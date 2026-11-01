@@ -6,7 +6,7 @@
 // pass the guard to their server, and their changed-only steps key exactly ICONS_PAGE_PUBLIC
 // (tools/changed-only/fleet-partition.selftest.mjs pins the keys).
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'vite';
@@ -50,16 +50,19 @@ try {
     assert.equal((await get('/src/module.js')).status, 200, 'a module outside public/ passes');
     assert.equal((await get('/index.html')).status, 200, 'a page outside public/ passes');
     assert.equal(refused.length, 0, 'nothing refused yet');
-    for (const path of ['/llms.txt', '/site.webmanifest', '/textures/a.webp', '/public/llms.txt', `/@fs${root}/public/llms.txt`]) {
+    // /@fs/ in both forms of a symlinked temp root (macOS's /var is /private/var; a Vite that resolves its root, 8.3 in one
+    // lane, answered the unresolved form itself before the guard saw it)
+    for (const path of ['/llms.txt', '/site.webmanifest', '/textures/a.webp', '/public/llms.txt', `/@fs${root}/public/llms.txt`,
+      `/@fs${realpathSync(root)}/public/llms.txt`]) {
       const response = await get(path);
       assert.equal(response.status, 403, `${path}: a public file outside ICONS_PAGE_PUBLIC is refused`);
       assert.match(response.text, /not an input of this page's changed-only key/);
     }
-    assert.deepEqual(refused, ['public/llms.txt', 'public/site.webmanifest', 'public/textures/a.webp', 'public/llms.txt', 'public/llms.txt'],
-      'each refusal is reported by its repository path');
+    assert.deepEqual(refused, ['public/llms.txt', 'public/site.webmanifest', 'public/textures/a.webp', 'public/llms.txt', 'public/llms.txt',
+      'public/llms.txt'], 'each refusal is reported by its repository path');
     assert.deepEqual(await get('/favicon.ico'), { status: 204, text: '' }, 'the browser\'s favicon request is answered empty, unread');
     assert.notEqual((await get('/missing.txt')).status, 403, 'a missing path is left to Vite');
-    assert.equal(refused.length, 5, 'favicon and missing paths are not refusals');
+    assert.equal(refused.length, 6, 'favicon and missing paths are not refusals');
   });
   // exact files: a page keyed per id (the geometry gate's oracles) is served those files and no sibling
   const exactRefused = [];

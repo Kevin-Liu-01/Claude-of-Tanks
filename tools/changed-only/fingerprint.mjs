@@ -23,7 +23,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
+  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
   stepDefinition } from './steps.mjs';
 import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
 import { computeWorldState, tokenPin } from './world.mjs';
@@ -147,6 +147,17 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 
   // Roster: ids, their order, groups, renames. A change runs every step in whole-fleet mode.
   const roster = H(JSON.stringify(data.roster));
+
+  // The values of the catalog keys a step declares (267, steps.mjs `catalogKeys`): one row per key, its value in each
+  // catalog ("absent" where it has none). A pattern ending in `*` takes every key with that prefix.
+  let catalogs = null;
+  const catalogValues = (patterns) => {
+    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(readFileSync(abs(file), 'utf8')); } catch { return {}; } });
+    const keys = [...new Set(catalogs.flatMap((catalog) => Object.keys(catalog)))].filter((key) => patterns.some((pattern) =>
+      (pattern.endsWith('*') ? key.startsWith(pattern.slice(0, -1)) : key === pattern)));
+    const named = new Set([...patterns.filter((pattern) => !pattern.endsWith('*')), ...keys]);
+    return [...named].sort().map((key) => `catalog:${key}:${h16(JSON.stringify(catalogs.map((catalog) => catalog[key] ?? 'absent')))}`);
+  };
 
   // Per-id input files (266): a table's `inputField` names, in each id's row, a file the step writing the table reads for
   // that id, as { path, sha256 } (path as a page fetches it, under public/). Its row is the file's hash when the file is
@@ -337,9 +348,22 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const readFiles = readGlobs.length
       ? expandGlobs(root, readGlobs, { exclude: [...(step.excludeReads ?? [])] }).map(abs).filter((file) => !excluded.has(file))
       : [];
-    const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...toolFiles, ...foreignTables]), { exclude: ownFiles }),
+    // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
+    // rows when the balance pass is out of the core (the combat row only where rowReads names it)
+    const rowTables = [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
+      ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT),
+      // the per-id files its own output rows name (266, `inputField`)
+      ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort();
+    // (267) a step that declares the catalog keys its page draws keys their values, not the whole string catalogs
+    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys) : [];
+    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !CATALOG_FILES.includes(rel(file)))) : toolFiles;
+    const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),
+      ...catalogRows,
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`),
-      ...envRows(environmentOf(toolExecuted)));
+      ...envRows(environmentOf(toolExecuted)),
+      // (267) a canonical table's frame, its fields beside the rows, decides every id it reads (TABLES `canonical`):
+      // keyed whole as canonical content, so a reorder of rows or fields moves no key
+      ...rowTables.filter((table) => data.frames?.[table]).map((table) => `frame:${table}:${data.frames[table]}`));
     // Recorded (frame-checked) outputs: the tables' files and files written whole. `writes` files are bound to the rows
     // by the tool itself (the icon manifest holds each image's sha256), so they are not tracked file by file.
     const outputFiles = [...recorded].filter((file) => !aggregateFiles.has(file) || step.files.includes(rel(file)));
@@ -348,12 +372,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
       foreignTables: [...foreignTables].map(rel).sort(),
-      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
-      // rows when the balance pass is out of the core (the combat row only where rowReads names it)
-      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
-        ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT),
-        // the per-id files its own output rows name (266, `inputField`)
-        ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort(),
+      rowTables,
     };
   }
 

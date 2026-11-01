@@ -15,14 +15,20 @@
 //     names nearly every id): that is the suite itself, which test:recommend names and the owner triggers.
 // A negative control runs on every invocation: a receipt whose closure holds a file is selected when that file changes,
 // and every changed receipt file is selected. A control that fails exits 2 before anything runs.
+// Every receipt that ends red is re-run alone here and on the merge base and printed OWN, INHERITED (the identical
+// failure on the base) or FLAKY (passes alone here); the exit counts only OWN (tools/lane-reds.mjs: base results are
+// kept by input fingerprint in the shared receipt cache, so lanes on one base run it there once).
 // `--root=<dir>` evaluates another checkout's registry and closures (a report only: it implies --dry-run).
 // A branch carrying an integration tree beyond the base (origin/integ/*) gets the suggested --base printed first;
 // `--base=integ` takes it. The command stops its children and exits on SIGTERM/SIGINT/SIGHUP/SIGALRM or its parent's exit.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { defaultTierFiles, manualSuiteFiles } from './selftest-tiers.mjs';
+import { classifyLaneReds, laneRedLines } from './lane-reds.mjs';
+import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
+import { isStarved } from './selftest-verdict.mjs';
 import { changedPaths, changedTankIds, createReadIndex, exitWithParent, fleetPartition, laneReadOf, receiptRunTimes, receiptsNaming,
   chooseBase, runTracked, TOOLS_ROOT } from './test-diff.mjs';
 
@@ -152,16 +158,39 @@ async function main(argv) {
 
   const dir = mkdtempSync(join(tmpdir(), 'cot-test-lane-'));
   try {
-    let status = 0;
+    let status = 0, unreported = false;
+    const reds = [];
     for (const [tier, extra] of [['default', []], ['tanks', ['--heavy=tanks']]]) {
       const files = rows.filter((row) => row.tier === tier).map((row) => row.file);
       if (!files.length) continue;
-      const list = join(dir, `${tier}.txt`);
+      const list = join(dir, `${tier}.txt`), reportPath = join(dir, `${tier}-report.json`);
       writeFileSync(list, files.join('\n') + '\n');
-      const code = await runTracked(process.execPath, ['tools/run-selftests.mjs', 'all', ...extra, `--only-from=${list}`], { cwd: root, stdio: 'inherit' });
+      const code = await runTracked(process.execPath, ['tools/run-selftests.mjs', 'all', ...extra, `--only-from=${list}`, `--report=${reportPath}`],
+        { cwd: root, stdio: 'inherit' });
       if (code !== 0 && !status) status = code;
+      // the receipts that ended red (STARVED is the machine's verdict, never red)
+      try {
+        reds.push(...JSON.parse(readFileSync(reportPath, 'utf8')).rows
+          .filter((row) => !row.skipped && (row.error || (row.status !== 0 && !isStarved(row.status)))).map((row) => row.file));
+      } catch { unreported = true; }
     }
-    console.log(`[test:lane] ${status ? 'FAIL' : 'PASS'}: ${rows.length} receipts; the manual suites are the owner's (npm run test:recommend)`);
+    let classified = null;
+    if (reds.length) {
+      const logDir = mkdtempSync(join(tmpdir(), 'cot-test-lane-reds-')); // kept: the pair logs of every red
+      classified = await classifyLaneReds(reds, {
+        root, commit: diff.mergeBase, headCache: cache, logDir, runFile: runner.runSelftestFile,
+        storeDir: join(resolveSelftestCacheDir(root, process.env).dir, 'lane-base'),
+        makeCache: (checkout) => createSelftestCache({ root: checkout, cacheDir: cache.cacheDir, alwaysRun: runner.SELFTEST_FRESH_FILES,
+          fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES, declaredInputs: runner.SELFTEST_DECLARED_INPUTS }),
+      });
+      for (const line of laneRedLines(classified, { commit: diff.mergeBase, logDir })) console.log(line);
+      // only the lane's own reds fail it; a runner that wrote no report keeps its own exit
+      status = classified.own.length ? 1 : unreported ? status : 0;
+    }
+    const counts = classified ? `; ${classified.own.length} own red${classified.own.length === 1 ? '' : 's'}, ${classified.rows.length - classified.own.length} not the lane's` : '';
+    console.log(`[test:lane] ${status ? 'FAIL' : 'PASS'}: ${rows.length} receipts${counts}; the manual suites are the owner's (npm run test:recommend)`);
+    if (value('json') && classified) writeFileSync(resolve(value('json')), JSON.stringify({ ...report,
+      reds: classified.rows.map((row) => ({ file: row.file, class: row.class, verdict: row.verdict, here: (row.confirm ?? row).here.message, base: row.base.message })) }, null, 1) + '\n');
     return status;
   } finally {
     rmSync(dir, { recursive: true, force: true }); // this run's own list files

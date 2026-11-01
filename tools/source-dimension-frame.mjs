@@ -3,6 +3,7 @@
 // historical-preservation policy are deliberately not changed.
 import * as THREE from 'three';
 import { SUPPLIED_SOURCE_COMPARISON_IDS } from './supplied-source-reference-overrides.mjs';
+import { buildOffsetFor } from './source-world-registration.mjs';
 
 const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1987','t80u',
   'leclerc_xlr','amx56','chieftain_mk10','t72b3','jpz_e100','type10','type90',
@@ -10,6 +11,9 @@ const IDS=new Set(['m1a2_abrams_sepv2','leo2a6','k1a1','amx30b','t62mv1','t72b_1
   'c1_ariete','challenger1_mk3','chieftain5','strv122', 'ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'm48a5_patton',
   // Merkava family 262 (owner 2026-10-27: the supplied Mk 1B-4B models are the target): measured on their source's ruler
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
+  // 267 (Main 2026-11-01): the Burlak prototype is measured on the composite it follows (the T-90A X source's hull under
+  // the Burlak X source's turret, source-world-registration.mjs); its gun's declared departure lifts no height
+  't90a_burlak_proto',
   ...SUPPLIED_SOURCE_COMPARISON_IDS]);
 
 export function usesSourceDimensionFrame(id,registration) {
@@ -33,9 +37,9 @@ export function sourceDimensionCamera(sourceBounds,direction) {
 }
 
 /** `buildOffset` is the build's declared departure from the source's turret datums (source-world-registration.mjs
- *  SOURCE_WORLD_BUILD_OFFSETS: the T-80U's ring race); its rise is added to the source's heights, nothing else. */
+ *  SOURCE_WORLD_BUILD_OFFSETS: the T-80U's ring race); its turret's rise is added to the source's heights, nothing else. */
 export function sourceDimensionRows(reference,actual,referenceBounds,actualBounds,buildOffset=[0,0,0]) {
-  const rows=[],lift=buildOffset[1];
+  const rows=[],lift=buildOffsetFor(buildOffset,'turret')[1];
   const add=(name,a,r,method)=>{
     if(![a,r].every(v=>Number.isFinite(v)&&v>0))throw new Error(`Missing positive ${name} source measurement`);
     rows.push({name,actual:a,published:r,pct:Math.abs(a-r)/r*100,method});

@@ -22,6 +22,7 @@ import { uniqueIds } from './id-list.mjs';
 import { readTankAssets } from './tank-assets-store.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { iconsPagePublicOnly } from './icons-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS, undeclaredCatalogReads } from './page-catalog-keys.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
@@ -182,6 +183,8 @@ try {
         const chunk = chunkIds.slice(i, i + 12);
         Object.assign(rows, await page.evaluate((tankIds) => window.__CENTER_AUDIT(tankIds), chunk));
       }
+      // 267: --update keys only the catalog strings this page draws; any other key it asked for fails the run
+      if (update) pageErrors.push(...await undeclaredCatalogReads(page, ICONS_PAGE_CATALOG_KEYS));
       if (update) return;
       for (let i = 0; i < chunkIds.length; i += 24) {
         const chunk = chunkIds.slice(i, i + 24);

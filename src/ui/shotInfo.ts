@@ -45,7 +45,8 @@ import {
   presentationProjectionFor,
 } from '../vehicles/presentationAnchors.generated.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
+import { isMapId } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from './mapNames.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
@@ -375,8 +376,11 @@ const SI_CSS = `
   padding:0 0 var(--s1);transition:opacity var(--dur-stage) ease;}
 .cot-si-card.out{opacity:0;}
 
-.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:var(--battle-fs-11);color:var(--warn);overflow:hidden;line-height:1.3;}
-.cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
+/* (every line of the card is one line by construction, its value whole and a label whole or out of view: a long
+   locale's line wrapped, owner 2026-11-01 "china goes to twolines in some text"; tools/shot-card-fit.browser.mjs) */
+.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:var(--battle-fs-11);color:var(--warn);overflow:hidden;line-height:1.3;
+  white-space:nowrap;text-overflow:ellipsis;}
+.cot-si-hd{flex:none;min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   padding:var(--s1) 9px 3px;border-bottom:1px solid var(--line-1);}
 .cot-si-state{display:flex;min-width:0;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:700;
@@ -387,14 +391,17 @@ const SI_CSS = `
 .cot-si-card{container:si-card/inline-size;}
 /* (a longer outcome ends in an ellipsis beside the figure, which keeps its width: the narrow card's PENETRATION alone lost
    its glyph at 900x700, gauntlet r8) */
-@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}}
+@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}
+  /* (the pen row's fresh roll gives way to the roll that reached the plate and its chip: zh's "480 › 300 mm 反应装甲" ran
+     159 px in a 156 px row; the row's title keeps the fresh roll) */
+  .cot-si-kv.pen b .fresh{display:none;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* the hull points the shot took off, beside the outcome (owner 2026-10-31, "make the -xxxxx number be colored"): the
    damage dealt's one colour, as the float and the log carry it; yellow beside the outcome's orange (an amber figure by an
    orange title read as two oranges in one row, gauntlet r7) */
 .cot-si-dmg{flex:0 0 auto;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-20);line-height:1;
   letter-spacing:0;color:var(--battle-damage-dealt);white-space:nowrap;}
-.cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
+.cot-si-sub{flex:none;height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:var(--s1);overflow:hidden;white-space:nowrap;}
 .cot-si-sub>span:last-child{text-align:right;color:var(--ink-1);font-weight:700;}
@@ -408,13 +415,19 @@ const SI_CSS = `
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
 /* (one rhythm: every row 2 px over and under a hairline, the subtitle's included; the pen row's own gap and the armor row's
    own rules read as one-offs, gauntlet r3) */
-.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
+.cot-si-kv{min-width:0;display:grid;grid-template-columns:minmax(12px,1fr) auto;gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
   align-items:center;font-size:var(--battle-fs-12);line-height:14px;color:var(--ink-3);letter-spacing:0em;}
 /* (one 14 px line in both scripts: zh's 13 px rows ran a pixel a row taller than en's 12 px, and a dock that held four en
    rows held three in zh, gauntlet r11) */
-.cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
-/* (the row's glyph at 12 px in the label's ink: at 9 px in ink-3 it read as a speck, gauntlet r5) */
-.cot-si-kv .cot-si-k svg{width:12px;height:12px;flex:0 0 auto;color:var(--ink-2);}
+/* (the value takes its width first, the row's 12 px glyph always stays, and the label shows whole or wraps out of its
+   one-line box, the glyph naming the row: at the card's 176 px the label kept its width and the value lost its tail,
+   "220 → 350 mm …" and the pen's chip, in zh and the pseudo-locale; a label cut to "穿…" names nothing) */
+.cot-si-kv .cot-si-k{min-width:0;height:14px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--s1);}
+.cot-si-kv .cot-si-k>span{white-space:nowrap;}
+/* (the row's glyph at 12 px in the label's ink: at 9 px in ink-3 it read as a speck, gauntlet r5; its 1 px margins make its
+   line the label's 14 px with or without the label, so a label wrapped out starts under the box: on a 12 px line its top
+   2 px showed under the glyph) */
+.cot-si-kv .cot-si-k svg{width:12px;height:12px;flex:0 0 auto;margin-block:1px;color:var(--ink-2);}
 .cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
   letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
@@ -857,7 +870,7 @@ function penetrationPresentation(
   const cut = fresh > roll + 1;
   const qualifier = penetrationQualifier(ev, nominal, roll, fresh);
   // the fresh roll, the sprite's chevron, then what reached the plate (the card's html)
-  const arrow = cut ? `${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'si-cut')}` : '';
+  const arrow = cut ? `<span class="fresh">${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'si-cut')}</span>` : '';
   const legend = cut
     ? t('killcam.legend.fresh', { tag: t(qualifier === 'era' ? 'killcam.era' : 'killcam.screens') })
     : roll > 0 && nominal > 0 ? t('killcam.legend.roll') : '';

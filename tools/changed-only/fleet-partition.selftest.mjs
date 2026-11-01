@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { balanceTokens, computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
-  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, gpuChunks } from './steps.mjs';
+  SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, CATALOG_FILES, gpuChunks } from './steps.mjs';
 import { browserIdCap } from '../browser-id-chunks.mjs';
 import { declaredNotInput, tableFileList } from './globs.mjs';
 import { tokenPin } from './world.mjs';
@@ -188,6 +188,7 @@ assert.ok(launchEnv.includes('COT_BROWSER_TREE_CAP_MB') && launchEnv.every((name
 for (const name of ['icons', 'centering']) {
   const step = STEPS.find((entry) => entry.name === name);
   assert.ok(state.steps[name].toolFiles.includes('tools/icons-page-public.mjs'), `${name}: keys the served public list`);
+  assert.ok(!state.steps[name].toolFiles.includes('public'), `${name}: never keys public/ whole (a name such as the guard's /public/ prefix)`);
   assert.ok(step.reads.length && step.reads.every((glob) => /^public\/[^/*]+\/\*\*$/.test(glob)) && !step.reads.includes('public/**'),
     `${name}: reads named public directories (${step.reads.join(', ')}), never public/**`);
 }
@@ -211,6 +212,28 @@ for (const name of ['icons', 'centering']) {
     assert.ok(!recordFiles.includes(`docs/geometry-gate/${other}`), `gate: docs/geometry-gate/${other} is not a record`);
   }
 }
+// 267: the sim-floor ledger keys anatomy per id (TABLES simFloors, canonical) and through its frame, never by its bytes:
+// the 266 Brazil merge reordered its rows and re-ran anatomy on every id for identical content.
+{
+  const anatomy = state.steps.anatomy;
+  assert.ok(anatomy.rowTables.includes('simFloors') && !anatomy.toolFiles.includes('docs/geometry-gate/sim-floors.json')
+    && !anatomy.foreignTables.includes('docs/geometry-gate/sim-floors.json'), 'anatomy: reads the sim floors per id, not the file whole');
+  assert.equal(Object.keys(state.rows.simFloors ?? {}).length, state.ids.length, 'every id has a sim-floor row');
+  for (const [name, entry] of Object.entries(state.steps)) {
+    if (name !== 'anatomy') assert.ok(!entry.toolFiles.includes('docs/geometry-gate/sim-floors.json'), `${name}: never keys the sim floors`);
+  }
+}
+// 267: no world bake reaches the i18n catalogs (the localized map name is UI code), and the GPU steps that do reach them
+// key only the strings their page draws (catalogKeys); a HUD string edit re-ran both and every map.
+for (const [name, entry] of Object.entries(state.world?.steps ?? {})) {
+  assert.ok(!entry.toolFiles.some((file) => file === 'src/ui/i18n.ts' || CATALOG_FILES.includes(file)), `world ${name}: reaches no string catalog`);
+}
+for (const [name, entry] of Object.entries(state.steps)) {
+  if (entry.toolFiles.some((file) => CATALOG_FILES.includes(file))) {
+    assert.ok(entry.step.catalogKeys?.length, `${name}: reaches the string catalogs, so declares the keys its tool draws (catalogKeys)`);
+  }
+}
+assert.ok(['centering', 'icons'].every((name) => state.steps[name].toolFiles.includes(CATALOG_FILES[0])), 'control: the icons page reaches them');
 assert.ok(graph.edges(join(root, 'tools/browser-id-chunks.mjs')).exec.has(join(root, capsTable)), 'control: the helper executes the cap table');
 assert.ok(declaredNotInput(DECLARED_DYNAMIC['tools/browser-id-chunks.mjs'], capsTable) && !declaredNotInput({}, capsTable),
   'control: only the scheduleOnly declaration takes the table out of the key');

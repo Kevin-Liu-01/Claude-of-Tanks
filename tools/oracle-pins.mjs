@@ -77,8 +77,6 @@ export const ORACLE_PINS = Object.freeze({
   '/models/community-candidates/strv122_x_source.glb': pin('d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582'), // strv122 (certificate)
   '/models/community-candidates/strv81_x_source.glb': pin('66b2818a6cfe23a2f7be0ec7be68286e9969fb253d0c878a231aeec95e021aa1'), // centurion3, centurion5_2, strv81 (certificate)
   '/models/community-candidates/strv_103b.glb': pin('e0b0997377b43edf2e9a8123baa5f26b5ee3d28fc9ae0208c13826893870be80'), // strv103a
-  '/models/community-candidates/t-90a_burlak_armored_warfare.glb': pin('812000466f783234effb41b54d32925bf071a3bf117c2b0780a26d6a40bd8f90',
-    "the T-90 lane's 267 rebuild moved this id (its gate walk on main reads the same); the version every T-90 lane holds"), // t90a_burlak_proto
   '/models/community-candidates/t14_x_source.glb': pin('48745114206a2123e687f75477526caac0ad3896bd677639f44995d44b97e769'), // t14_armata
   '/models/community-candidates/t55a_x_source.glb': pin('b1f618c9982b08df3e1584903108367713696e17c72ea3f6ab589d2ad90385de',
     "the only version on this machine (the Type 59 lane); the 08-17 row scored 0, this file 91.8"), // t55a, type59
@@ -92,9 +90,10 @@ export const ORACLE_PINS = Object.freeze({
   '/models/community-candidates/t80u_kursk_manako.glb': pin('eaa2136bcb064fae8007c8f049a80b61c6ceba7ce10c591dc9d66f8253988308'), // t80u_kursk
   '/models/community-candidates/t80u_x_source.glb': pin('dcb16e5bc83c37e380a252c08462948a6ff9098738464ea4bee9e45ccb02df81'), // t80u (certificate)
   '/models/community-candidates/t90_x_source.glb': pin('619f5cec83ed3ceb8ab852bd1ae95b09d097e12631d8c89f3c0f19f56c7fa592'), // t90 (certificate)
-  '/models/community-candidates/t90a_burlak_x_source.glb': pin('db1ca6b229f9925474dfda35727d76895e9a3b825af2c3b3a326cf2a6e7d0b52'), // t90a_burlak (certificate)
+  '/models/community-candidates/t90a_burlak_x_source.glb': pin('db1ca6b229f9925474dfda35727d76895e9a3b825af2c3b3a326cf2a6e7d0b52'), // t90a_burlak; t90a_burlak_proto's grafted turret (certificate)
   '/models/community-candidates/t90a_source.glb': pin('f0ba16a464dc7e9584ea382f11e5e98481b2945db2b8a2f134dfbae4fbba793d'), // t90a (certificate)
   '/models/community-candidates/t90a_vladimir_x_source.glb': pin('c3c41ccc322f5746727022964dc03760fab196183532d0e416884d97ffa8858c'), // t90a_vladimir
+  '/models/community-candidates/t90a_x_source.glb': pin('f0ba16a464dc7e9584ea382f11e5e98481b2945db2b8a2f134dfbae4fbba793d'), // t90a_burlak_proto's composite hull (the t90a certificate's bytes)
   '/models/community-candidates/t90m_source.glb': pin('926571090982af867c43277c0f77a73501f6559dac363d33dc42bf157ebd0e60'), // t90m (certificate)
   '/models/community-candidates/t90ms_x_source.glb': pin('fd3d0c6e13b419ef76b431f6c96230407b9a07d43546a85d757ce82f78182ec5'), // t90ms_tagil (certificate)
   '/models/community-candidates/t90sm_source.glb': pin('48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1'), // t90sm (certificate)

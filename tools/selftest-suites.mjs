@@ -351,6 +351,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tool-page-load.selftest.mjs',
     // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
     'tools/icons-page-public.selftest.mjs',
+    // 267: the icons page keys only the catalog strings it draws; an undeclared key fails its tools' runs
+    'tools/page-catalog-keys.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
@@ -821,6 +823,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-page-unique.selftest.mjs',
     'tools/viteGameEntryMeta.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
+    // 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite
+    'tools/media-r5/fleet-coverage.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
     // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
@@ -861,6 +865,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/selftest-cpu-pool.selftest.mjs',
     'tools/selftest-schedule.selftest.mjs',
     'tools/gate.selftest.mjs',
+    // 267: test:lane's red classes (OWN, INHERITED, FLAKY) and the base results kept by input fingerprint
+    'tools/lane-reds.selftest.mjs',
     'tools/release.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
@@ -1640,6 +1646,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',

@@ -1,4 +1,4 @@
-import { withOwnerSizeTargets } from './owner-size-targets.ts';
+import { OWNER_SIZE_TARGETS, withOwnerSizeTargets } from './owner-size-targets.ts';
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { GRIFFIN_PROPORTION_REFERENCE } from './griffin-proportion-registration.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
@@ -20,7 +20,7 @@ const CENTURION_SOURCE_FRAME = Object.freeze({
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
-export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSourceFrames({
+const STUDY_SOURCE_WORLD_FRAMES = withAssembledSourceFrames({
   puma_s1: {sha256:'340e00fa8053680d2adbeabc10293264d07f743c9e5680462da8e081635cf4c0',
     fused:true,turret:[.434794,1.947494,-1.319322],gun:[.019503,2.513110,-.791446]},
   type89: {sha256:'8ab1bbbcbde2e6c008a80557cb54409211301df21b86d865b27b4d1adb027566',
@@ -252,12 +252,55 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   // The Centurion family (267, Main 2026-10-31), one source frame for the three marks rebuilt to it in 262
   // (centurionFamily.ts): the Strv 81 print in its pristine download, whips and all (CENTURION_SOURCE_FRAME).
   centurion3: CENTURION_SOURCE_FRAME, centurion5_2: CENTURION_SOURCE_FRAME, strv81: CENTURION_SOURCE_FRAME,
-}), griffin50mm: GRIFFIN_PROPORTION_REFERENCE.frame});
+});
+/** One source's hull under another's turret and gun: the graft moves rigidly by the difference of the two certified
+ *  ring datums (the graft's onto the host's), so the composite's turret datum is the host's and its trunnion the graft's,
+ *  moved. Both sources keep their own certificates; the loader verifies both files (tools/reference-glb-loader.ts). */
+function seatedGraft(host, graft) {
+  const translation = host.turret.map((v, i) => v - graft.turret[i]);
+  return { sha256: host.sha256, turret: [...host.turret], gun: graft.gun.map((v, i) => v + translation[i]),
+    graft: { sha256: graft.sha256, turret: [...graft.turret], gun: [...graft.gun], translation } };
+}
+export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...STUDY_SOURCE_WORLD_FRAMES,
+  griffin50mm: GRIFFIN_PROPORTION_REFERENCE.frame,
+  // t90a_burlak_proto (267, Main's ruling 2026-10-31): the build is the T-90A X hull (profiles/t90X.ts, the t90a twin)
+  // under the Burlak prototype turret (t90.ts buildT90BurlakTurret), so its reference is the T-90A X source's hull under
+  // the Burlak X source's turret and gun (the source the production t90a_burlak passes), the Burlak turret's lower-ring
+  // datum seated on the T-90A X ring datum: both are the turret's ring bottom in their sources (the T-90A X ring 11 mm
+  // into its 1.479 deck, the Burlak's on its hull's raised ring at 1.545 over a 1.466 deck), so the Burlak turret drops
+  // 0.0766 m with its ring onto the T-90A deck. Installed at the owner's 1.05 (tools/owner-size-targets.ts).
+  t90a_burlak_proto: seatedGraft(STUDY_SOURCE_WORLD_FRAMES.t90a, STUDY_SOURCE_WORLD_FRAMES.t90a_burlak),
+});
 export const SOURCE_WORLD_FRAMES = Object.freeze(withOwnerSizeTargets(AUTHORING_SOURCE_WORLD_FRAMES));
 // Declared departures of a build's turret and gun pivots from its certificate's source datums (the certificates stay
 // immutable). The T-80U seats its casting T80U_X_RING_RAISE_M over the source's ring on a machined race (owner
 // 2026-10-21, 31235a8c85: the gun mount stood in the deck); the build is held to the datums plus that raise only.
-export const SOURCE_WORLD_BUILD_OFFSETS = Object.freeze({ t80u: Object.freeze([0, T80U_X_RING_RAISE_M, 0]) });
+// An offset is one vector for both pivots, or {turret, gun} where they depart apart (an anchor it omits departs by 0).
+// The Burlak prototype (267) sits its turret on the T-90A X ring (no departure there) but keeps the T-90A X cannon on
+// the T-90A X trunnion station (x .005, z 1.30) with its seat 15.6 mm higher (t90.ts finishT90BurlakNative2026): over
+// the ring that trunnion stands 0.1251 m higher and 0.1351 m further forward than the production Burlak X source's, the
+// prototype's own (source metres; installed at the owner's 1.05).
+const T90A_BURLAK_PROTO_SEAT_RISE_M = .0156;
+export const SOURCE_WORLD_BUILD_OFFSETS = Object.freeze({ t80u: Object.freeze([0, T80U_X_RING_RAISE_M, 0]),
+  t90a_burlak_proto: Object.freeze({ gun: Object.freeze(AUTHORING_SOURCE_WORLD_FRAMES.t90a.gun.map((v, i) =>
+    (v - AUTHORING_SOURCE_WORLD_FRAMES.t90a_burlak_proto.gun[i] + (i === 1 ? T90A_BURLAK_PROTO_SEAT_RISE_M : 0))
+      * OWNER_SIZE_TARGETS.t90a_burlak_proto)) }) });
+/** The declared departure of one pivot (`anchor`: 'turret' or 'gun') from a build offset of either form. */
+export const buildOffsetFor = (buildOffset, anchor) =>
+  Array.isArray(buildOffset) ? buildOffset : buildOffset?.[anchor] ?? [0,0,0];
+// Declared departures of a build's PARTS from its certified source, as SOURCE_WORLD_BUILD_OFFSETS declares its pivots':
+// the source node named stands in the comparison where the owner ruled the build's part, moved rigidly (its shape stays
+// the source's) so its top is the ruled height. The certificate and its file stay as they are; the loader applies each
+// row before any scale and the gate record lists it (tools/reference-glb-loader.ts, procedural-fidelity.html).
+// The T-90A X (release 240, the owner: "make sure all tank turrets are clear of hulls"): the housing behind the ring, the
+// source's 'gear222' (x -0.885..0.335, z -1.877..-1.543, its top 24 cm over the deck at 1.721), stood in the bustle's
+// sweep, so the build lays a low cover on its footprint with its top at 1.530 (profiles/t90X.ts aGlacis). The Burlak
+// prototype's composite hull is that source and its build that hull, so the row is its too.
+const T90A_X_DECK_COVER = Object.freeze({ node: 'gear222', top: 1.530,
+  ruling: 'owner, release 240 ("make sure all tank turrets are clear of hulls"): the housing behind the ring is a low cover at 1.53 (profiles/t90X.ts aGlacis)' });
+export const SOURCE_WORLD_PART_DEPARTURES = Object.freeze({
+  t90a: Object.freeze([T90A_X_DECK_COVER]), t90a_burlak_proto: Object.freeze([T90A_X_DECK_COVER]),
+});
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
@@ -278,7 +321,7 @@ export function validateSourceWorldFrame(certificate, measuredHash, frames, buil
       // A fused oracle has no independent moving owners. Its empty rig nodes
       // stay at the origin; do not fabricate source articulation. Native
       // inferred articulation remains independently checked below.
-      const offset=owner==='procedural' && anchor!=='hull' ? buildOffset : [0,0,0];
+      const offset=owner==='procedural' && anchor!=='hull' ? buildOffsetFor(buildOffset,anchor) : [0,0,0];
       const expected=anchor==='hull' || (owner==='reference'&&certificate?.fused)
         ? [0,0,0] : certificate?.[anchor]?.map((v,i)=>v+offset[i]);
       const actual=frame?.[anchor];
