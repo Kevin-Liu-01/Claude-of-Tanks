@@ -549,14 +549,17 @@ const _panelHit: PanelPlateHit = { plate: null, nx: 0, ny: 0, nz: 0 };
 const shotZones = new WeakMap<readonly ArmorPlate[], ZonePlate[]>();
 
 /**
- * (267) The plate a shot reads where it enters a frame's cells: the face's, unless that plate cannot meet the shot (it
- * faces away from it: a roof under a level round, a side ahead of the bow; or it is a gun plate and the entry lies off
- * its window), when it is the plate facing the shot whose outline the shot's line crosses nearest the entry
- * (sim/armorPlanes.ts zoneAlongShot), as the authored armour stands. The impact angle stays the face's.
+ * (267) Where a shot enters a frame's cells on a face whose plate cannot meet it (the plate faces away from the shot: a
+ * roof under a level round, a side ahead of the bow; or it is a gun plate and the entry lies off its window): the main
+ * plate facing the shot whose outline the shot's line crosses nearest the entry (sim/armorPlanes.ts zoneAlongShot), as
+ * the authored armour stands. Null where the face's plate stands. The hit is then a hit on that plate (Main's ruling,
+ * 267): its thickness, its angle to the shot, its ricochet test, so a bevel never out-protects the plate it belongs to
+ * (the KF51's 750 mm front read ~2,000 mm through its 70-degree bevel at the face's angle); the struck face only decides
+ * that the shot is read again.
  */
 function plateAlongShot(
   plates: readonly ArmorPlate[], plate: ArmorPlate, x: number, y: number, z: number, frame: FrameIndex,
-): ArmorPlate {
+): ZonePlate | null {
   let zones = shotZones.get(plates);
   if (!zones) { zones = zonePlates(plates); shotZones.set(plates, zones); }
   let own = -1;
@@ -565,9 +568,10 @@ function plateAlongShot(
   if (own < 0) for (let index = 0; index < zones.length; index++) {
     if ((zones[index].plate as ArmorPlate).name === plate.name) { own = index; break; }
   }
-  if (own < 0) return plate;
+  if (own < 0) return null;
   const d = _dirN[frame];
-  return zones[zoneAlongShot(zones, own, x, y, z, d.x, d.y, d.z)].plate as ArmorPlate;
+  const along = zoneAlongShot(zones, own, x, y, z, d.x, d.y, d.z);
+  return along === own ? null : zones[along];
 }
 
 function traceCollisionShell(
@@ -612,7 +616,11 @@ function traceCollisionShell(
         if (_panelHit.nx === _panelHit.nx) { nx = _panelHit.nx; ny = _panelHit.ny; nz = _panelHit.nz; }
       }
     }
-    if (plates) plate = plateAlongShot(plates, plate, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, frame);
+    if (plates) {
+      const along = plateAlongShot(plates, plate, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, frame);
+      // a hit on that plate: its normal sets the angle, the ricochet test and the deflection (the entry stays the face's)
+      if (along) { plate = along.plate as ArmorPlate; nx = along.normal[0]; ny = along.normal[1]; nz = along.normal[2]; }
+    }
     const cosI = Math.min(1, Math.max(0,
       -(_dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));
     out.push(finishFrameHit({

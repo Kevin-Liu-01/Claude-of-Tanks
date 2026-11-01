@@ -668,11 +668,16 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         const last = info.layers[info.layers.length - 1];
         // (267) a face of this zone the round reads through the plate across its path (its own plate does not face the
         // round: sim/armor.ts plateAlongShot) is painted in that plate's zone, so here it is judged as this zone's plate
+        // at the face's own angle (as the authority reads a round that does meet it)
         const own = entry.template.zones[entry.sampleZone].plate;
         const face = last?.collisionFace;
         if (last && face && last.plate !== own && face.plate === own && !face.gunSplit) {
-          if (info.plate === last.plate) info.plate = own as typeof info.plate;
+          const n = face.normal;
+          const cos = -(n[0] * (last.impactLocalDirX ?? 0) + n[1] * (last.impactLocalDirY ?? 0) + n[2] * (last.impactLocalDirZ ?? 0));
+          const angle = (Math.acos(Math.min(1, Math.max(0, cos))) * 180) / Math.PI;
+          if (info.plate === last.plate) { info.plate = own as typeof info.plate; info.impactAngleDeg = angle; }
           last.plate = own as typeof last.plate;
+          last.impactAngleDeg = angle;
         }
         const ratio = estimatePenRatio(shellSpec, info.distM, info);
         if (!Number.isFinite(ratio)) continue;

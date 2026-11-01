@@ -1,11 +1,13 @@
 // 267 (Main's ruling, a fleet balance move): a round entering a collision face whose plate cannot meet it — the plate
 // faces away from the round (a roof under a level round, a side ahead of the bow), or it is a mantlet or gun notch and
 // the entry lies off its window — reads the plate facing the round whose outline the round's line crosses, nearest the
-// entry (sim/armor.ts plateAlongShot, sim/armorZones.ts zoneAlongShot), at the face's own angle. nearestPlate let a
+// entry (sim/armor.ts plateAlongShot, sim/armorPlanes.ts zoneAlongShot), as a hit on that plate: its thickness, its
+// angle to the round, its ricochet test (Main's ruling, 267), so a bevel never out-protects its own front. nearestPlate let a
 // sloped front-top bevel take the roof: a level round met a 45 mm roof where the authored cheek or front stood across
 // its path. Held here, on a cell with a bevel: a level round through the bevel reads the front; the controls (above the
 // front's outline, top attack, a flank round on the side) keep their plates; a mantlet off its window reads the front,
-// over it the mantlet. On the fleet's head-on grids (leo2a5m, t72b3, m1a2_abrams, t90m, kf51_panther; 600 mm, 0/±15/±30):
+// over it the mantlet. Invariant: a re-read hit's effective protection is its plate's along the same line (the angle of
+// that line to that plate); with the face's angle back it is not (the mutation control). On the fleet's head-on grids (leo2a5m, t72b3, m1a2_abrams, t90m, kf51_panther; 600 mm, 0/±15/±30):
 // every hit whose plate faces its round keeps it, every other reads the plate along its line; the KF51's front-top reads
 // its front and, from above, its roof; the Leopard's bevels and its off-window mantlet faces read its cheeks.
 import assert from 'node:assert/strict';
@@ -16,6 +18,9 @@ const { zoneAlongShot, zonePlates } = await import('./armorZones.ts');
 const { PLANE_FACING_MIN } = await import('./armorPlanes.ts');
 const { ZONE_FACING_MIN } = await import('./armorZoneWeights.ts');
 const { gunFaceSplitPlate } = await import('./gunFaceSplit.ts');
+const { effectiveThickness } = await import('./damage.ts');
+const REF = { name: 'REF 120 APFSDS', type: 'APFSDS', caliberMm: 120, pen100Mm: 600, pen1000Mm: 580, pen2000Mm: 560 };
+const DEG = 180 / Math.PI;
 
 // the trace's facing floor is the paint's (a literal in the trace's module, which shares no chunk with the paint's weights)
 assert.equal(PLANE_FACING_MIN, ZONE_FACING_MIN, 'the trace and the paint share one facing floor');
@@ -64,8 +69,10 @@ const shoot = (armor, from, to) => firstFace(traceTank(new Vector3(...from), new
   const bevel = shoot(armor, [0.3, 0.95, 10], [0.3, 0.95, -10]);
   assert.equal(bevel.collisionFace.plate.name, 'roof', 'the bevel\'s face is the roof\'s (nearestPlate)');
   assert.equal(bevel.plate.name, 'front', 'a level round through the bevel reads the front across its path');
-  assert.ok(Math.abs(bevel.impactAngleDeg - (Math.acos(0.3 / Math.hypot(0.3, 0.8)) * 180) / Math.PI) < 0.01,
-    `at the bevel's own angle (${bevel.impactAngleDeg.toFixed(2)} deg)`);
+  assert.ok(bevel.impactAngleDeg < 1e-6 && Math.abs(bevel.impactLocalNormalZ - 1) < 1e-9,
+    `as a hit on the front: its angle to the round (0 deg), never the bevel's 69 (${bevel.impactAngleDeg.toFixed(2)} deg)`);
+  assert.equal(effectiveThickness(REF, bevel.plate, bevel.impactAngleDeg).effMm, effectiveThickness(REF, front, 0).effMm,
+    'the bevel reads exactly the front head-on: never more');
   // controls: a round that does meet the roof or the side keeps it
   const over = shoot(armor, [0.3, 1.1, 10], [0.3, 1.1, -10]);
   assert.ok(over.collisionFace.plate.name === 'roof' && over.plate.name === 'roof', 'above the front\'s outline the bevel reads the roof');
@@ -121,6 +128,15 @@ for (const id of ['leo2a5m', 't72b3', 'm1a2_abrams', 't90m', 'kf51_panther']) {
       const along = zones[zoneAlongShot(zones, index, px, py, pz, hit.impactLocalDirX, hit.impactLocalDirY, hit.impactLocalDirZ)].plate;
       assert.equal(hit.plate, along, `${id} ${grid.name}@${deg} (${x.toFixed(2)}, ${y.toFixed(3)}): the plate along the round`);
       if (hit.plate === own) continue;
+      // the invariant: a re-read hit is a hit on its plate along the same line (its normal, its angle, its reading)
+      const zone = zones.find((entry) => entry.plate === hit.plate), n = zone.normal;
+      const cos = -(n[0] * hit.impactLocalDirX + n[1] * hit.impactLocalDirY + n[2] * hit.impactLocalDirZ);
+      const angle = Math.acos(Math.min(1, Math.max(0, cos))) * DEG;
+      assert.ok(Math.abs(hit.impactAngleDeg - angle) < 1e-6 && Math.abs(hit.impactLocalNormalX - n[0]) < 1e-9
+        && Math.abs(hit.impactLocalNormalY - n[1]) < 1e-9 && Math.abs(hit.impactLocalNormalZ - n[2]) < 1e-9,
+        `${id} ${grid.name}@${deg} (${x.toFixed(2)}, ${y.toFixed(3)}): read at ${hit.plate.name}'s own angle (${angle.toFixed(2)}, not ${hit.impactAngleDeg.toFixed(2)})`);
+      const reading = effectiveThickness(REF, hit.plate, angle).effMm;
+      assert.equal(effectiveThickness(REF, hit.plate, hit.impactAngleDeg).effMm, reading, `${id}: the plate's reading along the line`);
       counts.moved++;
       const key = `${own.name}>${hit.plate.name}`;
       counts.pairs[key] = (counts.pairs[key] || 0) + 1;

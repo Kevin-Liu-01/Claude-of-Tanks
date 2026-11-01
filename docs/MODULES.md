@@ -185,7 +185,8 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   spread across 48-query frame batches to avoid periodic render stalls; battle
   exit releases every zone table. Since 267 a round whose face's plate cannot
   meet it (a front-top bevel scored to the roof, met level) reads the plate
-  across its path (`sim/armor.ts` plateAlongShot); the paint follows, a whole
+  across its path as a hit on that plate, its angle and ricochet test
+  (`sim/armor.ts` plateAlongShot); the paint follows, a whole
   panel through a row the overlay resolves per view, a split one among its
   zones per fragment.
 - Damage panel (`ui/damagePanel.ts`): reads CombatState directly per frame;
