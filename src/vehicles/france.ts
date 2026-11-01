@@ -847,7 +847,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), 0.98, 0.66, -1.25); // roof socket bridges the antenna pot to the welded crown
     // 267 round 4 (Sonnet, critic7: "antennas far too tall, about 1.5 turret heights; the photos show stubby, cone-based
     // aerials of about 0.4 of the turret height"): a cone on the pot and a short rod, 0.32 m in all; the fleet whip is off.
-    P.add('turretDetail', antennaPart(cylY(0.022, 0.034, 0.10, 10)), 0.98, 0.84, -1.25);   // stepped cone, lower course
+    // (the lower course runs down through the pot into the roof: standing on the pot alone, the aerial read as a
+    // floating island to the geometry gate, which leaves equipment out of its silhouette)
+    P.add('turretDetail', antennaPart(cylY(0.022, 0.034, 0.21, 10)), 0.98, 0.735, -1.25);  // stepped cone, lower course
     P.add('turretDetail', antennaPart(cylY(0.010, 0.020, 0.10, 8)), 0.98, 0.94, -1.25);    // upper course
     P.add('turretDetail', antennaPart(cylY(0.006, 0.008, 0.20, 6)), 0.98, 1.09, -1.25);    // rod
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.98, 0.762, -1.25);     // whip base pot at the source seat
