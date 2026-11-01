@@ -45,8 +45,17 @@ assert.deepEqual([...new Set(eraSectors.map((plate) => plate.name))].sort(), [..
   'six named ERA banks back the Kontakt-1 courses');
 // 264b (germany.ts): no 2A6M wedge pair floats over the 2A6 roof; the turret is the 2A6's main cells under the UA's
 // Kontakt-1, and the skirts and tracks are the 2A6's faces, at the UA's own ratings
-assert.ok(spec.armor.turretPlates.every((plate) => plate.kind === 'main' || plate.kind === 'era'),
-  'the turret carries the 2A6\'s main cells and its own Kontakt-1, no donor spaced plates');
+// 266 (Main 2026-10-31, leopardXWedges.ts): the wedge pair returns fitted on the 2A6 cheeks the UA is drawn with, the
+// 2A6's own fit, never the 2A6M donor's free-standing pair
+assert.ok(spec.armor.turretPlates.every((plate) => plate.kind === 'main' || plate.kind === 'era'
+  || (plate.kind === 'spaced' && /^turret_wedge_[LR]$/.test(plate.name))),
+  'the turret carries the 2A6\'s main cells, its wedge pair and its own Kontakt-1, no donor spaced plates');
+{
+  const wedges = (s) => s.armor.turretPlates.filter((p) => p.kind === 'spaced')
+    .map((p) => [p.name, p.keMm, p.ceMm, p.verts.map((v) => v.map((x) => Math.round(x * 1e6)))]);
+  assert.ok(wedges(spec).length > 0, 'the wedges carry spaced plates where they are drawn');
+  assert.deepEqual(wedges(spec), wedges(a6), 'the wedge plates are the 2A6\'s, fitted on its drawn cheeks');
+}
 assert.deepEqual({ ...LEOPARD_A6_UA_SHELL_DIMS }, { hullLengthM: D.dims.hullLengthM, overallLengthM: D.dims.overallLengthM,
   widthM: D.dims.widthM, heightM: D.dims.heightM }, 'the kit\'s layout names the 2A6\'s dimensions');
 {
