@@ -969,6 +969,10 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     fenders(P, 1.24, 1.695, 1.519, -0.30, 1.10, 0.03);                            // fore deck aft half 1.534
     fenders(P, 1.24, 1.695, 1.534, 1.10, 2.06, 0.03);                             // fore deck fwd half 1.549
     fenders(P, 1.24, 1.695, 1.562, -1.86, -0.65, 0.03);                          // mid deck 1.577; aft edge stops before the source's supported deck dip
+    // 267 (roof-pocket census): the mid deck stands 5.7 cm over the tub top (1.49); since the skirt's upper row (round 5)
+    // walls its outer side, the gap under it was a slot open at both ends (424-480 cm2 a side). A filler under the deck
+    // closes it out to the row's inner face, 1 cm inside the deck's ends
+    for (const s of [-1, 1]) P.add('hullDetail', box(0.41, 0.061, 1.19), s * 1.445, 1.5185, -1.255);
     fenders(P, 1.20, 1.40, 1.592, -2.16, -1.80, 0.03);                           // engine deck fore step 1.607
     // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's plates, louvres, fan,
     // bands and cable runs sit 2.5 cm lower, and its filler pots 0.19 m aft, under and past the sweep of the turret's
@@ -2082,6 +2086,22 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
     // 267: each side's fifteen launchers (nine GALIX and the six that left the cheeks) stand in one flush housing.
     for (const s of [-1, 1]) leclercGalixHousing(P, s, 9 + galixTop);
+    // 267 (roof-pocket census): between the side-wing core's rear face (z -1.30) and the housing's chamfered front, the aft
+    // roof wedge over the turret's sloped flank and the side rack walled a slot of air (390-520 cm2 a side, seen over the
+    // rack's top). A block in detail paint fills it inboard of the rack's wall face and up into the wedge; on the right the
+    // wedge's outer edge falls inboard aft, so the block's rear outer corner stays 1 cm inside it.
+    for (const s of [-1, 1]) {
+      const run = s < 0 ? 0.92 : 0.52;                                           // the wedge's outer underside edge: z -1.28 to its 0.44 end
+      const edgeX = (z: number): number => 1.28 - (s < 0 ? 0.04 : 0.26) * (-1.28 - z) / run;
+      const under = (z: number): number => 0.56 - 0.12 * (-1.28 - z) / run;
+      const housingZ = (x: number): number => -1.47 - (x - 0.90) / 0.54 * 0.10 - 0.004;
+      const zF = -1.295, xIn = 0.98, xOutF = 1.255, xOutR = Math.min(1.255, edgeX(housingZ(1.255)) - 0.012);
+      const zInR = housingZ(xIn), zOutR = housingZ(xOutR);
+      P.add('turretDetail', convexSlab(
+        [s * xIn, 0.14, zF], [s * xOutF, 0.14, zF], [s * xOutR, 0.14, zOutR], [s * xIn, 0.14, zInR],
+        [s * xIn, under(zF) + 0.02, zF], [s * xOutF, under(zF) + 0.006, zF], [s * xOutR, under(zOutR) + 0.006, zOutR],
+        [s * xIn, under(zInR) + 0.02, zInR]));
+    }
     // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
     // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
     // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat
