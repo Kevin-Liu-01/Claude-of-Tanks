@@ -2735,7 +2735,8 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   for (let k = 0; k + 1 < guard.length; k++) {
     bar(P, 'turretDark', [guard[k][0], L.y(guard[k][1]), L.z(guard[k][2])], [guard[k + 1][0], L.y(guard[k + 1][1]), L.z(guard[k + 1][2])], 0.008);
   }
-  roofScope(P, T, -0.65, 0.95, 0, 0.12, 0.34);
+  // (round 22, latrun-1: the 7C's sight hood standing 0.22 m over its roof)
+  roofScope(P, T, -0.65, 0.95, 0, mark === 'magach7c' ? 0.22 : 0.12, 0.34);
   // the ventilator's upright drum at the roof's right-rear corner, the mast behind the loader's hatch, the lifting eyes
   // at the roof's rear corners
   {
@@ -2846,15 +2847,16 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
       // the spare road wheel standing on edge at the basket's rear, its axle across the tank and its top 5 cm over the
       // top rail (latrun-3); two tarpaulin rolls and two boxes stowed beside it
       // (round 17: turned to face the side, a load packed round it)
-      // (round 20: the running gear's own cast-spoke wheel, as the A3's spares, so it reads as a road wheel; round 21,
-      // latrun-3: on the basket's left half, the rolls on its right)
+      // (round 20: the running gear's own cast-spoke wheel, as the A3's spares, so it reads as a road wheel; round 22,
+      // latrun-3: standing in the basket's left flank bay between the bustle and the bars, its face to the side (behind
+      // the bustle it stood inside the casting))
       const { wheelR } = M60_HULL_SPEC.gear, trackW = M60_HULL_SPEC.trackW, wheelW = Math.min(0.26, trackW * 0.42);
       const wy = rails[rails.length - 1] + 0.05 - wheelR;
       const spare = buildNationWheel('m60a3-cast-spoke', {
         radiusM: wheelR, tireWidthM: wheelW, high: Boolean(P.q), segments: P.q ? 28 : 12,
         maxWidthM: Math.max(wheelW * STANDARD_WHEEL_AXIAL_ENVELOPE, trackW * TRACK_WIDTH_WHEEL_CAP),
       });
-      const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, 0.42, L.y(wy), L.z(-1.72)); };
+      const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, 1.24, L.y(wy), L.z(-1.45)); };
       at('turretDark', spare.tire);
       at('turretDetail', spare.disc);
       at('turretDark', spare.dark);
@@ -2869,7 +2871,7 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
         P.add('turretDark', KIT.xform(KIT.torus(0.06, 0.016, P.q ? 12 : 8), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.98, L.y(rails[0] + 0.035), L.z(-2.00));
       }
       for (const [x, y] of [[-0.30, yf + 0.16], [-0.30, yf + 0.46]] as const) {
-        KIT.tarpRoll(P, 'turretCloth', x, L.y(y), L.z(-1.82), 0.95, 0.15, true, P.q ? 12 : 8);
+        KIT.tarpRoll(P, 'turretCloth', x, L.y(y), L.z(-1.82), 0.95, 0.12, true, P.q ? 12 : 8);
       }
       for (const [x, z] of [[-0.62, -1.30], [0.72, -1.20]] as const) {
         P.add('turretDetail', moldedBox(0.42, 0.30, 0.34, 0.02, 1, 0.01), x, L.y(yf + 0.16), L.z(z));
@@ -2965,8 +2967,14 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   // searchlight on its bracket over it with its cover on, the A3's three studs where the light would mount
   const G = M60_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
-  P.addGunExtra(m60Mantlet(P.q), 0, 0, 0);
-  {
+  if (mark === 'magach7c') {
+    // (round 22, latrun-1 and -5: the 7C's gun leaves its notch out of a flat-faced shield box 0.42 m wide and 0.36 m
+    // tall, its collar round the sleeve, clear of the notch's walls by 4 cm; the M60's cast mantlet and its boss would
+    // stand through them)
+    P.addGunExtra(moldedBox(0.42, 0.36, 0.42, 0.02, 1, 0.01), 0, 0, 0.29);
+    P.addGunExtra(cylZ(0.15, 0.06, P.q ? 20 : 12), 0, 0, 0.53);
+  } else P.addGunExtra(m60Mantlet(P.q), 0, 0, 0);
+  if (mark !== 'magach7c') {
     // the gun shield (the owner's model): a raised cast boss round the bore tapering into the sleeve
     P.addGunExtra(m60ShieldBoss(), 0.01, -0.02, 0);
     // (round 18: the sleeve runs plain out of the boss on both, as the owner's model: no collar rings)
@@ -2979,7 +2987,7 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   }
   P.addGunExtra(cylZ(0.14, 0.44, P.q ? 20 : 12), 0, 0, 0.80);
   if (!a3) P.addGunExtra(cylZ(0.155, 0.02, P.q ? 20 : 12), 0, 0, 1.00);
-  for (const x of [0.33, -0.33]) {
+  for (const x of mark === 'magach7c' ? [] : [0.33, -0.33]) {
     P.addGunExtra(cylZ(0.065, 0.02, P.q ? 16 : 10), x, 0.12, 0.495);
     P.addGunExtraDark(cylZ(0.05, 0.03, P.q ? 16 : 10), x, 0.12, 0.50);
   }
@@ -3030,7 +3038,8 @@ function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
     for (const dx of [-0.075, 0.075]) P.addGunExtra(box(0.05, 0.42, 0.06), dx, 0.63, 0.30);
     P.addGunExtra(box(0.22, 0.06, 0.30), 0, 0.87, 0.34);
     P.addGunExtraDark(box(0.14, 0.17, 0.52), 0, 0.985, 0.38);
-    P.addGunExtra(box(0.12, 0.18, 0.28), -0.14, 0.97, 0.38);
+    // (round 22, Yad la-Shiryon 005: the big box beside its receiver)
+    P.addGunExtra(box(0.20, 0.26, 0.42), -0.18, 0.96, 0.36);
     P.addGunExtraDark(cylZ(0.035, 0.25, 10), 0, 0.985, 0.765);
     P.addGunExtraDark(cylZ(0.017, 0.80, 8), 0, 0.985, 1.29);
     P.addGunExtraDark(KIT.lathe([[0.001, 0], [0.02, 0], [0.04, 0.08], [0.001, 0.08]], 10).rotateX(Math.PI / 2), 0, 0.985, 1.69);
@@ -3356,14 +3365,19 @@ function m60BlazerTurret(P: CastPort): void {
     for (const z of [0.41, -0.13, -0.67, -1.21]) rail.push([side * (reach(z) + 0.02), 2.66 - M60_RING.y, z - M60_RING.z]);
     for (let k = 0; k + 1 < rail.length; k++) bar(P, 'turretDark', rail[k], rail[k + 1], 0.015);
     for (const [x, y, z] of rail) P.add('turretDark', KIT.box(0.025, 0.08, 0.025), x - side * 0.02, y - 0.04, z);
-    // the slab's frame beside the mantlet
-    P.add('turretDark', KIT.box(0.05, 0.40, 0.05), side * 0.66, 2.05 - M60_RING.y, 1.84 - M60_RING.z);
+    // the wedge's bracket beside the mantlet: a frame post under its edge and two arms back to the cheek
+    const wedgeApex = new THREE.Vector3(side * 0.76, 2.20, 2.00);
+    P.add('turretDark', KIT.box(0.05, 0.40, 0.05), side * 0.76, 2.00 - M60_RING.y, 1.95 - M60_RING.z);
+    for (const y of [2.00, 2.36]) {
+      bar(P, 'turretDark', [side * 0.76, y - M60_RING.y, 1.95 - M60_RING.z], [side * (w(y, 1.70) - 0.02), y - M60_RING.y, 1.70 - M60_RING.z], 0.015);
+    }
     // the cheek's fan: five boxes along the casting's plan contour, a row of four over them
     // (round 20, latrun-4: the fan runs on round the cheek as one neat course on the casting; round 19's tipped boxes read
     // as a tumbled pile)
     const fan: { c: THREE.Vector3; n: THREE.Vector3; h: number; embed: number }[] = [];
+    // (round 22: its first column behind the wedge, Yad la-Shiryon 005's two-by-two grid there)
     for (const [y, h, count, yaws] of [[2.06, 0.40, 5, [0.70, 0.56, 0.42, 0.28, 0.14]], [2.42, 0.28, 4, [0.62, 0.48, 0.34, 0.20]]] as const) {
-      let run = 0, next = 0.0, k = 0, pz = 1.86, px = w(y, pz);
+      let run = 0, next = 0.27, k = 1, pz = 1.86, px = w(y, pz);
       for (let z = 1.855; z >= 0.95 && k < count; z -= 0.005) {
         const x = w(y, z);
         run += Math.hypot(x - px, z - pz);
@@ -3378,14 +3392,20 @@ function m60BlazerTurret(P: CastPort): void {
       for (let k = 0; k < 8; k++) {
         const z = 0.95 - k * 0.27, y0 = bandFoot(k), y1 = bandTop(k);
         // (round 20: turned 15 degrees, so each front edge stands proud of its neighbour, Yad la-Shiryon 005's shingles)
-        blazerBox(P, 'turret', new THREE.Vector3(side * (reach(z) + 0.07), (y0 + y1) / 2, z), facing(side, z, side * 0.26, 0.30), up,
+        // (round 22, Yad la-Shiryon 005: fanned aft, the front box's top leaning back 5 degrees and the rearmost's 25)
+        const lean = (5 + 20 * (k / 7)) * Math.PI / 180, aft = new THREE.Vector3(0, Math.cos(lean), -Math.sin(lean));
+        blazerBox(P, 'turret', new THREE.Vector3(side * (reach(z) + 0.07), (y0 + y1) / 2, z), facing(side, z, side * 0.26, 0.30), aft,
           0.30, y1 - y0, 0.10, 0);
       }
       for (const { c, n, h, embed } of fan) blazerBox(P, 'turret', c, n, up, 0.30, h, 0.10, embed);
       // the tall slab beside the mantlet on its frame, its face turned 30 degrees out from the bore
-      // (round 21, latrun-2: the corner box 0.35 x 0.55 x 0.30 m turned 35 degrees out and leaning back 10)
-      const n = new THREE.Vector3(side * Math.sin(0.61) * Math.cos(0.17), Math.sin(0.17), Math.cos(0.61) * Math.cos(0.17));
-      blazerBox(P, 'turret', new THREE.Vector3(side * 0.72, 2.05, 1.84), n, up, 0.35, 0.55, 0.30, 0.02);
+      // (round 22, Yad la-Shiryon 005 and latrun-2: a wedge of two boxes on a bracket just outside the mantlet's cover,
+      // its edge pointing forward, the faces turned 40 degrees out and in from the bore, standing 0.30 m off the cheek)
+      for (const s of [1, -1]) {
+        const yaw = s * 0.70, n = new THREE.Vector3(side * Math.sin(yaw), 0, Math.cos(yaw));
+        const across = new THREE.Vector3().crossVectors(up, n).multiplyScalar(s * side);
+        blazerBox(P, 'turret', wedgeApex.clone().addScaledVector(across, 0.15).addScaledVector(n, -0.10), n, up, 0.30, 0.50, 0.10, 0);
+      }
     });
   }
 }
@@ -3465,7 +3485,7 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
     new THREE.Vector3(x, ridge, nose).addScaledVector(u, v).addScaledVector(n, out);
   // the face plate: t thick, from v0 up the face (its front wall clear of the lower face) to the roof's line beside the
   // mantlet, to vBlock over it; the core under it sunk by t, its top following the plate's front wall down from the face
-  const t = 0.15, v0 = 0.13, slotZ = 2.14, lidZ = 1.75, xIn = 0.25, xMid = 0.56, xOut = 0.97;
+  const t = 0.15, v0 = 0.13, slotZ = 2.14, lidZ = 1.75, xIn = 0.25, xMid = 0.56, xOut = 0.965;
   const vRoof = (roof - ridge) / sa, vBlock = (nose - slotZ) / ca, zRoof = nose - (roof - ridge) / UP;
   const zA = nose - v0 * ca, yA = ridge + v0 * sa, zA2 = zA - t * sa, yA2 = yA - t * ca;
   const coreTop = (z: number): number => z >= zA ? top(z) : z >= zA2 ? yA + (yA2 - yA) * ((zA - z) / (zA - zA2))
@@ -3491,8 +3511,9 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
     // slot parts the modules' tops, as latrun-1; round 21: closing over the slot there, the notch's roof one straight
     // edge over the mantlet)
     loft([rearZ, 1.30, 1.45, zRoof - eps, zRoof + eps, 1.65, lidZ], (z) => {
-      const cb = (x: number): number => castTopAt(M60_TURRET, side * x, z) - 0.02;
-      return [[0, cb(0)], [xMid, cb(xMid)], [xMid, top(z)], [0, top(z)]];
+      // (round 22: its foot level, so the notch's roof is one straight edge)
+      const cb = Math.min(castTopAt(M60_TURRET, 0, z), castTopAt(M60_TURRET, side * xMid, z)) - 0.02;
+      return [[0, cb], [xMid, cb], [xMid, top(z)], [0, top(z)]];
     });
     const plate = new THREE.Shape([[xIn, v0], [xOut, v0], [xOut, vRoof], [xMid, vRoof], [xMid, vBlock], [xIn, vBlock]]
       .map(([x, v]) => new THREE.Vector2(sx(x), v)));
@@ -3527,16 +3548,20 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
       else pts.push(up(x1, roof), dn(x1, floor), back(x1, roof), back(x1, floor));
       return convexSolid(pts);
     };
-    const middle = zk(0.985, nose - 0.10, 25 * Math.PI / 180), corner = zk(1.285, 2.30, 55 * Math.PI / 180);
-    P.add('turret', toRing(chisel(0.985, 1.27, middle, false)));
-    P.add('turret', toRing(chisel(1.285, packX, corner, true)));
+    // (round 22: the joints 3 cm, so they read at a distance)
+    const middle = zk(0.995, nose - 0.10, 25 * Math.PI / 180), corner = zk(1.295, 2.30, 55 * Math.PI / 180);
+    P.add('turret', toRing(chisel(0.995, 1.265, middle, false)));
+    P.add('turret', toRing(chisel(1.295, packX, corner, true)));
     {
       // the middle module's bolts along its top edge, normal to its upper face
       const nm = new THREE.Vector3(sx(UP * Math.tan(25 * Math.PI / 180)), 1, UP).normalize();
       const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nm));
-      for (const x of [1.04, 1.125, 1.21]) {
-        const b = new THREE.Vector3(sx(x), roof - 0.03, middle(x) - (roof - 0.03 - ridge) / UP).addScaledVector(nm, 0.008);
-        P.add('turretDetail', KIT.cylY(0.025, 0.025, 0.02, 8), b.x, L.y(b.y), L.z(b.z), e.x, e.y, e.z);
+      // (round 22, latrun-5: three rows of three down its face)
+      for (const x of [1.04, 1.13, 1.22]) {
+        for (const y of [roof - 0.03, roof - 0.20, roof - 0.37]) {
+          const b = new THREE.Vector3(sx(x), y, middle(x) - (y - ridge) / UP).addScaledVector(nm, 0.008);
+          P.add('turretDetail', KIT.cylY(0.025, 0.025, 0.02, 8), b.x, L.y(b.y), L.z(b.z), e.x, e.y, e.z);
+        }
       }
       KIT.liftEye(P, 'turretDetail', sx(1.13), L.y(roof + 0.03), L.z(1.20), Math.PI / 2);
     }
@@ -3549,7 +3574,7 @@ function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
       return [[xib, floor], [packX - bev * 0.58, floor], [packX, floor + bev], [packX, roof - ch], [packX - ch, roof], [xit, roof],
         [xit, lip], [Math.max(xib, xit + 1e-4), lip]];
     };
-    loft([packRear, -0.40, 0.10, 0.60, 0.85, rearZ - 0.015], packRing);
+    loft([packRear, -0.40, 0.10, 0.60, 0.85, rearZ - 0.03], packRing);
     // the smoke dischargers' box on the pack, 1.1 m behind the nose, tilted 15 degrees nose-down
     P.add('turretDetail', KIT.xform(moldedBox(0.20, 0.35, 0.55, 0.02, 1, 0.01), 0, 0, 0, 0.26, 0, 0), sx(packX + 0.10),
       L.y(2.24), L.z(nose - 1.10 - 0.275));
