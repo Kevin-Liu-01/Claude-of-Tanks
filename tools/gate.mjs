@@ -177,8 +177,10 @@ export function failureSignature(text, roots = []) {
  * baseline at the same time: { here: { status, log }, base: { status, log } }.
  */
 export async function compareRedReceipt(file, { runPair, signatureOf }) {
+  // a result may carry its message already (test:lane's base results, reused from tools/lane-reds.mjs's store)
   const summary = (result) => ({ status: result.status, log: result.log, ...(result.missing ? { missing: true } : {}),
-    message: result.status === 0 ? '' : (signatureOf(result.log) || `exit status ${result.status}`) });
+    ...(result.cached ? { cached: true } : {}),
+    message: result.status === 0 ? '' : (result.message ?? (signatureOf(result.log) || `exit status ${result.status}`)) });
   const first = await runPair(file, 1);
   const row = { file, here: summary(first.here), base: summary(first.base) };
   if (row.here.status === 0) row.verdict = 'flaky';
@@ -298,15 +300,19 @@ export function receiptSummary(out, root) {
     reused: report.reused, failed, starved };
 }
 
-async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockFactory }) {
-  const { runSelftestFile, runSelftestSuite, SELFTEST_OWNED_LEASE_FILES } = await import('./run-selftests.mjs');
-  const { createCaptureLock } = await import('./capture-lock.mjs');
-  lockFactory ??= createCaptureLock;
-  const commit = git(root, 'rev-parse', '--verify', `${ref}^{commit}`);
-  const dir = join(out, `baseline-${commit.slice(0, 12)}`);
-  const result = { ref, commit, dir, rows: [] };
-  if (echo) console.log(`[gate] baseline: worktree of ${ref} (${commit.slice(0, 12)}) at ${dir}`);
+/**
+ * A detached worktree of `commit` at `dir` that runs on this checkout's installs (node_modules and public/models
+ * linked): { dir, lockfileMatches, remove() }. remove() unlinks the installs first, so removing the worktree never
+ * reaches through a link. The gate's --baseline and test:lane's red classes (tools/lane-reds.mjs) run receipts in it.
+ */
+export function openBaselineWorktree(root, commit, dir) {
   git(root, 'worktree', 'add', '--detach', dir, commit);
+  const remove = () => {
+    for (const link of [join(dir, 'node_modules'), join(dir, 'public', 'models')]) {
+      try { if (lstatSync(link).isSymbolicLink()) unlinkSync(link); } catch { /* absent */ }
+    }
+    try { git(root, 'worktree', 'remove', '--force', dir); } catch { /* reported by the caller */ }
+  };
   try {
     const modules = join(root, 'node_modules');
     if (existsSync(modules)) symlinkSync(realpathSync(modules), join(dir, 'node_modules'));
@@ -316,7 +322,25 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
       symlinkSync(realpathSync(models), join(dir, 'public', 'models'));
     }
     const lock = (path) => { try { return readFileSync(path); } catch { return null; } };
-    result.lockfileMatches = Boolean(lock(join(root, 'package-lock.json'))?.equals(lock(join(dir, 'package-lock.json')) ?? Buffer.alloc(0)));
+    const lockfileMatches = Boolean(lock(join(root, 'package-lock.json'))?.equals(lock(join(dir, 'package-lock.json')) ?? Buffer.alloc(0)));
+    return { dir, lockfileMatches, remove };
+  } catch (error) {
+    remove();
+    throw error;
+  }
+}
+
+async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockFactory }) {
+  const { runSelftestFile, runSelftestSuite, SELFTEST_OWNED_LEASE_FILES } = await import('./run-selftests.mjs');
+  const { createCaptureLock } = await import('./capture-lock.mjs');
+  lockFactory ??= createCaptureLock;
+  const commit = git(root, 'rev-parse', '--verify', `${ref}^{commit}`);
+  const dir = join(out, `baseline-${commit.slice(0, 12)}`);
+  const result = { ref, commit, dir, rows: [] };
+  if (echo) console.log(`[gate] baseline: worktree of ${ref} (${commit.slice(0, 12)}) at ${dir}`);
+  const worktree = openBaselineWorktree(root, commit, dir);
+  try {
+    result.lockfileMatches = worktree.lockfileMatches;
     const signatureOf = (log) => { try { return failureSignature(readFileSync(log, 'utf8'), [root, dir]); } catch { return ''; } };
     const runPair = async (file, attempt) => {
       const logs = { here: join(out, 'pairs', 'here', `${file}.${attempt}.log`), base: join(out, 'pairs', 'base', `${file}.${attempt}.log`) };
@@ -341,11 +365,7 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
       },
     });
   } finally {
-    // unlink the shared installs first: removing the worktree must never reach through a link
-    for (const link of [join(dir, 'node_modules'), join(dir, 'public', 'models')]) {
-      try { if (lstatSync(link).isSymbolicLink()) unlinkSync(link); } catch { /* absent */ }
-    }
-    try { git(root, 'worktree', 'remove', '--force', dir); } catch { /* reported below */ }
+    worktree.remove();
   }
   result.blocking = result.rows.filter((row) => row.blocking).map((row) => row.file);
   return result;
