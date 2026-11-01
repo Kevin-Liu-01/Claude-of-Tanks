@@ -207,6 +207,28 @@ function roofFittings(P:TankBuilderPort):void{
   equipment(P,'turretDetail',antennaPart(box(.0731,.2721,.0742)),.32814,2.51682,-.83181);
   equipment(P,'turretDetail',cylY(.022,.095,16),-.24975,2.1005,-.81318);   // the whip's foot on the roof (it stood 29 mm over it; 2026-10-19 owner float sweep)
   equipment(P,'turretDark',antennaPart(cylY(.0053,1.291,10)),-.24975,2.75206,-.81318);
+  commanderSearchlight(P);
+}
+/** 267 (Main's fused-box gate: "t72bu's 0.15 x 0.12 m block at the cupola's right (to 2.52 m; the build has nothing above
+ * 2.29)"): the commander's OU-3GA2M infrared searchlight on the cupola's front-right rim. Source (t72bu_x_source.glb
+ * mesh_324, islands 1611 and 1669): two coaxial octagonal drums, x -0.375..-0.226, y 2.349..2.518, z 0.229..0.397 (centre
+ * y 2.434, z 0.313), held from its inner side by a 45 mm upright (island 1478, x -0.449..-0.404, from the roof to 2.418).
+ * Here a round lamp to that envelope looking forward: its housing r .080 on the axis (x -0.300, y 2.434), a domed rear
+ * cap from z .232, the bezel r .086 to its mouth at z .397, the dark lens 8 mm inside the mouth; a cranked arm 24 mm
+ * thick from the cupola race's top (its foot 8 mm into it, inside the race's .320 radius) up and forward to a trunnion boss
+ * entering the housing's inner side, with its nut on the arm's outer face. Body (turret buckets), not a roof fitting. */
+function commanderSearchlight(P:TankBuilderPort):void{
+  const ax=-.300,ay=2.434;
+  const lamp=[[0,.232],[.050,.232],[.072,.240],[.080,.252],[.080,.368],[.086,.371],[.086,.397],[.072,.397],[.070,.389],[0,.389]] as const;
+  equipment(P,'turretDetail',new THREE.LatheGeometry(lamp.map(([r,z])=>new THREE.Vector2(r,z)),28).rotateX(Math.PI/2),ax,ay,0);
+  equipment(P,'turretDark',cylZ(.0705,.004,28),ax,ay,.3905);
+  // the arm: an outline in (z, y), 24 mm thick across x -0.413..-0.389 (its inner face 3 mm off the housing)
+  const arm:[number,number][]=[[.150,2.2365],[.215,2.2365],[.215,2.250],[.352,2.405],[.352,2.462],[.318,2.478],[.282,2.462],[.170,2.300],[.150,2.290]];
+  const ring=arm.map(([z,y])=>[z,y] as const);
+  equipment(P,'turretDetail',sectionSolid([{z:.389,ring},{z:.413,ring}]).applyMatrix4(new THREE.Matrix4().makeBasis(
+    new THREE.Vector3(0,0,1),new THREE.Vector3(0,1,0),new THREE.Vector3(-1,0,0))),0,0,0);
+  equipment(P,'turretDetail',cylX(.026,.024,16),-.383,ay,.3125);
+  equipment(P,'turretDark',cylX(.016,.010,6),-.416,ay,.3125);
 }
 function smoke(P:TankBuilderPort):void{
   for(const side of [-1,1]){
@@ -220,9 +242,33 @@ function smoke(P:TankBuilderPort):void{
 }
 function machineGun(P:TankBuilderPort):void{
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
-  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle on the cupola
+  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle over the cupola
   // race's front rim (2.2445) ahead of the hatch blocks, in place of the traced box mount, uprights and rods.
-  libraryRoofMg(P,{station:'t72buCommanderNsvtStation',cls:'nsvt',seat:[-.58057-YAW[0],2.2445-YAW[1],.217-YAW[2]]});
+  // 267 (coordinator: "raise the commander's gun mount ... by the amount that matches the source gun line"): the source's
+  // NSVT barrel runs at y 2.6895 (t72bu_x_source.glb mesh_324 islands 1230/1242, x -0.607); the library gun's bore lies
+  // .3022 over its station, which stood at 2.2395 (bore 2.5417). Matched exactly (a .148 rise) the shield's lower edge at
+  // the heavy MG's full 10.3 degrees of depression passed 21.7 mm over the searchlight (top 2.520) at yaw 86, so the pintle
+  // stands NSVT_RISE higher on a turned riser (bore 2.6967, 7 mm over the source's): 25 mm or more from the searchlight,
+  // its arm and the cupola at every yaw and every pitch from -10.3 to +43 degrees.
+  libraryRoofMg(P,{station:'t72buCommanderNsvtStation',cls:'nsvt',seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
+  nsvtRiser(P);
+}
+const NSVT_PINTLE=[-.58057,2.2445,.217] as const,NSVT_RISE=.155;
+/** 267: the NSVT's riser on the cupola race (top 2.2445, radius .320; the pintle .250 from the cupola's axis): a turned
+ * column with a bolted foot flange 8 mm into the race, a fillet into the shaft, and a chamfered collar whose top is the
+ * pintle's seat (the gun's own flange stands 5 mm into it), with three gusset webs from the shaft to the flange and four
+ * bolt heads. Body (turret buckets): it stays put while the gun's yaw stage turns on it. */
+function nsvtRiser(P:TankBuilderPort):void{
+  const [x,y0,z]=NSVT_PINTLE,top=y0+NSVT_RISE,flangeTop=y0+.012;
+  const profile=[[0,y0-.008],[.066,y0-.008],[.066,flangeTop-.006],[.060,flangeTop],[.050,flangeTop],[.044,flangeTop+.012],
+    [.040,top-.021],[.052,top-.017],[.052,top-.004],[.048,top],[0,top]] as const;
+  equipment(P,'turretDetail',new THREE.LatheGeometry(profile.map(([r,y])=>new THREE.Vector2(r,y)),24),x,0,z);
+  for(let k=0;k<3;k++){
+    const a=Math.PI/3+k*2*Math.PI/3,web:[number,number][]=[[.038,flangeTop-.002],[.061,flangeTop-.002],[.061,flangeTop+.004],[.038,flangeTop+.050]];
+    equipment(P,'turretDetail',sectionSolid([{z:-.004,ring:web},{z:.004,ring:web}]).applyMatrix4(new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(Math.sin(a),0,Math.cos(a)),new THREE.Vector3(0,1,0),new THREE.Vector3(-Math.cos(a),0,Math.sin(a)))),x,0,z);
+  }
+  for(let k=0;k<4;k++){const a=k*Math.PI/2;equipment(P,'turretDark',cylY(.008,.007,6),x+.057*Math.sin(a),flangeTop+.0015,z+.057*Math.cos(a));}
 }
 function mainGun(P:TankBuilderPort):void{
   const muzzle=T72BU_X_DATUMS.muzzleZ,floor=T72BU_X_DATUMS.boreFloorZ;

@@ -8,6 +8,7 @@ import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {t72b3mGlacisSeat} from './t72b3mX.ts';
 type Point=readonly[number,number,number];
 type Plan=readonly(readonly[number,number])[];
 const {box,cylX,cylY}=KIT;
@@ -143,14 +144,20 @@ function snorkel(P:TankBuilderPort):void{
   }finally{dispose();}
 }
 
-// Hull frame. The raised Relikt block rows of the glacis package, three a side in four regular rows across the 2016 build's
-// glacis cover (top y 1.4934 at z 2.00 falling .382 a metre, .04 thick): ERA furniture of the same glacis clusters, so
-// they go with them.
+// Hull frame. The raised Relikt block rows of the glacis package, three a side in four regular rows over the 2016 build's
+// glacis: ERA furniture of the same glacis clusters, so they go with them. 267 (lane t90-family-267, coordinator: "seat
+// row 1 on the actual cover surface ... buried 5-15 mm"): each block seats 8 mm into the surface under its centre
+// (t72b3mX.ts t72b3mGlacisSeat: the 267 container lids under rows 2-4, the bare cover over the upper glacis under row 1),
+// tilted to that surface's fall. Until then every block stood .062 over a datum read as the cover's base: 32-38 mm of air
+// under the first row, 4 mm into the lids under the rest. The inner block of row 1 is 6.4 cm shorter at its back, so it
+// clears the driver's vision block (hullDark at z 1.988-2.073, |x| < .197) and the driver's hatch rim (z < 2.08).
 function glacisRows(P:TankBuilderPort):void{
+  const H=.044,BURY=.008;
   for(const side of [-1,1])P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
     for(const z of [2.17,2.47,2.77,3.07])for(const x of [.19,.54,.89]){
-      const y=1.4934-(z-2)*.382+.04+.022;
-      P.addExternalArmor('hull',markEraFurniture(box(.33,.044,.28)),side*x,y,z,.365);
+      const inner=z<2.3&&x<.3,d=inner?.216:.28,zc=inner?2.195:z;
+      const {y,slope}=t72b3mGlacisSeat(zc),tilt=Math.atan(slope),lift=H/2-BURY;
+      P.addExternalArmor('hull',markEraFurniture(box(.33,H,d)),side*x,y+lift*Math.cos(tilt),zc+lift*Math.sin(tilt),tilt);
     }
   });
 }
