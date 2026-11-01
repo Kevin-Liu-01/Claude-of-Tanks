@@ -1293,7 +1293,7 @@ import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
 import { plateObstacles, sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap, worldPlateGap,
   worldPlateSink } from './sightFurniture.ts';
-import { damageFigureMarkup, hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
+import { damageFigureMarkup, hitOutcomeFor, INCOMING_DAMAGE_INK, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
   guidedMissileSlot,
@@ -8234,7 +8234,8 @@ export function initHud(bus: EventBus): HudRuntime {
       outcomeId: feedback.outcomeId,
       mergeKey: feedback.mergeKey,
       label: feedback.label,
-      labelColor: feedback.color,
+      // (damage taken's token resolved for the canvas; an outcome word keeps its registry ink)
+      labelColor: feedback.color === INCOMING_DAMAGE_INK ? liveToken('battle-damage-taken') : feedback.color,
       numeric: feedback.numeric,
       crit: feedback.critical,
       dmg, amount,

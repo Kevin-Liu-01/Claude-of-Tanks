@@ -491,9 +491,9 @@ const SI_CSS = `
   color:var(--ink-2);border-bottom:1px solid var(--line-1);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
-.cot-si-lrow .d{font-weight:700;color:var(--accent-hi);width:36px;flex:0 0 auto;text-align:right;
+.cot-si-lrow .d{font-weight:700;color:var(--battle-damage-taken);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:0;}
-/* (a shot's own figure in the damage dealt's colour, the card's and the float's; the received rows keep theirs; every
+/* (a shot's own figure in the damage dealt's colour, the card's and the float's; the received rows the damage taken's; every
    figure untracked, as the card's: at -.01em the true minus touched a 4, critic r2) */
 .cot-si-lrow .d.dealt{color:var(--battle-damage-dealt);}
 /* the damage figure's minus a hair off its number (damageFigureMarkup; the float's too, hud.ts: this sheet is the page's) */

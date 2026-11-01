@@ -161,6 +161,9 @@ function resolveHitOutcome(
   return HIT_OUTCOMES.blocked;
 }
 
+/** The damage the player took, as a token reference (a canvas resolves it with liveToken('battle-damage-taken')). */
+export const INCOMING_DAMAGE_INK = 'var(--battle-damage-taken)';
+
 /**
  * One canonical, always-readable label for the camera-relative incoming-hit
  * indicator. Positive HP damage uses the historical signed number while every
@@ -179,12 +182,10 @@ export function incomingHitFeedbackFor(
   const numeric = damage > 0;
   const critical = (ev.modulesHit?.length || 0) > 0 || (ev.crewHit?.length || 0) > 0;
   const label = numeric ? `-${damage}` : outcome.label;
-  // Splash damage is deliberately amber: it is the distinct "yellow one"
-  // from the original HUD. Direct damage stays salmon-red; outcome words use
-  // the registry color consumed by the cards and kill cam.
-  const color = numeric
-    ? kind === 'he' ? '#ffd166' : '#ff8a72'
-    : outcome.color;
+  // Damage taken is one token, a direct hit's and an HE splash's alike (the splash's old amber read as the damage the
+  // player dealt, Main 2026-10-31); the arc's kind still tells them apart. The canvas resolves the token (hud.ts liveToken);
+  // outcome words use the registry color consumed by the cards and kill cam.
+  const color = numeric ? INCOMING_DAMAGE_INK : outcome.color;
   return {
     kind,
     outcomeId: outcome.id,

@@ -135,12 +135,20 @@ try {
         });
         await page.waitForSelector('.cot-si-stats.show', { timeout: 15000 });
         await page.waitForTimeout(3500);
-        const report = await page.evaluate(() => ({
-          dealt: document.querySelector('.cot-si-stats .es-tal.hot .v')?.textContent ?? null,
-          best: document.querySelector('.cot-si-stats .bd')?.textContent ?? null,
-        }));
+        const report = await page.evaluate(() => {
+          const rgba = (css) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = css;
+            c.fillRect(0, 0, 1, 1); return [...c.getImageData(0, 0, 1, 1).data]; };
+          const dealt = document.querySelector('.cot-si-stats .es-tal[data-stat=dealt] .v');
+          const best = document.querySelector('.cot-si-stats .bd');
+          return { dealt: dealt?.textContent ?? null, best: best?.textContent ?? null,
+            dealtInk: dealt ? rgba(getComputedStyle(dealt).color) : null, bestInk: best ? rgba(getComputedStyle(best).color) : null };
+        });
         expect(digits(report.dealt) === 50, `end report dealt ${report.dealt} reads 50`);
         expect(digits(report.best) === 50, `end report best shot ${report.best} reads 50`);
+        // (the same datum in the same colour as the card's figure, Main 2026-10-31)
+        const near = (a, b) => a && b && a.slice(0, 3).every((v, i) => Math.abs(v - b[i]) <= 1);
+        expect(near(report.dealtInk, seen.ink.card) && near(report.bestInk, seen.ink.card),
+          `end report dealt ${report.dealtInk} and best ${report.bestInk} in the card's ${seen.ink.card}`);
       }
       problems.push(...errors.map((e) => `page error: ${e}`));
       await page.screenshot({ path: `${out}/${layout}-${name.replace(/[^a-z]+/g, '-')}.png` });

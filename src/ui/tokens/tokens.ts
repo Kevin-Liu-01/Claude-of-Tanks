@@ -366,6 +366,7 @@ export const TOKENS = {
   'battle-nv': '#b4ee8c',
   'battle-pen': '#7ee87e',
   'battle-damage-dealt': '#ffd15c',
+  'battle-damage-taken': '#ff5a4e',
   'battle-ring-ammo': 'inset 0 0 0 1px oklch(from #c4573f l c h / .6)',
   'battle-text-halo': '0 1px 2px oklch(from #050608 l c h / .9),0 0 3px oklch(from #050608 l c h / .65)',
   'battle-mark-ring': '0 0 0 2px oklch(from #050608 l c h / .55)',
