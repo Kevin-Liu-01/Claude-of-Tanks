@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-11-01T05:19:39.359Z",
+ "generatedAt": "2026-11-01T07:12:33.514Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 41,
+ "passed": 42,
  "total": 167,
  "rows": [
   {
@@ -656,10 +656,10 @@
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
-    "stations": 21.8,
-    "turretCurves": 34.4,
-    "wholeCurves": 0.1,
+    "hullCurves": 92.2,
+    "stations": 73.4,
+    "turretCurves": 30,
+    "wholeCurves": 56.5,
     "dims": 0,
     "floaters": 100
    },
@@ -1199,22 +1199,6 @@
     "turretCurves": 61.2,
     "wholeCurves": 62.1,
     "dims": 59.9,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "t90m",
-   "geoMin": 60.1,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 94.6,
-    "stations": 97.9,
-    "turretCurves": 60.1,
-    "wholeCurves": 92.9,
-    "dims": 95.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1800,6 +1784,22 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "t90m",
+   "geoMin": 90.6,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 94.6,
+    "stations": 97.9,
+    "turretCurves": 90.6,
+    "wholeCurves": 92.9,
+    "dims": 95.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m45_patton",

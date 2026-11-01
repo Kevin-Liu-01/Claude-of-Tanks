@@ -31,6 +31,9 @@ assert.throws(()=>sourceDimensionRows({...dims,widthM:NaN},dims,ref,ref));
   const undeclared=sourceDimensionRows(dims,tallDims,ref,taller);
   assert.ok(undeclared.find(r=>r.name==='heightM').pct>2&&undeclared.find(r=>r.name==='physicalHeightM').pct>1.6,'undeclared, the rise is a height error');
   assert.ok(sourceDimensionRows(dims,dims,ref,ref,[0,lift,0]).find(r=>r.name==='heightM').pct>2,'an unraised build fails a declared raise');
+  // per-pivot offsets (267, the Burlak prototype's gun station): only the turret's rise lifts the source's heights
+  assert.deepEqual(sourceDimensionRows(dims,tallDims,ref,taller,{turret:[0,lift,0]}),declared,'a turret rise reads as the vector form');
+  assert.ok(sourceDimensionRows(dims,dims,ref,ref,{gun:[0,.13,.14]}).every(r=>r.pct===0),'a gun-only departure lifts nothing');
 }
 assert.throws(()=>sourceDimensionCamera(new THREE.Box3(),new THREE.Vector3(1,0,0)));
 const certified={passed:true,mode:'canonical-source-world'};
