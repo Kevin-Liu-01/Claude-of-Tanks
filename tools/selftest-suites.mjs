@@ -1092,6 +1092,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/notFound.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'tools/marketing-shots/og-images.selftest.mjs',
+    // og-r2: a tank link shares its tank (the table, the cards, the rewrite)
+    'tools/media-r5/tank-share.selftest.mjs',
     'src/ui/localeRouting.selftest.mjs',
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',

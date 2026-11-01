@@ -1,0 +1,1109 @@
+{
+ "schemaVersion": 1,
+ "tanks": {
+  "abramsx": {
+   "name": "AbramsX",
+   "card": "/brand/og-r2/tanks/abramsx-card.jpg"
+  },
+  "aft10": {
+   "name": "AFT-10",
+   "card": "/brand/og-r2/tanks/aft10-card.jpg"
+  },
+  "ajax": {
+   "name": "Ajax",
+   "card": "/brand/og-r2/tanks/ajax-card.jpg"
+  },
+  "amx10p": {
+   "name": "AMX-10P",
+   "card": "/brand/og-r2/tanks/amx10p-card.jpg"
+  },
+  "amx10p_25": {
+   "name": "AMX-10P 25",
+   "card": "/brand/og-r2/tanks/amx10p_25-card.jpg"
+  },
+  "amx30": {
+   "name": "AMX-30",
+   "card": "/brand/og-r2/tanks/amx30-card.jpg"
+  },
+  "amx30b": {
+   "name": "AMX-30B",
+   "card": "/brand/og-r2/tanks/amx30b-card.jpg"
+  },
+  "amx30b2": {
+   "name": "AMX-30B2",
+   "card": "/brand/og-r2/tanks/amx30b2-card.jpg"
+  },
+  "amx40": {
+   "name": "AMX-40",
+   "card": "/brand/og-r2/tanks/amx40-card.jpg"
+  },
+  "amx40_proto": {
+   "name": "AMX-40 Prototype",
+   "card": "/brand/og-r2/tanks/amx40_proto-card.jpg"
+  },
+  "amx56": {
+   "name": "AMX 56",
+   "card": "/brand/og-r2/tanks/amx56-card.jpg"
+  },
+  "ares_apc": {
+   "name": "Ares APC",
+   "card": "/brand/og-r2/tanks/ares_apc-card.jpg"
+  },
+  "bm_oplot_m": {
+   "name": "T-84BM Oplot-M",
+   "card": null
+  },
+  "bm_oplot_t": {
+   "name": "T-84BM Oplot-T",
+   "card": null
+  },
+  "bmp2": {
+   "name": "BMP-2",
+   "card": "/brand/og-r2/tanks/bmp2-card.jpg"
+  },
+  "bmp3": {
+   "name": "BMP-3",
+   "card": null
+  },
+  "bmp3_rok": {
+   "name": "BMP-3 (ROK)",
+   "card": "/brand/og-r2/tanks/bmp3_rok-card.jpg"
+  },
+  "bmp3m_dragun125": {
+   "name": "BMP-3M Dragun 125",
+   "card": "/brand/og-r2/tanks/bmp3m_dragun125-card.jpg"
+  },
+  "bmpt_t90": {
+   "name": "BMPT T-90",
+   "card": "/brand/og-r2/tanks/bmpt_t90-card.jpg"
+  },
+  "bmpt_terminator2": {
+   "name": "BMPT Terminator 2",
+   "card": "/brand/og-r2/tanks/bmpt_terminator2-card.jpg"
+  },
+  "borsuk": {
+   "name": "Borsuk",
+   "card": "/brand/og-r2/tanks/borsuk-card.jpg"
+  },
+  "bwp1": {
+   "name": "BWP-1 (Bojowy Wóz Piechoty 1)",
+   "card": "/brand/og-r2/tanks/bwp1-card.jpg"
+  },
+  "c1_ariete": {
+   "name": "C1 Ariete",
+   "card": "/brand/og-r2/tanks/c1_ariete-card.jpg"
+  },
+  "c1_ariete_preserie": {
+   "name": "C1 Ariete Preserie",
+   "card": "/brand/og-r2/tanks/c1_ariete_preserie-card.jpg"
+  },
+  "c1_ariete_proto_serie1": {
+   "name": "C1 Ariete Prototype (Serie 1)",
+   "card": "/brand/og-r2/tanks/c1_ariete_proto_serie1-card.jpg"
+  },
+  "c2_ariete": {
+   "name": "C2 Ariete",
+   "card": "/brand/og-r2/tanks/c2_ariete-card.jpg"
+  },
+  "c2_ariete_proto": {
+   "name": "C2 Ariete Prototype",
+   "card": "/brand/og-r2/tanks/c2_ariete_proto-card.jpg"
+  },
+  "carro45t": {
+   "name": "Carro 45t",
+   "card": "/brand/og-r2/tanks/carro45t-card.jpg"
+  },
+  "centurion13": {
+   "name": "Centurion Mk 13",
+   "card": null
+  },
+  "centurion3": {
+   "name": "Centurion Mk 3",
+   "card": "/brand/og-r2/tanks/centurion3-card.jpg"
+  },
+  "centurion5_1_aus": {
+   "name": "Centurion Mk 5/1 (Aust)",
+   "card": null
+  },
+  "centurion5_2": {
+   "name": "Centurion Mk 5/2",
+   "card": "/brand/og-r2/tanks/centurion5_2-card.jpg"
+  },
+  "centurion5_avre": {
+   "name": "Centurion Mk 5 AVRE",
+   "card": null
+  },
+  "challenger1_mk1": {
+   "name": "Challenger 1 Mk 1",
+   "card": null
+  },
+  "challenger1_mk2": {
+   "name": "Challenger 1 Mk 2",
+   "card": "/brand/og-r2/tanks/challenger1_mk2-card.jpg"
+  },
+  "challenger1_mk3": {
+   "name": "Challenger 1 Mk 3",
+   "card": "/brand/og-r2/tanks/challenger1_mk3-card.jpg"
+  },
+  "challenger2": {
+   "name": "Challenger 2",
+   "card": "/brand/og-r2/tanks/challenger2-card.jpg"
+  },
+  "challenger2e": {
+   "name": "Challenger 2E",
+   "card": "/brand/og-r2/tanks/challenger2e-card.jpg"
+  },
+  "challenger3": {
+   "name": "Challenger 3",
+   "card": "/brand/og-r2/tanks/challenger3-card.jpg"
+  },
+  "challenger3_proto": {
+   "name": "Challenger 3 Prototype",
+   "card": null
+  },
+  "challenger3_td": {
+   "name": "Challenger 3 TD",
+   "card": null
+  },
+  "challenger3_td_rws": {
+   "name": "Challenger 3 TD (RWS)",
+   "card": null
+  },
+  "challenger_x": {
+   "name": "FV4030/5",
+   "card": null
+  },
+  "challenger_x_sleek": {
+   "name": "FV4030/6",
+   "card": null
+  },
+  "chieftain3": {
+   "name": "Chieftain Mk 3",
+   "card": "/brand/og-r2/tanks/chieftain3-card.jpg"
+  },
+  "chieftain5": {
+   "name": "Chieftain Mk 5",
+   "card": "/brand/og-r2/tanks/chieftain5-card.jpg"
+  },
+  "chieftain_mk10": {
+   "name": "Chieftain Mk 10",
+   "card": "/brand/og-r2/tanks/chieftain_mk10-card.jpg"
+  },
+  "chieftain_mk9": {
+   "name": "Chieftain Mk 9",
+   "card": "/brand/og-r2/tanks/chieftain_mk9-card.jpg"
+  },
+  "christian2": {
+   "name": "Christian II",
+   "card": null
+  },
+  "cv90": {
+   "name": "CV90",
+   "card": "/brand/og-r2/tanks/cv90-card.jpg"
+  },
+  "cv90105_tml": {
+   "name": "CV90105 TML",
+   "card": "/brand/og-r2/tanks/cv90105_tml-card.jpg"
+  },
+  "cv9035dk": {
+   "name": "CV9035 DK",
+   "card": null
+  },
+  "cv9040c": {
+   "name": "CV9040C",
+   "card": "/brand/og-r2/tanks/cv9040c-card.jpg"
+  },
+  "cv90_mk4": {
+   "name": "CV90 Mk 4",
+   "card": "/brand/og-r2/tanks/cv90_mk4-card.jpg"
+  },
+  "cv90_mk4_concept": {
+   "name": "CV90 Mk 4 Concept",
+   "card": "/brand/og-r2/tanks/cv90_mk4_concept-card.jpg"
+  },
+  "dardo": {
+   "name": "Dardo",
+   "card": "/brand/og-r2/tanks/dardo-card.jpg"
+  },
+  "ee_t3_osorio": {
+   "name": "EE-T3 Osório",
+   "card": null
+  },
+  "ee_t4_osorio": {
+   "name": "EE-T4 Osório",
+   "card": null
+  },
+  "fv4034": {
+   "name": "FV4034",
+   "card": null
+  },
+  "fv510": {
+   "name": "FV510 Warrior",
+   "card": null
+  },
+  "fv510_milan": {
+   "name": "FV510 Warrior MILAN",
+   "card": null
+  },
+  "griffin50mm": {
+   "name": "Griffin 50 mm",
+   "card": "/brand/og-r2/tanks/griffin50mm-card.jpg"
+  },
+  "griffin_viper": {
+   "name": "Griffin Viper",
+   "card": "/brand/og-r2/tanks/griffin_viper-card.jpg"
+  },
+  "hayate_ifv": {
+   "name": "Hayate IFV",
+   "card": "/brand/og-r2/tanks/hayate_ifv-card.jpg"
+  },
+  "jpz_e100": {
+   "name": "Jagdpanzer E100",
+   "card": null
+  },
+  "k1a1": {
+   "name": "K1A1",
+   "card": "/brand/og-r2/tanks/k1a1-card.jpg"
+  },
+  "k1e1": {
+   "name": "K1E1",
+   "card": "/brand/og-r2/tanks/k1e1-card.jpg"
+  },
+  "k21": {
+   "name": "K21",
+   "card": "/brand/og-r2/tanks/k21-card.jpg"
+  },
+  "k2_black_panther": {
+   "name": "K2 Black Panther",
+   "card": "/brand/og-r2/tanks/k2_black_panther-card.jpg"
+  },
+  "k2b": {
+   "name": "K2B",
+   "card": "/brand/og-r2/tanks/k2b-card.jpg"
+  },
+  "kf41_lynx": {
+   "name": "KF41 Lynx",
+   "card": "/brand/og-r2/tanks/kf41_lynx-card.jpg"
+  },
+  "kf51_evo": {
+   "name": "KF51 EVO",
+   "card": "/brand/og-r2/tanks/kf51_evo-card.jpg"
+  },
+  "kf51_panther": {
+   "name": "KF51 Panther",
+   "card": "/brand/og-r2/tanks/kf51_panther-card.jpg"
+  },
+  "kf51_u": {
+   "name": "KF51-U",
+   "card": "/brand/og-r2/tanks/kf51_u-card.jpg"
+  },
+  "kurganets25": {
+   "name": "Kurganets-25",
+   "card": "/brand/og-r2/tanks/kurganets25-card.jpg"
+  },
+  "kv2": {
+   "name": "KV-2",
+   "card": "/brand/og-r2/tanks/kv2-card.jpg"
+  },
+  "leclerc_s1": {
+   "name": "Leclerc S1",
+   "card": "/brand/og-r2/tanks/leclerc_s1-card.jpg"
+  },
+  "leclerc_s2": {
+   "name": "Leclerc S2",
+   "card": "/brand/og-r2/tanks/leclerc_s2-card.jpg"
+  },
+  "leclerc_sxxi": {
+   "name": "Leclerc SXXI",
+   "card": "/brand/og-r2/tanks/leclerc_sxxi-card.jpg"
+  },
+  "leclerc_xlr": {
+   "name": "Leclerc XLR",
+   "card": "/brand/og-r2/tanks/leclerc_xlr-card.jpg"
+  },
+  "leo1a2a1": {
+   "name": "Leopard 1A2A1",
+   "card": null
+  },
+  "leo1a3dk": {
+   "name": "Leopard 1A3 DK",
+   "card": null
+  },
+  "leo1a5": {
+   "name": "Leopard 1A5",
+   "card": null
+  },
+  "leo1a5dk": {
+   "name": "Leopard 1A5 DK",
+   "card": null
+  },
+  "leo1a5dk1": {
+   "name": "Leopard 1A5 DK-1",
+   "card": null
+  },
+  "leo2_improved": {
+   "name": "Leopard 2 Improved",
+   "card": "/brand/og-r2/tanks/leo2_improved-card.jpg"
+  },
+  "leo2_revolution": {
+   "name": "Leopard 2 Revolution",
+   "card": "/brand/og-r2/tanks/leo2_revolution-card.jpg"
+  },
+  "leo2_revolution_proto": {
+   "name": "Leopard 2 Revolution Proto",
+   "card": "/brand/og-r2/tanks/leo2_revolution_proto-card.jpg"
+  },
+  "leo2a2": {
+   "name": "Leopard 2A2",
+   "card": null
+  },
+  "leo2a3": {
+   "name": "Leopard 2A3 OTCO",
+   "card": "/brand/og-r2/tanks/leo2a3-card.jpg"
+  },
+  "leo2a3_b4": {
+   "name": "Leopard 2A3",
+   "card": null
+  },
+  "leo2a4": {
+   "name": "Leopard 2A4",
+   "card": "/brand/og-r2/tanks/leo2a4-card.jpg"
+  },
+  "leo2a4_otco": {
+   "name": "Leopard 2A4 OTCO",
+   "card": null
+  },
+  "leo2a4_v": {
+   "name": "Leopard 2A4 V",
+   "card": null
+  },
+  "leo2a4m": {
+   "name": "Leopard 2A4M",
+   "card": "/brand/og-r2/tanks/leo2a4m-card.jpg"
+  },
+  "leo2a4m_can": {
+   "name": "Leopard 2A4M CAN",
+   "card": "/brand/og-r2/tanks/leo2a4m_can-card.jpg"
+  },
+  "leo2a5": {
+   "name": "Leopard 2A5",
+   "card": "/brand/og-r2/tanks/leo2a5-card.jpg"
+  },
+  "leo2a5dk": {
+   "name": "Leopard 2A5 DK",
+   "card": null
+  },
+  "leo2a5m": {
+   "name": "Leopard 2A5M",
+   "card": "/brand/og-r2/tanks/leo2a5m-card.jpg"
+  },
+  "leo2a6": {
+   "name": "Leopard 2A6",
+   "card": null
+  },
+  "leo2a6_ua": {
+   "name": "Leopard 2A6 UA",
+   "card": "/brand/og-r2/tanks/leo2a6_ua-card.jpg"
+  },
+  "leo2a6m": {
+   "name": "Leopard 2A6M",
+   "card": "/brand/og-r2/tanks/leo2a6m-card.jpg"
+  },
+  "leo2a7v": {
+   "name": "Leopard 2A7V",
+   "card": "/brand/og-r2/tanks/leo2a7v-card.jpg"
+  },
+  "leopard2_proto": {
+   "name": "Leopard 2 Prototype",
+   "card": null
+  },
+  "lrmv_lynx": {
+   "name": "LRMV Lynx",
+   "card": "/brand/og-r2/tanks/lrmv_lynx-card.jpg"
+  },
+  "m1a1": {
+   "name": "M1A1 Abrams",
+   "card": "/brand/og-r2/tanks/m1a1-card.jpg"
+  },
+  "m1a1_abrams_aim": {
+   "name": "M1A1 Abrams AIM",
+   "card": "/brand/og-r2/tanks/m1a1_abrams_aim-card.jpg"
+  },
+  "m1a1_abrams_fep": {
+   "name": "M1A1 Abrams FEP",
+   "card": "/brand/og-r2/tanks/m1a1_abrams_fep-card.jpg"
+  },
+  "m1a1_abrams_hc": {
+   "name": "M1A1 Abrams HC",
+   "card": null
+  },
+  "m1a1_abrams_sa": {
+   "name": "M1A1 Abrams SA",
+   "card": "/brand/og-r2/tanks/m1a1_abrams_sa-card.jpg"
+  },
+  "m1a1ha": {
+   "name": "M1A1 Abrams HA",
+   "card": "/brand/og-r2/tanks/m1a1ha-card.jpg"
+  },
+  "m1a2_abrams": {
+   "name": "M1A2 Abrams",
+   "card": "/brand/og-r2/tanks/m1a2_abrams-card.jpg"
+  },
+  "m1a2_abrams_sepv2": {
+   "name": "M1A2 Abrams SEPv2",
+   "card": "/brand/og-r2/tanks/m1a2_abrams_sepv2-card.jpg"
+  },
+  "m1a2_abrams_sepv3": {
+   "name": "M1A2 Abrams SEPv3",
+   "card": "/brand/og-r2/tanks/m1a2_abrams_sepv3-card.jpg"
+  },
+  "m1a2_abrams_tusk": {
+   "name": "M1A2 Abrams TUSK",
+   "card": null
+  },
+  "m1a3": {
+   "name": "M1E3 Abrams",
+   "card": "/brand/og-r2/tanks/m1a3-card.jpg"
+  },
+  "m2a2_bradley": {
+   "name": "M2A2 Bradley",
+   "card": "/brand/og-r2/tanks/m2a2_bradley-card.jpg"
+  },
+  "m3a3_bradley": {
+   "name": "M3A3 Bradley CFV",
+   "card": "/brand/og-r2/tanks/m3a3_bradley-card.jpg"
+  },
+  "m41_bw": {
+   "name": "M41 (Bundeswehr)",
+   "card": null
+  },
+  "m41_jgsdf": {
+   "name": "M41 (JGSDF)",
+   "card": null
+  },
+  "m41a3": {
+   "name": "M41A3 Walker Bulldog",
+   "card": null
+  },
+  "m41dk1": {
+   "name": "M41 DK-1",
+   "card": null
+  },
+  "m46_patton": {
+   "name": "M46 Patton",
+   "card": null
+  },
+  "m47_patton": {
+   "name": "M47 Patton",
+   "card": null
+  },
+  "m48_super": {
+   "name": "M48 Super",
+   "card": null
+  },
+  "m48a2ga2": {
+   "name": "Kpz M48A2GA2",
+   "card": null
+  },
+  "m48a3_patton": {
+   "name": "M48A3 Patton",
+   "card": null
+  },
+  "m48a5_patton": {
+   "name": "M48A5 Patton",
+   "card": null
+  },
+  "m551_sheridan": {
+   "name": "M551 Sheridan",
+   "card": null
+  },
+  "m551a1_tts": {
+   "name": "M551A1 TTS",
+   "card": "/brand/og-r2/tanks/m551a1_tts-card.jpg"
+  },
+  "m60a1": {
+   "name": "M60A1 Patton",
+   "card": null
+  },
+  "m60a2": {
+   "name": "M60A2 Starship",
+   "card": null
+  },
+  "m60a3": {
+   "name": "M60A3",
+   "card": null
+  },
+  "m6_linebacker": {
+   "name": "M6 Linebacker",
+   "card": "/brand/og-r2/tanks/m6_linebacker-card.jpg"
+  },
+  "magach3": {
+   "name": "Magach 3",
+   "card": null
+  },
+  "magach6b": {
+   "name": "Magach 6B",
+   "card": null
+  },
+  "magach7c": {
+   "name": "Magach 7C",
+   "card": null
+  },
+  "marder1a3": {
+   "name": "Schützenpanzer Marder 1A3",
+   "card": null
+  },
+  "marder2": {
+   "name": "Marder 2",
+   "card": null
+  },
+  "mbt70": {
+   "name": "MBT-70",
+   "card": "/brand/og-r2/tanks/mbt70-card.jpg"
+  },
+  "merkava1b": {
+   "name": "Merkava Mk 1B",
+   "card": "/brand/og-r2/tanks/merkava1b-card.jpg"
+  },
+  "merkava2b": {
+   "name": "Merkava Mk 2B",
+   "card": "/brand/og-r2/tanks/merkava2b-card.jpg"
+  },
+  "merkava2d": {
+   "name": "Merkava Mk 2D",
+   "card": "/brand/og-r2/tanks/merkava2d-card.jpg"
+  },
+  "merkava3_baz": {
+   "name": "Merkava Mk 3 Baz",
+   "card": "/brand/og-r2/tanks/merkava3_baz-card.jpg"
+  },
+  "merkava3c": {
+   "name": "Merkava Mk 3C",
+   "card": "/brand/og-r2/tanks/merkava3c-card.jpg"
+  },
+  "merkava3d": {
+   "name": "Merkava Mk 3D",
+   "card": "/brand/og-r2/tanks/merkava3d-card.jpg"
+  },
+  "merkava4": {
+   "name": "Merkava Mk 4",
+   "card": "/brand/og-r2/tanks/merkava4-card.jpg"
+  },
+  "merkava4_barak": {
+   "name": "Merkava Mk 4 Barak",
+   "card": "/brand/og-r2/tanks/merkava4_barak-card.jpg"
+  },
+  "merkava4_trophy": {
+   "name": "Merkava Mk 4 Trophy",
+   "card": "/brand/og-r2/tanks/merkava4_trophy-card.jpg"
+  },
+  "merkava4b": {
+   "name": "Merkava Mk 4B",
+   "card": "/brand/og-r2/tanks/merkava4b-card.jpg"
+  },
+  "namer_ifv": {
+   "name": "Namer IFV",
+   "card": "/brand/og-r2/tanks/namer_ifv-card.jpg"
+  },
+  "object148_proto": {
+   "name": "Object 148 Proto",
+   "card": "/brand/og-r2/tanks/object148_proto-card.jpg"
+  },
+  "object695": {
+   "name": "Object 695",
+   "card": "/brand/og-r2/tanks/object695-card.jpg"
+  },
+  "olifant_mk2": {
+   "name": "Olifant Mk 2",
+   "card": null
+  },
+  "osorio_p1": {
+   "name": "EE-T1 Osório (105)",
+   "card": null
+  },
+  "osorio_p2": {
+   "name": "EE-T1 Osório (120)",
+   "card": null
+  },
+  "pl01": {
+   "name": "PL-01",
+   "card": "/brand/og-r2/tanks/pl01-card.jpg"
+  },
+  "pl01_105": {
+   "name": "PL-01 (105)",
+   "card": "/brand/og-r2/tanks/pl01_105-card.jpg"
+  },
+  "pt64_tur": {
+   "name": "PT-64 Tur",
+   "card": null
+  },
+  "pt84_orzel": {
+   "name": "PT-84 Orzeł",
+   "card": null
+  },
+  "pt84_sokol": {
+   "name": "PT-84 Sokół",
+   "card": null
+  },
+  "pt84_zbik": {
+   "name": "PT-84 Żbik",
+   "card": null
+  },
+  "pt91a_twardy": {
+   "name": "PT-91A Twardy",
+   "card": "/brand/og-r2/tanks/pt91a_twardy-card.jpg"
+  },
+  "pt91m": {
+   "name": "PT-91M Pendekar",
+   "card": "/brand/og-r2/tanks/pt91m-card.jpg"
+  },
+  "puma_s1": {
+   "name": "Puma S1",
+   "card": "/brand/og-r2/tanks/puma_s1-card.jpg"
+  },
+  "raiju_ifv": {
+   "name": "Raijū IFV",
+   "card": "/brand/og-r2/tanks/raiju_ifv-card.jpg"
+  },
+  "sabra_mk2": {
+   "name": "Sabra Mk 2",
+   "card": null
+  },
+  "shot_kal": {
+   "name": "Sho't Kal",
+   "card": null
+  },
+  "spz_puma": {
+   "name": "Schützenpanzer Puma",
+   "card": null
+  },
+  "spz_wotan": {
+   "name": "SPz Wotan",
+   "card": null
+  },
+  "stb1": {
+   "name": "STB-1",
+   "card": "/brand/og-r2/tanks/stb1-card.jpg"
+  },
+  "strv103a": {
+   "name": "Stridsvagn 103A",
+   "card": "/brand/og-r2/tanks/strv103a-card.jpg"
+  },
+  "strv103b": {
+   "name": "Stridsvagn 103B",
+   "card": "/brand/og-r2/tanks/strv103b-card.jpg"
+  },
+  "strv105": {
+   "name": "Strv 105",
+   "card": null
+  },
+  "strv121": {
+   "name": "Stridsvagn 121",
+   "card": "/brand/og-r2/tanks/strv121-card.jpg"
+  },
+  "strv122": {
+   "name": "Stridsvagn 122",
+   "card": "/brand/og-r2/tanks/strv122-card.jpg"
+  },
+  "strv81": {
+   "name": "Stridsvagn 81",
+   "card": "/brand/og-r2/tanks/strv81-card.jpg"
+  },
+  "t14_armata": {
+   "name": "T-14 Armata",
+   "card": "/brand/og-r2/tanks/t14_armata-card.jpg"
+  },
+  "t49": {
+   "name": "T49",
+   "card": null
+  },
+  "t55a": {
+   "name": "T-55A",
+   "card": null
+  },
+  "t62_1975": {
+   "name": "T-62 obr. 1975",
+   "card": "/brand/og-r2/tanks/t62_1975-card.jpg"
+  },
+  "t62mv1": {
+   "name": "T-62MV-1",
+   "card": "/brand/og-r2/tanks/t62mv1-card.jpg"
+  },
+  "t64b1v_2022": {
+   "name": "T-64B1V mod. 2022",
+   "card": null
+  },
+  "t64bm1m": {
+   "name": "T-64BM1M",
+   "card": null
+  },
+  "t64bv": {
+   "name": "T-64BV",
+   "card": null
+  },
+  "t64bv1": {
+   "name": "T-64BV1",
+   "card": "/brand/og-r2/tanks/t64bv1-card.jpg"
+  },
+  "t64bv_donbas": {
+   "name": "T-64BV mod. 2017",
+   "card": "/brand/og-r2/tanks/t64bv_donbas-card.jpg"
+  },
+  "t72_rys": {
+   "name": "T-72 Ryś (Concept)",
+   "card": "/brand/og-r2/tanks/t72_rys-card.jpg"
+  },
+  "t72b3": {
+   "name": "T-72B3",
+   "card": "/brand/og-r2/tanks/t72b3-card.jpg"
+  },
+  "t72b3_bastion_m": {
+   "name": "T-72B3 Bastion-M",
+   "card": "/brand/og-r2/tanks/t72b3_bastion_m-card.jpg"
+  },
+  "t72b3_qilin": {
+   "name": "T-72B3 Qilin",
+   "card": "/brand/og-r2/tanks/t72b3_qilin-card.jpg"
+  },
+  "t72b3_sich": {
+   "name": "T-72B3 Sich",
+   "card": "/brand/og-r2/tanks/t72b3_sich-card.jpg"
+  },
+  "t72b3_zhuque": {
+   "name": "T-72B3 Zhuque",
+   "card": null
+  },
+  "t72b3_zubr": {
+   "name": "T-72B3 Zubr",
+   "card": "/brand/og-r2/tanks/t72b3_zubr-card.jpg"
+  },
+  "t72b3_zubr_ii": {
+   "name": "T-72B3 Zubr II",
+   "card": "/brand/og-r2/tanks/t72b3_zubr_ii-card.jpg"
+  },
+  "t72b3m_2016": {
+   "name": "T-72B3M obr. 2016",
+   "card": null
+  },
+  "t72b3m_2022": {
+   "name": "T-72B3M obr. 2022",
+   "card": null
+  },
+  "t72b3m_bulat_m": {
+   "name": "T-72B3M Bulat-M",
+   "card": "/brand/og-r2/tanks/t72b3m_bulat_m-card.jpg"
+  },
+  "t72b3m_hetman": {
+   "name": "T-72B3M Hetman",
+   "card": "/brand/og-r2/tanks/t72b3m_hetman-card.jpg"
+  },
+  "t72b3m_hetman_ii": {
+   "name": "T-72B3M Hetman II",
+   "card": null
+  },
+  "t72b3m_kunlun": {
+   "name": "T-72B3M Kunlun",
+   "card": "/brand/og-r2/tanks/t72b3m_kunlun-card.jpg"
+  },
+  "t72b3m_wilk": {
+   "name": "T-72B3M Wilk",
+   "card": "/brand/og-r2/tanks/t72b3m_wilk-card.jpg"
+  },
+  "t72b3m_xuanwu": {
+   "name": "T-72B3M Xuanwu",
+   "card": null
+  },
+  "t72b_1987": {
+   "name": "T-72B obr. 1987",
+   "card": "/brand/og-r2/tanks/t72b_1987-card.jpg"
+  },
+  "t72bu": {
+   "name": "T-72BU",
+   "card": "/brand/og-r2/tanks/t72bu-card.jpg"
+  },
+  "t72bu_1989": {
+   "name": "T-72BU obr. 1989",
+   "card": "/brand/og-r2/tanks/t72bu_1989-card.jpg"
+  },
+  "t72m1_jaguar": {
+   "name": "T-72M1 Jaguar",
+   "card": null
+  },
+  "t80": {
+   "name": "T-80",
+   "card": "/brand/og-r2/tanks/t80-card.jpg"
+  },
+  "t80b": {
+   "name": "T-80B",
+   "card": null
+  },
+  "t80bv": {
+   "name": "T-80BV",
+   "card": null
+  },
+  "t80u": {
+   "name": "T-80U",
+   "card": "/brand/og-r2/tanks/t80u-card.jpg"
+  },
+  "t80u_bars_m": {
+   "name": "T-80U Bars-M",
+   "card": "/brand/og-r2/tanks/t80u_bars_m-card.jpg"
+  },
+  "t80u_husarz": {
+   "name": "T-80U Husarz",
+   "card": "/brand/og-r2/tanks/t80u_husarz-card.jpg"
+  },
+  "t80u_kursk": {
+   "name": "T-80U Kursk",
+   "card": "/brand/og-r2/tanks/t80u_kursk-card.jpg"
+  },
+  "t80u_yun": {
+   "name": "T-80U Yun",
+   "card": "/brand/og-r2/tanks/t80u_yun-card.jpg"
+  },
+  "t80u_zoria": {
+   "name": "T-80U Zoria",
+   "card": "/brand/og-r2/tanks/t80u_zoria-card.jpg"
+  },
+  "t80uk": {
+   "name": "T-80UK",
+   "card": null
+  },
+  "t84": {
+   "name": "Object 478DU2",
+   "card": "/brand/og-r2/tanks/t84-card.jpg"
+  },
+  "t84bm_oplot_m": {
+   "name": "T-84U Oplot",
+   "card": null
+  },
+  "t90": {
+   "name": "T-90",
+   "card": "/brand/og-r2/tanks/t90-card.jpg"
+  },
+  "t90_1992": {
+   "name": "T-90 obr. 1992",
+   "card": "/brand/og-r2/tanks/t90_1992-card.jpg"
+  },
+  "t90a": {
+   "name": "T-90A",
+   "card": null
+  },
+  "t90a_2004": {
+   "name": "T-90A obr. 2004",
+   "card": null
+  },
+  "t90a_2006": {
+   "name": "T-90A obr. 2006",
+   "card": null
+  },
+  "t90a_burlak": {
+   "name": "T-90A Burlak",
+   "card": null
+  },
+  "t90a_burlak_proto": {
+   "name": "T-90A Burlak Prototype",
+   "card": "/brand/og-r2/tanks/t90a_burlak_proto-card.jpg"
+  },
+  "t90a_vladimir": {
+   "name": "T-90A Vladimir",
+   "card": "/brand/og-r2/tanks/t90a_vladimir-card.jpg"
+  },
+  "t90am": {
+   "name": "T-90AM",
+   "card": null
+  },
+  "t90m": {
+   "name": "T-90M Proryv",
+   "card": "/brand/og-r2/tanks/t90m-card.jpg"
+  },
+  "t90m_proryv": {
+   "name": "T-90AM II",
+   "card": null
+  },
+  "t90ms_2011": {
+   "name": "T-90MS obr. 2011",
+   "card": "/brand/og-r2/tanks/t90ms_2011-card.jpg"
+  },
+  "t90ms_tagil": {
+   "name": "T-90MS Tagil",
+   "card": "/brand/og-r2/tanks/t90ms_tagil-card.jpg"
+  },
+  "t90sm": {
+   "name": "T-90SM",
+   "card": "/brand/og-r2/tanks/t90sm-card.jpg"
+  },
+  "t90sm_2013": {
+   "name": "T-90SM obr. 2013",
+   "card": null
+  },
+  "tamoyo1": {
+   "name": "MB-3 Tamoyo 1",
+   "card": null
+  },
+  "tamoyo3": {
+   "name": "MB-3 Tamoyo 3",
+   "card": null
+  },
+  "tos1a_tagil": {
+   "name": "TOS-1A Tagil",
+   "card": "/brand/og-r2/tanks/tos1a_tagil-card.jpg"
+  },
+  "type10": {
+   "name": "Type 10",
+   "card": null
+  },
+  "type100": {
+   "name": "Type 100 IFV",
+   "card": "/brand/og-r2/tanks/type100-card.jpg"
+  },
+  "type10_dozer": {
+   "name": "Type 10 Kaitaku",
+   "card": null
+  },
+  "type10_tk_x": {
+   "name": "Type 10 (TK-X)",
+   "card": null
+  },
+  "type10b": {
+   "name": "Type 10B",
+   "card": "/brand/og-r2/tanks/type10b-card.jpg"
+  },
+  "type59": {
+   "name": "Type 59",
+   "card": null
+  },
+  "type74": {
+   "name": "Type 74",
+   "card": "/brand/og-r2/tanks/type74-card.jpg"
+  },
+  "type89": {
+   "name": "Type 89",
+   "card": null
+  },
+  "type90": {
+   "name": "Type 90",
+   "card": "/brand/og-r2/tanks/type90-card.jpg"
+  },
+  "type90_kyumaru": {
+   "name": "STC-1",
+   "card": "/brand/og-r2/tanks/type90_kyumaru-card.jpg"
+  },
+  "type90a": {
+   "name": "STC-2",
+   "card": "/brand/og-r2/tanks/type90a-card.jpg"
+  },
+  "type96_72_long": {
+   "name": "Type 96-72 Lóng (Concept)",
+   "card": "/brand/og-r2/tanks/type96_72_long-card.jpg"
+  },
+  "type96_72m_lei": {
+   "name": "Type 96-72M Léi",
+   "card": "/brand/og-r2/tanks/type96_72m_lei-card.jpg"
+  },
+  "type96_80_feng": {
+   "name": "Type 96-80 Fēng",
+   "card": "/brand/og-r2/tanks/type96_80_feng-card.jpg"
+  },
+  "type96b": {
+   "name": "Type 96B",
+   "card": "/brand/og-r2/tanks/type96b-card.jpg"
+  },
+  "ua_challenger2": {
+   "name": "Challenger 2 (Ukraine)",
+   "card": "/brand/og-r2/tanks/ua_challenger2-card.jpg"
+  },
+  "ua_cv9040c": {
+   "name": "CV9040C (Ukraine)",
+   "card": null
+  },
+  "ua_m1a1": {
+   "name": "M1A1 SA (Ukraine)",
+   "card": "/brand/og-r2/tanks/ua_m1a1-card.jpg"
+  },
+  "ua_m1a2_abrams": {
+   "name": "M1A2 Abrams UA",
+   "card": "/brand/og-r2/tanks/ua_m1a2_abrams-card.jpg"
+  },
+  "ua_m2a3_bradley": {
+   "name": "M2A3 Bradley (Ukraine)",
+   "card": "/brand/og-r2/tanks/ua_m2a3_bradley-card.jpg"
+  },
+  "ua_t80bv": {
+   "name": "T-80BV (Ukraine)",
+   "card": "/brand/og-r2/tanks/ua_t80bv-card.jpg"
+  },
+  "udes03": {
+   "name": "UDES 03",
+   "card": null
+  },
+  "upior": {
+   "name": "Upiór IFV",
+   "card": "/brand/og-r2/tanks/upior-card.jpg"
+  },
+  "vickers_mk1": {
+   "name": "Vickers MBT Mk 1",
+   "card": null
+  },
+  "vt4a1": {
+   "name": "VT-4A1",
+   "card": "/brand/og-r2/tanks/vt4a1-card.jpg"
+  },
+  "vt4a1_baihu": {
+   "name": "VT-4A1 Baihu",
+   "card": null
+  },
+  "warrior_tes_h": {
+   "name": "Warrior TES(H)",
+   "card": "/brand/og-r2/tanks/warrior_tes_h-card.jpg"
+  },
+  "x1_pioneiro": {
+   "name": "CCL X1 Pioneiro",
+   "card": null
+  },
+  "x1a2_carcara": {
+   "name": "CCL X1A2 Carcará",
+   "card": null
+  },
+  "xk2_black_panther": {
+   "name": "XK2 Black Panther",
+   "card": "/brand/og-r2/tanks/xk2_black_panther-card.jpg"
+  },
+  "ztz100": {
+   "name": "ZTZ-100",
+   "card": "/brand/og-r2/tanks/ztz100-card.jpg"
+  },
+  "ztz100_prototype": {
+   "name": "ZTZ-100 Prototype",
+   "card": "/brand/og-r2/tanks/ztz100_prototype-card.jpg"
+  },
+  "ztz20": {
+   "name": "ZTZ-20",
+   "card": null
+  },
+  "ztz20_prototype": {
+   "name": "ZTZ-20 Prototype",
+   "card": null
+  },
+  "ztz85_iii": {
+   "name": "ZTZ-85-III",
+   "card": null
+  },
+  "ztz99_longwei": {
+   "name": "ZTZ-99 Longwei",
+   "card": null
+  },
+  "ztz99a": {
+   "name": "ZTZ-99A",
+   "card": null
+  },
+  "ztz99a2": {
+   "name": "ZTZ-99A2",
+   "card": "/brand/og-r2/tanks/ztz99a2-card.jpg"
+  },
+  "ztz99a2_qinglong": {
+   "name": "ZTZ-99A2 Qinglong",
+   "card": null
+  }
+ }
+}
