@@ -149,8 +149,14 @@ leo2a7dk.visual = {
   // r11 (r10 critics, both: rounded blobs with near-black read as paint; the photograph's cover one continuous,
   // low-contrast grey-green mottle): no near-black, the tones close together
   // r12 (r11 Opus: green on green; the photograph's khaki-tan areas in the green): a muted tan for the light patch
-  scheme: 'nato', base: '#494e39', weather: '#43483a', patches: ['#3b402f', '#5b5741', '#42473a'], marking: 'number',
-  number: '11', camoScale: 1.6,
+  // 267 (r12 critics, both: the cover's pale speckled panels over a woodland of rounded blotches, two textures; one
+  // continuous Barracuda texture over hull, skirts, turret and gun, nothing painted under it): the coat is the cover's
+  // own lace, the fleck painter's dense dapple at a few centimetres (the Latvia photograph at full size, Commons
+  // 3840 px: mid-green panels under a fine dark lace, about a sixth of them brown-tan), the dark tone twice for the
+  // lace's share; the cover's cut-leaf texture takes its colours from the first three (ghillieSuit coverPaletteOf), so
+  // the cover and the paint between its panels are one fabric
+  scheme: 'fleck', base: '#515c3d', weather: '#4c5639', patches: ['#2a301f', '#625640', '#384129', '#2a301f'],
+  marking: 'number', number: '11', camoScale: 1.0,
 };
 
 // ------------------------------------------------------------------------------------------------- CV9035 DK --
