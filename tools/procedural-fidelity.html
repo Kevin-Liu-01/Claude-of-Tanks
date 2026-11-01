@@ -858,6 +858,7 @@ if (whipsAside) {
   for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
   for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
 }
+/** `measure` on the whole models: every whip and stowage part set aside is back in place (both models). */
 function withWholeSource(measure) {
   const undo = [...stowageAsideUndo, ...whipsAsideUndo];
   for (const [node, geometry, other] of undo.slice().reverse()) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
@@ -926,8 +927,10 @@ function visibleBox(root) {
   return result;
 }
 
-const referenceBox = visibleBox(reference.root);
-const proceduralBox = visibleBox(procedural.root);
+// The frames, scale anchors and boxes below are rulers: they see the whole models, whips and stowage included
+// (withWholeSource), so setting parts aside never moves the raster grid or the registration (267).
+const referenceBox = withWholeSource(() => visibleBox(reference.root));
+const proceduralBox = withWholeSource(() => visibleBox(procedural.root));
 // Recovered GLBs are normalized by the game loader, whose conservative
 // scale is the minimum of length, width and height.  A tall antenna can
 // therefore shrink the entire armored body (Type 90: 3.43 m real width became
@@ -940,7 +943,7 @@ const safeScale=(target,current)=>THREE.MathUtils.clamp(target/Math.max(current,
 const hullLength=(visual)=>{
   const hull=visual.root.getObjectByName('rig_hull');
   if (!hull) return 0;
-  return visibleBox(hull).getSize(new THREE.Vector3()).z;
+  return withWholeSource(() => visibleBox(hull)).getSize(new THREE.Vector3()).z;
 };
 const useHullLengthAnchor=source?.glb?.fidelityScaleAnchor === 'hullLength';
 const refAnchor=useHullLengthAnchor ? hullLength(reference) : refWidth;
@@ -981,8 +984,8 @@ if (sourceWorldCertificate) {
     SOURCE_WORLD_BUILD_OFFSETS[id]);
   if (!sourceWorldRegistration.passed) failFidelity(sourceWorldRegistration.failures.join('; '));
 }
-referenceBox.copy(visibleBox(reference.root));
-proceduralBox.copy(visibleBox(procedural.root));
+referenceBox.copy(withWholeSource(() => visibleBox(reference.root)));
+proceduralBox.copy(withWholeSource(() => visibleBox(procedural.root)));
 const sharedBox = referenceBox.clone().union(proceduralBox);
 const center = sharedBox.getCenter(new THREE.Vector3());
 const corners = [];
@@ -2217,7 +2220,8 @@ if (params.get('geo')) {
   };
   let floaterFails = 0;
   const floaterRows = [];
-  {
+  // floaters judge the whole build (a part set aside for the comparisons still holds what it carries)
+  withWholeSource(() => {
     const turretN = procedural.root.getObjectByName('rig_turret');
     const gunN = procedural.root.getObjectByName('rig_gun');
     const dep = spec.gunDepressionDeg ?? 8, elev = spec.gunElevationDeg ?? 15;
@@ -2235,7 +2239,7 @@ if (params.get('geo')) {
     if (turretN) turretN.rotation.y = 0;
     if (gunN) gunN.rotation.x = 0;
     procedural.root.updateMatrixWorld(true);
-  }
+  });
   const floaterScore = floaterFails ? 0 : 100;
   // For a declared fused reference, the 1-D curve extrema are dominated by
   // whichever mixed-owner fitting happens to occupy a sampled column (the
