@@ -38,13 +38,13 @@ function replaceMeta(
 }
 
 /**
- * A localized twin shares its page's picture but not its English label: every
- * /brand/og/<card>.jpg (Open Graph, Twitter and JSON-LD) becomes the locale's
- * card. The default og-image.png carries no label and stays.
+ * A localized twin shares its page's picture but not its English title: every
+ * /brand/og-r2/<card>.jpg (Open Graph, Twitter and JSON-LD) becomes the locale's
+ * card (the brand's wordless cards stay one).
  */
 function localizeSocialCards(html: string, locale: SupportedLocale): string {
   const origin = SITE_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return html.replace(new RegExp(`${origin}/brand/og/([a-z0-9-]+)\\.jpg`, 'g'),
+  return html.replace(new RegExp(`${origin}/brand/og-r2/([a-z0-9-]+)\\.jpg`, 'g'),
     (_, card: string) => socialCardUrl(card, locale));
 }
 
