@@ -337,11 +337,9 @@ function buildAMX40(P: FranceBuilderPort): void {
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.040), s * 1.640, 0.97, 1.85 - k * 1.04); // panel joints (2mm proud of the 1.648 face)
     // 266 (owner: "goofy parts"): the bow mud flaps hung INBOARD under the beak, between the tracks, where the Saumur hull
     // has none; they now hang where it carries its broad black flaps, from under each outer bow nose over its track.
-    // 267 round 4 (Opus, critic6: "the headlight box sits on a tall camo-painted face above the black flap; in pic-1 the
-    // light box sits directly on the flap"): the flap runs up over the outer nose's crest to the platform under the lamp.
-    // 267 round 4b (both critics, critic7: "the flap blocks hang far too deep and hide the track; the real ones are thin
-    // black aprons, about a third of the nose height, under tan fender pods"): a 0.18 m apron under the lamp pod.
-    P.add('hullRubber', box(0.56, 0.18, 0.028), s * 1.30, 1.14, 3.44);
+    // 267 round 4c (Sonnet, critic8: "the real flaps are broader, angled outward and clearly separate from the fender"):
+    // the flap hangs from under the nose crest as before, its outer end swung 0.30 rad forward.
+    P.add('hullRubber', box(0.56, 0.30, 0.028), s * 1.30, 1.06, 3.395, 0, -s * 0.30, 0);
     P.add('hullRubber', box(0.30, 0.20, 0.028), s * 1.28, 0.86, -3.380);        // stern flaps, faces -3.394 (band 0.76..0.96 under the 12% filter)
     // skirt-top shadow seam + sponson-wall relief (three-depth-planes read)
     for (const [lo, hi, outer] of skirtBands) P.add('hullShadow', box(0.040, 0.03, hi - lo + 0.004), s * (outer - 0.020), 1.345, (lo + hi) / 2);
@@ -407,15 +405,18 @@ function buildAMX40(P: FranceBuilderPort): void {
     // yellow lenses and tail-light units on each fender corner"): each bow corner carries a boxed lamp housing on the
     // platform, a round lens in its face and the indicator box outboard of it; the guarded twin pods are gone.
     for (const s of [-1, 1]) {
-      // 267 round 4b (critic7: Sonnet "a tan fender pod with a thin black apron below", Opus "the light box sits directly
-      // on the flap"): the housing is the pod in the nose crest, over the apron, its back buried in the crest
-      P.add('hull', box(0.36, 0.22, 0.24), s * 1.30, 1.34, 3.34);               // pod, y 1.23..1.45, face 3.46
-      P.add('hullDark', box(0.37, 0.02, 0.25), s * 1.30, 1.455, 3.34);          // its brow
+      // (267 round 4c: both critics, critic8, keep the raised housings on the fender tops, as in both photos)
+      P.add('hullDetail', box(0.36, 0.20, 0.20), s * 1.30, 1.585, 3.05);       // housing, seated on the bow platform
+      // 267 round 4c (Opus, critic8: "the two front width-marker poles are missing", pic-1): a pole at the platform's outer
+      // corner, its foot in the platform
+      P.add('hullDetail', cylY(0.011, 0.013, 0.52, 8), s * 1.55, 1.75, 3.18);
+      P.add('hullDetail', cylY(0.024, 0.024, 0.03, 10), s * 1.55, 2.02, 3.18);
+      P.add('hullDark', box(0.37, 0.02, 0.21), s * 1.30, 1.69, 3.05);           // its brow
       const lamp = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 1, r: 0.068, guard: false, rake: 0, seed: s > 0 ? 4 : 3 });
-      lamp.position.set(s * 1.25, 1.34, 3.475);
+      lamp.position.set(s * 1.25, 1.585, 3.165);
       P.hullG.add(lamp);
-      P.add('hullDark', box(0.10, 0.09, 0.03), s * 1.42, 1.34, 3.465);          // indicator
-      P.add('hullGlass', box(0.08, 0.07, 0.012), s * 1.42, 1.34, 3.482);
+      P.add('hullDark', box(0.10, 0.09, 0.03), s * 1.42, 1.585, 3.155);         // indicator
+      P.add('hullGlass', box(0.08, 0.07, 0.012), s * 1.42, 1.585, 3.172);
     }
     const cable = FITTINGS.towCable({ mats: P.mats, r: 0.019, seed: 7,
       pts: [[1.32, 1.602, 0.75], [1.365, 1.602, -0.25], [1.32, 1.64, -1.45]] });  // cable is half-buried in its deck clips, as in the source print
@@ -678,11 +679,11 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 round 2 (Opus, critic3: "a dark notch at the tank's-left front corner of the turret, between the roof box and the
   // cheek, reads as a cavity; the real cheek is solid"): the left cheek's nose runs on to the mantlet's side as solid
   // armour, 10 mm outboard of the mantlet web (x 0.62) so the gun elevates clear of it.
-  // 267 round 4 (Opus, critic6: "a sloped left-front plate", pic-2): its face rakes back 0.20 m to the roof edge and its
-  // outer top follows the cheek nose's lean
+  // 267 round 4 (Opus, critic6: "a sloped left-front plate", pic-2): its face rakes back to the roof edge and its outer
+  // top follows the cheek nose's lean; 4c (Sonnet, critic8: "a plain dark wedge, not a flat armoured face"): 0.10 m
   P.add('turret', convexSlab(
     [0.63, 0.18, 1.86], [1.00, 0.18, 1.86], [1.00, 0.18, 2.12], [0.63, 0.18, 2.20],
-    [0.63, 0.56, 1.86], [0.88, 0.56, 1.86], [0.88, 0.56, 1.93], [0.63, 0.56, 2.00]));
+    [0.63, 0.56, 1.86], [0.88, 0.56, 1.86], [0.88, 0.56, 2.02], [0.63, 0.56, 2.10]));
   // ---- optics band — CAPPED AT 2.40 world (post-warp frame; the print's
   // 2.77 cupola / 3.09 pano tower compress onto this line under the filed
   // knee-2.39 plan). Every top ≤ 0.800 local. -----------------------------
@@ -709,24 +710,17 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDetail', cupola(cylY(0.51, 0.52, 0.014, 26)), -0.80, 0.657, -0.162); // outer well lip
   P.add('turretDark', cupola(torus(0.43, 0.010, 26)), -0.80, 0.667, -0.162);      // drainage seam
   P.add('turret', cupola(cylY(0.42, 0.45, 0.030, 24)), -0.80, 0.677, -0.162);    // stepped seat
-  // 267 round 4 (both critics, critic7: "the cupola is far too low and small, a short drum with tiny periscopes; the real
-  // one is a tall cupola with large vision blocks in a continuous band, about a third of the turret front's height",
-  // pic-1, pic-4): the drum stands 0.20 m (was 0.12) under the lid with a glazing band of ten large blocks round it.
-  P.add('turret', cupola(cylY(0.37, 0.39, 0.200, 24)), -0.80, 0.790, -0.162);    // drum
-  P.add('turretDark', cupola(cylY(0.385, 0.385, 0.075, 24)), -0.80, 0.815, -0.162); // glazing band
-  P.add('turret', cupola(cylY(0.34, 0.37, 0.040, 24)), -0.80, 0.910, -0.162);    // lid
-  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.931, -0.162);
-  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.90, -0.162);            // hatch hinge on the drum's shoulder
-  P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.965, 0.00);            // hatch/periscope peak seated on the lid
-  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.975, 0.052);
-  for (let k = 0; k < 10; k++) {                                                // vision blocks in the band
-    const a = (k / 10) * Math.PI * 2 + 0.2;
-    P.add('turretGlass', box(0.12, 0.060, 0.025), -0.80 + Math.sin(a) * 0.392, 0.815, -0.162 + Math.cos(a) * 0.392 * cupolaZ, 0, a, 0);
+  P.add('turret', cupola(cylY(0.37, 0.39, 0.120, 24)), -0.80, 0.750, -0.162);    // drum
+  P.add('turret', cupola(cylY(0.34, 0.36, 0.035, 24)), -0.80, 0.8275, -0.162);   // lid
+  P.add('turretDark', cupola(torus(0.34, 0.010, 24)), -0.80, 0.846, -0.162);
+  P.add('turretDetail', box(0.13, 0.05, 0.12), -0.43, 0.82, -0.162);            // hatch hinge on the drum's shoulder
+  P.add('turretDetail', box(0.18, 0.08, 0.10), -0.82, 0.88, 0.00);             // hatch/periscope peak seated on the lid
+  P.add('turretDark', box(0.14, 0.035, 0.012), -0.82, 0.89, 0.052);
+  for (let k = 0; k < 8; k++) {                                                 // vision blocks round the drum
+    const a = (k / 8) * Math.PI * 2 + 0.2;
+    P.add('turretDark', box(0.085, 0.050, 0.030), -0.80 + Math.sin(a) * 0.385, 0.765, -0.162 + Math.cos(a) * 0.385 * cupolaZ, 0, a, 0);
   }
-  // 267 round 4 (Opus, critic6: "the cupola and tall periscope sit too close to the centreline; in pic-1 the periscope
-  // stands about 0.55 of the half-width out, ahead of the cupola"): the sight and its turntable move to x -0.62 and the
-  // roof MG takes the inboard station they left.
-  P.add('turretDark', cylY(0.14, 0.16, 0.075, 14), -0.62, 0.615, 0.36);       // panoramic sight turntable embeds into the crown
+  P.add('turretDark', cylY(0.155, 0.175, 0.075, 14), -0.62, 0.615, 0.36);     // panoramic sight turntable embeds into the crown
   // 266 (critics round 1: "a clump of near-black cuboids in place of the tall sight"): the plinth, faceted head, optic
   // bridges and carrier block are the Saumur sight's column and head: a round column off the turntable, a box head with
   // its window, to the old head's top (1.00).
@@ -746,7 +740,8 @@ function buildAMX40(P: FranceBuilderPort): void {
   {
     // 267 round 4 (Opus, critic7: "a fat drum with an overhanging lid; the real sight has a box head on a slimmer round
     // body"; Sonnet: "a separate cylinder beside the cupola, not on its ring"): a 0.23 m body, forward of the ring.
-    const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.115, colR2: 0.13, colH: 0.48, head: [0.32, 0.17, 0.28], window: [0.24, 0.09] });
+    // (267 round 4c, Sonnet critic8: "it reads like a chimney; the head is wider and the neck stubbier")
+    const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.13, colR2: 0.145, colH: 0.40, head: [0.36, 0.18, 0.30], window: [0.26, 0.09] });
     sight.position.set(-0.62, 0.72, 0.36);
     P.turretG.add(sight);
   }
@@ -847,12 +842,15 @@ function buildAMX40(P: FranceBuilderPort): void {
     // world and heightM p95 keeps the roof plateau.
     // 267 round 2 (Opus, critic1: "four antennas; the photos show two"): the paired receiver masts on the right front roof
     // are gone; the aft mast and the fleet whip (decorations.ts) are the two.
-    P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), -1.00, 0.66, -1.41); // roof socket bridges the antenna pot to the welded crown
+    // 267 round 4c (Opus, critic8: "the antenna on its tall stepped-cone base is on the turret's left", pic-1, pic-2,
+    // pic-4): the one aerial stands at the left rear of the roof.
+    P.addEquipment('turret', cylY(0.040, 0.045, 0.17, 10), 0.98, 0.66, -1.25); // roof socket bridges the antenna pot to the welded crown
     // 267 round 4 (Sonnet, critic7: "antennas far too tall, about 1.5 turret heights; the photos show stubby, cone-based
     // aerials of about 0.4 of the turret height"): a cone on the pot and a short rod, 0.32 m in all; the fleet whip is off.
-    P.add('turretDetail', antennaPart(cylY(0.010, 0.032, 0.12, 8)), -1.00, 0.85, -1.41);
-    P.add('turretDetail', antennaPart(cylY(0.006, 0.008, 0.20, 6)), -1.00, 1.01, -1.41);
-    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), -1.00, 0.762, -1.41);    // whip base pot at the source seat
+    P.add('turretDetail', antennaPart(cylY(0.022, 0.034, 0.10, 10)), 0.98, 0.84, -1.25);   // stepped cone, lower course
+    P.add('turretDetail', antennaPart(cylY(0.010, 0.020, 0.10, 8)), 0.98, 0.94, -1.25);    // upper course
+    P.add('turretDetail', antennaPart(cylY(0.006, 0.008, 0.20, 6)), 0.98, 1.09, -1.25);    // rod
+    P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.98, 0.762, -1.25);     // whip base pot at the source seat
   }
   };
   buildRoofSystems();
@@ -963,13 +961,18 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.addGunExtraDark(box(0.13, 0.03, 0.03), -0.79, 0.005, 1.088);                // hasp bar across the door
   for (const sx of [-1, 1]) P.addGunExtra(box(0.024, 0.09, 0.06), -0.79 + sx * 0.045, 0.19, 1.045); // hinge straps
   P.addGunExtra(box(0.12, 0.022, 0.03), -0.79, 0.225, 1.022);
-  P.addGunExtra(cylZ(0.105, 0.04, 20), -0.40, 0.03, 0.94);                     // the port's raised collar on the step
-  P.addGunExtraDark(cylZ(0.072, 0.012, 20), -0.40, 0.03, 0.962);               // the open port
+  // 267 round 4c (both critics, critic8: "the large round port between the sight box and the gun ring is missing", pic-4,
+  // pic-1): the annular cheek continuation (z 0.90..1.02) hid the collar; it now stands out to 1.07, its opening deep.
+  P.addGunExtra(cylZ(0.125, 0.15, 22), -0.40, 0.03, 0.995);                    // the port's raised collar on the step, to z 1.07
+  P.addGunExtraDark(cylZ(0.092, 0.012, 20), -0.40, 0.03, 1.066);               // the open port
   // 20mm F2 coax on the RIGHT (print Object_2: x +0.34..+0.44, r ~0.05,
   // to z_w 2.81) — the France-lane visible second barrel
   P.addGunExtra(box(0.14, 0.18, 0.30), 0.39, -0.02, 0.90);                      // coax housing slot
   // 266 (Opus: "a thin bar about 1 m long runs under the barrel root"): the 20 mm barrel stood 0.46 m out of its slot;
   // the Saumur turret shows a short stub at the port, 0.2 m.
+  // 267 round 4c (Sonnet, critic8: "no clear cylinder beside the mantlet; the small round fitting is too small", pic-2):
+  // the 20 mm stands in a 0.13 m sleeve out of its slot.
+  P.addGunExtra(cylZ(0.065, 0.16, 14), 0.39, 0.0, 1.12);
   P.addGunExtra(cylZ(0.030, 0.22, 10), 0.39, 0.0, 1.14);
   P.addGunExtraDark(cylZ(0.036, 0.07, 10), 0.39, 0.0, 1.215);                   // muzzle ring
   P.addGunExtraDark(cylZ(0.017, 0.02, 8), 0.39, 0.0, 1.245);                    // bore dot (§B3.1 pinhole)
