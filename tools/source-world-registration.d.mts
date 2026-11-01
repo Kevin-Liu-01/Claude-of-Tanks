@@ -13,6 +13,9 @@ export type SourceWorldBuildOffset=Vector3|{readonly turret?:Vector3;readonly gu
 export const AUTHORING_SOURCE_WORLD_FRAMES:Readonly<Record<string,SourceWorldCertificate|undefined>>;
 export const SOURCE_WORLD_FRAMES:Readonly<Record<string,SourceWorldCertificate|undefined>>;
 export const SOURCE_WORLD_BUILD_OFFSETS:Readonly<Record<string,SourceWorldBuildOffset|undefined>>;
+/** A source node moved rigidly so its top stands at the owner's ruled height (source metres), with the ruling cited. */
+export interface SourceWorldPartDeparture {readonly node:string;readonly top:number;readonly ruling:string}
+export const SOURCE_WORLD_PART_DEPARTURES:Readonly<Record<string,readonly SourceWorldPartDeparture[]|undefined>>;
 export function buildOffsetFor(buildOffset:SourceWorldBuildOffset|undefined,anchor:'turret'|'gun'):Vector3;
 export function verifySourceWorldBytes(bytes:ArrayBuffer,certificate:{readonly sha256:string}):Promise<string>;
 export function hashLocalOracle(url:string):Promise<string>;
