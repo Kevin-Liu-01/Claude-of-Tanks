@@ -16,8 +16,9 @@ assert.deepEqual(Object.keys(VEHICLE_ROLE_PROFILES).sort(), [...ALL_TANK_IDS].so
 // 265: the Leopard 1A2A1 joins (leopard1-263).
 // release 262 (centurion family): + the Sho't Kal, the Centurion Mk 13, the Strv 105, the Olifant Mk 2, the Mk 5 AVRE and the Australian Mk 5/1
 // 266: the M60 batch's Magach 6B and 7C join.
-// 267: the Danish Leopard 2A7 DK joins (held from 265), and the Centurion Mk 5/2 DK on the Centurion family's Mk 5/2.
-assert.equal(ALL_TANK_IDS.length, 278); // 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15); 265: the Longwei family's four (236 + 4) 265 (integration): 240 + the M48A3, the Magach 3, the M48A2GA2 and the M48 Super (pattons-m48-266). 265 (integration): 244 + the Centurion family's six new marks (centurion-family-262). 265 (integration): 250 + the Leopard 1A2A1, the fourth-batch Leopard 2A3 and the PT-84 Orzeł, Sokół and Żbik (the union re-sum at 255).
+// 267: the Danish Leopard 2A7 DK joins (held from 265), and the Centurion Mk 5/2 DK on the Centurion family's Mk 5/2;
+// the Type 90 (B) joins (the Japan line).
+assert.equal(ALL_TANK_IDS.length, 279); // 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15); 265: the Longwei family's four (236 + 4) 265 (integration): 240 + the M48A3, the Magach 3, the M48A2GA2 and the M48 Super (pattons-m48-266). 265 (integration): 244 + the Centurion family's six new marks (centurion-family-262). 265 (integration): 250 + the Leopard 1A2A1, the fourth-batch Leopard 2A3 and the PT-84 Orzeł, Sokół and Żbik (the union re-sum at 255).
 const ranges = ALL_TANK_IDS.map(id => viewRangeOf(TANK_SPECS[id]));
 assert.equal(viewRangeOf(TANK_SPECS.m551a1_tts), Math.max(...ranges));
 assert.equal(viewRangeOf(TANK_SPECS.m551_sheridan), 480);

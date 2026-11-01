@@ -26,6 +26,7 @@ interface ContactSpec {
     bodyContactPoints?: { hull?: readonly number[]; turret?: readonly number[] };
     turretPivot?: readonly number[];
     modules?: readonly { module: string; min: readonly number[]; max: readonly number[] }[];
+    hullPlates?: readonly { verts?: readonly (readonly number[])[]; physicalMm?: number; kind?: string; era?: unknown }[];
   };
 }
 
@@ -149,25 +150,55 @@ export function tankContactRect(spec: ContactSpec): TankContactRect {
 
 /**
  * The hull's centre of mass along its length, from the centre of its track contact (m, + toward the nose; physics lane
- * round 5). The anatomy places the masses that move it: the turret at its pivot (TURRET_MASS_SHARE of the vehicle) and
- * the power pack, the engine and transmission modules, at their middle (POWER_PACK_MASS_SHARE); the hull, its armour
- * and its running gear stand on the track contact's centre. A rear-engined tank's centre of mass sits a quarter to a
- * third of a metre behind its tracks' middle (T-90M 0.24 m, M1A2 0.35 m), a Merkava's, its engine forward, a quarter to
- * two fifths of a metre ahead; an IFV with its engine forward and its turret aft (Bradley, CV90) keeps it near the
- * middle. 0 for a hull without an anatomy (a synthetic fixture).
+ * round 5). The anatomy places the masses that move it: the turret at its pivot (TURRET_MASS_SHARE of the vehicle), the
+ * power pack, the engine and transmission modules with the final drives and cooling beside them, at their middle
+ * (POWER_PACK_MASS_SHARE), and the hull's armour at its plates' centroid weighted by their area and physical thickness
+ * (HULL_ARMOUR_MASS_SHARE; its main plates: spaced plates and ERA are add-ons); the hull's structure, its running gear and
+ * what it carries stand on the track contact's centre. The armour sits forward on every main battle tank (its glacis and
+ * nose, 1.3-1.5 m ahead of the tracks' middle) and the power pack at whichever end the layout puts it: a rear-engined
+ * tank's centre of mass sits a sixth to a third of a metre behind its tracks' middle (M1A2 0.17 m, T-90AM 0.26 m, T-90M
+ * 0.32 m), a Merkava's, its engine and its armour both forward, a quarter to half a metre ahead (the 4B, its turret 1.35 m
+ * aft, 0.25 m); an IFV with its engine forward and its turret aft (Bradley, CV90) keeps it within a fifth of a metre of the
+ * middle. (Physics, 268: with the pack at a tenth and no armour every Merkava stood at or behind the middle, the 4B
+ * 0.15 m aft, and it nodded nose up landing off a 2 m drop.) 0 for a hull without an anatomy (a synthetic fixture).
  */
 const TURRET_MASS_SHARE = 0.3;
-const POWER_PACK_MASS_SHARE = 0.1;
+const POWER_PACK_MASS_SHARE = 0.18;
+const HULL_ARMOUR_MASS_SHARE = 0.15;
 const massCache = new WeakMap<ContactSpec, {
-  modules: unknown; pivot: unknown; rect: TankContactRect; offset: number;
+  modules: unknown; pivot: unknown; plates: unknown; rect: TankContactRect; offset: number;
 }>();
+
+/** The hull armour's centroid along the length (hull-local z): its main plates' areas times their physical thickness. */
+function hullArmourCenterZ(plates: NonNullable<ContactSpec['armor']>['hullPlates']): number {
+  let moment = 0, weight = 0;
+  for (const plate of plates ?? []) {
+    const verts = plate.verts;
+    const thickness = plate.physicalMm ?? 0;
+    if (!verts || verts.length < 3 || !(thickness > 0) || plate.kind === 'spaced' || plate.era) continue;
+    const [ax, ay, az] = verts[0]!;
+    for (let index = 1; index + 1 < verts.length; index++) {
+      const [bx, by, bz] = verts[index]!, [cx, cy, cz] = verts[index + 1]!;
+      const ux = bx - ax, uy = by - ay, uz = bz - az, wx = cx - ax, wy = cy - ay, wz = cz - az;
+      const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+      const mass = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz) * thickness;
+      moment += mass * (az + bz + cz) / 3;
+      weight += mass;
+    }
+  }
+  return weight > 0 ? moment / weight : NaN;
+}
+
 export function tankMassCenterOffsetM(spec: ContactSpec): number {
   const armor = spec?.armor;
   const modules = armor?.modules;
   const pivot = armor?.turretPivot;
+  const plates = armor?.hullPlates;
   const rect = tankContactRect(spec);
   const cached = massCache.get(spec);
-  if (cached && cached.modules === modules && cached.pivot === pivot && cached.rect === rect) return cached.offset;
+  if (cached && cached.modules === modules && cached.pivot === pivot && cached.plates === plates && cached.rect === rect) {
+    return cached.offset;
+  }
   let offset = 0;
   if (Array.isArray(modules)) {
     let low = Infinity, high = -Infinity;
@@ -180,7 +211,9 @@ export function tankMassCenterOffsetM(spec: ContactSpec): number {
     if (offset !== 0 && Array.isArray(pivot) && Number.isFinite(pivot[2])) {
       offset += TURRET_MASS_SHARE * (pivot[2] - rect.centerZ);
     }
+    const armourZ = offset !== 0 ? hullArmourCenterZ(plates) : NaN;
+    if (Number.isFinite(armourZ)) offset += HULL_ARMOUR_MASS_SHARE * (armourZ - rect.centerZ);
   }
-  massCache.set(spec, { modules, pivot, rect, offset });
+  massCache.set(spec, { modules, pivot, plates, rect, offset });
   return offset;
 }

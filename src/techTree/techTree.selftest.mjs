@@ -220,5 +220,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
-assert.equal(digest, '2ca040a7ef5579d5', `tree content changed: re-pin to ${digest} if deliberate`);
+// 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
+assert.equal(digest, '46b1a3a9307d8466', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

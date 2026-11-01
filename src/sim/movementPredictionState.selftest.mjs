@@ -133,6 +133,22 @@ test('a version-7 checkpoint still decodes, with nothing in the bump stops', () 
     [source.state._susp.d, source.state._susp.dv, 0.012, -0.2]);
 });
 
+test('a version-8 checkpoint still decodes, resting on no body contact', () => {
+  const source = entity();
+  for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
+  source.state._body.bodyRest = 3;
+  const v9 = captureMovementPredictionState(source.state);
+  assert.equal(v9.version, 9);
+  assert.equal(v9.flags >> 11 & 3, 3, 'version 9 carries the ends a hull rests on a body contact at as flag bits 11 and 12');
+  const full = entity().state;
+  assert.equal(applyMovementPredictionState(full, v9), true);
+  assert.equal(full._body.bodyRest, 3);
+  const target = entity().state;
+  target._body.bodyRest = 3;
+  assert.equal(applyMovementPredictionState(target, { version: 8, values: v9.values, flags: v9.flags & 2047 }), true);
+  assert.equal(target._body.bodyRest, 0);
+});
+
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
   const source = entity();
   const good = captureMovementPredictionState(source.state);
@@ -140,9 +156,9 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
   const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
-    { ...good, version: 7 }, { ...good, version: 9 },
+    { ...good, version: 7 }, { ...good, version: 10 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
-    { ...good, values: sparse }, ...[-1, 2048, 1.5, NaN].map(flags => ({ ...good, flags })),
+    { ...good, values: sparse }, ...[-1, 8192, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];
   for (const value of bad) {
     const target = entity().state;

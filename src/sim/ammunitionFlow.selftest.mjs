@@ -211,6 +211,8 @@ const laterChannelCounts = {
   t72b3m_hetman_ii: 3, t72b3_zubr_ii: 3,
   // (the Type 10 Kaitaku, 1cb19b32da/8295c63e03) the Type 10's own three rounds
   type10_dozer: 3,
+  // 267: the Type 90 (B), the Type 90's three rounds
+  type90b: 3,
   // (release 262 CN) the new T-55A's D-10T2S rounds
   t55a: 3,
   // 262: the ZTZ-20's and the ZTZ-20 Prototype's three 105 mm rounds
@@ -310,12 +312,13 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // four new M48s' three each (265 integration), and the Centurion family's six marks (262, merged in 265),
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
-// (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267).
+// (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
+// and the Type 90 (B)'s three (267).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
-  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk, 560,
+  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

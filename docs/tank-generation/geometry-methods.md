@@ -184,9 +184,9 @@ verified authored bores and sealed missile canisters. Test retained native rim,
 inward-facing walls at several depths, and a single recessed backstop against
 the complete visible model, including interior fills. Flush contact is valid;
 a second exposed coplanar cap is not.
-Seat the mantlet in real receiving armor. [Type10's seat contract](../../src/vehicles/profiles/type10GunSeat.ts)
-is a model-specific example of mouth, moving housing and muzzle datums—not source-X
-coordinates to copy. Test neutral, elevation and depression after turret traverse.
+Seat the mantlet in real receiving armor: a model's mouth, moving housing and muzzle
+datums are its own (the Type 10's seat contract retired with its ×1.10 base in 267),
+not source-X coordinates to copy. Test neutral, elevation and depression after turret traverse.
 
 Author an MG's receiver, barrel, feed, cradle, optics and relevant shield in a
 coherent station frame. Yaw the whole station; articulate the weapon about its

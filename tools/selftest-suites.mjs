@@ -636,7 +636,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/jagdpanzerE100X.selftest.mjs',
     'src/vehicles/profiles/type10X.selftest.mjs',
     'src/vehicles/profiles/type10XRoofPanels.selftest.mjs',
+    // release 267: the TK-X and the Type 10B on the modern Type 10 (their photo packets' fixture), and the Type 90 (B)
+    'src/vehicles/profiles/type10Marks.selftest.mjs',
     'src/vehicles/profiles/type90X.selftest.mjs',
+    'src/vehicles/profiles/type90B.selftest.mjs',
     'src/vehicles/profiles/arieteX.selftest.mjs',
     'src/vehicles/profiles/arieteXSupplied.selftest.mjs',
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
@@ -762,9 +765,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
-    'src/vehicles/profiles/type10GunSeat.selftest.mjs',
-    'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',
-    'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
@@ -784,6 +784,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite)
+    'tools/module-outside-share.selftest.mjs',
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',

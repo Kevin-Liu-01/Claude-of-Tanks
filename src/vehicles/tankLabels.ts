@@ -173,6 +173,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['TK-X-0002', 'Type 90 second prototype', 'Type 90A', 'Type 90 Kai'],
   },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
+  // 267 (owner 2026-10-31, "add a type 90 b esp with that awesome machine gun"): the Type 90 with the dozer kit and a
+  // remote 12.7 mm station (type90bSpecs.ts)
+  type90b: { displayName: 'Type 90 (B)', shortName: 'Type 90 (B)', searchAliases: ['Type 90B', 'Type 90 B', 'Type 90 dozer', 'Type 90 RWS', '90式戦車 ドーザ付'] },
   // 266: the Brazilian Army line
   osorio_p1: { displayName: 'EE-T1 Osório (105)', shortName: 'Osório 105', searchAliases: ['EE-T1 Osorio', 'Osorio P1', 'Osório P.1', 'Engesa Osorio 105', 'Brazilian tank'] },
   x1_pioneiro: { displayName: 'CCL X1 Pioneiro', shortName: 'X1 Pioneiro', searchAliases: ['X1', 'Pioneiro', 'Bernardini X1', 'X1A', 'Brazilian Stuart', 'MB-1'] },

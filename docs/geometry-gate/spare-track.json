@@ -3360,7 +3360,7 @@
    "hostSweep": []
   },
   "type10": {
-   "inputHash": "b2e8eac22a311f76",
+   "inputHash": "e0c571c65ea91484",
    "runs": [
     {
      "index": 0,
@@ -3381,7 +3381,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.916,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3403,7 +3403,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.892,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3425,7 +3425,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.892,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3447,7 +3447,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.916,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     }
    ],
@@ -3461,7 +3461,7 @@
    "hostSweep": []
   },
   "type10_dozer": {
-   "inputHash": "2cfb3ac523c486de",
+   "inputHash": "c3c0693249212c3d",
    "runs": [
     {
      "index": 0,
@@ -3482,7 +3482,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.88,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3504,7 +3504,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.867,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3526,7 +3526,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.795,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
@@ -3548,7 +3548,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.916,
-      "host": "hull<hull@profiles/type10X.ts:52>"
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     }
    ],
@@ -3556,84 +3556,39 @@
    "hostSweep": []
   },
   "type10_tk_x": {
-   "inputHash": "1c7c8e8c1488404e",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.914,
-      "gap": 0.026,
-      "air": 0.06,
-      "hidden": 0,
-      "sunkMaxM": 0.005,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.911,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1748>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "adhoc:type10-rear-links@<anon>@modern3.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1724>"
-     }
-    }
-   ],
+   "inputHash": "e3356293c2dfbd0e",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "e55c846f49f86744",
+   "inputHash": "27c7ee39e52836ea",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts",
-     "source": "fitting",
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
      "frame": "hull",
-     "registered": false,
+     "registered": true,
      "classes": [],
      "primary": "OK",
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.97,
-      "gap": 0.03,
-      "air": 0,
+      "support": 0.939,
+      "gap": 0,
+      "air": 0.061,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.911,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1749>"
+      "exposure": 0.916,
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     },
     {
      "index": 1,
-     "site": "adhoc:type10-rear-links@<anon>@modern3.ts",
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -3646,11 +3601,55 @@
       "gap": 0,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1724>"
+      "exposure": 0.892,
+      "host": "hull<hull@profiles/type10X.ts:55>"
+     }
+    },
+    {
+     "index": 2,
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.001,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.892,
+      "host": "hull<hull@profiles/type10X.ts:55>"
+     }
+    },
+    {
+     "index": 3,
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.939,
+      "gap": 0,
+      "air": 0.061,
+      "hidden": 0,
+      "sunkMaxM": 0.001,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.916,
+      "host": "hull<hull@profiles/type10X.ts:55>"
      }
     }
    ],
@@ -3699,7 +3698,7 @@
    "hostSweep": []
   },
   "type90": {
-   "inputHash": "09fd0900531137a7",
+   "inputHash": "732c33fbd3d25c47",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3712,6 +3711,12 @@
   },
   "type90a": {
    "inputHash": "4c3471c834abee23",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "type90b": {
+   "inputHash": "fd724234ffee4e31",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

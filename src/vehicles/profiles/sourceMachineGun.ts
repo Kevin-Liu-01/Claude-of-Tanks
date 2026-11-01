@@ -7,8 +7,12 @@ import { paintAmmoVertexColours, prepareWeaponFinishGeometry } from '../weaponFi
 type Slot = 'turretDark' | 'turretDetail' | 'turretGlass' | 'turretAmmo';
 type Point = readonly [number, number, number];
 
+/** A station's paint: `drabShade` darkens its issue-drab parts (1 = the army's drab; the JGSDF Type 90's M2 and cradle
+ *  are a darker olive-grey than its ammunition can, type90X.ts). */
+interface StationLook { readonly drabShade?: number }
+
 /** Preserve an authored weapon's actual solids while giving it one fitting owner. */
-export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: StationDatum) {
+export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: StationDatum, look: StationLook = {}) {
   const local = (point: Point): [number,number,number] => point.map((v,i)=>v-yaw[i]) as [number,number,number];
   const station = datum && beginAuxiliaryStation(P, {...datum,
     yaw: local(datum.yaw), pivot: local(datum.pivot), muzzle: local(datum.muzzle)});
@@ -29,6 +33,8 @@ export function sourceMachineGun(P: TankBuilderPort, yaw: Point, datum?: Station
     if (slot==='turretAmmo' && drab) {
       prepareWeaponFinishGeometry(geometry, KIT.boxUV);
       paintAmmoVertexColours(geometry, drab, false);
+      const shade = look.drabShade ?? 1, colour = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
+      if (shade !== 1 && colour) for (let i = 0; i < colour.array.length; i++) (colour.array as Float32Array)[i] *= shade;
       return geometry;
     }
     if (m.userData?.weaponUvScale) return prepareWeaponFinishGeometry(geometry, KIT.boxUV);
