@@ -1008,7 +1008,10 @@ function buildAMX40(P: FranceBuilderPort): void {
   // contour: sleeve A r 0.125 (z_w 2.93..4.62), bare gap r 0.070
   // (4.62..5.50), sleeve B r 0.110 (5.50..6.36), muzzle r 0.076.
   buildGun(P, { len: 5.34, r: 0.100, sleeve: false, evac: null, collar: false, baseR: 0.17 });
-  P.add('gun', box(0.58, 0.36, 0.14), -0.59, -0.08, 0.50);                     // armored camera saddle, continuous into the mantlet
+  // armored camera saddle, continuous into the mantlet. 267 (the depression curve): a mantlet part, it pitches with the
+  // gun but does not recoil (it sat in the tube's bucket, so the gun sweep measured it as barrel: 22 mm over the deck at
+  // level, and through the engine plateau turned aft)
+  P.addGunExtra(box(0.58, 0.36, 0.14), -0.59, -0.08, 0.50);
   // 267 (Opus, round 3: "a flat plank runs forward from the mantlet along the right underside of the gun"): the two
   // thermal-shroud seam rails stood 8 cm out of the sleeve's side; the sleeves are clean, as on the Saumur gun.
   // Thermal shrouds and their cinch rings share one radial dimension, so
