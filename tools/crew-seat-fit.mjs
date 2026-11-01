@@ -882,6 +882,18 @@ const CREW_PAD_M = 0.01;
 const PLACE_TOL_M = 0.01;
 const SETTLE_SCALE = 0.94;
 const SETTLE_STEPS = 24;
+/**
+ * The release floor: no internal volume is thinner than this along any axis (object695X.selftest imports it). A part
+ * that settles thinner is not placed; the strategies after it are tried, and a module with no part placed keeps its
+ * sketch (267: object695's feed system settled 23 mm deep, and six radios and a transmission under 50 mm).
+ */
+export const MODULE_DEPTH_FLOOR_M = 0.05;
+/**
+ * A module sketch with at least this share of its box outside its armour is wrong data: gen-combat-anatomy reports it,
+ * and tools/module-outside-share.selftest.mjs fails on it (267: the M551's transmission sat 96% under its rear plate).
+ */
+export const MODULE_OUTSIDE_SHARE_LIMIT = 0.3;
+const thickEnough = (box) => box.min.every((value, axis) => box.max[axis] - value >= MODULE_DEPTH_FLOOR_M);
 
 /** A shape's surface samples and its core (centre, or a capsule's axis ends and middle). */
 function samplesOf(shape) {
@@ -1016,6 +1028,28 @@ function growFreeBox(part, column, blocked, deepest = false) {
 }
 
 /**
+ * The share of each placeable sketched module's box outside its armour, as placeModules reports it (`outside`): the
+ * voxels of its grid whose centre lies outside its frame's armour column, weighted by part volume; nothing is placed.
+ * Returns [{ module, frame, outside, sketchedL }] in the spec's module order.
+ */
+export function moduleOutsideShares(spec, { drawn = new Set(), ring = null } = {}) {
+  const armor = spec.armor;
+  const turretLimit = ring && Number.isFinite(ring.rimR) && (armor.collisionShells?.turret || []).length ? { ringR: ring.rimR } : null;
+  const shells = { hull: makeShell(armor, 'hull', false), turret: makeShell(armor, 'turret', false, turretLimit) };
+  return (armor.modules || []).filter((box) => placeable(box, drawn)).map((box) => {
+    const frame = box.turretLocal ? 'turret' : 'hull';
+    let sketched = 0, outside = 0;
+    for (const part of box.parts?.length ? box.parts : [box]) {
+      const size = part.min.reduce((product, value, axis) => product * (part.max[axis] - value), 1);
+      const { shares } = growFreeBox(part, (x, z) => shells[frame].column(x, z, 0), () => 0);
+      sketched += size;
+      outside += shares.outside * size;
+    }
+    return { module: box.module, frame, outside: ROUND3(sketched > 0 ? outside / sketched : 0), sketchedL: ROUND3(sketched * 1000) };
+  });
+}
+
+/**
  * The module seats of a finalized probe spec whose crew `seats` are fitted (fitCrewSeats): every sketched module's
  * parts, placed in MODULE_ORDER. `drawn` holds the keys (`module|turretLocal`) of drawn module receipts, which stay.
  * Returns { seats, report }: the published records and, per module, the share of its sketch's box that lay outside its
@@ -1058,7 +1092,8 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
       crew += shares.crew * size;
       moduleShare += shares.modules * size;
       // settle: shrink about a point until the runtime's hit shapes clear the crew and the earlier modules; first about
-      // the box's centre, then toward its free seed, then from the free voxel deepest from anything blocked
+      // the box's centre, then toward its free seed, then from the free voxel deepest from anything blocked. A settled
+      // box thinner than the release floor along any axis fails that strategy.
       const settle = (start, about) => {
         let at = start, fitted = partShapes(start);
         for (let step = 0; step < SETTLE_STEPS && shapesIntersect(fitted, obstacles, PLACE_TOL_M); step++) {
@@ -1068,7 +1103,7 @@ export function placeModules(spec, seats, { drawn = new Set(), ring = null, hitS
           fitted = partShapes(at);
           settled++;
         }
-        return shapesIntersect(fitted, obstacles, PLACE_TOL_M) ? null : { box: at, fitted };
+        return shapesIntersect(fitted, obstacles, PLACE_TOL_M) || !thickEnough(at) ? null : { box: at, fitted };
       };
       let result = grown ? settle(grown, null) ?? settle(grown, seed) : null;
       if (!result && grown) {
