@@ -6,6 +6,7 @@
 //   node tools/fleet-surface-overlap-audit.mjs --ids=type10b --report-only
 //   node tools/fleet-surface-overlap-audit.mjs --check --out=/tmp/surface-overlaps.json
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
+import { WORKER_PAGES } from './browser-id-caps.mjs';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
@@ -20,10 +21,10 @@ const option = (name, fallback = '') => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-surface-overlap-audit --ids');
-const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
+const requestedWorkers = Number.parseInt(option('workers', String(WORKER_PAGES)), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))
-  : 4;
+  : WORKER_PAGES;
 const outputPath = resolve(option('out', '.qa-device/fleet-surface-overlap-audit.json'));
 const check = args.includes('--check') && !args.includes('--report-only');
 const root = process.cwd();
