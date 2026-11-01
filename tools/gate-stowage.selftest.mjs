@@ -108,8 +108,8 @@ for (const name of ['track_1', 'Track (Left)', 'gun_barrel_44', 'Main barrel', '
   const oracle = stowageParts(source, { isRenderNode, oracle: true });
   const pairing = pairedStowage(built, oracle);
   assert.deepEqual(pairing.kinds, ['can'], 'only the jerry cans are on both sides');
-  assert.deepEqual([...pairing.built.nodes.keys()], [cans], 'the build sets aside its cans alone');
-  assert.deepEqual([...pairing.oracle.nodes.keys()], [jerry]);
+  assert.deepEqual([...pairing.built.nodes.keys()].map((m) => m.uuid), [cans.uuid], 'the build sets aside its cans alone');
+  assert.deepEqual([...pairing.oracle.nodes.keys()].map((m) => m.name), ['jerrycan01']);
   assert.deepEqual(pairing.unpaired, { procedural: ['log', 'stowage'], reference: [] }, 'its rack and log stay in on both sides');
   const hidden = pairedStowage(built, oracle, (node) => node !== cans);
   assert.deepEqual(hidden.kinds, [], 'a hidden part does not pair: the source\'s cans stay in');
