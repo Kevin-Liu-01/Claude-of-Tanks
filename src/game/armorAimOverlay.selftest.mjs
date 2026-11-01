@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createArmorAimOverlay } from './armorAimOverlay.ts';
-import { ARMOR_PAINT_SET_SLOTS, ARMOR_PAINT_ZONE_TEXELS, makeBurnUniforms } from '../vehicles/materials.ts';
+import { ARMOR_PAINT_PANEL_SLOTS, ARMOR_PAINT_SET_SLOTS, ARMOR_PAINT_ZONE_TEXELS, makeBurnUniforms } from '../vehicles/materials.ts';
 
 // 262: the scoped flashlight is paint (vehicles/materials.ts ARMOR_PAINT, riding the burn hook): this runtime fills
 // each scoped vehicle's zone table — every authored main plate's plane and outline, and its colour blended from samples
@@ -83,7 +83,8 @@ assert.equal(target.uniforms.uApOn.value, 0, 'primed paint stays off before scop
 // the zone table: the two main plates (the spaced skirt is a layer, not a zone), each a plane and an outline
 {
   const table = entry.table;
-  assert.equal(table.length, (2 * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_SET_SLOTS) * 4, 'one run of texels per main plate, then the zone-set slots');
+  assert.equal(table.length, (2 * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_SET_SLOTS + ARMOR_PAINT_PANEL_SLOTS) * 4,
+    'one run of texels per main plate, then the zone-set slots, then the whole panels\' rows');
   assert.deepEqual([...table.slice(0, 4)].map((v) => +v.toFixed(6)), [0, 0, 1, -1], 'the glacis plane: z = 1, facing +z');
   const edges = [];
   for (let e = 1; e < ARMOR_PAINT_ZONE_TEXELS - 1; e++) edges.push([...table.slice(e * 4, e * 4 + 4)]);
@@ -145,6 +146,33 @@ assert.equal(target.uniforms.uApOn.value, 0, 'the setting turns the paint off at
   at(new THREE.Vector3(1, 1, 6), 4000);
   assert.ok(lonely.texture.version > moved, 'ERA spent: the refresh samples again');
   still.dispose();
+}
+
+// (267) a whole panel's row is the plate a round along the current view reads at its centre: a bevel the roof scores, seen
+// level, reads the front across it (the authority's plateAlongShot); seen from above, the roof
+{
+  const front = { name: 'test_front', kind: 'main', physicalMm: 600, keMm: 600, ceMm: 600, verts: [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]] };
+  const roof = { name: 'test_roof', kind: 'main', physicalMm: 40, keMm: 40, ceMm: 40, verts: [[-1, 2.2, 0.6], [1, 2.2, 0.6], [1, 2.2, -1], [-1, 2.2, -1]] };
+  const bevelTarget = makeTarget('overlay-bevel', 0);
+  bevelTarget.spec = { armor: { ...bevelTarget.spec.armor, hullPlates: [front, roof, rear] } };
+  const panels = createArmorAimOverlay();
+  const bevelEntry = panels.prime(bevelTarget);
+  const { template } = bevelEntry;
+  const ROOF = template.zones.findIndex((zone) => zone.plate === roof), FRONT = template.zones.findIndex((zone) => zone.plate === front);
+  const index = template.wholePanel(ROOF, [0, 1.9, 0.8]);
+  assert.ok(index >= 0 && template.panels.length === 1, 'the bake names a whole panel');
+  const row = () => bevelEntry.table[(template.panelBase + index) * 4];
+  const view = (muzzle, nowMs) => panels.update({ enabled: true, scoped: true, targets: [bevelTarget], shellSpec, muzzle, nowMs });
+  view(new THREE.Vector3(0, 1.9, 60), 0);
+  assert.equal(row(), FRONT, 'seen level, the bevel reads the front across it');
+  view(new THREE.Vector3(0, 60, 0.8), 1000);
+  assert.equal(row(), ROOF, 'seen from above, the roof it faces');
+  // a panel above the front's outline (between its top and the roof) seen level: the roof (the authority's too)
+  const high = template.wholePanel(ROOF, [0, 2.1, 0.7]);
+  view(new THREE.Vector3(0, 2.1, 60), 2000);
+  assert.equal(bevelEntry.table[(template.panelBase + high) * 4], ROOF, 'above the front\'s outline, seen level: the roof');
+  assert.equal(row(), FRONT, 'and the bevel below it, the front');
+  panels.dispose();
 }
 
 const restoreWarm = overlay.warm();
