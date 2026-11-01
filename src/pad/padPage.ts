@@ -670,6 +670,9 @@ function paintStatus(next: PadStatus): void {
   paintReload(next.reloadTotalS > 0 && next.reloadS > 0 ? 1 - next.reloadS / next.reloadTotalS : 1, next.reloadS);
 }
 
+/** This phone's seat in a couch lobby (docs/COUCH-MODE.md), named before the link's state; 0 in a single pairing. */
+let seatNumber = 0;
+
 function paintLink(state: PadLinkState): void {
   let words = '';
   let tone = '';
@@ -679,7 +682,7 @@ function paintLink(state: PadLinkState): void {
   } else if (state.kind === 'linking') { words = t('pad.state.linking'); tone = 'warn'; }
   else if (state.kind === 'away') { words = t('pad.state.away'); tone = 'warn'; }
   else words = t('pad.state.connecting');
-  linkChip.textContent = words;
+  linkChip.textContent = seatNumber ? `${t('pad.seat', { n: seatNumber })} · ${words}` : words;
   if (tone) linkChip.dataset.tone = tone; else delete linkChip.dataset.tone;
 }
 
@@ -709,6 +712,7 @@ function storedResume(): { code: string; token: string } | null {
 const ENDED_WORDS: Record<string, string> = {
   unknown: 'pad.ended.unknown', expired: 'pad.ended.unknown', ended: 'pad.ended.ended', desktop_left: 'pad.ended.desktopLeft',
   replaced: 'pad.ended.replaced', unreachable: 'pad.ended.unreachable', relay_spent: 'pad.ended.relaySpent',
+  full: 'pad.ended.full', removed: 'pad.ended.removed',
 };
 
 function connect(route: { code: string } | { resume: { code: string; token: string } }): void {
@@ -724,6 +728,7 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     serviceUrl,
     ...('code' in route ? { code: route.code } : { resume: route.resume }),
     onToken(code, token) { try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ code, token })); } catch { /* private mode */ } },
+    onSeat(seat) { seatNumber = seat; },
     onState(state) {
       if (debug) debug.state = state.kind;
       if (state.kind !== 'live') releaseControls();
