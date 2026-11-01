@@ -178,8 +178,10 @@ const JAPAN_SPECS = {
     armorFactor: 1.12,
   }),
   type10b: variant('type10b', 'type10_tk_x', {
-    name: 'Type 10B', number: '10-B', scheme: 'stripes',
-    base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'],
+    // 267 (the photo critic): JGSDF dark green and chocolate brown, not the sandy tans; a tactical number, as the JGSDF
+    // paints (its designation is no marking)
+    name: 'Type 10B', number: '26', scheme: 'stripes',
+    base: '#3a4937', weather: '#4f5741', patches: ['#243026', '#4a3a2a', '#3d3024'],
     camoScale: 0.40,
     dims: { hullLengthM: 7.513, overallLengthM: 10.439, widthM: 3.564, heightM: 2.838 },
     stats: { hp: 2700, enginePowerHp: 1200, weightTons: 48.0, topSpeedKmh: 70,

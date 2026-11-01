@@ -133,11 +133,10 @@ function frontEquipment(P:TankBuilderPort):void {
     P.addEquipment('hullGlass',box(width*.74,.038,.004),x,roof-.033,z+.107);
   }
   for(const side of [-1,1]) {
-    for(const [x,y,r,depth]of[[1.355893,1.439983,.042086,.096604],[1.269718,1.431538,.033641,.073575]]) {
-      P.addEquipment('hullDetail',cylZ(r,depth,24),side*x,y,3.510617-depth/2);
-      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r*.82,.004,24),'headlight'),side*x,y,3.510617);
-      P.addEquipment('hullDetail',box(.0252,.042017,.020936),side*x,1.397967,3.468446);
-    }
+    // one large round lamp in each corner guard (the photographs; the guard's uprights stand at x 1.21 and 1.424)
+    P.addEquipment('hullDetail',cylZ(.078,.11,24),side*1.317,1.442,3.510617-.055);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.004,24),'headlight'),side*1.317,1.442,3.510617);
+    P.addEquipment('hullDetail',box(.0252,.042017,.020936),side*1.317,1.360,3.468446);
     for(const z of [3.400256,3.526319]) {
       for(const x of [1.210,1.424])P.addEquipment('hullDetail',box(.016,.13917,.031403),side*x,1.446544,z);
       P.addEquipment('hullDetail',box(.230095,.016,.031403),side*1.317029,1.508129,z);
@@ -239,7 +238,16 @@ function optic(P:TankBuilderPort):void {
     ring:[[-half,roof-.010646],[half,roof-.010646],[half,roof],[-half,roof]] as [number,number][],
   })));
   turret(P,'turretDetail',lid,.656886,0,0);
-  turret(P,'turretGlass',box(.492,.206,.006),.656886,2.526,1.19512);
+  // the two windows under the visor, either side of a mullion (JGSDF photographs, 267)
+  for(const dx of [-.122,.122])turret(P,'turretGlass',box(.214,.170,.006),.656886+dx,2.526,1.19512);
+  turret(P,'turretDetail',box(.034,.19,.012),.656886,2.526,1.1935);
+  // the armoured flaps that close over the windows, hinged on the box's outer top edges and raised to meet in a peak over
+  // its middle (the turret roof's signature in the Type 90's photographs)
+  for(const side of [-1,1]) {
+    const flap=box(.30,.02,.33);flap.translate(-side*.15,0,0);flap.rotateZ(-side*.42);
+    turret(P,'turretDetail',flap,.656886+side*.289,2.655,.995);
+    turret(P,'turretDark',cylZ(.014,.30,10),.656886+side*.289,2.655,.995);
+  }
   const cupola=cylinder(.38362,.115719,40);cupola.scale(1,1,.3599445/.38362);
   turret(P,'turretHatch',cupola,-.641153,2.517331,.123371);
   turret(P,'turretDetail',KIT.cylY(.1682,.2775,.157596,12),-.641153,2.653989,.115596);
@@ -255,51 +263,49 @@ function optic(P:TankBuilderPort):void {
 }
 
 // The roof M2 on its pintle (the Type 90's own mount; JGSDF Type 90 photographs, docs/references/photos/type90b-20261031.json):
-// a stepped boss on the roof, the pintle post with its lock block, the swivel head over it, and the cradle that carries
-// the gun with its ammunition can and tray on the gun's right, the curved feed chute from the can over into the
-// receiver, and the spade grips and sight at the back. The post stands at the source's station (x 0.084, z 0.420) and
-// the bore at its measured 2.8638 (the receiver's underside 5 mm into the post's top).
-const M2_POST={x:.084077,z:.420359,roofY:2.459472,headY:2.80,boreY:2.8638} as const;
+// beside the inboard face of the gunner's sight's rear half, so the barrel reaches over the turret front. A square
+// pedestal on its base plate with a clamp collar, the swivel head over it, and the cradle that carries the gun on its
+// tray, the ammunition can hung outboard on the gun's right and the arched feed chute from the can up into the receiver,
+// with the crew form's spade grips and sight at the back. The bore keeps the source's 2.8638.
+const M2_POST={x:.20,z:.88,roofY:2.408,headY:2.80,boreY:2.8638} as const;
 
 /** The crew M2's muzzle z at true class length, read off the fleet's construction of it (libraryRoofMg.ts). */
 function m2MuzzleZ(pivotZ:number):number {
   const bounds=new THREE.Box3(),part=new THREE.Box3();
   libraryStationGun({add(_slot,g,x,y,z){
     g.computeBoundingBox();part.copy(g.boundingBox!).translate(new THREE.Vector3(x,y,z));bounds.union(part);g.dispose();
-  }},{cls:'m2',x:M2_POST.x,boreY:M2_POST.boreY,pivotZ,crew:true,feed:'right'});
+  }},{cls:'m2',x:M2_POST.x,boreY:M2_POST.boreY,pivotZ,crew:true,ammo:false,feed:'right'});
   return bounds.max.z;
 }
 
 function roofWeapon(P:TankBuilderPort):void {
   const {x,z,roofY,headY,boreY}=M2_POST;
-  // the fixed post: a flanged boss seated 4 mm into the roof, the column and its traverse lock block
-  turret(P,'turretDetail',cylinder(.115,.012,24),x,roofY+.002,z);
-  turret(P,'turretDetail',KIT.cylY(.072,.088,.05,20),x,roofY+.029,z);
-  turret(P,'turretDark',cylinder(.042,headY-.035-(roofY+.054),16),x,(headY-.035+roofY+.054)/2,z);
-  turret(P,'turretDetail',box(.096,.085,.11),x,roofY+.165,z+.03);
-  turret(P,'turretDark',cylX(.014,.13,10),x,roofY+.165,z+.074);
-  turret(P,'turretDark',box(.03,.05,.03),x-.062,roofY+.165,z+.03);
+  // the fixed pedestal: its base plate seated 4 mm into the roof, the square column and its clamp collar
+  turret(P,'turretDetail',box(.18,.022,.18),x,roofY+.007,z);
+  const column=headY-.035-(roofY+.018);
+  turret(P,'turretDetail',box(.082,column,.082),x,roofY+.018+column/2,z);
+  turret(P,'turretDetail',box(.112,.05,.112),x,roofY+.15,z);
+  turret(P,'turretDark',box(.03,.034,.05),x-.071,roofY+.15,z+.02);
   const pivotZ=z+.02,muzzleZ=m2MuzzleZ(pivotZ);
   const w=sourceMachineGun(P,PIVOT,{name:'type90XRoofM2',caliberMm:12.7,
     yaw:[x,headY-.035,z],pivot:[x,headY,pivotZ],muzzle:[x,boreY,muzzleZ]});
-  // pitch: the gun, the cradle housing under its receiver, the trunnion through the cradle's cheeks
-  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the M2
-  // is the fleet's M2 in its crew form at true length (libraryRoofMg.ts libraryStationGun: spade grips, sight and its
-  // ammunition can, here on its right as on the Type 90's mount)
-  libraryStationGun(w,{cls:'m2',x,boreY,pivotZ,crew:true,feed:'right'});
-  w.add('turretDetail',box(.13,.07,.50),x-.012,headY-.012,z+.05);                 // cradle housing
-  w.add('turretDark',box(.134,.012,.46),x-.012,headY+.026,z+.05);                  // its top seam under the receiver
-  for(const side of [-1,1])w.add('turretDetail',box(.014,.075,.17),x+side*.072,headY+.008,pivotZ);
-  w.add('turretDark',cylX(.018,.17,12),x,headY,pivotZ);                           // trunnion pin
-  w.add('turretDetail',box(.06,.035,.08),x,headY+.03,z+.31);                      // front rest under the barrel
-  // the curved feed chute: a C of plate from the can's mouth up and over into the receiver's right side
-  const chute=new THREE.TorusGeometry(.085,.02,6,16,Math.PI);
-  chute.scale(1,1,3.4);chute.rotateY(Math.PI/2);chute.rotateZ(-Math.PI/2);
-  w.add('turretDetail',chute,x-.10,boreY-.035,z+.02);
+  // pitch: the gun (Owner 2026-10-28: the fleet's M2 in its crew form at true length, libraryRoofMg.ts), its cradle with
+  // the trunnion through its cheeks, the long tray under the receiver and barrel, and the can and chute on its right
+  libraryStationGun(w,{cls:'m2',x,boreY,pivotZ,crew:true,ammo:false,feed:'right'});
+  w.add('turretDetail',box(.10,.032,.64),x,headY-.006,z+.15);                     // tray under the receiver and barrel
+  w.add('turretDetail',box(.12,.06,.20),x,headY+.012,pivotZ);                     // cradle
+  for(const side of [-1,1])w.add('turretDetail',box(.014,.07,.15),x+side*.067,headY+.012,pivotZ);
+  w.add('turretDark',cylX(.016,.16,12),x,headY,pivotZ);                           // trunnion pin
+  w.add('turretAmmo',box(.12,.20,.30),x-.215,boreY-.17,z-.02);                    // the 100-round can, hung outboard
+  w.add('turretDark',box(.125,.016,.28),x-.215,boreY-.062,z-.02);                 // its lid
+  w.add('turretDetail',box(.15,.02,.32),x-.215,boreY-.278,z-.02);                 // the can's tray
+  w.add('turretDetail',box(.02,.10,.06),x-.15,boreY-.24,z-.02);                   // the tray's hanger to the cradle
+  const chute=new THREE.TorusGeometry(.078,.015,6,14,Math.PI);chute.scale(1,1,3.4);
+  w.add('turretDetail',chute,x-.135,boreY-.06,z+.0);                              // the arched feed chute
   w.stage('yaw');
-  // yaw: the swivel head on the post's top
-  w.add('turretDetail',cylinder(.05,.064,16),x,headY-.035,z);
-  w.add('turretDetail',box(.11,.022,.12),x,headY-.006,pivotZ);
+  // yaw: the swivel head on the pedestal's top
+  w.add('turretDetail',cylinder(.055,.064,16),x,headY-.035,z);
+  w.add('turretDetail',box(.12,.022,.13),x,headY-.006,pivotZ);
   w.finish();
 }
 
@@ -334,7 +340,7 @@ function antennas(P:TankBuilderPort):void {
   }
   turret(P,'turretDetail',box(.126199,.262846,.157615),-.010489,2.443769,-2.086540);
   turret(P,'turretDetail',cylinder(.0578,.10511,20),-.010489,2.627747,-2.102242);
-  turret(P,'turretDark',cylinder(.047311,.472927,20),-.010489,2.916766,-2.102242);
+  turret(P,'turretDark',cylinder(.047311,.26,20),-.010489,2.8104,-2.102242);   // the crosswind sensor's mast (photographs: about 0.3 m)
 }
 
 function mainGun(P:TankBuilderPort):void {

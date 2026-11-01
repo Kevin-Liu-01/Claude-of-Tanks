@@ -48,8 +48,9 @@ function physicalOpenings(tank,quality) {
   const lattice=tank.root.getObjectByName('turretOpenLattice');
   assert.ok(!hit(lattice,v(.17,2.26,-2.70),v(0,0,1),.25),`${quality}: actual rear basket slot`);
   assert.ok(hit(lattice,v(.310584,2.26,-2.70),v(0,0,1),.25),`${quality}: positive source-spaced rack post`);
-  near(hit(tank.root,v(.656,2.53,1.46),v(0,0,-1))?.point.z,1.19812,.001,
-    `${quality}: complete assembled sight pane, not false deep empty hood`);
+  // 267: the sight's two windows either side of the mullion (the photographs), each a complete pane at the face
+  for(const x of [.534,.778])near(hit(tank.root,v(x,2.53,1.46),v(0,0,-1))?.point.z,1.19812,.001,
+    `${quality}: complete assembled sight pane at x ${x}, not false deep empty hood`);
   assert.ok(!hit(tank.root,v(.656,2.53,1.46),v(0,0,-1),.24),`${quality}: real under-hood front air`);
   near(hit(tank.root,v(.656,3,1.40),v(0,-1,0))?.point.y,2.694989,.001,
     `${quality}: measured thin rising hood above that air`);
@@ -64,8 +65,9 @@ function gunOwnership(tank,quality) {
   p.toArray().forEach((n,i)=>near(n,TYPE90_X_DATUMS.trunnion[i],1e-8,`${quality}: actual inferred pitch datum ${i}`));
   near(hit(tube,v(0,3,4.50),v(0,-1,0))?.point.y,2.096726,.001,
     `${quality}: independently tapered circular fore jacket`);
-  // Source MG extension bridges the receiver and barrel; no floating .21m gap.
-  assert.ok(hit(tank.root,v(.079,3,.68),v(0,-1,0))?.point.y>2.75,
+  // The M2's receiver runs on into its barrel (no floating gap). 267: the mount stands where the JGSDF photographs show it,
+  // beside the inboard face of the gunner's sight's rear half (the source print's post stood behind the sight, z 0.42).
+  assert.ok(hit(tank.root,v(.20,3,1.05),v(0,-1,0))?.point.y>2.75,
     `${quality}: integrated positive receiver/barrel extension`);
 }
 

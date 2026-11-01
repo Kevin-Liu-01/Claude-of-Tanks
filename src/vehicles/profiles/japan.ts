@@ -369,29 +369,40 @@ function addType10BRemoteStation(P: JapaneseBuilderPort & TankBuilderPort): void
   weapon.finish();
 }
 
-/** The 10B's active protection: a radar head at each turret corner looking out over its quarter, and a launcher a side on
- *  the shelf over the side blocks, its two tubes raised outboard. */
+/** The 10B's active protection: a radar head at each turret corner looking out over its quarter (a panel of radiating
+ *  tiles in its frame, a sun cap), and a launcher a side on the shelf over the side blocks: a turntable carrying two
+ *  raised tubes, their capped muzzles outboard. */
 function addType10BActiveProtection(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   for (const side of [-1, 1]) {
     for (const [z, y, aft] of [[0.70, 2.07, false], [-1.55, 2.15, true]] as const) {
       const x = side * 1.16, yaw = side * (aft ? Math.PI * 0.75 : Math.PI * 0.25);
+      const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
       P.add('turretDetail', cylY(0.03, 0.03, 0.12, 10), ...tl(x, y + 0.04, z));
-      P.add('turretDetail', box(0.26, 0.21, 0.05), ...tl(x, y + 0.20, z), 0, yaw, 0);
-      P.add('turretDark', box(0.22, 0.17, 0.008), ...tl(x + Math.sin(yaw) * 0.028, y + 0.20, z + Math.cos(yaw) * 0.028), 0, yaw, 0);
+      P.add('turretDetail', box(0.28, 0.23, 0.06), ...tl(x, y + 0.20, z), 0, yaw, 0);
+      P.add('turretDetail', box(0.30, 0.02, 0.09), ...tl(x + fx * 0.015, y + 0.325, z + fz * 0.015), 0, yaw, 0);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
+        const u = (i - 1.5) * 0.06, v = (j - 1) * 0.06;
+        P.add('turretDark', box(0.05, 0.05, 0.008), ...tl(x + fx * 0.032 + rx * u, y + 0.20 + v, z + fz * 0.032 + rz * u), 0, yaw, 0);
+      }
     }
     const lx = side * 1.20, ly = 2.07, lz = -0.55;
-    P.add('turretDetail', box(0.20, 0.10, 0.30), ...tl(lx, ly + 0.03, lz));
-    for (const dz of [-0.07, 0.07]) {
-      const tube = cylZ(0.042, 0.26, 14);
+    P.add('turretDetail', box(0.22, 0.08, 0.32), ...tl(lx, ly + 0.02, lz));
+    P.add('turretDetail', cylY(0.10, 0.11, 0.05, 20), ...tl(lx, ly + 0.085, lz));
+    for (const dz of [-0.06, 0.06]) {
+      const tube = cylZ(0.045, 0.30, 14);
       tube.rotateX(-0.55).rotateY(side * Math.PI / 2);
-      P.add('turretDark', tube, ...tl(lx + side * 0.07, ly + 0.14, lz + dz));
+      P.add('turretDetail', tube, ...tl(lx + side * 0.06, ly + 0.19, lz + dz));
+      const cap = cylZ(0.047, 0.012, 14);
+      cap.translate(0, 0, 0.15).rotateX(-0.55).rotateY(side * Math.PI / 2);
+      P.add('turretDark', cap, ...tl(lx + side * 0.06, ly + 0.19, lz + dz));
     }
   }
 }
 
 /** The 10B's reactive armour: a course of cassettes a side on the hull's upper skirt over the road wheels, and over the
- *  turret's rear and middle side blocks (seeded by type10b_skirt_era_* and type10b_turret_era_*, japan.ts). */
+ *  turret's side blocks, rear, middle and front, under the smoke dischargers' sloped face (seeded by type10b_skirt_era_*
+ *  and type10b_turret_era_*, japan.ts). */
 function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   const wall = TYPE10_X_SIDE_WALL;
   for (const side of [-1, 1]) {
@@ -400,7 +411,7 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
       seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 1.035, 2.80 - i * 0.70, t, 0.32, 0.64, null,
         { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }
-    for (const z of [-1.62, -1.26, -0.96, -0.62]) {
+    for (const z of [-1.62, -1.26, -0.96, -0.62, 0.45, 0.78, 1.10]) {
       const t = 0.07;
       seatedArmorCassette(P, 'turret', ...tl(side * (wall.x + t / 2), (wall.low + wall.high) / 2, z), t,
         wall.high - wall.low - 0.03, 0.31, null, { axis: 'x', contactSide: -side, embed: 0.010, lid: true });

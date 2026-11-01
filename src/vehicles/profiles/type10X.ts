@@ -297,6 +297,7 @@ function rearRack(P:TankBuilderPort,mark:Type10Mark):void {
   }
   // production baskets carry expanded-mesh panels in the tube frame; the TK-X ran the open fence (photographs, 267)
   if(mark==='production')basketMesh(P,left,right,rear,front);
+  else prototypeFence(P,left,right,rear,front);
   rearBasketStowage(P);
 }
 
@@ -493,7 +494,8 @@ const STOWAGE_DOORS=[[-1.84,-1.22],[-1.06,-.72],[-.66,-.36]] as const;
 function sideModules(P:TankBuilderPort,side:number,stowageDoors:boolean):void {
   const h=WALL_HIGH-WALL_LOW,mid=(WALL_HIGH+WALL_LOW)/2,at=(proud:number)=>side*(WALL_X+proud);
   for(const z of MODULE_SEAMS) {
-    onTurret(P,'turretDark',box(.006,h,.018),at(.001),mid,z);
+    onTurret(P,'turretDark',box(.006,h,.024),at(.001),mid,z);
+    for(const dz of [-.022,.022])onTurret(P,'turretDetail',box(.010,h,.012),at(.004),mid,z+dz);   // the blocks' raised edges
     for(const y of [WALL_LOW+.055,mid,WALL_HIGH-.055])onTurret(P,'turretDetail',box(.022,.042,.052),at(.009),y,z);
     const hook=new THREE.TorusGeometry(.03,.008,6,10,Math.PI);hook.rotateY(Math.PI/2);
     onTurret(P,'turretDetail',hook,side*(WALL_X-.022),WALL_HIGH+.02,z);
@@ -509,24 +511,32 @@ function sideModules(P:TankBuilderPort,side:number,stowageDoors:boolean):void {
   }
 }
 
-// Smoke: four 76 mm dischargers a side in the front block (photographs, 267). Production tanks fire them through one
-// oval slot; the TK-X prototypes had four separate round ports. The tubes lean out and up, their mouths at the wall.
+// Smoke: four 76 mm dischargers a side in the front block's sloped top face (photographs, 267: the 45-degree chamfer over
+// the side wall, which runs |x| 1.435 at z 0.55 to 1.408 at z 1.0 at y 1.94). Production tanks fire them through one oval
+// slot; the TK-X prototypes had four separate round ports. The tubes look up and out of the face, a little forward.
 function smokeDischargers(P:TankBuilderPort,side:number,mark:Type10Mark):void {
-  const y=1.79,zs=[.62,.73,.84,.95],axis=new THREE.Vector3(side*.80,.55,.24).normalize();
+  const y=1.94,zs=[.62,.73,.84,.95],faceX=(z:number)=>1.4353-.0607*(z-.55);
+  const normal=new THREE.Vector3(side*.7071,.7071,0),axis=new THREE.Vector3(side*.70,.70,.12).normalize();
   if(mark==='production') {
-    const slot=cylX(.066,.010,20);slot.scale(1,1,3.4);
-    onTurret(P,'turretDark',slot,side*(WALL_X+.002),y,(zs[0]+zs[3])/2);
+    const mid=(zs[0]+zs[3])/2,slot=cylinder(.066,.010,20);slot.scale(1,1,3.4);slot.rotateZ(-side*Math.PI/4);
+    onTurret(P,'turretDark',slot,side*faceX(mid)+normal.x*.002,y+normal.y*.002,mid);
   }
   for(const z of zs) {
     const outer=.045,inner=.037,shape=new THREE.Shape();shape.absarc(0,0,outer,0,Math.PI*2,false);
     const hole=new THREE.Path();hole.absarc(0,0,inner,0,Math.PI*2,true);shape.holes.push(hole);
     const g=new THREE.ExtrudeGeometry(shape,{depth:.06,steps:1,bevelEnabled:false,curveSegments:14});
-    g.translate(0,0,-.05);
+    g.translate(0,0,-.055);
     markSmokeTube(g).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis));
-    onTurret(P,'turretDetail',g,side*(WALL_X+.004),y,z);
+    const at=new THREE.Vector3(side*faceX(z),y,z).addScaledVector(normal,.004);
+    onTurret(P,'turretDetail',g,at.x,at.y,at.z);
+    // the bore reads deep and black from outside: a dark cap 3 cm down the tube
+    const bore=cylinder(.036,.006,14);bore.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis));
+    const deep=at.clone().addScaledVector(axis,-.03);
+    onTurret(P,'turretDark',bore,deep.x,deep.y,deep.z);
     if(mark!=='production') {
-      const rim=new THREE.TorusGeometry(.052,.008,6,16);rim.rotateY(Math.PI/2);
-      onTurret(P,'turretDetail',rim,side*(WALL_X+.004),y,z);
+      const rim=new THREE.TorusGeometry(.052,.008,6,16);
+      rim.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),normal));
+      onTurret(P,'turretDetail',rim,at.x,at.y,at.z);
     }
   }
 }
@@ -544,6 +554,16 @@ function laserWarners(P:TankBuilderPort):void {
     onTurret(P,'turretDetail',box(.10,.12,.10),side*1.24,2.13+.055,-1.86,0,side*Math.PI*.75,0);
     onTurret(P,'turretGlass',box(.06,.05,.006),side*1.24+side*.036,2.13+.065,-1.86-.036,0,side*Math.PI*.75,0);
   }
+}
+
+// The TK-X's open fence (TRDI photographs): close-set uprights between the frame's posts and a solid lower band round the
+// rear and both sides, without the production mesh.
+function prototypeFence(P:TankBuilderPort,left:number,right:number,rear:number,front:number):void {
+  const y0=1.622,y1=2.125,band=.11;
+  for(let x=left+.115;x<right-.05;x+=.23)frameBar(P,[x,y0,rear],[x,y1,rear]);
+  for(let z=rear+.094;z<front-.05;z+=.187)for(const x of [left,right])frameBar(P,[x,y0,z],[x,y1,z]);
+  turret(P,'turretDetail',box((right-left)*EQUIPMENT_X_DATUM,band,.006),(left+right)/2,y0+band/2,rear);
+  for(const x of [left,right])turret(P,'turretDetail',box(.006,band,front-rear),x,y0+band/2,(rear+front)/2);
 }
 
 // The basket's expanded-mesh panels: a grid of wire across the rear and both sides inside the tube frame.

@@ -79,6 +79,9 @@ export interface LibraryStationGunOptions {
   /** A gun a crewman fires at the mount (a loader's or commander's pintle): its grips, sight and ammunition box, in place
    *  of a remote station's solenoid housing. */
   crew?: boolean;
+  /** The crew form's ammunition can (default: with `crew`); false where the mount carries its own can and feed (the Type
+   *  90's tray and arm, type90X.ts). */
+  ammo?: boolean;
   /** How far the receiver's centre stands behind the pivot (default 0.08 m). An enclosed mini-turret sets it so the whole
    *  receiver stays under its flat roof, behind the sloped face; the barrel still runs to the published muzzle. */
   receiverBehind?: number;
@@ -96,7 +99,8 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   const def = MG_CLASSES[o.cls], feed = o.feed ?? 'right';
   // the Kord at 102 %: its ported brake's mouth meets a station's 30 mm muzzle-rim receipt (nationalMachineGun)
   const scale = o.cls === 'kord' ? 1.02 : 1;
-  const base = { cls: o.cls, scale, remote: !o.crew, ammo: Boolean(o.crew), mount: 'external-cradle', feed } as const;
+  const ammo = Boolean(o.crew) && o.ammo !== false;
+  const base = { cls: o.cls, scale, remote: !o.crew, ammo, mount: 'external-cradle', feed } as const;
   const probe = createPintleLayout(base, { add() {} });
   const dz = o.pivotZ - (o.receiverBehind ?? 0.08) - probe.recZ, dy = o.boreY - probe.trunY;
   const barrelLength = o.muzzleZ === undefined ? undefined : o.muzzleZ - dz - probe.trunZ - 0.10 * probe.s - def.flashL * probe.s;
@@ -108,5 +112,5 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   });
   addPintleReceiver(layout);
   addPintleBarrel(layout);
-  if (o.crew) addPintleAmmo(layout);
+  if (ammo) addPintleAmmo(layout);
 }
