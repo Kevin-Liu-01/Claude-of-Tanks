@@ -668,7 +668,14 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        // 267 round 5 (Sonnet, critic7: "the deck net is a flat rectangular mat with hard straight edges and the gun passes
+        // through it; a real net hangs in lumps"): a ragged outline short of the deck's corners, sticks pushed under it
+        // into humps, a looser billow, and the garnish kept to its outer band clear of the gun's sweep
+        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.9, seed: 37,
+          outline: [[-1.62, -0.10], [1.60, -0.10], [1.70, 0.70], [1.56, 1.65], [1.68, 2.55], [1.30, 3.18], [0.45, 3.06],
+            [-0.50, 3.22], [-1.42, 3.02], [-1.70, 2.15], [-1.56, 1.10], [-1.70, 0.40]],
+          tents: [[-1.15, 0.55, 0.10], [1.10, 1.05, 0.09], [-0.95, 2.35, 0.08], [1.20, 2.50, 0.09], [-1.35, 1.55, 0.07]],
+          reliefScale: 1.6, garnishEdgeBandM: 0.85 }),
       ],
       // 267 (Sonnet, round 3: "the net patches on the skirt are flat rectangles with hard edges, pasted mats"): the skirt
       // drapes are gone; the armoured skirt course stays bare under the deck nets.

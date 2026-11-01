@@ -172,6 +172,22 @@ function embrasuredShield(P: MiscBuilderPort, w: number, h: number, t: number, x
   P.addEquipment('turret', box(nw, h - nd, t), x, y - nd / 2 * Math.cos(rx), z - nd / 2 * Math.sin(rx), rx, 0, 0);
 }
 
+// 267 round 5 (the owner's field standard: nothing that moves passes through what does not): an open black housing round
+// a roof station's riding gun, as the Saumur Leclercs' remote mount reads. Side walls 2 cm outside the gun's x range
+// (gx0..gx1 in the fitting frame; pitch never moves a part sideways) rise from the foot (y) to the pivot height (h); a
+// back wall at zBack (null: none, where the gun's recoiled reach overhangs its station's body) and a front lip of height
+// lip at zFront (both in the fitting frame), the turntable plate on a roof station (plate). Call it inside the station's
+// captureAuxiliaryStock window so the housing yaws with the gun.
+function rwsHousing(P: MiscBuilderPort, x: number, y: number, z: number, gx0: number, gx1: number, h: number,
+  zBack: number, zFront: number, lip: number, plate: boolean, back = true): void {
+  const { box, cylY } = KIT;
+  const t = 0.025, xl = gx0 - 0.02 - t / 2, xr = gx1 + 0.02 + t / 2, w = xr - xl + t, depth = zFront - zBack;
+  for (const xs of [xl, xr]) P.add('turretDark', box(t, h, depth), x + xs, y + h / 2, z + (zBack + zFront) / 2);
+  if (back) P.add('turretDark', box(w, h, t), x + (xl + xr) / 2, y + h / 2, z + zBack - t / 2);
+  if (lip > 0) P.add('turretDark', box(w, lip, t), x + (xl + xr) / 2, y + lip / 2, z + zFront + t / 2);
+  if (plate) P.add('turretDark', cylY(0.20, 0.20, 0.02, 18), x, y + 0.01, z);
+}
+
 // Armored optics housing: body + dark split doors/aperture + glass slit.
 // frame: 'turret' | 'hull'. face: +z aperture.
 function sightBox(
@@ -1117,21 +1133,29 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
             [s * outX, blockTopAt(zf), nose ? 3.17 : zf], [s * moduleInX, blockTopAt(zf), zf]));
         }
 
+        // 267 round 5 (both critics, critic7: "the hull side is one flat wall with a single thin rail; the photos show a step
+        // and seam between an upper and a lower module row", img_2372): each course is two rows, the lower panels on the
+        // 1.70 line to the 1.24 joint and the upper (sponson-box) row 2 cm inboard above it, so a lit ledge and a dark
+        // joint run between them; each row has its own panel seams, offset, standing proud of its face.
+        const rowY = 1.24;
+        const course = (foot: number, depth: number, z: number): void => {
+          P.add('hull', box(0.035, rowY - foot, depth), s * 1.6825, (rowY + foot) / 2, z);
+          P.add('hull', box(0.035, skirtTopY - rowY, depth), s * 1.6625, (skirtTopY + rowY) / 2, z);
+        };
         for (let k = 0; k < 10; k++) {
           // LAST course is the ref's short cut-high panel over the sprocket
           // (its side bottom reads 0.805 at -3.27, not the 0.48 sheet line)
-          if (k === 0) P.add('hull', box(0.035, skirtTopY - 0.81, 0.41), s * 1.6825, (skirtTopY + 0.81) / 2, -3.05);
-          else P.add('hull', box(0.035, skirtTopY - skirtFootY, 0.41), s * 1.6825, (skirtTopY + skirtFootY) / 2, -3.05 + 0.4306 * k);
+          course(k === 0 ? 0.81 : skirtFootY, 0.41, -3.05 + 0.4306 * k);
         }
-        P.add('hull', box(0.035, skirtTopY - skirtFootY, 0.215), s * 1.6825, (skirtTopY + skirtFootY) / 2, 1.1325); // closes the sheet-to-block slot
-        P.add('hull', box(0.035, skirtTopY - skirtFootY, 0.51), s * 1.6825, (skirtTopY + skirtFootY) / 2, 1.49);  // 267 r3: the sheet run to the shorter front module
-        for (let k = 0; k < 5; k++) P.add('hullDark', box(0.03, 0.80, 0.016), s * 1.684, 1.125, 0.72 - k * 0.86);
-        // 267 (Sonnet, round 3: "the side skirt panels are one flat unbroken slab; real skirts show separate hinged panels
-        // with cut-outs"): the joint between the skirt row and the sponson-box row above it, and two hand-hold cut-outs
-        for (let z0 = -3.25; z0 < 1.74 - 1e-6; z0 += 0.45) {
+        course(skirtFootY, 0.215, 1.1325);                                       // closes the sheet-to-block slot
+        course(skirtFootY, 0.51, 1.49);                                          // 267 r3: the sheet run to the shorter front module
+        for (let k = 0; k < 5; k++) P.add('hullDark', box(0.006, rowY - skirtFootY - 0.02, 0.025), s * 1.7015, (rowY + skirtFootY) / 2, 0.72 - k * 0.86);
+        for (let k = 0; k < 6; k++) P.add('hullDark', box(0.006, skirtTopY - rowY - 0.04, 0.025), s * 1.6815, (skirtTopY + rowY) / 2, 1.15 - k * 0.86);
+        for (let z0 = -3.25; z0 < 1.74 - 1e-6; z0 += 0.45) {                     // the joint's shadow at the upper row's foot
           const run = Math.min(0.45, 1.74 - z0);
-          P.add('hullDark', box(0.008, 0.016, run + 0.004), s * 1.7025, 1.17, z0 + run / 2);
+          P.add('hullDark', box(0.006, 0.022, run + 0.004), s * 1.6815, rowY + 0.011, z0 + run / 2);
         }
+        // 267 (Sonnet, round 3): two hand-hold cut-outs low in the lower row
         for (const zh of [-1.62, 0.16]) P.add('hullDark', box(0.008, 0.08, 0.20), s * 1.7025, 0.86, zh);
       };
       buildLeclercHullCourse1();
@@ -1723,9 +1747,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // flat-faced base block", M7754): a flat-faced base block on the cheek, the sight head on it with its top falling to
     // the front, a hood round its recessed dark face with the blue window and the round aperture, and the two armoured
     // doors standing open forward from its outer edges.
+    // 267 round 5 (Sonnet, critic7: "the open door leaf reads as a free-standing fin; the photo's block is about twice as
+    // long fore and aft", pic-3, M7754): the base block runs 0.94 m, from the roof edge forward under the open doors.
     P.add('turret', convexSlab(
-      [-0.47, 0.18, 1.76], [-0.97, 0.18, 1.76], [-0.97, 0.18, 1.24], [-0.47, 0.18, 1.24],
-      [-0.47, 0.56, 1.72], [-0.97, 0.56, 1.72], [-0.97, 0.56, 1.24], [-0.47, 0.56, 1.24]));
+      [-0.47, 0.18, 1.92], [-0.97, 0.18, 1.92], [-0.97, 0.18, 0.98], [-0.47, 0.18, 0.98],
+      [-0.47, 0.56, 1.88], [-0.97, 0.56, 1.88], [-0.97, 0.56, 0.98], [-0.47, 0.56, 0.98]));
     P.add('turret', convexSlab(
       [-0.53, 0.55, 1.60], [-0.91, 0.55, 1.60], [-0.91, 0.55, 1.30], [-0.53, 0.55, 1.30],
       [-0.53, 0.86, 1.60], [-0.91, 0.86, 1.60], [-0.91, 0.90, 1.30], [-0.53, 0.90, 1.30]));
@@ -1825,8 +1851,21 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       const rackTop = variant === 'xlr' ? 0.35 : 0.44, rackRear = variant === 'xlr' ? -1.43 : -1.48;
       // painted plate (Opus, critic2: "the bins read inverted, light dots on a black slab" under the camouflage's black)
       P.add('turretDetail', box(0.295, rackTop - 0.02, -0.15 - rackRear), s * 1.3975, (rackTop + 0.02) / 2, (rackRear - 0.15) / 2);
+      // 267 round 5 (both critics, critic7: "the perforated baskets are a dot texture on a flat face; the photos show framed
+      // perforated baskets standing proud, with straps", img_2372): the frame is tube, 3 cm proud of the perforated face on
+      // standoffs, with posts at the bay ends, and each bay carries one strap and buckle
+      const railX = s * 1.577, bays = [-0.15, -0.47, -0.79, -1.11, rackRear];
       for (const y of variant === 'xlr' ? [rackTop, 0.02] : [rackTop, 0.23, 0.02]) {
-        P.add('turretDetail', box(0.045, 0.045, -0.15 - rackRear), s * 1.53, y, (rackRear - 0.15) / 2); // rack frame rails
+        P.add('turretDetail', cylZ(0.019, -0.15 - rackRear, 10), railX, y, (rackRear - 0.15) / 2);   // frame rail
+      }
+      for (const z of bays) {
+        P.add('turretDetail', cylY(0.017, 0.017, rackTop - 0.02, 8), railX, (rackTop + 0.02) / 2, z);   // post
+        for (const y of [0.05, rackTop - 0.04]) P.add('turretDetail', box(0.04, 0.03, 0.03), s * 1.558, y, z); // standoff
+      }
+      for (let k = 0; k < bays.length - 1; k++) {
+        const zc = (bays[k] + bays[k + 1]) / 2 + 0.07;
+        P.add('turretCloth', box(0.006, rackTop - 0.03, 0.035), s * 1.549, (rackTop + 0.01) / 2, zc);   // strap
+        P.add('turretDark', box(0.012, 0.045, 0.045), s * 1.552, rackTop * 0.55, zc);                  // buckle
       }
       // 267 (both photo critics, round 3: "the turret side has only flat dark panels; the real bustle sides carry long racks
       // of perforated baskets"): each of the four bays is a perforated plate, three rows of five holes, between the
@@ -1835,7 +1874,6 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       // dark top between the wall and the perforated plate, and end posts standing at its corners
       if (variant !== 'xlr') {
         P.add('turretDark', box(0.23, 0.006, -0.15 - rackRear - 0.06), s * 1.39, rackTop + 0.004, (rackRear - 0.15) / 2);
-        for (const z of [rackRear + 0.02, -0.17]) P.add('turretDetail', box(0.035, rackTop + 0.03, 0.035), s * 1.535, (rackTop - 0.01) / 2 + 0.01, z);
       }
       const holeRows = variant === 'xlr' ? [0.11, 0.185, 0.26] : [0.085, 0.155, 0.30, 0.37];
       for (let k = 0; k < 4; k++) {
@@ -1957,12 +1995,20 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       // owner's roof RWS takes its place (the XLR's RWS replaced the roof 7.62), so they carry no ANF1.
       if (!centeredRoofStations) {
         // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+        // 267 round 5 (both critics, critic7: "a thin MG on a tiny stalk; the photos show a low black remote weapon
+        // station box with the gun on it", 6954, pic-3): the gun stands 3 cm lower on a stub column (the shared pintle's
+        // negative riser, as deep as its cradle's sweep allows) inside an open black housing, the station's stock: a
+        // turntable plate, side walls 2 cm outside the gun's width (pitch never moves a part sideways), a back wall
+        // behind its furthest recoiled reach and a lip under the barrel's lowest pass
+        const finishAnf1 = captureAuxiliaryStock(P, 'leclercRoofAnf1');
+        rwsHousing(P, -0.85, 0.610, 0.413, -0.083, 0.113, 0.18, -0.30, 0.20, 0.04, true);
         const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true,
-          working: true, ridingCradle: true });
+          working: true, ridingCradle: true, riser: -0.03 });
         anf1.name = 'leclercRoofAnf1';
         anf1.position.set(-0.85, 0.610, 0.413);
         anf1.userData.roofContactY = 0.610;
         P.turretG.add(anf1);
+        finishAnf1();
       }
     }
     // 2026-10-08 (the owner's field standard in main 6763d7cc0, the coordinator's ruling on the lane's audit): the second
@@ -1970,7 +2016,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // equipment") had the France agent seat a 12.7 mm M2 right-forward on the mid roof; wave 257 made it a 7.62 GPMG on
     // the HL-70 lid, which left two roof 7.62s where a Leclerc carries one. The order stays answered by the S2's ANF1,
     // the S1's and XLR's roof RWS and the 12.7 coax.
-    if (!centeredRoofStations) P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, 0.62, 0.32); // ANF1 ammo pouch reseated FLAT on the mid roof (top 2.23w)
+    // (267 round 5: the flat ammo pouch beside the ANF1 gave way to its station's body)
     P.add('turretDetail', box(0.105, 0.09, 0.12), 0.8875, LH + 0.03, -0.822);    // sight/mount block (carries the priced 2.427w front line; WIDENED x 0.835..0.94 so col 0.916 — ref 2.41 — stays covered after the MG left. 90-ladder r1: z_w -0.862..-0.982 — the old -0.80 front edge printed 2.42 into side col -0.802 [ref roof 2.355]; the block now hides under the mast columns' 2.53 line)
     periscope(P, 'turretDetail', -0.35, 0.60, -0.28, 0.3);
     P.add('turretDetail', box(0.09, 0.104, 0.12), -0.215, 0.70, -0.10);          // 90-ladder r1: loader periscope housing — base on the 2.248 channel, crown 2.352 = the ref's 2.351 line on front cols -0.182/-0.222 (left-only; the print's right side stays low)                       // (france round: head FLUSH over the new high cap — the 0.762 reseat printed +0.10 over the ref's 2.36 band on the -0.38 side cols)
@@ -2270,9 +2316,12 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   // owner's roof RWS (refactored 2026-08-29) is the XLR's working roof weapon; its shoe, body, sight and shield are the
   // station's stock. Gameplay change: functional roof guns 0 -> 1.
   const finishXlrRws = captureAuxiliaryStock(P, 'leclercXlrRoofRwsGun');
-  P.addEquipment('turret', cylY(0.27, 0.27, xlrShoeH, 16),
+  // 267 round 5 (both critics, critic7: "the machine gun is mounted high on a box, top-heavy; the photos show a low black
+  // remote weapon station box", 6954): the shoe and body are black, the gun sits on a stub column (the shared pintle's
+  // negative riser) and the shield comes down with it
+  P.add('turretDark', cylY(0.27, 0.27, xlrShoeH, 16),
     xlrRwsX, xlrRoofY + xlrShoeH / 2, xlrRwsZ);
-  P.addEquipment('turret', box(0.42, xlrBodyH, 0.42),
+  P.add('turretDark', box(0.42, xlrBodyH, 0.42),
     xlrRwsX, xlrShoeTopY + xlrBodyH / 2, xlrRwsZ);
   P.add('turretDark', box(0.26, 0.14, 0.025), xlrRwsX, 0.9395, -0.105);
   P.add('turretGlass', box(0.16, 0.10, 0.025), xlrRwsX, 0.9595, -0.088);
@@ -2280,10 +2329,11 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   // its rear plane. This makes shield, gun and body one continuous load path.
   // Release 230: the barrel crossed the plate's top at rest and through 22 degrees of elevation; it rides in an
   // embrasure 108 mm wide whose floor clears the barrel's lowest pass at full depression.
-  embrasuredShield(P, 0.50, 0.28, 0.045, xlrRwsX, 1.0395, 0.01, -0.18, 0.108, 0.067);
+  embrasuredShield(P, 0.50, 0.28, 0.045, xlrRwsX, 1.0395 - 0.04, 0.01, -0.18, 0.108, 0.067);
+  rwsHousing(P, xlrRwsX, xlrBodyTopY, -0.17, -0.092, 0.068, 0.135, -0.2155, 0.05, 0, false);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true,
-      remoteControlled: true, ridingCradle: true });
+      remoteControlled: true, ridingCradle: true, riser: -0.04 });
     mg.name = 'leclercXlrRoofRwsGun';
     mg.position.set(xlrRwsX, xlrBodyTopY, -0.17);
     mg.userData.mountContactY = xlrBodyTopY;
@@ -2385,15 +2435,19 @@ function buildAMX56(P: MiscBuilderPort): void {
   // 2026-10-08 (the owner's 2A5M precedent in main 6763d7cc0): the owner's roof RWS (refactored 2026-08-29) is the S1's
   // working roof weapon, its base, body, sight and shield the station's stock. Gameplay change: functional 0 -> 1.
   const finishAmxRws = captureAuxiliaryStock(P, 'amx56RoofRwsGun');
-  P.addEquipment('turret', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
-  P.addEquipment('turret', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
+  // 267 round 5 (both critics, critic7: "the MG stands high on a thin post above a small dome; the photo mount is a compact
+  // black box with the gun close on top"): black stock, a stub column (the shared pintle's negative riser), the shield
+  // down with the gun
+  P.add('turretDark', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
+  P.add('turretDark', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
   P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
   // release 230: the receiver's front swept 4 cm into the shield's top edge from full depression to 2 degrees of
   // elevation; it passes through an embrasure 124 mm wide and 44 mm deep
-  embrasuredShield(P, 0.52, 0.30, 0.045, amxRwsX, 1.052, -0.025, -0.16, 0.124, 0.044);
+  embrasuredShield(P, 0.52, 0.30, 0.045, amxRwsX, 1.052 - 0.035, -0.025, -0.16, 0.124, 0.044);
+  rwsHousing(P, amxRwsX, 1.012, -0.23, -0.165, 0.110, 0.215, -0.21, 0.17, 0, false, false);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true,
-      remoteControlled: true, ridingCradle: true });
+      remoteControlled: true, ridingCradle: true, riser: -0.035 });
     mg.name = 'amx56RoofRwsGun';
     mg.position.set(amxRwsX, 1.012, -0.23);
     mg.userData.mountContactY = 1.012;
