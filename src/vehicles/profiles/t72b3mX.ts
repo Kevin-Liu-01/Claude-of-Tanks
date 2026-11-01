@@ -86,13 +86,13 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
+function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true):void {
   for(const side of [-1,1]){
     const left=side<0?-1.103:.014,right=side<0?-.014:1.103;
     if(nativeEra)P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
       const cover=roofSheet([[2.00,left,right,1.4934,1.4934],[2.61,left,right,1.2725,1.2725],[3.25,left,right,1.0232,1.0232]],.040);
       P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
-      glacisContainers(P,side);
+      if(containers)glacisContainers(P,side);
     });
     const lane=side<0?-1.962:1.958;
     for(const [a,b,top,low]of SKIRT_SPANS){
@@ -114,7 +114,7 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
       P.addMudguard('t72b3m-x-rear-curtain','hullRubber',box(.004,.14,.825),lane-side*.009,.730,-2.143);
     }
   }
-  if(nativeEra)splashBoard(P);
+  if(nativeEra&&containers)splashBoard(P);
 }
 
 // 267 (Main: "Relikt glacis in distinct rows of containers with seams and a stepped face"). The source raft
@@ -124,10 +124,9 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
 // .49-.77, z 3.07-3.25 at |x| .19-.48), crossed at z 2.89-2.92 by the splash board standing 0.13 m square to the plate
 // between the headlights, with its seams at |x| .20 and .48 in the front row. Here: the 40 mm cover keeps its hit faces
 // (the armour binding) and carries the containers as furniture of the same cluster, in two rows of closed boxes with 12 mm
-// seams, the rear row (z 2.335-2.900) two a side, the front row (z 2.940-3.244) three a side, every lid in one plane 4 mm
-// over the plane the obr. 2022's raised blocks stand on (t72b3m2022Kit.ts glacisRows: 1.5319 - .382 (z - 2), so those
-// blocks seat 4 mm into the lids instead of standing 26-38 mm over the bare cover), 30-36 mm over the cover, chamfered
-// 6 mm on the top edges, their feet 6 mm into the cover. The rear row's back edge is the glacis step; the front row's
+// seams, the rear row (z 2.335-2.900) two a side, the front row (z 2.940-3.244) three a side, every lid in one plane
+// (1.5359 - .382 (z - 2)), 30-36 mm over the cover, chamfered 6 mm on the top edges, their feet 6 mm into the cover. (The
+// obr. 2022 lays its own block grid instead, on the bare cover: buildT72B3MXHull glacisContainers.) The rear row's back edge is the glacis step; the front row's
 // face over the cover's edge is the bolted toe (two hex heads a box); the source's two bolt groups and the access plates sit
 // on the lids. Gun sweep: the upper glacis under the mantlet (z < 2.335) is unchanged.
 const GLACIS_COVER:readonly(readonly[z:number,y:number])[]=[[2.00,1.4934],[2.61,1.2725],[3.25,1.0232]];
@@ -139,13 +138,9 @@ function glacisCoverY(z:number):number {
 const GLACIS_LID_SLOPE=.382,GLACIS_ALPHA=Math.atan(GLACIS_LID_SLOPE);
 const glacisLidY=(z:number)=>1.5359-GLACIS_LID_SLOPE*(z-2);
 const GLACIS_ROWS:readonly(readonly[z0:number,z1:number])[]=[[2.335,2.900],[2.940,3.244]];
-/** The glacis's top surface at z and its fall a metre (what the obr. 2022's raised blocks seat on, t72b3m2022Kit.ts
- * glacisRows): a container lid where a row of containers stands, the bare cover elsewhere. */
-export function t72b3mGlacisSeat(z:number):{y:number;slope:number} {
-  if(GLACIS_ROWS.some(([a,b])=>z>=a&&z<=b))return {y:glacisLidY(z),slope:GLACIS_LID_SLOPE};
-  const [a,b,c]=GLACIS_COVER,[p,q]=z<=b[0]?[a,b]:[b,c];
-  return {y:glacisCoverY(z),slope:(p[1]-q[1])/(q[0]-p[0])};
-}
+/** The bare glacis cover's top at z: what a frontal package that replaces the containers (buildT72B3MXHull
+ * glacisContainers: false; the obr. 2022's block grid, t72b3m2022Kit.ts glacisRows) seats on. */
+export function t72b3mGlacisCoverY(z:number):number { return glacisCoverY(z); }
 /** A closed container box between |x| a..b and z z0..z1: its foot 6 mm into the cover (following the cover's kink at z
  * 2.61), its lid in the glacisLidY plane, top edges chamfered 6 mm (the ends' top edges too); a plate: 10 mm, 3 mm into
  * the lid, chamfered 3 mm. */
@@ -592,11 +587,15 @@ function sleeveHardware(P:TankBuilderPort):void {
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
  * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
 interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean;
+  /** false (267): the reactive cover stays, without the 2016's containers, plates, bolts and splash board over it, for a
+   * frontal package that lays its own glacis blocks on the bare cover (buildT72B3MX: wherever the cheek cells give way to
+   * the build's own, the obr. 2022's t72b3m2022Kit.ts). */
+  glacisContainers?:boolean;
 }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
+  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false,options.glacisContainers!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={},hullOptions:T72B3MXHullOptions={}):void {

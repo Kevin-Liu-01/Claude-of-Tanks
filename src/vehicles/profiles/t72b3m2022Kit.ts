@@ -8,7 +8,7 @@ import {beamBetween} from './measuredPrimitives.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-import {t72b3mGlacisSeat} from './t72b3mX.ts';
+import {t72b3mGlacisCoverY} from './t72b3mX.ts';
 type Point=readonly[number,number,number];
 type Plan=readonly(readonly[number,number])[];
 const {box,cylX,cylY}=KIT;
@@ -145,19 +145,28 @@ function snorkel(P:TankBuilderPort):void{
 }
 
 // Hull frame. The raised Relikt block rows of the glacis package, three a side in four regular rows over the 2016 build's
-// glacis: ERA furniture of the same glacis clusters, so they go with them. 267 (lane t90-family-267, coordinator: "seat
-// row 1 on the actual cover surface ... buried 5-15 mm"): each block seats 8 mm into the surface under its centre
-// (t72b3mX.ts t72b3mGlacisSeat: the 267 container lids under rows 2-4, the bare cover over the upper glacis under row 1),
-// tilted to that surface's fall. Until then every block stood .062 over a datum read as the cover's base: 32-38 mm of air
-// under the first row, 4 mm into the lids under the rest. The inner block of row 1 is 6.4 cm shorter at its back, so it
-// clears the driver's vision block (hullDark at z 1.988-2.073, |x| < .197) and the driver's hatch rim (z < 2.08).
+// glacis cover (top y 1.4934 at z 2.00, its 40 mm thickness below that): ERA furniture of the same glacis clusters, so
+// they go with them. 267 (lane t90-family-267): the blocks keep the 266 grid exactly (each 330 x 280 x 44 mm, its
+// underside .0385 over the line 1.4934 - .382 (z - 2), tilted .365), and each now stands on its own mounting pad instead
+// of 32-38 mm of air: a closed block inset 25 mm all round under it, from 6 mm into the cover to 5 mm into the block's
+// underside. The 20 mm seams between blocks therefore stay open down to the cover, 8 cm under the block tops, so the grid
+// reads cell by cell as on 266 (the 2016's own container rows stand down under this grid: buildT72B3MX glacisContainers).
+// The two inner blocks of the first row are 200 mm deep, centred at z 2.205, clear of the driver's hatch rim (the 266 block
+// on the left stood 8 mm into it) and of his vision block (hullDark, z 1.988-2.073, |x| < .197).
 function glacisRows(P:TankBuilderPort):void{
-  const H=.044,BURY=.008;
+  const W=.33,H=.044,TILT=.365,INSET=.025,c=Math.cos(TILT),sn=Math.sin(TILT);
+  // the block's underside plane, as a height at z (the 266 datum)
+  const under=(zc:number,yc:number)=>(z:number)=>yc-(H/2)/c-Math.tan(TILT)*(z-zc);
   for(const side of [-1,1])P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
     for(const z of [2.17,2.47,2.77,3.07])for(const x of [.19,.54,.89]){
-      const inner=z<2.3&&x<.3,d=inner?.216:.28,zc=inner?2.195:z;
-      const {y,slope}=t72b3mGlacisSeat(zc),tilt=Math.atan(slope),lift=H/2-BURY;
-      P.addExternalArmor('hull',markEraFurniture(box(.33,H,d)),side*x,y+lift*Math.cos(tilt),zc+lift*Math.sin(tilt),tilt);
+      const inner=z<2.3&&x<.3,d=inner?.20:.28,zc=inner?2.205:z,yc=1.4934-(zc-2)*.382+.062;
+      P.addExternalArmor('hull',markEraFurniture(box(W,H,d)),side*x,yc,zc,TILT);
+      // the pad, between the cover and the block's underside, its ends square to the hull's axis
+      const bot=under(zc,yc),mid=zc-(H/2)*sn,z0=mid-(d/2)*c+INSET,z1=mid+(d/2)*c-INSET;
+      const a=side*(x-W/2+INSET),b=side*(x+W/2-INSET),x0=Math.min(a,b),x1=Math.max(a,b);
+      const ring=(at:number):[number,number][]=>[[x0,t72b3mGlacisCoverY(at)-.006],[x1,t72b3mGlacisCoverY(at)-.006],[x1,bot(at)+.005],[x0,bot(at)+.005]];
+      const zs=[z0,...(z0<2.61&&2.61<z1?[2.61]:[]),z1];
+      P.addExternalArmor('hull',markEraFurniture(sectionSolid(zs.map(at=>({z:at,ring:ring(at)})))));
     }
   });
 }
