@@ -209,7 +209,7 @@ function roofEquipment(P:TankBuilderPort):void{
   // nothing under it; it runs down onto that stowage, 42 mm further forward (top height unchanged).
   top(P,'turretDetail',cylY(.029,.4954,16),.27545,2.37489,-1.07821);
   top(P,'turretDetail',cylY(.02,.04,12),.2756,2.651,-1.07821);
-  top(P,'turretDetail',cylY(.01735,.8253,12),-.7956,2.51954,-2.345);
+  top(P,'turretDetail',antennaPart(cylY(.01735,.8253,12)),-.7956,2.51954,-2.345);
   antenna(P);
 }
 function antenna(P:TankBuilderPort):void{

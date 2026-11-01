@@ -11,14 +11,14 @@ import { join } from 'node:path';
 import { COMBAT_TABLE, DUEL, DUEL_TABLE, combatTake, siteScene } from './site50.mjs';
 import { combatVerdict, fightFaults } from './combat-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 const only = process.argv[2]?.split(',').map(Number) ?? null;
 const worlds = new Map();
 const worldOf = (map) => {
   if (!worlds.has(map)) {
-    const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-    const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    const f = surveyPath(map);
+    const features = f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
     worlds.set(map, { features, model: features ? worldModel(features) : null });
   }
   return worlds.get(map);

@@ -3,7 +3,7 @@
 // pictures, read from the sources that already own each datum. It imports no map config and no engine runtime, so the
 // picker reads it without loading a battlefield. (The blurred placeholders, src/ui/mapLqip.ts, stay the loading screen's
 // own chunk: the picker's cards show the stills themselves.)
-//   name: catalog.ts getLocalizedMapName      regions: regionTags.ts mapRegionTags (the camo browser's landscape tags)
+//   name: mapNames.ts getLocalizedMapName     regions: regionTags.ts mapRegionTags (the camo browser's landscape tags)
 //   hours: battleWeatherPolicy.ts BATTLE_TIMES, Mars and the Moon held to day (battleAtmosphereRuntime.ts prepare)
 //   modes: every battle mode on every map (no mode is tied to a map; gameModeCatalog.ts BATTLE_MODE_IDS)
 //   random: mapIds.ts RANDOM_BATTLE_MAP_IDS
@@ -14,7 +14,8 @@
 //     importing that table from the picker's lazy chunk split it off the game's boot chunk, one more boot request.
 // There is no size datum: every map plays the same 1024 m square and its two sides start 720-860 m apart (Mars 513 m),
 // so a size class would sort all but one map together.
-import { MAP_IDS, RANDOM_BATTLE_MAP_IDS, isMapId, getLocalizedMapName, type MapId } from '../world/maps/catalog.ts';
+import { MAP_IDS, RANDOM_BATTLE_MAP_IDS, isMapId, type MapId } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from './mapNames.ts';
 import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { BATTLE_TIMES, type BattleTimeOfDay } from '../engine/battleWeatherPolicy.ts';
 import { mapRegionTags } from './regionTags.ts';

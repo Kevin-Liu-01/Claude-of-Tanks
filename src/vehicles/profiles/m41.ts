@@ -17,6 +17,7 @@
 // (profiles/pattonCast.ts castRing), here with squarer shoulders for the M41's welded flanks. A +Z hull's right is -X.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
@@ -600,7 +601,7 @@ function* buildM41Steps(P: TankBuilderPort, mark: M41Mark): TankProfileBuild {
     // whip antennas on the bustle
     for (const s of [-1, 1] as const) {
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.45, ROOF_Y + 0.03, -1.70);
-      P.addEquipment('turret', cylY(0.013, 0.015, 2.0, 8), s * 0.45, ROOF_Y + 1.03, -1.70, 0, 0, s * 0.03);
+      P.addEquipment('turret', antennaPart(cylY(0.013, 0.015, 2.0, 8)), s * 0.45, ROOF_Y + 1.03, -1.70, 0, 0, s * 0.03);
     }
     P.turretG.userData.m41TurretReceipt = {
       revision: 'm41-265-oracle', mark, roofY: ROOF_Y, turretHalfWidth: 1.13, bustleRearZ: -2.25,

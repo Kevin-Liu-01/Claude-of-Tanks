@@ -60,6 +60,9 @@ assert.equal(en('endScreen.kills', { count: 1 }), '1 kill');
 assert.equal(en('endScreen.kills', { count: 4 }), '4 kills');
 assert.equal(en('endScreen.deaths', { count: 1 }), '1 death');
 assert.equal(zh('endScreen.deaths', { count: 2 }), '阵亡 2 次');
+assert.equal(en('shotInfo.missileBlast', { targets: 1 }), 'Blast · 1 vehicle');
+assert.equal(en('shotInfo.missileBlast', { targets: 3 }), 'Blast · 3 vehicles');
+assert.equal(zh('shotInfo.missileBlast', { targets: 1 }), '爆炸 · 1 辆载具');
 assert.equal(en('docs.evidence.fleetValue', { count: '220' }), 'vehicles', 'the docs unit word no longer repeats the count');
 
 // --- pseudo-locale -----------------------------------------------------------------------------------------------------
