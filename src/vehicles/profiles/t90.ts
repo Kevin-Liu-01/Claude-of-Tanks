@@ -442,244 +442,205 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
 // the two OTShU-1-7 Shtora emitters at the mantlet, six 902B launchers a side, the 1G46 sight box, the commander's
 // cupola and machine-gun station, and flat K-5 plates on the crown. These steps belong to t90_1992 alone.
 
-// Burlak uses the proven T-90A chassis and native six-wheel course.  The
-// earlier standalone prototype scaffold drifted into a longer, taller hull
-// even though the Burlak change is the rotating fighting compartment and
-// autoloader bustle.  Reuse the authored family chassis, then replace only
-// the complete turret/gun package with the distinct repository-authored
-// Burlak assembly.
-function addT90BurlakShoulderFoundationNative2026(P: T90BuilderPort, {
-  includeProtection = true,
-  carrierDrop = 0,
-  frontLift = 0,
-  frontForward = 0,
-}: {
-  includeProtection?: boolean;
-  carrierDrop?: number;
-  frontLift?: number;
-  frontForward?: number;
-} = {}): void {
+// ---- T-90A Burlak prototype turret (lane t90-family-267, S5; Main's ruling 2026-11-01) ----
+// The Burlak prototype rides the source-X T-90A hull and running gear; its turret is built to the Burlak X source's
+// (t90a_burlak_x_source.glb, the Armored Warfare model the production t90a_burlak follows), true size, from that source's
+// measured stations (docs/references/tanks/t90a_burlak_x.source-measurements.json). Its ring datum seats on the T-90A
+// X ring, so the source's turret-local stations are this turret's local frame (metres over the ring plane, forward +z).
+// What the Burlak is in the BTVT drawings and the prototype's photographs: a tall slab-sided welded turret, an arrow
+// plan that is widest at its shoulders and narrows to a neck, the long welded autoloader bustle, two chevron cheek packs
+// of four cassettes, the commander's cast pod on the left with his machine gun, the gunner's sight mast and five-tube
+// grenade fans on the bustle's flanks. The 266 native turret (a cast dome, diamond wings, tapered bustle) is retired.
+// The cannon stays the T-90A X tube on its own seat (the gate's declared departure, SOURCE_WORLD_BUILD_OFFSETS).
+
+// The welded shell, rear to front: z, half-width left and right at the side plates, roof, floor. The side plates stand
+// to 46 % of their height and lean 70 mm in to the roof edge (the source's welded top chamfer).
+const BURLAK_SHELL_STATIONS: readonly (readonly [z: number, left: number, right: number, top: number, floor: number])[] = [
+  [-3.2988, .914, .914, .6534, .2284], [-3.2147, .956, .956, .7006, .1911], [-3.0147, .956, .956, .7006, .1403],
+  [-2.8147, .956, .956, .7191, .1402], [-1.6147, .956, .956, .7191, .1396], [-1.4147, .918, .918, .7006, .0907],
+  [-1.2147, .7257, .7257, .6998, .0598], [-1.0147, .8184, .8184, .6932, .0598], [-.8147, .911, .911, .6863, .0598],
+  [-.6147, 1.0052, 1.0052, .6794, .0598], [-.4147, 1.1008, 1.1008, .6725, .0598], [-.2147, 1.1963, 1.1963, .6630, .0598],
+  [-.0147, 1.2919, 1.2919, .6289, .0598], [.1853, 1.3875, 1.3875, .5947, .0598], [.3853, 1.4833, 1.4833, .5606, .0588],
+  [.5853, 1.5789, 1.5639, .5265, .0548], [.7853, 1.3972, 1.3356, .4949, .0548], [.9853, 1.1679, 1.1074, .4906, .0548],
+  [1.0853, 1.0533, .9933, .4735, .0548],
+];
+const BURLAK_BUSTLE = Object.freeze({ frontZ: -1.4147, rearZ: -3.2988, halfWidth: .956, roofY: .7191, floorY: .1396 });
+
+function replaceT90BurlakCoreNative2026(P: T90BuilderPort): void {
   const { box, polyTurret } = KIT;
-  // Burlak keeps the mature cast T-90A fighting compartment.  Its defining
-  // armor is a clipped, open-edged outer shoulder system rather than a
-  // second solid turret.  The inboard thirds disappear into the native dome
-  // and the outboard tips thin in both plan and elevation.
-  for (const s of [-1, 1]) {
-    // Thin horizontal shoulder diamond: this is the broad plan-view plate
-    // visible around the gun court, not a deep solid side wall.  Its rear
-    // edge overlaps the core and its outboard tip overlaps the terminal leaf.
-    P.add('turret', polyTurret([
-      [s * 0.28, 1.30], [s * 0.82, 1.30], [s * 1.84, 0.98],
-      [s * 1.80, 0.84], [s * 1.46, 0.62], [s * 1.44, 0.05],
-      [s * 0.42, 0.48],
-    ], 0.07, 1.00, 1.00), 0, 0.40 - carrierDrop + frontLift, frontForward);
-    // Unequal planted protection cassettes preserve negative breaks between
-    // the wing and the dome instead of recreating the rejected slab wall.
-    if (includeProtection) {
-      for (const [x, y, z, yaw, roll, w, h, d] of [
-        [0.72, 0.39, 1.28, 0.31, -0.24, 0.44, 0.36, 0.10],
-        [1.04, 0.37, 1.04, 0.47, -0.20, 0.48, 0.38, 0.11],
-        [1.43, 0.33, 0.78, 0.62, -0.14, 0.44, 0.35, 0.12],
-        [1.72, 0.37, 0.92, 0.28, -0.08, 0.34, 0.10, 0.11],
-      ]) {
-        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.045), s * x, y, z, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.72), 0, h * 0.52, 0.030), s * x, y, z, roll, -s * yaw, 0);
-      }
-    }
-    // A short return makes the carrier visibly load-bearing in side and yaw
-    // views while leaving the lower shoulder undercut open.
-    P.add('turret', box(0.16, 0.30, 0.36), s * 1.63, 0.27, -0.50, 0, 0, -s * 0.10);
-    P.add('turretDark', box(0.018, 0.24, 0.30), s * 1.72, 0.27, -0.50, 0, 0, -s * 0.10);
-    // Full rear cast shoulder: the measured plan remains near 1.5 m half-
-    // width through z=-0.9 before entering the narrow autoloader neck.  A
-    // buried unequal service pack supplies that supported shoulder volume
-    // while retaining the lower undercut and the one-shell topology.
-    // 267: its underside stays 13.5 cm over the ring plane, where the retired 0.85 section squash drew it (at 15.5 cm
-    // the slot under it read as a roof pocket on the census at some grid alignments).
-    P.add('turret', box(0.30, 0.33, 0.68), s * 1.42, 0.30, -0.84, -0.06, -s * 0.10, 0);
-    P.add('turretDark', box(0.018, 0.24, 0.56), s * 1.58, 0.31, -0.84, -0.06, -s * 0.10, 0);
-    P.add('turretDetail', box(0.23, 0.016, 0.040), s * 1.42, 0.48, -0.61, -0.06, -s * 0.10, 0);
-  }
-  // Buried mantlet/chin bridge.  The reference protection court continues
-  // to z≈1.62 while the closed cast core stops near z=1.3; this supported
-  // center mass joins both shoulder roots to the gun cradle and prevents a
-  // bare barrel from appearing to enter the turret through a narrow slit.
-  P.add('turret', box(0.90, 0.36, 0.34), 0, 0.18 + frontLift, 1.43 + frontForward, -0.08, 0, 0);
-  P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17 + frontLift, 1.605 + frontForward, -0.08, 0, 0);
+  // Retain the mature T-90A cannon tree but remove every cast-turret bucket and direct fitting: one rotating mass.
+  P.turretG.clear();
+  P.turretG.add(P.gunG);
+  P.clear('turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack');
+  P.add('turret', weldedStationLoft(BURLAK_SHELL_STATIONS.map(([z, l, r, top, floor]): WeldedStation =>
+    [z, floor, top, -l, r, -l, r, -(l - .07), r - .07])));
+  // Closed ring collar under the shell's floor (the 267 census fix: closed prisms, so the seat over the deck cannot
+  // fold an open one into a lid inside the shell).
+  const apron = [
+    [-0.22, 1.02], [0.22, 1.02], [0.92, 0.68], [1.36, 0.08],
+    [1.26, -0.68], [0.82, -1.02], [-0.82, -1.02], [-1.26, -0.68],
+    [-1.36, 0.08], [-0.92, 0.68],
+  ];
+  P.add('turret', polyTurret(apron, 0.24, 0.94, 0.95, true), 0, -0.18, -0.06);
+  P.add('turretDark', polyTurret(apron, 0.022, 0.95, 0.97, true), 0, 0.04, -0.06);
+  // the turret's ring flange on the race, inside the ring well's rim (the seat over the deck leaves it as built there)
+  P.add('turret', KIT.cylY(.83, .83, .06, 48), 0, .03, 0);
+  // The two welded blocks either side of the mantlet and the cradle housing under it (the source's front plates).
+  P.add('turret', orientedSlab(
+    [-1.0638, .1744, 1.0753], [-.2688, .1744, 1.0753], [-.2758, .0959, 1.3853], [-.7082, .0959, 1.3853],
+    [-1.0638, .4744, 1.0753], [-.2688, .4744, 1.0753], [-.2758, .3959, 1.3853], [-.7082, .3959, 1.3853]));
+  P.add('turret', orientedSlab(
+    [.2913, .1744, 1.0753], [1.0063, .1744, 1.0753], [.7663, .1354, 1.2853], [.2913, .1354, 1.2853],
+    [.2913, .4744, 1.0753], [1.0063, .4744, 1.0753], [.7663, .4354, 1.2853], [.2913, .4354, 1.2853]));
+  P.add('turret', box(.54, .431, .261), .001, .2505, 1.175);
+  P.add('turretDark', box(.46, .34, .014), .001, .2505, 1.312);
 }
 
-function addT90BurlakBustleNative2026(
-  P: T90BuilderPort,
-  { scale = 1 }: { scale?: number } = {},
-): void {
-  const { box } = KIT;
-  const rootZ = -1.08;
-  const fit = (value: number): number => value * scale;
-  const fitZ = (z: number): number => rootZ + (z - rootZ) * scale;
-  // One shallow tapered bustle begins inside the existing cast rear bins.
-  // It is a closed authored loft with a real floor and roof; lids and rails
-  // merely articulate that load-bearing body and never substitute for it.
-  // Scale remains available to comparison tools, while production vehicles
-  // use the complete source envelope around the fixed neck plane.
-  const stations: WeldedStation[] = [
-    [-1.08, 0.00, 0.64, -1.10, 1.10, -0.98, 0.98, -1.04, 1.04],
-    [-1.50, 0.05, 0.67, -1.02, 1.02, -0.90, 0.90, -0.96, 0.96],
-    [-2.08, 0.07, 0.65, -0.84, 0.84, -0.72, 0.72, -0.79, 0.79],
-    [-2.68, 0.08, 0.60, -0.72, 0.72, -0.60, 0.60, -0.67, 0.67],
-    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the tail's floor stays level with the
-    // station ahead of it; it dropped 8 cm to the ring's plane, into the stern's drums and bins it swings over)
-    [-3.30, 0.08, 0.58, -0.58, 0.58, -0.47, 0.47, -0.54, 0.54],
-  ].map(([z, y0, y1, xl, xr, xbl, xbr, xtl, xtr]): WeldedStation => [
-    fitZ(z), fit(y0), fit(y1), fit(xl), fit(xr),
-    fit(xbl), fit(xbr), fit(xtl), fit(xtr),
-  ]);
-  P.add('turret', weldedStationLoft(stations));
-  for (const [z, w, d, y] of [
-    [-1.34, 1.54, 0.32, 0.68], [-1.80, 1.44, 0.35, 0.69],
-    [-2.29, 1.26, 0.36, 0.67], [-2.83, 1.04, 0.36, 0.62],
-  ]) {
-    // 2026-10-19 (owner float sweep): the lids kept a flat seat while the bustle roof falls aft, leaving them 8-16 mm
-    // up; each lid and its strip is dropped onto the roof.
-    P.snapGroup('t90-burlak-bustle-lid', () => {
-      P.add('turretDark', box(fit(w), fit(0.018), fit(d)), 0, fit(y), fitZ(z));
-      P.add('turretDetail', box(fit(w * 0.80), fit(0.012), fit(0.040)),
-        0, fit(y + 0.015), fitZ(z + d * 0.39));
-    }, { reachM: 0.04, mode: 'down' });
+// The chevron cheek packs: per side four sloped K-5 style panels on five vertical carrier ribs, laid along the pack's axis
+// 42 deg out from the bore. Each panel is a 60 mm plate climbing 31 deg from its rear edge at the shell to its front edge
+// 0.66 m out; the ribs under them stand to the panels' line from the shell and are cut away under their fronts, so the
+// pack's front reads as a raked wedge over air (the source's front cheeks, Object_23). Panels: x, z, width, floor,
+// roof; ribs: x, z, top, axis yaw (deg), length.
+const BURLAK_CHEEK_PANELS = Object.freeze({
+  right: [[1.675, .924, .290, .086, .515], [1.456, 1.116, .251, .060, .489], [1.253, 1.296, .255, .060, .489],
+    [1.040, 1.481, .261, .086, .514]],
+  left: [[-1.689, .962, .295, .087, .507], [-1.466, 1.163, .248, .060, .489], [-1.261, 1.341, .252, .060, .490],
+    [-1.046, 1.517, .270, .090, .510]],
+} as const);
+const BURLAK_CHEEK_RIBS = Object.freeze({
+  right: [[1.792, .819, .551, 42, .673], [1.564, 1.031, .531, 42, .673], [1.359, 1.208, .528, 42, .667],
+    [1.157, 1.396, .529, 42, .673], [.945, 1.572, .546, 42, .673], [.752, 1.532, .419, 21, .433], [.295, 1.539, .419, 1, .379]],
+  left: [[-1.809, .859, .551, -42, .659], [-1.572, 1.077, .524, -42, .673], [-1.368, 1.257, .524, -42, .673],
+    [-1.165, 1.430, .525, -42, .673], [-.945, 1.622, .543, -42, .673], [-.291, 1.630, .538, 0, .482]],
+} as const);
+
+/** A four-corner section (u forward along `deg` from +z, y up) as a slab `thick` across that axis, set at (x, z). */
+function burlakAxisSlab(quad: readonly (readonly [number, number])[], thick: number, deg: number, x: number, z: number): THREE.BufferGeometry {
+  const a = deg * Math.PI / 180, ax = Math.sin(a), az = Math.cos(a);
+  const ring = (v: number) => quad.map(([u, y]) => [x + u * ax + v * az, y, z + u * az - v * ax]);
+  return orientedSlab(...ring(-thick / 2), ...ring(thick / 2));
+}
+
+function addT90BurlakCheekPacksNative2026(P: T90BuilderPort): void {
+  // The panels are the turret's reactive cheek armour: each side's are its turret_era cluster (spent and restored with
+  // it); the ribs under them are the turret's permanent carriers.
+  const endPlates = {
+    right: [[.307, .087, 1.345], [.662, .087, 1.346], [.796, .357, 1.676], [.307, .357, 1.678],
+      [.307, .147, 1.345], [.662, .147, 1.346], [.796, .381, 1.676], [.307, .381, 1.678]],
+    left: [[-1.10, .091, 1.385], [-.30, .091, 1.385], [-.30, .45, 1.859], [-1.156, .45, 1.859],
+      [-1.10, .151, 1.385], [-.30, .151, 1.385], [-.30, .51, 1.859], [-1.156, .51, 1.859]],
+  } as const;
+  for (const side of ['right', 'left'] as const) {
+    const s = side === 'right' ? 1 : -1;
+    P.destructibleCluster(`turret_era_${side === 'right' ? 'R' : 'L'}`, () => {
+      for (const [x, z, width, floor, roof] of BURLAK_CHEEK_PANELS[side]) {
+        P.add('turret', burlakAxisSlab([[-.3315, floor], [.3315, roof - .024], [.3315, roof], [-.3315, floor + .06]],
+          width - .012, s * 42, x, z));
+        // the panel's lid seam, 4 mm proud of its sloped top
+        P.add('turretDark', burlakAxisSlab([[-.29, floor + .056], [.29, roof - .008], [.29, roof + .004], [-.29, floor + .068]],
+          width * .78, s * 42, x, z));
+      }
+      // the end plate at the mantlet, climbing forward over the cradle housing (the left the larger)
+      P.add('turret', orientedSlab(...endPlates[side]));
+    });
+    for (const [x, z, top, deg, len] of BURLAK_CHEEK_RIBS[side]) {
+      P.add('turretDetail', burlakAxisSlab([[-len / 2, .057], [len / 2, top - .067], [len / 2, top - .01], [-len / 2, .377]],
+        .034, deg, x, z));
+    }
   }
-  // The bustle side's half-width at height y and station z (the loft's straight runs between its stations and between
-  // each station's floor, chine and roof rows).
-  const wallX = (y: number, z: number): number => {
-    const at = ([, y0, y1, , xm, , xb, , xt]: WeldedStation): number => {
-      const ym = y0 + (y1 - y0) * 0.46;
-      return y <= ym ? xb + (xm - xb) * (y - y0) / (ym - y0) : xm + (xt - xm) * (y - ym) / (y1 - ym);
-    };
-    const behind = stations.findIndex((station) => station[0] <= z);
-    const i = behind < 0 ? stations.length - 1 : Math.max(1, behind);
-    const a = stations[i - 1], b = stations[Math.min(i, stations.length - 1)];
-    const t = b[0] === a[0] ? 0 : Math.min(1, Math.max(0, (z - a[0]) / (b[0] - a[0])));
-    return at(a) + (at(b) - at(a)) * t;
-  };
+}
+
+function addT90BurlakBustleNative2026(P: T90BuilderPort): void {
+  const { box, cylZ } = KIT;
+  const { frontZ, rearZ, halfWidth, roofY, floorY } = BURLAK_BUSTLE;
+  // Two longitudinal roof hatches over the autoloader with their stiffeners, and the cable box at the bustle's root.
+  for (const x of [-.4667, .4683]) {
+    P.add('turretDark', box(.41, .012, 1.371), x, roofY + .011, -2.3155);
+    for (const z of [-2.895, -1.735]) P.add('turretDetail', box(.17, .010, .029), x, roofY + .0179, z);
+  }
+  P.add('turretDetail', box(.4426, .179, .664), .4880, .7555, -1.148);
+  // Grab rails along both bustle sides, and the five-tube grenade fans on its flanks: four tubes radiating 70 deg
+  // either side of square from a bracket plate run out of the side plate.
   for (const s of [-1, 1]) {
-    // 2026-10-19 (owner float sweep): the yawed side pods stood 25-46 mm off the tapering bustle wall; each pod and its
-    // face plate is seated on the wall.
-    for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) {
-      // 267 (roof-pocket census): each pod stands on a foot plate run in to the bustle side, which falls away under the
-      // chine the pod seats on; the slot under the pod's floor read as a pocket once the section rose. The foot rides
-      // the pod's seat move, so its lip stays 15 mm proud of the pod's outer face and its inner edge buried in the wall.
-      const yaw = -s * 0.32, ux = [Math.cos(yaw), -Math.sin(yaw)], uz = [Math.sin(yaw), Math.cos(yaw)];
-      const at = (across: number, along: number): [number, number] => [
-        s * fit(x) + ux[0] * across + uz[0] * along, fitZ(z) + ux[1] * across + uz[1] * along];
-      const half = fit(d) / 2 + fit(0.01), outer = s * fit(0.095 + 0.015), inner = -s * fit(0.095);
-      const footTop = fit(0.235), footBottom = fit(0.21);
-      const inWall = (point: [number, number]): [number, number] => [s * (wallX(footBottom, point[1]) - fit(0.015)), point[1]];
-      const front = at(inner, half), rear = at(inner, -half);
-      const foot = KIT.polyTurret([at(outer, half), at(outer, -half), rear, inWall(rear), inWall(front), front],
-        footTop - footBottom, 1, 1, true);
-      P.snapGroup('t90-burlak-bustle-pod-foot', () => P.add('turretDetail', foot, 0, footBottom, 0), { reachM: 0.004 });
-      P.snapGroup('t90-burlak-bustle-pod', () => {
-        P.add('turret', box(fit(0.19), fit(0.28), fit(d)), s * fit(x), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
-        P.add('turretDark', box(fit(0.015), fit(0.22), fit(d * 0.80)),
-          s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
-      }, { reachM: 0.06, onMove: ([mx, my, mz]) => { foot.translate(mx, my, mz); } });
+    P.add('turretDetail', box(.12, .063, 1.114), s * .8095, .6505, -1.927);
+    for (const z of [-2.93, -2.55, -2.16, -1.77]) P.add('turretDetail', box(.03, .023, .27), s * (halfWidth + .015), .6154, z - .1147);
+    // (Drawn tubes, not live launchers: the fleet's banks may not fire aft of 77 deg, vehicleAuxiliaryGeometry.ts.)
+    P.add('turretDetail', box(.36, .063, .54), s * (halfWidth + .10), .2995, -2.67);
+    for (const [x, z, deg, y] of [[1.100, -2.286, 20, .30], [1.242, -2.518, 62, .30], [1.240, -2.820, 118, .30],
+      [1.098, -3.052, 160, .30], [1.050, -3.042, 180, .414]]) {
+      const yawRad = s * deg * Math.PI / 180;
+      P.add('turretDetail', cylZ(.042, .34, 10).rotateX(-.22).rotateY(yawRad), s * x, y, z);
+      P.add('turretDark', cylZ(.036, .012, 10).translate(0, 0, .176).rotateX(-.22).rotateY(yawRad), s * x, y, z);
     }
-    if (scale < 0.999) {
-      // Keep optional reduced comparison envelopes watertight without changing
-      // the visible armour-pod proportions. Production vehicles remain scale=1.
-      P.add('turret', box(fit(0.16), fit(0.24), fit(0.20)),
-        s * fit(1.07), fit(0.37), fitZ(-2.44), 0, -s * 0.32, 0);
-    }
-    for (const y of [0.32, 0.43, 0.54]) P.add('turretDetail',
-      box(fit(0.030), fit(0.022), fit(0.68)), s * fit(0.50), fit(y), fitZ(-3.00));
-    for (const z of [-3.32, -3.08, -2.84, -2.68]) P.add('turretDetail',
-      box(fit(0.030), fit(0.24), fit(0.030)), s * fit(0.50), fit(0.43), fitZ(z));
   }
+  // Rear stowage plates with their tie-down bars, and the two lifting hooks over the rear face's top edge.
   for (const [x, w, n] of [[-0.42, 0.42, 4], [0.10, 0.34, 3], [0.43, 0.24, 2]]) {
-    P.add('turretDark', box(fit(w), fit(0.20), fit(0.022)), fit(x), fit(0.43), fitZ(-3.315));
-    for (let i = 0; i < n; i++) P.add('turretDetail',
-      box(fit(0.020), fit(0.14), fit(0.016)),
-      fit(x - w * 0.34 + i * (w * 0.68 / Math.max(1, n - 1))), fit(0.43), fitZ(-3.332));
+    P.add('turretDark', box(w, .20, .022), x, .45, rearZ + .002);
+    for (let i = 0; i < n; i++) P.add('turretDetail', box(.020, .14, .010), x - w * .34 + i * (w * .68 / Math.max(1, n - 1)), .45, rearZ - .010);
+  }
+  for (const x of [-.635, .635]) {
+    P.add('turretDetail', box(.05, .03, .14), x, .652, rearZ - .045);
+    P.add('turretDetail', box(.05, .154, .03), x, .59, rearZ - .10);
   }
   P.turretG.userData.t90BurlakBustleReceipt = Object.freeze({
-    scale,
-    rootZ,
-    rearZ: fitZ(-3.30),
-    frontHalfWidth: fit(1.10),
-    frontHeight: fit(0.64),
-    maxRoofY: fit(0.69),
+    scale: 1,
+    rootZ: frontZ,
+    rearZ,
+    frontHalfWidth: halfWidth,
+    frontHeight: roofY,
+    floorY,
+    maxRoofY: roofY + .0229,
   });
 }
 
 function finishT90BurlakNative2026(P: T90BuilderPort): void {
-  const { box, cylY, cylZ, torus } = KIT;
-  // Preserve the full authored magazine envelope. A previous 0.90 scale made
-  // the Burlak bustle visibly undersized relative to its turret foundation.
-  const bustleScale = 1;
-  const bustleRootZ = -1.08;
-  const fitBustle = (value: number): number => value * bustleScale;
-  const fitBustleZ = (z: number): number => (
-    bustleRootZ + (z - bustleRootZ) * bustleScale
-  );
+  const { box, cylY, cylZ } = KIT;
+  addT90BurlakCheekPacksNative2026(P);
+  addT90BurlakBustleNative2026(P);
+  // The commander's cast pod bulging from the left flank, round in plan (0.51 m about x -1.2654, z -0.85): z,
+  // half-width, floor, roof.
+  const pod: readonly (readonly [number, number, number, number])[] = [
+    [-1.36, .05, .14, .40], [-1.30, .25, .10, .45], [-1.20, .37, .08, .48], [-1.10, .45, .07, .495], [-1.00, .49, .06, .50],
+    [-.85, .51, .06, .50], [-.70, .49, .06, .50], [-.60, .45, .06, .495], [-.50, .38, .07, .48], [-.40, .25, .09, .45],
+    [-.34, .05, .12, .40]];
+  P.add('turret', weldedStationLoft(pod.map(([z, h, floor, roof]): WeldedStation =>
+    [z, floor, roof, -1.2654 - h, -1.2654 + h, -1.2654 - h * .88, -1.2654 + h * .88, -1.2654 - h * .62, -1.2654 + h * .62])));
+  // The rail bins along the pod and the left roof edge, on three posts.
+  for (const [z, d] of [[-.70, .66], [.06, .74]]) P.add('turretDetail', box(.15, .122, d), -1.358, .726, z);
+  for (const z of [-.95, -.30, .36]) P.add('turretDetail', box(.07, .30, .07), -1.358, .58, z);
+  // the bracket the two left-flank grenade tubes and the bins' middle post stand on
+  P.add('turret', box(.50, .39, .30), -1.35, .255, -.15);
 
-  addT90BurlakShoulderFoundationNative2026(P);
-  addT90BurlakBustleNative2026(P, { scale: bustleScale });
-
-  // Prototype roof hierarchy: a broad slew seat, compact panoramic head,
-  // two hatch rings and a clearly founded NSVT.  These forms supply the tall
-  // but low-area silhouette visible in the reference without inflating the
-  // cast shell itself.
-  P.add('turret', box(0.52, 0.14, 0.48), 0.38, 0.63, -0.70);
-  P.add('turretDark', torus(0.22, 0.022, 18), 0.38, 0.71, -0.70);
-  // 2026-10-19 (owner float sweep): the sight head stood 40 mm over its seat box (and its window 19 mm off its face),
-  // and the left hatch ring 74 mm over the crown with the commander station on it. The window lies on the head's
-  // raked face, and the ring's collar runs down into the crown.
-  // 2026-10-21 (float-gaps 230): the head keeps its 0.92 station (its crown is the turret's top, pinned by
-  // fleetResize20261002; the 10-19 sweep had dropped it 42 mm into the box); a 50 mm neck inside the slew ring
-  // (corners 21 mm inside the ring's tube) runs from 2.5 mm inside the seat box to 7.5 mm inside the head.
-  P.add('turret', box(0.26, 0.05, 0.24), 0.38, 0.7225, -0.70);
-  P.add('turret', orientedSlab(
-    [-0.15, -0.18, -0.14], [0.15, -0.18, -0.14], [0.15, -0.18, 0.14], [-0.15, -0.18, 0.14],
-    [-0.11, 0.18, -0.10], [0.11, 0.18, -0.10], [0.11, 0.18, 0.10], [-0.11, 0.18, 0.10],
-  ), 0.38, 0.92, -0.70);
-  P.add('turretGlass', box(0.19, 0.16, 0.012), 0.38, 0.92, -0.576, -0.111, 0, 0);
-  P.add('turret', cylY(0.25, 0.28, 0.22, 18), -0.48, 0.72, -0.34);
-  P.add('turretDark', cylY(0.22, 0.22, 0.022, 16), -0.48, 0.84, -0.34);
-  P.add('turret', cylY(0.20, 0.23, 0.09, 16), 0.38, 0.77, -0.24);
-  P.add('turretDark', cylY(0.17, 0.17, 0.020, 14), 0.38, 0.825, -0.24);
-  // 2026-10-21 (watertight-230): each hatch ring stands on a cast collar down into the roof crown (0.64-0.68 under
-  // them). The rings were authored 6-9 cm over the crown, and the gap they and the commander's station closed over
-  // read as turret interior: the interior fills filled it as a dark stair-step under the left ring. The collars sit
-  // 8 mm inside each ring's lower radius and 1 cm up into it, so no face of a collar is coplanar with its ring.
-  P.add('turret', cylY(0.272, 0.272, 0.13, 18), -0.48, 0.675, -0.34);
-  P.add('turret', cylY(0.222, 0.222, 0.125, 16), 0.38, 0.6725, -0.24);
-  // Restore the richer repository-authored roof cadence from the earlier
-  // Burlak pass, but keep it below the corrected low combat envelope.  The
-  // long left foundation is half buried in the crown; every periscope and
-  // sight head lands on that foundation or a hatch ring instead of becoming
-  // the freestanding roof forest used by the discarded prototype.
-  P.add('turret', box(0.34, 0.13, 0.86), -1.12, 0.67, -0.28);
-  P.add('turretDark', box(0.29, 0.014, 0.78), -1.12, 0.742, -0.28);
-  for (const [x, z, yaw] of [
-    [-0.78, -0.29, -0.22], [-0.58, -0.22, 0], [-0.38, -0.29, 0.22],
-    [0.18, -0.07, -0.18], [0.47, -0.10, 0.18],
-  ]) {
-    P.add('turretDark', box(0.12, 0.055, 0.070), x, 0.79, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.080, 0.032, 0.010), x, 0.802, z + 0.040, 0, yaw, 0);
+  // Roof suite at the source's stations: the gunner's (right) and commander's (left) hatch rings, the gunner's sight
+  // housing, the commander's panoramic sight on its pedestal, the gunner's sight mast and the roof boxes.
+  P.add('turret', cylY(.292, .292, .10, 28), .5913, .670, -.3747);
+  P.add('turretDark', cylY(.274, .274, .025, 28), .5913, .728, -.3747);
+  P.add('turret', cylY(.267, .267, .10, 28), -.6788, .687, -.0947);
+  P.add('turretDark', cylY(.251, .251, .025, 28), -.6788, .745, -.0947);
+  P.add('turret', cylY(.17485, .17485, .4004, 24), .9818, .7240, .24);
+  P.add('turretDetail', box(.21, .10, .10), .9818, .865, .40);
+  P.add('turretGlass', box(.17, .07, .012), .9818, .865, .451);
+  P.add('turret', cylY(.24465, .24465, .129, 24), -.4988, .7206, -.8242);
+  P.add('turretDetail', cylY(.145, .145, .2798, 24).scale(1.48, 1, 1), -.4989, .9186, -.795);
+  P.add('turretDetail', box(.2978, .0889, .2803), -.4987, 1.1049, -.7881);
+  P.add('turretGlass', box(.1873, .2056, .012), -.4994, .9323, -.6745);
+  P.add('turretDark', box(.3317, .0117, .0634), -.4989, 1.0634, -.6997);
+  P.add('turretDetail', cylY(.056, .056, .90, 12), .2930, 1.1097, -.4709);
+  for (const y of [.8354, 1.0554, 1.2854]) P.add('turretDetail', box(.10, .0615, .096), .2930, y, -.4709);
+  P.add('turretDetail', box(.30, .18, .22), .395, 1.10, -.49);
+  P.add('turretDetail', box(.09, .03, .13), .2930, 1.572, -.4705);
+  // the periscope covers in two rows down the roof's centre (tops on the falling roof line)
+  for (const x of [-.114, .114]) for (const [z, top] of [[-.326, .752], [-.022, .734], [.269, .684], [.561, .634]]) {
+    P.add('turretDetail', box(.123, .14, .285), x, top - .07, z);
   }
-  P.add('turret', box(0.30, 0.15, 0.28), 0.36, 0.57, 0.31, 0, -0.12, 0);
-  P.add('turretDark', box(0.25, 0.090, 0.014), 0.36, 0.58, 0.462, 0, -0.12, 0);
-  P.add('turretGlass', box(0.19, 0.060, 0.008), 0.36, 0.58, 0.471, 0, -0.12, 0);
-  // Autoloader feed-lid and two longitudinal rub rails.  They overlap the
-  // closed bustle roof and add mechanical scale without altering its plan.
-  P.add('turretDark', box(fitBustle(0.72), fitBustle(0.014), fitBustle(0.66)),
-    fitBustle(0.02), fitBustle(0.695), fitBustleZ(-2.18));
-  P.add('turretDetail', box(fitBustle(0.030), fitBustle(0.022), fitBustle(1.42)),
-    fitBustle(-0.31), fitBustle(0.710), fitBustleZ(-2.19));
-  P.add('turretDetail', box(fitBustle(0.030), fitBustle(0.022), fitBustle(1.42)),
-    fitBustle(0.35), fitBustle(0.710), fitBustleZ(-2.19));
+  for (const [x, y, z, w, h, d] of [[.6409, .5017, .7075, .25, .3118, .3984], [.5676, .5608, .5470, .3879, .2532, .0984],
+    [.5798, .5455, .7629, .4104, .2241, .5701], [.0002, .5475, .9695, .3407, .1988, .188], [-.8622, .6972, -1.0823, .2105, .1914, .3081],
+    [1.0201, .4733, -.7451, .2104, .1909, .3086], [-.8254, .8102, -.5438, .1182, .3598, .1184],
+    [.555, .64, .64, .39, .10, .32]]) P.add('turretDetail', box(w, h, d), x, y, z);
   addT90AutomatedCommanderStation(P, {
-    x: -0.46,
-    z: -0.42,
-    seatY: 0.80,
+    x: -1.22,
+    z: -.87,
+    seatY: .43,
     yaw: 0,
     scale: 0.58,
     heightScale: 0.65,
@@ -690,22 +651,22 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
     weaponName: 't90aBurlakCommanderNsvt',
     receiptKey: 't90aBurlakAutomatedStationReceipt',
   });
-  // Unequal cheek smoke fans are a defining Burlak/T-90 station.  Their
-  // broad local shoes overlap the shoulder carrier; the launchers then grow
-  // outboard/upward from those seats instead of intersecting the roof.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.20, 0.16, 0.36), s * 1.30, 0.32, 0.12, 0, 0, -s * 0.15);
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: s < 0 ? 6 : 5, r: 0.040, len: 0.27, pitch: -0.41, splay: 0.30, arc: 0.56, spacing: 0.098 });
-    smoke.position.set(s * 1.34, 0.45, 0.13);
-    smoke.rotation.y = s * 1.02;
-    P.turretG.add(smoke);
+  // Grenade launchers: three in each cheek pack, two on the left flank and three on the right, at the source's tubes.
+  for (const [x, y, z, count, yaw, pitch, spacing] of [
+    [1.350, .366, 1.015, 3, .677, -.668, .285], [-1.3709, .3923, 1.0690, 3, -.604, -.668, .295],
+    [-1.68, .388, .187, 2, -1.35, -.379, .558], [1.3517, .573, -.314, 2, 1.405, -.458, .227],
+    [1.0417, .5413, -1.0435, 1, 1.170, -.266, .1]]) {
+    const bank = FITTINGS.smokeBank({ mats: P.mats, count, r: .055, len: .36, pitch, splay: 0, arc: 0, spacing, base: false });
+    bank.position.set(x, y, z);
+    bank.rotation.y = yaw;
+    P.turretG.add(bank);
   }
   {
-    // 267: the whip keeps the 2.27 m it drew under the retired 0.85 section squash; only its foot rises with the roof.
-    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h:2.27, r:0.014, rake:0.018, seed:61 });
-    antenna.position.set(0, 0.63, -1.02);
+    // The whip on its pot at the source's station, 0.19 m left of the centreline, to the source's 2.29 m.
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 2.28, r: 0.014, rake: 0, seed: 61 });
+    antenna.position.set(-.19, .69, -.94);
     P.turretG.add(antenna);
-    P.add('turretDark', cylY(0.045, 0.060, 0.12, 8), 0, 0.63, -1.02);
+    P.add('turretDark', cylY(0.045, 0.060, 0.12, 8), -.19, .69, -.94);
   }
 
   // The Burlak source uses the same 2A46 family run but terminates slightly
@@ -716,46 +677,8 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
   P.gunG.scale.z = 0.955;
   // 267: the trunnion stays where the 266 rig drew it (80 mm over the T-90A seat, seen through the retired 0.85
   // section squash), so the combat frame (t90MarkFrames.ts) and the gun-pitch curve (turretScaleGunPitch.ts) still
-  // describe the drawn gun; the restored turret section rises round it.
+  // describe the drawn gun.
   P.gunG.position.y = (P.gunG.position.y + 0.08) * 0.85;
-}
-
-function replaceT90BurlakCoreNative2026(P: T90BuilderPort): void {
-  const { polyMultiLoft, polyTurret } = KIT;
-  // Retain the mature T-90A cannon tree but remove every cast-turret bucket
-  // and direct fitting.  This guarantees there is one rotating primary mass,
-  // not a Burlak skin laid over a hidden T-90A dome.
-  P.turretG.clear();
-  P.turretG.add(P.gunG);
-  P.clear('turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack');
-
-  const plan = [
-    [-0.25, 1.28], [0.25, 1.28], [0.76, 1.10], [1.38, 0.78],
-    [1.40, 0.45], [1.46, 0.05], [1.58, -0.48], [1.64, -0.72],
-    [1.36, -1.08], [0.76, -1.20], [-0.76, -1.20], [-1.36, -1.08],
-    [-1.64, -0.72], [-1.58, -0.48], [-1.46, 0.05], [-1.40, 0.45],
-    [-1.38, 0.78], [-0.76, 1.10],
-  ];
-  const shoulder = [0.37, 0.37, 0.40, 0.43, 0.45, 0.47, 0.47, 0.46, 0.44, 0.41, 0.41, 0.44, 0.46, 0.47, 0.47, 0.45, 0.43, 0.40];
-  const crown = [0.54, 0.54, 0.58, 0.62, 0.64, 0.66, 0.66, 0.69, 0.65, 0.61, 0.61, 0.65, 0.69, 0.66, 0.66, 0.64, 0.62, 0.58];
-  P.add('turret', polyMultiLoft(plan, [
-    { height:0.02, inset:1.00 },
-    { height:shoulder, inset:0.98 },
-    { height:crown, inset:0.82 },
-  ]));
-  // Closed ring apron overlaps both the hull ring and the shell floor.  The
-  // short plan preserves the source undercut ahead of the autoloader neck.
-  const apron = [
-    [-0.22, 1.02], [0.22, 1.02], [0.92, 0.68], [1.36, 0.08],
-    [1.26, -0.68], [0.82, -1.02], [-0.82, -1.02], [-1.26, -0.68],
-    [-1.36, 0.08], [-0.92, 0.68],
-  ];
-  // 267 (roof-pocket census, turret RAISED 3328 cm2 in 8 pockets): both prisms are closed solids. Open-bottomed, the
-  // seat over the deck folded each one's walls to its lid, and those lids, up-facing inside the shell's floor, closed the
-  // shell there: its whole body read as a 1 cm floor plate, and the slew seat, hatch collars and roof foundations over it
-  // read as roofs over open air.
-  P.add('turret', polyTurret(apron, 0.24, 0.94, 0.95, true), 0, -0.18, -0.06);
-  P.add('turretDark', polyTurret(apron, 0.022, 0.95, 0.97, true), 0, 0.04, -0.06);
 }
 
 // Every turret-owned bucket of a build (tankFactoryCore BUCKET_DEF: turretG, gunG and recoilG owners), for replacing a
@@ -769,16 +692,12 @@ const T90_TURRET_BUCKETS = Object.freeze([
 
 function buildT90BurlakTurret(P: T90BuilderPort): void {
   // Lane t90-family-266 (the owner 2026-10-30: "take inspiration and update from the later t90s we added that have far
-  // more accurate models"): the Burlak prototype rides the source-X T-90A hull and running gear; its own Burlak turret
-  // (core, shoulders, autoloader bustle and roof suite) is unchanged and seats on that ring. The X turret is cleared
-  // whole; its gun stays (the X build runs first, in the profile below).
+  // more accurate models"): the Burlak prototype rides the source-X T-90A hull and running gear and seats its own Burlak
+  // turret on that ring (267: built to the Burlak X source, above). The X turret is cleared whole; its gun stays (the X
+  // build runs first, in the profile below).
   P.clear(...T90_TURRET_BUCKETS);
   replaceT90BurlakCoreNative2026(P);
   finishT90BurlakNative2026(P);
-  // 267 (both blind critics, S5: "the turret reads low against the photos and drawings"): the 0.85 section squash the
-  // native hull needed is retired. On the T-90A X ring the authored section is the source's own: over the deck the
-  // bustle roof stands 0.72 m, the crown 0.65 m and the front 0.56 m, as on t90a_burlak_x_source.glb (0.72 / 0.69 /
-  // 0.53) and the BTVT side drawing's tall bustle box; squashed they read 0.62 / 0.55 / 0.48.
 }
 
 /** Turret-ring height on the family chassis (builder frame). */
