@@ -25,30 +25,39 @@ function addRollerMounts(P: TankBuilderPort): void {
   // top and bottom (the plate reads as its own slab over the hull plate, not a paint line)
   const [py, pz] = onPlate(PLATE_LEN / 2, t / 2 - 0.002);
   P.addEquipment('hullDetail', box(halfW * 2, PLATE_LEN - 0.02, t), 0, py, pz, TILT, 0, 0);
-  for (const s of [0.018, PLATE_LEN - 0.018]) {
-    const [ry, rz] = onPlate(s, t + 0.006);
-    P.addEquipment('hullDetail', box(halfW * 2, 0.026, 0.014), 0, ry, rz, TILT, 0, 0);
+  for (const s of [0.02, PLATE_LEN - 0.02]) {
+    const [ry, rz] = onPlate(s, t + 0.011);
+    P.addEquipment('hullDetail', box(halfW * 2, 0.03, 0.022), 0, ry, rz, TILT, 0, 0);
     for (let i = 0; i < 9; i++) {
-      const [by, bz] = onPlate(s, t + 0.016);
+      const [by, bz] = onPlate(s, t + 0.025);
       P.addEquipment('hullDark', cylY(0.017, 0.017, 0.012, 8), -0.80 + i * 0.20, by, bz, TILT, 0, 0);
     }
   }
   for (const side of [-1, 1]) {
-    const [ey, ez] = onPlate(PLATE_LEN / 2, t + 0.006);
-    P.addEquipment('hullDetail', box(0.026, PLATE_LEN - 0.04, 0.014), side * (halfW - 0.013), ey, ez, TILT, 0, 0);
+    const [ey, ez] = onPlate(PLATE_LEN / 2, t + 0.011);
+    P.addEquipment('hullDetail', box(0.03, PLATE_LEN - 0.07, 0.022), side * (halfW - 0.015), ey, ez, TILT, 0, 0);
   }
-  // six seats for the roller's push frames, three in front of each track: a pad, two heavy lug cheeks and the pin
+  // the plate's lower edge in shadow under its rim (round 3: "the plate's raised rim hardly stands out")
+  const [dy, dz] = onPlate(0.002, t + 0.004);
+  P.addEquipment('hullDark', box(halfW * 2 + 0.01, 0.004, 0.03), 0, dy, dz, TILT, 0, 0);
+  // six seats for the roller's push frames, three in front of each track (round 3: "deep, chunky clevis blocks with
+  // pins"): a deep base block, the clevis's two cheeks with the shadowed slot between them, the pin through them and its
+  // bosses on the cheeks' outer faces
   for (const side of [-1, 1]) {
     for (const x of [0.26, 0.50, 0.74]) {
-      const sx = side * x, s = 0.115;
-      const [ay, az] = onPlate(s, t + 0.0225);
-      P.addEquipment('hullDetail', box(0.22, 0.16, 0.045), sx, ay, az, TILT, 0, 0);
+      const sx = side * x, s = 0.12;
+      const [ay, az] = onPlate(s, t + 0.03);
+      P.addEquipment('hullDetail', box(0.20, 0.20, 0.06), sx, ay, az, TILT, 0, 0);
+      const [ny, nz] = onPlate(s, t + 0.0605);
+      P.addEquipment('hullDark', box(0.078, 0.18, 0.001), sx, ny, nz, TILT, 0, 0);
       for (const o of [-1, 1]) {
-        const [cy, cz] = onPlate(s, t + 0.045 + 0.075);
-        P.addEquipment('hullDetail', box(0.055, 0.16, 0.15), sx + o * 0.072, cy, cz, TILT, 0, 0);
+        const [cy, cz] = onPlate(s, t + 0.061 + 0.065);
+        P.addEquipment('hullDetail', box(0.05, 0.20, 0.13), sx + o * 0.065, cy, cz, TILT, 0, 0);
+        const [oy, oz] = onPlate(s, t + 0.061 + 0.09);
+        P.addEquipment('hullDark', cylX(0.046, 0.016, 14), sx + o * 0.099, oy, oz);
       }
-      const [qy, qz] = onPlate(s, t + 0.045 + 0.105);
-      P.addEquipment('hullDark', cylX(0.032, 0.22, 12), sx, qy, qz);
+      const [qy, qz] = onPlate(s, t + 0.061 + 0.09);
+      P.addEquipment('hullDark', cylX(0.03, 0.18, 12), sx, qy, qz);
     }
   }
   // the lift chains' hitch lugs on the glacis (its top falls 1.4677 -> 1.2751 from z 2.324 to 3.408), inboard of the

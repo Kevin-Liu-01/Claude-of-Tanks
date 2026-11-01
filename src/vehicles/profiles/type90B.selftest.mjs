@@ -48,7 +48,7 @@ for (const quality of ['high', 'low']) {
       assert.ok(station, `${quality}: ${id} carries the roof M2 station`);
       assert.ok(station.getObjectByName('auxiliaryWeaponPitch'), `${quality}: ${id}'s M2 pitches in its cradle`);
       const muzzle = new THREE.Vector3(...station.userData.auxiliaryMuzzle).applyMatrix4(station.matrixWorld);
-      assert.ok(muzzle.y > 2.80 && muzzle.y < 2.93 && muzzle.z > 1.9 && muzzle.z < 2.3,
+      assert.ok(muzzle.y > 2.85 && muzzle.y < 3.00 && muzzle.z > 1.9 && muzzle.z < 2.3,
         `${quality}: ${id}'s M2 muzzle reaches over the turret front (${muzzle.toArray().map((n) => n.toFixed(3))})`);
     }
   } finally { tank.dispose(); base.dispose(); }

@@ -3359,9 +3359,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
   // 267 (the Japan line's photo critics): no JGSDF Type 90 photograph shows spare links on a turret side plate (the
-  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear
+  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear. Round 3: nor a
+  // decor discharger pair on the cheeks ("a small four-tube fitting ... the photos show smoke dischargers only at the rear
+  // corners"): profiles/type90X.ts draws the two four-tube banks there, so the pair doubled them (16 -> the real 8, as the
+  // AMX-40 and Leclerc S1 above).
   if (spec.id === 'type90' || spec.id === 'type90b') {
-    for (let i = base.length - 1; i >= 0; i--) if (base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') base.splice(i, 1);
+    for (let i = base.length - 1; i >= 0; i--) {
+      if ((base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') || base[i].kit === 'smoke') base.splice(i, 1);
+    }
   }
   if (spec.id === 'raiju_ifv') {
     for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];

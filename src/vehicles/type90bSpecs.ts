@@ -25,7 +25,7 @@ stripSilhouetteDimensions(spec.dims);
 spec.armor.hullPlates.push(type90bRollerPlate());
 // The JGSDF's two-tone, drab olive under large irregular blotches of chocolate brown, as the Type 90 photographs show it
 // (267, the photo critics: the family's sage green with small tan blobs, then a banded third tone, read as no JGSDF coat)
-spec.visual = { ...spec.visual, scheme: 'nato', base: '#4b4f31', weather: '#585c3d', patches: ['#3a2c20'],
+spec.visual = { ...spec.visual, scheme: 'nato', base: '#424730', weather: '#4e523b', patches: ['#3a2c20'],
   camoScale: 0.75, marking: 'number', number: '42' };
 
 registerFleetSpecs(registries, ['type90b'], { type90b: spec });

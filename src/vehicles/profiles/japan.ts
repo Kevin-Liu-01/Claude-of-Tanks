@@ -376,35 +376,40 @@ function addType10BRemoteStation(P: JapaneseBuilderPort & TankBuilderPort): void
   weapon.finish();
 }
 
-/** The 10B's active protection: a radar head at each turret corner looking out over its quarter (a panel of radiating
- *  tiles in its frame, a sun cap), and a launcher a side on the shelf over the side blocks: a turntable carrying two
- *  raised tubes, their capped muzzles outboard. */
+/** The 10B's active protection: a radar head at each turret corner looking out over its quarter (a broad flat panel of
+ *  radiating tiles in its frame under a sun cap), and a launcher unit a side on the shelf over the side blocks: a pedestal
+ *  and turntable carrying a box of four tubes raised outboard, their muzzles capped. Round 3 (the photo critic: "make the
+ *  radar heads larger flat panels angled at each corner and the launchers clearly separate turreted units"). */
 function addType10BActiveProtection(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   for (const side of [-1, 1]) {
     // the front heads stand on the front blocks' shelves; the rear heads hang flat on the bustle's flanks below the roof
     // line (on posts over the roof they drew the field net into a sail)
-    for (const [z, y, aft] of [[0.70, 2.03, false], [-1.92, 1.62, true]] as const) {
+    for (const [z, y, aft] of [[0.70, 2.03, false], [-1.92, 1.56, true]] as const) {
       const x = side * (aft ? 1.477 : 1.16), yaw = side * (aft ? Math.PI * 0.62 : Math.PI * 0.25);
       const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-      if (!aft) P.add('turretDetail', cylY(0.03, 0.03, 0.12, 10), ...tl(x, y + 0.04, z));
-      P.add('turretDetail', box(0.28, 0.23, 0.06), ...tl(x, y + 0.20, z), 0, yaw, 0);
-      P.add('turretDetail', box(0.30, 0.02, 0.09), ...tl(x + fx * 0.015, y + 0.325, z + fz * 0.015), 0, yaw, 0);
-      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
-        const u = (i - 1.5) * 0.06, v = (j - 1) * 0.06;
-        P.add('turretDark', box(0.05, 0.05, 0.008), ...tl(x + fx * 0.032 + rx * u, y + 0.20 + v, z + fz * 0.032 + rz * u), 0, yaw, 0);
+      const w = aft ? 0.36 : 0.40, h = aft ? 0.30 : 0.32, cy = y + 0.04 + h / 2 + (aft ? 0 : 0.10);
+      if (!aft) P.add('turretDetail', cylY(0.035, 0.035, 0.14, 10), ...tl(x, y + 0.07, z));
+      P.add('turretDetail', box(w, h, 0.07), ...tl(x, cy, z), 0, yaw, 0);
+      P.add('turretDetail', box(w + 0.03, 0.022, 0.10), ...tl(x + fx * 0.016, cy + h / 2 + 0.012, z + fz * 0.016), 0, yaw, 0);
+      const nu = aft ? 5 : 6, nv = 4;
+      for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+        const u = (i - (nu - 1) / 2) * 0.056, v = (j - (nv - 1) / 2) * 0.062;
+        P.add('turretDark', box(0.048, 0.052, 0.008), ...tl(x + fx * 0.0395 + rx * u, cy + v, z + fz * 0.0395 + rz * u), 0, yaw, 0);
       }
     }
+    // the launcher unit: pedestal, turntable, the four-tube box raised 30 degrees outboard with its capped muzzles
     const lx = side * 1.20, ly = 2.07, lz = -0.55;
-    P.add('turretDetail', box(0.22, 0.08, 0.32), ...tl(lx, ly + 0.02, lz));
-    P.add('turretDetail', cylY(0.10, 0.11, 0.05, 20), ...tl(lx, ly + 0.085, lz));
-    for (const dz of [-0.06, 0.06]) {
-      const tube = cylZ(0.045, 0.30, 14);
-      tube.rotateX(-0.55).rotateY(side * Math.PI / 2);
-      P.add('turretDetail', tube, ...tl(lx + side * 0.06, ly + 0.19, lz + dz));
-      const cap = cylZ(0.047, 0.012, 14);
-      cap.translate(0, 0, 0.15).rotateX(-0.55).rotateY(side * Math.PI / 2);
-      P.add('turretDark', cap, ...tl(lx + side * 0.06, ly + 0.19, lz + dz));
+    P.add('turretDetail', box(0.24, 0.06, 0.34), ...tl(lx, ly + 0.01, lz));
+    P.add('turretDetail', cylY(0.075, 0.085, 0.10, 18), ...tl(lx, ly + 0.091, lz));
+    P.add('turretDetail', cylY(0.14, 0.14, 0.04, 24), ...tl(lx, ly + 0.162, lz));
+    const pitch = -Math.PI / 6, out = side * Math.PI / 2;
+    const launcher = box(0.24, 0.20, 0.34); launcher.rotateX(pitch).rotateY(out);
+    P.add('turretDetail', launcher, ...tl(lx, ly + 0.355, lz));       // its lowest edge 1 mm over the turntable
+    for (const [du, dv] of [[-0.055, -0.048], [0.055, -0.048], [-0.055, 0.048], [0.055, 0.048]] as const) {
+      const cap = cylZ(0.042, 0.012, 14);
+      cap.translate(du, dv, 0.171).rotateX(pitch).rotateY(out);
+      P.add('turretDark', cap, ...tl(lx, ly + 0.355, lz));
     }
   }
 }
@@ -416,12 +421,12 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   const wall = TYPE10_X_SIDE_WALL;
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) {
-      const t = 0.09, x0 = 1.5745;
+      const t = 0.13, x0 = 1.5745;                       // round 3: proud of the skirt ('10-15 cm of stand-off')
       seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 1.035, 2.80 - i * 0.70, t, 0.32, 0.64, null,
         { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }
     for (const z of [-1.62, -1.26, -0.96, -0.62, 0.45, 0.78, 1.10]) {
-      const t = 0.12;
+      const t = 0.14;
       seatedArmorCassette(P, 'turret', ...tl(side * (wall.x + t / 2), (wall.low + wall.high) / 2, z), t,
         wall.high - wall.low - 0.03, 0.31, null, { axis: 'x', contactSide: -side, embed: 0.010, lid: true });
     }

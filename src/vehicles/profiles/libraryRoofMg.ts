@@ -82,6 +82,8 @@ export interface LibraryStationGunOptions {
   /** The crew form's ammunition can (default: with `crew`); false where the mount carries its own can and feed (the Type
    *  90's tray and arm, type90X.ts). */
   ammo?: boolean;
+  /** The gun in the army's issue drab with its mount ('turretAmmo') in place of weapon steel: the JGSDF's olive M2s. */
+  drab?: boolean;
   /** How far the receiver's centre stands behind the pivot (default 0.08 m). An enclosed mini-turret sets it so the whole
    *  receiver stays under its flat roof, behind the sloped face; the barrel still runs to the published muzzle. */
   receiverBehind?: number;
@@ -107,7 +109,7 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   const layout = createPintleLayout({ ...base, ...(barrelLength === undefined ? {} : { barrelLength }), muzzleBoreDepth: 0.07 }, {
     add(slot: string, geometry: THREE.BufferGeometry, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): void {
       if (slot === 'shadow') return;
-      g.add(slot === 'glass' ? 'turretGlass' : 'turretDark', KIT.xform(geometry, px, py, pz, rx, ry, rz), o.x, dy, dz);
+      g.add(slot === 'glass' ? 'turretGlass' : o.drab ? 'turretAmmo' : 'turretDark', KIT.xform(geometry, px, py, pz, rx, ry, rz), o.x, dy, dz);
     },
   });
   addPintleReceiver(layout);

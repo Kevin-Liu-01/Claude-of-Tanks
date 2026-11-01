@@ -23,10 +23,10 @@
         "https://www.mod.go.jp/gsdf/dc/cfin/html/img/i230-R6.10.28.pdf",
         "https://www.janes.com/osint-insights/defence-news/defence/japan-to-upgrade-type-10-mbt"
       ],
-      "widthM": 3.495,
+      "widthM": 3.51,
       "overallLengthM": 9.42,
       "tallestM": 4.122,
-      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the modern Type 10 it draws with its fit: 9.42 m gun forward (published 9.42 m), 3.49-3.50 m over the owner's field net on the skirts' reactive armour (the Type 10's 3.389 m source width, published 3.24 m: docs/references/tanks/type10_x.md), 4.122 m to the whips' tips.",
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the modern Type 10 it draws with its fit: 9.42 m gun forward (published 9.42 m), 3.51 m over the owner's field net on the skirts' stand-off reactive armour (the Type 10's 3.389 m source width, published 3.24 m: docs/references/tanks/type10_x.md), 4.122 m to the whips' tips.",
       "caliberMm": 120,
       "launcherTubes": 0,
       "roofMachineGuns": 1,
