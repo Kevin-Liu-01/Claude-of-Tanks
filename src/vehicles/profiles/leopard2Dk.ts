@@ -181,5 +181,12 @@ export function buildLeopard2A7DK(P: TankBuilderPort): void {
   // the fender between the deck's edge and the skirts (r6 critics, both models: from above the ground showed through a
   // 4 cm slit at x 1.82-1.85 from z -2.30 to 1.80, rayed down at 1 cm), a strip just under the deck's edge
   for (const side of [-1, 1] as const) P.add('hull', KIT.box(0.07, 0.02, 4.14), side * 1.835, 1.315, -0.25);
+  // and ahead of it the 2A7V's slit between the hull side and the front mudguard (x 1.80-1.86, z 2.6-3.5: the German
+  // build's suit covers it; 267, the DK's cover is its coat: tank-standard-check contiguity, 12 cells at x 1.83 z 2.94),
+  // lidded just under the mudguard's top, clear of the track
+  for (const side of [-1, 1] as const) {
+    P.add('hull', KIT.box(0.07, 0.02, 0.73), side * 1.835, 1.555, 2.915);
+    P.add('hull', KIT.box(0.07, 0.02, 0.27), side * 1.835, 1.39, 3.415);
+  }
   P.turretG.userData.leopard2DkReceipt = { mark: '2A7 DK', ribbedStowageModules: 3, barracuda: true, flag: true };
 }
