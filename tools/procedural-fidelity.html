@@ -831,12 +831,21 @@ const roofFittingsExcluded = (() => {
 // length stay the source's whole ones (withWholeSource): setting whips or stowage aside changes what is compared, never
 // the ruler. Stowage goes first, so a mesh that loses both keeps neither.
 const stowageAsideUndo = [];
-for (const { nodes, ranges } of stowage) {
+for (const [model, { nodes, ranges }] of stowage.entries()) {
   for (const [node, cut] of ranges) {
     const body = bodyGeometryWithout(node.geometry, cut);
-    stowageAsideUndo.push([node, node.geometry, body]); node.geometry = body;
+    stowageAsideUndo.push([node, node.geometry, body, model]); node.geometry = body;
   }
-  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node), model]); baseVisible.set(node, false); }
+}
+/** `measure` with one model's stowage (0 the build, 1 the source) back in place, everything else as it stands. */
+function withStowageBack(measure, model) {
+  const entries = stowageAsideUndo.filter((entry) => entry[3] === model);
+  const saved = entries.map(([node, geometry]) => (geometry ? node.geometry : baseVisible.get(node)));
+  for (const [node, geometry, other] of entries) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+  try { return measure(); } finally {
+    for (const [i, [node, geometry]] of entries.entries()) { if (geometry) node.geometry = saved[i]; else baseVisible.set(node, saved[i]); }
+  }
 }
 const stowageAside = (() => {
   const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
@@ -2151,8 +2160,22 @@ if (params.get('geo')) {
     const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
     const { published: hullTarget, ...hullBasis } = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims,
       ownOracle ? referenceDimensions.hullLengthM : null);
-    if (ext) dimCheck('hullLengthM', ext.len, hullTarget, hullBasis);
-    dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+    // A published length is a silhouette, stowage and all, so where the build's stowage is set aside its body is held to
+    // the interval from the body to the body with its stowage back (as a published height spans body top to roof fittings)
+    const buildStowage = !preservation && stowageAside?.procedural.length > 0;
+    const stowageLength = (name, body, withStowage, published, extra = {}) => {
+      if (!buildStowage || !published || !Number.isFinite(withStowage)) { dimCheck(name, body, published, extra); return; }
+      if (!Number.isFinite(body) || body <= 0) return;
+      dimRows.push({ name, actual:body, withStowage, published, method:'interval: body to body with its stowage', ...extra,
+        pct:heightIntervalPct(body, withStowage, published) });
+    };
+    if (ext) stowageLength('hullLengthM', ext.len, buildStowage ? withStowageBack(() => {
+      const side = sideTraces(procedural, reference);
+      return bodyExtent(side.whole, side.hull)?.len;
+    }, 0) : null, hullTarget, hullBasis);
+    stowageLength('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')),
+      buildStowage ? withStowageBack(() => withBodyOnly(() => pixelSpanZ('whole')), 0) : null,
+      pub.silhouetteOverallLengthM ?? pub.overallLengthM);
     dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
