@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { TANK_SPECS } from '../specs.ts';
+import { ALL_TANK_IDS, TANK_SPECS } from '../specs.ts';
 
 const a = new THREE.Vector3();
 const b = new THREE.Vector3();
@@ -116,6 +116,63 @@ oplot.dispose();
   assert.equal(t90am.resetEra(), true, 'new round restores authored ERA placement');
   assert.equal(countCollapsed(), before, 'restored ERA has no collapsed cassette instances');
   t90am.dispose();
+}
+
+// 267 (Main's tanks-suite triage, ruled "armour and visuals agree in both directions"): on every id the gameplay ERA
+// plates of its spec and the ERA clusters its build draws are the same set. A spec ERA plate with nothing drawn on it
+// is armour a player cannot see (the T-90AM carried the Proryv's skirt and turret-flank Relikt plates over a T-90SM
+// build that draws neither); drawn ERA with no plate under it is armour that stops nothing (the T-90MS obr. 2011's
+// turret-flank K-5 boxes). t90MarkFrames.ts agreeDrawnEra settles both; this holds the whole fleet to it.
+const eraPlateNames = (spec) => [...new Set([...spec.armor.hullPlates, ...spec.armor.turretPlates]
+  .filter((plate) => plate.kind === 'era').map((plate) => plate.name))].sort();
+const eraAgreement = (plates, drawn) => ({
+  specUndrawn: plates.filter((name) => !drawn.includes(name)),
+  drawnUnspecced: drawn.filter((name) => !plates.includes(name)),
+});
+// Disagreements held while another lane owns the fix: { id: { specUndrawn: [...], drawnUnspecced: [...] } }. A held
+// id may not gain one and must be removed as it is fixed (the check is exact both ways). Empty at 267: the fleet agrees.
+const KNOWN_ERA_DISAGREEMENTS = Object.freeze({});
+const drawnEra = new Map();
+{
+  const found = {};
+  for (const id of ALL_TANK_IDS) {
+    const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', geometryReceipt: true });
+    const drawn = [...(tank.root.userData.eraClusterNames ?? [])].sort();
+    tank.dispose();
+    drawnEra.set(id, drawn);
+    const { specUndrawn, drawnUnspecced } = eraAgreement(eraPlateNames(TANK_SPECS[id]), drawn);
+    if (specUndrawn.length || drawnUnspecced.length) found[id] = { specUndrawn, drawnUnspecced };
+  }
+  const report = Object.entries(found).map(([id, { specUndrawn, drawnUnspecced }]) =>
+    `  ${id}: spec plate(s) with nothing drawn [${specUndrawn.join(', ')}]; drawn ERA with no plate [${drawnUnspecced.join(', ')}]`);
+  assert.deepEqual(found, KNOWN_ERA_DISAGREEMENTS,
+    `gameplay ERA and drawn ERA disagree (held: ${Object.keys(KNOWN_ERA_DISAGREEMENTS).length}):\n${report.join('\n')}`);
+  console.log(`eraSeating.selftest: ${ALL_TANK_IDS.length} ids' gameplay ERA plates and drawn ERA clusters agree both ways `
+    + `(${Object.keys(found).length} held)`);
+}
+// Negative controls, one per direction, on the two disagreements this receipt was written for, as they stood: the check
+// must name them. The T-90AM's plates before the ruling were its donor record's (armorT90M; the T-90M Proryv still
+// carries it whole), against the T-90SM build the T-90AM draws; the obr. 2011's plates without the Tagil flank pair,
+// against the flank boxes it draws.
+{
+  const amDrawn = drawnEra.get('t90am'), msDrawn = drawnEra.get('t90ms_2011');
+  assert.deepEqual(eraAgreement(eraPlateNames(TANK_SPECS.t90m_proryv), amDrawn),
+    { specUndrawn: ['side_era_L', 'side_era_R', 'skirt_era_L', 'skirt_era_R'], drawnUnspecced: [] },
+    'control: the T-90AM\'s former Proryv plates are four spec plates with nothing drawn on them');
+  assert.deepEqual(eraAgreement(eraPlateNames(TANK_SPECS.t90ms_2011).filter((name) => !/^side_era_/.test(name)), msDrawn),
+    { specUndrawn: [], drawnUnspecced: ['side_era_L', 'side_era_R'] },
+    'control: the obr. 2011 without its flank plates draws two ERA sectors with no plate under them');
+  // and the added flank plates are bound to the drawn boxes' own faces (the ERA visual binding), as the family's are
+  const ms = createTank('t90ms_2011', null, { proceduralOnly: true, geometryReceipt: true });
+  for (const name of ['side_era_L', 'side_era_R']) {
+    const rows = ms.root.userData.eraVisualBindingReceipt.plates.filter((row) => row.name === name);
+    assert.ok(rows.length && rows.every((row) => row.registered && row.ownerMatches && row.fittedSurfaces.length > 0),
+      `t90ms_2011 ${name}: registered on the turret with hit faces fitted to its drawn boxes`);
+    assert.equal(ms.stripEra(name), true, `t90ms_2011 ${name} strips its drawn boxes`);
+  }
+  assert.equal(ms.resetEra(), true);
+  ms.dispose();
+  console.log('eraSeating.selftest: negative controls (spec-undrawn on the T-90AM\'s former plates, drawn-unspecced on the obr. 2011 without its flank plates) fail as they must');
 }
 
 console.log('eraSeating.selftest: ERA caps are seated, consumable, and resettable');
