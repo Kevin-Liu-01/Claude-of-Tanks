@@ -898,7 +898,7 @@
       }
     ]
   },
-  "geometryHash": "412d4a74",
+  "geometryHash": "e85fa882",
   "metadataHash": "ac3524e6",
   "presentationAnchor": {
     "xM": -0.0002,
@@ -950,7 +950,7 @@
     "verifiedInsignia": 1,
     "verifiedDesignation": 1,
     "minimumVisibilityRatio": 1,
-    "codes": ["JP:jp-roundel:73"]
+    "codes": ["JP:jp-roundel:TK-X"]
   },
   "assets": {
     "angle": {
@@ -975,7 +975,7 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 9258,
-      "sha256": "aa697ef0068bf6f56f6ace172f98fb6cf3e611c8350e604c325916e7433c10c1"
+      "sha256": "9b4ccb55fcee748fea428cbbcd29c37ace37b00bc47cbad67c1dc50f427381a7"
     },
     "side": {
       "file": "type10_tk_x_side.webp",
