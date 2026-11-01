@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSelftestSuite, runSelftestFile, selftestWorkerCount, SELFTEST_EXCLUSIVE_CPU_FILES } from './run-selftests.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -69,6 +70,16 @@ assert.deepEqual(normal.timings.map(row => row.file).sort(), ['a', 'b', 'browser
 const stoppedRefreshes = normal.refreshes;
 await new Promise(resolve => setTimeout(resolve, 15));
 assert.equal(normal.refreshes, stoppedRefreshes, 'finished pool clears its heartbeat');
+
+{
+  // (267) STARVED in the pool (tools/selftest-verdict.mjs): neither a failure (the suite passes, nothing logged as FAIL)
+  // nor a pass the cache keeps
+  const starvedPool = fixture();
+  const run = runSelftestSuite('starved', ['a', 'b'], starvedPool.options);
+  await tick(); starvedPool.finish('a', { status: SELFTEST_STARVED_EXIT }); starvedPool.finish('b');
+  assert.equal(await run, 0, 'a STARVED receipt does not fail the pool');
+  assert.deepEqual(starvedPool.errors, [], 'nor is it logged as a failure');
+}
 
 assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES, [
   'src/vehicles/fleetLazy.selftest.mjs',

@@ -179,16 +179,20 @@ try {
   assert.equal(selftestReadOf(cache, 'src/ui/runtimeStyles.selftest.mjs', 'docs/DEPLOYS.md', REPO_ROOT), 'broad',
     'a deployment note stays a fallback match');
   // 266 (Main): det-math-lint walks the authority's import graph by computed paths (an `imports` entry), so detMath is
-  // keyed on and selected by every module that graph executes, whether or not a run of it was observed: 265's castle
-  // painter (vehicleMarkings.ts) and 266's gunFaceSplit (through armor.ts) select it; a UI module outside the graph
-  // does not. Control: without the entry, neither selects it.
-  const detMath = 'src/sim/detMath.selftest.mjs', graphPaths = ['src/vehicles/vehicleMarkings.ts', 'src/sim/armor.ts'];
+  // keyed on and selected by every module that graph executes, whether or not a run of it was observed: the bots'
+  // ai.ts and 266's gunFaceSplit (through armor.ts) select it; a UI module outside the graph does not. Control: without
+  // the entry, neither selects it. (267: 265's castle painter, vehicleMarkings.ts, left the graph; the lint's
+  // presentation guard names the marking modules and reads src/vehicles/ by prefix, so a vehicle module selects detMath
+  // by name with or without the entry.)
+  const detMath = 'src/sim/detMath.selftest.mjs', graphPaths = ['src/game/ai.ts', 'src/sim/armor.ts'];
   for (const path of graphPaths) assert.equal(selftestReadOf(cache, detMath, path, REPO_ROOT), 'named', `a change to ${path} selects detMath`);
   assert.equal(selftestReadOf(cache, detMath, 'src/ui/hud.ts', REPO_ROOT), null, 'control: a module outside the authority graph does not');
   const withoutLint = Object.fromEntries(Object.entries(SELFTEST_SCANS).filter(([path]) => path !== 'tools/det-math-lint.mjs'));
   const bare = createSelftestCache({ cacheDir: selftestCacheLocations(REPO_ROOT, process.env).dir, env: {}, argv: [], scans: withoutLint,
     declaredInputs: SELFTEST_DECLARED_INPUTS, fixtureKeyed: SELFTEST_FIXTURE_KEYED_FILES, alwaysRun: SELFTEST_FRESH_FILES });
   for (const path of graphPaths) assert.equal(selftestReadOf(bare, detMath, path, REPO_ROOT), null, `control: without the entry, ${path} does not`);
+  assert.equal(selftestReadOf(bare, detMath, 'src/vehicles/vehicleMarkings.ts', REPO_ROOT), 'named',
+    'a marking module selects detMath by the presentation guard\'s name');
   const declared = Object.keys(SELFTEST_SCANS).length;
   console.log(`selftest scans: ${declared} listing modules declared (${Object.entries(kinds).map(([kind, count]) => `${count} ${kind}`).join(', ')}); `
     + `${inheriting.lists} receipts keyed and selected by listings, ${inheriting.tracked} selected by tracked listings; `

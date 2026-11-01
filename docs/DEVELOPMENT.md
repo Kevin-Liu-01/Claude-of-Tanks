@@ -507,6 +507,12 @@ inputs are byte-identical to its last PASS prints a SKIP line (`COT_SELFTEST_CAC
 everything). Every failure in a group is reported in one run; `COT_SELFTEST_FAIL_FAST=1` stops at the first. Result reuse is specified in
 "Test gate and result reuse" below.
 
+A receipt has a third verdict, STARVED (267, `tools/selftest-verdict.mjs`): one that judges host time net of what the
+machine withheld (`tools/starvation-meter.mjs`) and finds too little left to judge exits 75. The runner prints STARVED,
+lists it at the end of the run and in its report, never caches it as a PASS (the next run executes it again) and does
+not fail the run for it; the gate counts it apart from the red receipts in `gate.md`. mp-soak is the first: its
+acknowledgement, tick-cost and control gates can each be starved on a loaded machine.
+
 **Receipt tiers (266; owner 2026-10-30: "make super strenuous suites like balance and other testing to be not for every
 deploy annd manually recommended annd triggered by ME").** `tools/selftest-tiers.mjs` splits the registry; the audit of
 every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.md`.
