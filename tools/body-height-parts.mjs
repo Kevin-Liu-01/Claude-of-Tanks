@@ -29,9 +29,11 @@
 // Imported by tools/procedural-fidelity.html (the browser gate) and tools/body-height-parts.selftest.mjs.
 import { Box3, Matrix4, Vector3 } from 'three';
 
-/** Fitting types that are roof fittings; the antenna ones never count toward any height. */
+/** Fitting types that are roof fittings; the antenna ones never count toward any height. A commander's sight tower over
+ * the cupola (kit.ts roofSight, 267) is one: a published height is taken to the cupola or the roof gun, so the body leaves
+ * the tower out and the roof-fittings top keeps it. */
 export const ROOF_FITTING_TYPES = Object.freeze(['antennaWhip', 'pintleMG', 'americanM2', 'americanRws', 'openYokeRws',
-  'weaponStationMount', 'auxiliaryWeapon']);
+  'weaponStationMount', 'auxiliaryWeapon', 'roofSight']);
 export const ANTENNA_FITTING_TYPES = Object.freeze(['antennaWhip']);
 /** Seat roles cut from merged buckets (all antennas). */
 export const BODY_EXCLUDED_SEAT_ROLES = Object.freeze(['antenna']);

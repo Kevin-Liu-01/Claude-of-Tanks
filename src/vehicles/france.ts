@@ -693,11 +693,15 @@ function buildAMX40(P: FranceBuilderPort): void {
   // head with its window band and cap, in the turret's paint (the print's own head stands at 3.09 m).
   // 267 round 3 (Opus, critic2: "unpainted black with a plain flat cap; the real one is body-coloured with a squared head
   // and a window"): the column is painted detail (the camouflage's black patch lies there) and the head a squared box.
-  P.add('turretDetail', cylY(0.150, 0.165, 0.40, 20), -0.15, 0.80, 0.24);     // column 0.60..1.00
-  P.add('turretDetail', box(0.34, 0.14, 0.34), -0.15, 1.065, 0.24);           // squared head 0.995..1.135
-  P.add('turretDetail', box(0.30, 0.02, 0.30), -0.15, 1.145, 0.24);           // its lid
-  P.add('turretDark', box(0.24, 0.07, 0.02), -0.15, 1.07, 0.415);             // window frame
-  P.add('turretGlass', box(0.21, 0.05, 0.012), -0.15, 1.07, 0.427);           // window
+  // 267 round 2 (Main: keep the photos' tall tower, tag it for the height gate): the tower is the kit's roofSight fitting,
+  // a roof fitting to tools/body-height-parts.mjs, so the published 2.62 m reads against the hull, turret and cupola. A
+  // fitting sits in the turret's final frame (the 1.20 section scale below does not reach it): column 0.72..1.20, the
+  // squared head to 1.36 and its lid, as the bucket-drawn tower stood after that scale.
+  {
+    const sight = FITTINGS.roofSight({ mats: P.mats, colR: 0.150, colR2: 0.165, colH: 0.48, head: [0.34, 0.168, 0.34], window: [0.24, 0.084] });
+    sight.position.set(-0.15, 0.72, 0.24);
+    P.turretG.add(sight);
+  }
   P.add('turret', cylY(0.22, 0.23, 0.075, 18), 0.62, 0.625, -0.72);             // smaller asymmetric secondary station, buried into the aft crown
   P.add('turretDark', torus(0.205, 0.012, 18), 0.62, 0.666, -0.72);            // loader hatch well
   P.add('turret', cylY(0.185, 0.195, 0.030, 18), 0.62, 0.681, -0.72);          // loader hatch RIGHT-REAR

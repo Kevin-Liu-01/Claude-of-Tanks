@@ -313,6 +313,12 @@ interface FittingOptions {
   base?: boolean;
   straps?: number;
   axis?: string;
+  /** roofSight: the column's head and foot radii and height, the head box and the window band (267). */
+  colR?: number;
+  colR2?: number;
+  colH?: number;
+  head?: readonly [number, number, number];
+  window?: readonly [number, number];
 }
 
 interface FittingParts {
@@ -3889,6 +3895,29 @@ function fittingSmokeBank(opts: FittingOptions = {}): THREE.Group {
 }
 
 /**
+ * Commander's sight tower standing above the cupola: a round column to a squared head with its window band and lid. A
+ * roof fitting to the height gate (tools/body-height-parts.mjs 'roofSight'): published heights are taken to the cupola
+ * or the roof gun, so the body leaves the tower out and the roof-fittings top keeps it (267, Main's ruling on the AMX-40).
+ * Origin: the column's foot, on its turntable.
+ * @param {object} opts  mats; colR=0.15; colR2=0.165 (foot); colH=0.48; head=[0.34, 0.168, 0.34]; window=[0.24, 0.084];
+ *   seed, shadows, rotation
+ */
+function fittingRoofSight(opts: FittingOptions = {}): THREE.Group {
+  const { box, cylY } = KIT;
+  const colR = opts.colR ?? 0.15, colR2 = opts.colR2 ?? 0.165, colH = opts.colH ?? 0.48;
+  const [hx, hy, hz] = opts.head ?? [0.34, 0.168, 0.34];
+  const [wx, wy] = opts.window ?? [0.24, 0.084];
+  const parts = fitParts();
+  parts.add('detail', cylY(colR, colR2, colH, 20), 0, colH / 2, 0);
+  const headY = colH + hy / 2 - 0.006;
+  parts.add('detail', box(hx, hy, hz), 0, headY, 0);
+  parts.add('detail', box(hx - 0.04, 0.024, hz - 0.04), 0, headY + hy / 2 + 0.012, 0);
+  parts.add('dark', box(wx, wy, 0.02), 0, headY + 0.004, hz / 2 + 0.005);
+  parts.add('glass', box(wx - 0.03, wy - 0.024, 0.012), 0, headY + 0.004, hz / 2 + 0.017);
+  return fitAssemble('roofSight', parts, opts);
+}
+
+/**
  * Whip antenna on a base pot (PALE-REFUND-aware: the thin member defaults to
  * the PALE detail slot so it refunds silhouette cost; pass slot:'dark' only
  * over pale backdrops).
@@ -4066,6 +4095,7 @@ export const FITTINGS = {
   lightCluster: fittingLightCluster,
   smokeBank: fittingSmokeBank,
   antennaWhip: fittingAntennaWhip,
+  roofSight: fittingRoofSight,
   unditchingLog: fittingUnditchingLog,
   markExact: fittingMarkExact,
 };
