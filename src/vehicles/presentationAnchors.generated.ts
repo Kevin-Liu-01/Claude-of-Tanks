@@ -311,7 +311,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   amx30b: Object.freeze({ centerYM: 1.7352, topHalfM: 6.4777, sideHalfM: 3.2388 }),
   amx30b2: Object.freeze({ centerYM: 1.753, topHalfM: 6.7029, sideHalfM: 3.3514 }),
   amx40: Object.freeze({ centerYM: 2.5572, topHalfM: 7.0681, sideHalfM: 3.534 }),
-  amx40_proto: Object.freeze({ centerYM: 1.7662, topHalfM: 7.1055, sideHalfM: 3.5528 }),
+  amx40_proto: Object.freeze({ centerYM: 1.7663, topHalfM: 7.1055, sideHalfM: 3.5528 }),
   amx56: Object.freeze({ centerYM: 1.7778, topHalfM: 6.6766, sideHalfM: 3.3383 }),
   ares_apc: Object.freeze({ centerYM: 1.9517, topHalfM: 3.8797, sideHalfM: 2.0883 }),
   bm_oplot_m: Object.freeze({ centerYM: 1.9936, topHalfM: 6.9971, sideHalfM: 3.4986 }),
