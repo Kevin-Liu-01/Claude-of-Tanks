@@ -1563,22 +1563,22 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [0,0.45,1.3872],
-        "max": [1.3988,1.7155,3.2288],
+        "min": [-1.3988,0.45,1.3872],
+        "max": [0,1.5683,2.4862],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [0.0979,0.5872,2.4553],
-        "max": [1.3008,1.4983,3.0815],
+        "min": [-1.3008,0.5872,2.4553],
+        "max": [-0.0979,1.3513,2.7833],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [-1.2951,0.45,-2.9746],
-        "max": [-0.4144,1.3128,-1.8114],
+        "min": [0.6493,0.5095,-2.4676],
+        "max": [1.2951,0.926,-1.8114],
         "turretLocal": false
       },
       {
@@ -1591,15 +1591,15 @@
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [0.2898,0.1447,-1.3683],
-        "max": [0.8619,0.6367,-0.6048],
+        "min": [-0.8619,0.1447,-1.3683],
+        "max": [-0.2898,0.6367,-0.6048],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "optics",
-        "min": [-0.0535,0.6913,0.1586],
-        "max": [0.5186,1.074,0.9221],
+        "min": [-0.3756,0.6913,0.1586],
+        "max": [0.0535,0.8091,0.6578],
         "turretLocal": true
       },
       {
@@ -1642,35 +1642,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.9291,0.5023,0.6681],
-        "max": [-0.4697,1.5691,2.0094],
+        "min": [0.4697,0.5117,0.6681],
+        "max": [0.9291,1.5984,2.0094],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.3176,-0.8445,0.3469],
-        "max": [0.777,0.5077,0.8555],
+        "min": [-0.777,-1.08,-0.2531],
+        "max": [-0.3176,0.2429,0.5355],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.3462,-1.08,-0.8353],
-        "max": [0.8056,0.3077,0.0074],
+        "min": [-0.7359,-1.28,-0.5853],
+        "max": [-0.3462,-0.03,0.2574],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.9126,-1.28,0.0152],
-        "max": [-0.4532,0.4934,0.4547],
+        "min": [0.4032,-1.28,0.0152],
+        "max": [0.8626,0.4934,0.3899],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "29d5e2e4",
-  "metadataHash": "84848e5e",
+  "metadataHash": "2e4f3da4",
   "presentationAnchor": {
     "xM": -0.0017,
     "zM": -0.3133
@@ -1777,24 +1777,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46878,
-      "sha256": "38ccc8b485b4d307f0b892c359ae0193032eb7e3f4aeacd7fd713b084aa1d0c2"
+      "bytes": 46884,
+      "sha256": "eeff3bab508d2bc792958ca0e685960db98b701a03b80f9a825bbe4d267be34f"
     },
     "modulesSide": {
       "file": "merkava3_baz_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42250,
-      "sha256": "1ed8e80121323ac13eb9f8f011f85d7789c44dac28fc4e53b5fc64e61e175391"
+      "bytes": 41390,
+      "sha256": "12297f571b1c045c8a9774f8ad822c580daefdbbc104bcd080feebb967397dd1"
     },
     "crewSide": {
       "file": "merkava3_baz_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40404,
-      "sha256": "7b461ebf1aece17b48c06736ae4f1c2a7bc2e10332a10c9e41c21e5d8e749337"
+      "bytes": 40124,
+      "sha256": "5910e409ffe8c38ea67d7c1d760d98badc6c5c7ab6f68f95a45ff2f9767f57c2"
     },
     "markings": {
       "file": "merkava3_baz_markings.png",
@@ -1807,8 +1807,8 @@
     "technicalLabels": {
       "file": "merkava3_baz_technical.json",
       "mime": "application/json",
-      "bytes": 4582,
-      "sha256": "9ad19cef5f0f3c5839bf56104653efb3155d6ac5e994a50ff7ef951d7e40b29d"
+      "bytes": 4584,
+      "sha256": "95ae5a45f69a893055b2b0c6a2d6e6030723a1bc4b088dd494b83d87d48481d1"
     }
   }
 }

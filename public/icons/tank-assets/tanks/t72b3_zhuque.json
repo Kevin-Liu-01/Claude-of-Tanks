@@ -10705,14 +10705,14 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9578,0.4605,-3.2148],
-        "max": [0.9786,1.4599,-1.6563],
+        "min": [-0.9578,0.4605,-2.5555],
+        "max": [0.9786,1.4305,-1.6563],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8223,0.5604,-3.0902],
+        "min": [-0.8223,0.7703,-3.0902],
         "max": [0.8431,1.28,-2.5603],
         "turretLocal": false
       },
@@ -10845,21 +10845,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2958,-0.5223,-0.6495],
-        "max": [0.7243,0.7695,0.1067],
+        "min": [0.2458,-0.5227,-0.5494],
+        "max": [0.63,0.7691,0.2067],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.7443,-0.5276,-0.8583],
-        "max": [-0.3158,0.7072,-0.0417],
+        "min": [-0.58,-0.4949,-0.503],
+        "max": [-0.2658,0.7612,0.2083],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "ada472e2",
-  "metadataHash": "f3308cfa",
+  "geometryHash": "132fc181",
+  "metadataHash": "00a0897b",
   "presentationAnchor": {
     "xM": 0.0009,
     "zM": -0.0507
@@ -10918,15 +10918,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28102,
-      "sha256": "0e4e1668a8c188e8c316b1aae11f847a599f6fd3ea76033d51ec34c6c905585b",
+      "bytes": 28092,
+      "sha256": "59ca87b69c63bd96fb1141b84fa3c1b74483737c610ac453db604cc6ed1e6e70",
       "thumbnail": {
         "file": "thumbs/t72b3_zhuque_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11540,
-        "sha256": "cc3d6ce0f082e71e7046e04cdb16f0e9b97c7d4037587ca8f452d0afee31cd5b"
+        "bytes": 11526,
+        "sha256": "0d20b8f870175e0cfb6f49cfda6d33eb2698c839568bffe8fa466fc0784b12bd"
       }
     },
     "top": {
@@ -10934,16 +10934,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11766,
-      "sha256": "d9c81abd5c1f00e69ecaff61b56533f258a2d37b2636f52e76aafb3998ccddc2"
+      "bytes": 11772,
+      "sha256": "7b74237bb3b08328c5f2966a5f55a6249d7139108893a15d3433e31d7cf34a31"
     },
     "side": {
       "file": "t72b3_zhuque_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9808,
-      "sha256": "88e3fbe50f89f5d73ed42c35fedbd4b9fc818f840261dd2565b3714f44bd52c3"
+      "bytes": 9810,
+      "sha256": "a7d52a888463b3e897d4ee9d52dd756d459017954120ada47274599eed832496"
     },
     "topSilhouette": {
       "file": "t72b3_zhuque_top_silhouette.png",
@@ -10958,32 +10958,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 3995,
-      "sha256": "70cea43708e042c28823b3ae18e17e3ae949c3c21826653e3404155dfa0cd4ed"
+      "bytes": 3997,
+      "sha256": "953ad82f104853b356a66ba02c13c169450ab8289ed53cb19bbe3470c458a155"
     },
     "armorSide": {
       "file": "t72b3_zhuque_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24858,
-      "sha256": "1b07f50c4cbc0b1156d0f22f0a124d500ca67c523537719d485036007f4fadf1"
+      "bytes": 24980,
+      "sha256": "c85c82ea53a705827f0dfe8e3065efa03f009e63f368e2a05f8de46f4f92f1a8"
     },
     "modulesSide": {
       "file": "t72b3_zhuque_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21656,
-      "sha256": "a01e7c6e5660eb031a674d646ceef31fd04ce8a48843d300031cdbb4264e73db"
+      "bytes": 21426,
+      "sha256": "ab879933d055aeb4af17aee7c30c9b647b3a5f319545305aa23a555251cc51f7"
     },
     "crewSide": {
       "file": "t72b3_zhuque_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19556,
-      "sha256": "874862e27a3ddf1074650f4b5dcc010038279a21b825de207d88c9b91d39aa34"
+      "bytes": 19296,
+      "sha256": "04454a7aa2b48efe3143424eb53979c91578e455517ad8e4c9ccc2da300c1c45"
     },
     "markings": {
       "file": "t72b3_zhuque_markings.png",
@@ -10996,8 +10996,8 @@
     "technicalLabels": {
       "file": "t72b3_zhuque_technical.json",
       "mime": "application/json",
-      "bytes": 5363,
-      "sha256": "36bca7ca43da8d58437c08480dcc3df3cf1351242015056ef668d8998251ebe0"
+      "bytes": 5361,
+      "sha256": "86c4b4610b15538cca6cca6490a52c2017e4f4667ddded5a42aaf08169b73b6c"
     }
   }
 }

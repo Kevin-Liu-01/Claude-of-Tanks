@@ -333,36 +333,36 @@
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.1718,0.5242,-3.5114],
-        "max": [1.1718,1.8124,-1.7809],
+        "min": [-1.1718,0.5242,-2.7953],
+        "max": [1.1718,1.7525,-1.7809],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-1.0077,0.6645,-3.373],
+        "min": [-1.0077,0.8141,-3.373],
         "max": [1.0077,1.592,-2.7846],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.4687,0.5242,-1.7096],
-        "max": [1.1718,1.2847,-0.5343],
+        "min": [-1.1718,0.5242,-1.7096],
+        "max": [-0.4687,1.2847,-0.5343],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "ammoRack",
-        "min": [-0.996,0.5242,-0.6037],
-        "max": [0.996,1.3778,0.7043],
+        "min": [-0.3374,0.5965,-0.5206],
+        "max": [0.8726,1.3055,0.2942],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.9374,0.8812,-1.4247],
-        "max": [-0.2929,1.5874,-0.3562],
+        "min": [0.3122,0.9024,-1.3935],
+        "max": [0.9181,1.5662,-0.4171],
         "turretLocal": false
       },
       {
@@ -446,35 +446,35 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2569,0.9527,1.4079],
-        "max": [0.2025,1.469,3.2004],
+        "min": [-0.2025,1.1177,1.5243],
+        "max": [0.2569,1.4232,3.2915],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2392,-0.7205,-0.1986],
-        "max": [0.6589,0.5712,0.2182],
+        "min": [-0.6589,-0.7205,-0.1986],
+        "max": [-0.2392,0.5712,0.2182],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.273,-1.1748,-0.4652],
-        "max": [0.7324,-0.122,0.3775],
+        "min": [-0.7324,-1.1748,-0.4652],
+        "max": [-0.273,-0.122,0.3775],
         "turretLocal": true
       },
       {
         "volumeId": "C04",
         "name": "loader",
-        "min": [-0.6289,-1.2559,-0.287],
-        "max": [-0.1892,0.5175,0.1525],
+        "min": [0.1892,-1.2559,-0.287],
+        "max": [0.6289,0.5175,0.1525],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "ecd5a0b0",
-  "metadataHash": "c91c7d7f",
+  "geometryHash": "ca5c1307",
+  "metadataHash": "aabc4918",
   "presentationAnchor": {
     "xM": 0.0002,
     "zM": -0.0374
@@ -503,7 +503,7 @@
       "trackPadSimplified": 1,
       "armorPaint": 7,
       "hullRubber": 1,
-      "unclassified": 24,
+      "unclassified": 22,
       "gearShadow": 2,
       "machineGun": 3,
       "canvas": 1
@@ -533,15 +533,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31044,
-      "sha256": "58718433c8858cb18aaf08c1ff3146da2fb325df9d8a233b8a7a93081d239bc7",
+      "bytes": 30992,
+      "sha256": "1bd69e6e2fe5440a2f3457ef2c9f900bbac6576245a4bdf24bbf80a944956cf5",
       "thumbnail": {
         "file": "thumbs/m60a1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12430,
-        "sha256": "9cea68887bc62a40514e3669bc42708d75ae46a6e3fde8419696582e3db3bf03"
+        "bytes": 12410,
+        "sha256": "6d6abc64feddc6e5b4402a4972461983957e2ad6324f4f91b3c2a929cc3adab0"
       }
     },
     "top": {
@@ -549,16 +549,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13978,
-      "sha256": "2aca537f87e87867a04667846a8b345069151268a18c849beb88dfca3ace665f"
+      "bytes": 13506,
+      "sha256": "2a119464cb4ed882bd12546b397133787a58b5fb2667ff749987992a7f9aeb9e"
     },
     "side": {
       "file": "m60a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15902,
-      "sha256": "da931e2e7d8d42b0b49ebd15da1d3d141262d70721d1dce07c51a83a4ddac90c"
+      "bytes": 15900,
+      "sha256": "623016fa19c5535fffc1a2e22a43b61e69a8acd92b4490b06a159d5234df5725"
     },
     "topSilhouette": {
       "file": "m60a1_top_silhouette.png",
@@ -581,24 +581,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32260,
-      "sha256": "35d0fdb21df4b1bfd5f23aa937ea8b6b9d51547df6ea6dad38dd0a3dc47a1c2f"
+      "bytes": 32346,
+      "sha256": "55d8d16220259a0363ac987b9fcb93744e708a73e72a8923bce57bd32506e5c5"
     },
     "modulesSide": {
       "file": "m60a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35564,
-      "sha256": "157c0716bf3a882b81f75e1559de20a812a71b90e76f6dfacb33543eb0374c43"
+      "bytes": 35118,
+      "sha256": "8adcbb42c5080d2316b63d7f48cffc03a0249a8aeb0c45be0760da7f5b8d1868"
     },
     "crewSide": {
       "file": "m60a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33138,
-      "sha256": "da73ef6b24f9b470234dbf84a9742a4eb6fc840cd741190ee60930e20e3e4b02"
+      "bytes": 33090,
+      "sha256": "969134301b3f902cd6651bd670c0612425ba33c6d96b5c46f1fca3000912e87b"
     },
     "markings": {
       "file": "m60a1_markings.png",
@@ -611,8 +611,8 @@
     "technicalLabels": {
       "file": "m60a1_technical.json",
       "mime": "application/json",
-      "bytes": 4699,
-      "sha256": "66603ea4f2193632d057925fe72e134c8de736c36fa876c217d2fc2dccb7db5e"
+      "bytes": 4700,
+      "sha256": "fbae9286c9034b821f8729da98f7cacbdc9657b6da6c016b88448509d9dee31b"
     }
   }
 }
