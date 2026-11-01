@@ -212,6 +212,7 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/changed-only/balance-keys.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    'tools/module-outside-share.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/technical-framing.selftest.mjs',
     'tools/vertex-color-coverage.selftest.mjs',

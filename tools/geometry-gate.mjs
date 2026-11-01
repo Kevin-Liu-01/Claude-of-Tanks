@@ -15,6 +15,7 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // order) and maintains docs/geometry-gate/ledger.json (tool-written only).
 //
 // Usage: node tools/geometry-gate.mjs [--ids=a,b] [--check] [--repin] [--absent=skip] [--skipped=<file>] [--oracles-only]
+//   [--prune] [--registry=<file>]
 // --repin (npm run gate:repin): a requested registered id whose oracle file is missing stops the run before anything is
 // measured or written, instead of recording an unavailable row over its measured one; an id the page cannot measure
 // keeps its previous ledger row, marked with the error as repinError.
@@ -24,6 +25,12 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // changed-only chain leaves them due. Every record names its oracle: { path, sha256 }, the registry's path as the page
 // fetches it and the sha256 of that file's bytes (the gate step's per-id input). --oracles-only measures nothing and
 // writes that field into each requested (or every) id's existing record where the oracle file is here.
+// Oracle pins (Main 2026-11-01, 267): an oracle whose bytes do not match its pin in tools/oracle-pins.mjs is a different
+// version: the gate refuses it before loading the page, naming the pinned sha256 (under --repin the row is kept, marked
+// repinError, and --skipped names it), so no record is ever measured on an unverified file.
+// Roster (267): the ledger keeps rows only for the fleet's ids (the page's playable roster); a run that writes it drops
+// any other row and that id's record. --prune does only that, measuring nothing. --registry=<file> writes the page's
+// registry ({ referenceSources: id -> path, playable }) and exits.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -32,7 +39,8 @@ import puppeteer from 'puppeteer';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
-import { mergeLedgerRow, missingOraclesError, unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { mergeLedgerRow, missingOraclesError, oraclePinError, rosterLedgerRows, unavailableOracleReport } from './geometry-gate-policy.mjs';
+import { ORACLE_PINS } from './oracle-pins.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 import { servedPublicOnly } from './served-public.mjs';
@@ -47,6 +55,9 @@ const REPIN = args.includes('--repin');
 const ABSENT_SKIP = args.includes('--absent=skip');
 const SKIPPED_FILE = args.find((a) => a.startsWith('--skipped='))?.slice(10) ?? null;
 const ORACLES_ONLY = args.includes('--oracles-only');
+const PRUNE_ONLY = args.includes('--prune');
+const REGISTRY_FILE = args.find((a) => a.startsWith('--registry='))?.slice(11) ?? null;
+let playableIds = null;
 /** id -> why this run did not measure it (--skipped). */
 const skipped = {};
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
@@ -95,6 +106,8 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
     }
   } else if (available.size < registered.size) {
     console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
+    // a whole-fleet --skipped run names them too, so nothing it did not measure reads as current
+    for (const id of referenceIds) if (!available.has(id)) skipped[id] = `oracle absent here (${referenceSources[id]})`;
   }
   return ids;
 }
@@ -146,8 +159,14 @@ const ids = await withRegistryPage(async ({ page }) => {
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
   const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
   referenceSourceOf = referenceSources;
-  return selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
+  playableIds = await page.evaluate('window.__PLAYABLE_IDS');
+  if (REGISTRY_FILE) {
+    fs.writeFileSync(REGISTRY_FILE, `${JSON.stringify({ referenceSources, playable: [...playableIds].sort() }, null, 1)}\n`);
+    return [];
+  }
+  return PRUNE_ONLY ? [] : selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
 });
+if (REGISTRY_FILE) { console.log(`geometry-gate --registry: wrote ${REGISTRY_FILE}`); process.exit(0); }
 if (ORACLES_ONLY) {
   // the gate step's per-id input on the records already measured: no page, no measurement (267 backfill)
   let named = 0;
@@ -165,6 +184,9 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
   const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
   for (const id of chunk) {
     try {
+      const oracle = oracleOf(referenceSourceOf[id]);
+      const pinError = oraclePinError(oracle.path, oracle.sha256, ORACLE_PINS);
+      if (pinError) throw new Error(pinError);
       let rawSourceComparison=null;
       if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded'});
@@ -183,7 +205,7 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
       const report = await page.evaluate('window.__GEO_REPORT');
       if (!report) throw new Error('no __GEO_REPORT');
       if(rawSourceComparison)report.rawSourceComparison=rawSourceComparison;
-      report.oracle = oracleOf(referenceSourceOf[id]);
+      report.oracle = oracle;
       fs.writeFileSync(path.join(OUT, `${id}.json`), `${JSON.stringify(report, null, 1)}\n`);
       rows.push(report);
       const c = report.components;
@@ -201,7 +223,7 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
 // --ids runs MERGE into the fleet ledger (never shrink it to the subset)
 const ledgerPath = path.join(OUT, 'ledger.json');
 const byId = new Map();
-if (requested && fs.existsSync(ledgerPath)) {
+if ((requested || PRUNE_ONLY) && fs.existsSync(ledgerPath)) {
   try {
     // A row under an id the tank id alias layer renamed carries over to the new id (SSOT 2.19).
     for (const r of JSON.parse(fs.readFileSync(ledgerPath, 'utf8')).rows || []) {
@@ -211,13 +233,19 @@ if (requested && fs.existsSync(ledgerPath)) {
   } catch { /* corrupted ledger rebuilds from this run */ }
 }
 for (const r of rows) mergeLedgerRow(byId, r, { repin: REPIN });
-const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
+// rows (and records) of ids the fleet no longer has go: a retired or renamed-away id's row is a stale pin
+const { kept, pruned } = rosterLedgerRows([...byId.values()], playableIds ?? []);
+for (const id of pruned) {
+  for (const file of [`${id}.json`, `${id}.raw-source.json`]) if (fs.existsSync(path.join(OUT, file))) fs.rmSync(path.join(OUT, file));
+}
+if (pruned.length) console.log(`[geo] pruned ${pruned.length} ledger row(s) of ids not in the roster: ${pruned.join(', ')}`);
+const all = kept.sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
 // Do not churn the ledger timestamp when no comparison row was evaluated.
 // A rerun that changes no row keeps the file byte-identical (2026-10-16): a fresh timestamp alone used to invalidate every
 // receipt that hashes docs/ (573 in 226).
-if (rows.length) {
+if (rows.length || pruned.length) {
   const body = {
     gate: 'every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity',
     passed, total: all.length, rows: all,

@@ -337,6 +337,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/whip-rods.selftest.mjs',
     // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
     'tools/gate-stowage.selftest.mjs',
+    // 267 (Main 2026-11-01): an oracle is measured only as the version its pin names; the ledger holds only the fleet's ids
+    'tools/gate-oracle-pins.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
@@ -786,6 +788,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite)
+    'tools/module-outside-share.selftest.mjs',
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',

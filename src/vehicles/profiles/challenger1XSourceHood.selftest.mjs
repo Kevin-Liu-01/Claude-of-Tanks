@@ -105,7 +105,7 @@ for (const quality of ['high', 'low']) {
     const m = new THREE.Mesh(g, material); m.name = g.userData.challenger1SourceHood; m.position.set(...D.turretPivot); m.updateMatrixWorld(true); parts.push(m);
   } });
   try {
-    assert.equal(newCount, 9); assert.equal(parts.length, 9);
+    assert.equal(newCount, 10); assert.equal(parts.length, 10); // + 'pocket-back' (e5b13c563a, the 265 minors pass)
     actual.root.scale.setScalar(1 / 1.10); before.root.scale.setScalar(1 / 1.10);
     actual.root.updateMatrixWorld(true); before.root.updateMatrixWorld(true);
     const all = meshes(actual.root), base = meshes(before.root);

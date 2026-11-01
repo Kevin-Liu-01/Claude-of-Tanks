@@ -91,3 +91,21 @@ export function unavailableOracleReport(id, qualityBar = 'fleet') {
     error: 'registered comparison oracle unavailable in this worktree',
   };
 }
+
+/** The ledger rows whose id is in `roster`, and the ids of the others (267, Main 2026-11-01: a row for an id the fleet no
+ *  longer has is a stale pin; the gate drops it, and its record, whenever it writes the ledger). An empty roster (none
+ *  read) keeps every row. */
+export function rosterLedgerRows(rows, roster) {
+  if (!roster?.length) return { kept: [...rows], pruned: [] };
+  const fleet = new Set(roster);
+  return { kept: rows.filter((row) => fleet.has(row.id)), pruned: rows.filter((row) => !fleet.has(row.id)).map((row) => row.id).sort() };
+}
+
+/** Why the oracle at `path` with these bytes (`sha256`) may not be measured, or null (267, Main 2026-11-01): a file that is
+ *  not the version its pin names is a different oracle, and a registered path without a pin is unverified. */
+export function oraclePinError(path, sha256, pins) {
+  const pin = pins[path];
+  if (!pin) return `oracle ${path} has no pinned sha256 (tools/oracle-pins.mjs): not measured`;
+  if (pin.sha256 !== sha256) return `oracle ${path} is ${sha256}, not the pinned ${pin.sha256}: not measured`;
+  return null;
+}

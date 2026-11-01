@@ -194,6 +194,9 @@ interface RigidBodyState {
   /** Set by the tank contact pass (tankBodyContacts.ts) while the hull rests on another hull's roof: the root height
    * the ride stands at, its ground for the next step (NaN otherwise). */
   restSupportY: number;
+  /** The ends at which the last support solve stood the hull on a body contact (appendBodyContact; 1 its front half, 2 its
+   * rear): those keep resting on one within BODY_REST_BAND_M (keepBodyRest). */
+  bodyRest: number;
 }
 
 export interface MovementContactGeometry {
@@ -278,6 +281,10 @@ export interface SupportSamples {
   /** The highest body contact (an end guard, or a box corner on a structure) the fit records, -Infinity for none: one
    * the hull rests on above its tracks (round 8; see appendBodyContact). */
   bodyTop: number;
+  /** How far under the tracks' support a body contact may still join the fit: BODY_REST_BAND_M while the hull rested on one. */
+  bodyBand: number;
+  /** The ends with a body contact over the tracks' support this step (1 front half, 2 rear; keepBodyRest). */
+  bodyEnds: number;
   /** Track-contact stations the springs carry (_bedD/_bedX/_bedZ: the outer pair and the wheel-run fan lines). */
   bedCount: number;
   /** The highest track-end (idler and sprocket wrap) deficit: hull-fixed, never carried by a spring. */
@@ -779,6 +786,13 @@ let _blockedSpeed = 0;
  * ground that falls away under a moving hull is still a fall (no faster than gravity).
  */
 let _rotationDrop = 0;
+/**
+ * How far this tick's turn of the hull raised the support at the contact it rests on (the other side of _rotationDrop). A
+ * tumbling hull's turn is its own, not the ground's motion, so the ride's ground rate leaves it out (physics, 268): a
+ * T-90AM rolling about its root at 1.5 rad/s into a 60-degree gable, 54-71 degrees over (under the shell's 70), had its
+ * support rise 0.9 m in 16 ticks, its springs carried it up at that rate, and it flew 1.4 m over where it touched.
+ */
+let _rotationRise = 0;
 /** Whether this tick's fit found every track sample carrying the hull (no edge, no drop under it): only then does a
  * grade it runs down carry its tracks with it (constrainLoadedRide). */
 let _wholeTrackOnGround = true;
@@ -853,6 +867,17 @@ const STRIKE_FRICTION = 0.7;
 const REST_STEP_RAD = 0.003;
 /** Body contacts the fit can record beside the outer lines (24 end guards and 4 box corners). */
 const FIT_BODY_MAX = 28;
+/**
+ * A hull that rested on a body contact last step keeps resting on one while one is within this of the tracks' support
+ * (keepBodyRest): under the clearance its end guards and box corners keep over the track line (END_GUARD_MIN_Y_M), so on
+ * ground its tracks carry it lets go.
+ */
+const BODY_REST_BAND_M = 0.1;
+/** This step's body contacts under the tracks' support within the band (hull-local x, z and deficit; keepBodyRest). */
+const _bandX = new Float64Array(FIT_BODY_MAX);
+const _bandZ = new Float64Array(FIT_BODY_MAX);
+const _bandD = new Float64Array(FIT_BODY_MAX);
+let _bandCount = 0;
 /** The body contacts this step (hull-local z and deficit): those at the far end from a strike are what it turns about
  * when a turn about the centre of mass would sink one (constrainLoadedRide, round 8). */
 const _bodyZ = new Float64Array(FIT_BODY_MAX);
@@ -1592,6 +1617,8 @@ const _supportSamples: SupportSamples = {
   panY: null,
   fitCount: 0,
   bodyTop: -Infinity,
+  bodyBand: 0,
+  bodyEnds: 0,
   bedCount: 0,
   wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
@@ -1897,7 +1924,17 @@ function bodyContactSupport(
     _guardHit.worldX = worldX;
     _guardHit.worldZ = worldZ;
   }
-  if (deficit > samples.outerMax) appendBodyContact(samples, localX, localZ, deficit);
+  if (deficit > samples.outerMax) {
+    appendBodyContact(samples, localX, localZ, deficit);
+    samples.bodyEnds |= localZ >= samples.centerZ ? 1 : 2;
+  } else if (samples.bodyBand > 0 && _bandCount < FIT_BODY_MAX) {
+    // under the tracks' support, within the band of a hull that rested on a body contact at that end: one only if none at
+    // that end is over it (keepBodyRest)
+    _bandX[_bandCount] = localX;
+    _bandZ[_bandCount] = localZ;
+    _bandD[_bandCount] = deficit;
+    _bandCount++;
+  }
   if (_bodyCount < FIT_BODY_MAX) {
     _bodyZ[_bodyCount] = localZ;
     _bodyD[_bodyCount] = deficit;
@@ -1921,6 +1958,30 @@ function appendBodyContact(samples: SupportSamples, localX: number, localZ: numb
   _fitH[record] = deficit + localX * samples.sinRoll * samples.cosPitch + samples.bottomLift + localZ * samples.sinPitch;
   _fitD[record] = deficit;
   if (deficit > samples.bodyTop) samples.bodyTop = deficit;
+}
+
+/**
+ * Hysteresis on a hull's rest on a body contact (physics, 268): a body contact joins the fit over the tracks' support
+ * (appendBodyContact), and at an end of the hull (its front or rear half) that rested on one last step and has none over
+ * the tracks this step, those within BODY_REST_BAND_M under it still do. A T-90AM leaning on a roof's eave by its nose,
+ * 0.01-0.15 m either side of its front track station, read the nose every other step: without it the samples were the
+ * street's, the ground one plane, and the target pitch flipped 48 to -2.6 degrees step by step until the hull slapped flat
+ * at 18 rad/s; one resting on a 40-degree shed flipped its plane 1.6 mrad. Only at an end with none over the tracks: a hull
+ * landing tail-first on one guard took the next one in the band as well, tipped about it as about an edge and slid off a
+ * 45-degree roof it holds on. Returns the ends the hull now rests on a body contact at.
+ */
+function keepBodyRest(samples: SupportSamples, rested: number): number {
+  let ends = samples.bodyEnds;
+  const keep = rested & ~ends;
+  if (!keep || !(samples.bodyBand > 0)) return ends;
+  const floor = samples.outerMax - samples.bodyBand;
+  for (let index = 0; index < _bandCount; index++) {
+    const end = _bandZ[index] >= samples.centerZ ? 1 : 2;
+    if (!(keep & end) || !(_bandD[index] > floor)) continue;
+    appendBodyContact(samples, _bandX[index], _bandZ[index], _bandD[index]);
+    ends |= end;
+  }
+  return ends;
 }
 
 /**
@@ -2104,7 +2165,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
       solverLift: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
-      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN,
+      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN, bodyRest: 0,
     },
     _rollover: { elapsedS: 0, expired: false },
     _groundType: 'medium',
@@ -2160,6 +2221,7 @@ export function resetTankVerticalState(
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
   state._body.restSupportY = NaN;
+  state._body.bodyRest = 0;
   if (grounded !== false && !state.overturned) state._body.tumbling = false;
 }
 
@@ -2655,6 +2717,10 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       // 0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and the hull
       // left the eave at 2.6 m/s.
       if (solverRise > SUPPORT_STEP_M) ride.supportY += solverRise;
+    }
+    // a tumbling hull's own turn into the ground lifts it by position, not as the ground's rate (_rotationRise)
+    if (state._body.tumbling && _rotationRise > 0 && Number.isFinite(ride.supportY)) {
+      ride.supportY += Math.min(_rotationRise, Math.max(0, supportY - ride.supportY));
     }
     const groundVStart = ride.groundV;
     updateRideSupportVelocity(ride, supportY, dt);
@@ -3172,6 +3238,8 @@ function integrateHorizontalMotion(
 const _wallPoints = new WeakMap<object, readonly number[]>();
 /** Plan directions in which the hull's outline meets a face (wallContactPoints). */
 const WALL_OUTLINE_DIRECTIONS = 16;
+/** Points this close to a direction's most outward reach are as far out: the one further along the hull's half is taken. */
+const WALL_REACH_TIE_M = 0.01;
 /** The grades of the faces the outline is taken against: the shallowest wall, and a sheer one. */
 const WALL_OUTLINE_GRADES = [CLIFF_GRADE, 6] as const;
 
@@ -3194,16 +3262,26 @@ function wallContactPoints(spec: MovementSpec): readonly number[] {
         const angle = (2 * Math.PI * direction) / WALL_OUTLINE_DIRECTIONS;
         const ux = detMath.sin(angle);
         const uz = detMath.cos(angle);
-        let best = -1;
-        let bestReach = -Infinity;
-        for (let index = 0; index + 2 < hull.length; index += 3) {
-          const reach = hull[index] * ux + hull[index + 2] * uz - hull[index + 1] / grade;
-          if (reach > bestReach) {
-            bestReach = reach;
-            best = index;
+        // (physics, 268) the most outward point in each half of the hull across the direction, the one further along it
+        // on a tie (WALL_REACH_TIE_M): a face nearly parallel to a side meets one of the side's ends first, as a pivot
+        // sweeps it in, never its middle. A T-90AM's left side is a run of points at x -1.90 from z -3.46 to 3.38; the one
+        // most outward point was its front end, and pivoting at a wall's foot it swept the rear end 5.9 cm into the face.
+        for (const half of [1, -1]) {
+          let best = -1;
+          let bestReach = -Infinity;
+          let bestAlong = 0;
+          for (let index = 0; index + 2 < hull.length; index += 3) {
+            const along = half * (hull[index] * uz - hull[index + 2] * ux);
+            if (along < 0) continue;
+            const reach = hull[index] * ux + hull[index + 2] * uz - hull[index + 1] / grade;
+            if (reach > bestReach + WALL_REACH_TIE_M || (reach > bestReach - WALL_REACH_TIE_M && along > bestAlong)) {
+              bestReach = Math.max(reach, bestReach);
+              best = index;
+              bestAlong = along;
+            }
           }
+          if (best >= 0 && !chosen.includes(best)) chosen.push(best);
         }
-        if (best >= 0 && !chosen.includes(best)) chosen.push(best);
       }
     }
     chosen.sort((a, b) => a - b);
@@ -4030,6 +4108,9 @@ function resetSupportSamples(
   samples.sideCount = 0;
   samples.outerMax = -Infinity;
   samples.bodyTop = -Infinity;
+  samples.bodyBand = state._body.bodyRest ? BODY_REST_BAND_M : 0;
+  samples.bodyEnds = 0;
+  _bandCount = 0;
   samples.outerX = 0;
   samples.outerZ = 0;
   samples.settleDeficitSum = 0;
@@ -4779,6 +4860,7 @@ function writeSupportCache(
   const bellySupportY = samples.bellyMax - bellyYield;
   if (bellySupportY > supportY) supportY = bellySupportY;
   if (bellySupportY > seatY) seatY = bellySupportY;
+  state._body.bodyRest = keepBodyRest(samples, state._body.bodyRest);
   updateTerrainFitAndPerch(
     entity,
     samples,
@@ -4805,6 +4887,7 @@ function writeSupportCache(
     const lift = (contactX * (samples.sinRoll * samples.cosPitch - detMath.sin(cache.roll) * detMath.cos(cache.pitch))
       + contactZ * (samples.sinPitch - detMath.sin(cache.pitch)));
     _rotationDrop = lift > 0 ? lift : 0;
+    _rotationRise = lift < 0 ? -lift : 0;
   }
   cache.x = state.pos.x;
   cache.z = state.pos.z;
@@ -5388,6 +5471,7 @@ export function updateTank(
   state.slopeBlocked = false;
   _blockedSpeed = 0;
   _rotationDrop = 0;
+  _rotationRise = 0;
   _supportRate = 0;
   _tippedThisTick = false;
   _wholeTrackOnGround = true;
