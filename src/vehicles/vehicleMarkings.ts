@@ -406,7 +406,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
-  centurion5_2dk: anchor('turret', 'right', 0.42, 0.49, 0.20, -1),
+  // 267: the Danish flag smaller than the Mk 5/2's roundel (critics dk1: its ends stood off the curved turret side)
+  centurion5_2dk: anchor('turret', 'right', 0.42, 0.49, 0.16, -1),
   shot_kal: anchor('turret', 'left', 0.42, 0.49, 0.25, 1),
   centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),

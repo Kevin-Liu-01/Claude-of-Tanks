@@ -167,8 +167,9 @@ function ribbedModule(P: TankBuilderPort, c: Vec3, size: Vec3, face: -1 | 0 | 1)
 }
 
 export function buildLeopard2A7DK(P: TankBuilderPort): void {
-  // the gun in the cover's coat to the muzzle (267: the r12 critics, both: one Barracuda texture over hull, skirts, turret
-  // and gun; the sand wrap of r6-r12 read as the brightest thing on the tank, its coat bands as neat stripes)
+  // the gun's Barracuda wrap a dull khaki under the cover's greens (r8: stock sand clashed; r12: a pale tan the brightest
+  // thing on the tank; 267 dk1: the gun in the coat read as painted, the photograph's wrap lighter and khaki)
+  P.mats.canvasPale.color.setHex(0x5d5642);
   buildLeopard2A7VX(P, { danish: true });
   // the rear module across the bustle and a module down each rear turret side, behind the smoke banks
   // (the rear module runs forward under the bustle's overhang to the turret's rear wall at z -2.49; the side modules sit

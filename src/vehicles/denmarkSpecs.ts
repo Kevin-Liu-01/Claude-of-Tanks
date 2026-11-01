@@ -159,7 +159,11 @@ leo2a7dk.visual = {
   // flecktarn takes the base and three patches at its finest density (catalogCamoPainter: half the ground the first
   // patch, a fifth the second, under a fifth the third): a mid-green ground, a slightly darker green for its fields, an
   // olive-tan accent close to them and the dark lace last
-  scheme: 'fleck', base: '#59653f', weather: '#545f3c', patches: ['#4c5736', '#5a5a40', '#2f3726'],
+  // p5 (critics dk1, both 6.3: the lace only in the cover's rectangles and there light speckle on dark, the paint round
+  // them large dark blotches; the photograph's mid-green panels under a fine dark lace): the tones close together, so
+  // the cover's cut-leaf texture (its lobes in these tones, its cuts' gaps at 0.62 of the base) is dark lace on mid-green
+  // and the paint between its panels a quiet mid-green of the same fabric
+  scheme: 'fleck', base: '#5a6640', weather: '#556040', patches: ['#525d3a', '#5d5a40', '#4a5535'],
   marking: 'number', number: '11', camoScale: 1.0,
 };
 
@@ -188,7 +192,8 @@ centurion5_2dk.visual = {
   // the Danish Army's 1980s three-tone (the Oksbøl, Pansermuseet and Stevnsfortet tanks): olive, black and an earth brown
   // in large hard-edged fields; c2 (the c1 sheets: a bright grass green and an orange brown against the Stevnsfortet
   // photograph's dark olive and earth brown): the olive and the brown darker and duller
-  scheme: 'nato', base: '#4f5733', weather: '#575f3b', patches: ['#1a1c16', '#5a3d26'], marking: 'number', number: '32',
+  // c4 (critics dk1: the olive light and yellow, the brown a rust; the photographs' a darker, duller olive and earth brown)
+  scheme: 'nato', base: '#3f4630', weather: '#474e36', patches: ['#18191a', '#463424'], marking: 'number', number: '32',
   camoScale: 0.48,
 };
 
