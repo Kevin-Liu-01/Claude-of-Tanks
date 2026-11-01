@@ -159,7 +159,7 @@
   },
   "challenger3_proto": {
    "name": "Challenger 3 Prototype",
-   "card": null
+   "card": "/brand/og-r2/tanks/challenger3_proto-card.jpg"
   },
   "challenger3_td": {
    "name": "Challenger 3 TD",
@@ -235,7 +235,7 @@
   },
   "fv4034": {
    "name": "FV4034",
-   "card": null
+   "card": "/brand/og-r2/tanks/fv4034-card.jpg"
   },
   "fv510": {
    "name": "FV510 Warrior",
@@ -371,11 +371,11 @@
   },
   "leo2a4_otco": {
    "name": "Leopard 2A4 OTCO",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a4_otco-card.jpg"
   },
   "leo2a4_v": {
    "name": "Leopard 2A4 V",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a4_v-card.jpg"
   },
   "leo2a4m": {
    "name": "Leopard 2A4M",
@@ -399,7 +399,7 @@
   },
   "leo2a6": {
    "name": "Leopard 2A6",
-   "card": null
+   "card": "/brand/og-r2/tanks/leo2a6-card.jpg"
   },
   "leo2a6_ua": {
    "name": "Leopard 2A6 UA",
@@ -435,7 +435,7 @@
   },
   "m1a1_abrams_hc": {
    "name": "M1A1 Abrams HC",
-   "card": null
+   "card": "/brand/og-r2/tanks/m1a1_abrams_hc-card.jpg"
   },
   "m1a1_abrams_sa": {
    "name": "M1A1 Abrams SA",
@@ -459,7 +459,7 @@
   },
   "m1a2_abrams_tusk": {
    "name": "M1A2 Abrams TUSK",
-   "card": null
+   "card": "/brand/og-r2/tanks/m1a2_abrams_tusk-card.jpg"
   },
   "m1a3": {
    "name": "M1E3 Abrams",
@@ -667,7 +667,7 @@
   },
   "sabra_mk2": {
    "name": "Sabra Mk 2",
-   "card": null
+   "card": "/brand/og-r2/tanks/sabra_mk2-card.jpg"
   },
   "shot_kal": {
    "name": "Sho't Kal",
@@ -799,7 +799,7 @@
   },
   "t72b3m_hetman_ii": {
    "name": "T-72B3M Hetman II",
-   "card": null
+   "card": "/brand/og-r2/tanks/t72b3m_hetman_ii-card.jpg"
   },
   "t72b3m_kunlun": {
    "name": "T-72B3M Kunlun",
@@ -951,7 +951,7 @@
   },
   "type10": {
    "name": "Type 10",
-   "card": null
+   "card": "/brand/og-r2/tanks/type10-card.jpg"
   },
   "type100": {
    "name": "Type 100 IFV",
@@ -963,7 +963,7 @@
   },
   "type10_tk_x": {
    "name": "Type 10 (TK-X)",
-   "card": null
+   "card": "/brand/og-r2/tanks/type10_tk_x-card.jpg"
   },
   "type10b": {
    "name": "Type 10B",
@@ -979,7 +979,7 @@
   },
   "type89": {
    "name": "Type 89",
-   "card": null
+   "card": "/brand/og-r2/tanks/type89-card.jpg"
   },
   "type90": {
    "name": "Type 90",
@@ -1091,7 +1091,7 @@
   },
   "ztz99_longwei": {
    "name": "ZTZ-99 Longwei",
-   "card": null
+   "card": "/brand/og-r2/tanks/ztz99_longwei-card.jpg"
   },
   "ztz99a": {
    "name": "ZTZ-99A",
