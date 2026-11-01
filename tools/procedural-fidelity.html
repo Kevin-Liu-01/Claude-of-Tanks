@@ -38,7 +38,7 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, stowageParts, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, stowageParts, pairedStowage, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -770,14 +770,15 @@ for (const root of [reference.root, procedural.root]) {
 // pintle or roof weapons and their mounts, on both models (tools/body-height-parts.mjs names them by their tags; an
 // oracle by its node names or its registration's roofFittingNodes). Every other mask keeps them. The 'roof' mode keeps
 // the roof weapons and leaves only the antennas out: the top of a published height's interval.
-// Stowage (fuel drums, their cradles, stowage racks and baskets) leaves every comparison on this page, on both models,
-// wherever the build tags it (profiles/stowagePart.ts) or the source names it or boxes it (FUSED_STOWAGE_BOXES): body
-// against body (Main's ruling 2026-10-31, 267). Every body built below leaves it out too; the score's ruler keeps it
-// (withWholeSource).
-const stowage = [
-  stowageParts(procedural.root, { isRenderNode }),
-  stowageParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_STOWAGE_BOXES[id]?.boxes ?? null }),
-];
+// Stowage (fuel drums, their cradles, stowage racks and baskets; jerry cans; unditching logs) leaves every comparison on
+// this page, on both models, kind by kind wherever the build tags that kind (profiles/stowagePart.ts, the kit's stowage
+// fittings) and the source names it or boxes it (FUSED_STOWAGE_BOXES): body against body (Main's rulings 2026-10-31 and
+// 11-01). A kind one side has alone stays on both sides. Every body built below leaves it out too; the score's ruler keeps
+// it (withWholeSource).
+const stowagePairing = pairedStowage(stowageParts(procedural.root, { isRenderNode }),
+  stowageParts(reference.root, { isRenderNode, oracle:true, named:FUSED_STOWAGE_BOXES[id]?.nodes ?? null, parts:FUSED_STOWAGE_BOXES[id]?.parts ?? null }),
+  (node) => baseVisible.get(node) === true);
+const stowage = [stowagePairing.built, stowagePairing.oracle];
 const roofFittings = [
   roofFittingParts(procedural.root, { isRenderNode, cut:stowage[0].ranges }),
   roofFittingParts(reference.root, { isRenderNode, oracle:true, boxes:FUSED_ROOF_GUN_BOXES[id]?.boxes ?? null,
@@ -821,17 +822,28 @@ const roofFittingsExcluded = (() => {
 // length stay the source's whole ones (withWholeSource): setting whips or stowage aside changes what is compared, never
 // the ruler. Stowage goes first, so a mesh that loses both keeps neither.
 const stowageAsideUndo = [];
-for (const { nodes, ranges } of stowage) {
+for (const [model, { nodes, ranges }] of stowage.entries()) {
   for (const [node, cut] of ranges) {
     const body = bodyGeometryWithout(node.geometry, cut);
-    stowageAsideUndo.push([node, node.geometry, body]); node.geometry = body;
+    stowageAsideUndo.push([node, node.geometry, body, model]); node.geometry = body;
   }
-  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
+  for (const node of nodes.keys()) { stowageAsideUndo.push([node, null, baseVisible.get(node), model]); baseVisible.set(node, false); }
+}
+/** `measure` with one model's stowage (0 the build, 1 the source) back in place, everything else as it stands. */
+function withStowageBack(measure, model) {
+  const entries = stowageAsideUndo.filter((entry) => entry[3] === model);
+  const saved = entries.map(([node, geometry]) => (geometry ? node.geometry : baseVisible.get(node)));
+  for (const [node, geometry, other] of entries) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
+  try { return measure(); } finally {
+    for (const [i, [node, geometry]] of entries.entries()) { if (geometry) node.geometry = saved[i]; else baseVisible.set(node, saved[i]); }
+  }
 }
 const stowageAside = (() => {
-  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()],
+  const named = stowage.map(({ nodes, ranges }) => [...new Set([...[...nodes.values()].map(({ kind, tag }) => `${kind}:${tag}`),
     ...[...ranges].map(([node, cut]) => `${node.name}:${cut.length}`)])].sort());
-  return named[0].length || named[1].length ? { procedural:named[0], reference:named[1] } : null;
+  const { unpaired } = stowagePairing, alone = unpaired.procedural.length || unpaired.reference.length;
+  return named[0].length || named[1].length || alone
+    ? { kinds:stowagePairing.kinds, procedural:named[0], reference:named[1], ...(alone ? { staysIn:unpaired } : {}) } : null;
 })();
 const whipsAside = paired.named.antenna;
 const whipsAsideUndo = [];
@@ -839,6 +851,7 @@ if (whipsAside) {
   for (const { trimmed } of roofFittings) for (const [node, body] of trimmed) { whipsAsideUndo.push([node, node.geometry, body]); node.geometry = body; }
   for (const node of paired.hidden) if (antennaNodes.has(node)) { whipsAsideUndo.push([node, null, baseVisible.get(node)]); baseVisible.set(node, false); }
 }
+/** `measure` on the whole models: every whip and stowage part set aside is back in place (both models). */
 function withWholeSource(measure) {
   const undo = [...stowageAsideUndo, ...whipsAsideUndo];
   for (const [node, geometry, other] of undo.slice().reverse()) { if (geometry) node.geometry = geometry; else baseVisible.set(node, other); }
@@ -907,8 +920,10 @@ function visibleBox(root) {
   return result;
 }
 
-const referenceBox = visibleBox(reference.root);
-const proceduralBox = visibleBox(procedural.root);
+// The frames, scale anchors and boxes below are rulers: they see the whole models, whips and stowage included
+// (withWholeSource), so setting parts aside never moves the raster grid or the registration (267).
+const referenceBox = withWholeSource(() => visibleBox(reference.root));
+const proceduralBox = withWholeSource(() => visibleBox(procedural.root));
 // Recovered GLBs are normalized by the game loader, whose conservative
 // scale is the minimum of length, width and height.  A tall antenna can
 // therefore shrink the entire armored body (Type 90: 3.43 m real width became
@@ -921,7 +936,7 @@ const safeScale=(target,current)=>THREE.MathUtils.clamp(target/Math.max(current,
 const hullLength=(visual)=>{
   const hull=visual.root.getObjectByName('rig_hull');
   if (!hull) return 0;
-  return visibleBox(hull).getSize(new THREE.Vector3()).z;
+  return withWholeSource(() => visibleBox(hull)).getSize(new THREE.Vector3()).z;
 };
 const useHullLengthAnchor=source?.glb?.fidelityScaleAnchor === 'hullLength';
 const refAnchor=useHullLengthAnchor ? hullLength(reference) : refWidth;
@@ -962,8 +977,8 @@ if (sourceWorldCertificate) {
     SOURCE_WORLD_BUILD_OFFSETS[id]);
   if (!sourceWorldRegistration.passed) failFidelity(sourceWorldRegistration.failures.join('; '));
 }
-referenceBox.copy(visibleBox(reference.root));
-proceduralBox.copy(visibleBox(procedural.root));
+referenceBox.copy(withWholeSource(() => visibleBox(reference.root)));
+proceduralBox.copy(withWholeSource(() => visibleBox(procedural.root)));
 const sharedBox = referenceBox.clone().union(proceduralBox);
 const center = sharedBox.getCenter(new THREE.Vector3());
 const corners = [];
@@ -2141,8 +2156,22 @@ if (params.get('geo')) {
     const ownOracle = source?.glb?.path && source.glb.path !== (LOCAL_REFERENCE_OVERRIDES[donorId] || MODEL_SOURCE[donorId])?.glb?.path;
     const { published: hullTarget, ...hullBasis } = hullLengthTarget(pub, preservation ? null : TANK_SPECS[donorId]?.dims,
       ownOracle ? referenceDimensions.hullLengthM : null);
-    if (ext) dimCheck('hullLengthM', ext.len, hullTarget, hullBasis);
-    dimCheck('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+    // A published length is a silhouette, stowage and all, so where the build's stowage is set aside its body is held to
+    // the interval from the body to the body with its stowage back (as a published height spans body top to roof fittings)
+    const buildStowage = !preservation && stowageAside?.procedural.length > 0;
+    const stowageLength = (name, body, withStowage, published, extra = {}) => {
+      if (!buildStowage || !published || !Number.isFinite(withStowage)) { dimCheck(name, body, published, extra); return; }
+      if (!Number.isFinite(body) || body <= 0) return;
+      dimRows.push({ name, actual:body, withStowage, published, method:'interval: body to body with its stowage', ...extra,
+        pct:heightIntervalPct(body, withStowage, published) });
+    };
+    if (ext) stowageLength('hullLengthM', ext.len, buildStowage ? withStowageBack(() => {
+      const side = sideTraces(procedural, reference);
+      return bodyExtent(side.whole, side.hull)?.len;
+    }, 0) : null, hullTarget, hullBasis);
+    stowageLength('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')),
+      buildStowage ? withStowageBack(() => withBodyOnly(() => pixelSpanZ('whole')), 0) : null,
+      pub.silhouetteOverallLengthM ?? pub.overallLengthM);
     dimCheck('widthM', withBodyOnly(() => measurePixelWidth(procedural, reference)), pub.silhouetteWidthM ?? pub.widthM);
   }
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
@@ -2184,7 +2213,8 @@ if (params.get('geo')) {
   };
   let floaterFails = 0;
   const floaterRows = [];
-  {
+  // floaters judge the whole build (a part set aside for the comparisons still holds what it carries)
+  withWholeSource(() => {
     const turretN = procedural.root.getObjectByName('rig_turret');
     const gunN = procedural.root.getObjectByName('rig_gun');
     const dep = spec.gunDepressionDeg ?? 8, elev = spec.gunElevationDeg ?? 15;
@@ -2202,7 +2232,7 @@ if (params.get('geo')) {
     if (turretN) turretN.rotation.y = 0;
     if (gunN) gunN.rotation.x = 0;
     procedural.root.updateMatrixWorld(true);
-  }
+  });
   const floaterScore = floaterFails ? 0 : 100;
   // For a declared fused reference, the 1-D curve extrema are dominated by
   // whichever mixed-owner fitting happens to occupy a sampled column (the
@@ -2249,7 +2279,7 @@ if (params.get('geo')) {
       ...(Number.isFinite(procRoofTop) ? { roofFittingsTop: +Math.max(procExt.h, procRoofTop).toFixed(3) } : {}) },
     ...(roofFittingsExcluded ? { roofFittingsExcluded } : {}),
     ...(whipsAside ? { whipsAside:'every comparison: the source\'s named or boxed whips and the build\'s whips; the score height with them' } : {}),
-    ...(stowageAside ? { stowageAside:{ rule:'every comparison: the build\'s tagged stowage and the source\'s named or boxed stowage; the score height and plan length with them', ...stowageAside } } : {}),
+    ...(stowageAside ? { stowageAside:{ rule:'every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole', ...stowageAside } } : {}),
     ...(roofFittingsExcluded && (dimensionFrame || preservation) ? { oracleComparison:{ antennasDropped:paired.named.antenna,
       roofWeaponsDropped:paired.named.weapon, rule:'a kind of roof fitting leaves both models only where the oracle names it' } } : {}),
     floaterFails, floaterRows,
