@@ -181,11 +181,13 @@ function embrasuredShield(P: MiscBuilderPort, w: number, h: number, t: number, x
 function rwsHousing(P: MiscBuilderPort, x: number, y: number, z: number, gx0: number, gx1: number, h: number,
   zBack: number, zFront: number, lip: number, plate: boolean, back = true): void {
   const { box, cylY } = KIT;
+  // (267 round 5c, both critics, critic11: the black housing "reads like a hole in the render", "an open bin": a mount is
+  // painted bodywork, so it takes the camouflaged detail bucket and shows its lit faces; the gun stays gunmetal)
   const t = 0.025, xl = gx0 - 0.02 - t / 2, xr = gx1 + 0.02 + t / 2, w = xr - xl + t, depth = zFront - zBack;
-  for (const xs of [xl, xr]) P.add('turretDark', box(t, h, depth), x + xs, y + h / 2, z + (zBack + zFront) / 2);
-  if (back) P.add('turretDark', box(w, h, t), x + (xl + xr) / 2, y + h / 2, z + zBack - t / 2);
-  if (lip > 0) P.add('turretDark', box(w, lip, t), x + (xl + xr) / 2, y + lip / 2, z + zFront + t / 2);
-  if (plate) P.add('turretDark', cylY(0.20, 0.20, 0.02, 18), x, y + 0.01, z);
+  for (const xs of [xl, xr]) P.add('turretDetail', box(t, h, depth), x + xs, y + h / 2, z + (zBack + zFront) / 2);
+  if (back) P.add('turretDetail', box(w, h, t), x + (xl + xr) / 2, y + h / 2, z + zBack - t / 2);
+  if (lip > 0) P.add('turretDetail', box(w, lip, t), x + (xl + xr) / 2, y + lip / 2, z + zFront + t / 2);
+  if (plate) P.add('turretDetail', cylY(0.20, 0.20, 0.02, 18), x, y + 0.01, z);
 }
 
 // Armored optics housing: body + dark split doors/aperture + glass slit.
@@ -1269,14 +1271,18 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // 267 (Sonnet, round 3: "no fender-corner headlamp units; the real one is a boxed headlamp + indicator on each
     // corner"): each front corner carries the Saumur hulls' lamp box on the glacis over the skirt block, a round lens in
     // its face and the amber indicator outboard; the low twin pods and their guards are gone.
+    // (267 round 5c, Opus, critic11: "the headlight clusters are set back on the front skirt modules, 50 px of deck from
+    // the flaps; the real lamps sit on the fender corner directly above the flap", pic-1, pic-2, pic-3): each box stands on
+    // the mudguard shoulder (top 1.34 @ 2.95 -> 1.245 @ 3.58) over its flap, its foot 2 cm into the shoulder.
+    const guardY = (z: number): number => 1.34 - (z - 2.95) * 0.095 / 0.63;
     for (const s of [-1, 1]) {
       P.add('hullDetail', slab(
-        [s * 1.30, 1.36, 2.70], [s * 1.62, 1.36, 2.70], [s * 1.62, 1.39, 2.50], [s * 1.30, 1.39, 2.50],
-        [s * 1.30, 1.55, 2.70], [s * 1.62, 1.55, 2.70], [s * 1.62, 1.55, 2.50], [s * 1.30, 1.55, 2.50]));
-      P.add('hullDark', box(0.33, 0.018, 0.21), s * 1.46, 1.555, 2.60);           // brow
-      headlight(P, s * 1.41, 1.455, 2.70, 0, 0.060);
-      P.add('hullDark', box(0.09, 0.08, 0.02), s * 1.555, 1.455, 2.705);         // indicator
-      P.add('hullGlass', box(0.07, 0.06, 0.012), s * 1.555, 1.455, 2.716);
+        [s * 1.30, guardY(3.55) - 0.02, 3.55], [s * 1.62, guardY(3.55) - 0.02, 3.55], [s * 1.62, guardY(3.35) - 0.02, 3.35], [s * 1.30, guardY(3.35) - 0.02, 3.35],
+        [s * 1.30, 1.43, 3.55], [s * 1.62, 1.43, 3.55], [s * 1.62, 1.43, 3.35], [s * 1.30, 1.43, 3.35]));
+      P.add('hullDark', box(0.33, 0.018, 0.21), s * 1.46, 1.435, 3.45);           // brow
+      headlight(P, s * 1.41, 1.345, 3.55, 0, 0.060);
+      P.add('hullDark', box(0.09, 0.08, 0.02), s * 1.555, 1.345, 3.555);         // indicator
+      P.add('hullGlass', box(0.07, 0.06, 0.012), s * 1.555, 1.345, 3.566);
     }
     // 266 (owner: "clean up the leclercs"): the tow cable slung across the glacis, its eyes and ferrules as big as the
     // headlamps, is gone; the Saumur Leclercs carry nothing across the glacis, and their cables ride the engine deck.
@@ -2166,9 +2172,11 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // it; it now runs from the face frame (gun frame z 2.49) 0.70 m out along the tube, gathered in two folds.
     // 267 round 4: the sock starts inside the new cradle's front (gun frame z 2.29) and runs 0.73 m out along the tube
     // 267 round 5b (both critics, critic10: "an oversized khaki cone at the gun root, about twice the barrel's diameter; the
-    // real cloth cover hugs the barrel"): the sock tapers 0.17 -> 0.135 m over the tube
-    P.add('gunMountCloth', cylZ(0.135, 0.80, 16, 0.17), 0, 0, 2.62);
-    for (const z of [2.50, 2.80]) P.add('gunMountDark', cylZ(0.17 - (z - 2.22) * 0.035 / 0.80 + 0.004, 0.014, 16), 0, 0, z);
+    // real cloth cover hugs the barrel"); round 5c (Sonnet, critic11: "the real boot flares and sags over the mantlet",
+    // 7754): a short flare at the root, 0.225 -> 0.155 m over 0.25 m, then the sleeve hugging the tube to 0.135 m
+    P.add('gunMountCloth', cylZ(0.155, 0.25, 16, 0.225), 0, 0, 2.345);
+    P.add('gunMountCloth', cylZ(0.135, 0.55, 16, 0.155), 0, 0, 2.745);
+    for (const z of [2.50, 2.80]) P.add('gunMountDark', cylZ(0.155 - (z - 2.47) * 0.020 / 0.55 + 0.004, 0.014, 16), 0, 0, z);
     P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
     P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
     // 2026-10-07 (tank-accessories round 4, wave 217: "the coax root shows daylight through the mantlet"): the coax
@@ -2332,11 +2340,11 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   // station's stock. Gameplay change: functional roof guns 0 -> 1.
   const finishXlrRws = captureAuxiliaryStock(P, 'leclercXlrRoofRwsGun');
   // 267 round 5 (both critics, critic7: "the machine gun is mounted high on a box, top-heavy; the photos show a low black
-  // remote weapon station box", 6954): the shoe and body are black, the gun sits on a stub column (the shared pintle's
-  // negative riser) and the shield comes down with it
-  P.add('turretDark', cylY(0.27, 0.27, xlrShoeH, 16),
+  // remote weapon station box", 6954): the gun sits on a stub column (the shared pintle's negative riser) and the shield
+  // comes down with it; (round 5c) the shoe and body in detail paint, as the housing
+  P.add('turretDetail', cylY(0.27, 0.27, xlrShoeH, 16),
     xlrRwsX, xlrRoofY + xlrShoeH / 2, xlrRwsZ);
-  P.add('turretDark', box(0.42, xlrBodyH, 0.42),
+  P.add('turretDetail', box(0.42, xlrBodyH, 0.42),
     xlrRwsX, xlrShoeTopY + xlrBodyH / 2, xlrRwsZ);
   P.add('turretDark', box(0.26, 0.14, 0.025), xlrRwsX, 0.9395, -0.105);
   P.add('turretGlass', box(0.16, 0.10, 0.025), xlrRwsX, 0.9595, -0.088);
@@ -2451,10 +2459,10 @@ function buildAMX56(P: MiscBuilderPort): void {
   // working roof weapon, its base, body, sight and shield the station's stock. Gameplay change: functional 0 -> 1.
   const finishAmxRws = captureAuxiliaryStock(P, 'amx56RoofRwsGun');
   // 267 round 5 (both critics, critic7: "the MG stands high on a thin post above a small dome; the photo mount is a compact
-  // black box with the gun close on top"): black stock, a stub column (the shared pintle's negative riser), the shield
-  // down with the gun
-  P.add('turretDark', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
-  P.add('turretDark', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
+  // black box with the gun close on top"): a stub column (the shared pintle's negative riser), the shield down with the
+  // gun; (round 5c) the base and body in detail paint, as the housing
+  P.add('turretDetail', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
+  P.add('turretDetail', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
   P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
   // release 230: the receiver's front swept 4 cm into the shield's top edge from full depression to 2 degrees of
   // elevation; it passes through an embrasure 124 mm wide and 44 mm deep

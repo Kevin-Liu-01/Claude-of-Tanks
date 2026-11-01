@@ -872,7 +872,10 @@ function buildAMX40(P: FranceBuilderPort): void {
     // (the lower course runs down through the pot into the roof: standing on the pot alone, the aerial read as a
     // floating island to the geometry gate, which leaves equipment out of its silhouette)
     P.add('turretDetail', antennaPart(cylY(0.022, 0.034, 0.21, 10)), 0.98, 0.735, -1.25);  // stepped cone, lower course
-    P.add('turretDetail', antennaPart(cylY(0.010, 0.020, 0.10, 8)), 0.98, 0.94, -1.25);    // upper course
+    // (267 round 5c, both critics, critic11: "the whip hovers above its base": the upper course began 5 cm above the lower
+    // cone's top; it now runs from it, and three insulator discs step the cone, as in pic-4)
+    P.add('turretDetail', antennaPart(cylY(0.010, 0.020, 0.15, 8)), 0.98, 0.915, -1.25);  // upper course
+    for (const [y, r] of [[0.80, 0.036], [0.835, 0.030], [0.87, 0.024]]) P.add('turretDetail', antennaPart(cylY(r, r, 0.012, 12)), 0.98, y, -1.25);
     P.add('turretDetail', antennaPart(cylY(0.010, 0.012, 0.20, 8)), 0.98, 1.09, -1.25);    // rod (267 r5b: thick enough to read)
     P.add('turretDark', cylY(0.035, 0.045, 0.055, 10), 0.98, 0.762, -1.25);     // whip base pot at the source seat
   }
