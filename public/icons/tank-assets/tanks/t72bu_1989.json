@@ -2103,7 +2103,7 @@
       }
     ]
   },
-  "geometryHash": "be48550c",
+  "geometryHash": "9e8f8363",
   "metadataHash": "7d43e335",
   "presentationAnchor": {
     "xM": -0.0053,
@@ -2128,8 +2128,8 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 12,
-      "gunmetal": 4,
+      "armorPaint": 13,
+      "gunmetal": 5,
       "unclassified": 17,
       "gearShadow": 1,
       "machineGun": 4,
@@ -2161,15 +2161,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24040,
-      "sha256": "42a621a8eaca18076d6c8e4b81b891bc5d7fd1423d5d58805315f73378ce33ae",
+      "bytes": 24024,
+      "sha256": "b393d51e862a54a16eba95f9b50bea23862c9c5acbc821a8f56693621e026130",
       "thumbnail": {
         "file": "thumbs/t72bu_1989_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9850,
-        "sha256": "8250fd5d26e56abf6d31fce1d90c98430166199e8a0f9edb2e3a188f791ce36c"
+        "bytes": 9856,
+        "sha256": "d331713988d6953d705f0a32d3ec1f378b4b4a432b5a67247fa1a6489171822d"
       }
     },
     "top": {
@@ -2185,8 +2185,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 8830,
-      "sha256": "49c00ba7f335e83016cfcd99e5fee137148d3f82729cb80356f062a1886f8ad4"
+      "bytes": 8814,
+      "sha256": "2a29f37cc83cdeefcc1e67048717d9223722d73351badc26cfc07e3dec24d4a8"
     },
     "topSilhouette": {
       "file": "t72bu_1989_top_silhouette.png",
@@ -2209,24 +2209,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22814,
-      "sha256": "a8c47965e7e274a3b0063dcff5dc245a607a0f7d191cf0690a9a51b36c52bace"
+      "bytes": 22770,
+      "sha256": "a2266c3c25cf697cacae81cc6ffa6e15c2ebf7f0264582cd802566cbb1c8cb6c"
     },
     "modulesSide": {
       "file": "t72bu_1989_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20242,
-      "sha256": "d3171dfbf9ed311694d23d5c54d7946e0dca4dfdc99497b4ff4b8ed1ad5d569f"
+      "bytes": 20230,
+      "sha256": "6c870e0a542771795a30011dd8d2163e7bc72581888cfdf31dfca319639f3499"
     },
     "crewSide": {
       "file": "t72bu_1989_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18186,
-      "sha256": "367e048af81f1cd1d192a4f9e9435a1d1f6215547ccc996a866bb681451d8b0f"
+      "bytes": 18232,
+      "sha256": "874f9463590006368db0dc973ee57e4ccd9237c483faab8a06e82aeb42d56805"
     },
     "markings": {
       "file": "t72bu_1989_markings.png",

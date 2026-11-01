@@ -1341,7 +1341,7 @@
       }
     ]
   },
-  "geometryHash": "bee88816",
+  "geometryHash": "2e13abfb",
   "metadataHash": "a6f305fb",
   "presentationAnchor": {
     "xM": 0.0014,
@@ -1366,9 +1366,9 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 12,
+      "armorPaint": 13,
       "hullRubber": 1,
-      "gunmetal": 4,
+      "gunmetal": 5,
       "unclassified": 16,
       "gearShadow": 1,
       "machineGun": 4,
@@ -1400,15 +1400,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24392,
-      "sha256": "683df8f6e7dc070cbf6ef159c1a16ee65c135c681361fd44434d6534d1e96510",
+      "bytes": 24366,
+      "sha256": "03aea9ff0c02221a3eb50211e6f8a20e23e020309724c3bf0d4f4fcd9b40cdc3",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
         "bytes": 10154,
-        "sha256": "185fc6fb4a833bad1ec20fffaff37f50add0357225860cbe1f90148ee6084acc"
+        "sha256": "dcf7149e65e753645feb1a62bed235ea13f54b687b96c8c4187f4b03af4370b1"
       }
     },
     "top": {
@@ -1424,8 +1424,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9870,
-      "sha256": "bfaf72e66acfe523b362c0003d04e737341d2e872fe124d9557d3bc12440ccd8"
+      "bytes": 9880,
+      "sha256": "f13099c16da4359a9006133d9ca19732604c7269d90dde4099e7cafded11d84c"
     },
     "topSilhouette": {
       "file": "t80uk_top_silhouette.png",
@@ -1448,24 +1448,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23700,
-      "sha256": "a085668f214a79f753d6546bfaa4d94a026ba4c79cae1503ab3049d2c2ccefdb"
+      "bytes": 23678,
+      "sha256": "8547b0c7f39b218fce313e55e502d09d8219f1162d5ba49aed5088b78b76c727"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22860,
-      "sha256": "770d9ce38c1d290b4f7153a1d9a4a6b96a5c7fbc63ed9b5b05149cac2a8c5104"
+      "bytes": 22858,
+      "sha256": "d547c89b87dd039a56e5511acd5343b438fbf4ba6e2cb048f3b81abb8633bbf3"
     },
     "crewSide": {
       "file": "t80uk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19624,
-      "sha256": "bc53e423d5f35d623e008712e900dcb7b62aa1684c1984c688bb6ffd93c17799"
+      "bytes": 19606,
+      "sha256": "3612267f54d72af913b600927d4196c0f6ce5ddae0fdcb338fca1c5c70dfcd2b"
     },
     "markings": {
       "file": "t80uk_markings.png",
