@@ -3327,7 +3327,8 @@ function m60BlazerTurret(P: CastPort): void {
     const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, yaw);
     return plan.multiplyScalar(Math.cos(pitch)).add(new THREE.Vector3(0, Math.sin(pitch), 0)).normalize();
   };
-  const bandTop = (k: number): number => Math.min(2.40 + 0.03 * k, 2.60);
+  // (round 21, latrun-3 and -4: the rear boxes reaching to 5 cm under the roof's edge)
+  const bandTop = (k: number): number => Math.min(2.40 + 0.035 * k, 2.63);
   // (round 19: the row's feet stepping up 8 cm from front to rear, its brackets with them)
   const bandFoot = (k: number): number => 1.90 + 0.08 * (k / 7);
   for (const side of [1, -1]) {
@@ -3367,8 +3368,9 @@ function m60BlazerTurret(P: CastPort): void {
       }
       for (const { c, n, h, embed } of fan) blazerBox(P, 'turret', c, n, up, 0.30, h, 0.10, embed);
       // the tall slab beside the mantlet on its frame, its face turned 30 degrees out from the bore
-      const n = new THREE.Vector3(side * Math.sin(0.52), 0, Math.cos(0.52));
-      blazerBox(P, 'turret', new THREE.Vector3(side * 0.70, 2.05, 1.86), n, up, 0.32, 0.55, 0.22, 0.02);
+      // (round 21, latrun-2: the corner box 0.35 x 0.55 x 0.30 m turned 35 degrees out and leaning back 10)
+      const n = new THREE.Vector3(side * Math.sin(0.61) * Math.cos(0.17), Math.sin(0.17), Math.cos(0.61) * Math.cos(0.17));
+      blazerBox(P, 'turret', new THREE.Vector3(side * 0.72, 2.05, 1.84), n, up, 0.35, 0.55, 0.30, 0.02);
     });
   }
 }
@@ -3386,15 +3388,15 @@ function m60BlazerGlacis(P: CastPort): void {
     const lift = slope.clone().applyAxisAngle(new THREE.Vector3(1, 0, 0), 0.20);
     for (let i = 0; i < 7; i++) blazerBox(P, 'hull', new THREE.Vector3(-0.72 + i * 0.24, m60DeckY(2.76), 2.76), lift, fwd, 0.22, 0.55, 0.10, 0.04);
     for (const z of [3.04, 3.28]) {
-      for (let i = 0; i < 7; i++) blazerBox(P, 'hull', new THREE.Vector3(-0.66 + i * 0.22, m60DeckY(z), z), steep, fwd, 0.21, 0.28, 0.09, 0.03);
+      for (let i = 0; i < 7; i++) blazerBox(P, 'hull', new THREE.Vector3(-0.66 + i * 0.22, m60DeckY(z), z), steep, fwd, 0.21, 0.28, 0.12, 0.03);
     }
     for (const x of [-0.58, 0.58]) blazerBox(P, 'hull', new THREE.Vector3(x, m60DeckY(2.10), 2.10), new THREE.Vector3(0, 1, 0), fwd, 0.26, 0.34, 0.09);
   });
-  // (round 19, latrun-2: a tow cable from each bow eye up the glacis outboard of the lights and looped back down it)
+  // (round 19, latrun-2: a tow cable from each bow eye up the glacis outboard of the lights; round 21: one taut run, its
+  // loop read as a hose)
   for (const s of [-1, 1]) {
-    const on = (x: number, z: number, lift = 0.035): [number, number, number] => [s * x, m60DeckY(z) + lift, z];
-    KIT.towCable(P, [[s * 0.70, M60_HULL_SPEC.toe[1] - 0.10, M60_HULL_SPEC.toe[0] + 0.03], on(0.90, 3.36, 0.03), on(1.08, 3.10), on(1.12, 2.75),
-      on(1.10, 2.50), on(1.02, 2.47), on(0.98, 2.70), on(1.00, 3.00)], 0.015);
+    const on = (x: number, z: number): [number, number, number] => [s * x, m60DeckY(z) + 0.03, z];
+    KIT.towCable(P, [[s * 0.70, M60_HULL_SPEC.toe[1] - 0.10, M60_HULL_SPEC.toe[0] + 0.03], on(0.92, 3.30), on(1.10, 2.95), on(1.12, 2.50)], 0.015);
   }
 }
 
@@ -3613,14 +3615,15 @@ function m60Magach7Hull(P: CastPort): void {
     const q = c.clone().addScaledVector(slope, 0.15).addScaledVector(v, 0.10);
     KIT.liftEye(P, 'hullDetail', ax, q.y, q.z, 0);
   }
-  m60Magach7Grille(P);
+  m60IdfGrille(P);
 }
 
-/** The Magach 7's engine grille box over the rear plate (latrun-4, Tanks in Gilo, IDF Magach Merkaz): 1.65 m wide and
+/** The IDF M60s' engine grille box over the rear plate, the Magach 6B's and 7C's alike (7C latrun-4, Tanks in Gilo,
+ * IDF Magach Merkaz; 6B latrun-3, Tank Square 4): 1.65 m wide and
  * 0.69 m tall, standing 0.20 m proud of the plate with its top at the deck's edge, its upper corners chamfered; a post
  * down its middle parts two doors, each louvred by fifteen slats raked 28 degrees rising to the post (an inverted V) over
  * the dark grille; two shackles under it, and the tail lights moved down under it on the plate (the A1's stand inside). */
-function m60Magach7Grille(P: CastPort): void {
+function m60IdfGrille(P: CastPort): void {
   const H = M60_HULL_SPEC, gw = 0.825, gy0 = 1.16, gy1 = H.tailTopY, gd = 0.20, cut = 0.12, fr = 0.05, post = 0.03;
   const zf = H.tailZ - gd;
   const door = (s: number): THREE.Vector2[] => [[post, gy0 + fr], [gw - fr, gy0 + fr], [gw - fr, gy1 - cut - 0.02],
@@ -4129,7 +4132,7 @@ export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3' | 'm
   // owner's model)
   const H = M60_HULL_SPEC, G = variant === 'a2' ? M60A2_GUN : M60_GUN;
   yield* pershingHullSteps(P, { ...H, gear: { ...H.gear, ...finish } });
-  if (variant === 'magach6b') { m60BlazerGlacis(P); yield 'm60HullEra'; }
+  if (variant === 'magach6b') { m60BlazerGlacis(P); m60IdfGrille(P); yield 'm60HullEra'; }
   if (variant === 'magach7c') { m60Magach7Hull(P); yield 'm60HullArmour'; }
   if (variant === 'a2') yield* m60a2TurretSteps(P);
   else yield* m60TurretSteps(P, variant);
