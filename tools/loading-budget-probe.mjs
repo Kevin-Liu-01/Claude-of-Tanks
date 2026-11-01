@@ -27,6 +27,7 @@
 // load time and loading-screen responsiveness are intentionally separate
 // contracts: a fast load with a frozen progress screen is still a failure.
 
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { build, createServer, preview } from 'vite';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -192,11 +193,13 @@ console.log(`[loading-budget] strict budget <${limitMs} ms; maps=${maps.join(','
 console.log(`[loading-budget] battle click-to-control budget <${rolloutLimitMs} ms`);
 console.log(`[loading-budget] transition frame-gap budget <${stallLimitMs} ms`);
 
-const browser = await launchGuardedBrowser(puppeteer, {
+const LAUNCH_OPTIONS = {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const ownBrowserPid = browser.process()?.pid || 0;
+};
+// The tank-switch chunks replace this browser with one of their own (measureTankSwitches).
+let browser = await launchGuardedBrowser(puppeteer, LAUNCH_OPTIONS);
+let ownBrowserPid = browser.process()?.pid || 0;
 sampleGpuContention(ownBrowserPid);
 const contentionSampler = setInterval(() => {
   load1Max = Math.max(load1Max, os.loadavg()[0]);
@@ -822,16 +825,37 @@ async function measureTransitionsAndRematch() {
 }
 
 async function measureTankSwitches() {
-  const opened = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
+  const listing = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
+  let ids;
   try {
-    const availableIds = await opened.page.evaluate(() => [
+    const availableIds = await listing.page.evaluate(() => [
       ...document.querySelectorAll('.cot-card[data-spec-id]'),
     ].map((card) => card.dataset.specId));
-    const ids = requestedTankIds === 'all'
+    ids = requestedTankIds === 'all'
       ? availableIds
       : requestedTankIds.split(',').map((id) => id.trim()).filter(Boolean);
     const missing = ids.filter((id) => !availableIds.includes(id));
     if (missing.length) throw new Error(`Unknown tank id(s): ${missing.join(', ')}`);
+  } finally {
+    await closePage(listing);
+  }
+  // Tank switch runs last: the shared browser closes, and each chunk of the cards gets a fresh browser and Garage
+  // session of its own (tools/browser-id-chunks.mjs), where each switch is measured as before.
+  await browser.close();
+  await eachBrowserChunk('tools/loading-budget-probe.mjs', ids, async (chunk, { launch }) => {
+    browser = await launch(puppeteer, LAUNCH_OPTIONS);
+    ownBrowserPid = browser.process()?.pid || 0;
+    try {
+      await measureTankSwitchChunk(chunk);
+    } finally {
+      await browser.close();
+    }
+  });
+}
+
+async function measureTankSwitchChunk(ids) {
+  const opened = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
+  try {
     for (const id of ids) {
       await resetStalls(opened.page, `tank-switch:${id}`);
       if (tankIntentDwellMs > 0) {
@@ -892,7 +916,7 @@ try {
   clearInterval(contentionSampler);
   load1Max = Math.max(load1Max, os.loadavg()[0]);
   sampleGpuContention(ownBrowserPid);
-  await browser.close();
+  if (browser.connected) await browser.close();
   if (typeof server.close === 'function') await server.close();
   else await new Promise((resolve) => server.httpServer.close(resolve));
   if (distDir) await rm(distDir, { recursive: true, force: true });

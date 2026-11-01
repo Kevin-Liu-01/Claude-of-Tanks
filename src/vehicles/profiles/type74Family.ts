@@ -435,9 +435,11 @@ function addProductionTurretKit(P: TankBuilderPort, at: ShellProbe): void {
     smoke.position.set(at.flank(s, 0.41, 0.62) - s * 0.02, 0.41, 0.62);
     P.turretG.add(smoke);
   }
-  // the bustle basket: pipe rails round the rear face, an open mesh floor and back, a canvas load
+  // the bustle basket: pipe rails round the rear face, an open mesh floor and back, a canvas load. 266 (roof-pocket
+  // census): it hangs on the rear face, its floor 1.5 cm over the face's foot (0.25), not tucked 7 cm up under the
+  // undercut, where its floor and load walled the slot under the bustle (0.51 m2 of see-through pocket)
   {
-    const xb = 0.92, z0 = -2.00, z1 = -2.42, y0 = 0.18, y1 = 0.475, ym = (y0 + y1) / 2;
+    const xb = 0.92, z0 = -2.00, z1 = -2.42, y0 = 0.265, y1 = 0.56, ym = (y0 + y1) / 2;
     for (const y of [y0, y1]) {
       P.add('turretDetail', box(2 * xb, 0.03, 0.03), 0, y, z1);
       for (const s of [-1, 1]) P.add('turretDetail', box(0.03, 0.03, z0 - z1), s * xb, y, (z0 + z1) / 2);

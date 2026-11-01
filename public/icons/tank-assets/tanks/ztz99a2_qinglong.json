@@ -5440,21 +5440,21 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.4304,0.4989,-4.1063],
-        "max": [1.4304,1.6364,-1.9696],
+        "min": [-1.4304,0.4989,-3.2457],
+        "max": [1.4304,1.6364,-2.2367],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.2301,0.6181,-3.9353],
+        "min": [-1.2301,0.6181,-3.5866],
         "max": [1.2301,1.4371,-3.2089],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.5811,0.5183,-1.9487],
+        "min": [0.5811,0.81,-1.41],
         "max": [1.4527,1.2767,-0.9013],
         "turretLocal": false
       },
@@ -5577,8 +5577,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2297,0.5146,0.9003],
-        "max": [0.2297,1.5994,2.3768],
+        "min": [-0.6397,1.0528,1.6159],
+        "max": [-0.1803,1.4284,3.4184],
         "turretLocal": false
       },
       {
@@ -5597,8 +5597,8 @@
       }
     ]
   },
-  "geometryHash": "abfbacde",
-  "metadataHash": "1ea082e3",
+  "geometryHash": "e283f0ad",
+  "metadataHash": "e99ef376",
   "presentationAnchor": {
     "xM": 0.0004,
     "zM": -0.4368
@@ -5656,15 +5656,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26490,
-      "sha256": "a1167a087c032f7bd330753d53e774f456941b946a32827bc619f4d10c875f20",
+      "bytes": 26504,
+      "sha256": "e6c569a44a3f699c52bb6eb38e04834fd0b068a5862fecbc6490bb4cf2221064",
       "thumbnail": {
         "file": "thumbs/ztz99a2_qinglong_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10760,
-        "sha256": "fb613d2b660f04119fb22918f84fd8b3f253989ab7dd603a01c2845ffa118f1c"
+        "bytes": 10766,
+        "sha256": "0b3ef9b4e755921d0f7eef631f7fd65f74cacd55f4323e7260d997fcaa5b37cf"
       }
     },
     "top": {
@@ -5704,24 +5704,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21660,
-      "sha256": "6cadca0cfcd05b82f334357ee04542f614aa3f29ea6538d506a8a10793133f59"
+      "bytes": 21656,
+      "sha256": "ef05c7caf82ce0c2e8619124adb0462cfb443f616832dc92ab5ab06aaaadc7b8"
     },
     "modulesSide": {
       "file": "ztz99a2_qinglong_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21424,
-      "sha256": "42ff18bb7eb06ff6f6c469a7164b8ef4dbf1164656b0808f426355d10d4bad1b"
+      "bytes": 20442,
+      "sha256": "cdb6465e819934e9796afb2d9790b806f39892bfac4ad7a22b0d49bc2d9140b3"
     },
     "crewSide": {
       "file": "ztz99a2_qinglong_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17802,
-      "sha256": "323e2663f0d3f0c7672d3ab80e720cd974425d99ba2b8769eb0909be444cb399"
+      "bytes": 17194,
+      "sha256": "aa0d9f0c715e012032d98611b7479d7e72770625feb2dec99e52d6ef84b7f0cc"
     },
     "markings": {
       "file": "ztz99a2_qinglong_markings.png",
@@ -5734,8 +5734,8 @@
     "technicalLabels": {
       "file": "ztz99a2_qinglong_technical.json",
       "mime": "application/json",
-      "bytes": 5587,
-      "sha256": "7a4f31e86baccee27cb1fc52414dab734509120e33644d2d97d8895d235cdd6e"
+      "bytes": 5586,
+      "sha256": "13ad35f72177c5e8147d7eb6a3c4cfefbe09ad08235fbed48b62472e29272065"
     }
   }
 }

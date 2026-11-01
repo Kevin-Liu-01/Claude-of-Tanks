@@ -601,8 +601,10 @@ for (let index = 0; index < happy.calls.length; index++) {
 assert.ok(order.indexOf('compileClosed') < order.indexOf('warmRender'));
 assert.deepEqual(happy.calls[order.indexOf('compileClosed') + 1], ['yield', true],
   'final submission releases its task before the first native forward bind');
-assert.deepEqual(happy.lightSignatures, [[2, 1], [2, 1], [2, 1]],
-  'day warms the fixed pool before manual headlights can be enabled; the early submission sees the final signature');
+// (local-fps-266, Main's ruling on the 266 ranking) a day battle's lit set has no night pool (its manual headlights light
+// their lenses only), fixed before the first submission as the night's is
+assert.deepEqual(happy.lightSignatures, [[0, 0], [0, 0], [0, 0]],
+  'a day battle keeps the pool out of its lit set; the early submission sees the final signature');
 // (2026-10-15, the perf lane) the scene's programs reach the driver once the light signature is final, before the
 // allied builds, so they link while those run; every early slice releases its task
 for (const [before, after] of [['nightLighting', 'earlyCompileClosed'], ['earlyCompileClosed', 'allies'],

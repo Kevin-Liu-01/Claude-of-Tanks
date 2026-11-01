@@ -698,6 +698,14 @@ function addMantlet(P: TankBuilderPort): void {
     { z: 0.32, ring: ring(MANTLET_HALF_W, -0.23, 0.22, 0.03) },
     { z: 0.40, ring: ring(MANTLET_HALF_W - 0.04, -0.19, 0.18, 0.05) },
   ]));
+  // 266 (roof-pocket census): the mantlet's upper shield under the brow, its top an arc about the trunnion 5 mm inside
+  // the brow's underside, so it fills the throat there at every pitch and never meets the brow, out to 5 mm off the throat
+  // walls (the throat stood open 16 cm over the mantlet under the brow, and 5 cm beside it: 0.11 m2 of see-through)
+  const shieldR = BROW_UNDER_Y - TRUNNION[1] - 0.005, shieldHalfW = THROAT_X - 0.005;
+  P.add('gunMount', sectionSolid([-0.10, -0.05, 0, 0.05, 0.10, 0.14].map((z) => {
+    const top = Math.sqrt(shieldR * shieldR - z * z);
+    return { z, ring: [[-shieldHalfW, 0.18], [shieldHalfW, 0.18], [shieldHalfW, top], [-shieldHalfW, top]] as SectionPoint[] };
+  })));
   // canvas boot from the mantlet face to the tube
   const n = P.q ? 18 : 12, e = 2 / 3;
   const boot = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {

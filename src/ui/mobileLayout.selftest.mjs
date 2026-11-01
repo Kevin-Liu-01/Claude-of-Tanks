@@ -198,8 +198,9 @@ assert.doesNotMatch(hud, /cot-bounce|showBounceMessage|BOUNCE_TEXT/,
   'ricochets must not create a second generic toast beside the hit marker and combat record');
 assert.match(hud,
   // (2026-10-09: main's rapid-fire consolidation, 7095d2058, returns before a desktop zero-damage label is made; the
-  // touch layout's one compact outcome label is painted in the zero-damage branch)
-  /if \(!\(hit\.damage > 0\) && !document\.body\.classList\.contains\('cot-touch-layout'\)\) return;[\s\S]*if \(hit\.damage > 0\)[\s\S]*\} else \{[\s\S]*outcome\.label/,
+  // touch layout's one compact outcome label is painted in the zero-damage branch; 2026-10-31: the hull points the hit
+  // took off decide it, game/hullPointsRemoved.ts)
+  /const removed = hullPointsRemoved\(hit\);[\s\S]*if \(!\(removed > 0\) && !document\.body\.classList\.contains\('cot-touch-layout'\)\) return;[\s\S]*if \(removed > 0\)[\s\S]*\} else \{[\s\S]*outcome\.label/,
   'desktop zero-damage results must use the ballistic card only while touch retains one compact impact label');
 assert.doesNotMatch(hud, /d\.textContent = '(?:RICOCHET|NO PENETRATION|ABSORBED)'/,
   'HUD result copy must come from the shared hit-outcome registry');
@@ -335,8 +336,10 @@ assert.match(shotInfo,
 assert.match(shotInfo,
   /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
   'the report must keep only angle, armor and penetration analysis rows');
-// (its damage is the floating number's, UI-LOCKDOWN B16: no damage row)
+// (no damage row: the hull points the shot took off stand beside the outcome, owner 2026-10-31)
 assert.doesNotMatch(shotInfo, /kv\('damage', t\('killcam\.stat\.damage'\)/, 'the shot card carries no damage row');
+assert.match(shotInfo, /if \(!header \|\| removed <= 0\) \{ figure\?\.remove\(\); return; \}\s*figure \?\?= markDatum\(el\('span', 'cot-si-dmg', header\), 'shot-damage'\);/,
+  'the figure stands beside the outcome, and a shot that took no hull points shows its outcome alone, never −0');
 assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,

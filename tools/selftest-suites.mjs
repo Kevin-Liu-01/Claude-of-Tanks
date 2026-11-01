@@ -841,6 +841,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    'tools/selftest-process-groups.selftest.mjs',
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
     'tools/test-commands-exit.selftest.mjs',
@@ -858,7 +859,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
-    // launch in the checkout goes through it
+    // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
@@ -913,6 +914,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
     'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
+    'src/engine/opaqueProgramOrder.selftest.mjs',
+    // local-fps-266: a regional window's farther faces (its pane behind the frame, the dark behind the pane) layered behind
+    'src/world/paneStack.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
@@ -1354,6 +1358,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/nightLightingAccess.selftest.mjs',
+    'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
@@ -2470,6 +2475,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
+    // 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off the
+    // enemy"), stamped where the hit resolves and carried over the wire
+    'src/sim/hullPointsRemoved.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
     'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
@@ -2649,6 +2657,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
+    // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
+    'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
