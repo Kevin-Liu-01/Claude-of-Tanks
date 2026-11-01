@@ -218,5 +218,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the CV9035 DK; the US M41A3 on lane 6 beside the M46, the Bundeswehr M41 a Germany special at I.
 // 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
 // Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
-assert.equal(digest, 'c285a4ac9b24e43d', `tree content changed: re-pin to ${digest} if deliberate`);
+// 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
+assert.equal(digest, 'acc310f590c14509', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

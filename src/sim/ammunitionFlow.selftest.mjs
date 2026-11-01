@@ -240,6 +240,8 @@ const laterChannelCounts = {
   x1_pioneiro: 3, x1a2_carcara: 3, tamoyo1: 3, tamoyo3: 3, osorio_p1: 3, osorio_p2: 3, ee_t3_osorio: 3, ee_t4_osorio: 3,
   // 266: the M41 family's three rounds each, the CV9035 DK's three, and the T49's one (the M551's Shillelagh)
   m41a3: 3, m41_bw: 3, m41_jgsdf: 3, m41dk1: 3, cv9035dk: 3, t49: 1,
+  // 267 (the Japan line): the Type 90 (B), the Type 90's three rounds
+  type90b: 3,
   // 266: the Ukrainian CV9040C (the Swedish CV9040C's three rounds)
   ua_cv9040c: 3,
 };
@@ -310,11 +312,12 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // four new M48s' three each (265 integration), and the Centurion family's six marks (262, merged in 265),
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
-// (266), and the Brazil line's eight, three each (266).
+// (266), and the Brazil line's eight, three each (266), and the Type 90 (B)'s three (267).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
-  - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels, 560,
+  - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
+  - laterChannelCounts.type90b, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
