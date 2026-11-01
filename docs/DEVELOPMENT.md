@@ -1261,7 +1261,8 @@ by hand, and never take one side of it whole as the merge result.
   centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
   its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
-  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`): the file's bytes
+  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`), with the
+  `graft: { path, sha256 }` beside it where a certificate seats a second source in the first (t90a_burlak_proto): the file's bytes
   where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
   did, and different bytes at the path re-run that id alone. A ledger a step only checks each id against
   (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed

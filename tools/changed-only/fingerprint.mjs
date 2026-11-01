@@ -162,7 +162,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // Per-id input files (266): a table's `inputField` names, in each id's row, a file the step writing the table reads for
   // that id, as { path, sha256 } (path as a page fetches it, under public/). Its row is the file's hash when the file is
   // in this checkout, else the hash the row recorded, so a checkout without the file keys the id as the checkout that
-  // measured it did. It keys only its own id, never the ids whose spec chains name it.
+  // measured it did. It keys only its own id, never the ids whose spec chains name it. A `graft` beside it (267: a
+  // certified second source the registration seats in the first, t90a_burlak_proto's turret) is the id's input as well.
   const inputTables = {}, absentInputs = {};
   for (const [name, table] of Object.entries(TABLES)) {
     if (!table.inputField) continue;
@@ -171,10 +172,14 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const inputRows = {};
     for (const [id, named] of Object.entries(data.named?.[name] ?? {})) {
       if (typeof named?.path !== 'string') continue;
-      const file = abs(join('public', named.path.replace(/^\/+/, '')));
-      const digest = graph.hashLargeFile(file);
-      if (digest === 'missing') (absentInputs[name] ??= {})[id] = `${table.inputField} absent here (${rel(file)})`;
-      inputRows[id] = h16(`${named.path}:${digest === 'missing' ? (named.sha256 ?? 'unrecorded') : digest}`);
+      const keyOf = (input, what) => {
+        const file = abs(join('public', input.path.replace(/^\/+/, '')));
+        const digest = graph.hashLargeFile(file);
+        if (digest === 'missing') (absentInputs[name] ??= {})[id] ??= `${what} absent here (${rel(file)})`;
+        return `${input.path}:${digest === 'missing' ? (input.sha256 ?? 'unrecorded') : digest}`;
+      };
+      const graft = typeof named.graft?.path === 'string' ? `|${keyOf(named.graft, `${table.inputField} graft`)}` : '';
+      inputRows[id] = h16(`${keyOf(named, table.inputField)}${graft}`);
     }
     data.rows[input] = inputRows;
   }

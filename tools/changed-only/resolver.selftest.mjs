@@ -411,6 +411,28 @@ put('src/vehicles/anchors.generated.ts', anchors);
   assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
   put('public/models/a1.glb', 'oracle a1 v1');
   put('public/models/a2.glb', 'oracle a2 v1');
+  // a graft source beside the oracle (267: t90a_burlak_proto's turret, the Burlak X source seated on the T-90A X hull) is
+  // its id's input too: its bytes moving mark that id alone, its absence keys it from the recorded sha256 and is named,
+  // and an id without one keys as before
+  put('public/models/g2.glb', 'graft g2 v1');
+  const grafted = (g2 = sha('graft g2 v1')) => ({ records: { ...named().records,
+    a2: { ...named().records.a2, graft: { path: '/models/g2.glb', sha256: g2 } } } });
+  const graftGate = (g2) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows,
+    records: { a1: 'g1', a2: 'g2' } }, named: grafted(g2), chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const k0 = graftGate();
+  assert.equal(k0.inKey('gate', 'a1'), g0.inKey('gate', 'a1'), 'an id without a graft keys as before');
+  assert.notEqual(k0.inKey('gate', 'a2'), g0.inKey('gate', 'a2'), 'a graft joins its id\'s key');
+  const km = bootstrap(k0);
+  put('public/models/g2.glb', 'graft g2 v2');
+  result = resolveChanged(graftGate(), km);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a2' }, 'different bytes at a2\'s graft mark a2 alone');
+  put('public/models/g2.glb', 'graft g2 v1');
+  renameSync(join(root, 'public/models/g2.glb'), join(root, 'public/models/g2.away'));
+  const graftAbsent = graftGate();
+  assert.deepEqual(changed(resolveChanged(graftAbsent, km)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'a graft absent here keys a2 from its recorded sha256');
+  assert.equal(graftAbsent.inputAbsent('gate', 'a2'), 'oracle graft absent here (public/models/g2.glb)');
+  renameSync(join(root, 'public/models/g2.away'), join(root, 'public/models/g2.glb'));
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
