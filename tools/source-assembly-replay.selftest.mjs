@@ -213,6 +213,7 @@ try {
   assert.equal(recipeMatrix(centurionRecipe).determinant() > 0, true, 'a proper, uniform registration');
   assert.equal(centurionRecipe.sourceSha256, 'bda892df141aab4ef64879de5be3236a2cfe118fada7a9c38e707076b634765d', 'the pristine download');
   assert.equal(centurionReceipt.sourceSha256, centurionRecipe.sourceSha256);
+  // object3d-assert-ok: the recipe's and receipt's JSON selector fields (names and arrays), not three.js objects
   assert.deepEqual([centurionRecipe.includeRoots, centurionRecipe.exactDuplicateMeshes, centurionRecipe.omitIslandsBelowY,
     centurionRecipe.omitIslandsInside, centurionReceipt.omittedMeshes, centurionReceipt.omittedDetachedIslands],
     [undefined, undefined, undefined, undefined, [], null], 'the whole print: nothing selected away or trimmed');
