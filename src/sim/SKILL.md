@@ -13,7 +13,8 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 <!-- agent-docs:fill:model -->
 `movement.ts` owns tank state and terrain contact through named fixed-step
 phases for debuffs, drivetrain, gun lay, collision, attitude, support sampling,
-and ride contact; `armor.ts` owns hit geometry;
+and ride contact; `armor.ts` owns hit geometry (a round whose face's plate cannot meet it reads the plate
+across its path: `armorPlanes.ts`, 267);
 `ballistics.ts` owns typed shells, gravity, guidance, penetration falloff, gun
 lay, and dispersion; `damage.ts` owns penetration/modules/crew/fire;
 `spotting.ts` owns strict renderer-free visibility and team-intel contracts;
