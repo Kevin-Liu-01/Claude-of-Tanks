@@ -240,8 +240,6 @@ const laterChannelCounts = {
   x1_pioneiro: 3, x1a2_carcara: 3, tamoyo1: 3, tamoyo3: 3, osorio_p1: 3, osorio_p2: 3, ee_t3_osorio: 3, ee_t4_osorio: 3,
   // 266: the M41 family's three rounds each, the CV9035 DK's three, and the T49's one (the M551's Shillelagh)
   m41a3: 3, m41_bw: 3, m41_jgsdf: 3, m41dk1: 3, cv9035dk: 3, t49: 1,
-  // 267 (the Japan line): the Type 90 (B), the Type 90's three rounds
-  type90b: 3,
   // 266: the Ukrainian CV9040C (the Swedish CV9040C's three rounds)
   ua_cv9040c: 3,
 };
