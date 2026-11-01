@@ -12,6 +12,12 @@ import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
 // of maps and use that everywhere"): every production vehicle leads a take, the fleet's after the fifty and the nine,
 // numbered on from 60, spread over the battlefields, each in its own tank's paint, each held to every per-take bar the
 // site takes are (take-bars.mjs).
+// (267) This default-tier receipt stages and judges the roster alike on every machine: it reads no battlefield survey
+// (the media lane's local dumps, which move the parked foes, the bursts, the camera fixes and the survey bars), and the
+// vehicles still waiting for a take, which only a survey-backed plan and a filming round answer, are listed, not
+// failed: a tank lane adding a vehicle cannot plan its take. Both are the manual media suite's
+// (fleet-coverage.selftest.mjs, npm run test:heavy -- media).
+process.env.MEDIA_R5_FEATURES = 'off'; // paths.mjs surveyPath: read lazily, so set before the first take is staged
 assert.ok(FLEET.length > 0, 'a fleet roster (fleet-plan.mjs writes fleet-roster.json)');
 // the roster's plan (s60-s224) numbered on from 60 in order; a vehicle added since (fleet-plan.mjs --append) numbered on
 // after it, never on a number another take holds (s225-s252 are the combat round's and the duels')
@@ -31,7 +37,7 @@ const sitesHeroes = new Set([...SHOTS, ...OWNER_NINE].map(heroOf)), fleetHeroes 
 assert.equal(new Set(fleetHeroes).size, fleetHeroes.length, 'one fleet take a tank');
 assert.deepEqual(fleetHeroes.filter((h) => sitesHeroes.has(h)), [], 'a tank leading one of the site takes keeps that take');
 const covered = new Set([...sitesHeroes, ...fleetHeroes]);
-assert.deepEqual(PRODUCTION_TANK_IDS.filter((id) => !covered.has(id)), [], 'every production vehicle leads a take');
+const waiting = PRODUCTION_TANK_IDS.filter((id) => !covered.has(id));
 
 // the battlefields: a wide spread, none crowded
 const perMap = {};
@@ -60,7 +66,8 @@ for (const shot of FLEET) {
   }
 }
 
-// every per-take bar
+// every per-take bar a take holds without a battlefield survey
 const problems = FLEET.flatMap((shot) => takeBars(shot, { cast, scene: scenes.get(shot[0]) }));
 assert.deepEqual(problems, [], `the fleet takes clear every bar (${problems.length} problems)`);
-console.log(`fleet.selftest: ${FLEET.length} fleet takes, ${covered.size} of ${PRODUCTION_TANK_IDS.length} production vehicles leading a take, on ${Object.keys(perMap).length} battlefields`);
+console.log(`fleet.selftest: ${FLEET.length} fleet takes, ${covered.size} of ${PRODUCTION_TANK_IDS.length} production vehicles leading a take, on ${Object.keys(perMap).length} battlefields`
+  + (waiting.length ? `; ${waiting.length} waiting for a take (the media suite's): ${waiting.join(', ')}` : ''));
