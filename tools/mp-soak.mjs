@@ -8,7 +8,8 @@
  *
  *   npm run test:net:v2:soak                      28 clients, 14v14, 5 minutes, heaviest map, tick-cost child
  *   node tools/mp-soak.mjs --short                4 clients, 20 s, deterministic seed (the core receipt)
- *   node tools/mp-soak.mjs --short --plant-stall  the receipt: plus the negative control below
+ *   node tools/mp-soak.mjs --short --plant-stall --plant-late-input --plant-late-ack   the receipt: plus the negative controls
+ *   node tools/mp-soak.mjs --short --duration=10 --plant-slow-server                   the receipt's slow-server control
  *   node tools/mp-soak.mjs --clients=28 --duration=300 --map=monsoon --latency=60 --jitter=20 --loss=3
  *
  * (267) Starvation: the soak measures host time in a thread it shares with the machine. It measures what the machine
@@ -20,9 +21,12 @@
  * the ticks it drops must be charged to the server. The child server's own thread is not measured: its gates read as
  * before.
  *
- * Gates (exit 1 on any): every client welcomed and spawned; snapshot cadence per
- * client (the rate its WELCOME names — SNAPSHOT_HZ by default, P3b: 20 — +- jitter); input acknowledgement lag p95
- * (the lead the client chose at send time subtracted) <= RTT p95 + one tick + one snapshot interval (+ the server's
+ * Gates (exit 1 on any failure; exit 75, the STARVED verdict of tools/selftest-verdict.mjs, when none failed and the
+ * machine starved one): every client welcomed and spawned; snapshot cadence per
+ * client (the rate its WELCOME names — SNAPSHOT_HZ by default, P3b: 20 — +- jitter); input acknowledgement: in-process,
+ * in the server's own ticks (the acknowledging snapshot's tick less the input's, p95 <= the snapshot interval + the
+ * jitter buffer's 3, over spans whose ticks ran on schedule; 267), with a child server the wall-clock lag p95 (the
+ * lead the client chose at send time subtracted) <= RTT p95 + one tick + one snapshot interval (+ the server's
  * jitter buffer growth beyond one tick);
  * pose continuity of interpolated remote samples at a 2..4-interval delay (no
  * sampler-introduced step > 0.5 m beyond the motion the wire carries, no backwards
@@ -47,6 +51,7 @@ import { dequantizePosition, quantizeAimDistance, quantizeAngle } from '../src/m
 import { createLogger } from '../server/match/log.ts';
 import { createMatchService } from '../server/match/service.ts';
 import { createStarvationMeter, threadCpuMs } from './starvation-meter.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 
 // ------------------------------------------------------------ arguments
 function argValue(name, fallback) {
@@ -74,6 +79,10 @@ if (serverMode !== 'child' && serverMode !== 'inprocess') throw new TypeError('s
 const runTickCost = !short && !process.argv.includes('--no-tick-cost');
 const diag = process.argv.includes('--diag');
 const plantStall = process.argv.includes('--plant-stall');
+// (267) the acknowledgement controls (--plant-late-input, --plant-late-ack) and the slow server (--plant-slow-server)
+const plantLateInput = process.argv.includes('--plant-late-input');
+const plantLateAck = process.argv.includes('--plant-late-ack');
+const plantSlowServer = process.argv.includes('--plant-slow-server');
 const secret = 'mp-soak-seat-secret-0123456789abcdef';
 const TICK_BUDGET_MS = 6;
 // (267) the planted stall: 400 ms of CPU drops the ticks beyond the loop's catch-up window (server/match/loop.ts
@@ -84,6 +93,28 @@ const LOOP_CATCH_UP_TICKS = 6;
 const TICK_WALL_TOLERANCE_MS = 1;
 const PLANT_MIN_DROPPED = Math.floor(PLANT_STALL_CPU_MS / TICK_MS) - LOOP_CATCH_UP_TICKS - 2;
 const MIN_JUDGED_TICKS = 300;
+// (267) the acknowledgement in the server's own ticks: the server applies the control for tick S - bufferTicks at tick S
+// (server/match/inputBuffer.ts, an adaptive buffer of 1..3 ticks) and the next snapshot acknowledges it, so an input on
+// time is acknowledged within the snapshot interval plus the buffer's most. Judged only over spans whose ticks ran on
+// schedule (a catch-up after a stall runs its ticks back to back, faster than the network delivers their inputs: host
+// time again), and only with enough of them; the server slow on its own thread is the tick-cost gate's (its control:
+// --plant-slow-server).
+const ACK_BUFFER_MAX_TICKS = 3;
+const ACK_MIN_JUDGED = 20;
+const PLANT_CONTROL_MIN_JUDGED = 5;
+// the late-input control: from 10 % to 20 % of the run every client's controls leave this late; the late-ack control:
+// from 22 % to 32 % every snapshot's acknowledgement is reported this many ticks old (rewritten as it arrives: the
+// actor exposes no seat), both well past the bound and both before the planted stall at 35 % (after a machine drop of
+// hundreds of ticks the clients' clocks run past the server's 120-tick lead bound, every frame is refused far-ahead and
+// nothing is acknowledged until the clocks slew back); the slow server spends this CPU in every tick (past TICK_BUDGET_MS)
+const PLANT_LATE_INPUT_TICKS = 8;
+const PLANT_LATE_ACK_TICKS = 8;
+const PLANT_SLOW_SERVER_CPU_MS = 9;
+// the real client's hard resync (src/mp/match/clock.ts hardResyncMs): an offset error past it snaps instead of slewing
+const CLOCK_HARD_RESYNC_MS = 2000;
+/** The planted acknowledgement windows (performance.now() ms), set when the run starts, and the in-process server's tick. */
+const plantWindows = { lateInput: null, lateAck: null, serverTick: null };
+const inWindow = (window, ms) => Boolean(window) && ms >= window.fromMs && ms < window.toMs;
 // The snapshot interval is the server's choice and rides the WELCOME (P3b, 2026-09-29): every client reads its own
 // (`client.intervalTicks`, this default until it is welcomed) for its sampler, its gap counting and the gates.
 const DEFAULT_SNAPSHOT_INTERVAL_TICKS = TICK_HZ / SNAPSHOT_HZ;
@@ -213,7 +244,10 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
   function slewClock() {
     if (client.clockOffsetTicks == null || client.clockTargetTicks == null) return;
     const error = client.clockTargetTicks - client.clockOffsetTicks;
-    client.clockOffsetTicks += Math.max(-0.05, Math.min(0.05, error));
+    // (267) an error past the real client's hard resync (src/mp/match/clock.ts hardResyncMs, 2 s) snaps, as it does: after
+    // a machine drop of hundreds of ticks the slew alone kept every frame past the server's 120-tick lead bound for minutes
+    if (Math.abs(error) * TICK_MS > CLOCK_HARD_RESYNC_MS) client.clockOffsetTicks = client.clockTargetTicks;
+    else client.clockOffsetTicks += Math.max(-0.05, Math.min(0.05, error));
   }
 
   function receive(target, bytes) {
@@ -264,6 +298,8 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
         target.history.set(frame.tick, frame);
         if (target.history.size > 64) target.history.delete(target.history.keys().next().value);
         const margin = frame.inputMarginTicks === 127 ? null : frame.inputMarginTicks;
+        // (267) the late-ack control: inside its window the acknowledgement is reported PLANT_LATE_ACK_TICKS old
+        if (frame.ackedInputTick !== NO_TICK && inWindow(plantWindows.lateAck, performance.now())) frame.ackedInputTick -= PLANT_LATE_ACK_TICKS;
         if (frame.ackedInputTick !== NO_TICK && frame.ackedInputTick > target.acked) {
           target.acked = frame.ackedInputTick;
           for (const [tick, sent] of target.sentTicks) {
@@ -278,7 +314,8 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
               // snapshot measures (a control sent before the next snapshot reported a drop was sent on a stale estimate);
               // the drops themselves are judged where they happen, by the tick gates.
               const leadOverServer = sent.leadTicks + sent.offsetTicks - target.clockTargetTicks;
-              target.ackSamples.push([sent.at, sent.at + lag, lag - Math.max(0, leadOverServer) * TICK_MS]);
+              // (267) and the input's tick with the snapshot tick that acknowledged it: the gate's terms in-process
+              target.ackSamples.push([sent.at, sent.at + lag, lag - Math.max(0, leadOverServer) * TICK_MS, { tick, ackTick: frame.tick }]);
               target.sentTicks.delete(tick);
             }
           }
@@ -362,11 +399,20 @@ function createSoakClient(index, url, token, { creator = false } = {}) {
       client.clientTick = clientTick;
       // remember when the control left and how far ahead of the estimated server tick it was sent
       client.sentTicks.set(clientTick, { at: now, leadTicks: clientTick - serverTickNow(), offsetTicks: client.clockOffsetTicks });
-      if (client.sentTicks.size > 120) client.sentTicks.delete(client.sentTicks.keys().next().value);
-      socket.send(encodeMessage({
+      // (267) ten seconds of controls: after a stall the clock runs ~90 ticks ahead and each control waits as long for its
+      // acknowledgement; a 120 cap evicted them first, and the acknowledgement gate and its controls saw none
+      if (client.sentTicks.size > 600) client.sentTicks.delete(client.sentTicks.keys().next().value);
+      const input = encodeMessage({
         type: MESSAGE_TYPE.INPUT, clientTick, snapshotAckTick: client.lastSnapshotTick ?? NO_TICK,
         interpDelayMs: Math.round(client.interpDelayIntervals * client.intervalTicks * TICK_MS), controls: client.controls.slice(),
-      }));
+      });
+      // (267) the late-input control: inside its window the control leaves PLANT_LATE_INPUT_TICKS after its own tick on the
+      // server's clock (the in-process tick: a client's clock may run tens of ticks ahead after machine drops, and a fixed
+      // delay then still arrived early)
+      if (inWindow(plantWindows.lateInput, now) && plantWindows.serverTick) {
+        const lateMs = Math.max(0, clientTick + PLANT_LATE_INPUT_TICKS - plantWindows.serverTick()) * TICK_MS;
+        setTimeout(() => { if (!client.left && !client.killed) socket.send(input); }, lateMs);
+      } else socket.send(input);
     }, TICK_MS));
     client.timers.push(setInterval(() => {
       socket.send(encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: Math.round(performance.now()) & 0xffffffff, snapshotAckTick: client.lastSnapshotTick ?? NO_TICK }));
@@ -590,11 +636,30 @@ async function main() {
       previousInterval = interval;
     },
   });
-  if (loop) server.onTickCost((cost) => ticksSince.push(cost));
+  // (267) when each server tick ran: a tick run within half a tick of the one before was a catch-up after a stall
+  const tickRunAt = new Map();
+  if (loop) server.onTickCost((cost) => { ticksSince.push(cost); tickRunAt.set(loop.tick, performance.now()); });
   meter.start();
   // the negative control (--plant-stall, the receipt): at 35 % of the run one server tick spends PLANT_STALL_CPU_MS of
   // CPU inside the authority's step; its stall and its tick-rate window must be judged the server's, never starvation
   let plant = null;
+  const windowAt = (from, to) => ({ fromMs: started + durationS * 1000 * from, toMs: started + durationS * 1000 * to });
+  if (plantLateInput) {
+    if (!actor) throw new Error('--plant-late-input reads the in-process server\'s tick');
+    plantWindows.lateInput = windowAt(0.10, 0.20);
+    plantWindows.serverTick = () => actor.tick;
+  }
+  if (plantLateAck) plantWindows.lateAck = windowAt(0.22, 0.32);
+  if (plantSlowServer) {
+    if (!actor) throw new Error('--plant-slow-server plants inside the in-process server');
+    const authority = actor.authority;
+    const slowStep = authority.step;
+    authority.step = function slowServerStep(...args) {
+      const cpuFrom = threadCpuMs();
+      while (threadCpuMs() - cpuFrom < PLANT_SLOW_SERVER_CPU_MS) { /* the server slow on its own thread: CPU, not wall */ }
+      return slowStep.apply(this, args);
+    };
+  }
   if (plantStall) {
     if (!actor) throw new Error('--plant-stall plants inside the in-process server');
     const authority = actor.authority;
@@ -694,7 +759,13 @@ async function main() {
   const unplanted = (spans) => spans.filter(([from, to]) => !planted(from, to));
   const net = (spans) => spans.map(([from, to, ms]) => ms - starvedIn(from, to));
   const rttJudged = net(unplanted(survivors.flatMap((client) => client.rttSpans.values)));
-  const ackSamples = unplanted(survivors.flatMap((client) => client.ackSamples.values));
+  // (267) the acknowledgement controls' samples are kept out of the gate: a late input by its send time, a late ack by
+  // any overlap of its span with the window; the late-ack control judges those acknowledged inside it (the rewrite's)
+  const lateInputSample = (sample) => inWindow(plantWindows.lateInput, sample[0]);
+  const lateAckSample = (sample) => plantWindows.lateAck !== null && sample[1] > plantWindows.lateAck.fromMs && sample[0] < plantWindows.lateAck.toMs;
+  const lateAckedSample = (sample) => inWindow(plantWindows.lateAck, sample[1]);
+  const plantedAckSamples = unplanted(survivors.flatMap((client) => client.ackSamples.values));
+  const ackSamples = plantedAckSamples.filter((sample) => !lateInputSample(sample) && !lateAckSample(sample));
   const ackJudged = net(ackSamples);
   const rttP95 = quantile(rttJudged, 0.95);
   const ackP95 = quantile(survivors.flatMap((client) => client.ackLags.values), 0.95);
@@ -707,8 +778,40 @@ async function main() {
   const rttP50 = quantile(rttJudged, 0.5);
   const intrinsicP50 = quantile(ackJudged, 0.5);
   const ackJudgedDetail = `p95 ${quantile(ackSamples.map((sample) => sample[2]), 0.95).toFixed(0)} ms before taking out the starvation inside each span`;
-  if (intrinsicP95 <= ackBound && survivors.every((client) => client.ackLags.length > 0)) pass('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw p95 ${ackP95.toFixed(0)} incl. lead) <= rtt p95 ${rttP95.toFixed(0)} (p50 ${rttP50.toFixed(0)}) + ${1 + intervalTicks + bufferTicks - 1} ticks (one tick + one snapshot at ${Math.max(...survivors.map((c) => c.snapshotHz))} Hz + the buffer beyond one); ${ackJudgedDetail}`);
-  else fail('input ack lag', `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw ${ackP95.toFixed(0)}) vs bound ${ackBound.toFixed(0)} ms (rtt p95 ${rttP95.toFixed(0)}, buffer ${bufferTicks}); ${ackJudgedDetail}`);
+  const wallDetail = `p50 ${intrinsicP50.toFixed(0)} / p95 ${intrinsicP95.toFixed(0)} ms (raw p95 ${ackP95.toFixed(0)} incl. lead) vs rtt p95 ${rttP95.toFixed(0)} `
+    + `(p50 ${rttP50.toFixed(0)}) + ${1 + intervalTicks + bufferTicks - 1} ticks (one tick + one snapshot at ${Math.max(...survivors.map((c) => c.snapshotHz))} Hz `
+    + `+ the buffer beyond one); ${ackJudgedDetail}`;
+  if (loop) {
+    // (267, main's load class: lanes at load 50-70 failed the wall-clock form by 300-450 ms after netting, and a correction
+    // for the client's lead read through a starved snapshot both under- and over-shot) in-process the acknowledgement is
+    // judged in the server's own ticks: the snapshot tick that acknowledged an input less the input's tick, over spans
+    // whose ticks ran on schedule (each at least half a tick after the one before: not a catch-up burst)
+    const ackBoundTicks = intervalTicks + ACK_BUFFER_MAX_TICKS;
+    const onSchedule = (tick) => tickRunAt.has(tick) && tickRunAt.has(tick - 1) && tickRunAt.get(tick) - tickRunAt.get(tick - 1) >= TICK_MS / 2;
+    const ticksOf = (samples, { scheduled = true } = {}) => samples.map((sample) => sample[3])
+      .filter((terms) => terms && Number.isFinite(terms.ackTick) && (!scheduled
+        || Array.from({ length: Math.max(0, terms.ackTick - terms.tick) }, (_, k) => terms.tick + 1 + k).every(onSchedule)))
+      .map((terms) => terms.ackTick - terms.tick);
+    const judgedTicks = ticksOf(ackSamples);
+    const allTicks = ticksOf(ackSamples, { scheduled: false });
+    const tickDetail = `p50 ${quantile(judgedTicks, 0.5)} / p95 ${quantile(judgedTicks, 0.95)} / max ${judgedTicks.length ? Math.max(...judgedTicks) : '-'} `
+      + `ticks over ${judgedTicks.length} of ${allTicks.length} acknowledgements whose ticks ran on schedule (bound ${ackBoundTicks}: a snapshot `
+      + `interval of ${intervalTicks} + the buffer's ${ACK_BUFFER_MAX_TICKS}; all: p95 ${quantile(allTicks, 0.95)}); wall clock (diagnostic): ${wallDetail}`;
+    if (judgedTicks.length < ACK_MIN_JUDGED) starved('input ack lag', `${ACK_MIN_JUDGED} needed on schedule; ${tickDetail}`);
+    else if (quantile(judgedTicks, 0.95) <= ackBoundTicks) pass('input ack lag', tickDetail);
+    else fail('input ack lag', tickDetail);
+    // the controls: the planted samples, judged the same way, must sit past the bound
+    const control = (name, samples, what) => {
+      const ticks = ticksOf(samples);
+      const detail = `${what}: p50 ${quantile(ticks, 0.5)} ticks over ${ticks.length} of ${samples.length} on schedule (must exceed ${ackBoundTicks})`;
+      if (ticks.length < PLANT_CONTROL_MIN_JUDGED) starved(name, `${PLANT_CONTROL_MIN_JUDGED} needed; ${detail}`);
+      else if (quantile(ticks, 0.5) > ackBoundTicks) pass(name, detail);
+      else fail(name, detail);
+    };
+    if (plantLateInput) control('late input control', plantedAckSamples.filter(lateInputSample), `controls sent ${PLANT_LATE_INPUT_TICKS} ticks after their tick`);
+    if (plantLateAck) control('late ack control', plantedAckSamples.filter(lateAckedSample), `acknowledgements reported ${PLANT_LATE_ACK_TICKS} ticks old`);
+  } else if (intrinsicP95 <= ackBound && survivors.every((client) => client.ackLags.length > 0)) pass('input ack lag', wallDetail);
+  else fail('input ack lag', `${wallDetail} (bound ${ackBound.toFixed(0)} ms, buffer ${bufferTicks})`);
   const maxStep = Math.max(...survivors.map((client) => client.maxStep));
   // a step net of the motion the starvation in its frames' flight could hold back (a tick of wire motion per starved
   // TICK_MS) and of the ticks the clock ran ahead of the server tick past a tick of estimate noise: after the server drops
@@ -821,6 +924,12 @@ async function main() {
   if (failed.length || !tickCostOk) {
     console.log(`[mp-soak] FAILED: ${failed.map((gate) => gate.name).join(', ')}${tickCostOk ? '' : ', tick cost'}`);
     process.exit(1);
+  }
+  // (267) a gate the machine starved is neither a pass nor a failure: the STARVED verdict (tools/selftest-verdict.mjs)
+  const starvedGates = gates.filter((gate) => gate.starved);
+  if (starvedGates.length) {
+    console.log(`[mp-soak] STARVED: ${starvedGates.map((gate) => gate.name).join(', ')} (the machine withheld what they judge; no gate failed)`);
+    process.exit(SELFTEST_STARVED_EXIT);
   }
   console.log('[mp-soak] all gates passed');
   process.exit(0);
