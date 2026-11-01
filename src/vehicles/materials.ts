@@ -4091,15 +4091,72 @@ const ARMOR_PAINT_VERTEX_GLSL = `
 `;
 
 /**
+ * (267) The plate along the eye (sim/armorPlanes.ts zoneAlongShot, the eye standing in for the gun), a fragment-only
+ * function: -1 where the zone `own` faces the eye and, a mantlet's or gun notch's, the point lies over its footprint;
+ * else the zone facing the eye whose outline the eye's line through the point crosses, nearest the point, among a whole
+ * panel's (at most two) named plates or every plate in [from, to). `edge` is how far inside that outline the crossing lies
+ * (outside the nearest, negative), for the border; `near` the zone it is nearest. An outline the line misses by more than
+ * 5 cm is left at its first edge that far off.
+ */
+const ARMOR_PAINT_ALONG_EYE_GLSL = `
+int apAlongEye( vec3 p, vec3 d, int own, vec4 set, int from, int to, int foot0, int footN, out float edge, out int near ) {
+  edge = 1.0;
+  near = -1;
+  if ( own < 0 ) return -1;
+  vec4 ownPl = texelFetch( uApZones, ivec2( own * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+  bool ownOff = false;
+  for ( int f = 0; f < footN; f++ ) {
+    vec4 fa = texelFetch( uApZones, ivec2( foot0 + 2 * f, 0 ), 0 );
+    vec3 fb = texelFetch( uApZones, ivec2( foot0 + 2 * f + 1, 0 ), 0 ).xyz;
+    if ( int( fa.w + 0.5 ) == own && !( all( greaterThanEqual( p, fa.xyz ) ) && all( lessThanEqual( p, fb ) ) ) ) ownOff = true;
+  }
+  if ( -dot( ownPl.xyz, d ) >= ${ZONE_FACING_MIN.toFixed(4)} && !ownOff ) return -1;
+  bool few = set.y < -1.5 && set.y > -2.5;
+  int n = few ? 2 : to - from;
+  float reach = 1e9;
+  float coverIn = -1e3;
+  float nearIn = -1e3;
+  int cover = -1;
+  for ( int i = 0; i < n; i++ ) {
+    int k = few ? int( floor( ( i == 0 ? set.z : set.w ) + 0.5 ) ) : from + i;
+    if ( k < 0 ) continue;
+    vec4 pl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+    float along = dot( pl.xyz, d );
+    if ( -along < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+    float s = -( dot( pl.xyz, p ) + pl.w ) / along;
+    vec3 x = p + s * d;
+    float inside = 1e3;
+    for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+      vec4 ed = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+      inside = min( inside, -( dot( ed.xyz, x ) + ed.w ) );
+      if ( inside < -0.05 ) break;
+    }
+    if ( inside < -0.05 ) continue;
+    bool off = false;
+    for ( int f = 0; f < footN; f++ ) {
+      vec4 fa = texelFetch( uApZones, ivec2( foot0 + 2 * f, 0 ), 0 );
+      vec3 fb = texelFetch( uApZones, ivec2( foot0 + 2 * f + 1, 0 ), 0 ).xyz;
+      if ( int( fa.w + 0.5 ) == k && !( all( greaterThanEqual( p, fa.xyz ) ) && all( lessThanEqual( p, fb ) ) ) ) off = true;
+    }
+    if ( off ) continue;
+    if ( inside > nearIn ) { nearIn = inside; near = k; }
+    if ( inside >= -0.001 && abs( s ) < reach ) { reach = abs( s ); cover = k; coverIn = inside; }
+  }
+  edge = clamp( cover >= 0 ? coverIn : nearIn, -1.0, 1.0 );
+  return cover;
+}
+`;
+
+/**
  * The paint, per fragment (the notes in order of the code, kept out of the shader string, which ships in the boot chunk):
  * - (263) a baked panel (game/armorPaintPanels.ts) takes its cluster's one zone, so a border falls on a part's edge;
  *   below 0 a bare panel; 0 the per-point score. One value a triangle, so the branch is the same across a pixel quad.
  *   (267) A baked panel only reads its colour: none of the per-point terms below runs for it. A panel the bake found split
  *   between up to four zones (below ARMOR_PAINT_PANEL_BARE: its set, after the footprints in the table) keeps the
  *   per-point score and its borders, scoring those zones alone instead of every zone of its frame, in their frame.
- *   A whole panel ([zone, -2, cover, cover] in the sets' rows) takes that zone unscored, as a panel, and only the plate
- *   along the eye below is tested on it, among the (at most two) plates the bake found some level eye meets it through
- *   ([zone, -3]: every plate of its frame).
+ *   A whole panel ([zone, -2, cover, cover] in the sets' rows) takes that zone unscored, as a panel, in a branch of its
+ *   own: its frame's point and eye, then only the plate along the eye (apAlongEye), among the (at most two) plates the
+ *   bake found some level eye meets it through ([zone, -3]: every plate of its frame).
  * - The turret's frame: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells).
  * - The part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
  *   inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
@@ -4119,8 +4176,8 @@ const ARMOR_PAINT_VERTEX_GLSL = `
  * - (267) Where the zone's own plate does not face the eye (a bevel scored to the roof seen level, a front corner to a
  *   side; or a mantlet's or gun notch's off its footprint), the plate facing the eye whose outline the eye's line through
  *   the point crosses, nearest the point, as the authority reads a round there (sim/armorZones.ts zoneAlongShot): the
- *   eye stands in for the gun. Its border is where that line leaves the outline; the bake makes such panels whole panels.
- *   An outline the line misses by more than 5 cm is left at its first edge that far off.
+ *   eye stands in for the gun (apAlongEye). Its border is where that line leaves the outline; the bake makes such panels
+ *   whole panels.
  * - The hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
  *   through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds). (263) The
  *   camo keeps a quarter of its light and shade (its blotches read as zone borders; every round preferred less of it),
@@ -4145,141 +4202,111 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked != ${ARMOR_PAINT_PANEL_BARE} ) {
     int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
     bool apSetted = apBaked < ${ARMOR_PAINT_PANEL_BARE};
     vec4 apSet = apSetted ? texelFetch( uApZones, ivec2( apFoot0 + 2 * apFootN - apBaked - 2, 0 ), 0 ) : vec4( -1.0 );
-    bool apWhole = apSetted && apSet.y < -1.5;
-    vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
-    bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
-    bool apOverFoot = false;
-    for ( int f = 0; f < apFootN; f++ ) {
-      vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
-      vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-      if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
-    }
-    apTurret = apSetted ? int( apSet.x + 0.5 ) >= apHullN : apTurret || apOverFoot;
-    mat4 apInv = apTurret ? uApTurInv : uApHullInv;
-    vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
-    vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
-    vec3 apNs = mat3( apInv ) * vApN;
-    vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
-    if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
-    vec3 apH = max( apTurret ? uApTurH : uApHullH, vec3( 0.05 ) );
-    vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
-    vec3 apBox = apQ * apQ * apQ / apH;
-    apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
-    vec3 apLean = apN + 3.0 * apBox;
-    apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
-    vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
-    bool apGear = !apWhole && uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
-      || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
-      || !apTurret && uApHullH.y > 0.0
-        && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
-    int apFrom = apTurret ? apHullN : 0;
-    int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
-    int apCount = apGear || apWhole ? 0 : apSetted ? 4 : apTo - apFrom;
-    float apBest = -1e9;
-    float apSecond = -1e9;
-    int apBestK = -1;
-    int apSecondK = -1;
-    for ( int i = 0; i < apCount; i++ ) {
-      int k = apSetted ? int( floor( ( i == 0 ? apSet.x : i == 1 ? apSet.y : i == 2 ? apSet.z : apSet.w ) + 0.5 ) ) : apFrom + i;
-      if ( k < 0 ) continue;
-      vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
-      float apFacing = dot( apPl.xyz, apN );
-      if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
-      float apGapOut = 0.0;
-      for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
-        vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
-        apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
-      }
-      float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
-        - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
-      if ( apScore > apBest ) {
-        apSecond = apBest;
-        apSecondK = apBestK;
-        apBest = apScore;
-        apBestK = k;
-      } else if ( apScore > apSecond ) {
-        apSecond = apScore;
-        apSecondK = k;
-      }
-    }
-    int apFootK = -1;
-    float apFootIn = -1e3;
-    for ( int f = 0; f < apFootN; f++ ) {
-      vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
-      int apFk = int( apFa.w + 0.5 );
-      if ( apFk < apFrom || apFk >= apTo ) continue;
-      vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-      vec3 apIn3 = min( apP - apFa.xyz, apFb - apP );
-      float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
-      if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
-    }
-    bool apForced = !apWhole && apFootK >= 0 && apFootIn > 0.0;
-    apZone = apWhole ? int( apSet.x + 0.5 ) : apForced ? apFootK : apBestK;
-    float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
-    float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
-    float apMarginW = fwidth( apMargin );
-    float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
-    float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
-    apOther = apForced ? apBestK : apSecondK;
-    apPx = apForced ? 1e3 : apMarginPx;
-    if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
-    if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
-    if ( apWhole ) { apOther = -1; apPx = 1e3; apBlendPx = 1e3; }
-    vec3 apD = normalize( apP - apEye );
-    int apCover = -1;
-    int apNearK = -1;
-    float apCoverEdge = 1.0;
-    if ( apZone >= 0 ) {
-      vec4 apOwnPl = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
-      bool apOwnOff = false;
+    if ( apSetted && apSet.y < -1.5 ) {
+      apZone = int( apSet.x + 0.5 );
+      bool apTurretW = apZone >= apHullN;
+      mat4 apInvW = apTurretW ? uApTurInv : uApHullInv;
+      vec3 apPW = ( apInvW * vec4( vApW, 1.0 ) ).xyz;
+      vec3 apEyeW = ( apInvW * vec4( cameraPosition, 1.0 ) ).xyz;
+      float apEdgeW;
+      int apNearW;
+      int apCoverW = apAlongEye( apPW, normalize( apPW - apEyeW ), apZone, apSet, apTurretW ? apHullN : 0,
+        apTurretW ? apZoneN : apHullN, apFoot0, apFootN, apEdgeW, apNearW );
+      float apPxW = abs( apEdgeW ) / max( fwidth( apEdgeW ), 1e-5 );
+      if ( apCoverW >= 0 && apCoverW != apZone ) { apOther = apZone; apZone = apCoverW; apPx = apPxW; }
+      else if ( apNearW >= 0 && apNearW != apZone ) { apOther = apNearW; apPx = apPxW; }
+    } else {
+      vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
+      bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
+      bool apOverFoot = false;
       for ( int f = 0; f < apFootN; f++ ) {
         vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
         vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-        if ( int( apFa.w + 0.5 ) == apZone && !( all( greaterThanEqual( apP, apFa.xyz ) ) && all( lessThanEqual( apP, apFb ) ) ) ) apOwnOff = true;
+        if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
       }
-      if ( -dot( apOwnPl.xyz, apD ) < ${ZONE_FACING_MIN.toFixed(4)} || apOwnOff ) {
-        float apReach = 1e9;
-        float apCoverIn = -1e3;
-        float apNearIn = -1e3;
-        bool apFew = apWhole && apSet.y > -2.5;
-        int apCandN = apFew ? 2 : apTo - apFrom;
-        for ( int i = 0; i < apCandN; i++ ) {
-          int k = apFew ? int( floor( ( i == 0 ? apSet.z : apSet.w ) + 0.5 ) ) : apFrom + i;
-          if ( k < 0 ) continue;
-          vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
-          float apAlong = dot( apPl.xyz, apD );
-          if ( -apAlong < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
-          float apS = -( dot( apPl.xyz, apP ) + apPl.w ) / apAlong;
-          vec3 apX = apP + apS * apD;
-          float apIn = 1e3;
-          for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
-            vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
-            apIn = min( apIn, -( dot( apEd.xyz, apX ) + apEd.w ) );
-            if ( apIn < -0.05 ) break;
-          }
-          if ( apIn < -0.05 ) continue;
-          bool apKOff = false;
-          for ( int f = 0; f < apFootN; f++ ) {
-            vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
-            vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-            if ( int( apFa.w + 0.5 ) == k && !( all( greaterThanEqual( apP, apFa.xyz ) ) && all( lessThanEqual( apP, apFb ) ) ) ) apKOff = true;
-          }
-          if ( apKOff ) continue;
-          if ( apIn > apNearIn ) { apNearIn = apIn; apNearK = k; }
-          if ( apIn >= -0.001 && abs( apS ) < apReach ) { apReach = abs( apS ); apCover = k; apCoverIn = apIn; }
+      apTurret = apSetted ? int( apSet.x + 0.5 ) >= apHullN : apTurret || apOverFoot;
+      mat4 apInv = apTurret ? uApTurInv : uApHullInv;
+      vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
+      vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
+      vec3 apNs = mat3( apInv ) * vApN;
+      vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
+      if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
+      vec3 apH = max( apTurret ? uApTurH : uApHullH, vec3( 0.05 ) );
+      vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
+      vec3 apBox = apQ * apQ * apQ / apH;
+      apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
+      vec3 apLean = apN + 3.0 * apBox;
+      apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
+      vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
+      bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
+        || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
+        || !apTurret && uApHullH.y > 0.0
+          && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
+      int apFrom = apTurret ? apHullN : 0;
+      int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
+      int apCount = apGear ? 0 : apSetted ? 4 : apTo - apFrom;
+      float apBest = -1e9;
+      float apSecond = -1e9;
+      int apBestK = -1;
+      int apSecondK = -1;
+      for ( int i = 0; i < apCount; i++ ) {
+        int k = apSetted ? int( floor( ( i == 0 ? apSet.x : i == 1 ? apSet.y : i == 2 ? apSet.z : apSet.w ) + 0.5 ) ) : apFrom + i;
+        if ( k < 0 ) continue;
+        vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+        float apFacing = dot( apPl.xyz, apN );
+        if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
+        float apGapOut = 0.0;
+        for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+          vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+          apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
         }
-        apCoverEdge = clamp( apCover >= 0 ? apCoverIn : apNearIn, -1.0, 1.0 );
+        float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
+          - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
+        if ( apScore > apBest ) {
+          apSecond = apBest;
+          apSecondK = apBestK;
+          apBest = apScore;
+          apBestK = k;
+        } else if ( apScore > apSecond ) {
+          apSecond = apScore;
+          apSecondK = k;
+        }
       }
-    }
-    float apCoverPx = abs( apCoverEdge ) / max( fwidth( apCoverEdge ), 1e-5 );
-    if ( apCover >= 0 && apCover != apZone ) {
-      apOther = apZone;
-      apZone = apCover;
-      apPx = apCoverPx;
-      apBlendPx = 1e3;
-    } else if ( apNearK >= 0 && apNearK != apZone && apCoverPx < apPx ) {
-      apOther = apNearK;
-      apPx = apCoverPx;
+      int apFootK = -1;
+      float apFootIn = -1e3;
+      for ( int f = 0; f < apFootN; f++ ) {
+        vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+        int apFk = int( apFa.w + 0.5 );
+        if ( apFk < apFrom || apFk >= apTo ) continue;
+        vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+        vec3 apIn3 = min( apP - apFa.xyz, apFb - apP );
+        float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
+        if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
+      }
+      bool apForced = apFootK >= 0 && apFootIn > 0.0;
+      apZone = apForced ? apFootK : apBestK;
+      float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
+      float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
+      float apMarginW = fwidth( apMargin );
+      float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
+      float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
+      apOther = apForced ? apBestK : apSecondK;
+      apPx = apForced ? 1e3 : apMarginPx;
+      if ( apFootK >= 0 && apFootK != apBestK && apFootPx < apPx ) { apPx = apFootPx; apOther = apForced ? apBestK : apFootK; }
+      if ( !apForced && apSecondK >= 0 ) apBlendPx = apMarginPx;
+      float apCoverEdge;
+      int apNearK;
+      int apCover = apAlongEye( apP, normalize( apP - apEye ), apZone, vec4( -1.0 ), apFrom, apTo, apFoot0, apFootN, apCoverEdge, apNearK );
+      float apCoverPx = abs( apCoverEdge ) / max( fwidth( apCoverEdge ), 1e-5 );
+      if ( apCover >= 0 && apCover != apZone ) {
+        apOther = apZone;
+        apZone = apCover;
+        apPx = apCoverPx;
+        apBlendPx = 1e3;
+      } else if ( apNearK >= 0 && apNearK != apZone && apCoverPx < apPx ) {
+        apOther = apNearK;
+        apPx = apCoverPx;
+      }
     }
   }
   if ( apZone >= 0 ) {
@@ -4460,7 +4487,7 @@ transformed += crD;
 }
 ${ARMOR_PAINT_VERTEX_GLSL}`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
+      .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}\n${ARMOR_PAINT_ALONG_EYE_GLSL}`)
       .replace('#include <roughnessmap_fragment>',
         `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );\nroughnessFactor = mix( roughnessFactor, 0.85, apFlat );`)
       .replace('#include <normal_fragment_maps>',
