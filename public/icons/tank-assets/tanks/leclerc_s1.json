@@ -1403,7 +1403,7 @@
       }
     ]
   },
-  "geometryHash": "588456c3",
+  "geometryHash": "49681390",
   "metadataHash": "74b9cc9d",
   "presentationAnchor": {
     "xM": 0.003,
@@ -1463,15 +1463,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22074,
-      "sha256": "c2809b26ed0b60d388eb46e398d5dc87ea3dfa2e6e0d6868fd07d9b560f8232b",
+      "bytes": 22106,
+      "sha256": "083a7482759701aa64099c43a465f78852f6cc357f17dc5150e776c51542a747",
       "thumbnail": {
         "file": "thumbs/leclerc_s1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9458,
-        "sha256": "016e8275b268313ccfa8df2467a593bfcab59ee1b66e59034fc5e5ba41c624db"
+        "bytes": 9468,
+        "sha256": "854651b5e9141a8dd73a35fe45c16afc2a125be1193183061c2266421420163d"
       }
     },
     "top": {
@@ -1479,16 +1479,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9506,
-      "sha256": "7e429ca20c5e3c10ee7538f8a351df1af820fa18edf71769a22c561121416739"
+      "bytes": 9512,
+      "sha256": "fa662680186277df90f4d170b99a5914d6f85f51f614f90bd38d70564b0a263c"
     },
     "side": {
       "file": "leclerc_s1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 7796,
-      "sha256": "f53bf6a3232d60e90beae04be9b048841b29ac97180cd8c03ebc82243bcdf209"
+      "bytes": 7962,
+      "sha256": "7f9dd34d687f0b459eed4bbdf83ce31c0063a772b299af2eb4b89c53028eff68"
     },
     "topSilhouette": {
       "file": "leclerc_s1_top_silhouette.png",
@@ -1511,24 +1511,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21852,
-      "sha256": "d1c14e4085623fd83b85417a1a099bb82a7e3275b5640181d86f7d90ae3efb38"
+      "bytes": 21846,
+      "sha256": "319ae0807182b4915831c99929d1e44d479c26f4ca9bb834db515062e7129337"
     },
     "modulesSide": {
       "file": "leclerc_s1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21990,
-      "sha256": "1c884101cbdf737d81fe7ea2fcfb6094397957bb8c9606b3e2fc20cb32441483"
+      "bytes": 21930,
+      "sha256": "4f9dc522b57347c27326f80ee66bf656925535134c8e2aaa1e25d88b925afff9"
     },
     "crewSide": {
       "file": "leclerc_s1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19458,
-      "sha256": "da65516476dcc14c3def7e052dfe553a339059bff57cb5b00f2cd2c4fccba84c"
+      "bytes": 19440,
+      "sha256": "8c43269c8dbbe4c1302ed10a38699c7d5b7ff212527ce8a73559bc89f8235c0a"
     },
     "markings": {
       "file": "leclerc_s1_markings.png",
