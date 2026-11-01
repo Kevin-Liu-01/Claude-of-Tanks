@@ -20,7 +20,10 @@
 // `tanks` is id-scoped: lane mode runs the pins of the changed tanks, so the whole suite is warranted only when the
 // shared fleet core moved under them. An entry page's HTML (a root *.html Vite builds from) counts only for a receipt
 // that names that page itself: many receipts reach index.html and 404.html through Vite's entry, and a document-head
-// change moves no simulation, bot or world result (the og:video head warranted six suites that way).
+// change moves no simulation, bot or world result (the og:video head warranted six suites that way). A receipt file
+// (*.selftest.mjs) or a test-support file is never product input: it counts only for a receipt that runs or reads it (its
+// own file, a module its run executes, a path its own source names, bytes it was seen reading), never through a
+// directory a receipt lists or a registry its closure names (267: object695X.selftest.mjs warranted ten suites).
 // `--root=<dir>` evaluates another checkout (a report on another branch's diff); `--base=integ` and the integration
 // suggestion as in lane mode; the command exits with its parent and on SIGTERM/SIGINT/SIGHUP/SIGALRM.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -37,6 +40,16 @@ const READS = new Set(['named', 'scan', 'observed']);
 export const ENTRY_HTML = /^[^/]+\.html$/;
 /** Whether `file` reads `path` on purpose: any path but an entry page, or a page the receipt's own source names. */
 export const readsOnPurpose = (path, text) => !ENTRY_HTML.test(path) || text.includes(path);
+/** A receipt or a file only receipts import. */
+export const RECEIPT_FILE = /\.(selftest|test-support)\.mjs$/;
+/**
+ * Whether `file` runs or reads the receipt file `path` itself (any other path: true): `path` is `file`, a module its run
+ * executes (cache.runSetOf: imports and spawned tools), named in its own source, or among the bytes its latest PASS read.
+ * A directory it lists or names, or a registry in its closure that names every receipt, does not count.
+ */
+export const readsReceiptFile = (cache, root, textOf) => (file, path) => !RECEIPT_FILE.test(path) || path === file
+  || cache.runSetOf(resolve(root, file)).has(resolve(root, path)) || textOf(file).includes(path)
+  || Boolean(cache.observedOf?.(file)?.reads.has(path));
 const list = (items, count = 5) => `${items.slice(0, count).join(', ')}${items.length > count ? `, +${items.length - count} more` : ''}`;
 const CLASS_WORDS = { armour: 'armour', gun: 'gun', hp: 'HP', mobility: 'mobility', size: 'size', role: 'role', new: 'new', removed: 'removed' };
 
@@ -176,11 +189,12 @@ async function main(argv) {
     if (!texts.has(file)) { try { texts.set(file, readFileSync(join(root, file), 'utf8')); } catch { texts.set(file, ''); } }
     return texts.get(file);
   };
+  const runsOrReads = readsReceiptFile(cache, root, textOf);
   const readers = new Map();
   for (const [name, entry] of Object.entries(MANUAL_SUITES)) {
     const reading = new Map();
     for (const file of [...manualSuiteFiles(registered, [name]), ...entry.commands.map((command) => command[1])]) {
-      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)) && readsOnPurpose(path, textOf(file)));
+      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)) && readsOnPurpose(path, textOf(file)) && runsOrReads(file, path));
       if (paths.length) reading.set(file, paths);
     }
     readers.set(name, reading);
@@ -196,7 +210,8 @@ async function main(argv) {
   const { receiptsNaming } = await import('./test-diff.mjs');
   const naming = receiptsNaming(root, tanks, new Set(idChanges.ids.keys()));
   const runMsOf = await receiptRunTimes(root);
-  const pins = selectLane({ defaults: [], tanks, changed: diff.paths, readOf, core: partition.core, naming, pinCostOf: runMsOf });
+  const pins = selectLane({ defaults: [], tanks, changed: diff.paths, readOf: (file, path) => (runsOrReads(file, path) ? readOf(file, path) : null),
+    core: partition.core, naming, pinCostOf: runMsOf });
   const idPins = pins.selected.size, idPinsDeferred = pins.deferred.size;
   cache.persist();
   let balance = null;
