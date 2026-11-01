@@ -10,6 +10,7 @@ import { addType10DozerKit } from './type10Dozer.ts';
 import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X, TYPE10_X_DATUMS, TYPE10_X_SIDE_WALL } from './type10X.ts';
 import { sectionSolid } from './sectionSolid.ts';
+import { TKX_TRIAL_MODULE, TKX_GLACIS_PLATE, tkxGlacisY, TYPE10B_WEDGE_ROWS } from '../type10MarkArmor.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { libraryStationGun, libraryStationGunBounds } from './libraryRoofMg.ts';
 import { buildType90B } from './type90B.ts';
@@ -336,7 +337,7 @@ function addTkxTrialsFit(P: JapaneseBuilderPort): void {
  *  bolted to the upper glacis. */
 function addTkxTrialArmour(P: JapaneseBuilderPort & TankBuilderPort): void {
   const { box, cylZ, cylY } = KIT;
-  const xi = 0.49, xo = 1.40, z0 = 1.62, z1 = 2.56, y0 = 1.57, y1 = 2.15;
+  const { xi, xo, z0, z1, y0, y1 } = TKX_TRIAL_MODULE;                    // its plates: type10MarkArmor.ts
   for (const side of [-1, 1]) {
     const xc = side * (xi + xo) / 2, w = xo - xi;
     P.add('turretDetail', box(w, y1 - y0, z1 - z0), ...tl(xc, (y0 + y1) / 2, (z0 + z1) / 2));
@@ -352,8 +353,9 @@ function addTkxTrialArmour(P: JapaneseBuilderPort & TankBuilderPort): void {
     }
   }
   // the glacis trial plate (the glacis falls 1.370 -> 1.3065 from z 2.50 to 3.31), its bolt rows along both long edges
-  const rake = Math.atan2(1.370 - 1.3065, 3.3137 - 2.50), zc = 2.93, yc = 1.339 - (zc - 2.898) * Math.tan(rake) + 0.021;
-  P.addEquipment('hullDetail', box(1.50, 0.04, 0.62), 0, yc, zc, rake, 0, 0);
+  const G = TKX_GLACIS_PLATE, rake = Math.atan2(1.370 - 1.3065, 3.3137 - 2.50), zc = (G.z0 + G.z1) / 2;
+  const yc = tkxGlacisY(zc) + G.t / 2 + 0.001;
+  P.addEquipment('hullDetail', box(G.halfW * 2, G.t, G.z1 - G.z0), 0, yc, zc, rake, 0, 0);
   for (let i = 0; i < 8; i++) for (const dz of [-0.27, 0.27])
     P.addEquipment('hullDark', cylY(0.017, 0.017, 0.012, 8), -0.66 + i * 0.19, yc + 0.026 - dz * Math.tan(rake), zc + dz, rake, 0, 0);
 }
@@ -523,9 +525,7 @@ function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
 function addType10BWedges(P: JapaneseBuilderPort): void {
   const { cylY } = KIT;
   for (const side of [-1, 1]) {
-    const rows: [number, number, number, number, number][] = [
-      [1.62, 0.49, 1.42, 1.58, 2.15], [2.30, 0.62, 1.18, 1.61, 2.11], [2.86, 0.84, 0.94, 1.68, 1.98]];
-    const g = sectionSolid(rows.map(([z, xi, xo, lo, hi]) => {
+    const g = sectionSolid(TYPE10B_WEDGE_ROWS.map(([z, xi, xo, lo, hi]) => {                 // its plates: type10MarkArmor.ts
       const ring: [number, number][] = [[xi, lo], [xo, lo], [xo, hi], [xi, hi]];
       return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring };
     }));

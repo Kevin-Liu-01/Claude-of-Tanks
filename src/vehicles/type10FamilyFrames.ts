@@ -6,6 +6,7 @@
 // japan.ts), so this runs after every clone and donor synchronisation, beside the T-90 marks' pass.
 // First-party combat metadata: Kevin B. Liu (NOTICE.md).
 import { fitArmorToDims } from './specs.ts';
+import { tkxTrialPlates, type10bWedgePlates } from './type10MarkArmor.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
 const TYPE10_MARKS = Object.freeze(['type10_tk_x', 'type10b'] as const);
@@ -34,4 +35,12 @@ export function applyType10FamilyFrames(specs: Record<string, FleetTankSpec>): v
     spec.armor.gunBarrel.radiusM = twin.armor.gunBarrel.radiusM;
   }
   if (specs.type10_tk_x) Object.assign(specs.type10_tk_x.visual, { ...TKX_TRIALS_VISUAL, patches: [...TKX_TRIALS_VISUAL.patches] });
+  // the marks' added armour, plates the record never carried with their own protection (Main 2026-11-01: armour that
+  // reads as armour is armour; type10MarkArmor.ts), about the Type 10's pivot both marks now turn on
+  if (specs.type10_tk_x) {
+    const trial = tkxTrialPlates();
+    specs.type10_tk_x.armor.turretPlates.push(...trial.turret);
+    specs.type10_tk_x.armor.hullPlates.push(...trial.hull);
+  }
+  if (specs.type10b) specs.type10b.armor.turretPlates.push(...type10bWedgePlates());
 }
