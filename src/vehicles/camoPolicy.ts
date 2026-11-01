@@ -144,7 +144,7 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
   'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk', 'paint_m41_bw', 'paint_m41_jgsdf'] as const);
 /** 267 (the Japan line): the Type 90 (B)'s JGSDF two-tone in large bands, olive drab under chocolate brown (the photo
  *  critic: the family's sage-and-tan service paint read as no JGSDF coat). Appends after 266's saved catalog indices. */
-const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_type90b'] as const);
+const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_type90b', 'paint_type10'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
@@ -551,8 +551,10 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#4b553b', weather: '#797762', patches: ['#494235', '#252c26'] }),
   preset('sig_ariete_c2', 'c2_ariete_proto', signatureTags('it', 'woodland', 'organic'),
     { scheme: 'nato', base: '#424f39', weather: '#546047', patches: ['#222a24', '#66503b'], camoScale: 0.46, patchK: 1.2 }),
+  // 267 (owner 2026-11-01: the 10B "need[s] to look a lot more unique"): the upgrade fit's coyote ground with olive and
+  // dark brown blotches, for the green Type 10 bands it shared
   preset('sig_type10b', 'type10b', signatureTags('jp', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'], camoScale: 0.4 }),
+    { scheme: 'nato', base: '#8f7f5c', weather: '#9c8b67', patches: ['#5b5b40', '#3f3a2b'], camoScale: 0.5 }),
   preset('sig_type90', 'type90_kyumaru', signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#46503d', weather: '#555d49', patches: ['#70563e', '#303a30'], camoScale: 0.48 }),
   preset('sig_type90a', 'type90a', signatureTags('jp', 'woodland', 'stripes'),
@@ -913,8 +915,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // modern cool green and the Type 10's two-tone): Gelboliv, and the JGSDF's olive drab of 1961 to the 1980s
   m41_bw: 'paint_m41_bw',
   m41_jgsdf: 'paint_m41_jgsdf',
-  // 267: the Type 90 (B) in the JGSDF two-tone of its own paint
+  // 267: the Type 90 (B) in the JGSDF two-tone of its own paint; the TK-X in its prototypes' pale trials finish (owner
+  // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
+  type10_tk_x: 'paint_type10',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

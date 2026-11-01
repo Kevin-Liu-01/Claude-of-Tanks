@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 49 entries over 125 vehicles.
+// 50 entries over 126 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -48,6 +48,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_t90ms',
   'paint_tamoyo1',
   'paint_tamoyo3',
+  'paint_type10',
   'paint_type10_dozer',
   'paint_type74',
   'paint_type90b',
@@ -115,6 +116,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_t90ms',lead: 't90ms_2011',sourceTankIds: ['t90ms_2011','t90ms_tagil'],nation: 'USSR/Russia',label: 'Russian Plain Brown',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#6a6047',weather: '#75694e',patches: []}},
   {id: 'paint_tamoyo1',lead: 'tamoyo1',sourceTankIds: ['tamoyo1'],nation: 'Brazil',label: 'Brazilian Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#454d31',weather: '#515a3c',patches: ['#70502e','#634528'],camoScale: 0.42,patchK: 1.7}},
   {id: 'paint_tamoyo3',lead: 'tamoyo3',sourceTankIds: ['tamoyo3'],nation: 'Brazil',label: 'Brazilian Blotch Woodland IV',tags: ['woodland','organic','signature'],visual: {scheme: 'blotch',base: '#3b4231',weather: '#444b36',patches: ['#6a4a2c'],camoScale: 0.48,patchK: 2.2}},
+  {id: 'paint_type10',lead: 'type10_tk_x',sourceTankIds: ['type10_tk_x'],nation: 'Japan',label: 'JGSDF Bands Urban',tags: ['jp','urban','stripes','signature'],visual: {scheme: 'stripes',base: '#8c8f87',weather: '#999b92',patches: ['#a8987a','#6d7866'],camoScale: 0.55}},
   {id: 'paint_type10_dozer',lead: 'type10_dozer',sourceTankIds: ['type10_dozer'],nation: 'Japan',label: 'JGSDF Digital Woodland',tags: ['jp','woodland','digital','signature'],visual: {scheme: 'digital',base: '#3e4b33',weather: '#545e43',patches: ['#1f271b','#5e7040','#735a3c'],camoScale: 0.4}},
   {id: 'paint_type74',lead: 'type74',sourceTankIds: ['type74'],nation: 'Japan',label: 'JGSDF Bands Woodland',tags: ['jp','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#44503a',weather: '#4e5a44',patches: ['#4d4133','#37432f'],camoScale: 0.6}},
   {id: 'paint_type90b',lead: 'type90b',sourceTankIds: ['type90b'],nation: 'Japan',label: 'JGSDF Two-Tone Woodland',tags: ['jp','woodland','organic','signature'],visual: {scheme: 'nato',base: '#383c2b',weather: '#444838',patches: ['#30281f'],camoScale: 0.75}},

@@ -20,9 +20,9 @@ for (const id of ['type10_tk_x', 'type10b']) {
   assert.equal(spec.gun.caliberMm, 120, `${id}: the 120 mm gun`);
   assert.equal(spec.armor.crew.length, 3, `${id}: three crew`);
 }
-// the 10B's reactive seeds, fitted by the anatomy pass one plate per cassette it draws: six a side on the hull's skirt,
+// the 10B's reactive seeds, fitted by the anatomy pass one plate per cassette it draws: eight a side on the hull's skirt,
 // seven a side over the turret's side blocks
-for (const [list, seed, perSide] of [['hullPlates', 'skirt', 6], ['turretPlates', 'turret', 7]]) {
+for (const [list, seed, perSide] of [['hullPlates', 'skirt', 8], ['turretPlates', 'turret', 7]]) {
   for (const tag of ['L', 'R']) {
     const n = getSpec('type10b').armor[list].filter((p) => p.name === `type10b_${seed}_era_${tag}`).length;
     assert.equal(n, perSide, `type10b: ${perSide} ${seed} cassettes fitted on its ${tag} side (${n})`);

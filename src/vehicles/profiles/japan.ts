@@ -384,20 +384,19 @@ function addType10BRemoteStation(P: JapaneseBuilderPort & TankBuilderPort): void
 function addType10BActiveProtection(P: JapaneseBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
   for (const side of [-1, 1]) {
-    // the front heads stand on the front blocks' shelves; the rear heads hang flat on the bustle's flanks below the roof
-    // line (on posts over the roof they drew the field net into a sail)
-    for (const [z, y, aft] of [[0.70, 2.03, false], [-1.92, 1.56, true]] as const) {
-      const x = side * (aft ? 1.477 : 1.16), yaw = side * (aft ? Math.PI * 0.62 : Math.PI * 0.25);
+    // the four heads stand on bracket blocks at the turret's corners, the front pair on the front blocks' shelves looking
+    // forward and out, the rear pair on the bustle's roof corners looking aft and out: one crown of four panels over the
+    // roof line (round 6: "raise all four panels to roof height at the corners"; the owner 2026-11-01: the 10B must read
+    // apart from the Type 10 at a glance). The roof net is cut round them (ghillieFleetSuits.ts type10b).
+    for (const [z, y, aft] of [[0.70, 2.03, false], [-1.55, 2.19, true]] as const) {
+      const x = side * (aft ? 1.22 : 1.16), yaw = side * (aft ? Math.PI * 0.75 : Math.PI * 0.25);
       const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
-      const w = aft ? 0.36 : 0.40, h = aft ? 0.30 : 0.32, cy = y + 0.04 + h / 2 + (aft ? 0 : 0.10);
-      // round 5 ("a blank upright plank ... no visible bracket"): the front heads stand on a bracket block and its foot plate
-      if (!aft) {
-        P.add('turretDetail', box(0.20, 0.02, 0.16), ...tl(x, y + 0.01, z), 0, yaw, 0);
-        P.add('turretDetail', box(0.12, 0.118, 0.10), ...tl(x - fx * 0.02, y + 0.021 + 0.059, z - fz * 0.02), 0, yaw, 0);
-      }
+      const w = 0.40, h = 0.32, cy = y + 0.04 + h / 2 + 0.10;
+      P.add('turretDetail', box(0.20, 0.02, 0.16), ...tl(x, y + 0.01, z), 0, yaw, 0);
+      P.add('turretDetail', box(0.12, 0.118, 0.10), ...tl(x - fx * 0.02, y + 0.021 + 0.059, z - fz * 0.02), 0, yaw, 0);
       P.add('turretDetail', box(w, h, 0.07), ...tl(x, cy, z), 0, yaw, 0);
       P.add('turretDetail', box(w + 0.03, 0.022, 0.10), ...tl(x + fx * 0.016, cy + h / 2 + 0.012, z + fz * 0.016), 0, yaw, 0);
-      const nu = aft ? 5 : 6, nv = 4;
+      const nu = 6, nv = 4;
       for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
         const u = (i - (nu - 1) / 2) * 0.056, v = (j - (nv - 1) / 2) * 0.062;
         P.add('turretDark', box(0.048, 0.052, 0.008), ...tl(x + fx * 0.0395 + rx * u, cy + v, z + fz * 0.0395 + rz * u), 0, yaw, 0);
@@ -425,7 +424,8 @@ function addType10BActiveProtection(P: JapaneseBuilderPort): void {
 function addType10BReactiveArmor(P: JapaneseBuilderPort): void {
   const wall = TYPE10_X_SIDE_WALL;
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 6; i++) {
+    // (the owner 2026-11-01: the full skirt, eight a side, so the belt reads at distance)
+    for (let i = 0; i < 8; i++) {
       const t = 0.13, x0 = 1.5745;                       // round 3: proud of the skirt ('10-15 cm of stand-off')
       // (round 5: "one thin belt about a third of the skirt's height": the cassettes cover the skirt's depth)
       seatedArmorCassette(P, 'hull', side * (x0 + t / 2), 0.985, 2.80 - i * 0.70, t, 0.42, 0.64, null,

@@ -9,6 +9,14 @@ import { fitArmorToDims } from './specs.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
 const TYPE10_MARKS = Object.freeze(['type10_tk_x', 'type10b'] as const);
+
+/** The TK-X prototypes' trials finish (owner 2026-11-01: "the tk x and type 10b need to look a lot more unique"; TRDI
+ *  trial and museum photographs, docs/references/photos/type10-tk-x-20261031.json, tkx_no3: a pale grey ground with sand
+ *  and grey-green bands), and their trial designation in place of the production '73'. The production Type 10 clones the
+ *  TK-X's registration visual (sourceXSecondWaveSpecs.ts), so the coat is set here, after every clone. Its stock paint
+ *  is paint_type10 (the generator names paints by the lead's seed id; camoPolicy.ts). */
+const TKX_TRIALS_VISUAL = Object.freeze({ scheme: 'stripes', base: '#8c8f87', weather: '#999b92',
+  patches: ['#a8987a', '#6d7866'], camoScale: 0.55, number: 'TK-X' } as const);
 const STRUCTURAL_DIMS = ['hullLengthM', 'overallLengthM', 'widthM', 'heightM'] as const;
 
 export function applyType10FamilyFrames(specs: Record<string, FleetTankSpec>): void {
@@ -25,4 +33,5 @@ export function applyType10FamilyFrames(specs: Record<string, FleetTankSpec>): v
     spec.armor.gunBarrel.lengthM = twin.armor.gunBarrel.lengthM;
     spec.armor.gunBarrel.radiusM = twin.armor.gunBarrel.radiusM;
   }
+  if (specs.type10_tk_x) Object.assign(specs.type10_tk_x.visual, { ...TKX_TRIALS_VISUAL, patches: [...TKX_TRIALS_VISUAL.patches] });
 }

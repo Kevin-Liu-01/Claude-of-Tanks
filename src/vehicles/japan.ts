@@ -178,9 +178,10 @@ const JAPAN_SPECS = {
     armorFactor: 1.12,
   }),
   type10b: variant('type10b', 'type10_tk_x', {
-    name: 'Type 10B', number: '10-B', scheme: 'stripes',
-    base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'],
-    camoScale: 0.40,
+    // 267 (owner 2026-11-01): the coyote upgrade coat, its Signature's (camoPolicy.ts sig_type10b)
+    name: 'Type 10B', number: '10-B', scheme: 'nato',
+    base: '#8f7f5c', weather: '#9c8b67', patches: ['#5b5b40', '#3f3a2b'],
+    camoScale: 0.5,
     dims: { hullLengthM: 7.513, overallLengthM: 10.439, widthM: 3.564, heightM: 2.838 },
     stats: { hp: 2700, enginePowerHp: 1200, weightTons: 48.0, topSpeedKmh: 70,
       reverseSpeedKmh: 45, hullTraverseDegS: 50, turretTraverseDegS: 48,
