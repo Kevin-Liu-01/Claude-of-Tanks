@@ -10830,23 +10830,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 27750,
-      "sha256": "ccb74b6e46a476ab34f41bc4b96475e29399aac0c385b7f95bf349b9cfd6046a"
+      "sha256": "a445fa781e712fb51effcaced1557c571c178ce18f82e34e628cca4a13e92619"
     },
     "modulesSide": {
       "file": "t72b3m_bulat_m_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26012,
-      "sha256": "bd9f1e16797304c3f527fd2362aaff5aa7a168e6147d3b0ed3d399c9772a94e1"
+      "bytes": 25500,
+      "sha256": "e591edd0626ec3c6976ad476788b8f5e7fc956f68d406a651ea73387dbb18d1e"
     },
     "crewSide": {
       "file": "t72b3m_bulat_m_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23384,
-      "sha256": "94913e88e1ea1971a2782793a1e630cfccdd1d1fd1c7b3051abd1dd359d89c2b"
+      "bytes": 23462,
+      "sha256": "d70f315d8780e949667f48a74085a8a0dfea63174e1d81b15db34b89fa4a9129"
     },
     "angle": {
       "file": "t72b3m_bulat_m_angle.webp",
@@ -10907,8 +10907,8 @@
     "technicalLabels": {
       "file": "t72b3m_bulat_m_technical.json",
       "mime": "application/json",
-      "bytes": 5462,
-      "sha256": "7f426bfcbb25ea34ccf073fa3e8d16f9e9111688a6d2c789a2d75fd2b16d0ee5"
+      "bytes": 5464,
+      "sha256": "1ee01ac22c61716130b7b1feada52518b2c4fe481a4c03deae4668e08d662c25"
     }
   }
 }

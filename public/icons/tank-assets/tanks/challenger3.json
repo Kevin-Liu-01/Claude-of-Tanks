@@ -3433,24 +3433,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22714,
-      "sha256": "27171b7a42a17e70a61ce68a63a91176ebd690467e6e8624f053db3d97d2921c"
+      "bytes": 22698,
+      "sha256": "bcea7dc81544284d6280a893c61049c82b57b469aea75246deee5b8ba424f72a"
     },
     "modulesSide": {
       "file": "challenger3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21932,
-      "sha256": "1ebf18073a29f43e8924e9ed5165b8a9ad0ed1a1a5ff852ac31963b272111d0f"
+      "bytes": 21298,
+      "sha256": "a032fd679809aea0112b2bbd35220635fc64de2b887aedc7e1b99b1634a42daf"
     },
     "crewSide": {
       "file": "challenger3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 17930,
-      "sha256": "eeaf04e79428f93ca5661ef4cf453105039ea1ae97b02a39f2bf94d62e430e69"
+      "bytes": 17078,
+      "sha256": "eeb57ebb79cea58143aa1eb155f921e48a333bfba63aaa8dfed82f3eb66c4c43"
     },
     "markings": {
       "file": "challenger3_markings.png",
@@ -3463,8 +3463,8 @@
     "technicalLabels": {
       "file": "challenger3_technical.json",
       "mime": "application/json",
-      "bytes": 5484,
-      "sha256": "94ac49fd1b8534775fb6727e9b8922d3eea98a49885f2aff711f179524f7acea"
+      "bytes": 5481,
+      "sha256": "8f1d435fa3513c83707d93b85c968acbbaeab258a74a23c50ab7679e3fe19517"
     }
   }
 }

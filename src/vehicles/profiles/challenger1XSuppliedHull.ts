@@ -93,11 +93,13 @@ function foreDeck(P:TankBuilderPort):void{
   // Lower central driver channel is preserved between the two shoulders.
   P.add('hull',slab([[8,31.4,49.4,63.55],[20,31.4,49.4,63.45],
     [50,31.4,49.3,55.1],[70,31.4,48.3,51.71],[79.8,34.8,47.25,48.3]]));
+  // 266 (roof-pocket census): each shoulder beside the driver's channel is a solid block down into the deck, its top the
+  // supplied sheet's; the 1.4 in sheet stood up to 5 in over the deck's falling plane with daylight under it from the
+  // channel and the nose (0.31 m2 a side on all three marks)
   for(const side of [-1,1]){
-    const x=side*24.6;
-    P.add('hull',roofSheet([[p(0,0,16)[2],p(x-9,0,0)[0],p(x+9,0,0)[0],p(0,64.9,0)[1],p(0,64.9,0)[1]],
-      [p(0,0,62)[2],p(x-9,0,0)[0],p(x+9,0,0)[0],p(0,59.38,0)[1],p(0,59.38,0)[1]],
-      [p(0,0,70)[2],p(x-9,0,0)[0],p(x+9,0,0)[0],p(0,54.54,0)[1],p(0,54.54,0)[1]]],m(1.4)));
+    const x=side*24.6,l=p(x-9,0,0)[0],r=p(x+9,0,0)[0],floor=p(0,49.4,0)[1];
+    P.add('hull',sectionSolid(([[16,64.9],[62,59.38],[70,54.54]] as const).map(([z,top])=>({z:p(0,0,z)[2],
+      ring:[[l,floor],[r,floor],[r,p(0,top,0)[1]],[l,p(0,top,0)[1]]] as [number,number][]}))));
   }
   const hatch=roofSheet([[p(0,0,19.8)[2],p(-14.8,0,0)[0],p(14.8,0,0)[0],p(0,60.2,0)[1],p(0,60.2,0)[1]],
     [p(0,0,70.4)[2],p(-14.8,0,0)[0],p(14.8,0,0)[0],p(0,54.9,0)[1],p(0,54.9,0)[1]]],m(1.2));

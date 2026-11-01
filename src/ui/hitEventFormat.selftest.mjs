@@ -53,9 +53,10 @@ for (const [event, id, label, penetrated, blocked] of outcomeCases) {
 }
 
 const incomingCases = [
-  [{ kind: 'pen', damage: 417 }, 'pen', 'penetration', '-417', '#ff8a72', true, false, 'damage:pen'],
-  [{ kind: 'he_pen', damage: 510 }, 'pen', 'penetration', '-510', '#ff8a72', true, false, 'damage:pen'],
-  [{ kind: 'he_splash', damage: 83.7 }, 'he', 'splash', '-84', '#ffd166', true, false, 'damage:he'],
+  // (damage taken is one token, direct and splash alike: never the damage dealt's yellow, Main 2026-10-31)
+  [{ kind: 'pen', damage: 417 }, 'pen', 'penetration', '-417', 'var(--battle-damage-taken)', true, false, 'damage:pen'],
+  [{ kind: 'he_pen', damage: 510 }, 'pen', 'penetration', '-510', 'var(--battle-damage-taken)', true, false, 'damage:pen'],
+  [{ kind: 'he_splash', damage: 83.7 }, 'he', 'splash', '-84', 'var(--battle-damage-taken)', true, false, 'damage:he'],
   [{ kind: 'ricochet', damage: 0 }, 'bounce', 'ricochet', 'RICOCHET', '#bcc8d2', false, false, 'outcome:ricochet'],
   [{ kind: 'nonpen', damage: 0 }, 'bounce', 'blocked', 'BLOCKED', '#8fa3b4', false, false, 'outcome:blocked'],
   [{ kind: 'era', damage: 0 }, 'bounce', 'era_absorbed', 'ERA ABSORBED', '#9fabb5', false, false, 'outcome:era_absorbed'],
@@ -63,7 +64,7 @@ const incomingCases = [
   [{ kind: 'screen_pierce', damage: 0 }, 'bounce', 'passed_through', 'PASSED THROUGH', '#9fb0bf', false, false, 'outcome:passed_through'],
   [{ kind: 'he_splash', damage: 0 }, 'he', 'no_damage', 'NO DAMAGE', '#8fa3b4', false, false, 'outcome:no_damage'],
   [{ kind: 'pen', damage: 0, modulesHit: [{ newState: 'yellow' }] }, 'pen', 'module_hit', 'MODULE HIT', '#f0b04a', false, true, 'outcome:module_hit'],
-  [{ kind: 'pen', damage: 122, crewHit: ['loader'] }, 'pen', 'penetration', '-122', '#ff8a72', true, true, 'damage:pen'],
+  [{ kind: 'pen', damage: 122, crewHit: ['loader'] }, 'pen', 'penetration', '-122', 'var(--battle-damage-taken)', true, true, 'damage:pen'],
   [{ kind: 'nonpen', damage: Number.NaN }, 'bounce', 'blocked', 'BLOCKED', '#8fa3b4', false, false, 'outcome:blocked'],
   [{ kind: 'nonpen', damage: -50 }, 'bounce', 'blocked', 'BLOCKED', '#8fa3b4', false, false, 'outcome:blocked'],
 ];

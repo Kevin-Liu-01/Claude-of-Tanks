@@ -597,24 +597,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18872,
-      "sha256": "b435a7dbd8362a29773860bff2796cc307e43c7b910e215f2694191ab84016c7"
+      "bytes": 18902,
+      "sha256": "1cc4adf94703482a89cc50d2c25b058d44e2a5984c17aa6835fe74b002f0fb9b"
     },
     "modulesSide": {
       "file": "type10_tk_x_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22686,
-      "sha256": "790bc03484a23520ed2a0d859ae50d1a1f96b7abf5b1da7f9f80019c39a5f283"
+      "bytes": 22976,
+      "sha256": "8855b9cdedb01dce3b3c838eef2f292d04e92e39986c17754f8c630eba779f32"
     },
     "crewSide": {
       "file": "type10_tk_x_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18916,
-      "sha256": "ccfa67480ff8cace9e4d785389bfe3749f4bdd515a36b7ad805a661470d9fd07"
+      "bytes": 18620,
+      "sha256": "9facb66f05d18f575ccb3e689c4f2b93595c0745fcfc720b20bc1d32767191fd"
     },
     "markings": {
       "file": "type10_tk_x_markings.png",
@@ -628,7 +628,7 @@
       "file": "type10_tk_x_technical.json",
       "mime": "application/json",
       "bytes": 4403,
-      "sha256": "dbb47274f3a1cc1dd507fec58bd4fccbba9b0304f9201149091b5c628c29f8b7"
+      "sha256": "08968e1ac14444a24d113136e57a874a03883301191afdb03dfeb77f9f9d729a"
     }
   }
 }

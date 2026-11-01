@@ -43,19 +43,25 @@ import { createFixedStepLoop } from './loop.ts';
   const after = earliest().at;
   assert.ok(Math.abs(after - (1000 + 12 * 1000 / 60)) < 1e-6, `late wake-up keeps the grid (${after})`);
   assert.ok(loop.stats.lateWakeupMaxMs >= 12 - 1e-6);
-  // a 500 ms stall: at most six ticks run, the rest are dropped and counted, the phase is kept
+  // a 500 ms stall: six ticks run (the catch-up window, on from the tick before it), the rest are dropped and counted,
+  // and the tick lands on the wall's grid (267): every peer reads server time as tick * tickMs
+  const beforeStall = seen.length;
   fireNext(500);
   assert.equal(loop.stats.stalls, 1);
   assert.ok(loop.stats.droppedTicks >= 20, `dropped ${loop.stats.droppedTicks}`);
+  assert.deepEqual(seen.slice(beforeStall), [12, 13, 14, 15, 16, 17], 'the catch-up window runs the six ticks after the stall began');
+  assert.equal(loop.tick, Math.floor((nowMs - 1000) * 60 / 1000 + 1e-6), `the tick is the wall's (${loop.tick} at ${(nowMs - 1000).toFixed(1)} ms)`);
+  assert.equal(loop.tick, 17 + loop.stats.droppedTicks, 'the dropped ticks are skipped, never run');
   fire(nowMs);
   const ticksAfterStall = loop.tick;
   fire(nowMs + 1000 / 60 * 3 + 0.001);
   assert.equal(loop.tick, ticksAfterStall + 3, 'after a stall the loop resumes one tick per interval');
+  assert.deepEqual(seen.slice(-3), [ticksAfterStall + 1, ticksAfterStall + 2, ticksAfterStall + 3], 'from the tick after the skip');
   loop.stop();
   const pending = timers.filter((t) => !t.cancelled).length;
   assert.equal(pending, 0, 'stop cancels the armed timer');
   assert.equal(loop.running, false);
-  assert.equal(loop.tickCost.count, loop.tick);
+  assert.equal(loop.tickCost.count, loop.tick - loop.stats.droppedTicks);
   console.log(`loop.selftest: ${loop.tick} ticks, ${loop.stats.wakeups} wake-ups, drift-free late wake, stall dropped ${loop.stats.droppedTicks} ticks`);
 }
 

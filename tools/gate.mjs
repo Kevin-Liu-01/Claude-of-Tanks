@@ -35,6 +35,7 @@ import { constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { isStarved } from './selftest-verdict.mjs';
 
 export const GATE_STEPS = Object.freeze(['typecheck', 'build', 'i18n', 'budget', 'workers', 'receipts', 'preflight']);
 const VERDICTS_BLOCKING = Object.freeze({ regression: true, changed: true, flaky: false, unstable: false, inherited: false });
@@ -176,8 +177,10 @@ export function failureSignature(text, roots = []) {
  * baseline at the same time: { here: { status, log }, base: { status, log } }.
  */
 export async function compareRedReceipt(file, { runPair, signatureOf }) {
+  // a result may carry its message already (test:lane's base results, reused from tools/lane-reds.mjs's store)
   const summary = (result) => ({ status: result.status, log: result.log, ...(result.missing ? { missing: true } : {}),
-    message: result.status === 0 ? '' : (signatureOf(result.log) || `exit status ${result.status}`) });
+    ...(result.cached ? { cached: true } : {}),
+    message: result.status === 0 ? '' : (result.message ?? (signatureOf(result.log) || `exit status ${result.status}`)) });
   const first = await runPair(file, 1);
   const row = { file, here: summary(first.here), base: summary(first.base) };
   if (row.here.status === 0) row.verdict = 'flaky';
@@ -208,7 +211,8 @@ export function renderGateMarkdown(summary) {
   }
   const receipts = summary.receipts;
   if (receipts) {
-    lines.push('', `## Receipts`, '', `${receipts.selected ?? '?'} selected, ${receipts.executed ?? '?'} executed, ${receipts.reused ?? '?'} reused, ${receipts.failed.length} red.`);
+    lines.push('', `## Receipts`, '', `${receipts.selected ?? '?'} selected, ${receipts.executed ?? '?'} executed, ${receipts.reused ?? '?'} reused, ${receipts.failed.length} red, ${receipts.starved?.length ?? 0} starved.`);
+    if (receipts.starved?.length) lines.push('', 'STARVED (the machine withheld what they judge; run them again on a quieter machine):', '', ...receipts.starved.map((file) => `- \`${file}\``));
     for (const failed of receipts.failed) lines.push('', `- \`${failed.file}\` (log: \`${failed.log}\`)`, '', fence(failed.message));
   }
   const baseline = summary.baseline;
@@ -281,17 +285,49 @@ async function runStep(plan, { root, out, echo }) {
   return { ...row, status, ms };
 }
 
-function receiptSummary(out, root) {
+export function receiptSummary(out, root) {
   let report;
   try { report = JSON.parse(readFileSync(join(out, 'receipts.json'), 'utf8')); } catch { return null; }
-  const failed = report.rows.filter((row) => !row.skipped && (row.error || row.status !== 0)).map((row) => {
+  // (267) a STARVED receipt (tools/selftest-verdict.mjs) is counted apart: the machine withheld what it judges
+  const starved = report.rows.filter((row) => !row.skipped && !row.error && isStarved(row.status)).map((row) => row.file);
+  const failed = report.rows.filter((row) => !row.skipped && (row.error || row.status !== 0) && !starved.includes(row.file)).map((row) => {
     const log = join(out, 'receipts', `${row.file}.log`);
     let text = '';
     try { text = readFileSync(log, 'utf8'); } catch { /* spawn error: no log */ }
     return { file: row.file, status: row.status, message: row.error ?? (failureSignature(text, [root]) || `exit status ${row.status}`), log };
   });
   return { report: join(out, 'receipts.json'), status: report.status, selected: report.selected, executed: report.executed,
-    reused: report.reused, failed };
+    reused: report.reused, failed, starved };
+}
+
+/**
+ * A detached worktree of `commit` at `dir` that runs on this checkout's installs (node_modules and public/models
+ * linked): { dir, lockfileMatches, remove() }. remove() unlinks the installs first, so removing the worktree never
+ * reaches through a link. The gate's --baseline and test:lane's red classes (tools/lane-reds.mjs) run receipts in it.
+ */
+export function openBaselineWorktree(root, commit, dir) {
+  git(root, 'worktree', 'add', '--detach', dir, commit);
+  const remove = () => {
+    for (const link of [join(dir, 'node_modules'), join(dir, 'public', 'models')]) {
+      try { if (lstatSync(link).isSymbolicLink()) unlinkSync(link); } catch { /* absent */ }
+    }
+    try { git(root, 'worktree', 'remove', '--force', dir); } catch { /* reported by the caller */ }
+  };
+  try {
+    const modules = join(root, 'node_modules');
+    if (existsSync(modules)) symlinkSync(realpathSync(modules), join(dir, 'node_modules'));
+    const models = join(root, 'public', 'models');
+    if (existsSync(models) && !existsSync(join(dir, 'public', 'models'))) {
+      mkdirSync(join(dir, 'public'), { recursive: true });
+      symlinkSync(realpathSync(models), join(dir, 'public', 'models'));
+    }
+    const lock = (path) => { try { return readFileSync(path); } catch { return null; } };
+    const lockfileMatches = Boolean(lock(join(root, 'package-lock.json'))?.equals(lock(join(dir, 'package-lock.json')) ?? Buffer.alloc(0)));
+    return { dir, lockfileMatches, remove };
+  } catch (error) {
+    remove();
+    throw error;
+  }
 }
 
 async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockFactory }) {
@@ -302,17 +338,9 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
   const dir = join(out, `baseline-${commit.slice(0, 12)}`);
   const result = { ref, commit, dir, rows: [] };
   if (echo) console.log(`[gate] baseline: worktree of ${ref} (${commit.slice(0, 12)}) at ${dir}`);
-  git(root, 'worktree', 'add', '--detach', dir, commit);
+  const worktree = openBaselineWorktree(root, commit, dir);
   try {
-    const modules = join(root, 'node_modules');
-    if (existsSync(modules)) symlinkSync(realpathSync(modules), join(dir, 'node_modules'));
-    const models = join(root, 'public', 'models');
-    if (existsSync(models) && !existsSync(join(dir, 'public', 'models'))) {
-      mkdirSync(join(dir, 'public'), { recursive: true });
-      symlinkSync(realpathSync(models), join(dir, 'public', 'models'));
-    }
-    const lock = (path) => { try { return readFileSync(path); } catch { return null; } };
-    result.lockfileMatches = Boolean(lock(join(root, 'package-lock.json'))?.equals(lock(join(dir, 'package-lock.json')) ?? Buffer.alloc(0)));
+    result.lockfileMatches = worktree.lockfileMatches;
     const signatureOf = (log) => { try { return failureSignature(readFileSync(log, 'utf8'), [root, dir]); } catch { return ''; } };
     const runPair = async (file, attempt) => {
       const logs = { here: join(out, 'pairs', 'here', `${file}.${attempt}.log`), base: join(out, 'pairs', 'base', `${file}.${attempt}.log`) };
@@ -337,11 +365,7 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
       },
     });
   } finally {
-    // unlink the shared installs first: removing the worktree must never reach through a link
-    for (const link of [join(dir, 'node_modules'), join(dir, 'public', 'models')]) {
-      try { if (lstatSync(link).isSymbolicLink()) unlinkSync(link); } catch { /* absent */ }
-    }
-    try { git(root, 'worktree', 'remove', '--force', dir); } catch { /* reported below */ }
+    worktree.remove();
   }
   result.blocking = result.rows.filter((row) => row.blocking).map((row) => row.file);
   return result;

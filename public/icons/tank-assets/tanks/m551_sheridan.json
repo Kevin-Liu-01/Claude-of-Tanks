@@ -1516,24 +1516,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33154,
-      "sha256": "9a8c3afddbc0005f7d615e56611048cf621359ddbf0fcdd3b52afa45b8e5e985"
+      "bytes": 33164,
+      "sha256": "a6a234d5271141513d4da03ca0bdabdb79bfec561bbe232911d1f6430eac21af"
     },
     "modulesSide": {
       "file": "m551_sheridan_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31032,
-      "sha256": "653fcc4fda72c00237021deba87e5eeb071ad69b5076e6b1908ce8e19721a730"
+      "bytes": 31046,
+      "sha256": "d141ce71c0af4686e1ecfe91b4cfee0e590e03976b512a13db6d2d894a599d49"
     },
     "crewSide": {
       "file": "m551_sheridan_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31296,
-      "sha256": "e351a7c3a80144f0d5967cc2a49c607a2ab3396b5fb2f7b47d982cac2c4453aa"
+      "bytes": 31294,
+      "sha256": "deb82a75c2fb4177c36177ff6ad589e3c84f386e04e16c7ed7e8c5f30a7d0fe8"
     },
     "markings": {
       "file": "m551_sheridan_markings.png",

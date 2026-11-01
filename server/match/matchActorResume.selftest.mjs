@@ -53,7 +53,7 @@ async function advance(actor, ticks) {
 }
 
 // ---- invalid resume options
-for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 0 }, { tick: 3, battleTimeMs: -1 }, { tick: 3, battleTimeMs: Number.NaN }]) {
+for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 0 }, { tick: 3, battleTimeMs: -1 }, { tick: 3, battleTimeMs: Number.NaN }, { tick: 3, battleTimeMs: 0, dueAtMs: Number.NaN }]) {
   assert.throws(() => createMatchActor({ roomId: 'resume-bad', mapId: 'verdant', seed: 1, seats, world: 'terrain', now, schedule, autoStart: false, resume }), /resume needs/);
 }
 
@@ -115,6 +115,29 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   assert.ok(verdicts[0].tick > 1200);
   await advance(actor, 4);
   assert.equal(actor.stopped, true);
+}
+
+// ---- (267) a resume due before the loop starts: the loop starts on the old host's timeline, the ticks the world stood
+// still (the new host loading its world, holding for its seats) skipped, so server time stays the clients' clocks' time;
+// the battle clock, which only steps, skipped nothing
+{
+  const actor = createMatchActor({
+    roomId: 'resumed-due', mapId: 'verdant', seed: 21, seats, bots, world: 'terrain', countdownS: 5, now, schedule, autoStart: false,
+    resume: { tick: 1200, battleTimeMs: 30_000, dueAtMs: nowMs },
+  });
+  assert.equal(actor.tick, 1200, 'the still world sits at the resume tick');
+  nowMs += 1500;
+  actor.start();
+  assert.equal(actor.tick, 1290, `the loop starts 1.5 s on the old host's timeline (${actor.tick})`);
+  const viewer = attachViewer(actor, 0, 'p1');
+  await flush();
+  assert.equal(viewer.welcome.serverTick, 1290);
+  assert.equal(viewer.welcome.serverTimeMs, Math.round(1290 * TICK_MS), 'server time is the wall\'s since the resume tick was due');
+  await advance(actor, 6);
+  const first = viewer.frames[0];
+  assert.ok(first && first.tick > 1290 && first.tick <= 1296, `snapshots continue from there (${first?.tick})`);
+  assert.ok(first.meta.battleTimeMs >= 30_000 && first.meta.battleTimeMs < 30_200, `the battle clock skipped nothing (${first.meta.battleTimeMs})`);
+  actor.stop();
 }
 
 // ---- a resume with the ruleset's own clock: the limit counts from the resumed time

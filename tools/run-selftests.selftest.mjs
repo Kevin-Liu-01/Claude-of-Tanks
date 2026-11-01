@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { defaultTierFiles } from './selftest-tiers.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
@@ -87,7 +88,7 @@ assert.deepEqual(selftestPlan(['a'], {
     scanBy: ['src/presentation/gone.ts'], broadOnly: false },
 ], 'named files, named directories and listings select; the fallback alone only explains');
 
-function fixture({ failAt, errorAt, acquireError } = {}) {
+function fixture({ failAt, errorAt, acquireError, starvedAt } = {}) {
   const events = [], errors = [];
   let held = false, refreshes = 0;
   const lock = {
@@ -107,7 +108,7 @@ function fixture({ failAt, errorAt, acquireError } = {}) {
       assert.equal(held, file !== 'browser', 'actual browser child owns its own lease');
       events.push(file);
       if (file === 'slow') await new Promise((resolve) => setTimeout(resolve, 25));
-      return { status: file === failAt ? 7 : 0, error: file === errorAt ? new Error('spawn failed') : undefined };
+      return { status: file === failAt ? 7 : file === starvedAt ? SELFTEST_STARVED_EXIT : 0, error: file === errorAt ? new Error('spawn failed') : undefined };
     },
   };
   return { options, events, errors, get held() { return held; }, get refreshes() { return refreshes; } };
@@ -261,6 +262,17 @@ assert.equal(selftestFailFast({}), false); assert.equal(selftestFailFast({ COT_S
   assert.equal(await runSelftestSuite('cached-fail', ['b'], { ...failedCached.options, cache }), 7);
   assert.deepEqual(records, [], 'a failure is never recorded as a pass');
 }
+{
+  // (267) STARVED (tools/selftest-verdict.mjs): the machine withheld what the receipt judges. Neither a failure (the suite
+  // passes, nothing is logged as FAIL) nor a pass the cache keeps (the next run executes it again); it is logged apart.
+  const starved = fixture({ starvedAt: 'b' });
+  const records = [];
+  const cache = { lookup: (file) => ({ skip: false, key: `k-${file}`, inputs: 1 }), recordPass: (file, key) => records.push([file, key]) };
+  assert.equal(await runSelftestSuite('starved', ['a', 'b', 'browser'], { ...starved.options, cache }), 0, 'a STARVED receipt does not fail the suite');
+  assert.deepEqual(starved.errors, [], 'nor is it logged as a failure');
+  assert.ok(starved.events.includes('[selftests] STARVED b'), 'it is logged as STARVED');
+  assert.deepEqual(records, [['a', 'k-a'], ['browser', 'k-browser']], 'and never recorded as a pass');
+}
 const spawnFailed = fixture({ errorAt: 'a' });
 await assert.rejects(runSelftestSuite('spawn-error', ['a'], spawnFailed.options), /spawn failed/);
 assert.equal(spawnFailed.held, false);
@@ -330,6 +342,9 @@ for (const budget of [0, -1, NaN, Infinity]) {
   assert.equal(invalidBudget.events.length, 0, 'invalid scheduling options cannot acquire or run');
 }
 
+/** Listeners a finished receipt leaves on the runner's signals: none. */
+const listening = (emitter) => ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGALRM', 'exit']
+  .reduce((sum, name) => sum + emitter.listenerCount(name), 0);
 for (const signal of ['SIGINT', 'SIGTERM']) {
   const signals = new EventEmitter(), child = new EventEmitter(), kills = [];
   child.kill = (value) => { kills.push(value); return true; };
@@ -341,6 +356,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   assert.equal(launch[2].cwd, process.cwd());
   assert.deepEqual(launch[2].env, selftestChildEnv());
   assert.equal(launch[2].stdio, 'inherit');
+  assert.equal(launch[2].detached, true, 'every receipt leads its own process group');
   signals.emit(signal);
   assert.deepEqual(kills, [signal], 'forward termination only to the owned child');
   let finished = false;
@@ -350,7 +366,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   child.emit('close', 0);
   assert.deepEqual(await pending, { status: signal === 'SIGINT' ? 130 : 143, error: undefined },
     'graceful child cleanup cannot turn a requested interruption into suite success');
-  assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
+  assert.equal(listening(signals), 0);
 }
 for (const [signal, status] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGKILL', 137]]) {
   const signals = new EventEmitter(), child = new EventEmitter();
@@ -359,7 +375,31 @@ for (const [signal, status] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGKILL', 1
   child.emit('close', null, signal);
   assert.deepEqual(await pending, { status, error: undefined },
     'owned child signal termination propagates the customary exit status');
-  assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
+  assert.equal(listening(signals), 0);
+}
+// (266) an outer alarm or hangup ends the receipt with SIGTERM and keeps its own status; a launched receipt (it has a
+// pid) is signalled as a process group, and whatever is left of the group is SIGKILLed once it closes
+for (const [signal, status] of [['SIGHUP', 129], ['SIGALRM', 142]]) {
+  const signals = new EventEmitter(), child = new EventEmitter(), kills = [];
+  child.kill = (value) => { kills.push(value); return true; };
+  const pending = runSelftestFile('alarmed.mjs', { signals, spawnProcess: () => child });
+  signals.emit(signal);
+  assert.deepEqual(kills, ['SIGTERM'], `${signal} ends the receipt with SIGTERM`);
+  child.emit('close', 0);
+  assert.deepEqual(await pending, { status, error: undefined }, `${signal} keeps its own exit status`);
+  assert.equal(listening(signals), 0);
+}
+{
+  const signals = new EventEmitter(), child = Object.assign(new EventEmitter(), { pid: 4242 }), groups = [];
+  child.kill = () => assert.fail('a receipt with a pid is signalled as its group');
+  const pending = runSelftestFile('grouped.mjs', { signals, spawnProcess: () => child,
+    killGroup: (pid, signal) => { groups.push([pid, signal]); } });
+  signals.emit('SIGTERM');
+  signals.emit('exit');
+  child.emit('close', 0);
+  await pending;
+  assert.deepEqual(groups, [[4242, 'SIGTERM'], [4242, 'SIGKILL'], [4242, 'SIGKILL']],
+    'the group gets the signal, is swept when the runner exits, and again once the receipt has closed');
 }
 const spawnSignals = new EventEmitter(), failedChild = new EventEmitter();
 failedChild.kill = () => false;
@@ -368,11 +408,11 @@ const error = new Error('ENOENT');
 failedChild.emit('error', error);
 failedChild.emit('close', -2);
 assert.deepEqual(await failedLaunch, { status: -2, error });
-assert.equal(spawnSignals.listenerCount('SIGINT') + spawnSignals.listenerCount('SIGTERM'), 0);
+assert.equal(listening(spawnSignals), 0);
 await assert.rejects(runSelftestFile('bad-launch.mjs', {
   signals: spawnSignals, spawnProcess() { throw new Error('synchronous launch failure'); },
 }), /synchronous launch failure/);
-assert.equal(spawnSignals.listenerCount('SIGINT') + spawnSignals.listenerCount('SIGTERM'), 0);
+assert.equal(listening(spawnSignals), 0);
 
 assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/source-dimension-frame.browser.selftest.mjs',
@@ -388,6 +428,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/black-world.browser.selftest.mjs', // 2026-10-19 (black-screen-228): the guard's battle receipt
   'tools/garage-roster-settle.browser.selftest.mjs', // 2026-10-30 (garage-roster-thrash-265): the roster settle guard
   'tools/hud-self-measure.browser.selftest.mjs', // 2026-10-30 (hud-self-measure-266): the HUD self-measure guard
+  'tools/pane-stack-layer.browser.selftest.mjs', // 2026-10-31 (local-fps-266): the pane-stack layer's GPU receipt
   'tools/garage-switch-probe.selftest.mjs', // 2026-09-26: self-leasing part 2
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {

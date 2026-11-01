@@ -7,6 +7,14 @@
 // processes, computed imports) must be declared below and pinned to the exact call sites that make them, or the
 // resolver runs that step on every id.
 
+import { browserIdChunks } from '../browser-id-chunks.mjs';
+import { ICONS_PAGE_PUBLIC } from '../icons-page-public.mjs';
+import { GATE_PAGE_PUBLIC } from '../gate-page-public.mjs';
+import { ICONS_PAGE_CATALOG_KEYS } from '../page-catalog-keys.mjs';
+
+/** The i18n string catalogs (267): a step that declares `catalogKeys` keys those keys' values instead of these files. */
+export const CATALOG_FILES = Object.freeze(['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalog.zh-CN.json']);
+
 /** The fleet's entry modules. Tools reach every builder through these. */
 export const FLEET_ENTRIES = Object.freeze([
   'src/vehicles/tankFactory.ts',
@@ -30,6 +38,13 @@ export const GROUP_LOADERS_FILE = 'src/vehicles/fleetFactory.ts';
  * Per-id tables. `module` tables are read by importing the file(s) and taking `exportName`; `json` tables by parsing
  * the file and following `path`; `jsonRow` tables hold one id's row per file, the file named <id>.json (266: the tank
  * asset manifest, tools/tank-assets-store.mjs). A row is the stable JSON of one id's entry ("absent" when it has none).
+ * `idsOnly` (267): only the files named for a roster id are rows; the directory's other files belong to other tools.
+ * `inputField` (267): the field of an id's row naming a file the step writing the table reads for that id, as
+ * { path, sha256 } (path as a page fetches it, under public/): keyed per id by tools/changed-only/fingerprint.mjs, from
+ * the file when it is in this checkout, else from the recorded sha256.
+ * `canonical` (267): a ledger whose order means nothing, read by a step per id (its rowReads) instead of whole: each row
+ * is hashed as canonical JSON (keys sorted), and its frame (the fields beside the rows: a tolerance) is keyed whole into
+ * each reading step's tool key, canonically too, so re-serializing or reordering the file moves no key.
  */
 export const TABLES = Object.freeze({
   auxiliaryInventory: { kind: 'module', files: ['src/vehicles/auxiliaryInventory.generated.ts'], exportName: 'AUXILIARY_INVENTORY' },
@@ -49,6 +64,10 @@ export const TABLES = Object.freeze({
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'jsonRow', files: ['public/icons/tank-assets/tanks/*.json'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
+  // 267: the sim-floor ledger the anatomy step checks each id against (tools/anatomy-floor-ledger.mjs); keyed per id
+  simFloors: { kind: 'json', files: ['docs/geometry-gate/sim-floors.json'], path: ['rows'], canonical: true },
+  // 267: the geometry gate's records, one per measured id beside the other steps' ledgers; each names its oracle
+  geometryGate: { kind: 'jsonRow', files: ['docs/geometry-gate/*.json'], idsOnly: true, inputField: 'oracle' },
   // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
   combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
 });
@@ -73,7 +92,9 @@ export const AGGREGATES = Object.freeze([
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
  * name files the tool reads in the chain's mode whose contents reach only its verdicts (printed problems), never a
  * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them. `namesOnly` globs
- * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266).
+ * name paths the file only names, never reads (route strings, URLs): the edge to them is dropped (266). `scheduleOnly`
+ * names modules the file loads whose values decide only how the work is scheduled (ids per browser), never what a run
+ * writes: the edge to them is dropped, and the read trace accepts the load (266).
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
@@ -104,7 +125,7 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'src/vehicles/materialPainterWorker.ts': {
     pin: '02080ee9df202934',
     reads: [],
-    note: 'a page worker: fetches the painter font, public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2, inside the GPU steps\' public/** reads',
+    note: 'a page worker: fetches the painter font its client names (src/vehicles/materialPainterWorkerClient.ts: public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2), inside the GPU steps\' public/fonts/** reads (tools/icons-page-public.mjs)',
   },
   'tools/gen-interior-fills.mjs': {
     pin: '7ad1c72d6da8aede',
@@ -144,12 +165,13 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
     // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
     // 266 re-pin: --sync-assets reads the manifest through tools/tank-assets-store.mjs instead of one JSON file.
-    pin: 'd2a108825f11dc4e',
+    // 266 re-pin: under --update the server serves only the public directories tools/icons-page-public.mjs names.
+    pin: 'fd2a6ec92b5b7c3f',
     reads: [],
     // public/icons is read only by --check (the exported-icon audit) and --sync-assets; the chain runs --update, which
     // renders live builds and writes the anchors file alone.
     modeOnly: ['public/icons'],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; under --update the page loads only the public directories tools/icons-page-public.mjs names (the step\'s declared reads; any other public file is refused and fails the run); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
   },
   'tools/genIcons.mjs': {
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
@@ -158,9 +180,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // its own output in outDir, like the images.
     // 266 re-pin: the manifest is a row file per tank, read and written through tools/tank-assets-store.mjs (declared
     // below); genIcons' own remaining reads are the images and sidecars it has just written.
-    pin: '943e75f896468bd1',
+    // 266 re-pin: the server serves only the public directories tools/icons-page-public.mjs names.
+    pin: 'feb59bcc894b093e',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest (through tools/tank-assets-store.mjs), images and technical-label sidecars',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; the page loads only the public directories tools/icons-page-public.mjs names (the step\'s declared reads; any other public file is refused and fails the run); file reads are its own manifest (through tools/tank-assets-store.mjs), images and technical-label sidecars',
   },
   'tools/tank-assets-store.mjs': {
     // 266: the per-tank asset manifest. It names no repository path: every read and listing is under the icons
@@ -195,6 +218,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // the floor ledger decides whether a regen passes (a drift exits 3 after the rows are written), never what the
     // generated anatomy rows hold; its accepts carry their own reason trail
     verdictOnly: ['docs/geometry-gate/sim-floors.json'],
+    // 267: keyed per id by the anatomy step's rowReads (TABLES simFloors, canonical) and its frame, never by its bytes
+    // (the 266 Brazil merge reordered rows and re-ran anatomy on all 276 ids for identical content)
+    covered: ['docs/geometry-gate/sim-floors.json'],
     note: 'reads the anatomy step\'s own outputs (src/vehicles/combatAnatomyCalibrations.ts and its combatAnatomyGroups files, as data) and the sim-floor ledger (verdict only); writes the ledger\'s rows for new and retired tanks',
   },
   'tools/fleet-geometry-ledger.mjs': {
@@ -207,10 +233,14 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/browser-launch.mjs': {
     pin: '87d9d82caf048471',
     reads: [],
+    // 266: the capture lock it imports (to release a killed browser's holds) only schedules, so a lock edit re-runs no
+    // step (tools/capture-lock.mjs's own declaration)
+    scheduleOnly: ['tools/capture-lock.mjs'],
     note: 'runs ps over the launched browser\'s process tree for its memory watchdog: process state, never a file a step keys',
   },
   'tools/capture-lock.mjs': {
-    pin: 'be03f207d16f52a7',
+    // 266 re-pin: release priority reads the queue's tickets to name a release ticket and to see one waiting (scheduling)
+    pin: '8d9ee43203067ad3',
     reads: [],
     note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
   },
@@ -235,12 +265,57 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: ['src/world/props-models.bin.gz'],
     note: 'fetches new URL(\'./props-models.bin.gz\', import.meta.url)',
   },
+  // 266: the cap table splits a GPU step's ids into browsers; every id renders the same in any chunk (centering --update
+  // chunked and unchunked: byte for byte), so a re-measured cap re-runs no step.
+  'tools/browser-id-chunks.mjs': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    scheduleOnly: ['tools/browser-id-caps.mjs'],
+    note: 'loads tools/browser-launch.mjs (keyed: its launch flags reach the renders) when a chunk launches; the caps only place browser boundaries',
+  },
+  // 267: the gate step (tools/geometry-gate.mjs). Its oracles are per-id inputs: each record names its oracle's path and
+  // sha256 (TABLES geometryGate `inputField`), so the step keys that file per id, and its server serves only the selected
+  // ids' registered oracles beside GATE_PAGE_PUBLIC.
+  'tools/geometry-gate.mjs': {
+    pin: 'a9a10ec324b64a6e',
+    reads: [],
+    // public/: the oracles' presence and bytes for the ids it measures (keyed per id by the geometryGate.oracle rows) and
+    // the files its server serves (the step's reads); docs/geometry-gate: its own records, raw-source comparisons and
+    // ledger (the step's outputs), never another step's ledger in that directory
+    covered: ['public', 'docs/geometry-gate'],
+    note: 'stats and hashes the selected ids\' oracles under public/ and reads and merges its own ledger and records',
+  },
+  'tools/reference-glb-loader.ts': {
+    pin: 'f68d2a7ef44b3f2d',
+    reads: [],
+    note: 'a page module: fetches the id\'s registered oracle (cfg.path), keyed per id by its record (geometryGate.oracle)',
+  },
+  'tools/source-world-registration.mjs': {
+    pin: '02080ee9df202934',
+    reads: [],
+    note: 'a page module: hashLocalOracle fetches the id\'s own oracle to check its certified sha256, keyed per id by its record',
+  },
+  'tools/isolated-capture-browser.mjs': {
+    pin: 'e3b0c44298fc1c14',
+    reads: [],
+    note: 'starts the Vite server and guarded browser the gate measures in and removes its own temporary Vite cache: process state and a scratch directory, never a file the step keys',
+  },
+  // 266: the GPU tools' server guard. It stats a requested path only to tell a public file from a module, and refuses
+  // (403) a public file outside its page's list; every file it serves lies under the step's declared reads.
+  'tools/served-public.mjs': {
+    pin: 'ad3c9886d1a8cabe',
+    reads: [],
+    // 267: '/public/' is the URL prefix Vite serves a public file under by its repository path: a name, never a read
+    namesOnly: ['public'],
+    note: 'statSync of the path a request names, to find a public file outside the page\'s list; it reads no file contents',
+  },
   'tools/map-probe-runtime.mjs': {
     pin: 'ae2caa4c871631f4',
     reads: [],
     // The world steps import it for isMainModule (wreck-bake-plan) and behind --headless (collision); neither runs its
-    // dev server, browser or git call.
-    modeOnly: ['index.html'],
+    // dev server, browser or git call. 266: nor its browser launcher, whose edge pulled browser-launch.mjs and
+    // capture-lock.mjs into every map's key, so a lock or guard edit re-ran the world steps on all of them.
+    modeOnly: ['index.html', 'tools/browser-launch.mjs'],
     note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
   },
   // 266: the public route table names every page (index.html, 404.html, home.html, ...) as a route string. It has no file
@@ -257,7 +332,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     pin: '525a21e40aa0d260',
     reads: [],
     // 230 (foliage-shadow-sites-228): map-probe-runtime's probe server loads this Vite plugin; the world steps import
-    // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above).
+    // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above). 266: nor does
+    // the catalog path's template (src/ui/i18nCatalog.${locale}.json) key the whole of src/ui: every UI edit re-ran the
+    // world steps on every map; its key modules stay keyed as imports.
+    modeOnly: ['src/ui'],
     note: 'a Vite plugin: reads src/ui/i18nCatalog.<locale>.json only when a dev server serves virtual:cot-i18n-studio/<locale>; the chain runs no dev server',
   },
   // 264: battle-spikes-253 (85d330ad12, 254) reads a sourced texture's file back from the HTTP cache to decode it off the
@@ -280,6 +358,14 @@ export const SCHEDULING_ENV = Object.freeze({
   COT_NAV_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to navigate',
   COT_READY_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to report ready',
   COT_NAV_RETRIES: 'presentation-centering: how often a page load that timed out is retried',
+  COT_BROWSER_ID_CAP: 'browser-id-chunks (266): lowers the ids per browser, so where a fresh browser starts, never what an id renders',
+  // 266: the browser guard's limits (tools/browser-launch.mjs) decide when a browser is killed (exit 86), never what it
+  // renders; keyed with their values, a raised tree cap re-ran centering and icons on every id
+  COT_BROWSER_HEAP_MB: 'browser-launch: each renderer\'s V8 heap cap',
+  COT_BROWSER_RENDERER_CAP_MB: 'browser-launch: the guard\'s per-renderer memory limit',
+  COT_BROWSER_TREE_CAP_MB: 'browser-launch: the guard\'s whole-browser memory limit',
+  COT_BROWSER_GUARD_INTERVAL_MS: 'browser-launch: how often the guard samples the browser\'s memory',
+  COT_BROWSER_RENDERER_LIMIT: 'browser-launch: how many renderer processes Chrome may start',
 });
 
 /**
@@ -309,8 +395,8 @@ export const PER_ID_ACCESSORS = Object.freeze({
  * on every step.
  *   entries   the balance modules; their closure beyond the core is checked like any executed fleet module
  *   importers the files whose imports of an entry apply it to the registry (any other import keeps it in the core)
- *   tokens    the importers' lines naming one are pinned (world.mjs tokenPin): a new use of the pass
- *             breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
+ *   tokens    the importers' lines naming one, or a name an entry exports, are pinned (world.mjs tokenPin): a new
+ *             use of the pass breaks the pin, and the pass counts as core until the use is reviewed and re-pinned
  *   combat    leaf paths of a registered spec (`[]`: every item of an array): what the levers set (measured, every field
  *             the pass moved on the 266 fleet). tools/changed-only/trace-check.mjs --combat moves them all and fails a step
  *             whose rows follow without SPEC_COMBAT in its rowReads.
@@ -320,9 +406,10 @@ export const SPEC_REST = 'specRest';
 export const BALANCE = Object.freeze({
   entries: Object.freeze(['src/vehicles/fleetBalancePass.ts']),
   importers: Object.freeze({
-    'src/vehicles/fleetRegistration.ts': { pin: 'bc25e02d684ab734', note: 'applies the four passes (and integ 265: leopard1-263\'s applyBuildFootings) to TANK_SPECS, once each, at registration' },
+    'src/vehicles/fleetRegistration.ts': { pin: '205f9fbeb7ec9410', note: 'applies the five passes (applyBuildFootings since integ 265) to TANK_SPECS, once each, at registration' },
   }),
-  tokens: Object.freeze(['fleetBalancePass', 'applyFleetBalancePass', 'applyModernEraFold', 'applyShownTierFloors', 'applySameTierFairness']),
+  // with every name the entries export (fingerprint.mjs balanceTokens): a new pass is pinned without an edit here
+  tokens: Object.freeze(['fleetBalancePass']),
   combat: Object.freeze([
     'hp', 'enginePowerHp', 'topSpeedKmh', 'reverseSpeedKmh', 'hullTraverseDegS', 'turretTraverseDegS',
     'gun.reloadS', 'gun.aimTimeS', 'gun.baseAccuracy', 'gun.autoloader.intraClipS', 'gun.autoloader.fullReloadS',
@@ -333,26 +420,23 @@ export const BALANCE = Object.freeze({
 });
 
 const ids = (list) => `--ids=${list.join(',')}`;
+/** The public files the icons page loads in the GPU steps: the directories its tools' server serves (266). */
+const ICONS_PAGE_READS = ICONS_PAGE_PUBLIC.map((dir) => `public/${dir}/**`);
+/** The public files the gate's page loads beside its ids' oracles (267, tools/gate-page-public.mjs). */
+const GATE_PAGE_READS = [...GATE_PAGE_PUBLIC.dirs.map((dir) => `public/${dir}/**`),
+  ...GATE_PAGE_PUBLIC.files.map((file) => `public${file}`)];
 
 /**
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
  * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
  * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
- * killed. `maxIds` caps a chunk by renderer memory as well. Measured on this Mac (2026-10-31, RSS of the browser tree):
- * icons on the 60 heaviest ids by ledger vertices peaked at 3.0 GB renderer / 4.4 GB tree in 162 s, so 51 keeps half the
- * cap; centering on all 236 ids peaked at 4.45 GB / 5.7 GB, so 120 keeps it near half as the fleet grows.
+ * killed. The tool's own cap of ids per browser (tools/browser-id-chunks.mjs BROWSER_ID_CAPS, with its measurements)
+ * holds as well, so a chain chunk is one browser of the tool's own chunking too.
  */
-const ICONS_MAX_IDS = 51;
-const CENTERING_MAX_IDS = 120;
-
-/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within both caps, chunkS seconds of estimated
- *  work (perIdS each) and maxIds ids, split evenly (255 ids at 51: five of 51). */
+/** A GPU step's ids in capture-lock holds: the fewest chunks that keep each within chunkS seconds of estimated work
+ *  (perIdS each) and the tool's ids per browser, split evenly (255 icons ids at 51: five of 51). */
 export function gpuChunks(step, list) {
-  const cap = Math.max(1, Math.min(Math.floor(step.chunkS / step.perIdS), step.maxIds ?? Infinity));
-  const count = Math.ceil(list.length / cap), size = Math.ceil(list.length / Math.max(1, count));
-  const chunks = [];
-  for (let index = 0; index < list.length; index += size) chunks.push(list.slice(index, index + size));
-  return chunks;
+  return browserIdChunks(step.tool, list, Math.floor(step.chunkS / step.perIdS));
 }
 
 /**
@@ -365,8 +449,8 @@ export function gpuChunks(step, list) {
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
  *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
  *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
- *   chunkS, perIdS, maxIds  a GPU step's capture-lock holds: at most chunkS seconds of estimated work and maxIds ids per
- *           browser (gpuChunks); none of them is keyed
+ *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
+ *           BROWSER_ID_CAPS ids per browser (gpuChunks); none of them is keyed
  */
 export const STEPS = Object.freeze([
   {
@@ -414,7 +498,8 @@ export const STEPS = Object.freeze([
     flags: [], full: [], scoped: (list) => [ids(list)],
     // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
     // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
-    rowReads: [SPEC_COMBAT],
+    // 267: each id's sim-floor row (its drift check), and the ledger's tolerance through the table's frame
+    rowReads: [SPEC_COMBAT, 'simFloors'],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
@@ -453,12 +538,14 @@ export const STEPS = Object.freeze([
     rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
     outputs: ['presentationAnchors', 'presentationProjections'],
-    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100, maxIds: CENTERING_MAX_IDS,
-    // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
-    // models excepted: no playable build loads one, AGENTS.md).
-    reads: ['public/**'],
-    // --update renders live builds; the exported-icon audit (public/icons) runs only under --check/--sync-assets.
-    excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],
+    files: [], gb: 6, timeoutS: 1200, perIdS: 1.5, chunkS: 1100,
+    // The page renders through Vite and Chrome: the public directories it loads are inputs, and the tool's server refuses
+    // any other public file (tools/icons-page-public.mjs; 266: all of public/ was keyed, so the vehicle count in
+    // public/llms.txt re-ran this step and icons on every id). The exported-icon audit (public/icons) runs only under
+    // --check/--sync-assets, which record no key.
+    reads: ICONS_PAGE_READS,
+    // 267: the catalog strings the page draws (tools/page-catalog-keys.mjs), not the whole catalogs
+    catalogKeys: ICONS_PAGE_CATALOG_KEYS,
   },
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],
@@ -471,10 +558,28 @@ export const STEPS = Object.freeze([
     // into public/icons): not inputs of its own key.
     writes: ['public/icons/**'],
     // The manifest's header, written whole beside the per-tank row files (266, tools/tank-assets-store.mjs).
-    files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100, maxIds: ICONS_MAX_IDS,
-    reads: ['public/**'],
-    // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
-    excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],
+    files: ['public/icons/tank-assets/index.json'], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
+    // the public directories the page loads (tools/icons-page-public.mjs, as centering)
+    reads: ICONS_PAGE_READS,
+    catalogKeys: ICONS_PAGE_CATALOG_KEYS,
+  },
+  {
+    // 267: the geometry gate. Each registered id measured against its comparison oracle (tools/geometry-gate.mjs, the
+    // page tools/procedural-fidelity.html), so a gate-tool change re-measures every id once and an id whose build and
+    // oracle are unchanged keeps its record. The page reads the specs' dims and variantOf (the spec rest row), never a
+    // combat field.
+    name: 'gate', device: 'gpu', tool: 'tools/geometry-gate.mjs', entries: ['tools/procedural-fidelity.html'],
+    // --absent=skip: an id whose oracle is not in this checkout keeps its record and is reported, never thrown on
+    flags: ['--repin', '--absent=skip'], full: [], scoped: (list) => [ids(list)],
+    check: null, checkScoped: null,
+    outputs: ['geometryGate'],
+    // the ledger is written whole beside the records; k1a1 and the owner-kit ids keep a raw-source comparison each
+    files: ['docs/geometry-gate/ledger.json'], writes: ['docs/geometry-gate/*.raw-source.json'],
+    gb: 6, timeoutS: 1200, perIdS: 25, chunkS: 1100,
+    // the public files the page loads beside the oracles (each oracle is keyed per id by its record)
+    reads: GATE_PAGE_READS,
+    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs): they stay due
+    skipped: '--skipped',
   },
 ]);
 

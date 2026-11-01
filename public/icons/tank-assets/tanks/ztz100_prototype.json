@@ -1895,24 +1895,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35854,
-      "sha256": "ae13d0fa56af52adcf21e88b4d18a2224396ef311e2be216eb70e983cc105915"
+      "bytes": 35750,
+      "sha256": "915941a0a479668a23849307fe3a0f80f6c58e79098e7b979bcad7edd544a507"
     },
     "modulesSide": {
       "file": "ztz100_prototype_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37940,
-      "sha256": "fd8383a4c2cb5fba8b0d8504bdea7ea3f796e5241cbdef5929ad4cb0c3083702"
+      "bytes": 35392,
+      "sha256": "12813addb1806be482280d0761872ed7e637a06c0287566e62097c7e132896c4"
     },
     "crewSide": {
       "file": "ztz100_prototype_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34978,
-      "sha256": "f760e782ed33b7e6870a5e3da9e330d5df118b80f9fbafbd23ed8549756bef65"
+      "bytes": 35014,
+      "sha256": "c8fd7dbb0f7392d4539bb860890a641469b81760f8dde7cb170cce0239e2c882"
     },
     "angle": {
       "file": "ztz100_prototype_angle.webp",

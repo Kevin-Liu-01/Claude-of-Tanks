@@ -31,11 +31,11 @@ import { CAST_NAMES } from './cast.mjs';
 import { COMBAT, DUELS, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
 import { TANK_ID_RENAMES, resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyDirectory } from './paths.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url)), ROOT = join(HERE, '../..');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const FEATURES = arg('features') ?? process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features');
+const FEATURES = arg('features') ?? surveyDirectory(); // paths.mjs: MEDIA_R5_FEATURES, else this tool's own dumps
 const OUT = join(HERE, 'fleet-roster.json');
 // the roster's motion plans (site50-motion.json) are keyed by take and fit its anchors: planning afresh moves anchors and
 // voids them, so an existing roster is kept unless --fresh (single takes move with fleet-replan.mjs)

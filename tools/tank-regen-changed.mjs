@@ -40,6 +40,7 @@ import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, r
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
+import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
@@ -144,10 +145,18 @@ function runChild(argv, { niced, timeoutS, label }) {
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
 /** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills) runs as parallel parts merged by the tool itself. */
+/** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
+ *  step: never recorded, so they stay due for a checkout that can run them; this chain does not try them again. */
+const notRunHere = {};
+/** A run's skip report: the file the chain passed in a step's `skipped` flag, `{ id: reason }` ({} when none). */
+const skipFile = (step, label) => (step.skipped ? join(qaDir, `${stamp}-${step.name}-${label}.skipped.json`) : null);
+const readSkipped = (file) => (file && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {});
+
 async function runCpuStep(step, ids, state) {
   const count = ids?.length ?? state.ids.length;
   const scopedArgs = ids ? step.scoped(ids) : step.full;
-  if (step.parts && count >= 8 && JOBS > 1) {
+  // a step that reports skipped ids runs whole: its parts would each report apart (267)
+  if (step.parts && !step.skipped && count >= 8 && JOBS > 1) {
     const parts = Math.min(JOBS, Math.ceil(count / 4));
     const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
     const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
@@ -169,8 +178,11 @@ async function runCpuStep(step, ids, state) {
   let jsonPath = null;
   if (step.report) extra.push(`${step.report}=${join(qaDir, `${stamp}-${step.name}-report.json`)}`);
   if (step.json) { jsonPath = join(qaDir, `${stamp}-${step.name}-${Date.now()}.json`); extra.push(`${step.json}=${jsonPath}`); }
+  const skippedFile = skipFile(step, Date.now());
+  if (skippedFile) extra.push(`${step.skipped}=${skippedFile}`);
   await gate(step.gb);
-  const run = await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra], { niced: true, timeoutS: timeoutFor(step, count), label: step.name });
+  const run = { ...await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra], { niced: true, timeoutS: timeoutFor(step, count), label: step.name }),
+    skipped: readSkipped(skippedFile) };
   if (run.code === 0 && jsonPath) {
     // spare-track --update exits 0 when a build fails and keeps the old row: every requested id must have a fresh row.
     const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
@@ -189,6 +201,7 @@ async function runCpuStep(step, ids, state) {
 async function runGpuStep(step, ids, state) {
   const { createCaptureLock } = await import('./capture-lock.mjs');
   const list = ids ?? state.ids;
+  const skipped = {};
   // A whole-fleet run larger than one hold is chunked too; the chunks together cover every id, written by the tool's
   // own --ids merge.
   const chunks = gpuChunks(step, list);
@@ -201,12 +214,14 @@ async function runGpuStep(step, ids, state) {
       await gate(step.gb);
       // A whole-fleet run that fits one hold runs the tool's own whole-fleet mode (no --ids), exactly as a full regen.
       const scope = !ids && chunks.length === 1 ? step.full : step.scoped(chunk);
-      const run = await runChild([step.tool, ...step.flags, ...scope],
+      const skippedFile = skipFile(step, index + 1);
+      const run = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
         { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}` });
       if (run.code !== 0) return run;
+      Object.assign(skipped, readSkipped(skippedFile));
     } finally { clearInterval(refresh); lock.release(); }
   }
-  return { code: 0 };
+  return { code: 0, skipped };
 }
 
 let manifest = readManifest(root) ?? emptyManifest();
@@ -246,12 +261,20 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const resolved = IDS ? (restrict && TABLE_PRESENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
     : forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
+  const tried = notRunHere[name] ?? {};
+  if (resolved.ids.some((id) => tried[id])) {
+    const left = resolved.ids.filter((id) => !tried[id]);
+    log(`[regen] ${name}: ${resolved.ids.length - left.length} id(s) not runnable here stay due (tried this chain)`);
+    resolved.ids = left;
+    if (!left.length) resolved.mode = 'none';
+    else if (resolved.mode !== 'ids') resolved.mode = 'ids';
+  }
   if (resolved.mode === 'none') { log(`[regen] ${name}: 0 changed`); return false; }
   const why = resolved.reasons['*'] ?? [...new Set(Object.values(resolved.reasons).flat())].slice(0, 6);
   log(`[regen] ${name}: ${resolved.mode} ${resolved.ids.length} id(s) (${why.join('; ')})`);
   if (DRY) {
     const chunks = definition.device === 'gpu' ? gpuChunks(definition, resolved.ids).map((chunk) => chunk.length) : null;
-    if (chunks) log(`[regen] ${name}: would run ${chunks.length} browser chunk(s) of ${chunks.join(', ')} id(s) (at most ${definition.maxIds ?? 'any'} per browser, ${definition.chunkS} s per hold)`);
+    if (chunks) log(`[regen] ${name}: would run ${chunks.length} browser chunk(s) of ${chunks.join(', ')} id(s) (at most ${browserIdCap(definition.tool)} per browser, ${definition.chunkS} s per hold)`);
     summary.runs.push({ step: name, mode: resolved.mode, count: resolved.ids.length, ids: resolved.ids, dryRun: true, ...(chunks ? { chunks } : {}) });
     return false;
   }
@@ -270,7 +293,13 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
-  recordStep(manifest, name, scoped, inKeys, afterView);
+  const skipped = run.skipped ?? {};
+  if (Object.keys(skipped).length) {
+    Object.assign(notRunHere[name] ??= {}, skipped);
+    log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here, left due: ${Object.entries(skipped).slice(0, 6)
+      .map(([id, why]) => `${id} (${why})`).join(', ')}`);
+  }
+  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)) });
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;
@@ -461,6 +490,17 @@ try {
         summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_PRESENT ? {} : { unrecorded: true }) };
       }
       if (!TABLE_PRESENT) log('[regen] no fingerprints table: no rows recorded, no final resolve; run the release check for these ids next');
+    }
+    // ids a tool could not run in this checkout stay due without failing the chain; the summary names them
+    for (const [name, tried] of Object.entries(notRunHere)) {
+      const entry = summary.final[name];
+      if (!entry || entry.mode === 'none') continue;
+      const notRunnable = entry.ids.filter((id) => tried[id]);
+      if (!notRunnable.length) continue;
+      entry.notRunHere = Object.fromEntries(notRunnable.map((id) => [id, tried[id]]));
+      entry.ids = entry.ids.filter((id) => !tried[id]);
+      if (!entry.ids.length) entry.mode = 'none';
+      log(`[regen] final ${name}: ${notRunnable.length} id(s) not runnable here stay due (${notRunnable.slice(0, 6).join(', ')})`);
     }
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
     for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);

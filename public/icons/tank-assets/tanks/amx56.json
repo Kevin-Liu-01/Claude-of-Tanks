@@ -2235,15 +2235,15 @@
       {
         "volumeId": "M03",
         "name": "autoloader",
-        "min": [-0.9952,0.06,-2.303],
+        "min": [-0.9952,0.208,-2.303],
         "max": [0.9346,0.3561,-1.4418],
         "turretLocal": true
       },
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.1584,0.468,-3.2604],
-        "max": [1.1584,1.6233,-1.5971],
+        "min": [-1.0889,0.5027,-2.5767],
+        "max": [1.0889,1.5886,-1.6274],
         "turretLocal": false
       },
       {
@@ -2256,14 +2256,14 @@
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.4634,0.468,-1.5286],
+        "min": [0.4634,0.5544,-1.5286],
         "max": [1.1584,1.159,-0.3979],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.3704,-0.1204,-2.4705],
+        "min": [-1.3704,0.2027,-2.4705],
         "max": [1.3098,0.4965,-1.2744],
         "turretLocal": true
       },
@@ -2348,7 +2348,7 @@
     ]
   },
   "geometryHash": "8fed9c3c",
-  "metadataHash": "2eb445e2",
+  "metadataHash": "369305cd",
   "presentationAnchor": {
     "xM": 0.0014,
     "zM": 0.0747
@@ -2405,24 +2405,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26186,
-      "sha256": "6233eb408714e16515efa3b59b32241bc626297d446b8d94a7146f66eeca7b41"
+      "bytes": 26164,
+      "sha256": "5ca946a8ed221a1e13a4ff5634de055a216c1a2b026b3beaf9a3b29a12a85e48"
     },
     "modulesSide": {
       "file": "amx56_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23734,
-      "sha256": "ba2f432fbd6e9f670187e55b4e5f4f77d93a61407ba79be79403d94884c172f4"
+      "bytes": 23114,
+      "sha256": "9a86fc2a0481da7f0b5ebd5b16b69b81d3ca83735e6752c086812814cbbec537"
     },
     "crewSide": {
       "file": "amx56_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20464,
-      "sha256": "806e9290abbeafac652c1cab57528c3d5be00995fecb6b70ab6dccb711a32f4c"
+      "bytes": 19936,
+      "sha256": "911b7bffd3cf7519c5a2ea55d746a8c0dea65e8ca9832c108918e737a8cbfb1c"
     },
     "angle": {
       "file": "amx56_angle.webp",
@@ -2483,8 +2483,8 @@
     "technicalLabels": {
       "file": "amx56_technical.json",
       "mime": "application/json",
-      "bytes": 5069,
-      "sha256": "27bae9e79c58519c42b90fa6ade16b7a34f3490ae4094be71bf81c686186e982"
+      "bytes": 5067,
+      "sha256": "fb580e98bdfd576a24441d3618a87d9ed4ae5aaa411f75bf0880b1536574aa1b"
     }
   }
 }

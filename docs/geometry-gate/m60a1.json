@@ -18,17 +18,17 @@
  "rawGeoMin": 77.66630328611384,
  "rawComponents": {
   "hullCurves": 88.60940031668305,
-  "stations": 93.18704671071109,
+  "stations": 91.24010594929636,
   "turretCurves": 77.66630328611384,
-  "wholeCurves": 86.71837957388509,
+  "wholeCurves": 86.77387724622496,
   "dims": 79.26608682634973,
   "floaters": 100
  },
  "components": {
   "hullCurves": 88.6,
-  "stations": 93.2,
+  "stations": 91.2,
   "turretCurves": 77.7,
-  "wholeCurves": 86.7,
+  "wholeCurves": 86.8,
   "dims": 79.3,
   "floaters": 100
  },
@@ -234,19 +234,19 @@
      "errM": 0.066
     },
     {
+     "at": 2.74,
+     "refTop": 1.06,
+     "refBot": -1.61,
+     "procTop": 1.19,
+     "procBot": -1.61,
+     "errM": 0.061
+    },
+    {
      "at": 3.93,
      "refTop": 0.25,
      "refBot": -1.48,
      "procTop": 0.32,
      "procBot": -1.43,
-     "errM": 0.061
-    },
-    {
-     "at": 4.15,
-     "refTop": 0.24,
-     "refBot": -1.26,
-     "procTop": 0.32,
-     "procBot": -1.22,
      "errM": 0.061
     }
    ]
@@ -576,9 +576,9 @@
    ]
   },
   "front_whole": {
-   "score": 86.71837957388509,
-   "meanPct": 0.9,
-   "p95Pct": 4.17,
+   "score": 87.7297791697718,
+   "meanPct": 0.84,
+   "p95Pct": 3.74,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -589,17 +589,9 @@
      "at": -1.27,
      "refTop": 0.6,
      "refBot": -1.62,
-     "procTop": 0.92,
+     "procTop": 0.93,
      "procBot": -1.61,
-     "errM": 0.162
-    },
-    {
-     "at": 0.81,
-     "refTop": 1.36,
-     "refBot": -1.12,
-     "procTop": 1.09,
-     "procBot": -1.15,
-     "errM": 0.148
+     "errM": 0.167
     },
     {
      "at": 1.39,
@@ -615,7 +607,7 @@
      "refBot": -1.62,
      "procTop": 0.99,
      "procBot": -1.61,
-     "errM": 0.136
+     "errM": 0.134
     },
     {
      "at": 1.23,
@@ -637,17 +629,9 @@
      "at": 1.27,
      "refTop": 0.72,
      "refBot": -1.62,
-     "procTop": 0.92,
+     "procTop": 0.93,
      "procBot": -1.61,
-     "errM": 0.101
-    },
-    {
-     "at": 0.85,
-     "refTop": 1.36,
-     "refBot": -1.12,
-     "procTop": 1.19,
-     "procBot": -1.15,
-     "errM": 0.099
+     "errM": 0.107
     },
     {
      "at": 1.06,
@@ -666,6 +650,14 @@
      "errM": 0.066
     },
     {
+     "at": 0.85,
+     "refTop": 1.09,
+     "refBot": -1.12,
+     "procTop": 1.19,
+     "procBot": -1.15,
+     "errM": 0.066
+    },
+    {
      "at": -1.35,
      "refTop": 0.18,
      "refBot": -1.62,
@@ -680,6 +672,14 @@
      "procTop": 1.19,
      "procBot": -1.15,
      "errM": 0.055
+    },
+    {
+     "at": 0.44,
+     "refTop": 1.12,
+     "refBot": -1.13,
+     "procTop": 1.19,
+     "procBot": -1.15,
+     "errM": 0.051
     }
    ]
   }
@@ -736,19 +736,19 @@
      "errM": 0.066
     },
     {
+     "at": 2.74,
+     "refTop": 1.06,
+     "refBot": 0.29,
+     "procTop": 1.19,
+     "procBot": 0.3,
+     "errM": 0.066
+    },
+    {
      "at": -0.59,
      "refTop": 0.97,
      "refBot": 0.09,
      "procTop": 0.89,
      "procBot": 0.13,
-     "errM": 0.061
-    },
-    {
-     "at": 2.74,
-     "refTop": 1.07,
-     "refBot": 0.29,
-     "procTop": 1.19,
-     "procBot": 0.3,
      "errM": 0.061
     },
     {
@@ -943,10 +943,10 @@
    "i": 4,
    "refW": 3.639,
    "procW": 3.641,
-   "refTop": 2.858,
+   "refTop": 2.686,
    "procTop": 2.809,
    "wPct": 0.06046625223406864,
-   "topPct": 1.495981382703729
+   "topPct": 3.832310296401397
   },
   {
    "i": 5,
@@ -1088,6 +1088,7 @@
    "node:weapon3"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
  "floaterFails": 0,
  "floaterRows": [
   {

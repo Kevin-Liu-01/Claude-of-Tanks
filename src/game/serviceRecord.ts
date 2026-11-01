@@ -1,4 +1,5 @@
 import { weaponHitKind } from './weaponHitKind.ts';
+import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { FiredRoundLedger } from './battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { getPlayerRecord } from './profile.ts';
@@ -595,7 +596,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const event = recordOf(payload);
     if (!battle || !event) return;
     const player = me();
-    const damage = Math.max(0, finite(event.damage));
+    // (the hull points the hit took off, the figure the battle's readouts show: a kill reads what the hull had left)
+    const damage = hullPointsRemoved({ hpRemoved: typeof event.hpRemoved === 'number' ? event.hpRemoved : undefined,
+      damage: finite(event.damage) });
     const attacker = text(event.attackerId);
     const target = text(event.targetId);
     if (attacker && damage > 0) battle.damageBy.set(attacker, (battle.damageBy.get(attacker) ?? 0) + damage);

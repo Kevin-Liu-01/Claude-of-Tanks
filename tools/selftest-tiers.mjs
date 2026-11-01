@@ -104,14 +104,15 @@ export const MUST_KEEP = Object.freeze({
 
 const suite = (about, files, extra = {}) => Object.freeze({ about, files: Object.freeze(files), commands: Object.freeze([]), ...extra });
 
-/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. */
+/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. `hits`: its
+ *  verdicts are hits the authority resolves, so a change to that code warrants it whole (test-diff.mjs hitResolutionMoves). */
 export const MANUAL_SUITES = Object.freeze({
   balance: suite('fleet round-robin duels on the authoritative battle path and the balance tables they hold', [
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
   ],
-    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]) }),
+    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]), hits: true }),
   pacing: suite('whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map', [
     'server/battlePacing.selftest.mjs',
     'server/battlePacingShard1.selftest.mjs',
@@ -126,7 +127,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/sim/deployment.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-  ]),
+  ], { hits: true }),
   bots: suite('bot behaviour played out on the authority (every mode, objectives, levels, approaches)', [
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
@@ -136,7 +137,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
-  ]),
+  ], { hits: true }),
   sims: suite('drone, missile, escort and counter-drone scenario runs', [
     'src/game/watchTakeover.selftest.mjs',
     'src/sim/botDroneAttack.selftest.mjs',
@@ -145,7 +146,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
-  ]),
+  ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
@@ -791,6 +792,9 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
+  ]),
+  media: suite('the media lane\'s fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane\'s local dumps: run it where they are)', [
+    'tools/media-r5/fleet-coverage.selftest.mjs',
   ]),
 });
 

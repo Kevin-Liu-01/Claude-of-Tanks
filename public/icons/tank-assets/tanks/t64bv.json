@@ -5268,24 +5268,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27544,
-      "sha256": "86504638cae134e51fc7277d5cf6046c38e3a7026f64c72f059568e9a706c7d9"
+      "bytes": 27568,
+      "sha256": "8fdd0a2dfa541200570b94be3222e2ea9c5c45cd3d0bab539fd9d7cb84f3dcfe"
     },
     "modulesSide": {
       "file": "t64bv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22184,
-      "sha256": "e4c468a90ab350161edd91ee6b7ed11c97d25d3b1d655bec1c4fd91e1ee7fa1b"
+      "bytes": 21892,
+      "sha256": "7750e60939e5a7e87f81f06fa2ec4a058288e4ee1665c2acc788ce27f37a2f30"
     },
     "crewSide": {
       "file": "t64bv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19296,
-      "sha256": "c3fad3540b2ed9f88a917aaa803d660f6342983b90d44287afa625ae17a4286c"
+      "bytes": 18820,
+      "sha256": "395f996a6238642088e3fe4cb9dc535cda71e3ef2a034a7118325f22d99f0755"
     },
     "markings": {
       "file": "t64bv_markings.png",

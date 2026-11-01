@@ -831,24 +831,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23496,
-      "sha256": "d695946e73f2954be77e51f19ec983380c2f29428221625d76ad85ef68bdd426"
+      "bytes": 23470,
+      "sha256": "b18e9a6408373fdef9ebc5c7b237399445b86eaf6a9100c9b7bd0daeb01c7a07"
     },
     "modulesSide": {
       "file": "kf41_lynx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24928,
-      "sha256": "2238eadf899e8d353aa9b67082df274cd4a8bcbdbe5179ebc2179615c5475ca6"
+      "bytes": 25424,
+      "sha256": "eafea4687af753e5181ea3881e31fbb6c6f2f5f38f6e9926eb7a4e128c5a464b"
     },
     "crewSide": {
       "file": "kf41_lynx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22670,
-      "sha256": "6a5065f2af28104ee8e853b99e46d8951e88bc8d26e60e7f5a0e680f765ed1ef"
+      "bytes": 22556,
+      "sha256": "42c64ec2f2deb539f8b2c864a76cf7c9eb595876ca21951c4899d47fed0bc796"
     },
     "angle": {
       "file": "kf41_lynx_angle.webp",
@@ -910,7 +910,7 @@
       "file": "kf41_lynx_technical.json",
       "mime": "application/json",
       "bytes": 4910,
-      "sha256": "997de6d9bab8c53913b478399469e629899cd09d36d108b02a8c85690282bf36"
+      "sha256": "f8ebd1342b7f0550e15ea4ff9aa1e9c2515ab0d866efd4028e4a736152dff0d5"
     }
   }
 }

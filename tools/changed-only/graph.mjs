@@ -147,6 +147,20 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     hashes.set(file, digest);
     return digest;
   };
+  /** hashFile for large inputs read per id (comparison oracles, 266): the digest is kept in the store against the
+   *  file's size, mtime and inode, so a run rehashes only a file that changed. */
+  const hashLargeFile = (file) => {
+    let stat;
+    try { stat = statSync(file); } catch (error) { if (['ENOENT', 'ENOTDIR'].includes(error.code)) return 'missing'; throw error; }
+    if (!stat.isFile()) return 'missing';
+    const id = `${stat.size}:${stat.mtimeMs}:${stat.ino}`;
+    const known = store.digests?.[file];
+    if (known?.id === id) return known.sha256;
+    const sha256 = hashFile(file);
+    (store.digests ??= {})[file] = { id, sha256 };
+    dirty = true;
+    return sha256;
+  };
   const walk = (dir, out, seen = new Set()) => {
     let canonical, entries;
     try { canonical = realpathSync(dir); entries = readdirSync(dir, { withFileTypes: true }); }
@@ -210,6 +224,12 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     infos.set(file, value);
     return value;
   };
+  // Gitignored scratch (.qa-dev, dist, .vercel, ...) a file names is never an input (266: map-probe-runtime names its
+  // receipt directory, .qa-dev/reports, and the world keys followed whatever reports a checkout had left there).
+  const scratch = (target) => {
+    const top = relative(root, target).split(sep)[0];
+    return top !== 'node_modules' && SKIP_DIRS.has(top);
+  };
   /** { exec, mention, flags } for one file: exec = executed imports; mention = named files and directories. */
   const edges = (file) => {
     if (edgeMap.has(file)) return edgeMap.get(file);
@@ -228,13 +248,15 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     for (const specifier of meta.specifiers) {
       if (meta.imports.includes(specifier)) continue;
       const target = resolveSpecifier(file, specifier);
-      if (target && target !== file && !(isDir(target) && target.includes(`${sep}node_modules`))) mention.add(target);
+      if (!target || target === file || scratch(target)) continue;
+      if (!(isDir(target) && target.includes(`${sep}node_modules`))) mention.add(target);
     }
     for (const segments of meta.joined) {
       if (!segments.some(hasWord)) continue; // `.join('')` names no file (see header)
       for (const base of [dirname(file), root]) {
         const target = resolve(base, ...segments);
-        if (inside(root, target) && target !== root && target !== file && (isFile(target) || isDir(target))) mention.add(target);
+        if (!inside(root, target) || target === root || target === file || scratch(target)) continue;
+        if (isFile(target) || isDir(target)) mention.add(target);
       }
     }
     for (const { prefix, suffix, execute } of meta.dynamic) {
@@ -247,6 +269,7 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
       const dir = slash >= 0 ? resolveSpecifier(file, prefix.slice(0, slash + 1)) : null;
       if (!execute && appSource && dir && ROOT_DIRS.has(relative(root, dir))) continue; // an app route (see header)
       if (!dir || !isDir(dir)) { if (execute) flags.unresolved = true; else flags.broad = true; continue; }
+      if (!execute && scratch(dir)) continue;
       mention.add(dir);
       if (!execute) continue;
       const members = []; walk(dir, members);
@@ -306,13 +329,16 @@ export function createGraph({ root, cacheDir = defaultGraphCacheDir(), importHel
     if (!dirty) return;
     let previous;
     try { previous = JSON.parse(readFileSync(storePath, 'utf8')); } catch {}
-    if (previous?.parserHash === parserHash) store.byHash = { ...previous.byHash, ...store.byHash };
+    if (previous?.parserHash === parserHash) {
+      store.byHash = { ...previous.byHash, ...store.byHash };
+      store.digests = { ...previous.digests, ...store.digests };
+    }
     mkdirSync(cacheDir, { recursive: true });
     const temporary = `${storePath}.${process.pid}.tmp`;
     writeFileSync(temporary, JSON.stringify(store));
     renameSync(temporary, storePath);
     dirty = false;
   };
-  return { root, hashFile, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
+  return { root, hashFile, hashLargeFile, fingerprintDir, edges, closure, rowsOf, persist, isDir, isFile,
     rel: (path) => relative(root, path), abs: (path) => resolve(root, path) };
 }

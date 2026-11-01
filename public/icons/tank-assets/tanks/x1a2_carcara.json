@@ -586,8 +586,8 @@
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [-0.6,0.0776,-1.5862],
-        "max": [-0.1,0.4319,-0.8562],
+        "min": [0.1,0.1957,-1.3526],
+        "max": [0.6,0.4319,-0.8562],
         "turretLocal": true
       },
       {
@@ -655,28 +655,28 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.5657,0.6501,1.2738],
-        "max": [-0.1063,1.2581,2.7636],
+        "min": [0.1063,0.6404,1.2738],
+        "max": [0.5657,1.2484,2.7836],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [0.2207,-0.5881,-0.3604],
-        "max": [0.6492,0.7311,0.4239],
+        "min": [-0.6492,-0.5881,-0.3604],
+        "max": [-0.2207,0.7311,0.4239],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.2303,-0.6237,-0.7143],
-        "max": [0.62,0.764,0.1206],
+        "min": [-0.52,-0.6237,-0.6643],
+        "max": [-0.1303,0.764,0.1706],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "a0431ef9",
-  "metadataHash": "fbb0434b",
+  "metadataHash": "80d17001",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0015
@@ -734,15 +734,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30544,
-      "sha256": "46486bce3158fee50a0c0f03896f2fef3f255a56852d1d53113d21fbc1d58f93",
+      "bytes": 30538,
+      "sha256": "c7744a6b8be0013d9707e7569b020d84727be1624725ae58143cd58a6bf65c7a",
       "thumbnail": {
         "file": "thumbs/x1a2_carcara_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12144,
-        "sha256": "4e2010d7b0e5c6d4f301ab26cb767aee6c4de9c6be4afb4aec4d2ba22bbe8be2"
+        "bytes": 12152,
+        "sha256": "64e8b93020bd7190fbcd031edf164064a5a3f35156d91ca7e754e77eb632fc90"
       }
     },
     "top": {
@@ -783,23 +783,23 @@
       "height": 512,
       "mime": "image/webp",
       "bytes": 31432,
-      "sha256": "38634bce54e6f0881747cb3f8b1f0155d78975f7e37b0a2ecc6dc1abf420e541"
+      "sha256": "bf83d23a73ea4d690e4d9f168c1cf77935dfec8dfc055c69841611baf7e03373"
     },
     "modulesSide": {
       "file": "x1a2_carcara_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33278,
-      "sha256": "c6d8d416954436a9d0a753fcbfc9cd94f4d020ac460777b52f953a0069f3a54e"
+      "bytes": 33102,
+      "sha256": "a5860fcbf99301cf4248cfc2f6cb5ec6e085b8254bb8c4158a57159f94a48d27"
     },
     "crewSide": {
       "file": "x1a2_carcara_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28926,
-      "sha256": "d65ae2fcc1ad4221ba98ed117763e77ae7bd604e4ced446e09b2b2eab331c24e"
+      "bytes": 28820,
+      "sha256": "8c01b7576dde35b58b26233133ea0f30d160c19cdc88129597250bb0b12e202b"
     },
     "markings": {
       "file": "x1a2_carcara_markings.png",
@@ -813,7 +813,7 @@
       "file": "x1a2_carcara_technical.json",
       "mime": "application/json",
       "bytes": 4797,
-      "sha256": "155551e2365da5d14391aab2115e8f8d7e5ff888ce531f68bfb7bfa0e3dcbc1d"
+      "sha256": "54fa8861196c7e4a5b1a292ca64f0d2595b7e1b483701ed10b86e645dcd87641"
     }
   }
 }

@@ -631,24 +631,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20828,
-      "sha256": "7dc19c5a119259a9c1d4693134d0475d913cbd327d7d8da32e184e4a0f18a7fc"
+      "bytes": 21034,
+      "sha256": "ded58191afb3ef8432df7586fea4f84aab5bd4806373cdc69609145abaf32ed4"
     },
     "modulesSide": {
       "file": "leopard2_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23542,
-      "sha256": "9057679d8d4db1ef2e75836e5c69b465b4895bebe069df7e951a079509dfb69e"
+      "bytes": 22224,
+      "sha256": "a24c5ff8a5b44fe1b66955c466c8640b17503ff5e8ac411d736064dd47ae09bc"
     },
     "crewSide": {
       "file": "leopard2_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21092,
-      "sha256": "ddd37955b554fd73429a68b6f0fc4a1d43661611e8840d6e108ca61ff65729e4"
+      "bytes": 21136,
+      "sha256": "84fc0917d39286df58d5fc2b993eb10a6f95677796e2c79ea722f25224d99038"
     },
     "markings": {
       "file": "leopard2_proto_markings.png",

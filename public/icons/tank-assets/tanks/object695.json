@@ -1786,24 +1786,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36962,
-      "sha256": "2a4abd5a37c33a3e4eafb62125aaf059c07cdf8d61a7f1f1629c774ff846b706"
+      "bytes": 36824,
+      "sha256": "b76201c3cde54da8242cd52484120f43d5a2a9a2bcbadaf1117c918711510f52"
     },
     "modulesSide": {
       "file": "object695_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41430,
-      "sha256": "3d1e3a47e4dc739c2cd9f3787a0d1989fbf590ab946cbc9aa34aee4c497ff951"
+      "bytes": 39844,
+      "sha256": "526cc5caa6cd627814914f8b8ed978e264abd4c07d8b7403611b7a40e7ed4423"
     },
     "crewSide": {
       "file": "object695_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36952,
-      "sha256": "9bed601f15863a6f833ad7acd91584afca62088096cec9faaf97975fcac9cfd9"
+      "bytes": 37032,
+      "sha256": "14ab3af5e3e4a3cb26185f01075363e0a672cda478e39dfde34a7816fd2cde7f"
     },
     "angle": {
       "file": "object695_angle.webp",

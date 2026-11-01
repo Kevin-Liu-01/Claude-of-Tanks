@@ -635,24 +635,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38228,
-      "sha256": "d1d62b09f6d1ddb35588eba69a9728286082a62c3b8d69dc8549de9d6d87b50e"
+      "bytes": 38420,
+      "sha256": "86d3b2c10396d93c03865507875d15cb9e3642db92e1e8991c27745d7884766a"
     },
     "modulesSide": {
       "file": "spz_puma_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42704,
-      "sha256": "6966de94dced6daa1ab22594745edf1838b65cbc9d83b0fcca35a92b89d950fa"
+      "bytes": 41246,
+      "sha256": "16f58b75f6f2e228d496d35ba671e15a8f0921572827d47f85071ee0b67d101b"
     },
     "crewSide": {
       "file": "spz_puma_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38934,
-      "sha256": "a0c88b38a6013a31cc87cf7adc700f332aaedf194911a22187405dd702cbad3d"
+      "bytes": 39676,
+      "sha256": "ef809e3c025372acd66b8dd8ab891b201300ba1893b93524cc43536021a1f5d3"
     },
     "markings": {
       "file": "spz_puma_markings.png",

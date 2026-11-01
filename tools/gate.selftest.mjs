@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { compareRedReceipt, failureSignature, GATE_LOCK_TIMEOUT_MS, GATE_STEPS, normalizeMessage, parseGateArgs, planGate,
-  renderGateMarkdown, runGate, verdictBlocks, workerPackages } from './gate.mjs';
+  receiptSummary, renderGateMarkdown, runGate, verdictBlocks, workerPackages } from './gate.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { REPO_ROOT } from './selftest-cache.mjs';
 
 // Gate P13/P14/P2 (2026-10-01): tools/gate.mjs is the one versioned landing gate. These cases pin its
@@ -143,6 +144,25 @@ const nodeFailure = (root, message, extra = '') => [
   assert.match(markdown, /blocking a\\\|b/, 'table cells escape pipes');
   assert.match(markdown, /### r\.selftest\.mjs: changed\n\nHere:\n\n```\nB2\n```\n\nBaseline:\n\n```\nA\n```/, 'both messages are reported');
   assert.match(markdown, /lockfile differs/);
+}
+
+// (267) a STARVED receipt (tools/selftest-verdict.mjs) is counted apart from the red ones and named in gate.md
+{
+  const out = mkdtempSync(join(tmpdir(), 'cot-gate-starved-'));
+  try {
+    mkdirSync(join(out, 'receipts'), { recursive: true });
+    writeFileSync(join(out, 'receipts', 'red.selftest.mjs.log'), 'AssertionError [ERR_ASSERTION]: red\n');
+    writeFileSync(join(out, 'receipts.json'), JSON.stringify({ status: 7, selected: 3, executed: 3, reused: 0, rows: [
+      { file: 'ok.selftest.mjs', status: 0 }, { file: 'red.selftest.mjs', status: 7 }, { file: 'soak.selftest.mjs', status: SELFTEST_STARVED_EXIT }] }));
+    const summary = receiptSummary(out, REPO_ROOT);
+    assert.deepEqual(summary.failed.map((row) => row.file), ['red.selftest.mjs'], 'a STARVED receipt is not red');
+    assert.deepEqual(summary.starved, ['soak.selftest.mjs'], 'it is counted apart');
+    const markdown = renderGateMarkdown({ ok: false, head: 'c'.repeat(40), steps: [], receipts: summary });
+    assert.match(markdown, /3 selected, 3 executed, 0 reused, 1 red, 1 starved\./);
+    assert.match(markdown, /STARVED \(the machine withheld what they judge[^\n]*\n\n- `soak\.selftest\.mjs`/, 'gate.md names it');
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
 }
 
 // execution on injected commands: tee to step logs, stop at the first red step, summaries written

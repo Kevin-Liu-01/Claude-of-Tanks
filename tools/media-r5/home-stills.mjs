@@ -20,7 +20,7 @@ import { TANK_SPECS } from '../../src/vehicles/specs.ts';
 import { signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import { buildScene, fire, dust, exhaust, debris, shockwave, smokeScreen, boom, H } from './setups.mjs';
 import { worldModel, sightBlockers, insideRecord } from './world-model.mjs';
-import { SHOTS } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 const DEG = Math.PI / 180;
 const own = (id) => signatureCamoPatternId(id) ?? stockCamoPatternIdFor(id, TANK_SPECS[id]?.nation, TANK_SPECS[id]?.era);
@@ -148,8 +148,8 @@ const featuresOf = (() => {
   const cache = new Map();
   return (map) => {
     if (!cache.has(map)) {
-      const file = join(SHOTS, 'features', `features-${map}.json`);
-      const features = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
+      const file = surveyPath(map);
+      const features = file && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
       cache.set(map, features ? { features, model: worldModel(features) } : { features: null, model: null });
     }
     return cache.get(map);

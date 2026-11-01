@@ -2265,8 +2265,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25656,
-      "sha256": "2f12abb0ca59afae156804c6e122f849abf4b2a30c8943efbb8d3bafb0a4eb24"
+      "bytes": 25700,
+      "sha256": "bc70c1c75a92c05470f8de30ee4b1941746a8c626b9ff297fd35edb211131f4a"
     },
     "modulesSide": {
       "file": "t64bm1m_modules_side.webp",

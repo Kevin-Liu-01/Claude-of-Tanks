@@ -9,7 +9,7 @@ import { powerLinesOf, powerWires, telephoneWires, wiresOf, wiresUnbuilt } from 
 import { fxBodies, fxCoverAt } from './fx-cover.mjs';
 import { absoluteShots } from './lens-check.mjs';
 import { sampleActorTrack, sampleCameraRail } from '../../src/game/studioTimeline.ts';
-import { SHOTS as SHOTS_DIR } from './paths.mjs';
+import { surveyPath } from './paths.mjs';
 
 // The combat round (owner 2026-10-13: "more shots of 1v1 tank battles or 2v2 or 1v2s ... 1. show more tanks and 2. show
 // the actual tank combat ... with effects all over the place"): takes 225 to 233, three of each format, every gun
@@ -46,9 +46,9 @@ for (const f of ['1v1', '1v2', '2v2']) assert.equal(formats.filter((x) => x === 
 const worlds = new Map();
 const worldOf = (map) => {
   if (!worlds.has(map)) {
-    // (the battlefields a tree's own review dumped, MEDIA_R5_FEATURES, as combat-check reads them)
-    const f = join(process.env.MEDIA_R5_FEATURES ?? join(SHOTS_DIR, 'features'), `features-${map}.json`);
-    const features = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    // (the battlefields a tree's own review dumped, MEDIA_R5_FEATURES, as combat-check reads them: paths.mjs surveyPath)
+    const f = surveyPath(map);
+    const features = f && existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
     worlds.set(map, { features, model: features ? worldModel(features) : null });
   }
   return worlds.get(map);

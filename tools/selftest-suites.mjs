@@ -333,6 +333,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/body-height-parts.selftest.mjs',
     // 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare body to body
     'tools/fused-roof-gun-boxes.selftest.mjs',
+    // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
+    'tools/whip-rods.selftest.mjs',
+    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
+    'tools/gate-stowage.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
@@ -343,6 +347,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
     'tools/id-list.selftest.mjs',
     'tools/tool-page-load.selftest.mjs',
+    // 266: the GPU steps' page is served only the public directories their keys read; any other public file is refused
+    'tools/icons-page-public.selftest.mjs',
+    // 267: the icons page keys only the catalog strings it draws; an undeclared key fails its tools' runs
+    'tools/page-catalog-keys.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
@@ -813,6 +821,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-page-unique.selftest.mjs',
     'tools/viteGameEntryMeta.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
+    // 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite
+    'tools/media-r5/fleet-coverage.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
     // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
@@ -841,6 +851,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/terrain-fast-cache-benchmark.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    'tools/selftest-process-groups.selftest.mjs',
     // 266 (owner 2026-10-30): the default and manual tiers, their callers, lane mode and the heavy-suite recommender
     'tools/selftest-tiers.selftest.mjs',
     'tools/test-commands-exit.selftest.mjs',
@@ -852,13 +863,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/selftest-cpu-pool.selftest.mjs',
     'tools/selftest-schedule.selftest.mjs',
     'tools/gate.selftest.mjs',
+    // 267: test:lane's red classes (OWN, INHERITED, FLAKY) and the base results kept by input fingerprint
+    'tools/lane-reds.selftest.mjs',
     'tools/release.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
-    // launch in the checkout goes through it
+    // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
@@ -913,6 +926,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
     'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
+    'src/engine/opaqueProgramOrder.selftest.mjs',
+    // local-fps-266: a regional window's farther faces (its pane behind the frame, the dark behind the pane) layered behind
+    'src/world/paneStack.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
     'src/engine/articulatedShadowBatch.selftest.mjs',
@@ -1354,6 +1370,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
     'src/engine/nightLightingAccess.selftest.mjs',
+    'src/engine/battleLitSet.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
@@ -1627,6 +1644,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/stallTimeline.selftest.mjs', // 267: through a server stall the timeline keeps the wall's grid; no control past the input ring
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
@@ -2470,6 +2488,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
+    // 2026-10-31: every damage figure and total is the hull points the hit took off (owner: "the amount u took off the
+    // enemy"), stamped where the hit resolves and carried over the wire
+    'src/sim/hullPointsRemoved.selftest.mjs',
     'src/ui/shotReadoutPolicy.selftest.mjs',
     'src/ui/damageNumberBurst.selftest.mjs',
     'src/ui/finalBlow.selftest.mjs',
@@ -2649,6 +2670,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
+    // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
+    'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
     'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)

@@ -753,24 +753,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 46184,
-      "sha256": "2f20d90fe07b5890c03bfe8eab17b97f884d9fe41d7d1790bc3a66caf9bd3e19"
+      "bytes": 46488,
+      "sha256": "ca3c206f0fe7c1badb2cee80641d093ada0515fdd223e8de9d78a50a1c259d92"
     },
     "modulesSide": {
       "file": "fv510_milan_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40382,
-      "sha256": "2cd6c95203ba662fa23f46ef7d53aa73aa3868300086fdc962dc6897a44b75f5"
+      "bytes": 39576,
+      "sha256": "0d07af3c800a740bb360427c2fae0db5fd35e85ea443a939d864fcc404cfdd1a"
     },
     "crewSide": {
       "file": "fv510_milan_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33740,
-      "sha256": "5070daa7104167515be5525eac0921b00d649a1640b7863c989ed4db7f19263f"
+      "bytes": 33794,
+      "sha256": "ad8312c97b10910fc9b7a840850a3d08fa2b321007e1d2b98cdd5726a4b6688a"
     },
     "markings": {
       "file": "fv510_milan_markings.png",
@@ -783,8 +783,8 @@
     "technicalLabels": {
       "file": "fv510_milan_technical.json",
       "mime": "application/json",
-      "bytes": 5416,
-      "sha256": "a24cf233f165dc3e3ea8d3e4e0ef3d635fe1cb7fd7c4964d6db4b5cd70eba5b2"
+      "bytes": 5550,
+      "sha256": "c8ce6bab075fb7c7779be69e101cab966b9f6bfdc4227e7337769c8cd1135fe4"
     }
   }
 }

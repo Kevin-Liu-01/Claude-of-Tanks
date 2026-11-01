@@ -616,24 +616,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38552,
-      "sha256": "e086fb7a0023a5ef82f61eb954a8f9514b5f5da2ddf41da7b467189b71c04a28"
+      "bytes": 38536,
+      "sha256": "70229ab16422bf81f5f681e43b38c79bbe0964ba3878038803028e18c865bba1"
     },
     "modulesSide": {
       "file": "marder1a3_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44560,
-      "sha256": "b4accab8a67ce303f3017db9e33631a375d5dc4694c1a8f6009b8aff609fa67c"
+      "bytes": 43808,
+      "sha256": "6ab39eae5a906d74cf523df5f79f126773128cdf0a92f8598710b74d6c81131e"
     },
     "crewSide": {
       "file": "marder1a3_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41352,
-      "sha256": "878b99107be19c7d102b21865f231e596f0794303c8277bd56b4b49de94a6115"
+      "bytes": 40908,
+      "sha256": "34fe8206648e64448d37fca5576e716ff08b0d2e9357e2d856b2d6b6b2d44abb"
     },
     "markings": {
       "file": "marder1a3_markings.png",
@@ -647,7 +647,7 @@
       "file": "marder1a3_technical.json",
       "mime": "application/json",
       "bytes": 5003,
-      "sha256": "5aabb1cb7c50fd1cccb8cf2ad4088e23a46bc674929fef15e5b6c36e7ecc44a8"
+      "sha256": "62dcf5aa0a9635ef0344c9482fd16f41382eb8d72dfe4c2fdb40fe47c677c10e"
     }
   }
 }

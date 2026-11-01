@@ -1125,24 +1125,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29682,
-      "sha256": "cd14c5385823dbff8b67025886800ae568c11faa224f8d18fd6bde6101130877"
+      "bytes": 29708,
+      "sha256": "67f9aa6ebce9f0751e64095049a32c5f4c8149e30603c73f1d713b4e29c094b5"
     },
     "modulesSide": {
       "file": "amx10p_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30814,
-      "sha256": "8e3642021042ef4dd8216d0851d42f0b9addd0edbd9101dd54e2ff9a01952acd"
+      "bytes": 30474,
+      "sha256": "15ea9eb0351bdf583bc898d26f99d81477cc8d772d83e0bb1e762c6eafdc8aec"
     },
     "crewSide": {
       "file": "amx10p_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27440,
-      "sha256": "6f8c5cc565da4db381cb87f64c230de0e8a8534a021f35e9b306030f08dc8d06"
+      "bytes": 27914,
+      "sha256": "8a924ba0d73817ba9b25ba881d61de01627a99615171e6f9dce0b4cbe527e40d"
     },
     "angle": {
       "file": "amx10p_angle.webp",

@@ -55225,24 +55225,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36434,
-      "sha256": "d6992531000dcdebece5a26e6ad83dd8a7a3f114a908bc082ec57ed4dde70699"
+      "bytes": 36390,
+      "sha256": "5322ca885fb4ed079202fdd20b25ce1c62fe7117532417511a938f8f0f1ee3cb"
     },
     "modulesSide": {
       "file": "t72b3m_wilk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28000,
-      "sha256": "19ac3216618dd4e78207bb980a30502c4002e46a896d5c947ec0c1a6f9204d00"
+      "bytes": 27498,
+      "sha256": "c869263441161dd8011abe0dae06ee24fa00cd73e65da85f46f77bbe33d5c11a"
     },
     "crewSide": {
       "file": "t72b3m_wilk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26040,
-      "sha256": "169f03ff44d7444ca7d8066cc2e0e23fbbba18be5e4fd176792f996c2faeda0c"
+      "bytes": 26130,
+      "sha256": "47a777ae7fb176870ca2120112b74f1bb22ad5e8537bcb01c7d97e3647441570"
     },
     "angle": {
       "file": "t72b3m_wilk_angle.webp",

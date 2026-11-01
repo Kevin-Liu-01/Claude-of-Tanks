@@ -1,4 +1,4 @@
-import { layoutViewportSize } from './responsiveLayout.ts';
+import { layoutViewportSize, settleResponsiveLayout } from './responsiveLayout.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
@@ -992,6 +992,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // coming over it, and the passes in between seated the countdown's fading dial and the alert under it again, twice
     // (the loading census, CLS 0.028 on a phone's end screen). A new battle's phase lifts the class.
     if (document.body.classList.contains('cot-es-armed')) return;
+    // A resize's new bands first: this pass's callback, queued before the resize (a mutation's, an observer's), ran ahead
+    // of responsiveLayout's, and measured the old bands' CSS: the open log stood 16 px into a large map at 1180x820 from
+    // 820x1180 until the next pass, which a busy frame put past the layout receipt's 180 ms (266's tablet-mouse gate)
+    settleResponsiveLayout(window);
     // (the HUD's own switch first, hud.ts setMode: a hidden HUD is known without a layout read, the read that forced the
     // frame's reflow at a pass's start, the perf lane's census)
     const visible = root.style?.display === 'none' ? false : !!root.getClientRects().length;

@@ -3057,8 +3057,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24908,
-      "sha256": "c8ee0ff4be998897ad6d22d5276e62535af2333db26d01e432838a8fe2c8a26f"
+      "bytes": 25008,
+      "sha256": "37c08c7e4d5300b722168f0dff6a00a3f0fed176b75d6d6c2de875f22b3f6008"
     },
     "modulesSide": {
       "file": "pt64_tur_modules_side.webp",

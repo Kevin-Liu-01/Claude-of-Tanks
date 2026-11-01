@@ -1117,24 +1117,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 21502,
-      "sha256": "e53a94aa5b3d390e7ab80a3af0f4aacff257a0d95e72334ab481840760351505"
+      "bytes": 21556,
+      "sha256": "0516d955baf22d010402df3bb06082d3a89c197150578548dadbf8a42de596d1"
     },
     "modulesSide": {
       "file": "type96_80_feng_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20812,
-      "sha256": "8a830b67e9941ca76433a29df74d23f7bfbfaf7ec410c79845c55b4657748702"
+      "bytes": 20320,
+      "sha256": "9f0ca3636b5db23add854f7af74bea1b8c9ef6043190bff4c9c4fbc4f059daf5"
     },
     "crewSide": {
       "file": "type96_80_feng_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18214,
-      "sha256": "dcc5ff6474888b8ecdb490820a24d63f8bda3f320ad65b99a3ce210650836c9a"
+      "bytes": 18152,
+      "sha256": "bba391c8ca3b67dbe81fcac9f3d62a1e289a41258c75640906de9abfcd998c0f"
     },
     "angle": {
       "file": "type96_80_feng_angle.webp",

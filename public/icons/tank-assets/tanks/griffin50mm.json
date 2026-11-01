@@ -539,16 +539,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30626,
-      "sha256": "4ac997f24ee6d43668e4cd7631e6e174c3a02cc932033146cff3a58893d67f68"
+      "bytes": 30558,
+      "sha256": "e5d9f64410104f4e95a92e452e7673afddc2be74b0295870c7aa1b18b7b778fd"
     },
     "modulesSide": {
       "file": "griffin50mm_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32434,
-      "sha256": "476d7dc232e01ad9ae8b3548fb62544a8e404ae0c3cad865ad24e95ca6b39e18"
+      "bytes": 31832,
+      "sha256": "3c349ccea4ef84cdb56ccbd01a85938de630901350e818f03a13dfc570126b89"
     },
     "crewSide": {
       "file": "griffin50mm_crew_side.webp",

@@ -9,6 +9,10 @@ families) ... which look crazyyy". Built as the `magach7c` mark of `src/vehicles
 AVDS-1790-5A's 908 hp (fleetBalancePass). Israel's special line at II. Implementation: first build; blind critics and
 the release check pending.
 
+Stage A (Main, 2026-10-31): no 3D model exists for this mark, so it passes stage A through the Latrun photo packet
+(`docs/references/photos/magach-latrun-20261031.json`, `tools/photo-reference-policy.mjs`), proved by
+`src/vehicles/profiles/pattonCastProportions.selftest.mjs`. Its round-18 blind photo critic scored 7/10.
+
 Exact vehicle: the IDF's **Magach 7C** of the late 1980s and 1990s: the M60 turret under flat passive armour modules,
 a plate over the upper glacis, deep bolted side skirts, the low Urdan cupola with the commander's .50, the 105 mm M68
 in its thermal sleeve, as the Yad la-Shiryon (Latrun) museum tank.

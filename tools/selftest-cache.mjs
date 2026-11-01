@@ -238,8 +238,24 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     // Every file a listing module it runs lists is a named input (data, never followed): the key changes when one
     // appears, changes or goes, and a reader of closures (selection) sees the read directly.
     for (const pattern of scanOf(file).lists) for (const member of membersOf(pattern)) seen.add(member);
+    // An import-graph reader it runs (tools/selftest-scans.mjs `imports`) reads every module its entries' static graph
+    // executes: each is a named input, so a change anywhere in that graph keys the receipt and selects it (266).
+    for (const entry of scanOf(file).imports) for (const member of importGraphOf(resolve(root, entry))) seen.add(member);
     executedSets.set(file, executed);
     closures.set(file, seen); return seen;
+  };
+  // The static graph an entry module executes (its code imports, followed), for `imports` declarations.
+  const importGraphs = new Map();
+  const importGraphOf = entry => {
+    if (importGraphs.has(entry)) return importGraphs.get(entry);
+    const graph = new Set(), stack = [entry];
+    while (stack.length) {
+      const current = stack.pop();
+      if (graph.has(current) || !isFile(current)) continue;
+      graph.add(current);
+      for (const dependency of dependenciesOf(current)) if (executableEdges.get(current)?.has(dependency)) stack.push(dependency);
+    }
+    importGraphs.set(entry, graph); return graph;
   };
   // The files whose flags (browser, Git, computed imports) and environment reads count for a receipt: the modules its
   // import graph executes, never a file it only names or lists. Another receipt's walk may have parsed a named file, so
@@ -278,17 +294,18 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
   // only (its declaration is its whole input set), so it inherits nothing.
   const scanOf = file => {
     if (scanSets.has(file)) return scanSets.get(file);
-    const result = { modules: [], lists: [], tracked: [] };
+    const result = { modules: [], lists: [], tracked: [], imports: [] };
     if (!Object.hasOwn(declaredInputs, relative(root, file))) {
-      const lists = new Set(), tracked = new Set();
+      const lists = new Set(), tracked = new Set(), imports = new Set();
       for (const module of runSetOf(file)) {
         const declaration = scans[relative(root, module)];
         if (!declaration) continue;
         result.modules.push(relative(root, module));
         declaration.lists?.forEach(pattern => lists.add(pattern));
         declaration.tracked?.forEach(pattern => tracked.add(pattern));
+        declaration.imports?.forEach(entry => imports.add(entry));
       }
-      result.modules.sort(); result.lists = [...lists].sort(); result.tracked = [...tracked].sort();
+      result.modules.sort(); result.lists = [...lists].sort(); result.tracked = [...tracked].sort(); result.imports = [...imports].sort();
     }
     scanSets.set(file, result); return result;
   };
