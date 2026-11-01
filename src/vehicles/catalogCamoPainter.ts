@@ -410,7 +410,8 @@ function paintSubstrate<C extends MaterialCanvas>(
 }
 
 /** A fitted multispectral cover (release 267; the Danish Leopard 2A7 DK's Barracuda, the Latvia photograph at full
- * size): flat panels in brick rows with dark seams, about one in six a brown-tan, all under one fine, clustered dark lace.
+ * size): flat panels in brick rows with dark seams, about one in ten a brown-tan, under a fine, sparse, soft-edged
+ * dark-green lace (a quarter of the ground).
  * The base and the first patch are the panels' greens, the second the tan panels', the third the lace. Fourteen
  * panels a tile (two metres), the lace a few centimetres; periodic in both directions. */
 function paintBarracuda<C extends MaterialCanvas>(
@@ -425,9 +426,9 @@ function paintBarracuda<C extends MaterialCanvas>(
   const stagger = Array.from({ length: rows }, () => rng());
   const tones = Array.from({ length: rows * 4 }, () => {
     const pick = rng();
-    return { colour: pick < .16 ? tan ?? green : pick < .58 ? green : greenB ?? green, light: 1 + (rng() - .5) * .08 };
+    return { colour: pick < .10 ? tan ?? green : pick < .56 ? green : greenB ?? green, light: 1 + (rng() - .5) * .08 };
   });
-  const fine = noise(rng, 46), mid = noise(rng, 17), pigment = noise(rng, 5);
+  const fine = noise(rng, 60), mid = noise(rng, 20), pigment = noise(rng, 5);
   const field = new Float32Array(n * n);
   for (let index = 0; index < n * n; index++) {
     const u = (index % n) / n, v = Math.floor(index / n) / n;
@@ -436,7 +437,9 @@ function paintBarracuda<C extends MaterialCanvas>(
   const histogram = new Uint32Array(512);
   for (const value of field) histogram[Math.max(0, Math.min(511, Math.floor(value * 511)))]++;
   let cut = 1, sum = 0;
-  for (let bin = 0; bin < 512; bin++) { sum += histogram[bin]; if (sum >= .34 * field.length) { cut = (bin + .5) / 511; break; } }
+  for (let bin = 0; bin < 512; bin++) { sum += histogram[bin]; if (sum >= .24 * field.length) { cut = (bin + .5) / 511; break; } }
+  // the lace's edge blended over a few hundredths of the field, not stepped at one texel
+  const soft = .025;
   const seam = 1.7 / n;
   for (let index = 0; index < n * n; index++) {
     const x = index % n, y = Math.floor(index / n), u = x / n, v = y / n;
@@ -444,9 +447,10 @@ function paintBarracuda<C extends MaterialCanvas>(
     const uu = wrap(u + stagger[row] / across, 1), col = Math.min(across - 1, Math.floor(uu * across));
     const panel = tones[row * 4 + col];
     const edge = Math.min(uu * across - col, col + 1 - uu * across) / across, rim = Math.min(v * rows - row, row + 1 - v * rows) / rows;
-    const c: Color = field[index] < cut ? (lace ?? green) : panel.colour;
+    const t = Math.max(0, Math.min(1, (cut + soft - field[index]) / (2 * soft)));
+    const dark = lace ?? green, c: Color = [0, 1, 2].map((ch) => panel.colour[ch] * (1 - t) + dark[ch] * t) as Color;
     let light = panel.light * (1 + (pigment(u, v) - .5) * .06);
-    if (Math.min(edge, rim) < seam) light *= .62;
+    if (Math.min(edge, rim) < seam) light *= .72;
     const at = index * 4;
     for (let ch = 0; ch < 3; ch++) image.data[at + ch] = c[ch] * light;
     image.data[at + 3] = 255;

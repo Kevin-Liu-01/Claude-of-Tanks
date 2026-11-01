@@ -158,8 +158,10 @@ leo2a7dk.visual = {
   // fine lace, and the cover's cut-leaf panels read as clumps on paint; critics dk1 and dk2, both 6.3 and 6.8)
   // 267 p6: the coat IS the cover, the catalog painter's Barracuda (catalogCamoPainter paintBarracuda): mid-green panels
   // in brick rows with dark seams, about one in six brown-tan, all under one fine dark lace, on every painted face and
-  // the gun; the green darker (dk2, Opus: lighter and yellower than the photograph's)
-  scheme: 'barracuda', base: '#56613d', weather: '#515c3a', patches: ['#4f5a38', '#6b5a42', '#2a3021'],
+  // the gun; the green darker (dk2, Opus: lighter and yellower than the photograph's); p8 (dk3, Opus 7.6, Sonnet 7.0: the
+  // lace coarse, near-black, pixel-edged, a third of the ground on a saturated green; the photograph's fine dark lace on a
+  // muted grey-green): a grey-green ground, the lace a dark green, the tan muted
+  scheme: 'barracuda', base: '#545d44', weather: '#4f5841', patches: ['#4e573f', '#655440', '#363d2c'],
   marking: 'number', number: '11',
 };
 
