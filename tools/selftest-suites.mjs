@@ -335,6 +335,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/fused-roof-gun-boxes.selftest.mjs',
     // 267 (Main 2026-10-31): whips found by their geometry (a thin rod whose tip stands clear) carry the antenna role
     'tools/whip-rods.selftest.mjs',
+    // 267 (Main 2026-10-31): stowage (drums, cradles, racks, baskets) leaves the gate's body on both sides, the ruler whole
+    'tools/gate-stowage.selftest.mjs',
     // 266: gate:repin's chunks (one capture ticket each) stop at the first failing chunk; a row it cannot re-pin is named
     'tools/gate-repin.selftest.mjs',
     'tools/source-comparison-cameras.selftest.mjs',
