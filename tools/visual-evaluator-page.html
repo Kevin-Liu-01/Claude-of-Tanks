@@ -205,7 +205,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
   t80: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  t80uk: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
+  // t80uk (267, Main 2026-11-01): it builds on its certified source-X twin t80u (fleetRenewalSpecs.ts FLEET_RENEWAL_DONORS;
+  // profiles/t80ukRenewal.ts lays its command kit on buildT80UX), so it is a declared derivative of that twin, as the
+  // T-90 marks are of theirs; the javanilga print (/models/tanks/t80u_javanilga.glb, whole curves 4.4) retires as its gate
+  // oracle. Its own command kit, which the twin lacks, is judged by the blind critic instead (Main's condition).
   // t90a_2004, t90a_2006, t90sm_2013 (266, Main 10-31): each builds on its certified source-X twin (t90a, t90a_vladimir,
   // t90sm) under the owner's "fresh take on the new base" (t90Mark*Turret.ts), so each is a declared derivative of that
   // twin, as the Oplot-T and the T-84U are of bm_oplot_m; their old mark prints (t90a_xarchenko_variant, recovered

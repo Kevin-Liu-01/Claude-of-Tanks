@@ -271,6 +271,19 @@ export const SOURCE_WORLD_BUILD_OFFSETS = Object.freeze({ t80u: Object.freeze([0
 /** The declared departure of one pivot (`anchor`: 'turret' or 'gun') from a build offset of either form. */
 export const buildOffsetFor = (buildOffset, anchor) =>
   Array.isArray(buildOffset) ? buildOffset : buildOffset?.[anchor] ?? [0,0,0];
+// Declared departures of a build's PARTS from its certified source, as SOURCE_WORLD_BUILD_OFFSETS declares its pivots':
+// the source node named stands in the comparison where the owner ruled the build's part, moved rigidly (its shape stays
+// the source's) so its top is the ruled height. The certificate and its file stay as they are; the loader applies each
+// row before any scale and the gate record lists it (tools/reference-glb-loader.ts, procedural-fidelity.html).
+// The T-90A X (release 240, the owner: "make sure all tank turrets are clear of hulls"): the housing behind the ring, the
+// source's 'gear222' (x -0.885..0.335, z -1.877..-1.543, its top 24 cm over the deck at 1.721), stood in the bustle's
+// sweep, so the build lays a low cover on its footprint with its top at 1.530 (profiles/t90X.ts aGlacis). The Burlak
+// prototype's composite hull is that source and its build that hull, so the row is its too.
+const T90A_X_DECK_COVER = Object.freeze({ node: 'gear222', top: 1.530,
+  ruling: 'owner, release 240 ("make sure all tank turrets are clear of hulls"): the housing behind the ring is a low cover at 1.53 (profiles/t90X.ts aGlacis)' });
+export const SOURCE_WORLD_PART_DEPARTURES = Object.freeze({
+  t90a: Object.freeze([T90A_X_DECK_COVER]), t90a_burlak_proto: Object.freeze([T90A_X_DECK_COVER]),
+});
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);
