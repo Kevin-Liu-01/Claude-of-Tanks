@@ -5024,6 +5024,26 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     wpIndex = 0;
     autoPatrolBuilt = true;
     loopWaypoints = false;
+    skipReachedIngress();
+  }
+
+  /**
+   * A route round liquid (sim/botRoutePlanner.ts planDryRoute) keeps its snapped ingress, the grid cell nearest the
+   * hull, as its first waypoint wherever that cell lies; the other grid's routes drop the cell when the hull reaches
+   * the next waypoint straight (clearRoute). The controller takes every one-way route the same way (268, item 10): a
+   * hull that reaches the second waypoint on a dry, solid-free straight leg starts there. On Autumn, the one rotation
+   * map that routes round liquid, a moving objective replans a hunter's route as often as once a second, and each route
+   * began at a cell up to 18 m off, often behind the hull: it circled back to it at speed, and the Horde's zombies spent
+   * the wave weaving (advance 0.63-0.81 on Autumn, 0.86-0.97 on every other map).
+   */
+  function skipReachedIngress(): void {
+    if (!liquidSafe || wpIndex !== 0 || waypoints.length < 2) return;
+    const position = entity.state.pos, next = waypoints[1];
+    const dx = next.x - position.x, dz = next.z - position.z, distance = detMath.hypot(dx, dz);
+    if (!(distance > 0.5)) return;
+    if (!liquidSafe(position.x, position.z, detMath.atan2(dx, dz), distance)) return;
+    if (findBlockingObstacle(position.x, position.z, dx, dz, distance, spec.dims.widthM * 0.5 + 1.4)) return;
+    wpIndex = 1;
   }
 
   function startSearchLeg(kind: string, goalX: number, goalZ: number, routeLengthM: number, timeS: number): void {
@@ -6849,6 +6869,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     wpIndex = 0;
     autoPatrolBuilt = true; // user route supersedes the auto loop
     loopWaypoints = !!loop;
+    if (!loop) skipReachedIngress();
   }
 
   /**
