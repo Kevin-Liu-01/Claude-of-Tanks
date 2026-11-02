@@ -9308,6 +9308,18 @@ row	tankAssets	ztz99_longwei	9f0b4f35a107dc40
 row	tankAssets	ztz99a	ed1ddb108131690e
 row	tankAssets	ztz99a2	1bd02ec6a5da5f2c
 row	tankAssets	ztz99a2_qinglong	37dc351f67c4b746
+stamp	gate	bm_oplot_m	28ba5657bc5e5644	578a84f0ce091c79	page-error		page error, previous row kept: owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): oplotMKt762 03735f1a2db4559079dd484cdf53a482d63d9c08c56ab0006f56e2b9237f3cf0; oplotMKitSternDrums 2d2fa5a53829362e9b226
+stamp	gate	bmp3m_dragun125	c5e0555a7e251b90	ae524ec1ccfd3361	page-error		page error, previous row kept: procedural: turret differs from the independent source datum; procedural: gun differs from the independent source datum
+stamp	gate	c1_ariete	426f7930fbf84a6f	5cc59d72a2d0fd1d	oracle-absent	public/models/community-candidates/ariete_c1_x_source.glb	oracle absent here (/models/community-candidates/ariete_c1_x_source.glb)
+stamp	gate	cv90105_tml	81c5ebd628d4f65c	8f2f9c0b2438f11d	oracle-absent	public/models/community-candidates/cv90105_tml_x_source.glb	oracle absent here (/models/community-candidates/cv90105_tml_x_source.glb)
+stamp	gate	cv90_mk4	8901d8f7b5743e52	82c86b86c45a5813	oracle-absent	public/models/community-candidates/cv90_mkiv_x_source.glb	oracle absent here (/models/community-candidates/cv90_mkiv_x_source.glb)
+stamp	gate	k1a1	915ba9ce1172e6e9	cd09fd7d2bb43c50	page-error		page error, previous row kept: photo supplement changed; fresh review required
+stamp	gate	k2_black_panther	cbc0b36780f45f47	efb38cfea0ddd79c	oracle-absent	public/models/community-candidates/k2_black_panther_source.glb	oracle absent here (/models/community-candidates/k2_black_panther_source.glb)
+stamp	gate	kurganets25	881dad058a182cb4	a1831069fc64e440	page-error		page error, previous row kept: procedural: turret differs from the independent source datum; procedural: gun differs from the independent source datum
+stamp	gate	m41a3	477790ee3b0f2718	2a91139109c96403	oracle-absent	public/models/community-candidates/m41_walker_bulldog_lowpoly.glb	oracle absent here (/models/community-candidates/m41_walker_bulldog_lowpoly.glb)
+stamp	gate	merkava3d	c5169d7ff253645f	9997f408c8042254	oracle-absent	public/models/community-candidates/merkava3d_source.glb	oracle absent here (/models/community-candidates/merkava3d_source.glb)
+stamp	gate	merkava4	7a8550db790dbd68	8a08f6f0be74ae91	oracle-absent	public/models/community-candidates/merkava4_source.glb	oracle absent here (/models/community-candidates/merkava4_source.glb)
+stamp	gate	type89	75a12202d90a29a8	3f6fff507d37d77d	oracle-absent	public/models/community-candidates/type89_x_source.glb	oracle absent here (/models/community-candidates/type89_x_source.glb)
 tool	anatomy	8f2458aaf88277d5
 tool	centering	b7154661daa3cd57
 tool	controls	e22ca4a12022c981
