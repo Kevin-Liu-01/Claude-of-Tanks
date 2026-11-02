@@ -152,9 +152,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'imp(<literal>) imports repository modules (followed as edges); node_modules imports are covered by the lockfiles; src source-line reads are covered (see covered)',
   },
   'tools/gen-combat-anatomy.mjs': {
-    pin: 'd1f869f3a73b1713',
+    pin: 'd59d402d211d9b75',
     reads: [],
-    note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check)',
+    note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check); 268: '
+      + '--check --jobs spawns itself on --ids parts of the same tree (reads nothing new)',
   },
   // 268: the parallel parts of a step (the chain's --jobs)
   'tools/changed-only/parts.mjs': {
