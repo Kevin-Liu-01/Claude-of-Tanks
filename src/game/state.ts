@@ -78,7 +78,7 @@ import {
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from '../sim/tankContactShape.ts';
-import { stepRolloverLifecycle } from '../sim/rollover.ts';
+import { stepBotRollovers } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.ts';
@@ -2756,15 +2756,6 @@ function resolveRamContacts(
   rams.length = 0;
 }
 
-function stepRolloverRecovery(game: SoloGameState, bus: EventBus): void {
-  for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.combat.destroyed || entity.isPlayer) continue;
-    if (stepRolloverLifecycle(entity.state, SIM_DT)) {
-      bus.emit('tank:autoflip', { id: entity.id, specId: entity.specId });
-    }
-  }
-}
-
 const reloadEventIndicatorScratch: MagazineIndicator = { rounds: 0, capacity: 0, launcher: false };
 function emitReloadProgress(
   entity: SoloEntity,
@@ -3069,7 +3060,8 @@ export function simStep(
       collider.queueRam(upper, lower, closing, nx, nz));
   resolveCrushContacts(collider, world, bus);
   resolveRamContacts(game, bus, rig, collider);
-  stepRolloverRecovery(game, bus);
+  // (268) a bot rights itself on the timer, as the authority's do (sim/rollover.ts stepBotRollovers); a seat presses for it
+  stepBotRollovers(game.tanks, SIM_DT, (entity) => bus.emit('tank:autoflip', { id: entity.id, specId: entity.specId }));
   // the hulls have moved: the turret bodies meet them where they stand now, before any shell this step is traced
   game._wreckTurrets?.step(game.tanks);
   stages?.stage(FRAME_STAGE.fire);

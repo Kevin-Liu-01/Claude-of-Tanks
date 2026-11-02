@@ -43,7 +43,7 @@ import {
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
-import { stepRolloverLifecycle } from './rollover.ts';
+import { stepBotRollovers } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
@@ -2342,10 +2342,8 @@ export function createAuthoritativeMatch({
   }
 
   function advanceRollover(dt: number): void {
-    for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed || !entity.bot) continue;
-      if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
-    }
+    // (268) one rule for both drivers (sim/rollover.ts stepBotRollovers): a bot rights itself on the timer
+    stepBotRollovers(entities, dt, (entity) => { emit('tank_autoflip', { id: entity.id }); });
   }
 
   const auxRay = new Vector3();
