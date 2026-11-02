@@ -172,11 +172,15 @@ const rankedMaps = (id) => {
   const own = open(prefs);
   return [...own, ...open(MAP_IDS.filter((m) => !own.includes(m) && !SPACE.includes(m)))];
 };
-const anchorFor = (map) => {
+// (268) the sets the motion search already failed for a hero (fleet-rejects.json, fleet-replan.mjs), 30 m round each, are
+// never offered to it again (they carry no map, so a reject can also skip a set at the same spot on another battlefield)
+const REJECTS_FILE = join(HERE, 'fleet-rejects.json'), REJECTS = existsSync(REJECTS_FILE) ? JSON.parse(readFileSync(REJECTS_FILE, 'utf8')) : {};
+const anchorFor = (map, id) => {
   if (!anchorCache.has(map)) anchorCache.set(map, anchorsOf(map));
-  const used = taken.get(map) ?? [];
-  const spot = anchorCache.get(map).find(([x, z]) => used.every(([ux, uz]) => Math.hypot(ux - x, uz - z) > 150))
-    ?? anchorCache.get(map).find(([x, z]) => used.every(([ux, uz]) => Math.hypot(ux - x, uz - z) > 60));
+  const used = taken.get(map) ?? [], tried = REJECTS[id] ?? [];
+  const open = anchorCache.get(map).filter(([x, z]) => tried.every(([rx, rz]) => Math.hypot(rx - x, rz - z) > 30));
+  const spot = open.find(([x, z]) => used.every(([ux, uz]) => Math.hypot(ux - x, uz - z) > 150))
+    ?? open.find(([x, z]) => used.every(([ux, uz]) => Math.hypot(ux - x, uz - z) > 60));
   if (spot) taken.set(map, [...used, spot]);
   return spot ?? null;
 };
@@ -185,7 +189,7 @@ const roster = [], unplaced = heroes.filter((id) => !asWritten(id));
 const order = heroes.map(asWritten).filter(Boolean).sort((p, q) => (spec(p).nation ?? '').localeCompare(spec(q).nation ?? '') || p.localeCompare(q));
 for (const [k, id] of order.entries()) {
   let map = null, spot = null;
-  for (const m of rankedMaps(id)) { spot = anchorFor(m); if (spot) { map = m; break; } }
+  for (const m of rankedMaps(id)) { spot = anchorFor(m, id); if (spot) { map = m; break; } }
   if (!spot) { unplaced.push(id); continue; }
   perMap.set(map, perMap.get(map) + 1);
   const time = SPACE.includes(map) ? 'day' : HOURS[(k + hash(id)) % HOURS.length];

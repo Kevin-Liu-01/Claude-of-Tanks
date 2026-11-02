@@ -146,22 +146,21 @@
  },
  {
   "n": 64,
-  "id": "type59-monsoon",
+  "id": "type59-alpine",
   "hero": "type59",
   "nation": "China",
   "era": "cold-war",
-  "map": "monsoon",
-  "time": "morning",
+  "map": "alpine",
+  "time": "golden",
   "anchor": [
-   -18,
-   210
+   -222,
+   -87
   ],
-  "heading": 245.1,
-  "template": 7,
-  "action": "shellfire",
+  "heading": 79,
+  "template": 6,
+  "action": "artillery",
   "lineup": [
-   "type59",
-   "ztz85_iii"
+   "type59"
   ],
   "foes": [
    "type74",
@@ -172,12 +171,12 @@
    "service_type10"
   ],
   "title": {
-   "en": "A Type 59 crosses Monsoon Ridge through shellfire in the morning",
-   "zh": "清晨，一辆 Type 59 冒着炮火穿越季风雨脊"
+   "en": "A Type 59 charges through artillery at Glacier Pass in the evening light",
+   "zh": "傍晚，一辆 Type 59 冒着炮击冲过冰川关"
   },
   "short": {
-   "en": "Type 59, Monsoon Ridge",
-   "zh": "Type 59，季风雨脊"
+   "en": "Type 59, Glacier Pass",
+   "zh": "Type 59，冰川关"
   }
  },
  {
@@ -407,10 +406,10 @@
   "map": "titan_gorge",
   "time": "day",
   "anchor": [
-   259.4,
-   -199.4
+   -42,
+   -42
   ],
-  "heading": 336.9,
+  "heading": 70,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -878,10 +877,10 @@
   "map": "polders",
   "time": "day",
   "anchor": [
-   -8.9,
-   15.7
+   50.4,
+   65.7
   ],
-  "heading": 157,
+  "heading": 224.5,
   "template": 21,
   "action": "assault",
   "lineup": [
@@ -2767,10 +2766,10 @@
   "map": "steppe",
   "time": "golden",
   "anchor": [
-   -41,
-   -181.3
+   -177,
+   -312
   ],
-  "heading": 280.3,
+  "heading": 265,
   "template": 49,
   "action": "column",
   "lineup": [
@@ -3203,10 +3202,10 @@
   "map": "railyard",
   "time": "morning",
   "anchor": [
-   -38.7,
-   -108.7
+   138,
+   318
   ],
-  "heading": 3.6,
+  "heading": 271,
   "template": 7,
   "action": "shellfire",
   "lineup": [
@@ -3314,10 +3313,10 @@
   "map": "blackglass",
   "time": "golden",
   "anchor": [
-   281.5,
-   161.6
+   42.5,
+   154.9
   ],
-  "heading": 279.2,
+  "heading": 258.7,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -4376,10 +4375,10 @@
   "map": "saltwind",
   "time": "day",
   "anchor": [
-   -132,
+   -177,
    -87
   ],
-  "heading": 6,
+  "heading": 93,
   "template": 36,
   "action": "kill",
   "lineup": [
@@ -5283,10 +5282,10 @@
   "map": "airfield",
   "time": "night",
   "anchor": [
-   -271.9,
-   -230
+   -330,
+   -215
   ],
-  "heading": 298.6,
+  "heading": 352.4,
   "template": 18,
   "action": "kill",
   "lineup": [
@@ -6088,10 +6087,10 @@
   "map": "skybridge",
   "time": "morning",
   "anchor": [
-   -177,
-   -42
+   -267,
+   183
   ],
-  "heading": 78,
+  "heading": 89,
   "template": 21,
   "action": "assault",
   "lineup": [
@@ -6120,21 +6119,22 @@
  },
  {
   "n": 256,
-  "id": "christian2-verdant",
+  "id": "christian2-reservoir",
   "hero": "christian2",
   "nation": "Denmark",
   "era": "modern",
-  "map": "verdant",
-  "time": "day",
+  "map": "reservoir",
+  "time": "morning",
   "anchor": [
-   48,
-   138
+   -267,
+   183
   ],
-  "heading": 259,
-  "template": 24,
+  "heading": 74,
+  "template": 36,
   "action": "kill",
   "lineup": [
-   "christian2"
+   "christian2",
+   "cv9035dk"
   ],
   "foes": [
    "t80u_x",
@@ -6145,12 +6145,12 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Christian II knocks out a T-80U at Verdant Fields",
-   "zh": "一辆 Christian II 在翠野原击毁一辆 T-80U"
+   "en": "A Christian II knocks out a T-80U at Highland Reservoir in the morning",
+   "zh": "清晨，一辆 Christian II 在高地水库击毁一辆 T-80U"
   },
   "short": {
-   "en": "Christian II, Verdant Fields",
-   "zh": "Christian II，翠野原"
+   "en": "Christian II, Highland Reservoir",
+   "zh": "Christian II，高地水库"
   }
  },
  {
@@ -6235,10 +6235,10 @@
   "map": "railyard",
   "time": "golden",
   "anchor": [
-   -200,
-   -76
+   -265,
+   -122.5
   ],
-  "heading": 266.6,
+  "heading": 2.1,
   "template": 4,
   "action": "column",
   "lineup": [
@@ -6273,10 +6273,10 @@
   "map": "railyard",
   "time": "night",
   "anchor": [
-   262.8,
-   15
+   265,
+   -50
   ],
-  "heading": 178.1,
+  "heading": 358.1,
   "template": 38,
   "action": "kill",
   "lineup": [
@@ -6417,10 +6417,10 @@
   "map": "titan_gorge",
   "time": "day",
   "anchor": [
-   138,
-   -87
+   183,
+   -42
   ],
-  "heading": 160,
+  "heading": 103,
   "template": 23,
   "action": "hold",
   "lineup": [
@@ -6525,10 +6525,10 @@
   "map": "caldera",
   "time": "morning",
   "anchor": [
-   -265.5,
-   171.6
+   -123,
+   235.8
   ],
-  "heading": 194.5,
+  "heading": 229.5,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -6562,8 +6562,8 @@
   "map": "badlands",
   "time": "night",
   "anchor": [
-   -193.6,
-   -224.8
+   -236.7,
+   -219.8
   ],
   "heading": 276.7,
   "template": 33,
@@ -6706,10 +6706,10 @@
   "map": "copper_mesa",
   "time": "golden",
   "anchor": [
-   -267,
-   318
+   -62.2,
+   139.6
   ],
-  "heading": 75,
+  "heading": 25.6,
   "template": 19,
   "action": "fires",
   "lineup": [
@@ -6852,10 +6852,10 @@
   "map": "fjord",
   "time": "golden",
   "anchor": [
-   48,
+   138,
    -222
   ],
-  "heading": 11,
+  "heading": 89,
   "template": 26,
   "action": "onTheMove",
   "lineup": [
@@ -6992,21 +6992,22 @@
  },
  {
   "n": 280,
-  "id": "leo2a3-b4-autumn",
+  "id": "leo2a3-b4-urban",
   "hero": "leo2a3_b4",
   "nation": "Germany",
   "era": "modern",
-  "map": "autumn",
+  "map": "urban",
   "time": "day",
   "anchor": [
-   138,
-   48
+   3,
+   318
   ],
-  "heading": 283,
-  "template": 38,
-  "action": "kill",
+  "heading": 12,
+  "template": 26,
+  "action": "onTheMove",
   "lineup": [
-   "leo2a3_b4"
+   "leo2a3_b4",
+   "leo2a4_v"
   ],
   "foes": [
    "t72b3_x",
@@ -7017,12 +7018,12 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Leopard 2A3 knocks out a T-72B3 at Amberford",
-   "zh": "一辆 Leopard 2A3 在安伯福击毁一辆 T-72B3"
+   "en": "A Leopard 2A3 fires on the move at Steinburg",
+   "zh": "一辆 Leopard 2A3 在斯泰因堡行进间射击"
   },
   "short": {
-   "en": "Leopard 2A3, Amberford",
-   "zh": "Leopard 2A3，安伯福"
+   "en": "Leopard 2A3, Steinburg",
+   "zh": "Leopard 2A3，斯泰因堡"
   }
  },
  {
@@ -7034,10 +7035,10 @@
   "map": "urban",
   "time": "day",
   "anchor": [
-   117.7,
-   -214.5
+   93,
+   183
   ],
-  "heading": 257.3,
+  "heading": 19,
   "template": 7,
   "action": "shellfire",
   "lineup": [
@@ -7143,10 +7144,10 @@
   "map": "reservoir",
   "time": "golden",
   "anchor": [
-   -4,
-   78
+   3,
+   -42
   ],
-  "heading": 15,
+  "heading": 164,
   "template": 39,
   "action": "fires",
   "lineup": [
@@ -7288,9 +7289,9 @@
   "time": "sunset",
   "anchor": [
    -312,
-   228
+   273
   ],
-  "heading": 355,
+  "heading": 3,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -7359,10 +7360,10 @@
   "map": "steppe",
   "time": "day",
   "anchor": [
-   301.5,
-   -317.5
+   -42,
+   -87
   ],
-  "heading": 348.7,
+  "heading": 79,
   "template": 39,
   "action": "fires",
   "lineup": [
@@ -7506,10 +7507,10 @@
   "map": "copper_mesa",
   "time": "day",
   "anchor": [
-   -353.3,
-   -292.3
+   -339.3,
+   -379.3
   ],
-  "heading": 170.9,
+  "heading": 350.9,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -7652,10 +7653,10 @@
   "map": "saltwind",
   "time": "morning",
   "anchor": [
-   -168.2,
-   215.2
+   40.7,
+   126.4
   ],
-  "heading": 80.6,
+  "heading": 204.3,
   "template": 19,
   "action": "fires",
   "lineup": [
@@ -7689,10 +7690,10 @@
   "map": "fjord",
   "time": "sunset",
   "anchor": [
-   -177,
-   273
+   -16.1,
+   -63.8
   ],
-  "heading": 90,
+  "heading": 17.6,
   "template": 6,
   "action": "artillery",
   "lineup": [
@@ -7724,10 +7725,10 @@
   "map": "skybridge",
   "time": "day",
   "anchor": [
-   -87,
-   -222
+   -177,
+   -42
   ],
-  "heading": 12,
+  "heading": 78,
   "template": 29,
   "action": "kill",
   "lineup": [
@@ -7867,8 +7868,8 @@
   "map": "caldera",
   "time": "day",
   "anchor": [
-   294,
-   -210.7
+   302,
+   -270
   ],
   "heading": 352.3,
   "template": 20,
@@ -7979,10 +7980,10 @@
   "map": "airfield",
   "time": "day",
   "anchor": [
-   -125,
-   -262
+   3,
+   -177
   ],
-  "heading": 58.8,
+  "heading": 10,
   "template": 29,
   "action": "kill",
   "lineup": [
