@@ -6589,7 +6589,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!Number.isFinite(ramGap)) return;
     ramHoldOffs++;
-    input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
+    // a rusher turns off the line the way its drive already turns (its orbit's side), never against it (268, item 10):
+    // the hold-off's own side (away from the hull's offset) fought the orbit's turn tick by tick, the two cancelled, and
+    // the hunter stood 9-15 m off its target, its yaw frozen, under 0.5 m/s (Horde seeds 1 and 13: every engaged still)
+    const driveSide = doctrine.rush && Math.abs(input.steer) > 0.2 ? Math.sign(input.steer) : 0;
+    input.steer = (driveSide || Math.sign(-ramCross) || orbitSide) * sign;
+    // and it rolls on round the hull at swerveThrottle while it can still stop short of the back-off gap: stopping
+    // stood it pivoting on the spot until the orbit drove it back onto the line
+    if (doctrine.rush && sign > 0 && ramGap <= stopM + RUSH_DRIVE.brakeGapM && ramGap > stopM + RUSH_DRIVE.backOffGapM) {
+      input.throttle = RUSH_DRIVE.swerveThrottle;
+      input.brake = false;
+      return;
+    }
     if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
       // all but touching and standing: back off the hull (turning off its line)
       if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
