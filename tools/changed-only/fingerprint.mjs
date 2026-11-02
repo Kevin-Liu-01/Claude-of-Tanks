@@ -565,21 +565,42 @@ export function loadBase(root, base) {
   } catch { return null; }
 }
 
-/** The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run). */
-export function refreshComponents(manifest, state) {
-  manifest.toolchain = state.toolchain;
-  manifest.toolchainParts = [...state.toolchainParts];
-  manifest.roster = state.roster;
-  manifest.core = state.core;
-  manifest.groups = { ...state.groups };
-  manifest.tools = Object.fromEntries(Object.entries(state.steps).map(([name, step]) => [name, step.tool]));
-  manifest.rows = {};
-  for (const table of state.tableNames) {
-    const rows = state.rows[table] ?? {};
-    if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+/** The world step a world component line names (world:<kind>:<step>[:<map>]); null for the world's own lines. */
+const worldStepOf = (key, steps) => (steps.includes(key.split(':')[2]) ? key.split(':')[2] : null);
+
+/**
+ * The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run): what
+ * the resolver names when a step's keys move (reasonsFor). (268) `ran`: the steps this run recorded (every step when
+ * omitted). Only their own lines move: a tank step's tool key, a world step's tool, map and donor keys. `shared`: the
+ * lines every step reads (the toolchain, roster, core, groups, rows and the world's own) move too. The chain passes
+ * false on a partial chain (--steps, --no-gpu, --no-world). A step that did not run then keeps the lines its keys were
+ * taken against. Its keys embed them, so it stays due either way, but its reasons stay true: --steps=gate used to
+ * relabel four steps whose tools had moved "inputs rewritten after this step ran".
+ */
+export function refreshComponents(manifest, state, { ran = null, shared = true } = {}) {
+  const moves = (name) => !ran || ran.includes(name);
+  if (shared) {
+    manifest.toolchain = state.toolchain;
+    manifest.toolchainParts = [...state.toolchainParts];
+    manifest.roster = state.roster;
+    manifest.core = state.core;
+    manifest.groups = { ...state.groups };
+    manifest.rows = {};
+    for (const table of state.tableNames) {
+      const rows = state.rows[table] ?? {};
+      if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+    }
   }
-  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them.
-  if (state.world) manifest.comps = { ...state.world.comps };
+  manifest.tools = { ...manifest.tools,
+    ...Object.fromEntries(Object.entries(state.steps).filter(([name]) => moves(name)).map(([name, step]) => [name, step.tool])) };
+  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them. A world
+  // step that moves replaces its own lines (a map it no longer has drops out).
+  if (state.world) {
+    const worldSteps = Object.keys(state.world.steps), comps = (manifest.comps ??= {});
+    const owned = (key) => { const step = worldStepOf(key, worldSteps); return step ? moves(step) : shared; };
+    for (const key of Object.keys(comps)) if (owned(key)) delete comps[key];
+    for (const [key, value] of Object.entries(state.world.comps)) if (owned(key)) comps[key] = value;
+  }
   return manifest;
 }
 
