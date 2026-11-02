@@ -1021,7 +1021,7 @@ key	anatomy	amx40	5fd57d6d2edf6266	f5b9651dc0e1fbd2
 key	anatomy	amx40_proto	aa2c3eb832c94687	3336d8c13723f76f
 key	anatomy	amx56	982569355e40060f	a206c7af5f9ef5e5
 key	anatomy	ares_apc	e84b67a4b734fa56	61f04e16920e743d
-key	anatomy	bm_oplot_m	d619ba6e31093ac2	034e433981636ae5
+key	anatomy	bm_oplot_m	008429c67cc935a0	034e433981636ae5
 key	anatomy	bm_oplot_t	1e3d101501cb1168	359f21f0bba3ef7b
 key	anatomy	bmp2	b26b83e85f5b3230	ad8c76056ed868b2
 key	anatomy	bmp3	959ff2ffb56b2087	7b6998c29485b611
@@ -1298,7 +1298,7 @@ key	centering	amx40	e61f51d29329f490	f0a136f61c9d6fbc
 key	centering	amx40_proto	7c4c491f2d28146f	aeed401094027fe5
 key	centering	amx56	63c399670c8fbf3d	b0da88bccc10a3ab
 key	centering	ares_apc	e0182dd0fb96a337	6c79564a4e08216b
-key	centering	bm_oplot_m	022dde8d0c460d05	8b2b3ed1e572d380
+key	centering	bm_oplot_m	484f76a6da35a4b1	8b2b3ed1e572d380
 key	centering	bm_oplot_t	178ef3d30de23e94	4ab4df68471c9dbf
 key	centering	bmp2	26bcc98b4c485c15	5c1f14f99b36e090
 key	centering	bmp3	c2533215a7227d28	bccc977255009706
@@ -1608,7 +1608,7 @@ key	controls	amx40	513c7f17f75bea68	1d7e62b42d8a1ae1
 key	controls	amx40_proto	5e18c47deb039010	6d9dfb0fc70b86c2
 key	controls	amx56	a92baaca6e583981	805426f6b857a8f7
 key	controls	ares_apc	6ecb4dfcf15fcf34	93ef0e6a5ba5dc8b
-key	controls	bm_oplot_m	fc34545b576882cb	4096f9437f256c3e
+key	controls	bm_oplot_m	4f5232de437548b8	5e40dc95a2cd7fcf
 key	controls	bm_oplot_t	45c8522873ad0d47	c074f8c49a4ef791
 key	controls	bmp2	31ecb834727c8c00	47e4f8cc6bb0cc9d
 key	controls	bmp3	f2bb1796bc2b3d14	ab36175a300428c6
@@ -1885,7 +1885,7 @@ key	fills	amx40	76e3220b219d0fd3	95d77b4b1c475069
 key	fills	amx40_proto	171aa58b853b3314	431ab4487371cc11
 key	fills	amx56	f7983debe34a8c8e	a2d4984e78164861
 key	fills	ares_apc	33aed71d728dbc23	36743a064b360ed8
-key	fills	bm_oplot_m	baec9a07149bbf01	9d82467d47b0a4d5
+key	fills	bm_oplot_m	8a50bb0d043e48c6	9d82467d47b0a4d5
 key	fills	bm_oplot_t	9eabef154fa0bfed	24790ec3e946c56d
 key	fills	bmp2	2a85bfa516678ae4	c6d4bb25ba11a3c3
 key	fills	bmp3	e3da41d53ea93c72	a77a5374c5cc4b4c
@@ -2163,7 +2163,7 @@ key	gunLines	amx40	55b24fa14d777305	4a7a1f1b03c4ae19
 key	gunLines	amx40_proto	89b19ff135224176	becaeea0ef0e3198
 key	gunLines	amx56	a7b21a2d643db66d	8b83e5b238d3d9d6
 key	gunLines	ares_apc	6f073169b834aa51	c17d032d678b858d
-key	gunLines	bm_oplot_m	470d589f59707cf8	96dbbc5d44683091
+key	gunLines	bm_oplot_m	375b2312ce8ac5e9	16565ead2bcb28ea
 key	gunLines	bm_oplot_t	c9c67838a76a8574	4e3facd41adb959c
 key	gunLines	bmp2	fcb8c54dfca97d83	d6db04ae8c5144ab
 key	gunLines	bmp3	9aa5299c8767b308	4ca78a7ef8a300d4
@@ -2440,7 +2440,7 @@ key	icons	amx40	fffa61c356bb430a	6fd7cf0b127d799b
 key	icons	amx40_proto	c23c7ad2fc7ce194	cf74dea410210c69
 key	icons	amx56	13f960b6900a39ef	8e8a7c2030f21cad
 key	icons	ares_apc	56dc48a3b6a82d4e	46fa283b4eddb2a7
-key	icons	bm_oplot_m	7a6f32ad1f3988b9	7be4c61e7c04cc95
+key	icons	bm_oplot_m	b8d026694f4d6e4a	2dec32cda38adeb5
 key	icons	bm_oplot_t	080cf91bf9d541a7	f54406d33119e124
 key	icons	bmp2	2cee1d727fcc2c07	bd01acbc451edf2e
 key	icons	bmp3	949abfaa4c5476d0	d8ebf5acf1b9e38c
@@ -2717,7 +2717,7 @@ key	ledger	amx40	07d02ca4eb0fde63	048f51f34756b53e
 key	ledger	amx40_proto	a7d960377d1fbdc7	523b7901df593f0f
 key	ledger	amx56	aaa3a00c4e36d74a	bcd9a885d82b0afd
 key	ledger	ares_apc	e235dd8197f4b4e2	6d8ecaf98475f717
-key	ledger	bm_oplot_m	3467586f38ccfd21	7dc68d03c2e6734a
+key	ledger	bm_oplot_m	72af6d1d14453717	6047b7f2303e36c3
 key	ledger	bm_oplot_t	d0a98d0eabc502f8	2dadffb9b50e5804
 key	ledger	bmp2	0db4ae49f1f690c3	5e7164d7cc8c835c
 key	ledger	bmp3	29a7cdbd202ce2f1	804db16c2e574deb
@@ -2994,7 +2994,7 @@ key	marking	amx40	f3ff4449d2fc5510	219e17463e039343
 key	marking	amx40_proto	07a511d6806a8c52	66c7c1b5fd2a4a70
 key	marking	amx56	22c2bf81f253a7f0	e73e990da768ccbf
 key	marking	ares_apc	c02310683cfcdc3c	f3c209f99d29c749
-key	marking	bm_oplot_m	bbf0487e941acf27	96d303c9ea2da0ff
+key	marking	bm_oplot_m	b42f7ef6544f946f	96d303c9ea2da0ff
 key	marking	bm_oplot_t	bba95dfdd652ccea	8bf913f47aa99ed5
 key	marking	bmp2	2ca0d5c352db82a5	c542c625cad1a999
 key	marking	bmp3	02079c508abeccb6	d86e984a106d2eb5
@@ -3271,7 +3271,7 @@ key	seats	amx40	8b1dc69478c3a9e9	24f978604cd31223
 key	seats	amx40_proto	e81f9f2296998335	85fd3b4ea4a7e942
 key	seats	amx56	a723689fc4f93778	384ce9c705befad9
 key	seats	ares_apc	b5963252b9402483	3fa6fba7ab6ecd8c
-key	seats	bm_oplot_m	a8569eb3c408d30a	c043535a22cdbf6e
+key	seats	bm_oplot_m	bb8d65a9de4b44e1	8d5fa078f4ce5809
 key	seats	bm_oplot_t	a1280f5ba212d698	9fa807ff889488d7
 key	seats	bmp2	2cb159e955eb9330	db2e2163bc557fb8
 key	seats	bmp3	7805fe6e1d36f166	7b9e8a5cdb6d5d8f
@@ -3548,7 +3548,7 @@ key	spareTrack	amx40	d0a163200b28ace3	b73e6a5fff5669fd
 key	spareTrack	amx40_proto	abbaab1b87ff5dd4	73d7a4c03f7dec0f
 key	spareTrack	amx56	33ec0d7a548bc376	f7134644bc64efef
 key	spareTrack	ares_apc	bf4e034a855fec41	3bd096b0373cdf37
-key	spareTrack	bm_oplot_m	c7e8051121f2fb64	649b3fad494e807d
+key	spareTrack	bm_oplot_m	a4dffba1ea352c92	c4a09203780acf64
 key	spareTrack	bm_oplot_t	d01fac2f8206aaad	1c57844921345536
 key	spareTrack	bmp2	60ba93caeb8fca3a	89009c0390a04bd3
 key	spareTrack	bmp3	d075784510c62df0	42fce14c6fa9d93b
@@ -3892,7 +3892,7 @@ row	auxiliaryInventory	amx40	52f7b2e76d5e4546
 row	auxiliaryInventory	amx40_proto	4b3a750730d9e34e
 row	auxiliaryInventory	amx56	217c7ff9699d1e2f
 row	auxiliaryInventory	ares_apc	ad13fee7a65c0a1c
-row	auxiliaryInventory	bm_oplot_m	17c79df40407c10f
+row	auxiliaryInventory	bm_oplot_m	33245ebabce4b0c6
 row	auxiliaryInventory	bm_oplot_t	8b4f608eaba98f28
 row	auxiliaryInventory	bmp2	107f02f6865047ef
 row	auxiliaryInventory	bmp3	b4f910fe8274d4f3
@@ -5243,7 +5243,7 @@ row	geometryLedger	amx40	10a1774e516fb3ea
 row	geometryLedger	amx40_proto	252ab61a191cf4d5
 row	geometryLedger	amx56	02f8f0806535752d
 row	geometryLedger	ares_apc	4d11d47b1917a358
-row	geometryLedger	bm_oplot_m	9f25854d9b1a3cdf
+row	geometryLedger	bm_oplot_m	07f7fd22618fbe6d
 row	geometryLedger	bm_oplot_t	bf41768cf81adff0
 row	geometryLedger	bmp2	d160d58655281d5e
 row	geometryLedger	bmp3	561365abff7f00ad
@@ -5520,7 +5520,7 @@ row	gunJunction	amx40	13e396806cbcfbc7
 row	gunJunction	amx40_proto	c267e33d5ea84b4d
 row	gunJunction	amx56	19dd0083a4149bd8
 row	gunJunction	ares_apc	2ac388f20808dca0
-row	gunJunction	bm_oplot_m	95b4dec8897c73fa
+row	gunJunction	bm_oplot_m	971a70d405d590fc
 row	gunJunction	bm_oplot_t	4b22ed9be37852cf
 row	gunJunction	bmp2	0206e00b3cac942b
 row	gunJunction	bmp3	2102854c2de925e9
@@ -6351,7 +6351,7 @@ row	missionAttachmentSeats	amx40	7b1f10e4fdb0c81e
 row	missionAttachmentSeats	amx40_proto	02b91eb974b167bf
 row	missionAttachmentSeats	amx56	774777f650f5491c
 row	missionAttachmentSeats	ares_apc	33dcc820868834be
-row	missionAttachmentSeats	bm_oplot_m	87409a5204fe9fa7
+row	missionAttachmentSeats	bm_oplot_m	590e5500a35eeecb
 row	missionAttachmentSeats	bm_oplot_t	fce00e9ed631d753
 row	missionAttachmentSeats	bmp2	b6c7ae63d1215e70
 row	missionAttachmentSeats	bmp3	a4961028aae444f4
@@ -7740,7 +7740,7 @@ row	spareTrackLedger	amx40	635f7269ed1df7b4
 row	spareTrackLedger	amx40_proto	58b3ea571352bf3d
 row	spareTrackLedger	amx56	047c4672d7b88221
 row	spareTrackLedger	ares_apc	df53e279909ceedf
-row	spareTrackLedger	bm_oplot_m	79db9bdcf6de72e9
+row	spareTrackLedger	bm_oplot_m	b32955be93280f79
 row	spareTrackLedger	bm_oplot_t	1ec0f09b73b5857c
 row	spareTrackLedger	bmp2	3ba4c62c604866f6
 row	spareTrackLedger	bmp3	3037515094928245
@@ -8603,7 +8603,7 @@ row	tankAssets	amx40	07dda8b940a04759
 row	tankAssets	amx40_proto	48303bda67405649
 row	tankAssets	amx56	dd529c66ba43ff56
 row	tankAssets	ares_apc	5c5c916d0ed2b1c7
-row	tankAssets	bm_oplot_m	c0be94b211385a79
+row	tankAssets	bm_oplot_m	dbbd38621eaaacbb
 row	tankAssets	bm_oplot_t	339f739f108ce198
 row	tankAssets	bmp2	f2170eaaf840eecf
 row	tankAssets	bmp3	5ca2907ba72caf02
