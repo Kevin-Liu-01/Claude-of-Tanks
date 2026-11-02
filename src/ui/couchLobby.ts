@@ -129,9 +129,13 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     if (view.code && view.code !== shownCode) {
       shownCode = view.code;
       const url = padPageUrl(location.origin, view.code);
+      // an address too long for a code leaves the QR blank; the short code and the address below still seat a phone
       const matrix = encodeQr(url);
-      qr.setAttribute('viewBox', `-4 -4 ${matrix.size + 8} ${matrix.size + 8}`);
-      qr.innerHTML = `<rect class="bg" x="-4" y="-4" width="${matrix.size + 8}" height="${matrix.size + 8}"/><path class="mods" d="${qrSvgPath(matrix)}"/>`;
+      qr.style.display = matrix ? '' : 'none';
+      if (matrix) {
+        qr.setAttribute('viewBox', `-4 -4 ${matrix.size + 8} ${matrix.size + 8}`);
+        qr.innerHTML = `<rect class="bg" x="-4" y="-4" width="${matrix.size + 8}" height="${matrix.size + 8}"/><path class="mods" d="${qrSvgPath(matrix)}"/>`;
+      }
       code.textContent = formatPadCode(view.code);
       address.textContent = url.replace(/^https?:\/\//, '').replace(/#.*$/, '');
     }

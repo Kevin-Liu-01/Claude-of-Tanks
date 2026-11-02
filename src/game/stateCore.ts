@@ -59,7 +59,7 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   /** Watch mode (game/watchSeat.ts): a watched battle's seat ledger; null otherwise. */
   watch?: WatchSession | null;
   /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
-  couch?: CouchSession<RuntimeValue> | null;
+  couch?: CouchSession<Entity> | null;
 }
 
 /**

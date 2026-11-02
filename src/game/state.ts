@@ -161,7 +161,7 @@ import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
 } from './soloConsumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
-import { assignCouchSeats, type CouchBattle } from './couchSeats.ts';
+import { assignCouchSeats, type CouchBattle, type CouchSession } from './couchSeats.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
@@ -393,6 +393,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _fortified?: FortifiedCoverLedger | null;
   /** Watch mode (watch-mode-243; game/watchSeat.ts): the seat ledger of a watched battle, null otherwise. */
   watch?: WatchSession<SoloAiController> | null;
+  /** Couch mode (game/couchSeats.ts): which tank each phone drives; null otherwise. */
+  couch?: CouchSession<SoloEntity> | null;
   _destructionEvents?: StructureStageEvent[];
   _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
