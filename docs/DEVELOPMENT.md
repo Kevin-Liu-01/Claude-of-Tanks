@@ -1185,7 +1185,10 @@ spare-track keep-out), then the geometry ledger, the manual reference, centering
 lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
-by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
+by the tool itself (`gen-interior-fills --merge-from`), and so does anatomy (268: each part measures its ids into its
+scratch dir, `gen-combat-anatomy --out-dir`, and the merge writes the groups, index, loader map and sim-floor ledger
+once, byte for byte as one run). The chain holds a parts step's shared outputs to their digests while its parts run and
+fails the step when one moved (`tools/changed-only/parts.mjs`, steps.mjs `parts` and `sharedWrites`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
 `--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
 whole-fleet `--check`, writes nothing, exits 1 on a stale step). Fills have no check mode of their own:
 `tools/changed-only/fills-check.mjs` measures the ids into scratch with the generator's code and flags and compares
