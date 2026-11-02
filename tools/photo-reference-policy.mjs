@@ -26,6 +26,10 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 269 (Main 2026-11-02, the South Africa line): the Semel and the Olifant Mk 1, Mk 1A and Mk 1B on the Centurion family,
+  // and Project Loggim's TTD, each proved by its photographs and published dimensions with no 3D model to follow
+  'docs/references/photos/olifant-centurions-20261102.json':Object.freeze(['semel','olifant_mk1','olifant_mk1a','olifant_mk1b']),
+  'docs/references/photos/olifant-ttd-20261102.json':Object.freeze(['ttd']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

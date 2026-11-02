@@ -65,6 +65,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'warrior_tes_h',
     // release 262: the Olifant Mk 2 (2007)
     'olifant_mk2',
+    // release 269: the TTD (1992)
+    'ttd',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',

@@ -47,6 +47,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   olifant_mk1: '269: the Olifant Mk 1: the 20-pdr Mk 5 with the 750 hp AVDS diesel, 56 t, and the laser fire control',
   olifant_mk1a: '269: the Olifant Mk 1A: the Mk 5/2\'s 105 mm hull with the 750 hp AVDS, 56 t, the stabilised GT3 and its APFSDS a step under the Mk 2\'s',
   olifant_mk1b: '269: the Olifant Mk 1B: the Mk 2 without its thermal fire control, 900 hp, its turret cheeks and rounds a step under the Mk 2\'s',
+  ttd: '269: the TTD: 58.3 t on 1,234 hp, the GT3 105 mm with the Mk 2\'s rounds, spaced armour at the IV footing over a 750 mm glacis',
   centurion5_1_aus: '262: the new Australian Mk 5/1: the Strv 81\'s Mk 5 hull, armour, 20-pdr Type B and Meteor as they stand',
   centurion5_avre: '262: the new Mk 5 AVRE: the Mk 5/2 hull and Meteor with the 165 mm demolition gun, measured in its own cohort',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)

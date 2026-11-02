@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
+assert.equal(TECH_TREES.length, 16, 'sixteen national trees'); // 266: Denmark, Brazil; 269: South Africa
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -221,5 +221,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
-assert.equal(digest, '46b1a3a9307d8466', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
+// (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
+// special lane; the TTD the special (IV). The UK tree's nations drop South Africa.
+assert.equal(digest, 'cfe7630b6ca95d6f', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

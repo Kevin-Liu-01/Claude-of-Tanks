@@ -196,7 +196,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_bars_m',
     't80u_husarz', 't80u_kursk', 't80u_yun', 't80u_zoria', 't80uk', 't84', 't84bm_oplot_m', 't90', 't90_1992',
     't90a', 't90a_2004', 't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m',
-    't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tamoyo3', 'type10', 'type10_dozer',
+    't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tamoyo3', 'ttd', 'type10', 'type10_dozer',
     'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type90b', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'type96b', 'ua_challenger2', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_t80bv', 'vickers_mk1', 'vt4a1',
     'vt4a1_baihu', 'xk2_black_panther', 'ztz100', 'ztz20', 'ztz20_prototype', 'ztz85_iii', 'ztz99_longwei',
@@ -262,7 +262,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3',
     'm46_patton', 'm47_patton', 'm48_super', 'm48a2ga2', 'm48a3_patton', 'm48a5_patton', 'm60a1', 'm60a2', 'm60a3',
     'magach3', 'magach6b', 'magach7c', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'sabra_mk2', 'semel', 'shot_kal', 'strv105', 'tamoyo1', 'tamoyo3',
-    'ua_m1a1', 'ua_m1a2_abrams',
+    'ttd', 'ua_m1a1', 'ua_m1a2_abrams',
   ]),
   flanker: Object.freeze([
     'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'bm_oplot_m', 'bm_oplot_t', 'c1_ariete',
@@ -330,7 +330,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'cv90105_tml', 'fv4034', 'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25',
     'leo2_revolution_proto', 'leopard2_proto', 'm48_super', 'marder2', 'mbt70', 'object148_proto', 'osorio_p1',
     'osorio_p2', 'stb1', 'strv105', 't14_armata', 't84', 't90a_burlak', 't90a_burlak_proto', 'tamoyo1', 'tamoyo3',
-    'type10_tk_x', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100',
+    'ttd', 'type10_tk_x', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100',
     'ztz100_prototype', 'ztz20_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals

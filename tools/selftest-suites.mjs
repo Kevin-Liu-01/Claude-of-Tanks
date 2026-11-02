@@ -199,6 +199,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilian line's
     // X1, X1A2, Tamoyos and Osórios in their trees, tiers and photo packets at both qualities, each mark's kit
     'src/vehicles/profiles/brazil.selftest.mjs',
+    // release 269 (owner: "flesh out south african and australian tank trees"): the South African line's Semel and Olifants
+    // on the Centurion family and the TTD in their tree, tiers and photo packets at both qualities, each mark's kit
+    'src/vehicles/profiles/southAfrica.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',

@@ -79,7 +79,8 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
-  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'],
+  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10',
+  'paint_semel', 'paint_olifant_mk1b'],
   'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
@@ -89,7 +90,8 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
-  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10']);
+  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10',
+  'paint_semel', 'paint_olifant_mk1b']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -126,7 +128,9 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Danish M41 DK-1 and CV9035 DK and the Bundeswehr and JGSDF M41s, each in its own coat.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
   'centurion5_1_aus', 'pt84_orzel', 'leo1a5dk1', 'leo2a5dk', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1',
-  'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf', 'leo2a7dk', 'centurion5_2dk', 'type90b'];
+  'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf', 'leo2a7dk', 'centurion5_2dk', 'type90b',
+  // release 269: the South Africa line in its two coats (the Semel's and the Mk 1B's; the others wear them below)
+  'semel', 'olifant_mk1b'];
 // Release 267: the Danish Leopard 2A7 DK in its own coat under the Barracuda cover and the Centurion Mk 5/2 DK in its
 // 1980s three-tone, appended after 266's; then the Japan line's Type 90 (B) in its JGSDF two-tone.
 // Release 266: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the X1's grey olive drab sit within a
@@ -155,7 +159,9 @@ const ADDED_WEARING_PRODUCTION_PAINT = { leo2a3_b4: 'leo2a3' };
 // factory PL-01 digital, the Żbik in the urban block grey).
 const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', magach3: 'service_merkava2d', m48a2ga2: 'service_leo2a6m',
   m48_super: 'service_leo2a6m', pt84_sokol: 'service_pl01', pt84_zbik: 'urbanblock', magach6b: 'service_merkava2d',
-  magach7c: 'service_merkava2d' };
+  magach7c: 'service_merkava2d',
+  // release 269: the Olifant Mk 1 and Mk 1A in the Semel's SADF brown, the TTD in the Mk 1B's 1990s three-tone
+  olifant_mk1: 'paint_semel', olifant_mk1a: 'paint_semel', ttd: 'paint_olifant_mk1b' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,

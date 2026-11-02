@@ -1778,5 +1778,15 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [nx, ny, nz], Math.PI / 2);
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-nx, ny, nz], -Math.PI / 2);
   }
+  // the South African marks' own kit, as a player reads it at range (profiles/southAfrica.selftest.mjs)
+  if (m.sa) {
+    P.turretG.userData.olifantMarkReceipt = Object.freeze({
+      mark, gun: m.gun, suspension: m.kit === 'olifant' ? 'torsion' : 'horstmann',
+      skirts: m.kit === 'olifant' ? 'armoured' : saSkirtless(m) ? 'off' : 'plates', deck: saAvds(m) ? 'avds' : 'olifant',
+      dischargers: m.sa === 'semel' ? 12 : 8,
+      bustle: m.sa === 'mk1' ? 'net-rack' : m.sa === 'mk1a' ? 'box' : m.sa === 'mk1b' ? 'can-rack' : 'bin',
+      searchlight: m.sa === 'mk1b', sightPost: false, bushBar: m.sa === 'mk1a',
+    });
+  }
   P.topY = 1.0;
 }

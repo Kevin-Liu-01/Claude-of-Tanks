@@ -380,6 +380,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   olifant_mk1: { displayName: 'Olifant Mk 1', searchAliases: ['Olifant', 'Olifant Mk1', 'Olifant Mk.1', 'South African Centurion', 'SADF'] },
   olifant_mk1a: { displayName: 'Olifant Mk 1A', searchAliases: ['Olifant', 'Olifant Mk1A', 'Olifant Mk.1A', 'Olifant GT3', 'SADF'] },
   olifant_mk1b: { displayName: 'Olifant Mk 1B', searchAliases: ['Olifant', 'Olifant Mk1B', 'Olifant Mk.1B', 'Olifant GT3B', 'SADF'] },
+  ttd: { displayName: 'Olifant TTD', shortName: 'TTD', searchAliases: ['TTD', 'Tank Technology Demonstrator', 'Project Loggim', 'Loggim', 'South African MBT prototype'] },
   olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
   centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
   centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },

@@ -10,6 +10,7 @@ import './classicFleetSpecs.ts';
 import './olifantMk2Specs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { modernArmor } from './specHelpers.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -21,9 +22,9 @@ const southAfrican = (id: string, donor: string, name: string, era: 'cold-war' |
   return spec;
 };
 
-// The SADF's brown of the 1970s and 1980s (the Angola and De Brug photographs; TE's Mk 1A "dark sand livery"): one flat
-// coat, the tank's tactical number on the turret's side bin
-const sadfBrown = (number: string) => ({ scheme: 'solid' as const, base: '#76664b', weather: '#837358', patches: [] as string[],
+// The SADF's nutria brown of the 1970s and 1980s (the Angola and De Brug photographs; TE's Mk 1A "dark sand livery"): one
+// flat coat, greyer and lighter than the Soviet plain brown, the tank's tactical number on the turret's side bin
+const sadfBrown = (number: string) => ({ scheme: 'solid' as const, base: '#857356', weather: '#917f62', patches: [] as string[],
   marking: 'number' as const, number, camoScale: 0.55 });
 
 // ------------------------------------------------------------------------------------------------------- Semel --
@@ -81,13 +82,39 @@ olifant_mk1b.gun = {
   ...olifant_mk1b.gun, reloadS: 7.0, baseAccuracy: 0.27, aimTimeS: 1.9,
   shells: olifant_mk1b.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 510, pen1000Mm: 480, pen2000Mm: 450 } : shell),
 };
-// the SANDF's three-tone as the Tempe tank wears it: sand, a mid green and a dark brown in large soft patches (the Mk 2's
-// coat is browner and its patches smaller)
+// the SANDF's three-tone of the 1990s as the Tempe tank wears it: sand under a mid green and a dark green in broad soft
+// patches (the blotch painter; the Mk 2's woodland coat is browner and its patches smaller); the TTD wore the same
 olifant_mk1b.visual = {
   ...olifant_mk1b.visual,
-  scheme: 'woodland', base: '#a7936b', weather: '#b3a07a', patches: ['#58633f', '#4a3f2e'],
-  marking: 'number', number: '31B', camoScale: 0.72,
+  scheme: 'blotch', base: '#a7936b', weather: '#b3a07a', patches: ['#5d6a43', '#3e4a35'],
+  marking: 'number', number: '31B', camoScale: 0.72, patchK: 2.0,
 };
 
-registerFleetSpecs(registries, ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b'],
-  { semel, olifant_mk1, olifant_mk1a, olifant_mk1b });
+// ------------------------------------------------------------------------------------------------- Olifant TTD --
+// Project Loggim's Tank Technology Demonstrator (one prototype, 1992; TE; the SA Armour Museum): hull 7.78 x 3.62 x 2.99
+// m, 58.3 t, a twin-turbo V-8 diesel of 1,234 hp (920 kW), 71 km/h, four forward and two reverse gears, 360 degrees of
+// traverse in under ten seconds, -10/+20 degrees; spaced multi-layer armour, 750 mm effective over the glacis; the 105
+// mm GT3 for its trials (the 120 mm GT6 never fitted) with the Mk 2's rounds; the CS60N and GS60 stabilised sights with
+// thermal, a laser rangefinder and hunter-killer control. The armour box is the build's (profiles/ttd.ts datums).
+const ttd = southAfrican('ttd', 'olifant_mk2', 'Olifant TTD', 'modern');
+Object.assign(ttd.dims, { hullLengthM: 7.78, overallLengthM: 9.41, widthM: 3.62, heightM: 2.99 });
+Object.assign(ttd, { hp: 2200, weightTons: 58.3, enginePowerHp: 1234, topSpeedKmh: 71, reverseSpeedKmh: 30,
+  hullTraverseDegS: 32, turretTraverseDegS: 36, gunElevationDeg: 20, gunDepressionDeg: 10 });
+ttd.armor = modernArmor({
+  hl: 3.89, hw: 1.68, inW: 1.00, floor: 0.50, trkTop: 0.89, roofY: 1.72,
+  turretPivot: [0, 1.72, 0.40], gunPivot: [0, 0.52, 1.20], barrelLenM: 3.92, barrelRadM: 0.09,
+  glacis: [450, 450, 650], lower: [140, 140, 180], side: [70, 70, 90], skirt: [40, 40, 140], rear: 35, roof: 30,
+  tw: 1.45, tFrontZ: 1.60, tRearZ: -2.78, tH: 0.84,
+  cheek: [520, 520, 740], tSide: [210, 210, 300], tRear: 50, tRoof: 40, mantlet: [400, 400, 560], loader: true, bustleAmmo: true,
+});
+ttd.gun = { ...ttd.gun, caliberMm: 105, reloadS: 6.4, baseAccuracy: 0.24, aimTimeS: 1.65 };
+// the SANDF's three-tone as the demonstrator wore it, the Mk 1B's: sand under a mid green and a dark green in broad soft
+// patches (the parade, mobility and museum photographs)
+ttd.visual = {
+  ...ttd.visual,
+  scheme: 'blotch', base: '#ab976f', weather: '#b6a37d', patches: ['#5f6b45', '#3e4a35'],
+  marking: 'number', number: '01', camoScale: 0.78, patchK: 2.0,
+};
+
+registerFleetSpecs(registries, ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'],
+  { semel, olifant_mk1, olifant_mk1a, olifant_mk1b, ttd });

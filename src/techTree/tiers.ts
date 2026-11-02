@@ -45,6 +45,8 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   vickers_mk1: 2, vt4a1: 8, warrior_tes_h: 5, xk2_black_panther: 6, ztz100: 10, ztz100_prototype: 10, ztz20: 10, ztz20_prototype: 10, ztz85_iii: 1,
   ztz99_longwei: 6, ztz99a: 9, ztz99a2: 10, ztz99a2_qinglong: 9, vt4a1_baihu: 7, t72b3_zhuque: 7, t72b3m_xuanwu: 7,
   x1_pioneiro: 1, x1a2_carcara: 1,
+  // 269: the South Africa tree
+  semel: 2, olifant_mk1: 2, olifant_mk1a: 3, olifant_mk1b: 3, ttd: 4,
 });
 
 const NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'] as const;
