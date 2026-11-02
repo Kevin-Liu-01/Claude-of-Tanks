@@ -46,8 +46,8 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty,
-  rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
+  rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
   rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
@@ -92,6 +92,8 @@ import {
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
+import { createBotController, createOpeningPlan, openingRoute } from './botConstruction.ts';
+import type { BotMatch, OpeningPlan } from './botConstruction.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import {
   activateSpecialAction,
@@ -105,9 +107,9 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
-import { createAI, roleOf, type AiOrder } from './ai.ts';
+import type { AiOrder } from './ai.ts';
 import {
-  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks,
+  collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks,
   type NavigationWreck,
 } from '../sim/botRoutePlanner.ts';
 import {
@@ -352,6 +354,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   timeS: number;
   fireTickAcc: number;
   combatRng: RandomSource;
+  /** The battle's seed (resetBattleSession): combat draws and every bot's streams. */
+  matchSeed?: number;
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
   resultTimeS: number | null;
@@ -364,7 +368,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
   auxiliarySmokeScreens?: SmokeScreen[];
-  /** Each bot's opening route, a leg a step (planOpeningRouteSteps; prepareNextOpeningRoute advances the oldest). */
+  /** Each bot's opening route, a leg a step (game/botConstruction.ts openingRoute; prepareNextOpeningRoute advances the oldest). */
   openingRouteJobs: Array<Iterator<void, void, void>>;
   mapId: string;
   killcam?: KillcamRecorder | null;
@@ -479,6 +483,8 @@ interface SetupBattleOptions {
   deferOpeningRoutes?: boolean;
   /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's; ignored for a mode that cannot be watched. */
   watch?: boolean;
+  /** The battle's seed (combat draws and every bot's streams, game/botConstruction.ts); a solo battle keeps COMBAT_SEED. */
+  seed?: number;
 }
 
 interface CameraRig {
@@ -741,7 +747,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.auxiliarySmokeScreens = [];
   auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
-  game.combatRng = mulberry32(COMBAT_SEED);
+  game.matchSeed = options.seed ?? COMBAT_SEED;
+  game.combatRng = mulberry32(game.matchSeed);
   game.result = null;
   game.resultReason = null;
   game.resultTimeS = null;
@@ -839,9 +846,6 @@ function chooseBattleAllies(
   });
 }
 
-type SoloAiDependencies = Parameters<typeof createAI>[1]['deps'];
-type SharedAiDependencies = Omit<SoloAiDependencies, 'getEnemies' | 'getAllies' | 'spotting'>;
-type OpeningRole = ReturnType<typeof roleOf>;
 
 interface BattleSpawnContext {
   game: SoloGameState;
@@ -850,31 +854,19 @@ interface BattleSpawnContext {
   playerSpecId: string;
   allies: Set<SoloEntity>;
   placement: MatchPlacement;
-  enemyCenterX: number;
-  enemyCenterZ: number;
   playerPerpendicularX: number;
   playerPerpendicularZ: number;
   playerForwardX: number;
   playerForwardZ: number;
   obstacles: SoloObstacle[];
-  concealment: ConcealerDisc[];
-  village: VillageBounds | null;
-  roleCounts: Record<TeamId, Record<string, number | boolean>>;
-  teamHasBrawler: Record<TeamId, boolean>;
-  teamHasScout: Record<TeamId, boolean>;
-  aiDependencies: SharedAiDependencies;
-  botNavigation: Readonly<BotNavigationGrid>;
+  /** The bots' construction, one for both drivers (game/botConstruction.ts): this battle's side of it, and its opening doctrine. */
+  botMatch: BotMatch;
+  opening: OpeningPlan;
   enemyIndex: number;
   allyIndex: number;
   /** Proving ground: the range laid out on this battlefield and the target hull seated on each lane (lane order). */
   provingLayout: ProvingRangeLayout | null;
   provingTargets: SoloEntity[];
-}
-
-interface OpeningLane {
-  role: OpeningRole;
-  index: number;
-  side: number;
 }
 
 /**
@@ -945,238 +937,17 @@ function initializeBattleEntity(
   }
 }
 
-function selectOpeningLane(
-  context: BattleSpawnContext,
-  entity: SoloEntity,
-): OpeningLane {
-  const counts = context.roleCounts[entity.team];
-  let role = roleOf(entity.spec);
-  if (role === 'flanker' && !context.teamHasBrawler[entity.team] && !counts._vanguard) {
-    counts._vanguard = true;
-    role = 'brawler';
-  } else if (role === 'flanker' && !context.teamHasScout[entity.team] && !counts._scoutLane) {
-    counts._scoutLane = true;
-    role = 'scout';
-  }
-  const previousCount = counts[role];
-  const index = typeof previousCount === 'number' ? previousCount : 0;
-  counts[role] = index + 1;
-  const side = (index % 2 === 0 ? 1 : -1) * (entity.team === 'enemy' ? 1 : -1);
-  return { role, index, side };
-}
-
-function nearestBushWaypoint(
-  context: BattleSpawnContext,
-  x: number,
-  z: number,
-): Waypoint {
-  let bestX = x;
-  let bestZ = z;
-  let bestDistance = 45;
-  for (const disc of context.concealment) {
-    if (!disc || disc.add < 0.3) continue;
-    const distance = Math.hypot(disc.x - x, disc.z - z);
-    if (distance >= bestDistance) continue;
-    bestDistance = distance;
-    bestX = disc.x;
-    bestZ = disc.z;
-  }
-  return [bestX, bestZ];
-}
-
-function skirtTownWaypoint(
-  village: VillageBounds | null,
-  x: number,
-  z: number,
-): Waypoint {
-  if (!village || village.x1 - village.x0 < 200) return [x, z];
-  const padding = 24;
-  const outside = 45;
-  if (x < village.x0 - padding || x > village.x1 + padding ||
-      z < village.z0 - padding || z > village.z1 + padding) return [x, z];
-  const left = x - village.x0;
-  const right = village.x1 - x;
-  const bottom = z - village.z0;
-  const top = village.z1 - z;
-  const nearest = Math.min(left, right, bottom, top);
-  if (nearest === left) return [village.x0 - outside, z];
-  if (nearest === right) return [village.x1 + outside, z];
-  if (nearest === bottom) return [x, village.z0 - outside];
-  return [x, village.z1 + outside];
-}
-
-function clampBattleWaypoint(point: Waypoint): Waypoint {
-  return [
-    Math.max(-460, Math.min(460, point[0])),
-    Math.max(-460, Math.min(460, point[1])),
-  ];
-}
-
-function buildOpeningWaypoints(
-  context: BattleSpawnContext,
-  entity: SoloEntity,
-  spawn: SpawnPoint,
-  lane: OpeningLane,
-): Waypoint[] {
-  const target: Vec3Tuple = entity.team === 'enemy'
-    ? context.world.spawnPoints.player.pos
-    : [context.enemyCenterX, 0, context.enemyCenterZ];
-  const deltaX = target[0] - spawn.pos[0];
-  const deltaZ = target[2] - spawn.pos[2];
-  const distance = Math.hypot(deltaX, deltaZ) || 1;
-  const forwardX = deltaX / distance;
-  const forwardZ = deltaZ / distance;
-  const lateralX = forwardZ;
-  const lateralZ = -forwardX;
-  const { role, index, side } = lane;
-  const waypoints: Waypoint[] = [];
-  if (role === 'sniper') {
-    const advance = 0.30 + (index % 3) * 0.06;
-    const lateral = (34 + index * 27) * side;
-    waypoints.push([
-      spawn.pos[0] + deltaX * advance + lateralX * lateral,
-      spawn.pos[2] + deltaZ * advance + lateralZ * lateral,
-    ]);
-  } else if (role === 'scout') {
-    const lateral = (190 + index * 42) * side;
-    waypoints.push(
-      nearestBushWaypoint(context,
-        spawn.pos[0] + deltaX * 0.42 + lateralX * lateral,
-        spawn.pos[2] + deltaZ * 0.42 + lateralZ * lateral),
-      nearestBushWaypoint(context,
-        spawn.pos[0] + deltaX * 0.68 + lateralX * lateral * 0.7,
-        spawn.pos[2] + deltaZ * 0.68 + lateralZ * lateral * 0.7),
-      [target[0], target[2]],
-    );
-  } else if (role === 'flanker') {
-    const lateral = (95 + (index % 3) * 38) * side;
-    const standoff = Math.min(distance, 165 + (index % 3) * 22);
-    waypoints.push(
-      [spawn.pos[0] + deltaX * 0.45 + lateralX * lateral,
-        spawn.pos[2] + deltaZ * 0.45 + lateralZ * lateral],
-      [target[0] - forwardX * standoff + lateralX * lateral * 0.55,
-        target[2] - forwardZ * standoff + lateralZ * lateral * 0.55],
-      [target[0], target[2]],
-    );
-  } else {
-    const lateral = ((index % 3) - 1) * 44 * (entity.team === 'enemy' ? 1 : -1);
-    const standoff = Math.min(distance, index === 0 ? 105 : 135 + (index % 3) * 22);
-    waypoints.push(
-      [spawn.pos[0] + deltaX * 0.5 + lateralX * lateral,
-        spawn.pos[2] + deltaZ * 0.5 + lateralZ * lateral],
-      [target[0] - forwardX * standoff + lateralX * lateral,
-        target[2] - forwardZ * standoff + lateralZ * lateral],
-      [target[0], target[2]],
-    );
-  }
-  return waypoints.map((point, index) => clampBattleWaypoint(
-    index < waypoints.length - 1
-      ? skirtTownWaypoint(context.village, point[0], point[1])
-      : point,
-  ));
-}
-
-/**
- * A bot's opening route, one leg a step (battle-spikes-253): the deferred warm advances it a leg at a time, where a bot's
- * whole route was one job (the countdown's 30-290 ms bursts). The legs run in the same order on the same seeded stream,
- * so every route is the one it was; the waypoints are set once the route is whole, as before.
- */
-function* planOpeningRouteSteps(
-  context: BattleSpawnContext,
-  entity: SoloEntity,
-  spawn: SpawnPoint,
-  controller: SoloAiController,
-  role: OpeningRole,
-  doctrineWaypoints: Waypoint[],
-  routeRng: RandomSource,
-): Generator<void, void, void> {
-  const terrainWaypoints: Waypoint[] = [];
-  let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
-  for (const [x, z] of doctrineWaypoints) {
-    const leg = planBotRoute({
-      start: routeStart,
-      goal: { x, z },
-      navigation: context.botNavigation,
-      rng: routeRng,
-      role,
-      spec: entity.spec,
-      useRoleDetour: false,
-    });
-    if (!leg.length) break;
-    terrainWaypoints.push(...leg);
-    // A dry-route leg may end on the reachable bank, not the requested wet
-    // doctrine point. Subsequent legs must continue at the actual endpoint.
-    const end = leg[leg.length - 1];
-    routeStart = context.botNavigation.navigationWaterPolicy === 'avoid-liquid'
-      ? { x: end[0], z: end[1] } : { x, z };
-    yield;
-  }
-  controller.setWaypoints(terrainWaypoints, { loop: false });
-  entity._openingRoute = terrainWaypoints;
-}
-
 function createBattleBot(
   context: BattleSpawnContext,
   entity: SoloEntity,
   entityIndex: number,
   spawn: SpawnPoint,
 ): void {
-  const enemyScratch: SoloEntity[] = [];
-  const allyScratch: SoloEntity[] = [];
-  // round 62 pacing: the no-contact search plans its legs over the shared navigation grid (own seeded stream)
-  const searchRng = mulberry32(18000 + entityIndex);
-  const controller = createAI(entity, {
-    // the battle's difficulty, stepped down for the Horde's zombies by the ruleset
-    difficulty: rulesetBotDifficulty(context.game.ruleset, entity.team, getStoredDifficulty()),
-    // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
-    doctrine: () => rulesetBotDoctrine(context.game.ruleset, entity.team),
-    rng: mulberry32(7000 + entityIndex),
-    deps: {
-      ...context.aiDependencies,
-      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
-        options?: { requireGoalLevel?: boolean }) => planBotRoute({
-        start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
-        spec: entity.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
-      }),
-      getEnemies: () => {
-        enemyScratch.length = 0;
-        for (const candidate of context.game.tanks) {
-          if (candidate.team !== entity.team && candidate.modeActive !== false && !candidate.combat.destroyed && !isGunship(candidate)) {
-            enemyScratch.push(candidate);
-          }
-        }
-        return enemyScratch;
-      },
-      getAllies: () => {
-        allyScratch.length = 0;
-        for (const candidate of context.game.tanks) {
-          if (candidate !== entity && candidate.team === entity.team &&
-              !candidate.combat.destroyed) allyScratch.push(candidate);
-        }
-        return allyScratch;
-      },
-      spotting: {
-        isSpotted: (id: string, receiver: SpottingTank | null) =>
-          context.game.spotting
-            ? context.game.spotting.isSpotted(id, entity.team, receiver)
-            : true,
-      },
-      // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
-      getObjective: () => context.game.matchModeController?.botObjective(entity) ?? null,
-      // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
-      intel: {
-        freshestContact: () => context.game.matchModeController?.freshestSighting(entity) ?? null,
-        enemyDeployment: () => context.game.matchModeController?.enemyDeployment(entity) ?? null,
-      },
-    },
-  }) as SoloAiController;
+  // (268) one bot construction for both drivers (game/botConstruction.ts): the authority builds its bots the same way
+  const controller = createBotController(entity, entityIndex, getStoredDifficulty(), context.botMatch) as SoloAiController;
   entity.aiCtl = controller;
-  const lane = selectOpeningLane(context, entity);
-  const doctrineWaypoints = buildOpeningWaypoints(context, entity, spawn, lane);
-  const routeRng = mulberry32(17000 + entityIndex);
-  const prepare = planOpeningRouteSteps(
-    context, entity, spawn, controller, lane.role, doctrineWaypoints, routeRng,
-  );
+  const route = openingRoute(entity, entityIndex, { x: spawn.pos[0], z: spawn.pos[2] }, context.opening, context.botMatch, controller);
+  const prepare = (function* opening(): Generator<void, void, void> { entity._openingRoute = yield* route; })();
   if (context.options.deferOpeningRoutes) context.game.openingRouteJobs.push(prepare);
   else for (const _leg of prepare) { /* eager: every leg now */ }
 }
@@ -1380,16 +1151,6 @@ export function setupBattle(
 
   const obstacleQuery = game._obstacleQuery = simObstacleQuery(world);
   game._obstacleWorld = world;
-  const aiDeps = {
-    heightField: ground.field,
-    raycast: world.raycast,
-    getObstacles: () => world.getObstacles(),
-    queryObstacles: obstacleQuery || null,
-    // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
-    // through real bushes (state.ts nudges their waypoints; ai.ts may sample
-    // them for repositioning). Absent in headless fixtures.
-    getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
-  };
   // One immutable terrain/ground/cover scan is shared by every local bot.
   // Opening doctrine still authors the tactical points below; A* only expands
   // each leg into a path this specific drivetrain can actually traverse.
@@ -1424,6 +1185,18 @@ export function setupBattle(
     getObstacles: () => world.getObstacles(),
   });
   game._botNavigation = botNavigation;
+  const botMatch: BotMatch = {
+    seed: game.matchSeed ?? COMBAT_SEED,
+    ruleset: () => game.ruleset,
+    tanks: () => game.tanks,
+    spotting: () => game.spotting,
+    mode: () => game.matchModeController,
+    heightField: ground.field,
+    raycast: world.raycast,
+    getObstacles: () => world.getObstacles(),
+    queryObstacles: obstacleQuery || null,
+    navigation: botNavigation,
+  };
   game._navigationWrecks = [];
   game._navigationWreckTicks = 0;
 
@@ -1438,29 +1211,14 @@ export function setupBattle(
   const allyPick = chooseBattleAllies(game, playerSpecId, !!opts.random);
   const allySet = new Set(allyPick);
   const playerYaw = sp.player.yaw;
-  let enemyCenterX = 0;
-  let enemyCenterZ = 0;
-  for (const spawn of sp.enemies) {
-    enemyCenterX += spawn.pos[0];
-    enemyCenterZ += spawn.pos[2];
-  }
-  const enemyCount = sp.enemies.length || 1;
-  enemyCenterX /= enemyCount;
-  enemyCenterZ /= enemyCount;
-
-  const roleCounts: Record<TeamId, Record<string, number | boolean>> = {
-    player: {},
-    enemy: {},
-  };
-  const teamHasBrawler: Record<TeamId, boolean> = { player: false, enemy: false };
-  const teamHasScout: Record<TeamId, boolean> = { player: false, enemy: false };
-  for (const entity of game.tanks) {
-    if (entity === game.tanks[0]) continue;
-    const team: TeamId = allySet.has(entity) ? 'player' : 'enemy';
-    const role = roleOf(entity.spec);
-    if (role === 'brawler') teamHasBrawler[team] = true;
-    if (role === 'scout') teamHasScout[team] = true;
-  }
+  // the bots' opening doctrine over every hull but the player's, led by the map's authored spawns (game/botConstruction.ts)
+  const opening = createOpeningPlan(
+    game.tanks.filter((entity) => entity !== game.tanks[0])
+      .map((entity) => ({ team: allySet.has(entity) ? 'player' : 'enemy', spec: entity.spec })),
+    { player: { x: sp.player.pos[0], z: sp.player.pos[2] }, enemies: sp.enemies.map((point) => ({ x: point.pos[0], z: point.pos[2] })) },
+    world.heightField._layout?.village || null,
+    world.getConcealment?.() || [],
+  );
 
   const spawnContext: BattleSpawnContext = {
     game,
@@ -1469,20 +1227,13 @@ export function setupBattle(
     playerSpecId,
     allies: allySet,
     placement,
-    enemyCenterX,
-    enemyCenterZ,
     playerPerpendicularX: Math.cos(playerYaw),
     playerPerpendicularZ: -Math.sin(playerYaw),
     playerForwardX: Math.sin(playerYaw),
     playerForwardZ: Math.cos(playerYaw),
     obstacles: world.getObstacles(),
-    concealment: world.getConcealment?.() || [],
-    village: world.heightField._layout?.village || null,
-    roleCounts,
-    teamHasBrawler,
-    teamHasScout,
-    aiDependencies: aiDeps,
-    botNavigation,
+    botMatch,
+    opening,
     enemyIndex: 0,
     allyIndex: 0,
     provingLayout,

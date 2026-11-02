@@ -100,10 +100,12 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
+import { botFriendlyFireRisk } from '../game/ai.ts';
+import { createBotController, createOpeningPlan, openingRoute } from '../game/botConstruction.ts';
+import type { BotMatch } from '../game/botConstruction.ts';
 import type { AiDifficulty } from '../game/ai.ts';
 import {
-  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
+  collectNavigationWrecks, createBotNavigationGrid, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import {
@@ -124,7 +126,7 @@ import {
 import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
   consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
   type MatchRuleset,
   type RulesetPhysics,
@@ -580,60 +582,6 @@ function spawnFor(
   // (game/state.ts) seats its tanks through the same placement call.
   const slot = placement.deploymentSlot(team, index);
   return { x: slot.x, z: slot.z, yaw: slot.yaw };
-}
-
-function botOpeningGoal(
-  entity: AuthoritativeEntity,
-  teamSlot: number,
-  entities: readonly AuthoritativeEntity[],
-  opponents: readonly AuthoritativeEntity[],
-): { x: number; z: number } {
-  const allies = entities.filter((entry) => entry.team === entity.team);
-  let ownX = 0;
-  let ownZ = 0;
-  for (const ally of allies) {
-    ownX += ally.state.pos.x;
-    ownZ += ally.state.pos.z;
-  }
-  ownX /= Math.max(1, allies.length);
-  ownZ /= Math.max(1, allies.length);
-  let enemyX = 0;
-  let enemyZ = 0;
-  for (const opponent of opponents) {
-    enemyX += opponent.state.pos.x;
-    enemyZ += opponent.state.pos.z;
-  }
-  enemyX /= Math.max(1, opponents.length);
-  enemyZ /= Math.max(1, opponents.length);
-  let dx = enemyX - ownX;
-  let dz = enemyZ - ownZ;
-  const distance = Math.max(1, detMath.hypot(dx, dz));
-  dx /= distance;
-  dz /= distance;
-
-  // Deploy into distinct lanes on our side of the battlefield instead of
-  // plotting every bot straight through a random enemy spawn. Roles shape
-  // the opening, but both teams use the exact same deterministic doctrine.
-  const role = roleOf(entity.spec);
-  // Keep a genuine deployment line between the teams.  The former fixed
-  // fraction sent both sides toward the same point on compact maps, so the
-  // opening regularly became an 80 m ram-fight inside 30 seconds.  Advance
-  // only the distance the map can spare while retaining a ~340 m front;
-  // faster roles may probe beyond it and snipers remain slightly behind.
-  const spareAdvance = Math.max(0, (distance - 340) * 0.5);
-  const roleAdvance = role === 'scout' ? 1.16
-    : role === 'flanker' ? 1.07
-      : role === 'brawler' ? 0.94 : 0.82;
-  const advanceM = Math.min(distance * 0.34, spareAdvance * roleAdvance);
-  const laneOrder = allies.length <= 1 ? [1] : [-1, 1, -0.35, 0.35, -1.5, 1.5, 0];
-  const laneScale = role === 'flanker' || role === 'scout' ? 1.2
-    : role === 'sniper' ? 1 : 0.85;
-  const laneM = Math.min(110, Math.max(55, distance * 0.14));
-  const lane = laneOrder[teamSlot % laneOrder.length]! * laneM * laneScale;
-  return {
-    x: Math.max(-440, Math.min(440, ownX + dx * advanceM + dz * lane)),
-    z: Math.max(-440, Math.min(440, ownZ + dz * advanceM - dx * lane)),
-  };
 }
 
 function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec): { muzzle: Vector3; direction: Vector3 } {
@@ -1092,73 +1040,28 @@ export function createAuthoritativeMatch({
     })
     : null);
 
+  // (268) one bot construction for both drivers (game/botConstruction.ts): the solo battle builds its bots the same way
+  const botMatch: BotMatch = {
+    seed,
+    ruleset: () => ruleset,
+    tanks: () => entities,
+    spotting: () => spotting,
+    mode: () => modeController,
+    heightField,
+    raycast: spottingRaycast,
+    getObstacles: () => staticObstacles,
+    queryObstacles: worldCollision?.queryObstacles || null,
+    navigation: botNavigation,
+  };
+  const opening = createOpeningPlan(entities.filter((entity) => entity.bot), layout.spawns, layout.village ?? null,
+    worldCollision?.getConcealment?.() ?? []);
+
   function initializeBot(entity: AuthoritativeEntity, index: number): void {
-    const opponents = entities.filter((entry) => entry.team !== entity.team);
-    const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
-    const botRng = mulberry32(seed + 41000 + index * 997);
-    // round 62 pacing: the no-contact search plans its legs over the shared navigation grid; its own seeded
-    // stream keeps the controller's draws where they were
-    const searchRng = mulberry32(seed + 43000 + index * 991);
-    const navigation = botNavigation;
-    entity.aiCtl = createAI(entity, {
-      // the seat's difficulty, stepped down for the Horde's zombies by the ruleset
-      difficulty: rulesetBotDifficulty(ruleset, entity.team, playerRecordById.get(entity.id)?.difficulty || 'normal'),
-      // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
-      doctrine: () => rulesetBotDoctrine(ruleset, entity.team),
-      rng: botRng,
-      deps: {
-        heightField,
-        raycast: spottingRaycast,
-        getEnemies: () => {
-          opponents.length = 0;
-          for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
-          return opponents;
-        },
-        // A wreck is no teammate: a falling-back or retiring bot looks for support among its allies (ai.ts
-        // nearestSupport), and the authority handed it destroyed hulls too, so it could drive to a teammate's wreck.
-        // The solo step filters wrecks (game/state.ts getAllies); the authority now does the same.
-        getAllies: () => {
-          allies.length = 0;
-          for (const candidate of entities) {
-            if (candidate !== entity && candidate.team === entity.team && !candidate.combat.destroyed) allies.push(candidate);
-          }
-          return allies;
-        },
-        getObstacles: () => staticObstacles,
-        queryObstacles: worldCollision?.queryObstacles || null,
-        spotting: {
-          isSpotted: (targetId, receiver) =>
-            spotting.isSpotted(targetId, entity.team, receiver || entity),
-        },
-        // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
-        getObjective: () => modeController.botObjective(entity),
-        // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
-        intel: {
-          freshestContact: () => modeController.freshestSighting(entity),
-          enemyDeployment: () => modeController.enemyDeployment(entity),
-        },
-        ...(navigation ? {
-          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
-            options?: { requireGoalLevel?: boolean }) => planBotRoute({
-            start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
-            useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
-          }),
-        } : {}),
-      },
-    });
-    const teamSlot = entities.filter((entry) => entry.team === entity.team).indexOf(entity);
-    const goal = opponents.length
-      ? botOpeningGoal(entity, teamSlot, entities, opponents)
-      : null;
-    if (!goal) return;
-    entity.aiCtl.setWaypoints(planBotRoute({
-      start: entity.state.pos,
-      goal,
-      navigation: botNavigation,
-      rng: botRng,
-      role: roleOf(entity.spec),
-      spec: entity.spec,
-    }), { loop: false });
+    const controller = createBotController(entity, index, playerRecordById.get(entity.id)?.difficulty || 'normal', botMatch);
+    entity.aiCtl = controller;
+    // the opening route's legs all at once (the solo battle's warm takes them a leg a step)
+    const route = openingRoute(entity, index, { x: entity.state.pos.x, z: entity.state.pos.z }, opening, botMatch, controller);
+    while (!route.next().done) { /* every leg now */ }
   }
 
   function initializeBots(): void {
