@@ -218,7 +218,7 @@ export const MANUAL_SUITES = Object.freeze({
   ],
     // the whole-fleet anatomy check (npm run tank:anatomy:check without its fleetPassDefault, a receipt of this suite)
     { commands: Object.freeze([
-      Object.freeze(['node', 'tools/gen-combat-anatomy.mjs', '--check']),
+      Object.freeze(['node', 'tools/gen-combat-anatomy.mjs', '--check', '--jobs=4']),
       Object.freeze(['node', 'tools/gen-vehicle-marking-seats.mjs', '--check']),
       Object.freeze(['node', 'tools/module-hit-probe.mjs']),
       Object.freeze(['node', 'tools/tank-assets-check.mjs', '--views', 'armorSide,modulesSide,crewSide', '--skip-bore']),

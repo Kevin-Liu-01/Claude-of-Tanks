@@ -519,7 +519,8 @@ export const STEPS = Object.freeze([
     // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
     // 267: each id's sim-floor row (its drift check), and the ledger's tolerance through the table's frame
     rowReads: [SPEC_COMBAT, 'simFloors'],
-    check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
+    // 268: the check runs as --jobs parts with no merge (gen-combat-anatomy --check --jobs)
+    check: ['--check', '--jobs=4'], checkScoped: (list) => ['--check', '--jobs=4', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
     sharedWrites: ['docs/geometry-gate/sim-floors.json'],

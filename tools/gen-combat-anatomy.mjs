@@ -3,7 +3,7 @@
 // publish the pure-data calibration consumed by combatAnatomy.ts.
 //
 //   node tools/gen-combat-anatomy.mjs          # regenerate the full fleet
-//   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed
+//   node tools/gen-combat-anatomy.mjs --check [--jobs=4]  # fail when a tank changed (--jobs: parallel parts, no merge)
 //   node tools/gen-combat-anatomy.mjs --crew-only [--ids=a,b]  # re-seat the crew in the committed calibrations
 //   node tools/gen-combat-anatomy.mjs --ids=a,b --out-dir=<dir>  # one part of a parallel run: its rows into <dir> alone
 //   node tools/gen-combat-anatomy.mjs [--ids=a,b,c,d] --merge-from=<dir>,<dir>  # write the parts' rows as this run's
@@ -12,6 +12,9 @@
 // --out-dir parts (tools/changed-only/parts.mjs). A part reads the tree and writes nothing in it; the merge takes the
 // parts' rows in place of measuring them and is otherwise this run, so the groups, the index, the loader map and the
 // sim-floor ledger are written once, byte for byte as one process writes them (tools/combat-anatomy-parts.selftest.mjs).
+// --check --jobs=N runs the check as N --check --ids parts and no merge (a check writes nothing): each part compares its
+// ids' measurement with the committed files, and this process adds the one fleet-wide clause of a whole check, a
+// sim-floor ledger row for an id that left the fleet.
 //
 // Every row carries its crew seats (235, tools/crew-seat-fit.mjs): a P50 body per crew station, seated in its role's
 // posture inside the shell this row measures, and (266) its module seats: the sketched modules placed around the crew
@@ -23,6 +26,7 @@
 // responsible, unless accepted with a reason (--accept-floor=<id>[,<id>]:<reason>, or COT_ACCEPT_FLOOR_DRIFT through
 // an npm chain). The write mode still writes its outputs first, then exits 3, so the regen chain stops there.
 
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { uniqueIds } from './id-list.mjs';
 import {
@@ -30,6 +34,7 @@ import {
 } from 'node:fs';
 import { userInfo } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
@@ -81,6 +86,29 @@ if (partDir && (!onlyIds || check || crewOnly || mergeFrom || process.argv.some(
 }
 if (mergeFrom && (check || crewOnly)) throw new Error('[combat-anatomy] --merge-from writes the parts\' rows: never with --check or --crew-only');
 const PART_TOOL = 'gen-combat-anatomy';
+const checkJobs = check ? Math.max(1, Number(optionValue('jobs') ?? 1) | 0) : 1;
+const checkIds = ALL_TANK_IDS.filter((id) => !onlyIds || onlyIds.has(id));
+if (checkJobs > 1 && checkIds.length >= 8) {
+  const lists = Array.from({ length: Math.min(checkJobs, Math.ceil(checkIds.length / 4)) }, () => []);
+  checkIds.forEach((id, index) => lists[index % lists.length].push(id));
+  const passOn = process.argv.slice(2).filter((arg) => !/^--(?:ids|jobs)=/.test(arg));
+  const codes = await Promise.all(lists.map((list) => new Promise((done) => {
+    spawn(process.execPath, [fileURLToPath(import.meta.url), ...passOn, `--ids=${list.join(',')}`], { stdio: 'inherit' })
+      .on('close', (code) => done(code ?? 1));
+  })));
+  let code = codes.find((each) => each !== 0) ?? 0;
+  if (!onlyIds) {
+    const { extra } = compareFloorRows(readFloorLedger().rows, {}, { ids: [], fleetIds: ALL_TANK_IDS });
+    if (extra.length) {
+      console.error(`[combat-anatomy] SIM FLOOR: ledger rows for ids no longer in the fleet: ${extra.join(', ')} `
+        + '(node tools/anatomy-floor-drift.mjs --prune)');
+      code ||= 2;
+    }
+  }
+  console.log(`[combat-anatomy] ${code ? `FAIL (exit ${code})` : 'PASS'} — ${checkIds.length} receipts checked in ${lists.length} parts `
+    + `(exits ${codes.join(', ')})`);
+  process.exit(code);
+}
 const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds || crewOnly
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
   : Object.freeze({});
