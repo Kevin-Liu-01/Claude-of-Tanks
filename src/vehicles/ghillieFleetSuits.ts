@@ -545,7 +545,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'c2_ariete_proto', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
     // release 231: the hull net is cut round the whole gun's envelope (its mantlet plate's foot passed 11 mm over the
     // track-guard drape at the -7 side stops)
-    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8, conservativeGunEnvelope: true,
+    // 267 round 2 (both blind critics: "ragged shards sticking out at the rear skirt and past the hull outline in the top
+    // view"): the garnish stays within 4 cm of the skirt armour's 1.993 m plane (was 2.19), and the skirt drapes start
+    // on the skirt run (its rear end at -3.21), not 24 cm behind it
+    fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.8, conservativeGunEnvelope: true,
     turret: {
       top: [laid({
         x0: -1.71, x1: 1.71, z0: -2.72, z1: 2.06, nx: 43, nz: 60, y: 0.97,
@@ -562,7 +565,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.87, x1: 1.87, z0: -0.11, z1: 3.85, nx: 37, nz: 40, y: 1.90, holes: [rect(-0.43, 0.20, 0.84, 1.29)],
           garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.45, 3.40, 1.72, 0.55, 2.01, 41),
+      side: skirts(-3.15, 3.40, 1.72, 0.55, 1.995, 41),
     },
   },
   // LRMV Lynx: the turret roof netted round the RWS (the builder) and the periscope row, drapes ahead of the side smoke

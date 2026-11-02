@@ -223,9 +223,11 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   bwp1: variant('bwp1', 'bmp2', {
     name: 'BWP-1 (Bojowy Wóz Piechoty 1)', nation: 'Poland', number: 'BWP-1',
     base: '#3f4a3e', weather: '#535d4d', patches: ['#28312b', '#5d5948', '#706750'],
-    dims: { hullLengthM: 6.90, overallLengthM: 7.12, widthM: 3.45, heightM: 3.02,
-      silhouetteHullLengthM: 6.61, silhouetteOverallLengthM: 6.72,
-      silhouetteWidthM: 3.45, silhouetteHeightM: 2.82 },
+    // 267 round 2: the as-built envelope of the BMP-1 hull with the appliqué and the RCWS-30 (the 30 mm muzzle stays
+    // inside the bow; height to the station's head, whips excluded)
+    dims: { hullLengthM: 6.76, overallLengthM: 6.76, widthM: 3.05, heightM: 2.60,
+      silhouetteHullLengthM: 6.76, silhouetteOverallLengthM: 6.76,
+      silhouetteWidthM: 3.05, silhouetteHeightM: 2.60 },
     trackWidthM: 0.44,
     stats: { hp: 1850, enginePowerHp: 720, weightTons: 32.0, topSpeedKmh: 68,
       reverseSpeedKmh: 28, hullTraverseDegS: 48, turretTraverseDegS: 60, gunPitchDegS: 46 },
@@ -535,5 +537,21 @@ const bmptT90FlankEra = registries.tankSpecs.t90am?.armor.turretPlates
 AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);
 
 applyEscortFieldKitArmor(AFV_FAMILY_SPECS.upior,ESCORT_FIELD_KITS.upior);
+
+// 267: the ROK BMP-3 stands on the BMP-3 hull (profiles/afvFamily.ts buildBMP3ROK): its ring moves to the bmp3 ring
+// (was the BMP-2 donor's [0, 1.66, 0.03]); the trunnion is its own turret's, as drawn and as the combat rig already
+// records it (was the donor's [0, 0.285, 0.55]). The barrel datum stays.
+AFV_FAMILY_SPECS.bmp3_rok.armor.turretPivot = [...AFV_FAMILY_SPECS.bmp3.armor.turretPivot];
+AFV_FAMILY_SPECS.bmp3_rok.armor.gunPivot = [0, 0.34, 0.62];
+// 267 round 2: its hull plates take the BMP-3 hull's faces (bmp3's plates of the same name: the hull it draws) and keep
+// their own protection (physical, KE and CE millimetres and kind), so shots meet plates where the hull is.
+for (const rokPlate of AFV_FAMILY_SPECS.bmp3_rok.armor.hullPlates) {
+  const bmp3Plate = AFV_FAMILY_SPECS.bmp3.armor.hullPlates.find((candidate) => candidate.name === rokPlate.name);
+  if (!bmp3Plate) throw new Error(`bmp3_rok hull plate ${rokPlate.name} has no BMP-3 face`);
+  rokPlate.verts = structuredClone(bmp3Plate.verts);
+}
+// 267: the BWP-1's RCWS-30 carries its cradle between the yoke cheeks of its strut frame (profiles/bwp1Rcws30.ts); the
+// trunnion follows the drawn station (was the BMP-2 donor's [0, 0.285, 0.55]; the old turret drew it at [0, 0.40, 0.60]).
+AFV_FAMILY_SPECS.bwp1.armor.gunPivot = [0, 0.55, 0.10];
 
 registerFleetSpecs(registries, AFV_FAMILY_IDS, AFV_FAMILY_SPECS);

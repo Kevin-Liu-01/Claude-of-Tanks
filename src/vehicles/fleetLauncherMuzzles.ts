@@ -14,7 +14,8 @@ const bradley = [mouth(-.97, .04, .23), mouth(-.97, -.20, .23)];
 const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   m2a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
-  bmp2: [turret(.06, .655 + .025 * detMath.sin(.02), .155 + .025 * detMath.cos(.02), .02)],
+  // 267: the full-length 9M113 container on the 9P135M post (profiles/bmpBoatHull.ts), its front ring's mouth
+  bmp2: [turret(.05, .655 + .03 * detMath.sin(.02), .32 + .03 * detMath.cos(.02), .02)],
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
   puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
   borsuk: [.545,.795].map(y => turret(1.34,y,.91)),
@@ -27,7 +28,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   fv510_milan: [turret(.56 * 1.1, (.92 + .0125 * detMath.sin(.04)) * 1.1 * .84,
     (.927 + .0125 * detMath.cos(.04)) * 1.1, detMath.atan(detMath.tan(.04) * .84))],
   bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * detMath.sin(.035)), y, .668 + .011 * detMath.cos(.035), 0, s * .035))),
-  bwp1: [turret(.28, 1.11, .76)],
+  // 267: the Spike-LR canister on the RCWS-30's right arm (profiles/bwp1Rcws30.ts), its front collar's mouth
+  bwp1: [turret(-.88, .51, .705)],
   marder1a3: [turret(.55, .92, .445)],
   // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
   m3a3_bradley: [-1, 1].map(s => turret(-.91, .6626 + s * .0949, .3633 - s * .0047, .05)),

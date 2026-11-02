@@ -20,6 +20,14 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // 266 (Main 2026-10-31): the M60 batch's two Israeli marks, built on the rebuilt M60A1's castings from the Latrun
   // museum tanks' photographs, with no 3D model to follow
   'docs/references/photos/magach-latrun-20261031.json':Object.freeze(['magach6b','magach7c']),
+  // 268 (the owner, 2026-11-01: "now update the ... bmp 3 rok, bwp-1"): the BMP-3 in ROK service on the fleet's BMP-3
+  // hull and the BWP-1 under the RCWS-30, built from photographs with no 3D model to follow
+  'docs/references/photos/bmp-family-20261101.json':Object.freeze(['bmp3_rok','bwp1']),
+  // 268 (the owner, 2026-11-01: "now update the c2 protottype, c1 prototype s1 ... K2B ... k1e1"): the C1 and C2 Ariete
+  // prototypes, the K1E1 and the K2B, rebuilt from photographs; the prints the first three were registered to (the series
+  // C1 Ariete, the K1A1) show other variants and are deregistered (Main's ruling 2026-10-28); the K2B had no 3D target
+  'docs/references/photos/ariete-prototypes-20261101.json':Object.freeze(['c1_ariete_proto_serie1','c2_ariete_proto']),
+  'docs/references/photos/korea-k1e1-k2b-20261101.json':Object.freeze(['k1e1','k2b']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

@@ -24,6 +24,9 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // 2026-10-30 (vickers-cr1-262): the Challenger 1 rebuild ends the hull shell at the hull length (the old shell ran 0.4 m
 // past the bow), seats the turret over its deck and narrows the gun mount, so challenger1_mk3's hull max z, turret min y
 // and gunMount x/y are re-measured as the current build / factor; its dims, pivots, contact and muzzle are unchanged.
+// 2026-11-01 (italy-korea-bmp-267): the K21's in-turret cradle box became its real mantlet (jacket, collar, housing with
+// the coaxial port) ahead of the turret face, so k21's gunMount box is re-measured as the current build / factor
+// (re-measured again after the same lane's round-2 jacket/housing refinement).
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];

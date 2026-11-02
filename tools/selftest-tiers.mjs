@@ -365,6 +365,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/griffinViper.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/ifvMantletAndBow.selftest.mjs',
+    'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
     'src/vehicles/profiles/japaneseHydropneumaticSuspension.selftest.mjs',
     'src/vehicles/profiles/k1a1Geometry.selftest.mjs',

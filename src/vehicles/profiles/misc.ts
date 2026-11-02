@@ -36,6 +36,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import { arieteLampCluster } from './arieteMkParts.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -398,7 +399,7 @@ function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
 // ---------------------------------------------------------------------------
 function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, openRackGrid, periscope, towCable } = KIT;
+    fenders, liftEye, openRackGrid, periscope, towCable } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   // ---- hull tub + sponsons + stepped deck ----
   const buildArieteHullStage1 = (): void => {
@@ -446,9 +447,17 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
     // plan shadow, behind the idler wrap's dilated 3.70 far edge
     for (const s of [-1, 1]) {
       // release 231: the crest's top at 1.555 (it stood 2.5 cm into the rear basket's sweep, 1.575 at 4.0-4.2 m, with the turret turned round)
-      P.add('hull', box(0.13, 0.365, 0.14), s * 1.615, 1.3725, 3.35);           // crest block inner (top 1.555 since 231; was 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
-      P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
-      P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
+      // 267: the print's corner "crests" (x 1.55-1.737, y 1.19-1.555, z 3.28-3.42) are gone. Round 2 (both blind critics:
+      // "low, boxed headlight clusters at the front hull corners, on the upper glacis edge"; the round-1 mirror posts that
+      // replaced the crests read "thin and stick up unnaturally"): each corner carries a low boxed lamp cluster on the
+      // glacis shoulder's front edge (crown 1.30: with the fume extractor the gun's -3.6 deg stop at yaw 18.5 passes
+      // 2.3 cm over its inner corner, past its 25 mm keep), standing on a short fender extension (z 3.41-3.59) from whose
+      // edge a 0.40 m rubber mud flap hangs ahead of the idler (photographs 1 and 3), its hem 4.6 cm clear of the wrap.
+      P.add('hull', box(0.42, 0.02, 0.18), s * 1.37, 1.20, 3.50);                // fender extension, 1 cm into the shoulder's face
+      arieteLampCluster(P, s * 1.42, 1.20, 3.52, s, { w: 0.32, h: 0.10, d: 0.20 });
+      P.add('hullRubber', box(0.40, 0.32, 0.02), s * 1.37, 1.05, 3.58);          // front mud flap, 0.89..1.21
+      P.add('hullDark', box(0.40, 0.025, 0.03), s * 1.37, 1.1975, 3.575);        // flap clamp bar on the extension's edge
+      // (old rubber lip under the crest: box(0.50, 0.05, 0.12) at 1.235 / 3.40, now the flap's head) (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
       // Closed glacis shoulder: the center glacis and the outboard crest used
       // to meet only in projection, leaving a background-visible pocket above
       // the idler at oblique angles.  This shallow armor wedge overlaps the
@@ -511,8 +520,8 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
   buildArieteHullStage2(); // V splash rail HUGGING the glacis (r3: the -0.16 tilt topped 1.42 over the ref's bare 1.26-1.35 line)
   yield 'buildArieteHullStage2';
   const buildArieteMarkingsStage1 = (): void => {
-    headlight(P, -1.40, 1.20, 3.30, -0.25, 0.048);                              // (r3-1024: sunk — the 1.35 guard crowns printed the 3.21 side col over the ref's 1.279 line)                               // tucked at the crest shoulders (the 1.42-high pods printed 1.47 over the ref's bare 1.28 glacis line)
-    headlight(P, 1.40, 1.20, 3.30, -0.25, 0.048);
+    // (267: the sunk headlight pods at ±1.40 / 1.20 / 3.30 became the corner lamp clusters, buildArieteHullStage2; the
+    // round-1 nose grille is gone again, round 2: "the photos show a plain glacis")
     P.add('hullDetail', torus(0.08, 0.015, 10), -0.60, 0.62, 3.40, Math.PI / 2, 0, 0); // tow eyes
     P.add('hullDetail', torus(0.08, 0.015, 10), 0.60, 0.62, 3.40, Math.PI / 2, 0, 0);
     // release 231: no lift eyes on the deck edge (their rings stood 4.7 cm into the turret's sweep)
@@ -548,19 +557,29 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
     fenders(P, 1.20, 1.56, 1.41, -3.55, 2.45, 0.028);                            // fenders END at the glacis knee (the 3.30 run printed a 1.44 shelf over the ref's bare 1.26-1.38 glacis line)
     fenders(P, 1.55, 1.71, 1.400, -3.71, 2.45, 0.024);                          // trench fill to the skirt inner face (owner 2026-10-19 sweep: it stopped at 1.67, 3.6 cm short of the 1.706 face, and every skirt panel floated) (turret-fix round: the bare 1.56..1.735 strip read as a black trench over the track top at every 3/4 angle — SS-B2). Top 1.412 stays UNDER both the 1.42 skirt line and the 1.424 fender top: the first 1.41-seat fill printed one extra side-row pixel line (side_hull 69.5 -> 68.9)
     for (const s of [-1, 1]) {
-      for (let k = 0; k < 12; k++) {                                             // restore the authored seven-wheel read: retain the original panel crowns,
-        P.add('hull', box(0.0265, 0.62, 0.455), s * 1.71925, 1.11, -2.98 + k * 0.4775); // but lift the hem above the road-wheel crowns instead of hiding the
-        P.add('hull', box(0.0225, 0.495, 0.455), s * 1.74375, 1.0475, -2.98 + k * 0.4775); // complete suspension behind an almost continuous wall.
+      // 267 (lane italy-korea-bmp-267, series C1 photographs 2 and 6): six long skirt panels and the raked leading panel
+      // (seven), each ~0.95 m, not twelve 0.46 m slats; same run (z -3.2075..2.50), same crowns, hems and outer-skin split.
+      const skirtPanel = (5.7075 - 5 * 0.0225) / 6;
+      for (let k = 0; k < 6; k++) {                                              // restore the authored seven-wheel read: retain the original panel crowns,
+        const pz = -3.2075 + skirtPanel / 2 + k * (skirtPanel + 0.0225);
+        P.add('hull', box(0.0265, 0.62, skirtPanel), s * 1.71925, 1.11, pz);     // but lift the hem above the road-wheel crowns instead of hiding the
+        P.add('hull', box(0.0225, 0.495, skirtPanel), s * 1.74375, 1.0475, pz);  // complete suspension behind an almost continuous wall.
+        P.add('hullDetail', box(0.016, 0.05, 0.10), s * 1.759, 0.835, pz);       // lifting handle at the hem, mid-panel
+        if (k > 0) P.add('hullDark', box(0.03, 0.60, 0.024), s * 1.712, 1.11, pz - skirtPanel / 2 - 0.01125); // panel joint behind the gap
       }                                                                          // r3-1024 OUTER-SKIN SPLIT: main course tops 1.42 pull inboard to x 1.7325 (rendered 1.7546, 2px clear of the ±1.7625 col boundary) and a LOW outer skin (x 1.7325-1.755, top 1.295) rides the ±1.784 front cols — the ref's outermost skirt cols read tops 1.317 rendered, not 1.57; the full-height 1.755 faces printed +0.12 there
       P.add('hull', slab(                                                        // 13th course = the ref's SLANTED LEADING CUT (one raked lip 1.42@2.52 -> 1.34@2.98 — the flat 1.42 course printed 0.10-0.14 over the falling glacis line on four side cols + the +-1.797 front col)
-        [s * 1.706, 0.80, 2.498], [s * 1.7325, 0.80, 2.498], [s * 1.7325, 0.80, 2.98], [s * 1.706, 0.80, 2.98],
+        // 267 round 2 (photograph 2 and the Opus critic: the leading panel's front edge rakes back): the leading edge falls
+        // 35 deg from the crest's 2.98 to the hem at 2.602; top line, hem and run unchanged (side mask: the hull tub fills
+        // the cut-away triangle behind it)
+        [s * 1.706, 0.80, 2.498], [s * 1.7325, 0.80, 2.498], [s * 1.7325, 0.80, 2.602], [s * 1.706, 0.80, 2.602],
         [s * 1.706, 1.42, 2.498], [s * 1.7325, 1.42, 2.498], [s * 1.7325, 1.34, 2.98], [s * 1.706, 1.34, 2.98])); // 2026-10-19 (owner float sweep): led 22 mm past the 12th panel; laps 2 mm onto it
-      P.add('hull', box(0.0225, 0.495, 0.4575), s * 1.74375, 1.0475, 2.75125);  // 13th-course outer skin
+      P.add('hull', slab(                                                        // 13th-course outer skin, raked with it
+        [s * 1.7325, 0.80, 2.5225], [s * 1.755, 0.80, 2.5225], [s * 1.755, 0.80, 2.602], [s * 1.7325, 0.80, 2.602],
+        [s * 1.7325, 1.295, 2.5225], [s * 1.755, 1.295, 2.5225], [s * 1.755, 1.295, 2.9485], [s * 1.7325, 1.295, 2.9485]));
       P.add('hull', box(0.0265, 0.62, 0.34), s * 1.71925, 1.11, -3.39);          // 14th course over the sprocket
       P.add('hull', box(0.0225, 0.495, 0.34), s * 1.74375, 1.0475, -3.39);       // 14th-course outer skin
       if (s > 0) P.add('hull', box(0.055, 0.50, 0.38), s * 1.75, 1.05, 0.92);    // R SKIRT END PLATE, crown preserved / hem lifted
       else P.add('hull', box(0.055, 0.04, 0.38), s * 1.75, 1.275, 0.92);         // L MIRROR-DOT STRIP x -1.7225..-1.7775 (r3 1024: the ref's -1.822 front col is a 1.272-1.314 DOT — its L mirror arm — where the R col carries the full band; the symmetric full plate paid 0.332, THE worst front_hull col. The 0.38 z-band keeps the plan ±1.84 dot AND the widthM pixel column; max authored |x| stays 1.7775 = the render-scale k anchor)
-      for (let k = 0; k < 6; k++) P.add('hullDark', box(0.036, 0.50, 0.016), s * 1.715, 1.05, 2.62 - k * 1.00); // seam strips ON the shaved panels
     }
   };
   buildArieteMarkingsStage1();
@@ -848,6 +867,13 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
     // ref's own smooth tube SKIPS its slabs — its i13 top is the 1.628
     // glacis; a 12-seg would paint 1.84). MRS union 0.27 < the 12% cut.
     P.addGunExtra(cylZ(0.111, 2.913, 24), 0, 0, 3.1055);
+    // 267 round 2 (photographs 2 and 6, the registered print's own thick tube section at 30-57 % of the run, and the Opus
+    // critic): the fume extractor shows as a 1.3x bulge over the sleeve (r 0.144), 41-53 % of the way from the mantlet
+    // (z 2.90-3.30). It starts no nearer the mantlet: at 2.70 it passed 4 mm over the skirt's rear corner at the -2.5 deg
+    // stop at yaw 151 (the kit's own evacuator at 0.685 stays inside the sleeve).
+    P.addGunExtra(cylZ(0.144, 0.05, 24, 0.111), 0, 0, 2.925);
+    P.addGunExtra(cylZ(0.144, 0.30, 24), 0, 0, 3.10);
+    P.addGunExtra(cylZ(0.111, 0.05, 24, 0.144), 0, 0, 3.275);
     buildGun(P, { len: 4.93, r: 0.075, sleeve: true, evac: 0.685, evacR: 1.40, collar: true, baseR: 0.16 });
     muzzleBore(P, 0.075, 4.91);                                                  // §B3.1 muzzle bore (shadow-named — see the helper)
     // MRS/muzzle collar (push round): keep this primary circular envelope on

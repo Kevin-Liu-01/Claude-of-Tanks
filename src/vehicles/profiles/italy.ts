@@ -36,8 +36,8 @@ import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mount as addFitting } from './fittingMount.ts';
+import { arieteLampCluster, arieteSideLouvre, attilaSightHead, boltHeads, wedge } from './arieteMkParts.ts';
 import { sampleArmorFace } from './armorFaceSampling.ts';
-import { sectionSolid } from './sectionSolid.ts';
 import { fitsInSkirt, profileSkirtGeometry, skirtBand, skirtBottomAt, skirtSegment, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { ARIETE_PROTO_TURRET_LIFT_M } from '../modern3Specs.ts';
@@ -92,6 +92,10 @@ function faceSeatedArmorCassette(
   h: number,
   d: number,
   embed: number,
+  // 267 (lane italy-korea-bmp-267): 'plate' is the Ariete C2's bolted add-on armour (C2 photographs: plain flat blocks
+  // with chamfered edges, no dark lid), `bevel` its edge chamfer and `bolts` its corner bolt heads; 'era' (default) is the
+  // C1 prototype's trials cassette with its lid.
+  style: { kind: 'era' } | { kind: 'plate'; bevel: number; bolts: boolean } = { kind: 'era' },
 ): void {
   const normal = face.normal.clone().normalize();
   const zAxis = courseAxis.clone().addScaledVector(normal,
@@ -103,6 +107,22 @@ function faceSeatedArmorCassette(
   const center = face.point.clone().addScaledVector(normal, h / 2 - embed / 2);
   const armorBucket = owner === 'hull' ? 'hull' : 'turret';
   const detailBucket = owner === 'hull' ? 'hullDark' : 'turretDark';
+  if (style.kind === 'plate') {
+    const b = style.bevel, hw = w / 2, hd = d / 2;
+    P.visualEraCluster(`italy-layered-${owner}`, owner, () => {
+      P.add(armorBucket, wedge([-hw, -embed, hd], [hw, -embed, hd], [hw, -embed, -hd], [-hw, -embed, -hd],
+        [-hw + b, h, hd - b], [hw - b, h, hd - b], [hw - b, h, -hd + b], [-hw + b, h, -hd + b]),
+      face.point.x, face.point.y, face.point.z, rotation.x, rotation.y, rotation.z);
+    });
+    if (style.bolts && P.q) {
+      const at = (u: number, v: number): THREE.Vector3 => face.point.clone().addScaledVector(xAxis, u)
+        .addScaledVector(normal, h).addScaledVector(zAxis, v);
+      const iu = hw - b - 0.03, iv = hd - b - 0.03;
+      boltHeads(P, owner === 'hull' ? 'hullDetail' : 'turretDetail',
+        [at(-iu, iv), at(iu, iv), at(iu, -iv), at(-iu, -iv)], normal);
+    }
+    return;
+  }
   P.visualEraCluster(`italy-layered-${owner}`, owner, () => {
     P.add(armorBucket, KIT.box(w, h + embed, d), center.x, center.y, center.z,
       rotation.x, rotation.y, rotation.z);
@@ -156,7 +176,7 @@ const ARIETE_SKIRT: ProfileSkirt = { inner: 1.725, outer: 1.76, stations: [
 // ---------------------------------------------------------------------------
 function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfileBuild {
   const { box, cylY, cylZ, openRackGrid, torus, buildGun, buildRunningGear,
-    headlight, liftEye, periscope, towCable, stowage } = KIT;
+    liftEye, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const c2 = mark === 'c2';
@@ -237,21 +257,26 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       [-1.50, 1.21, 3.62], [1.50, 1.21, 3.62], [1.475, 1.115, 3.785], [-1.475, 1.115, 3.785]));
     P.add('hull', slab(                                                          // under-nose chin: belly 0.42@+3.00 -> 0.97@+3.79 (12%-band bow anchor;
       [-0.95, 0.42, 3.00], [0.95, 0.42, 3.00], [0.90, 0.97, 3.79], [-0.90, 0.97, 3.79],   // x ±0.95 clear of the native track lane)
-      [-0.95, 1.24, 3.00], [0.95, 1.24, 3.00], [0.90, 1.19, 3.79], [-0.90, 1.19, 3.79]));
+      // 267 round 2: its crown falls to 1.10 at the nose (was 1.19): it stood 2-8 cm through glacis B and the nose band
+      // ahead of z 3.45 as a raised 1.8 m plate on the nose, the "transverse slat bar" no photograph shows
+      [-0.95, 1.24, 3.00], [0.95, 1.24, 3.00], [0.90, 1.10, 3.79], [-0.90, 1.10, 3.79]));
     for (const s of [-1, 1]) {
       P.add('hull', slab(                                                        // bow shoulder closures tub->nose (idler pocket, §5.18 no-air;
         [s * 0.88, 0.42, 3.00], [s * 0.95, 0.42, 3.00], [s * 0.95, 0.70, 3.55], [s * 0.88, 0.70, 3.55],  // outer face ±0.95 clear of the lane)
         [s * 0.88, 1.26, 3.00], [s * 0.95, 1.26, 3.00], [s * 0.95, 1.15, 3.55], [s * 0.88, 1.15, 3.55])); // tops tucked under the §5.299 raked B plane
-      P.add('hull', box(0.18, 0.14, 0.19), s * 0.87, 1.20, 3.705);               // nose center bumps to +3.80 (plan_hull 3.803 @ x ±0.825..0.915)
-      headlight(P, s * 0.87, 1.10, 3.70, -0.22, 0.05);                           // headlight pods on the bumps
+      // 267 (lane italy-korea-bmp-267, from the series C1 and C2 photographs): the lamps are not on two bumps at the nose
+      // centre but in a low boxed cluster set into each front corner of the glacis edge, over the track, with a flat mud
+      // flap hanging from the glacis edge behind it (arieteMkParts.ts). The centre bumps and their brush guards are gone.
+      // Round 2 (both blind critics: "low, boxed headlight clusters at the front hull corners, on the upper glacis edge";
+      // the C1's under-lip lamp and its long flap read "added on" and "reaching low toward the track line"): the cluster
+      // sits on the nose band's front edge, its face 15 mm ahead of the nose, and the flap's hem is at the lower nose line
+      // (0.97). Gun clearance (nationalGunClearance, measured): the C1 prototype's -6.5/-6.7 stops at yaw 16-21 graze the
+      // nose, so its crown is 1.18 (1 cm under the barrel's 25 mm keep at its inner corner); the C2's -3.8/-3.9 stops let
+      // it stand to 1.22.
+      arieteLampCluster(P, s * 1.31, 1.06, 3.80, s, { w: 0.32, h: c2 ? 0.16 : 0.12, d: 0.16 });
+      P.add(c2 ? 'hullDetail' : 'hullRubber', box(0.40, 0.18, 0.02), s * 1.30, 1.06, 3.49);        // mud flap, its head 1 cm into the glacis underside
+      P.add('hullDark', box(0.40, 0.025, 0.045), s * 1.30, 1.128, 3.49);                            // flap clamp bar under the glacis edge
       P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.819, 3.694, Math.PI / 2, 0, 0); // bow tow eyes; 2026-10-19 (owner float sweep): hung 0.19 m under the chin, now from it (r2: last 8 mm closed)
-      // s5322-C4 headlight BRUSH GUARDS (§5.283 debt; thin low-kit bars also
-      // armor the razor-margin bow anchor columns per the whip-rough law).
-      P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.79, 1.12, 3.76);        // guard verticals (feet buried in the chin plane)
-      P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.95, 1.12, 3.76);
-      P.add('hullDetail', box(0.174, 0.014, 0.014), s * 0.87, 1.205, 3.76);      // guard hoop bar under the bump crest
-      P.add('hullDetail', box(0.012, 0.012, 0.085), s * 0.79, 1.19, 3.7475);     // stays tied back into the bump face
-      P.add('hullDetail', box(0.012, 0.012, 0.085), s * 0.95, 1.19, 3.7475);
       // s5322-C5 bow tow SHACKLES stowed FLAT on the nose-band plate above
       // their eyes (crew stowage read: D-bow half-buried on the raked plate +
       // clamp block; the first leaned-off-the-chin seat FLOATED clear of both
@@ -263,15 +288,10 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
     // crossing weave strips riding the §5.299 raked plane A (pitch 0.0638;
     // tops <= surface+0.020 — the read is tone relief, budgeted inside the
     // side_hull headroom; clear of the c2 add-on rows which start z 2.04).
-    P.add('hullDark', box(1.24, 0.009, 0.28), 0.22, 1.3667, 1.86, 0.0638, 0, 0);
-    P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3826, 1.77, 0.0638, 0, 0);
-    P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3767, 1.86, 0.0638, 0, 0);
-    P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3710, 1.95, 0.0638, 0, 0);
-    for (let k = 0; k < 5; k++) {
-      P.add('hullDetail', box(0.022, 0.011, 0.26), -0.26 + k * 0.24, 1.3767, 1.86, 0.0638, 0, 0);
-    }
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.34, 2.30, -0.055, s * 0.42, 0); // V splash rail riding the raked plane (crest ~1.36, the print's furniture line)
-    towCable(P, [[-1.06, 1.30, 2.50], [0, 1.355, 2.05], [1.06, 1.30, 2.50]]);     // drape re-seated on the §5.299 slope (was fully buried under the flat plate)
+    // 267: the woven band at the driver's station is gone. Round 2 (both blind critics: "the photos show a plain glacis";
+    // "thin dark rods cross in an X on the glacis below the mantlet, like loose stray cables"): the glacis carries no intake
+    // grille, no V splash rail and no draped tow cable (the rear plate keeps its stowed cable); it is the plain raked plate
+    // of the photographs.
     // The source groups mix fixed and rotating parts. Shoulder bins, roof
     // furniture and the left cheek fairing belong to the turret on BOTH marks.
     // Their source-space seats are preserved through localY/L; only the roof
@@ -394,6 +414,11 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
   const baseSkirtTopY = 1.38;
   const heavySkirtBottomY = 0.60;
   const heavySkirtTopY = 1.42;
+  // 267: the C2's front skirt blocks (bays 1-6, z -0.15..2.63) end in a 0.20 m chamfer rising to a fender narrowed to
+  // |x| 1.69 over them
+  const C2_SKIRT_CHAMFER_H = 0.20;
+  const C2_FENDER_EDGE_X = 1.69;
+  const C2_BLOCK_RUN: readonly [number, number] = [3.09 - (3.09 - skirtRear) / 13 * 7, 3.09 - (3.09 - skirtRear) / 13];
   const buildArieteMkHullStage3 = (): void => {
     for (const s of [-1, 1] as const) {
       const buildArieteMkHullCourse1 = (): void => {
@@ -403,6 +428,18 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
         // profile, 6 cm under its hem and 4 cm under its top, so it rakes with it at both ends)
         P.add(skirtBucket, profileSkirtGeometry({ inner: 1.65, outer: 1.68, stations: skirtSegment(ARIETE_SKIRT, -2.92, 2.90).stations
           .map(([z, bottom, top]) => [z, bottom - (heavySkirtBottomY - baseSkirtBottomY), top - (heavySkirtTopY - baseSkirtTopY)]) }, s));
+        if (!c2) {
+          // 267: aft of the heavy package the C1 prototype's light skirt reads as panels too (series photographs: ~0.85-1 m
+          // panels with hem handles), not one blank 2.5 m wall: two panel joints and three hem handles on the apron face
+          for (const z of [-1.25, -2.09]) {
+            const lo = skirtBottomAt(ARIETE_SKIRT, z) - (heavySkirtBottomY - baseSkirtBottomY) + 0.03;
+            const hi = skirtTopAt(ARIETE_SKIRT, z) - (heavySkirtTopY - baseSkirtTopY) - 0.03;
+            P.add(skirtDarkBucket, box(0.012, hi - lo, 0.022), s * 1.682, (lo + hi) / 2, z);
+          }
+          for (const z of [-0.83, -1.67, -2.50]) {
+            P.add(skirtBucket, box(0.018, 0.05, 0.10), s * 1.686, skirtBottomAt(ARIETE_SKIRT, z) - 0.02, z);
+          }
+        }
         // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
         // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
         // marks. 0.50 pitch < the 0.54 station slab (edge-on prism law holds);
@@ -417,44 +454,109 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
         const panelCarrierX = 1.760;
         for (let k = 0; k < panels; k++) {
           const zc = z0 - panelD * (k + 0.5);
-          // outer carrier reaches through the fender shelf without lowering its hem: a panel of the profile run
-          P.add(skirtBucket, profileSkirtGeometry(skirtSegment(ARIETE_SKIRT,
-            zc - (panelD - 0.025) / 2, zc + (panelD - 0.025) / 2), s));
-          // panel seams span the carrier face between its lines, bolts where they fall on it
-          const seamZ = zc - panelD / 2 + 0.012, seamLo = skirtBottomAt(ARIETE_SKIRT, seamZ) + 0.04;
-          const seamHi = skirtTopAt(ARIETE_SKIRT, seamZ) - 0.04;
-          P.add(skirtDarkBucket, box(0.012, seamHi - seamLo, 0.02), s * (panelCarrierX - 0.008), (seamLo + seamHi) / 2, seamZ);
-          for (const [y, dz] of [[1.09, -0.22], [0.79, 0.22]] as const) {
-            const z = zc + panelD * dz;
-            if (y > skirtBottomAt(ARIETE_SKIRT, z) + 0.03 && y < skirtTopAt(ARIETE_SKIRT, z) - 0.03)
-              P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), y, z);
+          // 267 (C2 acceptance photographs 1-3, the skirt crop in ariete/crop_c2_skirt02.png): the C2's front run is five
+          // THICK armour blocks behind the raked corner bay, each a tall vertical face under a steep chamfered top that
+          // climbs inboard to a narrowed fender; aft of them thin plain plates end in the long rear louvre; no dark ERA
+          // lids. Same 13 bays, two courses a bay (one on the raked end bays): the block's face and its chamfer.
+          // Round 2 (critics: the C2's blocks should cover the front 55-60 % of the run, the rest one flat panel with its
+          // grille; the C1 prototype's panels read half the photographs' width): the C2 has six blocks behind the corner
+          // bay (bays 1-6, 54 % of the run with the corner), its rear six bays one flush panel; the C1 prototype's seven
+          // carriers read as four panels (~1.0 m, joints at bays 2, 4 and 6), its ERA courses unchanged on them.
+          const c2Block = c2 && k >= 1 && k < 7;
+          const c2Flat = c2 && k >= 7;
+          // (the C2's flat rear section in three two-bay panels, joints at bays 7, 9 and 11)
+          const joint = c2 ? !c2Flat || k % 2 === 1 : k % 2 === 0;                     // a panel joint at the bay's front edge
+          const jointAft = c2 ? !c2Flat || (k % 2 === 0 && k < panels - 1) : k % 2 === 1 && k < panels - 1; // ... at its rear
+          const bayTop = Math.min(skirtTopAt(ARIETE_SKIRT, zc - panelD / 2), skirtTopAt(ARIETE_SKIRT, zc + panelD / 2));
+          const chamferBottom = bayTop - C2_SKIRT_CHAMFER_H;
+          // outer carrier reaches through the fender shelf without lowering its hem: a panel of the profile run (a C2
+          // block's carrier stops under its chamfer); carriers run on unbroken across a panel, 25 mm apart at its joints
+          const carrier = skirtSegment(ARIETE_SKIRT, zc - panelD / 2 + (jointAft ? 0.0125 : 0), zc + panelD / 2 - (joint ? 0.0125 : 0));
+          P.add(skirtBucket, profileSkirtGeometry(c2Block ? { ...carrier, stations: carrier.stations
+            .map(([z, bottom]) => [z, bottom, chamferBottom + 0.02]) } : carrier, s));
+          if (!c2Block && joint) {
+            // panel seams span the carrier face between its lines, bolts where they fall on it
+            const seamZ = zc - panelD / 2 + 0.012, seamLo = skirtBottomAt(ARIETE_SKIRT, seamZ) + 0.04;
+            const seamHi = skirtTopAt(ARIETE_SKIRT, seamZ) - 0.04;
+            P.add(skirtDarkBucket, box(0.012, seamHi - seamLo, 0.02), s * (panelCarrierX - 0.008), (seamLo + seamHi) / 2, seamZ);
+            for (const [y, dz] of [[1.09, -0.22], [0.79, 0.22]] as const) {
+              const z = zc + panelD * dz;
+              if (y > skirtBottomAt(ARIETE_SKIRT, z) + 0.03 && y < skirtTopAt(ARIETE_SKIRT, z) - 0.03)
+                P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), y, z);
+            }
+            const hingeZ = zc + panelD / 2 - 0.0125;
+            if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07),
+              s * (panelCenterX + 0.004), skirtTopAt(ARIETE_SKIRT, hingeZ) - 0.07, hingeZ); // hinge straps bridge the panel crown into the fender seat
           }
-          const hingeZ = zc + panelD / 2 - 0.0125;
-          if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07),
-            s * (panelCenterX + 0.004), skirtTopAt(ARIETE_SKIRT, hingeZ) - 0.07, hingeZ); // hinge straps bridge the panel crown into the fender seat
-          for (const y of [0.79, 1.09]) {
+          if (c2Block) {
+            const blockD = panelD - 0.03, plate = { kind: 'plate', bevel: 0.016, bolts: false } as const;
+            // the vertical face: 52 mm proud of the carrier (outer plane 1.812, the receipt's lid plane), backed 90 mm into it
+            const faceBottom = 0.635, faceTop = chamferBottom - 0.004;
+            const face = { point: new THREE.Vector3(s * panelCarrierX, (faceBottom + faceTop) / 2, zc),
+              normal: new THREE.Vector3(s, 0, 0), dv: new THREE.Vector3(0, 0, 1) };
+            faceSeatedArmorCassette(P, 'hull', face, face.dv, faceTop - faceBottom, 0.052, blockD, 0.09, plate);
+            // the chamfer: from the face's top edge (1.812) up and inboard to the narrowed fender's edge
+            const p0 = new THREE.Vector3(s * 1.812, chamferBottom, zc), p1 = new THREE.Vector3(s * C2_FENDER_EDGE_X, bayTop, zc);
+            const along = p1.clone().sub(p0), len = along.length();
+            const n = new THREE.Vector3(along.y * s, -along.x * s, 0).normalize();
+            if (n.x * s < 0) n.negate();
+            const seat = p0.clone().add(p1).multiplyScalar(0.5).addScaledVector(n, -0.03);
+            faceSeatedArmorCassette(P, 'hull', { point: seat, normal: n, dv: new THREE.Vector3(0, 0, 1) },
+              new THREE.Vector3(0, 0, 1), len, 0.03, blockD, 0.06, plate);
+            if (c2EraReceipt) c2EraReceipt.sideSkirtCassettes += 2;
+            continue;
+          }
+          // (the C2's flat rear panel: its two courses meet at 0.94 and run bay into bay, a flush 12 mm skin)
+          const rows: readonly (readonly [number, number])[] = c2Flat ? [[0.79, 0.30], [1.09, 0.30]] : [[0.79, 0.275], [1.09, 0.275]];
+          for (const [y, rowW] of rows) {
             // (release 240: the 0.275 m cassette only where it lies on the profile panel)
-            if (!fitsInSkirt(ARIETE_SKIRT, zc - (panelD - 0.055) / 2, zc + (panelD - 0.055) / 2, y - 0.1375, y + 0.1375)) continue;
+            if (!fitsInSkirt(ARIETE_SKIRT, zc - (panelD - 0.055) / 2, zc + (panelD - 0.055) / 2, y - rowW / 2, y + rowW / 2)) continue;
             const face = {
               point: new THREE.Vector3(s * panelCarrierX, y, zc),
               normal: new THREE.Vector3(s, 0, 0),
               dv: new THREE.Vector3(0, 0, 1),
             };
-            faceSeatedArmorCassette(P, 'hull', face, face.dv,
-              0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
+            if (c2Flat) {
+              const lead = joint ? 0.0125 : 0, trail = jointAft ? 0.0125 : 0;      // the panel's joints
+              face.point.z += (trail - lead) / 2;
+              faceSeatedArmorCassette(P, 'hull', face, face.dv, rowW, 0.012, panelD - lead - trail,
+                C2_ERA_EMBED_M, { kind: 'plate', bevel: 0.002, bolts: false });
+            } else if (c2) {
+              // the raked corner bay carries a thick block too (photographs: the corner module under the lamp cluster)
+              faceSeatedArmorCassette(P, 'hull', face, face.dv, rowW, 0.052,
+                panelD - 0.03, 0.09, { kind: 'plate', bevel: 0.016, bolts: false });
+            } else {
+              faceSeatedArmorCassette(P, 'hull', face, face.dv,
+                0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
+            }
             if (c2EraReceipt) c2EraReceipt.sideSkirtCassettes += 1;
             else c1EraReceipt.sideSkirtCassettes += 1;
           }
         }
+        // the C2's rear grille (photographs 1 and 3: one long slatted field in the flat rear panel, over its last three bays)
+        if (c2) arieteSideLouvre(P, { dark: skirtDarkBucket, detail: skirtBucket }, s, panelCarrierX + 0.012,
+          0.84, 1.22, -2.84, -1.56, 6);
         // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD): the front panel's profile under its top line
         P.add(skirtBucket, profileSkirtGeometry(skirtBand(skirtSegment(ARIETE_SKIRT, 2.65, 3.07, 1.755, 1.80), 0.06, 9), s));
-        P.add(skirtBucket, box(0.275, 0.06, sideWallFront - skirtSeatRear),
-          s * 1.6525, 1.39, (sideWallFront + skirtSeatRear) / 2);                 // aft fender shelf: 20 mm hull overlap, 30+ mm skirt overlap
-        P.add(skirtBucket, slab(                                                   // forward shelf follows the glacis instead of hovering over it
-          [s * 1.48, 1.36, sideWallFront], [s * 1.79, 1.36, sideWallFront],
-          [s * 1.79, 1.20, 3.09], [s * 1.48, 1.20, 3.09],
-          [s * 1.48, 1.42, sideWallFront], [s * 1.79, 1.42, sideWallFront],
-          [s * 1.79, 1.26, 3.09], [s * 1.48, 1.26, 3.09]));
+        // aft fender shelf: 20 mm hull overlap, 30+ mm skirt overlap (267: on the C2 narrowed to the chamfers' 1.69 edge
+        // over the block run)
+        const aftShelf = (zA: number, zB: number, outer: number): void => P.add(skirtBucket,
+          box(outer - 1.515, 0.06, zB - zA), s * (1.515 + outer) / 2, 1.39, (zA + zB) / 2);
+        const fwdShelf = (zA: number, zB: number, outer: number): void => {
+          const y = (z: number): number => 1.42 - (z - sideWallFront) * (0.16 / (3.09 - sideWallFront));
+          P.add(skirtBucket, slab(                                                 // forward shelf follows the glacis instead of hovering over it
+            [s * 1.48, y(zA) - 0.06, zA], [s * outer, y(zA) - 0.06, zA], [s * outer, y(zB) - 0.06, zB], [s * 1.48, y(zB) - 0.06, zB],
+            [s * 1.48, y(zA), zA], [s * outer, y(zA), zA], [s * outer, y(zB), zB], [s * 1.48, y(zB), zB]));
+        };
+        if (c2) {
+          aftShelf(skirtSeatRear, C2_BLOCK_RUN[0], 1.79);
+          aftShelf(C2_BLOCK_RUN[0], sideWallFront, C2_FENDER_EDGE_X + 0.004);
+          fwdShelf(sideWallFront, C2_BLOCK_RUN[1], C2_FENDER_EDGE_X + 0.004);
+          fwdShelf(C2_BLOCK_RUN[1], 3.09, 1.79);
+        } else {
+          aftShelf(skirtSeatRear, sideWallFront, 1.79);
+          fwdShelf(sideWallFront, 3.09, 1.79);
+        }
         // front mudguards (plan ±1.545..1.795 -> z 3.005..3.093; front-view
         // crest 1.33, outer droop 1.22)
         P.add(skirtBucket, box(0.14, 0.10, 0.46), s * 1.72, 1.275, 2.86);
@@ -782,10 +884,12 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
             const cheekFrontFace: Quad = [
               cheekBottom[0], cheekBottom[1], cheekTop[1], cheekTop[0],
             ];
+            // 267 (C2 photographs 2-5): the field is the C2's bolted add-on plating, flush chamfered plates with corner
+            // bolts that close into one panelled front, not ERA bricks with dark lids
             for (const u of [0.10, 0.30, 0.50, 0.70, 0.90]) for (const v of [0.27, 0.73]) {
               const face = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
               faceSeatedArmorCassette(P, 'turret', face, face.dv,
-                0.13, 0.055, 0.20, C2_ERA_EMBED_M);
+                0.150, 0.045, 0.255, C2_ERA_EMBED_M, { kind: 'plate', bevel: 0.006, bolts: true });
               if (c2EraReceipt) {
                 c2EraReceipt.turretCheekCassettes += 1;
                 c2EraReceipt.turretCheekForwardNormalDotMin = Math.min(
@@ -810,7 +914,7 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
                     dv: new THREE.Vector3(0, 0, 1),
                   };
                   faceSeatedArmorCassette(P, 'turret', face, face.dv,
-                    carrier.h * 0.34, 0.055, carrier.d * 0.37, C2_ERA_EMBED_M);
+                    carrier.h * 0.43, 0.045, carrier.d * 0.47, C2_ERA_EMBED_M, { kind: 'plate', bevel: 0.012, bolts: true });
                   if (c2EraReceipt) c2EraReceipt.turretSideCassettes += 1;
                 }
               };
@@ -830,20 +934,14 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
                 0.16, 0.050, 0.26, C2_ERA_EMBED_M);
               if (c2EraReceipt) c2EraReceipt.turretBustleCassettes += 1;
             }
-            for (const [i, py, prx] of [[0, 1.364, -0.064], [1, 1.345, -0.10], [2, 1.315, -0.10]]) {
-              const buildArieteMkHullCourse2 = (): void => {
-                P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), py, 2.30 + i * 0.30, prx, 0, 0);
-              };
-              buildArieteMkHullCourse2(); // glacis add-on rows re-seated ON the §5.299 raked plane
-            }
+            // (267: the glacis add-on rows are gone: no C2 photograph shows plates on the upper glacis, which carries the
+            // intake grille between the lamp clusters)
           };
           buildArieteMkTurretCourse1();
         }
-        // 2026-10-19 (owner float sweep): the housing stood 61 mm off the roof field; it seats on it with its window.
-        P.snapGroup('ariete-c2-commander-sight', () => {
-          P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
-          P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
-        }, { reachM: 0.08 });
+        // 267 (C2 photographs 1-5): the commander's new panoramic sight is an armoured drum with a domed cap and a meshed
+        // forward window, standing on the C1 pano's pedestal (it replaces the plain box housing; arieteMkParts.ts)
+        attilaSightHead(P, 'turret', -0.76, 1.165, L(-0.16));
         // (release 240, the owner: "make sure all tank turrets are clear of hulls": the pod stood 0.22-0.32 m over the fore
         // deck inside the turret's front volume, since release 231 removed its fairing; it seats on the upper glacis ahead of
         // the driver, its top under the bustle's 1.80 m (world) sweep line)
@@ -856,22 +954,17 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
         stowage(P, 'turretDetail', rng, [[0.62, 0.76, L(-2.06), 0.48, 0.18, 0.24]]);
         addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, r: 0.02, rake: 0, seed: 52 }),
           -0.87, 0.86, L(-0.885));                                                 // second whip rigged on the C2 fit
-        // T-90-style automated weapon tower on the right roof.  The low race is
-        // the only structural part; pedestal, yoke, shields and gun remain
-        // equipment so they cannot inflate the turret armor receipt.
+        // 267 (C2 photographs 2-5): the C2's roof gun is the loader's 12.7 mm heavy MG on a pintle at his hatch, behind a
+        // two-leaf gun shield, not an automated tower: the race, yoke box, canted cheeks and sensor head are gone. It keeps
+        // the station's name, side and working rig (userData.remoteControlled marks a working station, as on the C1).
+        // (Round 2: at the old station's seat, aft-outboard of the hatch ring; on the ring's centre the field net's right
+        // flank re-cut and the turret's ring-overhang pockets grew 2020 -> 2216 cm2, roof-pocket census.)
         const rwsX = 0.54, rwsZ = L(-0.57);
-        P.addCupola('turret', cylY(0.18, 0.21, 0.10, 16), rwsX, 0.94, rwsZ);
-        P.addEquipment('turret', box(0.30, 0.20, 0.28), rwsX, 1.07, rwsZ);
-        // 2026-10-19 (owner float sweep): the canted cheeks stood 9 mm off the body; set 10 mm inboard onto it.
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.17, 1.20, rwsZ + 0.03, 0, 0, -0.08);
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.17, 1.20, rwsZ + 0.03, 0, 0, 0.08);
-        P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
-        P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
-        const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, ridingCradle: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
-          elev: -0.04, ammo: true, shield: true, scale: 0.88, seed: 46 });
+        const remoteRws = FITTINGS.pintleMG({ working: true, ridingCradle: true, mats: P.mats, cls: 'm2', tone: 'two-tone',
+          elev: -0.02, ammo: true, shield: 'armored', scale: 0.86, seed: 46 });
         remoteRws.name = 'arieteC2RemoteRws';
         remoteRws.userData.remoteControlled = true;
-        addFitting(P, 'turret', remoteRws, rwsX, 1.17, rwsZ + 0.02, [0, 0.08, 0]);
+        addFitting(P, 'turret', remoteRws, rwsX, 0.895, rwsZ, [0, 0, 0]);
         P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
       };
       buildArieteMkMarkingsCourse1();
@@ -912,11 +1005,13 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       P.turretG.userData.arieteC2EraReceipt = Object.freeze(c2EraReceipt);
     }
     P.turretG.userData.arieteEquipmentReceipt = Object.freeze(c2 ? {
+      // 267: one working station, the loader's shielded 12.7 mm pintle gun at his hatch (the C2 photographs)
       roofWeaponStations: 1,
-      remoteWeapon: 'nsvt',
+      remoteWeapon: 'm2',
       remoteControlled: true,
       remoteWeaponSide: 'right',
-      armoredTower: true,
+      armoredTower: false,
+      gunShield: true,
       rotatingShoulderModules: 4,
       rotatingApuAssembly: true,
     } : {
@@ -1037,6 +1132,12 @@ const buildArieteC2 = steppedBuilder(function* (P: ItalyBuilderPort): TankProfil
 });
 
 // ---------------------------------------------------------------------------
+// 267: the Carro's own parts live in carro45tParts.ts (imported here, beside its builder, so the shared header stays
+// the Ariete builder's).
+import { CARRO_TURRET, addCarroBowKit, addCarroBustleBins, addCarroDeckLouvres, addCarroEngineDeck, addCarroHatches,
+  addCarroRearHatch, addCarroRoofOptics, carroGlacisGeometry,
+  addCarroSkirts, addCarroSternKit, carroCheekGeometry, carroCrownGeometry, carroMantletGeometry, seatOnCarroUpperPlate,
+} from './carro45tParts.ts';
 // Carro 45t — OTO 45-tonne paper project, print-true ground-up build.
 // Gate-true lines (gatecurves decode, K=1): hull deck 1.496 (-2.25..+1.24),
 // rear deck 1.55 (-3.32..-2.96), stern tail 1.42-1.45 with raked plate;
@@ -1048,36 +1149,31 @@ const buildArieteC2 = steppedBuilder(function* (P: ItalyBuilderPort): TankProfil
 // six-wheel gear with raised idler (ramp to +3.5) and rear sprocket.
 // ---------------------------------------------------------------------------
 function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
-  const { box, cylY, cylZ, torus, frustum, buildGun,
-    buildRunningGear, headlight, periscope, liftEye } = KIT;
+  const { box, cylY, cylZ, buildGun, buildRunningGear, liftEye } = KIT;
   const slab = orientedSlab;
 
   // ---- hull tub + decks -----------------------------------------------------
   const buildCarro45TMarkingsStage1 = (): void => {
-    P.add('hull', box(1.90, 0.85, 5.60), 0, 0.915, 0.10);                        // tub core x ±0.95 (the 1.02 inner band plane owns the lane)
-    P.add('hull', box(2.80, 0.09, 5.60), 0, 1.375, 0.10);                        // sponson floors x ±1.40 ABOVE the animated sweep envelope (track top + bump travel)
+    // 267: the tub, its inner walls and the sponson floors end under the upper glacis (they stood up to 13 cm through it)
+    P.add('hull', box(1.90, 0.81, 5.55), 0, 0.895, 0.075);                       // tub core x ±0.95 (the 1.02 inner band plane owns the lane)
+    P.add('hull', box(2.80, 0.09, 5.06), 0, 1.375, -0.17);                       // sponson floors x ±1.40 ABOVE the animated sweep envelope (track top + bump travel)
     P.add('hull', box(2.80, 0.05, 4.45), 0, 1.471, -0.025);                      // main deck 1.496 (z -2.25..+2.20 — gate ref hull runs FLAT to the glacis knee; the raised crest is TURRET material in the print)
-    for (const s of [-1, 1]) P.add('hull', box(0.035, 1.03, 5.60), s * 0.965, 0.835, 0.10); // inner sponson walls (front_hull bot 0.324 @ ±0.95-0.98)
-    P.add('hull', box(2.80, 0.06, 0.34), 0, 1.526, -3.15);                       // rear deck 1.556 (z -3.32..-2.98)
-    P.add('hull', box(2.80, 0.05, 0.19), 0, 1.518, -2.885);                      // step 1.543
-    P.add('hull', box(2.80, 0.05, 0.28), 0, 1.484, -2.53);                       // step 1.509
-    P.add('hull', box(2.80, 0.045, 0.14), 0, 1.474, -2.32);                      // step to the main deck
-    // engine deck dressing: grille fields + fuel caps (§B3.2 density); VEH-13: the fields are no seat for spare links
-    withSeatRole(P, 'grille', (P) => {
-      P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
-      for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
-      P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
-      for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
-    });
-    for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.025, 12), s * 1.05, 1.508, -1.32);
+    for (const s of [-1, 1]) P.add('hull', box(0.035, 0.98, 5.55), s * 0.965, 0.81, 0.075); // inner sponson walls (front_hull bot 0.324 @ ±0.95-0.98)
+    // 267: one engine-deck plate at 1.455 and two framed louvre fields (carro45tParts.ts) replace the four stepped
+    // boxes (1.556/1.543/1.509/1.474) whose seams cut the old flat slats into dashes; VEH-13: no seat for spare links
+    addCarroEngineDeck(P);
+    withSeatRole(P, 'grille', (P) => addCarroDeckLouvres(P));
+    // fuel caps on the engine deck ahead of the louvres (267: off the turret deck, whose 1.52 caps set the turret seat 2 cm
+    // higher round their radius)
+    for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.025, 12), s * 1.20, 1.4625, -2.33);
     // ---- stern (tail 1.42-1.45 @ -3.42..-3.48, raked plate; plan rear center
     // -3.42..-3.49) -------------------------------------------------------------
     P.add('hull', slab(                                                          // raked tail plate center (the shoe lane owns |x| 1.02..1.58 below 1.26)
       [-0.95, 0.65, -3.24], [0.95, 0.65, -3.24], [0.95, 0.95, -3.385], [-0.95, 0.95, -3.385],
-      [-0.95, 1.45, -3.29], [0.95, 1.45, -3.29], [0.95, 1.45, -3.36], [-0.95, 1.45, -3.36]));
+      [-0.95, 1.44, -3.29], [0.95, 1.44, -3.29], [0.95, 1.44, -3.36], [-0.95, 1.44, -3.36]));
     for (const s2 of [-1, 1]) P.add('hull', slab(                                // tail plate outer courses ABOVE the band top
       [s2 * 0.94, 1.26, -3.26], [s2 * 1.38, 1.26, -3.26], [s2 * 1.38, 1.26, -3.34], [s2 * 0.94, 1.26, -3.36],
-      [s2 * 0.94, 1.45, -3.29], [s2 * 1.38, 1.45, -3.29], [s2 * 1.38, 1.45, -3.34], [s2 * 0.94, 1.45, -3.36]));
+      [s2 * 0.94, 1.44, -3.29], [s2 * 1.38, 1.44, -3.29], [s2 * 1.38, 1.44, -3.34], [s2 * 0.94, 1.44, -3.36]));
     // The belly rises from the tub's rear edge (z -2.70, y 0.49) to the raked plate's foot (z -3.24, y 0.65) on a
     // lower rear plate (owner 2026-10-19, "the empty gaps in hulls": the engine bay stood open 0.54 m from below, up to
     // the deck), 40 mm into the tub and 10 mm into the raked plate.
@@ -1085,45 +1181,29 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
       [-0.944, 0.496, -2.66], [0.944, 0.496, -2.66], [0.944, 0.656, -3.25], [-0.944, 0.656, -3.25],
       [-0.944, 0.576, -2.66], [0.944, 0.576, -2.66], [0.944, 0.736, -3.25], [-0.944, 0.736, -3.25]));
     P.add('hull', box(1.90, 0.62, 0.11), 0, 1.02, -3.405);                       // center exhaust recess block (ref plan -3.40..-3.46 across |x|<0.95)
-    P.add('hullDark', box(1.82, 0.50, 0.02), 0, 1.02, -3.455);
-    P.add('hull', box(2.76, 0.30, 0.10), 0, 1.30, -3.38);                        // upper rear plate band
-    P.add('hullDark', box(1.70, 0.34, 0.035), 0, 1.06, -3.40);                   // rear louvre grille
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.66, 0.026, 0.04), 0, 0.93 + k * 0.10, -3.415);
-    for (const s of [-1, 1]) {
-      P.add('hullDark', box(0.12, 0.07, 0.04), s * 1.15, 1.38, -3.395);          // taillights (seated on the -3.385 plate)
-      P.add('hullDetail', torus(0.07, 0.014, 10), s * 0.62, 0.94, -3.36, Math.PI / 2, 0, 0); // tow eyes (bottom at the ref's 0.83 tail band)
-      P.add('hull', box(0.045, 0.42, 0.60), s * 1.6925, 1.13, -2.95);            // final-drive outer caps OUTSIDE the shoe faces (1.583+0.08 radial pads; front cols ±1.66 read bottom 0.90)
-    }
+    P.add('hull', box(2.76, 0.29, 0.10), 0, 1.295, -3.38);                       // upper rear plate band (267: top 1.45 -> 1.44, under the gun's stern sweep)
+    // 267: the louvred exhaust grille, tail-light clusters and rear clevises (carro45tParts.ts) replace the flat black
+    // panel, the hidden louvre field and the buried lamps; the final-drive caps became the skirt's rear panel
+    addCarroSternKit(P);
     P.add('hull', box(0.36, 0.16, 0.10), 0, 1.38, -3.42);                        // convoy shield block (band-thin: the tail body edge stays pinned at -3.385)
     // ---- glacis + bow ((2.20,1.47)->(3.10,1.24)->nose 1.03@3.43; chin
     // 0.49@2.80 -> 0.95@3.43; final-drive noses to +3.52) -----------------------
-    P.add('hull', frustum(1.40, 3.10, 2.20, 1.40, 2.24, 2.20, 1.24, 1.468));     // upper glacis plane
-    P.add('hull', frustum(1.40, 3.37, 3.06, 1.40, 3.08, 3.06, 1.06, 1.25));     // nose wedge to +3.37 (ref PLAN center front 3.31-3.36; the pods own 3.487)
+    // upper glacis plane + nose wedge to +3.37 (ref PLAN center front 3.31-3.36), 267: one subdivided loft of the same
+    // lines (carro45tParts.ts), so the baked shading draws no diagonal seam across the plate
+    P.add('hull', carroGlacisGeometry());
+    P.add('hull', box(1.89, 0.138, 0.365), 0, 1.169, 2.8825);                    // bow fill between the chin and the glacis underside (the shortened tub left a 7 L pocket)
     P.add('hull', slab(                                                          // bow chin (tip band stays sub-threshold for the hull-row frame pin;
       [-0.95, 0.49, 2.70], [0.95, 0.49, 2.70], [0.94, 0.96, 3.47], [-0.94, 0.96, 3.47],   // x ±0.95 clear of the idler wrap)
       [-0.95, 1.26, 2.70], [0.95, 1.26, 2.70], [0.94, 1.02, 3.47], [-0.94, 1.02, 3.47]));
-    for (const s2 of [-1, 1]) {
-      P.add('hull', slab(                                                        // outboard chin shoulders ABOVE the wrap+shoe crown (flat run)
-        [s2 * 0.96, 1.27, 2.70], [s2 * 1.38, 1.27, 2.70], [s2 * 1.34, 1.27, 3.05], [s2 * 0.95, 1.27, 3.05],
-        [s2 * 0.96, 1.33, 2.70], [s2 * 1.38, 1.33, 2.70], [s2 * 1.34, 1.30, 3.05], [s2 * 0.95, 1.30, 3.05]));
-      P.add('hull', slab(                                                        // shoulder tips tapering to the ref's 1.10 nose line (past the wrap)
-        [s2 * 0.95, 1.25, 3.05], [s2 * 1.34, 1.25, 3.05], [s2 * 1.30, 1.08, 3.30], [s2 * 0.94, 1.08, 3.30],
-        [s2 * 0.95, 1.28, 3.05], [s2 * 1.34, 1.28, 3.05], [s2 * 1.30, 1.14, 3.30], [s2 * 0.94, 1.14, 3.30]));
-    }
+    // 267: the outboard shoulder slabs and tips (they stood 3-5 cm through the glacis and nose), the boxed final-drive
+    // noses, pod tips and glacis headlight drums are gone: the frustum and nose wedge close the bow, and the driver's
+    // hatch, nose lamp clusters and lower-glacis clevises (carro45tParts.ts) carry its fittings.
+    addCarroBowKit(P);
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.34, 0.40, 0.25), s * 0.80, 1.00, 3.175);               // final-drive noses (FRAME LOCK: bow body edge PINNED at +3.30 — the
-      P.add('hull', box(0.22, 0.18, 0.30), s * 0.80, 1.01, 3.34);                // 0.48 band ends there and everything beyond stays sub-threshold);
-      P.add('hullDark', box(0.10, 0.10, 0.04), s * 0.80, 1.00, 3.475);           // pod tips carry the ref's 3.487 plan corners (thin: side band stays sub)
-      // 2026-10-19 (owner float sweep): the pods stood 58 mm over the glacis; dropped onto it.
-      P.snapGroup(`carro45t-headlight-${s}`, () => headlight(P, s * 0.35, 1.38, 3.04, -0.22, 0.052), { reachM: 0.08, mode: 'down' }); // headlight pods (side 1.415@2.96-3.08, plan 3.36@±0.33..0.37)
       P.add('hull', slab(                                                        // bow corner closure wedges (inside the 1.017 lane plane, bottoms riding
         [s * 0.95, 0.30, 2.70], [s * 0.985, 0.30, 2.70], [s * 0.985, 1.00, 3.42], [s * 0.95, 1.00, 3.42],  // the ramp line so the side view keeps the print's ramp)
         [s * 0.95, 1.26, 2.70], [s * 0.985, 1.26, 2.70], [s * 0.985, 1.06, 3.42], [s * 0.95, 1.06, 3.42]));
-      P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.55, 0.92, 3.38, Math.PI / 2, 0, 0); // bow tow eyes at the ref's 0.91 bow-band line
     }
-    addFitting(P, 'hull', FITTINGS.towCable({ mats: P.mats, seed: 71,
-      pts: [[-1.02, -0.04, 0.13], [0, 0.08, -0.14], [1.02, -0.04, 0.13]] }),
-      0, 1.36, 2.42);                                                            // draped tow cable (print bumps 1.52 @ 2.49-2.62)
     P.decal('hull', 'number', '45T', 0.26, [-0.72, 1.345, 2.62], 0, -0.255);
   };
   buildCarro45TMarkingsStage1();
@@ -1132,49 +1212,43 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
   // 1.50-1.53, outer droop 1.40; aprons ±1.62..1.71 down to 0.90; stations
   // w 3.42 the whole run) -----------------------------------------------------
   const buildCarro45THullStage1 = (): void => {
+    // 267: bolted skirt panels (carro45tParts.ts) replace the 3 cm apron bays, width strips and painted seams
+    addCarroSkirts(P);
     for (const s of [-1, 1]) {
       const buildCarro45THullCourse1 = (): void => {
         for (let k = 0; k < 14; k++) {                                             // fender plane + hem + apron in 0.46 m bays (edge-on prism law:
           const bz = -3.345 + 0.4596 * k + 0.2298;                                 // every 0.50 station slab contains a real end face); the run ENDS at
-          const fy = k >= 13 ? 1.40 : k >= 12 ? 1.475                              // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING
-            : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (xk2_black_panther sweep law)
+          // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING toward the bow; bays inside the turret
+          // swing ride at 1.48 (xk2_black_panther sweep law). 267: the bays at both ends step down under the 105's -8
+          // degree sweep over the hull corners (bay 11 1.512 -> 1.464, bay 12 1.475 -> 1.44, bay 13 1.40 -> 1.38, stern
+          // bays 1.512 -> 1.425)
+          const fy = k >= 13 ? 1.38 : k >= 12 ? 1.44 : k <= 1 ? 1.425 : 1.464;
           // owner 2026-10-19 (flaps sweep): every bay widens 15 mm inboard into the hull side the run stood 10 mm off; the
           // stern bay (k 0) also runs 17 mm forward into bay 1 across the 12 mm seam (past the hull's end it has no other seat)
           const bw = 0.285, bl = k === 0 ? 0.4646 : 0.4476, bc = k === 0 ? bz + 0.0085 : bz;
           P.add('hull', box(bw, 0.032, bl), s * (1.68 - bw / 2), fy, bc);         // toward the bow (gate tops 1.38-1.42 over the nose)
           P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
-          if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
         }
-        P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, 2.05);              // widthM strips, outer face ±1.7125 (pixel width 3.425 vs spec 3.43; guard;
-        P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
-        for (let k = 0; k < 7; k++) P.add('hullDark', box(0.034, 0.50, 0.016), s * 1.696, 1.19, 2.55 - k * 0.95); // apron seams
-        P.add('hull', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
-        MUDGUARDS.add(P, { hang: true,
-          label: `italy-front-flap-${s}`, x: s * 1.695, y: 1.05, z: 3.31,
-          thickness: 0.03, length: 0.06, height: 0.20, material: 'rubber',
-          crown: 0.006, frontCut: 0.02,
-        });                                                                        // front flap stubs outboard of the shoe lane
-        P.add('hullDetail', box(0.04, 0.05, 0.24), s * 1.695, 1.145, 3.20);       // fender-to-flap hanger
+        // 267: the front flap stub, its loose hanger and the 6 cm flap 22 cm ahead of the fender are gone: the skirt's
+        // front panel now runs over the idler to the fender's end
         MUDGUARDS.add(P, { hang: true,
           label: `italy-rear-flap-${s}`, x: s * 1.55, y: 1.02, z: -3.30,
           thickness: 0.03, length: 0.24, height: 0.28, material: 'rubber',
           rotation: [0, Math.PI / 2, 0], crown: 0.009, rearCut: 0.035,
         });                                                                        // rear flaps
+        // 267: the fender crowbar, shovel, jack bar and jack block are gone: they stood up to 11 cm over the fender bays
+        // under them and in the 105's -8 degree sweep over the bow and stern corners (the gun sweep's only hull stops
+        // there); the fenders run clean as on the C1 Ariete.
         if (s > 0) {
-          P.add('hullDark', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);             // crowbar on the bow fender (bare steel, FSP-06; outside the turret swing circle)
-          P.add('hullDetail', box(0.09, 0.04, 0.60), 1.52, 1.545, -2.45);          // shovel aft of the swing circle, clear of the st0/st1 windows
           // 2026-10-16 (226 gate, the coordinator: an add-on must not stretch the declared dimensions): the deck seat aft of
           // the swing is an engine grille, and the seat solver's remount stood the links on the right apron, 10.5 cm
           // outside the 3.43 m design width (concept check: width +3.2 %). No other hull station holds them inside the
           // envelope, so they ride the turret's right wall, laid on its 34-degree slope under the bustle band, well
           // inside the width (outer face x 1.46) and clear of the smoke bank and the gun's sweep (seats as authored).
+          // 267: laid flat on the rebuilt left upper plate between the smoke bank and the bustle bin
           const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 77 });
-          links.position.set(1.3068, 0.5108, -0.30);
-          links.rotation.set(0, 0, -0.995);
+          seatOnCarroUpperPlate(links, 1, 0.56, -0.26);                            // aft of the insignia seat (z 0.04..0.28)
           P.turretG.add(links);
-        } else {
-          P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.504, 2.72);          // jack bar on the bow fender (outside the swing circle; 2026-10-19 owner float sweep: was 39 mm over it)
-          P.add('hullDark', box(0.16, 0.05, 0.30), -1.52, 1.55, -2.45);            // jack block aft of the swing
         }
       };
       buildCarro45THullCourse1();
@@ -1205,21 +1279,10 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
   buildCarro45TRunningGearStage1();
   yield 'buildCarro45TRunningGearStage1';
   const L = (zWorld: number): number => zWorld + 0.30;
-  // One closed crown replaces the stacked fan cap, plateau and shoulder patches.
-  // Each station owns the wall AND roof edge, so no plate can extend through its
-  // neighbour. The asymmetric plateau is retained; the front ends at the gun bay.
-  const crownStations = [
-    { z: -1.84, w: 1.20, bottom: 0.14, belt: 0.24, roofW: 1.04, left: 0.66, right: 0.66, crown: 0.66 },
-    { z: -1.10, w: 1.53, bottom: 0.03, belt: 0.11, roofW: 1.12, left: 0.85, right: 0.70, crown: 0.85 },
-    { z: -0.14, w: 1.55, bottom: 0.03, belt: 0.10, roofW: 1.14, left: 0.85, right: 0.70, crown: 0.85 },
-    { z:  0.72, w: 1.51, bottom: 0.03, belt: 0.11, roofW: 1.12, left: 0.79, right: 0.69, crown: 0.79 },
-    { z:  1.40, w: 1.10, bottom: 0.03, belt: 0.22, roofW: 0.88, left: 0.74, right: 0.69, crown: 0.74 },
-  ];
-  const crown = sectionSolid(crownStations.map(({ z, w, bottom, belt, roofW, left, right, crown }) => ({
-    z,
-    ring: [[-w, bottom], [w, bottom], [w, belt], [roofW, right],
-      [0.44, crown], [-0.44, crown], [-roofW, left], [-w, belt]],
-  })), { sideQuadDiagonal: 'convex' });
+  // 267 (owner: "now update the ... carro 45t"): the 2026-09-29 continuous crown rebuilt as a welded shell of planar
+  // faces (carro45tParts.ts): a vertical belt, one upper-plate lean and a flat roof the whole length, one plan sweep
+  // from the side wall to the cheek noses, the bustle undercut and raked at its rear face.
+  const crown = carroCrownGeometry();
   // Use the actual triangulated surface to seat roof fittings, including the
   // lower right shoulder. This is construction-time work, never a frame update.
   const roofProbe = new THREE.Mesh(crown, new THREE.MeshBasicMaterial());
@@ -1234,117 +1297,60 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
     P.add('turret', crown);
     // Closed cheeks meet the crown at z=1.40. Their inner walls form an open
     // 0.88 m gun bay; the mantlet moves in this space instead of through a lip.
-    for (const side of [-1, 1]) {
-      P.add('turret', sectionSolid([
-        { z: 1.40, w: 1.10, roofW: 0.88, top: side < 0 ? 0.74 : 0.69, innerTop: 0.74, belt: 0.22 },
-        { z: 2.08, w: 0.52, roofW: 0.49, top: 0.38, innerTop: 0.41, belt: 0.25 },
-      ].map(({ z, w, roofW, top, innerTop, belt }) => {
-        const ring: [number, number][] = [[0.44, 0.03], [w, 0.03], [w, belt], [roofW, top], [0.44, innerTop]];
-        return { z, ring: side > 0 ? ring : ring.map(([x, y]): [number, number] => [-x, y]).reverse() };
-      }), { sideQuadDiagonal: 'convex' }));
-    }
-    // The former driver seam/periscopes hovered over the nose and gun bay.
-    // Seat them behind its opening on the continuous front roof instead.
-    P.add('turretDark', box(0.36, 0.012, 0.26), -0.16, roofY(-0.16, 1.01) + 0.004, 1.01, 0.0734, 0, 0);
-    for (let k = -1; k <= 1; k++) periscope(P, 'turretDetail', 0.16 * k,
-      roofY(0.16 * k, 1.22) + 0.015, 1.22, k * 0.10);
-    // Compact commander's sight is seated through the new roof skin rather
-    // than suspended under the retired shelf.
-    P.addEquipment('turret', box(0.32, 0.14, 0.42), 0.94, roofY(0.94, L(-0.35)) + 0.065, L(-0.35));
-    P.add('turretGlass', box(0.026, 0.10, 0.28), 1.105, roofY(0.94, L(-0.35)) + 0.065, L(-0.30));
-    P.add('turretDark', box(0.28, 0.02, 0.36), 0.94, roofY(0.94, L(-0.35)) + 0.14, L(-0.35));
-    // cupola (x 0, z -0.78, top 2.421) + loader ring + periscopes
-    P.add('turret', cylY(0.20, 0.28, 0.060, P.q ? 20 : 12), -0.01, 0.877, L(-0.78)); // connected cupola seat: roof through upper lid
-    P.add('turret', cylY(0.155, 0.195, 0.022, P.q ? 20 : 12), -0.01, 0.910, L(-0.78)); // dome step to 2.421
-    P.add('turretDark', torus(0.175, 0.012, 18), -0.01, 0.898, L(-0.78));
-    P.add('turret', box(0.22, 0.012, 0.20), -0.01, 0.912, L(-0.78), 0, 0.10, 0); // split hatch lid FLAT (owner cadence; inside the 2.42 cupola datum)
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2;
-      periscope(P, 'turretDetail', -0.01 + Math.sin(a) * 0.19, 0.875, L(-0.78) + Math.cos(a) * 0.19, a);
-    }
-    P.add('turret', cylY(0.205, 0.235, 0.040, P.q ? 20 : 12), -0.55, 0.805, L(0.10)); // loader hatch shoe buried into the sloping roof
-    P.add('turret', cylY(0.180, 0.190, 0.022, P.q ? 20 : 12), -0.55, 0.838, L(0.10)); // shallow oval-read lid, still below the 2.42 m cupola datum
-    P.add('turretDark', torus(0.205, 0.012, 16), -0.55, 0.835, L(0.10));
-    P.add('turretDark', box(0.30, 0.014, 0.025), -0.55, 0.855, L(0.10), 0, -0.10, 0); // split-lid seam
-    P.add('turret', box(0.06, 0.055, 0.10), -0.34, 0.815, L(0.10));              // seated hinge block
-    for (let k = 0; k < 4; k++) {
-      const a = k * Math.PI / 2 + Math.PI / 4;
-      periscope(P, 'turretDetail', -0.55 + Math.sin(a) * 0.22, 0.835,
-        L(0.10) + Math.cos(a) * 0.22, a);
-    }
-    P.addEquipment('turret', box(0.22, 0.155, 0.20), 0.73, roofY(0.73, L(0.70)) + 0.065, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
-    P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, roofY(0.73, L(0.70)) + 0.12, L(0.805));
+    for (const side of [-1, 1] as const) P.add('turret', carroCheekGeometry(side));
+    // 267: the crew stations of a three-man autoloader turret, OF-40 / C1 Ariete style: the gunner's roof sight with
+    // its lifted visor (right front), the commander's panoramic head and cupola behind it, the left hatch with its two
+    // periscopes, the armoured vent over the bustle magazine (every piece in its own hatch/cupola/optics bucket, so
+    // the shell stays one closed roof skin).
+    addCarroRoofOptics(P);
+    addCarroHatches(P);
   };
   buildCarro45TTurretStage1();
   yield 'buildCarro45TTurretStage1';
   // Rear service grille and fittings follow the integral bustle.
   const buildCarro45TTurretStage2 = (): void => {
-    // The shell itself now closes the bustle; only its external service grille remains.
-    P.add('turretDark', box(2.28, 0.30, 0.04), 0, 0.42, -1.855);                     // rear louvre field
-    for (let i = 0; i < 9; i++) P.add('turretDetail', box(0.028, 0.34, 0.05), -1.12 + i * 0.28, 0.42, -1.875); // rib cadence (owner)
-    for (const s2 of [-1, 1]) P.add('turretDetail', box(0.032, 0.34, 0.42), s2 * 1.19, 0.42, L(-1.92)); // corner stanchions
-    addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.30, d: 0.14,
-      h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, -1.86,
-      [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
-    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+    // 267: bustle bins a side and the magazine's replenishment hatch on the rear face (carro45tParts.ts), the basket
+    // under it on the full raked face, its mount side 10 mm into the plate.
+    addCarroBustleBins(P);
+    addCarroRearHatch(P);
+    const rackD = 0.30;
+    addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.80, d: rackD,
+      h: 0.30, fill: 0.45, rails: 2, seed: 76 }), 0, 0.20, CARRO_TURRET.rearZ - rackD / 2 + 0.010,
+      [0, Math.PI, 0]);                                                          // rear rack: open face points outboard (-Z)
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station beside the left hatch
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.50, seed: 72, working: true, ridingCradle: true }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
-    // Canted corner launchers retain broad shoes seated on each roof shoulder.
+      elev: 0, shield: false, scale: 0.50, seed: 72, working: true, ridingCradle: true }),
+    0.20, roofY(0.20, -0.66) - 0.015, -0.66, [0, 0.30, 0]);                     // the Breda, its pedestal embedded in the roof
+    // Five-tube banks on the roof's front shoulders, firing forward and outboard (C1 Ariete / OF-40 placement).
     for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,
-      pitch: -0.34, arc: 0.62, spacing: 0.085, slot: 'detail',
-      rotation: [0, 0, -s * 0.10], seed: 78 + (s > 0 ? 1 : 0),
-    }), s * 1.02, roofY(s * 1.02, L(-0.92)) + 0.018, L(-0.92));
-
-    // Low supported crown rail follows the source roof lattice.  Each rail is
-    // returned into the plateau by short uprights; there are no sky-supported
-    // rods.  The darker rail reads clearly against the painted crown without
-    // overtopping the certified cupola datum.
-    for (const x of [-0.98, 0.35]) {
-      P.add('turretDark', box(0.025, 0.025, 0.84), x, 0.910, L(-0.94));
-      for (const z of [-1.34, -0.54]) P.add('turretDark', box(0.030, 0.120, 0.030),
-        x, 0.850, L(z));
+      mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.42,
+      pitch: -0.72, arc: 0.40, spacing: 0.085, slot: 'detail',
+      seed: 78 + (s > 0 ? 1 : 0),
+    }), s * 0.88, roofY(s * 0.88, 0.40) + 0.018, 0.40);
+    // Two whips on pots at the rear roof corners, tips at the 4.05 m record height.
+    for (const s of [-1, 1]) {
+      const wx = s * 0.82, wz = -1.42, wh = 1.59, wy = roofY(wx, wz);
+      P.add('turretDark', cylY(0.040, 0.050, 0.08, 10), wx, wy + 0.03, wz);
+      P.add('turretDark', cylY(0.022, 0.022, 0.05, 8), wx, wy + 0.09, wz);
+      P.add('turretDetail', antennaPart(box(0.030, wh, 0.030)), wx, wy + 0.11 + wh / 2, wz);
     }
-    for (const z of [-1.34, -0.54]) P.add('turretDark', box(1.35, 0.025, 0.025),
-      -0.315, 0.910, L(z));
-    for (const [wx, wy, wz, wh] of [[-0.385, roofY(-0.385, L(-1.590)) - 0.01, -1.535, 1.63], [0.385, roofY(0.385, L(-1.620)) - 0.01, -1.565, 1.64]]) {
-      P.add('turretDark', cylY(0.035, 0.045, 0.08, 10), wx, wy + 0.04, L(wz - 0.055)); // offset-mount whips: pot clear of the st4 window, VERTICAL rod in
-      P.add('turretDark', box(0.024, 0.05, 0.075), wx, wy + 0.10, L(wz - 0.028)); // the print's own trace column (tips ~4.10; the fitting's inline pot
-      P.add('turretDetail', antennaPart(box(0.038, wh, 0.038)), wx, wy + 0.125 + wh / 2, L(wz)); // could not satisfy both station windows at once)
-      P.add('turretDark', box(0.05, 0.035, 0.05), wx, wy + 0.135, L(wz));
-    }
-                                                                                 // the print's -1.52 station read one column rear; st3/st4 carry the
-                                                                                 // paired station reads and the trim absorbs them, packet-documented)
-    for (const s2 of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {                                              // side access-panel seams, riding the canted wall face (owner's proud
-        const pz = 0.16 - i * 0.57;                                              // panels superseded: the print walls cant 1.60@±1.54 -> 2.33@±1.15)
-        P.add('turret', box(0.030, 0.26, 0.38), s2 * 1.40, 0.30, L(pz), 0, 0, s2 * 0.50);
-        P.add('turretDark', box(0.018, 0.20, 0.30), s2 * 1.425, 0.30, L(pz), 0, 0, s2 * 0.50);
-        // 2026-10-19 (owner float sweep): the upper seam stood 24 mm off the canted panel; the three now ride its face.
-        for (const dy of [-0.065, 0, 0.065]) P.add('turretDetail', box(0.020, 0.014, 0.27),
-          s2 * (1.425 + 0.017 * Math.cos(0.5) - dy * Math.sin(0.5)), 0.30 + 0.017 * Math.sin(0.5) + dy * Math.cos(0.5), L(pz), 0, 0, s2 * 0.50);
-      }
-    }
-    for (const s2 of [-1, 1]) P.add('turretDetail', box(0.02, 0.10, 0.16), s2 * 1.435, 0.30, L(-1.30));
+    for (const [x, z] of [[1.0, -1.30], [-1.0, -1.30], [0.95, 0.85], [-0.95, 0.85]]) liftEye(P, 'turretDetail', x, roofY(x, z), z);
   };
-  buildCarro45TTurretStage2(); // flush shackle plates (lift eyes read 2.32 over the 1.9-2.1 cant)
+  buildCarro45TTurretStage2();
   yield 'buildCarro45TTurretStage2';
-  // roof lid cadence (owner c425f495): unequal service plates + hinge bars
+  // turret designation, the mantlet and the 105
   const buildCarro45TMarkingsStage2 = (): void => {
-    for (const [lx, lz, w, dd] of [[-0.74, -0.30, 0.44, 0.38], [-0.20, -0.34, 0.42, 0.36],
-      [0.30, -0.32, 0.40, 0.36]]) {
-      P.add('turretDark', box(w, 0.016, dd), lx, roofY(lx, L(lz)) + 0.003, L(lz), 0.06965, 0, 0);                  // rear service lids, FLUSH (st-window roof-height law)
-      P.add('turretDetail', box(w * 0.78, 0.012, 0.026), lx, roofY(lx, L(lz + dd * 0.38)) + 0.016, L(lz + dd * 0.38), 0.06965, 0, 0);
-    }
-    P.decal('turret', 'number', '45T', 0.25, [-1.53, 0.38, L(-0.55)], -Math.PI / 2, 0, 0);
+    P.decal('turret', 'number', '45T', 0.25, [-CARRO_TURRET.wall - 0.004, 0.17, L(-0.55)], -Math.PI / 2, 0, 0);
 
     // saddle mantlet (node Object_6: x ±0.39, y 1.589..2.226, z 1.16..2.11;
     // gate top 2.02 @ +1.83..+2.11 with the chin rising 1.72-1.78)
-    P.addGunExtra(box(0.62, 0.43, 0.56), 0, -0.105, 0.58);                       // central housing 1.585..2.015 (world z 1.30..1.86; the chin chamfer owns the tip band 1.86..2.14)
-    P.addGunExtra(box(0.78, 0.36, 0.38), 0, 0.07, 0.42);                         // top saddle lip to 2.15 (world z 1.16..1.54)
-    P.addGunExtra(KIT.xform(box(0.44, 0.30, 0.36), 0, 0, 0), 0, -0.06, 1.02, 0.75, 0, 0); // chin chamfer 1.70 -> 1.84 owning the mantlet tip (ref bottoms 1.72@+1.95, 1.78@+2.07)
-    P.addGunExtra(cylZ(0.155, 0.34, 14, 0.125), 0, 0, 1.18);                     // collar lead
-    P.addGunExtraDark(cylZ(0.030, 0.09, 8), 0.26, 0.09, 0.95);                   // coax port
+    // 267: one wedge mantlet (carro45tParts.ts) replaces the stacked housing, saddle lip and chin boxes
+    P.addGunExtra(carroMantletGeometry());
+    P.addGunExtra(cylZ(0.150, 0.26, P.q ? 20 : 12, 0.136), 0, 0, 0.97);         // gun sleeve collar ahead of the wedge nose
+    P.addGunExtraDark(cylZ(0.030, 0.012, 10), 0.24, 0.0, 0.842);                // coax port, a flush disc on the nose face
+    for (const [bx, by] of [[-0.29, 0.06], [-0.29, -0.06], [0.29, 0.06], [0.29, -0.06]]) {
+      P.addGunExtraDark(cylZ(0.014, 0.010, 8), bx, by, 0.842);                  // face-plate bolts, flush heads
+    }
     // 105mm: slim tube, mid-tube evacuator drum (side_gun swell r 0.139
     // z 5.47..6.17), plain slim muzzle at +7.11 (overall 10.60)
     buildGun(P, { len: 6.11, r: 0.10, baseR: 0.135, evac: 0.785, evacR: 1.39 });

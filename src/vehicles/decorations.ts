@@ -3241,6 +3241,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Wegmann banks carry it there, so it takes no decor pair beside them.
   if (spec.id === 'm41a3' || spec.id === 'm41_bw' || spec.id === 'm41_jgsdf') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
   if (spec.id === 'm41dk1') return [];
+  // 267 (owner: "now update the ... carro 45t"): the rebuilt Carro authors its complete kit (five-tube banks on the roof
+  // shoulders, which carry the smoke consumable, bustle bins and basket, twin whips, the Breda, bow and stern clevises):
+  // the field load's second smoke pair, roof cargo and bow shackles doubled it and crossed the new upper plates.
+  if (spec.id === 'carro45t') return [];
   // the T49's M551 turret carries its own smoke banks and searchlight (profiles/m41.ts)
   if (spec.id === 't49') return [];
   // Release 265 (the Danish line's blind critics): the Leopard 1A5 DK-1 keeps its UN-fit roof clear (its housing stands

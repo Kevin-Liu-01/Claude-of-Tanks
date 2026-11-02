@@ -438,6 +438,65 @@ function addK21Launcher(P: TankBuilderPort): void {
     // Existing finite receiver joins the measured housing to the turret shoulder.
     equipment(P, 'turret', 'Detail', box(.20, .30, .35), 1.10, 2.30, -1.21);
 }
+/** 2026-11-01 (owner: "give the k21 a mantlet"): the 40 mm gun's mantlet as ROK Army photographs show it (research/k21
+ * in the 267 lane), inside the source oracle's gun-front envelope (Object_16: x +-.159, y 2.240..2.604, z <= 1.041):
+ * a round armoured jacket with a raised band near its front and a barrel collar stepping down to the tube, and the
+ * low housing seated on it against the face whose front carries the coaxial machine-gun port. Gun-local metres
+ * (trunnion origin). Every part ahead of the turret face lies .525 m or more from the trunnion, beyond the face's top
+ * corner (.506 m), so it pitches clear of the turret from full depression to full elevation.
+ * Round 2 (blind A/B): the jacket is as large as the envelope allows. Its .114 m body and .124 m band are cut flat at
+ * the oracle's floor (y 2.240, .096 m under the bore), so they stay round on the top and sides, centred on the tube.
+ * The housing sits .05 m lower (top 2.541, level with the roof line behind the front bevel) and is set back to the
+ * face. The face edge itself (2.48) is only .144 m above the bore, under the jacket's own top plus a port. */
+function addK21Mantlet(P: TankBuilderPort): void {
+    const n = P.q ? 32 : 18, floor = -.096;
+    const round = (r: number, cut: number) => Array.from({ length: n }, (_, i) => {
+        const a = i / n * Math.PI * 2;
+        return [r * Math.cos(a), Math.max(r * Math.sin(a), cut)] as const;
+    });
+    // Smooth only the round courses; the flat chord on the floor keeps its crisp edges.
+    const roundEdges = (r: number, cut: number) => round(r, cut).flatMap(([, y], i, ring) =>
+        y === cut && ring[(i + 1) % n][1] === cut ? [] : [i]);
+    const course = (r: number, z0: number, z1: number) => P.addGunExtra(sectionSolid([{ z: z0, ring: round(r, floor) },
+        { z: z1, ring: round(r, floor) }], { smoothSideEdges: roundEdges(r, floor) }));
+    // Chamfered rear end in the well, the jacket body, then the raised band 30 mm behind its front face.
+    P.addGunExtra(sectionSolid([{ z: .530, ring: round(.104, -.088) }, { z: .546, ring: round(.114, floor) }]));
+    course(.114, .545, .702);
+    course(.124, .648, .672);
+    // Collar: .075 m, then .058 m, then the .036 m tube.
+    const collar = [[0, .700], [.075, .700], [.075, .719], [.058, .723], [.058, .738], [.052, .741], [0, .741]];
+    P.addGunExtra(new THREE.LatheGeometry(collar.map(([r, z]) => new THREE.Vector2(r, z)), P.q ? 28 : 16).rotateX(Math.PI / 2));
+    const plate = (w: number, bottom: number, top: number, c: number) => [[-w, bottom], [w, bottom], [w, top - c],
+        [w - c, top], [-w + c, top], [-w, top - c]] as const;
+    P.addGunExtra(sectionSolid([
+        { z: .515, ring: plate(.140, .100, .205, .014) },
+        { z: .628, ring: plate(.140, .100, .205, .014) },
+        { z: .640, ring: plate(.132, .106, .191, .012) },
+    ]));
+    // Coaxial port, facing straight ahead above the band: a flush dark mouth inside a low raised collar.
+    const lip = [[.028, -.004], [.038, -.004], [.038, .005], [.034, .010], [.028, .010], [.028, -.004]];
+    P.addGunExtra(new THREE.LatheGeometry(lip.map(([r, z]) => new THREE.Vector2(r, z)), P.q ? 16 : 10).rotateX(Math.PI / 2), 0, .152, .640);
+    P.addGunExtraDark(cylZ(.028, .006, P.q ? 16 : 10), 0, .152, .640);
+}
+/** The real gun sits in a vertical well cut in the turret front plate, with chamfered lower corners. This turret face
+ * is a closed plate, so a bevelled armour lip, a dark lining on its inner walls and a dark back plate form the well
+ * (world metres). The opening leaves a .031 m dark gap round the jacket; the lip stands .05 m proud of the face and its
+ * arms stop under the housing's lowest sweep at full depression. */
+function addK21GunWell(P: TankBuilderPort): void {
+    const top = 2.33, inner = [[.145, top], [.145, 2.145], [.110, 2.110], [-.110, 2.110], [-.145, 2.145], [-.145, top]] as const;
+    const frame = (outer: number, bottom: number) => [[-outer, bottom], [outer, bottom], [outer, top], ...inner,
+        [-outer, top]] as const;
+    equipment(P, 'turret', 'PaintedDetail', sectionSolid([{ z: .785, ring: frame(.280, 2.072) },
+        { z: .840, ring: frame(.190, 2.088) }]), 0, 0, 0);
+    // Dark lining 2.5 mm either side of the opening's walls and sill, recessed 2 mm behind the lip.
+    const d = .0025, k = d * (Math.SQRT2 - 1), y = top - .002;
+    const lining = [[-.145 - d, y], [-.145 - d, 2.145 - k], [-.110 - k, 2.110 - d], [.110 + k, 2.110 - d],
+        [.145 + d, 2.145 - k], [.145 + d, y], [.145 - d, y], [.145 - d, 2.145 + k], [.110 - k, 2.110 + d],
+        [-.110 + k, 2.110 + d], [-.145 + d, 2.145 + k], [-.145 + d, y]] as const;
+    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .789, ring: lining }, { z: .838, ring: lining }]), 0, 0, 0);
+    const back = [[-.110, 2.106], [.110, 2.106], [.146, 2.142], [.146, 2.435], [-.146, 2.435], [-.146, 2.142]] as const;
+    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .786, ring: back }, { z: .800, ring: back }]), 0, 0, 0);
+}
 function buildK21Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(.93, 1.00, .15, P.q ? 36 : 20), 0, .045, 0);
     P.add('turret', sectionSolid([
@@ -483,7 +542,9 @@ function buildK21Turret(P: TankBuilderPort): void {
             equipment(P, 'turret', 'Detail', cylX(.018, .040, 10), side * .975, 2.470, z);
         equipment(P, 'turret', 'Detail', box(.080, .135, .065), side * .94, 2.445, .195);
     }
-    optic(P, 'turret', -.10, 2.60, .61, .25, .15, .30);
+    // 2026-11-01: this roof box stood in the gun's path (the barrel ran through it above 20 degrees, and the mantlet
+    // housing sweeps that space); it moves .31 m aft, behind both at full elevation, unchanged in size and height.
+    optic(P, 'turret', -.10, 2.60, .30, .25, .15, .30);
     // Object_14 collars start in the rear roof shoulder at 2.50638 m;
     // Object_21 whips begin at their narrow 2.673 m terminal, not above a gap.
     for (const [x, tip] of [[-.883495, 4.17597], [.884605, 4.17628]]) {
@@ -496,7 +557,10 @@ function buildK21Turret(P: TankBuilderPort): void {
     }
     addBasket(P);
     weaponAssembly(P, () => addK21Launcher(P));
-    P.addGunExtra(KIT.xform(box(.34, .37, .53), 0, .06, .05, -.06));
+    // 2026-11-01: the former 340 x 370 x 530 mm cradle box sat inside the turret and rose through the roof at
+    // elevation; the measured mantlet and its well replace it.
+    addK21Mantlet(P);
+    addK21GunWell(P);
     barrel(P, 2.391, .036, .63, undefined, .020);
     openGunTube(P, 2.391, 2.601, .045, .096, .020, .11);
 }

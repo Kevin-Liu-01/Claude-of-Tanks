@@ -51,6 +51,8 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://info.publicintelligence.net/MCIA-QatarHandbook.pdf', kind: 'military-handbook' }),
   amx10pDragarStudy: Object.freeze({ title: 'AMX-10P 25 Dragar configuration and original photographic study',
     url: 'https://kementah.blogspot.com/2020/04/circuit-breaker-day-24-pix-singapore.html', kind: 'original-photography' }),
+  bwp1Rcws30Photos: Object.freeze({ title: 'MSPO 2004: BWP-1 carrying the Rafael RCWS-30 unmanned station (Pibwl)',
+    url: 'https://commons.wikimedia.org/wiki/File:MSPO2004_PICT0105_BWP1_RCWS30.JPG', kind: 'original-photography' }),
   ownerViper: Object.freeze({ title: 'Owner-directed modern American missile carrier, 2026-09-21',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/griffin_viper.md',
     kind: 'owner-authored-concept' }),
@@ -482,9 +484,11 @@ const LAYOUTS = Object.freeze({
   aresRemoteApc: { confidence: 'documented', sources: ['britishAjax'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
-  bmp1: { confidence: 'platform-inferred', sources: ['roeBmp2'], crew: crew(
-    ['driver', 'hull', 'frontLeft'], ['commander', 'hull', 'midLeft'], ['gunner', 'turret', 'frontCenter'],
-  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'clipFeed' }, missileRack: { placement: 'hull', form: 'gunLaunchedRounds' } }) },
+  // 268: the BWP-1 under the unmanned RCWS-30 (profiles/bwp1Rcws30.ts): every seat stays in the hull and the station
+  // carries its own ammunition box, belt feed and Spike canister. Seats are inferred; no interior drawing is published.
+  bwp1Rcws30: { confidence: 'platform-inferred', sources: ['bwp1Rcws30Photos'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   bradley: { confidence: 'documented', sources: ['usArmySystems', 'usArmyBradleyManual'], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'bradleyAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'hull', form: 'verticalTowStowage' } }) },
   puma: { confidence: 'documented', sources: ['bundeswehrPuma'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
@@ -592,7 +596,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
   namerIfv: ['namer_ifv'],
   aresRemoteApc: ['ares_apc'],
-  bmp1: ['bwp1'],
+  bwp1Rcws30: ['bwp1'],
   puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],
   bmp3: ['bmp3', 'bmp3_rok'],
   bmptFive: ['bmpt_t90'],

@@ -8,6 +8,12 @@
 // buildPL01 = buildK2 + addPL01Package). The current pl01 (ratified §5.267
 // ground-up stealth build) is untouched and remains Poland's.
 //
+// 267 (owner 2026-11-01, "update ... K2B"; 2026-10-25: "a proper mantlet and turret front that aligns with what a
+// prototype of a k2 would look like"): the K2B now reads as a K2 development vehicle (research/k2b): the PL-01 diamond
+// overlay is gone, so the K2's own arrowhead turret shows, and it carries the development package of the K2s on the
+// Hyundai Rotem stand: bolted add-on cassettes with vertical faces over the cheeks either side of the K2's measured
+// mantlet, corner smoke launchers and APS sensor heads (addK2BTurretFront), with the remote K6 and the skirt cassettes.
+//
 // Fidelity map vs the resurrected source: addK2BPackage is the verbatim old
 // addPL01Package; mount/cassette are the verbatim old module helpers;
 // addRoofWhips/addRoofRWS are the verbatim old addPolishWhips/addPolishRWS
@@ -15,7 +21,10 @@
 // Korean). The ONLY functional delta is the baked hull number decal text:
 // 'PL-01' -> 'K2B'.
 
-import { KIT, FITTINGS, convexSlab, orientedSlab } from './kit.ts';
+import * as THREE from 'three';
+import { KIT, FITTINGS, convexSlab } from './kit.ts';
+import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addK2GunFront } from './k2X.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildK2 } from '../modern3.ts';
@@ -110,9 +119,132 @@ function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
   });
 }
 
-function addK2BPackage(P: ProceduralBuilderPort): void {
-  const { box, cylY, cylZ } = KIT;
-  const slab = orientedSlab;
+/**
+ * The K2B's turret front (267, rounds 2-3; research/k2b photos 1, 4-6): the K2 development vehicles' add-on cheek
+ * package as three cleanly stacked armour modules a side, a stepped V in plan: each module's raked face is swept back
+ * 55 degrees from the K2's measured mantlet (k2X.ts addK2GunFront) and set back 0.10 m from the module inboard of it,
+ * so the steps show as faces of their own, and each module's top steps down outboard (all at or under the roof line).
+ * The modules only meet on shared end planes (no interpenetration), mirror-exact either side; every module carries its
+ * own bolt line. buildK2 builds this turret with `addOnFront`, so the K2's own blunt nose, cheek armour and banks are not
+ * under it. Behind the modules a side armour block runs back along each flank, with the 2x3 smoke-grenade bank on its
+ * front shoulder and an APS sensor head on the outer module.
+ * Turret frame: the K2 ring [0, 1.66, -0.30]; +x is the tank's left; the seat floor is 0.03 (deck 1.66 + the seam).
+ */
+const K2B_CHEEK = Object.freeze({
+  footY: 0.04,
+  /** Module x spans (inner to outer), their set-backs, and their tops at their inner and outer ends. */
+  modules: Object.freeze([
+    Object.freeze({ x0: 0.47, x1: 0.82, step: 0.00, top0: 0.70, top1: 0.68 }),
+    Object.freeze({ x0: 0.82, x1: 1.18, step: 0.10, top0: 0.64, top1: 0.60 }),
+    Object.freeze({ x0: 1.18, x1: 1.54, step: 0.20, top0: 0.56, top1: 0.50 }),
+  ]),
+  /** The face line at the foot: from the mantlet side back along the sweep. */
+  noseZ: 2.68, sweep: Math.tan(55 * Math.PI / 180),
+  /** The faces' lean: this far back per metre of height. */
+  lean: 0.24 / 0.66,
+  /** The common back line, buried in the turret loft and the second roof skin; the module tops are the forward roof. */
+  backZ0: 1.10, backZ1: 0.80, backX0: 0.47, backX1: 1.54,
+});
+
+function cheekFaceZ(x: number, y: number, step: number): number {
+  const C = K2B_CHEEK;
+  return C.noseZ - (x - C.backX0) * C.sweep - (y - C.footY) * C.lean - step;
+}
+
+function cheekBackZ(x: number): number {
+  const C = K2B_CHEEK;
+  return C.backZ0 + (C.backZ1 - C.backZ0) * (x - C.backX0) / (C.backX1 - C.backX0);
+}
+
+function addK2BTurretFront(P: ProceduralBuilderPort & Modern3BuilderPort): void {
+  const { box, cylZ } = KIT;
+  const C = K2B_CHEEK;
+  for (const side of [-1, 1]) {
+    // The face frame (shared by all three modules): u along the foot edge, v up the lean, n out of the face.
+    const u = new THREE.Vector3(side, 0, -C.sweep).normalize();
+    const v = new THREE.Vector3(0, 1, -C.lean).normalize();
+    const n = new THREE.Vector3().crossVectors(u, v).normalize();
+    if (n.z < 0) n.negate();
+    const xAxis = side > 0 ? u.clone() : u.clone().negate();
+    const faceBasis = (origin: THREE.Vector3): THREE.Matrix4 =>
+      new THREE.Matrix4().makeBasis(xAxis, new THREE.Vector3().crossVectors(n, xAxis), n).setPosition(origin);
+    for (const m of C.modules) {
+      const yb = C.footY;
+      // eight corners, six planar faces: raked front, falling top, the two vertical ends, the back, the foot
+      P.add('turret', convexSlab(
+        [side * m.x0, yb, cheekFaceZ(m.x0, yb, m.step)], [side * m.x1, yb, cheekFaceZ(m.x1, yb, m.step)],
+        [side * m.x1, yb, cheekBackZ(m.x1)], [side * m.x0, yb, cheekBackZ(m.x0)],
+        [side * m.x0, m.top0, cheekFaceZ(m.x0, m.top0, m.step)], [side * m.x1, m.top1, cheekFaceZ(m.x1, m.top1, m.step)],
+        [side * m.x1, m.top1, cheekBackZ(m.x1)], [side * m.x0, m.top0, cheekBackZ(m.x0)]));
+      // bolt line: four flush bolt heads along the face, 0.08 m under its top edge
+      const top = (m.top0 + m.top1) / 2 - 0.08;
+      for (const t of [0.15, 0.38, 0.62, 0.85]) {
+        const x = m.x0 + (m.x1 - m.x0) * t, y = top - (m.top0 - m.top1) * (t - 0.5);
+        const bolt = box(0.032, 0.032, 0.010);
+        bolt.applyMatrix4(faceBasis(new THREE.Vector3(side * x, y, cheekFaceZ(x, y, m.step)).addScaledVector(n, 0.004)));
+        P.add('turretDark', bolt);
+      }
+    }
+    // APS sensor head on the outer module's top
+    const outer = C.modules[2];
+    const sx = 1.34, sz = 1.00, sy = outer.top0 + (outer.top1 - outer.top0) * (sx - outer.x0) / (outer.x1 - outer.x0);
+    P.add('turretDetail', box(0.15, 0.13, 0.17), side * sx, sy + 0.055, sz);
+    P.add('turretDark', box(0.11, 0.085, 0.012), side * sx, sy + 0.06, sz + 0.088);
+    P.add('turretGlass', box(0.065, 0.045, 0.006), side * sx, sy + 0.06, sz + 0.095);
+    // Side armour block from the modules' back along the flank, its foot buried in the loft wall, an APS panel on it
+    P.add('turret', convexSlab(
+      [side * 1.30, 0.04, 0.90], [side * 1.58, 0.04, 0.90], [side * 1.58, 0.06, -0.22], [side * 1.36, 0.06, -0.22],
+      [side * 1.30, 0.44, 0.90], [side * 1.52, 0.44, 0.90], [side * 1.52, 0.44, -0.22], [side * 1.32, 0.46, -0.22]));
+    P.add('turretDark', box(0.012, 0.18, 0.24), side * 1.582, 0.24, 0.20);
+    P.add('turretGlass', box(0.008, 0.10, 0.14), side * 1.588, 0.24, 0.20);
+    for (const z of [-0.08, 0.46]) P.add('turretDark', box(0.010, 0.30, 0.016), side * 1.581, 0.23, z);
+    // 2x3 smoke-grenade bank on the side block's front shoulder, just behind the modules, looking forward, out and up
+    const bank = new THREE.Matrix4().compose(new THREE.Vector3(side * 1.61, 0.30, 0.66),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.32, side * 0.55, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
+    const bracket = box(0.30, 0.22, 0.10);
+    bracket.translate(side * -0.02, 0, -0.03);
+    bracket.applyMatrix4(bank);
+    P.add('turretDetail', bracket);
+    for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
+      const tube = markSmokeTube(cylZ(0.045, 0.24, P.q ? 12 : 8));
+      tube.translate((col - 1) * 0.095, (row - 0.5) * 0.095, 0.12);
+      tube.applyMatrix4(bank);
+      P.add('turretDetail', tube);
+      const mouth = new THREE.CircleGeometry(0.034, P.q ? 12 : 8);
+      mouth.translate((col - 1) * 0.095, (row - 0.5) * 0.095, 0.2415);
+      mouth.applyMatrix4(bank);
+      P.add('turretDark', mouth);
+    }
+  }
+}
+
+/**
+ * The K2B's front-corner fender/lamp housings (267 round 3; research/k2b photos 1, 5): a matched pair of armoured
+ * boxes on the front corners, as wide as the fender (x 1.14..1.78), each with two lamps in recessed bezels on its
+ * slightly raked face, and a wide rubber flap under it. buildK2 builds the K2B hull with `k2bBow`, which leaves out the K2's
+ * small glacis lamp housings and compact flaps and rakes the guard and bow-wedge feet back.
+ * Hull frame; the housing tops stay at 1.40 m, under the gun's published depression over the corners.
+ */
+function addK2BCornerHousings(P: ProceduralBuilderPort & Modern3BuilderPort): void {
+  const { box } = KIT;
+  for (const side of [-1, 1]) {
+    const xi = side * 1.14, xo = side * 1.78;
+    P.add('hull', convexSlab(
+      [xi, 1.20, 3.52], [xo, 1.20, 3.52], [xo, 1.20, 3.08], [xi, 1.20, 3.08],
+      [xi, 1.37, 3.49], [xo, 1.37, 3.49], [xo, 1.40, 3.08], [xi, 1.40, 3.08]));
+    P.add('hullDark', box(0.62, 0.012, 0.012), side * 1.46, 1.372, 3.488);  // lid seam along the face's top edge
+    for (const x of [1.30, 1.60]) {
+      const lean = Math.atan2(0.03, 0.17);
+      P.add('hullDark', box(0.13, 0.10, 0.012), side * x, 1.29, 3.508, -lean, 0, 0);
+      P.add('hullGlass', markVehicleNightLens(KIT.cylZ(0.038, 0.010, 16), 'headlight'), side * x, 1.29, 3.514, -lean, 0, 0);
+    }
+    // 267 round 4: the housing's rubber curtain sat wholly inside the raked bow wedge; the K2's own front mudflap
+    // (modern3.ts buildFrontGuards) now hangs from the wedge foot below this housing.
+  }
+}
+
+function addK2BPackage(P: ProceduralBuilderPort & Modern3BuilderPort): void {
+  const { box, cylY } = KIT;
 
   // Full-height modular stealth sides: the panels overlap the intact K2
   // skirt/fender structure but remain outside the animated shoe envelope.
@@ -120,9 +252,12 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   for (const side of [-1, 1]) {
     for (let i = 0; i < 8; i++) {
       const z = 2.58 - i * 0.78;
-      const h = i === 0 || i === 7 ? 0.82 : 0.94;
-      cassette(P, 'hull', side * 1.86, 1.12 + (i % 2) * 0.008, z,
-        0.075, h, 0.70, [0, 0, side * (i < 2 ? 0.035 : -0.012)], false);
+      // 267 round 3: the panels close up to 15 mm seams (they stood 8 cm apart) and, between the end panels, come down
+      // with the skirt hem over the road wheels' top quarter (0.56; they stopped at 0.65)
+      const end = i === 0 || i === 7;
+      const h = end ? 0.82 : 1.03, y = end ? 1.12 : 1.075 + (i % 2) * 0.008;
+      cassette(P, 'hull', side * 1.86, y, z,
+        0.075, h, 0.765, [0, 0, side * (i < 2 ? 0.035 : -0.012)], false);
       // the two bow cassettes lean in 0.035 rad: their top strip follows the leaning face (it stood 10 mm off it)
       P.add('hullDark', box(0.020, 0.040, 0.56), side * (i < 2 ? 1.8925 : 1.905),
         1.48, z);
@@ -132,21 +267,9 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
     // The cassettes stand 10 cm outboard of the K2 skirt (outer face 1.72): a mounting rail along the skirt top carries
     // them (owner 2026-10-19 sweep: they floated beside it with nothing joining them to the hull).
     P.add('hull', box(0.12, 0.05, 6.10), side * 1.77, 1.46, -0.15);
-    // Folded bow shoulder closes into the frontal armor instead of ending
-    // as a flat applique plate.
-    P.add('hull', slab(
-      [side * 0.20, 1.22, 3.52], [side * 1.82, 1.08, 3.24],
-      [side * 1.76, 1.16, 2.70], [side * 0.18, 1.16, 2.88],
-      [side * 0.18, 1.58, 3.42], [side * 1.72, 1.48, 3.12],
-      [side * 1.68, 1.26, 2.70], [side * 0.18, 1.22, 2.91]));
   }
   P.add('hullDark', box(2.72, 0.055, 0.12), 0, 1.22, 3.48, -0.26, 0, 0);
-  for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
-      mats: P.mats, pods: 3, spacing: 0.12, r: 0.042,
-      shield: true, seed: 1010 + (side > 0 ? 1 : 0),
-    }), side * 1.17, 1.48, 3.30, [-0.18, 0, 0]);
-  }
+  addK2BCornerHousings(P);                                             // 267 round 3: replaces the K2B's glacis lamp clusters
 
   // Joined station loft for the source's low diamond turret. These pieces
   // intersect the K2 crown and each other, forming one closed stealth mass.
@@ -154,43 +277,13 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   // would look like"): the diamond's front no longer buries the gun. It parts into the K2's two raked cheek wedges
   // (the diamond's own outer faces, cut at x 0.45) round a gun well, a gun housing at its back, and the K2's measured
   // mantlet, sight hood and collar (k2X.ts addK2GunFront) standing proud in it.
-  const CHEEK_X = 0.45;
-  const onDiagonal = (a: readonly number[], b: readonly number[], x: number): number[] => {
-    const t = (x - a[0]) / (b[0] - a[0]);
-    return a.map((value, axis) => value + (b[axis] - value) * t);
-  };
-  for (const side of [-1, 1]) {
-    const tipBottom = [side * 0.26, -0.03, 2.45], rearBottom = [side * 1.42, -0.03, 0.52];
-    const tipTop = [side * 0.20, 0.60, 2.20], rearTop = [side * 1.12, 0.68, 0.34];
-    const innerBottom = onDiagonal(tipBottom, rearBottom, side * CHEEK_X), innerTop = onDiagonal(tipTop, rearTop, side * CHEEK_X);
-    P.add('turret', convexSlab(
-      innerBottom, rearBottom, [side * CHEEK_X, -0.03, 0.52], onDiagonal(tipBottom, rearBottom, side * 0.9),
-      innerTop, rearTop, [side * CHEEK_X, 0.68, 0.34], onDiagonal(tipTop, rearTop, side * 0.9)));
-  }
-  // The gun housing between the cheeks, its face at the mantlet's back wall (gun-relative z 0.277, turret z 2.0)
-  P.add('turret', slab(
-    [-CHEEK_X, -0.03, 2.0], [CHEEK_X, -0.03, 2.0], [CHEEK_X, -0.03, 0.52], [-CHEEK_X, -0.03, 0.52],
-    [-CHEEK_X, 0.60, 2.0], [CHEEK_X, 0.60, 2.0], [CHEEK_X, 0.68, 0.34], [-CHEEK_X, 0.68, 0.34]));
-  P.add('turret', slab(
-    [-1.42, -0.03, 0.52], [1.42, -0.03, 0.52], [1.31, 0.02, -2.05], [-1.31, 0.02, -2.05],
-    [-1.12, 0.68, 0.34], [1.12, 0.68, 0.34], [1.10, 0.62, -1.91], [-1.10, 0.62, -1.91]));
-  P.add('turretDark', box(2.10, 0.025, 1.08), 0, 0.70, -0.78);
-  for (const side of [-1, 1]) {
-    // Paired EO/thermal heads sit in recessed, backed housings.
-    P.add('turret', box(0.42, 0.27, 0.42), side * 0.72, 0.75, 0.22,
-      -0.10, side * 0.08, 0);
-    P.add('turretDark', box(0.31, 0.16, 0.032), side * 0.72, 0.77, 0.445,
-      -0.10, side * 0.08, 0);
-    for (const dx of [-0.09, 0.09]) {
-      P.add('turretGlass', cylZ(0.055, 0.030, 14), side * 0.72 + dx,
-        0.77, 0.468, Math.PI / 2, 0, 0);
-    }
-    P.add('turretDetail', box(0.035, 0.22, 0.30), side * 0.96, 0.75, 0.18);
-  }
+  // 267 (owner 2026-11-01, "update ... K2B"): the PL-01 diamond overlay and its paired roof heads are gone; the K2's own
+  // arrowhead turret (buildK2) carries the development package instead (addK2BTurretFront).
+  addK2BTurretFront(P);
   // VH.14 (coordinator ruling 2026-10-14): the K2's one roof gun is the loader's K6 on its working open-yoke station;
   // the second roof RWS gun is gone
   addOpenYokeAuxRWS(P);
-  addRoofWhips(P, 0.64, -1.72, 1030, 1.00);
+  addRoofWhips(P, 0.705, -1.72, 1030, 1.00);
 
   // The K2's gun front (the K2 X measured mantlet, sight hood and collar) on the K2B's trunnion. The K2B carries its
   // trunnion 1.72 m ahead of its ring (the K2 1.15 m), so turned aft the mantlet hangs over the engine deck: its lower
@@ -205,7 +298,7 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
 }
 
 function buildK2B(P: ProceduralBuilderPort & Modern3BuilderPort): void {
-  buildK2(P);
+  buildK2(P, { addOnFront: true, k2bBow: true });
   addK2BPackage(P);
   // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the ring receipt reads the deck at its
   // well's floor (1.56), so its seat (turretSeatRace.ts) stopped at 1.63, 3 cm into the 1.66 roof round the ring, and the
