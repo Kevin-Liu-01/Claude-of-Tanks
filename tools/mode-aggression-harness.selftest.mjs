@@ -180,21 +180,21 @@ const meeting = deals.filter(asks).length, meanKills = mean(deals, (d) => d.kill
 // Main's ruling: first set at 19 of 24, 4.79, a level that counted a deal a defect helped (item 10's hold-off turned a
 // rusher with its orbit off any hull, ai.honestSenses red; scoped to its own target, seed 17 fell 5 -> 3 and seed 20
 // 6 -> 5), it recorded 18 of 24, 4.67; the rusher's held back-off (RUSH_DRIVE.backOffHoldS) tightened it to 19 of 24,
-// 4.71. The mean advance is held at 0.8, the engagement distance at 50 m on the mean, and first contact 8-25 s after the
-// wave starts on 21 of the 24.
-const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET = { deals: 19, meanKills: 4.71 };
+// 4.71. Main's ruling (2026-11-02): the ratchet is the MEAN alone, tightened to the best mean measured; the deal count is
+// printed beside the owner's 21/24 and no longer gates (a defect fix re-deals 24 chaotic battles, and one deal flipping on
+// a count bar blocked a correct fix: item 10b, 18/24 at 4.75). The mean advance is held at 0.8, the engagement distance at
+// 50 m on the mean, and first contact 8-25 s after the wave starts on 21 of the 24.
+const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET_MEAN = 4.75;
 const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
 const killsAt = Math.round(meanKills * 100) / 100;
 const shortDeals = Math.max(0, OWNER_OUTCOME.deals - meeting), shortKills = Math.max(0, Math.round((OWNER_OUTCOME.meanKills - killsAt) * 100) / 100);
-const outcome = `OUTCOME ${meeting}/24 · ${killsAt.toFixed(2)} (owner bar ${OWNER_OUTCOME.deals}/24 · ${OWNER_OUTCOME.meanKills.toFixed(1)}: `
+const outcome = `OUTCOME mean ${killsAt.toFixed(2)}, ratchet mean ≥ ${OUTCOME_RATCHET_MEAN.toFixed(2)} (deals ${meeting}/24, owner `
+  + `${OWNER_OUTCOME.deals}/24 · ${OWNER_OUTCOME.meanKills.toFixed(1)}: `
   + (shortDeals || shortKills ? `short ${shortDeals} deal${shortDeals === 1 ? '' : 's'}, ${shortKills.toFixed(2)} kills)` : 'met)');
 console.log(outcome);
-if (meeting > OUTCOME_RATCHET.deals || killsAt > OUTCOME_RATCHET.meanKills) {
-  console.log(`  the KNOWN ratchet can tighten to ${Math.max(meeting, OUTCOME_RATCHET.deals)}/24 · ${Math.max(killsAt, OUTCOME_RATCHET.meanKills).toFixed(2)}`);
-}
+if (killsAt > OUTCOME_RATCHET_MEAN) console.log(`  the KNOWN ratchet can tighten to mean ≥ ${killsAt.toFixed(2)}`);
 const misses = [];
-if (meeting < OUTCOME_RATCHET.deals) misses.push(`${meeting} of 24 deals meet the three asks (the KNOWN ratchet holds ${OUTCOME_RATCHET.deals}; ${outcome})`);
-if (killsAt < OUTCOME_RATCHET.meanKills) misses.push(`mean wave-1 kills ${killsAt.toFixed(2)} (the KNOWN ratchet holds ${OUTCOME_RATCHET.meanKills}; ${outcome})`);
+if (killsAt < OUTCOME_RATCHET_MEAN) misses.push(`mean wave-1 kills ${killsAt.toFixed(2)} (the KNOWN ratchet holds ${OUTCOME_RATCHET_MEAN.toFixed(2)}; ${outcome})`);
 if (meanAdvance < 0.8) misses.push(`Horde mean advance ${meanAdvance.toFixed(3)} (want >= 0.8)`);
 const engaged = deals.filter((d) => d.engageDistM != null), engageDistM = mean(engaged, (d) => d.engageDistM);
 if (engageDistM > 50) misses.push(`zombies fight close: ${engageDistM.toFixed(1)} m on the mean (want <= 50)`);
