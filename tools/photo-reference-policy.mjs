@@ -20,6 +20,10 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // 266 (Main 2026-10-31): the M60 batch's two Israeli marks, built on the rebuilt M60A1's castings from the Latrun
   // museum tanks' photographs, with no 3D model to follow
   'docs/references/photos/magach-latrun-20261031.json':Object.freeze(['magach6b','magach7c']),
+  // 267 (Main 2026-10-28 and 2026-10-29, as the 2A4-era Leopards): the Eurosatory 2024 KF51 Panther EVO and KF51-U,
+  // rebuilt from photographs, their registered print (the 2022 demonstrator) unregistered
+  'docs/references/photos/kf51-evo-20261101.json':Object.freeze(['kf51_evo']),
+  'docs/references/photos/kf51-u-20261101.json':Object.freeze(['kf51_u']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

@@ -79,6 +79,19 @@ if (KF51_MANTLET >= 0) {
   KF51_SPEC.armor.turretPlates[KF51_MANTLET] = { ...frontPlate('mantlet', 500, 0.43, 0.01, 1.088, 0.79, 1.1), drawn: true, template };
 }
 
+// 267 (the rebuild's cheeks, kf51EvoGunFace.selftest.mjs): profiles/kf51Evo.ts's wedge cheeks run their lower facets from
+// the turret floor at the slot face up to the noses' ridge, facing forward and down (normal y -0.95), and the template's
+// front leans back (calibrated, its face looks 19 degrees up), so no front plate met those facets within nearestPlate's
+// 0.12 alignment and the roof hatches' proud front plates (vertical, 1.8 m behind) took the lower cheeks. The front stands
+// vertical on the template's foot: both facets meet it (0.31 and 0.95) and a face looking down meets none, as before. A
+// source-X variant on its own build (fitSourceArmor) takes the template back, as it does the mantlet's.
+const KF51_FRONT = KF51_SPEC.armor.turretPlates.findIndex((plate) => plate.name === 'turret_front');
+if (KF51_FRONT >= 0) {
+  const template = KF51_SPEC.armor.turretPlates[KF51_FRONT];
+  const footZ = template.verts[0][2];
+  KF51_SPEC.armor.turretPlates[KF51_FRONT] = { ...template, verts: template.verts.map(([x, y]) => [x, y, footZ]), template };
+}
+
 // The procedural KF51 now carries a reactive two-row flank jacket. Keep its
 // combat zones in the boot-light spec registry so the visible cassettes are
 // hittable, consumable and depleted by the same ERA path as the KF51B set.

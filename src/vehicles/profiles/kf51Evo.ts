@@ -725,7 +725,10 @@ function addGun(P: TankBuilderPort): void {
   P.add('gun', cylZ(RH130_SLEEVE_R, 2.45, seg), 0, 0, 3.275);
   for (const z of [2.30, 3.05, 3.95]) P.add('gunDark', cylZ(RH130_SLEEVE_R + 0.006, 0.045, seg), 0, 0, z);
   P.add('gun', cylZ(RH130_MUZZLE_R, 0.08, seg, RH130_SLEEVE_R), 0, 0, 4.54);
-  P.add('gun', cylZ(RH130_MUZZLE_R, GUN_LEN - 4.58, seg), 0, 0, (4.58 + GUN_LEN) / 2);
+  // the section stops 3 mm short of the muzzle: the bore carve rebuilds the muzzle plane's face only out to the tube's
+  // radius, so a section capped on that plane left its rim open (tank-sealed-check: a crescent at the muzzle); the
+  // tube's face stands 3 mm proud as the lip and the section closes on its own cap behind it
+  P.add('gun', cylZ(RH130_MUZZLE_R, GUN_LEN - 0.003 - 4.58, seg), 0, 0, (4.58 + GUN_LEN - 0.003) / 2);
   P.add('gunDark', cylZ(RH130_MUZZLE_R + 0.004, 0.035, seg), 0, 0, 4.62);
   P.add('gun', convexSlab(
     [-0.10, 0.118, 5.36], [0.10, 0.118, 5.36], [0.10, 0.118, 5.02], [-0.10, 0.118, 5.02],

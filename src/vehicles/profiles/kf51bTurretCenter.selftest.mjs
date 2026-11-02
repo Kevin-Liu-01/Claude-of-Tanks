@@ -234,7 +234,7 @@ try {
   // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
   const crew = hull?.userData.kf51uCrewStationsReceipt;
   assert.equal(crew?.crewInHull, 3, 'KF51-U seats its three crew in the hull');
-  assert.equal(spareLinks, undefined, 'KF51-U glacis is the clean KF51 front armour');
+  assert.equal(spareLinks === undefined, true, 'KF51-U glacis is the clean KF51 front armour');
   const turretHatches = [];
   turret.traverse((node) => { if (node.isMesh && node.name === 'turretHatch') turretHatches.push(node); });
   assert.equal(turretHatches.length, 0, 'KF51-U turret is uncrewed: no turret hatches');

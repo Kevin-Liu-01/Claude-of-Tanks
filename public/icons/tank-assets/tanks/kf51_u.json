@@ -1231,8 +1231,8 @@
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.6756,0.1369,-3.058],
-        "max": [1.0636,0.5928,-1.3729],
+        "min": [-1.1191,0.1223,-3.1118],
+        "max": [1.1191,0.5789,-1.0801],
         "turretLocal": true
       },
       {
@@ -1338,29 +1338,29 @@
     "crew": [
       {
         "volumeId": "C01",
+        "name": "gunner",
+        "min": [0.5434,0.5817,1.2465],
+        "max": [1.0028,1.6817,1.9722],
+        "turretLocal": false
+      },
+      {
+        "volumeId": "C02",
         "name": "driver",
         "min": [0.2453,1.0951,1.8433],
         "max": [0.6738,1.4206,3.703],
         "turretLocal": false
       },
       {
-        "volumeId": "C02",
-        "name": "gunner",
-        "min": [0.184,-1.262,-0.3071],
-        "max": [0.6434,-0.1228,0.5143],
-        "turretLocal": true
-      },
-      {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.5937,-0.0014,-1.3633],
-        "max": [-0.184,0.5186,-0.7681],
-        "turretLocal": true
+        "min": [-1.0028,0.5747,1.3577],
+        "max": [-0.5434,1.6147,2.1609],
+        "turretLocal": false
       }
     ]
   },
   "geometryHash": "177a8be8",
-  "metadataHash": "77123329",
+  "metadataHash": "b41ad19b",
   "presentationAnchor": {
     "xM": 0.0004,
     "zM": 0.0672
@@ -1476,16 +1476,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25602,
-      "sha256": "a17e561d66bf8f2de96297730b427c32a11e7fcc16d9e971beb46d02ffcab67c"
+      "bytes": 25510,
+      "sha256": "cdcf3da9fffdfc6e69ed3ecbaadeffe8624c7dca51c73394e938b1d4dc62716d"
     },
     "crewSide": {
       "file": "kf51_u_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22608,
-      "sha256": "3ca143325a006b495646c2223f2d14baf0d54407d4d1648b1ceca51afbc2f0e7"
+      "bytes": 22482,
+      "sha256": "72eb948f4af6f90dcfc90017cf1b031351f48aeccd51abd2e143501e2494714e"
     },
     "markings": {
       "file": "kf51_u_markings.png",
@@ -1498,8 +1498,8 @@
     "technicalLabels": {
       "file": "kf51_u_technical.json",
       "mime": "application/json",
-      "bytes": 5457,
-      "sha256": "06408ddf81d9aa1f4a289c1727044328b87452a2393817168d7c8f20045e9b4a"
+      "bytes": 5456,
+      "sha256": "7244eba867507631f922e718a7dabeeeb171235ae9695ed1e833ec3e5756f491"
     }
   }
 }
