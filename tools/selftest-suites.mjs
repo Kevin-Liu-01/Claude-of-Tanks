@@ -1781,6 +1781,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing).
+    'src/sim/frontlineLineGuard.selftest.mjs',
     // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
     // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate

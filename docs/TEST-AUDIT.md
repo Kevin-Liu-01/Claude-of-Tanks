@@ -17,12 +17,12 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 |---|---:|---:|
 | KEEP | 1504 | 162.6 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 654 | 1118.7 |
+| MANUAL | 655 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2159 | 1281.7 | 228.2 |
+| Before: every receipt (npm test without the tiers) | 2160 | 1281.7 | 228.2 |
 | After: the default tier | 1504 | 162.6 | 36.8 |
 
 Default tier: 12.7 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.0 min pool, 18.6 min browser receipts.
@@ -32,7 +32,7 @@ Default tier: 12.7 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the 
 | Suite | Receipts | CPU-min | What it covers |
 |---|---:|---:|---|
 | `balance` | 3 | 1.1 | fleet round-robin duels on the authoritative battle path and the balance tables they hold; then `node tools/balance-matchups.mjs --check` |
-| `pacing` | 13 | 93.9 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
+| `pacing` | 14 | 93.9 | whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map |
 | `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
@@ -142,7 +142,7 @@ Sim determinism and driver boundaries, the authority rules, armour/ballistics/da
 
 None. Folding receipts saves only process starts (about a second each) and would need a per-assertion coverage review; the CPU is in the receipts that build tanks and maps, which moved to manual suites instead.
 
-## MANUAL (654)
+## MANUAL (655)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -795,6 +795,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/hullRubber.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (t72b3, m2a2_bradley), 5.0 s: 262: the hull's rubber (skirts, flaps, mats) its own material, painted by place; the tyres bare | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/internalLayoutRegistry.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (griffin50mm, kurganets25, aft10, bmp3m_dragun125, ...), 5.0 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/trackContactDerivationAudit.selftest.mjs` | 5.0 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc), 5.0 s: 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/sim/frontlineLineGuard.selftest.mjs` | n/a | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, n/a s: 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing). | test:heavy -- pacing; test:recommend flags it when its inputs change |
 | `tools/changed-only/balance-keys.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that i | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
@@ -1747,6 +1748,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/sim/missionDockSeats.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: The boot-side dock seats (2026-10-12, the 221 integration): src/sim/missionDockSeats.generated.ts is exactly t | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/modeConfiguration.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (r | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/navigationLiquidSafety.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/sim/playerInputStage.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: 268 (couch mode): one seat's input stage, the authority's and the local seats' alike | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/rollover.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/roofTargetOrder.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: 2026-10-13 the MP stream: nearest-first roof-gun scan picks the same target | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/shellLightCover.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: 2026-10-12: a round breaks the light cover it flies through (fences, crates, cars) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2178,7 +2180,6 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/world-residency-policy.selftest.mjs` | 1.0 | KEEP | tool contract, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/worldColliderAudit.selftest.mjs` | 1.0 | KEEP | tool contract, 1.0 s: 2026-10-07 the hitbox lane: the world collider audit's measures | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/wreck-paint-bench.selftest.mjs` | 1.0 | KEEP | tool contract, 1.0 s | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/sim/playerInputStage.selftest.mjs` | 1.0 | KEEP | simulation rule, 1.0 s: 268 (couch mode): one seat's input stage, the authority's and the local seats' alike | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/padActor.selftest.mjs` | 0.9 | KEEP | contract, 0.9 s: The phone controller's pairing rules (docs/PHONE-CONTROLLER.md "Pairing"): a code expires, joins once, a wrong | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/hudNotices.selftest.mjs` | 0.9 | KEEP | interface contract, 0.9 s: 2026-10-25 (owner): the battle's notices on the kit's notice grammar, no stripe or one-sided coloured border | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/decorKitTextureSelection.selftest.mjs` | 0.9 | KEEP | vehicle rule, 0.9 s: decorKitTextureSelection.selftest.mjs — a tank's decoration kit takes its own camo entry (UI-LOCKDOWN E, 2026- | default tier (npm test, the release gate; lane mode by its closure) |

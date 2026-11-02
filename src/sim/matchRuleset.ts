@@ -335,10 +335,12 @@ interface AssaultRules {
   /**
    * The line's guard (round 2, the critic's E2: on compact maps the 70-110 m line saw and shot the attack's spawn at
    * 0.2 s): a defender's slot is never within `minAttackM` of a living attacker nor (outOfSight) in an attacker's terrain
-   * sight; a slot that is steps back `stepBackM` along the axis, at most `tries` times, and takes the last step
-   * otherwise. The march reads the Horde arrival's sight constants (ArrivalRules).
+   * sight. (268, item 9) It searches the defender's ground, judged where the placement puts the hull: back along the axis
+   * `stepBackM` at a time, `backSteps` times, and across the line `acrossSteps` slot spacings either side; with no clear
+   * slot there, it takes the clearest (outside the reach first, then out of sight, then the furthest from the attack). The
+   * march reads the Horde arrival's sight constants (ArrivalRules).
    */
-  readonly lineGuard: { readonly minAttackM: number; readonly outOfSight: boolean; readonly stepBackM: number; readonly tries: number } | null;
+  readonly lineGuard: { readonly minAttackM: number; readonly outOfSight: boolean; readonly stepBackM: number; readonly backSteps: number; readonly acrossSteps: number } | null;
   /** `squad` fresh defenders drive at the sector just taken `afterCaptureS` after it falls, for `forS`, then fall back. */
   readonly counterAttack: { readonly squad: number; readonly afterCaptureS: number; readonly forS: number } | null;
   /** While a sector is contested and its line is short, one defender arrives from the rear this often, up to count + `reinforceExtra`. */
@@ -1419,7 +1421,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       // the line 70-110 m behind the centre: clear of the zone (30 m), so the attack can stand in it and fight for it
       // (30-70 put the near defenders on the zone's own edge: the round-1 A/B's shield seat never took sector 1 in 12:00)
       defendersStartOnLine: true, lineBandM: Object.freeze([70, 110] as const),
-      lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 }),
+      lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, backSteps: 12, acrossSteps: 8 }),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40, holdSpreadM: 14,
       regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,

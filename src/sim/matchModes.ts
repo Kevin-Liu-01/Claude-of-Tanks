@@ -118,6 +118,8 @@ export interface MatchModeSpawn {
   x: number;
   z: number;
   yaw: number;
+  /** Already placed by its director (placement.respawn: Frontline's line slot); the revive stands the hull on it as it is. */
+  placed?: boolean;
 }
 
 interface MatchModeHooks<Entity extends MatchModeEntity> {
@@ -771,7 +773,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!at && ballRespawnBackM != null) at = ballRespawnSpot(entity, ballRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
-    const safeSpawn = !placement ? spawn
+    const safeSpawn = !placement || spawn.placed ? spawn
       : (safeM ? placement.respawnNear(spawn, entity.id, occupiedBy(entity, safeM), safeM * 2.5) : null)
         ?? placement.respawn(spawn, entity.id, occupiedBy(entity));
     if (!safeSpawn) {
@@ -861,7 +863,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // stable: identities that sat out the last wave lead; wrecks of this sector's fight arrive last
     pool.sort((a, b) => Number(lastWaveIds.has(a.id)) - Number(lastWaveIds.has(b.id)));
     const arrivals = pool.slice(0, Math.max(0, Math.min(pool.length, targetCount - living.length)));
-    arrivals.forEach((enemy, slot) => reviveAtSpawn(enemy, healthScale, lineSlot(slot, arrivals.length, false)));
+    arrivals.forEach((enemy, slot) => reviveAtSpawn(enemy, healthScale, lineSlot(enemy, slot, arrivals.length, false)));
     lastWaveIds = new Set([...living, ...arrivals].map((entity) => entity.id));
     freshDefenders = arrivals.map((entity) => entity.id);
   };
@@ -1133,32 +1135,72 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * A defender's slot on the live line (defendersStartOnLine): lineBandM behind the sector's centre, spread across it,
    * facing the attack; `rear` puts it reinforceRearM back (the trickle). Null keeps the hostile's own spawn.
    */
-  function lineSlot(slot: number, count: number, rear: boolean): MatchModeSpawn | null {
+  function lineSlot(entity: Entity, slot: number, count: number, rear: boolean): MatchModeSpawn | null {
     if (!ruleset.assault || !assaultRules.defendersStartOnLine) return null;
     const zone = liveLine();
     if (!zone) return null;
     const [near, far] = assaultRules.lineBandM;
-    let back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
+    const back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
     const across = (slot - (count - 1) / 2) * assaultRules.lineSpacingM + (spawnRng() - 0.5) * assaultRules.lineJitterM;
-    // the line's guard: out of the attack's reach and terrain sight, stepping back along the axis (round 2, E2)
+    const yaw = detMath.atan2(-axisX, -axisZ);
+    const at = (backM: number, acrossM: number): MatchModeSpawn => ({
+      x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * backM + lateralX * acrossM)),
+      z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * backM + lateralZ * acrossM)),
+      yaw,
+    });
+    // the line's guard: out of the attack's reach and terrain sight (round 2, E2). (268, item 9) It searches the defender's
+    // ground rather than giving up after its steps back: each candidate judged where the placement stands the hull (its
+    // obstacles and the hulls already placed), the first the guard clears taken; with none, the clearest. The ground is
+    // this line's own: a step never takes a defender within the next sector's contest reach (it would hold that sector too)
     const guard = assaultRules.lineGuard;
-    for (let step = 0; ; step++) {
-      const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * back + lateralX * across));
-      const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * back + lateralZ * across));
-      if (!guard || step >= guard.tries || lineClear(x, z, guard)) return { x, z, yaw: detMath.atan2(-axisX, -axisZ) };
-      back += guard.stepBackM;
+    if (!guard) return at(back, across);
+    const next = zones[Math.min(lineIndex, zones.length - 1) + 1];
+    const maxBack = next ? Math.max(back, (next.x - zone.x) * axisX + (next.z - zone.z) * axisZ - assaultRules.contestReachM) : Infinity;
+    let best: { input: MatchModeSpawn; placed: MatchModeSpawn; key: [number, number, number] } | null = null;
+    let last: MatchModeSpawn | null = null;
+    // the candidates nearest the drawn slot first: back along the axis by stepBackM, across by the line's spacing
+    const offsets = lineSearchOffsets(guard, assaultRules.lineSpacingM, maxBack - back);
+    for (const [backOffsetM, acrossOffsetM] of offsets) {
+      const input = at(back + backOffsetM, across + acrossOffsetM);
+      const placed = placement ? placement.respawn(input, entity.id, occupiedBy(entity)) : input;
+      if (!placed) continue;
+      last = placed;
+      const exposure = lineExposure(placed.x, placed.z, guard);
+      if (exposure.nearestM >= guard.minAttackM && !exposure.seen) return { ...placed, placed: true };
+      // the clearest: outside the reach first, then out of sight, then the furthest from the attack
+      const key: [number, number, number] = [exposure.nearestM >= guard.minAttackM ? 1 : 0, exposure.seen ? 0 : 1, exposure.nearestM];
+      if (!best || key[0] > best.key[0] || (key[0] === best.key[0] && (key[1] > best.key[1] || (key[1] === best.key[1] && key[2] > best.key[2])))) {
+        best = { input, placed, key };
+      }
     }
+    if (!best) return null;
+    // the placement keeps one reservation per hull, the last it made: stand the chosen candidate's again
+    const chosen = last === best.placed ? best.placed : placement ? placement.respawn(best.input, entity.id, occupiedBy(entity)) ?? best.placed : best.placed;
+    return { ...chosen, placed: true };
   }
-  /** No living attacker within the guard's minAttackM of (x, z), nor (outOfSight) seeing it over the terrain. */
-  function lineClear(x: number, z: number, guard: NonNullable<typeof assaultRules.lineGuard>): boolean {
-    const minSq = guard.minAttackM ** 2, sightSq = hordeRules.sightRangeM ** 2;
+  /** The guard's search pattern (back, across) in metres, nearest the drawn slot first; never past `maxBackM`. */
+  function lineSearchOffsets(guard: NonNullable<typeof assaultRules.lineGuard>, spacingM: number, maxBackM: number): [number, number][] {
+    const offsets: [number, number, number, number][] = [];
+    for (let step = 0; step <= guard.backSteps && step * guard.stepBackM <= maxBackM; step++) {
+      for (let lane = -guard.acrossSteps; lane <= guard.acrossSteps; lane++) {
+        const backM = step * guard.stepBackM, acrossM = lane * spacingM;
+        offsets.push([backM, acrossM, backM * backM + acrossM * acrossM, step * 1000 + lane + guard.acrossSteps]);
+      }
+    }
+    offsets.sort((a, b) => a[2] - b[2] || a[3] - b[3]);
+    return offsets.map(([backM, acrossM]) => [backM, acrossM]);
+  }
+  /** How exposed a slot is to the attack: the nearest living attacker's distance, and (outOfSight) whether one sees it. */
+  function lineExposure(x: number, z: number, guard: NonNullable<typeof assaultRules.lineGuard>): { nearestM: number; seen: boolean } {
+    const sightSq = hordeRules.sightRangeM ** 2;
+    let nearestSq = Infinity, seen = false;
     for (const attacker of teams.alpha) {
       if (attacker.modeActive === false || attacker.combat.destroyed) continue;
       const dSq = squaredDistance(attacker, x, z);
-      if (dSq < minSq) return false;
-      if (guard.outOfSight && dSq <= sightSq && terrainSees(attacker, x, z, hordeRules)) return false;
+      if (dSq < nearestSq) nearestSq = dSq;
+      if (!seen && guard.outOfSight && dSq <= sightSq && terrainSees(attacker, x, z, hordeRules)) seen = true;
     }
-    return true;
+    return { nearestM: Math.sqrt(nearestSq), seen };
   }
   /** A defender's revive scale: the sector's own, with the attack's hull (the ruleset's hpScale) divided back out. */
   const assaultHealth = (): number => assaultWaveHealthScale(assaultRules, lineIndex, zones.length) / (ruleset.hpScale > 0 ? ruleset.hpScale : 1);
@@ -1174,7 +1216,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const active = drawWave(activeCount);
       let slot = 0;
       for (const entity of hordeEnemies) {
-        if (active.has(entity)) reviveAtSpawn(entity, healthScale, lineSlot(slot++, active.size, false));
+        if (active.has(entity)) reviveAtSpawn(entity, healthScale, lineSlot(entity, slot++, active.size, false));
         else deactivate(entity);
       }
       freshDefenders = [...active].map((entity) => entity.id);
@@ -1253,7 +1295,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (rested < pickRested || (rested === pickRested && pick && enemy.id < pick.id)) { pick = enemy; pickRested = rested; }
     }
     if (!pick) return;
-    reviveAtSpawn(pick, assaultHealth(), lineSlot(0, 1, true));
+    reviveAtSpawn(pick, assaultHealth(), lineSlot(pick, 0, 1, true));
     emit('mode_line_reinforced', { line: lineIndex, id: pick.id });
   };
 
