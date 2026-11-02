@@ -77,6 +77,8 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     node({ id: 'tos1a_tagil', tier: 5, line: 'support', lane: 11, parents: ['bmp3'], slot: 'line' }),
     node({ id: 'bmpt_terminator2', tier: 5, line: 'support', lane: 12, parents: ['tos1a_tagil'], slot: 'line' }),
     node({ id: 'bmpt_t90', tier: 6, line: 'support', lane: 12, parents: ['bmpt_terminator2'], slot: 'line' }),
+    // 267: the original Ob'yekt 199 Terminator (2009-2013, Kazakhstan's) at VI beside the BMPT T-90, off the BMPT-72
+    node({ id: 'bmpt_terminator', tier: 6, line: 'support', lane: 13, parents: ['bmpt_terminator2'], slot: 'line' }),
     // Special
     node({
       id: 't14_armata', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special', builds: ['object148_proto'],

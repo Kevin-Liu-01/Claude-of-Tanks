@@ -236,6 +236,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   tos1a_tagil: { doctrine: 'siege', viewM: 345, still: 0.111, moving: 0.061 },
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
+  // 267: the original Terminator between the BMPT-72 and the BMPT T-90 (its 2009 sight set, the T-72 hull's signature)
+  bmpt_terminator: { doctrine: 'armored-support', viewM: 410, still: 0.174, moving: 0.114 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
   // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
   m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },

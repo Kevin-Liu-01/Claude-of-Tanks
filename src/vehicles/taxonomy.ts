@@ -83,7 +83,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
     'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'ua_cv9040c', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
+    'm3a3_bradley', 'bmpt_t90', 'bmpt_terminator', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),

@@ -38,6 +38,9 @@ import { resolveTankId } from './tankIdAliases.ts';
 // visual carries its measured 0.60 m track (spec.visual.trackWidthM, read by the track contact and track marks) for the
 // retired 0.55; scheme, colours, pattern and seed are unchanged. type59 306893e0db54f6ad -> c3e94da916bc0b93. Its
 // ZTZ-85-III variant keeps its own 0.55 m track (china.ts), so its row is production's.
+// Re-pinned 2026-11-01 (release 267, the BMPT-72 on the T-72B3M X hull, profiles/bmpt72Station.ts): bmpt_terminator2's
+// resolved Factory visual carries that hull's 0.58 m track (spec.visual.trackWidthM) for the T-80U hull's 0.60; scheme,
+// colours, pattern and seed are unchanged. bmpt_terminator2 d90451c7ad569e1f -> fd8e4eb2ec22b153.
 // Re-pinned 2026-10-27 (owner: the T-90 names, display only): one selection moved by its label alone, the tier X
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
@@ -73,8 +76,8 @@ assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
-  'paint_m41_bw', 'paint_m41_jgsdf'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), append, after GT');
+  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_bmpt_terminator'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the three PT-84 paints (262), then the release-265 Signatures and the Centurion family\'s three paints (Sho\'t Kal, Olifant Mk 2, Mk 5/1), then the Danish coats, the Challenger 1 paints, the Brazilian coats and the Danish and Bundeswehr/JGSDF M41 and CV9035 DK coats (266), then the original BMPT Terminator\'s three-tone (267), append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
@@ -83,7 +86,7 @@ assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_lineback
   'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus', 'paint_leo1a5dk1', 'paint_leo2a5dk',
   'paint_challenger1_mk1', 'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3',
   'paint_x1a2_carcara', 'paint_osorio_p1', 'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk',
-  'paint_m41_bw', 'paint_m41_jgsdf']);
+  'paint_m41_bw', 'paint_m41_jgsdf', 'paint_bmpt_terminator']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -117,10 +120,11 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Danish 1A5 DK-1 and 2A5 DK, each in its own coat; the Osório P.2 and P.1, the Tamoyo 1 and 3 and the X1A2, each in its
 // own coat (the P.1's earth-brown and dark-green bands appended last, after the blind critics' second round); the
 // fictional EE-T3 and EE-T4 Osório (owner 2026-10-30) in their three-tone and digital woodland, appended after; the
-// Danish M41 DK-1 and CV9035 DK and the Bundeswehr and JGSDF M41s, each in its own coat.
+// Danish M41 DK-1 and CV9035 DK and the Bundeswehr and JGSDF M41s, each in its own coat. Release 267: the original BMPT
+// Terminator in its Engineering Technologies 2012 three-tone desert.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws', 'shot_kal', 'olifant_mk2',
   'centurion5_1_aus', 'pt84_orzel', 'leo1a5dk1', 'leo2a5dk', 'osorio_p2', 'tamoyo1', 'tamoyo3', 'x1a2_carcara', 'osorio_p1',
-  'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf'];
+  'ee_t3_osorio', 'ee_t4_osorio', 'm41dk1', 'cv9035dk', 'm41_bw', 'm41_jgsdf', 'bmpt_terminator'];
 // Release 266: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the X1's grey olive drab sit within a
 // shade of a named preset, so no authored paint of their own: Denmark and Brazil have no national Factory coat, and they
 // paint their spec's coat.

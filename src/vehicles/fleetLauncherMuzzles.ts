@@ -26,7 +26,9 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   hayate_ifv: [-1, 1].map(s => turret(s * .92, .385 + .02 * detMath.sin(.14), .285 + .02 * detMath.cos(.14), .14)),
   fv510_milan: [turret(.56 * 1.1, (.92 + .0125 * detMath.sin(.04)) * 1.1 * .84,
     (.927 + .0125 * detMath.cos(.04)) * 1.1, detMath.atan(detMath.tan(.04) * .84))],
-  bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * detMath.sin(.035)), y, .668 + .011 * detMath.cos(.035), 0, s * .035))),
+  // 267: the front caps of the two armoured Ataka boxes, two tubes side by side in each box's outboard part
+  // (profiles/bmpt72Station.ts: tubes x .905 / 1.075, axis y .985, cap faces z .985)
+  bmpt_terminator2: [-1, 1].flatMap(s => [.905, 1.075].map(x => turret(s * x, .985, .985))),
   bwp1: [turret(.28, 1.11, .76)],
   marder1a3: [turret(.55, .92, .445)],
   // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
@@ -34,6 +36,9 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   upior: [turret(1.10, .37, .83)],
   // 267: the frangible discs on the two armoured Ataka boxes' front covers (profiles/bmptT90Station.ts), 2 x 2 a box
   bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),
+  // 267: the original Terminator's open Ataka tubes ride the cradle's arms (profiles/bmptTerminatorStation.ts RAMKA_ATAKA): the
+  // gun frame, each mouth the front end cap's face, 2 x 2 a side (lower, upper)
+  bmpt_terminator: [-1, 1].flatMap(s => [-.135, .135].map(y => mouth(s * .95, y, 2.032))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
   aft10: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };

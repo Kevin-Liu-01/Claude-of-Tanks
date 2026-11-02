@@ -101,7 +101,7 @@ expect('challenger3', 'challenger3_proto', 'donor'); expect('ua_challenger2', 'c
 expect('fv510', 'warrior_tes_h'); expect('ajax', 'warrior_tes_h'); expect('ares_apc', 'warrior_tes_h');
 expect('t62_1975', 't90_1992'); expect('t55a', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); // 262: the T-54/T-55 starfish exception while the switch holds expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
 expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
-expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_tagil', 't90am');
+expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('bmpt_terminator', 't90am'); expect('tos1a_tagil', 't90am');
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');

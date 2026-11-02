@@ -138,9 +138,12 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35
-assert.equal(ids.length, 36, 'review every missile/rocket vehicle when the roster changes');
-assert.equal(throughGun, 7, 'gun-launched exceptions remain explicit');
+// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 at 266 (the roster's later
+// guided ids, among them the BMPT T-90, the TOS-1A Tagil, the T49 and the Griffin Viper); 38 with the original BMPT
+// Terminator's open Ataka tube pairs (bmpt_terminator, 267)
+assert.equal(ids.length, 38, 'review every missile/rocket vehicle when the roster changes');
+// 8 since the T49's MGM-51C Shillelagh (266) joined the Sheridans', the MBT-70's, the M60A2's, the BMP-3s' and the M1A3's
+assert.equal(throughGun, 8, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();
 console.log(JSON.stringify({ vehicles: ids.length, externalRounds: external, gunLaunchedRounds: throughGun, launches, stockProbes }));

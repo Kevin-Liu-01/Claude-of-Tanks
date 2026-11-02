@@ -9,6 +9,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'roof machine gun (the commander\'s and gunner\'s sights sit where an NSVT would).',
   bmpt_terminator2: 'BMPT-72 "Terminator 2": two 2A42 30 mm, four Ataka and a coaxial PKTM in the Epokha-type module; no '
     + 'roof machine gun.',
+  bmpt_terminator: 'BMPT "Terminator" (Ob. 199 "Ramka", 2009-2013): two 2A42 30 mm, four open Ataka tubes and a coaxial '
+    + 'PKTM in the module, two AG-17D in the hull\'s bow; no roof machine gun.',
   bmp3: 'BMP-3: 100 mm 2A70, 30 mm 2A72, a coaxial PKT and two bow PKTs; no roof machine gun on the turret.',
   bmp3_rok: 'BMP-3 in Republic of Korea service: the standard BMP-3 armament (2A70, 2A72, coaxial and bow PKTs); no roof '
     + 'machine gun.',

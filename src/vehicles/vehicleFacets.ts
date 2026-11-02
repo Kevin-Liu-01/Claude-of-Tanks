@@ -235,7 +235,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // Tank-support fighting vehicles (BMPT), the TOS-1A rocket system and the owner-authored ZTZ-100 missile-support
   // prototype: none is a tank, a troop carrier or a dedicated tank destroyer.
   'fire-support': Object.freeze([
-    'bmpt_t90', 'bmpt_terminator2', 'tos1a_tagil', 'ztz100_prototype',
+    'bmpt_t90', 'bmpt_terminator', 'bmpt_terminator2', 'tos1a_tagil', 'ztz100_prototype',
   ]),
 });
 
@@ -287,8 +287,8 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
   support: Object.freeze([
-    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
-    'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
+    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c',
+    'cv90_mk4', 'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
     'kf41_lynx', 'kurganets25', 'm2a2_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'object695', 'puma_s1',
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior',
     'warrior_tes_h',
@@ -298,7 +298,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
 const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]>> = Object.freeze({
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bm_oplot_m',
-    'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
+    'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
     'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_avre', 'challenger1_mk1',
     'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'challenger_x', 'challenger_x_sleek',
     'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
