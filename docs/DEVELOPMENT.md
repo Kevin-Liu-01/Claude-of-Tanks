@@ -566,7 +566,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   the default-tier receipts whose closure (the result cache's own, `selftestReadOf`, a broad-fallback match excluded)
   holds a changed path, plus the `tanks` pins that name a changed tank id or read a changed file outside the shared
   fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
-  files, a table's moved rows, a path naming the id). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
+  files, a table's moved rows, a source or generated path naming the id: under `src/`, `docs/references/` or what
+  the fleet steps write, never a page's media). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
   pin's inputs: lane mode then runs none of them and reports them, and test:recommend names the whole `tanks` suite.
   Nor does it run a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration
   names nearly every id: the fingerprints bootstrap moved 218 tanks); test:recommend then names `tanks` for the owner.
