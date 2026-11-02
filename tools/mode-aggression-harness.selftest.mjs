@@ -1,5 +1,5 @@
 // The mode aggression harness (gameplay-modes-228) as a receipt: its compare gate reads targets the way the build plan
-// states them, and two short seeded runs through the real solo battle pin the asks the owner made of the zombie modes
+// states them, and short seeded runs through the real solo battle (Horde's first wave over a 24-deal sweep) pin the asks the owner made of the zombie modes
 // (2026-10-17 / 2026-10-18): Endless Horde fields the wave law's enemies out of the humans' reach and sight, its fodder
 // hulls (0.15 of their own) against the humans' doubled hulls, and zombies that rush in, never fall back, scoot, kite
 // or ram; the Infected arrive near the survivors and close on them. The long A/B batches (8+ seeds a mode) live under
@@ -91,34 +91,73 @@ const run = (mode, capS, seed, player) => new Promise((resolve, reject) => {
 });
 // round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
 // chased hard), all at once
-// (268, item 7) the battle's seed is handed in (rosterState soloMatchSeed), not steered through the battle counter: the deals
-// moved once, and Horde's pinned Verdant battle is seed 9 (seed 1's new deal: the sortie destroyed 3/6 inside 45 s)
-const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45, 9, 'm60a2'),
-  run('infected', 60, 1, 'm60a2'), run('frontline_assault', 90, 4, 'm1a3'), run('capture_the_flag', 120, 5, 'kf51_evo'),
-  run('turbo_ball', 120, 7, 'm1a3')]);
+// (268, item 7) the battle's seed is handed in (rosterState soloMatchSeed), not steered through the battle counter.
+// (268, item 10) Horde's first wave is judged over a sweep, not one pinned deal (seed 9 since item 7): the deals are chaotic,
+// so the owner's asks are bars over 24 fixed deals, three a map on the eight rotation maps (seed s plays
+// MAP_ROTATION[(s - 1) % 8]; seeds 1, 6 and 17 among them), six at a time beside the other modes' battles.
+const HORDE_SEEDS = Array.from({ length: 24 }, (_, i) => i + 1);
+const pool = async (jobs, limit) => {
+  const out = new Array(jobs.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: limit }, async () => { while (next < jobs.length) { const i = next++; out[i] = await jobs[i](); } }));
+  return out;
+};
+const [hordeRuns, [infected, front, flags, pitch]] = await Promise.all([
+  pool(HORDE_SEEDS.map((seed) => () => run('endless_horde', 45, seed, 'm60a2')), 6),
+  Promise.all([run('infected', 60, 1, 'm60a2'), run('frontline_assault', 90, 4, 'm1a3'), run('capture_the_flag', 120, 5, 'kf51_evo'),
+    run('turbo_ball', 120, 7, 'm1a3')]),
+]);
 
-// Endless Horde, seed 9 (Verdant), the fight seat with its four allies, 45 s: the first wave
+// Endless Horde, wave 1, the fight seat with its four allies, 45 s a deal. Each deal keeps the wave's law: the law's
+// enemies all arrived, at most the live cap at once, none within reach or in a human's sight; the HP split (owner
+// 2026-10-17: "all the zombies actually have low hp"); zombies that never fall back, scoot, kite, settle or ram, and that
+// hunt only what their side spots (the engagement distance and the hunt's honesty over the sweep: the one pinned deal's
+// asks, per deal, were already missed on four of the 24 before item 10 — engagement 54-55 m, unspotted 0.022-0.024).
 const rules = matchRulesetFor('endless_horde');
-const wave1 = horde.horde.waves[0];
-assert.equal(wave1.enemies, hordeWaveTotal(rules.horde, 1, 1), 'wave 1 fields the law (6)');
-assert.equal(wave1.arrivals, wave1.enemies, 'every enemy of the wave arrived');
-assert.ok(wave1.zombieDeaths >= wave1.enemies - 2, `the five-tank sortie has destroyed most of wave 1 inside 45 s (${wave1.zombieDeaths}/${wave1.enemies})`);
-assert.ok(wave1.peakAlive <= hordeMaxAlive(rules.horde, 1, 20), 'at most the live cap at once');
-assert.equal(wave1.spawnNear, 0, 'no arrival inside spawnMinHumanM of a human');
-assert.equal(wave1.spawnSeen, 0, "no arrival in a human's terrain line of sight");
-assert.ok(wave1.firstShotS >= 8 && wave1.firstShotS <= 25, `first contact 8-25 s after the wave starts (${wave1.firstShotS})`);
-// the HP split (owner 2026-10-17: "all the zombies actually have low hp"): fodder at 0.15 of their own hull, humans doubled
-assert.ok(Math.abs(wave1.hostileHullOfOwn - rules.horde.hostileHpScale) < 0.002, `zombie hull ${wave1.hostileHullOfOwn} of its own`);
+const maps = new Map();
+const deals = hordeRuns.map((horde) => {
+  const wave1 = horde.horde.waves[0], zombies = horde.bravo, at = `seed ${horde.seed} (${horde.mapId})`;
+  maps.set(horde.mapId, (maps.get(horde.mapId) ?? 0) + 1);
+  assert.equal(wave1.enemies, hordeWaveTotal(rules.horde, 1, 1), `${at}: wave 1 fields the law (6)`);
+  assert.equal(wave1.arrivals, wave1.enemies, `${at}: every enemy of the wave arrived`);
+  assert.ok(wave1.peakAlive <= hordeMaxAlive(rules.horde, 1, 20), `${at}: at most the live cap at once`);
+  assert.equal(wave1.spawnNear, 0, `${at}: no arrival inside spawnMinHumanM of a human`);
+  assert.equal(wave1.spawnSeen, 0, `${at}: no arrival in a human's terrain line of sight`);
+  assert.ok(Math.abs(wave1.hostileHullOfOwn - rules.horde.hostileHpScale) < 0.002, `${at}: zombie hull ${wave1.hostileHullOfOwn} of its own`);
+  assert.ok(wave1.humanMaxHp >= wave1.hostileMaxHp / wave1.hostileHullOfOwn * 1.5, `${at}: the human hull is about twice a full hull`);
+  for (const flag of ['fallingBack', 'scooting', 'kiting', 'settling']) assert.equal(zombies.flags[flag], 0, `${at}: zombies never ${flag}`);
+  assert.equal(horde.ramStats.hunterRams, 0, `${at}: hunters never ram`);
+  assert.ok(wave1.firstShotS >= 8 && wave1.firstShotS <= 25, `${at}: first contact 8-25 s after the wave starts (${wave1.firstShotS})`);
+  return { seed: horde.seed, mapId: horde.mapId, kills: wave1.zombieDeaths, enemies: wave1.enemies, advance: zombies.move.advance,
+    still: zombies.engagedStillShare ?? 0, firstShotS: wave1.firstShotS, engageDistM: zombies.engageDistM,
+    huntSamples: horde.huntHonesty.samples, unspotted: horde.huntHonesty.unspottedShare * horde.huntHonesty.samples };
+});
 assert.equal(rules.hpScale, 2, 'humans keep the doubled hull (never below their own)');
-assert.ok(wave1.humanMaxHp >= wave1.hostileMaxHp / wave1.hostileHullOfOwn * 1.5, 'the human hull is about twice a full hull');
-// the rush (owner 2026-10-18: "increase aggression in that game mode too")
-const zombies = horde.bravo;
-assert.ok(zombies.move.advance >= 0.8, `zombies advance (${zombies.move.advance})`);
-assert.ok(zombies.engagedStillShare <= 0.05, `zombies never stand still in a fight (${zombies.engagedStillShare})`);
-assert.ok(zombies.engageDistM <= 50, `zombies fight close (${zombies.engageDistM} m)`);
-for (const flag of ['fallingBack', 'scooting', 'kiting', 'settling']) assert.equal(zombies.flags[flag], 0, `zombies never ${flag}`);
-assert.equal(horde.ramStats.hunterRams, 0, 'hunters never ram');
-assert.ok(horde.huntHonesty.unspottedShare <= 0.02, 'hunts route on what the team spots, never a live unspotted position');
+assert.equal(maps.size, 8, `the sweep covers the eight rotation maps (${[...maps.keys()].join(', ')})`);
+for (const [mapId, n] of maps) assert.equal(n, 3, `three deals on ${mapId}`);
+// the owner's three asks of a deal (2026-10-18: "increase aggression in that game mode too"): the five-tank sortie has
+// destroyed all but two of the wave inside 45 s, the zombies advance (>= 0.8 of their moving samples) and never stand
+// still in a fight (<= 5 % of their engaged samples)
+const asks = (d) => d.kills >= d.enemies - 2 && d.advance >= 0.8 && d.still <= 0.05;
+const mean = (f) => deals.reduce((n, d) => n + f(d), 0) / deals.length;
+const meeting = deals.filter(asks).length, meanKills = mean((d) => d.kills), meanAdvance = mean((d) => d.advance);
+// Main's bars (2026-11-02). OUTCOME, chaotic deal by deal: at least 21 of the 24 meet the three asks, and the wave's mean
+// kills are at least 5.0 of 6. CONDUCT, a defect on any deal: standing still at most 5 % and advance at least 0.6 on every
+// deal, the mean advance at least 0.8.
+const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
+const misses = [];
+if (meeting < 21) misses.push(`${meeting} of 24 deals meet the three asks (want >= 21)`);
+if (meanKills < 5) misses.push(`mean wave-1 kills ${meanKills.toFixed(2)} (want >= 5.0)`);
+for (const d of deals) {
+  if (d.still > 0.05) misses.push(`seed ${d.seed} (${d.mapId}) stands still ${d.still} of its engaged samples (want <= 0.05)`);
+  if (d.advance < 0.6) misses.push(`seed ${d.seed} (${d.mapId}) advances ${d.advance} (want >= 0.6)`);
+}
+if (meanAdvance < 0.8) misses.push(`mean advance ${meanAdvance.toFixed(3)} (want >= 0.8)`);
+assert.deepEqual(misses, [], `Horde wave 1 over the 24-deal sweep:\n${table}`);
+const engaged = deals.filter((d) => d.engageDistM != null), engageDistM = engaged.reduce((n, d) => n + d.engageDistM, 0) / engaged.length;
+assert.ok(engageDistM <= 50, `zombies fight close (${engageDistM.toFixed(1)} m on the mean)`);
+const huntSamples = deals.reduce((n, d) => n + d.huntSamples, 0), unspotted = deals.reduce((n, d) => n + d.unspotted, 0) / huntSamples;
+assert.ok(unspotted <= 0.02, `hunts route on what the team spots, never a live unspotted position (${unspotted.toFixed(3)} of ${huntSamples} hunt samples)`);
 
 // Infected, seed 1 (Verdant), 60 s: the infected rise round the survivors and close on them
 const hunters = infected.bravo;
@@ -148,6 +187,6 @@ assert.ok(pitch.ball.touches.alpha > 0 && pitch.ball.touches.bravo > 0, 'both si
 assert.ok(pitch.ball.pursuit.strikerShare.alpha > 0.2 && pitch.ball.pursuit.strikerShare.bravo > 0.2, 'two strikers a side are on it');
 
 console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; Horde wave 1 `
-  + `${wave1.enemies} on the law (first contact ${wave1.firstShotS} s, zombies ${zombies.engageDistM} m, advance ${zombies.move.advance}); `
+  + `over 24 deals: ${meeting}/24 meet the three asks, mean kills ${meanKills.toFixed(2)}, mean advance ${meanAdvance.toFixed(3)}, no deal over 5 % still; `
   + `infected ${infected.infected.huntDistToSurvivorM} m from the survivors; Frontline sector 1 kills ${front.frontline.sector1Kills}; `
   + `CTF first pickup ${flags.ctf.firstPickupS} s; Turbo Ball ${pitch.ball.totalTouches} touches`);
