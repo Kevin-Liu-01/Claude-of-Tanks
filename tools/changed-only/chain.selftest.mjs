@@ -13,6 +13,9 @@
 //     when the table exists, and refuses an unknown or repeated id; --help prints the usage;
 //   - (266) a page built from a step's output (steps.mjs DEPENDENTS, the Field Manual prerender after icons) is checked
 //     after that step ran and rewritten only when stale; a chain where the step did not run never touches it.
+//   - (268) a parts step (steps.mjs `parts`, as fills and anatomy) on eight ids runs as parallel parts and one merge that
+//     write what one process writes, manifest included; a part that writes the step's shared table itself fails the step
+//     before the merge runs.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -61,8 +64,11 @@ put(B, 'src/vehicles/fleetFactory.ts', "import './fleetRegistration.ts';\nconst 
 // re-runs it for the ids whose fills moved and gets the same rows: the fixpoint the real chain relies on.
 // seats also takes the chain's --skipped report (267): an id named in skip-ids.txt cannot run in this tree, keeps its row
 // and is reported, as the geometry gate reports an id whose oracle is absent here.
-const generator = (table, exportName, formula, { skips = false } = {}) => [
-  "import { existsSync, readFileSync, writeFileSync } from 'node:fs';",
+// fills also runs as parts (268, tools/changed-only/parts.mjs): a part (--out-dir) writes its ids' rows into its dir
+// alone, and the merge (--merge-from) takes them in place of building those ids. COT_FIXTURE_PARTS_RACE is the mutant:
+// each part also writes the shared table, as two --ids runs would.
+const generator = (table, exportName, formula, { skips = false, parts = false } = {}) => [
+  "import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
   "import { createTank } from '../src/vehicles/tankFactory.ts';",
   "import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';",
   'const args = process.argv.slice(2);',
@@ -74,7 +80,11 @@ const generator = (table, exportName, formula, { skips = false } = {}) => [
   'const rows = {};',
   ...(skips ? ["const cannot = new Set(existsSync('skip-ids.txt') ? readFileSync('skip-ids.txt', 'utf8').split(',').map((id) => id.trim()) : []);",
     'const skipped = {};'] : []),
+  ...(parts ? ["const partDir = args.find((arg) => arg.startsWith('--out-dir='))?.slice(10);",
+    "const merged = Object.assign({}, ...(args.find((arg) => arg.startsWith('--merge-from='))?.slice(13).split(',') ?? [])",
+    "  .map((dir) => JSON.parse(readFileSync(`${dir}/rows.json`, 'utf8'))));"] : []),
   'for (const id of ALL_TANK_IDS) {',
+  ...(parts ? ['  if (partDir && !scoped.has(id)) continue;', '  if (merged[id]) { rows[id] = merged[id]; continue; }'] : []),
   '  if (scoped && !scoped.has(id) && previous[id]) { rows[id] = previous[id]; continue; }',
   ...(skips ? ["  if (cannot.has(id) && (!scoped || scoped.has(id))) { rows[id] = previous[id]; skipped[id] = 'fixture input absent here'; continue; }"] : []),
   '  const tank = createTank(id);',
@@ -82,11 +92,15 @@ const generator = (table, exportName, formula, { skips = false } = {}) => [
   '}',
   ...(skips ? ["const report = args.find((arg) => arg.startsWith('--skipped='))?.slice(10);",
     'if (report) writeFileSync(report, JSON.stringify(skipped));'] : []),
+  ...(parts ? ['if (partDir) {', '  mkdirSync(partDir, { recursive: true });', '  writeFileSync(`${partDir}/rows.json`, JSON.stringify(rows));',
+    `  if (process.env.COT_FIXTURE_PARTS_RACE) writeFileSync('src/vehicles/${table}.generated.ts', \`\${head}\${JSON.stringify({ ...previous, ...rows })};\\n\`);`,
+    '  process.exit(0);', '}'] : []),
   'const out = `${head}${JSON.stringify(rows)};\\n`;',
   "if (args.includes('--check')) { if (out !== text) { console.error('stale'); process.exitCode = 1; } }",
   `else writeFileSync('src/vehicles/${table}.generated.ts', out);`, ''].join('\n');
 put(B, 'tools/gen-controls.mjs', generator('controls', 'CONTROLS', '{ guns: tank.base % 7 }'));
-put(B, 'tools/gen-fills.mjs', generator('fills', 'FILLS', '{ fill: tank.base * 2 + tank.guns }'));
+const fillsTool = generator('fills', 'FILLS', '{ fill: tank.base * 2 + tank.guns }', { parts: true });
+put(B, 'tools/gen-fills.mjs', fillsTool);
 put(B, 'tools/gen-seats.mjs', generator('seats', 'SEATS', '{ seat: tank.fill + tank.guns + 1 }', { skips: true }));
 for (const [table, exportName] of [['controls', 'CONTROLS'], ['fills', 'FILLS'], ['seats', 'SEATS']]) {
   put(B, `src/vehicles/${table}.generated.ts`, `export const ${exportName} = {};\n`);
@@ -152,6 +166,8 @@ writeFileSync(tableModule, [
   "  loaderFiles: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/profiledProcedurals.ts'],",
   // The world tool reads its own outputs at computed paths (the index, to keep the maps it does not rebuild): declared.
   `  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: { 'tools/gen-world.mjs': { pin: '${h16(dynamicSites(worldTool, 'gen-world.mjs').join('\n'))}', reads: [] },`,
+  // fills' parts read their scratch dirs (the merge's --merge-from): never the tree.
+  `    'tools/gen-fills.mjs': { pin: '${h16(dynamicSites(fillsTool, 'gen-fills.mjs').join('\n'))}', reads: [] },`,
   // seats' skip marker stands for an oracle absent from one checkout: never a whole-step input (as the gate's public/)
   "    'tools/gen-seats.mjs': { reads: [], covered: ['skip-ids.txt'] } }, accessors: {},",
   "  world: { registryFile: 'src/world/maps/index.ts', outputs: ['server/world-collision-manifests'],",
@@ -165,23 +181,39 @@ writeFileSync(tableModule, [
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
-  "export const STEPS = [step('controls'), step('fills'), { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
+  "export const STEPS = [step('controls'), { ...step('fills'), parts: (dir) => [`--out-dir=${dir}`] },",
+  "  { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
   "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
 // A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
 const N = join(base, 'N');
 cpSync(B, N, { recursive: true });
+// (268) And an eight-id fleet for the parts path (the chain splits a parts step of eight ids or more).
+const P = join(base, 'P');
+cpSync(B, P, { recursive: true });
+const EIGHT = ['a1', 'a2', 'a3', 'a4', 'b1', 'b2', 'b3', 'b4'];
+put(P, 'src/vehicles/specs.ts', [
+  `export const ALL_TANK_IDS = ${JSON.stringify(EIGHT)};`,
+  'export const SAVED_TANK_IDS = ALL_TANK_IDS;',
+  'export const DEVELOPMENT_TANK_IDS = [];',
+  `export const TANK_SPECS = { ${EIGHT.map((id) => `${id}: { id: '${id}'${id === 'b2' ? ", visualBase: 'a1'" : ''} }`).join(', ')} };`, ''].join('\n'));
+put(P, 'src/vehicles/fleetManifest.ts', `export const FLEET_GROUP_BY_ID = { ${EIGHT.map((id) => `${id}: '${id[0] === 'a' ? 'alpha' : 'beta'}'`).join(', ')} };\n`);
+put(P, 'src/vehicles/profiles/alpha.ts', "import { TURRET } from './turretKit.ts';\nexport const ALPHA = { a1: 10 + TURRET, a2: 20 + TURRET, a3: 23 + TURRET, a4: 27 + TURRET };\n");
+put(P, 'src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 30, b2: 41, b3: 44, b4: 52 };\n');
+put(P, 'docs/floors.json', `${JSON.stringify({ schema: 1, tolerance: 1, rows: Object.fromEntries(EIGHT.map((id, i) => [id, { f: i + 1, g: 0 }])) })}\n`);
 const env = { ...process.env, COT_CHANGED_ONLY_CACHE_DIR: cacheDir, NODE_OPTIONS: '' };
 const summaries = (root) => {
   const dir = join(root, '.qa-dev/changed-only');
   return existsSync(dir) ? readdirSync(dir).filter((name) => /^\d{4}-.*Z\.json$/.test(name)).sort() : [];
 };
+/** One process per step unless the flags name --jobs (268: the parts path). */
+const jobs = (flags) => (flags.some((flag) => flag.startsWith('--jobs=')) ? [] : ['--jobs=1']);
 /** Run the chain in `root`; returns its summary (the newest .qa-dev/changed-only/<stamp>.json it wrote). */
 function chain(root, ...flags) {
   const before = new Set(summaries(root));
   try {
     execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`,
-      '--no-gpu', '--jobs=1', ...flags], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
+      '--no-gpu', ...jobs(flags), ...flags], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
   } catch (error) {
     throw new Error(`chain ${flags.join(' ')} failed in ${root}:\n${error.stdout}\n${error.stderr}`);
   }
@@ -353,6 +385,29 @@ assert.deepEqual(chain(S).runs, [], 'a current table: the plain chain runs nothi
 // 10. Bootstrapping the pristine tree lifts the refusal (negative control for 6).
 chain(N, '--all');
 assert.deepEqual(chain(N).runs, [], 'after --all the plain chain resolves clean');
+
+// 11 (268). A parts step on eight ids: two parts and one merge write what one process writes, manifest included. The
+// mutant (each part also writes the shared fills table, as two --ids runs would) fails the step before the merge runs.
+const P1 = join(base, 'P1'), P2 = join(base, 'P2'), P3 = join(base, 'P3');
+for (const root of [P1, P2, P3]) cpSync(P, root, { recursive: true });
+chain(P1, '--all');
+chain(P2, '--all', '--jobs=2');
+assert.deepEqual(snapshot(P2), snapshot(P1), 'fills as parts and a merge write what one process writes');
+/** The children the chain started (its log names each by label as it starts it). */
+const started = (root) => readdirSync(join(root, '.qa-dev/changed-only')).filter((name) => name.endsWith('.log'))
+  .flatMap((name) => [...read(root, `.qa-dev/changed-only/${name}`).matchAll(/^\[regen\] ([\w-]+): (?:nice -n 10 )?node /gm)].map((match) => match[1]));
+for (const label of ['fills-part0', 'fills-part1', 'fills-merge']) {
+  assert.ok(started(P2).includes(label), `${label} ran (the parts path, not one process)`);
+  assert.ok(!started(P1).includes(label), `--jobs=1 runs no ${label}`);
+}
+let raced = null;
+try {
+  execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${P3}`, `--table=${tableModule}`, '--no-gpu', '--all', '--jobs=2'],
+    { cwd: P3, env: { ...env, COT_FIXTURE_PARTS_RACE: '1' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
+} catch (error) { raced = error; }
+assert.equal(raced?.status, 1, 'a part that writes the shared table fails the chain');
+assert.match(raced.stdout, /fills: a part wrote src\/vehicles\/fills\.generated\.ts; only the merge writes the step's shared outputs/);
+assert.ok(started(P3).includes('fills-part1') && !started(P3).includes('fills-merge'), 'the parts ran; the merge did not');
 
 const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.join(',')}]`).join(' ');
 // The repository's dependents: the Field Manual prerender after the icons step (its fleet tiles read the icons
