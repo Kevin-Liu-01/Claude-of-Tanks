@@ -78,10 +78,10 @@ export function createTankAssetsAudit() {
     /widthRatio: 0\.54[\s\S]*heightRatio: 0\.68[\s\S]*baselineRatio: 0\.88[\s\S]*new Float64Array/,
     'one reusable policy excludes sparse equipment and owns fleet framing');
   assert.match(technicalGenerator,
-    /const angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[\s\S]*const angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);/,
+    /angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[\s\S]*const angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);/,
     'the shipped garage angle asset always passes through the shared portrait normalizer');
   assert.match(technicalGenerator,
-    /const thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\)[\s\S]*files\[`thumbs\/\$\{angleFile\}`\]/,
+    /thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\)[\s\S]*files\[`thumbs\/\$\{angleFile\}`\]/,
     'one capture atomically emits normalized 512px and 256px portraits');
   assert.match(portraitGenerator, /mkdirSync\(dirname\(outputPath\), \{ recursive: true \}\)/,
     'portrait generation creates the nested thumbnail output deterministically');
@@ -91,7 +91,7 @@ export function createTankAssetsAudit() {
   assert.match(assetChecker, /__AUDIT_PORTRAITS[\s\S]*portrait framing outside fleet envelope/,
     'the tank asset release checker rejects missing or misframed thumbnails');
   assert.match(technicalGenerator,
-    /new THREE\.Vector3\(portraitSideRatio\(id\), 0\.34, 1\.0\)/,
+    /for \(const ratio of portraitSideRatios\(\)\) \{\s*const dir = new THREE\.Vector3\(ratio, 0\.34, 1\.0\)/,
     'portrait-only azimuth policy preserves fixed elevation and forward direction');
   assert.match(technicalGenerator, /from '\/tools\/portrait-camera\.ts'/,
     'portrait azimuth uses the separately regression-tested bounded policy');
