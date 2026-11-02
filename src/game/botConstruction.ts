@@ -13,8 +13,7 @@ import { planBotRoute } from '../sim/botRoutePlanner.ts';
 import type { BotRoutePoint } from '../sim/botRoutePlanner.ts';
 import { rulesetBotDifficulty, rulesetBotDoctrine } from '../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../sim/matchRuleset.ts';
-import { createAI, roleOf } from './ai.ts';
-import { mulberry32 } from './stateCore.ts';
+import { createAI, mulberry32, roleOf } from './ai.ts';
 
 type AiOptions = Parameters<typeof createAI>[1];
 type AiDeps = AiOptions['deps'];

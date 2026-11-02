@@ -6,7 +6,7 @@
  * consumables; and its paint's bonus is a datum the driver stamps on each hull at the battle's start (camoBonus: the solo
  * battle reads the player's saved scheme against the map's biome, the authority its seat record's).
  */
-import { mulberry32 } from '../game/stateCore.ts';
+import { mulberry32 } from '../game/ai.ts';
 import { consumableSpottingIds } from './consumableRules.ts';
 import type { ConsumableState } from './consumableRules.ts';
 import { smokeBlocks } from './smokeScreen.ts';
