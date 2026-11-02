@@ -32,6 +32,8 @@
 //
 // Resource rules: every CPU child runs `nice -n 10 node --max-old-space-size=4096` after `headroom can-start --gb N`,
 // with a wall-clock limit that kills only that child; GPU children are not niced and run inside the capture lock.
+// Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
+// (tools/changed-only/childPriority.mjs, 267).
 import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -39,6 +41,7 @@ import { join, resolve } from 'node:path';
 import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
+import { cpuChildCommand } from './changed-only/childPriority.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
@@ -121,9 +124,8 @@ async function gate(gb) {
 /** Run one child; resolves with its exit code. A timeout kills exactly that child (TERM, then KILL after 15 s). */
 function runChild(argv, { niced, timeoutS, label }) {
   return new Promise((done) => {
-    const command = niced ? 'nice' : process.execPath;
-    const fullArgs = niced ? ['-n', '10', process.execPath, ...argv] : argv;
-    log(`[regen] ${label}: ${niced ? 'nice -n 10 ' : ''}node ${argv.join(' ').slice(0, 400)}`);
+    const { command, args: fullArgs, prefix } = cpuChildCommand(process.execPath, argv, { niced });
+    log(`[regen] ${label}: ${prefix}node ${argv.join(' ').slice(0, 400)}`);
     const out = join(qaDir, `${stamp}-${label.replace(/[^\w.-]+/g, '_')}.out`);
     const child = spawn(command, fullArgs, { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     const sink = (chunk) => appendFileSync(out, chunk);

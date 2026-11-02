@@ -21,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { dynamicSites, h16 } from './graph.mjs';
 import { DEPENDENTS, FLEET_API_TOKENS, stepByName } from './steps.mjs';
+import { cpuChildCommand } from './childPriority.mjs';
 import { tokenPin } from './world.mjs';
 
 const repo = resolve(import.meta.dirname, '../..');
@@ -360,5 +361,19 @@ const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.joi
 assert.deepEqual(DEPENDENTS.map((entry) => `${entry.name}<${entry.after.join(',')}`), ['docsPrerender<icons', 'publicShell<docsPrerender']);
 assert.ok(stepByName('icons').outputs.includes('tankAssets'), 'icons writes the manifest the prerender reads');
 for (const entry of DEPENDENTS) assert.ok(existsSync(join(repo, entry.tool)), `${entry.name}: ${entry.tool} exists`);
+
+// 267 (Main: release priority covers the CPU too): a lane's CPU children run at nice 10, the release chain's
+// (COT_CAPTURE_PRIORITY=release) un-niced; the command line differs by that setting alone, and GPU children never nice.
+const childArgv = ['tools/gen.mjs', '--ids=a1'];
+const laneChild = cpuChildCommand('/bin/node', childArgv, { niced: true, env: {} });
+const releaseChild = cpuChildCommand('/bin/node', childArgv, { niced: true, env: { COT_CAPTURE_PRIORITY: 'release' } });
+assert.deepEqual(laneChild, { command: 'nice', args: ['-n', '10', '/bin/node', ...childArgv], prefix: 'nice -n 10 ' });
+assert.deepEqual(releaseChild, { command: '/bin/node', args: childArgv, prefix: '' });
+assert.deepEqual([laneChild.args.slice(3), releaseChild.args], [childArgv, childArgv], 'the same node command line either way');
+assert.equal(cpuChildCommand('/bin/node', childArgv, { niced: true, env: { COT_CAPTURE_PRIORITY: 'normal' } }).command, 'nice');
+assert.deepEqual(cpuChildCommand('/bin/node', childArgv, { niced: false, env: {} }), releaseChild, 'a GPU child is never niced');
+const runnerSource = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
+assert.match(runnerSource, /cpuChildCommand\(process\.execPath, argv, \{ niced \}\)/, 'the runner spawns every child through it');
+assert.doesNotMatch(runnerSource, /\['-n', '10'/, 'no hard-coded nice left in the runner');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
