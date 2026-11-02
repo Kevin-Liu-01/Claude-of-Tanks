@@ -633,6 +633,16 @@ const TARGET_MEMORY_S   = 5.0;    // chase last-seen position this long after LO
 const FLANK_TIMEOUT_S   = 20.0;
 const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
+// (268, item 10; Main) A hull driving into a static solid it touches, with no way, releases at once rather than after
+// STUCK_TIME_S: this long pressed, a solid within STATIC_CONTACT_M of one of CONTACT_PROBES (fractions of the half-length
+// along, the half-width across: the front half and the sides). Horde seed 12: a T-64BV wedged 4 s between two boulders
+// 1.5 m apart on a slope, at 0.95 throttle with no way, until the low-speed watchdog reversed it.
+const WEDGE_CONTACT_S = 0.25;
+const ROUTE_TOUCH_M = 0.25;      // a corner lane from inside a box's margin keeps this far off the box (routeSegmentHitsBox)
+const STATIC_CONTACT_M = 0.35;
+const CONTACT_PROBES: ReadonlyArray<readonly [number, number]> = Object.freeze([
+  [1, -1], [1, 0], [1, 1], [0.5, -1], [0.5, 1], [0, -1], [0, 1],
+] as const);
 const UNSTICK_TIME_S    = 1.4;
 const SLOPE_BLOCK_RECOVERY_S = 0.35;
 // A collider stop (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree): a UA M1A1 turning a
@@ -2751,6 +2761,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (allyHoldT > 0 && (timeS - allyHoldLastS > ALLY_HOLD_FORGET_S ||
         detMath.hypot(st.pos.x - allyHoldAnchor.x, st.pos.z - allyHoldAnchor.z) > ALLY_HOLD_CLEAR_M)) allyHoldT = 0;
     const holding = held && driveIntent;
+    // a rusher's hold is one unbroken stand behind a stopped ally (RUSH_DRIVE.allyHoldS): any tick it is not held ends it
+    const rush = doctrineOf().rush;
+    if (rush && !holding) allyHoldT = 0;
     if (holding) {
       if (allyHoldT === 0) {
         allyHoldAnchor.x = st.pos.x;
@@ -2761,7 +2774,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     allyHoldT += dt;
-    if (allyHoldT < ALLY_HOLD_LIMIT_S || !holding) return;
+    if (allyHoldT < (rush ? RUSH_DRIVE.allyHoldS : ALLY_HOLD_LIMIT_S) || !holding) return;
     allyHoldT = 0;
     allyHoldGiveWays++;
     allyYieldT = 0;
@@ -3050,6 +3063,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** A solid (not crushed, crushable or a bridge deck) within `margin` of (x, z). */
+  /** The side (+1 right, -1 left) of a static solid the hull touches (CONTACT_PROBES within STATIC_CONTACT_M), else 0. */
+  let contactReleases = 0;
+  function staticSolidContactSide(): number {
+    const st = entity.state, hl = ownHalfLengthM(), hw = (spec.dims.widthM || 3) * 0.5;
+    const fx = detMath.sin(st.yaw), fz = detMath.cos(st.yaw);
+    let touched = false, side = 0;
+    for (let i = 0; i < CONTACT_PROBES.length; i++) {
+      const [along, across] = CONTACT_PROBES[i]!;
+      if (!solidWithin(st.pos.x + fx * along * hl + fz * across * hw, st.pos.z + fz * along * hl - fx * across * hw, STATIC_CONTACT_M)) continue;
+      touched = true;
+      side += across;
+    }
+    return touched ? Math.sign(side) || orbitSide : 0;
+  }
+
   function solidWithin(x: number, z: number, margin: number): boolean {
     if (clearanceScan) {
       clearanceScan.begin(x - margin, z - margin, x + margin, z + margin);
@@ -3141,6 +3169,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let ddx = endX - sourceX, ddz = endZ - sourceZ;
       const len = detMath.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
+      // a hull already inside the box's margin only has to keep its lane off the box itself, as the planner's legs do
+      // (sim/botRoutePlanner.ts NAV_LEG_TOUCH_M; 268, item 10 (A)): judged at the full margin every corner's lane began
+      // inside it and "hit", no corner opened, and the hull drove its straight line into the solid (Desert seed 12: a
+      // T-64BV into the 1.5 m gap between two boulders)
+      const clearance = collisionClearanceContainsPoint(box as CollisionRecord, sourceX, sourceZ, margin * 0.85)
+        ? ROUTE_TOUCH_M : margin * 0.85;
       return rayCollisionClearanceEntry2(
         box as CollisionRecord,
         sourceX,
@@ -3148,7 +3182,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         ddx,
         ddz,
         len,
-        margin * 0.85,
+        clearance,
       ) != null;
   }
 
@@ -6578,9 +6612,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && (Math.abs(entity.state.speed) < 0.3 || progressRate < 0.45);
     if (movingTooSlowly) {
       lowSpeedT += dt;
-      if (lowSpeedT <= STUCK_TIME_S) return;
+      // pressed into a static solid with no way (never a hull, never a crushable: a ram stays a ram): release now, the
+      // reverse swinging the bow away from the contact (movement.ts flips the steer under way backwards)
+      const contact = lowSpeedT >= WEDGE_CONTACT_S && input.throttle > 0.5 && Math.abs(entity.state.speed) < 0.3
+        ? staticSolidContactSide() : 0;
+      if (lowSpeedT <= STUCK_TIME_S && !contact) return;
       unstickUntilS = timeS + UNSTICK_TIME_S;
-      unstickSteer = rng() < 0.5 ? -1 : 1;
+      unstickSteer = contact || (rng() < 0.5 ? -1 : 1);
+      if (contact) contactReleases++;
       lowSpeedT = 0;
       escalateStuckRecovery(timeS, true);
       return;
@@ -7166,7 +7205,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
-      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, plannedLegRuns, plannedLegRejoins, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, plannedLegRuns, plannedLegRejoins, contactReleases, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,

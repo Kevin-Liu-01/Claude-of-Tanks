@@ -246,6 +246,13 @@ export const RUSH_DRIVE = Object.freeze({
    */
   backOffHoldS: 1.2,
   /**
+   * (268, item 10; Main) A rusher held behind an ally stopped (under the controller's parked speed) for this long without
+   * a break gives way: the passing path round it (its legs cleared at the hull's half-width + 1 m, beyond the planner's
+   * + 0.5 m). The bounded yield's 8 s stood a hunter behind a standing ally in the fight (Infected, Steppe seed 7: an M60A2
+   * stopped 8 m behind a Centurion 3 for 4 s).
+   */
+  allyHoldS: 1.5,
+  /**
    * A lane keeper that is no rusher (noRamLane: Frontline's sides, the survivors, the Horde's allies, Turbo Ball) backs off
    * from this gap when it stands (round 3b, the critic's M4: in a sector's point-blank fight the hulls stood nose to nose,
    * driving into one another — over half of Frontline's engaged stills on Verdant with an enemy inside 20 m).
