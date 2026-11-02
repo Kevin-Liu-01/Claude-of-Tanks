@@ -21,6 +21,8 @@
 //     oracle appears; a stamp never hides an output edited by hand, and a skip without a reason gets none.
 //   - (268) a partial chain (--steps) writes only the lines of the steps it ran: a step whose tool moved stays due and
 //     reads as its tool.
+//   - (268) every fixture chain is bounded by the CPU its process tree spends, never wall time (watchChild), and a
+//     tree's CPU keeps what its exited members spent.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -224,15 +226,29 @@ const summaries = (root) => {
 };
 /** One process per step unless the flags name --jobs (268: the parts path). */
 const jobs = (flags) => (flags.some((flag) => flag.startsWith('--jobs=')) ? [] : ['--jobs=1']);
+/** A fixture chain's limit: a budget of the CPU its process tree spends (childBudget.mjs watchChild), never wall time
+ *  (268: at load 560 a healthy chain overran a 300 s wall limit). A tree with no CPU progress for the hang cap is stopped
+ *  as a hang. */
+const CHAIN_CPU_S = 300, CHAIN_HANG_S = 600;
+/** Run the chain with `args` in `root`; resolves { status, stdout, stderr, verdict } (verdict: why its watch stopped it). */
+function runChain(root, args, childEnv = env) {
+  return new Promise((done) => {
+    const child = spawn(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`, ...args],
+      { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    const watch = watchChild(child.pid, { budgetS: CHAIN_CPU_S, hangS: CHAIN_HANG_S, pollMs: 2000, graceMs: 5000 });
+    child.on('close', (status) => { watch.stop(); done({ status, stdout, stderr, verdict: watch.verdict }); });
+  });
+}
 /** Run the chain in `root`; returns its summary (the newest .qa-dev/changed-only/<stamp>.json it wrote). */
 const chain = (root, ...flags) => chainWith({}, root, ...flags);
-function chainWith(extraEnv, root, ...flags) {
+async function chainWith(extraEnv, root, ...flags) {
   const before = new Set(summaries(root));
-  try {
-    execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`,
-      '--no-gpu', ...jobs(flags), ...flags], { cwd: root, env: { ...env, ...extraEnv }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
-  } catch (error) {
-    throw new Error(`chain ${flags.join(' ')} failed in ${root}:\n${error.stdout}\n${error.stderr}`);
+  const run = await runChain(root, ['--no-gpu', ...jobs(flags), ...flags], { ...env, ...extraEnv });
+  if (run.status !== 0) {
+    throw new Error(`chain ${flags.join(' ')} failed in ${root}${run.verdict ? ` (${run.verdict.message})` : ''}:\n${run.stdout}\n${run.stderr}`);
   }
   const written = summaries(root).filter((name) => !before.has(name));
   assert.equal(written.length, 1, 'one summary per chain run');
@@ -245,7 +261,7 @@ const snapshot = (root) => Object.fromEntries(OUTPUTS.map((rel) => [rel, read(ro
 const ranIds = (summary, name) => summary.runs.filter((run) => run.step === name).flatMap((run) => run.ids);
 
 // 1. Bootstrap: every step on the whole fleet, then to a fixpoint; --verify re-checks every step.
-const boot = chain(B, '--all', '--verify');
+const boot = await chain(B, '--all', '--verify');
 assert.equal(boot.ok, true);
 for (const [name, entry] of Object.entries(boot.final)) assert.equal(entry.mode, 'none', `bootstrap leaves ${name} resolved`);
 assert.deepEqual(boot.verify.map((entry) => `${entry.step}:${entry.check}`), ['controls:pass', 'fills:pass', 'seats:pass', 'collision:pass']);
@@ -256,7 +272,7 @@ assert.deepEqual(boot.dependents.map((entry) => `${entry.step}:${entry.wrote}`),
 
 // 2. Unchanged: nothing runs and nothing is rewritten.
 const quiet = snapshot(B);
-const noop = chain(B);
+const noop = await chain(B);
 assert.deepEqual(noop.runs, [], 'an unchanged tree runs no generator');
 assert.deepEqual(noop.dependents, [], 'nor checks the page built from one (negative control)');
 assert.deepEqual(snapshot(B), quiet, 'an unchanged tree is left byte-identical');
@@ -266,8 +282,8 @@ const C = join(base, 'C'), F = join(base, 'F');
 cpSync(B, C, { recursive: true });
 cpSync(B, F, { recursive: true });
 for (const root of [C, F]) put(root, 'src/vehicles/profiles/turretKit.ts', 'export const TURRET = 3;\n');
-const changedRun = chain(C, '--verify');
-const fullRun = chain(F, '--all');
+const changedRun = await chain(C, '--verify');
+const fullRun = await chain(F, '--all');
 assert.deepEqual(snapshot(C), snapshot(F), 'changed-only outputs and manifest are byte-identical to a whole-fleet regen');
 assert.deepEqual(changedRun.dependents.map((entry) => `${entry.step}:${entry.wrote}`), ['docs:true'], 'the kit moved seats rows: the page is rewritten');
 assert.notDeepEqual(snapshot(C), quiet, 'the edit moved rows');
@@ -289,7 +305,7 @@ assert.deepEqual(changedRun.verify.map((entry) => `${entry.step}:${entry.check}:
 // 4. An output row edited by hand is found and regenerated; the tree returns to the full regen's bytes.
 const seats = read(C, 'src/vehicles/seats.generated.ts');
 put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '"b1":{"seat":-1}'));
-const repair = chain(C);
+const repair = await chain(C);
 assert.deepEqual(ranIds(repair, 'seats'), ['b1'], 'the hand-edited row is the only one regenerated');
 assert.deepEqual(repair.dependents.map((entry) => `${entry.step}:${entry.wrote}`), ['docs:false'],
   'seats ran but restored the rows the page was built from: checked, not rewritten');
@@ -302,14 +318,14 @@ assert.deepEqual(snapshot(C), snapshot(F), 'the repair restores the full regen b
 const oracle = read(C, 'public/models/b1.glb');
 put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '"b1":{"seat":-1}').replace(/"a2":\{"seat":\d+\}/, '"a2":{"seat":-2}'));
 rmSync(join(C, 'public/models/b1.glb'));
-const blocked = chain(C);
+const blocked = await chain(C);
 assert.equal(blocked.ok, true, 'an id the tool cannot run here does not fail the chain');
 assert.deepEqual(ranIds(blocked, 'seats'), ['a2', 'b1'], 'seats ran once on both edited ids: the skipped one is not retried');
 assert.deepEqual([blocked.final.seats.mode, Object.keys(blocked.final.seats.notRunHere ?? {}), blocked.final.seats.stamped],
   ['none', ['b1'], undefined], 'the final resolve names the id left due, with its reason: its stamp does not hold over the hand edit');
 assert.match(read(C, 'src/vehicles/seats.generated.ts'), /"b1":\{"seat":-1\}/, 'its row is untouched');
 put(C, 'public/models/b1.glb', oracle);
-const unblocked = chain(C);
+const unblocked = await chain(C);
 assert.deepEqual(ranIds(unblocked, 'seats'), ['b1'], 'the id left due runs alone once the tree can run it (a2 was recorded)');
 assert.deepEqual(snapshot(C), snapshot(F), 'and the tree returns to the full regen bytes');
 
@@ -322,34 +338,34 @@ put(C, 'docs/floors.json', floorsBefore.replace('"b1":{"f":3,', '"b1":{"f":3.5,'
 rmSync(join(C, 'public/models/b1.glb'));
 const M = join(base, 'M');
 cpSync(C, M, { recursive: true });
-const unnamed = chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M);
+const unnamed = await chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M);
 assert.deepEqual([unnamed.ok, Object.keys(unnamed.final.seats.notRunHere ?? {}), /^stamp\t/m.test(read(M, 'release/fingerprints.tsv'))],
   [true, ['b1'], false], 'mutant: a skip without a reason gets no stamp');
-const unnamedResolve = chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M, '--dry-run');
+const unnamedResolve = await chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M, '--dry-run');
 assert.deepEqual([unnamedResolve.final.seats.mode, unnamedResolve.final.seats.ids], ['ids', ['b1']], 'mutant: and stays red');
-const stamping = chain(C);
+const stamping = await chain(C);
 assert.deepEqual([ranIds(stamping, 'seats'), stamping.final.seats.mode, stamping.final.seats.notRunHere, stamping.final.seats.stamped],
   [['b1'], 'none', undefined, { b1: 'oracle-absent: oracle absent here (/models/b1.glb)' }], 'the absent oracle is stamped with its reason');
 assert.deepEqual(stamping.changedIds, [], 'an id the tool did not run is no regenerated id (the release check names none)');
 assert.match(read(C, 'release/fingerprints.tsv'), /^stamp\tseats\tb1\t[0-9a-f]{16}\t[0-9a-f]{16}\toracle-absent\tpublic\/models\/b1\.glb\toracle absent here \(\/models\/b1\.glb\)$/m);
 const stampedQuiet = snapshot(C);
-assert.deepEqual(chain(C).runs, [], 'a fixture id with a missing oracle reads current: the next chain runs nothing');
+assert.deepEqual((await chain(C)).runs, [], 'a fixture id with a missing oracle reads current: the next chain runs nothing');
 assert.deepEqual(snapshot(C), stampedQuiet, 'and rewrites nothing');
 put(C, 'public/models/b1.glb', oracle);
-const dropped = chain(C, '--dry-run');
+const dropped = await chain(C, '--dry-run');
 assert.deepEqual([dropped.final.seats.ids, dropped.final.seats.reasons.b1?.includes('stamp\'s inputs moved (public/models/b1.glb)')], [['b1'], true],
   'dropping the oracle in makes it due, named by the stamp');
-const measured = chain(C);
+const measured = await chain(C);
 assert.deepEqual([ranIds(measured, 'seats'), /^stamp\t/m.test(read(C, 'release/fingerprints.tsv'))], [['b1'], false], 'the chain runs it alone and clears the stamp');
 put(C, 'docs/floors.json', floorsBefore);
-chain(C);
+await chain(C);
 assert.deepEqual(snapshot(C), snapshot(F), 'restored, the tree returns to the full regen bytes');
 
 // 5. A map config edit rebuilds that map alone (no tank step runs); the whole-world regen agrees byte for byte.
 for (const root of [C, F]) put(root, 'src/world/maps/betaMap.ts', "export default { base: 8, props: { tankWrecks: { ids: ['b1'] } } };\n");
-const mapRun = chain(C);
+const mapRun = await chain(C);
 assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['collision[beta]'], 'a map config edit runs that map only');
-chain(F, '--all', '--steps=collision');
+await chain(F, '--all', '--steps=collision');
 assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
 
 // 5b (267). A canonical ledger (TABLES `canonical`, read per id): re-serializing it with rows and keys in another order
@@ -358,45 +374,41 @@ const floors = read(C, 'docs/floors.json');
 const flip = (value) => (value && typeof value === 'object' && !Array.isArray(value)
   ? Object.fromEntries(Object.keys(value).reverse().map((key) => [key, flip(value[key])])) : value);
 put(C, 'docs/floors.json', `${JSON.stringify(flip(JSON.parse(floors)), null, 2)}\n`);
-assert.deepEqual(chain(C).runs, [], 'the same ledger in another order runs nothing');
+assert.deepEqual((await chain(C)).runs, [], 'the same ledger in another order runs nothing');
 put(C, 'docs/floors.json', floors.replace('"a2":{"f":2,', '"a2":{"f":2.5,'));
-assert.deepEqual(chain(C).runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[a2]'], 'one id\'s changed row runs that id alone');
+assert.deepEqual((await chain(C)).runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[a2]'], 'one id\'s changed row runs that id alone');
 put(C, 'docs/floors.json', floors.replace('"tolerance":1', '"tolerance":2'));
-assert.deepEqual(ranIds(chain(C), 'seats'), ['*'], 'the frame (its tolerance) runs the step on the whole fleet');
+assert.deepEqual(ranIds(await chain(C), 'seats'), ['*'], 'the frame (its tolerance) runs the step on the whole fleet');
 put(C, 'docs/floors.json', floors);
-chain(C);
+await chain(C);
 assert.deepEqual(snapshot(C), snapshot(F), 'restored, the tree returns to the full regen bytes');
 
 /** A chain run expected to refuse: exit 2 and no generator; returns its output. */
-function refused(root, ...flags) {
+async function refused(root, ...flags) {
   const before = summaries(root).length;
-  try {
-    execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`, '--no-gpu', '--jobs=1', ...flags],
-      { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
-  } catch (error) {
-    assert.equal(error.status, 2, `${flags.join(' ')} refuses with exit 2:\n${error.stderr}`);
-    const written = summaries(root).slice(before);
-    for (const name of written) assert.deepEqual(JSON.parse(read(root, `.qa-dev/changed-only/${name}`)).runs, [], 'a refusal runs no generator');
-    return `${error.stdout}${error.stderr}`;
-  }
-  assert.fail(`${flags.join(' ') || 'a plain run'} in ${root} should have refused`);
+  const run = await runChain(root, ['--no-gpu', '--jobs=1', ...flags]);
+  if (run.status === 0) assert.fail(`${flags.join(' ') || 'a plain run'} in ${root} should have refused`);
+  assert.equal(run.status, 2, `${flags.join(' ')} refuses with exit 2${run.verdict ? ` (${run.verdict.message})` : ''}:\n${run.stderr}`);
+  const written = summaries(root).slice(before);
+  for (const name of written) assert.deepEqual(JSON.parse(read(root, `.qa-dev/changed-only/${name}`)).runs, [], 'a refusal runs no generator');
+  return `${run.stdout}${run.stderr}`;
 }
 const rowOf = (root, table, id) => JSON.parse(read(root, `src/vehicles/${table}.generated.ts`).replace(/^export const \w+ = /, '').replace(/;\n$/, ''))[id];
 
 // 6. No fingerprints table (main before the 265 bootstrap): a plain run, a dry run and --verify refuse; --help prints usage.
 assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')));
 for (const flags of [[], ['--dry-run'], ['--verify']]) {
-  assert.match(refused(N, ...flags), /no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap/);
+  assert.match(await refused(N, ...flags), /no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap/);
 }
 assert.deepEqual(summaries(N), [], 'the table refusals write nothing at all');
 const help = execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), '--help'], { cwd: N, env, encoding: 'utf8' });
 assert.match(help, /--ids=a,b/); assert.match(help, /--all/); assert.match(help, /refuses/);
-assert.match(refused(N, '--ids=a1,a1'), /lists a1 2 times/, 'a repeated id is refused');
-assert.match(refused(N, '--ids=zz'), /roster does not hold: zz/, 'an unknown id is refused before any step runs');
-assert.match(refused(N, '--ids=b1', '--all'), /drop --all/);
+assert.match(await refused(N, '--ids=a1,a1'), /lists a1 2 times/, 'a repeated id is refused');
+assert.match(await refused(N, '--ids=zz'), /roster does not hold: zz/, 'an unknown id is refused before any step runs');
+assert.match(await refused(N, '--ids=b1', '--all'), /drop --all/);
 
 // 7. --ids with no table: every step on exactly b1, the world step on the map casting it; nothing recorded.
-const lone = chain(N, '--ids=b1');
+const lone = await chain(N, '--ids=b1');
 for (const name of ['controls', 'fills', 'seats']) assert.deepEqual(ranIds(lone, name), ['b1'], `${name} ran b1 alone`);
 assert.deepEqual(ranIds(lone, 'collision'), ['beta'], 'the world step ran the map whose wrecks cast b1');
 assert.ok(!existsSync(join(N, 'release/fingerprints.tsv')), 'no table: none created, no rows recorded');
@@ -415,14 +427,14 @@ assert.match(read(T, 'release/fingerprints.tsv'), /^toolchain\t\w+\tschema:1\tno
   'the table keeps the toolchain\'s parts beside its hash');
 const elsewhere = read(T, 'release/fingerprints.tsv').replace(/^toolchain\t\w+\t(.*)\tnode:v[\d.]+/m, 'toolchain\t0123456789abcdef\t$1\tnode:v0.0.0');
 put(T, 'release/fingerprints.tsv', elsewhere);
-assert.match(refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: node: v0\.0\.0 recorded, v[\d.]+ here\)/);
-const unrecorded = chain(T, '--ids=b1');
+assert.match(await refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: node: v0\.0\.0 recorded, v[\d.]+ here\)/);
+const unrecorded = await chain(T, '--ids=b1');
 assert.deepEqual([ranIds(unrecorded, 'seats'), unrecorded.final.seats.unrecorded, read(T, 'release/fingerprints.tsv') === elsewhere], [['b1'], true, true],
   '--ids on another toolchain runs its ids and records nothing');
 // 8b (268). A node_modules that is not the lock's install refuses before a tool runs (the toolchain keys the lock alone).
 put(T, 'package-lock.json', '{"lockfileVersion":3,"packages":{"node_modules/kit":{"version":"2.0.0"}}}\n');
 put(T, 'node_modules/.package-lock.json', '{"packages":{"node_modules/kit":{"version":"1.0.0"}}}\n');
-assert.match(refused(T, '--ids=b1'), /node_modules is not package-lock\.json's install \(1: kit 1\.0\.0 installed, 2\.0\.0 locked\): run npm ci/);
+assert.match(await refused(T, '--ids=b1'), /node_modules is not package-lock\.json's install \(1: kit 1\.0\.0 installed, 2\.0\.0 locked\): run npm ci/);
 
 // 9. With a table: --ids runs exactly those ids and records their rows; the plain chain then finds only the rest, and the
 // tree ends equal to a whole-fleet regen of the same edit. Negative control: the plain chain on a tree with a current
@@ -431,28 +443,28 @@ const S = join(base, 'S'), G = join(base, 'G');
 cpSync(B, S, { recursive: true });
 cpSync(B, G, { recursive: true });
 for (const root of [S, G]) put(root, 'src/vehicles/profiles/alpha.ts', "import { TURRET } from './turretKit.ts';\nexport const ALPHA = { a1: 12 + TURRET, a2: 21 + TURRET };\n");
-const first = chain(S, '--ids=a1');
+const first = await chain(S, '--ids=a1');
 for (const name of ['controls', 'fills', 'seats']) assert.deepEqual([...new Set(ranIds(first, name))], ['a1'], `${name} ran a1 alone (a later pass re-runs it when the fills it reads moved)`);
 assert.deepEqual(ranIds(first, 'collision'), ['alpha'], 'the world step ran the map casting a1');
-const rest = chain(S);
+const rest = await chain(S);
 for (const name of ['controls', 'fills', 'seats']) {
   const ids = ranIds(rest, name);
   assert.ok(!ids.includes('a1') && ids.includes('a2') && ids.includes('b2'), `${name}: a1's rows were recorded, the rest ran (${ids})`);
 }
-chain(G, '--all');
+await chain(G, '--all');
 assert.deepEqual(snapshot(S), snapshot(G), '--ids then changed-only equals a whole-fleet regen, manifest included');
-assert.deepEqual(chain(S).runs, [], 'a current table: the plain chain runs nothing and is not refused');
+assert.deepEqual((await chain(S)).runs, [], 'a current table: the plain chain runs nothing and is not refused');
 
 // 10. Bootstrapping the pristine tree lifts the refusal (negative control for 6).
-chain(N, '--all');
-assert.deepEqual(chain(N).runs, [], 'after --all the plain chain resolves clean');
+await chain(N, '--all');
+assert.deepEqual((await chain(N)).runs, [], 'after --all the plain chain resolves clean');
 
 // 11 (268). A parts step on eight ids: two parts and one merge write what one process writes, manifest included. The
 // mutant (each part also writes the shared fills table, as two --ids runs would) fails the step before the merge runs.
 const P1 = join(base, 'P1'), P2 = join(base, 'P2'), P3 = join(base, 'P3');
 for (const root of [P1, P2, P3]) cpSync(P, root, { recursive: true });
-chain(P1, '--all');
-chain(P2, '--all', '--jobs=2');
+await chain(P1, '--all');
+await chain(P2, '--all', '--jobs=2');
 assert.deepEqual(snapshot(P2), snapshot(P1), 'fills as parts and a merge write what one process writes');
 /** The children the chain started (its log names each by label as it starts it). */
 const started = (root) => readdirSync(join(root, '.qa-dev/changed-only')).filter((name) => name.endsWith('.log'))
@@ -468,12 +480,8 @@ assert.doesNotMatch(chainLog(P2), /^\[regen\] fills-part\d: .*--report=/m, 'a pa
 const fillsReport = (root) => read(root, `.qa-dev/changed-only/${readdirSync(join(root, '.qa-dev/changed-only')).find((name) => name.endsWith('-fills-report.json'))}`);
 assert.equal(fillsReport(P2), fillsReport(P1), 'the merge\'s report equals the one process\'s');
 assert.match(fillsReport(P2), /^\["a1","a2","a3","a4","b1","b2","b3","b4"\]$/m, 'and names every id the parts measured');
-let raced = null;
-try {
-  execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${P3}`, `--table=${tableModule}`, '--no-gpu', '--all', '--jobs=2'],
-    { cwd: P3, env: { ...env, COT_FIXTURE_PARTS_RACE: '1' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
-} catch (error) { raced = error; }
-assert.equal(raced?.status, 1, 'a part that writes the shared table fails the chain');
+const raced = await runChain(P3, ['--no-gpu', '--all', '--jobs=2'], { ...env, COT_FIXTURE_PARTS_RACE: '1' });
+assert.equal(raced.status, 1, 'a part that writes the shared table fails the chain');
 assert.match(raced.stdout, /fills: a part wrote src\/vehicles\/fills\.generated\.ts; only the merge writes the step's shared outputs/);
 assert.ok(started(P3).includes('fills-part1') && !started(P3).includes('fills-merge'), 'the parts ran; the merge did not');
 
@@ -531,6 +539,27 @@ assert.notEqual(burner.exit, 0);
 const hung = await watched('setTimeout(() => {}, 120000)', { budgetS: 100, hangS: 2 });
 assert.equal(hung.stopped?.kind, 'hang', 'a child with no CPU progress past the hang cap is stopped as a hang');
 assert.match(hung.stopped.message, /no CPU progress/);
+// (268) The tree's CPU keeps what exited members spent. Short children run one after another spend the budget between
+// them; summed over the live members alone, no sample ever saw more than one child's share. A child that spent a lot and
+// exited is no hang while its parent keeps working: the live sum fell below its old peak.
+const sequential = `const { execFileSync } = require('node:child_process'); for (let k = 0; k < 4; k++) execFileSync(process.execPath, ['-e', ${JSON.stringify(spend(0.6))}]);`;
+const overspent = await watched(sequential, { budgetS: 1.5, hangS: 60 });
+assert.equal(overspent.stopped?.kind, 'budget', 'children run one after another spend one budget');
+const afterChild = `const { execFileSync } = require('node:child_process'); execFileSync(process.execPath, ['-e', ${JSON.stringify(spend(1.2))}]);
+  const until = Date.now() + 6000; const nap = new Int32Array(new SharedArrayBuffer(4));
+  while (Date.now() < until) { ${spend(0.03)} Atomics.wait(nap, 0, 0, 150); }`;
+const working = await watched(afterChild, { budgetS: 100, hangS: 3 });
+assert.deepEqual([working.exit, working.stopped], [0, null], 'a parent working on after its child exits is no hang');
+// cpuLimited: a synchronous child bounded by its own CPU (RLIMIT_CPU), never wall time, as the rows read is
+const { cpuLimited } = await import('./childBudget.mjs');
+let burned = null;
+// the burner ends itself after 10 s of CPU, so a limit that never fires fails this check instead of hanging it
+const selfEnding = 'const t = process.cpuUsage(); for (;;) { const u = process.cpuUsage(t); if (u.user + u.system > 10e6) process.exit(0); }';
+try { execFileSync(...cpuLimited(process.execPath, ['-e', selfEnding], 1), { stdio: 'ignore' }); } catch (error) { burned = error; }
+assert.equal(burned?.signal, 'SIGXCPU', 'a synchronous child past its CPU limit is stopped by the kernel');
+const sleptAt = Date.now();
+execFileSync(...cpuLimited(process.execPath, ['-e', 'setTimeout(() => {}, 2500)'], 1), { stdio: 'ignore' });
+assert.ok(Date.now() - sleptAt > 2000, 'and one that outlives that much wall time on little CPU finishes');
 const runnerBudget = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(runnerBudget, /watchChild\(child\.pid, \{ budgetS: timeoutS, hangS: HANG_S/, 'the runner budgets its CPU children through it');
 
@@ -543,16 +572,16 @@ cpSync(B, X, { recursive: true });
 put(X, 'tools/gen-fills.mjs', `${read(X, 'tools/gen-fills.mjs')}// 268: the tool moved\n`);
 put(X, 'docs/floors.json', read(X, 'docs/floors.json').replace('"b1":{"f":3,', '"b1":{"f":3.5,'));
 const beforePartial = read(X, 'release/fingerprints.tsv');
-const partial = chain(X, '--steps=seats');
+const partial = await chain(X, '--steps=seats');
 assert.deepEqual(partial.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[b1]'], 'the partial chain runs seats on b1 alone');
 const othersOf = (text) => text.split('\n').filter((line) => line.split('\t')[1] !== 'seats');
 assert.deepEqual(othersOf(read(X, 'release/fingerprints.tsv')), othersOf(beforePartial),
   'every line of a step it did not run (and every shared line) is byte-identical');
 assert.notEqual(read(X, 'release/fingerprints.tsv'), beforePartial, 'control: seats\' own lines moved');
-const afterPartial = chain(X, '--dry-run');
+const afterPartial = await chain(X, '--dry-run');
 assert.deepEqual([afterPartial.final.fills.mode, afterPartial.final.fills.reasons.a1?.[0]], ['all', 'tool tools/gen-fills.mjs or its flags'],
   'the step whose tool moved stays due, named as its tool');
 assert.equal(afterPartial.final.seats.mode, 'none', 'and the step that ran is current');
-assert.deepEqual(Object.entries(chain(X).final).filter(([, entry]) => entry.mode !== 'none'), [], 'the plain chain settles the rest');
+assert.deepEqual(Object.entries((await chain(X)).final).filter(([, entry]) => entry.mode !== 'none'), [], 'the plain chain settles the rest');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);

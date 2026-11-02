@@ -22,6 +22,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
+import { cpuLimited } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
   stepDefinition } from './steps.mjs';
@@ -75,12 +76,14 @@ export function parseGroupLoaders(text, filename = GROUP_LOADERS_FILE) {
   return groups;
 }
 
+/** The rows child's CPU budget: about 60 s of CPU warm. Its limit is CPU, never wall: at load ~500 (2026-10-20) a healthy
+ *  read overran a 5-minute wall limit and failed the chain, and 30 minutes only moved the load where it fails (268). */
+const ROWS_CPU_S = 1800;
+
 function readRows(root, env, tableModule = null) {
-  const out = execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
-    ...(tableModule ? [tableModule] : [])], {
-    // 2026-10-20: 30 minutes (was 5): at load average ~500 the rows read after a finished seats step overran 5 minutes
-    // and failed the chain with ETIMEDOUT though the step's outputs were written; the traces allow 30-60 minutes
-    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 1_800_000,
+  const out = execFileSync(...cpuLimited(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
+    ...(tableModule ? [tableModule] : [])], ROWS_CPU_S), {
+    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
     env: { ...env, NODE_OPTIONS: '' }, stdio: ['ignore', 'pipe', 'pipe'],
   });
   return JSON.parse(out);
