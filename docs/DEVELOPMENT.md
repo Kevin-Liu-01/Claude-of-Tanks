@@ -1213,6 +1213,10 @@ core (every file the fleet entries reach outside a group's builder registration:
 generated spec data, index/loader maps), the builder groups on the id's spec chain (visualBase, variantOf, donors) and
 the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
 writes. An id re-runs when its row is missing or either key moved; a hand edit to one output row marks that id.
+Beside the keys the table keeps the component lines the resolver names when a key moves (a step's tool, the core, the
+groups, the rows, the roster). A step's own lines are written only when it runs, and the shared ones only by a chain
+that selects every step (268). A partial chain (`--steps`, `--no-gpu`, `--no-world`) leaves every step it did not run
+as its keys were taken, so a step whose tool moved stays due under its true reason.
 
 It fails closed: an undeclared directory read, child process, computed import or whole-environment read in a step's
 closure runs that step on every id; a roster change, a missing manifest, an unreadable table or an output file edited
