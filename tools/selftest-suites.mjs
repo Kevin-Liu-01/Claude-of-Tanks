@@ -902,6 +902,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
+    'tools/combat-anatomy-parts.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
     'tools/changed-only/fresh.selftest.mjs',
     // 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that id on

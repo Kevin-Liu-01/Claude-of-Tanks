@@ -28,12 +28,16 @@
 // A row's run `site` is its ledger key (spare-track-digest.mjs ledgerSiteKeys): source, part, authoring function and
 // file, never a source line number.
 // Cost: about 10 s an id; one process. House rules: 4 GB heap, wall-clock alarm, --yield-load.
+// Parts (268, tools/changed-only/parts.mjs): --ids --out-dir=<dir> measures its ids into dir alone (each id's row or
+// build failure, and its seat-plan audit); --merge-from=<dir>,<dir> takes those in place of measuring them, then runs
+// the source lint and writes the ledger, the seat plan and --json once, as one run does.
 
 import path from 'node:path';
 import { uniqueIds } from './id-list.mjs';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { SPARE_TRACK_BUILD, spareTrackGeometryDigest, ledgerSiteKeys } from './spare-track-digest.mjs';
+import { partArgs, writePartRows } from './changed-only/parts.mjs';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -1866,6 +1870,12 @@ const UPDATE = flag('update'), CHECK = flag('check'), GATE = flag('gate');
 // the receipt's seeded break (PROUD): never with --update, so a seeded row cannot reach the ledger
 const SEED_PROUD = flag('seed-proud');
 if (SEED_PROUD && UPDATE) throw new Error('--seed-proud is a seeded break: it never writes the ledger (drop --update)');
+const PART_TOOL = 'spare-track-placement-check';
+const PARTS = partArgs(argv, PART_TOOL);
+if ((PARTS.partDir || PARTS.merging) && (CHECK || GATE || CROPS || JSONL || SHARD || OUT || SEED_PROUD)) {
+  throw new Error(`${PART_TOOL}: parts (--out-dir, --merge-from) measure for --update; never with --check, --gate, --crops, --jsonl, --shard, --out or --seed-proud`);
+}
+if (PARTS.partDir && JSON_OUT) throw new Error(`${PART_TOOL}: a part writes its rows alone; the merge writes --json`);
 const ALL_IDS = [...(specs.ALL_TANK_IDS ?? specs.SAVED_TANK_IDS ?? specs.TANK_IDS)];
 let ids = uniqueIds((arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean), 'spare-track-placement-check --ids');
 if (ids.length === 1 && ids[0] === 'all') ids = [...ALL_IDS];
@@ -1883,6 +1893,12 @@ const results = {};
 const planAudits = {};
 const failures = [];
 for (const id of ids) {
+  const taken = PARTS.take(id);
+  if (taken) {
+    if (taken.planAudit) planAudits[id] = taken.planAudit;
+    if (taken.failure) failures.push(taken.failure); else results[id] = taken.result;
+    continue;
+  }
   while (YIELD_LOAD > 0 && os.loadavg()[0] > YIELD_LOAD) {
     console.log(`[spare-track] load ${os.loadavg()[0].toFixed(1)} > ${YIELD_LOAD}: waiting`);
     await new Promise((r) => setTimeout(r, 30000));
@@ -1934,6 +1950,13 @@ for (const id of ids) {
   _visual.dispose();
   const bad = runs.filter((r) => r.classes.some((c) => GATED.has(c)));
   if (!QUIET) console.log(`${id}\truns ${runs.length}\tdefective ${bad.length}\tuncovered ${uncovered.length}\t${clean.buildMs + clean.analyseMs} ms`);
+}
+PARTS.done();
+if (PARTS.partDir) {
+  writePartRows(PARTS.partDir, PART_TOOL, Object.fromEntries(ids.map((id) => [id,
+    { result: results[id], planAudit: planAudits[id], failure: failures.find((failure) => failure.startsWith(`${id}: `)) }])));
+  console.log(`[spare-track] part: ${ids.length} ids written to ${PARTS.partDir}`);
+  process.exit(0);
 }
 /** Rewrite spareTrackSeatPlan.ts with the search's answers for every id built in this run (others are kept). */
 function writeSeatPlan(audits) {

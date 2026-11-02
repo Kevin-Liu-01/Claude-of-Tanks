@@ -189,9 +189,18 @@ and record of any id outside the roster, and `node tools/geometry-gate.mjs
 - `hullLengthM` is the full side span of the hull's own trace (no turret, no
   gun, even where a casemate hangs the gun on the hull's rig), never a band
   threshold that barrel columns can cross once the whips stop raising it;
-  fenders and mudguards count, as in published hull lengths. A fused oracle
-  has no hull trace, so both sides use the whole-body extent there. That span
-  is a silhouette, so its target is the spec's `silhouetteHullLengthM` when
+  fenders and mudguards count, as in published hull lengths. In an oracle
+  comparison (the source ruler, the preservation baseline) a fused oracle has
+  no hull trace, so both sides use the whole-body extent there. A published
+  hull length is held to the build's hull trace whatever the oracle: the
+  oracle is not a side of that comparison. 268 tried the whole-body extent for
+  the build on fused oracles and measured it on the real gate, the same tree
+  and oracles, old tool against new: of 51 fused ids 5 moved, and it broke
+  `mbt70` (dims 87.2 to 0, its gun inside the 12 % band) and `fv510` (0.1 to
+  4.6 %, its thin bow cut), left `type74` failing, and explained none of
+  267's red records; 18 masked controls held (branch `item/gate-dims-268`,
+  kept unmerged, and its REPORT.md in `~/cot-lanes/gate-dims-268-evidence`).
+  That span is a silhouette, so its target is the spec's `silhouetteHullLengthM` when
   there is one. A build on a donor's frame (`FLEET_RENEWAL_DONORS`, else
   `variantOf`, when its hull length is the donor's own number) lost the
   donor's silhouette in the copy. It is built on that hull by design, so it
