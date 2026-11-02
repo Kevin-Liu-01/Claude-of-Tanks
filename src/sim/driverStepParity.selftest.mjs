@@ -62,6 +62,12 @@ function hullBytes(entity) {
   const fields = [['pos.x', s.pos.x], ['pos.y', s.pos.y], ['pos.z', s.pos.z], ...STATE_FIELDS.map((key) => [key, s[key]]),
     ['hp', c.hp], ['destroyed', c.destroyed ? 1 : 0], ['reload', c.reload?.t ?? 0], ['shellSlot', c.shellSlot ?? 0],
     ...(c.ammo ?? []).map((count, slot) => [`ammo.${slot}`, count])];
+  // (268) the hull's actions: its consumables' cooldowns and charges, its auxiliaries (lights, roof gun, smoke and its screen)
+  const items = entity.consumables;
+  if (items) for (let slot = 0; slot < items.readyAt.length; slot++) fields.push([`consumable.${slot}.readyAt`, items.readyAt[slot]], [`consumable.${slot}.charges`, items.charges[slot] ?? -1]);
+  const aux = c.auxiliary ?? {};
+  fields.push(['aux.lights', aux.lights ?? 0], ['aux.gunOn', aux.gunOn ? 1 : 0], ['aux.smokeCharges', aux.smokeCharges ?? -1], ['aux.smokeReadyAt', aux.smokeReadyAt ?? -1],
+    ['aux.smoke.born', aux.smoke?.born ?? -1], ['aux.smoke.x', aux.smoke?.x ?? 0], ['aux.smoke.z', aux.smoke?.z ?? 0], ['aux.smoke.yaw', aux.smoke?.yaw ?? 0]);
   for (const [name, module] of Object.entries(c.modules ?? {}).sort(([a], [b]) => a.localeCompare(b))) fields.push([`module.${name}`, module.hp]);
   return fields.map(([key, value]) => [key, hex(value)]);
 }
@@ -76,6 +82,8 @@ const ownShellSlot = (tick, chosen) => (tick < 200 ? 0 : tick < 460 ? chosen : t
 const OWN_SPEC = 'm1a1_abrams_hc';
 /** The hostile bot's ammunition: its second slot over ticks 100-139 and 250-279, between its shots (every 150 from 40). */
 const foeShellSlot = (tick) => ((tick >= 100 && tick < 140) || (tick >= 250 && tick < 280) ? 1 : 0);
+/** The hostile bot's presses (sim/playerActions.ts bits, a press on its tick alone): a repair kit, smoke, lights, a magazine reload, first aid. */
+const FOE_PRESSES = new Map([[70, 1 << 0], [160, 1 << 6], [220, 1 << 7], [330, 1 << 3], [380, 1 << 1]]);
 
 /**
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
@@ -150,7 +158,7 @@ async function runBattle(ticks, perturb, chosen) {
     return {
       update() {
         tick++;
-        const script = { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: foeShellSlot(tick), actionBits: 0 };
+        const script = { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: foeShellSlot(tick), actionBits: FOE_PRESSES.get(tick) ?? 0 };
         const input = perturb?.(tick, side, entity.id, script) ?? script;
         Object.assign(entity.input, input);
         entity.input.aimPoint.set(target.state.pos.x, target.state.pos.y + 1.5, target.state.pos.z);
@@ -184,7 +192,7 @@ async function runBattle(ticks, perturb, chosen) {
     }
   }
   const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, denied,
-    shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots };
+    shots: shots.map(({ tick, slot }) => [tick, slot]), foeSlots, foeSmokeS: foe.combat.auxiliary?.smoke?.born ?? null };
   authorityWorld.release?.();
   pageWorld.release?.();
   return { divergence, exercised, own: own.state, foe: foe.state };
@@ -285,7 +293,8 @@ assert.equal(same.divergence, null, `the local step and the authority's step par
 assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
 assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
 assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
-const { denied, shots, foeSlots } = same.exercised;
+const { denied, shots, foeSlots, foeSmokeS } = same.exercised;
+assert.ok(Math.abs(foeSmokeS - 161 / 60) < 1e-9, `the bot's smoke fired the tick it was pressed, on both sides (${foeSmokeS})`);
 assert.deepEqual(foeSlots, [[120, 1], [200, 0], [260, 1]], `the bot switched its ammunition without firing, on both sides (${JSON.stringify(foeSlots)})`);
 assert.deepEqual(shots, [[90, 0], [540, 1]], `the own hull fired its first slot, then its second, and nothing on the refused slot (${JSON.stringify(shots)})`);
 assert.deepEqual(denied.page, denied.authority, 'the same ammunition refusals on both sides, tick for tick');

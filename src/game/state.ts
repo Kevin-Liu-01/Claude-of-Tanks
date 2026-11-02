@@ -67,7 +67,7 @@ import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { validatedContactGeometry } from '../sim/trackContact.ts';
 import {
-  createTankState, updateTank, requestTankJump, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
+  createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
@@ -78,7 +78,7 @@ import {
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from '../sim/tankContactShape.ts';
-import { requestTankSelfRight, stepRolloverLifecycle } from '../sim/rollover.ts';
+import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.ts';
@@ -86,17 +86,18 @@ import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../si
 import {
   createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
+  selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import * as detMath from '../sim/detMath.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
+import { applyHullActions, tickHullConsumables } from '../sim/hullActions.ts';
+import type { HullActionsHost } from '../sim/hullActions.ts';
 import { pushFromHulls } from '../sim/tankPairContact.ts';
 import { createBotController, createOpeningPlan, openingRoute } from './botConstruction.ts';
 import type { BotMatch, OpeningPlan } from './botConstruction.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import {
-  activateSpecialAction,
   bindSpecialActionState,
   createSpecialActionState,
   specialActionGuidesShell,
@@ -159,12 +160,11 @@ import {
 } from './provingRange.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
-  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, type ConsumableId, type ConsumableState,
+  APS_BURST_OFFSET_M, type ConsumableId, type ConsumableState,
 } from '../sim/consumableRules.ts';
 import {
-  createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
+  createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, 
 } from './soloConsumables.ts';
-import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
@@ -2287,47 +2287,64 @@ function retargetObjectiveBots(game: SoloGameState): void {
   }
 }
 
-function stepBotControllers(game: SoloGameState): void {
+/**
+ * Each hull's controls, presses and consumables this step, hull by hull in roster order as the authority runs them
+ * (updateEntityControls; 268): a bot's controller through the shared bot stage, a proving target driven to its mark, then
+ * the hull's actions and timed consumables (sim/hullActions.ts). A seat's controls were staged before the step; the
+ * player's presses go through its UI (game/playerBattleActions.ts).
+ */
+function stepHullControls(game: SoloGameState, bus: EventBus, world: SoloWorld): void {
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
       collectNavigationWrecks(game.tanks, game._navigationWrecks));
   }
   const proving = game.ruleset.provingGround;
+  const host = soloActionsHost(game, bus, world);
   for (const entity of game.tanks) {
     if (entity.modeActive === false) continue;
     // (268) the authority's bot stage (sim/playerInputStage.ts), wrecks included: one rule for a bot's controls on both drivers
     if (entity.aiCtl) applyBotInput(entity, SIM_DT, game.timeS);
     else if (proving && entity._provingMark && !entity.combat.destroyed) driveProvingTarget(entity, proving);
+    applyHullActions(entity, host);
+    tickHullConsumables(entity, host);
   }
 }
 
-function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
-  for (const entity of game.tanks) {
-    if (!entity.aiCtl || entity.modeActive === false || entity.combat.destroyed) continue;
-    const actionBits = entity.input.actionBits | 0;
-    entity.input.actionBits = 0;
-    if (!actionBits) continue;
-    if (actionBits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
-      startMagazineReload(entity.combat, entity.spec);
-    }
-    if (actionBits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(entity);
-    // round 60 pacing: an overturned bot asks for the self-right a player has (the authority does the same)
-    if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (!requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) {
-        requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
-      }
-    }
-    entity.input.auxiliaryBits = (entity.input.auxiliaryBits || 0) | (actionBits & (
-      PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.LIGHTS_OFF | PLAYER_ACTION_BITS.ROOF_GUN
-    ));
-    if (game.ruleset?.consumables === false) continue;
-    for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
-      if (actionBits & (1 << slot)) useSoloConsumable(entity, bus, slot, game.timeS);
-    }
+/** The solo battle's side of a hull's actions (sim/hullActions.ts), one per battle state: its bus, world and screens. */
+const soloActionHosts = new WeakMap<SoloGameState, { host: HullActionsHost<SoloEntity>; ref: { bus: EventBus; world: SoloWorld } }>();
+function soloActionsHost(game: SoloGameState, bus: EventBus, world: SoloWorld): HullActionsHost<SoloEntity> {
+  let entry = soloActionHosts.get(game);
+  if (!entry) {
+    const ref = { bus, world };
+    const host: HullActionsHost<SoloEntity> = {
+      get timeS() { return game.timeS; },
+      get verdict() { return game.result !== null; },
+      get consumables() { return game.ruleset.consumables; },
+      get rng() { return game.combatRng; },
+      // the canister lands on the match's ground (its craters and heaps), as the authority's does
+      get ground() { return groundFor(ref.world).field.getHeightAt; },
+      get world() { return ref.world; },
+      // (FX lane 2026-10-17) on its map's wind (smokeScreen.ts smokeWindForMap)
+      get wind() { return smokeWindForMap(game.mapId); },
+      supply: (entity, kind) => game.matchModeController?.requestSupply(entity.id, kind, game.timeS),
+      smokeLaunched: (_entity, screen) => {
+        const screens = game.auxiliarySmokeScreens ??= [];
+        screens.push(screen);
+        if (screens.length > 84) screens.shift();
+        ref.bus.emit('auxiliary:smokeScreens', { screens });
+      },
+      moduleRepaired: (entity, module) => ref.bus.emit('module:state', { id: entity.id, module, state: 'ok', source: 'repair-kit' }),
+      fireOut: (entity) => ref.bus.emit('tank:fire', { id: entity.id, burning: false }),
+      engineStrained: (entity) => ref.bus.emit('module:state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' }),
+    };
+    entry = { host, ref };
+    soloActionHosts.set(game, entry);
   }
+  entry.ref.bus = bus;
+  entry.ref.world = world;
+  return entry.host;
 }
-
 /** A crash is priced on the closing speed its contact ticks lose within this window of its first tick. */
 const IMPACT_CRASH_WINDOW_S = 0.3;
 /** A tick that loses less than this is the drive pressing against the surface, not a blow — it carries no energy. */
@@ -3036,10 +3053,8 @@ export function simStep(
   stages?.stage(FRAME_STAGE.bots);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
   if (game.jev && game._jevView) game.jev.step(game._jevView);
-  stepBotControllers(game);
+  stepHullControls(game, bus, world);
   silenceGunsAfterVerdict(game);
-  applyBotSupportActions(game, bus);
-  tickSoloConsumables(game.tanks, bus, game.timeS, game.combatRng);
   stages?.stage(FRAME_STAGE.aerial);
   const aerialCallbacks = game.aerialCallbacks ??= createAerialCallbacks(game);
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.

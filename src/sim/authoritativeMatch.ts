@@ -2,7 +2,7 @@ import type { ModeCheckpoint } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { auxiliaryCapabilities, requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
+import { auxiliaryCapabilities, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -27,7 +27,6 @@ import {
   computeDispersionRadM,
   createTankState,
   fireRecoil,
-  requestTankJump,
   applyShellKnock,
   shellKnockMps,
   updateTank,
@@ -44,7 +43,7 @@ import {
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
-import { requestTankSelfRight, stepRolloverLifecycle } from './rollover.ts';
+import { stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.ts';
@@ -53,15 +52,10 @@ import type { ArmorIntersection } from './armor.ts';
 import {
   createCombatState,
   isHeClass,
-  repairAllModules,
-  repairModules,
   resolveHeBurst,
   resolveShellHit,
   selectFirstAvailableShell,
-  strainModule,
   selectedWeaponModuleState,
-  magazineReloadDenialReason,
-  startMagazineReload,
   startPostShotReload,
   tickReload,
   tickFire,
@@ -107,22 +101,21 @@ import {
 } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import {
-  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, DEFAULT_CONSUMABLE_LOADOUT, GOVERNOR_STRAIN_HP_FRACTION, apsIntercepts,
+  APS_BURST_OFFSET_M, DEFAULT_CONSUMABLE_LOADOUT, apsIntercepts,
   botConsumableLoadout, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
-  suppressNewFire, tickConsumables, useConsumableSlot as useConsumableSlotRule,
-  type ConsumableHost, type ConsumableId, type ConsumableState,
+  type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
-import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
+import { applyHullActions, tickHullConsumables } from './hullActions.ts';
+import type { HullActionsHost } from './hullActions.ts';
 import { pushFromHulls } from './tankPairContact.ts';
 import type { AuthoritativePlayerInput } from './playerInputStage.ts';
 import {
-  activateSpecialAction,
   bindSpecialActionState,
   createSpecialActionState,
   specialActionGuidesShell,
 } from './specialActions.ts';
-import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunition.ts';
+import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
@@ -474,8 +467,6 @@ const CRUSH_PRESS_S = 0.45;
 const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
-/** A Governor Override that ended strains the engine (one function for every tank: the tick allocates nothing). */
-const strainEngine = (combat: CombatState): boolean => strainModule(combat, 'engine', GOVERNOR_STRAIN_HP_FRACTION);
 const TEAM_ALPHA = 'alpha';
 const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
@@ -1561,29 +1552,6 @@ export function createAuthoritativeMatch({
     }
   }
 
-  function reloadMagazine(entity: AuthoritativeEntity): void {
-    const reason = magazineReloadDenialReason(entity.combat);
-    if (!reason && startMagazineReload(entity.combat, entity.spec)) {
-      emit('magazine_reload', { id: entity.id });
-      return;
-    }
-    emit('magazine_reload_denied', {
-      id: entity.id,
-      reason: reason || 'NO_MAGAZINE',
-    });
-  }
-
-  function useSpecialAction(entity: AuthoritativeEntity): void {
-    const action = activateSpecialAction(entity);
-    emit(action.ok ? 'special_action' : 'special_action_denied', {
-      id: entity.id,
-      kind: action.kind,
-      active: !!action.active,
-      slot: action.slot ?? null,
-      reason: action.reason || null,
-    });
-  }
-
   /** A seat's consumables: a bot's role picks, a player's chosen items (or the default trio), within the mode's gate. */
   function consumableLoadoutFor(
     spec: AuthoritativeSpec, bot: boolean, chosen: readonly string[] | null | undefined,
@@ -1592,52 +1560,6 @@ export function createAuthoritativeMatch({
     const gate = rulesetConsumableGate(ruleset);
     return bot ? botConsumableLoadout(vehicle, gate)
       : sanitizeConsumableLoadout(Array.isArray(chosen) ? chosen : DEFAULT_CONSUMABLE_LOADOUT, vehicle, gate);
-  }
-
-  /** The authority's side of an item: modules, ammunition, smoke and the events a use emits. */
-  function consumableHost(entity: AuthoritativeEntity): ConsumableHost {
-    return {
-      timeS,
-      repairAll: () => repairAllModules(entity.combat),
-      repair: (names) => repairModules(entity.combat, names),
-      restock: (fraction) => replenishAmmunition(entity.combat, fraction).totalAdded,
-      smoke: auxiliaryCapabilities(entity.spec)?.smoke?.length ? entity.combat.auxiliary ?? null : null,
-      moduleRepaired: (module) => emit('module_state', { id: entity.id, module, state: 'ok' }),
-      fireOut: () => emit('tank_fire', { id: entity.id, burning: false }),
-    };
-  }
-
-  function useConsumableSlot(
-    entity: AuthoritativeEntity,
-    bits: number,
-    slot: number,
-  ): void {
-    const bit = 1 << slot;
-    if (!(bits & bit)) return;
-    if (!ruleset.consumables) {
-      emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' });
-      return;
-    }
-    const use = useConsumableSlotRule(entity.consumables, slot, entity.combat, consumableHost(entity), consumableTiming);
-    if (!use.ok) {
-      emit('consumable_denied', {
-        id: entity.id, slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
-        ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
-      });
-      return;
-    }
-    emit('consumable_used', {
-      id: entity.id, slot, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
-    });
-  }
-
-  /** One tick of a crew's timed consumables: ended effects, a strained engine, a suppressed fire. */
-  function tickEntityConsumables(entity: AuthoritativeEntity): void {
-    const combat = entity.combat;
-    if (combat.destroyed) return;
-    const strained = tickConsumables(entity.consumables, combat, timeS, rng, strainEngine);
-    if (strained) emit('module_state', { id: entity.id, module: 'engine', state: combat.modules.engine?.state ?? 'yellow' });
-    if (suppressNewFire(entity.consumables, combat, timeS)) emit('tank_fire', { id: entity.id, burning: false });
   }
 
   /** A missile steered at a point is jammed when an enemy with its IR Jammer on stands there. */
@@ -1650,35 +1572,54 @@ export function createAuthoritativeMatch({
     return false;
   }
 
-  function useConsumables(entity: AuthoritativeEntity): void {
-    const bits = entity.input.actionBits | 0;
-    entity.input.actionBits = 0;
-    if (!bits || entity.combat.destroyed) return;
-    if (!result) {
-      if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
-      if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
-      // (2026-10-09) the canisters fly through the match's collision (the shards and their destruction state): they
-      // bounce off walls, and the clouds stay out of the houses beside them
-      // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
-      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt, worldCollision, smokeWind)) {
-        auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
-        if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
+  // (268) one action path for both drivers (sim/hullActions.ts): the authority's side of a hull's presses and consumables
+  const actionsHost: HullActionsHost<AuthoritativeEntity> = {
+    get timeS() { return timeS; },
+    get verdict() { return !!result; },
+    get consumables() { return !!ruleset.consumables; },
+    rng,
+    ground: heightField.getHeightAt,
+    world: worldCollision,
+    // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
+    wind: smokeWind,
+    supply: (entity, kind) => modeController.requestSupply(entity.id, kind, timeS + modeTimeOffsetS),
+    smokeLaunched: (_entity, screen) => {
+      auxiliarySmokeScreens.push(screen);
+      if (auxiliarySmokeScreens.length > 84) auxiliarySmokeScreens.shift();
+    },
+    magazineReload: (entity, reason) => {
+      if (reason === null) emit('magazine_reload', { id: entity.id });
+      else emit('magazine_reload_denied', { id: entity.id, reason });
+    },
+    specialAction: (entity, action) => {
+      emit(action.ok ? 'special_action' : 'special_action_denied', {
+        id: entity.id,
+        kind: action.kind,
+        active: !!action.active,
+        slot: action.slot ?? null,
+        reason: action.reason || null,
+      });
+    },
+    selfRighted: (entity) => { emit('tank_self_right', { id: entity.id }); },
+    consumable: (entity, slot, use) => {
+      if (!use) { emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' }); return; }
+      if (!use.ok) {
+        emit('consumable_denied', {
+          id: entity.id, slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
+          ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
+        });
+        return;
       }
-      if (bits & PLAYER_ACTION_BITS.DRONE) entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) | PLAYER_ACTION_BITS.DRONE;
-      if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
-      if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
-      if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
-    }
-    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
-    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
-    if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) emit('tank_self_right', { id: entity.id });
-      else requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
-    }
-    for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
-      useConsumableSlot(entity, bits, slot);
-    }
-  }
+      emit('consumable_used', {
+        id: entity.id, slot, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
+      });
+    },
+    moduleRepaired: (entity, module) => { emit('module_state', { id: entity.id, module, state: 'ok' }); },
+    fireOut: (entity) => { emit('tank_fire', { id: entity.id, burning: false }); },
+    engineStrained: (entity) => {
+      emit('module_state', { id: entity.id, module: 'engine', state: entity.combat.modules.engine?.state ?? 'yellow' });
+    },
+  };
 
   function selectedShellForFire(
     entity: AuthoritativeEntity,
@@ -2244,8 +2185,8 @@ export function createAuthoritativeMatch({
       } else {
         applyPlayerInput(entity, inputs.get(entity.id), emit);
       }
-      useConsumables(entity);
-      tickEntityConsumables(entity);
+      applyHullActions(entity, actionsHost);
+      tickHullConsumables(entity, actionsHost);
     }
     // battle endings (2026-09-25): the verdict silences every trigger — bots and humans — while the ruleset's
     // hold keeps the field alive (the solo step does the same in state.ts silenceGunsAfterVerdict)
