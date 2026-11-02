@@ -34,7 +34,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
   m3a3_bradley: [-1, 1].map(s => turret(-.91, .6626 + s * .0949, .3633 - s * .0047, .05)),
   upior: [turret(1.10, .37, .83)],
-  bmpt_t90: [-1, 1].flatMap(s => [1.005, 1.245].flatMap(x => [.35, .60].map(y => turret(s * (x + .011 * detMath.sin(.03)), y, .724 + .011 * detMath.cos(.03), 0, s * .03)))),
+  // 267: the frangible discs on the two armoured Ataka boxes' front covers (profiles/bmptT90Station.ts), 2 x 2 a box
+  bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
   aft10: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };

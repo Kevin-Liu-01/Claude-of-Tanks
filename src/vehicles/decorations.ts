@@ -477,10 +477,10 @@ function fnv1a(str: string): number {
 
 /**
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
- * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/type10Dozer.ts), which keeps the bow
- * shackles and chain off the blade.
+ * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
+ * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
  */
-const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10']]);
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90']]);
 
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
@@ -3034,17 +3034,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type10_tk_x: () => [
-    { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.28, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-    { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
-  ],
   // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
   // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
   t64bm1m: () => [
@@ -3252,9 +3241,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
+  // (267, the Japan line's photo critics) the TK-X on its trials as TRDI's photographs show the prototypes, a clean roof,
+  // deck and basket with its own trials rack; and the Type 10B under its field net, whose roof loads drew the net into a
+  // hoop over the turret's rear (the decor raises field nets): both carry their own kit
+  if (spec.id === 'type10_tk_x' || spec.id === 'type10b') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3369,6 +3362,16 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
+  // 267 (the Japan line's photo critics): no JGSDF Type 90 photograph shows spare links on a turret side plate (the
+  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear. Round 3: nor a
+  // decor discharger pair on the cheeks ("a small four-tube fitting ... the photos show smoke dischargers only at the rear
+  // corners"): profiles/type90X.ts draws the two four-tube banks there, so the pair doubled them (16 -> the real 8, as the
+  // AMX-40 and Leclerc S1 above).
+  if (spec.id === 'type90' || spec.id === 'type90b') {
+    for (let i = base.length - 1; i >= 0; i--) {
+      if ((base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') || base[i].kit === 'smoke') base.splice(i, 1);
+    }
+  }
   if (spec.id === 'raiju_ifv') {
     for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }
@@ -3452,8 +3455,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     && !(row.kit === 'tarp' && row.slot[0] === 'rearDeck'));
   // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
   // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
-  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
-  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
+  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census). 267: the Burlak
+  // prototype's eleven grenade tubes ride its rebuilt turret at the source's positions (t90.ts); the pair stood through
+  // its right cheek.
+  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m' || spec.id === 't90a_burlak_proto') {
+    return manifest.filter(row => row.kit !== 'smoke');
+  }
   // 266 (owner: "clean up and smooth out the goofy parts" on the AMX-40 prototype and the Leclerc S1, S2 and SXXI):
   // both photo critics read the loose roof loads as clutter against the Saumur photos (a cooler box, a duffel and a drum
   // stacked on the commander's station, a bedroll blob, a round lamp on a post), and the rolls, tarps and links hung on
@@ -3461,8 +3468,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
   // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
   // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  // 267 (both photo critics, round 3, S1: "a stack of tan boxes perched on the extreme rear corner of the deck"): of the
+  // rear-deck loads only the camouflage net stays (the corner jerrycans, rations, bin, tarp and spare wheel are off).
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
     && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
+    // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
+    && row.kit !== 'antenna'
+    // 267 round 3 (both critics, critic2, S1: "a rigid tow cable across the whole nose"): the bow chain/cable row is off
+    && row.kit !== 'chain'
+    // 267 round 3 (Sonnet, critic3, S1: "a tow cable strung across the hull front, crossing the muzzle"): the side-top
+    // cable finds no seat on the skirt that now runs up to the deck edge and fell back across the nose; it is off too
+    && !(spec.id !== 'amx40_proto' && row.kit === 'cable')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
@@ -3931,7 +3948,7 @@ function seatProbe(
  */
 function rearRackParts(bb: THREE.Box3, railZ: readonly [number, number], detail: 0 | 1,
   struts: ReadonlyArray<{ b: number; z: number; n?: THREE.Vector3 } | null>,
-  railN: ReadonlyArray<THREE.Vector3 | null> = [null, null]): DecorPart[] {
+  railN: ReadonlyArray<THREE.Vector3 | null> = [null, null], seat267 = false): DecorPart[] {
   // Round 4 (2026-10-07, wave 217 on the T-72B3M: "flat pure-black square bars with no brackets, bolts or shading, and
   // its only visible support is a thin strut ending in a loose plate below it"): the frame is angle stock in shaded
   // steel (RACK_STEEL_TONE, not near-black), each strut is round bar ending on a foot plate laid on the rear plate where
@@ -3966,7 +3983,12 @@ function rearRackParts(bb: THREE.Box3, railZ: readonly [number, number], detail:
       steel(footPlate(x, -strut.b, strut.z, 0.07, 0.09, detail, strut.n));           // foot plate bolted to the hull
       steel(footPlate(x, -rail / 2, railZ[i], 0.07, 0.07, 0, railN[i]));            // upper foot at the rail (under the load)
     } else {
-      steel(footPlate(x, -0.06, railZ[i], 0.07, 0.14, detail, railN[i]));            // welded bracket bolted to the plate
+      // 267 (CONTACT_SEAT_267; the contact receipt on the T-90MS Tagil's stern): the rail found the plate at y -0.015 and
+      // the bracket's middle stands 45 mm lower, so on a sloped plate it lay on the plate's plane at the rail's height,
+      // 20-36 mm off the plate at its own, the rail's end its only contact. It slides along the plate's normal to there.
+      const n = railN[i];
+      const footZ = seat267 && n && Math.abs(n.y) > 1e-6 && Math.abs(n.z) > 0.3 ? railZ[i] + 0.045 * n.y / n.z : railZ[i];
+      steel(footPlate(x, -0.06, footZ, 0.07, 0.14, detail, n));                        // welded bracket bolted to the plate
     }
   }
   return parts;
@@ -4049,6 +4071,18 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
   't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
 ]);
+/**
+ * 267 (lane t90-family-267, the accessory-contact receipt on the T-90 family): three seat fixes, adopted per id as 240's
+ * re-seat was (LEDGE_RESEAT_HELD). A hung load's arm needs the turret wall behind its foot (sideLedgeParts); a rear
+ * rack's welded bracket lies on a sloped plate at its own height, and a rack's foot only where the plate face reaches
+ * its edges (rearRackParts, hullRearRack). Over the whole fleet they move every vehicle with the same seat (decor hash
+ * at 0c66107a83: the arm rule alone 48 ids, the bracket rule 36), whose icons and hero cards would follow, so they
+ * hold for the ids whose receipt named the defect; an id joins when its lane re-renders it. The T-72B3M 2022 waits:
+ * its stern's flaps and log brackets leave neither rack 7 cm of plate, so the foot rule would strip its stern.
+ */
+const CONTACT_SEAT_267: ReadonlySet<string> = new Set<string>([
+  't90', 't90a_2006', 't90ms_2011', 't90ms_tagil', 't90m', 'type96_72m_lei',
+]);
 
 /**
  * Turret-side carriage for a hung load (round 3, 2026-10-07), built in the piece's frame, where the turret wall lies
@@ -4065,7 +4099,8 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  * 2026-10-17 (227): such an arm first slides in along the load to where the wall is, so the load keeps its station.
  */
 function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
-  wallAt?: (x: number, y: number, under?: boolean) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
+  wallAt?: (x: number, y: number, under?: boolean) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true,
+  seat267 = false): DecorPart[] | null {
   const parts: DecorPart[] = [];
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
@@ -4107,6 +4142,11 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
       if (!wall) return null;
       cleatY = -0.045;
     }
+    // 267 (CONTACT_SEAT_267; the contact receipt on the T-90s): where the turret side ends above the arm (a T-90's side
+    // wall over the chamfer that runs in under it) the cleat found the wall and the foot plate stood on the wall's plane
+    // in air, 12 cm or more off the turret, the arm its only contact. An arm whose foot has no wall behind it (nor a
+    // swell to stand on) is not built there: it slides along the load, or the load hangs where both arms have the wall.
+    if (seat267 && wallAt && !wall && !swell) return null;
     const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
     steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
     steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
@@ -6512,10 +6552,23 @@ function* decorationSteps(
         }
         const pieceZ = plateOut - gap - bb.max.z;
         const lxs = [bb.min.x - 0.025, bb.max.x + 0.025];
+        // 267 (CONTACT_SEAT_267; the contact receipt on the T-90M's and Type 96's sterns): a rail's or strut's probe
+        // that met a narrow face proud of the plate (a drum cradle's 13 mm arm 52 mm out, a lip's 20 mm edge strip with
+        // the plate 5-13 cm behind it above and below) bolted the 70 mm foot plate on it, its edges in air. A foot lies
+        // only where the face reaches within the contact receipt's 15 mm of its edges: probes 2 cm to either side of the
+        // probe and above and below it meet the face's plane within 15 mm.
+        const seat267 = CONTACT_SEAT_267.has(spec.id);
+        const across = (lx: number, fy: number, hit: SurfaceHit): boolean => !seat267
+          || ([[-0.02, 0], [0.02, 0], [0, -0.02], [0, 0.02]] as const).every(([dx, dy]) => {
+            const side = hullP.zface(px + lx + dx, fy + dy, 1, sternZ - 1.4);
+            const planeZ = hit.p.z - (hit.n.x * dx + hit.n.y * dy) / hit.n.z;
+            return isRearPlateHit(side) && Math.abs(side.p.z - planeZ) <= 0.015;
+          });
         const railN: Array<THREE.Vector3 | null> = [null, null];
         const railZ = lxs.map((lx, i) => {
           const hit = hullP.zface(px + lx, y - 0.015, 1, sternZ - 1.4);
           if (!isRearPlateHit(hit) || hit.p.z < plateOut - 0.02 || hit.p.z > plateOut + 0.45) return null;
+          if (!across(lx, y - 0.015, hit)) return null;
           railN[i] = hit.n.clone();
           return hit.p.z - pieceZ;
         });
@@ -6526,7 +6579,7 @@ function* decorationSteps(
           for (let b = rearRackBrace(bb); b >= 0.1 - 1e-6; b -= 0.03) {
             if (y - b - REAR_RACK_FOOT < rearFittingFloor()) continue;
             const hit = hullP.zface(px + lx, y - b, 1, sternZ - 1.4);
-            if (!isRearPlateHit(hit)) continue;
+            if (!isRearPlateHit(hit) || !across(lx, y - b, hit)) continue;
             const z = hit.p.z - pieceZ;
             if (z >= rails[i] - 0.05 && z <= rails[i] + 0.35) return { b, z, n: hit.n.clone() };
           }
@@ -6542,7 +6595,7 @@ function* decorationSteps(
             if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
           }
           for (const part of list) part.geo.applyMatrix4(about);
-          list.push(...rearRackParts(bb, rails, detail, struts, railN));
+          list.push(...rearRackParts(bb, rails, detail, struts, railN, seat267));
         };
         carry(parts, 1);
         if (parts.coarse) carry(parts.coarse, 0);
@@ -6845,7 +6898,8 @@ function* decorationSteps(
             const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
             // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
             const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
-            const ledge = sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt, !LEDGE_RESEAT_HELD.has(spec.id));
+            const ledge = sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt, !LEDGE_RESEAT_HELD.has(spec.id),
+              CONTACT_SEAT_267.has(spec.id));
             if (ledge) list.push(...ledge);
             return !!ledge;
           };

@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
+import {stowagePart} from './stowagePart.ts';
 import {T90_X_DATUMS} from './t90X.ts';
 import {fabricRollParts} from '../accessoryPrimitives.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -469,6 +470,8 @@ function cageX(S:Stock,side:number):number {
 }
 
 function bustleCage(P:TankBuilderPort,S:Stock):void {
+  // 267 (Main 2026-10-31): the cage is the bustle's stowage basket, every part of it stowage (stowagePart.ts)
+  const stow=(bucket:string,g:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0):void=>put(P,bucket,stowagePart(g),x,y,z,rx,ry,rz);
   const X={[-1]:cageX(S,-1),[1]:cageX(S,1)} as Record<number,number>;
   const back=CAGE_REAR,floorMid=(CAGE_FLOOR[0]+CAGE_FLOOR[1])/2;
   // the floor: a tray across the back and down both sides; its inner edge is buried in the stock met at floor height
@@ -476,7 +479,7 @@ function bustleCage(P:TankBuilderPort,S:Stock):void {
   const rearBox=S.hit([0,1.90,-3.5],[0,0,1]);
   const rearBottom=S.under(.5,-2.55);
   if(!rearBox||rearBottom===null)throw new Error('t90sm_2013: no bustle rear box for the cage');
-  put(P,'turretPaintedDetail',box(X[-1]+X[1]+.02,CAGE_FLOOR[1]-CAGE_FLOOR[0],rearBox.z-back+.012),(X[1]-X[-1])/2,floorMid,(back+rearBox.z)/2);
+  stow('turretPaintedDetail',box(X[-1]+X[1]+.02,CAGE_FLOOR[1]-CAGE_FLOOR[0],rearBox.z-back+.012),(X[1]-X[-1])/2,floorMid,(back+rearBox.z)/2);
   for(const s of [-1,1]) {
     const front=CAGE_FRONT[s],rows:SolidSection[]=[];
     const n=Math.round((front-rearBox.z)/.10);
@@ -486,10 +489,10 @@ function bustleCage(P:TankBuilderPort,S:Stock):void {
       const xi=Math.min(faceAt(Math.max(rearBox.z,z-.05)),faceAt(z),faceAt(Math.min(front,z+.05))),xo=X[s]+.010;
       rows.push({z,ring:ccw([[s*xi,CAGE_FLOOR[0]],[s*xo,CAGE_FLOOR[0]],[s*xo,CAGE_FLOOR[1]],[s*xi,CAGE_FLOOR[1]]])});
     }
-    put(P,'turretPaintedDetail',sectionSolid(rows));
+    stow('turretPaintedDetail',sectionSolid(rows));
     // the kick plate from the floor up into the rear box's bottom, along its side where no box reaches the floor
     const kz0=rearBox.z,kz1=Math.min(front,-2.36);
-    put(P,'turretPaintedDetail',box(.012,rearBottom+.008-CAGE_FLOOR[1]+.004,kz1-kz0),s*.79,(CAGE_FLOOR[1]-.004+rearBottom+.008)/2,(kz0+kz1)/2);
+    stow('turretPaintedDetail',box(.012,rearBottom+.008-CAGE_FLOOR[1]+.004,kz1-kz0),s*.79,(CAGE_FLOOR[1]-.004+rearBottom+.008)/2,(kz0+kz1)/2);
   }
   // slats: the back wall, both sides and each side's front return into the stock, each wall's slats one welded part
   const back9:THREE.BufferGeometry[]=[],sides:Record<number,THREE.BufferGeometry[]>={[-1]:[],[1]:[]},returns:Record<number,THREE.BufferGeometry[]>={[-1]:[],[1]:[]};
@@ -503,17 +506,17 @@ function bustleCage(P:TankBuilderPort,S:Stock):void {
       if(h)returns[s].push(barGeometry([s*(X[s]+BAR_W/2),y,front],[s*(Math.abs(h.x)-.010),y,front],BAR_W,BAR_H));
     }
   }
-  put(P,'turretOpenLattice',KIT.mergeAll(back9));
-  for(const s of [-1,1]){put(P,'turretOpenLattice',KIT.mergeAll(sides[s]));if(returns[s].length)put(P,'turretOpenLattice',KIT.mergeAll(returns[s]));}
+  stow('turretOpenLattice',KIT.mergeAll(back9));
+  for(const s of [-1,1]){stow('turretOpenLattice',KIT.mergeAll(sides[s]));if(returns[s].length)stow('turretOpenLattice',KIT.mergeAll(returns[s]));}
   // the capping rail round the top, the floor's turned-down lip, and the posts under caps
-  const cap=(a:Point,b:Point)=>bar(P,'turretOpenLattice',a,b,.030,.022);
+  const cap=(a:Point,b:Point)=>stow('turretOpenLattice',barGeometry(a,b,.030,.022));
   cap([-X[-1],CAGE_TOP,back],[X[1],CAGE_TOP,back]);
-  const lip=(a:Point,b:Point)=>bar(P,'turretOpenLattice',a,b,.010,.040);
+  const lip=(a:Point,b:Point)=>stow('turretOpenLattice',barGeometry(a,b,.010,.040));
   lip([-X[-1],CAGE_FLOOR[0]+.012,back-.004],[X[1],CAGE_FLOOR[0]+.012,back-.004]);
   const postLow=CAGE_FLOOR[1]-.008,postHigh=CAGE_TOP+.006;
   const post=(x:number,z:number,ry:number):void=>{
-    put(P,'turretOpenLattice',box(POST_T,postHigh-postLow,POST_W),x,(postLow+postHigh)/2,z,0,ry,0);
-    put(P,'turretOpenLatticeDark',box(POST_T+.012,.014,POST_W+.012),x,postHigh+.004,z,0,ry,0);
+    stow('turretOpenLattice',box(POST_T,postHigh-postLow,POST_W),x,(postLow+postHigh)/2,z,0,ry,0);
+    stow('turretOpenLatticeDark',box(POST_T+.012,.014,POST_W+.012),x,postHigh+.004,z,0,ry,0);
   };
   for(const s of [-1,1]) {
     const front=CAGE_FRONT[s];

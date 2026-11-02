@@ -1191,7 +1191,7 @@ function seedArmorPaintPanels(root: THREE.Object3D): void {
     const material = object.material, geometry = object.geometry, position = geometry?.getAttribute('position');
     if (Array.isArray(material) || !material || !position || geometry.getAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE)) return;
     if (armorPaintMode(material) < 1) return;
-    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(position.count), 1, false));
+    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int16Array(position.count), 1, false));
   });
 }
 

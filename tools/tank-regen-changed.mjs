@@ -28,17 +28,23 @@
 // assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
 // settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
-// after), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
+// after; a step's own input rows as the run recorded them, stampedInKeys), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
 //
 // Resource rules: every CPU child runs `nice -n 10 node --max-old-space-size=4096` after `headroom can-start --gb N`,
-// with a wall-clock limit that kills only that child; GPU children are not niced and run inside the capture lock.
+// with a limit that stops only that child and its own children; GPU children are not niced and run inside the capture
+// lock, under a wall-clock limit.
+// Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
+// (tools/changed-only/childPriority.mjs, 267). A CPU child's limit is a budget of its process tree's CPU, not of wall
+// time, with a 30-minute no-progress cap for a hang (tools/changed-only/childBudget.mjs, 267).
 import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
-  from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, stampedInKeys,
+  writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
+import { cpuChildCommand } from './changed-only/childPriority.mjs';
+import { watchChild } from './changed-only/childBudget.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
@@ -118,29 +124,42 @@ async function gate(gb) {
   }
 }
 
-/** Run one child; resolves with its exit code. A timeout kills exactly that child (TERM, then KILL after 15 s). */
+/**
+ * Run one child; resolves with its exit code (124 when the runner stopped it). A CPU child's limit is a budget of the CPU
+ * its process tree spends (tools/changed-only/childBudget.mjs, 267): a starved child keeps running, one that burns past
+ * its budget or makes no CPU progress for HANG_S is stopped by exact pids, the reason named. A GPU child (never niced:
+ * it runs inside a capture hold) keeps a wall-clock limit, which bounds the hold (TERM, then KILL after 15 s).
+ */
 function runChild(argv, { niced, timeoutS, label }) {
   return new Promise((done) => {
-    const command = niced ? 'nice' : process.execPath;
-    const fullArgs = niced ? ['-n', '10', process.execPath, ...argv] : argv;
-    log(`[regen] ${label}: ${niced ? 'nice -n 10 ' : ''}node ${argv.join(' ').slice(0, 400)}`);
+    const { command, args: fullArgs, prefix } = cpuChildCommand(process.execPath, argv, { niced });
+    log(`[regen] ${label}: ${prefix}node ${argv.join(' ').slice(0, 400)}`);
     const out = join(qaDir, `${stamp}-${label.replace(/[^\w.-]+/g, '_')}.out`);
     const child = spawn(command, fullArgs, { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     const sink = (chunk) => appendFileSync(out, chunk);
     child.stdout.on('data', sink); child.stderr.on('data', sink);
-    let killed = false;
-    const timer = setTimeout(() => {
-      killed = true;
-      log(`[regen] ${label}: wall-clock limit ${timeoutS} s; stopping pid ${child.pid}`);
-      try { process.kill(child.pid, 'SIGTERM'); } catch {}
-      setTimeout(() => { try { process.kill(child.pid, 'SIGKILL'); } catch {} }, 15_000).unref();
-    }, timeoutS * 1000);
+    let killed = false, timer = null, watch = null;
+    if (niced) {
+      watch = watchChild(child.pid, { budgetS: timeoutS, hangS: HANG_S, onStop: (verdict) => {
+        killed = true;
+        log(`[regen] ${label}: ${verdict.message}; stopping pid ${child.pid} and its children`);
+      } });
+    } else {
+      timer = setTimeout(() => {
+        killed = true;
+        log(`[regen] ${label}: wall-clock limit ${timeoutS} s (a GPU child: its capture hold); stopping pid ${child.pid}`);
+        try { process.kill(child.pid, 'SIGTERM'); } catch {}
+        setTimeout(() => { try { process.kill(child.pid, 'SIGKILL'); } catch {} }, 15_000).unref();
+      }, timeoutS * 1000);
+    }
     child.on('close', (code, signal) => {
-      clearTimeout(timer);
+      clearTimeout(timer); watch?.stop();
       done({ code: killed ? 124 : code ?? (signal ? 128 : 1), out });
     });
   });
 }
+/** A CPU child with no CPU progress in its tree for this long is hung (its CPU budget is the step's limit). */
+const HANG_S = 1800;
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
@@ -299,7 +318,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
     log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here, left due: ${Object.entries(skipped).slice(0, 6)
       .map(([id, why]) => `${id} (${why})`).join(', ')}`);
   }
-  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)) });
+  recordStep(manifest, name, scoped, stampedInKeys(state, afterView, name, inKeys), afterView, { skip: new Set(Object.keys(skipped)) });
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;

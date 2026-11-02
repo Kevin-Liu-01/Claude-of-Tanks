@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "type90b": {
+      "name": "Type 90 (B)",
+      "authority": "Release 267 (owner 2026-10-31, \"add a type 90 b esp with that awesome machine gun\", with a War Thunder render of the Type 90 (B); Main 2026-10-31 on the lane's research): the Type 90 built ready for the Type 92 mine-clearing roller, the War Thunder wiki's (B), whose only change is the roller's 10 mm mounting plates on the lower front plate (it cannot take the dozer kit). No Type 90 carried a remote weapon station: the render's 'boxy mount with a sight housing' is the Type 90's own 12.7 mm M2 on its pintle cradle beside the gunner's sight, rebuilt for every Type 90 from the JGSDF photographs here. The B's build is the production Type 90's (profiles/type90X.ts) with the roller's plate, six seats and hitch lugs (profiles/type90B.ts); the black stripes of the render have no real source and are not drawn.",
+      "sources": [
+        "https://wiki.warthunder.com/unit/jp_type_90b",
+        "https://ja.wikipedia.org/wiki/90%E5%BC%8F%E6%88%A6%E8%BB%8A",
+        "https://en.wikipedia.org/wiki/Type_90_tank",
+        "https://www.mod.go.jp/gsdf/nae/2d/kuniwomamoru/soubihin/souki/90tk.htm",
+        "https://commons.wikimedia.org/wiki/File:%EF%BC%99%EF%BC%92%E5%BC%8F%E5%9C%B0%E9%9B%B7%E5%8E%9F%E5%87%A6%E7%90%86%E3%83%AD%E3%83%BC%E3%83%A9_(1).jpg",
+        "https://commons.wikimedia.org/wiki/File:92%E5%BC%8F%E5%9C%B0%E9%9B%B7%E5%8E%9F%E5%87%A6%E7%90%86%E3%83%AD%E3%83%BC%E3%83%A9.jpg",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type90_tank_20120527-01.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type90_tank_20120527-05.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type90_tank_20120527-07.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type90_tank_20120527-08.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type90_tank_20120527-10.JPG",
+        "https://commons.wikimedia.org/wiki/File:Type_90_tank_belonging_to_JGSDF_71st_tank_regiment.jpg"
+      ],
+      "widthM": 3.618,
+      "overallLengthM": 9.799,
+      "tallestM": 4.659,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities, the photo check's rule) of the production Type 90 build it shares: 9.799 m gun forward (published 9.80 m, JGSDF and Japanese Wikipedia), 3.618 m over the lowered wings (the Type 90's source registration's width; the published 3.40 m conflict is recorded in docs/references/tanks/type90_x.md), 4.659 m to the whips' tips (the roof at 2.46 m). The roller kit stays inside the Type 90's envelope (type90B.selftest.mjs).",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/type90B.selftest.mjs"
+    }
+  }
+}

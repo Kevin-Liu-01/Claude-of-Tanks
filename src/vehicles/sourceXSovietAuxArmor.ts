@@ -84,15 +84,28 @@ const B3M_PANELS: readonly (readonly [number,number,number,number])[]=[
   [-1.389,-.795,1.53164,.79919],[-.785,-.19,1.53164,.79919],[-.18,.415,1.53164,.79919],
   [.423,1.018,1.53164,.79919],[1.029,1.624,1.53164,.79919],[1.637,2.232,1.52077,.79884],
   [2.242,3.182,1.47615,.7984]];
+// 266 (shared B3M base, t72b3mX.ts skirtFlapsAndHangers): the flat lower, front and rear curtains became toothed rubber
+// flaps hung 6 deg outboard from hinge bars (y .812), alternate flaps 10 mm further out. Each flap's outer face is two
+// real facets: the sheet above its chamfered lower corners and the trapezoid tooth below them.
+const B3M_FLAPS: readonly (readonly [a: number,b: number,bottom: number,group: string])[]=[
+  ...B3M_PANELS.map(([a,b],i)=>[a,b,.50,`b3m-lower-curtain-%s-${i}`] as const).filter(([a,b])=>a>-1.4 && b<2.24),
+  [2.245,2.712,.62,'b3m-front-curtain-%s-0'],[2.712,3.180,.62,'b3m-front-curtain-%s-1'],
+  [-2.556,-2.143,.65,'b3m-rear-curtain-%s-0'],[-2.143,-1.731,.65,'b3m-rear-curtain-%s-1']];
+function b3mFlaps(emit: Emit, side: number, lane: number): void {
+  const hinge=.812,lean=.105,t=.014,c=Math.cos(lean),s=Math.sin(lean);
+  B3M_FLAPS.forEach(([a,b,bottom,name],i)=>{
+    const h=hinge-bottom,w=b-a-.012,cx=w*.30,cy=h*.55,z=(a+b)/2,x0=Math.abs(lane)-.009+t/2+(i%2?.010:0);
+    const at=(u: number,v: number): Point=>[side*(x0+t/2*c-s*v),hinge+t/2*s+c*v,z+u];
+    const group=name.replace('%s',String(side));
+    sideQuad(emit,side,at(-w/2,cy-h),at(-w/2,0),at(w/2,cy-h),at(w/2,0),group);
+    sideQuad(emit,side,at(cx-w/2,-h),at(-w/2,cy-h),at(w/2-cx,-h),at(w/2,cy-h),group);
+  });
+}
 function t72b3m_2022(emit: Emit, side: number): void {
   const lane=side<0?-1.962:1.958;
-  B3M_PANELS.forEach(([a,b,top,low],i)=>{
-    flatPanel(emit,side,lane-side*.0095,a,b,low,top,`b3m-fixed-backing-${side}-${i}`);
-    if(a>-1.4 && b<2.24)flatPanel(emit,side,lane-side*.0075,a+.003,b-.003,
-      .5206,.7976,`b3m-lower-curtain-${side}-${i}`);
-  });
-  flatPanel(emit,side,lane-side*.007,2.2445,3.1795,.6296,.7996,`b3m-front-curtain-${side}`);
-  flatPanel(emit,side,lane-side*.007,-2.5555,-1.7305,.660,.800,`b3m-rear-curtain-${side}`);
+  B3M_PANELS.forEach(([a,b,top,low],i)=>
+    flatPanel(emit,side,lane-side*.0095,a,b,low,top,`b3m-fixed-backing-${side}-${i}`));
+  b3mFlaps(emit,side,lane);
 }
 
 function t72bu_1989(emit: Emit, side: number): void {

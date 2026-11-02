@@ -1063,5 +1063,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/type96b_x_source.glb",
+  "sha256": "ac66370796b83d2d63755390ffdbcaa503d9dbc15726630205c4e44a2765b1ed"
+ }
 }

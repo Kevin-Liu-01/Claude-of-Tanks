@@ -3,6 +3,7 @@
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {roofSheet} from './measuredPrimitives.ts';
+import {stowagePart} from './stowagePart.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type Height=readonly[z:number,y:number];
 const FLANGE:readonly Height[]=[[-3.79005,1.28130],[-3.72365,1.23830],[-3.66895,1.21970],
@@ -16,19 +17,20 @@ function height(rows:readonly Height[],z:number):number{
   }
   return rows[rows.length-1][1];
 }
+// A drum cradle (web, bearing flange, root and hinge plate): stowage, every part (stowagePart.ts, 267).
 function cradle(P:TankBuilderPort,x:number,dy:number,dz:number):void{
   const zs=[...new Set([...WEB.map(r=>r[0]),...FLANGE.map(r=>r[0])])].sort((a,b)=>a-b);
   const upper=(z:number)=>z<FLANGE[0][0]?1.2305+(z+3.80175)*4.24:z>FLANGE.at(-1)![0]?1.3428:height(FLANGE,z)-.006;
-  P.addEquipment('hullDetail',sectionSolid(zs.map(z=>({z:z+dz,ring:[[x-.0049,height(WEB,z)+dy],
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(zs.map(z=>({z:z+dz,ring:[[x-.0049,height(WEB,z)+dy],
     [x+.0049,height(WEB,z)+dy],[x+.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy],
-    [x-.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy]]}))));
-  P.addEquipment('hullDetail',roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098));
+    [x-.0049,Math.max(upper(z),height(WEB,z)+.0004)+dy]]})))));
+  P.addEquipment('hullDetail',stowagePart(roofSheet(FLANGE.map(([z,y])=>[z+dz,x-.0244,x+.0264,y+dy,y+dy] as const),.0098)));
   const roots:readonly(readonly[number,number,number])[]=[[-3.29595,1.198,1.19],[-3.25295,1.237,1.1582],
     [-3.23345,1.2422,1.153],[-3.18455,1.2275,1.139],[-3.15335,1.2334,1.139],[-3.11035,1.150,1.1494]];
-  P.addEquipment('hullDetail',sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],
-    [x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]}))));
-  P.addEquipment('hullDetail',roofSheet([[-3.31935+dz,x-.05935,x+.05935,1.2129+dy,1.2129+dy],
-    [-3.24515+dz,x-.05935,x+.05935,1.2666+dy,1.2666+dy]],.030));
+  P.addEquipment('hullDetail',stowagePart(sectionSolid(roots.map(([z,t,b])=>({z:z+dz,ring:[[x-.0121,b+dy],
+    [x+.0121,b+dy],[x+.0121,t+dy],[x-.0121,t+dy]]})))));
+  P.addEquipment('hullDetail',stowagePart(roofSheet([[-3.31935+dz,x-.05935,x+.05935,1.2129+dy,1.2129+dy],
+    [-3.24515+dz,x-.05935,x+.05935,1.2666+dy,1.2666+dy]],.030)));
 }
 export function addT90MSRearCradles(P:TankBuilderPort):void{
   // Independently measured MS stations; its folds are not the AW stations.

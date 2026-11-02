@@ -1069,5 +1069,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t72b_1987_x_source.glb",
+  "sha256": "0d8a2541b648e0c6576de4b7e4b922948bf2ce97913fa363d9fc767746b7f7af"
+ }
 }

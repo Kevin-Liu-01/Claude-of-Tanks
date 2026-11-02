@@ -20,6 +20,12 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // 266 (Main 2026-10-31): the M60 batch's two Israeli marks, built on the rebuilt M60A1's castings from the Latrun
   // museum tanks' photographs, with no 3D model to follow
   'docs/references/photos/magach-latrun-20261031.json':Object.freeze(['magach6b','magach7c']),
+  // 267 (Main 2026-10-31, the Japan line): the Type 90 (B) on the production Type 90's build, and the TK-X and the Type
+  // 10B on the modern Type 10's, each proved by JGSDF/TRDI photographs; the production Type 10 print the TK-X was
+  // registered against is deregistered (a prototype cannot match it)
+  'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
+  'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
+  'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
   // 268 (the owner, 2026-11-01: "now update the ... bmp 3 rok, bwp-1"): the BMP-3 in ROK service on the fleet's BMP-3
   // hull and the BWP-1 under the RCWS-30, built from photographs with no 3D model to follow
   'docs/references/photos/bmp-family-20261101.json':Object.freeze(['bmp3_rok','bwp1']),

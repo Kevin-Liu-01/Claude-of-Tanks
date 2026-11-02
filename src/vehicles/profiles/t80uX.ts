@@ -9,6 +9,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import { libraryRoofMg } from './libraryRoofMg.ts';
+import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import {machinedRing} from '../machineGunGeometry.ts';
 import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -208,6 +209,27 @@ function roofEquipment(P:TankBuilderPort):void {
   onTurret(P,'turretDetail',box(.095,.065,.095),.5355,1.586,1.394);
   // 2026-10-19 (owner float sweep): the small sensor block stood 78 mm ahead of the sight drum; it is seated on it.
   P.snapGroup('t80u-sight-block',()=>onTurret(P,'turretDetail',box(.058,.042,.064),.772,1.740,1.623),{reachM:.09});
+  commanderSightHead(P);
+}
+
+/** 267 (Main's fused-box gate: "t80u's cupola-front sight block (to 2.40, 2.465 with the declared raise; the build's body
+ * stops at 2.314)"): the commander's sight head standing in the cupola's front. Source (t80u_x_source.glb mesh_324, island
+ * 1543, source frame): x -0.7111..-0.5333, a neck z 0.0556..0.0823 from the roof (2.1554) to 2.3109 under a head z
+ * 0.0556..0.1266 to 2.3999. Here, in the same frame (the casting and its kit ride T80U_X_RING_RAISE_M higher): the neck
+ * rising from the cupola race's top (foot 8 mm into it, inside its .328 radius) 15.5 cm wide, its back raked, under the
+ * head at the source's width, depth and top with its upper edges chamfered, the dark window on its face 2 mm proud and an
+ * armoured brow over it. The traced NSVT post the 264 pass replaced stood at x -0.955 (machineGun); this was never part
+ * of it. Body (turret buckets), not a roof fitting. */
+function commanderSightHead(P:TankBuilderPort):void {
+  const x0=-.7111,x1=-.5333,xm=(x0+x1)/2;
+  const neck=[[.004,2.241],[.0823,2.241],[.0823,2.318],[.034,2.318]] as const;
+  const head=[[.030,2.3109],[.1266,2.3109],[.1266,2.381],[.108,2.3999],[.048,2.3999],[.030,2.386]] as const;
+  const along=(ring:readonly(readonly[number,number])[],a:number,b:number)=>sectionSolid([{z:a,ring},{z:b,ring}]).applyMatrix4(
+    new THREE.Matrix4().makeBasis(new THREE.Vector3(0,0,1),new THREE.Vector3(0,1,0),new THREE.Vector3(-1,0,0)));
+  onTurret(P,'turretDetail',along(neck,-(xm+.0775),-(xm-.0775)),0,0,0);
+  onTurret(P,'turretDetail',along(head,-x1,-x0),0,0,0);
+  onTurret(P,'turretDark',box(.150,.040,.006),xm,2.344,.1276);
+  onTurret(P,'turretDetail',box(.178,.008,.026),xm,2.3735,.137);
 }
 
 function smoke(P:TankBuilderPort):void {
@@ -220,8 +242,42 @@ function smoke(P:TankBuilderPort):void {
 function machineGun(P:TankBuilderPort):void {
   // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
   // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its own pintle standing
-  // where the traced post stood on the roof (2.16 there) ahead of the cupola, in place of the post, boxes and rods.
-  libraryRoofMg(P,{station:'t80uCommanderNsvtStation',cls:'nsvt',seat:[-.955-YAW[0],2.16-YAW[1],.251-YAW[2]]});
+  // where the traced post stood ahead of the cupola, in place of the post, boxes and rods.
+  // 267 (coordinator: raise the mount the minimum that clears the commander's sight head by 25 mm at every yaw): the
+  // pintle stood at 2.16 in this frame, 60 mm over the roof under it (2.095; the 264 seat read the post's top, not the
+  // roof), with the gun's bore at 2.4572 against the source NSVT's 2.4315 (t80u_x_source.glb mesh_324 island 1110,
+  // x -0.955). On the sight head (top 2.3999) its shield's lower edge at the heavy MG's full 10.3 degrees of depression
+  // came within 25 mm over yaws 64-176; raised 0.116 it kept 24.0 mm, 0.118 26.0, so the pintle stands NSVT_RISE = 0.12
+  // higher (27.9 mm at yaw 138, bore 2.5772: 14.6 cm over the source's) on a turned riser that also closes the old gap.
+  const {station}=libraryRoofMg(P,{station:'t80uCommanderNsvtStation',cls:'nsvt',seat:[NSVT_PINTLE[0]-YAW[0],NSVT_PINTLE[1]+NSVT_RISE-YAW[1],NSVT_PINTLE[2]-YAW[2]]});
+  nsvtRiser(P,station);
+}
+const NSVT_PINTLE=[-.955,2.16,.251] as const,NSVT_RISE=.12;
+/** 267: the NSVT's riser on the sloping roof (2.079-2.106 within 7 cm of the pintle, falling outward to the left): a cast
+ * boss r .075 from 8 mm under the roof's lowest point there to 2.118, a fillet into a turned shaft and a chamfered collar
+ * whose top is the pintle's seat (the gun's own flange stands 5 mm into it), with three gusset webs from the shaft to the
+ * boss and four bolt heads on it. It is the gun's mount, not the turret's body (Main's gate ruling, 267: the gate's body
+ * heights leave roof weapons and their mounts out, tools/body-height-parts.mjs): the factory merges its stock
+ * (captureAuxiliaryStock) into NSVT_RISER, a static group under the station tagged as a weapon-station mount (no weapon of
+ * its own, so the controls inventory's drawn-weapon census passes it by), beside the gun's yawing fitting; it stays put
+ * while the gun turns on it. */
+const NSVT_RISER='t80uCommanderNsvtRiser';
+function nsvtRiser(P:TankBuilderPort,station:THREE.Group):void {
+  const mount=new THREE.Group();mount.name=NSVT_RISER;
+  Object.assign(mount.userData,{fitting:'weaponStationMount',hasWeapon:false,supportAssembly:station.name});
+  station.add(mount);
+  const finish=captureAuxiliaryStock(P,NSVT_RISER,'yaw');
+  const [x,,z]=NSVT_PINTLE,foot=2.0706,boss=2.118,top=NSVT_PINTLE[1]+NSVT_RISE;
+  const profile=[[0,foot],[.075,foot],[.075,boss-.006],[.069,boss],[.050,boss],[.044,boss+.012],[.040,top-.021],
+    [.052,top-.017],[.052,top-.004],[.048,top],[0,top]] as const;
+  onTurret(P,'turretDetail',new THREE.LatheGeometry(profile.map(([r,y])=>new THREE.Vector2(r,y)),24),x,0,z);
+  for(let k=0;k<3;k++){
+    const a=Math.PI/3+k*2*Math.PI/3,web:[number,number][]=[[.038,boss-.002],[.070,boss-.002],[.070,boss+.004],[.038,boss+.060]];
+    onTurret(P,'turretDetail',sectionSolid([{z:-.004,ring:web},{z:.004,ring:web}]).applyMatrix4(new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(Math.sin(a),0,Math.cos(a)),new THREE.Vector3(0,1,0),new THREE.Vector3(-Math.cos(a),0,Math.sin(a)))),x,0,z);
+  }
+  for(let k=0;k<4;k++){const a=k*Math.PI/2;onTurret(P,'turretDark',cylY(.008,.007,6),x+.062*Math.sin(a),boss+.0015,z+.062*Math.cos(a));}
+  finish();
 }
 
 function mainGun(P:TankBuilderPort):void {

@@ -1151,5 +1151,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/t80.glb",
+  "sha256": "938fad652cae2e527618033ea15006959d90888944329427a8b3341ce65699ed"
+ }
 }

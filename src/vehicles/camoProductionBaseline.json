@@ -432,7 +432,7 @@
   "sig_amx56": "6684f92c5498bc2f",
   "sig_leclerc": "33f44987f14fe454",
   "sig_ariete_c2": "f3c48cd5e8575f73",
-  "sig_type10b": "887b9841aac1b356",
+  "sig_type10b": "83f10393f53d2535",
   "sig_type90": "fb2d08c9f545951b",
   "sig_type90a": "a2635ecb60ebf9d2",
   "sig_type59": "a582aad184333f35",
@@ -830,14 +830,14 @@
   },
   "type10": {
    "selection": "factory",
-   "stock": "service_type10",
-   "factory": "a29eb6eab6409d73",
+   "stock": "paint_type10",
+   "factory": "79507db13e424d81",
    "auto": "dpm digitaldesert winterbands urban oakleaf summer desert berlin urban dpm dpm dpm"
   },
   "type10b": {
    "selection": "factory",
    "stock": "sig_type10b",
-   "factory": "009bf79d0c845fc0",
+   "factory": "a8103e9faaef602e",
    "auto": "flecktarn digitaldesert winterbands berlin oakleaf dpm digitaldesert urban urban flecktarn flecktarn flecktarn"
   },
   "m2a2_bradley": {

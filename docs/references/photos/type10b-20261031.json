@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "type10b": {
+      "name": "Type 10B",
+      "authority": "Release 267 (owner 2026-10-31; Main 2026-10-31: the later production variant, one base, true size): the production Type 10 as the JGSDF photographs show it (profiles/type10X.ts: the bolted side blocks, the oval smoke slot, the four laser warners, the meshed basket, the ring M2's seat) carrying the Type 10 upgrade programme's fit: the ATLA call for companies of June 2024 and GSDF notice 1230 (28 October 2024) on active protection, with a remote weapon station (Janes) on the commander's ring, and the reactive armour the sides and roof are reported to take (Japanese Wikipedia). The fit is tendered, not fielded: the 10B is notional (vehicleFacets.ts concept), its armour the Type 10's own with the 10B's reactive seeds.",
+      "sources": [
+        "https://ja.wikipedia.org/wiki/10%E5%BC%8F%E6%88%A6%E8%BB%8A",
+        "https://en.wikipedia.org/wiki/Type_10_(tank)",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type10_tank_20120527-05.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type10_tank_20120527-06.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type10_tank_20120527-10.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_Type10_tank_20120527-12.JPG",
+        "https://commons.wikimedia.org/wiki/File:JGSDF_type10_Tank_Gun_Turret.JPG",
+        "https://commons.wikimedia.org/wiki/File:10%E5%BC%8F%E6%88%A6%E8%BB%8A_(Type_10_Tank)_-_Japan_Ground_Self-Defense_Force._(53825532346).jpg",
+        "https://commons.wikimedia.org/wiki/File:%EF%BC%98%E6%88%A6-1_10%E5%BC%8F%E6%88%A6%E8%BB%8A.jpg",
+        "https://motor-fan.jp/article/20096/",
+        "https://j-defense.ikaros.jp/docs/commentary/001142.html",
+        "https://www.mod.go.jp/gsdf/dc/cfin/html/img/i230-R6.10.28.pdf",
+        "https://www.janes.com/osint-insights/defence-news/defence/japan-to-upgrade-type-10-mbt"
+      ],
+      "widthM": 3.522,
+      "overallLengthM": 9.42,
+      "tallestM": 4.122,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities) of the modern Type 10 it draws with its fit: 9.42 m gun forward (published 9.42 m), 3.522 m over the owner's field net on the skirts' stand-off reactive armour (the Type 10's 3.389 m source width, published 3.24 m: docs/references/tanks/type10_x.md), 4.122 m to the whips' tips.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/type10Marks.selftest.mjs"
+    }
+  }
+}

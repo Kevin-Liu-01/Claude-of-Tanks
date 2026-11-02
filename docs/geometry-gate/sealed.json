@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T12:26:10.484Z",
+ "generatedAt": "2026-11-01T06:26:00.074Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -1197,47 +1197,119 @@
   },
   "leclerc_s1": {
    "sealed": true,
-   "openPx": 7,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 41,
-   "seeThroughPx": 1,
+   "insideOutPx": 36,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 142040,
+   "tris": 137888,
    "frame": [
     0,
-    1.5,
+    2.3,
     1.35,
-    5.6
+    5.9
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 the builder-owned mast whips (2.1 and 1.7 m) raise the bounds and centre the census frame higher - the body and its sealing are unchanged",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": true,
+      "openPx": 7,
+      "openViews": 0,
+      "seeThroughPx": 1,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.5,
+       1.35,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      2.3,
+      1.35,
+      5.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 7,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "leclerc_s2": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 33,
+   "insideOutPx": 40,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 139190,
+   "tris": 133165,
    "frame": [
     0,
-    1.25,
+    2.3,
     1.35,
-    5.5
+    5.9
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 the builder-owned mast whips (2.1 and 1.7 m) raise the bounds and centre the census frame higher - the body and its sealing are unchanged",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": true,
+      "openPx": 4,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.25,
+       1.35,
+       5.5
+      ]
+     },
+     "to": [
+      0,
+      2.3,
+      1.35,
+      5.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 2,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "leclerc_sxxi": {
    "sealed": true,
-   "openPx": 18,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 36,
+   "insideOutPx": 32,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3052,
-   "tris": 148877,
+   "netSeeThroughPx": 1657,
+   "tris": 143170,
    "frame": [
     0,
-    1.4,
+    2.3,
     1.35,
-    5.6
+    5.9
    ],
    "accepts": [
     {
@@ -1257,6 +1329,76 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4265
+     }
+    },
+    {
+     "kind": "reframe",
+     "reason": "267 the builder-owned mast whips (2.1 and 1.7 m) raise the bounds and centre the census frame higher - the body and its sealing are unchanged",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "sealed": true,
+      "openPx": 18,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3052,
+      "frame": [
+       0,
+       1.4,
+       1.35,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      2.3,
+      1.35,
+      5.9
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 15,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 1858
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267 the netting falls from 3052 to 1858 px with the skirt drapes off the suit",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3052,
+      "frame": [
+       0,
+       1.4,
+       1.35,
+       5.6
+      ]
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267 round 3, the HL-60 base block, sight head and open doors change how the field suit net drapes over the right cheek, netting 1671 to 1544 px",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 1671
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267 round 4, the HL-60 base block lengthened forward, its square doors and the corner wedge modules change how the field suit net drapes over the turret front, netting 1544 to 1657 px",
+     "by": "kevinliu",
+     "date": "2026-10-31",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 1544
      }
     }
    ]
@@ -3632,30 +3774,118 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 36,
-   "seeThroughPx": 51,
+   "insideOutPx": 384,
+   "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 96314,
+   "tris": 77692,
    "frame": [
     0,
-    1.85,
-    1.45,
-    6
+    1.8,
+    0.9,
+    5.4
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 (owner 2026-11-01): the TK-X and the 10B rebuilt on the true-size Type 10 base (type10X.ts, 9.42 m, height 2.95 -> 2.22 m), so each build sits in the production Type 10's census frame",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 51,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     },
+     "to": [
+      0,
+      1.8,
+      0.9,
+      5.4
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "type10b": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 36,
-   "seeThroughPx": 45,
-   "netSeeThroughPx": 4056,
-   "tris": 117158,
+   "insideOutPx": 339,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 2283,
+   "tris": 88484,
    "frame": [
-    0,
-    1.85,
-    1.45,
-    6
+    0.05,
+    2.05,
+    0.9,
+    5.6
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "267 (owner 2026-11-01): the TK-X and the 10B rebuilt on the true-size Type 10 base (type10X.ts, 9.42 m, height 2.95 -> 2.22 m), so each build sits in the production Type 10's census frame",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 45,
+      "netSeeThroughPx": 4056,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     },
+     "to": [
+      0.05,
+      2.05,
+      0.9,
+      5.6
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 1948
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "267: the 10B's camouflage net re-hung over the true-size turret and hull (netting 4056 -> 1948 px in the old frame, 2283 in its own, see-through 45 -> 0)",
+     "by": "japan-line-267",
+     "date": "2026-11-01",
+     "from": {
+      "seeThroughPx": 45,
+      "netSeeThroughPx": 4056,
+      "frame": [
+       0,
+       1.85,
+       1.45,
+       6
+      ]
+     }
+    }
    ]
   },
   "type59": {
@@ -5028,6 +5258,51 @@
     2.65,
     1.2,
     5.9
+   ]
+  },
+  "type90b": {
+   "sealed": true,
+   "openPx": 26,
+   "openViews": 0,
+   "insideOutPx": 136,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82418,
+   "frame": [
+    0,
+    2.35,
+    0.85,
+    5.9
+   ]
+  },
+  "leo2a7dk": {
+   "sealed": true,
+   "openPx": 2,
+   "openViews": 0,
+   "insideOutPx": 363,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 117445,
+   "frame": [
+    0,
+    2.8,
+    1.5,
+    6.6
+   ]
+  },
+  "centurion5_2dk": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 320,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 99184,
+   "frame": [
+    0,
+    1.6,
+    1,
+    5.5
    ]
   }
  }

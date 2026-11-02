@@ -9,6 +9,17 @@ const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
+// 267 (Main's ruling, 2026-11-01): its measured gun stops (tools/gun-depression-sweep.mjs at 26 mm): the barrel over the
+// bow-corner width poles (1.775 m, yaw 15-19) and lamp housings (yaw 20-26) and aft over the engine plateau; over the bow
+// spare-track links (yaw 5-13) at -4, where the stowage seat pass keeps them (spareTrackSeat.ts: 5 cm from the gun; at
+// -4.3 it leaves them unbuilt; the barrel alone keeps 26 mm to -6). The mantlet stands in a known conflict with the
+// deck there (nationalGunClearance.selftest.mjs holds the barrel there).
+const AMX40_PROTO_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -8], [2, -8], [4, -7.7], [5, -4], [13, -4], [14, -1.6],
+  [15, -0.5], [16, -0.3], [18, -0.3], [19, -0.5], [21, -2.2], [24, -2.3], [25, -2.5], [26, -3.1], [27, -5.2],
+  [28, -6.7], [32, -6.2], [34, -6.2], [35, -6.7], [37, -8], [70, -8], [71, 0.1], [73, 0.1], [74, -8], [125, -8],
+  [127, -6.7], [128, -6.3], [130, -6.3], [132, -6.1], [134, -5.6], [135, -5.4], [142, -5.4], [143, -3], [144, -1.9],
+  [145, -1.6], [149, -1.3], [150, -0.6], [151, -0.5], [157, -0.4], [180, -0.4]] as const);
+
 const FRANCE_SPECS = {
   amx40_proto: {
     id: 'amx40_proto', name: 'AMX-40 Prototype', nation: 'France', era: 'modern', role: 'mbt',
@@ -18,6 +29,7 @@ const FRANCE_SPECS = {
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 8,
+    gunPitchByYawDeg: AMX40_PROTO_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 120, reloadS: 6.5, baseAccuracy: 0.30, aimTimeS: 1.9,
       bloom: BLOOM_MODERN,

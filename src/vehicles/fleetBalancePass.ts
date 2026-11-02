@@ -281,7 +281,8 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.34, aimTimeS: 2 });
     armor(registry, 't80b', 0.95);
   }
-  Object.assign(spec(registry, 'type90_kyumaru'), {
+  // 267: the Type 90 (B) keeps the Type 90's mobility (the Type 90 mirrors its Kyū-maru donor's, sourceXSecondWave)
+  for (const id of ['type90_kyumaru', 'type90b']) Object.assign(spec(registry, id), {
     enginePowerHp: 1550, topSpeedKmh: 74, reverseSpeedKmh: 34,
     hullTraverseDegS: 48, turretTraverseDegS: 44,
   });
@@ -659,7 +660,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   for (const id of ['m1a1_abrams_aim', 'm1a1_abrams_hc', 'm1a2_abrams_sepv2', 'm1a2_abrams']) spec(registry, id).hp = 2450;
   // the Type 90 family's 3-round clip (1,500 damage) was still reloading when it died; the STC-2 rebuild keeps its
   // Kyū-maru donor's gun and hull (sourceXSecondWave), so the two change together
-  for (const id of ['type90', 'type90_kyumaru']) {
+  for (const id of ['type90', 'type90_kyumaru', 'type90b']) {
     autoloaderCycle(registry, id, 9);
     spec(registry, id).hp = 2450;
   }
