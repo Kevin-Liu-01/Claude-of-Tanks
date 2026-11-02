@@ -15,13 +15,14 @@
 //     after that step ran and rewritten only when stale; a chain where the step did not run never touches it.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { dynamicSites, h16 } from './graph.mjs';
 import { DEPENDENTS, FLEET_API_TOKENS, stepByName } from './steps.mjs';
 import { cpuChildCommand } from './childPriority.mjs';
+import { psCpuSeconds, treeCpu, watchChild } from './childBudget.mjs';
 import { tokenPin } from './world.mjs';
 
 const repo = resolve(import.meta.dirname, '../..');
@@ -375,5 +376,41 @@ assert.deepEqual(cpuChildCommand('/bin/node', childArgv, { niced: false, env: {}
 const runnerSource = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(runnerSource, /cpuChildCommand\(process\.execPath, argv, \{ niced \}\)/, 'the runner spawns every child through it');
 assert.doesNotMatch(runnerSource, /\['-n', '10'/, 'no hard-coded nice left in the runner');
+
+// 267 (Main: the load class): a CPU child's limit is a budget of its tree's CPU, not of wall time. A child starved of
+// CPU (SIGSTOP slices) outlives the wall time its budget names; a child burning CPU past its budget is stopped with the
+// budget named; a child with no CPU progress for the hang cap is stopped as a hang.
+assert.equal(psCpuSeconds('1-02:03:04.50'), 93784.5);
+assert.equal(psCpuSeconds('0:01.25'), 1.25);
+assert.deepEqual(treeCpu([{ pid: 1, ppid: 0, cpuS: 1 }, { pid: 2, ppid: 1, cpuS: 2 }, { pid: 3, ppid: 2, cpuS: 3 }, { pid: 4, ppid: 9, cpuS: 5 }], 1),
+  { pids: [1, 2, 3], cpuS: 6 });
+async function watched(code, options, slices = null) {
+  const child = spawn(process.execPath, ['-e', code], { stdio: 'ignore' });
+  let stopped = null, slicer = null, paused = false;
+  const watch = watchChild(child.pid, { pollMs: 200, graceMs: 1000, ...options, onStop: (verdict) => { stopped = verdict; } });
+  if (slices) {
+    const flip = () => { paused = !paused; try { process.kill(child.pid, paused ? 'SIGSTOP' : 'SIGCONT'); } catch { /* gone */ }
+      slicer = setTimeout(flip, paused ? slices.stopMs : slices.runMs); };
+    slicer = setTimeout(flip, slices.runMs);
+  }
+  const startedAt = Date.now();
+  const exit = await new Promise((resolveExit) => child.on('close', (status, signal) => resolveExit(status ?? signal)));
+  clearTimeout(slicer); watch.stop();
+  return { exit, stopped, wallS: (Date.now() - startedAt) / 1000 };
+}
+const spend = (cpuS) => `const t = process.cpuUsage(); for (;;) { const u = process.cpuUsage(t); if (u.user + u.system > ${cpuS * 1e6}) break; }`;
+const starved = await watched(spend(1.2), { budgetS: 3, hangS: 60 }, { runMs: 100, stopMs: 400 });
+assert.equal(starved.exit, 0, 'a starved child finishes');
+assert.equal(starved.stopped, null, 'a starved child is never stopped under its CPU budget');
+assert.ok(starved.wallS > 3, `the starved child ran past the wall time its budget names (${starved.wallS.toFixed(1)} s)`);
+const burner = await watched('for (;;) {}', { budgetS: 1, hangS: 60 });
+assert.equal(burner.stopped?.kind, 'budget', 'a child burning CPU past its budget is stopped');
+assert.match(burner.stopped.message, /CPU budget 1 s spent/, 'the budget is named');
+assert.notEqual(burner.exit, 0);
+const hung = await watched('setTimeout(() => {}, 120000)', { budgetS: 100, hangS: 2 });
+assert.equal(hung.stopped?.kind, 'hang', 'a child with no CPU progress past the hang cap is stopped as a hang');
+assert.match(hung.stopped.message, /no CPU progress/);
+const runnerBudget = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
+assert.match(runnerBudget, /watchChild\(child\.pid, \{ budgetS: timeoutS, hangS: HANG_S/, 'the runner budgets its CPU children through it');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
