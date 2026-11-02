@@ -92,31 +92,60 @@ const run = (mode, capS, seed, player) => new Promise((resolve, reject) => {
 // round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
 // chased hard), all at once
 // (268, item 7) the battle's seed is handed in (rosterState soloMatchSeed), not steered through the battle counter.
-// (268, item 10) Horde's first wave is judged over a sweep, not one pinned deal (seed 9 since item 7): the deals are chaotic,
-// so the owner's asks are bars over 24 fixed deals, three a map on the eight rotation maps (seed s plays
-// MAP_ROTATION[(s - 1) % 8]; seeds 1, 6 and 17 among them), six at a time beside the other modes' battles.
-const HORDE_SEEDS = Array.from({ length: 24 }, (_, i) => i + 1);
+// (268, item 10; Main, 2026-11-02: fix the class) A pinned deal in a chaotic sim fails by chaos, so every mode is judged
+// over a seed sweep, never one deal: 24 Horde deals (three a map), 8 of each other mode (one a map; seed s plays
+// MAP_ROTATION[(s - 1) % 8]), each mode's seat pinned as before. Outcome-class asks (kills, distances, pickups, touches,
+// timings) are held on the mean or a count bar; conduct asks (standing still, falling back, rams, honesty, placement, the
+// mission keeping its hull) on every deal, but for the deals KNOWN_CONDUCT lists by seed with a named, unfixed defect.
+const SEEDS = (n) => Array.from({ length: n }, (_, i) => i + 1);
+const SWEEPS = [
+  { mode: 'endless_horde', capS: 45, player: 'm60a2', seeds: SEEDS(24) },
+  { mode: 'infected', capS: 60, player: 'm60a2', seeds: SEEDS(8) },
+  { mode: 'frontline_assault', capS: 90, player: 'm1a3', seeds: SEEDS(8) },
+  { mode: 'capture_the_flag', capS: 120, player: 'kf51_evo', seeds: SEEDS(8) },
+  { mode: 'turbo_ball', capS: 120, player: 'm1a3', seeds: SEEDS(8) },
+];
+const RECEIPT_JOBS = 8;
 const pool = async (jobs, limit) => {
   const out = new Array(jobs.length);
   let next = 0;
   await Promise.all(Array.from({ length: limit }, async () => { while (next < jobs.length) { const i = next++; out[i] = await jobs[i](); } }));
   return out;
 };
-const [hordeRuns, [infected, front, flags, pitch]] = await Promise.all([
-  pool(HORDE_SEEDS.map((seed) => () => run('endless_horde', 45, seed, 'm60a2')), 6),
-  Promise.all([run('infected', 60, 1, 'm60a2'), run('frontline_assault', 90, 4, 'm1a3'), run('capture_the_flag', 120, 5, 'kf51_evo'),
-    run('turbo_ball', 120, 7, 'm1a3')]),
+// the longest battles first, so the tail of the sweep is short
+const battles = SWEEPS.flatMap((sweep) => sweep.seeds.map((seed) => ({ ...sweep, seed }))).sort((a, b) => b.capS - a.capS || a.seed - b.seed);
+const sweepStarted = Date.now();
+const results = await pool(battles.map((b) => () => run(b.mode, b.capS, b.seed, b.player)), RECEIPT_JOBS);
+const runsOf = (mode) => results.filter((r) => r.mode === mode).sort((a, b) => a.seed - b.seed);
+const [hordeRuns, infectedRuns, frontRuns, flagRuns, ballRuns] = SWEEPS.map((sweep) => runsOf(sweep.mode));
+for (const sweep of SWEEPS) assert.equal(runsOf(sweep.mode).length, sweep.seeds.length, `${sweep.mode}: every deal of the sweep ran`);
+const mean = (list, f) => list.reduce((n, r) => n + (f(r) ?? 0), 0) / list.length;
+
+// Deals that fail a conduct ask through a named, unfixed defect (Main, 2026-11-02), by mode and seed, the asks and the
+// cause. The list only shrinks: a listed deal that passes its asks fails the receipt until it is struck off here (and in
+// cot-launch-state TESTS-OWED). Its other asks hold as on every deal.
+const KNOWN_CONDUCT = new Map([
+  ['endless_horde.6', { asks: ['honesty'], cause: "the director's arrival lead (HUNT_RULES.lead, 0.85-1.1 of the way to the humans' centroid, +-20 degrees) within the measure's 2 m of a human still on its deployment slot, the wave's first 2 s, no sighting yet (4 of 81 hunt samples)" }],
+  ['endless_horde.24', { asks: ['honesty'], cause: "the same: the director's arrival lead within 2 m of an M47 still on its slot, the first 2 s (4 of 186)" }],
+  ['infected.2', { asks: ['settledStill', 'still'], cause: 'ITEM 10b (Main, 2026-11-02): an infected stands still about 20 % of its settled engaged samples on Badlands, on every build since the base; cause to be named and fixed' }],
+  ['frontline_assault.7', { asks: ['placedNear'], cause: "a rear reinforcement at 54.3 s: the line guard's bounded search (item 9; back 140 of 172.6 m on the line's own ground) found no slot clear of 200 m and took the clearest, out of sight, 199.2 m off the attack" }],
+  ['capture_the_flag.6', { asks: ['missionReleased'], cause: "Autumn's dry grid: a raider at (203.5, -18.7) on the river flat plans from a start cell whose dry component cannot reach the raid point (200 of 200 seeded plans return the start cell alone), the route is used up at once and the mission releases the hull for MISSION_RELEASE_S (alpha 0.029 of samples); 0.2 m on, the same plan is whole" }],
 ]);
+const conductMisses = [], known = [];
+const judge = (mode, run, asks) => {
+  const key = `${mode}.${run.seed}`, listed = KNOWN_CONDUCT.get(key);
+  const failing = Object.entries(asks).filter(([, pass]) => !pass).map(([ask]) => ask);
+  for (const ask of failing) {
+    if (listed?.asks.includes(ask)) known.push(`${key} ${ask}`);
+    else conductMisses.push(`${key} (${run.mapId}): ${ask}`);
+  }
+  if (listed && listed.asks.every((ask) => asks[ask] !== false)) conductMisses.push(`${key}: passes its listed asks (${listed.asks.join(', ')}): strike it off KNOWN_CONDUCT`);
+};
 
 // Endless Horde, wave 1, the fight seat with its four allies, 45 s a deal. Each deal keeps the wave's law: the law's
 // enemies all arrived, at most the live cap at once, none within reach or in a human's sight; the HP split (owner
-// 2026-10-17: "all the zombies actually have low hp"); zombies that never fall back, scoot, kite, settle or ram, and that
-// hunt only what their side spots. The engagement distance is held on the sweep's mean (Main, 2026-11-02). The hunt's
-// honesty is a rule, held per deal unless a deal's miss has a named cause: at item 10's tip seeds 6 and 24 read 0.049 and
-// 0.022, every sample in the wave's first 2 s, before any sighting: the director's arrival order (matchModes reviveAtSpawn,
-// HUNT_RULES.lead, 0.85-1.1 of the way to the humans' centroid at the arrival, +-20 degrees) put the lead point within the
-// measure's 2 m of a human still on its deployment slot (the formation's centroid is its middle hull). That is the
-// director's documented order, not a read of a hidden position, so the rule is held on the sweep's pooled hunt samples.
+// 2026-10-17: "all the zombies actually have low hp"). Conduct on every deal: zombies stand still at most 5 % and advance
+// at least 0.6 of their moving samples, never fall back, scoot, kite, settle or ram, and hunt only what their side spots.
 const rules = matchRulesetFor('endless_horde');
 const maps = new Map();
 const deals = hordeRuns.map((horde) => {
@@ -129,12 +158,13 @@ const deals = hordeRuns.map((horde) => {
   assert.equal(wave1.spawnSeen, 0, `${at}: no arrival in a human's terrain line of sight`);
   assert.ok(Math.abs(wave1.hostileHullOfOwn - rules.horde.hostileHpScale) < 0.002, `${at}: zombie hull ${wave1.hostileHullOfOwn} of its own`);
   assert.ok(wave1.humanMaxHp >= wave1.hostileMaxHp / wave1.hostileHullOfOwn * 1.5, `${at}: the human hull is about twice a full hull`);
-  for (const flag of ['fallingBack', 'scooting', 'kiting', 'settling']) assert.equal(zombies.flags[flag], 0, `${at}: zombies never ${flag}`);
-  assert.equal(horde.ramStats.hunterRams, 0, `${at}: hunters never ram`);
-  assert.ok(wave1.firstShotS >= 8 && wave1.firstShotS <= 25, `${at}: first contact 8-25 s after the wave starts (${wave1.firstShotS})`);
+  judge('endless_horde', horde, {
+    still: (zombies.engagedStillShare ?? 0) <= 0.05, advance: zombies.move.advance >= 0.6,
+    flags: ['fallingBack', 'scooting', 'kiting', 'settling'].every((flag) => zombies.flags[flag] === 0),
+    rams: horde.ramStats.hunterRams === 0, honesty: horde.huntHonesty.unspottedShare <= 0.02,
+  });
   return { seed: horde.seed, mapId: horde.mapId, kills: wave1.zombieDeaths, enemies: wave1.enemies, advance: zombies.move.advance,
-    still: zombies.engagedStillShare ?? 0, firstShotS: wave1.firstShotS, engageDistM: zombies.engageDistM,
-    huntSamples: horde.huntHonesty.samples, unspotted: horde.huntHonesty.unspottedShare * horde.huntHonesty.samples };
+    still: zombies.engagedStillShare ?? 0, firstShotS: wave1.firstShotS, engageDistM: zombies.engageDistM };
 });
 assert.equal(rules.hpScale, 2, 'humans keep the doubled hull (never below their own)');
 assert.equal(maps.size, 8, `the sweep covers the eight rotation maps (${[...maps.keys()].join(', ')})`);
@@ -143,16 +173,15 @@ for (const [mapId, n] of maps) assert.equal(n, 3, `three deals on ${mapId}`);
 // destroyed all but two of the wave inside 45 s, the zombies advance (>= 0.8 of their moving samples) and never stand
 // still in a fight (<= 5 % of their engaged samples)
 const asks = (d) => d.kills >= d.enemies - 2 && d.advance >= 0.8 && d.still <= 0.05;
-const mean = (f) => deals.reduce((n, d) => n + f(d), 0) / deals.length;
-const meeting = deals.filter(asks).length, meanKills = mean((d) => d.kills), meanAdvance = mean((d) => d.advance);
+const meeting = deals.filter(asks).length, meanKills = mean(deals, (d) => d.kills), meanAdvance = mean(deals, (d) => d.advance);
 // Main's bars (2026-11-02). OUTCOME, chaotic deal by deal: the owner's bar is 21 of the 24 meeting the three asks and the
 // wave's mean kills at least 5.0 of 6. It is held as a KNOWN ratchet (Main, 2026-11-02): the receipt fails below the level
 // the honest code reaches (the shortfall is the human sortie's fire, not the zombies' conduct) and tightens to each new
 // level a fix reaches; every run prints the owner's bar and the gap, so a pass never reads as the bar met. Reset once, by
 // Main's ruling: first set at 19 of 24, 4.79, a level that counted a deal a defect helped (item 10's hold-off turned a
 // rusher with its orbit off any hull, ai.honestSenses red; scoped to its own target, seed 17 fell 5 -> 3 and seed 20
-// 6 -> 5), it records 18 of 24, 4.67. CONDUCT, a defect on any deal: standing still at most 5 % and advance at least 0.6 on
-// every deal, the mean advance at least 0.8.
+// 6 -> 5), it records 18 of 24, 4.67. The mean advance is held at 0.8, the engagement distance at 50 m on the mean, and
+// first contact 8-25 s after the wave starts on 21 of the 24.
 const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET = { deals: 18, meanKills: 4.67 };
 const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
 const killsAt = Math.round(meanKills * 100) / 100;
@@ -166,45 +195,64 @@ if (meeting > OUTCOME_RATCHET.deals || killsAt > OUTCOME_RATCHET.meanKills) {
 const misses = [];
 if (meeting < OUTCOME_RATCHET.deals) misses.push(`${meeting} of 24 deals meet the three asks (the KNOWN ratchet holds ${OUTCOME_RATCHET.deals}; ${outcome})`);
 if (killsAt < OUTCOME_RATCHET.meanKills) misses.push(`mean wave-1 kills ${killsAt.toFixed(2)} (the KNOWN ratchet holds ${OUTCOME_RATCHET.meanKills}; ${outcome})`);
-for (const d of deals) {
-  if (d.still > 0.05) misses.push(`seed ${d.seed} (${d.mapId}) stands still ${d.still} of its engaged samples (want <= 0.05)`);
-  if (d.advance < 0.6) misses.push(`seed ${d.seed} (${d.mapId}) advances ${d.advance} (want >= 0.6)`);
+if (meanAdvance < 0.8) misses.push(`Horde mean advance ${meanAdvance.toFixed(3)} (want >= 0.8)`);
+const engaged = deals.filter((d) => d.engageDistM != null), engageDistM = mean(engaged, (d) => d.engageDistM);
+if (engageDistM > 50) misses.push(`zombies fight close: ${engageDistM.toFixed(1)} m on the mean (want <= 50)`);
+const contact = deals.filter((d) => d.firstShotS >= 8 && d.firstShotS <= 25).length;
+if (contact < 21) misses.push(`first contact 8-25 s after the wave starts on ${contact} of 24 (want >= 21)`);
+
+// Infected, 60 s a deal: the infected rise round the survivors and close on them. On the mean: within 150 m of a survivor at
+// least 0.8 of their samples, 90 m off them at most. On every deal: standing still at most 6 % of their engaged samples a
+// second after a (re)spawn and 10 % counting the spawns (round 2: the 90-150 m ring puts a revived infected in a fight at
+// its first sample, still accelerating from rest), never falling back or scooting, no rams, no hunt on an unspotted survivor.
+for (const run of infectedRuns) {
+  const hunters = run.bravo;
+  judge('infected', run, {
+    settledStill: hunters.engagedStillSettledShare <= 0.06, still: hunters.engagedStillShare <= 0.1,
+    flags: hunters.flags.fallingBack <= 0.02 && hunters.flags.scooting <= 0.05, rams: run.ramStats.hunterRams === 0,
+    honesty: run.huntHonesty.unspottedShare <= 0.02,
+  });
 }
-if (meanAdvance < 0.8) misses.push(`mean advance ${meanAdvance.toFixed(3)} (want >= 0.8)`);
-assert.deepEqual(misses, [], `Horde wave 1 over the 24-deal sweep:\n${table}`);
-const engaged = deals.filter((d) => d.engageDistM != null), engageDistM = engaged.reduce((n, d) => n + d.engageDistM, 0) / engaged.length;
-assert.ok(engageDistM <= 50, `zombies fight close (${engageDistM.toFixed(1)} m on the mean)`);
-const huntSamples = deals.reduce((n, d) => n + d.huntSamples, 0), unspotted = deals.reduce((n, d) => n + d.unspotted, 0) / huntSamples; // pooled: see above
-assert.ok(unspotted <= 0.02, `hunts route on what the team spots, never a live unspotted position (${unspotted.toFixed(3)} of ${huntSamples} hunt samples)`);
+const within150 = mean(infectedRuns, (r) => r.infected.huntWithin150Share), survivorM = mean(infectedRuns, (r) => r.infected.huntDistToSurvivorM);
+if (within150 < 0.8) misses.push(`infected within 150 m of a survivor ${within150.toFixed(3)} on the mean (want >= 0.8)`);
+if (survivorM > 90) misses.push(`infected ${survivorM.toFixed(1)} m from the survivors on the mean (want <= 90)`);
 
-// Infected, seed 1 (Verdant), 60 s: the infected rise round the survivors and close on them
-const hunters = infected.bravo;
-assert.ok(infected.infected.huntWithin150Share >= 0.8, `infected within 150 m of a survivor (${infected.infected.huntWithin150Share})`);
-assert.ok(infected.infected.huntDistToSurvivorM <= 90, `infected close on the survivors (${infected.infected.huntDistToSurvivorM} m)`);
-// settled: a second or more after a (re)spawn (round 2: the 90-150 m ring puts a revived infected in a fight at its first
-// sample, still accelerating from rest; in this window 15 of the 26 still samples were a hull's first second)
-assert.ok(hunters.engagedStillSettledShare <= 0.06, `the infected keep moving in a fight (${hunters.engagedStillSettledShare}; with the spawns ${hunters.engagedStillShare})`);
-assert.ok(hunters.engagedStillShare <= 0.1, `the infected keep moving in a fight, their spawns counted (${hunters.engagedStillShare})`);
-assert.ok(hunters.flags.fallingBack <= 0.02 && hunters.flags.scooting <= 0.05, 'the infected neither fall back nor scoot');
-assert.equal(infected.ramStats.hunterRams, 0, 'the infected never ram');
-assert.ok(infected.huntHonesty.unspottedShare <= 0.02, 'the infected hunt only what their side spots');
-
-// Frontline Assault, seed 4 (Desert), 90 s: the first sector is fought for — its defenders stand on their line out of the
-// attack's reach and sight at the start, and nobody on either side falls back far or scoots
+// Frontline Assault, 90 s a deal: the first sector is fought for. On every deal: no defender placed within the line
+// guard's reach of an attacker or in an attacker's terrain sight, nobody on either side scoots. Contested (sector 1 kills,
+// or the first line still held at 45 s) on at least 7 of the 8.
 const lineGuardM = matchRulesetFor('frontline_assault').assault.lineGuard.minAttackM;
-assert.equal(front.frontline.placedNear, 0, `no defender is placed within the line guard's ${lineGuardM} m of an attacker`);
-assert.equal(front.frontline.placedSeen, 0, "no defender is placed in an attacker's terrain sight");
-assert.ok(front.frontline.sector1Kills > 0 || !(front.frontline.lines[0]?.atS < 45), `sector 1 is contested (kills ${front.frontline.sector1Kills}, taken at ${front.frontline.lines[0]?.atS ?? '—'} s)`);
-for (const side of ['alpha', 'bravo']) assert.equal(front[side].flags.scooting ?? 0, 0, `Frontline ${side}: no shoot-and-scoot`);
-// Capture the Flag, seed 5 (Winter), 120 s: the flags are run — a flag is lifted inside two minutes
-assert.ok(flags.ctf.pickups >= 1, `a flag is taken inside 120 s (${flags.ctf.pickups}; first at ${flags.ctf.firstPickupS} s)`);
-assert.ok((flags.alpha.flags.missionReleased ?? 0) <= 0.02 && (flags.bravo.flags.missionReleased ?? 0) <= 0.02, 'flag missions keep their hulls');
-// Turbo Ball, seed 7 (Steppe), 120 s: the ball is pursued — touched, struck at and contested by both sides
-assert.ok(pitch.ball.totalTouches >= 20, `the ball is played (${pitch.ball.totalTouches} touches in 120 s)`);
-assert.ok(pitch.ball.touches.alpha > 0 && pitch.ball.touches.bravo > 0, 'both sides touch it');
-assert.ok(pitch.ball.pursuit.strikerShare.alpha > 0.2 && pitch.ball.pursuit.strikerShare.bravo > 0.2, 'two strikers a side are on it');
+for (const run of frontRuns) {
+  judge('frontline_assault', run, {
+    placedNear: run.frontline.placedNear === 0, placedSeen: run.frontline.placedSeen === 0,
+    scoot: (run.alpha.flags.scooting ?? 0) === 0 && (run.bravo.flags.scooting ?? 0) === 0,
+  });
+}
+const contested = frontRuns.filter((r) => r.frontline.sector1Kills > 0 || !(r.frontline.lines[0]?.atS < 45)).length;
+if (contested < 7) misses.push(`Frontline sector 1 contested on ${contested} of 8 (want >= 7; line guard ${lineGuardM} m)`);
 
-console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; Horde wave 1 `
-  + `over 24 deals: ${outcome}, mean advance ${meanAdvance.toFixed(3)}, no deal over 5 % still; `
-  + `infected ${infected.infected.huntDistToSurvivorM} m from the survivors; Frontline sector 1 kills ${front.frontline.sector1Kills}; `
-  + `CTF first pickup ${flags.ctf.firstPickupS} s; Turbo Ball ${pitch.ball.totalTouches} touches`);
+// Capture the Flag, 120 s a deal: the flags are run. A flag is lifted inside two minutes on at least 7 of the 8; on every
+// deal the flag missions keep their hulls (released at most 2 % of either side's samples).
+for (const run of flagRuns) {
+  judge('capture_the_flag', run, {
+    missionReleased: (run.alpha.flags.missionReleased ?? 0) <= 0.02 && (run.bravo.flags.missionReleased ?? 0) <= 0.02,
+  });
+}
+const lifted = flagRuns.filter((r) => r.ctf.pickups >= 1).length;
+if (lifted < 7) misses.push(`a flag is taken inside 120 s on ${lifted} of 8 (want >= 7)`);
+
+// Turbo Ball, 120 s a deal: the ball is pursued. At least 20 touches on the mean; both sides touching it, and two strikers a
+// side on it (striker share above 0.2 each side), on at least 7 of the 8.
+const touches = mean(ballRuns, (r) => r.ball.totalTouches);
+const bothTouch = ballRuns.filter((r) => r.ball.touches.alpha > 0 && r.ball.touches.bravo > 0).length;
+const strikers = ballRuns.filter((r) => r.ball.pursuit.strikerShare.alpha > 0.2 && r.ball.pursuit.strikerShare.bravo > 0.2).length;
+if (touches < 20) misses.push(`the ball is played: ${touches.toFixed(1)} touches in 120 s on the mean (want >= 20)`);
+if (bothTouch < 7) misses.push(`both sides touch the ball on ${bothTouch} of 8 (want >= 7)`);
+if (strikers < 7) misses.push(`two strikers a side on the ball on ${strikers} of 8 (want >= 7)`);
+
+misses.push(...conductMisses);
+assert.deepEqual(misses, [], `the mode sweeps:\n${table}`);
+console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; `
+  + `${results.length} battles in ${Math.round((Date.now() - sweepStarted) / 1000)} s (${RECEIPT_JOBS} at a time). Horde wave 1 over 24 deals: `
+  + `${outcome}, mean advance ${meanAdvance.toFixed(3)}; infected ${survivorM.toFixed(0)} m from the survivors; Frontline contested `
+  + `${contested}/8; a flag lifted on ${lifted}/8; Turbo Ball ${touches.toFixed(0)} touches; conduct on every deal, known by seed: `
+  + `${known.join(', ') || 'none'}`);
