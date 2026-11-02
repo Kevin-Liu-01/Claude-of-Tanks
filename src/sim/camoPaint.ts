@@ -2,9 +2,11 @@
  * The camouflage paint's spotting bonus (camo_spotting r3, WoT's rule; 268: one rule for both drivers): a hull's paint
  * earns CAMO_PAINT_BONUS, spotting's paint term, on a map whose biome it belongs to, by its season or as one of the biome's own
  * pool. AUTO always earns it (it resolves to a member of the map's pool); factory paint earns it when the vehicle's stock
- * scheme does. The tables are the vehicles' paint tables (src/vehicles/materials.ts paints AUTO from the pools); the solo
- * battle stamps each hull's bonus from the player's saved scheme, the match actor from each seat's chosen scheme (the
- * room's camo), so a seat's paint earns the same on either driver.
+ * scheme does. The tables are the vehicles' paint tables: src/vehicles/materials.ts keeps its copy (BIOME_PATTERN,
+ * PATTERN_SEASON), held row for row to these by src/vehicles/camoPolicy.selftest.mjs, until a release that moves the
+ * fleet core anyway folds it onto this module (item/camo-fold-268; folding re-keys every tank and map). The solo battle
+ * stamps each hull's bonus from the player's saved scheme, the match actor from each seat's chosen scheme (the room's
+ * camo), so a seat's paint earns the same on either driver.
  */
 /** A biome-matched paint's camouflage bonus (+3.5 %, camo_spotting r3), spotting's paint term (sim/spotting.ts). */
 export const CAMO_PAINT_BONUS = 0.035;

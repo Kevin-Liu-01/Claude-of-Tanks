@@ -145,7 +145,7 @@ Camouflage is production's system (fix/camo-defaults, 2026-10-09; the owner on l
 they only show generic camos now instead of the cool camos we had before", then "yeah our entire camo system before was
 better"; R113: "the default camos of our tanks to be what they were before, but just organized a lot better"). Factory
 is each tank's stock scheme (`camoPolicy.ts` stockCamoPatternIdFor: its Signature, a named stock or the nation's service
-pattern); AUTO draws per (vehicle, biome) from `sim/camoPaint.ts` CAMO_BIOME_POOLS (materials.ts paints them; the match reads the same rule for its spotting bonus); a bot keeps its own paint on 40 % of rolls
+pattern); AUTO draws per (vehicle, biome) from `materials.ts` BIOME_PATTERN; a bot keeps its own paint on 40 % of rolls
 (`rosterState.ts` autoCamoIdsForBattle). `camoCatalogProductionIndices.selftest.mjs` holds every tank's selection, stock,
 Factory visual and AUTO, and every catalog index, to production (`camoProductionBaseline.json`, afc5018e9). A paint
 generated later appends after GT (`AUTHORED_PAINT_IDS_AFTER_GT`), never among the earlier ids. PR #9's national/theatre

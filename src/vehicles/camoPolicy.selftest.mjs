@@ -328,7 +328,7 @@ assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
 // biome's season fits, AUTO always earns, factory by the stock scheme, style-only schemes and other biomes never; an
 // unknown map is verdant; the vehicles paint AUTO from the same pools
 {
-  const { CAMO_BIOME_POOLS, camoBiome, camoPaintFits, camoSelectionBonus } = await import('../sim/camoPaint.ts');
+  const { CAMO_BIOME_POOLS, CAMO_PATTERN_SEASONS, camoBiome, camoPaintFits, camoSelectionBonus } = await import('../sim/camoPaint.ts');
   const { CAMO_PAINT_BONUS } = await import('../sim/spotting.ts');
   for (const [biome, pool] of Object.entries(CAMO_BIOME_POOLS)) for (const scheme of pool) assert.ok(camoPaintFits(scheme, biome), `${scheme} fits ${biome}`);
   assert.equal(camoPaintFits('summer', 'coastal'), true, 'a season fits');
@@ -341,9 +341,19 @@ assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
   assert.equal(camoSelectionBonus('factory', null, 'verdant'), 0, 'with no stock scheme it earns nothing');
   assert.equal(camoSelectionBonus(null, 'summer', 'verdant'), CAMO_PAINT_BONUS, 'no choice is factory');
   assert.equal(camoSelectionBonus('nonesuch', null, 'verdant'), 0, 'an unknown scheme earns nothing');
+  // (268) the paint keeps its copy of the tables (materials.ts BIOME_PATTERN, PATTERN_SEASON) until a release that moves the
+  // fleet core anyway folds it onto camoPaint.ts (item/camo-fold-268): the paint and the bonus read the same rows
   const materials = readFileSync(new URL('./materials.ts', import.meta.url), 'utf8');
-  assert.match(materials, /import \{ CAMO_BIOME_POOLS, camoPaintFits \} from '\.\.\/sim\/camoPaint\.ts';/, 'the vehicles paint AUTO and grant the bonus from the one table');
-  assert.doesNotMatch(materials, /const PATTERN_SEASON/, 'no second season table');
+  const paintTable = (name) => {
+    const block = new RegExp(`const ${name}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`).exec(materials);
+    assert.ok(block, `materials.ts ${name} is read`);
+    const rows = {};
+    for (const row of block[1].matchAll(/(\w+):\s*\[([^\]]*)\]/g)) rows[row[1]] = [...row[2].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    return rows;
+  };
+  assert.deepEqual(paintTable('BIOME_PATTERN'), CAMO_BIOME_POOLS, 'the paint draws AUTO from the pools the bonus reads');
+  assert.deepEqual(paintTable('PATTERN_SEASON'), CAMO_PATTERN_SEASONS, 'the paint grants its bonus by the seasons the match reads');
+  assert.match(materials, /return \(PATTERN_SEASON\[pat\] \|\| \[\]\)\.includes\(activeBiome\)\s*\|\| pool\.includes\(pat\);/, 'hasCamoPaint is the same rule as camoPaintFits');
 }
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');
 
