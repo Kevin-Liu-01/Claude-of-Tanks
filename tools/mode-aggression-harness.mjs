@@ -70,6 +70,18 @@ const MAP_ROTATION = ['verdant', 'badlands', 'urban', 'desert', 'winter', 'autum
 const SAMPLE_TICKS = 30; // 0.5 s at SIM_DT
 const MOVE_EPS_MPS = 0.75;
 const SPAWN_SETTLE_S = 1;
+/**
+ * (268, item 10; Main) Standing still is a stand, not a sample: a hull is standing when it has been under MOVE_EPS_MPS
+ * continuously for longer than T_REV, and every engaged slow sample of that stand counts (the ones it held while younger
+ * than T_REV once it outlasts it). A reversal is no stand: every hull passes through zero speed between going back and
+ * going on. T_REV is physics: the longest stretch under MOVE_EPS_MPS of a full-throttle reversal from -2 m/s to under way
+ * forward (flat ground, steer 0) of the slowest-reversing hull the 24-deal Horde sweep fields (74 hulls, seeds 1-24,
+ * 2026-11-02), plus one sample period. That is the Chieftain Mk 3 (and Mk 5, 750 hp on 55 t): 59 ticks on medium ground
+ * (54 on hard, 85 on soft, inside T_REV too), so T_REV = 59 + 30 ticks = 1.483 s. The stand reads the sample's own
+ * threshold (MOVE_EPS_MPS), so --standMinS=0 counts every slow sample as before (the mutant reproduces the old numbers);
+ * the receipt re-derives the 59 ticks from movement.ts.
+ */
+const STAND_MIN_TICKS = 59 + SAMPLE_TICKS;
 
 function parseSeeds(text) {
   const out = [];
@@ -594,6 +606,14 @@ const difficulty = arg('difficulty', 'normal');
 const arrangement = arg('arrangement', null) ? JSON.parse(arg('arrangement')) : null;
 const rules = matchRulesetFor(mode, null, arrangement);
 const capS = Number(arg('capS', (rules.timeLimitS ?? 900) + 5));
+const STAND_MIN_S = Number(arg('standMinS', STAND_MIN_TICKS * SIM_DT));
+// --plantStand=<s> (a control of the stand measure, never a deal): from --plantFromS (default 20 s) the bravo bot engaged
+// and under way (over 2 m/s) farthest from any alpha hull (the least likely to die in its stand) is held at zero throttle, brakes on, until it has stood <s> seconds, then driven at
+// full throttle until the stand ends; the harness prints that stand's slow engaged samples and how many the measure
+// counted (a PLANT line on stderr)
+const PLANT_STAND_S = Number(arg('plantStand', 0));
+const PLANT_FROM_S = Number(arg('plantFromS', 20));
+const plant = { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0, done: false };
 // --teamSurvival (Endless Horde only): every alpha seat reads as human while the mode controller steps, so the overrun
 // comes when the whole team is down instead of when the harness-driven player seat dies (a measurement shim, as the
 // authority engine's h1 shim; it would change Frontline's regroup gate, so it is refused there)
@@ -793,6 +813,7 @@ const recOf = (e) => {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
+      slowFromT: null, pendingStill: 0, pendingSettledStill: 0,
       flags: { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
@@ -1032,10 +1053,21 @@ function sample(t) {
       r.move[cls]++;
       if (!r.human) bk[cls]++;
       if (e.aiCtl?.state === 'engage') {
-        r.engage.samples++; if (speed < MOVE_EPS_MPS) r.engage.still++;
-        // settled: a second or more after the hull's (re)spawn, so a hull still accelerating from rest is not a hull
-        // standing in a fight (round 2: the Infected's 90-150 m ring puts a revive in a fight at its first sample)
-        if (t - r.spawnT >= SPAWN_SETTLE_S) { r.engage.settled++; if (speed < MOVE_EPS_MPS) r.engage.settledStill++; }
+        // a slow sample counts when it is part of a stand (STAND_MIN_S): at once inside one, held while the slow stretch is
+        // younger than that, and dropped if the stretch ends first (a reversal, a jolt)
+        const settled = t - r.spawnT >= SPAWN_SETTLE_S;
+        r.engage.samples++;
+        if (settled) r.engage.settled++;
+        if (speed < MOVE_EPS_MPS) {
+          if (plant.from != null && !plant.done && e.id === plant.id) plant.slow++;
+          if (STAND_MIN_S === 0 || (r.slowFromT != null && t - r.slowFromT > STAND_MIN_S)) {
+            r.engage.still++;
+            if (settled) r.engage.settledStill++;
+          } else if (r.slowFromT != null) {
+            r.pendingStill++;
+            if (settled) r.pendingSettledStill++;
+          }
+        }
       }
       if (!r.human) {
         // guards: stuck = under 0.5 m/s for over 10 s while not engaged and off its objective; bunching = a moving
@@ -1289,9 +1321,59 @@ let spentSamples = 0;
 // the opening line (placed inside setupBattle, before the recorder listens) is checked where it stands at the start
 if (mode === 'frontline_assault') for (const e of ents) if (normTeam(e.team) === 'bravo' && alive(e)) front.pendingPlacements.push(e.id);
 if (front.pendingPlacements.length) settlePlacements();
+/** Each hull's slow stretch, tick by tick: a stand that outlasts STAND_MIN_S commits the slow samples it held. */
+function trackStands(t) {
+  if (STAND_MIN_S === 0) return;
+  for (const e of ents) {
+    const r = recs.get(e.id);
+    if (!r) continue;
+    const slow = alive(e) && Math.abs(e.state.speed ?? 0) < MOVE_EPS_MPS;
+    if (slow && r.slowFromT == null) r.slowFromT = t;
+    else if (!slow && r.slowFromT != null) { r.slowFromT = null; r.pendingStill = 0; r.pendingSettledStill = 0; }
+    if (r.slowFromT != null && t - r.slowFromT > STAND_MIN_S && (r.pendingStill || r.pendingSettledStill)) {
+      r.engage.still += r.pendingStill; r.engage.settledStill += r.pendingSettledStill;
+      r.pendingStill = 0; r.pendingSettledStill = 0;
+    }
+  }
+}
+/** The planted stand (--plantStand): pick the hull, hold it until it has stood the planted time, report the stand. */
+function plantStep(t) {
+  if (!PLANT_STAND_S || plant.done) return;
+  if (plant.id == null) {
+    if (t < PLANT_FROM_S) return;
+    let e = null, far = -1;
+    for (const x of ents) {
+      if (!x.aiCtl || adapter.isHuman(x) || normTeam(x.team) !== 'bravo' || !alive(x) || x.aiCtl.state !== 'engage' || !(Math.abs(x.state.speed ?? 0) > 2)) continue;
+      let near = Infinity;
+      for (const h of ents) if (normTeam(h.team) === 'alpha' && alive(h)) near = Math.min(near, Math.hypot(h.state.pos.x - x.state.pos.x, h.state.pos.z - x.state.pos.z));
+      if (near > far) { far = near; e = x; }
+    }
+    if (!e) return;
+    const ctl = e.aiCtl, update = ctl.update;
+    ctl.update = (dt, timeS) => {
+      update.call(ctl, dt, timeS);
+      if (plant.holding) { e.input.throttle = 0; e.input.steer = 0; e.input.brake = true; }
+      else if (plant.leaving) { e.input.throttle = 1; e.input.steer = 0; e.input.brake = false; }
+    };
+    plant.id = e.id; plant.holding = true;
+    return;
+  }
+  const r = recs.get(plant.id);
+  if (plant.from == null && r.slowFromT != null) { plant.from = r.slowFromT; plant.still0 = r.engage.still; }
+  if (plant.from == null) return;
+  if (plant.holding && t - plant.from >= PLANT_STAND_S) { plant.holding = false; plant.leaving = true; }
+  if (r.slowFromT == null) {
+    plant.done = true; plant.leaving = false;
+    const e = ents.find((x) => x.id === plant.id);
+    console.error(`PLANT ${plant.id} stood ${(t - plant.from).toFixed(3)} s (held ${PLANT_STAND_S} s, T_REV ${STAND_MIN_S} s), `
+      + `${alive(e) ? 'under way' : 'destroyed'}: slow engaged samples ${plant.slow}, counted ${r.engage.still - plant.still0}`);
+  }
+}
 for (; tick < ticks; tick++) {
   adapter.step();
   const t = adapter.timeS();
+  trackStands(t);
+  plantStep(t);
   for (const ev of adapter.drain()) onEvent(ev, t);
   if (horde.pendingArrivals.length) settleArrivals();
   if (front.pendingPlacements.length) settlePlacements();

@@ -10,7 +10,11 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Vector3 } from 'three';
 import { hordeMaxAlive, hordeWaveTotal, matchRulesetFor } from '../src/sim/matchRuleset.ts';
+import { createTankState, updateTank, SIM_DT } from '../src/sim/movement.ts';
+import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
+import { getSpec } from '../src/vehicles/specs.ts';
 
 const HARNESS = fileURLToPath(new URL('./mode-aggression-harness.mjs', import.meta.url));
 const TARGETS = fileURLToPath(new URL('./mode-aggression-targets.json', import.meta.url));
@@ -114,8 +118,62 @@ const pool = async (jobs, limit) => {
 };
 // the longest battles first, so the tail of the sweep is short
 const battles = SWEEPS.flatMap((sweep) => sweep.seeds.map((seed) => ({ ...sweep, seed }))).sort((a, b) => b.capS - a.capS || a.seed - b.seed);
+
+// (268, item 10; Main, 2026-11-02) Standing still is a stand: the harness counts a slow sample only inside a stand longer
+// than T_REV, the slowest Horde hull's full-throttle reversal from -2 m/s through zero (ticks under the sample's
+// MOVE_EPS_MPS) plus one sample period. The reversal is re-derived here from movement.ts on each ground class: the pinned
+// ticks are the Chieftain Mk 3's on medium ground, and T_REV covers its soft-ground reversal too. Two planted stands are
+// the positive controls (Horde seed 2 from 14 s, the engaged hostile farthest from the humans held at zero throttle, then
+// driven off): 3 s and 1.5 x T_REV each count every slow sample they hold. The negative controls are deals of the sweep:
+// seed 19's Puma reversals and seed 18's one-sample jolt read clean in the still asks.
+const harnessSource = readFileSync(HARNESS, 'utf8');
+const pinned = /const STAND_MIN_TICKS = (\d+) \+ SAMPLE_TICKS;/.exec(harnessSource);
+assert.ok(pinned, 'the harness pins T_REV as reversal ticks + SAMPLE_TICKS');
+assert.match(harnessSource, /const SAMPLE_TICKS = 30;/);
+assert.match(harnessSource, /const MOVE_EPS_MPS = 0\.75;/);
+await ensureAuthorityFleet();
+const reversalTicks = (id, ground) => {
+  const spec = getSpec(id), field = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }), getGroundType: () => ground };
+  const state = createTankState(spec, new Vector3(0, 0, 0), 0);
+  state.speed = -2;
+  const hull = { id, specId: id, spec, team: 'bravo', state, combat: { hp: spec.hp, maxHp: spec.hp, destroyed: false, modules: {}, crew: {} },
+    input: { throttle: 1, steer: 0, brake: false, fire: false, aimPoint: new Vector3(), shellSlot: 0, actionBits: 0 } };
+  let slow = 0;
+  for (let i = 0; i < 20 / SIM_DT; i++) {
+    updateTank(hull, field, SIM_DT, null);
+    if (state.speed >= 0.75) return slow;
+    if (Math.abs(state.speed) < 0.75) slow++;
+  }
+  return Infinity;
+};
+const reversal = Object.fromEntries(['hard', 'medium', 'soft'].map((ground) => [ground, reversalTicks('chieftain3', ground)]));
+const T_REV_TICKS = Number(pinned[1]) + 30, T_REV_S = T_REV_TICKS * SIM_DT;
+assert.equal(reversal.medium, Number(pinned[1]), `the pin is the Chieftain Mk 3's reversal on medium ground (${reversal.medium} ticks)`);
+assert.ok(reversal.soft < T_REV_TICKS && reversal.hard < T_REV_TICKS, `T_REV (${T_REV_TICKS} ticks) covers it on every ground (${JSON.stringify(reversal)})`);
+const plantRun = (standS) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', '--mode=endless_horde', '--seed=2', '--capS=26', '--player=m60a2',
+    `--plantStand=${standS}`, '--plantFromS=14'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let err = '';
+  child.stderr.on('data', (d) => { err += d; });
+  child.on('close', (code) => {
+    if (code !== 0) { reject(new Error(`the planted ${standS} s stand exited ${code}: ${err.slice(-2000)}`)); return; }
+    resolve({ standS, line: err.split('\n').find((line) => line.startsWith('PLANT ')) ?? '' });
+  });
+});
+
 const sweepStarted = Date.now();
-const results = await pool(battles.map((b) => () => run(b.mode, b.capS, b.seed, b.player)), RECEIPT_JOBS);
+const PLANTS = [3, 1.5 * T_REV_S];
+const finished = await pool([...battles.map((b) => () => run(b.mode, b.capS, b.seed, b.player)), ...PLANTS.map((standS) => () => plantRun(standS))], RECEIPT_JOBS);
+const results = finished.slice(0, battles.length);
+const plants = finished.slice(battles.length).map(({ standS, line }) => {
+  const m = /stood ([\d.]+) s .*, (under way|destroyed): slow engaged samples (\d+), counted (\d+)/.exec(line);
+  assert.ok(m, `the planted ${standS} s stand ran: ${line}`);
+  const [, stoodS, end, slow, counted] = m;
+  assert.equal(end, 'under way', `the planted hull drove off its ${standS} s stand: ${line}`);
+  assert.ok(Number(stoodS) >= standS, `the planted stand lasted its ${standS} s: ${line}`);
+  assert.ok(Number(slow) > 0 && Number(counted) === Number(slow), `a planted ${standS} s stand counts in full: ${line}`);
+  return `${Number(standS.toFixed(3))} s ${counted}/${slow}`;
+});
 const runsOf = (mode) => results.filter((r) => r.mode === mode).sort((a, b) => a.seed - b.seed);
 const [hordeRuns, infectedRuns, frontRuns, flagRuns, ballRuns] = SWEEPS.map((sweep) => runsOf(sweep.mode));
 for (const sweep of SWEEPS) assert.equal(runsOf(sweep.mode).length, sweep.seeds.length, `${sweep.mode}: every deal of the sweep ran`);
@@ -127,8 +185,6 @@ const mean = (list, f) => list.reduce((n, r) => n + (f(r) ?? 0), 0) / list.lengt
 const KNOWN_CONDUCT = new Map([
   ['endless_horde.6', { asks: ['honesty'], cause: "the director's arrival lead (HUNT_RULES.lead, 0.85-1.1 of the way to the humans' centroid, +-20 degrees) within the measure's 2 m of a human still on its deployment slot, the wave's first 2 s, no sighting yet (4 of 81 hunt samples)" }],
   ['endless_horde.24', { asks: ['honesty'], cause: "the same: the director's arrival lead within 2 m of an M47 still on its slot, the first 2 s (4 of 186)" }],
-  ['infected.2', { asks: ['settledStill', 'still'], cause: 'ITEM 10b (Main, 2026-11-02): an infected stands still about 20 % of its settled engaged samples on Badlands, on every build since the base; cause to be named and fixed' }],
-  ['capture_the_flag.6', { asks: ['missionReleased'], cause: "Autumn's dry grid: a raider at (203.5, -18.7) on the river flat plans from a start cell whose dry component cannot reach the raid point (200 of 200 seeded plans return the start cell alone), the route is used up at once and the mission releases the hull for MISSION_RELEASE_S (alpha 0.029 of samples); 0.2 m on, the same plan is whole" }],
 ]);
 const conductMisses = [], known = [];
 const judge = (mode, run, asks) => {
@@ -180,11 +236,12 @@ const meeting = deals.filter(asks).length, meanKills = mean(deals, (d) => d.kill
 // Main's ruling: first set at 19 of 24, 4.79, a level that counted a deal a defect helped (item 10's hold-off turned a
 // rusher with its orbit off any hull, ai.honestSenses red; scoped to its own target, seed 17 fell 5 -> 3 and seed 20
 // 6 -> 5), it recorded 18 of 24, 4.67; the rusher's held back-off (RUSH_DRIVE.backOffHoldS) tightened it to 19 of 24,
-// 4.71. Main's ruling (2026-11-02): the ratchet is the MEAN alone, tightened to the best mean measured; the deal count is
-// printed beside the owner's 21/24 and no longer gates (a defect fix re-deals 24 chaotic battles, and one deal flipping on
-// a count bar blocked a correct fix: item 10b, 18/24 at 4.75). The mean advance is held at 0.8, the engagement distance at
+// 4.71, and the rock-wedge release with the stopped-ally pass (1bda84c2a1) to 4.96. Main's ruling (2026-11-02): the ratchet
+// is the MEAN alone, tightened to the best mean measured; the deal count is printed beside the owner's 21/24 and no
+// longer gates (a defect fix re-deals 24 chaotic battles, and one deal flipping on a count bar blocked a correct fix:
+// item 10b, 18/24 at 4.75). The mean advance is held at 0.8, the engagement distance at
 // 50 m on the mean, and first contact 8-25 s after the wave starts on 21 of the 24.
-const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET_MEAN = 4.75;
+const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET_MEAN = 4.96;
 const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
 const killsAt = Math.round(meanKills * 100) / 100;
 const shortDeals = Math.max(0, OWNER_OUTCOME.deals - meeting), shortKills = Math.max(0, Math.round((OWNER_OUTCOME.meanKills - killsAt) * 100) / 100);
@@ -255,7 +312,8 @@ if (strikers < 7) misses.push(`two strikers a side on the ball on ${strikers} of
 misses.push(...conductMisses);
 assert.deepEqual(misses, [], `the mode sweeps:\n${table}`);
 console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; `
-  + `${results.length} battles in ${Math.round((Date.now() - sweepStarted) / 1000)} s (${RECEIPT_JOBS} at a time). Horde wave 1 over 24 deals: `
+  + `${results.length} battles in ${Math.round((Date.now() - sweepStarted) / 1000)} s (${RECEIPT_JOBS} at a time); a stand outlasts T_REV `
+  + `${T_REV_TICKS} ticks (the Chieftain Mk 3's reversal ${JSON.stringify(reversal)} + one sample), planted stands counted ${plants.join(', ')}. Horde wave 1 over 24 deals: `
   + `${outcome}, mean advance ${meanAdvance.toFixed(3)}; infected ${survivorM.toFixed(0)} m from the survivors; Frontline contested `
   + `${contested}/8 (${clearest} proven clearest placement${clearest === 1 ? '' : 's'}); a flag lifted on ${lifted}/8; Turbo Ball ${touches.toFixed(0)} touches; conduct on every deal, known by seed: `
   + `${known.join(', ') || 'none'}`);
