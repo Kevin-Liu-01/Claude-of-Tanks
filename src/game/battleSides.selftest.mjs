@@ -119,11 +119,12 @@ try {
   let disposed=0;
   for(const entity of extra)entity.visual={...visual(),dispose(){disposed++;}};
   for(const entity of reused.allTanks)if(!entity.visual)entity.visual=visual();
-  const firstSeed=reused.matchSeed;
+  const firstSeed=reused.matchSeed,firstTurrets=reused._wreckTurrets;
   setupBattle(reused,korea,world,{...options,arrangement:null}); // a battle whose sides fill without repeats
   // (268, Main item 7) one seed per battle: a random battle's is the base plus the battles before it, a staged roster's the
   // fixed base; the mode and the wreck turrets read it as the authority reads its match seed
   assert.deepEqual([firstSeed,reused.matchSeed],[6000,6001],'each random battle its own seed: the base plus the battles before it');
+  assert.ok(firstTurrets&&reused._wreckTurrets&&reused._wreckTurrets!==firstTurrets,'each battle its own turret world on its seed, as the authority\'s per match');
   setupBattle(reused,korea,world,{...options,random:false,arrangement:null});
   assert.equal(reused.matchSeed,6000,'a staged roster keeps the fixed seed');
   setupBattle(reused,korea,world,{...options,arrangement:null,seed:41});

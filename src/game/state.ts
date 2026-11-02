@@ -1100,9 +1100,9 @@ export function setupBattle(
   game._destructionBreaches = [];
   game._destructionCraters = [];
   // physics lane (2026-10-10): this battle's turret bodies meet the deformed ground and the world's solid records
-  // (268, item 7) a new match's world on this battle's seed, as the authority's per match (it once kept the session's first)
-  const wreckTurrets = game._wreckTurrets ??= createWreckTurrets({ seed: game.matchSeed ?? COMBAT_SEED });
-  wreckTurrets.reset(game.matchSeed ?? COMBAT_SEED);
+  // (268, item 7) a new match's turret world on this battle's seed, as the authority builds one per match (it once kept the
+  // session's first world and seed); its readers take game._wreckTurrets live
+  const wreckTurrets = game._wreckTurrets = createWreckTurrets({ seed: game.matchSeed ?? COMBAT_SEED });
   wreckTurrets.gravity = 9.81 * (Number.isFinite(game.ruleset.gravityScale) ? game.ruleset.gravityScale : 1);
   wreckTurrets.bind(wreckEnvironmentFor(world, ground.field));
 

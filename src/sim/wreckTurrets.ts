@@ -483,9 +483,7 @@ export interface WreckTurrets {
   /** Put a body back as a log or a migration knew it (settled, or awake to fall from there). */
   restore(tank: WreckTurretTank, pose: WreckTurretBodyState): boolean;
   release(id: string): void;
-  /** A new match's world (268, item 7): every body and owner cleared, the launches drawn from `seed` where given (the match
-   * seed, as a fresh authority's turrets draw from theirs). */
-  reset(seed?: number): void;
+  reset(): void;
   /** Every body's pose, rounded to the millimetre (the determinism audit hashes it). */
   digest(): string;
   /** Ids with a body, in launch order. */
@@ -504,7 +502,7 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
     capacity, kinematicCapacity: 2 * 64 + 8, gravity: options.gravity ?? 9.81,
     velocityIterations: 10, positionIterations: 4, contactsPerBody: 40,
   });
-  let seed = (options.seed ?? 0) >>> 0;
+  const seed = (options.seed ?? 0) >>> 0;
   /** id → body slot, in launch order */
   const slots = new Map<string, number>();
   /** id → its kinematic owner number (first seen, deterministic) */
@@ -662,13 +660,10 @@ export function createWreckTurrets(options: WreckTurretOptions = {}): WreckTurre
       slots.delete(id);
       bodyScale.delete(id);
     },
-    reset(nextSeed) {
+    reset() {
       world.clear();
       slots.clear();
       bodyScale.clear();
-      owners.clear();
-      nextOwner = 1;
-      if (nextSeed !== undefined) seed = nextSeed >>> 0;
     },
     digest() {
       let text = '';

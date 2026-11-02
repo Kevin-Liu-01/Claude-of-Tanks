@@ -190,31 +190,6 @@ function cookOff(tick = 120) {
   assert.notDeepEqual([...a.pose], [...c.pose], 'the launch is seeded by the kill');
 }
 
-// --- (268, Main item 7) a reset is a new match: the solo battle keeps one world across its battles and resets it with each
-// battle's seed, and that world throws a turret exactly as a fresh match's (the authority's, built per match) does on that
-// seed, its owners renumbered from the start; another seed throws it another way
-{
-  const fresh = cookOff(120);
-  const reused = createWreckTurrets({ seed: 99 });
-  reused.bind(flat);
-  const earlier = hull('h0', 1.2);
-  assert.equal(reused.launch(earlier, 'ammorack', 40), true, 'a turret of an earlier battle');
-  for (let n = 0; n < 30; n++) reused.step([earlier]);
-  reused.reset(7);
-  assert.deepEqual(reused.ids(), [], 'the new match starts with no bodies');
-  const tank = hull();
-  assert.equal(reused.launch(tank, 'ammorack', 120), true);
-  settle(reused, [tank]);
-  reused.framePose(tank.id, pose);
-  assert.deepEqual([...pose], [...fresh.pose], 'the reset world throws the turret as a fresh match on the same seed does, to the bit');
-  assert.equal(reused.digest(), fresh.turrets.digest());
-  reused.reset(8);
-  reused.launch(hull(), 'ammorack', 120);
-  settle(reused, [hull()]);
-  reused.framePose('h1', pose);
-  assert.notDeepEqual([...pose], [...fresh.pose], 'another battle\'s seed throws it another way');
-}
-
 // --- a plain kill: the turret is knocked off its ring and drops back on its own deck, askew
 {
   const turrets = createWreckTurrets({ seed: 3 });
