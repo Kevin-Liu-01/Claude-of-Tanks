@@ -172,26 +172,57 @@ export function failureSignature(text, roots = []) {
   return normalizeMessage(picked.join('\n'), roots);
 }
 
+// A measurement token: a number, a range or list of them, with a short unit ("26", "0.050mm", "39-162", "-1.9,0.6"), its
+// brackets and punctuation kept; a number inside a name (t72b3m_2016, curtain--1-2, 2A6, v24) is not one.
+const MEASURE = /^[-+±]?\.?\d[\d.,:/x–-]*(?:e[-+]?\d+)?(?:%|°|[a-z]{1,3}(?:\/s)?)?$/i;
+const TOKEN = /^([(\[{'"]*)(.*?)([)\]}'",.;:!?]*)$/;
+// a parenthesised list of ids or values ("(m1a1,m1a1ha,...)", "(a, b, c)")
+const ID_LIST = /\((?:\s*[\w.…-]+\s*,)+\s*[\w.…-]+\s*\)/g;
+const measuredLine = (line) => line.replace(ID_LIST, '(<ids>)').split(' ').map((token) => {
+  const [, open, core, close] = TOKEN.exec(token);
+  return MEASURE.test(core) ? `${open}#${close}` : token;
+}).join(' ');
+// what a detail line names: quoted strings, paths, and name[key] rows
+const SUBJECT = /'[^']*'|"[^"]*"|`[^`]*`|[\w.<>-]*\/[\w./<>-]+|[\w.-]+\[[^\]\s]+\]/g;
+
+/**
+ * The comparison key of a failure signature (267, the Japan lane: "alice received 26 of the 54 snapshots" here against
+ * the base's "27 of the 42", one timing assertion at load ~500, and fresh.selftest's planned-move detail with another id
+ * count, both read OWN). Its first line and Node's actual/expected/operator lines with every measurement `#` and every
+ * parenthesised list `(<ids>)`, and the subjects its other lines name, as a set: the same assertion with other
+ * measurements, counts, lists or detail wording keys alike; another assertion, a reworded one or another subject (an id
+ * or a file in it) keys apart.
+ */
+export function failureKey(message) {
+  const [head = '', ...rest] = String(message ?? '').split('\n');
+  const values = rest.filter((line) => /^(?:actual|expected|operator):/.test(line)).map(measuredLine);
+  const subjects = new Set(rest.filter((line) => !/^(?:actual|expected|operator):/.test(line))
+    .flatMap((line) => measuredLine(line).match(SUBJECT) ?? []));
+  return [measuredLine(head), ...values, ...[...subjects].sort()].join('\n');
+}
+
 /**
  * One red receipt against the baseline. runPair(file, attempt) runs it alone here and on the
- * baseline at the same time: { here: { status, log }, base: { status, log } }.
+ * baseline at the same time: { here: { status, log }, base: { status, log } }. Failures compare by failureKey; each
+ * side keeps its own message.
  */
 export async function compareRedReceipt(file, { runPair, signatureOf }) {
   // a result may carry its message already (test:lane's base results, reused from tools/lane-reds.mjs's store)
   const summary = (result) => ({ status: result.status, log: result.log, ...(result.missing ? { missing: true } : {}),
     ...(result.cached ? { cached: true } : {}),
     message: result.status === 0 ? '' : (result.message ?? (signatureOf(result.log) || `exit status ${result.status}`)) });
+  const same = (a, b) => failureKey(a.message) === failureKey(b.message);
   const first = await runPair(file, 1);
   const row = { file, here: summary(first.here), base: summary(first.base) };
   if (row.here.status === 0) row.verdict = 'flaky';
   else if (row.base.status === 0) row.verdict = 'regression';
-  else if (row.here.message === row.base.message) row.verdict = 'inherited';
+  else if (same(row.here, row.base)) row.verdict = 'inherited';
   else {
     const second = await runPair(file, 2);
     row.confirm = { here: summary(second.here), base: summary(second.base) };
     if (row.confirm.here.status === 0) row.verdict = 'flaky';
-    else if (row.confirm.base.status === 0 || row.confirm.base.message !== row.base.message) row.verdict = 'unstable';
-    else if (row.confirm.here.message === row.base.message) row.verdict = 'inherited';
+    else if (row.confirm.base.status === 0 || !same(row.confirm.base, row.base)) row.verdict = 'unstable';
+    else if (same(row.confirm.here, row.base)) row.verdict = 'inherited';
     else row.verdict = 'changed';
   }
   return row;
