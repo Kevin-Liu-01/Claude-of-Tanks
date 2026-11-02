@@ -408,11 +408,26 @@ export function buildK2(P: Modern3BuilderPort,
   // 267 round 4 (both blind critics on XK2 and K2B: "a thin dark curved line and a loose stick lie on the glacis";
   // owner, same class: "stuff on sides not flush with the turret. fix"): the tow cable draped from the turret front
   // through the plate to the right edge, and the splash V read as a loose bar beside the barrel. XK2 photos 1/5 show a
-  // plain glacis, so both are gone with the V's apex block. The hatch ring and rim stood level on the raked bed, half
-  // buried behind and lifted in front (the dashed arc in plan); they now lie on the bed plate's top face.
+  // plain glacis, so both are gone with the V's apex block.
+  // Round 5 (both critics, top view: "a dashed ring" on the front deck): the dark rim torus rode 1 mm over the ring's
+  // top and broke it into dashes. The hatch is now one solid raised ring on the rake: an annulus (r 0.205-0.27) 2 mm
+  // into the bed plate and 38 mm proud of it all the way round, both its shoulders chamfered (continuous bands in plan;
+  // its walls alone are edge-on there), round a lid 20 mm lower with a dark seam at its rim; all of it inside the old
+  // ring's cylinder, so no gun pose comes nearer the hull.
   P.add('hull', box(0.60, 0.045, 0.60), -0.42, 1.505, 2.02, 0.19, 0, 0);       // hatch bed plate on the rake
-  P.add('hull', cylY(0.27, 0.27, 0.04, P.q ? 20 : 12), -0.42, 1.5448, 2.0277, 0.19, 0, 0); // driver hatch ring, 2 mm into the bed
-  P.add('hullDark', torus(0.27, 0.014, P.q ? 20 : 12), -0.42, 1.5517, 2.0290, 0.19, 0, 0);
+  {
+    const bedTop = new THREE.Vector3(-0.42, 1.505, 2.02)                       // the bed plate's top-face centre
+      .addScaledVector(new THREE.Vector3(0, Math.cos(0.19), Math.sin(0.19)), 0.0225);
+    const seg = P.q ? 24 : 14;
+    // closed (r, y) section, wound outward, swept round the hatch axis
+    const lathe = (...rz: [number, number][]): THREE.LatheGeometry =>
+      new THREE.LatheGeometry([...rz, rz[0]].map(([r, y]) => new THREE.Vector2(r, y)), seg);
+    const place = [bedTop.x, bedTop.y, bedTop.z, 0.19, 0, 0] as const;
+    P.add('hull', lathe([0.270, -0.002], [0.270, 0.004], [0.242, 0.038], [0.226, 0.038], [0.205, 0.018],
+      [0.205, -0.002]), ...place);                                                                            // ring
+    P.add('hull', cylY(0.205, 0.205, 0.020, seg).translate(0, 0.008, 0), ...place);                          // lid
+    P.add('hullDark', lathe([0.205, 0.016], [0.205, 0.022], [0.180, 0.022], [0.180, 0.016]), ...place);      // lid rim seam
+  }
   periscope(P, 'hullDetail', -0.58, 1.625, 1.52);
   periscope(P, 'hullDetail', -0.30, 1.635, 1.50);
   {

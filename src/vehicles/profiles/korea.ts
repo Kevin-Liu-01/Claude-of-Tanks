@@ -138,10 +138,20 @@ const K2B_CHEEK = Object.freeze({
     Object.freeze({ x0: 0.82, x1: 1.18, step: 0.10, top0: 0.64, top1: 0.60 }),
     Object.freeze({ x0: 1.18, x1: 1.54, step: 0.20, top0: 0.56, top1: 0.50 }),
   ]),
-  /** The face line at the foot: from the mantlet side back along the sweep. */
+  /** The face line at the foot: from the mantlet side back along the sweep. Round 5 keeps the cheek body's faces where
+   *  round 4 had them: the gun's clearance sweep skips gun samples inside the turret body's plan outline, and a body
+   *  set back 8 cm beside the mantlet exposed its lower corner (K2B 12 yaws shallower, 24.6 mm at yaw -54). */
   noseZ: 2.68, sweep: Math.tan(55 * Math.PI / 180),
   /** The faces' lean: this far back per metre of height. */
   lean: 0.24 / 0.66,
+  /** Round 5, the add-on wedge plate on each module, a wedge in plan: its foot this far ahead of the module face at its
+   *  inner end (6 cm normal to the face) and at its outer end (12 cm), so each plate's face turns nearer the front than
+   *  the cheek and its thick outer end shows as a step; its front leans back only plateLean per metre (steeper than the
+   *  face, 2 cm prouder at its top); its top rakes forward and down like a wedge's, from plateBackDrop under the module's
+   *  top at the face to plateFrontDrop at its front edge; its ends plateInset inside the module's, its back 5 mm into the
+   *  module face. */
+  plateDzIn: 0.107, plateDzOut: 0.214, plateLean: 0.27, plateBackDrop: 0.03, plateFrontDrop: 0.17, plateInset: 0.02,
+  plateSeat: 0.005,
   /** The common back line, buried in the turret loft and the second roof skin; the module tops are the forward roof. */
   backZ0: 1.10, backZ1: 0.80, backX0: 0.47, backX1: 1.54,
 });
@@ -160,34 +170,57 @@ function addK2BTurretFront(P: ProceduralBuilderPort & Modern3BuilderPort): void 
   const { box, cylZ } = KIT;
   const C = K2B_CHEEK;
   for (const side of [-1, 1]) {
-    // The face frame (shared by all three modules): u along the foot edge, v up the lean, n out of the face.
-    const u = new THREE.Vector3(side, 0, -C.sweep).normalize();
-    const v = new THREE.Vector3(0, 1, -C.lean).normalize();
-    const n = new THREE.Vector3().crossVectors(u, v).normalize();
-    if (n.z < 0) n.negate();
-    const xAxis = side > 0 ? u.clone() : u.clone().negate();
-    const faceBasis = (origin: THREE.Vector3): THREE.Matrix4 =>
-      new THREE.Matrix4().makeBasis(xAxis, new THREE.Vector3().crossVectors(n, xAxis), n).setPosition(origin);
+    const pv = new THREE.Vector3(0, 1, -C.plateLean).normalize();
     for (const m of C.modules) {
       const yb = C.footY;
-      // eight corners, six planar faces: raked front, falling top, the two vertical ends, the back, the foot
+      // the cheek body module: eight corners, six planar faces (raked front, falling top, two vertical ends, back, foot)
       P.add('turret', convexSlab(
         [side * m.x0, yb, cheekFaceZ(m.x0, yb, m.step)], [side * m.x1, yb, cheekFaceZ(m.x1, yb, m.step)],
         [side * m.x1, yb, cheekBackZ(m.x1)], [side * m.x0, yb, cheekBackZ(m.x0)],
         [side * m.x0, m.top0, cheekFaceZ(m.x0, m.top0, m.step)], [side * m.x1, m.top1, cheekFaceZ(m.x1, m.top1, m.step)],
         [side * m.x1, m.top1, cheekBackZ(m.x1)], [side * m.x0, m.top0, cheekBackZ(m.x0)]));
-      // bolt line: four flush bolt heads along the face, 0.08 m under its top edge
-      const top = (m.top0 + m.top1) / 2 - 0.08;
+      // round 5: the add-on wedge plate standing proud of it, seated 5 mm into the face
+      const topAt = (x: number): number => m.top0 + (m.top1 - m.top0) * (x - m.x0) / (m.x1 - m.x0);
+      const xa = m.x0 + C.plateInset, xb = m.x1 - C.plateInset;
+      const dzPerX = (C.plateDzOut - C.plateDzIn) / (xb - xa);
+      const front = (x: number, y: number): number =>
+        cheekFaceZ(x, yb, m.step) + C.plateDzIn + (x - xa) * dzPerX - (y - yb) * C.plateLean;
+      const back = (x: number, y: number): number => cheekFaceZ(x, y, m.step) - C.plateSeat;
+      // the plate face's frame: u along its foot edge, pv up its lean, pn out of it
+      const u = new THREE.Vector3(side, 0, -(C.sweep - dzPerX)).normalize();
+      const xAxis = side > 0 ? u.clone() : u.clone().negate();
+      const pn = new THREE.Vector3().crossVectors(u, pv).normalize();
+      if (pn.z < 0) pn.negate();
+      const plateBasis = (origin: THREE.Vector3): THREE.Matrix4 =>
+        new THREE.Matrix4().makeBasis(xAxis, new THREE.Vector3().crossVectors(pn, xAxis), pn).setPosition(origin);
+      const ba = topAt(xa) - C.plateBackDrop, bb = topAt(xb) - C.plateBackDrop;      // top edge on the module face
+      const fa = topAt(xa) - C.plateFrontDrop, fb = topAt(xb) - C.plateFrontDrop;    // top edge of the plate's front
+      P.add('turret', convexSlab(
+        [side * xa, yb, back(xa, yb)], [side * xb, yb, back(xb, yb)], [side * xb, yb, front(xb, yb)], [side * xa, yb, front(xa, yb)],
+        [side * xa, ba, back(xa, ba)], [side * xb, bb, back(xb, bb)], [side * xb, fb, front(xb, fb)], [side * xa, fa, front(xa, fa)]));
+      // bolt line: four flush bolt heads along the plate face, 0.07 m under its top edge
       for (const t of [0.15, 0.38, 0.62, 0.85]) {
-        const x = m.x0 + (m.x1 - m.x0) * t, y = top - (m.top0 - m.top1) * (t - 0.5);
+        const x = xa + (xb - xa) * t, y = fa + (fb - fa) * t - 0.07;
         const bolt = box(0.032, 0.032, 0.010);
-        bolt.applyMatrix4(faceBasis(new THREE.Vector3(side * x, y, cheekFaceZ(x, y, m.step)).addScaledVector(n, 0.004)));
+        bolt.applyMatrix4(plateBasis(new THREE.Vector3(side * x, y, front(x, y)).addScaledVector(pn, 0.003)));
         P.add('turretDark', bolt);
       }
     }
-    // APS sensor head on the outer module's top
+    if (side < 0) {
+      // Round 5: the gun well's right-hand cheek. The K2 mantlet is narrower on its right (the gun mount to x 0.34,
+      // against 0.43 on the sight side), so a 13 cm slot beside it looked down past the loft nose onto the driver's hatch
+      // ring (the "faint arc" in plan). This frontal block on the inner module's face plane closes it, 1.5 cm clear of
+      // the gun mount at every pitch (gun pitch keeps x), its back in the loft nose and its outer end 2 cm into the module.
+      const yb = C.footY, wellTop = 0.60;
+      const fz = (y: number): number => cheekFaceZ(C.backX0, y, 0);
+      P.add('turret', convexSlab(
+        [-0.355, yb, 2.30], [-0.49, yb, 2.30], [-0.49, yb, fz(yb)], [-0.355, yb, fz(yb)],
+        [-0.355, wellTop, 2.30], [-0.49, wellTop, 2.30], [-0.49, wellTop, fz(wellTop)], [-0.355, wellTop, fz(wellTop)]));
+    }
+    // APS sensor head centred on the outer module's top (between its face edge and its back line)
     const outer = C.modules[2];
-    const sx = 1.34, sz = 1.00, sy = outer.top0 + (outer.top1 - outer.top0) * (sx - outer.x0) / (outer.x1 - outer.x0);
+    const sx = 1.34, sy = outer.top0 + (outer.top1 - outer.top0) * (sx - outer.x0) / (outer.x1 - outer.x0);
+    const sz = (cheekFaceZ(sx, sy, outer.step) + cheekBackZ(sx)) / 2;
     P.add('turretDetail', box(0.15, 0.13, 0.17), side * sx, sy + 0.055, sz);
     P.add('turretDark', box(0.11, 0.085, 0.012), side * sx, sy + 0.06, sz + 0.088);
     P.add('turretGlass', box(0.065, 0.045, 0.006), side * sx, sy + 0.06, sz + 0.095);
