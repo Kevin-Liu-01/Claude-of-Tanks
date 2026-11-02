@@ -171,8 +171,8 @@ export interface BotDoctrine {
   /** The no-contact search and the scout's kite scan read live enemy positions, or only what the team has spotted. */
   readonly searchRouting: 'live' | 'spotted';
   /**
-   * The mode route push (both builders): seconds between pushes and the move that re-routes a bot; null keeps each
-   * builder's own legacy cadence (LEGACY_ROUTE_PUSH), so a mode without a table routes exactly as before in both.
+   * The mode route push (sim/modeRoutePush.ts, both drivers): seconds between pushes and the move that re-routes a bot;
+   * null keeps the legacy cadence (LEGACY_ROUTE_PUSH).
    */
   readonly routeRefreshS: number | null;
   readonly routeMoveM: number | null;
@@ -193,15 +193,13 @@ export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
   routeRefreshS: null, routeMoveM: null, claimRangeM: null, packFire: 0,
 });
 /**
- * The route push each builder ran before the doctrine (round 2, the critic's E9: one 3 s / 12 m figure for both changed
- * the solo battle's 4 s / 18 m): `fastModes` re-route every `fastRefreshS` on any move. A doctrine's own figures win.
+ * The route push before the doctrine, one for both drivers (268): the solo battle's 4 s / 18 m, `fastModes` re-routing every
+ * `fastRefreshS` on any move. The authority kept its own 3 s / 12 m (fast in the Horde and Mars too) until 268; one figure
+ * for both was the solo battle's when it last changed (round 2, the critic's E9 kept it). A doctrine's own figures win.
  */
 const LEGACY_ROUTE_PUSH = Object.freeze({
-  solo: Object.freeze({ refreshS: 4, moveM: 18, fastModes: Object.freeze(['turbo_ball']) }),
-  authority: Object.freeze({ refreshS: 3, moveM: 12, fastModes: Object.freeze(['turbo_ball', 'endless_horde', 'mars']) }),
-  fastRefreshS: 1.25,
+  refreshS: 4, moveM: 18, fastModes: Object.freeze(['turbo_ball']), fastRefreshS: 1.25,
 });
-type RouteBuilder = 'solo' | 'authority';
 interface RoutePush { readonly refreshS: number; readonly moveM: number }
 type BotDoctrineOverrides = { readonly alpha?: Partial<BotDoctrine>; readonly bravo?: Partial<BotDoctrine> };
 /** The Horde's zombies (and, with the hull turn, the infected): charge, fire on the move, never duck, never retreat. */
@@ -1815,30 +1813,26 @@ const doctrineMemo = new WeakMap<object, { alpha: BotDoctrine; bravo: BotDoctrin
  * read one table and an Infected convert switches to the infected's on its first tick. Frozen and memoised per
  * ruleset: a tick allocates nothing.
  */
-const routeMemo = new WeakMap<object, Record<RouteBuilder, { alpha: RoutePush; bravo: RoutePush }>>();
+const routeMemo = new WeakMap<object, { alpha: RoutePush; bravo: RoutePush }>();
 /**
- * The mode route push a builder runs for a side: the side doctrine's routeRefreshS / routeMoveM, or (null) the builder's
- * legacy cadence (LEGACY_ROUTE_PUSH, fast in its fast modes). Frozen and memoised per ruleset like the doctrine.
+ * The mode route push for a side: the side doctrine's routeRefreshS / routeMoveM, or (null) the legacy cadence
+ * (LEGACY_ROUTE_PUSH, fast in its fast modes). Frozen and memoised per ruleset like the doctrine.
  */
-export function rulesetRoutePush(ruleset: Pick<MatchRuleset, 'bots' | 'mode'>, team: string, builder: RouteBuilder): RoutePush {
+export function rulesetRoutePush(ruleset: Pick<MatchRuleset, 'bots' | 'mode'>, team: string): RoutePush {
   let memo = routeMemo.get(ruleset);
   if (!memo) {
-    const of = (side: string, b: RouteBuilder): RoutePush => {
+    const fast = (LEGACY_ROUTE_PUSH.fastModes as readonly string[]).includes(ruleset.mode);
+    const of = (side: string): RoutePush => {
       const doctrine = rulesetBotDoctrine(ruleset, side);
-      const legacy = LEGACY_ROUTE_PUSH[b];
-      const fast = (legacy.fastModes as readonly string[]).includes(ruleset.mode);
       return Object.freeze({
-        refreshS: doctrine.routeRefreshS ?? (fast ? LEGACY_ROUTE_PUSH.fastRefreshS : legacy.refreshS),
-        moveM: doctrine.routeMoveM ?? (fast ? 0 : legacy.moveM),
+        refreshS: doctrine.routeRefreshS ?? (fast ? LEGACY_ROUTE_PUSH.fastRefreshS : LEGACY_ROUTE_PUSH.refreshS),
+        moveM: doctrine.routeMoveM ?? (fast ? 0 : LEGACY_ROUTE_PUSH.moveM),
       });
     };
-    memo = {
-      solo: { alpha: of('alpha', 'solo'), bravo: of('bravo', 'solo') },
-      authority: { alpha: of('alpha', 'authority'), bravo: of('bravo', 'authority') },
-    };
+    memo = { alpha: of('alpha'), bravo: of('bravo') };
     routeMemo.set(ruleset, memo);
   }
-  return team === 'bravo' || team === 'enemy' ? memo[builder].bravo : memo[builder].alpha;
+  return team === 'bravo' || team === 'enemy' ? memo.bravo : memo.alpha;
 }
 
 export function rulesetBotDoctrine(ruleset: Pick<MatchRuleset, 'bots'>, team: string): BotDoctrine {

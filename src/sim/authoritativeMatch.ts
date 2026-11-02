@@ -106,6 +106,7 @@ import {
   type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
 import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
+import { pushModeRoutes } from './modeRoutePush.ts';
 import { applyHullActions, tickHullConsumables } from './hullActions.ts';
 import type { HullActionsHost } from './hullActions.ts';
 import { pushFromHulls } from './tankPairContact.ts';
@@ -119,7 +120,7 @@ import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetUnlimitedFor,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -2141,30 +2142,9 @@ export function createAuthoritativeMatch({
     return true;
   }
 
-  /**
-   * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the
-   * authority's legacy 3 s / 12 m, 1.25 s on any move in its fast modes) re-routes a bot whose destination moved that far.
-   */
+  /** The mode route push, one for both drivers (268, sim/modeRoutePush.ts). */
   function refreshModeBotRoutes(): void {
-    if (normalizedGameMode === 'standard') return;
-    const alphaDue = timeS >= nextModeRouteS.alpha, bravoDue = timeS >= nextModeRouteS.bravo;
-    if (!alphaDue && !bravoDue) return;
-    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetRoutePush(ruleset, 'alpha', 'authority').refreshS;
-    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetRoutePush(ruleset, 'bravo', 'authority').refreshS;
-    for (const entity of entities) {
-      if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
-      if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
-      const target = modeController.botTarget(entity);
-      if (!target) continue;
-      const moved = detMath.hypot(
-        target.x - (entity._modeTargetX ?? Infinity),
-        target.z - (entity._modeTargetZ ?? Infinity),
-      );
-      if (moved < rulesetRoutePush(ruleset, entity.team, 'authority').moveM) continue;
-      entity._modeTargetX = target.x;
-      entity._modeTargetZ = target.z;
-      entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
-    }
+    pushModeRoutes(entities, normalizedGameMode, ruleset, timeS, nextModeRouteS, (entity) => modeController.botTarget(entity));
   }
 
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)

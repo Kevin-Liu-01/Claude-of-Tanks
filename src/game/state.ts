@@ -47,7 +47,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition,
-  rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
+  rulesetObjectiveAxisM, rulesetVerdictSide,
   rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
@@ -91,6 +91,7 @@ import {
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import * as detMath from '../sim/detMath.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
+import { pushModeRoutes } from '../sim/modeRoutePush.ts';
 import { applyHullActions, tickHullConsumables } from '../sim/hullActions.ts';
 import type { HullActionsHost } from '../sim/hullActions.ts';
 import { pushFromHulls } from '../sim/tankPairContact.ts';
@@ -375,8 +376,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   openingRouteJobs: Array<Iterator<void, void, void>>;
   mapId: string;
   killcam?: KillcamRecorder | null;
-  /** The next mode route push per side (retargetObjectiveBots; the doctrine's routeRefreshS). */
-  _nextModeRouteS?: { player: number; enemy: number };
+  /** The next mode route push per side (sim/modeRoutePush.ts; the doctrine's routeRefreshS). */
+  _nextModeRouteS?: { alpha: number; bravo: number };
   /** TEAM NATIONS: this battle's record (the countries, the fills) and MONO's allied seats (chooseBattleAllies). */
   teamNations?: BattleTeamNations | null;
   _nationalAllyIds?: Set<string> | null;
@@ -1305,7 +1306,7 @@ export function setupBattle(
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   game.matchModeState = game.matchModeController.state;
-  game._nextModeRouteS = { player: 0, enemy: 0 };
+  game._nextModeRouteS = { alpha: 0, bravo: 0 };
   attachBattleCommander(game);
 }
 
@@ -2260,34 +2261,6 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
 }
 
 /**
- * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the solo
- * battle's legacy 4 s / 18 m) re-routes a bot whose destination moved that far or more.
- */
-function retargetObjectiveBots(game: SoloGameState): void {
-  if (game.gameMode === 'standard') return;
-  const due = game._nextModeRouteS ??= { player: 0, enemy: 0 };
-  const alphaDue = game.timeS >= due.player, bravoDue = game.timeS >= due.enemy;
-  if (!alphaDue && !bravoDue) return;
-  if (alphaDue) due.player = game.timeS + rulesetRoutePush(game.ruleset, 'player', 'solo').refreshS;
-  if (bravoDue) due.enemy = game.timeS + rulesetRoutePush(game.ruleset, 'enemy', 'solo').refreshS;
-  for (const entity of game.tanks) {
-    if (!entity.aiCtl || entity.modeActive === false || entity.combat.destroyed) continue;
-    const bravo = entity.team === 'enemy';
-    if (bravo ? !bravoDue : !alphaDue) continue;
-    const target = game.matchModeController?.botTarget(entity);
-    if (!target) continue;
-    const moved = Math.hypot(
-      target.x - (entity._modeTargetX ?? Infinity),
-      target.z - (entity._modeTargetZ ?? Infinity),
-    );
-    if (moved < rulesetRoutePush(game.ruleset, entity.team, 'solo').moveM) continue;
-    entity._modeTargetX = target.x;
-    entity._modeTargetZ = target.z;
-    entity.aiCtl.setWaypoints([[target.x, target.z]], { loop: false });
-  }
-}
-
-/**
  * Each hull's controls, presses and consumables this step, hull by hull in roster order as the authority runs them
  * (updateEntityControls; 268): a bot's controller through the shared bot stage, a proving target driven to its mark, then
  * the hull's actions and timed consumables (sim/hullActions.ts). A seat's controls were staged before the step; the
@@ -3040,7 +3013,9 @@ export function simStep(
   groundFor(world).overlay.setTime(game.timeS);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
-  retargetObjectiveBots(game);
+  // (268) the mode route push, one for both drivers (sim/modeRoutePush.ts)
+  pushModeRoutes(game.tanks, game.gameMode, game.ruleset, game.timeS, game._nextModeRouteS ??= { alpha: 0, bravo: 0 },
+    (entity) => game.matchModeController?.botTarget(entity));
   stages?.stage(FRAME_STAGE.bots);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
   if (game.jev && game._jevView) game.jev.step(game._jevView);
