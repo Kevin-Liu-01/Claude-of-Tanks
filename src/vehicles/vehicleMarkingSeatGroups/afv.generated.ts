@@ -249,22 +249,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.21,
         "pos": [
-          0.8023848,
-          0.4754892,
-          -0.5030325
+          0.9611427,
+          0.3054216,
+          -0.5050373
         ],
         "quaternion": [
-          -0.2234612,
-          0.8532499,
-          0.1193785,
-          0.4558272
+          -0.3351455,
+          0.7448108,
+          0.2367709,
+          0.526188
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "bmp3_rok",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0133911
+        "maximumSurfaceErrorM": 0.0131914
       }
     ]
   },
@@ -374,37 +374,37 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          1.7342586,
-          1.237148,
+          1.3647156,
+          1.322367,
           -0.5845749
         ],
         "quaternion": [
-          -0.0063639,
-          0.7070781,
-          0.0063639,
-          0.7070781
+          -0.0758029,
+          0.703032,
+          0.0758029,
+          0.703032
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "bwp1",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.07
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          1.7342586,
-          1.237148,
-          -1.3209363
+          1.046,
+          0.79768,
+          -1.339
         ],
         "quaternion": [
-          -0.0063639,
-          0.7070781,
-          0.0063639,
-          0.7070781
+          0,
+          0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "bwp1",

@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { KIT } from './kit.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** Measured datums of the welded shell (ring-local metres). */
@@ -312,12 +313,13 @@ export function addCarroBowKit(P: KitPort): void {
     P.addModuleVisual('optics', 'hullGlass', box(0.11, 0.026, 0.102), px, py + nY * 0.036, pz + nZ * 0.036, GLACIS_TILT, k * 0.22, 0);
   }
   // lamp clusters on the nose corners: a squared housing, two lenses and a bar guard (C1 Ariete pattern), its
-  // underside on the nose wedge's lowest point under it (the back sinks into the sloping plate)
+  // underside on the nose wedge's lowest point under it (the back sinks into the sloping plate). The lenses are the
+  // vehicle's driving lights (vehicle-controls-inventory requires them; night lighting emits from them)
   for (const side of [-1, 1] as const) {
     const lx = side * 1.14, lz = 3.15, base = 1.25 - (lz + 0.06 - 3.08) * (0.19 / 0.29) - 0.004;
     P.add('hullDetail', box(0.30, 0.13, 0.12), lx, base + 0.065, lz);
     for (const dx of [-0.075, 0.075]) {
-      P.add('hullGlass', KIT.cylZ(0.042, 0.012, 14), lx + dx, base + 0.072, lz + 0.061);
+      P.add('hullGlass', markVehicleNightLens(KIT.cylZ(0.042, 0.012, 14), 'headlight'), lx + dx, base + 0.072, lz + 0.061);
       P.add('hullDark', KIT.cylZ(0.050, 0.010, 14), lx + dx, base + 0.072, lz + 0.057);
     }
     const foot = 1.25 - (lz + 0.098 - 3.08) * (0.19 / 0.29) - 0.008, head = base + 0.148;  // uprights stand on the nose

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-01T09:52:26.933Z",
+ "generatedAt": "2026-11-02T10:37:30.756Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 39,
  "total": 151,
@@ -700,19 +700,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "c1_ariete_preserie",
-   "geoMin": 24.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 59.2,
-    "wholeCurves": 39.5,
-    "turretCurves": 24.8,
-    "stations": 64.6,
-    "dims": 99.4,
-    "floaters": 100
-   }
-  },
-  {
    "id": "type96b",
    "geoMin": 25.3,
    "requiredMinimum": 92,
@@ -827,14 +814,14 @@
   },
   {
    "id": "bmp3",
-   "geoMin": 39.4,
+   "geoMin": 39.6,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
     "hullCurves": 57.8,
     "stations": 78.2,
-    "turretCurves": 39.4,
+    "turretCurves": 39.6,
     "wholeCurves": 52.6,
     "dims": 100,
     "floaters": 100
@@ -853,6 +840,22 @@
     "turretCurves": 42.1,
     "wholeCurves": 57.3,
     "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "c1_ariete_preserie",
+   "geoMin": 46.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 55,
+    "stations": 65.9,
+    "turretCurves": 58.2,
+    "wholeCurves": 46.4,
+    "dims": 97.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -882,6 +885,22 @@
    "components": {
     "wholeCurves": 86,
     "dims": 49,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bmp2",
+   "geoMin": 49.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 59.7,
+    "stations": 49.4,
+    "turretCurves": 58.1,
+    "wholeCurves": 50.6,
+    "dims": 95.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1251,19 +1270,6 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "bmp2",
-   "geoMin": 82.7,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 85.2,
-    "wholeCurves": 82.7,
-    "turretCurves": 84.8,
-    "stations": 87.3,
-    "dims": 100,
-    "floaters": 100
-   }
   },
   {
    "id": "carro45t",

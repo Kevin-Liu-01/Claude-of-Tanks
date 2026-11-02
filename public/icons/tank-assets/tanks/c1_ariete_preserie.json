@@ -460,8 +460,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.7143,0.6825,1.6432],
-        "max": [-0.2549,1.3589,3.4356],
+        "min": [-0.7143,0.8689,1.6432],
+        "max": [-0.2549,1.2889,3.4356],
         "turretLocal": false
       },
       {
@@ -487,17 +487,17 @@
       }
     ]
   },
-  "geometryHash": "f315a0c1",
-  "metadataHash": "3d132603",
+  "geometryHash": "54177ee0",
+  "metadataHash": "cd06e9e7",
   "presentationAnchor": {
-    "xM": 0.0003,
-    "zM": -0.0784
+    "xM": 0.0002,
+    "zM": -0.0806
   },
-  "presentationHash": "323f0e18",
+  "presentationHash": "82fc0a42",
   "presentationProjection": {
     "centerYM": 1.3108,
-    "topHalfM": 6.0112,
-    "sideHalfM": 3.0056
+    "topHalfM": 6.0135,
+    "sideHalfM": 3.0068
   },
   "appearance": {
     "version": 1,
@@ -514,9 +514,9 @@
       "trackPad": 1,
       "trackPadSimplified": 1,
       "armorPaint": 9,
-      "hullRubber": 1,
       "gunmetal": 11,
       "opticGlass": 2,
+      "hullRubber": 1,
       "unclassified": 23,
       "gearShadow": 2,
       "machineGun": 3,
@@ -547,15 +547,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22990,
-      "sha256": "b4bc9bbdaa4ce85ee371cda69b80979ddaebe787817c075dd6fd040cc5077f45",
+      "bytes": 22808,
+      "sha256": "82f641e93455fef1a78ee7d5ffd17e5f5db739897cbac6e5e0ebe2306e452ea6",
       "thumbnail": {
         "file": "thumbs/c1_ariete_preserie_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9626,
-        "sha256": "18a5d8cb9785164b5f87180307fb86be41d63ae8bd767f564acf72f84144d152"
+        "bytes": 9636,
+        "sha256": "359328eb90dc68b805d72e1b452c8e8aeb9f5f082f5dd0e0927f03d326ccf0d0"
       }
     },
     "top": {
@@ -563,56 +563,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11206,
-      "sha256": "dee0266ee21b35d19f5f835d4972c4c19ce8607a27ea94965050f18abe6f78b0"
+      "bytes": 11382,
+      "sha256": "15200b4833d2437bcda976ca1ba31c4f3f680bcbbc96f230ffd173a0b4470e2c"
     },
     "side": {
       "file": "c1_ariete_preserie_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10682,
-      "sha256": "e27ef96959558c6f822b015bafc29b2d63fbb2efe56e9bdc2a36f249c4b9e420"
+      "bytes": 10966,
+      "sha256": "28530dc249c47d86eca7ffee2caa57ec60a0517f993eb12683c4e47b391f3b27"
     },
     "topSilhouette": {
       "file": "c1_ariete_preserie_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1373,
-      "sha256": "1e10da1cb624d6f8a2dadcd8f4910aebaf42efb9f1ca0ed6adc0b2e292770cb0"
+      "bytes": 1347,
+      "sha256": "048bc7de79f295ddfd0749bd6fcb9e751627aa7228bd325d925c8830fb352303"
     },
     "sideSilhouette": {
       "file": "c1_ariete_preserie_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4228,
-      "sha256": "7cc4f9a6cd3ff967ef202ea6fb5006eba1254c00ba24498e74e0cf542c7ca2ab"
+      "bytes": 4349,
+      "sha256": "819ee7fb8131b199d7b3330a3c261a410b2cff28c5039828e033c4de4ed2b3b4"
     },
     "armorSide": {
       "file": "c1_ariete_preserie_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24324,
-      "sha256": "393e1b7c07b27d821b2485d069ea391a39b383bc5674c8427158d3dc621d60d3"
+      "bytes": 24082,
+      "sha256": "0ef9813341e8e588eae0dfe3c29d1ab21b16d105d4fef739acaf24960699ca55"
     },
     "modulesSide": {
       "file": "c1_ariete_preserie_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25926,
-      "sha256": "31322131e8c5e97178842146f55588ca9587cdd63a28a5037913ab0dface55fe"
+      "bytes": 25468,
+      "sha256": "e803a51694c58720b7c9c650620ca988725be8df34eaef95fe870bd8448835a8"
     },
     "crewSide": {
       "file": "c1_ariete_preserie_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23570,
-      "sha256": "ea3159ae3e8f0046a074fe30580d81f6bc3c57d1f6b3bafe23ea52c0ae567042"
+      "bytes": 23592,
+      "sha256": "f901bef271916fc9e32a1aeeb2ef6544dd48963b618357d2e7b47ac8e2f90a07"
     },
     "markings": {
       "file": "c1_ariete_preserie_markings.png",
@@ -625,8 +625,8 @@
     "technicalLabels": {
       "file": "c1_ariete_preserie_technical.json",
       "mime": "application/json",
-      "bytes": 4685,
-      "sha256": "c7aadac45a9f72a1861afa880543467ce56ed657b8ce1ee2072f9b8a84e29470"
+      "bytes": 4678,
+      "sha256": "30dcbb8e3cabbf554cb793ab68d7e53876d9433bb6715b0a83f76bc902d5bd2b"
     }
   }
 }

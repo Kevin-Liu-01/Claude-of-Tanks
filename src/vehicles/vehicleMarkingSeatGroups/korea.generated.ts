@@ -14,7 +14,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.9042223,
+          -1.9047624,
           1.179928,
           -0.42
         ],
@@ -51,7 +51,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0174567
+        "maximumSurfaceErrorM": 0.0005401
       },
       {
         "kind": "designation",
