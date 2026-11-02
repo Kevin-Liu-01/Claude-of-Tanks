@@ -37,10 +37,6 @@ const lathe=(profile:readonly(readonly[number,number])[],n=20)=>new THREE.LatheG
 
 // ---- turret roof ------------------------------------------------------------------------------------------------------
 
-/** A prism standing on the roof: rings [x, -z] at rising y stations. */
-const upright=(stations:readonly{y:number;ring:readonly SectionPoint[]}[])=>sectionSolid(stations.map(s=>({z:s.y,ring:s.ring})))
-  .applyMatrix4(new THREE.Matrix4().makeBasis(new THREE.Vector3(1,0,0),new THREE.Vector3(0,0,-1),new THREE.Vector3(0,1,0)));
-
 /** The four corners a levelling pad reads the roof at: (x -/+ hx, z - hz), then (x -/+ hx, z + hz). */
 const padCorners=(hx:number,hz:number)=>[[-hx,-hz],[hx,-hz],[-hx,hz],[hx,hz]] as const;
 /** A pad level on top at `top`, its underside fitted to the sloping roof (`under`: the roof's height at padCorners) and
@@ -48,35 +44,45 @@ const padCorners=(hx:number,hz:number)=>[[-hx,-hz],[hx,-hz],[-hx,hz],[hx,hz]] as
 const levelPad=(x:number,z:number,hx:number,hz:number,under:readonly number[],top:number)=>sectionSolid([0,1].map(k=>({z:z+(k?hz:-hz),
   ring:[[x-hx,under[k*2]-SEAT_M],[x+hx,under[k*2+1]-SEAT_M],[x+hx,top],[x-hx,top]] as SectionPoint[]})));
 
-/** A Shtora-1 TShU-1-11 laser-warning head: a squat octagonal housing, its top chamfered into facets, its three detector
- * windows on the forward facets and a lens on top, on a short bracket (two cheeks and a web) whose foot plate, level on
- * top and fitted underneath to the sloping roof, is bolted to it. 0.15 m across the flats. `corners` is the roof's height
- * under the foot's corners (x -/+ 0.065 at z - 0.055, then at z + 0.055). */
+/** A Shtora-1 TShU-1-11 laser-warning head: a squat drum with a rounded top edge, its three round lens windows (bezels
+ * round dark lenses) facing forward and to the front quarters, on a short solid pedestal standing on a foot plate that
+ * is level on top, fitted underneath to the sloping roof and bolted to it. `corners` is the roof's height under the
+ * foot's corners (x -/+ 0.065 at z - 0.055, then at z + 0.055). */
 const LWR_FOOT=padCorners(.065,.055);
 function laserWarningHead(P:TankBuilderPort,x:number,z:number,corners:readonly number[]):void{
-  const ytop=Math.max(...corners)+.006,hy=ytop+.044,ap=.075,R=ap/Math.cos(Math.PI/8);
+  const ytop=Math.max(...corners)+.006,hy=ytop+.040,rd=.072;
   P.addEquipment('turretDetail',levelPad(x,z,.065,.055,corners,ytop));
   for(const dx of [-.050,.050])for(const dz of [-.040,.040])P.addEquipment('turretDark',cylY(.0065,.006,6).translate(x+dx,ytop+.002,z+dz));
-  for(const dx of [-.038,.038])P.addEquipment('turretDetail',box(.012,.052,.078).translate(x+dx,ytop+.024,z));
-  P.addEquipment('turretDetail',box(.064,.040,.012).translate(x,ytop+.020,z-.024));
-  const oct=(s:number)=>Array.from({length:8},(_,k)=>{const a=Math.PI/8+k*Math.PI/4;return [x+R*s*Math.cos(a),-z+R*s*Math.sin(a)] as SectionPoint;});
-  P.addEquipment('turretDetail',upright([{y:hy,ring:oct(1)},{y:hy+.060,ring:oct(1)},{y:hy+.086,ring:oct(.60)}]));
-  for(const a of [-Math.PI/4,0,Math.PI/4])
-    P.addEquipment('turretDark',box(.044,.030,.006).rotateY(a).translate(x+(ap+.001)*Math.sin(a),hy+.032,z+(ap+.001)*Math.cos(a)));
-  P.addEquipment('turretDark',cylY(.022,.004,16).translate(x,hy+.087,z));
+  P.addEquipment('turretDetail',cylY(.046,.044,16).translate(x,ytop+.020,z));
+  P.addEquipment('turretDetail',lathe([[0,hy],[rd,hy],[rd,hy+.050],[rd-.006,hy+.062],[rd-.020,hy+.068],[0,hy+.070]],24).translate(x,0,z));
+  for(const a of [-.6,0,.6]){
+    const at=(d:number)=>new THREE.Vector3(x+d*Math.sin(a),hy+.030,z+d*Math.cos(a));
+    const b=at(rd+.002),g=at(rd+.006);
+    P.addEquipment('turretDetail',cylZ(.020,.010,16).rotateY(a).translate(b.x,b.y,b.z));
+    P.addEquipment('turretDark',cylZ(.0145,.004,16).rotateY(a).translate(g.x,g.y,g.z));
+  }
 }
 
-/** The DVE-BS crosswind sensor: a folding mast on a hinge block at the rear of the roof; on its head the sensor, a small
- * vertical cylinder with a domed cap and two window bands, inside a guard of two rings on four posts with a cross over the
- * top; under the guard the vane, a tail fin aft on an arm with its counterweight forward. The mast and everything on it
- * take the antenna seat role (antennaPart): a thin mast is not the turret's body. */
-function windSensorMast(P:TankBuilderPort,x:number,z:number,roof:number,slope:readonly[number,number]):void{
-  const y0=roof-SEAT_M,hinge=y0+.055,top=hinge+.52,ant=(bucket:string,g:THREE.BufferGeometry)=>P.addEquipment(bucket,antennaPart(g));
-  // the hinge block, its underside following the roof's slope (`slope`: the roof at z -/+ 0.045)
-  P.addEquipment('turretDetail',sectionSolid([0,1].map(k=>{const b=slope[k]-SEAT_M;return {z:z+(k?.045:-.045),ring:[[x-.040,b],[x+.040,b],
-    [x+.040,y0+.040],[x+.024,y0+.070],[x-.024,y0+.070],[x-.040,y0+.040]] as SectionPoint[]};})));
-  P.addEquipment('turretDark',cylX(.012,.096,10),x,hinge,z);
-  ant('turretDetail',cylY(.017,top-hinge,12,.021).translate(x,(hinge+top)/2,z));
+/** The DVE-BS crosswind sensor: a folding mast hinged at its foot (a base plate fitted to the sloping roof and bolted
+ * down, two lugs with rounded heads, the pin with its head and nut, the mast's foot knuckle between the lugs); on the
+ * mast's head the sensor, a small vertical cylinder with a domed cap and two window bands, inside a guard of two rings on
+ * four posts with a cross over the top; under the guard a small vane, a tail fin aft on a short arm with its
+ * counterweight forward. The mast and everything on it take the antenna seat role (antennaPart): a thin mast is not the
+ * turret's body. `slope` is the roof under the base plate's back and front (z -/+ 0.035). */
+function windSensorMast(P:TankBuilderPort,x:number,z:number,slope:readonly[number,number]):void{
+  const base=Math.max(...slope)+.008,hinge=base+.040,top=hinge+.48,ant=(bucket:string,g:THREE.BufferGeometry)=>P.addEquipment(bucket,antennaPart(g));
+  P.addEquipment('turretDetail',sectionSolid([0,1].map(k=>({z:z+(k?.035:-.035),ring:[[x-.048,slope[k]-SEAT_M],[x+.048,slope[k]-SEAT_M],
+    [x+.048,base],[x-.048,base]] as SectionPoint[]}))));
+  for(const dx of [-.036,.036])for(const dz of [-.024,.024])P.addEquipment('turretDark',cylY(.006,.006,6).translate(x+dx,base+.002,z+dz));
+  for(const sx of [-1,1]){
+    P.addEquipment('turretDetail',box(.012,hinge-base+.002,.044).translate(x+sx*.030,(base+hinge)/2,z));
+    P.addEquipment('turretDetail',cylX(.022,.012,14).translate(x+sx*.030,hinge,z));
+  }
+  P.addEquipment('turretDark',cylX(.008,.088,8).translate(x,hinge,z));
+  P.addEquipment('turretDark',cylX(.013,.006,10).translate(x-.042,hinge,z));
+  P.addEquipment('turretDark',cylX(.013,.008,6).translate(x+.043,hinge,z));
+  P.addEquipment('turretDetail',cylX(.020,.046,14).translate(x,hinge,z));
+  ant('turretDetail',cylY(.017,top-hinge-.012,12,.021).translate(x,(hinge+.012+top)/2,z));
   const h0=top+.006,gr=.082,g0=top+.004,g1=h0+.200;
   ant('turretDetail',cylY(.034,.016,16).translate(x,top,z));
   ant('turretDetail',lathe([[0,h0],[.040,h0],[.040,h0+.150],[.034,h0+.166],[.018,h0+.174],[0,h0+.176]],20).translate(x,0,z));
@@ -87,42 +93,36 @@ function windSensorMast(P:TankBuilderPort,x:number,z:number,roof:number,slope:re
     ant('turretDetail',beamBetween([x+.026*Math.cos(a),top,z+.026*Math.sin(a)],[px,g0,pz],.006,6));}
   for(const a of [Math.PI/4,3*Math.PI/4])
     ant('turretDetail',beamBetween([x-gr*Math.cos(a),g1,z-gr*Math.sin(a)],[x+gr*Math.cos(a),g1,z+gr*Math.sin(a)],.006,6));
-  const vy=top-.090;
-  ant('turretDetail',cylY(.026,.032,12).translate(x,vy,z));
-  ant('turretDetail',beamBetween([x,vy,z+.095],[x,vy,z-.205],.006,6));
-  ant('turretDark',cylZ(.016,.040,10).translate(x,vy,z+.105));
-  ant('turretDetail',foreAft([x-.0025,x+.0025].map(sx=>({x:sx,ring:ccw([[-z+.190,vy-.028],[-z+.330,vy-.048],[-z+.330,vy+.062],[-z+.190,vy+.030]])}))));
+  const vy=top-.080;
+  ant('turretDetail',cylY(.021,.022,12).translate(x,vy,z));
+  ant('turretDetail',beamBetween([x,vy,z+.050],[x,vy,z-.095],.0045,6));
+  ant('turretDark',cylZ(.009,.020,10).translate(x,vy,z+.058));
+  ant('turretDetail',foreAft([x-.002,x+.002].map(sx=>({x:sx,ring:ccw([[-z+.085,vy-.012],[-z+.150,vy-.022],[-z+.150,vy+.030],[-z+.085,vy+.014]])}))));
 }
 
-/** An R-163 whip on its insulated mount: a bolted flange, the cylindrical insulator base, the conical insulator, the
- * coil-spring foot and the cable gland, then the whip in three sections with joint collars and a tip cap, leaning
- * back WHIP_LEAN, the whole mount standing level on a wedge pad fitted to the sloping rear roof. The gland faces forward and its cable runs down onto the roof and forward along it, under a bolted
- * clip, into a roof entry boss: away from the stowed snorkel behind. The whip takes the antenna seat role (antennaPart).
- * `cableRoof` is the roof's height where the cable meets the roof, at its clip and at its boss (z + 0.110, 0.135, 0.170),
- * the boss short of the loader's hatch ring. */
-const WHIP_LEAN=.10,WHIP_SECTIONS=[[.0115,1.05],[.0085,1.00],[.0055,.95]] as const;
-const MOUNT_PAD=padCorners(.075,.075);
-function antennaMount(P:TankBuilderPort,x:number,z:number,under:readonly number[],cableRoof:readonly[number,number,number]):void{
-  // the mount stands level on a pad fitted to the roof's slope (`under`: the roof at MOUNT_PAD), its flange 3 mm into it
-  const padTop=Math.max(...under)+.010,y0=padTop-.003;
-  P.addEquipment('turretDetail',levelPad(x,z,.075,.075,under,padTop));
-  P.addEquipment('turretDetail',lathe([[0,y0],[.068,y0],[.068,y0+.012],[.062,y0+.016],[.046,y0+.016],[.046,y0+.080],
+/** An R-163 whip on its insulated mount: a low cast boss on the rear roof (round, its foot flared into the roof's slope,
+ * level on top), the bolted flange on it, the cylindrical insulator base, the conical insulator and the coil-spring foot,
+ * then the whip in three sections, each stepping down from the one below at a joint collar, to a tip cap, leaning back
+ * WHIP_LEAN. The cable gland comes out of the boss's inboard side and its cable runs down along the roof into a roof
+ * fitting beside it. The whip takes the antenna seat role (antennaPart). `ring` is the roof under the boss's foot
+ * (BOSS_RING), `fitting` the roof under the cable's roof fitting. */
+const WHIP_LEAN=.075,WHIP_SECTIONS=[[.0135,.0175,1.05],[.0085,.0105,1.00],[.0045,.0060,.95]] as const;
+const BOSS_R=.088,BOSS_RING=Array.from({length:8},(_,k)=>[BOSS_R*Math.cos(k*Math.PI/4),BOSS_R*Math.sin(k*Math.PI/4)] as const);
+function antennaMount(P:TankBuilderPort,x:number,z:number,side:number,ring:readonly number[],fitting:number):void{
+  const lo=Math.min(...ring),hi=Math.max(...ring),yb=hi+.008,y0=yb-.003;
+  P.addEquipment('turretDetail',lathe([[0,lo-.030],[BOSS_R,lo-.030],[BOSS_R,lo+.002],[.080,(lo+yb)/2],[.075,yb-.008],[.071,yb-.002],[.066,yb],[0,yb]],28).translate(x,0,z));
+  P.addEquipment('turretDetail',lathe([[0,y0],[.064,y0],[.064,y0+.012],[.058,y0+.016],[.046,y0+.016],[.046,y0+.080],
     [.040,y0+.086],[.040,y0+.090],[.020,y0+.160],[.016,y0+.166],[0,y0+.166]],24),x,0,z);
   for(let k=0;k<6;k++){const a=k*Math.PI/3+Math.PI/6;
-    P.addEquipment('turretDark',cylY(.0075,.007,6),x+.057*Math.cos(a),y0+.0155,z+.057*Math.sin(a));}
-  // the gland, the cable along the roof, its clip and the entry boss
-  const [r1,r2,r3]=cableRoof,cr=.0085;
-  P.addEquipment('turretDark',cylZ(.016,.050,10).translate(x,y0+.045,z+.060));
-  P.addEquipment('turretDark',new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(x,y0+.045,z+.082),
-    new THREE.Vector3(x,y0+.038,z+.096),new THREE.Vector3(x,r1+cr-.002,z+.110),new THREE.Vector3(x,r2+cr-.002,z+.135),
-    new THREE.Vector3(x,r3+.012,z+.170)]),16,cr,8));
-  const clip:THREE.Vector3[]=[];
-  for(let i=0;i<=8;i++){const a=Math.PI*i/8;clip.push(new THREE.Vector3(x+(cr+.004)*Math.cos(a),r2+cr-.002+(cr+.004)*Math.sin(a),z+.135));}
-  P.addEquipment('turretDetail',new THREE.TubeGeometry(new THREE.CatmullRomCurve3(clip),10,.003,5));
-  for(const sx of [-1,1])P.addEquipment('turretDetail',box(.016,.005,.014).translate(x+sx*(cr+.012),r2-SEAT_M+.0025+.002,z+.135));
-  P.addEquipment('turretDark',cylY(.0055,.005,6).translate(x+cr+.012,r2+.004,z+.135));
-  P.addEquipment('turretDetail',cylY(.021,.030,12).translate(x,r3-SEAT_M+.015,z+.170));
-  P.addEquipment('turretDark',cylY(.025,.010,6).translate(x,r3+.012,z+.170));
+    P.addEquipment('turretDark',cylY(.0072,.007,6),x+.054*Math.cos(a),y0+.0155,z+.054*Math.sin(a));}
+  // the gland on the boss's inboard side, its cable along the roof into the roof fitting
+  const gy=Math.max(lo+.016,yb-.022),gx=x-side*(.080+.014),fx=x-side*.215,cr=.0085;
+  P.addEquipment('turretDark',cylX(.016,.034,10).translate(gx,gy,z));
+  P.addEquipment('turretDark',cylX(.019,.008,6).translate(gx-side*.014,gy,z));
+  P.addEquipment('turretDark',new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(gx-side*.016,gy,z),
+    new THREE.Vector3(gx-side*.045,gy-.004,z),new THREE.Vector3(fx+side*.050,fitting+cr+.004,z),new THREE.Vector3(fx+side*.012,fitting+.022,z)]),14,cr,8));
+  P.addEquipment('turretDetail',cylY(.024,.034,14).translate(fx,fitting-SEAT_M+.017,z));
+  P.addEquipment('turretDark',cylY(.027,.010,6).translate(fx,fitting+.020,z));
   // the coil-spring foot over the insulator, then the whip, both turned back WHIP_LEAN about the spring's foot
   const foot=new THREE.Vector3(x,y0+.164,z),lean=new THREE.Matrix4().makeRotationX(-WHIP_LEAN),turns=6,coilH=.090;
   const coil:THREE.Vector3[]=[];
@@ -131,12 +131,12 @@ function antennaMount(P:TankBuilderPort,x:number,z:number,under:readonly number[
   P.addEquipment('turretDark',place(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(coil),turns*16,.0055,6)));
   P.addEquipment('turretDark',place(cylY(.014,.020,12).translate(0,coilH+.006,0)));
   let y=coilH+.016;
-  WHIP_SECTIONS.forEach(([r,len],i)=>{
-    P.addEquipment('turretDark',antennaPart(place(cylY(r,len,8,r*1.3).translate(0,y+len/2,0))));
+  WHIP_SECTIONS.forEach(([rt,rb,len],i)=>{
+    P.addEquipment('turretDark',antennaPart(place(cylY(rt,len,8,rb).translate(0,y+len/2,0))));
     y+=len;
-    if(i<WHIP_SECTIONS.length-1)P.addEquipment('turretDark',antennaPart(place(cylY(r*1.6,.032,8).translate(0,y,0))));
+    if(i<WHIP_SECTIONS.length-1)P.addEquipment('turretDark',antennaPart(place(cylY(rt*1.45,.030,8).translate(0,y,0))));
   });
-  P.addEquipment('turretDark',antennaPart(place(new THREE.SphereGeometry(.013,10,6).translate(0,y+.004,0))));
+  P.addEquipment('turretDark',antennaPart(place(new THREE.SphereGeometry(.009,10,6).translate(0,y+.003,0))));
 }
 
 // ---- turret rear: the stowage basket and its canvas roll --------------------------------------------------------------
@@ -251,17 +251,21 @@ function canvasRoll(P:TankBuilderPort):void{
   const map=(s:number,y:number,rho:number)=>polar(rm+rho,s/rm,y);
   const radius=(s:number,th:number,phase:number)=>{const d=L/2-Math.abs(s);
     const shoulder=d<.04?.9+.1*Math.sqrt(1-((.04-d)/.04)**2):1;
-    const pinch=1-straps.reduce((m:number,q:number)=>m+.14*Math.exp(-(((s-q)/.028)**2)),0);
+    const pinch=1-straps.reduce((m:number,q:number)=>{const d=Math.abs(s-q);return m+(d<.026?.10:d<.07?.05*(1+Math.cos(Math.PI*(d-.026)/.044)):0);},0);
     return R*(1-tL/R*phase)*shoulder*pinch*(1+.015*Math.sin(3*th+4*s)+.010*Math.sin(5*th-7*s));};
   const section=(r:number,th:number)=>{let dy=r*.84*Math.cos(th);const flat=-.64*r;if(dy<flat)dy=flat+(dy-flat)*.3;return {dy,rho:r*1.06*Math.sin(th)};};
   const pos=(sr:number,sa:number,th:number,phase:number,scale=1,lift=0)=>{const c=section(radius(sr,th,phase)*scale+lift,th);return map(sa,yc+c.dy,c.rho);};
   const at=(s:number,j:number)=>pos(s,s,tf+TAU*j/NT,j/NT);
   const vs:number[]=[],idx:number[]=[],push=(v:THREE.Vector3)=>{vs.push(v.x,v.y,v.z);return vs.length/3-1;};
   const grid:number[][]=[];
-  for(let i=0;i<=NS;i++){const s=-L/2+L*i/NS;grid.push(Array.from({length:NT+1},(_,j)=>push(at(s,j))));}
-  for(let i=0;i<NS;i++)for(let j=0;j<NT;j++){const a=grid[i][j],b=grid[i+1][j],c=grid[i+1][j+1],d=grid[i][j+1];idx.push(a,b,c,a,c,d);}
+  // stations along the roll: even, plus each strap's groove floor and shoulders so the cinch keeps its shape
+  const ss=[...Array.from({length:NS+1},(_,i)=>-L/2+L*i/NS),...straps.flatMap(q=>[-.07,-.048,-.026,0,.026,.048,.07].map(d=>q+d))]
+    .sort((a,b)=>a-b).filter((v,i,a)=>i===0||v-a[i-1]>.006);
+  for(const s of ss)grid.push(Array.from({length:NT+1},(_,j)=>push(at(s,j))));
+  const NG=ss.length-1;
+  for(let i=0;i<NG;i++)for(let j=0;j<NT;j++){const a=grid[i][j],b=grid[i+1][j],c=grid[i+1][j+1],d=grid[i][j+1];idx.push(a,b,c,a,c,d);}
   // the outer layer's edge: the step from its thinned end back up to its full thickness at the flap
-  for(let i=0;i<NS;i++){const a=grid[i][NT],b=grid[i+1][NT],c=grid[i+1][0],d=grid[i][0];idx.push(a,b,c,a,c,d);}
+  for(let i=0;i<NG;i++){const a=grid[i][NT],b=grid[i+1][NT],c=grid[i+1][0],d=grid[i][0];idx.push(a,b,c,a,c,d);}
   // the ends, dished in toward the core
   for(const end of [-1,1]){const s=end*L/2,rings:number[][]=[];
     for(let k=0;k<K;k++){const f=1-k/K,ax=s-end*dish*(k/K)**.7;rings.push(Array.from({length:NT+1},(_,j)=>push(pos(s,ax,tf+TAU*j/NT,j/NT,f))));}
@@ -286,13 +290,18 @@ function canvasRoll(P:TankBuilderPort):void{
   const Y=new THREE.Vector3(0,1,0);
   for(const q of straps){
     const phq=q/rm,X=V(tangentAt(phq)),out=V(radialAt(phq));
-    const ring=Array.from({length:NT},(_,j)=>{const th=tf+TAU*j/NT;return pos(q,q,th,j/NT,1,.0015);});
-    P.addEquipment('turretDark',webbing(ring,.040,.004,true,X));
-    const thb=.40,p=pos(q,q,thb,phaseOf(thb),1,.005),nb=p.clone().sub(map(q,yc,0)).normalize();
+    // the band right round the roll, standing proud of the cinched cloth
+    const ring=Array.from({length:NT*2},(_,j)=>{const th=tf+TAU*j/(NT*2);return pos(q,q,th,j/(NT*2),1,.004);});
+    P.addEquipment('turretDark',webbing(ring,.046,.008,true,X));
+    // the buckle on the band (a frame, its centre bar and the prong), the band's free end run on through it
+    const thb=.40,p=pos(q,q,thb,phaseOf(thb),1,.016),nb=p.clone().sub(map(q,yc,0)).normalize();
     const tb=pos(q,q,thb+.01,phaseOf(thb+.01)).sub(pos(q,q,thb-.01,phaseOf(thb-.01))).normalize();
-    for(const sx of [-1,1])P.addEquipment('turretDark',bar(pt(p.clone().addScaledVector(X,sx*.025).addScaledVector(tb,-.022)),pt(p.clone().addScaledVector(X,sx*.025).addScaledVector(tb,.022)),.007,.005,pt(nb)));
-    for(const st of [-1,1])P.addEquipment('turretDark',bar(pt(p.clone().addScaledVector(X,-.029).addScaledVector(tb,st*.019)),pt(p.clone().addScaledVector(X,.029).addScaledVector(tb,st*.019)),.007,.005,pt(nb)));
-    P.addEquipment('turretDark',bar(pt(p.clone().addScaledVector(nb,.001)),pt(p.clone().addScaledVector(tb,.019).addScaledVector(nb,.001)),.004,.004,pt(nb)));
+    const B=(a:THREE.Vector3,b:THREE.Vector3,w:number,t:number)=>P.addEquipment('turretDark',bar(pt(a),pt(b),w,t,pt(nb)));
+    for(const sx of [-1,1])B(p.clone().addScaledVector(X,sx*.031).addScaledVector(tb,-.028),p.clone().addScaledVector(X,sx*.031).addScaledVector(tb,.028),.010,.006);
+    for(const st of [-1,0,1])B(p.clone().addScaledVector(X,-.036).addScaledVector(tb,st*.024),p.clone().addScaledVector(X,.036).addScaledVector(tb,st*.024),.009,st?.006:.008);
+    B(p.clone().addScaledVector(nb,.002),p.clone().addScaledVector(tb,.026).addScaledVector(nb,.002),.005,.004);
+    const tail=Array.from({length:10},(_,i)=>{const th=thb-.05+.07*i;return pos(q,q,th,phaseOf(th),1,.0115);});
+    P.addEquipment('turretDark',webbing(tail,.042,.005,false,X));
     for(const [th,railR,sense] of [[1.15,ro,-1],[-1.15,ri,1]] as const){
       const start=pos(q,q,th,phaseOf(th),1,.0015),c=polar(railR,phq,yt),inward=out.clone().multiplyScalar(sense);
       const from=start.clone().lerp(c,.5).add(new THREE.Vector3(0,.012,0)),rel=from.clone().sub(c);
@@ -331,16 +340,16 @@ function auxiliaryPowerUnit(P:TankBuilderPort,meshes:THREE.Mesh[]):void{
   P.addEquipment('hullDark',new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(xh,top+.006,zm-.09),
     new THREE.Vector3(xh,top+.045,zm-.07),new THREE.Vector3(xh,top+.050,zm),new THREE.Vector3(xh,top+.045,zm+.07),
     new THREE.Vector3(xh,top+.006,zm+.09)]),16,.007,6));
-  // the exhaust: a stub out of the outboard face 0.20 m ahead of the rear face (the intake's), its elbow turned up and its
-  // collared mouth (dark inside) under the box's chamfered edge; a clamp strap holds the pipe to the box. Not at the
-  // face's front end, where the gun's published floor passes low beside the box (yaw 143, -5 degrees).
-  const ey=top-.175,ez=z0+.20,exX=x1+.055,mouth=top-.080;
-  P.addEquipment('hullDark',new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(x1-.012,ey,ez),
-    new THREE.Vector3(x1+.030,ey,ez),new THREE.Vector3(exX-.003,ey+.022,ez),new THREE.Vector3(exX,ey+.060,ez),
-    new THREE.Vector3(exX,mouth,ez)]),16,.026,12));
-  P.addEquipment('hullDark',lathe([[.0235,-.011],[.031,-.011],[.031,.011],[.0235,.011],[.0235,-.011]],14).translate(exX,mouth-.008,ez));
-  P.addEquipment('hullDark',cylY(.0245,.004,12).translate(exX,mouth-.022,ez));
-  P.addEquipment('hullDark',bar([x1-.004,mouth-.040,ez],[exX,mouth-.040,ez],.020,.006,[0,0,1]));
+  // the exhaust: low on the outboard face near its rear corner, below and behind the latches; a bolted flange, the pipe
+  // straight out with its open mouth turned outboard (dark inside) and a small rain cap held off it on three pins. Under
+  // the box's top and clear of the gun's published floor.
+  const ey=top-.200,ez=z0+.070,xo=x1+.072;
+  P.addEquipment('hullDark',cylX(.040,.008,16).translate(x1+.002,ey,ez));
+  for(let k=0;k<4;k++){const a=Math.PI/4+k*Math.PI/2;P.addEquipment('hullDark',cylX(.0062,.005,6).translate(x1+.008,ey+.031*Math.sin(a),ez+.031*Math.cos(a)));}
+  P.addEquipment('hullDark',lathe([[.020,0],[.026,0],[.026,xo-x1],[.0205,xo-x1],[.020,0]],16).rotateZ(-Math.PI/2).translate(x1,ey,ez));
+  P.addEquipment('hullDark',cylX(.0205,.004,12).translate(xo-.020,ey,ez));
+  for(let k=0;k<3;k++){const a=Math.PI/2+k*2*Math.PI/3;P.addEquipment('hullDark',cylX(.0028,.018,6).translate(xo+.007,ey+.023*Math.sin(a),ez+.023*Math.cos(a)));}
+  P.addEquipment('hullDark',lathe([[0,0],[.034,0],[.034,.004],[.028,.008],[0,.009]],16).rotateZ(-Math.PI/2).translate(xo+.014,ey,ez));
   // the louvred intake on the rear face: a frame and four slats
   P.addEquipment('hullDetail',box(.24,.12,.010).translate((x0+x1)/2,y0+.13,z0-.002));
   for(let i=0;i<4;i++)P.addEquipment('hullDark',box(.21,.010,.022).rotateX(.6).translate((x0+x1)/2,y0+.09+i*.027,z0-.010));
@@ -367,13 +376,15 @@ export function addT80UKCommandFit(P:TankBuilderPort):void{
     const roof=(x:number,z:number,what:string)=>hit(turret.meshes,[x,1.6,z],[0,-1,0],what,P.spec.id).y;
     // every turret seat is read before any part is laid, so no part seats on another
     const lwr=[-1,1].map(s=>({x:s*.50,z:.548,corners:LWR_FOOT.map(([dx,dz])=>roof(s*.50+dx,.548+dz,'a laser-warning head'))}));
-    const wind={x:0,z:-1.172,y:roof(0,-1.172,'the DVE-BS mast'),slope:[-.045,.045].map(dz=>roof(0,-1.172+dz,'the DVE-BS hinge')) as [number,number]};
-    const whips=[-1,1].map(s=>({x:s*.50,z:-1.072,under:MOUNT_PAD.map(([dx,dz])=>roof(s*.50+dx,-1.072+dz,'an antenna mount')),
-      cable:[.110,.135,.170].map(dz=>roof(s*.50,-1.072+dz,'an antenna cable')) as [number,number,number]}));
+    const wind={x:0,z:-1.172,slope:[-.035,.035].map(dz=>roof(0,-1.172+dz,'the DVE-BS hinge')) as [number,number]};
+    // the whip mounts stand where the rear roof flattens (z -0.97), inboard at x 0.36 so the right whip stays out of the
+    // commander's NSVT muzzle's 1.25 m reach, the left boss clear of the loader's hatch ring
+    const whips=[-1,1].map(s=>({s,x:s*.36,z:-.97,ring:BOSS_RING.map(([dx,dz])=>roof(s*.36+dx,-.97+dz,'an antenna mount')),
+      fitting:roof(s*.36-s*.215,-.97,'an antenna cable fitting')}));
     rearBasket(P,turret.meshes);
     for(const h of lwr)laserWarningHead(P,h.x,h.z,h.corners);
-    windSensorMast(P,wind.x,wind.z,wind.y,wind.slope);
-    for(const w of whips)antennaMount(P,w.x,w.z,w.under,w.cable);
+    windSensorMast(P,wind.x,wind.z,wind.slope);
+    for(const w of whips)antennaMount(P,w.x,w.z,w.s,w.ring,w.fitting);
     canvasRoll(P);
     auxiliaryPowerUnit(P,hull.meshes);
   }finally{turret.dispose();hull.dispose();}
