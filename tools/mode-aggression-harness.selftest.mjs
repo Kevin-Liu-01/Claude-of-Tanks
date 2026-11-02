@@ -123,8 +123,9 @@ const battles = SWEEPS.flatMap((sweep) => sweep.seeds.map((seed) => ({ ...sweep,
 // than T_REV, the slowest Horde hull's full-throttle reversal from -2 m/s through zero (ticks under the sample's
 // MOVE_EPS_MPS) plus one sample period. The reversal is re-derived here from movement.ts on each ground class: the pinned
 // ticks are the Chieftain Mk 3's on medium ground, and T_REV covers its soft-ground reversal too. Two planted stands are
-// the positive controls (Horde seed 2 from 14 s, the engaged hostile farthest from the humans held at zero throttle, then
-// driven off): 3 s and 1.5 x T_REV each count every slow sample they hold. The negative controls are deals of the sweep:
+// the positive controls (a standard battle, seed 1 from 30 s: the engaged bravo bot farthest from the alpha side held at
+// zero throttle, then driven off; a Horde zombie, 0.15 of its hull, dies braking before its stand begins): 3 s and
+// 1.5 x T_REV each count every slow sample they hold. The negative controls are deals of the sweep:
 // seed 19's Puma reversals and seed 18's one-sample jolt read clean in the still asks.
 const harnessSource = readFileSync(HARNESS, 'utf8');
 const pinned = /const STAND_MIN_TICKS = (\d+) \+ SAMPLE_TICKS;/.exec(harnessSource);
@@ -151,13 +152,13 @@ const T_REV_TICKS = Number(pinned[1]) + 30, T_REV_S = T_REV_TICKS * SIM_DT;
 assert.equal(reversal.medium, Number(pinned[1]), `the pin is the Chieftain Mk 3's reversal on medium ground (${reversal.medium} ticks)`);
 assert.ok(reversal.soft < T_REV_TICKS && reversal.hard < T_REV_TICKS, `T_REV (${T_REV_TICKS} ticks) covers it on every ground (${JSON.stringify(reversal)})`);
 const plantRun = (standS) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', '--mode=endless_horde', '--seed=2', '--capS=26', '--player=m60a2',
-    `--plantStand=${standS}`, '--plantFromS=14'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', '--mode=standard', '--seed=1', '--capS=120', '--player=m60a2',
+    `--plantStand=${standS}`, '--plantFromS=30'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let err = '';
   child.stderr.on('data', (d) => { err += d; });
   child.on('close', (code) => {
     if (code !== 0) { reject(new Error(`the planted ${standS} s stand exited ${code}: ${err.slice(-2000)}`)); return; }
-    resolve({ standS, line: err.split('\n').find((line) => line.startsWith('PLANT ')) ?? '' });
+    resolve({ standS, line: err.split('\n').findLast((line) => line.startsWith('PLANT ') && line.includes(' stood ')) ?? '' });
   });
 });
 
@@ -165,15 +166,18 @@ const sweepStarted = Date.now();
 const PLANTS = [3, 1.5 * T_REV_S];
 const finished = await pool([...battles.map((b) => () => run(b.mode, b.capS, b.seed, b.player)), ...PLANTS.map((standS) => () => plantRun(standS))], RECEIPT_JOBS);
 const results = finished.slice(0, battles.length);
+// a control that fails is reported with the sweep's misses, never before the sweep is judged
+const controlMisses = [];
 const plants = finished.slice(battles.length).map(({ standS, line }) => {
   const m = /stood ([\d.]+) s .*, (under way|destroyed): slow engaged samples (\d+), counted (\d+)/.exec(line);
-  assert.ok(m, `the planted ${standS} s stand ran: ${line}`);
+  if (!m) { controlMisses.push(`the planted ${standS} s stand did not run: ${line || 'no PLANT line'}`); return `${standS} s none`; }
   const [, stoodS, end, slow, counted] = m;
-  assert.equal(end, 'under way', `the planted hull drove off its ${standS} s stand: ${line}`);
-  assert.ok(Number(stoodS) >= standS, `the planted stand lasted its ${standS} s: ${line}`);
-  assert.ok(Number(slow) > 0 && Number(counted) === Number(slow), `a planted ${standS} s stand counts in full: ${line}`);
+  if (end !== 'under way') controlMisses.push(`the planted hull did not drive off its ${standS} s stand: ${line}`);
+  if (!(Number(stoodS) >= standS)) controlMisses.push(`the planted stand fell short of its ${standS} s: ${line}`);
+  if (!(Number(slow) > 0 && Number(counted) === Number(slow))) controlMisses.push(`a planted ${standS} s stand counts in full: ${line}`);
   return `${Number(standS.toFixed(3))} s ${counted}/${slow}`;
 });
+
 const runsOf = (mode) => results.filter((r) => r.mode === mode).sort((a, b) => a.seed - b.seed);
 const [hordeRuns, infectedRuns, frontRuns, flagRuns, ballRuns] = SWEEPS.map((sweep) => runsOf(sweep.mode));
 for (const sweep of SWEEPS) assert.equal(runsOf(sweep.mode).length, sweep.seeds.length, `${sweep.mode}: every deal of the sweep ran`);
@@ -309,7 +313,7 @@ if (touches < 20) misses.push(`the ball is played: ${touches.toFixed(1)} touches
 if (bothTouch < 7) misses.push(`both sides touch the ball on ${bothTouch} of 8 (want >= 7)`);
 if (strikers < 7) misses.push(`two strikers a side on the ball on ${strikers} of 8 (want >= 7)`);
 
-misses.push(...conductMisses);
+misses.push(...conductMisses, ...controlMisses);
 assert.deepEqual(misses, [], `the mode sweeps:\n${table}`);
 console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; `
   + `${results.length} battles in ${Math.round((Date.now() - sweepStarted) / 1000)} s (${RECEIPT_JOBS} at a time); a stand outlasts T_REV `

@@ -608,12 +608,13 @@ const rules = matchRulesetFor(mode, null, arrangement);
 const capS = Number(arg('capS', (rules.timeLimitS ?? 900) + 5));
 const STAND_MIN_S = Number(arg('standMinS', STAND_MIN_TICKS * SIM_DT));
 // --plantStand=<s> (a control of the stand measure, never a deal): from --plantFromS (default 20 s) the bravo bot engaged
-// and under way (over 2 m/s) farthest from any alpha hull (the least likely to die in its stand) is held at zero throttle, brakes on, until it has stood <s> seconds, then driven at
-// full throttle until the stand ends; the harness prints that stand's slow engaged samples and how many the measure
-// counted (a PLANT line on stderr)
+// and under way (over 2 m/s) farthest from any alpha hull (the least likely to die in its stand) is held at zero
+// throttle, brakes on, until it has stood <s> seconds, then driven at full throttle until the stand ends; the harness
+// prints that stand's slow engaged samples and how many the measure counted (a PLANT line on stderr) and ends the run.
+// A held hull destroyed before its stand ends is replaced by the next one (three tries).
 const PLANT_STAND_S = Number(arg('plantStand', 0));
 const PLANT_FROM_S = Number(arg('plantFromS', 20));
-const plant = { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0, done: false };
+const plant = { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0, done: false, tries: 0 };
 // --teamSurvival (Endless Horde only): every alpha seat reads as human while the mode controller steps, so the overrun
 // comes when the whole team is down instead of when the harness-driven player seat dies (a measurement shim, as the
 // authority engine's h1 shim; it would change Frontline's regroup gate, so it is refused there)
@@ -1340,7 +1341,7 @@ function trackStands(t) {
 function plantStep(t) {
   if (!PLANT_STAND_S || plant.done) return;
   if (plant.id == null) {
-    if (t < PLANT_FROM_S) return;
+    if (t < PLANT_FROM_S || plant.tries >= 3) return;
     let e = null, far = -1;
     for (const x of ents) {
       if (!x.aiCtl || adapter.isHuman(x) || normTeam(x.team) !== 'bravo' || !alive(x) || x.aiCtl.state !== 'engage' || !(Math.abs(x.state.speed ?? 0) > 2)) continue;
@@ -1349,31 +1350,36 @@ function plantStep(t) {
       if (near > far) { far = near; e = x; }
     }
     if (!e) return;
-    const ctl = e.aiCtl, update = ctl.update;
+    const ctl = e.aiCtl, update = ctl.update, id = e.id;
     ctl.update = (dt, timeS) => {
       update.call(ctl, dt, timeS);
+      if (plant.id !== id) return;
       if (plant.holding) { e.input.throttle = 0; e.input.steer = 0; e.input.brake = true; }
       else if (plant.leaving) { e.input.throttle = 1; e.input.steer = 0; e.input.brake = false; }
     };
-    plant.id = e.id; plant.holding = true;
+    plant.id = id; plant.holding = true; plant.tries++;
     return;
   }
-  const r = recs.get(plant.id);
+  const e = ents.find((x) => x.id === plant.id), r = recs.get(plant.id);
+  const ended = plant.from == null ? !alive(e) : r.slowFromT == null;
   if (plant.from == null && r.slowFromT != null) { plant.from = r.slowFromT; plant.still0 = r.engage.still; }
-  if (plant.from == null) return;
-  if (plant.holding && t - plant.from >= PLANT_STAND_S) { plant.holding = false; plant.leaving = true; }
-  if (r.slowFromT == null) {
-    plant.done = true; plant.leaving = false;
-    const e = ents.find((x) => x.id === plant.id);
-    console.error(`PLANT ${plant.id} stood ${(t - plant.from).toFixed(3)} s (held ${PLANT_STAND_S} s, T_REV ${STAND_MIN_S} s), `
-      + `${alive(e) ? 'under way' : 'destroyed'}: slow engaged samples ${plant.slow}, counted ${r.engage.still - plant.still0}`);
+  if (plant.from != null && plant.holding && t - plant.from >= PLANT_STAND_S) { plant.holding = false; plant.leaving = true; }
+  if (!ended) return;
+  if (!alive(e) && plant.tries < 3) {
+    console.error(`PLANT ${plant.id} destroyed ${plant.from == null ? 'before its stand' : `${(t - plant.from).toFixed(3)} s into its stand`}; planting the next hull`);
+    Object.assign(plant, { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0 });
+    return;
   }
+  plant.done = true; plant.leaving = false;
+  console.error(`PLANT ${plant.id} stood ${plant.from == null ? '0.000' : (t - plant.from).toFixed(3)} s (held ${PLANT_STAND_S} s, T_REV ${STAND_MIN_S} s), `
+    + `${alive(e) ? 'under way' : 'destroyed'}: slow engaged samples ${plant.slow}, counted ${r.engage.still - plant.still0}`);
 }
 for (; tick < ticks; tick++) {
   adapter.step();
   const t = adapter.timeS();
   trackStands(t);
   plantStep(t);
+  if (plant.done) break;
   for (const ev of adapter.drain()) onEvent(ev, t);
   if (horde.pendingArrivals.length) settleArrivals();
   if (front.pendingPlacements.length) settlePlacements();
