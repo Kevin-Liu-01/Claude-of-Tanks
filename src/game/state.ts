@@ -91,6 +91,7 @@ import {
   startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import * as detMath from '../sim/detMath.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
 import { createBotController, createOpeningPlan, openingRoute } from './botConstruction.ts';
 import type { BotMatch, OpeningPlan } from './botConstruction.ts';
@@ -121,7 +122,8 @@ import {
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
-import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
+import { CAMO_PAINT_BONUS } from '../sim/spotting.ts';
+import { createMatchSpotting } from '../sim/matchSpotting.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -158,7 +160,7 @@ import {
 } from './provingRange.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import {
-  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, consumableSpottingIds, type ConsumableId, type ConsumableState,
+  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, type ConsumableId, type ConsumableState,
 } from '../sim/consumableRules.ts';
 import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
@@ -290,6 +292,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     modeShellKnockScale?: number;
     modePhysics?: RulesetPhysics | null;
     equip?: string[];
+    /** Its paint's spotting bonus for this battle (sim/matchSpotting.ts), stamped by createBattleSpotting. */
+    camoBonus?: number;
     _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
     _lastImpactT?: number;
@@ -814,23 +818,19 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 }
 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
-  const groundHeightAt = groundFor(world).field.getHeightAt;
-  return createSpottingSystem({
+  // (268) one spotting construction for both drivers (sim/matchSpotting.ts); a hull's paint against this map's biome is
+  // stamped for the battle (the authority takes its seat record's)
+  for (const entity of game.tanks) entity.camoBonus = hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
+  return createMatchSpotting({
+    seed: game.matchSeed ?? COMBAT_SEED,
     getTanks: () => game.tanks as SpottingTank[],
     alwaysVisible: !!game.ruleset.alwaysVisible,
     raycast: world.raycast,
+    smokeScreens: () => game.auxiliarySmokeScreens || [],
+    timeS: () => game.timeS,
     // the match's ground (its craters and heaps), as the authority's spotting reads it
-    opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,groundHeightAt),
+    groundHeightAt: groundFor(world).field.getHeightAt,
     concealers: world.getConcealment?.() || [],
-    getCamoBonus: (tank) => {
-      const entity = tank as SpottingTank & { specId: string };
-      return hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
-    },
-    getEquipment: (tank) => {
-      const entity = tank as SpottingTank & { equip?: string[]; consumables?: ConsumableState };
-      return consumableSpottingIds(entity.consumables, entity.equip, game.timeS);
-    },
-    rng: mulberry32(9100),
   });
 }
 
@@ -1943,7 +1943,8 @@ function tryFire(
       bus.emit('ammo:depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
     }
   }
-  game.spotting?.notifyFired(entity.id, game.timeS);
+  // the shot's own calibre lifts the bloom, as the authority's (268: the page read the gun's)
+  game.spotting?.notifyFired(entity.id, game.timeS, shellSpec.caliberMm);
   notifyEnemyShot(game, entity);
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
@@ -2636,13 +2637,15 @@ function resolveCrushContacts(
   for (const contact of collider.pendingCrush) {
     const obstacle = contact.ob;
     if (obstacle.crushed) continue;
-    obstacle.crushed = true;
     const entity = contact.ent;
     const directionSign = Math.sign(entity.state.speed || 1);
-    const directionX = Math.sin(entity.state.yaw) * directionSign;
-    const directionZ = Math.cos(entity.state.yaw) * directionSign;
+    const directionX = detMath.sin(entity.state.yaw) * directionSign;
+    const directionZ = detMath.cos(entity.state.yaw) * directionSign;
     const overrunMps = Math.abs(entity.state.speed);
-    world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps);
+    // (268) the world first, as the authority crushes (destroyObstacle): a prop the world refuses stands and slows nothing.
+    // Marking it crushed first made the headless world (the authority's) refuse every crush, so it never fell for the rays.
+    if (world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps) === false) continue;
+    obstacle.crushed = true;
     entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
     // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
     if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
@@ -3104,8 +3107,6 @@ export function simStep(
   groundFor(world).overlay.setTime(game.timeS);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
-  stages?.stage(FRAME_STAGE.spotting);
-  stepSpotting(game, bus);
   retargetObjectiveBots(game);
   stages?.stage(FRAME_STAGE.bots);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
@@ -3142,6 +3143,10 @@ export function simStep(
   tickRepairs(game, bus, SIM_DT);
   stages?.stage(FRAME_STAGE.destruction);
   stepDestruction(game, bus, world);
+  // (268) sensing once the hulls, shells and structures have settled, where the authority senses (updateVisibility):
+  // the next step's bots read it on either driver
+  stages?.stage(FRAME_STAGE.spotting);
+  stepSpotting(game, bus);
   stages?.stage(FRAME_STAGE.mode);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
 }

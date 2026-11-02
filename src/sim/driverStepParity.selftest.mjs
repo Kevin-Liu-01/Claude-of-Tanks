@@ -14,8 +14,10 @@
 // hull carries one yet), its fourth slot fires as the fourth on both (268: the page's fire path capped a request at the
 // third slot, a rule the authority never had). The drivers still build their AIs apart (seeds, opening routes, enemy
 // lists), so the script stands in for the AI; one bot construction for both is the named follow-up (TESTS-OWED, 268).
-// Negative controls: one input on one side moved by a billionth at tick 300, and the page's ammunition switch a tick late,
-// are each found at their tick.
+// The real AI on both drivers (268, one bot construction: game/botConstruction.ts, sim/matchSpotting.ts): a forced 1v1,
+// the own hull charging a VT4A1 bot each driver built from the same seed and roster index, through the opening, spotting,
+// the engagement and its hits. Negative controls: one input on one side moved by a billionth at tick 300, the page's
+// ammunition switch a tick late, and the real-AI bot's heading a billionth off at tick 600, each found at its tick.
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -102,7 +104,7 @@ async function runBattle(ticks, perturb, chosen) {
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = 1;
-  setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
+  setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true, seed: SEED });
   const own = game.tanks.find((entity) => entity.isPlayer), foe = game.tanks.find((entity) => entity.team === 'enemy');
   game.tanks = [own, foe];
   game.allTanks = [own, foe];
@@ -188,6 +190,93 @@ async function runBattle(ticks, perturb, chosen) {
   return { divergence, exercised, own: own.state, foe: foe.state };
 }
 
+/**
+ * The real AI on both drivers: the page seats a forced 1v1 (the own hull and an AI_FOE_SPEC bot) on SEED, the authority
+ * the same two hulls where the page put them, each driver building the bot through its own path from the same seed and
+ * roster index. The own hull charges the bot, firing every 150 ticks; every tick both hulls (pose, motion, hit points,
+ * modules, ammunition) and the bot's controls and target are compared as bytes. `perturb(tick, foe)` may change the
+ * page's bot before its step.
+ */
+const AI_FOE_SPEC = 'vt4a1';
+async function runRealAi(ticks, perturb = null) {
+  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  const authored = pageWorld.heightField._layout.spawns;
+  const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
+  pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
+  const game = createGameState({ rosterSeed: 3 });
+  game.mapId = MAP;
+  spawnTanks(game, { scene: { remove() {} } });
+  for (const entity of game.allTanks) entity.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {} };
+  game.battleCount = 1;
+  // the page's roster pinned to the own hull and one bot (rosterState's debug flags), for its setup only
+  const previousDebug = globalThis.__DEBUG;
+  globalThis.__DEBUG = { flags: { forceRoster: [AI_FOE_SPEC], rosterExact: true } };
+  try {
+    setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'standard', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false, seed: SEED });
+  } finally {
+    globalThis.__DEBUG = previousDebug;
+  }
+  const [own, foe] = game.tanks;
+  assert.equal(game.tanks.length, 2, 'the pinned roster seats the own hull and one bot');
+  assert.ok(own.isPlayer && foe.aiCtl && foe.team === 'enemy', 'the second hull is a hostile bot');
+  const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
+    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoBonus: own.camoBonus, spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
+    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, camoBonus: foe.camoBonus, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
+  ] });
+  match.onMatchReady();
+  const authorityOf = (entity) => match.entityById.get(entity.id);
+  for (const entity of game.tanks) {
+    const authority = authorityOf(entity);
+    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
+      gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
+    const pos = entity.state.pos;
+    Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
+    pos.copy(authority.state.pos);
+    entity.input.aimPoint ??= new Vector3();
+    for (const state of [entity.state, authority.state]) if (state._sup) state._sup.x = NaN;
+  }
+  game.combatRng = mulberry32(SEED);
+  const bus = createBus(() => {});
+  const pageEmit = (type, payload) => bus.emit(type, payload);
+  const collider = createCollider(game, pageWorld);
+  // the own hull charges the bot: full throttle, turned onto it, firing every 150 ticks
+  const charge = (tick, self, other) => {
+    let error = Math.atan2(other.state.pos.x - self.state.pos.x, other.state.pos.z - self.state.pos.z) - self.state.yaw;
+    error = Math.atan2(Math.sin(error), Math.cos(error));
+    return { throttle: 1, steer: Math.max(-1, Math.min(1, error * 2)), brake: false, fire: tick % 150 === 90, shellSlot: 0, actionBits: 0,
+      aimLocked: false, ...encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z }) };
+  };
+  const start = { x: foe.state.pos.x, z: foe.state.pos.z };
+  const exercised = { pulls: 0, sightedAt: null };
+  let pulled = false;
+  let divergence = null;
+  for (let tick = 0; tick < ticks && !divergence; tick++) {
+    match.step({ dt: 1 / 60, inputs: new Map([[own.id, charge(tick, authorityOf(own), authorityOf(foe))]]) });
+    applyPlayerInput(own, charge(tick, own, foe), pageEmit);
+    perturb?.(tick, foe);
+    simStep(game, bus, pageWorld, null, collider);
+    if (foe.input.fire && !pulled) exercised.pulls++;
+    pulled = foe.input.fire;
+    if (exercised.sightedAt === null && foe.aiCtl.targetId === own.id) exercised.sightedAt = tick;
+    for (const entity of game.tanks) {
+      const page = hullBytes(entity), authority = hullBytes(authorityOf(entity));
+      const index = page.findIndex(([, bytes], i) => bytes !== authority[i][1]);
+      if (index >= 0) { divergence = { tick, hull: entity === own ? 'own' : 'bot', field: page[index][0] }; break; }
+    }
+    const bot = authorityOf(foe);
+    for (const key of ['throttle', 'steer', 'brake', 'fire', 'aimLocked', 'shellSlot', 'actionBits']) {
+      if (!divergence && foe.input[key] !== bot.input[key]) divergence = { tick, hull: 'bot', field: `input.${key}` };
+    }
+    for (const axis of ['x', 'y', 'z']) if (!divergence && hex(foe.input.aimPoint[axis]) !== hex(bot.input.aimPoint[axis])) divergence = { tick, hull: 'bot', field: `input.aimPoint.${axis}` };
+    if (!divergence && foe.aiCtl.targetId !== bot.aiCtl.targetId) divergence = { tick, hull: 'bot', field: 'targetId' };
+  }
+  Object.assign(exercised, { movedM: Math.hypot(foe.state.pos.x - start.x, foe.state.pos.z - start.z), botHp: foe.combat.hp / foe.combat.maxHp,
+    ownHp: own.combat.hp / own.combat.maxHp });
+  authorityWorld.release?.();
+  pageWorld.release?.();
+  return { divergence, exercised };
+}
+
 // ---- the same seed, world, hulls and inputs: byte-identical every tick ------------------------------------------------
 const TICKS = 900;
 const same = await run(TICKS);
@@ -213,6 +302,21 @@ const four = await run(TICKS, null, { fourthShell: true });
 assert.equal(four.divergence, null, `with a fourth shell the two steps part at ${JSON.stringify(four.divergence)}`);
 assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
 
+// ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
+// 2160 ticks: the opening, the sighting near 1780, the shots both ways and the bot's hits; the hulls' contact at 2195 is the
+// next divergence (the ram's resolution, TESTS-OWED 268)
+const REAL_AI_TICKS = 2160;
+const real = await runRealAi(REAL_AI_TICKS);
+assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
+assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
+assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
+assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
+assert.ok(real.exercised.botHp < 1, `the own hull hit the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
+const BOT_NUDGE = 600;
+const botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
+assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
+assert.equal(botNudged.divergence.tick, BOT_NUDGE, `at the tick it was seeded (${JSON.stringify(botNudged.divergence)})`);
+
 const SWITCH = 200;
 const late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH && side === 'page' && input.shellSlot === 1
   ? { ...input, shellSlot: 0 } : null));
@@ -226,4 +330,7 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `an ammunition switch and the emptied slot refused once at tick `
   + `${denied.page[0].tick}, its trigger held off on a ready gun at ${DENIED_FIRE_TICK}; given a fourth shell, its slot fired as the fourth at `
   + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
-  + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field})`);
+  + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field}); `
+  + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
+  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, took ${((1 - real.exercised.botHp) * 100).toFixed(1)} % of its hp), `
+  + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`);

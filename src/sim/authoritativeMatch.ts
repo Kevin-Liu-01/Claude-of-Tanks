@@ -76,7 +76,7 @@ import type {
   DamageShellSpec,
   HitEvent,
 } from './damage.ts';
-import { createSpottingSystem } from './spotting.ts';
+import { createMatchSpotting } from './matchSpotting.ts';
 import type {
   ConcealerDisc,
   SpottingRayHit,
@@ -110,7 +110,7 @@ import {
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import {
   APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, DEFAULT_CONSUMABLE_LOADOUT, GOVERNOR_STRAIN_HP_FRACTION, apsIntercepts,
-  botConsumableLoadout, consumableSpottingIds, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
+  botConsumableLoadout, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
   suppressNewFire, tickConsumables, useConsumableSlot as useConsumableSlotRule,
   type ConsumableHost, type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
@@ -174,6 +174,8 @@ export interface AuthoritativePlayerRecord {
   spawn?: AuthoritativeSpawn;
   bot?: boolean;
   equipment?: readonly string[] | null;
+  /** The seat's paint bonus against the map (sim/matchSpotting.ts camoBonus); absent, none. */
+  camoBonus?: number;
   /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
@@ -254,6 +256,8 @@ export interface AuthoritativeEntity {
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
+  /** Its paint's spotting bonus for this match (sim/matchSpotting.ts), from its seat record. */
+  camoBonus?: number;
   /** Impact physics: closing speed already priced in the crash still resolving, and when it last grew. */
   _impactAccumMps?: number;
   _impactAccumT?: number;
@@ -979,6 +983,7 @@ export function createAuthoritativeMatch({
       input,
       bot,
       isPlayer: !bot,
+      camoBonus: Number.isFinite(record.camoBonus) ? record.camoBonus : 0,
       connected: true,
       kills: 0,
       damage: 0,
@@ -1018,18 +1023,16 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
     ? worldCollision.getConcealment() ?? [] : [];
-  const spotting = createSpottingSystem({
+  // (268) one spotting construction for both drivers (sim/matchSpotting.ts): the solo battle builds its spotting the same way
+  const spotting = createMatchSpotting({
+    seed,
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
-    opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
+    smokeScreens: () => auxiliarySmokeScreens,
+    timeS: () => timeS,
+    groundHeightAt: heightField.getHeightAt,
     concealers: worldConcealers,
-    getEquipment: (entity) => {
-      const tank = entityById.get(entity.id);
-      return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
-    },
-    getCamoBonus: () => 0,
-    rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
