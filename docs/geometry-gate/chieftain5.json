@@ -1066,5 +1066,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/chieftain5_x_source.glb",
+  "sha256": "2a781a798e4ffe8f99ab9f6750b8db8e132b236de51a021cac28cbb82f268e79"
+ }
 }

@@ -1066,5 +1066,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/sabra_mk2_x_source.glb",
+  "sha256": "5ea261fb70f728d3547159a6a6cf1519af2403e05e57c02d87d394ec9f573a2b"
+ }
 }
