@@ -69,9 +69,16 @@ export const config = {
  */
 export function needsDocumentRewrite(url: URL): boolean {
   const path = url.pathname;
+  if (galleryTankId(url)) return true;
   if (path === '/cn' || path.startsWith('/cn/')) return true;
   if (path === '/studio' || path === '/studio/') return true;
   return (path === '/' || path === '/index.html') && url.searchParams.has('room');
+}
+
+const GALLERY_PATHS = new Set(['/gallery', '/gallery/', '/gallery.html', '/cn/gallery', '/cn/gallery/', '/cn/gallery.html']);
+/** The tank a Gallery link names (`/gallery?id=<id>` or its /cn twin), else null. */
+function galleryTankId(url: URL): string | null {
+  return GALLERY_PATHS.has(url.pathname) ? url.searchParams.get('id') || null : null;
 }
 
 /** @param {Request} request */
@@ -103,8 +110,37 @@ export default async function middleware(request: Request): Promise<Response> {
   return next(cookie ? { headers: { 'set-cookie': cookie } } : {});
 }
 
-/** Room-link and studio metadata, and the localized `/cn` 404; null when the request passes through unchanged. */
+/** A copy of a static shell's headers for a rewritten document: no stale length, hash or encoding, the deployment pin kept. */
+function rewrittenHeaders(shell: Response, cookie: string | null): Headers {
+  const headers = new Headers(shell.headers);
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  headers.delete('etag');
+  headers.delete('last-modified');
+  headers.set('content-type', 'text/html; charset=utf-8');
+  if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) headers.append('set-cookie', cookie);
+  return headers;
+}
+
+/**
+ * A link to one tank (og-r2, 2026-11-01): the Gallery's own document in its language, sharing that tank's name, link
+ * and card (src/presentation/tankShareMeta.ts, one table and nothing more); null for a tank the table does not know.
+ */
+async function tankShareResponse(request: Request, requestUrl: URL, id: string, cookie: string | null): Promise<Response | null> {
+  const { tankShareFor, withTankShare } = await import('./src/presentation/tankShareMeta.ts');
+  const share = tankShareFor(id);
+  if (!share) return null;
+  const shellUrl = new URL(requestUrl.pathname.startsWith('/cn/') ? '/cn/gallery' : '/gallery', requestUrl.origin);
+  shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
+  const shell = await fetch(shellUrl, { headers: { accept: 'text/html', cookie: request.headers.get('cookie') || '' } });
+  if (!shell.ok) return null;
+  return new Response(withTankShare(await shell.text(), share, requestUrl), { status: shell.status, headers: rewrittenHeaders(shell, cookie) });
+}
+
+/** Tank links, room-link and studio metadata, and the localized `/cn` 404; null when the request passes through unchanged. */
 async function documentResponse(request: Request, requestUrl: URL, cookie: string | null): Promise<Response | null> {
+  const tankId = galleryTankId(requestUrl);
+  if (tankId) return tankShareResponse(request, requestUrl, tankId, cookie);
   // The route table alone (no imports) settles most `/cn` requests: a static localized page that is neither the studio
   // nor a room link passes through without the catalogs (2026-10-22, nav-perf-240: every /cn page view loaded both).
   const { PUBLIC_ROUTE_RECORDS, resolveLocalePath } = await import('./src/ui/localeRouting.ts');
