@@ -147,7 +147,8 @@ function runChild(argv, { niced, timeoutS, label }) {
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
 /** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
- *  step: never recorded, so they stay due for a checkout that can run them; this chain does not try them again. */
+ *  step: never recorded as run. Stamped with their reason when the step names it (268: current until what would make
+ *  them runnable moves), else left due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
 /** A run's skip report: the file the chain passed in a step's `skipped` flag, `{ id: reason }` ({} when none). */
 const skipFile = (step, label) => (step.skipped ? join(qaDir, `${stamp}-${step.name}-${label}.skipped.json`) : null);
@@ -282,8 +283,9 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
     : forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
   const tried = notRunHere[name] ?? {};
-  if (resolved.ids.some((id) => tried[id])) {
-    const left = resolved.ids.filter((id) => !tried[id]);
+  // (268) by membership: a reason may be empty (a stamp refuses it; the id is still tried)
+  if (resolved.ids.some((id) => Object.hasOwn(tried, id))) {
+    const left = resolved.ids.filter((id) => !Object.hasOwn(tried, id));
     log(`[regen] ${name}: ${resolved.ids.length - left.length} id(s) not runnable here stay due (tried this chain)`);
     resolved.ids = left;
     if (!left.length) resolved.mode = 'none';
@@ -314,12 +316,20 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
   const skipped = run.skipped ?? {};
+  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned oracle, a page error) is stamped with its
+  // reason, so it reads current until what would make it runnable moves; one it cannot name stays due
+  const stamps = {}, unnamed = [];
+  for (const [id, why] of Object.entries(skipped)) {
+    const stamp = typeof why === 'string' && why.trim() ? definition.stamp?.(why) : null;
+    if (stamp) stamps[id] = { ...stamp, reason: why };
+    else unnamed.push(`${id} (${why || 'no reason'})`);
+  }
   if (Object.keys(skipped).length) {
     Object.assign(notRunHere[name] ??= {}, skipped);
-    log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here, left due: ${Object.entries(skipped).slice(0, 6)
-      .map(([id, why]) => `${id} (${why})`).join(', ')}`);
+    log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here: ${Object.keys(stamps).length} stamped`
+      + `${unnamed.length ? `, ${unnamed.length} left due (no stamp names the reason): ${unnamed.slice(0, 6).join(', ')}` : ''}`);
   }
-  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)) });
+  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)), stamps });
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;
@@ -515,15 +525,18 @@ try {
     for (const [name, tried] of Object.entries(notRunHere)) {
       const entry = summary.final[name];
       if (!entry || entry.mode === 'none') continue;
-      const notRunnable = entry.ids.filter((id) => tried[id]);
+      const notRunnable = entry.ids.filter((id) => Object.hasOwn(tried, id));
       if (!notRunnable.length) continue;
       entry.notRunHere = Object.fromEntries(notRunnable.map((id) => [id, tried[id]]));
-      entry.ids = entry.ids.filter((id) => !tried[id]);
+      entry.ids = entry.ids.filter((id) => !Object.hasOwn(tried, id));
       if (!entry.ids.length) entry.mode = 'none';
       log(`[regen] final ${name}: ${notRunnable.length} id(s) not runnable here stay due (${notRunnable.slice(0, 6).join(', ')})`);
     }
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
-    for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
+    for (const [name, entry] of Object.entries(summary.final)) {
+      const stamped = Object.keys(entry.stamped ?? {}).length;
+      log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}${stamped ? ` (${stamped} stamped not runnable here)` : ''}`);
+    }
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
     if (VERIFY && !DRY) await verifyRuns();
     // The release check takes the union of the tank ids this chain regenerated (every id when a step ran whole-fleet).

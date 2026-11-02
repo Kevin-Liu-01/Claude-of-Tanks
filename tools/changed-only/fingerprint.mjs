@@ -407,6 +407,12 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   };
   const outKey = (name, id) => H(...stepStates[name].step.outputs.map((table) => `${table}:${rowOf(table, id)}`));
   const fileHash = (file) => graph.hashFile(abs(file)).slice(0, 16);
+  // (268) A stamp's key: what would make an id the step could not run here runnable. A stamp naming files (an absent or
+  // unpinned oracle) keys the step's tool and those files' bytes, or their absence; one naming none (a page error) keys
+  // the id's whole input key, as of the run that stamped it.
+  const stampKey = (name, id, files, input = inKey(name, id)) => (files.length
+    ? H(`stamp:tool:${stepStates[name].tool}`, ...files.map((file) => `file:${file}:${graph.hashLargeFile(abs(file))}`))
+    : H(`stamp:in:${input}`));
 
   // The world steps' per-map keys (tools/changed-only/world.mjs): null for a tree or fixture without world rows.
   const worldConfig = { ...DEFAULT_CONFIG.world, ...(config.world ?? {}) };
@@ -429,7 +435,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     // why an id cannot run here: the per-id file its row names is absent from this checkout (266, `inputField`)
     inputAbsent: (name, id) => stepStates[name].step.outputs.map((table) => absentInputs[table]?.[id]).find(Boolean) ?? null,
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
-    inKey, outKey, builderKey, rowsKey, fileHash,
+    inKey, outKey, builderKey, rowsKey, fileHash, stampKey,
     partition: {
       core: [...coreSet].map(rel).sort(),
       groups: Object.fromEntries(Object.entries(groupFiles).map(([group, files]) => [group, [...files].map(rel).sort()])),
@@ -444,8 +450,12 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 // ---------------------------------------------------------------- manifest
 
 export function emptyManifest() {
-  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {}, comps: {} };
+  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {}, comps: {},
+    stamps: {} };
 }
+
+/** A stamp's reason on one manifest line: whitespace runs as one space, at most 240 characters. */
+const stampReason = (text) => String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
 
 export function parseManifest(text) {
   const manifest = emptyManifest();
@@ -462,6 +472,8 @@ export function parseManifest(text) {
     else if (kind === 'key') (manifest.keys[fields[0]] ??= {})[fields[1]] = { in: fields[2], out: fields[3] };
     else if (kind === 'file') (manifest.files[fields[0]] ??= {})[fields[1]] = fields[2];
     else if (kind === 'comp') manifest.comps[fields[0]] = fields[1];
+    else if (kind === 'stamp') (manifest.stamps[fields[0]] ??= {})[fields[1]] = { key: fields[2], out: fields[3], code: fields[4] ?? '',
+      files: fields[5] ? fields[5].split(',') : [], reason: fields[6] ?? '' };
     else return null;
   }
   return manifest;
@@ -478,6 +490,9 @@ export function serializeManifest(manifest) {
   for (const [step, keys] of Object.entries(manifest.keys)) for (const [id, key] of Object.entries(keys)) lines.push(`key\t${step}\t${id}\t${key.in}\t${key.out}`);
   for (const [step, files] of Object.entries(manifest.files)) for (const [file, hash] of Object.entries(files)) lines.push(`file\t${step}\t${file}\t${hash}`);
   for (const [name, hash] of Object.entries(manifest.comps ?? {})) lines.push(`comp\t${name}\t${hash}`);
+  for (const [step, stamps] of Object.entries(manifest.stamps ?? {})) for (const [id, stamp] of Object.entries(stamps)) {
+    lines.push(['stamp', step, id, stamp.key, stamp.out, stamp.code, stamp.files.join(','), stampReason(stamp.reason)].join('\t'));
+  }
   return `#schema ${SCHEMA}\n${lines.sort().join('\n')}\n`;
 }
 
@@ -521,13 +536,28 @@ export function refreshComponents(manifest, state) {
   return manifest;
 }
 
-/** Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:
- *  ids the tool reported it could not run here (steps.mjs `skipped`), left as they were recorded, so they stay due. */
-export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set() } = {}) {
-  const keys = (manifest.keys[name] ??= {});
+/**
+ * Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:
+ * ids the tool reported it could not run here (steps.mjs `skipped`), left as they were recorded. (268) `stamps`: those of
+ * them the step's `stamp` could name, { id: { code, reason, files } }: each keeps its key row and gets a stamp, keyed on
+ * what would make it runnable (stampKey) and holding the output its last run left (its key row's, else the first stamp's),
+ * so an output edited since still reads due. A run that measures an id clears its stamp.
+ */
+export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set(), stamps = {} } = {}) {
+  const keys = (manifest.keys[name] ??= {}), stamped = ((manifest.stamps ??= {})[name] ??= {});
   const ran = ids ?? after.ids;
-  if (!ids) for (const id of Object.keys(keys)) if (!after.ids.includes(id)) delete keys[id];
-  for (const id of ran) if (!skip.has(id)) keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
+  if (!ids) for (const record of [keys, stamped]) for (const id of Object.keys(record)) if (!after.ids.includes(id)) delete record[id];
+  for (const id of ran) {
+    const stamp = stamps[id];
+    if (stamp) {
+      stamped[id] = { key: after.stampKey(name, id, stamp.files, inKeys[id]), out: keys[id]?.out ?? stamped[id]?.out ?? after.outKey(name, id),
+        code: stamp.code, files: [...stamp.files], reason: stampReason(stamp.reason) };
+    } else if (!skip.has(id)) {
+      keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
+      delete stamped[id];
+    }
+  }
+  if (!Object.keys(stamped).length) delete manifest.stamps[name];
   manifest.files[name] = Object.fromEntries(after.steps[name].outputFiles.map((file) => [file, after.fileHash(file)]));
 }
 
@@ -568,15 +598,18 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
     const recordedRoster = state.rosterOf ? state.rosterOf(manifest) : manifest.roster;
     if (recordedRoster !== state.roster) { all([recordedRoster == null ? 'never recorded' : 'roster'], 'full'); continue; }
     if (!step.decomposed) { all(step.reasons); continue; }
-    const keys = manifest.keys[name] ?? {};
-    const changed = [];
+    const keys = manifest.keys[name] ?? {}, stamps = manifest.stamps?.[name] ?? {};
+    const changed = [], stamped = {};
     for (const id of state.ids) {
+      // (268) an id the step could not run here, stamped with why: current while that holds (stampProblem)
+      const stamp = stamps[id], loose = stamp ? stampProblem(state, step, name, id, stamp) : null;
+      if (stamp && !loose) { stamped[id] = `${stamp.code}: ${stamp.reason}`; continue; }
       const recorded = keys[id];
-      if (!recorded) { changed.push(id); reasons[id] = ['no row']; continue; }
+      if (!recorded) { changed.push(id); reasons[id] = ['no row', ...(loose ? [loose] : [])]; continue; }
       const why = [];
       if (recorded.in !== state.inKey(name, id)) why.push(...(state.reasonsFor ? state.reasonsFor(manifest, name, id) : reasonsFor(manifest, state, name, id)));
       if (recorded.out !== state.outKey(name, id)) why.push('output edited outside chain');
-      if (why.length) { changed.push(id); reasons[id] = why; }
+      if (why.length) { changed.push(id); reasons[id] = loose ? [...why, loose] : why; }
     }
     // A differing output file none of whose ids changed was edited outside its rows (a frame or format edit): only a
     // whole-fleet run rewrites it the way a full regen would.
@@ -588,9 +621,22 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
       all([...frameEdits.map(([file]) => `output file edited: ${file}`), ...missingFiles.map((file) => `output file unrecorded: ${file}`)], 'full');
       continue;
     }
-    result[name] = { mode: changed.length === 0 ? 'none' : changed.length === state.ids.length ? 'all' : 'ids', ids: changed, reasons };
+    result[name] = { mode: changed.length === 0 ? 'none' : changed.length === state.ids.length ? 'all' : 'ids', ids: changed, reasons,
+      ...(Object.keys(stamped).length ? { stamped } : {}) };
   }
   return result;
+}
+
+/** (268) Why a stamp no longer makes its id current (null while it holds): it names no code or reason, the step reports
+ *  no skips, what would make the id runnable moved (stampKey), or its output moved since the stamp was taken. */
+function stampProblem(state, step, name, id, stamp) {
+  if (!stamp.code || !stamp.reason) return 'stamp without a reason';
+  if (!step.step.skipped || !state.stampKey) return 'stamp on a step that reports no skips';
+  if (stamp.key !== state.stampKey(name, id, stamp.files)) {
+    return stamp.files.length ? `stamp's inputs moved (${stamp.files.join(', ')})` : 'stamp\'s inputs moved (the id\'s inputs)';
+  }
+  if (stamp.out !== state.outKey(name, id)) return 'output edited outside chain since the stamp';
+  return null;
 }
 
 export const tankHash = sha256;

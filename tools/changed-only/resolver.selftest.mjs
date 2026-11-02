@@ -8,7 +8,8 @@ import { dirname, join } from 'node:path';
 import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
-import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
+import { oraclePinError } from '../geometry-gate-policy.mjs';
+import { SPEC_COMBAT, SPEC_REST, gateStamp } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
@@ -373,7 +374,7 @@ put('src/vehicles/anchors.generated.ts', anchors);
   const sha = (text) => createHash('sha256').update(text).digest('hex');
   const gateCfg = { ...config, tables: { ...config.tables, records: { kind: 'jsonRow', files: ['docs/gate/*.json'], idsOnly: true, inputField: 'oracle' } } };
   const gateSteps = () => [...baseSteps(), { name: 'gate', device: 'gpu', tool: 'tools/gen-gate.mjs', flags: [], full: [],
-    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [] }];
+    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [], skipped: '--skipped' }];
   const named = (a1 = sha('oracle a1 v1')) => ({ records: { a1: { path: '/models/a1.glb', sha256: a1 }, a2: { path: '/models/a2.glb', sha256: sha('oracle a2 v1') } } });
   // b1's spec chain names a1: a1's oracle still keys only a1
   const gateRows = (a1) => rowsData({ rows: { ...rowsData().rows, records: { a1: 'g1', a2: 'g2' } }, named: named(a1),
@@ -411,6 +412,66 @@ put('src/vehicles/anchors.generated.ts', anchors);
   assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
   put('public/models/a1.glb', 'oracle a1 v1');
   put('public/models/a2.glb', 'oracle a2 v1');
+  // 268: a stamp (recordStep `stamps`) makes an id the tool could not run here current while what would make it runnable
+  // holds. b1 has never been recorded (no row), as the gate's ids whose oracles no checkout holds.
+  const g1 = gate(), stampManifest = bootstrap(g1);
+  delete stampManifest.keys.gate.b1;
+  assert.deepEqual(changed(resolveChanged(g1, stampManifest)).gate, 'ids:b1', 'an id never recorded is due ("no row")');
+  const absentStamp = { code: 'oracle-absent', reason: 'oracle absent here (/models/b1.glb)', files: ['public/models/b1.glb'] };
+  const stampB1 = (manifest, stamp, at = g1) => recordStep(manifest, 'gate', ['b1'], { b1: at.inKey('gate', 'b1') }, at,
+    { skip: new Set(['b1']), stamps: { b1: stamp } });
+  stampB1(stampManifest, absentStamp);
+  result = resolveChanged(g1, stampManifest);
+  assert.deepEqual([changed(result).gate, result.gate.stamped], ['none:', { b1: 'oracle-absent: oracle absent here (/models/b1.glb)' }],
+    'a missing oracle, stamped with its reason, reads current');
+  const text = serializeManifest(stampManifest);
+  assert.equal(serializeManifest(parseManifest(text)), text, 'the stamp line round-trips');
+  assert.equal(changed(resolveChanged(g1, parseManifest(text))).gate, 'none:', 'and reads current from the table');
+  put('src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 5 };\n');
+  assert.equal(changed(resolveChanged(gate(), stampManifest)).gate, 'none:', 'its build moving cannot make it runnable: still current');
+  put('src/vehicles/profiles/beta.ts', beta);
+  put('public/models/b1.glb', 'oracle b1 v1');
+  result = resolveChanged(gate(), stampManifest);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp\'s inputs moved (public/models/b1.glb)']],
+    'dropping the oracle in makes it due');
+  renameSync(join(root, 'public/models/b1.glb'), join(root, 'public/models/b1.away'));
+  assert.equal(changed(resolveChanged(gate(), stampManifest)).gate, 'none:', 'and taking it away again makes it current');
+  const reasonless = parseManifest(text.replace('\toracle absent here (/models/b1.glb)', '\t'));
+  assert.equal(reasonless.stamps.gate.b1.reason, '', 'mutant: the stamp line keeps its code and loses its reason');
+  result = resolveChanged(g1, reasonless);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp without a reason']],
+    'mutant: a stamp without a reason stays red');
+  const pageError = bootstrap(g1);
+  delete pageError.keys.gate.b1;
+  stampB1(pageError, { code: 'page-error', reason: 'page error, previous row kept: no __GEO_REPORT', files: [] });
+  assert.equal(changed(resolveChanged(g1, pageError)).gate, 'none:', 'a page error, stamped, reads current');
+  put('src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 5 };\n');
+  result = resolveChanged(gate(), pageError);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp\'s inputs moved (the id\'s inputs)']],
+    'its inputs moving (the page error\'s source) makes it due');
+  put('src/vehicles/profiles/beta.ts', beta);
+  stampB1(pageError, { code: 'page-error', reason: 'page error, previous row kept: no __GEO_REPORT', files: [] });
+  const handEdited = state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...gateRows().rows, records: { a1: 'g1', a2: 'g2', b1: 'g3' } },
+    named: named(), chains: gateRows().chains }) });
+  assert.deepEqual(changed(resolveChanged(handEdited, pageError)).gate, 'ids:b1', 'its output edited since the stamp makes it due');
+  recordStep(pageError, 'gate', ['b1'], { b1: g1.inKey('gate', 'b1') }, g1);
+  assert.deepEqual([pageError.stamps.gate, pageError.keys.gate.b1?.in], [undefined, g1.inKey('gate', 'b1')], 'a run that measures it clears the stamp');
+  const foreign = bootstrap(g1);
+  delete foreign.keys.sizes.b1;
+  foreign.stamps.sizes = { b1: { key: 'x', out: 'y', code: 'page-error', files: [], reason: 'no __GEO_REPORT' } };
+  assert.ok(resolveChanged(g1, foreign).sizes.reasons.b1.includes('stamp on a step that reports no skips'), 'a stamp on a step without skips is no stamp');
+  // the gate's own words are what gateStamp reads: its skip templates (tools/geometry-gate.mjs) and its pin errors
+  // (tools/geometry-gate-policy.mjs), so a reworded message cannot quietly stop stamping
+  const gateSource = readFileSync(join(import.meta.dirname, '../geometry-gate.mjs'), 'utf8');
+  assert.ok(gateSource.includes('skipped[id] = `oracle absent here (${referenceSources[id]})`')
+    && gateSource.includes('skipped[id] = `page error, previous row kept: ${error.message}`'), 'the gate words its skips as gateStamp reads them');
+  const oracleFile = '/models/x.glb', bytes = 'a'.repeat(64), oracleStamp = (code) => ({ code, files: ['public/models/x.glb'] });
+  assert.deepEqual([gateStamp(`oracle absent here (${oracleFile})`),
+    gateStamp(`page error, previous row kept: ${oraclePinError(oracleFile, bytes, { [oracleFile]: { sha256: 'b'.repeat(64) } })}`),
+    gateStamp(`page error, previous row kept: ${oraclePinError(oracleFile, bytes, {})}`),
+    gateStamp('page error, previous row kept: no __GEO_REPORT'), gateStamp(''), gateStamp('page error, previous row kept: ')],
+  [oracleStamp('oracle-absent'), oracleStamp('oracle-unpinned'), oracleStamp('oracle-unpinned'), { code: 'page-error', files: [] }, null, null],
+  'gateStamp reads the gate\'s reasons and refuses an empty one');
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);

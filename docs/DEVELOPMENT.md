@@ -1256,10 +1256,16 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
-- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`) names it in the
-  report its step's `skipped` flag asks for. The chain records the other ids, leaves that one due without retrying it
-  or failing, and names it in the final resolve; `tank:changed --explain` says the file is absent here. A checkout
-  holding the oracle clears it.
+- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`, or with a page
+  error that keeps the previous row) names it, with its reason, in the report its step's `skipped` flag asks for. The
+  chain records the other ids and stamps each named one whose reason the step's `stamp` reads (268, `gateStamp` in
+  `tools/changed-only/steps.mjs`): an absent or unpinned oracle is keyed on that file's presence and bytes and the
+  step's tool, any other page error on the id's whole input key. A stamped id reads current, in the chain and in
+  `fresh.selftest.mjs`, until that key moves (the oracle appears, a fix lands), and never over an output edited since
+  its last run; a reason the step cannot read gets no stamp, so the id stays due. The chain does not retry the id or
+  fail, and names any still due in the final resolve; `tank:changed --explain` says why. A stamp is the one key that
+  reads a gitignored file's presence: it says the id cannot run here, so a checkout holding the oracle finds it due and
+  clears it.
 - The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
   `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
   (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran

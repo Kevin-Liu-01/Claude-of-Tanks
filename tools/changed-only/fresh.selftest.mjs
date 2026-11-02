@@ -5,7 +5,9 @@
 // `tank:regen:changed -- --check --all` re-runs every generator's own --check and covers it, and any resolver miss.
 // A missing or unreadable manifest fails (Main 2026-10-29, 265: a guard that passes vacuously is no guard); the
 // negative controls below prove, on the same state, that a generator edited after the bootstrap, an input row moved
-// for one id and an output row edited by hand are each caught.
+// for one id and an output row edited by hand are each caught. (268) An id a step could not run here (the gate's absent
+// or unpinned oracles, its page errors) reads current through the chain's stamp, keyed on what would make it runnable;
+// a stamp without a reason, or over an output edited since, is caught.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -73,5 +75,25 @@ assert.deepEqual([staleRow.mode, staleRow.ids, staleRow.reasons[other]], ['ids',
 const reformatted = resolveChanged(view({ fileHash: staleFile(rowFile) }), manifest)[assets];
 assert.deepEqual([reformatted.mode, reformatted.reasons['*']], ['full', [`output file edited: ${rowFile}`]],
   `${assets}: ${rowFile} edited without its row is named`);
-console.log(`changed-only fresh.selftest: PASS (${STEPS.length} steps x ${state.ids.length} ids current for ${MANIFEST_PATH}; `
-  + `negative controls: an edited ${step} generator, a moved input, a hand-edited output and a stale ${rowFile} caught)`);
+// (6) 268: an id a step could not run here reads current through its stamp (fingerprint.mjs stampProblem), never by a
+// missing row: one gate id unrecorded is due, stamped with a reason it is current, and the same stamp without its reason,
+// or over an output edited since, is due.
+const gateStep = STEPS.find((entry) => entry.stamp).name, probe = state.ids.find((each) => manifest.keys[gateStep]?.[each]);
+const unrecorded = structuredClone(manifest);
+delete unrecorded.keys[gateStep][probe];
+delete unrecorded.stamps[gateStep]?.[probe];
+const gateOf = (m, at = state) => resolveChanged(at, m, { steps: [gateStep] })[gateStep];
+assert.deepEqual([gateOf(unrecorded).ids, gateOf(unrecorded).reasons[probe]], [[probe], ['no row']], `${gateStep}: an unrecorded ${probe} is due`);
+const stamped = (reason) => { const m = structuredClone(unrecorded);
+  (m.stamps[gateStep] ??= {})[probe] = { key: state.stampKey(gateStep, probe, []), out: state.outKey(gateStep, probe), code: 'page-error', files: [], reason };
+  return m; };
+assert.deepEqual([gateOf(stamped('page error, previous row kept: probe')).mode, gateOf(stamped('page error, previous row kept: probe')).stamped?.[probe]],
+  ['none', 'page-error: page error, previous row kept: probe'], `${gateStep}: stamped with its reason, ${probe} reads current`);
+assert.ok(gateOf(stamped('')).reasons[probe]?.includes('stamp without a reason'), `${gateStep}: a stamp without a reason stays red`);
+assert.ok(gateOf(stamped('page error, previous row kept: probe'), view({ outKey: (name, tankId) => `${state.outKey(name, tankId)}${tankId === probe ? '~hand' : ''}` }))
+  .reasons[probe]?.includes('output edited outside chain since the stamp'), `${gateStep}: a stamp never hides a hand edit`);
+const notRunHere = Object.values(result).flatMap((entry) => Object.values(entry.stamped ?? {}));
+const byCode = Object.entries(Object.groupBy(notRunHere, (why) => why.split(':')[0])).map(([code, list]) => `${code} ${list.length}`).join(', ');
+console.log(`changed-only fresh.selftest: PASS (${STEPS.length} steps x ${state.ids.length} ids current for ${MANIFEST_PATH}`
+  + `${notRunHere.length ? `, ${notRunHere.length} stamped not runnable here (${byCode})` : ''}; negative controls: an edited ${step} `
+  + `generator, a moved input, a hand-edited output, a stale ${rowFile} and an unreasoned or hand-edited stamp caught)`);

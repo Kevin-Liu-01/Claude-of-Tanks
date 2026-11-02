@@ -437,6 +437,20 @@ const GATE_PAGE_READS = [...GATE_PAGE_PUBLIC.dirs.map((dir) => `public/${dir}/**
   ...GATE_PAGE_PUBLIC.files.map((file) => `public${file}`)];
 
 /**
+ * (268) The gate's --skipped reasons (tools/geometry-gate.mjs, its pin errors in tools/geometry-gate-policy.mjs) as
+ * stamps (tools/changed-only/fingerprint.mjs stampKey): an absent or unpinned oracle is keyed on that file, any other
+ * page error on the id's whole input key. A reason it does not know names no stamp, so its id stays due.
+ */
+export function gateStamp(reason) {
+  const local = (path) => (path.startsWith('/') ? [`public${path}`] : []);
+  const absent = /^oracle absent here \((\S+)\)$/.exec(reason);
+  if (absent) return { code: 'oracle-absent', files: local(absent[1]) };
+  const unpinned = /^page error, previous row kept: oracle (\S+) (?:is [0-9a-f]{64}, not the pinned [0-9a-f]{64}|has no pinned sha256)\b/.exec(reason);
+  if (unpinned) return { code: 'oracle-unpinned', files: local(unpinned[1]) };
+  return /^page error, previous row kept: \S/.test(reason) ? { code: 'page-error', files: [] } : null;
+}
+
+/**
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
  * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
  * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
@@ -463,6 +477,8 @@ export function gpuChunks(step, list) {
  *           parts never get); the step's shared outputs must not move while the
  *           parts run (tools/changed-only/parts.mjs); sharedWrites: other files the tool writes (a verdict ledger),
  *           never keyed, held across the parts as the outputs are
+ *   skipped, stamp  the flag that gets the tool's report of the ids it could not run here ({ id: reason }), and how a
+ *           reason becomes a stamp ({ code, files } or null; tools/changed-only/fingerprint.mjs recordStep); neither keyed
  *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
  *           BROWSER_ID_CAPS ids per browser (gpuChunks); none of them is keyed
  */
@@ -602,8 +618,9 @@ export const STEPS = Object.freeze([
     gb: 6, timeoutS: 1200, perIdS: 25, chunkS: 1100,
     // the public files the page loads beside the oracles (each oracle is keyed per id by its record)
     reads: GATE_PAGE_READS,
-    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs): they stay due
-    skipped: '--skipped',
+    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs); each reason gateStamp
+    // names is stamped (268: current until its oracle or inputs move), any other stays due
+    skipped: '--skipped', stamp: gateStamp,
   },
 ]);
 

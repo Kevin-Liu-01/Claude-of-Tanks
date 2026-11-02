@@ -16,6 +16,8 @@
 //   - (268) a parts step (steps.mjs `parts`, as fills and anatomy) on eight ids runs as parallel parts and one merge that
 //     write what one process writes, manifest included; a part that writes the step's shared table itself fails the step
 //     before the merge runs.
+//   - (268) an id the tool cannot run here (its oracle absent) is stamped with the reason and reads current until the
+//     oracle appears; a stamp never hides an output edited by hand, and a skip without a reason gets none.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -62,8 +64,10 @@ put(B, 'src/vehicles/fleetFactory.ts', "import './fleetRegistration.ts';\nconst 
 // Generators: each rebuilds the listed ids (all without --ids), keeps every other row, writes rows in roster order, and
 // with --check compares instead of writing. controls ignores the fills its build reads, so the chain's second pass
 // re-runs it for the ids whose fills moved and gets the same rows: the fixpoint the real chain relies on.
-// seats also takes the chain's --skipped report (267): an id named in skip-ids.txt cannot run in this tree, keeps its row
-// and is reported, as the geometry gate reports an id whose oracle is absent here.
+// seats also takes the chain's --skipped report (267): b1 is measured against its oracle (public/models/b1.glb, as the
+// geometry gate's ids), and while that file is absent it keeps its row and is reported in the gate's own words, which the
+// fixture step stamps with the gate's own steps.mjs gateStamp (268). COT_FIXTURE_SKIP_NO_REASON is the mutant: the skip
+// is reported without a reason.
 // fills also runs as parts (268, tools/changed-only/parts.mjs): a part (--out-dir) writes its ids' rows into its dir
 // alone, and the merge (--merge-from) takes them in place of building those ids; the run that writes the table appends
 // the ids it wrote to --report (the chain gives that flag to the merge alone). COT_FIXTURE_PARTS_RACE is the mutant:
@@ -79,15 +83,16 @@ const generator = (table, exportName, formula, { skips = false, parts = false } 
   `const text = readFileSync('src/vehicles/${table}.generated.ts', 'utf8');`,
   'const previous = JSON.parse(text.slice(head.length, -2));',
   'const rows = {};',
-  ...(skips ? ["const cannot = new Set(existsSync('skip-ids.txt') ? readFileSync('skip-ids.txt', 'utf8').split(',').map((id) => id.trim()) : []);",
-    'const skipped = {};'] : []),
+  ...(skips ? ["const ORACLES = { b1: '/models/b1.glb' };", 'const skipped = {};'] : []),
   ...(parts ? ["const partDir = args.find((arg) => arg.startsWith('--out-dir='))?.slice(10);",
     "const merged = Object.assign({}, ...(args.find((arg) => arg.startsWith('--merge-from='))?.slice(13).split(',') ?? [])",
     "  .map((dir) => JSON.parse(readFileSync(`${dir}/rows.json`, 'utf8'))));"] : []),
   'for (const id of ALL_TANK_IDS) {',
   ...(parts ? ['  if (partDir && !scoped.has(id)) continue;', '  if (merged[id]) { rows[id] = merged[id]; continue; }'] : []),
   '  if (scoped && !scoped.has(id) && previous[id]) { rows[id] = previous[id]; continue; }',
-  ...(skips ? ["  if (cannot.has(id) && (!scoped || scoped.has(id))) { rows[id] = previous[id]; skipped[id] = 'fixture input absent here'; continue; }"] : []),
+  ...(skips ? ['  if (ORACLES[id] && !existsSync(`public${ORACLES[id]}`) && (!scoped || scoped.has(id))) {',
+    "    rows[id] = previous[id]; skipped[id] = process.env.COT_FIXTURE_SKIP_NO_REASON ? '' : `oracle absent here (${ORACLES[id]})`; continue;",
+    '  }'] : []),
   '  const tank = createTank(id);',
   `  rows[id] = ${formula};`,
   '}',
@@ -104,7 +109,9 @@ const generator = (table, exportName, formula, { skips = false, parts = false } 
 put(B, 'tools/gen-controls.mjs', generator('controls', 'CONTROLS', '{ guns: tank.base % 7 }'));
 const fillsTool = generator('fills', 'FILLS', '{ fill: tank.base * 2 + tank.guns }', { parts: true });
 put(B, 'tools/gen-fills.mjs', fillsTool);
-put(B, 'tools/gen-seats.mjs', generator('seats', 'SEATS', '{ seat: tank.fill + tank.guns + 1 }', { skips: true }));
+const seatsTool = generator('seats', 'SEATS', '{ seat: tank.fill + tank.guns + 1 }', { skips: true });
+put(B, 'tools/gen-seats.mjs', seatsTool);
+put(B, 'public/models/b1.glb', 'oracle b1\n');
 for (const [table, exportName] of [['controls', 'CONTROLS'], ['fills', 'FILLS'], ['seats', 'SEATS']]) {
   put(B, `src/vehicles/${table}.generated.ts`, `export const ${exportName} = {};\n`);
 }
@@ -157,6 +164,7 @@ put(B, 'tools/gen-docs.mjs', [
 // The fixture step table (tools/changed-only/table.mjs), kept outside every closure the resolver walks.
 const tableModule = join(base, 'table.mjs');
 writeFileSync(tableModule, [
+  `import { gateStamp } from ${JSON.stringify(join(repo, 'tools/changed-only/steps.mjs'))};`,
   'export const TABLES = {',
   "  controls: { kind: 'module', files: ['src/vehicles/controls.generated.ts'], exportName: 'CONTROLS' },",
   "  fills: { kind: 'module', files: ['src/vehicles/fills.generated.ts'], exportName: 'FILLS' },",
@@ -171,8 +179,8 @@ writeFileSync(tableModule, [
   `  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: { 'tools/gen-world.mjs': { pin: '${h16(dynamicSites(worldTool, 'gen-world.mjs').join('\n'))}', reads: [] },`,
   // fills' parts read their scratch dirs (the merge's --merge-from): never the tree.
   `    'tools/gen-fills.mjs': { pin: '${h16(dynamicSites(fillsTool, 'gen-fills.mjs').join('\n'))}', reads: [] },`,
-  // seats' skip marker stands for an oracle absent from one checkout: never a whole-step input (as the gate's public/)
-  "    'tools/gen-seats.mjs': { reads: [], covered: ['skip-ids.txt'] } }, accessors: {},",
+  // seats' oracle is per id (the gate keys each record's oracle; the stamp keys its presence): never a whole-step input
+  `    'tools/gen-seats.mjs': { pin: '${h16(dynamicSites(seatsTool, 'gen-seats.mjs').join('\n'))}', reads: [] } }, accessors: {},`,
   "  world: { registryFile: 'src/world/maps/index.ts', outputs: ['server/world-collision-manifests'],",
   `    fleetApiUsers: { 'tools/gen-world.mjs': { pin: '${tokenPin(worldTool, FLEET_API_TOKENS)}' } }, fleetApiTokens: ${JSON.stringify(FLEET_API_TOKENS)} } };`,
   "export const MAP_REGISTRY_FILE = 'src/world/maps/index.ts';",
@@ -185,7 +193,7 @@ writeFileSync(tableModule, [
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
   "export const STEPS = [step('controls'), { ...step('fills'), parts: (dir) => [`--out-dir=${dir}`], report: '--report' },",
-  "  { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
+  "  { ...step('seats'), skipped: '--skipped', stamp: gateStamp, rowReads: ['floors'] }];",
   "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
 // A pristine copy before any chain ran: no fingerprints table, empty generated tables (main before 265's bootstrap).
@@ -212,11 +220,12 @@ const summaries = (root) => {
 /** One process per step unless the flags name --jobs (268: the parts path). */
 const jobs = (flags) => (flags.some((flag) => flag.startsWith('--jobs=')) ? [] : ['--jobs=1']);
 /** Run the chain in `root`; returns its summary (the newest .qa-dev/changed-only/<stamp>.json it wrote). */
-function chain(root, ...flags) {
+const chain = (root, ...flags) => chainWith({}, root, ...flags);
+function chainWith(extraEnv, root, ...flags) {
   const before = new Set(summaries(root));
   try {
     execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${root}`, `--table=${tableModule}`,
-      '--no-gpu', ...jobs(flags), ...flags], { cwd: root, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
+      '--no-gpu', ...jobs(flags), ...flags], { cwd: root, env: { ...env, ...extraEnv }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 300_000 });
   } catch (error) {
     throw new Error(`chain ${flags.join(' ')} failed in ${root}:\n${error.stdout}\n${error.stderr}`);
   }
@@ -283,19 +292,52 @@ assert.deepEqual(snapshot(C), snapshot(F), 'the repair restores the full regen b
 
 // 4b (267). A tool that cannot run an id in this tree reports it (steps.mjs `skipped`): the chain records the other ids,
 // leaves that one due without failing or re-trying it, and names it in the final resolve; once the tree can run it, the
-// next chain runs it alone.
+// next chain runs it alone. (268) Its output was edited by hand, which only a run can repair: the stamp the chain takes
+// holds the output its last run left, so the id still reads due.
+const oracle = read(C, 'public/models/b1.glb');
 put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '"b1":{"seat":-1}').replace(/"a2":\{"seat":\d+\}/, '"a2":{"seat":-2}'));
-put(C, 'skip-ids.txt', 'b1');
+rmSync(join(C, 'public/models/b1.glb'));
 const blocked = chain(C);
 assert.equal(blocked.ok, true, 'an id the tool cannot run here does not fail the chain');
 assert.deepEqual(ranIds(blocked, 'seats'), ['a2', 'b1'], 'seats ran once on both edited ids: the skipped one is not retried');
-assert.deepEqual([blocked.final.seats.mode, Object.keys(blocked.final.seats.notRunHere ?? {})], ['none', ['b1']],
-  'the final resolve names the id left due, with its reason');
+assert.deepEqual([blocked.final.seats.mode, Object.keys(blocked.final.seats.notRunHere ?? {}), blocked.final.seats.stamped],
+  ['none', ['b1'], undefined], 'the final resolve names the id left due, with its reason: its stamp does not hold over the hand edit');
 assert.match(read(C, 'src/vehicles/seats.generated.ts'), /"b1":\{"seat":-1\}/, 'its row is untouched');
-rmSync(join(C, 'skip-ids.txt'));
+put(C, 'public/models/b1.glb', oracle);
 const unblocked = chain(C);
 assert.deepEqual(ranIds(unblocked, 'seats'), ['b1'], 'the id left due runs alone once the tree can run it (a2 was recorded)');
 assert.deepEqual(snapshot(C), snapshot(F), 'and the tree returns to the full regen bytes');
+
+// 4c (268). Not run by design, told from stale: an id due for its inputs (b1's sim-floor row) whose oracle is absent here is
+// stamped with its reason and reads current, so the next chain and the fresh resolve run nothing; dropping the oracle in
+// makes it due and the chain runs it alone, clearing the stamp. Mutant: a skip reported without a reason is never stamped
+// and stays due.
+const floorsBefore = read(C, 'docs/floors.json');
+put(C, 'docs/floors.json', floorsBefore.replace('"b1":{"f":3,', '"b1":{"f":3.5,'));
+rmSync(join(C, 'public/models/b1.glb'));
+const M = join(base, 'M');
+cpSync(C, M, { recursive: true });
+const unnamed = chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M);
+assert.deepEqual([unnamed.ok, Object.keys(unnamed.final.seats.notRunHere ?? {}), /^stamp\t/m.test(read(M, 'release/fingerprints.tsv'))],
+  [true, ['b1'], false], 'mutant: a skip without a reason gets no stamp');
+const unnamedResolve = chainWith({ COT_FIXTURE_SKIP_NO_REASON: '1' }, M, '--dry-run');
+assert.deepEqual([unnamedResolve.final.seats.mode, unnamedResolve.final.seats.ids], ['ids', ['b1']], 'mutant: and stays red');
+const stamping = chain(C);
+assert.deepEqual([ranIds(stamping, 'seats'), stamping.final.seats.mode, stamping.final.seats.notRunHere, stamping.final.seats.stamped],
+  [['b1'], 'none', undefined, { b1: 'oracle-absent: oracle absent here (/models/b1.glb)' }], 'the absent oracle is stamped with its reason');
+assert.match(read(C, 'release/fingerprints.tsv'), /^stamp\tseats\tb1\t[0-9a-f]{16}\t[0-9a-f]{16}\toracle-absent\tpublic\/models\/b1\.glb\toracle absent here \(\/models\/b1\.glb\)$/m);
+const stampedQuiet = snapshot(C);
+assert.deepEqual(chain(C).runs, [], 'a fixture id with a missing oracle reads current: the next chain runs nothing');
+assert.deepEqual(snapshot(C), stampedQuiet, 'and rewrites nothing');
+put(C, 'public/models/b1.glb', oracle);
+const dropped = chain(C, '--dry-run');
+assert.deepEqual([dropped.final.seats.ids, dropped.final.seats.reasons.b1.includes('stamp\'s inputs moved (public/models/b1.glb)')], [['b1'], true],
+  'dropping the oracle in makes it due, named by the stamp');
+const measured = chain(C);
+assert.deepEqual([ranIds(measured, 'seats'), /^stamp\t/m.test(read(C, 'release/fingerprints.tsv'))], [['b1'], false], 'the chain runs it alone and clears the stamp');
+put(C, 'docs/floors.json', floorsBefore);
+chain(C);
+assert.deepEqual(snapshot(C), snapshot(F), 'restored, the tree returns to the full regen bytes');
 
 // 5. A map config edit rebuilds that map alone (no tank step runs); the whole-world regen agrees byte for byte.
 for (const root of [C, F]) put(root, 'src/world/maps/betaMap.ts', "export default { base: 8, props: { tankWrecks: { ids: ['b1'] } } };\n");
