@@ -41,7 +41,7 @@ import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, r
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
 import { expandGlobs } from './changed-only/globs.mjs';
-import { movedShared, sharedDigests } from './changed-only/parts.mjs';
+import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -195,8 +195,7 @@ async function runParts(step, ids, state, scopedArgs, extra) {
   all.forEach((id, index) => lists[index % parts].push(id));
   // The step's shared outputs (its tables, `files`, `writes` and `sharedWrites`) are the merge's alone: held to their
   // digests across the parts, so a part that writes one fails the step instead of racing another part for it (268).
-  const shared = [...step.outputs.flatMap((name) => table.TABLES[name]?.files ?? []), ...(step.files ?? []),
-    ...(step.writes ?? []), ...(step.sharedWrites ?? [])];
+  const shared = sharedOutputs(step, table.TABLES);
   const before = sharedDigests(root, expandGlobs(root, shared));
   const runs = await Promise.all(lists.map(async (list, k) => {
     await gate(step.gb);

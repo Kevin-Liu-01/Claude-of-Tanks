@@ -66,6 +66,13 @@ export function partArgs(argv, tool) {
   };
 }
 
+/** The files a parts step's merge alone writes (globs): its tables' files (steps.mjs TABLES), `files`, `writes` and
+ *  `sharedWrites`. The chain holds them to their digests while the parts run. */
+export function sharedOutputs(step, tables) {
+  return [...step.outputs.flatMap((name) => tables[name]?.files ?? []), ...(step.files ?? []), ...(step.writes ?? []),
+    ...(step.sharedWrites ?? [])];
+}
+
 /** sha256 of each file (repository-relative paths under `root`: the chain expands the step's globs). */
 export function sharedDigests(root, paths) {
   return new Map(paths.map((path) => [path, createHash('sha256').update(readFileSync(join(root, path))).digest('hex')]));

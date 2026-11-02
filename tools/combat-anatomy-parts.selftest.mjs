@@ -6,14 +6,17 @@
 //     the merge keeps, or a part of another tool is refused; the arguments the seats, spare-track and gun-line tools
 //     take (partArgs) hand each id's part row to the merge once and refuse a row no id took;
 //   - (the mutant) parts that each write the shared files themselves, as two --ids runs would, lose a part's rows: the
-//     bytes differ from the whole run, and the chain's digests around the parts name every shared file they wrote.
+//     bytes differ from the whole run, and the chain's digests around the parts name every shared file they wrote;
+//   - every real parts step (steps.mjs `parts`) names its tables among its shared outputs, and the literal ones exist in
+//     this tree, so the chain's guard holds something.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { anatomyOutputFiles, anatomyRows } from './combat-anatomy-files.mjs';
-import { movedShared, partArgs, partWriter, readPartRows, sharedDigests, writePartRows } from './changed-only/parts.mjs';
+import { movedShared, partArgs, partWriter, readPartRows, sharedDigests, sharedOutputs, writePartRows } from './changed-only/parts.mjs';
+import { STEPS, TABLES } from './changed-only/steps.mjs';
 
 const TOOL = 'gen-combat-anatomy';
 const scratch = mkdtempSync(join(tmpdir(), 'combat-anatomy-parts-'));
@@ -132,6 +135,18 @@ try {
     'the chain\'s digests around the parts name every shared file a part wrote');
   assert.deepEqual(movedShared(before, sharedDigests(raceTree, shared).set('x.ts', 'new')), [...shared.filter((file) => raced[file] !== seed[file]), 'x.ts'].sort(),
     'and a file a part created');
+
+  // 5. the real parts steps: their tables are among the shared outputs the chain digests around the parts, and the
+  // literal ones exist here
+  const repo = join(import.meta.dirname, '..');
+  const partsSteps = STEPS.filter((step) => step.parts);
+  assert.deepEqual(partsSteps.map((step) => step.name), ['fills', 'seats', 'spareTrack', 'anatomy', 'gunLines']);
+  for (const step of partsSteps) {
+    const held = sharedOutputs(step, TABLES);
+    for (const name of step.outputs) assert.ok(TABLES[name]?.files.every((file) => held.includes(file)), `${step.name}: ${name}'s files are held`);
+    const literal = held.filter((file) => !file.includes('*'));
+    assert.ok(literal.length > 0 && literal.every((file) => existsSync(join(repo, file))), `${step.name}: its shared files exist (${literal})`);
+  }
   console.log(`combat-anatomy-parts.selftest: ${roster.length} fixture rows in 3 and 2 parts merge byte for byte as one run `
     + `(${Object.keys(whole).length} files); a part writes its own dir alone; the two-writer mutant lost rows in `
     + `${lost.length} of ${shared.length} shared files and the chain's digests named them`);
