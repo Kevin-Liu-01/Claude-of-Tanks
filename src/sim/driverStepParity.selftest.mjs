@@ -346,6 +346,140 @@ const late = await run(SWITCH + 30, (tick, side, id, input) => (tick === SWITCH 
 assert.ok(late.divergence, 'the page switching its ammunition a tick late is caught');
 assert.equal(late.divergence.tick, SWITCH, `at the switch's tick (${JSON.stringify(late.divergence)})`);
 
+// ---- (268, Main item 8) an objective mode on both drivers: Mars (zone control, the seeded boost caches, its low gravity
+// and respawns), the own hull scripted through a cache's pickup, rams that bring two buildings down and a fight to the bot's
+// death and its turret's flight; every tick the hulls, the mode's state, the destruction logs, the turret bodies and every
+// live round are compared as bytes. Found and fixed on the way: the page felled a blast's props before the world could (the
+// headless world then kept the tree's shell bands) and culled real hits on a steeply pitched hull (sim/shellHullReach.ts)
+const MODE_FOE_SPEC = 'm41a3';
+const bits = (value) => Buffer.from(new Float64Array([value]).buffer).toString('hex');
+async function runModeBattle(ticks, perturb = null) {
+  const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
+  const authored = pageWorld.heightField._layout.spawns;
+  const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
+  pageWorld.spawnPoints = { player: spawnOf(authored.player), enemies: authored.enemies.map(spawnOf) };
+  const game = createGameState({ rosterSeed: 3 });
+  game.mapId = MAP;
+  spawnTanks(game, { scene: { remove() {} } });
+  for (const entity of game.allTanks) entity.visual = { root: new Group(), setVisible() {}, syncFromState() {}, dispose() {} };
+  const previousDebug = globalThis.__DEBUG;
+  globalThis.__DEBUG = { flags: { forceRoster: [MODE_FOE_SPEC], rosterExact: true } };
+  try {
+    setupBattle(game, OWN_SPEC, pageWorld, { gameMode: 'mars', random: true, brain: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: false, seed: SEED });
+  } finally {
+    globalThis.__DEBUG = previousDebug;
+  }
+  const [own, foe] = game.tanks;
+  // the authority deploys both sides itself (sim/deployment.ts), as a real match does: no spawn handed in
+  const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, gameMode: 'mars', worldCollision: authorityWorld, players: [
+    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoBonus: own.camoBonus },
+    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true },
+  ] });
+  match.onMatchReady();
+  const authorityOf = (entity) => match.entityById.get(entity.id);
+  for (const entity of game.tanks) {
+    const a = authorityOf(entity).state;
+    assert.deepEqual([bits(entity.state.pos.x), bits(entity.state.pos.z), bits(entity.state.yaw)], [bits(a.pos.x), bits(a.pos.z), bits(a.yaw)],
+      `both drivers deploy ${entity.id} on the same slot`);
+  }
+  // the fight starts in the village where the first cache drops, on both drivers (the mode keeps the deployment slots as
+  // the respawn points on both)
+  for (const [entity, at] of [[own, { x: 6.7, z: 34, yaw: 3.14159 }], [foe, { x: 200, z: 150, yaw: -2.2 }]]) {
+    const state = authorityOf(entity).state;
+    state.pos.set(at.x, authorityWorld.heightField.getHeightAt(at.x, at.z) + 0.05, at.z);
+    state.yaw = at.yaw;
+  }
+  for (const entity of game.tanks) {
+    const authority = authorityOf(entity);
+    entity.visual = { root: new Group(), gunMuzzleWorld: (out) => authorityGunPose(entity, out, null),
+      gunDirWorld: (out) => authorityGunPose(entity, null, out), recoilKick() {}, setDestroyed() {}, syncFromState() {}, setVisible() {}, dispose() {} };
+    const pos = entity.state.pos;
+    Object.assign(entity.state, structuredClone({ ...authority.state, pos: undefined }), { pos });
+    pos.copy(authority.state.pos);
+    entity.input.aimPoint ??= new Vector3();
+    for (const state of [entity.state, authority.state]) if (state._sup) state._sup.x = NaN;
+  }
+  game.combatRng = mulberry32(SEED);
+  const bus = createBus(() => {});
+  const pageEmit = (type, payload) => bus.emit(type, payload);
+  const collider = createCollider(game, pageWorld);
+  // the village's weakest building, to ram down once the cache is taken
+  const shed = game._destruction.structures.structures.filter((entry) => entry.destructible && entry.collapsible && entry.role === 'building')
+    .sort((a, b) => a.maxHp - b.maxHp || a.id - b.id)[0];
+  const zone = { x: 64.4, z: -5.4 };
+  const drive = (self, target, { fire = false, slot = 0, aimY = 1.5, stopAt = 0 } = {}) => {
+    const dx = target.x - self.state.pos.x, dz = target.z - self.state.pos.z;
+    let error = Math.atan2(dx, dz) - self.state.yaw;
+    error = Math.atan2(Math.sin(error), Math.cos(error));
+    const go = Math.hypot(dx, dz) > stopAt;
+    return { throttle: go ? 1 : 0, steer: go ? Math.max(-1, Math.min(1, error * 2)) : 0, brake: !go, fire, shellSlot: slot, actionBits: 0,
+      aimLocked: false, ...encodeAimIntent(self.state.pos, { x: target.x, y: (target.y ?? self.state.pos.y) + aimY, z: target.z }) };
+  };
+  let phase = 'cache';
+  const script = (tick, self, other, pickups) => {
+    if (phase === 'cache') return drive(self, pickups.find((pickup) => pickup.active) ?? zone);
+    if (phase === 'shed') return drive(self, { x: shed.cx, z: shed.cz, y: shed.baseY }, { slot: 2, aimY: (shed.topY - shed.baseY) / 2 });
+    return drive(self, other.state.pos, { stopAt: 50, slot: 0, fire: tick % 40 === 0 });
+  };
+  const exercised = { cachesDropped: 0, collectedAt: null, collapses: [], foeDeaths: 0, killedAt: null, turretIds: [], zoneOwners: new Set(), pulls: 0 };
+  const seenCaches = new Set();
+  let divergence = null, foeWasDestroyed = false;
+  const authorityShells = [];
+  const shellKey = (list) => list.filter((shell) => !shell.dead).map((shell) => `${shell.id ?? shell.shellId}:${bits(shell.pos.x)}${bits(shell.pos.y)}${bits(shell.pos.z)}`).join('|');
+  for (let tick = 0; tick < ticks && !divergence; tick++) {
+    const pickups = match.modeController.serialize(own.id).pickups ?? [];
+    const authorityInput = script(tick, authorityOf(own), authorityOf(foe), pickups), pageInput = script(tick, own, foe, pickups);
+    match.step({ dt: 1 / 60, inputs: new Map([[own.id, authorityInput]]) });
+    perturb?.(tick, own);
+    applyPlayerInput(own, pageInput, pageEmit);
+    simStep(game, bus, pageWorld, null, collider);
+    if (pageInput.fire) exercised.pulls++;
+    for (const entity of game.tanks) {
+      const page = hullBytes(entity), authority = hullBytes(authorityOf(entity));
+      const index = page.findIndex(([, value], i) => value !== authority[i][1]);
+      if (index >= 0) { divergence = { tick, hull: entity === own ? 'own' : 'bot', field: page[index][0] }; break; }
+    }
+    const authorityMode = JSON.stringify(match.modeController.serialize(own.id)), pageMode = JSON.stringify(game.matchModeController.serialize(own.id));
+    if (!divergence && authorityMode !== pageMode) divergence = { tick, field: 'mode' };
+    const log = game._destruction.log;
+    if (!divergence && JSON.stringify(match.snapshotMeta(own.id).destructionLog) !== JSON.stringify(log)) divergence = { tick, field: 'destruction' };
+    if (!divergence && match.wreckTurretDigest() !== game._wreckTurrets.digest()) divergence = { tick, field: 'wreck turrets' };
+    authorityShells.length = 0;
+    match.observeForViewer(own.id, [], authorityShells);
+    if (!divergence && shellKey(game.shells) !== shellKey(authorityShells)) divergence = { tick, field: 'shells' };
+    const mode = JSON.parse(pageMode);
+    for (const pickup of mode.pickups ?? []) if (!seenCaches.has(pickup.id)) { seenCaches.add(pickup.id); exercised.cachesDropped++; }
+    for (const zoneState of mode.zones ?? []) if (zoneState.owner) exercised.zoneOwners.add(`${zoneState.id}:${zoneState.owner}`);
+    if (phase === 'cache' && [...seenCaches].some((id) => !(mode.pickups ?? []).some((pickup) => pickup.id === id && pickup.active))) {
+      exercised.collectedAt = tick;
+      phase = 'shed';
+    }
+    exercised.collapses = log.filter((entry) => entry.kind === 'stage' && entry.stage === 'collapsed').map((entry) => entry.structureId);
+    if (phase === 'shed' && exercised.collapses.includes(shed.id)) phase = 'foe';
+    if (foe.combat.destroyed && !foeWasDestroyed) exercised.foeDeaths++;
+    foeWasDestroyed = foe.combat.destroyed;
+    if (phase === 'foe' && foe.combat.destroyed && exercised.killedAt === null) { exercised.killedAt = tick; exercised.turretIds = [...game._wreckTurrets.ids()]; }
+    if (exercised.killedAt !== null && tick - exercised.killedAt >= 240) break;
+  }
+  exercised.zoneOwners = [...exercised.zoneOwners];
+  authorityWorld.release?.();
+  pageWorld.release?.();
+  return { divergence, exercised, shed: shed.id, foe: foe.id };
+}
+const MODE_TICKS = 6000;
+const mars = await runModeBattle(MODE_TICKS);
+assert.equal(mars.divergence, null, `Mars parts the two drivers at ${JSON.stringify(mars.divergence)}`);
+assert.ok(mars.exercised.cachesDropped >= 2 && mars.exercised.collectedAt !== null,
+  `the seeded caches dropped alike (${mars.exercised.cachesDropped}) and the own hull took one at tick ${mars.exercised.collectedAt}`);
+assert.ok(mars.exercised.collapses.length >= 2 && mars.exercised.collapses.includes(mars.shed), `two buildings came down alike (${mars.exercised.collapses})`);
+assert.ok(mars.exercised.killedAt !== null && mars.exercised.turretIds.includes(mars.foe),
+  `the bot was destroyed (tick ${mars.exercised.killedAt}) and its turret flew as a body, alike`);
+assert.ok(mars.exercised.foeDeaths >= 2, `the bot respawned on its slot and fought again, alike (${mars.exercised.foeDeaths} deaths)`);
+assert.ok(mars.exercised.zoneOwners.length >= 1, `a zone was taken, alike (${mars.exercised.zoneOwners})`);
+const MODE_NUDGE = 1200;
+const marsNudged = await runModeBattle(MODE_NUDGE + 20, (tick, own) => { if (tick === MODE_NUDGE) own.state.yaw += 1e-9; });
+assert.deepEqual(marsNudged.divergence?.tick, MODE_NUDGE, `Mars: the own heading a billionth off on the page at ${MODE_NUDGE} is caught there (${JSON.stringify(marsNudged.divergence)})`);
+
 console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls byte-identical on the local step (game/state.ts simStep) and the `
   + `authority's (sim/authoritativeMatch.ts), the page's controls through the authority's input stage (sim/playerInputStage.ts): `
   + `drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at ${(same.exercised.foeHp * 100).toFixed(1)} % hp, `
@@ -357,4 +491,8 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
   + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart and was destroyed; `
   + `its paint '${real.exercised.paint.page}' rolled alike, a handed paint caught at tick 0), `
-  + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`);
+  + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field}); `
+  + `Mars on both drivers byte-identical (hulls, mode state, destruction logs, turret bodies, every live round): ${mars.exercised.cachesDropped} caches `
+  + `dropped and one taken at tick ${mars.exercised.collectedAt}, buildings ${mars.exercised.collapses.join(' and ')} rammed down, the ${MODE_FOE_SPEC} `
+  + `killed ${mars.exercised.foeDeaths} times (respawned on its slot) and its turret flown from tick ${mars.exercised.killedAt}, zones ${mars.exercised.zoneOwners.join(', ')}; `
+  + `the own heading a billionth off caught at tick ${marsNudged.divergence.tick} (${marsNudged.divergence.field ?? marsNudged.divergence.hull})`);

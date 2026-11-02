@@ -148,6 +148,8 @@ import { structureRubbleHeightM } from './structureDamage.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
 import { botCamoRoll, camoSelectionBonus } from './camoPaint.ts';
+import { hullReachM, shellMayReachHull } from './shellHullReach.ts';
+import { applyLethalRamModuleDamage } from './ramModuleDamage.ts';
 import type { BotCamo } from './camoPaint.ts';
 
 import * as detMath from './detMath.ts';
@@ -661,8 +663,7 @@ function segmentTerrainHit(
   return null;
 }
 
-/** A wreck's turret off its ring: the reach of its plates and gun from its frame (m), and its frame as a matrix. */
-const WRECK_TURRET_REACH_M = 6.5;
+/** A wreck's turret off its ring: its frame as a matrix (its reach is sim/shellHullReach.ts WRECK_TURRET_REACH_M). */
 const _wreckTurretMatrix = new Matrix4();
 const _wreckTurretPos = new Vector3();
 const _wreckTurretQuat = new Quaternion();
@@ -684,13 +685,10 @@ function firstTankTrace(
   for (const target of entities) {
     if (target.id === shell.shooterId || target.modeActive === false || isGunship(target) ||
         !target.state || !target.combat) continue;
-    const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
-      target.spec.dims.hullLengthM * 0.65);
-    const centerDistance = target.state.pos.distanceTo(shell.prevPos);
     // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
     const body = target.combat.destroyed ? target._wreckTurret : null;
-    if (centerDistance > segmentLength + radius + 2 && !(body && detMath.hypot(body[0] - shell.prevPos.x, body[1] - shell.prevPos.y,
-      body[2] - shell.prevPos.z) <= segmentLength + WRECK_TURRET_REACH_M)) continue;
+    // (268, item 8) the broad phase both drivers run (sim/shellHullReach.ts)
+    if (!shellMayReachHull(shell.prevPos, segmentLength, target.state.pos, hullReachM(target.spec), body)) continue;
     const pose = tankPoseFromState(target.state);
     if (body) pose.turretWorld = wreckTurretMatrix(body, target.state.modeScale ?? 1);
     const hits = traceTank(shell.prevPos, shell.pos, pose, target.spec.armor,
@@ -1538,6 +1536,10 @@ export function createAuthoritativeMatch({
     if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
     a.combat.destroyed = a.combat.hp <= 0;
     if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
+    // (268, item 8) a lethal ram disables the struck running gear and the drivetrain, as the solo battle's does
+    // (sim/ramModuleDamage.ts)
+    if (a.combat.destroyed) applyLethalRamModuleDamage(a, contact.nx, contact.nz);
+    if (b.combat.destroyed && !bWasDestroyed) applyLethalRamModuleDamage(b, -contact.nx, -contact.nz);
     emit('tank_ram', {
       aId: a.id,
       bId: b.id,

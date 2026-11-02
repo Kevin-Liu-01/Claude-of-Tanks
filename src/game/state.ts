@@ -62,7 +62,6 @@ import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spottin
 import type { CollisionRecord } from '../world/collision.ts';
 import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
-import type { ModuleId } from '../sim/moduleCatalog.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { validatedContactGeometry } from '../sim/trackContact.ts';
@@ -124,6 +123,8 @@ import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { camoSelectionBonus } from '../sim/camoPaint.ts';
+import { hullReachM, shellMayReachHull } from '../sim/shellHullReach.ts';
+import { applyLethalRamModuleDamage, type RamModuleHit } from '../sim/ramModuleDamage.ts';
 import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import type { BotCamo } from '../sim/camoPaint.ts';
 import { createMatchSpotting } from '../sim/matchSpotting.ts';
@@ -517,12 +518,6 @@ interface RamContact {
   vertical: boolean;
 }
 
-interface RamModuleHit {
-  module: ModuleId;
-  newState: 'red';
-  dmg: number;
-}
-
 interface SoloRamEvent {
   aId: string;
   bId: string;
@@ -545,33 +540,6 @@ interface RamResolution {
   b: SoloEntity;
   bWasWreck: boolean;
   event: SoloRamEvent;
-}
-
-/** A lethal hull collision physically disables the struck running gear and
- * nearest drivetrain module. This is authoritative damage state, not a
- * kill-cam-only decoration; the replay consumes the same receipts the HUD and
- * tank visual receive. */
-function applyLethalRamModuleDamage(
-  ent: SoloEntity,
-  normalX: number,
-  normalZ: number,
-): RamModuleHit[] {
-  if (!ent.combat?.destroyed || !ent.combat.modules || !ent.state) return [];
-  const rightDot = normalX * Math.cos(ent.state.yaw) - normalZ * Math.sin(ent.state.yaw);
-  const nearTrack: ModuleId = rightDot >= 0 ? 'trackR' : 'trackL';
-  const drivetrain: ModuleId = ent.combat.modules.transmission ? 'transmission' : 'engine';
-  const names: ModuleId[] = [nearTrack, drivetrain];
-  const hits: RamModuleHit[] = [];
-  for (const name of names) {
-    const module = ent.combat.modules[name];
-    if (!module || module.state === 'red') continue;
-    const hpBefore = Math.max(0, module.hp || 0);
-    module.hp = 0;
-    module.state = 'red';
-    module.repairT = 0;
-    hits.push({ module: name, newState: 'red', dmg: Math.round(hpBefore) });
-  }
-  return hits;
 }
 
 interface CrushContact {
@@ -648,17 +616,9 @@ const _supportPose = createHullSupportPose();
 const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _worldRayOrigin = new THREE.Vector3();
-const _toC = new THREE.Vector3();
-/** A wreck's turret off its ring: its frame (traced at the body's pose) and the reach of its plates and gun from it. */
+/** A wreck's turret off its ring: its frame (traced at the body's pose) and its position (sim/shellHullReach.ts reaches it). */
 const _wreckTurretWorld = new THREE.Matrix4();
-const WRECK_TURRET_REACH_M = 6.5;
-const _toTurret = new THREE.Vector3();
-/** Whether the step's segment (from `from` along _seg) passes within `reach` of a point. */
-function segmentNearPoint(from: THREE.Vector3, length: number, x: number, y: number, z: number, reach: number): boolean {
-  _toTurret.set(x - from.x, y - from.y, z - from.z);
-  const along = Math.max(0, Math.min(length, _toTurret.dot(_seg)));
-  return _toTurret.lengthSq() - along * along <= reach * reach;
-}
+const _wreckTurretPoint = [0, 0, 0];
 const _spawnPos = new THREE.Vector3();
 const _contactCenter = new THREE.Vector3();
 const _obstacleCenter = new THREE.Vector3();
@@ -1908,16 +1868,12 @@ function traceNearestTank(
   nearest.intersections = null;
   for (const entity of game.tanks) {
     if (entity.modeActive === false || entity.id === shell.shooterId || isGunship(entity)) continue;
-    const radius = entity.spec.armor.boundingRadiusM;
     // physics lane: a wreck whose turret came off its ring is traced with the turret where its body lies
     const detached = entity.combat.destroyed && !!game._wreckTurrets?.frameMatrix(entity.id, _wreckTurretWorld);
-    _toC.copy(entity.state.pos);
-    _toC.y += entity.spec.dims.heightM * 0.5;
-    _toC.sub(shell.prevPos);
-    const projection = Math.max(0, Math.min(segmentLength, _toC.dot(_seg)));
-    const distanceSquared = _toC.lengthSq() - projection * projection;
-    if (distanceSquared > radius * radius && !(detached && segmentNearPoint(shell.prevPos, segmentLength,
-      _wreckTurretWorld.elements[12], _wreckTurretWorld.elements[13], _wreckTurretWorld.elements[14], WRECK_TURRET_REACH_M))) continue;
+    if (detached) for (let axis = 0; axis < 3; axis++) _wreckTurretPoint[axis] = _wreckTurretWorld.elements[12 + axis]!;
+    // (268, item 8) the broad phase both drivers run (sim/shellHullReach.ts): conservative whatever the hull's pose (the
+    // sphere round its root's mid-height culled real hits on a steeply pitched hull)
+    if (!shellMayReachHull(shell.prevPos, segmentLength, entity.state.pos, hullReachM(entity.spec), detached ? _wreckTurretPoint : null)) continue;
     const pose = tankPoseFromState(entity.state);
     if (detached) pose.turretWorld = _wreckTurretWorld;
     const intersections = traceTank(
@@ -2635,11 +2591,13 @@ function resolveRamDamage(
   if (previousContactS !== undefined && game.timeS >= previousContactS &&
       game.timeS - previousContactS < RAM_PAIR_COOLDOWN_S) return null;
   const { a, b } = contact;
-  if (a.combat.destroyed) return null;
+  // (268, item 8) as the authority gates it (ramPairCanDamage): teammates still part physically, but contact never becomes
+  // friendly-fire damage or a kill credit
+  if (a.combat.destroyed || a.team === b.team) return null;
   normalizeRamContact(contact);
   // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-  const afx = Math.sin(a.state.yaw), afz = Math.cos(a.state.yaw);
-  const bfx = Math.sin(b.state.yaw), bfz = Math.cos(b.state.yaw);
+  const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
+  const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
   const damage = ramShares(
     game.ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
     ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
@@ -3106,9 +3064,11 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
     for (let i = 0; i < fell; i++) {
       const obstacle = _blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
-      const length = Math.hypot(dx, dz) || 1;
+      const length = detMath.hypot(dx, dz) || 1;
+      // (268, item 8) the world first, as the authority fells (destroyObstacle): a prop the world refuses stands. Marked
+      // crushed first, the headless world refused the fell and kept the tree's shell bands, so a later round struck it
+      if (world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell') === false) continue;
       obstacle.crushed = true;
-      world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
       if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
         fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
       }
