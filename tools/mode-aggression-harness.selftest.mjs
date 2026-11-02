@@ -128,7 +128,6 @@ const KNOWN_CONDUCT = new Map([
   ['endless_horde.6', { asks: ['honesty'], cause: "the director's arrival lead (HUNT_RULES.lead, 0.85-1.1 of the way to the humans' centroid, +-20 degrees) within the measure's 2 m of a human still on its deployment slot, the wave's first 2 s, no sighting yet (4 of 81 hunt samples)" }],
   ['endless_horde.24', { asks: ['honesty'], cause: "the same: the director's arrival lead within 2 m of an M47 still on its slot, the first 2 s (4 of 186)" }],
   ['infected.2', { asks: ['settledStill', 'still'], cause: 'ITEM 10b (Main, 2026-11-02): an infected stands still about 20 % of its settled engaged samples on Badlands, on every build since the base; cause to be named and fixed' }],
-  ['frontline_assault.7', { asks: ['placedNear'], cause: "a rear reinforcement at 54.3 s: the line guard's bounded search (item 9; back 140 of 172.6 m on the line's own ground) found no slot clear of 200 m and took the clearest, out of sight, 199.2 m off the attack" }],
   ['capture_the_flag.6', { asks: ['missionReleased'], cause: "Autumn's dry grid: a raider at (203.5, -18.7) on the river flat plans from a start cell whose dry component cannot reach the raid point (200 of 200 seeded plans return the start cell alone), the route is used up at once and the mission releases the hull for MISSION_RELEASE_S (alpha 0.029 of samples); 0.2 m on, the same plan is whole" }],
 ]);
 const conductMisses = [], known = [];
@@ -218,16 +217,19 @@ if (within150 < 0.8) misses.push(`infected within 150 m of a survivor ${within15
 if (survivorM > 90) misses.push(`infected ${survivorM.toFixed(1)} m from the survivors on the mean (want <= 90)`);
 
 // Frontline Assault, 90 s a deal: the first sector is fought for. On every deal: no defender placed within the line
-// guard's reach of an attacker or in an attacker's terrain sight, nobody on either side scoots. Contested (sector 1 kills,
-// or the first line still held at 45 s) on at least 7 of the 8.
+// guard's reach of an attacker or in an attacker's terrain sight, but for the guard's designed fallback (item 9: no slot
+// clear, the clearest taken), which the harness proves from the guard's own log (every candidate it tried re-measured,
+// none clear, the defender on the best: placedClearest; a fallback it cannot prove counts as clearestUnproven, a miss);
+// nobody on either side scoots. Contested (sector 1 kills, or the first line still held at 45 s) on at least 7 of the 8.
 const lineGuardM = matchRulesetFor('frontline_assault').assault.lineGuard.minAttackM;
 for (const run of frontRuns) {
   judge('frontline_assault', run, {
-    placedNear: run.frontline.placedNear === 0, placedSeen: run.frontline.placedSeen === 0,
+    placedNear: run.frontline.placedNear === 0, placedSeen: run.frontline.placedSeen === 0, clearestProven: run.frontline.clearestUnproven === 0,
     scoot: (run.alpha.flags.scooting ?? 0) === 0 && (run.bravo.flags.scooting ?? 0) === 0,
   });
 }
 const contested = frontRuns.filter((r) => r.frontline.sector1Kills > 0 || !(r.frontline.lines[0]?.atS < 45)).length;
+const clearest = frontRuns.reduce((n, r) => n + r.frontline.placedClearest, 0);
 if (contested < 7) misses.push(`Frontline sector 1 contested on ${contested} of 8 (want >= 7; line guard ${lineGuardM} m)`);
 
 // Capture the Flag, 120 s a deal: the flags are run. A flag is lifted inside two minutes on at least 7 of the 8; on every
@@ -254,5 +256,5 @@ assert.deepEqual(misses, [], `the mode sweeps:\n${table}`);
 console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; `
   + `${results.length} battles in ${Math.round((Date.now() - sweepStarted) / 1000)} s (${RECEIPT_JOBS} at a time). Horde wave 1 over 24 deals: `
   + `${outcome}, mean advance ${meanAdvance.toFixed(3)}; infected ${survivorM.toFixed(0)} m from the survivors; Frontline contested `
-  + `${contested}/8; a flag lifted on ${lifted}/8; Turbo Ball ${touches.toFixed(0)} touches; conduct on every deal, known by seed: `
+  + `${contested}/8 (${clearest} proven clearest placement${clearest === 1 ? '' : 's'}); a flag lifted on ${lifted}/8; Turbo Ball ${touches.toFixed(0)} touches; conduct on every deal, known by seed: `
   + `${known.join(', ') || 'none'}`);

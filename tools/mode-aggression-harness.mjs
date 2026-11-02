@@ -833,7 +833,7 @@ const ball = { touches: { alpha: 0, bravo: 0, unknown: 0 }, shotTouches: 0, ramT
   // crowd: samples where at most 3 bots of each team stand within 30 m of the ball; bot shells that touched the ball
   crowdSamples: 0, crowdOk: 0, botShotTouches: 0 };
 const front = { lines: [], total: null, zoneSamples: { alpha: 0, bravo: 0 }, liveSamples: 0, alphaDistSum: 0, alphaDistN: 0, bravoDistSum: 0, bravoDistN: 0, maxIndex: 0,
-  pendingPlacements: [], placements: 0, placedNear: 0, placedSeen: 0, placedMinM: Infinity };
+  pendingPlacements: [], placements: 0, placedNear: 0, placedSeen: 0, placedMinM: Infinity, placedClearest: 0, clearestUnproven: 0, clearestMinM: Infinity };
 const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnChecks: 0, spawnNear: 0, spawnSeen: 0, spawnMinM: Infinity,
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
@@ -1196,11 +1196,47 @@ function settleArrivals() {
  * allows), or in one's terrain sight within 450 m.
  */
 const lineGuardM = rules.assault?.lineGuard?.minAttackM ?? 0;
+/**
+ * (268, item 10) A placement the guard logged as its fallback (MatchModeController.lineGuardFallbacks: no candidate clear,
+ * the clearest taken) is accepted when the record proves it: each candidate's nearest living attacker, measured here,
+ * agrees with the guard's within a tick of the attack's motion; none was clear (outside the guard's reach and out of sight
+ * at once); and the defender stands on the best of them by the guard's own order (outside the reach, then out of sight,
+ * then the furthest). The guard's sight is the one frontlineLineGuard.selftest proves independently on 64 seeds.
+ */
+function provenClearest(id, d0, t) {
+  const log = adapter.controller?.()?.lineGuardFallbacks?.() ?? [];
+  const record = [...log].reverse().find((r) => r.id === id && Math.abs(r.atS - t) < 0.05);
+  if (!record) return null;
+  const c = record.candidates;
+  let best = -1, bestKey = null, agree = true, anyClear = false;
+  for (let i = 0; i < c.length; i += 4) {
+    let nearest = Infinity;
+    for (const h of ents) {
+      if (normTeam(h.team) !== 'alpha' || !alive(h)) continue;
+      nearest = Math.min(nearest, Math.hypot(h.state.pos.x - c[i], h.state.pos.z - c[i + 1]));
+    }
+    if (Math.abs(nearest - c[i + 2]) > 1) agree = false;
+    if (c[i + 2] >= lineGuardM && !c[i + 3]) anyClear = true;
+    const key = [c[i + 2] >= lineGuardM ? 1 : 0, c[i + 3] ? 0 : 1, c[i + 2]];
+    if (!bestKey || key[0] > bestKey[0] || (key[0] === bestKey[0] && (key[1] > bestKey[1] || (key[1] === bestKey[1] && key[2] > bestKey[2])))) { bestKey = key; best = i; }
+  }
+  const onBest = best >= 0 && Math.hypot(c[best] - record.chosenX, c[best + 1] - record.chosenZ) < 0.5
+    && Math.hypot(d0.state.pos.x - record.chosenX, d0.state.pos.z - record.chosenZ) < 0.5;
+  return { proven: agree && !anyClear && onBest, nearestM: bestKey ? bestKey[2] : Infinity };
+}
 function settlePlacements() {
   const ids = front.pendingPlacements.splice(0);
   for (const id of ids) {
     const d0 = byId.get(id);
     if (!d0 || !alive(d0)) continue;
+    const fallback = provenClearest(id, d0, adapter.timeS());
+    if (fallback?.proven) {
+      front.placements++;
+      front.placedClearest++;
+      if (fallback.nearestM < front.clearestMinM) front.clearestMinM = fallback.nearestM;
+      continue;
+    }
+    if (fallback) front.clearestUnproven++;
     let nearest = Infinity, seen = false;
     for (const h of ents) {
       if (normTeam(h.team) !== 'alpha' || !alive(h)) continue;
@@ -1355,6 +1391,7 @@ if (mode === 'frontline_assault') {
     defenderDistToLiveZoneM: front.bravoDistN ? Math.round(front.bravoDistSum / front.bravoDistN) : null,
     sector1Kills: sector1.kills, counterAttacks: modeCounts.counter_attack ?? 0,
     placements: front.placements, placedNear: front.placedNear, placedSeen: front.placedSeen,
+    placedClearest: front.placedClearest, clearestUnproven: front.clearestUnproven, clearestMinM: Number.isFinite(front.clearestMinM) ? Math.round(front.clearestMinM) : null,
     placedMinM: Number.isFinite(front.placedMinM) ? Math.round(front.placedMinM) : null,
     waves: horde.waves };
 }

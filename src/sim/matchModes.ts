@@ -55,6 +55,8 @@ const FLAG_CAPTURE_RADIUS_M = 12;
 const FLAG_RETURN_S = 18;
 const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
+/** Frontline's line placements the guard could not clear, the latest kept (MatchModeController.lineGuardFallbacks). */
+const LINE_GUARD_FALLBACK_LOG = 16;
 /** An owned point's incursion alert repeats at most this often (a tank idling on the rim is one alert, not a stream). */
 const ZONE_CONTEST_REPEAT_S = 20;
 const ZONE_POINTS_PER_SECOND = 2;
@@ -112,6 +114,19 @@ export interface MatchModeEntity {
   modeShellKnockScale?: number;
   /** Ruleset impact physics block (matchRuleset.ts) the movement reads for the landing rebound. */
   modePhysics?: RulesetPhysics | null;
+}
+
+/**
+ * A Frontline line placement the guard could not clear (268, item 10): every candidate it tried, flat (x, z, its nearest
+ * living attacker in metres, 1 when an attacker's terrain sight reached it), and the one it stood the defender on, the
+ * clearest. The aggression receipt re-measures them to prove no candidate was clear.
+ */
+export interface LineGuardFallback {
+  id: string;
+  atS: number;
+  chosenX: number;
+  chosenZ: number;
+  candidates: readonly number[];
 }
 
 export interface MatchModeSpawn {
@@ -407,6 +422,8 @@ export interface MatchModeController<
   freshestSighting(entity: Entity): { x: number; z: number } | null;
   /** The enemy side's public deployment centre (the honest search's last resort). */
   enemyDeployment(entity: Entity): { x: number; z: number } | null;
+  /** Frontline's latest line placements the guard could not clear (at most LINE_GUARD_FALLBACK_LOG), oldest first. */
+  lineGuardFallbacks(): readonly LineGuardFallback[];
   serialize(viewerId?: string | null): MatchModePresentationState;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
@@ -1135,6 +1152,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * A defender's slot on the live line (defendersStartOnLine): lineBandM behind the sector's centre, spread across it,
    * facing the attack; `rear` puts it reinforceRearM back (the trickle). Null keeps the hostile's own spawn.
    */
+  // the line guard's candidates this search tried (x, z, nearest attacker, seen), and its logged fallbacks
+  const lineGuardTried: number[] = [];
+  const lineGuardFallbackLog: LineGuardFallback[] = [];
   function lineSlot(entity: Entity, slot: number, count: number, rear: boolean): MatchModeSpawn | null {
     if (!ruleset.assault || !assaultRules.defendersStartOnLine) return null;
     const zone = liveLine();
@@ -1158,6 +1178,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const maxBack = next ? Math.max(back, (next.x - zone.x) * axisX + (next.z - zone.z) * axisZ - assaultRules.contestReachM) : Infinity;
     let best: { input: MatchModeSpawn; placed: MatchModeSpawn; key: [number, number, number] } | null = null;
     let last: MatchModeSpawn | null = null;
+    lineGuardTried.length = 0;
     // the candidates nearest the drawn slot first: back along the axis by stepBackM, across by the line's spacing
     const offsets = lineSearchOffsets(guard, assaultRules.lineSpacingM, maxBack - back);
     for (const [backOffsetM, acrossOffsetM] of offsets) {
@@ -1167,6 +1188,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       last = placed;
       const exposure = lineExposure(placed.x, placed.z, guard);
       if (exposure.nearestM >= guard.minAttackM && !exposure.seen) return { ...placed, placed: true };
+      lineGuardTried.push(placed.x, placed.z, exposure.nearestM, exposure.seen ? 1 : 0);
       // the clearest: outside the reach first, then out of sight, then the furthest from the attack
       const key: [number, number, number] = [exposure.nearestM >= guard.minAttackM ? 1 : 0, exposure.seen ? 0 : 1, exposure.nearestM];
       if (!best || key[0] > best.key[0] || (key[0] === best.key[0] && (key[1] > best.key[1] || (key[1] === best.key[1] && key[2] > best.key[2])))) {
@@ -1176,6 +1198,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!best) return null;
     // the placement keeps one reservation per hull, the last it made: stand the chosen candidate's again
     const chosen = last === best.placed ? best.placed : placement ? placement.respawn(best.input, entity.id, occupiedBy(entity)) ?? best.placed : best.placed;
+    if (lineGuardFallbackLog.length >= LINE_GUARD_FALLBACK_LOG) lineGuardFallbackLog.shift();
+    lineGuardFallbackLog.push({ id: entity.id, atS: placementTimeS, chosenX: chosen.x, chosenZ: chosen.z, candidates: lineGuardTried.slice() });
     return { ...chosen, placed: true };
   }
   /** The guard's search pattern (back, across) in metres, nearest the drawn slot first; never past `maxBackM`. */
@@ -2572,6 +2596,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const at = centers[otherTeam(teamOf(entity))];
       deploymentOut.x = at.x; deploymentOut.z = at.z;
       return deploymentOut;
+    },
+    lineGuardFallbacks() {
+      return lineGuardFallbackLog;
     },
     captureCheckpoint(elapsedS) {
       // the wave rules the ruleset names (its horde, its assault), never a mode-id literal (round 3, the critic's E-R2-7)
