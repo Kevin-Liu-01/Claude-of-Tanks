@@ -1823,6 +1823,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.zoneHold.selftest.mjs',
     // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
     'src/game/ai.cornerHold.selftest.mjs',
+    // 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corners.
+    'src/game/ai.plannedLeg.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).

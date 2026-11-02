@@ -56,6 +56,7 @@ import {
   type ObstacleQuery,
 } from '../world/collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
+import { NAV_HULL_HALF_WIDTH_M } from '../sim/botRoutePlanner.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
@@ -134,7 +135,7 @@ interface FriendlyFireRisk {
 
 interface AiController {
   update(dt: number, timeS: number): void;
-  setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
+  setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean; planned?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void;
   notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
   notifyEnemyFired(shooter: AiEntity): void;
@@ -675,6 +676,9 @@ const DEAD_LEG_AWAY_S = 20;        // how long the travel a dead leg tried is ke
 const DEAD_LEG_AWAY_COS = 0.5;     // …within 60 degrees of its bearing (no back-up at all for that long)
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
+/** The planner's clearance beyond a hull's half-width on every leg it plans (sim/botRoutePlanner.ts NAV_LEG_CLEARANCE_M,
+ *  NAV_HULL_HALF_WIDTH_M + 0.5 for the widest hull; src/game/ai.plannedLeg.selftest.mjs pins the two together). */
+const PLANNED_LEG_CLEARANCE_M = 0.5;
 const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
@@ -1246,6 +1250,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   const waypoints: Position2[] = [];          // [{x,z}] patrol route
   let wpIndex = 0;
+  let waypointsPlanned = false;               // the waypoints are the planner's: each leg cleared (followPlannedLeg)
   let autoPatrolBuilt = false;
   let loopWaypoints = true;
 
@@ -2814,6 +2819,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // hulls drive through those. Plans are cached ROUTE_RECHECK_S so the cost
   // is a few hundred slab tests per bot every ~0.6 s, not per tick.
   const ROUTE_RECHECK_S = 0.6;
+  const ROUTE_CORNER_REACH_M = 4.5;      // a corner this near is reached: the router plans the next hop
+  const PLANNED_LEG_REJOIN_STEPS = 8;    // points along a planned leg the rejoin tries, its end first
   const ROUTE_LOOK_M = 85;
   const routeCorner = { x: 0, z: 0 };
   const routeCandidates: Position2[] = [
@@ -3226,11 +3233,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     directionZ /= distance;
     const limit = Math.min(distance, ROUTE_LOOK_M);
     const margin = spec.dims.widthM * 0.5 + 1.4;
-    const box = findBlockingObstacle(
+    let box = findBlockingObstacle(
       sourceX, sourceZ, directionX, directionZ, limit, margin,
     );
+    // A planned leg (268, item 10): the planner cleared it for the widest hull at its own clearance (half-width +
+    // PLANNED_LEG_CLEARANCE_M), the router judges lines at half-width + 1.4. Two rules for one corridor: on desert seed
+    // 20 a TOS-1A's planned leg passed 2.6 m from a building, the router called even the leg itself blocked, replaced
+    // it with a corner 14 m into a walled courtyard, and the hull pivoted and wedged there 15 s before a release lined it
+    // up and it drove the straight line out. While the hull's body overlaps the leg's cleared corridor, the line on to
+    // the leg's end is judged by the planner's rule; further off, the hull rejoins the leg before trying corners.
+    const legOff = box ? plannedLegOffset(gx, gz) : Infinity;
+    if (box && legOff <= NAV_HULL_HALF_WIDTH_M + PLANNED_LEG_CLEARANCE_M + spec.dims.widthM * 0.5
+      && !findBlockingObstacle(sourceX, sourceZ, directionX, directionZ, limit, spec.dims.widthM * 0.5 + PLANNED_LEG_CLEARANCE_M)) {
+      box = null;
+      plannedLegRuns++;
+    }
     routeOutcome = box ? 'blocked' : 'clear';
     if (box) {
+      if (legOff < Infinity && rejoinPlannedLeg(sourceX, sourceZ, margin)) return;
       const heldOpen = wasActive && cornerOpen(box, sourceX, sourceZ, heldX, heldZ, margin);
       if (heldOpen && nowS < routeCornerSettledUntilS) {
         routeCorner.x = heldX;
@@ -3261,6 +3281,46 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (liquidSafe || nowS < terrainRouteUntilS) {
       planTerrainRoute(sourceX, sourceZ, directionX, directionZ, gx, gz);
     }
+  }
+  /**
+   * The hull's distance off the planned leg whose end is the goal (the waypoint before the current one to it), or
+   * Infinity when the goal is no planned waypoint with one before it; the leg is left in plannedLeg for the rejoin.
+   */
+  let plannedLegRuns = 0, plannedLegRejoins = 0;
+  const plannedLeg = { ax: 0, az: 0, ex: 0, ez: 0, t: 0 };
+  function plannedLegOffset(gx: number, gz: number): number {
+    if (!waypointsPlanned || wpIndex < 1 || wpIndex >= waypoints.length) return Infinity;
+    const a = waypoints[wpIndex - 1]!, b = waypoints[wpIndex]!, stand = standHalfExtentM(spec);
+    // the goal is this leg's end (as driveToXZ clamps it)
+    if (Math.abs(clamp(b.x, -stand, stand) - gx) > 0.01 || Math.abs(clamp(b.z, -stand, stand) - gz) > 0.01) return Infinity;
+    const st = entity.state, ex = gx - a.x, ez = gz - a.z, length2 = ex * ex + ez * ez;
+    if (!(length2 > 1)) return Infinity;
+    const t = clamp(((st.pos.x - a.x) * ex + (st.pos.z - a.z) * ez) / length2, 0, 1);
+    plannedLeg.ax = a.x; plannedLeg.az = a.z; plannedLeg.ex = ex; plannedLeg.ez = ez; plannedLeg.t = t;
+    return detMath.hypot(a.x + ex * t - st.pos.x, a.z + ez * t - st.pos.z);
+  }
+  /** Back onto the planned leg at the furthest point of it a line clear at the router's margin reaches (a corner of it). */
+  function rejoinPlannedLeg(sourceX: number, sourceZ: number, margin: number): boolean {
+    const { ax, az, ex, ez, t } = plannedLeg;
+    for (let k = PLANNED_LEG_REJOIN_STEPS; k >= 0; k--) {
+      const f = t + (1 - t) * k / PLANNED_LEG_REJOIN_STEPS;
+      let dx = ax + ex * f - sourceX, dz = az + ez * f - sourceZ, distance = detMath.hypot(dx, dz);
+      // nearer than the corner's reach a point is no corner to steer for: the leg's nearest point is steered for across
+      // the leg, at the corner's reach, so the hull still heads onto the leg
+      if (distance < ROUTE_CORNER_REACH_M + 0.5) {
+        if (k !== 0 || distance < 0.5) continue;
+        const reach = ROUTE_CORNER_REACH_M + 0.5;
+        dx *= reach / distance; dz *= reach / distance; distance = reach;
+      }
+      if (findBlockingObstacle(sourceX, sourceZ, dx, dz, distance, margin)) continue;
+      routeCorner.x = sourceX + dx;
+      routeCorner.z = sourceZ + dz;
+      routeActive = true;
+      routeOutcome = 'rejoin';
+      plannedLegRejoins++;
+      return true;
+    }
+    return false;
   }
   // r7: corner preference bias — repeated strikes flip detourSide, and the
   // replan then prefers corners on the OTHER flank of the advance line, so
@@ -3439,7 +3499,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (routeActive) {
       const cdx = routeCorner.x - st.pos.x;
       const cdz = routeCorner.z - st.pos.z;
-      if (detMath.hypot(cdx, cdz) < 4.5) {
+      if (detMath.hypot(cdx, cdz) < ROUTE_CORNER_REACH_M) {
         // corner reached — veto it briefly and replan (next hop or straight)
         lastCorner.x = routeCorner.x;
         lastCorner.z = routeCorner.z;
@@ -3591,6 +3651,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function buildAutoPatrol() {
     const st = entity.state;
+    waypointsPlanned = false;
     const r = 45 + rng() * 40;
     const a0 = rng() * TAU;
     for (let i = 0; i < 4; i++) {
@@ -4969,6 +5030,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const sectorX = Math.round(enemy.state.pos.x / 50) * 50;
     const sectorZ = Math.round(enemy.state.pos.z / 50) * 50;
     waypoints.length = 0;
+    waypointsPlanned = false;
     waypoints.push({ x: (position.x + sectorX) / 2, z: (position.z + sectorZ) / 2 });
     waypoints.push({ x: sectorX, z: sectorZ });
     wpIndex = 0;
@@ -5020,6 +5082,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function setSearchWaypoints(route: ReadonlyArray<readonly [number, number]>): void {
     waypoints.length = 0;
+    waypointsPlanned = true; // the search and level legs are the planner's routes
     for (let i = 0; i < route.length; i++) waypoints.push({ x: route[i][0], z: route[i][1] });
     wpIndex = 0;
     autoPatrolBuilt = true;
@@ -5089,6 +5152,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         }
       } else {
         waypoints.length = 0;
+        waypointsPlanned = false;
         waypoints.push({ x: (position.x + goal.x) / 2, z: (position.z + goal.z) / 2 });
         waypoints.push({ x: goal.x, z: goal.z });
         wpIndex = 0;
@@ -5528,6 +5592,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     levelRouting = false;
     levelRouteTargetId = null;
     waypoints.length = 0;
+    waypointsPlanned = false;
     wpIndex = 0;
   }
 
@@ -6851,7 +6916,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function setWaypoints(
     points: readonly (readonly [number, number])[],
-    { loop = true }: { loop?: boolean } = {},
+    { loop = true, planned = false }: { loop?: boolean; planned?: boolean } = {},
   ): void {
     // Live modes and Jev supply destinations, not terrain-safe paths. Resolve
     // those through the same navigation grid as opening/search routes. Keep an
@@ -6863,8 +6928,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // the grid has no way the widest hull fits from here (a passage two wrecks narrow, a zone centre against a
       // wall): the destination itself stays the waypoint, for the local router to approach, never no route at all
       if (deps.planRoute) {
-        const planned = deps.planRoute(entity.state.pos, { x, z });
-        if (planned.length) points = planned;
+        const route = deps.planRoute(entity.state.pos, { x, z });
+        if (route.length) { points = route; planned = true; }
       }
       const end = points[points.length - 1];
       missionRouteEndX = end ? end[0] : NaN;
@@ -6877,6 +6942,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
     }
+    waypointsPlanned = planned && !loop;
     wpIndex = 0;
     autoPatrolBuilt = true; // user route supersedes the auto loop
     loopWaypoints = !!loop;
@@ -7080,7 +7146,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
       routeCornerZ: routeActive ? +routeCorner.z.toFixed(2) : null, routeCornerFlips,
-      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
+      driveGoalX, driveGoalZ, driveGoalAgeS: nowS - driveGoalAtS, steerGoalX, steerGoalZ, cornersCrowded, plannedLegRuns, plannedLegRejoins, pivotCreeps, pivotRollCuts, solidBrakes, wedgeReleases, wedgeReleased: !carefulDriving(), routeOutcome,
       objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,

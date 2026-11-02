@@ -336,7 +336,7 @@ export function openingRoute(
         ? { x: end[0], z: end[1] } : { x, z };
       yield;
     }
-    controller.setWaypoints(route, { loop: false });
+    controller.setWaypoints(route, { loop: false, planned: true });
     return route;
   })();
 }
