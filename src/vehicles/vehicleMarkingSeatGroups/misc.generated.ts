@@ -250,8 +250,8 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.24,
         "pos": [
           1.551,
-          0.22,
-          0.1487
+          0.27514,
+          -0.33695
         ],
         "quaternion": [
           0,
@@ -322,7 +322,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "pos": [
           -1.551,
           0.1325,
-          -0.0875
+          0.13925
         ],
         "quaternion": [
           0,
@@ -389,11 +389,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "insignia",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.2,
         "pos": [
           1.551,
-          0.2325,
-          -0.07155
+          0.11303,
+          0.1492
         ],
         "quaternion": [
           0,
@@ -406,7 +406,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0015326
+        "maximumSurfaceErrorM": 0.0015
       }
     ]
   },

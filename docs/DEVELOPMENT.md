@@ -566,7 +566,8 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   the default-tier receipts whose closure (the result cache's own, `selftestReadOf`, a broad-fallback match excluded)
   holds a changed path, plus the `tanks` pins that name a changed tank id or read a changed file outside the shared
   fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
-  files, a table's moved rows, a path naming the id). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
+  files, a table's moved rows, a source or generated path naming the id: under `src/`, `docs/references/` or what
+  the fleet steps write, never a page's media). A fleet-core edit (tankFactoryCore, decorations, kits) moves every
   pin's inputs: lane mode then runs none of them and reports them, and test:recommend names the whole `tanks` suite.
   Nor does it run a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration
   names nearly every id: the fingerprints bootstrap moved 218 tanks); test:recommend then names `tanks` for the owner.
@@ -1165,13 +1166,21 @@ The owner's rule (226): "no regenerating for tanks or anything else that didn't 
     npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
 
 **Refusals and `--ids` (266).** With no `release/fingerprints.tsv` (main before 265's bootstrap), or one recorded on
-another toolchain (`changed-ids` prints this run's toolchain parts next to the table's hash), every id resolves as
-changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before anything runs: "no fingerprints table:
-pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain mismatch, "or --all to re-record").
-`--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors; with a
-table it keeps the fixpoint among the ids and records their rows (the next plain run finds the rest; the chain receipt
-holds that `--ids` then a plain run equals a whole-fleet regen byte for byte), without one it runs each step once and
-records nothing. An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
+another toolchain, every id resolves as changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before
+anything runs: "no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain
+mismatch, "or --all to re-record", naming the part that moved: the table keeps the toolchain's parts beside its hash,
+268). `--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors;
+with a table on this run's toolchain it keeps the fixpoint among the ids and records their rows (the next plain run finds
+the rest; the chain receipt holds that `--ids` then a plain run equals a whole-fleet regen byte for byte). Without a
+table, or with one on another toolchain, it runs each step once and records nothing, so a lane never moves the table's
+toolchain (268: one run on another Node re-keyed every id). A `node_modules` that is not `package-lock.json`'s install
+(an installed version other than the lock's, a package one of them lacks) refuses every run but `--dry-run`: `npm ci`.
+
+**The toolchain (268)** is the schema, Node (`process.version`), the platform and `package-lock.json`: what changes a
+tool's output. An install's bookkeeping (`node_modules/.package-lock.json` differs between in-sync installs of one lock
+by npm's `peer` flags, so linked `node_modules` homes disagreed) and `NODE_OPTIONS` (the chain sets its tools' own) stay
+out, so two checkouts on one lock agree. Run the chain on `.nvmrc`'s Node: a login shell that does not inherit nvm's
+PATH finds Homebrew's Node 26 first (266's bootstrap `576f5e32ebc3c262` was taken there, 267's regen on nvm's 24.22.1). An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
 names (`docs/references/concepts/*.json` list their receipts) is no build input: five sat in the core key until 266, so
 an edit to one marked every id; `fleet-partition.selftest` now fails on any test-only tooling in a build's or step's key.
 The public pages are no step input either: `src/ui/localeRouting.ts` only names them as route strings (declared
@@ -1185,16 +1194,21 @@ spare-track keep-out), then the geometry ledger, the manual reference, centering
 lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
-by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
-`--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
-whole-fleet `--check`, writes nothing, exits 1 on a stale step). Fills have no check mode of their own:
+by the tool itself (`gen-interior-fills --merge-from`), and so do seats, spare track, anatomy and gun lines (268: each
+part measures its ids into its scratch dir, `--ids=<ids> --out-dir=<dir>`, and the merge, `--merge-from=<dirs>`, takes
+those rows in place of measuring and writes the step's tables, ledgers and its `--report`/`--json` once, byte for byte
+as one run). The chain holds a parts step's shared outputs to their digests while its parts run and fails the step when
+one moved (`tools/changed-only/parts.mjs`, steps.mjs `parts` and `sharedWrites`). Options: `--dry-run`, `--steps=a,b`,
+`--no-gpu`, `--jobs=N`, `--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all`
+(nightly: every step's whole-fleet `--check`, writes nothing, exits 1 on a stale step; anatomy's runs as
+`gen-combat-anatomy --check --jobs=4`, parallel `--ids` parts with no merge, as the fleet suite's does). Fills have no check mode of their own:
 `tools/changed-only/fills-check.mjs` measures the ids into scratch with the generator's code and flags and compares
 each record and its moving-clearance cells (`--ids=<ids>` or `--all`, `--jobs=N`).
 
 How an id is chosen (`tools/changed-ids.mjs`, `tools/changed-only/`): each (step, id) has an input key and an output
 key in `release/fingerprints.tsv`, written as soon as the step finishes. The input key covers the step's tool (its
 static import closure, canonical flags from `tools/changed-only/steps.mjs`, declared dynamic reads, the environment
-variables it reads), the toolchain (Node, platform, both lockfiles, NODE_OPTIONS minus heap flags), the shared fleet
+variables it reads), the toolchain (the schema, Node, the platform, `package-lock.json`), the shared fleet
 core (every file the fleet entries reach outside a group's builder registration: specs, factory, kits, materials,
 generated spec data, index/loader maps), the builder groups on the id's spec chain (visualBase, variantOf, donors) and
 the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
@@ -1251,19 +1265,29 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
-- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`) names it in the
-  report its step's `skipped` flag asks for. The chain records the other ids, leaves that one due without retrying it
-  or failing, and names it in the final resolve; `tank:changed --explain` says the file is absent here. A checkout
-  holding the oracle clears it.
+- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`, or with a page
+  error that keeps the previous row) names it, with its reason, in the report its step's `skipped` flag asks for. The
+  chain records the other ids and stamps each named one whose reason the step's `stamp` reads (268, `gateStamp` in
+  `tools/changed-only/steps.mjs`): an absent or unpinned oracle is keyed on that file's presence and bytes and the
+  step's tool, any other page error on the id's whole input key. A stamped id reads current, in the chain and in
+  `fresh.selftest.mjs`, until that key moves (the oracle appears, a fix lands), and never over an output edited since
+  its last run; a reason the step cannot read gets no stamp, so the id stays due. The chain does not retry the id or
+  fail, and names any still due in the final resolve; `tank:changed --explain` says why. A stamp is the one key that
+  reads a gitignored file's presence: it says the id cannot run here, so a checkout holding the oracle finds it due and
+  clears it.
 - The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
   `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
   (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran
   centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
   its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
-  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`): the file's bytes
+  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`), with the
+  `graft: { path, sha256 }` beside it where a certificate seats a second source in the first (t90a_burlak_proto): the file's bytes
   where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
-  did, and different bytes at the path re-run that id alone. A ledger a step only checks each id against
+  did, and different bytes at the path re-run that id alone. Because the gate writes the row its own key reads, a run
+  stamps that row as it recorded it (`stampedInKeys`: the recorded sha256s), not as it stood before the run. The
+  pre-run stamp left every id whose record gained or moved its oracle due a second time; 267's bootstrap gated 118 ids
+  twice. A ledger a step only checks each id against
   (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
   as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
   order moves no key, one row moves its id alone and the tolerance moves every id (267: the 266 Brazil merge reordered

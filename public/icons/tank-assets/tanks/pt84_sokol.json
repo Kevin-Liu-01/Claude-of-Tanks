@@ -6698,8 +6698,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-1.0455,0.1661,-1.5944],
-        "max": [-0.1743,0.1951,-1.1489],
+        "min": [-1.0455,0.0789,-1.2974],
+        "max": [-0.1743,0.3695,-1.1489],
         "turretLocal": true
       },
       {
@@ -6888,7 +6888,7 @@
     ]
   },
   "geometryHash": "183a5942",
-  "metadataHash": "3603678d",
+  "metadataHash": "a1053d2e",
   "presentationAnchor": {
     "xM": 0.0022,
     "zM": 0.0474
@@ -7002,8 +7002,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22902,
-      "sha256": "1ee44fa00921d943d45b69d98b11dfd8223846dd704b8b6f0296726d9f38305e"
+      "bytes": 23006,
+      "sha256": "f40d01aa5468427eb657d945b8e57db4870eead02f34a58cfc92aa20ab3797fd"
     },
     "crewSide": {
       "file": "pt84_sokol_crew_side.webp",
@@ -7025,7 +7025,7 @@
       "file": "pt84_sokol_technical.json",
       "mime": "application/json",
       "bytes": 5450,
-      "sha256": "ae8b87268a2a32dee50ab7b81c0f5d3329adb24dab86cf4f078e6fb1d50c2363"
+      "sha256": "91a82664aee294c4727887ffea04587b1dd9d250ae0c32429206b8547d8954e9"
     }
   }
 }

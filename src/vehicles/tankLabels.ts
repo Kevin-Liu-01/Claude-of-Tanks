@@ -173,6 +173,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['TK-X-0002', 'Type 90 second prototype', 'Type 90A', 'Type 90 Kai'],
   },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
+  // 267 (owner 2026-10-31, "add a type 90 b esp with that awesome machine gun"): the Type 90 with the dozer kit and a
+  // remote 12.7 mm station (type90bSpecs.ts)
+  type90b: { displayName: 'Type 90 (B)', shortName: 'Type 90 (B)', searchAliases: ['Type 90B', 'Type 90 B', 'Type 90 dozer', 'Type 90 RWS', '90式戦車 ドーザ付'] },
   // 266: the Brazilian Army line
   osorio_p1: { displayName: 'EE-T1 Osório (105)', shortName: 'Osório 105', searchAliases: ['EE-T1 Osorio', 'Osorio P1', 'Osório P.1', 'Engesa Osorio 105', 'Brazilian tank'] },
   x1_pioneiro: { displayName: 'CCL X1 Pioneiro', shortName: 'X1 Pioneiro', searchAliases: ['X1', 'Pioneiro', 'Bernardini X1', 'X1A', 'Brazilian Stuart', 'MB-1'] },
@@ -193,6 +196,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   m41_bw: { displayName: 'M41 (Bundeswehr)', shortName: 'M41 BW', searchAliases: ['M41 Germany', 'Bundeswehr M41', 'M41A1 BW', 'Walker Bulldog Germany'] },
   m41_jgsdf: { displayName: 'M41 (JGSDF)', shortName: 'M41 JGSDF', searchAliases: ['M41 Japan', 'JGSDF M41', 'Walker Bulldog Japan'] },
   m41dk1: { displayName: 'M41 DK-1', searchAliases: ['M41DK1', 'M41 DK1', 'Walker Bulldog DK', 'Danish M41', 'M41 Walker Bulldog'] },
+  leo2a7dk: { displayName: 'Leopard 2A7 DK', searchAliases: ['Leopard 2A7DK', 'Danish Leopard 2A7', 'Leopard 2 A7 DK', 'Leopard 2A7 Denmark'] },
   t49: { displayName: 'T49', searchAliases: ['T49', 'T49 light tank', 'M41 Sheridan turret', 'Walker Bulldog 152'] },
   leo1a5dk1: { displayName: 'Leopard 1A5 DK-1', searchAliases: ['Leopard 1A5DK1', 'Leopard 1A5 DK1', 'Bøllebank', 'Bollebank', 'UN Leopard', 'Danish Leopard Bosnia'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
@@ -357,6 +361,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5_2: { displayName: 'Centurion Mk 5/2' },
+  centurion5_2dk: { displayName: 'Centurion Mk 5/2 DK', searchAliases: ['Centurion DK', 'Danish Centurion', 'Centurion Mk V/2 DK', 'Centurion Mk 5/2 Denmark'] },
   // release 266: the M48s drawn on the M48A5's castings
   m48a3_patton: { displayName: 'M48A3 Patton', searchAliases: ['M48A3', 'Patton III', 'Vietnam Patton'] },
   magach3: { displayName: 'Magach 3', searchAliases: ['Magach', "Magach 3 Blazer", 'IDF M48', 'Israeli Patton'] },

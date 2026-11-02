@@ -105,7 +105,7 @@
   },
   "actual": {
    "heightM": 3.1548549269791692,
-   "hullLengthM": 6.83390113413334,
+   "hullLengthM": 6.940680839354174,
    "overallLengthM": 9.212176386779175,
    "widthM": 3.7275824368000032
   }
@@ -117,7 +117,7 @@
   "hullCurves": 92.68315868835327,
   "stations": 97.7128959144732,
   "turretCurves": 92.43349688441263,
-  "wholeCurves": 92.90819906364445,
+  "wholeCurves": 92.99409087958739,
   "dims": 95.30158730158735,
   "floaters": 100
  },
@@ -125,7 +125,7 @@
   "hullCurves": 92.7,
   "stations": 97.7,
   "turretCurves": 92.4,
-  "wholeCurves": 92.9,
+  "wholeCurves": 93,
   "dims": 95.3,
   "floaters": 100
  },
@@ -673,8 +673,8 @@
    ]
   },
   "front_whole": {
-   "score": 92.90819906364445,
-   "meanPct": 0.53,
+   "score": 92.99409087958739,
+   "meanPct": 0.52,
    "p95Pct": 1.27,
    "coverPct": 0,
    "reg": {
@@ -1137,8 +1137,8 @@
   },
   {
    "name": "hullLengthM",
-   "actual": 6.83390113413334,
-   "published": 6.83390113413334,
+   "actual": 6.940680839354174,
+   "published": 6.940680839354174,
    "pct": 0,
    "method": "paired identical masks in source-only fixed frame"
   },
@@ -1161,36 +1161,52 @@
    "actual": 3.74824499630928,
    "published": 3.721091628074646,
    "pct": 0.7297151198795849,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalHeightM",
    "actual": 3.727138133507251,
    "published": 3.7246025800704956,
    "pct": 0.06807581164021796,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   },
   {
    "name": "physicalOverallLengthM",
    "actual": 9.208750230407714,
    "published": 9.203907251358032,
    "pct": 0.05261872938764837,
-   "method": "full visible physical envelope, no raster filtering"
+   "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
   "heightM": 3.1548549269791692,
-  "hullLengthM": 6.83390113413334,
+  "hullLengthM": 6.940680839354174,
   "overallLengthM": 9.202469140850008,
   "widthM": 3.6693389612250034
  },
  "referenceBodyExtent": {
   "h": 3.157,
-  "len": 6.838
+  "len": 6.944
  },
  "proceduralBodyExtent": {
-  "h": 3.157,
-  "len": 6.838
+  "h": 3.108,
+  "len": 6.944,
+  "roofFittingsTop": 3.205
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaWhip:fitting_antennaWhip_dark",
+   "antennaWhip:fitting_antennaWhip_detail",
+   "auxiliaryWeapon:americanM240Body",
+   "auxiliaryWeapon:browningDerivedMachineGunCradle",
+   "pintleMG:americanM240Mount"
+  ],
+  "reference": []
+ },
+ "oracleComparison": {
+  "antennasDropped": false,
+  "roofWeaponsDropped": false,
+  "rule": "a kind of roof fitting leaves both models only where the oracle names it"
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -1214,7 +1230,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 172688,
+     "area": 172711,
      "minX": 208,
      "minY": 307,
      "maxX": 983,
@@ -1228,7 +1244,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 173917,
+     "area": 173919,
      "minX": 208,
      "minY": 307,
      "maxX": 983,
@@ -1264,5 +1280,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/m48a5_patton_x_source.glb",
+  "sha256": "b54aff317407b292bd4d352a3d60ea0531a36bfbc3c21c698a9ba12ebb495285"
+ }
 }

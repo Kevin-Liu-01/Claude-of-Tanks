@@ -17,6 +17,8 @@ import {addT90MSSideAssembly} from './t90msXSideAssembly.ts';
 import {addT90MSOpticalHead} from './t90msXOpticalHead.ts';
 import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './t90msXHullEnds.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
+import {addT90BowGuard,toothedRubberStrip,type BowGuardStation} from './t90AwXFenders.ts';
+import {glacisEraContainers,type GlacisEraBand} from './t90AwXDetails.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addShtoraEyes} from './shtora.ts';
 import { libraryStationGun } from './libraryRoofMg.ts';
@@ -39,15 +41,35 @@ function hull(P:TankBuilderPort):void{
   P.add('hull',cylY(1.24025,.053,48),-.00095,1.519,.118);
   for(const side of [-1,1])fenders(P,side);
 }
+// The source fender's top line (z, top, underside).
+const FENDER:readonly(readonly[number,number,number])[]=[[-1.00495,1.515,1.287],[0,1.505,1.287],[1,1.469,1.287],[2,1.409,1.286],
+  [2.8,1.351,1.267],[3.10,1.307,1.237],[3.30,1.256,1.210],[3.50,1.135,1.101],[3.67675,.809,.777]];
+const fenderTop=(z:number):number=>{
+  for(let i=1;i<FENDER.length;i++)if(z<=FENDER[i][0]){const[a,ya]=FENDER[i-1],[b,yb]=FENDER[i];return ya+(yb-ya)*(z-a)/(b-a);}
+  return FENDER[FENDER.length-1][1];
+};
+// 267 (S1; the 266 critics: "the bow mudguards read as oversized wedges jutting forward over the tracks"): the shoulder
+// fender ends with the side screens (z 2.985), its underside rising there to a 14 mm edge, and the bow guard ahead of it
+// is sheet steel (t90AwXFenders addT90BowGuard): a 12 mm shelf with a turned lip, a hinge where the line breaks down at
+// z 3.31, and a 10 mm toe flap on the source line to its 3.677 tip, narrowing to the source's nose (its sections: x
+// 1.02-1.78 at z 3.5, 1.07-1.55 at 3.6, 1.10-1.28 at 3.65), never further forward or wider than the 266 guard.
+const MS_SHOULDER_END=2.985;
+const MS_TOE:readonly BowGuardStation[]=[[3.314,.956,1.792,fenderTop(3.314),.002,.030,.040],[3.42,.962,1.790,fenderTop(3.42),.006,.045,.035],
+  [3.52,1.000,1.770,fenderTop(3.52),.018,.07,.030],[3.60,1.050,1.690,fenderTop(3.60),.025,.075,.025],
+  [3.65,1.090,1.580,fenderTop(3.65),.02,.055,.020],[3.67675,1.140,1.440,fenderTop(3.67675),.01,.03,.015]];
 function fenders(P:TankBuilderPort,side:number):void{
   addT90MSRearFenderCourses(P,side);
   const l=Math.min(side*.956,side*1.792),r=Math.max(side*.956,side*1.792);
-  const rows:readonly(readonly[number,number,number])[]=[[-1.00495,1.515,1.287],[0,1.505,1.287],[1,1.469,1.287],[2,1.409,1.286],
-    [2.8,1.351,1.267],[3.10,1.307,1.237],[3.30,1.256,1.210],[3.50,1.135,1.101],[3.67675,.809,.777]];
+  const rows=[...FENDER.filter(([z])=>z<=2.8),[MS_SHOULDER_END,fenderTop(MS_SHOULDER_END),fenderTop(MS_SHOULDER_END)-.014] as const];
   P.addMudguard('t90ms-x-source-fender','hull',sectionSolid(rows.map(([z,t,b])=>({z,ring:[[l,b],[r,b],[r,t-.007],[l,t]]}))));
-  // The hanging curtain is a separate narrow sheet, not a filled side wall.
+  addT90BowGuard(P,side,'t90ms-x-bow-guard',[[MS_SHOULDER_END,0,.004],[3.10,0,.012],[3.20,.002,.02],[3.302,.004,.03]]
+    .map(([z,fi,fo])=>[z,.956,1.792,fenderTop(z),fi,fo,.045] as const),MS_TOE,[[1.01,1.24],[1.30,1.52],[1.58,1.75]]);
+  // The hanging curtain is a separate narrow sheet, not a filled side wall. 267 (S3; the 266 critics: "flat hems"):
+  // each is cut into four trapezoid teeth between V notches 80 mm deep along its foot (t90AwXFenders toothedRubberStrip);
+  // its 21 mm sheet, outer face (x 1.7765) and corners stay, which the spaced-armour recipe reads (sourceXSovietAuxArmor.ts).
   for(const[z,d]of [[-.669,.67],[-.001,.655],[.662,.650],[1.328,.655],[1.999,.661],[2.659,.634]]){
-    P.addMudguard('t90ms-x-lower-curtain','hullRubber',box(.021,.322,d-.005),side*1.766,.598,z);
+    const a=z-(d-.005)/2,b=z+(d-.005)/2;
+    P.addMudguard('t90ms-x-lower-curtain','hullRubber',toothedRubberStrip(a,b,.719,.282,.08,(b-a)/4,.035,.021).translate(side*1.766,0,0));
     P.addEquipment('hullDetail',box(.02,.022,d-.012),side*1.766,.763,z);
   }
 }
@@ -71,29 +93,56 @@ function runningGear(P:TankBuilderPort):void{
     trackShoeDimensions:{padHeight:.036,grouserHeight:.010,webHeight:.018,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }
+// 267 (S3; the 266 critics: "the glacis armour reads flat"): the glacis Relikt as rows of welded containers over the
+// source's two cover stations (t90AwXDetails glacisEraContainers), each band on the plate its 266 slab lay on (24 and
+// 22 mm under that slab's face, the lower one with its knee at z 2.933): three rows of three a side above, two below.
+const msGlacisEra=(side:number):readonly GlacisEraBand[]=>{
+  const x0=side<0?.0104:-.008,x1=side<0?.8972:.878;
+  return [{z0:2.024,z1:2.711,x0,x1,plate:[[2.024,1.409],[2.711,1.076]],rows:3,cols:3,h0:.030,h1:.046},
+    {z0:2.6893,z1:3.1924,x0,x1,plate:[[2.6893,1.18764],[2.933,1.021],[3.1924,.83054]],rows:2,cols:3,h0:.028,h1:.040}];
+};
 function glacis(P:TankBuilderPort):void{
   for(const side of [-1,1]){
-    const l=side<0?-.8972:-.008,r=side<0?-.0104:.878;
     P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.024,l,r,1.433,1.433],[2.711,l,r,1.10,1.10]],.024),[0,1,0]));
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.6893,l,r,1.20964,1.20964],[2.933,l,r,1.043,1.043],[3.1924,l,r,.85254,.85254]],.022),[0,1,0]));
-      for(const x of [side*.158,side*.454,side*.750])for(const z of [2.14,2.35,2.57])
-        P.addExternalArmor('hull',markEraFurniture(box(.265,.012,.024).rotateX(.451)),x,1.442-(z-2.024)*.485,z);
-      // 2026-10-19 (owner float sweep): the lower lugs stood 20 mm over the nose sheet (y 1.15); seated 2 mm in.
-      for(const x of [side*.13,side*.72])P.addExternalArmor('hull',markEraFurniture(box(.068,.029,.090).rotateX(.53)),x,1.132,2.843);
+      for(const band of msGlacisEra(side)){
+        const {cover,bolts}=glacisEraContainers(side,band,P.q);
+        P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
+        if(P.q)P.addExternalArmor('hull',markEraFurniture(bolts));
+      }
+      // 2026-10-19 (owner float sweep): the lower lugs stood 20 mm over the nose sheet (y 1.15); seated 2 mm in. 267: on
+      // the lower band's first-row containers, which stand 14 mm over the 266 sheet there.
+      for(const x of [side*.13,side*.72])P.addExternalArmor('hull',markEraFurniture(box(.068,.029,.090).rotateX(.53)),x,1.146,2.843);
     });
     P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),side*.774,1.108,2.858);
     for(const dx of [-.093,.093])P.addEquipment('hullDetail',beamBetween([side*.774+dx,1.015,2.874],[side*.774+dx,1.245,2.730],.008));
   }
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.056,1.494,1.609);
 }
+/** 267 (S3; the 266 critics: "the side skirts read as plain slabs"): one Relikt container of a skirt screen, a closed
+ * box from the screen's backing out to the 266 cover's 13 mm face, 10 mm chamfers round its face (square
+ * ends at low quality). */
+function skirtContainer(side:number,inner:number,face:number,y0:number,y1:number,a:number,b:number,fine:boolean):THREE.BufferGeometry{
+  const c=.010,ring=(inset:number):Array<readonly[number,number]>=>{
+    const pts:Array<readonly[number,number]>=[[inner,y0+inset],[face-c-inset,y0+inset],[face-inset,y0+c+inset],[face-inset,y1-c-inset],
+      [face-c-inset,y1-inset],[inner,y1-inset]];
+    return side<0?pts.map(([x,y])=>[-x,y] as const).reverse():pts;
+  };
+  return sectionSolid(fine?[{z:a,ring:ring(c)},{z:a+c,ring:ring(0)},{z:b-c,ring:ring(0)},{z:b,ring:ring(c)}]:[{z:a,ring:ring(0)},{z:b,ring:ring(0)}]);
+}
 function skirts(P:TankBuilderPort):void{
   for(const side of [-1,1])for(const[z,d]of [[-.67086,.6536],[-.00331,.6557],[.66249,.6498],[1.32764,.6547],[1.99864,.6613],[2.65939,.6344]]){
     const x=side<0?-1.78658:1.78406,t=z>2.5?1.36644:1.43438;
     P.addEquipment('hullDetail',box(.025,t-.763,d-.007),x-side*.035,(t+.763)/2,z);
+    // the containers run from the backing's face (12.5 mm off its centre) to the old cover's outer face, the source's
+    // plan width (30 mm past it read 19.5 % over the source's plan at its outer station: geometry gate, 267); two bolt
+    // heads (high quality) hold each lid at its outer corners and go with it
+    const inner=Math.abs(x)-.035+.0125,face=Math.abs(x)+.0065,a=z-(d-.003)/2,b=z+(d-.003)/2;
     P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
-      P.addExternalArmor('hull',markEraHitFaces(box(.013,t-1.139,d-.003),[side,0,0]),x,(t+1.139)/2,z);
-      P.addExternalArmor('hull',markEraHitFaces(box(.013,.3002,d-.003),[side,0,0]),x,.90963,z);
+      for(const[y0,y1]of [[1.139,t],[.7595,1.0597]]){
+        P.addExternalArmor('hull',markEraHitFaces(skirtContainer(side,inner,face,y0,y1,a,b,P.q),[side,0,0]));
+        if(P.q)P.addExternalArmor('hull',markEraFurniture(KIT.mergeAll([a+.045,b-.045].map(zz=>
+          box(.010,.022,.022).translate(side*(face+.003),y0>1.1?y1-.035:y0+.035,zz)))));
+      }
     });
   }
 }
@@ -177,6 +226,8 @@ function sideArmor(P:TankBuilderPort):void{
   addT90MSSideAssembly(P);
 }
 function bustle(P:TankBuilderPort):void{
+  // 267: the open bustle basket stays body, not stowage (stowagePart.ts): the print's basket node starts at y 1.81 and
+  // matches the build's piece for piece nowhere, so the gate keeps it on both sides.
   top(P,'turretDetail',boxSections([[-2.4092,.61,2.100,1.66],[-2.28,.660,2.1163,1.6292],[-1.70,.66,2.1163,1.675],[-1.5899,.64,2.10,1.70]]),-.0127,0,0);
   top(P,'turretDetail',box(.5082,.0127,.751),-.00955,2.12014,-1.99081);
   top(P,'turretDetail',box(1.5049,.3445,.0957),.0088,1.91174,-2.49616);
@@ -233,14 +284,33 @@ function aps(P:TankBuilderPort,shtora:boolean):void{
   // 2026-10-30 (t90-family-266): the T-90MS obr. 2011 (t90.ts) keeps the housings blank; the T-90MS carries no Shtora
   if(shtora)addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
 }
+/** A vertical round head of radius `r`, `h` tall about y 0, whose front (+z) is cut back to a flat pocket `2a` wide
+ * with its floor `floor` ahead of the axis. */
+function pocketedHead(r:number,a:number,floor:number,h:number):THREE.BufferGeometry{
+  const edge=Math.sqrt(r*r-a*a),from=Math.atan2(edge,-a),to=Math.atan2(edge,a)+Math.PI*2;
+  const plan=new THREE.Shape();
+  plan.moveTo(-a,edge);
+  plan.absarc(0,0,r,from,to,false);
+  plan.lineTo(a,floor);plan.lineTo(-a,floor);plan.lineTo(-a,edge);
+  // the plan in x, z (shape y is +z) extruded down, then centred on y 0
+  return new THREE.ExtrudeGeometry(plan,{depth:h,bevelEnabled:false,curveSegments:14}).rotateX(Math.PI/2).translate(0,h/2,0);
+}
 function remoteWeapon(P:TankBuilderPort):void{
   const station=beginAuxiliaryStation(P,{name:'t90msRemoteGun',caliberMm:12.7,
     yaw:[-.5514-YAW[0],2.28619-YAW[1],-1.12601-YAW[2]],
     pivot:[-.582-YAW[0],2.86869-YAW[1],-1.52451-YAW[2]],
     muzzle:[-.582-YAW[0],2.91609-YAW[1],-.71541-YAW[2]]});
-  for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.34454,.21715,.0747],[2.52154,.21715,.2803]])
+  // 267 (the accessory-contact receipt: the sight window "touches nothing within 15 mm", 2.3 cm inside the drum): the
+  // source station (t90ms_x_source.glb, rays round its yaw axis) is a 434 mm drum to y 2.423 under a 388 mm head to
+  // 2.662 whose front carries a pocket 210 mm wide, its floor 124 mm ahead of the axis, under a lip at 156 mm, the dark
+  // sight window standing in it. The build ran the drum to the head's top, which buried the window 63 mm deep. The
+  // drum stops at the head, the head and lip carry the pocket, and the window stands on its floor (5 mm into it) with
+  // its face where it was.
+  for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.36515,.21715,.1157]])
     top(P,'turretDetail',cylY(r,h,32),-.5514,y,-1.12601);
-  top(P,'turretDark',box(.1872,.206,.012),-.55185,2.53519,-.9786);
+  top(P,'turretDetail',pocketedHead(.194,.105,.124,.222),-.5514,2.534,-1.12601);
+  top(P,'turretDetail',pocketedHead(.194,.105,.156,.017),-.5514,2.6535,-1.12601);
+  top(P,'turretDark',box(.1872,.206,.0344),-.55185,2.53519,-.98981);
   for(const x of [-.740,-.353]){
     const wall=sectionSolid([[-1.725, {low:2.80,high:2.90}],[-1.55,{low:2.38,high:2.99469}],[-1.33,{low:2.55,high:2.985}]].map(([z,r])=>{
       const a=r as {low:number;high:number};return{z:z as number,ring:[[x-.014,a.low],[x+.014,a.low],[x+.014,a.high],[x-.014,a.high]] as Array<readonly[number,number]>};

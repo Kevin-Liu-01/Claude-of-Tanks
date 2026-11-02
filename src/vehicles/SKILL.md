@@ -490,9 +490,10 @@ they expose boot-safe metadata while their authored visual builders remain
 demand-loaded. The registry holds that generated metadata on every path
 (`modern1.ts`/`modern2.ts` import it); their live `MODERN1_SPECS` /
 `MODERN2_SPECS` tables are only the generator's source, never registered.
-Keep the Type 10 / Type 10B trunnion, muzzle, throat, and mantlet-fit receipts
-in the pure `profiles/type10GunSeat.ts` boundary; geometry builders consume the
-datums but do not redefine them.
+The Type 10 marks (TK-X, Type 10B, Kaitaku) draw the one modern Type 10 base
+(`profiles/type10X.ts`, its `mark` and kit options) and take its combat frame in
+`type10FamilyFrames.ts`; add a mark's difference as its own package, never a
+second base.
 Do not add regional fleet bundle modules. Browser acquisition maps exact IDs to
 typed family loaders through `fleetManifest.ts` and `fleetFactory.ts`; full
 fleet tools use `tankFactory.ts`. Both paths must convert family profiles with

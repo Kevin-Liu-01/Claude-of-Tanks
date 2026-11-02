@@ -142,15 +142,21 @@ const AUTHORED_PAINT_IDS_AFTER_264 = Object.freeze(['paint_shot_kal', 'paint_oli
 const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_challenger1_mk1',
   'paint_challenger1_x', 'paint_osorio_p2', 'paint_tamoyo1', 'paint_tamoyo3', 'paint_x1a2_carcara', 'paint_osorio_p1',
   'paint_ee_t3_osorio', 'paint_ee_t4_osorio', 'paint_m41dk1', 'paint_cv9035dk', 'paint_m41_bw', 'paint_m41_jgsdf'] as const);
+/** Release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover (denmarkSpecs.ts), held from 265, and the
+ * Centurion Mk 5/2 DK's 1980s three-tone; then (the Japan line) the Type 90 (B)'s JGSDF two-tone in large bands, olive
+ * drab under chocolate brown (the photo critic: the family's sage-and-tan service paint read as no JGSDF coat), and the
+ * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
+const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_265[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -191,6 +197,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...RELEASE_265_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_264,
   ...AUTHORED_PAINT_IDS_AFTER_265,
+  ...AUTHORED_PAINT_IDS_AFTER_266,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -546,8 +553,10 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'nato', base: '#4b553b', weather: '#797762', patches: ['#494235', '#252c26'] }),
   preset('sig_ariete_c2', 'c2_ariete_proto', signatureTags('it', 'woodland', 'organic'),
     { scheme: 'nato', base: '#424f39', weather: '#546047', patches: ['#222a24', '#66503b'], camoScale: 0.46, patchK: 1.2 }),
+  // 267 (owner 2026-11-01: the 10B "need[s] to look a lot more unique"): the upgrade fit's coyote ground with olive and
+  // dark brown blotches, for the green Type 10 bands it shared
   preset('sig_type10b', 'type10b', signatureTags('jp', 'woodland', 'stripes'),
-    { scheme: 'stripes', base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'], camoScale: 0.4 }),
+    { scheme: 'nato', base: '#8f7f5c', weather: '#9c8b67', patches: ['#5b5b40', '#3f3a2b'], camoScale: 0.5 }),
   preset('sig_type90', 'type90_kyumaru', signatureTags('jp', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#46503d', weather: '#555d49', patches: ['#70563e', '#303a30'], camoScale: 0.48 }),
   preset('sig_type90a', 'type90a', signatureTags('jp', 'woodland', 'stripes'),
@@ -908,6 +917,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // modern cool green and the Type 10's two-tone): Gelboliv, and the JGSDF's olive drab of 1961 to the 1980s
   m41_bw: 'paint_m41_bw',
   m41_jgsdf: 'paint_m41_jgsdf',
+  // release 267: the Danish Leopard 2A7 DK's olive under its Barracuda cover
+  leo2a7dk: 'paint_leo2a7dk',
+  // the Centurion Mk 5/2 DK's 1980s three-tone (olive, earth brown, black; the Stevnsfortet photograph)
+  centurion5_2dk: 'paint_centurion5_2dk',
+  // 267: the Type 90 (B) in the JGSDF two-tone of its own paint; the TK-X in its prototypes' pale trials finish (owner
+  // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
+  type90b: 'paint_type90b',
+  type10_tk_x: 'paint_type10',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

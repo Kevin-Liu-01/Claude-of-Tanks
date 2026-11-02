@@ -59,7 +59,8 @@ for(const [id,family]of Object.entries(families))for(const quality of ['high','l
   for(const {part:p}of parts){
    intact(p,`${id}/${quality}`);checked++;
    if(family==='bow'){
-    [-.9,.61,3.12].forEach((n,i)=>near(p.bounds.min.getComponent(i),n,'retained bow minimum'));
+    // 267 round 5: the knee's foot rose 0.61 -> 0.72 (the photos' upper-to-lower nose plate ratio)
+    [-.9,.72,3.12].forEach((n,i)=>near(p.bounds.min.getComponent(i),n,'retained bow minimum'));
     [.9,1.048,3.43].forEach((n,i)=>near(p.bounds.max.getComponent(i),n,'retained bow maximum'));
    }
    if(family==='closure'){

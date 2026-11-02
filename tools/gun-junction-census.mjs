@@ -55,6 +55,7 @@ import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { partArgs, writePartRows } from './changed-only/parts.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -97,6 +98,13 @@ const { ALL_TANK_IDS, getSpec } = await import('../src/vehicles/specs.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', LEDGER_PATH ? '' : 'c2_ariete').split(',').filter(Boolean), 'gun-junction-census --ids');
 if (LEDGER_PATH && !ids.length) { console.error('gun-junction ledger: pass --ids=<a,b> or --all'); process.exit(2); }
 if (LEDGER_PATH && flag('update') === flag('check')) { console.error('gun-junction ledger: pass exactly one of --update or --check'); process.exit(2); }
+// Parts (268, tools/changed-only/parts.mjs): --ids --out-dir=<dir> censuses its ids into dir alone (each id's report
+// row); --merge-from=<dir>,<dir> takes those rows in place of building the tanks and writes the ledger (and --json)
+// once, as one run does.
+const PART_TOOL = 'gun-junction-census';
+const parts = partArgs(args, PART_TOOL);
+if ((parts.partDir || parts.merging) && (flag('check') || SEED_RECOIL_M)) throw new Error(`${PART_TOOL}: parts (--out-dir, --merge-from) census for --update; never with --check or --seed-recoil-m`);
+if (parts.partDir && opt('json', '')) throw new Error(`${PART_TOOL}: a part writes its rows alone; the merge writes --json`);
 
 /** Show only LOD level 0 (the close-up surface the player inspects); returns a restore function. */
 function nearestLodOnly(root) {
@@ -398,6 +406,12 @@ async function writeImage(path, view) {
 
 const report = []; let failures = 0;
 for (const id of ids) {
+  const taken = parts.take(id);
+  if (taken) {
+    report.push(taken);
+    if (['build-failed', 'gap', 'no-mouth'].includes(taken.status)) failures++;
+    continue;
+  }
   const started = performance.now();
   await ensureInteriorFills([id]);
   let tank;
@@ -431,6 +445,12 @@ for (const id of ids) {
   console.log(`${id}: ${verdict} — ${mouthCount} main mouth(s)${kind === 'hull-fixed' ? ' fixed in the hull' : ''}, ${tankPoses.length} poses (build ${((built - started) / 1000).toFixed(1)} s, census ${((censused - built) / 1000).toFixed(1)} s, total ${((performance.now() - started) / 1000).toFixed(1)} s)`);
   for (const l of lines) console.log(l);
   tank.dispose?.();
+}
+parts.done();
+if (parts.partDir) {
+  writePartRows(parts.partDir, PART_TOOL, Object.fromEntries(report.map((row) => [row.id, row])));
+  console.log(`gun-junction census: part of ${report.length} tank(s) written to ${parts.partDir}`);
+  process.exit(0);
 }
 const jsonPath = opt('json', '');
 if (jsonPath) { writeFileSync(resolve(jsonPath), JSON.stringify({ generated: new Date().toISOString(), resMm: RES_M * 1000, bandM: BAND_M, azimuths: AZIMUTHS, poses, tanks: report }, null, 1) + '\n'); console.log(`wrote ${jsonPath}`); }

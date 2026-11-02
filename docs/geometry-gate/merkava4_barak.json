@@ -990,6 +990,18 @@
   ],
   "reference": []
  },
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [
+    "can"
+   ],
+   "reference": []
+  }
+ },
  "oracleComparison": {
   "antennasDropped": false,
   "roofWeaponsDropped": false,
@@ -1067,5 +1079,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/merkava4_barak_x_source.glb",
+  "sha256": "0549b50430cd8df0ebf9d095b617e64e8c6274747bea1dd99e4dec0e987b8f4d"
+ }
 }

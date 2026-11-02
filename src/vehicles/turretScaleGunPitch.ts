@@ -21,12 +21,12 @@ t90m_proryv: [
   [0, -6], [19, -6], [20, -5.7], [23, -5.3], [39, -5.1], [49, -3.2], [50, -3], [133, -3], [135, -2.3],
   [136, -2.1], [139, -1.9], [140, -1.4], [141, -1.2], [147, -0.5], [148, -0.1], [149, 1], [150, 1.9], [162, 2],
   [163, 3.6], [164, 4.9], [165, 5.1], [170, 5.3], [171, 5], [172, 5.4], [177, 5.3], [178, 5], [180, 2]],
-  // depression 6, elevation 14; mountConflicts []; re-measured on the merged hull (245: main lowered its bustle tail)
+  // depression 6, elevation 14; mountConflicts []; 267: re-measured with the squash removed (its turret at its true
+  // height, t90.ts buildT90BurlakTurret) on the 267 T-90A X hull; the 245 curve let the barrel onto the rear deck kit at
+  // yaw 167
 t90a_burlak_proto: [
-  [0, -6], [30, -6], [33, -5.7], [34, -5.1], [35, -4.9], [36, -4.8], [40, -4.8], [45, -4.9], [46, -5.1],
-  [47, -5.4], [48, -6], [127, -6], [141, -4], [142, -3.7], [147, -3.6], [151, -3.8], [152, -2.8], [153, -2.2],
-  [155, -1.9], [158, -2], [160, -0.7], [161, -0.5], [162, -0.4], [164, -0.4], [167, -0.5], [168, -0.3],
-  [170, -0.3], [179, -0.9], [180, -1.6]],
+  [0, -6], [143, -6], [154, -2.7], [155, -2.5], [159, -2.5], [160, -1.5], [161, 0.8], [162, 1.7], [164, 2.6],
+  [165, 2.7], [168, 2.8], [169, 3.2], [172, 3.2], [177, 2.8], [180, 1.8]],
   // depression 10, elevation 20; mountConflicts [] (262: the fictional FV4030/5 and FV4030/6 on the hull rebuilt from
   // the Challenger 1's references; its rear deck sets both curves. The real marks ride the Mk 3's supplied-file build.)
 challenger_x: [

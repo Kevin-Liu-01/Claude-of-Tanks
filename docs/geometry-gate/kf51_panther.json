@@ -1082,7 +1082,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1155,5 +1154,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/kf51_x_source.glb",
+  "sha256": "82735650f85c1b8144ee9b87cb95d0ec230f0e627f34694ffa9116dd17dd2722"
+ }
 }

@@ -1146,5 +1146,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/abramsx-mortavex.glb",
+  "sha256": "441140f2428f0e956df62c73f01bcaa9fb9acf77c08e916707583e91f10fc355"
+ }
 }

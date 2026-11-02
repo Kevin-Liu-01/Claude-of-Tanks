@@ -863,7 +863,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -936,5 +935,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/amx30b_ahab.glb",
+  "sha256": "d098e1badf22f856f8d6f4797f8f0e1d9e76a0142cdc9a353bff1eb415787eb0"
+ }
 }

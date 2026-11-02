@@ -404,12 +404,20 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
     turret: {
       top: [laid({
-        x0: -1.68, x1: 1.70, z0: -3.41, z1: 1.97, nx: 42, nz: 67, y: 0.76,
+        // (267 round 5: "strips stick out into the air beyond the tank": the roof net ends inside the cassettes' faces)
+        x0: -1.55, x1: 1.57, z0: -3.41, z1: 1.97, nx: 39, nz: 67, y: 0.76,
         holes: [rect(-0.80, -0.30, -0.35, 0.15), rect(-0.70, -0.20, 0.30, 0.85), rect(-1.20, -0.80, -0.90, -0.45), rect(0.70, 1.10, -2.30, -1.85),
-          rect(-0.75, -0.05, -1.95, -1.40), rect(0.05, 0.75, -1.95, -1.40), rect(-0.95, -0.35, -1.00, -0.40), rect(0.25, 0.85, -1.00, -0.40)],
+          rect(-0.75, -0.05, -1.95, -1.40), rect(0.05, 0.75, -1.95, -1.40), rect(-0.95, -0.35, -1.00, -0.40), rect(0.25, 0.85, -1.00, -0.40),
+          // 267 (the Japan line's 10B on the Type 10 base): the remote station's turntable, the launcher units and the
+          // front radar heads stand clear of the net
+          rect(-0.96, -0.06, -0.39, 0.54), ...pair(1.00, 1.42, -1.00, -0.50), ...pair(0.92, 1.42, 0.22, 0.78),
+          ...pair(0.98, 1.48, -2.02, -1.50), rect(-0.84, -0.36, -3.10, -2.62)],
         garnishRiseM: 0.16, seed: 11,
       })],
-      side: [...flanks(-2.50, -0.28, 0.80, 0.46, 1.67, 17), ...flanks(-3.30, -2.56, 0.66, 0.36, 1.45, 19)],
+      // 267 (round 3 photo critic: "a wavy net sheet stands upright above the turret's rear roof edge", "cut the net back
+      // from the cassettes' faces"): the wall drapes start at the chamfer's top and end over the cassettes, ahead of the rear
+      // radar heads
+      side: [...flanks(-1.95, -0.28, 0.55, 0.17, 1.70, 17), ...flanks(-3.30, -2.56, 0.66, 0.36, 1.45, 19)],
       face: [face({ z: -3.42, x0: -1.30, x1: 1.30, y0: 0.36, y1: 0.74, nx: 26, ny: 6, seed: 23 })],
     },
     hull: {
@@ -417,7 +425,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.66, x1: 1.66, z0: -3.40, z1: 0.24, nx: 33, nz: 36, y: 1.95, holes: [rect(-1.80, -1.35, -3.55, -2.15)], garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.66, x1: 1.66, z0: 0.24, z1: 3.45, nx: 33, nz: 32, y: 1.80, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.10, 3.02, 1.60, 0.55, 1.76, 41, (side) => (side < 0 ? [cut(-3.55, -2.15, 1.30, 1.85)] : [])),
+      // the skirt drapes end over the reactive cassettes (their tops at 1.195), which stand clear
+      side: skirts(-3.10, 3.02, 1.55, 0.30, 1.76, 41, (side) => (side < 0 ? [cut(-3.55, -2.15, 1.30, 1.85)] : [])),
     },
   },
   // Type 90A: the roof netted round the sight head and its rail, the commander's and loader's hatches and the MG ring,
@@ -667,14 +676,26 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // drapes hang to the hem floor over the raised (0.70) skirt foot.
     turret: {
       top: [laid({ x0: -1.68, x1: 1.58, z0: -2.35, z1: 1.99, nx: 41, nz: 54, y: 0.72, garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-0.90, 0.95, 0.76, 0.42, 1.65, 17),
+      // (267 round 5b, Opus critic10: "black arched blots on the turret-side bins": the flank drapes hung over the racks;
+      // they now hang ahead of them)
+      side: flanks(-0.08, 0.95, 0.76, 0.42, 1.65, 17),
     },
     hull: {
       top: [
         laid({ x0: -1.70, x1: 1.70, z0: -3.15, z1: -0.10, nx: 34, nz: 31, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        // 267 round 5 (Sonnet, critic7: "the deck net is a flat rectangular mat with hard straight edges and the gun passes
+        // through it; a real net hangs in lumps"): a ragged outline short of the deck's corners, sticks pushed under it
+        // into humps, a looser billow, and the garnish kept to its outer band clear of the gun's sweep
+        laid({ x0: -1.70, x1: 1.70, z0: -0.10, z1: 3.25, nx: 34, nz: 34, y: 1.62, garnishRiseM: 0.08, garnishDensity: 0.9, seed: 37,
+          // (267 round 5b, both critics, critic10: "a straight-cut front edge, stopping dead at the mudguards": the front edge
+          // runs in deep tongues and stands off the mudguards)
+          outline: [[-1.62, -0.10], [1.60, -0.10], [1.70, 0.70], [1.56, 1.65], [1.50, 2.40], [1.28, 2.95], [0.85, 3.20],
+            [0.35, 2.88], [-0.20, 3.18], [-0.75, 2.86], [-1.25, 3.08], [-1.48, 2.55], [-1.70, 2.00], [-1.56, 1.10], [-1.70, 0.40]],
+          tents: [[-1.15, 0.55, 0.10], [1.10, 1.05, 0.09], [-0.95, 2.35, 0.08], [1.20, 2.50, 0.09], [-1.35, 1.55, 0.07]],
+          reliefScale: 1.6, garnishEdgeBandM: 0.85 }),
       ],
-      side: skirts(-3.30, 2.42, 1.40, 0.50, 1.83, 41),
+      // 267 (Sonnet, round 3: "the net patches on the skirt are flat rectangles with hard edges, pasted mats"): the skirt
+      // drapes are gone; the armoured skirt course stays bare under the deck nets.
     },
   },
   // T-80U Bars-M: the roof netted round its drum-fed station (the builder), sights and hatches, drapes behind each

@@ -152,9 +152,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'imp(<literal>) imports repository modules (followed as edges); node_modules imports are covered by the lockfiles; src source-line reads are covered (see covered)',
   },
   'tools/gen-combat-anatomy.mjs': {
-    pin: 'd1f869f3a73b1713',
+    pin: 'd59d402d211d9b75',
     reads: [],
-    note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check)',
+    note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check); 268: '
+      + '--check --jobs spawns itself on --ids parts of the same tree (reads nothing new)',
+  },
+  // 268: the parallel parts of a step (the chain's --jobs)
+  'tools/changed-only/parts.mjs': {
+    pin: 'bb0efc46ca9f9553',
+    reads: [],
+    note: 'readPartRows reads the --merge-from part directories the chain passes (rows this step\'s own parts measured with the same flags and tree); sharedDigests, which the chain alone calls, reads the step\'s own outputs around its parts',
   },
   'tools/gen-vehicle-marking-seats.mjs': {
     pin: '435bca1cb685e50d',
@@ -430,6 +437,20 @@ const GATE_PAGE_READS = [...GATE_PAGE_PUBLIC.dirs.map((dir) => `public/${dir}/**
   ...GATE_PAGE_PUBLIC.files.map((file) => `public${file}`)];
 
 /**
+ * (268) The gate's --skipped reasons (tools/geometry-gate.mjs, its pin errors in tools/geometry-gate-policy.mjs) as
+ * stamps (tools/changed-only/fingerprint.mjs stampKey): an absent or unpinned oracle is keyed on that file, any other
+ * page error on the id's whole input key. A reason it does not know names no stamp, so its id stays due.
+ */
+export function gateStamp(reason) {
+  const local = (path) => (path.startsWith('/') ? [`public${path}`] : []);
+  const absent = /^oracle absent here \((\S+)\)$/.exec(reason);
+  if (absent) return { code: 'oracle-absent', files: local(absent[1]) };
+  const unpinned = /^page error, previous row kept: oracle (\S+) (?:is [0-9a-f]{64}, not the pinned [0-9a-f]{64}|has no pinned sha256)\b/.exec(reason);
+  if (unpinned) return { code: 'oracle-unpinned', files: local(unpinned[1]) };
+  return /^page error, previous row kept: \S/.test(reason) ? { code: 'page-error', files: [] } : null;
+}
+
+/**
  * A GPU step runs each chunk in one browser, and its renderer grows with every id the chunk holds (genIcons renders them
  * all in one page evaluation and returns every image as a data URL); tools/browser-launch.mjs kills a renderer past 6 GB
  * (exit 86). 265: icons' time cap (chunkS 1100 / perIdS 2.5 = 440 ids) put all 255 ids in one browser, which the guard
@@ -450,8 +471,14 @@ export function gpuChunks(step, list) {
  *   full    extra args for a whole-fleet run; scoped(list) for an id run; check/checkScoped for verification (run by
  *           checkTool when the generator has no check mode of its own)
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
- *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
- *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
+ *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts(dir): the chain
+ *           splits a run of 8 or more ids into --jobs parallel parts, each given these arguments for its scratch dir,
+ *           and one merge run of the tool writes them (--merge-from, with the step's report and json flags, which the
+ *           parts never get); the step's shared outputs must not move while the
+ *           parts run (tools/changed-only/parts.mjs); sharedWrites: other files the tool writes (a verdict ledger),
+ *           never keyed, held across the parts as the outputs are
+ *   skipped, stamp  the flag that gets the tool's report of the ids it could not run here ({ id: reason }), and how a
+ *           reason becomes a stamp ({ code, files } or null; tools/changed-only/fingerprint.mjs recordStep); neither keyed
  *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
  *           BROWSER_ID_CAPS ids per browser (gpuChunks); none of them is keyed
  */
@@ -468,7 +495,7 @@ export const STEPS = Object.freeze([
     // The release flags (226: fills made at the old defaults 4/12 had to be redone); explicit, so a default change in
     // the tool cannot silently change what the chain generates.
     flags: ['--voxel=0.025', '--cell=2', '--rounds=8', '--min-fine=1'],
-    full: ['--all'], scoped: (list) => [ids(list)], parts: true,
+    full: ['--all'], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`, `--loader=${dir}/loader.ts`],
     // The generator measures and writes in one pass; its check measures into scratch with the same code and flags and
     // compares records (tools/changed-only/fills-check.mjs), so the generator's own bytes (and key) stay put.
     checkTool: 'tools/changed-only/fills-check.mjs',
@@ -479,7 +506,9 @@ export const STEPS = Object.freeze([
   {
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
     flags: ['--seeds=4000,4242,8191', '--qualities=high,low'],
-    full: [], scoped: (list) => [ids(list)],
+    // 268: parts seat their ids into scratch dirs; the merge writes both tables and the report once (one run used to
+    // rewrite them after every id, so two concurrent runs raced)
+    full: [], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     // 266 (trace-check --combat): the attachment seats follow the combat leaves
     rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
@@ -490,7 +519,9 @@ export const STEPS = Object.freeze([
     name: 'spareTrack', device: 'cpu', tool: 'tools/spare-track-placement-check.mjs',
     // --force: the tool's own inputHash skip ignores tool code and flags; the chain's key covers both.
     flags: ['--ledger=docs/geometry-gate/spare-track.json', '--update', '--force', '--quiet'],
-    full: ['--ids=all'], scoped: (list) => [ids(list)],
+    // 268 (6106 s of wall in the 267 regen): parts measure into scratch dirs; the merge runs the source lint and writes
+    // the ledger, the seat plan and --json once
+    full: ['--ids=all'], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     check: ['--ids=all', '--check'], checkScoped: (list) => [ids(list), '--check'],
     checkFlags: ['--ledger=docs/geometry-gate/spare-track.json', '--quiet'],
     outputs: ['spareTrackLedger', 'spareTrackSeatPlan'],
@@ -498,14 +529,18 @@ export const STEPS = Object.freeze([
   },
   {
     name: 'anatomy', device: 'cpu', tool: 'tools/gen-combat-anatomy.mjs',
-    flags: [], full: [], scoped: (list) => [ids(list)],
+    // 268: the regen's longest single-process step (3770 s of CPU in 266) runs as parallel parts: each measures its ids
+    // into its scratch dir, and the merge writes the groups, index, loader map and sim-floor ledger once
+    flags: [], full: [], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
     // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
     // 267: each id's sim-floor row (its drift check), and the ledger's tolerance through the table's frame
     rowReads: [SPEC_COMBAT, 'simFloors'],
-    check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
+    // 268: the check runs as --jobs parts with no merge (gen-combat-anatomy --check --jobs)
+    check: ['--check', '--jobs=4'], checkScoped: (list) => ['--check', '--jobs=4', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
+    sharedWrites: ['docs/geometry-gate/sim-floors.json'],
     gb: 8, timeoutS: 3600, perIdS: 15,
   },
   {
@@ -527,7 +562,9 @@ export const STEPS = Object.freeze([
     // 229: each id's gun-line census row binds the turret and gun digests of its ledger row, so it follows the ledger
     // (tank-release-plan's gun-junction --check fails an id whose ledger geometry moved without it).
     name: 'gunLines', device: 'cpu', tool: 'tools/gun-junction-census.mjs',
+    // 268: parts census their ids into scratch dirs; the merge writes the ledger once
     flags: ['--ledger=docs/geometry-gate/gun-junction.json', '--update'], full: ['--all'], scoped: (list) => [ids(list)],
+    parts: (dir) => [`--out-dir=${dir}`],
     check: ['--all'], checkScoped: (list) => [ids(list)], checkFlags: ['--ledger=docs/geometry-gate/gun-junction.json', '--check'],
     // the census copies each id's turret and gun digests from that id's fleet-ledger row (gun-junction-census.mjs)
     rowReads: ['geometryLedger'], outputs: ['gunJunction'],
@@ -581,8 +618,9 @@ export const STEPS = Object.freeze([
     gb: 6, timeoutS: 1200, perIdS: 25, chunkS: 1100,
     // the public files the page loads beside the oracles (each oracle is keyed per id by its record)
     reads: GATE_PAGE_READS,
-    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs): they stay due
-    skipped: '--skipped',
+    // the tool names the requested ids it did not measure here (tools/tank-regen-changed.mjs); each reason gateStamp
+    // names is stamped (268: current until its oracle or inputs move), any other stays due
+    skipped: '--skipped', stamp: gateStamp,
   },
 ]);
 
