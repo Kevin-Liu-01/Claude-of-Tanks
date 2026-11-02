@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
-import { balanceTokens, computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { BALANCE, CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
   SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_STEPS, CATALOG_FILES, gpuChunks } from './steps.mjs';
 import { browserIdCap } from '../browser-id-chunks.mjs';
@@ -73,11 +73,9 @@ assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whol
 assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
 assert.ok(state.steps.gunLines.rowTables.includes('geometryLedger'), 'gun lines key each id\'s fleet-ledger row (rowReads)');
 assert.deepEqual(state.steps.gunLines.foreignTables, [], 'gun lines reach no table whole (the fleet ledger is covered, keyed per id)');
-assert.equal(normalizedNodeOptions('--max-old-space-size=4096 --import=file:///w/tools/assert-graph-guard.mjs --x'), '--x',
-  'the heap cap and the runner\'s assert guard never key the toolchain');
-assert.equal(normalizedNodeOptions('--import=file:///w/tools/assert-graph-guard.mjs --import=file:///w/tools/selftest-observe.mjs'), '',
-  'nor does the runner\'s read observer (a receipt computes the same toolchain key as the command line)');
-assert.equal(normalizedNodeOptions('--import=file:///w/tools/other.mjs'), '--import=file:///w/tools/other.mjs', 'another preload still keys it');
+// (268) the toolchain is Node, the platform and the lock: a receipt (under the runner's preloads) computes the command line's
+assert.deepEqual(state.toolchainParts.map((part) => part.slice(0, part.indexOf(':'))), ['schema', 'node', 'platform', 'package-lock'],
+  'the toolchain keys the schema, Node, the platform and the lock alone');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');

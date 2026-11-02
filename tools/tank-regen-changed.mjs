@@ -11,9 +11,10 @@
 //                                                   # on the maps that cast them as wreck donors; their rows are recorded
 //                                                   # only when release/fingerprints.tsv exists
 //   npm run tank:regen:changed -- --help
-//   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the installed lock, NODE_OPTIONS),
+//   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the platform, package-lock.json),
 //   the chain refuses unless --ids, --all or --check says what to run (266: either way every id resolves as changed, so
-//   the default run used to plan the whole fleet silently).
+//   the default run used to plan the whole fleet silently); --ids then records no rows (268). A node_modules that is not
+//   the lock's install refuses every run but --dry-run (268).
 //   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel parts of fills, seats, spare track, anatomy, gun lines)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
@@ -36,8 +37,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
-  from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged,
+  toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
 import { expandGlobs } from './changed-only/globs.mjs';
@@ -70,6 +71,19 @@ if (value('ids') !== undefined) {
 // No table: every id would resolve as changed (no manifest), so a plain run would silently plan the whole fleet.
 const TABLE_PRESENT = existsSync(resolve(root, MANIFEST_PATH));
 if (!TABLE_PRESENT && !ALL && !CHECK && !IDS) refuse('no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap');
+// (268) The toolchain keys the lock (fingerprint.mjs toolchainOf), so the tools must be the lock's: a run on any other
+// install refuses before a tool runs.
+const DRIFT = DRY ? [] : installDrift(root);
+if (DRIFT.length) {
+  refuse(`node_modules is not package-lock.json's install (${DRIFT.length}: ${DRIFT.slice(0, 4).join('; ')}${DRIFT.length > 4 ? '; ...' : ''}): `
+    + 'run npm ci, or link a node_modules installed from this lock');
+}
+// (268) --ids records rows only into a table taken on this run's toolchain: rows taken on another would move the table's
+// toolchain and so mark every other id. On another one it runs its ids and records nothing, as without a table.
+const TOOLCHAIN = toolchainOf(root), RECORDED = TABLE_PRESENT ? readManifest(root) : null;
+const TABLE_CURRENT = TABLE_PRESENT && (!IDS || RECORDED?.toolchain === TOOLCHAIN.toolchain);
+const UNRECORDED = TABLE_CURRENT ? null : TABLE_PRESENT ? `the table is on another toolchain: ${toolchainChange(RECORDED, TOOLCHAIN.parts)}`
+  : 'no fingerprints table';
 const table = await loadTable(value('table') ?? null);
 const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
@@ -279,7 +293,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const fullState = fresh();
   const state = viewOf(definition, fullState);
   if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
-  const resolved = IDS ? (restrict && TABLE_PRESENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
+  const resolved = IDS ? (restrict && TABLE_CURRENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
     : forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
   const tried = notRunHere[name] ?? {};
@@ -310,7 +324,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   saveSummary();
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
-  if (IDS && !TABLE_PRESENT) { log(`[regen] ${name}: done in ${seconds} s (no fingerprints table: rows not recorded)`); return true; }
+  if (IDS && !TABLE_CURRENT) { log(`[regen] ${name}: done in ${seconds} s (rows not recorded: ${UNRECORDED})`); return true; }
   const after = fresh();
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
@@ -375,7 +389,7 @@ async function cpuFixpoint(firstPassFull) {
       summary.passes++;
       let moved = false;
       for (const name of CPU_FIXPOINT_STEPS.filter(selected)) if (await step(name, { restrict: !(firstPassFull && pass === 1) })) moved = true;
-      if (!moved || !TABLE_PRESENT) return;
+      if (!moved || !TABLE_CURRENT) return;
     }
     return;
   }
@@ -467,15 +481,14 @@ try {
   if (IDS) {
     const unknown = IDS.filter((id) => !fresh().ids.includes(id));
     if (unknown.length) throw Object.assign(new Error(`--ids names ids the roster does not hold: ${unknown.join(', ')}`), { refusal: true });
+    if (TABLE_PRESENT && !TABLE_CURRENT) log(`[regen] --ids: ${UNRECORDED}; these ids run and no rows are recorded`);
   }
   // A table recorded on another toolchain marks every id on every step: a plain run would plan the fleet as surely as
-  // no table at all (266: the bootstrap's 576f5e32ebc3c262 matched no install on the machine).
-  if (!ALL && !CHECK && !IDS) {
-    const recorded = readManifest(root)?.toolchain, state = fresh();
-    if (recorded && recorded !== state.toolchain) {
-      throw Object.assign(new Error(`the fingerprints table was recorded on another toolchain (${recorded}; this run ${state.toolchain}: `
-        + `${state.toolchainParts.join(', ')}), so every id would be marked: pass --ids=<ids> for a lane-scoped regen, or --all to re-record`), { refusal: true });
-    }
+  // no table at all (266: the bootstrap's 576f5e32ebc3c262 was taken on Homebrew's Node 26, which a login shell finds first).
+  if (!ALL && !CHECK && !IDS && RECORDED?.toolchain && RECORDED.toolchain !== TOOLCHAIN.toolchain) {
+    throw Object.assign(new Error(`the fingerprints table was recorded on another toolchain (${RECORDED.toolchain}; this run ${TOOLCHAIN.toolchain}: `
+      + `${toolchainChange(RECORDED, TOOLCHAIN.parts)}), so every id would be marked: run on the table's (Node from .nvmrc: nvm use), `
+      + 'pass --ids=<ids> for a lane-scoped regen (rows not recorded), or --all to re-record'), { refusal: true });
   }
   if (CHECK) await checkAll();
   else {
@@ -516,10 +529,10 @@ try {
       // --ids answers for its own ids (and the maps it ran): other ids may still be due, which the plain chain resolves
       const mine = new Set([...IDS, ...summary.runs.filter((run) => WORLD_NAMES.includes(run.step)).flatMap((run) => run.ids)]);
       for (const [name, entry] of Object.entries(summary.final)) {
-        const ids = TABLE_PRESENT ? entry.ids.filter((id) => mine.has(id)) : [];
-        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_PRESENT ? {} : { unrecorded: true }) };
+        const ids = TABLE_CURRENT ? entry.ids.filter((id) => mine.has(id)) : [];
+        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_CURRENT ? {} : { unrecorded: true }) };
       }
-      if (!TABLE_PRESENT) log('[regen] no fingerprints table: no rows recorded, no final resolve; run the release check for these ids next');
+      if (!TABLE_CURRENT) log(`[regen] ${UNRECORDED}: no rows recorded, no final resolve; run the release check for these ids next`);
     }
     // ids a tool could not run in this checkout stay due without failing the chain; the summary names them
     for (const [name, tried] of Object.entries(notRunHere)) {

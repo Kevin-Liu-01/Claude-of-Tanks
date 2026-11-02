@@ -1165,13 +1165,21 @@ The owner's rule (226): "no regenerating for tanks or anything else that didn't 
     npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
 
 **Refusals and `--ids` (266).** With no `release/fingerprints.tsv` (main before 265's bootstrap), or one recorded on
-another toolchain (`changed-ids` prints this run's toolchain parts next to the table's hash), every id resolves as
-changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before anything runs: "no fingerprints table:
-pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain mismatch, "or --all to re-record").
-`--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors; with a
-table it keeps the fixpoint among the ids and records their rows (the next plain run finds the rest; the chain receipt
-holds that `--ids` then a plain run equals a whole-fleet regen byte for byte), without one it runs each step once and
-records nothing. An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
+another toolchain, every id resolves as changed, so a plain run, `--dry-run` or `--verify` refuses with exit 2 before
+anything runs: "no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap" (on a toolchain
+mismatch, "or --all to re-record", naming the part that moved: the table keeps the toolchain's parts beside its hash,
+268). `--ids=<a,b>` runs every step on exactly those ids and the world steps on the maps that cast them as wreck donors;
+with a table on this run's toolchain it keeps the fixpoint among the ids and records their rows (the next plain run finds
+the rest; the chain receipt holds that `--ids` then a plain run equals a whole-fleet regen byte for byte). Without a
+table, or with one on another toolchain, it runs each step once and records nothing, so a lane never moves the table's
+toolchain (268: one run on another Node re-keyed every id). A `node_modules` that is not `package-lock.json`'s install
+(an installed version other than the lock's, a package one of them lacks) refuses every run but `--dry-run`: `npm ci`.
+
+**The toolchain (268)** is the schema, Node (`process.version`), the platform and `package-lock.json`: what changes a
+tool's output. An install's bookkeeping (`node_modules/.package-lock.json` differs between in-sync installs of one lock
+by npm's `peer` flags, so linked `node_modules` homes disagreed) and `NODE_OPTIONS` (the chain sets its tools' own) stay
+out, so two checkouts on one lock agree. Run the chain on `.nvmrc`'s Node: a login shell that does not inherit nvm's
+PATH finds Homebrew's Node 26 first (266's bootstrap `576f5e32ebc3c262` was taken there, 267's regen on nvm's 24.22.1). An unknown or repeated id is refused. `--help` prints the usage. A receipt that a fleet record only
 names (`docs/references/concepts/*.json` list their receipts) is no build input: five sat in the core key until 266, so
 an edit to one marked every id; `fleet-partition.selftest` now fails on any test-only tooling in a build's or step's key.
 The public pages are no step input either: `src/ui/localeRouting.ts` only names them as route strings (declared
@@ -1199,7 +1207,7 @@ each record and its moving-clearance cells (`--ids=<ids>` or `--all`, `--jobs=N`
 How an id is chosen (`tools/changed-ids.mjs`, `tools/changed-only/`): each (step, id) has an input key and an output
 key in `release/fingerprints.tsv`, written as soon as the step finishes. The input key covers the step's tool (its
 static import closure, canonical flags from `tools/changed-only/steps.mjs`, declared dynamic reads, the environment
-variables it reads), the toolchain (Node, platform, both lockfiles, NODE_OPTIONS minus heap flags), the shared fleet
+variables it reads), the toolchain (the schema, Node, the platform, `package-lock.json`), the shared fleet
 core (every file the fleet entries reach outside a group's builder registration: specs, factory, kits, materials,
 generated spec data, index/loader maps), the builder groups on the id's spec chain (visualBase, variantOf, donors) and
 the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step

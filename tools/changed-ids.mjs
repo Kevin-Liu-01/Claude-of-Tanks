@@ -12,7 +12,7 @@
 // roster change, missing manifest, an output file edited outside its rows). The chain that acts on it is
 // tools/tank-regen-changed.mjs (npm run tank:regen:changed).
 import { resolve } from 'node:path';
-import { computeState, loadBase, resolveChanged } from './changed-only/fingerprint.mjs';
+import { computeState, loadBase, resolveChanged, toolchainChange } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 
 const args = process.argv.slice(2);
@@ -49,9 +49,9 @@ if (json) {
     errors: [...state.errors, ...(state.world?.globalReasons ?? [])] }, null, 1)}\n`);
 } else {
   console.log(`[changed-ids] ${manifest ? 'manifest present' : 'no manifest'}; ${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files${state.world ? `; ${state.world.ids.length} maps` : ''} (${seconds} s)`);
-  // A toolchain mismatch marks every id on every step: say so once, with this run's parts (the table keeps only a hash).
+  // A toolchain mismatch marks every id on every step: say so once, naming the parts that moved (268: the table keeps them).
   if (manifest && manifest.toolchain !== state.toolchain) {
-    console.log(`[changed-ids] toolchain differs: the table was recorded on ${manifest.toolchain}, this run is ${state.toolchain} (${state.toolchainParts.join(', ')}); every id reads "toolchain"`);
+    console.log(`[changed-ids] toolchain differs: the table was recorded on ${manifest.toolchain}, this run is ${state.toolchain} (${toolchainChange(manifest, state.toolchainParts)}); every id reads "toolchain"`);
   }
   for (const name of names) {
     const entry = result[name];

@@ -1,7 +1,7 @@
 // Generator freshness at resolver cost (test-speed R8d): every fleet generator's committed outputs are current for the
 // committed fingerprint manifest (release/fingerprints.tsv), so a lane that edits a builder, a kit, a spec, a generator
 // or its flags without running `npm run tank:regen:changed` turns this red, naming the ids and why. No tank is built
-// (one fingerprint state: about 55-75 s warm, more cold or loaded). A toolchain difference (Node, lockfiles) is reported, not failed: the nightly
+// (one fingerprint state: about 55-75 s warm, more cold or loaded). A toolchain difference (Node, the lockfile) is reported, not failed: the nightly
 // `tank:regen:changed -- --check --all` re-runs every generator's own --check and covers it, and any resolver miss.
 // A missing or unreadable manifest fails (Main 2026-10-29, 265: a guard that passes vacuously is no guard); the
 // negative controls below prove, on the same state, that a generator edited after the bootstrap, an input row moved
@@ -11,7 +11,7 @@
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
-import { MANIFEST_PATH, SCHEMA, computeState, readManifest, resolveChanged } from './fingerprint.mjs';
+import { MANIFEST_PATH, SCHEMA, computeState, readManifest, resolveChanged, toolchainChange } from './fingerprint.mjs';
 import { STEPS } from './steps.mjs';
 
 // A tree may be named (a parity tree); the receipt itself checks its own repository.
@@ -25,7 +25,7 @@ const actual = computeState({ root, steps: STEPS });
 const state = actual.toolchain === manifest.toolchain ? actual
   : computeState({ root, steps: STEPS, toolchainOverride: manifest.toolchain });
 if (actual.toolchain !== manifest.toolchain) {
-  console.log(`changed-only fresh.selftest: note: this toolchain differs from the manifest's (${actual.toolchainParts.join(', ')}); judged on the manifest's`);
+  console.log(`changed-only fresh.selftest: note: this toolchain differs from the manifest's (${toolchainChange(manifest, actual.toolchainParts)}); judged on the manifest's`);
 }
 assert.deepEqual(state.errors, [], 'every per-id table reads');
 const result = resolveChanged(state, manifest);

@@ -8,9 +8,10 @@
 //   - an output row edited by hand is found and regenerated;
 //   - the world step (per map, after the tank steps) re-runs only the maps whose wreck donors or config moved, and its
 //     shards and index match the whole-world regen byte for byte;
-//   - (266) with no fingerprints table, or one recorded on another toolchain, a plain run refuses (exit 2, nothing run);
-//     --ids runs every step on exactly those ids (the world step on the maps casting them), records their rows only
-//     when the table exists, and refuses an unknown or repeated id; --help prints the usage;
+//   - (266) with no fingerprints table, or one recorded on another toolchain, a plain run refuses (exit 2, nothing run)
+//     and names the toolchain part that moved; --ids runs every step on exactly those ids (the world step on the maps
+//     casting them), records their rows only when the table exists on this toolchain, and refuses an unknown or repeated
+//     id; an install that is not the lock's refuses; --help prints the usage;
 //   - (266) a page built from a step's output (steps.mjs DEPENDENTS, the Field Manual prerender after icons) is checked
 //     after that step ran and rewritten only when stale; a chain where the step did not run never touches it.
 //   - (268) a parts step (steps.mjs `parts`, as fills and anatomy) on eight ids runs as parallel parts and one merge that
@@ -401,12 +402,22 @@ for (const table of ['controls', 'fills', 'seats']) {
 assert.equal(read(N, 'server/world-collision-manifests/beta.json'), read(B, 'server/world-collision-manifests/beta.json'));
 assert.ok(!existsSync(join(N, 'server/world-collision-manifests/alpha.json')), 'the map that does not cast b1 is untouched');
 
-// 8. A table recorded on another toolchain marks every id: a plain run refuses and names this run's parts; --ids runs.
+// 8. A table recorded on another toolchain marks every id: a plain run refuses and names the part that moved (268: the
+// table keeps its parts); --ids runs its ids and records nothing, so the table's toolchain never moves under a lane.
 const T = join(base, 'T');
 cpSync(B, T, { recursive: true });
-put(T, 'release/fingerprints.tsv', read(T, 'release/fingerprints.tsv').replace(/^toolchain\t\w+$/m, 'toolchain\t0123456789abcdef'));
-assert.match(refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: schema:1, node:v\d+/);
-assert.deepEqual(ranIds(chain(T, '--ids=b1'), 'seats'), ['b1'], '--ids is not blocked by the toolchain');
+assert.match(read(T, 'release/fingerprints.tsv'), /^toolchain\t\w+\tschema:1\tnode:v[\d.]+\tplatform:\S+\tpackage-lock:[0-9a-f]{64}$/m,
+  'the table keeps the toolchain\'s parts beside its hash');
+const elsewhere = read(T, 'release/fingerprints.tsv').replace(/^toolchain\t\w+\t(.*)\tnode:v[\d.]+/m, 'toolchain\t0123456789abcdef\t$1\tnode:v0.0.0');
+put(T, 'release/fingerprints.tsv', elsewhere);
+assert.match(refused(T), /recorded on another toolchain \(0123456789abcdef; this run \w+: node: v0\.0\.0 recorded, v[\d.]+ here\)/);
+const unrecorded = chain(T, '--ids=b1');
+assert.deepEqual([ranIds(unrecorded, 'seats'), unrecorded.final.seats.unrecorded, read(T, 'release/fingerprints.tsv') === elsewhere], [['b1'], true, true],
+  '--ids on another toolchain runs its ids and records nothing');
+// 8b (268). A node_modules that is not the lock's install refuses before a tool runs (the toolchain keys the lock alone).
+put(T, 'package-lock.json', '{"lockfileVersion":3,"packages":{"node_modules/kit":{"version":"2.0.0"}}}\n');
+put(T, 'node_modules/.package-lock.json', '{"packages":{"node_modules/kit":{"version":"1.0.0"}}}\n');
+assert.match(refused(T, '--ids=b1'), /node_modules is not package-lock\.json's install \(1: kit 1\.0\.0 installed, 2\.0\.0 locked\): run npm ci/);
 
 // 9. With a table: --ids runs exactly those ids and records their rows; the plain chain then finds only the rest, and the
 // tree ends equal to a whole-fleet regen of the same edit. Negative control: the plain chain on a tree with a current

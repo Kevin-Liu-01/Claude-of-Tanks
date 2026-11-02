@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
+import { balanceTokens, computeState, emptyManifest, installDrift, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest,
+  toolchainChange, toolchainOf }
   from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
@@ -160,10 +161,32 @@ assert.deepEqual(changed(resolveChanged(s0, null)), { sizes: 'full:a1,a2,b1', ot
 put('package-lock.json', '{"lockfileVersion":3,"x":1}\n');
 assert.deepEqual(changed(resolveChanged(state(), m0)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a lockfile change marks everything');
 put('package-lock.json', '{"lockfileVersion":3}\n');
-const otherOptions = computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: '--experimental-strip-types' }, rows: rowsData(), cacheDir, config });
-assert.equal(resolveChanged(otherOptions, m0).sizes.mode, 'all', 'a non-heap NODE_OPTIONS flag marks everything');
-const bigHeap = computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: '--max-old-space-size=8192' }, rows: rowsData(), cacheDir, config });
-assert.equal(resolveChanged(bigHeap, m0).sizes.mode, 'none', 'a heap size flag is not keyed');
+// (268) The toolchain keys what changes a tool's output (Node, the platform, the lock), never a checkout's install
+// bookkeeping or NODE_OPTIONS (the chain sets its tools' own): two checkouts on one lock, their node_modules linked to two
+// homes whose npm records differ only in peer flags, under two heap caps, compute one toolchain; a lock edit moves it.
+{
+  const { symlinkSync } = await import('node:fs');
+  const lockText = '{"lockfileVersion":3,"packages":{"":{"name":"x"},"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0","peer":true}}}\n';
+  const installs = ['{"packages":{"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0","peer":true}}}\n',
+    '{"packages":{"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0"}}}\n'];
+  const homes = installs.map((text, k) => { put(`homes/h${k}/.package-lock.json`, text); return join(root, `homes/h${k}`); });
+  const checkouts = homes.map((home, k) => { put(`co${k}/package-lock.json`, lockText); symlinkSync(home, join(root, `co${k}/node_modules`)); return join(root, `co${k}`); });
+  assert.notEqual(...homes.map((home) => readFileSync(join(home, '.package-lock.json'), 'utf8')), 'the two homes\' npm records differ');
+  const [one, two] = checkouts.map((dir) => toolchainOf(dir));
+  assert.equal(one.toolchain, two.toolchain, 'two checkouts on one lock agree, whatever node_modules home they link');
+  assert.deepEqual(checkouts.map((dir) => installDrift(dir)), [[], []], 'both installs are the lock\'s');
+  const heaps = ['--max-old-space-size=4096', '--max-old-space-size=8192 --import=file:///w/tools/selftest-observe.mjs']
+    .map((options) => computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: options }, rows: rowsData(), cacheDir, config }).toolchain);
+  assert.deepEqual([heaps[0] === heaps[1], heaps[0] === s0.toolchain], [true, true], 'NODE_OPTIONS keys nothing');
+  put('co1/package-lock.json', lockText.replace('0.180.0', '0.181.0'));
+  assert.notEqual(toolchainOf(checkouts[1]).toolchain, one.toolchain, 'control: a lock edit moves the toolchain');
+  assert.deepEqual(installDrift(checkouts[1]), ['three 0.180.0 installed, 0.181.0 locked'], 'and its old install is named as drift');
+  put('co1/package-lock.json', lockText.replace('"packages":{', '"packages":{"node_modules/added":{"version":"2.0.0"},'));
+  assert.deepEqual(installDrift(checkouts[1]), ['added locked, not installed'], 'a package the lock adds is drift');
+  assert.deepEqual(toolchainChange({ toolchainParts: one.parts }, toolchainOf(checkouts[1]).parts).split(': ')[0], 'package-lock',
+    'a table that keeps its parts names the part that moved');
+  assert.match(toolchainChange({ toolchainParts: [] }, one.parts), /records no parts; this run: schema:/, 'an older table names this run\'s parts');
+}
 const universes = rowsData(); universes.roster.saved = ['a1', 'a2'];
 assert.match(state({ rows: universes }).globalReasons.join(), /different ids/, 'id lists that disagree fail closed');
 const rowErrors = rowsData({ errors: ['sizes: unreadable'] });

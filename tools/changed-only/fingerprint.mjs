@@ -86,12 +86,48 @@ function readRows(root, env, tableModule = null) {
   return JSON.parse(out);
 }
 
-/** NODE_OPTIONS minus heap-size flags and the self-test runner's preloads (the assert guard decides only failing asserts
- *  in receipts, the observer only records reads; tools/run-selftests.mjs SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER), none
- *  of which can change what a tool writes. */
-export function normalizedNodeOptions(value = '') {
-  return value.split(/\s+/).filter((flag) => flag && !/^--max-old-space-size(=|$)/.test(flag)
-    && !/^--import=\S*\/tools\/(?:assert-graph-guard|selftest-observe)\.mjs$/.test(flag)).sort().join(' ');
+/**
+ * The toolchain: what runs every tool, by what changes its output (268): the schema, Node, the platform and
+ * package-lock.json. Two checkouts on one lock agree whatever their installs' bookkeeping (node_modules/.package-lock.json
+ * differs between in-sync installs of one lock by npm's peer flags) and NODE_OPTIONS (the chain sets its tools' own; a
+ * heap cap decides nothing); installDrift holds the install to the lock instead. A change runs every step on every id.
+ */
+export function toolchainOf(root, hashFile = (file) => (existsSync(file) ? sha256(readFileSync(file)) : 'missing')) {
+  const parts = [`schema:${SCHEMA}`, `node:${process.version}`, `platform:${process.platform}/${process.arch}`,
+    `package-lock:${hashFile(resolve(root, 'package-lock.json'))}`];
+  return { toolchain: H(...parts), parts };
+}
+
+/** What moved between a table's toolchain and `parts` (this run's), part by part; a table recorded before 268 keeps
+ *  no parts, so this run's are named. */
+export function toolchainChange(manifest, parts) {
+  if (!manifest?.toolchainParts?.length) return `the table records no parts; this run: ${parts.join(', ')}`;
+  const named = (list) => new Map(list.map((part) => [part.slice(0, part.indexOf(':')), part.slice(part.indexOf(':') + 1)]));
+  const was = named(manifest.toolchainParts), now = named(parts);
+  return [...new Set([...was.keys(), ...now.keys()])].filter((key) => was.get(key) !== now.get(key))
+    .map((key) => `${key}: ${was.get(key) ?? 'absent'} recorded, ${now.get(key) ?? 'absent'} here`).join('; ')
+    || `the same parts under another formula: ${parts.join(', ')}`;
+}
+
+/**
+ * How node_modules departs from package-lock.json, by npm's record of the install (node_modules/.package-lock.json):
+ * installed versions other than the lock's, packages the lock does not name, and packages it requires (not optional or
+ * peer) that are not installed. Empty when the install is the lock's, whatever its bookkeeping (268: the toolchain keys
+ * the lock, so a stale install would run other tools under the lock's key).
+ */
+export function installDrift(root) {
+  const packages = (file) => { try { return JSON.parse(readFileSync(resolve(root, file), 'utf8')).packages ?? {}; } catch { return null; } };
+  const lock = packages('package-lock.json'), installed = packages('node_modules/.package-lock.json');
+  if (!lock) return ['package-lock.json does not read'];
+  if (!installed) return ['nothing installed (node_modules/.package-lock.json)'];
+  const name = (path) => path.replace(/^node_modules\//, '');
+  return [
+    ...Object.entries(installed).filter(([path, pkg]) => lock[path] && lock[path].version !== pkg.version)
+      .map(([path, pkg]) => `${name(path)} ${pkg.version} installed, ${lock[path].version} locked`),
+    ...Object.keys(installed).filter((path) => !lock[path]).map((path) => `${name(path)} installed, not locked`),
+    ...Object.entries(lock).filter(([path, pkg]) => path && !installed[path] && !pkg.optional && !pkg.devOptional && !pkg.peer)
+      .map(([path]) => `${name(path)} locked, not installed`),
+  ];
 }
 
 /**
@@ -136,14 +172,11 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     globalReasons.push('roster: ALL_TANK_IDS, SAVED_TANK_IDS and the fleet manifest name different ids');
   }
 
-  // Toolchain: what runs every tool. A change runs every step on every id.
-  const lockHash = (file) => graph.hashFile(abs(file));
-  const toolchainParts = [`schema:${SCHEMA}`, `node:${process.version}`, `platform:${process.platform}/${process.arch}`,
-    `package-lock:${lockHash('package-lock.json')}`, `installed:${lockHash('node_modules/.package-lock.json')}`,
-    `node-options:${normalizedNodeOptions(env.NODE_OPTIONS)}`];
+  // Toolchain: what runs every tool (toolchainOf). A change runs every step on every id.
+  const { toolchain: actualToolchain, parts: toolchainParts } = toolchainOf(root, graph.hashFile);
   // toolchainOverride (the freshness receipt only): judge the tree as though it ran on the manifest's toolchain, so a
   // Node or lockfile change on this machine is reported apart instead of marking every id.
-  const toolchain = toolchainOverride ?? H(...toolchainParts);
+  const toolchain = toolchainOverride ?? actualToolchain;
 
   // Roster: ids, their order, groups, renames. A change runs every step in whole-fleet mode.
   const roster = H(JSON.stringify(data.roster));
@@ -450,8 +483,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 // ---------------------------------------------------------------- manifest
 
 export function emptyManifest() {
-  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {}, comps: {},
-    stamps: {} };
+  return { schema: SCHEMA, toolchain: null, toolchainParts: [], roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {},
+    files: {}, comps: {}, stamps: {} };
 }
 
 /** A stamp's reason on one manifest line: whitespace runs as one space, at most 240 characters. */
@@ -463,7 +496,8 @@ export function parseManifest(text) {
   if (lines[0] !== `#schema ${SCHEMA}`) return null;
   for (const line of lines.slice(1)) {
     const [kind, ...fields] = line.split('\t');
-    if (kind === 'toolchain') manifest.toolchain = fields[0];
+    // the hash, then (268) the parts it was taken on, so a table recorded elsewhere names what moved
+    if (kind === 'toolchain') { manifest.toolchain = fields[0]; manifest.toolchainParts = fields.slice(1); }
     else if (kind === 'roster') manifest.roster = fields[0];
     else if (kind === 'core') manifest.core = fields[0];
     else if (kind === 'group') manifest.groups[fields[0]] = fields[1];
@@ -481,7 +515,7 @@ export function parseManifest(text) {
 
 export function serializeManifest(manifest) {
   const lines = [];
-  if (manifest.toolchain) lines.push(`toolchain\t${manifest.toolchain}`);
+  if (manifest.toolchain) lines.push(['toolchain', manifest.toolchain, ...(manifest.toolchainParts ?? [])].join('\t'));
   if (manifest.roster) lines.push(`roster\t${manifest.roster}`);
   if (manifest.core) lines.push(`core\t${manifest.core}`);
   for (const [group, hash] of Object.entries(manifest.groups)) lines.push(`group\t${group}\t${hash}`);
@@ -522,6 +556,7 @@ export function loadBase(root, base) {
 /** The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run). */
 export function refreshComponents(manifest, state) {
   manifest.toolchain = state.toolchain;
+  manifest.toolchainParts = [...state.toolchainParts];
   manifest.roster = state.roster;
   manifest.core = state.core;
   manifest.groups = { ...state.groups };
