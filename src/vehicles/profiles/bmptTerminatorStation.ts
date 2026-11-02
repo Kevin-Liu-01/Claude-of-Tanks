@@ -45,20 +45,32 @@ const BASE_TOP_Y = 0.16;
 /** The body's box-like lower part under the humps: half-width, rear and front, top. */
 const BODY = Object.freeze({ w: 0.74, rear: -1.02, front: -0.15, top: 0.52 });
 /** Each hump (cradle housing): inner and outer face, foot (into the body), crown, rear and front; its corner radii. */
-const HUMP = Object.freeze({ inner: 0.19, outer: 0.72, foot: 0.50, top: 1.15, rear: -1.38, front: -0.21, rOut: 0.20, rIn: 0.06 });
-/** The cradle's half-width (2.5 cm off the humps' inner faces) and its run from the trunnion (gun frame). */
-const CRADLE = Object.freeze({ w: 0.165, rear: -0.32, front: 0.72 });
+const HUMP = Object.freeze({ inner: 0.19, outer: 0.72, foot: 0.50, top: 1.15, rear: -1.38, front: -0.21, rOut: 0.20, rIn: 0.02 });
+/** The cradle's half-width (1 cm off the humps' inner faces), its run from the trunnion and its domed crown's peak over
+ * the trunnion, 3.5 cm over the humps' crowns (gun frame). */
+const CRADLE = Object.freeze({ w: 0.18, rear: -0.32, front: 0.70, crown: 0.235 });
+/** Behind the cradle, the radius about the trunnion the module's rear wall between the humps keeps (3 cm outside the
+ * cradle's rear corners at every pitch). */
+const BRIDGE_R = 0.43;
 
 /** Counter-clockwise (x, y) ring of a box section with chamfered top corners, seen from +z. */
 function chamferedRing(x0: number, x1: number, bottom: number, top: number, chamfer: number): SectionPoint[] {
   return [[x0, bottom], [x1, bottom], [x1, top - chamfer], [x1 - chamfer, top], [x0 + chamfer, top], [x0, top - chamfer]];
 }
 
-/** Counter-clockwise octagon ring (x, y) round (cx, cy), half-width w, half-height h. */
-function octagonRing(cx: number, cy: number, w: number, h: number): SectionPoint[] {
-  const k = 0.42;
-  return [[cx - w * k, cy - h], [cx + w * k, cy - h], [cx + w, cy - h * k], [cx + w, cy + h * k], [cx + w * k, cy + h],
-    [cx - w * k, cy + h], [cx - w, cy + h * k], [cx - w, cy - h * k]];
+/** Counter-clockwise ring of the cradle's section: flat sides to a shoulder, a domed crown peaking at `crown`. */
+function domeRing(w: number, bottom: number, shoulder: number, crown: number): SectionPoint[] {
+  const k = Math.min(0.035, (crown - shoulder) * 0.6);
+  return [[-w, bottom], [w, bottom], [w, shoulder], [w - 0.03, shoulder + k], [0.06, crown], [-0.06, crown],
+    [-w + 0.03, shoulder + k], [-w, shoulder]];
+}
+
+/** Counter-clockwise twelve-point ellipse ring (x, y) round (cx, cy). */
+function ellipseRing(cx: number, cy: number, w: number, h: number): SectionPoint[] {
+  return Array.from({ length: 12 }, (_, k) => {
+    const a = -Math.PI / 2 + k * Math.PI / 6;
+    return [cx + w * Math.cos(a), cy + h * Math.sin(a)] as const;
+  });
 }
 
 /** A regular polygon ring at height y (x, y, z points), first corner off the +z axis by half a step. */
@@ -123,23 +135,44 @@ function addBaseAndBody(P: TankBuilderPort): void {
   // cradle's lowest pass at full depression); the cradle's breech swings down behind it, open to the rear (photo 08).
   P.add('turret', box(0.39, 0.16, 0.42), 0, HUMP.foot + 0.08, -0.41);
   P.add('turretDark', KIT.cylX(0.010, 0.36, 8), 0, HUMP.foot + 0.165, -0.24);
+  // Behind the cradle, the rear wall that joins the humps into one body, from their feet (onto the body's rear edge) to
+  // their crowns: its front an arc about the trunnion 3 cm clear of the cradle's rear at every pitch, so the receiver
+  // swings down inside it as the cannons elevate.
+  const [, ty, tz] = RAMKA_TRUNNION, arc = (y: number) => -Math.sqrt(BRIDGE_R * BRIDGE_R - y * y), foot = HUMP.foot - ty;
+  const gun: Array<readonly [number, number]> = [[HUMP.rear - tz, foot], [BODY.rear + 0.02 - tz, foot],
+    ...[-0.40, -0.35, -0.30, -0.25, -0.15, -0.05, 0.05, 0.10, 0.15].map(y => [arc(y), y] as const),
+    [arc(HUMP.top - ty), HUMP.top - ty], [HUMP.rear + 0.04 - tz, HUMP.top - ty], [HUMP.rear - tz, HUMP.top - ty - 0.05]];
+  let area = 0;
+  for (let i = 0; i < gun.length; i++) area += gun[i][0] * gun[(i + 1) % gun.length][1] - gun[(i + 1) % gun.length][0] * gun[i][1];
+  const outline = (area > 0 ? gun : [...gun].reverse()).map(([z, y]) => [z + tz, y + ty] as const);
+  const bridge = sectionSolid([{ z: -(HUMP.inner + 0.01), ring: outline }, { z: HUMP.inner + 0.01, ring: outline }]).rotateY(-Math.PI / 2);
+  bridge.userData.rangeSilhouette = true;
+  P.add('turret', bridge);
 }
 
 function addCannonPlant(P: TankBuilderPort): void {
-  const { box, cylX, cylZ } = KIT;
+  const { box, cylX, cylY, cylZ } = KIT;
   // The common cradle between the humps (2.5 cm off their inner faces): the tall receiver box over both breeches at its
   // rear, swinging down into the open space behind the closing block as the cannons elevate, lower towards its mouth.
-  const { w, rear, front } = CRADLE;
+  const { w, rear, front, crown } = CRADLE;
+  // the cradle's crown fills the space between the humps' crowns and rounds down at its front with theirs into the
+  // mantlet face both cannons leave from
   P.addGunExtra(sectionSolid([
-    { z: rear, ring: chamferedRing(-w, w, -0.20, 0.17, 0.04) },
-    { z: rear + 0.02, ring: chamferedRing(-w, w, -0.20, 0.20, 0.04) },
-    { z: 0.45, ring: chamferedRing(-w, w, -0.20, 0.20, 0.04) },
-    { z: 0.62, ring: chamferedRing(-w, w, -0.16, 0.14, 0.05) },
-    { z: front, ring: chamferedRing(-w + 0.015, w - 0.015, -0.13, 0.11, 0.05) },
+    { z: rear, ring: domeRing(w - 0.02, -0.20, 0.13, crown - 0.04) },
+    { z: rear + 0.03, ring: domeRing(w, -0.20, 0.195, crown) },
+    { z: 0.50, ring: domeRing(w, -0.20, 0.195, crown) },
+    { z: 0.58, ring: domeRing(w, -0.19, 0.15, 0.19) },
+    { z: 0.65, ring: domeRing(w, -0.17, 0.03, 0.09) },
+    { z: front, ring: domeRing(w - 0.01, -0.15, -0.08, -0.03) },
   ]), 0, 0, 0);
+  // under the bags, the mantlet's lower plate on a bracket from the cradle's front, closing the space between the humps'
+  // fronts over the closing block (2 cm ahead of that block at full depression)
+  P.addGunExtra(box(0.34, 0.17, 0.03), 0, -0.215, 0.765);
+  P.addGunExtra(box(0.30, 0.03, 0.08), 0, -0.145, 0.72);
+  for (const x of [-0.12, 0, 0.12]) P.addGunExtraDark(cylZ(0.012, 0.012, 6), x, -0.255, 0.784);
   P.addGunExtraDark(cylX(0.05, 0.46, 12), 0, 0, 0);                        // trunnion pins into both humps
-  P.addGunExtra(box(0.30, 0.012, 0.36), 0, 0.204, 0.05);                    // receiver cover on the cradle's top
-  for (const x of [-0.10, 0.10]) P.addGunExtraDark(cylX(0.010, 0.06, 8), x, 0.213, -0.12);
+  P.addGunExtra(box(0.12, 0.012, 0.56), 0, crown + 0.004, 0.08);            // cover strip along the crown
+  for (const z of [-0.14, 0.30]) for (const x of [-0.04, 0.04]) P.addGunExtraDark(cylY(0.012, 0.012, 0.012, 6), x, crown + 0.012, z);
   for (const x of [-0.10, 0.10]) {                                          // lifting handles on the receiver's back
     P.addGunExtraDark(beamBetween([x - 0.04, 0.08, rear + 0.005], [x - 0.04, 0.08, rear - 0.04], 0.010));
     P.addGunExtraDark(beamBetween([x + 0.04, 0.08, rear + 0.005], [x + 0.04, 0.08, rear - 0.04], 0.010));
@@ -147,16 +180,23 @@ function addCannonPlant(P: TankBuilderPort): void {
   }
   for (const side of [-1, 1]) {
     const barrel = side < 0 ? 0 : 1, x = side * RAMKA_BARREL_X;
-    // each cannon's own canvas bag over its mantlet (photo 10), sagging a little, from the cradle's mouth to its collar;
-    // narrow where it leaves the cradle, so at full depression it keeps clear of the humps' fronts
+    // each cannon's own rounded canvas-bagged mantlet (photo 10) out of the common rounded front, bulging and sagging a
+    // little, gathered to the collar; within the cradle's width until it is ahead of the humps' fronts
     P.add('gunMountCloth', sectionSolid([
-      { z: 0.70, ring: octagonRing(x, 0, 0.040, 0.10) },
-      { z: 0.80, ring: octagonRing(x, -0.012, 0.058, 0.10) },
-      { z: 0.98, ring: octagonRing(x, 0, 0.05, 0.05) },
+      { z: 0.69, ring: ellipseRing(x, -0.01, 0.030, 0.085) },
+      { z: 0.73, ring: ellipseRing(x, -0.01, 0.072, 0.110) },
+      { z: 0.80, ring: ellipseRing(x, -0.015, 0.087, 0.125) },
+      { z: 0.88, ring: ellipseRing(x, -0.02, 0.087, 0.120) },
+      { z: 0.96, ring: ellipseRing(x, -0.012, 0.072, 0.090) },
+      { z: 1.03, ring: ellipseRing(x, 0, 0.052, 0.054) },
     ]));
-    P.add(`gunBarrel${barrel}`, cylZ(0.055, 0.06, 16), x, 0, 1.00);         // collar
-    P.add(`gunBarrel${barrel}`, cylZ(0.045, 0.30, 14), x, 0, 1.17);         // thick root
-    P.add(`gunBarrel${barrel}`, cylZ(0.035, 1.20, 14), x, 0, 1.92);         // barrel
+    for (const z of [0.84, 0.92]) {                                       // the bag's two tie straps
+      P.add('gunMountDark', sectionSolid([{ z: z - 0.007, ring: ellipseRing(x, -0.018, 0.091, 0.127) },
+        { z: z + 0.007, ring: ellipseRing(x, -0.018, 0.091, 0.127) }]));
+    }
+    P.add(`gunBarrel${barrel}`, cylZ(0.055, 0.06, 16), x, 0, 1.05);         // collar
+    P.add(`gunBarrel${barrel}`, cylZ(0.045, 0.30, 14), x, 0, 1.22);         // thick root
+    P.add(`gunBarrel${barrel}`, cylZ(0.035, 1.16, 14), x, 0, 1.94);         // barrel
     // the cylindrical multi-baffle muzzle brake: its body, three baffle rings, the end ring and the bore disc
     P.add(`gunBarrel${barrel}`, cylZ(0.048, 0.22, 16), x, 0, 2.60);
     for (const z of [2.525, 2.585, 2.645]) P.add(`gunBarrel${barrel}Dark`, cylZ(0.064, 0.022, 16), x, 0, z);

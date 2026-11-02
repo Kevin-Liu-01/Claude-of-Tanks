@@ -44,10 +44,18 @@ const SIDE_PANELS = [-3.46, -2.37, -1.57, -0.77, 0.03, 0.83, 1.62] as const;
 /** The front fender housings: inner face (beside the glacis cover's edge, x 1.103), outer face, the run from the side
  * boxes forward, the bottom over the track, the crown's fall and the sloped face (bottom and top), the face's lip down
  * over the track's front. */
-const FENDER = Object.freeze({ inner: 1.106, outer: 2.005, rear: 1.61, bottom: 1.41, rearTop: 1.80,
-  faceFoot: [3.45, 1.41] as const, faceTop: [3.24, 1.62] as const, lipFoot: [3.76, 1.08] as const, lipInner: 1.15 });
-/** The AG-17D in each housing: the ball mount's centre across and up the face. */
-const AG17 = Object.freeze({ x: 1.30, y: 1.47 });
+const FENDER = Object.freeze({ inner: 1.106, outer: 2.005, rear: 1.61, bottom: 1.41, rearTop: 1.80, front: 3.42, frontTop: 1.43,
+  noseInner: 1.15 });
+/** The proud AG-17D box on each fender's inner half (photos 03-06): inner and outer face, rear, the top's front edge and
+ * the sloped face's foot (z, y), the crown. */
+const AGL_BOX = Object.freeze({ inner: 1.15, outer: 1.68, rear: 1.55, top: 2.25, faceTop: [2.20, 2.25] as const,
+  faceFoot: [2.55, 1.70] as const });
+/** The solid rounded nose each fender carries down in front of the track: its outer face (z, y) from the hood's top to
+ * its tip, and its inner face from the tip back up, 8 cm or more outside the track round the idler (z 3.218, y 0.873). */
+const NOSE_OUTER: ReadonlyArray<readonly [number, number]> = [[3.38, 1.437], [3.52, 1.38], [3.63, 1.28], [3.71, 1.15],
+  [3.745, 1.02], [3.73, 0.94]];
+const NOSE_INNER: ReadonlyArray<readonly [number, number]> = [[3.64, 0.935], [3.60, 1.00], [3.545, 1.10], [3.47, 1.19],
+  [3.38, 1.26]];
 /** The operators' stations either side of the driver's hatch (centre |x|, half-width, rear and front, top). */
 const STATION = Object.freeze({ x: 0.76, w: 0.28, rear: 1.26, front: 1.90, foot: 1.50, top: 1.80 });
 /** The left skirt's run over the engine bay left to the slat section (side +1, rear z, front z). */
@@ -89,49 +97,80 @@ function sideBoxes(P: TankBuilderPort, side: number): void {
     (SIDE.front - 0.30 + SIDE.rear + 0.30) / 2);
 }
 
-/** The front fender housing: the massive sloped armoured box over the front fender, flush beside the glacis (its crown
- * falling forward from the side boxes' top, its face sloped back), its face carried down as a thick lip in front of the
- * track (the rounded B3M mudguard's place), and the AG-17D in a ball mount inboard and low on the face. */
-function frontFenderHousing(P: TankBuilderPort, side: number): void {
-  const { box, cylZ } = KIT, F = FENDER, c = 0.04;
-  const profile: Array<readonly [number, number]> = [[F.rear, F.bottom], F.faceFoot, F.faceTop, [F.rear, F.rearTop]];
-  const pts: P3[] = [];
-  for (const [z, y] of profile) {
+/** A solid extruded across x (|x| a..b on one side) through a closed (z, y) outline, any shape: a section loft along x,
+ * turned into place (sectionSolid lofts along z; a quarter turn about y maps its (u, v, s) to (-s, v, u)). */
+function acrossX(side: number, a: number, b: number, outline: ReadonlyArray<readonly [number, number]>): THREE.BufferGeometry {
+  let area = 0;
+  for (let i = 0; i < outline.length; i++) {
+    const [u0, v0] = outline[i], [u1, v1] = outline[(i + 1) % outline.length];
+    area += u0 * v1 - u1 * v0;
+  }
+  const ring: SectionPoint[] = (area > 0 ? [...outline] : [...outline].reverse()).map(([u, v]) => [u, v] as const);
+  const s0 = Math.min(-side * a, -side * b), s1 = Math.max(-side * a, -side * b);
+  return sectionSolid([{ z: s0, ring }, { z: s1, ring }]).rotateY(-Math.PI / 2);
+}
+
+/** The front fender (photos 03-06): a massive sloped armoured hood over the track's front, flush beside the glacis (an
+ * inner cheek carried down to the glacis edge), its top falling from the side boxes' crown to the nose, which rounds down
+ * thick over the track's front; standing proud on its inner half, the AG-17D's armoured box with its sloped front, the
+ * launcher's ball mount in a canvas boot and its barrel on that face; the rear-view mirror on its stalk at the outer
+ * corner. */
+function frontFender(P: TankBuilderPort, side: number): void {
+  const { box, cylY, cylZ } = KIT, F = FENDER, B = AGL_BOX, c = 0.03;
+  // the hood: a wedge from the side boxes' crown down to the nose, its bottom over the track
+  const hoodPts: P3[] = [];
+  for (const [z, y] of [[F.rear, F.bottom], [F.front, F.bottom], [F.front, F.frontTop], [F.rear, F.rearTop]] as const) {
     const top = y > F.bottom + 0.01;
-    pts.push([side * F.inner, y, z], [side * F.outer, top ? y - c : y, z]);
-    if (top) pts.push([side * (F.outer - c), y, z]);
+    hoodPts.push([side * F.inner, y, z], [side * F.outer, top ? y - c : y, z]);
+    if (top) hoodPts.push([side * (F.outer - c), y, z]);
   }
-  const housing = hull(pts);
-  housing.userData.rangeSilhouette = true;
-  P.add('hull', housing);
-  // the lip: the face continued down over the track's front, 5 cm thick
-  const [fz, fy] = F.faceFoot, [lz, ly] = F.lipFoot, t = 0.05, lipPts: P3[] = [];
-  for (const x of [F.lipInner, F.outer]) for (const [z, y] of [[fz, fy], [lz, ly], [fz - t, fy], [lz - t, ly]] as const) {
-    lipPts.push([side * x, y + (z === fz || z === fz - t ? 0.01 : 0), z]);
-  }
-  P.add('hull', hull(lipPts));
-  // the inner cheek: the housing's inner wall carried down beside the glacis to 4 cm under its edge, so the housing sits
-  // flush with the glacis and no slot over the track opens between them (clear of the track's inner edge, x 1.19)
+  const hood = hull(hoodPts);
+  hood.userData.rangeSilhouette = true;
+  P.add('hull', hood);
+  // the solid rounded nose from the hood's front down over the track's front
+  const nose = acrossX(side, F.noseInner, F.outer, [...NOSE_OUTER, ...NOSE_INNER]);
+  nose.userData.rangeSilhouette = true;
+  P.add('hull', nose);
+  // the inner cheek: the hood's inner wall carried down beside the glacis to 4 cm under its edge, so the hood sits flush
+  // with the glacis and no slot over the track opens between them (clear of the track's inner edge, x 1.19)
   const cheek = (z: number, bottom: number) => ({ z, ring: sideRing(side, [[F.inner, bottom], [1.16, bottom], [1.16, F.bottom + 0.01], [F.inner, F.bottom + 0.01]]) });
   P.add('hull', sectionSolid([cheek(2.30, t72b3mGlacisCoverY(2.30) - 0.04), cheek(2.61, t72b3mGlacisCoverY(2.61) - 0.04),
-    cheek(3.25, t72b3mGlacisCoverY(3.25) - 0.04), cheek(3.44, 0.93)]));
-  // a bolt row along the face's top edge and the lifting eyes on the crown
-  const faceAt = (y: number) => fz + (y - fy) / (F.faceTop[1] - fy) * (F.faceTop[0] - fz);
-  for (const x of [1.35, 1.60, 1.85]) P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6).rotateX(Math.PI / 4), side * x, 1.595, faceAt(1.595) + 0.004);
-  for (const z of [2.0, 2.9]) {
-    const y = F.rearTop + (z - F.rear) / (F.faceTop[0] - F.rear) * (F.faceTop[1] - F.rearTop);
-    P.add('hullDetail', KIT.torus(0.035, 0.009, 14, 6).rotateZ(Math.PI / 2), side * 1.80, y + 0.03, z);
+    cheek(3.25, t72b3mGlacisCoverY(3.25) - 0.04), cheek(3.42, 0.95)]));
+  const hoodTop = (z: number) => F.rearTop + (z - F.rear) / (F.front - F.rear) * (F.frontTop - F.rearTop);
+  for (const x of [1.30, 1.55, 1.80]) P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6), side * x, hoodTop(3.20) + 0.005, 3.20);
+  // the AG-17D box standing proud on the hood's inner half: its crown 0.45 over the side boxes, its front sloped
+  const [tz, ty] = B.faceTop, [fz, fy] = B.faceFoot, boxPts: P3[] = [];
+  for (const [z, y] of [[B.rear, F.bottom + 0.01], [fz, F.bottom + 0.01], [fz, fy], [tz, ty], [B.rear, B.top]] as const) {
+    const top = y > B.top - 0.01;
+    boxPts.push([side * B.inner, top ? y - c : y, z], [side * B.outer, top ? y - c : y, z]);
+    if (top) boxPts.push([side * (B.inner + c), y, z], [side * (B.outer - c), y, z]);
   }
-  // the AG-17D: its ball in a collar on the face, the 30 mm barrel forward, the muzzle sleeve and its mouth
-  const n = new THREE.Vector3(0, 1, 1).normalize(), x = side * AG17.x, zf = faceAt(AG17.y);
-  P.add('hull', KIT.xform(cylZ(0.13, 0.05, 20), 0, 0, 0, -Math.PI / 4), x, AG17.y, zf);
-  P.add('hullDark', sph(0.095, 16), x, AG17.y + n.y * 0.035, zf + n.z * 0.035);
-  P.add('hullDark', cylZ(0.03, 0.42, 12), x, AG17.y + 0.02, zf + 0.25);
-  P.add('hullDark', cylZ(0.042, 0.07, 12), x, AG17.y + 0.02, zf + 0.44);
-  P.add('hullDark', cylZ(0.015, 0.012, 10), x, AG17.y + 0.02, zf + 0.476);
-  // the operator's small sight window beside the mount, under a brow
-  P.add('hullGlass', box(0.12, 0.06, 0.012), side * (AG17.x + 0.26), 1.52, faceAt(1.52) + 0.004, -Math.PI / 4, 0, 0);
-  P.add('hullDetail', box(0.16, 0.02, 0.06), side * (AG17.x + 0.26), 1.565, faceAt(1.565) + 0.02, -Math.PI / 4, 0, 0);
+  const aglBox = hull(boxPts);
+  aglBox.userData.rangeSilhouette = true;
+  P.add('hull', aglBox);
+  P.add('hullDetail', box(0.40, 0.016, 0.55), side * (B.inner + B.outer) / 2, B.top + 0.004, (B.rear + tz) / 2);
+  P.add('hullDetail', KIT.torus(0.035, 0.009, 14, 6).rotateZ(Math.PI / 2), side * (B.outer - 0.08), B.top + 0.035, B.rear + 0.15);
+  // on the sloped face: the collar, the ball, its canvas boot, the 30 mm barrel, the muzzle sleeve and its mouth
+  const fd = new THREE.Vector2(fz - tz, fy - ty).normalize(), n = new THREE.Vector3(0, -fd.x, fd.y);
+  if (n.z < 0) n.negate();
+  const tilt = -Math.atan2(n.y, n.z), x = side * (B.inner + B.outer) / 2, my = (ty + fy) / 2, mz = (tz + fz) / 2;
+  P.add('hull', KIT.xform(cylZ(0.13, 0.05, 20), 0, 0, 0, tilt), x, my, mz);
+  P.add('hullDark', sph(0.095, 16), x, my + n.y * 0.04, mz + n.z * 0.04);
+  P.add('hullCloth', cylZ(0.065, 0.16, 14, 0.095), x, my + 0.02, mz + 0.16);
+  P.add('hullDark', cylZ(0.03, 0.42, 12), x, my + 0.02, mz + 0.40);
+  P.add('hullDark', cylZ(0.042, 0.07, 12), x, my + 0.02, mz + 0.59);
+  P.add('hullDark', cylZ(0.015, 0.012, 10), x, my + 0.02, mz + 0.626);
+  const boltZ = tz + 0.12 * (fz - tz) + n.z * 0.004, boltY = ty + 0.12 * (fy - ty) + n.y * 0.004;
+  for (const dx of [-0.20, 0.20]) P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6).rotateX(Math.atan2(n.z, n.y)), x + side * dx, boltY, boltZ);
+  // the operator's sight window on the box's inner side, looking forward and in
+  P.add('hullGlass', box(0.012, 0.07, 0.14), side * (B.inner - 0.004), 2.06, 1.95);
+  P.add('hullDetail', box(0.02, 0.02, 0.18), side * (B.inner - 0.008), 2.11, 1.95);
+  // the rear-view mirror on its stalk at the hood's outer corner (photos 03-06), its glass to the rear
+  const my0 = hoodTop(1.80);
+  P.add('hullDark', cylY(0.03, 0.04, 0.04, 10), side * 1.90, my0 + 0.01, 1.80);
+  P.add('hullDark', beamBetween([side * 1.90, my0 + 0.02, 1.80], [side * 1.93, 2.30, 1.84], 0.014));
+  P.add('hullDetail', box(0.24, 0.34, 0.04), side * 1.93, 2.45, 1.84);
+  P.add('hullGlass', box(0.20, 0.30, 0.006), side * 1.93, 2.45, 1.818);
 }
 
 function operatorStation(P: TankBuilderPort, side: number): void {
@@ -153,25 +192,33 @@ function operatorStation(P: TankBuilderPort, side: number): void {
  * split at the cover's kink (z 2.61) so each lies in one plane, top edges chamfered; hex heads along the front row's face.
  * They are furniture of the cover's own clusters, so a spent package takes them with it. */
 function kontakt5Glacis(P: TankBuilderPort): void {
-  const H = 0.055, c = 0.008;
-  const rows = [[2.04, 2.295], [2.315, 2.595], [2.625, 2.905], [2.925, 3.20]] as const;
-  const cols = [[0.02, 0.27], [0.29, 0.54], [0.56, 0.80]] as const;
+  // Two rows of two large Kontakt-5 wedges a side (photos 03-06), one row on each glacis plane, each wedge thin where it
+  // leaves the glacis at its rear and standing off it at its blunt front edge, so the glacis reads as a saw-tooth in side
+  // view; the lower row's toe carries a row of hex heads.
+  const H0 = 0.03, H1 = 0.11, c = 0.01;
+  const rows = [[2.04, 2.59], [2.63, 3.21]] as const;
+  const cols = [[0.02, 0.40], [0.42, 0.80]] as const;
   for (const side of [-1, 1]) P.destructibleCluster(`glacis_era_${side < 0 ? 'L' : 'R'}`, () => {
     for (const [z0, z1] of rows) for (const [a, b] of cols) {
       const x0 = Math.min(side * a, side * b), x1 = Math.max(side * a, side * b);
       const section = (z: number, inset: number): SectionPoint[] => {
-        const foot = t72b3mGlacisCoverY(z) - 0.006, lid = t72b3mGlacisCoverY(z) + H - inset;
-        return [[x0, foot], [x1, foot], [x1, lid - c], [x1 - c, lid], [x0 + c, lid], [x0, lid - c]];
+        const foot = t72b3mGlacisCoverY(z) - 0.006, lid = t72b3mGlacisCoverY(z) + H0 + (z - z0) / (z1 - z0) * (H1 - H0) - inset;
+        return [[x0 + inset, foot], [x1 - inset, foot], [x1 - inset, lid - c], [x1 - inset - c, lid], [x0 + inset + c, lid], [x0 + inset, lid - c]];
       };
       P.addExternalArmor('hull', markEraFurniture(sectionSolid([
         { z: z0, ring: section(z0, c) }, { z: z0 + c, ring: section(z0 + c, 0) },
         { z: z1 - c, ring: section(z1 - c, 0) }, { z: z1, ring: section(z1, c) },
       ])));
+      // the lid's two lifting bolts near its rear
+      for (const x of [a + 0.08, b - 0.08]) {
+        const z = z0 + 0.10;
+        P.addExternalArmor('hull', markEraFurniture(KIT.cylY(0.013, 0.013, 0.012, 6)), side * x,
+          t72b3mGlacisCoverY(z) + H0 + (z - z0) / (z1 - z0) * (H1 - H0) + 0.002, z);
+      }
     }
-    // the front row's toe: hex heads on its front face
-    for (const x of [0.08, 0.23, 0.38, 0.53, 0.68]) {
-      const z = rows[3][1];
-      P.addExternalArmor('hull', markEraFurniture(KIT.cylZ(0.012, 0.012, 6)), side * x, t72b3mGlacisCoverY(z) + H / 2 - 0.004, z + 0.004);
+    for (const x of [0.10, 0.30, 0.50, 0.70]) {
+      const z = rows[1][1];
+      P.addExternalArmor('hull', markEraFurniture(KIT.cylZ(0.014, 0.012, 6)), side * x, t72b3mGlacisCoverY(z) + H1 / 2 - 0.004, z + 0.004);
     }
   });
 }
@@ -298,7 +345,7 @@ export function buildBMPTTerminator(P: TankBuilderPort): void {
   lowerNoseFittings(P);
   for (const side of [-1, 1]) {
     sideBoxes(P, side);
-    frontFenderHousing(P, side);
+    frontFender(P, side);
     operatorStation(P, side);
   }
   skirtFieldContainers(P);

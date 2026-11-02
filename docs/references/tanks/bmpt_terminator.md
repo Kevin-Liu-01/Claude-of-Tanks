@@ -30,21 +30,26 @@ launchers elevate +25/-5), two AG-17D in the hull, a coaxial PKTM.
 
 ## What was built from which photograph
 
-Round 2 (2026-11-01, after two blind photo critics on round 1, both "fix", reads-as "yes" / "partly"): the module is one
-rounded body on a low base, the front fenders the AG-17D housings, the stern a close slat cage; see "Round log".
+Round 3 (2026-11-01, after the critics split on round 2): round 2's stern and module layout kept; the front fenders are
+solid hoods with rounded noses and a proud AG-17D box on each, the module's humps joined into one body, the glacis
+Kontakt-5 fewer and larger wedges; see "Round log".
 
 - Hull (photos 03-09, 13-15): the fleet's T-72 X hull built in place by its own builder (`t72b3mX.ts`
   `buildT72B3MXHull`, `glacisContainers: false`, `glacisLamps: false`, and two default-off options added in 267:
   `roundedFrontGuards: false` leaves out the T-72B3M's rounded front mudguards, `openSkirtSpans` leaves the left
   skirt's cassettes out over the engine bay; the T-72B3M builds are unchanged, digest-proven). Added in
   `profiles/bmptTerminator.ts`:
-  - Kontakt-5 on the glacis (03, 04, 06): four rows of three flat modules a side, 55 mm over the bare cover, bolted along
-    the front row's toe, ERA furniture of the cover's own clusters; the two headlights in guards at the upper corners;
-    a row of towing and plough brackets with two tow hooks on the lower nose (03, 06).
-  - The front fender housings (03-06, 13): a massive sloped armoured box over each front fender, flush beside the
-    glacis (an inner cheek carried down to the glacis edge), its crown falling forward from the side boxes, its face
-    sloped back and continued down as a 5 cm lip in front of the track; each AG-17D's ball mount in a collar inboard and
-    low on the face, its 30 mm barrel forward, the operator's small sight window beside it.
+  - Kontakt-5 on the glacis (03-06): two rows of two large wedges a side, one row on each glacis plane, each 30 mm off
+    the cover at its rear and 110 mm at its blunt front edge (a saw-tooth in side view), two lifting bolts on each lid,
+    hex heads along the lower row's toe, ERA furniture of the cover's own clusters; the two headlights in guards at the
+    upper corners; a row of towing and plough brackets with two tow hooks on the lower nose (03, 06).
+  - The front fenders (03-06, 13): over each, a solid sloped armoured hood flush beside the glacis (an inner cheek
+    carried down to the glacis edge), its top falling from the side boxes' crown (1.80 m) to 1.43 m at its front, and a
+    solid rounded nose carried down in front of the track to 0.94 m, 8 cm or more outside it round the idler. Standing
+    proud on the hood's inner half, the AG-17D's armoured box (x 1.15-1.68, crown 2.25 m, 0.45 m over the side boxes)
+    with a sloped front: on that face the launcher's collar, ball mount, canvas boot, 30 mm barrel and muzzle sleeve,
+    bolts; a lifting eye and cover plate on its crown, the operator's sight window in its inner side. At the hood's outer
+    corner the rear-view mirror on its stalk, glass to the rear (03-06).
   - The side boxes (07, 09, 14, 15): a third row of armoured boxes over the two skirt rows from the stern's end to the
     fender housings, top 1.80 m, flush with the skirt faces, the stern box down to the fender's end; handles and bolts.
     The right skirt's two open rail fields closed by containers of the same rows (the photographs' skirt runs unbroken).
@@ -61,10 +66,14 @@ rounded body on a low base, the front fenders the AG-17D housings, the stern a c
   - a low compact base (r 0.92, 16 cm) with vision blocks round its front quarters (15); on it the commander's and
     gunner's hatches (13, 15), the gunner's big square armoured sight block with its large window and a round sensor
     either side at the front below the left cannon, the commander's stowage box at the front right (10);
-  - one compact rounded armoured body: a box-like lower part and on it two rounded humps (the cradle housings), their
-    crowns and fronts rounded off, close either side of the cradle; the cradle and a block under its front close the
-    space between them, the breech swinging down behind it, open only to the rear (04, 07, 08, 10);
-  - the twin 2A42 in one cradle, each in its own canvas-bagged mantlet, cylindrical multi-baffle muzzle brakes (10);
+  - one compact rounded armoured body: a box-like lower part and on it the two cradle housings, their outer crown edges
+    and fronts rounded off, joined into one by the cradle's own domed crown between them (1 cm off their inner faces,
+    3.5 cm over their crowns, rounding down at the front with them) and, behind the cradle, a rear wall from their
+    feet to their crowns whose front is an arc about the trunnion 3 cm clear of the receiver at every pitch (the
+    receiver swings down inside it); a block under the cradle's front and the mantlet's lower plate (gun frame) close
+    the front between them (04, 07, 08, 10);
+  - the twin 2A42 in one cradle, each leaving the common rounded front in its own rounded canvas-bagged mantlet (a
+    bulging twelve-sided bag with two tie straps, gathered to the collar), cylindrical multi-baffle muzzle brakes (10);
   - on the common trunnion through the humps, outside each, a compact trunnion housing at tube height carrying two open
     Ataka transport-launch tubes one over the other on a spine with two quick-release clamps (07, 10, 12); thicker rear
     sleeves, strap bands, end caps at both ends; in the gun frame, so they elevate with the cannons;
@@ -78,7 +87,9 @@ rounded body on a low base, the front fenders the AG-17D housings, the stern a c
 
 - Yaw axis (hull frame) [0, 1.5295, -0.40]; trunnion (turret frame) [0, 0.95, -0.90]; twin bores at x +-0.15, mouth face
   2.711 m ahead of the trunnion; Ataka tube axes (gun frame) x +-0.95, y +-0.135, r 0.08, from z 0.20 to 2.00, exits on
-  the front caps at z 2.032. Humps x 0.19-0.72, crown 1.15, z -1.38..-0.21 (turret frame); base r 0.92, deck 0.16.
+  the front caps at z 2.032. Humps x 0.19-0.72, crown 1.15, z -1.38..-0.21 (turret frame); cradle half-width 0.18,
+  crown 0.235 over the trunnion; rear wall's arc r 0.43 about the trunnion; base r 0.92, deck 0.16. AG-17D boxes (hull frame)
+  x 1.15-1.68, z 1.55-2.55, crown 2.25.
 
 ## Combat data (src/vehicles/afvFamily.ts)
 
@@ -125,21 +136,26 @@ spare-track placement row, the technical diagrams and the camo production baseli
   AG-17D "upright cubes", the mirrors "small black signs on stalks"; the stern screen standing off "about 0.6 m on thin
   rails" with "two flat oval outlines"; the cannons' box tips; the tall arm fins; the glacis field, the lower nose and the
   rear skirt's dark gaps.
-- Round 2 (r7): each of those, as "What was built" describes; the T-72B3M builds untouched (default-off options).
+- Round 2 (r7): each of those; the T-72B3M builds untouched (default-off options). Checkpoint `2d3199bcae`.
+- Critics on r7 split. Round 3 asks: the front fender boxes to stand proud like round 1's, solid sloped armoured boxes
+  with the AG-17D on the sloped face, the mirrors back, a rounded lower nose instead of thin curled sheets; the module's
+  humps joined into one compact body with the gap above the cradle filled and a distinct rounded bagged mantlet per
+  cannon; if cheap, fewer and larger wedge Kontakt-5 modules.
+- Round 3 (r8): each of those, as "What was built" describes.
 
-## Evidence (2026-11-01, round 2, lane tree, uncommitted)
+## Evidence (2026-11-01, round 3, lane tree, uncommitted)
 
 | Gate | Status | Command / artifact | Result |
 | --- | --- | --- | --- |
-| Typecheck | PASS | `node tools/typecheck.mjs` | TypeScript clean, no unused symbols, oxlint clean |
+| Typecheck | PASS | `node tools/typecheck.mjs` | TypeScript 7 clean, no unused symbols, oxlint clean |
 | Fixture | PASS | `node src/vehicles/profiles/bmptTerminator.selftest.mjs` | pivots, bores, 4 gun-frame exits, 5 crew, 3.44 m crown, high and low |
 | Accessory contact | PASS | `IDS=bmpt_terminator node .qa-dev/contactprobe.mjs` | 0 floating, 0 clipping |
-| Roof pockets | PASS | `node tools/roof-pocket-census.mjs --ids=bmpt_terminator` | none |
+| Roof pockets | PASS | `node tools/roof-pocket-census.mjs --ids=bmpt_terminator` | none (a first r8 build roofed a recess under a shallower rear bridge, 532 cm2; the wall now runs to the humps' feet) |
 | Gun sweep (cannons and both Ataka housings over the hull) | PASS | `node tools/gun-depression-sweep.mjs --ids=bmpt_terminator --no-suit` | full -5 at every yaw, nothing blocked at +45, no mount conflict, no curve |
-| Gun group over its own module | PASS | lane probe `.qa-dev/bmpt-terminator-gunturret.mjs` | 25 mm least (the cradle's sides to the humps) over -5..+45, the axis seats excepted |
+| Gun group over its own module | PASS | lane probe `.qa-dev/bmpt-terminator-gunturret.mjs` | 10 mm least: the cradle's sides beside the humps' inner faces (a lateral running gap parallel to the pitch axis); everything else 21 mm or more (the mantlet's lower plate over the closing block at -5), -5..+45, the axis seats excepted |
 | Barrel circularity / axis | PASS | `measureTurretBarrelCircularity` | worst aspect 1.026, lateral 0 |
 | ERA finish | PASS | the receipt's per-id assertions | glacis_era_L/R, skirt_era_L/R through the painted layered finish |
-| Whole-fleet geometry digest | PASS | `geodigest-all.zsh` (`geodigest-bmpt-T-r7`) against `geodigest-bmpt-base` | only `bmpt_terminator` new and builder U's `bmpt_terminator2` moved; the T-72B3M builds (and every national id on that hull) unchanged |
+| Whole-fleet geometry digest | PASS | `geodigest-all.zsh` (`geodigest-bmpt-T-r8`) against `geodigest-bmpt-base` | 277 ids: only `bmpt_terminator` new and builder U's `bmpt_terminator2` moved |
 | Receipts beside the changed files and naming the id | PASS | t72b3mXGeometry, t72b3mXSideMounts, nationalModernization, nationalUkraineProtection, afvBalance, recoilRig, guidedLauncherTubes, launcherOrigins, nationWheelSets, camoCatalogProductionIndices, camoPolicy, authoredPaintCatalog, factoryCamo, techTree, tacticalRoles, taxonomy, vehicleFacets, internalLayoutRegistry, tier, fleetOrder, fleetParity, tankIdAliases | |
 | roofWeaponPolicy | red, not this id | | stops at `magach6b` (duplicate station names, the M60 lane's known red); this id's no-roof-gun row passes before it |
 | crewSeats | OWED | regen | no combat-anatomy calibration for a new id until `tank:anatomy:update` |
