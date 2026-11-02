@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../../src/vehicles/tankFactory.ts';
 import { PRODUCTION_TANK_IDS, TANK_SPECS } from '../../src/vehicles/specs.ts';
-import { signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
+import { defaultCamoPatternId, signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { anchorsFinder } from './fleet-anchors.mjs';
 import { CAST_NAMES } from './cast.mjs';
@@ -103,10 +103,15 @@ const FIELDS = {
   Sweden: ['whiteout', 'longleaf', 'fjord', 'winter'],
   Israel: ['desert', 'badlands', 'copper_mesa', 'oasis', 'caldera'],
   Ukraine: ['steppe', 'autumn', 'frontier', 'winter'],
+  Denmark: ['polders', 'fjord', 'saltwind', 'coastal', 'longleaf', 'autumn'],
+  Brazil: ['frontier', 'steppe', 'mangrove', 'monsoon', 'delta', 'longleaf'],
+  'South Africa': ['badlands', 'desert', 'copper_mesa', 'steppe', 'oasis'],
+  Australia: ['desert', 'badlands', 'copper_mesa', 'airfield', 'coastal'],
 };
 const SPACE = ['mars', 'moon'];
 const FIFTY_MAPS = new Set(['urban', 'verdant', 'alpine', 'oasis', 'fjord', 'monsoon', 'railyard', 'foundry', 'frontier', 'delta', 'winter', 'orchard', 'reservoir']);
-const CAP = 7;
+// (268) 8 from 7: the 266 vehicles found 26 of the 33 battlefields full at 7, with sets to spare on most of them
+const CAP = 8;
 const EN = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
 const ZH = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
 const cat = (c, id) => c[`map.${id}`] ?? c.map?.[id];
@@ -192,7 +197,7 @@ for (const [k, id] of order.entries()) {
   const pool = foePool(id).filter((f) => !lineup.includes(f)), start = hash(id) % pool.length;
   const foes = [...pool.slice(start), ...pool.slice(0, start)].slice(0, Math.max(2, tplScene.actors.filter((x) => x.name.startsWith('foe')).length));
   const paintOf = (who, signature = true) => (signature ? signatureCamoPatternId(asToday(who)) : null)
-    ?? stockCamoPatternIdFor(asToday(who), spec(who).nation, spec(who).era);
+    ?? stockCamoPatternIdFor(asToday(who), spec(who).nation, spec(who).era) ?? defaultCamoPatternId(asToday(who));
   const unit = paintOf(id);
   let enemy = paintOf(foes[0]);
   if (enemy === unit) enemy = paintOf(foes[0], false);

@@ -7277,5 +7277,770 @@
    "en": "M48A3 Patton, Steinburg",
    "zh": "M48A3 Patton，斯泰因堡"
   }
+ },
+ {
+  "n": 288,
+  "id": "ee-t3-osorio-mangrove",
+  "hero": "ee_t3_osorio",
+  "nation": "Brazil",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "sunset",
+  "anchor": [
+   -312,
+   228
+  ],
+  "heading": 355,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "ee_t3_osorio",
+   "ee_t4_osorio"
+  ],
+  "foes": [
+   "t72b3_x",
+   "t90a_x"
+  ],
+  "paint": [
+   "paint_ee_t3_osorio",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An EE-T3 Osório leads the column through Mangrove Reach at sunset",
+   "zh": "日落时分，一辆 EE-T3 Osório 率领纵队穿过红树林水道"
+  },
+  "short": {
+   "en": "EE-T3 Osório, Mangrove Reach",
+   "zh": "EE-T3 Osório，红树林水道"
+  }
+ },
+ {
+  "n": 289,
+  "id": "ee-t4-osorio-longleaf",
+  "hero": "ee_t4_osorio",
+  "nation": "Brazil",
+  "era": "modern",
+  "map": "longleaf",
+  "time": "sunset",
+  "anchor": [
+   3,
+   3
+  ],
+  "heading": 75,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "ee_t4_osorio",
+   "ee_t3_osorio"
+  ],
+  "foes": [
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "paint_ee_t4_osorio",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An EE-T4 Osório knocks out a T-72B3M at Longleaf Crossing at sunset",
+   "zh": "日落时分，一辆 EE-T4 Osório 在长叶渡口击毁一辆 T-72B3M"
+  },
+  "short": {
+   "en": "EE-T4 Osório, Longleaf Crossing",
+   "zh": "EE-T4 Osório，长叶渡口"
+  }
+ },
+ {
+  "n": 290,
+  "id": "osorio-p1-steppe",
+  "hero": "osorio_p1",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "steppe",
+  "time": "day",
+  "anchor": [
+   301.5,
+   -317.5
+  ],
+  "heading": 348.7,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "osorio_p1",
+   "osorio_p2"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "paint_osorio_p1",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An EE-T1 Osório (105) fires across Tarkhan Steppe",
+   "zh": "一辆 EE-T1 Osório (105) 在塔尔罕草原开火"
+  },
+  "short": {
+   "en": "EE-T1 Osório (105), Tarkhan Steppe",
+   "zh": "EE-T1 Osório (105)，塔尔罕草原"
+  }
+ },
+ {
+  "n": 291,
+  "id": "osorio-p2-monsoon",
+  "hero": "osorio_p2",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "monsoon",
+  "time": "day",
+  "anchor": [
+   45.3,
+   165.3
+  ],
+  "heading": 8.4,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "osorio_p2",
+   "tamoyo3",
+   "tamoyo1"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_osorio_p2",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An EE-T1 Osório (120) returns fire across Monsoon Ridge",
+   "zh": "一辆 EE-T1 Osório (120) 在季风雨脊还击"
+  },
+  "short": {
+   "en": "EE-T1 Osório (120), Monsoon Ridge",
+   "zh": "EE-T1 Osório (120)，季风雨脊"
+  }
+ },
+ {
+  "n": 292,
+  "id": "tamoyo1-frontier",
+  "hero": "tamoyo1",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "frontier",
+  "time": "golden",
+  "anchor": [
+   264.5,
+   -113.8
+  ],
+  "heading": 223.2,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "tamoyo1",
+   "x1_pioneiro",
+   "osorio_p1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_tamoyo1",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An MB-3 Tamoyo 1 leads the column through Frontier Basin in the evening light",
+   "zh": "傍晚，一辆 MB-3 Tamoyo 1 率领纵队穿过边疆盆地"
+  },
+  "short": {
+   "en": "MB-3 Tamoyo 1, Frontier Basin",
+   "zh": "MB-3 Tamoyo 1，边疆盆地"
+  }
+ },
+ {
+  "n": 293,
+  "id": "tamoyo3-badlands",
+  "hero": "tamoyo3",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "badlands",
+  "time": "day",
+  "anchor": [
+   -193.3,
+   333.3
+  ],
+  "heading": 173,
+  "template": 26,
+  "action": "onTheMove",
+  "lineup": [
+   "tamoyo3",
+   "x1_pioneiro"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "paint_tamoyo3",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "An MB-3 Tamoyo 3 fires on the move at Redrock Divide",
+   "zh": "一辆 MB-3 Tamoyo 3 在红岩分界行进间射击"
+  },
+  "short": {
+   "en": "MB-3 Tamoyo 3, Redrock Divide",
+   "zh": "MB-3 Tamoyo 3，红岩分界"
+  }
+ },
+ {
+  "n": 294,
+  "id": "x1-pioneiro-copper-mesa",
+  "hero": "x1_pioneiro",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "copper_mesa",
+  "time": "day",
+  "anchor": [
+   -353.3,
+   -292.3
+  ],
+  "heading": 170.9,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "x1_pioneiro",
+   "x1a2_carcara"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "factory",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CCL X1 Pioneiro leads the column through Copper Mesa Mine",
+   "zh": "一辆 CCL X1 Pioneiro 率领纵队穿过铜台地矿场"
+  },
+  "short": {
+   "en": "CCL X1 Pioneiro, Copper Mesa Mine",
+   "zh": "CCL X1 Pioneiro，铜台地矿场"
+  }
+ },
+ {
+  "n": 295,
+  "id": "x1a2-carcara-titan-gorge",
+  "hero": "x1a2_carcara",
+  "nation": "Brazil",
+  "era": "cold-war",
+  "map": "titan_gorge",
+  "time": "day",
+  "anchor": [
+   363,
+   -357
+  ],
+  "heading": 282,
+  "template": 39,
+  "action": "fires",
+  "lineup": [
+   "x1a2_carcara",
+   "tamoyo3"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "paint_x1a2_carcara",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A CCL X1A2 Carcará fires across Titan Gorge",
+   "zh": "一辆 CCL X1A2 Carcará在泰坦峡谷开火"
+  },
+  "short": {
+   "en": "CCL X1A2 Carcará, Titan Gorge",
+   "zh": "CCL X1A2 Carcará，泰坦峡谷"
+  }
+ },
+ {
+  "n": 296,
+  "id": "cv9035dk-coastal",
+  "hero": "cv9035dk",
+  "nation": "Denmark",
+  "era": "modern",
+  "map": "coastal",
+  "time": "day",
+  "anchor": [
+   273,
+   -312
+  ],
+  "heading": 11,
+  "template": 5,
+  "action": "column",
+  "lineup": [
+   "cv9035dk",
+   "christian2"
+  ],
+  "foes": [
+   "t90a_x",
+   "t80u_x"
+  ],
+  "paint": [
+   "paint_cv9035dk",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV9035 DK leads the column through Saltmere Bay",
+   "zh": "一辆 CV9035 DK 率领纵队穿过盐沼湾"
+  },
+  "short": {
+   "en": "CV9035 DK, Saltmere Bay",
+   "zh": "CV9035 DK，盐沼湾"
+  }
+ },
+ {
+  "n": 297,
+  "id": "leo1a3dk-polders",
+  "hero": "leo1a3dk",
+  "nation": "Denmark",
+  "era": "cold-war",
+  "map": "polders",
+  "time": "day",
+  "anchor": [
+   363,
+   138
+  ],
+  "heading": 288,
+  "template": 4,
+  "action": "column",
+  "lineup": [
+   "leo1a3dk",
+   "leo1a5dk",
+   "m41dk1"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "factory",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 1A3 DK leads the column through Tidegate Polders",
+   "zh": "一辆 Leopard 1A3 DK 率领纵队穿过潮闸圩田"
+  },
+  "short": {
+   "en": "Leopard 1A3 DK, Tidegate Polders",
+   "zh": "Leopard 1A3 DK，潮闸圩田"
+  }
+ },
+ {
+  "n": 298,
+  "id": "leo1a5dk-saltwind",
+  "hero": "leo1a5dk",
+  "nation": "Denmark",
+  "era": "cold-war",
+  "map": "saltwind",
+  "time": "morning",
+  "anchor": [
+   -168.2,
+   215.2
+  ],
+  "heading": 80.6,
+  "template": 19,
+  "action": "fires",
+  "lineup": [
+   "leo1a5dk",
+   "m41dk1",
+   "leo1a3dk"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "factory",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 1A5 DK fires across Saltwind Narrows in the morning",
+   "zh": "清晨，一辆 Leopard 1A5 DK 在盐风海峡开火"
+  },
+  "short": {
+   "en": "Leopard 1A5 DK, Saltwind Narrows",
+   "zh": "Leopard 1A5 DK，盐风海峡"
+  }
+ },
+ {
+  "n": 299,
+  "id": "leo1a5dk1-fjord",
+  "hero": "leo1a5dk1",
+  "nation": "Denmark",
+  "era": "cold-war",
+  "map": "fjord",
+  "time": "sunset",
+  "anchor": [
+   -177,
+   273
+  ],
+  "heading": 90,
+  "template": 6,
+  "action": "artillery",
+  "lineup": [
+   "leo1a5dk1"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_leo1a5dk1",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Leopard 1A5 DK-1 charges through artillery at Nordhavn Fjord at sunset",
+   "zh": "日落时分，一辆 Leopard 1A5 DK-1 冒着炮击冲过诺德港峡湾"
+  },
+  "short": {
+   "en": "Leopard 1A5 DK-1, Nordhavn Fjord",
+   "zh": "Leopard 1A5 DK-1，诺德港峡湾"
+  }
+ },
+ {
+  "n": 300,
+  "id": "leo2a5dk-skybridge",
+  "hero": "leo2a5dk",
+  "nation": "Denmark",
+  "era": "modern",
+  "map": "skybridge",
+  "time": "day",
+  "anchor": [
+   -87,
+   -222
+  ],
+  "heading": 12,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "leo2a5dk",
+   "cv9035dk"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "paint_leo2a5dk",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Leopard 2A5 DK knocks out a T-80U at Skybridge Chasm",
+   "zh": "一辆 Leopard 2A5 DK 在天桥裂谷击毁一辆 T-80U"
+  },
+  "short": {
+   "en": "Leopard 2A5 DK, Skybridge Chasm",
+   "zh": "Leopard 2A5 DK，天桥裂谷"
+  }
+ },
+ {
+  "n": 301,
+  "id": "m41dk1-blackglass",
+  "hero": "m41dk1",
+  "nation": "Denmark",
+  "era": "cold-war",
+  "map": "blackglass",
+  "time": "day",
+  "anchor": [
+   -312,
+   -87
+  ],
+  "heading": 281,
+  "template": 23,
+  "action": "hold",
+  "lineup": [
+   "m41dk1",
+   "leo1a3dk"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_m41dk1",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M41 DK-1 holds its ground at Suzhou Creek",
+   "zh": "一辆 M41 DK-1 在苏州河坚守阵地"
+  },
+  "short": {
+   "en": "M41 DK-1, Suzhou Creek",
+   "zh": "M41 DK-1，苏州河"
+  }
+ },
+ {
+  "n": 302,
+  "id": "m41-bw-ruinspires",
+  "hero": "m41_bw",
+  "nation": "Germany",
+  "era": "cold-war",
+  "map": "ruinspires",
+  "time": "night",
+  "anchor": [
+   48,
+   318
+  ],
+  "heading": 5,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "m41_bw"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "paint_m41_bw",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M41 (Bundeswehr) knocks out a T-62MV-1 at Ruinspires at night",
+   "zh": "夜间，一辆 M41 (Bundeswehr) 在废墟尖塔击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "M41 (Bundeswehr), Ruinspires",
+   "zh": "M41 (Bundeswehr)，废墟尖塔"
+  }
+ },
+ {
+  "n": 303,
+  "id": "magach6b-desert",
+  "hero": "magach6b",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "desert",
+  "time": "night",
+  "anchor": [
+   48,
+   183
+  ],
+  "heading": 174,
+  "template": 18,
+  "action": "kill",
+  "lineup": [
+   "magach6b",
+   "magach7c"
+  ],
+  "foes": [
+   "t72b_1987_x",
+   "t64bv1"
+  ],
+  "paint": [
+   "service_merkava2d",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Magach 6B knocks out a T-72B at Sirocco Wadi at night",
+   "zh": "夜间，一辆 Magach 6B 在西罗科旱谷击毁一辆 T-72B"
+  },
+  "short": {
+   "en": "Magach 6B, Sirocco Wadi",
+   "zh": "Magach 6B，西罗科旱谷"
+  }
+ },
+ {
+  "n": 304,
+  "id": "magach7c-caldera",
+  "hero": "magach7c",
+  "nation": "Israel",
+  "era": "cold-war",
+  "map": "caldera",
+  "time": "day",
+  "anchor": [
+   294,
+   -210.7
+  ],
+  "heading": 352.3,
+  "template": 20,
+  "action": "returnFire",
+  "lineup": [
+   "magach7c",
+   "merkava1b",
+   "magach6b"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_merkava2d",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A Magach 7C returns fire across Obsidian Caldera",
+   "zh": "一辆 Magach 7C 在黑曜石火山口还击"
+  },
+  "short": {
+   "en": "Magach 7C, Obsidian Caldera",
+   "zh": "Magach 7C，黑曜石火山口"
+  }
+ },
+ {
+  "n": 305,
+  "id": "m41-jgsdf-cliffbridge",
+  "hero": "m41_jgsdf",
+  "nation": "Japan",
+  "era": "cold-war",
+  "map": "cliffbridge",
+  "time": "sunset",
+  "anchor": [
+   -312,
+   228
+  ],
+  "heading": 349,
+  "template": 38,
+  "action": "kill",
+  "lineup": [
+   "m41_jgsdf"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "paint_m41_jgsdf",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M41 (JGSDF) knocks out a T-64BV1 at Aegis Crossing at sunset",
+   "zh": "日落时分，一辆 M41 (JGSDF) 在神盾渡口击毁一辆 T-64BV1"
+  },
+  "short": {
+   "en": "M41 (JGSDF), Aegis Crossing",
+   "zh": "M41 (JGSDF)，神盾渡口"
+  }
+ },
+ {
+  "n": 306,
+  "id": "ua-cv9040c-winter",
+  "hero": "ua_cv9040c",
+  "nation": "Ukraine",
+  "era": "modern",
+  "map": "winter",
+  "time": "golden",
+  "anchor": [
+   231.5,
+   384.6
+  ],
+  "heading": 169.6,
+  "template": 21,
+  "action": "assault",
+  "lineup": [
+   "ua_cv9040c",
+   "t84",
+   "t64b1v_2022",
+   "t64bm1m"
+  ],
+  "foes": [
+   "t90m_x",
+   "t72b3m_x",
+   "t72b3_x"
+  ],
+  "paint": [
+   "service_ua_m2a3_bradley",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A CV9040C (Ukraine) leads the assault across Frosthollow in the evening light",
+   "zh": "傍晚，一辆 CV9040C (Ukraine) 率队突击霜谷"
+  },
+  "short": {
+   "en": "CV9040C (Ukraine), Frosthollow",
+   "zh": "CV9040C (Ukraine)，霜谷"
+  }
+ },
+ {
+  "n": 307,
+  "id": "m41a3-airfield",
+  "hero": "m41a3",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "airfield",
+  "time": "day",
+  "anchor": [
+   -125,
+   -262
+  ],
+  "heading": 58.8,
+  "template": 29,
+  "action": "kill",
+  "lineup": [
+   "m41a3",
+   "m48a3_patton"
+  ],
+  "foes": [
+   "t62mv1_x",
+   "t72b_1987_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "An M41A3 Walker Bulldog knocks out a T-62MV-1 at Kestrel Airfield",
+   "zh": "一辆 M41A3 Walker Bulldog 在红隼机场击毁一辆 T-62MV-1"
+  },
+  "short": {
+   "en": "M41A3 Walker Bulldog, Kestrel Airfield",
+   "zh": "M41A3 Walker Bulldog，红隼机场"
+  }
+ },
+ {
+  "n": 308,
+  "id": "t49-whiteout",
+  "hero": "t49",
+  "nation": "USA",
+  "era": "cold-war",
+  "map": "whiteout",
+  "time": "day",
+  "anchor": [
+   228,
+   273
+  ],
+  "heading": 194,
+  "template": 49,
+  "action": "column",
+  "lineup": [
+   "t49",
+   "m41a3",
+   "m47_patton"
+  ],
+  "foes": [
+   "t64bv1",
+   "t62mv1_x"
+  ],
+  "paint": [
+   "service_usa_desert",
+   "service_soviet_coldwar"
+  ],
+  "title": {
+   "en": "A T49 leads the column through Whiteout Station",
+   "zh": "一辆 T49 率领纵队穿过白茫站"
+  },
+  "short": {
+   "en": "T49, Whiteout Station",
+   "zh": "T49，白茫站"
+  }
  }
 ]

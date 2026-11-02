@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import '../../src/vehicles/tankFactory.ts';
 import { PRODUCTION_TANK_IDS, TANK_SPECS } from '../../src/vehicles/specs.ts';
-import { isBuiltInCamoId, signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
+import { defaultCamoPatternId, isBuiltInCamoId, signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import { CAST } from './cast.mjs';
 import { COMBAT, DUELS, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 import { takeBars } from './take-bars.mjs';
@@ -42,19 +42,19 @@ const waiting = PRODUCTION_TANK_IDS.filter((id) => !covered.has(id));
 const perMap = {};
 for (const sc of scenes.values()) perMap[sc.map] = (perMap[sc.map] ?? 0) + 1;
 assert.ok(Object.keys(perMap).length >= 25, `the fleet spreads over 25 battlefields at least (${Object.keys(perMap).length})`);
-for (const [map, count] of Object.entries(perMap)) assert.ok(count <= 7, `${map} holds ${count} fleet takes, 7 at most`);
+for (const [map, count] of Object.entries(perMap)) assert.ok(count <= 8, `${map} holds ${count} fleet takes, 8 at most`);
 // the planner keeps takes 60 m apart at the least; two lanes appending at once each miss the other's takes and can pick
 // one set (265: the Centurion Mk 5/1 Aust on the Qinglong's copper_mesa anchor at 0 m), so the merge fails here
 const crowded = FLEET.flatMap(([n, , , , a], i) => FLEET.slice(i + 1).filter(([, , , , b]) => b.map === a.map
   && Math.hypot(b.anchor[0] - a.anchor[0], b.anchor[1] - a.anchor[1]) < 60).map(([m]) => `s${n}/s${m} on ${a.map}`));
 assert.deepEqual(crowded, [], 'no two fleet takes within 60 m on one battlefield');
 
-// paint: the hero's side in the hero's own scheme (its signature, else its nation's stock coat), the foes in another,
+// paint: the hero's side in the hero's own scheme (its signature, else its nation's stock coat, else Factory), the foes in another,
 // one scheme a model (the Studio paints per model), catalog paint only
 const cast = new Set([...Object.values(CAST).map((id) => resolveTankId(id)), ...PRODUCTION_TANK_IDS]); // CAST is schema 1
 for (const shot of FLEET) {
   const sc = scenes.get(shot[0]), hero = sc.actors[0].id, spec = TANK_SPECS[hero];
-  const own = signatureCamoPatternId(hero) ?? stockCamoPatternIdFor(hero, spec.nation, spec.era);
+  const own = signatureCamoPatternId(hero) ?? stockCamoPatternIdFor(hero, spec.nation, spec.era) ?? defaultCamoPatternId(hero);
   assert.equal(sc.meta.paint.unit, own, `${sc.meta.id}: the hero's own scheme (${own})`);
   assert.ok(isBuiltInCamoId(sc.meta.paint.unit), `${sc.meta.id}: catalog paint`);
   if (sc.meta.paint.enemy) assert.ok(isBuiltInCamoId(sc.meta.paint.enemy) && sc.meta.paint.enemy !== sc.meta.paint.unit, `${sc.meta.id}: the enemy in another scheme`);
