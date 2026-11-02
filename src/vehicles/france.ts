@@ -951,8 +951,21 @@ function buildAMX40(P: FranceBuilderPort): void {
         [-0.19, y0, z0], [0.25, y0, z0], [0.25, y1, z1], [-0.19, y1, z1]));
     }
   }
-  P.addGunExtra(xformWithScale(cylZ(0.32, 0.12, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.385, 1]), -0.05, 0.015, 0.96); // soft annular cheek continuation, vertically compressed to the source tunnel
-  P.addGunExtra(xformWithScale(cylZ(0.255, 0.045, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.44, 1]), -0.05, 0.015, 1.035); // recessed oval gun tunnel, never a square mask
+  // 268: egg sections (a full half-ellipse over the top, a shallower one underneath) for the gun's round parts, so their
+  // tops and sides keep the 267 silhouette while their feet clear the hull roof (critic2: the squashed cheek ring read
+  // as "a dark disc set back into the mantlet")
+  const eggRing = (z: number, cx: number, cy: number, rx: number, top: number, bottom: number, scaleY = 1)
+    : { z: number; ring: [number, number][] } => ({
+    z, ring: Array.from({ length: P.q ? 24 : 16 }, (_, k) => {
+      const a = k / (P.q ? 24 : 16) * Math.PI * 2, s = Math.sin(a);
+      return [cx + rx * Math.cos(a), (cy + (s > 0 ? top : bottom) * s) / scaleY];
+    }),
+  });
+  const bootRing = (z: number, rx: number, top: number, bottom: number, scaleY = 1) => eggRing(z, 0.01, 0.005, rx, top, bottom, scaleY);
+  // soft annular cheek continuation and the recessed oval gun tunnel (never a square mask), in world terms 0.46 and 0.37
+  // m half-width, 0.19 and 0.17 over the axis as in 267, 0.13 and 0.12 under it
+  P.addGunExtra(loftZ([eggRing(0.90, -0.05, 0.015, 0.464, 0.16, 0.1233), eggRing(1.02, -0.05, 0.015, 0.464, 0.16, 0.1233)]));
+  P.addGunExtra(loftZ([eggRing(1.0125, -0.05, 0.015, 0.37, 0.1428, 0.1122), eggRing(1.0575, -0.05, 0.015, 0.37, 0.1428, 0.1122)]));
   // 267 (Sonnet, round 3: "a thick ring with no canvas gaiter; the real one is a ribbed collar under a fabric boot"): the
   // cast collar and the clamp shoulder are a dark ribbed mounting ring and a canvas boot tapering from it to sleeve A's
   // first cinch, with one fold ring (round: the boot is outside the section's 1.20 height scale).
@@ -960,12 +973,6 @@ function buildAMX40(P: FranceBuilderPort): void {
   // fabric boot tapering from a wide toothed ring): the ring and the boot keep the 267 flare over the top and sides
   // (0.43 m across) but are shallower underneath, their feet at -0.144 and -0.135 (gun frame), so the whole gun keeps
   // its depression over the front roof corners; the boot tapers round onto sleeve A.
-  const bootRing = (z: number, rx: number, top: number, bottom: number, scaleY = 1): { z: number; ring: [number, number][] } => ({
-    z, ring: Array.from({ length: P.q ? 24 : 16 }, (_, k) => {
-      const a = k / (P.q ? 24 : 16) * Math.PI * 2, s = Math.sin(a);
-      return [0.01 + rx * Math.cos(a), (0.005 + (s > 0 ? top : bottom) * s) / scaleY];
-    }),
-  });
   P.addGunExtraDark(loftZ([bootRing(1.05, 0.215, 0.25, 0.149, 1.20), bootRing(1.11, 0.215, 0.25, 0.149, 1.20)]));  // mounting ring
   P.add('gunMountCanvasSkin', loftZ([bootRing(1.11, 0.200, 0.200, 0.140), bootRing(1.45, 0.155, 0.155, 0.134),
     bootRing(1.63, 0.132, 0.132, 0.132)]));                                     // canvas boot
