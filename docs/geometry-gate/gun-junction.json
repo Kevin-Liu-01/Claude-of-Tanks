@@ -91,7 +91,7 @@
   "kf41_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4c5521cbd3502edc","gun":"49ba9c9013b72e2c"}},
   "kf51_evo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"067e877d08850d21","gun":"514f7c85299d9bcc"}},
   "kf51_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"403ce0a5ba9fd699","gun":"969cbdc09b5b2bc8"}},
-  "kf51_u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7b30dc51e241bedc","gun":"c7ba016a6fdc51b5"}},
+  "kf51_u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"785fb1560cc59002","gun":"23da89e380f04d8a"}},
   "kurganets25": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d250a50dcc2130f2","gun":"3f89ae065c2ed22d"}},
   "kv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c108436e42786290","gun":"30af178f72653641"}},
   "leclerc_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3cbf23b1f7214bba","gun":"b3d3842d54edab95"}},

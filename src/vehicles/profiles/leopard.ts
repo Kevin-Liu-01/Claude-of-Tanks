@@ -9685,12 +9685,37 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // the former 0.34 m center buried nearly the complete marked front face
     // beneath the rising fore-roof. Lift the housing and both apertures as one
     // rigid assembly so the glass never separates from its armored surround.
-    P.add('turretDark', box(0.44, 0.34, 0.18),
-      -0.74, 0.34 + multispectralSightLiftM, 1.27, -0.20, 0, 0);
-    for (const dx of [-0.09, 0.09]) {
-      P.add('turretGlass', box(0.10, 0.10, 0.018),
-        -0.74 + dx, 0.39 + multispectralSightLiftM, 1.366, -0.20, 0, 0);
-    }
+    // 268 (owner: the cheek "lights" read odd): the cheek's sensor group as photographed (Commons KF-51U_01/02/03/09):
+    // a body-coloured housing whose face carries the bolted window (a large round lens inboard, a small round lens over
+    // a teardrop outboard), the twin-lens pod under its sloped hood below it, and a camera pair outboard; the two square
+    // glass panes it had read as headlamps.
+    const sightY = 0.34 + multispectralSightLiftM;
+    const sightFace = (u: number, v: number, depth: number): [number, number, number] => {
+      const c = Math.cos(-0.20), sn = Math.sin(-0.20), w = 0.09 + depth;
+      return [-0.74 + u, sightY + v * c - w * sn, 1.27 + v * sn + w * c];
+    };
+    const onSight = (bucket: string, geometry: THREE.BufferGeometry, u: number, v: number, depth: number): void => {
+      const [x, y, z] = sightFace(u, v, depth);
+      P.add(bucket, geometry, x, y, z, -0.20, 0, 0);
+    };
+    // the housing rises from the roof as one block: its face pitched as before, its top falling back into the roof at
+    // z 0.84 (roof y 0.58) so it reads as part of the turret's cheek, not a box stood on the wedge
+    P.add('turret', convexSlab(
+      sightFace(-0.22, -0.243, 0), sightFace(0.22, -0.243, 0), [-0.52, 0.30, 0.84], [-0.96, 0.30, 0.84],
+      sightFace(-0.20, 0.17, 0), sightFace(0.20, 0.17, 0), [-0.54, 0.60, 0.84], [-0.94, 0.60, 0.84]));
+    onSight('turretDark', box(0.27, 0.19, 0.02), 0.03, 0.05, 0.0);                              // window recess
+    onSight('turretDetail', box(0.245, 0.165, 0.02), 0.03, 0.05, 0.008);                       // bolted frame
+    onSight('turretDark', cylZ(0.060, 0.012, P.q ? 24 : 14), 0.075, 0.05, 0.019);
+    onSight('turretGlass', cylZ(0.053, 0.006, P.q ? 24 : 14), 0.075, 0.05, 0.026);              // large lens, inboard
+    onSight('turretDark', cylZ(0.024, 0.012, 14), -0.045, 0.095, 0.019);                       // small round lens
+    onSight('turretDark', cylZ(0.021, 0.012, 12), -0.045, 0.035, 0.019);                       // teardrop head
+    onSight('turretDark', box(0.028, 0.030, 0.012), -0.045, 0.016, 0.019);                     // and tail
+    onSight('turret', convexSlab(                                                              // twin-lens pod hood
+      [-0.10, -0.15, 0.0], [0.13, -0.15, 0.0], [0.13, -0.15, 0.07], [-0.10, -0.15, 0.07],
+      [-0.12, -0.07, 0.0], [0.15, -0.07, 0.0], [0.15, -0.07, 0.05], [-0.12, -0.07, 0.05]), 0, 0, 0);
+    for (const du of [-0.025, 0.055]) onSight('turretDark', cylZ(0.027, 0.012, 14), du, -0.112, 0.068);
+    onSight('turretDark', box(0.055, 0.13, 0.02), -0.17, -0.07, 0.0);                          // camera pair, outboard
+    for (const dv of [-0.04, -0.10]) onSight('turretGlass', cylZ(0.018, 0.008, 12), -0.17, dv, 0.012);
 
     // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The retired 390 mm
     // round-ended shroud left a toy-like seam between the barrel and the broad
@@ -9711,23 +9736,17 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // It shares the elevation axis, supporting the cradle without sweeping
     // through the surrounding fixed armor as the gun pitches.
     P.addGunExtraDark(cylX(0.14, 0.90, 16), 0, 0, 0);
-    P.addGunExtra(outwardClosedSlab(
-      [-0.37, -0.20, 0.02], [0.37, -0.20, 0.02], [0.245, -0.135, 1.27], [-0.245, -0.135, 1.27],
-      [-0.34, 0.23, 0.02], [0.34, 0.23, 0.02], [0.218, 0.16, 1.27], [-0.218, 0.16, 1.27],
-    ));
-    // A shallow armored crown continues the turret's rising fore-roof plane;
-    // the inset dark belly reads as a flexible weather boot at full elevation.
-    P.addGunExtra(outwardClosedSlab(
-      [-0.305, 0.22, 0.10], [0.305, 0.22, 0.10], [0.198, 0.155, 1.22], [-0.198, 0.155, 1.22],
-      [-0.278, 0.272, 0.17], [0.278, 0.272, 0.17], [0.175, 0.208, 1.17], [-0.175, 0.208, 1.17],
-    ));
-    P.addGunExtraDark(outwardClosedSlab(
-      [-0.305, -0.215, 0.10], [0.305, -0.215, 0.10], [0.198, -0.138, 1.22], [-0.198, -0.138, 1.22],
-      [-0.278, -0.18, 0.17], [0.278, -0.18, 0.17], [0.175, -0.103, 1.17], [-0.175, -0.103, 1.17],
-    ));
+    // 268 (owner: the gun "looks unconnected to the turret"): the photographed KF51-U gun (Commons KF-51U_01/02/03)
+    // grows out of the turret throat as one large cone. A mantlet drum on the trunnion axis fills the throat from the
+    // rear bulkhead (z 0.88; the drum reaches 0.905) to the cheek walls (x +/-0.43; the drum +/-0.40), up to the cheeks'
+    // roof and down to the turret floor: round about the elevation axis, it never sweeps beyond itself as the gun
+    // pitches. The cone rises from it and tapers hard to the hexagonal nose clamp (blind critics, r10: the first cone
+    // read as a blunt drum); the six-plane wedge it replaces stood forward of an empty slot.
+    P.addGunExtra(cylX(0.275, 0.80, kf51bGunSegments), 0, 0, 0);              // mantlet drum in the throat
+    P.addGunExtra(cylZ(0.150, 1.25, kf51bGunSegments, 0.270), 0, 0.010, 0.645); // conical mantlet
     P.addGunExtraDark(cylZ(0.175, 0.12, 6), 0, 0.012, 1.31);                  // armored hexagonal nose clamp
-    P.addGunExtraDark(cylZ(0.027, 0.105, 8), 0.250, 0.050, 0.88);             // recessed coax aperture
-    P.addGunExtraDark(cylZ(0.018, 0.090, 8), -0.250, 0.076, 0.72);            // paired boresight aperture
+    P.addGunExtraDark(cylZ(0.027, 0.105, 8), 0.120, 0.155, 0.80);             // recessed coax aperture
+    P.addGunExtraDark(cylZ(0.018, 0.090, 8), -0.120, 0.165, 0.66);            // paired boresight aperture
 
     // Keep the ballistic tube at its existing 64 mm authored radius, but give
     // it the readable layered mass of a 130 mm installation.  Two tapered
@@ -9771,13 +9790,15 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     P.add('gunDark', cylZ(0.086, 0.040, kf51bGunSegments), 0, 0, 5.275);       // crisp muzzle rim
     muzzleBore(P, { len: 5.30, r: 0.064 });
     P.gunG.userData.kf51bAngularGunHousingReceipt = Object.freeze({
-      profile: 'kf51b-panther-angular-mantlet-r3',
+      profile: 'kf51u-conical-mantlet-r4',
       movingWithGun: true,
-      mainHousing: 'closed-tapered-six-plane-wedge',
-      rearWidthM: 0.74,
-      rearHeightM: 0.43,
-      forwardWidthM: 0.49,
-      forwardHeightM: 0.295,
+      mainHousing: 'conical-mantlet-on-throat-drum',
+      throatDrumRadiusM: 0.275,
+      throatDrumWidthM: 0.80,
+      rearWidthM: 0.54,
+      rearHeightM: 0.54,
+      forwardWidthM: 0.30,
+      forwardHeightM: 0.30,
       housingLengthM: 1.25,
       forwardClampSides: 6,
       forwardClampRadiusM: 0.175,
@@ -9792,23 +9813,54 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
 
     // 267: the Concept Uncrewed Turret's roof (Eurosatory 2024): no crew hatches or periscopes. Behind the gun throat
     // the armoured sensor tower carries the panoramic sight's large window and a stack of four Iron Fist launchers on
-    // its right; Iron Fist twin launchers turn on the roof's flanks, ROSY obscurant tubes run along the lower side
-    // edges, MUSS twin-lens heads watch the rear quarters, and the autoloader's two magazines open in the bustle's back.
+    // the vehicle's left; Iron Fist twin launchers turn on the roof's flanks, ROSY obscurant tubes run along the lower
+    // side edges, MUSS twin-lens heads watch the rear quarters, and the autoloader's two magazines open in the bustle's
+    // back.
+    // 268 (owner: the big box on the turret read odd): the tower as photographed (Commons KF-51U_01/02/03/12): a low
+    // plinth, a faceted head with raked, chamfered cheeks either side of the window, a chin below it and a brow over it;
+    // the window is a body-coloured bolted frame holding the dark lens cluster (one large round lens, a small round one
+    // over a teardrop, a pin lens), flush with the cheeks' front edge under the brow (no water-holding recess). The launcher stack stands on the vehicle's left and the
+    // bolted electronics box on its right, as the photographs show (they had been mirrored).
     const towerFace = -Math.atan2(0.06, 0.44);
     P.add('turret', convexSlab(
       [-0.42, 0.60, 0.82], [0.42, 0.60, 0.82], [0.42, 0.60, 0.10], [-0.42, 0.60, 0.10],
-      [-0.38, 1.04, 0.76], [0.38, 1.04, 0.76], [0.38, 1.04, 0.14], [-0.38, 1.04, 0.14]));
-    P.add('turretDark', box(0.40, 0.32, 0.03), -0.06, 0.84, 0.802, towerFace, 0, 0);
-    P.add('turretGlass', cylZ(0.11, 0.02, P.q ? 24 : 14), -0.02, 0.84, 0.815, towerFace, 0, 0);
-    for (const y of [0.76, 0.93]) P.add('turretGlass', cylZ(0.035, 0.02, 12), -0.19, y, 0.812, towerFace, 0, 0);
-    P.add('turretDetail', box(0.06, 0.44, 0.22), -0.445, 0.83, 0.62);                      // launcher rack on the tower's right
+      [-0.41, 0.69, 0.84], [0.41, 0.69, 0.84], [0.41, 0.69, 0.11], [-0.41, 0.69, 0.11]));   // plinth with its lip
+    P.add('turret', convexSlab(
+      [-0.36, 0.68, 0.61], [0.36, 0.68, 0.61], [0.36, 0.68, 0.14], [-0.36, 0.68, 0.14],
+      [-0.33, 1.06, 0.57], [0.33, 1.06, 0.57], [0.33, 1.06, 0.20], [-0.33, 1.06, 0.20]));   // head
+    for (const s of [-1, 1] as const) {
+      P.add('turret', convexSlab(                                                           // raked cheek, outer corner chamfered
+        [s * 0.18, 0.68, 0.81], [s * 0.36, 0.68, 0.73], [s * 0.36, 0.68, 0.58], [s * 0.18, 0.68, 0.58],
+        [s * 0.18, 1.04, 0.75], [s * 0.33, 1.04, 0.68], [s * 0.33, 1.04, 0.55], [s * 0.18, 1.04, 0.55]));
+    }
+    P.add('turret', convexSlab(                                                             // chin under the window
+      [-0.19, 0.68, 0.83], [0.19, 0.68, 0.83], [0.19, 0.68, 0.58], [-0.19, 0.68, 0.58],
+      [-0.19, 0.76, 0.81], [0.19, 0.76, 0.81], [0.19, 0.76, 0.58], [-0.19, 0.76, 0.58]));
+    P.add('turret', convexSlab(                                                             // brow over it
+      [-0.19, 0.98, 0.77], [0.19, 0.98, 0.77], [0.19, 0.98, 0.55], [-0.19, 0.98, 0.55],
+      [-0.19, 1.06, 0.73], [0.19, 1.06, 0.73], [0.19, 1.06, 0.55], [-0.19, 1.06, 0.55]));
+    P.add('turretDark', box(0.37, 0.23, 0.03), 0, 0.87, 0.755, towerFace, 0, 0);            // the dark surround of the frame
+    P.add('turretDetail', box(0.34, 0.20, 0.022), 0, 0.87, 0.769, towerFace, 0, 0);         // bolted window frame, flush with the cheeks
+    P.add('turretDark', cylZ(0.074, 0.012, P.q ? 28 : 16), 0.065, 0.87, 0.781, towerFace, 0, 0);
+    P.add('turretGlass', cylZ(0.066, 0.006, P.q ? 28 : 16), 0.065, 0.87, 0.788, towerFace, 0, 0); // the large lens
+    P.add('turretDark', cylZ(0.032, 0.012, 16), -0.095, 0.925, 0.781, towerFace, 0, 0);     // small round lens
+    P.add('turretDark', cylZ(0.026, 0.012, 14), -0.095, 0.855, 0.781, towerFace, 0, 0);     // the teardrop: its head,
+    P.add('turretDark', box(0.034, 0.040, 0.012), -0.095, 0.832, 0.781, towerFace, 0, 0);   // its waist
+    P.add('turretDark', cylZ(0.016, 0.012, 12), -0.095, 0.812, 0.781, towerFace, 0, 0);     // and its tail
+    P.add('turretDark', cylZ(0.014, 0.012, 12), -0.025, 0.805, 0.781, towerFace, 0, 0);     // pin lens
+    if (P.q) {
+      for (const [x, y] of [[-0.155, 0.955], [0, 0.955], [0.155, 0.955], [-0.155, 0.785], [0, 0.785], [0.155, 0.785]]) {
+        P.add('turretDark', cylZ(0.007, 0.008, 6), x, y, 0.781, towerFace, 0, 0);          // frame bolts
+      }
+    }
+    P.add('turretDetail', box(0.07, 0.44, 0.22), 0.385, 0.83, 0.62);                        // launcher rack on the tower's left
     for (let k = 0; k < 4; k++) {
       const y = 0.68 + k * 0.10;
-      P.add('turretDetail', cylZ(0.048, 0.22, 12), -0.52, y, 0.66, -0.10, -0.45, 0);
-      P.add('turretDark', cylZ(0.040, 0.012, 12), -0.57, y + 0.01, 0.76, -0.10, -0.45, 0);
+      P.add('turretDetail', cylZ(0.048, 0.22, 12), 0.47, y, 0.66, -0.10, 0.45, 0);
+      P.add('turretDark', cylZ(0.040, 0.012, 12), 0.52, y + 0.01, 0.76, -0.10, 0.45, 0);
     }
-    P.add('turret', box(0.16, 0.20, 0.30), 0.50, 0.71, 0.58);                             // bolted electronics box, left
-    P.add('turretDark', box(0.12, 0.13, 0.012), 0.50, 0.72, 0.735);
+    P.add('turret', box(0.16, 0.20, 0.30), -0.50, 0.71, 0.58);                            // bolted electronics box, right
+    P.add('turretDark', box(0.12, 0.13, 0.012), -0.50, 0.72, 0.735);
     for (const s of [-1, 1] as const) {
       // Iron Fist twin launcher on its turntable, canted out, up and forward
       P.add('turretDark', cylY(0.12, 0.13, 0.07, 14), s * 1.06, 0.62, -1.38);
@@ -9829,7 +9881,9 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
           -2.70 - 0.07 * Math.cos(0.6) + du * Math.sin(0.6), 0, Math.PI + s * 0.6, 0);
       }
     }
-    for (const [z, w] of [[0.95, 1.30], [-0.64, 1.72], [-1.96, 1.66]]) {
+    // 268: the fore seam at z 0.80 on the roof (y 0.58-0.59), behind the gun throat; at 0.95 it crossed the open throat
+    // and stood 6 cm over the falling cheek wedges
+    for (const [z, w] of [[0.80, 1.30], [-0.64, 1.72], [-1.96, 1.66]]) {
       P.add('turretDark', box(w, 0.014, 0.028), 0, 0.587, z);
     }
 
@@ -9860,9 +9914,14 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
             s * (wallX - 0.015), 0.35, z + dz, 0, s * 0.11, 0);
         }
       }
-      P.add('turret', box(0.20, 0.15, 0.24), s * 1.22, 0.56, 0.78, -0.05, s * 0.13, 0);
-      P.add('turretDark', box(0.024, 0.09, 0.15), s * 1.33, 0.57, 0.80, -0.05, s * 0.13, 0);
-      P.add('turretGlass', box(0.016, 0.055, 0.085), s * 1.347, 0.58, 0.81, -0.05, s * 0.13, 0);
+      // the flank sensor pod (Commons KF-51U_09): a camera pair in a dark bezel (268: was one glass pane, a marker lamp)
+      // seated on the straight side wall under the roof edge (y 0.59 there) and over the first armour module (top
+      // 0.47), behind the wedge's falling front facet, not perched on it
+      P.add('turret', box(0.20, 0.12, 0.22), s * 1.22, 0.53, 0.60, -0.05, s * 0.13, 0);
+      P.add('turretDark', box(0.024, 0.11, 0.09), s * 1.33, 0.53, 0.61, -0.05, s * 0.13, 0);
+      for (const y of [0.555, 0.505]) {
+        P.add('turretGlass', cylZ(0.022, 0.012, 12), s * 1.352, y, 0.61, 0, s * (Math.PI / 2 + 0.13), 0);
+      }
     }
 
   };

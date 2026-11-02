@@ -23,10 +23,11 @@ function verifyGunSeat(quality) {
     assert.ok(recoil.parent === gun, 'barrel and housing share the reseated gun joint');
     mount.geometry.computeBoundingBox();
     const bounds = mount.geometry.boundingBox;
-    closeTo(gun.position.z + bounds.min.z, 1.20, 1e-6);
-    closeTo(gun.position.z + bounds.max.z, 2.45, 1e-6);
-    // The fixed front shell ends at z=1.95: the housing now overlaps its
-    // throat by 750 mm and projects 500 mm, instead of 350/900 mm.
+    // 268: the throat drum reaches back to 0.905 (the rear bulkhead stands at 0.88), the cone forward to 2.45
+    closeTo(gun.position.z + bounds.min.z, 0.905, 1e-3);
+    closeTo(gun.position.z + bounds.max.z, 2.45, 1e-3);
+    // The fixed front shell ends at z=1.95: the housing overlaps its throat
+    // by over a metre and projects 500 mm, instead of 350/900 mm.
     assert.ok(1.95 - (gun.position.z + bounds.min.z) > .70,
       'the actual housing rear is buried in the turret throat');
     assert.ok(gun.position.z + bounds.max.z - 1.95 < .55,
@@ -86,7 +87,8 @@ function verifyGunSeat(quality) {
         const position = mount.geometry.getAttribute('position');
         for (let i = 0; i < position.count; i++) {
           const point = turret.worldToLocal(mount.localToWorld(new THREE.Vector3().fromBufferAttribute(position, i)));
-          assert.ok(Math.abs(point.x) < .38 && point.z > 1.09,
+          // the cheek walls stand at x +/-0.43 and the rear bulkhead at z 0.88 (asserted above)
+          assert.ok(Math.abs(point.x) < .425 && point.z > .90,
             `${quality}: moving housing clears the cheek walls and rear bulkhead at ${yaw}/${pitch}`);
         }
       }
@@ -164,16 +166,16 @@ try {
     'KF51B track hit geometry follows the enlarged visual hierarchy');
   assert.ok(gun?.parent === turret,
     'KF51B gun remains owned by the translated turret rig');
-  assert.equal(gunHousing?.profile, 'kf51b-panther-angular-mantlet-r3');
+  assert.equal(gunHousing?.profile, 'kf51u-conical-mantlet-r4');
   assert.equal(gunHousing?.movingWithGun, true,
     'KF51B mantlet, clamp and thermal shroud elevate with the gun rig');
-  assert.equal(gunHousing?.mainHousing, 'closed-tapered-six-plane-wedge');
+  assert.equal(gunHousing?.mainHousing, 'conical-mantlet-on-throat-drum');
+  assert.ok(gunHousing?.throatDrumWidthM < 2 * 0.43 && gunHousing?.throatDrumRadiusM <= 0.28,
+    'KF51-U mantlet drum fills the throat inside its cheek walls and rear bulkhead');
   assert.ok(gunHousing?.housingLengthM >= 1.20,
     'KF51B angular mantlet replaces the retired short 390 mm shroud');
-  assert.ok(gunHousing?.rearWidthM >= 0.72 && gunHousing?.rearWidthM < 0.78,
-    'KF51B mantlet fills the turret throat without dominating the front');
-  assert.ok(gunHousing?.rearHeightM <= 0.43 && gunHousing?.forwardWidthM <= 0.49,
-    'KF51B surrounding armor stays compact around the preserved gun course');
+  assert.ok(gunHousing?.rearWidthM < 2 * gunHousing?.throatDrumRadiusM && gunHousing?.forwardWidthM < gunHousing?.rearWidthM,
+    'KF51-U cone rises from inside its drum and tapers to the clamp');
   assert.equal(gunHousing?.forwardClampSides, 6,
     'KF51B mantlet terminates in a faceted armored clamp');
   assert.equal(gunHousing?.forwardClampRadiusM, 0.175,
