@@ -523,7 +523,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   t80u_kursk: Object.freeze({ centerYM: 1.3564, topHalfM: 6.6746, sideHalfM: 3.3373 }),
   t80u_yun: Object.freeze({ centerYM: 1.6063, topHalfM: 7.3899, sideHalfM: 3.695 }),
   t80u_zoria: Object.freeze({ centerYM: 1.5475, topHalfM: 6.6609, sideHalfM: 3.3305 }),
-  t80uk: Object.freeze({ centerYM: 2.6349, topHalfM: 6.5096, sideHalfM: 3.2548 }),
+  t80uk: Object.freeze({ centerYM: 2.7014, topHalfM: 6.5096, sideHalfM: 3.2548 }),
   t84: Object.freeze({ centerYM: 1.73, topHalfM: 5.7508, sideHalfM: 2.8754 }),
   t84bm_oplot_m: Object.freeze({ centerYM: 2.0079, topHalfM: 6.9369, sideHalfM: 3.4684 }),
   t90: Object.freeze({ centerYM: 2.2356, topHalfM: 6.7863, sideHalfM: 3.3931 }),
