@@ -55,6 +55,10 @@ export async function fleetPartition(root, { world = false } = {}) {
       return files;
     }, new Map()),
     groupChain: (id) => state.groupChain(id), fileIds: state.fileIds ?? {}, errors: [...state.errors, ...state.globalReasons],
+    // what the fleet steps write (their tables' files, `files` and `writes` globs): besides the source, the paths whose
+    // names name a tank (changedTankIds)
+    generated: [...new Set([...Object.values(TABLES ?? {}).flatMap((table) => table.files),
+      ...STEPS.flatMap((step) => [...(step.files ?? []), ...(step.writes ?? [])])])],
     world: state.world ? {
       maps: [...state.world.ids],
       steps: Object.fromEntries(Object.entries(state.world.steps).map(([name, step]) => [name, {
@@ -127,15 +131,23 @@ function moduleRowIds(root, mergeBase, head, files, roster) {
   return new Map(Object.entries(JSON.parse(child.stdout)).map(([path, ids]) => [path, ids && new Set(ids.filter((id) => roster.has(id)))]));
 }
 
+/** The source directories whose paths may name a tank by its id: the builders and their receipts, and the reference
+ *  intake (docs/references: measured sources and held-out packets a tank's receipts read). */
+const ID_SOURCE_DIRS = ['src/', 'docs/references/'];
+
 /**
  * Tank ids a diff moves, each with its reasons, from the fleet partition: a group's file marks the ids built through
- * that group, a table file the ids whose rows it moved, a path naming an id (a row file, an icon) that id. A shared
- * core file marks every id: it is returned in `core` and marks no id here, so callers can say so instead of selecting
- * the whole fleet.
+ * that group, a table file the ids whose rows it moved, a source or generated path naming an id (a row file, an icon, a
+ * reference) that id. A page's media name ids too (public/media's fleet stills and clips, the og cards), but no build
+ * or receipt of the tank reads them (268: a media-only diff named the tanks, fleet and world suites). A shared core
+ * file marks every id: it is returned in `core` and marks no id here, so callers can say so instead of selecting the
+ * whole fleet.
  */
 export function changedTankIds(partition, changed, { root, mergeBase, head = 'HEAD' } = {}) {
   const ids = new Map(), core = [];
   const idSet = new Set(partition.ids);
+  const generated = (partition.generated ?? []).map(scanPatternRegExp);
+  const namesTanks = (path) => ID_SOURCE_DIRS.some((dir) => path.startsWith(dir)) || generated.some((pattern) => pattern.test(path));
   const mark = (id, why) => { if (!ids.has(id)) ids.set(id, []); if (!ids.get(id).includes(why)) ids.get(id).push(why); };
   const groupsOfFile = new Map();
   for (const [group, files] of Object.entries(partition.groups)) for (const file of files) {
@@ -159,6 +171,7 @@ export function changedTankIds(partition, changed, { root, mergeBase, head = 'HE
         : modules.get(path) ?? null;
       for (const id of moved ?? tableIds) mark(id, moved ? `${path} row` : `${path} (rows unresolved)`);
     }
+    if (!namesTanks(path)) continue;
     const stem = basename(path).split('.')[0];
     if (idSet.has(stem)) mark(stem, path);
     for (const segment of path.split('/').slice(0, -1)) if (idSet.has(segment)) mark(segment, path);

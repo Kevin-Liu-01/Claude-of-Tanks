@@ -12,10 +12,17 @@ import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachme
 import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
 import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
 import {DRONE_DOCK_EXEMPT} from '../src/sim/droneDockExempt.ts';
+import {partArgs,writePartRows} from './changed-only/parts.mjs';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
 const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=uniqueIds(value('--ids',Object.keys(TANK_SPECS).join(',')).split(','),'gen-mission-attachment-seats --ids');
 const seeds=value('--seeds','4000,4242,8191').split(',').map(Number),qualities=value('--qualities','high,low').split(',');
 const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json');
+// Parts (268, tools/changed-only/parts.mjs): --ids --out-dir=<dir> seats its ids into dir alone (each id's record, or
+// null for a removed one, and its report row); --merge-from=<dir>,<dir> takes those rows in place of seating them and
+// writes both tables and the report once, as one run does. A part writes nothing in the tree, so parts never race
+// through flush(); a failing id is a report row there too, and the merge's exit says so.
+const PART_TOOL='gen-mission-attachment-seats',parts=partArgs(args,PART_TOOL),partRows={};
+if((parts.partDir||parts.merging)&&(check||dryRun))throw new Error(PART_TOOL+': parts (--out-dir, --merge-from) seat; never with --check or --dry-run');
 // Authored stands taller than the standard rises reach; a --hints row for the same id replaces one. The BMPT's braced
 // stand is the one src/game/missionAttachmentMechanical.selftest.mjs certifies independently: no other BMPT roof or
 // hull seat clears its twin 30 mm envelope (2026-10-08: none in 295,000 grid candidates).
@@ -138,6 +145,9 @@ function inspectRecord(spec,seat,candidates,cases){
  if(!buried)validation.failures.push({kind:'buried-payload negative control missed'});
  return {pass:validation.failures.length===0,validation};
 }
+/** A plain run writes the report and tables after every id (a long run keeps what it has done); parts and a merge
+ * write once, at the end. */
+const progress=()=>{if(!parts.partDir&&!parts.merging)flush();};
 function flush(){
  fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
  if(check||dryRun)return;
@@ -147,11 +157,17 @@ function flush(){
  fs.writeFileSync(MISSION_DOCK_SEATS_PATH,missionDockSeatsSource(records));
 }
 for(const id of ids){
+ const taken=parts.take(id);
+ if(taken){
+  if(taken.record)records[id]=taken.record;else delete records[id];
+  report.rows.push(taken.report);console.log(id,taken.report.pass?'PASS':'FAIL','(part)');continue;
+ }
  stockPool.clear();
  const spec=TANK_SPECS[id];if(!spec)throw new Error('Unknown vehicle '+id);
  // a sealed dockless vehicle (src/sim/droneDockExempt.ts DRONE_DOCK_EXEMPT) keeps no seat record
  if(Object.hasOwn(DRONE_DOCK_EXEMPT,id)){
-  const pass=!check||!records[id];delete records[id];report.rows.push({id,pass,exempt:DRONE_DOCK_EXEMPT[id]});flush();
+  const pass=!check||!records[id];delete records[id];
+  const row={id,pass,exempt:DRONE_DOCK_EXEMPT[id]};report.rows.push(row);partRows[id]={record:null,report:row};progress();
   console.log(id,pass?'EXEMPT':'FAIL','',pass?DRONE_DOCK_EXEMPT[id]:'an exempt vehicle keeps a seat record');continue;
  }
  await ensureInteriorFills([id]);
@@ -164,8 +180,14 @@ for(const id of ids){
   const result=check?inspectRecord(spec,records[id],candidates,cases):findSeat(spec,candidates,cases);
   if(result.seat)records[id]=result.seat;
   const pass=check?result.pass:!!result.seat;
-  report.rows.push({id,pass,...result});flush();console.log(id,pass?'PASS':'FAIL',result.checked??'',result.reason??'');
+  const row={id,pass,...result};report.rows.push(row);partRows[id]={record:records[id]??null,report:row};progress();
+  console.log(id,pass?'PASS':'FAIL',result.checked??'',result.reason??'');
  }finally{for(const entry of cases.values())entry.tank.dispose();}
+}
+parts.done();
+if(parts.partDir){
+ writePartRows(parts.partDir,PART_TOOL,partRows);
+ console.log(`mission seats: part of ${Object.keys(partRows).length} ids written to ${parts.partDir}`);process.exit(0);
 }
 report.pass=report.rows.every(r=>r.pass);flush();console.log(`mission seats: ${report.rows.filter(r=>r.pass).length}/${report.rows.length} ${check?'verified':'generated'}`);
 if(!report.pass)process.exitCode=1;
