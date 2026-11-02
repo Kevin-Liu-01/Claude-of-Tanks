@@ -847,6 +847,7 @@ const inf = { infections: 0, firstInfectionS: null, infectionTimes: [], survivor
 // hunt honesty (Infected, Endless Horde): how often a hostile bot's mode objective is the live position of a survivor its
 // team holds no spot on (the house rule: bots must not route on hidden enemies to look aggressive)
 const hunt = { samples: 0, unspotted: 0, unknown: 0 };
+const huntLast = new Map(); // hunter id -> the unspotted quarry its objective stood on at its previous sample
 let lastWave = null;
 const humanHull0 = mean(ents.filter((e) => normTeam(e.team) === 'alpha').map((e) => e.combat.maxHp));
 inf.survivors0 = ents.filter((e) => normTeam(e.team) === 'alpha').length;
@@ -1097,9 +1098,14 @@ function sample(t) {
       if (quarry && quarryD < 2) {
         hunt.samples++;
         const seen = adapter.isSpottedBy(e.team, quarry.id);
-        if (seen === null) hunt.unknown++; else if (!seen) { hunt.unspotted++; if (team === 'alpha') hunt.alliesUnspotted = (hunt.alliesUnspotted ?? 0) + 1; }
+        // (268, item 10; Main) an objective on an unspotted hull is a leak only when it stays on it: the same quarry, still
+        // unspotted, at this hunter's previous sample too. A leak tracks its quarry; a human crossing an honest hunt point
+        // (Horde seed 8: three single samples, the human at 6.7 m/s) does not.
+        const tracked = huntLast.get(e.id) === quarry.id;
+        if (seen === false) huntLast.set(e.id, quarry.id); else huntLast.delete(e.id);
+        if (seen === null) hunt.unknown++; else if (!seen && tracked) { hunt.unspotted++; if (team === 'alpha') hunt.alliesUnspotted = (hunt.alliesUnspotted ?? 0) + 1; }
         if (team === 'alpha') hunt.alliesSamples = (hunt.alliesSamples ?? 0) + 1;
-      }
+      } else huntLast.delete(e.id);
     }
     if (zone && !r.human) {
       const d = Math.hypot(zone.x - x, zone.z - z);
