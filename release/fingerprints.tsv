@@ -9320,15 +9320,15 @@ stamp	gate	m41a3	477790ee3b0f2718	2a91139109c96403	oracle-absent	public/models/c
 stamp	gate	merkava3d	c5169d7ff253645f	9997f408c8042254	oracle-absent	public/models/community-candidates/merkava3d_source.glb	oracle absent here (/models/community-candidates/merkava3d_source.glb)
 stamp	gate	merkava4	7a8550db790dbd68	8a08f6f0be74ae91	oracle-absent	public/models/community-candidates/merkava4_source.glb	oracle absent here (/models/community-candidates/merkava4_source.glb)
 stamp	gate	type89	75a12202d90a29a8	3f6fff507d37d77d	oracle-absent	public/models/community-candidates/type89_x_source.glb	oracle absent here (/models/community-candidates/type89_x_source.glb)
-tool	anatomy	ec06eb614847cca2
-tool	centering	c4cf737429a7e9dd
+tool	anatomy	8f2458aaf88277d5
+tool	centering	b7154661daa3cd57
 tool	controls	e22ca4a12022c981
 tool	fills	384657f2143d5ce5
 tool	gate	50bb874d92a947fb
-tool	gunLines	0bbe9e464815a49a
+tool	gunLines	07b6af9f7157b71e
 tool	icons	358883cc7bdcb3b0
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
-tool	seats	9f35644e7eee127f
-tool	spareTrack	5be101cb2fbd6f03
+tool	seats	32e5098bc68fd139
+tool	spareTrack	b3c7c3ada1a0cd64
 toolchain	c690d39fe44d5b27	schema:1	node:v24.22.1	platform:darwin/arm64	package-lock:f31ac1f3ac931fab5451658524d9e2c3ae94407e8f42bdef1cd20713ab5975bc
