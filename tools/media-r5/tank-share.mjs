@@ -31,17 +31,15 @@ const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slic
 export const CARD_FRAME = Object.freeze({
   challenger3_proto: 3.3, fv4034: 1.05, leo2a4_v: 2.55, leo2a6: 3.3, leo2a4_otco: 4.8, m1a1_abrams_hc: 1.05,
   m1a2_abrams_tusk: 1.05, sabra_mk2: 1.05, type10_tk_x: 5.55, type10: 1.05, type89: 4.05, ztz99_longwei: 1.05,
-  t72b3m_hetman_ii: 4.8,
+  t72b3m_hetman_ii: 4.8, udes03: 1.05,
 });
-/** Takes no frame of which shows their tank clearly: no card, the Gallery's until the take is filmed again. */
-export const REFILM = Object.freeze({ udes03: 'a night take, the hull unseen in every frame' });
 
 /** The table as the fleet stands: each visible tank's display name, and its card's site path when one is rendered. */
 export function tankShareTable() {
   const tanks = {};
   for (const id of [...VISIBLE_TANK_IDS].sort()) {
     const card = `${TANK_CARD_DIR}/${id}-card.jpg`;
-    tanks[id] = { name: tankDisplayName(TANK_SPECS[id]), card: !REFILM[id] && existsSync(join(ROOT, 'public', card)) ? `/${card}` : null };
+    tanks[id] = { name: tankDisplayName(TANK_SPECS[id]), card: existsSync(join(ROOT, 'public', card)) ? `/${card}` : null };
   }
   return { schemaVersion: 1, tanks };
 }
@@ -90,7 +88,6 @@ async function renderCards(stills, only) {
       // resumable: a card already rendered stays unless --force (the run is long; a laptop may sleep through it)
       if (!process.argv.includes('--force') && existsSync(join(ROOT, 'public', TANK_CARD_DIR, `${id}-card.jpg`))) continue;
       if (!TANK_SPECS[id] || !still || !existsSync(still)) { skipped.push(`${id}: no still`); continue; }
-      if (REFILM[id]) { skipped.push(`${id}: re-film (${REFILM[id]})`); continue; }
       // a chosen frame of the take's film (CARD_FRAME), else its 4K still
       const film = join(dirname(still), `${basename(dirname(still))}.mp4`);
       const source = CARD_FRAME[id] === undefined ? still : join(tmpdir(), `tank-card-${id}.jpg`);
