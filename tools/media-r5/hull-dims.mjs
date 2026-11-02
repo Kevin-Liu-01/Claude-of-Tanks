@@ -16,12 +16,15 @@ await import('../../src/vehicles/fleetRegistration.ts');
 const { getSpec } = await import('../../src/vehicles/specs.ts');
 const { tankContactRect } = await import('../../src/sim/tankContactShape.ts');
 const { FLEET, SHOTS, OWNER_NINE, siteScene } = await import('./site50.mjs');
+const { resolveTankId } = await import('../../src/vehicles/tankIdAliases.ts');
 
 const ids = new Set();
 for (const shot of [...SHOTS, ...OWNER_NINE, ...FLEET]) for (const a of siteScene(shot).actors) ids.add(a.id);
 const dims = {};
+// keyed as the scenes write their ids (schema 1, unstamped), which is how the route and lens checks look them up; the
+// spec is today's, read through the alias layer (268: aft10_x and the other renamed ids stopped the table at 255 tanks)
 for (const id of [...ids].sort()) {
-  const spec = getSpec(id), rect = tankContactRect(spec), d = spec.dims ?? {};
+  const spec = getSpec(resolveTankId(id, 1)), rect = tankContactRect(spec), d = spec.dims ?? {};
   const reach = Math.max(rect.halfLength, (d.overallLengthM ?? 0) - (d.hullLengthM ?? 0) / 2);
   dims[id] = [+rect.halfLength.toFixed(3), +rect.halfWidth.toFixed(3), +reach.toFixed(3), +(d.silhouetteHeightM ?? d.heightM ?? 2.4).toFixed(3)];
 }
