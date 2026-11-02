@@ -601,8 +601,8 @@ interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptSt
    * frontal package that lays its own glacis blocks on the bare cover (buildT72B3MX: wherever the cheek cells give way to
    * the build's own, the obr. 2022's t72b3m2022Kit.ts). */
   glacisContainers?:boolean;
-  /** false (267): no rounded front mudguards or their turned-down lips, for a hull whose own front fender housings stand
-   * there (the BMPT Terminator's AG-17D boxes, bmptTerminator.ts); the deck under them stays. */
+  /** false (267): no rounded front mudguards or their turned-down lips, for a hull whose own front fenders stand there
+   * (the BMPT Terminator's sloped hoods and noses, bmptTerminator.ts); the deck under them stays. */
   roundedFrontGuards?:boolean;
   /** 267: skirt runs [side, rear z, front z] left without their Relikt cassettes (skirtSpanOpen). */
   openSkirtSpans?:readonly OpenSkirtSpan[];

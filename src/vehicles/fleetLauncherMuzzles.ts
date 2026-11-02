@@ -38,7 +38,7 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   bmpt_t90: [-1, 1].flatMap(s => [.85, 1.05].flatMap(x => [.77, .93].map(y => turret(s * x, y, 1.695)))),
   // 267: the original Terminator's open Ataka tubes ride the cradle's arms (profiles/bmptTerminatorStation.ts RAMKA_ATAKA): the
   // gun frame, each mouth the front end cap's face, 2 x 2 a side (lower, upper)
-  bmpt_terminator: [-1, 1].flatMap(s => [-.135, .135].map(y => mouth(s * .95, y, 2.032))),
+  bmpt_terminator: [-1, 1].flatMap(s => [-.155, .155].map(y => mouth(s * .95, y, 2.032))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
   aft10: [-1.035, -.505, .505, 1.035].flatMap(x => [0, 1].map(r => ({ ...mouth(x, -.025 + r * .475, 1.244), covered: true }))),
 };

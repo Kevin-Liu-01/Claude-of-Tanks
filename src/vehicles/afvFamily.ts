@@ -548,17 +548,18 @@ AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);
 //   and 3UOF8 HE-I natures as bmpt_t90 at in-between penetration (123/111/99 between the installed 125/112/100 and
 //   122/110/98) and damage, 850 rounds in all (425 + 425, published);
 // - four 9M120-1 Ataka-T, one per open tube (guided-load rule), damage 520 (the installed 540 and 500) and 2.55 s.
-// The two AG-17D are hull equipment only, as on bmpt_t90 (no secondary-weapon row models them).
+// The real vehicle's two bow AG-17D were hull equipment only, as on bmpt_t90 (no secondary-weapon row); the build leaves
+// them off at the owner's ruling (round 5), so nothing in the combat data changes.
 AFV_FAMILY_SPECS.bmpt_terminator = variant('bmpt_terminator', 't72b3m_2022', {
   name: 'BMPT Terminator', nation: 'Russia', number: '01',
   // the Engineering Technologies 2012 vehicle's three-tone (photos 03-12): large olive and brown blots on sand
   base: '#a6936a', weather: '#b3a27a', patches: ['#5f6748', '#7b6142'],
   scheme: 'nato', camoScale: 0.60,
   // the T-72's 6.95 m hull; overall, width and height the build's measured envelope without whips (the guns never pass
-  // the bow: the stern slat cage to the AG-17D muzzles 7.67, over the side boxes' handles 4.10, the panoramic sight's lid
-  // at the published 3.44)
-  dims: { hullLengthM: 6.95, overallLengthM: 7.67, widthM: 4.10, heightM: 3.44,
-    silhouetteHullLengthM: 7.67, silhouetteOverallLengthM: 7.67,
+  // the bow: the stern slat cage to the front fenders' noses 7.55, over the side boxes' handles 4.10, the panoramic
+  // sight's lid at the published 3.44)
+  dims: { hullLengthM: 6.95, overallLengthM: 7.55, widthM: 4.10, heightM: 3.44,
+    silhouetteHullLengthM: 7.55, silhouetteOverallLengthM: 7.55,
     silhouetteWidthM: 4.10, silhouetteHeightM: 3.44 },
   trackWidthM: 0.58,
   stats: { hp: 2820, enginePowerHp: 1000, weightTons: 47.0, topSpeedKmh: 60,

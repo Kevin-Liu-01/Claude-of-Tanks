@@ -7,11 +7,13 @@
 // tub, running gear, fenders, the boxed reactive skirts and the glacis cover) with the glacis cover left bare
 // (glacisContainers: false), its low lamps and its rounded front mudguards left off (glacisLamps, roundedFrontGuards: false)
 // and the left skirt's cassettes left out over the engine bay (openSkirtSpans), then what the Terminator adds to it:
-//   - Kontakt-5 on the glacis: four rows of three flat modules a side on the bare cover, bolted along the front row's toe,
+//   - Kontakt-5 on the glacis: two rows of two large wedges a side on the bare cover, bolted along the lower row's toe,
 //     the two headlights in guards at the glacis' upper corners, the towing brackets and hooks on the lower nose
 //     (photos 03-06);
-//   - the front fender housings: a massive sloped armoured box over each front fender, flush beside the glacis, its face
-//     carried down over the track's front, each AG-17D's ball mount inboard and low on its face (photos 03-06, 13);
+//   - the front fenders: a solid sloped hood over each, flush beside the glacis, carrying on from the side boxes' crown
+//     and coming down over the track's front in a solid rounded nose (photos 03-06, 13). The real Object 199 carries an
+//     AG-17D grenade launcher in an armoured housing on each front fender; they are left off at the owner's ruling
+//     (round 5), and with them the rear-view mirrors that stood on the housings;
 //   - the side boxes along both fenders, the third row of the side wall over the two skirt rows, the stern box down to
 //     the fender's end (photos 07, 08, 09, 14, 15); the skirt's two open fields on the right closed by containers;
 //   - the slat section in the left skirt over the engine bay, the wheels showing through it (photo 07);
@@ -21,7 +23,9 @@
 //     their eyes on the stern boxes, brackets on the lower rear plate (photo 08), and the stern's closures.
 // Station: the Ramka module on its own ring 0.51 m aft of the T-72's (bmptTerminatorStation.ts).
 // Round 2 (the coordinator's two blind photo critics): the corner cubes, the mirrors on stalks, the B3M's scoop mudguards
-// and the stand-off stern screen gave way to the fender housings and the close slat cage.
+// and the stand-off stern screen gave way to the fender housings and the close slat cage. Rounds 3-4: the proud sloped
+// AG-17D housings filling the front corners, the large K-5 wedges. Round 5, the owner's ruling ("i mean those weird big
+// machine gun blocks"): the AG-17D housings and the mirrors on them left off, the fenders clean.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -33,7 +37,6 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { buildT72B3MXHull, t72b3mGlacisCoverY } from './t72b3mX.ts';
 import { hull } from './bmptT90Station.ts';
 import { buildRamkaStation } from './bmptTerminatorStation.ts';
-import { sph } from '../factoryGeometry.ts';
 
 type P3 = readonly [number, number, number];
 
@@ -46,14 +49,6 @@ const SIDE_PANELS = [-3.46, -2.37, -1.57, -0.77, 0.03, 0.83, 1.62] as const;
  * over the track's front. */
 const FENDER = Object.freeze({ inner: 1.106, outer: 2.005, rear: 1.61, bottom: 1.41, rearTop: 1.80, front: 3.42, frontTop: 1.43,
   noseInner: 1.15 });
-/** The AG-17D housing over each front corner (photos 03-06): the fender's full width, its crown, the top's front edge and
- * the sloped face's foot (z, y) on the hood, the outer and inner top chamfers; the ball mount inboard on the face, its
- * centre across and its place down the face (0 at the top edge, 1 at the foot). */
-const AGL_BOX = Object.freeze({ inner: 1.13, outer: 2.005, rear: 1.55, top: 2.22, faceTop: [2.12, 2.22] as const,
-  faceFoot: [2.74, 1.555] as const, outerChamfer: 0.07, innerChamfer: 0.03, ballX: 1.42, ballAt: 0.35 });
-/** The rear-view mirror on the housing's crown at its outer rear corner: bracket pad (x, z), the head's size (w, h, d)
- * and its height over the crown. */
-const MIRROR = Object.freeze({ x: 1.87, z: 1.68, w: 0.22, h: 0.34, d: 0.05, lift: 0.19 });
 /** The solid rounded nose each fender carries down in front of the track: its outer face (z, y) from the hood's top to
  * its tip, and its inner face from the tip back up, 8 cm or more outside the track round the idler (z 3.218, y 0.873). */
 const NOSE_OUTER: ReadonlyArray<readonly [number, number]> = [[3.38, 1.437], [3.52, 1.38], [3.63, 1.28], [3.71, 1.15],
@@ -114,13 +109,12 @@ function acrossX(side: number, a: number, b: number, outline: ReadonlyArray<read
   return sectionSolid([{ z: s0, ring }, { z: s1, ring }]).rotateY(-Math.PI / 2);
 }
 
-/** The front fender (photos 03-06): a massive sloped armoured hood over the track's front, flush beside the glacis (an
- * inner cheek carried down to the glacis edge), its top falling from the side boxes' crown to the nose, which rounds down
- * thick over the track's front; standing proud on its inner half, the AG-17D's armoured box with its sloped front, the
- * launcher's ball mount in a canvas boot and its barrel on that face; the rear-view mirror on its stalk at the outer
- * corner. */
+/** The front fender (photos 03-06): a sloped armoured hood over the track's front, flush beside the glacis (an inner cheek
+ * carried down to the glacis edge), its top carrying on from the side boxes' crown and falling to the nose, which rounds
+ * down thick over the track's front. The real Object 199 carries an AG-17D grenade launcher in an armoured housing on
+ * each; they are left off at the owner's ruling (round 5), so the corner is the clean fender alone. */
 function frontFender(P: TankBuilderPort, side: number): void {
-  const { box, cylZ } = KIT, F = FENDER, B = AGL_BOX, c = 0.03;
+  const F = FENDER, c = 0.03;
   // the hood: a wedge from the side boxes' crown down to the nose, its bottom over the track
   const hoodPts: P3[] = [];
   for (const [z, y] of [[F.rear, F.bottom], [F.front, F.bottom], [F.front, F.frontTop], [F.rear, F.rearTop]] as const) {
@@ -140,68 +134,12 @@ function frontFender(P: TankBuilderPort, side: number): void {
   const cheek = (z: number, bottom: number) => ({ z, ring: sideRing(side, [[F.inner, bottom], [1.16, bottom], [1.16, F.bottom + 0.01], [F.inner, F.bottom + 0.01]]) });
   P.add('hull', sectionSolid([cheek(2.30, t72b3mGlacisCoverY(2.30) - 0.04), cheek(2.61, t72b3mGlacisCoverY(2.61) - 0.04),
     cheek(3.25, t72b3mGlacisCoverY(3.25) - 0.04), cheek(3.42, 0.95)]));
+  // its plates' bolt rows across the hood and a lifting eye near its rear
   const hoodTop = (z: number) => F.rearTop + (z - F.rear) / (F.front - F.rear) * (F.frontTop - F.rearTop);
-  for (const x of [1.30, 1.55, 1.80]) P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6), side * x, hoodTop(3.20) + 0.005, 3.20);
-  // the AG-17D housing: one massive sloped armoured box over the front corner, the fender's full width, its crown 0.42
-  // over the side boxes, its broad front sloped down onto the hood over the track guard (photos 04, 05)
-  const [tz, ty] = B.faceTop, [fz, fy] = B.faceFoot, boxPts: P3[] = [];
-  for (const [z, y] of [[B.rear, F.bottom + 0.01], [fz, F.bottom + 0.01], [fz, fy], [tz, ty], [B.rear, B.top]] as const) {
-    const top = y > B.top - 0.01;
-    boxPts.push([side * B.inner, top ? y - B.innerChamfer : y, z], [side * B.outer, top ? y - B.outerChamfer : y, z]);
-    if (top) boxPts.push([side * (B.inner + B.innerChamfer), y, z], [side * (B.outer - B.outerChamfer), y, z]);
+  for (const z of [2.30, 3.20]) for (const x of [1.30, 1.55, 1.80]) {
+    P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6), side * x, hoodTop(z) + 0.005, z);
   }
-  const aglBox = hull(boxPts);
-  aglBox.userData.rangeSilhouette = true;
-  P.add('hull', aglBox);
-  P.add('hullDetail', box(0.50, 0.016, 0.48), side * 1.52, B.top + 0.004, (B.rear + tz) / 2);
-  P.add('hullDetail', KIT.torus(0.035, 0.009, 14, 6).rotateZ(Math.PI / 2), side * 1.24, B.top + 0.035, B.rear + 0.14);
-  // on the sloped face, inboard and high: the armoured collar, the ball, its canvas boot, the 30 mm barrel, the muzzle
-  // sleeve and its mouth; bolts along the face's top edge and its foot
-  const fd = new THREE.Vector2(fz - tz, fy - ty).normalize(), n = new THREE.Vector3(0, -fd.x, fd.y);
-  if (n.z < 0) n.negate();
-  const tilt = -Math.atan2(n.y, n.z), x = side * B.ballX, my = ty + B.ballAt * (fy - ty), mz = tz + B.ballAt * (fz - tz);
-  P.add('hull', KIT.xform(cylZ(0.15, 0.05, 22), 0, 0, 0, tilt), x, my, mz);
-  P.add('hullDark', sph(0.10, 16), x, my + n.y * 0.04, mz + n.z * 0.04);
-  P.add('hullCloth', cylZ(0.065, 0.16, 14, 0.095), x, my + 0.02, mz + 0.18);
-  P.add('hullDark', cylZ(0.03, 0.42, 12), x, my + 0.02, mz + 0.42);
-  P.add('hullDark', cylZ(0.042, 0.07, 12), x, my + 0.02, mz + 0.61);
-  P.add('hullDark', cylZ(0.015, 0.012, 10), x, my + 0.02, mz + 0.646);
-  const faceBolt = (t: number, bx: number) => P.add('hullDark', KIT.cylY(0.014, 0.014, 0.012, 6).rotateX(Math.atan2(n.z, n.y)),
-    side * bx, ty + t * (fy - ty) + n.y * 0.004, tz + t * (fz - tz) + n.z * 0.004);
-  for (const bx of [1.22, 1.62, 1.82]) faceBolt(0.08, bx);
-  for (const bx of [1.25, 1.50, 1.75]) faceBolt(0.88, bx);
-  // the operator's sight window on the housing's inner side, looking forward and in
-  P.add('hullGlass', box(0.012, 0.07, 0.14), side * (B.inner - 0.004), 2.06, 1.95);
-  P.add('hullDetail', box(0.02, 0.02, 0.18), side * (B.inner - 0.008), 2.11, 1.95);
-  rearViewMirror(P, side);
-}
-
-/** The rear-view mirror (photos 04, 05): a framed head on a bracket bolted to the housing's crown at its outer rear corner,
- * a braced post and a pivot knuckle under the head, the glass to the rear in its frame. */
-function rearViewMirror(P: TankBuilderPort, side: number): void {
-  const { box, cylX, cylY } = KIT, M = MIRROR, top = AGL_BOX.top, x = side * M.x;
-  P.add('hullDetail', box(0.12, 0.025, 0.16), x, top + 0.0125, M.z);
-  for (const dx of [-0.04, 0.04]) for (const dz of [-0.06, 0.06]) P.add('hullDark', cylY(0.011, 0.011, 0.012, 6), x + dx, top + 0.031, M.z + dz);
-  const headLow = top + M.lift, cy = headLow + M.h / 2;
-  P.add('hullDetail', cylY(0.024, 0.03, headLow - top - 0.03, 12), x, top + 0.025 + (headLow - top - 0.03) / 2, M.z);
-  P.add('hullDetail', beamBetween([x, top + 0.03, M.z + 0.07], [x, top + 0.12, M.z + 0.005], 0.012));
-  P.add('hullDark', cylX(0.03, 0.07, 12), x, headLow - 0.005, M.z);
-  // the head: a rounded back shell and the frame's four bars round the glass on its rear face
-  const r = 0.03, ring: SectionPoint[] = [];
-  for (const [qx, qy, a0] of [[1, -1, -Math.PI / 2], [1, 1, 0], [-1, 1, Math.PI / 2], [-1, -1, Math.PI]] as const) {
-    for (let k = 0; k <= 2; k++) {
-      const a = a0 + k * Math.PI / 4;
-      ring.push([x + qx * (M.w / 2 - r) + r * Math.cos(a), cy + qy * (M.h / 2 - r) + r * Math.sin(a)]);
-    }
-  }
-  const z0 = M.z - M.d / 2 + 0.012, z1 = M.z + M.d / 2;
-  P.add('hullDetail', sectionSolid([{ z: z0, ring }, { z: z1 - 0.01, ring }, { z: z1, ring: ring.map(([px, py]) => [x + (px - x) * 0.92, cy + (py - cy) * 0.94] as const) }]));
-  const fz = M.z - M.d / 2 + 0.006;
-  P.add('hullDetail', box(M.w - 0.01, 0.024, 0.014), x, cy + M.h / 2 - 0.017, fz);
-  P.add('hullDetail', box(M.w - 0.01, 0.024, 0.014), x, cy - M.h / 2 + 0.017, fz);
-  P.add('hullDetail', box(0.024, M.h - 0.05, 0.014), x + (M.w / 2 - 0.017), cy, fz);
-  P.add('hullDetail', box(0.024, M.h - 0.05, 0.014), x - (M.w / 2 - 0.017), cy, fz);
-  P.add('hullGlass', box(M.w - 0.05, M.h - 0.05, 0.006), x, cy, M.z - M.d / 2 + 0.008);
+  P.add('hullDetail', KIT.torus(0.035, 0.009, 14, 6).rotateZ(Math.PI / 2), side * 1.80, hoodTop(1.85) + 0.03, 1.85);
 }
 
 function operatorStation(P: TankBuilderPort, side: number): void {

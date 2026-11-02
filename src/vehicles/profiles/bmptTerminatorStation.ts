@@ -3,15 +3,17 @@
 // docs/references/tanks/bmpt_terminator.md). 267 (lane bmpt-family-267, builder T). Its look is not the 2018 serial's
 // armoured hammerhead (bmptT90Station.ts): one compact rounded armoured body, a box-like base carrying two rounded humps
 // (the cannons' cradle housings) close either side of the twin 2A42 30 mm, each cannon in its own canvas-bagged mantlet
-// with a multi-baffle muzzle brake; on the common trunnion through the humps, outside each, a compact housing carrying a
-// pair of OPEN 9M120 Ataka tubes with their end caps (two a side, one over the other). The commander's panoramic sight
+// with a multi-baffle muzzle brake; on the common trunnion through the humps, outside each, the Ataka launcher arm: its
+// plate on the hub and the armoured housing that wraps the rear half of a pair of OPEN 9M120 Ataka tubes with their end
+// caps (two a side, one over the other; photos 07, 10, 12). The commander's panoramic sight
 // stands on the right hump, the meteo sensor on the left one; the gunner's big square sight block with its window stands
 // at the module's front below the left-hand (vehicle's left) cannon, the commander's stowage box beside it, the two
 // hatches on the low base between them and the humps (photos 04, 07, 08, 10, 11, 13, 15).
 // Round 2 (the coordinator's two blind photo critics on round 1: "two tall slim flat-sided pillars on an oversized round
 // drum", "a recessed black slot between them"): the pillars are the humps of one body, the drum a low compact base, the
 // slot closed by the cradle and a block under it; the box tips are baffle brakes in bagged mantlets, the tall arm fins
-// compact trunnion housings at tube height.
+// compact trunnion housings at tube height. Round 5 (critics on round 4: "slender tubes held by a small block"): the
+// arms are solid armoured housings, the tubes thicker (r 0.09) and further apart (y +-0.155).
 //
 // The cradle and both Ataka housings ride the gun group (gunG), so the launchers elevate with the cannons (their published
 // arc is +25/-5; the game's one gun pitch carries them through the cannons' +45/-5). Launch exits: fleetLauncherMuzzles.ts
@@ -38,11 +40,14 @@ export const RAMKA_BARREL_X = 0.15;
  * carves each bore from that rim). */
 export const RAMKA_MUZZLE_Z = 2.711;
 /** The open Ataka tubes in the gun frame: column x, the two axes (upper, lower), radius, rear and front ends. */
-export const RAMKA_ATAKA = Object.freeze({ x: 0.95, ys: [0.135, -0.135] as const, r: 0.08, rearZ: 0.20, frontZ: 2.00 });
+export const RAMKA_ATAKA = Object.freeze({ x: 0.95, ys: [0.155, -0.155] as const, r: 0.09, rearZ: 0.20, frontZ: 2.00 });
 
-/** Each Ataka arm base (gun frame): its inner and outer face, the radius of its round rear about the trunnion axis, where
- * its full height ends forward and its sloped nose (z, half-height). */
-const ARM_BASE = Object.freeze({ x: [0.775, 0.875] as const, r: 0.28, shoulderZ: 0.50, noseZ: 0.66, noseY: 0.16 });
+/** Each Ataka launcher arm (gun frame; photos 07, 10, 12): the arm plate on the trunnion hub (inner and outer face, the
+ * radius of its round rear about the axis), the housing that wraps the tube pair's rear half outside it (its outer face,
+ * rear and front, the front's top edge set back), the arm's crown and its underside falling from rear to front, the
+ * housing's outer chamfer. */
+const ARM = Object.freeze({ inner: 0.775, plate: 0.875, outer: 1.085, r: 0.30, wrapRear: 0.30, front: 1.25, frontTop: 1.17,
+  top: 0.28, bottomRear: -0.33, bottomFront: -0.28, chamfer: 0.05 });
 
 /** The hull's side boxes' crown over the base's ring plane (1.80 m on the hull roof's 1.5295): under it every turret part
  * stays inside r 1.30 about the yaw axis, their inner faces' distance. */
@@ -232,32 +237,53 @@ function addAtakaPairs(P: TankBuilderPort): void {
   const length = A.frontZ - A.rearZ, midZ = (A.rearZ + A.frontZ) / 2;
   for (const side of [-1, 1]) {
     const x = side * A.x;
-    // The hub on the hump's outer face (a disc about the trunnion axis) and the armoured arm base on it (photos 07, 08,
-    // 12): round about the axis at its rear, carried forward to a sloped front, taller than the tube pair, the tubes
-    // along its outer face, its two jaws over and under them; bolts round its outer face, the bearing nut at its centre.
+    // The hub on the hump's outer face (a disc about the trunnion axis) and on it the launcher arm (photos 07, 10, 12): the
+    // arm plate, round about the axis at its rear, as tall as the tube pair and a little more, carried forward to the
+    // housing's front; outside it the armoured housing that wraps the tube pair's rear half, its rear face behind the
+    // tubes' rear caps, its outer edges chamfered, its front's top edge set back and its underside rising forward.
     P.addGunExtra(cylX(0.13, 0.115, 28), side * 0.7175, 0, 0);
-    const basePts: P3[] = [];
-    for (const bx of ARM_BASE.x) {
+    const bottomAt = (z: number) => ARM.bottomRear + (z - ARM.wrapRear) / (ARM.front - ARM.wrapRear) * (ARM.bottomFront - ARM.bottomRear);
+    const platePts: P3[] = [];
+    for (const px of [ARM.inner, ARM.plate]) {
       for (let k = 0; k <= 8; k++) {
         const a = Math.PI / 2 + k * Math.PI / 8;
-        basePts.push([side * bx, ARM_BASE.r * Math.sin(a), ARM_BASE.r * Math.cos(a)]);
+        platePts.push([side * px, Math.min(ARM.top, ARM.r * Math.sin(a)), ARM.r * Math.cos(a)]);
       }
-      for (const y of [-1, 1]) basePts.push([side * bx, y * ARM_BASE.r, ARM_BASE.shoulderZ], [side * bx, y * ARM_BASE.noseY, ARM_BASE.noseZ]);
+      platePts.push([side * px, ARM.top, ARM.frontTop], [side * px, ARM.top - ARM.chamfer, ARM.front],
+        [side * px, bottomAt(ARM.front), ARM.front], [side * px, ARM.bottomRear, ARM.wrapRear]);
     }
-    P.addGunExtra(hull(basePts));
-    const outerX = ARM_BASE.x[1];
-    for (const y of [-1, 1]) P.addGunExtra(box(A.x + A.r + 0.01 - outerX, ARM_BASE.r - 0.215 + 0.008, 0.38), side * (outerX + A.x + A.r + 0.01) / 2, y * (0.215 + (ARM_BASE.r - 0.215 + 0.008) / 2 - 0.008), 0.41);
+    const plate = hull(platePts);
+    plate.userData.rangeSilhouette = true;
+    P.addGunExtra(plate);
+    const wrapPts: P3[] = [], c = ARM.chamfer;
+    for (const [z, top, bottom] of [[ARM.wrapRear, ARM.top, ARM.bottomRear], [ARM.frontTop, ARM.top, bottomAt(ARM.frontTop)],
+      [ARM.front, ARM.top - c, bottomAt(ARM.front)]] as const) {
+      wrapPts.push([side * (ARM.plate - 0.015), top, z], [side * (ARM.plate - 0.015), bottom, z],
+        [side * (ARM.outer - c), top, z], [side * ARM.outer, top - c, z], [side * ARM.outer, bottom + c, z], [side * (ARM.outer - c), bottom, z]);
+    }
+    const wrap = hull(wrapPts);
+    wrap.userData.rangeSilhouette = true;
+    P.addGunExtra(wrap);
+    // on the housing: the bolted cover over its outer face, two lifting eyes on its crown, the release levers at its
+    // front; on the arm plate behind it, the bolt circle round the trunnion and the bearing nut
+    const midWrap = (ARM.wrapRear + ARM.frontTop) / 2;
+    P.addGunExtra(box(0.012, 0.30, 0.56), side * (ARM.outer + 0.006), -0.02, midWrap);
+    for (const dy of [-0.12, 0.10]) for (const dz of [-0.24, 0, 0.24]) {
+      P.addGunExtraDark(cylX(0.012, 0.012, 6), side * (ARM.outer + 0.016), -0.02 + dy, midWrap + dz);
+    }
+    for (const z of [ARM.wrapRear + 0.14, ARM.frontTop - 0.14]) {
+      P.addGunExtraDark(KIT.torus(0.03, 0.008, 12, 6).rotateX(Math.PI / 2), side * (ARM.plate + ARM.outer) / 2, ARM.top + 0.028, z);
+    }
+    for (const y of [-1, 1]) P.addGunExtraDark(box(0.016, 0.035, 0.10), side * (ARM.outer + 0.008), y * 0.10, ARM.front - 0.12);
     for (let k = 2; k <= 6; k++) {
       const a = Math.PI / 2 + k * Math.PI / 8;
-      P.addGunExtraDark(cylX(0.013, 0.012, 6), side * (outerX + 0.006), 0.24 * Math.sin(a), 0.24 * Math.cos(a));
+      P.addGunExtraDark(cylX(0.013, 0.012, 6), side * (ARM.plate + 0.006), 0.24 * Math.sin(a), 0.24 * Math.cos(a));
     }
-    P.addGunExtraDark(cylX(0.05, 0.03, 16), side * (outerX + 0.015), 0, 0);  // the bearing nut
-    // the spine between the tubes from the housing forward, and the two quick-release clamps that grip both (photo 12)
-    P.addGunExtra(box(0.10, 0.06, 1.22), x, 0, 0.82);
-    for (const z of [0.48, 1.30]) {
-      P.addGunExtra(box(0.14, 0.15, 0.10), x, 0, z);
-      P.addGunExtraDark(box(0.012, 0.03, 0.08), side * 1.026, 0, z);        // the release lever
-    }
+    P.addGunExtraDark(cylX(0.05, 0.03, 16), side * (ARM.plate + 0.015), 0, 0);  // the bearing nut
+    // ahead of the housing, the spine between the tubes and the quick-release clamp that grips both (photo 12)
+    P.addGunExtra(box(0.10, 0.06, 0.40), x, 0, ARM.front + 0.15);
+    P.addGunExtra(box(0.14, 0.17, 0.10), x, 0, ARM.front + 0.30);
+    P.addGunExtraDark(box(0.012, 0.03, 0.08), side * (A.x + 0.076), 0, ARM.front + 0.30);   // its release lever
     for (const y of A.ys) {
       // the transport-launch tube: a thicker rear sleeve over the body, two strap bands, the end caps proud of both ends
       P.addGunExtra(cylZ(A.r, length, 20), x, y, midZ);
@@ -315,6 +341,8 @@ function addSightsAndKit(P: TankBuilderPort): void {
     P.add('turret', cylZ(0.065, 0.14, 16), gx + dx, gy + 0.06, gz + 0.07);
     P.add('turretGlass', cylZ(0.045, 0.012, 16), gx + dx, gy + 0.06, gz + 0.142);
   }
+  // the inner sensor's pedestal on the deck, closing the space under it between the sight block and the commander's box
+  P.add('turret', box(0.13, gy + 0.01 - BASE_TOP_Y, 0.13), gx - 0.25, (gy + 0.01 + BASE_TOP_Y) / 2, gz + 0.07);
   // The commander's stowage box on the front right: lid, two latches.
   P.add('turret', box(0.40, 0.28, 0.30), -0.26, BASE_TOP_Y + 0.14, 0.47);
   P.add('turretDetail', box(0.42, 0.02, 0.32), -0.26, BASE_TOP_Y + 0.285, 0.47);

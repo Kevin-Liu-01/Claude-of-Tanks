@@ -45,7 +45,7 @@ assert.deepEqual(layout.crew.map((c) => c.role).sort(),
 
 // ---- the station's clearances (its own datums): the tubes outside the humps and their hubs, the cradle between them
 const HUMP_OUT = 0.72, HUB_OUT = 0.775, HUMP_IN = 0.19, CRADLE_HALF = 0.18;
-assert.ok(RAMKA_ATAKA.x - RAMKA_ATAKA.r > HUB_OUT + 0.09, 'the tubes stand clear of the hubs on the humps');
+assert.ok(RAMKA_ATAKA.x - RAMKA_ATAKA.r >= HUMP_OUT + 0.10, 'the tubes stand clear of the humps, the arm plate between');
 assert.ok(HUB_OUT > HUMP_OUT, 'the hub stands proud of its hump');
 assert.ok(HUMP_IN - CRADLE_HALF >= 0.01 - 1e-9, 'the cradle turns 1 cm off the humps');
 
