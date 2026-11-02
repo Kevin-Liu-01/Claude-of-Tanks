@@ -1,5 +1,5 @@
 #schema 1
-comp	world:donors:collision:airfield	839cb614967f38ca
+comp	world:donors:collision:airfield	c7b2477ec23f9eed
 comp	world:donors:collision:alpine	e3b0c44298fc1c14
 comp	world:donors:collision:autumn	e3b0c44298fc1c14
 comp	world:donors:collision:badlands	30148ade3f180018
@@ -32,7 +32,7 @@ comp	world:donors:collision:urban	b76f81ccc83f1139
 comp	world:donors:collision:verdant	d8f01d8a86a41728
 comp	world:donors:collision:whiteout	cc2e690a4ee73f1f
 comp	world:donors:collision:winter	e3b0c44298fc1c14
-comp	world:donors:trenches:airfield	839cb614967f38ca
+comp	world:donors:trenches:airfield	c7b2477ec23f9eed
 comp	world:donors:trenches:alpine	e3b0c44298fc1c14
 comp	world:donors:trenches:autumn	e3b0c44298fc1c14
 comp	world:donors:trenches:badlands	30148ade3f180018
@@ -65,7 +65,7 @@ comp	world:donors:trenches:urban	b76f81ccc83f1139
 comp	world:donors:trenches:verdant	d8f01d8a86a41728
 comp	world:donors:trenches:whiteout	cc2e690a4ee73f1f
 comp	world:donors:trenches:winter	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:airfield	839cb614967f38ca
+comp	world:donors:wreckPlan:airfield	c7b2477ec23f9eed
 comp	world:donors:wreckPlan:alpine	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:autumn	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:badlands	30148ade3f180018
@@ -199,9 +199,9 @@ comp	world:map:wreckPlan:verdant	9126604310529730
 comp	world:map:wreckPlan:whiteout	7fac80a15579e64a
 comp	world:map:wreckPlan:winter	bf2dc32dc52e1b8b
 comp	world:roster	c3797f6fbc261c2e
-comp	world:tool:collision	c7e90eef8f450f98
-comp	world:tool:trenches	40b69b47bb67aeeb
-comp	world:tool:wreckPlan	c77bfaa007751285
+comp	world:tool:collision	caa35f6e3430744a
+comp	world:tool:trenches	1a24e2a3906c405b
+comp	world:tool:wreckPlan	e8c4eac123918a3d
 core	2b6c35b434502301
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	46f7f1b693961fcf
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	64981c4a45b9177b
@@ -295,7 +295,7 @@ file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	81234ac9ea0a30c5
 file	centering	src/vehicles/presentationAnchors.generated.ts	4a516b205dac4d7f
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	ea624210f1ace30b
-file	controls	src/vehicles/auxiliaryInventory.generated.ts	20ec3d23c63be934
+file	controls	src/vehicles/auxiliaryInventory.generated.ts	acfe2598863bf7f0
 file	controls	src/vehicles/auxiliaryRoofGuns.generated.ts	be11651f1bac1ca5
 file	controls	src/vehicles/inertDrawnWeapons.generated.ts	38b586123e4eb814
 file	fills	docs/geometry-gate/moving-clearance-air.json	5d2ddc7759c260f6
@@ -397,7 +397,7 @@ file	gate	docs/geometry-gate/amx40.json	1db7177e8b207d50
 file	gate	docs/geometry-gate/amx40_proto.json	0ade26bde2b528c6
 file	gate	docs/geometry-gate/amx56.json	e4641e01f10743c0
 file	gate	docs/geometry-gate/ares_apc.json	09181e659bdd5777
-file	gate	docs/geometry-gate/bm_oplot_m.json	6c1a7d03bd1aaba3
+file	gate	docs/geometry-gate/bm_oplot_m.json	7b00752726b9b0f5
 file	gate	docs/geometry-gate/bmp2.json	d245118993b1d1e7
 file	gate	docs/geometry-gate/bmp3.json	7b5bf4bcfec8f240
 file	gate	docs/geometry-gate/bmp3m_dragun125.json	cf23b4798c94fca7
@@ -433,7 +433,7 @@ file	gate	docs/geometry-gate/kurganets25.json	30161a0c98a9db31
 file	gate	docs/geometry-gate/kv2.json	c913c587beda9cc4
 file	gate	docs/geometry-gate/leclerc_s2.json	1c3d27d9dbeccae0
 file	gate	docs/geometry-gate/leclerc_xlr.json	24718751c866b53a
-file	gate	docs/geometry-gate/ledger.json	ad2918c8a409d498
+file	gate	docs/geometry-gate/ledger.json	c35921aa93c65350
 file	gate	docs/geometry-gate/leo1a5.json	a5e8260e7161e68a
 file	gate	docs/geometry-gate/leo2_improved.json	a1364e03fe6841ac
 file	gate	docs/geometry-gate/leo2_revolution.json	dd91f6d381b4bc6e
@@ -464,7 +464,7 @@ file	gate	docs/geometry-gate/m48a5_patton.json	075e40f0a751adcc
 file	gate	docs/geometry-gate/m551_sheridan.json	85a92482de1f898f
 file	gate	docs/geometry-gate/m60a1.json	09bf22f1724d4920
 file	gate	docs/geometry-gate/m60a2.json	c20347868c94ba08
-file	gate	docs/geometry-gate/m60a3.json	cdbd2b9152c1c845
+file	gate	docs/geometry-gate/m60a3.json	b401f31b1268dee5
 file	gate	docs/geometry-gate/marder1a3.json	41931e3442556c9a
 file	gate	docs/geometry-gate/mbt70.json	fb442e29e1406237
 file	gate	docs/geometry-gate/merkava1b.json	ff5b92c257761380
@@ -487,7 +487,7 @@ file	gate	docs/geometry-gate/pt91m.json	c8e3b82a663d2ced
 file	gate	docs/geometry-gate/puma_s1.json	0d178a6ede99404a
 file	gate	docs/geometry-gate/sabra_mk2.json	44581bc174ce5394
 file	gate	docs/geometry-gate/spz_puma.json	0a5243e792f97600
-file	gate	docs/geometry-gate/stb1.json	721f27dcecffe5f2
+file	gate	docs/geometry-gate/stb1.json	279cf9a19fb93375
 file	gate	docs/geometry-gate/strv103a.json	5ef8dcac20ad5d61
 file	gate	docs/geometry-gate/strv103b.json	13ec830181537bcc
 file	gate	docs/geometry-gate/strv121.json	79514594fd241ec0
@@ -549,7 +549,7 @@ file	gate	docs/geometry-gate/ztz100_prototype.json	6db27603016d9c37
 file	gate	docs/geometry-gate/ztz85_iii.json	a2b6b1985e5f375e
 file	gate	docs/geometry-gate/ztz99_longwei.json	009852eda62f87db
 file	gate	docs/geometry-gate/ztz99a2.json	5158653d8b9c615e
-file	gunLines	docs/geometry-gate/gun-junction.json	00448a9913be80fc
+file	gunLines	docs/geometry-gate/gun-junction.json	035b7beeba05ca34
 file	icons	public/icons/tank-assets/index.json	46881c9fd0046165
 file	icons	public/icons/tank-assets/tanks/abramsx.json	701cda33d4f19025
 file	icons	public/icons/tank-assets/tanks/aft10.json	4f16506552c8e9de
@@ -563,7 +563,7 @@ file	icons	public/icons/tank-assets/tanks/amx40.json	0c091ef1b5d0e881
 file	icons	public/icons/tank-assets/tanks/amx40_proto.json	7759c434856b0e4d
 file	icons	public/icons/tank-assets/tanks/amx56.json	c8b492fc7c6be0b6
 file	icons	public/icons/tank-assets/tanks/ares_apc.json	05cec45ca71a7f5e
-file	icons	public/icons/tank-assets/tanks/bm_oplot_m.json	6d20df59b6db85b6
+file	icons	public/icons/tank-assets/tanks/bm_oplot_m.json	4ba7ce1d1317ed35
 file	icons	public/icons/tank-assets/tanks/bm_oplot_t.json	58ce8474e2b21fc8
 file	icons	public/icons/tank-assets/tanks/bmp2.json	51228353cc2d5fa8
 file	icons	public/icons/tank-assets/tanks/bmp3.json	ab6b9c802abfaeee
@@ -830,7 +830,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	7b228f05dd51f849
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	7cff05c879d79023
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	644eefabbee55408
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	d4d731800d51bf50
-file	ledger	docs/references/fleet-geometry-ledger.json	6520d3480177de5b
+file	ledger	docs/references/fleet-geometry-ledger.json	8d914f4ecfb5ad95
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -920,9 +920,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	196ed822
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	b799519109a67de1
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	018c6ca3b94b97bb
-file	seats	src/sim/missionAttachmentSeats.generated.ts	e3437ad3be4a4c9c
+file	seats	src/sim/missionAttachmentSeats.generated.ts	040700812a2502b5
 file	seats	src/sim/missionDockSeats.generated.ts	301825901d2a71a5
-file	spareTrack	docs/geometry-gate/spare-track.json	e40d10e7c679c889
+file	spareTrack	docs/geometry-gate/spare-track.json	ca235fbc6e63e917
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1839567789750174
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -1011,7 +1011,7 @@ group	type89SourceX	76f2119702cba4ed
 group	type90X	8aed76931d05f119
 group	type96bX	fdbadf7c869c9d64
 group	uk	73ab9c831232bab7
-group	ukraine	c10e5242029d9a04
+group	ukraine	8b2f897110514db7
 group	xk2	3b70dfeca6522c98
 key	anatomy	abramsx	ad39d1435023a4b1	aff5e7b00792d887
 key	anatomy	aft10	b1cf63dcafef56bf	6399ea1c6acb00be
@@ -1025,7 +1025,7 @@ key	anatomy	amx40	61d3a5a7dce7646a	f5b9651dc0e1fbd2
 key	anatomy	amx40_proto	024b8e0a4a8a2766	3336d8c13723f76f
 key	anatomy	amx56	9471e82fc093b847	a206c7af5f9ef5e5
 key	anatomy	ares_apc	7ad1a15fbbecc11c	61f04e16920e743d
-key	anatomy	bm_oplot_m	803d671bdd70ce08	034e433981636ae5
+key	anatomy	bm_oplot_m	72de2d0c236dd510	034e433981636ae5
 key	anatomy	bm_oplot_t	f8445e19dc4e258a	359f21f0bba3ef7b
 key	anatomy	bmp2	5d7fb5add9d8aa00	ad8c76056ed868b2
 key	anatomy	bmp3	0ddcff4b6814a3e8	7b6998c29485b611
@@ -1304,7 +1304,7 @@ key	centering	amx40	9b7bd2fff8bee1d0	f0a136f61c9d6fbc
 key	centering	amx40_proto	9d3ccd1b78379567	aeed401094027fe5
 key	centering	amx56	28a7f31aad375eec	b0da88bccc10a3ab
 key	centering	ares_apc	aa0b97e16142374c	6c79564a4e08216b
-key	centering	bm_oplot_m	4c173e700ba3a77a	8b2b3ed1e572d380
+key	centering	bm_oplot_m	5489cb4003f1ecf2	8b2b3ed1e572d380
 key	centering	bm_oplot_t	0c8b14d6f7019608	4ab4df68471c9dbf
 key	centering	bmp2	a709409c33dfe49f	5c1f14f99b36e090
 key	centering	bmp3	0cdf6221d362cd36	bccc977255009706
@@ -1616,7 +1616,7 @@ key	controls	amx40	947960b6ade542ed	1d7e62b42d8a1ae1
 key	controls	amx40_proto	30011750670dad1f	6d9dfb0fc70b86c2
 key	controls	amx56	22305114b6440d45	805426f6b857a8f7
 key	controls	ares_apc	68282759561b40a4	93ef0e6a5ba5dc8b
-key	controls	bm_oplot_m	425ee2331324c8ef	4096f9437f256c3e
+key	controls	bm_oplot_m	55096edd6fa7ec21	5e40dc95a2cd7fcf
 key	controls	bm_oplot_t	6a426837b0c3fefb	c074f8c49a4ef791
 key	controls	bmp2	df747593e201c788	47e4f8cc6bb0cc9d
 key	controls	bmp3	b24ae641ab9fb517	ab36175a300428c6
@@ -1895,7 +1895,7 @@ key	fills	amx40	92eee1c34838ecea	95d77b4b1c475069
 key	fills	amx40_proto	fc4303bf8d675bc7	431ab4487371cc11
 key	fills	amx56	2a907228f932cf5c	a2d4984e78164861
 key	fills	ares_apc	655a346a4d4dc681	36743a064b360ed8
-key	fills	bm_oplot_m	50c0594498779d0b	9d82467d47b0a4d5
+key	fills	bm_oplot_m	a0cc96e34f784b08	9d82467d47b0a4d5
 key	fills	bm_oplot_t	6a66502d4ff17291	24790ec3e946c56d
 key	fills	bmp2	4253f0ffcb48a42e	c6d4bb25ba11a3c3
 key	fills	bmp3	f3c12acc3bbbce48	a77a5374c5cc4b4c
@@ -2174,6 +2174,7 @@ key	gate	amx40	f550f5cc561c4f5a	b4e2f9140e87b76b
 key	gate	amx40_proto	ce5850517494baea	4ec82c692757db5e
 key	gate	amx56	a1e4258114632643	6d091cda9fff2eaa
 key	gate	ares_apc	680b0d3b90ecb482	8d7f990be0b77071
+key	gate	bm_oplot_m	05c1b55ebd546568	0bb38caa0e08c63d
 key	gate	bm_oplot_t	5722d9ed615cb5fe	2a91139109c96403
 key	gate	bmp2	09231353735823b5	62b86c8c55901d94
 key	gate	bmp3	2aaf1a1c88241fd5	5fb3f1aa66973106
@@ -2287,7 +2288,7 @@ key	gate	m551_sheridan	09278fe48fa442ec	828e657d9505c9e2
 key	gate	m551a1_tts	976f34041ecda644	2a91139109c96403
 key	gate	m60a1	92b1ef5ca4e28f12	3fc04ec3644c7ca9
 key	gate	m60a2	7cc37861531e9309	7daa525e71b8ab88
-key	gate	m60a3	6927b0dd1a5a0e22	c18e930080830d70
+key	gate	m60a3	c4b8ec4f322dce97	dd9c3245135bae1f
 key	gate	m6_linebacker	852124db28e9a8e1	2a91139109c96403
 key	gate	magach3	da1065a87a9602ce	2a91139109c96403
 key	gate	magach6b	2b22b5b45e5ac446	2a91139109c96403
@@ -2323,7 +2324,7 @@ key	gate	sabra_mk2	f3bd9e7a8d638e67	5a279372729b186b
 key	gate	shot_kal	4caf80446903f381	2a91139109c96403
 key	gate	spz_puma	8a535b8d5971e994	35ce47e7a4f60d72
 key	gate	spz_wotan	6c797d786203f52b	2a91139109c96403
-key	gate	stb1	08540f1b421d9c86	5e587fc2d60c534e
+key	gate	stb1	d4867ea4a1990692	727acf8cae32d766
 key	gate	strv103a	202fc127273d9baa	d317ef09316d2a6d
 key	gate	strv103b	9198db53b642f1f1	12e3f7b241ad1264
 key	gate	strv105	4a2f005aa564788b	2a91139109c96403
@@ -2441,7 +2442,7 @@ key	gunLines	amx40	b7fb93c17c038088	4a7a1f1b03c4ae19
 key	gunLines	amx40_proto	6abc25b69fab475e	becaeea0ef0e3198
 key	gunLines	amx56	803f5debc07cecb4	8b83e5b238d3d9d6
 key	gunLines	ares_apc	f06430ee8f957051	c17d032d678b858d
-key	gunLines	bm_oplot_m	f40dd7ea289864ed	96dbbc5d44683091
+key	gunLines	bm_oplot_m	5e6519fdfc9efcd0	16565ead2bcb28ea
 key	gunLines	bm_oplot_t	1faf075135ccb9f9	4e3facd41adb959c
 key	gunLines	bmp2	ef69f182b8da2407	d6db04ae8c5144ab
 key	gunLines	bmp3	a1dce8008414c8ed	4ca78a7ef8a300d4
@@ -2720,7 +2721,7 @@ key	icons	amx40	d9812eb2c88b51ee	6fd7cf0b127d799b
 key	icons	amx40_proto	b74d3ce6fc14880e	cf74dea410210c69
 key	icons	amx56	02ea2681c263a204	8e8a7c2030f21cad
 key	icons	ares_apc	bbb4bb89857118a0	46fa283b4eddb2a7
-key	icons	bm_oplot_m	b09df1caad87daf4	7be4c61e7c04cc95
+key	icons	bm_oplot_m	94c10db1ee573873	2dec32cda38adeb5
 key	icons	bm_oplot_t	0673f7a9e0874ac3	f54406d33119e124
 key	icons	bmp2	2e7521a7af99dd88	bd01acbc451edf2e
 key	icons	bmp3	7e354dee920973e8	d8ebf5acf1b9e38c
@@ -2999,7 +3000,7 @@ key	ledger	amx40	dc9b32acc2e10ebf	048f51f34756b53e
 key	ledger	amx40_proto	a2883133a631cd4e	523b7901df593f0f
 key	ledger	amx56	383993678f875b3c	bcd9a885d82b0afd
 key	ledger	ares_apc	79162e58c8f57778	6d8ecaf98475f717
-key	ledger	bm_oplot_m	9a2aeb2ff7238a4b	7dc68d03c2e6734a
+key	ledger	bm_oplot_m	65a39d21e4c7a653	6047b7f2303e36c3
 key	ledger	bm_oplot_t	9a203a4199c0fe80	2dadffb9b50e5804
 key	ledger	bmp2	cabb446825dbbd61	5e7164d7cc8c835c
 key	ledger	bmp3	cda665391b39564a	804db16c2e574deb
@@ -3278,7 +3279,7 @@ key	marking	amx40	622fbb95bacc6327	219e17463e039343
 key	marking	amx40_proto	61feba03e5e4f4ed	66c7c1b5fd2a4a70
 key	marking	amx56	9b54faafb0f2fb61	e73e990da768ccbf
 key	marking	ares_apc	3e33c8177c159259	f3c209f99d29c749
-key	marking	bm_oplot_m	06466e185d2f6e58	96d303c9ea2da0ff
+key	marking	bm_oplot_m	25b1a8df3b24fc8c	96d303c9ea2da0ff
 key	marking	bm_oplot_t	eeda61af402c7e5a	8bf913f47aa99ed5
 key	marking	bmp2	3fd363398f841f20	c542c625cad1a999
 key	marking	bmp3	de68e7d551e8e682	d86e984a106d2eb5
@@ -3557,7 +3558,7 @@ key	seats	amx40	15d9ec91446a73fd	24f978604cd31223
 key	seats	amx40_proto	71a2a49f32a7fffe	85fd3b4ea4a7e942
 key	seats	amx56	d0206249e4c6f2de	384ce9c705befad9
 key	seats	ares_apc	9d11452c2d56c413	3fa6fba7ab6ecd8c
-key	seats	bm_oplot_m	dc6fe6f94b66d711	c043535a22cdbf6e
+key	seats	bm_oplot_m	87a7c0ead67d94be	8d5fa078f4ce5809
 key	seats	bm_oplot_t	c6259658091c842a	9fa807ff889488d7
 key	seats	bmp2	f95e047f58db2722	db2e2163bc557fb8
 key	seats	bmp3	92f232b06dbc2848	7b9e8a5cdb6d5d8f
@@ -3836,7 +3837,7 @@ key	spareTrack	amx40	5b134166b36b944f	b73e6a5fff5669fd
 key	spareTrack	amx40_proto	dd026d896b9ba92d	73d7a4c03f7dec0f
 key	spareTrack	amx56	e94d3f3ee7186ef0	f7134644bc64efef
 key	spareTrack	ares_apc	ae95bd28fac00f7f	3bd096b0373cdf37
-key	spareTrack	bm_oplot_m	ec2c409e2ea7c353	649b3fad494e807d
+key	spareTrack	bm_oplot_m	4e89b3c57fcb90ff	c4a09203780acf64
 key	spareTrack	bm_oplot_t	ca2293da4023a21c	1c57844921345536
 key	spareTrack	bmp2	a2ccde2e400f9975	8b769d92ab914011
 key	spareTrack	bmp3	be96b9c80ad88e4d	3dc3c63155ea913c
@@ -4182,7 +4183,7 @@ row	auxiliaryInventory	amx40	52f7b2e76d5e4546
 row	auxiliaryInventory	amx40_proto	4b3a750730d9e34e
 row	auxiliaryInventory	amx56	217c7ff9699d1e2f
 row	auxiliaryInventory	ares_apc	ad13fee7a65c0a1c
-row	auxiliaryInventory	bm_oplot_m	17c79df40407c10f
+row	auxiliaryInventory	bm_oplot_m	33245ebabce4b0c6
 row	auxiliaryInventory	bm_oplot_t	8b4f608eaba98f28
 row	auxiliaryInventory	bmp2	107f02f6865047ef
 row	auxiliaryInventory	bmp3	b4f910fe8274d4f3
@@ -5379,7 +5380,7 @@ row	geometryGate	amx40	bfa3bbf5c413b4a8
 row	geometryGate	amx40_proto	bca65349a9b5a5ca
 row	geometryGate	amx56	dffd62a37ab04c85
 row	geometryGate	ares_apc	d7fe677679fdbf63
-row	geometryGate	bm_oplot_m	07f07437006dfaf9
+row	geometryGate	bm_oplot_m	dd0e16dfee44fd97
 row	geometryGate	bmp2	07f7d1feca320719
 row	geometryGate	bmp3	215d3f5100ce610d
 row	geometryGate	bmp3m_dragun125	80285a7a5982e31f
@@ -5445,7 +5446,7 @@ row	geometryGate	m48a5_patton	a625d15f6d50dd1c
 row	geometryGate	m551_sheridan	583e215f6528225f
 row	geometryGate	m60a1	d865f2707b11c7aa
 row	geometryGate	m60a2	f747f9ea762d4d4f
-row	geometryGate	m60a3	34d7d2dea1599a2b
+row	geometryGate	m60a3	7b1ef7b28e6be422
 row	geometryGate	marder1a3	8fa7a9ea56973c1d
 row	geometryGate	mbt70	3258c3aafcf0bfa6
 row	geometryGate	merkava1b	cacc86e7f84471eb
@@ -5468,7 +5469,7 @@ row	geometryGate	pt91m	58993d910113cbba
 row	geometryGate	puma_s1	631cc0467a6d1d82
 row	geometryGate	sabra_mk2	72d5e5eefa37a8ef
 row	geometryGate	spz_puma	f60f25dc1372afce
-row	geometryGate	stb1	1e72edd7dc02e758
+row	geometryGate	stb1	3589e6746d808c08
 row	geometryGate	strv103a	924fc2cfbbd5fce3
 row	geometryGate	strv103b	7d5a3852aa61faeb
 row	geometryGate	strv121	0ef49e0e44ed8a8e
@@ -5540,6 +5541,7 @@ row	geometryGate.oracle	amx40	2cb29738c93b5b1c
 row	geometryGate.oracle	amx40_proto	14a26119ecbcbfd5
 row	geometryGate.oracle	amx56	14c99ae214e88c3c
 row	geometryGate.oracle	ares_apc	f66d4104231a36a4
+row	geometryGate.oracle	bm_oplot_m	e383647c31064c73
 row	geometryGate.oracle	bmp2	fdbf27528209dd47
 row	geometryGate.oracle	bmp3	4ef995f567b07501
 row	geometryGate.oracle	c1_ariete_preserie	87e364a103af9e34
@@ -5657,7 +5659,7 @@ row	geometryLedger	amx40	10a1774e516fb3ea
 row	geometryLedger	amx40_proto	252ab61a191cf4d5
 row	geometryLedger	amx56	02f8f0806535752d
 row	geometryLedger	ares_apc	4d11d47b1917a358
-row	geometryLedger	bm_oplot_m	9f25854d9b1a3cdf
+row	geometryLedger	bm_oplot_m	07f7fd22618fbe6d
 row	geometryLedger	bm_oplot_t	bf41768cf81adff0
 row	geometryLedger	bmp2	d160d58655281d5e
 row	geometryLedger	bmp3	561365abff7f00ad
@@ -5936,7 +5938,7 @@ row	gunJunction	amx40	13e396806cbcfbc7
 row	gunJunction	amx40_proto	c267e33d5ea84b4d
 row	gunJunction	amx56	19dd0083a4149bd8
 row	gunJunction	ares_apc	2ac388f20808dca0
-row	gunJunction	bm_oplot_m	95b4dec8897c73fa
+row	gunJunction	bm_oplot_m	971a70d405d590fc
 row	gunJunction	bm_oplot_t	4b22ed9be37852cf
 row	gunJunction	bmp2	0206e00b3cac942b
 row	gunJunction	bmp3	2102854c2de925e9
@@ -6773,7 +6775,7 @@ row	missionAttachmentSeats	amx40	7b1f10e4fdb0c81e
 row	missionAttachmentSeats	amx40_proto	02b91eb974b167bf
 row	missionAttachmentSeats	amx56	774777f650f5491c
 row	missionAttachmentSeats	ares_apc	33dcc820868834be
-row	missionAttachmentSeats	bm_oplot_m	87409a5204fe9fa7
+row	missionAttachmentSeats	bm_oplot_m	590e5500a35eeecb
 row	missionAttachmentSeats	bm_oplot_t	fce00e9ed631d753
 row	missionAttachmentSeats	bmp2	b6c7ae63d1215e70
 row	missionAttachmentSeats	bmp3	a4961028aae444f4
@@ -8173,7 +8175,7 @@ row	spareTrackLedger	amx40	635f7269ed1df7b4
 row	spareTrackLedger	amx40_proto	58b3ea571352bf3d
 row	spareTrackLedger	amx56	047c4672d7b88221
 row	spareTrackLedger	ares_apc	df53e279909ceedf
-row	spareTrackLedger	bm_oplot_m	79db9bdcf6de72e9
+row	spareTrackLedger	bm_oplot_m	b32955be93280f79
 row	spareTrackLedger	bm_oplot_t	1ec0f09b73b5857c
 row	spareTrackLedger	bmp2	da8a9b1dd85224e7
 row	spareTrackLedger	bmp3	60249a06d546b779
@@ -9041,7 +9043,7 @@ row	tankAssets	amx40	07dda8b940a04759
 row	tankAssets	amx40_proto	48303bda67405649
 row	tankAssets	amx56	dd529c66ba43ff56
 row	tankAssets	ares_apc	5c5c916d0ed2b1c7
-row	tankAssets	bm_oplot_m	c0be94b211385a79
+row	tankAssets	bm_oplot_m	dbbd38621eaaacbb
 row	tankAssets	bm_oplot_t	339f739f108ce198
 row	tankAssets	bmp2	f2170eaaf840eecf
 row	tankAssets	bmp3	5ca2907ba72caf02
@@ -9308,7 +9310,6 @@ row	tankAssets	ztz99_longwei	9f0b4f35a107dc40
 row	tankAssets	ztz99a	ed1ddb108131690e
 row	tankAssets	ztz99a2	1bd02ec6a5da5f2c
 row	tankAssets	ztz99a2_qinglong	37dc351f67c4b746
-stamp	gate	bm_oplot_m	28ba5657bc5e5644	578a84f0ce091c79	page-error		page error, previous row kept: owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): oplotMKt762 03735f1a2db4559079dd484cdf53a482d63d9c08c56ab0006f56e2b9237f3cf0; oplotMKitSternDrums 2d2fa5a53829362e9b226
 stamp	gate	bmp3m_dragun125	c5e0555a7e251b90	ae524ec1ccfd3361	page-error		page error, previous row kept: procedural: turret differs from the independent source datum; procedural: gun differs from the independent source datum
 stamp	gate	c1_ariete	426f7930fbf84a6f	5cc59d72a2d0fd1d	oracle-absent	public/models/community-candidates/ariete_c1_x_source.glb	oracle absent here (/models/community-candidates/ariete_c1_x_source.glb)
 stamp	gate	cv90105_tml	81c5ebd628d4f65c	8f2f9c0b2438f11d	oracle-absent	public/models/community-candidates/cv90105_tml_x_source.glb	oracle absent here (/models/community-candidates/cv90105_tml_x_source.glb)
@@ -9320,15 +9321,15 @@ stamp	gate	m41a3	477790ee3b0f2718	2a91139109c96403	oracle-absent	public/models/c
 stamp	gate	merkava3d	c5169d7ff253645f	9997f408c8042254	oracle-absent	public/models/community-candidates/merkava3d_source.glb	oracle absent here (/models/community-candidates/merkava3d_source.glb)
 stamp	gate	merkava4	7a8550db790dbd68	8a08f6f0be74ae91	oracle-absent	public/models/community-candidates/merkava4_source.glb	oracle absent here (/models/community-candidates/merkava4_source.glb)
 stamp	gate	type89	75a12202d90a29a8	3f6fff507d37d77d	oracle-absent	public/models/community-candidates/type89_x_source.glb	oracle absent here (/models/community-candidates/type89_x_source.glb)
-tool	anatomy	8f2458aaf88277d5
+tool	anatomy	ec06eb614847cca2
 tool	centering	b7154661daa3cd57
 tool	controls	e22ca4a12022c981
 tool	fills	384657f2143d5ce5
-tool	gate	50bb874d92a947fb
-tool	gunLines	07b6af9f7157b71e
+tool	gate	762cca5f5ad4b0c3
+tool	gunLines	0bbe9e464815a49a
 tool	icons	65f97256ed1f6c51
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
-tool	seats	32e5098bc68fd139
-tool	spareTrack	b3c7c3ada1a0cd64
+tool	seats	9f35644e7eee127f
+tool	spareTrack	5be101cb2fbd6f03
 toolchain	c690d39fe44d5b27	schema:1	node:v24.22.1	platform:darwin/arm64	package-lock:f31ac1f3ac931fab5451658524d9e2c3ae94407e8f42bdef1cd20713ab5975bc

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T13:42:17.438Z",
+ "generatedAt": "2026-11-02T21:09:14.704Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -760,10 +760,10 @@
      {
       "reference": "owner-kit:stb1:stb1KitSternDrums",
       "group": "stb1KitSternDrums",
-      "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a",
+      "geometryPoseSha256": "5b57888233af752a7aa246414e487b26d50fa487e08f89d099450f12df74ebe5",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps",
       "ownerWords": "raise the drums on the stb1"
      }
@@ -1134,10 +1134,10 @@
      {
       "reference": "owner-kit:m60a3:m60a3KitRackLoad",
       "group": "m60a3KitRackLoad",
-      "geometryPoseSha256": "23fed4598f3223be7747ac0440859e1d948cc607bd6f1e829df190e7f16e9689",
+      "geometryPoseSha256": "3c88b527ccd887aa276fbedaeaa6e48a8eb6d4e1da621990b4ea862e163dd428",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the bustle rack's field load: two spare road wheels tipped up on its rear corners, three packs under a bedroll",
       "ownerWords": "wheels and bags"
      }
