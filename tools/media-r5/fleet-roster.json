@@ -3571,10 +3571,10 @@
   "map": "titan_gorge",
   "time": "day",
   "anchor": [
-   -132,
-   93
+   259.4,
+   -199.4
   ],
-  "heading": 75,
+  "heading": 336.9,
   "template": 7,
   "action": "shellfire",
   "lineup": [
@@ -6525,10 +6525,10 @@
   "map": "caldera",
   "time": "morning",
   "anchor": [
-   -123,
-   235.8
+   -372.3,
+   -306.3
   ],
-  "heading": 229.5,
+  "heading": 23.5,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -7761,10 +7761,10 @@
   "map": "blackglass",
   "time": "day",
   "anchor": [
-   -312,
-   -87
+   183,
+   -312
   ],
-  "heading": 281,
+  "heading": 1,
   "template": 23,
   "action": "hold",
   "lineup": [

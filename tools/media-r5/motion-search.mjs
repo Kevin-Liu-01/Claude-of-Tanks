@@ -16,7 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 // the fifty, the owner's nine and the fleet takes (fleet-roster.json), each searched on its own set
-const TAKES = [...SHOTS, ...OWNER_NINE, ...FLEET];
+const TAKES = [...SHOTS, ...OWNER_NINE, ...FLEET], FLEET_NS = new Set(FLEET.map(([n]) => n));
 import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
@@ -393,6 +393,10 @@ for (const [n, id, kind, title, set, film, still] of TAKES) {
         // (268) the hero drives: a route it covers at under 5 m/s over the measured window reads as a parked tank (the
         // owner on the versus films: "the tanks arent even moving"); speed alone was 0.4 of the score, under framing
         if (m.speed < 5) { reject('the hero barely moves'); continue; }
+        // (268) a fleet take is its vehicle's own loop (the Gallery's panel, 640×360): the lens stays within 35 m of it.
+        // Every fleet take past that was a lead-and-reveal climbing to 50 m and 25 m up, the vehicle a speck at its end
+        // (the review films; and the published fleet's six worst-framed takes, bad 0.46-0.49)
+        if (FLEET_NS.has(n) && m.far > 35) { reject('the lens leaves the vehicle'); continue; }
         // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
         // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
         const wrapD = (d) => ((d % 360) + 540) % 360 - 180;
