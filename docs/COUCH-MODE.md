@@ -87,10 +87,10 @@ checks it).
   every other seat the next tank on its side in roster order, and the rest stay bots, so a seat's tank has no bot
   (`spawnBattleEntities`). The roster holds one tank per vehicle, so no two seats share an id; the phone's own vehicle
   pick (phase 3) brings seat ids that are not spec ids, as the multiplayer host numbers its seats.
-- A seat's tank keeps the roster's camouflage and its spotting bonus, as the bot in that tank would have (the page
-  stamps every tank from the host's saved scheme for its vehicle). A phone's own scheme comes with its own vehicle pick
-  (phase 3), stamped by the one shared rule, `src/sim/camoPaint.ts` `camoSelectionBonus`, in setupBattle's stamping,
-  never a second rule.
+- A seat's tank keeps the camouflage and spotting bonus its roster slot carries, as the bot in that tank would have
+  (seat 1 drives the battle's first tank, which wears the host's saved scheme). A phone's own scheme comes with its own
+  vehicle pick (phase 3): the seat's tank takes that scheme in setupBattle and earns its bonus by the one shared rule,
+  `src/sim/camoPaint.ts` `camoSelectionBonus`, never a second rule.
 - Sizes and sides come from `src/sim/matchRuleset.ts`: `COUCH_RULES` (the couch modes, eight seats, the shared camera's
   framing) and `couchSeatSides` (Together puts every seat on Alpha; Teams alternates, Alpha first; the Horde is always
   Together). A seat with no tank left on its side sits the battle out.
