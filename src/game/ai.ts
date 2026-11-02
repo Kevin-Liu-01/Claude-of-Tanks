@@ -6630,9 +6630,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       ramGap = gap; ramCross = cross; ramHull = other;
     }
   }
+  let rushBackOffUntilS = -Infinity, rushBackOffTurn = 0;
   function holdOffEnemyHulls(input: AiInput): void {
     const doctrine = doctrineOf();
     if (!(doctrine.rush || doctrine.noRamLane) || !entity.state.grounded) return;
+    // a rusher that backs off a hull holds the back-off and its turn (RUSH_DRIVE.backOffHoldS); movement.ts flips the steer
+    // of a hull under way backwards, so the turn is kept by flipping it back
+    if (doctrine.rush && nowS < rushBackOffUntilS) {
+      input.throttle = -RUSH_DRIVE.backOffThrottle;
+      input.brake = false;
+      input.steer = entity.state.speed < 0 ? -rushBackOffTurn : rushBackOffTurn;
+      return;
+    }
     // the Turbo Ball is played for: a hull contesting it is no ram to avoid
     const ball = doctrine.noRamLane ? getObjective?.()?.ball ?? null : null;
     const st = entity.state, speed = st.speed;
@@ -6672,6 +6681,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
         input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
         input.brake = false;
+        if (doctrine.rush && sign > 0) {
+          rushBackOffUntilS = nowS + RUSH_DRIVE.backOffHoldS;
+          rushBackOffTurn = Math.sign(input.steer) || orbitSide;
+        }
       } else {
         input.throttle = 0;
         input.brake = Math.abs(speed) > 0.5;

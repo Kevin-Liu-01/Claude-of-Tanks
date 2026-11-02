@@ -240,6 +240,12 @@ export const RUSH_DRIVE = Object.freeze({
    */
   brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5, swerveThrottle: 0.45,
   /**
+   * (268, item 10) A rusher that backs off a hull holds the back-off this long, its turn kept: backing off a tick at a time,
+   * the reverse never built way (the lane looks behind a hull under way backwards, and the drive took it forward again),
+   * and the hunter dithered at the gap under 0.5 m/s, face to face with its quarry or pressed on a neighbour of it.
+   */
+  backOffHoldS: 1.2,
+  /**
    * A lane keeper that is no rusher (noRamLane: Frontline's sides, the survivors, the Horde's allies, Turbo Ball) backs off
    * from this gap when it stands (round 3b, the critic's M4: in a sector's point-blank fight the hulls stood nose to nose,
    * driving into one another — over half of Frontline's engaged stills on Verdant with an enemy inside 20 m).
