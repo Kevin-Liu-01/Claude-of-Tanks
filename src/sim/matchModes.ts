@@ -57,6 +57,8 @@ const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
 /** Frontline's line placements the guard could not clear, the latest kept (MatchModeController.lineGuardFallbacks). */
 const LINE_GUARD_FALLBACK_LOG = 16;
+/** The golden angle (rad): a hunter's successive search points round its ring (268, item 10) spread evenly. */
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 /** An owned point's incursion alert repeats at most this often (a tank idling on the rim is one alert, not a stream). */
 const ZONE_CONTEST_REPEAT_S = 20;
 const ZONE_POINTS_PER_SECOND = 2;
@@ -754,7 +756,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // and the arrival's orders (round 3, the critic's M1/M3): a director-placed hunter drives on along the facing the
   // director gave it — at the ring's centre as it stood at the arrival, never updated — to a seeded point HUNT_RULES.lead
   // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
-  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean }>();
+  /**
+   * A bravo bot's hunt anchor: where it rose (x, z, atS), its director lead (lx, lz) and whether it sweeps round the
+   * anchor; and its search (268, item 10; Main: a hunter never stands on a spent lead): the newest sighting it has reached
+   * (spentAtS) and how many search points it has reached since its last sighting (step).
+   */
+  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean; spentAtS: number; step: number }>();
   let arrivals = 0;
   // the live hulls a placement keeps clear of, each by its own seat radius (a Juggernaut's by its scale; a gunship in
   // its orbit stands on no ground); with `enemyClearM`, every live enemy by that distance (the ruleset's respawnSafeM)
@@ -806,23 +813,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     restedAt.delete(entity.id);
     if (entity.bot && teamOf(entity) === 'bravo') {
       let anchor = huntAnchor.get(entity.id);
-      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false }; huntAnchor.set(entity.id, anchor); }
+      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 }; huntAnchor.set(entity.id, anchor); }
       anchor.x = safeSpawn.x; anchor.z = safeSpawn.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = false;
-      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, the ring's own distance on
-      if (at && (ruleset.horde || infectionArrival)) {
-        let cx = 0, cz = 0, n = 0;
-        for (const human of teams.alpha) {
-          if (human.modeActive === false || human.combat.destroyed) continue;
-          cx += human.state.pos.x; cz += human.state.pos.z; n++;
-        }
-        if (n) {
-          const lead = HUNT_RULES.lead, k = arrivals++;
-          const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
-          const reach = detMath.hypot(cx / n - safeSpawn.x, cz / n - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
-          const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
-          anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
-          anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
-        }
+      anchor.spentAtS = -Infinity; anchor.step = 0;
+      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, on toward what its side knows
+      // (268, item 10; Main: everything an arriving hostile acts on comes from its side's knowledge, the freshest sighting,
+      // else the humans' public deployment centre; it read the humans' live centroid, an unsighted position, and on the
+      // wave's first seconds led zombies onto a human still on its slot)
+      if (at && (ruleset.horde || infectionArrival) && teams.alpha.some((human) => human.modeActive !== false && !human.combat.destroyed)) {
+        const known = sideKnowledgeOf(teamOf(entity), safeSpawn.x, safeSpawn.z);
+        const lead = HUNT_RULES.lead, k = arrivals++;
+        const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
+        const reach = detMath.hypot(known.x - safeSpawn.x, known.z - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
+        const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
+        anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + detMath.sin(heading) * reach));
+        anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + detMath.cos(heading) * reach));
       }
     }
     stampInfection(entity);
@@ -980,7 +985,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const radius = ringMin + spawnRng() * (ringMax - ringMin);
         const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + detMath.sin(angle) * radius));
         const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + detMath.cos(angle) * radius));
-        const yaw = detMath.atan2(cx - x, cz - z);
+        // (268, item 10; Main) the ring's centre keeps the arrival safe; what the arrival faces is what its side knows
+        const known = sideKnowledgeOf(teamOf(entity), x, z);
+        const yaw = detMath.atan2(known.x - x, known.z - z);
         const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
         if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz, leadScale)) continue;
         spawnSector = (sector + 1) % sectors;
@@ -2271,6 +2278,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
     }
   }
+  /**
+   * What a side knows of its enemy, as a point (268, item 10; Main): its freshest sighting (freshestFor, ties nearest to
+   * the point), else the enemy's public deployment centre. An arriving hostile faces it and leads on toward it; live
+   * positions place the arrival's ring only to keep it off the humans, never to steer it.
+   */
+  function sideKnowledgeOf(side: ObjectiveTeam, x: number, z: number): { x: number; z: number } {
+    return freshestFor(side, x, z) ?? centers[otherTeam(side)];
+  }
   /** The side's freshest sighting within HUNT_RULES.lastSeenMaxS (ties: nearest to the point), or null. */
   function freshestFor(side: ObjectiveTeam, x: number, z: number): Sighting | null {
     let best: Sighting | null = null, bestD = Infinity;
@@ -2317,26 +2332,40 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         tx = best.state.pos.x; tz = best.state.pos.z;
         lastContact.x = tx; lastContact.z = tz; lastContact.set = true; lastContact.atS = placementTimeS;
       } else {
+        // the search (268, item 10; Main): a hunter never stands on a spent lead. A sighting it has reached with nobody in
+        // sight is spent for it, and it hunts on past it: its sweep starts out round the spent point. A search point it
+        // reaches (within lead.arriveM) is spent too, and the next one is drawn at once, never at the next sweep epoch.
+        let anchor = huntAnchor.get(hunter.id);
+        if (!anchor) {
+          anchor = { x: hunter.state.pos.x, z: hunter.state.pos.z, atS: placementTimeS, lx: NaN, lz: NaN, swept: false, spentAtS: -Infinity, step: 0 };
+          huntAnchor.set(hunter.id, anchor);
+        }
+        const arrive2 = HUNT_RULES.lead.arriveM ** 2;
         const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
-        if (seen) { tx = seen.x; tz = seen.z; } else {
-          // the sweep: a seeded bearing per hunter and sweep epoch round the last contact (the opponents' deployment
-          // before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals out round
-          // it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
+        if (seen && seen.atS > anchor.spentAtS && squaredDistance(hunter, seen.x, seen.z) <= arrive2) {
+          anchor.spentAtS = seen.atS;
+          anchor.x = seen.x; anchor.z = seen.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
+          anchor.step = 0;
+        }
+        if (seen && seen.atS > anchor.spentAtS) { tx = seen.x; tz = seen.z; anchor.step = 0; } else {
+          // the sweep: a seeded bearing per hunter, sweep epoch and search step round the last contact (the opponents'
+          // deployment before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals
+          // out round it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
           // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position and orders, no one else's
+          if (Number.isNaN(anchor.lx) && squaredDistance(hunter, plan.x, plan.z) <= arrive2) anchor.step++;
           const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
-          const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2;
-          const anchor = huntAnchor.get(hunter.id);
+          // each search point it reaches turns the next a golden angle on round the ring, so successive points never bunch
+          const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2 + anchor.step * GOLDEN_ANGLE;
           const stale = !lastContact.set || placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS;
           // the hunter's own lead outranks a side contact older than its arrival (or stale)
-          const own = !!anchor && (stale || anchor.atS > lastContact.atS);
-          if (own && anchor && Number.isFinite(anchor.lx)
-            && squaredDistance(hunter, anchor.lx, anchor.lz) <= HUNT_RULES.lead.arriveM ** 2) {
+          const own = stale || anchor.atS > lastContact.atS;
+          if (own && Number.isFinite(anchor.lx) && squaredDistance(hunter, anchor.lx, anchor.lz) <= arrive2) {
             // there: the sweep spirals out round the lead point from now on
             anchor.x = anchor.lx; anchor.z = anchor.lz; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
           }
-          if (own && anchor && Number.isFinite(anchor.lx)) {
+          if (own && Number.isFinite(anchor.lx)) {
             tx = anchor.lx; tz = anchor.lz;
-          } else if (anchor && ((own && anchor.swept) || (stale && lastContact.set))) {
+          } else if ((own && anchor.swept) || (stale && lastContact.set)) {
             const local = HUNT_RULES.localSweep;
             const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - anchor.atS) / HUNT_RULES.sweepEpochS));
             tx = anchor.x + detMath.sin(angle) * ring; tz = anchor.z + detMath.cos(angle) * ring;
