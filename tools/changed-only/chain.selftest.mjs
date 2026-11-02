@@ -331,7 +331,7 @@ assert.deepEqual(chain(C).runs, [], 'a fixture id with a missing oracle reads cu
 assert.deepEqual(snapshot(C), stampedQuiet, 'and rewrites nothing');
 put(C, 'public/models/b1.glb', oracle);
 const dropped = chain(C, '--dry-run');
-assert.deepEqual([dropped.final.seats.ids, dropped.final.seats.reasons.b1.includes('stamp\'s inputs moved (public/models/b1.glb)')], [['b1'], true],
+assert.deepEqual([dropped.final.seats.ids, dropped.final.seats.reasons.b1?.includes('stamp\'s inputs moved (public/models/b1.glb)')], [['b1'], true],
   'dropping the oracle in makes it due, named by the stamp');
 const measured = chain(C);
 assert.deepEqual([ranIds(measured, 'seats'), /^stamp\t/m.test(read(C, 'release/fingerprints.tsv'))], [['b1'], false], 'the chain runs it alone and clears the stamp');

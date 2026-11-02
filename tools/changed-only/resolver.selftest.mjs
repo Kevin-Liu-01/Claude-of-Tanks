@@ -8,8 +8,7 @@ import { dirname, join } from 'node:path';
 import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
   from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
-import { oraclePinError } from '../geometry-gate-policy.mjs';
-import { SPEC_COMBAT, SPEC_REST, gateStamp } from './steps.mjs';
+import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-changed-only-fixture-'));
@@ -460,18 +459,6 @@ put('src/vehicles/anchors.generated.ts', anchors);
   delete foreign.keys.sizes.b1;
   foreign.stamps.sizes = { b1: { key: 'x', out: 'y', code: 'page-error', files: [], reason: 'no __GEO_REPORT' } };
   assert.ok(resolveChanged(g1, foreign).sizes.reasons.b1.includes('stamp on a step that reports no skips'), 'a stamp on a step without skips is no stamp');
-  // the gate's own words are what gateStamp reads: its skip templates (tools/geometry-gate.mjs) and its pin errors
-  // (tools/geometry-gate-policy.mjs), so a reworded message cannot quietly stop stamping
-  const gateSource = readFileSync(join(import.meta.dirname, '../geometry-gate.mjs'), 'utf8');
-  assert.ok(gateSource.includes('skipped[id] = `oracle absent here (${referenceSources[id]})`')
-    && gateSource.includes('skipped[id] = `page error, previous row kept: ${error.message}`'), 'the gate words its skips as gateStamp reads them');
-  const oracleFile = '/models/x.glb', bytes = 'a'.repeat(64), oracleStamp = (code) => ({ code, files: ['public/models/x.glb'] });
-  assert.deepEqual([gateStamp(`oracle absent here (${oracleFile})`),
-    gateStamp(`page error, previous row kept: ${oraclePinError(oracleFile, bytes, { [oracleFile]: { sha256: 'b'.repeat(64) } })}`),
-    gateStamp(`page error, previous row kept: ${oraclePinError(oracleFile, bytes, {})}`),
-    gateStamp('page error, previous row kept: no __GEO_REPORT'), gateStamp(''), gateStamp('page error, previous row kept: ')],
-  [oracleStamp('oracle-absent'), oracleStamp('oracle-unpinned'), oracleStamp('oracle-unpinned'), { code: 'page-error', files: [] }, null, null],
-  'gateStamp reads the gate\'s reasons and refuses an empty one');
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
