@@ -81,6 +81,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   uk: Object.freeze([
     'chieftain3', 'chieftain_mk9', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
     'fv510', 'fv510_milan',
   ]),
   challenger: Object.freeze([

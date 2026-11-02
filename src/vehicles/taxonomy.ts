@@ -56,6 +56,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'magach6b', 'magach7c',
     'vickers_mk1',
     'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
+    // release 269: the South African Centurions, 1974-91
+    'semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([

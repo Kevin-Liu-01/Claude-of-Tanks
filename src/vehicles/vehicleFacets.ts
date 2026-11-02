@@ -188,7 +188,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3', 'm48_super', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'magach3', 'magach6b', 'magach7c', 'mbt70', 'merkava1b', 'merkava2b',
     'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy',
-    'merkava4b', 'object148_proto', 'olifant_mk2', 'osorio_p1', 'osorio_p2', 'pt64_tur', 'pt84_orzel', 'pt84_sokol',
+    'merkava4b', 'object148_proto', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'osorio_p1', 'osorio_p2', 'pt64_tur', 'pt84_orzel', 'pt84_sokol',
     'pt84_zbik', 'pt91a_twardy', 'pt91m', 'sabra_mk2', 'stb1', 'strv121', 'strv122', 't14_armata', 't62_1975',
     't62mv1', 't64b1v_2022', 't64bm1m', 't64bv', 't64bv1', 't64bv_donbas', 't72_rys', 't72b3', 't72b3_bastion_m',
     't72b3_qilin', 't72b3_sich', 't72b3_zhuque', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022',
@@ -206,7 +206,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
     'carro45t', 'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_2dk', 'centurion5_avre', 'm46_patton',
-    'm47_patton', 'shot_kal', 'strv105', 'strv81', 't55a', 'tamoyo1', 'type59',
+    'm47_patton', 'semel', 'shot_kal', 'strv105', 'strv81', 't55a', 'tamoyo1', 'type59',
   ]),
   heavy: Object.freeze([
     'kv2',
@@ -261,7 +261,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc',
     'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3',
     'm46_patton', 'm47_patton', 'm48_super', 'm48a2ga2', 'm48a3_patton', 'm48a5_patton', 'm60a1', 'm60a2', 'm60a3',
-    'magach3', 'magach6b', 'magach7c', 'olifant_mk2', 'sabra_mk2', 'shot_kal', 'strv105', 'tamoyo1', 'tamoyo3',
+    'magach3', 'magach6b', 'magach7c', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2', 'sabra_mk2', 'semel', 'shot_kal', 'strv105', 'tamoyo1', 'tamoyo3',
     'ua_m1a1', 'ua_m1a2_abrams',
   ]),
   flanker: Object.freeze([
@@ -311,8 +311,8 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3', 'm6_linebacker', 'magach3',
     'magach6b', 'magach7c', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
-    'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'olifant_mk2',
-    'pt91a_twardy', 'pt91m', 'puma_s1', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
+    'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'olifant_mk2',
+    'pt91a_twardy', 'pt91m', 'puma_s1', 'sabra_mk2', 'semel', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
     'strv121', 'strv122', 'strv81', 't55a', 't62_1975', 't62mv1', 't64b1v_2022', 't64bm1m', 't64bv', 't64bv1',
     't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022', 't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar',
     't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004',
