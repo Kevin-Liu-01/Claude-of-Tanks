@@ -9738,6 +9738,13 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // read as a blunt drum); the six-plane wedge it replaces stood forward of an empty slot.
     P.addGunExtra(cylX(0.275, 0.80, kf51bGunSegments), 0, 0, 0);              // mantlet drum in the throat
     P.addGunExtra(cylZ(0.150, 1.25, kf51bGunSegments, 0.270), 0, 0.010, 0.645); // conical mantlet
+    // 268 r12 (owner 11-01 "unconnected"; Main: close the mantlet trough): a cowl on the trunnion axis closes the throat
+    // over the drum up to the roof line (y 0.58). A sector of a cylinder about the elevation axis never leaves its own
+    // arc as the gun pitches; its arc runs from 30 degrees behind the vertical, which at 20 degrees' elevation still
+    // stops at z 0.904 ahead of the rear bulkhead (0.88), to 75 degrees forward, where it sinks into the cone.
+    const cowlArc = Array.from({ length: 15 }, (_, i) => THREE.MathUtils.degToRad(-30 + (105 * i) / 14));
+    const cowlRing: [number, number][] = [[0, 0], ...cowlArc.map((a) => [-0.36 * Math.sin(a), 0.36 * Math.cos(a)] as [number, number])];
+    P.addGunExtra(KIT.xform(sectionSolid([{ z: -0.40, ring: cowlRing }, { z: 0.40, ring: cowlRing }]), 0, 0, 0, 0, Math.PI / 2, 0));
     P.addGunExtraDark(cylZ(0.175, 0.12, 6), 0, 0.012, 1.31);                  // armored hexagonal nose clamp
     P.addGunExtraDark(cylZ(0.027, 0.105, 8), 0.120, 0.155, 0.80);             // recessed coax aperture
     P.addGunExtraDark(cylZ(0.018, 0.090, 8), -0.120, 0.165, 0.66);            // paired boresight aperture
@@ -9788,6 +9795,8 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       movingWithGun: true,
       mainHousing: 'conical-mantlet-on-throat-drum',
       throatDrumRadiusM: 0.275,
+      throatCowlRadiusM: 0.36,
+      throatCowlArcDeg: Object.freeze([-30, 75]),
       throatDrumWidthM: 0.80,
       rearWidthM: 0.54,
       rearHeightM: 0.54,
