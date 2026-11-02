@@ -16,7 +16,7 @@
 // lists), so the script stands in for the AI; one bot construction for both is the named follow-up (TESTS-OWED, 268).
 // The real AI on both drivers (268, one bot construction: game/botConstruction.ts, sim/matchSpotting.ts): a forced 1v1,
 // the own hull charging a VT4A1 bot each driver built from the same seed and roster index, through the opening, spotting,
-// the engagement and its hits. Negative controls: one input on one side moved by a billionth at tick 300, the page's
+// the engagement and its hits, the two hulls' contact (sim/tankPairContact.ts) and the bot's destruction. Negative controls: one input on one side moved by a billionth at tick 300, the page's
 // ammunition switch a tick late, and the real-AI bot's heading a billionth off at tick 600, each found at its tick.
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
@@ -247,7 +247,7 @@ async function runRealAi(ticks, perturb = null) {
       aimLocked: false, ...encodeAimIntent(self.state.pos, { x: other.state.pos.x, y: other.state.pos.y + 1.5, z: other.state.pos.z }) };
   };
   const start = { x: foe.state.pos.x, z: foe.state.pos.z };
-  const exercised = { pulls: 0, sightedAt: null };
+  const exercised = { pulls: 0, sightedAt: null, closestM: Infinity };
   let pulled = false;
   let divergence = null;
   for (let tick = 0; tick < ticks && !divergence; tick++) {
@@ -258,6 +258,7 @@ async function runRealAi(ticks, perturb = null) {
     if (foe.input.fire && !pulled) exercised.pulls++;
     pulled = foe.input.fire;
     if (exercised.sightedAt === null && foe.aiCtl.targetId === own.id) exercised.sightedAt = tick;
+    exercised.closestM = Math.min(exercised.closestM, Math.hypot(foe.state.pos.x - own.state.pos.x, foe.state.pos.z - own.state.pos.z));
     for (const entity of game.tanks) {
       const page = hullBytes(entity), authority = hullBytes(authorityOf(entity));
       const index = page.findIndex(([, bytes], i) => bytes !== authority[i][1]);
@@ -303,15 +304,15 @@ assert.equal(four.divergence, null, `with a fourth shell the two steps part at $
 assert.deepEqual(four.exercised.shots, [[90, 0], [540, 3]], `the fourth slot fired as the fourth (${JSON.stringify(four.exercised.shots)})`);
 
 // ---- the real AI on both drivers, through the engagement ---------------------------------------------------------------
-// 2160 ticks: the opening, the sighting near 1780, the shots both ways and the bot's hits; the hulls' contact at 2195 is the
-// next divergence (the ram's resolution, TESTS-OWED 268)
-const REAL_AI_TICKS = 2160;
+// 3000 ticks: the opening, the sighting near 1780, the shots both ways, the hulls' contact and the bot's destruction
+const REAL_AI_TICKS = 3000;
 const real = await runRealAi(REAL_AI_TICKS);
 assert.equal(real.divergence, null, `the real AI parts the two drivers at ${JSON.stringify(real.divergence)}`);
 assert.ok(real.exercised.movedM > 200, `the bot drove its opening route and the engagement (${real.exercised.movedM.toFixed(0)} m)`);
 assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
 assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
-assert.ok(real.exercised.botHp < 1, `the own hull hit the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
+assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
+assert.equal(real.exercised.botHp, 0, `the own hull destroyed the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
 const BOT_NUDGE = 600;
 const botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
 assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
@@ -332,5 +333,5 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field}); `
   + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
-  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, took ${((1 - real.exercised.botHp) * 100).toFixed(1)} % of its hp), `
+  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart and was destroyed), `
   + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`);

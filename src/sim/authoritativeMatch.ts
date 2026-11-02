@@ -36,13 +36,11 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
 import {
-  prefersVerticalTankContact,
-  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from './tankContactShape.ts';
@@ -92,7 +90,7 @@ import type {
   WorldSnapshot,
 } from './worldSnapshot.ts';
 import {
-  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
+  createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
 } from '../world/collision.ts';
@@ -116,6 +114,7 @@ import {
 } from './consumableRules.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { applyBotInput, applyPlayerInput } from './playerInputStage.ts';
+import { pushFromHulls } from './tankPairContact.ts';
 import type { AuthoritativePlayerInput } from './playerInputStage.ts';
 import {
   activateSpecialAction,
@@ -1307,23 +1306,6 @@ export function createAuthoritativeMatch({
     return hard;
   }
 
-  function queueRamFromPush(
-    entity: AuthoritativeEntity,
-    other: AuthoritativeEntity,
-    pushX: number,
-    pushZ: number,
-  ): void {
-    const pushLength = detMath.hypot(pushX, pushZ);
-    if (pushLength <= 1e-6) return;
-    const nx = pushX / pushLength;
-    const nz = pushZ / pushLength;
-    // impact physics: the same pre-contact normal velocities the solo step records (game/state.ts queueRamFromPush)
-    const vAn = hullVelocityAlong(entity.state, nx, nz);
-    const vBn = hullVelocityAlong(other.state, nx, nz);
-    const closing = vBn - vAn;
-    if (closing > 0) pendingRams.push({ a: entity, b: other, closing, nx, nz, vAn, vBn, vertical: false });
-  }
-
   /** The most any hull's contact rect reaches from its root (its half-diagonal and its centre's offset), over every hull,
    * for the movement step (advanceTankMovement); Infinity outside it (no bound, no early rejection). */
   let pairReachMaxM = Infinity;
@@ -1344,47 +1326,10 @@ export function createAuthoritativeMatch({
     halfW: number,
     outPush: Vector3,
   ): void {
-    // Match the local simulation's exact-shell OBB contact. Shared geometry
-    // keeps private rooms and solo from disagreeing at rectangular shoulders.
-    // (physics stream, 2026-10-13, the MP stream's tick profile: this pair loop was a fifth of the movement step) a hull
-    // whose root lies further than the two rects' half-diagonals and the other's rect offset can meet none of them: the
-    // movement step's bound over every hull (pairReachMaxM) rejects it before its rect, trig and hypot are read, exactly
-    // where the full test below would reject it too
-    const ownReach = detMath.hypot(halfL, halfW) + pairReachMaxM;
-    const ownReach2 = ownReach * ownReach;
-    for (const other of entities) {
-      if (other === entity || other.modeActive === false || !other.state) continue;
-      const rootDX = centerX - other.state.pos.x, rootDZ = centerZ - other.state.pos.z;
-      if (rootDX * rootDX + rootDZ * rootDZ > ownReach2) continue;
-      const otherRect = tankContactRect(other.spec);
-      const otherHalfW = otherRect.halfWidth;
-      const otherHalfL = otherRect.halfLength;
-      const ofx = detMath.sin(other.state.yaw);
-      const ofz = detMath.cos(other.state.yaw);
-      const orx = ofz;
-      const orz = -ofx;
-      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
-      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
-      const dx = centerX - otherCenterX;
-      const dz = centerZ - otherCenterZ;
-      const outer = detMath.hypot(halfL, halfW) + detMath.hypot(otherHalfL, otherHalfW);
-      if (dx * dx + dz * dz > outer * outer || prefersVerticalTankContact(entity, other)
-        || tanksVerticallyClear(entity, other)) {
-        continue;
-      }
-      const beforeX = outPush.x;
-      const beforeZ = outPush.z;
-      const pushed = pushHullFromHull(
-        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
-        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
-        outPush,
-      );
-      if (!pushed) continue;
-      queueRamFromPush(
-        entity, other,
-        outPush.x - beforeX, outPush.z - beforeZ,
-      );
-    }
+    // (268) one hull-pair contact for both drivers (sim/tankPairContact.ts); the movement step's bound over every hull
+    // (pairReachMaxM) rejects a far hull before its rect, trig and hypot are read (the physics stream, 2026-10-13: this pair
+    // loop was a fifth of the movement step)
+    pushFromHulls(entity, entities, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams, pairReachMaxM);
   }
 
   function collideFor(

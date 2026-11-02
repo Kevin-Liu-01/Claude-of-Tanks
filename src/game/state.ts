@@ -71,12 +71,10 @@ import {
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from '../sim/impact.ts';
 import {
-  prefersVerticalTankContact,
-  tanksVerticallyClear,
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
 import { tankBodyTopM, tankContactRect } from '../sim/tankContactShape.ts';
@@ -93,6 +91,7 @@ import {
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import * as detMath from '../sim/detMath.ts';
 import { applyBotInput } from '../sim/playerInputStage.ts';
+import { pushFromHulls } from '../sim/tankPairContact.ts';
 import { createBotController, createOpeningPlan, openingRoute } from './botConstruction.ts';
 import type { BotMatch, OpeningPlan } from './botConstruction.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -114,7 +113,7 @@ import {
   type NavigationWreck,
 } from '../sim/botRoutePlanner.ts';
 import {
-  pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
+  createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
   type HullFootprint, type HullFootprintRect,
@@ -1382,81 +1381,6 @@ const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 const CRUSH_PRESS_S = 0.45;      // s of contact under throttle or steer (DST-02) that fells a trunk
 const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 
-function queueRamFromPush(
-  self: SoloEntity,
-  other: SoloEntity,
-  pushX: number,
-  pushZ: number,
-  pendingRams: RamContact[],
-): void {
-  const pushLength = Math.hypot(pushX, pushZ);
-  if (pushLength <= 1e-6) return;
-  const normalX = pushX / pushLength;
-  const normalZ = pushZ / pushLength;
-  // impact physics: each hull's velocity along the normal (drive plus the decaying shove) BEFORE the contact —
-  // the momentum exchange and the aggression split read these, not the speeds the blocked-drive bleed leaves
-  const vAn = hullVelocityAlong(self.state, normalX, normalZ);
-  const vBn = hullVelocityAlong(other.state, normalX, normalZ);
-  const closing = vBn - vAn;
-  if (closing > 0) {
-    pendingRams.push({ a: self, b: other, closing, nx: normalX, nz: normalZ, vAn, vBn, vertical: false });
-  }
-}
-
-function resolveTankCollisions(
-  game: SoloGameState,
-  self: SoloEntity | null,
-  centerX: number,
-  centerZ: number,
-  forwardX: number,
-  forwardZ: number,
-  rightX: number,
-  rightZ: number,
-  halfLength: number,
-  halfWidth: number,
-  outPush: THREE.Vector3,
-  pendingRams: RamContact[],
-): boolean {
-  if (!self) return false;
-  let pushed = false;
-  for (const other of game.tanks) {
-    if (other === self || other.modeActive === false) continue;
-    const footprint = tankContactRect(other.spec);
-    const otherForwardX = Math.sin(other.state.yaw);
-    const otherForwardZ = Math.cos(other.state.yaw);
-    const otherRightX = otherForwardZ;
-    const otherRightZ = -otherForwardX;
-    const otherCenterX = other.state.pos.x + otherRightX * footprint.centerX +
-      otherForwardX * footprint.centerZ;
-    const otherCenterZ = other.state.pos.z + otherRightZ * footprint.centerX +
-      otherForwardZ * footprint.centerZ;
-    const deltaX = centerX - otherCenterX;
-    const deltaZ = centerZ - otherCenterZ;
-    const outerRadius = Math.hypot(halfLength, halfWidth) +
-      Math.hypot(footprint.halfLength, footprint.halfWidth);
-    if (deltaX * deltaX + deltaZ * deltaZ > outerRadius * outerRadius ||
-        prefersVerticalTankContact(self, other) || tanksVerticallyClear(self, other)) continue;
-    const beforeX = outPush.x;
-    const beforeZ = outPush.z;
-    if (!pushHullFromHull(
-      centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth,
-      otherCenterX, otherCenterZ,
-      otherForwardX, otherForwardZ, otherRightX, otherRightZ,
-      footprint.halfLength, footprint.halfWidth,
-      outPush,
-    )) continue;
-    pushed = true;
-    queueRamFromPush(
-      self,
-      other,
-      outPush.x - beforeX,
-      outPush.z - beforeZ,
-      pendingRams,
-    );
-  }
-  return pushed;
-}
-
 function shouldCrushObstacle(
   game: SoloGameState,
   self: SoloEntity,
@@ -1647,16 +1571,13 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
     const halfL = contactRect ? contactRect.halfLength : radiusM * 0.6;
     const halfW = contactRect ? contactRect.halfWidth : radiusM * 0.45;
     const yaw = self && self.state ? self.state.yaw : 0;
-    const fx = Math.sin(yaw), fz = Math.cos(yaw);   // hull forward (world XZ)
-    const rx = fz, rz = -fx;                        // hull right
+    const fx = detMath.sin(yaw), fz = detMath.cos(yaw);   // hull forward (world XZ)
+    const rx = fz, rz = -fx;                              // hull right
     const centerX = pos.x + rx * (contactRect?.centerX || 0) + fx * (contactRect?.centerZ || 0);
     const centerZ = pos.z + rz * (contactRect?.centerX || 0) + fz * (contactRect?.centerZ || 0);
     _contactCenter.set(centerX, pos.y, centerZ);
     const boundsPushed = pushHullInsidePlayableBounds(
       centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush,
-    );
-    const tanksPushed = resolveTankCollisions(
-      game, self, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams,
     );
     const foot = contactRect && self
       ? hullFootprint(contactRect, pos.x, pos.z, yaw, self.state.visualPitch || 0, self.state.visualRoll || 0, _obstacleFoot)
@@ -1664,6 +1585,10 @@ function makeCollide(game: SoloGameState, world: SoloWorld): CollisionBundle {
     const obstaclesPushed = resolveObstacleCollisions(
       game, world, self, pos.y, foot, obstacles, nearby, pendingCrush, outPush,
     );
+    // (268) the other hulls last, as the authority's collider (sim/tankPairContact.ts): the pushes add in one order
+    const tanksPushed = self
+      ? pushFromHulls(self, game.tanks, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, outPush, pendingRams)
+      : false;
     // crushable props never push (they are queued for crushing instead), so an obstacle push is a hard surface
     bundle.hardContact = boundsPushed || obstaclesPushed;
     return boundsPushed || tanksPushed || obstaclesPushed;
