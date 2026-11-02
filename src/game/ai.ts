@@ -6613,7 +6613,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * met hulls at 2-3 m/s, and stood the zombies still).
    */
   let ramHoldOffs = 0;
-  let ramGap = Infinity, ramCross = 0;
+  let ramGap = Infinity, ramCross = 0, ramHull: AiEntity | null = null;
   function laneGap(other: AiEntity, fx: number, fz: number, buffer: number, stopM: number): void {
     const st = entity.state, od = other.spec?.dims;
     const otherHalf = detMath.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
@@ -6627,7 +6627,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (along <= 0 || Math.abs(cross) > halfLane) continue;
       const gap = along - ownHalfLengthM() - otherHalf;
       if (gap > buffer + stopM || gap >= ramGap) continue;
-      ramGap = gap; ramCross = cross;
+      ramGap = gap; ramCross = cross; ramHull = other;
     }
   }
   function holdOffEnemyHulls(input: AiInput): void {
@@ -6641,7 +6641,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const sign = speed < -0.5 || (speed <= 0.5 && input.throttle < 0) ? -1 : 1;
     const fx = detMath.sin(st.yaw) * sign, fz = detMath.cos(st.yaw) * sign;
     const stopM = Math.abs(speed) ** 2 / (2 * SOLID_STOP_MPS2);
-    ramGap = Infinity; ramCross = 0;
+    ramGap = Infinity; ramCross = 0; ramHull = null;
     const list = deps.getEnemies();
     for (let i = 0; i < list.length; i++) {
       const other = list[i];
@@ -6654,10 +6654,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!Number.isFinite(ramGap)) return;
     ramHoldOffs++;
-    // a rusher turns off the line the way its drive already turns (its orbit's side), never against it (268, item 10):
-    // the hold-off's own side (away from the hull's offset) fought the orbit's turn tick by tick, the two cancelled, and
-    // the hunter stood 9-15 m off its target, its yaw frozen, under 0.5 m/s (Horde seeds 1 and 13: every engaged still)
-    const driveSide = doctrine.rush && Math.abs(input.steer) > 0.2 ? Math.sign(input.steer) : 0;
+    // a rusher held off the hull its orbit circles turns off the line the way its drive already turns (the orbit's
+    // side), never against it (268, item 10): the hold-off's own side (away from the hull's offset) fought the orbit's turn
+    // tick by tick, the two cancelled, and the hunter stood 9-15 m off its target, its yaw frozen, under 0.5 m/s (Horde
+    // seeds 1 and 13: every engaged still). Off any other hull (a neighbour of its quarry on the ring) it turns away.
+    const driveSide = doctrine.rush && ramHull === target && Math.abs(input.steer) > 0.2 ? Math.sign(input.steer) : 0;
     input.steer = (driveSide || Math.sign(-ramCross) || orbitSide) * sign;
     // and it rolls on round the hull at swerveThrottle while it can still stop short of the back-off gap: stopping
     // stood it pivoting on the spot until the orbit drove it back onto the line
