@@ -3,7 +3,8 @@
 //   - parts measured apart, written to their scratch dirs and merged write every file byte for byte as one process
 //     does, for a whole run and an --ids run (rows kept, measured and missing from the committed table);
 //   - a part keeps no row but its own and writes nothing outside its dir; an id two parts measured, a part's row for an id
-//     the merge keeps, or a part of another tool is refused;
+//     the merge keeps, or a part of another tool is refused; the arguments the seats, spare-track and gun-line tools
+//     take (partArgs) hand each id's part row to the merge once and refuse a row no id took;
 //   - (the mutant) parts that each write the shared files themselves, as two --ids runs would, lose a part's rows: the
 //     bytes differ from the whole run, and the chain's digests around the parts name every shared file they wrote.
 // First-party tooling: Kevin B. Liu.
@@ -12,7 +13,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { anatomyOutputFiles, anatomyRows } from './combat-anatomy-files.mjs';
-import { movedShared, partWriter, readPartRows, sharedDigests, writePartRows } from './changed-only/parts.mjs';
+import { movedShared, partArgs, partWriter, readPartRows, sharedDigests, writePartRows } from './changed-only/parts.mjs';
 
 const TOOL = 'gen-combat-anatomy';
 const scratch = mkdtempSync(join(tmpdir(), 'combat-anatomy-parts-'));
@@ -94,6 +95,22 @@ try {
   assert.throws(() => write(join(tree, 'combatAnatomyCalibrations.ts'), 'x'), /writes only inside its own directory/,
     'a part cannot write a shared file');
   assert.throws(() => write(join(home, '..', 'part1', 'rows.json'), 'x'), /writes only inside its own directory/, 'nor a sibling part');
+  // partArgs (seats, spare track, gun lines): a part needs --ids and never merges; a merge takes each row once
+  assert.throws(() => partArgs([`--out-dir=${home}`], 'gen-x'), /a part \(--out-dir\) measures --ids/);
+  assert.throws(() => partArgs(['--ids=a1', `--out-dir=${home}`, `--merge-from=${home}`], 'gen-x'), /never both/);
+  assert.deepEqual(partArgs(['--ids=a1', `--out-dir=${home}`], 'gen-x').partDir, home);
+  const plain = partArgs(['--ids=a1'], 'gen-x');
+  assert.equal(plain.partDir ?? plain.merging, false, 'no part flags: a plain run');
+  assert.equal(plain.take('a1'), undefined);
+  plain.done();
+  const xDirs = [join(scratch, 'args', 'p0'), join(scratch, 'args', 'p1')];
+  writePartRows(xDirs[0], 'gen-x', { a1: { record: null }, b1: { record: { y: 1 } } });
+  writePartRows(xDirs[1], 'gen-x', { c1: { record: { y: -0 } } });
+  const merge = partArgs([`--merge-from=${xDirs.join(',')}`], 'gen-x');
+  assert.equal(merge.merging, true);
+  assert.deepEqual([merge.take('a1'), merge.take('b1'), merge.take('a1')], [{ record: null }, { record: { y: 1 } }, undefined], 'each row once');
+  assert.throws(() => merge.done(), /rows for ids this run does not measure: c1/, 'a row no id of the merge took');
+  assert.throws(() => partArgs([`--merge-from=${xDirs[0]}`], 'gen-y'), /a part of gen-x, not gen-y/);
 
   // 4. the mutant: parts that write the shared files themselves (each as an --ids run: the committed rows read at start,
   // its own measured), one after the other into one tree

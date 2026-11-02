@@ -65,10 +65,11 @@ put(B, 'src/vehicles/fleetFactory.ts', "import './fleetRegistration.ts';\nconst 
 // seats also takes the chain's --skipped report (267): an id named in skip-ids.txt cannot run in this tree, keeps its row
 // and is reported, as the geometry gate reports an id whose oracle is absent here.
 // fills also runs as parts (268, tools/changed-only/parts.mjs): a part (--out-dir) writes its ids' rows into its dir
-// alone, and the merge (--merge-from) takes them in place of building those ids. COT_FIXTURE_PARTS_RACE is the mutant:
+// alone, and the merge (--merge-from) takes them in place of building those ids; the run that writes the table appends
+// the ids it wrote to --report (the chain gives that flag to the merge alone). COT_FIXTURE_PARTS_RACE is the mutant:
 // each part also writes the shared table, as two --ids runs would.
 const generator = (table, exportName, formula, { skips = false, parts = false } = {}) => [
-  "import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+  "import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
   "import { createTank } from '../src/vehicles/tankFactory.ts';",
   "import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';",
   'const args = process.argv.slice(2);',
@@ -94,7 +95,9 @@ const generator = (table, exportName, formula, { skips = false, parts = false } 
     'if (report) writeFileSync(report, JSON.stringify(skipped));'] : []),
   ...(parts ? ['if (partDir) {', '  mkdirSync(partDir, { recursive: true });', '  writeFileSync(`${partDir}/rows.json`, JSON.stringify(rows));',
     `  if (process.env.COT_FIXTURE_PARTS_RACE) writeFileSync('src/vehicles/${table}.generated.ts', \`\${head}\${JSON.stringify({ ...previous, ...rows })};\\n\`);`,
-    '  process.exit(0);', '}'] : []),
+    '  process.exit(0);', '}',
+    "const reportFile = args.find((arg) => arg.startsWith('--report='))?.slice(9);",
+    "if (reportFile) appendFileSync(reportFile, `${JSON.stringify(Object.keys(rows))}\\n`);"] : []),
   'const out = `${head}${JSON.stringify(rows)};\\n`;',
   "if (args.includes('--check')) { if (out !== text) { console.error('stale'); process.exitCode = 1; } }",
   `else writeFileSync('src/vehicles/${table}.generated.ts', out);`, ''].join('\n');
@@ -181,7 +184,7 @@ writeFileSync(tableModule, [
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
   // Listed out of dependency order on purpose: the chain must follow CPU_FIXPOINT_STEPS, not alphabetical order.
-  "export const STEPS = [step('controls'), { ...step('fills'), parts: (dir) => [`--out-dir=${dir}`] },",
+  "export const STEPS = [step('controls'), { ...step('fills'), parts: (dir) => [`--out-dir=${dir}`], report: '--report' },",
   "  { ...step('seats'), skipped: '--skipped', rowReads: ['floors'] }];",
   "export const DEPENDENTS = [{ name: 'docs', tool: 'tools/gen-docs.mjs', check: [], write: ['--write'], after: ['seats'] }];", ''].join('\n'));
 
@@ -400,6 +403,13 @@ for (const label of ['fills-part0', 'fills-part1', 'fills-merge']) {
   assert.ok(started(P2).includes(label), `${label} ran (the parts path, not one process)`);
   assert.ok(!started(P1).includes(label), `--jobs=1 runs no ${label}`);
 }
+// the step's report flag goes to the merge alone, which writes what the one process wrote
+const chainLog = (root) => readdirSync(join(root, '.qa-dev/changed-only')).filter((name) => name.endsWith('.log')).map((name) => read(root, `.qa-dev/changed-only/${name}`)).join('');
+assert.match(chainLog(P2), /^\[regen\] fills-merge: .*--report=/m, 'the merge gets --report');
+assert.doesNotMatch(chainLog(P2), /^\[regen\] fills-part\d: .*--report=/m, 'a part never does');
+const fillsReport = (root) => read(root, `.qa-dev/changed-only/${readdirSync(join(root, '.qa-dev/changed-only')).find((name) => name.endsWith('-fills-report.json'))}`);
+assert.equal(fillsReport(P2), fillsReport(P1), 'the merge\'s report equals the one process\'s');
+assert.match(fillsReport(P2), /^\["a1","a2","a3","a4","b1","b2","b3","b4"\]$/m, 'and names every id the parts measured');
 let raced = null;
 try {
   execFileSync(process.execPath, [join(repo, 'tools/tank-regen-changed.mjs'), `--root=${P3}`, `--table=${tableModule}`, '--no-gpu', '--all', '--jobs=2'],

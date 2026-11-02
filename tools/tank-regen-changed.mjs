@@ -146,8 +146,6 @@ function runChild(argv, { niced, timeoutS, label }) {
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills, anatomy) runs as parallel parts merged by the
- *  tool itself. */
 /** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
  *  step: never recorded, so they stay due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
@@ -155,48 +153,18 @@ const notRunHere = {};
 const skipFile = (step, label) => (step.skipped ? join(qaDir, `${stamp}-${step.name}-${label}.skipped.json`) : null);
 const readSkipped = (file) => (file && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {});
 
+/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills, anatomy, seats, spare track, gun lines) runs as
+ *  parallel parts merged by the tool itself; its report and json flags go to the run that writes them (the merge). */
 async function runCpuStep(step, ids, state) {
   const count = ids?.length ?? state.ids.length;
   const scopedArgs = ids ? step.scoped(ids) : step.full;
-  // a step that reports skipped ids runs whole: its parts would each report apart (267)
-  if (step.parts && !step.skipped && count >= 8 && JOBS > 1) {
-    const parts = Math.min(JOBS, Math.ceil(count / 4));
-    const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
-    const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
-    const lists = Array.from({ length: parts }, () => []);
-    all.forEach((id, index) => lists[index % parts].push(id));
-    // The step's shared outputs (its tables, `files`, `writes` and `sharedWrites`) are the merge's alone: held to their
-    // digests across the parts, so a part that writes one fails the step instead of racing another part for it (268).
-    const shared = [...step.outputs.flatMap((name) => table.TABLES[name]?.files ?? []), ...(step.files ?? []),
-      ...(step.writes ?? []), ...(step.sharedWrites ?? [])];
-    const before = sharedDigests(root, expandGlobs(root, shared));
-    const runs = await Promise.all(lists.map(async (list, k) => {
-      await gate(step.gb);
-      return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, ...step.parts(join(scratch, `part${k}`))],
-        { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
-    }));
-    const failed = runs.find((run) => run.code !== 0);
-    if (failed) return failed;
-    const moved = movedShared(before, sharedDigests(root, expandGlobs(root, shared)));
-    if (moved.length) {
-      log(`[regen] ${step.name}: a part wrote ${moved.join(', ')}; only the merge writes the step's shared outputs`);
-      return { code: 1, out: runs[0].out };
-    }
-    const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
-    await gate(step.gb);
-    // the merge serializes every row and holds the step's own checks (anatomy's sim floors, with a blame build per drift)
-    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`],
-      { niced: true, timeoutS: step.timeoutS, label: `${step.name}-merge` });
-  }
   const extra = [];
   let jsonPath = null;
   if (step.report) extra.push(`${step.report}=${join(qaDir, `${stamp}-${step.name}-report.json`)}`);
   if (step.json) { jsonPath = join(qaDir, `${stamp}-${step.name}-${Date.now()}.json`); extra.push(`${step.json}=${jsonPath}`); }
-  const skippedFile = skipFile(step, Date.now());
-  if (skippedFile) extra.push(`${step.skipped}=${skippedFile}`);
-  await gate(step.gb);
-  const run = { ...await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra], { niced: true, timeoutS: timeoutFor(step, count), label: step.name }),
-    skipped: readSkipped(skippedFile) };
+  // a step that reports skipped ids runs whole: its parts would each report apart (267)
+  const run = step.parts && !step.skipped && count >= 8 && JOBS > 1
+    ? await runParts(step, ids, state, scopedArgs, extra) : await runWhole(step, scopedArgs, extra, count);
   if (run.code === 0 && jsonPath) {
     // spare-track --update exits 0 when a build fails and keeps the old row: every requested id must have a fresh row.
     const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
@@ -209,6 +177,45 @@ async function runCpuStep(step, ids, state) {
     }
   }
   return run;
+}
+
+async function runWhole(step, scopedArgs, extra, count) {
+  const skippedFile = skipFile(step, Date.now());
+  await gate(step.gb);
+  return { ...await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
+    { niced: true, timeoutS: timeoutFor(step, count), label: step.name }), skipped: readSkipped(skippedFile) };
+}
+
+async function runParts(step, ids, state, scopedArgs, extra) {
+  const count = ids?.length ?? state.ids.length;
+  const parts = Math.min(JOBS, Math.ceil(count / 4));
+  const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
+  const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
+  const lists = Array.from({ length: parts }, () => []);
+  all.forEach((id, index) => lists[index % parts].push(id));
+  // The step's shared outputs (its tables, `files`, `writes` and `sharedWrites`) are the merge's alone: held to their
+  // digests across the parts, so a part that writes one fails the step instead of racing another part for it (268).
+  const shared = [...step.outputs.flatMap((name) => table.TABLES[name]?.files ?? []), ...(step.files ?? []),
+    ...(step.writes ?? []), ...(step.sharedWrites ?? [])];
+  const before = sharedDigests(root, expandGlobs(root, shared));
+  const runs = await Promise.all(lists.map(async (list, k) => {
+    await gate(step.gb);
+    return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, ...step.parts(join(scratch, `part${k}`))],
+      { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
+  }));
+  const failed = runs.find((run) => run.code !== 0);
+  if (failed) return failed;
+  const moved = movedShared(before, sharedDigests(root, expandGlobs(root, shared)));
+  if (moved.length) {
+    log(`[regen] ${step.name}: a part wrote ${moved.join(', ')}; only the merge writes the step's shared outputs`);
+    return { code: 1, out: runs[0].out };
+  }
+  const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
+  await gate(step.gb);
+  // the merge serializes every row and holds the step's own checks (anatomy's sim floors, with a blame build per
+  // drift); it alone takes the report and json flags
+  return runChild([step.tool, ...step.flags, ...scopedArgs, ...extra, `--merge-from=${dirs}`],
+    { niced: true, timeoutS: step.timeoutS, label: `${step.name}-merge` });
 }
 
 /** Run a GPU step on `ids` in capture-lock holds, each one browser within the step's time and renderer caps (gpuChunks). */

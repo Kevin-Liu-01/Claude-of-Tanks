@@ -1,4 +1,5 @@
-// Parallel parts of a per-id generator (268, the changed-only chain's --jobs): each part measures its --ids and writes
+// Parallel parts of a per-id generator (268, the changed-only chain's --jobs; fills keep their own, anatomy, seats,
+// spare track and gun lines use these): each part measures its --ids and writes
 // their rows into its own scratch directory, reading the tree and writing nothing in it; one merge run takes those rows
 // in place of measuring them and writes the shared files (the tables, their index and loader map, the ledgers) once,
 // through the generator's own serializer, so N parts write exactly the bytes one process writes. The chain holds the
@@ -39,6 +40,30 @@ export function readPartRows(dirs, tool) {
     }
   }
   return rows;
+}
+
+/**
+ * A per-id generator's parts arguments: `--out-dir=<dir>` runs one part (its --ids measured into dir alone),
+ * `--merge-from=<dir>,<dir>` the merge. `take(id)` hands the merge that id's part row once (undefined when no part
+ * measured it: the merge measures it itself); `done()` refuses a part row no id of the merge took.
+ */
+export function partArgs(argv, tool) {
+  const value = (name) => argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? '';
+  const partDir = value('out-dir') || null, from = value('merge-from');
+  if (partDir && from) throw new Error(`${tool}: --out-dir runs one part and --merge-from the merge, never both`);
+  if (partDir && !value('ids')) throw new Error(`${tool}: a part (--out-dir) measures --ids`);
+  const merged = from ? readPartRows(from.split(','), tool) : null;
+  return {
+    partDir, merging: !!merged,
+    take: (id) => {
+      const row = merged?.get(id);
+      merged?.delete(id);
+      return row;
+    },
+    done: () => {
+      if (merged?.size) throw new Error(`${tool}: --merge-from rows for ids this run does not measure: ${[...merged.keys()].join(', ')}`);
+    },
+  };
 }
 
 /** sha256 of each file (repository-relative paths under `root`: the chain expands the step's globs). */

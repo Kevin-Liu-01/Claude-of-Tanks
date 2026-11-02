@@ -458,7 +458,8 @@ export function gpuChunks(step, list) {
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
  *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts(dir): the chain
  *           splits a run of 8 or more ids into --jobs parallel parts, each given these arguments for its scratch dir,
- *           and one merge run of the tool writes them (--merge-from); the step's shared outputs must not move while the
+ *           and one merge run of the tool writes them (--merge-from, with the step's report and json flags, which the
+ *           parts never get); the step's shared outputs must not move while the
  *           parts run (tools/changed-only/parts.mjs); sharedWrites: other files the tool writes (a verdict ledger),
  *           never keyed, held across the parts as the outputs are
  *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
@@ -488,7 +489,9 @@ export const STEPS = Object.freeze([
   {
     name: 'seats', device: 'cpu', tool: 'tools/gen-mission-attachment-seats.mjs',
     flags: ['--seeds=4000,4242,8191', '--qualities=high,low'],
-    full: [], scoped: (list) => [ids(list)],
+    // 268: parts seat their ids into scratch dirs; the merge writes both tables and the report once (one run used to
+    // rewrite them after every id, so two concurrent runs raced)
+    full: [], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     // 266 (trace-check --combat): the attachment seats follow the combat leaves
     rowReads: [SPEC_COMBAT],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
@@ -499,7 +502,9 @@ export const STEPS = Object.freeze([
     name: 'spareTrack', device: 'cpu', tool: 'tools/spare-track-placement-check.mjs',
     // --force: the tool's own inputHash skip ignores tool code and flags; the chain's key covers both.
     flags: ['--ledger=docs/geometry-gate/spare-track.json', '--update', '--force', '--quiet'],
-    full: ['--ids=all'], scoped: (list) => [ids(list)],
+    // 268 (6106 s of wall in the 267 regen): parts measure into scratch dirs; the merge runs the source lint and writes
+    // the ledger, the seat plan and --json once
+    full: ['--ids=all'], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     check: ['--ids=all', '--check'], checkScoped: (list) => [ids(list), '--check'],
     checkFlags: ['--ledger=docs/geometry-gate/spare-track.json', '--quiet'],
     outputs: ['spareTrackLedger', 'spareTrackSeatPlan'],
@@ -539,7 +544,9 @@ export const STEPS = Object.freeze([
     // 229: each id's gun-line census row binds the turret and gun digests of its ledger row, so it follows the ledger
     // (tank-release-plan's gun-junction --check fails an id whose ledger geometry moved without it).
     name: 'gunLines', device: 'cpu', tool: 'tools/gun-junction-census.mjs',
+    // 268: parts census their ids into scratch dirs; the merge writes the ledger once
     flags: ['--ledger=docs/geometry-gate/gun-junction.json', '--update'], full: ['--all'], scoped: (list) => [ids(list)],
+    parts: (dir) => [`--out-dir=${dir}`],
     check: ['--all'], checkScoped: (list) => [ids(list)], checkFlags: ['--ledger=docs/geometry-gate/gun-junction.json', '--check'],
     // the census copies each id's turret and gun digests from that id's fleet-ledger row (gun-junction-census.mjs)
     rowReads: ['geometryLedger'], outputs: ['gunJunction'],
