@@ -41,7 +41,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   t72b3mX: Object.freeze(['t72b3m_2016']),
   challenger1X: Object.freeze(['challenger1_mk3']),
   t72buX: Object.freeze(['t72bu']),
-  chieftain5X: Object.freeze(['chieftain5']),
+  // release 268: the Mk 3 and the Mk 9 on the Mk 5 X's castings (chieftainMarksX.ts)
+  chieftain5X: Object.freeze(['chieftain5', 'chieftain3', 'chieftain_mk9']),
   t90AwX: Object.freeze(['t90']),
   t90BurlakX: Object.freeze(['t90a_burlak']),
   t90msX: Object.freeze(['t90ms_tagil']),
@@ -80,7 +81,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'type74', 'amx30', 'amx30b2',
   ]),
   uk: Object.freeze([
-    'chieftain3', 'chieftain_mk9', 'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
+    'vickers_mk1', 'centurion3', 'centurion5_2', 'shot_kal', 'centurion13', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus',
     'fv510', 'fv510_milan',
   ]),
   challenger: Object.freeze([

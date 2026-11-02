@@ -40,9 +40,7 @@ export function createMudguardFenderSeatingAudit() {
         proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
           .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
       }
-      if (hullRig?.userData.chieftainShoulderMudguardReceipt) {
-        shoulderReceipts.set(id, hullRig.userData.chieftainShoulderMudguardReceipt);
-      } else if (hullRig?.userData.t90MSFrontMudguardReceipt) {
+      if (hullRig?.userData.t90MSFrontMudguardReceipt) {
         shoulderReceipts.set(id, hullRig.userData.t90MSFrontMudguardReceipt);
       } else if (hullRig?.userData.leopardShoulderMudguardReceipt) {
         shoulderReceipts.set(id, hullRig.userData.leopardShoulderMudguardReceipt);
@@ -94,8 +92,10 @@ export function createMudguardFenderSeatingAudit() {
       // profiles/leopard2Hull.ts, beside the 2A3 and the Christian II: its front mudguard over the idler is one closed
       // section solid per side, not this receipt's raked flange and terminal web; release 265: the 2A4 and the 2A4 OTCO
       // followed them with the 2A4 family's rebuild, profiles/leopard2A4Family.ts)
+      // (268: the Chieftain Mk 3 and Mk 9 left uk.ts's closed shoulder for the Mk 5 X's own bow guards,
+      // profiles/chieftain5XSourceHullEquipment.ts, with the source-built Mk 5)
       const expectedClosedShoulders = [
-        'chieftain3', 'chieftain_mk9', 't90ms_2011',
+        't90ms_2011',
         'kf51_evo', 'kf51_u',
       ];
       for (const id of expectedClosedShoulders) {
@@ -110,13 +110,6 @@ export function createMudguardFenderSeatingAudit() {
           `${id}: every structural shoulder/mudguard part is registered`);
       }
 
-      for (const id of ['chieftain3', 'chieftain_mk9']) {
-        const receipt = shoulderReceipts.get(id);
-        assert.equal(receipt.steppedShelvesVisibleFromSide, false,
-          `${id}: bow shoulder may not read as exposed stair steps`);
-        assert.ok(receipt.trackClearanceM >= 0.009,
-          `${id}: outer web remains beyond the moving shoe plane`);
-      }
 
       {
         const receipt = shoulderReceipts.get('t90ms_2011');
