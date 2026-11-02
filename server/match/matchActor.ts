@@ -15,6 +15,7 @@ import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import { camoSelectionBonus } from '../../src/sim/camoPaint.ts';
+import type { BotCamo } from '../../src/sim/camoPaint.ts';
 import { stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
@@ -77,6 +78,8 @@ export interface ActorBotSpec {
   team: 'alpha' | 'bravo';
   specId: string;
   difficulty?: 'easy' | 'normal' | 'hard';
+  /** The bot's paint as the old host's roster carried it (host migration); absent, the authority rolls it. */
+  camo?: BotCamo;
 }
 
 export interface MatchVerdict {
@@ -458,9 +461,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (seatOfPlayer.has(bot.playerId) || entityIdOf.has(bot.playerId)) throw new TypeError(`duplicate bot ${bot.playerId}`);
     const entityId = nextEntityId++;
     entityIdOf.set(bot.playerId, entityId);
-    // a bot wears its factory scheme, as the solo battle's do by default
+    // (268, item 6) a bot's paint is the authority's roll (or the roster's, resumed), its bonus with it; the WELCOME's roster
+    // carries it below, so every client paints what the authority scores
     players.push({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: bot.difficulty ?? 'normal',
-      camoBonus: camoSelectionBonus('factory', stockCamoPatternIdFor(bot.specId), mapId) });
+      ...(bot.camo ? { camo: bot.camo } : {}) });
     rosterEntries.push({ entityId, seat: NO_SEAT, team: TEAM_ID[bot.team], bot: true, connected: true, playerId: bot.playerId, name: bot.name, specId: bot.specId });
   }
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);
@@ -494,6 +498,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityByWireId.set(entityId, entity);
     lagComp.bind(entity, entityId - 1);
   }
+  for (const entry of rosterEntries) if (entry.bot) entry.camo = entityByWireId.get(entry.entityId)?.camo ?? 'factory';
   const era = createEraIndexer();
   // the authority's view for one viewer frame (buildFrame), reused for every frame
   const viewEntities: AuthoritativeEntity[] = [];

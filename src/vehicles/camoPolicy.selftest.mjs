@@ -341,6 +341,19 @@ assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
   assert.equal(camoSelectionBonus('factory', null, 'verdant'), 0, 'with no stock scheme it earns nothing');
   assert.equal(camoSelectionBonus(null, 'summer', 'verdant'), CAMO_PAINT_BONUS, 'no choice is factory');
   assert.equal(camoSelectionBonus('nonesuch', null, 'verdant'), 0, 'an unknown scheme earns nothing');
+  // (268, item 6) one bot paint rule: mulberry32's first draw on the bot's seed (the match seed and its roster index), AUTO
+  // under 60 %, every bot on the winter and desert maps
+  const { botCamoRoll } = await import('../sim/camoPaint.ts');
+  const { mulberry32 } = await import('../game/ai.ts');
+  let autos = 0;
+  for (let index = 0; index < 400; index++) {
+    const rolled = botCamoRoll(6000, index, 'verdant');
+    assert.equal(rolled, mulberry32(6000 + 47000 + index * 977)() < 0.6 ? 'auto' : 'factory', `bot ${index} rolls the bot's own stream`);
+    autos += rolled === 'auto';
+    assert.equal(botCamoRoll(6000, index, 'winter'), 'auto');
+    assert.equal(botCamoRoll(6000, index, 'desert'), 'auto');
+  }
+  assert.ok(autos > 200 && autos < 280, `about 60 % of bots wear AUTO (${autos} of 400)`);
   // (268) the paint keeps its copy of the tables (materials.ts BIOME_PATTERN, PATTERN_SEASON) until a release that moves the
   // fleet core anyway folds it onto camoPaint.ts (item/camo-fold-268): the paint and the bonus read the same rows
   const materials = readFileSync(new URL('./materials.ts', import.meta.url), 'utf8');

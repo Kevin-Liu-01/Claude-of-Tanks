@@ -124,6 +124,9 @@ import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { CAMO_PAINT_BONUS } from '../sim/spotting.ts';
+import { camoSelectionBonus } from '../sim/camoPaint.ts';
+import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
+import type { BotCamo } from '../sim/camoPaint.ts';
 import { createMatchSpotting } from '../sim/matchSpotting.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
@@ -168,7 +171,8 @@ import {
 } from './soloConsumables.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
-  autoCamoIdsForBattle,
+  soloBotCamo,
+  SOLO_MATCH_SEED,
   ensureTankVisual,
   pickBattleParticipants,
   pickNationalBattle,
@@ -294,6 +298,9 @@ type SoloPooledEntity = Omit<RosterEntity,
     equip?: string[];
     /** Its paint's spotting bonus for this battle (sim/matchSpotting.ts), stamped by createBattleSpotting. */
     camoBonus?: number;
+    /** A bot's paint this battle (game/rosterState.ts soloBotCamo: the authority's roll on a random roster); null for the
+     * player, who wears its saved selection. */
+    camo?: BotCamo | null;
     _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
     _lastImpactT?: number;
@@ -628,7 +635,7 @@ function soloDebugFlags(): SoloDebugFlags | null {
   return root.__DEBUG?.flags || null;
 }
 
-const COMBAT_SEED = 6000;
+const COMBAT_SEED = SOLO_MATCH_SEED;
 // module repair duration lives with the state machine: sim/damage.ts REPAIR_S
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
@@ -780,13 +787,13 @@ function configureBattleCamo(
   options: SetupBattleOptions,
 ): void {
   clearCamoOverrides();
-  if (options.random) {
-    for (const specId of autoCamoIdsForBattle(
-      game.tanks, playerSpecId, game.mapId, true, game.battleCount,
-    )) {
-      setCamoOverride(specId, 'auto');
-    }
-  }
+  // (268, item 6) each bot wears the paint its roster slot rolls, as the authority rolls an online bot's: its spec's runtime
+  // override (participants are keyed by spec id)
+  const seed = game.matchSeed ?? COMBAT_SEED;
+  game.tanks.forEach((entity, index) => {
+    entity.camo = soloBotCamo(index, entity.specId, playerSpecId, game.mapId, !!options.random, seed);
+    if (entity.camo) setCamoOverride(entity.specId, entity.camo);
+  });
   if (!options.deferCamoRepaint) applyCamoPatterns();
 }
 
@@ -820,7 +827,11 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
   // (268) one spotting construction for both drivers (sim/matchSpotting.ts); a hull's paint against this map's biome is
   // stamped for the battle (the authority takes its seat record's)
-  for (const entity of game.tanks) entity.camoBonus = hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
+  // (268, item 6) a bot's bonus follows its roster paint by the authority's rule; the player's its saved selection
+  for (const entity of game.tanks) {
+    entity.camoBonus = entity.camo ? camoSelectionBonus(entity.camo, stockCamoPatternIdFor(entity.specId), game.mapId)
+      : hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
+  }
   return createMatchSpotting({
     seed: game.matchSeed ?? COMBAT_SEED,
     getTanks: () => game.tanks as SpottingTank[],
@@ -1120,13 +1131,12 @@ export function setupBattle(
     game.recentBotSpecIds = memory.recent;
     game.previousBotSpecIds = memory.previous;
   }
-  // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
-  // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
-  // snowfields/dunes stop being full of factory-green bots (the player's
-  // AUTO paint already matched). Runtime overrides only — localStorage and
-  // the garage picker are untouched; the player's spec is never rolled
-  // (participants are keyed by spec id, so no bot shares it). Seeded per
-  // battle for reproducibility. main.ts startBattle calls setCamoBiome
+  // BOT BIOME CAMO (camo_spotting r5; 268 item 6, one rule with the authority): non-player participants of a random
+  // battle roll a 60% chance of fielding the biome-matched AUTO pattern (every bot on the winter and desert maps) so
+  // snowfields/dunes stop being full of factory-green bots; the rest wear their stock scheme. Runtime overrides only —
+  // localStorage and the garage picker are untouched; the player's spec is never rolled (participants are keyed by spec
+  // id, so no bot shares it). Rolled from the match seed at each roster index (rosterState.ts soloBotCamo), as the
+  // authority rolls an online bot. main.ts startBattle calls setCamoBiome
   // BEFORE setupBattle, so the repaint below resolves the right biome; the
   // trailing applyCamoPatterns() also restores factory paint on entries a
   // PREVIOUS battle's overrides repainted (cheap no-op otherwise).

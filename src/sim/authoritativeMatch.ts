@@ -16,6 +16,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
+import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
@@ -146,6 +147,8 @@ import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, ty
 import { structureRubbleHeightM } from './structureDamage.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
+import { botCamoRoll, camoSelectionBonus } from './camoPaint.ts';
+import type { BotCamo } from './camoPaint.ts';
 
 import * as detMath from './detMath.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
@@ -167,8 +170,10 @@ export interface AuthoritativePlayerRecord {
   spawn?: AuthoritativeSpawn;
   bot?: boolean;
   equipment?: readonly string[] | null;
-  /** The seat's paint bonus against the map (sim/matchSpotting.ts camoBonus); absent, none. */
+  /** The seat's paint bonus against the map (sim/matchSpotting.ts camoBonus); absent, none. A bot's follows its paint. */
   camoBonus?: number;
+  /** A bot's paint as the roster carried it (a resumed match); absent, the match rolls it (sim/camoPaint.ts botCamoRoll). */
+  camo?: BotCamo;
   /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
@@ -249,8 +254,10 @@ export interface AuthoritativeEntity {
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
-  /** Its paint's spotting bonus for this match (sim/matchSpotting.ts), from its seat record. */
+  /** Its paint's spotting bonus for this match (sim/matchSpotting.ts): a seat's from its record, a bot's from its paint. */
   camoBonus?: number;
+  /** A bot's paint (sim/camoPaint.ts botCamoRoll; the roster carries it to every client); null for a seat. */
+  camo?: BotCamo | null;
   /** Impact physics: closing speed already priced in the crash still resolving, and when it last grew. */
   _impactAccumMps?: number;
   _impactAccumT?: number;
@@ -962,6 +969,9 @@ export function createAuthoritativeMatch({
     applyRulesetToCombat(combat, spec.gun.shells, ruleset, rulesetSeatHullScale(ruleset, team, bot));
     const consumableItems = consumableLoadoutFor(spec, bot, record.consumables);
     const consumables = createConsumableState(consumableItems, consumableTiming, combat);
+    // (268, item 6) a bot's paint is the match's roll at its roster index, as the solo battle rolls it, or the roster's on
+    // a resumed match; its bonus follows that paint
+    const camo = !bot ? null : record.camo === 'auto' || record.camo === 'factory' ? record.camo : botCamoRoll(seed, entities.length, mapId);
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,
@@ -974,7 +984,9 @@ export function createAuthoritativeMatch({
       input,
       bot,
       isPlayer: !bot,
-      camoBonus: Number.isFinite(record.camoBonus) ? record.camoBonus : 0,
+      camo,
+      camoBonus: camo ? camoSelectionBonus(camo, stockCamoPatternIdFor(spec.id), mapId)
+        : Number.isFinite(record.camoBonus) ? record.camoBonus : 0,
       connected: true,
       kills: 0,
       damage: 0,

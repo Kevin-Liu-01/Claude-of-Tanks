@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { createGameState } from './stateCore.ts';
 import {
-  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
+  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, soloBotCamo, SOLO_MATCH_SEED, spawnTanks,
 } from './rosterState.ts';
+import { botCamoRoll } from '../sim/camoPaint.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 
@@ -58,6 +59,16 @@ assert.deepEqual(
   'high-contrast battlefields plan AUTO camouflage for every bot');
 assert.deepEqual(planBattleCamoOverrides(game, 'm1a1_abrams_hc', 'verdant', false), [],
   'non-random staged rosters do not invent bot camouflage overrides');
+// (268, item 6) one bot paint rule: the planned AUTO bots are the slots the authority's roll paints (sim/camoPaint.ts
+// botCamoRoll from the solo match seed at each roster index), and soloBotCamo is what setupBattle stamps on each hull
+assert.deepEqual(firstCamo, first.filter((_, index) => index > 0 && botCamoRoll(SOLO_MATCH_SEED, index, 'verdant') === 'auto'),
+  'the planned AUTO bots are the slots the match seed rolls');
+assert.ok(firstCamo.length > 0 && firstCamo.length < first.length - 1, `a verdant roster wears both paints (${firstCamo.length} of ${first.length - 1} AUTO)`);
+assert.deepEqual(first.map((id, index) => soloBotCamo(index, id, 'm1a1_abrams_hc', 'verdant', true, SOLO_MATCH_SEED)),
+  [null, ...first.slice(1).map((id) => (firstCamo.includes(id) ? 'auto' : 'factory'))], 'the player none, every bot its roll');
+assert.deepEqual(first.map((id, index) => soloBotCamo(index, id, 'm1a1_abrams_hc', 'verdant', false, SOLO_MATCH_SEED)),
+  [null, ...first.slice(1).map(() => 'factory')], 'a staged roster\'s bots wear their stock scheme');
+assert.equal(soloBotCamo(3, 'm1a1_abrams_hc', 'm1a1_abrams_hc', 'winter', true, SOLO_MATCH_SEED), null, 'a bot on the player\'s spec wears the player\'s paint');
 const staged = planBattleParticipantIds(game, 'm1a1_abrams_hc', false);
 assert.equal(staged.length, 8,
   'deterministic capture staging keeps a complete eight-vehicle roster');

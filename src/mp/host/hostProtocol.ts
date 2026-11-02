@@ -30,6 +30,9 @@ export interface HostBootBot {
   team: 'alpha' | 'bravo';
   specId: string;
   difficulty?: 'easy' | 'normal' | 'hard';
+  /** The bot's paint as the authority's roster carried it (an elected host's planFromRoster); absent, the authority
+   * rolls it (sim/camoPaint.ts botCamoRoll). */
+  camo?: 'auto' | 'factory';
 }
 
 /** What the old host serialized beside the wire keyframe: the parts of an entity a row does not carry. */

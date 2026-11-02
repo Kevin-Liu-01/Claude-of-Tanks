@@ -21,6 +21,7 @@
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
+import { botCamoRoll } from './camoPaint.ts';
 import { encodeAimIntent } from './aimIntent.ts';
 import { applyPlayerInput } from './playerInputStage.ts';
 import * as detMath from './detMath.ts';
@@ -69,6 +70,8 @@ function hullBytes(entity) {
   fields.push(['aux.lights', aux.lights ?? 0], ['aux.gunOn', aux.gunOn ? 1 : 0], ['aux.smokeCharges', aux.smokeCharges ?? -1], ['aux.smokeReadyAt', aux.smokeReadyAt ?? -1],
     ['aux.smoke.born', aux.smoke?.born ?? -1], ['aux.smoke.x', aux.smoke?.x ?? 0], ['aux.smoke.z', aux.smoke?.z ?? 0], ['aux.smoke.yaw', aux.smoke?.yaw ?? 0]);
   for (const [name, module] of Object.entries(c.modules ?? {}).sort(([a], [b]) => a.localeCompare(b))) fields.push([`module.${name}`, module.hp]);
+  // (268, item 6) its paint (a bot's roster roll; none for a seat) and the spotting bonus it earns
+  fields.push(['camo', { auto: 2, factory: 1 }[entity.camo] ?? 0], ['camoBonus', entity.camoBonus ?? 0]);
   return fields.map(([key, value]) => [key, hex(value)]);
 }
 
@@ -121,9 +124,10 @@ async function runBattle(ticks, perturb, chosen) {
   foe.state.pos.set(own.state.pos.x + 140 * Math.sin(own.state.yaw), 0, own.state.pos.z + 140 * Math.cos(own.state.yaw));
   // the online driver's authority on the same battlefield, the same hulls where the page put them (the player's equipment as
   // the page's: none stored; the hostile's the bots' default on both)
+  // (the page rolled the hostile's paint at its slot in the full roster: it rides to the authority as a resumed roster's would)
   const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
-    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
-    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
+    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoBonus: own.camoBonus, spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
+    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, camo: foe.camo, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
   ] });
   match.onMatchReady();
   const authorityOf = (entity) => match.entityById.get(entity.id);
@@ -206,7 +210,7 @@ async function runBattle(ticks, perturb, chosen) {
  * page's bot before its step.
  */
 const AI_FOE_SPEC = 'vt4a1';
-async function runRealAi(ticks, perturb = null) {
+async function runRealAi(ticks, perturb = null, { foeRecord = {} } = {}) {
   const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
@@ -229,8 +233,10 @@ async function runRealAi(ticks, perturb = null) {
   assert.ok(own.isPlayer && foe.aiCtl && foe.team === 'enemy', 'the second hull is a hostile bot');
   const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
     { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoBonus: own.camoBonus, spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
-    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, camoBonus: foe.camoBonus, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
+    // (268, item 6) the bot's paint is the authority's own roll at its roster index, as the page's is: nothing carried
+    { id: foe.id, specId: foe.specId, team: 'bravo', bot: true, spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI }, ...foeRecord },
   ] });
+  const paint = { page: foe.camo, authority: match.entityById.get(foe.id).camo };
   match.onMatchReady();
   const authorityOf = (entity) => match.entityById.get(entity.id);
   for (const entity of game.tanks) {
@@ -280,7 +286,7 @@ async function runRealAi(ticks, perturb = null) {
     if (!divergence && foe.aiCtl.targetId !== bot.aiCtl.targetId) divergence = { tick, hull: 'bot', field: 'targetId' };
   }
   Object.assign(exercised, { movedM: Math.hypot(foe.state.pos.x - start.x, foe.state.pos.z - start.z), botHp: foe.combat.hp / foe.combat.maxHp,
-    ownHp: own.combat.hp / own.combat.maxHp });
+    ownHp: own.combat.hp / own.combat.maxHp, paint });
   authorityWorld.release?.();
   pageWorld.release?.();
   return { divergence, exercised };
@@ -322,6 +328,13 @@ assert.ok(real.exercised.sightedAt !== null, 'the bot sighted the own hull');
 assert.ok(real.exercised.pulls >= 1, `the bot fired (${real.exercised.pulls} trigger pulls)`);
 assert.ok(real.exercised.closestM < 10, `the two hulls met (${real.exercised.closestM.toFixed(1)} m apart at the closest)`);
 assert.equal(real.exercised.botHp, 0, `the own hull destroyed the bot (${(real.exercised.botHp * 100).toFixed(1)} % hp)`);
+// (268, item 6) one bot paint rule: both drivers rolled the bot's paint from the match seed at its roster index (1), and an
+// index slip would show (the seed rolls another paint at 0); a paint the authority is handed instead parts them at tick 0
+assert.deepEqual(real.exercised.paint, { page: botCamoRoll(SEED, 1, MAP), authority: botCamoRoll(SEED, 1, MAP) },
+  `both drivers painted the bot by the roll (${JSON.stringify(real.exercised.paint)})`);
+assert.notEqual(botCamoRoll(SEED, 0, MAP), botCamoRoll(SEED, 1, MAP), 'the seed rolls another paint one slot over');
+const wrongPaint = await runRealAi(3, null, { foeRecord: { camo: real.exercised.paint.page === 'auto' ? 'factory' : 'auto' } });
+assert.deepEqual(wrongPaint.divergence, { tick: 0, hull: 'bot', field: 'camo' }, `a bot handed the other paint is caught (${JSON.stringify(wrongPaint.divergence)})`);
 const BOT_NUDGE = 600;
 const botNudged = await runRealAi(BOT_NUDGE + 20, (tick, foe) => { if (tick === BOT_NUDGE) foe.state.yaw += 1e-9; });
 assert.ok(botNudged.divergence, 'the bot\'s heading a billionth off on the page is caught');
@@ -342,5 +355,6 @@ console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls b
   + `${four.exercised.shots[1][0]} on both; a throttle a billionth off seeded at tick ${SEEDED} caught at tick `
   + `${nudged.divergence.tick} (${nudged.divergence.field}), the page's switch a tick late caught at tick ${late.divergence.tick} (${late.divergence.field}); `
   + `the real AI on both drivers ${REAL_AI_TICKS} ticks byte-identical (a ${AI_FOE_SPEC} bot drove ${real.exercised.movedM.toFixed(0)} m, sighted the own hull `
-  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart and was destroyed), `
+  + `at tick ${real.exercised.sightedAt}, fired ${real.exercised.pulls} times, met the own hull ${real.exercised.closestM.toFixed(1)} m apart and was destroyed; `
+  + `its paint '${real.exercised.paint.page}' rolled alike, a handed paint caught at tick 0), `
   + `its heading a billionth off at tick ${BOT_NUDGE} caught at tick ${botNudged.divergence.tick} (${botNudged.divergence.field})`);

@@ -55,6 +55,22 @@ assert.equal(fromRoom.bots[0].difficulty, 'hard');
 assert.deepEqual(planHostBoot(room, attached, 'alice').bots, fromRoom.bots);
 assert.equal(planFromMatchStart({ ...matchStart, plan: { seats: [{ seat: 'x' }] } }), null);
 assert.equal(planFromMatchStart({ ...matchStart, plan: 'nope' }), null);
+// (268, item 6) a bot's paint: an elected host's roster fallback keeps the paint the old authority rolled; a plan naming a
+// paint no bot can wear is ignored
+{
+  const roster = [
+    { seat: 0, team: 0, bot: false, playerId: 'alice', name: 'Alice', specId: 'm1a1_abrams_hc' },
+    { seat: 255, team: 1, bot: true, playerId: 'bot-1', name: 'Bot 1', specId: 't90am', camo: 'auto' },
+    { seat: 255, team: 0, bot: true, playerId: 'bot-2', name: 'Bot 2', specId: 't90am', camo: 'factory' },
+  ];
+  assert.deepEqual(planFromRoster(roster, null).bots.map((bot) => [bot.playerId, bot.camo]), [['bot-1', 'auto'], ['bot-2', 'factory']],
+    'an elected host keeps each bot\'s rolled paint');
+  assert.equal(planFromRoster([{ ...roster[1], camo: undefined }], null).bots[0].camo, undefined, 'no paint in the roster leaves the roll to the authority');
+  const painted = { ...matchStart, plan: { ...attached.plan, bots: [{ ...attached.plan.bots[0], camo: 'auto' }] } };
+  assert.equal(planFromMatchStart(painted).bots[0].camo, 'auto', 'an attached plan may carry a bot\'s paint');
+  assert.equal(planFromMatchStart({ ...matchStart, plan: { ...attached.plan, bots: [{ ...attached.plan.bots[0], camo: 'winter' }] } }), null,
+    'a bot paint outside AUTO and factory is a malformed plan');
+}
 
 // co-op (gameplay-modes-228): the Horde seats its twenty-strong pool and four allied bots; Frontline its twelve defenders
 // and three allies — the waves have hostiles in a room, and the host derives exactly the room's own seating

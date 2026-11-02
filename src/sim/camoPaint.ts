@@ -59,6 +59,29 @@ export function camoPaintFits(pattern: string, mapId: string): boolean {
   return (CAMO_PATTERN_SEASONS[pattern] ?? []).includes(biome) || (CAMO_BIOME_POOLS[biome] ?? []).includes(pattern);
 }
 
+/** A bot's paint: AUTO (a member of its map's pool) where the match rolls it, else its stock scheme. */
+export type BotCamo = 'auto' | 'factory';
+
+/** The share of a battle's bots that wear AUTO (camo_spotting r5: so a field is not all factory paint). */
+const BOT_AUTO_SHARE = 0.6;
+
+/**
+ * A bot's paint (268, Main item 6: one bot paint rule for both drivers), rolled from the match seed and the bot's roster
+ * index as its other streams are (game/botConstruction.ts botSeeds); on the winter and desert maps every bot wears AUTO,
+ * where a factory scheme reads wrong. The authority rolls it (sim/authoritativeMatch.ts) and the roster carries it
+ * (the WELCOME's flags bit 2), so a client paints what the authority scores; the solo battle rolls the same for a random
+ * roster (game/rosterState.ts).
+ */
+export function botCamoRoll(matchSeed: number, index: number, mapId: string): BotCamo {
+  if (mapId === 'winter' || mapId === 'desert') return 'auto';
+  // mulberry32's first draw (game/ai.ts) on the bot's own seed: this leaf imports nothing
+  let a = (matchSeed + 47000 + index * 977) | 0;
+  a = (a + 0x6D2B79F5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296 < BOT_AUTO_SHARE ? 'auto' : 'factory';
+}
+
 /**
  * A chosen scheme's spotting bonus on a map: 'auto' always, 'factory' when the vehicle's stock scheme (`stockPattern`)
  * fits, any other scheme when it fits; an unknown id earns nothing.
