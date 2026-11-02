@@ -229,7 +229,7 @@
   "t80u_kursk": {"turretRaisedCm2":4192,"turretBaseCm2":8932,"hullCm2":1264,"pockets":12,"geometry":{"hull":"c991244a73cf267e","turret":"410859fa7c31b8c6","gun":"be7d4746d0e64c14"}},
   "t80u_yun": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":1288,"pockets":2,"geometry":{"hull":"43c3235e80445909","turret":"2419a5da1885bc4d","gun":"a3ee65410eb85e76"}},
   "t80u_zoria": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"eb109b40a3ab72a3","turret":"d019be6dc9f529cc","gun":"b61fe635655510bf"}},
-  "t80uk": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"b86da5321b20bd14","turret":"7d14a951c0016741","gun":"fba414a0d77f7ffd"}},
+  "t80uk": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"9c966d17cee22482","turret":"403c0283d92ace6f","gun":"fba414a0d77f7ffd"}},
   "t84": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":4236,"pockets":4,"geometry":{"hull":"5ba6cc7bea4f474d","turret":"664be80767038cad","gun":"d7525b0801887392"}},
   "t84bm_oplot_m": {"turretRaisedCm2":2216,"turretBaseCm2":0,"hullCm2":1800,"pockets":4,"geometry":{"hull":"f691ab194ac4b355","turret":"5b259315c25ab345","gun":"f1b746bae0639ee5"}},
   "t90": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"d1d91ee744d30c26","turret":"41c0defaf693b0d7","gun":"ad7f948f7c0c73a6"}},
