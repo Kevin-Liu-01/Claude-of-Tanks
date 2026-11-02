@@ -1626,7 +1626,7 @@
         "volumeId": "M03",
         "name": "feedSystem",
         "min": [-0.0639,0.1894,-0.2192],
-        "max": [0.0639,0.2127,0.4542],
+        "max": [0.0639,0.2594,0.4542],
         "turretLocal": true
       },
       {
@@ -1732,7 +1732,7 @@
     ]
   },
   "geometryHash": "30a37009",
-  "metadataHash": "9c68f719",
+  "metadataHash": "668730e3",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0326
@@ -1794,8 +1794,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39844,
-      "sha256": "526cc5caa6cd627814914f8b8ed978e264abd4c07d8b7403611b7a40e7ed4423"
+      "bytes": 39884,
+      "sha256": "24706e392b38445a94e6a02a08f8a7e20b4b7b8961f5a8814b48f32a222ce11a"
     },
     "crewSide": {
       "file": "object695_crew_side.webp",

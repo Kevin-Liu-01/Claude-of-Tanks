@@ -1062,5 +1062,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/k21_x_assembled_20260918.glb",
+  "sha256": "e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b"
+ }
 }

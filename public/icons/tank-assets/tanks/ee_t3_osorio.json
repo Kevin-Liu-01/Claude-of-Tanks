@@ -616,8 +616,8 @@
       {
         "volumeId": "M07",
         "name": "radio",
-        "min": [0.1355,0.0587,-1.9825],
-        "max": [0.813,0.0867,-0.9226],
+        "min": [0.1355,0.0587,-1.8353],
+        "max": [0.813,0.4226,-1.6881],
         "turretLocal": true
       },
       {
@@ -753,7 +753,7 @@
     ]
   },
   "geometryHash": "28382041",
-  "metadataHash": "1a5712ed",
+  "metadataHash": "f6d5adb0",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.1779
@@ -867,8 +867,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19372,
-      "sha256": "2505689aba592ccbce61521704e59446e2301ea401a1dfb192d948c37a618334"
+      "bytes": 19380,
+      "sha256": "b37a3d16f9a26d453bd875f099681e9a0cc82b8cff657f6caf58b396c299b88d"
     },
     "crewSide": {
       "file": "ee_t3_osorio_crew_side.webp",
@@ -889,8 +889,8 @@
     "technicalLabels": {
       "file": "ee_t3_osorio_technical.json",
       "mime": "application/json",
-      "bytes": 5532,
-      "sha256": "0f7a8e3a66e0b5e6465298b62cbc2ff68a0fb40781e506652c25a64727d0c604"
+      "bytes": 5531,
+      "sha256": "d115ed02f4944f20995a5cddf989d35f2e712db72dc74ff9bf5386d2fdb7bb29"
     }
   }
 }

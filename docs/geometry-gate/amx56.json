@@ -1278,5 +1278,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leclerc_classic_x_source.glb",
+  "sha256": "e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0"
+ }
 }

@@ -102,7 +102,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3177>"
+      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3389>"
      }
     }
    ],
@@ -226,7 +226,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.922,
-      "host": "hull<buildBMP2@modern3.ts:4007>"
+      "host": "hull<buildBMP2@modern3.ts:3323>"
      }
     }
    ],
@@ -255,7 +255,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.966,
-      "host": "hull<buildBMP3@profiles/afvFamily.ts:1007>"
+      "host": "hull<buildBMP3@profiles/afvFamily.ts:1008>"
      }
     }
    ],
@@ -287,7 +287,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildBMP2@modern3.ts:4007>"
+      "host": "hull<buildBMP2@modern3.ts:3323>"
      }
     }
    ],
@@ -340,7 +340,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<buildBMP2@modern3.ts:3981>"
+      "host": "hull<buildBMP2@modern3.ts:3297>"
      }
     }
    ],
@@ -400,7 +400,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildArieteHullStage2@profiles/misc.ts:498>"
+      "host": "hull<buildArieteHullStage2@profiles/misc.ts:530>"
      }
     }
    ],
@@ -964,7 +964,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.956,
-      "host": "hull<buildType89Hull@modern3.ts:5084>"
+      "host": "hull<buildType89Hull@modern3.ts:4400>"
      }
     }
    ],
@@ -1030,7 +1030,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<buildK1A1Hull@modern3.ts:1250>"
+      "host": "hull<buildK1A1Hull@modern3.ts:1244>"
      }
     }
    ],
@@ -1661,7 +1661,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:493>"
+      "host": "hull<loftBand@profiles/abrams.ts:494>"
      }
     }
    ],
@@ -1696,7 +1696,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1442>"
+      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1443>"
      }
     }
    ],
@@ -1727,7 +1727,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:493>"
+      "host": "hull<loftBand@profiles/abrams.ts:494>"
      }
     }
    ],
@@ -1756,7 +1756,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.966,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3248>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3249>"
      }
     }
    ],
@@ -1815,7 +1815,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2544>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
      }
     }
    ],
@@ -1846,7 +1846,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.956,
-      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2716>"
+      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2032>"
      }
     },
     {
@@ -1870,7 +1870,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:835>"
+      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:836>"
      }
     }
    ],
@@ -1989,7 +1989,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2544>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
      }
     }
    ],
@@ -2036,7 +2036,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2544>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
      }
     }
    ],
@@ -2430,7 +2430,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<buildPuma@modern3.ts:4630>"
+      "host": "hull<buildPuma@modern3.ts:3946>"
      }
     }
    ],
@@ -3162,7 +3162,7 @@
    "hostSweep": []
   },
   "t80uk": {
-   "inputHash": "be5b0b01b6e606ad",
+   "inputHash": "9bb00be769f87879",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3240,7 +3240,7 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "4da4838485911c59",
+   "inputHash": "adcaa2e9f2c6367d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3291,7 +3291,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:67>"
      }
     }
    ],
@@ -3320,7 +3320,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.922,
-      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:66>"
+      "host": "hull<buildTamoyoHull@profiles/tamoyo.ts:67>"
      }
     }
    ],
@@ -3753,7 +3753,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.978,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3248>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3249>"
      }
     }
    ],
@@ -3816,7 +3816,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2544>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
      }
     }
    ],
@@ -3857,7 +3857,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<Proxy.add<-buildUpior@profiles/afvFamily.ts:1305>"
+      "host": "hull<Proxy.add<-buildUpior@profiles/afvFamily.ts:1306>"
      }
     }
    ],
@@ -3949,7 +3949,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildK2HullBody@modern3.ts:262>"
+      "host": "hull<buildK2HullBody@modern3.ts:256>"
      }
     }
    ],

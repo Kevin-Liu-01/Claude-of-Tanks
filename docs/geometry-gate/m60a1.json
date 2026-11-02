@@ -1089,6 +1089,18 @@
   ]
  },
  "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [],
+   "reference": [
+    "can"
+   ]
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1161,5 +1173,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/m60a1_x_source.glb",
+  "sha256": "c002db9dab0c31efb26bb8fb7586f0a2b347e673cab874760d4cdab866e00a8d"
+ }
 }

@@ -1305,6 +1305,10 @@
  ],
  "oracle": {
   "path": "/models/community-candidates/t90a_x_source.glb",
-  "sha256": "f0ba16a464dc7e9584ea382f11e5e98481b2945db2b8a2f134dfbae4fbba793d"
+  "sha256": "f0ba16a464dc7e9584ea382f11e5e98481b2945db2b8a2f134dfbae4fbba793d",
+  "graft": {
+   "path": "/models/community-candidates/t90a_burlak_x_source.glb",
+   "sha256": "db1ca6b229f9925474dfda35727d76895e9a3b825af2c3b3a326cf2a6e7d0b52"
+  }
  }
 }

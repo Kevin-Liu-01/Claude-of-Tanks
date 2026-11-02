@@ -858,7 +858,18 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [
+    "stowage"
+   ],
+   "reference": []
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -931,5 +942,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/mbt70_usa.glb",
+  "sha256": "2fe61a6bd2a44b58453fa4c8cfd07a6be07497a2fd5f0faece329652c4dd1c05"
+ }
 }

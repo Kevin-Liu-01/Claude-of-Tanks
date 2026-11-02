@@ -1692,6 +1692,7 @@
     "tools/marketing-shots/media-library.selftest.mjs": 1000,
     "tools/marketing-shots/mode-battle-director.selftest.mjs": 1000,
     "tools/marketing-shots/og-images.selftest.mjs": 2000,
+    "tools/media-r5/tank-share.selftest.mjs": 6000,
     "tools/marketing-shots/showcase-r2.selftest.mjs": 1000,
     "tools/marketing-shots/site50-media.selftest.mjs": 2000,
     "tools/marketing-shots/versus-media.selftest.mjs": 2000,

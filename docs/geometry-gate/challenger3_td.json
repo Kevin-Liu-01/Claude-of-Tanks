@@ -21,7 +21,7 @@
   "stations": 96.17674231569855,
   "turretCurves": 89.1731534090909,
   "wholeCurves": 90.73833705357141,
-  "dims": 100,
+  "dims": 95.23014047212686,
   "floaters": 100
  },
  "components": {
@@ -29,7 +29,7 @@
   "stations": 96.2,
   "turretCurves": 89.2,
   "wholeCurves": 90.7,
-  "dims": 100,
+  "dims": 95.2,
   "floaters": 100
  },
  "wholeShapeMetric": "metric-curves",
@@ -1033,15 +1033,17 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 3.738380571752787,
+   "actual": 3.5994073162972935,
+   "roofFittingsTop": 3.738380571752787,
    "published": 3.74,
+   "method": "interval: body top to roof-fittings top",
    "pct": 0.04330022051371822
   },
   {
    "name": "hullLengthM",
-   "actual": 9.63084660306573,
+   "actual": 9.783717184066774,
    "published": 9.63,
-   "pct": 0.008791309093768669
+   "pct": 1.5962324409841415
   },
   {
    "name": "overallLengthM",
@@ -1058,17 +1060,24 @@
  ],
  "referenceDimensions": {
   "heightM": 3.738380571752787,
-  "hullLengthM": 9.63084660306573,
+  "hullLengthM": 9.783717184066774,
   "overallLengthM": 13.174664617180825,
   "widthM": 4.058019059300423
  },
  "referenceBodyExtent": {
   "h": 3.738,
-  "len": 9.631
+  "len": 9.784
  },
  "proceduralBodyExtent": {
-  "h": 3.738,
-  "len": 9.631
+  "h": 3.599,
+  "len": 9.784,
+  "roofFittingsTop": 3.738
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDark"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -1142,5 +1151,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/challenger3_td_x_source.glb",
+  "sha256": "6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386"
+ }
 }

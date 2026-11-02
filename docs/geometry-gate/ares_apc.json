@@ -1051,5 +1051,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/ares_apc_x_source.glb",
+  "sha256": "f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1"
+ }
 }

@@ -1176,5 +1176,9 @@
   "gatePassed": false,
   "rawGeoMin": 0,
   "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+ },
+ "oracle": {
+  "path": "/models/community-candidates/stb_1_owner.glb",
+  "sha256": "8dfb864cac84e5e1353a066f08deafe0a61060b028e45e4a1df9fcc42e2dc6a3"
  }
 }
