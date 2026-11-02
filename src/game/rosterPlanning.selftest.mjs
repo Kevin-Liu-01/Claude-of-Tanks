@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createGameState } from './stateCore.ts';
 import {
-  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, soloBotCamo, SOLO_MATCH_SEED, spawnTanks,
+  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, soloBotCamo, soloMatchSeed, SOLO_MATCH_SEED, spawnTanks,
 } from './rosterState.ts';
 import { botCamoRoll } from '../sim/camoPaint.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
@@ -61,10 +61,14 @@ assert.deepEqual(planBattleCamoOverrides(game, 'm1a1_abrams_hc', 'verdant', fals
   'non-random staged rosters do not invent bot camouflage overrides');
 // (268, item 6) one bot paint rule: the planned AUTO bots are the slots the authority's roll paints (sim/camoPaint.ts
 // botCamoRoll from the solo match seed at each roster index), and soloBotCamo is what setupBattle stamps on each hull
-assert.deepEqual(firstCamo, first.filter((_, index) => index > 0 && botCamoRoll(SOLO_MATCH_SEED, index, 'verdant') === 'auto'),
-  'the planned AUTO bots are the slots the match seed rolls');
+// (268, item 7) the battle's own seed: the base plus the battles before it on a random roster, the fixed base on a staged one
+assert.deepEqual([soloMatchSeed(0, true), soloMatchSeed(4, true), soloMatchSeed(4, false)], [SOLO_MATCH_SEED, SOLO_MATCH_SEED + 4, SOLO_MATCH_SEED],
+  'one seed per battle');
+const nextSeed = soloMatchSeed(game.battleCount, true);
+assert.deepEqual(firstCamo, first.filter((_, index) => index > 0 && botCamoRoll(nextSeed, index, 'verdant') === 'auto'),
+  'the planned AUTO bots are the slots the next battle\'s seed rolls');
 assert.ok(firstCamo.length > 0 && firstCamo.length < first.length - 1, `a verdant roster wears both paints (${firstCamo.length} of ${first.length - 1} AUTO)`);
-assert.deepEqual(first.map((id, index) => soloBotCamo(index, id, 'm1a1_abrams_hc', 'verdant', true, SOLO_MATCH_SEED)),
+assert.deepEqual(first.map((id, index) => soloBotCamo(index, id, 'm1a1_abrams_hc', 'verdant', true, nextSeed)),
   [null, ...first.slice(1).map((id) => (firstCamo.includes(id) ? 'auto' : 'factory'))], 'the player none, every bot its roll');
 assert.deepEqual(first.map((id, index) => soloBotCamo(index, id, 'm1a1_abrams_hc', 'verdant', false, SOLO_MATCH_SEED)),
   [null, ...first.slice(1).map(() => 'factory')], 'a staged roster\'s bots wear their stock scheme');

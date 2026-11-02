@@ -123,12 +123,11 @@ import {
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
-import { CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { camoSelectionBonus } from '../sim/camoPaint.ts';
 import { stockCamoPatternIdFor } from '../vehicles/camoPolicy.ts';
 import type { BotCamo } from '../sim/camoPaint.ts';
 import { createMatchSpotting } from '../sim/matchSpotting.ts';
-import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
+import { getMultiplayerCamoSelection, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
@@ -172,6 +171,7 @@ import {
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   soloBotCamo,
+  soloMatchSeed,
   SOLO_MATCH_SEED,
   ensureTankVisual,
   pickBattleParticipants,
@@ -365,7 +365,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   timeS: number;
   fireTickAcc: number;
   combatRng: RandomSource;
-  /** The battle's seed (resetBattleSession): combat draws and every bot's streams. */
+  /** The battle's seed (resetBattleSession, rosterState soloMatchSeed): every stream of it, the mode's and the wreck turrets' too. */
   matchSeed?: number;
   result: 'victory' | 'defeat' | 'draw' | null;
   resultReason: string | null;
@@ -494,7 +494,7 @@ interface SetupBattleOptions {
   deferOpeningRoutes?: boolean;
   /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's; ignored for a mode that cannot be watched. */
   watch?: boolean;
-  /** The battle's seed (combat draws and every bot's streams, game/botConstruction.ts); a solo battle keeps COMBAT_SEED. */
+  /** The battle's seed (every stream of it); absent, rosterState soloMatchSeed (a random battle's own, a staged roster's fixed). */
   seed?: number;
 }
 
@@ -758,7 +758,9 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.auxiliarySmokeScreens = [];
   auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
-  game.matchSeed = options.seed ?? COMBAT_SEED;
+  // (268, item 7) one seed per battle, every stream of it reading it (rosterState soloMatchSeed: a random battle's the base
+  // plus the battles before it, a staged roster's the fixed base); counted before this battle's ordinal
+  game.matchSeed = options.seed ?? soloMatchSeed(game.battleCount, !!options.random);
   game.combatRng = mulberry32(game.matchSeed);
   game.result = null;
   game.resultReason = null;
@@ -827,10 +829,10 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
   // (268) one spotting construction for both drivers (sim/matchSpotting.ts); a hull's paint against this map's biome is
   // stamped for the battle (the authority takes its seat record's)
-  // (268, item 6) a bot's bonus follows its roster paint by the authority's rule; the player's its saved selection
+  // (268, items 6 and 7) every hull's bonus by the authority's rule: a bot's from its roster paint, the player's from its saved
+  // selection as the wire sends it (a custom paint is factory: a cosmetic choice never moves combat)
   for (const entity of game.tanks) {
-    entity.camoBonus = entity.camo ? camoSelectionBonus(entity.camo, stockCamoPatternIdFor(entity.specId), game.mapId)
-      : hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
+    entity.camoBonus = camoSelectionBonus(entity.camo ?? getMultiplayerCamoSelection(entity.specId), stockCamoPatternIdFor(entity.specId), game.mapId);
   }
   return createMatchSpotting({
     seed: game.matchSeed ?? COMBAT_SEED,
@@ -1098,8 +1100,9 @@ export function setupBattle(
   game._destructionBreaches = [];
   game._destructionCraters = [];
   // physics lane (2026-10-10): this battle's turret bodies meet the deformed ground and the world's solid records
-  const wreckTurrets = game._wreckTurrets ??= createWreckTurrets({ seed: COMBAT_SEED + game.battleCount });
-  wreckTurrets.reset();
+  // (268, item 7) a new match's world on this battle's seed, as the authority's per match (it once kept the session's first)
+  const wreckTurrets = game._wreckTurrets ??= createWreckTurrets({ seed: game.matchSeed ?? COMBAT_SEED });
+  wreckTurrets.reset(game.matchSeed ?? COMBAT_SEED);
   wreckTurrets.gravity = 9.81 * (Number.isFinite(game.ruleset.gravityScale) ? game.ruleset.gravityScale : 1);
   wreckTurrets.bind(wreckEnvironmentFor(world, ground.field));
 
@@ -1262,7 +1265,8 @@ export function setupBattle(
     ruleset: game.ruleset,
     range,
     entities: game.tanks,
-    seed: COMBAT_SEED + game.battleCount,
+    // (268, item 7) the battle's seed, as the authority's controller reads its match seed
+    seed: game.matchSeed ?? COMBAT_SEED,
     setWeaponStage: setModeWeapon,
     placement,
     // the match's ground (the map's pre-placed craters and every crater since), as the authority's controller reads it

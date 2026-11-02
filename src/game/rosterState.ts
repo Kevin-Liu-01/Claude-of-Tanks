@@ -702,8 +702,18 @@ export function planBattleParticipantIds(
     .map((entity) => entity.specId);
 }
 
-/** The solo battle's match seed (game/state.ts resetBattleSession): every bot's streams and its paint's roll. */
+/** The solo battle's base seed (game/state.ts resetBattleSession): a staged roster's match seed, a random one's base. */
 export const SOLO_MATCH_SEED = 6000;
+
+/**
+ * A solo battle's match seed (268, Main item 7: one seed rule): every stream of the battle reads it, as the authority's
+ * read its match seed (the bots, combat, spotting, the paint roll, the mode, the wreck turrets). A random battle's is the
+ * base plus the battles before it (a fresh session's first keeps 6000), a staged roster's (boot, the screenshot contract)
+ * the fixed base.
+ */
+export function soloMatchSeed(battlesBefore: number, random: boolean): number {
+  return random ? SOLO_MATCH_SEED + battlesBefore : SOLO_MATCH_SEED;
+}
 
 /**
  * A solo hull's paint at its roster index (268, Main item 6: one bot paint rule for both drivers): a random roster's bots
@@ -741,7 +751,7 @@ export function planBattleCamoOverrides(
   const battleOrdinal = game.battleCount + 1;
   const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, national);
   return participants
-    .filter((entity, index) => soloBotCamo(index, entity.specId, playerSpecId, mapId, randomize, SOLO_MATCH_SEED) === 'auto')
+    .filter((entity, index) => soloBotCamo(index, entity.specId, playerSpecId, mapId, randomize, soloMatchSeed(game.battleCount, randomize)) === 'auto')
     .map((entity) => entity.specId);
 }
 

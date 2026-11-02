@@ -25,8 +25,9 @@
  *    (muzzle flash lights it up) — bushes further back keep concealing.
  *  - Per-tank view range; a camo paint pattern adds a flat bonus (+3–4%)
  *    only when it matches the battlefield biome (WoT season rule — AUTO
- *    always matches; the gate lives in materials.hasCamoPaint via the
- *    getCamoBonus dep, r3).
+ *    always matches; the gate lives in sim/camoPaint.ts camoSelectionBonus,
+ *    stamped per hull as camoBonus and read through the getCamoBonus dep;
+ *    r3, one rule for both drivers since 268).
  *  - spotRange = viewRange − (viewRange − 50) × targetCamo, clamped to
  *    [50 m, MAX_SPOT_RANGE_M]. Inside 50 m the spot is unconditional —
  *    WoT's proximity rule detects THROUGH houses/terrain (no LOS test).

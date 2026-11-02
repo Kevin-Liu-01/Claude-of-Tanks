@@ -341,6 +341,12 @@ assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
   assert.equal(camoSelectionBonus('factory', null, 'verdant'), 0, 'with no stock scheme it earns nothing');
   assert.equal(camoSelectionBonus(null, 'summer', 'verdant'), CAMO_PAINT_BONUS, 'no choice is factory');
   assert.equal(camoSelectionBonus('nonesuch', null, 'verdant'), 0, 'an unknown scheme earns nothing');
+  // (268, item 7) a custom paint scores as factory on both drivers: the wire sends it as factory (networkCamoId), and the solo
+  // battle stamps the player from the same selection (game/state.ts createBattleSpotting), so a cosmetic choice never moves combat
+  assert.equal(networkCamoId(CUSTOM_CAMO_ID), 'factory', 'the wire sends a custom paint as factory');
+  for (const [stock, map] of [['summer', 'verdant'], ['desert', 'steppe'], ['summer', 'desert']]) {
+    assert.equal(camoSelectionBonus(networkCamoId(CUSTOM_CAMO_ID), stock, map), camoSelectionBonus('factory', stock, map), `custom scores as factory (${stock} on ${map})`);
+  }
   // (268, item 6) one bot paint rule: mulberry32's first draw on the bot's seed (the match seed and its roster index), AUTO
   // under 60 %, every bot on the winter and desert maps
   const { botCamoRoll } = await import('../sim/camoPaint.ts');
