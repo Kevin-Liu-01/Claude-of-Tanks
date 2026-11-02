@@ -1283,5 +1283,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leclerc_x_source.glb",
+  "sha256": "8d3f1061d6e9cfcf195052317859a57af9a7d7883050aed9538b77f3027e7c4e"
+ }
 }

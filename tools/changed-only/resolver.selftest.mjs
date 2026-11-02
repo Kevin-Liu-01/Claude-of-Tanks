@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
-  from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, installDrift, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest,
+  stampedInKeys, toolchainChange, toolchainOf } from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
@@ -160,10 +160,32 @@ assert.deepEqual(changed(resolveChanged(s0, null)), { sizes: 'full:a1,a2,b1', ot
 put('package-lock.json', '{"lockfileVersion":3,"x":1}\n');
 assert.deepEqual(changed(resolveChanged(state(), m0)), { sizes: 'all:a1,a2,b1', other: 'all:a1,a2,b1' }, 'a lockfile change marks everything');
 put('package-lock.json', '{"lockfileVersion":3}\n');
-const otherOptions = computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: '--experimental-strip-types' }, rows: rowsData(), cacheDir, config });
-assert.equal(resolveChanged(otherOptions, m0).sizes.mode, 'all', 'a non-heap NODE_OPTIONS flag marks everything');
-const bigHeap = computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: '--max-old-space-size=8192' }, rows: rowsData(), cacheDir, config });
-assert.equal(resolveChanged(bigHeap, m0).sizes.mode, 'none', 'a heap size flag is not keyed');
+// (268) The toolchain keys what changes a tool's output (Node, the platform, the lock), never a checkout's install
+// bookkeeping or NODE_OPTIONS (the chain sets its tools' own): two checkouts on one lock, their node_modules linked to two
+// homes whose npm records differ only in peer flags, under two heap caps, compute one toolchain; a lock edit moves it.
+{
+  const { symlinkSync } = await import('node:fs');
+  const lockText = '{"lockfileVersion":3,"packages":{"":{"name":"x"},"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0","peer":true}}}\n';
+  const installs = ['{"packages":{"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0","peer":true}}}\n',
+    '{"packages":{"node_modules/three":{"version":"0.180.0"},"node_modules/peerish":{"version":"1.0.0"}}}\n'];
+  const homes = installs.map((text, k) => { put(`homes/h${k}/.package-lock.json`, text); return join(root, `homes/h${k}`); });
+  const checkouts = homes.map((home, k) => { put(`co${k}/package-lock.json`, lockText); symlinkSync(home, join(root, `co${k}/node_modules`)); return join(root, `co${k}`); });
+  assert.notEqual(...homes.map((home) => readFileSync(join(home, '.package-lock.json'), 'utf8')), 'the two homes\' npm records differ');
+  const [one, two] = checkouts.map((dir) => toolchainOf(dir));
+  assert.equal(one.toolchain, two.toolchain, 'two checkouts on one lock agree, whatever node_modules home they link');
+  assert.deepEqual(checkouts.map((dir) => installDrift(dir)), [[], []], 'both installs are the lock\'s');
+  const heaps = ['--max-old-space-size=4096', '--max-old-space-size=8192 --import=file:///w/tools/selftest-observe.mjs']
+    .map((options) => computeState({ root, steps: baseSteps(), env: { NODE_OPTIONS: options }, rows: rowsData(), cacheDir, config }).toolchain);
+  assert.deepEqual([heaps[0] === heaps[1], heaps[0] === s0.toolchain], [true, true], 'NODE_OPTIONS keys nothing');
+  put('co1/package-lock.json', lockText.replace('0.180.0', '0.181.0'));
+  assert.notEqual(toolchainOf(checkouts[1]).toolchain, one.toolchain, 'control: a lock edit moves the toolchain');
+  assert.deepEqual(installDrift(checkouts[1]), ['three 0.180.0 installed, 0.181.0 locked'], 'and its old install is named as drift');
+  put('co1/package-lock.json', lockText.replace('"packages":{', '"packages":{"node_modules/added":{"version":"2.0.0"},'));
+  assert.deepEqual(installDrift(checkouts[1]), ['added locked, not installed'], 'a package the lock adds is drift');
+  assert.deepEqual(toolchainChange({ toolchainParts: one.parts }, toolchainOf(checkouts[1]).parts).split(': ')[0], 'package-lock',
+    'a table that keeps its parts names the part that moved');
+  assert.match(toolchainChange({ toolchainParts: [] }, one.parts), /records no parts; this run: schema:/, 'an older table names this run\'s parts');
+}
 const universes = rowsData(); universes.roster.saved = ['a1', 'a2'];
 assert.match(state({ rows: universes }).globalReasons.join(), /different ids/, 'id lists that disagree fail closed');
 const rowErrors = rowsData({ errors: ['sizes: unreadable'] });
@@ -373,7 +395,7 @@ put('src/vehicles/anchors.generated.ts', anchors);
   const sha = (text) => createHash('sha256').update(text).digest('hex');
   const gateCfg = { ...config, tables: { ...config.tables, records: { kind: 'jsonRow', files: ['docs/gate/*.json'], idsOnly: true, inputField: 'oracle' } } };
   const gateSteps = () => [...baseSteps(), { name: 'gate', device: 'gpu', tool: 'tools/gen-gate.mjs', flags: [], full: [],
-    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [] }];
+    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [], skipped: '--skipped' }];
   const named = (a1 = sha('oracle a1 v1')) => ({ records: { a1: { path: '/models/a1.glb', sha256: a1 }, a2: { path: '/models/a2.glb', sha256: sha('oracle a2 v1') } } });
   // b1's spec chain names a1: a1's oracle still keys only a1
   const gateRows = (a1) => rowsData({ rows: { ...rowsData().rows, records: { a1: 'g1', a2: 'g2' } }, named: named(a1),
@@ -411,6 +433,94 @@ put('src/vehicles/anchors.generated.ts', anchors);
   assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
   put('public/models/a1.glb', 'oracle a1 v1');
   put('public/models/a2.glb', 'oracle a2 v1');
+  // a graft source beside the oracle (267: t90a_burlak_proto's turret, the Burlak X source seated on the T-90A X hull) is
+  // its id's input too: its bytes moving mark that id alone, its absence keys it from the recorded sha256 and is named,
+  // and an id without one keys as before
+  put('public/models/g2.glb', 'graft g2 v1');
+  const grafted = (g2 = sha('graft g2 v1')) => ({ records: { ...named().records,
+    a2: { ...named().records.a2, graft: { path: '/models/g2.glb', sha256: g2 } } } });
+  const graftGate = (g2) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows,
+    records: { a1: 'g1', a2: 'g2' } }, named: grafted(g2), chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const k0 = graftGate();
+  assert.equal(k0.inKey('gate', 'a1'), g0.inKey('gate', 'a1'), 'an id without a graft keys as before');
+  assert.notEqual(k0.inKey('gate', 'a2'), g0.inKey('gate', 'a2'), 'a graft joins its id\'s key');
+  const km = bootstrap(k0);
+  put('public/models/g2.glb', 'graft g2 v2');
+  result = resolveChanged(graftGate(), km);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a2' }, 'different bytes at a2\'s graft mark a2 alone');
+  put('public/models/g2.glb', 'graft g2 v1');
+  renameSync(join(root, 'public/models/g2.glb'), join(root, 'public/models/g2.away'));
+  const graftAbsent = graftGate();
+  assert.deepEqual(changed(resolveChanged(graftAbsent, km)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'a graft absent here keys a2 from its recorded sha256');
+  assert.equal(graftAbsent.inputAbsent('gate', 'a2'), 'oracle graft absent here (public/models/g2.glb)');
+  renameSync(join(root, 'public/models/g2.away'), join(root, 'public/models/g2.glb'));
+  // a run that writes the rows its own key reads converges in one pass (stampedInKeys): a1's record gains its oracle and
+  // a2's its graft, and the stamp takes them as recorded; a file changed after the measurement still marks its id.
+  // Control: stamped as they stood before the run, both ids are due again (267's bootstrap gated 118 ids twice).
+  const runGate = (named, records) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows, records },
+    named, chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const beforeRun = runGate({ records: { a2: named().records.a2 } }, { a1: 'g0', a2: 'g2' });
+  const afterRun = runGate(grafted(), { a1: 'g1', a2: 'g2+' });
+  const preKeys = Object.fromEntries(['a1', 'a2'].map((id) => [id, beforeRun.inKey('gate', id)]));
+  const stampRun = (keys) => refreshComponents((() => { const m = bootstrap(beforeRun); recordStep(m, 'gate', ['a1', 'a2'], keys, afterRun); return m; })(), afterRun);
+  assert.deepEqual(changed(resolveChanged(afterRun, stampRun(preKeys))).gate, 'ids:a1,a2', 'control: the pre-run stamp leaves both due');
+  const converged = stampRun(stampedInKeys(beforeRun, afterRun, 'gate', preKeys));
+  assert.deepEqual(changed(resolveChanged(afterRun, converged)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'stamped as recorded, the run that wrote its oracle and graft leaves nothing due');
+  put('public/models/a1.glb', 'oracle a1 v2');
+  assert.deepEqual(changed(resolveChanged(runGate(grafted(), { a1: 'g1', a2: 'g2+' }), converged)).gate, 'ids:a1',
+    'a file changed after the run measured it marks its id');
+  put('public/models/a1.glb', 'oracle a1 v1');
+  assert.equal(stampedInKeys(beforeRun, afterRun, 'sizes', preKeys), preKeys, 'a step without own input rows stamps its pre-run keys');
+  // 268: a stamp (recordStep `stamps`) makes an id the tool could not run here current while what would make it runnable
+  // holds. b1 has never been recorded (no row), as the gate's ids whose oracles no checkout holds.
+  const g1 = gate(), stampManifest = bootstrap(g1);
+  delete stampManifest.keys.gate.b1;
+  assert.deepEqual(changed(resolveChanged(g1, stampManifest)).gate, 'ids:b1', 'an id never recorded is due ("no row")');
+  const absentStamp = { code: 'oracle-absent', reason: 'oracle absent here (/models/b1.glb)', files: ['public/models/b1.glb'] };
+  const stampB1 = (manifest, stamp, at = g1) => recordStep(manifest, 'gate', ['b1'], { b1: at.inKey('gate', 'b1') }, at,
+    { skip: new Set(['b1']), stamps: { b1: stamp } });
+  stampB1(stampManifest, absentStamp);
+  result = resolveChanged(g1, stampManifest);
+  assert.deepEqual([changed(result).gate, result.gate.stamped], ['none:', { b1: 'oracle-absent: oracle absent here (/models/b1.glb)' }],
+    'a missing oracle, stamped with its reason, reads current');
+  const text = serializeManifest(stampManifest);
+  assert.equal(serializeManifest(parseManifest(text)), text, 'the stamp line round-trips');
+  assert.equal(changed(resolveChanged(g1, parseManifest(text))).gate, 'none:', 'and reads current from the table');
+  put('src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 5 };\n');
+  assert.equal(changed(resolveChanged(gate(), stampManifest)).gate, 'none:', 'its build moving cannot make it runnable: still current');
+  put('src/vehicles/profiles/beta.ts', beta);
+  put('public/models/b1.glb', 'oracle b1 v1');
+  result = resolveChanged(gate(), stampManifest);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp\'s inputs moved (public/models/b1.glb)']],
+    'dropping the oracle in makes it due');
+  renameSync(join(root, 'public/models/b1.glb'), join(root, 'public/models/b1.away'));
+  assert.equal(changed(resolveChanged(gate(), stampManifest)).gate, 'none:', 'and taking it away again makes it current');
+  const reasonless = parseManifest(text.replace('\toracle absent here (/models/b1.glb)', '\t'));
+  assert.equal(reasonless.stamps.gate.b1.reason, '', 'mutant: the stamp line keeps its code and loses its reason');
+  result = resolveChanged(g1, reasonless);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp without a reason']],
+    'mutant: a stamp without a reason stays red');
+  const pageError = bootstrap(g1);
+  delete pageError.keys.gate.b1;
+  stampB1(pageError, { code: 'page-error', reason: 'page error, previous row kept: no __GEO_REPORT', files: [] });
+  assert.equal(changed(resolveChanged(g1, pageError)).gate, 'none:', 'a page error, stamped, reads current');
+  put('src/vehicles/profiles/beta.ts', 'export const BETA = { b1: 5 };\n');
+  result = resolveChanged(gate(), pageError);
+  assert.deepEqual([changed(result).gate, result.gate.reasons.b1], ['ids:b1', ['no row', 'stamp\'s inputs moved (the id\'s inputs)']],
+    'its inputs moving (the page error\'s source) makes it due');
+  put('src/vehicles/profiles/beta.ts', beta);
+  stampB1(pageError, { code: 'page-error', reason: 'page error, previous row kept: no __GEO_REPORT', files: [] });
+  const handEdited = state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...gateRows().rows, records: { a1: 'g1', a2: 'g2', b1: 'g3' } },
+    named: named(), chains: gateRows().chains }) });
+  assert.deepEqual(changed(resolveChanged(handEdited, pageError)).gate, 'ids:b1', 'its output edited since the stamp makes it due');
+  recordStep(pageError, 'gate', ['b1'], { b1: g1.inKey('gate', 'b1') }, g1);
+  assert.deepEqual([pageError.stamps.gate, pageError.keys.gate.b1?.in], [undefined, g1.inKey('gate', 'b1')], 'a run that measures it clears the stamp');
+  const foreign = bootstrap(g1);
+  delete foreign.keys.sizes.b1;
+  foreign.stamps.sizes = { b1: { key: 'x', out: 'y', code: 'page-error', files: [], reason: 'no __GEO_REPORT' } };
+  assert.ok(resolveChanged(g1, foreign).sizes.reasons.b1.includes('stamp on a step that reports no skips'), 'a stamp on a step without skips is no stamp');
   // idsOnly: the records directory's other tools' ledgers are not rows
   for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
   assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);

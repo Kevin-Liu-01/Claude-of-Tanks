@@ -871,7 +871,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 142030,
+     "area": 142040,
      "minX": 183,
      "minY": 233,
      "maxX": 948,
@@ -885,7 +885,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139239,
+     "area": 139249,
      "minX": 222,
      "minY": 233,
      "maxX": 988,
@@ -899,7 +899,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 138987,
+     "area": 138997,
      "minX": 222,
      "minY": 233,
      "maxX": 987,
@@ -913,7 +913,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 138363,
+     "area": 138373,
      "minX": 184,
      "minY": 233,
      "maxX": 948,
@@ -927,7 +927,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 142272,
+     "area": 142282,
      "minX": 192,
      "minY": 233,
      "maxX": 948,
@@ -935,5 +935,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/t64bv1.glb",
+  "sha256": "608336f292e7137b085f8ed931617d32d37594c4a0d4059200db1a7d89d4981d"
+ }
 }

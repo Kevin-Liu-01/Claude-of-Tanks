@@ -1109,6 +1109,18 @@
   ]
  },
  "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [],
+   "reference": [
+    "can"
+   ]
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1187,5 +1199,9 @@
   "gatePassed": false,
   "rawGeoMin": 45.69189058948835,
   "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+ },
+ "oracle": {
+  "path": "/models/community-candidates/m60a3_x_source.glb",
+  "sha256": "1eaf2699bfb8471b8a251b92679ba8e7149015745fadd33cf0a3b1f0a684b3fb"
  }
 }

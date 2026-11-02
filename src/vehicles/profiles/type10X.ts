@@ -14,6 +14,7 @@ import {addType10BowLinks} from './type10XBow.ts';
 import {addType10Skirts} from './type10XSkirts.ts';
 import {buildType10XGear} from './type10XGear.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
+import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {addType10XRoofPanels} from './type10XRoofPanels.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -48,7 +49,9 @@ function tubSection(z:number,top:number,bottom:number):SolidSection {
     [.862,top],[-.862,top],[-.882,top-bevel]]};
 }
 
-function hull(P:TankBuilderPort):void {
+interface HullFit {readonly bowLinks:boolean;readonly lowerSkirts:boolean;readonly fascia:'solid'|'segmented'}
+
+function hull(P:TankBuilderPort,fit:HullFit):void {
   P.add('hull',sectionSolid([
     tubSection(-3.615,1.515,1.45),tubSection(-3.552,1.516,.908),
     tubSection(-3.15,1.520,.625),
@@ -72,10 +75,10 @@ function hull(P:TankBuilderPort):void {
       const ring:[number,number][]=[[1.54402,floor],[1.551345,floor],[1.551345,roof],[1.54402,roof]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
     })));
-    sideArmor(P,side);mudguards(P,side);
+    sideArmor(P,side,fit);mudguards(P,side);
   }
   P.add('hull',cylinder(1.31519,.041,64),-.00276,1.485,.20655);
-  deckEquipment(P);frontEquipment(P);
+  deckEquipment(P);frontEquipment(P,fit.bowLinks);
 }
 
 // The tub's bow stations [z, roof, floor]: the floor rises over the lower bow's two planes to the nose and the roof
@@ -85,10 +88,18 @@ export const TYPE10_X_BOW_SECTIONS=Object.freeze([
   [3.32,1.306,.7303013235],[3.615,1.166,1.1463973487],
 ] as const);
 
-function sideArmor(P:TankBuilderPort,side:number):void {
-  addType10Skirts(P,side);
-  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),
-    'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);
+function sideArmor(P:TankBuilderPort,side:number,fit:HullFit):void {
+  if(fit.lowerSkirts)addType10Skirts(P,side);
+  if(fit.fascia==='solid') {
+    P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),
+      'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);
+  } else {
+    // a mark's own side armour: six bolted panels over the same 6.07 m with 10 cm cutouts between them showing the hull
+    // side behind (the TK-X trials vehicle, japan.ts)
+    const len=(6.0704-.10*5)/6;
+    for(let i=0;i<6;i++)P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,len),
+      'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545-6.0704/2+len/2+i*(len+.10));
+  }
   P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4065,.9621),
     'type10-painted-rear-fascia','hullDetail'),side*1.559035,.96097,-2.95899);
 }
@@ -142,8 +153,9 @@ function rearTransom(P:TankBuilderPort):void {
   }
 }
 
-function frontEquipment(P:TankBuilderPort):void {
-  addType10BowLinks(P);
+function frontEquipment(P:TankBuilderPort,bowLinks:boolean):void {
+  // the production tanks' spare links across the lower bow; the TK-X prototypes' lower plate was plain (photographs, 267)
+  if(bowLinks)addType10BowLinks(P);
   // Driver sits right of the bore; the broad central glacis stays unblocked.
   P.addHatch('hull',box(.646,.057,.456),.335,1.402,2.18,.020);
   for(const x of [.08,.24,.40,.56])P.addEquipment('hullGlass',box(.105,.038,.018),x,1.458,2.09);
@@ -159,7 +171,13 @@ function frontEquipment(P:TankBuilderPort):void {
       P.addEquipment('hullDetail',eye,side*.466,.790,3.536);
       P.addEquipment('hullDetail',box(.064,.063,.139),side*.466,.759,3.455);
     },{reachM:.04});
-    P.addEquipment('hullDetail',box(.068,.047,.23),side*.74,1.239,3.505);
+    // the round headlight in its box on the bow's corner, behind its wire guard (267, the photo critic: "mesh-guarded
+    // headlight boxes on the glacis corners"; type10_production_front.jpg), on the bow roof where the source's block stood
+    P.addEquipment('hullDetail',box(.17,.12,.12),side*.74,1.281,3.50);
+    P.addEquipment('hullDark',cylZ(.05,.004,18),side*.74,1.281,3.5615);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.044,.004,18),'headlight'),side*.74,1.281,3.5645);
+    for(const dy of [-.035,0,.035])P.addEquipment('hullDark',box(.15,.006,.006),side*.74,1.281+dy,3.574);
+    for(const dx of [-.05,0,.05])P.addEquipment('hullDark',box(.006,.10,.006),side*.74+dx,1.281,3.580);
   }
 }
 
@@ -279,7 +297,7 @@ function frameBar(P:TankBuilderPort,a:number[],b:number[],r=.012):void {
   const c=start.add(end).multiplyScalar(.5);turret(P,'turretOpenLattice',g,c.x/EQUIPMENT_X_DATUM,c.y,c.z);
 }
 
-function rearRack(P:TankBuilderPort):void {
+function rearRack(P:TankBuilderPort,mark:Type10Mark,stowage:boolean):void {
   // 2026-10-19 (owner float sweep): the basket stood 48 mm behind the bustle; its front bars now end 5 mm into it
   const left=-1.268,right=1.12,rear=-3.227,front=-2.012;
   for(const y of [1.622,1.731,2.125]) {
@@ -294,7 +312,10 @@ function rearRack(P:TankBuilderPort):void {
     frameBar(P,[left,2.125,z],[right,2.125,z]);
     for(const x of [left,right])frameBar(P,[x,1.622,z],[x,2.125,z]);
   }
-  rearBasketStowage(P);
+  // production baskets carry expanded-mesh panels in the tube frame; the TK-X ran the open fence (photographs, 267)
+  if(mark==='production')basketMesh(P,left,right,rear,front);
+  else prototypeFence(P,left,right,rear,front);
+  if(stowage)rearBasketStowage(P);
 }
 
 // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the basket held two canvas blocks
@@ -330,10 +351,18 @@ function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:num
   for(const side of [-1,1])turret(P,'turretDetail',box(.024,h,d),x+side*(w-.024)/(2*EQUIPMENT_X_DATUM),y+h/2,z);
   turret(P,'turretDetail',box(w,.020,d),x,y+h,z);
   turret(P,'turretDetail',box(w,h,.036),x,y+h/2,glassZ-.024);
+  // the housing's back wall (267: seen from behind, the open end read as a hollow box)
+  turret(P,'turretDetail',box(w,h,.02),x,y+h/2,z-d/2+.01);
   turret(P,'turretGlass',box(w-.070,h-.051,.006),x,y+h/2,glassZ-.003);
+  // the hood's mouth lined dark from the window out (round 3: the open hood read as a hollow box; the source keeps its
+  // window recessed): 1 mm inside the walls
+  const depth=z+d/2-glassZ,mouth=glassZ+depth/2;
+  turret(P,'turretDark',box(w-.05,.003,depth),x,y+.0125,mouth);
+  turret(P,'turretDark',box(w-.05,.003,depth),x,y+h-.012,mouth);
+  for(const side of [-1,1])turret(P,'turretDark',box(.003,h-.046,depth),x+side*(w-.054)/(2*EQUIPMENT_X_DATUM),y+h/2,mouth);
 }
 
-function roofEquipment(P:TankBuilderPort,remoteM2:boolean):void {
+function roofEquipment(P:TankBuilderPort,remoteM2:boolean,whips:boolean):void {
   turret(P,'turretHatch',cylinder(.32747,.127,40),-.511,2.317,.271);
   // 2026-10-19 (owner float sweep): the cupola stood 42-49 mm over the roof; a collar ring carries it from the roof
   turret(P,'turretDetail',cylinder(.33,.058,40),-.511,2.2295,.271);
@@ -354,7 +383,7 @@ function roofEquipment(P:TankBuilderPort,remoteM2:boolean):void {
   turret(P,'turretDetail',box(.240,.025,.235),-.976,2.505,-.501);
   addType10XRoofPanels(P,PIVOT);
   if(remoteM2)roofWeapon(P);
-  antennas(P);
+  if(whips)antennas(P);
 }
 
 function roofWeapon(P:TankBuilderPort):void {
@@ -472,7 +501,140 @@ function rearAntennaMount(P:TankBuilderPort):void {
   turret(P,'turretDetail',cap,0,0,0);
 }
 
-function mainGun(P:TankBuilderPort):void {
+/** Place a turret part at a hull-frame point (no transverse datum: the turret wall's measured x). */
+function onTurret(P:TankBuilderPort,slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0):void {
+  P.addEquipment(slot,g,x-PIVOT[0],y-PIVOT[1],z-PIVOT[2],rx,ry,rz);
+}
+
+// The turret's bolted side modules (267; JGSDF Type 10 photographs, docs/references/photos/type10b-20261031.json): the
+// vertical wall at |x| 1.4729 from y 1.565 to the chamfer at 1.875 is split by seams into the rear block, the middle
+// block and the narrow block ahead of it, with the front block running on to the wedge. Each seam carries its latches
+// and a lifting hook over it on the chamfer. Production blocks carry hinged stowage doors with their handles; the TK-X
+// prototypes' blocks were plain.
+export const TYPE10_X_SIDE_WALL=Object.freeze({x:1.4729,low:1.565,high:1.875});
+const {x:WALL_X,low:WALL_LOW,high:WALL_HIGH}=TYPE10_X_SIDE_WALL;
+const MODULE_SEAMS=[-1.13,-.30,.23] as const;
+// the TK-X's plain blocks show five seams (tkx_no1_left_side.jpg): two more in the rear block and one in the middle
+const PROTOTYPE_SEAMS=[-1.62,-1.13,-.72,-.30,.23] as const;
+const STOWAGE_DOORS=[[-1.84,-1.22],[-1.06,-.72],[-.66,-.36]] as const;
+
+function sideModules(P:TankBuilderPort,side:number,stowageDoors:boolean,mark:Type10Mark):void {
+  const h=WALL_HIGH-WALL_LOW,mid=(WALL_HIGH+WALL_LOW)/2,at=(proud:number)=>side*(WALL_X+proud);
+  // the bevel break: the wall's top edge under the chamfer in shadow along the blocks (round 3: "the horizontal bevel break")
+  onTurret(P,'turretDark',box(.004,.012,3.20),at(.001),WALL_HIGH-.008,-.25);
+  for(const z of mark==='production'?MODULE_SEAMS:PROTOTYPE_SEAMS) {
+    onTurret(P,'turretDark',box(.006,h,.05),at(.001),mid,z);
+    for(const dz of [-.037,.037])onTurret(P,'turretDetail',box(.024,h,.022),at(.011),mid,z+dz);   // the blocks' raised edges
+    for(const y of [WALL_LOW+.055,mid,WALL_HIGH-.055]) {
+      onTurret(P,'turretDetail',box(.026,.05,.07),at(.024),y,z);                                 // the latch body
+      onTurret(P,'turretDark',box(.012,.016,.05),at(.0435),y+.012,z);                            // its lever
+    }
+    const hook=new THREE.TorusGeometry(.03,.008,6,10,Math.PI);hook.rotateY(Math.PI/2);
+    onTurret(P,'turretDetail',hook,side*(WALL_X-.022),WALL_HIGH+.02,z);
+  }
+  if(!stowageDoors)return;
+  for(const [z0,z1] of STOWAGE_DOORS) {
+    const y0=WALL_LOW+.03,y1=WALL_HIGH-.035,len=z1-z0,zc=(z0+z1)/2;
+    for(const y of [y0,y1])onTurret(P,'turretDetail',box(.008,.016,len),at(.004),y,zc);
+    for(const z of [z0,z1])onTurret(P,'turretDetail',box(.008,y1-y0,.016),at(.004),(y0+y1)/2,z);
+    for(const z of [z0+len*.2,z1-len*.2])onTurret(P,'turretDark',cylZ(.011,.05,10),at(.011),y1+.004,z);
+    onTurret(P,'turretDark',box(.012,.022,.09),at(.024),(y0+y1)/2-.02,z1-.06);
+    for(const dz of [-.035,.035])onTurret(P,'turretDark',box(.016,.012,.01),at(.014),(y0+y1)/2-.02,z1-.06+dz);
+  }
+}
+
+// Smoke: four 76 mm dischargers a side in the front block's sloped top face (photographs, 267: the 45-degree chamfer over
+// the side wall, which runs |x| 1.435 at z 0.55 to 1.408 at z 1.0 at y 1.94). Production tanks fire them through one oval
+// slot; the TK-X prototypes had four separate round ports. The tubes look up and out of the face, a little forward.
+function smokeDischargers(P:TankBuilderPort,side:number,mark:Type10Mark):void {
+  const y=1.94,zs=[.52,.69,.86,1.03],faceX=(z:number)=>1.4353-.0607*(z-.55);   // round 3: half the block, deep bores
+  const normal=new THREE.Vector3(side*.7071,.7071,0),axis=new THREE.Vector3(side*.70,.70,.12).normalize();
+  if(mark==='production') {
+    const mid=(zs[0]+zs[3])/2,slot=cylinder(.074,.010,20);slot.scale(1,1,(zs[3]-zs[0]+.148)/.148);slot.rotateZ(-side*Math.PI/4);
+    onTurret(P,'turretDark',slot,side*faceX(mid)+normal.x*.002,y+normal.y*.002,mid);
+  }
+  for(const z of zs) {
+    const outer=.06,inner=.05,shape=new THREE.Shape();shape.absarc(0,0,outer,0,Math.PI*2,false);
+    const hole=new THREE.Path();hole.absarc(0,0,inner,0,Math.PI*2,true);shape.holes.push(hole);
+    const g=new THREE.ExtrudeGeometry(shape,{depth:.11,steps:1,bevelEnabled:false,curveSegments:14});
+    g.translate(0,0,-.105);
+    markSmokeTube(g).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis));
+    const at=new THREE.Vector3(side*faceX(z),y,z).addScaledVector(normal,.004);
+    onTurret(P,'turretDetail',g,at.x,at.y,at.z);
+    // the bore reads deep and black from outside: a dark cap 3 cm down the tube
+    const bore=cylinder(.049,.006,14);bore.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),axis));
+    const deep=at.clone().addScaledVector(axis,-.06);
+    onTurret(P,'turretDark',bore,deep.x,deep.y,deep.z);
+    if(mark!=='production') {
+      const rim=new THREE.TorusGeometry(.068,.009,6,18);
+      rim.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),normal));
+      onTurret(P,'turretDetail',rim,at.x,at.y,at.z);
+    }
+  }
+}
+
+// Laser warning receivers at the turret's four corners (photographs, 267): the front pair angled boxes with three
+// stacked windows looking forward and out, the rear pair smaller heads over the bustle corners.
+function laserWarners(P:TankBuilderPort):void {
+  for(const side of [-1,1]) {
+    const yaw=side*Math.PI/4;
+    onTurret(P,'turretDetail',box(.15,.19,.13),side*1.25,2.004+.09,1.21,0,yaw,0);
+    for(let i=0;i<3;i++) {
+      const g=box(.09,.034,.006);
+      onTurret(P,'turretGlass',g,side*1.25+Math.sin(yaw)*.067,2.004+.035+i*.052,1.21+Math.cos(yaw)*.067,0,yaw,0);
+    }
+    onTurret(P,'turretDetail',box(.10,.12,.10),side*1.24,2.13+.055,-1.86,0,side*Math.PI*.75,0);
+    onTurret(P,'turretGlass',box(.06,.05,.006),side*1.24+side*.036,2.13+.065,-1.86-.036,0,side*Math.PI*.75,0);
+  }
+}
+
+// The TK-X's open fence (TRDI photographs): close-set uprights between the frame's posts and a solid lower band round the
+// rear and both sides, without the production mesh.
+function prototypeFence(P:TankBuilderPort,left:number,right:number,rear:number,front:number):void {
+  // round 3 (tkx_rear_left.jpg, tkx_no3_left_rear_top.jpg): the band fills the lower 45 % as slats on a backing sheet
+  const y0=1.622,y1=2.125,band=.225;
+  for(let x=left+.115;x<right-.05;x+=.23)frameBar(P,[x,y0+band,rear],[x,y1,rear]);
+  for(let z=rear+.094;z<front-.05;z+=.187)for(const x of [left,right])frameBar(P,[x,y0+band,z],[x,y1,z]);
+  turret(P,'turretDetail',box((right-left)*EQUIPMENT_X_DATUM,band,.006),(left+right)/2,y0+band/2,rear);
+  for(const x of [left,right])turret(P,'turretDetail',box(.006,band,front-rear),x,y0+band/2,(rear+front)/2);
+  for(let i=0;i<4;i++) {
+    const y=y0+.03+i*.055;
+    turret(P,'turretDetail',box((right-left)*EQUIPMENT_X_DATUM-.04,.034,.012),(left+right)/2,y,rear-.0095);
+    for(const x of [left,right])turret(P,'turretDetail',box(.012,.034,front-rear-.06),x+Math.sign(x)*.0095/EQUIPMENT_X_DATUM,y,(rear+front)/2);
+  }
+}
+
+// The basket's expanded-mesh panels: a grid of wire across the rear and both sides inside the tube frame.
+function basketMesh(P:TankBuilderPort,left:number,right:number,rear:number,front:number):void {
+  const y0=1.622,y1=2.125,pitch=.115,wire=(a:number[],b:number[])=>frameBar(P,a,b,.0045);
+  for(let x=left+pitch;x<right-.02;x+=pitch)wire([x,y0,rear],[x,y1,rear]);
+  for(let z=rear+pitch;z<front-.02;z+=pitch)for(const x of [left,right])wire([x,y0,z],[x,y1,z]);
+  for(let y=y0+pitch;y<y1-.02;y+=pitch) {
+    wire([left,y,rear],[right,y,rear]);
+    for(const x of [left,right])wire([x,y,rear],[x,y,front]);
+  }
+}
+
+// Hull fittings the photographs show (267): wire grilles over the headlight recesses in the bolted front module, and the
+// tow cable looped across the rear grille between its eyes, the tail-light clusters at the stern's corners.
+function hullFittings(P:TankBuilderPort):void {
+  for(const side of [-1,1])for(const x of [1.16,1.277])for(const dy of [-.03,0,.03])
+    P.addEquipment('hullDark',box(.13,.006,.006),side*x,1.281+dy,3.536);
+  // the cable hangs in the open centre of the transom tray (its back sheet ends at z -3.791, the certified stern), under
+  // its upper sheet (1.418)
+  const cable=new THREE.CatmullRomCurve3([[-.70,1.33,-3.765],[-.35,1.37,-3.765],[0,1.35,-3.765],[.35,1.37,-3.765],
+    [.70,1.33,-3.765],[.50,1.14,-3.765],[0,1.12,-3.765],[-.50,1.14,-3.765]]
+    .map(([x,y,z])=>new THREE.Vector3(x,y,z)),true,'centripetal');
+  P.addEquipment('hullDark',new THREE.TubeGeometry(cable,48,.014,6,true));
+  for(const side of [-1,1]) {
+    // the tail-light clusters on the rear grille boxes' back faces (z -3.6075)
+    P.addEquipment('hullDetail',box(.14,.09,.03),side*1.38,1.33,-3.6215);
+    P.addEquipment('hullGlass',box(.055,.05,.006),side*1.41,1.335,-3.6395);
+    P.addEquipment('hullGlass',box(.045,.05,.006),side*1.345,1.335,-3.6395);
+  }
+}
+
+function mainGun(P:TankBuilderPort,mark:Type10Mark):void {
   // The muzzle section runs to the measured muzzle face, the muzzle/FX datum (official 9.42 m overall). It stopped
   // 20 mm short (5.60875) for the factory's seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add
   // (type10X: overall length 9.400 vs 9.42).
@@ -492,19 +654,48 @@ function mainGun(P:TankBuilderPort):void {
     }));
     gun(P,'gun',hardware,0,0,0);
   }
+  // the muzzle reference mirror's housing over the barrel (photographs, 267): upper right on production tanks, upper left
+  // on the TK-X prototypes
+  const mirrorX=mark==='production'?-.072:.072;
+  gun(P,'gun',box(.062,.034,.05),mirrorX*.6,1.851+.105,5.47);
+  gun(P,'gun',box(.074,.072,.096),mirrorX,1.851+.152,5.47);
+  gun(P,'gunDark',box(.006,.05,.07),mirrorX+(mirrorX>0?-.038:.038),1.851+.152,5.47);
   P.muzzleZ=TYPE10_X_DATUMS.muzzleZ-GUN[2];
 }
+
+/** The mark the shared base draws: the production tank, or the TK-X prototype's forms of the parts the series changed
+ *  (267, the Japan line: plain side modules, round smoke ports, the open basket fence, the muzzle mirror on the left). */
+export type Type10Mark='production'|'prototype';
 
 interface Type10XBuildOptions {
   /** False where a variant seats its own roof stations (the dozer's autocannons, type10DozerFieldKit.ts). */
   readonly remoteM2?:boolean;
+  readonly mark?:Type10Mark;
+  /** The production side blocks' stowage doors; false where a mark covers the blocks with its own armour (the 10B). */
+  readonly stowageDoors?:boolean;
+  /** The front blocks' smoke dischargers; false where a variant's appliqué covers those blocks and carries its own banks
+   *  (the Kaitaku, type10DozerFieldKit.ts). */
+  readonly smoke?:boolean;
+  /** The field chests in the rear basket; false for the TK-X's empty trials basket (its photographs). */
+  readonly basketStowage?:boolean;
+  /** The spare links across the lower bow (production; the TK-X's lower plate was plain). */
+  readonly bowLinks?:boolean;
+  /** The production basket, its whips and its rear antenna mount, its lower folded skirts and its one-piece side fascia;
+   *  a mark that carries its own (owner 2026-11-01: the TK-X and the 10B "need to look a lot more unique") draws them
+   *  in profiles/japan.ts. */
+  readonly basket?:boolean;
+  readonly antennas?:boolean;
+  readonly lowerSkirts?:boolean;
+  readonly fascia?:'solid'|'segmented';
 }
 
-export function buildType10X(P:TankBuilderPort,{remoteM2=true}:Type10XBuildOptions={}):void {
+export function buildType10X(P:TankBuilderPort,{remoteM2=true,mark='production',stowageDoors=mark==='production',smoke=true,
+  basketStowage=true,bowLinks=mark==='production',basket=true,antennas=true,lowerSkirts=true,
+  fascia='solid'}:Type10XBuildOptions={}):void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
-  hull(P);
+  hull(P,{bowLinks,lowerSkirts,fascia});
   P.gear=buildType10XGear(P,{style:'rubber',wheelR:.33617,wheelW:.358099,wheelY:.405,
     wheelZs:[...TYPE10_X_DATUMS.wheelStations],xc:1.27414,trackW:.486738,trackTh:.035,
     idler:{z:3.2069,y:.8113,r:.33617},sprocket:{z:-2.8495,y:.7480,r:.3131},
@@ -512,7 +703,9 @@ export function buildType10X(P:TankBuilderPort,{remoteM2=true}:Type10XBuildOptio
     returnRollerHullHalfWidthM:.878,
     topY:1.249,botY:.0805,paintedEnds:true,coveredTop:true,arms:true,
   });
-  turretArmor(P);rearRack(P);roofEquipment(P,remoteM2);mainGun(P);
+  turretArmor(P);if(basket)rearRack(P,mark,basketStowage);roofEquipment(P,remoteM2,antennas);mainGun(P,mark);
+  for(const side of [-1,1]){sideModules(P,side,stowageDoors,mark);if(smoke)smokeDischargers(P,side,mark);}
+  laserWarners(P);hullFittings(P);
   P.topY=2.989-PIVOT[1];
   P.hullG.userData.xRebuild={candidate:'type10',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

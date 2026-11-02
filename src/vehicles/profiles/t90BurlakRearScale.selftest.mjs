@@ -36,18 +36,22 @@ const inspect = (id) => {
   }
 }
 
+// 267 (S5, Main's ruling 2026-11-01): the prototype's turret is built to the Burlak X source; its welded bustle is the
+// source's box (t90.ts BURLAK_BUSTLE), from the neck behind the shell to the rear plate, its roof hatches on top.
 const burlak = inspect('t90a_burlak_proto');
 assert.equal(burlak.scale, 1,
-  'Burlak rear magazine restores its full authored scale');
-near(burlak.rootZ, -1.08,
-  'Burlak bustle keeps its shell attachment plane');
-near(burlak.rearZ, -3.30,
-  'Burlak bustle restores its full authored length');
-near(burlak.frontHalfWidth, 1.10,
-  'Burlak bustle restores its full authored width');
-near(burlak.frontHeight, 0.64,
-  'Burlak bustle restores its full authored height');
-near(burlak.maxRoofY, 0.69,
-  'Burlak bustle roof equipment follows the restored envelope');
+  'Burlak rear magazine keeps its full authored scale');
+near(burlak.rootZ, -1.4147,
+  'Burlak bustle starts at the source neck station');
+near(burlak.rearZ, -3.2988,
+  'Burlak bustle runs to the source rear plate');
+near(burlak.frontHalfWidth, 0.956,
+  'Burlak bustle keeps the source half-width');
+near(burlak.frontHeight, 0.7191,
+  'Burlak bustle roof stands at the source height');
+near(burlak.floorY, 0.1396,
+  'Burlak bustle floor stands at the source height over the ring');
+near(burlak.maxRoofY, 0.7191 + 0.0229,
+  'Burlak bustle roof equipment follows the source envelope');
 
-console.log('t90BurlakRearScale.selftest: Burlak rear magazine restores its full envelope around the fixed turret neck');
+console.log('t90BurlakRearScale.selftest: the Burlak rear magazine is the source bustle, full size, on the fixed turret neck');

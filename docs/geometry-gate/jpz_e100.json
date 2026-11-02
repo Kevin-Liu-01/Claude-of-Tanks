@@ -1261,5 +1261,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/jpz_e100_x_source.glb",
+  "sha256": "a7b6440b17c641b9c69947d263e8a1922ec137c269ccafc9dd63fa7c3e129571"
+ }
 }

@@ -240,9 +240,20 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   over the 0df7b32811 pins: the shot card's one-line rows (item/shot-card-fit-266, +93 B, inside the slack alone) and
   //   Brazil's flag-icons br.svg in flags.ts's FLAG_URL (+101 B: the Brazilian flag chips were broken images); Gallery
   //   +49 B stays inside its slack.
-  game: { brotliBytes: 1162785, requests: 128, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1207208, requests: 129, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 732944, requests: 75 },
+  // 2026-11-02 (integrator 267, the single end re-pin at integ/267 80bc20be95's build; Node 24.22.1; Main's brief: one bundle
+  //   re-pin with attribution): game +2,951 B brotli over the 266 pins (boot chunks +3,006 B over 266's main 950a4acc85 built
+  //   here on the same node_modules, which reads its pin within -144 B), cn +2,985 B, Gallery +2,786 B; requests DOWN to
+  //   127 / 128 / 73 (the Type 10 armour and gun-seat chunks and mapPalette fold away; the entry -89 B). By chunk and lane:
+  //   type90bArmor +1,474 (new: the Japan line's Type 90 (B) and Type 10 family tables, replacing type10DozerArmor -598 and
+  //   type10GunSeat -239), vehicleMarkings +1,232 (the 2A7 DK's and Centurion DK's Danish marks, the Type 90 (B)'s),
+  //   fleetFactory +843 (the three new ids registered at boot; Leclerc round 5, the Magachs, the Leopard 1 outlets, the T-90
+  //   family's rebuild), materials +712 (the bevel class's plate planes; the 2A7 DK's Barracuda coat), collision +244 (main's
+  //   plane fit), camoPolicy +190 (paint_leo2a7dk, paint_centurion5_2dk, paint_type90b, paint_type10), franceSpecs +146 (the
+  //   AMX-40's depression curve), decorations +137, mapNames +124 (new) against mapPalette -1,276 (main's og-cards), the rest
+  //   under 65 B each. Home +8 B, docs +58 B and 404 +120 B stay inside their slack.
+  game: { brotliBytes: 1165736, requests: 127, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1210193, requests: 128, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 735730, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
   notFound: { brotliBytes: 18355, requests: 7 },

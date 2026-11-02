@@ -936,5 +936,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leo2a4m_x_source.glb",
+  "sha256": "59771994cef5162da9984892dac5f2142f91a6e1f887d87531176a692779e31b"
+ }
 }

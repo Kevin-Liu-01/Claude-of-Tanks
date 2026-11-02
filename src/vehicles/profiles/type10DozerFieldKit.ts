@@ -16,7 +16,8 @@
 //   two wall modules and a cheek module a side on the turret.
 // - Lights: work lamps on the forward turret modules and on the bustle, the searchlight, and an equipment light on the
 //   original Type 10's 12.7 mm seat.
-// - Smoke: a four-tube bank a side on the rear turret modules (the TK-X build's eight charges; type10 draws none).
+// - Smoke: a four-tube bank a side on the rear turret modules (the TK-X build's eight charges): the appliqué covers the
+//   front blocks where the base's own dischargers sit (type10X.ts), so the Kaitaku builds the base without them.
 // - Equipment: stowage bins on the front fenders; the field cage's strapped packs.
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';

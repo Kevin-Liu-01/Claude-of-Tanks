@@ -1,6 +1,6 @@
 {
  "id": "t72bu",
- "geoMin": 38.1,
+ "geoMin": 92.9,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -104,23 +104,23 @@
    ]
   },
   "actual": {
-   "heightM": 2.2809451385959982,
+   "heightM": 2.510131013765931,
    "hullLengthM": 7.563133880607785,
    "overallLengthM": 10.357018835060298,
    "widthM": 3.5796650978922844
   }
  },
  "qualityBar": "exemplar",
- "gatePassed": false,
- "rawGeoMin": 38.131004366812306,
+ "gatePassed": true,
+ "rawGeoMin": 92.92694930462656,
  "rawComponents": {
-  "wholeCurves": 92.47776299255032,
-  "dims": 38.131004366812306,
+  "wholeCurves": 92.92694930462656,
+  "dims": 100,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 92.5,
-  "dims": 38.1,
+  "wholeCurves": 92.9,
+  "dims": 100,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -235,8 +235,8 @@
    ]
   },
   "side_whole": {
-   "score": 73.56100554044765,
-   "meanPct": 1.58,
+   "score": 76.15558650525368,
+   "meanPct": 1.36,
    "p95Pct": 12.54,
    "coverPct": 0,
    "reg": {
@@ -301,6 +301,14 @@
      "errM": 0.257
     },
     {
+     "at": 1.34,
+     "refTop": 0.57,
+     "refBot": -1.69,
+     "procTop": 1.04,
+     "procBot": -1.69,
+     "errM": 0.235
+    },
+    {
      "at": 3.09,
      "refTop": 0.07,
      "refBot": -1.68,
@@ -309,36 +317,28 @@
      "errM": 0.186
     },
     {
-     "at": 1.34,
-     "refTop": 0.57,
-     "refBot": -1.69,
-     "procTop": 0.89,
-     "procBot": -1.69,
-     "errM": 0.158
+     "at": -2.39,
+     "refTop": 0.05,
+     "refBot": -0.87,
+     "procTop": 0.05,
+     "procBot": -0.72,
+     "errM": 0.076
     },
     {
-     "at": 0.52,
-     "refTop": 1.05,
-     "refBot": -1.69,
-     "procTop": 0.86,
-     "procBot": -1.69,
-     "errM": 0.098
+     "at": 4.49,
+     "refTop": -0.23,
+     "refBot": -0.91,
+     "procTop": -0.29,
+     "procBot": -0.86,
+     "errM": 0.055
     },
     {
-     "at": 0.64,
-     "refTop": 1.05,
-     "refBot": -1.69,
-     "procTop": 0.86,
-     "procBot": -1.69,
-     "errM": 0.098
-    },
-    {
-     "at": 0.41,
-     "refTop": 1.03,
-     "refBot": -1.69,
-     "procTop": 0.86,
-     "procBot": -1.69,
-     "errM": 0.087
+     "at": 4.84,
+     "refTop": 0.06,
+     "refBot": -0.61,
+     "procTop": 0.07,
+     "procBot": -0.53,
+     "errM": 0.044
     }
    ]
   },
@@ -667,8 +667,8 @@
    ]
   },
   "front_whole": {
-   "score": 70.40455785715434,
-   "meanPct": 1.91,
+   "score": 71.80130522074289,
+   "meanPct": 1.79,
    "p95Pct": 11.2,
    "coverPct": 0,
    "reg": {
@@ -765,12 +765,12 @@
      "errM": 0.257
     },
     {
-     "at": -0.3,
-     "refTop": 0.82,
-     "refBot": -1.35,
-     "procTop": 0.54,
-     "procBot": -1.35,
-     "errM": 0.136
+     "at": -1.72,
+     "refTop": -0.34,
+     "refBot": -0.97,
+     "procTop": -0.29,
+     "procBot": -0.77,
+     "errM": 0.121
     }
    ]
   }
@@ -836,27 +836,27 @@
    "refW": 3.476,
    "procW": 3.508,
    "refTop": 2.758,
-   "procTop": 2.653,
+   "procTop": 2.808,
    "wPct": 0.9125953873931801,
-   "topPct": 3.096201135074552
+   "topPct": 1.4658987412681492
   },
   {
    "i": 6,
    "refW": 3.588,
    "procW": 3.575,
    "refTop": 2.756,
-   "procTop": 2.597,
+   "procTop": 2.752,
    "wPct": 0.35959883798480946,
-   "topPct": 4.689002292019399
+   "topPct": 0.1269024156766979
   },
   {
    "i": 7,
    "refW": 3.589,
    "procW": 3.575,
    "refTop": 2.762,
-   "procTop": 2.575,
+   "procTop": 2.73,
    "wPct": 0.3803945919106491,
-   "topPct": 5.512643527717763
+   "topPct": 0.9505436513750604
   },
   {
    "i": 8,
@@ -916,9 +916,9 @@
  "dimRows": [
   {
    "name": "heightM",
-   "actual": 2.2809451385959982,
+   "actual": 2.510131013765931,
    "published": 2.4992174006626007,
-   "pct": 8.733624454148462,
+   "pct": 0.43668122270742926,
    "method": "paired identical masks in source-only fixed frame"
   },
   {
@@ -975,9 +975,9 @@
   "len": 7.573
  },
  "proceduralBodyExtent": {
-  "h": 2.262,
+  "h": 2.273,
   "len": 7.693,
-  "roofFittingsTop": 2.634
+  "roofFittingsTop": 2.787
  },
  "roofFittingsExcluded": {
   "procedural": [
@@ -987,7 +987,8 @@
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_detail",
-   "pintleMG:browningDerivedMachineGunMount"
+   "pintleMG:browningDerivedMachineGunMount",
+   "weaponStationMount:t72buCommanderNsvtRiser"
   ],
   "reference": [
    "roofGunBoxes:mesh_324"
@@ -1006,7 +1007,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 134419,
+     "area": 134895,
      "minX": 152,
      "minY": 336,
      "maxX": 949,
@@ -1020,7 +1021,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 130291,
+     "area": 130978,
      "minX": 222,
      "minY": 336,
      "maxX": 1023,
@@ -1034,7 +1035,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 129880,
+     "area": 130375,
      "minX": 222,
      "minY": 336,
      "maxX": 1023,
@@ -1048,7 +1049,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 130040,
+     "area": 130516,
      "minX": 154,
      "minY": 336,
      "maxX": 949,
@@ -1062,7 +1063,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 135133,
+     "area": 135609,
      "minX": 162,
      "minY": 336,
      "maxX": 949,
@@ -1070,5 +1071,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t72bu_x_source.glb",
+  "sha256": "d62a92b41e65c9c0085f73d6f402980f6c057bc3c6169b8dfcd7bc41ec019ec3"
+ }
 }

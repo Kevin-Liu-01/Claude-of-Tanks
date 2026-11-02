@@ -1259,13 +1259,9 @@
       {
         "volumeId": "M09",
         "name": "optics",
-        "min": [-0.919,0.4845,-0.32],
-        "max": [0.828,0.89,0.6771],
+        "min": [-0.919,0.4845,0.0841],
+        "max": [0.828,0.6544,0.6771],
         "parts": [
-          {
-            "min": [0.185,0.8,-0.32],
-            "max": [0.355,0.89,-0.308]
-          },
           {
             "min": [0.638,0.5204,0.0841],
             "max": [0.828,0.6544,0.3141]
@@ -1341,15 +1337,15 @@
       }
     ]
   },
-  "geometryHash": "2ef5c733",
-  "metadataHash": "a6f305fb",
+  "geometryHash": "24bb5e10",
+  "metadataHash": "f8649590",
   "presentationAnchor": {
     "xM": 0.0014,
     "zM": -0.081
   },
   "presentationHash": "b13daf42",
   "presentationProjection": {
-    "centerYM": 1.9699,
+    "centerYM": 2.6349,
     "topHalfM": 6.5096,
     "sideHalfM": 3.2548
   },
@@ -1366,13 +1362,12 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 12,
+      "armorPaint": 14,
       "hullRubber": 1,
-      "gunmetal": 4,
+      "gunmetal": 5,
       "unclassified": 16,
       "gearShadow": 1,
       "machineGun": 4,
-      "opticGlass": 1,
       "canvas": 1
     }
   },
@@ -1400,15 +1395,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24160,
-      "sha256": "5b2c17aa904498ce882398b4081eeb4a83dc0a4ca10e048e183fc726688227a6",
+      "bytes": 25682,
+      "sha256": "8b3e90e59765db0cd7595b2a14f54eb4eee5f236a1a4be4c089232b655e54286",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10084,
-        "sha256": "01a4a4b27814da5a754e2f420614e11c48f281f03026b99663220690c3964415"
+        "bytes": 10724,
+        "sha256": "75f909c01182815532231424d937543938d2433187c2b94fea0e79e2209ec508"
       }
     },
     "top": {
@@ -1416,16 +1411,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9702,
-      "sha256": "bd1b8073fba9363de86ab2c8f86f6c77543970e262f434b23384bc71541387e9"
+      "bytes": 9754,
+      "sha256": "0eb3c52541caa32ee7b906fad88d730614cbb6b7236fcdda321694b5a4d1d8a6"
     },
     "side": {
       "file": "t80uk_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9832,
-      "sha256": "31beccb9d9dc0c9692c9b17e4984c06940f21f261bd8013b491434a4f05082a4"
+      "bytes": 10908,
+      "sha256": "5ccda56bb12bcf0c63154fa9ff1ea16d872f26c27c461d1f51ed2636428d9d98"
     },
     "topSilhouette": {
       "file": "t80uk_top_silhouette.png",
@@ -1440,32 +1435,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4371,
-      "sha256": "43a45f74a51cf9f8efeda99d43f3173d7adbe9e952dfed971af6155e13e047fe"
+      "bytes": 4664,
+      "sha256": "337c8ac5e8756a615e82b65f228ae2391d732b3455d17d3b369d6912cca11d8a"
     },
     "armorSide": {
       "file": "t80uk_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23566,
-      "sha256": "1fd6ea72c678f4f58dc65e86f1a1a6b28975a031348c5dc5d1cfb9013299f515"
+      "bytes": 24524,
+      "sha256": "a2d3344288789fe6b9a367c7ce13c9acb32123c67df7773a84c4204d1975d849"
     },
     "modulesSide": {
       "file": "t80uk_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22754,
-      "sha256": "2889cbfc7943b1845a4400f3c71203d6c8603e6f3b855d5d45deffb3f251088a"
+      "bytes": 23458,
+      "sha256": "e58ee831b17761af4a68963fbf892cc2e0d9e66286776a5ee2e45438cce9ab07"
     },
     "crewSide": {
       "file": "t80uk_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19420,
-      "sha256": "e26248a89f4bbd58eb23ba810c0d32470711105925da8b20af88af85c04b7a0d"
+      "bytes": 20028,
+      "sha256": "dd7b17d4828705e30ac2d996f5fdecce4901cb8edcbe466de670089fc7f9455d"
     },
     "markings": {
       "file": "t80uk_markings.png",
@@ -1478,8 +1473,8 @@
     "technicalLabels": {
       "file": "t80uk_technical.json",
       "mime": "application/json",
-      "bytes": 4798,
-      "sha256": "29eba58d428ab3719dfd02e6928083977e3e06b4ad52fc4579db8326a18cd7da"
+      "bytes": 4693,
+      "sha256": "1d32b424d7a2b7f9988622efb9cb31639c431ad53e47d5c01629e3dfc7be4850"
     }
   }
 }

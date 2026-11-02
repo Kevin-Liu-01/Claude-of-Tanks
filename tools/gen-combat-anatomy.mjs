@@ -3,8 +3,18 @@
 // publish the pure-data calibration consumed by combatAnatomy.ts.
 //
 //   node tools/gen-combat-anatomy.mjs          # regenerate the full fleet
-//   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed
+//   node tools/gen-combat-anatomy.mjs --check [--jobs=4]  # fail when a tank changed (--jobs: parallel parts, no merge)
 //   node tools/gen-combat-anatomy.mjs --crew-only [--ids=a,b]  # re-seat the crew in the committed calibrations
+//   node tools/gen-combat-anatomy.mjs --ids=a,b --out-dir=<dir>  # one part of a parallel run: its rows into <dir> alone
+//   node tools/gen-combat-anatomy.mjs [--ids=a,b,c,d] --merge-from=<dir>,<dir>  # write the parts' rows as this run's
+//
+// Parts (268: the regen's longest single-process step, 3770 s of CPU in 266): the changed-only chain splits a run into
+// --out-dir parts (tools/changed-only/parts.mjs). A part reads the tree and writes nothing in it; the merge takes the
+// parts' rows in place of measuring them and is otherwise this run, so the groups, the index, the loader map and the
+// sim-floor ledger are written once, byte for byte as one process writes them (tools/combat-anatomy-parts.selftest.mjs).
+// --check --jobs=N runs the check as N --check --ids parts and no merge (a check writes nothing): each part compares its
+// ids' measurement with the committed files, and this process adds the one fleet-wide clause of a whole check, a
+// sim-floor ledger row for an id that left the fleet.
 //
 // Every row carries its crew seats (235, tools/crew-seat-fit.mjs): a P50 body per crew station, seated in its role's
 // posture inside the shell this row measures, and (266) its module seats: the sketched modules placed around the crew
@@ -16,6 +26,7 @@
 // responsible, unless accepted with a reason (--accept-floor=<id>[,<id>]:<reason>, or COT_ACCEPT_FLOOR_DRIFT through
 // an npm chain). The write mode still writes its outputs first, then exits 3, so the regen chain stops there.
 
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { uniqueIds } from './id-list.mjs';
 import {
@@ -23,6 +34,7 @@ import {
 } from 'node:fs';
 import { userInfo } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
@@ -32,6 +44,8 @@ import {
   acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readCommittedCalibrations,
   readFloorLedger, seedFloorRows, writeFloorLedger,
 } from './anatomy-floor-ledger.mjs';
+import { anatomyOutputFiles, anatomyRows } from './combat-anatomy-files.mjs';
+import { readPartRows, writePartRows } from './changed-only/parts.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import {
   enableCombatAnatomyMeasurementMode,
@@ -64,6 +78,37 @@ const onlyIds = (() => {
   const arg = process.argv.find((a) => a.startsWith('--ids='));
   return arg ? new Set(uniqueIds(arg.slice(6).split(',').filter(Boolean), 'gen-combat-anatomy --ids')) : null;
 })();
+const optionValue = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null;
+const partDir = optionValue('out-dir');
+const mergeFrom = optionValue('merge-from')?.split(',').filter(Boolean) ?? null;
+if (partDir && (!onlyIds || check || crewOnly || mergeFrom || process.argv.some((a) => a.startsWith('--accept-floor=')))) {
+  throw new Error('[combat-anatomy] --out-dir measures one part: it takes --ids, never --check, --crew-only, --merge-from or --accept-floor (the merge records accepts)');
+}
+if (mergeFrom && (check || crewOnly)) throw new Error('[combat-anatomy] --merge-from writes the parts\' rows: never with --check or --crew-only');
+const PART_TOOL = 'gen-combat-anatomy';
+const checkJobs = check ? Math.max(1, Number(optionValue('jobs') ?? 1) | 0) : 1;
+const checkIds = ALL_TANK_IDS.filter((id) => !onlyIds || onlyIds.has(id));
+if (checkJobs > 1 && checkIds.length >= 8) {
+  const lists = Array.from({ length: Math.min(checkJobs, Math.ceil(checkIds.length / 4)) }, () => []);
+  checkIds.forEach((id, index) => lists[index % lists.length].push(id));
+  const passOn = process.argv.slice(2).filter((arg) => !/^--(?:ids|jobs)=/.test(arg));
+  const codes = await Promise.all(lists.map((list) => new Promise((done) => {
+    spawn(process.execPath, [fileURLToPath(import.meta.url), ...passOn, `--ids=${list.join(',')}`], { stdio: 'inherit' })
+      .on('close', (code) => done(code ?? 1));
+  })));
+  let code = codes.find((each) => each !== 0) ?? 0;
+  if (!onlyIds) {
+    const { extra } = compareFloorRows(readFloorLedger().rows, {}, { ids: [], fleetIds: ALL_TANK_IDS });
+    if (extra.length) {
+      console.error(`[combat-anatomy] SIM FLOOR: ledger rows for ids no longer in the fleet: ${extra.join(', ')} `
+        + '(node tools/anatomy-floor-drift.mjs --prune)');
+      code ||= 2;
+    }
+  }
+  console.log(`[combat-anatomy] ${code ? `FAIL (exit ${code})` : 'PASS'} — ${checkIds.length} receipts checked in ${lists.length} parts `
+    + `(exits ${codes.join(', ')})`);
+  process.exit(code);
+}
 const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds || crewOnly
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
   : Object.freeze({});
@@ -781,57 +826,32 @@ function seatsFor(id, calibration) {
   return { crewSeats, moduleSeats };
 }
 
-const rows = {};
-for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[combat-anatomy] unknown id ${id}`);
-for (const id of ALL_TANK_IDS) {
-  if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
-  if (crewOnly) {
+const rows = anatomyRows({
+  roster: ALL_TANK_IDS, only: onlyIds, committed: COMBAT_ANATOMY_CALIBRATIONS, part: !!partDir,
+  parts: mergeFrom ? readPartRows(mergeFrom, PART_TOOL) : null,
+  measure: (id) => {
+    const measured = receiptFor(id);
+    const row = { ...measured, ...seatsFor(id, measured) };
+    console.log(`[combat-anatomy] measured ${id}`);
+    return row;
+  },
+  reseat: crewOnly ? (id) => {
     if (!COMBAT_ANATOMY_CALIBRATIONS[id]) throw new Error(`[combat-anatomy] ${id}: --crew-only needs a committed calibration`);
     const { crewSeats: _previous, moduleSeats: _previousModules, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
-    rows[id] = { ...measured, ...seatsFor(id, measured) };
+    const row = { ...measured, ...seatsFor(id, measured) };
     console.log(`[combat-anatomy] seated ${id}`);
-    continue;
-  }
-  const measured = receiptFor(id);
-  rows[id] = { ...measured, ...seatsFor(id, measured) };
-  console.log(`[combat-anatomy] measured ${id}`);
+    return row;
+  } : null,
+});
+if (partDir) {
+  // a part's rows go to its own directory alone; the merge writes every shared file and holds the sim floors
+  writePartRows(partDir, PART_TOOL, rows);
+  console.log(`[combat-anatomy] part: measured ${Object.keys(rows).length} rows into ${partDir}`);
+  process.exit(0);
 }
 
-const fileHeader = `// Generated by tools/gen-combat-anatomy.mjs. Do not hand-edit.\n`
-  + `// Main armor and internal volumes are calibrated to these first-party geometry receipts.\n`;
-const rowsByGroup = {};
-for (const [id, calibration] of Object.entries(rows)) {
-  const group = FLEET_GROUP_BY_ID[id] || 'core';
-  (rowsByGroup[group] ||= {})[id] = calibration;
-}
-const groupNames = Object.keys(rowsByGroup).sort();
-const groupBinding = (group) => `CALIBRATIONS_${group.replace(/[^A-Za-z0-9]/g, '_').toUpperCase()}`;
-const groupSources = Object.fromEntries(groupNames.map((group) => [
-  join(groupOutputDir, `${group}.generated.ts`),
-  fileHeader
-    + `import type { CombatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';\n\n`
-    // Collision receipts are large numeric payloads. Keep generated modules
-    // compact so download/parse cost is governed by data, not indentation.
-    + `export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> = Object.freeze(${JSON.stringify(rowsByGroup[group])});\n`,
-]));
-const source = fileHeader
-  + `import type { CombatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';\n`
-  + groupNames.map((group) => `import { COMBAT_ANATOMY_CALIBRATIONS as ${groupBinding(group)} } from './combatAnatomyGroups/${group}.generated.ts';`).join('\n')
-  + `\n\nexport const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> = Object.freeze(Object.assign({},\n`
-  + groupNames.map((group) => `  ${groupBinding(group)},`).join('\n')
-  + `\n));\n`;
-const loaderSource = `// Generated by tools/gen-combat-anatomy.mjs. Do not hand-edit.\n`
-  + `// Explicit imports let Vite emit one immutable calibration chunk per visual family.\n\n`
-  + `import type { CombatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';\n\n`
-  + `type CalibrationGroupModule = { COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> };\n\n`
-  + `export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise<CalibrationGroupModule>>> = Object.freeze({\n`
-  + groupNames.map((group) => `  ${JSON.stringify(group)}: () => import('./combatAnatomyGroups/${group}.generated.ts'),`).join('\n')
-  + `\n});\n`;
-const outputs = {
-  [outPath]: source,
-  [loaderOutputPath]: loaderSource,
-  ...groupSources,
-};
+const { outputs, groupNames } = anatomyOutputFiles(rows, FLEET_GROUP_BY_ID,
+  { outPath, groupDir: groupOutputDir, loaderPath: loaderOutputPath });
 const staleGroupPaths = existsSync(groupOutputDir)
   ? readdirSync(groupOutputDir)
     .filter((name) => name.endsWith('.generated.js') || name.endsWith('.generated.ts'))

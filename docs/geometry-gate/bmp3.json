@@ -1153,5 +1153,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/bmp3_rok_42manako.glb",
+  "sha256": "c20e0afef722fc82c816f12326b63f7dc67081be72bb1c2ac6d5e79a99e62432"
+ }
 }

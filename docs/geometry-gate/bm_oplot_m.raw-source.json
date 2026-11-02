@@ -1,6 +1,6 @@
 {
  "id": "bm_oplot_m",
- "geoMin": 27.8,
+ "geoMin": 0,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -15,15 +15,15 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 27.80359761066103,
+ "rawGeoMin": 0,
  "rawComponents": {
-  "wholeCurves": 91.33066976551326,
-  "dims": 27.80359761066103,
+  "wholeCurves": 91.27711021953553,
+  "dims": 0,
   "floaters": 100
  },
  "components": {
   "wholeCurves": 91.3,
-  "dims": 27.8,
+  "dims": 0,
   "floaters": 100
  },
  "wholeShapeMetric": "registered-standard-view-masks (fused reference)",
@@ -138,7 +138,7 @@
    ]
   },
   "side_whole": {
-   "score": 81.69032953300724,
+   "score": 81.67029918005939,
    "meanPct": 1.08,
    "p95Pct": 3.3,
    "coverPct": 2.27,
@@ -196,19 +196,19 @@
      "errM": 0.116
     },
     {
+     "at": 2.42,
+     "refTop": 0.96,
+     "refBot": -1.99,
+     "procTop": 0.75,
+     "procBot": -1.99,
+     "errM": 0.105
+    },
+    {
      "at": -2.06,
      "refTop": -0.07,
      "refBot": -1.52,
      "procTop": -0.08,
      "procBot": -1.71,
-     "errM": 0.1
-    },
-    {
-     "at": 2.42,
-     "refTop": 0.96,
-     "refBot": -1.99,
-     "procTop": 0.76,
-     "procBot": -1.99,
      "errM": 0.1
     },
     {
@@ -570,8 +570,8 @@
    ]
   },
   "front_whole": {
-   "score": 59.10956380403155,
-   "meanPct": 2.84,
+   "score": 59.19979836675877,
+   "meanPct": 2.83,
    "p95Pct": 9.93,
    "coverPct": 0.56,
    "reg": {
@@ -820,14 +820,16 @@
   {
    "name": "heightM",
    "actual": 2.9548836376522676,
+   "roofFittingsTop": 2.9548836376522676,
    "published": 2.96,
+   "method": "interval: body top to roof-fittings top",
    "pct": 0.17285007931528323
   },
   {
    "name": "hullLengthM",
-   "actual": 7.437010503754021,
+   "actual": 7.674950571954485,
    "published": 6.825,
-   "pct": 8.967186868190776
+   "pct": 12.45348823376534
   },
   {
    "name": "overallLengthM",
@@ -854,7 +856,19 @@
  },
  "proceduralBodyExtent": {
   "h": 2.955,
-  "len": 7.437
+  "len": 7.675,
+  "roofFittingsTop": 2.955
+ },
+ "roofFittingsExcluded": {
+  "procedural": [
+   "antennaSpans:turretDark",
+   "pintleMG:oplotMKt762",
+   "pintleMG:sourceMachineGun_turretDark",
+   "pintleMG:sourceMachineGun_turretDetail",
+   "pintleMG:sourceMachineGun_turretGlass",
+   "pintleMG:sourceMachineGun_yawSupport"
+  ],
+  "reference": []
  },
  "floaterFails": 0,
  "floaterRows": [
@@ -864,7 +878,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133571,
+     "area": 133543,
      "minX": 169,
      "minY": 321,
      "maxX": 918,
@@ -878,7 +892,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131578,
+     "area": 131626,
      "minX": 229,
      "minY": 321,
      "maxX": 996,
@@ -892,7 +906,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131361,
+     "area": 131336,
      "minX": 229,
      "minY": 321,
      "maxX": 996,
@@ -906,7 +920,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131503,
+     "area": 131475,
      "minX": 171,
      "minY": 321,
      "maxX": 918,
@@ -920,7 +934,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133709,
+     "area": 133681,
      "minX": 179,
      "minY": 321,
      "maxX": 918,

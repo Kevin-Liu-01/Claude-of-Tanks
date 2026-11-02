@@ -2417,14 +2417,14 @@
         "volumeId": "M04",
         "name": "engine",
         "min": [-0.6538,0.5352,1.4668],
-        "max": [0.6538,0.9804,1.6396],
+        "max": [0.6538,0.9804,1.7548],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.5622,0.5575,1.6338],
-        "max": [0.5622,0.8781,1.7318],
+        "min": [-0.8298,0.9804,1.3467],
+        "max": [0.8298,1.5025,1.8749],
         "turretLocal": false
       },
       {
@@ -2480,8 +2480,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [0.2481,0.6484,1.359],
-        "max": [0.7075,1.7084,2.7003],
+        "min": [0.2481,1.0988,1.7334],
+        "max": [0.7075,1.5452,3.5258],
         "turretLocal": false
       },
       {
@@ -2501,7 +2501,7 @@
     ]
   },
   "geometryHash": "53dcac57",
-  "metadataHash": "686d70b6",
+  "metadataHash": "e2ee1089",
   "presentationAnchor": {
     "xM": -0.0011,
     "zM": 0.1061
@@ -2564,16 +2564,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24818,
-      "sha256": "27cb6ddc26d2b48d5992799e8db1ed968b559a2aee0d2adb3cb62d602fffb339"
+      "bytes": 25066,
+      "sha256": "3cf11a4876f8948e22898464cbf050b92411a71a9a56fbfa962bb6179c271ae4"
     },
     "crewSide": {
       "file": "aft10_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24984,
-      "sha256": "bc8536879c814c19762d61a58fcf510631a183bd47bf3b3a97db1b099e181053"
+      "bytes": 25282,
+      "sha256": "27bb4310d73722983cedbe3f4997777b47d7161acdafdf0eb3868549fcaec289"
     },
     "angle": {
       "file": "aft10_angle.webp",
@@ -2635,7 +2635,7 @@
       "file": "aft10_technical.json",
       "mime": "application/json",
       "bytes": 3811,
-      "sha256": "b00e8f536c0410b69393362e3d2796ffaf58117d22982a45eb246b75c7ae4a36"
+      "sha256": "ae59281d549d8802b488b23f769e8d1c484253f4611fc2f16e36fc18baac360b"
     }
   }
 }

@@ -1085,7 +1085,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 126027,
+     "area": 126033,
      "minX": 152,
      "minY": 247,
      "maxX": 873,
@@ -1099,7 +1099,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 123959,
+     "area": 123965,
      "minX": 189,
      "minY": 247,
      "maxX": 911,
@@ -1113,7 +1113,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 123489,
+     "area": 123495,
      "minX": 189,
      "minY": 247,
      "maxX": 910,
@@ -1127,7 +1127,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 122730,
+     "area": 122736,
      "minX": 154,
      "minY": 247,
      "maxX": 873,
@@ -1141,7 +1141,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 126251,
+     "area": 126257,
      "minX": 161,
      "minY": 247,
      "maxX": 873,
@@ -1149,5 +1149,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t64bv_donbass_manako.glb",
+  "sha256": "99c27a43025c479ce8776aca798d43f557f64acbf60f5308ffb62d9885b6f3a5"
+ }
 }

@@ -11,10 +11,11 @@
 //                                                   # on the maps that cast them as wreck donors; their rows are recorded
 //                                                   # only when release/fingerprints.tsv exists
 //   npm run tank:regen:changed -- --help
-//   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the installed lock, NODE_OPTIONS),
+//   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the platform, package-lock.json),
 //   the chain refuses unless --ids, --all or --check says what to run (266: either way every id resolves as changed, so
-//   the default run used to plan the whole fleet silently).
-//   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel fill parts)  --max-passes=3  --root=<tree>
+//   the default run used to plan the whole fleet silently); --ids then records no rows (268). A node_modules that is not
+//   the lock's install refuses every run but --dry-run (268).
+//   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel parts of fills, seats, spare track, anatomy, gun lines)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
 //
@@ -28,18 +29,26 @@
 // assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
 // settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
-// after), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
+// after; a step's own input rows as the run recorded them, stampedInKeys), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
 //
 // Resource rules: every CPU child runs `nice -n 10 node --max-old-space-size=4096` after `headroom can-start --gb N`,
-// with a wall-clock limit that kills only that child; GPU children are not niced and run inside the capture lock.
+// with a limit that stops only that child and its own children; GPU children are not niced and run inside the capture
+// lock, under a wall-clock limit.
+// Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
+// (tools/changed-only/childPriority.mjs, 267). A CPU child's limit is a budget of its process tree's CPU, not of wall
+// time, with a 30-minute no-progress cap for a hang (tools/changed-only/childBudget.mjs, 267).
 import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
-  from './changed-only/fingerprint.mjs';
+import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged,
+  stampedInKeys, toolchainChange, toolchainOf, writeManifest } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
+import { cpuChildCommand } from './changed-only/childPriority.mjs';
+import { watchChild } from './changed-only/childBudget.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
+import { expandGlobs } from './changed-only/globs.mjs';
+import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -68,6 +77,19 @@ if (value('ids') !== undefined) {
 // No table: every id would resolve as changed (no manifest), so a plain run would silently plan the whole fleet.
 const TABLE_PRESENT = existsSync(resolve(root, MANIFEST_PATH));
 if (!TABLE_PRESENT && !ALL && !CHECK && !IDS) refuse('no fingerprints table: pass --ids=<ids> for a lane-scoped regen, or --all to bootstrap');
+// (268) The toolchain keys the lock (fingerprint.mjs toolchainOf), so the tools must be the lock's: a run on any other
+// install refuses before a tool runs.
+const DRIFT = DRY ? [] : installDrift(root);
+if (DRIFT.length) {
+  refuse(`node_modules is not package-lock.json's install (${DRIFT.length}: ${DRIFT.slice(0, 4).join('; ')}${DRIFT.length > 4 ? '; ...' : ''}): `
+    + 'run npm ci, or link a node_modules installed from this lock');
+}
+// (268) --ids records rows only into a table taken on this run's toolchain: rows taken on another would move the table's
+// toolchain and so mark every other id. On another one it runs its ids and records nothing, as without a table.
+const TOOLCHAIN = toolchainOf(root), RECORDED = TABLE_PRESENT ? readManifest(root) : null;
+const TABLE_CURRENT = TABLE_PRESENT && (!IDS || RECORDED?.toolchain === TOOLCHAIN.toolchain);
+const UNRECORDED = TABLE_CURRENT ? null : TABLE_PRESENT ? `the table is on another toolchain: ${toolchainChange(RECORDED, TOOLCHAIN.parts)}`
+  : 'no fingerprints table';
 const table = await loadTable(value('table') ?? null);
 const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, DEPENDENTS, WORLD_STEPS, stepByName } = table;
 const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
@@ -118,71 +140,65 @@ async function gate(gb) {
   }
 }
 
-/** Run one child; resolves with its exit code. A timeout kills exactly that child (TERM, then KILL after 15 s). */
+/**
+ * Run one child; resolves with its exit code (124 when the runner stopped it). A CPU child's limit is a budget of the CPU
+ * its process tree spends (tools/changed-only/childBudget.mjs, 267): a starved child keeps running, one that burns past
+ * its budget or makes no CPU progress for HANG_S is stopped by exact pids, the reason named. A GPU child (never niced:
+ * it runs inside a capture hold) keeps a wall-clock limit, which bounds the hold (TERM, then KILL after 15 s).
+ */
 function runChild(argv, { niced, timeoutS, label }) {
   return new Promise((done) => {
-    const command = niced ? 'nice' : process.execPath;
-    const fullArgs = niced ? ['-n', '10', process.execPath, ...argv] : argv;
-    log(`[regen] ${label}: ${niced ? 'nice -n 10 ' : ''}node ${argv.join(' ').slice(0, 400)}`);
+    const { command, args: fullArgs, prefix } = cpuChildCommand(process.execPath, argv, { niced });
+    log(`[regen] ${label}: ${prefix}node ${argv.join(' ').slice(0, 400)}`);
     const out = join(qaDir, `${stamp}-${label.replace(/[^\w.-]+/g, '_')}.out`);
     const child = spawn(command, fullArgs, { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     const sink = (chunk) => appendFileSync(out, chunk);
     child.stdout.on('data', sink); child.stderr.on('data', sink);
-    let killed = false;
-    const timer = setTimeout(() => {
-      killed = true;
-      log(`[regen] ${label}: wall-clock limit ${timeoutS} s; stopping pid ${child.pid}`);
-      try { process.kill(child.pid, 'SIGTERM'); } catch {}
-      setTimeout(() => { try { process.kill(child.pid, 'SIGKILL'); } catch {} }, 15_000).unref();
-    }, timeoutS * 1000);
+    let killed = false, timer = null, watch = null;
+    if (niced) {
+      watch = watchChild(child.pid, { budgetS: timeoutS, hangS: HANG_S, onStop: (verdict) => {
+        killed = true;
+        log(`[regen] ${label}: ${verdict.message}; stopping pid ${child.pid} and its children`);
+      } });
+    } else {
+      timer = setTimeout(() => {
+        killed = true;
+        log(`[regen] ${label}: wall-clock limit ${timeoutS} s (a GPU child: its capture hold); stopping pid ${child.pid}`);
+        try { process.kill(child.pid, 'SIGTERM'); } catch {}
+        setTimeout(() => { try { process.kill(child.pid, 'SIGKILL'); } catch {} }, 15_000).unref();
+      }, timeoutS * 1000);
+    }
     child.on('close', (code, signal) => {
-      clearTimeout(timer);
+      clearTimeout(timer); watch?.stop();
       done({ code: killed ? 124 : code ?? (signal ? 128 : 1), out });
     });
   });
 }
+/** A CPU child with no CPU progress in its tree for this long is hung (its CPU budget is the step's limit). */
+const HANG_S = 1800;
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills) runs as parallel parts merged by the tool itself. */
 /** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
- *  step: never recorded, so they stay due for a checkout that can run them; this chain does not try them again. */
+ *  step: never recorded as run. Stamped with their reason when the step names it (268: current until what would make
+ *  them runnable moves), else left due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
 /** A run's skip report: the file the chain passed in a step's `skipped` flag, `{ id: reason }` ({} when none). */
 const skipFile = (step, label) => (step.skipped ? join(qaDir, `${stamp}-${step.name}-${label}.skipped.json`) : null);
 const readSkipped = (file) => (file && existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {});
 
+/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills, anatomy, seats, spare track, gun lines) runs as
+ *  parallel parts merged by the tool itself; its report and json flags go to the run that writes them (the merge). */
 async function runCpuStep(step, ids, state) {
   const count = ids?.length ?? state.ids.length;
   const scopedArgs = ids ? step.scoped(ids) : step.full;
-  // a step that reports skipped ids runs whole: its parts would each report apart (267)
-  if (step.parts && !step.skipped && count >= 8 && JOBS > 1) {
-    const parts = Math.min(JOBS, Math.ceil(count / 4));
-    const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
-    const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
-    const lists = Array.from({ length: parts }, () => []);
-    all.forEach((id, index) => lists[index % parts].push(id));
-    const runs = await Promise.all(lists.map(async (list, k) => {
-      await gate(step.gb);
-      const dir = join(scratch, `part${k}`);
-      return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, `--out-dir=${dir}`, `--loader=${join(dir, 'loader.ts')}`],
-        { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
-    }));
-    const failed = runs.find((run) => run.code !== 0);
-    if (failed) return failed;
-    const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
-    await gate(step.gb);
-    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`], { niced: true, timeoutS: 900, label: `${step.name}-merge` });
-  }
   const extra = [];
   let jsonPath = null;
   if (step.report) extra.push(`${step.report}=${join(qaDir, `${stamp}-${step.name}-report.json`)}`);
   if (step.json) { jsonPath = join(qaDir, `${stamp}-${step.name}-${Date.now()}.json`); extra.push(`${step.json}=${jsonPath}`); }
-  const skippedFile = skipFile(step, Date.now());
-  if (skippedFile) extra.push(`${step.skipped}=${skippedFile}`);
-  await gate(step.gb);
-  const run = { ...await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra], { niced: true, timeoutS: timeoutFor(step, count), label: step.name }),
-    skipped: readSkipped(skippedFile) };
+  // a step that reports skipped ids runs whole: its parts would each report apart (267)
+  const run = step.parts && !step.skipped && count >= 8 && JOBS > 1
+    ? await runParts(step, ids, state, scopedArgs, extra) : await runWhole(step, scopedArgs, extra, count);
   if (run.code === 0 && jsonPath) {
     // spare-track --update exits 0 when a build fails and keeps the old row: every requested id must have a fresh row.
     const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
@@ -195,6 +211,44 @@ async function runCpuStep(step, ids, state) {
     }
   }
   return run;
+}
+
+async function runWhole(step, scopedArgs, extra, count) {
+  const skippedFile = skipFile(step, Date.now());
+  await gate(step.gb);
+  return { ...await runChild([step.tool, ...step.flags, ...scopedArgs, ...extra, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
+    { niced: true, timeoutS: timeoutFor(step, count), label: step.name }), skipped: readSkipped(skippedFile) };
+}
+
+async function runParts(step, ids, state, scopedArgs, extra) {
+  const count = ids?.length ?? state.ids.length;
+  const parts = Math.min(JOBS, Math.ceil(count / 4));
+  const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
+  const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
+  const lists = Array.from({ length: parts }, () => []);
+  all.forEach((id, index) => lists[index % parts].push(id));
+  // The step's shared outputs (its tables, `files`, `writes` and `sharedWrites`) are the merge's alone: held to their
+  // digests across the parts, so a part that writes one fails the step instead of racing another part for it (268).
+  const shared = sharedOutputs(step, table.TABLES);
+  const before = sharedDigests(root, expandGlobs(root, shared));
+  const runs = await Promise.all(lists.map(async (list, k) => {
+    await gate(step.gb);
+    return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, ...step.parts(join(scratch, `part${k}`))],
+      { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
+  }));
+  const failed = runs.find((run) => run.code !== 0);
+  if (failed) return failed;
+  const moved = movedShared(before, sharedDigests(root, expandGlobs(root, shared)));
+  if (moved.length) {
+    log(`[regen] ${step.name}: a part wrote ${moved.join(', ')}; only the merge writes the step's shared outputs`);
+    return { code: 1, out: runs[0].out };
+  }
+  const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
+  await gate(step.gb);
+  // the merge serializes every row and holds the step's own checks (anatomy's sim floors, with a blame build per
+  // drift); it alone takes the report and json flags
+  return runChild([step.tool, ...step.flags, ...scopedArgs, ...extra, `--merge-from=${dirs}`],
+    { niced: true, timeoutS: step.timeoutS, label: `${step.name}-merge` });
 }
 
 /** Run a GPU step on `ids` in capture-lock holds, each one browser within the step's time and renderer caps (gpuChunks). */
@@ -258,12 +312,13 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const fullState = fresh();
   const state = viewOf(definition, fullState);
   if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
-  const resolved = IDS ? (restrict && TABLE_PRESENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
+  const resolved = IDS ? (restrict && TABLE_CURRENT ? idsResolve(definition, fullState, state) : idsScope(definition, fullState, state))
     : forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
   const tried = notRunHere[name] ?? {};
-  if (resolved.ids.some((id) => tried[id])) {
-    const left = resolved.ids.filter((id) => !tried[id]);
+  // (268) by membership: a reason may be empty (a stamp refuses it; the id is still tried)
+  if (resolved.ids.some((id) => Object.hasOwn(tried, id))) {
+    const left = resolved.ids.filter((id) => !Object.hasOwn(tried, id));
     log(`[regen] ${name}: ${resolved.ids.length - left.length} id(s) not runnable here stay due (tried this chain)`);
     resolved.ids = left;
     if (!left.length) resolved.mode = 'none';
@@ -284,22 +339,32 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const started = Date.now();
   const run = definition.device === 'gpu' ? await runGpuStep(definition, scoped, state) : await runCpuStep(definition, scoped, state);
   const seconds = Math.round((Date.now() - started) / 1000);
-  summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code });
+  // (268) the ids the tool reported it could not run are named apart: nothing of theirs was regenerated
+  summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code,
+    ...(Object.keys(run.skipped ?? {}).length ? { notRun: Object.keys(run.skipped).sort() } : {}) });
   saveSummary();
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
-  if (IDS && !TABLE_PRESENT) { log(`[regen] ${name}: done in ${seconds} s (no fingerprints table: rows not recorded)`); return true; }
+  if (IDS && !TABLE_CURRENT) { log(`[regen] ${name}: done in ${seconds} s (rows not recorded: ${UNRECORDED})`); return true; }
   const after = fresh();
   manifest = readManifest(root) ?? manifest;
   const afterView = viewOf(definition, after);
   if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
   const skipped = run.skipped ?? {};
+  // (268) each one the step can name (steps.mjs `stamp`: an absent or unpinned oracle, a page error) is stamped with its
+  // reason, so it reads current until what would make it runnable moves; one it cannot name stays due
+  const stamps = {}, unnamed = [];
+  for (const [id, why] of Object.entries(skipped)) {
+    const stamp = typeof why === 'string' && why.trim() ? definition.stamp?.(why) : null;
+    if (stamp) stamps[id] = { ...stamp, reason: why };
+    else unnamed.push(`${id} (${why || 'no reason'})`);
+  }
   if (Object.keys(skipped).length) {
     Object.assign(notRunHere[name] ??= {}, skipped);
-    log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here, left due: ${Object.entries(skipped).slice(0, 6)
-      .map(([id, why]) => `${id} (${why})`).join(', ')}`);
+    log(`[regen] ${name}: ${Object.keys(skipped).length} id(s) not run here: ${Object.keys(stamps).length} stamped`
+      + `${unnamed.length ? `, ${unnamed.length} left due (no stamp names the reason): ${unnamed.slice(0, 6).join(', ')}` : ''}`);
   }
-  recordStep(manifest, name, scoped, inKeys, afterView, { skip: new Set(Object.keys(skipped)) });
+  recordStep(manifest, name, scoped, stampedInKeys(state, afterView, name, inKeys), afterView, { skip: new Set(Object.keys(skipped)), stamps });
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;
@@ -345,7 +410,7 @@ async function cpuFixpoint(firstPassFull) {
       summary.passes++;
       let moved = false;
       for (const name of CPU_FIXPOINT_STEPS.filter(selected)) if (await step(name, { restrict: !(firstPassFull && pass === 1) })) moved = true;
-      if (!moved || !TABLE_PRESENT) return;
+      if (!moved || !TABLE_CURRENT) return;
     }
     return;
   }
@@ -437,15 +502,14 @@ try {
   if (IDS) {
     const unknown = IDS.filter((id) => !fresh().ids.includes(id));
     if (unknown.length) throw Object.assign(new Error(`--ids names ids the roster does not hold: ${unknown.join(', ')}`), { refusal: true });
+    if (TABLE_PRESENT && !TABLE_CURRENT) log(`[regen] --ids: ${UNRECORDED}; these ids run and no rows are recorded`);
   }
   // A table recorded on another toolchain marks every id on every step: a plain run would plan the fleet as surely as
-  // no table at all (266: the bootstrap's 576f5e32ebc3c262 matched no install on the machine).
-  if (!ALL && !CHECK && !IDS) {
-    const recorded = readManifest(root)?.toolchain, state = fresh();
-    if (recorded && recorded !== state.toolchain) {
-      throw Object.assign(new Error(`the fingerprints table was recorded on another toolchain (${recorded}; this run ${state.toolchain}: `
-        + `${state.toolchainParts.join(', ')}), so every id would be marked: pass --ids=<ids> for a lane-scoped regen, or --all to re-record`), { refusal: true });
-    }
+  // no table at all (266: the bootstrap's 576f5e32ebc3c262 was taken on Homebrew's Node 26, which a login shell finds first).
+  if (!ALL && !CHECK && !IDS && RECORDED?.toolchain && RECORDED.toolchain !== TOOLCHAIN.toolchain) {
+    throw Object.assign(new Error(`the fingerprints table was recorded on another toolchain (${RECORDED.toolchain}; this run ${TOOLCHAIN.toolchain}: `
+      + `${toolchainChange(RECORDED, TOOLCHAIN.parts)}), so every id would be marked: run on the table's (Node from .nvmrc: nvm use), `
+      + 'pass --ids=<ids> for a lane-scoped regen (rows not recorded), or --all to re-record'), { refusal: true });
   }
   if (CHECK) await checkAll();
   else {
@@ -486,31 +550,35 @@ try {
       // --ids answers for its own ids (and the maps it ran): other ids may still be due, which the plain chain resolves
       const mine = new Set([...IDS, ...summary.runs.filter((run) => WORLD_NAMES.includes(run.step)).flatMap((run) => run.ids)]);
       for (const [name, entry] of Object.entries(summary.final)) {
-        const ids = TABLE_PRESENT ? entry.ids.filter((id) => mine.has(id)) : [];
-        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_PRESENT ? {} : { unrecorded: true }) };
+        const ids = TABLE_CURRENT ? entry.ids.filter((id) => mine.has(id)) : [];
+        summary.final[name] = { mode: ids.length ? 'ids' : 'none', ids, reasons: {}, ...(TABLE_CURRENT ? {} : { unrecorded: true }) };
       }
-      if (!TABLE_PRESENT) log('[regen] no fingerprints table: no rows recorded, no final resolve; run the release check for these ids next');
+      if (!TABLE_CURRENT) log(`[regen] ${UNRECORDED}: no rows recorded, no final resolve; run the release check for these ids next`);
     }
     // ids a tool could not run in this checkout stay due without failing the chain; the summary names them
     for (const [name, tried] of Object.entries(notRunHere)) {
       const entry = summary.final[name];
       if (!entry || entry.mode === 'none') continue;
-      const notRunnable = entry.ids.filter((id) => tried[id]);
+      const notRunnable = entry.ids.filter((id) => Object.hasOwn(tried, id));
       if (!notRunnable.length) continue;
       entry.notRunHere = Object.fromEntries(notRunnable.map((id) => [id, tried[id]]));
-      entry.ids = entry.ids.filter((id) => !tried[id]);
+      entry.ids = entry.ids.filter((id) => !Object.hasOwn(tried, id));
       if (!entry.ids.length) entry.mode = 'none';
       log(`[regen] final ${name}: ${notRunnable.length} id(s) not runnable here stay due (${notRunnable.slice(0, 6).join(', ')})`);
     }
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
-    for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
+    for (const [name, entry] of Object.entries(summary.final)) {
+      const stamped = Object.keys(entry.stamped ?? {}).length;
+      log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}${stamped ? ` (${stamped} stamped not runnable here)` : ''}`);
+    }
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
     if (VERIFY && !DRY) await verifyRuns();
     // The release check takes the union of the tank ids this chain regenerated (every id when a step ran whole-fleet).
     const ran = summary.runs.filter((run) => (run.code === 0 || run.dryRun) && !WORLD_NAMES.includes(run.step));
     summary.changedMaps = [...new Set(summary.runs.filter((run) => WORLD_NAMES.includes(run.step) && (run.code === 0 || run.dryRun))
       .flatMap((run) => run.ids))].sort();
-    summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*'] : [...new Set(ran.flatMap((run) => run.ids))].sort();
+    summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*']
+      : [...new Set(ran.flatMap((run) => run.ids.filter((id) => !run.notRun?.includes(id))))].sort();
     if (summary.changedIds.length && !summary.changedIds.includes('*')) {
       log(`[regen] release check for the regenerated ids: npm run tank:release:check -- --ids=${summary.changedIds.join(',')} --gate`);
     }
