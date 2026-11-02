@@ -113,7 +113,7 @@ for(const [gate,laneFlag] of [[true,false],[false,false],[true,true],[false,true
 {
   // the fleet-wide anatomy check lives on as the manual fleet suite's command, and no step runs a whole manual suite
   const { MANUAL_SUITES } = await import('./selftest-tiers.mjs');
-  assert.ok(MANUAL_SUITES.fleet.commands.some(command=>command.join(' ')==='node tools/gen-combat-anatomy.mjs --check'));
+  assert.ok(MANUAL_SUITES.fleet.commands.some(command=>command.join(' ')==='node tools/gen-combat-anatomy.mjs --check --jobs=4'));
   assert.ok(steps.every(step=>step.args[0]!=='tools/test-heavy.mjs'||(step.args[1]==='tanks'&&step.args[2].startsWith('--ids='))),
     'tank:release:check runs only the id-scoped tanks form of the manual tier');
 }

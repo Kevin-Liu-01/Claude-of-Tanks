@@ -12,7 +12,7 @@
 // roster change, missing manifest, an output file edited outside its rows). The chain that acts on it is
 // tools/tank-regen-changed.mjs (npm run tank:regen:changed).
 import { resolve } from 'node:path';
-import { computeState, loadBase, resolveChanged } from './changed-only/fingerprint.mjs';
+import { computeState, loadBase, resolveChanged, toolchainChange } from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 
 const args = process.argv.slice(2);
@@ -49,20 +49,24 @@ if (json) {
     errors: [...state.errors, ...(state.world?.globalReasons ?? [])] }, null, 1)}\n`);
 } else {
   console.log(`[changed-ids] ${manifest ? 'manifest present' : 'no manifest'}; ${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files${state.world ? `; ${state.world.ids.length} maps` : ''} (${seconds} s)`);
-  // A toolchain mismatch marks every id on every step: say so once, with this run's parts (the table keeps only a hash).
+  // A toolchain mismatch marks every id on every step: say so once, naming the parts that moved (268: the table keeps them).
   if (manifest && manifest.toolchain !== state.toolchain) {
-    console.log(`[changed-ids] toolchain differs: the table was recorded on ${manifest.toolchain}, this run is ${state.toolchain} (${state.toolchainParts.join(', ')}); every id reads "toolchain"`);
+    console.log(`[changed-ids] toolchain differs: the table was recorded on ${manifest.toolchain}, this run is ${state.toolchain} (${toolchainChange(manifest, state.toolchainParts)}); every id reads "toolchain"`);
   }
   for (const name of names) {
     const entry = result[name];
     const head = entry.ids.slice(0, 12).join(',');
-    console.log(`${name.padEnd(10)} ${entry.mode.padEnd(4)} ${String(entry.ids.length).padStart(3)} changed${entry.ids.length ? `: ${head}${entry.ids.length > 12 ? ',...' : ''}` : ''}`);
+    const stamped = Object.keys(entry.stamped ?? {}).length;
+    console.log(`${name.padEnd(10)} ${entry.mode.padEnd(4)} ${String(entry.ids.length).padStart(3)} changed${entry.ids.length ? `: ${head}${entry.ids.length > 12 ? ',...' : ''}` : ''}`
+      + `${stamped ? ` (${stamped} stamped not runnable here)` : ''}`);
     // Long reason lists (every shard of a table unrecorded) print their first few and a count.
     const why = entry.reasons['*'];
     if (why) console.log(`           why: ${why.slice(0, 4).join('; ')}${why.length > 4 ? `; and ${why.length - 4} more` : ''}`);
     if (explain) {
       for (const id of explain === '*' ? entry.ids.slice(0, 20) : [explain]) {
         if (entry.reasons[id]) console.log(`           ${id}: ${entry.reasons[id].join('; ')}`);
+        // (268) current only through its stamp: not runnable here, and why
+        else if (entry.stamped?.[id]) console.log(`           ${id}: current, stamped not runnable here (${entry.stamped[id]})`);
       }
     }
   }
