@@ -55,6 +55,8 @@ import {
   type CollisionShape,
   type ObstacleQuery,
 } from '../world/collision.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
 import type {
@@ -1060,6 +1062,13 @@ function ensureAiInput(entity: AiEntity): void {
     entity.input.aimPoint = new Vector3();
   }
   entity.input.actionBits = 0;
+}
+
+/** The half-extent of the square the hull's root can stand in: the playable square less the reach of the contact rect
+ * both drivers hold inside it (pushHullInsidePlayableBounds), whatever the hull's heading. */
+function standHalfExtentM(spec: AiSpec): number {
+  const rect = tankContactRect(spec);
+  return PLAYABLE_HALF_EXTENT_M - detMath.hypot(rect.halfLength, rect.halfWidth) - Math.abs(rect.centerX) - Math.abs(rect.centerZ);
 }
 
 function isCasemate(spec: AiSpec): boolean {
@@ -3380,6 +3389,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function driveToXZ(input: AiInput, x: number, z: number, speedScale: number): boolean {
     const st = entity.state;
+    // A goal the hull cannot stand on is driven to the nearest point it can (268, item 10): the route grid reaches
+    // 500 m and the auto patrol clamps to it, but the playable square stops the hull 30 m short, so a route along the
+    // grid's outer ring (Autumn seed 6: a Marder 2 zombie bound for z -475) pressed the nose into the bound short of
+    // its waypoint, arrival never came, and the hull cycled wedge releases there until the Horde recycled it.
+    const stand = standHalfExtentM(spec);
+    x = clamp(x, -stand, stand);
+    z = clamp(z, -stand, stand);
     // Combat chase/flank destinations need the same bridge ingress as mission
     // routes. Local steering alone tried to cross gorge walls at target bearing.
     // When nothing plans from where the hull stands, the local router drives on toward the destination (bots lane,
