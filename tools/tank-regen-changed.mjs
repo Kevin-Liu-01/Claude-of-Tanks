@@ -40,6 +40,8 @@ import { emptyManifest, computeState, MANIFEST_PATH, readManifest, recordStep, r
   from './changed-only/fingerprint.mjs';
 import { loadTable } from './changed-only/table.mjs';
 import { gpuChunks } from './changed-only/steps.mjs';
+import { expandGlobs } from './changed-only/globs.mjs';
+import { movedShared, sharedDigests } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -144,7 +146,8 @@ function runChild(argv, { niced, timeoutS, label }) {
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills) runs as parallel parts merged by the tool itself. */
+/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills, anatomy) runs as parallel parts merged by the
+ *  tool itself. */
 /** Ids a step's tool reported it could not run in this checkout (steps.mjs `skipped`: the gate's absent oracles), by
  *  step: never recorded, so they stay due for a checkout that can run them; this chain does not try them again. */
 const notRunHere = {};
@@ -162,17 +165,28 @@ async function runCpuStep(step, ids, state) {
     const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
     const lists = Array.from({ length: parts }, () => []);
     all.forEach((id, index) => lists[index % parts].push(id));
+    // The step's shared outputs (its tables, `files`, `writes` and `sharedWrites`) are the merge's alone: held to their
+    // digests across the parts, so a part that writes one fails the step instead of racing another part for it (268).
+    const shared = [...step.outputs.flatMap((name) => table.TABLES[name]?.files ?? []), ...(step.files ?? []),
+      ...(step.writes ?? []), ...(step.sharedWrites ?? [])];
+    const before = sharedDigests(root, expandGlobs(root, shared));
     const runs = await Promise.all(lists.map(async (list, k) => {
       await gate(step.gb);
-      const dir = join(scratch, `part${k}`);
-      return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, `--out-dir=${dir}`, `--loader=${join(dir, 'loader.ts')}`],
+      return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, ...step.parts(join(scratch, `part${k}`))],
         { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
     }));
     const failed = runs.find((run) => run.code !== 0);
     if (failed) return failed;
+    const moved = movedShared(before, sharedDigests(root, expandGlobs(root, shared)));
+    if (moved.length) {
+      log(`[regen] ${step.name}: a part wrote ${moved.join(', ')}; only the merge writes the step's shared outputs`);
+      return { code: 1, out: runs[0].out };
+    }
     const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
     await gate(step.gb);
-    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`], { niced: true, timeoutS: 900, label: `${step.name}-merge` });
+    // the merge serializes every row and holds the step's own checks (anatomy's sim floors, with a blame build per drift)
+    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`],
+      { niced: true, timeoutS: step.timeoutS, label: `${step.name}-merge` });
   }
   const extra = [];
   let jsonPath = null;

@@ -156,6 +156,12 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: [],
     note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check)',
   },
+  // 268: the parallel parts of a step (the chain's --jobs)
+  'tools/changed-only/parts.mjs': {
+    pin: 'bb0efc46ca9f9553',
+    reads: [],
+    note: 'readPartRows reads the --merge-from part directories the chain passes (rows this step\'s own parts measured with the same flags and tree); sharedDigests, which the chain alone calls, reads the step\'s own outputs around its parts',
+  },
   'tools/gen-vehicle-marking-seats.mjs': {
     pin: '435bca1cb685e50d',
     reads: [],
@@ -450,8 +456,11 @@ export function gpuChunks(step, list) {
  *   full    extra args for a whole-fleet run; scoped(list) for an id run; check/checkScoped for verification (run by
  *           checkTool when the generator has no check mode of its own)
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
- *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
- *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
+ *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts(dir): the chain
+ *           splits a run of 8 or more ids into --jobs parallel parts, each given these arguments for its scratch dir,
+ *           and one merge run of the tool writes them (--merge-from); the step's shared outputs must not move while the
+ *           parts run (tools/changed-only/parts.mjs); sharedWrites: other files the tool writes (a verdict ledger),
+ *           never keyed, held across the parts as the outputs are
  *   chunkS, perIdS  a GPU step's capture-lock holds: at most chunkS seconds of estimated work, and at most the tool's
  *           BROWSER_ID_CAPS ids per browser (gpuChunks); none of them is keyed
  */
@@ -468,7 +477,7 @@ export const STEPS = Object.freeze([
     // The release flags (226: fills made at the old defaults 4/12 had to be redone); explicit, so a default change in
     // the tool cannot silently change what the chain generates.
     flags: ['--voxel=0.025', '--cell=2', '--rounds=8', '--min-fine=1'],
-    full: ['--all'], scoped: (list) => [ids(list)], parts: true,
+    full: ['--all'], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`, `--loader=${dir}/loader.ts`],
     // The generator measures and writes in one pass; its check measures into scratch with the same code and flags and
     // compares records (tools/changed-only/fills-check.mjs), so the generator's own bytes (and key) stay put.
     checkTool: 'tools/changed-only/fills-check.mjs',
@@ -498,7 +507,9 @@ export const STEPS = Object.freeze([
   },
   {
     name: 'anatomy', device: 'cpu', tool: 'tools/gen-combat-anatomy.mjs',
-    flags: [], full: [], scoped: (list) => [ids(list)],
+    // 268: the regen's longest single-process step (3770 s of CPU in 266) runs as parallel parts: each measures its ids
+    // into its scratch dir, and the merge writes the groups, index, loader map and sim-floor ledger once
+    flags: [], full: [], scoped: (list) => [ids(list)], parts: (dir) => [`--out-dir=${dir}`],
     // 266: its rows ignored the moved leaves on the trace-check --combat sample, but the anatomy code reads the plates'
     // ke/ce and the gun's cadence and rounds (module layout): keyed, about 15 s per lever id
     // 267: each id's sim-floor row (its drift check), and the ledger's tolerance through the table's frame
@@ -506,6 +517,7 @@ export const STEPS = Object.freeze([
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)],
     outputs: ['combatAnatomy'],
     files: ['src/vehicles/combatAnatomyCalibrations.ts', 'src/vehicles/combatAnatomyLoaders.generated.ts'],
+    sharedWrites: ['docs/geometry-gate/sim-floors.json'],
     gb: 8, timeoutS: 3600, perIdS: 15,
   },
   {
