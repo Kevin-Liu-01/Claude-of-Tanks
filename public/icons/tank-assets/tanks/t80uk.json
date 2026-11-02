@@ -1395,15 +1395,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25682,
-      "sha256": "8b3e90e59765db0cd7595b2a14f54eb4eee5f236a1a4be4c089232b655e54286",
+      "bytes": 26242,
+      "sha256": "8bb5b7cb1e3ddbb33c22136c20f4e49cbac28ffbaf8360ae6fee70895ca4bf0d",
       "thumbnail": {
         "file": "thumbs/t80uk_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10724,
-        "sha256": "75f909c01182815532231424d937543938d2433187c2b94fea0e79e2209ec508"
+        "bytes": 10854,
+        "sha256": "0b54b8a1a36b0f1f0cbb9d8c2e5fb9aee5dfe9c1b15e061d95a0225c9b5d7ed4"
       }
     },
     "top": {

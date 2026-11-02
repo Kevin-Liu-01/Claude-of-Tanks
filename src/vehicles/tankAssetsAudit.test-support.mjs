@@ -78,7 +78,7 @@ export function createTankAssetsAudit() {
     /widthRatio: 0\.54[\s\S]*heightRatio: 0\.68[\s\S]*baselineRatio: 0\.88[\s\S]*new Float64Array/,
     'one reusable policy excludes sparse equipment and owns fleet framing');
   assert.match(technicalGenerator,
-    /angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[\s\S]*const angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);/,
+    /angleSource = capture\(angleCam, BASE \* 2, BASE \* 2\);[\s\S]*angleCanvas = normalizeAnglePortrait\(angleSource, BASE\);/,
     'the shipped garage angle asset always passes through the shared portrait normalizer');
   assert.match(technicalGenerator,
     /thumbCanvas = normalizeAnglePortrait\(angleSource, BASE \/ 2\)[\s\S]*files\[`thumbs\/\$\{angleFile\}`\]/,

@@ -337,7 +337,10 @@ exhibits wear. Any hull can wear any other hull's paint identically: the paint
 noise stream is keyed by the recipe and pattern id (`camoPatternStreamSeed`),
 not by the hull, so switching tanks never reseeds a shared pattern. Carousel and
 dossier portraits face left (`tools/portrait-camera.ts`, regenerated through the
-unchanged framing gate).
+unchanged framing gate). Each portrait's azimuth comes from its own card: the
+standard view unless the card leaves the fleet envelope there, then the first
+azimuth of a fixed ladder whose card fits, turning side-on before head-on (268),
+so no tank carries a hand row. A card that cuts its tank at the edge never fits.
 The OpenAI, X and Gemini brand camos (2026-09-21, owner: "make the openai x
 and gemini camos more sporadic and random then predictably placed") share the
 Claude and Claude Spark composition: one hero mark, four mediums on a loosely

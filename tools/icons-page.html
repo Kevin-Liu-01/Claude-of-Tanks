@@ -738,9 +738,9 @@ function inspectOne(id, renderFiles, requestedViews = null) {
         Math.max(center.y - box.min.y, box.max.y - center.y), extentZ);
       const dist = (radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
       // The azimuth comes from the card (268, tools/portrait-camera.ts): the standard view unless its card leaves the
-      // fleet envelope, then the nearest ladder azimuth whose card fits. Tall source fittings remain intact; the
+      // fleet envelope, then the first ladder azimuth whose card fits, side-on before head-on. Tall source fittings remain intact; the
       // comparison/technical cameras, the dense-core scale and the pixel gates do not change.
-      let angleSource = null, thumbCanvas = null, portraitAudit = null, standardAudit = null, sideRatio = null;
+      let angleSource = null, angleCanvas = null, thumbCanvas = null, portraitAudit = null, standardAudit = null, sideRatio = null;
       for (const ratio of portraitSideRatios()) {
         const dir = new THREE.Vector3(ratio, 0.34, 1.0).normalize();
         const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
@@ -748,6 +748,9 @@ function inspectOne(id, renderFiles, requestedViews = null) {
         angleCam.lookAt(center);
         angleCam.updateMatrixWorld();
         angleSource = capture(angleCam, BASE * 2, BASE * 2);
+        // Both sizes in the order the cards were always drawn: the browser resamples the thumbnail differently when
+        // it is drawn first, so a reordered pair would move every card by pixels.
+        angleCanvas = normalizeAnglePortrait(angleSource, BASE);
         thumbCanvas = normalizeAnglePortrait(angleSource, BASE / 2);
         portraitAudit = auditPortraitCanvas(thumbCanvas);
         standardAudit ??= portraitAudit;
@@ -764,7 +767,6 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       if (sideRatio !== PORTRAIT_SIDE_RATIO) portrait = { sideRatio,
         standard: [+standardAudit.displayedFullWidth.toFixed(1), +standardAudit.displayedFullHeight.toFixed(1)] };
       const angleFile = tankAssetFile(id, 'angle');
-      const angleCanvas = normalizeAnglePortrait(angleSource, BASE);
       // Full dossier art and the Garage thumbnail are one atomic output. New
       // vehicle captures can no longer update one size while leaving the
       // other stale or hand-resized.
