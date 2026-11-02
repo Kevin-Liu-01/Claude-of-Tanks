@@ -45,7 +45,8 @@
 // Maps: --map pins one; otherwise seed s plays MAP_ROTATION[(s - 1) % 8] (Redrock = badlands and Steinburg = urban are
 // in it), so an A/B pair on the same seeds plays the same maps. The clock cap is the ruleset's own clock (+5 s), or
 // --capS (default 900 s for clockless modes such as Endless Horde). Determinism: every random draw is seeded (the game's
-// own seeds, the roster seed = the run seed, the battle ordinal = the run seed); no wall clock enters the simulation.
+// own seeds, the roster seed = the run seed, the battle's match seed the one a solo battle plays after run-seed battles,
+// handed in as the game takes a seed: 268, item 7); no wall clock enters the simulation.
 import { spawn } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -267,7 +268,7 @@ if (command === 'compare') {
 // ---------------------------------------------------------------------------------- simulation modules (children) ---
 const { ensureFullFleet } = await import(new URL('src/vehicles/fleetFactory.ts', ROOT).href);
 const { createGameState, setupBattle, simStep, createCollider, createBus } = await import(new URL('src/game/state.ts', ROOT).href);
-const { spawnTanks } = await import(new URL('src/game/rosterState.ts', ROOT).href);
+const { soloMatchSeed, spawnTanks } = await import(new URL('src/game/rosterState.ts', ROOT).href);
 const { createDedicatedWorldCollision } = await import(new URL('server/dedicatedWorldCollision.ts', ROOT).href);
 const { matchRulesetFor, terrainVariantFor, isWaveMode } = await import(new URL('src/sim/matchRuleset.ts', ROOT).href);
 const { createAI, roleOf } = await import(new URL('src/game/ai.ts', ROOT).href);
@@ -361,10 +362,11 @@ function setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes }
   game.mapId = mapId;
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = headlessVisual(entity);
-  game.battleCount = seed;
   const playerSpecId = playerSpecFor(seed);
+  // (268, item 7) the battle's match seed (setupBattle's seed: every stream of it) is the one a solo battle plays after
+  // run-seed battles (rosterState soloMatchSeed), handed in, never steered through the session's battle counter
   setupBattle(game, playerSpecId, world, {
-    gameMode: mode, random: true, arrangement, brain: null,
+    gameMode: mode, random: true, arrangement, brain: null, seed: soloMatchSeed(seed, true),
     deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes,
   });
   for (const entity of game.tanks) if (!entity.visual) entity.visual = headlessVisual(entity);

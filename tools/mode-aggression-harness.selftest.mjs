@@ -91,11 +91,13 @@ const run = (mode, capS, seed, player) => new Promise((resolve, reject) => {
 });
 // round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
 // chased hard), all at once
-const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45, 1, 'm60a2'),
+// (268, item 7) the battle's seed is handed in (rosterState soloMatchSeed), not steered through the battle counter: the deals
+// moved once, and Horde's pinned Verdant battle is seed 9 (seed 1's new deal: the sortie destroyed 3/6 inside 45 s)
+const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45, 9, 'm60a2'),
   run('infected', 60, 1, 'm60a2'), run('frontline_assault', 90, 4, 'm1a3'), run('capture_the_flag', 120, 5, 'kf51_evo'),
   run('turbo_ball', 120, 7, 'm1a3')]);
 
-// Endless Horde, seed 1 (Verdant), the fight seat with its four allies, 45 s: the first wave
+// Endless Horde, seed 9 (Verdant), the fight seat with its four allies, 45 s: the first wave
 const rules = matchRulesetFor('endless_horde');
 const wave1 = horde.horde.waves[0];
 assert.equal(wave1.enemies, hordeWaveTotal(rules.horde, 1, 1), 'wave 1 fields the law (6)');
