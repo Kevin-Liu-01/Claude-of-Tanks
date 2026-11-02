@@ -390,6 +390,9 @@ for (const [n, id, kind, title, set, film, still] of TAKES) {
         const edge = process.env.EDGE === '0' ? [] : frameEdgeFaults(scene, lensSeen);
         if (edge.length) { reject(edge[0].key); continue; }
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
+        // (268) the hero drives: a route it covers at under 5 m/s over the measured window reads as a parked tank (the
+        // owner on the versus films: "the tanks arent even moving"); speed alone was 0.4 of the score, under framing
+        if (m.speed < 5) { reject('the hero barely moves'); continue; }
         // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
         // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
         const wrapD = (d) => ((d % 360) + 540) % 360 - 180;

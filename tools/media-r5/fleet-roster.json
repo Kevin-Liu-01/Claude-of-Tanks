@@ -3385,10 +3385,10 @@
   "map": "blackglass",
   "time": "golden",
   "anchor": [
-   3,
+   93,
    3
   ],
-  "heading": 198,
+  "heading": 103,
   "template": 29,
   "action": "kill",
   "lineup": [
@@ -4735,10 +4735,10 @@
   "map": "frontier",
   "time": "morning",
   "anchor": [
-   -120,
-   10
+   -356,
+   -380
   ],
-  "heading": 95.7,
+  "heading": 7.1,
   "template": 24,
   "action": "kill",
   "lineup": [
