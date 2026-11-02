@@ -19,6 +19,8 @@
 //     before the merge runs.
 //   - (268) an id the tool cannot run here (its oracle absent) is stamped with the reason and reads current until the
 //     oracle appears; a stamp never hides an output edited by hand, and a skip without a reason gets none.
+//   - (268) a partial chain (--steps) writes only the lines of the steps it ran: a step whose tool moved stays due and
+//     reads as its tool.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -531,5 +533,26 @@ assert.equal(hung.stopped?.kind, 'hang', 'a child with no CPU progress past the 
 assert.match(hung.stopped.message, /no CPU progress/);
 const runnerBudget = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(runnerBudget, /watchChild\(child\.pid, \{ budgetS: timeoutS, hangS: HANG_S/, 'the runner budgets its CPU children through it');
+
+// 12 (268). A partial chain writes only the lines of the steps it ran: --steps=seats on a tree where fills' tool moved
+// (every fills id due) and one seats input moved (b1) runs seats on b1. Every other line of the table stays byte for
+// byte, the shared ones included. fills stays due and still reads as its tool; the shared refresh used to relabel it
+// "inputs rewritten after this step ran". Then the plain chain settles the rest.
+const X = join(base, 'X');
+cpSync(B, X, { recursive: true });
+put(X, 'tools/gen-fills.mjs', `${read(X, 'tools/gen-fills.mjs')}// 268: the tool moved\n`);
+put(X, 'docs/floors.json', read(X, 'docs/floors.json').replace('"b1":{"f":3,', '"b1":{"f":3.5,'));
+const beforePartial = read(X, 'release/fingerprints.tsv');
+const partial = chain(X, '--steps=seats');
+assert.deepEqual(partial.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['seats[b1]'], 'the partial chain runs seats on b1 alone');
+const othersOf = (text) => text.split('\n').filter((line) => line.split('\t')[1] !== 'seats');
+assert.deepEqual(othersOf(read(X, 'release/fingerprints.tsv')), othersOf(beforePartial),
+  'every line of a step it did not run (and every shared line) is byte-identical');
+assert.notEqual(read(X, 'release/fingerprints.tsv'), beforePartial, 'control: seats\' own lines moved');
+const afterPartial = chain(X, '--dry-run');
+assert.deepEqual([afterPartial.final.fills.mode, afterPartial.final.fills.reasons.a1?.[0]], ['all', 'tool tools/gen-fills.mjs or its flags'],
+  'the step whose tool moved stays due, named as its tool');
+assert.equal(afterPartial.final.seats.mode, 'none', 'and the step that ran is current');
+assert.deepEqual(Object.entries(chain(X).final).filter(([, entry]) => entry.mode !== 'none'), [], 'the plain chain settles the rest');
 
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
