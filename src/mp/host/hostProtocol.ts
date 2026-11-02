@@ -20,6 +20,8 @@ export interface HostBootSeat {
   equipment?: readonly string[] | null;
   /** The consumable in each slot (sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
+  /** The seat's chosen camouflage (the room's camo); the actor turns it into the seat's spotting bonus on the map. */
+  camo?: string | null;
 }
 
 export interface HostBootBot {

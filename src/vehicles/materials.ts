@@ -6,6 +6,7 @@
 // Expensive canvases are cached per spec id (shared between instances, refcounted).
 // No top-level side effects — canvases are created inside createTankMaterials.
 
+import { CAMO_BIOME_POOLS, camoPaintFits } from '../sim/camoPaint.ts';
 import * as THREE from 'three';
 import { stockCamoPatternIdFor,
   CUSTOM_CAMO_ID,
@@ -1325,18 +1326,8 @@ const CUSTOM_CAMO_LS_PREFIX = 'cot.camoCustom.v1.';
 // bot-biome-camo intent, extended). Element 0 stays the r8 canonical scheme.
 // EVERY pool member must belong on its biome field — the coastal pool stays
 // green-family for exactly the r8 reason above.
-const BIOME_PATTERN: Readonly<Record<string, readonly ResolvedMaterialCamoPattern[]>> = {
-  verdant: ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc'],
-  desert: ['desert', 'chocchip', 'digitaldesert', 'pinkdesert'],
-  winter: ['winter', 'washworn', 'winterbands', 'merdcwinter'],
-  urban: ['urban', 'urbanblock', 'berlin'],
-  autumn: ['autumn', 'oakleaf'],
-  coastal: ['summer', 'dpm', 'merdc'],
-  steppe: ['desert', 'digitaldesert', 'chocchip'],
-  railyard: ['urban', 'urbanblock', 'berlin'],
-  moon: ['urban', 'urbanblock'],
-  cliffbridge: ['summer', 'flecktarn', 'dpm'],
-};
+// (268) the pools and seasons live in sim/camoPaint.ts, the spotting bonus's one rule for both drivers
+const BIOME_PATTERN = CAMO_BIOME_POOLS as Readonly<Record<string, readonly ResolvedMaterialCamoPattern[]>>;
 let activeBiome: string = 'verdant';
 
 /** Persisted camo choice, or the first-party presentation default when unset. */
@@ -1463,21 +1454,6 @@ export function resolveMultiplayerCamoPattern<Value>(
 // railyard, and 'naval' has its niche on the coastal map. Style-only schemes
 // (digital, dazzle, splinter, ambushdot — dun/grey paints with no clear
 // biome) never qualify, like 'digital' always behaved.
-const PATTERN_SEASON: Readonly<Record<string, readonly string[]>> = {
-  summer: ['verdant', 'coastal'], merdc: ['verdant', 'coastal'], tropic: ['verdant'],
-  desert: ['desert', 'steppe'], pinkdesert: ['desert', 'steppe'],
-  winter: ['winter'], washworn: ['winter'],
-  urban: ['urban', 'railyard'], urbanblock: ['urban', 'railyard'],
-  autumn: ['autumn'], naval: ['coastal'],
-  // camo r2 expansion — each new scheme joins its palette's family (the r8
-  // rule). hexfield/midnight are style-only (no clear biome) and never
-  // qualify, exactly like digital/dazzle/splinter/ambushdot.
-  flecktarn: ['verdant'], amoeba: ['verdant'], dpm: ['verdant', 'coastal'],
-  tigerstripe: ['verdant'], m90: ['verdant'],
-  chocchip: ['desert', 'steppe'], digitaldesert: ['desert', 'steppe'],
-  merdcwinter: ['winter'], winterbands: ['winter'],
-  berlin: ['urban', 'railyard'], oakleaf: ['autumn'],
-};
 
 /**
  * True when the tank's resolved pattern MATCHES the active battlefield biome
@@ -1500,9 +1476,7 @@ export function hasCamoPaint(specId: string): boolean {
   // second clause: pool membership (camo r2 — BIOME_PATTERN rows are pools
   // now). AUTO always resolves to a pool member, so AUTO always qualifies;
   // a hand-picked pool scheme earns on its own biome the same way.
-  const pool: readonly string[] = BIOME_PATTERN[activeBiome] || [];
-  return (PATTERN_SEASON[pat] || []).includes(activeBiome)
-    || pool.includes(pat);
+  return camoPaintFits(pat, activeBiome);
 }
 
 function applySharedCamoVisual(

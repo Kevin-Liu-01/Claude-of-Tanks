@@ -61,7 +61,7 @@ export function planFromRoom(
     const specId = player.specId ? tankIds.resolveIncoming(player.specId) : botSpecFallback;
     seats.push({
       seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice(),
-      consumables: (player.consumables ?? []).slice(),
+      consumables: (player.consumables ?? []).slice(), camo: player.camo,
     });
   }
   const bots: HostBootBot[] = [];
@@ -107,6 +107,7 @@ export function planFromRoster(roster: readonly RosterPlanEntry[], room: RoomSna
     seats.push({
       seat: entry.seat, playerId: entry.playerId, name: entry.name, team, specId: entry.specId,
       equipment: player ? player.equipment.slice() : [], consumables: player ? (player.consumables ?? []).slice() : [],
+      camo: player ? player.camo : null,
     });
   }
   return { seats, bots };

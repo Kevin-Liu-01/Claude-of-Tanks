@@ -14,6 +14,8 @@ import type { DestructionLogEntry } from '../../src/sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../../src/mp/wire/destructionLog.ts';
 import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
+import { camoSelectionBonus } from '../../src/sim/camoPaint.ts';
+import { stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
@@ -62,6 +64,9 @@ export interface ActorSeatSpec {
   equipment?: readonly string[] | null;
   /** The consumable in each slot (sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
+  /** The seat's chosen camouflage (the room's camo: 'auto', 'factory' or a scheme); absent, factory. Its spotting bonus on
+   * the match's map is the one rule both drivers stamp (sim/camoPaint.ts). */
+  camo?: string | null;
   /** A spawn override (the receipts place hulls at known distances); the layout's spawn otherwise. */
   spawn?: { x: number; z: number; yaw?: number };
 }
@@ -444,7 +449,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     entityIdOf.set(spec.playerId, entityId);
     players.push({
       id: spec.playerId, specId: spec.specId, team: spec.team, equipment: spec.equipment ?? null,
-      consumables: spec.consumables ?? null, ...(spec.spawn ? { spawn: spec.spawn } : {}),
+      consumables: spec.consumables ?? null, camoBonus: camoSelectionBonus(spec.camo, stockCamoPatternIdFor(spec.specId), mapId),
+      ...(spec.spawn ? { spawn: spec.spawn } : {}),
     });
     rosterEntries.push({ entityId, seat: spec.seat, team: TEAM_ID[spec.team], bot: false, connected: false, playerId: spec.playerId, name: spec.name, specId: spec.specId });
   }
@@ -452,7 +458,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (seatOfPlayer.has(bot.playerId) || entityIdOf.has(bot.playerId)) throw new TypeError(`duplicate bot ${bot.playerId}`);
     const entityId = nextEntityId++;
     entityIdOf.set(bot.playerId, entityId);
-    players.push({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: bot.difficulty ?? 'normal' });
+    // a bot wears its factory scheme, as the solo battle's do by default
+    players.push({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: bot.difficulty ?? 'normal',
+      camoBonus: camoSelectionBonus('factory', stockCamoPatternIdFor(bot.specId), mapId) });
     rosterEntries.push({ entityId, seat: NO_SEAT, team: TEAM_ID[bot.team], bot: true, connected: true, playerId: bot.playerId, name: bot.name, specId: bot.specId });
   }
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);

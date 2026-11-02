@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { tankSeedId } from './tankIdAliases.ts'; // the ariete family prefix is schema-1 vocabulary
 import {
@@ -323,6 +324,27 @@ assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');
 assert.equal(stockCamoPatternIdFor('sabra_mk2'), 'sig_sabra_mk2_x');
 
 
+// (268) the paint's spotting bonus, one rule for both drivers (sim/camoPaint.ts): a pool member or a scheme of the
+// biome's season fits, AUTO always earns, factory by the stock scheme, style-only schemes and other biomes never; an
+// unknown map is verdant; the vehicles paint AUTO from the same pools
+{
+  const { CAMO_BIOME_POOLS, camoBiome, camoPaintFits, camoSelectionBonus } = await import('../sim/camoPaint.ts');
+  const { CAMO_PAINT_BONUS } = await import('../sim/spotting.ts');
+  for (const [biome, pool] of Object.entries(CAMO_BIOME_POOLS)) for (const scheme of pool) assert.ok(camoPaintFits(scheme, biome), `${scheme} fits ${biome}`);
+  assert.equal(camoPaintFits('summer', 'coastal'), true, 'a season fits');
+  assert.equal(camoPaintFits('winter', 'desert'), false, 'another biome does not');
+  assert.equal(camoPaintFits('digital', 'verdant'), false, 'a style-only scheme never fits');
+  assert.equal(camoPaintFits('factory', 'verdant'), false);
+  assert.equal(camoBiome('no-such-map'), 'verdant', 'an unknown map is verdant');
+  assert.equal(camoSelectionBonus('auto', null, 'moon'), CAMO_PAINT_BONUS, 'AUTO always earns');
+  assert.equal(camoSelectionBonus('factory', 'desert', 'steppe'), CAMO_PAINT_BONUS, 'factory paint earns by its stock scheme');
+  assert.equal(camoSelectionBonus('factory', null, 'verdant'), 0, 'with no stock scheme it earns nothing');
+  assert.equal(camoSelectionBonus(null, 'summer', 'verdant'), CAMO_PAINT_BONUS, 'no choice is factory');
+  assert.equal(camoSelectionBonus('nonesuch', null, 'verdant'), 0, 'an unknown scheme earns nothing');
+  const materials = readFileSync(new URL('./materials.ts', import.meta.url), 'utf8');
+  assert.match(materials, /import \{ CAMO_BIOME_POOLS, camoPaintFits \} from '\.\.\/sim\/camoPaint\.ts';/, 'the vehicles paint AUTO and grant the bonus from the one table');
+  assert.doesNotMatch(materials, /const PATTERN_SEASON/, 'no second season table');
+}
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');
 
 // Every selectable finish stays reachable. Flags contain shared fleet recipes,
