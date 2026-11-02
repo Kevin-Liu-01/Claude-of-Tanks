@@ -7,7 +7,7 @@
   "targets": {
     "kf51_u": {
       "name": "KF51-U (Eurosatory 2024)",
-      "authority": "Proposed by the release-267 IFV lane (item/ifv-kf51-modern-267) under Main's rulings of 2026-10-28 (\"where a rebuild's registered oracle shows a different (later) variant, unregister it\") and 2026-10-29 (the unregistered rebuilds qualify the geometry stage by a per-id photographic packet plus a shaded blind photo-critic PASS); Main accepts or vetoes it at the lane's READY. kf51_u is the KF51-U shown at Eurosatory 2024: the KF51 hull with its three crew under the front armour and the Concept Uncrewed Turret (the build's kf51uCrewStationsReceipt: crewInHull 3, no turret hatches; the Leopard 2A6 side by the owner's 2026-10-27 ruling). Its old oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator and is unregistered. Its blind A/B against these photographs (Opus and Sonnet critics) chose the rebuild. Its combat crew follow the build: its own internal layout record (internalLayoutRegistry.ts kf51U) seats gunner, driver and commander side by side in the hull front, where communityArmor's layout had seated two of them in the turret (a combat change reported at READY, FAIRNESS-267 section 3). Numerical 3D comparison remains unverified: no model of the KF51-U exists.",
+      "authority": "Proposed by the release-267 IFV lane (item/ifv-kf51-modern-267) under Main's rulings of 2026-10-28 (\"where a rebuild's registered oracle shows a different (later) variant, unregister it\") and 2026-10-29 (the unregistered rebuilds qualify the geometry stage by a per-id photographic packet plus a shaded blind photo-critic PASS); Main accepts or vetoes it at the lane's READY. kf51_u is the KF51-U shown at Eurosatory 2024: the KF51 hull with its three crew under the front armour and the Concept Uncrewed Turret (the build's kf51uCrewStationsReceipt: crewInHull 3, no turret hatches; the Leopard 2A6 side by the owner's 2026-10-27 ruling). Its old oracle kf51_grip420.glb shows the 2022 KF51 Panther demonstrator and is unregistered. Its blind A/B against these photographs (Opus and Sonnet critics) chose the rebuild, and the owner's 2026-11-02 rebuild (upright turret walls under a roof chamfer, the side shelf with its ROSY tubes and Iron Fist launchers, the photographed five-panel skirts, the KF51 rear fascia, crew-roof cupolas and lights) won its own blind A/B against that build (round r15, both critics, confidence 4). Its combat crew follow the build: its own internal layout record (internalLayoutRegistry.ts kf51U) seats gunner, driver and commander side by side in the hull front, where communityArmor's layout had seated two of them in the turret (a combat change reported at READY, FAIRNESS-267 section 3). Numerical 3D comparison remains unverified: no model of the KF51-U exists.",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:KF-51U_01.jpg",
         "https://commons.wikimedia.org/wiki/File:KF-51U_02.jpg",
@@ -22,10 +22,10 @@
         "https://www.edrmagazine.eu/rheinmetall-looking-beyond-the-panther-kf51",
         "https://esut.de/en/2024/06/meldungen/50719/"
       ],
-      "widthM": 4.261,
-      "overallLengthM": 11.505,
-      "tallestM": 3.436,
-      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule), the rebuilt Panther installed at 1.05x. Width over the camouflage suit's garnish (owner 2026-10-09; 4.08 m over the hull's skirts and ERA at x +-2.04). Length from the stern (z -4.011) to the 130 mm's muzzle with the gun forward (z 7.494). Tallest is the tip of the left bustle whip antenna, as built rather than published; the roof station stands 3.21 m tall.",
+      "widthM": 4.24,
+      "overallLengthM": 11.548,
+      "tallestM": 3.516,
+      "envelopeBasis": "As built (Box3 at both qualities, the photo check's rule), the rebuilt Panther installed at 1.05x. Width over the camouflage suit's garnish (owner 2026-10-09; 4.04 m over the hull's skirts at x +-2.02). Length from the stern (the KF51 rear fascia, z -4.054) to the 130 mm's muzzle with the gun forward (z 7.494). Tallest is the tip of the left bustle whip antenna, as built rather than published; the roof station stands about 3.25 m tall.",
       "caliberMm": 130,
       "launcherTubes": 0,
       "roofMachineGuns": 1,

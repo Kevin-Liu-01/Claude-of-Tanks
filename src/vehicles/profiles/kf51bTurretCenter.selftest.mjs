@@ -166,7 +166,7 @@ try {
     'KF51B track hit geometry follows the enlarged visual hierarchy');
   assert.ok(gun?.parent === turret,
     'KF51B gun remains owned by the translated turret rig');
-  assert.equal(gunHousing?.profile, 'kf51u-conical-mantlet-r4');
+  assert.equal(gunHousing?.profile, 'kf51u-conical-mantlet-r5');
   assert.equal(gunHousing?.movingWithGun, true,
     'KF51B mantlet, clamp and thermal shroud elevate with the gun rig');
   assert.equal(gunHousing?.mainHousing, 'conical-mantlet-in-throat-cowl');
@@ -230,7 +230,7 @@ try {
     'KF51B tower uses the same size standard as the Leopard 2A6M');
   assert.equal(rws?.userData.weaponRole, 'roof-primary',
     'KF51B open-yoke station replaces the retired split-shield roof gun');
-  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [-0.83, 0.605, 0.35]);
+  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [-0.83, 0.644, 0.35]);
   assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
   // 267 (the real Eurosatory 2024 KF51-U): the three crew ride in the hull under the KF51 front armour's flat crew roof,
   // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
@@ -242,30 +242,31 @@ try {
   assert.equal(turretHatches.length, 0, 'KF51-U turret is uncrewed: no turret hatches');
   assert.equal(attachmentSeat?.uncrewedTurret, true, 'KF51-U publishes its uncrewed turret');
   assert.equal(attachmentSeat?.hullCrewStations, 3, 'KF51-U publishes its three hull crew stations');
-  // 268 r11: the sight stands flush in a vertical face cut into the cheek nose, under the roof line (y 0.53 there)
+  // 268 r13: the sight stands flush in the cheek's own upright face, its window (0.22 m tall) wholly within the face,
+  // and the face's shoulder stays under the roof line
   const sight = attachmentSeat?.multispectralSight;
-  assert.equal(sight?.mounting, 'vertical-cheek-cut', 'KF51-U cheek sight sits in the cheek, not on it');
-  assert.deepEqual(sight?.centerLocal, [-0.70, 0.395, 1.3756]);
-  assert.ok(sight.faceBottomY < sight.apertureCenterY && sight.apertureCenterY < sight.faceTopY && sight.faceTopY < 0.50,
+  assert.equal(sight?.mounting, 'upright-cheek-face', 'KF51-U cheek sight sits in the cheek, not on it');
+  assert.deepEqual(sight?.centerLocal, [-0.90, 0.385, 1.2906]);
+  assert.ok(sight.faceBottomY < sight.apertureCenterY - 0.11 && sight.apertureCenterY + 0.11 < sight.faceTopY
+    && sight.faceTopY < roofReceipt.centerHeightM,
     'KF51-U cheek sight window lies within its face, and the face stays under the roof line');
-  assert.equal(attachmentSeat?.sidePanelStations.length, 7,
-    'KF51B carries a complete seven-station flank panel course');
-  for (let i = 1; i < attachmentSeat.sidePanelStations.length; i++) {
-    assert.ok(attachmentSeat.sidePanelStations[i].wallX
-      < attachmentSeat.sidePanelStations[i - 1].wallX + 0.06,
-    'KF51B flank panels follow the taper instead of staying on one fixed X plane');
-  }
+  // 268 r14: the photographed side is plain upright plate with one riveted access panel ahead of mid-length
+  const accessPanel = attachmentSeat?.flankAccessPanel;
+  assert.ok(accessPanel && accessPanel.z > 0 && accessPanel.proudM > 0 && accessPanel.proudM < 0.02 && accessPanel.wallX > 1.4,
+    'KF51-U flank carries its riveted access panel on the upright wall, ahead of mid-length');
 
-  assert.equal(skirtArmor?.panelsPerSide, 7,
-    'KF51B skirt jacket preserves its seven-module Panther cadence');
-  assert.equal(skirtArmor?.protectionRows, 2,
-    'KF51B skirt modules carry two readable protection faces');
+  // 268 r15 (owner 11-02, the hull to the turret's paradigm): the photographed KF51-U skirts, five deep chamfered
+  // panels a side, no grille
+  assert.equal(skirtArmor?.panelsPerSide, 5,
+    'KF51-U skirts carry five deep panels a side, as photographed');
+  assert.equal(skirtArmor?.protectionRows, 1,
+    'KF51-U skirt panels are single deep faces under a chamfered band');
   assert.ok(skirtArmor?.armorOuterFaceX > 1.88,
     'KF51B skirt armor is substantially thicker than the retired thin skin');
-  assert.ok(skirtArmor?.grilleY[0] > (skirtArmor?.armorBottomY + skirtArmor?.armorTopY) / 2,
-    'KF51B signature grille is reseated into the upper service band');
-  assert.equal(skirtArmor?.grilleReseatedAboveArmor, true,
-    'KF51B grille no longer masks the running gear and armor course');
+  assert.ok(skirtArmor?.chamferBandY[0] > (skirtArmor?.armorBottomY + skirtArmor?.armorTopY) / 2,
+    'KF51-U skirt chamfer band rides in the upper half of the skirt');
+  assert.equal(skirtArmor?.grilleRetired, true,
+    'KF51-U skirts carry no grille (the 2022 Panther\'s)');
   assert.equal(skirtArmor?.continuousUpperCarrier, true,
     'KF51B skirt modules have a continuous load path into the hull sponson');
   assert.ok(eraFinish?.visualSectors.includes('kf51b-hull-skirt-era'),
