@@ -13,6 +13,7 @@
 import { KIT } from './tankFactoryCore.ts';
 import { antennaPart } from './profiles/antennaPart.ts';
 import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
+import { loftZ } from './accessoryPrimitives.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import './franceSpecs.ts';
 import type { TankBuilderPort } from './tankFactoryCore.ts';
@@ -955,10 +956,20 @@ function buildAMX40(P: FranceBuilderPort): void {
   // 267 (Sonnet, round 3: "a thick ring with no canvas gaiter; the real one is a ribbed collar under a fabric boot"): the
   // cast collar and the clamp shoulder are a dark ribbed mounting ring and a canvas boot tapering from it to sleeve A's
   // first cinch, with one fold ring (round: the boot is outside the section's 1.20 height scale).
-  // 268: the ring and boot to the print's collar (0.32 m across, its foot at -0.16); the fold stands proud of the boot.
-  P.addGunExtraDark(cylZ(0.140, 0.06, P.q ? 22 : 14), 0.01, 0.005, 1.08);      // mounting ring
-  P.add('gunMountCanvasSkin', cylZ(0.130, 0.52, P.q ? 18 : 12, 0.137), 0.01, 0.005, 1.37);  // canvas boot
-  P.add('gunMountCanvasSkin', cylZ(0.145, 0.05, P.q ? 18 : 12, 0.145), 0.01, 0.005, 1.26);  // its fold
+  // 268 (both blind critics, critic1: a slim collar in a round ring "reads as an open hole round the gun"; pic-4: a
+  // fabric boot tapering from a wide toothed ring): the ring and the boot keep the 267 flare over the top and sides
+  // (0.43 m across) but are shallower underneath, their feet at -0.144 and -0.135 (gun frame), so the whole gun keeps
+  // its depression over the front roof corners; the boot tapers round onto sleeve A.
+  const bootRing = (z: number, rx: number, top: number, bottom: number, scaleY = 1): { z: number; ring: [number, number][] } => ({
+    z, ring: Array.from({ length: P.q ? 24 : 16 }, (_, k) => {
+      const a = k / (P.q ? 24 : 16) * Math.PI * 2, s = Math.sin(a);
+      return [0.01 + rx * Math.cos(a), (0.005 + (s > 0 ? top : bottom) * s) / scaleY];
+    }),
+  });
+  P.addGunExtraDark(loftZ([bootRing(1.05, 0.215, 0.25, 0.149, 1.20), bootRing(1.11, 0.215, 0.25, 0.149, 1.20)]));  // mounting ring
+  P.add('gunMountCanvasSkin', loftZ([bootRing(1.11, 0.200, 0.200, 0.140), bootRing(1.45, 0.155, 0.155, 0.134),
+    bootRing(1.63, 0.132, 0.132, 0.132)]));                                     // canvas boot
+  P.add('gunMountCanvasSkin', loftZ([bootRing(1.24, 0.188, 0.188, 0.142), bootRing(1.28, 0.188, 0.188, 0.142)])); // its fold
   P.addGunExtra(cylZ(0.12, 0.16, P.q ? 18 : 12), -0.03, 0, 0.72);              // shorter left trunnion shoulder
   // LLLTV/thermal camera box on the mantlet LEFT (print Object_5:
   // x -0.91..-0.27, y 1.82..2.05, z_w 1.89..2.14) — §B3: lens + hood tells
