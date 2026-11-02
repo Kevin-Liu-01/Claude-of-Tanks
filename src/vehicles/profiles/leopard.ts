@@ -9731,20 +9731,16 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // through the surrounding fixed armor as the gun pitches.
     P.addGunExtraDark(cylX(0.14, 0.90, 16), 0, 0, 0);
     // 268 (owner: the gun "looks unconnected to the turret"): the photographed KF51-U gun (Commons KF-51U_01/02/03)
-    // grows out of the turret throat as one large cone. A mantlet drum on the trunnion axis fills the throat from the
-    // rear bulkhead (z 0.88; the drum reaches 0.905) to the cheek walls (x +/-0.43; the drum +/-0.40), up to the cheeks'
-    // roof and down to the turret floor: round about the elevation axis, it never sweeps beyond itself as the gun
-    // pitches. The cone rises from it and tapers hard to the hexagonal nose clamp (blind critics, r10: the first cone
-    // read as a blunt drum); the six-plane wedge it replaces stood forward of an empty slot.
-    P.addGunExtra(cylX(0.275, 0.80, kf51bGunSegments), 0, 0, 0);              // mantlet drum in the throat
+    // grows out of the turret throat as one large tapered cone. r12 closed the open throat round it with a cowl on the
+    // trunnion axis; the merge round trims that cowl under the roof line (Main: it peaked above it from the side) and
+    // widens it to the cheek walls (x +/-0.43; the cowl +/-0.42) so no slot wall shows. Nothing fixed stands over the
+    // throat, so only the cowl's rear is bound: from 9 degrees' depression to 20 degrees' elevation every point stays
+    // ahead of the rear bulkhead (z 0.88; the cowl keeps to 0.90). Its top runs just under the cheeks' falling roof
+    // (gun-local z -0.19, y 0.27 to z 0.32, y 0.02), its rear down that sweep's bound, and the cone rises out of it.
+    const cowlRing: [number, number][] = ([[-0.24, -0.20], [-0.27, -0.05], [-0.19, 0.27], [0.32, 0.02], [0.32, -0.20]] as const)
+      .map(([z, y]) => [-z, y] as [number, number]);
+    P.addGunExtra(KIT.xform(sectionSolid([{ z: -0.42, ring: cowlRing }, { z: 0.42, ring: cowlRing }]), 0, 0, 0, 0, Math.PI / 2, 0));
     P.addGunExtra(cylZ(0.150, 1.25, kf51bGunSegments, 0.270), 0, 0.010, 0.645); // conical mantlet
-    // 268 r12 (owner 11-01 "unconnected"; Main: close the mantlet trough): a cowl on the trunnion axis closes the throat
-    // over the drum up to the roof line (y 0.58). A sector of a cylinder about the elevation axis never leaves its own
-    // arc as the gun pitches; its arc runs from 30 degrees behind the vertical, which at 20 degrees' elevation still
-    // stops at z 0.904 ahead of the rear bulkhead (0.88), to 75 degrees forward, where it sinks into the cone.
-    const cowlArc = Array.from({ length: 15 }, (_, i) => THREE.MathUtils.degToRad(-30 + (105 * i) / 14));
-    const cowlRing: [number, number][] = [[0, 0], ...cowlArc.map((a) => [-0.36 * Math.sin(a), 0.36 * Math.cos(a)] as [number, number])];
-    P.addGunExtra(KIT.xform(sectionSolid([{ z: -0.40, ring: cowlRing }, { z: 0.40, ring: cowlRing }]), 0, 0, 0, 0, Math.PI / 2, 0));
     P.addGunExtraDark(cylZ(0.175, 0.12, 6), 0, 0.012, 1.31);                  // armored hexagonal nose clamp
     P.addGunExtraDark(cylZ(0.027, 0.105, 8), 0.120, 0.155, 0.80);             // recessed coax aperture
     P.addGunExtraDark(cylZ(0.018, 0.090, 8), -0.120, 0.165, 0.66);            // paired boresight aperture
@@ -9793,11 +9789,9 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     P.gunG.userData.kf51bAngularGunHousingReceipt = Object.freeze({
       profile: 'kf51u-conical-mantlet-r4',
       movingWithGun: true,
-      mainHousing: 'conical-mantlet-on-throat-drum',
-      throatDrumRadiusM: 0.275,
-      throatCowlRadiusM: 0.36,
-      throatCowlArcDeg: Object.freeze([-30, 75]),
-      throatDrumWidthM: 0.80,
+      mainHousing: 'conical-mantlet-in-throat-cowl',
+      throatCowlWidthM: 0.84,
+      throatCowlTopUnderCheekRoof: true,
       rearWidthM: 0.54,
       rearHeightM: 0.54,
       forwardWidthM: 0.30,

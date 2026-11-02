@@ -23,8 +23,8 @@ function verifyGunSeat(quality) {
     assert.ok(recoil.parent === gun, 'barrel and housing share the reseated gun joint');
     mount.geometry.computeBoundingBox();
     const bounds = mount.geometry.boundingBox;
-    // 268: the throat drum reaches back to 0.905 (the rear bulkhead stands at 0.88), the cone forward to 2.45
-    closeTo(gun.position.z + bounds.min.z, 0.905, 1e-3);
+    // 268: the throat cowl reaches back to 0.91 (the rear bulkhead stands at 0.88), the cone forward to 2.45
+    closeTo(gun.position.z + bounds.min.z, 0.91, 1e-3);
     closeTo(gun.position.z + bounds.max.z, 2.45, 1e-3);
     // The fixed front shell ends at z=1.95: the housing overlaps its throat
     // by over a metre and projects 500 mm, instead of 350/900 mm.
@@ -169,13 +169,13 @@ try {
   assert.equal(gunHousing?.profile, 'kf51u-conical-mantlet-r4');
   assert.equal(gunHousing?.movingWithGun, true,
     'KF51B mantlet, clamp and thermal shroud elevate with the gun rig');
-  assert.equal(gunHousing?.mainHousing, 'conical-mantlet-on-throat-drum');
-  assert.ok(gunHousing?.throatDrumWidthM < 2 * 0.43 && gunHousing?.throatDrumRadiusM <= 0.28,
-    'KF51-U mantlet drum fills the throat inside its cheek walls and rear bulkhead');
+  assert.equal(gunHousing?.mainHousing, 'conical-mantlet-in-throat-cowl');
+  assert.ok(gunHousing?.throatCowlWidthM < 2 * 0.43 && gunHousing?.throatCowlTopUnderCheekRoof === true,
+    'KF51-U throat cowl fills the throat inside its cheek walls, under the cheeks\' roof');
   assert.ok(gunHousing?.housingLengthM >= 1.20,
     'KF51B angular mantlet replaces the retired short 390 mm shroud');
-  assert.ok(gunHousing?.rearWidthM < 2 * gunHousing?.throatDrumRadiusM && gunHousing?.forwardWidthM < gunHousing?.rearWidthM,
-    'KF51-U cone rises from inside its drum and tapers to the clamp');
+  assert.ok(gunHousing?.rearWidthM < gunHousing?.throatCowlWidthM && gunHousing?.forwardWidthM < gunHousing?.rearWidthM,
+    'KF51-U cone rises out of its throat cowl and tapers to the clamp');
   assert.equal(gunHousing?.forwardClampSides, 6,
     'KF51B mantlet terminates in a faceted armored clamp');
   assert.equal(gunHousing?.forwardClampRadiusM, 0.175,
