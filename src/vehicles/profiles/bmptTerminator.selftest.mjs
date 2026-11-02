@@ -75,9 +75,22 @@ for (const quality of ['high', 'low']) {
       for (let i = 0; i < pos.count; i++) top = Math.max(top, v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).y);
     });
     assert.ok(Math.abs(top - 3.44) <= 0.0344, `${quality}: tallest ${top.toFixed(3)} m against the published 3.44 m`);
+    // the module clears the hull as it turns: every turret part (gun at rest) under 2 cm over the side boxes' crown
+    // (1.80 m) stays inside r 1.29 about the yaw axis, the side boxes' inner faces standing at x 1.30
+    const yawInv = new THREE.Matrix4().copy(turretRig.matrixWorld).invert();
+    let reach = 0;
+    turretRig.traverse((o) => {
+      if (!o.isMesh || o.isInstancedMesh || /procShadow/.test(o.name)) return;
+      const pos = o.geometry.getAttribute('position'), m = new THREE.Matrix4().multiplyMatrices(yawInv, o.matrixWorld);
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m);
+        if (v.y + RAMKA_RING[1] < 1.82) reach = Math.max(reach, Math.hypot(v.x, v.z));
+      }
+    });
+    assert.ok(reach <= 1.29, `${quality}: the module's low parts reach r ${reach.toFixed(3)} about the yaw axis`);
   } finally {
     tank.dispose?.();
   }
 }
-console.log('bmptTerminator.selftest: the Ramka body, twin bores, four open Ataka exits in the gun frame, five crew and '
-  + 'the 3.44 m crown hold at both qualities');
+console.log('bmptTerminator.selftest: the Ramka body, twin bores, four open Ataka exits in the gun frame, five crew, '
+  + 'the 3.44 m crown and the low parts\' traverse reach hold at both qualities');

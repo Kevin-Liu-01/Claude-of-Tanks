@@ -40,6 +40,14 @@ export const RAMKA_MUZZLE_Z = 2.711;
 /** The open Ataka tubes in the gun frame: column x, the two axes (upper, lower), radius, rear and front ends. */
 export const RAMKA_ATAKA = Object.freeze({ x: 0.95, ys: [0.135, -0.135] as const, r: 0.08, rearZ: 0.20, frontZ: 2.00 });
 
+/** Each Ataka arm base (gun frame): its inner and outer face, the radius of its round rear about the trunnion axis, where
+ * its full height ends forward and its sloped nose (z, half-height). */
+const ARM_BASE = Object.freeze({ x: [0.775, 0.875] as const, r: 0.28, shoulderZ: 0.50, noseZ: 0.66, noseY: 0.16 });
+
+/** The hull's side boxes' crown over the base's ring plane (1.80 m on the hull roof's 1.5295): under it every turret part
+ * stays inside r 1.30 about the yaw axis, their inner faces' distance. */
+const SIDE_BOX_CROWN = 0.2705;
+
 /** The low base's deck (turret frame). */
 const BASE_TOP_Y = 0.16;
 /** The body's box-like lower part under the humps: half-width, rear and front, top. */
@@ -49,9 +57,9 @@ const HUMP = Object.freeze({ inner: 0.19, outer: 0.72, foot: 0.50, top: 1.15, re
 /** The cradle's half-width (1 cm off the humps' inner faces), its run from the trunnion and its domed crown's peak over
  * the trunnion, 3.5 cm over the humps' crowns (gun frame). */
 const CRADLE = Object.freeze({ w: 0.18, rear: -0.32, front: 0.70, crown: 0.235 });
-/** Behind the cradle, the radius about the trunnion the module's rear wall between the humps keeps (3 cm outside the
- * cradle's rear corners at every pitch). */
-const BRIDGE_R = 0.43;
+/** Behind the cradle, the radius about the trunnion everything between the humps keeps (3 cm outside the cradle's rear
+ * corners at every pitch). */
+const REAR_KEEP_R = 0.43;
 
 /** Counter-clockwise (x, y) ring of a box section with chamfered top corners, seen from +z. */
 function chamferedRing(x0: number, x1: number, bottom: number, top: number, chamfer: number): SectionPoint[] {
@@ -135,19 +143,32 @@ function addBaseAndBody(P: TankBuilderPort): void {
   // cradle's lowest pass at full depression); the cradle's breech swings down behind it, open to the rear (photo 08).
   P.add('turret', box(0.39, 0.16, 0.42), 0, HUMP.foot + 0.08, -0.41);
   P.add('turretDark', KIT.cylX(0.010, 0.36, 8), 0, HUMP.foot + 0.165, -0.24);
-  // Behind the cradle, the rear wall that joins the humps into one body, from their feet (onto the body's rear edge) to
-  // their crowns: its front an arc about the trunnion 3 cm clear of the cradle's rear at every pitch, so the receiver
-  // swings down inside it as the cannons elevate.
-  const [, ty, tz] = RAMKA_TRUNNION, arc = (y: number) => -Math.sqrt(BRIDGE_R * BRIDGE_R - y * y), foot = HUMP.foot - ty;
-  const gun: Array<readonly [number, number]> = [[HUMP.rear - tz, foot], [BODY.rear + 0.02 - tz, foot],
-    ...[-0.40, -0.35, -0.30, -0.25, -0.15, -0.05, 0.05, 0.10, 0.15].map(y => [arc(y), y] as const),
-    [arc(HUMP.top - ty), HUMP.top - ty], [HUMP.rear + 0.04 - tz, HUMP.top - ty], [HUMP.rear - tz, HUMP.top - ty - 0.05]];
-  let area = 0;
-  for (let i = 0; i < gun.length; i++) area += gun[i][0] * gun[(i + 1) % gun.length][1] - gun[(i + 1) % gun.length][0] * gun[i][1];
-  const outline = (area > 0 ? gun : [...gun].reverse()).map(([z, y]) => [z + tz, y + ty] as const);
-  const bridge = sectionSolid([{ z: -(HUMP.inner + 0.01), ring: outline }, { z: HUMP.inner + 0.01, ring: outline }]).rotateY(-Math.PI / 2);
-  bridge.userData.rangeSilhouette = true;
-  P.add('turret', bridge);
+  // Behind the cradle, between the humps (photo 08): at the top the stowage box with its carrying handle and latches,
+  // 3 cm or more outside the cradle's rear at every pitch; under it the breech opening, the receiver's back in it; at the
+  // bottom the block that closes the space under the cradle, its top 4 cm or more under the receiver at full elevation.
+  const [, ty, tz] = RAMKA_TRUNNION, keepZ = tz - REAR_KEEP_R - 0.005, boxRear = HUMP.rear - 0.14;
+  const boxLow = 0.70, boxTop = HUMP.top - 0.03, boxZ = (keepZ + boxRear) / 2, half = HUMP.inner + 0.005;
+  P.add('turretDetail', box(2 * half, boxTop - boxLow, keepZ - boxRear), 0, (boxTop + boxLow) / 2, boxZ);
+  P.add('turretDetail', box(2 * half - 0.02, 0.02, keepZ - boxRear - 0.02), 0, boxTop + 0.008, boxZ);
+  for (const x of [-0.08, 0.08]) P.add('turretDark', beamBetween([x, boxTop + 0.012, boxZ], [x, boxTop + 0.05, boxZ], 0.009));
+  P.add('turretDark', beamBetween([-0.08, boxTop + 0.05, boxZ], [0.08, boxTop + 0.05, boxZ], 0.009));
+  for (const x of [-0.12, 0.12]) {
+    P.add('turretDark', box(0.05, 0.07, 0.02), x, boxTop - 0.07, boxRear - 0.008);
+    P.add('turretDark', box(0.02, 0.03, 0.03), x, boxTop - 0.02, boxRear - 0.012);
+  }
+  P.add('turretDetail', box(2 * half - 0.06, 0.02, 0.016), 0, (boxTop + boxLow) / 2 - 0.05, boxRear - 0.006);
+  // (down onto the base's ring and forward under the body's rear overhang to the deck's edge, so no slot opens under it).
+  // As the module turns it passes over the hull roof: its foot stays inside r 1.19 about the yaw axis (the roof's fittings
+  // rise 5 cm from r 1.22), its lower part inside r 1.27 up to 2 cm over the side boxes' crown (their inner faces r 1.30).
+  const blockTop = ty - 0.40, blockLow = 0.035, blockFront = -0.86, mid = SIDE_BOX_CROWN + 0.02;
+  const rz = (r: number) => -Math.sqrt(r * r - half * half);
+  const part = (outline: ReadonlyArray<readonly [number, number]>) => {
+    const pts: P3[] = [];
+    for (const x of [-half, half]) for (const [z, y] of outline) pts.push([x, y, z]);
+    P.add('turret', hull(pts));
+  };
+  part([[blockFront, blockLow], [rz(1.19), blockLow], [rz(1.27), 0.10], [rz(1.27), mid], [blockFront, mid]]);
+  part([[blockFront, mid], [rz(1.27), mid], [HUMP.rear, mid + 0.13], [HUMP.rear, blockTop], [blockFront, blockTop]]);
 }
 
 function addCannonPlant(P: TankBuilderPort): void {
@@ -211,11 +232,26 @@ function addAtakaPairs(P: TankBuilderPort): void {
   const length = A.frontZ - A.rearZ, midZ = (A.rearZ + A.frontZ) / 2;
   for (const side of [-1, 1]) {
     const x = side * A.x;
-    // The hub on the hump's outer face (a disc about the trunnion axis) and the compact trunnion housing between the two
-    // tubes at their height, which carries them.
+    // The hub on the hump's outer face (a disc about the trunnion axis) and the armoured arm base on it (photos 07, 08,
+    // 12): round about the axis at its rear, carried forward to a sloped front, taller than the tube pair, the tubes
+    // along its outer face, its two jaws over and under them; bolts round its outer face, the bearing nut at its centre.
     P.addGunExtra(cylX(0.13, 0.115, 28), side * 0.7175, 0, 0);
-    P.addGunExtra(box(0.15, 0.20, 0.46), side * 0.845, 0, 0.13);
-    P.addGunExtraDark(cylX(0.05, 0.03, 16), side * 0.93, 0, 0);             // the housing's bearing nut
+    const basePts: P3[] = [];
+    for (const bx of ARM_BASE.x) {
+      for (let k = 0; k <= 8; k++) {
+        const a = Math.PI / 2 + k * Math.PI / 8;
+        basePts.push([side * bx, ARM_BASE.r * Math.sin(a), ARM_BASE.r * Math.cos(a)]);
+      }
+      for (const y of [-1, 1]) basePts.push([side * bx, y * ARM_BASE.r, ARM_BASE.shoulderZ], [side * bx, y * ARM_BASE.noseY, ARM_BASE.noseZ]);
+    }
+    P.addGunExtra(hull(basePts));
+    const outerX = ARM_BASE.x[1];
+    for (const y of [-1, 1]) P.addGunExtra(box(A.x + A.r + 0.01 - outerX, ARM_BASE.r - 0.215 + 0.008, 0.38), side * (outerX + A.x + A.r + 0.01) / 2, y * (0.215 + (ARM_BASE.r - 0.215 + 0.008) / 2 - 0.008), 0.41);
+    for (let k = 2; k <= 6; k++) {
+      const a = Math.PI / 2 + k * Math.PI / 8;
+      P.addGunExtraDark(cylX(0.013, 0.012, 6), side * (outerX + 0.006), 0.24 * Math.sin(a), 0.24 * Math.cos(a));
+    }
+    P.addGunExtraDark(cylX(0.05, 0.03, 16), side * (outerX + 0.015), 0, 0);  // the bearing nut
     // the spine between the tubes from the housing forward, and the two quick-release clamps that grip both (photo 12)
     P.addGunExtra(box(0.10, 0.06, 1.22), x, 0, 0.82);
     for (const z of [0.48, 1.30]) {

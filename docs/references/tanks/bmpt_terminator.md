@@ -30,9 +30,9 @@ launchers elevate +25/-5), two AG-17D in the hull, a coaxial PKTM.
 
 ## What was built from which photograph
 
-Round 3 (2026-11-01, after the critics split on round 2): round 2's stern and module layout kept; the front fenders are
-solid hoods with rounded noses and a proud AG-17D box on each, the module's humps joined into one body, the glacis
-Kontakt-5 fewer and larger wedges; see "Round log".
+Round 4 (2026-11-01, a polish round after round 3 beat round 1 with both blind critics): the AG-17D housings fill the
+front corners, the mirrors are framed heads on bolted brackets, the Ataka arms have armoured bases, the module's rear
+shows the breech opening of photo 08; see "Round log".
 
 - Hull (photos 03-09, 13-15): the fleet's T-72 X hull built in place by its own builder (`t72b3mX.ts`
   `buildT72B3MXHull`, `glacisContainers: false`, `glacisLamps: false`, and two default-off options added in 267:
@@ -45,11 +45,13 @@ Kontakt-5 fewer and larger wedges; see "Round log".
     upper corners; a row of towing and plough brackets with two tow hooks on the lower nose (03, 06).
   - The front fenders (03-06, 13): over each, a solid sloped armoured hood flush beside the glacis (an inner cheek
     carried down to the glacis edge), its top falling from the side boxes' crown (1.80 m) to 1.43 m at its front, and a
-    solid rounded nose carried down in front of the track to 0.94 m, 8 cm or more outside it round the idler. Standing
-    proud on the hood's inner half, the AG-17D's armoured box (x 1.15-1.68, crown 2.25 m, 0.45 m over the side boxes)
-    with a sloped front: on that face the launcher's collar, ball mount, canvas boot, 30 mm barrel and muzzle sleeve,
-    bolts; a lifting eye and cover plate on its crown, the operator's sight window in its inner side. At the hood's outer
-    corner the rear-view mirror on its stalk, glass to the rear (03-06).
+    solid rounded nose carried down in front of the track to 0.94 m, 8 cm or more outside it round the idler. On it the
+    AG-17D's housing (04, 05): one massive armoured box over the corner, the fender's full width (x 1.13-2.005), its
+    crown 2.22 m (0.42 m over the side boxes), its broad front sloped at about 47 degrees down onto the hood over the
+    track guard; on that face, inboard and high, the launcher's armoured collar, ball mount, canvas boot, 30 mm barrel
+    and muzzle sleeve, bolts along its top edge and foot; a lifting eye and cover plate on its crown, the operator's sight
+    window in its inner side. On the crown's outer rear corner the rear-view mirror: a bolted pad, a braced post, a pivot
+    knuckle and a framed head (0.22 x 0.34 m, rounded back shell, glass to the rear in its frame).
   - The side boxes (07, 09, 14, 15): a third row of armoured boxes over the two skirt rows from the stern's end to the
     fender housings, top 1.80 m, flush with the skirt faces, the stern box down to the fender's end; handles and bolts.
     The right skirt's two open rail fields closed by containers of the same rows (the photographs' skirt runs unbroken).
@@ -68,15 +70,19 @@ Kontakt-5 fewer and larger wedges; see "Round log".
     either side at the front below the left cannon, the commander's stowage box at the front right (10);
   - one compact rounded armoured body: a box-like lower part and on it the two cradle housings, their outer crown edges
     and fronts rounded off, joined into one by the cradle's own domed crown between them (1 cm off their inner faces,
-    3.5 cm over their crowns, rounding down at the front with them) and, behind the cradle, a rear wall from their
-    feet to their crowns whose front is an arc about the trunnion 3 cm clear of the receiver at every pitch (the
-    receiver swings down inside it); a block under the cradle's front and the mantlet's lower plate (gun frame) close
-    the front between them (04, 07, 08, 10);
+    3.5 cm over their crowns, rounding down at the front with them); a block under the cradle's front and the mantlet's
+    lower plate (gun frame) close the front between them (04, 07, 10). Behind the cradle between the humps (08): the
+    stowage box with its carrying handle and latches at the top, 3 cm or more outside the receiver at every pitch; under
+    it the breech opening, the receiver's back in it; at the bottom the block closing the space under the cradle, down to
+    the ring and cut back inside the hull's clearances as the module turns (r 1.19 at its foot, r 1.27 up to 2 cm over
+    the side boxes' crown);
   - the twin 2A42 in one cradle, each leaving the common rounded front in its own rounded canvas-bagged mantlet (a
     bulging twelve-sided bag with two tie straps, gathered to the collar), cylindrical multi-baffle muzzle brakes (10);
-  - on the common trunnion through the humps, outside each, a compact trunnion housing at tube height carrying two open
-    Ataka transport-launch tubes one over the other on a spine with two quick-release clamps (07, 10, 12); thicker rear
-    sleeves, strap bands, end caps at both ends; in the gun frame, so they elevate with the cannons;
+  - on the common trunnion through the humps, outside each, the hub and on it an armoured arm base (07, 08, 12): round
+    about the axis at its rear (r 0.28), carried forward to a sloped nose, taller than the tube pair, bolts round its
+    outer face; the two open Ataka transport-launch tubes along its outer face, one over the other, its two jaws over and
+    under them, a spine with two quick-release clamps forward (10, 12); thicker rear sleeves, strap bands, end caps at
+    both ends, the rear caps showing behind (08); in the gun frame, so they elevate with the cannons;
   - the commander's panoramic sight on the right hump: square pedestal, collar, drum and the head with its big forward
     window (03, 04, 10); the meteo sensor's round housing (its "01" face aft) and tall post on the left hump (07, 08);
     two whips.
@@ -88,8 +94,9 @@ Kontakt-5 fewer and larger wedges; see "Round log".
 - Yaw axis (hull frame) [0, 1.5295, -0.40]; trunnion (turret frame) [0, 0.95, -0.90]; twin bores at x +-0.15, mouth face
   2.711 m ahead of the trunnion; Ataka tube axes (gun frame) x +-0.95, y +-0.135, r 0.08, from z 0.20 to 2.00, exits on
   the front caps at z 2.032. Humps x 0.19-0.72, crown 1.15, z -1.38..-0.21 (turret frame); cradle half-width 0.18,
-  crown 0.235 over the trunnion; rear wall's arc r 0.43 about the trunnion; base r 0.92, deck 0.16. AG-17D boxes (hull frame)
-  x 1.15-1.68, z 1.55-2.55, crown 2.25.
+  crown 0.235 over the trunnion; rear stowage box r 0.43 or more about the trunnion; Ataka arm bases x 0.775-0.875; base
+  r 0.92, deck 0.16; every turret part under 1.82 m inside r 1.29 about the yaw axis. AG-17D housings (hull frame)
+  x 1.13-2.005, z 1.55-2.74, crown 2.22.
 
 ## Combat data (src/vehicles/afvFamily.ts)
 
@@ -141,21 +148,30 @@ spare-track placement row, the technical diagrams and the camo production baseli
   with the AG-17D on the sloped face, the mirrors back, a rounded lower nose instead of thin curled sheets; the module's
   humps joined into one compact body with the gap above the cradle filled and a distinct rounded bagged mantlet per
   cannon; if cheap, fewer and larger wedge Kontakt-5 modules.
-- Round 3 (r8): each of those, as "What was built" describes.
+- Round 3 (r8): each of those. Checkpoint `5854107fff`.
+- Both blind critics put r8 over round 1 (confidence 4 each), one passes it. Named: the mirrors "thin flat panels on
+  poles" that "look pasted on"; from the front the AG-17D housings "narrow, upright pods sitting on flat plain fender
+  blocks", where the real ones are "broad sloped armoured boxes that fill the front corners down to the track guards";
+  the Ataka arms want "armoured housings or arm bases where the tube pairs meet the module"; the module's rear (photo 08)
+  to show the breech opening if the pocket census stays at 0.
+- Round 4 (r9): each of those, as "What was built" describes. The opening: the stowage box above it is equipment (the
+  census's rule: a box is open by design), the block under it carried to the ring; a first try left a slot under the
+  body's rear overhang (520 cm2) and reached r 1.39 at the hull roof's height, which would have struck the side boxes
+  as the module turned; both fixed, the fixture now holds the reach.
 
-## Evidence (2026-11-01, round 3, lane tree, uncommitted)
+## Evidence (2026-11-01, round 4, lane tree, uncommitted)
 
 | Gate | Status | Command / artifact | Result |
 | --- | --- | --- | --- |
 | Typecheck | PASS | `node tools/typecheck.mjs` | TypeScript 7 clean, no unused symbols, oxlint clean |
-| Fixture | PASS | `node src/vehicles/profiles/bmptTerminator.selftest.mjs` | pivots, bores, 4 gun-frame exits, 5 crew, 3.44 m crown, high and low |
+| Fixture | PASS | `node src/vehicles/profiles/bmptTerminator.selftest.mjs` | pivots, bores, 4 gun-frame exits, 5 crew, 3.44 m crown, every turret part under 1.82 m inside r 1.29 about the yaw axis, high and low |
 | Accessory contact | PASS | `IDS=bmpt_terminator node .qa-dev/contactprobe.mjs` | 0 floating, 0 clipping |
-| Roof pockets | PASS | `node tools/roof-pocket-census.mjs --ids=bmpt_terminator` | none (a first r8 build roofed a recess under a shallower rear bridge, 532 cm2; the wall now runs to the humps' feet) |
+| Roof pockets | PASS | `node tools/roof-pocket-census.mjs --ids=bmpt_terminator` | none, the module's rear open under its stowage box (a first r9 build left a 520 cm2 slot under the body's rear overhang; the block under the opening now runs to the ring) |
 | Gun sweep (cannons and both Ataka housings over the hull) | PASS | `node tools/gun-depression-sweep.mjs --ids=bmpt_terminator --no-suit` | full -5 at every yaw, nothing blocked at +45, no mount conflict, no curve |
 | Gun group over its own module | PASS | lane probe `.qa-dev/bmpt-terminator-gunturret.mjs` | 10 mm least: the cradle's sides beside the humps' inner faces (a lateral running gap parallel to the pitch axis); everything else 21 mm or more (the mantlet's lower plate over the closing block at -5), -5..+45, the axis seats excepted |
 | Barrel circularity / axis | PASS | `measureTurretBarrelCircularity` | worst aspect 1.026, lateral 0 |
 | ERA finish | PASS | the receipt's per-id assertions | glacis_era_L/R, skirt_era_L/R through the painted layered finish |
-| Whole-fleet geometry digest | PASS | `geodigest-all.zsh` (`geodigest-bmpt-T-r8`) against `geodigest-bmpt-base` | 277 ids: only `bmpt_terminator` new and builder U's `bmpt_terminator2` moved |
+| Whole-fleet geometry digest | PASS | `geodigest-all.zsh` (`geodigest-bmpt-T-r9`) against `geodigest-bmpt-base` | 277 ids: only `bmpt_terminator` new and builder U's `bmpt_terminator2` moved |
 | Receipts beside the changed files and naming the id | PASS | t72b3mXGeometry, t72b3mXSideMounts, nationalModernization, nationalUkraineProtection, afvBalance, recoilRig, guidedLauncherTubes, launcherOrigins, nationWheelSets, camoCatalogProductionIndices, camoPolicy, authoredPaintCatalog, factoryCamo, techTree, tacticalRoles, taxonomy, vehicleFacets, internalLayoutRegistry, tier, fleetOrder, fleetParity, tankIdAliases | |
 | roofWeaponPolicy | red, not this id | | stops at `magach6b` (duplicate station names, the M60 lane's known red); this id's no-roof-gun row passes before it |
 | crewSeats | OWED | regen | no combat-anatomy calibration for a new id until `tank:anatomy:update` |
