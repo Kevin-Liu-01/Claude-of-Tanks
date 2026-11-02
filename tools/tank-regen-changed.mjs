@@ -14,7 +14,7 @@
 //   Without release/fingerprints.tsv, or with one recorded on another toolchain (Node, the installed lock, NODE_OPTIONS),
 //   the chain refuses unless --ids, --all or --check says what to run (266: either way every id resolves as changed, so
 //   the default run used to plan the whole fleet silently).
-//   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel fill and anatomy parts)  --max-passes=3  --root=<tree>
+//   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel parts of fills, seats, spare track, anatomy, gun lines)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
 //
