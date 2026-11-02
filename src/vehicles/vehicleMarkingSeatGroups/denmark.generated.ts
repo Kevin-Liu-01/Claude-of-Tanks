@@ -6,6 +6,77 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "centurion5_2dk": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.3,
+        "pos": [
+          1.681,
+          1.08,
+          1.4
+        ],
+        "quaternion": [
+          0,
+          0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hullTrackGuardR",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.3,
+        "pos": [
+          -1.681,
+          1.08,
+          1.4
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hullTrackGuardL",
+        "anchorProfile": "authored-surface-seat",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.2,
+        "pos": [
+          1.1312022,
+          0.6791639,
+          -0.268014
+        ],
+        "quaternion": [
+          -0.0790531,
+          0.738186,
+          0.0713377,
+          0.6661404
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "centurion5_2dk",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0001394
+      }
+    ]
+  },
   "leo1a3dk": {
     "schemaVersion": 1,
     "seats": [
@@ -310,6 +381,55 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "leo2a5dk",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "leo2a7dk": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.22,
+        "pos": [
+          -1.905,
+          1.26992,
+          -2.4055999
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "leo2a7dk",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.22,
+        "pos": [
+          -1.884,
+          1.26992,
+          -1.57235
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "leo2a7dk",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

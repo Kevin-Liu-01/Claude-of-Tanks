@@ -1028,7 +1028,7 @@
   {
    "name": "heightM",
    "actual": 2.756871704465894,
-   "roofFittingsTop": 3.294518883345135,
+   "roofFittingsTop": 3.1458079615274723,
    "published": 2.35125696659,
    "method": "interval: body top to roof-fittings top",
    "pct": 17.25097442089251
@@ -1067,7 +1067,7 @@
  "proceduralBodyExtent": {
   "h": 2.757,
   "len": 7.321,
-  "roofFittingsTop": 3.295
+  "roofFittingsTop": 3.146
  },
  "roofFittingsExcluded": {
   "procedural": [
@@ -1152,5 +1152,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/t-72b3m_obr._2022.glb",
+  "sha256": "6ee260f31911b1c60feab24999dfa30467cc1b5c8c5ff6ecf787ddd590e9f350"
+ }
 }

@@ -477,10 +477,10 @@ function fnv1a(str: string): number {
 
 /**
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
- * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/type10Dozer.ts), which keeps the bow
- * shackles and chain off the blade.
+ * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
+ * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
  */
-const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10']]);
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90']]);
 
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
@@ -3034,17 +3034,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type10_tk_x: () => [
-    { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.28, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-    { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
-  ],
   // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
   // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
   t64bm1m: () => [
@@ -3252,9 +3241,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // in its bustle cage (the fleet cargo's navy and teal cases rose over the cage) and the CV9035 DK's roof stays as the
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
-  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'cv9035dk') return [];
+  if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk' || spec.id === 'cv9035dk') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
+  // (267, the Japan line's photo critics) the TK-X on its trials as TRDI's photographs show the prototypes, a clean roof,
+  // deck and basket with its own trials rack; and the Type 10B under its field net, whose roof loads drew the net into a
+  // hoop over the turret's rear (the decor raises field nets): both carry their own kit
+  if (spec.id === 'type10_tk_x' || spec.id === 'type10b') return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3369,6 +3362,16 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
+  // 267 (the Japan line's photo critics): no JGSDF Type 90 photograph shows spare links on a turret side plate (the
+  // default turreted draw hangs four there): the Type 90 and the roller-ready B keep their cheeks clear. Round 3: nor a
+  // decor discharger pair on the cheeks ("a small four-tube fitting ... the photos show smoke dischargers only at the rear
+  // corners"): profiles/type90X.ts draws the two four-tube banks there, so the pair doubled them (16 -> the real 8, as the
+  // AMX-40 and Leclerc S1 above).
+  if (spec.id === 'type90' || spec.id === 'type90b') {
+    for (let i = base.length - 1; i >= 0; i--) {
+      if ((base[i].kit === 'tracks' && base[i].slot[0] === 'turretSidePlate') || base[i].kit === 'smoke') base.splice(i, 1);
+    }
+  }
   if (spec.id === 'raiju_ifv') {
     for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }
@@ -3465,8 +3468,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // set stay off; the dischargers and roof guns (gameplay counts) and the hull loads keep their rows.
   // The S1's decor discharger pair (a fan on its cheek ERA) moved onto its GALIX wedges as their upper row (misc.ts); the
   // AMX-40's own banks moved onto its front corners (france.ts), where a decor pair would double them.
+  // 267 (both photo critics, round 3, S1: "a stack of tan boxes perched on the extreme rear corner of the deck"): of the
+  // rear-deck loads only the camouflage net stays (the corner jerrycans, rations, bin, tarp and spare wheel are off).
   if (['amx40_proto', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1'].includes(spec.id)) return manifest.filter(row => row.kit !== 'cargo'
     && row.kit !== 'light' && row.kit !== 'packs' && !((spec.id === 'leclerc_s1' || spec.id === 'amx40_proto') && row.kit === 'smoke')
+    && !(row.slot[0] === 'rearDeck' && row.kit !== 'camonet')
+    // 267 round 2: the Leclercs' masts carry their own whips (misc.ts); the decor whips would double them
+    && row.kit !== 'antenna'
+    // 267 round 3 (both critics, critic2, S1: "a rigid tow cable across the whole nose"): the bow chain/cable row is off
+    && row.kit !== 'chain'
+    // 267 round 3 (Sonnet, critic3, S1: "a tow cable strung across the hull front, crossing the muzzle"): the side-top
+    // cable finds no seat on the skirt that now runs up to the deck edge and fell back across the nose; it is off too
+    && !(spec.id !== 'amx40_proto' && row.kit === 'cable')
     && !(['tarp', 'camonet', 'tracks'].includes(row.kit) && row.slot[0].startsWith('turret')));
   // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
   // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or

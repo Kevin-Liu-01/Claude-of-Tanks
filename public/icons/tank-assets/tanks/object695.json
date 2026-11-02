@@ -1626,7 +1626,7 @@
         "volumeId": "M03",
         "name": "feedSystem",
         "min": [-0.0639,0.1894,-0.2192],
-        "max": [0.0639,0.2127,0.4542],
+        "max": [0.0639,0.2594,0.4542],
         "turretLocal": true
       },
       {
@@ -1732,7 +1732,7 @@
     ]
   },
   "geometryHash": "30a37009",
-  "metadataHash": "9c68f719",
+  "metadataHash": "668730e3",
   "presentationAnchor": {
     "xM": 0,
     "zM": 0.0326
@@ -1786,24 +1786,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36962,
-      "sha256": "2a4abd5a37c33a3e4eafb62125aaf059c07cdf8d61a7f1f1629c774ff846b706"
+      "bytes": 36824,
+      "sha256": "b76201c3cde54da8242cd52484120f43d5a2a9a2bcbadaf1117c918711510f52"
     },
     "modulesSide": {
       "file": "object695_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41430,
-      "sha256": "3d1e3a47e4dc739c2cd9f3787a0d1989fbf590ab946cbc9aa34aee4c497ff951"
+      "bytes": 39884,
+      "sha256": "24706e392b38445a94e6a02a08f8a7e20b4b7b8961f5a8814b48f32a222ce11a"
     },
     "crewSide": {
       "file": "object695_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36952,
-      "sha256": "9bed601f15863a6f833ad7acd91584afca62088096cec9faaf97975fcac9cfd9"
+      "bytes": 37032,
+      "sha256": "14ab3af5e3e4a3cb26185f01075363e0a672cda478e39dfde34a7816fd2cde7f"
     },
     "angle": {
       "file": "object695_angle.webp",

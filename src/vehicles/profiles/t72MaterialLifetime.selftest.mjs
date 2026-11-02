@@ -7,9 +7,10 @@ const first = createTank('t72b3m_2022', null, options);
 const sibling = createTank('t72b3m_2022', null, options);
 // 2026-10-01: the owner's obr. 2022 rebuild (cdbfe54dc: t72b3m_2016 hull with the T-90SM X turret) retired the legacy
 // builder's private ring-gap band and dark gun finishes. The lifetime law is the factory's and is held on the
-// rebuild's own independent finishes: soft-case canvas, turret dark stock and the pitching gun mount.
+// rebuild's own independent finishes: the B3M's toothed rubber flaps (266: fc8fbb8115 retired the
+// soft-case belt), turret dark stock and the pitching gun mount.
 function capture(tank) {
-  const names = ['hullCloth', 'turretDark', 'gunMount'];
+  const names = ['hullRubber', 'turretDark', 'gunMount'];
   const meshes = names.map(name => {
     const mesh = tank.root.getObjectByName(name);
     assert.ok(mesh?.isMesh, `actual ${name} owner is present`);

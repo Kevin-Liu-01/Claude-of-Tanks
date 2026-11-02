@@ -1127,17 +1127,17 @@
       }
     ]
   },
-  "geometryHash": "ab29a546",
+  "geometryHash": "3a393730",
   "metadataHash": "7d3f159b",
   "presentationAnchor": {
-    "xM": -0.0023,
-    "zM": 0.286
+    "xM": -0.001,
+    "zM": 0.3273
   },
-  "presentationHash": "b7fdd681",
+  "presentationHash": "f087b8b0",
   "presentationProjection": {
     "centerYM": 1.6995,
-    "topHalfM": 3.9302,
-    "sideHalfM": 1.9651
+    "topHalfM": 3.9744,
+    "sideHalfM": 1.9872
   },
   "appearance": {
     "version": 1,
@@ -1183,39 +1183,39 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 54562,
-      "sha256": "d610bf1e74bb621e1f6b2979e81d7f351f4d4391b9cf148fe7f47a999169372d"
+      "bytes": 50414,
+      "sha256": "988892820163bb06c561ef1735763067e40fdfc7f296f8c45bd806ffb4f0bbf8"
     },
     "modulesSide": {
       "file": "griffin_viper_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 54834,
-      "sha256": "2388ee2b85933c51131453bd807d9aa9124e9aca3087c6933d588a84ce165f54"
+      "bytes": 50202,
+      "sha256": "b33204eadacaaec657005778e9ae5869e230cee40317065034cd74d18aad3f5c"
     },
     "crewSide": {
       "file": "griffin_viper_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 51836,
-      "sha256": "2e795efb46be157ebe3392f27715794624723d9dbb4e0f2e4a3a9763804ec92b"
+      "bytes": 47870,
+      "sha256": "90b8da6f8d5e2c138ae476b417fc1f915033e51d9a9ef4634be5512ab55dd00e"
     },
     "angle": {
       "file": "griffin_viper_angle.webp",
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36032,
-      "sha256": "a018c2a5edf97be840724967a2d5589378f724b3c06bf0d2d572adba5159c36b",
+      "bytes": 35996,
+      "sha256": "8e1bcf72e1fbc7c612d2c42285e8354de71e2c0bfcf5d3db68ae3258d7375db4",
       "thumbnail": {
         "file": "thumbs/griffin_viper_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13454,
-        "sha256": "9372181ca924c20bd4549667c52731bc9a13e4d7d86ae446ba324d9c90df1e6d"
+        "bytes": 13528,
+        "sha256": "a87b36873f339e6687ebf265024e5216eb9839af69c042b35c255832faf4853e"
       }
     },
     "top": {
@@ -1223,32 +1223,32 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32862,
-      "sha256": "793d52147f8526ba472f6b7b0f3ef7d635551379a7e11a73782d3eabea813e6b"
+      "bytes": 32536,
+      "sha256": "c943e61ddfc90508303df34f7c0c4414336afc8442fe42170da2fcc16056c025"
     },
     "side": {
       "file": "griffin_viper_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 20542,
-      "sha256": "3c3f80984707c7d3ee2bd6268aa0c0f91588679d5de1454660aaef4088cccb3c"
+      "bytes": 20504,
+      "sha256": "4846ca7bfe811761a93e1fe13c4a4ef7b96acfbae5169cff747317bbcca274ad"
     },
     "topSilhouette": {
       "file": "griffin_viper_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1644,
-      "sha256": "6d59130811186c372ad90aa9dcb5d8f215cfeebdd059716ccd741b47f1ac6b11"
+      "bytes": 1784,
+      "sha256": "ba970dd9bbc8f4a195f9dbcd51836d2e6a6d8a3a1d3f79bbae3013eddb4c2600"
     },
     "sideSilhouette": {
       "file": "griffin_viper_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5557,
-      "sha256": "19f2a800c4fd4b776c0c56aa4eac6c8d1e0463b1d35991f2024d05d76d3259f5"
+      "bytes": 5217,
+      "sha256": "1b3a3e79faa628768344647878ae80702515235bdc512b34c28093124a09b11c"
     },
     "markings": {
       "file": "griffin_viper_markings.png",
@@ -1261,8 +1261,8 @@
     "technicalLabels": {
       "file": "griffin_viper_technical.json",
       "mime": "application/json",
-      "bytes": 5704,
-      "sha256": "f1b22304c4914054f0ec36dbcab185ad4166a5aae0915365e9723b0cdb7a6a2c"
+      "bytes": 5699,
+      "sha256": "f4db4f78ac141dee08615c36f0eb0e4e24ea559f6b637596cb8b0ef9d507510c"
     }
   }
 }

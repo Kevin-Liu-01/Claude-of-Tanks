@@ -548,8 +548,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.9258,0.0702,-1.3568],
-        "max": [-0.2161,0.2026,-1.0124],
+        "min": [-0.9259,0.0702,-1.3568],
+        "max": [-0.2162,0.2026,-1.0124],
         "turretLocal": true
       },
       {
@@ -626,7 +626,7 @@
     ]
   },
   "geometryHash": "d89c34df",
-  "metadataHash": "d101d3a4",
+  "metadataHash": "25a05a48",
   "presentationAnchor": {
     "xM": -0.0035,
     "zM": -0.1193
@@ -735,24 +735,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30820,
-      "sha256": "0ca0536dab85b5139f4c1f649d0490768577b98ba0d2e8a485060eecd1597978"
+      "bytes": 30882,
+      "sha256": "84edeafb7bc95ea2c59c063400156ecdbb0e8f1ab9f2f6d42a0c5e6d8b84a33e"
     },
     "modulesSide": {
       "file": "xk2_black_panther_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31420,
-      "sha256": "322ff41e71a55cc14a3f9dd067691017e7a837c2d63079926b46b173c7eab85c"
+      "bytes": 30364,
+      "sha256": "8bed786667db7329c41e67a1be57101ad39cd32436443ad26ca8c7e8c8f357d7"
     },
     "crewSide": {
       "file": "xk2_black_panther_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26972,
-      "sha256": "6f38f6a904c28b14b02e3406fa025ac9fbb4751d1891b01f72316665d5d62dc5"
+      "bytes": 26852,
+      "sha256": "ac12a74993e17fbccf70c9936af5c9063e905802d6d41af049ebf802296950f6"
     },
     "markings": {
       "file": "xk2_black_panther_markings.png",
@@ -766,7 +766,7 @@
       "file": "xk2_black_panther_technical.json",
       "mime": "application/json",
       "bytes": 4595,
-      "sha256": "7db87fad1e42b861e0af416d9aab6b76b6714edbbce8f69053f9d00716ff10b2"
+      "sha256": "07ec0d803c30af86a646524c69a6e1c9fa7bbc31b54e80346107e4401170935c"
     }
   }
 }

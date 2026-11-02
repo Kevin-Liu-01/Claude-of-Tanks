@@ -13,6 +13,7 @@ import { TANK_SPECS, MODEL_SOURCE } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 import { verifyGunCradleSeats } from '../gunCradleSeats.test-support.mjs';
+import { MODULE_DEPTH_FLOOR_M } from '../../../tools/crew-seat-fit.mjs';
 
 // Original concept, not a supplied-source or historical turret claim.
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
@@ -59,11 +60,11 @@ function checkRadioVolume(armor) {
       face.normal.reduce((sum, value, axis) => sum + value * point[axis], face.constant) <= 1e-6)),
     'all 27 radio case samples lie inside the actual calibrated hull cells');
   }
-  // Match the unchanged release minimum for every actual internal volume.
+  // Match the unchanged release minimum for every actual internal volume (the floor module placement holds).
   for (const volume of [...armor.modules, ...armor.crew]) {
     if (volume.external || ['trackL', 'trackR', 'optics', 'turretRing', 'gunMount'].includes(volume.module)) continue;
     for (const shape of volume.parts?.length ? volume.parts : [volume]) {
-      assert(shape.max.every((value, axis) => value - shape.min[axis] >= .05),
+      assert(shape.max.every((value, axis) => value - shape.min[axis] >= MODULE_DEPTH_FLOOR_M),
         `${volume.module ?? volume.crew}: actual internal depth meets the release floor`);
     }
   }

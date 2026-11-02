@@ -1,4 +1,5 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { uniqueIds } from './id-list.mjs';
 // Turret-furniture parenting audit driver (owner law 2026-08-04,
@@ -27,46 +28,61 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await launchGuardedBrowser(puppeteer, {
+const launchOptions = {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-page.setDefaultTimeout(180000);
+};
 const results = [];
 try {
   let ids;
   if (idArg) {
     ids = idArg.slice(6).split(',');
   } else {
-    await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
-    ids = (await page.evaluate('window.__TP_RESULT')).ids;
-  }
-  console.log(`[turret-parent] auditing ${ids.length} procedural ids`);
-  for (const id of ids) {
+    // the procedural roster from a short-lived list page, so the audit below can chunk it
+    const browser = await launchGuardedBrowser(puppeteer, launchOptions);
     try {
-      await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?id=${id}`, { waitUntil: 'domcontentloaded' });
+      const page = await browser.newPage();
+      page.setDefaultTimeout(180000);
+      await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?mode=list`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
-      const r = await page.evaluate('window.__TP_RESULT');
-      results.push(r);
-      const s = r.stranded?.length ?? '?';
-      const a = r.abutting?.length ?? '?';
-      const d = r.dangling?.length ?? '?';
-      const worst = (r.stranded || []).slice(0, 3)
-        .map((h) => `${h.mesh}(${Math.round(h.overlap * 100)}%)`).join(' ');
-      console.log(`[turret-parent] ${id.padEnd(18)} stranded ${String(s).padStart(3)} abutting ${String(a).padStart(3)} dangling ${String(d).padStart(3)}  ${r.anomaly || ''}${worst}`);
-    } catch (e) {
-      results.push({ id, error: e.message.slice(0, 120) });
-      console.log(`[turret-parent] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);
+      ids = (await page.evaluate('window.__TP_RESULT')).ids;
+    } finally {
+      await browser.close();
     }
   }
+  console.log(`[turret-parent] auditing ${ids.length} procedural ids`);
+  // A fresh browser per chunk of ids (tools/browser-id-chunks.mjs), inside the run's one capture hold.
+  await eachBrowserChunk('tools/turret-parent-audit.mjs', ids, async (chunk, { launch }) => {
+    const browser = await launch(puppeteer, launchOptions);
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(180000);
+      for (const id of chunk) {
+        try {
+          await page.goto(`http://localhost:${port}/tools/turret-parent-audit.html?id=${id}`, { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction('window.__TP_READY === true', { polling: 50 });
+          const r = await page.evaluate('window.__TP_RESULT');
+          results.push(r);
+          const s = r.stranded?.length ?? '?';
+          const a = r.abutting?.length ?? '?';
+          const d = r.dangling?.length ?? '?';
+          const worst = (r.stranded || []).slice(0, 3)
+            .map((h) => `${h.mesh}(${Math.round(h.overlap * 100)}%)`).join(' ');
+          console.log(`[turret-parent] ${id.padEnd(18)} stranded ${String(s).padStart(3)} abutting ${String(a).padStart(3)} dangling ${String(d).padStart(3)}  ${r.anomaly || ''}${worst}`);
+        } catch (e) {
+          results.push({ id, error: e.message.slice(0, 120) });
+          console.log(`[turret-parent] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);
+        }
+      }
+    } finally {
+      await browser.close();
+    }
+  });
   mkdirSync('shots', { recursive: true });
   writeFileSync('shots/turret-parent.json', JSON.stringify(results, null, 1));
   const offenders = results.filter((r) => (r.stranded && r.stranded.length) || (r.abutting && r.abutting.length) || (r.dangling && r.dangling.length));
   console.log(`[turret-parent] offenders: ${offenders.length}/${results.length} -> shots/turret-parent.json`);
 } finally {
-  await browser.close();
   await server.close();
   releaseLock();
 }

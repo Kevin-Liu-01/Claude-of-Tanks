@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest }
-  from './fingerprint.mjs';
+import { balanceTokens, computeState, emptyManifest, parseManifest, recordStep, refreshComponents, resolveChanged, serializeManifest,
+  stampedInKeys } from './fingerprint.mjs';
 import { createGraph } from './graph.mjs';
 import { SPEC_COMBAT, SPEC_REST } from './steps.mjs';
 import { tokenPin } from './world.mjs';
@@ -327,6 +327,20 @@ put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
 put('src/vehicles/fleetRegistration.ts', "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\nexport const TOTAL = applyBalance(ALL_TANK_IDS);\n");
 assert.match(state({ steps: readers(), rows: specRows(), cfg: balanced }).partition.balanceReason, /importer pin stale: src\/vehicles\/fleetRegistration\.ts \(now [0-9a-f]{16}\)/,
   'control: a new use of the pass in its importer keeps it in the core until reviewed');
+// A pass the entry adds is pinned by name without a declaration edit (265: applyBuildFootings's call line was not): from
+// a reviewed pin over both imports, a second call of the new pass breaks it, though no declared token names that line.
+put('src/vehicles/balance.ts', 'export const applyBalance = (ids) => ids.length;\nexport function applyFootings(ids) { return ids; }\n');
+const footings = "import { ALL_TANK_IDS } from './specs.ts';\nimport { applyBalance, applyFootings } from './balance.ts';\napplyBalance(ALL_TANK_IDS);\napplyFootings(ALL_TANK_IDS);\n";
+put('src/vehicles/fleetRegistration.ts', footings);
+assert.deepEqual(balanceTokens(root, balanced.balance), ['balance.ts', 'applyBalance', 'applyFootings'], 'the entry\'s exports are tokens');
+const reviewed = { ...config, balance: { ...balanced.balance, importers: { 'src/vehicles/fleetRegistration.ts':
+  { pin: tokenPin(footings, balanceTokens(root, balanced.balance)) } } } };
+assert.equal(state({ steps: readers(), rows: specRows(), cfg: reviewed }).partition.balanceReason, null, 'the reviewed pin holds');
+put('src/vehicles/fleetRegistration.ts', `${footings}applyFootings(ALL_TANK_IDS);\n`);
+assert.equal(tokenPin(read('src/vehicles/fleetRegistration.ts'), tokens), tokenPin(footings, tokens),
+  'control: the declared tokens alone do not see the new call');
+assert.match(state({ steps: readers(), rows: specRows(), cfg: reviewed }).partition.balanceReason, /importer pin stale/,
+  'a second call of the new pass breaks the pin');
 put('src/vehicles/fleetRegistration.ts', registration);
 
 // 15. A module a table imports (266: auxiliaryRoofGuns.generated.ts decodes its rows with auxiliaryRoofGunsCodec.ts) is
@@ -345,5 +359,124 @@ put('src/vehicles/kit.ts', 'export const KIT = { wheel: 0.4 };\n');
 put('src/vehicles/anchorsCodec.ts', "import { readFileSync } from 'node:fs';\nexport const decode = (rows) => (readFileSync('x'), rows);\n");
 assert.match(state().globalReasons.join(), /anchorsCodec\.ts can read files/, 'control: a decoder that reads files fails closed');
 put('src/vehicles/anchors.generated.ts', anchors);
+
+// 267: a per-id input file named by the step's own output row (`inputField`: the geometry gate's oracles). It keys only its
+// id; different bytes at the path move only that id; a checkout without the file keys the id from the recorded sha256, so
+// it neither moves nor flip-flops, and names the absence; an id the tool skipped stays due; `idsOnly` reads only <id>.json.
+{
+  const { createHash } = await import('node:crypto');
+  const { tableFileList } = await import('./globs.mjs');
+  const { renameSync } = await import('node:fs');
+  put('tools/gen-gate.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
+  put('public/models/a1.glb', 'oracle a1 v1');
+  put('public/models/a2.glb', 'oracle a2 v1');
+  const sha = (text) => createHash('sha256').update(text).digest('hex');
+  const gateCfg = { ...config, tables: { ...config.tables, records: { kind: 'jsonRow', files: ['docs/gate/*.json'], idsOnly: true, inputField: 'oracle' } } };
+  const gateSteps = () => [...baseSteps(), { name: 'gate', device: 'gpu', tool: 'tools/gen-gate.mjs', flags: [], full: [],
+    scoped: (ids) => [`--ids=${ids}`], outputs: ['records'], files: [] }];
+  const named = (a1 = sha('oracle a1 v1')) => ({ records: { a1: { path: '/models/a1.glb', sha256: a1 }, a2: { path: '/models/a2.glb', sha256: sha('oracle a2 v1') } } });
+  // b1's spec chain names a1: a1's oracle still keys only a1
+  const gateRows = (a1) => rowsData({ rows: { ...rowsData().rows, records: { a1: 'g1', a2: 'g2' } }, named: named(a1),
+    chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } });
+  const gate = (a1) => state({ steps: gateSteps(), rows: gateRows(a1), cfg: gateCfg });
+  const g0 = gate();
+  assert.deepEqual([g0.globalReasons, g0.steps.gate.rowTables.includes('records.oracle'), g0.inputAbsent('gate', 'a1')], [[], true, null],
+    'the gate keys its records\' oracles, present here');
+  const gm = bootstrap(g0);
+  assert.deepEqual(changed(resolveChanged(gate(), gm)), { sizes: 'none:', other: 'none:', gate: 'none:' }, 'unchanged oracles mark nothing');
+  put('public/models/a1.glb', 'oracle a1 v2');
+  result = resolveChanged(gate(), gm);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a1' }, 'different bytes at a1\'s oracle mark a1 alone (not b1, whose chain names a1)');
+  assert.ok(result.gate.reasons.a1.includes('row records.oracle[a1]'), result.gate.reasons.a1.join());
+  put('public/models/a1.glb', 'oracle a1 v1');
+  renameSync(join(root, 'public/models/a1.glb'), join(root, 'public/models/a1.away'));
+  const absent = gate();
+  assert.deepEqual(changed(resolveChanged(absent, gm)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'an oracle absent here keys a1 from its recorded sha256: no move, no flip-flop between checkouts');
+  assert.equal(absent.inputAbsent('gate', 'a1'), 'oracle absent here (public/models/a1.glb)');
+  result = resolveChanged(gate(sha('oracle a1 v3')), gm);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a1' }, 'a record measured elsewhere against new bytes marks a1');
+  assert.ok(result.gate.reasons.a1.some((why) => /oracle absent here \(public\/models\/a1\.glb\): run it where the file is present/.test(why)),
+    'the reasons say the id can only be cleared where its oracle is');
+  renameSync(join(root, 'public/models/a1.away'), join(root, 'public/models/a1.glb'));
+  // a tool-reported skip is not recorded: the id stays due, the others are recorded
+  put('public/models/a1.glb', 'oracle a1 v2');
+  const moved = gate();
+  const skipManifest = bootstrap(g0);
+  put('public/models/a2.glb', 'oracle a2 v2');
+  const both = gate();
+  const inKeys = Object.fromEntries(['a1', 'a2'].map((id) => [id, both.inKey('gate', id)]));
+  recordStep(skipManifest, 'gate', ['a1', 'a2'], inKeys, both, { skip: new Set(['a1']) });
+  assert.deepEqual(changed(resolveChanged(both, skipManifest)).gate, 'ids:a1', 'the skipped id stays due; the measured one is recorded');
+  assert.ok(moved.inKey('gate', 'a1') !== g0.inKey('gate', 'a1'));
+  put('public/models/a1.glb', 'oracle a1 v1');
+  put('public/models/a2.glb', 'oracle a2 v1');
+  // a graft source beside the oracle (267: t90a_burlak_proto's turret, the Burlak X source seated on the T-90A X hull) is
+  // its id's input too: its bytes moving mark that id alone, its absence keys it from the recorded sha256 and is named,
+  // and an id without one keys as before
+  put('public/models/g2.glb', 'graft g2 v1');
+  const grafted = (g2 = sha('graft g2 v1')) => ({ records: { ...named().records,
+    a2: { ...named().records.a2, graft: { path: '/models/g2.glb', sha256: g2 } } } });
+  const graftGate = (g2) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows,
+    records: { a1: 'g1', a2: 'g2' } }, named: grafted(g2), chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const k0 = graftGate();
+  assert.equal(k0.inKey('gate', 'a1'), g0.inKey('gate', 'a1'), 'an id without a graft keys as before');
+  assert.notEqual(k0.inKey('gate', 'a2'), g0.inKey('gate', 'a2'), 'a graft joins its id\'s key');
+  const km = bootstrap(k0);
+  put('public/models/g2.glb', 'graft g2 v2');
+  result = resolveChanged(graftGate(), km);
+  assert.deepEqual(changed(result), { sizes: 'none:', other: 'none:', gate: 'ids:a2' }, 'different bytes at a2\'s graft mark a2 alone');
+  put('public/models/g2.glb', 'graft g2 v1');
+  renameSync(join(root, 'public/models/g2.glb'), join(root, 'public/models/g2.away'));
+  const graftAbsent = graftGate();
+  assert.deepEqual(changed(resolveChanged(graftAbsent, km)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'a graft absent here keys a2 from its recorded sha256');
+  assert.equal(graftAbsent.inputAbsent('gate', 'a2'), 'oracle graft absent here (public/models/g2.glb)');
+  renameSync(join(root, 'public/models/g2.away'), join(root, 'public/models/g2.glb'));
+  // a run that writes the rows its own key reads converges in one pass (stampedInKeys): a1's record gains its oracle and
+  // a2's its graft, and the stamp takes them as recorded; a file changed after the measurement still marks its id.
+  // Control: stamped as they stood before the run, both ids are due again (267's bootstrap gated 118 ids twice).
+  const runGate = (named, records) => state({ steps: gateSteps(), cfg: gateCfg, rows: rowsData({ rows: { ...rowsData().rows, records },
+    named, chains: { a1: ['a1'], a2: ['a2'], b1: ['a1', 'b1'] } }) });
+  const beforeRun = runGate({ records: { a2: named().records.a2 } }, { a1: 'g0', a2: 'g2' });
+  const afterRun = runGate(grafted(), { a1: 'g1', a2: 'g2+' });
+  const preKeys = Object.fromEntries(['a1', 'a2'].map((id) => [id, beforeRun.inKey('gate', id)]));
+  const stampRun = (keys) => refreshComponents((() => { const m = bootstrap(beforeRun); recordStep(m, 'gate', ['a1', 'a2'], keys, afterRun); return m; })(), afterRun);
+  assert.deepEqual(changed(resolveChanged(afterRun, stampRun(preKeys))).gate, 'ids:a1,a2', 'control: the pre-run stamp leaves both due');
+  const converged = stampRun(stampedInKeys(beforeRun, afterRun, 'gate', preKeys));
+  assert.deepEqual(changed(resolveChanged(afterRun, converged)), { sizes: 'none:', other: 'none:', gate: 'none:' },
+    'stamped as recorded, the run that wrote its oracle and graft leaves nothing due');
+  put('public/models/a1.glb', 'oracle a1 v2');
+  assert.deepEqual(changed(resolveChanged(runGate(grafted(), { a1: 'g1', a2: 'g2+' }), converged)).gate, 'ids:a1',
+    'a file changed after the run measured it marks its id');
+  put('public/models/a1.glb', 'oracle a1 v1');
+  assert.equal(stampedInKeys(beforeRun, afterRun, 'sizes', preKeys), preKeys, 'a step without own input rows stamps its pre-run keys');
+  // idsOnly: the records directory's other tools' ledgers are not rows
+  for (const file of ['a1.json', 'a2.json', 'ledger.json', 'spare-track.json', 'a1.raw-source.json']) put(`docs/gate/${file}`, '{}\n');
+  assert.deepEqual(tableFileList(root, gateCfg.tables.records, ['a1', 'a2', 'b1']), ['docs/gate/a1.json', 'docs/gate/a2.json']);
+  assert.equal(tableFileList(root, { ...gateCfg.tables.records, idsOnly: false }, ['a1']).length, 5, 'control: without idsOnly every file is a row file');
+}
+
+// 267: a step that declares the catalog keys its page draws (`catalogKeys`) keys their values, not the string catalogs:
+// another string's edit moves nothing, a declared one moves the step; control: without the declaration the whole
+// catalog stays keyed.
+{
+  put('src/ui/i18nCatalog.en-US.json', '{"hud.blast":"Blast · {n} vehicles","legend.owner":"Hull"}\n');
+  put('src/ui/i18nCatalog.zh-CN.json', '{"hud.blast":"爆炸","legend.owner":"车体"}\n');
+  put('tools/gen-page.mjs', "import en from '../src/ui/i18nCatalog.en-US.json' with { type: 'json' };\nimport zh from '../src/ui/i18nCatalog.zh-CN.json' with { type: 'json' };\nexport default [en, zh];\n");
+  const pageStep = (catalogKeys) => ({ name: 'page', device: 'gpu', tool: 'tools/gen-page.mjs', flags: [], full: [],
+    scoped: (ids) => [`--ids=${ids}`], outputs: [], files: [], ...(catalogKeys ? { catalogKeys } : {}) });
+  const tools = (catalogKeys) => state({ steps: [pageStep(catalogKeys)] }).steps.page.tool;
+  const en = read('src/ui/i18nCatalog.en-US.json');
+  const keyed = tools(['legend.owner']), whole = tools(null);
+  assert.ok(state({ steps: [pageStep(['legend.owner'])] }).steps.page.toolFiles.includes('src/ui/i18nCatalog.en-US.json'), 'the page reaches the catalog');
+  put('src/ui/i18nCatalog.en-US.json', en.replace('vehicles', 'vehicle(s)'));
+  assert.equal(tools(['legend.owner']), keyed, 'another string\'s edit moves nothing for a step that declares its keys');
+  assert.notEqual(tools(null), whole, 'control: without catalogKeys the whole catalog is keyed');
+  put('src/ui/i18nCatalog.en-US.json', en.replace('"Hull"', '"Hull!"'));
+  assert.notEqual(tools(['legend.owner']), keyed, 'a declared key\'s value moves the step');
+  put('src/ui/i18nCatalog.en-US.json', en);
+  assert.equal(tools(['legend.*']), tools(['legend.owner']), 'a prefix pattern names the same key');
+}
 
 console.log('changed-only resolver.selftest: PASS');

@@ -21,78 +21,11 @@
 // Pure numbers (no three.js), deterministic (Math.sqrt, Math.min and Math.max only).
 
 import { MANTLET_FORWARD_NZ, ZONE_FACING_MIN, ZONE_FACING_WEIGHT, ZONE_OUTSIDE_WEIGHT } from './armorZoneWeights.ts';
+import type { ZonePlate } from './armorPlanes.ts';
 
-interface ZonePlateSource {
-  readonly verts: readonly (readonly number[])[];
-  readonly kind?: string;
-  readonly name?: string;
-}
-
-/** A main plate so named is a mantlet or gun notch: it carries a footprint. */
-const MANTLET_NAME = /mantlet|gun_notch/i;
-/** Metres the footprint reaches past the plate's height, and past its z range. */
-const FOOTPRINT_Y_M = 0.1;
-const FOOTPRINT_Z_M = 0.35;
-
-type Point = [number, number, number];
-
-export interface ZonePlate {
-  readonly plate: unknown;
-  readonly normal: Point;
-  /** d(x) = normal·x + offset */
-  readonly offset: number;
-  /** Outward edge planes of the outline: e(x) = normal·x + offset, positive outside that edge. */
-  readonly edges: ReadonlyArray<{ readonly normal: Point; readonly offset: number }>;
-  /** A mantlet's or gun notch's footprint box (frame-local): a forward surface inside it is this plate's. */
-  readonly footprint: { readonly min: Point; readonly max: Point } | null;
-}
-
-const sub = (a: readonly number[], b: readonly number[]): Point => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a: readonly number[], b: readonly number[]): Point =>
-  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-function unit(a: readonly number[]): Point | null {
-  const size = Math.sqrt(dot(a, a));
-  return size > 1e-12 ? [a[0] / size, a[1] / size, a[2] / size] : null;
-}
-
-/** The main plates of one frame as zones (the plates nearestPlate assigns the cells' faces). */
-export function zonePlates(plates: readonly ZonePlateSource[] | undefined): ZonePlate[] {
-  const out: ZonePlate[] = [];
-  for (const plate of plates || []) {
-    if ((plate.kind || 'main') !== 'main') continue;
-    const verts = plate.verts || [];
-    if (verts.length < 3) continue;
-    // combatAnatomy plateDescriptor's normal: (v1 - v0) × (vLast - v0), outward
-    const normal = unit(cross(sub(verts[1], verts[0]), sub(verts[verts.length - 1], verts[0])));
-    if (!normal) continue;
-    const center = [0, 0, 0];
-    for (const point of verts) for (let axis = 0; axis < 3; axis++) center[axis] += point[axis] / verts.length;
-    // winding: counter-clockwise about the normal, so edge × normal points out of the outline
-    let turn = 0;
-    for (let i = 0; i < verts.length; i++) turn += dot(cross(sub(verts[i], center), sub(verts[(i + 1) % verts.length], center)), normal);
-    const ordered = turn >= 0 ? verts : [...verts].reverse();
-    const edges: Array<{ normal: Point; offset: number }> = [];
-    for (let i = 0; i < ordered.length; i++) {
-      const a = ordered[i], b = ordered[(i + 1) % ordered.length];
-      const side = unit(cross(sub(b, a), normal));
-      if (side) edges.push({ normal: side, offset: -dot(side, a) });
-    }
-    let footprint: ZonePlate['footprint'] = null;
-    if (MANTLET_NAME.test(plate.name || '')) {
-      const min: Point = [Infinity, Infinity, Infinity], max: Point = [-Infinity, -Infinity, -Infinity];
-      for (const point of verts) for (let axis = 0; axis < 3; axis++) {
-        min[axis] = Math.min(min[axis], point[axis]);
-        max[axis] = Math.max(max[axis], point[axis]);
-      }
-      min[1] -= FOOTPRINT_Y_M; max[1] += FOOTPRINT_Y_M;
-      min[2] -= FOOTPRINT_Z_M; max[2] += FOOTPRINT_Z_M;
-      footprint = { min, max };
-    }
-    out.push({ plate, normal, offset: -dot(normal, center), edges, footprint });
-  }
-  return out;
-}
+// (267) the plates as planes and outlines, and the plate along a shot, live in sim/armorPlanes.ts: the trace reads them in
+// every boot, and this module (with the paint's weights) stays out of its chunk
+export { zoneAlongShot, zonePlates, type ZonePlate } from './armorPlanes.ts';
 
 /**
  * The zone at a frame-local point of the armour whose outward normal is (nx, ny, nz): on a forward surface over a

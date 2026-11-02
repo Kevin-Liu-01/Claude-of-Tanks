@@ -1263,8 +1263,8 @@
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.4738,0.6791,-2.6869],
-        "max": [0.0326,0.709,-2.6592],
+        "min": [-0.7006,0.8069,-2.854],
+        "max": [0.7062,1.2925,-2.4046],
         "turretLocal": false
       },
       {
@@ -1409,7 +1409,7 @@
     ]
   },
   "geometryHash": "711f6824",
-  "metadataHash": "f40bff56",
+  "metadataHash": "3419489e",
   "presentationAnchor": {
     "xM": -0.0003,
     "zM": -0.0984
@@ -1516,24 +1516,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33154,
-      "sha256": "9a8c3afddbc0005f7d615e56611048cf621359ddbf0fcdd3b52afa45b8e5e985"
+      "bytes": 33164,
+      "sha256": "a6a234d5271141513d4da03ca0bdabdb79bfec561bbe232911d1f6430eac21af"
     },
     "modulesSide": {
       "file": "m551_sheridan_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31032,
-      "sha256": "653fcc4fda72c00237021deba87e5eeb071ad69b5076e6b1908ce8e19721a730"
+      "bytes": 30728,
+      "sha256": "33e46c36250665103ac14c48f05d9d596fec481f8f8d6a92e9378b9df80c2df3"
     },
     "crewSide": {
       "file": "m551_sheridan_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31296,
-      "sha256": "e351a7c3a80144f0d5967cc2a49c607a2ab3396b5fb2f7b47d982cac2c4453aa"
+      "bytes": 31294,
+      "sha256": "deb82a75c2fb4177c36177ff6ad589e3c84f386e04e16c7ed7e8c5f30a7d0fe8"
     },
     "markings": {
       "file": "m551_sheridan_markings.png",
@@ -1546,8 +1546,8 @@
     "technicalLabels": {
       "file": "m551_sheridan_technical.json",
       "mime": "application/json",
-      "bytes": 5603,
-      "sha256": "74cc56b2b877a77ec53f75d9d09012b6e4cc2780e690abcf8536cc483cde790f"
+      "bytes": 5607,
+      "sha256": "aac5c6c506504be621c5bf18840002ef7a7e2523cd237e3a0d9419beeb96be1a"
     }
   }
 }

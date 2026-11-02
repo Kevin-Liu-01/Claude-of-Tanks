@@ -30,6 +30,7 @@ export function camoPatchWorldScale(camoScale: number | null | undefined): numbe
 /**
  * Hulls whose small plate-like parts take their plate's projection on every face (factoryGeometry.ts thinPartBoxUV;
  * 2026-10-22, lane 240: the M1A1 HC's XM32 cassette skirts and armour tiles broke its three-tone into straight-edged
- * blocks at every module's ends and top).
+ * blocks at every module's ends and top; release 267: the Leopard 2A7 DK's ribbed stowage modules streaked its Barracuda
+ * coat down every rib, critics dk3).
  */
-export const CAMO_THIN_PART_PROJECTION_IDS: ReadonlySet<string> = new Set(['m1a1_abrams_hc']);
+export const CAMO_THIN_PART_PROJECTION_IDS: ReadonlySet<string> = new Set(['m1a1_abrams_hc', 'leo2a7dk']);

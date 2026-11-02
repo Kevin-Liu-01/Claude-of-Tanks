@@ -6,6 +6,7 @@
 // view and the Aalborg museum's 1A5 DK turret; the hull carries the Danish dozer channels and slope-fitted fender bins in
 // place of the German glacis grousers and side tools. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { buildLeo1HullSteps, type Leo1HullDatums } from './leopard1Hull.ts';
@@ -77,18 +78,9 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
       for (const f of [0.25, 0.75]) P.addEquipment(fit, box(0.014, 0.06, 0.045), s * 1.678, top - 0.075, z0 + (z1 - z0) * f);
     }
   }
-  // The engine's exhaust grilles on the sloped rear side plates behind the bins (Krigsmuseet side view: the last fifth of
-  // the hull side): a dark recessed panel and seven louvres along the plate's slope.
-  for (const s of [-1, 1] as const) {
-    const z0 = -2.10, z1 = -3.20, zc = (z0 + z1) / 2, yTop = deckEdgeY(zc) - 0.05, yLow = fenderY + 0.05;
-    const tilt = Math.atan2(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow), slant = Math.hypot(slopeX(yLow, zc) - slopeX(yTop, zc), yTop - yLow);
-    const yc = (yTop + yLow) / 2;
-    P.addEquipment('hullDark', box(0.016, slant, z0 - z1), s * (slopeX(yc, zc) + 0.004), yc, zc, 0, 0, s * tilt);
-    for (let k = 0; k < 7; k++) {
-      const y = yLow + (yTop - yLow) * (k + 0.5) / 7;
-      P.addEquipment('hull', box(0.03, 0.022, z0 - z1 - 0.06), s * (slopeX(y, zc) + 0.018), y, zc, 0, 0, s * (tilt + 0.5));
-    }
-  }
+  // (the engine's outlets on the sloped rear side plates behind the bins, the Krigsmuseet side view's last fifth of the
+  // hull side, are the family hull's grille housings, their slats continuous from the last bin to the stern: outlets
+  // 'continuous', profiles/leopard1Hull.ts.)
   // Dozer channels (armyvehicles.dk/leopard1a3.htm: "All Danish Leopard 1s had dozer attachment channels on the lower
   // front hull"): two channel brackets on the lower glacis, which leans back 28 degrees toward the belly.
   const lowerTilt = Math.atan2(3.54 - 3.24, 1.04 - 0.48);
@@ -113,7 +105,8 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
   const { box, cylX, cylY, cylZ, sph, xform, buildGun, liftEye, stowage, jerryCan, tarpRoll, ammoCan } = KIT;
   const { rng } = P;
   const hull = yield* buildLeo1HullSteps(P, { grouserRack: false, sideTools: false, deckTools: false, skirtBucket: 'hull',
-    fit263: false, rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1' });
+    rearCans: true, rearCanBucket: mark === 'a5dk1' ? 'hull' : 'hullCloth', denseGrilles: mark === 'a5dk1',
+    outlets: 'continuous' });
   addDanishHullKit(P, hull, mark);
   yield 'buildLeo1DkHullKit';
 
@@ -270,7 +263,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     // whip antennas on the rear roof corners
     for (const s of [-1, 1] as const) {
       P.addEquipment('turret', box(0.08, 0.08, 0.08), s * 0.82, roof + 0.04, -1.40);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.0, 8), s * 0.82, roof + 1.04, -1.40, 0, 0, s * 0.025);
+      P.addEquipment('turret', antennaPart(cylY(0.014, 0.016, 2.0, 8)), s * 0.82, roof + 1.04, -1.40, 0, 0, s * 0.025);
     }
   };
   buildLeo1DkTurretFittings();

@@ -23,9 +23,9 @@ import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
-  MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
+  CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
   stepDefinition } from './steps.mjs';
-import { expandGlobs, declaredNotInput } from './globs.mjs';
+import { expandGlobs, declaredNotInput, tableFileList } from './globs.mjs';
 import { computeWorldState, tokenPin } from './world.mjs';
 
 export const SCHEMA = 1;
@@ -105,6 +105,20 @@ export const DEFAULT_CONFIG = Object.freeze({
     fleetApiTokens: FLEET_API_TOKENS }),
 });
 
+
+/** The tokens that pin the balance pass's importers (steps.mjs BALANCE): its own `tokens` and every name its entries
+ *  export, so a new pass's call line is pinned without an edit to the declaration (265: applyBuildFootings's call line
+ *  was not). */
+export function balanceTokens(root, balance) {
+  const exported = balance.entries.flatMap((file) => {
+    const path = resolve(root, file);
+    return existsSync(path)
+      ? [...readFileSync(path, 'utf8').matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm)].map((match) => match[1])
+      : [];
+  });
+  return [...new Set([...balance.tokens, ...exported])];
+}
+
 export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, env = process.env, rows = null, graph = null, cacheDir,
   config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
@@ -134,10 +148,51 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // Roster: ids, their order, groups, renames. A change runs every step in whole-fleet mode.
   const roster = H(JSON.stringify(data.roster));
 
+  // The values of the catalog keys a step declares (267, steps.mjs `catalogKeys`): one row per key, its value in each
+  // catalog ("absent" where it has none). A pattern ending in `*` takes every key with that prefix.
+  let catalogs = null;
+  const catalogValues = (patterns) => {
+    catalogs ??= CATALOG_FILES.map((file) => { try { return JSON.parse(readFileSync(abs(file), 'utf8')); } catch { return {}; } });
+    const keys = [...new Set(catalogs.flatMap((catalog) => Object.keys(catalog)))].filter((key) => patterns.some((pattern) =>
+      (pattern.endsWith('*') ? key.startsWith(pattern.slice(0, -1)) : key === pattern)));
+    const named = new Set([...patterns.filter((pattern) => !pattern.endsWith('*')), ...keys]);
+    return [...named].sort().map((key) => `catalog:${key}:${h16(JSON.stringify(catalogs.map((catalog) => catalog[key] ?? 'absent')))}`);
+  };
+
+  // Per-id input files (266): a table's `inputField` names, in each id's row, a file the step writing the table reads for
+  // that id, as { path, sha256 } (path as a page fetches it, under public/). Its row is the file's hash when the file is
+  // in this checkout, else the hash the row recorded, so a checkout without the file keys the id as the checkout that
+  // measured it did. It keys only its own id, never the ids whose spec chains name it. A `graft` beside it (267: a
+  // certified second source the registration seats in the first, t90a_burlak_proto's turret) is the id's input as well.
+  // Its measured row (267) is the same row from the recorded sha256s alone: what a run stamps (stampedInKeys).
+  const inputTables = {}, absentInputs = {}, measuredRows = {};
+  for (const [name, table] of Object.entries(TABLES)) {
+    if (!table.inputField) continue;
+    const input = `${name}.${table.inputField}`;
+    inputTables[name] = input;
+    const inputRows = {}, measured = (measuredRows[input] = {});
+    for (const [id, named] of Object.entries(data.named?.[name] ?? {})) {
+      if (typeof named?.path !== 'string') continue;
+      const keyOf = (input, what) => {
+        const file = abs(join('public', input.path.replace(/^\/+/, '')));
+        const digest = graph.hashLargeFile(file);
+        if (digest === 'missing') (absentInputs[name] ??= {})[id] ??= `${what} absent here (${rel(file)})`;
+        return `${input.path}:${digest === 'missing' ? (input.sha256 ?? 'unrecorded') : digest}`;
+      };
+      const recordedOf = (input) => `${input.path}:${input.sha256 ?? 'unrecorded'}`;
+      const grafted = typeof named.graft?.path === 'string';
+      const graft = grafted ? `|${keyOf(named.graft, `${table.inputField} graft`)}` : '';
+      inputRows[id] = h16(`${keyOf(named, table.inputField)}${graft}`);
+      measured[id] = h16(`${recordedOf(named)}${grafted ? `|${recordedOf(named.graft)}` : ''}`);
+    }
+    data.rows[input] = inputRows;
+  }
+  const ownInputs = new Set(Object.values(inputTables));
+
   // Tables and aggregates.
   const tableFiles = new Map(); // abs file -> table names
   for (const [name, table] of Object.entries(TABLES)) {
-    for (const file of expandGlobs(root, table.files)) {
+    for (const file of tableFileList(root, table, [...new Set([...data.roster.saved, ...data.roster.all])])) {
       if (!tableFiles.has(abs(file))) tableFiles.set(abs(file), new Set());
       tableFiles.get(abs(file)).add(name);
     }
@@ -160,7 +215,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   let balanceReason = null;
   if (balanceEntries.size) {
     const stale = Object.entries(BALANCE_PASS.importers).flatMap(([file, declaration]) => {
-      const pin = existsSync(abs(file)) ? tokenPin(readFileSync(abs(file), 'utf8'), BALANCE_PASS.tokens) : 'missing';
+      const pin = existsSync(abs(file)) ? tokenPin(readFileSync(abs(file), 'utf8'), balanceTokens(root, BALANCE_PASS)) : 'missing';
       return pin === declaration.pin ? [] : [`${file} (now ${pin})`];
     });
     if (stale.length) balanceReason = `importer pin stale: ${stale.join(', ')}`;
@@ -272,6 +327,9 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const toolFiles = new Set(), foreignTables = new Set();
     for (const file of closure.files) {
       if (coreSet.has(file) || aggregateFiles.has(file) || ownFiles.has(file)) continue;
+      // (267) a receipt the closure only names is no tool input, as in the core (the gate's concept records list theirs);
+      // other named data stays keyed here, since a tool, unlike a fleet module, may read what it names
+      if (!closure.expanded.has(file) && /\.selftest\.mjs$/.test(file)) continue;
       if (tableFiles.has(file)) { foreignTables.add(file); continue; }
       toolFiles.add(file);
     }
@@ -299,9 +357,22 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     const readFiles = readGlobs.length
       ? expandGlobs(root, readGlobs, { exclude: [...(step.excludeReads ?? [])] }).map(abs).filter((file) => !excluded.has(file))
       : [];
-    const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...toolFiles, ...foreignTables]), { exclude: ownFiles }),
+    // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
+    // rows when the balance pass is out of the core (the combat row only where rowReads names it)
+    const rowTables = [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
+      ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT),
+      // the per-id files its own output rows name (266, `inputField`)
+      ...step.outputs.filter((table) => inputTables[table]).map((table) => inputTables[table])])].sort();
+    // (267) a step that declares the catalog keys its page draws keys their values, not the whole string catalogs
+    const catalogRows = step.catalogKeys ? catalogValues(step.catalogKeys) : [];
+    const keyedFiles = step.catalogKeys ? new Set([...toolFiles].filter((file) => !CATALOG_FILES.includes(rel(file)))) : toolFiles;
+    const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...keyedFiles, ...foreignTables]), { exclude: ownFiles }),
+      ...catalogRows,
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`),
-      ...envRows(environmentOf(toolExecuted)));
+      ...envRows(environmentOf(toolExecuted)),
+      // (267) a canonical table's frame, its fields beside the rows, decides every id it reads (TABLES `canonical`):
+      // keyed whole as canonical content, so a reorder of rows or fields moves no key
+      ...rowTables.filter((table) => data.frames?.[table]).map((table) => `frame:${table}:${data.frames[table]}`));
     // Recorded (frame-checked) outputs: the tables' files and files written whole. `writes` files are bound to the rows
     // by the tool itself (the icon manifest holds each image's sha256), so they are not tracked file by file.
     const outputFiles = [...recorded].filter((file) => !aggregateFiles.has(file) || step.files.includes(rel(file)));
@@ -310,10 +381,7 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
       foreignTables: [...foreignTables].map(rel).sort(),
-      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs); the spec
-      // rows when the balance pass is out of the core (the combat row only where rowReads names it)
-      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(specRows ? [SPEC_REST] : []),
-        ...(step.rowReads ?? []).filter((table) => specRows || table !== SPEC_COMBAT)])].sort(),
+      rowTables,
     };
   }
 
@@ -333,17 +401,19 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   };
   const builderKey = (id) => H(`core:${core}`, `roster:${roster}`, ...groupChain(id).map((group) => `group:${group}:${groups[group]}`));
   const rowOf = (table, id) => data.rows[table]?.[id] ?? 'absent';
-  const rowsKey = (step, id) => {
+  // `ownRow` (stampedInKeys): the id's own input rows taken from elsewhere (as a run recorded them)
+  const rowsKey = (step, id, ownRow = null) => {
     const parts = [];
     for (const table of stepStates[step.name].rowTables) for (const member of chainOf(id)) {
       if (member === id && step.outputs.includes(table)) continue;
-      parts.push(`${table}:${member}:${rowOf(table, member)}`);
+      if (member !== id && ownInputs.has(table)) continue;
+      parts.push(`${table}:${member}:${ownRow && ownInputs.has(table) ? ownRow(table) : rowOf(table, member)}`);
     }
     return H(...parts);
   };
-  const inKey = (name, id) => {
+  const inKey = (name, id, ownRow = null) => {
     const state = stepStates[name];
-    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id)}`);
+    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id, ownRow)}`);
   };
   const outKey = (name, id) => H(...stepStates[name].step.outputs.map((table) => `${table}:${rowOf(table, id)}`));
   const fileHash = (file) => graph.hashFile(abs(file)).slice(0, 16);
@@ -364,7 +434,12 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   return {
     world,
     root, schema: SCHEMA, toolchain, toolchainParts, roster, core, groups, groupChain, chainOf, buildReadTables,
-    tableNames: [...Object.keys(TABLES), ...(specRows ? [SPEC_COMBAT, SPEC_REST] : [])],
+    tableNames: [...Object.keys(TABLES), ...(specRows ? [SPEC_COMBAT, SPEC_REST] : []), ...ownInputs],
+    ownInputs,
+    // why an id cannot run here: the per-id file its row names is absent from this checkout (266, `inputField`)
+    inputAbsent: (name, id) => stepStates[name].step.outputs.map((table) => absentInputs[table]?.[id]).find(Boolean) ?? null,
+    // the id's own input row as its record says it was measured (267, stampedInKeys)
+    measuredRow: (table, id) => measuredRows[table]?.[id] ?? 'absent',
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
     inKey, outKey, builderKey, rowsKey, fileHash,
     partition: {
@@ -458,12 +533,24 @@ export function refreshComponents(manifest, state) {
   return manifest;
 }
 
-/** Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. */
-export function recordStep(manifest, name, ids, inKeys, after) {
+/** The in-keys to record for a run of `name`: `inKeys` as taken `before` it, except that a step which writes the rows
+ *  its own key reads (`inputField`: the gate's oracle, which the record names) takes them as the run recorded them
+ *  (`after`'s sha256s). Stamped as they stood before, every id whose record gained or moved its oracle was due again
+ *  after the run that wrote it (267's bootstrap: 118 ids gated twice). A file changed after the run hashed it still
+ *  differs from the recorded sha256, so its id stays due. */
+export function stampedInKeys(before, after, name, inKeys) {
+  const step = before.steps[name];
+  if (!step?.rowTables?.some((table) => before.ownInputs?.has(table))) return inKeys; // a map step: none
+  return Object.fromEntries(Object.keys(inKeys).map((id) => [id, before.inKey(name, id, (table) => after.measuredRow(table, id))]));
+}
+
+/** Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:
+ *  ids the tool reported it could not run here (steps.mjs `skipped`), left as they were recorded, so they stay due. */
+export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set() } = {}) {
   const keys = (manifest.keys[name] ??= {});
   const ran = ids ?? after.ids;
   if (!ids) for (const id of Object.keys(keys)) if (!after.ids.includes(id)) delete keys[id];
-  for (const id of ran) keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
+  for (const id of ran) if (!skip.has(id)) keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
   manifest.files[name] = Object.fromEntries(after.steps[name].outputFiles.map((file) => [file, after.fileHash(file)]));
 }
 
@@ -478,12 +565,16 @@ const reasonsFor = (manifest, state, name, id) => {
   for (const group of state.groupChain(id)) if (manifest.groups[group] !== state.groups[group]) out.push(`group ${group}`);
   for (const table of step.rowTables) for (const member of state.chainOf(id)) {
     if (member === id && step.step.outputs.includes(table)) continue;
+    if (member !== id && state.ownInputs?.has(table)) continue;
     const before = manifest.rows[table]?.[member] ?? 'absent', now = state.rows[table]?.[member] ?? 'absent';
     if (before !== now) out.push(`row ${table}[${member}]`);
   }
   // Every component matches the manifest's latest snapshot, so the key moved through rows a later step of the last
   // chain rewrote after this step ran (the chain's next pass re-runs it).
-  return out.length ? out : ['inputs rewritten after this step ran (a later step of the last chain)'];
+  const reasons = out.length ? out : ['inputs rewritten after this step ran (a later step of the last chain)'];
+  // (266) the per-id file its row names is not in this checkout: only a checkout holding it can clear the id
+  const absent = state.inputAbsent?.(name, id);
+  return absent ? [...reasons, `${absent}: run it where the file is present`] : reasons;
 };
 
 /**

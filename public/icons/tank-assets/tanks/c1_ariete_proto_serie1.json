@@ -1233,24 +1233,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26242,
-      "sha256": "73e0c7a61052f461e2000cca630b06311aee040392883e5f751be7f5ed4a8619"
+      "bytes": 26224,
+      "sha256": "c3f3f76545c901d5be8a1364473e99d02a6a9476648823c170d01dcc282c851b"
     },
     "modulesSide": {
       "file": "c1_ariete_proto_serie1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25532,
-      "sha256": "3393cd9eb2e9dcb03b35191d2e0113ec7f71c6d9e752bf297523940ae344232a"
+      "bytes": 24884,
+      "sha256": "f4782d05ff3742cbc5d94e3d51034cfc38203e957ac48b7e4495198aafa42c92"
     },
     "crewSide": {
       "file": "c1_ariete_proto_serie1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22252,
-      "sha256": "783fde361479592d81853afe1d3b7b6c7f6624304885ad8c42260465ac41a6b1"
+      "bytes": 22548,
+      "sha256": "4dcf3ac6b16e7951e9023505065d4b9b43eb6bee24b14d8434447010946536e6"
     },
     "markings": {
       "file": "c1_ariete_proto_serie1_markings.png",
@@ -1263,8 +1263,8 @@
     "technicalLabels": {
       "file": "c1_ariete_proto_serie1_technical.json",
       "mime": "application/json",
-      "bytes": 4715,
-      "sha256": "10d2d0005d92cb05928543b264889914cb0dcf2e71dd5eff958285fc18414c8f"
+      "bytes": 4714,
+      "sha256": "7233494bf02b51d81f1073491ee9adf516783c896295fd3656196f31eab9f00b"
     }
   }
 }

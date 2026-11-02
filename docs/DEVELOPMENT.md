@@ -28,7 +28,9 @@ Before publishing:
    every push, however small the change (owner 2026-09-23, after a push that turned `balanceMatchups` red on shared
    main for a night; since 266 balance is the manual `balance` suite, which `npm run test:recommend` names for the owner).
    `node tools/gate.mjs --baseline=<starting-base>` runs all of it in one
-   versioned command (below).
+   versioned command (below). The integrator runs the default tier and its smokes with
+   `COT_CAPTURE_PRIORITY=release`, so their browser receipts take the capture lock ahead of lane holds
+   (tools/capture-lock.mjs, 266); a lane never sets it.
    Record the validated commit. An earlier branch's green result does
    not certify conflict resolution or later source edits. For geometry, use
    the complete anatomy and targeted release procedure in `AGENTS.md`.
@@ -505,6 +507,12 @@ inputs are byte-identical to its last PASS prints a SKIP line (`COT_SELFTEST_CAC
 everything). Every failure in a group is reported in one run; `COT_SELFTEST_FAIL_FAST=1` stops at the first. Result reuse is specified in
 "Test gate and result reuse" below.
 
+A receipt has a third verdict, STARVED (267, `tools/selftest-verdict.mjs`): one that judges host time net of what the
+machine withheld (`tools/starvation-meter.mjs`) and finds too little left to judge exits 75. The runner prints STARVED,
+lists it at the end of the run and in its report, never caches it as a PASS (the next run executes it again) and does
+not fail the run for it; the gate counts it apart from the red receipts in `gate.md`. mp-soak is the first: its
+acknowledgement, tick-cost and control gates can each be starved on a loaded machine.
+
 **Receipt tiers (266; owner 2026-10-30: "make super strenuous suites like balance and other testing to be not for every
 deploy annd manually recommended annd triggered by ME").** `tools/selftest-tiers.mjs` splits the registry; the audit of
 every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.md`.
@@ -530,8 +538,21 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   (`STALE_GUARDS`: `collisionManifestDrift` and `wreckBakePlanDrift` on any map's files, the world core, the fleet core
   or a moved wreck donor, from the changed-only world partition; the fleet passes and the anatomy check on any moved
   tank), or, for balance, when an id's spec armour, gun, HP, mobility, size or role moved (the base's and the head's
-  registries). When closure reads alone warrant a suite and reach at most a quarter of it, the command names just those
-  receipts (`--only=`) with their own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
+  registries). The code that reads those fields counts too: a changed file in the static import closure of the
+  authority's hit resolution (`HIT_RESOLUTION_ENTRIES` in `tools/test-diff.mjs`: ballistics, armour, damage, walked as
+  det-math-lint walks the authority), less the per-id tables and group files the fleet partition names by id, is a
+  fleet-wide balance move that warrants every `hits` suite (balance, pacing, bots, sims) whole. 267's bevel head moved
+  `sim/armor.ts` and added `sim/armorPlanes.ts` while its balance line said no tank's armour changed. Two kinds of read
+  decide no result and are dropped. A path a reader reaches only through a module that declares it `scheduleOnly`
+  (`DECLARED_DYNAMIC`, as changed-only drops it from its keys) is one: the cap table placed only browsers yet named the
+  whole fleet suite. The other is a `hits` suite's reads of builder paths (a group or per-id table file outside the
+  authority's import graph) when what the builders emit did not move. When such reads alone warrant a `hits` suite,
+  the recommender compares, for the tanks those paths name, every finalized spec field as the tool facade registers it
+  and the HIGH and LOW geometry digests (each tree's own ledger worker), base against head (`builderObservables`; 187
+  tanks in under three minutes). Equal, the reads drop: 267's whip-rod tags (15 builders) named balance, pacing, bots
+  and sims and now names none. A tank that moved keeps them and is named on the balance line. When closure reads
+  alone warrant a suite and reach at most a quarter of it, the command names just those receipts (`--only=`) with their
+  own time. An entry page (a root `*.html` Vite builds from) counts only for a receipt
   whose own source names it, and never as a world-step trigger (the locale route table names the pages; the Node
   captures never read one): the og:video head (12 paths) went from six suites to two narrowed lines. Main relays that
   report; the owner triggers the run.
@@ -539,7 +560,9 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   an armour, ballistics and damage sample on real builds, the vehicle-core build paths, the cheap generated-output guards
   (the collision shard census and codec, the gun-junction, sealed, spare-track and watertight ledgers, the rounds census),
   and the i18n, attribution, hygiene and changed-only/cache guards.
-- **Lane mode**: `npm run test:lane [-- --base=<ref>]` (default `origin/main`; `--dry-run` prints the selection) runs
+- **Lane mode**: `npm run test:lane [-- --base=<ref>]` (default `origin/main`; a local branch behind its origin
+  branch, such as the shared checkout's `main`, is taken as `origin/<branch>`, and one with commits origin lacks is
+  kept with a warning; `--dry-run` prints the selection) runs
   the default-tier receipts whose closure (the result cache's own, `selftestReadOf`, a broad-fallback match excluded)
   holds a changed path, plus the `tanks` pins that name a changed tank id or read a changed file outside the shared
   fleet core. Changed ids come from the changed-only fleet partition (`tools/test-diff.mjs changedTankIds`: a group's
@@ -554,11 +577,14 @@ every receipt (decision, reason, where its coverage lives) is `docs/TEST-AUDIT.m
   criss-cross history (a lane that merged integ, then main after integ had merged main) it is the newest of
   `git merge-base --all` that origin/main does not contain (`tools/test-base.selftest.mjs`).
   Speed (266 follow-up): each receipt's reads are computed once per diff from the cache's closure and listings
-  (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt) and the changed tables' rows come from one git
-  call; integ/265's 3,035-path diff selects in about 78 s of CPU, where it ran past ten minutes. A JSON table (steps.mjs
-  TABLES kind 'json') is compared row by row instead of diffed: the M60 lane's icon regen rewrote the 55 MB
-  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s), and
-  each batched diff of the other tables stops at 2 minutes (its files then mark every id they hold). test:lane and
+  (`createReadIndex`, held equal to `selftestReadOf` by the tiers receipt); integ/265's 3,035-path diff selects in about
+  78 s of CPU, where it ran past ten minutes. Every changed table is compared row by row, never diffed. A JSON table
+  (steps.mjs TABLES kind 'json') is parsed on both sides: the M60 lane's icon regen rewrote the 55 MB
+  public/icons/tank-assets.json, whose 2,055,741-line diff took git 182 s (the same 252 ids now resolve in 4 s). A
+  module table (kind 'module') is imported on both sides by one child (`tools/test-module-rows-child.mjs`, its relative
+  imports bound to the tree): auxiliaryInventory, auxiliaryRoofGuns and the combat anatomy groups are one-line literals,
+  so a two-id diff's hunks named all 276 ids (267, magach-quality: now magach6b and magach7c). A file either reader
+  cannot read marks every id it holds. test:lane and
   test:recommend stop their children and exit on SIGTERM, SIGINT, SIGHUP or SIGALRM, or when their parent dies
   (`tools/test-commands-exit.selftest.mjs`, with an untracked control that orphans). Their signal listeners are attached
   only while a tracked child runs: a listener holds a signal until the event loop runs, and the selection is one
@@ -577,7 +603,9 @@ one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free 
   used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
   before Oxlint was added skips it with a notice until `npm ci`.
 - `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
-  no formatter. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
+  no formatter. It adds `no-undef` on JavaScript (`.js`, `.mjs`, `.cjs`), which has no compiler here: an
+  unimported name fails the lint, not the first tier that runs it. A page global read inside `page.evaluate` is
+  declared in the `globals` of its override. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
   with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
   simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
   hash-pinned sources are ignored.
@@ -1153,8 +1181,8 @@ fails if a page enters a step key (a step that really reads one is listed in its
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
-spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
-most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
+spare-track keep-out), then the geometry ledger, the manual reference, centering, icons and the geometry gate (capture
+lock, holds of at most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
 (`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
 by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
@@ -1223,8 +1251,27 @@ by hand, and never take one side of it whole as the merge result.
   A passing `fresh.selftest.mjs` is the proof.
 - A lane that cannot run a step (centering and icons need the capture lock) leaves that step stale and names it in its
   handoff. `fresh.selftest.mjs` stays red until the integrator's round runs the step, before the gate.
+- A tool that cannot run an id in this checkout (the gate without that id's oracle, `--absent=skip`) names it in the
+  report its step's `skipped` flag asks for. The chain records the other ids, leaves that one due without retrying it
+  or failing, and names it in the final resolve; `tank:changed --explain` says the file is absent here. A checkout
+  holding the oracle clears it.
+- The GPU steps key only the public files their page loads (266, 267): `tools/icons-page-public.mjs` and
+  `tools/gate-page-public.mjs` list them (measured with an HTTP request trace), and the tools' Vite server
+  (`tools/served-public.mjs`) answers any other public file 403, which fails the run. Keying all of `public/` re-ran
+  centering and icons on every id for a vehicle count in `public/llms.txt`.
 - The keys read only what every checkout holds. A file under the gitignored `public/models/` is keyed by its path, not
-  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. A route in the
+  its bytes or presence; a tool that reads one checks it against a sha256 pinned in a tracked file. The gate's oracles
+  (267) are keyed per id by the `oracle: { path, sha256 }` each record names (`TABLES` `inputField`), with the
+  `graft: { path, sha256 }` beside it where a certificate seats a second source in the first (t90a_burlak_proto): the file's bytes
+  where it is here, else the recorded sha256, so a checkout without it keys the id as the checkout that measured it
+  did, and different bytes at the path re-run that id alone. Because the gate writes the row its own key reads, a run
+  stamps that row as it recorded it (`stampedInKeys`: the recorded sha256s), not as it stood before the run. The
+  pre-run stamp left every id whose record gained or moved its oracle due a second time; 267's bootstrap gated 118 ids
+  twice. A ledger a step only checks each id against
+  (`docs/geometry-gate/sim-floors.json` for anatomy) is a `canonical` table read per id (`rowReads`): each row hashed
+  as canonical JSON and its frame (the tolerance) keyed whole, canonically, so re-serializing it in another row or key
+  order moves no key, one row moves its id alone and the tolerance moves every id (267: the 266 Brazil merge reordered
+  its rows and re-ran anatomy on all 276 ids for identical content). A route in the
   app's own source (`/docs/${topic}`) names no directory (`tools/changed-only/graph.mjs` header). When
   `fresh.selftest.mjs` passes in one checkout and fails in another at the same commit, an untracked file is reaching
   the tool key of the step it names ("tool … or its flags"): compare that step's `toolFiles` from `computeState` in

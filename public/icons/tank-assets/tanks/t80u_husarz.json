@@ -52237,24 +52237,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34754,
-      "sha256": "80e7f168cd31dd3aa9b8810f8a54aecd8e7b64b11e5a44d75cee8ca81205f462"
+      "bytes": 34762,
+      "sha256": "f86a2d41b1fc9ed67c06683b588efe215a5d45e64e5fb05d2727fccd3311710d"
     },
     "modulesSide": {
       "file": "t80u_husarz_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27630,
-      "sha256": "34146dad09bacbb4362db457878bd81b27de6881aaab4b0b2b017fbafb7d4a5e"
+      "bytes": 27400,
+      "sha256": "9f89fdf8cd1ce431aa9f6261ed0a369bcb96e532b0dbdf98557b374ac1429b96"
     },
     "crewSide": {
       "file": "t80u_husarz_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24136,
-      "sha256": "6df13a069d1a06c00bb27342c3c39814e55db5627047016ac8f1714d08f8646d"
+      "bytes": 25350,
+      "sha256": "570d80f2caa1a2080379f793fa02268714b934527fb3b78280e9cc1ad19b14f2"
     },
     "angle": {
       "file": "t80u_husarz_angle.webp",
@@ -52315,8 +52315,8 @@
     "technicalLabels": {
       "file": "t80u_husarz_technical.json",
       "mime": "application/json",
-      "bytes": 5333,
-      "sha256": "d1766c83ccf2b8e0eb7cec6339b4d4e6d90dae974abd9fe40056a10fbc549dde"
+      "bytes": 5330,
+      "sha256": "2858854ce9706a5bceaa89035a9defb14fb307e8d85483f46ce6aa0e71dcfb07"
     }
   }
 }

@@ -14,7 +14,7 @@
   "hullCurves": 56.62005471630566,
   "stations": 65.78541295437272,
   "turretCurves": 42.127875710078314,
-  "wholeCurves": 50.616194269008524,
+  "wholeCurves": 56.28451485372106,
   "dims": 100,
   "floaters": 100
  },
@@ -22,7 +22,7 @@
   "hullCurves": 56.6,
   "stations": 65.8,
   "turretCurves": 42.1,
-  "wholeCurves": 50.6,
+  "wholeCurves": 56.3,
   "dims": 100,
   "floaters": 100
  },
@@ -138,31 +138,15 @@
    ]
   },
   "side_whole": {
-   "score": 62.657045525863715,
-   "meanPct": 2.54,
-   "p95Pct": 8.7,
+   "score": 68.2182050037279,
+   "meanPct": 2.18,
+   "p95Pct": 6.52,
    "coverPct": 1.12,
    "reg": {
     "dAlong": -0.05609355550962469,
     "dy": 0.009628707439258005
    },
    "worst": [
-    {
-     "at": 2.34,
-     "refTop": 1.98,
-     "refBot": -1.98,
-     "procTop": 0.12,
-     "procBot": -1.97,
-     "errM": 0.934
-    },
-    {
-     "at": 2.23,
-     "refTop": 1.58,
-     "refBot": -1.98,
-     "procTop": 0.16,
-     "procBot": -1.97,
-     "errM": 0.714
-    },
     {
      "at": 3.32,
      "refTop": 0.21,
@@ -212,6 +196,14 @@
      "errM": 0.245
     },
     {
+     "at": 2.34,
+     "refTop": 0.54,
+     "refBot": -1.98,
+     "procTop": 0.12,
+     "procBot": -1.97,
+     "errM": 0.21
+    },
+    {
      "at": 1.36,
      "refTop": 0.26,
      "refBot": -1.98,
@@ -242,6 +234,14 @@
      "procTop": 0.63,
      "procBot": -1.97,
      "errM": 0.199
+    },
+    {
+     "at": 1.58,
+     "refTop": 1.01,
+     "refBot": -1.98,
+     "procTop": 0.64,
+     "procBot": -1.97,
+     "errM": 0.194
     }
    ]
   },
@@ -570,31 +570,15 @@
    ]
   },
   "front_whole": {
-   "score": 50.616194269008524,
-   "meanPct": 3.66,
-   "p95Pct": 9.12,
+   "score": 56.28451485372106,
+   "meanPct": 3.28,
+   "p95Pct": 7.23,
    "coverPct": 0,
    "reg": {
     "dAlong": 0.0010510796510676546,
     "dy": 0.06652456904314455
    },
    "worst": [
-    {
-     "at": 0.43,
-     "refTop": 1.99,
-     "refBot": -1.6,
-     "procTop": 0.35,
-     "procBot": -1.63,
-     "errM": 0.829
-    },
-    {
-     "at": 0.38,
-     "refTop": 1.57,
-     "refBot": -1.6,
-     "procTop": 0.35,
-     "procBot": -1.63,
-     "errM": 0.617
-    },
     {
      "at": -0.11,
      "refTop": 1.02,
@@ -674,15 +658,31 @@
      "procTop": 0.72,
      "procBot": -1.63,
      "errM": 0.263
+    },
+    {
+     "at": 0.52,
+     "refTop": 0.22,
+     "refBot": -1.6,
+     "procTop": 0.71,
+     "procBot": -1.63,
+     "errM": 0.253
+    },
+    {
+     "at": -0.29,
+     "refTop": 0.7,
+     "refBot": -1.6,
+     "procTop": 0.24,
+     "procBot": -1.63,
+     "errM": 0.242
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 61.548338884133,
-   "meanPct": 2.4,
-   "p95Pct": 5.76,
+   "score": 68.07203119051438,
+   "meanPct": 1.87,
+   "p95Pct": 5.65,
    "coverPct": 4.1,
    "reg": {
     "dAlong": -0.05609355550962469,
@@ -691,19 +691,11 @@
    "worst": [
     {
      "at": 2.34,
-     "refTop": 1.98,
+     "refTop": 0.54,
      "refBot": -0.35,
      "procTop": 0.12,
      "procBot": -0.43,
-     "errM": 0.97
-    },
-    {
-     "at": 2.23,
-     "refTop": 1.58,
-     "refBot": -0.41,
-     "procTop": 0.16,
-     "procBot": -0.43,
-     "errM": 0.719
+     "errM": 0.246
     },
     {
      "at": 1.36,
@@ -760,6 +752,14 @@
      "procTop": 0.6,
      "procBot": -0.59,
      "errM": 0.209
+    },
+    {
+     "at": 2.23,
+     "refTop": 0.54,
+     "refBot": -0.41,
+     "procTop": 0.16,
+     "procBot": -0.43,
+     "errM": 0.199
     },
     {
      "at": 0.06,
@@ -937,10 +937,10 @@
    "i": 4,
    "refW": 3.494,
    "procW": 3.519,
-   "refTop": 1.991,
+   "refTop": 0.544,
    "procTop": 0.158,
    "wPct": 0.7220216606498161,
-   "topPct": 45.98437504672597
+   "topPct": 9.703125046725969
   },
   {
    "i": 5,
@@ -1078,6 +1078,20 @@
    "node:vehicle#antenna_short_7"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [
+    "can",
+    "stowage"
+   ],
+   "reference": []
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1150,5 +1164,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/k1a1_kojf.glb",
+  "sha256": "b36b620f868cccbdbc2a874c6967273e2cc712b7df83c6e1bc054ec95bad24a0"
+ }
 }

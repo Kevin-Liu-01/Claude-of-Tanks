@@ -1002,24 +1002,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35122,
-      "sha256": "016b4f085fba8901ff3535073f5bfdec0bef78863a4bf388555072b85f9bcb31"
+      "bytes": 35094,
+      "sha256": "7e31f3eb806e72ea9ce05484fb300f851cd6a2edaed4d6cc6857d4f5643b8de4"
     },
     "modulesSide": {
       "file": "cv90_mk4_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36748,
-      "sha256": "a4a699c53aac51b0121c7f2bc33aec244aa534d5319067221248686da3a71861"
+      "bytes": 35100,
+      "sha256": "56f76639086a2b6b9cc038a3ce1055d1f9079a2af6c27b779f08df1815f51056"
     },
     "crewSide": {
       "file": "cv90_mk4_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32224,
-      "sha256": "a578cd5275565c312bc25f82dddee3cf746c4f8b7dd0b1cb2d25b06734e6ab3c"
+      "bytes": 32488,
+      "sha256": "e7ba10324edab0c4240a8a131867b659444d7e949706f0a15b9a264ee2f91c5e"
     },
     "angle": {
       "file": "cv90_mk4_angle.webp",
@@ -1080,8 +1080,8 @@
     "technicalLabels": {
       "file": "cv90_mk4_technical.json",
       "mime": "application/json",
-      "bytes": 5553,
-      "sha256": "3601f2a13f1241a76f8c1bf1f91d645eb695ba5a70e877d17626ba2038692bfa"
+      "bytes": 5570,
+      "sha256": "75ac83bc38794a6be92ec00474bbb04c3c8ce350c5e2a7efee6c5bbfabf93171"
     }
   }
 }

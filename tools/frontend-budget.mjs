@@ -226,9 +226,34 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   Australia, Poland's new hulls), camoPolicy +612 (the Centurion family's and the PT-84s' paints, the 265 Signatures),
   //   vehicleMarkings +411, presentation anchors +320, roles/taxonomy/i18n +500; main -1,400 (core-two-drivers: the solo
   //   routing gone). Inline CSS +6-16 B a page: the PT-84 font's ł/Ż (accepted, Main 21:40).
-  game: { brotliBytes: 1147226, requests: 128, entryBrotliBytes: 249894 },
-  cn: { brotliBytes: 1191178, requests: 129, entryBrotliBytes: 249894 },
-  gallery: { brotliBytes: 718363, requests: 75 },
+  // 2026-10-31 (integrator 266, the single end re-pin at integ/266 0df7b32811's build; Node 24.22.1; requests held at
+  //   128 / 129 / 75 after the Leopard 2 wedge leaf joined fleetLayouts): game +15,365 B brotli (boot chunks +15,416 B over
+  //   265's production build dd53e635f8), cn +15,836 B, Gallery +14,581 B. By chunk and lane: fleetFactory +6,292 (the
+  //   21 new ids registered at boot: the Danish Leopards and M41s, the T49, the CV9035 DK, the Brazil line's eight, the
+  //   Magach 6B and 7C, the Ukrainian CV9040C; the T-90 family's frames), turretSeatPlane +1,696 (the gun-face split and
+  //   cell facets, the shot card's hull points reader), fleetLayouts +1,492 (the Leopard 2 wedge fit, the M41 and Brazil
+  //   tables), vehicleMarkings +1,079 (the Brazilian insignia, the Ukrainian triangle, the Danish flags), decorations +1,051
+  //   (the suit-roof rule, the Proryv bow plate, the new ids' loads), camoPolicy +804 (the Danish, Challenger 1, Brazilian
+  //   and M41 coats), specs +603, tankFactoryCore +570 (local-fps-266's opaque program order and lit set), main +429,
+  //   i18n +413, presentation anchors +358, materials +271 (the armour paint's damage-only read), roles/taxonomy/teams +300.
+  // 2026-11-01 (integrator 266, re-pin at integ/266 30eab409ee's build; requests unchanged): game +194 B brotli, cn +194 B
+  //   over the 0df7b32811 pins: the shot card's one-line rows (item/shot-card-fit-266, +93 B, inside the slack alone) and
+  //   Brazil's flag-icons br.svg in flags.ts's FLAG_URL (+101 B: the Brazilian flag chips were broken images); Gallery
+  //   +49 B stays inside its slack.
+  // 2026-11-02 (integrator 267, the single end re-pin at integ/267 80bc20be95's build; Node 24.22.1; Main's brief: one bundle
+  //   re-pin with attribution): game +2,951 B brotli over the 266 pins (boot chunks +3,006 B over 266's main 950a4acc85 built
+  //   here on the same node_modules, which reads its pin within -144 B), cn +2,985 B, Gallery +2,786 B; requests DOWN to
+  //   127 / 128 / 73 (the Type 10 armour and gun-seat chunks and mapPalette fold away; the entry -89 B). By chunk and lane:
+  //   type90bArmor +1,474 (new: the Japan line's Type 90 (B) and Type 10 family tables, replacing type10DozerArmor -598 and
+  //   type10GunSeat -239), vehicleMarkings +1,232 (the 2A7 DK's and Centurion DK's Danish marks, the Type 90 (B)'s),
+  //   fleetFactory +843 (the three new ids registered at boot; Leclerc round 5, the Magachs, the Leopard 1 outlets, the T-90
+  //   family's rebuild), materials +712 (the bevel class's plate planes; the 2A7 DK's Barracuda coat), collision +244 (main's
+  //   plane fit), camoPolicy +190 (paint_leo2a7dk, paint_centurion5_2dk, paint_type90b, paint_type10), franceSpecs +146 (the
+  //   AMX-40's depression curve), decorations +137, mapNames +124 (new) against mapPalette -1,276 (main's og-cards), the rest
+  //   under 65 B each. Home +8 B, docs +58 B and 404 +120 B stay inside their slack.
+  game: { brotliBytes: 1165736, requests: 127, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1210193, requests: 128, entryBrotliBytes: 249894 },
+  gallery: { brotliBytes: 735730, requests: 73 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
   notFound: { brotliBytes: 18355, requests: 7 },

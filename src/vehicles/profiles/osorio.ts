@@ -24,6 +24,7 @@
 //   it, a 130 mm L/51.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, place } from '../accessoryPrimitives.ts';
@@ -479,7 +480,7 @@ function* buildOsorioSteps(P: TankBuilderPort, mark: OsorioMark): TankProfileBui
     // the whip antennas on their bases, rear right and left
     for (const s of [-1, 1] as const) {
       P.addEquipment('turret', box(0.09, 0.09, 0.09), s * 0.86, roof + 0.045, -1.95);
-      P.addEquipment('turret', cylY(0.012, 0.015, 2.0, 8), s * 0.86, roof + 1.09, -1.95, 0, 0, s * 0.03);
+      P.addEquipment('turret', antennaPart(cylY(0.012, 0.015, 2.0, 8)), s * 0.86, roof + 1.09, -1.95, 0, 0, s * 0.03);
     }
     // the right wall's grid, the left wall bare (the 1987 and 2024 left-side photographs; blind critic, round 3): the P.2's
     // deep basket from the cheeks' root to two-thirds back, its rails, uprights and fine wire mesh on a mesh floor and the

@@ -275,12 +275,10 @@ const MODERN3_SPECS = {
     // the §5.336 CLONE FRAME, kept byte-stable because userdrops5's type90_kyumaru
     // row clones this armor through make() + fitArmorToDims (which scales
     // pivots — the type90_kyumaru hit frame must stay byte-invariant, guard law
-    // §5.336) and japan.ts clones it for type10b. The LIVE rig/sim pivots
-    // for type10_tk_x + type10b are re-seated post-clone in japan.ts. Their gun
-    // pivot comes from profiles/type10GunSeat.ts so the mantlet meets the
-    // marked turret throat without moving the certified muzzle station.
-    // rig_turret itself stays builder-pinned at [0, 1.672, 0.2354] (see
-    // P.turretG.position.set in the builder).
+    // §5.336) and japan.ts clones it for type10b. 267: type10_tk_x and type10b
+    // draw the modern Type 10 (profiles/type10X.ts), so after every clone of
+    // this row their dims, armour fit and rig take the Type 10's
+    // (type10FamilyFrames.ts); the row itself stays the donors' frame.
     armor: modernArmor({
       hl: 3.762, hw: 1.782, inW: 1.144, floor: 0.495, trkTop: 1.045, roofY: 1.683,
       turretPivot: [0, 1.672, 0.231], gunPivot: [0, 0.319, 1.419],

@@ -1,62 +1,65 @@
-// Deterministic 1200x630 social cards composed from approved in-engine captures.
-// The default game card and every route companion share the owner-approved
-// bottom-left lockup: the commander mark and the outlined wordmark (public/brand/lockup.svg, tools/brand-marks.mjs).
-// Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
-// of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
-// the 404 and the manual's battle topics, performance and loading among them; two of the combat round's duels
-// (public/media/site50-r14/stills) for simulation and combat (a round striking a turret) and for filming the media;
-// the current Tank Gallery, Scene Studio, battle HUD and multiplayer captures for the pages about those screens. A
-// picture shared by two cards is framed differently on each.
-// A 1920x1080 picture covers the card at its full width, so its focus only moves the 45 px it loses top and bottom
-// (every tank stays in frame); the 2400x700 dual view, the HUD and the Studio's manual card are shown whole
-// ('contain', over their own blurred copy) so no player view, HUD edge or panel is cut.
+// Deterministic 1200x630 social cards composed from approved in-engine captures (og-r2, the owner 2026-11-01: "we need
+// better og images and og videos, for cot.kevinliu.studio and all its associatd links").
+// A card is its page's own shot, full-bleed and at its own brightness, with one text block in a quiet top corner: the
+// owner-approved lockup (the commander mark and the outlined wordmark, public/brand/lockup.svg, tools/brand-marks.mjs)
+// over the page's title, set large enough to read where a share shows the card a third of its size (a phone timeline,
+// ~340 px wide: the 76 px title keeps a 22 px cap). A scrim darkens only that corner. The game and the home page are
+// the brand's own cards: the lockup alone, larger. The text never stands on the hero tank: each row names the corner
+// its shot leaves clear (tl or tr), and og-images.selftest finds the lockup in that corner of the shipped card.
+// Each page's shot is the one it opens on (its banner take's poster, or a frame of its share clip, `<clip>.mp4#t=<s>`),
+// so the card, the clip a share plays and the page itself show one take.
+// Every labelled card is rendered twice: public/brand/og-r2/<id>.jpg for the English page and public/brand/og-r2/zh/<id>.jpg,
+// the same picture with the title in the zh-CN catalog's words, for its /cn twin (src/presentation/localizedHtml.ts). The
+// brand cards carry no words and serve both. The directory is new per design round so a platform that caches a card
+// by URL (X for about 7 days) fetches the new one.
 // Preview a subset with --only=game,home,docs-models before regenerating all.
-// Every labelled card is rendered twice: public/brand/og/<id>.jpg for the English page and public/brand/og/zh/<id>.jpg,
-// the same picture with the label in the zh-CN catalog's words, for its /cn twin (src/presentation/localizedHtml.ts).
 import { launchGuardedBrowser } from '../browser-launch.mjs';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { filterPublishedImage, masterFilter } from '../media-r5/master-filter.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const OUTPUT = join(ROOT, 'public/brand/og');
+export const OG_DIR = 'public/brand/og-r2';
 const LOCKUP = join(ROOT, 'public/brand/lockup.svg');
 
+// [id, title (English, '' for a brand card), source, focus (object-position), corner (tl | tr)]
 export const OG_IMAGE_CARDS = [
-  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 50%'],
-  ['home', 'HOME', 'public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp', '50% 50%'],
-  ['gallery', 'TANK GALLERY', 'public/media/ui-246/gallery-hero.webp', '50% 48%'],
-  ['studio', 'SCENE STUDIO', 'public/media/ui-246/studio-workspace.webp', '50% 0%'],
-  ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m-r6.webp', '50% 50%'],
-  ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp', '50% 50%'],
-  ['docs-modes', 'GAME MODES', 'public/media/site50-r14/home/modes/zone_control.webp', '50% 50%'],
-  ['docs-controls', 'CONTROLS & WATCH MODE', 'public/media/site50-r14/home/mechanics/mobile.webp', '50% 50%'],
-  ['docs-start', 'YOUR FIRST BATTLE', 'public/media/site50-r14/home/features/garage.webp', '50% 50%'],
-  ['docs-tanks', 'TANKS & EQUIPMENT', 'public/media/site50-r14/home/mechanics/dossiers.webp', '50% 50%'],
-  ['docs-fleet', 'EVERY TANK', 'public/media/home-r2/fleet-kv2-1920.webp', '50% 50%'],
-  ['docs-combat', 'ARMOUR, ANGLING & SPOTTING', 'public/media/site50-r14/home/mechanics/armor.webp', '50% 50%'],
-  ['docs-battlefields', 'BATTLEFIELDS', 'public/maps/cards/fjord.webp', '50% 50%'],
-  ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/ui-246/gallery-modules.webp', '50% 48%'],
-  ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/ui-246/gallery-armor.webp', '50% 48%'],
-  ['docs-simulation', 'SIMULATION & AUTHORITY', 'public/media/site50-r14/stills/s226-church-duel.webp', '50% 100%'],
-  ['docs-rendering', 'RENDERING & PERFORMANCE', 'public/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp', '50% 50%'],
-  ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 50%'],
-  ['docs-multiplayer', 'MULTIPLAYER', 'public/media/ui-246/multiplayer-pair.webp', '50% 28%', 'contain'],
-  ['docs-audio', 'SOUND & RADIO', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp', '50% 50%'],
-  ['docs-studio', 'SCENE STUDIO', 'public/media/site50-r14/stills/s33-water-tower.webp', '50% 50%'],
-  ['docs-filming', 'FILMING THE MEDIA', 'public/media/site50-r14/stills/s225-verdant-duel.webp', '50% 50%'],
-  ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 40%'],
+  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6-3840.webp', '50% 50%', 'tr'],
+  ['home', '', 'public/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4#t=0.5', '50% 50%', 'tl'],
+  ['gallery', 'Tank Gallery', 'public/media/home-r2/fleet-montage.mp4#t=3', '50% 50%', 'tr'],
+  ['studio', 'Scene Studio', 'public/media/site50-r14/loops/s33-water-tower.jpg', '50% 50%', 'tl'],
+  ['private-room', 'Private battle', 'public/media/versus-r1/vs01-desert-abrams-t90m-r6-3840.webp', '50% 50%', 'tl'],
+  ['docs', 'Technical field manual', 'public/media/docs-r1/banner-2560.webp', '75% 50%', 'tl'],
+  ['docs-modes', 'Game modes', 'public/media/site50-r14/loops/s21-fields-assault.jpg', '50% 50%', 'tl'],
+  ['docs-controls', 'Controls & Watch mode', 'public/media/site50-r14/loops/s26-minaret-fire.jpg', '50% 50%', 'tl'],
+  ['docs-start', 'Your first battle', 'public/media/docs-hero-r2/frontier-t90m-leo2a6.jpg', '50% 50%', 'tl'],
+  ['docs-tanks', 'Tanks & equipment', 'public/media/site50-r14/loops/s05-barn-advance.jpg', '50% 50%', 'tl'],
+  ['docs-fleet', 'Every tank', 'public/media/site50-r14/loops/s227-oasis-duel.jpg', '50% 50%', 'tl'],
+  ['docs-combat', 'Armour, angling & spotting', 'public/media/site50-r14/loops/s29-fjord-road-kill.jpg', '50% 50%', 'tl'],
+  ['docs-battlefields', 'Battlefields', 'public/maps/fjord.webp', '50% 50%', 'tl'],
+  ['docs-build', 'How the game was built', 'public/media/site50-r14/loops/s23-village-crossroads.jpg', '50% 50%', 'tl'],
+  ['docs-models', 'Procedural model pipeline', 'public/media/docs-hero-r2/verdant-challenger3-t80u.jpg', '50% 50%', 'tl'],
+  ['docs-simulation', 'Simulation & authority', 'public/media/site50-r14/loops/s226-church-duel.jpg', '50% 50%', 'tl'],
+  ['docs-rendering', 'Rendering & performance', 'public/media/site50-r14/loops/s20-road-return-fire.jpg', '50% 50%', 'tl'],
+  ['docs-ai', 'Bots & tactical AI', 'public/media/site50-r14/loops/s04-column-under-fire.jpg', '50% 50%', 'tl'],
+  ['docs-multiplayer', 'Multiplayer', 'public/media/site50-r14/loops/s18-street-knockout.jpg', '50% 50%', 'tl'],
+  ['docs-audio', 'Sound & radio', 'public/media/site50-r14/loops/s01-main-street-push.jpg', '50% 50%', 'tl'],
+  ['docs-studio', 'Scene Studio', 'public/media/site50-r14/loops/s33-water-tower.jpg', '50% 50%', 'tl'],
+  ['docs-filming', 'Filming the media', 'public/media/site50-r14/loops/s07-lake-shellfire.jpg', '50% 50%', 'tl'],
+  ['404', 'Route not found', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r7-3840.webp', '50% 50%', 'tl'],
 ];
 
-// The /cn pages' labels: each page's own words in the zh-CN catalog (its heading, nav label or title), so a card never
+// The /cn pages' titles: each page's own words in the zh-CN catalog (its heading, nav label or title), so a card never
 // says something its page does not.
 const ZH = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
-const zhTitle = (key) => ZH[key].split(' — ')[0];
+// a page title's own words, without the site's name after it (' — ' or ' · ')
+const zhTitle = (key) => ZH[key].split(/ — | · /)[0];
 const zhTopic = (topic) => ZH[`docs.topic.${topic}.label`];
 export const OG_ZH_LABELS = Object.freeze({
-  home: ZH['publicNav.home'],
   gallery: ZH['gallery.archive.h1'],
   studio: ZH['studio.title'],
   'private-room': ZH['playMenu.private.title'],
@@ -65,46 +68,52 @@ export const OG_ZH_LABELS = Object.freeze({
     'multiplayer', 'audio', 'studio', 'filming'].map((topic) => [`docs-${topic}`, zhTopic(topic)])),
   404: zhTitle('notFound.metaTitle'),
 });
-export const ogCardPath = (id, locale = 'en') => (id === 'game' ? 'public/brand/og-image.png'
-  : locale === 'zh' ? `public/brand/og/zh/${id}.jpg` : `public/brand/og/${id}.jpg`);
+/** A card's file: the zh twin for a /cn page when the card carries words, else the one card. */
+export const ogCardPath = (id, locale = 'en') => {
+  const titled = OG_IMAGE_CARDS.find(([card]) => card === id)?.[1];
+  return `${OG_DIR}/${locale === 'zh' && titled ? 'zh/' : ''}${id}.jpg`;
+};
 
-function asDataUrl(path, mime) {
-  return `data:${mime};base64,${readFileSync(path).toString('base64')}`;
+const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const asDataUrl = (path, mime) => `data:${mime};base64,${readFileSync(path).toString('base64')}`;
+const MIME = { webp: 'image/webp', jpg: 'image/jpeg', png: 'image/png' };
+
+/** A source as a data URL: a still as it is, a clip's frame (`<clip>.mp4#t=<s>`) through ffmpeg. */
+export function sourceDataUrl(source) {
+  const [file, at] = source.split('#t=');
+  if (!at) return asDataUrl(join(ROOT, file), MIME[file.split('.').pop()]);
+  const dir = mkdtempSync(join(tmpdir(), 'og-frame-'));
+  try {
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', at, '-i', join(ROOT, file), '-frames:v', '1', join(dir, 'frame.png')]);
+    return asDataUrl(join(dir, 'frame.png'), 'image/png');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
-export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
-  const image = asDataUrl(join(ROOT, source), 'image/webp');
+/** The title's size and the lockup's: the numbers og-images.selftest holds the cards to. */
+export const OG_TYPE = Object.freeze({ title: 76, titleZh: 80, lockup: 60, brandLockup: 116, inset: 64, top: 58 });
+
+export function cardHtml(title, image, focus, corner, lang = 'en') {
+  const right = corner === 'tr', brand = !title, { inset, top } = OG_TYPE;
   const lockup = asDataUrl(LOCKUP, 'image/svg+xml');
   const font = asDataUrl(join(ROOT, 'public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2'), 'font/woff2');
-  const contain = fit === 'contain';
   return `<!doctype html><html><head><style>
     @font-face{font-family:'Chakra Petch';src:url(${font}) format('woff2');font-weight:650 1000;font-display:block}
-    *{box-sizing:border-box}html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#071018}
-    .card,.backdrop,.hero,.shade,.grain{position:absolute;inset:0}
-    .backdrop{width:100%;height:100%;object-fit:cover;object-position:${position};filter:blur(${contain ? 18 : 0}px) saturate(.88) brightness(.6);transform:scale(${contain ? 1.08 : 1})}
-    .hero{width:100%;height:100%;object-fit:${contain ? 'contain' : 'cover'};object-position:${position};filter:saturate(.96) contrast(1.04) brightness(.9)}
-    .shade{background:linear-gradient(180deg,rgba(3,9,14,.46) 0%,rgba(3,9,14,.03) 42%,rgba(3,9,14,.18) 59%,rgba(3,9,14,.94) 100%),linear-gradient(90deg,rgba(3,9,14,.38),transparent 52%,rgba(3,9,14,.16))}
-    .grain{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
-    .rule{position:absolute;top:42px;right:48px;width:92px;height:3px;background:#f5a623;box-shadow:0 0 18px rgba(245,166,35,.28)}
-    .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 16px/1 'Chakra Petch',sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
-    .label:lang(zh){top:55px;font:600 19px/1 'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Microsoft YaHei',sans-serif;letter-spacing:4px}
-    .lockup{position:absolute;left:60px;bottom:48px;height:100px;width:auto;filter:drop-shadow(0 2px 18px rgba(0,0,0,.75))}
-    .edge{position:absolute;inset:14px;border:1px solid rgba(189,207,218,.2)}
-    .game .backdrop,.game .grain,.game .edge{display:none}
-    .game .hero{filter:none}
-    /* the game card's Leopard fills the lower left: its lockup takes the clear cobbles on the right (text never on a tank) */
-    .game .lockup{left:auto;right:48px;bottom:40px;height:84px}
-    .game .shade{background:linear-gradient(0deg,rgba(5,8,11,.82) 0%,rgba(5,8,11,.42) 24%,rgba(5,8,11,0) 48%)}
-  </style></head><body><div class="card${label ? '' : ' game'}" lang="${lang}">
-    <img class="backdrop" src="${image}"><img class="hero" src="${image}">
-    <div class="shade"></div><div class="grain"></div><div class="edge"></div>
-    ${label ? `<div class="rule"></div><div class="label">${label}</div>` : ''}
-    <img class="lockup" src="${lockup}" alt="Claude of Tanks">
-  </div></body></html>`;
+    *{box-sizing:border-box}html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#05080b}
+    .hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:${focus};filter:contrast(1.04) saturate(1.06)}
+    .scrim{position:absolute;inset:0;background:radial-gradient(ellipse 62% 70% at ${right ? '100%' : '0%'} 0%,rgba(3,7,10,.78) 0%,rgba(3,7,10,.5) 38%,rgba(3,7,10,0) 72%)}
+    .block{position:absolute;top:${top}px;${right ? 'right' : 'left'}:${inset}px;display:flex;flex-direction:column;align-items:${right ? 'flex-end' : 'flex-start'};gap:${brand ? 0 : 22}px;max-width:640px}
+    .lockup{height:${brand ? OG_TYPE.brandLockup : OG_TYPE.lockup}px;width:auto;filter:drop-shadow(0 2px 14px rgba(0,0,0,.55))}
+    h1{margin:0;color:#fff;font:700 ${OG_TYPE.title}px/.94 'Chakra Petch',sans-serif;text-transform:uppercase;letter-spacing:.005em;text-align:${right ? 'right' : 'left'};text-shadow:0 2px 22px rgba(0,0,0,.55);text-wrap:balance}
+    h1:lang(zh){font:600 ${OG_TYPE.titleZh}px/1.08 'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Microsoft YaHei',sans-serif;letter-spacing:.04em;word-break:keep-all;line-break:strict}
+  </style></head><body lang="${lang}"><img class="hero" src="${image}"><div class="scrim"></div>
+    <div class="block"><img class="lockup" src="${lockup}" alt="Claude of Tanks">${title ? `<h1>${escapeHtml(title)}</h1>` : ''}</div>
+  </body></html>`;
 }
 
 async function generateOgImages(cards = OG_IMAGE_CARDS) {
-  mkdirSync(OUTPUT, { recursive: true });
+  mkdirSync(join(ROOT, OG_DIR, 'zh'), { recursive: true });
   const browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     // (the capture-browser rule, 2026-10-23: every capture browser runs with a 3 GB JavaScript heap)
@@ -113,34 +122,24 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
-
-    const renders = cards.flatMap(([name, label, source, position, fit = 'cover']) => [
-      { name, label, source, position, fit, locale: 'en' },
-      ...(label ? [{ name, label: OG_ZH_LABELS[name], source, position, fit, locale: 'zh' }] : []),
-    ]);
-    mkdirSync(join(OUTPUT, 'zh'), { recursive: true });
-    for (const { name, label, source, position, fit, locale } of renders) {
-      if (label === undefined) throw new Error(`${name}: no ${locale} label`);
-      await page.setContent(cardHtml(label, source, position, fit, locale), { waitUntil: 'load' });
-      await page.evaluate(async () => {
-        // the labels' face: loaded outright, so a card without a label still proves the face resolves
-        await document.fonts.load('700 16px "Chakra Petch"');
-        if (!document.fonts.check('700 16px "Chakra Petch"')) throw new Error('brand font failed to load');
-        await Promise.all([...document.images].map((image) => image.complete
-          ? (image.naturalWidth ? Promise.resolve() : Promise.reject(new Error('image failed to decode')))
-          : new Promise((resolveImage, rejectImage) => {
-              image.addEventListener('load', resolveImage, { once: true });
-              image.addEventListener('error', rejectImage, { once: true });
-            })));
-      });
-      const target = join(ROOT, ogCardPath(name, locale));
-      const format = name === 'game' ? { type: 'png' } : { type: 'jpeg', quality: 88 };
-      await page.screenshot({ path: target, ...format, captureBeyondViewport: false });
-      if (masterFilter()) {
-        writeFileSync(target, await filterPublishedImage(readFileSync(target), `og-${locale}-${name}`,
-          { type: format.type === 'png' ? 'image/png' : 'image/jpeg', quality: format.quality ?? 90 }));
+    for (const [name, title, source, focus, corner] of cards) {
+      const image = sourceDataUrl(source);
+      for (const [locale, words] of [['en', title], ...(title ? [['zh', OG_ZH_LABELS[name]]] : [])]) {
+        if (words === undefined) throw new Error(`${name}: no ${locale} title`);
+        await page.setContent(cardHtml(words, image, focus, corner, locale), { waitUntil: 'load' });
+        await page.evaluate(async () => {
+          // the titles' face: loaded outright, so a brand card still proves the face resolves
+          await document.fonts.load('700 76px "Chakra Petch"');
+          if (!document.fonts.check('700 76px "Chakra Petch"')) throw new Error('brand font failed to load');
+          await Promise.all([...document.images].map((image) => image.decode()));
+        });
+        const target = join(ROOT, ogCardPath(name, locale));
+        await page.screenshot({ path: target, type: 'jpeg', quality: 86, captureBeyondViewport: false });
+        if (masterFilter()) {
+          writeFileSync(target, await filterPublishedImage(readFileSync(target), `og-${locale}-${name}`, { type: 'image/jpeg', quality: 86 }));
+        }
+        console.log(`wrote ${target}`);
       }
-      console.log(`wrote ${target}`);
     }
   } finally {
     await browser.close();

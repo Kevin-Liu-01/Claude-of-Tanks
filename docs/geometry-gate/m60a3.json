@@ -35,12 +35,12 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 64.93612935949896,
+ "rawGeoMin": 64.87602673584367,
  "rawComponents": {
   "hullCurves": 75.28050849380749,
   "stations": 93.65694318220261,
-  "turretCurves": 64.93612935949896,
-  "wholeCurves": 76.09241237144639,
+  "turretCurves": 64.87602673584367,
+  "wholeCurves": 76.8034016428251,
   "dims": 81.10309436598857,
   "floaters": 100
  },
@@ -48,7 +48,7 @@
   "hullCurves": 75.3,
   "stations": 93.7,
   "turretCurves": 64.9,
-  "wholeCurves": 76.1,
+  "wholeCurves": 76.8,
   "dims": 81.1,
   "floaters": 100
  },
@@ -164,7 +164,7 @@
    ]
   },
   "side_whole": {
-   "score": 87.0245113597506,
+   "score": 86.98577855783941,
    "meanPct": 0.97,
    "p95Pct": 2.32,
    "coverPct": 0,
@@ -246,6 +246,14 @@
      "errM": 0.066
     },
     {
+     "at": 2.74,
+     "refTop": 0.94,
+     "refBot": -1.72,
+     "procTop": 1.06,
+     "procBot": -1.73,
+     "errM": 0.066
+    },
+    {
      "at": 4.79,
      "refTop": -0.37,
      "refBot": -0.91,
@@ -258,14 +266,6 @@
      "refTop": 1.49,
      "refBot": -1.72,
      "procTop": 1.38,
-     "procBot": -1.73,
-     "errM": 0.061
-    },
-    {
-     "at": 2.86,
-     "refTop": 0.94,
-     "refBot": -1.72,
-     "procTop": 1.05,
      "procBot": -1.73,
      "errM": 0.061
     }
@@ -596,8 +596,8 @@
    ]
   },
   "front_whole": {
-   "score": 76.09241237144639,
-   "meanPct": 1.54,
+   "score": 76.8034016428251,
+   "meanPct": 1.48,
    "p95Pct": 9.14,
    "coverPct": 0,
    "reg": {
@@ -646,14 +646,6 @@
      "errM": 0.317
     },
     {
-     "at": 0.81,
-     "refTop": 1.24,
-     "refBot": -1.24,
-     "procTop": 0.97,
-     "procBot": -1.28,
-     "errM": 0.158
-    },
-    {
      "at": 0.64,
      "refTop": 1.74,
      "refBot": -1.24,
@@ -670,6 +662,14 @@
      "errM": 0.132
     },
     {
+     "at": 0.77,
+     "refTop": 0.98,
+     "refBot": -1.24,
+     "procTop": 1.19,
+     "procBot": -1.28,
+     "errM": 0.127
+    },
+    {
      "at": 0.73,
      "refTop": 1,
      "refBot": -1.24,
@@ -678,36 +678,36 @@
      "errM": 0.119
     },
     {
-     "at": 0.85,
-     "refTop": 1.24,
-     "refBot": -1.24,
-     "procTop": 1.07,
-     "procBot": -1.28,
-     "errM": 0.111
-    },
-    {
-     "at": 0.77,
-     "refTop": 1.02,
-     "refBot": -1.24,
-     "procTop": 1.19,
-     "procBot": -1.28,
-     "errM": 0.107
-    },
-    {
      "at": 1.06,
      "refTop": 0.97,
      "refBot": -1.24,
      "procTop": 0.94,
      "procBot": -1.37,
      "errM": 0.082
+    },
+    {
+     "at": -1.39,
+     "refTop": 0.61,
+     "refBot": -1.73,
+     "procTop": 0.75,
+     "procBot": -1.74,
+     "errM": 0.074
+    },
+    {
+     "at": -1.06,
+     "refTop": 1.29,
+     "refBot": -1.24,
+     "procTop": 1.27,
+     "procBot": -1.37,
+     "errM": 0.074
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 64.93612935949896,
-   "meanPct": 2.54,
+   "score": 64.87602673584367,
+   "meanPct": 2.55,
    "p95Pct": 7.55,
    "coverPct": 0,
    "reg": {
@@ -1108,6 +1108,19 @@
    "node:weapon3_m60a3-turret_1_0"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [],
+   "reference": [
+    "can"
+   ]
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1186,5 +1199,9 @@
   "gatePassed": false,
   "rawGeoMin": 45.69189058948835,
   "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+ },
+ "oracle": {
+  "path": "/models/community-candidates/m60a3_x_source.glb",
+  "sha256": "1eaf2699bfb8471b8a251b92679ba8e7149015745fadd33cf0a3b1f0a684b3fb"
  }
 }

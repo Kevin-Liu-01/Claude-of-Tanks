@@ -25561,44 +25561,52 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-0.9634,0.3719,-3.4274],
+        "min": [-0.9634,0.4598,-2.7165],
         "max": [0.9634,1.3677,-1.739],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-0.8285,0.4713,-3.2923],
-        "max": [0.8285,1.1882,-2.7183],
+        "min": [-0.8285,0.7103,-3.2923],
+        "max": [0.651,1.1882,-2.7183],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [-0.9634,0.3719,-1.6639],
+        "min": [-0.9634,0.4011,-1.6639],
         "max": [0.9634,0.9568,-0.801],
         "turretLocal": false
       },
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-1.0282,0.0142,-2.2236],
+        "min": [-1.0282,0.0717,-2.2236],
         "max": [1.0337,0.5607,-1.1021],
         "turretLocal": true
       },
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.881,0.0599,-1.9177],
-        "max": [-0.1445,0.3899,-1.1021],
+        "min": [-0.881,0.0599,-1.7721],
+        "max": [-0.1445,0.2524,-1.539],
         "turretLocal": true
       },
       {
         "volumeId": "M09",
         "name": "optics",
-        "min": [-1.579,0.2,-2.0896],
+        "min": [-1.579,0.2,-2.1259],
         "max": [1.579,1.2787,2.725],
         "parts": [
+          {
+            "min": [-1.2966,0.6617,-2.1259],
+            "max": [-1.2499,0.7117,-2.0792]
+          },
+          {
+            "min": [1.2554,0.6617,-2.1259],
+            "max": [1.3021,0.7117,-2.0792]
+          },
           {
             "min": [-0.3472,0.7597,-2.0896],
             "max": [-0.2472,0.8597,-2.0775]
@@ -25646,6 +25654,14 @@
           {
             "min": [-0.3878,1.1147,0.3965],
             "max": [-0.2238,1.2787,0.4085]
+          },
+          {
+            "min": [-1.3286,0.5137,1.0169],
+            "max": [-1.2607,0.6517,1.0848]
+          },
+          {
+            "min": [1.2662,0.5137,1.0169],
+            "max": [1.3341,0.6517,1.0848]
           },
           {
             "min": [0.4483,0.7322,1.0978],
@@ -25726,17 +25742,17 @@
       }
     ]
   },
-  "geometryHash": "878425ae",
-  "metadataHash": "853e8572",
+  "geometryHash": "3d76ce23",
+  "metadataHash": "19895b35",
   "presentationAnchor": {
     "xM": 0.0017,
-    "zM": 0.256
+    "zM": 0.2549
   },
-  "presentationHash": "9f3b20dc",
+  "presentationHash": "75648169",
   "presentationProjection": {
     "centerYM": 2.0395,
-    "topHalfM": 5.7489,
-    "sideHalfM": 2.8744
+    "topHalfM": 5.75,
+    "sideHalfM": 2.875
   },
   "appearance": {
     "version": 1,
@@ -25755,7 +25771,7 @@
       "trackPadSimplified": 1,
       "armorPaint": 27,
       "hullRubber": 1,
-      "gunmetal": 15,
+      "gunmetal": 16,
       "opticGlass": 5,
       "fittingPaint": 5,
       "unclassified": 19,
@@ -25787,15 +25803,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32428,
-      "sha256": "509896dda4d1849d37820de965cbb9681dfcdcd082cc058302ab93326099a07e",
+      "bytes": 32530,
+      "sha256": "5c539af04a204631b955257f17d567319478fa61e97a2259bc3ae685ee106df4",
       "thumbnail": {
         "file": "thumbs/type10_dozer_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12676,
-        "sha256": "bdb23a2fa5ec7f5393a69033ebbab76b08bdac47174f18cf49d882581ec24cff"
+        "bytes": 12552,
+        "sha256": "8b361c65b74062d2d20c06a1cfa5af0a376c3cfa7e2f506dfe7efa28970d68b1"
       }
     },
     "top": {
@@ -25803,56 +25819,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18436,
-      "sha256": "f4fb15797a3e389e42bf728a8996c662a8170858cf28523e2ad00b756af888ac"
+      "bytes": 18646,
+      "sha256": "362ca185791002892c85b8a81716123e9ce413bf49ae9ec021e7c9c685ad78d1"
     },
     "side": {
       "file": "type10_dozer_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14428,
-      "sha256": "45ba1e899ce80c6acdcf963230a2b3253d62826559a5b1791f3db06bc91f9f71"
+      "bytes": 16406,
+      "sha256": "a7b8102591b7f8bfe0c134739d308730fcdee382afa1ee9da51ad6f04d827f30"
     },
     "topSilhouette": {
       "file": "type10_dozer_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1703,
-      "sha256": "cabd8caacb2c535921eb29563738ba4cf69d8a542cfc321a55097b60844767fa"
+      "bytes": 1723,
+      "sha256": "251b347faafe110edb7eaf6a48a29317bff542627723b5d484842366adde6947"
     },
     "sideSilhouette": {
       "file": "type10_dozer_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 6101,
-      "sha256": "f619bbe04362e8f6a91c0dd21ce36750303f8d7319e6a47a1d0e36781fff11de"
+      "bytes": 6267,
+      "sha256": "cca5a68563902cec0bc2f23b267763d57d2a442b1d28efd7732d147b0dd89d48"
     },
     "armorSide": {
       "file": "type10_dozer_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42636,
-      "sha256": "e774547463a66c8f15663940f874e1b248e36f4e082da015d3e16fd65f4252fa"
+      "bytes": 43216,
+      "sha256": "818e61ff144c59a77adb051b67f72c034db2fac3f634594ab458dd22f6ffcd44"
     },
     "modulesSide": {
       "file": "type10_dozer_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34318,
-      "sha256": "1338d001c26882677ffb2bc4abb86261d75df0aa4ea8addb62b55393e0ae4fcf"
+      "bytes": 34180,
+      "sha256": "b98b1128c6a389455e46da54c89eddb93ebbc792107c66fddaab62ff672cb113"
     },
     "crewSide": {
       "file": "type10_dozer_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31552,
-      "sha256": "2d3be2fbb300b04d960c690afab70d09d635a2fd74dd3f94c9f6bcc221d347c2"
+      "bytes": 32172,
+      "sha256": "5abdceb67c3c052f5172ba1429e843f7264ba7e4b8310715cd6acd51f381fec2"
     },
     "markings": {
       "file": "type10_dozer_markings.png",
@@ -25865,8 +25881,8 @@
     "technicalLabels": {
       "file": "type10_dozer_technical.json",
       "mime": "application/json",
-      "bytes": 5848,
-      "sha256": "8cc06254f3deac5f3fdd259c991a1cbef8ea0870b02e396f8cbf262f471c7682"
+      "bytes": 5847,
+      "sha256": "8c027312d6394d4e1bf18c64315f410e3525ee7c789f2ef02df6d04a4e16cb41"
     }
   }
 }

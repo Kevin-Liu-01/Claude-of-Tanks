@@ -133,6 +133,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),
   type90: anchor('hull', 'left', .24, .82, .24, 1),
+  type90b: anchor('hull', 'left', .24, .82, .24, 1), // the Type 90's hull seat (type90)
   // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
@@ -184,6 +185,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a5: anchor('hull', 'left', .758, .484, .22, -1),
   // 265: the Danish flag on the hull side ahead of the bar-armour cages / under the Barracuda drapes' cut
   leo2a5dk: anchor('hull', 'left', .62, .484, .20, -1),
+  leo2a7dk: anchor('hull', 'left', .192, .493, .22, 1),
   merkava4: anchor('hull', 'left', .55132, .48234, .24, 1),
   // Source-built variants use exposed permanent armor: Trophy’s turret cheek
   // clears its outer skirts; Barak and Namer retain clear hull-side fields.
@@ -405,6 +407,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  // 267: the Danish flag smaller than the Mk 5/2's roundel (critics dk1: its ends stood off the curved turret side)
+  centurion5_2dk: anchor('turret', 'right', 0.42, 0.49, 0.16, -1),
   shot_kal: anchor('turret', 'left', 0.42, 0.49, 0.25, 1),
   centurion13: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
   strv105: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),

@@ -270,7 +270,6 @@ export interface FactoryTankSpec extends FleetTankSpec {
   visual: FactoryVisualSpec;
   visualBase?: string;
   variantOf?: string;
-  markings?: VehicleMarkingRecord;
 }
 
 interface GearEndpoint {
@@ -1192,7 +1191,7 @@ function seedArmorPaintPanels(root: THREE.Object3D): void {
     const material = object.material, geometry = object.geometry, position = geometry?.getAttribute('position');
     if (Array.isArray(material) || !material || !position || geometry.getAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE)) return;
     if (armorPaintMode(material) < 1) return;
-    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int8Array(position.count), 1, false));
+    geometry.setAttribute(ARMOR_PAINT_ZONE_ATTRIBUTE, new THREE.BufferAttribute(new Int16Array(position.count), 1, false));
   });
 }
 
@@ -8171,7 +8170,7 @@ function* buildTankCoreSteps(
   // (combatGunRigSeat.ts). The same object when no row moved this tank's frame.
   const spec = authoringRigSpec(combatSpec);
   const armor = spec.armor;
-  const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
+  const marking: VehicleMarkingRecord = vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
   const coreMaterialsStartedAt = coreClock();
   const mats: TankMaterials = usesSharedMaterialTextures
@@ -9198,12 +9197,15 @@ function* buildTankCoreSteps(
   // 2026-10-30 (owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): the merged mesh
   // keeps the vertex spans of its missile-rack stock (weaponAssembly's parts), so the decor keeps its pieces off every
   // launcher (decorations.ts launcherKeepOut). A smoke bank shares the 'launcher' seat role, so the role cannot say it.
-  const missileRackRangesFor = (list: THREE.BufferGeometry[]): Array<{ start: number; count: number }> => {
-    const ranges: Array<{ start: number; count: number }> = [];
+  // 267 (Main 2026-10-31): the same for stowage (profiles/stowagePart.ts), which the geometry gate's body leaves out.
+  // A test that answers a string records it as the span's kind (stowagePart's kinds).
+  const partRangesFor = (list: THREE.BufferGeometry[], test: (part: THREE.BufferGeometry) => unknown): Array<{ start: number; count: number; kind?: string }> => {
+    const ranges: Array<{ start: number; count: number; kind?: string }> = [];
     let vertexOffset = 0;
     for (const part of list) {
       const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
-      if (part.userData.weaponStock?.module === 'missileRack' && count) ranges.push({ start: vertexOffset, count });
+      const found = test(part);
+      if (found && count) ranges.push({ start: vertexOffset, count, ...(typeof found === 'string' ? { kind: found } : {}) });
       vertexOffset += count;
     }
     return ranges;
@@ -9289,7 +9291,8 @@ function* buildTankCoreSteps(
     if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
-    const rackRanges = missileRackRangesFor(list);
+    const rackRanges = partRangesFor(list, (part) => part.userData.weaponStock?.module === 'missileRack');
+    const stowageRanges = partRangesFor(list, (part) => part.userData.stowage);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -9311,6 +9314,7 @@ function* buildTankCoreSteps(
     tagMergedBucket(bucket, mesh);
     if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     if (rackRanges.length) mesh.userData.missileRackRanges = rackRanges;
+    if (stowageRanges.length) mesh.userData.stowageRanges = stowageRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>

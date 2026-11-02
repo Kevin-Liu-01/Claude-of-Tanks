@@ -391,36 +391,6 @@
       },
       {
         "hitboxId": "H23",
-        "name": "skirt_era_R",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": false,
-        "verts": [
-          [1.995,0.4526,3.465],
-          [1.995,0.4526,0.21],
-          [1.995,1.056,0.21],
-          [1.995,1.056,3.465]
-        ]
-      },
-      {
-        "hitboxId": "H24",
-        "name": "skirt_era_L",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": false,
-        "verts": [
-          [-1.995,0.4526,0.21],
-          [-1.995,0.4526,3.465],
-          [-1.995,1.056,3.465],
-          [-1.995,1.056,0.21]
-        ]
-      },
-      {
-        "hitboxId": "H25",
         "name": "skirt_rubber_R",
         "physicalMm": 8,
         "keMm": 8,
@@ -435,7 +405,7 @@
         ]
       },
       {
-        "hitboxId": "H26",
+        "hitboxId": "H24",
         "name": "skirt_rubber_L",
         "physicalMm": 8,
         "keMm": 8,
@@ -450,7 +420,7 @@
         ]
       },
       {
-        "hitboxId": "H27",
+        "hitboxId": "H25",
         "name": "track_R",
         "physicalMm": 20,
         "keMm": 20,
@@ -465,7 +435,7 @@
         ]
       },
       {
-        "hitboxId": "H28",
+        "hitboxId": "H26",
         "name": "track_L",
         "physicalMm": 20,
         "keMm": 20,
@@ -480,7 +450,7 @@
         ]
       },
       {
-        "hitboxId": "H29",
+        "hitboxId": "H27",
         "name": "slat_cage",
         "physicalMm": 10,
         "keMm": 10,
@@ -495,7 +465,7 @@
         ]
       },
       {
-        "hitboxId": "H30",
+        "hitboxId": "H28",
         "name": "hull_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -510,7 +480,7 @@
         ]
       },
       {
-        "hitboxId": "H31",
+        "hitboxId": "H29",
         "name": "hull_roof",
         "physicalMm": 40,
         "keMm": 40,
@@ -525,7 +495,7 @@
         ]
       },
       {
-        "hitboxId": "H32",
+        "hitboxId": "H30",
         "name": "hull_hatch_01_front",
         "physicalMm": 40,
         "keMm": 40,
@@ -540,7 +510,7 @@
         ]
       },
       {
-        "hitboxId": "H33",
+        "hitboxId": "H31",
         "name": "hull_hatch_01_rear",
         "physicalMm": 40,
         "keMm": 40,
@@ -555,7 +525,7 @@
         ]
       },
       {
-        "hitboxId": "H34",
+        "hitboxId": "H32",
         "name": "hull_hatch_01_right",
         "physicalMm": 40,
         "keMm": 40,
@@ -570,7 +540,7 @@
         ]
       },
       {
-        "hitboxId": "H35",
+        "hitboxId": "H33",
         "name": "hull_hatch_01_left",
         "physicalMm": 40,
         "keMm": 40,
@@ -585,7 +555,7 @@
         ]
       },
       {
-        "hitboxId": "H36",
+        "hitboxId": "H34",
         "name": "hull_hatch_01_top",
         "physicalMm": 40,
         "keMm": 40,
@@ -3871,36 +3841,6 @@
       },
       {
         "hitboxId": "T219",
-        "name": "side_era_R",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [1.218,0.1006,0.21],
-          [1.218,0.1006,-0.525],
-          [1.218,0.5532,-0.525],
-          [1.218,0.5532,0.21]
-        ]
-      },
-      {
-        "hitboxId": "T220",
-        "name": "side_era_L",
-        "physicalMm": 15,
-        "keMm": 15,
-        "ceMm": 15,
-        "kind": "era",
-        "turretLocal": true,
-        "verts": [
-          [-1.218,0.1006,-0.525],
-          [-1.218,0.1006,0.21],
-          [-1.218,0.5532,0.21],
-          [-1.218,0.5532,-0.525]
-        ]
-      },
-      {
-        "hitboxId": "T221",
         "name": "turret_side_R",
         "physicalMm": 300,
         "keMm": 350,
@@ -3915,7 +3855,7 @@
         ]
       },
       {
-        "hitboxId": "T222",
+        "hitboxId": "T220",
         "name": "turret_side_L",
         "physicalMm": 300,
         "keMm": 350,
@@ -3930,7 +3870,7 @@
         ]
       },
       {
-        "hitboxId": "T223",
+        "hitboxId": "T221",
         "name": "turret_bustle",
         "physicalMm": 45,
         "keMm": 45,
@@ -3945,7 +3885,7 @@
         ]
       },
       {
-        "hitboxId": "T224",
+        "hitboxId": "T222",
         "name": "turret_roof",
         "physicalMm": 45,
         "keMm": 45,
@@ -3960,7 +3900,7 @@
         ]
       },
       {
-        "hitboxId": "T225",
+        "hitboxId": "T223",
         "name": "turret_cupola_01_front",
         "physicalMm": 45,
         "keMm": 45,
@@ -3975,7 +3915,7 @@
         ]
       },
       {
-        "hitboxId": "T226",
+        "hitboxId": "T224",
         "name": "turret_cupola_01_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -3990,7 +3930,7 @@
         ]
       },
       {
-        "hitboxId": "T227",
+        "hitboxId": "T225",
         "name": "turret_cupola_01_right",
         "physicalMm": 45,
         "keMm": 45,
@@ -4005,7 +3945,7 @@
         ]
       },
       {
-        "hitboxId": "T228",
+        "hitboxId": "T226",
         "name": "turret_cupola_01_left",
         "physicalMm": 45,
         "keMm": 45,
@@ -4020,7 +3960,7 @@
         ]
       },
       {
-        "hitboxId": "T229",
+        "hitboxId": "T227",
         "name": "turret_cupola_01_top",
         "physicalMm": 45,
         "keMm": 45,
@@ -4035,7 +3975,7 @@
         ]
       },
       {
-        "hitboxId": "T230",
+        "hitboxId": "T228",
         "name": "turret_cupola_02_front",
         "physicalMm": 45,
         "keMm": 45,
@@ -4050,7 +3990,7 @@
         ]
       },
       {
-        "hitboxId": "T231",
+        "hitboxId": "T229",
         "name": "turret_cupola_02_rear",
         "physicalMm": 45,
         "keMm": 45,
@@ -4065,7 +4005,7 @@
         ]
       },
       {
-        "hitboxId": "T232",
+        "hitboxId": "T230",
         "name": "turret_cupola_02_right",
         "physicalMm": 45,
         "keMm": 45,
@@ -4080,7 +4020,7 @@
         ]
       },
       {
-        "hitboxId": "T233",
+        "hitboxId": "T231",
         "name": "turret_cupola_02_left",
         "physicalMm": 45,
         "keMm": 45,
@@ -4095,7 +4035,7 @@
         ]
       },
       {
-        "hitboxId": "T234",
+        "hitboxId": "T232",
         "name": "turret_cupola_02_top",
         "physicalMm": 45,
         "keMm": 45,
@@ -4249,7 +4189,7 @@
     ]
   },
   "geometryHash": "95787354",
-  "metadataHash": "c91e59a6",
+  "metadataHash": "b626727c",
   "presentationAnchor": {
     "xM": 0.0007,
     "zM": -0.3317
@@ -4355,8 +4295,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27826,
-      "sha256": "fd416596f6a3b5610c32ce33b475fad7e6b8757b8a09e6d52508e5f73bc7a829"
+      "bytes": 28020,
+      "sha256": "798d068f6fe366d693459f6aba8370384781910f96a51fd08360cfa76b459519"
     },
     "modulesSide": {
       "file": "t90am_modules_side.webp",
@@ -4386,7 +4326,7 @@
       "file": "t90am_technical.json",
       "mime": "application/json",
       "bytes": 4828,
-      "sha256": "9827cd40a57ef831c1d123d38dc506f5e2a9d9827a9778f9be227932cc1f0deb"
+      "sha256": "24c698c45aa4e0dc408d554737006f342a34316dc8a16c6094106f24c96f7377"
     }
   }
 }

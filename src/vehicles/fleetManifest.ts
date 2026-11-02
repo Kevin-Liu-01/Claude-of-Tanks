@@ -31,7 +31,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   christian2: Object.freeze(['christian2']),
   leopard2a3B4: Object.freeze(['leo2a3_b4', 'leo2a2', 'leo2a3']),
   leopard2a4Family: Object.freeze(['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a4_otco', 'leo2_improved', 'strv121']),
-  denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'cv9035dk']),
+  denmark: Object.freeze(['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk']),
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
     'ee_t4_osorio']),
   m41: Object.freeze(['m41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49']),
@@ -71,7 +71,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   modern2: Object.freeze(['mbt70', 'object148_proto', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'object695', 'ztz99a2_qinglong', 'vt4a1_baihu']),
   franceCore: Object.freeze(['amx40_proto']),
   xk2: Object.freeze(['xk2_black_panther']),
-  modern3Core: Object.freeze(['k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv']),
+  modern3Core: Object.freeze(['k1e1', 'm2a2_bradley', 'bmp2', 'hayate_ifv']),
   // These visual profiles used to be imported by every garage boot even when
   // no matching vehicle was visible. Keep their ownership in the same
   // import-free manifest as the larger authored families.
@@ -127,7 +127,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'bmp3', 'upior', 'bmpt_t90', 'bmpt_terminator',
   ]),
   korea: Object.freeze(['k2b']),
-  japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_dozer']),
+  japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_tk_x', 'type10_dozer', 'type90b']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);
 

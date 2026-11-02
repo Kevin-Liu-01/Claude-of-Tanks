@@ -1071,6 +1071,7 @@
  },
  "roofFittingsExcluded": {
   "procedural": [
+   "antennaSpans:turretDark",
    "auxiliaryWeapon:browningDerivedMachineGunBody",
    "auxiliaryWeapon:browningDerivedMachineGunCradle",
    "auxiliaryWeapon:fitting_auxiliaryWeapon_ammoCan",
@@ -1153,5 +1154,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/pt91m.glb",
+  "sha256": "fd30b29f3e6a8416e020a9dabb58e639c57db7e513a90291a49cfd8e6c8536d7"
+ }
 }

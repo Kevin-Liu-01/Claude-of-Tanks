@@ -867,6 +867,18 @@
   ],
   "reference": []
  },
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [
+    "stowage"
+   ],
+   "reference": []
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -939,5 +951,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/ztz99a2_manako.glb",
+  "sha256": "862355608ad9d7bf06a622b5ddb63c88f504c8a122020096984f02dc98a92041"
+ }
 }

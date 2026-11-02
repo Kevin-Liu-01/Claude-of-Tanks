@@ -1278,5 +1278,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/amx40_x_source.glb",
+  "sha256": "2b67a377fbd39d6a80e4d9511a2b890ec4abd19db37c41b1e7a6142d5c990079"
+ }
 }

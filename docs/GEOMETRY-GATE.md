@@ -132,10 +132,53 @@ and parts drawn into ordinary buckets under the `antenna` seat role
 spans and the gate cuts them). The oracle names them by node: War Thunder
 `antenna*`, `bone_mg_aa_*`, `mg_aa*`, `bone_mg_[hv]_*`, `mg_NN`,
 `mg_mount_*` (never `mg_twin`, the coaxial), Sketchfab `*Pintle`/`AmmoCan`, or
-a registration's `roofFittingNodes`. An oracle node named `ammo*` goes with a
+a registration's `roofFittingNodes`. A source that fuses them into one mesh
+names them by boxes in its certified frame (`tools/fused-roof-gun-boxes.mjs`):
+the triangles wholly inside leave it, a roof gun's from the body (the T-72/T-80
+studies). A whip fused into a source mesh is that source's defect (the Strv 81
+print's raked pair, 4.19 m tips over a 3.0 m tank; the oracle file keeps
+them): its boxes name it. Wherever a source names whips, by node or by box,
+they leave every comparison on the page, curves and stations too, with the
+build's whips beside them (`whipsAside` in the record; 267); the score's
+height stays the source's whole height, so setting them aside changes what is
+compared and never the ruler. Every build whip carries the antenna role:
+`node tools/whip-rod-census.mjs --all --gate` finds the fleet's whips by
+their geometry (a thin rod whose tip stands clear of everything round it)
+and fails on an untagged one. An oracle node named `ammo*` goes with a
 named roof gun it touches (within 0.1 m), as the build's ammunition rides in
 its gun's fitting; any other ammo box stays body. A new whip or mast drawn as a
 raw rod needs `antennaPart()`, or it counts as body.
+
+Stowage (267, Main's rulings 2026-10-31 and 11-01) is the same kind of
+fitting: fuel drums, their cradles, stowage racks and baskets (kind
+`stowage`), jerry cans (`can`) and unditching logs (`log`) leave every
+comparison on both models, kind by kind, where the build tags the kind
+(`stowagePart(g, kind)`, or the kit's `stowageRack`, `jerryCans` and
+`unditchingLog` fittings) and the source names it (drum, fuel storage,
+basket, stowage, jerry can, log nodes) or boxes it
+(`FUSED_STOWAGE_BOXES`: whole nodes, or boxes that cut only within the node
+they name). A kind one side has alone stays on both sides
+(`stowageAside.staysIn` in the record). Every ruler stays whole: the score's
+height and plan length, the cameras' frame, the oracle's scale anchors and
+the floater check see both models with their whips and stowage, and a
+published hull or overall length (a silhouette) holds the build's body to the
+interval from its body to its body with its stowage.
+
+### Oracle pins and the roster
+
+Every registered oracle is pinned by sha256 in `tools/oracle-pins.mjs`
+(Main 2026-11-01), and so is every graft source a certificate seats in one
+(`t90a_burlak_proto`: the Burlak X turret on the T-90A X hull). The page lists
+each id's files (`window.__REFERENCE_FILES`); the gate serves exactly those,
+records the graft beside the oracle, and the changed-only step keys both. The
+gate hashes each file it would load and refuses a file
+whose bytes are not its pin, or a path with no pin, before the page loads; the
+error names the pinned hash (under `--repin` the row is kept, marked
+`repinError`, and `--skipped` names the id), so no record is measured on an
+unverified file. A new version of an oracle is a new pin with its reason. The
+ledger holds rows only for the fleet's ids: a run that writes it drops the row
+and record of any id outside the roster, and `node tools/geometry-gate.mjs
+--prune` does only that (`tools/gate-oracle-pins.selftest.mjs`).
 - A published `heightM` is an interval target, since sources measure to the
   cupola or the roof gun: it passes anywhere from the body top (the p95 roof)
   to the roof-fittings top (the highest column with the roof weapons back and

@@ -1,6 +1,6 @@
 {
  "id": "chieftain_mk10",
- "geoMin": 81,
+ "geoMin": 80.1,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -112,19 +112,19 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 80.97377488358784,
+ "rawGeoMin": 80.1118196533064,
  "rawComponents": {
   "hullCurves": 92.92550244746515,
-  "stations": 96.57061447096487,
-  "turretCurves": 80.97377488358784,
-  "wholeCurves": 91.38644763940458,
+  "stations": 95.7663420980006,
+  "turretCurves": 80.1118196533064,
+  "wholeCurves": 91.42701254644328,
   "dims": 93.24941174914669,
   "floaters": 100
  },
  "components": {
   "hullCurves": 92.9,
-  "stations": 96.6,
-  "turretCurves": 81,
+  "stations": 95.8,
+  "turretCurves": 80.1,
   "wholeCurves": 91.4,
   "dims": 93.2,
   "floaters": 100
@@ -241,9 +241,9 @@
    ]
   },
   "side_whole": {
-   "score": 94.36855916216132,
-   "meanPct": 0.39,
-   "p95Pct": 1.61,
+   "score": 93.67133315366699,
+   "meanPct": 0.43,
+   "p95Pct": 1.88,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -257,6 +257,14 @@
      "procTop": 0.26,
      "procBot": -2.11,
      "errM": 0.211
+    },
+    {
+     "at": 0.91,
+     "refTop": 0.72,
+     "refBot": -2.11,
+     "procTop": 0.35,
+     "procBot": -2.11,
+     "errM": 0.188
     },
     {
      "at": 5.41,
@@ -337,14 +345,6 @@
      "procTop": 0.28,
      "procBot": -2.11,
      "errM": 0.04
-    },
-    {
-     "at": 0.18,
-     "refTop": 0.27,
-     "refBot": -2.11,
-     "procTop": 0.2,
-     "procBot": -2.11,
-     "errM": 0.034
     }
    ]
   },
@@ -673,7 +673,7 @@
    ]
   },
   "front_whole": {
-   "score": 91.38644763940458,
+   "score": 91.42701254644328,
    "meanPct": 0.6,
    "p95Pct": 2.27,
    "coverPct": 0,
@@ -783,8 +783,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 80.97377488358784,
-   "meanPct": 1.22,
+   "score": 80.1118196533064,
+   "meanPct": 1.3,
    "p95Pct": 7.24,
    "coverPct": 0,
    "reg": {
@@ -833,6 +833,14 @@
      "errM": 0.211
     },
     {
+     "at": 0.91,
+     "refTop": 0.72,
+     "refBot": -1.36,
+     "procTop": 0.35,
+     "procBot": -1.36,
+     "errM": 0.188
+    },
+    {
      "at": 2.13,
      "refTop": 0.64,
      "refBot": -0.76,
@@ -879,14 +887,6 @@
      "procTop": 0.04,
      "procBot": -0.47,
      "errM": 0.068
-    },
-    {
-     "at": 0.18,
-     "refTop": 0.27,
-     "refBot": -0.61,
-     "procTop": 0.2,
-     "procBot": -0.55,
-     "errM": 0.063
     }
    ]
   },
@@ -1076,10 +1076,10 @@
    "i": 8,
    "refW": 3.546,
    "procW": 3.546,
-   "refTop": 4.249,
-   "procTop": 4.249,
+   "refTop": 2.853,
+   "procTop": 2.812,
    "wPct": 0.0005916906329388661,
-   "topPct": 0.000007870192620314073
+   "topPct": 0.9651347177497395
   },
   {
    "i": 9,
@@ -1205,6 +1205,7 @@
    "node:mg_mount_v_4_chieftain_mk_10_turret_c_0"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
  "oracleComparison": {
   "antennasDropped": true,
   "roofWeaponsDropped": true,
@@ -1282,5 +1283,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/chieftain_mk10_x_source.glb",
+  "sha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85"
+ }
 }

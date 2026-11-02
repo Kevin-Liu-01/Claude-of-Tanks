@@ -806,8 +806,8 @@
       {
         "volumeId": "M09",
         "name": "radio",
-        "min": [-0.3224,0.2389,-0.8091],
-        "max": [-0.1443,0.3994,-0.7638],
+        "min": [-0.3402,0.2036,-0.8247],
+        "max": [-0.139,0.3853,-0.7737],
         "turretLocal": true
       },
       {
@@ -871,7 +871,7 @@
     ]
   },
   "geometryHash": "af03b9ff",
-  "metadataHash": "5ef496b7",
+  "metadataHash": "0f781086",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.0621
@@ -935,16 +935,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34362,
-      "sha256": "56f821329425debf8b75741fa87926f7d83479d72809db27928cbb46ad65de7a"
+      "bytes": 34184,
+      "sha256": "be4e3cdf2566eb27a8fd642b43890e0be56f776d6653c2c8e1550d7524b5379e"
     },
     "crewSide": {
       "file": "puma_s1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30056,
-      "sha256": "5238590d753425adcc478e0df39a6b3263448300c726c8ad4dbaf8b62e3c70af"
+      "bytes": 30058,
+      "sha256": "c4cd1e75daf637338243f01111d639f19b2e603569573de33eebc55d102dee56"
     },
     "angle": {
       "file": "puma_s1_angle.webp",
@@ -1005,8 +1005,8 @@
     "technicalLabels": {
       "file": "puma_s1_technical.json",
       "mime": "application/json",
-      "bytes": 4803,
-      "sha256": "9c7d04e400025608b2153fee653702efb94cad93c9ee2fa2e56fad2392391457"
+      "bytes": 4832,
+      "sha256": "d019408f48da5b74f7fe91e6ea48ff1e893e26bcbc0deba4f9abe9450649da62"
     }
   }
 }

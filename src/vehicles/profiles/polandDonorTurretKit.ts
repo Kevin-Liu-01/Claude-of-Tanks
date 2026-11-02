@@ -385,7 +385,7 @@ function zubrIIBasketLoad(P: TankBuilderPort): void {
   // Whips on the basket's front corner posts.
   for (const side of SIDES) {
     P.addEquipment('turretDetail', cylY(.050, .060, .06, seg(P, 12, 8)), side * b.half, b.top + .044, b.front);
-    P.addEquipment('turretDark', cylY(.008, .014, .75, seg(P, 8, 6)), side * b.half, b.top + .449, b.front);
+    P.addEquipment('turretDark', antennaPart(cylY(.008, .014, .75, seg(P, 8, 6))), side * b.half, b.top + .449, b.front);
   }
 }
 

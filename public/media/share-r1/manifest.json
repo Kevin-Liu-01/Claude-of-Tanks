@@ -1,0 +1,170 @@
+{
+ "libraryId": "claude-of-tanks-share-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "Share clips (og:video, og-r2, 2026-11-01): each public page's own banner take as a silent 1280x720 H.264 High@4.0 faststart mp4 of at most 10 s and 3 MB, cut from the take's master (libx264 -preset slow -crf 20 -maxrate 3400k; the 8.4 s battlefields montage at -crf 21 -maxrate 2600k). src/presentation/siteMetadata.ts names them; seoMetadata.selftest.mjs holds each to its limits.",
+ "items": [
+  {
+   "id": "battlefields-montage",
+   "path": "/media/share-r1/battlefields-montage.mp4",
+   "bytes": 2937184,
+   "sha256": "076a0a285924415824ce44f56960dbf4d8981697ba68a6ae353e590381579fb4",
+   "width": 1280,
+   "height": 720,
+   "seconds": 8.4,
+   "master": "battlefields-montage.mp4 (public/media/home-r2, 1920x1080)"
+  },
+  {
+   "id": "frontier-t90m-leo2a6",
+   "path": "/media/share-r1/frontier-t90m-leo2a6.mp4",
+   "bytes": 2853328,
+   "sha256": "a6acc403e77517e5c2ba2fd9ce610e89dec9ec93dd000edc6c017adad98d2365",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.1,
+   "master": "frontier-t90m-leo2a6.webm"
+  },
+  {
+   "id": "s01-main-street-push",
+   "path": "/media/share-r1/s01-main-street-push.mp4",
+   "bytes": 2862693,
+   "sha256": "bc7727cdbe1d27db95d9b9eb78d3be2bafa9188a29d400ff92df72b75a46d55b",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s01-main-street-push-4k.mp4"
+  },
+  {
+   "id": "s04-column-under-fire",
+   "path": "/media/share-r1/s04-column-under-fire.mp4",
+   "bytes": 2847642,
+   "sha256": "7a76d482a6136efb24af3f4d84662a763d541e9cce001a80f8cd5a89f3e96255",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s04-column-under-fire-4k.mp4"
+  },
+  {
+   "id": "s05-barn-advance",
+   "path": "/media/share-r1/s05-barn-advance.mp4",
+   "bytes": 2692487,
+   "sha256": "6bfa383e43117d85238ea8692a2cf94e1d50c1f6baae65002c5306ca7e866b36",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s05-barn-advance-4k.mp4"
+  },
+  {
+   "id": "s07-lake-shellfire",
+   "path": "/media/share-r1/s07-lake-shellfire.mp4",
+   "bytes": 2844499,
+   "sha256": "267808501822a5c26743e0548520b66d7daa6908944d5b2183ef4161ade5e99d",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s07-lake-shellfire-4k.mp4"
+  },
+  {
+   "id": "s18-street-knockout",
+   "path": "/media/share-r1/s18-street-knockout.mp4",
+   "bytes": 2856181,
+   "sha256": "7649cfb50eeb88fe8bd669b62512aec2a096798080faa546e5b1a31dda1c323c",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s18-street-knockout-4k.mp4"
+  },
+  {
+   "id": "s20-road-return-fire",
+   "path": "/media/share-r1/s20-road-return-fire.mp4",
+   "bytes": 2803541,
+   "sha256": "233e07bb39125867698b0bee98ef8e5990ffb80526effb7fc6f16246a29c4267",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s20-road-return-fire-4k.mp4"
+  },
+  {
+   "id": "s21-fields-assault",
+   "path": "/media/share-r1/s21-fields-assault.mp4",
+   "bytes": 2856275,
+   "sha256": "99b64dbaac54b0cfa715293565dc182a6787f7de2183b85e095a20e7aa6b189a",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s21-fields-assault-4k.mp4"
+  },
+  {
+   "id": "s226-church-duel",
+   "path": "/media/share-r1/s226-church-duel.mp4",
+   "bytes": 2078686,
+   "sha256": "3dff0c6d254f84029e5fc19652b23dc0108ba5a6027ababa255535e30c46b21d",
+   "width": 1280,
+   "height": 720,
+   "seconds": 4.6,
+   "master": "s226-church-duel.mp4"
+  },
+  {
+   "id": "s227-oasis-duel",
+   "path": "/media/share-r1/s227-oasis-duel.mp4",
+   "bytes": 2770986,
+   "sha256": "fbab4b34ea4a6d0e895ed50bf7649a043d373326b3215ec5c868cc079f0ef835",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s227-oasis-duel.mp4"
+  },
+  {
+   "id": "s23-village-crossroads",
+   "path": "/media/share-r1/s23-village-crossroads.mp4",
+   "bytes": 2815467,
+   "sha256": "e6f57cbb94e93e166965d8645a62bcd7bcbcf295cbae897867f5d70adaf937c6",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s23-village-crossroads-4k.mp4"
+  },
+  {
+   "id": "s26-minaret-fire",
+   "path": "/media/share-r1/s26-minaret-fire.mp4",
+   "bytes": 2832490,
+   "sha256": "6406a84fdc8fcd94e3a3f949ade3e7032f332aec3ea0ae1b90966b825cff27f0",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s26-minaret-fire-4k.mp4"
+  },
+  {
+   "id": "s29-fjord-road-kill",
+   "path": "/media/share-r1/s29-fjord-road-kill.mp4",
+   "bytes": 2863435,
+   "sha256": "7176a30ad974f2205d94c8afe96a38c3561c0bd8eeaa42a69f46d47b47fdccef",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s29-fjord-road-kill-4k.mp4"
+  },
+  {
+   "id": "s33-water-tower",
+   "path": "/media/share-r1/s33-water-tower.mp4",
+   "bytes": 2873647,
+   "sha256": "dd0301c486049725c9654c6e0703a435e31422487966f5371242c3a634d5c5a7",
+   "width": 1280,
+   "height": 720,
+   "seconds": 6.0,
+   "master": "s33-water-tower-4k.mp4"
+  },
+  {
+   "id": "verdant-challenger3-t80u",
+   "path": "/media/share-r1/verdant-challenger3-t80u.mp4",
+   "bytes": 2472143,
+   "sha256": "5a4c7419a8fc123f733042d70cf422b014e357afc2c171eec0dde438fcc67d34",
+   "width": 1280,
+   "height": 720,
+   "seconds": 5.1,
+   "master": "verdant-challenger3-t80u.webm"
+  }
+ ]
+}

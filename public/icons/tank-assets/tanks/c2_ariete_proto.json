@@ -2022,17 +2022,17 @@
       }
     ]
   },
-  "geometryHash": "e5f52e14",
+  "geometryHash": "465f6399",
   "metadataHash": "00a67bed",
   "presentationAnchor": {
-    "xM": -0.0002,
-    "zM": 0.0863
+    "xM": -0.0013,
+    "zM": 0.0717
   },
-  "presentationHash": "9c4d8397",
+  "presentationHash": "222ec9d3",
   "presentationProjection": {
     "centerYM": 2.0166,
-    "topHalfM": 6.8284,
-    "sideHalfM": 3.4142
+    "topHalfM": 6.844,
+    "sideHalfM": 3.422
   },
   "appearance": {
     "version": 1,
@@ -2053,7 +2053,7 @@
       "gunmetal": 15,
       "hullRubber": 1,
       "canvas": 6,
-      "unclassified": 20,
+      "unclassified": 13,
       "gearShadow": 2,
       "machineGun": 4
     }
@@ -2082,15 +2082,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26836,
-      "sha256": "349636ed0e6779cb817a6f1dc6a4ee7c944f0adb7c64b5c6238f0b5cc1d9f2c8",
+      "bytes": 26366,
+      "sha256": "58d8be6834dd1f414d27939072f1039287f727b13e6da101482edbabf5305dd9",
       "thumbnail": {
         "file": "thumbs/c2_ariete_proto_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10436,
-        "sha256": "562280d86bb7e974767d41d67a2508427eb46c3935db446ecd4ae623ad431f53"
+        "bytes": 10298,
+        "sha256": "cd0213041681793d68d46ec69b998e34aa466c8831055e037b4a9e4b2fb6509f"
       }
     },
     "top": {
@@ -2098,56 +2098,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 16116,
-      "sha256": "91866d80c312e93ea827465dd45ad86e50805307a851f95706f32a3aa647622b"
+      "bytes": 16430,
+      "sha256": "c48531b6d3ed6b3ebb9321c5ba06252e0ea325bee06068cc6ee538d8016750a6"
     },
     "side": {
       "file": "c2_ariete_proto_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11862,
-      "sha256": "c715f1e34f58dc5e1b331cac07bccfd8dc932b556569d76afa72482fb6187f77"
+      "bytes": 11706,
+      "sha256": "0992f569d1adc665c2333947031eb9ccc76a1b63f8aac654e27db81ed5de8cb4"
     },
     "topSilhouette": {
       "file": "c2_ariete_proto_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1450,
-      "sha256": "2dd490888ddf86b41e2240592085bb64d24d3cabd2224cbce8306506fe4f48b6"
+      "bytes": 1536,
+      "sha256": "39c0d2225aa4ced0d609cefceb557fce4fb00e28e7e7c2bfbcb52a09015a9655"
     },
     "sideSilhouette": {
       "file": "c2_ariete_proto_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4469,
-      "sha256": "449e40dedbbbefd6f3ff22a24931d7de4de5f2844139f524a78504ba88e9b54c"
+      "bytes": 4447,
+      "sha256": "16a2e00027e1f1cd08b3cfe577fa32fc786235d2f3eaebfc2d98db5b2cd9641d"
     },
     "armorSide": {
       "file": "c2_ariete_proto_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32582,
-      "sha256": "7898e37a35a8b59737b799d136f6c628f523af9e8822e17d9cbc45666a07529c"
+      "bytes": 31650,
+      "sha256": "fed19a09141821f70b3c0b506e2769b2032ed91fb02ce5b31eafde1175a85f1e"
     },
     "modulesSide": {
       "file": "c2_ariete_proto_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29872,
-      "sha256": "910afd0e019a848d8e857e6fd1e4a364d41c9049c6e452201fa45325076ba630"
+      "bytes": 28758,
+      "sha256": "ae0479c77c161b1fc8e4d71a67400744ab5e19eb63825ab46aea945a1011e96e"
     },
     "crewSide": {
       "file": "c2_ariete_proto_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26884,
-      "sha256": "0ae8db541fcf8d20df09b9701e35ab17e6c9a7f9c290c5f40e7f75242d0eb548"
+      "bytes": 26440,
+      "sha256": "6164883591a8bfdd5cb5cd853249fd78cbacf97fe0563fd8df73049d3d926d7e"
     },
     "markings": {
       "file": "c2_ariete_proto_markings.png",
@@ -2160,8 +2160,8 @@
     "technicalLabels": {
       "file": "c2_ariete_proto_technical.json",
       "mime": "application/json",
-      "bytes": 4706,
-      "sha256": "385c479a1e8c533967b8fc2f9c341a2ce6d2204e571957defd19af6b2fa05a27"
+      "bytes": 4703,
+      "sha256": "3c96550794afaa37a6fa6443fdc108a150f39b6b63f24d6ed0f754bbfa6046ad"
     }
   }
 }

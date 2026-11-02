@@ -11,19 +11,28 @@
 //     (a broad-fallback match alone is not a read);
 //   - a stale-output guard of it fires (tools/selftest-tiers.mjs STALE_GUARDS: a map's files, the world core, the
 //     shared fleet core or a wreck donor moved, from the changed-only world partition; or any tank moved);
-//   - balance: an id's balance inputs moved (spec armour, gun, HP, mobility, size, role: base and head registries).
+//   - balance: an id's balance inputs moved (spec armour, gun, HP, mobility, size, role: base and head registries);
+//   - the `hits` suites (balance, pacing, bots, sims), whole: a file in the static import closure of the authority's hit
+//     resolution moved (test-diff.mjs hitResolutionMoves), a fleet-wide balance move whatever the specs say.
+// A read that decides no result does not count: one only through a module that declares the path `scheduleOnly`
+// (test-diff.mjs withoutScheduleReads), and a hits suite's reads of builder paths when the tanks they name emit the same
+// finalized specs and HIGH/LOW geometry in the base's tree and this one (test-diff.mjs builderObservables).
 // `tanks` is id-scoped: lane mode runs the pins of the changed tanks, so the whole suite is warranted only when the
 // shared fleet core moved under them. An entry page's HTML (a root *.html Vite builds from) counts only for a receipt
 // that names that page itself: many receipts reach index.html and 404.html through Vite's entry, and a document-head
-// change moves no simulation, bot or world result (the og:video head warranted six suites that way).
+// change moves no simulation, bot or world result (the og:video head warranted six suites that way). A receipt file
+// (*.selftest.mjs) or a test-support file is never product input: it counts only for a receipt that runs or reads it (its
+// own file, a module its run executes, a path its own source names, bytes it was seen reading), never through a
+// directory a receipt lists or a registry its closure names (267: object695X.selftest.mjs warranted ten suites).
 // `--root=<dir>` evaluates another checkout (a report on another branch's diff); `--base=integ` and the integration
 // suggestion as in lane mode; the command exits with its parent and on SIGTERM/SIGINT/SIGHUP/SIGALRM.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { MANUAL_SUITES, STALE_GUARDS, manualSuiteFiles } from './selftest-tiers.mjs';
-import { balanceChanges, balanceInputs, changedMaps, changedPaths, changedTankIds, chooseBase, createReadIndex, exitWithParent,
-  fleetPartition, laneReadOf, receiptRunTimes, roman, TOOLS_ROOT, withBaseSources } from './test-diff.mjs';
+import { balanceChanges, balanceInputs, builderMoves, builderObservables, builderPaths, changedMaps, changedPaths, changedTankIds,
+  chooseBase, createReadIndex, exitWithParent, fleetPartition, hitResolutionMoves, laneReadOf, receiptRunTimes, roman, TOOLS_ROOT,
+  withBaseSources, withoutScheduleReads } from './test-diff.mjs';
 import { simulateWall } from './test-audit.mjs';
 
 const READS = new Set(['named', 'scan', 'observed']);
@@ -31,6 +40,16 @@ const READS = new Set(['named', 'scan', 'observed']);
 export const ENTRY_HTML = /^[^/]+\.html$/;
 /** Whether `file` reads `path` on purpose: any path but an entry page, or a page the receipt's own source names. */
 export const readsOnPurpose = (path, text) => !ENTRY_HTML.test(path) || text.includes(path);
+/** A receipt or a file only receipts import. */
+export const RECEIPT_FILE = /\.(selftest|test-support)\.mjs$/;
+/**
+ * Whether `file` runs or reads the receipt file `path` itself (any other path: true): `path` is `file`, a module its run
+ * executes (cache.runSetOf: imports and spawned tools), named in its own source, or among the bytes its latest PASS read.
+ * A directory it lists or names, or a registry in its closure that names every receipt, does not count.
+ */
+export const readsReceiptFile = (cache, root, textOf) => (file, path) => !RECEIPT_FILE.test(path) || path === file
+  || cache.runSetOf(resolve(root, file)).has(resolve(root, path)) || textOf(file).includes(path)
+  || Boolean(cache.observedOf?.(file)?.reads.has(path));
 const list = (items, count = 5) => `${items.slice(0, count).join(', ')}${items.length > count ? `, +${items.length - count} more` : ''}`;
 const CLASS_WORDS = { armour: 'armour', gun: 'gun', hp: 'HP', mobility: 'mobility', size: 'size', role: 'role', new: 'new', removed: 'removed' };
 
@@ -48,18 +67,23 @@ const minutes = (ms) => (ms < 90_000 ? `~${Math.max(1, Math.round(ms / 60_000))}
 
 /**
  * The recommendation as data. `readers`: suite -> Map(receipt or tool -> changed paths it reads); `balance`:
- * balanceChanges() rows (null when not compared); `ids`: changed tank ids (Map id -> reasons); `core`: changed shared
- * fleet core paths; `maps`: changedMaps() output; `wallMs`: suite -> its idle wall time; `idPins`: the tanks receipts
+ * balanceChanges() rows (null when not compared); `hits`: hitResolutionMoves() paths; `ids`: changed tank ids (Map id ->
+ * reasons); `core`: changed shared fleet core paths; `maps`: changedMaps() output; `wallMs`: suite -> its idle wall time;
+ * `idPins`: the tanks receipts
  * lane mode runs for `ids`, `idPinsDeferred` those it leaves to the owner (more than its share of the suite).
+ * `builders`: { paths, moved } when the builder observables were compared (test-diff.mjs builderObservables): with
+ * nothing moved, a `hits` suite drops its reads of those paths; with tanks moved, balance names them.
  * When closure reads alone warrant a suite and they reach at most a quarter of its receipts, the command names just
  * those (`--only=`), timed by `subsetWallMs(files)`.
  * Returns one row per suite: { suite, warranted, line, run }.
  */
-export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, readers, balance = null, ids = new Map(), core = [],
-  maps = {}, wallMs = {}, idPins = 0, idPinsDeferred = 0, subsetWallMs = null }) {
+export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, readers, balance = null, hits = [], builders = null,
+  ids = new Map(), core = [], maps = {}, wallMs = {}, idPins = 0, idPinsDeferred = 0, subsetWallMs = null }) {
   const rows = [];
+  const inert = builders && !builders.moved.length ? new Set(builders.paths) : null;
   for (const [name, entry] of Object.entries(suites)) {
-    const reading = readers.get(name) ?? new Map();
+    const reading = new Map([...(readers.get(name) ?? new Map())]
+      .map(([file, paths]) => [file, entry.hits && inert ? paths.filter((path) => !inert.has(path)) : paths]).filter(([, paths]) => paths.length));
     const parts = [];
     let warranted = false, run = `npm run test:heavy -- ${name}`;
     if (name === 'balance' && balance?.length) {
@@ -71,6 +95,17 @@ export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, reade
       const counts = [fresh && `${fresh} new ${fresh === 1 ? 'tank' : 'tanks'}`, moved.length && `${moved.length} ${moved.length === 1 ? 'tank' : 'tanks'} changed ${classes.join('/')}`,
         gone && `${gone} removed`].filter(Boolean);
       parts.push(`${counts.join(', ')} in tier${/[-,]/.test(tiers) ? 's' : ''} ${tiers} (${list(balance.map((row) => row.id), 6)})`);
+    }
+    const hitMove = Boolean(entry.hits && hits.length);
+    if (hitMove) {
+      warranted = true;
+      parts.push(`hit resolution changed (${list(hits, 3)}), a fleet-wide balance move`);
+    }
+    const built = name === 'balance' && builders?.moved.length ? builders.moved : null;
+    if (built) {
+      warranted = true;
+      const classes = [...new Set(built.flatMap((row) => row.classes))];
+      parts.push(`${built.length} ${built.length === 1 ? 'tank is' : 'tanks are'} built differently (${list(classes, 4)}: ${list(built.map((row) => row.id), 6)})`);
     }
     const onMaps = [], ofTanks = [];
     for (const [file, guard] of Object.entries(guards)) {
@@ -105,10 +140,10 @@ export function recommend({ suites = MANUAL_SUITES, guards = STALE_GUARDS, reade
       for (const paths of reading.values()) for (const path of paths) counts.set(path, (counts.get(path) ?? 0) + 1);
       const top = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'en')).map(([path]) => path);
       parts.push(`${reading.size} of its ${entry.files.length + entry.commands.length} checks read the change (${list(top, 3)})`);
-      if (name === 'balance' && balance && !balance.length) parts.push('no tank\'s armour, gun, HP, mobility, size or role changed');
+      if (name === 'balance' && balance && !balance.length && !hitMove && !built) parts.push('no tank\'s armour, gun, HP, mobility, size or role changed');
     }
     let timeMs = wallMs[name];
-    const onlyReads = warranted && !onMaps.length && !ofTanks.length && !(name === 'balance' && balance?.length) && !entry.idScoped;
+    const onlyReads = warranted && !onMaps.length && !ofTanks.length && !(name === 'balance' && balance?.length) && !hitMove && !built && !entry.idScoped;
     const readFiles = [...reading.keys()].filter((file) => entry.files.includes(file));
     if (onlyReads && readFiles.length === reading.size && readFiles.length <= entry.files.length / 4) {
       run = `npm run test:heavy -- ${name} --only=${readFiles.join(',')}`;
@@ -145,24 +180,28 @@ async function main(argv) {
   console.log(`[test:recommend] ${root === TOOLS_ROOT ? '' : `${root}: `}base ${base} (merge base ${diff.mergeBase.slice(0, 10)}), ${diff.paths.length} changed paths`);
   const cache = createSelftestCache({ root, alwaysRun: runner.SELFTEST_FRESH_FILES, fixtureKeyed: runner.SELFTEST_FIXTURE_KEYED_FILES,
     declaredInputs: runner.SELFTEST_DECLARED_INPUTS });
-  const index = createReadIndex(cache, root, diff.paths, (await load('tools/selftest-cache.mjs')).SELFTEST_BROAD_DIRS);
-  const readOf = laneReadOf(cache, index.readOf, root);
+  const { SELFTEST_BROAD_DIRS } = await load('tools/selftest-cache.mjs');
+  const index = createReadIndex(cache, root, diff.paths, SELFTEST_BROAD_DIRS);
+  const { DECLARED_DYNAMIC = {} } = await load('tools/changed-only/steps.mjs');
+  const readOf = withoutScheduleReads(cache, root, DECLARED_DYNAMIC, laneReadOf(cache, index.readOf, root), SELFTEST_BROAD_DIRS);
   const texts = new Map();
   const textOf = (file) => {
     if (!texts.has(file)) { try { texts.set(file, readFileSync(join(root, file), 'utf8')); } catch { texts.set(file, ''); } }
     return texts.get(file);
   };
+  const runsOrReads = readsReceiptFile(cache, root, textOf);
   const readers = new Map();
   for (const [name, entry] of Object.entries(MANUAL_SUITES)) {
     const reading = new Map();
     for (const file of [...manualSuiteFiles(registered, [name]), ...entry.commands.map((command) => command[1])]) {
-      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)) && readsOnPurpose(path, textOf(file)));
+      const paths = diff.paths.filter((path) => READS.has(readOf(file, path)) && readsOnPurpose(path, textOf(file)) && runsOrReads(file, path));
       if (paths.length) reading.set(file, paths);
     }
     readers.set(name, reading);
   }
   const partition = await fleetPartition(root, { world: true });
   const idChanges = changedTankIds(partition, diff.paths, { root, mergeBase: diff.mergeBase });
+  const hits = hitResolutionMoves(root, partition, diff.paths);
   // The world steps' Node captures never read a page: their keys hold index.html and 404.html only because the locale
   // route table names them (src/ui/localeRouting.ts) and the probe runtime's browser mode serves them (declared modeOnly).
   const maps = changedMaps(partition.world, diff.paths.filter((path) => !ENTRY_HTML.test(path)), { ids: idChanges.ids, core: idChanges.core });
@@ -171,21 +210,41 @@ async function main(argv) {
   const { receiptsNaming } = await import('./test-diff.mjs');
   const naming = receiptsNaming(root, tanks, new Set(idChanges.ids.keys()));
   const runMsOf = await receiptRunTimes(root);
-  const pins = selectLane({ defaults: [], tanks, changed: diff.paths, readOf, core: partition.core, naming, pinCostOf: runMsOf });
+  const pins = selectLane({ defaults: [], tanks, changed: diff.paths, readOf: (file, path) => (runsOrReads(file, path) ? readOf(file, path) : null),
+    core: partition.core, naming, pinCostOf: runMsOf });
   const idPins = pins.selected.size, idPinsDeferred = pins.deferred.size;
   cache.persist();
   let balance = null;
   if (readers.get('balance').size) {
-    try { balance = balanceChanges(withBaseSources(root, diff.mergeBase, (dir) => balanceInputs(dir)), balanceInputs(root)); }
+    try { balance = balanceChanges(await withBaseSources(root, diff.mergeBase, (dir) => balanceInputs(dir)), balanceInputs(root)); }
     catch (error) { console.log(`[test:recommend] balance inputs not compared (${error.message}); the receipts' reads stand`); }
   }
+  // A hits suite that only builder paths warrant: compare what the builders emit for the tanks those paths name, the
+  // base's tree against this one (builderObservables), only when the answer can drop the suite.
+  let builders = null;
+  const judgeable = new Set(builderPaths(root, partition, diff.paths, hits));
+  const builderOnly = (name) => MANUAL_SUITES[name].hits && readers.get(name).size && !(name === 'balance' && balance?.length)
+    && [...readers.get(name).values()].every((paths) => paths.every((path) => judgeable.has(path)));
+  if (!hits.length && Object.keys(MANUAL_SUITES).some(builderOnly)) {
+    const paths = [...new Set(Object.keys(MANUAL_SUITES).filter((name) => MANUAL_SUITES[name].hits)
+      .flatMap((name) => [...readers.get(name).values()].flat()).filter((path) => judgeable.has(path)))].sort();
+    const ids = [...changedTankIds(partition, paths, { root, mergeBase: diff.mergeBase }).ids.keys()];
+    const started = Date.now();
+    try {
+      const [before, after] = await Promise.all([
+        withBaseSources(root, diff.mergeBase, (dir) => builderObservables(dir, ids), ['src', 'tools', 'package.json']), builderObservables(root, ids)]);
+      builders = { paths, ids, moved: builderMoves(before, after), seconds: Math.round((Date.now() - started) / 1000) };
+      console.log(`[test:recommend] builders: ${paths.length} ${paths.length === 1 ? 'path' : 'paths'} (${list(paths, 3)}) read by the hits suites; `
+        + `${builders.moved.length ? `${builders.moved.length} of ${ids.length} tanks built differently` : `none of their ${ids.length} tanks' finalized specs or HIGH/LOW geometry moved, so those reads drop`} (${builders.seconds} s)`);
+    } catch (error) { console.log(`[test:recommend] builder observables not compared (${error.message}); the receipts' reads stand`); }
+  }
   const wallMs = Object.fromEntries(Object.keys(MANUAL_SUITES).map((name) => [name, simulateWall(manualSuiteFiles(registered, [name]), runMsOf).wallMs]));
-  const rows = recommend({ readers, balance, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred,
+  const rows = recommend({ readers, balance, hits, builders, ids: idChanges.ids, core: idChanges.core, maps, wallMs, idPins, idPinsDeferred,
     subsetWallMs: (files) => simulateWall(files, runMsOf).wallMs });
   for (const line of reportLines(rows)) console.log(line);
   console.log('[test:recommend] Main relays this to the owner; the owner triggers npm run test:heavy.');
   if (value('json')) writeFileSync(resolve(value('json')), JSON.stringify({ base, mergeBase: diff.mergeBase, changed: diff.paths.length,
-    rows, balance, ids: Object.fromEntries(idChanges.ids), core: idChanges.core,
+    rows, balance, hits, builders, ids: Object.fromEntries(idChanges.ids), core: idChanges.core,
     maps: Object.fromEntries(Object.entries(maps).map(([step, moved]) => [step, Object.fromEntries(moved)])),
     readers: Object.fromEntries([...readers].map(([name, reading]) => [name, Object.fromEntries(reading)])) }, null, 1) + '\n');
   return 0;

@@ -106,7 +106,7 @@
   "actual": {
    "heightM": 2.685183262070641,
    "hullLengthM": 7.0207459599198785,
-   "overallLengthM": 10.061477203331888,
+   "overallLengthM": 9.64755567281507,
    "widthM": 3.8420408730022615
   }
  },
@@ -128,9 +128,9 @@
  "curveRows": {
   "side_hull": {
    "score": 0,
-   "meanPct": 7.92,
+   "meanPct": 8.41,
    "p95Pct": 12.38,
-   "coverPct": 13.92,
+   "coverPct": 14.67,
    "reg": {
     "dAlong": 0,
     "dy": 0
@@ -235,8 +235,8 @@
    ]
   },
   "side_whole": {
-   "score": 93.7923967552408,
-   "meanPct": 0.41,
+   "score": 93.56127393996451,
+   "meanPct": 0.43,
    "p95Pct": 2.06,
    "coverPct": 0,
    "reg": {
@@ -343,8 +343,8 @@
    ]
   },
   "plan_hull": {
-   "score": 67.1092988233274,
-   "meanPct": 1.63,
+   "score": 66.99762602656395,
+   "meanPct": 1.64,
    "p95Pct": 15.13,
    "coverPct": 2.86,
    "reg": {
@@ -394,19 +394,19 @@
     },
     {
      "at": -0.85,
-     "refTop": 5.01,
+     "refTop": 4.57,
      "refBot": -2.18,
-     "procTop": 5,
+     "procTop": 4.55,
      "procBot": -1.95,
-     "errM": 0.122
+     "errM": 0.127
     },
     {
      "at": 0.85,
-     "refTop": 5.03,
+     "refTop": 4.57,
      "refBot": -2.16,
-     "procTop": 5.03,
+     "procTop": 4.55,
      "procBot": -1.95,
-     "errM": 0.106
+     "errM": 0.117
     },
     {
      "at": -0.96,
@@ -426,9 +426,9 @@
     },
     {
      "at": -0.73,
-     "refTop": 5.01,
+     "refTop": 4.55,
      "refBot": -2.06,
-     "procTop": 5.01,
+     "procTop": 4.55,
      "procBot": -1.99,
      "errM": 0.037
     },
@@ -436,22 +436,22 @@
      "at": 0.74,
      "refTop": 4.55,
      "refBot": -2.05,
-     "procTop": 4.55,
+     "procTop": 4.54,
      "procBot": -1.99,
-     "errM": 0.032
+     "errM": 0.037
     },
     {
      "at": -0.28,
      "refTop": 4.55,
      "refBot": -1.95,
-     "procTop": 4.55,
+     "procTop": 4.54,
      "procBot": -1.99,
-     "errM": 0.021
+     "errM": 0.027
     }
    ]
   },
   "plan_whole": {
-   "score": 86.61899259996733,
+   "score": 86.5135238474685,
    "meanPct": 0.5,
    "p95Pct": 5.64,
    "coverPct": 2.7,
@@ -478,19 +478,19 @@
     },
     {
      "at": -0.85,
-     "refTop": 5.01,
+     "refTop": 4.57,
      "refBot": -2.18,
-     "procTop": 5,
+     "procTop": 4.55,
      "procBot": -1.95,
-     "errM": 0.122
+     "errM": 0.127
     },
     {
      "at": 0.85,
-     "refTop": 5.03,
+     "refTop": 4.57,
      "refBot": -2.16,
-     "procTop": 5.03,
+     "procTop": 4.55,
      "procBot": -1.95,
-     "errM": 0.106
+     "errM": 0.117
     },
     {
      "at": -0.96,
@@ -510,9 +510,9 @@
     },
     {
      "at": -0.73,
-     "refTop": 5.01,
+     "refTop": 4.55,
      "refBot": -2.06,
-     "procTop": 5.01,
+     "procTop": 4.55,
      "procBot": -1.99,
      "errM": 0.037
     },
@@ -520,25 +520,25 @@
      "at": 0.74,
      "refTop": 4.55,
      "refBot": -2.05,
-     "procTop": 4.55,
+     "procTop": 4.54,
      "procBot": -1.99,
-     "errM": 0.032
+     "errM": 0.037
     },
     {
      "at": -0.28,
      "refTop": 4.55,
      "refBot": -1.95,
-     "procTop": 4.55,
+     "procTop": 4.54,
      "procBot": -1.99,
-     "errM": 0.021
+     "errM": 0.027
     },
     {
      "at": 0.29,
      "refTop": 4.55,
      "refBot": -1.95,
-     "procTop": 4.55,
+     "procTop": 4.54,
      "procBot": -1.99,
-     "errM": 0.021
+     "errM": 0.027
     },
     {
      "at": -1.87,
@@ -788,102 +788,102 @@
  "stationErr": [
   {
    "i": 0,
-   "refW": 3.55,
+   "refW": 3.582,
    "procW": 3.59,
-   "refTop": 2.245,
-   "procTop": 2.245,
-   "wPct": 1.1299678685333343,
-   "topPct": 0.0000025759999755658925
+   "refTop": 2.267,
+   "procTop": 2.299,
+   "wPct": 0.2233360403360038,
+   "topPct": 0.7092088599149474
   },
   {
    "i": 1,
-   "refW": 3.582,
+   "refW": 3.575,
    "procW": 3.59,
-   "refTop": 2.276,
-   "procTop": 2.299,
-   "wPct": 0.2233360403360038,
-   "topPct": 0.4995997411222959
+   "refTop": 2.289,
+   "procTop": 2.275,
+   "wPct": 0.4204118041834984,
+   "topPct": 0.30129433356524377
   },
   {
    "i": 2,
-   "refW": 3.59,
+   "refW": 3.587,
    "procW": 3.59,
-   "refTop": 2.303,
-   "procTop": 2.275,
-   "wPct": 0.013393034579958666,
-   "topPct": 0.600295580542307
+   "refTop": 2.389,
+   "procTop": 2.416,
+   "wPct": 0.0913940675098577,
+   "topPct": 0.5812847006517905
   },
   {
    "i": 3,
-   "refW": 3.602,
-   "procW": 3.59,
-   "refTop": 2.416,
-   "procTop": 2.569,
-   "wPct": 0.3469825903144809,
-   "topPct": 3.3011290900311034
-  },
-  {
-   "i": 4,
-   "refW": 3.628,
+   "refW": 3.592,
    "procW": 3.59,
    "refTop": 4.628,
    "procTop": 4.628,
-   "wPct": 1.0553860797820902,
+   "wPct": 0.052628091997989346,
    "topPct": 0
   },
   {
-   "i": 5,
-   "refW": 3.781,
+   "i": 4,
+   "refW": 3.773,
    "procW": 3.73,
+   "refTop": 3.134,
+   "procTop": 3.134,
+   "wPct": 1.163214152603559,
+   "topPct": 9.596347753562928e-15
+  },
+  {
+   "i": 5,
+   "refW": 3.777,
+   "procW": 3.726,
    "refTop": 2.48,
    "procTop": 2.551,
-   "wPct": 1.36970678240967,
+   "wPct": 1.3628841368668658,
    "topPct": 1.526420304253426
   },
   {
    "i": 6,
    "refW": 4.07,
-   "procW": 4.098,
-   "refTop": 2.476,
-   "procTop": 2.232,
-   "wPct": 0.6726970220114222,
-   "topPct": 5.274768265617345
+   "procW": 4.11,
+   "refTop": 2.232,
+   "procTop": 2.202,
+   "wPct": 0.9869039945698462,
+   "topPct": 0.6439510522908515
   },
   {
    "i": 7,
-   "refW": 3.983,
-   "procW": 4.026,
-   "refTop": 2.128,
-   "procTop": 2.117,
-   "wPct": 1.076547246142785,
-   "topPct": 0.23990030261818387
+   "refW": 3.816,
+   "procW": 3.826,
+   "refTop": 2.127,
+   "procTop": 2.114,
+   "wPct": 0.26206249424787725,
+   "topPct": 0.28161427979343084
   },
   {
    "i": 8,
    "refW": 3.813,
    "procW": 3.823,
-   "refTop": 2.074,
-   "procTop": 2.075,
+   "refTop": 1.902,
+   "procTop": 1.902,
    "wPct": 0.2622343027826797,
-   "topPct": 0.01830549365579339
+   "topPct": 0.008643123950186817
   },
   {
    "i": 9,
    "refW": 3.812,
    "procW": 3.822,
-   "refTop": 1.9,
+   "refTop": 1.899,
    "procTop": 1.902,
    "wPct": 0.26236364352873254,
-   "topPct": 0.05593980455510463
+   "topPct": 0.07367170176629628
   },
   {
    "i": 10,
-   "refW": 3.612,
-   "procW": 3.59,
+   "refW": 3.593,
+   "procW": 3.573,
    "refTop": 1.901,
    "procTop": 1.903,
-   "wPct": 0.6173386466163527,
-   "topPct": 0.04928861603108711
+   "wPct": 0.5505825826751878,
+   "topPct": 0.049390308770333076
   },
   {
    "i": 11,
@@ -900,7 +900,7 @@
    "procW": 0.185,
    "refTop": 1.885,
    "procTop": 1.902,
-   "wPct": 1.8030349395552758,
+   "wPct": 1.80317008917813,
    "topPct": 0.3716762258591162
   },
   {
@@ -930,8 +930,8 @@
   },
   {
    "name": "overallLengthM",
-   "actual": 10.061477203331888,
-   "published": 10.061477203331888,
+   "actual": 9.64755567281507,
+   "published": 9.64755567281507,
    "pct": 0,
    "method": "paired identical masks in source-only fixed frame"
   },
@@ -958,16 +958,16 @@
   },
   {
    "name": "physicalOverallLengthM",
-   "actual": 10.063049743175505,
-   "published": 10.063049554824829,
-   "pct": 0.0000018717057336799868,
+   "actual": 9.645221421718595,
+   "published": 9.64704966545105,
+   "pct": 0.01895132497349802,
    "method": "full visible body envelope, no raster filtering"
   }
  ],
  "referenceDimensions": {
   "heightM": 2.685183262070641,
   "hullLengthM": 7.0207459599198785,
-  "overallLengthM": 10.061477203331888,
+  "overallLengthM": 9.64755567281507,
   "widthM": 3.86326761815697
  },
  "referenceBodyExtent": {
@@ -976,7 +976,7 @@
  },
  "proceduralBodyExtent": {
   "h": 2.685,
-  "len": 7.589,
+  "len": 7.132,
   "roofFittingsTop": 3.12
  },
  "roofFittingsExcluded": {
@@ -989,6 +989,18 @@
    "pintleMG:browningDerivedMachineGunMount"
   ],
   "reference": []
+ },
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [
+   "stowage"
+  ],
+  "procedural": [
+   "hullDetail:16"
+  ],
+  "reference": [
+   "Object_24:816"
+  ]
  },
  "oracleComparison": {
   "antennasDropped": false,
@@ -1067,5 +1079,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t90a_burlak_x_source.glb",
+  "sha256": "db1ca6b229f9925474dfda35727d76895e9a3b825af2c3b3a326cf2a6e7d0b52"
+ }
 }

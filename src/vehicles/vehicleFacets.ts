@@ -183,7 +183,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'k2_black_panther', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi',
     'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leo2_improved', 'leo2_revolution',
     'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco', 'leo2a4_v', 'leo2a4m',
-    'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7v', 'leopard2_proto',
+    'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'leopard2_proto',
     'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams',
     'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3', 'm48_super', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'magach3', 'magach6b', 'magach7c', 'mbt70', 'merkava1b', 'merkava2b',
@@ -197,7 +197,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     't80u_husarz', 't80u_kursk', 't80u_yun', 't80u_zoria', 't80uk', 't84', 't84bm_oplot_m', 't90', 't90_1992',
     't90a', 't90a_2004', 't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m',
     't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tamoyo3', 'type10', 'type10_dozer',
-    'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type96_72_long', 'type96_72m_lei',
+    'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type90b', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'type96b', 'ua_challenger2', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_t80bv', 'vickers_mk1', 'vt4a1',
     'vt4a1_baihu', 'xk2_black_panther', 'ztz100', 'ztz20', 'ztz20_prototype', 'ztz85_iii', 'ztz99_longwei',
     'ztz99a', 'ztz99a2', 'ztz99a2_qinglong',
@@ -205,7 +205,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
-    'carro45t', 'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_avre', 'm46_patton',
+    'carro45t', 'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_2dk', 'centurion5_avre', 'm46_patton',
     'm47_patton', 'shot_kal', 'strv105', 'strv81', 't55a', 'tamoyo1', 'type59',
   ]),
   heavy: Object.freeze([
@@ -255,10 +255,10 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'ztz99a', 'ztz99a2', 'ztz99a2_qinglong',
   ]),
   frontline: Object.freeze([
-    'abramsx', 'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'kf51_evo', 'kf51_panther',
+    'abramsx', 'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_2dk', 'kf51_evo', 'kf51_panther',
     'kf51_u', 'leo2_improved', 'leo2_revolution', 'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4',
     'leo2a4', 'leo2a4_otco', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6',
-    'leo2a6_ua', 'leo2a6m', 'leo2a7v', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc',
+    'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc',
     'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3',
     'm46_patton', 'm47_patton', 'm48_super', 'm48a2ga2', 'm48a3_patton', 'm48a5_patton', 'm60a1', 'm60a2', 'm60a3',
     'magach3', 'magach6b', 'magach7c', 'olifant_mk2', 'sabra_mk2', 'shot_kal', 'strv105', 'tamoyo1', 'tamoyo3',
@@ -271,7 +271,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'mbt70',
     'osorio_p1', 'osorio_p2', 'pt84_orzel', 'stb1', 't72_rys', 't80', 't80b', 't80bv', 't80u', 't80u_kursk',
     't80uk', 't84', 't84bm_oplot_m', 'type10', 'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru',
-    'type90a', 'type96_80_feng', 'ua_t80bv', 'vickers_mk1', 'xk2_black_panther',
+    'type90a', 'type90b', 'type96_80_feng', 'ua_t80bv', 'vickers_mk1', 'xk2_black_panther',
   ]),
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
   sniper: Object.freeze([
@@ -299,13 +299,13 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bm_oplot_m',
     'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
-    'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_avre', 'challenger1_mk1',
+    'centurion13', 'centurion3', 'centurion5_1_aus', 'centurion5_2', 'centurion5_2dk', 'centurion5_avre', 'challenger1_mk1',
     'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'challenger_x', 'challenger_x_sleek',
     'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'dardo', 'fv510', 'fv510_milan', 'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2',
     'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk',
     'leo1a5dk1', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco',
-    'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7v',
+    'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v',
     'lrmv_lynx', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha',
     'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley', 'm3a3_bradley',
     'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a2ga2', 'm48a3_patton',
@@ -317,33 +317,34 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022', 't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar',
     't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004',
     't90a_2006', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm',
-    't90sm_2013', 'tos1a_tagil', 'type10', 'type100', 'type10_dozer', 'type59', 'type74', 'type89', 'type90',
+    't90sm_2013', 'tos1a_tagil', 'type10', 'type100', 'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type90b',
     'type96b', 'ua_challenger2', 'ua_cv9040c', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv',
     'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'x1_pioneiro', 'x1a2_carcara', 'ztz99a', 'ztz99a2',
   ]),
   // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form. (owner
   // 2026-10-25: the procedural Type 90 pair are the TK-X first-series prototypes STC-1 and STC-2, tankLabels.ts; the K2B
-  // and the Type 10B are the K2's and the Type 10's prototype versions.)
+  // is the K2's prototype version.)
   prototype: Object.freeze([
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'challenger3_td',
     'cv90105_tml', 'fv4034', 'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25',
     'leo2_revolution_proto', 'leopard2_proto', 'm48_super', 'marder2', 'mbt70', 'object148_proto', 'osorio_p1',
     'osorio_p2', 'stb1', 'strv105', 't14_armata', 't84', 't90a_burlak', 't90a_burlak_proto', 'tamoyo1', 'tamoyo3',
-    'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100',
+    'type10_tk_x', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther', 'ztz100',
     'ztz100_prototype', 'ztz20_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
   // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies; 262: the Challenger 3 TD's field fit. The
   // fleet's Leopard 2A4M (the 2A4 V with a field-modernisation kit) is notional: only Canada fielded a 2A4M (the owner
-  // via Main, 2026-10-29).
+  // via Main, 2026-10-29). 267: the Type 10B carries the Type 10 upgrade programme's fit (active protection, a remote
+  // station and reactive armour, tendered from 2024 and not fielded), so it is notional too.
   concept: Object.freeze([
     'carro45t', 'challenger3_td_rws', 'christian2', 'cv90_mk4_concept', 'ee_t3_osorio', 'ee_t4_osorio',
     'griffin_viper', 'jpz_e100', 'leo2a4m', 'm1a3', 'object695', 'pl01', 'pl01_105', 'pt64_tur', 'pt84_orzel',
     'pt84_sokol', 'pt84_zbik', 'raiju_ifv', 't49', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich',
     't72b3_zhuque', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii',
     't72b3m_kunlun', 't72b3m_wilk', 't72b3m_xuanwu', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria',
-    'type96_72_long', 'type96_72m_lei', 'type96_80_feng', 'upior', 'vt4a1_baihu', 'ztz20', 'ztz99_longwei',
+    'type10b', 'type96_72_long', 'type96_72m_lei', 'type96_80_feng', 'upior', 'vt4a1_baihu', 'ztz20', 'ztz99_longwei',
     'ztz99a2_qinglong',
   ]),
 });

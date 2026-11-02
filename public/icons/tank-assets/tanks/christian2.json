@@ -880,22 +880,22 @@
       {
         "volumeId": "M04",
         "name": "engine",
-        "min": [-1.0952,0.5603,-3.6966],
+        "min": [-0.9768,0.5898,-3.2236],
         "max": [1.0952,1.739,-2.0414],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "transmission",
-        "min": [-1.0404,0.601,-3.6966],
+        "min": [-0.8918,0.6602,-3.6966],
         "max": [1.0404,1.3123,-3.1793],
         "turretLocal": false
       },
       {
         "volumeId": "M06",
         "name": "fuelTank",
-        "min": [0.4928,0.5603,-1.9897],
-        "max": [1.0952,1.2106,-0.8517],
+        "min": [-1.0952,0.7377,-1.9897],
+        "max": [-0.4928,1.2106,-0.8517],
         "turretLocal": false
       },
       {
@@ -908,8 +908,8 @@
       {
         "volumeId": "M08",
         "name": "radio",
-        "min": [-0.9309,0.9058,-1.8345],
-        "max": [-0.3286,1.4139,-1.0069],
+        "min": [0.3286,0.9058,-1.8345],
+        "max": [0.9309,1.4139,-1.0069],
         "turretLocal": false
       },
       {
@@ -1001,37 +1001,37 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.8047,0.8833,1.4331],
-        "max": [-0.3453,1.3833,3.2255],
+        "min": [0.3453,0.877,1.46],
+        "max": [0.8047,1.3633,3.2255],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.8297,-0.68,-0.2548],
-        "max": [-0.3703,0.6721,0.5225],
+        "min": [0.3703,-0.68,-0.2548],
+        "max": [0.8297,0.6721,0.5225],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.3703,-0.696,-0.8223],
-        "max": [0.75,0.6917,0.011],
+        "min": [-0.75,-0.696,-0.8223],
+        "max": [-0.3703,0.6917,0.011],
         "turretLocal": true
       }
     ]
   },
-  "geometryHash": "14e1a68b",
-  "metadataHash": "f34d97e1",
+  "geometryHash": "362897d5",
+  "metadataHash": "519d0357",
   "presentationAnchor": {
-    "xM": 0.0011,
-    "zM": -0.1399
+    "xM": -0.0035,
+    "zM": -0.1609
   },
-  "presentationHash": "6d320b86",
+  "presentationHash": "d22a2157",
   "presentationProjection": {
     "centerYM": 1.9331,
-    "topHalfM": 6.2606,
-    "sideHalfM": 3.1303
+    "topHalfM": 6.2831,
+    "sideHalfM": 3.1415
   },
   "appearance": {
     "version": 1,
@@ -1050,7 +1050,7 @@
       "hullRubber": 1,
       "opticGlass": 2,
       "canvas": 5,
-      "unclassified": 21,
+      "unclassified": 17,
       "gearShadow": 2,
       "machineGun": 3,
       "fittingPaint": 4
@@ -1080,15 +1080,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29934,
-      "sha256": "da2f81969966a22207d3473197e9053a469129527007acbcbd3d98c8b964ad3e",
+      "bytes": 28506,
+      "sha256": "b35fd9f52983ae5c4ce8958b32566a7b1d7032a59f2ebf4d39fe88b6593486ea",
       "thumbnail": {
         "file": "thumbs/christian2_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11348,
-        "sha256": "cbefb695797994d94734b01c13f2f6c3dc06c663322650ed0b2bd4bb43d96292"
+        "bytes": 10968,
+        "sha256": "9fc3dc641f4d900375dc236df527cd9db6ccb400826f95148a7b85479549c0a1"
       }
     },
     "top": {
@@ -1096,56 +1096,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 18858,
-      "sha256": "9f6a2453e0c8d1b8f56e8982ff1fb4350819c20de83dde7782bd3a98e8e2164e"
+      "bytes": 19234,
+      "sha256": "6c788d2a6bdd0248a69cb0ff9f7f494e77620868ec32e5a24eff01a57dde4f58"
     },
     "side": {
       "file": "christian2_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15692,
-      "sha256": "e7f5fd7246791d53b5f07741b6737331ffeb8e80b0a071987fd155d8ebbd12ed"
+      "bytes": 14650,
+      "sha256": "622354cffd7725aca5e272b6117f09b77d614b99aaadd08c225cc3d8a172440d"
     },
     "topSilhouette": {
       "file": "christian2_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1402,
-      "sha256": "1a2b3759f66f6c614f623e9262dada6ac84a8320d167531eb8e7a46b4a3dbd15"
+      "bytes": 1486,
+      "sha256": "e2fd679880cf33e98db58126e88bd1f48ac70fdbe9f979f1d55f2f092d64bed0"
     },
     "sideSilhouette": {
       "file": "christian2_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5015,
-      "sha256": "62e1c128b480bfaa2adf34c4fbcdacf8054f4bfaaa157a0ffc1076d86e253b53"
+      "bytes": 5187,
+      "sha256": "b6d190e3d8407ad0ebe5c3dd717d5163c4a5d395938b81cdffab3ffd52da1a5a"
     },
     "armorSide": {
       "file": "christian2_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36608,
-      "sha256": "4cbd7bbdcbbcc9446c0abaf6c739e1f3f3c48ddfb5cbfd5f94f2096b8200510b"
+      "bytes": 34354,
+      "sha256": "89fb913d6da1d83a1ac23b81ed1b696beafdc1c145672fe919c3453cca3b1e5a"
     },
     "modulesSide": {
       "file": "christian2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 37094,
-      "sha256": "be8edb6ca90adae5e08e033857a1e14958def53fb6eda83b14075a4e2d85326b"
+      "bytes": 34926,
+      "sha256": "9b92f2c9ac5ccfef9f35b356457bf3ffef2bdf461a1551ebc6b14feeced4cc39"
     },
     "crewSide": {
       "file": "christian2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34600,
-      "sha256": "6941ab4783623bcc5a526b5583aecbaf61be43a4820cde3752812f042e1be210"
+      "bytes": 32616,
+      "sha256": "1d0ef193e8a37a571202fbf146e75b270f2e005fa9819aeae7c58109e684bb20"
     },
     "markings": {
       "file": "christian2_markings.png",
@@ -1158,8 +1158,8 @@
     "technicalLabels": {
       "file": "christian2_technical.json",
       "mime": "application/json",
-      "bytes": 5318,
-      "sha256": "6db100878fb49d5915561686e7de3e66adf0ebad67875bb93f1599f0e0e00e2b"
+      "bytes": 5202,
+      "sha256": "a75eeb0aa9c552e71573408e54d1475f6f4f71250f4b0ae19f48bf54a10e011f"
     }
   }
 }

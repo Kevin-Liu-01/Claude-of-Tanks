@@ -1074,7 +1074,19 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [
+    "can",
+    "stowage"
+   ],
+   "reference": []
+  }
+ },
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1147,5 +1159,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/spz_puma.glb",
+  "sha256": "9714eacccee26d9c4d30b3f8e10e13a5c19aa139784df1f79a15c6c4e2dee4a4"
+ }
 }

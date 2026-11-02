@@ -74,7 +74,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
-  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  centurion3: SECOND_WAVE_X_REFERENCE_OVERRIDES.centurion3, // 267: source-world certified on the Strv 81 print
   // release 262: the owner's M48A5, source-world certified (second-wave-x-reference-overrides.ts)
   m48a5_patton: SECOND_WAVE_X_REFERENCE_OVERRIDES.m48a5_patton,
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): renders =
@@ -146,7 +146,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // Fitting it would copy that error (docs/references/tanks/pt91_twardy.md).
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
-  strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
+  strv81: SECOND_WAVE_X_REFERENCE_OVERRIDES.strv81, // 267: source-world certified on the Strv 81 print
   // 264 (Main ruling 2026-10-28, as tools/procedural-fidelity.html): strv121 is rebuilt on the release-262 Leopard 2 hull; its old oracle (a Stridsvagn 122) is unregistered here too.
   ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false } },
   // VT-4A1 deliberately shares the complete ZTZ-99A2 hull. Its independent
@@ -165,7 +165,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // 267: the geometry gate's composite (the T-90A X source's hull under the Burlak X source's turret), now certified: the
   // retired AW print would fail the certificate's hash.
   t90a_burlak_proto: T90_X_REFERENCE_OVERRIDES.t90a_burlak_proto,
-  centurion5_2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  centurion5_2: SECOND_WAVE_X_REFERENCE_OVERRIDES.centurion5_2, // 267: source-world certified on the Strv 81 print
   challenger1_mk2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc_s2: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },

@@ -36,7 +36,7 @@ const assertMaterialHierarchy = (id) => {
     }
     assert.ok(tank.root.getObjectByName('hullExternalArmor'), `${id}: hull ERA is present`);
     let dedicated = 0;
-    for (const name of ['hullCloth', 'turretCloth', 'hullWood', 'turretTrack']) {
+    for (const name of ['hullCloth', 'turretCloth', 'hullWood', 'turretTrack', 'hullRubber']) {
       const object = tank.root.getObjectByName(name);
       if (!object) continue;
       dedicated++;
@@ -44,7 +44,7 @@ const assertMaterialHierarchy = (id) => {
         `${id}: ${name} never repeats the full camouflage atlas on primitive-local UVs`);
       assert.ok(object.material !== armor.material, `${id}: ${name} keeps its own finish`);
     }
-    assert.ok(dedicated > 0, `${id}: carries at least one dedicated canvas or turntable finish`);
+    assert.ok(dedicated > 0, `${id}: carries at least one dedicated canvas, rubber or turntable finish`);
   } finally {
     tank.dispose();
   }

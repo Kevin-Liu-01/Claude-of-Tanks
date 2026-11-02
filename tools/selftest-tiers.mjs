@@ -104,14 +104,15 @@ export const MUST_KEEP = Object.freeze({
 
 const suite = (about, files, extra = {}) => Object.freeze({ about, files: Object.freeze(files), commands: Object.freeze([]), ...extra });
 
-/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. */
+/** The manual tier: named suites, each with what it covers. `commands` run after the suite's receipts. `hits`: its
+ *  verdicts are hits the authority resolves, so a change to that code warrants it whole (test-diff.mjs hitResolutionMoves). */
 export const MANUAL_SUITES = Object.freeze({
   balance: suite('fleet round-robin duels on the authoritative battle path and the balance tables they hold', [
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
   ],
-    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]) }),
+    { commands: Object.freeze([Object.freeze(['node', 'tools/balance-matchups.mjs', '--check'])]), hits: true }),
   pacing: suite('whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map', [
     'server/battlePacing.selftest.mjs',
     'server/battlePacingShard1.selftest.mjs',
@@ -126,7 +127,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/sim/deployment.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
-  ]),
+  ], { hits: true }),
   bots: suite('bot behaviour played out on the authority (every mode, objectives, levels, approaches)', [
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
@@ -136,7 +137,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botVerdantApproach.selftest.mjs',
     'tools/mode-aggression-harness.selftest.mjs',
-  ]),
+  ], { hits: true }),
   sims: suite('drone, missile, escort and counter-drone scenario runs', [
     'src/game/watchTakeover.selftest.mjs',
     'src/sim/botDroneAttack.selftest.mjs',
@@ -145,7 +146,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/sim/droneRecon.selftest.mjs',
     'src/sim/gunshipEscortMaps.selftest.mjs',
     'src/sim/missileRoles.selftest.mjs',
-  ]),
+  ], { hits: true }),
   perf: suite('host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code', [
     'server/collisionRestoreIndex.selftest.mjs',
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
@@ -173,6 +174,8 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetPassHigh.selftest.mjs',
     'src/vehicles/fleetPassLow.selftest.mjs',
+    // 267: every id's gameplay ERA plates and drawn ERA agree both ways (about 10 CPU-min; the rule's controls stay default)
+    'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/interiorFillSurface.selftest.mjs',
@@ -209,6 +212,7 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/changed-only/balance-keys.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    'tools/module-outside-share.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/technical-framing.selftest.mjs',
     'tools/vertex-color-coverage.selftest.mjs',
@@ -355,7 +359,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/easternSourceContact.selftest.mjs',
-    'src/vehicles/profiles/eraSeating.selftest.mjs',
+    'src/vehicles/profiles/eraSeatingPins.selftest.mjs',
     'src/vehicles/profiles/europeGunOwnership.selftest.mjs',
     'src/vehicles/profiles/europeSourceDetail.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
@@ -544,15 +548,14 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/turretSeatClosure.selftest.mjs',
     'src/vehicles/profiles/type100.selftest.mjs',
     'src/vehicles/profiles/type100RunningGear.selftest.mjs',
-    'src/vehicles/profiles/type10GunSeat.selftest.mjs',
-    'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',
-    'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
+    'src/vehicles/profiles/type10Marks.selftest.mjs',
     'src/vehicles/profiles/type10X.selftest.mjs',
     'src/vehicles/profiles/type10XRoofPanels.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
     'src/vehicles/profiles/type10XSkirts.selftest.mjs',
     'src/vehicles/profiles/type59Overhaul.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
+    'src/vehicles/profiles/type90B.selftest.mjs',
     'src/vehicles/profiles/type90X.selftest.mjs',
     'src/vehicles/profiles/type96GunOwnership.selftest.mjs',
     'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
@@ -791,6 +794,9 @@ export const MANUAL_SUITES = Object.freeze({
     'tools/black-world.browser.selftest.mjs',
     'tools/destruction-first-use.browser.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
+  ]),
+  media: suite('the media lane\'s fleet backlog: every production vehicle leads a take, and every fleet take clears its battlefield survey (the media lane\'s local dumps: run it where they are)', [
+    'tools/media-r5/fleet-coverage.selftest.mjs',
   ]),
 });
 

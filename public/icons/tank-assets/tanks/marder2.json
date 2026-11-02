@@ -908,24 +908,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36734,
-      "sha256": "852c511723f98d27533580639c76acffab1c1337187b2008f032154116312404"
+      "bytes": 36720,
+      "sha256": "d2e48b95481e8ea4c29c6ef606bed29dced76364700b5f2fe6f24506e569168c"
     },
     "modulesSide": {
       "file": "marder2_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34488,
-      "sha256": "148be459f57a8927dd0e027334120daf82d2a3bf9187bc0e403c9adeb796bbf3"
+      "bytes": 34232,
+      "sha256": "510bb010ef092ae254cb984545cbcea80f446c8b219d8e60783c2423d954e706"
     },
     "crewSide": {
       "file": "marder2_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30470,
-      "sha256": "4d73a4e439a2b62133fb6e29be2713bfc1576404411574802868b5f52c3eaf39"
+      "bytes": 31268,
+      "sha256": "58aff72de092b449f29012c590d0b057b8d26bb6d64f8ce3733f425f7974e1ea"
     },
     "angle": {
       "file": "marder2_angle.webp",
@@ -987,7 +987,7 @@
       "file": "marder2_technical.json",
       "mime": "application/json",
       "bytes": 4676,
-      "sha256": "e061f46a13ee04f2fc8c8fd26fd49383df15647de2ad28b7609e928ad67a4b34"
+      "sha256": "981d985d5436aa919ab6703092a19a9ca19ca542d359a52aa1b897037ec17c05"
     }
   }
 }

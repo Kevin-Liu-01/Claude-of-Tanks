@@ -477,7 +477,9 @@ export function createMatchHostCore({
       countdownS: next.countdownS, ...(next.battleLimitS != null ? { battleLimitS: next.battleLimitS } : {}),
       world, now, ...(schedule ? { schedule } : {}), autoStart: false,
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
-      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
+      // the resume tick was due as the boot arrived (MatchSession fixes it from the wall just before): the loop starts on that
+      // timeline, the ticks spent loading the world and holding for the seats skipped (267)
+      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
       ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },

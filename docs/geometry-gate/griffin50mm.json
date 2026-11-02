@@ -1064,5 +1064,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/griffin50_x_proportions_20260921.glb",
+  "sha256": "89b52b83f0d69744a1c666a89b7b3fa921d2bfa9cb219d01168b982300cdfad3"
+ }
 }

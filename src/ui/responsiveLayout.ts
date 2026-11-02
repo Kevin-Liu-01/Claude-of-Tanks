@@ -64,6 +64,8 @@ interface ViewportSnapshot {
 interface ResponsiveLayoutHandle {
   snapshot(): ViewportSnapshot | null;
   refresh(): void;
+  /** Applies a measure a resize has queued now, ahead of its frame. */
+  settle(): void;
   destroy(): void;
 }
 
@@ -303,13 +305,20 @@ export function seedResponsiveLayout(
   for (const [name, value] of Object.entries(vars)) doc.documentElement.style.setProperty(name, value);
 }
 
+/** Apply the installed layout's queued measure now, so a reader in the same frame sees the new bands' attributes and
+ *  vars: a resize queues one frame callback here and one per reader, and a reader whose callback was already queued ran
+ *  before this one, measuring the old bands' CSS. */
+export function settleResponsiveLayout(win: Window | undefined = globalThis.window): void {
+  ((win as ResponsiveWindow | undefined)?.[RESPONSIVE_LAYOUT_HANDLE] as ResponsiveLayoutHandle | undefined)?.settle();
+}
+
 /** Install the canonical responsive attributes and keep them synchronized. */
 export function installResponsiveLayout(
   win: Window | undefined = globalThis.window,
   doc: Document | undefined = globalThis.document,
 ): ResponsiveLayoutHandle {
   if (!win || !doc?.documentElement || !doc?.body) {
-    return { snapshot: () => classifyViewport(), refresh() {}, destroy() {} };
+    return { snapshot: () => classifyViewport(), refresh() {}, settle() {}, destroy() {} };
   }
   const responsiveWindow = win as ResponsiveWindow;
   const existing = responsiveWindow[RESPONSIVE_LAYOUT_HANDLE];
@@ -383,6 +392,11 @@ export function installResponsiveLayout(
   const handle = {
     snapshot: () => current,
     refresh,
+    settle() {
+      if (!frame) return;
+      win.cancelAnimationFrame(frame);
+      apply();
+    },
     destroy() {
       if (frame) win.cancelAnimationFrame(frame);
       win.removeEventListener('resize', refresh);

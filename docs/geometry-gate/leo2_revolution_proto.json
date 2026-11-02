@@ -1161,5 +1161,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leo2_revolution_proto_preservation.glb",
+  "sha256": "ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7"
+ }
 }

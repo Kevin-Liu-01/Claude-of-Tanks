@@ -170,6 +170,7 @@ async function migrationCase({ label, hold, carlBackAfterMs, holdFor = null }) {
   carlTransport.replace(rtcFor('carl'), 'host migration');
   for (let n = 0; n < 120 && carlClient.snapshotsAcceptedCount === carlBefore; n++) await advance(TICK_MS);
   assert.ok(carlClient.snapshotsAcceptedCount > carlBefore, `${label}: carl receives frames from bob's actor`);
+  const backTick = core.actor.tick;
   const firstSeenByCarl = rowOf(carlClient);
   const jumpM = Math.hypot(firstSeenByCarl.x - lastSeenByCarl.x, firstSeenByCarl.z - lastSeenByCarl.z);
   await advance(2000);
@@ -178,7 +179,7 @@ async function migrationCase({ label, hold, carlBackAfterMs, holdFor = null }) {
   for (const client of clients) client.dispose();
   bob.stop();
   await settle(4);
-  return { label, speed: bobOwn.speed, resumeTick, tickBeforeCarl, whileAway, jumpM, afterM, holdStats };
+  return { label, speed: bobOwn.speed, resumeTick, tickBeforeCarl, whileAway, backTick, jumpM, afterM, holdStats };
 }
 
 // ---- the hold list: connected seats with a battle seat, the elected one among them, the host that went never
@@ -207,6 +208,11 @@ assert.equal(held.holdStats.released, 'seats', 'hold: released when every awaite
 assert.equal(held.holdStats.awaited, 2);
 assert.equal(held.holdStats.arrived, 2);
 assert.ok(held.holdStats.heldMs >= 1900 && held.holdStats.heldMs < RESUME_HOLD_MS, `hold: held for carl's return (${held.holdStats.heldMs} ms)`);
+// (267) the world stood still, the timeline did not: the loop starts on the old host's timeline, the held ticks skipped
+// (every client's clock carries that time; a loop started at the resume tick ran behind it by the hold)
+const heldTicks = Math.floor(held.holdStats.heldMs / TICK_MS);
+assert.ok(held.backTick >= held.resumeTick + heldTicks && held.backTick <= held.resumeTick + heldTicks + 130,
+  `hold: the loop started past the resume tick by the held ticks (${held.backTick - held.resumeTick} ticks on, ${heldTicks} held)`);
 
 // ---- a seat that never returns: the world moves at RESUME_HOLD_MS
 const late = await migrationCase({ label: 'timeout', hold: true, carlBackAfterMs: RESUME_HOLD_MS + 1000 });

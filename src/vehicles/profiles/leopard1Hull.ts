@@ -2,9 +2,10 @@
 // profiles/leopard.ts so the Danish 1A3 DK and 1A5 DK builds (profiles/leopard1Dk.ts) ride the same hull. The Leopard 1A5
 // builds it with the defaults. Integration 266: leopard1-263's critic rounds on the German 1A5's hull (the raked front
 // mudguards, the painted skirts, the louvred engine outlets, bow headlights and mirrors, the grouser lattice, the clean
-// transom) are `fit263`, the 1A5's default; the Danish builds keep the 265 hull they were certified on (their gun stops
-// over the stern quarters are not swept against the louvres) until the Denmark lane adopts the fit. First-party
-// procedural geometry: Kevin B. Liu (NOTICE.md).
+// transom). 266 (Main 2026-10-31: a family shares one hull): that is the one build; the Danish builds ride it too, their
+// rear fuel cans their own stowage (rearCans). 267: the engine outlets inside the fender's edge, their run and slats per
+// mark (outlets), the gun stops swept against them (modern2.ts, denmarkSpecs.ts).
+// First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT, orientedSlab, convexSlab } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -19,19 +20,21 @@ export interface Leo1HullOptions {
   readonly sideTools?: boolean;
   /** The shovel and crowbar on the deck beside the turret ring (the Danish welded turret's gun sweeps that deck low). */
   readonly deckTools?: boolean;
-  /** The side skirts' hem: the 265 hull's black rubber (steel-backed rubber painted with the hull's fittings under
-   * `fit263`, leopard1-263's critics round 3), or the coat (the Danish tanks' skirts are painted over). */
+  /** The side skirts' hem: steel-backed rubber painted with the hull's fittings (leopard1-263's critics round 3), or the
+   * coat (the Danish tanks' skirts are painted over). */
   readonly skirtBucket?: 'hullRubber' | 'hull';
   /** Release 265, r8: close-set slats over the engine deck's dark beds (the UN-white DK-1, whose six slats a field read
    * as black zebra stripes). */
   readonly denseGrilles?: boolean;
-  /** leopard1-263's critic rounds on the German 1A5 (default on): the raked boxed front mudguards, the longer painted
-   * skirts, the louvred engine outlets over the sprockets, the bow headlights under guard bars and the driver's mirrors,
-   * the grouser lattice and the clean transom. Off: the 265 hull the Danish builds were certified on. */
-  readonly fit263?: boolean;
-  /** The two fuel cans in their rear carriers (the 265 hull; the German A5's Munster transom is clean under `fit263`):
-   * drab cloth, or the coat (the DK-1's UN white painted them over). */
+  /** The two fuel cans in their rear carriers on the transom (the Danish tanks'; the German A5's Munster transom is clean,
+   * leopard1-263's critics round 3). */
+  readonly rearCans?: boolean;
+  /** The rear fuel cans' finish: drab cloth, or the coat (the DK-1's UN white painted them over). */
   readonly rearCanBucket?: 'hullCloth' | 'hull';
+  /** The engine's air outlets on the sloped rear side plates: the German A5's slats in three bays over 1 m behind its
+   * stern bin (Munster side, Cosford quarter), or the Danish tanks' continuous slats from their last fender bin to the
+   * stern (Krigsmuseet side). */
+  readonly outlets?: 'bays' | 'continuous';
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -51,10 +54,9 @@ export interface Leo1HullDatums {
 }
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
-  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket: skirtOption = 'hullRubber', fit263 = true,
-    rearCanBucket = 'hullCloth', denseGrilles = false } = options;
-  const skirtBucket = fit263 && skirtOption === 'hullRubber' ? 'hullDetail' : skirtOption;
-  const rearCans = !fit263;
+  const { grouserRack = true, sideTools = true, deckTools = true, skirtBucket: skirtOption = 'hullRubber', rearCans = false,
+    rearCanBucket = 'hullCloth', denseGrilles = false, outlets = 'bays' } = options;
+  const skirtBucket = skirtOption === 'hullRubber' ? 'hullDetail' : skirtOption;
   const { box, cylX, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool, xform } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -110,11 +112,12 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
   const trackContactZR = roadWheelZs.at(-1);
   const frontIdler = { z: 3.17, y: 0.66, r: 0.28 };
   const rearSprocket = { z: -2.70, y: 0.73, r: 0.29 };
-  // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the rear louvre boxes' run.
+  // The front mudguards' plate (its top from the shelf at rearZ to frontY at frontZ) and the engine outlets' run on the
+  // sloped side plates (from the stern; the German A5's ahead to its stern bin, the Danish to their last fender bin).
   const frontGuard = { rearZ: 2.98, frontZ: 3.64, frontY: 1.02 };
   const frontGuardTopY = (z: number): number =>
     fenderY - (fenderY - frontGuard.frontY) * (z - frontGuard.rearZ) / (frontGuard.frontZ - frontGuard.rearZ);
-  const rearLouvre = { rearZ: -3.36, frontZ: -2.40, topY: 1.655 };
+  const outletRun = { rearZ: -3.36, frontZ: outlets === 'bays' ? -2.40 : -1.97, topY: 1.655 };
 
   // ---------------------------------------------------------------- hull --
   // Lower tub between the tracks, from the 0.44 belly to the fender line.
@@ -153,6 +156,23 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
         [m(0.80), 1.10, upperGlacisFrontZ], [m(1.64), fenderY, 3.42],
         [m(sponsonX), fenderY - 0.02, upperGlacisRearZ], [m(deckEdgeX), upperGlacisRearY - 0.025, upperGlacisRearZ]));
     }
+    // 266 (Main 2026-10-31, the roof-pocket census: the 1A5's pockets grew 656 -> 1780 cm2 with the 263 hull, the Danish
+    // builds' stood at 4116): the wedge under the upper glacis was hollow. In front of the tub it ran from the lower glacis
+    // to the plate, open at its ends under the cheeks; over the tub it was open through the slit where the cheeks' tops
+    // meet the plate. The bow is solid under the plate: one fill over the tub inside the cheeks (their inner edges, 1.05 low
+    // and 1.30 high at the break, 0.80 at the nose; 4 cm clear of the track's inner edge), one from the tub to the nose.
+    const underGlacisY = (z: number): number => upperGlacisY(z) - 0.005;
+    const cheekInnerX = (z: number, high: boolean): number => {
+      const t = (z - upperGlacisRearZ) / (upperGlacisFrontZ - upperGlacisRearZ);
+      return high ? deckEdgeX + (0.80 - deckEdgeX) * t : 1.05 + (0.80 - 1.05) * t;
+    };
+    const overTubZ = [upperGlacisRearZ + 0.005, 3.21];
+    P.add('hull', convexSlab(
+      ...overTubZ.flatMap((z) => [-1, 1].map((s) => [s * (cheekInnerX(z, false) - 0.015), fenderY - 0.02, z])),
+      ...overTubZ.flatMap((z) => [-1, 1].map((s) => [s * (cheekInnerX(z, true) - 0.02), underGlacisY(z), z]))));
+    // (down to the lower glacis's foot at 0.74 and 1-2 cm behind its face to the nose, over the lower bow's back slope)
+    P.add('hull', convexSlab(...[-1, 1].flatMap((s) => [
+      [s * 0.79, 0.74, 3.20], [s * 0.79, underGlacisY(3.20), 3.20], [s * 0.79, 0.74, 3.29], [s * 0.79, 1.045, 3.52]])));
     // Rear plate from the belly rise to the stern deck, and its deck lip.
     P.add('hull', box(2.58, 1.64 - 0.94, 0.15), 0, (1.64 + 0.94) / 2, -3.47);
     // lower rear plate: the belly rises from its rear edge (z -3.26) to the rear plate's foot (z -3.395) (owner
@@ -170,54 +190,42 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       // Continuous fender shelf over the return run, the sloped side resting on it.
       P.add('hullDetail', box(0.70, 0.03, 6.78), s * 1.345, fenderY - 0.015, -0.02);
       P.add('hullDetail', box(0.012, 0.06, 6.70), s * 1.692, fenderY - 0.03, -0.04);
-      if (fit263) {
-        // Front mudguards (critics 265: "large flared, sloped plates over the track fronts"): long plates falling forward
-        // from the shelf over the idler to past the nose, boxed by a deep outer flange, an inner wall and a deep front lip
-        // (critics 265: "deep angled boxes", not thin plates).
-        P.add('hullDetail', slab(
-          [s * 1.05, fenderY - 0.03, frontGuard.rearZ], [s * 1.71, fenderY - 0.03, frontGuard.rearZ],
-          [s * 1.71, frontGuard.frontY - 0.03, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.03, frontGuard.frontZ],
-          [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.71, fenderY, frontGuard.rearZ],
-          [s * 1.71, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
-        // (critics 265, round 3: "tall raked mudguard plates", not low boxes) the outer flange deepens to the front, where
-        // the lip falls 0.32 m and rakes back 7 cm at its foot, 4 cm ahead of the track's wrap over the idler
-        P.add('hullDetail', slab(
-          [s * 1.69, fenderY - 0.22, frontGuard.rearZ], [s * 1.712, fenderY - 0.22, frontGuard.rearZ],
-          [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07], [s * 1.69, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07],
-          [s * 1.69, fenderY, frontGuard.rearZ], [s * 1.712, fenderY, frontGuard.rearZ],
-          [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.69, frontGuard.frontY, frontGuard.frontZ]));
-        // (the inner wall 4 cm deep over the idler, 8 cm at the nose: at 12 cm its foot stood in the strict track band over
-        // the idler's wrap, track-clip-audit --exact --strict)
-        P.add('hullDetail', slab(
-          [s * 1.05, fenderY - 0.04, frontGuard.rearZ], [s * 1.072, fenderY - 0.04, frontGuard.rearZ],
-          [s * 1.072, frontGuard.frontY - 0.08, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.08, frontGuard.frontZ],
-          [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.072, fenderY, frontGuard.rearZ],
-          [s * 1.072, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
-        P.add('hullDetail', slab(
-          [s * 1.05, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.092], [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.092],
-          [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07], [s * 1.05, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07],
-          [s * 1.05, frontGuard.frontY, frontGuard.frontZ - 0.022], [s * 1.712, frontGuard.frontY, frontGuard.frontZ - 0.022],
-          [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
-      } else {
-        // Front mudguards fall from the shelf over the idler; the rear ones close the shelf behind the sprocket.
-        P.add('hullDetail', slab(
-          [s * 1.05, fenderY - 0.03, 3.30], [s * 1.69, fenderY - 0.03, 3.30], [s * 1.69, 1.02, 3.50], [s * 1.05, 1.02, 3.50],
-          [s * 1.05, fenderY, 3.30], [s * 1.69, fenderY, 3.30], [s * 1.69, 1.05, 3.49], [s * 1.05, 1.05, 3.49]));
-      }
-      // Side skirts: hem over the wheel tops, top on the fender edge (segmented as on service vehicles). Under `fit263`
-      // steel-backed rubber painted with the hull (critics 265, round 3: dark separate tiles read wrong), continuous
-      // sections from the fender edge down over the road-wheel tops.
+      // Front mudguards (critics 265: "large flared, sloped plates over the track fronts"): long plates falling forward
+      // from the shelf over the idler to past the nose, boxed by a deep outer flange, an inner wall and a deep front lip
+      // (critics 265: "deep angled boxes", not thin plates).
+      P.add('hullDetail', slab(
+        [s * 1.05, fenderY - 0.03, frontGuard.rearZ], [s * 1.71, fenderY - 0.03, frontGuard.rearZ],
+        [s * 1.71, frontGuard.frontY - 0.03, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.03, frontGuard.frontZ],
+        [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.71, fenderY, frontGuard.rearZ],
+        [s * 1.71, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
+      // (critics 265, round 3: "tall raked mudguard plates", not low boxes) the outer flange deepens to the front, where
+      // the lip falls 0.32 m and rakes back 7 cm at its foot, 4 cm ahead of the track's wrap over the idler
+      P.add('hullDetail', slab(
+        [s * 1.69, fenderY - 0.22, frontGuard.rearZ], [s * 1.712, fenderY - 0.22, frontGuard.rearZ],
+        [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07], [s * 1.69, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07],
+        [s * 1.69, fenderY, frontGuard.rearZ], [s * 1.712, fenderY, frontGuard.rearZ],
+        [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.69, frontGuard.frontY, frontGuard.frontZ]));
+      // (the inner wall 4 cm deep over the idler, 8 cm at the nose: at 12 cm its foot stood in the strict track band over
+      // the idler's wrap, track-clip-audit --exact --strict)
+      P.add('hullDetail', slab(
+        [s * 1.05, fenderY - 0.04, frontGuard.rearZ], [s * 1.072, fenderY - 0.04, frontGuard.rearZ],
+        [s * 1.072, frontGuard.frontY - 0.08, frontGuard.frontZ], [s * 1.05, frontGuard.frontY - 0.08, frontGuard.frontZ],
+        [s * 1.05, fenderY, frontGuard.rearZ], [s * 1.072, fenderY, frontGuard.rearZ],
+        [s * 1.072, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
+      P.add('hullDetail', slab(
+        [s * 1.05, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.092], [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.092],
+        [s * 1.712, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07], [s * 1.05, frontGuard.frontY - 0.32, frontGuard.frontZ - 0.07],
+        [s * 1.05, frontGuard.frontY, frontGuard.frontZ - 0.022], [s * 1.712, frontGuard.frontY, frontGuard.frontZ - 0.022],
+        [s * 1.712, frontGuard.frontY, frontGuard.frontZ], [s * 1.05, frontGuard.frontY, frontGuard.frontZ]));
+      // Side skirts: hem over the wheel tops, top on the fender edge (segmented as on service vehicles): steel-backed rubber
+      // painted with the hull (critics 265, round 3: dark separate tiles read wrong), continuous sections from the fender
+      // edge down over the road-wheel tops.
       P.hangMudguard('leo1a5-front-skirt-hem', skirtBucket, box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
       P.hangMudguard('leo1a5-rear-skirt-hem', skirtBucket, box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
       for (let k = 0; k < 7; k++) {
         const z = 2.40 - k * 0.82;
-        if (fit263) {
-          P.hangMudguard('leo1a5-skirt-hem', skirtBucket, box(0.014, 0.40, 0.82), s * skirtX, 0.915, z);
-          P.add('hullDetail', box(0.012, 0.41, 0.03), s * (skirtX - 0.004), 0.915, z - 0.41);
-        } else {
-          P.hangMudguard('leo1a5-skirt-hem', skirtBucket, box(0.014, 0.33, 0.76), s * skirtX, 0.945, z);
-          P.add('hullDetail', box(0.012, 0.34, 0.026), s * (skirtX - 0.004), 0.945, z - 0.395);
-        }
+        P.hangMudguard('leo1a5-skirt-hem', skirtBucket, box(0.014, 0.40, 0.82), s * skirtX, 0.915, z);
+        P.add('hullDetail', box(0.012, 0.41, 0.03), s * (skirtX - 0.004), 0.915, z - 0.41);
       }
       if (sideTools) {
         // Pioneer tools and their brackets on the sloped upper side, where the A5 carries them.
@@ -229,44 +237,49 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
           P.addEquipment('hullWood', cylZ(0.022, 0.90, 8), s * (xAt(1.32) + 0.035), 1.32, z);
         }
       }
-      if (fit263) {
-        // The engine's louvred air outlets over the sprockets (critics 265, round 3: "the large louvred boxes on each rear
-        // side, a Leopard 1 signature, modelled as shallow slatted panels"; the Munster 1A5's side and quarter photos): a
-        // grille box on the sloped side from the fender to a level top 4-9 cm over the deck edge, its face leaning in
-        // 37 degrees, framed by end plates and rails, nine slats over a dark backing in three bays. The gun's stops over
-        // the stern quarters follow it (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG).
-        const louvreFaceFrom = new THREE.Vector2(1.708, fenderY + 0.05);
-        const louvreFaceTo = new THREE.Vector2(1.708 - 0.75 * (rearLouvre.topY - louvreFaceFrom.y), rearLouvre.topY);
-        const louvreRing = (outX: number, top: number): readonly (readonly [number, number])[] => {
-          const ring = [[1.24, fenderY], [outX, fenderY], [outX, louvreFaceFrom.y],
-            [outX - 0.75 * (top - louvreFaceFrom.y), top], [1.24, top]] as const;
-          return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
-        };
-        P.addEquipment('hull', sectionSolid([rearLouvre.rearZ, rearLouvre.frontZ]
-          .map((z) => ({ z, ring: louvreRing(louvreFaceFrom.x, rearLouvre.topY) }))));
-        for (const [z0, z1] of [[rearLouvre.rearZ - 0.02, rearLouvre.rearZ], [rearLouvre.frontZ, rearLouvre.frontZ + 0.02]]) {
-          P.addEquipment('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: louvreRing(louvreFaceFrom.x + 0.03, rearLouvre.topY + 0.015) }))));
-        }
-        const louvreN = new THREE.Vector2(0.8, 0.6), louvreTilt = s * Math.atan2(0.6, 0.8);
-        const louvreFaceLength = louvreFaceFrom.distanceTo(louvreFaceTo);
-        const louvreLength = rearLouvre.frontZ - rearLouvre.rearZ, louvreZ = (rearLouvre.rearZ + rearLouvre.frontZ) / 2;
-        const onLouvre = (t: number, out: number): THREE.Vector2 =>
-          louvreFaceFrom.clone().lerp(louvreFaceTo, t).addScaledVector(louvreN, out);
-        const backing = onLouvre(0.5, 0.003);
-        P.add('hullDark', box(0.006, louvreFaceLength * 0.92, louvreLength), s * backing.x, backing.y, louvreZ, 0, 0, louvreTilt);
-        for (const t of [0.02, 0.98]) {
-          const at = onLouvre(t, 0.016);
-          P.addEquipment('hull', box(0.026, 0.04, louvreLength), s * at.x, at.y, louvreZ, 0, 0, louvreTilt);
-        }
+      // The engine's louvred air outlets over the sprockets (critics 265, round 3: "the large louvred boxes on each rear
+      // side, a Leopard 1 signature"): a grille housing on the sloped side from the fender to a level top over the deck
+      // edge (the photographs' top stands over the engine deck, near the bustle's underside), its face leaning in, framed
+      // by end plates and rails, eight slats over a dark backing. 267 (Main 2026-10-31; blind A/B o1: the housing's height
+      // wins over a panel flush in the plate on all four): its foot pulled in from 1.708 to 1.655, so nothing stands past
+      // the fender's edge in the top view; the slats per mark: the German A5's in three bays over 1 m behind its stern bin
+      // (Munster side, Cosford quarter), the Danish tanks' continuous from their last fender bin to the stern
+      // (Krigsmuseet side). The gun's stops over the stern quarters follow it (modern2.ts LEO1A5_GUN_PITCH_BY_YAW_DEG,
+      // denmarkSpecs.ts).
+      const { rearZ, frontZ, topY } = outletRun;
+      const outletFaceFrom = new THREE.Vector2(1.655, fenderY + 0.05);
+      const outletFaceTo = new THREE.Vector2(1.344, topY);
+      const outletLean = (outletFaceFrom.x - outletFaceTo.x) / (outletFaceTo.y - outletFaceFrom.y);
+      const outletRing = (outX: number, top: number): readonly (readonly [number, number])[] => {
+        const ring = [[1.24, fenderY], [outX, fenderY], [outX, outletFaceFrom.y],
+          [outX - outletLean * (top - outletFaceFrom.y), top], [1.24, top]] as const;
+        return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+      };
+      P.addEquipment('hull', sectionSolid([rearZ, frontZ].map((z) => ({ z, ring: outletRing(outletFaceFrom.x, topY) }))));
+      for (const [z0, z1] of [[rearZ - 0.02, rearZ], [frontZ, frontZ + 0.02]]) {
+        P.addEquipment('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: outletRing(outletFaceFrom.x + 0.02, topY + 0.015) }))));
+      }
+      const outletN = new THREE.Vector2(1, outletLean).normalize(), outletTilt = s * Math.atan(outletLean);
+      const outletFaceLength = outletFaceFrom.distanceTo(outletFaceTo);
+      const outletLength = frontZ - rearZ, outletZ = (rearZ + frontZ) / 2;
+      const onOutlet = (t: number, out: number): THREE.Vector2 =>
+        outletFaceFrom.clone().lerp(outletFaceTo, t).addScaledVector(outletN, out);
+      const backing = onOutlet(0.5, 0.003);
+      P.add('hullDark', box(0.006, outletFaceLength * 0.92, outletLength), s * backing.x, backing.y, outletZ, 0, 0, outletTilt);
+      for (const t of [0.02, 0.98]) {
+        const at = onOutlet(t, 0.016);
+        P.addEquipment('hull', box(0.026, 0.04, outletLength), s * at.x, at.y, outletZ, 0, 0, outletTilt);
+      }
+      if (outlets === 'bays') {
         for (const bay of [-1, 1]) {
-          const at = onLouvre(0.5, 0.016);
-          P.addEquipment('hull', box(0.026, louvreFaceLength * 0.92, 0.04), s * at.x, at.y, louvreZ + bay * louvreLength / 6,
-            0, 0, louvreTilt);
+          const at = onOutlet(0.5, 0.016);
+          P.addEquipment('hull', box(0.026, outletFaceLength * 0.92, 0.04), s * at.x, at.y, outletZ + bay * outletLength / 6,
+            0, 0, outletTilt);
         }
-        for (let k = 0; k < 9; k++) {
-          const at = onLouvre(0.10 + k * 0.10, 0.014);
-          P.addEquipment('hull', box(0.022, 0.028, louvreLength), s * at.x, at.y, louvreZ, 0, 0, louvreTilt);
-        }
+      }
+      for (let k = 0; k < 8; k++) {
+        const at = onOutlet(0.11 + k * 0.111, 0.014);
+        P.addEquipment('hull', box(0.022, 0.028, outletLength), s * at.x, at.y, outletZ, 0, 0, outletTilt);
       }
     }
     P.mats.rubber.color.setHex(0x34372d);
@@ -295,39 +308,28 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
     P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
     for (const s of [-1, 1] as const) {
-      if (fit263) {
-        // Round headlights on the bow's outer corners beside the grouser rack, inboard of the mudguards, each on a foot
-        // under a bent guard bar (critics 265, round 4: "round headlights beside the grille ... become small boxes on the
-        // fender fronts"; the Munster 1A5's front photo).
-        P.addEquipment('hull', box(0.08, 0.10, 0.08), s * 0.95, 1.16, 3.35);
-        headlight(P, s * 0.95, 1.27, 3.37, 0, 0.075);
-        P.addEquipment('hullDark', cylY(0.011, 0.011, 0.26, 7), s * 0.86, 1.24, 3.46);
-        P.addEquipment('hullDark', cylY(0.011, 0.011, 0.28, 7), s * 1.04, 1.23, 3.46);
-        P.addEquipment('hullDark', cylX(0.011, 0.19, 7), s * 0.95, 1.37, 3.46);
-      } else {
-        // Headlights and their guards on the front cheeks, ahead of the glacis corners.
-        headlight(P, s * 1.31, 1.17, 3.27, -0.26);
-        P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.20, 3.30, -0.26, 0, 0);
-      }
+      // Round headlights on the bow's outer corners beside the grouser rack, inboard of the mudguards, each on a foot
+      // under a bent guard bar (critics 265, round 4: "round headlights beside the grille ... become small boxes on the
+      // fender fronts"; the Munster 1A5's front photo).
+      P.addEquipment('hull', box(0.08, 0.10, 0.08), s * 0.95, 1.16, 3.35);
+      headlight(P, s * 0.95, 1.27, 3.37, 0, 0.075);
+      P.addEquipment('hullDark', cylY(0.011, 0.011, 0.26, 7), s * 0.86, 1.24, 3.46);
+      P.addEquipment('hullDark', cylY(0.011, 0.011, 0.28, 7), s * 1.04, 1.23, 3.46);
+      P.addEquipment('hullDark', cylX(0.011, 0.19, 7), s * 0.95, 1.37, 3.46);
       P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
       liftEye(P, 'hullDetail', s * 1.17, deckTopY(1.65) + 0.015, 1.65, s * 0.45);
       // width-indicator rods on the front mudguards
-      if (fit263) {
-        P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, frontGuardTopY(3.36) + 0.17, 3.36, 0, 0, s * 0.08);
-        P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), frontGuardTopY(3.36) + 0.17 + Math.cos(0.08) * 0.17, 3.36);
-        // the driver's mirror: an oval head on its stalk behind the lamp, the glass facing back (critics 265, round 5: "no
-        // mirror heads"; the Munster 1A5's front photo)
-        // (low enough that the barrel laid over it at full depression keeps its 25 mm: at 0.37 m it touched at yaw 22)
-        const mirrorY = frontGuardTopY(3.10) + 0.30, mirrorYaw = s * 0.30;
-        P.addEquipment('hull', cylY(0.012, 0.012, 0.26, 7), s * 1.12, frontGuardTopY(3.10) + 0.13, 3.10);
-        P.addEquipment('hull', xform(cylZ(0.085, 0.05, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
-          s * 1.12, mirrorY, 3.10, 0, mirrorYaw, 0);
-        P.addEquipment('hullDark', xform(cylZ(0.072, 0.006, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
-          s * 1.12 - Math.sin(mirrorYaw) * 0.027, mirrorY, 3.10 - Math.cos(mirrorYaw) * 0.027, 0, mirrorYaw, 0);
-      } else {
-        P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, fenderY + 0.17, 3.36, 0, 0, s * 0.08);
-        P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), fenderY + 0.17 + Math.cos(0.08) * 0.17, 3.36);
-      }
+      P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, frontGuardTopY(3.36) + 0.17, 3.36, 0, 0, s * 0.08);
+      P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), frontGuardTopY(3.36) + 0.17 + Math.cos(0.08) * 0.17, 3.36);
+      // the driver's mirror: an oval head on its stalk behind the lamp, the glass facing back (critics 265, round 5: "no
+      // mirror heads"; the Munster 1A5's front photo)
+      // (low enough that the barrel laid over it at full depression keeps its 25 mm: at 0.37 m it touched at yaw 22)
+      const mirrorY = frontGuardTopY(3.10) + 0.30, mirrorYaw = s * 0.30;
+      P.addEquipment('hull', cylY(0.012, 0.012, 0.26, 7), s * 1.12, frontGuardTopY(3.10) + 0.13, 3.10);
+      P.addEquipment('hull', xform(cylZ(0.085, 0.05, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12, mirrorY, 3.10, 0, mirrorYaw, 0);
+      P.addEquipment('hullDark', xform(cylZ(0.072, 0.006, P.q ? 16 : 12), 0, 0, 0, 0, 0, 0, [1.35, 1, 1]),
+        s * 1.12 - Math.sin(mirrorYaw) * 0.027, mirrorY, 3.10 - Math.cos(mirrorYaw) * 0.027, 0, mirrorYaw, 0);
     }
     // tow cable run across the bow edge, below the grouser rack
     towCable(P, [
@@ -388,8 +390,9 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
     else for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, exhaustTopY + 0.006, -2.84 - k * 0.11);
 
     // Rear service face, two giant NATO fuel cans in proper carriers against the transom, clear of the sprocket wraps,
-    // with braces running forward into the hull, and the tail lights. Under `fit263` no fuel cans (critics 265, round 3:
-    // the X-marked can carriers stood over the deck line, and the Munster 1A5's rear quarter shows a clean transom).
+    // with braces running forward into the hull, and the tail lights (rearCans: the Danish tanks'; the German A5's transom
+    // is clean, critics 265, round 3: the X-marked can carriers stood over the deck line, and the Munster 1A5's rear
+    // quarter shows a clean transom).
     P.add('hullDark', box(2.28, 0.46, 0.035), 0, 1.26, -3.525);
     for (let k = 0; k < 7; k++) {
       P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.26, -3.545);
@@ -439,7 +442,7 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
       deckEdgeX,
       sponsonX,
       skirtOuterX: skirtX + 0.007,
-      skirtHemY: fit263 ? 0.715 : 0.78,
+      skirtHemY: 0.715,
       slopedUpperSides: true,
       segmentedSideAprons: 14,
       rearFuelCans: rearCans ? 2 : 0,

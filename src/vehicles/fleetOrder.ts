@@ -52,7 +52,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'merkava4', 'merkava4b', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
-    'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10_dozer', 'type10b',
+    'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type90b', 'type10_tk_x', 'type10_dozer', 'type10b',
   ]),
   national_ua: Object.freeze(["t80u_zoria", "t72b3m_hetman", "t72b3m_hetman_ii", "t72b3_sich"]),
   national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii", "pt64_tur", "pt84_sokol", "pt84_orzel", "pt84_zbik"]),
@@ -73,7 +73,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 266: the Danish Army line (the Christian II moved here from Sweden)
   denmark: Object.freeze([
-    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'christian2',
+    'centurion5_2dk', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'cv9035dk', 'leo2a5dk', 'leo2a7dk', 'christian2',
   ]),
   // 266: the Brazilian Army line
   brazil: Object.freeze(['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',

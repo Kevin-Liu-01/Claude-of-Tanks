@@ -109,13 +109,13 @@ const FAMILY_UPGRADES = Object.freeze({
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 265: the Danish Leopards
-  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk']],
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
   // 266: the Osório's two prototypes (the 105 mm P.1 before the 120 mm P.2)
   brazil: [['x1_pioneiro', 'x1a2_carcara'], ['tamoyo1', 'tamoyo3'], ['osorio_p1', 'osorio_p2'], ['ee_t3_osorio', 'ee_t4_osorio']],
   // 265: the M41s (the Danish rebuild at II over the originals at I)
   m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
   // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
-  denmarkB: [['cv90', 'cv9035dk']],
+  denmarkB: [['centurion5_2', 'centurion5_2dk'], ['cv90', 'cv9035dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -218,7 +218,10 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the CV9035 DK; the US M41A3 on lane 6 beside the M46, the Bundeswehr M41 a Germany special at I.
 // 265 (the owner 2026-10-30): the Ukrainian CV9040C at IV beside the Bradley on Ukraine's aid line.
 // Re-pinned 2026-10-31 at integ/266 (ua-cv9040c-265 49ecc585b4 merged; every other tree check passes): + the Ukrainian CV9040C.
+// 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
+// Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
+// 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
 // 267 re-pin (lane bmpt-family-267, the owner's "make a BMPT Terminator"): the original Ob'yekt 199 Terminator at VI on
 // the support line (lane 13) off the BMPT-72, beside the BMPT T-90.
-assert.equal(digest, '8b02cd4014e49b8c', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, 'b35c3a0d8505834f', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

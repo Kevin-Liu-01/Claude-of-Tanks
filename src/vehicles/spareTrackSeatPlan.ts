@@ -9,7 +9,7 @@ export type SeatPlanEntry = number | readonly number[];
 export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, SeatPlanEntry>>>> = {
   "amx40_proto": {
     "amx40-rear-links@hull(1.19,1.22,-3.37)": [-1.716, -0.047, -4.06, 0.5, 0.5, 0.5, -0.5, 0],
-    "fitting@hull(-1.08,1.70,1.62)": -1,
+    "fitting@hull(-1.08,1.70,1.62)": [-0.7, 1.54154, 2.83085, 0.00744, 0.70707, 0.00744, 0.70707, 0],
   },
   "bmp2": {
     "fitting@hull(1.38,1.27,-2.60)": [0.745, 0.86963, -3.12336, 0.51656, -0.48287, 0.51656, -0.48287, 1],
@@ -96,14 +96,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "t80bv": {
     "fitting@hull(0.58,1.40,0.30)": [0.35837, 0.81058, -3.10208, 0.65868, -0.25718, 0.65868, -0.25718, 1],
-  },
-  "type10_tk_x": {
-    "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.508, 0.5, -0.5, 0.5, 0.5, 0],
-    "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
-  },
-  "type10b": {
-    "fitting@hull(-1.12,1.79,-3.15)": [-1.701, 1.01835, 2.442, 0.5, -0.5, 0.5, 0.5, 0],
-    "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
   },
   "ua_m1a1": {
     "fitting@turret(0.30,0.35,-3.22)": [0.404, 0.8165, -2.022, 0, 0, 0, 1, 0],

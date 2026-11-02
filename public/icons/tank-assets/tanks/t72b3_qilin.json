@@ -9633,7 +9633,7 @@
       }
     ]
   },
-  "geometryHash": "ab02c26e",
+  "geometryHash": "98826a88",
   "metadataHash": "dba9b723",
   "presentationAnchor": {
     "xM": 0.001,
@@ -9693,24 +9693,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26116,
-      "sha256": "91650f74557578bc493934a223019a5d1a84f7ec7a94dd9075248b45d1d03270"
+      "bytes": 26084,
+      "sha256": "82e371fbed1d0e49a3553159c05a979ae9637c884abf0a2fb2f2484950878e0b"
     },
     "modulesSide": {
       "file": "t72b3_qilin_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22724,
-      "sha256": "c3a0d8d0b3c0958e93877829a6d6e50fd67dc49ded0140afa19f67f41c74af9f"
+      "bytes": 22514,
+      "sha256": "a86345e0440ad4621af7d2664cd0665db16606e42e97df1c9ab8e7e2e93d61fa"
     },
     "crewSide": {
       "file": "t72b3_qilin_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19980,
-      "sha256": "8bc4d897f37bf491518baa135267ec85c0ab7ca1f3d33abacc3fe4b0c8e3f4c8"
+      "bytes": 19940,
+      "sha256": "1c589e5a6552793ff6cb76d5159380d4bed4ce8262126145ce2a0292e8c3b991"
     },
     "angle": {
       "file": "t72b3_qilin_angle.webp",
@@ -9733,16 +9733,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10924,
-      "sha256": "feedd468417d57a23f5576759d6d7eaa0d02d6a659b785c54c330f1e293efa81"
+      "bytes": 10930,
+      "sha256": "08446f8b0d25f91a5dc1daacb1f72d2fcde68699ea6ae333a7eccc578ec9c4ef"
     },
     "side": {
       "file": "t72b3_qilin_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10252,
-      "sha256": "f6a2ffd3bfccfe7e33225d68aeb1b3ff251628244b43a934006932169d767593"
+      "bytes": 10258,
+      "sha256": "245ab7ca28c653994f2379cfd66eaca43ffadd7efefe8ef7afc0a2fc29ad4a5b"
     },
     "topSilhouette": {
       "file": "t72b3_qilin_top_silhouette.png",
@@ -9757,8 +9757,8 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4353,
-      "sha256": "ae49bac9d6ac3c422cc9b40f015c34ec660f404ba05dddaf33647407151b2a40"
+      "bytes": 4354,
+      "sha256": "3139bfc64ceb62bef057129222c84ece94e52878ab86df0ac72b7ca5e93f99d7"
     },
     "markings": {
       "file": "t72b3_qilin_markings.png",
@@ -9771,8 +9771,8 @@
     "technicalLabels": {
       "file": "t72b3_qilin_technical.json",
       "mime": "application/json",
-      "bytes": 5472,
-      "sha256": "e7438fe15263d7b35408fc4215ec1946f880c5481998b8ac76579f42cdfcf67d"
+      "bytes": 5473,
+      "sha256": "8fa62b6e23fcdc6aa09c20ea5babca0665f60d4602b8d8f3ee29cc4485809c65"
     }
   }
 }

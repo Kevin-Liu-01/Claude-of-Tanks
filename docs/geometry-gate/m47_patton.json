@@ -9,12 +9,12 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": false,
- "rawGeoMin": 87.2901722072182,
+ "rawGeoMin": 87.31199331901215,
  "rawComponents": {
   "hullCurves": 90.66752230372377,
   "stations": 90.85054795535224,
-  "turretCurves": 89.3208690891432,
-  "wholeCurves": 87.2901722072182,
+  "turretCurves": 89.28404796920866,
+  "wholeCurves": 87.31199331901215,
   "dims": 99.33272492146817,
   "floaters": 100
  },
@@ -30,13 +30,13 @@
  "stationMethod": "legacy-uncapped-raster-slices",
  "curveRows": {
   "side_hull": {
-   "score": 91.23272224553128,
+   "score": 91.29344857469309,
    "meanPct": 0.64,
    "p95Pct": 1.75,
    "coverPct": 0,
    "reg": {
     "dAlong": 0.10045029673580297,
-    "dy": 0.00014210483167307532
+    "dy": 0.000010332174273360154
    },
    "worst": [
     {
@@ -53,7 +53,7 @@
      "refBot": -0.58,
      "procTop": -0.6,
      "procBot": -0.63,
-     "errM": 0.077
+     "errM": 0.078
     },
     {
      "at": 3.85,
@@ -67,7 +67,7 @@
      "at": -1.8,
      "refTop": -0.39,
      "refBot": -0.98,
-     "procTop": -0.31,
+     "procTop": -0.32,
      "procBot": -1.03,
      "errM": 0.059
     },
@@ -120,31 +120,31 @@
      "errM": 0.046
     },
     {
-     "at": -1.31,
-     "refTop": -0.21,
-     "refBot": -1.44,
-     "procTop": -0.26,
-     "procBot": -1.4,
-     "errM": 0.045
-    },
-    {
      "at": -0.24,
      "refTop": -0.08,
      "refBot": -1.69,
      "procTop": 0,
      "procBot": -1.69,
      "errM": 0.041
+    },
+    {
+     "at": -1.02,
+     "refTop": -0.09,
+     "refBot": -1.67,
+     "procTop": -0.08,
+     "procBot": -1.6,
+     "errM": 0.038
     }
    ]
   },
   "side_whole": {
-   "score": 89.50243534739022,
-   "meanPct": 0.71,
+   "score": 89.48404533186572,
+   "meanPct": 0.72,
    "p95Pct": 1.81,
    "coverPct": 0.56,
    "reg": {
     "dAlong": 0.10045029673580297,
-    "dy": 0.00014210483167307532
+    "dy": 0.000010332174273360154
    },
    "worst": [
     {
@@ -177,7 +177,7 @@
      "refBot": -1.68,
      "procTop": 0.65,
      "procBot": -1.64,
-     "errM": 0.069
+     "errM": 0.068
     },
     {
      "at": 3.85,
@@ -570,8 +570,8 @@
    ]
   },
   "front_whole": {
-   "score": 87.2901722072182,
-   "meanPct": 0.93,
+   "score": 87.31199331901215,
+   "meanPct": 0.92,
    "p95Pct": 2.67,
    "coverPct": 0,
    "reg": {
@@ -609,7 +609,7 @@
      "refBot": -1.23,
      "procTop": 0.92,
      "procBot": -1.21,
-     "errM": 0.096
+     "errM": 0.094
     },
     {
      "at": -0.93,
@@ -680,13 +680,13 @@
  },
  "turretRows": {
   "side": {
-   "score": 89.3208690891432,
+   "score": 89.28404796920866,
    "meanPct": 0.79,
-   "p95Pct": 2,
+   "p95Pct": 1.99,
    "coverPct": 0,
    "reg": {
     "dAlong": 0.10045029673580297,
-    "dy": 0.00014210483167307532
+    "dy": 0.000010332174273360154
    },
    "worst": [
     {
@@ -1083,7 +1083,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 183340,
+     "area": 183316,
      "minX": 155,
      "minY": 313,
      "maxX": 976,
@@ -1097,7 +1097,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 183445,
+     "area": 183433,
      "minX": 213,
      "minY": 313,
      "maxX": 976,
@@ -1111,7 +1111,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 182274,
+     "area": 182256,
      "minX": 213,
      "minY": 313,
      "maxX": 976,
@@ -1125,7 +1125,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 181813,
+     "area": 181789,
      "minX": 159,
      "minY": 313,
      "maxX": 976,
@@ -1139,7 +1139,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 183708,
+     "area": 183684,
      "minX": 170,
      "minY": 313,
      "maxX": 976,
@@ -1147,5 +1147,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/m47_patton.glb",
+  "sha256": "aacc768f798c6fc8fa484b5f19ba40d7d568e0965079efdaf6c252182ad6e14e"
+ }
 }

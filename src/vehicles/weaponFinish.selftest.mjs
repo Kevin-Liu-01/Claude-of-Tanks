@@ -236,13 +236,15 @@ try {
     });
     assert.ok(weaponMeshes >= 1, `${id}: weapon meshes were covered (${weaponMeshes})`);
   }
-  // the T-90MS Tagil tower: the optic housing projects the camouflage at the fleet density (was 4.6 a metre)
+  // the T-90MS remote station (259579e51c and 50854bcefb, lane t90-family-266, retired the Tagil tower and its optic housing,
+  // which measured 4.6 a metre): its housing projects the camouflage at the fleet density
   const t90ms_2011 = visuals[IDS.indexOf('t90ms_2011')];
-  const housing = t90ms_2011.root.getObjectByName('t90msTagilTowerOpticHousing');
-  assert.ok(housing, 't90ms_2011: the Tagil optic housing exists');
+  const housing = t90ms_2011.root.getObjectByName('t90msRemoteGun_yaw_turretDetail');
+  assert.ok(housing, 't90ms_2011: the remote station housing exists');
+  assert.equal(housing.material.name, 'cot:armor-paint', 't90ms_2011: the station housing wears the hull camouflage');
   {
     const density = uvDensityMedian(housing, t90ms_2011.root);
-    assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms_2011: the optic housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, was 4.6)`);
+    assert.ok(Math.abs(density - CAMO_UV_REPEATS_PER_M) < 0.05, `t90ms_2011: the station housing projects the camouflage at the fleet density (${density.toFixed(3)} per metre, the Tagil tower's optic was 4.6)`);
   }
 } finally {
   for (const visual of visuals) visual.dispose();
@@ -266,4 +268,4 @@ assert.equal(leaked.length, 0, 'every weapon-finish material is released on disp
 }
 void KIT;
 console.log(`weaponFinish.selftest: ${IDS.length} hulls, ${JSON.stringify(tally)} weapon meshes, no flat weapon mesh, `
-  + 'unknown slots refused, the Tagil optic at the fleet camouflage density, receipt builds untouched PASS');
+  + 'unknown slots refused, the T-90MS station housing at the fleet camouflage density, receipt builds untouched PASS');

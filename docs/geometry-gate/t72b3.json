@@ -1,6 +1,6 @@
 {
  "id": "t72b3",
- "geoMin": 85.5,
+ "geoMin": 85,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -112,20 +112,20 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 85.45712452136523,
+ "rawGeoMin": 85.0165512282073,
  "rawComponents": {
   "hullCurves": 95.59140614121857,
-  "stations": 99.03266789385782,
-  "turretCurves": 85.45712452136523,
-  "wholeCurves": 90.12492790386433,
+  "stations": 96.6162874575358,
+  "turretCurves": 85.0165512282073,
+  "wholeCurves": 89.85079341034385,
   "dims": 98.24390243902437,
   "floaters": 100
  },
  "components": {
   "hullCurves": 95.6,
-  "stations": 99,
-  "turretCurves": 85.5,
-  "wholeCurves": 90.1,
+  "stations": 96.6,
+  "turretCurves": 85,
+  "wholeCurves": 89.9,
   "dims": 98.2,
   "floaters": 100
  },
@@ -241,8 +241,8 @@
    ]
   },
   "side_whole": {
-   "score": 90.12492790386433,
-   "meanPct": 0.69,
+   "score": 89.85079341034385,
+   "meanPct": 0.71,
    "p95Pct": 2.71,
    "coverPct": 0,
    "reg": {
@@ -673,8 +673,8 @@
    ]
   },
   "front_whole": {
-   "score": 93.66473034274195,
-   "meanPct": 0.43,
+   "score": 92.87881804435486,
+   "meanPct": 0.5,
    "p95Pct": 1.95,
    "coverPct": 0,
    "reg": {
@@ -689,6 +689,14 @@
      "procTop": 0.12,
      "procBot": -2.33,
      "errM": 0.181
+    },
+    {
+     "at": 1.08,
+     "refTop": -0.46,
+     "refBot": -2.4,
+     "procTop": -0.67,
+     "procBot": -2.36,
+     "errM": 0.124
     },
     {
      "at": -0.77,
@@ -755,36 +763,28 @@
      "errM": 0.081
     },
     {
+     "at": 1.01,
+     "refTop": -0.47,
+     "refBot": -2.36,
+     "procTop": -0.64,
+     "procBot": -2.36,
+     "errM": 0.081
+    },
+    {
      "at": 1.81,
      "refTop": -1.34,
      "refBot": -1.96,
      "procTop": -1.29,
      "procBot": -1.94,
      "errM": 0.04
-    },
-    {
-     "at": -1.13,
-     "refTop": -0.64,
-     "refBot": -2.4,
-     "procTop": -0.67,
-     "procBot": -2.36,
-     "errM": 0.037
-    },
-    {
-     "at": 0.58,
-     "refTop": -0.47,
-     "refBot": -2.35,
-     "procTop": -0.44,
-     "procBot": -2.33,
-     "errM": 0.029
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 85.45712452136523,
-   "meanPct": 0.72,
+   "score": 85.0165512282073,
+   "meanPct": 0.75,
    "p95Pct": 3.36,
    "coverPct": 2.61,
    "reg": {
@@ -865,6 +865,14 @@
      "errM": 0.092
     },
     {
+     "at": 2.12,
+     "refTop": -0.02,
+     "refBot": -1.28,
+     "procTop": 0.08,
+     "procBot": -1.2,
+     "errM": 0.087
+    },
+    {
      "at": 2.56,
      "refTop": -0.14,
      "refBot": -0.8,
@@ -879,14 +887,6 @@
      "procTop": 0.03,
      "procBot": -1.07,
      "errM": 0.071
-    },
-    {
-     "at": 0.16,
-     "refTop": -0.6,
-     "refBot": -1.28,
-     "procTop": -0.68,
-     "procBot": -1.26,
-     "errM": 0.051
     }
    ]
   },
@@ -1049,28 +1049,28 @@
    "i": 5,
    "refW": 3.601,
    "procW": 3.602,
-   "refTop": 4.278,
-   "procTop": 4.278,
+   "refTop": 2.836,
+   "procTop": 2.858,
    "wPct": 0.019435108684663225,
-   "topPct": 0.000010137898482001593
+   "topPct": 0.4022256172101138
   },
   {
    "i": 6,
    "refW": 3.601,
    "procW": 3.602,
-   "refTop": 5.457,
-   "procTop": 5.457,
+   "refTop": 2.526,
+   "procTop": 2.832,
    "wPct": 0.019435108684663225,
-   "topPct": 0.0000013998156977548226
+   "topPct": 5.603621276899536
   },
   {
    "i": 7,
    "refW": 3.666,
    "procW": 3.667,
-   "refTop": 3.552,
-   "procTop": 3.552,
+   "refTop": 2.728,
+   "procTop": 2.728,
    "wPct": 0.02744829233002253,
-   "topPct": 0.000010186628359608488
+   "topPct": 0.0000035843363938165155
   },
   {
    "i": 8,
@@ -1214,6 +1214,7 @@
    "node:weapon3"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
  "oracleComparison": {
   "antennasDropped": true,
   "roofWeaponsDropped": true,
@@ -1291,5 +1292,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/t72b3_x_source.glb",
+  "sha256": "53d22b5ca53a742446dd957840233863735deda09b967ea1f1a79c9b2b03d797"
+ }
 }

@@ -16,21 +16,40 @@ export const SITE_ORIGIN = CANONICAL_ORIGIN;
 type ShareVideo = { readonly path: string; readonly width: number; readonly height: number };
 
 /**
- * Each page family's share clip (og:video), chosen by the owner in the media election of 2026-10-30 and used as
- * published: H.264 High@4.0, faststart, no audio, at most 10 s and 3 MB. localizedHtml.ts writes it into every public
- * page; seoMetadata.selftest.mjs reads each file's own size and limits.
+ * Each page's share clip (og:video): H.264 High@4.0, faststart, no audio, at most 10 s and 3 MB. The game (with the
+ * landing and the 404) and the Gallery keep the clips the owner chose in the media election of 2026-10-30; the Studio,
+ * the manual's index and every chapter share their own banner take (og-r2, 2026-11-01), cut at 1280x720 into
+ * /media/share-r1 from the take's master, so a chapter's share plays what the chapter opens on (src/docs/topics.ts);
+ * Battlefields, whose banner is a still, plays the battlefields montage.
+ * localizedHtml.ts writes it into every public page; seoMetadata.selftest.mjs reads each file's own size and limits.
  */
-const SHARE_VIDEOS = {
+const shareClip = (take: string): ShareVideo => ({ path: `/media/share-r1/${take}.mp4`, width: 1280, height: 720 });
+const SHARE_VIDEOS: Readonly<Partial<Record<PublicRouteRecord['id'], ShareVideo>>> = {
   game: { path: '/media/home-r2/vs03-reservoir-k2-vt4a1-1280.mp4', width: 1280, height: 720 },
   gallery: { path: '/media/home-r2/fleet-montage.mp4', width: 1280, height: 720 },
-  docs: { path: '/media/docs-hero-r2/verdant-challenger3-t80u-mobile.mp4', width: 960, height: 540 },
-  studio: { path: '/media/home-r2/studio-246.mp4', width: 1280, height: 720 },
-} as const satisfies Record<string, ShareVideo>;
+  studio: shareClip('s33-water-tower'),
+  docs: shareClip('verdant-challenger3-t80u'),
+  docsModes: shareClip('s21-fields-assault'),
+  docsControls: shareClip('s26-minaret-fire'),
+  docsStart: shareClip('frontier-t90m-leo2a6'),
+  docsTanks: shareClip('s05-barn-advance'),
+  docsFleet: shareClip('s227-oasis-duel'),
+  docsCombat: shareClip('s29-fjord-road-kill'),
+  docsBattlefields: shareClip('battlefields-montage'),
+  docsBuild: shareClip('s23-village-crossroads'),
+  docsModels: shareClip('verdant-challenger3-t80u'),
+  docsAi: shareClip('s04-column-under-fire'),
+  docsAudio: shareClip('s01-main-street-push'),
+  docsSimulation: shareClip('s226-church-duel'),
+  docsRendering: shareClip('s20-road-return-fire'),
+  docsMultiplayer: shareClip('s18-street-knockout'),
+  docsStudio: shareClip('s33-water-tower'),
+  docsFilming: shareClip('s07-lake-shellfire'),
+};
 
-/** A public route's share clip: the game's on the game, the landing and the 404; the manual's on its index and chapters. */
+/** A public route's share clip: its own, else the game's (the landing and the 404 share the game's). */
 export function shareVideoForRoute(routeId: PublicRouteRecord['id']): ShareVideo {
-  if (routeId === 'gallery' || routeId === 'studio') return SHARE_VIDEOS[routeId];
-  return routeId.startsWith('docs') ? SHARE_VIDEOS.docs : SHARE_VIDEOS.game;
+  return SHARE_VIDEOS[routeId] ?? SHARE_VIDEOS.game!;
 }
 
 type SiteMetadata = {
@@ -54,7 +73,7 @@ const GAME_METADATA: SiteMetadata = {
   description: `Claude of Tanks is a free browser-native armored warfare game with ${PRODUCT_STATS.productionVehicles} production vehicles, ${PRODUCT_STATS.battlefields} battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account.`,
   canonical: `${SITE_ORIGIN}/`,
   url: `${SITE_ORIGIN}/`,
-  image: `${SITE_ORIGIN}/brand/og-image.png`,
+  image: `${SITE_ORIGIN}/brand/og-r2/game.jpg`,
   imageAlt: 'Claude of Tanks in-engine armored battle with the commander mark',
   type: 'website',
   robots: INDEX_ROBOTS,
@@ -67,7 +86,7 @@ export const STUDIO_METADATA: SiteMetadata = {
   description: 'Open the Claude of Tanks Scene Studio to stage vehicles, maps, cameras, weather, articulation, effects, timelines, stills, GIFs, and cinematic battle videos directly in your browser.',
   canonical: `${SITE_ORIGIN}/studio`,
   url: `${SITE_ORIGIN}/studio`,
-  image: `${SITE_ORIGIN}/brand/og/studio.jpg`,
+  image: `${SITE_ORIGIN}/brand/og-r2/studio.jpg`,
   imageAlt: 'Claude of Tanks Scene Studio composing an in-engine urban tank battle',
   type: 'website',
   robots: INDEX_ROBOTS,
@@ -75,9 +94,12 @@ export const STUDIO_METADATA: SiteMetadata = {
   ogDescription: 'Compose cinematic tank scenes with current vehicles, maps, cameras, weather, effects, timelines, stills, GIFs, and video.',
 };
 
-/** A page's social card: the English card, or its zh-CN twin with the label in Chinese (tools/marketing-shots/generate-og-images.mjs). */
+/** The brand's own cards (the game and the landing): the lockup alone, no words, one card for both languages. */
+const WORDLESS_CARDS: ReadonlySet<string> = new Set(['game', 'home']);
+/** A page's social card: the English card, or its zh-CN twin with the title in Chinese (tools/marketing-shots/generate-og-images.mjs).
+ *  The folder is new per design round (og-r2, 2026-11-01), so a platform that caches a card by URL fetches the new one. */
 export function socialCardUrl(card: string, locale: SupportedLocale): string {
-  return `${SITE_ORIGIN}/brand/og/${locale === 'zh-CN' ? 'zh/' : ''}${card}.jpg`;
+  return `${SITE_ORIGIN}/brand/og-r2/${locale === 'zh-CN' && !WORDLESS_CARDS.has(card) ? 'zh/' : ''}${card}.jpg`;
 }
 
 export function localizedGameMetadata(locale: SupportedLocale): SiteMetadata {

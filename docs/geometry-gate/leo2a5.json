@@ -1,6 +1,6 @@
 {
  "id": "leo2a5",
- "geoMin": 69.2,
+ "geoMin": 68.3,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -15,20 +15,20 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": false,
- "rawGeoMin": 69.19288862158055,
+ "rawGeoMin": 68.34307989684545,
  "rawComponents": {
   "hullCurves": 92.04503690034979,
-  "stations": 86.60378085068744,
-  "turretCurves": 84.9828693580211,
-  "wholeCurves": 69.19288862158055,
+  "stations": 86.60320655197964,
+  "turretCurves": 84.93706098269287,
+  "wholeCurves": 68.34307989684545,
   "dims": 100,
   "floaters": 100
  },
  "components": {
   "hullCurves": 92,
   "stations": 86.6,
-  "turretCurves": 85,
-  "wholeCurves": 69.2,
+  "turretCurves": 84.9,
+  "wholeCurves": 68.3,
   "dims": 100,
   "floaters": 100
  },
@@ -144,7 +144,7 @@
    ]
   },
   "side_whole": {
-   "score": 86.58094542954142,
+   "score": 86.54684363901929,
    "meanPct": 0.88,
    "p95Pct": 4.86,
    "coverPct": 0,
@@ -576,8 +576,8 @@
    ]
   },
   "front_whole": {
-   "score": 69.19288862158055,
-   "meanPct": 2.13,
+   "score": 68.34307989684545,
+   "meanPct": 2.2,
    "p95Pct": 8.82,
    "coverPct": 0,
    "reg": {
@@ -686,8 +686,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 84.9828693580211,
-   "meanPct": 1,
+   "score": 84.93706098269287,
+   "meanPct": 1.01,
    "p95Pct": 4.99,
    "coverPct": 0,
    "reg": {
@@ -934,10 +934,10 @@
    "i": 3,
    "refW": 3.483,
    "procW": 3.474,
-   "refTop": 4.117,
-   "procTop": 4.117,
+   "refTop": 2.854,
+   "procTop": 2.854,
    "wPct": 0.2550473122416275,
-   "topPct": 0.01185032856071655
+   "topPct": 0.012539487010095851
   },
   {
    "i": 4,
@@ -1095,6 +1095,7 @@
    "node:vehicle#mg_mount_v_46"
   ]
  },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1167,5 +1168,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leo2a5_x_source.glb",
+  "sha256": "41b3cc644e2e9610b0b47a8e6e193a90929c711e13b10716057942807493ce99"
+ }
 }
