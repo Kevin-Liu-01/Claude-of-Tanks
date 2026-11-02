@@ -27,10 +27,12 @@ const TARGETS = Object.freeze({
     // tower is its only roof gun
     soleRoofWeapon: true,
   }),
+  // 268 r11: beside the sensor tower on the vehicle's right, as photographed; a compact 0.95 station so it clears the
+  // tower's plinth and stays on the roof
   kf51_u: Object.freeze({
-    variant: 'kf51b-panther', mount: [0.30, 0.55, -2.16],
-    sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRiseM: 0.14,
-    minimumWidth: 0.88, minimumHeight: 0.72, weaponRole: 'roof-primary',
+    variant: 'kf51b-panther', mount: [-0.83, 0.605, 0.35],
+    sizeStandard: 'leopard-reduced-tower', scale: 0.95, towerRiseM: 0.14,
+    minimumWidth: 0.80, minimumHeight: 0.66, weaponRole: 'roof-primary',
   }),
   kf51_evo: Object.freeze({
     variant: 'kf51-panther', mount: [0.42, 0.815, -1.72],

@@ -230,7 +230,7 @@ try {
     'KF51B tower uses the same size standard as the Leopard 2A6M');
   assert.equal(rws?.userData.weaponRole, 'roof-primary',
     'KF51B open-yoke station replaces the retired split-shield roof gun');
-  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [0.30, 0.55, -2.16]);
+  assert.deepEqual(attachmentSeat?.roofRws?.mountLocal, [-0.83, 0.605, 0.35]);
   assert.equal(attachmentSeat?.roofRws?.visibleFeedBelt, true);
   // 267 (the real Eurosatory 2024 KF51-U): the three crew ride in the hull under the KF51 front armour's flat crew roof,
   // ahead of the uncrewed turret; the Leopard bow's glacis spare links went under that armour
@@ -242,15 +242,12 @@ try {
   assert.equal(turretHatches.length, 0, 'KF51-U turret is uncrewed: no turret hatches');
   assert.equal(attachmentSeat?.uncrewedTurret, true, 'KF51-U publishes its uncrewed turret');
   assert.equal(attachmentSeat?.hullCrewStations, 3, 'KF51-U publishes its three hull crew stations');
-  assert.deepEqual(attachmentSeat?.multispectralSight?.centerLocal, [-0.74, 0.52, 1.27],
-    'KF51B multispectral sight housing rises above the fore-roof skin');
-  closeTo(attachmentSeat?.multispectralSight?.apertureCenterY, 0.57);
-  assert.ok(attachmentSeat?.multispectralSight?.apertureCenterY > 0.56,
-    'KF51B multispectral apertures rise with their armored housing');
-  assert.equal(attachmentSeat?.multispectralSight?.liftM, 0.18,
-    'KF51B sight lift remains an explicit local-frame seating adjustment');
-  assert.equal(attachmentSeat?.multispectralSight?.rigidApertureLift, true,
-    'KF51B sight glass cannot detach from its raised housing');
+  // 268 r11: the sight stands flush in a vertical face cut into the cheek nose, under the roof line (y 0.53 there)
+  const sight = attachmentSeat?.multispectralSight;
+  assert.equal(sight?.mounting, 'vertical-cheek-cut', 'KF51-U cheek sight sits in the cheek, not on it');
+  assert.deepEqual(sight?.centerLocal, [-0.70, 0.395, 1.3756]);
+  assert.ok(sight.faceBottomY < sight.apertureCenterY && sight.apertureCenterY < sight.faceTopY && sight.faceTopY < 0.50,
+    'KF51-U cheek sight window lies within its face, and the face stays under the roof line');
   assert.equal(attachmentSeat?.sidePanelStations.length, 7,
     'KF51B carries a complete seven-station flank panel course');
   for (let i = 1; i < attachmentSeat.sidePanelStations.length; i++) {

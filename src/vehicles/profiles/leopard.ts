@@ -9331,7 +9331,6 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     0.56, 0.56, 0.60, 0.63, 0.58,
   ] as const;
   const turretRoofCenterHeightM = 0.66;
-  const multispectralSightLiftM = 0.18;
 
   // §5.299 kf51_u FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
@@ -9680,42 +9679,37 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
         [s * 1.34, 0.36, 0.04], s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, s * 0.08);
     }
 
-    // Large recessed multispectral sight on the owner's left-front cheek.
-    // Keep the pitched housing rooted in the wedge, but expose its upper body:
-    // the former 0.34 m center buried nearly the complete marked front face
-    // beneath the rising fore-roof. Lift the housing and both apertures as one
-    // rigid assembly so the glass never separates from its armored surround.
-    // 268 (owner: the cheek "lights" read odd): the cheek's sensor group as photographed (Commons KF-51U_01/02/03/09):
-    // a body-coloured housing whose face carries the bolted window (a large round lens inboard, a small round lens over
-    // a teardrop outboard), the twin-lens pod under its sloped hood below it, and a camera pair outboard; the two square
-    // glass panes it had read as headlamps.
-    const sightY = 0.34 + multispectralSightLiftM;
-    const sightFace = (u: number, v: number, depth: number): [number, number, number] => {
-      const c = Math.cos(-0.20), sn = Math.sin(-0.20), w = 0.09 + depth;
-      return [-0.74 + u, sightY + v * c - w * sn, 1.27 + v * sn + w * c];
+    // Large multispectral sight on the owner's left-front cheek (the vehicle's right).
+    // 268 r11 (owner 11-01 "stuff on sides not flush with the turret"; Main's r11 order; blind critics, r10: "the cheek
+    // sensor housing stands proud on top of the cheek like a separate box ... sunk into the angled cheek face"): the
+    // cheek's two front facets lean back 49 and 62 degrees, so no upright housing can stand on them without rising over
+    // the roof line. The cheek nose is cut square instead: a wedge on the turret's own swept front edge (the shoulder
+    // ring, y 0.25) rises as a vertical face to a shelf at y 0.47, under the roof, whose back meets the upper facet. The
+    // sensor group of the photographs (Commons KF-51U_01/02/03/09) sits in that face: the bolted window (a large round
+    // lens inboard, a small round lens over a teardrop outboard), the twin-lens pod under its hood below it, and the
+    // camera pair outboard. Nothing stands above the turret's surface.
+    const cheekFaceZ = (x: number): number => 1.270 + (x + 0.98) * (1.451 - 1.270) / 0.48;   // the swept edge at y 0.25
+    const cheekShelfBackZ = (x: number): number => (0.9289 + 0.031 * x - 0.882 * 0.47) / 0.47;  // upper facet at y 0.47
+    const cheekYaw = -Math.atan2(0.181, 0.48);                                                  // the face's outward sweep
+    const onCheek = (bucket: string, geometry: THREE.BufferGeometry, x: number, y: number, depth: number): void => {
+      P.add(bucket, geometry, x + Math.sin(cheekYaw) * depth, y, cheekFaceZ(x) + Math.cos(cheekYaw) * depth, 0, cheekYaw, 0);
     };
-    const onSight = (bucket: string, geometry: THREE.BufferGeometry, u: number, v: number, depth: number): void => {
-      const [x, y, z] = sightFace(u, v, depth);
-      P.add(bucket, geometry, x, y, z, -0.20, 0, 0);
-    };
-    // the housing rises from the roof as one block: its face pitched as before, its top falling back into the roof at
-    // z 0.84 (roof y 0.58) so it reads as part of the turret's cheek, not a box stood on the wedge
     P.add('turret', convexSlab(
-      sightFace(-0.22, -0.243, 0), sightFace(0.22, -0.243, 0), [-0.52, 0.30, 0.84], [-0.96, 0.30, 0.84],
-      sightFace(-0.20, 0.17, 0), sightFace(0.20, 0.17, 0), [-0.54, 0.60, 0.84], [-0.94, 0.60, 0.84]));
-    onSight('turretDark', box(0.27, 0.19, 0.02), 0.03, 0.05, 0.0);                              // window recess
-    onSight('turretDetail', box(0.245, 0.165, 0.02), 0.03, 0.05, 0.008);                       // bolted frame
-    onSight('turretDark', cylZ(0.060, 0.012, P.q ? 24 : 14), 0.075, 0.05, 0.019);
-    onSight('turretGlass', cylZ(0.053, 0.006, P.q ? 24 : 14), 0.075, 0.05, 0.026);              // large lens, inboard
-    onSight('turretDark', cylZ(0.024, 0.012, 14), -0.045, 0.095, 0.019);                       // small round lens
-    onSight('turretDark', cylZ(0.021, 0.012, 12), -0.045, 0.035, 0.019);                       // teardrop head
-    onSight('turretDark', box(0.028, 0.030, 0.012), -0.045, 0.016, 0.019);                     // and tail
-    onSight('turret', convexSlab(                                                              // twin-lens pod hood
-      [-0.10, -0.15, 0.0], [0.13, -0.15, 0.0], [0.13, -0.15, 0.07], [-0.10, -0.15, 0.07],
-      [-0.12, -0.07, 0.0], [0.15, -0.07, 0.0], [0.15, -0.07, 0.05], [-0.12, -0.07, 0.05]), 0, 0, 0);
-    for (const du of [-0.025, 0.055]) onSight('turretDark', cylZ(0.027, 0.012, 14), du, -0.112, 0.068);
-    onSight('turretDark', box(0.055, 0.13, 0.02), -0.17, -0.07, 0.0);                          // camera pair, outboard
-    for (const dv of [-0.04, -0.10]) onSight('turretGlass', cylZ(0.018, 0.008, 12), -0.17, dv, 0.012);
+      [-0.98, 0.25, cheekFaceZ(-0.98)], [-0.50, 0.25, cheekFaceZ(-0.50)], [-0.50, 0.25, 1.03], [-0.98, 0.25, 1.03],
+      [-0.98, 0.47, cheekFaceZ(-0.98)], [-0.50, 0.47, cheekFaceZ(-0.50)],
+      [-0.50, 0.47, cheekShelfBackZ(-0.50)], [-0.98, 0.47, cheekShelfBackZ(-0.98)]));
+    const sightX = -0.70, sightY = 0.395;
+    onCheek('turretDark', box(0.25, 0.145, 0.02), sightX, sightY, 0.0);                         // window recess
+    onCheek('turretDetail', box(0.23, 0.125, 0.02), sightX, sightY, 0.008);                     // bolted frame
+    onCheek('turretDark', cylZ(0.050, 0.012, P.q ? 24 : 14), sightX + 0.05, sightY, 0.019);
+    onCheek('turretGlass', cylZ(0.044, 0.006, P.q ? 24 : 14), sightX + 0.05, sightY, 0.026);    // large lens, inboard
+    onCheek('turretDark', cylZ(0.020, 0.012, 14), sightX - 0.055, sightY + 0.030, 0.019);       // small round lens
+    onCheek('turretDark', cylZ(0.017, 0.012, 12), sightX - 0.055, sightY - 0.015, 0.019);       // teardrop head
+    onCheek('turretDark', box(0.022, 0.024, 0.012), sightX - 0.055, sightY - 0.032, 0.019);     // and tail
+    onCheek('turret', box(0.17, 0.035, 0.05), sightX + 0.01, 0.300, 0.025);                     // twin-lens pod hood
+    for (const dx of [-0.025, 0.045]) onCheek('turretDark', cylZ(0.022, 0.012, 14), sightX + dx, 0.272, 0.032);
+    onCheek('turretDark', box(0.05, 0.12, 0.02), -0.885, 0.36, 0.0);                           // camera pair, outboard
+    for (const y of [0.39, 0.33]) onCheek('turretGlass', cylZ(0.016, 0.008, 12), -0.885, y, 0.012);
 
     // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The retired 390 mm
     // round-ended shroud left a toy-like seam between the barrel and the broad
@@ -9820,7 +9814,7 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // plinth, a faceted head with raked, chamfered cheeks either side of the window, a chin below it and a brow over it;
     // the window is a body-coloured bolted frame holding the dark lens cluster (one large round lens, a small round one
     // over a teardrop, a pin lens), flush with the cheeks' front edge under the brow (no water-holding recess). The launcher stack stands on the vehicle's left and the
-    // bolted electronics box on its right, as the photographs show (they had been mirrored).
+    // RWS on its right (r11), as the photographs show (the stack had been mirrored).
     const towerFace = -Math.atan2(0.06, 0.44);
     P.add('turret', convexSlab(
       [-0.42, 0.60, 0.82], [0.42, 0.60, 0.82], [0.42, 0.60, 0.10], [-0.42, 0.60, 0.10],
@@ -9859,8 +9853,6 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       P.add('turretDetail', cylZ(0.048, 0.22, 12), 0.47, y, 0.66, -0.10, 0.45, 0);
       P.add('turretDark', cylZ(0.040, 0.012, 12), 0.52, y + 0.01, 0.76, -0.10, 0.45, 0);
     }
-    P.add('turret', box(0.16, 0.20, 0.30), -0.50, 0.71, 0.58);                            // bolted electronics box, right
-    P.add('turretDark', box(0.12, 0.13, 0.012), -0.50, 0.72, 0.735);
     for (const s of [-1, 1] as const) {
       // Iron Fist twin launcher on its turntable, canted out, up and forward
       P.add('turretDark', cylY(0.12, 0.13, 0.07, 14), s * 1.06, 0.62, -1.38);
@@ -9932,10 +9924,13 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
   // thin post and exposed no coherent feed/sensor mechanism. This shares
   // the 2A6M's powered open-yoke architecture and scale, while the Panther
   // variant adds a faceted armored brow, twin apertures and canted cheeks.
+  // 268 r11 (Main's r11 order; blind critics, r10): the photographs (Commons KF-51U_02/12) carry the RWS beside the
+  // sensor tower on the vehicle's right, not at the turret's back; a compact 0.95 station (its ammunition box outboard)
+  // stands on the roof there clear of the tower's plinth (x -0.42)
   const kf51bRoofRws = addLeopardOpenYokeAuxRws(P, {
-    x: 0.30, y: 0.55, z: -2.16,
-    variant: 'kf51b-panther', ammoSide: 1, sensorSide: -1, yaw: -0.025,
-    weaponRole: 'roof-primary',
+    x: -0.83, y: 0.605, z: 0.35,
+    variant: 'kf51b-panther', ammoSide: -1, sensorSide: 1, yaw: 0,
+    weaponRole: 'roof-primary', scale: 0.95,
   });
   const buildKF51OwnerExactTurretStage2 = (): void => {
     P.turretG.userData.openYokeRwsReceipt = kf51bRoofRws;
@@ -9989,11 +9984,13 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       uncrewedTurret: true,
       hullCrewStations: 3,
       roofSeamY: 0.587,
+      // 268 r11: the window stands in the vertical face cut into the cheek nose (y 0.25-0.47), under the roof line
       multispectralSight: Object.freeze({
-        centerLocal: Object.freeze([-0.74, 0.34 + multispectralSightLiftM, 1.27]),
-        apertureCenterY: 0.39 + multispectralSightLiftM,
-        liftM: multispectralSightLiftM,
-        rigidApertureLift: true,
+        mounting: 'vertical-cheek-cut',
+        centerLocal: Object.freeze([-0.70, 0.395, 1.3756]),
+        apertureCenterY: 0.395,
+        faceBottomY: 0.25,
+        faceTopY: 0.47,
       }),
       sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
         .map((z) => ({ z, wallX: turretPanelWallXAt(z) })),

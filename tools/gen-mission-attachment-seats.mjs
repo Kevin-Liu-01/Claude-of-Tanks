@@ -26,6 +26,10 @@ const AUTHORED_DOCKS=[
  // and the pad cantilevers 0.24 m forward over the left cheek, outside the gun mask's ±90 degree sweep. The native grid
  // and its cantilever pass do not reach this foot/offset pair, so the seat is offered first (standard rise; every check runs).
  {id:'cv90',chosen:{frame:'turret',x:.6,y:.747,z:.46,payloadOffset:[0,.24]}},
+ // 2026-11-02 (268 r11, the KF51-U's RWS moved beside the sensor tower as photographed): the tower top that carried the
+ // dock is now under the RWS barrel's sweep, and the suit nets the rest of the roof; the dock takes the roof plate the
+ // RWS left at the turret's back (installed frame; roof y 0.634 there), clear of that sweep, in the suit's hole for it.
+ {id:'kf51_u',chosen:{frame:'turret',x:.315,y:.679,z:-2.205}},
 ];
 const hintsPath=value('--hints',''),fileHints=hintsPath?JSON.parse(fs.readFileSync(hintsPath)):[];
 const hintRows=[...AUTHORED_DOCKS.filter(dock=>!fileHints.some(row=>row.id===dock.id)),...fileHints];
