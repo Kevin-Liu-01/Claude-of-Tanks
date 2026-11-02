@@ -167,7 +167,11 @@ interval from its body to its body with its stowage.
 ### Oracle pins and the roster
 
 Every registered oracle is pinned by sha256 in `tools/oracle-pins.mjs`
-(Main 2026-11-01). The gate hashes the file it would load and refuses a file
+(Main 2026-11-01), and so is every graft source a certificate seats in one
+(`t90a_burlak_proto`: the Burlak X turret on the T-90A X hull). The page lists
+each id's files (`window.__REFERENCE_FILES`); the gate serves exactly those,
+records the graft beside the oracle, and the changed-only step keys both. The
+gate hashes each file it would load and refuses a file
 whose bytes are not its pin, or a path with no pin, before the page loads; the
 error names the pinned hash (under `--repin` the row is kept, marked
 `repinError`, and `--skipped` names the id), so no record is measured on an

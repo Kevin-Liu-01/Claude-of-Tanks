@@ -23,7 +23,8 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // and ledger row untouched, never thrown on or recorded as unavailable. --skipped=<file> writes { id: reason } for every
 // requested registered id the run did not measure (an absent oracle, or a page error that kept its previous row), so the
 // changed-only chain leaves them due. Every record names its oracle: { path, sha256 }, the registry's path as the page
-// fetches it and the sha256 of that file's bytes (the gate step's per-id input). --oracles-only measures nothing and
+// fetches it and the sha256 of that file's bytes (the gate step's per-id input), and the graft source a certificate seats in
+// it as { graft: { path, sha256 } } (267: t90a_burlak_proto), pinned and keyed alike. --oracles-only measures nothing and
 // writes that field into each requested (or every) id's existing record where the oracle file is here.
 // Oracle pins (Main 2026-11-01, 267): an oracle whose bytes do not match its pin in tools/oracle-pins.mjs is a different
 // version: the gate refuses it before loading the page, naming the pinned sha256 (under --repin the row is kept, marked
@@ -73,13 +74,21 @@ const localAssetPath = (assetPath) => {
 /** The oracle a record names: the registry's path as the page fetches it and the sha256 of the file's bytes. */
 const oracleOf = (assetPath) => ({ path: assetPath, sha256: crypto.createHash('sha256').update(fs.readFileSync(localAssetPath(assetPath))).digest('hex') });
 let referenceSourceOf = {};
+/** id -> every public file its registration loads (the page's __REFERENCE_FILES): its oracle, then a graft source. */
+let referenceFilesOf = {};
+const filesOf = (id) => referenceFilesOf[id] ?? (referenceSourceOf[id] ? [referenceSourceOf[id]] : []);
+/** A record's oracle with the graft source a certificate seats in it (267: t90a_burlak_proto), each pinned and keyed. */
+const oracleRecordOf = (id) => {
+  const [file, graft] = filesOf(id);
+  return graft ? { ...oracleOf(file), graft: oracleOf(graft) } : oracleOf(file);
+};
 function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars) {
   const registered = new Set(referenceIds);
   assertNoPhotoOverride(requested??[],registered);
-  const available = new Set(referenceIds.filter((id) => {
-    const localPath = localAssetPath(referenceSources[id]);
+  const available = new Set(referenceIds.filter((id) => filesOf(id).length && filesOf(id).every((file) => {
+    const localPath = localAssetPath(file);
     return localPath && fs.existsSync(localPath);
-  }));
+  })));
   const ids = requested
     ? requested.filter((id) => available.has(id))
     : referenceIds.filter((id) => available.has(id));
@@ -117,8 +126,9 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
 /** Public files a page of this run loaded outside the gate step's key (267): any one fails the run. */
 const refusedPublic = [];
 async function withRegistryPage(run, dependencies = {}) {
-  // 267: the requested ids' registered oracles (none before discovery, which loads no oracle) and GATE_PAGE_PUBLIC
-  const oracles = Object.entries(referenceSourceOf).filter(([id, file]) => file && (!requested || requested.includes(id))).map(([, file]) => file);
+  // 267: every file the requested ids' registrations load (their oracles and declared grafts; none before discovery, which
+  // loads no oracle) and GATE_PAGE_PUBLIC
+  const oracles = Object.keys(referenceSourceOf).filter((id) => !requested || requested.includes(id)).flatMap(filesOf);
   return await withIsolatedCaptureBrowser({
     root: ROOT,
     logLevel: 'error',
@@ -159,6 +169,7 @@ const ids = await withRegistryPage(async ({ page }) => {
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
   const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
   referenceSourceOf = referenceSources;
+  referenceFilesOf = await page.evaluate('window.__REFERENCE_FILES') ?? {};
   playableIds = await page.evaluate('window.__PLAYABLE_IDS');
   if (REGISTRY_FILE) {
     fs.writeFileSync(REGISTRY_FILE, `${JSON.stringify({ referenceSources, playable: [...playableIds].sort() }, null, 1)}\n`);
@@ -174,7 +185,7 @@ if (ORACLES_ONLY) {
     const file = path.join(OUT, `${id}.json`);
     if (!fs.existsSync(file)) continue;
     const text = fs.readFileSync(file, 'utf8'), record = JSON.parse(text);
-    const next = `${JSON.stringify({ ...record, oracle: oracleOf(referenceSourceOf[id]) }, null, 1)}\n`;
+    const next = `${JSON.stringify({ ...record, oracle: oracleRecordOf(id) }, null, 1)}\n`;
     if (next !== text) { fs.writeFileSync(file, next); named++; }
   }
   console.log(`geometry-gate --oracles-only: ${named} record(s) name their oracle (${ids.length} id(s) with an oracle here)`);
@@ -184,9 +195,11 @@ await eachBrowserChunk('tools/geometry-gate.mjs', ids, (chunk, { launch }) => wi
   const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
   for (const id of chunk) {
     try {
-      const oracle = oracleOf(referenceSourceOf[id]);
-      const pinError = oraclePinError(oracle.path, oracle.sha256, ORACLE_PINS);
-      if (pinError) throw new Error(pinError);
+      const oracle = oracleRecordOf(id);
+      for (const file of [oracle, ...(oracle.graft ? [oracle.graft] : [])]) {
+        const pinError = oraclePinError(file.path, file.sha256, ORACLE_PINS);
+        if (pinError) throw new Error(pinError);
+      }
       let rawSourceComparison=null;
       if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded'});
