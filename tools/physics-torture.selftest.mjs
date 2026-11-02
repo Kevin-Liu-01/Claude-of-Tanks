@@ -177,8 +177,11 @@ check('drive-trench', 'low', 'earth', [
 // down at 7.5 m/s, three steps of contact on and off: p99 2272, where its old span read under 1300. An open item: the
 // lip's chatter under a short tail.)
 // (2150, the far wall's grip, movement.ts STRIKE_FRICTION: its nose no longer rides up the far wall and drops back, p99 2089)
+// (2300, physics 268, tankContactShape.ts: the power pack's share with its final drives and the hull's armour put the
+// Bradley's centre of mass 0.10 m ahead of its tracks' middle, where it read 0.00; its tail leaves the near lip with less
+// weight on it and the lip's chatter under its short tail, the open item above, is back at p99 2272)
 check('drive-assault-trench', 'tall', 'earth', [
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 2150, 'before: 1856'),
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 2300, 'before: 1856'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the

@@ -98,6 +98,9 @@ const armor: ArmorEnvelope = {
   ],
   modules: [
     moduleBox('engine', [-0.52, 0.35, -2.67], [0.52, 0.64, -2.43]),
+    // 267: the cross-drive transmission across the rear hull ahead of the rear sprockets, above the sloped lower rear
+    // plate (the transmission derived from the engine box sat 96% under that plate, outside the armour)
+    moduleBox('transmission', [-0.66, 0.64, -2.76], [0.66, 0.98, -2.32]),
     moduleBox('fuelTank', [-0.72, 0.35, -1.25], [0.72, 0.75, -0.75]),
     moduleBox('ammoRack', [-0.60, 0.40, -0.70], [0.60, 0.70, -0.10]),
     moduleBox('missileRack', [-0.65, 0.40, -1.45], [0.65, 0.68, -0.85]),
@@ -184,7 +187,8 @@ const ttsArmor: ArmorEnvelope = {
     leftSidePlate('m551a1_tts_bustle_L', 48, 1.30, 0.12, 1.30, 0.86,
       -1.78, -0.54, { keMm: 82, ceMm: 108 }),
   ],
-  modules: armor.modules.map((module) => {
+  // the TTS's extended engine deck keeps the transmission derived from its own engine box
+  modules: armor.modules.filter((module) => module.module !== 'transmission').map((module) => {
     if (module.module === 'engine') {
       return moduleBox('engine', [-1.08, 0.72, -3.50], [1.08, 1.42, -2.52]);
     }

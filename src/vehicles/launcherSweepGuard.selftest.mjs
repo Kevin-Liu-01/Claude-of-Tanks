@@ -10,7 +10,8 @@
 // with its decor: its bands must exist, and no cosmetic hull decor triangle may lie under a band's annulus (7 cm either
 // side) higher than its lowest point less 3.5 cm. Negative control: the Viper planned as if its gun never elevated
 // (gunElevationDeg 0: the launchers seen only at rest and depressed) seats the jerrycan rack under its pods, and this
-// check sees it.
+// check sees it. 266 (the net-hoop class, 0d11e3e081): its field net's roof cloth now turns that rack away on its own
+// ('suit-roof'), so the control also hides the net's cloth from the planner (bareNets).
 import assert from 'node:assert/strict';
 import { Box3, Vector3 } from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -31,16 +32,27 @@ assert.ok(gunLauncherIds.includes('griffin_viper') && gunLauncherIds.length >= 8
 await ensureInteriorFills(gunLauncherIds);
 
 const box = new Box3(), v = new Vector3();
-/** Build `id` with its decor through the factory's planner hook; `planSpec` patches the spec the plan reads. */
-function survey(id, planSpec = null) {
+/** Build `id` with its decor through the factory's planner hook; `planSpec` patches the spec the plan reads; `bareNets`
+ * hides the field suit's nets (decorations.ts reads its roof and drape cloth off meshes named *_net) from the plan only. */
+function survey(id, planSpec = null, bareNets = false) {
   let bands = null, rest = null, plan = null;
   const decorPlanner = (args) => {
     bands = launcherSweepBands(args.turretG, args.spec);
     rest = launcherSweepBands(args.turretG, { gunElevationDeg: 0, gunDepressionDeg: 0 });
-    const steps = planTankDecorationsSteps(planSpec ? { ...args, spec: { ...args.spec, ...planSpec } } : args);
-    let step = steps.next();
-    while (!step.done) step = steps.next();
-    plan = step.value;
+    const nets = [];
+    if (bareNets) for (const g of [args.hullG, args.turretG]) {
+      g.traverse((o) => { if (o.isMesh && o.userData.fieldSuit === true && /_net$/.test(o.name)) nets.push([o, o.name]); });
+    }
+    assert.ok(!bareNets || nets.length > 0, `${id}: a field net to hide`);
+    for (const [o, name] of nets) o.name = `${name}_bare`;
+    try {
+      const steps = planTankDecorationsSteps(planSpec ? { ...args, spec: { ...args.spec, ...planSpec } } : args);
+      let step = steps.next();
+      while (!step.done) step = steps.next();
+      plan = step.value;
+    } finally {
+      for (const [o, name] of nets) o.name = name;
+    }
     return plan;
   };
   const steps = createTankSteps(id, null, { proceduralOnly: true, decor: true, quality: 'high', geometryQuality: 'high', camoSeed: 4242, decorPlanner });
@@ -84,7 +96,7 @@ function survey(id, planSpec = null) {
 }
 
 // Negative control first: the Viper's decor as the rest-pose guard left it, a jerrycan rack under the elevated pods.
-const before = survey('griffin_viper', { gunElevationDeg: 0 });
+const before = survey('griffin_viper', { gunElevationDeg: 0 }, true);
 assert.ok(before.under > 0, `griffin_viper planned without the pods' elevation seats hull decor under them (${before.under} triangles)`);
 assert.equal(before.turnedAway, 0, 'with no elevation the pods sweep nothing the guard turns away');
 // piece for piece (one traversal order), the bands reach down where the pods' rear swings at full elevation

@@ -50,7 +50,7 @@ const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
 const { authoredCombatAnatomy, finalizeCombatAnatomy, moduleHitShapes } = await import('../src/vehicles/combatAnatomy.ts');
 const { combatAnatomyCalibration } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
-const { fitCrewSeats, placeModules } = await import('./crew-seat-fit.mjs');
+const { fitCrewSeats, MODULE_OUTSIDE_SHARE_LIMIT, placeModules } = await import('./crew-seat-fit.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -764,9 +764,9 @@ function receiptFor(id) {
   }
 }
 
-/** A module sketch with this share of its box outside its armour, or keeping less than DATA_FIX_KEPT_SHARE of it once
- *  placed, is reported as a data fix. */
-const DATA_FIX_OUTSIDE_SHARE = 0.3;
+/** A module sketch with MODULE_OUTSIDE_SHARE_LIMIT of its box outside its armour (crew-seat-fit.mjs; the
+ *  module-outside-share receipt fails on it), or keeping less than DATA_FIX_KEPT_SHARE of it once placed, is reported
+ *  as a data fix. */
 const DATA_FIX_KEPT_SHARE = 0.1;
 
 /**
@@ -784,7 +784,7 @@ function seatsFor(id, calibration) {
   // a sketch that lies largely outside its armour, or has almost no room, is wrong data: the pass keeps what fits, and
   // says so
   for (const entry of report) {
-    if (entry.outside >= DATA_FIX_OUTSIDE_SHARE || entry.kept < DATA_FIX_KEPT_SHARE || entry.unplaced) {
+    if (entry.outside >= MODULE_OUTSIDE_SHARE_LIMIT || entry.kept < DATA_FIX_KEPT_SHARE || entry.unplaced) {
       console.log(`[combat-anatomy] data fix: ${id} ${entry.module} (${entry.frame}) sketch ${entry.sketchedL} L, `
         + `${Math.round(entry.outside * 100)}% outside its armour, ${Math.round(entry.kept * 100)}% kept${entry.unplaced ? ', UNPLACED' : ''}`);
     }

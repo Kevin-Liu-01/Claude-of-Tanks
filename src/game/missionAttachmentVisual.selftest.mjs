@@ -155,7 +155,7 @@ for(const id of ['m1a1_abrams_hc','t90am','leclerc_s1','strv103b','leo2_improved
   const entity={id,team:'alpha',spec,state:{pos:tank.root.position.clone(),yaw:.6,turretYaw,visualPitch:.12,visualRoll:-.08,speed:0},combat:{destroyed:false},input:{auxiliaryBits:PLAYER_ACTION_BITS.DRONE,throttle:0,steer:0,fire:false,brake:false,aimPoint:new Vector3()}};
   initializeAerial(entity,matchRulesetFor('drone'));let shell;
   stepAerial(entity,0,1/60,()=>1,s=>{shell=s;});
-  assert.ok(shell&&shell.pos.distanceTo(parked)<1e-8,`${id}: actual native dock and authoritative launch match at yaw ${turretYaw}`);
+  assert.ok(shell&&shell.pos.distanceTo(parked)<1e-4,`${id}: actual native dock and authoritative launch match at yaw ${turretYaw} (the inventory's 0.1 mm pivot)`);
  }
  clearMissionAttachment(tank.root);tank.dispose();
 }
