@@ -2537,10 +2537,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     allyAvoidingId = best.id;
     allyClosestM = allyRisk.distance;
     const following = allyRisk.headingDot > 0.55 && allyRisk.along > 0;
+    // the ally follows this hull: the same way, behind it
+    const leading = allyRisk.headingDot > 0.55 && allyRisk.along <= 0;
     const headOn = allyRisk.headingDot < -0.25;
     // Human drivers cannot participate in our deterministic bot ID handshake.
     const hasPriority = !best.isPlayer && String(entity.id) < String(best.id);
-    const mustYield = following || !hasPriority;
+    // Exactly one hull of a pair yields (268, item 10b): in a following pair the follower, whatever the ids; a crossing or
+    // head-on meeting goes by the ids. `following || !hasPriority` let both yield (a follower with the priority yielded as
+    // a follower, the hull ahead on the ids), and the pair stood: Infected, Badlands seed 2, a T-55A and a BMP-2 each
+    // yielding to the other about 13 s, 31-38 m off the survivors (ai.allyYield.selftest builds the case).
+    const mustYield = following || (!leading && !hasPriority);
     allyYielding = mustYield;
     // The committed passing path already steers round this ally. An evasive nudge on top of it cancelled the
     // detour's pivot (Cinder Junction 7v7 seed 72839: the detour's -1 plus the head-on +1 left the hull at 0 for

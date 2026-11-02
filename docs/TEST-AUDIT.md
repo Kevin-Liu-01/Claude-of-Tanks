@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1505 | 162.6 |
+| KEEP | 1506 | 162.7 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1118.7 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2161 | 1281.7 | 228.2 |
-| After: the default tier | 1505 | 162.6 | 36.8 |
+| Before: every receipt (npm test without the tiers) | 2162 | 1281.8 | 228.2 |
+| After: the default tier | 1506 | 162.7 | 36.8 |
 
 Default tier: 12.7 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.0 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/module-outside-share.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite) | test:heavy -- fleet; test:recommend flags it when its inputs change |
 
-## KEEP (1505)
+## KEEP (1506)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1158,6 +1158,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/profiles/kv2Dimensions.selftest.mjs` | 4.7 | KEEP | vehicle rule, 4.7 s: 262 (owner 2026-10-27: "update/redesign ... turrets and hullls as well based on proper historical referrences | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/foliageSeeThrough.selftest.mjs` | 4.7 | KEEP | world rule, 4.7 s: item 259: See-through foliage is off by default, and off clears no foliage | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/world/battleScaleExactness.selftest.mjs` | 4.4 | KEEP | world rule, 4.4 s: perf-249: the battle step's cheaper reads answer as before, to the bit | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.plannedLeg.selftest.mjs` | 4.4 | KEEP | game flow, 4.4 s: 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corner | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/ui/technicalDrawing.selftest.mjs` | 4.3 | KEEP | interface contract, 4.3 s: The technical drawings' receipts (258; the owner, 2026-10-26: "make all technical drawings much better and muc | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/weaponCoverage.selftest.mjs` | 4.0 | KEEP | audio contract, 4.0 s: weaponCoverage.selftest.mjs — every weapon station of every playable vehicle sounds (AU.02, the audio stream, | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/engine/volumetricClouds.selftest.mjs` | 4.0 | KEEP | renderer contract, 4.0 s: Round 68 (2026-09-24): the volumetric cloud layer, pinned without a GPU. The noise bakes (cloudNoise.ts) are d | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2310,4 +2311,4 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/game/ai.plannedLeg.selftest.mjs` | n/a | KEEP | game flow, n/a s: 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corner | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/game/ai.allyYield.selftest.mjs` | n/a | KEEP | game flow, n/a s: 268 (Main item 10b): exactly one hull of an ally pair yields; the follower in a following pair, whatever the i | default tier (npm test, the release gate; lane mode by its closure) |
