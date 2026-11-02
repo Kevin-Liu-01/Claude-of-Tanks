@@ -147,11 +147,13 @@ const mean = (f) => deals.reduce((n, d) => n + f(d), 0) / deals.length;
 const meeting = deals.filter(asks).length, meanKills = mean((d) => d.kills), meanAdvance = mean((d) => d.advance);
 // Main's bars (2026-11-02). OUTCOME, chaotic deal by deal: the owner's bar is 21 of the 24 meeting the three asks and the
 // wave's mean kills at least 5.0 of 6. It is held as a KNOWN ratchet (Main, 2026-11-02): the receipt fails below the level
-// the fixes have reached (item 10: 19 of 24, 4.79; the shortfall is the human sortie's fire, not the zombies' conduct) and
-// tightens to each new level a fix reaches; every run prints the owner's bar and the gap, so a pass never reads as the bar
-// met. CONDUCT, a defect on any deal: standing still at most 5 % and advance at least 0.6 on every deal, the mean advance at
-// least 0.8.
-const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET = { deals: 19, meanKills: 4.79 };
+// the honest code reaches (the shortfall is the human sortie's fire, not the zombies' conduct) and tightens to each new
+// level a fix reaches; every run prints the owner's bar and the gap, so a pass never reads as the bar met. Reset once, by
+// Main's ruling: first set at 19 of 24, 4.79, a level that counted a deal a defect helped (item 10's hold-off turned a
+// rusher with its orbit off any hull, ai.honestSenses red; scoped to its own target, seed 17 fell 5 -> 3 and seed 20
+// 6 -> 5), it records 18 of 24, 4.67. CONDUCT, a defect on any deal: standing still at most 5 % and advance at least 0.6 on
+// every deal, the mean advance at least 0.8.
+const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET = { deals: 18, meanKills: 4.67 };
 const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
 const killsAt = Math.round(meanKills * 100) / 100;
 const shortDeals = Math.max(0, OWNER_OUTCOME.deals - meeting), shortKills = Math.max(0, Math.round((OWNER_OUTCOME.meanKills - killsAt) * 100) / 100);
