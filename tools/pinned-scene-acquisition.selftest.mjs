@@ -60,7 +60,7 @@ delete D.game;
 assert.throws(() => invoke(capturePinnedScene), /roster unavailable/);
 
 // The map's camouflage (2026-10-06): the pinned M1A2 wore its factory sand on every battlefield. The pools are the
-// game's own (src/vehicles/materials.ts BIOME_PATTERN, the pools the bots' AUTO paint draws from); the tank wears the
+// game's own (src/sim/camoPaint.ts CAMO_BIOME_POOLS, the pools the bots' AUTO paint draws from); the tank wears the
 // first scheme of its map's pool, Verdant's where the map has none.
 const camo = PINNED_SCENE.camo;
 assert.ok(camo && Object.isFrozen(camo) && Object.isFrozen(camo.pools), 'the camouflage pools are read and frozen');

@@ -3,16 +3,20 @@
 import { readFileSync } from 'node:fs';
 
 /**
- * The battlefields' camouflage pools, read from the game's own table (src/vehicles/materials.ts BIOME_PATTERN, the
- * pools the bots' AUTO paint draws from on each map) with the per-tank selection key (materials.ts CAMO_LS_PREFIX).
- * (2026-10-09, fix/camo-defaults: production's camouflage system is restored, so the pools are read from materials.ts
- * again rather than from PR #9's camoPolicy.ts AUTO_CAMO_BIOMES.) Null when the source cannot be read (a copied tools
- * directory): the pin is then a no-op and the tank wears its stored selection.
+ * The battlefields' camouflage pools, read from the game's own table (src/sim/camoPaint.ts CAMO_BIOME_POOLS, the
+ * pools the bots' AUTO paint draws from on each map; 268 moved them there from materials.ts) with the per-tank selection
+ * key (src/vehicles/materials.ts CAMO_LS_PREFIX). (2026-10-09, fix/camo-defaults: production's camouflage system is
+ * restored, so the pools are read from the game's paint tables rather than from PR #9's camoPolicy.ts AUTO_CAMO_BIOMES.)
+ * Null when either source cannot be read (a copied tools directory): the pin is then a no-op and the tank wears its
+ * stored selection.
  */
-export function readMapCamoPools(materialsSource = new URL('../src/vehicles/materials.ts', import.meta.url)) {
-  let materials;
-  try { materials = readFileSync(materialsSource, 'utf8'); } catch { return null; }
-  const table = /const BIOME_PATTERN[^=]*=\s*\{([\s\S]*?)\n\};/.exec(materials);
+export function readMapCamoPools(
+  materialsSource = new URL('../src/vehicles/materials.ts', import.meta.url),
+  poolsSource = new URL('../src/sim/camoPaint.ts', import.meta.url),
+) {
+  let materials, paint;
+  try { materials = readFileSync(materialsSource, 'utf8'); paint = readFileSync(poolsSource, 'utf8'); } catch { return null; }
+  const table = /const CAMO_BIOME_POOLS[^=]*=\s*Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(paint);
   const prefix = /const CAMO_LS_PREFIX = '([^']+)';/.exec(materials);
   if (!table || !prefix) return null;
   const pools = {};
