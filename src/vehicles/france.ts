@@ -911,14 +911,19 @@ function buildAMX40(P: FranceBuilderPort): void {
   // ~1.96-2.06 world (plan cols x ±0.38..0.50: 1.978) with only the
   // CENTER course reaching the 2.39 face — the r1 full-width 2.28/2.40
   // fronts read +0.42 on four plan columns.
+  // 268 (the mantlet met the deck: the 267 sweep found the fixed mount on the hull roof at level ahead and in the engine
+  // deck turned aft, at full elevation from yaw 154): its underside hung 3-13 cm under the print's (gun frame y -0.27..-0.31
+  // to the print's -0.14..-0.27). The web, cradle, saddle, shoulder, cheek ring, tunnel, collar and boot now end at the
+  // turret face's lower line (gun frame -0.215) and rise forward to the print's collar (-0.16), so the whole gun keeps
+  // its clearance at the published stops (franceSpecs.ts).
   const buildWeaponSystem = (): void => {
   P.addGunExtra(slab(                                                           // source-height canted outer mantlet web; its soft facet encloses the oval tunnel without a rectangular shoulder block
-    [-0.72, -0.22, 0.02], [0.62, -0.22, 0.02], [0.58, -0.25, 0.38], [-0.66, -0.25, 0.38],
+    [-0.72, -0.18, 0.02], [0.62, -0.18, 0.02], [0.58, -0.18, 0.38], [-0.66, -0.18, 0.38],
     [-0.62, 0.43, 0.02], [0.54, 0.43, 0.02], [0.51, 0.29, 0.38], [-0.58, 0.29, 0.38]));
   // 266 (both photo critics: "a black ellipse round the gun root reads as a hole into the turret"): the deep oval recess and
   // the oval tunnel take the mantlet's paint, so the cradle and collar read as one solid mantlet.
-  P.addGunExtra(xformWithScale(cylZ(0.41, 0.035, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.50, 0.56, 1]), -0.04, 0.02, 0.275); // deep oval recess behind the CN120 cradle
-  P.addGunExtra(xformWithScale(cylZ(0.36, 0.20, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1.42, 0.64, 1]), -0.04, 0.02, 0.39); // rounded CN120 cradle transition
+  P.addGunExtra(xformWithScale(cylZ(0.41, 0.035, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.50, 0.52, 1]), -0.04, 0.035, 0.275); // deep oval recess behind the CN120 cradle
+  P.addGunExtra(xformWithScale(cylZ(0.36, 0.20, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1.42, 0.59, 1]), -0.04, 0.035, 0.39); // rounded CN120 cradle transition
   P.addGunExtra(slab(                                                           // housing crown chamfer (top 2.36w; at +20° the rear corner rises
     [-0.70, 0.18, 0.18], [0.60, 0.18, 0.18], [0.60, 0.16, 0.38], [-0.70, 0.16, 0.38],
     [-0.66, 0.22, 0.18], [0.56, 0.22, 0.18], [0.56, 0.20, 0.38], [-0.66, 0.20, 0.38])); //   continuously seated over the compact housing)
@@ -944,15 +949,16 @@ function buildAMX40(P: FranceBuilderPort): void {
         [-0.19, y0, z0], [0.25, y0, z0], [0.25, y1, z1], [-0.19, y1, z1]));
     }
   }
-  P.addGunExtra(xformWithScale(cylZ(0.32, 0.12, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.50, 1]), -0.05, 0.015, 0.96); // soft annular cheek continuation, vertically compressed to the source tunnel
-  P.addGunExtra(xformWithScale(cylZ(0.255, 0.045, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.56, 1]), -0.05, 0.015, 1.035); // recessed oval gun tunnel, never a square mask
+  P.addGunExtra(xformWithScale(cylZ(0.32, 0.12, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.385, 1]), -0.05, 0.015, 0.96); // soft annular cheek continuation, vertically compressed to the source tunnel
+  P.addGunExtra(xformWithScale(cylZ(0.255, 0.045, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [1.45, 0.44, 1]), -0.05, 0.015, 1.035); // recessed oval gun tunnel, never a square mask
   // 267 (Sonnet, round 3: "a thick ring with no canvas gaiter; the real one is a ribbed collar under a fabric boot"): the
   // cast collar and the clamp shoulder are a dark ribbed mounting ring and a canvas boot tapering from it to sleeve A's
   // first cinch, with one fold ring (round: the boot is outside the section's 1.20 height scale).
-  P.addGunExtraDark(cylZ(0.215, 0.06, P.q ? 22 : 14), 0.01, 0.005, 1.08);      // mounting ring
-  P.add('gunMountCanvasSkin', cylZ(0.140, 0.52, P.q ? 18 : 12, 0.200), 0.01, 0.005, 1.37);  // canvas boot
-  P.add('gunMountCanvasSkin', cylZ(0.178, 0.05, P.q ? 18 : 12, 0.178), 0.01, 0.005, 1.26);  // its fold
-  P.addGunExtra(cylZ(0.16, 0.16, P.q ? 18 : 12), -0.03, 0, 0.72);              // shorter left trunnion shoulder
+  // 268: the ring and boot to the print's collar (0.32 m across, its foot at -0.16); the fold stands proud of the boot.
+  P.addGunExtraDark(cylZ(0.150, 0.06, P.q ? 22 : 14), 0.01, 0.005, 1.08);      // mounting ring
+  P.add('gunMountCanvasSkin', cylZ(0.132, 0.52, P.q ? 18 : 12, 0.145), 0.01, 0.005, 1.37);  // canvas boot
+  P.add('gunMountCanvasSkin', cylZ(0.152, 0.05, P.q ? 18 : 12, 0.152), 0.01, 0.005, 1.26);  // its fold
+  P.addGunExtra(cylZ(0.14, 0.16, P.q ? 18 : 12), -0.03, 0, 0.72);              // shorter left trunnion shoulder
   // LLLTV/thermal camera box on the mantlet LEFT (print Object_5:
   // x -0.91..-0.27, y 1.82..2.05, z_w 1.89..2.14) — §B3: lens + hood tells
   // 266 (both photo critics: a triangular "shark fin" and a loose wing box where the Saumur turret carries one armoured
@@ -1011,7 +1017,7 @@ function buildAMX40(P: FranceBuilderPort): void {
   // armored camera saddle, continuous into the mantlet. 267 (the depression curve): a mantlet part, it pitches with the
   // gun but does not recoil (it sat in the tube's bucket, so the gun sweep measured it as barrel: 22 mm over the deck at
   // level, and through the engine plateau turned aft)
-  P.addGunExtra(box(0.58, 0.36, 0.14), -0.59, -0.08, 0.50);
+  P.addGunExtra(box(0.58, 0.265, 0.14), -0.59, -0.0325, 0.50);
   // 267 (Opus, round 3: "a flat plank runs forward from the mantlet along the right underside of the gun"): the two
   // thermal-shroud seam rails stood 8 cm out of the sleeve's side; the sleeves are clean, as on the Saumur gun.
   // Thermal shrouds and their cinch rings share one radial dimension, so
