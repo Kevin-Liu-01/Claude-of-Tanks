@@ -283,6 +283,13 @@ export function bodyExtent(curve, hullCurve = null) {
   return { h: top - bot, hMax: tops[tops.length - 1] - bot, len: Math.abs(span[span.length - 1][0] - span[0][0]) };
 }
 
+/** Every dims extent of one side's `{ whole, hull }` traces, by one rule: the hull trace counts only where both models have
+ * component masks (`masked`). A fused oracle has no hull of its own, so there the build, the paired build and the oracle all
+ * take the whole-body extent (266 held only the oracle to it: bm_oplot_m read its hull span 7.405 against 6.825). */
+export function sideBodyExtent(side, masked) {
+  return bodyExtent(side.whole, masked ? side.hull : null);
+}
+
 /** The published hull length a build's hull span is held to. The span is a silhouette (fenders, drums and stern kit in
  * it), so the target is one too: the spec's own silhouette hull length, else its published one. A build on a donor's
  * frame carries the donor's structural hull length without the donor's silhouette (stripSilhouetteDimensions); it is

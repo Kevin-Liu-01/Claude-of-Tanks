@@ -5,7 +5,10 @@
 // later rulings: a published height is an interval (body top to roof-fittings top, whips out of both) and hull length
 // comes from the hull's own trace, so a thick barrel column never counts as hull; that trace is a silhouette, so a build
 // on a donor's frame is held to the donor's silhouette (its own oracle's span beside it), never the structural datum.
+// Every dims extent the page takes goes through one rule (sideBodyExtent, 268): the hull trace only where both models have
+// component masks, so on a fused oracle the build is measured whole-body like the oracle.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import '../src/vehicles/tankFactory.ts';
 import { createTank } from '../src/vehicles/tankFactoryCore.ts';
@@ -13,7 +16,7 @@ import { FITTINGS } from '../src/vehicles/profiles/kit.ts';
 import { TANK_SPECS } from '../src/vehicles/specs.ts';
 import { FLEET_RENEWAL_DONORS } from '../src/vehicles/fleetRenewalSpecs.ts';
 import { AMMO_TOUCH_M, ORACLE_ROOF_FITTING_NODES, bodyExtent, bodyGeometryWithout, columnTrace, heightIntervalPct, hullLengthTarget,
-  isAntennaTag, oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag, trianglesInBoxes } from './body-height-parts.mjs';
+  isAntennaTag, oracleRoofFittingTag, pairedRoofFittings, roofFittingParts, roofFittingTag, sideBodyExtent, trianglesInBoxes } from './body-height-parts.mjs';
 
 const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
 const visible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
@@ -147,6 +150,29 @@ assert.ok(Math.abs(heightIntervalPct(2.2, 2.1, 2.3) - 4.3478260870) < 1e-6, 'a r
   assert.equal(bodyExtent(whole, hull).h, bodyExtent(whole).h, 'the hull trace does not touch the height');
   assert.equal(bodyExtent(whole, Array(30).fill(null)).len, bodyExtent(whole).len, 'no hull trace: the whole-body span');
   assert.equal(bodyExtent(whole).hMax, 2.5);
+  assert.equal(sideBodyExtent({ whole, hull }, true).len, bodyExtent(whole, hull).len, 'both models masked: the hull trace');
+  assert.equal(sideBodyExtent({ whole, hull }, false).len, bodyExtent(whole).len, 'a fused oracle: the whole-body extent');
+  assert.equal(sideBodyExtent({ whole, hull: null }, false).h, bodyExtent(whole).h);
+}
+
+// --- the page takes every dims extent by that one rule ---------------------------------------------------------------
+{
+  const page = readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
+  assert.match(page, /const sideExtent = \(side\) => sideBodyExtent\(side, geometryComponentMasksAvailable\);/,
+    'the rule reads the masks both models have');
+  for (const name of ['procExt', 'procPairedExt', 'refExt']) assert.match(page, new RegExp(`const ${name} = sideExtent\\(`), `${name} by the rule`);
+  // a bodyExtent call given a hull trace bypasses the rule (266: the build's hull span against a fused oracle's whole body)
+  const bypasses = [];
+  for (const at of page.matchAll(/(?<![\w$])bodyExtent\(/g)) {
+    let depth = 1, i = at.index + at[0].length;
+    for (; i < page.length && depth > 0; i++) {
+      if ('([{'.includes(page[i])) depth++;
+      else if (')]}'.includes(page[i])) depth--;
+      else if (page[i] === ',' && depth === 1) { bypasses.push(page.slice(at.index, page.indexOf('\n', at.index))); break; }
+    }
+  }
+  assert.deepEqual(bypasses, [], 'no dims extent in the page takes a hull trace outside sideBodyExtent');
+  assert.ok(page.match(/(?<![\w$])bodyExtent\(/g).length >= 1, 'the scan sees the page\'s bodyExtent calls (the roof top)');
 }
 
 // --- a build on a donor's frame is held to a silhouette hull length, never the donor's structural datum ----------------

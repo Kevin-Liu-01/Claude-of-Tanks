@@ -190,7 +190,12 @@ and record of any id outside the roster, and `node tools/geometry-gate.mjs
   gun, even where a casemate hangs the gun on the hull's rig), never a band
   threshold that barrel columns can cross once the whips stop raising it;
   fenders and mudguards count, as in published hull lengths. A fused oracle
-  has no hull trace, so both sides use the whole-body extent there. That span
+  has no hull trace, so both sides use the whole-body extent there. One rule
+  takes every dims extent (the build's, the paired build's, the oracle's, the
+  build's with its stowage back, the source ruler's): `sideBodyExtent` uses
+  the hull trace only where both models have component masks (268; until then
+  the build's own row kept its hull trace against a fused oracle, so
+  `bm_oplot_m` read 7.405 m against 6.825 m). That span
   is a silhouette, so its target is the spec's `silhouetteHullLengthM` when
   there is one. A build on a donor's frame (`FLEET_RENEWAL_DONORS`, else
   `variantOf`, when its hull length is the donor's own number) lost the

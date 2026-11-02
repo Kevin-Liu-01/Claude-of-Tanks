@@ -38,7 +38,7 @@ import stb1OwnerKitReceipt from '/docs/references/tanks/stb1-owner-kit-receipt.j
 import m60a3OwnerKitReceipt from '/docs/references/tanks/m60a3-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
-import { roofFittingParts, stowageParts, pairedStowage, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
+import { roofFittingParts, stowageParts, pairedStowage, bodyGeometryWithout, isAntennaTag, pairedRoofFittings, columnTrace, bodyExtent, sideBodyExtent, heightIntervalPct, hullLengthTarget } from '/tools/body-height-parts.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
@@ -2056,12 +2056,13 @@ if (params.get('geo')) {
   const sideTraces = (visual, other, mode = 'body', cam = camsG.side) => withBodyOnly(() => ({
     whole: gTrace(gMask(visual, other, cam, 'whole'), cam), hull: gTrace(gMask(visual, other, cam, 'hullBody'), cam),
   }), mode);
+  const sideExtent = (side) => sideBodyExtent(side, geometryComponentMasksAvailable);
   const procSide = sideTraces(procedural, reference);
   const procPairedSide = sideTraces(procedural, reference, 'paired');
   const refSide = sideTraces(reference, procedural, 'paired');
-  const procExt = bodyExtent(procSide.whole, procSide.hull);
-  const procPairedExt = bodyExtent(procPairedSide.whole, geometryComponentMasksAvailable ? procPairedSide.hull : null);
-  const refExt = bodyExtent(refSide.whole, geometryComponentMasksAvailable ? refSide.hull : null);
+  const procExt = sideExtent(procSide);
+  const procPairedExt = sideExtent(procPairedSide);
+  const refExt = sideExtent(refSide);
   const procRoofTop = bodyExtent(sideTraces(procedural, reference, 'roof').whole)?.hMax;
   // columns are CENTERS: a span between first/last centers is one pitch
   // short of the physical extent (refs self-measured ~3% narrow on width)
@@ -2135,8 +2136,8 @@ if (params.get('geo')) {
     const side=sourceDimensionCamera(referenceBox,TRUE_AXES.side);
     const plan=sourceDimensionCamera(referenceBox,TRUE_AXES.plan);
     const measure=(visual,other)=>withBodyOnly(()=>{
-      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side),
-        geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hullBody'),side):null);
+      const body=sideExtent({whole:gTrace(gMask(visual,other,side,'whole'),side),
+        hull:geometryComponentMasksAvailable?gTrace(gMask(visual,other,side,'hullBody'),side):null});
       return {heightM:body?.h,hullLengthM:body?.len,
         overallLengthM:pixelSpanZ('whole',visual,other,side),
         widthM:measurePixelWidth(visual,other,plan)};
@@ -2171,10 +2172,8 @@ if (params.get('geo')) {
       dimRows.push({ name, actual:body, withStowage, published, method:'interval: body to body with its stowage', ...extra,
         pct:heightIntervalPct(body, withStowage, published) });
     };
-    if (ext) stowageLength('hullLengthM', ext.len, buildStowage ? withStowageBack(() => {
-      const side = sideTraces(procedural, reference);
-      return bodyExtent(side.whole, side.hull)?.len;
-    }, 0) : null, hullTarget, hullBasis);
+    if (ext) stowageLength('hullLengthM', ext.len,
+      buildStowage ? withStowageBack(() => sideExtent(sideTraces(procedural, reference))?.len, 0) : null, hullTarget, hullBasis);
     stowageLength('overallLengthM', withBodyOnly(() => pixelSpanZ('whole')),
       buildStowage ? withStowageBack(() => withBodyOnly(() => pixelSpanZ('whole')), 0) : null,
       pub.silhouetteOverallLengthM ?? pub.overallLengthM);
