@@ -328,6 +328,7 @@ assert.deepEqual([unnamedResolve.final.seats.mode, unnamedResolve.final.seats.id
 const stamping = chain(C);
 assert.deepEqual([ranIds(stamping, 'seats'), stamping.final.seats.mode, stamping.final.seats.notRunHere, stamping.final.seats.stamped],
   [['b1'], 'none', undefined, { b1: 'oracle-absent: oracle absent here (/models/b1.glb)' }], 'the absent oracle is stamped with its reason');
+assert.deepEqual(stamping.changedIds, [], 'an id the tool did not run is no regenerated id (the release check names none)');
 assert.match(read(C, 'release/fingerprints.tsv'), /^stamp\tseats\tb1\t[0-9a-f]{16}\t[0-9a-f]{16}\toracle-absent\tpublic\/models\/b1\.glb\toracle absent here \(\/models\/b1\.glb\)$/m);
 const stampedQuiet = snapshot(C);
 assert.deepEqual(chain(C).runs, [], 'a fixture id with a missing oracle reads current: the next chain runs nothing');

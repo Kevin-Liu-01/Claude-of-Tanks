@@ -339,7 +339,9 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
   const started = Date.now();
   const run = definition.device === 'gpu' ? await runGpuStep(definition, scoped, state) : await runCpuStep(definition, scoped, state);
   const seconds = Math.round((Date.now() - started) / 1000);
-  summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code });
+  // (268) the ids the tool reported it could not run are named apart: nothing of theirs was regenerated
+  summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code,
+    ...(Object.keys(run.skipped ?? {}).length ? { notRun: Object.keys(run.skipped).sort() } : {}) });
   saveSummary();
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   // --ids with no table: the rows are not recorded (a partial table would mark every other id unrecorded)
@@ -575,7 +577,8 @@ try {
     const ran = summary.runs.filter((run) => (run.code === 0 || run.dryRun) && !WORLD_NAMES.includes(run.step));
     summary.changedMaps = [...new Set(summary.runs.filter((run) => WORLD_NAMES.includes(run.step) && (run.code === 0 || run.dryRun))
       .flatMap((run) => run.ids))].sort();
-    summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*'] : [...new Set(ran.flatMap((run) => run.ids))].sort();
+    summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*']
+      : [...new Set(ran.flatMap((run) => run.ids.filter((id) => !run.notRun?.includes(id))))].sort();
     if (summary.changedIds.length && !summary.changedIds.includes('*')) {
       log(`[regen] release check for the regenerated ids: npm run tank:release:check -- --ids=${summary.changedIds.join(',')} --gate`);
     }
