@@ -2,7 +2,8 @@
 // tooling: Kevin B. Liu. test:lane hands this every receipt that ended red (STARVED is not red); each is re-run alone
 // here and on the lane's merge base, by the gate's own rule (tools/gate.mjs compareRedReceipt: the first error, paths,
 // temporary directories and timings normalised, a differing pair re-run once):
-//   INHERITED  it fails on the base with the identical failure;
+//   INHERITED  it fails on the base with the same failure (gate.mjs failureKey: other measurements, counts and lists
+//              alike, both texts printed);
 //   OWN        it passes on the base (or is new), or its failure differs from the base's;
 //   FLAKY      it passes alone here: it went red beside the pool (reported, not the lane's).
 // test:lane's exit counts only OWN.
@@ -145,7 +146,11 @@ export function laneRedLines({ rows }, { commit, logDir }) {
     const base = row.base.cached ? ' (base result kept by a lane for these inputs)' : row.base.missing ? ' (no such receipt on the base)' : '';
     const message = row.class === 'FLAKY' ? '' : `: ${first((row.confirm ?? row).here.message)}`;
     lines.push(`  ${row.class} ${row.file}: ${row.why}${base}${message}`);
-    if (row.verdict === 'changed' || row.verdict === 'unstable') lines.push(`    base: ${first(row.base.message)}`);
+    // both texts whenever they differ: an inherited red keyed alike (gate.mjs failureKey) with other measurements too
+    if (row.verdict === 'changed' || row.verdict === 'unstable'
+      || (row.class === 'INHERITED' && first(row.base.message) !== first((row.confirm ?? row).here.message))) {
+      lines.push(`    base: ${first(row.base.message)}`);
+    }
   }
   return lines;
 }
