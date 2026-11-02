@@ -26,15 +26,15 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 3514778,
-      "sha256": "38e94a0f13d2e02e85bd7e5155865d4f268a35d5cf21bb2d5f6b8392d2e25c0a",
+      "bytes": 3514853,
+      "sha256": "fc4961789ef56c30bd4f3dd9cf37306d4e8a43421887e899cb4c4f5cbad29f61",
       "obstacles": 2988,
       "colliders": 8124,
       "concealers": 2491
     },
     "coastal": {
-      "bytes": 1836998,
-      "sha256": "4007d88faf7786edbbfcbabde80e51a5e578b6b91a6ee4232fbdb658e0e861ac",
+      "bytes": 1837005,
+      "sha256": "2141b09143475454807251a2c3cee3ba7cd720338dd4a00a1a2721c25e252255",
       "obstacles": 4141,
       "colliders": 4690,
       "concealers": 3675
@@ -61,8 +61,8 @@
       "concealers": 1904
     },
     "frontier": {
-      "bytes": 2218852,
-      "sha256": "d8d08e92ecb1dff635ca7980facd952de122d6f7f910cee1964b19605771f352",
+      "bytes": 2219079,
+      "sha256": "fa9141f89cdc079bb2ced7a43b08c4239ac2f8cdb3f5fe34d095be3e35efb6ff",
       "obstacles": 8357,
       "colliders": 9047,
       "concealers": 8325
@@ -117,8 +117,8 @@
       "concealers": 2730
     },
     "ruinspires": {
-      "bytes": 5464181,
-      "sha256": "8fd98d280b123b6a864aa1ede7c63fab108f9ed895b96f57f1f1c27049f5c8cd",
+      "bytes": 5464303,
+      "sha256": "2994a2179961dab2bd09432e78361b40e581ae9565cf2bf382a41beb003a65ba",
       "obstacles": 2475,
       "colliders": 8844,
       "concealers": 388
@@ -159,8 +159,8 @@
       "concealers": 958
     },
     "airfield": {
-      "bytes": 1216215,
-      "sha256": "887458f269df8bca53b5b8e7c9fd11338175d717add0d72a5a2c5c6147a8789d",
+      "bytes": 1216344,
+      "sha256": "40871ca87b275850da278d7c164e7da5e7e2ec05814b3b8b111f22fe2b129511",
       "obstacles": 4720,
       "colliders": 5400,
       "concealers": 3872
@@ -173,8 +173,8 @@
       "concealers": 874
     },
     "whiteout": {
-      "bytes": 1529095,
-      "sha256": "7b75505d15897578291889829bb799deab7493e531e13b212fec974d6639ee8a",
+      "bytes": 1529334,
+      "sha256": "fb1fb9f7889c6e7c3475719235a4a161bd8d779428747e64345e2bc28fd45475",
       "obstacles": 1115,
       "colliders": 1408,
       "concealers": 0
@@ -194,15 +194,15 @@
       "concealers": 2285
     },
     "mangrove": {
-      "bytes": 1132437,
-      "sha256": "aa320399c3008ab81336c441878303e17bbb66028483e07b2317470067b57dde",
+      "bytes": 1132715,
+      "sha256": "827f57a400f3006a2c5b601a7709838a8aa3a940b1159dcf23836cc430b37652",
       "obstacles": 5591,
       "colliders": 5568,
       "concealers": 6579
     },
     "saltwind": {
-      "bytes": 2176118,
-      "sha256": "b7788a4a8613064e4c3baac63f763f46f02cfb736cb2cae3fed516a725215331",
+      "bytes": 2176125,
+      "sha256": "86980e783ec6a000fb1337bb1c585229ba61a4ed051e356bc4b18cfa297cbcc2",
       "obstacles": 8503,
       "colliders": 8658,
       "concealers": 4095
@@ -260,15 +260,15 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 3663295,
-        "sha256": "b253dfa3792a2a276e404a9ce4c781fbd8d3cfc4c6c59692fbfb198c3ea39de4",
+        "bytes": 3663370,
+        "sha256": "42302f658c21815f1bf0f31f1907ab0f08e61dd43ad8caaa7dbcc3e0bcbbd1a8",
         "obstacles": 3114,
         "colliders": 8166,
         "concealers": 2491
       },
       "coastal": {
-        "bytes": 2181196,
-        "sha256": "ac9b24f2fdc5501684db86936de8a9d537e607743bf230bc74d9ed4636e81cdb",
+        "bytes": 2181179,
+        "sha256": "7980ba2504c13f413cc6d872564069a38953309f4638ae5fea4655f9be676b81",
         "obstacles": 4054,
         "colliders": 4492,
         "concealers": 3436
@@ -295,8 +295,8 @@
         "concealers": 1904
       },
       "frontier": {
-        "bytes": 2270314,
-        "sha256": "1017f35c5cd0f673a2f38d746460cab7fbee4b807f39026f1c7c3725250c554d",
+        "bytes": 2270541,
+        "sha256": "6afea6f258d03b2571ef861f2efdb1ea7eb5b04aa86f9cff595bbe7ebc787812",
         "obstacles": 8238,
         "colliders": 8830,
         "concealers": 7990
@@ -351,8 +351,8 @@
         "concealers": 2730
       },
       "ruinspires": {
-        "bytes": 5464181,
-        "sha256": "8fd98d280b123b6a864aa1ede7c63fab108f9ed895b96f57f1f1c27049f5c8cd",
+        "bytes": 5464303,
+        "sha256": "2994a2179961dab2bd09432e78361b40e581ae9565cf2bf382a41beb003a65ba",
         "obstacles": 2475,
         "colliders": 8844,
         "concealers": 388
@@ -393,8 +393,8 @@
         "concealers": 932
       },
       "airfield": {
-        "bytes": 1330224,
-        "sha256": "6646f209417e5518ff1a5804245c4202155c02d88312cc9e990b3322d3ea6952",
+        "bytes": 1330353,
+        "sha256": "7b5bcd9fc62529062f3feba4bd0cdfba73120a45a620f6e347ade3c127f9dc31",
         "obstacles": 4763,
         "colliders": 5415,
         "concealers": 3872
@@ -407,8 +407,8 @@
         "concealers": 878
       },
       "whiteout": {
-        "bytes": 1704176,
-        "sha256": "3a06cdae95c98dc942290821351d850841bea766f8bd4a3bd7174d2ab14104f2",
+        "bytes": 1704415,
+        "sha256": "cbb143b86c153f08d85dfb628361f90592a20673821d3848bde0f50911456092",
         "obstacles": 1255,
         "colliders": 1459,
         "concealers": 0
@@ -428,15 +428,15 @@
         "concealers": 2358
       },
       "mangrove": {
-        "bytes": 1339107,
-        "sha256": "5f148652be11f7ee53839b4941cc5dc16cb9cb9aed679deb8ee37e48defddd15",
+        "bytes": 1339385,
+        "sha256": "d0d43414a3825f942704c271203ed224ce6e9db4e90f0c233c251b624325f686",
         "obstacles": 5748,
         "colliders": 5654,
         "concealers": 6634
       },
       "saltwind": {
-        "bytes": 2365135,
-        "sha256": "9a566db9282b1472f89c120717e14af3c26f36de70137671385f7c29a046ca97",
+        "bytes": 2365142,
+        "sha256": "150fe2246466c42ff5a178613e5ba8925bcb5ac8d630f619a4dac8b07d183a88",
         "obstacles": 8600,
         "colliders": 8616,
         "concealers": 3968
