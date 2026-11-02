@@ -118,7 +118,8 @@ interface BmpHullOptions {
 
 export const BMP_HULL_OPTIONS: Readonly<Record<BmpHullVariant, BmpHullOptions>> = {
   // BMP-2: 4 left / 3 right firing ports (bmp2 reference packet), left-front driver, engine front-right
-  bmp2: { binOuter: 1.556, ports: [[-0.504, -1.144, -1.784, -2.414], [-0.824, -1.464, -2.104]], portStandoff: 0, bmp2m: true },
+  // (round 3: bins 9 mm wider a side, so the stiffeners' outer face makes the published 3.15 m width; it was 3.132 m)
+  bmp2: { binOuter: 1.565, ports: [[-0.504, -1.144, -1.784, -2.414], [-0.824, -1.464, -2.104]], portStandoff: 0, bmp2m: true },
   // BMP-1 / BWP-1: 4 + 4 ports, the narrower fender bins (2.94 m vehicle width)
   bwp1: { binOuter: 1.47, ports: [[-0.47, -1.10, -1.73, -2.36], [-0.47, -1.10, -1.73, -2.36]], portStandoff: 0.035, bmp2m: false },
 };
@@ -395,6 +396,10 @@ function addBowFittings(P: Modern3BuilderPort, variant: BmpHullVariant): void {
       pts: [[0.92, GLACIS_TOP(2.84) + 0.025, 2.84], [0.0, GLACIS_TOP(2.87) + 0.025, 2.87],
         [-0.92, GLACIS_TOP(2.84) + 0.025, 2.84]],
     });
+    // pressed ferrules over the rope's ends (round 3: the bare tube ends read open from the side)
+    for (const s of [-1, 1]) {
+      P.add('hullDark', KIT.cylX(0.032, 0.07, 10), s * 0.90, GLACIS_TOP(2.84) + 0.025, 2.84);
+    }
     P.hullG.add(cable);
     return;
   }
@@ -490,7 +495,8 @@ export function buildBmpBoatHull(P: Modern3BuilderPort, variant: BmpHullVariant)
     P.hullG.add(links);
   }
   addRunningGear(P);
-  P.decal('hull', 'soot', null, 0.5, [-1.33, 1.45, 1.10], -Math.PI / 2);         // exhaust stain, right flank
+  // round 3: no exhaust-stain decal on the right flank: both variants armour that plate (BMP-2M cassettes, BWP-1
+  // appliqué), so only its top showed, overhanging the side's top edge (sealed check: see-through soot)
 }
 
 // ---------------------------------------------------------------------------
@@ -503,7 +509,9 @@ export function buildBmp2Turret(P: Modern3BuilderPort): void {
   const { box, cylY, cylZ, lathe, torus, xform, buildGun } = KIT;
   const scaled = KIT.xform as (g: THREE.BufferGeometry, x?: number, y?: number, z?: number, rx?: number, ry?: number,
     rz?: number, s?: number | readonly [number, number, number]) => THREE.BufferGeometry;
-  P.add('turret', scaled(cylY(0.90, 0.915, 0.05, 30), 0, 0, 0, 0, 0, 0, [1, 1, 0.85]), 0, -0.02, 0.02);
+  // ring plate inside the race's rim (round 3: at r 0.915 the seat lifted its rim onto the seat plane and warped both
+  // caps into inside-out cones, open to a level look through the seam; inside the rim the seat leaves it as built)
+  P.add('turret', scaled(cylY(0.80, 0.81, 0.05, 30), 0, 0, 0, 0, 0, 0, [1, 1, 0.85]), 0, -0.02, 0.02);
   P.add('turret', scaled(lathe([
     [0.93, 0.0], [0.948, 0.06], [0.955, 0.16], [0.948, 0.25], [0.93, 0.35],
     [0.775, 0.385], [0.625, 0.425], [0.455, 0.45], [0.23, 0.485], [0.0, 0.50],

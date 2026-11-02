@@ -634,7 +634,7 @@
       }
     ]
   },
-  "geometryHash": "ad824bdc",
+  "geometryHash": "5193b95e",
   "metadataHash": "7ffe54e7",
   "presentationAnchor": {
     "xM": 0.0014,
@@ -666,7 +666,7 @@
       "armorPaint": 8,
       "wood": 1,
       "canvas": 1,
-      "unclassified": 16,
+      "unclassified": 15,
       "gearShadow": 1
     }
   },
@@ -680,7 +680,7 @@
     "fallback": 1
   },
   "vehicleMarkings": {
-    "total": 3,
+    "total": 2,
     "insignia": 1,
     "designation": 1,
     "verifiedInsignia": 1,
@@ -718,8 +718,8 @@
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 15924,
-      "sha256": "2468dafd51527f381f55cd51795024d08344dc675a5f2fa9262f3a14ea490e26"
+      "bytes": 15968,
+      "sha256": "afaffd77a02721e9b5fb2d46a7efca0c394f407ecc24fa6466235592b38681ab"
     },
     "topSilhouette": {
       "file": "bwp1_top_silhouette.png",
@@ -742,24 +742,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34110,
-      "sha256": "8a27dae536d489f7575b5a89b2d9eeabd896d924608dfc56e03cd86e34e5501e"
+      "bytes": 33860,
+      "sha256": "909aeead618c48b46aeedaeb945ae2dd1ec2bebf74113c6d4a98eb65ee27a4b8"
     },
     "modulesSide": {
       "file": "bwp1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35202,
-      "sha256": "1be7dcd01c5e0b7be8cf9398529b95e25366caefbb75549b2c804394fe45c746"
+      "bytes": 34432,
+      "sha256": "f046bf4db50db54aab84d4f1005fb267bdcf75cf96628cbe1fbfed8cca687465"
     },
     "crewSide": {
       "file": "bwp1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32740,
-      "sha256": "5d3f2369701d001362d7c37dd9ddfc6eb4621024e526e0a84f5427f4302928e9"
+      "bytes": 32784,
+      "sha256": "141f40a06606a98f3b71f36395114468023e4fd9fdd694a81e9fd5c83d61eb13"
     },
     "markings": {
       "file": "bwp1_markings.png",
@@ -772,8 +772,8 @@
     "technicalLabels": {
       "file": "bwp1_technical.json",
       "mime": "application/json",
-      "bytes": 5451,
-      "sha256": "b16c7ef5a9e59ba755483876f6ef3117818a92d1fc0e653b6a0bf00237e4526f"
+      "bytes": 4383,
+      "sha256": "90f04070010e792b6062a4ce784763c1c39a8faaab86ca85861ff34192379968"
     }
   }
 }

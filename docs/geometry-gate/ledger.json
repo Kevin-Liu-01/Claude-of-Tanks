@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-11-02T10:37:30.756Z",
+ "generatedAt": "2026-11-02T12:51:47.402Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 39,
+ "passed": 38,
  "total": 151,
  "rows": [
   {
@@ -607,6 +607,16 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "k21",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
    "id": "c2_ariete_proto",
    "geoMin": 2.7,
    "requiredMinimum": 90,
@@ -890,22 +900,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "bmp2",
-   "geoMin": 49.4,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 59.7,
-    "stations": 49.4,
-    "turretCurves": 58.1,
-    "wholeCurves": 50.6,
-    "dims": 95.3,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "k1a1",
    "geoMin": 49.7,
    "gatePassed": false,
@@ -917,6 +911,22 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "bmp2",
+   "geoMin": 50.3,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 63.9,
+    "stations": 50.3,
+    "turretCurves": 62,
+    "wholeCurves": 53.7,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m2a2_bradley",
@@ -2006,19 +2016,6 @@
    "components": {
     "wholeCurves": 95.4,
     "dims": 94.8,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "k21",
-   "geoMin": 94.8,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 94.8,
-    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

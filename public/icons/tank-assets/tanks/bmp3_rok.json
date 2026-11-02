@@ -57,7 +57,7 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "turretPivot": [0,1.66,0.03],
+    "turretPivot": [0,1.85,0.24],
     "plates": [
       {
         "hitboxId": "H01",
@@ -340,7 +340,7 @@
       {
         "volumeId": "M04",
         "name": "missileRack",
-        "min": [-0.765,0.527,-0.0347],
+        "min": [-0.765,0.527,-0.4448],
         "max": [-0.051,0.8208,0.7857],
         "turretLocal": false
       },
@@ -368,8 +368,8 @@
       {
         "volumeId": "M08",
         "name": "ammoRack",
-        "min": [-0.1326,0.47,-0.0671],
-        "max": [0.6993,0.8177,0.6758],
+        "min": [-0.1326,0.47,-0.1445],
+        "max": [0.6993,0.8177,0.6639],
         "turretLocal": false
       },
       {
@@ -422,21 +422,21 @@
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-0.6915,-0.7298,-0.4805],
-        "max": [-0.2618,0.5795,0.3409],
+        "min": [-0.7116,-0.7692,-0.4364],
+        "max": [-0.2618,0.5801,0.3409],
         "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.4598,-1.27,-0.7087],
-        "max": [-0.0901,0.1177,0.1269],
+        "min": [-0.4498,-0.9692,-0.6987],
+        "max": [-0.0901,0.4186,0.1269],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "128514ec",
-  "metadataHash": "6b04a458",
+  "metadataHash": "ee0e7a7e",
   "presentationAnchor": {
     "xM": -0.0079,
     "zM": -0.1233
@@ -551,16 +551,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42028,
-      "sha256": "0180b146ae2ff0694fc381b3e3d84cfd62f5dead728d8582be3909f02dae573b"
+      "bytes": 42084,
+      "sha256": "65f99ae11a12eb9f7056d8da2bdd7fed3fc9cd6c45f79acbabeb1335546480ee"
     },
     "crewSide": {
       "file": "bmp3_rok_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39004,
-      "sha256": "58feeb12c315c3f4f5ed9faed8eafaf5d47c34156aa653f45ae63baa6324041e"
+      "bytes": 38614,
+      "sha256": "b0ea9f36f6e1b6e48392bdb7110c4a89286a623f8f766d8c50db6ba5ce8b654a"
     },
     "markings": {
       "file": "bmp3_rok_markings.png",
@@ -573,8 +573,8 @@
     "technicalLabels": {
       "file": "bmp3_rok_technical.json",
       "mime": "application/json",
-      "bytes": 3574,
-      "sha256": "88f553ab2c81fff5cde4b151805644a1606792f09c3878d7efaa2e4f342391b3"
+      "bytes": 3576,
+      "sha256": "da9bd373de5584b90db6c6688777b9aa68b69e0a9d08c1402377f520e6610f6e"
     }
   }
 }

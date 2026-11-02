@@ -32,7 +32,7 @@
   "ares_apc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"383de3c1e1e970af","gun":"a7614cd19fa7d69b"}},
   "bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4171a2519190d7f5","gun":"a91fee59ed5a3957"}},
   "bm_oplot_t": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9768cf9d91e67d1c","gun":"a55b2fbcd636bb78"}},
-  "bmp2": {"status":"gap","kind":"turret","mouths":1,"worstMm":0,"openings":2,"geometry":{"turret":"ea734ccabf065d4d","gun":"b21d836e1f459b29"}},
+  "bmp2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c066560fee4c24ca","gun":"b21d836e1f459b29"}},
   "bmp3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"eee65ef42dc2b9d2","gun":"1a34390dcb570fc3"}},
   "bmp3_rok": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cecae155cfc67795","gun":"83850756f6157aff"}},
   "bmp3m_dragun125": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1782b1b22efd624d","gun":"f303b85b5784645f"}},
