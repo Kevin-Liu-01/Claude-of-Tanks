@@ -24,10 +24,19 @@ const southAfrican = (id: string, donor: string, name: string, era: 'cold-war' |
   return spec;
 };
 
-// The SADF's nutria brown of the 1970s and 1980s (the Angola and De Brug photographs; TE's Mk 1A "dark sand livery"): one
-// flat coat, greyer and lighter than the Soviet plain brown, the tank's tactical number on the turret's side bin
-const sadfBrown = (number: string) => ({ scheme: 'solid' as const, base: '#857356', weather: '#917f62', patches: [] as string[],
-  marking: 'number' as const, number, camoScale: 0.55 });
+// The SADF's nutria brown of the 1970s and 1980s (the Angola and De Brug photographs; TE's Mk 1A "dark sand livery") under
+// the field disruption the bush units brushed over it (owner 2026-11-03: no plain coats, and the Mk 1 and Mk 1A told apart
+// at a glance): the Semel in broad dark-earth and olive bands, the Mk 1 darkened with bush green and black-brown three-tone
+// (it fights under a green net), the Mk 1A in the pale sand and earth fields of a dry-season disruptive (under a straw
+// net). Each carries its tactical number on the turret's side bin.
+const sadfCoat = (number: string, coat: { scheme: string; base: string; weather: string; patches: string[]; camoScale: number;
+  patchK?: number }) => ({ ...coat, marking: 'number' as const, number });
+const semelBands = (number: string) => sadfCoat(number, { scheme: 'stripes', base: '#857356', weather: '#917f62',
+  patches: ['#4d4030', '#5f6443'], camoScale: 0.55 });
+const bushThreeTone = (number: string) => sadfCoat(number, { scheme: 'nato', base: '#76684d', weather: '#827456',
+  patches: ['#4b5535', '#2a2720'], camoScale: 0.55, patchK: 1.3 });
+const drySeasonDisruptive = (number: string) => sadfCoat(number, { scheme: 'merdc', base: '#a08b63', weather: '#ab9770',
+  patches: ['#6c5a3d', '#c8b48c', '#3b3428'], camoScale: 0.6, patchK: 1.2 });
 
 // ------------------------------------------------------------------------------------------------------- Semel --
 // 1974, 35 Centurion Mk 5s (TE: "Centurion Mk.5A"): the Skokiaan's Continental AVI-1790-8 fuel-injected petrol V12 of 810
@@ -37,7 +46,7 @@ const sadfBrown = (number: string) => ({ scheme: 'solid' as const, base: '#85735
 const semel = southAfrican('semel', 'strv81', 'Semel', 'cold-war');
 Object.assign(semel.dims, { hullLengthM: 7.56, overallLengthM: 9.85, widthM: 3.39, heightM: 2.94 });
 Object.assign(semel, { weightTons: 51.8, enginePowerHp: 810, topSpeedKmh: 42, reverseSpeedKmh: 13 });
-semel.visual = { ...semel.visual, ...sadfBrown('11') };
+semel.visual = { ...semel.visual, ...semelBands('11') };
 
 // ------------------------------------------------------------------------------------------------- Olifant Mk 1 --
 // 1978 (153 Centurion Mk 3s converted 1979-84; TE): the Teledyne Continental AVDS-1790-2A diesel of 750 hp and a
@@ -49,7 +58,7 @@ const olifant_mk1 = southAfrican('olifant_mk1', 'strv81', 'Olifant Mk 1', 'cold-
 Object.assign(olifant_mk1.dims, { hullLengthM: 7.56, overallLengthM: 9.85, widthM: 3.28, heightM: 2.94 });
 Object.assign(olifant_mk1, { hp: 1500, weightTons: 56, enginePowerHp: 750, topSpeedKmh: 45, reverseSpeedKmh: 14 });
 olifant_mk1.gun = { ...olifant_mk1.gun, baseAccuracy: 0.285, aimTimeS: 2.15 };
-olifant_mk1.visual = { ...olifant_mk1.visual, ...sadfBrown('22') };
+olifant_mk1.visual = { ...olifant_mk1.visual, ...bushThreeTone('22') };
 
 // ------------------------------------------------------------------------------------------------ Olifant Mk 1A --
 // 1985 (TE; Wikipedia): the Mk 1 rearmed with the stabilised 105 mm, an Israeli L7 first and then the GT3 from Lyttelton
@@ -65,7 +74,7 @@ olifant_mk1a.gun = {
     ? { ...shell, name: 'GT3 APFSDS', pen100Mm: 500, pen1000Mm: 468, pen2000Mm: 436, dmg: 420, velocityMps: 1500 }
     : shell),
 };
-olifant_mk1a.visual = { ...olifant_mk1a.visual, ...sadfBrown('21A') };
+olifant_mk1a.visual = { ...olifant_mk1a.visual, ...drySeasonDisruptive('21A') };
 
 // ------------------------------------------------------------------------------------------------ Olifant Mk 1B --
 // 1991, 44 built by OMC (TE): the torsion-bar hull lengthened for the bigger engine compartment, a double floor, the

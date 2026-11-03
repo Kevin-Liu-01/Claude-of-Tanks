@@ -30,7 +30,7 @@ PASS, regeneration and critics pending (`docs/history/research/south-africa-line
 | 3 | the 20-pdr with its fume extractor | the 20-pdr Type B | kept |
 | 4 | two banks of four 81 mm dischargers raised forward on the turret's sides (Mk 1) / the Mk 5's two six-tube blocks (Semel) | the Mk 5/2's six-tube blocks | Mk 1: a 2x2 block on a bracket over each side bin; Semel: the Mk 5's blocks |
 | 5 | rolled camouflage nets on the bustle | the Mk 5/2's tall basket | Mk 1: an open net rack on arms carrying two fat rolled nets; Semel: the Mk 3/5 box bin |
-| 6 | SADF nutria brown, the tactical number | — | `paint_semel` "SANDF Plain Khaki" (#857356) |
+| 6 | SADF nutria brown, the tactical number | — | `paint_olifant_mk1` "SANDF Three-Tone Woodland": the nutria darkened (#76684d) under bush green and black-brown field three-tone (owner 2026-11-03: no plain coats; the Mk 1 and Mk 1A told apart at a glance) |
 
 ### Datums
 

@@ -147,9 +147,11 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * drab under chocolate brown (the photo critic: the family's sage-and-tan service paint read as no JGSDF coat), and the
  * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
-/** Release 269: the South Africa line's coats (southAfricaSpecs.ts): the SADF's nutria brown the Semel, the Olifant Mk 1 and
- * Mk 1A wear, and the 1990s SANDF three-tone of the Mk 1B and the TTD. Appended after 267's saved catalog indices. */
-const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b'] as const);
+/** Release 269: the South Africa line's coats (southAfricaSpecs.ts): the SADF's nutria brown under the bush units' field
+ * disruption, a coat of its own on each of the Semel, the Olifant Mk 1 and the Mk 1A (owner 2026-11-03: no plain coats),
+ * and the 1990s SANDF three-tone of the Mk 1B and the TTD. Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_semel', 'paint_olifant_mk1b', 'paint_olifant_mk1',
+  'paint_olifant_mk1a'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
@@ -931,11 +933,12 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
-  // release 269: the South Africa line: the SADF's nutria brown on the 20-pdr and 105 mm Centurions of 1974-85, the 1990s
-  // SANDF three-tone on the Mk 1B and the TTD
+  // release 269: the South Africa line: the SADF's nutria brown under field disruption on the 20-pdr and 105 mm Centurions
+  // of 1974-85 (the Semel's bands, the Mk 1's bush three-tone, the Mk 1A's dry-season disruptive), the 1990s SANDF
+  // three-tone on the Mk 1B and the TTD
   semel: 'paint_semel',
-  olifant_mk1: 'paint_semel',
-  olifant_mk1a: 'paint_semel',
+  olifant_mk1: 'paint_olifant_mk1',
+  olifant_mk1a: 'paint_olifant_mk1a',
   olifant_mk1b: 'paint_olifant_mk1b',
   ttd: 'paint_olifant_mk1b',
 });

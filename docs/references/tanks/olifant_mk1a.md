@@ -24,7 +24,7 @@ Implementation: DONE; regeneration and critics pending.
 | 2 | a long flat-sided box on the bustle, the turret's width, its top at the roof line, running over the engine deck, the number on its side | the Mk 1's net rack | a 1.84 x 0.62 x 0.84 m box from the casting's back, its lid seams and hasps, nothing on it (269 blind critics: a net rack on its back read as the Mk 1's) |
 | 3 | the bush bar ahead of the nose | — | a V of two tubes from the nose lugs to a point 0.55 m ahead and 0.14 m over the nose (set off the glacis: low, it read as a bumper), stays back to the front guards' tips, mesh panels in its bays |
 | 4 | skirts off, the AVDS deck, the 2x4 dischargers | — | the Mk 1's |
-| 5 | SADF nutria brown, tactical number | — | `paint_semel` |
+| 5 | SADF nutria brown, tactical number | — | `paint_olifant_mk1a` "SANDF Disruptive Desert": pale sand (#a08b63) in earth, light-sand and dark fields of a dry-season disruptive (owner 2026-11-03: no plain coats; told apart from the Mk 1) |
 
 The packet's TE skirts (4.5 mm) and the photographs' skirtless tanks disagree: the build follows the photographs (the
 bush, De Brug, Angola).
