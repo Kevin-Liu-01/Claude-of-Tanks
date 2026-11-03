@@ -164,6 +164,7 @@ import {
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { classifyChunkFailure } from './app/lazyImportRetry.ts';
+import { createLazyChunk, type LazyChunk } from './app/lazyChunk.ts';
 import {
   GARAGE_VARIANTS, getGarageVariant, loadGarageVariantId, saveGarageVariantId,
 } from './game/garageVariants.ts';
@@ -4090,7 +4091,9 @@ await bootStage('post', async () => {
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
 const studioLinks = (): NodeListOf<Element> => document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]');
-let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
+// (2026-11-02 audit R6) an opener's chunk under the one lazy-chunk policy (app/lazyChunk.ts): the Studio's entry marks its
+// links and their next press reloads; the rule the hand-made `??=` memo kept, now declared
+let studioLightRuntime: LazyChunk<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
   // the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk
@@ -4125,7 +4128,7 @@ const studioAccess = createStudioAccess({
       light: import('./game/studioLight.ts').StudioLight | null = null,
     ) => {
       await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
-      studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
+      studioLightRuntime ??= createLazyChunk(() => import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
         const runtime = createStudioLightRuntime({
           scene,
           getWorld: currentWorld,
@@ -4145,8 +4148,8 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
-      }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
-      const applied = await (await studioLightRuntime).apply(time, light);
+      }), { opener: true }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
+      const applied = await (await studioLightRuntime.load()).apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
       await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);

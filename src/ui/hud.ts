@@ -2539,7 +2539,15 @@ export function initHud(bus: EventBus): HudRuntime {
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
   let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
-  let rangeCardLoad: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, so a proving
+  // ground never showed its card for the session; a later frame asks again past the backoff (a minute at most), logging
+  // once per ask, and asks nothing while the browser is offline
+  const rangeCardChunk = createLazyChunk(() => import('./provingRangeCard.ts').then((module) => {
+    rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
+  }, (error: unknown) => {
+    console.error('[hud] range card failed to load', error);
+    throw error;
+  }));
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- the top-right corner (owner 2026-10-24: "right should have fps and other data like that"; "have a way to access
@@ -8934,10 +8942,7 @@ export function initHud(bus: EventBus): HudRuntime {
     rangeLanes = range ? range.lanes : null;
     if (!range) { rangeCard?.hide(); return; }
     if (!rangeCard) {
-      rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
-        rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
-      // (asked once: a chunk that did not arrive is not asked for again in this document, and a frame's retry logged each frame)
-      }).catch((error) => { console.error('[hud] range card failed to load', error); });
+      void rangeCardChunk.load(); // (the same promise each frame until its state moves: no per-frame allocation)
       return;
     }
     const player = frame.player || playerRef;

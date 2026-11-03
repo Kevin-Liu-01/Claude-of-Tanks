@@ -913,10 +913,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
-    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet terminal, a module asked again, then past a backoff)
+    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet in any part, a removed chunk or an opener terminal;
+    // a module asked again past a backoff capped at a minute, with no budget)
     'src/app/lazyChunk.selftest.mjs',
-    // 2026-11-02 audit R6: the named lazy chunks hold their load in app/lazyChunk.ts; no new hand-made `??= import(` memo
+    // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
+    // hand-made memo; a default-policy load of several parts settles them with importAll
     'src/app/lazyChunkSites.selftest.mjs',
+    // 2026-11-02 audit R6: a failed notice kit or battle notice region chunk is asked again by the next battle notice
+    'src/ui/battleNoticesLoadFailure.selftest.mjs',
     // 2026-11-02 audit R6: a failed paint is painted again (three in a row at most); no DOM still caches its null
     'src/vehicles/paintCaches.selftest.mjs',
     // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode

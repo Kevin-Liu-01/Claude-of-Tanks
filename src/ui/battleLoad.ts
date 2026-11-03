@@ -31,7 +31,7 @@ import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
-import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 
 // Translate legacy English progress labels written by the various loading
 // runtimes. Each entry pairs a known English string with its i18n key; any
@@ -743,17 +743,18 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const stepFills = stepEls.map((_, step) => requiredElement<HTMLElement>(root, `.fbar i:nth-child(${step + 1}) b`));
   const countEl = requiredElement<HTMLDivElement>(root, '.count');
 
-  /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): once per page, null where they
-   *  cannot load (a Node receipt, a blocked chunk), and the cards keep their silhouettes. */
-  let heroCards: Promise<typeof import('./heroCard.ts') | null> | null = null;
+  /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): where they cannot load (a Node
+   *  receipt, a blocked chunk) the cards keep their silhouettes. (2026-11-02 audit R6) Under the one lazy-chunk policy
+   *  (app/lazyChunk.ts): a failure was null for the session; a failed module is asked again by a later fill, a failed
+   *  sheet never (importAll: neither hides the other). */
+  const heroCards = createLazyChunk(() => importAll([import('./heroCard.ts'), import('./heroCard.css')]).then(([module]) => module));
   /** Each new card once: a card kept in place keeps its layers, and one a later fill dropped is skipped (a roster's seats
    *  arriving one by one decorate only the cards they add, never cancelling the ones before them). */
   function decorateCards(host: HTMLElement, cards: readonly (readonly [HTMLElement, string])[]): void {
     if (!cards.length) return;
-    heroCards ??= Promise.all([import('./heroCard.ts'), import('./heroCard.css')]).then(([module]) => module, () => null);
-    void heroCards.then(async (hero) => {
-      const manifest = hero ? await hero.loadHeroManifest() : null;
-      if (!hero || !manifest) return;
+    void heroCards.load().then(async (hero) => {
+      const manifest = await hero.loadHeroManifest();
+      if (!manifest) return;
       host.style.setProperty('--hc-flag-mask', hero.heroCardFlagMask(manifest));
       for (const [card, id] of cards) {
         if (!card.isConnected || card.dataset.heroFor === id) continue;
@@ -763,7 +764,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
         // painted)
         hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px', priority: true });
       }
-    });
+    }, () => { /* the cards keep their silhouettes */ });
   }
 
   let visible = false;

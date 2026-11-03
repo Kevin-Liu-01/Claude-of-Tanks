@@ -1,3 +1,4 @@
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/studioLight.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
@@ -1185,16 +1186,18 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const inheritBtn = kitButton(t('studioPanel.selected.camoInherit'), 'ghost', 'undo');
   inheritBtn.addEventListener('click', () => patchSel({ camo: null }));
   // the swatches paint a few a frame, the painter and the fleet's specs loading with the first
-  let swatchPainter: Promise<SwatchPainter> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk (unhandled), so
+  // no swatch painted for the session; the next swatch asked for asks again
+  const swatchPainter = createLazyChunk(() => importAll([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
+    .then(([painter, specs]): SwatchPainter => ({ paint: painter.paintCamoSwatch, auto: painter.paintAutoCamoSwatch, spec: specs.getSpec })));
   const swatchQueue: Array<readonly [HTMLCanvasElement, string, string]> = [];
   let swatchFrame = 0;
   function pumpSwatches(): void {
     if (swatchFrame || !swatchQueue.length) return;
-    swatchPainter ??= Promise.all([import('./camoSwatchPainter.ts'), import('../vehicles/specs.ts')])
-      .then(([painter, specs]) => ({ paint: painter.paintCamoSwatch, auto: painter.paintAutoCamoSwatch, spec: specs.getSpec }));
+    const painting = swatchPainter.load();
     swatchFrame = requestAnimationFrame(() => {
       swatchFrame = 0;
-      void swatchPainter?.then((painter) => {
+      void painting.then((painter) => {
         for (const [canvas, specId, patternId] of swatchQueue.splice(0, SWATCHES_PER_FRAME)) {
           const spec = painter.spec(specId) as unknown as Parameters<SwatchPainter['paint']>[1] | undefined;
           if (!spec || !canvas.isConnected) continue;
@@ -1202,7 +1205,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
           else painter.paint(canvas, spec, patternId);
         }
         pumpSwatches();
-      });
+      }, () => { /* the queued swatches stay blank until the next one asks again */ });
     });
   }
   const camoLabel = (id: string): string => {

@@ -44,7 +44,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
-import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -2222,9 +2222,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
   // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
   let equipmentPreview: EquipmentPreviewModule | null = null;
-  let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
-  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
-    (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and a choice
+  // waits on it, so no equipment could be fitted for the session; the next hover or choice asks again
+  const equipmentPreviewChunk = createLazyChunk(() => import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> => equipmentPreviewChunk.load();
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
@@ -3927,9 +3928,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // Deploy's sheet (deploy.css) rides off the game entry: it loads once the Garage is playable and idle, or at the first
   // open, which waits for it, so the screen never paints unstyled (a failed load still opens it).
-  let deployStyles: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failure from the idle preload
+  // for the session; now a failed sheet stands (asked again it would not apply), and a failed screen module is asked
+  // again by the next open (importAll: the sheet's failure is never hidden by the module's)
   let deployStyled = false;
-  const ensureDeployStyles = (): Promise<void> => (deployStyles ??= Promise.all([import('./deploy.css'), import('./deployScreen.ts')])
+  const deployStylesChunk = createLazyChunk(() => importAll([import('./deploy.css'), import('./deployScreen.ts')])
     .then(([, { mountDeployScreen }]) => {
       deployScreen = mountDeployScreen({
         menu: battleMenu, options: soloOptions, mapIds: new Set(maps.map((map) => map.id)),
@@ -3965,17 +3968,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (battleMenu.dataset.deployTab === 'campaign') deployScreen.brief();
       deployStyled = true;
     }));
+  const ensureDeployStyles = (): Promise<void> => deployStylesChunk.load();
   const preloadDeployStyles = (): void => {
     if (window.__GAME_READY !== true) { setTimeout(preloadDeployStyles, 250); return; }
     if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
     else setTimeout(() => { void ensureDeployStyles(); }, 800);
   };
   preloadDeployStyles();
+  // (a failed load still opens the screen, this once: the next open asks the chunk again, app/lazyChunk.ts)
+  let deployOpenUnstyled = false;
   function openBattleMenu(): void {
-    if (!deployStyled) {
-      void ensureDeployStyles().then(openBattleMenu, () => { deployStyled = true; openBattleMenu(); });
+    if (!deployStyled && !deployOpenUnstyled) {
+      void ensureDeployStyles().then(openBattleMenu, () => { deployOpenUnstyled = true; openBattleMenu(); });
       return;
     }
+    deployOpenUnstyled = false;
     openSurface(deploySurface, battleModeBtn);
     renderBattleOptions();
     renderDeployTank();
@@ -4117,7 +4124,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
   // (audit R6) the Deploy sheet's mode picker, loaded in idle time and with the sheet (no trigger of its own): a chunk
   // that did not arrive leaves the sheet without it, and the next opening asks again (app/lazyChunk.ts)
-  const deployModesChunk = createLazyChunk(() => Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
+  const deployModesChunk = createLazyChunk(() => importAll([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
       const cards = modeCards;
       deployModeCards = cards;
       deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
@@ -4229,16 +4236,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
-  let arrangementPanelLoad: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk (unhandled), and
+  // the mode settings and the TEAMS switch never rendered for the session; the next render asks again
+  const arrangementPanelChunk = createLazyChunk(() => import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
+    arrangementPanel = createBattleArrangementPanel(soloOptions, {
+      playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
+      customSides: sidesCustom,
+    });
+    arrangementPanel.render(battleGameMode);
+  }));
   const renderArrangementPanel = (): void => {
     if (arrangementPanel) { arrangementPanel.render(battleGameMode); return; }
-    arrangementPanelLoad ??= import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
-      arrangementPanel = createBattleArrangementPanel(soloOptions, {
-        playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
-        customSides: sidesCustom,
-      });
-      arrangementPanel.render(battleGameMode);
-    });
+    void arrangementPanelChunk.load();
   };
   // The Deploy screen (brand-ui S3). Every chip and rule reads the mode's ruleset (sim/matchRuleset.ts), so the screen
   // never promises a rule the battle does not keep.

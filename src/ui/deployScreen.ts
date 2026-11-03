@@ -5,6 +5,7 @@
 // its state and every choice; this module reads them through the host and adds its controls to the markup. It imports
 // only modules that already stand in chunks of their own: a module the entry also imports (the profile, the kit, the load
 // estimate) comes through the host, or the bundler splits it off the entry into one more request at boot.
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import type { AiDifficulty } from '../game/input.ts';
 import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
@@ -281,12 +282,13 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     if (tier) host.setRoving(tierGroup, tier);
   }
   // the drawer and its data load with the first map to draw (they share the HUD's glyph modules: their own chunk)
-  let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and no map drew
+  // its objectives again for the session; the next map drawn asks again
+  const drawer = createLazyChunk(() => import('./deployObjectives.ts'));
   function drawObjectives(): void {
     const mapId = host.selectedMap(), mode = host.selectedMode();
     if (!menu.classList.contains('open') || mapId === 'random') return;
-    drawer ??= import('./deployObjectives.ts');
-    void drawer.then(({ drawDeployObjectives }) => drawDeployObjectives(objectives, mapId, mode)).catch(() => { /* the bare map */ });
+    void drawer.load().then(({ drawDeployObjectives }) => drawDeployObjectives(objectives, mapId, mode)).catch(() => { /* the bare map */ });
   }
   // the campaign tab's plate (the direction's 04-deploy plate, for an operation): the one in focus over its
   // battlefield, its brief, the enemy formation's flag, its clock, difficulty and stars, its opening objectives on the
@@ -323,8 +325,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     if (!mm) return;
     const canvas = createUiCanvas(mm, '').canvas;
     // the frontline's opening objectives (the drawer and its data load with the first map to draw)
-    drawer ??= import('./deployObjectives.ts');
-    void drawer.then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
+    void drawer.load().then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
       ? drawDeployObjectives(canvas, op.mapId, 'frontline_assault') : undefined)).catch(() => { /* the bare map */ });
   }
   // a row under the pointer or the keyboard briefs its operation

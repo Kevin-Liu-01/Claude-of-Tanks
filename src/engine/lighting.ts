@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { PRESETS, getDeviceTier, getPreset, onPresetChange, resolvePresetName } from './quality.ts';
@@ -524,14 +525,14 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
 // into every cascade — the same maps (a proxy only drops the instances outside its cascade's frustum).
 type CasterProxyModule = typeof import('./shadowCasterProxies.ts');
 let casterProxies: CasterProxyModule | null = null;
-let casterProxiesLoad: Promise<CasterProxyModule | null> | null = null;
+// (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was null for the session; the next
+// rig asks again (until then every instance casts into every cascade, as before the module arrives)
+const casterProxiesLoad = createLazyChunk((): Promise<CasterProxyModule> => import('./shadowCasterProxies.ts'));
 function loadCasterProxies(lights: readonly THREE.DirectionalLight[]): void {
-  casterProxiesLoad ??= import('./shadowCasterProxies.ts').then((module) => module, () => null);
-  void casterProxiesLoad.then((module) => {
-    if (!module) return;
+  void casterProxiesLoad.load().then((module) => {
     module.registerCasterCascades(lights); // before the first owner meets a hook: an unregistered cascade builds none
     casterProxies = module;
-  });
+  }, () => { /* every instance casts into every cascade */ });
 }
 /** map.ts freezes the battle world's root after its build: the static shadow layer (shadowStaticCache.ts). */
 const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.matrixTraversalFrozen === true;
