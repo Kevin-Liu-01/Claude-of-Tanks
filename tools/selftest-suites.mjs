@@ -2389,6 +2389,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hinterland/hinterlandLandforms.selftest.mjs',
     // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
     'src/world/hinterland/hinterlandMesh.selftest.mjs',
+    'src/world/hinterland/hinterlandLifetime.selftest.mjs', // 2026-11-02 audit R1: the world owns its Hinterland; ring fallback; one root
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',

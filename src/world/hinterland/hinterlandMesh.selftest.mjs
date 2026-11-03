@@ -7,6 +7,7 @@
 //     into one float atlas whose blocks hold their levels' samples;
 //   - the hook keeps the hinterland out of the old ring's path unless the map migrates.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const { compressDistance, trueDistance, curvatureDrop, compressPoint, HINTERLAND_PROJECT_GLSL } = await import('./project.ts');
 const { selectHinterlandNodes, hinterlandMorph, HINTERLAND_LOD_DESKTOP } = await import('./lod.ts');
@@ -87,7 +88,6 @@ const { HL_SURFACE_FLAG } = await import('./surface.ts');
 const { samplePyramid } = await import('./pyramid.ts');
 const { packHinterlandHeights } = await import('./mesh.ts');
 const { createHinterlandObject } = await import('./install.ts');
-const { hinterlandSupplyFor, supplyHinterland, withdrawHinterland } = await import('../hinterlandHook.ts');
 const { wire, transfer } = buildHinterlandWire({ mapId: 'polders', terrainVariant: null, fieldSeed: 1337, search: '?hinterland=1', tier: 'desktop' });
 assert.ok(transfer.length >= wire.levels.length + 2, 'the heights, trees and buildings travel as transfers');
 assert.ok(wire.trees.length > 0 && wire.buildings.length > 0 && wire.settlements.length > 0, 'the plan travels');
@@ -268,13 +268,8 @@ assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 26000
   assert.match(air.fragmentPars, /vec3 hlHazeTarget\( vec3 fallback \)/);
 }
 
-// the hook: a terrain build of another map (or the trench variant) never takes this supply
-const supply = { request: { mapId: 'polders', terrainVariant: null }, pending: false, buildSteps: function* () { return null; } };
-supplyHinterland(supply);
-assert.equal(hinterlandSupplyFor({ id: 'polders' }), supply);
-assert.equal(hinterlandSupplyFor({ id: 'verdant' }), null);
-assert.equal(hinterlandSupplyFor({ id: 'polders', assaultTrenches: true }), null);
-withdrawHinterland(supply);
-assert.equal(hinterlandSupplyFor({ id: 'polders' }), null);
+// (2026-11-02 audit R1) the hook keeps no process-wide supply slot: a world build hands its Hinterland to its own terrain
+// build (TerrainStreamOptions.hinterlandSupply; hinterlandLifetime.selftest)
+assert.doesNotMatch(readFileSync(new URL('../hinterlandHook.ts', import.meta.url), 'utf8'), /const supplied = new Map/);
 
 console.log(`hinterlandMesh.selftest: compression, curvature and selection ok — ${a.length} nodes all round, ${wide.length} in view, ${scope.length} through the ×8 scope`);

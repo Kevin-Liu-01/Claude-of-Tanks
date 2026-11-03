@@ -23,8 +23,8 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
-import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
-import { hinterlandSupplyFor } from './hinterlandHook.ts';
+import { horizonRing, type HorizonRing, type HorizonRingSupply } from './horizonRingHook.ts';
+import type { HinterlandSupply } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -825,6 +825,9 @@ interface TerrainChunk {
 interface TerrainStreamOptions {
   streamFarLods?: boolean;
   focus?: SpawnPoint;
+  /** (2026-11-02 audit R1) the world build's own horizon ring and Hinterland supplies (map.ts), handed to this build only */
+  horizonRingSupply?: HorizonRingSupply | null;
+  hinterlandSupply?: HinterlandSupply | null;
 }
 
 interface TerrainStreamingStats {
@@ -9522,17 +9525,18 @@ function* terrainBuildSteps(
   // answer; nothing waits for it — the pipeline is built here meanwhile when it has not answered, and its answer is taken
   // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
   // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
-  const ringSource = horizonRingSupplyFor(cfg);
+  const ringSource = streamOpts?.horizonRingSupply ?? null;
   // (the horizons stream, 2026-10-13, HL-3) a migrated map — its file's `hinterland` block, or a lab draft under
   // ?hinterland=1 — takes the Hinterland in place of the old ring: the world build supplies it (hinterlandHook.ts) and it
   // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
-  const hinterlandSource = hinterlandSupplyFor(cfg);
+  const hinterlandSource = streamOpts?.hinterlandSupply ?? null;
   function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
     // (horizons-240) the battlefield's own sheets carried past the edge (hinterland/groundDetail.ts)
     const ground = { textures: splatTextures, layerMeans: (mat.userData as { layerMeans?: unknown }).layerMeans,
       roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint,
       tints: ['tintA', 'tintB', 'tintC'].map((k) => (cfg?.splat as Record<string, readonly number[] | undefined> | undefined)?.[k]) };
-    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground });
+    // (2026-11-02 audit R1) and the old ring for the land's place, should the worker fail after this
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground, fallback: () => ringStage() });
     let step = steps.next();
     while (!step.done) {
       yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
@@ -9543,7 +9547,11 @@ function* terrainBuildSteps(
     yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true];
   }
   function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
-    if (hinterlandSource) { yield* hinterlandStage(); return; }
+    // (audit R1) a Hinterland whose worker has already failed brings no land: the old ring stands in its place
+    if (hinterlandSource && !hinterlandSource.failed) { yield* hinterlandStage(); return; }
+    yield* ringStage();
+  }
+  function* ringStage(): Generator<TerrainBuildProgress, void, void> {
     let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
     if (ringSource && !ringPipeline) {
       const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {

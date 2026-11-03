@@ -54,12 +54,10 @@ import type { StructureGroundOcclusionHandle } from '../engine/structureGroundOc
 import { createStructureGroundOcclusion } from '../engine/structureGroundOcclusionRuntime.ts';
 import { aureoleSunOf } from '../engine/structureAureoleBake.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
-import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
-import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { loadMapKits } from './worldKits.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -470,8 +468,7 @@ export async function createMapAsync(
     mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
     debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
   });
-  if (ringSource) supplyHorizonRing(ringSource);
-  if (hinterlandSource) supplyHinterland(hinterlandSource);
+  // (2026-11-02 audit R1) both go to this build's own terrain build (its stream options), never through a process-wide slot
   let completed = false;
   // (2026-11-02 audit R1) the subsystems built so far: a build that ends before its world exists releases them (they were
   // dropped, and with them the terrain material's live preset subscriptions and the vegetation's runtime)
@@ -507,6 +504,8 @@ export async function createMapAsync(
         // Heightfield/collision/spotting data remains complete and deterministic.
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
+        horizonRingSupply: ringSource,
+        hinterlandSupply: hinterlandSource,
       }, terrainSources));
     builtTerrain = terrain;
     submitPrograms(terrain);
@@ -542,7 +541,11 @@ export async function createMapAsync(
     // the load probes, beside the terrain's streaming record
     await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
     if (ringSource) terrain.userData.horizonRingLoad = ringSource.stats;
-    if (hinterlandSource) terrain.userData.hinterlandLoad = hinterlandSource.stats;
+    if (hinterlandSource) {
+      terrain.userData.hinterlandLoad = hinterlandSource.stats;
+      // (audit R1) the world owns the Hinterland its worker may still be answering for: its dispose stops it
+      terrain.userData.disposeHinterland = () => hinterlandSource.dispose();
+    }
     if (earthLandReady) await earthLandReady;
     const world = await assembleWorldPaced(engineCtx, config, heightField, terrain, vegetation, props,
       fineSlices ? () => step('Sealing the battlefield', 0.99) : null);
@@ -557,10 +560,10 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
-    if (ringSource) { withdrawHorizonRing(ringSource); ringSource.dispose(); }
-    // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; only a build
-    // that failed or was cancelled stops it)
-    if (hinterlandSource) { withdrawHinterland(hinterlandSource); if (!completed) hinterlandSource.dispose(); }
+    ringSource?.dispose();
+    // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; a build that
+    // failed or was cancelled stops it now, a completed world when it is released — its dispose)
+    if (hinterlandSource && !completed) hinterlandSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
       // (audit R1) the partial build's rollback: the vegetation's own teardown, then the built roots released
@@ -1079,6 +1082,7 @@ function* assembleWorldSteps(
       delete terrain.userData.cancelSourcedTextures;
       unregisterDestructibles();
       vegetation.dispose();
+      terrain.userData.disposeHinterland?.(); // (2026-11-02 audit R1) a Hinterland still answering attaches nothing now
       // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)
       if (groundOcclusion) {
         if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;
