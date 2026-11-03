@@ -131,9 +131,10 @@ const KF51B_SPEC = {
   }),
   visual: {
     ...KF51_SPEC.visual,
-    // 268 r16: the Eurosatory 2024 block livery, as its Signature (camoPolicy.ts sig_kf51b)
+    // 269 r16: the Eurosatory 2024 block livery, as its Signature (camoPolicy.ts sig_kf51b), and the 'KF51-U' lettering
+    // it carries on the turret flank (Commons KF-51U_02) for a tactical number it never wore (the national insignia stays)
     scheme: 'digital', base: '#77746d', weather: '#75726b', patches: ['#5b5a55', '#899a40', '#252729'],
-    number: '52', camoScale: 0.4, patchK: 1, digitalCellK: 10, trackWidthM: 0.587,
+    marking: 'number', number: 'KF51-U', camoScale: 0.4, patchK: 1, digitalCellK: 10, trackWidthM: 0.587,
   },
 } satisfies FleetTankSpec;
 

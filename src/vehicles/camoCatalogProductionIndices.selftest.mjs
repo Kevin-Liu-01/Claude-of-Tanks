@@ -65,8 +65,9 @@ import { resolveTankId } from './tankIdAliases.ts';
 // type10b's Factory 009bf79d0c845fc0 -> a8103e9faaef602e. Its stock, AUTO and every other row are unchanged.
 // Re-pinned 2026-11-03 (269 r16; the owner: "give the kf51 u a better more pertinent camo"): two rows moved. The KF51-U
 // (schema-1 kf51b) wears the block livery it showed at Eurosatory 2024 (warm grey, mid grey, lime and charcoal cells) for
-// the woodland three-tone: selection sig_kf51b 1592088bb90a548a -> 4617cfd14de22d6d, its Factory e90c78e6284e68f5 ->
-// 9ad169c9af24a3e1. Only the KF51-U wears sig_kf51b; its stock, AUTO and every other row are unchanged.
+// the woodland three-tone, and its 'KF51-U' lettering for the number '52': selection sig_kf51b 1592088bb90a548a ->
+// 4617cfd14de22d6d, its Factory e90c78e6284e68f5 -> 77da4c06a87e3a90. Only the KF51-U wears sig_kf51b; its stock, AUTO
+// and every other row are unchanged.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
