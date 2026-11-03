@@ -911,6 +911,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
+    // before the unlock, and a budget that tears down before it exits
+    'tools/chain-lifecycle.selftest.mjs',
     // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
     'tools/combat-anatomy-parts.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
