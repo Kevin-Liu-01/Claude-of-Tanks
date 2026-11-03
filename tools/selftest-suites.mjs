@@ -1740,6 +1740,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    // 2026-11-02 audit M4: a hull the mode keeps off the field is neither spotted nor spotting; the linger ends on time
+    'src/sim/spottingLife.selftest.mjs',
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
