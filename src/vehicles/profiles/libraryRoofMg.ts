@@ -79,6 +79,11 @@ export interface LibraryStationGunOptions {
   /** A gun a crewman fires at the mount (a loader's or commander's pintle): its grips, sight and ammunition box, in place
    *  of a remote station's solenoid housing. */
   crew?: boolean;
+  /** The crew form's ammunition can (default: with `crew`); false where the mount carries its own can and feed (the Type
+   *  90's tray and arm, type90X.ts). */
+  ammo?: boolean;
+  /** The gun in the army's issue drab with its mount ('turretAmmo') in place of weapon steel: the JGSDF's olive M2s. */
+  drab?: boolean;
   /** How far the receiver's centre stands behind the pivot (default 0.08 m). An enclosed mini-turret sets it so the whole
    *  receiver stays under its flat roof, behind the sloped face; the barrel still runs to the published muzzle. */
   receiverBehind?: number;
@@ -96,17 +101,31 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   const def = MG_CLASSES[o.cls], feed = o.feed ?? 'right';
   // the Kord at 102 %: its ported brake's mouth meets a station's 30 mm muzzle-rim receipt (nationalMachineGun)
   const scale = o.cls === 'kord' ? 1.02 : 1;
-  const base = { cls: o.cls, scale, remote: !o.crew, ammo: Boolean(o.crew), mount: 'external-cradle', feed } as const;
+  const ammo = Boolean(o.crew) && o.ammo !== false;
+  const base = { cls: o.cls, scale, remote: !o.crew, ammo, mount: 'external-cradle', feed } as const;
   const probe = createPintleLayout(base, { add() {} });
   const dz = o.pivotZ - (o.receiverBehind ?? 0.08) - probe.recZ, dy = o.boreY - probe.trunY;
   const barrelLength = o.muzzleZ === undefined ? undefined : o.muzzleZ - dz - probe.trunZ - 0.10 * probe.s - def.flashL * probe.s;
   const layout = createPintleLayout({ ...base, ...(barrelLength === undefined ? {} : { barrelLength }), muzzleBoreDepth: 0.07 }, {
     add(slot: string, geometry: THREE.BufferGeometry, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): void {
       if (slot === 'shadow') return;
-      g.add(slot === 'glass' ? 'turretGlass' : 'turretDark', KIT.xform(geometry, px, py, pz, rx, ry, rz), o.x, dy, dz);
+      g.add(slot === 'glass' ? 'turretGlass' : o.drab ? 'turretAmmo' : 'turretDark', KIT.xform(geometry, px, py, pz, rx, ry, rz), o.x, dy, dz);
     },
   });
   addPintleReceiver(layout);
   addPintleBarrel(layout);
-  if (o.crew) addPintleAmmo(layout);
+  if (ammo) addPintleAmmo(layout);
+}
+
+/** The drawn bounds of libraryStationGun's construction for these options, in the stock's authored frame (no geometry is
+ *  kept): a mount reads it to seat its cradle under the receiver and its station's muzzle on the drawn mouth. */
+export function libraryStationGunBounds(o: LibraryStationGunOptions): THREE.Box3 {
+  const bounds = new THREE.Box3(), part = new THREE.Box3();
+  libraryStationGun({ add(_slot, geometry, x, y, z) {
+    geometry.computeBoundingBox();
+    part.copy(geometry.boundingBox!).translate(new THREE.Vector3(x, y, z));
+    bounds.union(part);
+    geometry.dispose();
+  } }, o);
+  return bounds;
 }

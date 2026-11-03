@@ -5,6 +5,7 @@
 // The kit is the REA-2011 show prototype's fit: laser-warning heads in the empty front housings, a closed bustle bin
 // set with the wading snorkel stowed on it, rubber flaps under the stern screens and at the bow, caged headlights.
 import type * as THREE from 'three';
+import {DoubleSide,Mesh,MeshBasicMaterial,Raycaster,Vector3} from 'three';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addT90CradleDrums} from './t90CradleDrums.ts';
 import {KIT} from './kit.ts';
@@ -68,23 +69,42 @@ function wadingSnorkel(P:TankBuilderPort):void{
 function sternFlaps(P:TankBuilderPort):void{
   // Segmented rubber flaps carry the side curtain's hem (y .437) back to the stern under the slat screens: four
   // segments hung 30 mm up behind the screens' inner hanging sheet, whose lower edge climbs from y .52 (z -1.005) to
-  // 1.01 (z -3.04); they hang inboard of it and outboard of the track (x 1.68).
-  const hem=.44,edge=(z:number)=>.5205-(z+1.00495)*.2414;
+  // 1.01 (z -3.04); they hang inboard of it and outboard of the track (x 1.68). 267 (S3): their feet are cut into the
+  // curtain's teeth (t90msX.ts fenders): three trapezoid teeth a segment between V notches 80 mm deep.
+  const hem=.44,edge=(z:number)=>.5205-(z+1.00495)*.2414,notch=.035,depth=.08,teeth=3;
   for(const side of [-1,1]){
     const face=side>0?1.7657:1.77635,l=Math.min(side*face,side*(face-.016)),r=Math.max(side*face,side*(face-.016));
     for(let i=0;i<4;i++){
-      const z1=-1.012-i*.508,z0=z1-.498;
-      P.addEquipment('hullRubber',sectionSolid([z0,z1].map(z=>({z,ring:[[l,hem],[r,hem],[r,edge(z)+.03],[l,edge(z)+.03]] as Array<readonly[number,number]>}))));
+      const z1=-1.012-i*.508,z0=z1-.498,cuts:(readonly[number,number])[]=[[z0,0]];
+      for(let k=1;k<teeth;k++){const z=z0+(z1-z0)*k/teeth;cuts.push([z-notch,0],[z,depth],[z+notch,0]);}
+      cuts.push([z1,0]);
+      P.addEquipment('hullRubber',sectionSolid(cuts.map(([z,cut])=>({z,ring:[[l,hem+cut],[r,hem+cut],[r,edge(z)+.03],[l,edge(z)+.03]] as Array<readonly[number,number]>}))));
     }
   }
 }
 
+/** First hit of a ray on the hull stock (builder frame). */
+function hullHit(P:TankBuilderPort,from:Point3,dir:Point3,what:string):THREE.Vector3{
+  const mat=new MeshBasicMaterial({side:DoubleSide});
+  const ray=new Raycaster(new Vector3(...from),new Vector3(...dir).normalize());
+  let best:THREE.Intersection|undefined;
+  P.forEachBucketPart(['hull'],g=>{const m=new Mesh(g,mat);m.updateMatrixWorld();const h=ray.intersectObject(m)[0];if(h&&(!best||h.distance<best.distance))best=h;});
+  mat.dispose();
+  if(!best)throw new Error(`${P.spec.id}: the 2011 kit's ${what} found no hull stock from ${from.join(',')}`);
+  return best.point;
+}
+
 function bowFlaps(P:TankBuilderPort):void{
-  // Rubber mud flaps hung from the front fender tips (underside y .793 at z 3.668), as the T-72/T-90 line's front
-  // fenders carry, under a steel clamp strip; they hang ahead of the idler's track wrap (z 3.44).
+  // Rubber mud flaps hung from the front fender tips, as the T-72/T-90 line's front fenders carry, under a steel clamp
+  // strip; they hang ahead of the idler's track wrap (z 3.44). 267 (S1): the source build's bow guard ends in a narrow
+  // toe flap (t90msX.ts MS_TOE, x 1.09-1.58 at z 3.65), so each flap is that toe's width, hung 22 mm behind its tip
+  // from the toe's underside (rays down onto it at the flap's ends and middle), 200 mm of rubber.
+  const z=3.655,w=.40,cx=1.335;
   for(const side of [-1,1]){
-    P.addEquipment('hullRubber',box(.74,.26,.016),side*1.374,.67,3.668);
-    P.addEquipment('hullDark',box(.76,.036,.022),side*1.374,.79,3.668);
+    let under=9;
+    for(const dx of [-w/2+.02,0,w/2-.02])under=Math.min(under,hullHit(P,[side*(cx+dx),1.6,z],[0,-1,0],'bow flap toe').y-.010);
+    P.addEquipment('hullRubber',box(w,.20,.014),side*cx,under+.006-.10,z);
+    P.addEquipment('hullDark',box(w+.02,.032,.020),side*cx,under-.012,z);
   }
 }
 

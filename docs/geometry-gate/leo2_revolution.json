@@ -861,7 +861,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -934,5 +933,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/leopard_revolution_owner_2026.glb",
+  "sha256": "7a19d4244aa647a50cf7c1f18268da60329b11d14254a8c009ad09fac4c4b3f1"
+ }
 }

@@ -22,7 +22,8 @@ for(const quality of ['high','low']) {
           `${quality}: fender crown bends down without old constant-height forward shelf`);
       }
       const well=cast(armor,[side*1.43,.90,3.3],[0,1,0])[0];
-      near(well?.point.y,1.145,.003,`${quality}: actual open space above idler, not a solid mudguard block`);
+      // (267) the rolled bow sheet is 16 mm (the fender sheet it continues was 22 mm): its underside over the idler
+      near(well?.point.y,1.151,.003,`${quality}: actual open space above idler, not a solid mudguard block`);
       const lip=cast(armor,[side*1.4,.85,3.55],[0,0,1])[0];
       assert.ok(lip?.point.z>3.70,`${quality}: curved forward lip leaves the wheel well open`);
       near(cast(armor,[side*1.4,0,-3.3],[0,1,0])[0]?.point.y,.813344,.003,

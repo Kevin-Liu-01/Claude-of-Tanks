@@ -19,5 +19,8 @@ export function portraitSideRatio(id: string): number {
   // scale to (brazil-line-266; the X1 still measured 113.7 x 112.0 at the Lynx's 0.86).
   if (id === 'x1_pioneiro') return 1.10;
   if (id === 'x1a2_carcara') return 0.70;
+  // Release 267: the T-80UK command fit's tall mast stood 112.0 card px against the 111.8 px full-height envelope
+  // (1.27 x 88) at the default 0.56; a more side-on view widens the dense core it scales to.
+  if (id === 't80uk') return 0.70;
   return 0.56;
 }

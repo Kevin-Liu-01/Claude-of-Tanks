@@ -373,11 +373,16 @@ const SPECS: FleetTankSpec[] = [
       },
       visual: { scheme: 'solid', base: '#6a6047', weather: '#75694e', patches: [], number: '340' } }),
   // t90a_burlak_proto: experimental Burlak bustle-autoloader turret on the T-90A
-  // hull (t90a_2004 stats; height to the taller bustle roof; the rear-rack
-  // autoloader feeds a touch faster than the carousel). overallLengthM:
-  // the Burlak bustle overhangs the hull rear ~0.24 past the T-90A datum
-  // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
-  // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
+  // hull (t90a_2004 stats; the rear-rack autoloader feeds a touch faster than
+  // the carousel). 267 (Main's ruling 2026-11-01: the dims describe the model
+  // players see): since 266 it rides the source-X T-90A hull (profiles/t90X.ts,
+  // t90a's twin: the same parts at its 1.05 installed size; stowage aside both
+  // hulls span 7.423 m before it), so hull length, width and hull silhouette are
+  // t90a's. heightM is its own turret's structural roof, the bustle roof (its
+  // casting crown 2.11; roof fittings left out, as t90a's 2.2049); overallLengthM
+  // is the gun-forward total to the hull rear (muzzle 6.041 to the rear drums
+  // -4.194, t90a's measure): on this hull the bustle (rear -3.344) no longer
+  // overhangs it. The 266 values (2.30, 9.76) described the retired native hull.
   make('t90a_2004', 't90a_burlak_proto', 'T-90A Burlak Prototype', 'USSR/Russia',
     { hp: 2500, gun: {
         reloadS: 6.0,
@@ -388,7 +393,7 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 600 }),
         })),
       },
-      dims: { heightM: 2.30, overallLengthM: 9.76 },
+      dims: { hullLengthM: 6.86, widthM: 3.78, silhouetteHullLengthM: 7.888, heightM: 2.17, overallLengthM: 10.235 },
       visual: { number: '059' } }),
 ];
 

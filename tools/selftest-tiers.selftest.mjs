@@ -204,7 +204,8 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
 {
   const partition = { ids: ['leo2a4', 'leo2a5', 't90a'], core: new Set(['src/vehicles/tankFactoryCore.ts']),
     groups: { leopard: ['src/vehicles/profiles/leopard.ts'], t90: ['src/vehicles/profiles/t90.ts'] },
-    groupChain: (id) => (id.startsWith('leo') ? ['leopard'] : ['t90']), fileIds: { 'src/vehicles/table.generated.ts': ['leo2a4', 't90a'] } };
+    groupChain: (id) => (id.startsWith('leo') ? ['leopard'] : ['t90']), fileIds: { 'src/vehicles/table.generated.ts': ['leo2a4', 't90a'] },
+    generated: ['public/icons/**'] };
   const moved = changedTankIds(partition, ['src/vehicles/profiles/leopard.ts', 'src/vehicles/tankFactoryCore.ts', 'public/icons/tanks/t90a.json',
     'src/vehicles/table.generated.ts', 'docs/DEPLOYS.md']);
   assert.deepEqual(moved.core, ['src/vehicles/tankFactoryCore.ts'], 'a core file marks no id: it is reported apart');
@@ -213,6 +214,11 @@ const lane = (changed, naming = new Map()) => selectLane({ defaults: ['r/default
   assert.deepEqual(moved.ids.get('t90a'), ['public/icons/tanks/t90a.json', 'src/vehicles/table.generated.ts (rows unresolved)'],
     'a path naming the id, and a table file with no diff to read (all its ids)');
   assert.equal(changedTankIds(partition, ['docs/DEPLOYS.md']).ids.size, 0, 'a docs edit moves no tank');
+  // 268: a page's media name ids too (the fleet stills and clips, the og cards); only source and generated paths do
+  assert.equal(changedTankIds(partition, ['public/media/site50-r14/fleet/t90a.webm', 'public/brand/og/t90a.png', 'docs/history/t90a.md']).ids.size, 0,
+    'a media or prose path naming an id moves no tank');
+  assert.deepEqual([...changedTankIds(partition, ['src/vehicles/profiles/t90a.selftest.mjs', 'docs/references/vertex/leo2a5.json']).ids.keys()].sort(),
+    ['leo2a5', 't90a'], 'a source path naming an id (a receipt, the reference intake) marks it');
   const world = { maps: ['verdant', 'desert'], donorsOf: (step, map) => (map === 'desert' ? ['t90a'] : []),
     steps: { collision: { core: new Set(['tools/capture-world-collision-manifests.mjs']), maps: { verdant: new Set(['src/world/maps/verdant.ts']), desert: new Set() } } } };
   assert.deepEqual([...changedMaps(world, ['src/world/maps/verdant.ts']).collision.keys()], ['verdant'], 'a map file moves its map');

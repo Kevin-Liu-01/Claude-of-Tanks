@@ -806,8 +806,8 @@
       {
         "volumeId": "M09",
         "name": "radio",
-        "min": [-0.3224,0.2389,-0.8091],
-        "max": [-0.1443,0.3994,-0.7638],
+        "min": [-0.3402,0.2036,-0.8247],
+        "max": [-0.139,0.3853,-0.7737],
         "turretLocal": true
       },
       {
@@ -871,7 +871,7 @@
     ]
   },
   "geometryHash": "af03b9ff",
-  "metadataHash": "5ef496b7",
+  "metadataHash": "0f781086",
   "presentationAnchor": {
     "xM": 0.0001,
     "zM": -0.0621
@@ -935,8 +935,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35118,
-      "sha256": "7ce87cc903d280d8da0efb40882f62db2faa0cb688e888186083bb71b7caa9a6"
+      "bytes": 34184,
+      "sha256": "be4e3cdf2566eb27a8fd642b43890e0be56f776d6653c2c8e1550d7524b5379e"
     },
     "crewSide": {
       "file": "puma_s1_crew_side.webp",

@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { beamBetween } from './measuredPrimitives.ts';
+import { stowagePart } from './stowagePart.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addT90A2004TurretPackage } from './t90MarkA2004Turret.ts';
 type Point = readonly [number, number, number];
@@ -35,8 +36,9 @@ function stockRay(P: TankBuilderPort, buckets: string[], from: Point, dir: Point
   return best ? best.point : null;
 }
 
+/** One of the turret rack's tubes: stowage, as the whole rack is (stowagePart.ts, 267). */
 function tube(P: TankBuilderPort, a: Point, b: Point, r = .016): void {
-  P.addEquipment('turretDetail', beamBetween(a, b, r, 10));
+  P.addEquipment('turretDetail', stowagePart(beamBetween(a, b, r, 10)));
 }
 
 // Segmented rubber flaps under the side screens: the rubber-fabric strips the garrison T-72/T-90 fleet hung below the
@@ -96,7 +98,7 @@ function turretRack(P: TankBuilderPort): void {
     tube(P, [xl, y, zf], [xl, y, zr]); tube(P, [xr, y, zf], [xr, y, zr]); tube(P, [xl, y, zr], [xr, y, zr]);
   }
   tube(P, [xl, rail, zf], [xr, rail, zf]);
-  for (const [x, , z] of posts.slice(0, 4)) P.addEquipment('turretDetail', box(.07, .012, .07), x, roof + .004, z); // weld pads
+  for (const [x, , z] of posts.slice(0, 4)) P.addEquipment('turretDetail', stowagePart(box(.07, .012, .07)), x, roof + .004, z); // weld pads
 }
 
 export function addT90MarkA2004Kit(P: TankBuilderPort): void {

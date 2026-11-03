@@ -12,6 +12,8 @@ import { libraryRoofMg } from './libraryRoofMg.ts';
 import {T90_BURLAK_X_SOURCE_DATUMS} from '../t90BurlakXArmor.ts';
 import {addT90BurlakSkirtCassettes} from './t90BurlakXSkirts.ts';
 import {addT90BurlakRearFurniture} from './t90BurlakXRear.ts';
+import {addT90BowGuard,toothedRubberStrip,type BowGuardStation} from './t90AwXFenders.ts';
+import {glacisEraContainers,type GlacisEraBand} from './t90AwXDetails.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const T90_BURLAK_X_DATUMS=T90_BURLAK_X_SOURCE_DATUMS;
@@ -34,12 +36,46 @@ function hull(P:TankBuilderPort):void{
   P.add('hull',cylY(1.24025,.099,48),-.00095,1.4964,.11567);
   for(const side of [-1,1])fenders(P,side);
 }
+// The crowned fender's source stations (z, top, bottom). The Burlak's hull is the T-90 AW print's (its hull, tread and
+// suspension nodes are the t90 print's, docs/references/tanks/t90a_burlak.md), so its fender, bow guard, glacis K-5 and
+// skirt hem follow the T-90 AW's (t90AwXFenders.ts, t90AwXDetails.ts); 2.94 is the shoulder's front.
+const CROWN:readonly(readonly[z:number,top:number,bottom:number])[]=[[-3.367,1.22,1.204],[-3.30,1.2744,1.2518],
+  [-3.10,1.305,1.289],[-2.9,1.483,1.2883],[-2,1.495,1.2873],[0,1.491,1.2865],[1,1.452,1.2873],[2,1.3916,1.2863],
+  [2.8,1.340,1.2678],[2.94,1.324,1.26],[3.1,1.3033,1.237],[3.3,1.268,1.208],[3.5,1.1688,1.123],[3.65,1.016,.969],
+  [3.755,.91,.87]];
+// The hull's upper glacis edge under the fender (hull(): its half-width and top at each station).
+const GLACIS_EDGE:readonly(readonly[z:number,half:number,top:number])[]=[[1.9,1.052,1.4314],[2.5,1.043,1.1708],
+  [2.7,1.032,1.084],[2.9,1.022,.9972],[3.1,1.0115,.9104]];
+function lerpRows(rows:readonly(readonly number[])[],k:number,z:number):number{
+  for(let i=1;i<rows.length;i++)if(z<=rows[i][0]||i===rows.length-1){
+    const a=rows[i-1],b=rows[i];return a[k]+(b[k]-a[k])*(z-a[0])/(b[0]-a[0]);
+  }
+  return rows[rows.length-1][k];
+}
+// 267 (S1, the 266 blind critics: "the bow mudguards read as oversized wedges jutting forward over the tracks"): ahead of
+// the shoulder the guard is the T-90 AW's pressed sheet (addT90BowGuard): a 12 mm shelf to 3.304 that falls across its
+// width to an 8 mm turned lip, three hinge knuckles over a 12 mm gap, and a 10 mm toe flap on the source's top line that
+// narrows to the source's nose (x 1.09-1.72 at 3.65, 1.27-1.42 at 3.75); no further forward and no wider than the loft.
+const BOW_SHELF:readonly(readonly[z:number,innerFall:number,outerFall:number])[]=[[2.94,0,.004],[3.02,0,.008],
+  [3.10,0,.012],[3.20,.002,.02],[3.304,.004,.03]];
+const BOW_TOE:readonly(readonly[z:number,inner:number,outer:number,innerFall:number,outerFall:number,lip:number])[]=[
+  [3.316,.944,1.795,.002,.030,.040],[3.45,.952,1.795,.008,.05,.035],[3.58,1.000,1.778,.02,.075,.030],
+  [3.67,1.060,1.725,.025,.08,.025],[3.725,1.135,1.640,.02,.06,.020],[3.755,1.225,1.495,.01,.03,.015]];
 function fenders(P:TankBuilderPort,side:number):void{
   const l=Math.min(side*.944,side*1.795),r=Math.max(side*.944,side*1.795);
-  const rows:readonly(readonly[number,number,number])[]=[[-3.367,1.22,1.204],[-3.30,1.2744,1.2518],[-3.10,1.305,1.289],
-    [-2.9,1.483,1.2883],[-2,1.495,1.2873],[0,1.491,1.2865],[1,1.452,1.2873],[2,1.3916,1.2863],
-    [2.8,1.340,1.2678],[3.1,1.3033,1.237],[3.3,1.268,1.208],[3.5,1.1688,1.123],[3.65,1.016,.969],[3.755,.91,.87]];
-  P.addMudguard('burlak-x-source-crown','hull',sectionSolid(rows.map(([z,t,b])=>({z,ring:[[l,b],[r,b],[r,t-.007],[l,t]]}))));
+  const mirror=(ring:Array<readonly[number,number]>)=>side<0?ring.map(([x,y])=>[-x,y] as const).reverse():ring;
+  P.addMudguard('burlak-x-source-crown','hull',sectionSolid(CROWN.filter(([z])=>z<=2.94)
+    .map(([z,t,b])=>({z,ring:[[l,b],[r,b],[r,t-.007],[l,t]]}))));
+  // 267 (roof-pocket census, hull 576 + 532 cm2): the hull side's top edge closes the wedge of air between the falling
+  // glacis edge and the fender's inner edge over it, from that edge out to the hull side, 10 mm into the glacis and 6 mm
+  // into the fender (the source sections turn the guard's inner edge down to the hull there).
+  P.addEquipment('hullDetail',sectionSolid([2.30,2.5,2.7,2.94].map(z=>{
+    const out=lerpRows(GLACIS_EDGE,1,z)-.003,low=lerpRows(GLACIS_EDGE,2,z)-.010,high=lerpRows(CROWN,2,z)+.006;
+    return {z,ring:mirror([[.944,low],[out,low],[out,high],[.944,high]])};
+  })));
+  const shelf:BowGuardStation[]=BOW_SHELF.map(([z,innerFall,outerFall])=>[z,.944,1.795,lerpRows(CROWN,1,z),innerFall,outerFall,.045]);
+  const toe:BowGuardStation[]=BOW_TOE.map(([z,inner,outer,innerFall,outerFall,lip])=>[z,inner,outer,lerpRows(CROWN,1,z),innerFall,outerFall,lip]);
+  addT90BowGuard(P,side,'burlak-x-bow-guard',shelf,toe,[[1.00,1.24],[1.30,1.52],[1.58,1.76]]);
   for(const[z,d]of [[-2.06345,1.959],[-.45925,1.2476],[.8833,1.4287],[2.29245,1.3838]]){
     // Full-height fixed sheets carry vehicle paint. Mudguard registration
     // describes their seating, not a rubber finish; keep the original stock,
@@ -47,6 +83,10 @@ function fenders(P:TankBuilderPort,side:number):void{
     P.addMudguard('burlak-x-fixed-skirt',side<0?'hullTrackGuardL':'hullTrackGuardR',box(.011,.5801,d-.01),side*1.732,1.016,z);
     P.addEquipment('hullDetail',box(.038,.028,d-.005),side*1.735,1.320,z);
   }
+  // 267 (S3, "the side skirts read as plain slabs with flat hems"): the T-90 AW's toothed rubber strip runs under the
+  // sheets' common .726 hem from end to end, its tips 100 mm under it, at x 1.7195-1.7315: its top 40 mm bolted 5 mm into
+  // the back of the sheets (inner face 1.7265), outboard of the track (1.690) and its wheels.
+  P.addMudguard('burlak-x-toothed-hem','hullRubber',toothedRubberStrip(-3.043,2.98435,.72595,.10).translate(side*1.7255,0,0));
 }
 function runningGear(P:TankBuilderPort):void{
   // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Russia nation construction
@@ -63,13 +103,21 @@ function runningGear(P:TankBuilderPort):void{
     trackShoeDimensions:{padHeight:.036,grouserHeight:.010,webHeight:.018,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }
+// 267 (S3, "the glacis armour reads flat"): the glacis Kontakt-5 as the T-90 AW's welded containers (glacisEraContainers),
+// two bands a side over the source's two cover stations (the 266 slabs: 2.180-2.643 to |x| 0.89 and 2.646-3.219 to
+// 0.779, 21 and 25 mm thick), each container on the plate that slab lay on; three columns, two and three rows.
+const GLACIS_ERA:readonly GlacisEraBand[]=[
+  {z0:2.180,z1:2.643,x0:.012,x1:.89,plate:[[2.180,1.308],[2.643,1.109]],rows:2,cols:3,h0:.030,h1:.046},
+  {z0:2.646,z1:3.219,x0:.0105,x1:.77875,plate:[[2.646,1.104],[3.219,.858]],rows:3,cols:3,h0:.028,h1:.044},
+];
 function hullEra(P:TankBuilderPort):void{
   for(const side of [-1,1]){
-    const l=side<0?-.89:.012,r=side<0?-.012:.89;
     P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.18,l,r,1.329,1.329],[2.643,l,r,1.130,1.130]],.021),[0,1,0]));
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.646,l*.875,r*.875,1.129,1.129],[3.219,l*.875,r*.875,.883,.883]],.025),[0,1,0]));
-      for(const z of [2.26,2.43,2.70,2.88,3.09])for(const x of [side*.22,side*.62])P.addExternalArmor('hull',markEraFurniture(box(.24,.01,.024)),x,1.343-(z-2.18)*.429,z,.40);
+      for(const band of GLACIS_ERA){
+        const {cover,bolts}=glacisEraContainers(side,band,P.q);
+        P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
+        if(P.q)P.addExternalArmor('hull',markEraFurniture(bolts));
+      }
     });
   }
   addT90BurlakSkirtCassettes(P);

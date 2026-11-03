@@ -12,7 +12,7 @@ import {addT90AWOpticalHeads} from './t90AwXOpticalHeads.ts';
 import {addT90AWSmallOptics} from './t90AwXSmallOptics.ts';
 import {addT90AWCastUnderside} from './t90AwXCastUnderside.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
-import {addT90AWMeteo,addT90AWSideEra,addT90AWProjectors,addT90AWRearCases} from './t90AwXDetails.ts';
+import {addT90AWMeteo,addT90AWSideEra,addT90AWProjectors,addT90AWRearCases,glacisEraContainers,type GlacisEraBand} from './t90AwXDetails.ts';
 import {addT90AWRearCradles} from './t90AwXHullEnds.ts';
 import {addT90AWFender,addT90AWExhaust,addT90AWSkirts} from './t90AwXFenders.ts';
 import {addT90AWCheekLeaves} from './t90AwXCheekLeaves.ts';
@@ -60,13 +60,21 @@ function runningGear(P:TankBuilderPort):void{
     trackShoeDimensions:{padHeight:.036,grouserHeight:.010,webHeight:.018,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }
+// 267 (S3): the glacis Kontakt-5 as two bands of welded containers a side (t90AwXDetails glacisEraContainers) over the
+// source's two cover stations, which they keep: the upper band z 2.180-2.643 to |x| 0.89, the lower 2.646-3.219 to
+// 0.779, each on the plate its 266 slab lay on (21 and 25 mm under that slab's face); three columns, two and three rows.
+const AW_GLACIS_ERA:readonly GlacisEraBand[]=[
+  {z0:2.180,z1:2.643,x0:.012,x1:.89,plate:[[2.180,1.308],[2.643,1.109]],rows:2,cols:3,h0:.030,h1:.046},
+  {z0:2.646,z1:3.219,x0:.0105,x1:.77875,plate:[[2.646,1.104],[3.219,.858]],rows:3,cols:3,h0:.028,h1:.044},
+];
 function hullEra(P:TankBuilderPort):void{
   for(const side of [-1,1]){
-    const a=side<0?-.89:.012,b=side<0?-.012:.89;
     P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.180,a,b,1.329,1.329],[2.643,a,b,1.130,1.130]],.021),[0,1,0]));
-      P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.646,a*.875,b*.875,1.129,1.129],[3.219,a*.875,b*.875,.883,.883]],.025),[0,1,0]));
-      for(const z of [2.26,2.43,2.70,2.88,3.09])for(const x of [side*.22,side*.62])P.addExternalArmor('hull',markEraFurniture(box(.24,.010,.024)),x,1.329-(z-2.18)*.429+.014,z,.40);
+      for(const band of AW_GLACIS_ERA){
+        const {cover,bolts}=glacisEraContainers(side,band,P.q);
+        P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
+        if(P.q)P.addExternalArmor('hull',markEraFurniture(bolts));
+      }
     });
   }
   addT90AWSideEra(P);

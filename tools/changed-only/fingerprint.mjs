@@ -86,12 +86,48 @@ function readRows(root, env, tableModule = null) {
   return JSON.parse(out);
 }
 
-/** NODE_OPTIONS minus heap-size flags and the self-test runner's preloads (the assert guard decides only failing asserts
- *  in receipts, the observer only records reads; tools/run-selftests.mjs SELFTEST_GRAPH_GUARD, SELFTEST_OBSERVER), none
- *  of which can change what a tool writes. */
-export function normalizedNodeOptions(value = '') {
-  return value.split(/\s+/).filter((flag) => flag && !/^--max-old-space-size(=|$)/.test(flag)
-    && !/^--import=\S*\/tools\/(?:assert-graph-guard|selftest-observe)\.mjs$/.test(flag)).sort().join(' ');
+/**
+ * The toolchain: what runs every tool, by what changes its output (268): the schema, Node, the platform and
+ * package-lock.json. Two checkouts on one lock agree whatever their installs' bookkeeping (node_modules/.package-lock.json
+ * differs between in-sync installs of one lock by npm's peer flags) and NODE_OPTIONS (the chain sets its tools' own; a
+ * heap cap decides nothing); installDrift holds the install to the lock instead. A change runs every step on every id.
+ */
+export function toolchainOf(root, hashFile = (file) => (existsSync(file) ? sha256(readFileSync(file)) : 'missing')) {
+  const parts = [`schema:${SCHEMA}`, `node:${process.version}`, `platform:${process.platform}/${process.arch}`,
+    `package-lock:${hashFile(resolve(root, 'package-lock.json'))}`];
+  return { toolchain: H(...parts), parts };
+}
+
+/** What moved between a table's toolchain and `parts` (this run's), part by part; a table recorded before 268 keeps
+ *  no parts, so this run's are named. */
+export function toolchainChange(manifest, parts) {
+  if (!manifest?.toolchainParts?.length) return `the table records no parts; this run: ${parts.join(', ')}`;
+  const named = (list) => new Map(list.map((part) => [part.slice(0, part.indexOf(':')), part.slice(part.indexOf(':') + 1)]));
+  const was = named(manifest.toolchainParts), now = named(parts);
+  return [...new Set([...was.keys(), ...now.keys()])].filter((key) => was.get(key) !== now.get(key))
+    .map((key) => `${key}: ${was.get(key) ?? 'absent'} recorded, ${now.get(key) ?? 'absent'} here`).join('; ')
+    || `the same parts under another formula: ${parts.join(', ')}`;
+}
+
+/**
+ * How node_modules departs from package-lock.json, by npm's record of the install (node_modules/.package-lock.json):
+ * installed versions other than the lock's, packages the lock does not name, and packages it requires (not optional or
+ * peer) that are not installed. Empty when the install is the lock's, whatever its bookkeeping (268: the toolchain keys
+ * the lock, so a stale install would run other tools under the lock's key).
+ */
+export function installDrift(root) {
+  const packages = (file) => { try { return JSON.parse(readFileSync(resolve(root, file), 'utf8')).packages ?? {}; } catch { return null; } };
+  const lock = packages('package-lock.json'), installed = packages('node_modules/.package-lock.json');
+  if (!lock) return ['package-lock.json does not read'];
+  if (!installed) return ['nothing installed (node_modules/.package-lock.json)'];
+  const name = (path) => path.replace(/^node_modules\//, '');
+  return [
+    ...Object.entries(installed).filter(([path, pkg]) => lock[path] && lock[path].version !== pkg.version)
+      .map(([path, pkg]) => `${name(path)} ${pkg.version} installed, ${lock[path].version} locked`),
+    ...Object.keys(installed).filter((path) => !lock[path]).map((path) => `${name(path)} installed, not locked`),
+    ...Object.entries(lock).filter(([path, pkg]) => path && !installed[path] && !pkg.optional && !pkg.devOptional && !pkg.peer)
+      .map(([path]) => `${name(path)} locked, not installed`),
+  ];
 }
 
 /**
@@ -136,14 +172,11 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     globalReasons.push('roster: ALL_TANK_IDS, SAVED_TANK_IDS and the fleet manifest name different ids');
   }
 
-  // Toolchain: what runs every tool. A change runs every step on every id.
-  const lockHash = (file) => graph.hashFile(abs(file));
-  const toolchainParts = [`schema:${SCHEMA}`, `node:${process.version}`, `platform:${process.platform}/${process.arch}`,
-    `package-lock:${lockHash('package-lock.json')}`, `installed:${lockHash('node_modules/.package-lock.json')}`,
-    `node-options:${normalizedNodeOptions(env.NODE_OPTIONS)}`];
+  // Toolchain: what runs every tool (toolchainOf). A change runs every step on every id.
+  const { toolchain: actualToolchain, parts: toolchainParts } = toolchainOf(root, graph.hashFile);
   // toolchainOverride (the freshness receipt only): judge the tree as though it ran on the manifest's toolchain, so a
   // Node or lockfile change on this machine is reported apart instead of marking every id.
-  const toolchain = toolchainOverride ?? H(...toolchainParts);
+  const toolchain = toolchainOverride ?? actualToolchain;
 
   // Roster: ids, their order, groups, renames. A change runs every step in whole-fleet mode.
   const roster = H(JSON.stringify(data.roster));
@@ -162,19 +195,28 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   // Per-id input files (266): a table's `inputField` names, in each id's row, a file the step writing the table reads for
   // that id, as { path, sha256 } (path as a page fetches it, under public/). Its row is the file's hash when the file is
   // in this checkout, else the hash the row recorded, so a checkout without the file keys the id as the checkout that
-  // measured it did. It keys only its own id, never the ids whose spec chains name it.
-  const inputTables = {}, absentInputs = {};
+  // measured it did. It keys only its own id, never the ids whose spec chains name it. A `graft` beside it (267: a
+  // certified second source the registration seats in the first, t90a_burlak_proto's turret) is the id's input as well.
+  // Its measured row (267) is the same row from the recorded sha256s alone: what a run stamps (stampedInKeys).
+  const inputTables = {}, absentInputs = {}, measuredRows = {};
   for (const [name, table] of Object.entries(TABLES)) {
     if (!table.inputField) continue;
     const input = `${name}.${table.inputField}`;
     inputTables[name] = input;
-    const inputRows = {};
+    const inputRows = {}, measured = (measuredRows[input] = {});
     for (const [id, named] of Object.entries(data.named?.[name] ?? {})) {
       if (typeof named?.path !== 'string') continue;
-      const file = abs(join('public', named.path.replace(/^\/+/, '')));
-      const digest = graph.hashLargeFile(file);
-      if (digest === 'missing') (absentInputs[name] ??= {})[id] = `${table.inputField} absent here (${rel(file)})`;
-      inputRows[id] = h16(`${named.path}:${digest === 'missing' ? (named.sha256 ?? 'unrecorded') : digest}`);
+      const keyOf = (input, what) => {
+        const file = abs(join('public', input.path.replace(/^\/+/, '')));
+        const digest = graph.hashLargeFile(file);
+        if (digest === 'missing') (absentInputs[name] ??= {})[id] ??= `${what} absent here (${rel(file)})`;
+        return `${input.path}:${digest === 'missing' ? (input.sha256 ?? 'unrecorded') : digest}`;
+      };
+      const recordedOf = (input) => `${input.path}:${input.sha256 ?? 'unrecorded'}`;
+      const grafted = typeof named.graft?.path === 'string';
+      const graft = grafted ? `|${keyOf(named.graft, `${table.inputField} graft`)}` : '';
+      inputRows[id] = h16(`${keyOf(named, table.inputField)}${graft}`);
+      measured[id] = h16(`${recordedOf(named)}${grafted ? `|${recordedOf(named.graft)}` : ''}`);
     }
     data.rows[input] = inputRows;
   }
@@ -392,21 +434,28 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
   };
   const builderKey = (id) => H(`core:${core}`, `roster:${roster}`, ...groupChain(id).map((group) => `group:${group}:${groups[group]}`));
   const rowOf = (table, id) => data.rows[table]?.[id] ?? 'absent';
-  const rowsKey = (step, id) => {
+  // `ownRow` (stampedInKeys): the id's own input rows taken from elsewhere (as a run recorded them)
+  const rowsKey = (step, id, ownRow = null) => {
     const parts = [];
     for (const table of stepStates[step.name].rowTables) for (const member of chainOf(id)) {
       if (member === id && step.outputs.includes(table)) continue;
       if (member !== id && ownInputs.has(table)) continue;
-      parts.push(`${table}:${member}:${rowOf(table, member)}`);
+      parts.push(`${table}:${member}:${ownRow && ownInputs.has(table) ? ownRow(table) : rowOf(table, member)}`);
     }
     return H(...parts);
   };
-  const inKey = (name, id) => {
+  const inKey = (name, id, ownRow = null) => {
     const state = stepStates[name];
-    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id)}`);
+    return H(`schema:${SCHEMA}`, `toolchain:${toolchain}`, `tool:${state.tool}`, `builder:${builderKey(id)}`, `rows:${rowsKey(state.step, id, ownRow)}`);
   };
   const outKey = (name, id) => H(...stepStates[name].step.outputs.map((table) => `${table}:${rowOf(table, id)}`));
   const fileHash = (file) => graph.hashFile(abs(file)).slice(0, 16);
+  // (268) A stamp's key: what would make an id the step could not run here runnable. A stamp naming files (an absent or
+  // unpinned oracle) keys the step's tool and those files' bytes, or their absence; one naming none (a page error) keys
+  // the id's whole input key, as of the run that stamped it.
+  const stampKey = (name, id, files, input = inKey(name, id)) => (files.length
+    ? H(`stamp:tool:${stepStates[name].tool}`, ...files.map((file) => `file:${file}:${graph.hashLargeFile(abs(file))}`))
+    : H(`stamp:in:${input}`));
 
   // The world steps' per-map keys (tools/changed-only/world.mjs): null for a tree or fixture without world rows.
   const worldConfig = { ...DEFAULT_CONFIG.world, ...(config.world ?? {}) };
@@ -428,8 +477,10 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
     ownInputs,
     // why an id cannot run here: the per-id file its row names is absent from this checkout (266, `inputField`)
     inputAbsent: (name, id) => stepStates[name].step.outputs.map((table) => absentInputs[table]?.[id]).find(Boolean) ?? null,
+    // the id's own input row as its record says it was measured (267, stampedInKeys)
+    measuredRow: (table, id) => measuredRows[table]?.[id] ?? 'absent',
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
-    inKey, outKey, builderKey, rowsKey, fileHash,
+    inKey, outKey, builderKey, rowsKey, fileHash, stampKey,
     partition: {
       core: [...coreSet].map(rel).sort(),
       groups: Object.fromEntries(Object.entries(groupFiles).map(([group, files]) => [group, [...files].map(rel).sort()])),
@@ -444,8 +495,12 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
 // ---------------------------------------------------------------- manifest
 
 export function emptyManifest() {
-  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {}, comps: {} };
+  return { schema: SCHEMA, toolchain: null, toolchainParts: [], roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {},
+    files: {}, comps: {}, stamps: {} };
 }
+
+/** A stamp's reason on one manifest line: whitespace runs as one space, at most 240 characters. */
+const stampReason = (text) => String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
 
 export function parseManifest(text) {
   const manifest = emptyManifest();
@@ -453,7 +508,8 @@ export function parseManifest(text) {
   if (lines[0] !== `#schema ${SCHEMA}`) return null;
   for (const line of lines.slice(1)) {
     const [kind, ...fields] = line.split('\t');
-    if (kind === 'toolchain') manifest.toolchain = fields[0];
+    // the hash, then (268) the parts it was taken on, so a table recorded elsewhere names what moved
+    if (kind === 'toolchain') { manifest.toolchain = fields[0]; manifest.toolchainParts = fields.slice(1); }
     else if (kind === 'roster') manifest.roster = fields[0];
     else if (kind === 'core') manifest.core = fields[0];
     else if (kind === 'group') manifest.groups[fields[0]] = fields[1];
@@ -462,6 +518,8 @@ export function parseManifest(text) {
     else if (kind === 'key') (manifest.keys[fields[0]] ??= {})[fields[1]] = { in: fields[2], out: fields[3] };
     else if (kind === 'file') (manifest.files[fields[0]] ??= {})[fields[1]] = fields[2];
     else if (kind === 'comp') manifest.comps[fields[0]] = fields[1];
+    else if (kind === 'stamp') (manifest.stamps[fields[0]] ??= {})[fields[1]] = { key: fields[2], out: fields[3], code: fields[4] ?? '',
+      files: fields[5] ? fields[5].split(',') : [], reason: fields[6] ?? '' };
     else return null;
   }
   return manifest;
@@ -469,7 +527,7 @@ export function parseManifest(text) {
 
 export function serializeManifest(manifest) {
   const lines = [];
-  if (manifest.toolchain) lines.push(`toolchain\t${manifest.toolchain}`);
+  if (manifest.toolchain) lines.push(['toolchain', manifest.toolchain, ...(manifest.toolchainParts ?? [])].join('\t'));
   if (manifest.roster) lines.push(`roster\t${manifest.roster}`);
   if (manifest.core) lines.push(`core\t${manifest.core}`);
   for (const [group, hash] of Object.entries(manifest.groups)) lines.push(`group\t${group}\t${hash}`);
@@ -478,6 +536,9 @@ export function serializeManifest(manifest) {
   for (const [step, keys] of Object.entries(manifest.keys)) for (const [id, key] of Object.entries(keys)) lines.push(`key\t${step}\t${id}\t${key.in}\t${key.out}`);
   for (const [step, files] of Object.entries(manifest.files)) for (const [file, hash] of Object.entries(files)) lines.push(`file\t${step}\t${file}\t${hash}`);
   for (const [name, hash] of Object.entries(manifest.comps ?? {})) lines.push(`comp\t${name}\t${hash}`);
+  for (const [step, stamps] of Object.entries(manifest.stamps ?? {})) for (const [id, stamp] of Object.entries(stamps)) {
+    lines.push(['stamp', step, id, stamp.key, stamp.out, stamp.code, stamp.files.join(','), stampReason(stamp.reason)].join('\t'));
+  }
   return `#schema ${SCHEMA}\n${lines.sort().join('\n')}\n`;
 }
 
@@ -504,30 +565,78 @@ export function loadBase(root, base) {
   } catch { return null; }
 }
 
-/** The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run). */
-export function refreshComponents(manifest, state) {
-  manifest.toolchain = state.toolchain;
-  manifest.roster = state.roster;
-  manifest.core = state.core;
-  manifest.groups = { ...state.groups };
-  manifest.tools = Object.fromEntries(Object.entries(state.steps).map(([name, step]) => [name, step.tool]));
-  manifest.rows = {};
-  for (const table of state.tableNames) {
-    const rows = state.rows[table] ?? {};
-    if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+/** The world step a world component line names (world:<kind>:<step>[:<map>]); null for the world's own lines. */
+const worldStepOf = (key, steps) => (steps.includes(key.split(':')[2]) ? key.split(':')[2] : null);
+
+/**
+ * The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run): what
+ * the resolver names when a step's keys move (reasonsFor). (268) `ran`: the steps this run recorded (every step when
+ * omitted). Only their own lines move: a tank step's tool key, a world step's tool, map and donor keys. `shared`: the
+ * lines every step reads (the toolchain, roster, core, groups, rows and the world's own) move too. The chain passes
+ * false on a partial chain (--steps, --no-gpu, --no-world). A step that did not run then keeps the lines its keys were
+ * taken against. Its keys embed them, so it stays due either way, but its reasons stay true: --steps=gate used to
+ * relabel four steps whose tools had moved "inputs rewritten after this step ran".
+ */
+export function refreshComponents(manifest, state, { ran = null, shared = true } = {}) {
+  const moves = (name) => !ran || ran.includes(name);
+  if (shared) {
+    manifest.toolchain = state.toolchain;
+    manifest.toolchainParts = [...state.toolchainParts];
+    manifest.roster = state.roster;
+    manifest.core = state.core;
+    manifest.groups = { ...state.groups };
+    manifest.rows = {};
+    for (const table of state.tableNames) {
+      const rows = state.rows[table] ?? {};
+      if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+    }
   }
-  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them.
-  if (state.world) manifest.comps = { ...state.world.comps };
+  manifest.tools = { ...manifest.tools,
+    ...Object.fromEntries(Object.entries(state.steps).filter(([name]) => moves(name)).map(([name, step]) => [name, step.tool])) };
+  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them. A world
+  // step that moves replaces its own lines (a map it no longer has drops out).
+  if (state.world) {
+    const worldSteps = Object.keys(state.world.steps), comps = (manifest.comps ??= {});
+    const owned = (key) => { const step = worldStepOf(key, worldSteps); return step ? moves(step) : shared; };
+    for (const key of Object.keys(comps)) if (owned(key)) delete comps[key];
+    for (const [key, value] of Object.entries(state.world.comps)) if (owned(key)) comps[key] = value;
+  }
   return manifest;
 }
 
-/** Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:
- *  ids the tool reported it could not run here (steps.mjs `skipped`), left as they were recorded, so they stay due. */
-export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set() } = {}) {
-  const keys = (manifest.keys[name] ??= {});
+/** The in-keys to record for a run of `name`: `inKeys` as taken `before` it, except that a step which writes the rows
+ *  its own key reads (`inputField`: the gate's oracle, which the record names) takes them as the run recorded them
+ *  (`after`'s sha256s). Stamped as they stood before, every id whose record gained or moved its oracle was due again
+ *  after the run that wrote it (267's bootstrap: 118 ids gated twice). A file changed after the run hashed it still
+ *  differs from the recorded sha256, so its id stays due. */
+export function stampedInKeys(before, after, name, inKeys) {
+  const step = before.steps[name];
+  if (!step?.rowTables?.some((table) => before.ownInputs?.has(table))) return inKeys; // a map step: none
+  return Object.fromEntries(Object.keys(inKeys).map((id) => [id, before.inKey(name, id, (table) => after.measuredRow(table, id))]));
+}
+
+/**
+ * Record that `step` ran on `ids` (every id when null): inKeys taken before the run, outKeys and files after. `skip`:
+ * ids the tool reported it could not run here (steps.mjs `skipped`), left as they were recorded. (268) `stamps`: those of
+ * them the step's `stamp` could name, { id: { code, reason, files } }: each keeps its key row and gets a stamp, keyed on
+ * what would make it runnable (stampKey) and holding the output its last run left (its key row's, else the first stamp's),
+ * so an output edited since still reads due. A run that measures an id clears its stamp.
+ */
+export function recordStep(manifest, name, ids, inKeys, after, { skip = new Set(), stamps = {} } = {}) {
+  const keys = (manifest.keys[name] ??= {}), stamped = ((manifest.stamps ??= {})[name] ??= {});
   const ran = ids ?? after.ids;
-  if (!ids) for (const id of Object.keys(keys)) if (!after.ids.includes(id)) delete keys[id];
-  for (const id of ran) if (!skip.has(id)) keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
+  if (!ids) for (const record of [keys, stamped]) for (const id of Object.keys(record)) if (!after.ids.includes(id)) delete record[id];
+  for (const id of ran) {
+    const stamp = stamps[id];
+    if (stamp) {
+      stamped[id] = { key: after.stampKey(name, id, stamp.files, inKeys[id]), out: keys[id]?.out ?? stamped[id]?.out ?? after.outKey(name, id),
+        code: stamp.code, files: [...stamp.files], reason: stampReason(stamp.reason) };
+    } else if (!skip.has(id)) {
+      keys[id] = { in: inKeys[id], out: after.outKey(name, id) };
+      delete stamped[id];
+    }
+  }
+  if (!Object.keys(stamped).length) delete manifest.stamps[name];
   manifest.files[name] = Object.fromEntries(after.steps[name].outputFiles.map((file) => [file, after.fileHash(file)]));
 }
 
@@ -568,15 +677,18 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
     const recordedRoster = state.rosterOf ? state.rosterOf(manifest) : manifest.roster;
     if (recordedRoster !== state.roster) { all([recordedRoster == null ? 'never recorded' : 'roster'], 'full'); continue; }
     if (!step.decomposed) { all(step.reasons); continue; }
-    const keys = manifest.keys[name] ?? {};
-    const changed = [];
+    const keys = manifest.keys[name] ?? {}, stamps = manifest.stamps?.[name] ?? {};
+    const changed = [], stamped = {};
     for (const id of state.ids) {
+      // (268) an id the step could not run here, stamped with why: current while that holds (stampProblem)
+      const stamp = stamps[id], loose = stamp ? stampProblem(state, step, name, id, stamp) : null;
+      if (stamp && !loose) { stamped[id] = `${stamp.code}: ${stamp.reason}`; continue; }
       const recorded = keys[id];
-      if (!recorded) { changed.push(id); reasons[id] = ['no row']; continue; }
+      if (!recorded) { changed.push(id); reasons[id] = ['no row', ...(loose ? [loose] : [])]; continue; }
       const why = [];
       if (recorded.in !== state.inKey(name, id)) why.push(...(state.reasonsFor ? state.reasonsFor(manifest, name, id) : reasonsFor(manifest, state, name, id)));
       if (recorded.out !== state.outKey(name, id)) why.push('output edited outside chain');
-      if (why.length) { changed.push(id); reasons[id] = why; }
+      if (why.length) { changed.push(id); reasons[id] = loose ? [...why, loose] : why; }
     }
     // A differing output file none of whose ids changed was edited outside its rows (a frame or format edit): only a
     // whole-fleet run rewrites it the way a full regen would.
@@ -588,9 +700,22 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
       all([...frameEdits.map(([file]) => `output file edited: ${file}`), ...missingFiles.map((file) => `output file unrecorded: ${file}`)], 'full');
       continue;
     }
-    result[name] = { mode: changed.length === 0 ? 'none' : changed.length === state.ids.length ? 'all' : 'ids', ids: changed, reasons };
+    result[name] = { mode: changed.length === 0 ? 'none' : changed.length === state.ids.length ? 'all' : 'ids', ids: changed, reasons,
+      ...(Object.keys(stamped).length ? { stamped } : {}) };
   }
   return result;
+}
+
+/** (268) Why a stamp no longer makes its id current (null while it holds): it names no code or reason, the step reports
+ *  no skips, what would make the id runnable moved (stampKey), or its output moved since the stamp was taken. */
+function stampProblem(state, step, name, id, stamp) {
+  if (!stamp.code || !stamp.reason) return 'stamp without a reason';
+  if (!step.step.skipped || !state.stampKey) return 'stamp on a step that reports no skips';
+  if (stamp.key !== state.stampKey(name, id, stamp.files)) {
+    return stamp.files.length ? `stamp's inputs moved (${stamp.files.join(', ')})` : 'stamp\'s inputs moved (the id\'s inputs)';
+  }
+  if (stamp.out !== state.outKey(name, id)) return 'output edited outside chain since the stamp';
+  return null;
 }
 
 export const tankHash = sha256;

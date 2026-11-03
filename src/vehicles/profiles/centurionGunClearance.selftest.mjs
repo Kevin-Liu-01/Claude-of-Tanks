@@ -19,7 +19,7 @@ import { getSpec } from '../specs.ts';
 import { gunHullProbe, gunHullSweep } from '../gunHullClearance.test-support.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = 0.020, BARREL_KEEP = 0.025, DEG = Math.PI / 180;
-const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus'];
+const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus', 'centurion5_2dk'];
 
 /** Closest distance from p to triangle (a, b, c) (Ericson). */
 function triDistance(p, a, b, c, ab, ac, ap, q) {

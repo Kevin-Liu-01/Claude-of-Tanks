@@ -636,7 +636,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/jagdpanzerE100X.selftest.mjs',
     'src/vehicles/profiles/type10X.selftest.mjs',
     'src/vehicles/profiles/type10XRoofPanels.selftest.mjs',
+    // release 267: the TK-X and the Type 10B on the modern Type 10 (their photo packets' fixture), and the Type 90 (B)
+    'src/vehicles/profiles/type10Marks.selftest.mjs',
     'src/vehicles/profiles/type90X.selftest.mjs',
+    'src/vehicles/profiles/type90B.selftest.mjs',
     'src/vehicles/profiles/arieteX.selftest.mjs',
     'src/vehicles/profiles/arieteXSupplied.selftest.mjs',
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
@@ -761,10 +764,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/longweiFamily.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
+    // 267: the per-tank ERA seating pins (id-scoped tanks suite) and the whole-fleet ERA agreement sweep (manual fleet
+    // suite); eraSeating.selftest.mjs keeps the rule's negative controls and held list in the default tier
+    'src/vehicles/profiles/eraSeatingPins.selftest.mjs',
+    'src/vehicles/profiles/eraSeatingFleet.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
-    'src/vehicles/profiles/type10GunSeat.selftest.mjs',
-    'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',
-    'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
@@ -898,6 +902,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
+    'tools/combat-anatomy-parts.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
     'tools/changed-only/fresh.selftest.mjs',
     // 266 (Main): the balance pass keyed per id through the spec rows: a one-id lever on the real fleet marks that id on
@@ -1009,6 +1015,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
     'src/sim/armorZonePlates.selftest.mjs',
+    // 267 (Main's ruling, a fleet balance move): a round whose face's plate cannot meet it reads the plate across its path
+    'src/sim/armorAlongShot.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
@@ -1092,6 +1100,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/notFound.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'tools/marketing-shots/og-images.selftest.mjs',
+    // og-r2: a tank link shares its tank (the table, the cards, the rewrite)
+    'tools/media-r5/tank-share.selftest.mjs',
     'src/ui/localeRouting.selftest.mjs',
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',

@@ -20,7 +20,7 @@
   "hullCurves": 75.28050849380749,
   "stations": 93.65694318220261,
   "turretCurves": 45.69189058948835,
-  "wholeCurves": 65.4550954661095,
+  "wholeCurves": 66.1660847374882,
   "dims": 81.10309436598857,
   "floaters": 100
  },
@@ -28,7 +28,7 @@
   "hullCurves": 75.3,
   "stations": 93.7,
   "turretCurves": 45.7,
-  "wholeCurves": 65.5,
+  "wholeCurves": 66.2,
   "dims": 81.1,
   "floaters": 100
  },
@@ -144,8 +144,8 @@
    ]
   },
   "side_whole": {
-   "score": 87.0632441616618,
-   "meanPct": 0.96,
+   "score": 87.0245113597506,
+   "meanPct": 0.97,
    "p95Pct": 2.32,
    "coverPct": 0,
    "reg": {
@@ -226,6 +226,14 @@
      "errM": 0.066
     },
     {
+     "at": 2.74,
+     "refTop": 0.94,
+     "refBot": -1.72,
+     "procTop": 1.06,
+     "procBot": -1.73,
+     "errM": 0.066
+    },
+    {
      "at": 4.79,
      "refTop": -0.37,
      "refBot": -0.91,
@@ -238,14 +246,6 @@
      "refTop": 1.49,
      "refBot": -1.72,
      "procTop": 1.38,
-     "procBot": -1.73,
-     "errM": 0.061
-    },
-    {
-     "at": 2.86,
-     "refTop": 0.94,
-     "refBot": -1.72,
-     "procTop": 1.05,
      "procBot": -1.73,
      "errM": 0.061
     }
@@ -576,8 +576,8 @@
    ]
   },
   "front_whole": {
-   "score": 65.4550954661095,
-   "meanPct": 2.36,
+   "score": 66.1660847374882,
+   "meanPct": 2.3,
    "p95Pct": 10.32,
    "coverPct": 0,
    "reg": {
@@ -686,7 +686,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 64.99623198315427,
+   "score": 64.93612935949896,
    "meanPct": 2.54,
    "p95Pct": 7.55,
    "coverPct": 0,
@@ -1087,6 +1087,19 @@
    "node:weapon2_m60a3-mini_turret_2_0",
    "node:weapon3_m60a3-turret_1_0"
   ]
+ },
+ "whipsAside": "every comparison: the source's named or boxed whips and the build's whips; the score height with them",
+ "stowageAside": {
+  "rule": "every comparison, kind by kind where the build tags it and the source names or boxes it (a kind one side has alone stays in); every ruler whole",
+  "kinds": [],
+  "procedural": [],
+  "reference": [],
+  "staysIn": {
+   "procedural": [],
+   "reference": [
+    "can"
+   ]
+  }
  },
  "floaterFails": 0,
  "floaterRows": [

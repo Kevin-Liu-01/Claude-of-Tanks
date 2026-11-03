@@ -1073,7 +1073,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1146,5 +1145,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/upior_killcapturedestroy.glb",
+  "sha256": "45af347ce1a56bac955645bf8a4bbcd8e67cac744f26d2743412137b936ceb2b"
+ }
 }

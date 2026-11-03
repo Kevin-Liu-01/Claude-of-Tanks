@@ -1,5 +1,7 @@
 // Independently authored flat-bar basket. The source oracle is local-only;
 // rail levels, canted side planes and support datums are scalar measurements.
+// 267: not tagged as stowage (stowagePart.ts): the print's basket lies inside its misc_a mesh with no piece-for-piece
+// match, so the gate keeps the basket as body on both sides.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
