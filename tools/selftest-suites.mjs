@@ -1852,6 +1852,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.modeExit.selftest.mjs',
     // 2026-11-02 audit M7: the waypoints carry their writer; a route ending where the mission's does is not the mission's
     'src/game/ai.routeOwner.selftest.mjs',
+    // 2026-11-02 audit M7: news between ticks lands at the next update in one declared order (any telling, one bot)
+    'src/game/ai.eventOrder.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

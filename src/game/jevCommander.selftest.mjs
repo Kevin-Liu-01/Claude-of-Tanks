@@ -51,6 +51,12 @@ function wire(tanks, seedBase = 41) {
   return tanks;
 }
 
+/** The controllers take the orders delivered since their last update (2026-11-02 audit M7: news between ticks waits
+ * for the bot's next update), as the step after the commander's would. */
+function takeOrders(f) {
+  for (const tank of f.tanks) if (tank.aiCtl) tank.aiCtl.update(SIM_DT, f.view.timeS);
+}
+
 /** A 3+human v 3 fixture on a zone map: the enemy team is spotted except one hull the spotting sim hides. */
 function fixture() {
   const tanks = wire([
@@ -248,6 +254,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(enemyStats.lowConfidence, 1, 'the 0.2-confidence hold kept the classic brain');
   assert.equal(enemyStats.inputTokens, 3000);
   assert.equal(enemyStats.lastLatencyMs, 0);
+  takeOrders(f);
   const kv2 = f.byId('kv2').aiCtl.debugInfo();
   assert.equal(kv2.orderPosture, 'push');
   assert.equal(kv2.orderTarget, 'm1a1_abrams_hc', 'the target label resolved back to the entity id');
@@ -302,6 +309,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   answerAll('push');
   await tick();
   commander.step(f.view);
+  takeOrders(f);
   const stats = commander.stats('enemy');
   assert.equal(stats.discardedDead, 1);
   assert.equal(stats.discardedChanged, 1);
@@ -322,6 +330,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
+  takeOrders(f);
   assert.equal(f.byId('t72b3m_2022').aiCtl.debugInfo().orderPosture, 'hold');
   assert.equal(f.byId('t72b3m_2022').aiCtl.debugInfo().orderTarget, null, 'a dead target is never ordered');
   f.byId('m1a1_abrams_hc').combat.destroyed = false;
@@ -338,6 +347,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
+  takeOrders(f);
   const targetOnly = f.byId('t72b3m_2022').aiCtl.debugInfo();
   assert.equal(targetOnly.orderPosture, null, 'no posture effect below the bar');
   assert.equal(targetOnly.orderTarget, 'm1a1_abrams_hc', 'the confident target is still ordered');
@@ -379,6 +389,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   });
   await tick();
   commander.step(f.view);
+  takeOrders(f);
   const leo = f.byId('leo2a4').aiCtl.debugInfo();
   assert.equal(leo.orderPosture, 'capture');
   assert.equal(commander.orderLog.find((entry) => entry.id === 'leo2a4').applied, true);

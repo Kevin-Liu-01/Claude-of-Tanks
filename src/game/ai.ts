@@ -6800,6 +6800,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // ---- main update ----------------------------------------------------------
 
   function update(dt: number, timeS: number): void {
+    // what reached the bot since the last tick lands first, in its declared order, at that tick's clock and live
+    // objective (the between-tick inputs, audit M7)
+    drainPendingEvents();
     objectiveTick++;
     inUpdate = true;
     try { updateTick(dt, timeS); } finally { inUpdate = false; }
@@ -6930,10 +6933,98 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
+  // ---- between-tick inputs (2026-11-02 audit M7) ---------------------------
+  // The integrations report shell results, hits, gunshots and orders between two updates, each in its own order (the
+  // solo step and the authority filter and loop differently; a commander's order lands on whichever tick its answer
+  // arrives), and these start flanks and hit reactions, change the mode and draw from this bot's seeded stream. They
+  // are queued and applied at the top of the next update(), before anything else that tick, at the clock and live
+  // objective the callbacks always saw (the last tick's), in one declared order: gunshots heard, then this bot's own
+  // shell results, then hits on its team, then the commander's orders; within a kind by the shooter's id (a hit on
+  // this hull before a teammate's report) or the struck hull's id, and arrival order only among events with the same
+  // key. So a bot's decisions are a function of what reached it in a step, not of the order it was told. What each
+  // event does is unchanged (the apply* functions below); the validity checks still run when the event arrives.
+  // notifyFriendlyBlocked stays immediate: it only raises a timer to a floor and counts, the same in any order, and
+  // draws nothing.
+  const PENDING_ENEMY_FIRED = 0, PENDING_SHELL_RESULT = 1, PENDING_UNDER_FIRE = 2, PENDING_ORDER = 3;
+  interface PendingEvent {
+    rank: number;
+    seq: number;
+    key: string;
+    shooter: AiEntity | null;
+    selfHit: boolean;
+    damaging: boolean | undefined;
+    kind: string | undefined;
+    targetId: string | null;
+    order: AiOrder | null;
+  }
+  const pendingEvents: PendingEvent[] = []; // a pool: records are reused, the array only grows to the busiest step's count
+  let pendingCount = 0;
+  let pendingSeq = 0;
+  let draining = false;
+  function pendingSlot(rank: number, key: string): PendingEvent {
+    let event = pendingEvents[pendingCount];
+    if (!event) {
+      event = { rank: 0, seq: 0, key: '', shooter: null, selfHit: false, damaging: undefined, kind: undefined, targetId: null, order: null };
+      pendingEvents.push(event);
+    }
+    pendingCount++;
+    event.rank = rank;
+    event.seq = pendingSeq++;
+    event.key = key;
+    event.shooter = null;
+    event.selfHit = false;
+    event.damaging = undefined;
+    event.kind = undefined;
+    event.targetId = null;
+    event.order = null;
+    return event;
+  }
+  /** Declared order: kind; a hit on this hull before a teammate's report; the key (a hull id); then arrival. */
+  function pendingBefore(a: PendingEvent, b: PendingEvent): boolean {
+    if (a.rank !== b.rank) return a.rank < b.rank;
+    if (a.selfHit !== b.selfHit) return a.selfHit;
+    if (a.key !== b.key) return a.key < b.key;
+    return a.seq < b.seq;
+  }
+  const reactionInfo: HitReactionInfo = {};
+  function drainPendingEvents(): void {
+    if (pendingCount === 0) return;
+    // insertion sort in place (a handful of records a step; no allocation)
+    for (let i = 1; i < pendingCount; i++) {
+      const event = pendingEvents[i];
+      let j = i - 1;
+      while (j >= 0 && pendingBefore(event, pendingEvents[j])) { pendingEvents[j + 1] = pendingEvents[j]; j--; }
+      pendingEvents[j + 1] = event;
+    }
+    draining = true;
+    try {
+      for (let i = 0; i < pendingCount; i++) {
+        const event = pendingEvents[i];
+        if (event.rank === PENDING_ENEMY_FIRED) applyEnemyFired(event.shooter!);
+        else if (event.rank === PENDING_SHELL_RESULT) applyShellResult(event.targetId, event.kind);
+        else if (event.rank === PENDING_UNDER_FIRE) {
+          reactionInfo.selfHit = event.selfHit;
+          reactionInfo.damaging = event.damaging;
+          reactionInfo.kind = event.kind;
+          applyUnderFire(event.shooter!, reactionInfo);
+        } else applyOrder(event.order);
+      }
+    } finally {
+      draining = false;
+      clearPendingEvents();
+    }
+  }
+  /** Drop the queue (the records keep no hull or order alive). */
+  function clearPendingEvents(): void {
+    for (let i = 0; i < pendingCount; i++) { pendingEvents[i].shooter = null; pendingEvents[i].order = null; }
+    pendingCount = 0;
+  }
+
   /**
    * Feedback for shells this tank fired (integration calls this per §3.6 lock).
    * Two consecutive non-penetrating results on the current target trigger a flank;
    * every result also resamples the aim error and forces a fresh weak-spot probe.
+   * Queued for the next update (see the between-tick inputs above).
    * @param {object} hitEvent HitEvent (§2.6)
    */
   function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void {
@@ -6941,9 +7032,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Do not re-roll main aim or trigger a flank for each automatic-gun bullet.
     if (!hitEvent) return;
     if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
-    if (target && hitEvent.targetId === target.id) {
+    if (draining) { applyShellResult(hitEvent.targetId ?? null, hitEvent.kind); return; }
+    const event = pendingSlot(PENDING_SHELL_RESULT, hitEvent.targetId ?? '');
+    event.targetId = hitEvent.targetId ?? null;
+    event.kind = hitEvent.kind;
+  }
+
+  function applyShellResult(targetId: string | null, kind: string | undefined): void {
+    if (target && targetId === target.id) {
       missStreak = 0; // the round reached the target: the spot's lay holds (see PASSIVE_PRESS_MISSES)
-      const k = hitEvent.kind;
+      const k = kind;
       if (k === 'nonpen' || k === 'ricochet' || k === 'spaced_absorb' || k === 'era') {
         nonPenCount++;
         probeTimer = 0; // re-evaluate aim zone / shell slot immediately
@@ -6957,9 +7055,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** Direct hits provoke retaliation; nearby team reports provide awareness.
-   * Neither event overrides a closer fight merely because its shooter is human. */
+   * Neither event overrides a closer fight merely because its shooter is human. Queued for the next update. */
   function notifyUnderFire(shooter: AiEntity, info: HitReactionInfo = {}): void {
     if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
+    if (draining) { applyUnderFire(shooter, info); return; }
+    const event = pendingSlot(PENDING_UNDER_FIRE, shooter.id);
+    event.shooter = shooter;
+    event.selfHit = !!info.selfHit;
+    event.damaging = info.damaging;
+    event.kind = info.kind;
+  }
+
+  function applyUnderFire(shooter: AiEntity, info: HitReactionInfo): void {
     // A teammate's report must not overwrite the attacker hitting this hull.
     if (info.selfHit || nowS >= underFireUntilS || !directlyUnderFire) {
       underFire = shooter;
@@ -6980,9 +7087,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** An audible gunshot is a contact hint, not an order to abandon a fight.
-   * Both teams and human/bot shooters use this same policy. */
+   * Both teams and human/bot shooters use this same policy. Queued for the next update. */
   function notifyEnemyFired(shooter: AiEntity): void {
     if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
+    if (draining) { applyEnemyFired(shooter); return; }
+    pendingSlot(PENDING_ENEMY_FIRED, shooter.id).shooter = shooter;
+  }
+
+  function applyEnemyFired(shooter: AiEntity): void {
     if (target && enemyAlive(target)) {
       if (target === shooter && isVisibleToTeam(shooter)) rememberPosition(shooter, nowS);
       return;
@@ -7023,9 +7135,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /**
    * Take a commander's order (game/jevCommander.ts). The posture's immediate effects start here; the
    * gated reads above (hold band, cover discipline, target claim, fire discipline, engage driving)
-   * carry it until `untilS`, when the classic brain resumes by itself.
+   * carry it until `untilS`, when the classic brain resumes by itself. Queued for the next update (orders keep
+   * their arrival order: the last one stands).
    */
   function setOrder(next: AiOrder | null): void {
+    if (draining) { applyOrder(next); return; }
+    pendingSlot(PENDING_ORDER, '').order = next;
+  }
+
+  function applyOrder(next: AiOrder | null): void {
     if (!next || nowS >= next.untilS) {
       order = null;
       return;
@@ -7117,6 +7235,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       searching, searchKind, searchLegs, searchFailures,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length, routeOwner, // audit M7: who wrote the waypoints
+      pendingEvents: pendingCount, // audit M7: between-tick inputs waiting for the next update
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
       lastRun, lastRuns,
