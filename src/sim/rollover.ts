@@ -8,7 +8,7 @@
  */
 
 import * as detMath from './detMath.ts';
-import { OVERTURN_EXIT_UP_Y, hullBodyMode, startHullRighting } from './hullBodyMode.ts';
+import { OVERTURN_EXIT_UP_Y, hullBodyMode, setHullGrounded, startHullRighting } from './hullBodyMode.ts';
 /**
  * Bots right themselves after this long on their side or roof (owner 2026-09-20: "bots should automatically right
  * themselves after like 5 seconds being upside down"; 15 s until then). Only bots run the lifecycle — a player
@@ -88,10 +88,9 @@ export function requestTankSelfRight(state: RolloverState | null | undefined, gr
     state._ride.airTime = 0;
     // the launch leaves the ground as a jump does (movement.ts liftTankRide): a ride still loaded on its support took
     // the kick back into its suspension spring and the hull never left the roof it was rolling over (physics lane)
-    state._ride.grounded = false;
     if (Number.isFinite(state._ride.y)) state._ride.y = (state._ride.y as number) + SELF_RIGHT_CLEARANCE_M;
   }
-  state.grounded = false;
+  setHullGrounded(state, false);
   startHullRighting(state);
   state.rolloverCountdownS = 0;
   if (state._rollover) {

@@ -17,6 +17,8 @@
  * terrain-relative by movement.ts, as before, and now clears the overturn with it; it is refused while the centre of mass
  * is past the side, so the overturn cannot re-enter on the next step and flap.
  *
+ * Ground contact's two copies (`state.grounded`, `_ride.grounded`) have one writer here too (`setHullGrounded`).
+ *
  * Pure flag logic: no clock, no randomness, no allocation; Node-runnable like the rest of src/sim.
  */
 
@@ -31,6 +33,13 @@ export type HullBodyMode = 'supported' | 'tumbling' | 'righting';
 export interface HullBodyState {
   overturned?: boolean;
   _body?: { tumbling?: boolean; autoRighting?: boolean };
+}
+
+/** The two copies of ground contact: `grounded` (the step's groundedAtStart, the row's AIRBORNE flag) and the ride's
+ * (the viewer checkpoint's flag bit 1). */
+export interface HullGroundState {
+  grounded?: boolean;
+  _ride?: { grounded?: boolean };
 }
 
 function bodyOf(state: HullBodyState): { tumbling?: boolean; autoRighting?: boolean } {
@@ -116,3 +125,9 @@ export function restoreHullBodyMode(
   write(state, mode, overturned);
 }
 
+/** Ground contact's one writer: both copies at once, so no path (a step, a launch, a roof seat, a row or a checkpoint
+ * restore) can leave them apart. */
+export function setHullGrounded(state: HullGroundState, grounded: boolean): void {
+  state.grounded = grounded;
+  if (state._ride) state._ride.grounded = grounded;
+}

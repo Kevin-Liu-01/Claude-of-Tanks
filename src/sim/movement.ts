@@ -39,7 +39,8 @@ import { publishedTrackContact } from './trackContact.ts';
 
 import * as detMath from './detMath.ts';
 import {
-  enterHullTumble, finishHullRighting, hullBodyMode, resetHullBodyMode, settleHullOnTracks, updateHullOverturn,
+  enterHullTumble, finishHullRighting, hullBodyMode, resetHullBodyMode, setHullGrounded, settleHullOnTracks,
+  updateHullOverturn,
 } from './hullBodyMode.ts';
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
@@ -2197,7 +2198,7 @@ export function resetTankVerticalState(
   }
   state.pos.y = y;
   state.verticalSpeed = Number.isFinite(verticalSpeed) ? verticalSpeed : 0;
-  state.grounded = grounded !== false;
+  setHullGrounded(state, grounded !== false);
   state.landingImpactMps = 0;
   state.fallImpactMps = 0;
   const ride = state._ride;
@@ -2205,7 +2206,6 @@ export function resetTankVerticalState(
   ride.v = state.verticalSpeed;
   ride.supportY = NaN;
   ride.groundV = 0;
-  ride.grounded = state.grounded;
   ride.airTime = 0;
   ride.bounces = 0;
   ride.rebound = 0;
@@ -2235,7 +2235,7 @@ function initializeRideState(state: TankState, supportY: number): RideState {
   if (state.grounded !== false) {
     ride.y = supportY;
     ride.v = 0;
-    ride.grounded = true;
+    setHullGrounded(state, true);
   }
   ride.supportY = supportY;
   ride.groundV = 0;
@@ -2822,8 +2822,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   } else if (state.landingImpactMps > 0) {
     landAlongGrade(state, ride);
   }
-  state.grounded = grounded;
-  ride.grounded = grounded;
+  setHullGrounded(state, grounded);
   state.verticalSpeed = ride.v;
   state.pos.y = ride.y;
 }
@@ -5690,9 +5689,8 @@ function liftTankRide(state: LiftableState, upMps: number): void {
     ride.v = Math.max(ride.v || 0, 0) + upMps;
     ride.airTime = 0;
     if (Number.isFinite(ride.y)) ride.y = (ride.y as number) + RIDE_DETACH_CLEARANCE_M + 0.005;
-    ride.grounded = false;
   }
-  state.grounded = false;
+  setHullGrounded(state, false);
 }
 
 /**

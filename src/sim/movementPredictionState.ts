@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MovementContactGeometry, TankState } from './movement.ts';
-import { restoreHullBodyMode } from './hullBodyMode.ts';
+import { restoreHullBodyMode, setHullGrounded } from './hullBodyMode.ts';
 
 // Versioned, fixed-length viewer-only integrator checkpoint. Pose/combat stay
 // in their existing authority lanes; this restores the dynamic state that a
@@ -134,7 +134,8 @@ export function applyMovementPredictionState(
   state._ride.supportY = flags & 1 ? values[offset] : NaN;
   state._body.landingBlendS = values[offset + 1];
   state._rollover.elapsedS = values[offset + 2];
-  state._ride.grounded = !!(flags & 2);
+  // both copies of ground contact from the checkpoint, the integrator's truth (whatever the row said)
+  setHullGrounded(state, !!(flags & 2));
   state._body.dynamicSupport = !!(flags & 8);
   // the rigid phase and the righting torque against the overturn the row set (hullBodyMode.ts keeps the mode legal)
   restoreHullBodyMode(state, state.overturned, !!(flags & 4), !!(flags & 16));

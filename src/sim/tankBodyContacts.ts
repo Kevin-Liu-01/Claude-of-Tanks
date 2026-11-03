@@ -11,7 +11,7 @@
 import { tankContactRect } from './tankContactShape.ts';
 
 import * as detMath from './detMath.ts';
-import { enterHullTumble } from './hullBodyMode.ts';
+import { enterHullTumble, setHullGrounded } from './hullBodyMode.ts';
 interface TankBodyState {
   pos: { x: number; y: number; z: number };
   yaw: number;
@@ -508,8 +508,7 @@ function resolveVerticalImpulse(
 function markDynamicSupport(upper: TankBodyEntity): ReturnType<typeof ensureBodyState> {
   const body = ensureBodyState(upper.state);
   body.dynamicSupport = true;
-  upper.state.grounded = false;
-  upper.state._ride.grounded = false;
+  setHullGrounded(upper.state, false);
   return body;
 }
 
@@ -568,8 +567,7 @@ function seatOnRoof(upper: TankBodyEntity, lower: TankBodyEntity): void {
   const seated = state.pos.y;
   body.restSupportY = Number.isFinite(body.restSupportY) ? Math.max(body.restSupportY!, seated) : seated;
   const lowerV = lower.state.verticalSpeed || lower.state._ride.v || 0;
-  state.grounded = true;
-  ride.grounded = true;
+  setHullGrounded(state, true);
   ride.airTime = 0;
   ride.supportY = body.restSupportY!;
   ride.groundV = lowerV;

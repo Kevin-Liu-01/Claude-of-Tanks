@@ -14,7 +14,7 @@
  */
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
-import { restoreHullBodyMode } from '../../sim/hullBodyMode.ts';
+import { restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
 import type {
   MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
   TankState,
@@ -236,7 +236,7 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.visualRoll = dequantizeAngle(row.roll);
   state.turretYaw = dequantizeAngle(row.turretYaw);
   state.gunPitch = dequantizeAngle(row.gunPitch);
-  state.grounded = !(row.flags & ENTITY_FLAGS.AIRBORNE);
+  setHullGrounded(state, !(row.flags & ENTITY_FLAGS.AIRBORNE));
   // the row carries the rigid phase's two sub-states, not a plain tumble: the viewer checkpoint restores the true bit
   // right after (restoreCheckpoint); without one, the hull holds the mode those two flags imply (hullBodyMode.ts)
   const overturned = !!(row.flags & ENTITY_FLAGS.OVERTURNED);
@@ -249,7 +249,6 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state._spring.roll = state.visualRoll - (state._hold?.r ?? 0) - (state._holdSeat?.r ?? 0);
   state._ride.y = state.pos.y;
   state._ride.v = state.verticalSpeed;
-  state._ride.grounded = state.grounded;
   state._ride.airTime = 0;
   // The first replay tick re-establishes terrain support at the authority pose.
   state._ride.supportY = NaN;
@@ -700,7 +699,7 @@ export class LocalPredictor {
     target.trackScroll.r = live.trackR;
     target.speed = source.speed;
     target.verticalSpeed = source.verticalSpeed;
-    target.grounded = source.grounded;
+    setHullGrounded(target, source.grounded);
     target.overturned = source.overturned;
     target._body.tumbling = source._body.tumbling;
     target._body.autoRighting = source._body.autoRighting;
