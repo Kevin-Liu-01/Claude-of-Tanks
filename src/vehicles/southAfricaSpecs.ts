@@ -141,6 +141,10 @@ olifant_mk1a.gunPitchByYawDeg = [[0, -10], [1, -9.2], [2, -8.5], [3, -8.3], [11,
   [163, -0.1], [177, -0.2], [180, -0.3]];
 olifant_mk1b.gunPitchByYawDeg = [[0, -10], [24, -10], [28, -8.7], [30, -8.4], [32, -8.4], [38, -9.9], [39, -10],
   [135, -10], [137, -9.5], [140, -9.1], [141, -8.3], [149, -8.1], [156, -6], [179, -6], [180, -6.1]];
+// the TTD on the Leopard 2 hull: the forward lift eyes over the bow quarters, the louvre deck astern
+ttd.gunPitchByYawDeg = [[0, -10], [16, -10], [17, -9.5], [18, -9.1], [22, -8.5], [24, -8.3], [26, -8.3], [27, -8.8],
+  [28, -9.9], [29, -10], [136, -10], [143, -6.3], [147, -4.3], [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7],
+  [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1], [178, 0.9], [180, 0.4]];
 
 registerFleetSpecs(registries, ['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b', 'ttd'],
   { semel, olifant_mk1, olifant_mk1a, olifant_mk1b, ttd });
