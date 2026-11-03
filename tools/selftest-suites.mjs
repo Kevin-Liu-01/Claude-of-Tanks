@@ -963,6 +963,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
     // 2026-11-02 audit R3: the governor's suspension as named holds (a restore mid-load, a film across a load release)
     'src/engine/adaptiveHolds.selftest.mjs',
+    // 2026-11-02 audit R4: the governor's tier-down warmup is each workload's, measured from its reset
+    'src/engine/governorWarmup.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
     'src/engine/sceneSourcePass.selftest.mjs',

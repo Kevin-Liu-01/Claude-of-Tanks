@@ -406,7 +406,9 @@ export class AdaptiveQualityPolicy {
 
   private applyTierRelief(window: AdaptiveQualityWindow): AdaptiveQualityAction {
     const clockSeconds = window.clockSeconds;
-    if (clockSeconds <= TIER_DOWN_WARMUP_SECONDS) return 'none';
+    // (2026-11-02 audit R4) the warmup is each workload's, measured from its reset (a new battle, a Garage return, a
+    // governor hold released), not from the page's first governed frame
+    if (clockSeconds - this.resetAt <= TIER_DOWN_WARMUP_SECONDS) return 'none';
     // keeping up (or a trial still measuring the last cut, or a failed trial's bar): no strike, and the run restarts
     if (window.achievedFps >= tierKeepUpFps(window.frameBudgetMs) || this.tierTrial !== null
       || clockSeconds < this.tierDownBarredUntil) {
