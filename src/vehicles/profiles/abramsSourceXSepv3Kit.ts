@@ -57,7 +57,12 @@ function trophyLauncher(P: TankBuilderPort, side: -1 | 1, fit: Sepv3TrophyFit = 
     put(P, 'turret', 'turretDark', 'trophy-arm', box(len, .05, .06), [s(inner - len / 2), y, zc + dz]);
   }
   if (fit === 'mounts') {
-    put(P, 'turret', 'turret', 'trophy-interface', box(.03, .34, .68), [s(outer - D + .015), yc, zc]);
+    // (269 blind critic: the plate in the hull's colour read as nothing missing) the empty cradle as an open frame: the
+    // interface plate dark, rails joining the arms' outer ends top and bottom, and end posts, so the bracket reads as the
+    // launcher's empty seat
+    put(P, 'turret', 'turretDark', 'trophy-interface', box(.03, .34, .68), [s(outer - D + .015), yc, zc]);
+    for (const y of [1.99, 2.26]) put(P, 'turret', 'turretDark', 'trophy-cradle-rail', box(.05, .05, .66), [s(outer - .025), y, zc]);
+    for (const dz of [-.30, .30]) put(P, 'turret', 'turretDark', 'trophy-cradle-post', box(.05, .32, .05), [s(outer - .025), (1.99 + 2.26) / 2, zc + dz]);
     return;
   }
   // launcher body, armoured lid, countermeasure face and muzzles

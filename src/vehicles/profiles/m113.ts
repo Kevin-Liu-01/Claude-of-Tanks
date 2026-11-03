@@ -70,14 +70,14 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   {
     const [y0, z0] = onGlacis(0.10, 0.03), [y1, z1] = onGlacis(0.86, 0.03);
     const len = Math.hypot(z1 - z0, y1 - y0);
-    P.addEquipment('hull', xform(box(2.14, 0.035, len), 0, 0, 0, -glacis, 0, 0), 0, (y0 + y1) / 2, (z0 + z1) / 2);
+    P.addEquipment('hull', xform(box(2.14, 0.035, len), 0, 0, 0, glacis, 0, 0), 0, (y0 + y1) / 2, (z0 + z1) / 2);
     for (const x of [-0.70, 0.70]) {
       const [hy, hz] = onGlacis(0.10, 0.06);
       P.add('hullDark', cylX(0.035, 0.22, 10), x, hy, hz);
     }
     for (const x of [-0.98, 0.98]) {
       const [sy, sz] = onGlacis(0.55, 0.07);
-      P.add('hullDark', box(0.05, 0.05, 0.30), x, sy, sz, -glacis, 0, 0);
+      P.add('hullDark', box(0.05, 0.05, 0.30), x, sy, sz, glacis, 0, 0);
     }
   }
   // the lamp clusters on the glacis' top corners in their guards (headlight and blackout lamp), the towing eyes on the
@@ -134,7 +134,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
       }
     }
     // (the appliqué over the glacis' lower half, under the vane's hinges)
-    P.addExternalArmor('hull', xform(box(2.30, 0.05, 0.40), 0, 0, 0, -glacis, 0, 0), 0, onGlacis(0.25, 0.025)[0], onGlacis(0.25, 0.025)[1]);
+    P.addExternalArmor('hull', xform(box(2.30, 0.05, 0.40), 0, 0, 0, glacis, 0, 0), 0, onGlacis(0.25, 0.025)[0], onGlacis(0.25, 0.025)[1]);
     // the armoured fuel tanks either side of the ramp, their bottoms sloping up to the rear (the AS4's rear and side
     // photographs)
     for (const s of [-1, 1] as const) {

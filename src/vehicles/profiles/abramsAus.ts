@@ -9,7 +9,7 @@ import { ABRAMS_PROFILES } from './abrams.ts';
 import { KIT } from './kit.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
-const { box, cylY, cylZ } = KIT;
+const { box, cylX, cylY, cylZ } = KIT;
 
 // Turret-local stations (pivot 0, 1.632, 0.350 on the hull): the M1A1 rack's rear frame stands at z -3.47 between
 // x +-1.07 with its floor at y 0.24 and its dropped top rail at 0.63; the extension carries it to z -3.97
@@ -50,10 +50,23 @@ function tmapu(P: TankBuilderPort): void {
   P.add('turretDetail', cylZ(0.07, 0.014, 20), 0.475, gy, z1 - 0.012);
   P.add('turretDark', cylZ(0.05, 0.018, 20), 0.475, gy, z1 - 0.016);
   P.add('turretDetail', box(0.05, 0.08, 0.03), x1 - 0.12, gy, z1 - 0.015);
-  const stackX = x0 - 0.10, stackZ = z1 + 0.14, stackTop = y1 + 0.23;
-  P.add('turretDark', cylY(0.032, 0.032, stackTop - y0, 12), stackX, (y0 + stackTop) / 2, stackZ);
-  P.add('turretDark', cylY(0.048, 0.048, 0.03, 12), stackX, stackTop + 0.015, stackZ);
-  P.add('turretDark', box(0.14, 0.03, 0.04), stackX, stackTop + 0.045, stackZ);
+  // (269 blind critic: at 0.23 m over the box, 3.2 cm thick, it read as a stub) the pipe 0.34 m over the box and thicker,
+  // under its cap and T-head, its top (2.81 m) inside the photo packet's tallest (docs/references/photos)
+  const stackX = x0 - 0.10, stackZ = z1 + 0.14, stackTop = y1 + 0.34;
+  P.add('turretDark', cylY(0.042, 0.042, stackTop - y0, 12), stackX, (y0 + stackTop) / 2, stackZ);
+  P.add('turretDark', cylY(0.056, 0.056, 0.035, 12), stackX, stackTop + 0.017, stackZ);
+  P.add('turretDark', box(0.18, 0.035, 0.05), stackX, stackTop + 0.052, stackZ);
+}
+
+/** The rack's load in its right half, clear of the TMAPU (rear_adfa2015: packs, a crate and cans on the floor; 269 blind
+ * critic: the lengthened rack read as an empty cage), lashed under the low rail. */
+function rackLoad(P: TankBuilderPort): void {
+  const y = RACK.floor + 0.006;
+  P.add('turretCloth', box(0.42, 0.30, 0.36), -0.70, y + 0.15, -3.66, 0, 0.12, 0);   // a large pack
+  P.add('turretDark', box(0.30, 0.22, 0.26), -0.30, y + 0.11, -3.62);                 // a crate
+  P.add('turretCloth', cylX(0.13, 0.50, 12), -0.64, y + 0.13, -3.86);                 // a rolled bag
+  for (const x of [-0.15, -0.31]) P.add('turretDetail', box(0.15, 0.34, 0.24), x, y + 0.17, -3.85);   // two cans
+  P.add('turretDark', box(0.90, 0.025, 0.025), -0.50, RACK.low + 0.04, -3.72);        // the lashing strap
 }
 
 /** The call-sign plate hung on the rack's right side rail (the tank's number on it; the TMAPU holds the left rear). */
@@ -75,6 +88,7 @@ export function buildM1A1AimSaAus(P: TankBuilderPort): void {
   }
   rackExtension(P);
   tmapu(P);
+  rackLoad(P);
   callSignPlate(P);
   P.turretG.userData.ausAbramsReceipt = { base: 'm1a1', tmapu: 'rack-left-rear', rackExtensionM: RACK.front - RACK.rear,
     rackTiers: 2, callSignPlate: true };

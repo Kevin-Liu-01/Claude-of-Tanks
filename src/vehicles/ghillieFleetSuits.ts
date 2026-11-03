@@ -930,7 +930,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       // over the cheeks to their tips (the owner: "even drape ghillie acrross the top of mantlet and cheeks")
       top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 2.70, nx: 44, nz: 74, y: 0.92, garnishRiseM: 0.18, garnishDensity: 1.4,
         seed: 11 })],
-      side: flanks(-2.45, 0.60, 0.90, 0.50, 1.70, 17),
+      // open over the empty Trophy cradles (the Australian tell Main asked for; the 269 blind critic saw none under the net)
+      side: flanks(-2.45, 0.60, 0.90, 0.50, 1.70, 17, {}, () => [cut(-2.06, -1.02, 0.25, 0.95)]),
       face: [face({ z: -3.20, x0: -1.20, x1: 1.20, y0: 0.55, y1: 0.98, nx: 24, ny: 6, seed: 23 })],
     },
     hull: {
