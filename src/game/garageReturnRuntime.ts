@@ -14,19 +14,22 @@ import type { GaragePresentationRestoreReceipt } from './garagePhasePresentation
  * - restoreSkipped: Battle Again left the GPU restore unpaid (the next battle's cover owns the screen)
  * - restoring: paying a skipped restore (Battle Again did not start a battle after all)
  * - failed: a return threw; Garage frames stay suppressed until a later return succeeds
+ * - superseded: (audit F3 review) a return cut short by another presentation (it owns the scene) or a graphics-context
+ *   change (the context recovery retries the return); frames stay suppressed, but it is no failure: nothing to notify
  */
 export type GarageReturnState =
-  | 'idle' | 'entering' | 'preparing' | 'prepared' | 'handoff' | 'restoreSkipped' | 'restoring' | 'failed';
+  | 'idle' | 'entering' | 'preparing' | 'prepared' | 'handoff' | 'restoreSkipped' | 'restoring' | 'failed' | 'superseded';
 
 export const GARAGE_RETURN_EDGES: Readonly<Record<GarageReturnState, readonly GarageReturnState[]>> = Object.freeze({
   idle: Object.freeze(['entering', 'preparing'] as const),
-  entering: Object.freeze(['idle', 'restoreSkipped', 'failed'] as const),
-  preparing: Object.freeze(['prepared', 'failed'] as const),
+  entering: Object.freeze(['idle', 'restoreSkipped', 'failed', 'superseded'] as const),
+  preparing: Object.freeze(['prepared', 'failed', 'superseded'] as const),
   prepared: Object.freeze(['handoff', 'entering', 'preparing'] as const),
   handoff: Object.freeze(['idle', 'failed'] as const),
   restoreSkipped: Object.freeze(['restoring', 'entering', 'preparing'] as const),
-  restoring: Object.freeze(['idle', 'failed'] as const),
+  restoring: Object.freeze(['idle', 'failed', 'superseded'] as const),
   failed: Object.freeze(['entering', 'preparing'] as const),
+  superseded: Object.freeze(['entering', 'preparing'] as const),
 });
 
 /** The two player-facing return operations; one holds the transition lease at a time. */
@@ -43,6 +46,27 @@ export class GarageReturnBusyError extends Error {
     this.active = active;
     this.requested = requested;
   }
+}
+
+/**
+ * (2026-11-02 audit F3 review) A return cut short by another presentation (`presentation`: a round activated, a newer
+ * return) or by its graphics context (`context`: lost, replaced, or the caller's own context expired). Not a failure:
+ * the presentation that took the scene, or the context recovery that retries the return, owns the screen, so callers
+ * open no failure notice for it (and a Retry there would race that recovery).
+ */
+export class GarageReturnSupersededError extends Error {
+  readonly code = 'garage_return_superseded';
+  readonly by: 'presentation' | 'context';
+  constructor(by: 'presentation' | 'context', message: string) {
+    super(message);
+    this.name = 'GarageReturnSupersededError';
+    this.by = by;
+  }
+}
+
+export function isGarageReturnSuperseded(error: unknown): error is GarageReturnSupersededError {
+  return error instanceof GarageReturnSupersededError
+    || (!!error && typeof error === 'object' && (error as { code?: unknown }).code === 'garage_return_superseded');
 }
 
 export function isGarageReturnBusy(error: unknown): error is GarageReturnBusyError {
@@ -368,9 +392,13 @@ export function createGarageReturnRuntime<Visual = object>(
     }
     state = next;
   };
-  /** A thrown return step: the current return's state becomes 'failed' (a step after its success edge keeps it). */
-  const fail = (trace: GarageReturnTrace): void => {
-    if (trace === lastTrace && GARAGE_RETURN_EDGES[state].includes('failed')) state = 'failed';
+  /**
+   * A thrown return step: the current return's state becomes 'failed', or 'superseded' when another presentation or a
+   * context change cut it short (a step after its success edge keeps its state).
+   */
+  const fail = (trace: GarageReturnTrace, error: unknown): void => {
+    const next: GarageReturnState = isGarageReturnSuperseded(error) ? 'superseded' : 'failed';
+    if (trace === lastTrace && GARAGE_RETURN_EDGES[state].includes(next)) state = next;
   };
 
   const performEntry = async (options: GarageReturnOptions, isCallerCurrent: () => boolean): Promise<void> => {
@@ -381,7 +409,7 @@ export function createGarageReturnRuntime<Visual = object>(
     const isCurrent = (): boolean => isCallerCurrent() && (!prepareOnly || generation === preparationGeneration);
     const assertCurrent = (): void => {
       if (!isCurrent() || (entryScheduler && !entryScheduler.isCurrent())) {
-        throw new Error('Garage return recovery was superseded or its graphics context changed.');
+        throw new GarageReturnSupersededError('context', 'Garage return recovery was superseded or its graphics context changed.');
       }
     };
     assertCurrent();
@@ -390,13 +418,13 @@ export function createGarageReturnRuntime<Visual = object>(
       ...(prepareOnly ? { awaitingHandoff: true } : {}),
     };
     // Publish ownership before any adapter can mutate roots/phase or re-enter.
-    // Failure deliberately leaves the state 'failed' (frames suppressed) after the pending promise clears.
+    // Failure deliberately leaves the state 'failed' or 'superseded' (frames suppressed) after the pending promise clears.
     lastTrace = trace;
     moveTo(prepareOnly ? 'preparing' : 'entering', trace);
     try {
       await performEntrySteps(options, trace, entryScheduler, isCurrent, assertCurrent);
     } catch (error) {
-      fail(trace);
+      fail(trace, error);
       throw error;
     }
   };
@@ -425,7 +453,7 @@ export function createGarageReturnRuntime<Visual = object>(
     const assertOwnedGarage = (): void => {
       assertCurrent();
       if (entryScheduler && (game.phase !== 'garage' || lastTrace !== trace)) {
-        throw new Error('Garage return was superseded by another presentation.');
+        throw new GarageReturnSupersededError('presentation', 'Garage return was superseded by another presentation.');
       }
     };
     let sliceStartedAt = startedAt;
@@ -571,13 +599,13 @@ export function createGarageReturnRuntime<Visual = object>(
       markedAt = at;
     };
     if (game.phase !== 'garage' || lastTrace !== trace || state !== 'prepared') {
-      throw new Error('The prepared Garage was superseded before its handoff.');
+      throw new GarageReturnSupersededError('presentation', 'The prepared Garage was superseded before its handoff.');
     }
     moveTo('handoff', trace);
     try {
       performHandoffSteps(trace, startedAt, markStage);
     } catch (error) {
-      fail(trace);
+      fail(trace, error);
       throw error;
     }
   };
@@ -609,13 +637,13 @@ export function createGarageReturnRuntime<Visual = object>(
     try {
       trace.presentationRestore = await restoreGaragePresentation();
       if (game.phase !== 'garage' || lastTrace !== trace) {
-        throw new Error('Garage return was superseded by another presentation.');
+        throw new GarageReturnSupersededError('presentation', 'Garage return was superseded by another presentation.');
       }
       if (!trace.presentationRestore) {
         throw new Error('Garage return completed without a presentation restore receipt');
       }
     } catch (error) {
-      fail(trace);
+      fail(trace, error);
       throw error;
     }
     trace.restoreSkipped = false;

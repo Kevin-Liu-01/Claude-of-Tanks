@@ -75,6 +75,12 @@ export function createBattleAgainAction({
         reportError('Battle Again ignored while the Garage return is busy', error);
         return;
       }
+      // (audit F3 review) nor is one whose return another presentation or a graphics-context change cut short: that
+      // presentation, or the context recovery retrying the return, owns the screen
+      if (Reflect.get(Object(error), 'code') === 'garage_return_superseded') {
+        reportError('Battle Again superseded', error);
+        return;
+      }
       // A failure dialog's transfer must not keep the action latch occupied.
       return showFailure(error, revision);
     });

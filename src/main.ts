@@ -3468,14 +3468,23 @@ const enterGarage = garageReturn.enter;
  * (2026-11-02 audit F3 review) The Garage return failure notice, with its one action: a failed return keeps Garage
  * frames suppressed ('failed'), so the notice and its retry are the player's way out. Demand-loaded like every notice.
  */
-const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Promise<void> => (
-  import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
-    .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError))
-);
+const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Promise<void> => {
+  // (audit F3 review) a return cut short by another presentation (it owns the scene) or a graphics-context change (the
+  // context recovery retries it) is not a failure: its notice opened over the battle that took the scene, and its Retry
+  // cleared that battle or raced the recovery into 'The newer Garage return is not ready'. (The code check, not an
+  // import: the return implementation stays off the boot graph.)
+  if (Reflect.get(Object(error), 'code') === 'garage_return_superseded') {
+    console.info('[garage return] superseded:', Reflect.get(Object(error), 'message'));
+    return Promise.resolve();
+  }
+  return import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
+    .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
+};
 /**
  * Every return caller that has no failure exit of its own (the Studio's exit, the room's covered restore) gets the
  * Leave's: a return that failed and still owes the screen says so and offers the return again ('failed' → 'entering').
- * The caller still sees the rejection; a superseded return (another presentation took the scene) is not a dead end.
+ * The caller still sees the rejection; a superseded return ('superseded': another presentation took the scene, or the
+ * context recovery retries it) is not a dead end and opens nothing.
  */
 const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: RuntimeValue) => {
   if (garageReturn.state === 'failed') {
@@ -3529,7 +3538,9 @@ const leaveBattleToGarage = (): Promise<void> => {
   // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection
   return garageReturn.leave().catch((error: RuntimeValue) => {
     // (the code check, not an import: the return implementation stays off the boot graph)
-    if (Reflect.get(Object(error), 'code') === 'garage_return_busy') {
+    // (audit F3 review) a Leave cut short by another presentation or a context change opens no notice either
+    const code = Reflect.get(Object(error), 'code');
+    if (code === 'garage_return_busy' || code === 'garage_return_superseded') {
       console.info('[garage return] Leave ignored:', Reflect.get(Object(error), 'message'));
       return;
     }
