@@ -76,7 +76,7 @@ import type {
   DamageShellSpec,
   HitEvent,
 } from './damage.ts';
-import { createSpottingSystem } from './spotting.ts';
+import { CAMO_PAINT_BONUS, createMatchSpotting } from './spotting.ts';
 import type {
   ConcealerDisc,
   SpottingRayHit,
@@ -177,6 +177,11 @@ export interface AuthoritativePlayerRecord {
   /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
+  /**
+   * The seat's paint matches the battlefield (materials.ts hasCamoPaint): the spotting's CAMO_PAINT_BONUS, as the solo
+   * step grants it. A seat input (2026-11-02 audit M6, spotting parity); a room sends none yet, so online hulls read 0.
+   */
+  camoPaint?: boolean;
 }
 
 export interface AuthoritativePlayerInput extends AimIntentInput {
@@ -239,6 +244,8 @@ export interface AuthoritativeEntity {
   connected: boolean;
   kills: number;
   damage: number;
+  /** The seat's biome-matched paint (AuthoritativePlayerRecord.camoPaint): the spotting's paint bonus. */
+  camoPaint: boolean;
   /** The consumable in each slot, kept across lives (sim/consumableRules.ts sanitizeConsumableLoadout). */
   consumableItems: ConsumableId[];
   /** This life's consumable cooldowns, charges and timed effects. */
@@ -1044,6 +1051,7 @@ export function createAuthoritativeMatch({
       connected: true,
       kills: 0,
       damage: 0,
+      camoPaint: record.camoPaint === true,
       consumableItems,
       consumables,
       consumableReadyAt: consumables.readyAt,
@@ -1080,7 +1088,11 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
     ? worldCollision.getConcealment() ?? [] : [];
-  const spotting = createSpottingSystem({
+  // the battle's spotting through the solo step's factory (sim/spotting.ts createMatchSpotting: the stagger from the seed,
+  // the seat's paint; 2026-11-02 audit M6)
+  const spotting = createMatchSpotting({
+    seed,
+    teams: [TEAM_ALPHA, TEAM_BRAVO],
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
@@ -1090,9 +1102,7 @@ export function createAuthoritativeMatch({
       const tank = entityById.get(entity.id);
       return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
     },
-    getCamoBonus: () => 0,
-    rng: mulberry32(seed + 31000),
-    teams: [TEAM_ALPHA, TEAM_BRAVO],
+    getCamoBonus: (entity) => (entityById.get(entity.id)?.camoPaint ? CAMO_PAINT_BONUS : 0),
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? preparedGround?.navigation ?? createBotNavigationGrid({

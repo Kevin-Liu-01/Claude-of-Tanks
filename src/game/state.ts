@@ -118,7 +118,7 @@ import {
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
-import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
+import { createMatchSpotting, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { createCrushPressLedger, type CrushPressLedger } from '../sim/crushPress.ts';
 import { autoRightsItself } from '../sim/botDriven.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
@@ -587,6 +587,11 @@ function soloDebugFlags(): SoloDebugFlags | null {
 }
 
 const COMBAT_SEED = 6000;
+/**
+ * The solo battle's seed: its combat stream and its spotting stagger draw from it as the authority's do from its `seed`
+ * (sim/driverStepParity.selftest seats the authority with it).
+ */
+export const SOLO_BATTLE_SEED = COMBAT_SEED;
 // module repair duration lives with the state machine: sim/damage.ts REPAIR_S
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
@@ -780,7 +785,11 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
   const groundHeightAt = groundFor(world).field.getHeightAt;
-  return createSpottingSystem({
+  // the authority's factory (sim/spotting.ts createMatchSpotting; 2026-11-02 audit M6): the stagger from the battle's seed,
+  // the solo step's two sides, the Garage's paint as the seat's
+  return createMatchSpotting({
+    seed: SOLO_BATTLE_SEED,
+    teams: ['player', 'enemy'],
     getTanks: () => game.tanks as SpottingTank[],
     alwaysVisible: !!game.ruleset.alwaysVisible,
     raycast: world.raycast,
@@ -795,7 +804,6 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
       const entity = tank as SpottingTank & { equip?: string[]; consumables?: ConsumableState };
       return consumableSpottingIds(entity.consumables, entity.equip, game.timeS);
     },
-    rng: mulberry32(9100),
   });
 }
 
@@ -2157,7 +2165,8 @@ function tryFire(
       bus.emit('ammo:depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
     }
   }
-  game.spotting?.notifyFired(entity.id, game.timeS);
+  // the round's own caliber prices the bloom, as the authority's does (spotting.ts fireCamoLossFor; 2026-11-02 audit M6)
+  game.spotting?.notifyFired(entity.id, game.timeS, shellSpec.caliberMm);
   notifyEnemyShot(game, entity);
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
@@ -3274,9 +3283,11 @@ function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['
 }
 
 /**
- * One fixed simulation step. Ordering is authoritative: sensing and AI write
- * input before movement; contacts resolve before weapons; projectiles resolve
- * before damage timers; objective state settles before the match verdict.
+ * One fixed simulation step. Ordering is authoritative: AI writes input before
+ * movement (from the sensing the previous step ended with); contacts resolve
+ * before weapons; projectiles resolve before damage timers; spotting senses the
+ * settled world before the mode reads it; objective state settles before the
+ * match verdict. The authority's stepPlaying keeps the same order.
  */
 export function simStep(
   game: SoloGameState,
@@ -3294,10 +3305,8 @@ export function simStep(
   groundFor(world).overlay.setTime(game.timeS);
   // the stage marks (game/frameStages.ts) only name the stage: null in a player's session, never a clock here
   const stages = frameStages;
-  stages?.stage(FRAME_STAGE.spotting);
-  stepSpotting(game, bus);
-  retargetObjectiveBots(game);
   stages?.stage(FRAME_STAGE.bots);
+  retargetObjectiveBots(game);
   // Jev commander (2026-09-25): due requests go out and arrived answers become orders before the controllers step
   if (game.jev && game._jevView) game.jev.step(game._jevView);
   stepBotControllers(game);
@@ -3332,6 +3341,10 @@ export function simStep(
   tickRepairs(game, bus, SIM_DT);
   stages?.stage(FRAME_STAGE.destruction);
   stepDestruction(game, bus, world);
+  // spotting once the world has settled, before the mode reads it: the authority's place (stepPlaying updateVisibility),
+  // on the tick's clock; the bots of the next tick read it (2026-11-02 audit M6, spotting parity)
+  stages?.stage(FRAME_STAGE.spotting);
+  stepSpotting(game, bus);
   stages?.stage(FRAME_STAGE.mode);
   settleBattleResult(game, bus, stepMatchMode(game, bus));
 }

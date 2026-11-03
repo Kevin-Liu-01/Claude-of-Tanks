@@ -9,18 +9,24 @@
 // authority poses them (its visual stands in for the drawn barrel). Bots' controllers and the mode controllers still run
 // in each loop on its own; folding the two loops into one core step is the named follow-up (TESTS-OWED, core-two-drivers-265).
 // Negative control: one input on one side moved by a billionth at tick 300 is found at that tick.
+// Spotting (2026-11-02 audit M6): both drivers build it through one factory (sim/spotting.ts createMatchSpotting: the
+// stagger stream from the battle's seed, the seat's camo paint) and step it at the same point of the tick, so what each
+// hull's team sees of the other is compared every tick too; the authority is seated with the page's battle seed and the
+// page's paint. Negative control: the authority's battle seed one off (its combat stream kept equal) is found at the
+// first spotting check, the stagger the solo step once drew from a seed of its own.
 import assert from 'node:assert/strict';
 import { Euler, Group, Matrix4, Quaternion, Vector3 } from 'three';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { decodeAimIntent, encodeAimIntent } from './aimIntent.ts';
 import * as detMath from './detMath.ts';
-import { createBus, createCollider, createGameState, mulberry32, setupBattle, simStep } from '../game/state.ts';
+import { createBus, createCollider, createGameState, mulberry32, setupBattle, simStep, SOLO_BATTLE_SEED } from '../game/state.ts';
+import { hasCamoPaint } from '../vehicles/materials.ts';
 import { spawnTanks } from '../game/rosterState.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 
 const MAP = 'verdant';
-const SEED = 7;
+const SEED = SOLO_BATTLE_SEED;
 await ensureFullFleet();
 
 const _euler = new Euler(), _quat = new Quaternion(), _unit = new Vector3(), _hull = new Matrix4(), _local = new Matrix4();
@@ -58,7 +64,7 @@ function hullBytes(entity) {
  * The battle on both steps for `ticks` ticks; `perturb(tick, side, id, input)` may change one side's input. Returns the
  * first tick and field where the two worlds differ (null when they never do) and what the scenario exercised.
  */
-async function run(ticks, perturb = null) {
+async function run(ticks, perturb = null, { authoritySeed = SEED } = {}) {
   const authorityWorld = createDedicatedWorldCollision(MAP), pageWorld = createDedicatedWorldCollision(MAP);
   const authored = pageWorld.heightField._layout.spawns;
   const spawnOf = (point) => ({ pos: [point.x, pageWorld.heightField.getHeightAt(point.x, point.z), point.z], yaw: point.yaw ?? 0 });
@@ -79,9 +85,11 @@ async function run(ticks, perturb = null) {
   foe.state.pos.set(own.state.pos.x + 140 * Math.sin(own.state.yaw), 0, own.state.pos.z + 140 * Math.cos(own.state.yaw));
   // the online driver's authority on the same battlefield, the same hulls where the page put them (the player's equipment as
   // the page's: none stored; the hostile's the bots' default on both)
-  const match = createAuthoritativeMatch({ mapId: MAP, seed: SEED, countdownS: 0, worldCollision: authorityWorld, players: [
-    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
-    { id: foe.id, specId: foe.specId, team: 'bravo', spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
+  const match = createAuthoritativeMatch({ mapId: MAP, seed: authoritySeed, countdownS: 0, worldCollision: authorityWorld, players: [
+    { id: own.id, specId: own.specId, team: 'alpha', equipment: [], camoPaint: hasCamoPaint(own.specId),
+      spawn: { x: own.state.pos.x, z: own.state.pos.z, yaw: own.state.yaw } },
+    { id: foe.id, specId: foe.specId, team: 'bravo', camoPaint: hasCamoPaint(foe.specId),
+      spawn: { x: foe.state.pos.x, z: foe.state.pos.z, yaw: foe.state.yaw + Math.PI } },
   ] });
   match.onMatchReady();
   const authorityOf = (entity) => match.entityById.get(entity.id);
@@ -96,7 +104,7 @@ async function run(ticks, perturb = null) {
     entity.input.aimPoint ??= new Vector3();
     for (const state of [entity.state, authority.state]) if (state._sup) state._sup.x = NaN;
   }
-  game.combatRng = mulberry32(SEED);
+  game.combatRng = mulberry32(authoritySeed);
   const bus = createBus(() => {});
   const collider = createCollider(game, pageWorld);
   const inputFor = (tick, self, other) => {
@@ -106,6 +114,8 @@ async function run(ticks, perturb = null) {
       : { throttle: 0, steer: 0, brake: true, fire: tick % 150 === 40, shellSlot: 0, actionBits: 0, aimLocked: false, ...aim };
   };
   let divergence = null;
+  let spottedTicks = 0;
+  const seen = [], shells = [];
   for (let tick = 0; tick < ticks && !divergence; tick++) {
     const inputs = new Map();
     for (const entity of game.tanks) {
@@ -127,8 +137,18 @@ async function run(ticks, perturb = null) {
       const index = page.findIndex(([, bytes], i) => bytes !== authority[i][1]);
       if (index >= 0) divergence = { tick, hull: entity === own ? 'own' : 'foe', field: page[index][0] };
     }
+    // what each hull's team sees of the other: the authority's viewer filter and the page's spotting, the same rule
+    for (const viewer of game.tanks) {
+      if (divergence) break;
+      const other = viewer === own ? foe : own;
+      match.observeForViewer(viewer.id, seen, shells);
+      const authoritySees = seen.some((entity) => entity.id === other.id);
+      const pageSees = other.team === viewer.team || other.combat.destroyed || game.spotting.isSpotted(other.id, viewer.team, viewer);
+      if (authoritySees !== pageSees) divergence = { tick, hull: viewer === own ? 'own' : 'foe', field: `sees ${other === own ? 'own' : 'foe'}` };
+      if (pageSees) spottedTicks++;
+    }
   }
-  const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp };
+  const exercised = { ownHp: own.combat.hp / own.combat.maxHp, foeHp: foe.combat.hp / foe.combat.maxHp, spottedTicks };
   authorityWorld.release?.();
   pageWorld.release?.();
   return { divergence, exercised, own: own.state, foe: foe.state };
@@ -141,6 +161,7 @@ assert.equal(same.divergence, null, `the local step and the authority's step par
 assert.ok(same.exercised.foeHp < 1, `the own shots hit the hostile on both sides (${(same.exercised.foeHp * 100).toFixed(1)} % hp)`);
 assert.ok(same.exercised.ownHp < 1, `and the own hull took damage, the hostile's shots and a crash (${(same.exercised.ownHp * 100).toFixed(1)} % hp)`);
 assert.ok(Math.abs(same.own.turretYaw) > 0.5, 'the turret laid its gun round onto the target');
+assert.ok(same.exercised.spottedTicks > TICKS, `both teams spot each other on both sides, tick for tick (${same.exercised.spottedTicks} hull-ticks)`);
 
 // ---- negative control: one input on one side moved by a billionth is a different world, found at its tick ------------
 const SEEDED = 300;
@@ -149,7 +170,13 @@ const nudged = await run(SEEDED + 30, (tick, side, id, input) => (tick === SEEDE
 assert.ok(nudged.divergence, 'a throttle a billionth higher on the page at tick 300 is caught');
 assert.equal(nudged.divergence.tick, SEEDED, `at the tick it was seeded (${JSON.stringify(nudged.divergence)})`);
 
+// ---- negative control: a spotting stagger drawn from another seed is a different world (the solo step's old own seed)
+const reseeded = await run(60, null, { authoritySeed: SEED + 1 });
+assert.ok(reseeded.divergence && reseeded.divergence.field.startsWith('sees'),
+  `an authority seeded one off is caught on what a team sees, at the first check (${JSON.stringify(reseeded.divergence)})`);
+
 console.log(`driverStepParity.selftest: ${MAP} 1v1, ${TICKS} ticks, both hulls byte-identical on the local step (game/state.ts simStep) and the `
   + `authority's (sim/authoritativeMatch.ts): drive, turn, gun lay, a crash, shots, hits, knock, bloom and reload (hostile at `
   + `${(same.exercised.foeHp * 100).toFixed(1)} % hp, own at ${(same.exercised.ownHp * 100).toFixed(1)} %); a throttle a billionth off seeded at tick `
-  + `${SEEDED} caught at tick ${nudged.divergence.tick} (${nudged.divergence.field})`);
+  + `${SEEDED} caught at tick ${nudged.divergence.tick} (${nudged.divergence.field}); spotting compared every tick `
+  + `(${same.exercised.spottedTicks} hull-ticks spotted), a stagger seed one off caught at tick ${reseeded.divergence.tick}`);
