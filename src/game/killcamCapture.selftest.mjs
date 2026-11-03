@@ -81,4 +81,22 @@ const hull = () => ({
   assert.match(presentation, /if \(mounted\) recordKillcamStep\(frame\.renderTimeMs\);/);
 }
 
+// 2026-11-02 audit (02-game-2 #5): one capture reset for both battle entries, the no-replay death's spectate handover
+// revoked by cancel(), and the chase's settings guard on an injected port (it read window.__DEBUG.settings, which only
+// diagnostics builds install). The controller needs a scene, a rig and the page: its source and wiring are pinned.
+{
+  const killcam = readFileSync(new URL('./killcam.ts', import.meta.url), 'utf8');
+  assert.equal((killcam.match(/resetCaptureMemory\(\);/g) || []).length, 2, 'ui:battleStart and phase:change battle run the one reset');
+  assert.equal((killcam.match(/pendingDeath = pendingVictory = lastHitOnPlayer = null;/g) || []).length, 1, 'no second hand-written list');
+  assert.match(killcam, /const resetCaptureMemory = \(\): void => \{\n\s+clearTraj\(\);\n\s+poseHistory\.clear\(\);\n\s+turretTracks\.clear\(\);\n\s+pendingDeath = pendingVictory = lastHitOnPlayer = null;\n\s+lastLethal = lastDestroyed = null;\n\s+lastHitByTarget\.clear\(\);\n\s+\};/);
+  assert.match(killcam, /spectateHandoffTimer = setTimeout\(\(\) => \{ spectateHandoffTimer = null; spectate\.maybeStart\(\); \}, 80\);/);
+  assert.match(killcam, /cancel\(\) \{\n\s+clearExit\(\);\n\s+cancelSpectateHandoff\(\);/, 'cancel() revokes the pending handover');
+  assert.doesNotMatch(killcam, /setTimeout\(\(\) => spectate\.maybeStart\(\), 80\)/, 'no untracked handover timer');
+  assert.match(killcam, /try \{\n\s+if \(isSettingsOpen\(\)\) return;/, 'the orbit reads the settings port');
+  assert.doesNotMatch(killcam, /dbg\.settings/, 'not the diagnostics surface');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  assert.match(main, /createKillCam\([\s\S]{0,1400}isSettingsOpen: \(\) => settings\.isOpen\(\),[\s\S]{0,300}'battleLightsActive', 'isSettingsOpen'\]/,
+    'production wires the live settings into the chase');
+}
+
 console.log('killcamCapture.selftest: held step frames refreshed in place, snapshots copied, ERA and crew, pooled traces, room and solo capture pass');

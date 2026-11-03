@@ -1871,8 +1871,10 @@ const killcamAccess = createKillcamAccess({
       getFx: () => fxRuntimeAccess.current,
       prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
       battleLightsActive: () => !garageLightsUp,
+      // (2026-11-02 audit, 02-game-2 #5) the ally chase never orbits behind Settings, in production too
+      isSettingsOpen: () => settings.isOpen(),
     }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination',
-      'battleLightsActive']));
+      'battleLightsActive', 'isSettingsOpen']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
