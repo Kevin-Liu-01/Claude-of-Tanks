@@ -645,7 +645,7 @@ export class MatchSession {
     const p2p = this.p2pOptions;
     const me = this.room.playerId;
     if (!p2p || !parseP2pMatchUrl(payload.matchUrl) || (this.room.hostId ?? payload.hostId ?? null) !== me || !this.canHost) return;
-    if (!this.hostSecretFor(payload) || round.room.match?.status === 'playing') return;
+    if (!this.hostSecretFor(payload) || this.matchRunning(round)) return;
     const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
     const setTimer = timers.setTimer ?? ((callback: () => void, delayMs: number) => setTimeout(callback, delayMs));
     const clearTimer = timers.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
@@ -682,6 +682,21 @@ export class MatchSession {
 
   private stopEntryReports(reason: string): void {
     this.entryReports?.stop(reason);
+  }
+
+  /**
+   * Whether the round's match already runs on a host (audit M2, 2026-11-03): the room's current record of the match
+   * says playing, the entry's own room snapshot did, or the room's newest election for the match resumes from a
+   * keyframe (tick > 0) that the seats in the match hold. A seat elected while its world loads holds no such state. The
+   * entry snapshot alone went stale: a seat that began loading while the match was starting and was elected after it
+   * went playing booted a fresh host at tick 0, and the battle restarted for every peer.
+   */
+  private matchRunning(round: SessionRound): boolean {
+    const matchId = round.matchStart.matchId;
+    const current = this.room.room?.match;
+    if (round.room.match?.status === 'playing' || (current?.id === matchId && current.status === 'playing')) return true;
+    const election = this.room.lastHostChanged;
+    return !!election && election.resumeTick > 0 && this.room.matchStart?.matchId === matchId;
   }
 
   /**
@@ -919,10 +934,10 @@ export class MatchSession {
     this.hostSecret = this.hostSecretFor(payload);
     let inner: Transport;
     this.runningGeneration = Math.max(parseP2pMatchUrl(payload.matchUrl)?.generation ?? 0, this.room.generation);
-    // Named host for a match already playing (a reload inside the host grace): this seat holds no state to resume from,
-    // its peers hold the sealed keyframe. Decline, enter as a peer, let the room elect one of them; boot afresh only when
+    // Named host for a match already playing (a reload inside the host grace, or elected while its world loaded): this
+    // seat holds no state to resume from, its peers hold the sealed keyframe. Decline, enter as a peer, let the room elect one of them; boot afresh only when
     // no election follows (nobody else is left to host).
-    const reentryAsNamedHost = hostId === me && this.canHost && !!this.hostSecret && round.room.match?.status === 'playing';
+    const reentryAsNamedHost = hostId === me && this.canHost && !!this.hostSecret && this.matchRunning(round);
     if (reentryAsNamedHost) {
       this.log('warn', 'named host of a running match without its state: declining so a peer resumes', { matchId: payload.matchId });
       this.p2pListeners.emit({ kind: 'declined' });
@@ -1048,10 +1063,19 @@ export class MatchSession {
     if (!client || !round || !migrating || migrating.state === 'closed' || !parseP2pMatchUrl(round.matchStart.matchUrl)) {
       // An election that lands while this seat's world still loads (no match client yet; audit M2, 2026-11-02) is kept by
       // the room client with its secret, and the round's entry acts on it once the world is ready (openPeerToPeer reads
-      // the room's newest host and hostSecretFor). Elected meanwhile, the seat reports loading as an elected host does.
+      // the room's newest host and hostSecretFor). Elected meanwhile for a match that has not begun, the seat reports
+      // loading as an elected host does. Elected for a match that already runs (2026-11-03), it holds none of the
+      // match's state: it declines now, so the room elects a seat that resumes from its keyframe; the entry, once the
+      // world is ready, declines again and boots only when no election follows (openPeerToPeer's re-entry path).
       if (!client && round && !this.matchClient && change.hostId === this.room.playerId && parseP2pMatchUrl(round.matchStart.matchUrl)) {
-        this.log('info', 'elected while the world loads: the entry boots the host', { generation: change.generation });
-        this.startEntryReports(round, round.matchStart);
+        if (this.canHost && this.matchRunning(round)) {
+          this.log('warn', 'elected while the world loads a running match: declining so a peer resumes', { generation: change.generation, resumeTick: change.resumeTick });
+          this.p2pListeners.emit({ kind: 'declined' });
+          this.setDecline('reentry', { declined: true });
+        } else {
+          this.log('info', 'elected while the world loads: the entry boots the host', { generation: change.generation });
+          this.startEntryReports(round, round.matchStart);
+        }
       }
       return;
     }
