@@ -1593,6 +1593,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padLink.selftest.mjs',
     'src/pad/qr.selftest.mjs',
     'server/rooms/localPadService.selftest.mjs',
+    'server/rooms/roomEvents.selftest.mjs', // 2026-11-02 audit S1: Room and PadPair end every event through one end and deallocate by one rule
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
