@@ -9,17 +9,17 @@
 //     the gunner, the gunner sight's IR searchlight replaced by a new type; cafe c1): the thermal module in its own
 //     armoured head outboard of the 1K13-2 with its shutter open over the window, and the new IR searchlight on a yoke
 //     over the sight;
-//   - the ribbed stowage bin the 3rd Armoured Brigade's vehicles carry on the turret's left rear quarter (Commons r1).
+//   - the ribbed stowage bin the 3rd Armoured Brigade's vehicles carry round the turret's left rear corner (Commons r1).
 // Frame: bmp3Family.ts's turret frame (+x the vehicle's left, +z forward, y up from the ring plane).
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { KIT, FITTINGS, orientedSlab, convexSlab } from './kit.ts';
+import { KIT, FITTINGS, convexSlab } from './kit.ts';
 import { mount } from './fittingMount.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { hoop } from './bentBarHoop.ts';
 
 /** The shared turret's datums the fit seats against (bmp3Family.ts). */
-export interface Bmp3RokTurretDatums {
+interface Bmp3RokTurretDatums {
   /** top of the inset roof plate */
   readonly roofY: number;
   /** the 1K13-2 sight box: plan x0..x1, z0..z1 at its foot, its top */
@@ -46,39 +46,57 @@ function sideLoft(stations: ReadonlyArray<{ readonly x: number; readonly section
   return g;
 }
 
-// ---- left rear quarter: the chamfer face from the flank junction J to the rear corner R (y 0.17..0.40) -------------
+// ---- left rear quarter and rear: the chamfer face from the flank junction J to the rear corner R, and the rear face
+// (z -1.07..-1.09 over y 0.17..0.40; both faces lean out ~6 mm over that height, the roof-edge chamfer above them) ----
 const J: Vec2 = [1.14, -0.47];
 const R: Vec2 = [0.72, -1.08];
 const CH_LEN = Math.hypot(R[0] - J[0], R[1] - J[1]);
+const DH: Vec2 = [(R[0] - J[0]) / CH_LEN, (R[1] - J[1]) / CH_LEN];   // along the chamfer, rearward
+const NQ: Vec2 = [-DH[1], DH[0]];                                     // out of the chamfer face
+const ZR = -1.08;
 /** yaw that turns a local frame (x outward through the chamfer face, z forward along it) onto the left rear chamfer */
 const CH_YAW = Math.atan2(J[0] - R[0], J[1] - R[1]);
 
-/** The ribbed stowage bin on the left rear quarter (Commons r1: a tall box the full height of the turret flank from
- * the rear corner forward ~0.6 m, vertical ribs on its face). Local frame: x out of the chamfer face, z forward along it
- * (z 0 at J), y the turret's. Its inner face is buried 9-21 mm in the chamfer (the face leans out 6 mm over its height);
- * its top runs in over the roof-edge chamfer so no channel opens between bin and shell; its floor (y 0.15) clears the
- * raised troop deck (turret y 0.10 beyond r 1.30) as the turret turns. */
-function addLeftQuarterBin(P: TankBuilderPort): void {
-  const { box, cylZ } = KIT;
-  const z0 = -(CH_LEN - 0.06), z1 = -0.07;
-  const section: Vec2[] = [
-    [-0.015, 0.15], [0.160, 0.15], [0.200, 0.19], [0.200, 0.445], [0.186, 0.462], [-0.068, 0.462], [-0.015, 0.40],
-  ];
-  // the loft runs along local z: its ring is (x, y)
-  const bin = sectionSolid([{ z: z0, ring: ccw(section) }, { z: z1, ring: ccw(section) }]);
-  const put = (slot: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
+/** The bin's plan at one level: out dq from the chamfer and dr from the rear face, its inner edges sunk eq / er into the
+ * shell; from the front end (0.07 m behind J) round the outer corner to the inboard end (x 0.16) and back inside. */
+function binPlan(dq: number, dr: number, eq: number, er: number): Vec2[] {
+  const at = (s: number, off: number): Vec2 => [J[0] + DH[0] * s + NQ[0] * off, J[1] + DH[1] * s + NQ[1] * off];
+  const sC = (ZR - dr - J[1] - dq * NQ[1]) / DH[1], sK = (ZR + er - J[1] + eq * NQ[1]) / DH[1];
+  return [at(0.07, -eq), at(0.07, dq), at(sC, dq), [0.16, ZR - dr], [0.16, ZR + er], at(sK, -eq)];
+}
+
+/** The ribbed stowage bin wrapped round the turret's left rear corner (Commons r1: a tall box the full height of the
+ * flank from the rear corner forward ~0.6 m with vertical ribs on its face, and stowage standing ~0.12 m proud of the
+ * turret's rear behind it). A level loft: its inner faces are sunk 9-25 mm in the shell, its top runs in over the
+ * roof-edge chamfer so no channel opens between bin and shell, a lid lip rings its outer faces, its floor (y 0.15)
+ * clears the raised troop deck (turret y 0.10 beyond r 1.30) as the turret turns. */
+function addLeftRearBin(P: TankBuilderPort): void {
+  const { box, cylX, cylZ } = KIT;
+  const DQ = 0.20, DR = 0.12;
+  const eq = (y: number): number => 0.015 + Math.max(0, y - 0.40) * 0.83;
+  const er = (y: number): number => 0.015 + Math.max(0, y - 0.40) * 0.60;
+  const levels: Array<[number, number]> = [[0.150, -0.040], [0.190, 0], [0.400, 0], [0.424, 0], [0.425, 0.012],
+    [0.452, 0.012], [0.464, -0.002]];
+  P.add('turretPaintedDetail', KIT.xform(sectionSolid(levels.map(([y, o]) => ({
+    z: y, ring: ccw(binPlan(DQ + o, DR + o, eq(y), er(y)).map(([x, z]) => [x, -z] as Vec2)),
+  }))), 0, 0, 0, -Math.PI / 2, 0, 0));
+  // quarter face (local frame: x out of the chamfer, z forward along it from J): two pressed ribs, two hasps under the
+  // lid lip, two hinge knuckles at the lid's inner edge
+  const quarter = (slot: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
     P.add(slot, KIT.xform(g, x, y, z), J[0], 0, J[1], 0, CH_YAW, 0);
-  put('turretPaintedDetail', bin, 0, 0, 0);
-  // lid: a plate laid on the bin's top with a 12 mm lip over the face, two hinge knuckles at its inner edge
-  put('turretPaintedDetail', box(0.240, 0.016, (z1 - z0) + 0.012), 0.092, 0.468, (z0 + z1) / 2);
-  for (const z of [z0 + 0.12, z1 - 0.12]) put('turretDetail', cylZ(0.013, 0.09, 8), -0.020, 0.480, z);
-  // pressed vertical ribs dividing the face in three, and a hasp under the lid in the two outer panels
-  const panel = (z1 - z0) / 3;
-  for (const k of [1, 2]) put('turretPaintedDetail', box(0.024, 0.235, 0.028), 0.205, 0.315, z0 + k * panel);
+  const qz0 = -0.07, qz1 = -(ZR - DR - J[1] - DQ * NQ[1]) / DH[1], panel = (qz1 - qz0) / 3;
+  for (const k of [1, 2]) quarter('turretPaintedDetail', box(0.024, 0.215, 0.028), DQ + 0.005, 0.30, qz0 + k * panel);
   for (const k of [0.5, 2.5]) {
-    put('turretDetail', box(0.022, 0.055, 0.045), 0.206, 0.425, z0 + k * panel);
-    put('turretDark', box(0.012, 0.02, 0.026), 0.216, 0.41, z0 + k * panel);
+    quarter('turretDetail', box(0.022, 0.055, 0.045), DQ + 0.006, 0.40, qz0 + k * panel);
+    quarter('turretDark', box(0.012, 0.02, 0.026), DQ + 0.016, 0.385, qz0 + k * panel);
   }
+  for (const k of [0.6, 2.4]) quarter('turretDetail', cylZ(0.013, 0.09, 8), -0.035, 0.471, qz0 + k * panel);
+  // rear face: two ribs, a hasp, two hinge knuckles
+  const rz = ZR - DR;
+  for (const x of [0.40, 0.64]) P.add('turretPaintedDetail', box(0.028, 0.215, 0.024), x, 0.30, rz - 0.005);
+  P.add('turretDetail', box(0.045, 0.055, 0.022), 0.28, 0.40, rz - 0.006);
+  P.add('turretDark', box(0.026, 0.02, 0.012), 0.28, 0.385, rz - 0.016);
+  for (const x of [0.30, 0.58]) P.add('turretDetail', cylX(0.013, 0.09, 8), x, 0.471, ZR + 0.035);
 }
 
 // ---- Korean radio masts ---------------------------------------------------------------------------------------------
@@ -184,5 +202,5 @@ function addGunnerThermalStation(P: TankBuilderPort, d: Bmp3RokTurretDatums): vo
 export function addBmp3RokTurretFit(P: TankBuilderPort, d: Bmp3RokTurretDatums): void {
   addGunnerThermalStation(P, d);
   addRadioMasts(P, d.roofY);
-  addLeftQuarterBin(P);
+  addLeftRearBin(P);
 }

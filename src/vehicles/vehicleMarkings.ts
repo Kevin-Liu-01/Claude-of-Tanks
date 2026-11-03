@@ -436,7 +436,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
   // turret cheeks that remain clear of weapons, sights and missile boxes.
-  bmp3_rok: anchor('turret', 'right', 0.43, 0.46, 0.21, -1),
+  // round 269: the left flank's flat plate between the ROK radio mast and the cheek takes both (vertical 0.46 -> 0.52:
+  // the designation no longer hangs over the flank's undercut)
+  bmp3_rok: anchor('turret', 'right', 0.43, 0.52, 0.21, -1),
   ua_m2a3_bradley: anchor('hull', 'left', 0.39, 0.63, 0.24, 1),
   bmpt_terminator2: anchor('turret', 'right', 0.36, 0.48, 0.21, -1),
   // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —

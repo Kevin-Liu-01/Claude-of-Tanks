@@ -1,6 +1,6 @@
 // First-party procedural BMP-3 parts (release 268 round b, the owner 2026-11-02: "make a new bmp 3 turret. or add a lot
 // more decorations to it", "fix the rectaunglar prisms in teh bmp 3 hulls that look like jutting out from bottom", and
-// more upper-glacis and roof detail). Shared by `bmp3` and `bmp3_rok` (round 269: bmp3_rok adds its ROK fit, bmp3RokTurretFit.ts):
+// more upper-glacis and roof detail). Shared by `bmp3` and `bmp3_rok` (round 269: plus bmp3RokTurretFit.ts on the ROK):
 //   - buildBmp3WeldedTurret: the welded, faceted two-man turret of the 2K23 complex in place of the round dome: flat
 //     undercut sides under a chamfered roof edge, front cheeks swept back either side of the deep gun recess (canvas
 //     boot), the 1K13-2 gunner's sight box (left), the commander's cupola with its TKN-3 head and the OU-3GA2 infrared
@@ -168,7 +168,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     P.add('turretDetail', cylZ(0.013, 0.60, 8), s * 1.195, 0.33, -0.04);
     if (rok && s < 0) {
       // ROK service fit: a stowage bin low on the right flank under the grab rail (the left flank carries the radio
-      // mast and the rear-quarter bin, bmp3RokTurretFit.ts)
+      // mast and the bin round its rear corner, bmp3RokTurretFit.ts)
       P.add('turret', box(0.11, 0.16, 0.48), s * 1.185, 0.215, -0.18);
       P.add('turretDark', box(0.10, 0.012, 0.42), s * 1.19, 0.297, -0.18);
       for (const z of [-0.33, -0.03]) P.add('turretDetail', box(0.02, 0.10, 0.03), s * 1.245, 0.215, z);
