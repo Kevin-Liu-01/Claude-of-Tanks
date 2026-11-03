@@ -182,5 +182,10 @@ m1a2_sepv3_aus.gunPitchByYawDeg = [[0, -10], [10, -10], [11, -8.9], [12, -8.6], 
   [118, -9.9], [126, -9.9], [127, -9.4], [133, -6.5], [137, -5], [139, -3.4], [141, -2.1], [142, -1.7], [143, 0], [144, 0.7],
   [147, 1.8], [148, 2.1], [151, 2.6], [152, 2.8], [154, 2.9], [162, 3], [164, 2.5], [165, 2.1], [167, 0.5], [175, 0.5],
   [180, 0.2]];
+// the Redback's 30 mm (the same sweep, 2026-11-02) the full ten degrees but over the front quarters' deck stowage
+// (17-36) and astern (from 143) over the rear armour, the louvres and the hatch frames, held up to -6.5 at 154-158
+redback.gunPitchByYawDeg = [[0, -10], [15, -10], [23, -8.9], [25, -8.7], [35, -8.6], [36, -8.7], [37, -9], [38, -10],
+  [141, -10], [143, -9.3], [146, -8.4], [147, -8.2], [153, -8.2], [154, -6.6], [156, -6.5], [158, -6.5], [159, -6.7],
+  [160, -8.1], [161, -7.6], [165, -7.5], [180, -8.2]];
 registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
   { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1, redback, m1a1_aim_sa_aus, m1a2_sepv3_aus });
