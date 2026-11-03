@@ -30,7 +30,16 @@ export interface HostBootBot {
   difficulty?: 'easy' | 'normal' | 'hard';
 }
 
-/** What the old host serialized beside the wire keyframe: the parts of an entity a row does not carry. */
+/** A reload channel as the old host left it: [remaining s, total s, kind]. */
+export type MigrationReload = [t: number, totalS: number, kind: string];
+
+/**
+ * What the old host serialized beside the wire keyframe: the parts of an entity a row does not carry. The optional
+ * fields are the fight's combat counters (audit M1, 2026-11-02): without them a migration swapped a selected
+ * launcher's cycle onto the cannon, left damaged modules at full hp, put fires out on their first tick and refilled
+ * magazines, salvos, consumables and smoke. Times are seconds from the keyframe: the new host's authority clock
+ * starts at 0. An extras entry without them (an older build's) restores what it carries.
+ */
 export interface MigrationEntityExtras {
   entityId: number;
   kills: number;
@@ -38,6 +47,20 @@ export interface MigrationEntityExtras {
   modules: Record<string, string>;
   crew: Record<string, boolean>;
   burning: boolean;
+  /** Every module below full hp: [hp, red repair progress s]. */
+  moduleHp?: Record<string, [hp: number, repairT: number]>;
+  /** A burning fire's budget: [ticks left, tick timer]. */
+  fire?: [ticksLeft: number, tickTimer: number];
+  /** Each shell slot's reload channel (slots sharing a channel carry the same values), and the cannon channel. */
+  reloads?: MigrationReload[];
+  gunReload?: MigrationReload;
+  magazineRounds?: number;
+  launcherSalvoShots?: number;
+  launcherCursor?: number;
+  /** Each slot's cooldown left and charges, and every timed item still active (seconds left), by item. */
+  consumables?: { readyIn: number[]; charges: (number | null)[]; activeFor: Record<string, number> };
+  /** Lights, the roof gun's switch and rounds, the smoke kit's charges and cooldown left. */
+  auxiliary?: { lights: -1 | 0 | 1; gunOn: boolean; smokeCharges: number; smokeReadyIn: number; shots: number; nextShotIn: number; stations?: [shots: number, nextShotIn: number][] };
 }
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */

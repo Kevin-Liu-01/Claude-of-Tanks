@@ -98,6 +98,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/sixModesAuthority.selftest.mjs',
   'src/mp/host/sixModesMigration.selftest.mjs',
     'src/mp/host/objectiveModesMigration.selftest.mjs', // 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff
+    'src/mp/host/combatMigration.selftest.mjs', // 2026-11-02 audit M1: reload channels, module hp, fires, magazines, consumables, smoke and pillboxes survive a host handoff
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',

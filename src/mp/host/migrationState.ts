@@ -19,7 +19,11 @@ import type { SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, dequantizeVelocity } from '../wire/quantize.ts';
 import { bytesToBase64Url } from '../match/base64url.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
-import type { HostBootConfig, HostResumeState, MigrationEntityExtras } from './hostProtocol.ts';
+import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import { selectShell, strainModule } from '../../sim/damage.ts';
+import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
+import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
+import type { ConsumableState } from '../../sim/consumableRules.ts';
 
 export { MIGRATION_EVENT_KIND, MigrationStore, isMigrationEventKind } from '../match/migrationStore.ts';
 export type { MigrationChunkPayload, RetainedBlob } from '../match/migrationStore.ts';
@@ -165,6 +169,92 @@ function restoreReload(target: ReloadLike | undefined, remainingS: number, total
 }
 
 const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
+const isReloadKind = (kind: unknown): kind is typeof RELOAD_KINDS[number] => (RELOAD_KINDS as readonly unknown[]).includes(kind);
+const finiteOr = (value: unknown, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
+const captureReload = (reload: ReloadLike | undefined): MigrationReload => [reload?.t ?? 0, reload?.totalS ?? 0, reload?.kind ?? 'ready'];
+function writeReload(target: ReloadLike | undefined, carried: MigrationReload | undefined): void {
+  if (!target || !Array.isArray(carried)) return;
+  target.t = Math.max(0, finiteOr(carried[0], target.t));
+  target.totalS = Math.max(0, finiteOr(carried[1], target.totalS));
+  if (isReloadKind(carried[2])) target.kind = carried[2];
+}
+
+/**
+ * The selected shell slot and the reload pointer move together, as damage.ts selectShell keeps them (audit M1: the slot
+ * was set alone, so a vehicle with its launcher selected wrote the launcher's cycle onto the cannon channel and the two
+ * swapped timers). selectShell refuses an empty slot; the old host may still have had one selected (its last round
+ * fired), so that slot is taken with its own channel the same way.
+ */
+function restoreShellSlot(combat: CombatState, slot: number, spec: DamageTankSpec): void {
+  if (selectShell(combat, slot, spec)) return;
+  const shells = spec.gun.shells?.length ?? 0;
+  const bounded = shells ? Math.max(0, Math.min(shells - 1, slot | 0)) : slot | 0;
+  combat.shellSlot = bounded;
+  const channel = combat.reloadChannels?.[bounded];
+  if (channel) combat.reload = channel;
+}
+
+/** The fight's counters an extras entry carries (MigrationEntityExtras), through the functions the simulation uses. */
+function restoreCombatExtras(combat: CombatState, consumables: ConsumableState | null | undefined, extras: MigrationEntityExtras, timeS: number): void {
+  // modules: the hp, the law's state from it (damage.ts strainModule: a fresh module is at full hp), red repair progress
+  if (extras.moduleHp && typeof extras.moduleHp === 'object') {
+    for (const [moduleId, carried] of Object.entries(extras.moduleHp)) {
+      const module = (combat.modules as Record<string, { hp: number; maxHp: number; state: string; repairT: number } | undefined>)[moduleId];
+      if (!module || !Array.isArray(carried) || !(module.maxHp > 0)) continue;
+      const hp = Math.max(0, Math.min(module.maxHp, finiteOr(carried[0], module.maxHp)));
+      strainModule(combat, moduleId, hp / module.maxHp);
+      if (module.state === 'red') module.repairT = Math.max(0, finiteOr(carried[1], 0));
+    }
+  }
+  if (extras.burning && Array.isArray(extras.fire) && combat.fire) {
+    combat.fire.burning = true;
+    combat.fire.ticksLeft = Math.max(1, Math.round(finiteOr(extras.fire[0], 1)));
+    combat.fire.tickTimer = Math.max(0, finiteOr(extras.fire[1], 0));
+  }
+  // every channel by slot (a shared channel takes the same values twice), then the cannon's
+  if (Array.isArray(extras.reloads) && combat.reloadChannels) {
+    for (let slot = 0; slot < combat.reloadChannels.length && slot < extras.reloads.length; slot++) writeReload(combat.reloadChannels[slot], extras.reloads[slot]);
+  }
+  if (extras.gunReload) writeReload(combat.gunReload ?? combat.reload, extras.gunReload);
+  if (combat.magazine && Number.isInteger(extras.magazineRounds)) combat.magazine.rounds = Math.max(0, Math.min(combat.magazine.capacity, extras.magazineRounds!));
+  if (Number.isInteger(extras.launcherSalvoShots)) combat.launcherSalvoShots = Math.max(0, extras.launcherSalvoShots!);
+  if (Number.isInteger(extras.launcherCursor)) combat.launcherCursor = Math.max(0, extras.launcherCursor!);
+  const carried = extras.consumables;
+  if (consumables && carried && typeof carried === 'object') {
+    for (let slot = 0; slot < consumables.items.length; slot++) {
+      if (Array.isArray(carried.readyIn)) consumables.readyAt[slot] = timeS + Math.max(0, finiteOr(carried.readyIn[slot], 0));
+      if (Array.isArray(carried.charges) && slot < carried.charges.length) {
+        const left = carried.charges[slot];
+        if (left === null || (Number.isInteger(left) && left! >= 0)) consumables.charges[slot] = left as number | null;
+      }
+    }
+    if (carried.activeFor && typeof carried.activeFor === 'object') {
+      for (const [item, leftS] of Object.entries(carried.activeFor)) {
+        if (item in consumables.until && finiteOr(leftS, 0) > 0) (consumables.until as Record<string, number>)[item] = timeS + (leftS as number);
+      }
+    }
+    // an active item's multipliers fold in as the item's own use folds them (consumableRules.ts)
+    applyConsumableMultipliers(consumables, combat as unknown as Parameters<typeof applyConsumableMultipliers>[1], timeS);
+  }
+  const aux = extras.auxiliary;
+  if (combat.auxiliary && aux && typeof aux === 'object') {
+    const state = combat.auxiliary;
+    if (aux.lights === -1 || aux.lights === 0 || aux.lights === 1) state.lights = aux.lights;
+    if (typeof aux.gunOn === 'boolean') state.gunOn = aux.gunOn;
+    if (Number.isInteger(aux.smokeCharges)) state.smokeCharges = Math.max(0, aux.smokeCharges);
+    state.smokeReadyAt = timeS + Math.max(0, finiteOr(aux.smokeReadyIn, 0));
+    if (Number.isInteger(aux.shots)) state.shots = Math.max(0, aux.shots);
+    state.nextShot = timeS + Math.max(0, finiteOr(aux.nextShotIn, 0));
+    if (Array.isArray(aux.stations) && state.stations) {
+      for (let index = 0; index < state.stations.length && index < aux.stations.length; index++) {
+        const station = state.stations[index]!, entry = aux.stations[index];
+        if (!Array.isArray(entry)) continue;
+        if (Number.isInteger(entry[0])) station.shots = Math.max(0, entry[0]);
+        station.nextShot = timeS + Math.max(0, finiteOr(entry[1], 0));
+      }
+    }
+  }
+}
 
 /**
  * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
@@ -260,11 +350,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     combat.hp = row.hp;
     combat.maxHp = Math.max(1, row.maxHp);
     combat.destroyed = (row.flags & 1) !== 0 || row.hp <= 0;
-    combat.shellSlot = row.shellSlot;
     if (Array.isArray(combat.ammo)) {
       const ammo = [row.ammo0, row.ammo1, row.ammo2];
       for (let slot = 0; slot < combat.ammo.length && slot < ammo.length; slot++) combat.ammo[slot] = ammo[slot]!;
     }
+    restoreShellSlot(combat, row.shellSlot, entity.spec);
     combat.reload = restoreReload(combat.reload as ReloadLike | undefined, dequantizeReloadS(row.reload), dequantizeReloadS(row.reloadTotal), RELOAD_KINDS[row.reloadKind] ?? 'ready') as typeof combat.reload;
     if (combat.gunReload && combat.gunReload !== combat.reload) {
       restoreReload(combat.gunReload as ReloadLike, dequantizeReloadS(row.gunReload), dequantizeReloadS(row.gunReloadTotal), RELOAD_KINDS[row.gunReloadKind] ?? 'ready');
@@ -297,6 +387,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       }
       for (const [crewId, able] of Object.entries(extras.crew)) if (crewId in combat.crew) combat.crew[crewId] = able;
       if (combat.fire) combat.fire.burning = extras.burning;
+      restoreCombatExtras(combat, entity.consumables, extras, actor.authority.timeS);
     }
     restored++;
   }
@@ -306,19 +397,49 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
 }
 
-/** The extras beside a keyframe row: what the wire row does not carry. */
+/** Seconds left until a sim time (never negative). */
+const leftOf = (at: number, timeS: number): number => Math.max(0, Math.round((finiteOr(at, 0) - timeS) * 1000) / 1000);
+
+/** The extras beside a keyframe row: what the wire row does not carry (MigrationEntityExtras). */
 export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] {
   const out: MigrationEntityExtras[] = [];
+  const timeS = actor.authority.timeS;
   for (const entity of actor.authority.entities) {
     const entityId = actor.wireIdOf(entity.id);
     if (entityId === null) continue;
+    const combat = entity.combat;
     const modules: Record<string, string> = {};
-    for (const [moduleId, module] of Object.entries(entity.combat.modules as Record<string, { state?: string } | undefined>)) {
+    const moduleHp: Record<string, [number, number]> = {};
+    for (const [moduleId, module] of Object.entries(combat.modules as Record<string, { state?: string; hp?: number; maxHp?: number; repairT?: number } | undefined>)) {
       if (module?.state && module.state !== 'ok') modules[moduleId] = module.state;
+      if (module && typeof module.hp === 'number' && typeof module.maxHp === 'number' && module.hp < module.maxHp) moduleHp[moduleId] = [module.hp, module.state === 'red' ? module.repairT ?? 0 : 0];
     }
     const crew: Record<string, boolean> = {};
-    for (const [crewId, able] of Object.entries(entity.combat.crew)) if (!able) crew[crewId] = false;
-    out.push({ entityId, kills: entity.kills, damage: Math.round(entity.damage), modules, crew, burning: !!entity.combat.fire?.burning });
+    for (const [crewId, able] of Object.entries(combat.crew)) if (!able) crew[crewId] = false;
+    const burning = !!combat.fire?.burning;
+    const extras: MigrationEntityExtras = { entityId, kills: entity.kills, damage: Math.round(entity.damage), modules, crew, burning };
+    if (Object.keys(moduleHp).length) extras.moduleHp = moduleHp;
+    if (burning) extras.fire = [combat.fire.ticksLeft, combat.fire.tickTimer];
+    if (combat.reloadChannels?.length) extras.reloads = combat.reloadChannels.map((channel) => captureReload(channel));
+    if (combat.gunReload) extras.gunReload = captureReload(combat.gunReload);
+    if (combat.magazine) extras.magazineRounds = combat.magazine.rounds;
+    if (combat.launcherSalvoShots) extras.launcherSalvoShots = combat.launcherSalvoShots;
+    if (combat.launcherCursor) extras.launcherCursor = combat.launcherCursor;
+    const consumables = entity.consumables;
+    if (consumables) {
+      const activeFor: Record<string, number> = {};
+      for (const [item, until] of Object.entries(consumables.until)) if (until > timeS) activeFor[item] = leftOf(until, timeS);
+      extras.consumables = { readyIn: consumables.readyAt.map((at) => leftOf(at, timeS)), charges: consumables.charges.slice(), activeFor };
+    }
+    const aux = combat.auxiliary;
+    if (aux) {
+      extras.auxiliary = {
+        lights: aux.lights, gunOn: aux.gunOn, smokeCharges: aux.smokeCharges, smokeReadyIn: leftOf(aux.smokeReadyAt, timeS),
+        shots: aux.shots, nextShotIn: leftOf(aux.nextShot, timeS),
+        ...(aux.stations?.length ? { stations: aux.stations.map((station): [number, number] => [station.shots, leftOf(station.nextShot, timeS)]) } : {}),
+      };
+    }
+    out.push(extras);
   }
   return out;
 }

@@ -335,6 +335,8 @@ export const MAX_AUTHORITATIVE_PLAYERS = 64;
 export interface NewModeCheckpoint {
   mode: ModeCheckpoint;
   flights: { id: string; flight: AerialCheckpoint }[];
+  /** The pillboxes' booked points by prop index (audit M1, 2026-11-02: a half-broken pillbox came back whole). */
+  fortified?: Array<[propIdx: number, points: number]>;
 }
 
 export interface AuthoritativeMatchOptions {
@@ -2998,12 +3000,14 @@ export function createAuthoritativeMatch({
       // hand-kept list of modes left Zone Control, Mars, CTF and Turbo Ball out, so their matches restarted at 0-0)
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
-      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
+      const pillboxes = fortified.capture();
+      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates, ...(pillboxes.length ? { fortified: pillboxes } : {}) };
     },
     restoreModeCheckpoint(checkpoint) {
       modeTimeOffsetS = Math.max(0, checkpoint.mode.elapsedS);
       modeController.restoreCheckpoint(checkpoint.mode);
       for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
+      if (Array.isArray(checkpoint.fortified)) fortified.restore(checkpoint.fortified);
     },
     restoreDestroyedObstacles,
     restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
