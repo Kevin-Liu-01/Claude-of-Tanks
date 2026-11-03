@@ -68,7 +68,9 @@ export interface TankVisual {
   gunDirWorld?(target: Vector3): Vector3;
   stripEra?(plateName: string): void;
   resetEra?(): void;
-  setDestroyed?(options: { pop: boolean }): void;
+  /** `lateCause` (2026-11-02 audit F10): this call is the kill's cause landing after its flag laid the wreck, so a pop
+   *  upgrades a young plain wreck (vehicles/wreckLifecycle.ts); without it a repeat on a wreck does nothing */
+  setDestroyed?(options: { pop: boolean; lateCause?: boolean }): void;
   /** Physics lane (wire 5): the host will send this wreck's turret pose; never simulate it locally. */
   awaitWreckTurretPose?(): void;
   resetDestroyed?(): void;
@@ -779,15 +781,16 @@ export function createBattlePresentation({
   function updateDestruction(actor: MatchActor, destroyed: boolean): void {
     if (destroyed) {
       const pop = destructionCause.get(actor.id) === 'ammo_rack';
-      // a cause after the flag calls again: the visual's wreck owner upgrades a young plain wreck to the cook-off and
-      // ignores any other repeat (vehicles/wreckLifecycle.ts, 2026-11-02 audit F10)
+      // a cause after the flag calls again, naming itself late: the visual's wreck owner upgrades a young plain wreck to
+      // the cook-off (vehicles/wreckLifecycle.ts, 2026-11-02 audit F10); no other caller's repeat upgrades a wreck
       if (actor._networkDestroyed && actor._networkDestroyPop === pop) return;
+      const lateCause = actor._networkDestroyed;
       actor._networkDestroyed = true;
       actor._networkDestroyPop = pop;
       if (actor.visual.setDestroyed) {
         // Impact scars are transient children of the live tank: detach them before the wreck material traversal.
         clearVehicleDecals?.(actor.visual);
-        actor.visual.setDestroyed({ pop });
+        actor.visual.setDestroyed(lateCause ? { pop, lateCause } : { pop });
         // the host owns the turret's body (wire 5): the visual follows the rows' pose and never simulates its own
         actor.visual.awaitWreckTurretPose?.();
       }

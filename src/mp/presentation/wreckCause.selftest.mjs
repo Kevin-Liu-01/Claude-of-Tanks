@@ -1,6 +1,7 @@
 // 2026-11-02 audit F10: a network peer's wreck takes the cause of the death it shows. The row's DESTROYED flag and the
-// tank_destroyed event (which carries the cause) race; the presentation forwards a late cook-off cause to the visual
-// (whose wreck owner upgrades a young plain wreck, vehicles/wreckLifecycle.ts), and a respawn forgets the last life's
+// tank_destroyed event (which carries the cause) race; the presentation forwards a late cook-off cause to the visual,
+// naming it late (lateCause: only then does the visual's wreck owner upgrade a young plain wreck,
+// vehicles/wreckLifecycle.ts; the first call names nothing), and a respawn forgets the last life's
 // cause, so a second death never first draws the previous death's wreck (a turret pop after a cook-off last time).
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
@@ -22,7 +23,7 @@ function fakeVisual() {
     setVisible() {}, syncFromState(state) { this.root.position.copy(state.pos); },
     recoilKick() { return null; }, gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); },
     stripEra() {}, resetEra() {},
-    setDestroyed(options) { wrecks.push(options.pop ? 'cookoff' : 'plain'); },
+    setDestroyed(options) { wrecks.push((options.pop ? 'cookoff' : 'plain') + (options.lateCause ? '+late' : '')); },
     resetDestroyed() { wrecks.push('revive'); },
     dispose() {},
   };
@@ -71,9 +72,9 @@ frame(true);
 assert.deepEqual(wrecks, ['plain']);
 killed('ammo_rack');
 frame(true);
-assert.deepEqual(wrecks, ['plain', 'cookoff'], 'a late cook-off cause reaches the visual');
+assert.deepEqual(wrecks, ['plain', 'cookoff+late'], 'a late cook-off cause reaches the visual, named late');
 frame(true);
-assert.deepEqual(wrecks, ['plain', 'cookoff'], 'once');
+assert.deepEqual(wrecks, ['plain', 'cookoff+late'], 'once');
 
 // a respawn forgets the last life's cause: the next death's flag before its event wrecks as the plain kill it may be
 frame(false);

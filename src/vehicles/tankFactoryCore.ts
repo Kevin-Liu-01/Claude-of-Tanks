@@ -1360,7 +1360,10 @@ export interface TankVisual {
   setWeaponModuleState(module: string, state: ModuleStateName): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
-  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** `lateCause` (2026-11-02 audit F10): the kill's cause arriving after this wreck was laid (a network peer's event
+   *  after its row's flag): a pop then upgrades a young plain wreck to the cook-off (wreckLifecycle.ts). Any other
+   *  repeat on a wreck does nothing. */
+  setDestroyed(options?: { pop?: boolean; ageS?: number; lateCause?: boolean }): void;
   /** (2026-11-02 audit F10) The wreck as its one declared state (wreckLifecycle.ts): intact, plain, cook-off, disposed. */
   wreckState(): TankWreckState;
   /** (2026-11-02 audit F10) This visual's life: bumped by every reset and its disposal, so a beat deferred for one life
@@ -10975,9 +10978,10 @@ export function* createTankRuntimeSteps(
   }
 
   /** setDestroyed's entry (wreckLifecycle.ts): true when a new wreck is to be laid. A young plain wreck's late cook-off
-   *  cause upgrades it here; every other repeat, and a disposed visual, does nothing. */
-  function enterWreck(opts: { pop?: boolean } | undefined): boolean {
-    const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop) });
+   *  cause (`lateCause`, named only by the network presentation) upgrades it here; every other repeat, and a disposed
+   *  visual, does nothing. */
+  function enterWreck(opts: { pop?: boolean; lateCause?: boolean } | undefined): boolean {
+    const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop), lateCause: !!(opts && opts.lateCause) });
     if (move === 'upgrade') upgradeToCookOff();
     return move === 'wreck';
   }

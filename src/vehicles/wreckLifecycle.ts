@@ -8,8 +8,11 @@
  * a late FX timer could wreck one whose GPU resources were gone.
  *
  *  - intact  → plain | cookoff   (destroy)
- *  - plain   → cookoff           (destroy with pop, while the wreck is younger than WRECK_POP_UPGRADE_S): the cause
- *                                arrived after the flag. Past the window, and every other repeat, is ignored.
+ *  - plain   → cookoff           (destroy with pop AND lateCause, while the wreck is younger than WRECK_POP_UPGRADE_S):
+ *                                the cause arrived after the flag. Only the network presentation says so (battlePresentation
+ *                                updateDestruction, on its repeat call when the cause flips the pop); every other repeat —
+ *                                an FX timer's deferred wreck after the Studio laid its own plain one, a killcam re-wreck —
+ *                                is ignored, as the old latch ignored it, and so is a late cause past the window.
  *  - cookoff                     never un-pops (a plain repeat is ignored)
  *  - any     → intact            (reset: a rematch, a respawn, a killcam restage; also safe on an intact visual)
  *  - any     → disposed          (dispose); a disposed visual takes nothing again
@@ -20,7 +23,9 @@
 export type TankWreckState = 'intact' | 'plain' | 'cookoff' | 'disposed';
 
 export type TankWreckEvent =
-  | { readonly kind: 'destroy'; readonly pop: boolean }
+  /** `lateCause`: this destroy is the kill's own cause arriving after its wreck was laid (a network peer's
+   *  tank_destroyed event after the row's DESTROYED flag), so it may upgrade a young plain wreck */
+  | { readonly kind: 'destroy'; readonly pop: boolean; readonly lateCause?: boolean }
   | { readonly kind: 'reset' }
   | { readonly kind: 'dispose' };
 
@@ -40,7 +45,7 @@ export function tankWreckMove(state: TankWreckState, event: TankWreckEvent, wrec
   if (event.kind === 'dispose') return 'dispose';
   if (event.kind === 'reset') return 'reset';
   if (state === 'intact') return 'wreck';
-  if (state === 'plain' && event.pop && wreckAgeS < WRECK_POP_UPGRADE_S) return 'upgrade';
+  if (state === 'plain' && event.pop && event.lateCause === true && wreckAgeS < WRECK_POP_UPGRADE_S) return 'upgrade';
   return 'ignore';
 }
 
