@@ -1427,11 +1427,17 @@ function buildOlifantDischargers(P: TankBuilderPort): void {
 /** The Olifant Mk 1's net racks and the Mk 1A's long bustle box (the Mk 1 photographs carry rolled camouflage nets on an
  * open rack at the turret's back; TE, the Mk 1A at De Brug: "the additional storage bins at the back of the turret", a
  * flat-sided box the turret's width, its top at the roof line, running 0.8 m over the engine deck, the tank's number on
- * its side). Ring frame. */
+ * its side; nothing on it, so it never reads as the Mk 1's rack). Ring frame. */
 function buildOlifantBustleStowage(P: TankBuilderPort, m: MarkDesign): void {
   if (m.sa === 'mk1') {
-    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.70, d: 0.52, h: 0.46, fill: 0.7, rails: 2, seed: 7101 }),
+    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.70, d: 0.52, h: 0.46, fill: 0, rails: 2, seed: 7101 }),
       0, 0.36, -1.76);
+    // the two rolled camouflage nets across the rack, fat enough to read over the bustle at range (269 blind critics:
+    // the rack's mixed load did not read as nets), each tied twice
+    for (const dz of [-0.125, 0.125]) {
+      P.add('turretCloth', cylX(0.12, 1.56, P.q ? 16 : 10), 0, 0.53, -1.76 + dz);
+      for (const dx of [-0.48, 0.48]) P.add('turretDark', cylX(0.126, 0.03, P.q ? 16 : 10), dx, 0.53, -1.76 + dz);
+    }
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.05, 0.05, 0.14), s * 0.62, 0.38, -1.48);
       P.add('turretDark', xform(box(0.04, 0.04, 0.30), 0, 0, 0, 0.75, 0, 0), s * 0.62, 0.60, -1.56);
@@ -1449,9 +1455,6 @@ function buildOlifantBustleStowage(P: TankBuilderPort, m: MarkDesign): void {
     for (const f of [0.3, 0.75]) P.add('turretDark', box(0.02, 0.07, 0.05), s * (hw + 0.008), 0.78, z0 + (z1 - z0) * f);
   }
   for (const hx of [-0.50, 0.50]) P.add('turretDark', box(0.06, 0.08, 0.02), hx, 0.80, z1 - 0.01);
-  // the camouflage-net rack on the box's back
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.60, d: 0.30, h: 0.34, fill: 0.7, rails: 1, seed: 7111 }),
-    0, 0.52, z1 - 0.16);
 }
 
 /** The Mk 1A's bush-bashing frame (TE: "a protective vegetation frame"; the De Brug photograph's V across the nose): two
@@ -1464,18 +1467,20 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
     P.add('hullDark', xform(cylZ(r, len, seg), 0, 0, 0, Math.atan2(-d[1], d[2]), Math.asin(d[0] / len), 0),
       (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   };
-  const tip: V3 = [0, NOSE_Y + 0.02, NOSE_Z + 0.42];
+  const tip: V3 = [0, NOSE_Y + 0.14, NOSE_Z + 0.55];
   for (const s of [-1, 1]) {
     // the V's arm from the shackle lug to the tip, and its stay back to the front guard's tip
     const lug: V3 = [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04];
-    tube(lug, tip, 0.045, 10);
+    tube(lug, tip, 0.05, 10);
     tube([s * 0.28, (lug[1] + tip[1]) / 2, (lug[2] + tip[2]) / 2], [s * 1.30, 1.10, 3.76], 0.035, 8);
     P.add('hullDark', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
   }
   P.add('hullDark', box(0.14, 0.14, 0.10), tip[0], tip[1], tip[2]);
   // the frame's mesh panels, one in each bay (the V's two halves, the bays behind the stays), each run back under the
   // nose's edge: left open, the bays read through to the ground from above (the standard check's contiguity, release
-  // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay)
+  // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay). The stay bays stop 2.5 cm inside the
+  // track's inner edge (TRACK.xc - w / 2): out to the guards' tips they stood in the track band over the idlers (the
+  // track-clip audit, 36 cells); over the track the plan is the track's own
   const panel = (corners: readonly (readonly [number, number, number])[]): void => {
     const at = (dy: number) => corners.map(([x, y, z]) => [x, y + dy, z]);
     P.add('hullDark', convexSlab(...at(-0.006), ...at(0.006)));
@@ -1485,7 +1490,9 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     panel([[0, vY(back), back], [s * 0.56, vY(back), back], [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04], tip]);
     const mid: readonly [number, number, number] = [s * 0.28, (NOSE_Y - 0.06 + tip[1]) / 2, (NOSE_Z + 0.04 + tip[2]) / 2];
-    panel([[s * 0.28, vY(back), back], mid, [s * 1.30, 1.10, 3.76], [s * 1.30, 1.10, back]]);
+    const xIn = TRACK.xc - TRACK.w / 2 - 0.025, t = (xIn - 0.28) / (1.30 - 0.28);
+    const edge: readonly [number, number, number] = [s * xIn, mid[1] + t * (1.10 - mid[1]), mid[2] + t * (3.76 - mid[2])];
+    panel([[s * 0.28, vY(back), back], mid, edge, [s * xIn, edge[1], back]]);
   }
 }
 

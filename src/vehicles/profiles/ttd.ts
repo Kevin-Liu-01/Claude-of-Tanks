@@ -29,11 +29,15 @@ function addTtdKit(P: TankBuilderPort): void {
   // sheet"; the top-down photograph)
   for (const s of [-1, 1] as const) {
     const wall = s < 0 ? T.wallRightM : T.wallLeftM, x = s * (wall - 0.22), z0 = -0.95;
-    P.addEquipment('turret', box(0.20, 0.05, 0.62), x, roof + 0.025, z0 + 0.25);
+    // (269 blind critic: the banks read low and small at range) the tubes on a raised block, their muzzles over the
+    // sheet's top edge in profile and dark at the bore, the sheet half as tall again
+    P.addEquipment('turret', box(0.20, 0.17, 0.62), x, roof + 0.085, z0 + 0.25);
     for (let k = 0; k < 4; k++) {
-      P.add('turretDetail', markSmokeTube(cylZ(0.042, 0.24, 12)), x, roof + 0.14, z0 + 0.02 + k * 0.155, -0.62, s * 0.30, 0);
+      const z = z0 + 0.02 + k * 0.155;
+      P.add('turretDetail', markSmokeTube(cylZ(0.042, 0.24, 12)), x, roof + 0.24, z, -0.62, s * 0.30, 0);
+      P.add('turretDark', cylZ(0.030, 0.245, 10), x, roof + 0.24, z, -0.62, s * 0.30, 0);
     }
-    P.addEquipment('turret', box(0.03, 0.22, 0.76), s * (wall - 0.035), roof + 0.05, z0 + 0.25);
+    P.addEquipment('turret', box(0.03, 0.30, 0.76), s * (wall - 0.035), roof + 0.10, z0 + 0.25);
   }
   P.turretG.userData.ttdTurretReceipt = Object.freeze({
     revision: 'ttd-269-leopard2', base: 'leopard2a4-block', roofY: roof, dischargers: 8, sheetedDischargers: true,

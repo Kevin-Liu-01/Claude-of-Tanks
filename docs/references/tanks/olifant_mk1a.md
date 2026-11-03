@@ -21,8 +21,8 @@ Implementation: DONE; regeneration and critics pending.
 | # | Photo read | Baseline (the Mk 1 mark) | Build |
 |---|---|---|---|
 | 1 | the 105 mm with its fume extractor, no thermal sleeve | the 20-pdr | the family's L7 (no sleeve: `isMk52` excludes the SA marks) |
-| 2 | a long flat-sided box on the bustle, the turret's width, its top at the roof line, running over the engine deck, the number on its side | the Mk 1's net rack | a 1.84 x 0.62 x 0.84 m box from the casting's back, its lid seams and hasps, a net rack on its back |
-| 3 | the bush bar ahead of the nose | — | a V of two tubes from the nose lugs to a point 0.42 m ahead, stays back to the front guards' tips |
+| 2 | a long flat-sided box on the bustle, the turret's width, its top at the roof line, running over the engine deck, the number on its side | the Mk 1's net rack | a 1.84 x 0.62 x 0.84 m box from the casting's back, its lid seams and hasps, nothing on it (269 blind critics: a net rack on its back read as the Mk 1's) |
+| 3 | the bush bar ahead of the nose | — | a V of two tubes from the nose lugs to a point 0.55 m ahead and 0.14 m over the nose (set off the glacis: low, it read as a bumper), stays back to the front guards' tips, mesh panels in its bays |
 | 4 | skirts off, the AVDS deck, the 2x4 dischargers | — | the Mk 1's |
 | 5 | SADF nutria brown, tactical number | — | `paint_semel` |
 

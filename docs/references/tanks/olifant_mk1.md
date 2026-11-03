@@ -29,7 +29,7 @@ PASS, regeneration and critics pending (`docs/history/research/south-africa-line
 | 2 | the raised louvred 1790 deck, the box air cleaners on the rear guards, the grille boxes on the upper rear plate | Meteor louvres, fishtail silencers | the Sho't Kal's AVDS deck and grille boxes (no IDF racks, guns or chevrons); the charging silencer, telephone and rear tow cable left off |
 | 3 | the 20-pdr with its fume extractor | the 20-pdr Type B | kept |
 | 4 | two banks of four 81 mm dischargers raised forward on the turret's sides (Mk 1) / the Mk 5's two six-tube blocks (Semel) | the Mk 5/2's six-tube blocks | Mk 1: a 2x2 block on a bracket over each side bin; Semel: the Mk 5's blocks |
-| 5 | rolled camouflage nets on the bustle | the Mk 5/2's tall basket | Mk 1: an open net rack on arms; Semel: the Mk 3/5 box bin |
+| 5 | rolled camouflage nets on the bustle | the Mk 5/2's tall basket | Mk 1: an open net rack on arms carrying two fat rolled nets; Semel: the Mk 3/5 box bin |
 | 6 | SADF nutria brown, the tactical number | — | `paint_semel` "SANDF Plain Khaki" (#857356) |
 
 ### Datums

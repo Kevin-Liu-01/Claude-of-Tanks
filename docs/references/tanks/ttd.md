@@ -27,7 +27,7 @@ regeneration and critics pending. (A first, independent photo-class build, 2026-
 | # | Photo / source read | Build |
 |---|---|---|
 | 1 | Leopard 2A4-like: seven road wheels, four return rollers, rear sprocket, the slab turret with flat cheeks either side of the gun's slot and the commander's cupola on the right | the release Leopard 2 hull and gear; the 2A4 turret's block front (`buildLeopard2A4Turret`, gun 'L44', front 'block') |
-| 2 | the two banks of four 81 mm dischargers on the roof's side edges behind an armour sheet | the 2A4's rear-corner blocks left off (`smoke: false`); four tubes a side raised forward behind the cupolas, the sheet over each wall's top edge |
+| 2 | the two banks of four 81 mm dischargers on the roof's side edges behind an armour sheet | the 2A4's rear-corner blocks left off (`smoke: false`); four tubes a side on a raised block behind the cupolas, raised forward, dark at the bore and over the sheet's top in profile; the sheet over each wall's top edge, 0.30 m tall |
 | 3 | the loader's 7.62 mm | the FN MAG on the loader's ring (`loaderMG: 'mag'`) |
 | 4 | no rear box; bins on the bustle's sides; whips standing | `rearBox: false`, `sideBins`, `whips` |
 | 5 | "TTD 001 M" on the lower nose | a stencil on the lower glacis |

@@ -3238,6 +3238,16 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Holstebro photograph shows it (r3 critics: a navy bag, a crate of bottles). All build their own dischargers.
   // (r7 critics: on the 1A3 DK and 1A5 DK the field load's grey and beige cases read as modern and perched on the rear)
   if (spec.id === 'leo1a3dk' || spec.id === 'leo1a5dk' || spec.id === 'leo1a5dk1' || spec.id === 'leo2a5dk' || spec.id === 'leo2a7dk' || spec.id === 'cv9035dk') return [];
+  // Release 269 (the South African line's blind critics, 2026-11-03): the Semel and the Olifants author their own
+  // dischargers and bustle kit (profiles/centurionFamily.ts: the Mk 1's net rack, the Mk 1A's long box, the Mk 1B's can
+  // rack). The era field load seated a second bank mid-side (read as the Mk 1's), a roof gun and a lamp, and packs and a
+  // net roll over the Mk 1A's box (read as the Mk 1's rack): they carry the Mk 2's deck load only. The TTD, one
+  // demonstrator, carries none (the field load's bank on its turret wall read as the 2A4's Wegmann launchers).
+  if (['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b'].includes(spec.id)) return [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+  ];
+  if (spec.id === 'ttd') return [];
   // (release 266: the Magachs on the M60A1's castings, the same way)
   if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   // (267, the Japan line's photo critics) the TK-X on its trials as TRDI's photographs show the prototypes, a clean roof,
