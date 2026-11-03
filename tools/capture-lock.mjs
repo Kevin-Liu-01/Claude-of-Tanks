@@ -1324,6 +1324,8 @@ export function createCaptureLock({
 
   const api = { acquire, refresh, release, checkpoint, waiting, nestedEnv, get lastTicket() { return lastTicket; },
     get heldTicket() { return hold?.ticket ?? null; }, get heldClass() { return hold ? holdTerms.lockClass : null; },
+    /** Whether this instance holds the lock now (its own hold or a nested one): the one record of it, never a caller's flag. */
+    get held() { return hold !== null; },
     /** Whether the hold is a nested one (a child's, inside its parent's hold). */
     get nested() { return Boolean(hold?.nested); },
     /** The running hold's cap (the base cap while a release ticket waits behind a raised one), or null: nothing held, or

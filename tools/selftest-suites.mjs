@@ -825,6 +825,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site-video-budget.selftest.mjs',
     // 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes
     'tools/media-r5/site-loops-resume.selftest.mjs',
+    // 2026-11-02 audit S4: the media lane's payback to the normal band, one rule for the lab and the finals
+    'tools/media-r5/priority-yield.selftest.mjs',
     // brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds,
     // one still per page)
     'src/presentation/mediaPlayer.selftest.mjs',
