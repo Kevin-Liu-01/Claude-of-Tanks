@@ -19,6 +19,7 @@ import { KIT } from '../tankFactoryCore.ts';
 import { FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { weaponAssembly } from './weaponStock.ts';
+import { hoop } from './bentBarHoop.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -213,6 +214,8 @@ function addProw(P: Modern3BuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.10, 0.06, 0.20), s * 0.80, 1.385, 3.24, -0.38, 0, 0); // vane hinge brackets
   }
+  // round 268b: the vane's hold-down clips along its upper edge (photo: the row of small brackets across the nose)
+  for (const x of [-0.42, 0, 0.42]) P.add('hullDetail', box(0.08, 0.05, 0.12), x, 1.392, 3.20, -0.38, 0, 0);
   P.add('hull', box(1.96, 0.06, 0.56), 0, 0.435, 1.98);                         // belly pan: tub front -> plane A
   for (const s of [-1, 1]) {
     const m = (x: number): number => (s < 0 ? -x : x);
@@ -366,9 +369,16 @@ function addDeck(P: Modern3BuilderPort, variant: BmpHullVariant): void {
     const w = Math.min(0.56, 2 * (bodyAt(h.z).deck - 0.08));
     P.add('hull', box(w, 0.035, h.l), xc, DECK_Y + 0.008, h.z);
     P.add('hullDark', box(w - 0.06, 0.012, 0.025), xc, DECK_Y + 0.028, h.z + h.l / 2 - 0.05);
-    P.add('hullDetail', box(0.05, 0.03, 0.10), s * 0.10, DECK_Y + 0.02, h.z + h.l * 0.25);
-    P.add('hullDetail', box(0.05, 0.03, 0.10), s * 0.10, DECK_Y + 0.02, h.z - h.l * 0.25);
-    P.add('hullDetail', box(0.14, 0.025, 0.03), xc, DECK_Y + 0.036, h.z - h.l / 2 + 0.10);
+    // round 268b: the lid's pressed stiffening panel, hinge knuckles (round barrels on their leaves) along the inner
+    // edge, and a bent lifting handle
+    P.add('hull', box(w - 0.10, 0.014, h.l - 0.12), xc, DECK_Y + 0.030, h.z - 0.01);
+    for (const dz of [h.l * 0.28, -h.l * 0.28]) {
+      P.add('hullDetail', KIT.cylZ(0.022, 0.13, 10), s * 0.09, DECK_Y + 0.030, h.z + dz);
+      P.add('hullDetail', box(0.07, 0.012, 0.11), s * 0.115, DECK_Y + 0.026, h.z + dz);
+    }
+    // (the handle keeps the old bar's 1.677 m top: the BMP-2's gun sweeps this deck at full depression)
+    for (const dx of [-0.06, 0.06]) P.add('hullDetail', box(0.016, 0.024, 0.016), xc + dx, DECK_Y + 0.036, h.z - h.l / 2 + 0.10);
+    P.add('hullDetail', KIT.cylX(0.008, 0.14, 6), xc, DECK_Y + 0.040, h.z - h.l / 2 + 0.10);
   }
   // fuel filler caps and the antenna base on the rear deck
   P.add('hullDetail', cylY(0.065, 0.07, 0.025, 12), 0.0, DECK_Y + 0.008, -2.85);
@@ -416,6 +426,41 @@ function addBowFittings(P: Modern3BuilderPort, variant: BmpHullVariant): void {
   }
 }
 
+/** Round 268b (the owner: "add more upper glacis and roof details"): the driver's hatch lid in its ring with the rear
+ * hinge barrel and the lid handle, the BMP-2 commander's lid, hinge and handle, lifting eyes at the four roof corners,
+ * and on the BMP-1 bow the bent-tube hoop guards over the lamp clusters (photo: research/bwp1 5). The BMP-2M glacis
+ * cassettes take their retaining bolts in addBmp2mHullPackage. */
+function addGlacisAndRoofDetail(P: Modern3BuilderPort, variant: BmpHullVariant): void {
+  const { box, cylX, cylY } = KIT;
+  P.add('hull', cylY(0.175, 0.185, 0.022, 18), 0.60, DECK_Y + 0.036, 1.42);
+  P.add('hullDark', box(0.16, 0.012, 0.012), 0.60, DECK_Y + 0.047, 1.30);
+  P.add('hullDetail', cylX(0.024, 0.20, 10), 0.60, DECK_Y + 0.026, 1.215);
+  P.add('hullDetail', box(0.11, 0.022, 0.024), 0.60, DECK_Y + 0.052, 1.46);
+  if (variant === 'bmp2') {
+    P.add('hull', cylY(0.155, 0.165, 0.02, 16), 0.68, DECK_Y + 0.031, 0.99);
+    P.add('hullDetail', cylX(0.022, 0.16, 10), 0.68, DECK_Y + 0.022, 0.80);
+    P.add('hullDetail', box(0.10, 0.02, 0.022), 0.68, DECK_Y + 0.046, 1.06);
+  }
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', hoop(0.042, 0.011, false), s * 0.94, DECK_Y - 0.006, 1.64);
+    // (the BMP-2's 2A42 sweeps the rear deck at full depression over the stern: its rear eyes would raise the floor
+    // there, so only the BWP-1, whose RCWS gun rides higher, carries them)
+    if (variant === 'bwp1') P.add('hullDetail', hoop(0.042, 0.011, false), s * 0.50, DECK_Y - 0.006, -2.98);
+  }
+  if (variant === 'bmp2') return;
+  // BMP-1 lamps: two bent hoops over each cluster, their legs standing on the glacis plate either side
+  for (const [x, half] of [[0.90, 0.135], [-0.92, 0.075]] as Array<[number, number]>) {
+    const yc = GLACIS_TOP(2.79) + 0.10;
+    for (const z of [2.735, 2.855]) {
+      const foot = GLACIS_TOP(z) - 0.012;
+      // (the legs run 8 mm past the arch's open ends, which close inside them)
+      for (const dx of [-half, half]) P.add('hullDetail', cylY(0.012, 0.012, yc - foot + 0.008, 6), x + dx, (yc + foot + 0.008) / 2, z);
+      P.add('hullDetail', hoop(half, 0.011, true), x, yc, z);
+    }
+    P.add('hullDetail', KIT.cylZ(0.011, 0.14, 6), x, yc + half, 2.795);
+  }
+}
+
 /** The owner's BMP-2M modernization package (2026-08-14, PROGRAM-STATE §5.238), rebuilt on the lofted hull:
  * seven cassettes a side on a continuous carrier rail along the raked sides (they cover the firing ports, as on a
  * field-modernized protection fit, and stay on the fender shelf, far above the track return), and two staggered
@@ -455,6 +500,12 @@ function addBmp2mHullPackage(P: Modern3BuilderPort): void {
       P.add('hull', xform(box(w, 0.11, 0.30), 0, 0, 0, slope, 0, 0), x, GLACIS_TOP(z) + off * n[0], z + off * n[1]);
       P.add('hullDark', xform(box(w - 0.05, 0.016, 0.02), 0, 0, 0, slope, 0, 0),
         x, GLACIS_TOP(z + 0.15) + (off + 0.05) * n[0], z + 0.14 + (off + 0.05) * n[1]);  // seating seam at the lip
+      // round 268b: two retaining bolts at the cassette's upper corners (heads 4 mm into its face)
+      for (const dx of [-(w / 2 - 0.07), w / 2 - 0.07]) {
+        const u = -0.09, v = off + 0.055 + 0.006;
+        P.add('hullDetail', xform(KIT.cylY(0.02, 0.022, 0.02, 8), 0, 0, 0, slope, 0, 0),
+          x + dx, GLACIS_TOP(z) + v * n[0] - u * Math.sin(slope), z + v * n[1] + u * Math.cos(slope));
+      }
     }
   }
 }
@@ -485,6 +536,7 @@ export function buildBmpBoatHull(P: Modern3BuilderPort, variant: BmpHullVariant)
   o.ports[1].forEach((z) => addFiringPort(P, -1, z, o.bmp2m, o.portStandoff));
   addDeck(P, variant);
   addBowFittings(P, variant);
+  addGlacisAndRoofDetail(P, variant);
   if (o.bmp2m) addBmp2mHullPackage(P);
   else {
     // pioneer shovel and a duffel on the left fender shelf, spare links on the right (the BMP-2M's cassettes fill them)
