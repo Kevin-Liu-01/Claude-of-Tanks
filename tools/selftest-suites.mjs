@@ -1854,6 +1854,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.routeOwner.selftest.mjs',
     // 2026-11-02 audit M7: news between ticks lands at the next update in one declared order (any telling, one bot)
     'src/game/ai.eventOrder.selftest.mjs',
+    // 2026-11-02 audit M7: a brain Watch mode hands back resumes from the hull as it stands (no burst, shot or spike)
+    'src/game/ai.watchResume.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

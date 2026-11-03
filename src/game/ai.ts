@@ -146,6 +146,11 @@ interface AiController {
   readonly targetId: string | null;
   /** The tier the controller was built with (the solo battle and the authority may step it down per ruleset). */
   readonly difficulty: AiDifficulty;
+  /**
+   * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat): what the
+   * controller measures between its own ticks restarts from the hull as it stands now (audit M7).
+   */
+  resume(): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -6799,6 +6804,55 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // ---- main update ----------------------------------------------------------
 
+  /**
+   * The resume entry point (2026-11-02 audit M7). Watch mode parks a bot's controller while the watcher drives its hull
+   * (game/watchSeat.ts) and hands it back on Leave; the controller was not stepped in between, so what it measures
+   * from one tick to the next read the whole gap as one tick of its own: the hull lost while parked booked as one
+   * burst (a fallback or a backoff on the first tick back), the parked displacement over one tick as a progress spike,
+   * the watcher's last shot as this bot's (its spot's count, a miss at its target), and the stuck and dwell clocks ran
+   * on from where the hull stood. They restart from the hull as it stands now; the mission re-plans from here at its
+   * next step, and a leg, crest, cover point or vantage picked where the hull stood is dropped. Windows on match time
+   * expire by themselves and stay; news queued before the park is dropped. Allocation-free.
+   */
+  function resume(): void {
+    clearPendingEvents();
+    const st = entity.state;
+    lastHp = combatHitPoints(entity);
+    burstDamage = 0;
+    burstDamageUntilS = -1;
+    progX = st.pos.x;
+    progZ = st.pos.z;
+    progressRate = 2;
+    prevReloadT = entity.combat?.reload?.t ?? 0;
+    spotPos.x = st.pos.x;
+    spotPos.z = st.pos.z;
+    shotsFromSpot = 0;
+    lowSpeedT = 0;
+    slopeBlockT = 0;
+    losBlockedT = 0;
+    gunLimitT = 0;
+    probeMissT = 0;
+    arcLimitedT = 0;
+    navGoalX = navGoalZ = 1e9;
+    navBestD = Infinity;
+    navNoProgressT = 0;
+    stuckStrikes = 0;
+    freeMoveT = 0;
+    allyYieldT = 0;
+    allyDeadlockT = 0;
+    allyHoldT = 0;
+    allyHoldLastS = -Infinity;
+    legKind = 0;
+    leg.atS = -Infinity;
+    leg.driven = false;
+    hasMoveTarget = false;
+    hasCoverPoint = false;
+    hasVantage = false;
+    routeTimer = 0;
+    missionRouteX = missionRouteZ = Infinity;
+    missionRouteAtS = -Infinity;
+  }
+
   function update(dt: number, timeS: number): void {
     // what reached the bot since the last tick lands first, in its declared order, at that tick's clock and live
     // objective (the between-tick inputs, audit M7)
@@ -7186,6 +7240,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyEnemyFired,
     notifyFriendlyBlocked,
     setOrder,
+    resume,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },
@@ -7211,6 +7266,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       hpFrac: entity.combat && entity.combat.maxHp
         ? +(entity.combat.hp / entity.combat.maxHp).toFixed(2) : 1,
       burstDamage: Math.round(burstDamage),
+      progressRate: +progressRate.toFixed(2), // audit M7: the displacement rate the stuck tests read
       friendlyBlockT: +friendlyBlockT.toFixed(2),
       friendlyBlockCount,
       friendlyLaneMoves, friendlyLaneSearches,
