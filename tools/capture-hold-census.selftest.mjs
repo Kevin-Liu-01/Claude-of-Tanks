@@ -103,7 +103,8 @@ const DIRECT_ACQUIRERS = Object.freeze([
 const DIRECT_ACQUIRER_RECEIPTS = Object.freeze([
   'tools/articulated-shadow-batch.browser.selftest.mjs', 'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/black-world.browser.selftest.mjs', 'tools/browser-guard-holds.selftest.mjs',
-  'tools/browser-launch.selftest.mjs', 'tools/capture-command.selftest.mjs', 'tools/capture-lock-reentry.selftest.mjs',
+  'tools/browser-launch.selftest.mjs', 'tools/capture-command.selftest.mjs', 'tools/capture-lock-class.selftest.mjs',
+  'tools/capture-lock-reentry.selftest.mjs',
   'tools/capture-lock.selftest.mjs', 'tools/cloud-history.browser.selftest.mjs',
   'tools/destruction-first-use.browser.selftest.mjs', 'tools/garage-roster-settle.browser.selftest.mjs',
   'tools/garage-switch-probe.selftest.mjs', 'tools/horizon-panorama-bake.browser.selftest.mjs',
