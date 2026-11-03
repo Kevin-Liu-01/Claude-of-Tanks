@@ -734,7 +734,7 @@ await withFixture(async (f) => {
 });
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-  const recovery = main.slice(main.indexOf('async onRestored() {'), main.indexOf('// Some mobile browsers discard'));
+  const recovery = main.slice(main.indexOf('async onRestored(signal: AbortSignal) {'), main.indexOf('// Some mobile browsers discard'));
   assert.ok(recovery.indexOf('lighting.invalidateShadowMaps();') >= 0
     && recovery.indexOf('lighting.invalidateShadowMaps();') < recovery.indexOf('applyGraphicsRecovery();'),
   'context owner invalidates shadow readiness before any quality or covered restore work');

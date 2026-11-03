@@ -2088,9 +2088,12 @@ renderer.userData.contextRecovery = {
     // (2026-11-02 audit R3) the context's own governor hold: a restore releases only this one, never a covered load's
     post.setAdaptiveHold('context-lost', true);
   },
-  async onRestored() {
+  async onRestored(signal: AbortSignal) {
     const restoredInfo = renderer.info;
-    const isCurrentRestoration = () => renderer.info === restoredInfo && !renderer.getContext().isContextLost();
+    // (2026-11-02 audit R3) a newer loss aborts this restoration (contextRecovery.ts), and the next one starts only
+    // after this one stops at a checkpoint below
+    const isCurrentRestoration = () => !signal.aborted && renderer.info === restoredInfo
+      && !renderer.getContext().isContextLost();
     // CPU depth-texture objects survive a WebGL reset; their previous contents
     // do not. Invalidate them before any dormant Garage can accept a partial warm.
     lighting.invalidateShadowMaps();

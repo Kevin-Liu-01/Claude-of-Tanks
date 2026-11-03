@@ -1474,6 +1474,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
+    // 2026-11-02 audit R3: one restoration at a time (aborted by a newer loss), the loss counted first, a typed outcome
+    'src/engine/contextRestoreOwner.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
