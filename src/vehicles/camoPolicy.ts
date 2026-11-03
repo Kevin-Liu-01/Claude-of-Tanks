@@ -509,8 +509,12 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'], camoScale: 0.44 }),
   preset('sig_mbt70', 'mbt70', signatureTags('de', 'woodland', 'organic'),
     { scheme: 'fleck', base: '#4b5142', weather: '#5b604f', patches: ['#2c332a', '#6a5640', '#1d211f'], camoScale: 0.42 }),
-  preset('sig_kf51b', 'kf51_u', signatureTags('de', 'woodland', 'organic'),
-    { scheme: 'nato', base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'], camoScale: 0.34, patchK: 1.28 }),
+  // 2026-11-03 (268 r16; the owner: "give the kf51 u a better more pertinent camo"): the livery the KF51-U wore at
+  // Eurosatory 2024 (Commons KF-51U_01..13), Rheinmetall's block pattern of square cells: warm light grey with mid-grey
+  // fields, lime-green and charcoal blocks, the tones measured off the photographed plates (light 38 %, mid 29 %, lime
+  // 19 %, charcoal 12 %). Cells of 2 m / 8 (digitalCellK 10) read as its 0.25-0.75 m blocks, not a fine pixel field.
+  preset('sig_kf51b', 'kf51_u', signatureTags('de', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#77746d', weather: '#75726b', patches: ['#5b5a55', '#899a40', '#252729'], camoScale: 0.4, digitalCellK: 10 }),
   preset('sig_bmpt_t90', 'bmpt_t90', signatureTags('ru', 'woodland', 'digital'),
     { scheme: 'digital', base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'], camoScale: 0.5 }),
   preset('sig_t90', 't90_1992', signatureTags('ru', 'woodland', 'stripes'),
