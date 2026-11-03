@@ -7,6 +7,8 @@
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two;
+//  - a bus takes one runtime: binding twice, or a second runtime (a failed initializer's retry) binding the same bus,
+//    never doubles the effects or leaves the first reacting;
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -137,4 +139,31 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round');
+// ---- a bus takes one runtime, once ----
+{
+  const groundBurst = (bus, shellId) => {
+    bus.emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 30, -60], muzzlePos: [0, 30, -60], dir: [0, -0.4, 0.9], shellType: 'HE',
+      caliberMm: 125, shellName: '125 mm HE', munition: 'he', chargeKg: 3.4 });
+    bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he', chargeKg: 3.4, caliberMm: 125, shellType: 'HE' });
+  };
+  const media = (fx) => fx.group.getObjectByName('fx-volume-media').children[0].geometry.instanceCount;
+  const once = runtime();
+  once.frames(2); groundBurst(once.bus, 501); once.frames(6);
+  const single = media(once.fx);
+  const twice = runtime();
+  twice.fx.bindBus(twice.bus);
+  twice.frames(2); groundBurst(twice.bus, 502); twice.frames(6);
+  assert.ok(Math.abs(media(twice.fx) - single) <= 5, `a bus bound twice reacts once (${media(twice.fx)} vs ${single})`);
+  // a second runtime on the first one's bus takes it over
+  const first = runtime();
+  const second = runtime();
+  second.fx.bindBus(first.bus);
+  first.bus.emit('tank:destroyed', { id: 'x', cause: 'shot', pos: [3, 0, 3] });
+  // (read before a frame: with no corpse to ride, the wreck column leaves at the next update)
+  const wreckOf = (fx) => fx.getAttachmentDebug().subjects.some((c) => c.id === 'wreck:x');
+  assert.equal(wreckOf(second.fx), true, 'the runtime that bound the bus last reacts');
+  assert.equal(wreckOf(first.fx), false, 'the one it replaced no longer does');
+  for (const r of [once, twice, first, second]) r.fx.resetAll();
+}
+
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round; a bus takes one runtime');

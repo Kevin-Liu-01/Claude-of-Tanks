@@ -247,6 +247,13 @@ interface FxDebugSurface {
 
 type FxEventBus = Pick<EventBus, 'on'>;
 
+/**
+ * (2026-11-02 audit F10) The runtime bound to each bus: a bus takes one fx runtime. The page's initializer
+ * (main.ts) binds the bus before it can still fail; the runtime its retry builds takes the bus over, so the partial one
+ * never keeps reacting into a detached group (a second subscription doubled every effect).
+ */
+const busBinders = new WeakMap<FxEventBus, () => void>();
+
 function onFxEvent<EventName extends keyof FxEventMap>(
   bus: FxEventBus,
   event: EventName,
@@ -6391,6 +6398,9 @@ function* createFxSteps(
   }) : null;
 
   let cinematicPortState: FxCinematicPort | null = null;
+  const noBinding = (): void => {};
+  /** (2026-11-02 audit F10) undo this runtime's bus binding (bindBus) */
+  let unbindBus: () => void = noBinding;
   const fx: FxRuntime = {
     group,
 
@@ -6623,7 +6633,27 @@ function* createFxSteps(
      * Subscribe to combat bus events (ARCHITECTURE §1.5 payloads).
      * @param {object} bus injected event bus
      */
-    bindBus(bus: FxEventBus): void {
+    bindBus(source: FxEventBus): void {
+      // (2026-11-02 audit F10) idempotent: this runtime's earlier binding goes, and so does another runtime's on this
+      // bus; every subscription below is recorded so the binding can be undone whole
+      unbindBus();
+      busBinders.get(source)?.();
+      const offs: Array<() => void> = [];
+      const bus: FxEventBus = {
+        on: (event, listener) => {
+          const off = source.on(event, listener);
+          if (typeof off === 'function') offs.push(off);
+          return off;
+        },
+      };
+      const unbind = (): void => {
+        for (const off of offs) off();
+        offs.length = 0;
+        if (busBinders.get(source) === unbind) busBinders.delete(source);
+        if (unbindBus === unbind) unbindBus = noBinding;
+      };
+      unbindBus = unbind;
+      busBinders.set(source, unbind);
       // (FX lane 2026-10-17) a network screen drifts on this map's wind, the one its authority stamped (no wire field)
       bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens, smokeWindForMap(world?.()?.mapId)); });
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
