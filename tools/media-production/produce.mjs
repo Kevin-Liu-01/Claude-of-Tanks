@@ -140,7 +140,8 @@ async function films(page, row) {
 }
 const lock=createCaptureLock(); let server,browser;
 // --ticket-stamp joins the capture queue at that place, as cinema.mjs's does (the media lane's slot, one ticket at a time)
-await lock.acquire(45*60*1000, args['ticket-stamp'] ? { ticket: ticketAt(Number(args['ticket-stamp'])) } : undefined);
+// deterministic Studio stills (no timing measured): they share the lock with other renders (2026-11-02 audit S4)
+await lock.acquire(45*60*1000, { lockClass: 'render', ...(args['ticket-stamp'] ? { ticket: ticketAt(Number(args['ticket-stamp'])) } : {}) });
 let interrupted=false;
 const stop=()=>{interrupted=true;void browser?.close().catch(()=>{});};
 process.once('SIGINT',stop);process.once('SIGTERM',stop);

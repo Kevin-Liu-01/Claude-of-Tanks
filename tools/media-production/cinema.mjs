@@ -193,7 +193,8 @@ let server, browser, interrupted = false;
 // a place-keeping lease lets a waiting perf cost hold in first (the coordinator, 2026-10-13): it rejoins one past the
 // last perf band ticket waiting, read as it joins
 const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(stampBehindWaiting(Number(args['ticket-stamp'])));
-await lock.acquire(6 * 60 * 60 * 1000, { ticket });
+// a deterministic film render (frozen clock, no timing measured): it shares the lock with other renders (audit S4)
+await lock.acquire(6 * 60 * 60 * 1000, { ticket, lockClass: 'render' });
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
 let leaseOver = false, leaseStopped = false;
 // endBefore() ends the lease before a film its longest take would carry past the budget; a take that runs past the budget

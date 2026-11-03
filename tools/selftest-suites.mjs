@@ -888,6 +888,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/capture-lock.selftest.mjs',
     // 2026-11-02 audit S4: one acquire per instance (no leaked render slot, no wait on its own pid) and nested holds
     'tools/capture-lock-reentry.selftest.mjs',
+    // 2026-11-02 audit S4: a lock class taken by default (exclusive) is said and recorded; the media renderers name theirs
+    'tools/capture-lock-class.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
     // 2026-11-02 audit S4: one owner of a hold's cap, budget, grace and yield (withCaptureHold, runWarmHold)
     'tools/capture-hold-phases.selftest.mjs',

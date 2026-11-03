@@ -127,6 +127,10 @@ function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }
 // The class comes from `--lock-class=render|timing` on the command line, else acquire's `lockClass`, else
 // COT_SHOTS_LOCK_CLASS, else the command's script names (classifyCommand); the ticket, owner.json, the slot files and
 // the hold log record it, and `--status` shows it.
+// The default stays exclusive (2026-11-02 audit S4): a deterministic render read as timing only costs throughput, a
+// timing hold read as a render would share the GPU with what it measures. It is made visible instead: an acquire classed
+// by the default says so once per process (pass `lockClass`, 'render' for deterministic stills and films), the hold log
+// and `--status` mark it `(default)`, and the media renderers (cinema.mjs, produce.mjs) name their class.
 // The hold cap (DEFAULT_HOLD_CAP_MS, 20 min): a holder past its cap gives the lock up at its next checkpoint() while
 // anyone waits and re-queues at the back. acquire's `holdCapMinutes` raises it for that ticket only, with a
 // `holdCapReason`; a holder that never calls checkpoint() keeps its hold and is logged once past the cap.
@@ -1120,6 +1124,11 @@ export function createCaptureLock({
       return prepared;
     }
     const classed = resolveLockClass({ option: lockClass, command });
+    if (classed.from === 'default') {
+      const who = (command ?? process.argv.slice(1).join(' ')).slice(0, 160);
+      noteOnce(`default-class:${who}`, `[capture-lock] ${who}: classed timing by default (no script name matched), an exclusive hold; `
+        + "pass lockClass ('render' for a deterministic still or film) to share the lock with other renders", log);
+    }
     const cap = resolveHoldCap(holdCapMinutes, holdCapReason, holdCapMs);
     const release = resolvePriority(priority) === 'release';
     const terms = { lockClass: classed.lockClass, classFrom: classed.from, capMs: cap.capMs, ...(cap.capReason ? { capReason: cap.capReason } : {}),
@@ -1202,7 +1211,7 @@ export function createCaptureLock({
             heldLocks.add(api);
             if (place) { try { unlinkSync(placePath(queueDir, place)); } catch { /* gone */ } }
             appendHoldLog(logFile, { e: 'hold', pid: process.pid, ticket: ownTicket, waitedMs: Date.now() - startedAt, warmMs,
-              lockClass: terms.lockClass, ...(render ? { members: claimed.members } : {}), capMs: granted.capMs,
+              lockClass: terms.lockClass, classFrom: terms.classFrom, ...(render ? { members: claimed.members } : {}), capMs: granted.capMs,
               ...(granted.capReason ? { capReason: granted.capReason } : {}), ...(release ? { priority: 'release' } : {}),
               command: process.argv.slice(1).join(' ').slice(0, 300) });
             return prepared;
@@ -1399,7 +1408,8 @@ if (process.argv[1] && process.argv.includes('--status') && startedAsCommand()) 
     }
   } else if (owner.state === 'ok') {
     const heldMs = Date.now() - Date.parse(owner.token.startedAt);
-    const lockClass = LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'exclusive (an older copy: no class)';
+    const lockClass = LOCK_CLASSES.includes(owner.token.lockClass)
+      ? `${owner.token.lockClass}${owner.token.classFrom === 'default' ? ' (default)' : ''}` : 'exclusive (an older copy: no class)';
     console.log(`held ${minutes(heldMs)} by pid ${owner.token.pid}${pidAlive(owner.token.pid) ? '' : ' (dead)'}, ${lockClass}${capOf(owner.token)}: `
       + `${owner.token.command ?? '?'}`);
   } else {
