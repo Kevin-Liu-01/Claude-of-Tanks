@@ -3,6 +3,55 @@ import { t } from '../ui/i18n.ts';
 import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
 
+/**
+ * The Garage return's one state (2026-11-02 audit F3). It is moved only by `moveTo` along RETURN_EDGES, by the
+ * return that owns the current trace; the trace's flags below are its published diagnostics, never its control.
+ * - idle: nothing owed (no return yet, or the last one handed over a restored Garage)
+ * - entering: a foreground return swaps the Garage in under its veil
+ * - preparing / prepared: (perf-246) a return behind the battle report; prepared waits for the player's Return
+ * - handoff: the prepared Garage takes the screen
+ * - restoreSkipped: Battle Again left the GPU restore unpaid (the next battle's cover owns the screen)
+ * - restoring: paying a skipped restore (Battle Again did not start a battle after all)
+ * - failed: a return threw; Garage frames stay suppressed until a later return succeeds
+ */
+export type GarageReturnState =
+  | 'idle' | 'entering' | 'preparing' | 'prepared' | 'handoff' | 'restoreSkipped' | 'restoring' | 'failed';
+
+export const GARAGE_RETURN_EDGES: Readonly<Record<GarageReturnState, readonly GarageReturnState[]>> = Object.freeze({
+  idle: Object.freeze(['entering', 'preparing'] as const),
+  entering: Object.freeze(['idle', 'restoreSkipped', 'failed'] as const),
+  preparing: Object.freeze(['prepared', 'failed'] as const),
+  prepared: Object.freeze(['handoff', 'entering', 'preparing'] as const),
+  handoff: Object.freeze(['idle', 'failed'] as const),
+  restoreSkipped: Object.freeze(['restoring', 'entering', 'preparing'] as const),
+  restoring: Object.freeze(['idle', 'failed'] as const),
+  failed: Object.freeze(['entering', 'preparing'] as const),
+});
+
+/** The two player-facing return operations; one holds the transition lease at a time. */
+export type GarageReturnOperation = 'leave' | 'battleAgain';
+
+/** A second, different return operation while one is in flight: refused by name, never silently merged. */
+export class GarageReturnBusyError extends Error {
+  readonly code = 'garage_return_busy';
+  readonly active: GarageReturnOperation;
+  readonly requested: GarageReturnOperation;
+  constructor(active: GarageReturnOperation, requested: GarageReturnOperation) {
+    super(`The Garage return is busy with ${active}; ${requested} was not started.`);
+    this.name = 'GarageReturnBusyError';
+    this.active = active;
+    this.requested = requested;
+  }
+}
+
+export function isGarageReturnBusy(error: unknown): error is GarageReturnBusyError {
+  return error instanceof GarageReturnBusyError
+    || (!!error && typeof error === 'object' && (error as { code?: unknown }).code === 'garage_return_busy');
+}
+
+/** The wait a Battle Again gives the previous entry to finish, and the next one to cover. */
+const BATTLE_AGAIN_WAIT_MS = 15_000;
+
 export interface GarageReturnTrace {
   stages: Record<string, number>;
   /** Owned return state: only an exact successful restore permits Garage frames. */
@@ -146,13 +195,26 @@ export interface GarageReturnRuntimeOptions<Visual = object> {
   createEntryScheduler?: () => GarageReturnEntryScheduler;
   isBattleEntryPending(): boolean;
   isBattleEntryCovering(): boolean;
+  /** Resolves once no battle entry is pending (the entry lifecycle's settle edge; no polling). */
+  whenBattleEntrySettled(): Promise<void>;
+  /** Resolves once a battle entry's cover owns the screen (the entry lifecycle's cover edge; no polling). */
+  whenBattleEntryCovering(): Promise<void>;
   nowMs?: () => number;
-  sleep?: (milliseconds: number) => Promise<void>;
+  /** The one deadline timer of a Battle Again wait; `signal` aborts it (clears the timer) once the edge arrived. */
+  sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
   publishTrace?: (trace: GarageReturnTrace) => void;
 }
 
 export interface GarageReturnRuntime {
   readonly transitioning: boolean;
+  /** The player-facing operation holding the transition lease, or null. */
+  readonly operation: GarageReturnOperation | null;
+  /** The return's explicit state (GarageReturnState); the frame gate and the lifecycle read it. */
+  readonly state: GarageReturnState;
+  /** Ordinary Garage frames stay suppressed (the Garage is not handed over restored). */
+  readonly framesSuppressed: boolean;
+  /** Resolves when the return entry in flight (swap, preparation, handoff, skipped restore) settles; null: none is. */
+  whenSettled(): Promise<void> | null;
   readonly lastTrace: GarageReturnTrace | null;
   enter(options?: GarageReturnOptions): Promise<void>;
   /** Retry an interrupted canonical return under the restored device's cover. */
@@ -235,13 +297,15 @@ function validateGarageReturnPorts<Visual>(
         createEntryScheduler: options.createEntryScheduler ?? (() => null),
         isBattleEntryPending: options.isBattleEntryPending,
         isBattleEntryCovering: options.isBattleEntryCovering,
+        whenBattleEntrySettled: options.whenBattleEntrySettled,
+        whenBattleEntryCovering: options.whenBattleEntryCovering,
         nowMs: options.nowMs ?? (() => performance.now()),
         sleep: options.sleep ?? (() => Promise.resolve()),
         publishTrace: options.publishTrace ?? (() => {}),
       },
       'garage return lifecycle',
       ['getSelectedSpecId', 'restoreGaragePresentation', 'createEntryScheduler', 'isBattleEntryPending',
-        'isBattleEntryCovering', 'nowMs', 'sleep', 'publishTrace'],
+        'isBattleEntryCovering', 'whenBattleEntrySettled', 'whenBattleEntryCovering', 'nowMs', 'sleep', 'publishTrace'],
     );
   } catch {
     throw new TypeError('garage return runtime requires every lifecycle port');
@@ -274,21 +338,39 @@ export function createGarageReturnRuntime<Visual = object>(
     createEntryScheduler,
     isBattleEntryPending,
     isBattleEntryCovering,
+    whenBattleEntrySettled,
+    whenBattleEntryCovering,
     nowMs = () => performance.now(),
-    sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    sleep = (milliseconds, signal) => new Promise((resolve) => {
+      const timer = setTimeout(resolve, milliseconds);
+      signal?.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+    }),
     publishTrace = () => {},
   } = options;
 
-  let activeTransition: Promise<void> | null = null;
-  let activeEntry: Promise<void> | null = null;
-  let activeRecovery: Promise<boolean> | null = null;
-  let recoveryIsCurrent: (() => boolean) | null = null;
+  // The leases: the player-facing transition (one operation), the return entry in flight (its kind), the context
+  // recovery (its device). Joining callers share a lease's promise; the state below is what they did.
+  let transitionLease: { readonly promise: Promise<void>; readonly operation: GarageReturnOperation } | null = null;
+  let entryLease: { readonly promise: Promise<void>; readonly prepares: boolean } | null = null;
+  let recoveryLease: { readonly promise: Promise<boolean>; readonly isCurrent: () => boolean } | null = null;
   let lastTrace: GarageReturnTrace | null = null;
   let lastEntryOptions: GarageReturnOptions = {};
-  // perf-246: the in-flight preparation behind the report (its entry is `activeEntry`); Battle Again abandons it by
-  // advancing the generation its isCurrent reads.
-  let preparing = false;
+  let state: GarageReturnState = 'idle';
+  // perf-246: Battle Again abandons a preparation behind the report by advancing the generation its isCurrent reads.
   let preparationGeneration = 0;
+
+  /** The one state writer: only the return that owns the current trace moves it, and only along an edge. */
+  const moveTo = (next: GarageReturnState, trace: GarageReturnTrace): void => {
+    if (trace !== lastTrace) return;
+    if (!GARAGE_RETURN_EDGES[state].includes(next)) {
+      throw new Error(`Garage return cannot move from ${state} to ${next}.`);
+    }
+    state = next;
+  };
+  /** A thrown return step: the current return's state becomes 'failed' (a step after its success edge keeps it). */
+  const fail = (trace: GarageReturnTrace): void => {
+    if (trace === lastTrace && GARAGE_RETURN_EDGES[state].includes('failed')) state = 'failed';
+  };
 
   const performEntry = async (options: GarageReturnOptions, isCallerCurrent: () => boolean): Promise<void> => {
     const entryScheduler = createEntryScheduler?.();
@@ -307,8 +389,25 @@ export function createGarageReturnRuntime<Visual = object>(
       ...(prepareOnly ? { awaitingHandoff: true } : {}),
     };
     // Publish ownership before any adapter can mutate roots/phase or re-enter.
-    // Failure deliberately retains this state after the pending promise clears.
+    // Failure deliberately leaves the state 'failed' (frames suppressed) after the pending promise clears.
     lastTrace = trace;
+    moveTo(prepareOnly ? 'preparing' : 'entering', trace);
+    try {
+      await performEntrySteps(options, trace, entryScheduler, isCurrent, assertCurrent);
+    } catch (error) {
+      fail(trace);
+      throw error;
+    }
+  };
+
+  const performEntrySteps = async (
+    options: GarageReturnOptions,
+    trace: GarageReturnTrace,
+    entryScheduler: GarageReturnEntryScheduler | undefined,
+    isCurrent: () => boolean,
+    assertCurrent: () => void,
+  ): Promise<void> => {
+    const prepareOnly = options.prepareOnly === true;
     const preserveRoom = options.preserveRoom ?? network.shouldPreserveRoom();
     // A context loss re-runs a preparation as a preparation: the report is still the screen.
     lastEntryOptions = prepareOnly ? { preserveRoom, prepareOnly } : { preserveRoom };
@@ -378,7 +477,7 @@ export function createGarageReturnRuntime<Visual = object>(
     // the handoff of a preparation behind the report.
     transitionAppPhase(game, 'garage', { reason: prepareOnly ? 'garage-return:prepare' : 'garage-return', announce: false });
 
-    // The published unready trace and Garage phase now suppress all ordinary
+    // The return's state and the Garage phase now suppress all ordinary
     // scene frames. Never yield earlier while reset roots could still render.
     const afterReset = checkpoint();
     if (afterReset) { await afterReset; assertOwnedGarage(); }
@@ -429,6 +528,7 @@ export function createGarageReturnRuntime<Visual = object>(
       // restore (the program links of a first return) is not paid. Frames stay suppressed: presentationUnready.
       trace.restoreSkipped = true;
       trace.totalMs = Math.round(nowMs() - startedAt);
+      moveTo('restoreSkipped', trace);
       return;
     }
     trace.presentationRestore = await restoreGaragePresentation(
@@ -441,6 +541,7 @@ export function createGarageReturnRuntime<Visual = object>(
     trace.presentationUnready = false;
     markStage('presentationRestore');
     trace.totalMs = Math.round(nowMs() - startedAt);
+    moveTo(prepareOnly ? 'prepared' : 'idle', trace);
     // Covered restore frames are intentionally bursty. Start the Garage's
     // quality baseline only after every resource and shadow unit is ready.
     if (!prepareOnly) presentation.setAdaptiveSuspended(false);
@@ -468,9 +569,19 @@ export function createGarageReturnRuntime<Visual = object>(
       trace.stages[name] = Math.round(at - markedAt);
       markedAt = at;
     };
-    if (game.phase !== 'garage' || lastTrace !== trace || !trace.awaitingHandoff) {
+    if (game.phase !== 'garage' || lastTrace !== trace || state !== 'prepared') {
       throw new Error('The prepared Garage was superseded before its handoff.');
     }
+    moveTo('handoff', trace);
+    try {
+      performHandoffSteps(trace, startedAt, markStage);
+    } catch (error) {
+      fail(trace);
+      throw error;
+    }
+  };
+
+  const performHandoffSteps = (trace: GarageReturnTrace, startedAt: number, markStage: (name: string) => void): void => {
     presentation.clearBattle();
     if (settings.isOpen()) settings.close({ noRelock: true });
     markStage('handoffReset');
@@ -485,23 +596,31 @@ export function createGarageReturnRuntime<Visual = object>(
     trace.awaitingHandoff = false;
     markStage('handoffAudio');
     trace.stages.handoff = Math.round(nowMs() - startedAt);
+    moveTo('idle', trace);
     presentation.setAdaptiveSuspended(false);
   };
 
   /** perf-246: Battle Again did not start a battle after all — pay the skipped restore before the Garage shows. */
   const performSkippedRestore = async (trace: GarageReturnTrace): Promise<void> => {
-    if (game.phase !== 'garage' || lastTrace !== trace || !trace.restoreSkipped) return;
+    if (game.phase !== 'garage' || lastTrace !== trace || state !== 'restoreSkipped') return;
     const startedAt = nowMs();
-    trace.presentationRestore = await restoreGaragePresentation();
-    if (game.phase !== 'garage' || lastTrace !== trace) {
-      throw new Error('Garage return was superseded by another presentation.');
-    }
-    if (!trace.presentationRestore) {
-      throw new Error('Garage return completed without a presentation restore receipt');
+    moveTo('restoring', trace);
+    try {
+      trace.presentationRestore = await restoreGaragePresentation();
+      if (game.phase !== 'garage' || lastTrace !== trace) {
+        throw new Error('Garage return was superseded by another presentation.');
+      }
+      if (!trace.presentationRestore) {
+        throw new Error('Garage return completed without a presentation restore receipt');
+      }
+    } catch (error) {
+      fail(trace);
+      throw error;
     }
     trace.restoreSkipped = false;
     trace.presentationUnready = false;
     trace.stages.presentationRestore = Math.round(nowMs() - startedAt);
+    moveTo('idle', trace);
     presentation.setAdaptiveSuspended(false);
   };
 
@@ -513,59 +632,53 @@ export function createGarageReturnRuntime<Visual = object>(
       rejectEntry = reject;
     });
     const tracked = pending.finally(() => {
-      if (activeEntry === tracked) {
-        activeEntry = null;
-        preparing = false;
-      }
+      if (entryLease?.promise === tracked) entryLease = null;
     });
     // Direct recovery callers and synchronous phase listeners share one entry,
     // so an older overlapping completion cannot release a successor's cover.
-    activeEntry = tracked;
-    preparing = prepareOnly;
+    entryLease = { promise: tracked, prepares: prepareOnly };
     work().then(resolveEntry, rejectEntry);
     return tracked;
   };
 
   const enter = (options: GarageReturnOptions = {}, isCurrent = () => true): Promise<void> => {
-    if (activeEntry) {
-      if (!preparing || options.prepareOnly) return activeEntry;
+    if (entryLease) {
+      if (!entryLease.prepares || options.prepareOnly) return entryLease.promise;
       // A foreground return over a preparation behind the report: Battle Again abandons it (the next battle must not
       // wait for the Garage's warm); a Return lets it finish and then hands the screen over.
       if (options.skipPresentationRestore) preparationGeneration += 1;
-      return activeEntry.catch(() => {}).then(() => enter(options, isCurrent));
+      return entryLease.promise.catch(() => {}).then(() => enter(options, isCurrent));
     }
     const prepared = lastTrace;
-    if (!options.prepareOnly && game.phase === 'garage' && prepared?.awaitingHandoff
-      && !prepared.presentationUnready) {
+    if (!options.prepareOnly && game.phase === 'garage' && prepared && state === 'prepared') {
       return track(() => performHandoff(prepared));
     }
     return track(() => performEntry(options, isCurrent), options.prepareOnly === true);
   };
 
   const prepare = (): Promise<boolean> => {
-    if (activeTransition || activeEntry || game.phase === 'garage' || isBattleEntryPending()
+    if (transitionLease || entryLease || game.phase === 'garage' || isBattleEntryPending()
       || network.shouldPreserveRoom()) {
       return Promise.resolve(false);
     }
     preparationGeneration += 1;
-    return enter({ prepareOnly: true })
-      .then(() => lastTrace?.awaitingHandoff === true && !lastTrace.presentationUnready, () => false);
+    return enter({ prepareOnly: true }).then(() => state === 'prepared', () => false);
   };
 
   const performContextRecovery = async (isCurrent: () => boolean): Promise<boolean> => {
     const interrupted = lastTrace;
     const originalOptions = lastEntryOptions;
     // A skipped restore (Battle Again) has no Garage to recover: the next battle's entry owns the screen.
-    if (game.phase !== 'garage' || !interrupted?.presentationUnready || interrupted.restoreSkipped) return false;
+    if (game.phase !== 'garage' || !interrupted?.presentationUnready || state === 'restoreSkipped') return false;
     // A loss can still be unwinding through the original entry's await. Do not
     // race its teardown or mistake its eventual rejection for a recovery failure.
-    await activeEntry?.catch(() => {});
+    await entryLease?.promise.catch(() => {});
     if (!isCurrent()) throw new Error('Garage graphics recovery belongs to an expired context.');
     if (game.phase !== 'garage') return false;
     if (lastTrace !== interrupted) {
       // A newer user-owned return wins. Wait for it, but never retry it with the
       // older room policy or clear its incomplete transaction using a GPU receipt.
-      await activeEntry;
+      await entryLease?.promise;
       if (!isCurrent()) throw new Error('Garage graphics recovery belongs to an expired context.');
       if (game.phase !== 'garage') return false;
       if (lastTrace?.presentationUnready) throw new Error('The newer Garage return is not ready.');
@@ -577,26 +690,29 @@ export function createGarageReturnRuntime<Visual = object>(
   };
 
   const recoverAfterContextRestore = (isCurrent: () => boolean): Promise<boolean> => {
-    if (activeRecovery) {
-      if (recoveryIsCurrent?.()) return activeRecovery;
+    if (recoveryLease) {
+      if (recoveryLease.isCurrent()) return recoveryLease.promise;
       // A second restored device must not inherit the older device's rejected
       // preparation. Join its unwind, then acquire a fresh canonical retry.
-      return activeRecovery.catch(() => false).then(() => recoverAfterContextRestore(isCurrent));
+      return recoveryLease.promise.catch(() => false).then(() => recoverAfterContextRestore(isCurrent));
     }
     const pending = performContextRecovery(isCurrent);
     const tracked = pending.finally(() => {
-      if (activeRecovery === tracked) {
-        activeRecovery = null;
-        recoveryIsCurrent = null;
-      }
+      if (recoveryLease?.promise === tracked) recoveryLease = null;
     });
-    activeRecovery = tracked;
-    recoveryIsCurrent = isCurrent;
+    recoveryLease = { promise: tracked, isCurrent };
     return tracked;
   };
 
-  const beginTransition = (operation: () => Promise<void>): Promise<void> => {
-    if (activeTransition) return activeTransition;
+  /**
+   * The transition lease. The same operation joins the one in flight (a repeated click); a different one is refused
+   * by name (GarageReturnBusyError): a Leave during Battle Again, or the reverse, never silently becomes the other.
+   */
+  const beginTransition = (kind: GarageReturnOperation, operation: () => Promise<void>): Promise<void> => {
+    if (transitionLease) {
+      if (transitionLease.operation === kind) return transitionLease.promise;
+      return Promise.reject(new GarageReturnBusyError(transitionLease.operation, kind));
+    }
     let resolvePending!: () => void;
     let rejectPending!: (error: Error) => void;
     const pending = new Promise<void>((resolve, reject) => {
@@ -605,7 +721,10 @@ export function createGarageReturnRuntime<Visual = object>(
     });
     // Arm the latch before invoking any adapter. A transition may synchronously
     // emit phase/UI events, and those re-entrant callers must join this lease.
-    activeTransition = pending;
+    const tracked = pending.finally(() => {
+      if (transitionLease?.promise === tracked) transitionLease = null;
+    });
+    transitionLease = { promise: tracked, operation: kind };
     try {
       operation().then(resolvePending, rejectPending);
     } catch (error) {
@@ -613,14 +732,20 @@ export function createGarageReturnRuntime<Visual = object>(
         ? error
         : new Error('Garage return transition failed', { cause: error }));
     }
-    const tracked = pending.finally(() => {
-      if (activeTransition === tracked) activeTransition = null;
-    });
-    activeTransition = tracked;
     return tracked;
   };
 
-  const leave = (): Promise<void> => beginTransition(async () => {
+  /** One event-driven wait with one deadline: true when the edge arrived first (its deadline timer then clears). */
+  const waitFor = async (edge: Promise<void>, milliseconds: number): Promise<boolean> => {
+    const deadline = new AbortController();
+    try {
+      return await Promise.race([edge.then(() => true), sleep(milliseconds, deadline.signal).then(() => false)]);
+    } finally {
+      deadline.abort();
+    }
+  };
+
+  const leave = (): Promise<void> => beginTransition('leave', async () => {
     // Input state releases immediately; the scene swap remains under the veil. The report stays on screen until the
     // veil covers it (enter() clears it there): hiding it first showed the bare battle for a few frames
     // (2026-10-22, nav-perf-240).
@@ -635,16 +760,12 @@ export function createGarageReturnRuntime<Visual = object>(
     });
   });
 
-  const battleAgain = (trigger: () => boolean = () => ui.triggerBattle()): Promise<void> => {
-    if (activeTransition) return activeTransition;
-    return beginTransition(async () => {
+  const battleAgain = (trigger: () => boolean = () => ui.triggerBattle()): Promise<void> => (
+    beginTransition('battleAgain', async () => {
       await transition.run(async () => {
         // Cover the whole wait, and never dispose state owned by an entry that
         // has not finished. The report stays intact until covered enter().
-        const waitStartedAt = nowMs();
-        while (isBattleEntryPending() && nowMs() - waitStartedAt < 15_000) {
-          await sleep(150);
-        }
+        if (isBattleEntryPending()) await waitFor(whenBattleEntrySettled(), BATTLE_AGAIN_WAIT_MS);
         if (isBattleEntryPending()) {
           throw new Error('The previous battle is still loading. Please try Battle Again when it finishes.');
         }
@@ -652,9 +773,9 @@ export function createGarageReturnRuntime<Visual = object>(
         // abandoned, a prepared Garage only hands over its screen, and a fresh return skips the GPU restore.
         await enter({ skipPresentationRestore: true });
         const restoreSkipped = async (): Promise<void> => {
-          await activeEntry?.catch(() => {});
+          await entryLease?.promise.catch(() => {});
           const trace = lastTrace;
-          if (trace?.restoreSkipped) await track(() => performSkippedRestore(trace));
+          if (trace && state === 'restoreSkipped') await track(() => performSkippedRestore(trace));
         };
         let triggered: boolean;
         try {
@@ -667,11 +788,7 @@ export function createGarageReturnRuntime<Visual = object>(
           await restoreSkipped();
           throw new Error('Battle Again is unavailable. Your Garage is ready; choose a battle from there.');
         }
-        const handoffStartedAt = nowMs();
-        while (!isBattleEntryCovering() && nowMs() - handoffStartedAt < 15_000) {
-          await sleep(16);
-        }
-        if (!isBattleEntryCovering()) {
+        if (!isBattleEntryCovering() && !await waitFor(whenBattleEntryCovering(), BATTLE_AGAIN_WAIT_MS)) {
           await restoreSkipped();
           throw new Error('The next battle did not start. Please check your battle selection and try again.');
         }
@@ -683,13 +800,19 @@ export function createGarageReturnRuntime<Visual = object>(
         progress: false,
         minShowMs: 420,
       });
-    });
-  };
+    })
+  );
 
   return {
-    get transitioning() { return activeTransition !== null; },
+    get transitioning() { return transitionLease !== null; },
+    get operation() { return transitionLease?.operation ?? null; },
+    get state() { return state; },
+    get framesSuppressed() { return state !== 'idle'; },
+    whenSettled: () => entryLease?.promise.then(() => {}, () => {}) ?? null,
     get lastTrace() { return lastTrace; },
-    get awaitingHandoff() { return game.phase === 'garage' && lastTrace?.awaitingHandoff === true; },
+    get awaitingHandoff() {
+      return game.phase === 'garage' && (state === 'preparing' || state === 'prepared' || state === 'handoff');
+    },
     enter,
     recoverAfterContextRestore,
     leave,

@@ -1310,6 +1310,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageTankLifecycle.selftest.mjs',
     'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleAgainAction.selftest.mjs',
+    'src/game/garageReturnState.selftest.mjs', // 2026-11-02 audit F3: explicit return state, named busy refusals, no polling
     'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
     'src/game/battleEntryIntent.selftest.mjs', // 2026-11-02 audit F2: one solo intent record; a room world never inherits it
     'src/game/battleClientAccess.selftest.mjs',

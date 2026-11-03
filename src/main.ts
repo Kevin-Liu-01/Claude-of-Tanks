@@ -3465,6 +3465,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   },
   isBattleEntryPending: () => battleEntryLifecycle.pending,
   isBattleEntryCovering: () => battleLoad.covering,
+  // (audit F3) Battle Again waits on the entry lifecycle's own edges, never a poll
+  whenBattleEntrySettled: () => battleEntryLifecycle.whenSettled(),
+  whenBattleEntryCovering: () => battleEntryLifecycle.whenCovered(),
     publishTrace: (trace: RuntimeValue) => { window.__GARAGE_ENTRY = trace; },
   }),
 });
@@ -3472,7 +3475,7 @@ const enterGarage = garageReturn.enter;
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
   isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
-  isReturnOwed: () => garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.awaitingHandoff,
+  isReturnOwed: () => garageReturn.state !== 'idle',
 });
 // perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
 // battle, off the boot graph; it registers itself as the report's backdrop owner (src/ui/reportBackdrop.ts).
@@ -3509,7 +3512,19 @@ const leaveBattleToGarage = (): Promise<void> => {
     v2.leaveRoom('explicit_leave');
     return Promise.resolve();
   }
-  return garageReturn.leave();
+  // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
+  // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection
+  return garageReturn.leave().catch((error: RuntimeValue) => {
+    // (the code check, not an import: the return implementation stays off the boot graph)
+    if (Reflect.get(Object(error), 'code') === 'garage_return_busy') {
+      console.info('[garage return] Leave ignored:', Reflect.get(Object(error), 'message'));
+      return;
+    }
+    console.error('[garage return] Leave failed', error);
+    void import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => (
+      showGarageReturnFailure(error, () => { void leaveBattleToGarage(); })
+    )).catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
+  });
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
   lifecycle: battleEntryLifecycle,
@@ -3519,6 +3534,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   enterGarage,
   // (2026-11-02 audit F2) the Play menu's and the campaign ladder's starts announce their battle like the Garage button
   announce: (payload) => bus.emit('ui:battleStart', payload),
+  // (audit F3) a start accepted while a Garage return is in flight waits for it instead of racing its restore
+  whenGarageSettled: () => garageReturn.whenSettled(),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
@@ -3850,7 +3867,7 @@ const mainFrame = createMainFrameRuntime({
   // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
   isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
+  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && garageReturn.current?.framesSuppressed === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,

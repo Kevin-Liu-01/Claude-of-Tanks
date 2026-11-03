@@ -38,6 +38,11 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     preload: owner.preload,
     get current() { return owner.current; },
     get transitioning() { return owner.current?.transitioning ?? false; },
+    get operation() { return owner.current?.operation ?? null; },
+    // (2026-11-02 audit F3) a pristine Garage has had no return: idle, nothing suppressed, nothing to wait for
+    get state() { return owner.current?.state ?? 'idle'; },
+    get framesSuppressed() { return owner.current?.framesSuppressed ?? false; },
+    whenSettled() { return owner.current?.whenSettled() ?? null; },
     get lastTrace(): GarageReturnTrace | null { return owner.current?.lastTrace ?? null; },
     get awaitingHandoff() { return owner.current?.awaitingHandoff ?? false; },
     async enter(returnOptions?: GarageReturnOptions) {
