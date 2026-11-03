@@ -972,6 +972,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: a tiny parent waits in one first-layout recovery instead of rebuilding it every 250 ms
+    'src/engine/viewportRecovery.selftest.mjs',
     // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
     // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
     // before every yield, and the repro harness's summary arithmetic
