@@ -11,8 +11,9 @@
 //   handlers, so a fix to hold semantics had to be made in each. The direct acquirers today are listed below (grandfathered;
 //   the lock's own receipts among them): a new one fails here (hold through withCaptureHold), and a migrated one must
 //   leave the list. A direct acquirer is a source that imports a capture lock and calls acquire(), or one that calls
-//   acquire() on a lock it was handed (`lock.acquire(`, `capture.lock.acquire(`; round 2: withIsolatedCaptureBrowser held
-//   that way, a parallel wrapper the import test never saw).
+//   acquire() on a lock it was handed (`lock.acquire(`, `capture.lock.acquire(`; round 2: withIsolatedCaptureBrowser and
+//   hud-ammo-capture's runCapture held that way, parallel wrappers the import test never saw; both hold through
+//   withCaptureHold now).
 // - No unchecked nesting (round 2): COT_LANE_HOLD=1 skipped the capture FIFO and the session mutex in three tools with
 //   nothing checking that a live hold backed it (its helper, tools/tmp-lane-hold.mjs, is gone), so a leftover export ran
 //   GPU work unlocked. A child nests through its hold's token (capture-lock nestedEnv, checked against the owner record);
@@ -130,7 +131,6 @@ const DIRECT_ACQUIRERS = Object.freeze([
   'tools/garage-draw-range-probe.mjs', 'tools/garage-mobile.browser.mjs', 'tools/garage-mode-preview.browser.mjs',
   'tools/garage-wheel-band.browser.mjs', 'tools/gate-audio-probe.mjs', 'tools/griffin-viper-garage-probe.mjs',
   'tools/ground-banding-shots.mjs', 'tools/gunship-fx.browser.mjs', 'tools/gunship-hud.browser.mjs',
-  'tools/hud-ammo-capture.mjs',
   'tools/gunship-lens-strip.browser.mjs', 'tools/horizon-construction-bench.mjs', 'tools/isometric-camera.browser.mjs',
   'tools/letterbox-bands.browser.mjs', 'tools/loading-census.mjs', 'tools/map-environment-audit.mjs',
   'tools/marketing-shots/capture-multiplayer-dual-screen.mjs', 'tools/marketing-shots/capture-showcase-r2-ui.mjs',
