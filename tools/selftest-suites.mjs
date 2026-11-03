@@ -1578,6 +1578,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/roomLock.selftest.mjs', // 2026-11-02 audit M2: the admin's lock outlives rounds; a start re-reads the room after its host answers
     'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',

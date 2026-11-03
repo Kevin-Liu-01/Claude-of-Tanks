@@ -183,9 +183,20 @@ function assertEditable(player: RoomPlayer): void {
   if (player.ready) throw new RoomError('vehicle_locked', 'unready before changing your vehicle or team');
 }
 
+/**
+ * Whether the room refuses a fresh join now (audit M2, 2026-11-02): the admin's `set_locked` switch (`adminLocked`), or
+ * a round that is starting or playing (its roster is frozen). The two used to share `settings.locked`, which the match
+ * lifecycle cleared at every match end and aborted start — an admin-locked room unlocked itself after each round.
+ */
+export function joinLocked(room: RoomSnapshot): boolean {
+  return room.settings.adminLocked === true || room.phase !== 'waiting';
+}
+
 function touch(room: RoomSnapshot, now: number): RoomSnapshot {
   room.revision++;
   room.touchedAt = Math.max(room.touchedAt, now);
+  // the wire's `locked` stays what every reader knew it as (no fresh join now), derived here and nowhere else
+  room.settings.locked = joinLocked(room);
   return room;
 }
 
@@ -304,7 +315,7 @@ export function createRoom({ roomCode, mode, creator, selection, settings, hostT
 
 /** Seat a new player (auto-balanced unless a team is requested and has room). */
 export function joinRoom(room: RoomSnapshot, { player, selection, team, now }: JoinRoomOptions): RoomPlayer {
-  if (room.settings.locked) throw new RoomError('room_locked');
+  if (joinLocked(room)) throw new RoomError('room_locked');
   const id = cleanSeatId(player.id);
   if (room.players.some((entry) => entry.id === id)) throw new RoomError('already_joined');
   const requested: RoomTeam = isCoopGameMode(room.settings.gameMode) ? 'alpha' : (team && isRoomTeam(team) ? team : autoTeam(room));
@@ -537,7 +548,7 @@ export function applyRoomCommand(
     }
     case 'set_locked':
       assertAdmin(room, id);
-      room.settings.locked = !!command.locked;
+      room.settings.adminLocked = !!command.locked;
       break;
     case 'start':
       // The host's actor starts the match (`planStart`); the command only checks the right.
@@ -586,7 +597,6 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
   const teamNations: RoomTeamNations = planRoomBots(room.settings, seats, bots, seed >>> 0);
   room.round += 1;
   room.phase = 'starting';
-  room.settings.locked = true;
   touch(room, now);
   // `random` (the room default) becomes a concrete battlefield here, from the match seed, so the match
   // host, every seat's `match_start` and the room's match record name the same map (v1 resolved it the
@@ -629,7 +639,6 @@ export function abortStart(room: RoomSnapshot, now: number): RoomSnapshot {
     room.round = Math.max(0, room.round - 1);
   }
   room.phase = 'waiting';
-  room.settings.locked = false;
   return touch(room, now);
 }
 
@@ -649,7 +658,6 @@ export function finishMatch(
     reason: outcome.reason,
   };
   room.phase = 'waiting';
-  room.settings.locked = false;
   resetReadiness(room);
   touch(room, now);
   return room.lastResult;
