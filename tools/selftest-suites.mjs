@@ -1270,6 +1270,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleWarmRuntime.selftest.mjs',
     'src/game/combatWarmCoordinator.selftest.mjs',
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
+    'src/game/deferredWarmReceipt.selftest.mjs', // 2026-11-02 audit S3: the deferred warm receipt declares running/finished/failed/cancelled
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
