@@ -29,6 +29,7 @@ import { createAuxiliaryState, roofStationCount } from './auxiliarySystems.ts';
 import { COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_PINS, COUNTER_DRONE_SETS, roofStations, stationClass } from './counterDroneStations.test-support.mjs';
 import { createCombatState } from './damage.ts';
 import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
+import { missionAttachmentFor } from './missionAttachment.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 
@@ -94,6 +95,17 @@ export async function prepareCounterDrone(specIds, carrierId = DEFAULT_CARRIER) 
   const ids = [...new Set([...specIds, carrierId])];
   for (const id of ids) if (!TANK_SPECS[id]) throw new Error(`unknown spec ${id}`);
   await ensureAuthorityFleet(ids);
+}
+
+/**
+ * Where every flight leaves from: the carrier's drone dock as the authority seats it (missionAttachmentFor), as
+ * `<carrier> <frame> x,y,z` in metres to 0.1 mm, after prepareCounterDrone. The pins carry it
+ * (COUNTER_DRONE_PINS.carrierDock), so a carrier rebuild reads as the launch moving rather than a station's lethality
+ * (268: the KV-2's dock moved twice after the 249 pins, and every pinned run moved with it).
+ */
+export function carrierDock(carrierId = DEFAULT_CARRIER) {
+  const seat = missionAttachmentFor(TANK_SPECS[carrierId]), at = (v) => Math.round(v * 1e4) / 1e4;
+  return `${carrierId} ${seat.frame} ${at(seat.x)},${at(seat.y)},${at(seat.z)}`;
 }
 
 
