@@ -104,6 +104,15 @@ export interface MatchActorResume {
    * the clients' controls aimed that far ahead. Without it the loop starts at `tick` when it starts.
    */
   dueAtMs?: number;
+  /**
+   * The phase the old host was in (audit M1, 2026-11-02; 'playing' when absent). Every resume used to skip the countdown
+   * and run, so a host lost during the countdown went live at once while its peers were still in their covered entry,
+   * and a keyframe sealed after the verdict resumed as a running match. Now a countdown resumes with `countdownMs` left
+   * and an ended match stays ended with its `verdict` (the authority's restoreVerdict: no event, the hold spent).
+   */
+  phase?: 'countdown' | 'playing' | 'ended';
+  countdownMs?: number;
+  verdict?: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
 }
 
 export interface MatchActorOptions {
@@ -395,6 +404,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       || (resume.dueAtMs !== undefined && !Number.isFinite(resume.dueAtMs)))) {
     throw new TypeError('resume needs an integer tick >= 0, a finite battleTimeMs >= 0 and a finite dueAtMs if any');
   }
+  if (resume && ((resume.phase !== undefined && resume.phase !== 'countdown' && resume.phase !== 'playing' && resume.phase !== 'ended')
+      || (resume.countdownMs !== undefined && !(resume.countdownMs >= 0 && Number.isFinite(resume.countdownMs))))) {
+    throw new TypeError('resume phase must be countdown, playing or ended, and its countdownMs finite and >= 0');
+  }
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
   const snapshotHz = options.snapshotHz ?? SNAPSHOT_HZ;
@@ -418,9 +431,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   const publishFailures = new WeakSet<object>();
-  // A resumed match skips the countdown and its clock limit counts from where the old host left it.
+  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase), its clock
+  // limit counting from the battle time already played.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
-  const countdownS = resume ? 0 : options.countdownS ?? 5;
+  const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
+  const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
   const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
   const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
     : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
@@ -476,6 +491,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     });
     lagComp = createLagCompensation({ entities: authority.entities });
     bound.hook = lagComp;
+    // an ended match resumes ended: the first tick settles the verdict it carried (settleVerdict), the field stays still
+    if (resumedVerdict) authority.restoreVerdict(resumedVerdict.result, resumedVerdict.reason);
   } catch (error) {
     releaseWorld();
     throw error;

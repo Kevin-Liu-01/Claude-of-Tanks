@@ -11,9 +11,9 @@ import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
  * assembles and retains the newest of each. The elected host opens them, restores the entities from the rows and the
  * extras (kills, damage, modules, crew, fires) and boots the actor at the retained tick.
  */
-import type { MatchActor } from '../../../server/match/matchActor.ts';
+import type { MatchActor, MatchActorResume } from '../../../server/match/matchActor.ts';
 import { eraPlateIndices } from '../wire/era.ts';
-import { MAX_EVENT_JSON_BYTES } from '../wire/constants.ts';
+import { INPUT_MARGIN_UNKNOWN, MAX_EVENT_JSON_BYTES, NO_TICK, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { SnapshotFrame, WireEvent } from '../wire/messages.ts';
 import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, dequantizeVelocity } from '../wire/quantize.ts';
@@ -301,7 +301,54 @@ export function resumeStateFromRetained(
     const destructibleRevision = Math.max(state.frame.meta.destructibleRevision + added.length, destroyed.length);
     state.frame = { ...state.frame, destroyed, meta: { ...state.frame.meta, destructibleRevision } };
   }
+  // the phase is the newest frame's (the keyframe's own may be older: a countdown that has since ended)
+  state.phase = resumePhaseOf(state).phase ?? state.phase;
   return { state, baseTick, baseAtMs };
+}
+
+/**
+ * The phase a resumed actor continues in (audit M1, 2026-11-02; MatchActorResume.phase), read from the state's frame
+ * meta, which the newest frame overlays: a verdict there is an ended match; a countdown (or a keyframe of the loading
+ * actor) continues with the milliseconds it had left; anything else plays. A state without meta keeps its own phase.
+ */
+export function resumePhaseOf(state: Pick<HostResumeState, 'phase' | 'frame'>): Pick<MatchActorResume, 'phase' | 'countdownMs' | 'verdict'> {
+  const meta = state.frame?.meta;
+  if (!meta) return { phase: state.phase === 'countdown' || state.phase === 'ended' ? state.phase : 'playing' };
+  const result = meta.verdict === VERDICT.ALPHA ? 'alpha' : meta.verdict === VERDICT.BRAVO ? 'bravo' : meta.verdict === VERDICT.DRAW ? 'draw' : null;
+  if (result) return { phase: 'ended', verdict: { result, reason: meta.verdictReason ?? '' } };
+  if (meta.phase === PHASE.COUNTDOWN || meta.phase === PHASE.LOADING) return { phase: 'countdown', countdownMs: Math.max(0, meta.countdownMs | 0) };
+  return { phase: 'playing' };
+}
+
+/** What an elected seat with no readable keyframe does (migrationFallback). */
+export type MigrationFallback =
+  | { kind: 'decline'; reason: 'battle_in_progress' }
+  | { kind: 'restart'; state: HostResumeState; resumeTick: number };
+
+/**
+ * An elected seat whose retained keyframe is missing or cannot be opened (audit M1, 2026-11-02). It used to boot fresh at
+ * tick 0 whatever the match had reached: a battle in progress restarted from its spawns, behind every client's clock
+ * (a client's tick clock ignores older ticks, so its inputs ran far ahead of the new host's). Now:
+ *   - the seat saw the battle playing or decided (its newest frame says so): it declines as unable, so the room elects a
+ *     seat that holds a keyframe, or ends the match when none can;
+ *   - before the battle played (no frame yet, or only the countdown): the match starts over from its countdown on the
+ *     timeline the clients already keep, at the later of the room's resume tick and the seat's newest tick plus the time
+ *     since: a resume state with no rows (every hull on its spawn), so the boot takes the one resume path.
+ */
+export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs }: {
+  latestFrame: SnapshotFrame | null; latestFrameAtMs: number | null; nowMs: number; resumeTick: number; countdownMs: number;
+}): MigrationFallback {
+  const phase = latestFrame?.meta.phase;
+  if (phase === PHASE.PLAYING || phase === PHASE.ENDED || (latestFrame && latestFrame.meta.verdict !== VERDICT.NONE)) return { kind: 'decline', reason: 'battle_in_progress' };
+  const seen = latestFrame && latestFrameAtMs !== null ? latestFrame.tick + Math.max(0, Math.ceil((nowMs - latestFrameAtMs) / TICK_MS)) : 0;
+  const tick = Math.max(0, Math.floor(Number(resumeTick) || 0), seen);
+  const remainingMs = Math.max(0, Math.round(Number(countdownMs) || 0));
+  const frame: SnapshotFrame = {
+    tick, serverTimeMs: Math.round(tick * TICK_MS), ackedInputTick: NO_TICK, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: INPUT_MARGIN_UNKNOWN,
+    meta: { phase: PHASE.COUNTDOWN, countdownMs: Math.min(0xffff, remainingMs), battleTimeMs: 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
+    destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null,
+  };
+  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] } };
 }
 
 /**

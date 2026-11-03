@@ -25,7 +25,7 @@ import type { EntityRow, SnapshotFrame } from '../wire/messages.ts';
 import { ROOM_MATCH_KEYFRAME_INTERVAL_MS, ROOM_MATCH_POLL_MS } from '../room/protocol.ts';
 import { verifySeatTokenWeb } from './seatTokenWeb.ts';
 import {
-  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, sealMigrationBlob,
+  applyResumeState, captureEntityExtras, chunkMigrationBlob, deriveMigrationKey, encodeBootConfig, encodeMigrationKeyframe, resumePhaseOf, sealMigrationBlob,
 } from './migrationState.ts';
 import type { MigrationKeyframe } from './migrationState.ts';
 import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
@@ -479,7 +479,8 @@ export function createMatchHostCore({
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       // the resume tick was due as the boot arrived (MatchSession fixes it from the wall just before): the loop starts on that
       // timeline, the ticks spent loading the world and holding for the seats skipped (267)
-      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted } : null,
+      // and in the phase the old host was in (audit M1: a countdown with its time left, an ended match with its verdict)
+      resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs, dueAtMs: bootStarted, ...resumePhaseOf(resume) } : null,
       ...(next.snapshotHz !== undefined ? { snapshotHz: next.snapshotHz } : {}),
       ...(build !== undefined ? { build } : {}),
       onVerdict: () => { const live = actor; if (live) report(live, now()); },

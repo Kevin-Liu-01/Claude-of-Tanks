@@ -125,7 +125,7 @@ import {
 import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, ENDING_HOLD_LIMIT_S, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
   consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
   type MatchRuleset,
   type RulesetPhysics,
@@ -426,6 +426,12 @@ export interface AuthoritativeMatch {
    * match's log, so every peer's settled reading converges. Returns the entries this world applied.
    */
   restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number };
+  /**
+   * A resumed match the previous authority had already decided (audit M1, 2026-11-02): its verdict stands, without an
+   * event (every seat was told), and its ending hold counts as spent, so the field stays still and the match ended. A
+   * keyframe sealed after the verdict used to resume as a running match with no result.
+   */
+  restoreVerdict(result: MatchResult, reason: string): void;
   /**
    * A resumed match (physics lane): a wreck's turret body where the previous authority's newest row had it — asleep
    * where it lay, or awake to fall on from there. False for an unknown hull or a vehicle without a turret.
@@ -3012,6 +3018,12 @@ export function createAuthoritativeMatch({
     restoreDestroyedObstacles,
     restoreDestruction(entries: readonly DestructionLogEntry[]): { applied: number } {
       return { applied: destruction.restore(entries) };
+    },
+    restoreVerdict(nextResult, reason) {
+      if (result || (nextResult !== TEAM_ALPHA && nextResult !== TEAM_BRAVO && nextResult !== 'draw')) return;
+      result = nextResult;
+      resultReason = String(reason ?? '');
+      resultTimeS = timeS - ENDING_HOLD_LIMIT_S;
     },
     restoreWreckTurret(id, pose) {
       const entity = entityById.get(id);
