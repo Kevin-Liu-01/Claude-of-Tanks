@@ -6,23 +6,24 @@
 - Updated: 2026-11-02 (release 268, registrar R0).
 - Owner request: "love your work on the terminnators. that made me realize we should add more double barrel vehicels"
   (2026-11-02); the coordinator settled five new playable ids, nothing existing changes.
-- Implementation status: REGISTERED WITH A PLACEHOLDER BUILD. Every shared table carries the id; the build is the
-  registrar's placeholder (the BMP-3 hull and running gear under a box turret with one 35 mm barrel on each side), which builder C replaces with measured geometry in the group files.
-- Qualification status: NOT RUN (placeholder geometry). Photographic qualification (a dated packet under
-  `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`, with a fixture selftest) is owed once the
-  real build exists: the packet needs the as-built envelope.
+- Implementation status: MEASURED BUILD (builder C, 2026-11-02): `src/vehicles/profiles/chineseAirDefense.ts` (turret and
+  guns) on `src/vehicles/profiles/plaAirDefenseChassis.ts` (hull and running gear), datums in
+  `src/vehicles/profiles/chineseAirDefenseLayout.ts`, read by `src/vehicles/chineseAirDefenseSpecs.ts`. Receipt:
+  `src/vehicles/profiles/chineseAirDefense.selftest.mjs`.
+- Qualification status: NOT RUN. Photographic qualification and the generated tables (combat anatomy, marking seats,
+  interior fill, presentation anchors, auxiliary inventory, tank assets) are owed by the integrator.
 - Publication status: not published; worktree `~/cot-lanes/twin-aa-268`, branch `item/twin-aa-268` (from origin/main
   7cc204ab32), uncommitted.
-- Current next action: builder C authors the measured build in `src/vehicles/profiles/chineseAirDefense.ts` and keeps the spatial datums in
-  `src/vehicles/chineseAirDefenseSpecs.ts` (turret and gun pivots, fire axes, launcher mouths, turret plates, turret-local modules and crew) equal to
-  the geometry; then the combat-anatomy update, marking seats, interior fill, presentation anchors, auxiliary inventory
-  and tank assets for this id (generated tables the registrar did not write: the browser's lazy anatomy and marking-seat
-  loaders reject an unknown group until they exist).
+- Current next action: the integrator runs the combat-anatomy update and check, marking seats, interior fill,
+  presentation anchors, auxiliary inventory and tank assets for this id, registers the selftest, and owns the
+  photographic packet.
 
 ## Scope and preservation
 
 - Mode: new photographic id (real vehicle, no 3D source), release 268 twin-cannon air-defence round.
-- Owned files (builder C after the registrar): `src/vehicles/chineseAirDefenseSpecs.ts`, `src/vehicles/profiles/chineseAirDefense.ts`, this packet.
+- Owned files (builder C after the registrar): `src/vehicles/chineseAirDefenseSpecs.ts`, `src/vehicles/profiles/chineseAirDefense.ts`,
+  `src/vehicles/profiles/plaAirDefenseChassis.ts`, `src/vehicles/profiles/chineseAirDefenseLayout.ts`,
+  `src/vehicles/profiles/chineseAirDefense.selftest.mjs`, this packet.
 - Shared tables the registrar wrote (the builders do not edit them): fleet manifest, factory loader, registration,
   procedurals, fleet order, taxonomy, facets, role profiles, labels, wheel sets, track patterns, markings anchors,
   roof-weapon policy, decorations, internal layouts, interior-fill policy, camo stock, audio engine family, the tech
@@ -82,3 +83,38 @@ Saved under `~/cot-lanes/twin-aa-268-evidence/photos/pgz09/` (comparison only; n
 - Clear the guns, radars and launchers through the whole pitch range at every yaw (`tools/gun-depression-sweep.mjs`).
 - Then the generated tables for this id: combat anatomy (`npm run tank:anatomy:update` and `check`), marking seats,
   interior fill, presentation anchors, auxiliary inventory, tank assets; and the photographic packet registration.
+
+## As built (builder C, 2026-11-02)
+
+Hull frame: ground y 0, +z forward, +x the vehicle's left. Photograph 02 is a square right-side view: scaled by the
+published 3.40 m radar-down height (the folded search antenna's top) it reads 4.8 mm a pixel at 1600 px wide, and the
+0.74 m road wheels and 0.15 m track pitch it gives agree. That scale makes the hull 7.06 m, not the 6.7 m the
+encyclopaedia pages repeat from the PGZ-95 (the conflict the registrar flagged): the build follows the photograph.
+
+| Part | Built | Basis |
+| --- | --- | --- |
+| Hull | 7.06 m (z -3.50 to +3.56), 3.20 m wide, roof 1.74 m, belly 0.45 m; 7.31 m over the idlers' track wraps behind the hull | photo 02 at the published height; published width |
+| Hull shape | vertical sides over the tracks with a chamfered roof edge, the glacis from z +2.65 down 27 deg to a sharp nose at 0.95 m, the lower plate raked back to the belly | photos 01-03 |
+| Front | caged headlight boxes on the glacis corners, fender boxes over the sprockets, two stowed track sections and the tow rope on the lower plate, tow eyes at the nose corners | photos 01, 03 |
+| Hull fittings | driver's hatch front left with three vision blocks, engine grille front right, air louvre on the left side, stowage drum on the rear right corner | photos 01-02 |
+| Running gear | six road wheels r 0.37 at 0.914 m pitch (z +2.19 to -2.38), front sprocket r 0.29, a high rear idler r 0.33 (z -3.34, y 0.76) standing behind the hull, three return rollers, 0.48 m track at x +-1.34, top run 1.16 m | photo 02; China's IFV wheel standard |
+| Turret | 3.6 m long (z -2.88 to +0.72 in the hull), ring at z -1.10; a lower band leaning out to the 0.45 m belt, the upper body to a 1.30 m roof with bevelled edges; the front column under the EO head (round lens, window, laser warning plate), the round tracking-radar antenna (0.58 m) on a stalk in front of it; three smoke dischargers a side on the band; two roof hatches, the gunner's periscope, the search antenna folded flat on its pedestal (top 1.66 m over the ring: the 3.40 m height), the rear sight box | photos 01-03; Wikipedia (radar positions) |
+| Guns | a PG99 35 mm a side at x +-1.25, 0.84 m over the ring (2.58 m), in a wedge-shaped armoured housing (x 1.06-1.44, 1.23 m long, deep at the front, its underside rising to the rear) on a trunnion 0.45 m behind the ring; barrel r 0.046 with a thicker root, muzzle booster and velocity ring to the 3.40 m muzzle plane (1.85 m ahead of the hull centre) | photo 02 (housing, barrel line, muzzle 1 m ahead of the tracking antenna) |
+| Fire axes | twin, x +-1.25, y 0, one recoil group a side | |
+| Armour (game) | hull 30/34 glacis, 28/32 nose, 15/17 sides, 12/14 rear, 10/11 roof; turret 30/34 front, 15/17 sides (KE/CE mm) | Wikipedia: welded steel, the frontal arc against 14.5 mm |
+
+Dims: hull 7.06 m, overall 7.31 m, 3.20 m wide, 3.40 m high.
+
+Also drawn: the loading door on the turret rear wall and the lifting lugs on its roof bevel.
+
+### Builder C receipts (2026-11-02/03, worktree uncommitted)
+
+| Check | Result |
+| --- | --- |
+| `src/vehicles/profiles/chineseAirDefense.selftest.mjs` (datums, bores, launch exits, envelope 3 %, guns 2 cm from the turret every 2.5 deg of pitch, 2.5 cm from the hull every 5 deg of yaw and pitch) | PASS |
+| Hull clearance every 1 deg of yaw at 13 pitches from -5 to 85 deg (`gunHullProbe`, keep 0.026 m; `.qa-dev/C/sweep1deg.mjs`) | PASS, no curve needed |
+| `tools/gun-depression-sweep.mjs --no-suit` | NOT RUN to completion: the machine's load (85-250) held it at 10-15 % CPU, killed after 2 h |
+| Accessory contact probe | PASS (0 floating, 0 clipping) |
+| `tools/roof-pocket-census.mjs` | PASS (no pockets) |
+| `npm run -s typecheck` | PASS |
+| Geometry digest: 15 neighbouring ids (BMP-3 family, Type 100, AFT-10, Type 59, ZTZ-100/20/85-III/99A2, VT-4A1, both BMPTs, M6, TOS-1A) | byte-identical to the coordinator's baseline |

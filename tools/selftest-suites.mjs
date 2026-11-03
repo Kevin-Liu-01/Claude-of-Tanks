@@ -171,6 +171,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/tos1aTagil.selftest.mjs',
     // 268: the GM-352 air-defence pair (Tunguska-M, Pantsir-S1): datums, fire axes, launch exits, the shared chassis, sweeps
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
+    // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
+    'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',

@@ -6,23 +6,25 @@
 - Updated: 2026-11-02 (release 268, registrar R0).
 - Owner request: "love your work on the terminnators. that made me realize we should add more double barrel vehicels"
   (2026-11-02); the coordinator settled five new playable ids, nothing existing changes.
-- Implementation status: REGISTERED WITH A PLACEHOLDER BUILD. Every shared table carries the id; the build is the
-  registrar's placeholder (the BMP-3 hull and running gear under a box turret, one 25 mm barrel a side and four closed QW-2 canisters), which builder C replaces with measured geometry in the group files.
-- Qualification status: NOT RUN (placeholder geometry). Photographic qualification (a dated packet under
-  `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`, with a fixture selftest) is owed once the
-  real build exists: the packet needs the as-built envelope.
+- Implementation status: MEASURED BUILD (builder C, 2026-11-02): `src/vehicles/profiles/chineseAirDefense.ts` (turret, pods,
+  radar) on `src/vehicles/profiles/plaAirDefenseChassis.ts` (hull and running gear), datums in
+  `src/vehicles/profiles/chineseAirDefenseLayout.ts`, read by `src/vehicles/chineseAirDefenseSpecs.ts` (ring, trunnion, fire
+  axes, launch exits, armour plates, modules, crew). Receipt: `src/vehicles/profiles/chineseAirDefense.selftest.mjs`.
+- Qualification status: NOT RUN. Photographic qualification (a dated packet under `docs/references/photos/`, registered
+  in `tools/photo-reference-policy.mjs`, with a fixture selftest) and the generated tables (combat anatomy, marking seats,
+  interior fill, presentation anchors, auxiliary inventory, tank assets) are owed by the integrator.
 - Publication status: not published; worktree `~/cot-lanes/twin-aa-268`, branch `item/twin-aa-268` (from origin/main
   7cc204ab32), uncommitted.
-- Current next action: builder C authors the measured build in `src/vehicles/profiles/chineseAirDefense.ts` and keeps the spatial datums in
-  `src/vehicles/chineseAirDefenseSpecs.ts` (turret and gun pivots, fire axes, launcher mouths, turret plates, turret-local modules and crew) equal to
-  the geometry; then the combat-anatomy update, marking seats, interior fill, presentation anchors, auxiliary inventory
-  and tank assets for this id (generated tables the registrar did not write: the browser's lazy anatomy and marking-seat
-  loaders reject an unknown group until they exist).
+- Current next action: the integrator runs the combat-anatomy update and check, marking seats, interior fill,
+  presentation anchors, auxiliary inventory and tank assets for this id (the browser's lazy anatomy and marking-seat
+  loaders reject an unknown group until they exist), registers the selftest, and owns the photographic packet.
 
 ## Scope and preservation
 
 - Mode: new photographic id (real vehicle, no 3D source), release 268 twin-cannon air-defence round.
-- Owned files (builder C after the registrar): `src/vehicles/chineseAirDefenseSpecs.ts`, `src/vehicles/profiles/chineseAirDefense.ts`, this packet.
+- Owned files (builder C after the registrar): `src/vehicles/chineseAirDefenseSpecs.ts`, `src/vehicles/profiles/chineseAirDefense.ts`,
+  `src/vehicles/profiles/plaAirDefenseChassis.ts`, `src/vehicles/profiles/chineseAirDefenseLayout.ts`,
+  `src/vehicles/profiles/chineseAirDefense.selftest.mjs`, this packet.
 - Shared tables the registrar wrote (the builders do not edit them): fleet manifest, factory loader, registration,
   procedurals, fleet order, taxonomy, facets, role profiles, labels, wheel sets, track patterns, markings anchors,
   roof-weapon policy, decorations, internal layouts, interior-fill policy, camo stock, audio engine family, the tech
@@ -83,3 +85,38 @@ Saved under `~/cot-lanes/twin-aa-268-evidence/photos/pgz95/` (comparison only; n
 - Clear the guns, radars and launchers through the whole pitch range at every yaw (`tools/gun-depression-sweep.mjs`).
 - Then the generated tables for this id: combat anatomy (`npm run tank:anatomy:update` and `check`), marking seats,
   interior fill, presentation anchors, auxiliary inventory, tank assets; and the photographic packet registration.
+
+## As built (builder C, 2026-11-02)
+
+Hull frame: ground y 0, +z forward, +x the vehicle's left (`src/vehicles/vehicleSide.ts`). Every number below is in
+`chineseAirDefenseLayout.ts`; "photo" means read from the two museum photographs against the published length and width.
+
+| Part | Built | Basis |
+| --- | --- | --- |
+| Hull | 6.71 m nose to rear plate, 3.20 m over the fenders, roof 1.62 m, belly 0.40 m | published length and width; heights photo |
+| Hull shape | flat roof to z +1.20, the engine deck sloping 14 deg to a 1.16 m front edge at +3.02, the nose plate raked 28 deg to 0.46 m, upper sides leaning in from 1.60 m at the 1.05 m fender to 1.36 m at the roof | photo 01 |
+| Front | two big deck grilles side by side and a small one behind (engine front right), fender boxes with caged headlights over the sprockets, mudguard plates ahead of the sprockets, two pairs of tow brackets on the nose plate | photo 01; Army Technology (front engine) |
+| Crew hatches | driver's raised block front left (z 0.84-1.34), the commander's behind it (z 0.22-0.68), three vision blocks and a round hatch each | Army Technology ("raised hatch and three vision blocks"); photo 02 |
+| Running gear | six road wheels r 0.31 (z +2.22 to -2.23, 0.89 m pitch), front sprocket r 0.26 at y 0.62, rear idler r 0.25 at y 0.52, three return rollers, 0.40 m track at x +-1.38, top run 0.97 m | Wikipedia (6 wheels, 3 rollers); photo 01; China's IFV wheel standard (Type 100 construction) |
+| Turret | one-man turret on the rear half, ring at z -1.20; body 1.68 m wide, 2.10 m long, roof 0.92 m over the ring with chamfered edges and a sloped front; EO director's armoured box on the front left with TV/IR windows; four smoke grenade launchers at each front corner | Army Technology; photos 01-02 |
+| Guns | an over-under pair of Type 87 25 mm a side (pod centre x +-1.08, bores 0.34 m apart), open cradle plates, exposed receivers, barrels r 0.026 clamped together at z 1.30, flash hiders to the 2.43 m muzzle plane; trunnion at turret-local (0, 0.62, 0.15) | Wikipedia ("two a side"); photo 02 (pairs stacked over-under, receivers open, the midway clamp) |
+| QW-2 | four tubes, two stacked over each pair (x +-1.11, y 0.41/0.56 over the trunnion), seeker-cap boxes, exits at z 1.58; they pitch with the guns | Wikipedia ("above the cannons"); photo 02 |
+| Search radar | CLC-1 reflector 1.40 x 1.10 m on a mast at the turret rear, raised as photographed: top 4.47 m | photo 02; published 4.82 m raised, 3.40 m folded |
+| Fire axes | the upper bore of each pair (x +-1.08, y +0.17); each side's two tubes share that side's recoil group | four independent tubes need two more barrel buckets in the factory (not in this lane) |
+| Armour (game) | hull 18/20 front, 12/14 sides, 10/12 rear, 8/9 roof; turret 14/16 front, 10/12 sides (KE/CE mm) | high-hardness steel against small arms and splinters (Army Technology) |
+
+Dims: 6.71 x 3.20 x 4.47 m (the height is the raised antenna's, the build's own).
+
+Also drawn: the gunner's sight head on the director box, the access door in the left wall.
+
+### Builder C receipts (2026-11-02/03, worktree uncommitted)
+
+| Check | Result |
+| --- | --- |
+| `src/vehicles/profiles/chineseAirDefense.selftest.mjs` (datums, bores, launch exits, envelope 3 %, guns 2 cm from the turret every 2.5 deg of pitch, 2.5 cm from the hull every 5 deg of yaw and pitch) | PASS |
+| Hull clearance every 1 deg of yaw at 13 pitches from -5 to 85 deg (`gunHullProbe`, keep 0.026 m; `.qa-dev/C/sweep1deg.mjs`) | PASS, no curve needed |
+| `tools/gun-depression-sweep.mjs --no-suit` | NOT RUN to completion: the machine's load (85-250) held it at 10-15 % CPU, killed after 2 h |
+| Accessory contact probe | PASS (0 floating, 0 clipping) |
+| `tools/roof-pocket-census.mjs` | PASS (no pockets) |
+| `npm run -s typecheck` | PASS |
+| Geometry digest: 15 neighbouring ids (BMP-3 family, Type 100, AFT-10, Type 59, ZTZ-100/20/85-III/99A2, VT-4A1, both BMPTs, M6, TOS-1A) | byte-identical to the coordinator's baseline |

@@ -111,8 +111,9 @@ function rig(id, options = {}) {
 // Any future `spec.gun.muzzles` id must be added here (the roster guard at
 // the end of this block fails the build if one is missing).
 // 268: the Tunguska-M's and Pantsir-S1's two 2A38M, one fire axis each on its inner barrel (profiles/gm352Layout.ts);
-// the Gepard's two KDA in their flank bays (profiles/gepardFrame.ts)
-const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'tunguska_m', 'pantsir_s1', 'gepard_1a2'];
+// the Gepard's two KDA in their flank bays (profiles/gepardFrame.ts); the PGZ-95's two side pairs, one fire axis each on its
+// upper gun with both guns of a side in that side's group (profiles/chineseAirDefenseLayout.ts); the PGZ-09's two 35 mm
+const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);
@@ -151,7 +152,7 @@ for (const id of TWIN_PLANT) {
   // explicit index (sim path: shot N -> muzzles[N % len]) is respected
   assert.equal(visual.recoilKick(0, 0.36, 5), 1, `${id}: explicit index modulo`);
 
-  // the belt stroke follows the calibre (tankFactoryCore RAPID_AMP): 6.6 cm for the 30 mm pairs, 7.7 cm for the Gepard's 35 mm
+  // the belt stroke follows the calibre (tankFactoryCore RAPID_AMP): 5.5 cm for the 25 mm, 6.6 cm for the 30 mm, 7.7 cm for the 35 mm
   const stroke = Math.min(0.085, Math.max(0.055, getSpec(id).gun.caliberMm * 0.0022));
   // asymmetric kick: yaw/roll flip sides with the firing barrel
   visual.recoilKick(0, 0.36, 0); // left barrel
@@ -177,11 +178,17 @@ for (const id of TWIN_PLANT) {
   near(barrelGs[1].position.z, -stroke, 1e-6, `${id}: right firing tube recoils`);
   // The Terminator belt refire must find the tube back in battery; the
   // rapid stroke spans exactly 0.28 s, matching the fastest twin cycle.
+  // 268: the PGZ-95's 0.25 s cycle is shorter than the stroke. The belt alternates (shot N -> muzzles[N % len]), so
+  // its next shot finds the other tube in battery and the fired tube has until its own refire two cycles on.
   const cycle = getSpec(id).gun.shells[0].reloadS;
+  const STROKE_S = 0.28; // tankFactoryCore RAPID_BACK + RAPID_HOLD + RAPID_RETURN
   visual.syncFromState(state, cycle - 0.06);
+  near(barrelGs[0].position.z, 0, 1e-9, `${id}: the next tube in battery for the ${cycle}s belt refire`);
+  if (cycle < STROKE_S) visual.syncFromState(state, cycle);
+  const refireS = cycle < STROKE_S ? 2 * cycle : cycle;
   for (let index = 0; index < barrelGs.length; index++) {
     near(barrelGs[index].position.z, 0, 1e-9,
-      `${id}: tube ${index} in battery before the ${cycle}s belt refire`);
+      `${id}: tube ${index} in battery before its ${refireS}s belt refire`);
   }
   near(recoilG.rotation.z, 0, 1e-12, `${id}: cradle roll returns to zero`);
 }
