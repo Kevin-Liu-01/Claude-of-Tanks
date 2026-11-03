@@ -12,7 +12,7 @@ and Mk 2 to look "A LOT DIFERENT FROM MK 3". The shared turret now carries:
 - the cupola's nine glazed episcopes, the glass of the MG sight head, and the loader's periscope.
 
 The Mk 3 keeps the Op Granby kit (side armour, the nose array and the rear drums). Its stock coat is the light stone
-of the Bovington 64 KG 87's Granby finish under Caunter bands of silver-grey and slate (2026-11-03, the owner: "any tank
+of the Bovington 64 KG 87's Granby finish under a darker sand-brown disruptive with pale and dark bars (2026-11-03, the owner: "any tank
 without a proper camo need a proper camoo"; plain before), and its decor is the Granby desert load: water cans, bedrolls, ration
 boxes and a net. The Mk 1 and Mk 2 are described in [challenger1_mk1.md](challenger1_mk1.md) and
 [challenger1_mk2.md](challenger1_mk2.md).
