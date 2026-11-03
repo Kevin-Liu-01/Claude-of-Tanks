@@ -16,8 +16,8 @@
 // face the same pinned 27 opponents (every id the two catalogs share but the player, sorted, every k-th: the cost probes'
 // rule), the High preset and 14 v 14. Runs alternate the builds' order map by map. --profile adds a CDP CPU profile over
 // each entry (attribution only: a profiled run's timings are not comparable with an unprofiled one).
-// Locks: the capture FIFO with --session-mutex (frame-budget-probe's acquireProbeLocks) unless a lane hold took them
-// (COT_LANE_HOLD=1).
+// Locks: the capture FIFO with --session-mutex (frame-budget-probe's acquireProbeLocks); a child of a hold nests in it
+// (the hold's token; COT_LANE_HOLD=1 is retired, 2026-11-02 audit S4).
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
@@ -325,7 +325,7 @@ async function main(opt) {
   // program disk cache off); the receipt records them
   const extraBrowserArgs = typeof opt['browser-args'] === 'string' ? opt['browser-args'].split('|').filter(Boolean) : [];
   let left = 0;
-  const locks = process.env.COT_LANE_HOLD === '1' ? null : await acquireProbeLocks({ sessionMutex: opt['session-mutex'] ?? null, log });
+  const locks = await acquireProbeLocks({ sessionMutex: opt['session-mutex'] ?? null, log });
   const refresh = locks ? setInterval(() => locks.refresh(), 30000) : null;
   const servers = [];
   try {

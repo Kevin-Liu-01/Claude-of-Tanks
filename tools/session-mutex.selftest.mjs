@@ -3,14 +3,16 @@
 // agent's mutex cost every later round a 45-minute wait), and the polite lock (visual-census-lock) reaped any mutex without
 // a pid file 60 s on, a live shell holder's included. Now: a dead owner's mutex is reaped, a live one's never, a legacy
 // mutex (a `pid` file only) once its pid is dead, and a bare directory (its holder may be a live shell loop) never; shells
-// hold it through with-session-mutex.mjs. Private directories only.
+// hold it through with-session-mutex.mjs. A probe started under the mutex's holder nests in it (round 2:
+// sessionMutexHeldByAncestor, where COT_LANE_HOLD=1 skipped it unchecked). Private directories only.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { claimSessionMutex, reapDeadSessionMutex, releaseSessionMutex, releaseSessionMutexAt, sessionMutexState } from './capture-lock.mjs';
+import { claimSessionMutex, reapDeadSessionMutex, releaseSessionMutex, releaseSessionMutexAt, sessionMutexHeldByAncestor,
+  sessionMutexState } from './capture-lock.mjs';
 import { createPoliteCaptureLock } from './visual-census-lock.mjs';
 
 const LOCK = new URL('./capture-lock.mjs', import.meta.url).href;
@@ -98,7 +100,29 @@ try {
     const usage = spawnSync(process.execPath, [WRAPPER, dir], { encoding: 'utf8' });
     assert.equal(usage.status, 2);
   }
-  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, and the shell wrapper');
+  // ---- held by an ancestor (round 2): a command run under the holder nests in it; another process's is not its own ------
+  {
+    const dir = join(root, 'ancestor');
+    const probe = `import { sessionMutexHeldByAncestor } from ${JSON.stringify(LOCK)}; process.stdout.write(String(sessionMutexHeldByAncestor(${JSON.stringify(dir)})));`;
+    const under = spawnSync(process.execPath, [WRAPPER, dir, '--', process.execPath, '--input-type=module', '-e', probe], { encoding: 'utf8' });
+    assert.equal(under.status, 0, under.stderr);
+    assert.equal(under.stdout.trim(), 'true', 'the wrapper holding the mutex is an ancestor of its command');
+    assert.equal(sessionMutexHeldByAncestor(dir), false, 'a free mutex is nobody\'s');
+    const hold = claimSessionMutex(dir);
+    assert.equal(sessionMutexHeldByAncestor(dir), false, 'this process\'s own hold is not an ancestor\'s');
+    assert.equal(spawnSync(process.execPath, ['--input-type=module', '-e', probe], { encoding: 'utf8' }).stdout, 'true', 'its child nests in it');
+    releaseSessionMutex(hold, { log: quiet });
+    const holder = spawn(process.execPath, ['--input-type=module', '-e',
+      `import { claimSessionMutex } from ${JSON.stringify(LOCK)}; claimSessionMutex(${JSON.stringify(dir)}); console.log('claimed'); setInterval(() => {}, 1000);`],
+    { stdio: ['ignore', 'pipe', 'inherit'] });
+    let said = '';
+    holder.stdout.setEncoding('utf8').on('data', (chunk) => { said += chunk; });
+    for (let i = 0; i < 800 && !said.includes('claimed'); i++) await new Promise((done) => setTimeout(done, 25));
+    assert.deepEqual([sessionMutexState(dir).state, sessionMutexHeldByAncestor(dir)], ['live', false], 'a child\'s hold is not this process\'s ancestor\'s');
+    holder.kill('SIGKILL');
+    await new Promise((done) => holder.once('close', done));
+  }
+  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper, and a holder\'s descendants nesting in it');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

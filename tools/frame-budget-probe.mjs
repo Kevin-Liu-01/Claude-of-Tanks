@@ -61,7 +61,7 @@ import {
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
 import { CAPTURE_QUEUE_DIR, claimSessionMutex, createCaptureLock, reapDeadSessionMutex, releaseSessionMutexAt,
-  sessionMutexState } from './capture-lock.mjs';
+  sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
@@ -737,18 +737,27 @@ export function foreignGpuCpu() {
   } catch { return { cpu: -1, processes: -1 }; }
 }
 
-/** The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO. */
+/**
+ * The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO.
+ * Nested holds (2026-11-02 audit S4, round 2): COT_LANE_HOLD=1 skipped both with no check that any hold backed it (its
+ * helper, tools/tmp-lane-hold.mjs, is gone), so a leftover export ran GPU probes unlocked. It is retired (the lock says so
+ * and queues): a child of a hold nests in the FIFO through the hold's token (capture-lock nestedEnv, checked by acquire()
+ * against the live owner record), and in the session mutex only while the mutex's live owner is this process's ancestor
+ * (`mutexNested`), where it used to wait behind its own parent.
+ */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
-  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
-  // a lane hold (one ticket for several probe steps, tools/tmp-lane-hold.mjs) already holds the FIFO and the mutex for
-  // the steps it spawns with COT_LANE_HOLD=1: they take nothing and release nothing
-  if (process.env.COT_LANE_HOLD === '1') { log('the capture FIFO and the session mutex are the lane hold\'s'); return { round: 0, release: () => {}, refresh: () => {} }; }
+  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued,
+  mutexNested = defaultMutexNested } = {}) {
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
     await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
     ticket ??= lock.lastTicket ?? null;
     if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    if (mutexNested(sessionMutex)) {
+      log(`session mutex held by an ancestor of this process: nested in it (round ${round})`);
+      return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    }
     // a holder queued behind us cannot release while we hold the head: give the turn back at once; any other holder
     // (between its own captures) gets mutexWaitMs
     const queued = holderQueued(sessionMutex);
@@ -780,6 +789,9 @@ function mutexOwner(dir) {
 function defaultMutexBusy(dir) {
   const { state } = sessionMutexState(dir);
   return state === 'live' || state === 'unowned';
+}
+function defaultMutexNested(dir) {
+  return sessionMutexHeldByAncestor(dir);
 }
 function defaultHolderQueued(dir) {
   const owner = mutexOwner(dir);
