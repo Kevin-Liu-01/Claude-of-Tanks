@@ -2085,7 +2085,8 @@ renderer.userData.contextRecovery = {
   onLost() {
     graphicsContextLost = true;
     garagePhasePresentation.invalidateGpu();
-    post.setAdaptiveSuspended(true);
+    // (2026-11-02 audit R3) the context's own governor hold: a restore releases only this one, never a covered load's
+    post.setAdaptiveHold('context-lost', true);
   },
   async onRestored() {
     const restoredInfo = renderer.info;
@@ -2123,7 +2124,7 @@ renderer.userData.contextRecovery = {
     post.render(0);
     if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     graphicsContextLost = false;
-    post.setAdaptiveSuspended(false);
+    post.setAdaptiveHold('context-lost', false);
     // Some mobile browsers discard the outstanding rAF when the WebGL device
     // is reclaimed. The loop's queued latch would then stay true forever even
     // though no callback exists. Cancel/re-arm explicitly after restoration;
@@ -2140,7 +2141,7 @@ bus.on('phase:change', () => post.resetAdaptiveResolution());
 // Map construction, roster painting and shader compilation intentionally
 // create long frames behind an opaque screen. They are loading throughput,
 // not gameplay performance, so exclude them from the live quality governor.
-bus.on('ui:battleStart', () => post.setAdaptiveSuspended(true));
+bus.on('ui:battleStart', () => post.setAdaptiveHold('loading', true));
 
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)

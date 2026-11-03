@@ -152,7 +152,8 @@ interface SavedState {
   aspect: number;
   taaEnabled: boolean;
   temporalAccumulation: boolean;
-  adaptiveSuspended: boolean;
+  /** (2026-11-02 audit R3) the film's own governor hold, released on leave (no snapshot of anyone else's). */
+  adaptiveHold: { release(): void };
   flareDt: number | null;
 }
 
@@ -234,12 +235,11 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       aspect: camera.aspect,
       taaEnabled: post.taa.enabled,
       temporalAccumulation: post.upscaler.temporalAccumulation,
-      adaptiveSuspended: renderer.domElement.dataset.adaptiveSuspended === 'true',
+      adaptiveHold: post.holdAdaptive('studio-film'),
       flareDt: post.lensFlare.fixedDt,
     };
     ports.setFilmMode(true);
     try {
-      post.setAdaptiveSuspended(true);
       post.pinDynScale(1);
       post.resetPerfTrims();
       applyFilmSize(width, height);
@@ -285,7 +285,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
     camera.updateProjectionMatrix();
     post.setSize(state.width, state.height);
     post.pinDynScale(null);
-    post.setAdaptiveSuspended(state.adaptiveSuspended);
+    state.adaptiveHold.release();
     lighting.updateFrustums();
     lighting.update(true);
     ports.setFilmMode(false);

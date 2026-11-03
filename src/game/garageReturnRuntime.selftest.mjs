@@ -433,7 +433,7 @@ function contextRecoveryFixture(fixture, body = contextRestoreBody) {
     const getDeviceTier = () => 'desktop';
     const nextFrame = async () => {};
     const viewport = { apply() {} };
-    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() { ports.assertShadows('confirming the restored frame'); ports.assertEnvironment(); } };
+    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, setAdaptiveHold() {}, render() { ports.assertShadows('confirming the restored frame'); ports.assertEnvironment(); } };
     const sky = { bakeEnvironment() { ports.rebuildEnvironment(); } };
     const applyGraphicsRecovery = () => ports.assertShadows('graphics quality recovery');
     const pedestal = { trim() {} };

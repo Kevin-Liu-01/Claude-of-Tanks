@@ -117,6 +117,17 @@ import {
 } from './structureGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
+import { createNamedHolds, type NamedHold } from './namedHolds.ts';
+
+/**
+ * (2026-11-02 audit R3) who holds the adaptive governor off. The governor measures only while none does:
+ * - 'loading': the covered loading phase (the Garage's battle start, the solo and network loads, the Garage return
+ *   releases it); `setAdaptiveSuspended` is this latch, and QA probes that freeze the governor share it as before;
+ * - 'context-lost': a lost WebGL context, until its restore completes;
+ * - 'studio-film': a Studio film or still owns every frame.
+ * A restore during a covered load releases only its own hold, so loading frames still never govern.
+ */
+export type AdaptiveHoldReason = 'loading' | 'context-lost' | 'studio-film';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
 const hazeTermsScratch = { x: 0, y: 0 };
 
@@ -197,7 +208,16 @@ export interface PostRuntime {
   pinDynScale(value: number | null): void;
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
+  /** The covered loading phase's governor hold (the 'loading' latch of {@link AdaptiveHoldReason}). */
   setAdaptiveSuspended(suspended: boolean): void;
+  /** Latch one named governor hold (one slot per reason). */
+  setAdaptiveHold(reason: AdaptiveHoldReason, held: boolean): void;
+  /** A counted governor hold; the handle releases once. */
+  holdAdaptive(reason: AdaptiveHoldReason): NamedHold<AdaptiveHoldReason>;
+  /** True while any governor hold stands. */
+  readonly adaptiveSuspended: boolean;
+  /** The reasons holding the governor now (telemetry). */
+  readonly adaptiveHoldReasons: readonly AdaptiveHoldReason[];
   /** 2026-10-01: the battlefield's ground height (world x, z → y) — the base of the aerial haze layer. */
   setGroundHeightSource(source: ((x: number, z: number) => number) | null): void;
   resetAdaptiveResolution(): void;
@@ -2775,6 +2795,13 @@ export function createPost(
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
+  // (2026-11-02 audit R3) the suspension is derived from named holds (AdaptiveHoldReason): each owner releases only
+  // its own, and the governor resets only when the derived switch flips
+  const adaptiveHolds = createNamedHolds<AdaptiveHoldReason>((held) => {
+    adaptiveSuspended = held;
+    renderer.domElement.dataset.adaptiveSuspended = String(held);
+    resetGovernorState();
+  });
   // (local-fps-265) the raster the governor's own tier change carries into the next preset, set only while it reports
   // the change (the preset listeners, this module's included, run inside that call)
   let carriedRasterRatio: number | null = null;
@@ -3390,12 +3417,20 @@ export function createPost(
     },
 
     setAdaptiveSuspended(suspended) {
-      const next = !!suspended;
-      if (next === adaptiveSuspended) return;
-      adaptiveSuspended = next;
-      renderer.domElement.dataset.adaptiveSuspended = String(next);
-      resetGovernorState();
+      adaptiveHolds.set('loading', !!suspended);
     },
+
+    setAdaptiveHold(reason, held) {
+      adaptiveHolds.set(reason, !!held);
+    },
+
+    holdAdaptive(reason) {
+      return adaptiveHolds.acquire(reason);
+    },
+
+    get adaptiveSuspended() { return adaptiveSuspended; },
+
+    get adaptiveHoldReasons() { return adaptiveHolds.reasons(); },
 
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */
