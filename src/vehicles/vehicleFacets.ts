@@ -184,7 +184,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leo2_improved', 'leo2_revolution',
     'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco', 'leo2a4_v', 'leo2a4m',
     'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'leopard2_proto',
-    'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams',
+    'leopard_as1', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams',
     'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3', 'm48_super', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'magach3', 'magach6b', 'magach7c', 'mbt70', 'merkava1b', 'merkava2b',
     'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy',
@@ -212,7 +212,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'kv2',
   ]),
   light: Object.freeze([
-    'bmp3m_dragun125', 'cv90105_tml', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts',
+    'bmp3m_dragun125', 'cv90105_tml', 'm113a1_fsv', 'm113a1_mrv', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts',
     'pl01', 'pl01_105', 't49', 'x1_pioneiro', 'x1a2_carcara',
   ]),
   // Autocannon-armed fighting vehicles, with the cavalry and reconnaissance types (M3A3 CFV, Ajax).
@@ -223,7 +223,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
   ]),
   apc: Object.freeze([
-    'ares_apc',
+    'ares_apc', 'm113as4',
   ]),
   // Casemates (Strv 103, UDES 03, Jagdpanzer E100) and missile carriers (AFT-10, Griffin Viper, Object 695).
   td: Object.freeze([
@@ -268,7 +268,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'bm_oplot_m', 'bm_oplot_t', 'c1_ariete',
     'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'carro45t', 'ee_t3_osorio',
     'ee_t4_osorio', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi',
-    'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'mbt70',
+    'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leopard_as1', 'mbt70',
     'osorio_p1', 'osorio_p2', 'pt84_orzel', 'stb1', 't72_rys', 't80', 't80b', 't80bv', 't80u', 't80u_kursk',
     't80uk', 't84', 't84bm_oplot_m', 'type10', 'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru',
     'type90a', 'type90b', 'type96_80_feng', 'ua_t80bv', 'vickers_mk1', 'xk2_black_panther',
@@ -282,7 +282,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'k21', 'lrmv_lynx',
-    'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
+    'm113a1_fsv', 'm113a1_mrv', 'm113as4', 'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
     'pl01', 'pl01_105', 't49', 'x1_pioneiro', 'x1a2_carcara',
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
@@ -306,7 +306,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk',
     'leo1a5dk1', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco',
     'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v',
-    'lrmv_lynx', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha',
+    'leopard_as1', 'lrmv_lynx', 'm113a1_fsv', 'm113a1_mrv', 'm113as4', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha',
     'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley', 'm3a3_bradley',
     'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a2ga2', 'm48a3_patton',
     'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3', 'm6_linebacker', 'magach3',

@@ -197,6 +197,11 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   centurion5_avre: { doctrine: 'assault', viewM: 380, still: 0.210, moving: 0.150 },
   // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
   centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
+  // release 269: the Australian M113s (scouts and fire support; the AS4 a carrier)
+  leopard_as1: { doctrine: 'flexible', viewM: 425, still: 0.200, moving: 0.140 },
+  m113a1_fsv: { doctrine: 'support', viewM: 420, still: 0.250, moving: 0.200 },
+  m113a1_mrv: { doctrine: 'scout', viewM: 460, still: 0.280, moving: 0.240 },
+  m113as4: { doctrine: 'recon', viewM: 440, still: 0.280, moving: 0.240 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },

@@ -56,6 +56,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'magach6b', 'magach7c',
     'vickers_mk1',
     'centurion3', 'centurion5_2', 'centurion5_2dk', 'shot_kal', 'centurion13', 'centurion5_avre', 'centurion5_1_aus', 'm46_patton', 'm47_patton',
+    // release 269: the Australian M113A1 FSV and MRV (1970-96) and the Leopard AS1 (1976-2007)
+    'm113a1_fsv', 'm113a1_mrv', 'leopard_as1',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
@@ -63,6 +65,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'warrior_tes_h',
     // release 262: the Olifant Mk 2 (2007)
     'olifant_mk2',
+    // release 269: the Australian M113AS4 (2007)
+    'm113as4',
     'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 't72_rys',
     'tos1a_tagil', 'griffin_viper', 'ares_apc',
     'leo2a6', 'c1_ariete', 'c2_ariete', 'strv122', 't72b3m_2016',
