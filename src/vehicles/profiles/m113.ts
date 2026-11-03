@@ -33,8 +33,13 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
   // the upper hull: the flat roof, the glacis falling to the nose; the vertical sides from the roof to their foot over
   // the tracks; the rear plate and ramp vertical
   const top = (z: number): number => (z <= D.glacisTopZ ? B.roofY : B.roofY - (z - D.glacisTopZ) / B.glacisRun * (B.roofY - B.noseY));
-  const upper = (z: number): SolidSection => ({ z, ring: [[-B.hw, B.sideLowY], [B.hw, B.sideLowY], [B.hw, top(z) - 0.02],
-    [B.hw - 0.02, top(z)], [-(B.hw - 0.02), top(z)], [-B.hw, top(z) - 0.02]] as SectionPoint[] });
+  // (269 release check: at sideLowY over the tracks the sides stood in the track band) the foot steps up to shroudY outboard
+  // of the tub, over the tracks
+  const upper = (z: number): SolidSection => {
+    const foot = Math.min(B.shroudY, top(z) - 0.03);
+    return { z, ring: [[-B.hw, foot], [-B.tubHw, foot], [-B.tubHw, B.sideLowY], [B.tubHw, B.sideLowY], [B.tubHw, foot],
+      [B.hw, foot], [B.hw, top(z) - 0.02], [B.hw - 0.02, top(z)], [-(B.hw - 0.02), top(z)], [-B.hw, top(z) - 0.02]] as SectionPoint[] };
+  };
   P.add('hull', sectionSolid([D.sternZ, D.glacisTopZ, D.noseZ].map(upper)));
   // the lower hull between the tracks: the lower front plate rising to the nose, the belly, the rear lip
   const belly = (z: number): number => {
@@ -46,7 +51,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     ring: [[-B.tubHw, belly(z)], [B.tubHw, belly(z)], [B.tubHw, B.sideLowY + 0.02], [-B.tubHw, B.sideLowY + 0.02]] as SectionPoint[] }))));
   // the sides' foot: a lip over the track along each side
   for (const s of [-1, 1] as const) {
-    P.add('hullDetail', box(0.05, 0.05, D.length - 0.30), s * (B.hw - 0.02), B.sideLowY - 0.02, -0.05);
+    P.add('hullDetail', box(0.05, 0.05, D.length - 0.30), s * (B.hw - 0.02), B.shroudY + 0.02, -0.05);
   }
   const glacis = Math.atan2(B.roofY - B.noseY, B.glacisRun);
   const onGlacis = (t: number, lift = 0): [number, number] => {
@@ -117,7 +122,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     for (const s of [-1, 1] as const) {
       const x = s * (B.hw + 0.07), zMid = (D.glacisTopZ + D.sternZ) / 2;
       for (const [z0, z1] of [[D.glacisTopZ - 0.05, zMid + 0.01], [zMid - 0.01, D.sternZ + 0.12]] as const) {
-        P.addEquipment('hull', box(0.14, 0.80, z0 - z1), x, 1.36, (z0 + z1) / 2);
+        P.addEquipment('hull', box(0.14, 0.78, z0 - z1), x, B.shroudY + 0.40, (z0 + z1) / 2);
         P.add('hullDark', box(0.15, 0.012, z0 - z1 - 0.04), x, 1.76, (z0 + z1) / 2);
       }
       for (const z of [D.glacisTopZ - 0.40, zMid, D.sternZ + 0.50]) P.add('hullDark', cylX(0.025, 0.02, 8), x + s * 0.075, 1.62, z);
@@ -129,8 +134,8 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
       const panels = 4, run = D.glacisTopZ - (D.sternZ + 0.20), pz = run / panels;
       for (let k = 0; k < panels; k++) {
         const z0 = D.glacisTopZ - k * pz - 0.006, z1 = z0 - pz + 0.012;
-        P.addExternalArmor('hull', box(0.06, 0.92, z0 - z1), x, 1.36, (z0 + z1) / 2);
-        for (const by of [1.08, 1.64]) for (const f of [0.2, 0.8]) P.add('hullDark', cylX(0.022, 0.016, 8), x + s * 0.035, by, z1 + (z0 - z1) * f);
+        P.addExternalArmor('hull', box(0.06, 0.84, z0 - z1), x, B.shroudY + 0.43, (z0 + z1) / 2);
+        for (const by of [1.14, 1.66]) for (const f of [0.2, 0.8]) P.add('hullDark', cylX(0.022, 0.016, 8), x + s * 0.035, by, z1 + (z0 - z1) * f);
       }
     }
     // (the appliqué over the glacis' lower half, under the vane's hinges)
@@ -258,7 +263,9 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     P.add('gunDark', cylZ(0.032, 0.10, 10), 0, 0, 1.05);
     muzzleBore(P, { len: 1.10, r: 0.022 });
     P.muzzleZ = 1.10;
-    P.decal('turret', 'flag', 'au-army-kangaroo', 0.20, [0, 0.36, 0.64], 0);
+    // the kangaroo on the turret's front face, left of the M2's cradle (turret_kangaroo_2021; at 0.36 m it stood over the
+    // face's top edge in air, which the sealed check read as see-through)
+    P.decal('turret', 'flag', 'au-army-kangaroo', 0.17, [-0.12, 0.14, 0.704], 0);
   }
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,

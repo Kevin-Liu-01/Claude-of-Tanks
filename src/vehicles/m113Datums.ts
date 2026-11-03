@@ -6,7 +6,9 @@ export type M113Mark = 'fsv' | 'mrv' | 'as4';
 /** The AS4's stretch: a sixth road wheel and 0.666 m more hull ahead of the rear plate. */
 const AS4_STRETCH = 0.666;
 export const M113_BASE = Object.freeze({
-  length: 4.863, roofY: 1.86, noseY: 0.99, glacisRun: 0.79, sideLowY: 0.80, hw: 1.27, tubHw: 0.93, bellyY: 0.43,
+  // shroudY: the side's foot over the tracks, clear of the track over the sprocket and through its top run's sweep (0.92 m
+  // at most, the release check's clip audit); between the tracks the hull runs down to sideLowY and the belly
+  length: 4.863, roofY: 1.86, noseY: 0.99, glacisRun: 0.79, sideLowY: 0.80, shroudY: 0.97, hw: 1.27, tubHw: 0.93, bellyY: 0.43,
   xc: 1.15, trackW: 0.38, wheelR: 0.305, wheelY: 0.39, wheelPitch: 0.70, firstWheelBack: 1.00, sprocketBack: 0.34,
   idlerFromRear: 0.32,
 });

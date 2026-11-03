@@ -11,7 +11,7 @@ import './ifvReplicaSpecs.ts';
 import './abramsSourceXSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { modernArmor } from './specHelpers.ts';
+import { crewBox, modernArmor } from './specHelpers.ts';
 import { m113Datums, type M113Mark } from './m113Datums.ts';
 import { ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 import { REDBACK } from './redbackDatums.ts';
@@ -50,6 +50,12 @@ const m113Armor = (mark: M113Mark, turret: { tw: number; tFrontZ: number; tRearZ
     tRear: 12, tRoof: 10, mantlet: mark === 'fsv' ? [32, 32, 32] : [25, 25, 25],
   });
 };
+/** The driver at the front left (+x, the hull's left) beside the front-right engine, as the M113AS4 and the Redback seat
+ * him (internalLayoutRegistry.ts m113OneManTurret, ifvFrontTwoMan); modernArmor seats him front right. */
+const driverFrontLeft = <T extends { crew: readonly { crew: string; min: readonly number[]; max: readonly number[]; turretLocal: boolean }[] }>(armor: T): T => ({
+  ...armor, crew: armor.crew.map((c) => (c.crew === 'driver'
+    ? crewBox(c.crew, [-c.max[0], c.min[1], c.min[2]], [-c.min[0], c.max[1], c.max[2]], c.turretLocal) : c)),
+});
 const m113Mobility = (weightTons: number, hp: number, kmh: number) =>
   ({ weightTons, enginePowerHp: hp, topSpeedKmh: kmh, reverseSpeedKmh: 14, hullTraverseDegS: 55 });
 // the 76 mm short guns' rounds: HESH and HE (no armour-piercing round: the Saladin's L5A1 and the Scorpion's L23A1)
@@ -82,7 +88,7 @@ m113a1_mrv.visual = { ...m113a1_mrv.visual, ...raacOliveDrab('21B') };
 const m113as4 = australian('m113as4', 'ares_apc', 'M113AS4', 'modern', 'ifv');
 Object.assign(m113as4.dims, { hullLengthM: 5.53, overallLengthM: 6.05, widthM: 2.69, heightM: 2.60 });
 Object.assign(m113as4, { hp: 1300, ...m113Mobility(18, 350, 65) });
-m113as4.armor = m113Armor('as4', { tw: 0.66, tFrontZ: 0.70, tRearZ: -0.66, tH: 0.46 }, 1.10, 0.03);
+m113as4.armor = driverFrontLeft(m113Armor('as4', { tw: 0.66, tFrontZ: 0.70, tRearZ: -0.66, tH: 0.46 }, 1.10, 0.03));
 m113as4.visual = { ...m113as4.visual, ...ausDisruptive('22A') };
 
 // ------------------------------------------------------------------------------------------------- Leopard AS1 --
@@ -111,13 +117,13 @@ const redback = australian('redback', 'puma_s1', 'AS21 Redback', 'modern', 'ifv'
 // ledges, 3.52 m to the remote station's gun (the turret roof 2.90)
 Object.assign(redback.dims, { hullLengthM: 7.9, overallLengthM: 8.37, widthM: 3.64, heightM: 3.52 });
 // the combat envelope on the build's own datums (the Puma's was another hull and turret), at the Puma's protection
-redback.armor = modernArmor({
+redback.armor = driverFrontLeft(modernArmor({
   hl: (REDBACK.noseZ - REDBACK.sternZ) / 2, hw: REDBACK.halfWidthM, inW: REDBACK.tubX, floor: REDBACK.bellyY, trkTop: 1.0,
   roofY: REDBACK.roofY, turretPivot: [...REDBACK.ring], gunPivot: [...REDBACK.trunnion], barrelLenM: REDBACK.barrelM, barrelRadM: 0.046,
   glacis: [285, 285, 390], lower: [210, 210, 275], side: [145, 145, 205], skirt: null, rear: 40, roof: 48,
   tw: (REDBACK.turret.leftX - REDBACK.turret.rightX) / 2, tFrontZ: REDBACK.turret.noseZ, tRearZ: REDBACK.turret.rearZ,
   tH: REDBACK.turret.roofY, cheek: [265, 265, 350], tSide: [165, 165, 245], tRear: 50, tRoof: 44, mantlet: [285, 285, 370],
-});
+}));
 Object.assign(redback, { hp: 2700, weightTons: 42, enginePowerHp: 1000, topSpeedKmh: 65, reverseSpeedKmh: 30,
   protectionSuite: { hardKillAps: true, softKillAps: false } });
 // its two Spike LR2 (the Puma's MELLS is the same family) from its own launcher (fleetLauncherMuzzles.ts)

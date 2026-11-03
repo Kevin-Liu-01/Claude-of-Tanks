@@ -179,6 +179,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.army.mod.uk/learn-and-explore/equipment/combat-vehicles/warrior/',
     kind: 'operator',
   }),
+  australianM113As4: Object.freeze({
+    title: 'Australian Army — M113AS4 armoured personnel carrier',
+    url: 'https://army.gov.au/equipment/vehicles-and-surveillance/m113as4-armoured-personnel-carrier',
+    kind: 'operator',
+  }),
   britishAjax: Object.freeze({
     title: 'General Dynamics UK — AJAX variants',
     url: 'https://generaldynamics.uk.com/wp-content/uploads/2021/09/Ajax-Variants-Super-Diary.pdf',
@@ -479,6 +484,10 @@ const LAYOUTS = Object.freeze({
     feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
     missileRack: null,
   }) },
+  // 269: the M113AS4's crew of two, its crew commander in the one-man Tenix turret over the M113's front engine
+  m113OneManTurret: { confidence: 'documented', sources: ['australianM113As4'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['commander', 'turret', 'frontCenter'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
   aresRemoteApc: { confidence: 'documented', sources: ['britishAjax'], crew: crew(
     ['driver', 'hull', 'frontRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
@@ -589,11 +598,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   linebacker: ['m6_linebacker'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],
-  ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
+  // (269: the Redback's two-man T2000 turret, beside its LAND 400 rival the KF41)
+  ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90', 'redback'],
   namerIfv: ['namer_ifv'],
-  aresRemoteApc: ['ares_apc', 'm113as4'],
+  m113OneManTurret: ['m113as4'],
+  aresRemoteApc: ['ares_apc'],
   bmp1: ['bwp1'],
-  puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept', 'redback'],
+  puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],
   bmp3: ['bmp3', 'bmp3_rok'],
   bmptFive: ['bmpt_t90'],
   bmptThree: ['bmpt_terminator2'],
