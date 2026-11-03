@@ -98,7 +98,7 @@ comp	world:donors:wreckPlan:urban	b76f81ccc83f1139
 comp	world:donors:wreckPlan:verdant	d8f01d8a86a41728
 comp	world:donors:wreckPlan:whiteout	cc2e690a4ee73f1f
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
-comp	world:fleet	a52aae7a1696e48c
+comp	world:fleet	a8126791a90d8421
 comp	world:map:collision:airfield	653bb1ba31589e19
 comp	world:map:collision:alpine	093933e44d61cf22
 comp	world:map:collision:autumn	4a47aa8f76c63e0f
@@ -202,7 +202,7 @@ comp	world:roster	c3797f6fbc261c2e
 comp	world:tool:collision	c7e90eef8f450f98
 comp	world:tool:trenches	40b69b47bb67aeeb
 comp	world:tool:wreckPlan	c77bfaa007751285
-core	509ae0d28f58a22d
+core	5b7e1498fd2c7990
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	04c0f30b38d7668f
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	64981c4a45b9177b
 file	anatomy	src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts	6571985a5c2a8d3a
@@ -2299,23 +2299,23 @@ key	gate	leo2a6m	bebdaa730ab96598	d4712b8303434abd
 key	gate	leo2a7dk	f85eb0e303a213ff	2a91139109c96403
 key	gate	leo2a7v	415802fdce4851ef	04e3afb4f2f164d0
 key	gate	leopard2_proto	e9e17f45d147d24a	8200710983ccf84b
-key	gate	leopard_as1	1b08beb84c0808a4	2a91139109c96403
+key	gate	leopard_as1	3a0129d5b2cd103a	2a91139109c96403
 key	gate	lrmv_lynx	66aadc69d964cfbe	2a91139109c96403
-key	gate	m113a1_fsv	eed768deb9633366	2a91139109c96403
-key	gate	m113a1_mrv	88049b2722823d42	2a91139109c96403
-key	gate	m113as4	673b59f23241e195	2a91139109c96403
+key	gate	m113a1_fsv	f7a372586746eaec	2a91139109c96403
+key	gate	m113a1_mrv	b3ac053a593a9be0	2a91139109c96403
+key	gate	m113as4	31025fd8b5127a14	2a91139109c96403
 key	gate	m1a1	07c5421b18c3a359	444e06d16509dbe6
 key	gate	m1a1_abrams_aim	1b25aa4c20f051bb	96877a94935a7842
 key	gate	m1a1_abrams_fep	677fa8aca0526ecf	eeb0332053418636
 key	gate	m1a1_abrams_hc	26ec4d022044629b	0588793b1b1458c7
 key	gate	m1a1_abrams_sa	2b5d971d9123d171	96d58e3865878412
-key	gate	m1a1_aim_sa_aus	23f3e64745003b9a	2a91139109c96403
+key	gate	m1a1_aim_sa_aus	21a6ffb5d21eac38	2a91139109c96403
 key	gate	m1a1ha	541e308a40b4b6d2	18246f33ff0b7c2c
 key	gate	m1a2_abrams	a7825eb9de0246d4	2a91139109c96403
 key	gate	m1a2_abrams_sepv2	6053a418427ecfc4	b2b23bce225527ff
 key	gate	m1a2_abrams_sepv3	5496861982d330ab	2a91139109c96403
 key	gate	m1a2_abrams_tusk	a040ab011a60b92e	2a91139109c96403
-key	gate	m1a2_sepv3_aus	c99294c05f2d0725	2a91139109c96403
+key	gate	m1a2_sepv3_aus	9adce141fcdbfb15	2a91139109c96403
 key	gate	m1a3	467930b53a2f8c86	2a91139109c96403
 key	gate	m2a2_bradley	c5d9f34a668f7785	1d9d38ba7448b19a
 key	gate	m3a3_bradley	b058ddc0dabd86bd	a77b80280edacc59
@@ -2364,7 +2364,7 @@ key	gate	pt91a_twardy	381eb40dda279f1b	68edc2b7192f16fb
 key	gate	pt91m	0f1b2aad04b0704b	537a687264a33055
 key	gate	puma_s1	ab7a202f76cc1a10	fe38622e66e908b8
 key	gate	raiju_ifv	c043fd628c707595	2a91139109c96403
-key	gate	redback	9c53114e0107e051	2a91139109c96403
+key	gate	redback	f5343a889b2eacdc	2a91139109c96403
 key	gate	sabra_mk2	f3bd9e7a8d638e67	5a279372729b186b
 key	gate	shot_kal	4caf80446903f381	2a91139109c96403
 key	gate	spz_puma	8a535b8d5971e994	35ce47e7a4f60d72
@@ -3725,23 +3725,23 @@ key	seats	leo2a6m	152188eb4b4aa2db	4c1bc6200c212bec
 key	seats	leo2a7dk	6dd3293849affabf	fc98ad56b624610e
 key	seats	leo2a7v	7e110f5cc6f1202b	fd2fac3947052b22
 key	seats	leopard2_proto	9a87f0cd454547d9	be1afdf75c2dc88a
-key	seats	leopard_as1	b41979b3bda5bda9	ff4322aa2e6c9114
+key	seats	leopard_as1	41f70afc7200cb13	ff4322aa2e6c9114
 key	seats	lrmv_lynx	0ea0424411f4c8a3	ed862630f95d97b7
-key	seats	m113a1_fsv	2bf8bd24c03ef720	b727179a56da9c50
-key	seats	m113a1_mrv	b7a330c44caebc86	4606603ed6cb1245
-key	seats	m113as4	f23f2665b2797039	43d0e2f922104ea4
+key	seats	m113a1_fsv	024e003c0c165fe5	b727179a56da9c50
+key	seats	m113a1_mrv	c01cf4d4c1f11d68	4606603ed6cb1245
+key	seats	m113as4	5d21c55642bed2bf	43d0e2f922104ea4
 key	seats	m1a1	d1d18f3eb11a9ab9	1c4f2d88ee29776c
 key	seats	m1a1_abrams_aim	169ecc677fc163a1	ba0d0cef714a7ee1
 key	seats	m1a1_abrams_fep	f5bed7fdffc9065e	e9ff0f8be4effd60
 key	seats	m1a1_abrams_hc	7ce5425bf34b1abf	af29ce029ac483d0
 key	seats	m1a1_abrams_sa	6add7f716d5d5182	3b97963d3add39be
-key	seats	m1a1_aim_sa_aus	effb7bdbfc62acbe	072b2ae64e72e53a
+key	seats	m1a1_aim_sa_aus	ae209103fac94b70	072b2ae64e72e53a
 key	seats	m1a1ha	e1ab922289431759	c528c62101995625
 key	seats	m1a2_abrams	8f47d32de71dbd2e	04c40d9863afb163
 key	seats	m1a2_abrams_sepv2	a9aeda6e63d01093	bc8c99fdb1cc123e
 key	seats	m1a2_abrams_sepv3	5801fa69243c6164	71dcc8cae5d6227d
 key	seats	m1a2_abrams_tusk	48b485478f60beea	e80c012bc9b05db6
-key	seats	m1a2_sepv3_aus	da2638fa1cf77698	1fb3c12e88214bed
+key	seats	m1a2_sepv3_aus	2353802cfbf862ee	1fb3c12e88214bed
 key	seats	m1a3	83f45946286a5d67	3f1b6d1a67b6b207
 key	seats	m2a2_bradley	ad93e31e42e69a33	ca94ef9adfa33e21
 key	seats	m3a3_bradley	8d9a7d6a82942759	a1ff6242e721ba24
@@ -3793,7 +3793,7 @@ key	seats	pt91a_twardy	f18222fcaca049ec	eafbfb74f825c45b
 key	seats	pt91m	9d21acdc642a649e	96995102d1fb5b06
 key	seats	puma_s1	f1bd04801bfd94ec	763d2f7f4c795780
 key	seats	raiju_ifv	e2089e2bdfb374bf	1e76b6df8860b359
-key	seats	redback	a05db34983c48eb6	fe83ff5ddc5dabe3
+key	seats	redback	82e16bfbfa50a7d6	fe83ff5ddc5dabe3
 key	seats	sabra_mk2	1c2b2f97f0828821	fca06d51615517e0
 key	seats	shot_kal	34ee081b0567dd10	908753edd7980797
 key	seats	spz_puma	524e7725d3134645	3580dd115c0aa262
@@ -9115,7 +9115,7 @@ row	specRest	pt91a_twardy	5d2a844284b44c5a
 row	specRest	pt91m	b9c218023e4fb477
 row	specRest	puma_s1	6899d76a48498b47
 row	specRest	raiju_ifv	3fcd93b877455584
-row	specRest	redback	efd973999f883652
+row	specRest	redback	e37cbab54f817d32
 row	specRest	sabra_mk2	e393c6160802bbb7
 row	specRest	shot_kal	1063777c89f4a28f
 row	specRest	spz_puma	c081d4a3b79a6e10
@@ -9534,6 +9534,6 @@ tool	gunLines	0bbe9e464815a49a
 tool	icons	3478c4c7bca3cd74
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
-tool	seats	9f35644e7eee127f
+tool	seats	be3729eeb10d19ac
 tool	spareTrack	5be101cb2fbd6f03
 toolchain	c690d39fe44d5b27	schema:1	node:v24.22.1	platform:darwin/arm64	package-lock:f31ac1f3ac931fab5451658524d9e2c3ae94407e8f42bdef1cd20713ab5975bc
