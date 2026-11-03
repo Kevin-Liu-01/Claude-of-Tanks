@@ -7,8 +7,8 @@
 // applies, and Vite's preload never asks for it again (it skips an href that has a link, or that its `seen` map holds),
 // so a chunk asked again would run unstyled. A reload recovers in every case. So no opener offers an in-page retry of
 // its chunk (src/ui/components/loadFailure.selftest.mjs; 2026-11-02 audit R6: every lazy chunk's load is one
-// app/lazyChunk.ts, where a caller with no trigger to press, a builder, a warm, a notice, asks a failed module again past
-// a backoff, never a failed stylesheet): its trigger keeps a quiet error state that needs no chunk,
+// app/lazyChunk.ts, an opener's with `opener: true`, and only a caller with no trigger to press, a builder, a warm, a
+// notice, asks a failed module again, never a failed stylesheet): its trigger keeps a quiet error state that needs no chunk,
 // data-load-state="error" (the kit's danger dot, components.css) with an aria-description, and the trigger's next press
 // reloads the page once online. The page never reloads by itself (the post-ready ruling).
 // This module and its two strings ride in the boot runtime chunk on every page (tools/viteI18nPageCatalogs.ts

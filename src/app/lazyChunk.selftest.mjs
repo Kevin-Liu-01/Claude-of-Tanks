@@ -35,31 +35,34 @@ assert.equal(isStylesheetFailure(null), false);
   assert.equal(calls, 1);
 }
 
-// ---- a module failure: kept, asked again by the next caller once the backoff passed, never while offline
+// ---- a module failure: kept; asked again by the next caller, at once after one failure, then past the backoff, never
+// while offline
 {
   let clock = 0;
   let onLine = true;
   let calls = 0;
-  let fail = 2;
+  let fail = 3;
   const chunk = createLazyChunk(async () => { calls++; if (fail-- > 0) throw moduleFailure(); return 'late'; },
     { now: () => clock, online: () => onLine });
   await assert.rejects(chunk.load(), /dynamically imported module/);
   assert.equal(chunk.state, 'failed');
   assert.equal(chunk.terminal, false);
   assert.match(String(chunk.error), /dynamically imported module/);
-  await assert.rejects(chunk.load(), /dynamically imported module/, 'inside the backoff the kept failure answers');
-  assert.equal(chunk.load(), chunk.load(), 'the same kept promise');
-  assert.equal(calls, 1, 'nothing asked again inside the backoff');
-  clock = 2_000;
   onLine = false;
   await assert.rejects(chunk.load());
   assert.equal(calls, 1, 'nothing asked again while offline');
   onLine = true;
   await assert.rejects(chunk.load(), /dynamically imported module/);
-  assert.equal(calls, 2, 'the first ask past 2 s asks again');
+  assert.equal(calls, 2, 'after one failure the next ask asks again at once');
+  await assert.rejects(chunk.load(), /dynamically imported module/, 'inside the backoff the kept failure answers');
+  assert.equal(chunk.load(), chunk.load(), 'the same kept promise');
+  assert.equal(calls, 2, 'nothing asked again inside the backoff');
+  clock = 2_000;
+  await assert.rejects(chunk.load());
+  assert.equal(calls, 3, 'after two, the first ask past 2 s');
   clock = 5_000;
   await assert.rejects(chunk.load());
-  assert.equal(calls, 2, 'the second backoff is 4 s');
+  assert.equal(calls, 3, 'after three, the backoff is 4 s');
   clock = 6_000;
   assert.equal(await chunk.load(), 'late', 'a transient failure no longer stands for the session');
   assert.equal(chunk.state, 'ready');
@@ -76,6 +79,18 @@ assert.equal(isStylesheetFailure(null), false);
   clock = 3_600_000;
   await assert.rejects(chunk.load(), /preload CSS/);
   assert.equal(calls, 1, 'never asked again in its document');
+}
+
+// ---- an opener's chunk: any failure is terminal (its trigger's next press reloads the page)
+{
+  let clock = 0;
+  let calls = 0;
+  const chunk = createLazyChunk(async () => { calls++; throw moduleFailure(); }, { now: () => clock, opener: true });
+  await assert.rejects(chunk.load());
+  assert.equal(chunk.terminal, true);
+  clock = 60_000;
+  await assert.rejects(chunk.load());
+  assert.equal(calls, 1, 'an opener never asks again in its document');
 }
 
 // ---- the budget: the fifth failure is terminal (lazyImportRetry LAZY_IMPORT_RETRY.maxFailures)
@@ -116,7 +131,6 @@ assert.equal(isStylesheetFailure(null), false);
   let clock = 0;
   const chunk = createLazyChunk(() => import('./lazyImportRetry.ts?lazy-chunk-blip'), { now: () => clock });
   await assert.rejects(chunk.load(), /dynamically imported module/);
-  clock = 2_000;
   const module = await chunk.load();
   assert.equal(typeof module.importRetryDelayMs, 'function', 'the chunk asked again after the blip lands');
   hook.deregister();
@@ -124,4 +138,4 @@ assert.equal(isStylesheetFailure(null), false);
 
 await settle();
 assert.deepEqual(unhandled, []);
-console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet is terminal; a module failure is asked again past the 2/4 s backoff, never offline, five at most');
+console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet or an opener\'s chunk is terminal; a module failure is asked again at once, then past the 2/4 s backoff, never offline, five at most');

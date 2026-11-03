@@ -95,10 +95,11 @@ its next press goes through `pressFailed` (the page reloads once online, never
 by itself), and a page's enhancement asks once through `importWhenOnline`
 (`node src/ui/components/loadFailure.selftest.mjs`). Every lazy chunk's load
 is one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6): a failed
-stylesheet is terminal; a caller with no trigger (a builder, a warm, a notice,
-decorative paint) asks a failed module again on its next need past the
-INFRA-P11 backoff, never by itself and never offline
-(`node src/app/lazyChunk.selftest.mjs`).
+stylesheet, or any failure of an opener's chunk (`opener: true`), is terminal;
+a caller with no trigger (a builder, a warm, a notice, decorative paint) asks a
+failed module again on its next need, at once after one failure and then past
+the INFRA-P11 backoff, never by itself and never offline
+(`node src/app/lazyChunk.selftest.mjs`, `node src/app/lazyChunkSites.selftest.mjs`).
 Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
 space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
 writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`

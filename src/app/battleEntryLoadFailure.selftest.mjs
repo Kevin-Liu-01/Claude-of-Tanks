@@ -6,7 +6,7 @@
 // later solo entry failed at "Preparing effects" though the warm is optional. The mission-attachment visual was kept the
 // same way, and the FX gate that every battle, Studio and shot frame waits on awaits it. Both are now one
 // app/lazyChunk.ts: the covered warm skips on a load failure (the deferred warm does it in play) and the attachment
-// resolves without a mount, and the next ask past the backoff loads each. A chunk "fails" as a browser's does when the
+// resolves without a mount, and the next ask loads each (app/lazyChunk.ts: at once after one failure, then past a backoff). A chunk "fails" as a browser's does when the
 // network drops: its resolve throws once.
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
@@ -56,11 +56,8 @@ console.warn = (...args) => { warnings.push(args.map(String).join(' ')); };
   assert.equal(skipped.ran, false, 'a failed chunk skips the covered warm: the solo entry goes on');
   assert.equal(skipped.failed, 'load');
   assert.ok(warnings.some((line) => /covered warm did not load/.test(line)), 'and says so in the console');
-  const again = await owner.warmFirstBattleCovered(async () => {});
-  assert.equal(again.ran, false, 'inside the backoff the next entry skips it too, without a fetch');
-  clock += 2_000;
   const ran = await owner.warmFirstBattleCovered(async () => {});
-  assert.equal(ran.ran, true, 'a later battle past the backoff loads the chunk and runs the warm it skipped');
+  assert.equal(ran.ran, true, 'the next battle asks the chunk again and runs the warm it skipped');
   assert.equal((await owner.warmFirstBattleCovered(async () => {})).ran, false, 'then once a renderer, as before');
   owner.dispose();
   delete globalThis.__BATTLE_FIRST_WARM;
@@ -70,19 +67,18 @@ console.warn = (...args) => { warnings.push(args.map(String).join(' ')); };
 {
   const { loadMissionAttachmentVisual } = await import('../game/battlePresentationRuntime.ts');
   failing.add('./missionAttachmentVisual.ts');
-  clock += 60_000;
   await loadMissionAttachmentVisual();
   assert.deepEqual(asked.filter((line) => line.startsWith('./missionAttachmentVisual.ts')), ['./missionAttachmentVisual.ts (failed)'],
     'the gate resolved though the chunk failed');
   assert.ok(warnings.some((line) => /mission attachment/.test(line)));
-  assert.equal(loadMissionAttachmentVisual(), loadMissionAttachmentVisual(), 'an aerial tank asking every frame allocates nothing');
-  clock += 2_000;
-  await loadMissionAttachmentVisual();
+  const next = loadMissionAttachmentVisual();
+  assert.equal(loadMissionAttachmentVisual(), next, 'an aerial tank asking every frame shares one ask and allocates nothing');
+  await next;
   assert.deepEqual(asked.filter((line) => line.startsWith('./missionAttachmentVisual.ts')),
-    ['./missionAttachmentVisual.ts (failed)', './missionAttachmentVisual.ts'], 'the next ask past the backoff loads it');
-  assert.equal(loadMissionAttachmentVisual(), loadMissionAttachmentVisual());
+    ['./missionAttachmentVisual.ts (failed)', './missionAttachmentVisual.ts'], 'the next ask loads it');
+  assert.equal(loadMissionAttachmentVisual(), loadMissionAttachmentVisual(), 'and once loaded, one settled promise');
 }
 
 console.warn = warn;
 hook.deregister();
-console.log('battleEntryLoadFailure.selftest: a failed deferred-warm or mission-attachment chunk no longer fails later battles; the next ask past the backoff loads it');
+console.log('battleEntryLoadFailure.selftest: a failed deferred-warm or mission-attachment chunk no longer fails later battles; the next ask loads it');

@@ -6,8 +6,8 @@
 // streamer), the turret ring kept `loading ??=` (no kill left a ring), and the riding-parts prebuild latched before its
 // import. isTankBuilderReady skipped the interior fills ensureTankBuilder awaits, so createTank could build a tank
 // without them, and a build passed the guard before its spec's combat anatomy was finalized. Each chunk is now one
-// app/lazyChunk.ts (a module failure is asked again by the next ask past the backoff), the predicate is exactly what the
-// ensure awaits, and a build finalizes first.
+// app/lazyChunk.ts (a module failure is asked again by the next ask, at once after one failure, then past a backoff),
+// the predicate is exactly what the ensure awaits, and a build finalizes first.
 //
 // The fleet facade's heavy neighbours (the factory core, the fleet registration, the specs, the profile packs) are
 // stubbed through a resolve hook so this runs in a second; the four data loaders it awaits (the kit's groups, the
@@ -55,13 +55,12 @@ const hook = registerHooks({
 });
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-// ---- the turret ring: one failed chunk, then the next visual's ask past the backoff loads it
+// ---- the turret ring: one failed chunk, then the next visual's ask loads it
 {
   const { loadTurretRingModule, turretRingModule } = await import('./turretRingLoader.ts');
   failing.add('./turretRingWell.ts');
   await assert.rejects(loadTurretRingModule(), /dynamically imported module/);
   assert.equal(turretRingModule(), null);
-  clock += 2_000;
   const ring = await loadTurretRingModule();
   assert.equal(typeof ring.createTurretRingPresentation, 'function', 'a failed ring chunk no longer stands for the session');
   assert.equal(turretRingModule(), ring);
@@ -86,10 +85,8 @@ const sibling = 'leo2_revolution';
   assert.equal(isTankBuilderReady(leopard), false,
     'the kit, the group, the seats and the calibration landed but the fills did not: the builder is not ready');
   assert.throws(() => createTank(leopard, null), /is not loaded/, 'so no build runs without its fills');
-  await assert.rejects(ensureTankBuilder(leopard), /dynamically imported module/, 'inside the backoff the kept failure answers');
-  clock += 2_000;
   await ensureTankBuilder(leopard);
-  assert.equal(isTankBuilderReady(leopard), true, 'the next ensure past the backoff loads the fills');
+  assert.equal(isTankBuilderReady(leopard), true, 'the next ensure asks the fills again and loads them');
   assert.deepEqual(createTank(leopard, null), { id: leopard });
 }
 
@@ -110,7 +107,6 @@ const sibling = 'leo2_revolution';
   await ensureTankBuilders([leopard]);
   await settle();
   assert.deepEqual(started, [], 'the prebuild chunk failed');
-  clock += 2_000;
   await ensureTankBuilders([sibling]);
   await settle();
   assert.deepEqual(started, [[sibling]], 'a later ask starts it (the latch no longer stands before its import)');
@@ -118,4 +114,4 @@ const sibling = 'leo2_revolution';
 }
 
 hook.deregister();
-console.log('builderLoadFailure.selftest: a failed fills, ring or prebuild chunk is asked again past the backoff; isTankBuilderReady needs the fills; a build finalizes first');
+console.log('builderLoadFailure.selftest: a failed fills, ring or prebuild chunk is asked again by the next ask; isTankBuilderReady needs the fills; a build finalizes first');
