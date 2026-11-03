@@ -72,6 +72,13 @@ export interface HostResumeState {
   phase: 'countdown' | 'playing' | 'ended';
   frame: SnapshotFrame;
   entities: MigrationEntityExtras[];
+  /**
+   * The tick the extras (`entities`) were captured at: the keyframe's, when a newer frame's rows overlay its rows and move
+   * `tick` on (migrationState.ts resumeStateFromRetained). Absent: `tick`.
+   */
+  keyframeTick?: number;
+  /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
+  timeS?: number;
 }
 
 export interface HostBootConfig {
