@@ -192,16 +192,16 @@ export const HERO_RUNGS = Object.freeze({ tank: Object.freeze([480, 960] as cons
 /** Encoder settings. The AVIF value is a quantizer (0 best, 100 worst): 30 is visually clean at 2x. */
 export const HERO_ENCODE = Object.freeze({ avifQuantizer: 30, avifSpeed: 5, webpQuality: 82 });
 
-/** Byte budgets the receipt enforces (p95 per layer; totals for the directory and the manifest). */
+/** Byte budgets the receipt enforces (p95 per layer; the directory's mean per card; the manifest's total). */
 export const HERO_BUDGETS = Object.freeze({
   tankAvif480: 14 * 1024,
   tankAvif960: 28 * 1024,
   tankWebp480: 30 * 1024,
   flagAvif: 12 * 1024, // either AVIF rung of a nation's flag layer
   flagWebp: 20 * 1024, // the 480 WebP fallback (non-AVIF browsers only)
-  // release 269: 13 MiB for the South African and Australian trees' twelve cards (main stood 7.9 KB under 12 MiB with
-  // 284 tanks at about 44 KB each, no orphan files); about ten cards of headroom
-  directory: 13 * 1024 * 1024,
+  // public/icons/hero over its card count, flags and manifest included (Main 11-02, 268: a flat 12 MiB total tripped on
+  // every new tank once the fleet reached it; the total now grows with the cards and a card's mean weight does not)
+  directoryPerCard: 46 * 1024,
   manifest: 100 * 1024,
 });
 
