@@ -793,17 +793,17 @@
       }
     ]
   },
-  "geometryHash": "a97add7a",
+  "geometryHash": "53a7da46",
   "metadataHash": "7bd8b744",
   "presentationAnchor": {
-    "xM": -0.0007,
-    "zM": -0.0911
+    "xM": 0,
+    "zM": -0.0352
   },
-  "presentationHash": "e23f9349",
+  "presentationHash": "61a4a380",
   "presentationProjection": {
     "centerYM": 2.4479,
-    "topHalfM": 6.6012,
-    "sideHalfM": 3.3006
+    "topHalfM": 6.5414,
+    "sideHalfM": 3.2707
   },
   "appearance": {
     "version": 1,
@@ -822,10 +822,10 @@
       "trackSteel": 1,
       "armorPaint": 13,
       "hullRubber": 1,
-      "gunmetal": 11,
+      "gunmetal": 10,
       "opticGlass": 2,
-      "wood": 2,
-      "unclassified": 17,
+      "wood": 1,
+      "unclassified": 11,
       "gearShadow": 2,
       "canvas": 2,
       "machineGun": 4
@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27000,
-      "sha256": "bb13b6ad7d578c74810052de28ba853834303e91b503a877b019ee753a9e3f70",
+      "bytes": 26656,
+      "sha256": "0fd77c1157efdceec91c726383c968e622e68aab132ce60087a7ca7efe138d92",
       "thumbnail": {
         "file": "thumbs/olifant_mk1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11128,
-        "sha256": "3b5b3cd22e313749a4060400b8c6e689c3429cef32c0449be2c989c2c8a8d02c"
+        "bytes": 11160,
+        "sha256": "54a9ccbe185e9bdad7188464bd3e928cc423fbdf71b49f53bcc4d0f1a45089b9"
       }
     },
     "top": {
@@ -871,56 +871,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 9798,
-      "sha256": "36050d02634fbd8acfcb360419ed8d4d0419b3e2713712feb1aec68a28501a87"
+      "bytes": 8670,
+      "sha256": "e8b3fffc262d95734a744383e1e6c5d3b1643a6af12afe3539811aa979b321ed"
     },
     "side": {
       "file": "olifant_mk1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 11742,
-      "sha256": "d48f840d6db61f4c5e4e4439a2e705c89b16ae57ff4323a26dd7117dcfa3e4b1"
+      "bytes": 12754,
+      "sha256": "a6eb1f15ae3e86d6ec3cdcf7622c59c1f940693bb409e040ce135ade761b6636"
     },
     "topSilhouette": {
       "file": "olifant_mk1_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1152,
-      "sha256": "747c324bcce98ba4b192706afe796778b3d408dcf7135e3bedd16bda17b5ac5b"
+      "bytes": 1080,
+      "sha256": "34d193572e86d87237538878edc4ffc7c90f61a10514f0fa5741e67c9febd6c2"
     },
     "sideSilhouette": {
       "file": "olifant_mk1_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4758,
-      "sha256": "e1e16af59761241142831f99bf85f08110aa7990cf19543c17b1aa09e05a068d"
+      "bytes": 4509,
+      "sha256": "0d1c099514f1a000955271ecb4ebca355e7ed5055a9b0dfa6a116cef8bedadb9"
     },
     "armorSide": {
       "file": "olifant_mk1_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27868,
-      "sha256": "73f5b358319f2bbb0dd56f625945806eb1816ab154bfef29c38fcb3fa429879b"
+      "bytes": 27304,
+      "sha256": "b61fad64cc93368b51482399a2e055161810943aa4821bee196df990da5e3066"
     },
     "modulesSide": {
       "file": "olifant_mk1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27104,
-      "sha256": "872e3cb6d1e255281b556d14862f1b80f3a7e6f3401303dd210da0590780235e"
+      "bytes": 26556,
+      "sha256": "ee4fe7675eea4a3ebc31f1f22059ada26fc69a631cd4b6a306d646895873f74a"
     },
     "crewSide": {
       "file": "olifant_mk1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25650,
-      "sha256": "a2310e6e1d1c091d63325ecc71f44aeddb1ca9377981ad436915e17512abad3e"
+      "bytes": 25052,
+      "sha256": "ca6e1a5fe0a58ced6d6b4717756939576cca2a81b63a72c4024b076889012626"
     },
     "markings": {
       "file": "olifant_mk1_markings.png",
@@ -933,8 +933,8 @@
     "technicalLabels": {
       "file": "olifant_mk1_technical.json",
       "mime": "application/json",
-      "bytes": 5243,
-      "sha256": "eb618964c9cb87e51f9a40475caca697d2065a88d829bbc7d440ae058a41f71b"
+      "bytes": 5499,
+      "sha256": "7bef5ac531f92a5e241083d3e930f4eea1648b6b5baa842ca31fee6cb8960571"
     }
   }
 }
