@@ -13,7 +13,7 @@
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import { KIT } from './kit.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-import { buildLeopard2Hull } from './leopard2Hull.ts';
+import { addLeopard2SternRackFloor, buildLeopard2Hull } from './leopard2Hull.ts';
 import { buildLeopard2A4Turret } from './leopard2A4Turret.ts';
 import { LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
 import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
@@ -45,6 +45,9 @@ function addTtdKit(P: TankBuilderPort): void {
 export function buildTtd(P: TankBuilderPort): void {
   buildLeopard2Hull(P, { flapName: 'ttd-rear-flap', exhaust: 'louvre', foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M,
     fuelFillers: false, forwardLiftEyeZ: EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z });
+  // the stern rack floored as the early Leopards' and the Christian II's (open, it read through to the ground from above:
+  // the standard check's contiguity, 54 cells at x 0, z -3.99, release 269)
+  addLeopard2SternRackFloor(P);
   buildLeopard2A4Turret(P, { gun: 'L44', front: 'block', seed: 26900, loaderMG: { cls: 'mag', name: 'ttdLoaderMag' },
     smoke: false, whips: true, sideBins: true, rearBox: false });
   addTtdKit(P);

@@ -10,7 +10,7 @@
 // Hull frame: +Z forward, ground y 0, the hull centred on z 0 (front guards 3.78, rear plate -3.72); left is +X. The
 // turret ring is 1.88 m across, centred 0.47 m ahead of the hull's middle on the 1.70 m roof. Turret parts are authored
 // in the ring frame; the gun's in the trunnion frame (2.075 m high, 1.10 m ahead of the hull's middle).
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
@@ -1473,6 +1473,20 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
     P.add('hullDark', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
   }
   P.add('hullDark', box(0.14, 0.14, 0.10), tip[0], tip[1], tip[2]);
+  // the frame's mesh panels, one in each bay (the V's two halves, the bays behind the stays), each run back under the
+  // nose's edge: left open, the bays read through to the ground from above (the standard check's contiguity, release
+  // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay)
+  const panel = (corners: readonly (readonly [number, number, number])[]): void => {
+    const at = (dy: number) => corners.map(([x, y, z]) => [x, y + dy, z]);
+    P.add('hullDark', convexSlab(...at(-0.006), ...at(0.006)));
+  };
+  const back = NOSE_Z - 0.04, rise = (tip[1] - (NOSE_Y - 0.06)) / (tip[2] - (NOSE_Z + 0.04));
+  const vY = (z: number): number => NOSE_Y - 0.06 + (z - (NOSE_Z + 0.04)) * rise;
+  for (const s of [-1, 1]) {
+    panel([[0, vY(back), back], [s * 0.56, vY(back), back], [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04], tip]);
+    const mid: readonly [number, number, number] = [s * 0.28, (NOSE_Y - 0.06 + tip[1]) / 2, (NOSE_Z + 0.04 + tip[2]) / 2];
+    panel([[s * 0.28, vY(back), back], mid, [s * 1.30, 1.10, 3.76], [s * 1.30, 1.10, back]]);
+  }
 }
 
 /** The Mk 1B's rack across the bustle's back: a welded frame of jerrycans and boxes from corner to corner (the Tempe rear

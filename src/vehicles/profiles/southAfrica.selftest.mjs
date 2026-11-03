@@ -18,7 +18,7 @@ const CENT = 'olifant-centurions-20261102.json';
 const IDS = {
   semel: { tier: 2, caliber: 84, packet: CENT, receipt: 'olifantMarkReceipt', muzzle: 6.07 },
   olifant_mk1: { tier: 2, caliber: 84, packet: CENT, receipt: 'olifantMarkReceipt', muzzle: 6.07 },
-  olifant_mk1a: { tier: 3, caliber: 105, packet: CENT, receipt: 'olifantMarkReceipt', muzzle: 5.84 },
+  olifant_mk1a: { tier: 2, caliber: 105, packet: CENT, receipt: 'olifantMarkReceipt', muzzle: 5.84 },
   olifant_mk1b: { tier: 3, caliber: 105, packet: CENT, receipt: 'olifantMarkReceipt', muzzle: 5.84 },
   ttd: { tier: 3, caliber: 105, packet: 'olifant-ttd-20261102.json', receipt: 'ttdTurretReceipt', muzzle: TTD_DATUMS.muzzleHullZ },
 };

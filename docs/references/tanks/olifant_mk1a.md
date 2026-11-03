@@ -2,7 +2,7 @@
 
 ## Current status (release 269, 2026-11-02): a new South African Centurion
 
-The Mk 1 rearmed (1985): tier III in the South Africa tree. Built as the Centurion family's `olifant_mk1a` mark
+The Mk 1 rearmed (1985): tier II in the South Africa tree. Built as the Centurion family's `olifant_mk1a` mark
 (`profiles/centurionFamily.ts`; the additive `sa` edit) on `profiles/uk.ts`; spec `southAfricaSpecs.ts` (a clone of the
 Mk 5/2 with its own package). Photo packet `olifant-centurions-20261102.json`; fixture `profiles/southAfrica.selftest.mjs`.
 Implementation: DONE; regeneration and critics pending.
