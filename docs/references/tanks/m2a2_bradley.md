@@ -895,3 +895,65 @@ buildM2A2Bradley, m3a3/ua call it inside their wrappers):
 ### ua_m2a3 enrollment
 DECIDED (§5.354): **NOT ENROLLED** — measurement-only clone convention.
 See docs/references/tanks/ua_m2a3_bradley.md.
+
+## 268 — owner-supplied model as the target; the Bradley shell rebuilt in place (2026-11-02)
+
+Owner (2026-11-02, 17:20): "the m1a1s and bradleys look odd. here are the actual models, runn our tank generation
+procedures on them." Source: `~/Downloads/Claude of Tanks Models/m2_bradley_ifv.glb` (private, comparison only), sha256
+`523dd567a3717f735f479bb841b600de320f6a4731fe65e19287ce67ee8bbaf7`, 6,261,496 bytes, seven meshes (body_lod0 11,830
+tris, turret_lod 5,672 with the gun and TOW fused, treads_lod 744, bagsbagsba 1,883, three small pieces). It is the
+same 42manako print as the repo gate oracle `public/models/tanks/community/m2_bradley_ifv.glb` (sha256 0d3f779a…), whose
+copy is the batch-38 non-uniform warp (z ×1.087, y ×0.903 against the raw); the raw file is the target.
+
+Registration (`tools/source-x-oracle.mjs --prepare`, recipe id `m2a2_bradley_x`): axes x,y,z (det +1, bow +Z, up +Y),
+one uniform scale 2.673 (hull length 2.4504 raw → 6.55 m published), translation 0 (tread bottom at y 0; hull centred
+within 1 cm). Prepared export: `public/models/community-candidates/m2a2_bradley_x_source.glb` (ignored, never staged).
+Handedness: the source carries the TOW launcher and the driver on +X, the vehicle's left in this repo's frame, the
+engine and its exhaust on −X, as real Bradleys do; the family (all four ids) now does too (it had them mirrored).
+
+The family is built on the source's datums (`modern3.ts` BRADLEY_HULL, BRADLEY_GLACIS, BRADLEY_GEAR, BRADLEY_TURRET,
+BRADLEY_BIN, BRADLEY_TOW, BRADLEY_TURRET_RING). Datum table (registered source / candidate, metres):
+
+| datum | source | candidate |
+|---|---|---|
+| hull length | −3.285..3.265 | core −3.285..3.265 |
+| deck crown | 2.06 over ±0.85 | 2.06 over ±0.85 |
+| roof gutter behind the side plates | left (+X) 1.60–1.65 at x 1.45–1.50; right 1.71; over the engine (right, z 0.3–1.75) 1.85–1.90 | 1.60 / 1.67 / 1.86 at x 1.51 |
+| side plates | top 1.935 over ±1.50..1.55 | top 1.93 over ±1.51..1.57 |
+| stern corners | the plate top falls 1.935 → 1.556 over z −3.0..−3.3 | 1.93 → 1.575 |
+| rear boxes | x ±0.86..1.16, y 1.59..2.08, z −3.27..−3.00 | the same |
+| raised troop roof | 2.19 over x −0.44..0.72, z −2.9..−2.22, tapering to 2.12 over x −0.22..0.55 at z −3.0; its cargo-hatch block 2.244 over x −0.34..0.61, z −2.62..−2.13 | the same roof (x to 0.68 at z −2.9); the hatch block 2.234 over x −0.34..0.59, z −2.55..−2.13 (1 cm lower, 7 cm shorter: the M3A3's lower 25 mm keeps its pre-268 rear depression over it) |
+| engine-deck raise (right) | 2.108 over x −1.0..0.3 | 2.11 over x −0.96..0.28, z 0.59..1.51 |
+| driver's hatch (left) | x 0.18..0.68, z 0.78..1.28, top 2.135 | (0.43, 1.03), r 0.27, top 2.11 |
+| glacis | 2.06 at z ~1.6–1.7 → 1.52 at 2.70 | 2.06 at 1.70 → 1.52 at 2.70 |
+| skirt | ±1.70, hem 0.69 | ±1.70, hem 0.69 |
+| track | shoes 0.977..1.518 | 0.53 (the specs' visual.trackWidthM) at ±1.2475 |
+| turret ring | x −0.14, z −0.40 on 2.057 | the same (spec turretPivot) |
+| turret walls | left +0.68..0.71, right −1.08..−1.15 | +0.70, −1.12 (the shell 0.14 m off its ring) |
+| turret roof | plate 2.83; hatch rings 2.92–2.975; ISU x −0.05..0.70, z −0.40..0.15, top 3.19 | 2.83; 2.93 / 2.99; ISU x 0.06..0.66, z −0.33..0.13, top 3.18 |
+| right stowage bin | to x −1.50 over y 2.20–2.68, z −0.95..0.30 | −1.49, 2.20–2.68, z −0.95..0.40 |
+| antenna mast (right rear) | x −1.29..−0.90, y 2.62..3.59, z −1.50..−1.05 | the same |
+| gun line, muzzle | x −0.20, y 2.525; muzzle z 2.37 | the same |
+| TOW launcher | erected for firing: x 0.75..1.37, y 2.90..3.33, z −1.10..0.20, its pivot at the box's inner lower edge (0.75, 2.90) | built stowed: folded 90° down and out about that pivot, x 0.75..1.18, y 2.28..2.90 |
+
+Spec fields changed (old → new). `m2a2_bradley` (`modern3Specs.ts`; `ua_m2a3_bradley` inherits them): hw 1.635 → 1.70,
+trkTop 0.95 → 1.16, roofY 1.90 → 2.06, turretPivot [0, 1.895, −0.45] → [−0.14, 2.06, −0.40], gunPivot
+[−0.075, 0.375, 0.60] → [−0.06, 0.465, 0.60], barrelLenM 2.30 → 2.17, tw 0.82 → 0.98, tFrontZ 0.98 → 1.15,
+tRearZ −1.05 → −1.20, tH 0.87 → 0.77. `m3a3_bradley` (`afvFamily.ts`): hw 1.64 → 1.70, trkTop 0.95 → 1.16, roofY
+1.90 → 2.06, turretPivot [0.04, 1.895, −0.36] → [−0.14, 2.06, −0.40], barrelLenM 2.30 → 1.99 (the drawn M242 2.42 →
+1.99, to the M2's muzzle). `m6_linebacker` (`m6LinebackerSpecs.ts`, `m6LinebackerLayout.ts`): hw 1.64 → 1.70, trkTop
+0.95 → 1.16, roofY 1.90 → 2.06, LINEBACKER_RING [0.04, 1.895, −0.36] → [−0.14, 2.06, −0.40], LINEBACKER_LAUNCHER.x
+−1.62 → 1.62. `combatGunRigs.generated.ts` m2a2/ua rows re-measured by the census to the new frame (lengthM 2.1705).
+`fleetLauncherMuzzles.ts`: bradley [1.05/1.35, 1.055, 0.60] → stowed [1.105, 0.68/0.38, 0.60]; m3a3 x −0.91 → 0.91.
+
+Shared seam (for the new `m3a2_bradley`'s classic turret): `buildBradleyHullSteps(P)` / `buildBradleyHull(P)` build the
+hull core, deck furniture, running gear and glacis links with no turret group; `BRADLEY_TURRET_RING` exports the ring
+datum (x −0.14, z −0.40, deckY 2.06); `bradleyFlankDressing(P, { turretSeat: false })` adds the side armour, bow kit,
+stern and markings without the A2 turret's seat pan and collar. `marder1a3` keeps its pre-268 donor build verbatim
+(`buildMarderDonorSteps`), byte-identical.
+
+Silhouette agreement (identical orthographic/perspective cameras, antennas excluded; lane evidence
+C/source/overlay-final4): against the source with its launcher folded to the travel pose the candidate is built in,
+IoU side 0.921, front 0.930, top 0.959, rear 0.931, front34 0.961; against the source as modelled (launcher
+erected) side 0.909, front 0.889, top 0.959, rear 0.890, front34 0.954. Round 1 read 0.784 / 0.751 / 0.950 /
+0.752 / 0.866.

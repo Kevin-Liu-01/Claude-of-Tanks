@@ -23,6 +23,15 @@ const oldBow=orientedSlab(
  [-1.6291,1.3114633560,3.879],[1.6291,1.3114633560,3.879],
  [1.6291,1.34,3.84],[-1.6291,1.34,3.84]);
 const oldBowPart=shellPart(oldBow);
+// Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the bow course's two deck corners follow the owner's
+// source glacis (1.2052 at z 3.879 and 1.21 at 3.84; the print-fit table's 1.3115 / 1.34); its lower bow and width
+// corners are unchanged. The original slab above stays the opposite-diagonal negative control.
+const liveBow=orientedSlab(
+ [-1.6791,1.1609803438,3.879],[1.6791,1.1609803438,3.879],
+ [1.6791,.9850980639,3.84],[-1.6791,.9850980639,3.84],
+ [-1.6291,1.205+.005*(.002/.041),3.879],[1.6291,1.205+.005*(.002/.041),3.879],
+ [1.6291,1.21,3.84],[-1.6291,1.21,3.84]);
+const liveBowPart=shellPart(liveBow);
 assert(mirroredSurfaceError(oldBowPart,oldBowPart).maxM>.012,'original opposite-diagonal dent is detected');
 // Original bustle already had mirrored corners and triangles. Its two side
 // courses still bent inward: reflection alone cannot repair this defect.
@@ -93,7 +102,10 @@ for(const id of ids)for(const quality of ['high','low']){
   }});
  try{
   const parts=captures.map(({bucket,g})=>({...shellPart(g),g,bucket})).filter(p=>p.bucket==='hull'||p.bounds.max.z<-.729);
-  assert.equal(parts.filter(p=>p.bucket==='hull').length,58,`${id}/${quality}: every native hull loft course captured`);
+  // Re-pinned 2026-11-02 (release 268, abrams-bradley-268 builder A): the M1A1 deck table follows the owner's source
+  // (a sloped glacis plate and a hull roof climbing under the turret: 20 stations, was 19 with the splash step), so the
+  // hull lofts capture 56 courses (58 before).
+  assert.equal(parts.filter(p=>p.bucket==='hull').length,56,`${id}/${quality}: every native hull loft course captured`);
   const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,5,'five original bustle bottom stations remain separate');
   const native=nativeStructuralStock(tank.root,['hull','turret']);assert.deepEqual(native.unsupported,[]);
   for(const p of parts){
@@ -114,7 +126,7 @@ for(const id of ids)for(const quality of ['high','low']){
   }
   assert(nonplanarOutward>0,'do not pretend preserved noncoplanar datums became planar');
   const bow=parts.find(p=>p.bucket==='hull'&&near(p.bounds.min.z,3.84)&&near(p.bounds.max.z,3.879));
-  assert(bow);assert.equal(bow.signature,oldBowPart.signature,'all eight original bow boundary/attachment corners survive');
+  assert(bow);assert.equal(bow.signature,liveBowPart.signature,'all eight original bow boundary/attachment corners survive');
   const tail=bustle.find(p=>near(p.bounds.min.z,-3.13));assert(tail);
   assert.equal(tail.signature,oldBustlePart.signature,'all eight original bustle boundary/attachment corners survive');
   const kneeDatums=[[-.73,-.102],[-1.36,-.102],[-1.43,-.03],[-1.66,.10],[-2.42,.16],[-3.13,.28]];
@@ -130,5 +142,5 @@ for(const id of ids)for(const quality of ['high','low']){
   console.log(`${id}/${quality}: ${parts.length} live courses, exact footprint/undercut, outward side facets and physical mirror passed`);
  }finally{tank.dispose();}
 }
-oldBow.dispose();oldBustle.dispose();
+oldBow.dispose();liveBow.dispose();oldBustle.dispose();
 console.log(`Abrams returns: ${checked} actual native courses; ${nonplanarOutward} explicit outward nonplanar facets retained; ${trackChecks} animated3mm-expanded shoe bounds; historic dent, inward-fold, shifted-native and track-intrusion controls passed`);

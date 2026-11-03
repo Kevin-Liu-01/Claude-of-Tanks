@@ -174,7 +174,9 @@ for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
 
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [
-  ['m1a1_abrams_hc', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
+  // Re-pinned 2026-11-02 (release 268 round 3, abrams-bradley-268 builder A): the M1A1 HC carries no retained
+  // commander EO head under its remote station (blind A/B m1r2, research/m1a1_abrams_hc/photos): no optic row.
+  ['m1a1_abrams_hc', 'standard', 'm1a2-split-loader', 'split', null],
   ['m1a1_abrams_sa', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
   ['m1a1_abrams_aim', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
   ['m1a1_abrams_fep', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
@@ -265,6 +267,13 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
       `${id}: Browning and shield remain equipment-owned`);
   });
   const optic = turret.userData.abramsRelocatedCommanderOpticReceipt;
+  if (expectedOptic === null) {
+    assert.equal(optic, undefined, `${id}: carries no retained commander optics assembly`);
+    abramsStations.set(id,
+      `${station[0].userData.designFamily || station[0].userData.americanRwsFamily}:${station[0].userData.stationVariant}`);
+    tank.dispose();
+    continue;
+  }
   assert.equal(optic?.retainedLegacyAssembly, true,
     `${id}: retains the established commander optics assembly`);
   assert.equal(optic?.clearsWeaponTower, true,

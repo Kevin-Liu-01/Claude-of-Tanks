@@ -479,8 +479,10 @@ function fnv1a(str: string): number {
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
  * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
  * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
+ * The M3A2 is the M2A2 under main's classic turret (268, profiles/m3a2Bradley.ts): it draws the M2A2's kit and seed.
  */
-const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90']]);
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90'],
+  ['m3a2_bradley', 'm2a2_bradley']]);
 
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
@@ -2872,8 +2874,13 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   ],
   // Release 233: the M1A1HA carries a track-width mine plow on its bow (profiles/abramsM1A1Identity.ts), so the default
   // draw keeps everything but its bow hardware (the shackle pair and the tow chain), which would hang on the raised plow.
+  // Release 268 (abrams-bradley-268): its tarp roll hangs on the left turret side. With the invented add-on
+  // cassettes gone from the Desert Storm walls, a roll drawn for the right side put one arm through the right stowage
+  // bay; the side draw stays consumed and every other row is unchanged (the namer_ifv precedent below).
   m1a1ha: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 } : row)),
+    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 }
+      : row.kit === 'tarp' && row.slot[0] === 'turretSide' ? { ...row, slot: ['turretSide', { ...row.slot[1], side: 1 }] }
+        : row)),
   m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
@@ -4064,8 +4071,10 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
-  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
+  // (268, lane abrams-bradley-268: m2a2_bradley and ua_m2a3_bradley adopt the re-seat with their source-measured
+  // turret, whose left wall moved in under the hung load's old foot)
+  'amx30b', 'hayate_ifv', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013',
 ]);
 /**
  * 267 (lane t90-family-267, the accessory-contact receipt on the T-90 family): three seat fixes, adopted per id as 240's
@@ -4078,6 +4087,9 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  */
 const CONTACT_SEAT_267: ReadonlySet<string> = new Set<string>([
   't90', 't90a_2006', 't90ms_2011', 't90ms_tagil', 't90m', 'type96_72m_lei',
+  // 268 (lane abrams-bradley-268, re-rendered on the source-measured shell: the M2A2's hung load's arm crossed its own
+  // strap, the M3A3's rear rack bracket the stern's falling corner)
+  'm2a2_bradley', 'm3a3_bradley',
 ]);
 
 /**

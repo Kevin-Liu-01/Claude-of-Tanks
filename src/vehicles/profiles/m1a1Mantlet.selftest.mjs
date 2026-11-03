@@ -181,7 +181,9 @@ for(const quality of ['high','low'])for(const id of ids){
       const wall=ray.intersectObject(moving)[0];
       assert.ok(!wall||wall.distance>=.130,`${id}: entire rotor casting leaves the axial recoil passage open at z=${z}, angle=${angle}`);
     }
-    if(id==='m1a1ha'||id==='ua_m1a1'){
+    // 2026-11-02 (release 268, abrams-bradley-268 builder A): the gun-rig searchlight is the Desert Storm HA's alone; the
+    // Ukrainian M1A1 SA borrows the HA shell without it (research/ua_m1a1/photos), so only the HA keeps this support.
+    if(id==='m1a1ha'){
       // Across the former air gap, the lamp now has finite painted support.
       for(const x of [-.41,-.48]){
         ray.set(new Vector3(x,.04,.70),new Vector3(0,0,-1));ray.far=.42;

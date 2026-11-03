@@ -145,7 +145,9 @@ const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_de
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
   challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
   challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100',
-  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5' };
+  centurion13: 'centurion5_2', centurion5_avre: 'centurion5_2', strv105: 'strv81', leo1a2a1: 'leo1a5',
+  // release 268: the M3A2 Bradley wears the M2A2's stock coat (its M2A2 spec's visual)
+  m3a2_bradley: 'm2a2_bradley' };
 // Added since production in a Signature of its own, appended after the earlier ids (release 265: the Longwei family).
 const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
 // release 262: the fourth batch's Leopard 2A3 wears the 2A3 OTCO's coat (it carries that build's paint and combat data)

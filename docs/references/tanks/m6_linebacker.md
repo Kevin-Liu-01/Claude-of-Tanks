@@ -115,3 +115,11 @@ cage stock and air, roof weapon census, fixed hull ownership, and firing origins
 at yaw −83°/0°/90° and pitch −9°/0°/45°. Fills, full combat anatomy, technical
 diagrams, standard/release checks and rendered inspection remain separate gates.
 Their actual current outcomes are listed above; do not infer a full release pass from this fixture.
+
+## 268 — on the source-measured Bradley shell (2026-11-02)
+
+The Linebacker keeps the owner's concept turret, pod and flank kit on the shared Bradley rebuilt to the owner's supplied
+model (m2a2_bradley.md, 268). Its ring moves to the measured datum (`m6LinebackerLayout.ts` LINEBACKER_RING
+[0.04, 1.895, −0.36] → [−0.14, 2.06, −0.40]); the Stinger pod and its trunnion arms move to the turret's LEFT, +X, where
+the source carries its TOW launcher (LINEBACKER_LAUNCHER.x −1.62 → 1.62; the mouths follow); the rear pioneer kit lies
+on the new roof's slopes behind the side plates. Spec fields: hw 1.64 → 1.70, trkTop 0.95 → 1.16, roofY 1.90 → 2.06.

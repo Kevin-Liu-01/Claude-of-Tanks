@@ -46,10 +46,12 @@ const RACK_FRONT_Z = -3.165;        // bustle rear wall
 const RACK_REAR_Z = -3.505;         // rack rear fence
 const RACK_HALF_W = 1.07;
 const RACK_MID_Z = (RACK_FRONT_Z + RACK_REAR_Z) / 2;
-// Gunner's primary sight doghouse (tejasRoofKit, non-CWS roofs): head box (0.52 x 0.10 x 0.38) at (0.78, 0.60, 1.05).
-const GPS_X = 0.78;
-const GPS_TOP_Y = 0.65;
-const GPS_Z = 1.05;
+// Gunner's primary sight doghouse (profiles/abrams.ts M1A1_GPS_DOGHOUSE): release 268 moves it to the vehicle-right
+// front roof ahead of the commander (the photographed station, and the owner's source model's); its lid stands ~0.85 m
+// over the ring on the falling cheek roof.
+const GPS_X = -0.74;
+const GPS_TOP_Y = 0.85;
+const GPS_Z = 1.06;
 
 /** A box beam of section w x h running from a to b (its length axis on the segment). */
 function beam(a: Vec3, b: Vec3, w: number, h: number): THREE.BufferGeometry {
@@ -340,6 +342,10 @@ function addSaFit(P: AbramsIdentityPort): void {
 
 /** The variant's identity kit; the base M1A1 (the family reference) and other hulls get none. */
 export function addM1A1VariantIdentity(P: AbramsIdentityPort): void {
+  // Release 268: a mark built on another mark's shell (ua_m1a1 on the m1a1ha) names itself in m1a1BaseHost and wears
+  // none of the donor's identity kit (profiles/ukraine.ts buildUAM1A1).
+  const host = P.hullG.userData.m1a1BaseHost;
+  if (typeof host === 'string' && host !== P.spec.id) return;
   switch (P.spec.id) {
     case 'm1a1ha': addTrackWidthMinePlow(P); addDesertStormStowage(P); break;
     case 'm1a1_abrams_hc': addHeavyCommonStowage(P); break;

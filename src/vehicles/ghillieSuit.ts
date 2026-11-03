@@ -3463,6 +3463,14 @@ const sepv3HullY = (x: number, z: number): number => Math.max(abramsHullY(x, z),
   (Math.abs(x) > 1.04 ? 1.58 : 1.56) - THREE.MathUtils.smoothstep(z, 3.2, 3.5) * 0.16);
 /** The SEPv3 turret roof net's outer edge (its outline), for the flank drapes' roll-over. */
 const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.32, 1.42], [0.38, 1.36], [1.12, 0.86]], z);
+/**
+ * Release 268 round 3 (abrams-bradley-268, blind A/B m1r2: "a large triangular sheet rises from the front-left turret
+ * corner over the turret roof"): the M1A1 family's roof runs level at 0.79 back of z -0.75 and falls to the cheek
+ * corner's 0.65 at z 0.90 (profiles/abrams.ts, the release-268 source-measured shell). The FEP cover's carrier levels
+ * follow that fall instead of holding the level roof's height out over the falling front, where the flank roll stood
+ * 18 cm over the roof's edge and the drape rose to it as a free triangle.
+ */
+const sepv3TurretRoofY = (z: number): number => 0.79 - 0.14 * THREE.MathUtils.clamp((z + 0.75) / 1.65, 0, 1);
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
@@ -3720,13 +3728,14 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outAt: (_z, t) => 1.92 + (1 - t) * 0.090, seed: 21 + side,
         // round 3: the drape rolls over the fender edge into the deck cover instead of standing as a free edge
         shoulder: { z0: -3.08, z1: 2.62, inAt: () => 1.6, yAt: (z: number) => sepv3HullY(1.6, z) - 0.004 } })),
-      face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.31, nx: 14, ny: 5,
-        outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.12], [0.72, 1.31], [-0.72, 1.31], [-1.10, 1.12]],
+      // (release 268: the bow net stops at the source-measured bow's 1.21 m top edge, as on ua_m1a1)
+      face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.21, nx: 14, ny: 4,
+        outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.08], [0.72, 1.21], [-0.72, 1.21], [-1.10, 1.08]],
         holes: [rect(-0.78, -0.42, 1.04, 1.29), rect(0.42, 0.78, 1.04, 1.29)], seed: 29 }],
     },
     turret: {
       top: [{ x0: -1.42, x1: 1.42, z0: -3.35, z1: 1.12, nx: 24, nz: 38,
-        yAt: () => 0.88,
+        yAt: (_x: number, z: number) => sepv3TurretRoofY(z) + 0.09,
         outline: [[-1.05, -3.35], [1.05, -3.35], [1.42, -2.32], [1.36, 0.38], [0.86, 1.12], [-0.86, 1.12], [-1.36, 0.38], [-1.42, -2.32]],
         // release 233: the gunner's primary sight and its FEP FLIR head (0.55..1.03 x, 0.62..1.30 z) stand clear of the net
         holes: [rect(-1.26, -0.48, -0.86, 0.02), rect(-0.52, 0.05, 0.06, 0.55), rect(0.16, 0.83, -0.64, 0.06), rect(-1.28, -0.70, -2.92, -1.70), rect(0.68, 1.30, -2.84, -1.62), rect(0.50, 1.08, 0.60, 1.30)], seed: 37 }],
@@ -3738,18 +3747,19 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // bustle and its stowage ride bare.
       side: [-1, 1].map((side) => {
         const z0 = side < 0 ? -2.02 : -2.32;
-        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 26, ny: 8,
-          topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
+        // (release 268 round 3: each flank drape ends ahead of its M250 bank's bracket at z 0.64, profiles/abrams.ts
+        // tejasSmokeCluster, instead of hanging over the bank's tubes)
+        return { side, z0, z1: 0.60, nz: side < 0 ? 22 : 24, ny: 8,
+          topAt: (z: number) => sepv3TurretRoofY(z) + 0.01, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
           outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
           // 2026-10-23 (the owner: "Paint it on the drape"): no window for the markings; the star and the "34" are painted
           // on these drapes (vehicleMarkings.ts vehicleMarkingPaintsOnSuit), where the windows read as black squares
           // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
           // rolls over the roof edge and tucks under the roof net
-          shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
+          shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: (z: number) => sepv3TurretRoofY(z) + 0.084 } };
       }),
-      face: [{ z: 1.38, x0: -1.36, x1: 1.36, y0: -0.02, y1: 0.76, nx: 20, ny: 8,
-        outline: [[-1.00, -0.02], [1.00, -0.02], [1.36, 0.40], [0.96, 0.76], [-0.96, 0.76], [-1.36, 0.40]],
-        holes: [rect(-0.52, 0.52, -0.06, 0.68), rect(-1.22, -0.78, 0.44, 0.78), rect(0.55, 1.22, 0.44, 0.78)], seed: 61 }],
+      // (release 268 round 3: the face net hung at z 1.38 across the swept cheeks crumpled into the cheek cassettes;
+      // the cheeks ride bare, as the flank drapes' fronts end at the cheek corners)
     },
   },
   ua_m1a1: {
@@ -3773,8 +3783,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         // release 230: over the rear quarters the gun sweeps level across the drapes' top cords (yaw 140-148, its stop
         // -2..+1 there): the boughs tucked under the cord hang there instead of standing up into the barrel
         boughsHangAt: [[-2.95, -2.25]] })),
-      face: [{ z: 3.94, x0: -1.12, x1: 1.12, y0: 0.96, y1: 1.33, nx: 16, ny: 6,
-        outline: [[-0.90, 0.96], [0.90, 0.96], [1.12, 1.12], [0.74, 1.33], [-0.74, 1.33], [-1.12, 1.12]],
+      // Release 268 (abrams-bradley-268, the M1A1's source-measured bow: its top now 1.205-1.21 m, was 1.31-1.34): the
+      // bow net stops at the bow's top edge; its upper 12 cm hung in front of nothing (ghillieSuit.selftest, 2.3 cm)
+      face: [{ z: 3.94, x0: -1.12, x1: 1.12, y0: 0.96, y1: 1.21, nx: 16, ny: 5,
+        outline: [[-0.90, 0.96], [0.90, 0.96], [1.12, 1.08], [0.74, 1.21], [-0.74, 1.21], [-1.12, 1.08]],
         holes: [rect(-0.80, -0.40, 1.03, 1.31), rect(0.40, 0.80, 1.03, 1.31)], seed: 237 }],
     },
     // A second carrier drapes over the full field-cage envelope rather than

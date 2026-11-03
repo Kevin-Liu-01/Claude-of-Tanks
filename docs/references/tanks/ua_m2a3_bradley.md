@@ -62,3 +62,29 @@ hulls properly or with attachments."
   §5.361 float-fix landing (394da5ed) re-seats it. No clone-local
   action: the clone carries no gate row and its silhouette dims ride
   the donor spec.
+
+## 268 — the source-measured shell and the frontline kit (2026-11-02)
+
+The Ukrainian vehicle takes the shared Bradley rebuilt on the owner's supplied model (m2a2_bradley.md, 268): the measured
+hull, the source's turret with the TOW launcher stowed on the left, the driver and TOW on the left, the engine right.
+Owner, verbatim: "the m2a3 bradley needs a lot more decorrations and props too." The kit is seated geometry in
+`profiles/afvFamily.ts` (`addUkrainianBradleyPackage`, `addUkrainianBradleyFieldKit`), not decor, so it renders in the
+Node rasters and the contact probe sees it. No roof gun (the owner's field standard 2026-10-08); no cope cage (the
+references show none on this mark).
+
+- BRAT (photographed, research/ua_m2a3_bradley 1, 2, 5): two rows along the side plates' clear stretches (face x 1.57,
+  the lower row on the skirt ledge, the upper 2 cm under the plate top), two rows of three across the upper glacis
+  between the deck break and the trim vane, four across the vane, a column of two on the turret's left wall aft of the
+  stowed launcher.
+- Spare track links: the shared run down the glacis' right column, and two two-link runs on the nose shelf.
+- Turret bustle: field bags in the rack, a camouflage-net bundle lashed across its top, a rucksack hung on its back.
+- An unditching log nested in the right roof gutter (against the side plate's inner face and the roof), strapped.
+- Right rear: a welded basket hung outboard of the BRAT course from the plate top, standing on the skirt top: an
+  ammunition chest with an ammunition can on its lid, a rucksack, a bedroll across its end rails.
+- Left rear: a shelf on the skirt top with two brackets to the skirt face, two jerrycans on it against the BRAT course
+  behind a strap on two posts.
+
+Everything clears the sweeps: the turret's low parts pass 2.18 m and over within 1.66 m of the ring, the 25 mm at −9°
+passes 2.13 m and over to its 2.85 m reach; nothing of the kit stands above 2.0 m inside them (the nose links lie beyond
+the muzzle). Triangles HIGH/LOW: the vehicle on the final shell without the kit 83,248 / 65,406, with it 89,192 / 70,282
+(the kit 5,944 / 4,876; the pre-268 vehicle 94,740 / 76,588).

@@ -585,7 +585,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   kf51_evo: ['kf51_evo', 'kf51_u', 'kf51_panther'],
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],
-  bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
+  bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley', 'm3a2_bradley'],
   linebacker: ['m6_linebacker'],
   amx10p: ['amx10p'],
   amx10pDragar: ['amx10p_25'],

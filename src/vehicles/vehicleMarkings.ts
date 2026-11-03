@@ -301,6 +301,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type10b: anchor('hull', 'left', 0.39, 0.61, 0.23, 1),
   type10_dozer: anchor('turret', 'right', .30, .44, .24, 1), // the modern Type 10's turret seat (type10)
   m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
+  m3a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1), // the M2A2's hull seat (268: the shared hull)
   bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
   spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),
   marder2: anchor('hull', 'left', .38, .60, .24, 1),

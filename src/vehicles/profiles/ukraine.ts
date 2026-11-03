@@ -1332,6 +1332,10 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
   // before attaching the first-party cage and decals.
   const id = P.spec.id;
   P.spec.id = 'm1a1ha';
+  // Release 268: the HA base lends its shell, not its Desert Storm kit. The host id tells buildTejasFamily and the
+  // M1A1 identity kits that this is a Ukrainian M1A1 SA: no track-width mine plow, no 1991 rack stowage, no gun
+  // searchlight (research/ua_m1a1/photos).
+  P.hullG.userData.m1a1BaseHost = id;
   try {
     ABRAMS_PROFILES.m1a1ha.build(P);
   } finally {

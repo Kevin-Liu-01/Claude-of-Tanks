@@ -643,6 +643,10 @@ License/author/source are embedded in the GLB's own `asset.extras`
 |---|---|---|---|---|---|
 | M2A2 Bradley (`m2a2_bradley`, oracle only) | M2 Bradley IFV | 42manako | https://sketchfab.com/3d-models/m2-bradley-ifv-ab022158ab5f4fbfa55d4142db7595ab | CC-BY-4.0 (embedded: "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)") | `public/models/tanks/community/m2_bradley_ifv.glb` (nodes: body_lod0 hull, turret_lod turret+25mm, treads_lod, bagsbagsba stowage; ground y=0, z long) |
 
+Release 268: the M3A2 Bradley (`m3a2_bradley`) carries the first-party M2A2 turret as main built it at 7cc204ab32, whose
+numbers were measured against this oracle, extracted and mirrored (`src/vehicles/profiles/bradleyClassicTurret.ts`). It is
+procedural like the rest of the fleet: no source mesh, texture or vertex data enters runtime or public output.
+
 ### User drops waves 5–7 (recovered fleet, integrated 2026-07-29) — local-only models
 
 These models came from the owner's recovered download folder. They are enabled

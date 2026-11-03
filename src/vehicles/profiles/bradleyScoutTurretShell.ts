@@ -9,6 +9,10 @@ import {sectionSolid} from './sectionSolid.ts';
 
 type PlaceEra = (...transform: number[]) => void;
 
+/** The A3 turret's ring datum on the shared Bradley hull (268, the owner's source: deck 2.06, the ring 0.14 m right of
+ *  the centreline, z −0.40; was [0.04, 1.895, −0.36]). The spec's armor.turretPivot repeats it for the combat frame. */
+export const BRADLEY_SCOUT_TURRET_PIVOT = Object.freeze([-0.14, 2.06, -0.40] as const);
+
 /** Seat each cassette on the real sloped cheek after the A3's height conversion. */
 export function placeBradleyScoutCheekEra(side: number, put: PlaceEra): void {
   for (const fraction of [.18,.55]) for (const z of [.60,.79,.98]) {
@@ -22,7 +26,7 @@ export function placeBradleyScoutCheekEra(side: number, put: PlaceEra): void {
     const rotation = new THREE.Euler().setFromQuaternion(new THREE.Quaternion()
       .setFromUnitVectors(new THREE.Vector3(0,0,1),normal));
     point.addScaledVector(normal,.07*1.05/2-.005);
-    put(point.x,1.895+point.y,-.36+point.z,rotation.x,rotation.y,rotation.z,.72,.92*.80,1.05);
+    put(point.x,BRADLEY_SCOUT_TURRET_PIVOT[1]+point.y,BRADLEY_SCOUT_TURRET_PIVOT[2]+point.z,rotation.x,rotation.y,rotation.z,.72,.92*.80,1.05);
   }
 }
 

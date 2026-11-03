@@ -54,7 +54,9 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
     `${id}: commander optic publishes its distinct viewing-window layout`);
   assert.equal(optic?.equipmentOwned, true);
   const gunRig = tank.root.getObjectByName('rig_gun');
-  if (ha) {
+  // 2026-11-02 (release 268, abrams-bradley-268 builder A): the Ukrainian M1A1 SA borrows the HA shell, not its
+  // Desert Storm gun searchlight (research/ua_m1a1/photos).
+  if (ha && id !== 'ua_m1a1') {
     const light = gunRig?.userData.abramsGunRigSearchlightReceipt;
     assert.equal(light?.pitchesWithGun, true,
       `${id}: large searchlight belongs to the elevating gun rig`);
