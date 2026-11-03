@@ -464,6 +464,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeMultiplierLayers.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
+    // 2026-11-02 audit M5: a mode weapon swap (Gun Game, the AC-130) repoints the cannon channel with the rest
+    'src/sim/modeWeaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
