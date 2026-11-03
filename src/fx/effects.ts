@@ -7009,8 +7009,9 @@ function* createFxSteps(
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
+        // (2026-11-02 audit F10) a hull's burst stood for this round's: the ground draws none of its own
+        if (burstDrawn) return;
         if (e.hitTerrain) {
-          if (burstDrawn) return;
           const water = !!e.hitWater || shellPointOnWater(_v3);
           if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
             if (e.shellId != null) noteBurst(e.shellId);
