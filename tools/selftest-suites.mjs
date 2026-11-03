@@ -913,6 +913,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
+    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet terminal, a module asked again past the backoff)
+    'src/app/lazyChunk.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',

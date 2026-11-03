@@ -1,12 +1,14 @@
 // The kit's load failure (loading states 264, Main's ruling on the garage lane's probe). Copyright © 2026 Kevin B. Liu.
 //
-// A lazy chunk that failed is never asked for again in its document, because what a browser does with one asked again
-// is not stable (tools/offline-import-probe.mjs, offline then online, 2026-10-28). Chrome 151 keeps a failed import()
+// An opener's lazy chunk that failed is never asked for again in its document, because what a browser does with one
+// asked again is not stable (tools/offline-import-probe.mjs, offline then online, 2026-10-28). Chrome 151 keeps a failed import()
 // for the document's life and fails every importer of a failed modulepreload (a never-tried importer, and a fresh query
 // of one, too); Chrome 156 loads both once the network is back; in both, a failed stylesheet <link> stands and never
 // applies, and Vite's preload never asks for it again (it skips an href that has a link, or that its `seen` map holds),
 // so a chunk asked again would run unstyled. A reload recovers in every case. So no opener offers an in-page retry of
-// its chunk (src/ui/components/loadFailure.selftest.mjs): its trigger keeps a quiet error state that needs no chunk,
+// its chunk (src/ui/components/loadFailure.selftest.mjs; 2026-11-02 audit R6: every lazy chunk's load is one
+// app/lazyChunk.ts, where a caller with no trigger to press, a builder, a warm, a notice, asks a failed module again past
+// a backoff, never a failed stylesheet): its trigger keeps a quiet error state that needs no chunk,
 // data-load-state="error" (the kit's danger dot, components.css) with an aria-description, and the trigger's next press
 // reloads the page once online. The page never reloads by itself (the post-ready ruling).
 // This module and its two strings ride in the boot runtime chunk on every page (tools/viteI18nPageCatalogs.ts
