@@ -73,6 +73,7 @@ import { markShadowOnly } from './renderLayers.ts';
 
 {
   // the production wiring: the deployment warm holds and releases its casters by name; restores compare what they wrote
+  // (the warm driven through a real articulated batch installed mid-warm: deploymentShadowWarm.selftest)
   const warm = readFileSync(new URL('./deploymentShadowWarm.ts', import.meta.url), 'utf8');
   assert.match(warm, /for \(const \{ object \} of state\.casters\) holdCastShadowOff\(object, state\);/);
   assert.match(warm, /for \(const object of batch\) if \(!castShadowHeldByOthers\(object, state\)\) object\.castShadow = true;/);
