@@ -565,6 +565,8 @@ export interface BattleLoadScreen {
   ): void;
   progress(fraction: number, label?: string): void;
   countdown(seconds: number): void;
+  /** Fade out, then drop out of layout. A later show() that reopens the cover first ends the fade and settles its promise
+   *  at once; a caller tells the two apart by `covering` after the await (false: hidden; true: reopened). */
   hide(): Promise<void>;
 }
 
@@ -771,6 +773,16 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   // `covering` follows the actual composited surface through its exit fade so
   // battle input cannot steer a camera that is only partly exposed yet.
   let covering = false;
+  // (2026-11-02 audit F8) the exit fade in flight: its timer and its caller's promise. A show() or a second hide() takes
+  // it over, so an old fade's timer can never uncover a cover a later show() reopened, and its caller learns it lost
+  let exitFade: { timer: ReturnType<typeof setTimeout>; resolve(): void; done?: Promise<void> } | null = null;
+  const supersedeExitFade = (): void => {
+    if (!exitFade) return;
+    const fade = exitFade;
+    exitFade = null;
+    clearTimeout(fade.timer);
+    fade.resolve();
+  };
   // the load's first frame, until its countdown (the Deploy button's estimate reads these, battleLoadEstimate.ts)
   let loadStartedAt = 0;
   let shownFill = '';
@@ -1028,6 +1040,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
       if (!visible) loadStartedAt = performance.now();
+      supersedeExitFade();
       visible = true;
       covering = true;
       // Entry is a safety cover, not an animation: it must own the very next
@@ -1104,7 +1117,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
 
     /** Fade out, then drop out of layout. */
     hide() {
-      if (!visible) return Promise.resolve();
+      if (!visible) return exitFade?.done ?? Promise.resolve(); // a fade in flight answers for itself
       visible = false;
       loadStartedAt = 0;
       // hold display through the opacity transition (.on carries display:flex,
@@ -1112,13 +1125,22 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       root.classList.add('leaving');
       root.classList.remove('on');
       teamsEl.removeAttribute('aria-busy');
-      return new Promise<void>((resolve) => setTimeout(() => {
-        if (!visible) {
-          root.classList.remove('leaving');
-          covering = false;
-        }
-        resolve();
-      }, 230));
+      supersedeExitFade();
+      const done = new Promise<void>((resolve) => {
+        const fade: NonNullable<typeof exitFade> = {
+          resolve,
+          timer: setTimeout(() => {
+            if (exitFade !== fade) return; // a later show() or hide() owns the cover now
+            exitFade = null;
+            root.classList.remove('leaving');
+            covering = false;
+            resolve();
+          }, 230),
+        };
+        exitFade = fade;
+      });
+      if (exitFade) exitFade.done = done;
+      return done;
     },
   };
   return api;
