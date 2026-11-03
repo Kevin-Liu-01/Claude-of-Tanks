@@ -59,7 +59,7 @@ const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
 // wash lighter (its blue kept 15 under the German national olive's, so it stays its own paint)
 // 2026-11-03 (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the Gelboliv under soft dark-olive and earth masses, a field coat over the national colour
 m41_bw.visual = { ...m41_bw.visual, scheme: 'blotch', base: '#474028', weather: '#544b34', patches: ['#1c1b11', '#857850'],
-  marking: 'number', number: '231', camoScale: 0.55, patchK: 2.0, insignia: 'de-cross-1956' };
+  marking: 'number', number: '231', camoScale: 0.5, patchK: 1.3, insignia: 'de-cross-1956' };
 
 // The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
 // came after it), warmer and greener than the Bundeswehr's Gelboliv.
