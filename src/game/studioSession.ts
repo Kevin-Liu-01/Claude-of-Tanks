@@ -165,7 +165,7 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
 }
 
 /** What holds the Studio, the first that applies (audit F9: one reading every entry point asks). */
-export type StudioBusy = 'recording' | 'film' | 'export' | 'session' | 'scene' | 'map' | 'history';
+export type StudioBusy = 'recording' | 'film' | 'export' | 'session' | 'scene' | 'map' | 'history' | 'light';
 
 export interface StudioBusyFlags {
   /** The session is open (not closed, entering or exiting). */
@@ -180,6 +180,8 @@ export interface StudioBusyFlags {
   readonly mapChange: boolean;
   /** An undo or redo is restoring a document. */
   readonly restoring: boolean;
+  /** A time of day or sun change is preparing the battlefield's light (it lands inside its own awaits). */
+  readonly lighting: boolean;
 }
 
 export function studioBusy(flags: StudioBusyFlags): StudioBusy | null {
@@ -190,6 +192,7 @@ export function studioBusy(flags: StudioBusyFlags): StudioBusy | null {
   if (flags.scene) return 'scene';
   if (flags.mapChange) return 'map';
   if (flags.restoring) return 'history';
+  if (flags.lighting) return 'light';
   return null;
 }
 

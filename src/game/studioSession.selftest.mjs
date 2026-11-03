@@ -169,7 +169,8 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
 
 // One busy reading, in a fixed order; the take owns the transport only while it records, renders or exports.
 {
-  const free = { open: true, recording: false, filming: false, exporting: false, scene: false, mapChange: false, restoring: false };
+  const free = { open: true, recording: false, filming: false, exporting: false, scene: false, mapChange: false, restoring: false,
+    lighting: false };
   assert.equal(studioBusy(free), null);
   const cases = [
     [{ recording: true, filming: true }, 'recording'],
@@ -178,11 +179,12 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
     [{ open: false, scene: true }, 'session'],
     [{ scene: true, mapChange: true }, 'scene'],
     [{ mapChange: true, restoring: true }, 'map'],
-    [{ restoring: true }, 'history'],
+    [{ restoring: true, lighting: true }, 'history'],
+    [{ lighting: true }, 'light'],
   ];
   for (const [patch, expected] of cases) assert.equal(studioBusy({ ...free, ...patch }), expected, JSON.stringify(patch));
-  assert.deepEqual(['recording', 'film', 'export', 'session', 'scene', 'map', 'history', null].map(transportHeld),
-    [true, true, true, false, false, false, false, false], 'a load, a map change or an undo leaves the playhead alone');
+  assert.deepEqual(['recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light', null].map(transportHeld),
+    [true, true, true, false, false, false, false, false, false], 'a load, a map change, an undo or a light change leaves the playhead alone');
 }
 
 console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound and its late undo, and the busy reading pass');

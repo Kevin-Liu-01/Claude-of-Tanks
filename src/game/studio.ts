@@ -757,6 +757,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   const session = createStudioSession();
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
+  let lightChanges = 0;        // (audit F9) time of day / sun changes in flight (busy() 'light')
   // the whole fleet's builders (247): warmed once the Studio is up, never part of its entry (__STUDIO.ready() awaits it)
   let fleetReady: Promise<void> | null = null;
   const warmFleet = (): Promise<void> => (fleetReady ??= ensureFullFleet().catch((error: unknown) => {
@@ -4009,9 +4010,22 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let productionOwnsLoad = false;
   let productionFormat: ProductionFormat = 'landscape';
 
+  /**
+   * (audit F9) The production entry points that replace the scene or reframe the take ask the one busy reading: a staging
+   * or a duel under an open film or an export replaced the storyboard it renders (a staging even woke and relit the
+   * battlefield before load() refused it), and one begun beside a scene load, a battlefield change, an undo or a light
+   * change raced it. A film (or its export) asks to be finished first; anything else is the Studio being busy.
+   */
+  function productionBusy(onRecording = t('studio.error.busy')): string | null {
+    const reason = busy();
+    if (!reason) return null;
+    if (reason === 'recording') return onRecording;
+    return reason === 'film' || reason === 'export' ? t('studio.error.finishFilm') : t('studio.error.busy');
+  }
+
   function setProductionFormat(format: ProductionFormat): void {
     productionAspect(format);
-    if (recording || loading || productionLoading || format === productionFormat) return;
+    if (productionBusy() || format === productionFormat) return;
     pauseTimeline();
     const ground = (x: number, z: number) => hfProxy.getHeightAt(x, z);
     const live = getCamera();
@@ -4032,7 +4046,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   async function directProduction(options: ProductionOptions): Promise<ReturnType<typeof stateJson>> {
-    if (recording || loading || productionLoading) throw new Error(t('studio.error.busy'));
+    // (asked before productionLoading is set: the staging's own load then passes through productionOwnsLoad)
+    const refusal = productionBusy();
+    if (refusal) throw new Error(refusal);
     const preset = productionPreset(options.presetId);
     const owner = session.token(); // (audit F9) its own load belongs to the session it staged in
     productionLoading = true;
@@ -4062,7 +4078,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function applyProductionCamera(rig: ProductionRigId): void {
-    if (recording || loading) return;
+    if (productionBusy()) return;
     const actor = selected ?? actors[0];
     if (!actor) throw new Error(t('studio.error.selectTank'));
     pauseTimeline();
@@ -4076,7 +4092,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /** Build an immediately recordable 15-second battle from the first two actors. */
   function directDuel(opts: { variant?: number } = {}) {
-    if (recording) throw new Error(t('studio.error.stopRecordingStoryboard'));
+    const refusal = productionBusy(t('studio.error.stopRecordingStoryboard'));
+    if (refusal) throw new Error(refusal);
     if (actors.length < 2) throw new Error(t('studio.error.duelNeedsTwo'));
     const alpha = actors[0];
     const bravo = actors[1];
@@ -4883,21 +4900,24 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * (audit F9) What holds the Studio, read the same way by every entry point (studioSession.ts studioBusy): a recording,
    * a film at film size, a film export, a session that is not open, a scene load or staging, a battlefield change, an
-   * undo or redo. The transport asks transportHeld(busy()).
+   * undo or redo, a light change. The transport asks transportHeld(busy()). `exceptExport` is the export's own film
+   * begin's reading: its export flag is the one holder it opens under, and studioBusy ranks that flag above the session,
+   * scene, map, history and light holders, so a plain busy() named the export and hid a staging or a battlefield change
+   * that began in the export's module gap.
    */
-  function busy(): StudioBusy | null {
+  function busy(exceptExport = false): StudioBusy | null {
     return studioBusy({
-      open: session.phase === 'open', recording: !!recording, filming, exporting: !!filmExport,
-      scene: loading || productionLoading, mapChange: !!mapChange, restoring: restoringHistory,
+      open: session.phase === 'open', recording: !!recording, filming, exporting: !exceptExport && !!filmExport,
+      scene: loading || productionLoading, mapChange: !!mapChange, restoring: restoringHistory, lighting: lightChanges > 0,
     });
   }
 
-  function filmBusy(): string | null {
-    const reason = busy();
+  function filmBusy(exceptExport = false): string | null {
+    const reason = busy(exceptExport);
     if (reason === 'recording') return 'Stop recording before rendering a film';
     if (reason === 'film') return 'A film render is already active';
     if (reason === 'export') return t('studio.error.exportRunning');
-    if (reason === 'session' || reason === 'scene' || reason === 'map') return 'Finish the current Studio operation first';
+    if (reason) return 'Finish the current Studio operation first'; // a session not open, a scene, a map, an undo, a light
     return null;
   }
 
@@ -5036,9 +5056,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return exportFilm({
         begin: () => {
           stillOpen();
-          // (audit F9) the film opens over nothing else: a recording or another film refuses it as beginFilm's filmBusy
-          // does; the export's own flag is the one holder it opens under
-          const refusal = busy() === 'export' ? null : filmBusy();
+          // (audit F9) the film opens over nothing else: whatever beginFilm's filmBusy refuses refuses it (a recording,
+          // another film, a staging, a battlefield change, an undo or a light change begun in the module's gap); the
+          // export's own flag is the one holder it opens under
+          const refusal = filmBusy(true);
           if (refusal) throw new Error(refusal);
           filmCues = withAudio ? [] : null;
           const session = openFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
@@ -5583,13 +5604,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       panel.refreshMap();
       invalidate();
     };
-    if (!covered) { await work(); return; }
+    // (audit F9) a light change in flight holds the Studio (busy() 'light'): a recording, a film or a staging begun beside
+    // it took the light it landed mid-take
+    lightChanges++;
     try {
-      await transition.run(work, { title: t('studio.settingLight') });
-    } catch (error) {
-      if (!owner.current()) throw new StudioSessionEnded(); // the exit's cover took this one over
-      throw error;
-    }
+      if (!covered) { await work(); return; }
+      try {
+        await transition.run(work, { title: t('studio.settingLight') });
+      } catch (error) {
+        if (!owner.current()) throw new StudioSessionEnded(); // the exit's cover took this one over
+        throw error;
+      }
+    } finally { lightChanges--; }
   }
 
   /**
@@ -6235,6 +6261,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     exit,
     /** (audit F9) The live session's token, stale once it ends: a caller's later load({ owner }) is refused after an exit. */
     sessionToken: (): StudioSessionToken => session.token(),
+    /** (audit F9) What holds the Studio (studioSession.ts StudioBusy), or null: the reading every entry point asks. */
+    busy: (): StudioBusy | null => busy(),
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
       if (transportHeld(busy()) || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError(t('studio.error.invalidExportStep'));

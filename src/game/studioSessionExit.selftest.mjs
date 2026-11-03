@@ -1,6 +1,7 @@
 // studioSessionExit.selftest.mjs — an exit takes every in-flight step of the Studio session back (2026-11-02 audit F9).
-// Runs the actual setMap / load / applyStudioLight / exportFilmFile / exit callers of studio.ts against small ports, and
-// exits while each awaits: nothing of the closed session may land after the teardown restored the battlefield.
+// Runs the actual setMap / load / applyStudioLight / exportFilmFile / directProduction / exit callers of studio.ts against
+// small ports, and exits while each awaits: nothing of the closed session may land after the teardown restored the
+// battlefield. And the film, the staging and the export's own begin read one busy answer.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -10,9 +11,10 @@ import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, S
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
 const CORE = ['setMap', 'withStage', 'doExit', 'exit', 'load', 'ensureLoadMap', 'replaceLoadActors', 'applyStudioLight',
-  'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm'];
+  'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm', 'directProduction'];
 // the session's helpers where the file has them
-const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted'];
+const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
+  'productionBusy'];
 const found = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
@@ -105,7 +107,12 @@ function makeStudio(overrides = {}) {
     fx: { resetAll: noop, setFrozen: noop }, studioStages: new Map(), resetStudioGround: noop, releaseStudioFx: noop,
     camera: { rotation: { z: 0 } }, cam: { roll: 0 }, normalizeStoryboard: () => ({ shots: [] }),
     rail: { rebuild: noop, updateVisibility: noop }, disposePicture: noop, unsweepPool: noop,
-    enterGarage: async () => { calls.push('enter-garage'); }, syncRoute: noop, docBrand: noop,
+    enterGarage: async () => { calls.push('enter-garage'); ports.game.phase = 'garage'; }, syncRoute: noop, docBrand: noop,
+    game: { phase: 'studio' },
+    // a staging's parts (directProduction): an open world its rigs all see the tank in
+    productionPreset: (id) => ({ id, map: 'desert' }), createProductionScene: () => ({ map: 'desert', actors: [] }),
+    TANK_IDS: { stamp: () => ({}) }, selectActor: noop, setRailVisible: noop, hfProxy: { getHeightAt: () => 0 },
+    _v1: null, _v2: null, _v3: null,
     ...overrides,
   };
   ports.getWorld = () => ports.world;
@@ -115,6 +122,7 @@ function makeStudio(overrides = {}) {
     const { ${names.join(', ')} } = ports;
     let active = true, entering = null, closing = null, exitRun = null, mapChange = null, buildPlateUp = false;
     let recording = null, loading = false, productionLoading = false, productionOwnsLoad = false, filming = false, restoringHistory = false;
+    let lightChanges = 0;
     let filmExport = null, filmCues = null, filmShake = 1, timeScale = 0, clockMs = 1200, timeOfDay = 'day', studioLight = null;
     let storyboard = { shots: [], durationMs: 8000 }, selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     let placeArmed = null, dragActor = null, dragging = false, lookThrough = true, productionFormat = 'landscape';
@@ -126,10 +134,11 @@ function makeStudio(overrides = {}) {
     // the Studio is open: its session entered (the base keeps only the active flag)
     session.open(session.beginEntry());
     return {
-      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport,
+      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport, directProduction,
       setTime: (time) => applyStudioLight(time, null, true),
       get active() { return active; }, get mapChange() { return mapChange; }, get timeOfDay() { return timeOfDay; },
       get filmExport() { return filmExport; }, set recording(value) { recording = value; },
+      set filming(value) { filming = value; }, set productionLoading(value) { productionLoading = value; },
     };
     }
   `);
@@ -363,6 +372,46 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.equal(h.studio.filmExport, null);
 }
 
+// 12. The export's own film begin refuses what beginFilm refuses, its own export flag aside: a battlefield change, a staging
+// or a light change in flight when the film would open (begun in the export's module gap) stops the export with
+// filmBusy's answer. studioBusy ranks the export flag first, so asking whether the holder was the export hid them all.
+for (const [name, hold] of [
+  ['battlefield change', (h) => { void h.studio.setMap('desert').catch(() => undefined); }],
+  ['staging', (h) => { h.studio.productionLoading = true; }],
+  ['light change', (h) => { void h.studio.setTime('night').catch(() => undefined); }],
+]) {
+  const h = makeStudio();
+  let refusal = null;
+  const film = h.studio.exportFilmFile({ download: false }).catch((error) => { refusal = error; });
+  await settle();
+  hold(h);
+  await settle();
+  h.releaseExportModule();
+  await film;
+  await settle();
+  assert.ok(!h.calls.includes('film-open'), `no film opens beside a ${name}`);
+  assert.equal(refusal?.message, 'Finish the current Studio operation first', `the ${name} refuses the export as beginFilm would`);
+  assert.equal(h.studio.filmExport, null);
+}
+
+// 13. A staging asks the one busy reading before it stages: under an open film, during an export (its module gap) or
+// beside a light change it is refused, and the battlefield is never switched, woken or relit under the film.
+for (const [name, hold, message] of [
+  ['an open film', (h) => { h.studio.filming = true; }, 'studio.error.finishFilm'],
+  ['an export', (h) => { void h.studio.exportFilmFile({ download: false }).catch(() => undefined); }, 'studio.error.finishFilm'],
+  ['a light change', (h) => { void h.studio.setTime('night').catch(() => undefined); }, 'studio.error.busy'],
+]) {
+  const h = makeStudio();
+  hold(h);
+  await settle();
+  const before = h.calls.length;
+  const staged = h.studio.directProduction({ presetId: 'desert-crossfire' }).then(() => 'staged', (error) => error.message);
+  assert.equal(await Promise.race([staged, settle(2).then(() => 'still staging')]), message, `a staging under ${name} is refused at once`);
+  const late = h.calls.slice(before);
+  assert.ok(!late.some((c) => Array.isArray(c) && (c[0] === 'ensure-world' || (c[0] === 'dormant' && c[1] === false))),
+    `no battlefield switch or wake under ${name}`);
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -375,4 +424,4 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.match(body, /return owner && !owner\.current\(\) \? null : applied;/, 'a session that ended before it finished reports no light to undo');
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a closed session\'s load never re-enters; a recording refuses the export\'s film; queued switches run in order; a superseded exit cover still leaves');
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves');

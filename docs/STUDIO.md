@@ -117,6 +117,7 @@ Additional methods used by the panel:
 ```js
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
 __STUDIO.sessionToken()                                // stale once the session ends: load(json, {owner}) is then refused
+__STUDIO.busy()                                        // what holds the Studio ('recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light') or null
 await __STUDIO.ready()                                 // entered, and every tank's builder in (247)
 __STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)   // addActor: after ready(); load() needs only its own tanks
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
@@ -219,7 +220,10 @@ picture only; Studio does not currently mix game audio into the capture stream.
 It records in real time and can drop frames on a busy machine; use the film
 renderer below for deliverables. A recording is refused while a film is open or
 an export runs (from its request), and while the Studio is entering, exiting,
-loading a scene, changing battlefield or restoring an undo.
+loading a scene, changing battlefield, restoring an undo or changing the light.
+`directProduction()`, `directDuel()`, `setProductionFormat()` and
+`applyProductionCamera()` are refused (or ignored) on the same reading, and a
+film (`beginFilm()`, an export's own film) opens over none of them.
 
 ### Film renderer
 
