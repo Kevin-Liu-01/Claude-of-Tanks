@@ -76,7 +76,7 @@ import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWork
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, sceneryLegacyCollisionTypes } from './maps/sceneryKit.ts';
 import {
   AMMOBOX_LEGACY, bSandbagBroken, buildCampFireRing, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
   paintBurlap,
@@ -4718,6 +4718,9 @@ ${snowCap ? `
     // 72-triangle crates of before on the baked finish: the same kind, record and draws (bAmmobox spends the legacy
     // builder's draws), no collider either way (a crushable 'loop' contact), so every host places the same stacks
     ...(mobileProps ? { ammobox: { ...DESTRUCTIBLE_TYPES.ammobox, mat: 'baked' as const, build: AMMOBOX_LEGACY.build, broken: AMMOBOX_LEGACY.broken } } : {}),
+    // (2026-11-02 audit R2) the windpump, lumber stack and windmotor of this build (maps/sceneryKit.ts): each records its
+    // pool's contact band in this world's build, never the module's one set the last world built
+    ...sceneryLegacyCollisionTypes(),
     sandbagbig: {
       cls: 'break', mat: 'burlap', contact: 'ob', collider: true, r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
