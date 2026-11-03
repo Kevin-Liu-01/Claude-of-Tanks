@@ -6027,7 +6027,7 @@ export function createKillCam(deps: KillcamDeps) {
     // (2026-11-02 audit F10) re-wrecked from its receipt, as the victim is: its cook-off look and its authority's turret
     // pose (it was always a plain wreck whose turret a local body threw and settled by its seat)
     const wreck = replay.attackerRestore?.wreck;
-    if (wreck && visual.setDestroyed) restoreKillcamWreck(visual, wreck);
+    if (wreck) restoreKillcamWreck(visual, wreck);
     if (replay.attackerRestore && !replay.attackerRestore.wasVisible && visual.setVisible) {
       visual.setVisible(false);
     }
