@@ -13,7 +13,22 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { blankComments } from '../ui/components/loadFailure.selftest.mjs';
+
+/** `source` with its comments blanked and its strings kept (the blanking components/loadFailure.selftest.mjs does). */
+function blankComments(source) {
+  const out = source.split('');
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (c === '/' && (source[i + 1] === '/' || source[i + 1] === '*')) {
+      const end = source[i + 1] === '/' ? (source.indexOf('\n', i) + 1 || source.length) - 1 : source.indexOf('*/', i) + 2;
+      for (let j = i; j < end; j++) if (out[j] !== '\n') out[j] = ' ';
+      i = end - 1;
+    } else if (c === "'" || c === '"' || c === '`') {
+      for (i++; i < source.length && source[i] !== c; i++) if (source[i] === '\\') i++;
+    }
+  }
+  return out.join('');
+}
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (file) => blankComments(readFileSync(join(ROOT, file), 'utf8'));
