@@ -7,6 +7,7 @@
 //   - a ready after stop() leaves the host stopped; a second stop() emits nothing;
 //   - a ready after the boot timeout leaves it failed;
 //   - a ready while booting goes live, once;
+//   - a live host whose thread fails goes failed once and is torn down (review round 2: the table dropped live → failed);
 //   - a core whose actor ended itself is stopped and refuses a new link (link_close back to the main thread).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -30,7 +31,7 @@ function scriptedHost() {
   const timers = new Map();
   let deliver = null;
   const sent = [];
-  const port = { post(message) { sent.push(message.type); }, onMessage(listener) { deliver = listener; return () => { deliver = null; }; }, close() {} };
+  const port = { closed: 0, post(message) { sent.push(message.type); }, onMessage(listener) { deliver = listener; return () => { deliver = null; }; }, close() { this.closed++; } };
   const states = [];
   const relay = new FakeSignalRelay('host', 1);
   const host = createMatchHost({
@@ -43,7 +44,7 @@ function scriptedHost() {
   });
   host.onState((state) => states.push(state));
   return {
-    host, states, sent,
+    host, states, sent, port, relay,
     worker: (message) => deliver?.(message),
     advance(ms) {
       nowMs += ms;
@@ -92,6 +93,27 @@ const ready = { type: 'ready', tick: 0, entities: 2, resumed: false, kernels: { 
   assert.deepEqual(run.states, ['booting', 'live', 'stopped']);
 }
 
+// ---- a live host whose thread fails (review round 2): the browser port reports a Worker 'error' at any point of its life
+// as boot_failed (browserHostPort.ts); the table had no live → failed move, so the host stayed live with a dead thread
+// and its session answered a later election of this seat with 'already hosting'
+{
+  const run = scriptedHost();
+  const starting = run.host.start(config);
+  run.worker(ready);
+  await starting;
+  assert.equal(run.host.state, 'live');
+  run.worker({ type: 'boot_failed', error: 'worker error' });
+  assert.equal(run.host.state, 'failed', `a live host whose thread failed is failed (was: ${run.host.state})`);
+  assert.equal(run.host.acceptor, null, 'its acceptor is closed with the teardown');
+  run.advance(600); // the port's close grace
+  assert.equal(run.port.closed, 1, 'its port is closed after the grace');
+  run.worker(ready);
+  run.worker({ type: 'boot_failed', error: 'worker error' });
+  run.host.stop();
+  assert.equal(run.host.state, 'failed', 'a failed host stays failed');
+  assert.deepEqual(run.states, ['booting', 'live', 'failed'], `failed once, nothing after (${run.states.join(' → ')})`);
+}
+
 // ---- a core whose actor ends itself after its verdict is stopped, and refuses a new link
 {
   await ensureAuthorityFleet(seats.map((seat) => seat.specId));
@@ -119,4 +141,4 @@ const ready = { type: 'ready', tick: 0, entities: 2, resumed: false, kernels: { 
   core.dispose();
   pair.main.close();
 }
-console.log('hostRuntimeStates: a stopped or failed host stays so whatever its thread replies, a live one goes live once, and a core whose actor ended is stopped');
+console.log('hostRuntimeStates: a stopped or failed host stays so whatever its thread replies, a live one goes live once and fails when its thread does, and a core whose actor ended is stopped');

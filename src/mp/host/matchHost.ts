@@ -28,11 +28,13 @@ type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
  * flight across the thread boundary when the session stopped the host (or one landing just after the boot timeout)
  * moved a stopped or failed host to `live`: its drain no longer held back the stopped actor's reports, it overwrote the
  * page's kernels report and boot timings, and a later stop() emitted `stopped` again. Stopped and failed are terminal.
+ * A live host still fails (review round 2): the browser port reports a Worker `error` at any point of its life as
+ * `boot_failed` (browserHostPort.ts), and that host must be torn down, not left live with a dead thread.
  */
 const HOST_MOVES: Readonly<Record<MatchHostState, readonly MatchHostState[]>> = Object.freeze({
   idle: ['booting', 'failed', 'stopped'],
   booting: ['live', 'failed', 'stopped'],
-  live: ['stopped'],
+  live: ['stopped', 'failed'],
   stopped: [],
   failed: [],
 });
