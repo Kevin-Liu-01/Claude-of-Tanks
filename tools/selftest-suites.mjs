@@ -2439,6 +2439,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/destructibleRenderPolicy.selftest.mjs',
     'src/world/destructibles.selftest.mjs',
+    // 2026-11-02 audit R2: a map's trench variant registers and queues its measures as its own world (build key)
+    'src/world/destructibleWorldKey.selftest.mjs',
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',

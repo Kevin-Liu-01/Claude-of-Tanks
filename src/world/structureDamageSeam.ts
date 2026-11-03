@@ -99,6 +99,9 @@ export function mapDamageHash(mapId: string): number {
 export interface DescribeStructureArgs {
   structureIdx: number;
   mapId: string;
+  /** (2026-11-02 audit R2) The world it is built in (destructibles.ts worldBuildKey; defaults to `mapId`): the deferred
+   *  measures queue holds one world's parts, and a map's trench variant is another world than its standard one. */
+  buildKey?: string;
   builder: string;
   style: string | null;
   parts: Readonly<Record<string, readonly BufferGeometry[]>>;
@@ -136,7 +139,9 @@ export function describeStructure(args: DescribeStructureArgs): StructureDamageA
  * since (props.ts mergeInto), they are read back into the body frame through the anatomy's placement, the box they had
  * at describe the check.
  */
-interface DeferredMeasure { anatomy: StructureDamageAnatomy; parts: DescribeStructureArgs['parts'] | null; builder: string; mapId: string;
+interface DeferredMeasure { anatomy: StructureDamageAnatomy; parts: DescribeStructureArgs['parts'] | null; builder: string;
+  /** the world it was described in (DescribeStructureArgs.buildKey) */
+  buildKey: string;
   probe: [number, number, number] | null; box: [number, number, number, number, number] | null;
   intact: StructureDamageAnatomy['intact'] | null; enclosure: StructureDamageAnatomy['enclosure'] | null;
   /** (battle-spikes-253) the measure the idle measurer has begun, resumed where it stopped (null: none begun) */
@@ -146,8 +151,9 @@ let warnedReadBack = false;
 function defer(anatomy: StructureDamageAnatomy, args: DescribeStructureArgs): void {
   // (another map's structures still waiting — a tool that builds map after map never runs the idle measurer — are measured
   // first: one map's parts held at most)
-  if (pendingMeasures.length && pendingMeasures[pendingMeasures.length - 1]!.mapId !== args.mapId) measureDeferredStructures(Infinity);
-  const job: DeferredMeasure = { anatomy, parts: args.parts, builder: args.builder, mapId: args.mapId, probe: null, box: null, intact: null, enclosure: null };
+  const buildKey = args.buildKey ?? args.mapId;
+  if (pendingMeasures.length && pendingMeasures[pendingMeasures.length - 1]!.buildKey !== buildKey) measureDeferredStructures(Infinity);
+  const job: DeferredMeasure = { anatomy, parts: args.parts, builder: args.builder, buildKey, probe: null, box: null, intact: null, enclosure: null };
   // the first corner as described (a part moved since reads differently) and the parts' box in the body frame
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y1 = -Infinity;
   for (const list of Object.values(args.parts)) for (const g of list) {
@@ -236,14 +242,15 @@ function bodyFrameParts(parts: DescribeStructureArgs['parts'], job: DeferredMeas
   return out;
 }
 /**
- * (battle-spikes-253) Another battlefield's deferred structures (the queue holds one map's), measured for up to `budgetMs`
+ * (battle-spikes-253) Another world's deferred structures (the queue holds one world's: 2026-11-02 audit R2, by its build key,
+ * so a map's trench variant drains its standard world's), measured for up to `budgetMs`
  * in the order the idle measurer takes them; how many are left. A props build drains them in its own slices before it
  * describes its first building: `defer` measured them all in one go (1.4 s of one task on a 4x phone's Garage background
  * build: a prefetched battlefield's measures, never run by a world that was not played).
  */
-export function measureOtherMapStructures(mapId: string, budgetMs: number): number {
+export function measureOtherMapStructures(buildKey: string, budgetMs: number): number {
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
-  const other = (): boolean => pendingMeasures.length > 0 && pendingMeasures[pendingMeasures.length - 1]!.mapId !== mapId;
+  const other = (): boolean => pendingMeasures.length > 0 && pendingMeasures[pendingMeasures.length - 1]!.buildKey !== buildKey;
   const spent = (): boolean => typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs;
   while (other()) {
     // (a structure's measure in steps, as the idle measurer takes it: one structure was 133 ms of one task)

@@ -183,7 +183,7 @@ import {
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
 } from './maps/exteriorDetailKit.ts';
-import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
+import { registerWorldDestructibles, emitBreakFx, emitDestroyed, worldBuildKey } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
 import { createUtilityWires, proceduralPoleParts, utilityConductorsOf, utilityPoleDistanceGeometry, utilityPoleGeometry } from './maps/utilityPoles.ts';
@@ -775,6 +775,8 @@ export interface TownRowEntry {
 export interface PropsMapConfig {
   id: string;
   props?: Partial<PropsSettings>;
+  /** The Frontline Assault trench variant's build (worldBuildConfig.ts): its own world beside the map's standard one. */
+  assaultTrenches?: boolean;
 }
 
 interface PlacedBuilding {
@@ -3962,9 +3964,12 @@ function* propsBuildSteps(
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
+  // (2026-11-02 audit R2) the world's own identity, its map and its terrain variant: the trench variant of a map is another
+  // world (its destructible registration, its deferred structure measures), never the standard world's replacement
+  const worldKey = worldBuildKey(cfg);
   // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
   // build describes its first building and the queue would take them all in one go
-  while (measureOtherMapStructures(mapId, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
+  while (measureOtherMapStructures(worldKey, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
   // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
   const civicPlan = civicPlanFor(mapId);
   if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
@@ -5234,7 +5239,7 @@ ${snowCap ? `
     if (!state) return;
     const style = regionalArchitecture?.id ?? null;
     const anatomy = describeStructure({
-      structureIdx, mapId, builder, style, parts: parts as Readonly<Record<string, readonly THREE.BufferGeometry[]>>,
+      structureIdx, mapId, buildKey: worldKey, builder, style, parts: parts as Readonly<Record<string, readonly THREE.BufferGeometry[]>>,
       w: maxX - minX, d: maxZ - minZ, h: maxY, placement: { x, y, z, yaw }, massClass: state.massClass,
     });
     structureDamage.set(structureIdx, { builder, style, anatomy });
@@ -12811,7 +12816,7 @@ ${snowCap ? `
     }
   }
   const registerDestructibles = (): (() => void) => registerWorldDestructibles({
-    key: mapId,
+    key: worldKey,
     isActive: () => {
       for (let o: THREE.Object3D | null = group; o; o = o.parent) {
         if (o.visible === false) return false;
