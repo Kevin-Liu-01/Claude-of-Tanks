@@ -8,6 +8,7 @@
  */
 
 import * as detMath from './detMath.ts';
+import { OVERTURN_EXIT_UP_Y, hullBodyMode, startHullRighting } from './hullBodyMode.ts';
 /**
  * Bots right themselves after this long on their side or roof (owner 2026-09-20: "bots should automatically right
  * themselves after like 5 seconds being upside down"; 15 s until then). Only bots run the lifecycle — a player
@@ -37,7 +38,8 @@ interface RolloverState {
 const LINEAR_RESET_MPS = 0.45;
 const VERTICAL_RESET_MPS = 0.35;
 const ANGULAR_RESET_RAD_S = 0.25;
-const SIDE_UP_Y = 0.48;
+/** On its side: the overturn's own exit (hullBodyMode.ts). */
+const SIDE_UP_Y = OVERTURN_EXIT_UP_Y;
 
 function wrapAngle(value: number): number {
   let angle = value;
@@ -46,10 +48,10 @@ function wrapAngle(value: number): number {
   return angle;
 }
 
-/** True only while a living movement state can accept one self-right edge. */
+/** True only while a living movement state can accept one self-right edge: grounded, overturned and tumbling (not
+ * already under the righting torque). */
 export function canSelfRightTank(state: RolloverState | null | undefined): boolean {
-  return !!state && state.overturned === true && state.grounded !== false &&
-    state._body?.tumbling === true && state._body.autoRighting !== true;
+  return !!state && state.overturned === true && state.grounded !== false && hullBodyMode(state) === 'tumbling';
 }
 
 /**
@@ -64,7 +66,6 @@ export function canSelfRightTank(state: RolloverState | null | undefined): boole
  */
 export function requestTankSelfRight(state: RolloverState | null | undefined, gravityScale = 1): boolean {
   if (!state || !canSelfRightTank(state)) return false;
-  const body = state._body!;
   const spring = state._spring;
   if (!spring) return false;
 
@@ -91,8 +92,7 @@ export function requestTankSelfRight(state: RolloverState | null | undefined, gr
     if (Number.isFinite(state._ride.y)) state._ride.y = (state._ride.y as number) + SELF_RIGHT_CLEARANCE_M;
   }
   state.grounded = false;
-  body.tumbling = true;
-  body.autoRighting = true;
+  startHullRighting(state);
   state.rolloverCountdownS = 0;
   if (state._rollover) {
     state._rollover.elapsedS = 0;
@@ -139,7 +139,9 @@ export function stepRolloverLifecycle(state: RolloverState, dt: number): boolean
     : nextElapsedS;
   state.rolloverCountdownS = Math.max(0, ROLLOVER_AUTO_RIGHT_S - rollover.elapsedS);
   if (rollover.elapsedS < ROLLOVER_AUTO_RIGHT_S || rollover.expired) return false;
+  // the righting torque runs in the rigid phase only (hullBodyMode.ts); a trapped hull is always in it, and a refused
+  // start leaves the window to try again rather than a latch nothing would clear
+  if (!startHullRighting(state)) return false;
   rollover.expired = true;
-  if (state._body) state._body.autoRighting = true;
   return true;
 }

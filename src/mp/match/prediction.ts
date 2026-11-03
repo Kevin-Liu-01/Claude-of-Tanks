@@ -14,6 +14,7 @@
  */
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
+import { restoreHullBodyMode } from '../../sim/hullBodyMode.ts';
 import type {
   MovementCollisionResolver, MovementCombatState, MovementContactGeometry, MovementHeightField, MovementSpec,
   TankState,
@@ -236,9 +237,11 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.turretYaw = dequantizeAngle(row.turretYaw);
   state.gunPitch = dequantizeAngle(row.gunPitch);
   state.grounded = !(row.flags & ENTITY_FLAGS.AIRBORNE);
-  state.overturned = !!(row.flags & ENTITY_FLAGS.OVERTURNED);
-  state._body.autoRighting = !!(row.flags & ENTITY_FLAGS.AUTO_RIGHTING);
-  state._body.tumbling = state.overturned || state._body.autoRighting;
+  // the row carries the rigid phase's two sub-states, not a plain tumble: the viewer checkpoint restores the true bit
+  // right after (restoreCheckpoint); without one, the hull holds the mode those two flags imply (hullBodyMode.ts)
+  const overturned = !!(row.flags & ENTITY_FLAGS.OVERTURNED);
+  const autoRighting = !!(row.flags & ENTITY_FLAGS.AUTO_RIGHTING);
+  restoreHullBodyMode(state, overturned, overturned || autoRighting, autoRighting);
   state._prevSpeed = state.speed;
   // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
   // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's

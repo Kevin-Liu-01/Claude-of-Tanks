@@ -43,6 +43,7 @@
  * adding more than one value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
+import { restoreHullBodyMode } from '../../sim/hullBodyMode.ts';
 
 export const MOVEMENT_CHECKPOINT_VERSION = 9;
 
@@ -152,9 +153,9 @@ export function applyMovementCheckpoint(
   state._body.landingBlendS = values[offset + 1]!;
   state._rollover.elapsedS = values[offset + 2]!;
   state._ride.grounded = !!(flags & 2);
-  state._body.tumbling = !!(flags & 4);
   state._body.dynamicSupport = !!(flags & 8);
-  state._body.autoRighting = !!(flags & 16);
+  // the rigid phase and the righting torque against the overturn the row set (hullBodyMode.ts keeps the mode legal)
+  restoreHullBodyMode(state, state.overturned, !!(flags & 4), !!(flags & 16));
   state._rollover.expired = !!(flags & 32);
   state.atGunLimit = !!(flags & 64);
   state.gunLimitSpec = !!(flags & 128);

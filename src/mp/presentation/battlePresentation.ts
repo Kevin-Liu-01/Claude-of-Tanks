@@ -22,6 +22,7 @@ import type { CombatState } from '../../sim/damage.ts';
 import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
 import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
+import { restoreHullBodyMode } from '../../sim/hullBodyMode.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
@@ -812,9 +813,10 @@ export function createBattlePresentation({
     state.pos.set(sample.x * POS_SCALE, sample.y * POS_SCALE, sample.z * POS_SCALE);
     state.verticalSpeed = sample.vy;
     state.grounded = (sample.flags & ENTITY_FLAGS.AIRBORNE) === 0;
-    state.overturned = (sample.flags & ENTITY_FLAGS.OVERTURNED) !== 0;
-    state._body.autoRighting = (sample.flags & ENTITY_FLAGS.AUTO_RIGHTING) !== 0;
-    state._body.tumbling = state.overturned || state._body.autoRighting;
+    // the rigid phase's two sub-states ride the row, a plain tumble does not (hullBodyMode.ts restores a legal mode)
+    const overturned = (sample.flags & ENTITY_FLAGS.OVERTURNED) !== 0;
+    const autoRighting = (sample.flags & ENTITY_FLAGS.AUTO_RIGHTING) !== 0;
+    restoreHullBodyMode(state, overturned, overturned || autoRighting, autoRighting);
     state._ride.y = sample.y;
     state._ride.v = sample.vy;
     state._ride.grounded = state.grounded;

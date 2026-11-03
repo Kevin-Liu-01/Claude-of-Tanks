@@ -38,6 +38,9 @@ import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 import { publishedTrackContact } from './trackContact.ts';
 
 import * as detMath from './detMath.ts';
+import {
+  enterHullTumble, finishHullRighting, hullBodyMode, resetHullBodyMode, settleHullOnTracks, updateHullOverturn,
+} from './hullBodyMode.ts';
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
@@ -1372,8 +1375,8 @@ function landingTurnRate(rate: number, error: number, closing: number, lever: nu
 }
 const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
 const TUMBLE_EXIT_UP_Y = 0.88;     // hysteresis: settle close to upright only
-const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
-const OVERTURN_EXIT_UP_Y = 0.48;
+// the overturn's own thresholds (enter -0.08: the centre of mass past the side; exit 0.48) live with the body-mode owner
+const RIGHTED_UP_Y = 0.94;         // the righting torque hands back to the tracks within ~20° of the ground's plane
 const GROUND_TUMBLE_DAMP_S = 1.7;
 const GROUND_TUMBLE_GRAVITY = 3.1;
 const AUTO_RIGHT_OMEGA = 3.4;
@@ -2222,7 +2225,9 @@ export function resetTankVerticalState(
   state._body.dynamicSupport = false;
   state._body.restSupportY = NaN;
   state._body.bodyRest = 0;
-  if (grounded !== false && !state.overturned) state._body.tumbling = false;
+  // an upright hull on the ground is supported, its tumble and any righting with it (audit M8: the righting latch
+  // outlived a reset that cleared only the tumble)
+  if (grounded !== false) resetHullBodyMode(state);
 }
 
 function initializeRideState(state: TankState, supportY: number): RideState {
@@ -3536,7 +3541,7 @@ function applyLandingAttitudeImpulse(
       _landingTurn.halfWidth, _landingTurn.height);
   }
   body.landingBlendS = LANDING_CONTACT_BLEND_S;
-  if (upYAtStart < TUMBLE_ENTER_UP_Y) body.tumbling = true;
+  if (upYAtStart < TUMBLE_ENTER_UP_Y) enterHullTumble(state);
 }
 
 function updateRigidAttitude(
@@ -3579,15 +3584,16 @@ function updateRigidAttitude(
   const relativeUpY = detMath.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
     detMath.cos(wrapAngle(spring.roll - state._terr.roll));
   if ((!groundedAtStart || landingImpact > 0) && upY < TUMBLE_ENTER_UP_Y) {
-    body.tumbling = true;
+    enterHullTumble(state);
   }
+  // the rigid phase ends on the ground fit (terrain-relative), and the overturn ends with it (hullBodyMode.ts)
   const settledSpeed = Math.abs(spring.pitchV) + Math.abs(spring.rollV);
-  if (groundedAtStart && body.autoRighting && relativeUpY > 0.94 && settledSpeed < 0.18) {
-    body.autoRighting = false;
-    body.tumbling = false;
-  } else if (groundedAtStart && body.tumbling && !body.autoRighting &&
+  const mode = hullBodyMode(state);
+  if (groundedAtStart && mode === 'righting' && relativeUpY > RIGHTED_UP_Y && settledSpeed < 0.18) {
+    finishHullRighting(state, upY);
+  } else if (groundedAtStart && mode === 'tumbling' &&
       relativeUpY > TUMBLE_EXIT_UP_Y && settledSpeed < 0.12 && landingImpact <= 0) {
-    body.tumbling = false;
+    settleHullOnTracks(state, upY);
   }
 }
 
@@ -3677,10 +3683,7 @@ function updateHullAttitude(
   }
   state.visualPitch = state._spring.pitch;
   state.visualRoll = state._spring.roll;
-  const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
-  state.overturned = state.overturned
-    ? upY < OVERTURN_EXIT_UP_Y
-    : upY < OVERTURN_ENTER_UP_Y;
+  updateHullOverturn(state, detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll));
 }
 
 /** A rock corner's ground as the wheels there feel it: as it is within their reach below the hull's track plane, its
@@ -5461,11 +5464,8 @@ export function updateTank(
   // A grounded tank on extreme authored terrain still belongs to the normal
   // support solver. Enter the rigid tumble phase automatically only after the
   // center of mass has genuinely crossed the side; lesser tilts need a launch
-  // or landing/contact impulse.
-  if (upYAtStart < OVERTURN_ENTER_UP_Y) body.tumbling = true;
-  state.overturned = state.overturned
-    ? upYAtStart < OVERTURN_EXIT_UP_Y
-    : upYAtStart < OVERTURN_ENTER_UP_Y;
+  // or landing/contact impulse (hullBodyMode.ts owns the overturn's hysteresis).
+  updateHullOverturn(state, upYAtStart);
   const landingImpactAtStart = Number.isFinite(state.landingImpactMps)
     ? state.landingImpactMps : 0;
   state.slopeBlocked = false;

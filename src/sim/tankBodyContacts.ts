@@ -11,6 +11,7 @@
 import { tankContactRect } from './tankContactShape.ts';
 
 import * as detMath from './detMath.ts';
+import { enterHullTumble } from './hullBodyMode.ts';
 interface TankBodyState {
   pos: { x: number; y: number; z: number };
   yaw: number;
@@ -516,7 +517,6 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   upper: Entity,
   lower: Entity,
   upperFrame: BodyContactFrame,
-  upperBody: ReturnType<typeof ensureBodyState>,
   closing: number,
   onImpact: TankBodyImpact<Entity> | null,
 ): void {
@@ -551,7 +551,7 @@ function applyAngularImpact<Entity extends TankBodyEntity>(
   upper.state._spring.rollV += rollKick;
   const upY = detMath.cos(upper.state.visualPitch) * detMath.cos(upper.state.visualRoll);
   if (Math.abs(pitchKick) + Math.abs(rollKick) >= STACK_TUMBLE_KICK || upY < 0.7) {
-    upperBody.tumbling = true;
+    enterHullTumble(upper.state);
   }
   if (!onImpact) return;
   const centerDistance = detMath.hypot(centerDx, centerDz);
@@ -619,8 +619,8 @@ function resolveContactPair<Entity extends TankBodyEntity>(
     upper.state.speed *= 0.985;
     return true;
   }
-  const upperBody = markDynamicSupport(upper);
-  applyAngularImpact(upper, lower, upperFrame, upperBody, closing, onImpact);
+  markDynamicSupport(upper);
+  applyAngularImpact(upper, lower, upperFrame, closing, onImpact);
   upper.state.speed *= 0.985;
   return true;
 }

@@ -1706,6 +1706,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
+    // 2026-11-02 audit M8: one owner for the hull body mode; no overturned or righting latch outside the rigid phase
+    'src/sim/hullBodyMode.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
