@@ -85,13 +85,13 @@ origin), each gun gun-local about its elevation axis. Every number below is a co
 | Cheeks | 2.44 m wide, 0.22 m tall under the bays' front (top 0.33 m over the ring since fix round 1, 6 cm under the lowered covers at full depression), the chin raked; the dischargers' shelf | photos 10, 11, 12 |
 | Floor | 0.11 m over the ring (1.71 m), so the outer corners sweep the hull's lift eyes (top 1.68 m) | the hull build |
 | Elevation bearing | axis 0.60 m over the ring (fix round 1; 0.66 before), 0.40 m behind it; the black disc 0.34 m in radius on each flank, showing under the cover | photo 08 read through its perspective (axis 0.54 m and bores 0.71 m over the turret's floor line, the disc's centre under the cover, 58 % back along it) |
-| Gun covers | 0.46 m wide (x 0.78-1.24), 0.46 m tall, 0.52 m behind to 1.10 m ahead of the axis, octagonal section, the nose tapering onto the barrel, two doors; their tops 0.14 m under the roof since fix round 1 (flush before) | photos 08, 09, 12 |
+| Gun covers | 0.46 m wide (x 0.78-1.24), 0.46 m tall, 0.52 m behind to 1.06 m ahead of the axis; since fix round 2 an angular armoured box: flat inner and outer sides, a 0.13 m chamfer along its top outer edge, a faceted nose (a shoulder at 0.82 m, then a front face 0.20 x 0.19 m round the bore), two doors with hinges and handles on the outer face; their tops 0.14 m under the roof since fix round 1 | photos 08, 09, 12, 14 |
 | Bores | x +/-0.96 m, 0.15 m over the axis (2.35 m at rest) | photo 10 (the bores at 1.27 x the face's half width); photo 08 (0.71 m over the turret's floor line) |
 | Barrels | 35 mm KDA L/90: 3.15 m barrel, 3.71 m with the v0 head (de.wikipedia); jacket, clamp, tapered tube; the v0 head (fix round 1): a clamp collar, the muzzle brake and its flange (the bore mouth, 3.74 m ahead of the axis), a round rod and two tapered blades reaching 0.31 m past it to 4.05 m, a wire loop: 7.71 m overall with the guns forward (published 7.68 / 7.76 m) | de.wikipedia; photos 03, 04 |
-| Tracking radar | fix round 1: one bulbous nose the turret's full height: a lateral drum 0.56 m across and 0.76 m long between two squared yoke cheeks, a forward dome 0.64 m across on its rim (its face 0.64 m proud of the front plate), on a rounded chin tub 0.80-0.88 m wide from the turret's floor up under the head, its front 0.54 m proud | photos 06, 08, 10, 12 |
-| Search radar | MPDR 12 raised (fix round 1): a squat drum 0.60 m across and 0.42 m tall on the rear roof (1.48 m behind the ring) with its turntable, a short elbow into the reflector's back, a deep doubly curved reflector 1.24 m wide, 1.04 m tall and 0.32 m deep, canted back 22 degrees, concave forward, its top at the published 4.22 m and its lower edge 0.58 m over the roof; the feed horn before its lower half on a 0.13 m swan-neck waveguide from the drum's front | de.wikipedia (4.22 m raised); photos 06, 08, 09 |
+| Tracking radar | one bulbous nose the turret's full height (fix rounds 1 and 2): a lateral drum 0.66 m across and 0.82 m long between two squared yoke cheeks (1.00 m over them), a shallow forward dome 0.72 m across on its rim (its face 0.69 m proud of the front plate), on a squared bucket 0.84 m wide and a rounded chin tub from the turret's floor | photos 02, 06, 08, 10, 12 |
+| Search radar | MPDR 12 raised (fix rounds 1 and 2): a squat drum 0.60 m across and 0.55 m tall on the rear roof (1.48 m behind the ring) with its turntable, a short elbow into the reflector's back, a doubly curved reflector 1.50 m wide, 0.75 m tall and 0.30 m deep (2:1, its back pillowed), canted back 22 degrees, concave forward, its top at the published 4.22 m and its lower edge 0.85 m over the roof; the feed horn before its lower half on a 0.13 m swan-neck waveguide from the drum's front | de.wikipedia (4.22 m raised); photos 06 (the raised reflector 300 x 140 px), 08, 09, 10 (the covered one 200 x 100 px) |
 | Sights and hatches | two sight heads at the roof's front either side of the radar (commander right, gunner left), two round hatches behind them, four lift eyes | photos 10, 12 |
-| Dischargers | four 76 mm Wegmann tubes a side on a bracket on the cheek's top, raised outboard and forward, 4.5 cm outboard of the barrels' and noses' sweep | de.wikipedia (2 x 4); photos 08, 11, 12 |
+| Dischargers | four 76 mm Wegmann tubes a side (0.096 m across since fix round 2) on a bracket on the cheek's top, raised outboard and forward, outboard of the barrels' and noses' sweep | de.wikipedia (2 x 4); photos 08, 11, 12 |
 | Rear kit | two stowage boxes on the rear face, a box on each flank, two radio whips (2.2 m, antenna seat role) | photos 08, 09 |
 | Hull kit (this build only) | four stowage bins a side on the sloped side plates (outer face over the fender's edge, lid 3 cm under the deck's edge since fix round 1: 1.52 m in photo 01), four grouser blocks on the glacis, the APU's intake grille on the deck's front left | photos 01, 09, 11, 14; 06, 10, 12; the APU replaces the Leopard 1's front-left ammunition |
 
@@ -120,6 +120,16 @@ covers and the rear boxes in front of it). Receipts after the fix (2026-11-03): 
 for gepard_1a2 PASS (27.73 mm worst, at yaw -173; the bare -10 degrees meets the hull); contact 0 / 0; roof pockets none;
 typecheck clean; leo1a5, leo1a2a1, leo1a3dk, leo1a5dk and leo1a5dk1 byte-identical to the baseline under the new
 `sideSkirts` option (default on); the 15 selftests naming the id or the Leopard 1 ids PASS.
+
+Fix round 2 (2026-11-03; blind A/B critics P and Q, both preferring round 2, `~/cot-lanes/twin-aa-268-evidence/ab1/out/`):
+the search reflector 2:1 wide (1.24 x 1.04 m -> 1.50 x 0.75 m, the drum 0.42 -> 0.55 m tall to keep the 4.22 m top);
+the gun covers re-cut as angular armoured boxes (flat sides, a broad top-outer chamfer, a faceted nose with a front face
+round the bore, hinged doors); the tracking radar larger and 0.10 m further forward (drum 0.56 -> 0.66 m, dome 0.64 ->
+0.72 m and shallower, yoke 1.00 m across, a squared bucket between it and the chin); the dischargers' tubes 0.084 ->
+0.096 m across. Not taken (one critic each): Q's taller rear louvre wall and perforated hull strip (round 1's critic B
+kept the louvre block; the German vehicles' bins are plain in photo 11). Receipts: the fixture PASS; nationalGunClearance
+for gepard_1a2 PASS (27.73 mm at yaw -173, the curve unchanged); contact 0 / 0; roof pockets none; typecheck clean; the
+five Leopard 1 ids byte-identical to the baseline; smokeLauncherFleet and afvBalance PASS.
 
 ## Photographic references
 

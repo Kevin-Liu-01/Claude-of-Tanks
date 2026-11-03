@@ -21,12 +21,13 @@ export const GM352_HULL = Object.freeze({
   deckY: 2.00, glacisTopZ: 3.15, noseY: 1.40, lowerFootZ: 3.35,
   /** the stern: the deck's aft edge, the sloped rear deck's foot on the stern plate */
   deckRearZ: -3.40, sternTopY: 1.84, sternFootY: 0.95, sternBellyZ: -3.70,
-  /** the fender band (TankBiathlon 2014 side view, photograph 02 at 229 px/m: 1.08-1.33 m up, the full length): a plate
-   * sloping 27 degrees out and down from the hull side's foot to its outer edge, 3 cm thick; over the bow its lower edge
-   * drops to 0.97 m and its top rises to the nose, the front end raked up to the nose's corner */
-  fenderTopY: 1.335, fenderBottomY: 1.08, fenderThickness: 0.03, fenderBowZ: 3.40, fenderTipZ: 3.93, fenderTipBottomY: 0.97,
+  /** the fender shelf (TankBiathlon 2014 side view, photograph 02 at 229 px/m: 1.08-1.33 m up, the full length): a solid
+   * shelf from the hull side's foot out to its outer lip, its top sloping 30 degrees down from 1.36 m to the lip at
+   * 1.285 m, the lip's face to the flat underside at 1.08 m; over the bow (z 3.40 on) it sweeps down to a point at the
+   * nose's corner, its foot at 0.97 m */
+  fenderTopY: 1.36, fenderLipY: 1.285, fenderBottomY: 1.08, fenderBowZ: 3.40, fenderTipZ: 3.95, fenderTipBottomY: 0.97,
   fenderTipTopY: 1.40,
-  /** the band's butt joints (photograph 02: x 405, 775, 1165, 1555) */
+  /** the shelf's butt joints (photograph 02: x 405, 775, 1165, 1555) */
   fenderJointZs: Object.freeze([-2.44, -0.82, 0.88, 2.59]),
 });
 
@@ -50,7 +51,7 @@ export const TUNGUSKA = Object.freeze({
   gunPivot: Object.freeze([0, 0.72, 0.18] as const),
   /** each 2A38M's centre, its two bores either side of it, and their mouths (gun-local: photograph 02's muzzles 2.21 m
    * ahead of the ring, 0.28 m past the tracking radar's face) */
-  gunX: 1.00, boreDx: 0.055, muzzleZ: 2.03,
+  gunX: 1.00, boreDx: 0.075, muzzleZ: 2.03,
   /** the broad round lower turret: an oval plan 2.76 x 2.94 m, its centre 0.27 m ahead of the ring (photograph 02:
    * z -0.93..1.78, photograph 05: its front 1.71), 0.30 m tall with a rounded top edge */
   tub: Object.freeze({ halfWidth: 1.38, halfLength: 1.47, centreZ: 0.27, bottomY: 0.012, topY: 0.305 }),
@@ -66,9 +67,9 @@ export const TUNGUSKA = Object.freeze({
    * plate from 2.11 to 2.94 m behind the ring, 0.96 m over the deck at the box, 0.83 m at its outer edge; photograph 03:
    * 1.7 m across, arched, its ends drooping) */
   searchDrive: Object.freeze({ halfWidth: 0.30, bottomY: 0.92, topY: 1.22, rearZ: -2.55, frontZ: -1.95,
-    columnHalfWidth: 0.18, columnBottomY: 0.30, columnDepth: 0.42 }),
-  searchPlate: Object.freeze({ hingeY: 0.98, hingeZ: -2.30, halfWidth: 0.85, length: 0.78, fold: 0.20, arch: 0.16,
-    thickness: 0.05 }),
+    ladderHalfWidth: 0.16, ladderBottomY: 0.30, ladderZ: -2.24 }),
+  searchPlate: Object.freeze({ hingeY: 0.98, hingeZ: -2.30, halfWidth: 1.10, length: 0.82, fold: 0.26, arch: 0.26,
+    thickness: 0.06 }),
   /** the 9M311M launchers (gun-local): one flat armoured side box a flank, 1.4 m long, 0.50 m tall, flush outboard
    * (photograph 02: z -1.00..0.40 ahead of the ring, 0.32-0.84 m over the deck), and the 2x2 containers ahead of it
    * (photographs 08, 12: their covers 0.27 m behind the drum's face). The box's front part elevates with the containers
@@ -85,22 +86,26 @@ export const PANTSIR = Object.freeze({
    * banks swing up off it and never down into the deck */
   gunPivot: Object.freeze([0, 0.86, -0.70] as const),
   /** the 2A38M centres, bores and mouths (gun-local), the receivers 0.42 m out along the bores from the trunnion */
-  gunX: 0.80, boreDx: 0.055, muzzleZ: 2.77, gunDz: 0.42,
+  gunX: 0.80, boreDx: 0.075, muzzleZ: 2.77, gunDz: 0.42,
   platform: Object.freeze({ bottomApothem: 1.04, topApothem: 0.98, bottomY: 0.012, topY: 0.20 }),
   body: Object.freeze({ halfWidth: 0.55, bottomY: 0.18, topY: 0.95, rearZ: -1.25, frontZ: 0.55 }),
   /** the tracking radar's drum and its front radome */
   radar: Object.freeze({ r: 0.50, y: 0.80, rearZ: 0.30, frontZ: 1.05 }),
-  /** the 57E6 banks (gun-local): six containers in two columns of three on the cradle; outboard, the flat armoured slab
-   * over their back 72 %, 2.2 x 0.70 m, its foot 0.30 m under the lowest container and its back at the search radar's
-   * mast (photograph 09); the container covers 0.77 m past the drum's face */
+  /** the 57E6 banks (gun-local): six containers in two columns of three on the cradle, the ribbed casing along the
+   * inner column (photographs 01, 03, 09, 15); the containers' domed covers 0.77 m past the drum's face */
   bank: Object.freeze({ tubeXs: Object.freeze([1.20, 1.42]), tubeYs: Object.freeze([-0.19, 0.08, 0.35]), tubeR: 0.085,
-    tubeRearZ: -0.08, mouthZ: 2.52, cradleInnerX: 1.07, cradleOuterX: 1.515, cradleRearZ: -0.30, cradleFrontZ: 1.40,
-    cradleBottomY: -0.45, cradleTopY: -0.27, slabInnerX: 1.515, slabOuterX: 1.615, slabBottomY: -0.575, slabTopY: 0.125,
-    slabRearZ: -0.40, slabFrontZ: 1.80 }),
-  /** the search radar on its mast at the module's back: a landscape box antenna 1.24 x 0.85 x 0.45 m with chamfered top
-   * corners (photographs 06, 12), its IFF horns under the back face */
-  searchRadar: Object.freeze({ z: -0.92, mastR: 0.22, mastTopY: 1.30, halfWidth: 0.62, panelBottomY: 1.20,
-    panelTopY: 2.05, depth: 0.45, chamfer: 0.14 }),
+    tubeRearZ: -0.08, mouthZ: 2.52, cradleInnerX: 1.07, cradleOuterX: 1.49, cradleRearZ: -0.30, cradleFrontZ: 1.40,
+    cradleBottomY: -0.45, cradleTopY: -0.27 }),
+  /** the armoured side plate at the rear foot of each bank, fixed to the module (photographs 01, 07, 15: upright while
+   * the bank elevates, about as tall as it is long, its recessed panel), outboard of the containers on its beam from
+   * the platform (turret-local) */
+  sidePlate: Object.freeze({ innerX: 1.525, outerX: 1.615, bottomY: 0.10, topY: 1.10, rearZ: -1.15, frontZ: -0.25,
+    beamInnerX: 0.95, beamTopY: 0.28, beamRearZ: -0.62, beamFrontZ: -0.28 }),
+  /** the search radar on its mast at the module's back: a landscape box antenna 1.36 x 0.80 x 0.34 m (1.7 : 1, its depth
+   * a quarter of its width) with chamfered top corners and back vertical edges (photographs 06, 07, 12), leaning 3
+   * degrees back, its front face behind the guns' receivers at full elevation, the IFF horns under its back face */
+  searchRadar: Object.freeze({ z: -1.07, mastZ: -1.00, mastR: 0.22, mastBottomY: 0.74, mastTopY: 1.30, halfWidth: 0.68,
+    panelBottomY: 1.22, panelTopY: 2.02, depth: 0.34, chamfer: 0.12, edgeChamfer: 0.08, tilt: -0.06 }),
 });
 
 /** Every launch exit (gun-local): one per drawn container, left to right, lower row first. */

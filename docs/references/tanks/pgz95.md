@@ -135,3 +135,13 @@ Also drawn: the gunner's sight head on the director box, the access door in the 
 - Road wheels: the photographs show solid dished wheels with a raised hub; the fleet's China IFV standard (the Type 100's
   pressed ribs) reads as spokes. Requested: the wheel-standard exception to China's ZTZ-100 recessed web
   (`nationWheelSets.ts`, a shared table).
+
+### Fix round 2 (2026-11-03, blind A/B critics P and Q on rounds 1-2)
+
+- Search reflector 26 % wider and deeper: 1.45 x 0.84 m, 0.30 m deep, its top edge one arc (the middle 0.076 m above
+  the corners), the lower corners still rounding in; round 2's low, thick pedestal kept. Top 3.95 m (spec height 3.95).
+- The large box on the rear left of the turret roof (0.42 x 0.42 m, 0.24 m tall, with its lid seam; the antenna base
+  moved onto it) and inset access doors with hinges in both flanks (photograph 02).
+- QW-2 seeker caps 0.145 m cubes (1.6 tube diameters, photograph 02).
+- Not changed: the hull hatches stay raised (Army Technology: "a raised hatch and three vision blocks" each for the
+  driver and the commander), the upper-side lean (22.8 degrees; one critic, unsure).

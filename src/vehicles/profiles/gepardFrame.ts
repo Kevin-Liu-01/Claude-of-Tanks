@@ -38,20 +38,23 @@ export const GEPARD_MUZZLE_Z = 3.74;
 export const GEPARD_PRONG_TIP_Z = 4.05;
 
 /** Each gun's armoured cover, gun-local: its section about the elevation axis and its length either side of it. Its top
- * 0.14 m under the roof (photos 08, 12), the bearing disc showing under it. */
+ * 0.14 m under the roof (photos 08, 12), the bearing disc showing under it. Fix round 2 (A/B critic P, photos 09, 12,
+ * 14): an angular armoured box, flat sides, a broad chamfer along its top outer edge, a faceted nose (a shoulder, then a
+ * front face 0.20 x 0.19 m round the bore). */
 export const GEPARD_GUN_COVER = Object.freeze({
-  innerX: 0.78, outerX: 1.24, bottomY: -0.12, topY: 0.34, rearZ: -0.52, bodyFrontZ: 0.45, noseZ: 1.10,
+  innerX: 0.78, outerX: 1.24, bottomY: -0.12, topY: 0.34, rearZ: -0.52, bodyFrontZ: 0.55, shoulderZ: 0.82, noseZ: 1.06,
   bearingR: 0.34,
 });
 
 /**
- * The MPDR 12 search radar raised over the rear section (turret-local; fix round 1, both critics, photos 06, 08, 09): a
- * squat drum on the rear roof, a short elbow from its turntable to the reflector's back, and a deep doubly curved
- * reflector 1.24 m wide, 1.04 m tall and 0.32 m deep, canted back 22 degrees, concave forward, its top at the published
- * 4.22 m raised height and its lower edge 0.58 m over the roof; the feed horn in front of its lower half on a swan-neck
- * waveguide from the drum.
+ * The MPDR 12 search radar raised over the rear section (turret-local; fix round 1, both critics, photos 06, 08, 09; fix
+ * round 2, both A/B critics: 2:1 wide, photo 06's raised reflector 300 x 140 px and photo 10's covered one 200 x 100 px):
+ * a squat drum 0.60 m across and 0.55 m tall on the rear roof (photo 09), a short elbow from its turntable to the
+ * reflector's back, and a doubly curved reflector 1.50 m wide, 0.75 m tall and 0.30 m deep (its back pillowed), canted
+ * back 22 degrees, concave forward, its top at the published 4.22 m raised height and its lower edge 0.85 m over the roof;
+ * the feed horn in front of its lower half on a swan-neck waveguide from the drum.
  */
 export const GEPARD_SEARCH_RADAR = Object.freeze({
-  drumZ: -1.48, drumR: 0.30, drumH: 0.42,
-  halfW: 0.62, halfH: 0.52, depth: 0.32, shell: 0.04, tiltDeg: 22, vertexY: 2.018, vertexZ: -1.62, topY: 2.62,
+  drumZ: -1.48, drumR: 0.30, drumH: 0.55,
+  halfW: 0.75, halfH: 0.375, depth: 0.30, shell: 0.04, tiltDeg: 22, vertexY: 2.16, vertexZ: -1.62, topY: 2.62,
 });

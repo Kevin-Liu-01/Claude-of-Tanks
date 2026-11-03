@@ -107,8 +107,8 @@ Object.assign(pgz95, {
   turretTraverseDegS: 65, gunPitchDegS: 45, gunElevationDeg: 85, gunDepressionDeg: 5,
 });
 // published length and width; the height is the build's with the search antenna raised on its short pedestal as
-// photographed (3.91 m; the published figures are 3.40 m folded, 4.82 m raised)
-pgz95.dims = { hullLengthM: 6.71, overallLengthM: 6.71, widthM: 3.20, heightM: 3.91 };
+// photographed (3.95 m; the published figures are 3.40 m folded, 4.82 m raised)
+pgz95.dims = { hullLengthM: 6.71, overallLengthM: 6.71, widthM: 3.20, heightM: 3.95 };
 // The Terminator 2's twin 2A42 package (afvFamily.ts) scaled by calibre to 25 mm (x 25/30): damage and the cycle down
 // (43 and 0.25 s). The calibre-scaled penetration (104 mm) would sit at 0.56 of the tier-V IFV median (balanceAudit.ts,
 // floor 0.65), so the round takes the shown-tier floor fleetBalancePass applyShownTierFloors lifted the Terminator to.
@@ -157,11 +157,14 @@ const pgz09 = plaVariant('pgz09', 'PGZ-09');
     roofPlate('hull_roof', roof[0], L.fenderHalf - 0.04, L.roofY, L.rearZ, L.glacisZ, mm(roof)),
   ];
   pgz09.armor.turretPlates = [
-    frontPlate('turret_chin', turretFront[0], T.baseHalf, 0.02, T.baseFrontZ, T.beltY, T.beltFrontZ, mm(turretFront)),
+    // the round drum under the upper body, as its four quarter faces
+    frontPlate('turret_drum_front', turretFront[0], T.drumR * 0.7, 0.02, T.drumR, T.beltY, T.drumR, mm(turretFront)),
+    rearPlate('turret_base_rear', rear[0], 0.84, 0.02, T.rearZ + 0.12, T.beltY, T.rearZ + 0.12, mm(rear)),
+    ...sidePair('turret_base', turretSide, 0.84, 0.02, 0.84, T.beltY, T.rearZ + 0.12, 0),
+    ...sidePair('turret_drum', turretSide, T.drumR, 0.02, T.drumR, T.beltY, -T.drumR * 0.7, T.drumR * 0.7),
     frontPlate('turret_front', turretFront[0], T.bodyHalf, T.beltY, T.frontZ, T.frontRoofY, T.frontZ, mm(turretFront)),
     frontPlate('turret_step', turretSide[0], T.bodyHalf, T.frontRoofY, T.stepZ, T.roofY, T.stepZ, mm(turretSide)),
-    frontPlate('eo_column_front', turretFront[0], 0.34, T.beltY, T.beltFrontZ, T.frontRoofY, 1.70, mm(turretFront)),
-    ...sidePair('turret_band', turretSide, T.baseHalf, 0.02, T.beltHalf, T.beltY, T.rearZ + 0.08, T.baseFrontZ),
+    frontPlate('eo_column_front', turretFront[0], 0.34, T.beltY, T.columnFrontZ, T.frontRoofY, 1.70, mm(turretFront)),
     ...sidePair('turret_side', turretSide, T.bodyHalf, T.beltY, T.bodyHalf, T.shoulderY, T.rearZ, T.frontZ),
     rearPlate('turret_rear', rear[0], T.bodyHalf, 0.02, T.rearZ, T.roofY, T.rearZ, mm(rear)),
     roofPlate('turret_roof', roof[0], T.roofHalf, T.roofY, T.rearZ + 0.04, T.stepZ - 0.04, mm(roof)),
@@ -177,7 +180,7 @@ const pgz09 = plaVariant('pgz09', 'PGZ-09');
     moduleBox('trackR', [1.10, 0, -3.70], [1.58, L.gear.topY, 3.30]),
     moduleBox('ammoRack', [-0.85, -0.50, -1.40], [0.85, 0.40, -0.30], true),
     moduleBox('radio', [0.30, 0.50, -1.70], [0.85, 1.10, -1.20], true),
-    moduleBox('optics', [-0.34, T.beltY, 1.18], [0.34, 1.24, T.beltFrontZ], true),
+    moduleBox('optics', [-0.34, T.beltY, 1.18], [0.34, 1.24, T.columnFrontZ + 0.04], true),
     { ...moduleBox('gun', [-G.housingOuter, gp[1] + G.housingKeelY, gp[2] + G.housingRearZ],
       [G.housingOuter, gp[1] + G.housingTopY, gp[2] + G.collarFrontZ], true), gunFollow: true, external: true },
   ];

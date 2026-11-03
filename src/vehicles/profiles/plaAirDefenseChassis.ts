@@ -222,9 +222,14 @@ export function buildPgz09Chassis(P: TankBuilderPort): void {
   // the rear: tail lights, the tow pintle, the stowage drum standing on the rear right corner (photograph 02)
   taillights(P, 1.10, 1.58, L.rearZ - 0.02);
   P.add('hullDetail', box(0.26, 0.16, 0.10), 0, 0.92, L.rearZ - 0.03);
-  // (kept 0.38 m tall: the guns depress over it at the rear, yaw 175-180)
-  P.add('hullDetail', cylY(0.13, 0.13, 0.38, P.q ? 16 : 10), -1.32, L.roofY + 0.185, -3.28);
-  P.add('hullDark', cylY(0.135, 0.135, 0.03, P.q ? 16 : 10), -1.32, L.roofY + 0.375, -3.28);
+  // the rear right corner (fix round 2, photograph 02's left end): the stowage drum, 0.50 m tall (the photograph's reaches
+  // 0.68 m, but the guns depress over this corner: at -5 degrees the barrels pass 2.31 m over it), and beside it the
+  // raised box with its grille
+  P.add('hullDetail', cylY(0.13, 0.13, 0.50, P.q ? 16 : 10), -1.38, L.roofY + 0.245, -2.98);
+  P.add('hullDark', cylY(0.135, 0.135, 0.03, P.q ? 16 : 10), -1.38, L.roofY + 0.495, -2.98);
+  P.add('hullDetail', box(0.40, 0.30, 0.28), -1.32, L.roofY + 0.14, -3.32);
+  P.add('hullDark', box(0.32, 0.012, 0.20), -1.32, L.roofY + 0.294, -3.32);
+  for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.30, 0.016, 0.022), -1.32, L.roofY + 0.30, -3.39 + k * 0.07);
   P.add('hullDark', cylY(0.045, 0.055, 0.07, 10), 1.30, L.roofY + 0.035, -3.20);
   KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: G.wheelR, wheelW: G.wheelW, wheelY: G.wheelY, xc: G.xc, dishR: 0.78,

@@ -137,3 +137,18 @@ the roof between them) stands 1.27 m over the ring, its front part 1.06 m from z
 - Hull: the deep side plates over the front 1.42 m, down to 0.85 m, with an access hatch.
 - Rear wall: four hinge latches and the antenna base.
 - Road wheels: as the PGZ-95 (requested: the ZTZ-100 recessed-web exception).
+
+### Fix round 2 (2026-11-03, blind A/B critics P and Q on rounds 1-2)
+
+- Turret base: a round drum (radius 0.90 m, 0.32 m tall) on its race collar, set back under the overhanging upper body,
+  with a low block running on under the rear of the upper body (photograph 02's lower band reaches the turret's rear);
+  the smoke dischargers in a mounting block on each flank of the drum, inside the housings' sweep.
+- Search array: a square-sided box 1.05 x 0.76 x 0.29 m with four transverse ribs on top, on two short brackets that
+  leave a 0.10 m gap over the roof; its top stays at 3.40 m. Photograph 03 puts its width at 0.83-0.95 m; 1.05 m splits
+  the critics (one read round 2's 0.92 m as right, the other wanted about 1.36 m).
+- EO head enlarged (0.58 x 0.22 x 0.52 m) with the sensor box and window under its front; kept on the centreline over
+  the tracking radar (photographs 01 and 03: it stands behind the dish in both front quarters).
+- Front-roof step kept at photograph 02's measure (0.21 m, from turret-local z 0.62): the EO head standing to 1.24 m in
+  front of it hides much of the dip in a side view.
+- Rear right corner of the hull: the drum 0.50 m tall (the photograph's reaches 0.68 m, but the barrels pass 2.31 m over
+  that corner at -5 degrees) and the raised box with its grille beside it.

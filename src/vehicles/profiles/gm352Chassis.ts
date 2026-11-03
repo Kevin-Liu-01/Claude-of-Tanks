@@ -62,43 +62,37 @@ function hullShell(P: TankBuilderPort): void {
       [x, H.sternFootY, -L + 0.01]);
   }
   P.add('hull', convexSolid(lower));
-  // The fender bands (photographs 01, 02, 05, 06): a plate along each side, sloping 27 degrees out and down from the
-  // hull side's foot over the track, its rear end square at the stern. Over the bow it turns down: its lower edge drops
-  // and its top rises toward the nose, the front end raked up to the nose's corner.
+  // The fender shelves (photographs 01, 02, 05, 06, 13): a solid bevelled shelf along each side over the track, its top
+  // sloping 30 degrees out and down from the hull side to the outer lip, the lip's face standing to the shelf's flat
+  // underside; its rear end square at the stern. Over the bow it sweeps down to a point at the nose's corner.
   for (const side of [-1, 1]) {
-    const band = fenderSection(side, H.fenderTopY, H.fenderBottomY);
-    P.add('hull', convexSolid([...band(-L + 0.035), ...band(H.fenderBowZ)]));
-    const tip = fenderSection(side, H.fenderTipTopY, H.fenderTipBottomY);
-    P.add('hull', convexSolid([...band(H.fenderBowZ), ...tip(H.fenderTipZ).map(([x, y, z]) => [x, y,
-      z - (y < H.fenderTopY ? 0.07 : 0)] as P3)]));
-    // the band's butt joints: straps 6 cm wide over its outer face
-    const n = fenderNormal(H.fenderTopY, H.fenderBottomY);
+    const shelf = fenderSection(side);
+    P.add('hull', convexSolid([...shelf(-L + 0.035), ...shelf(H.fenderBowZ)]));
+    P.add('hull', convexSolid([...shelf(H.fenderBowZ),
+      [side * (H.sideX - 0.01), H.fenderTipTopY, H.fenderTipZ], [side * (H.sideX + 0.05), H.fenderTipBottomY, H.fenderTipZ - 0.07],
+      [side * (H.sideX - 0.01), H.fenderTipBottomY + 0.05, H.fenderTipZ - 0.10]]));
+    // the shelf's butt joints: straps 6 cm wide over its top and its lip
     for (const z of H.fenderJointZs) {
       P.add('hullDetail', convexSolid([z - 0.03, z + 0.03].flatMap((jz) => [
-        [side * (H.sideX + 0.004), H.fenderTopY + 0.004, jz], [side * (H.fenderX + n[0] * 0.006), H.fenderBottomY + n[1] * 0.006, jz],
-        [side * (H.sideX - 0.004), H.fenderTopY - 0.012, jz], [side * (H.fenderX - n[0] * 0.012), H.fenderBottomY - n[1] * 0.012, jz],
+        [side * (H.sideX - 0.004), H.fenderTopY + 0.006, jz], [side * (H.fenderX + 0.006), H.fenderLipY + 0.006, jz],
+        [side * (H.fenderX + 0.006), H.fenderBottomY + 0.02, jz], [side * (H.fenderX - 0.03), H.fenderBottomY + 0.02, jz],
+        [side * (H.sideX - 0.004), H.fenderTopY - 0.03, jz],
       ] as P3[])));
     }
     // the rear mud flaps behind the sprockets, hung from the sponson's underside, and the rubber flap under the
-    // fender's bow end, ahead of the idler
+    // shelf's bow end, ahead of the idler
     P.addMudguard('gm352-rear-flap', 'hullRubber', KIT.box(0.40, 0.48, 0.025), side * 1.30, H.sponsonY - 0.23, -L + 0.03);
-    P.addMudguard('gm352-bow-strip', 'hullRubber', KIT.box(0.025, 0.16, 0.36), side * (H.fenderX - 0.03), 0.96, 3.62);
+    P.addMudguard('gm352-bow-strip', 'hullRubber', KIT.box(0.025, 0.16, 0.30), side * (H.fenderX - 0.04), 0.96, 3.60);
   }
 }
 
-/** The fender plate's outward normal in the (x, y) section: out and up, square to its slope. */
-function fenderNormal(topY: number, bottomY: number): [number, number] {
-  const dx = H.fenderX - (H.sideX - 0.01), dy = topY - bottomY, l = Math.hypot(dx, dy);
-  return [dy / l, dx / l];
-}
-
-/** The fender plate's section at a station: its outer face's top (into the hull side) and bottom edges, and the same
- * two edges on its underside, the plate's thickness in from them. */
-function fenderSection(side: number, topY: number, bottomY: number): (z: number) => P3[] {
-  const [nx, ny] = fenderNormal(topY, bottomY), t = H.fenderThickness, xi = H.sideX - 0.01;
+/** The fender shelf's section at a station: into the hull side at its top and its foot, the 30-degree top out to the
+ * lip, the lip's face down to the flat underside. */
+function fenderSection(side: number): (z: number) => P3[] {
+  const xi = H.sideX - 0.01;
   return (z) => [
-    [side * xi, topY, z], [side * H.fenderX, bottomY, z],
-    [side * (xi - nx * t), topY - ny * t, z], [side * (H.fenderX - nx * t), bottomY - ny * t, z],
+    [side * xi, H.fenderTopY, z], [side * H.fenderX, H.fenderLipY, z], [side * H.fenderX, H.fenderBottomY, z],
+    [side * xi, H.fenderBottomY, z],
   ];
 }
 
@@ -178,35 +172,52 @@ function hullSides(P: TankBuilderPort, variant: Gm352ChassisOptions['variant']):
 
 function hullFront(P: TankBuilderPort): void {
   const L = H.halfLength;
-  // The driver's raised vision box front left, standing on the glacis' top edge with its front face raked 45 degrees
-  // down onto the plate, the vision block's glass across it; his hatch on the roof behind it. Both boxes stand ahead of
-  // the 2.85 m the missile racks' corners reach at any bearing (gm352Layout.ts), so the racks depress over them.
-  const driverTop = 2.20, faceTopZ = 3.02, faceFootZ = 3.42;
+  // The driver's hump front left (photographs 01, 06, 13): a raised box standing on the glacis' top edge, its front
+  // face raked down onto the plate with the big windscreen in its frame, the flat visor lid overhanging it; his hatch on
+  // the roof behind it. Both front boxes stand ahead of the 2.81 m the guns' muzzles reach at any bearing.
+  const driverTop = 2.34, faceTopZ = 3.00, faceFootZ = 3.42;
   P.add('hull', convexSolid([0.32, 1.10].flatMap((x) => [
     [x, H.deckY - 0.03, 2.88], [x, driverTop, 2.88], [x, driverTop, faceTopZ], [x, glacisY(faceFootZ) - 0.02, faceFootZ],
     [x, glacisY(faceFootZ) - 0.06, faceFootZ - 0.04], [x, H.deckY - 0.03, H.glacisTopZ],
   ] as P3[])));
   const rake = Math.atan2(driverTop - (glacisY(faceFootZ) - 0.02), faceFootZ - faceTopZ);
-  const glassY = driverTop - 0.10, glassZ = faceTopZ + (driverTop - glassY) / Math.tan(rake);
-  P.add('hullGlass', KIT.box(0.60, 0.012, 0.11), 0.71, glassY, glassZ, rake, 0, 0);
-  P.add('hullDark', KIT.box(0.70, 0.03, 0.05), 0.71, driverTop + 0.005, faceTopZ - 0.005);       // the visor over the glass
+  /** a point on the raked face, `down` metres down it from its top edge, `out` metres proud of it */
+  const onFace = (down: number, out: number): [number, number] => [
+    driverTop - down * Math.sin(rake) + out * Math.cos(rake), faceTopZ + down * Math.cos(rake) + out * Math.sin(rake)];
+  const [gy, gz] = onFace(0.17, 0.004), tilt = rake - Math.PI / 2;
+  P.add('hullGlass', KIT.box(0.60, 0.20, 0.012), 0.71, gy, gz, tilt, 0, 0);
+  // the windscreen's frame and its centre bar
+  for (const [dy, w, h] of [[-0.115, 0.68, 0.035], [0.115, 0.68, 0.035]] as const) {
+    const [fy, fz] = onFace(0.17 + dy, 0.012);
+    P.add('hullDark', KIT.box(w, h, 0.03), 0.71, fy, fz, tilt, 0, 0);
+  }
+  for (const dx of [-0.32, 0, 0.32]) {
+    const [fy, fz] = onFace(0.17, 0.012);
+    P.add('hullDark', KIT.box(0.035, 0.26, 0.03), 0.71 + dx, fy, fz, tilt, 0, 0);
+  }
+  P.add('hullDetail', KIT.box(0.86, 0.035, 0.30), 0.71, driverTop + 0.017, faceTopZ - 0.03);    // the visor lid
   P.add('hullHatch', KIT.cylY(0.24, 0.25, 0.04, P.q ? 24 : 12), 0.71, H.deckY + 0.012, 2.60);
   P.add('hullDark', KIT.torus(0.245, 0.012, P.q ? 24 : 12), 0.71, H.deckY + 0.034, 2.60);
-  // The equipment box front right, its top raked forward down onto the glacis.
+  // The equipment box front right, its top raked forward down onto the glacis, its flat lid overhanging the front.
+  const rightTop = 2.26;
   P.add('hull', convexSolid([-1.18, -0.40].flatMap((x) => [
-    [x, H.deckY - 0.03, 2.88], [x, 2.14, 2.88], [x, 2.14, 3.02], [x, glacisY(3.40) - 0.02, 3.40], [x, glacisY(3.40) - 0.06, 3.36],
-    [x, H.deckY - 0.03, H.glacisTopZ],
+    [x, H.deckY - 0.03, 2.88], [x, rightTop, 2.88], [x, rightTop, 3.02], [x, glacisY(3.40) - 0.02, 3.40],
+    [x, glacisY(3.40) - 0.06, 3.36], [x, H.deckY - 0.03, H.glacisTopZ],
   ] as P3[])));
-  P.add('hullDetail', KIT.box(0.70, 0.02, 0.12), -0.79, 2.146, 2.95);
-  // The headlight boxes on the glacis' corners, the lamps in their fronts.
+  P.add('hullDetail', KIT.box(0.84, 0.035, 0.26), -0.79, rightTop + 0.017, 2.98);
+  // the plate between the two boxes with its stencilled cross (photograph 06)
+  P.add('hullDetail', convexSolid([-0.40, 0.32].flatMap((x) => [
+    [x, H.deckY - 0.03, 2.90], [x, H.deckY + 0.08, 2.90], [x, glacisY(3.30) + 0.05, 3.30], [x, glacisY(3.30) - 0.03, 3.30],
+  ] as P3[])));
+  // The headlight pods on the deck's front corners, outboard of the two boxes: each lamp in its housing under a hood.
   for (const side of [-1, 1]) {
-    const x = side * 1.27, z = 3.36;
-    P.add('hull', convexSolid([x - 0.15, x + 0.15].flatMap((bx) => [
-      [bx, glacisY(z - 0.16) - 0.04, z - 0.16], [bx, glacisY(z - 0.16) + 0.13, z - 0.16], [bx, glacisY(z - 0.16) + 0.13, z + 0.08],
-      [bx, glacisY(z + 0.14) - 0.04, z + 0.14],
+    const x = side * 1.28, z = 3.30, foot = glacisY(z + 0.14) - 0.04, top = glacisY(z - 0.18) + 0.24;
+    P.add('hull', convexSolid([x - 0.16, x + 0.16].flatMap((bx) => [
+      [bx, glacisY(z - 0.18) - 0.04, z - 0.18], [bx, top, z - 0.18], [bx, top, z + 0.10], [bx, foot, z + 0.14],
     ] as P3[])));
-    KIT.headlight(P, x + side * 0.05, glacisY(z - 0.16) + 0.06, z + 0.115, 0, 0.055);
-    P.add('hullDark', KIT.box(0.08, 0.05, 0.05), x - side * 0.08, glacisY(z - 0.16) + 0.06, z + 0.10);
+    P.add('hullDetail', KIT.box(0.34, 0.03, 0.12), x, top + 0.012, z + 0.14);                     // the hood
+    KIT.headlight(P, x + side * 0.05, top - 0.11, z + 0.135, 0, 0.075);
+    P.add('hullDark', KIT.box(0.09, 0.06, 0.05), x - side * 0.09, top - 0.11, z + 0.12);
     // tow hook on the lower glacis: a clevis block and its shackle lying out of it
     const hookZ = 3.80, hookY = H.bellyY + (hookZ - H.lowerFootZ) * (H.noseY - H.bellyY) / (L - H.lowerFootZ);
     P.add('hullDetail', KIT.box(0.14, 0.16, 0.10), side * 0.56, hookY, hookZ + 0.02, -0.57, 0, 0);

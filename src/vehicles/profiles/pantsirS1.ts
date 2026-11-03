@@ -3,14 +3,14 @@
 // platform on the ring, the central body, the tracking radar's big drum forward on it with its round yellow radome
 // facing ahead on a stem, the search radar's landscape box antenna on its mast at the back with the IFF horns under
 // its back face. Either side of the drum a 2A38M twin-barrel 30 mm cannon, and outboard of each gun a bank of six 57E6
-// containers, two columns of three, on its cradle, held by two thin bands, the long flat armoured slab over its
-// outer side's back and the ribbed casing on its inner side (photographs 01-03, 08-12).
+// containers, two columns of three, on its cradle, held by two thin bands, the ribbed casing on its inner side; at
+// each bank's rear foot the square armoured side plate, fixed to the module (photographs 01-03, 07-12, 15).
 //
 // Combat wiring (gm352Layout.ts PANTSIR, read by gm352AirDefenseSpecs.ts): the ring at GM352_RING, the trunnion at
 // gunPivot, one fire axis per gun on its inner bore (barrel groups 0 and 1), the twelve launch exits on the containers'
 // domed front covers. The banks pitch with the guns over the system's -5..+85 degree envelope on a trunnion at the
-// module's back, under the slabs' back ends: everything stands ahead of it or close round it, so nothing swings down
-// into the deck, and the search radar stands between the guns' receivers.
+// module's back, behind the side plates' middle: everything stands ahead of it or close round it, so nothing swings
+// down into the deck; the side plates stand outboard of the containers and the search radar behind the receivers.
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT, FITTINGS } from './kit.ts';
@@ -39,6 +39,22 @@ function moduleBody(P: TankBuilderPort): void {
     P.add('turret', KIT.cylX(0.14, 0.07, P.q ? 24 : 14), s * (body.halfWidth + 0.025), M.gunPivot[1], M.gunPivot[2]);
     P.add('turretDetail', KIT.box(0.024, 0.40, 0.56), s * (body.halfWidth + 0.002), 0.56, -0.16);
   }
+  // the armoured side plates at the banks' rear feet, each on its beam out from the platform: upright, about as tall as
+  // they are long, the recessed panel in the outer face (photographs 01, 07, 15)
+  const { sidePlate: SP } = M;
+  for (const s of [-1, 1]) {
+    const span = (a: number, b: number): [number, number] => s < 0 ? [-b, -a] : [a, b];
+    P.add('turret', roundedSideBox(...span(SP.innerX, SP.outerX), SP.rearZ, SP.frontZ, SP.bottomY, SP.topY, 0.06, P.q ? 3 : 1));
+    const [bx0, bx1] = span(SP.beamInnerX, SP.innerX + 0.01);
+    P.add('turret', KIT.box(bx1 - bx0, SP.beamTopY - SP.bottomY, SP.beamFrontZ - SP.beamRearZ), (bx0 + bx1) / 2,
+      (SP.beamTopY + SP.bottomY) / 2, (SP.beamRearZ + SP.beamFrontZ) / 2);
+    const face = s * SP.outerX;
+    P.add('turretDark', roundedSideBox(face - 0.004, face + 0.004, SP.rearZ + 0.12, SP.frontZ - 0.12, SP.bottomY + 0.14,
+      SP.topY - 0.12, 0.08, P.q ? 3 : 1));
+    const [q0, q1] = s < 0 ? [face - 0.008, face + 0.002] : [face - 0.002, face + 0.008];
+    P.add('turretDetail', roundedSideBox(q0, q1, SP.rearZ + 0.16, SP.frontZ - 0.16, SP.bottomY + 0.18, SP.topY - 0.16, 0.06,
+      P.q ? 3 : 1));
+  }
   // the tracking radar: its drum over the body's front on a stem from the platform, the radome, the rim
   P.add('turret', KIT.cylZ(radar.r, radar.frontZ - radar.rearZ, n), 0, radar.y, (radar.rearZ + radar.frontZ) / 2);
   // its pedestal from the body's front out under the drum (the elevation drive's housing)
@@ -53,40 +69,43 @@ function moduleBody(P: TankBuilderPort): void {
 }
 
 function searchRadar(P: TankBuilderPort): void {
-  const { searchRadar: S, body } = M, n = P.q ? 24 : 14;
-  // the box antenna stows leaning 6 degrees back, its back face (the fans, the IFF horns) to the rear (photographs
-  // 05-07, 09, 12): 1.24 x 0.85 x 0.45 m, landscape, its two top corners chamfered
-  const tilt = 0.10, cy = (S.panelBottomY + S.panelTopY) / 2, h = S.panelTopY - S.panelBottomY, w = S.halfWidth;
-  P.add('turret', KIT.cylY(S.mastR, S.mastR + 0.02, S.mastTopY - body.topY + 0.06, n), 0, (S.mastTopY + body.topY - 0.06) / 2, S.z);
-  /** panel-local (x across, up the face, out of the back) to turret-local */
+  const { searchRadar: S } = M, n = P.q ? 24 : 14;
+  // the box antenna stows leaning 3 degrees back, its back face (the fans, the ribs, the IFF horns) to the rear
+  // (photographs 05-07, 09, 12): 1.36 x 0.80 x 0.34 m, landscape 1.7 : 1, its top corners and its back vertical edges
+  // chamfered; raised equipment on its mast (open air under it, as photographs 07 and 09 show): the stock kept drawn at
+  // every range, not the armour body's own mesh
+  const tilt = S.tilt, cy = (S.panelBottomY + S.panelTopY) / 2, h = S.panelTopY - S.panelBottomY, w = S.halfWidth;
+  P.add('turret', KIT.cylY(S.mastR, S.mastR + 0.02, S.mastTopY - S.mastBottomY, n), 0, (S.mastTopY + S.mastBottomY) / 2, S.mastZ);
+  /** panel-local (x across, up the face, out of the front) to turret-local */
   const at = (x: number, dy: number, dz: number): P3 =>
     [x, cy + dy * Math.cos(tilt) - dz * Math.sin(tilt), S.z + dy * Math.sin(tilt) + dz * Math.cos(tilt)];
-  const outline: [number, number][] = [[-w, -h / 2], [w, -h / 2], [w, h / 2 - S.chamfer], [w - S.chamfer, h / 2],
-    [-w + S.chamfer, h / 2], [-w, h / 2 - S.chamfer]];
-  // raised equipment on its mast (open air under it, as photographs 07 and 09 show): the stock kept drawn at every range,
-  // not the armour body's own mesh
-  P.add('turretCupola', convexSolid([-1, 1].flatMap((side) => outline.map(([x, dy]) => at(x, dy, side * S.depth / 2)))));
+  const outline = (inset: number): [number, number][] => [[-w + inset, -h / 2], [w - inset, -h / 2],
+    [w - inset, h / 2 - S.chamfer], [w - S.chamfer - inset * 0.5, h / 2], [-w + S.chamfer + inset * 0.5, h / 2],
+    [-w + inset, h / 2 - S.chamfer]];
+  P.add('turretCupola', convexSolid([
+    ...outline(0).map(([x, dy]) => at(x, dy, S.depth / 2)), ...outline(0).map(([x, dy]) => at(x, dy, -S.depth / 2 + S.edgeChamfer)),
+    ...outline(S.edgeChamfer).map(([x, dy]) => at(x, dy, -S.depth / 2)),
+  ]));
   const back = -S.depth / 2;
-  // the back face: a column of fan grilles down each side, the centre's raised panels and the horn bracket's spine
+  // the back face: a column of fan grilles down each side and four vertical stiffening ribs across its middle
   for (const side of [-1, 1]) {
-    P.add('turretDark', KIT.box(0.20, h - 0.20, 0.02), ...at(side * (w - 0.15), -0.04, back - 0.006), tilt, 0, 0);
+    P.add('turretDark', KIT.box(0.20, h - 0.20, 0.02), ...at(side * (w - S.edgeChamfer - 0.14), -0.04, back - 0.006), tilt, 0, 0);
     if (P.q) for (let k = 0; k < 6; k++) {
-      P.add('turretDetail', KIT.cylZ(0.055, 0.012, 12), ...at(side * (w - 0.15), -h / 2 + 0.16 + k * 0.105, back - 0.012), tilt, 0, 0);
+      P.add('turretDetail', KIT.cylZ(0.055, 0.012, 12), ...at(side * (w - S.edgeChamfer - 0.14), -h / 2 + 0.15 + k * 0.10,
+        back - 0.012), tilt, 0, 0);
     }
-    P.add('turretDetail', KIT.box(0.24, h - 0.24, 0.025), ...at(side * 0.22, -0.02, back - 0.008), tilt, 0, 0);
+    for (const x of [0.12, 0.30]) P.add('turretDetail', KIT.box(0.05, h - 0.10, 0.035), ...at(side * x, 0, back - 0.012), tilt, 0, 0);
   }
-  P.add('turretDetail', KIT.box(0.16, 0.30, 0.05), ...at(0, 0.12, back - 0.02), tilt, 0, 0);
-  P.add('turretDetail', KIT.box(0.12, h * 0.55, 0.06), ...at(0, -h / 2 + h * 0.27, back - 0.025), tilt, 0, 0);
   // the IFF antenna under the back face (photograph 12): its bracket on the face's foot and two horizontal rows on it,
   // each a rod with two fat bodies and a flared horn at one end out past the box's side, the upper row's to the left,
   // the lower row's (under the box's foot) to the right
   P.add('turretDetail', KIT.box(0.16, 0.32, 0.20), ...at(0, -h / 2 + 0.02, back - 0.09), tilt, 0, 0);
   for (const [side, dy] of [[1, -h / 2 + 0.10], [-1, -h / 2 - 0.04]] as const) {
     const [, y, z] = at(0, dy, back - 0.12), q = P.q ? 14 : 8;
-    P.add('turretDetail', KIT.cylX(0.022, 1.24, q), 0, y, z);
-    for (const bx of [-0.26, 0.26]) P.add('turretDetail', KIT.cylX(0.05, 0.22, q), bx, y, z);
+    P.add('turretDetail', KIT.cylX(0.022, 2 * w, q), 0, y, z);
+    for (const bx of [-0.28, 0.28]) P.add('turretDetail', KIT.cylX(0.05, 0.24, q), bx, y, z);
     const horn = KIT.lathe([[0.022, 0], [0.03, 0.06], [0.068, 0.22], [0.074, 0.24], [0.001, 0.24]], q);
-    P.add('turretDetail', horn.rotateZ(-side * Math.PI / 2), side * 0.615, y, z);
+    P.add('turretDetail', horn.rotateZ(-side * Math.PI / 2), side * (w - 0.005), y, z);
   }
   // the front face's stiffening frame
   for (const side of [-1, 1]) {
@@ -129,20 +148,10 @@ function missileBanks(P: TankBuilderPort): void {
   const length = B.mouthZ - B.tubeRearZ - 0.02;
   for (const side of [-1, 1]) {
     const mirror = (a: number, b: number): [number, number] => side < 0 ? [-b, -a] : [a, b];
-    // the cradle under the containers
+    // the cradle under the containers (the module's fixed side plate stands outboard of them, moduleBody)
     const [cx0, cx1] = mirror(B.cradleInnerX, B.cradleOuterX);
     P.addModuleVisual('missileRack', 'gunMount', KIT.box(cx1 - cx0, B.cradleTopY - B.cradleBottomY, B.cradleFrontZ - B.cradleRearZ),
       (cx0 + cx1) / 2, (B.cradleTopY + B.cradleBottomY) / 2, (B.cradleFrontZ + B.cradleRearZ) / 2);
-    // the armoured slab over the outer side's back, its recessed rounded panel (photograph 09)
-    const [sx0, sx1] = mirror(B.slabInnerX, B.slabOuterX);
-    P.addModuleVisual('missileRack', 'gunMount',
-      roundedSideBox(sx0, sx1, B.slabRearZ, B.slabFrontZ, B.slabBottomY, B.slabTopY, 0.10, P.q ? 4 : 2));
-    const face = side < 0 ? -B.slabOuterX : B.slabOuterX;
-    P.add('gunMountDark', roundedSideBox(face - 0.004, face + 0.004, B.slabRearZ + 0.30, B.slabFrontZ - 0.30,
-      B.slabBottomY + 0.12, B.slabTopY - 0.14, 0.10, P.q ? 4 : 2));
-    const [p0, p1] = side < 0 ? [face - 0.008, face + 0.002] : [face - 0.002, face + 0.008];
-    P.add('gunMount', roundedSideBox(p0, p1, B.slabRearZ + 0.34, B.slabFrontZ - 0.34, B.slabBottomY + 0.16,
-      B.slabTopY - 0.18, 0.08, P.q ? 4 : 2));
     // the ribbed casing along the inner column's inner side
     const inner = side * (B.tubeXs[0] - B.tubeR - 0.025), y0 = B.tubeYs[0] - 0.05, y1 = B.tubeYs[2] + 0.05;
     P.add('gunMount', KIT.box(0.05, y1 - y0, B.cradleFrontZ - 0.10), inner, (y0 + y1) / 2, B.cradleFrontZ / 2 + 0.05);
@@ -162,7 +171,7 @@ function missileBanks(P: TankBuilderPort): void {
     // two thin bands round the six containers
     const fx = side * (B.tubeXs[0] + B.tubeXs[1]) / 2, fy = (B.tubeYs[0] + B.tubeYs[2]) / 2;
     const fw = B.tubeXs[1] - B.tubeXs[0] + 2 * B.tubeR, fh = B.tubeYs[2] - B.tubeYs[0] + 2 * B.tubeR;
-    for (const z of [B.slabFrontZ + 0.10, B.mouthZ - 0.25]) packBand(P, fx, fy, fw, fh, z);
+    for (const z of [B.cradleFrontZ + 0.40, B.mouthZ - 0.25]) packBand(P, fx, fy, fw, fh, z);
   }
   P.turretG.userData.airDefenseLauncher = { launcherTubes: rackMouths(B.tubeXs, B.tubeYs, B.mouthZ).length };
 }

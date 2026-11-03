@@ -41,14 +41,6 @@ function convex(points: readonly P3[]): THREE.BufferGeometry {
   return geometry;
 }
 
-/** An octagonal section (a rectangle with its four edges chamfered) at station z. */
-function octagon(z: number, cx: number, cy: number, hw: number, hh: number, ch: number): P3[] {
-  return [
-    [cx - hw, cy - hh + ch, z], [cx - hw + ch, cy - hh, z], [cx + hw - ch, cy - hh, z], [cx + hw, cy - hh + ch, z],
-    [cx + hw, cy + hh - ch, z], [cx + hw - ch, cy + hh, z], [cx - hw + ch, cy + hh, z], [cx - hw, cy + hh - ch, z],
-  ];
-}
-
 // ------------------------------------------------------------------ hull kit --
 /** The Gepard's own hull kit on the shared Leopard 1 hull (only this build draws it). */
 function addGepardHullKit(P: TankBuilderPort, hull: Leo1HullDatums): void {
@@ -128,15 +120,15 @@ function addTurretBody(P: TankBuilderPort): void {
 }
 
 /**
- * The Albis tracking radar on the upper body's front (photos 06, 10, 12; fix round 1, critics A3 and B2): one bulbous nose
- * the turret's full height, a rounded chin tub from the turret's floor up under the head, as wide as it, the head a
- * lateral drum between two squared yoke cheeks, the radome a dome 0.64 m across over its rim, its face 0.64 m proud of the
- * turret's front plate.
+ * The Albis tracking radar on the upper body's front (photos 02, 06, 10, 12; fix round 1, critics A3 and B2; fix round 2,
+ * both A/B critics: larger and further forward, a squared bucket under it): one bulbous nose the turret's full height, a
+ * rounded chin tub from the turret's floor, the squared bucket on it, the head a lateral drum 0.66 m across between two
+ * squared yoke cheeks, the radome a shallow dome 0.72 m across on its rim, its face 0.69 m proud of the front plate.
  */
 function addTrackingRadar(P: TankBuilderPort): void {
   const { box, cylX, cylZ, sph, xform } = KIT;
-  const headY = 0.74, headZ = 1.60, domeR = 0.32, n = P.q ? 28 : 18;
-  // the chin: its back inside the front plate, its front a half ellipse in plan, raked back 0.10 m to its foot
+  const headY = 0.74, headZ = 1.70, drumR = 0.33, domeR = 0.36, n = P.q ? 28 : 18;
+  // the chin: its back inside the front plate, its front a half ellipse in plan, raked back 0.08 m to its foot
   const chin = (y: number, half: number, front: number): P3[] => [
     [-half, y, T.frontZ - 0.08], [half, y, T.frontZ - 0.08],
     ...Array.from({ length: 7 }, (_, k) => {
@@ -144,12 +136,13 @@ function addTrackingRadar(P: TankBuilderPort): void {
       return [half * Math.cos(a), y, front - 0.30 + 0.30 * Math.sin(a)] as P3;
     }),
   ];
-  P.addEquipment('turret', convex([...chin(T.floorY + 0.02, 0.40, 1.74), ...chin(0.56, 0.44, 1.84)]));
-  P.addEquipment('turret', cylX(0.28, 0.76, P.q ? 24 : 16), 0, headY, headZ);
-  for (const s of SIDES) P.addEquipment('turret', box(0.10, 0.44, 0.46), s * 0.42, headY, headZ - 0.02);
-  P.addEquipment('turretDetail', cylZ(domeR + 0.005, 0.05, n), 0, headY, headZ + 0.04);
-  P.addEquipment('turretDetail', xform(sph(domeR, n, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0, [1, 0.85, 1]),
-    0, headY, headZ + 0.065);
+  P.addEquipment('turret', convex([...chin(T.floorY + 0.02, 0.40, 1.78), ...chin(0.27, 0.42, 1.86)]));
+  P.addEquipment('turret', box(0.84, 0.22, 0.56), 0, 0.36, 1.62);
+  P.addEquipment('turret', cylX(drumR, 0.82, P.q ? 24 : 16), 0, headY, headZ);
+  for (const s of SIDES) P.addEquipment('turret', box(0.10, 0.50, 0.52), s * 0.45, headY, headZ - 0.02);
+  P.addEquipment('turretDetail', cylZ(domeR + 0.005, 0.05, n), 0, headY, headZ + 0.06);
+  P.addEquipment('turretDetail', xform(sph(domeR, n, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0, [1, 0.55, 1]),
+    0, headY, headZ + 0.085);
 }
 
 /**
@@ -185,12 +178,12 @@ function addSearchRadar(P: TankBuilderPort): void {
   // the elbow: from the turntable up into the reflector's back, 15 mm into its shell
   P.addEquipment('turretDark', convex([
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [sx * 0.15, drumTop + 0.01, R.drumZ + sz * 0.13] as P3)),
-    ...[-1, 1].flatMap((sx) => [-0.32, -0.08].map((v) => at(sx * 0.11, v, face(0, v) - R.shell + 0.015))),
+    ...[-1, 1].flatMap((sx) => [-0.24, -0.06].map((v) => at(sx * 0.12, v, face(0, v) - R.shell + 0.015))),
   ]));
   // the feed horn before the reflector's lower half, its mouth on the reflector, on the swan-neck waveguide from the drum
-  const horn = at(0, -0.20, 0.42);
+  const horn = at(0, -0.15, 0.40);
   P.addEquipment('turretDark', box(0.22, 0.13, 0.17), horn[0], horn[1], horn[2], -tilt, 0, 0);
-  const mouth = at(0, -0.20, 0.42 - 0.085);
+  const mouth = at(0, -0.15, 0.40 - 0.085);
   P.add('turretDark', box(0.18, 0.10, 0.012), mouth[0], mouth[1], mouth[2], -tilt, 0, 0);
   P.addEquipment('turretDark', sweptTube([
     [0, drumTop - 0.10, R.drumZ + R.drumR - 0.05], [0, drumTop + 0.01, R.drumZ + R.drumR + 0.14],
@@ -226,17 +219,18 @@ function addRoofAndRearKit(P: TankBuilderPort): void {
 /** The four 76 mm dischargers on each cheek's top (photos 08, 11, 12): a bracket bar, the tubes raised outboard and forward. */
 function addSmokeDischargers(P: TankBuilderPort): void {
   const { box, cylZ, xform } = KIT;
-  const footY = T.cheekTopY + 0.03, tubeX = 1.13, tubeZs = [0.74, 0.86, 0.98, 1.10];
+  const footY = T.cheekTopY + 0.03, tubeX = 1.15, tubeZs = [0.76, 0.88, 1.00, 1.12];
   for (const s of SIDES) {
-    P.addEquipment('turret', box(0.15, 0.05, 0.50), s * tubeX, T.cheekTopY + 0.015, 0.92);
+    P.addEquipment('turret', box(0.15, 0.05, 0.50), s * tubeX, T.cheekTopY + 0.015, 0.94);
     const bore = new THREE.Vector3(s * 0.30, 0.90, 0.30).normalize();
     const turn = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), bore));
     for (const z of tubeZs) {
       const foot = new THREE.Vector3(s * tubeX, footY, z);
       const tube = foot.clone().addScaledVector(bore, 0.11), mouth = foot.clone().addScaledVector(bore, 0.217);
-      P.addEquipment('turret', xform(markSmokeTube(cylZ(0.042, 0.22, P.q ? 12 : 8)), 0, 0, 0, turn.x, turn.y, turn.z),
+      // (fix round 2, A/B critic P: the 76 mm tubes at their 0.1 m outer diameter)
+      P.addEquipment('turret', xform(markSmokeTube(cylZ(0.048, 0.22, P.q ? 12 : 8)), 0, 0, 0, turn.x, turn.y, turn.z),
         tube.x, tube.y, tube.z);
-      P.add('turretDark', xform(cylZ(0.033, 0.012, P.q ? 12 : 8), 0, 0, 0, turn.x, turn.y, turn.z), mouth.x, mouth.y, mouth.z);
+      P.add('turretDark', xform(cylZ(0.038, 0.012, P.q ? 12 : 8), 0, 0, 0, turn.x, turn.y, turn.z), mouth.x, mouth.y, mouth.z);
     }
   }
 }
@@ -248,24 +242,31 @@ function addGuns(P: TankBuilderPort): void {
   const n = P.q ? 18 : 12;
   for (const s of SIDES) {
     const index = s < 0 ? 0 : 1;
-    const cx = (COVER.innerX + COVER.outerX) / 2, hw = (COVER.outerX - COVER.innerX) / 2;
-    const cy = (COVER.bottomY + COVER.topY) / 2, hh = (COVER.topY - COVER.bottomY) / 2;
+    const cy = (COVER.bottomY + COVER.topY) / 2;
     // The bearing (photo 08's black disc): the turning disc 20 mm off the body's flank, its hub into the body.
     P.addGunExtraDark(cylX(COVER.bearingR, 0.05, P.q ? 32 : 20), s * (T.bodyHalfW + 0.045), 0, 0);
     P.addGunExtra(cylX(0.15, 0.08, n), s * (T.bodyHalfW + 0.01), 0, 0);
-    // The cover: full section from its tail to the receiver's front, the nose tapering onto the barrel.
+    // The cover (fix round 2, photos 09, 12, 14): an angular armoured box, flat inner and outer sides, a broad chamfer
+    // along its top outer edge, small ones elsewhere; the tail's lower edge cut back under a longer top (photo 08); the
+    // nose faceted, a shoulder where the top and the outer side start to fall, then a front face round the bore.
     const mirror = (points: readonly P3[]): P3[] => points.map(([x, y, z]) => [s * x, y, z] as P3);
+    const section = (z: number, x0: number, x1: number, y0: number, y1: number, outer: number, inner: number, low: number): P3[] => [
+      [x0, y0 + low, z], [x0 + low, y0, z], [x1 - low, y0, z], [x1, y0 + low, z],
+      [x1, y1 - outer, z], [x1 - outer, y1, z], [x0 + inner, y1, z], [x0, y1 - inner, z],
+    ];
+    const { innerX: x0, outerX: x1, bottomY: y0, topY: y1 } = COVER;
     P.addGunExtra(convex(mirror([
-      // (the tail's lower edge cut back under a longer top, as photo 08's)
-      ...octagon(COVER.rearZ, cx, cy + 0.085, hw - 0.03, hh - 0.085, 0.07),
-      ...octagon(COVER.rearZ + 0.12, cx, cy, hw, hh, 0.07),
-      ...octagon(COVER.bodyFrontZ, cx, cy, hw, hh, 0.07),
-      ...octagon(COVER.noseZ, BORE.x, BORE.y, 0.085, 0.085, 0.03),
+      ...section(COVER.rearZ, x0 + 0.03, x1 - 0.03, 0.05, y1, 0.11, 0.03, 0.04),
+      ...section(COVER.rearZ + 0.12, x0, x1, y0, y1, 0.13, 0.03, 0.05),
+      ...section(COVER.bodyFrontZ, x0, x1, y0, y1, 0.13, 0.03, 0.05),
+      ...section(COVER.shoulderZ, x0 + 0.04, x1 - 0.07, y0 + 0.06, y1 - 0.04, 0.10, 0.03, 0.04),
+      ...section(COVER.noseZ, BORE.x - 0.10, BORE.x + 0.10, BORE.y - 0.09, BORE.y + 0.10, 0.03, 0.02, 0.02),
     ])));
-    // two hinged access doors and their handles on the cover's outer face
-    for (const z of [-0.17, 0.23]) {
-      P.addGunExtra(box(0.012, 0.24, 0.36), s * (COVER.outerX + 0.004), cy - 0.01, z);
-      P.addGunExtraDark(box(0.02, 0.03, 0.09), s * (COVER.outerX + 0.014), cy - 0.01, z + 0.10);
+    // two hinged access doors on the cover's flat outer face, their hinges at the front edges and their handles
+    for (const z of [-0.17, 0.25]) {
+      P.addGunExtra(box(0.015, 0.22, 0.38), s * (x1 + 0.005), cy - 0.04, z);
+      P.addGunExtraDark(box(0.02, 0.03, 0.09), s * (x1 + 0.016), cy - 0.04, z - 0.08);
+      for (const dy of [-0.07, 0.07]) P.addGunExtraDark(KIT.cylY(0.012, 0.012, 0.05, 8), s * (x1 + 0.014), cy - 0.04 + dy, z + 0.185);
     }
     // The barrel (photo 08): a jacket out of the nose, a clamp, the L/90 tube. At its end the v0 measuring head (photos
     // 03, 04; fix round 1, critic B4): a clamp collar, the muzzle brake and its face flange (the bore mouth), and three

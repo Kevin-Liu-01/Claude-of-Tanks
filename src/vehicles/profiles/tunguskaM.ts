@@ -95,10 +95,11 @@ function turretBody(P: TankBuilderPort): void {
   }
 }
 
-/** The search radar folded for travel (photographs 01-06): its drive head over the housing's back on the elevation
- * drive's column, the reflector plate hinged low in the head and folded back out of its rear face over the engine
- * deck, arched across its width, the triangular lightening pockets of its ribbed back facing up. Raised equipment, not
- * armour: the stock kept drawn at every range. */
+/** The search radar folded for travel (photographs 01-06): its drive head over the housing's back on the lattice
+ * ladder frame, the reflector plate hinged low in the head and folded 15 degrees down and back out of its rear face
+ * over the engine deck, 2.2 m across (70 % of the turret's width over the launchers), its tips curving down 25
+ * degrees, the triangular lightening pockets of its ribbed back facing up. Raised equipment, not armour: the stock
+ * kept drawn at every range. */
 function searchRadar(P: TankBuilderPort): void {
   const { searchDrive: D, searchPlate: S } = T;
   P.add('turretCupola', convexSolid([-1, 1].flatMap((s) => [
@@ -109,7 +110,8 @@ function searchRadar(P: TankBuilderPort): void {
   P.add('turretDark', KIT.box(0.40, 0.06, 0.30), 0, D.topY + 0.02, D.rearZ + 0.30);
   // the plate: its section arched across the width, its outline a D (the straight hinge edge, the rounded free edge)
   const nx = P.q ? 18 : 10, ns = P.q ? 6 : 3, hw = S.halfWidth;
-  const archY = (x: number): number => S.arch * (1 - (x / hw) ** 2);
+  // its tips curve down 25 degrees off the centre line, which stays at the hinge's height
+  const archY = (x: number): number => -S.arch * (x / hw) ** 2;
   const reach = (x: number): number => S.length * (0.35 + 0.65 * Math.cbrt(1 - Math.abs(x / hw) ** 3));
   const local = (x: number, s: number, up: number): THREE.Vector3 => {
     // plate-local: x across, s back from the hinge along the plate, up out of its upper (back) face
@@ -141,16 +143,23 @@ function searchRadar(P: TankBuilderPort): void {
   plate.computeVertexNormals();
   P.add('turretCupola', plate);
   // the lightening pockets on its upper (back) face: two rows of triangles, apex alternating (photographs 02, 03, 12)
-  if (P.q) for (const [row, s] of [[0, 0.38], [1, 0.62]] as const) for (let k = 0; k < 4; k++) {
-    const x = (k - 1.5) * 0.36, flip = (k + row) % 2 === 0 ? 1 : -1, w = 0.13, d = 0.10;
+  if (P.q) for (const [row, s] of [[0, 0.40], [1, 0.66]] as const) for (let k = 0; k < 4; k++) {
+    const x = (k - 1.5) * 0.46, flip = (k + row) % 2 === 0 ? 1 : -1, w = 0.15, d = 0.10;
     const corners = [[x - w, s - flip * d], [x + w, s - flip * d], [x, s + flip * d]].map(([cx, cs]) =>
       [cx, Math.min(cs, reach(cx) - 0.05)] as P2);
     P.add('turretDark', convexSolid(corners.flatMap(([cx, cs]) => [local(cx, cs, 0.004), local(cx, cs, -0.012)]
       .map((v) => [v.x, v.y, v.z] as P3))));
   }
-  // the elevation drive's column under the head, down the housing's back (photographs 02, 03)
-  P.add('turretCupola', KIT.box(2 * D.columnHalfWidth, D.bottomY - D.columnBottomY + 0.02, D.columnDepth), 0,
-    (D.bottomY + D.columnBottomY + 0.02) / 2, T.radarBox.rearZ - D.columnDepth / 2 + 0.01);
+  // the lattice ladder frame under the head, down the housing's back, braced to it (photographs 02, 03, 04)
+  const rail = D.ladderHalfWidth, top = D.bottomY + 0.01, foot = D.ladderBottomY;
+  for (const sx of [-1, 1]) {
+    P.add('turretDark', KIT.box(0.045, top - foot, 0.045), sx * rail, (top + foot) / 2, D.ladderZ);
+    for (const y of [foot + 0.10, top - 0.12]) {
+      P.add('turretDark', KIT.box(0.035, 0.035, T.radarBox.rearZ - D.ladderZ + 0.01), sx * rail, y,
+        (D.ladderZ + T.radarBox.rearZ) / 2 - 0.005);
+    }
+  }
+  for (let y = foot + 0.05; y < top - 0.02; y += 0.11) P.add('turretDark', KIT.box(2 * rail, 0.025, 0.03), 0, y, D.ladderZ);
 }
 
 function trackingRadar(P: TankBuilderPort): void {
@@ -221,7 +230,13 @@ export function cannon2A38M(P: TankBuilderPort, side: number, gunX: number, bore
   }
   const inner = gx - side * boreDx;
   P.add(`gunBarrel${index}`, KIT.cylZ(0.058, 0.06, n), inner, 0, dz + 0.73);
-  P.add(dark, KIT.box(0.17, 0.05, 0.05), gx, 0, muzzleZ - 0.26);
+  // the muzzle frame: a rectangular brace round both barrels (photographs 02, 12, 13)
+  const fw = 2 * boreDx + 0.13, fh = 0.13, ft = 0.02;
+  for (const s of [-1, 1]) {
+    P.add(dark, KIT.box(fw, ft, 0.04), gx, s * (fh - ft) / 2, muzzleZ - 0.22);
+    P.add(dark, KIT.box(ft, fh, 0.04), gx + s * (fw - ft) / 2, 0, muzzleZ - 0.22);
+  }
+  P.add(dark, KIT.box(2 * boreDx, 0.04, 0.04), gx, 0, muzzleZ - 0.22);
   P.add(dark, KIT.cylZ(0.017, 0.004, 10), gx + side * boreDx, 0, muzzleZ);
 }
 

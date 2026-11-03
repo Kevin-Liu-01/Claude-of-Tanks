@@ -231,7 +231,7 @@ tunguska.visual = { ...tunguska.visual, scheme: 'solid', base: '#44553a', weathe
 // ---- Pantsir-S1 (tracked) -----------------------------------------------------------------------------------------
 // The Pantsir-S1 combat module: twelve 57E6 in two six-tube banks (Wikipedia Pantsir: "up to twelve 57E6"), two
 // columns of three a side, outboard of the 2A38M guns.
-const { bank: PB, body: PBD, radar: PR, platform: PP, searchRadar: PS } = PANTSIR;
+const { bank: PB, body: PBD, radar: PR, platform: PP, searchRadar: PS, sidePlate: PSP } = PANTSIR;
 const pantsir = airDefenseVariant({
   id: 'pantsir_s1', name: 'Pantsir-S1 (tracked)', gunPivot: PANTSIR.gunPivot, gunX: PANTSIR.gunX, boreDx: PANTSIR.boreDx,
   muzzleZ: PANTSIR.muzzleZ, tubes: rackMouths(PB.tubeXs, PB.tubeYs, PB.mouthZ),
@@ -244,20 +244,32 @@ Object.assign(pantsir, {
   turretTraverseDegS: 72, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 5,
 });
 // the "~7.8 m" the brief gives for the tracked option is not a published datum; the shared GM-352 hull builds 7.93 m
-pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 4.10 };
+pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24,
+  heightM: +(GM352_RING[1] + PANTSIR.searchRadar.panelTopY + 0.01).toFixed(2) };
 {
-  const gp = PANTSIR.gunPivot, tilt = 0.10, cy = (PS.panelBottomY + PS.panelTopY) / 2, h = PS.panelTopY - PS.panelBottomY;
-  // the search radar's box antenna, its top corners chamfered, leaning back on its mast (pantsirS1.ts searchRadar)
+  const gp = PANTSIR.gunPivot, tilt = PS.tilt, cy = (PS.panelBottomY + PS.panelTopY) / 2, h = PS.panelTopY - PS.panelBottomY;
+  // the search radar's box antenna, its top corners chamfered, leaning back on its mast (pantsirS1.ts searchRadar; the
+  // plates leave out its back edges' 8 cm chamfers)
   const w = PS.halfWidth, c = PS.chamfer;
   const panel = antennaBoxPlates('ps_search', [[-w, -h / 2], [w, -h / 2], [w, h / 2 - c], [w - c, h / 2], [-w + c, h / 2], [-w, h / 2 - c]],
     PS.depth, (x, up, out) => [x, cy + up * Math.cos(tilt) - out * Math.sin(tilt), PS.z + up * Math.sin(tilt) + out * Math.cos(tilt)],
     8, 10);
+  // the side plates at the banks' rear feet (pantsirS1.ts moduleBody)
+  const sidePlates = [-1, 1].flatMap((s) => {
+    const [x0, x1] = s < 0 ? [-PSP.outerX, -PSP.innerX] : [PSP.innerX, PSP.outerX];
+    const corners = [x0, x1].flatMap((x) => [PSP.bottomY, PSP.topY].flatMap((y) => [PSP.rearZ, PSP.frontZ].map((z) => [x, y, z] as Point)));
+    const inside: Point = [(x0 + x1) / 2, (PSP.bottomY + PSP.topY) / 2, (PSP.rearZ + PSP.frontZ) / 2];
+    const quad = (k: number, a: number[]) => outwardFace(`ps_side${s < 0 ? 'R' : 'L'}_${k}`, a.map((i) => corners[i]), inside, 15, 20);
+    return [quad(0, [0, 1, 3, 2]), quad(1, [4, 5, 7, 6]), quad(2, [0, 1, 5, 4]), quad(3, [2, 3, 7, 6]), quad(4, [0, 2, 6, 4]),
+      quad(5, [1, 3, 7, 5])];
+  });
   pantsir.armor.turretPlates = [
     ...octagonPlates('ps_platform', PP.bottomApothem, PP.topApothem, PP.bottomY, PP.topY, 15, 20),
     ...prismPlates('ps_body', PBD.halfWidth, [[PBD.rearZ, PBD.bottomY], [PBD.frontZ, PBD.bottomY], [PBD.frontZ, PBD.topY],
       [PBD.rearZ + 0.20, PBD.topY], [PBD.rearZ, PBD.topY - 0.18]], 15, 20),
     ...drumPlates('ps_radar', PR.r, PR.y, PR.rearZ, PR.frontZ, 10, 12),
     ...panel,
+    ...sidePlates,
   ];
   pantsir.armor.modules.push(
     moduleBox('radio', [-0.45, 0.25, PBD.rearZ + 0.10], [0.45, 0.85, -0.55], true),
@@ -265,8 +277,8 @@ pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM:
     moduleBox('optics', [-PR.r, PR.y - PR.r, PR.rearZ + 0.10], [PR.r, PR.y + PR.r, PR.frontZ + 0.10], true),
     { ...moduleBox('gun', [-(PANTSIR.gunX + 0.14), gp[1] - 0.13, gp[2] + PANTSIR.gunDz - 0.32],
       [PANTSIR.gunX + 0.14, gp[1] + 0.13, gp[2] + PANTSIR.gunDz + 0.64], true), external: true },
-    { ...moduleBox('missileRack', [-PB.slabOuterX, gp[1] + PB.slabBottomY, gp[2] + PB.slabRearZ],
-      [PB.slabOuterX, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
+    { ...moduleBox('missileRack', [-(PB.tubeXs[1] + PB.tubeR), gp[1] + PB.cradleBottomY, gp[2] + PB.cradleRearZ],
+      [PB.tubeXs[1] + PB.tubeR, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
   );
   pantsir.armor.crew.push(
     // internalLayoutRegistry.ts IFV_TWO_MAN_TURRET: gunner front right (-x), commander rear right

@@ -30,13 +30,14 @@ const { box, cylX, cylY, cylZ } = KIT;
  * shovel-like reflector"). The front and back sheets are smooth, the rim is flat-faced.
  */
 function reflectorShell(width: number, height: number, depth: number, thick: number, nu: number, nv: number,
-  taper = 0.38): THREE.BufferGeometry {
+  taper = 0.38, arch = 0): THREE.BufferGeometry {
   const at = (i: number, j: number): [number, number, number] => {
     const u = -1 + 2 * i / nu, v = -1 + 2 * j / nv;
-    // full width over the upper half; below it the outline rounds in to (1 - taper) of the width at the bottom edge
+    // full width over the upper half; below it the outline rounds in to (1 - taper) of the width at the bottom edge;
+    // the top edge one arc, `arch` of the half-height higher at the middle than at the corners (fix round 2)
     const narrow = v < 0 ? 1 - taper + taper * Math.sqrt(1 - v * v) : 1;
     const x = width / 2 * u * narrow;
-    const y = height / 2 * v;
+    const y = height / 2 * v * (v > 0 ? 1 + arch * (1 - u * u) : 1);
     return [x, y, depth * (2 * x / width) ** 2];
   };
   const sheet = (back: boolean): THREE.BufferGeometry => {
@@ -82,7 +83,7 @@ function reflectorShell(width: number, height: number, depth: number, thick: num
 function qw2Tube(P: TankBuilderPort, x: number, y: number): void {
   const G = PGZ95_GUNS, n = P.q ? 12 : 8;
   P.add('gunMount', cylZ(G.tubeR, G.headRearZ - G.tubeRearZ + 0.02, n), x, y, (G.headRearZ + G.tubeRearZ) / 2 + 0.01);
-  P.add('gunMount', box(0.13, 0.13, G.launchZ - G.headRearZ), x, y, (G.launchZ + G.headRearZ) / 2);
+  P.add('gunMount', box(G.capSize, G.capSize, G.launchZ - G.headRearZ), x, y, (G.launchZ + G.headRearZ) / 2);
   P.add('gunMountDark', cylZ(0.042, 0.012, n), x, y, G.launchZ + 0.004);
   P.add('gunMountDark', cylZ(G.tubeR + 0.006, 0.05, n), x, y, G.tubeRearZ + 0.02);
 }
@@ -117,8 +118,12 @@ function pgz95Turret(P: TankBuilderPort): void {
   // the gunner's sight head on the director box and the access door in the left wall (photograph 02)
   P.addModuleVisual('optics', 'turretDetail', box(0.24, 0.14, 0.26), 0.26, 0.78, 0.86);
   P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.06, 0.012), 0.26, 0.79, 0.994);
-  P.add('turretDetail', box(0.016, 0.42, 0.42), T.sideX + 0.006, 0.30, 0.10);
-  for (const z of [-0.06, 0.26]) P.add('turretDark', box(0.03, 0.05, 0.08), T.sideX + 0.02, 0.45, z);
+  // the inset access doors in both flanks with their hinges (fix round 2, both A/B critics, photograph 02)
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.016, 0.46, 0.50), s * (T.sideX + 0.006), 0.32, 0.10);
+    P.add('turretDark', box(0.012, 0.40, 0.44), s * (T.sideX + 0.016), 0.32, 0.10);
+    for (const y of [0.16, 0.48]) P.add('turretDark', box(0.03, 0.06, 0.08), s * (T.sideX + 0.02), y, -0.17);
+  }
   // four smoke grenade launchers at each front corner, on a foot plate, fired forward and up (Army Technology)
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.34, 0.04, 0.17), s * 0.765, 0.06, 1.01);
@@ -133,7 +138,13 @@ function pgz95Turret(P: TankBuilderPort): void {
   P.addModuleVisual('optics', 'turretDetail', box(0.15, 0.08, 0.11), -0.32, T.roofY + 0.04, 0.38);
   P.addModuleVisual('optics', 'turretGlass', box(0.12, 0.03, 0.012), -0.32, T.roofY + 0.05, 0.437);
   P.add('turretDetail', box(0.54, 0.024, 0.48), 0.42, T.roofY + 0.008, 0.26);
-  P.add('turretDark', cylY(0.04, 0.05, 0.06, 10), 0.50, T.roofY + 0.03, -1.00);
+  // the large box bolted on the rear left of the roof, a quarter of the turret's width, with its lid seam and the antenna
+  // base on it (fix round 2, both A/B critics, photograph 02)
+  P.add('turret', convexBody([-1.14, -0.72].flatMap((z) => [[0.40, T.roofY - 0.02, z], [T.roofHalf, T.roofY - 0.02, z],
+    [0.82, 0.775, z]] as P3[]).concat([[0.42, T.roofY + 0.24, -1.12], [0.78, T.roofY + 0.24, -1.12], [0.42, T.roofY + 0.24, -0.74],
+    [0.78, T.roofY + 0.24, -0.74]])));
+  P.add('turretDark', box(0.38, 0.012, 0.012), 0.60, T.roofY + 0.20, -0.733);
+  P.add('turretDark', cylY(0.04, 0.05, 0.06, 10), 0.66, T.roofY + 0.27, -1.00);
   // the CLC-1 search antenna on its short pedestal: the turntable housing, the column, the yoke, the reflector tilted
   // back on its back frame, the feed on its strut
   const mz = R.mastZ;
@@ -145,7 +156,7 @@ function pgz95Turret(P: TankBuilderPort): void {
   // the reflector's own frame: tilted back by R.tilt about its centre
   const onDish = (geometry: THREE.BufferGeometry): THREE.BufferGeometry =>
     geometry.rotateX(-R.tilt).translate(R.x, R.y, R.z);
-  P.add('turretDetail', onDish(reflectorShell(R.width, R.height, R.depth, R.thick, P.q ? 14 : 8, P.q ? 8 : 5)));
+  P.add('turretDetail', onDish(reflectorShell(R.width, R.height, R.depth, R.thick, P.q ? 16 : 10, P.q ? 8 : 5, 0.38, R.arch)));
   // the back frame: its flat front 1.5 cm into the sheet's back (curved about the vertical only), down onto the yoke
   const frameBottom = new THREE.Vector3(0, -R.height / 2 - 0.12, -0.10).applyAxisAngle(new THREE.Vector3(1, 0, 0), -R.tilt)
     .add(new THREE.Vector3(R.x, R.y, R.z));
@@ -154,7 +165,7 @@ function pgz95Turret(P: TankBuilderPort): void {
   if (Math.abs(frameBottom.z - mz) > 0.12 || frameBottom.y > R.pedestalTopY + 0.10) {
     throw new Error('PGZ-95 radar: the reflector frame no longer stands on the yoke');
   }
-  const feed = new THREE.Vector3(0, -0.04, 0.40);
+  const feed = new THREE.Vector3(0, -0.04, 0.46);
   P.add('turretDetail', onDish(box(0.12, 0.10, 0.14).translate(feed.x, feed.y, feed.z)));
   P.add('turretDark', onDish(beamBetween([0, -R.height / 2 + 0.03, 0.005], [0, feed.y - 0.05, feed.z - 0.03], 0.018, 8)));
   P.topY = T.roofY + 0.05;
@@ -215,13 +226,14 @@ function buildPgz95(P: TankBuilderPort): void {
 function pgz09Turret(P: TankBuilderPort): void {
   const L = PGZ09_LAYOUT, T = L.turret, TR = L.trackingRadar, SR = L.searchRadar;
   const n = P.q ? 36 : 20;
-  P.add('turret', cylY(1.02, 1.04, 0.10, n), 0, 0.03, 0);
-  // the base tier: its faces lean out from the ring to the ledge at beltY, set in under the upper body; the chin raked
-  // forward under the front column (fix round 1, critic B: "a distinct two-tier base")
-  P.add('turret', convexBody(mirrored([
-    [T.baseHalf, 0.02, T.rearZ + 0.08], [T.baseHalf, 0.02, T.baseFrontZ],
-    [T.beltHalf, T.beltY, T.rearZ + 0.02], [T.beltHalf, T.beltY, T.beltFrontZ],
-  ])));
+  // the round drum from the ring to beltY, set back under the overhanging upper body (fix round 2, both A/B critics,
+  // photographs 01 and 03), on its race collar
+  P.add('turret', cylY(T.drumR + 0.03, T.drumR + 0.05, 0.08, n), 0, 0.02, 0);
+  P.add('turret', cylY(T.drumR, T.drumR, T.beltY, n), 0, T.beltY / 2, 0);
+  // behind the drum the base runs on under the rear of the upper body as a low block, set in 0.12 m (photograph 02's
+  // lower band reaches the turret's rear)
+  P.add('turret', convexBody(mirrored([[0.82, 0.02, T.rearZ + 0.14], [0.82, 0.02, 0], [0.86, T.beltY, T.rearZ + 0.10],
+    [0.86, T.beltY, 0]])));
   // the upper body to the front part's roof, the front face between the guns
   P.add('turret', convexBody(mirrored([
     [T.bodyHalf, T.beltY - 0.02, T.rearZ], [T.bodyHalf, T.frontRoofY - 0.05, T.rearZ], [T.bodyHalf - 0.06, T.frontRoofY, T.rearZ],
@@ -235,24 +247,34 @@ function pgz09Turret(P: TankBuilderPort): void {
     [T.bodyHalf - 0.005, T.frontRoofY - 0.02, T.stepZ], [T.bodyHalf - 0.005, T.shoulderY, T.stepZ], [T.roofHalf, T.roofY, T.stepZ - 0.04],
   ])));
   // the front column under the EO head, and the head with its round lens, window and laser warning plate
-  P.add('turret', convexBody(mirrored([[0.34, T.beltY - 0.02, 1.18], [0.34, T.beltY - 0.02, T.beltFrontZ], [0.34, T.frontRoofY, 1.18],
+  P.add('turret', convexBody(mirrored([[0.34, T.beltY - 0.02, 1.18], [0.34, T.beltY - 0.02, T.columnFrontZ], [0.34, T.frontRoofY, 1.18],
     [0.32, T.frontRoofY, 1.70]])));
-  P.addModuleVisual('optics', 'turret', convexBody(mirrored([[0.25, T.frontRoofY - 0.02, 1.26], [0.25, T.frontRoofY - 0.02, 1.72],
-    [0.24, 1.24, 1.28], [0.24, 1.24, 1.68]])));
-  P.addModuleVisual('optics', 'turretGlass', cylZ(0.065, 0.012, P.q ? 18 : 12), 0.10, 1.15, 1.702);
-  P.addModuleVisual('optics', 'turretGlass', box(0.11, 0.08, 0.012), -0.12, 1.15, 1.702);
-  P.add('turretDetail', box(0.10, 0.05, 0.012), -0.12, 1.215, 1.689);
+  // the EO head (enlarged, fix round 2): the upper box with the round lens and the laser warning plate, the sensor box
+  // with its window under its front (photograph 02)
+  P.addModuleVisual('optics', 'turret', convexBody(mirrored([[0.29, T.frontRoofY - 0.04, 1.22], [0.29, T.frontRoofY - 0.04, 1.74],
+    [0.28, 1.24, 1.24], [0.28, 1.24, 1.70]])));
+  P.addModuleVisual('optics', 'turretGlass', cylZ(0.07, 0.012, P.q ? 18 : 12), 0.12, 1.12, 1.723);
+  P.add('turretDetail', box(0.12, 0.06, 0.012), -0.14, 1.17, 1.718);
+  P.addModuleVisual('optics', 'turret', box(0.34, 0.22, 0.28), -0.05, 0.92, 1.62);
+  P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.10, 0.012), -0.07, 0.92, 1.766);
   // the tracking radar's round antenna on its stalk at the front: 0.60 m across, 0.26 m deep (fix round 1)
   const domeBack = TR.z - 0.07;
-  P.add('turretDark', cylZ(0.09, domeBack - T.beltFrontZ + 0.03, P.q ? 14 : 10), 0, TR.y, (domeBack + T.beltFrontZ) / 2 - 0.005);
+  P.add('turretDark', cylZ(0.09, domeBack - T.columnFrontZ + 0.03, P.q ? 14 : 10), 0, TR.y, (domeBack + T.columnFrontZ) / 2 - 0.005);
   const dome = KIT.lathe([[0, -0.07], [0.25, -0.07], [TR.r, -0.04], [TR.r, -0.01], [0.28, 0.04], [0.22, 0.11],
     [0.13, 0.16], [0, 0.19]], P.q ? 28 : 16).rotateX(Math.PI / 2);
   P.add('turretDetail', dome, 0, TR.y, TR.z);
   // the trunnion bosses on the upper sides
   for (const s of [-1, 1]) P.add('turret', cylX(0.16, 0.02, P.q ? 20 : 12), s * (T.bodyHalf + 0.005), L.gunPivot[1], L.gunPivot[2]);
-  // three smoke dischargers on each side of the base tier under the upper body's overhang, fired forward and up
-  for (const s of [-1, 1]) for (const z of [0.15, 0.40, 0.65]) {
-    P.add('turretDetail', cylZ(0.04, 0.22, 10), s * 0.865, 0.22, z, -0.62, 0, 0);
+  // three smoke dischargers a side in a mounting block on the drum's flank, filling the space up to the upper body's
+  // overhang (photograph 02: under the housing's front), fired forward and up; the block stays inside the housing's
+  // sweep (x 1.02 outward)
+  for (const s of [-1, 1]) {
+    P.add('turret', convexBody([[0.80, 0.12, -0.25], [0.97, 0.12, -0.25], [0.80, 0.12, 0.25], [0.97, 0.12, 0.25],
+      [0.80, T.beltY, -0.25], [0.97, T.beltY, -0.25], [0.80, T.beltY, 0.25], [0.97, T.beltY, 0.25]]
+      .map(([x, y, z]) => [s * x, y, z] as P3)));
+    for (const [x, y] of [[0.845, 0.175], [0.925, 0.175], [0.885, 0.245]]) {
+      P.add('turretDetail', cylZ(0.037, 0.20, 10), s * x, y, 0.22, -0.55, 0, 0);
+    }
   }
   // roof: two hatches on the rear part, the gunner's periscope on the front part, the rear sight box, the folded search
   // antenna lying fore and aft on its stepped pedestal (fix round 1, both critics: a 0.26 m deep box, its long side
@@ -263,13 +285,16 @@ function pgz09Turret(P: TankBuilderPort): void {
   }
   P.addModuleVisual('optics', 'turretDetail', box(0.15, 0.09, 0.12), -0.46, T.frontRoofY + 0.045, 0.95);
   P.addModuleVisual('optics', 'turretGlass', box(0.12, 0.035, 0.012), -0.46, T.frontRoofY + 0.05, 1.012);
-  const antennaRear = SR.z - SR.depth / 2, antennaFront = SR.z + SR.depth / 2, antennaBottom = SR.topY - SR.thick;
-  P.add('turretDetail', box(0.74, antennaBottom - T.roofY - 0.06 + 0.01, SR.depth - 0.12), 0, (T.roofY + antennaBottom - 0.06) / 2, SR.z);
-  P.add('turretDetail', box(0.56, 0.07, SR.depth - 0.26), 0, antennaBottom - 0.03, SR.z);
-  P.add('turretDetail', convexBody(mirrored([[SR.width / 2, antennaBottom - 0.01, antennaRear], [SR.width / 2, SR.topY, antennaRear],
-    [SR.width / 2, antennaBottom - 0.01, antennaFront], [SR.width / 2, SR.topY - 0.10, antennaFront],
-    [SR.width / 2, SR.topY, antennaFront - 0.10]])));
-  P.add('turretDark', box(SR.width - 0.10, 0.012, SR.depth - 0.22), 0, SR.topY + 0.004, SR.z - 0.05);
+  // the search array: a square-sided box with shallow transverse ribs on its top, carried on two short brackets that leave
+  // a 0.10 m gap over the roof (fix round 2, both A/B critics, photographs 01-03)
+  const antennaBottom = SR.topY - SR.thick;
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.10, SR.gap + 0.04, SR.depth - 0.20), s * 0.32, T.roofY + (SR.gap + 0.04) / 2 - 0.02, SR.z);
+  }
+  P.add('turretDetail', box(SR.width, SR.thick, SR.depth), 0, antennaBottom + SR.thick / 2, SR.z);
+  for (let k = 0; k < 4; k++) {
+    P.add('turretDark', box(SR.width - 0.08, 0.012, 0.035), 0, SR.topY + 0.004, SR.z - SR.depth / 2 + 0.13 + k * (SR.depth - 0.26) / 3);
+  }
   P.add('turret', convexBody([[-0.56, T.roofY - 0.02, -1.42], [-0.12, T.roofY - 0.02, -1.42], [-0.56, T.roofY - 0.02, -1.00],
     [-0.12, T.roofY - 0.02, -1.00], [-0.54, T.roofY + 0.33, -1.40], [-0.14, T.roofY + 0.33, -1.40], [-0.54, T.roofY + 0.33, -1.03],
     [-0.14, T.roofY + 0.33, -1.03]]));
