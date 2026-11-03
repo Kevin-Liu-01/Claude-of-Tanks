@@ -1,6 +1,8 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 /**
- * Retryable owner for the battle-only HUD graph.
+ * Retryable owner for the battle-only HUD graph (2026-11-02 audit R6: its chunks under the one lazy-chunk policy,
+ * app/lazyChunk.ts: a failed module is asked again by the next battle, a failed stylesheet never, so the HUD never runs
+ * unstyled; the battle entry's own failure marks the battle button and its next press reloads).
  *
  * The garage does not render the combat HUD, damage schematic, or their
  * top-down mask rig. Keeping those modules behind this boundary removes them
@@ -49,35 +51,20 @@ export function createBattleHudAccess(
   engineCtx: TankThumbEngineContext,
   loaders: BattleHudLoaders = DEFAULT_LOADERS,
 ): BattleHudAccess {
-  let current: BattleHudBundle | null = null;
-  let pending: Promise<BattleHudBundle> | null = null;
-
-  const preload = (): Promise<BattleHudBundle> => {
-    if (current) return Promise.resolve(current);
-    if (pending) return pending;
-
-    const request = Promise.all([
-      loaders.hud(),
-      loaders.damagePanel(),
-      loaders.tankThumbs(),
-    ]).then(([hudModule, damagePanelModule, tankThumbModule]) => {
-      tankThumbModule.initTopMaskRig(engineCtx);
-      const hud = hudModule.initHud(bus);
-      const damagePanel = damagePanelModule.createDamagePanel();
-      hud.setDamagePanel(damagePanel);
-      current = Object.freeze({ hud, damagePanel });
-      return current;
-    }).catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
-    });
-
-    pending = request;
-    return request;
-  };
+  const bundle = createLazyChunk(() => Promise.all([
+    loaders.hud(),
+    loaders.damagePanel(),
+    loaders.tankThumbs(),
+  ]).then(([hudModule, damagePanelModule, tankThumbModule]): BattleHudBundle => {
+    tankThumbModule.initTopMaskRig(engineCtx);
+    const hud = hudModule.initHud(bus);
+    const damagePanel = damagePanelModule.createDamagePanel();
+    hud.setDamagePanel(damagePanel);
+    return Object.freeze({ hud, damagePanel });
+  }));
 
   return {
-    preload,
-    get current() { return current; },
+    preload: () => bundle.load(),
+    get current() { return bundle.value; },
   };
 }

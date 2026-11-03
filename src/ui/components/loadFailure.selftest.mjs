@@ -235,6 +235,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ['src/ui/settings.ts', 'the HUD editor', /if \(pressFailed\(editHud\)\) return;/, /markLoadFailed\(\[editHud\]/],
     ['src/gallery/gallery.ts', "the Gallery's anatomy layers", /if \(!pressFailed\(modeButtons\.find/, /markLoadFailed\(modeButtons\.filter/],
     ['src/main.ts', 'the Studio (its links and F8)', /pressFailed: \(\) => pressFailed\(\.\.\.studioLinks\(\)\)/, /markLoadFailed\(studioLinks\(\)\)/],
+    // 2026-11-02 audit R6: the Garage openers that asked a failed chunk again in the page (the styled photo, facet and
+    // hotspot chunks among them: asked again, a chunk runs unstyled) hold it in app/lazyChunk.ts as openers
+    ['src/ui/garage.ts', 'the photo mode', /reloadsForFailure\(photoButton, /, /reportLoadFailure\('cot-photo-load'/],
+    ['src/ui/garage.ts', 'the roster facets', /reloadsForFailure\(facetToggle, /, /reportLoadFailure\('cot-facets-load'/],
+    ['src/ui/garage.ts', 'the hotspot callouts', /reloadsForFailure\(calloutsButton, /, /reportLoadFailure\('cot-hotspots-load'/],
+    ['src/ui/garage.ts', "Deploy's battlefield picker", /reloadsForFailure\(fieldTrigger, /, /reportLoadFailure\('cot-deploy-field-load'/],
+    ['src/ui/garage.ts', "the battle card's quick menus", /reloadsForFailure\(quickBtn, /, /reportLoadFailure\('cot-quick-load'/],
   ];
   for (const [file, name, press, mark] of OPENERS) {
     const source = blankComments(readFileSync(join(ROOT, file), 'utf8'));

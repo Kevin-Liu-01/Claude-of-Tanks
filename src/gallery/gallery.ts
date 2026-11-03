@@ -49,6 +49,7 @@ import { revealWhenReady } from '../ui/components/reveal.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { applyGalleryCameraRange, fitGalleryDepth, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = 'appearance' | AnatomyMode | 'markup';
@@ -253,35 +254,34 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
 // the owner's load-time priority). The Damage lab tab holds a placeholder of its size while the module takes more than
 // 200 ms; a failed load is retried by the next tank load.
 type DamageLabModule = typeof import('./damageLab.ts');
-let damageLabModule: Promise<DamageLabModule> | null = null;
-function loadDamageLab(): Promise<DamageLabModule> {
-  if (damageLabModule) return damageLabModule;
+// (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): a failed module is asked again by the next
+// vehicle's load, a failed stylesheet never
+const damageLabModule = createLazyChunk((): Promise<DamageLabModule> => {
   const pending = document.createElement('div');
   pending.className = 'damage-workbench';
   pending.setAttribute('aria-busy', 'true');
   const slow = setTimeout(() => damageHost.append(pending), 200);
-  damageLabModule = import('./damageLab.ts').then(
+  return import('./damageLab.ts').then(
     (module) => { clearTimeout(slow); pending.remove(); return module; },
-    (error: unknown) => { clearTimeout(slow); pending.remove(); damageLabModule = null; throw error; },
+    (error: unknown) => { clearTimeout(slow); pending.remove(); throw error; },
   );
-  return damageLabModule;
+});
+function loadDamageLab(): Promise<DamageLabModule> {
+  return damageLabModule.load();
 }
 // The take (owner 2026-10-12, brand-ui SPEC 12.5): the selected vehicle's own newest take is the dossier's hero media.
 // Its module and the fleet index load once the first tank is on screen; until then, and for a vehicle the index lacks,
 // the frame keeps the vehicle's hero card.
 let inAction: InActionBlock | null = null;
-let inActionLoad: Promise<void> | null = null;
+// (audit R6) the take's chunk under the one lazy-chunk policy: a failed module is asked again by the next vehicle
+const inActionLoad = createLazyChunk(() => import('./inAction.ts').then(({ mountInAction }) => {
+  inAction = mountInAction(takeMedia, $<HTMLElement>('#takeActions'));
+  void inAction.ids.then((ids) => { takeIds = ids; renderFacets(); });
+}));
 let takeIds: ReadonlySet<string> | null = null;
 function showInAction(id: string): void {
   if (inAction) { inAction.show(id); return; }
-  inActionLoad ??= import('./inAction.ts').then(
-    ({ mountInAction }) => {
-      inAction = mountInAction(takeMedia, $<HTMLElement>('#takeActions'));
-      void inAction.ids.then((ids) => { takeIds = ids; renderFacets(); });
-    },
-    () => { inActionLoad = null; },
-  );
-  void inActionLoad.then(() => { if (selectedId === id) inAction?.show(id); });
+  void inActionLoad.load().then(() => { if (selectedId === id) inAction?.show(id); }, () => {});
 }
 function damageTargetKey(key: string | null): string {
   if (!key || !damageLab) return '';
@@ -304,13 +304,13 @@ function colorDamageOverlay(): void {
 // through import() the first time one of them opens, so the Gallery's first load and the game boot graph stay as they
 // were; the scene is built once per vehicle and specimen state and kept while the layers switch.
 type AnatomyModule = typeof import('./anatomyView.ts');
-let anatomyModule: Promise<AnatomyModule> | null = null;
+// (audit R6) an opener's chunk (the layer buttons): any failure is terminal, the buttons keep the kit's error state
+const anatomyModule = createLazyChunk((): Promise<AnatomyModule> => import('./anatomyView.ts'), { opener: true });
 let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts');
-  return anatomyModule;
+  return anatomyModule.load();
 }
 const anatomyHost = (): AnatomyHost => ({
   renderer, scene, camera, viewport,

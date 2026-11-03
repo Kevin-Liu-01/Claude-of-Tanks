@@ -915,6 +915,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/lazyImportRetry.selftest.mjs',
     // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet terminal, a module asked again past the backoff)
     'src/app/lazyChunk.selftest.mjs',
+    // 2026-11-02 audit R6: the named lazy chunks hold their load in app/lazyChunk.ts; no new hand-made `??= import(` memo
+    'src/app/lazyChunkSites.selftest.mjs',
     // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
     'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',

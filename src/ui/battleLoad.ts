@@ -31,6 +31,7 @@ import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 // Translate legacy English progress labels written by the various loading
 // runtimes. Each entry pairs a known English string with its i18n key; any
@@ -84,15 +85,16 @@ function mapArtGradient(mapId: string | undefined): string {
 // live in a lazy chunk the Garage loads in idle time, so the loading screen's first frame shows the map's own picture
 // without a request while the boot bundle stays as it was.
 let mapLqip: Readonly<Record<string, string>> | null = null;
-let mapLqipLoad: Promise<void> | null = null;
-/** Load the placeholder chunk (once; a failed fetch may be retried by a later call). */
+// (2026-11-02 audit R6) the chunk under the one lazy-chunk policy (app/lazyChunk.ts): a failed chunk is asked again by a
+// later call past the backoff, never by itself
+const mapLqipChunk = createLazyChunk(() => import('./mapLqip.ts').then((module) => { mapLqip = module.MAP_LQIP; }));
+/** Load the placeholder chunk (once; a failed chunk may be asked again by a later call). */
 export function primeMapLqip(): Promise<void> {
-  mapLqipLoad ??= import('./mapLqip.ts').then((module) => { mapLqip = module.MAP_LQIP; }, () => { mapLqipLoad = null; });
-  return mapLqipLoad;
+  return mapLqipChunk.load().catch(() => {});
 }
 /** The placeholder chunk in the browser's idle time (a short timeout where requestIdleCallback is missing). */
 export function primeMapLqipWhenIdle(): void {
-  if ((mapLqip || mapLqipLoad) && isImagePreloaded(MARK_MOTION_URL)) return;
+  if ((mapLqip || mapLqipChunk.state === 'loading') && isImagePreloaded(MARK_MOTION_URL)) return;
   const prime = (): void => { void primeMapLqip(); void preloadImage(MARK_MOTION_URL); };
   const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
   if (typeof idle === 'function') idle(prime, { timeout: 4000 });
