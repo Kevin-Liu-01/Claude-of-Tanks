@@ -54,6 +54,12 @@ const MAX_OFFSET = 32;
 }
 
 // ---- the fleet build ----------------------------------------------------------------------------------------------
+// LOW (batchStatic) folds a rig's same-material markings into one exact draw (tankFactoryCore.ts batchMobileStaticChildren)
+// that carries a footprint per folded marking but not each one's armour (268: the 10B's insignia and designation share
+// rig_hull since the 267 rebuild). The HIGH pass's markings, at their footprints' centres, say which armour each is on.
+const footprintCentres = (mark) => (mark.userData.markingFootprints ?? [{ center: [0, 0, 0] }])
+  .map(({ center }) => new THREE.Vector3().fromArray(center).applyMatrix4(mark.matrixWorld));
+let highMarkings = null;
 for (const options of [
   { proceduralOnly: true, geometryReceipt: true, quality: 'high' },
   { proceduralOnly: true, geometryReceipt: true, quality: 'low', batchStatic: true },
@@ -100,19 +106,32 @@ for (const options of [
     'detail draw applies its own offset');
 
   // markings draw in front of every layer their bounds meet, the armour they are painted on included
-  assert.ok(markings.length >= 2, 'the Type 10B carries its insignia and designation');
-  for (const mark of markings) {
-    const surface = mark.parent.getObjectByName(mark.userData.surfaceMesh ?? 'hull')
-      ?? tank.root.getObjectByName(mark.userData.surfaceOwner === 'turret' ? 'turret' : 'hull');
-    assert.ok(surface, `${mark.name}: its armour exists`);
+  tank.root.updateMatrixWorld(true);
+  const painted = markings.flatMap((mark) => footprintCentres(mark).map((at) => ({ mark, at })));
+  if (!highMarkings) {
+    assert.ok(markings.length >= 2 && painted.length === markings.length, 'the Type 10B carries its insignia and designation');
+    highMarkings = painted.map(({ mark, at }) => ({ name: mark.name, at,
+      surfaceMesh: mark.userData.surfaceMesh, surfaceOwner: mark.userData.surfaceOwner }));
+  }
+  assert.equal(painted.length, highMarkings.length,
+    `every marking draws (${markings.map((mark) => `${mark.name}: ${footprintCentres(mark).length}`).join(', ')})`);
+  const matched = new Set();
+  for (const { mark, at } of painted) {
+    // the HIGH marking painted here (a LOW batch's footprint sits where that marking's own draw did)
+    const high = highMarkings.find((candidate) => !matched.has(candidate) && candidate.at.distanceTo(at) < 1e-4);
+    assert.ok(high, `${mark.name}: the footprint at ${at.toArray().map((v) => v.toFixed(3))} is a HIGH marking's`);
+    matched.add(high);
+    const surface = mark.parent.getObjectByName(high.surfaceMesh ?? 'hull')
+      ?? tank.root.getObjectByName(high.surfaceOwner === 'turret' ? 'turret' : 'hull');
+    assert.ok(surface, `${mark.name} (${high.name}): its armour exists`);
     const material = Array.isArray(mark.material) ? mark.material[0] : mark.material;
     mark.onBeforeRender(null, null, null, mark.geometry, material, null);
     assert.equal(material.polygonOffsetFactor, 0, `${mark.name}: slope-independent`);
     assert.ok(mark.userData.coplanarDepthOffset >= (surface.userData.coplanarDepthOffset ?? 0) + MARKING_DEPTH_MARGIN,
-      `${mark.name} (${mark.userData.coplanarDepthOffset}) draws ${MARKING_DEPTH_MARGIN} units in front of its armour (${surface.userData.coplanarDepthOffset})`);
+      `${mark.name} (${high.name}, ${mark.userData.coplanarDepthOffset}) draws ${MARKING_DEPTH_MARGIN} units in front of its armour (${surface.userData.coplanarDepthOffset})`);
     assert.equal(material.polygonOffsetUnits, -mark.userData.coplanarDepthOffset, `${mark.name}: its offset applies`);
   }
   tank.dispose();
 }
 
-console.log('coplanarDepthLayers.selftest: contact-bounded offsets keep every tie\'s winner; markings draw over their armour');
+console.log('coplanarDepthLayers.selftest: contact-bounded offsets keep every tie\'s winner; markings draw over their armour, folded into a LOW batch or not');
