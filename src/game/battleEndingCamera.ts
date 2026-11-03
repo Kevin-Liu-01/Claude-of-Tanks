@@ -125,8 +125,9 @@ export function createBattleEndingCamera({
 
   return {
     begin(next, skip) {
+      // (2026-11-02 audit F4) refuse before writing anything: a plan that frames nothing leaves a running beat whole
+      if (!next.focus || next.beat === 'none') return false;
       focus = next.focus;
-      if (!focus || next.beat === 'none') return false;
       plan = next;
       onSkip = skip;
       start.copy(camera.position);

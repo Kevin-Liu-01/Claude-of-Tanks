@@ -1901,6 +1901,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (watch-drone-244) Take control in every watchable mode: the boss, a convert, a carrier, revives, a drone; AC-130 and rooms
     'src/game/watchTakeover.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
+    'src/game/battleResultBeatClock.selftest.mjs', // 2026-11-02 audit F4: death and ending beats hold through a pause
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
     'src/game/killcamSelection.selftest.mjs',

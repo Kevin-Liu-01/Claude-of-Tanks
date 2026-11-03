@@ -59,6 +59,14 @@ function createHarness({ ending = false } = {}) {
     beats,
     get skip() { return skip; },
     set now(value) { wallMs = value; },
+    // 2026-11-02 audit F4: the beats run on presentation time, which advances only across updates (one frame step
+    // each), so the time a beat runs is frames, not one update after a wall-clock jump (that is a pause, which holds)
+    framesTo(toMs) {
+      while (wallMs < toMs) {
+        wallMs = Math.min(toMs, wallMs + 16);
+        runtime.update();
+      }
+    },
     set playResult(value) { playResult = value; },
     set cameraAccepts(value) { cameraAccepts = value; },
   };
@@ -146,8 +154,7 @@ assert.deepEqual(delayed.plays[0].options, { freshKill: true, finalKill: true, o
 assert.equal(delayed.runtime.snapshot().pendingDeadlineMs, null, 'the death beat is spent');
 assert.equal(delayed.calls.filter(([name]) => name === 'deathCam').length, 2,
   'defeat verdict returns to a wreck orbit after the replay fallback');
-delayed.now = 2700;
-delayed.runtime.update();
+delayed.framesTo(2800);
 assert.equal(delayed.plays.length, 1, 'the spent death beat never asks again at its old deadline');
 
 delayed.game.result = null;
@@ -228,8 +235,7 @@ assert.deepEqual(revivedDead.calls.at(-1), ['veil', true]);
 const replayedDeath = createHarness();
 replayedDeath.game.player.combat.destroyed = true;
 replayedDeath.runtime.update();
-replayedDeath.now = 2700;
-replayedDeath.runtime.update(); // the death beat fires the mid-battle replay
+replayedDeath.framesTo(2700); // the death beat fires the mid-battle replay
 assert.equal(replayedDeath.plays.length, 1);
 replayedDeath.game.result = 'defeat';
 replayedDeath.game.resultReason = 'elimination';
@@ -256,19 +262,16 @@ assert.deepEqual(clockDefeat.calls.find(([name]) => name === 'receipt')[1], {
 });
 assert.equal(clockDefeat.runtime.snapshot().beat, 'timesUp');
 // the beat runs 2.5 s through the camera, then presents and releases the report gate
-clockDefeat.now = 100 + 1250;
-clockDefeat.runtime.update();
+clockDefeat.framesTo(100 + 1250);
 assert.deepEqual(clockDefeat.calls.at(-1), ['camera.frame', 0.5]);
 assert.equal(clockDefeat.calls.some(([name]) => name === 'show'), false, 'the report waits for the beat');
-clockDefeat.now = 100 + 2500;
-clockDefeat.runtime.update();
+clockDefeat.framesTo(100 + 2500);
 assert.deepEqual(names(clockDefeat.calls).slice(-8),
   ['camera.frame', 'camera.end', 'veil', 'show', 'presented', 'release', 'deathCam', 'beat'],
   'the beat ends into the ordinary defeat presentation, then the report gate opens');
 assert.deepEqual(clockDefeat.calls.at(-1), ['beat', 'done', 'timesUp']);
 assert.equal(clockDefeat.runtime.snapshot().beat, null);
-clockDefeat.now = 100 + 9000;
-clockDefeat.runtime.update();
+clockDefeat.framesTo(100 + 9000);
 assert.equal(clockDefeat.calls.filter(([name]) => name === 'show').length, 1, 'presented exactly once');
 
 // any key / click skips a camera beat
