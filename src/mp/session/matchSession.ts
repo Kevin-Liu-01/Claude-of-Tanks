@@ -283,6 +283,10 @@ export class MatchSession {
   private decline: HostDecline = null;
   /** The current decline was said with `unable` (a decline said again carries the flag it was said with). */
   private declineUnable = false;
+  /** Declines this seat said (declined: true) that the room has not answered yet. */
+  private declinesInFlight = 0;
+  /** A per-match decline was forgotten while a command saying it was in flight: the room reads it after its reset. */
+  private lateDecline = false;
   /** The room's record of this seat's decline at its last snapshot (null before one): a true → false edge is a reset. */
   private declineRecord: boolean | null = null;
   /** The hosting tab already told the room it is going (pagehide): leaving the match must not decline twice. */
@@ -469,18 +473,25 @@ export class MatchSession {
   private setDecline(next: HostDecline, say?: { declined: boolean; unable?: boolean; onFail?: () => void }): void {
     this.decline = next;
     if (next === null) this.declineUnable = false;
-    else if (say?.declined) this.declineUnable = say.unable === true;
+    else {
+      this.lateDecline = false;
+      if (say?.declined) this.declineUnable = say.unable === true;
+    }
     if (!say) return;
-    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).catch(() => { say.onFail?.(); /* the room may predate the command */ });
+    if (say.declined) this.declinesInFlight++;
+    const settled = (): void => { if (say.declined) this.declinesInFlight--; };
+    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(settled, () => { settled(); say.onFail?.(); /* the room may predate the command */ });
   }
 
   /**
    * Keep the room's record of this seat's decline in step with the seat (audit M2, 2026-11-02). A seat that cannot host
    * says so once it is in the room, so the election never names it — and again when the room's record of it reads
    * willing on an admission or after a reset (best effort: an older room ignores it). A decline made for one match is
-   * over once the room is back to waiting: the room reset it, and a decline that reached the room after that reset is
-   * withdrawn here. While that match runs, an admission whose record lost the decline (a command sent into a room-socket
-   * blip) says it again.
+   * over once the room is back to waiting: the room reset it, and one of this seat's own that reached the room after
+   * that reset is withdrawn here, as is a declined record an admission finds while this seat is willing (an earlier
+   * page's). A decline other code made straight through the room client is not this session's to undo (2026-11-03).
+   * While that match runs, an admission whose record lost the decline (a command sent into a room-socket blip) says it
+   * again.
    */
   private syncDecline(admitted: boolean): void {
     if (!this.p2pOptions || this.room.phase !== 'joined') return;
@@ -495,9 +506,13 @@ export class MatchSession {
       return;
     }
     if (record === null || !room) return;
+    if (room.phase !== 'waiting') this.lateDecline = false;
     if ((this.decline === 'match' || this.decline === 'reentry') && room.phase === 'waiting') {
       this.log('info', 'the match a decline was made for is over: willing to host again', { decline: this.decline });
+      // a command saying it, still on its way, reaches the room after the reset: the record turning declined is that one
+      const late = !record && this.declinesInFlight > 0;
       this.setDecline(null, record ? { declined: false } : undefined);
+      this.lateDecline = late;
       return;
     }
     // Only an admission or a move of the room's record re-says anything: a room that never echoes a decline is not asked
@@ -514,8 +529,13 @@ export class MatchSession {
       this.log('info', 'a decline for the running match the room never read: said again', { decline: this.decline });
       this.setDecline(this.decline, { declined: true, ...(this.declineUnable ? { unable: true } : {}) });
     }
-    // a decline this seat no longer means (one that reached the room after the reset of its match): withdrawn
-    else if (this.decline === null && room.phase === 'waiting' && this.canHost) this.setDecline(null, { declined: false });
+    // a decline this seat no longer means: its own that reached the room after the reset of its match, or a record an
+    // admission finds. Withdrawing every declined record while willing also undid a decline other code sent through the
+    // room client (the e2e harness's "this seat declined", the headless peer tool's hook) the moment the room echoed it.
+    else if (this.decline === null && room.phase === 'waiting' && this.canHost && (admitted || this.lateDecline)) {
+      this.lateDecline = false;
+      this.setDecline(null, { declined: false });
+    }
   }
 
   /** Enter (or re-enter) the announced match: presentation, transport on the seat token, client. */

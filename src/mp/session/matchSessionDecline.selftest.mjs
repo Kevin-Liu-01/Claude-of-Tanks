@@ -6,6 +6,11 @@
 // Here: (1) the room actor resets the declines at a match's end and re-elects the admin first; (2) a session whose host
 // left a round mid-match forgets that decline once the room is back to waiting, so its headroom path works again; (3) a
 // mobile seat says its `unable` again when the room's reset reaches it.
+// (4) (2026-11-03) The session withdraws only a decline of its own: one sent as its match ended that the room read after
+// its reset, or a declined record an admission finds while the seat is willing. It used to withdraw every declined
+// record it saw while willing in the lobby, so a decline sent straight through the room client (tools/mp-p2p-decline's
+// "p2 and p3 have declined", the headless peer tool's declineHost hook) was undone as soon as the room echoed it, and the
+// e2e passed only when it caught the echo inside the room's coalescing window.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from '../room/roomActor.ts';
@@ -92,7 +97,7 @@ const snapshot = ({ host = { transport: 'p2p', hostId: null, generation: 0, sinc
 const world = new RtcWorld();
 const cores = [];
 const declinesOf = (transport, from = 0) => transport.outbound.slice(from).filter((envelope) => envelope.payload?.command?.type === 'host_decline').map((envelope) => envelope.payload.command);
-async function seat(p2p = {}) {
+async function seat(p2p = {}, { declined = false } = {}) {
   let transport = null;
   const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 60_000, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const session = new MatchSession({
@@ -104,7 +109,7 @@ async function seat(p2p = {}) {
   const joining = client.join({ roomCode });
   await sleep(0);
   const request = transport.outbound.find((envelope) => envelope.type === 'room_join');
-  transport.deliver({ type: 'room_joined', requestId: request.requestId, payload: { room: snapshot(), playerId: 'me', seat: 0, chat: [] } });
+  transport.deliver({ type: 'room_joined', requestId: request.requestId, payload: { room: snapshot({ declined }), playerId: 'me', seat: 0, chat: [] } });
   await joining;
   return { client, session, transport };
 }
@@ -126,7 +131,19 @@ async function seat(p2p = {}) {
     assert.deepEqual(declinesOf(transport).at(-1), { type: 'host_decline', declined: true, unable: true }, 'setup: the leave handed the match on');
     // the room: the match runs on another host with this seat declined, then ends and resets every decline
     transport.deliver({ type: 'room_state', payload: { room: snapshot({ host: { transport: 'p2p', hostId: 'other', generation: 2, since: 3000 }, phase: 'playing', match, declined: true }) } });
-    transport.deliver({ type: 'room_state', payload: { room: snapshot({ host: { transport: 'p2p', hostId: null, generation: 2, since: 4000 }, phase: 'waiting', match: { ...match, status: 'ended', endedAt: 4000, verdict: { result: 'alpha', reason: 'elimination' } }, declined: false }) } });
+    const ended = { host: { transport: 'p2p', hostId: null, generation: 2, since: 4000 }, phase: 'waiting', match: { ...match, status: 'ended', endedAt: 4000, verdict: { result: 'alpha', reason: 'elimination' } } };
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
+    // (4) the leave's decline was still on its way (this room never answers it): the room reads it after its reset, and
+    // the session withdraws it once, the decline being over with its match
+    const late = transport.outbound.length;
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: true }) } });
+    await sleep(0);
+    assert.deepEqual(declinesOf(transport, late), [{ type: 'host_decline', declined: false }], '(4) its own decline, read after the reset, is withdrawn');
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: true }) } });
+    await sleep(0);
+    assert.deepEqual(declinesOf(transport, late), [{ type: 'host_decline', declined: false }], '(4) once: a later declined record is not that decline');
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
     // this tab then runs slow in the lobby: the headroom path is open again (the leave's latch kept it shut)
     const mark = transport.outbound.length;
     for (let frame = 0; frame < 600; frame++) session.observeFrame(50);
@@ -153,5 +170,20 @@ async function seat(p2p = {}) {
     'the mobile seat says again that it cannot host');
   session.dispose(); client.dispose();
 }
+// ---- (4) a decline sent straight through the room client stays; a declined record an admission finds is withdrawn
+{
+  const { client, session, transport } = await seat();
+  void client.declineHost(true).catch(() => {});
+  transport.deliver({ type: 'room_state', payload: { room: snapshot({ declined: true }) } });
+  await sleep(0);
+  assert.deepEqual(declinesOf(transport), [{ type: 'host_decline', declined: true }], '(4) the session leaves a decline it did not make to the room');
+  session.dispose(); client.dispose();
+}
+{
+  const { client, session, transport } = await seat({}, { declined: true });
+  await sleep(0);
+  assert.deepEqual(declinesOf(transport), [{ type: 'host_decline', declined: false }], '(4) admitted willing over an earlier page\'s decline: withdrawn');
+  session.dispose(); client.dispose();
+}
 for (const core of cores) core.dispose();
-console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again');
+console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds');
