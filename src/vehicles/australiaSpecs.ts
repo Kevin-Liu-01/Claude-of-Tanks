@@ -14,6 +14,7 @@ import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhou
 import { modernArmor } from './specHelpers.ts';
 import { m113Datums, type M113Mark } from './m113Datums.ts';
 import { ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
+import { REDBACK } from './redbackDatums.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -102,9 +103,22 @@ delete leopard_as1.visual.insignia;
 // Soucy composite rubber tracks, in-arm hydropneumatics; 42 t; 8.8 m over the gun, 3.6 m wide, 3.8 m high (Hanwha; Janes
 // 7.9 x 3.64 x 3.75 m). On the Puma S1's footing (VI: the 30 mm, the Spike, the 43 t; its LAND 400 rival the KF41 at V).
 const redback = australian('redback', 'puma_s1', 'AS21 Redback', 'modern', 'ifv');
-Object.assign(redback.dims, { hullLengthM: 7.9, overallLengthM: 8.8, widthM: 3.6, heightM: 3.75 });
+// as built (redbackDatums.ts): the 7.9 m hull, 8.37 m over the rear step frames and lamp guards (the 30 mm muzzle 0.8 m
+// inside the nose, as the 2021 live-fire profile shows: Hanwha's 8.8 m is not reached), 3.64 m over the appliqué
+// ledges, 3.52 m to the remote station's gun (the turret roof 2.90)
+Object.assign(redback.dims, { hullLengthM: 7.9, overallLengthM: 8.37, widthM: 3.64, heightM: 3.52 });
+// the combat envelope on the build's own datums (the Puma's was another hull and turret), at the Puma's protection
+redback.armor = modernArmor({
+  hl: (REDBACK.noseZ - REDBACK.sternZ) / 2, hw: REDBACK.halfWidthM, inW: REDBACK.tubX, floor: REDBACK.bellyY, trkTop: 1.0,
+  roofY: REDBACK.roofY, turretPivot: [...REDBACK.ring], gunPivot: [...REDBACK.trunnion], barrelLenM: REDBACK.barrelM, barrelRadM: 0.046,
+  glacis: [285, 285, 390], lower: [210, 210, 275], side: [145, 145, 205], skirt: null, rear: 40, roof: 48,
+  tw: (REDBACK.turret.leftX - REDBACK.turret.rightX) / 2, tFrontZ: REDBACK.turret.noseZ, tRearZ: REDBACK.turret.rearZ,
+  tH: REDBACK.turret.roofY, cheek: [265, 265, 350], tSide: [165, 165, 245], tRear: 50, tRoof: 44, mantlet: [285, 285, 370],
+});
 Object.assign(redback, { hp: 2700, weightTons: 42, enginePowerHp: 1000, topSpeedKmh: 65, reverseSpeedKmh: 30,
   protectionSuite: { hardKillAps: true, softKillAps: false } });
+// its two Spike LR2 (the Puma's MELLS is the same family)
+redback.gun = { ...redback.gun, shells: redback.gun.shells.map((shell) => (shell.type === 'HEAT' ? { ...shell, name: 'Spike LR2' } : shell)) };
 redback.visual = { ...redback.visual, ...ausDisruptive('31A') };
 
 // ------------------------------------------------------------------------------------------------------ Abrams --
