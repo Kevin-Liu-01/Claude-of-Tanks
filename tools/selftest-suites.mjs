@@ -1882,6 +1882,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
     'src/app/programOriginWatch.selftest.mjs', // 2026-11-02 audit F2: one shared draw wrapper; any stop order restores it
+    'src/app/mainFlowPorts.selftest.mjs', // 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
