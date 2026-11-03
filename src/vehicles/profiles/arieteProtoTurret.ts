@@ -56,10 +56,11 @@ const CROWN = 0.86, EAVE = 0.82, FLAT = 0.55;   // the roof: flat centre to |x| 
 const SZ0 = 0.45, SLOPE = 0.11;                 // the roof falls 0.11 per metre ahead of z 0.45
 const FZ0 = 2.00, FX0 = 0.29, FY0 = 0.383, FSW = 0.30, FRK = 1.23; // cheek face: z = FZ0 - FSW(|x| - FX0) - FRK(y - FY0)
 const BEV_X = 0.46, SLOT_X = 0.235, BEV_BACK = 0.12;                // inner bevel from |x| 0.46 to the slot, 12 cm back
-// the slot's back wall: 9.5 cm ahead of the gun's breech root (buildGun's collar ends 1.525 here), so the root stays inside
-// the turret's plan at every bearing (gunHullClearance skips gun stock 6.5 cm inside it); above 0.553 the bevels' inner
-// plane carries it back to the roof as the brow over the mantlet
-const SLOT_BACK = 1.62;
+// the slot's back wall, where the old turret's mantlet cavity wall stood (1.67): the gun's breech root and the mantlet
+// block's rear stay inside the turret's plan at every bearing (gunHullClearance skips gun stock 6.5 cm inside it), so the
+// gun keeps its published side stops over the hull slab's edge; above 0.512 the bevels' inner plane carries it back to the
+// roof as the brow over the mantlet
+const SLOT_BACK = 1.67;
 const REAR = -1.95, UNDER_Z0 = -0.85, UNDER_Z1 = -1.30, UNDER_Y = 0.33; // the main box's rear and the bustle's underside
 const BOX_FRONT = -1.93, BOX_REAR = -2.45, BOX_TOP = 0.82, BOX_BOT = 0.35, BOX_W1 = 1.16; // rear stowage box
 // the C2's add-on front: a plane 4 cm proud of the cheek faces' foot, raked 38 degrees (C2 photographs 2 and 4: its front
@@ -105,7 +106,7 @@ export function arieteProtoTurretShell(P: ArieteTurretPort): void {
       P.add('turret', convexBlock(mirror(pts, s)));
     }
   }
-  // the centre between the slot walls: its front the slot's back wall to 0.553, then the brow, the bevels' inner edge
+  // the centre between the slot walls: its front the slot's back wall to 0.512, then the brow, the bevels' inner edge
   // plane carried across the slot back to the roof
   const [tfz, tfy] = topFront(SLOT_X);
   const yk = (frontZ(SLOT_X, 0) - SLOT_BACK) / FRK;
@@ -140,8 +141,9 @@ export function arieteProtoMantlet(P: ArieteTurretPort): void {
   P.addGunExtra(convexBlock([...ring(0.17, 0.58), ...ring(0.17, 0.98), ...ring(0.150, 1.06, -0.13)]));
   // mantlet block filling the slot behind and under it (photograph 4: squared under the collar), its back on the slot's
   // wall (inside the turret), its top under the brow, its upper front raked back behind the collar
-  P.addGunExtra(convexBlock([-0.225, 0.225].flatMap((x) => [[x, -0.145, 0.35], [x, -0.145, 0.64], [x, 0.02, 0.64],
-    [x, 0.20, 0.545], [x, 0.20, 0.35]] as V3[])));
+  // (its lower outer edges chamfered 5.5 cm: the side stops' keep over the hull slab's edge)
+  P.addGunExtra(convexBlock([-1, 1].flatMap((s) => [[s * 0.17, -0.145, 0.35], [s * 0.17, -0.145, 0.64], [s * 0.225, -0.09, 0.35],
+    [s * 0.225, -0.09, 0.64], [s * 0.225, 0.02, 0.64], [s * 0.225, 0.20, 0.545], [s * 0.225, 0.20, 0.35]] as V3[])));
   // coax MG 42/59: its port housing on the collar's flank, the throat, the stub muzzle and booster
   P.addGunExtra(KIT.cylZ(0.046, 0.20, 10), 0.165, 0.10, 0.80);
   P.addGunExtraDark(KIT.cylZ(0.030, 0.03, 8), 0.165, 0.10, 0.895);

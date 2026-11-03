@@ -558,15 +558,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // view"): the garnish stays within 4 cm of the skirt armour's 1.993 m plane (was 2.19), and the skirt drapes start
     // on the skirt run (its rear end at -3.21), not 24 cm behind it
     fieldClearanceM: 0.03, maxHalfWidth: 2.03, hemFloorM: 0.8, conservativeGunEnvelope: true,
+    // 269 (the owner, 2026-11-03: the C2 prototype's completely new turret, profiles/arieteProtoTurret.ts): the turret net
+    // refitted to the new shell (walls +-1.41, the cheek tip 2.39, the stowage box's rear 2.70 and its bins and APU behind
+    // it) and opened round its new fittings: the Lothar-SD box and Attila-D drum together, the commander's cupola and its
+    // periscopes, the loader's hatch, the two roof periscopes, the fume vent, the met mast and the two whip bases (the
+    // loader's 12.7 mm is opened by the builder); the flank drapes hang on the bustle behind the smoke rows (they run
+    // forward of 1.93 now, under the add-on boxes' rear ends), the rear drape between the left bin and the APU
     turret: {
       top: [laid({
-        x0: -1.71, x1: 1.71, z0: -2.72, z1: 2.06, nx: 43, nz: 60, y: 0.97,
-        holes: [rect(-1.06, -0.52, -0.32, 0.16), rect(0.19, 0.82, -0.12, 0.12), rect(-0.12, 0.34, 0.24, 0.64), rect(0.01, 0.29, -0.69, -0.45),
-          rect(-0.38, -0.10, -0.34, -0.10), rect(-0.42, -0.24, -1.21, -1.03), rect(0.63, 1.04, 0.45, 0.61)],
+        x0: -1.71, x1: 1.71, z0: -2.80, z1: 2.06, nx: 43, nz: 61, y: 0.97,
+        holes: [rect(-1.15, -0.50, 0.12, 1.26), rect(-1.28, -0.40, -0.76, 0.12), rect(0.37, 1.25, -0.68, 0.15),
+          rect(-0.43, -0.23, 0.93, 1.09), rect(0.23, 0.43, 0.93, 1.09), rect(-0.14, 0.14, -1.02, -0.74),
+          rect(-0.10, 0.22, -1.45, -1.12), rect(-0.42, -0.24, -1.37, -1.18), rect(1.16, 1.34, -1.36, -1.17)],
         garnishRiseM: 0.16, seed: 11,
       })],
-      side: flanks(-2.57, -0.82, 1.00, 0.46, 1.68, 17),
-      face: [face({ z: -2.72, x0: -1.30, x1: 1.30, y0: 0.52, y1: 0.95, nx: 26, ny: 6, seed: 23 })],
+      side: flanks(-2.62, -1.96, 0.92, 0.44, 1.68, 17),
+      face: [face({ z: -2.70, x0: -0.52, x1: 0.62, y0: 0.45, y1: 0.90, nx: 12, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
