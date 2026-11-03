@@ -34,7 +34,7 @@ import {
 } from './audioMath.ts';
 import { createAssetLibrary, predecodeAssets, type AssetLibrary } from './assetLibrary.ts';
 import { createMixer, type Mixer } from './mixer.ts';
-import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
+import { createVoicePool, type ActiveVoice, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
 import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './captions.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
@@ -311,9 +311,25 @@ interface SmokeScreen { born?: number; x?: number; y?: number; z?: number; sourc
 
 // The report banks (close, own, distant) live in weaponAudio.ts with the classes (the coverage receipt reads them).
 
-/** A running loop the engine can stop (the fire alarm, the heartbeat, the loading bed). */
+/** A loop the engine wants sounding and can stop (the fire alarm, the heartbeat, the loading bed, a wreck's fires). */
 interface Rig {
   stop(fadeS?: number): void;
+  /** Its recording is playing now (it may still be decoding, or have been refused like any cue). */
+  readonly sounding: boolean;
+}
+
+/**
+ * A wanted loop (2026-11-02 audit F11): 'waiting' until its recording plays (it may still be decoding, or the graph
+ * not exist yet), 'playing', then 'off' once stopped, or refused once decoded (out of range, culled, as any cue). A
+ * stop from either state is final.
+ */
+interface LoopWant {
+  readonly id: string;
+  readonly options: PlayOptions;
+  /** When it was wanted (ctx time; -1 before the graph existed): a late start keeps its delay and its length. */
+  from: number;
+  state: 'waiting' | 'playing' | 'off';
+  voice: ActiveVoice | null;
 }
 
 /** Assets every battle needs before the first shot. */
@@ -532,7 +548,9 @@ export function createAudio({
   const deathLatch = new Map<string, boolean>();
   const rigs = new Map<string, VehicleRig>();
   const moduleStates = new Map<string, string>();
-  const wrecks: { until: number; voices: ReturnType<VoicePool['play']>[]; nextCreak: number; x: number; y: number; z: number }[] = [];
+  const wrecks: { until: number; loops: Rig[]; nextCreak: number; x: number; y: number; z: number }[] = [];
+  // Wanted loops still waiting for their recording or the graph (startLoop retries them as each lands).
+  const waitingLoops: LoopWant[] = [];
   let probeSolo: string | null = null;
   const soundLog: Record<string, unknown>[] = [];
   let soundSeq = 0;
@@ -620,11 +638,51 @@ export function createAudio({
     return !!pool.play(id, options);
   }
 
-  /** A looping cue as a stoppable handle; null while its asset decodes (a missing loop stays silent). */
-  function loopRig(id: string, options: PlayOptions = {}): Rig | null {
-    const voice = pool?.play(id, { ...options, loop: true }) ?? null;
-    if (!voice) return null;
-    return { stop: (fadeS = 0.2) => { pool?.stop((v) => v === voice, fadeS); } };
+  /**
+   * A looping cue the engine wants, as a stoppable handle (2026-11-02 audit F11): it starts now, or as soon as its
+   * recording has decoded or the graph exists, so a cold first battle's loader bed, a fire alarm, a wreck's fires or the
+   * heartbeat asked for while decoding are heard late rather than never. A missing loop stays silent.
+   */
+  function loopRig(id: string, options: PlayOptions = {}): Rig {
+    const want: LoopWant = { id, options, from: ctx ? ctx.currentTime : -1, state: 'waiting', voice: null };
+    startLoop(want);
+    return {
+      stop(fadeS = 0.2) {
+        const voice = want.voice;
+        want.state = 'off';
+        want.voice = null;
+        const at = waitingLoops.indexOf(want);
+        if (at >= 0) waitingLoops.splice(at, 1);
+        if (voice) pool?.stop((v) => v === voice, fadeS);
+      },
+      get sounding() { return want.state === 'playing' && !!want.voice && !want.voice.dead; },
+    };
+  }
+
+  function startLoop(want: LoopWant): void {
+    if (want.state !== 'waiting') return;
+    if (!pool || !library || !ctx) { if (!waitingLoops.includes(want)) waitingLoops.push(want); return; }
+    if (want.from < 0) want.from = ctx.currentTime;
+    const elapsed = ctx.currentTime - want.from;
+    const { delayS = 0, maxDurS } = want.options;
+    // a loop with a length (the heartbeat) whose moment has passed while it decoded is not started at all
+    if (maxDurS != null && maxDurS - elapsed < 0.5) { want.state = 'off'; return; }
+    const decoded = library.has(want.id);
+    const voice = pool.play(want.id, elapsed > 0.001
+      ? { ...want.options, loop: true, delayS: Math.max(0, delayS - elapsed), ...(maxDurS != null ? { maxDurS: maxDurS - elapsed } : {}) }
+      : { ...want.options, loop: true });
+    if (voice) { want.voice = voice; want.state = 'playing'; }
+    else if (decoded) want.state = 'off';
+    else {
+      // still decoding (the ask above queued it in the front lane): start it when it lands
+      if (!waitingLoops.includes(want)) waitingLoops.push(want);
+      const lib = library;
+      void lib.load([want.id]).then(() => { if (want.state === 'waiting' && lib.has(want.id)) startLoop(want); });
+    }
+    if (want.state !== 'waiting') {
+      const at = waitingLoops.indexOf(want);
+      if (at >= 0) waitingLoops.splice(at, 1);
+    }
   }
 
   function at(p: Vec3 | { x: number; y: number; z: number }): PlayOptions {
@@ -1276,10 +1334,10 @@ export function createAudio({
     if (!cinematic && event.id !== playerId && listenerValid && distanceTo(x, y, z) < 600) caption('explosion', x, y, z);
     if (!cinematic && placed && ctx) {
       const now = ctx.currentTime;
-      const voices: ReturnType<VoicePool['play']>[] = [];
-      if (cause === 'ammorack') voices.push(pool?.play('cookoff_loop', { x, y, z, loop: true, delayS: 0.8 }) ?? null);
-      if (cause !== 'shot' || random() < 0.45) voices.push(pool?.play('wreck_fire_loop', { x, y, z, loop: true, delayS: 0.5 }) ?? null);
-      wrecks.push({ until: now + 22 + random() * 18, voices, nextCreak: now + 6 + random() * 6, x, y, z });
+      const loops: Rig[] = [];
+      if (cause === 'ammorack') loops.push(loopRig('cookoff_loop', { x, y, z, delayS: 0.8 }));
+      if (cause !== 'shot' || random() < 0.45) loops.push(loopRig('wreck_fire_loop', { x, y, z, delayS: 0.5 }));
+      wrecks.push({ until: now + 22 + random() * 18, loops, nextCreak: now + 6 + random() * 6, x, y, z });
     }
     const rig = rigs.get(event.id);
     if (rig) { rig.kill(0.25); rigs.delete(event.id); }
@@ -1309,8 +1367,7 @@ export function createAudio({
     for (let i = wrecks.length - 1; i >= 0; i--) {
       const wreck = wrecks[i];
       if (now > wreck.until) {
-        const doomed = new Set(wreck.voices.filter(Boolean));
-        pool?.stop((v) => doomed.has(v), 2.5);
+        for (const loop of wreck.loops) loop.stop(2.5);
         wrecks.splice(i, 1);
         continue;
       }
@@ -2210,11 +2267,15 @@ export function createAudio({
     // the rigs' loops go with the rigs (the next battle's rigs pin their own)
     library?.pin([], true, 'rigs');
     surfaceCache.clear();
-    for (const wreck of wrecks) {
-      const doomed = new Set(wreck.voices.filter(Boolean));
-      pool?.stop((v) => doomed.has(v), 0.4);
-    }
+    for (const wreck of wrecks) for (const loop of wreck.loops) loop.stop(0.4);
     wrecks.length = 0;
+    // a wanted loop still decoding never starts in the next phase (the loader's bed excepted, as below)
+    for (let i = waitingLoops.length - 1; i >= 0; i--) {
+      const want = waitingLoops[i];
+      if (loadingActive && want.id === LOADING_BED) continue;
+      want.state = 'off';
+      waitingLoops.splice(i, 1);
+    }
     // The ambience director's scene goes with its loops (2026-11-02 audit F11): left holding a scene whose voices this
     // teardown kills, its self-repair (ensureLoops) brought the garage hangar back under the battle loader.
     ambience?.stop(0.4);
@@ -2428,6 +2489,8 @@ export function createAudio({
     chooseSnapshot();
     // Adopted after the battle phase edge: warm the battle set now (its edge has passed).
     if (battleMode.phase === 'battle') void warmBattle();
+    // the loops wanted before the graph existed (the loader's bed)
+    for (const want of [...waitingLoops]) startLoop(want);
   }
 
   /** The garage's and menus' controls (interfaceSounds.ts classifies the pressed element). */
@@ -2933,11 +2996,11 @@ export function createAudio({
   }
 
   function loadingOn(on: boolean): void {
-    if (!mixer || !pool) return;
+    // the intent is kept before the graph exists (its bed starts with it); the deploy cue is a one-off
     if (on && !loadingActive) {
       loadingActive = true;
       loading = loopRig(LOADING_BED);
-      play('ui_deploy', { gainDb: -3 });
+      if (ready()) play('ui_deploy', { gainDb: -3 });
       logSound('loading:start');
     } else if (!on && loadingActive) {
       loadingActive = false;
@@ -2965,9 +3028,11 @@ export function createAudio({
       get sfxCount() { return library?.stats().assets ?? 0; },
       get killcamSfxLog() { return killcamLog; },
       get soundLog() { return soundLog; },
-      get loadingActive() { return !!loading; },
+      /** The loader's bed is wanted (the engine's flag); loadingSounding: its recording is playing. */
+      get loadingActive() { return loadingActive; },
+      get loadingSounding() { return !!loading?.sounding; },
       /** The battle mode and the per-battle intents it gates (2026-11-02 audit F11). */
-      battleState: () => ({ ...battleMode, ambientWanted, startEngineArmed: startEngineSoon, deathsLatched: deathLatch.size }),
+      battleState: () => ({ ...battleMode, ambientWanted, startEngineArmed: startEngineSoon, deathsLatched: deathLatch.size, loopsWaiting: waitingLoops.length }),
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,

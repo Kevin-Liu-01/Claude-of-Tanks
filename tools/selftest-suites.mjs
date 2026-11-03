@@ -1533,6 +1533,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
     // battle's ambience intent is per battle)
     'src/audio/ambienceTeardown.selftest.mjs',
+    // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
+    'src/audio/wantedLoops.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
