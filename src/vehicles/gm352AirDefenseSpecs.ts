@@ -280,6 +280,10 @@ pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24,
     { ...moduleBox('missileRack', [-(PB.tubeXs[1] + PB.tubeR), gp[1] + PB.cradleBottomY, gp[2] + PB.cradleRearZ],
       [PB.tubeXs[1] + PB.tubeR, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
   );
+  // the 30 mm ready rounds kept under the module's roof: the template's rack (modernArmor) stood to 1.10 m, through the
+  // 0.95 m roof into the roof sight (268 internalPlacement: ammoRack ∩ optics once the cradle arm refit its seat)
+  pantsir.armor.modules = pantsir.armor.modules.map((box) => box.module !== 'ammoRack' ? box
+    : { ...box, max: [box.max[0], PBD.topY - 0.05, box.max[2]] as Point });
   pantsir.armor.crew.push(
     // internalLayoutRegistry.ts IFV_TWO_MAN_TURRET: gunner front right (-x), commander rear right
     crewBox('gunner', [-0.48, PBD.bottomY + 0.05, -0.30], [-0.05, PBD.topY - 0.08, 0.20], true),
