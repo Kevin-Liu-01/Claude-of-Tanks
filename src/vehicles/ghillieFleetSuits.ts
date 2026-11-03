@@ -889,34 +889,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.30, 3.10, 1.54, 0.55, 2.05, 41),
     },
   },
-  // M1E3 (the m1a3, rebuilt 2026-10-28; the owner: "it needs all the extra decorations ... we had on the m1a3 ... make
-  // it feel really used and lived in"): the turret roof and bustle netted round the station, the sights, the APS heads
-  // and the bustle cage (the builder), drapes down the flanks outside the field cage, a rear drape over the basket; the
-  // engine deck to the stern rack, the front deck round the hatches and periscopes, four drapes a side over the slab
-  // skirts and the flank cages.
-  m1a3: {
-    id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
-    // m1e3-264 (nationalGunClearance.selftest): at 3 cm the cut left the front-deck leaves 1 mm under the bore
-    // evacuator at the measured front-quarter stops (m1a1GunLimits.ts)
-    fieldClearanceM: 0.06, maxHalfWidth: 2.36, hemFloorM: 0.8,
-    clothClearsGunStops: true, cardsClearGunStops: true,
-    turret: {
-      top: [laid({ x0: -1.75, x1: 1.75, z0: -2.98, z1: 1.90, nx: 44, nz: 61, y: 0.88, garnishRiseM: 0.16, seed: 11 })],
-      side: flanks(-2.90, -0.20, 0.86, 0.46, 1.82, 17),
-      face: [face({ z: -3.30, x0: -1.45, x1: 1.45, y0: 0.40, y1: 0.80, nx: 29, ny: 6, seed: 23 })],
-    },
-    hull: {
-      top: [
-        // the bore evacuator's path kept bare: over the engine deck where the gun lies level astern (164-180), and over
-        // the front shoulders at the front-quarter stops (18-41); the suit's swept-gun cut left cloth 21 mm under it
-        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.73, garnishRiseM: 0.14, seed: 31,
-          holes: [rect(-1.05, 1.05, -3.25, -2.55)] }),
-        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.50, garnishRiseM: 0.12, seed: 37,
-          holes: pair(0.80, 1.92, 2.50, 3.45) }),
-      ],
-      side: skirts(-3.70, 3.50, 1.44, 0.55, 2.06, 41),
-    },
-  },
+  // M1E3 (the m1a3): no net since 2026-11-02 (the owner: "remove the ghillie on the m1e3"); its field cage, cages,
+  // APS, whips and stowage stay (profiles/m1a3Concept.ts)
   // Griffin Viper: the long flat hull roof netted bow to stern round the Viper station's sweep, the driver's hatch
   // and its periscopes; the small station's roof netted round its sights; three-quarter drapes a side down the hull.
   griffin_viper: {

@@ -100,10 +100,11 @@ assert.ok(gunRig.parent === turretRig, 'the gun articulates with the turret');
 assert.equal(turretRig.position.z, 0.35, 'the M1 turret sits at the M1A1 family ring station');
 assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'), 'the roof weapon station is independently identifiable');
 
-// The owner's 2026-10-28 ruling: the M1A3's field kit stays on the M1E3 (net, field cage, cages, APS, whips, stowage).
+// The owner's 2026-10-28 ruling: the M1A3's field kit stays on the M1E3 (field cage, cages, APS, whips, stowage); the
+// net came off on 2026-11-02 (the owner: "remove the ghillie on the m1e3").
 const names = [];
 tank.root.traverse((part) => names.push(part.name));
-assert.ok(names.some((name) => /_ghillie_/.test(name)), 'the M1E3 wears the field net');
+assert.ok(!names.some((name) => /_ghillie_/.test(name)), 'the M1E3 wears no field net');
 assert.ok(tank.root.getObjectByName('turretExternalArmor'), 'the M1E3 carries its flank and basket slat cage');
 assert.ok(tank.root.getObjectByName('rig_hull').userData.rearFieldStowage, 'the stern rack carries the crew stowage');
 
