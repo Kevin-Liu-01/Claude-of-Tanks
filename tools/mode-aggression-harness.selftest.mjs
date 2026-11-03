@@ -186,10 +186,8 @@ const mean = (list, f) => list.reduce((n, r) => n + (f(r) ?? 0), 0) / list.lengt
 // Deals that fail a conduct ask through a named, unfixed defect (Main, 2026-11-02), by mode and seed, the asks and the
 // cause. The list only shrinks: a listed deal that passes its asks fails the receipt until it is struck off here (and in
 // cot-launch-state TESTS-OWED). Its other asks hold as on every deal.
-const KNOWN_CONDUCT = new Map([
-  ['endless_horde.6', { asks: ['honesty'], cause: "the director's arrival lead (HUNT_RULES.lead, 0.85-1.1 of the way to the humans' centroid, +-20 degrees) within the measure's 2 m of a human still on its deployment slot, the wave's first 2 s, no sighting yet (4 of 81 hunt samples)" }],
-  ['endless_horde.24', { asks: ['honesty'], cause: "the same: the director's arrival lead within 2 m of an M47 still on its slot, the first 2 s (4 of 186)" }],
-]);
+// 2026-11-02: horde.6 and horde.24 struck off (the director's arrival leads on its side's knowledge, 84cb8f86a8; both pass)
+const KNOWN_CONDUCT = new Map();
 const conductMisses = [], known = [];
 const judge = (mode, run, asks) => {
   const key = `${mode}.${run.seed}`, listed = KNOWN_CONDUCT.get(key);
