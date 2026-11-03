@@ -56,7 +56,10 @@ const CROWN = 0.86, EAVE = 0.82, FLAT = 0.55;   // the roof: flat centre to |x| 
 const SZ0 = 0.45, SLOPE = 0.11;                 // the roof falls 0.11 per metre ahead of z 0.45
 const FZ0 = 2.00, FX0 = 0.29, FY0 = 0.383, FSW = 0.30, FRK = 1.23; // cheek face: z = FZ0 - FSW(|x| - FX0) - FRK(y - FY0)
 const BEV_X = 0.46, SLOT_X = 0.235, BEV_BACK = 0.12;                // inner bevel from |x| 0.46 to the slot, 12 cm back
-const SLOT_BACK = 1.40, BROW_Y = 0.58;                              // the slot's back wall and the brow over the mantlet
+// the slot's back wall: 9.5 cm ahead of the gun's breech root (buildGun's collar ends 1.525 here), so the root stays inside
+// the turret's plan at every bearing (gunHullClearance skips gun stock 6.5 cm inside it); above 0.553 the bevels' inner
+// plane carries it back to the roof as the brow over the mantlet
+const SLOT_BACK = 1.62;
 const REAR = -1.95, UNDER_Z0 = -0.85, UNDER_Z1 = -1.30, UNDER_Y = 0.33; // the main box's rear and the bustle's underside
 const BOX_FRONT = -1.93, BOX_REAR = -2.45, BOX_TOP = 0.82, BOX_BOT = 0.35, BOX_W1 = 1.16; // rear stowage box
 // the C2's add-on front: a plane 4 cm proud of the cheek faces' foot, raked 38 degrees (C2 photographs 2 and 4: its front
@@ -102,15 +105,12 @@ export function arieteProtoTurretShell(P: ArieteTurretPort): void {
       P.add('turret', convexBlock(mirror(pts, s)));
     }
   }
-  // the centre between the slot walls, its front the slot's back wall under the brow
+  // the centre between the slot walls: its front the slot's back wall to 0.553, then the brow, the bevels' inner edge
+  // plane carried across the slot back to the roof
   const [tfz, tfy] = topFront(SLOT_X);
   const yk = (frontZ(SLOT_X, 0) - SLOT_BACK) / FRK;
   P.add('turret', convexBlock([-1, 1].flatMap((s) => mirror([[SLOT_X, FLOOR, SZ0], [SLOT_X, FLOOR, SLOT_BACK],
     [SLOT_X, yk, SLOT_BACK], [SLOT_X, CROWN, SZ0], [SLOT_X, tfy, tfz]], s))));
-  // the brow over the mantlet: the bevels' inner edge plane across the slot, its underside 6 cm over the gun shield
-  const bz = SLOT_BACK - 0.01, byk = (frontZ(SLOT_X, 0) - bz) / FRK, bx = SLOT_X + 0.004;
-  P.add('turret', convexBlock([-1, 1].flatMap((s) => mirror([[bx, BROW_Y, bz], [bx, BROW_Y, frontZ(SLOT_X, BROW_Y)],
-    [bx, byk, bz]], s))));
   // the rear stowage box (rear view: a full-width box behind the bustle, tapering aft, its top level with the eaves)
   const taper = (z: number): number => W - 0.005 - (W - 0.005 - BOX_W1) * (BOX_FRONT - z) / (BOX_FRONT - BOX_REAR);
   P.add('turret', convexBlock([-1, 1].flatMap((s) => mirror([
@@ -122,8 +122,8 @@ export function arieteProtoTurretShell(P: ArieteTurretPort): void {
 }
 
 /** The gun's shield (gun frame: origin on the trunnion): the round collar on its squared mantlet block in the slot. The
- * collar's underside is cut flat at -0.145 and the block's at -0.145 (the accepted 0.15 m keep over the hull slab at the
- * front arc's depression); the coax MG 42/59 keeps its port at (0.165, 0.10). */
+ * collar's underside is cut flat at -0.145 and the block's at -0.145 (the old mantlet plate's 0.15, so its keep over the
+ * hull slab and the glacis at the depression stops holds); the coax MG 42/59 keeps its port at (0.165, 0.10). */
 export function arieteProtoMantlet(P: ArieteTurretPort): void {
   const seg = P.q ? 18 : 12;
   const ring = (r: number, z: number, cut = -0.145): V3[] => {
@@ -139,9 +139,9 @@ export function arieteProtoMantlet(P: ArieteTurretPort): void {
   // collar (photographs 2 and 4: a fat round shield sleeve, its front edge chamfered)
   P.addGunExtra(convexBlock([...ring(0.17, 0.58), ...ring(0.17, 0.98), ...ring(0.150, 1.06, -0.13)]));
   // mantlet block filling the slot behind and under it (photograph 4: squared under the collar), its back on the slot's
-  // wall, its top under the brow to the brow's front edge, its upper front raked back behind the collar
+  // wall (inside the turret), its top under the brow, its upper front raked back behind the collar
   P.addGunExtra(convexBlock([-0.225, 0.225].flatMap((x) => [[x, -0.145, 0.35], [x, -0.145, 0.64], [x, 0.02, 0.64],
-    [x, 0.23, 0.545], [x, 0.23, 0.35]] as V3[])));
+    [x, 0.20, 0.545], [x, 0.20, 0.35]] as V3[])));
   // coax MG 42/59: its port housing on the collar's flank, the throat, the stub muzzle and booster
   P.addGunExtra(KIT.cylZ(0.046, 0.20, 10), 0.165, 0.10, 0.80);
   P.addGunExtraDark(KIT.cylZ(0.030, 0.03, 8), 0.165, 0.10, 0.895);
