@@ -23,6 +23,20 @@ import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWo
 
 type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
 
+/**
+ * The runtime's moves (audit M1/M3, 2026-11-02): setState refused only a move to the same state, so a `ready` already in
+ * flight across the thread boundary when the session stopped the host (or one landing just after the boot timeout)
+ * moved a stopped or failed host to `live`: its drain no longer held back the stopped actor's reports, it overwrote the
+ * page's kernels report and boot timings, and a later stop() emitted `stopped` again. Stopped and failed are terminal.
+ */
+const HOST_MOVES: Readonly<Record<MatchHostState, readonly MatchHostState[]>> = Object.freeze({
+  idle: ['booting', 'failed', 'stopped'],
+  booting: ['live', 'failed', 'stopped'],
+  live: ['stopped'],
+  stopped: [],
+  failed: [],
+});
+
 interface MatchHostRoomPort {
   signaler: Signaler;
   /** The host's report to the room (a `room_command`); rejections are logged, never fatal. */
@@ -132,10 +146,13 @@ export function createMatchHost({
   let uplinkBytesPerS = 0;
   let startPromise: Promise<void> | null = null;
 
-  const setState = (next: MatchHostState, detail = ''): void => {
-    if (state === next) return;
+  const canMove = (next: MatchHostState): boolean => HOST_MOVES[state].includes(next);
+  /** The one writer of `state`: a move the table does not allow is ignored (false). */
+  const setState = (next: MatchHostState, detail = ''): boolean => {
+    if (!canMove(next)) return false;
     state = next;
     stateListeners.emit({ state: next, detail });
+    return true;
   };
 
   const post = (message: HostToWorkerMessage, transfer?: ArrayBuffer[]): void => { port?.post(message, transfer); };
@@ -176,7 +193,8 @@ export function createMatchHost({
   const receive = (message: WorkerToHostMessage): void => {
     switch (message.type) {
       case 'ready':
-        if (ready) return;
+        // only a booting host goes live: a ready from a thread this host already stopped or failed is its last word
+        if (ready || !canMove('live')) return;
         ready = true;
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
         post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host', playerId });
@@ -240,8 +258,7 @@ export function createMatchHost({
   };
 
   const fail = (detail: string): void => {
-    if (state === 'stopped' || state === 'failed') return;
-    setState('failed', detail);
+    if (!setState('failed', detail)) return;
     teardown();
   };
 
@@ -320,7 +337,7 @@ export function createMatchHost({
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
-    if (state === 'stopped' || state === 'failed') return;
+    if (!canMove('stopped')) return;
     post({ type: 'stop', reason, detail });
     setState('stopped', detail || 'stopped');
     teardown();

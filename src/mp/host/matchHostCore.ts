@@ -247,6 +247,8 @@ export function createMatchHostCore({
   }
 
   function openLink(peer: number, label: string, playerId: string): void {
+    // a stopped core (its match over, or stopped by its owner) admits no link: the main thread closes the channel
+    if (stopped || disposed) { post({ type: 'link_close', peer, reason: CLOSE_REASON.MATCH_ENDED, detail: 'host stopped' }); return; }
     if (!actor || !config) { pendingOpens.push({ peer, label, playerId, frames: [] }); return; }
     const previous = links.get(peer);
     if (previous) previous.closedByMain();
@@ -440,7 +442,13 @@ export function createMatchHostCore({
       if (nowMs - lastKeyframeMs >= keyframeIntervalMs) { lastKeyframeMs = nowMs; void broadcastKeyframe(); }
       if (nowMs - lastConfigMs >= configIntervalMs) { lastConfigMs = nowMs; void broadcastConfig(); }
     }
-    if (live.stopped) { post({ type: 'stats', stats: stats()! }); return; }
+    if (live.stopped) {
+      post({ type: 'stats', stats: stats()! });
+      // the actor ended itself (its linger after the verdict ran out): the core is stopped too (audit M1/M3: it stayed
+      // open, kept every link and admitted re-offering peers onto a stopped actor)
+      stop(CLOSE_REASON.MATCH_ENDED, 'match over');
+      return;
+    }
     housekeeping = setTimer(housekeep, HOUSEKEEPING_MS);
   }
 
