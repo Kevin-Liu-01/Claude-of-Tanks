@@ -10,6 +10,7 @@ import { createControlSampler } from '../presentation/controlSampler.ts';
 import { MULTIPLAYER_V2_SESSION } from './playMenuAdapter.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
 import { ACTION_BITS, CLOSE_REASON, PROTOCOL_VERSION, TEAM, VERDICT } from '../wire/index.ts';
+import { WorldActivationSupersededError } from '../../world/worldActivationRuntime.ts';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const settle = async (times = 6) => { for (let index = 0; index < times; index++) await tick(); };
@@ -831,6 +832,41 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   assert.deepEqual(mid.menu.failures, [], 'an explicit leave is not a failure');
   releaseWorld();
   await assert.rejects(entering, /superseded/);
+}
+
+// ------------------------------------------------------------ (2026-11-02 audit R1) the Garage restore supersedes the world load
+// A room closed or left while a round loads: the covered Garage restore (setDormant(true)) supersedes the round's world
+// activation, which rejects with its own supersession (src/world/worldActivationRuntime.ts). The room released the round
+// first, so it is no failed entry: no entry_failed_world beacon, no report (before, every kick, expiry or Leave during a
+// load was counted and reported as a failed world entry).
+for (const how of ['closed', 'left']) {
+  let supersede = null;
+  const lost = createHarness({
+    loadWorld: () => new Promise((_resolve, reject) => { supersede = () => reject(new WorldActivationSupersededError('alpine')); }),
+    enterGarage: async () => { supersede?.(); },
+  });
+  const lostRoom = makeRoomSession(lost.calls);
+  const lostEntry = lost.composition.beginRoom({ role: 'client', session: lostRoom, lobbyState: lostRoom.lobby });
+  const entering = lost.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' })
+    .then(() => null, (error) => error);
+  await settle();
+  if (how === 'closed') lostRoom.closeFromRoom('expired');
+  else lost.composition.leaveRoom('explicit_leave');
+  await settle(12);
+  assert.equal(await lostEntry, false);
+  assert.equal((await entering)?.name, 'WorldActivationSuperseded', `room ${how}: the Garage restore superseded the world load`);
+  assert.ok(!lost.ports.failure, `room ${how} while loading: no failed entry is recorded`);
+  assert.ok(!lost.calls.some((call) => typeof call === 'string' && call.startsWith('error:')), `room ${how}: nothing is reported`);
+  assert.equal(lost.presentations.length, 0);
+}
+// a round still owning its load whose world activation is superseded (by none of its own doing) is still its failure
+{
+  const taken = createHarness({ loadWorld: async () => { throw new WorldActivationSupersededError('alpine'); } });
+  const takenRoom = makeRoomSession(taken.calls);
+  const takenEntry = taken.composition.beginRoom({ role: 'host', session: takenRoom, lobbyState: takenRoom.lobby });
+  await assert.rejects(taken.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' }), /superseded/);
+  assert.equal(await takenEntry, false);
+  assert.equal(taken.ports.failure?.stage, 'world', 'an owned round records its world failure');
 }
 
 // ------------------------------------------------------------ the match-start timeout restores the Garage and keeps the room
