@@ -45,8 +45,10 @@ function seeded(seed) {
   };
 }
 
+// (2026-11-02 audit R2) a toss-class kind (a rammed churn's ballistic arc): no map lays one today, the runtime keeps the path
+const FIXTURE_TYPES = { tossbarrel: { ...DESTRUCTIBLE_TYPES.barrel, cls: 'toss' } };
 function makeRecord(kind, index, x, z, pools, rng) {
-  const meta = DESTRUCTIBLE_TYPES[kind];
+  const meta = FIXTURE_TYPES[kind] ?? DESTRUCTIBLE_TYPES[kind];
   let pool = pools.get(kind);
   if (!pool) {
     pool = { meta, mats4: [], records: [], nBroken: 0 };
@@ -294,6 +296,26 @@ for (const [mode, cap] of [['sweep', 3], ['impact', 6]]) {
     else seam.notifyShellImpact(0, 0.2, 0, { r: 4.6, he: true });
     assert.equal(f.records.filter((r) => r.state).length, cap, `${mode}: original per-call cap preserved`);
   } finally { f.dispose(); }
+}
+
+// ---- 2026-11-02 audit R2: a tossed prop lands where it landed the battle before (the build's destruction stream, never
+// reset, gave each toss its scatter: another landing per rematch, per peer and per late joiner's settled restore)
+{
+  const tossed = fixture([['tossbarrel', 0, 0], ['crate', 4, 0]]);
+  try {
+    const landing = () => {
+      assert.ok(tossed.crushDestructible(0, 1, 0.3, 8, 'ram'), 'the toss record flies');
+      for (let i = 0; i < 120 && tossed.crushAnims.length; i++) tossed.updateProps(1 / 60);
+      assert.equal(tossed.crushAnims.length, 0, 'the toss lands');
+      const m = new THREE.Matrix4();
+      tossed.pools.get('tossbarrel').imI.getMatrixAt(tossed.records[0].slot, m);
+      return m.elements.map((v) => Math.round(v * 1e6));
+    };
+    const first = landing();
+    tossed.crushDestructible(1, 1, 0, 8, 'ram'); // another break between the battles
+    tossed.resetDestructibles();
+    assert.deepEqual(landing(), first, 'the rematch\'s toss lands where the first battle\'s did');
+  } finally { tossed.dispose(); }
 }
 
 console.log('destructibleAuthority.selftest: cosmetic/authority boundary, actual solo/network callers, fixed pools, deferred blasts and rematch reset passed');

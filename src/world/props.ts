@@ -12502,13 +12502,16 @@ ${snowCap ? `
       utilityWires?.rebuild(spans);
     }
   }
+  /** A tossed prop's tumble rate (rad/s), seeded by its pool slot: the runner's first tick and the overflow snap agree. */
+  const tossSpinOf = (index: number): number => 5.0 + mulberry32((index + 3) * 2654435761)() * 4.5;
   function pushCrushAnim(a: CrushAnimation): void {
     if (crushAnims.length >= MAX_CRUSH_ANIMS) {
       const old = crushAnims.shift(); // snap-finish the oldest
       if (!old) return;
       if (!old.placement) { old.im.getMatrixAt(old.index, _cm); old.placement = _cm.clone(); }
       if (old.type === 'toss') {
-        if (old.spin == null) { old.spin = 6; old.r = old.h * 0.35; }
+        // (2026-11-02 audit R2) its own seeded tumble, as the runner gives it (was a fixed 6 rad/s: another landing pose)
+        if (old.spin == null) { old.spin = tossSpinOf(old.index); old.r = old.h * 0.35; }
         poseTossed(old, old.dur);
       } else {
         poseToppled(old, old.maxAng);
@@ -12572,11 +12575,15 @@ ${snowCap ? `
       // settling on their side. Persists via the anim's final pose.
       const th = 2.2 + Math.min(speed, 12) * 0.55;
       setToppleAxis(_cax, dx, dz);
+      // (2026-11-02 audit R2) the throw's scatter is the record's own (its kind's pool slot and its seat), never a draw
+      // from the build's destruction stream: that stream's position was the build's draws plus every toss before this
+      // one in the session and was never reset, so a churn landed elsewhere per rematch, per peer and per settled restore
+      const scatter = mulberry32(((rec.slot + 11) * 2654435761) ^ Math.round(rec.x * 64) ^ (Math.round(rec.z * 64) << 12) ^ (seed + 9001));
       pushCrushAnim({
         type: 'toss', im: pool.imI!, index: rec.slot,
         x: rec.x, y: rec.y, z: rec.z, h: rec.h,
-        vx: (dx / directionLength) * th + (drng() - 0.5) * 1.2,
-        vz: (dz / directionLength) * th + (drng() - 0.5) * 1.2,
+        vx: (dx / directionLength) * th + (scatter() - 0.5) * 1.2,
+        vz: (dz / directionLength) * th + (scatter() - 0.5) * 1.2,
         vy: 2.6 + Math.min(speed, 12) * 0.30,
         ax: _cax.x, az: _cax.z,
         t: settled ? 1.5 : 0, placement: null, dur: 1.5,
@@ -13031,7 +13038,7 @@ ${snowCap ? `
         a.im.getMatrixAt(a.index, _cm);
         a.placement = _cm.clone();
         if (a.type === 'toss') {
-          a.spin = 5.0 + mulberry32((a.index + 3) * 2654435761)() * 4.5;
+          a.spin = tossSpinOf(a.index);
           a.r = a.h * 0.35;
         } else {
           // random hinge-axis wobble so simultaneous topples de-sync

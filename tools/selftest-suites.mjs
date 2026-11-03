@@ -2441,6 +2441,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibles.selftest.mjs',
     // 2026-11-02 audit R2: a map's trench variant registers and queues its measures as its own world (build key)
     'src/world/destructibleWorldKey.selftest.mjs',
+    // 2026-11-02 audit R2: what a cached world carried into the next battle (Studio sweeps, the toss stream, water, sward)
+    'src/world/battleResetLeftovers.selftest.mjs',
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
