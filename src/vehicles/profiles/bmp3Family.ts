@@ -1,6 +1,6 @@
 // First-party procedural BMP-3 parts (release 268 round b, the owner 2026-11-02: "make a new bmp 3 turret. or add a lot
 // more decorations to it", "fix the rectaunglar prisms in teh bmp 3 hulls that look like jutting out from bottom", and
-// more upper-glacis and roof detail). Shared by `bmp3` and `bmp3_rok` (the ROK Army's BMP-3s are the export standard):
+// more upper-glacis and roof detail). Shared by `bmp3` and `bmp3_rok` (round 269: bmp3_rok adds its ROK fit, bmp3RokTurretFit.ts):
 //   - buildBmp3WeldedTurret: the welded, faceted two-man turret of the 2K23 complex in place of the round dome: flat
 //     undercut sides under a chamfered roof edge, front cheeks swept back either side of the deep gun recess (canvas
 //     boot), the 1K13-2 gunner's sight box (left), the commander's cupola with its TKN-3 head and the OU-3GA2 infrared
@@ -20,6 +20,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts'
 import { mount } from './fittingMount.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { hoop } from './bentBarHoop.ts';
+import { addBmp3RokTurretFit } from './bmp3RokTurretFit.ts';
 
 type Vec3Tuple = [number, number, number];
 export type Bmp3TurretVariant = 'bmp3' | 'bmp3_rok';
@@ -85,6 +86,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   ]));
   // lifting eyes on the roof edge (bent bars standing on the plate)
   for (const [x, z] of [[0.86, 0.36], [-0.86, 0.36], [0.58, -0.86], [-0.58, -0.86]] as Array<[number, number]>) {
+    if (rok && x > 0 && z > 0) continue;                                              // ROK: the thermal head stands here
     P.add('turretDetail', hoop(0.045, 0.012, false), x, ROOF_Y - 0.008, z);
   }
 
@@ -108,9 +110,11 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     P.add('turretGlass', xform(cylZ(r, 0.012, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.016);
   }
   P.add('turretDetail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
-  P.add('turretDetail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
-  P.add('turretDetail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
-  P.add('turretGlass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
+  if (!rok) {                                     // ROK: the new IR searchlight on its yoke (bmp3RokTurretFit.ts)
+    P.add('turretDetail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
+    P.add('turretDetail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
+    P.add('turretGlass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
+  }
 
   // ---- commander (-x, the vehicle's right): cupola with vision blocks, the TKN-3 head ahead, OU-3GA2 searchlight ----
   const cx = -0.44, cz = -0.30;
@@ -153,16 +157,18 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   P.add('turretDark', torus(0.152, 0.008, 18), 0, ROOF_Y + 0.004, -0.74);
   for (const s of [-1, 1]) {
     const ax = s * 0.80, az = -0.78;
-    P.add('turretDetail', box(0.13, 0.05, 0.13), ax, ROOF_Y + 0.015, az);
-    mount(P, 'turret', FITTINGS.antennaWhip({
-      mats: P.mats, h: s < 0 ? 0.72 : 0.60, r: 0.011, rake: -s * 0.04,
-      seed: (rok ? 3120 : 3830) + (s > 0 ? 1 : 0),
-    }), ax, ROOF_Y + 0.040, az);
+    if (!rok) {                                     // ROK: the Korean radios' masts on brackets (bmp3RokTurretFit.ts)
+      P.add('turretDetail', box(0.13, 0.05, 0.13), ax, ROOF_Y + 0.015, az);
+      mount(P, 'turret', FITTINGS.antennaWhip({
+        mats: P.mats, h: s < 0 ? 0.72 : 0.60, r: 0.011, rake: -s * 0.04, seed: 3830 + (s > 0 ? 1 : 0),
+      }), ax, ROOF_Y + 0.040, az);
+    }
     // grab rail along the upper side: two standoffs welded to the side plate and the bar
     for (const z of [-0.30, 0.22]) P.add('turretDetail', box(0.075, 0.024, 0.024), s * 1.165, 0.33, z);
     P.add('turretDetail', cylZ(0.013, 0.60, 8), s * 1.195, 0.33, -0.04);
-    if (rok) {
-      // ROK service fit (the 3rd Armoured Brigade photograph): a stowage bin low on each flank under the grab rail
+    if (rok && s < 0) {
+      // ROK service fit: a stowage bin low on the right flank under the grab rail (the left flank carries the radio
+      // mast and the rear-quarter bin, bmp3RokTurretFit.ts)
       P.add('turret', box(0.11, 0.16, 0.48), s * 1.185, 0.215, -0.18);
       P.add('turretDark', box(0.10, 0.012, 0.42), s * 1.19, 0.297, -0.18);
       for (const z of [-0.33, -0.03]) P.add('turretDetail', box(0.02, 0.10, 0.03), s * 1.245, 0.215, z);
@@ -193,6 +199,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     P.addGunExtraDark(cylZ(0.016, 0.95, 8), 0.21, 0.02, 0.92);
     muzzleTipDot(P, 0.21, 0.02, 1.395, 0.010, { parent: 'gunG' });
     P.decal('turret', 'number', 'ROK 3', 0.18, [1.146, 0.27, 0.27] as Vec3Tuple, Math.PI / 2);
+    addBmp3RokTurretFit(P, { roofY: ROOF_Y, sight: { x0: sx0, x1: sx1, z0: sz0, z1: sz1, top: sTop } });
     P.topY = Math.max(P.topY || 0, 1.14);
     return;
   }
