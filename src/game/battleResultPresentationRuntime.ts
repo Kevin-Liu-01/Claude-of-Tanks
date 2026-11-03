@@ -108,8 +108,9 @@ interface RunningBeat {
 }
 
 const DEFAULT_DEATH_BEAT_MS = 2600;
-/** The most one update may advance the beat clock: a frame step with room for a slow frame, never a pause. */
-const MAX_BEAT_STEP_MS = 100;
+/** The most one update may advance the beat clock: a frame step with room for a slow device's frame (4 fps), never a
+ *  pause. */
+const MAX_BEAT_STEP_MS = 250;
 
 /**
  * Own the result/replay presentation state machine independently from the
@@ -148,9 +149,10 @@ export function createBattleResultPresentationRuntime({
 
   const director = ending?.director ?? createBattleEndingDirector();
   // The beat clock (2026-11-02 audit F4): the death beat and the ending beats run on presentation time, which advances
-  // only across update() calls, at most one frame step each. update() runs only while the battle frame does (never
-  // while Settings pauses the battle, nor in a hidden tab), so a beat holds through a pause instead of firing the
-  // moment play resumes. It reads the wall clock (now()) at its first update, so unpaused frames keep wall-time deadlines.
+  // only across update() calls, at most one frame step (MAX_BEAT_STEP_MS) each. update() runs only while the battle
+  // frame does (never while Settings pauses the battle, nor in a hidden tab), so a beat holds through a pause instead of
+  // firing the moment play resumes. It reads the wall clock (now()) at its first update, so unpaused frames keep
+  // wall-time deadlines.
   let beatClockMs: number | null = null;
   let lastWallMs = 0;
   const advanceBeatClock = (): number => {

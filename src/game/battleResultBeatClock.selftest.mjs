@@ -59,8 +59,8 @@ function harness({ ending = false } = {}) {
   h.pause(30_000); // the player opens Settings (the live battle pauses)
   h.runtime.update(); // the first frame after the panel closes
   assert.equal(h.plays.length, 0, 'a death beat due during the pause does not fire the moment play resumes');
-  // (the resume frame counts one frame step, at most 100 ms, of the pause)
-  h.framesTo(h.now + 1400);
+  // (the resume frame counts one frame step, at most 250 ms, of the pause)
+  h.framesTo(h.now + 1200);
   assert.equal(h.plays.length, 0, 'the beat still has its remaining time to run');
   h.framesTo(h.now + 200);
   assert.equal(h.plays.length, 1, 'the beat fires once its 2.6 s of presentation have run');
@@ -89,7 +89,7 @@ function harness({ ending = false } = {}) {
   h.runtime.update();
   assert.equal(h.calls.some((call) => call.startsWith('show:')), false, 'the beat did not end behind the pause');
   const lastFrame = Number(h.calls.filter((call) => call.startsWith('frame:')).at(-1).slice(6));
-  assert.ok(lastFrame > 0.39 && lastFrame < 0.45, `the beat resumes where it stood (u ${lastFrame})`);
+  assert.ok(lastFrame > 0.39 && lastFrame < 0.51, `the beat resumes where it stood (u ${lastFrame})`);
   h.framesTo(h.now + 1600);
   assert.equal(h.calls.filter((call) => call.startsWith('show:')).length, 1, 'then it ends into the report');
   assert.equal(h.runtime.snapshot().beat, null);
