@@ -6,6 +6,7 @@
 //    stage builders ran twice: a building stood up and fell again);
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
+//  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two;
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -111,4 +112,29 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire');
+// ---- one burst per HE round, whatever frames its events land on ----
+{
+  const { fx, bus, frames } = runtime();
+  // the media bodies drawn: a hull's plate burst ~25, the ground's ~100, both ~125
+  const bodies = () => fx.group.getObjectByName('fx-volume-media').children[0].geometry.instanceCount;
+  const near = (a, b) => Math.abs(a - b) <= 5;
+  let id = 100;
+  const fired = (shellId) => bus.emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 30, -60], muzzlePos: [0, 30, -60], dir: [0, -0.4, 0.9],
+    shellType: 'HE', caliberMm: 125, shellName: '125 mm HE', munition: 'he', chargeKg: 3.4 });
+  const hit = (shellId) => bus.emit('shell:hit', { shellId, attackerId: 'g', targetId: 't', kind: 'he_splash', damage: 40, pos: [1, 0.8, 0],
+    normal: [0, 1, 0], caliberMm: 125, shellType: 'HE', destroyed: false });
+  const expired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he', chargeKg: 3.4,
+    caliberMm: 125, shellType: 'HE' });
+  const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(shellId); script(shellId); frames(12); return bodies(); };
+  // the solo order: the hull event and the expiry in one step: the ground's burst, the hull's fragments
+  const sameFrame = run((s) => { hit(s); expired(s); frames(1); });
+  const hullThenExpiry = run((s) => { hit(s); frames(2); expired(s); });
+  assert.ok(near(hullThenExpiry, sameFrame), `a hull event, then its expiry two frames later: one burst (${hullThenExpiry} vs ${sameFrame})`);
+  const expiryThenHull = run((s) => { expired(s); frames(2); hit(s); });
+  assert.ok(near(expiryThenHull, sameFrame), `an expiry, then its hull event two frames later: one burst (${expiryThenHull} vs ${sameFrame})`);
+  const hullOnly = run((s) => { hit(s); });
+  assert.ok(hullOnly > 0 && hullOnly < sameFrame, `a hull event whose expiry never lands bursts on the hull after its wait (${hullOnly})`);
+  fx.resetAll();
+}
+
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round');

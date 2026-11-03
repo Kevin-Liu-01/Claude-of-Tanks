@@ -2306,10 +2306,31 @@ function* createFxSteps(
   const pendingHe: PendingHeHit[] = [];
   for (let i = 0; i < PENDING_HE_MAX; i++) pendingHe.push({ shellId: null, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, caliberMm: 0, at: 0 });
   let pendingHeCount = 0;
-  /** rounds whose burst this frame's shell:expired drew (cleared every resolve) */
-  const burstDrawn = new Set<ShellId>();
-  /** rounds whose burst a hull event drew during the resolve (cleared every resolve) */
-  const burstOnHull = new Set<ShellId>();
+  /**
+   * (2026-11-02 audit F10) rounds whose burst was drawn (fx time), by their shell:expired or by a hull event, kept
+   * HE_BURST_KEEP_S: a round's events split across frames (a network peer's budgeted queue) still draw one burst. They
+   * were cleared every frame, so a hull event resolved on one frame and the expiry on the next drew two explosions.
+   */
+  const HE_BURST_KEEP_S = 0.5;
+  /** A hull event waits at most this long (fx s) for its round's expiry (a peer's queue lands events up to 4 ticks
+   *  apart): the burst is the expiry's when it draws one (the ground's, the wall's), else the first hull's. */
+  const HE_WAIT_S = 0.1;
+  const burstAt = new Map<ShellId, number>();
+  /** rounds whose shell:expired has landed (fx time), kept as long */
+  const roundEndedAt = new Map<ShellId, number>();
+  function recent(map: Map<ShellId, number>, id: ShellId): boolean {
+    const t = map.get(id);
+    return t !== undefined && particles.getTime() - t <= HE_BURST_KEEP_S;
+  }
+  const burstRecent = (id: ShellId): boolean => recent(burstAt, id);
+  function note(map: Map<ShellId, number>, id: ShellId): void {
+    if (map.size > 256) map.clear(); // leak guard (a frozen clock never ages them out)
+    map.set(id, particles.getTime());
+  }
+  const noteBurst = (id: ShellId): void => note(burstAt, id);
+  let burstPruneNow = 0;
+  const pruneBurst = (t: number, id: ShellId): void => { if (burstPruneNow - t > HE_BURST_KEEP_S) burstAt.delete(id); };
+  const pruneEnded = (t: number, id: ShellId): void => { if (burstPruneNow - t > HE_BURST_KEEP_S) roundEndedAt.delete(id); };
 
   function queueHeHit(e: ShellHitEvent): boolean {
     if (!blast) return false;
@@ -2324,17 +2345,26 @@ function* createFxSteps(
   }
 
   function resolvePendingHe(): void {
-    if (!blast || pendingHeCount === 0) { burstDrawn.clear(); return; }
     const now = particles.getTime();
+    burstPruneNow = now;
+    if (burstAt.size) burstAt.forEach(pruneBurst);
+    if (roundEndedAt.size) roundEndedAt.forEach(pruneEnded);
+    if (!blast || pendingHeCount === 0) return;
+    let waiting = 0;
     for (let i = 0; i < pendingHeCount; i++) {
       const r = pendingHe[i];
-      const bo = Math.min(0, r.at - now);
       const id = r.shellId;
-      if (id != null && (burstDrawn.has(id) || burstOnHull.has(id))) {
+      // (2026-11-02 audit F10) its round's expiry not landed yet: it waits (at most HE_WAIT_S; a frozen capture never)
+      if (id != null && !frozen && !burstRecent(id) && !recent(roundEndedAt, id) && now - r.at < HE_WAIT_S) {
+        pendingHe[i] = pendingHe[waiting]; pendingHe[waiting++] = r;
+        continue;
+      }
+      const bo = Math.min(0, r.at - now);
+      if (id != null && burstRecent(id)) {
         fragmentStrike(blast, r.x, r.y, r.z, r.nx, r.ny, r.nz, bo);
         continue;
       }
-      if (id != null) burstOnHull.add(id);
+      if (id != null) noteBurst(id);
       const info = (id != null ? shellMunitions.get(id) : null) ?? heByCaliber(r.caliberMm);
       if (id != null) shellMunitions.delete(id);
       const gy = groundY(r.x, r.z);
@@ -2345,9 +2375,7 @@ function* createFxSteps(
         chargeKg: Math.max(0.3, info.chargeKg), ground: r.y - gy < reach ? classifyTerrain(heightField, r.x, r.z) : null,
         birthOffset: bo });
     }
-    pendingHeCount = 0;
-    burstDrawn.clear();
-    burstOnHull.clear();
+    pendingHeCount = waiting;
   }
 
   /**
@@ -6800,6 +6828,12 @@ function* createFxSteps(
           notifyShellImpact(e.pos[0], e.pos[1], e.pos[2], { he, r: he ? 4.6 : 1.0 });
         }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
+        // (2026-11-02 audit F10) the round has ended (its waiting hull events resolve now); a hull event that drew its
+        // burst already (it waited past HE_WAIT_S) leaves the expiry none: one explosion a round
+        if (e.shellId != null) {
+          note(roundEndedAt, e.shellId);
+          if (burstRecent(e.shellId)) return;
+        }
         if (e.hitKind === 'prop') {
           if (Array.isArray(e.normal)) _v4.set(e.normal[0], e.normal[1], e.normal[2]).normalize();
           else _v4.copy(_UP);
@@ -6838,7 +6872,7 @@ function* createFxSteps(
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
               stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
-            if (e.shellId != null) burstDrawn.add(e.shellId);
+            if (e.shellId != null) noteBurst(e.shellId);
             return;
           }
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
@@ -6847,7 +6881,7 @@ function* createFxSteps(
         if (e.hitTerrain) {
           const water = !!e.hitWater || shellPointOnWater(_v3);
           if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
-            if (e.shellId != null) burstDrawn.add(e.shellId);
+            if (e.shellId != null) noteBurst(e.shellId);
             return;
           }
           if (water) waterSplash(_v3, e.caliberMm || 76, false);
@@ -7691,8 +7725,8 @@ function* createFxSteps(
       lastBlast.structureId = -1;
       lastGroundBlast.craterId = -1;
       pendingHeCount = 0;
-      burstDrawn.clear();
-      burstOnHull.clear();
+      burstAt.clear();
+      roundEndedAt.clear();
       shellMunitions.clear();
       lastTickS = particles.getTime();
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
