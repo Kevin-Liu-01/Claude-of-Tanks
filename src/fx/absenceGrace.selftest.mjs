@@ -98,7 +98,7 @@ globalThis.document ??= { createElement: () => createCanvas(1, 1) };
   const step = (present) => {
     sh.prevPos.copy(sh.pos); sh.pos.z += 250 / 60; sh.ageS += 1 / 60; sh.distM += 250 / 60;
     fx.update(1 / 60, present ? [sh] : [], camera, () => null);
-    return fx.getGuidedMissileDebug();
+    return fx.getGuidedRecordDebug();
   };
   for (let f = 0; f < 10; f++) step(true);
   assert.equal(step(false).endedTrails, 0, 'a round missing one frame has not ended');

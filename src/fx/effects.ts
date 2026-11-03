@@ -558,6 +558,7 @@ export interface FxRuntime {
   /** (2026-11-02 audit R7) the parts whose fx-clock stamps a rebase moves, in order (timeShift.ts) */
   timeShiftNames?(): readonly string[];
   getGuidedMissileDebug(): object;
+  getGuidedRecordDebug?(): { records: number; endedTrails: number };
   getAttachmentDebug(): object;
   warmTextures(): void;
   preloadTextures(): Promise<boolean>;
@@ -6468,15 +6469,18 @@ function* createFxSteps(
 
     /** Render-side ATGM visibility telemetry used by the browser lifecycle gate. */
     getGuidedMissileDebug() {
-      // (2026-11-02 audit F10) the rounds on record whose smoke trail has ended (gone past the absence grace, or struck)
-      let endedTrails = 0;
-      for (const trail of guidedTrails.values()) if ((trail.smokeSlot ?? -1) >= 0 && smokeTrails.ended(trail.smokeSlot as number)) endedTrails++;
       return {
         bodies: renderedAtgmBodies,
         trailSegments: renderedAtgmTrailSegments,
-        records: guidedTrails.size,
-        endedTrails,
       };
+    },
+
+    /** (2026-11-02 audit F10) the guided rounds on record, and those whose smoke trail has ended (gone past the absence
+     *  grace, or struck) */
+    getGuidedRecordDebug() {
+      let endedTrails = 0;
+      for (const trail of guidedTrails.values()) if ((trail.smokeSlot ?? -1) >= 0 && smokeTrails.ended(trail.smokeSlot as number)) endedTrails++;
+      return { records: guidedTrails.size, endedTrails };
     },
 
     /** Moving-emitter telemetry for deterministic browser/lifecycle probes. */
