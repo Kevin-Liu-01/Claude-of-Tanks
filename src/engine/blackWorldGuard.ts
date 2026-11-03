@@ -49,6 +49,8 @@
  */
 import * as THREE from 'three';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import { createNamedHolds, type NamedHold } from './namedHolds.ts';
+import type { RecoveryOutcome } from './contextRecovery.ts';
 import {
   RENDER_BLACK_WORLD_STAGE,
   renderBlackWorldCode,
@@ -305,6 +307,14 @@ export interface BlackWorldGuard {
    * never resets a presented frame's history) fresh temporal histories.
    */
   onCoveredEntry(options?: { covered?: boolean }): void;
+  /**
+   * (2026-11-02 audit R3) H1 re-asserts the state the reveal took (camera layer 0, scene visibility, no override
+   * material, the canonical passes, the scene target's viewport, the battlefield and presentation roots): it owns that
+   * state while a revealed battle runs. A battle-time owner that changes it on purpose (a presentation that hides the
+   * world or drops layer 0) holds an exemption for as long as it does: the guard stands aside (no verdicts, no heals).
+   * Studio and shot staging are built-in exemptions.
+   */
+  exempt(reason: string): NamedHold<string>;
   stats(): Record<string, number | boolean | string | null>;
   readonly receipts: BlackWorldReceipt[];
   dispose(): void;
@@ -495,7 +505,12 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   // the context restores this guard asked for: at most one a page (one guard a renderer, one renderer a page), since each
   // takes the recovery preset one rung down
   let contextRestores = 0;
-  // H4's restore in flight (eng E3): the incident stays open while the context is away, its credit waits for the return
+  // H4's restore in flight (eng E3): the incident stays open while the context is away, its credit waits for the return.
+  // (2026-11-02 audit R3) a declared state: 'pending' while the recovery machine (contextRecovery.ts, through the
+  // renderer's requestContextRestore) has not answered, 'back' once it answered ready (or, on a bare renderer, the
+  // restored event arrived), 'none' otherwise; a failed restoration ends the wait at once instead of a 15 s timer
+  let restoreWait: 'none' | 'pending' | 'back' = 'none';
+  let restoreTicket = 0;
   let restoreAskedAt = -1;
   // H3's MSAA-off lasts the battle it healed (eng E2): the samples and preset it lowered, taken back at the next entry
   let h3Lowered: { samples: number; preset: string } | null = null;
@@ -527,7 +542,9 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     return !!coverElement && coverElement.classList.contains('on');
   };
   // (a staged shot view stands the guard aside while the shot mode lasts, eng D9)
-  const exempt = (): boolean => (ports.isExempt ? ports.isExempt() : (!!host.__STUDIO?.active || host.__DEBUG?.shotMode === true));
+  const exemptions = createNamedHolds<string>(() => {});
+  const exempt = (): boolean => exemptions.held
+    || (ports.isExempt ? ports.isExempt() : (!!host.__STUDIO?.active || host.__DEBUG?.shotMode === true));
   const focused = (): boolean => (ports.hasFocus ? ports.hasFocus()
     : typeof document === 'undefined' || (document.hasFocus() && !document.hidden));
   const worldGroup = (): THREE.Object3D | null => ports.getWorld?.()?.group ?? null;
@@ -756,6 +773,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     const t0 = timing ? performance.now() : 0;
     sceneRan = false;
     downWanted = false;
+    settleRestoreWait(now());
     active = isActive();
     const t1 = timing ? performance.now() : 0;
     originalPostRender.call(post, dt, frameWallDtSeconds);
@@ -767,7 +785,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       if (failStreak) { failStreak = 0; lastFailClass = null; }
       // (eng D7) the battle ended with the incident open (the player left a black screen, a cover came up): it reports now;
       // (round 3, eng E3) not while the guard's own context restore (H4) is away, whose return the incident waits for
-      if (incident && !incident.closed && !reported && !awaitingRestore()) endIncident('left', now());
+      if (incident && !incident.closed && !reported && !awaitingRestore(now())) endIncident('left', now());
     }
     if (timing) {
       const ms = (t1 - t0) + (performance.now() - t2) + timed[5];
@@ -779,12 +797,23 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     }
   }
 
-  /** H4's restore is in flight: the same battle, the context away (or just back and not yet judged), inside its wait. */
-  function awaitingRestore(): boolean {
-    if (restoreAskedAt < 0) return false;
-    if (ports.game.phase === 'battle' && verdictsSinceAct === 0 && now() - restoreAskedAt < RESTORE_WAIT_MS) return true;
+  /**
+   * H4's restore is in flight: the same battle, the context away (or just back and not yet judged), inside its wait.
+   * (2026-11-02 audit R3) a pure predicate: the wait ends in settleRestoreWait, once a frame, never inside a check.
+   */
+  function awaitingRestore(t: number): boolean {
+    return restoreWait !== 'none' && ports.game.phase === 'battle' && verdictsSinceAct === 0
+      && t - restoreAskedAt < RESTORE_WAIT_MS;
+  }
+
+  function settleRestoreWait(t: number): void {
+    if (restoreWait !== 'none' && !awaitingRestore(t)) endRestoreWait();
+  }
+
+  function endRestoreWait(): void {
+    restoreWait = 'none';
     restoreAskedAt = -1;
-    return false;
+    restoreTicket++;
   }
 
   function isActive(): boolean {
@@ -849,7 +878,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       onVerdict(judgeVerdict(bits, probeResult ? answer : null), t);
     }
     if (incident && !incident.closed && !reported && incident.steps.length && t - incident.steps[incident.steps.length - 1].atMs > 2000
-      && !awaitingRestore()) {
+      && !awaitingRestore(t)) {
       // a ladder that ended unhealed still reports once (healedBy null)
       incident.endedBy = 'ladder';
       report(incident);
@@ -982,7 +1011,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   function report(receipt: BlackWorldReceipt): void {
     if (reported) return;
     reported = true;
-    restoreAskedAt = -1;
+    endRestoreWait();
     // (the console warning and the ring hold every incident; the beacon only the first MAX_REPORTS a page)
     if (reports >= MAX_REPORTS) return;
     reports++;
@@ -1245,6 +1274,20 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (!lose) return;
     contextRestores++;
     restoreAskedAt = now();
+    restoreWait = 'pending';
+    const ticket = ++restoreTicket;
+    // (2026-11-02 audit R3) through the recovery machine when the renderer publishes it: a typed outcome, not a timer
+    const request = (renderer as { userData?: { requestContextRestore?: () => Promise<RecoveryOutcome> } })
+      .userData?.requestContextRestore;
+    if (typeof request === 'function') {
+      const answer = (outcome: RecoveryOutcome): void => {
+        if (ticket !== restoreTicket || restoreWait !== 'pending') return;
+        if (outcome === 'ready') restoreWait = 'back';
+        else endRestoreWait();
+      };
+      request().then(answer, () => answer('failed'));
+      return;
+    }
     lose.loseContext();
     setTimeout(() => { try { lose.restoreContext(); } catch { /* the recovery notice owns it */ } }, 120);
   }
@@ -1268,7 +1311,12 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     pending = false; pendingDown = false; queryLit = queryNan = queryDown = null; queryContext = null; probeReady = false;
   };
   // the restored context links the probe's programs again (in parallel, as under a cover)
-  const onContextRestored = (): void => { warmProbePrograms(); };
+  const onContextRestored = (): void => {
+    // (a bare renderer without the recovery machine: the restored event is H4's return)
+    if (restoreWait === 'pending' && typeof (renderer as { userData?: { requestContextRestore?: unknown } })
+      .userData?.requestContextRestore !== 'function') restoreWait = 'back';
+    warmProbePrograms();
+  };
   // (eng D7) a page going away with an incident open reports it first: in the capture phase, ahead of the entry
   // telemetry's own pagehide / hidden flush, which then carries it
   const onPageHide = (): void => { if (incident && !incident.closed && !reported) endIncident('page', now()); };
@@ -1350,6 +1398,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       ladderEndedAt = -Infinity;
       warmProbePrograms();
     },
+    exempt(reason) { return exemptions.acquire(reason); },
     stats() {
       return { ...stats, enabled: guard.enabled, active, frame, cpuBits, failStreak, pending: !!pending,
         lastClass: lastFailClass, incident: incident && !incident.closed ? incident.class : null,
