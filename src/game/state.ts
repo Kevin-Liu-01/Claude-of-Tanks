@@ -119,6 +119,7 @@ import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
+import { createCrushPressLedger, type CrushPressLedger } from '../sim/crushPress.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -377,6 +378,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   jev?: JevCommander | null;
   _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
+  /** The crush press this battle's hulls have put on the records they turn or drive into (sim/crushPress.ts). */
+  _crushPress?: CrushPressLedger | null;
   /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
   _botNavigation?: Readonly<BotNavigationGrid> | null;
   /** The battle's obstacle query for its step (simObstacleQuery) and the world it was made for (stepObstacleQuery). */
@@ -431,10 +434,8 @@ interface SoloWorldHit {
   record?: SoloObstacle | null;
 }
 
-interface SoloObstacle extends CollisionRecord {
-  _pressT?: number;
-  _pressS?: number;
-}
+// (the crush press is the battle's, never the record's: sim/crushPress.ts; 2026-11-02 audit M6)
+type SoloObstacle = CollisionRecord;
 
 interface SoloWorld {
   spawnPoints: { player: SpawnPoint; enemies: SpawnPoint[] };
@@ -737,6 +738,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   for (const entity of game.allTanks) entity.spec = getSpec(entity.specId);
   game.nextShellId = 1;
   game.timeS = 0;
+  // the clock restarts: no press of the last battle survives into this one (sim/crushPress.ts; 2026-11-02 audit M6)
+  game._crushPress?.clear();
   game.auxiliarySmokeScreens = [];
   auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
@@ -1627,8 +1630,6 @@ const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 // slow-speed tree behind it for 4+ s, because a wedged tank can never reach
 // 6 km/h again; WoT tanks push saplings over from a standstill). A parked
 // nudge (no throttle) still never fells anything.
-const CRUSH_PRESS_S = 0.45;      // s of contact under throttle or steer (DST-02) that fells a trunk
-const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 
 function queueRamFromPush(
   self: SoloEntity,
@@ -1731,12 +1732,8 @@ function shouldCrushObstacle(
   // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never crushing
   // them)
   if (Math.abs(self.input.throttle || 0) <= 0.35 && Math.abs(self.input.steer || 0) <= 0.35) return false;
-  if (game.timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
-    obstacle._pressS = 0;
-  }
-  obstacle._pressT = game.timeS;
-  obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-  return obstacle._pressS >= CRUSH_PRESS_S;
+  // this battle's press of this hull on this record (sim/crushPress.ts, the authority's ledger; 2026-11-02 audit M6)
+  return (game._crushPress ??= createCrushPressLedger()).press(obstacle, self.id, game.timeS, SIM_DT);
 }
 
 function queueCrush(

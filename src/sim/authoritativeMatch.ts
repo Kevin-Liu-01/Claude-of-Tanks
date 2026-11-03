@@ -142,6 +142,7 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
+import { createCrushPressLedger } from './crushPress.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
@@ -273,10 +274,8 @@ export interface AuthoritativeEntity {
   _ramKeep?: number;
 }
 
-export interface AuthoritativeObstacle extends CollisionRecord {
-  _pressT?: number;
-  _pressS?: number;
-}
+// (the crush press is the match's, never the record's: sim/crushPress.ts; 2026-11-02 audit M6)
+export type AuthoritativeObstacle = CollisionRecord;
 
 interface AuthoritativeWorldRayHit extends SpottingRayHit {
   kind: string;
@@ -476,8 +475,6 @@ const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
-const CRUSH_PRESS_S = 0.45;
-const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
 /** A Governor Override that ended strains the engine (one function for every tank: the tick allocates nothing). */
@@ -934,6 +931,8 @@ export function createAuthoritativeMatch({
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
+  // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
+  const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
   // step owns the same object (game/state.ts) and calls it at the same moments
   const destruction = createDestructionMatch({
@@ -1352,10 +1351,8 @@ export function createAuthoritativeMatch({
     // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never
     // crushing them)
     if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
-    if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
-    obstacle._pressT = timeS;
-    obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-    return obstacle._pressS >= CRUSH_PRESS_S;
+    // this match's press of this hull on this record (sim/crushPress.ts, the solo step's ledger; 2026-11-02 audit M6)
+    return crushPress.press(obstacle, entity.id, timeS, SIM_DT);
   }
 
   function queueCrushedObstacle(

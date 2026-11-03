@@ -1694,6 +1694,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactParity.selftest.mjs',
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     'src/sim/driverStepParity.selftest.mjs',
+    'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
