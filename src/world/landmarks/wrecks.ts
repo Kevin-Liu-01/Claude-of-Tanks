@@ -107,8 +107,10 @@ function sectionPoint(sec: Section, a: number, j = 1): { y: number; z: number; n
 }
 
 /** The smooth hulls (fuselage, tail cone, wing panels, nacelles): built as their own geometries with analytic normals
- *  and per-vertex paint, handed to the part set after the sink's flat-shaded parts (finishWreck). */
-let smooth: THREE.BufferGeometry[] = [];
+ *  and per-vertex paint, handed to the part set after the sink's flat-shaded parts (finishWreck).
+ *  (2026-11-02 audit R1) Kept on the build's own sink: one module-level list was never reset, so a build that threw
+ *  between its first loft and its finish handed its hulls to the next aircraft wreck's metal bucket. */
+const smoothOf = new WeakMap<PartSink, THREE.BufferGeometry[]>();
 
 /**
  * A lofted tube in a pose: sections along local x joined round, smooth-shaded (each vertex the section's own normal)
@@ -117,7 +119,7 @@ let smooth: THREE.BufferGeometry[] = [];
  * open. `inside`: the tube's inner face (wound and lit inward), a broken hull's scorched interior. Structural unless
  * `decor` (the collision derivation welds it by its shared corners).
  */
-function loft(_sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: readonly Section[], n: number, paint: (s: number, a: number, y: number) => Rgb,
+function loft(sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: readonly Section[], n: number, paint: (s: number, a: number, y: number) => Rgb,
   opts: EmitOptions & { capStart?: Rgb | null; capEnd?: Rgb | null; rng?: () => number; inside?: boolean; arc?: readonly [number, number]; panels?: boolean } = {}): void {
   const { capStart = null, capEnd = null, inside = false, panels = false } = opts;
   const a0 = opts.arc?.[0] ?? 0, a1 = opts.arc?.[1] ?? Math.PI * 2, closed = !opts.arc;
@@ -168,14 +170,16 @@ function loft(_sink: PartSink, _bucket: RegionalBucket, P: Pose, sections: reado
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.userData = { regional: true, uvJitter: 'none', ...(opts.decor ? { noCollision: true } : {}) };
+  let smooth = smoothOf.get(sink);
+  if (!smooth) smoothOf.set(sink, smooth = []);
   smooth.push(g);
 }
 
 /** The sink's parts with the smooth hulls joined to the metal bucket. */
 function finishWreck(sink: PartSink): RegionalParts {
   const parts = sink.finish();
-  parts.structureMetal.push(...smooth);
-  smooth = [];
+  parts.structureMetal.push(...(smoothOf.get(sink) ?? []));
+  smoothOf.delete(sink);
   return parts;
 }
 

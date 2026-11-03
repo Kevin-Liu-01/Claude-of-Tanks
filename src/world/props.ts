@@ -298,6 +298,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -3742,6 +3743,8 @@ export async function createPropsAsync(
     // builders up front
     if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
+      // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
+      assertNoBuildScopeOpen('props build');
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;

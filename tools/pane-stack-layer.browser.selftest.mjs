@@ -27,7 +27,7 @@ import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-
 import { PartSink, streamFrom } from '../src/world/maps/regional/geometry.ts';
 import { holedPolygon } from '../src/world/maps/regional/house.ts';
 import { windowUnit } from '../src/world/maps/regional/openings.ts';
-import { setFacadeCraft, withFacade } from '../src/world/maps/regional/facade.ts';
+import { withFacade } from '../src/world/maps/regional/facade.ts';
 import { PANE_STACK_UNITS_PER_LAYER } from '../src/world/paneStack.ts';
 
 async function bounded(promise, timeoutMs, label) {
@@ -39,8 +39,7 @@ async function bounded(promise, timeoutMs, label) {
   } finally { clearTimeout(timer); }
 }
 
-// ---- the wall, built as a kit builds it
-setFacadeCraft(true);
+// ---- the wall, built as a kit builds it (the facade craft is on outside a receipt's withFacadeCraft(false) scope)
 const face = { origin: [0, 0, 0], u: [1, 0, 0], out: [0, 0, 1], width: 6 };
 const holes = [-2, 0, 2].map((u) => ({ u0: u - 0.45, u1: u + 0.45, y0: 1, y1: 2.3 }));
 const style = { frame: [0.9, 0.9, 0.88], frameWidth: 0.06, frameOut: 0.03, bars: 'cross', surround: null, sill: null, shutters: null };

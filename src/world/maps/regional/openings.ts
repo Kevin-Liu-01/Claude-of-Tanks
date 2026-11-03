@@ -3,6 +3,7 @@
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { LocalFrame, faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type EmitOptions, type Face, type FaceSkip, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
 import { facadeOn, facadeRng, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -42,6 +43,7 @@ export interface WindowStyle {
  * sill). Builders are synchronous: the slot never leaks between walls.
  */
 let sillShadowBucket: RegionalBucket | null = null;
+registerBuildScope('openings.sillShadow', () => sillShadowBucket !== null); // (2026-11-02 audit R1: buildScopes.ts)
 export function withSillShadow<T>(bucket: RegionalBucket | null, body: () => T): T {
   const prior = sillShadowBucket;
   sillShadowBucket = bucket;
