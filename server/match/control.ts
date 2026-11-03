@@ -43,8 +43,15 @@ interface MatchControlStatus {
   verdict: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
 }
 
+/**
+ * What a status reads of a match: its actor, or the final reading the service keeps of an actor that stopped itself
+ * (audit M3, 2026-11-02: the service drops such an actor, so its world and histories go, while the room may still poll
+ * its verdict; MatchService.matchStatusSource).
+ */
+export type MatchStatusSource = Pick<MatchActor, 'phase' | 'tick'> & { readonly authority: Pick<MatchActor['authority'], 'result' | 'resultReason'> };
+
 interface MatchControlPort {
-  actor(roomId: string): MatchActor | undefined;
+  actor(roomId: string): MatchStatusSource | undefined;
   createActor(request: MatchStartRequest): MatchActor;
   removeActor(roomId: string, reason?: number): boolean;
 }
@@ -101,7 +108,7 @@ function readMatchStartRequest(value: unknown): MatchStartRequest | null {
   };
 }
 
-export function statusOf(roomId: string, actor: MatchActor | undefined, matchId: string | null): MatchControlStatus | null {
+export function statusOf(roomId: string, actor: MatchStatusSource | undefined, matchId: string | null): MatchControlStatus | null {
   if (!actor) return null;
   const result = actor.authority.result;
   return {

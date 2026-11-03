@@ -135,6 +135,8 @@ export interface MatchActorOptions {
   resume?: MatchActorResume | null;
   log?: Logger;
   onVerdict?: (verdict: MatchVerdict) => void;
+  /** The actor stopped (its own end after the verdict's linger, or a stop() from its owner); called once, after its clients are detached. */
+  onStop?: (reason: CloseReasonId) => void;
   now?: () => number;
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
@@ -420,7 +422,7 @@ function clampI16(value: number): number {
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
-    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
+    log = silentLogger, onVerdict, onStop, now = () => performance.now(), schedule, autoStart = true,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
@@ -620,14 +622,37 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     }
   }
 
+  /**
+   * The actor's own reliable events (roster changes, the room service's and the host's) wait while a batch is going out
+   * and follow it, stamped with the tick being stepped (audit M3, 2026-11-02): a detach inside a send loop (a send that
+   * threw) broadcast its roster event re-entrantly, so the remaining clients received it ahead of the batch being sent,
+   * stamped loop.tick, one tick behind that batch's during a step (the loop advances its tick after the callback).
+   */
+  const queuedEvents: WireEvent[] = [];
+  let sendingEvents = 0;
+  let steppingTick: number | null = null;
   function broadcastEvent(event: WireEvent): void {
-    const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: loop.tick, events: [event] };
-    let bytes: Uint8Array;
-    try { bytes = encodeMessage(message); } catch (error) {
-      actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
-      return;
+    queuedEvents.push(event);
+    flushQueuedEvents();
+  }
+
+  function flushQueuedEvents(): void {
+    if (sendingEvents > 0) return;
+    sendingEvents++;
+    try {
+      while (queuedEvents.length) {
+        const event = queuedEvents.shift()!;
+        const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: steppingTick ?? loop.tick, events: [event] };
+        let bytes: Uint8Array;
+        try { bytes = encodeMessage(message); } catch (error) {
+          actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
+          continue;
+        }
+        for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
+      }
+    } finally {
+      sendingEvents--;
     }
-    for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
   }
 
   function rateLimited(client: ActorClient, nowMs: number): boolean {
@@ -795,6 +820,14 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function deliverEvents(tick: number): void {
     if (authority.pendingEventCount === 0) return;
+    sendingEvents++;
+    try { deliverEventBatches(tick); } finally { sendingEvents--; }
+    // a roster change a failed send raised in the batches goes out after them (flushQueuedEvents)
+    flushQueuedEvents();
+    authority.afterEventBroadcast();
+  }
+
+  function deliverEventBatches(tick: number): void {
     for (const client of clients.keys()) {
       const events = authority.eventsForViewer(client.viewerId);
       if (!events.length) continue;
@@ -814,7 +847,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       }
       if (send(client, bytes)) { client.events += events.length; totals.events += events.length; }
     }
-    authority.afterEventBroadcast();
   }
 
   function rowFor(entity: AuthoritativeEntity, entityId: number, tick: number): EntityRow {
@@ -1063,6 +1095,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function onTick(tick: number, dt: number): void {
     if (stopped) return;
+    steppingTick = tick;
+    try { stepTick(tick, dt); } finally { steppingTick = null; }
+  }
+
+  function stepTick(tick: number, dt: number): void {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
@@ -1114,6 +1151,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     for (const client of [...clients.keys()]) detach(client, reason, detail);
     releaseWorld();
     actorLog.info('actor stopped', { reason, tick: loop.tick });
+    try { onStop?.(reason); } catch (error) { actorLog.error('stop callback failed', { error: String(error) }); }
   }
 
   const revokedPlayers = new Set<string>();
@@ -1177,7 +1215,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
       roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
     });
-    if (!welcomed) return false;
+    // a link that closed under the WELCOME (send returns false on a closed link, without a throw) leaves the seat now
+    // (audit M3, 2026-11-02): before, the client stayed seated and marked connected until a close event that may not follow
+    if (!welcomed) { detach(client, CLOSE_REASON.NONE, 'welcome not sent'); return false; }
     actorLog.info('client welcomed', { seat: client.seat, player: client.playerId, spectator, build: hello.clientBuild.slice(0, 32) });
     if (entity) broadcastEvent({ kind: 'roster', payload: { entityId, playerId: client.playerId, connected: true } });
     return true;

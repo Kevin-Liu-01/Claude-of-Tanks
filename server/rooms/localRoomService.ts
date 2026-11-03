@@ -91,7 +91,7 @@ export function createInProcessMatchHost({
   return {
     transport: 'service',
     async start(config: MatchHostStartConfig) {
-      const existing = matchService.actors.get(config.roomId);
+      const existing = matchService.matchStatusSource(config.roomId);
       if (existing && !matchConcluded(existing.phase)) throw new Error('a match is already running for this room');
       if (existing) matchService.removeActor(config.roomId);
       matchService.createActor({
@@ -105,9 +105,9 @@ export function createInProcessMatchHost({
       return { matchUrl };
     },
     async status(roomId: string): Promise<MatchHostStatus | null> {
-      const actor = matchService.actors.get(roomId);
-      // the actor's one status phase (matchActor.ts matchStatusPhase): the rooms' vocabulary, nothing left to map
-      const status = statusOf(roomId, actor, matchIds.get(roomId) ?? null);
+      // the actor's one status phase (matchActor.ts matchStatusPhase): the rooms' vocabulary, nothing left to map; an
+      // actor that stopped itself is read from the final reading the service keeps (control.ts MatchStatusSource)
+      const status = statusOf(roomId, matchService.matchStatusSource(roomId), matchIds.get(roomId) ?? null);
       if (!status) return null;
       return { roomId, matchId: status.matchId, phase: status.phase, verdict: status.verdict };
     },
