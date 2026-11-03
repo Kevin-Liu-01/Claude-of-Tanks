@@ -917,6 +917,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/lazyChunk.selftest.mjs',
     // 2026-11-02 audit R6: the named lazy chunks hold their load in app/lazyChunk.ts; no new hand-made `??= import(` memo
     'src/app/lazyChunkSites.selftest.mjs',
+    // 2026-11-02 audit R6: a failed paint is painted again (three in a row at most); no DOM still caches its null
+    'src/vehicles/paintCaches.selftest.mjs',
+    // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode
+    'src/ui/cachedFailures.selftest.mjs',
     // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
     'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',

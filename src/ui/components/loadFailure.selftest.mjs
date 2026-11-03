@@ -242,6 +242,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ['src/ui/garage.ts', 'the hotspot callouts', /reloadsForFailure\(calloutsButton, /, /reportLoadFailure\('cot-hotspots-load'/],
     ['src/ui/garage.ts', "Deploy's battlefield picker", /reloadsForFailure\(fieldTrigger, /, /reportLoadFailure\('cot-deploy-field-load'/],
     ['src/ui/garage.ts', "the battle card's quick menus", /reloadsForFailure\(quickBtn, /, /reportLoadFailure\('cot-quick-load'/],
+    // (audit R6) the Gallery's 1-5 keys open a layer as its press does, so they reload as it does
+    ['src/gallery/gallery.ts', "the Gallery's layer keys", /const mode = GALLERY_MODES\[Number\(event\.key\) - 1\];[^]{0,200}?if \(!pressFailed\(modeButtons\.find\(/, /markLoadFailed\(modeButtons\.filter/],
   ];
   for (const [file, name, press, mark] of OPENERS) {
     const source = blankComments(readFileSync(join(ROOT, file), 'utf8'));

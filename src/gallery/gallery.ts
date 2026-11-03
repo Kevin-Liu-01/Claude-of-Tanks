@@ -245,7 +245,7 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
   overlay() {
     if (!isAnatomyMode(activeMode) || activeMode === 'armor') setMode('modules', false);
     else setMode(activeMode, false);
-    void anatomyReady.then(() => anatomyView?.setToggle('hits', damageWorkbench.hitboxes));
+    void anatomySettled().then(() => anatomyView?.setToggle('hits', damageWorkbench.hitboxes));
   },
   copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: selectedId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
 });
@@ -288,7 +288,7 @@ function damageTargetKey(key: string | null): string {
   return damageLab.targets.some(target => target.key === key) ? key : '';
 }
 function emphasizeDamageTarget(): void {
-  void anatomyReady.then(() => { if (damageLab?.selected) anatomyView?.select(damageLab.selected); });
+  void anatomySettled().then(() => { if (damageLab?.selected) anatomyView?.select(damageLab.selected); });
 }
 function colorDamageOverlay(): void {
   if (!damageLab || !anatomyView) return;
@@ -308,6 +308,13 @@ type AnatomyModule = typeof import('./anatomyView.ts');
 const anatomyModule = createLazyChunk((): Promise<AnatomyModule> => import('./anatomyView.ts'), { opener: true });
 let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
+/** (audit R6) The latest showAnatomy's settling: each show replaces anatomyReady, so a waiter follows it to the newest. */
+async function anatomySettled(): Promise<void> {
+  for (let seen: Promise<void> | null = null; seen !== anatomyReady;) {
+    seen = anatomyReady;
+    await seen.catch(() => {});
+  }
+}
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
   return anatomyModule.load();
@@ -1495,9 +1502,27 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
   }
 }
 
+/** (2026-11-02 audit R6) The vehicle load's failure edge: a builder or lab chunk that did not arrive, or a build that
+ *  threw, left the silhouette up, READY false and an unhandled rejection. The current load's failure takes the
+ *  silhouette down and says so; the tank before it stays on the stage, and the row's next press asks again (the
+ *  builder and lab chunks are re-asked under app/lazyChunk.ts). A superseded load's failure is the newer load's
+ *  business, never this one's. */
 async function loadTank(
   requestedId: string | null | undefined,
   options: GalleryLoadOptions = {},
+): Promise<void> {
+  const version = loadVersion + 1; // the version the load claims before its first await
+  await loadTankUnguarded(requestedId, options).then(undefined, (error: unknown) => {
+    if (version !== loadVersion) return;
+    loadingState.classList.add('hidden');
+    console.warn('[gallery] the vehicle did not load', error);
+    showToast(t('loadFailed.generic'), { severity: 'error' });
+  });
+}
+
+async function loadTankUnguarded(
+  requestedId: string | null | undefined,
+  options: GalleryLoadOptions,
 ): Promise<void> {
   let id = requestedId;
   if (!id || !recordById.has(id)) id = records[0]?.id;
@@ -1541,7 +1566,8 @@ async function loadTank(
   setMode(options.mode || activeMode, false);
   updateUrl();
   await nextFrame();
-  loadingState.classList.add('hidden');
+  // (audit R6) a load superseded during that frame leaves the newer load's silhouette standing
+  if (version === loadVersion) loadingState.classList.add('hidden');
   if (version === loadVersion) showInAction(id);
   const { createDamageLab } = await loadDamageLab();
   if (version !== loadVersion || !visual) return;
@@ -1740,7 +1766,9 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (!event.ctrlKey && !event.metaKey && /^[1-5]$/.test(event.key)) {
-    setMode(GALLERY_MODES[Number(event.key) - 1]);
+    const mode = GALLERY_MODES[Number(event.key) - 1];
+    // (audit R6) a layer whose module did not arrive: the key reloads once online, as a press does
+    if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode);
     return;
   }
   if (!event.ctrlKey && !event.metaKey && (event.key === '[' || event.key === ']')) {
@@ -1828,7 +1856,7 @@ window.__TANK_GALLERY = {
     return changed;
   },
   resetDamage: () => { damageLab?.reset(); updateArticulation(); setMode(activeMode, false); damageWorkbench.refresh(); },
-  waitAnatomyReady: () => anatomyReady,
+  waitAnatomyReady: anatomySettled,
   setAnatomyToggle: (toggle: AnatomyToggle, value: boolean) => anatomyView?.setToggle(toggle, value),
   setArmorMetric: (metric: ArmorMetric) => { armorMetric = metric; anatomyView?.setMetric(metric); },
   selectPart: (key: string | null) => anatomyView?.select(key),
