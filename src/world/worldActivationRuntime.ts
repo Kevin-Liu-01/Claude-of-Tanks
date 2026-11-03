@@ -102,7 +102,13 @@ interface ActivationRequest {
   world: object | null;
 }
 
-/** The rejection a superseded ensure settles with: a later request owns the battlefield on screen. */
+/**
+ * The rejection a superseded ensure settles with: a later request owns the battlefield on screen. That later request is
+ * often the caller's own doing (its exit or failure path restoring the Garage: setDormant(true)), so a caller checks its
+ * own ownership first: an entry it no longer owns (abandoned, released, replaced) settles silently, as any abandonment
+ * does; only an entry still owned treats the supersession as its failure (studio.ts doEnter, mp/session
+ * browserComposition.ts failRound). Callers in other chunks read the `superseded` flag rather than import this class.
+ */
 export class WorldActivationSupersededError extends Error {
   readonly superseded = true;
   readonly mapId: string;

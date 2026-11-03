@@ -5800,7 +5800,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (opts.coveredByBoot) await work(opts.onProgress || (() => {}));
       else await withStage(mapId, work, owns);
     } catch (error) {
-      if (error instanceof EntryAbandoned) return; // an exit took it back; a later entry runs its own
+      // an exit took it back; a later entry runs its own. (audit R1) Whatever the error: the exit's Garage supersedes the
+      // battlefield activation (WorldActivationSuperseded), and an entry no longer owned writes nothing over its successor
+      if (error instanceof EntryAbandoned || !owns()) return;
       active = false;
       panel.hide();
       game.phase = 'garage';
