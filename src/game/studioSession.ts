@@ -6,6 +6,8 @@
  * moves the generation on and every token it handed out goes stale at once. The exit also runs the cancels registered
  * with the session (a film export's abort) and waits, bounded, for the work it holds (an atmosphere preparation, an
  * export's own end) before the Garage takes the battlefield back: nothing of a closed session lands after its teardown.
+ * Held work that outlives the bound gets its undo (hold's afterEnd) once the teardown is done, unless a newer session is
+ * live by then: the teardown's restore stays the last word however slow the work.
  *
  *   closed ──beginEntry──▶ entering ──open──▶ open
  *                            │                 │
@@ -64,8 +66,12 @@ export interface StudioSession {
   close(): boolean;
   /** Register in-flight work's cancel; an exit runs it. Returns its release. */
   onEnd(cancel: () => void): () => void;
-  /** Work the exit waits for (settled, never rethrown) before its teardown; returns `work` itself. */
-  hold<T>(work: Promise<T>): Promise<T>;
+  /**
+   * Work the exit waits for (settled, never rethrown) before its teardown; returns `work` itself. `afterEnd` undoes work
+   * that settles after the exit stopped waiting (the bound): it runs once the teardown is done (at close, or at once when
+   * the Studio already closed), and never while a newer session is live (that session owns what the work touched).
+   */
+  hold<T>(work: Promise<T>, afterEnd?: () => void): Promise<T>;
   /** Resolves once every held work settled, or after settleMs (true when everything settled). */
   settled(): Promise<boolean>;
 }
@@ -78,6 +84,13 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
   let generation = 0;
   const cancels = new Set<() => void>();
   const held = new Set<Promise<unknown>>();
+  // the generation whose exit stopped waiting for held work (its teardown may run from then on), and the undos of work
+  // that settled after that, waiting for the teardown to finish
+  let waitedGeneration = -1;
+  const afterClose: Array<() => void> = [];
+  const undo = (afterEnd: () => void): void => {
+    try { afterEnd(); } catch (error) { console.error('[studio] undoing late work failed', error); }
+  };
 
   const move = (next: StudioSessionPhase): boolean => {
     if (!EDGES[phase].includes(next)) return false;
@@ -117,22 +130,35 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
       }
       return true;
     },
-    close() { return move('closed'); },
+    close() {
+      if (!move('closed')) return false;
+      for (const afterEnd of afterClose.splice(0)) undo(afterEnd);
+      return true;
+    },
     onEnd(cancel) {
       cancels.add(cancel);
       return () => { cancels.delete(cancel); };
     },
-    hold(work) {
+    hold(work, afterEnd) {
+      const issued = generation;
+      const owned = live(); // held by a live session (else it was stale from the start)
       const entry = work.then(() => undefined, () => undefined);
       held.add(entry);
-      void entry.then(() => { held.delete(entry); });
+      void entry.then(() => {
+        held.delete(entry);
+        if (!afterEnd || (owned && issued === generation)) return; // still its own session's: nothing to undo
+        if (phase === 'closed') undo(afterEnd);
+        else if (phase === 'exiting' && waitedGeneration === generation) afterClose.push(afterEnd);
+        // exiting and still waiting: the teardown runs after this work; entering or open: a newer session owns it
+      });
       return work;
     },
     settled() {
-      if (!held.size) return Promise.resolve(true);
+      const waited = (): void => { if (phase === 'exiting') waitedGeneration = generation; };
+      if (!held.size) { waited(); return Promise.resolve(true); }
       return new Promise<boolean>((resolve) => {
-        const handle = schedule(() => resolve(false), settleMs);
-        void Promise.all([...held]).then(() => { unschedule(handle); resolve(true); });
+        const handle = schedule(() => { waited(); resolve(false); }, settleMs);
+        void Promise.all([...held]).then(() => { unschedule(handle); waited(); resolve(true); });
       });
     },
   };

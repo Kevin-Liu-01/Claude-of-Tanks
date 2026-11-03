@@ -97,6 +97,76 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
   assert.equal(timers.at(-1).ms, 5000);
 }
 
+// Held work's undo (afterEnd): only work that settles after the exit stopped waiting gets it, once the teardown is done
+// (at close, or at once after it), and never while a newer session is live or while its own session still holds it.
+{
+  const timers = [];
+  const session = createStudioSession({
+    setTimeout: (callback) => { timers.push(callback); return timers.length; },
+    clearTimeout: () => {},
+  });
+  const turn = () => new Promise((resolve) => setImmediate(resolve));
+  const undone = [];
+  const deferred = () => { let land; const work = new Promise((resolve) => { land = resolve; }); return { work, land }; };
+
+  session.open(session.beginEntry());
+  const own = deferred();
+  session.hold(own.work, () => undone.push('own'));
+  own.land(); await turn();
+  assert.deepEqual(undone, [], 'work its live session still holds is never undone');
+
+  const waitedFor = deferred(), duringTeardown = deferred(), afterClose = deferred();
+  session.hold(waitedFor.work, () => undone.push('waited-for'));
+  session.hold(duringTeardown.work, () => undone.push('during-teardown'));
+  session.hold(afterClose.work, () => undone.push('after-close'));
+  session.beginExit();
+  let bounded = null;
+  void session.settled().then((value) => { bounded = value; });
+  waitedFor.land(); await turn();
+  assert.deepEqual(undone, [], 'work that lands while the exit waits is followed by the teardown: nothing to undo');
+  timers.at(-1)(); await turn();
+  assert.equal(bounded, false, 'the bound ended the wait with two still in flight');
+  duringTeardown.land(); await turn();
+  assert.deepEqual(undone, [], 'work landing during the teardown waits for it to finish');
+  session.close();
+  assert.deepEqual(undone, ['during-teardown'], 'its undo runs once the teardown is done');
+  afterClose.land(); await turn();
+  assert.deepEqual(undone, ['during-teardown', 'after-close'], 'work landing after the close is undone at once');
+
+  // a newer session is live when the last of the old session's work lands: that session owns the battlefield now
+  const outlived = deferred();
+  session.open(session.beginEntry());
+  session.hold(outlived.work, () => undone.push('outlived'));
+  session.beginExit();
+  void session.settled();
+  timers.at(-1)(); await turn();
+  session.close();
+  session.open(session.beginEntry());
+  outlived.land(); await turn();
+  assert.deepEqual(undone, ['during-teardown', 'after-close'], 'no undo under a newer live session');
+  // work held while no session is live is stale from the start: landing after the wait, it is undone too
+  session.beginExit();
+  const stale = deferred();
+  void session.settled();
+  session.hold(stale.work, () => undone.push('stale'));
+  await turn();
+  stale.land(); await turn();
+  session.close();
+  assert.deepEqual(undone.at(-1), 'stale');
+  const throwing = deferred();
+  session.open(session.beginEntry());
+  session.hold(throwing.work, () => { throw new Error('an undo that throws'); });
+  session.beginExit();
+  void session.settled();
+  timers.at(-1)(); await turn();
+  session.close();
+  const errors = console.error;
+  const logged = [];
+  console.error = (...args) => logged.push(args);
+  try { throwing.land(); await turn(); } finally { console.error = errors; }
+  assert.equal(logged.length, 1, 'a throwing undo is logged, never thrown');
+}
+
 // One busy reading, in a fixed order; the take owns the transport only while it records, renders or exports.
 {
   const free = { open: true, recording: false, filming: false, exporting: false, scene: false, mapChange: false, restoring: false };
@@ -115,4 +185,4 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
     [true, true, true, false, false, false, false, false], 'a load, a map change or an undo leaves the playhead alone');
 }
 
-console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound, and the busy reading pass');
+console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound and its late undo, and the busy reading pass');

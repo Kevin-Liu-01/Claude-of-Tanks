@@ -247,8 +247,13 @@ interface StudioContext {
    */
   ensureWorld(mapId: string, onProgress?: ProgressListener, options?: { readonly earlyPrograms?: boolean }): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
-  /** Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). */
-  prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
+  /**
+   * Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). It lights the world
+   * itself, after its own awaits: `owner` is the Studio session asking (audit F9), and once it is no longer current the
+   * preparation applies no light and no ambience override (the exit restored the battlefield's own). Resolves with the
+   * light it applied, or null when its session ended first (whatever it applied came before that session's restore).
+   */
+  prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null, owner?: { current(): boolean }): Promise<unknown>;
   /** Restore the world's baked horizon light and the readability before the battlefield leaves the Studio. */
   restoreStudioAtmosphere?(): void;
   /** The renderer's forward program warm (main.ts): the first view's programs are prepared with it (prepareFirstViewPrograms). */
@@ -5523,11 +5528,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     && (a?.headlights ?? true) === (b?.headlights ?? true);
 
   /**
-   * (audit F9) Light the battlefield for the session: the exit waits for a preparation in flight (session.hold) before
-   * it restores the battlefield's own light, so a late one never re-lights the world the Garage hands to a battle.
+   * (audit F9) Light the battlefield for the session. The preparation applies the light itself, inside its own awaits, so
+   * the session guards it three ways: it is handed the session's token and lights nothing once that is stale (it then
+   * resolves null); the exit waits for it (session.hold) before it restores the battlefield's own light; and one that
+   * outlived the exit's bounded wait and still reports a light gets the restore again once the teardown is done (hold's
+   * afterEnd). The restore is the battlefield's last light however slow the preparation (a cold chunk, a far-panorama
+   * rebake on a loaded phone).
    */
   function prepareAtmosphere(time: StudioTimeOfDay, light: StudioLight | null): Promise<unknown> {
-    return session.hold(Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light)));
+    const owner = session.token();
+    let lit = false;
+    const work = Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light, owner)).then((applied) => {
+      lit = applied != null;
+      return applied;
+    });
+    return session.hold(work, () => { if (lit) ctx.restoreStudioAtmosphere?.(); });
   }
 
   /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */

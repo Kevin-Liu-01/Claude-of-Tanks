@@ -4122,6 +4122,7 @@ const studioAccess = createStudioAccess({
     prepareStudioAtmosphere: async (
       time: import('./game/studioLight.ts').StudioTimeOfDay,
       light: import('./game/studioLight.ts').StudioLight | null = null,
+      owner?: { current(): boolean },
     ) => {
       await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
       studioLightRuntime ??= import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
@@ -4145,11 +4146,14 @@ const studioAccess = createStudioAccess({
         studioLightLive = runtime;
         return runtime;
       }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
-      const applied = await (await studioLightRuntime).apply(time, light);
+      const runtime = await studioLightRuntime;
+      // (audit F9) a Studio session that ended while this prepared lights nothing: its exit restored the battlefield
+      if (owner && !owner.current()) return null;
+      const applied = runtime.apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
       await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);
-      return applied;
+      return owner && !owner.current() ? null : applied; // (its light came before that session's restore)
     },
     setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),
     restoreStudioAtmosphere: () => {

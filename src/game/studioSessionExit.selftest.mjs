@@ -27,7 +27,7 @@ const functions = [...found.values()].join('\n').replace("await import('./studio
 function makeStudio(overrides = {}) {
   const calls = [];
   const noop = () => {};
-  let releaseWorld = null, releaseAtmosphere = null, releaseBuilders = null, releaseExportModule = null;
+  let releaseWorld = null, releaseAtmosphere = null, releaseBuilders = null, releaseExportModule = null, atmosphereOwner = null;
   const exportFrames = { rendered: 0, aborted: false };
   const ports = {
     calls, exportFrames,
@@ -42,9 +42,12 @@ function makeStudio(overrides = {}) {
     }),
     setWorldDormant: (value) => calls.push(['dormant', value]),
     ctx: {
-      prepareStudioAtmosphere: (time) => new Promise((resolve) => {
+      // (main.ts lights the world inside its own awaits; this port lights at its release whatever the token says, so a
+      // scenario reads what the Studio itself guarantees)
+      prepareStudioAtmosphere: (time, _light, owner) => new Promise((resolve) => {
+        atmosphereOwner = owner ?? null;
         calls.push(['atmosphere-start', time]);
-        releaseAtmosphere = () => { calls.push(['atmosphere-lit', time]); resolve(); };
+        releaseAtmosphere = () => { calls.push(['atmosphere-lit', time]); resolve({ time }); }; // the plan it applied
       }),
       restoreStudioAtmosphere: () => calls.push('atmosphere-restored'),
       getStudioLight: () => null,
@@ -66,7 +69,7 @@ function makeStudio(overrides = {}) {
     loadedStoryboard: () => ({ shots: [], durationMs: 8000 }), bindStoryboardTracks: noop,
     applyCamera: noop, clampStudioTime: (time) => time, replaceLoadEffects: noop, applyPictureRuntime: noop,
     restoreLoadedPresentation: noop, stateJson: () => ({ ok: true }),
-    enter: async () => {}, sceneMeta: { seed: 5000 },
+    enter: async () => { calls.push('studio-enter'); }, sceneMeta: { seed: 5000 },
     // the film side
     filmRenderer: { active: false, begin() { this.active = true; calls.push('film-open'); return { startMs: 0, frames: 4 }; },
       renderNext() { return {}; }, end() { this.active = false; calls.push('film-closed'); } },
@@ -126,7 +129,7 @@ function makeStudio(overrides = {}) {
       setMap, load, exit, doExit, exportFilmFile, cancelFilmExport,
       setTime: (time) => applyStudioLight(time, null, true),
       get active() { return active; }, get mapChange() { return mapChange; }, get timeOfDay() { return timeOfDay; },
-      get filmExport() { return filmExport; },
+      get filmExport() { return filmExport; }, set recording(value) { recording = value; },
     };
     }
   `);
@@ -135,6 +138,7 @@ function makeStudio(overrides = {}) {
     studio, calls, ports, exportFrames,
     releaseWorld: () => releaseWorld?.(), releaseAtmosphere: () => { const release = releaseAtmosphere; releaseAtmosphere = null; release?.(); },
     releaseBuilders: () => releaseBuilders?.(), releaseExportModule: () => releaseExportModule?.(),
+    atmosphereOwner: () => atmosphereOwner,
   };
 }
 const settle = async (turns = 6) => { for (let i = 0; i < turns; i++) await new Promise((resolve) => setImmediate(resolve)); };
@@ -281,4 +285,66 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.ok(h.calls.includes('enter-garage'));
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting, a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; queued switches run in order; a superseded exit cover still leaves');
+// 9. A preparation slower than the exit's bounded wait (a cold light chunk, a far-panorama rebake on a loaded phone): the
+// teardown goes on after the bound, the preparation holds a token the exit made stale (main.ts applies no light and no
+// ambience override with it), and one that lights anyway is undone after the teardown: the restore stays the last light.
+{
+  const h = makeStudio({ session: createStudioSession({ settleMs: 20 }) });
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  h.releaseWorld();
+  await settle();
+  assert.ok(h.calls.some((c) => Array.isArray(c) && c[0] === 'atmosphere-start'), 'the switch is lighting');
+  assert.equal(h.atmosphereOwner()?.current(), true, 'the preparation is handed its live session\'s token');
+  h.studio.exit();
+  await new Promise((resolve) => { setTimeout(resolve, 60); }); // past the exit's bound
+  await settle();
+  assert.ok(h.calls.includes('enter-garage'), 'the bound let the exit go on to the Garage');
+  assert.equal(h.atmosphereOwner().current(), false, 'the late preparation holds a stale token');
+  h.releaseAtmosphere(); // lands after the teardown, lighting regardless
+  await outcome(switching);
+  await settle();
+  const lastLit = h.calls.findLastIndex((c) => Array.isArray(c) && c[0] === 'atmosphere-lit');
+  assert.ok(lastLit > h.calls.indexOf('enter-garage'), 'the preparation landed after the Garage returned');
+  assert.ok(h.calls.lastIndexOf('atmosphere-restored') > lastLit, 'the restore is still the battlefield\'s last light');
+}
+
+// 9 (main.ts's side). A preparation that honours its token lights nothing for the closed session and reports no light:
+// the teardown's restore is the only one (a second could reset a battle the Garage started in the meantime).
+{
+  const h = makeStudio({ session: createStudioSession({ settleMs: 20 }) });
+  let release = null;
+  h.ports.ctx.prepareStudioAtmosphere = (time, _light, owner) => new Promise((resolve) => {
+    release = () => {
+      if (!owner.current()) { resolve(null); return; }
+      h.calls.push(['atmosphere-lit', time]);
+      resolve({ time });
+    };
+  });
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  h.releaseWorld();
+  await settle();
+  h.studio.exit();
+  await new Promise((resolve) => { setTimeout(resolve, 60); });
+  await settle();
+  release();
+  await outcome(switching);
+  await settle();
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'atmosphere-lit'), 'no Studio light for the closed session');
+  assert.equal(h.calls.filter((c) => c === 'atmosphere-restored').length, 1, 'nothing lit late, so nothing restored twice');
+}
+
+// main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const start = main.indexOf('prepareStudioAtmosphere: async (');
+  const body = main.slice(start, main.indexOf('restoreStudioAtmosphere:', start));
+  assert.ok(start > 0 && body.includes('owner?: { current(): boolean }'), 'main.ts takes the session\'s token');
+  const stale = body.indexOf('if (owner && !owner.current()) return null;');
+  assert.ok(stale > body.indexOf('await studioLightRuntime') && stale < body.indexOf('.apply(time, light)')
+    && stale < body.indexOf('setDensityOverride(1)'), 'the stale check follows the last await and precedes the light and the ambience override');
+  assert.match(body, /return owner && !owner\.current\(\) \? null : applied;/, 'a session that ended before it finished reports no light to undo');
+}
+
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a closed session\'s load never re-enters; a recording refuses the export\'s film; queued switches run in order; a superseded exit cover still leaves');
