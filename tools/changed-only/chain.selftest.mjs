@@ -22,7 +22,8 @@
 //   - (268) a partial chain (--steps) writes only the lines of the steps it ran: a step whose tool moved stays due and
 //     reads as its tool.
 //   - (268) every fixture chain is bounded by the CPU its process tree spends, never wall time (watchChild), and a
-//     tree's CPU keeps what its exited members spent.
+//     tree's CPU keeps what its exited members spent; so is a synchronous child (budgetedSync, the rows read), node
+//     spawning node.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -550,18 +551,26 @@ const afterChild = `const { execFileSync } = require('node:child_process'); exec
   while (Date.now() < until) { ${spend(0.03)} Atomics.wait(nap, 0, 0, 150); }`;
 const working = await watched(afterChild, { budgetS: 100, hangS: 3 });
 assert.deepEqual([working.exit, working.stopped], [0, null], 'a parent working on after its child exits is no hang');
-// cpuLimited: a synchronous child bounded by its own CPU (RLIMIT_CPU), never wall time, as the rows read is
-const { cpuLimited } = await import('./childBudget.mjs');
+// (268) budgetedSync: a synchronous child bounded by its tree's CPU, never wall time, as the rows read is. Node spawning
+// node, the rows read's own shape, where the kernel's CPU limit (ulimit -t) never fired. The burner ignores the TERM it
+// is sent and ends itself after 10 s of CPU, so a watch that never stops it fails this check instead of hanging it.
+const { budgetedSync } = await import('./childBudget.mjs');
 let burned = null;
-// the burner ends itself after 10 s of CPU, so a limit that never fires fails this check instead of hanging it
-const selfEnding = 'const t = process.cpuUsage(); for (;;) { const u = process.cpuUsage(t); if (u.user + u.system > 10e6) process.exit(0); }';
-try { execFileSync(...cpuLimited(process.execPath, ['-e', selfEnding], 1), { stdio: 'ignore' }); } catch (error) { burned = error; }
-assert.equal(burned?.signal, 'SIGXCPU', 'a synchronous child past its CPU limit is stopped by the kernel');
+try {
+  budgetedSync(process.execPath, ['-e', `process.on('SIGTERM', () => {}); ${spend(10)}`],
+    { budgetS: 1, pollMs: 200, graceMs: 1000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+} catch (error) { burned = error; }
+assert.match(String(burned?.stderr), /stopped: CPU budget 1 s spent/, 'a synchronous child past its CPU budget is stopped, the budget named');
 const sleptAt = Date.now();
-execFileSync(...cpuLimited(process.execPath, ['-e', 'setTimeout(() => {}, 2500)'], 1), { stdio: 'ignore' });
+const slept = budgetedSync(process.execPath, ['-e', 'setTimeout(() => process.stdout.write("rows"), 2500)'],
+  { budgetS: 1, pollMs: 200, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 assert.ok(Date.now() - sleptAt > 2000, 'and one that outlives that much wall time on little CPU finishes');
+assert.equal(slept, 'rows', 'with its output the caller\'s');
 const runnerBudget = readFileSync(join(repo, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(runnerBudget, /watchChild\(child\.pid, \{ budgetS: timeoutS, hangS: HANG_S/, 'the runner budgets its CPU children through it');
+assert.match(readFileSync(join(repo, 'tools/changed-only/fingerprint.mjs'), 'utf8'),
+  /budgetedSync\(process\.execPath, \['--max-old-space-size=4096', join\(import\.meta\.dirname, 'rows-child\.mjs'\)/,
+  'the rows read is bounded through it');
 
 // 12 (268). A partial chain writes only the lines of the steps it ran: --steps=seats on a tree where fills' tool moved
 // (every fills id due) and one seats input moved (b1) runs seats on b1. Every other line of the table stays byte for
