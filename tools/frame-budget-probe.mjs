@@ -52,7 +52,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import {
@@ -60,7 +60,8 @@ import {
   resolveHullRelativePose, sleep,
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
-import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
+import { CAPTURE_QUEUE_DIR, claimSessionMutex, createCaptureLock, reapDeadSessionMutex, releaseSessionMutexAt,
+  sessionMutexState } from './capture-lock.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
@@ -774,10 +775,11 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
 function mutexOwner(dir) {
   try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
 }
+// (2026-11-02 audit S4) the session mutex is an owned lock directory (capture-lock.mjs claimSessionMutex): a killed
+// holder's mutex is reaped, where a bare mkdir stayed held for good and cost every later round its 45-minute wait
 function defaultMutexBusy(dir) {
-  const owner = mutexOwner(dir);
-  if (!owner) return existsSync(dir);
-  try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
+  const { state } = sessionMutexState(dir);
+  return state === 'live' || state === 'unowned';
 }
 function defaultHolderQueued(dir) {
   const owner = mutexOwner(dir);
@@ -785,13 +787,11 @@ function defaultHolderQueued(dir) {
   try { return readdirSync(CAPTURE_QUEUE_DIR).some((name) => name.endsWith(`-${owner}.t`)); } catch { return false; }
 }
 function defaultTryMutex(dir) {
-  try { mkdirSync(dir); writeFileSync(path.join(dir, 'pid'), String(process.pid)); return true; } catch { return false; }
+  if (claimSessionMutex(dir)) return true;
+  return reapDeadSessionMutex(dir) && Boolean(claimSessionMutex(dir));
 }
 function defaultReleaseMutex(dir) {
-  try {
-    const owner = readFileSync(path.join(dir, 'pid'), 'utf8').trim();
-    if (owner === String(process.pid)) rmSync(dir, { recursive: true, force: true });
-  } catch { /* already gone */ }
+  releaseSessionMutexAt(dir);
 }
 
 export async function openPreview(root, port) {

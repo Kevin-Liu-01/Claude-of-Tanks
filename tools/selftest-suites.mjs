@@ -898,6 +898,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
+    // 2026-11-02 audit S4: the probe mutex has an owner (a dead holder's reaped, a live or shell holder's never)
+    'tools/session-mutex.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments

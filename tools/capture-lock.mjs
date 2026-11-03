@@ -785,6 +785,74 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
   return result === true;
 }
 
+// ---- session mutexes (2026-11-02 audit S4) ----------------------------------------------------------------------------
+// The probe mutex (an agent scratchpad's probe.lock) was a bare mkdir with no owner: shell holders (`until mkdir …; do
+// sleep 5; done; …; rmdir`), the polite lock (visual-census-lock: a `pid` file inside, and a mutex that had no pid after 60 s
+// was reaped, a live shell holder's included) and frame-budget-probe's acquireProbeLocks (never reaped: a killed agent's
+// mutex cost every later round its 45-minute wait). It is now an owned lock directory like the capture lock's own: the owner
+// token (pid and start time) plus the legacy `pid` file older readers take, reaped only once its owner is dead (a pid gone,
+// or reused by another process). A legacy mutex (a `pid` file, no token) is reaped once that pid is dead and the mutex is
+// older than `graceMs`; a bare directory with neither is never reaped, since its holder (a shell loop) may be alive. Shell
+// holders run their command under tools/with-session-mutex.mjs, which holds the mutex with an owner for the command's life.
+
+/** Take the session mutex at `dir`: the hold, or null while it is taken. */
+export function claimSessionMutex(dir) {
+  const hold = claimOwnedLock(dir, { terms: { session: true } });
+  if (!hold) return null;
+  try { writeFileSync(join(dir, 'pid'), String(process.pid)); } catch { /* the token is the record; the pid file is for older readers */ }
+  return hold;
+}
+
+/** Release a session mutex this process holds (claimSessionMutex's hold); false when it no longer owns it. */
+export function releaseSessionMutex(hold, { log = stderrLog } = {}) {
+  return hold ? releaseOwnedLock(hold, { log }) : false;
+}
+
+/** Release the session mutex at `dir` when its owner token is this process's (for callers that keep only the path). */
+export function releaseSessionMutexAt(dir, { log = stderrLog } = {}) {
+  const owner = readOwner(dir);
+  if (owner.state !== 'ok' || owner.token.pid !== process.pid) return false;
+  return releaseOwnedLock({ lockDir: dir, id: owner.token.id, nonce: owner.token.nonce, pid: process.pid, ticket: null, token: owner.token,
+    lostNoted: false }, { log });
+}
+
+/** What holds the session mutex at `dir`: { state: 'free' | 'live' | 'dead' | 'unowned', pid, legacy, ageMs, why }. */
+export function sessionMutexState(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } = {}) {
+  let at;
+  try { at = pathId(dir); } catch (error) { return error.code === 'ENOENT' ? { state: 'free' } : { state: 'unowned', why: error.code }; }
+  const ageMs = Date.now() - at.mtimeMs;
+  if (!at.isDir) return { state: 'unowned', ageMs, why: 'a file, not a directory' };
+  const owner = readOwner(dir);
+  if (owner.state === 'ok' && owner.token.id === at.id) {
+    const liveness = ownerLiveness(owner.token, ageMs, lockStaleMs);
+    return { state: liveness.alive ? 'live' : 'dead', pid: owner.token.pid, legacy: false, ageMs, id: at.id, why: liveness.why };
+  }
+  let pid = NaN;
+  try { pid = Number(readFileSync(join(dir, 'pid'), 'utf8').trim()); } catch { /* no pid file */ }
+  if (Number.isSafeInteger(pid) && pid > 0) return { state: pidAlive(pid) ? 'live' : 'dead', pid, legacy: true, ageMs, id: at.id };
+  return { state: 'unowned', ageMs, id: at.id, why: 'no owner token and no pid file (a shell holder\'s mkdir, or a claim in progress)' };
+}
+
+/** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */
+export function reapDeadSessionMutex(dir, { graceMs = 60_000, lockStaleMs = DEFAULT_LOCK_STALE_MS, log = stderrLog } = {}) {
+  const first = sessionMutexState(dir, { lockStaleMs });
+  if (first.state === 'free') return true;
+  if (first.state !== 'dead') return false;
+  if (!first.legacy) return reapDeadLock(dir, { lockStaleMs, orphanStaleMs: Number.MAX_SAFE_INTEGER, log });
+  if (first.ageMs < graceMs) return false;
+  const reaped = withReapMutex(dir, () => {
+    const again = sessionMutexState(dir, { lockStaleMs });
+    if (again.state === 'free') return true;
+    if (again.state !== 'dead' || !again.legacy || again.id !== first.id) return false;
+    const tomb = `${dir}.reaped-${process.pid}-${randomBytes(6).toString('hex')}`;
+    if (!renameAway(dir, again.id, tomb, log)) return false;
+    clearTomb(tomb, log);
+    log(`[capture-lock] reaped the session mutex ${dir} of dead pid ${again.pid} (a legacy pid file)`);
+    return true;
+  });
+  return reaped === true;
+}
+
 /** Renew a waiting ticket; restore it under the same name (so the same place) when another waiter removed it while we
  *  were still waiting (an older copy of this module, or a heartbeat this process missed). */
 function keepTicket(path, text) {
