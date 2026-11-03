@@ -88,6 +88,18 @@ try {
   assert.equal(ctx.state, 'running', 'the next key press resumes it');
   assert.equal(doc.count('keydown'), 0);
 
+  // a gesture whose resume the browser still refuses (the call holds the device) leaves the unlock armed
+  ctx.allowResume = false;
+  ctx.set('interrupted');
+  doc.dispatch('pointerdown');
+  await settle();
+  assert.equal(ctx.state, 'interrupted', 'the device is still held');
+  assert.equal(doc.count('pointerdown'), 1, 'so the next gesture tries again');
+  ctx.allowResume = true;
+  doc.dispatch('pointerdown');
+  await settle();
+  assert.equal(ctx.state, 'running', 'and resumes it once the call has ended');
+
   // muted, the unlock steps aside without resuming (as the first gesture always has)
   lazy.mute(true);
   ctx.set('suspended');

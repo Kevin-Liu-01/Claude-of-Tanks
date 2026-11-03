@@ -174,7 +174,8 @@ export function createLazyAudio({
       if (context && typeof context.addEventListener === 'function') context.addEventListener('statechange', onDeviceState);
     }
     if (!context) return null;
-    if (halted()) void context.resume().catch(() => {});
+    // a refused resume (no activation yet, the call still holding the device) leaves the next gesture to try again
+    if (halted()) void context.resume().catch(() => { if (halted()) armGesture(); });
     return context;
   };
 
