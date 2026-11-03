@@ -1424,6 +1424,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
+    // 2026-11-02 audit R3: one cloud install in flight, each caller its own fate; the noise worker retired after the fallback
+    'src/engine/sharedInstall.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
     // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
