@@ -262,6 +262,19 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
     mg.position.set(0.52, roof + 0.115, -0.62);
     mg.rotation.y = -0.30;
     P.turretG.add(mg);
+    // the AS1's commander's M2 on a pintle at the cupola's front edge (front34_service_1armd, 1st Armoured Regiment:
+    // the commander's heavy gun belt-fed beside the loader's MAG 58)
+    if (mark === 'as1') {
+      P.addEquipment('turretDark', cylY(0.03, 0.035, 0.16, P.q ? 12 : 8), -0.40, roof + 0.20, -0.14);
+      const commander = FITTINGS.pintleMG({
+        mats: P.mats, cls: 'm2', tone: 'two-tone', elev: 0.04,
+        scale: 0.92, seed: 2691, shield: false, ammo: true, working: true, ridingCradle: true,
+      });
+      commander.name = 'leo1As1CommanderM2';
+      commander.position.set(-0.40, roof + 0.28, -0.14);
+      commander.rotation.y = 0.12;
+      P.turretG.add(commander);
+    }
     // Wegmann 76 mm dischargers: two rows of four on a bracket high on each side, with a guard loop (Krigsmuseet); the
     // 1A5s' four in two rows at the side's rear (the Aalborg turret, the RAMTA front and the Air Show rear: r10 critics)
     if (mark === 'a5' || mark === 'a5dk1') for (const s of [-1, 1] as const) {

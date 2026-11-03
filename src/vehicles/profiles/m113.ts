@@ -112,8 +112,8 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
 
   // ---------------------------------------------------------------- the mark's hull kit --
   if (mark === 'mrv') {
-    // the buoyancy pods: two slab panels on each side, the full side from the glacis' top to the rear plate, and a
-    // third across the glacis under the vane's line (the Perth and Puckapunyal MRVs)
+    // the buoyancy pods: two slab panels on each side, the full side from the glacis' top to the rear plate (the Perth and
+    // Puckapunyal MRVs; the folded trim vane holds the glacis)
     for (const s of [-1, 1] as const) {
       const x = s * (B.hw + 0.07), zMid = (D.glacisTopZ + D.sternZ) / 2;
       for (const [z0, z1] of [[D.glacisTopZ - 0.05, zMid + 0.01], [zMid - 0.01, D.sternZ + 0.12]] as const) {

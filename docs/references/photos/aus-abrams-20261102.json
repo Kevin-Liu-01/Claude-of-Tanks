@@ -7,7 +7,7 @@
   "targets": {
     "m1a1_aim_sa_aus": {
       "name": "M1A1 AIM SA",
-      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The Australian Army's M1A1 AIM SA (59 from 2006-07) on the fleet's plain M1A1 build with the Australian kit the photographs show: the TMAPU in the left rear of a lengthened two-tier bustle rack, the call-sign plate, the kangaroo, the disruptive three-tone and the owner's heavy field net to the muzzle (2026-11-02). No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The Australian Army's M1A1 AIM SA (59 from 2006-07) on the fleet's plain M1A1 build with the Australian kit the photographs show: the TMAPU in the left rear of a lengthened two-tier bustle rack with its tall capped exhaust beside it (rear_adfa2015), the call-sign plate on the rack's right rail, the kangaroo, the disruptive three-tone and the owner's heavy field net to the muzzle (2026-11-02). No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:Side_view_of_an_Australian_Army_Abrams_tank_at_the_2015_ADFA_open_day.jpg",
         "https://commons.wikimedia.org/wiki/File:Rear_three-quarter_view_of_an_Australian_Army_Abrams_tank_at_the_2015_ADFA_open_day.jpg",
@@ -17,8 +17,8 @@
       ],
       "widthM": 3.861,
       "overallLengthM": 9.772,
-      "tallestM": 2.842,
-      "envelopeBasis": "The as-built envelope of the fleet's M1A1 (9.77 m over the gun, as published) under the field net, its garnish reaching 3.86 m across the 3.66 m skirts; the tallest point is the TMAPU's exhaust stack (the build carries no whips).",
+      "tallestM": 2.816,
+      "envelopeBasis": "The as-built envelope of the fleet's M1A1 (9.77 m over the gun, as published) under the field net, its garnish reaching 3.86 m across the 3.66 m skirts; the tallest point is the M1A1's commander's station (the build carries no whips; the TMAPU's capped stack stands lower).",
       "caliberMm": 120,
       "launcherTubes": 0,
       "roofMachineGuns": 1,

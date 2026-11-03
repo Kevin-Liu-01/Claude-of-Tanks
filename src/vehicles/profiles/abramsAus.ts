@@ -1,7 +1,7 @@
 // The Australian Army's M1A1 AIM SA (release 269; australiaSpecs.ts): the fleet's plain M1A1 build (the commander's .50
 // on the CWS, the loader's pintle gun) with the Australian kit the 2012-2023 photographs show on every tank: the TMAPU
-// standing in the left rear of a lengthened bustle rack (a black box with a louvred and a round grille on its rear face
-// and the exhaust stack on its roof), the rack's raised second tier of rails round its rear, and the call-sign
+// standing in the left rear of a lengthened bustle rack (a black box with a louvred and a round grille on its rear face,
+// its tall exhaust pipe beside it), the rack's raised second tier of rails round its rear, and the call-sign
 // plate on the rack (docs/references/tanks/m1a1_aim_sa_aus.md). The kangaroo and the three-tone are the spec's
 // (vehicleMarkings.ts, the disruptive coat). First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -14,7 +14,9 @@ const { box, cylY, cylZ } = KIT;
 // Turret-local stations (pivot 0, 1.632, 0.350 on the hull): the M1A1 rack's rear frame stands at z -3.47 between
 // x +-1.07 with its floor at y 0.24 and its dropped top rail at 0.63; the extension carries it to z -3.97
 const RACK = { x: 1.05, floor: 0.24, low: 0.29, mid: 0.63, tier: 0.98, front: -3.47, rear: -3.97 } as const;
-const TMAPU = { x0: -0.98, x1: -0.36, z0: -3.40, z1: -3.92, y1: 0.98 } as const;
+// the TMAPU on the rack's left (+x: a +Z hull's left), read off the square rear photograph (rear_adfa2015, ~2.5 mm a pixel
+// on the 3.5 m hull): 0.72 m across from 0.22 m off the centreline, 0.52 m tall over the rack floor
+const TMAPU = { x0: 0.22, x1: 0.94, z0: -3.40, z1: -3.92, y1: 0.77 } as const;
 
 /** The rack's extension: mesh floor, side and rear rails at the rack's two heights, and the raised tier over the rear. */
 function rackExtension(P: TankBuilderPort): void {
@@ -33,28 +35,32 @@ function rackExtension(P: TankBuilderPort): void {
   }
 }
 
-/** The tank-mounted auxiliary power unit: the black box across the rack's joint, its louvred and round grilles on the
- * rear face, two handles, the exhaust stack and its cap on the roof's outboard rear corner. */
+/** The tank-mounted auxiliary power unit: the black box across the rack's joint, a tan panel over the inboard part of
+ * its rear face carrying the square louvred grille and the round grille, a latch on its outboard part, and the tall capped
+ * exhaust pipe standing on the rack floor just inboard of it (rear_adfa2015, rear34_adfa2015). */
 function tmapu(P: TankBuilderPort): void {
   const { x0, x1, z0, z1, y1 } = TMAPU, y0 = RACK.floor + 0.006;
   const xc = (x0 + x1) / 2, w = x1 - x0, d = z0 - z1, h = y1 - y0;
   P.add('turretDark', box(w, h, d), xc, y0 + h / 2, (z0 + z1) / 2);
   P.add('turretDark', box(w + 0.02, 0.016, d + 0.02), xc, y1 + 0.008, (z0 + z1) / 2);
-  const gy = y0 + h * 0.58;
-  P.add('turretDetail', box(0.22, 0.22, 0.012), x0 + 0.17, gy, z1 - 0.006);
-  for (let i = 0; i < 5; i++) P.add('turretDark', box(0.19, 0.014, 0.018), x0 + 0.17, gy - 0.08 + i * 0.04, z1 - 0.014, 0.5);
-  P.add('turretDetail', cylZ(0.10, 0.016, 20), x1 - 0.17, gy, z1 - 0.008);
-  P.add('turretDark', cylZ(0.072, 0.02, 20), x1 - 0.17, gy, z1 - 0.012);
-  for (const x of [x0 + 0.12, x1 - 0.12]) P.add('turretDetail', box(0.10, 0.02, 0.025), x, y1 - 0.07, z1 - 0.014);
-  P.add('turretDark', cylY(0.04, 0.04, 0.20, 12), x0 + 0.10, y1 + 0.10, z1 + 0.10);
-  P.add('turretDark', box(0.12, 0.03, 0.05), x0 + 0.10, y1 + 0.215, z1 + 0.10);
+  const gy = y1 - 0.13, panelX1 = x0 + 0.52;
+  P.add('turret', box(panelX1 - x0 - 0.02, 0.22, 0.010), (x0 + panelX1) / 2, gy, z1 - 0.005);
+  P.add('turretDetail', box(0.16, 0.16, 0.012), 0.63, gy, z1 - 0.011);
+  for (let i = 0; i < 5; i++) P.add('turretDark', box(0.14, 0.012, 0.016), 0.63, gy - 0.06 + i * 0.03, z1 - 0.018, 0.5);
+  P.add('turretDetail', cylZ(0.07, 0.014, 20), 0.475, gy, z1 - 0.012);
+  P.add('turretDark', cylZ(0.05, 0.018, 20), 0.475, gy, z1 - 0.016);
+  P.add('turretDetail', box(0.05, 0.08, 0.03), x1 - 0.12, gy, z1 - 0.015);
+  const stackX = x0 - 0.10, stackZ = z1 + 0.14, stackTop = y1 + 0.23;
+  P.add('turretDark', cylY(0.032, 0.032, stackTop - y0, 12), stackX, (y0 + stackTop) / 2, stackZ);
+  P.add('turretDark', cylY(0.048, 0.048, 0.03, 12), stackX, stackTop + 0.015, stackZ);
+  P.add('turretDark', box(0.14, 0.03, 0.04), stackX, stackTop + 0.045, stackZ);
 }
 
-/** The call-sign plate on the rear rails right of the TMAPU, the tank's number on it. */
+/** The call-sign plate hung on the rack's right side rail (the tank's number on it; the TMAPU holds the left rear). */
 function callSignPlate(P: TankBuilderPort): void {
-  const x = 0.55, y = (RACK.low + RACK.mid) / 2, z = RACK.rear - 0.03;
-  P.add('turret', box(0.46, 0.26, 0.012), x, y, z);
-  P.decal('turret', 'number', '', 0.17, [x, y, z - 0.008], Math.PI);
+  const x = -RACK.x - 0.03, y = (RACK.low + RACK.mid) / 2, z = (RACK.front + RACK.rear) / 2;
+  P.add('turret', box(0.012, 0.26, 0.40), x, y, z);
+  P.decal('turret', 'number', '', 0.17, [x - 0.008, y, z], -Math.PI / 2);
 }
 
 export function buildM1A1AimSaAus(P: TankBuilderPort): void {
