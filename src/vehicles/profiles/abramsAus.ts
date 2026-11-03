@@ -7,6 +7,7 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { ABRAMS_PROFILES } from './abrams.ts';
 import { KIT } from './kit.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
 const { box, cylY, cylZ } = KIT;
 
@@ -71,4 +72,6 @@ export function buildM1A1AimSaAus(P: TankBuilderPort): void {
   callSignPlate(P);
   P.turretG.userData.ausAbramsReceipt = { base: 'm1a1', tmapu: 'rack-left-rear', rackExtensionM: RACK.front - RACK.rear,
     rackTiers: 2, callSignPlate: true };
+  // the owner, 2026-11-02: "a lot of ghillie on them and on their barrels" (ghillieFleetSuits.ts m1a1_aim_sa_aus)
+  addVehicleGhillieSuit(P);
 }

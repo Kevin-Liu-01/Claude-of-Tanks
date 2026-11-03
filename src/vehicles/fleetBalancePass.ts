@@ -652,7 +652,8 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   mantlet(registry, 'leo2_improved', 0.7);
   mantlet(registry, 'vt4a1', 0.7);
   for (const id of ['leo2_revolution', 'leo2_revolution_proto']) mantlet(registry, id, 1.7);
-  mantlet(registry, 'm1a1', 1.5);
+  // 269: the Australian M1A1 AIM SA is the M1A1's turret and gun face (australiaSpecs.ts), so it takes the same raise
+  for (const id of ['m1a1', 'm1a1_aim_sa_aus']) mantlet(registry, id, 1.5);
   mantlet(registry, 'm1a1ha', 2.0);
   spec(registry, 'm1a1ha').hp = 2500;
   // the M1A2 and M1A2 SEPv2 studies keep their HC and AIM donors' combat (abramsSourceX: the study's hp is its donor's),
