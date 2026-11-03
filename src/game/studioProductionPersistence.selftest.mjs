@@ -33,7 +33,7 @@ const create = new Function('ports', `
   let picture=NEUTRAL_PICTURE, pictureApplied=0;
   const applyPictureRuntime=()=>{pictureApplied++;};
   let sceneFilm=null, filmExport=null; const filmRenderer={active:false}, getFilm=()=>sceneFilm;
-  let productionFormat='landscape', productionLoading=false, loading=false, recording=false;
+  let productionFormat='landscape', productionLoading=false, productionOwnsLoad=false, loading=false, recording=false;
   let storyboard={shots:[],durationMs:8000}, clockMs=0, timeScale=0, timeOfDay='day', selectedShotId=null;
   let camera={pos:[0,4,-10],lookAt:[0,1.7,0],fov:40,rollDeg:0}, map='verdant', replacements=0, refreshed=[];
   const actors=[], effectLog=[], sceneMeta={seed:5000};
@@ -47,7 +47,8 @@ const create = new Function('ports', `
   const setStoryboard=next=>{storyboard=structuredClone(next);};
   const pauseTimeline=()=>{}, invalidate=()=>{}, r2=v=>v;
   const panel={refreshAll:()=>refreshed.push(productionFormat)};
-  const setMap=async id=>{map=id;}, ensureLoadMap=async json=>{await setMap(json.map||'verdant'); return session.token();};
+  let mapGate=null;
+  const setMap=async id=>{if(mapGate)await mapGate;map=id;}, ensureLoadMap=async json=>{await setMap(json.map||'verdant'); return session.token();};
   const setTimeOfDay=async time=>{timeOfDay=time;};
   const replaceLoadActors=async()=>{replacements++;};
   const loadedStoryboard=json=>structuredClone(json.storyboard||{shots:[],durationMs:8000});
@@ -61,7 +62,8 @@ const create = new Function('ports', `
   const selectActor=()=>{},setRailVisible=()=>{};
   const post={};
   ${stripTypeScriptTypes(functions.join('\n'))}
-  return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied})};
+  return {load,stateJson,setProductionFormat,directProduction,stats:()=>({replacements,format:productionFormat,refreshed,pictureApplied}),
+    holdMap:()=>{let release;mapGate=new Promise((resolve)=>{release=resolve;});return ()=>{mapGate=null;release();};}};
 `);
 const runtime = create({ createProductionScene, productionPreset, productionAspect, reframeProductionPoint, reframeProductionFov,
   NEUTRAL_PICTURE, pictureStateJson, resolvePicture, normalizeFilm, isStudioTime, normalizeStudioLight, studioTimeFor,
@@ -113,4 +115,20 @@ assert.equal(runtime.stats().replacements, replaced, 'an invalid picture fails b
 assert.equal(runtime.stats().pictureApplied, applied);
 await runtime.load(legacy);
 assert.equal('picture' in runtime.stateJson(), false, 'loading a scene without a picture resets it to neutral');
+// (2026-11-02 audit F9) a staging sequence holds the scene through its battlefield change: a take or a JSON file loaded
+// meanwhile is refused, not raced (the last to finish won, and the panel could name the loser as staged)
+{
+  const releaseMap = runtime.holdMap();
+  const staging = runtime.directProduction({ presetId: 'desert-crossfire', format: 'landscape' });
+  await Promise.resolve();
+  const replacedBefore = runtime.stats().replacements;
+  const raced = runtime.load(legacy).then(() => 'loaded', (error) => error.message);
+  const answer = await Promise.race([raced, new Promise((resolve) => { setImmediate(() => resolve('waiting on the staging')); })]);
+  assert.match(answer, /studio\.error\.loadInFlight/, 'a load during a staging is refused at once');
+  assert.equal(runtime.stats().replacements, replacedBefore, 'and replaces nothing');
+  releaseMap();
+  const staged = await staging;
+  assert.equal(staged.productionFormat, 'landscape', 'the staging finishes as its own scene');
+  await runtime.load(legacy);
+}
 console.log('studioProductionPersistence: real save/load/direct/preset format round trips, legacy defaults, UI refresh, picture round trip and invalid-input isolation pass');

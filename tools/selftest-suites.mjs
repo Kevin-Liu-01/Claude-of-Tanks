@@ -478,6 +478,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
     'src/ui/studioQueue.selftest.mjs',
+    // 2026-11-02 audit F9: Clear during a queue run skips no job, Export film waits for the queue, a hidden sound lane stops
+    'src/ui/studioPanelBusy.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',

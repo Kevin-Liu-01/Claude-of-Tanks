@@ -272,8 +272,15 @@ export function mountStudioProductionPanel(
     ],
     onChoose: (template) => useTemplate(template),
   });
+  /**
+   * (2026-11-02 audit F9) A scene replacement is in flight or the take is recording: every way to stage a template asks
+   * this one question (staging a sequence once ignored a take still loading, and the last to finish won).
+   */
+  function sceneBusy(): boolean {
+    return staging || loadingTake || S.recordingStatus().active;
+  }
   function openTemplates(): void {
-    if (staging || loadingTake || S.recordingStatus().active) return;
+    if (sceneBusy()) return;
     sheet.open([...sequences, ...takes], currentTemplate);
   }
   /** Stage a template: a sequence casts the featured tank, a take stages as filmed. */
@@ -308,7 +315,7 @@ export function mountStudioProductionPanel(
   // the Director's frame row repeated the header's switch); the receipts' bare dock keeps its own
   if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
   function stageSequence(): void {
-    if (staging || S.recordingStatus().active) return;
+    if (sceneBusy()) return;
     staging = true; refresh(); say(productionLabel('staging'));
     const presetId = selectedId;
     S.directProduction({ presetId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
@@ -403,7 +410,7 @@ export function mountStudioProductionPanel(
   }
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
-    if (!path || loadingTake || staging || S.recordingStatus().active) return;
+    if (!path || sceneBusy()) return;
     loadingTake = true;
     refresh();
     say(productionLabel('takeLoading'));
@@ -549,6 +556,7 @@ export function mountStudioProductionPanel(
     const locked = staging || recording.active;
     toggle.disabled = recording.active;
     for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
+    stage.disabled = sceneBusy();
     tanks.setDisabled(locked);
     frame.lock(locked);
     lens.lock(locked);

@@ -208,6 +208,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly CAMO_PATTERN_IDS: readonly string[];
   readonly ACTOR_STATES: readonly string[];
   readonly mapId: string | null;
+  /** The Studio owns the frame (its session's entry shell to its exit's teardown). */
+  readonly active: boolean;
   readonly timeOfDay: StudioTimeOfDay;
   setTimeOfDay(time: StudioTimeOfDay): Promise<RuntimeValue>;
   setLight(patch: StudioLight | null): Promise<RuntimeValue>;
@@ -1688,8 +1690,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
   }
   const aborted = (error: RuntimeValue): boolean => error instanceof Error && error.name === 'AbortError';
+  /**
+   * (2026-11-02 audit F9) The output side is taken: a film exporting, a recording, or the render queue's run (its still at
+   * every shot selects shots and seeks between frames, which an export started beside it fought over).
+   */
+  function outputBusy(): boolean {
+    return queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
+  }
   function startFilmExport(): void {
-    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+    if (outputBusy() || !S.filmExportStatus().supported) return;
     renderFilm({
       resolution: Number(filmSize.seg.value),
       fps: Number(filmFps.seg.value),
@@ -1714,7 +1723,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }
     }
     const status = S.filmExportStatus();
-    const busyOutput = status.active || S.recordingStatus().active;
+    const busyOutput = outputBusy();
     exportBtn.disabled = busyOutput || !status.supported;
     for (const control of [filmSize.seg, filmFps.seg, filmBlur.seg, filmShake.seg]) control.disabled = busyOutput;
     if (!status.supported) { filmSummary.textContent = t('studio.film.unsupported'); return; }
@@ -2141,22 +2150,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       return row;
     }));
     queueEmpty.hidden = queueJobs.length > 0;
-    const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
-    queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
+    queueStart.disabled = outputBusy() || !queueJobs.some((job) => job.state === 'waiting');
     queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
     // an empty queue shows no actions at all (the kit's disabled ink still read as live beside "Nothing queued")
     queueFoot.hidden = !queueJobs.length;
   }
   const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
+  /**
+   * Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. (audit F9) Each turn takes
+   * the first job still waiting: Clear (or a row's remove) during a run splices the list, and an iterator over it skipped
+   * the job after the removed rows, leaving it waiting.
+   */
   async function runQueue(): Promise<void> {
     if (queueRunning) return;
     queueRunning = true;
     let files = 0;
     refreshQueue();
     try {
-      for (const job of queueJobs) {
-        if (job.state !== 'waiting') continue;
+      for (let job = queueJobs.find((entry) => entry.state === 'waiting'); job; job = queueJobs.find((entry) => entry.state === 'waiting')) {
         job.state = 'running';
         job.progress = 0;
         refreshQueue();
@@ -2200,6 +2211,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     for (const [index, { first: shot }] of runs.entries()) {
       S.selectCameraShot(shot.id);
       await nextFrame();
+      // (audit F9) the Studio closed between shots: the rest would capture the Garage
+      if (!S.active) throw new DOMException(t('studio.film.cancelled'), 'AbortError');
       S.capture({ width, height, download: true,
         name: queueFileName(map, `shot-${String(index + 1).padStart(2, '0')}-${shotLabel(shot.label)}`, ratio, 'png') });
       made++;
@@ -2753,7 +2766,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   async function drawSound(): Promise<void> {
     soundTimer = 0;
     const key = soundKey;
-    const result = root.style.display === 'block' ? await S.soundPreview(SOUND_BUCKETS).catch(() => null) : null;
+    // (audit F9) a hidden panel draws nothing and stops asking: it re-armed every 1.5 s for as long as the page lived after
+    // an exit. The next show's timeline rebuild schedules the draw again (the key is forgotten).
+    if (root.style.display !== 'block') { soundKey = ''; return; }
+    const result = await S.soundPreview(SOUND_BUCKETS).catch(() => null);
     if (!result) { soundTimer = setTimeout(drawSound, 1500); return; } // busy or playing: again once it settles
     if (key !== soundKey) return; // the scene moved on while it mixed; its own redraw is queued
     let peak = 0;

@@ -235,6 +235,17 @@ stage.fire('click'); rejectStage(new Error('GPU unavailable')); await tick();
 assert.equal(stage.disabled, false, 'staging releases its controls on rejection');
 assert.deepEqual(notices.at(-1), ['GPU unavailable', 'error'], 'a failure is the toast\'s error');
 assert.ok(!all().some(element => /production-status/.test(element.className ?? '')), 'the panel keeps no status line of its own');
+// (2026-11-02 audit F9) one scene replacement at a time: a take still loading holds the Director's staging (staging once
+// checked only itself, and the last of the two to finish won)
+{
+  const stagesBefore = calls.filter(call => call[0] === 'stage').length;
+  byData('siteTake', 's01-street').fire('click');
+  assert.equal(stage.disabled, true, 'Stage waits while a take loads');
+  sheet.options.onChoose(sheet.opened.at(-1).items.find((item) => item.id === 'seq:one'));
+  assert.equal(calls.filter(call => call[0] === 'stage').length, stagesBefore, 'a sequence chosen while a take loads stages nothing');
+  await tick(); await tick();
+  assert.equal(stage.disabled, false, 'the loaded take releases Stage');
+}
 byText('Capture PNG').fire('click'); await tick();
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'capture')[1]), JSON.stringify({ width: 2160, height: 3840, download: true }));
 byText('Record film').fire('click'); await tick();

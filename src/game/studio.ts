@@ -3990,6 +3990,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   let productionLoading = false;
+  let productionOwnsLoad = false;
   let productionFormat: ProductionFormat = 'landscape';
 
   function setProductionFormat(format: ProductionFormat): void {
@@ -4035,6 +4036,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       };
       const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z), sees);
       // Built from this build's presets: current ids, stamped so load() never renames them (SSOT 2.19).
+      productionOwnsLoad = true; // this load is the staging's own (load() reads and clears it before any await)
       const result = await load({ ...recipe, ...TANK_IDS.stamp() });
       selectActor('lead');
       setRailVisible(false);
@@ -5461,6 +5463,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     json: StudioSceneInput = {},
     opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
+    // (audit F9) a staging sequence (directProduction) holds the scene until its own load, the one call it lets through:
+    // a take or a JSON file loaded during its battlefield change raced it, and the last to finish won
+    const stagedByProduction = productionOwnsLoad;
+    productionOwnsLoad = false;
+    if (productionLoading && !stagedByProduction) throw new Error(t('studio.error.loadInFlight'));
     // A scene names its vehicles under the id schema it was written in (SSOT 2.19).
     json = sceneInCurrentTankIds(json);
     const loadedFormat = json.productionFormat ?? 'landscape';
