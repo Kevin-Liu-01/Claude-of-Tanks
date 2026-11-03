@@ -460,6 +460,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
     'src/sim/consumableRules.selftest.mjs',
+    // 2026-11-02 audit M5: equipMults as named layers (equipment, mode stamps, consumables); the boss keeps x0.5 through items
+    'src/sim/modeMultiplierLayers.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',

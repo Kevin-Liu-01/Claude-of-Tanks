@@ -11,6 +11,7 @@ import {
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
+import { setModeMultiplier } from './consumableRules.ts';
 import { botDriven } from './botDriven.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { placementTankRadius } from './hullRadius.ts';
@@ -484,14 +485,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const baseSpeed = ruleset.speedMultiplier;
   // the wave law: the Horde's own, and Frontline's wave pressure reads the Horde's speed ramp
   const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
+  // the infection's hull scale lands once per combat state (a fresh one each life)
   const infectionStamped=new WeakSet<object>();
-  // a wave mode's hostiles reload slower (the Horde's or Frontline's hostileReloadScale), stamped once per combat state
-  // like the infection's
+  // a wave mode's hostiles reload slower (the Horde's or Frontline's hostileReloadScale). The reload stamps are mode
+  // layers of the combat state's multipliers (consumableRules.ts setModeMultiplier, audit M5): a timed item's use or end
+  // keeps them, and setting one again replaces it, so the hostile stamp needs no latch (it shared the infection's, which
+  // then skipped the infected bots' hull and reload)
   const hostileReloadScale = ruleset.horde?.hostileReloadScale ?? ruleset.assault?.hostileReloadScale ?? 1;
   const stampHostile=(entity:Entity):void=>{
-    if(hostileReloadScale===1||teamOf(entity)!=='bravo'||!entity.bot||infectionStamped.has(entity.combat))return;
-    infectionStamped.add(entity.combat);
-    const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*hostileReloadScale;
+    if(hostileReloadScale===1||teamOf(entity)!=='bravo'||!entity.bot)return;
+    setModeMultiplier(entity.combat,'hostile','reload',hostileReloadScale);
   };
   const stampInfection=(entity:Entity):void=>{
     stampHostile(entity);
@@ -500,7 +503,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const infected=teamOf(entity)==='bravo';
     const scale=infected?infection.infectedHpScale:infection.survivorHpScale;
     entity.combat.maxHp=Math.max(1,Math.round(entity.combat.maxHp*scale));entity.combat.hp=entity.combat.maxHp;
-    if(infected){const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*infection.infectedReloadScale;}
+    if(infected)setModeMultiplier(entity.combat,'infected','reload',infection.infectedReloadScale);
   };
 
   const scoreTarget = ruleset.scoreTarget ?? scoreTargetForMode(id) ?? Infinity;
@@ -577,8 +580,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     applyJuggernautScale(boss);
     boss.combat.maxHp = Math.round(boss.combat.maxHp * ruleset.juggernaut.hpScale);
     boss.combat.hp = boss.combat.maxHp;
-    const mults = boss.combat.equipMults || (boss.combat.equipMults = {});
-    mults.reload = (mults.reload ?? 1) * ruleset.juggernaut.reloadScale;
+    setModeMultiplier(boss.combat, 'juggernaut', 'reload', ruleset.juggernaut.reloadScale);
   }
   if (ruleset.gunGame) for (const entity of entities) setWeaponStage(entity, 0);
   // a point on the axis through the middle, half of `axisM` toward the team's side (the Turbo Ball goals, the CTF flag

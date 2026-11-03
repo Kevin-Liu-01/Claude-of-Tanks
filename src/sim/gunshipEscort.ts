@@ -1,4 +1,5 @@
 import type { MatchModeEntity, MatchModeResult } from './matchModes.ts';
+import { setModeMultiplier } from './consumableRules.ts';
 
 import * as detMath from './detMath.ts';
 export const ESCORT_RULES = Object.freeze({ hpScale:.9, reloadScale:2, speedScale:.65, radiusM:26 });
@@ -15,7 +16,7 @@ export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Ent
   const state:EscortState={...destination,total:friends.length,alive:friends.length,rescued:0,required:Math.max(1,Math.ceil(friends.length/2)),progress:0};
   for(const friend of friends){
     friend.combat.maxHp=Math.max(1,Math.round(friend.combat.maxHp*ESCORT_RULES.hpScale));friend.combat.hp=friend.combat.maxHp;
-    const mults=friend.combat.equipMults??(friend.combat.equipMults={});mults.reload=(mults.reload??1)*ESCORT_RULES.reloadScale;
+    setModeMultiplier(friend.combat,'escort','reload',ESCORT_RULES.reloadScale); // a mode layer (audit M5): items keep it
   }
   function update():void {
     let alive=0,progress=0;
