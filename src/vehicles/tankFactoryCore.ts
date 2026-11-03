@@ -123,7 +123,7 @@ import {
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
-import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import { createWreckTurretDriverIfLoaded, preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
 import {
   isWreckState, tankWreckMove, tankWreckNext, type TankWreckEvent, type TankWreckMove, type TankWreckState,
 } from './wreckLifecycle.ts';
@@ -1368,8 +1368,12 @@ export interface TankVisual {
    * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
    */
   setWreckTurretPose(pose: ArrayLike<number> | null): void;
-  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here. */
+  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here.
+   *  Before the kill it holds for the next wreck (resetDestroyed clears it). */
   awaitWreckTurretPose(): void;
+  /** (2026-11-02 audit F10) The wreck turret's frame pose [x, y, z, qx, qy, qz, qw] as its authority last had it placed,
+   *  into `out`; false when no authority holds the turret (the killcam re-wrecks a restaged victim there). */
+  wreckTurretHeldPose(out: Float64Array): boolean;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   /**
@@ -10682,6 +10686,32 @@ export function* createTankRuntimeSteps(
     });
   }
   let turretFlying = false;
+  /** (2026-11-02 audit F10) this wreck asked for the physics once (an authority's pose arrived before it had loaded) */
+  let turretDriverRequested = false;
+  function requestTurretDriver(): void {
+    if (turretDriverRequested || geometryOnly) return;
+    turretDriverRequested = true;
+    // the loader reports a failure itself, and a later wreck may ask again (wreckTurretDriverLoader.ts)
+    void preloadWreckTurretDriver().catch(() => undefined);
+  }
+  /**
+   * (2026-11-02 audit F10) The body driver for an authority's turret: made now if the physics has loaded (asked for if
+   * not, on a wreck). A wreck that fell back to the scripted arc (its kill came before the physics) hands its turret to
+   * the body once it has: back on its seat at the kill's yaw, the frame the driver measures from, then placed at the
+   * authority's pose on the next update, so the turret drawn and the turret shells meet agree.
+   */
+  function authorityTurretDriver(): WreckTurretDriver | null {
+    if (!turretDriver) ensureTurretDriver();
+    if (!turretDriver) { if (destroyed) requestTurretDriver(); return null; }
+    if (destroyed && turretDriver.drives && !turretDriver.active) {
+      popActive = false;
+      turretG.position.copy(wreckSeat);
+      turretG.rotation.set(0, popYaw0, 0);
+      turretG.scale.copy(wreckSeatScale);
+      turretDriver.begin(wreckState === 'cookoff', wreckSeat, null);
+    }
+    return turretDriver;
+  }
 
   /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
   function settleTurret() {
@@ -11698,9 +11728,17 @@ export function* createTankRuntimeSteps(
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 
-    setWreckTurretPose(pose) { if (destroyed) turretDriver?.setExternal(pose); },
+    setWreckTurretPose(pose) {
+      if (!pose || wreckState === 'disposed') return;
+      authorityTurretDriver()?.setExternal(pose);
+    },
 
-    awaitWreckTurretPose() { if (destroyed) turretDriver?.awaitExternal(); },
+    awaitWreckTurretPose() {
+      if (wreckState === 'disposed') return;
+      authorityTurretDriver()?.awaitExternal();
+    },
+
+    wreckTurretHeldPose(out) { return destroyed && !!turretDriver && turretDriver.heldPose(out); },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
@@ -11823,6 +11861,7 @@ export function* createTankRuntimeSteps(
         gunG.rotation.x = 0;
       }
       turretDriver?.reset();
+      turretDriverRequested = false;
       turretFlying = false;
       burnU.uBurnT.value = -1; // disarm the burn mask (clones stay cached)
       burnU.uBurnGlow.value = 0;

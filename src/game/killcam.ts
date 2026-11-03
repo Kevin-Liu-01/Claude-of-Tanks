@@ -185,6 +185,8 @@ interface KillcamVisual {
   /** Physics lane: the wreck's turret pose this frame (world turret frame), and the promise that it will come. */
   setWreckTurretPose?(pose: ArrayLike<number> | null): void;
   awaitWreckTurretPose?(): void;
+  /** (2026-11-02 audit F10) where the wreck's authority (a host, the solo step) last had its turret, when one holds it */
+  wreckTurretHeldPose?(out: Float64Array): boolean;
   isDestroyed?(): boolean;
   resetDestroyed?(): void;
   setVisible?(visible: boolean): void;
@@ -572,7 +574,7 @@ interface PlaybackBundle {
   vegGroup: THREE.Object3D | null;
   vegWasVisible: boolean;
   dimmedLights: Array<[THREE.DirectionalLight | THREE.HemisphereLight, number]> | null;
-  rewreck: { pop: boolean; brokenTracks: string[]; eraSpent: string[] } | null;
+  rewreck: { pop: boolean; brokenTracks: string[]; eraSpent: string[]; turretPose: Float64Array | null } | null;
   restageModuleStates: ModuleStates | null;
   restageEraSpent: string[];
   snapPoseState: ReturnType<typeof replayStateFromPose>;
@@ -2417,10 +2419,13 @@ export function createKillCam(deps: KillcamDeps) {
       (snap.moduleStates && snap.moduleStates[module] === 'red')
       || (snap.ev.modulesHit || []).some((hit) =>
         hit.module === module && hit.newState === 'red'));
+    // (2026-11-02 audit F10) a turret an authority holds goes back where it had it, never where a local body would land
+    const turretPose = new Float64Array(7);
     return {
       pop: !!snap.ev.ammoRacked,
       brokenTracks,
       eraSpent: snap.eraSpent || [],
+      turretPose: visual.wreckTurretHeldPose?.(turretPose) ? turretPose : null,
     };
   }
 
@@ -5998,6 +6003,13 @@ export function createKillCam(deps: KillcamDeps) {
     const rewreck = replay.rewreck;
     const visual = replay.snap.targetEnt?.visual;
     if (!rewreck || !visual) return;
+    // (2026-11-02 audit F10) a restaged victim whose turret its authority held is declared held again before the
+    // re-wreck, at the pose it had: no local body is thrown and settled where the authority's collision turret is not
+    // (a wreck the replay never lifted keeps its own turret)
+    if (rewreck.turretPose && !visual.isDestroyed?.() && visual.awaitWreckTurretPose && visual.setWreckTurretPose) {
+      visual.awaitWreckTurretPose();
+      visual.setWreckTurretPose(rewreck.turretPose);
+    }
     visual.setDestroyed({ pop: rewreck.pop, ageS: 12 });
     if (visual.setTrackState) {
       for (const module of rewreck.brokenTracks) visual.setTrackState(module, true);
