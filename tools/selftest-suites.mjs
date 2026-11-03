@@ -1611,6 +1611,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/matchSessionEntryReports.selftest.mjs', // 2026-10-13 MP plan step 8: the loading host reports until its actor does
     'src/mp/session/hostHeadroom.selftest.mjs', // 2026-10-13 MP plan step 10: a slow tab declines to host while it waits in the room
     'src/mp/session/matchSessionHandOff.selftest.mjs', // 2026-10-13 MP plan step 11: a hosting tab going away hands its match on at once
+    'src/mp/session/matchSessionRematchHost.selftest.mjs', // 2026-11-02 audit M2: a host's in-place rematch never declines its own next round
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',

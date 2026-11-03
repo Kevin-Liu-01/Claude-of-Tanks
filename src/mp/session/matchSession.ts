@@ -1029,6 +1029,10 @@ export class MatchSession {
     // an early peer link no match client owns yet (openEarlyPeerLink): the client's leave would have closed it
     const unowned = client ? null : this.migrating;
     const handedOff = this.handedOff;
+    // Only a host leaving a round that is still running hands it on. A settled round (its verdict, a loss) has nothing
+    // to hand on, and a rematch's leave runs after the room already elected this seat for the next round: a decline
+    // then reads as the NEW round's host declining as unable, and the room ends that round at once (audit M2, 2026-11-02).
+    const handsOn = reason !== 'rematch' && (this.currentPhase === 'loading' || this.currentPhase === 'match');
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
     this.closeStandby(`leave: ${reason}`);
@@ -1051,8 +1055,10 @@ export class MatchSession {
       // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
       // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).
       host.stop(CLOSE_REASON.CLIENT_LEAVE, reason);
-      if (this.room.phase === 'joined' && !handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
-      this.declinedHosting = true;
+      if (handsOn) {
+        if (this.room.phase === 'joined' && !handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+        this.declinedHosting = true;
+      }
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
     }
     presentation?.dispose();
