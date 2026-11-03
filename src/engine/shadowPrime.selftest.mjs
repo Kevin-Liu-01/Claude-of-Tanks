@@ -813,4 +813,42 @@ await withFixture(async (f) => {
     'p1-p3 (one new variant), cut and p4 (cut new), disp (new), and a plain caster with normals (new): one new variant a batch');
 }
 
+// (2026-11-02 audit R4) the prime holds the lights' shadow flags across its awaits: a failure gives back only the flags
+// that still hold the prime's own false (another owner's write during an await stands), and only from the prime that
+// still holds the light (an overlapping newer prime inherits the original snapshot instead of the older prime's false)
+await withFixture(async (f) => {
+  const original = f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]);
+  const reason = new Error('superseded');
+  await assert.rejects(f.run({ yieldBeforeCascade(index) {
+    if (index !== 1) return;
+    f.lights[0].shadow.autoUpdate = true; // the live scheduler / a forced update during the await
+    f.lights[0].shadow.needsUpdate = true;
+    throw reason;
+  } }), (error) => error === reason);
+  assert.deepEqual([f.lights[0].shadow.autoUpdate, f.lights[0].shadow.needsUpdate], [true, true],
+    'another owner\'s write during the prime\'s await stands');
+  assert.deepEqual([f.lights[1].shadow.autoUpdate, f.lights[1].shadow.needsUpdate], original[1],
+    'the flags the prime still held go back to the snapshot');
+});
+await withFixture(async (f) => {
+  const original = f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]);
+  const gate = () => { let open; const promise = new Promise((resolve) => { open = resolve; }); return { promise, open }; };
+  const firstGate = gate(), secondGate = gate();
+  const firstFail = new Error('first superseded'), secondFail = new Error('second failed');
+  const first = f.run({ async yieldBeforeCascade(index) { if (index === 1) { await firstGate.promise; throw firstFail; } } });
+  const firstDone = first.then(() => null, (error) => error);
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+  const second = f.run({ async yieldBeforeCascade(index) { if (index === 1) { await secondGate.promise; throw secondFail; } } });
+  const secondDone = second.then(() => null, (error) => error);
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+  firstGate.open();
+  assert.equal(await firstDone, firstFail);
+  assert.deepEqual(f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]), [[false, false], [false, false]],
+    'the older prime, superseded, leaves the newer prime\'s held flags alone');
+  secondGate.open();
+  assert.equal(await secondDone, secondFail);
+  assert.deepEqual(f.lights.map((light) => [light.shadow.autoUpdate, light.shadow.needsUpdate]), original,
+    'the newer prime restores the flags from before either prime');
+});
+
 console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; a hull\'s near shadow detail warms where it brings a new variant');

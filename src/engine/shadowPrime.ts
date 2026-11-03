@@ -75,6 +75,13 @@ function cleanupRunner() {
   };
 }
 
+/**
+ * (2026-11-02 audit R4) which prime holds each light's shadow flags, and the flags from before the first prime that took
+ * them. A prime holds autoUpdate/needsUpdate false across its awaits; an overlapping newer prime takes the light over and
+ * inherits the original snapshot (before, it snapshotted the older prime's false), and only the current holder restores.
+ */
+const primeHolders = new WeakMap<object, { state: object; auto: boolean; needs: boolean }>();
+
 function capturePrimeState({ renderer, scene, camera, lights }: ShadowPrimeRequest) {
   const info = renderer.info;
   // (2026-10-27, the room-stalls lane) every other light the live camera counts: a prime render keeps them on its layer
@@ -96,8 +103,11 @@ function capturePrimeState({ renderer, scene, camera, lights }: ShadowPrimeReque
     mip: renderer.getActiveMipmapLevel?.() ?? 0,
     cameraMask: camera.layers.mask,
     live,
-    prior: lights.map((light) => ({ light, shadow: light.shadow,
-      mask: light.layers.mask, auto: light.shadow.autoUpdate, needs: light.shadow.needsUpdate })),
+    prior: lights.map((light) => {
+      const held = primeHolders.get(light.shadow);
+      return { light, shadow: light.shadow, mask: light.layers.mask,
+        auto: held ? held.auto : light.shadow.autoUpdate, needs: held ? held.needs : light.shadow.needsUpdate };
+    }),
     contextCurrent(): boolean {
       try { return renderer.info === info && renderer.shadowMap === shadowMap && !gl.isContextLost(); }
       catch { return false; }
@@ -341,8 +351,8 @@ function renderPrimeCascade(
     };
     renderer.setRenderTarget(target);
     light.shadow.needsUpdate = true;
-    renderer.render(scene, camera);
-    light.shadow.needsUpdate = false;
+    // (the prime's own synchronous request: back to the value it holds across awaits, a throwing render included)
+    try { renderer.render(scene, camera); } finally { light.shadow.needsUpdate = false; }
   } catch (error) {
     failed = true;
     throw error;
@@ -415,11 +425,27 @@ async function warmFirstCascade(
   }
 }
 
+function holdPrimeFlags(state: PrimeState): void {
+  for (const prior of state.prior) {
+    primeHolders.set(prior.shadow, { state, auto: prior.auto, needs: prior.needs });
+    prior.shadow.autoUpdate = false;
+    prior.shadow.needsUpdate = false;
+  }
+}
+
+/**
+ * (2026-11-02 audit R4) give the flags back: only a light this prime still holds, and only a flag that still holds the
+ * value the prime wrote (false). A success leaves them false (the handoff to lighting.ts); a failure restores the snapshot.
+ * Another owner's write during the prime's awaits (the live scheduler, a forced update) stands.
+ */
 function restorePrimeFlags(state: PrimeState, success: boolean): void {
   const cleanup = cleanupRunner();
   for (const prior of state.prior) cleanup.run(() => {
-    prior.shadow.autoUpdate = success ? false : prior.auto;
-    prior.shadow.needsUpdate = success ? false : prior.needs;
+    if (primeHolders.get(prior.shadow)?.state !== state) return;
+    primeHolders.delete(prior.shadow);
+    if (success) return;
+    if (prior.shadow.autoUpdate === false) prior.shadow.autoUpdate = prior.auto;
+    if (prior.shadow.needsUpdate === false) prior.shadow.needsUpdate = prior.needs;
   });
   cleanup.finish();
 }
@@ -459,10 +485,7 @@ export async function primeShadowCascades(request: ShadowPrimeRequest): Promise<
   try {
     request.scene.updateMatrixWorld(true);
     request.camera.updateMatrixWorld(true);
-    for (const light of request.lights) {
-      light.shadow.autoUpdate = false;
-      light.shadow.needsUpdate = false;
-    }
+    holdPrimeFlags(state);
     if (request.casterWarmup) {
       await warmFirstCascade(state, request, target, request.casterWarmup);
     }
