@@ -2320,7 +2320,10 @@ export function createAuthoritativeMatch({
     _lightCoverDir.multiplyScalar(1 / length);
     sweepLightCover(worldCollision.queryObstacles.bind(worldCollision) as LightCoverQuery, shell.prevPos, _lightCoverDir,
       Math.min(stop, length), _lightCoverScratch as CollisionRecord[], (record) => {
-        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps);
+        // the shooter is the blow's source (as destroyShellObstacle names it): a viewer that does not see it reads the
+        // fall without the round's bearing and speed (viewerWorldEvent; 2026-11-02 audit SIDE)
+        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps,
+          shell.shooterId);
       });
   }
 

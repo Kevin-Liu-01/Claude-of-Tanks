@@ -174,4 +174,33 @@ const worldEvents = (match, viewerId) => match.eventsForViewer(viewerId).filter(
   assert.equal(hidden.treeIdx, 17);
 }
 
+// ---- 2026-11-02 audit SIDE: light cover a hidden shooter's round flies through (sim/shellLightCover.ts) — a fence the
+// world's raycast never meets, broken on the way by breakLightCoverAlong — carries no bearing or speed to bravo either
+{
+  const fence = { min: [-12, -100, -35.5], max: [12, 100, -34.5], shape2: { kind: 'obb', cx: 0, cz: -35, hw: 12, hl: 0.5, yaw: 0 }, crushable: true, kind: 'fence', propIdx: 5 };
+  const world = {
+    mapId: 'verdant', getObstacles: () => [fence],
+    queryObstacles: (_a, _b, _c, _d, out) => { out.length = 0; if (!fence.crushed) out.push(fence); return out; },
+    raycast: () => null,
+    crushObstacle(obstacle) { obstacle.crushed = true; return true; },
+  };
+  const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, worldCollision: world, players: [
+    { id: 'gunner', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -60, yaw: 0 } },
+    { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 600, yaw: Math.PI } },
+  ] });
+  match.onMatchReady();
+  const fire = new Map([['gunner', { throttle: 0, steer: 0, brake: false, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);
+  for (let i = 0; i < 90; i++) match.step({ dt: 1 / 60, inputs: fire });
+  assert.equal(fence.crushed, true, 'the round broke the fence it flew through');
+  const farView = match.snapshot({ tick: 90, serverTimeMs: 1500, viewerId: 'far', ackInputSeq: 1 });
+  assert.ok(!farView.entities.some((entity) => entity.id === 'gunner'), 'the gunner is hidden from bravo');
+  const own = worldEvents(match, 'gunner').find((event) => event.type === 'world_prop_destroyed');
+  const hidden = worldEvents(match, 'far').find((event) => event.type === 'world_prop_destroyed');
+  assert.equal(own?.cause, 'shell', 'the light cover fell to the shell');
+  assert.ok(own.directionZ > 0.9 && own.speedMps > 100, 'the shooter\'s view: the shot\'s bearing and speed');
+  assert.ok(hidden, 'the fence\'s fall still reaches bravo (world state)');
+  for (const field of PROP_WITHHELD) assert.ok(!(field in hidden), `bravo never reads ${field} of a hidden shooter's light-cover break (${JSON.stringify(hidden)})`);
+  for (const field of ['obstacleIndex', 'kind', 'x', 'y', 'z']) assert.equal(hidden[field], own[field], `what fell stays: ${field}`);
+}
+
 console.log('hiddenWorldEvents.selftest: the blow\'s source rides the destruction events on the authority only; a viewer that does not see it reads stages, holes, craters and falls as world state, without the cause, heading, speed, blow point or munition; its own team, a spotting team and a spectator read them whole; one log and one destroyed list for every viewer');
