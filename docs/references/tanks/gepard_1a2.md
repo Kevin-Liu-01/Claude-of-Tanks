@@ -3,21 +3,22 @@
 ## Current status
 
 - IDs and display names: `gepard_1a2`, "Flakpanzer Gepard 1A2" (`src/vehicles/tankLabels.ts`); fleet group `gepard`.
-- Updated: 2026-11-02 (release 268, registrar R0).
+- Updated: 2026-11-02 (release 268, builder G over the registrar R0's registration).
 - Owner request: "love your work on the terminnators. that made me realize we should add more double barrel vehicels"
   (2026-11-02); the coordinator settled five new playable ids, nothing existing changes.
-- Implementation status: REGISTERED WITH A PLACEHOLDER BUILD. Every shared table carries the id; the build is the
-  registrar's placeholder (the shared Leopard 1 hull and running gear (`profiles/leopard1Hull.ts`, its real chassis) under a box turret with one 35 mm barrel on each side), which builder G replaces with measured geometry in the group files.
-- Qualification status: NOT RUN (placeholder geometry). Photographic qualification (a dated packet under
-  `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`, with a fixture selftest) is owed once the
-  real build exists: the packet needs the as-built envelope.
+- Implementation status: MEASURED PHOTOGRAPHIC BUILD (builder G). The shared Leopard 1 hull and running gear
+  (`profiles/leopard1Hull.ts`, unchanged, called with `grouserRack`, `deckTools` and `sideTools` off) under the Gepard's
+  welded turret, its guns, radars and dischargers (`profiles/gepard.ts`), every spatial datum the spec reads drawn from
+  one frame (`profiles/gepardFrame.ts`); the build section below has the numbers and the photographs they came from.
+- Qualification status: native fixture `src/vehicles/profiles/gepard.selftest.mjs` (both qualities); photographic
+  qualification (a dated packet under `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`) is
+  owed and is the coordinator's: the as-built envelope is 7.71 m x 3.42 m (the hull's front mudguards) x 4.22 m (the
+  search radar raised; whips out).
 - Publication status: not published; worktree `~/cot-lanes/twin-aa-268`, branch `item/twin-aa-268` (from origin/main
   7cc204ab32), uncommitted.
-- Current next action: builder G authors the measured build in `src/vehicles/profiles/gepard.ts` and keeps the spatial datums in
-  `src/vehicles/gepardSpecs.ts` (turret and gun pivots, fire axes, launcher mouths, turret plates, turret-local modules and crew) equal to
-  the geometry; then the combat-anatomy update, marking seats, interior fill, presentation anchors, auxiliary inventory
-  and tank assets for this id (generated tables the registrar did not write: the browser's lazy anatomy and marking-seat
-  loaders reject an unknown group until they exist).
+- Current next action (coordinator): register `gepard.selftest.mjs`, then the generated tables for this id: combat
+  anatomy (`npm run tank:anatomy:update` and `check`), marking seats, interior fill, presentation anchors, auxiliary
+  inventory, tank assets; the photographic packet; and the marking anchor (below).
 
 ## Scope and preservation
 
@@ -50,7 +51,7 @@ side outboard of the turret (03, 04 and 07: the muzzle brakes and the velocity-m
 | Engine | MTU MB 838 CaM-500, 610 kW (830 PS), ~65 km/h, 550 km | de.wikipedia; en.wikipedia |
 | 1A2 | the 1996-2000 service-life extension (NDV): 147 Bundeswehr vehicles, 60 Dutch; FAPDS ammunition | de.wikipedia; en.wikipedia |
 
-## Registration numbers (combat rows are final-intent; spatial datums are the placeholder's)
+## Registration numbers (combat rows are final-intent; spatial datums are builder G's)
 
 | Field | Value | Basis |
 | --- | --- | --- |
@@ -58,16 +59,55 @@ side outboard of the turret (03, 04 and 07: the muzzle brakes and the velocity-m
 | Class / role / status / era | spaa / scout (recon) / service / modern | the 1A2 is a 1996-2000 upgrade |
 | HP, engine, weight | 2,500 / 830 hp / 47.5 t | |
 | Speed, reverse, traverse | 65 / 25 km/h / 38 and 72 deg/s authored (42.6 and 79.2 after recon) | de.wikipedia; the Leopard 1A5's reverse |
-| Gun arc | -10 / +85 degrees, 50 deg/s; the Leopard 1A5's traverse curve dropped (the guns ride outside the deck edge) | de.wikipedia |
+| Gun arc | -10 / +85 degrees, 50 deg/s; the Leopard 1A5's curve dropped; builder G's measured stops over the engine deck (from yaw 140, at most 1 degree: the muzzle heads over the outlets' and exhaust's covers): `[[0,-10],[139,-10],[140,-9.5],[142,-9],[144,-9],[145,-9.1],[149,-9.7],[151,-9.3],[172,-9],[175,-9],[180,-9.4]]` | de.wikipedia; `.qa-dev/gepard/sweepfast.mjs` (the sweep's probe and keep) fitted by `tools/gun-depression-sweep.mjs --envelope` |
 | 35 mm | APDS-T 146/131/117 mm, 61 dmg, 1,385 m/s, 40 rounds; FAPDS-T (HE channel) 56 dmg, 1,440 m/s, 640 rounds; 0.35 s | the Terminator 2's 30 mm rows scaled by calibre (x 35/30); the published 40 + 640 load |
 | SAM | none | the 1A2 carries no missiles |
 | Fire control | 0.25 accuracy, 1.05 s aim (0.99 after recon) | |
-| Fire axes | twin, x = +/-1.40 m (placeholder) | |
+| Fire axes | twin, gun-local x = +/-0.96 m, y = +0.17 m over the elevation axis, muzzle heads 4.05 m ahead of it | the build (profiles/gepardFrame.ts) |
 | Turret pivot | (0, 1.60, 0.50): the Leopard 1 hull's turret station on the 1.58 m deck | profiles/leopard1Hull.ts |
+| Gun pivot | (0, 0.66, -0.40) turret-local: the centre of the large elevation bearing on each flank (photo 08) | the build |
 | Paint | spec coat: the Leopard 1A5's Bundeswehr NATO three-tone; stock: Germany's Factory coat `service_leo2a6m` (as the 1A5) | no new paint |
 | Marking | turret left anchor (the Leopard 1A5's), Bundeswehr cross, number 422 (photo 12) | |
 | Wheels | the Leopard 1A5's standard (`WHEEL_STANDARD_EXCEPTIONS`, donor leo2a4), not Germany's IFV Lynx wheel | |
 | View / camouflage | 450 m, 0.225 / 0.195 | |
+
+## Build (builder G, 268)
+
+Frame: hull metres, +z forward; the turret is drawn turret-local (ring plane y 0 at 1.60 m, 0.50 m ahead of the hull
+origin), each gun gun-local about its elevation axis. Every number below is a constant in `profiles/gepardFrame.ts`.
+
+| Part | Numbers | From |
+| --- | --- | --- |
+| Hull and running gear | the fleet's Leopard 1 (7 road wheels on 0.74 m, 3.25 m over the tracks, 1.58 m deck), unchanged | `profiles/leopard1Hull.ts` |
+| Turret length / height | 3.16 m (front face 1.30 m ahead of the ring, rear face 1.86 m behind); roof 1.08 m over the ring (2.68 m) | photo 01's side elevation scaled on the wheel span (turret 785 px of 4.44 m = 1095 px; roof 2.68 m), photo 08/11 |
+| Upper body | 1.44 m wide, slab sides, 0.10 m front corner chamfers, the front roof edge chamfered | photo 10's front (the face about 1.4 m between its corner edges, the covers right beside it) |
+| Rear section | 2.48 m wide, from 1.10 m behind the ring to the rear face, closing the gun bays behind the covers | photos 08, 09 (the rear box flush with the covers' outer faces) |
+| Cheeks | 2.44 m wide, 0.27 m tall under the bays' front, the chin raked; the dischargers' shelf | photos 10, 11, 12 |
+| Floor | 0.11 m over the ring (1.71 m), so the outer corners sweep the hull's lift eyes (top 1.68 m) | the hull build |
+| Elevation bearing | axis 0.66 m over the ring, 0.40 m behind it; the black disc 0.40 m in radius on each flank | photo 08 (the disc's centre under the cover, 58 % back along it) |
+| Gun covers | 0.46 m wide (x 0.78-1.24), 0.52 m tall, 0.52 m behind to 1.10 m ahead of the axis, octagonal section, the nose tapering onto the barrel, two doors | photos 08, 09, 12 |
+| Bores | x +/-0.96 m, 0.17 m over the axis (2.43 m at rest) | photo 10 (the bores at 1.27 x the face's half width); raised from 0.14 so the muzzle heads clear the stern deck further round |
+| Barrels | 35 mm KDA L/90: 3.15 m barrel, 3.71 m with the v0 head (de.wikipedia); jacket, clamp, tapered tube, brake and the v0 head's three-bar cage and ring; muzzle heads 4.05 m ahead of the axis: 7.71 m overall with the guns forward (published 7.68 / 7.76 m) | de.wikipedia; photos 03, 04, 07 |
+| Tracking radar | a lateral drum 0.54 m across and 0.80 m long with bearing caps, a forward dome 0.59 m across, on a 0.70 m pedestal and a rounded tub 0.92 m wide; the head's top at the roof | photos 06, 10, 12 |
+| Search radar | MPDR 12 raised: a pedestal drum, the turntable and a tapered arm over the rear section (1.45 m behind the ring), a doubly curved reflector 1.36 m wide and 0.62 m tall (focal length 0.55 m) facing forward, the feed horn on its strut; the reflector's top at the published 4.22 m | de.wikipedia (4.22 m raised); photos 08, 09, 11 |
+| Sights and hatches | two sight heads at the roof's front either side of the radar (commander right, gunner left), two round hatches behind them, four lift eyes | photos 10, 12 |
+| Dischargers | four 76 mm Wegmann tubes a side on a bracket on the cheek's top, raised outboard and forward, 4.5 cm outboard of the barrels' and noses' sweep | de.wikipedia (2 x 4); photos 08, 11, 12 |
+| Rear kit | two stowage boxes on the rear face, a box on each flank, two radio whips (2.2 m, antenna seat role) | photos 08, 09 |
+| Hull kit (this build only) | four stowage bins a side on the sloped side plates (outer face over the fender's edge, lid at 1.46 m), four grouser blocks on the glacis, the APU's intake grille on the deck's front left | photos 09, 11, 14; 06, 10, 12; the APU replaces the Leopard 1's front-left ammunition |
+
+Receipts run by builder G (2026-11-02, worktree `~/cot-lanes/twin-aa-268`, uncommitted over 6cb68f5947): the fixture
+`profiles/gepard.selftest.mjs` PASS; `GUN_CLEARANCE_IDS=gepard_1a2 nationalGunClearance.selftest.mjs` PASS (26.07 mm worst,
+at yaw -143; the bare -10 degrees meets the hull, the negative control); the accessory contact probe 0 floating / 0
+clipping; `tools/roof-pocket-census.mjs` none; the geometry digest (`.qa-dev/geodigest2.mjs`) of leo1a5, leo1a2a1,
+leo1a3dk, leo1a5dk and leo1a5dk1 byte-identical to the coordinator's baseline; the selftests naming the id or the
+Leopard 1 ids (afvBalance, vehicleAudioProfiles, ammunitionFlow, camoCatalogProductionIndices, nationWheelSets,
+vehicleFacets, leopard1A2A1Source, leopard1A5Source, leopardStructuralRepairs, denmark, smokeLauncherFleet, camoPolicy,
+roofHoldFire, tankIdAliases, techTree) PASS; typecheck clean in these files.
+
+The German 1A2 is built: the Belgian (13, 14) and Dutch radars are not. The covered guns of 01-02 are not drawn.
+Clearances the fixture holds: both guns 15 mm or more from every turret part through -10 to +85 degrees (the bearing
+hubs turn in the body's flank about their own axis and are left out); the cover tails swing back 0.656 m from the axis,
+4.4 cm short of the bays' rear wall; the cover tails' lowest point at +85 degrees is 1.75 m, 0.17 m over the deck.
 
 ## Photographic references
 
@@ -92,9 +132,15 @@ Saved under `~/cot-lanes/twin-aa-268-evidence/photos/gepard/` (comparison only; 
 
 ## Construction work order (builder G)
 
-- Replace the placeholder in `src/vehicles/profiles/gepard.ts` with the measured build; keep `src/vehicles/gepardSpecs.ts`'s turret and gun pivots,
-  fire axes (`gun.muzzles`), launcher mouths (`gun.launcherMuzzles`, one per drawn tube, `launcherTubes` equal), turret
-  plates, turret-local modules and crew boxes equal to the geometry.
-- Clear the guns, radars and launchers through the whole pitch range at every yaw (`tools/gun-depression-sweep.mjs`).
-- Then the generated tables for this id: combat anatomy (`npm run tank:anatomy:update` and `check`), marking seats,
-  interior fill, presentation anchors, auxiliary inventory, tank assets; and the photographic packet registration.
+- DONE: the measured build in `src/vehicles/profiles/gepard.ts` (and `profiles/gepardFrame.ts`); `src/vehicles/gepardSpecs.ts`'s
+  turret and gun pivots, fire axes (`gun.muzzles`), turret plates, turret-local modules and crew boxes read the same
+  frame (no launchers: `gun.launcherMuzzles` stays absent).
+- DONE: the guns against the turret through the whole arc (the fixture) and against the hull at every yaw: the floors
+  from the sweep's own probe and keep (`.qa-dev/gepard/sweepfast.mjs`: both sides of each degree, a 0.5-degree grid
+  bisected to 0.05, every 5 degrees up to +85 at every 2 degrees of yaw: no conflict above level), the curve fitted by
+  `tools/gun-depression-sweep.mjs --envelope`, held at every degree by `nationalGunClearance.selftest.mjs`. The full
+  `tools/gun-depression-sweep.mjs --ids=gepard_1a2 --no-suit` (every pitch at every degree, about 35,000 poses of 124k
+  samples) did not finish on the loaded machine (load ~200: under 2 CPU-minutes in 22 minutes); rerun it on a quiet one.
+- OWED (coordinator): the generated tables for this id: combat anatomy (`npm run tank:anatomy:update` and `check`),
+  marking seats, interior fill, presentation anchors, auxiliary inventory, tank assets; and the photographic packet
+  registration.

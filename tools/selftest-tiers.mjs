@@ -363,6 +363,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/europeGunOwnership.selftest.mjs',
     'src/vehicles/profiles/europeSourceDetail.selftest.mjs',
     'src/vehicles/profiles/europeSourceRunningGear.selftest.mjs',
+    'src/vehicles/profiles/gepard.selftest.mjs',
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     'src/vehicles/profiles/griffinAssembledHull.selftest.mjs',
     'src/vehicles/profiles/griffinViper.selftest.mjs',

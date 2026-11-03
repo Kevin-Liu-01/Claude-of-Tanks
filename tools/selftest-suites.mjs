@@ -526,6 +526,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
     'src/sim/specialActions.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
+    // 268: the Flakpanzer Gepard 1A2 on the shared Leopard 1 hull: frame, bores, crew, height, gun and hull clearance
+    'src/vehicles/profiles/gepard.selftest.mjs',
     'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',

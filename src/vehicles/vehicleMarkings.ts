@@ -450,7 +450,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // and launchers ride the turret sides of the others
   tunguska_m: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   pantsir_s1: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
-  gepard_1a2: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  // the cross high on the upper body's flank ahead of the gun bay's cover (photos 08, 11, 12; builder G)
+  gepard_1a2: anchor('turret', 'left', 0.78, 0.75, 0.24, 1),
   pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
