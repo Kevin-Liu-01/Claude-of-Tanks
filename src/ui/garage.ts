@@ -4924,7 +4924,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // document), the rival and quick picker menus (body top layer), the tech tree and photo mode, and the filter's
       // auto-select timer, which could change the selection after the battle entry began
       closeEqPicker({ restoreFocus: false });
-      garageConsumables?.close();
+      garageConsumables?.close({ restoreFocus: false });
       rivalMenu?.close();
       quickMenus?.mode.close();
       quickMenus?.field.close();

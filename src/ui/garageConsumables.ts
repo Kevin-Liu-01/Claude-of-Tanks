@@ -41,7 +41,8 @@ interface GarageConsumablesOptions {
 export interface GarageConsumables {
   /** Draw the shown tank's slots (and tell the settings and tray its items). */
   render(): void;
-  close(): void;
+  /** Close (the focus goes back to its slot unless `restoreFocus` is false: the Garage hiding). */
+  close(options?: { restoreFocus?: boolean }): void;
   dispose(): void;
 }
 
@@ -335,7 +336,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   return {
     render,
-    close: () => close(),
+    close: (options) => close(options),
     dispose() {
       close();
       host.removeEventListener('click', onHostClick);

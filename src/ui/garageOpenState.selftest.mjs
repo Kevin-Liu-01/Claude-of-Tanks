@@ -139,7 +139,7 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
   assert.match(source, /get isOpen\(\) \{ return garageScreen\.isOpen; \}/);
   assert.doesNotMatch(source, /garageSwatchOpen = (true|false)/, 'the swatch gate reads the screen');
   const hide = source.slice(source.indexOf('    hide() {'), source.indexOf('/** Normalize packaged tank portraits'));
-  for (const closer of ['garageScreen.hide()', 'closeEqPicker({ restoreFocus: false })', 'garageConsumables?.close()',
+  for (const closer of ['garageScreen.hide()', 'closeEqPicker({ restoreFocus: false })', 'garageConsumables?.close({ restoreFocus: false })',
     'rivalMenu?.close()', 'quickMenus?.mode.close()', 'quickMenus?.field.close()', 'techTreeScreen?.close({ restoreFocus: false })',
     'closePhoto?.()', 'facetPanelMounted?.close()', 'clearTimeout(facetSelectTimer)', 'closeSurfacesWithin(root)',
     'sweepHiddenSurfaces()']) {
