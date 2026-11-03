@@ -203,4 +203,72 @@ const worldEvents = (match, viewerId) => match.eventsForViewer(viewerId).filter(
   for (const field of ['obstacleIndex', 'kind', 'x', 'y', 'z']) assert.equal(hidden[field], own[field], `what fell stays: ${field}`);
 }
 
-console.log('hiddenWorldEvents.selftest: the blow\'s source rides the destruction events on the authority only; a viewer that does not see it reads stages, holes, craters and falls as world state, without the cause, heading, speed, blow point or munition; its own team, a spotting team and a spectator read them whole; one log and one destroyed list for every viewer');
+// ---- 2026-11-03 review of audit M6: a ram's ids and midpoint place both hulls (the midpoint less the wreck's place is the
+// rammer's). A wreck is seen by every viewer, so it never makes a ram observable on its own: a hidden hull shoving a wreck —
+// its own team's (a teammate contact, reported since round 1) or the viewer's team's (the older case) — reaches only the
+// rammer's side and a viewer that sees the rammer. The pair's own team keeps the friendly crunch and call.
+const openWorld = { mapId: 'verdant', getObstacles: () => [], queryObstacles: (_a, _b, _c, _d, out) => { out.length = 0; return out; }, raycast: () => null };
+function wreckShove(wreckTeam, extra = []) {
+  const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 5, countdownS: 0, worldCollision: openWorld, players: [
+    { id: 'ram-a', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: -80, yaw: 0 } },
+    { id: 'wreck', specId: 'm1a1_abrams_hc', team: wreckTeam, spawn: { x: 0, z: -40, yaw: 0 } },
+    { id: 'eye', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: 520, yaw: Math.PI } },
+    ...extra,
+  ] });
+  match.onMatchReady();
+  const wreck = match.entityById.get('wreck');
+  wreck.combat.hp = 0; wreck.combat.destroyed = true;
+  const drive = new Map([['ram-a', { throttle: 1, steer: 0, brake: false, fire: false, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);
+  const viewers = ['ram-a', 'wreck', 'eye', ...extra.map((player) => player.id)];
+  const rams = Object.fromEntries(viewers.map((id) => [id, []]));
+  const snapshotRams = Object.fromEntries(viewers.map((id) => [id, []]));
+  let hiddenAtRam = true;
+  for (let tick = 0; tick < 900; tick++) {
+    match.step({ dt: 1 / 60, inputs: drive });
+    const own = match.eventsForViewer('ram-a').filter((event) => event.type === 'tank_ram');
+    if (own.length) {
+      const seen = [], shells = [];
+      match.observeForViewer('eye', seen, shells);
+      if (seen.some((entity) => entity.id === 'ram-a')) hiddenAtRam = false;
+      for (const id of viewers) {
+        rams[id].push(...match.eventsForViewer(id).filter((event) => event.type === 'tank_ram'));
+        const view = match.snapshot({ tick, serverTimeMs: tick * 50 / 3, viewerId: id, ackInputSeq: 1 });
+        snapshotRams[id].push(...view.events.filter((event) => event.type === 'tank_ram'));
+      }
+    }
+    match.afterEventBroadcast();
+  }
+  return { rams, snapshotRams, hiddenAtRam };
+}
+{
+  // (1) a hidden bravo hull shoves a bravo wreck: alpha reads nothing of it; bravo reads the friendly contact whole
+  const { rams, snapshotRams, hiddenAtRam } = wreckShove('bravo', [{ id: 'mate', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 300, z: -300, yaw: 0 } }]);
+  assert.ok(hiddenAtRam, 'ram-a is hidden from alpha whenever it rams (the case under test)');
+  assert.ok(rams['ram-a'].length >= 1, `the shove is a reported teammate contact (${rams['ram-a'].length})`);
+  assert.ok(rams['ram-a'].every((event) => event.aId === 'ram-a' && event.bId === 'wreck' && event.damageA === 0 && event.damageB === 0));
+  assert.deepEqual(rams.eye, [], `alpha never reads a hidden hull's shove of its own team's wreck (${JSON.stringify(rams.eye[0] ?? null)})`);
+  assert.deepEqual(snapshotRams.eye, [], 'nor in its snapshot\'s events');
+  assert.deepEqual(rams.mate, rams['ram-a'], 'the pair\'s own team keeps the friendly crunch and call');
+  assert.deepEqual(rams.wreck, rams['ram-a'], 'and so does the wreck\'s owner (a teammate of the rammer)');
+  assert.deepEqual(snapshotRams.mate, snapshotRams['ram-a']);
+}
+{
+  // (2) a hidden bravo hull shoves an alpha wreck: neither alpha nor the dead owner reads it
+  const { rams, snapshotRams, hiddenAtRam } = wreckShove('alpha');
+  assert.ok(hiddenAtRam, 'ram-a is hidden from alpha whenever it rams');
+  assert.ok(rams['ram-a'].length >= 1, `the rammer reads its own ram (${rams['ram-a'].length})`);
+  assert.deepEqual(rams.eye, [], `alpha never reads a hidden hull's shove of an alpha wreck (${JSON.stringify(rams.eye[0] ?? null)})`);
+  assert.deepEqual(rams.wreck, [], 'nor the wreck\'s dead owner: it took nothing live');
+  assert.deepEqual([...snapshotRams.eye, ...snapshotRams.wreck], []);
+}
+{
+  // (3) the control: an alpha hull that sees the rammer reads the same shove whole
+  const { rams, hiddenAtRam } = wreckShove('alpha', [{ id: 'spotter', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 120, z: -60, yaw: -Math.PI / 2 } }]);
+  assert.equal(hiddenAtRam, false, 'alpha sees ram-a here');
+  assert.ok(rams.spotter.length >= 1);
+  assert.deepEqual(rams.spotter, rams['ram-a'], 'a viewer that sees the rammer reads the ram whole');
+  assert.deepEqual(rams.eye, rams['ram-a'], 'and so does its team');
+  assert.deepEqual(rams.wreck, rams['ram-a'], 'and the wreck\'s owner, whose team sees the rammer');
+}
+
+console.log('hiddenWorldEvents.selftest: the blow\'s source rides the destruction events on the authority only; a viewer that does not see it reads stages, holes, craters and falls as world state, without the cause, heading, speed, blow point or munition; its own team, a spotting team and a spectator read them whole; one log and one destroyed list for every viewer; a ram reaches a hull that took it live and a viewer that sees both parties, never a viewer through a wreck alone');

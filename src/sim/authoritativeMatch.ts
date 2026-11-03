@@ -1726,6 +1726,9 @@ export function createAuthoritativeMatch({
     });
   }
 
+  /** tank_ram events whose struck hull was already a wreck: its owner took nothing live (canObserveRam). */
+  const wreckRams = new WeakSet<AuthoritativeEvent>();
+
   function resolveRamPair(key: string, contact: PendingRam): void {
     if (ramPairCooling(key)) return;
     const { a, b } = contact;
@@ -1736,7 +1739,7 @@ export function createAuthoritativeMatch({
     if (!dealt) return;
     ramPairTime.set(key, timeS);
     const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
-    emit('tank_ram', {
+    const ram = emit('tank_ram', {
       aId: a.id,
       bId: b.id,
       damageA,
@@ -1746,6 +1749,7 @@ export function createAuthoritativeMatch({
       y: (a.state.pos.y + b.state.pos.y) * 0.5,
       z: (a.state.pos.z + b.state.pos.z) * 0.5,
     });
+    if (bWasDestroyed) wreckRams.add(ram);
     if (dealt.friendly) return;
     // the lethal ram's module receipts before the destruction, as the solo step publishes them (state.ts
     // publishRamDamage) and as a crash's are (publishEntityImpact): a client sets a peer's module stage only from these
@@ -2808,6 +2812,18 @@ export function createAuthoritativeMatch({
     return copy;
   }
 
+  /**
+   * A ram as `viewer` may read it. Its two ids and its midpoint place both hulls (the midpoint less one hull's place is
+   * the other's), so it goes to a hull that took it live, and otherwise only to a viewer that sees both parties. Every
+   * viewer sees a wreck, so a wreck party never makes a ram observable on its own: a hidden hull shoving a wreck, its own
+   * team's or the viewer's, gave that viewer its exact place (2026-11-03 review of the 2026-11-02 audit M6).
+   */
+  function canObserveRam(viewer: AuthoritativeEntity, event: Record<string, RuntimeValue>): boolean {
+    const aId = String(event.aId ?? ''), bId = String(event.bId ?? '');
+    if (viewer.id === aId || (viewer.id === bId && !wreckRams.has(event as AuthoritativeEvent))) return true;
+    return canObserveEntity(viewer, aId) && canObserveEntity(viewer, bId);
+  }
+
   function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
     if (!viewer) return true;
     if (!value || typeof value !== 'object') return false;
@@ -2817,6 +2833,7 @@ export function createAuthoritativeMatch({
     // destruction: a building breaking or the ground cratering is world state every viewer receives; how it was dealt is
     // withheld from a viewer that does not see its source (viewerWorldEvent, 2026-10-13)
     if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
+    if (eventType === 'tank_ram') return canObserveRam(viewer, event);
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
       if (id && canObserveEntity(viewer, String(id))) return true;
     }
