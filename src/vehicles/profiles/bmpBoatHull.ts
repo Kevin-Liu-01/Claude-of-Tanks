@@ -496,23 +496,35 @@ function addBmp2mHullPackage(P: Modern3BuilderPort): void {
       const right: SectionPoint[] = [[f - 0.02, 1.235], [f + 0.07, 1.235], [f + 0.07, 1.30], [f - 0.02, 1.325]];
       return { z, ring: s > 0 ? right : right.slice().reverse().map(([x, y]) => [-x, y] as SectionPoint) };
     })));
-    // Release 268 (roofHoldFire's 130-degree scene): each cassette stands upright on the rail, its outer face vertical
-    // 11 cm off the side's foot and its inner face on the raked plate, as the BMP-2M's boxes do. Lying on the raked
-    // side they made the hull's side facet from the bin edge 32 degrees off vertical, where a 12.7 mm round met 18 mm
-    // at the edge of its reach (one ghost flight in sixteen).
-    const outerX = (z: number): number => sidePoint(z, 1.30).x + 0.11;
+    // Release 268 (roofHoldFire's 130, 140 and 150-degree scenes): each cassette stands on the rail, its inner face on
+    // the raked plate and its outer face leaning in 22 degrees from 15 cm off the side's foot (never inboard of x 1.42
+    // there), so the row runs straight along the fender bins where the troop compartment's walls converge, as the
+    // BMP-2M's boxes do. Lying on the raked plate they twisted the combat hull's side facet toward the rear quarter,
+    // where a 12.7 mm round met 18 mm at the edge of its reach (one ghost flight in sixteen) instead of the track and
+    // rear plate it defeats.
+    const outerX = (z: number): number => Math.max(sidePoint(z, 1.30).x + 0.15, 1.42);
+    const lean = Math.tan(22 * Math.PI / 180);
     const inner = (z: number, y: number): Vec3Tuple => { const p = bmpSidePoint(s, z, y, -0.01); return [p.x, p.y, z]; };
-    const outer = (z: number, y: number): Vec3Tuple => [s * outerX(z), y, z];
+    const outer = (z: number, y: number): Vec3Tuple => [s * (outerX(z) - (y - 1.30) * lean), y, z];
     sideZ.forEach((zc, k) => {
       const len = k === 0 || k === sideZ.length - 1 ? 0.48 : 0.52;
       const zf = zc + len / 2, zr = zc - len / 2;
       const y1 = Math.min(bodyAt(zf).top[1], bodyAt(zr).top[1]) - 0.012;
       P.add('hull', orientedSlabLocal(inner(zf, 1.30), outer(zf, 1.30), outer(zr, 1.30), inner(zr, 1.30),
         inner(zf, y1), outer(zf, y1), outer(zr, y1), inner(zr, y1)));                 // cassette on rail and plate
+      // the cassette's sill: painted bodywork closing the slot between its underside and the fender shelf, outboard of
+      // the rail (no armour: the combat hull's side facet stays the cassette's)
+      const sill = (z: number, y: number, out: boolean): Vec3Tuple =>
+        [s * (out ? outerX(z) - 0.004 : bodyAt(z).foot + 0.05), y, z];
+      P.add('hullFixedPaintedBodywork', orientedSlabLocal(sill(zf, 1.235, false), sill(zf, 1.235, true),
+        sill(zr, 1.235, true), sill(zr, 1.235, false), sill(zf, 1.31, false), sill(zf, 1.31, true), sill(zr, 1.31, true),
+        sill(zr, 1.31, false)));
       const yaw = s * Math.atan2(outerX(zf) - outerX(zr), zf - zr);              // the face follows the side's plan
-      P.add('hullDark', box(0.012, 0.015, len - 0.08), s * (outerX(zc) + 0.004), y1 - 0.0375, zc, 0, yaw, 0); // lid seam
+      const yl = y1 - 0.0375;                                                       // lid seam on the leaning face
+      P.add('hullDark', box(0.012, 0.015, len - 0.08), s * (outerX(zc) - (yl - 1.30) * lean + 0.004), yl, zc,
+        0, yaw, s * Math.atan(lean));
       for (const z of [zf - 0.07, zr + 0.07]) {
-        P.add('hullDetail', cylX(0.018, 0.02, 6), s * (outerX(z) + 0.006), 1.36, z); // retaining bolts
+        P.add('hullDetail', cylX(0.018, 0.02, 6), s * (outerX(z) - 0.06 * lean + 0.006), 1.36, z); // retaining bolts
       }
     });
     // forward return: the first cassette closes into the glacis shoulder
