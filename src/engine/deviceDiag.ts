@@ -29,6 +29,7 @@ import { t } from '../ui/i18n.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
 import { createGpuCatchUpGate } from './gpuCatchUp.ts';
+import { fieldWriteNumber, noteFieldWrite, textureRetired } from './fieldWrites.ts';
 
 interface DeviceDiagResult {
   basic: boolean;
@@ -339,6 +340,7 @@ export function applyDiagRescue(
     // flat-lit beats black: the shadow depth-compare path is the only stage
     // this device fails — run the session without shadow maps.
     renderer.shadowMap.enabled = false;
+    noteFieldWrite(renderer.shadowMap, 'enabled');
     return 'shadows-off';
   }
   return null;
@@ -410,6 +412,7 @@ export function enforceEnvValidity(
     return true;
   }
   scene.environment = null;
+  noteFieldWrite(scene, 'environment');
   if (!_envCompLight) {
     // tuned against the desktop verdant battle band (mobile r4 probe):
     // env-on 23.85 vs env-off+ambient sweep 1.0->17.3 / 2.0->20.3 /
@@ -939,13 +942,20 @@ function createWatchdogProbe(
   };
 }
 
-function createWatchdogStages(
+/**
+ * The watchdog ladder's stages (exported for their receipt). (2026-11-02 audit R4) a stage that spans an await (the
+ * async ladder holds them up to LADDER_PREPARE_MS) reverts only while the field still holds its own write: the value it
+ * wrote and the write number it noted (fieldWrites.ts); a newer owner's write in between, even of the same null or
+ * false, stands, and a texture its owner retired meanwhile is never installed again.
+ */
+export function createWatchdogStages(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
 ): SceneWatchdogStage[] {
   let previousShadowEnabled = false;
   let previousEnvironment: THREE.Texture | null = null;
   let previousFog: THREE.Fog | THREE.FogExp2 | null = null;
+  let shadowWrite = -1, environmentWrite = -1, fogWrite = -1;
   return [
     {
       label: 'shadows-off',
@@ -953,12 +963,13 @@ function createWatchdogStages(
       apply() {
         previousShadowEnabled = renderer.shadowMap.enabled;
         renderer.shadowMap.enabled = false;
+        shadowWrite = noteFieldWrite(renderer.shadowMap, 'enabled');
         recompileScene(scene);
       },
       revert() {
-        // Compare-and-swap: a rescue stage that spanned an await (the async ladder) never clobbers a newer owner's state.
-        if (renderer.shadowMap.enabled !== false) return;
+        if (renderer.shadowMap.enabled !== false || fieldWriteNumber(renderer.shadowMap, 'enabled') !== shadowWrite) return;
         renderer.shadowMap.enabled = previousShadowEnabled;
+        noteFieldWrite(renderer.shadowMap, 'enabled');
         recompileScene(scene);
       },
     },
@@ -968,11 +979,14 @@ function createWatchdogStages(
       apply() {
         previousEnvironment = scene.environment;
         scene.environment = null;
+        environmentWrite = noteFieldWrite(scene, 'environment');
         recompileScene(scene);
       },
       revert() {
-        if (scene.environment !== null) return;
+        if (scene.environment !== null || fieldWriteNumber(scene, 'environment') !== environmentWrite) return;
+        if (textureRetired(previousEnvironment)) return;
         scene.environment = previousEnvironment;
+        noteFieldWrite(scene, 'environment');
         recompileScene(scene);
       },
     },
@@ -982,11 +996,13 @@ function createWatchdogStages(
       apply() {
         previousFog = scene.fog;
         scene.fog = null;
+        fogWrite = noteFieldWrite(scene, 'fog');
         recompileScene(scene);
       },
       revert() {
-        if (scene.fog !== null) return;
+        if (scene.fog !== null || fieldWriteNumber(scene, 'fog') !== fogWrite) return;
         scene.fog = previousFog;
+        noteFieldWrite(scene, 'fog');
         recompileScene(scene);
       },
     },
@@ -1418,6 +1434,7 @@ export function reclaimShadows(
     const before = probe.measure(scene, camera);
     if (before < 6) return { reclaimed: false, reason: 'scene-black' };
     renderer.shadowMap.enabled = true;
+    noteFieldWrite(renderer.shadowMap, 'enabled');
     recompileScene(scene);
     // warmup render before judging (same flake defense as the boot probes)
     probe.measure(scene, camera);
@@ -1428,6 +1445,7 @@ export function reclaimShadows(
       return { reclaimed: true, reason: 'healthy' };
     }
     renderer.shadowMap.enabled = false;
+    noteFieldWrite(renderer.shadowMap, 'enabled');
     recompileScene(scene);
     note(`shadow reclaim failed (band ${after.toFixed(1)}) — staying off`);
     return { reclaimed: false, reason: 'still-black' };
@@ -1435,6 +1453,7 @@ export function reclaimShadows(
     const message = error instanceof Error ? error.message : String(error);
     note(`reclaim threw: ${message.slice(0, 160)}`);
     renderer.shadowMap.enabled = false;
+    noteFieldWrite(renderer.shadowMap, 'enabled');
     return { reclaimed: false, reason: 'threw' };
   } finally {
     probe.dispose();

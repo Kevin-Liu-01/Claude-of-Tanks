@@ -1488,6 +1488,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/contextRestoreOwner.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
+    // 2026-11-02 audit R4: the rescue ladder reverts only its own writes (a newer owner's null stands, no retired texture)
+    'src/engine/watchdogStageOwners.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',
