@@ -4,18 +4,21 @@
 // each pair to the frame's two sides with open ground between them. Here a duel is staged again as a group: the foe is
 // brought in along its own bearing to 9-15 m from the hero (the first spot whose footprint is clear), the turrets laid on
 // each other and the foe's hit and debris carried with it; then a lens is searched round the pair, in four families:
-//   low    0.5-1.1 m up, 9-20 m off, a Dutch roll allowed: the hulls tower over the lens
+//   low    1.1-1.5 m up (lower, the lens sits in the grass), 9-20 m off, a Dutch roll allowed: the hulls tower over it
 //   mid    2-3.2 m up, 10-25 m off: the eye of a crewman on the next hull
 //   high   6-12 m up, 10-24 m off: a drone's look down on both decks
 //   tele   1.5-6 m up, 35-60 m off, a long lens: the pair stacked and compressed
 // Each candidate is aimed at the pair, its FOV fitted so the two boxes together span 1.55 of the frame's 2 (78 %), and
 // re-aimed so that union sits on the frame's centre. It passes only when (rule set before the search): both tanks are
 // whole inside 0.92 of every edge; the hero spans at least half the frame's width and the foe at least 22 %; each shows
-// a front or three-quarter (hero within 55° of its nose, foe 65°); the foe, if nearer, covers at most 15 % of the hero's
-// box; no record, terrain or smoke source stands between the lens and either hull. Of the passes the score prefers a
+// a front or three-quarter (hero within 40° of its nose, foe 65°); the nearer of the two covers at most 15 % of the
+// hero's box or 35 % of the foe's; no other tank of the scene stands nearer over the pair; the view looks down at most
+// 32°; no record, terrain or smoke source stands between the lens and either hull. (Review of the first 50, 11-02: at
+// 55° the hero showed its side with the foe behind it, at 0.5 m the lens sat in the grass, a column's third tank laid
+// its barrel across one lens, and 9 m up over 8 m read as a plan view.) Of the passes the score prefers a
 // bigger hero, a bigger foe, a nearer lens, a view at least 30° from the round's own and the sun behind the lens.
 //   node tools/media-r5/versus/close.mjs solve <id> [id ...]        the best lens of each family, with its boxes
-//   node tools/media-r5/versus/close.mjs write <id>:<family> ...    -> v6/zz-close-r11.mjs, the picks as scene rows
+//   node tools/media-r5/versus/close.mjs write <id>:<family> ... [--round=12]  -> v6/zz-close-r<round>.mjs, the picks
 // Run from the repository root. The picks' scenes then go through versus6.mjs check and final like every other round.
 import { readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -24,7 +27,7 @@ import { SCENES, frameOf, tankBox, modelOf, dimsOf, bearingOf, polar, wrap, r2, 
 import { sightBlockers, insideRecord } from '../world-model.mjs';
 
 const FAMILIES = {
-  low: { h: [0.5, 0.8, 1.1], d: [9, 11, 13, 16, 20], roll: [0, 9, -9], fov: 45 },
+  low: { h: [1.1, 1.5], d: [9, 11, 13, 16, 20], roll: [0, 9, -9], fov: 45 },
   mid: { h: [2, 3.2], d: [10, 13, 16, 20, 25], roll: [0, 6, -6], fov: 45 },
   high: { h: [6, 9, 12], d: [10, 14, 18, 24], roll: [0], fov: 45 },
   tele: { h: [1.5, 3.5, 6], d: [35, 45, 60], roll: [0, 5, -5], fov: 14 },
@@ -117,9 +120,18 @@ function judge(model, s, c, ownBearing) {
   if (Math.abs((u.x0 + u.x1) / 2) > 0.08 || Math.abs((u.y0 + u.y1) / 2) > 0.12) return null;
   const A = axesOf(model, c), eye2 = [A.eye[0], A.eye[2]];
   const offH = Math.abs(wrap(bearingOf(hero.pos, eye2) - hero.facingDeg)), offF = Math.abs(wrap(bearingOf(foe.pos, eye2) - foe.facingDeg));
-  if (offH > 55 || offF > 65) return null;
+  if (offH > 40 || offF > 65) return null;
   const ox = Math.max(0, Math.min(H.x1, Fo.x1) - Math.max(H.x0, Fo.x0)), oy = Math.max(0, Math.min(H.y1, Fo.y1) - Math.max(H.y0, Fo.y0));
   if (Fo.z < H.z && ox * oy > 0.15 * hw * (H.y1 - H.y0)) return null;
+  if (H.z <= Fo.z && ox * oy > 0.35 * fw * (Fo.y1 - Fo.y0)) return null;
+  const pairGround = model.supportAt(hero.pos[0], hero.pos[1]);
+  if (A.eye[1] - pairGround > Math.tan(32 * DEG) * Math.hypot(A.eye[0] - hero.pos[0], A.eye[2] - hero.pos[1])) return null;
+  const Fr = frameOf(model, c);
+  for (const o of s.actors) {
+    if (o === hero || o === foe || !dimsOf(o.id)) continue;
+    const b = tankBox(model, Fr, o);
+    if (b && b.z < Math.max(H.z, Fo.z) && b.x1 > u.x0 && b.x0 < u.x1 && b.y1 > u.y0 && b.y0 < u.y1) return null;
+  }
   if (insideRecord(model, A.eye, 0.3)) return null;
   for (const a of [hero, foe]) {
     if (sightBlockers(model, A.eye, [a.pos[0], model.supportAt(a.pos[0], a.pos[1]) + 1.3, a.pos[1]]).length || terrainHides(model, A.eye, a)) return null;
@@ -156,9 +168,12 @@ function solve(id) {
   return { id, gap, best };
 }
 
-const ROWS = 'zz-close-r11.mjs';
-const newId = (id, fam) => `${id.replace(/-r\d+(-front)?$/, '')}-${fam}-r11`;
-function cli([mode, ...rest]) {
+// --round=<n> (default 11): the round a write names its scenes and rows file for (12: the second pass, 11-02)
+const ROUND = Number(process.argv.find((a) => a.startsWith('--round='))?.slice(8) ?? 11);
+const ROWS = `zz-close-r${ROUND}.mjs`;
+const newId = (id, fam) => `${id.replace(/-r\d+(-front)?$/, '')}-${fam}-r${ROUND}`;
+function cli([mode, ...args]) {
+  const rest = args.filter((a) => !a.startsWith('--'));
   if (mode === 'solve') {
     for (const id of rest) {
       const { gap, best } = solve(id);
@@ -178,7 +193,7 @@ function cli([mode, ...rest]) {
       console.log(`[close] ${newId(id, fam)}: ${id}, foe at ${gap} m, ${fam}`);
     }
     const body = rows.map((r) => `  ${JSON.stringify(r)},`).join('\n');
-    writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'v6', ROWS), `// Round 11, the close group (close.mjs write): each row is [id, source scene, foe gap in m, family, lens], picked from
+    writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'v6', ROWS), `// Round ${ROUND}, the close group (close.mjs write): each row is [id, source scene, foe gap in m, family, lens], picked from
 // close.mjs solve. The source's staging, effects, light and picture stand; regroup() brings the foe in and the lens is
 // the pick's.
 import { SCENES } from '../versus.mjs';
@@ -190,7 +205,7 @@ ${body}
 for (const [ID, SRC, GAP, FAMILY, LENS] of ROWS) {
   SCENES[ID] = () => {
     const s = regroup(SCENES[SRC](), GAP);
-    return { ...s, lenses: [{ ...LENS }], meta: { ...s.meta, id: ID, round: 11, source: SRC, idea: 'the close group, ' + FAMILY + ' lens' } };
+    return { ...s, lenses: [{ ...LENS }], meta: { ...s.meta, id: ID, round: ${ROUND}, source: SRC, idea: 'the close group, ' + FAMILY + ' lens' } };
   };
 }
 `);
@@ -200,7 +215,8 @@ for (const [ID, SRC, GAP, FAMILY, LENS] of ROWS) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const DIR = join(dirname(fileURLToPath(import.meta.url)), 'v6');
-  for (const f of readdirSync(DIR).filter((x) => x.endsWith('.mjs') && x !== ROWS).sort()) {
+  // the sources only: a round's rows import this file, which is still loading here
+  for (const f of readdirSync(DIR).filter((x) => x.endsWith('.mjs') && !x.startsWith('zz-close-')).sort()) {
     try { await import(pathToFileURL(join(DIR, f)).href); } catch (e) { console.error(`[close] skipped v6/${f}: ${String(e?.message ?? e).split('\n')[0]}`); }
   }
   cli(process.argv.slice(2));
