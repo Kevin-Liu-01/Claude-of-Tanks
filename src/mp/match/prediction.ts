@@ -505,8 +505,7 @@ export class LocalPredictor {
   private initialize(authority: PredictionAuthority): void {
     const state = createTankState(this.spec, this.sim.state.pos, dequantizeAngle(authority.row.yaw));
     this.sim.state = state;
-    applyAuthorityRow(state, authority.row);
-    this.restoreCheckpoint(authority.viewer);
+    this.applyAuthority(authority);
     this.world.anchor?.(state);
     this.clearCorrection();
     this.holdingRest = false;
@@ -521,9 +520,19 @@ export class LocalPredictor {
   }
 
   private rewind(authority: PredictionAuthority): void {
+    this.applyAuthority(authority);
+    this.world.anchor?.(this.sim.state);
+  }
+
+  /**
+   * The authority's tick onto the simulation state, in the one order that is right: the row's pose and flags (with the
+   * integrator they imply), then the viewer checkpoint over them. The checkpoint restores the integrator, both copies of
+   * ground contact and the body mode against the row's overturn (hullBodyMode.ts); without one the row's projection
+   * stands. Every reseed goes through here, so no caller can apply them the other way round.
+   */
+  private applyAuthority(authority: PredictionAuthority): void {
     applyAuthorityRow(this.sim.state, authority.row);
     this.restoreCheckpoint(authority.viewer);
-    this.world.anchor?.(this.sim.state);
   }
 
   /** Replay the unacknowledged ticks; true when the newest tick was stepped (its predecessor pose captured). */

@@ -49,8 +49,12 @@ const VALUE_COUNT = VERSION_7_COUNT + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 8191;
 
+/** The layout's current version and length (the wire names them, src/mp/match/movementCheckpoint.ts: one codec). */
+export const MOVEMENT_PREDICTION_STATE_VERSION = 9;
+export const MOVEMENT_PREDICTION_STATE_VALUES = VALUE_COUNT;
+
 interface MovementPredictionState {
-  version: 9;
+  version: typeof MOVEMENT_PREDICTION_STATE_VERSION;
   values: number[];
   flags: number;
 }
@@ -107,7 +111,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10 |
     (state._body.bodyRest & 3) << 11;
-  return { version: 9, values, flags };
+  return { version: MOVEMENT_PREDICTION_STATE_VERSION, values, flags };
 }
 
 export function applyMovementPredictionState(
