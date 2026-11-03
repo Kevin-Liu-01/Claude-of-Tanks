@@ -1285,6 +1285,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelObstacleQuery.selftest.mjs',
     // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
     'src/game/soloKernelMemoryGrowth.selftest.mjs',
+    // 2026-11-02 audit S2: a solo battle's kernel choice is made once at its setup (kernels landing before its first step
+    // carry the next battle, never half of this one)
+    'src/game/soloKernelChoice.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)

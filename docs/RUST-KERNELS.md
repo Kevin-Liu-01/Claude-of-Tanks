@@ -53,8 +53,9 @@ refused with a code (`REFUSED_*`, `protocol_refusal` names the last) and never a
     the migration config.
   - A solo battle steps on the main thread over the rendered world (`game/state.ts`). There the kernels take the hulls'
     support: `src/world/soloWorldKernels.ts` gives each world its own instance, its grid loaded in the order of the
-    world's own obstacle grid, its ground mirrored from the battle's overlay. A world binds them when its hulls first
-    need support; one that steps before the module is ready stays on the TypeScript.
+    world's own obstacle grid, its ground mirrored from the battle's overlay. Each battle chooses once, at its setup
+    (2026-11-02 audit S2): set up once the module is ready, it rides the kernels for its hulls' support and its obstacle
+    query alike; set up before, it stays on the TypeScript to its end, and the next battle on that world rides them.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 

@@ -382,6 +382,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   /** The battle's obstacle query for its step (simObstacleQuery) and the world it was made for (stepObstacleQuery). */
   _obstacleQuery?: SoloWorld['queryObstacles'] | null;
   _obstacleWorld?: SoloWorld | null;
+  /** The hulls' support field on that world for this battle: its kernels' or the TypeScript's, chosen at setup. */
+  _supportField?: StructureSupportField | null;
   _navigationWrecks?: NavigationWreck[];
   _navigationWreckTicks?: number;
   /** Destruction (docs/DESTRUCTION.md): this battle's structures and log, as the authority keeps them. */
@@ -1377,7 +1379,12 @@ export function setupBattle(
   // world (raycast for hard cover, vegetation discs for bush concealment).
   game.spotting = createBattleSpotting(game, world);
 
-  const obstacleQuery = game._obstacleQuery = simObstacleQuery(world);
+  // (2026-11-02 audit S2) the battle's world kernels, chosen once here before its first step: the kernels when they had
+  // loaded by now and the world can ride them, for the hulls' support and the obstacle query alike; else the TypeScript
+  // for this battle (kernels that land later carry the next battle)
+  const battleKernels = soloWorldKernels;
+  game._supportField = structureSupportFor(world, battleKernels);
+  const obstacleQuery = game._obstacleQuery = simObstacleQuery(world, battleKernels);
   game._obstacleWorld = world;
   const aiDeps = {
     heightField: ground.field,
@@ -2762,13 +2769,21 @@ function resolveTankImpacts(
   }
 }
 
-const structureSupportByWorld = new WeakMap<SoloWorld, StructureSupportField>();
+/** A world's support fields: the TypeScript's, and its kernels' (null: the world cannot ride them), each made once. */
+interface SoloWorldSupport {
+  typescript?: StructureSupportField;
+  kernels?: StructureSupportField | null;
+  /** The provider `kernels` came from. */
+  provider?: SoloWorldKernels;
+}
+const structureSupportByWorld = new WeakMap<SoloWorld, SoloWorldSupport>();
 
 /**
- * The world kernels for solo battles (on unless ?simKernels=ts; world/soloWorldKernels.ts, docs/RUST-KERNELS.md): a world whose
- * hulls first need their support while they are set rides them for its lifetime — its ground mirrored onto them (the
- * stamps laid so far, then every change) and its hulls' support answered there, the same values as the TypeScript's —
- * and any other world stays on the TypeScript.
+ * The world kernels for solo battles (on unless ?simKernels=ts; world/soloWorldKernels.ts, docs/RUST-KERNELS.md). Each
+ * battle chooses once, at its setup (setupBattle, 2026-11-02 audit S2): a battle set up once they have loaded rides them
+ * on a world that can — its ground mirrored onto them once for the world's life (the stamps laid so far, then every
+ * change) and its hulls' support and obstacle query answered there, the same values as the TypeScript's — and a battle
+ * set up before they land stays on the TypeScript, both its support and its query, to its end.
  */
 interface SoloWorldKernels {
   /** Mirror this world's ground onto its own kernels; false when the world cannot ride them. */
@@ -2779,28 +2794,27 @@ interface SoloWorldKernels {
   supportField(world: SoloWorld, terrain: SoloHeightField): StructureSupportField;
 }
 let soloWorldKernels: SoloWorldKernels | null = null;
-/** Set (or clear) the solo world kernels: worlds whose support field is made from now on ride them. */
+/** Set (or clear) the solo world kernels: battles set up from now on ride them. */
 export function setSoloWorldKernels(kernels: SoloWorldKernels | null): void {
   soloWorldKernels = kernels;
 }
 
 /**
- * (local-fps-265) The obstacle query a battle's step reads: the world's grid on its kernels when they are loaded (the
+ * (local-fps-265) The obstacle query a battle's step reads: the world's grid on its kernels when the battle rides them (the
  * authority's own query: headlessCollisionWorld builds it on the same kernel grid), else the world's TypeScript grid.
  * The kernel grid holds the world grid's records in the same slots and answers bit for bit (docs/RUST-KERNELS.md); its
- * clearance scan takes the bots' solid sweeps (ai.ts solidAhead, avoidObstacles) off the TypeScript fallback. Mirroring
- * the ground here, at the battle's setup, makes the grid before the bots are built; without the kernels the support
- * field stays lazy, so kernels that arrive before the first step still carry it.
+ * clearance scan takes the bots' solid sweeps (ai.ts solidAhead, avoidObstacles) off the TypeScript fallback. The
+ * battle's setup mirrors the ground first (structureSupportFor), which makes the grid before the bots are built.
  */
 /** The obstacle query a step reads on `world`: the battle's (setupBattle) when it was made for this world. */
 function stepObstacleQuery(game: SoloGameState, world: SoloWorld | null | undefined): SoloWorld['queryObstacles'] {
   return world && game._obstacleWorld === world ? game._obstacleQuery ?? world.queryObstacles : world?.queryObstacles;
 }
 
-function simObstacleQuery(world: SoloWorld): SoloWorld['queryObstacles'] {
-  if (!soloWorldKernels?.obstacleQuery) return world.queryObstacles;
-  structureSupportFor(world);
-  return soloWorldKernels.obstacleQuery(world) ?? world.queryObstacles;
+function simObstacleQuery(world: SoloWorld, kernels: SoloWorldKernels | null): SoloWorld['queryObstacles'] {
+  if (!kernels?.obstacleQuery) return world.queryObstacles;
+  structureSupportFor(world, kernels);
+  return kernels.obstacleQuery(world) ?? world.queryObstacles;
 }
 
 const wreckEnvironmentByWorld = new WeakMap<SoloWorld, RigidEnvironment>();
@@ -2829,16 +2843,25 @@ function groundFor(world: SoloWorld): SoloGround {
   return ground;
 }
 
-/** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on. */
-function structureSupportFor(world: SoloWorld): StructureSupportField {
-  let field = structureSupportByWorld.get(world);
-  if (!field) {
-    const ground = groundFor(world);
-    field = soloWorldKernels?.mirrorGround(world, ground.overlay)
-      ? soloWorldKernels.supportField(world, ground.field) : createStructureSupportField(ground.field, world);
-    structureSupportByWorld.set(world, field);
+/** Round 30: the height field every hull rides on — terrain plus the tops of the primitives it stands on — on `kernels`
+ * when the world can ride them, else the TypeScript's. */
+function structureSupportFor(world: SoloWorld, kernels: SoloWorldKernels | null): StructureSupportField {
+  let support = structureSupportByWorld.get(world);
+  if (!support) structureSupportByWorld.set(world, support = {});
+  if (kernels) {
+    if (support.provider !== kernels) {
+      const ground = groundFor(world);
+      support.provider = kernels;
+      support.kernels = kernels.mirrorGround(world, ground.overlay) ? kernels.supportField(world, ground.field) : null;
+    }
+    if (support.kernels) return support.kernels;
   }
-  return field;
+  return support.typescript ??= createStructureSupportField(groundFor(world).field, world);
+}
+
+/** The support field a step reads on `world`: the battle's (setupBattle chose it) when it was made for this world. */
+function stepSupportField(game: SoloGameState, world: SoloWorld): StructureSupportField {
+  return game._obstacleWorld === world && game._supportField ? game._supportField : structureSupportFor(world, null);
 }
 
 function stepTankMovement(
@@ -2848,7 +2871,7 @@ function stepTankMovement(
   rig: CameraRig | null,
   collider: CollisionBundle,
 ): void {
-  const support = structureSupportFor(world);
+  const support = stepSupportField(game, world);
   for (const entity of game.tanks) {
     // wrecks stay in the step (2026-09-19): readDebuffs marks them immobile / skidding, so a destroyed hull
     // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
