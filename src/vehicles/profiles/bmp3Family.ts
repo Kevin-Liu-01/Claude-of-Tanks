@@ -221,13 +221,12 @@ export function addBmp3HullDetail(P: TankBuilderPort): void {
   const { box, cylX, cylY, cylZ, xform, periscope } = KIT;
   const lip = (x: number, y: number, off: number): Vec3Tuple => [x, y + off * LIP_N[0], LIP_Z(y) + off * LIP_N[1]];
   const lipLean = Math.atan2(0.15, 0.42);
-  // folded wave-breaker board over the nose: the board (12 mm buried, 18 mm proud), two stiffeners, the hinge line
+  // folded wave-breaker board over the nose: a clean plate (12 mm buried, 18 mm proud) and its hinges along the top
+  // (photo p7: no bolt rows or joint strips on its face)
   const board = (x0: number, x1: number, y0: number, y1: number, a: number, b: number): THREE.BufferGeometry =>
     orientedSlab(lip(x0, y0, a), lip(x1, y0, a), lip(x1, y0, b), lip(x0, y0, b),
       lip(x0, y1, a), lip(x1, y1, a), lip(x1, y1, b), lip(x0, y1, b));
   P.add('hull', board(-0.96, 0.96, 1.16, 1.49, -0.012, 0.018));
-  P.add('hullDark', board(-0.92, 0.92, 1.455, 1.47, 0.012, 0.024));                    // top seam under the hinges
-  for (const x of [-0.34, 0.34]) P.add('hullDetail', board(x - 0.03, x + 0.03, 1.19, 1.45, 0.010, 0.034));
   for (const x of [-0.66, 0.0, 0.66]) {
     P.add('hullDetail', xform(cylX(0.030, 0.20, 10), 0, 0, 0, 0, 0, 0), x, 1.525, LIP_Z(1.525) - 0.012);
     P.add('hullDetail', xform(box(0.16, 0.06, 0.03), 0, 0, 0, -lipLean, 0, 0), x, 1.47, LIP_Z(1.47) + 0.022);

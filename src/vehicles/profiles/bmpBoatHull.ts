@@ -214,8 +214,6 @@ function addProw(P: Modern3BuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.10, 0.06, 0.20), s * 0.80, 1.385, 3.24, -0.38, 0, 0); // vane hinge brackets
   }
-  // round 268b: the vane's hold-down clips along its upper edge (photo: the row of small brackets across the nose)
-  for (const x of [-0.42, 0, 0.42]) P.add('hullDetail', box(0.08, 0.05, 0.12), x, 1.392, 3.20, -0.38, 0, 0);
   P.add('hull', box(1.96, 0.06, 0.56), 0, 0.435, 1.98);                         // belly pan: tub front -> plane A
   for (const s of [-1, 1]) {
     const m = (x: number): number => (s < 0 ? -x : x);
@@ -427,9 +425,9 @@ function addBowFittings(P: Modern3BuilderPort, variant: BmpHullVariant): void {
 }
 
 /** Round 268b (the owner: "add more upper glacis and roof details"): the driver's hatch lid in its ring with the rear
- * hinge barrel and the lid handle, the BMP-2 commander's lid, hinge and handle, lifting eyes at the four roof corners,
- * and on the BMP-1 bow the bent-tube hoop guards over the lamp clusters (photo: research/bwp1 5). The BMP-2M glacis
- * cassettes take their retaining bolts in addBmp2mHullPackage. */
+ * hinge barrel and the lid handle, the BMP-2 commander's lid, hinge and handle, lifting eyes at the roof corners (the
+ * BMP-2 front pair only), and on the BMP-1 bow the bent-tube hoop guards over the lamp clusters (photo: research/bwp1
+ * 5). Discrete seated items the photographs show; no bolt rows or joint strips on the glacis plate. */
 function addGlacisAndRoofDetail(P: Modern3BuilderPort, variant: BmpHullVariant): void {
   const { box, cylX, cylY } = KIT;
   P.add('hull', cylY(0.175, 0.185, 0.022, 18), 0.60, DECK_Y + 0.036, 1.42);
@@ -500,12 +498,6 @@ function addBmp2mHullPackage(P: Modern3BuilderPort): void {
       P.add('hull', xform(box(w, 0.11, 0.30), 0, 0, 0, slope, 0, 0), x, GLACIS_TOP(z) + off * n[0], z + off * n[1]);
       P.add('hullDark', xform(box(w - 0.05, 0.016, 0.02), 0, 0, 0, slope, 0, 0),
         x, GLACIS_TOP(z + 0.15) + (off + 0.05) * n[0], z + 0.14 + (off + 0.05) * n[1]);  // seating seam at the lip
-      // round 268b: two retaining bolts at the cassette's upper corners (heads 4 mm into its face)
-      for (const dx of [-(w / 2 - 0.07), w / 2 - 0.07]) {
-        const u = -0.09, v = off + 0.055 + 0.006;
-        P.add('hullDetail', xform(KIT.cylY(0.02, 0.022, 0.02, 8), 0, 0, 0, slope, 0, 0),
-          x + dx, GLACIS_TOP(z) + v * n[0] - u * Math.sin(slope), z + v * n[1] + u * Math.cos(slope));
-      }
     }
   }
 }
