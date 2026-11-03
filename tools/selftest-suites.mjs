@@ -1463,6 +1463,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
     'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-11-02 audit R3: after the worker fails, its unanswered bakes and every later one run on the main thread
+    'src/engine/structureGroundOcclusionFallback.selftest.mjs',
     // 2026-10-17 (the SKY lane, 227 SKY-03): a thin deck's aureole — the solids' soft shadow under Whiteout's stratus
     'src/engine/structureAureole.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
