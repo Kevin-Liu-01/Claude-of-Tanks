@@ -382,8 +382,14 @@ export interface RamModuleHit {
 }
 
 export interface RamPairDamage {
+  /** The pair are teammates: the contact is reported (its sound, the crew's call, the cab's jolt) and deals nothing. */
+  friendly: boolean;
   damageA: number;
   damageB: number;
+  /** What the contact priced on each hull through its damage-taken scale: the damage itself between enemies, the cab's
+   * jolt alone between teammates. */
+  joltA: number;
+  joltB: number;
   /** b was a wreck before the ram (it takes nothing, and its death is not this ram's). */
   bWasDestroyed: boolean;
   aModulesHit: RamModuleHit[];
@@ -403,9 +409,11 @@ export function normalizeRamContact(contact: RamPairContact): void {
 /**
  * A lethal hull collision physically disables the struck running gear and the nearest drivetrain module: the track on the
  * side the blow came from and the transmission (the engine where the hull has none) go red. Authoritative damage state,
- * not a kill-cam decoration: the wreck's drive reads it (it skids instead of rolling on), the replay and the HUD receive
- * the same receipts. (2026-11-02 audit M6: this was the solo step's alone; the authority's ram left the wreck's tracks
- * whole.) `normalX/Z` is the push on this hull.
+ * not a kill-cam decoration: the wreck's drive reads it (it skids instead of rolling on), and both drivers publish each
+ * hit as a module-state event with source 'ram' (solo `module:state`, the authority's `module_state`, which a client
+ * re-emits) before the destruction, so the replay, the thrown-track visual and the HUD read the same receipts.
+ * (2026-11-02 audit M6: this was the solo step's alone; the authority's ram left the wreck's tracks whole.)
+ * `normalX/Z` is the push on this hull.
  */
 export function applyLethalRamModuleDamage(hull: RamPairHull, normalX: number, normalZ: number): RamModuleHit[] {
   const combat = hull.combat;
@@ -427,13 +435,14 @@ export function applyLethalRamModuleDamage(hull: RamPairHull, normalX: number, n
 /**
  * The damage one ram pair deals, written onto both hulls (both drivers call this after their pair cooldown): the
  * ruleset's pool split by mass, aggression and struck face (ramShares), through each hull's damage-taken scale, then the
- * lethal ram's module damage. A wreck rams nothing, and teammates still separate physically but their contact never
- * becomes friendly-fire damage or a kill credit (the authority's rule; the solo step priced it, 2026-11-02 audit M6).
- * Returns null when the pair deals no damage (the caller starts no cooldown).
+ * lethal ram's module damage. A wreck rams nothing. Teammates separate physically and their contact is still a ram the
+ * drivers report (`friendly`: the crunch, the crew's friendly_ram call, the cab's jolt), but it never becomes
+ * friendly-fire damage, a module hit or a kill credit (the authority's rule; the solo step priced it, 2026-11-02 audit M6).
+ * Returns null when the contact is under the ram threshold (the caller starts no cooldown and reports nothing).
  */
 export function resolveRamPairDamage(physics: RulesetPhysics, contact: RamPairContact): RamPairDamage | null {
   const { a, b } = contact;
-  if (!a.combat || !b.combat || a.combat.destroyed || a.team === b.team) return null;
+  if (!a.combat || !b.combat || a.combat.destroyed) return null;
   normalizeRamContact(contact);
   const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
   const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
@@ -445,14 +454,18 @@ export function resolveRamPairDamage(physics: RulesetPhysics, contact: RamPairCo
   );
   if (damage.total <= 0) return null;
   const bWasDestroyed = b.combat.destroyed;
-  const damageA = hullDamageTaken(a.combat, damage.toA);
-  const damageB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
+  const joltA = hullDamageTaken(a.combat, damage.toA);
+  const joltB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
+  if (a.team === b.team) {
+    return { friendly: true, damageA: 0, damageB: 0, joltA, joltB, bWasDestroyed, aModulesHit: [], bModulesHit: [] };
+  }
+  const damageA = joltA, damageB = joltB;
   a.combat.hp = Math.max(0, a.combat.hp - damageA);
   if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
   a.combat.destroyed = a.combat.hp <= 0;
   if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
   return {
-    damageA, damageB, bWasDestroyed,
+    friendly: false, damageA, damageB, joltA, joltB, bWasDestroyed,
     aModulesHit: a.combat.destroyed ? applyLethalRamModuleDamage(a, contact.nx, contact.nz) : [],
     bModulesHit: b.combat.destroyed && !bWasDestroyed ? applyLethalRamModuleDamage(b, -contact.nx, -contact.nz) : [],
   };

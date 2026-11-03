@@ -1731,11 +1731,11 @@ export function createAuthoritativeMatch({
     const { a, b } = contact;
     // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
     // lethal ram reddens the struck track and the drivetrain — the solo step's one rule (sim/impact.ts resolveRamPairDamage;
-    // a wreck rams nothing, and teammates separate without friendly-fire damage or a kill credit: 2026-11-02 audit M6)
+    // a wreck rams nothing, and a teammate contact is reported with no damage, module hit or kill credit: 2026-11-02 audit M6)
     const dealt = resolveRamPairDamage(ruleset.physics, contact);
     if (!dealt) return;
     ramPairTime.set(key, timeS);
-    const { damageA, damageB, bWasDestroyed } = dealt;
+    const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
     emit('tank_ram', {
       aId: a.id,
       bId: b.id,
@@ -1746,6 +1746,11 @@ export function createAuthoritativeMatch({
       y: (a.state.pos.y + b.state.pos.y) * 0.5,
       z: (a.state.pos.z + b.state.pos.z) * 0.5,
     });
+    if (dealt.friendly) return;
+    // the lethal ram's module receipts before the destruction, as the solo step publishes them (state.ts
+    // publishRamDamage) and as a crash's are (publishEntityImpact): a client sets a peer's module stage only from these
+    for (const hit of aModulesHit) emit('module_state', { id: a.id, module: hit.module, state: hit.newState, source: 'ram' });
+    for (const hit of bModulesHit) emit('module_state', { id: b.id, module: hit.module, state: hit.newState, source: 'ram' });
     recordRamDestructions(a, b, bWasDestroyed);
   }
 

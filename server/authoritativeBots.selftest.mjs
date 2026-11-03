@@ -44,8 +44,10 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
     if ((tick + 1) % 60 !== 0) continue;
     const snapshot = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60 });
     for (const event of snapshot.events) {
-      if (event.type === 'tank_ram' &&
-          teamById.get(event.aId) === teamById.get(event.bId)) alliedRamEvents++;
+      // a teammate contact is reported with zero damage (2026-11-02 audit M6, sim/impact.ts resolveRamPairDamage);
+      // what must never happen is a damaging one
+      if (event.type === 'tank_ram' && teamById.get(event.aId) === teamById.get(event.bId) &&
+          (Number(event.damageA) > 0 || Number(event.damageB) > 0)) alliedRamEvents++;
     }
     match.afterSnapshotBroadcast();
     for (const entity of match.entities) {

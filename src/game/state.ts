@@ -523,6 +523,10 @@ interface RamResolution {
   a: SoloEntity;
   b: SoloEntity;
   bWasWreck: boolean;
+  /** A teammate contact: reported (the crunch, the crew's call, the cab's jolt), never damage or a kill. */
+  friendly: boolean;
+  /** The contact as the player's cab feels it (sim/impact.ts RamPairDamage joltA/joltB; 0 when no player is in it). */
+  playerJolt: number;
   event: SoloRamEvent;
 }
 
@@ -2900,7 +2904,7 @@ function resolveRamDamage(
   const { a, b } = contact;
   // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
   // lethal ram reddens the struck track and the drivetrain — the authority's one rule (sim/impact.ts resolveRamPairDamage;
-  // a wreck rams nothing, and teammates separate without damage or a kill credit: 2026-11-02 audit M6)
+  // a wreck rams nothing, and a teammate contact is reported with no damage or kill credit: 2026-11-02 audit M6)
   const dealt = resolveRamPairDamage(game.ruleset.physics, contact);
   if (!dealt) return null;
   cooldowns.set(key, game.timeS);
@@ -2909,6 +2913,8 @@ function resolveRamDamage(
     a,
     b,
     bWasWreck,
+    friendly: dealt.friendly,
+    playerJolt: a.isPlayer ? dealt.joltA : (b.isPlayer ? dealt.joltB : 0),
     event: {
     aId: a.id,
     bId: b.id,
@@ -2938,8 +2944,9 @@ function publishRamDamage(
   rig: CameraRig | null,
   resolution: RamResolution,
 ): void {
-  const { a, b, bWasWreck, event } = resolution;
-  if (game.killcam && (a.combat.destroyed || b.combat.destroyed)) {
+  const { a, b, bWasWreck, friendly, playerJolt, event } = resolution;
+  // a teammate contact kills nothing (a shoved friendly wreck is no lethal ram to replay)
+  if (game.killcam && !friendly && (a.combat.destroyed || b.combat.destroyed)) {
     game.killcam.onRam(event, a, b);
   }
   emitRamModuleHits(bus, a, event.aModulesHit);
@@ -2950,9 +2957,9 @@ function publishRamDamage(
   if (a.combat.destroyed && !a._destroyedAnnounced) {
     announceDestroyed(game, bus, a, bWasWreck ? null : b.id, 'ram');
   }
-  const playerDamage = a.isPlayer ? event.dmgA : (b.isPlayer ? event.dmgB : 0);
-  if (rig && playerDamage > 0) {
-    rig.addTrauma(Math.min(0.55, 0.12 + playerDamage * 0.0009));
+  // the cab's jolt follows what the contact priced on the player's hull, a teammate's shove included (it deals nothing)
+  if (rig && playerJolt > 0) {
+    rig.addTrauma(Math.min(0.55, 0.12 + playerJolt * 0.0009));
   }
   bus.emit('tank:ram', event);
 }
