@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 interface FailureNotice {
-  showGarageReturnFailure(error: RuntimeValue): void;
+  showGarageReturnFailure(error: RuntimeValue, retry?: (() => void) | null): void;
   hideGarageReturnFailure(): void;
 }
 interface BattleAgainActionOptions {
@@ -9,13 +9,18 @@ interface BattleAgainActionOptions {
   loadFailure(): Promise<FailureNotice>;
   getPhase(): string;
   getEntryGeneration(): number;
+  /**
+   * (2026-11-02 audit F3 review) The notice's one action, read when it opens: the Garage return again when Battle
+   * Again left it 'failed' (a skipped restore that threw leaves a frozen Garage), else none.
+   */
+  getRetry?(): (() => void) | null;
   getRoom(): object | null;
   reportError(message: string, error: RuntimeValue): void;
 }
 
 /** Failure-only notice lifetime; the canonical return runtime still owns the action. */
 export function createBattleAgainAction({
-  action, loadFailure, getPhase, getEntryGeneration, getRoom, reportError,
+  action, loadFailure, getPhase, getEntryGeneration, getRetry = () => null, getRoom, reportError,
 }: BattleAgainActionOptions) {
   let pendingAction: Promise<void> | null = null;
   let actionRevision = 0;
@@ -48,7 +53,7 @@ export function createBattleAgainAction({
         || getPhase() !== phase || getEntryGeneration() !== entryGeneration
         || getRoom() !== room) return;
       notice = loaded;
-      loaded.showGarageReturnFailure(error);
+      loaded.showGarageReturnFailure(error, getRetry());
     } catch (noticeError) {
       // Observe even a superseded import rejection; never create an unhandled
       // rejection or replace the original action error.

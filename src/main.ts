@@ -2828,7 +2828,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           setGarageStatus: (status) => garage.setRoomStatus(status),
           emitRoomState: (payload) => bus.emit('network:roomState', payload),
           clearInput: () => input.setEnabled(false),
-          enterGarage: () => garageReturn.enter(),
+          // (audit F3 review) the covered restore after a failed join: a failed return says so and offers its retry
+          enterGarage: enterGarageWithExit,
           returnToGarage: () => garageReturn.leave(),
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
@@ -3474,6 +3475,27 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   }),
 });
 const enterGarage = garageReturn.enter;
+/**
+ * (2026-11-02 audit F3 review) The Garage return failure notice, with its one action: a failed return keeps Garage
+ * frames suppressed ('failed'), so the notice and its retry are the player's way out. Demand-loaded like every notice.
+ */
+const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Promise<void> => (
+  import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => { showGarageReturnFailure(error, retry); })
+    .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError))
+);
+/**
+ * Every return caller that has no failure exit of its own (the Studio's exit, the room's covered restore) gets the
+ * Leave's: a return that failed and still owes the screen says so and offers the return again ('failed' → 'entering').
+ * The caller still sees the rejection; a superseded return (another presentation took the scene) is not a dead end.
+ */
+const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: RuntimeValue) => {
+  if (garageReturn.state === 'failed') {
+    console.error('[garage return] return failed', error);
+    void presentGarageReturnFailure(error, retryGarageReturn);
+  }
+  throw error;
+});
+const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
   isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
@@ -3523,9 +3545,7 @@ const leaveBattleToGarage = (): Promise<void> => {
       return;
     }
     console.error('[garage return] Leave failed', error);
-    void import('./ui/garageReturnFailure.ts').then(({ showGarageReturnFailure }) => (
-      showGarageReturnFailure(error, () => { void leaveBattleToGarage(); })
-    )).catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
+    void presentGarageReturnFailure(error, () => { void leaveBattleToGarage(); });
   });
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
@@ -3568,6 +3588,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     if (reload) garage.noteBattleLoadFailed();
     return import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, reload ? null : retry));
   },
+  // (audit F3 review) the recovery's own return failed: the return notice, whose retry runs the return again
+  presentReturnFailure: (error, retry) => presentGarageReturnFailure(error, retry),
   onFailure: (error) => entryTelemetry.send({
     kind: 'entry_result', mode: 'solo', outcome: 'failed', code: 'entry_failed', error: describeError(error, location.origin),
   }),
@@ -3580,6 +3602,8 @@ const battleAgainAction = createBattleAgainAction({
   // (audit F2) the entry's identity is the entry lifecycle's serial: a spectator switch or a watchdog re-arm is not
   // a new battle and no longer suppresses a failed Battle Again's notice
   getEntryGeneration: () => battleEntryLifecycle.entrySerial,
+  // (audit F3 review) a Battle Again that left the return 'failed' (its skipped restore threw) offers the return again
+  getRetry: () => (garageReturn.state === 'failed' ? retryGarageReturn : null),
   getRoom: () => onlineMatch.current?.room ?? null,
   reportError: (message, error) => console.error(message, error),
 });
@@ -4158,7 +4182,8 @@ const studioAccess = createStudioAccess({
       }
     },
     setWorldDormant,
-    setGarageSpots, setGarageSunTrim, enterGarage,
+    // (audit F3 review) the Studio's exit: a failed return says so and offers its retry, instead of a frozen Garage
+    setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,
     // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
     // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the
     // world's baked horizon light on exit.
