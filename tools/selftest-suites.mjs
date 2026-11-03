@@ -2627,6 +2627,9 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
+    // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
+    // 'interrupted' resumes like 'suspended')
+    'src/audio/audioDevice.selftest.mjs',
     'src/vehicles/profiles/centurionFamily.selftest.mjs',
     'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',

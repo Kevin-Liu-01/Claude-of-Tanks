@@ -125,10 +125,54 @@ export function createLazyAudio({
   let loadingRevision = 0;
   let gestureBound = false;
 
+  // ---- the device's lifecycle (2026-11-02 audit F11). The browser can stop the context under the game: suspended
+  // (a backgrounded tab, an autoplay policy) or, on WebKit, 'interrupted' (a phone call, another app's audio). Either
+  // is resumed by the next gesture anywhere: the unlock re-arms whenever the device stops, and steps aside while it
+  // runs. A page that becomes visible again also tries at once, where the browser allows it without a gesture.
+  const halted = (): boolean => {
+    const state: string | undefined = context?.state;
+    return state === 'suspended' || state === 'interrupted';
+  };
+  const GESTURES = ['pointerdown', 'pointerup', 'keydown'] as const;
+  let gestureArmed = false;
+  const disarmGesture = (): void => {
+    if (!gestureArmed) return;
+    gestureArmed = false;
+    for (const type of GESTURES) document.removeEventListener(type, onGesture, true);
+  };
+  const armGesture = (): void => {
+    if (gestureArmed || typeof document === 'undefined') return;
+    gestureArmed = true;
+    for (const type of GESTURES) document.addEventListener(type, onGesture, true);
+  };
+  // Opening the device is synchronous and can take hundreds of milliseconds (click-perf-244: 585 ms of a first Garage
+  // press's handlers). Where activation is verified the press paints first and the device opens one frame later,
+  // inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup does. Engines
+  // without the activation API keep the in-gesture unlock, and so does a device already open: resuming it is cheap,
+  // and WebKit resumes an interrupted context only inside the gesture.
+  function onGesture(): void {
+    const sticky = hasStickyActivation();
+    const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
+    if (!sticky && activationKnown) return;
+    disarmGesture();
+    if (muted || masterVolume <= 0) return;
+    if (context || !sticky) { resume(); return; }
+    void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
+  }
+  const onDeviceState = (): void => { if (halted()) armGesture(); };
+  const onVisibility = (): void => {
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !halted()) return;
+    armGesture();
+    if (!muted && masterVolume > 0) resume();
+  };
+
   const unlockContext = (): AudioContext | null => {
-    if (!context) context = createContext();
+    if (!context) {
+      context = createContext();
+      if (context && typeof context.addEventListener === 'function') context.addEventListener('statechange', onDeviceState);
+    }
     if (!context) return null;
-    if (context.state === 'suspended') void context.resume().catch(() => {});
+    if (halted()) void context.resume().catch(() => {});
     return context;
   };
 
@@ -272,20 +316,9 @@ export function createLazyAudio({
       // mixer, so neither waits for a first battle.
       if (!gestureBound && typeof document !== 'undefined') {
         gestureBound = true;
-        // Opening the device is synchronous and can take hundreds of milliseconds (click-perf-244: 585 ms of a first
-        // Garage press's handlers). Where activation is verified the press paints first and the device opens one frame
-        // later, inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup
-        // does. Engines without the activation API keep the in-gesture unlock.
-        const gestures = ['pointerdown', 'pointerup', 'keydown'] as const;
-        const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
-        const onGesture = (): void => {
-          const sticky = hasStickyActivation();
-          if (!sticky && activationKnown) return;
-          for (const type of gestures) document.removeEventListener(type, onGesture, true);
-          if (!sticky) { if (!muted && masterVolume > 0) resume(); return; }
-          void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
-        };
-        for (const type of gestures) document.addEventListener(type, onGesture, true);
+        // the first gesture opens the device and loads the mixer (unless both already happened)
+        if (!context || !real || halted()) armGesture();
+        document.addEventListener('visibilitychange', onVisibility);
         // Boot idle after the first frame (AU.07, 2026-10-13): the mixer module and the interface's press sounds, decoded
         // with no device, so the first press anywhere is neither silent nor late.
         void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));

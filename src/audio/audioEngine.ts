@@ -2400,7 +2400,9 @@ export function createAudio({
       if (!AC) return;
       ctx = new AC({ latencyHint: 'interactive' });
     }
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    // a context the browser stopped under us: suspended, or WebKit's 'interrupted' (a call, another app's audio)
+    const state: string = ctx.state;
+    if (state === 'suspended' || state === 'interrupted') void ctx.resume().catch(() => {});
     if (mixer) return;
     mixer = createMixer({ context: ctx, reverb: budget.reverb, channelVolumes: chan, masterVolume, muted });
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
