@@ -6930,7 +6930,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
   let missionRouteX = Infinity, missionRouteZ = Infinity, missionRouteAtS = -Infinity;
-  let missionRouteEndX = NaN, missionRouteEndZ = NaN; // the planned mission route's last waypoint
+  let missionRouteHasEnd = false; // the last route set was a destination's plan (not an integration's own list)
   let missionOffObjective = false;                    // the hull stood off its objective at the last mission step
   function missionRouteNeedsRefresh(x: number, z: number): boolean {
     return detMath.hypot(x - missionRouteX, z - missionRouteZ) >= 12
@@ -6951,7 +6951,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    */
   function missionRouteEnded(): boolean {
     const last = waypoints[waypoints.length - 1];
-    if (!last) return missionRouteAtS > -Infinity && Number.isNaN(missionRouteEndX);
+    if (!last) return missionRouteAtS > -Infinity && !missionRouteHasEnd;
     return routeOwner === 'destination' && routeUsedUp();
   }
 
@@ -6973,12 +6973,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         const planned = deps.planRoute(entity.state.pos, { x, z });
         if (planned.length) points = planned;
       }
-      const end = points[points.length - 1];
-      missionRouteEndX = end ? end[0] : NaN;
-      missionRouteEndZ = end ? end[1] : NaN;
+      missionRouteHasEnd = points.length > 0;
     } else {
       missionRouteX = missionRouteZ = Infinity;
-      missionRouteEndX = missionRouteEndZ = NaN;
+      missionRouteHasEnd = false;
     }
     // (a user route supersedes the auto loop)
     claimWaypoints(destination ? 'destination' : points.length ? 'route' : 'none', !!loop);
