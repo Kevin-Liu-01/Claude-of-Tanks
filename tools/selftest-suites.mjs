@@ -1846,6 +1846,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.pivotRoll.selftest.mjs',
     // 2026-10-09 (gameplay lane): an escalated stuck recovery releases the careful rules for 10 s (Blackglass 38001).
     'src/game/ai.wedgeRelease.selftest.mjs',
+    // 2026-11-02 audit M7: the drive owners, doctrine starts and drive layers run from declared tables in the old order
+    'src/game/ai.driveOwner.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

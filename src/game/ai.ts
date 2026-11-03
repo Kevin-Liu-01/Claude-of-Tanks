@@ -1095,6 +1095,40 @@ function combatHitPoints(entity: AiEntity): number {
 // ---------------------------------------------------------------------------
 
 /**
+ * Who drives the hull this tick (2026-11-02 audit M7): the exclusive drive owners, highest precedence first.
+ * driveCurrentMode offers the hull to each in this order and the first that claims it writes the drive; 'mode' (the
+ * patrol / engage / seekCover / flank driver) always claims. The mission driver, a live hit reaction, a route to the
+ * target's level, the arc limit's leg (over the press and its back-up), the passive press, the settled-shot halt, any
+ * other scoot or escape leg, then the mode. The order is the one the statements had; debugInfo().driveOwner names the
+ * owner of the last tick (null while the hull is a wreck).
+ */
+export const AI_DRIVE_OWNERS = Object.freeze([
+  'mission', 'reaction', 'levelRoute', 'arcScoot', 'passivePress', 'settle', 'scoot', 'mode',
+] as const);
+export type AiDriveOwner = (typeof AI_DRIVE_OWNERS)[number];
+
+/**
+ * What runs after the owner (audit M7), in this order. None owns the hull: each amends what the owner wrote — the
+ * committed traffic detour, the jockey's strafe, then 'progress' (it measures the displacement and writes nothing; the
+ * recoveries after it read it), the slope, collider, low-speed and orbit recoveries, and 'finish' (ally avoidance,
+ * the liquid and solid brakes, the terrain escape, the ram hold-off, abilities, aim and fire, in finishStep's order).
+ */
+export const AI_DRIVE_LAYERS = Object.freeze([
+  'trafficDetour', 'jockey', 'progress', 'slopeRecovery', 'colliderRecovery', 'lowSpeedRecovery', 'orbitRecovery', 'finish',
+] as const);
+export type AiDriveLayer = (typeof AI_DRIVE_LAYERS)[number];
+
+/**
+ * The doctrine's overlay starts (audit M7), in this order each tick: a start sees what the ones before it started this
+ * tick (a ram run clears the scoot and settle windows; the press clears the scoot unless the arc limit's leg runs).
+ */
+export const AI_DOCTRINE_STARTS = Object.freeze([
+  'elevationLock', 'emptyRack', 'objectiveShift', 'passivePress', 'shotRelocation', 'probeRelocation',
+  'penDeniedFlank', 'fallback', 'squadManeuver',
+] as const);
+export type AiDoctrineStart = (typeof AI_DOCTRINE_STARTS)[number];
+
+/**
  * Create the shared AI controller for one non-player tank on either team.
  *
  * @param {object} entity TankEntity (§2.4) — `{ id, spec, state, combat, input, ai }`.
@@ -5566,21 +5600,28 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (getObjective?.()?.mission || !beginLevelRoute(target, timeS)) markUnbearable(target, timeS);
   }
 
+  // The doctrine's overlay starts (AI_DOCTRINE_STARTS), each given the tick's combat state, step, clock and range.
+  type DoctrineStart = (combat: CombatState | undefined, dt: number, timeS: number, targetDistance: number) => void;
+  const doctrineStarts: Readonly<Record<AiDoctrineStart, DoctrineStart>> = {
+    elevationLock: (_combat, dt, timeS) => updateElevationLock(dt, timeS),
+    emptyRack: (_combat, dt, timeS) => updateEmptyRack(dt, timeS),
+    objectiveShift: (_combat, dt) => updateObjectiveShift(dt),
+    passivePress: (_combat, dt, timeS, targetDistance) => updatePassivePress(dt, timeS, targetDistance),
+    shotRelocation: (combat, _dt, timeS) => updateShotRelocation(combat, timeS),
+    probeRelocation: (_combat, dt, timeS) => updateProbeRelocation(dt, timeS),
+    penDeniedFlank: (_combat, dt, timeS) => updatePenDeniedManeuver(dt, timeS),
+    fallback: (combat, _dt, timeS, targetDistance) => maybeStartFallback(combat, timeS, targetDistance),
+    squadManeuver: (_combat, _dt, timeS, targetDistance) => updateSquadManeuver(timeS, targetDistance),
+  };
+  const doctrineStartOrder: readonly DoctrineStart[] = AI_DOCTRINE_STARTS.map((start) => doctrineStarts[start]);
+
   function updateDoctrine(
     combat: CombatState | undefined,
     dt: number,
     timeS: number,
     targetDistance: number,
   ): void {
-    updateElevationLock(dt, timeS);
-    updateEmptyRack(dt, timeS);
-    updateObjectiveShift(dt);
-    updatePassivePress(dt, timeS, targetDistance);
-    updateShotRelocation(combat, timeS);
-    updateProbeRelocation(dt, timeS);
-    updatePenDeniedManeuver(dt, timeS);
-    maybeStartFallback(combat, timeS, targetDistance);
-    updateSquadManeuver(timeS, targetDistance);
+    for (let i = 0; i < doctrineStartOrder.length; i++) doctrineStartOrder[i](combat, dt, timeS, targetDistance);
   }
 
   // Round 48 pacing (2026-09-24, Frosthollow seed 3 of server/battlePacing): a lone Strv 103 stood 263 m from
@@ -6334,38 +6375,65 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
-  function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
-    input.brake = false;
-    driveIntent = false;
-    if (driveMission(input)) return;
-    if (driveReaction(input, timeS)) return;
+  // The drive owners' claims (AI_DRIVE_OWNERS): each drives and returns true when it owns the hull this tick.
+  type DriveClaim = (input: AiInput, timeS: number, targetDistance: number) => boolean;
+  const driveClaims: Readonly<Record<AiDriveOwner, DriveClaim>> = {
+    mission: (input) => driveMission(input),
+    reaction: (input, timeS) => driveReaction(input, timeS),
     // the route to the target's level owns the hull while it runs (see ELEVATION_LOCK_S)
-    if (levelRouting) {
+    levelRoute: (input) => {
+      if (!levelRouting) return false;
       drivePatrol(input);
-      return;
-    }
+      return true;
+    },
     // a gun pinned at its stop finishes nothing from where it stands: the arc limit's leg owns the hull over the press
     // and the press's back-up (see LEG_DEAD_M)
-    if (arcScoot && timeS < scootUntilS) {
+    arcScoot: (input, timeS) => {
+      if (!(arcScoot && timeS < scootUntilS)) return false;
       driveScootLeg(input);
-      return;
-    }
-    if (passivePressing && target && losClear) {
+      return true;
+    },
+    passivePress: (input) => {
+      if (!(passivePressing && target && losClear)) return false;
       drivePassivePress(input);
-      return;
-    }
+      return true;
+    },
     // the settled-shot halt, but not under fire in the open (SETTLE_STARVED_S)
-    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack && !exposedUnderFire(timeS)) {
+    settle: (input, timeS) => {
+      if (!(timeS < settleUntilS && target && losClear && !conserving && !emptyRack && !exposedUnderFire(timeS))) return false;
       faceYaw(input, detMath.atan2(
         target.state.pos.x - entity.state.pos.x,
         target.state.pos.z - entity.state.pos.z,
       ));
-      return;
-    }
-    if (timeS < scootUntilS) {
+      return true;
+    },
+    scoot: (input, timeS) => {
+      if (timeS >= scootUntilS) return false;
       driveScootLeg(input);
-      return;
+      return true;
+    },
+    mode: (input, timeS, targetDistance) => {
+      driveModeOwner(input, timeS, targetDistance);
+      return true;
+    },
+  };
+  const driveClaimOrder: readonly DriveClaim[] = AI_DRIVE_OWNERS.map((owner) => driveClaims[owner]);
+  let driveOwner: AiDriveOwner | null = null;
+
+  /** The hull goes to the first owner in AI_DRIVE_OWNERS that claims it ('mode' always does). */
+  function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
+    input.brake = false;
+    driveIntent = false;
+    for (let i = 0; i < driveClaimOrder.length; i++) {
+      if (driveClaimOrder[i](input, timeS, targetDistance)) {
+        driveOwner = AI_DRIVE_OWNERS[i];
+        return;
+      }
     }
+  }
+
+  /** The 'mode' owner: the declared mode's own driver. */
+  function driveModeOwner(input: AiInput, timeS: number, targetDistance: number): void {
     if (mode === 'patrol') drivePatrol(input);
     else if (mode === 'engage') driveEngage(input, timeS, targetDistance);
     else if (mode === 'seekCover') {
@@ -6720,7 +6788,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const input = entity.input;
     const cb = entity.combat;
     const allyYieldingPrev = allyYielding;
-    if (resetStepIntent(input)) return;
+    if (resetStepIntent(input)) { driveOwner = null; return; }
     updateSurvivalMemory(timeS);
     updatePerception(dt, timeS);
     updateStalematePolicy(timeS);
@@ -6739,24 +6807,30 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     updateGunLaneRelocation(timeS);
 
     driveCurrentMode(input, timeS, distToTarget);
-    driveTrafficDetour(input, timeS);
-    driveJockey(input, dt, timeS);
+    tickAllyYieldingPrev = allyYieldingPrev;
+    for (let i = 0; i < driveLayerOrder.length; i++) driveLayerOrder[i](input, dt, timeS);
+  }
 
+  // The layers after the drive owner (AI_DRIVE_LAYERS), in order; each may amend the owner's input.
+  let tickAllyYieldingPrev = false; // the ally yield of the step before this one (the recoveries' grace)
+  type DriveLayer = (input: AiInput, dt: number, timeS: number) => void;
+  const driveLayers: Readonly<Record<AiDriveLayer, DriveLayer>> = {
+    trafficDetour: (input, _dt, timeS) => driveTrafficDetour(input, timeS),
+    jockey: (input, dt, timeS) => driveJockey(input, dt, timeS),
     // ---- stuck detection & recovery ----
     // Real displacement rate (EMA). The drivetrain `st.speed` lies when the
     // collision pushback cancels the motion against an obstacle, so the
     // stuck test uses BOTH: no wheel speed OR no ground actually covered.
-    updateProgressRate(dt);
+    progress: (_input, dt) => updateProgressRate(dt),
     // movement.ts reports an engine/traction capability rejection explicitly. Waiting
     // for the generic two-second low-speed heuristic made bots repeatedly
     // grind into short cliffs that the coarse 25 m route grid cannot see.
     // A sustained slope block is definitive terrain feedback: reverse and
     // invalidate the leg promptly so the existing seeded detour/replan policy
     // can route around it. The short dwell filters one-tick ridge contacts.
-    updateSlopeRecovery(dt, timeS);
-    updateColliderRecovery(timeS);
-    updateLowSpeedRecovery(input, dt, timeS, allyYieldingPrev);
-
+    slopeRecovery: (_input, dt, timeS) => updateSlopeRecovery(dt, timeS),
+    colliderRecovery: (_input, _dt, timeS) => updateColliderRecovery(timeS),
+    lowSpeedRecovery: (input, dt, timeS) => updateLowSpeedRecovery(input, dt, timeS, tickAllyYieldingPrev),
     // r6 ORBIT WATCHDOG (see trackNavProgress): continuous displacement with
     // NO approach to the nav goal — a bot circling a spawn prop cluster keeps
     // progressRate at 1-2 m/s, so the stuck test above never fires (probe:
@@ -6764,12 +6838,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // end, and the whole enemy team contributed 0 shells for 60 s). Six
     // seconds without closing on the goal is a strike through the SAME
     // unstick/detour/waypoint-skip machinery.
-    updateOrbitRecovery(dt, timeS, allyYieldingPrev);
-
+    orbitRecovery: (_input, dt, timeS) => updateOrbitRecovery(dt, timeS, tickAllyYieldingPrev),
     // Last movement authority: applies to ordinary routes, fallback reverse,
     // and generic unstick bursts alike.
-    finishStep(input, dt, timeS);
-  }
+    finish: (input, dt, timeS) => finishStep(input, dt, timeS),
+  };
+  const driveLayerOrder: readonly DriveLayer[] = AI_DRIVE_LAYERS.map((layer) => driveLayers[layer]);
 
   /**
    * Replace the patrol route.
@@ -6980,6 +7054,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
       mode, targetId: target ? target.id : null,
+      driveOwner, // audit M7: who drove the hull last tick (AI_DRIVE_OWNERS)
       targetIsPlayer: !!(target && target.isPlayer),
       // BATTLE-AI r7 doctrine surface: class role + measurable signals
       // (sniper relocations, live scoot/kite/fallback windows) for probes.
