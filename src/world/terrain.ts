@@ -9228,7 +9228,6 @@ export async function finishHorizonRingAsync(
 ): Promise<void> {
   const stage = group.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
   if (!stage) return;
-  delete group.userData.finishHorizonRing;
   const steps = stage();
   let completed = false;
   try {
@@ -9239,8 +9238,11 @@ export async function finishHorizonRingAsync(
     }
     completed = true;
   } finally {
+    // (2026-11-02 audit R1) the stage leaves the group once it has drained: deleted first, a cancelled drain left a
+    // ringless group with nothing to finish it
+    if (completed) delete group.userData.finishHorizonRing;
     // a cancelled build (its pacing threw): close the stage's private continuations
-    if (!completed) { try { steps.return?.(); } catch { /* preserve the original failure */ } }
+    else { try { steps.return?.(); } catch { /* preserve the original failure */ } }
   }
 }
 

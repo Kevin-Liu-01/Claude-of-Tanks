@@ -4162,39 +4162,50 @@ export async function createVegetationAsync(
   const stageTimings: Record<string, number> = {};
   const sliceTimings: Array<{ stage: string; ms: number }> = [];
   let stepStarted = performance.now();
-  let r = g.next();
-  const recordStep = (result: IteratorResult<BuildYield, VegetationRuntime>): void => {
-    const key = result.done ? 'finalize' : (result.value.stage || 'other');
-    const ms = performance.now() - stepStarted;
-    stageTimings[key] = (stageTimings[key] || 0) + ms;
-    sliceTimings.push({ stage: key, ms });
-  };
-  recordStep(r);
-  let i = 0;
-  // Fine builds include per-species texture and geometry boundaries. The
-  // exact count varies with the biome, so this is an upper-bound progress
-  // denominator; createMapAsync advances to the next canonical stage when
-  // the generator completes.
-  const total = fineSlices ? 160 : 16;
-  while (!r.done) {
-    const admissionStep = r.value?.stage === 'placementTerrain';
-    const shouldTick = admissionStep || fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
-    // Admission preparation yields even in coarse builds; its extra sampler
-    // rows must not consume the planting progress denominator.
-    if (tick && shouldTick) await tick(admissionStep ? i : ++i, total);
-    stepStarted = performance.now();
-    r = g.next();
+  // (2026-11-02 audit R1) a tick that throws (a cancelled build) closes the generator, as the terrain's and the props'
+  // builds close theirs: its own finally blocks run (the placing belts'), and nothing is left suspended
+  let completed = false;
+  try {
+    let r = g.next();
+    const recordStep = (result: IteratorResult<BuildYield, VegetationRuntime>): void => {
+      const key = result.done ? 'finalize' : (result.value.stage || 'other');
+      const ms = performance.now() - stepStarted;
+      stageTimings[key] = (stageTimings[key] || 0) + ms;
+      sliceTimings.push({ stage: key, ms });
+    };
     recordStep(r);
+    let i = 0;
+    // Fine builds include per-species texture and geometry boundaries. The
+    // exact count varies with the biome, so this is an upper-bound progress
+    // denominator; createMapAsync advances to the next canonical stage when
+    // the generator completes.
+    const total = fineSlices ? 160 : 16;
+    while (!r.done) {
+      const admissionStep = r.value?.stage === 'placementTerrain';
+      const shouldTick = admissionStep || fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
+      // Admission preparation yields even in coarse builds; its extra sampler
+      // rows must not consume the planting progress denominator.
+      if (tick && shouldTick) await tick(admissionStep ? i : ++i, total);
+      stepStarted = performance.now();
+      r = g.next();
+      recordStep(r);
+    }
+    const slowest = sliceTimings.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+    r.value._buildDetail = {
+      ...Object.fromEntries(
+        Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)])),
+      sliceCount: sliceTimings.length,
+      maxSliceMs: slowest[0]?.ms || 0,
+      slowest,
+    };
+    completed = true;
+    return r.value;
+  } finally {
+    if (!completed) {
+      const pending: Iterator<BuildYield, VegetationRuntime, void> = g;
+      try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
+    }
   }
-  const slowest = sliceTimings.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
-  r.value._buildDetail = {
-    ...Object.fromEntries(
-      Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)])),
-    sliceCount: sliceTimings.length,
-    maxSliceMs: slowest[0]?.ms || 0,
-    slowest,
-  };
-  return r.value;
 }
 
 function* vegetationBuildSteps(
@@ -9938,7 +9949,10 @@ function* vegetationBuildSteps(
     _woodsMask: woodsMask,
     _nearCull: nearCullState,
     _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
-    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
-    warmImpostorsAsync: (waitLinks) => (treeImpostors ? treeImpostors.ensureBakedAsync(waitLinks) : Promise.resolve(false)),
+    // (2026-11-02 audit R1) a released world's warm bakes nothing: drawn after the release, the atlas re-created its
+    // framebuffers with no owner left to free them
+    warmImpostors: () => (treeImpostors && !disposed ? treeImpostors.ensureBaked() : false),
+    warmImpostorsAsync: (waitLinks) => (treeImpostors && !disposed
+      ? treeImpostors.ensureBakedAsync(waitLinks, () => !disposed) : Promise.resolve(false)),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }
