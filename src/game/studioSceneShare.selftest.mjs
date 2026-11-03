@@ -540,7 +540,7 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.match(main, /autoEnter: false/, 'main.ts owns the direct Studio boot');
   assert.match(main, /studioBoot\.scene = runtime\.bootScene\?\.\(\) \?\? null;\n\s+const sceneMap = studioBoot\.scene \? await studioBoot\.scene\.map : null;\n\s+return runtime\.enter\(\{\n\s+map: sceneMap \|\| STUDIO_BOOT_MAP,/,
     'the direct boot enters on the linked scene\'s battlefield');
-  assert.match(main, /window\.__GAME_READY = true;\nstudioBoot\.scene\?\.open\(STUDIO_BOOT_MAP\)/, 'the direct boot opens the linked scene once ready');
+  assert.match(main, /bootReadiness\.markReady\(\);\nstudioBoot\.scene\?\.open\(STUDIO_BOOT_MAP\)/, 'the direct boot opens the linked scene once ready');
   assert.match(studio, /if \(!active \|\| loading \|\| entering \|\| filmRenderer\.active \|\| recording\) \{\n\s+restoreAddress\(\);/,
     'a pasted link waits for an idle Studio and otherwise puts the address back');
   assert.match(studio, /const failure = sceneLinkOpenFailure\(result\);\n\s+panel\.notice\(failure\.message, 'error', failure\.detail\);/,

@@ -253,6 +253,7 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { createAppLifecycle } from './game/appLifecycle.ts';
+import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
@@ -3496,6 +3497,8 @@ const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: Run
 const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
+  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
+  isBooting: () => !bootReadiness.ready || boot.gated,
   isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
   isReturnOwed: () => garageReturn.state !== 'idle',
 });
@@ -4472,7 +4475,9 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
   }));
 }
 garageBootDone = true;
-window.__GAME_READY = true;
+// (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts); it writes window.__GAME_READY, the harness
+// mirror the tools wait on, which product code never reads
+bootReadiness.markReady();
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));

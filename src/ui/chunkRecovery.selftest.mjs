@@ -17,7 +17,7 @@ function createHarness(ready, {
   const timers = [];
   const storage = new Map();
   let replacedUrl = null;
-  const window = { __GAME_READY: ready };
+  const window = { __COT_BOOT_READY: ready };
   const location = {
     href,
     replace(url) { replacedUrl = url; },
@@ -250,7 +250,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   let observed = null;
   const stage = { textContent: 'Starting engine' };
   const retry = { classes: [], focused: false, classList: { add(name) { retry.classes.push(name); } }, onclick: null, focus() { retry.focused = true; } };
-  const window = { __GAME_READY: false };
+  const window = { __COT_BOOT_READY: false };
   const url = search ? href.replace('?', `?${search}&`) : href;
   const context = {
     window,

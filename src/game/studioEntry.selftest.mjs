@@ -54,7 +54,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     studioLight: null, // media r5: the scene's sun override, forwarded with the time
     ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
     // the rest of the fleet warms when the Studio is up, never inside the entry (247)
-    window: { __GAME_READY: !directBoot, requestIdleCallback: (callback) => { calls.push('idle'); callback(); } }, game, camera,
+    window: { requestIdleCallback: (callback) => { calls.push('idle'); callback(); } }, game, camera,
+    // (2026-11-02 audit S3) the boot latch the entry waits on (src/app/bootReadiness.ts, as studio.ts imports it)
+    isBootReady: () => !directBoot, whenBootReady: (callback) => { callback(); return noop; },
     warmFleet: () => { calls.push('fleet-warm'); return Promise.resolve(); },
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
     post: { resetAdaptiveResolution: noop, render: () => calls.push('covered-frame') },

@@ -17,6 +17,8 @@ import { flagIconCode } from './flagCodes.ts';
 import { iconUrl, tankThumbUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
+// (2026-11-02 audit S3) the product's boot latch, never its harness mirror (the flag the tools wait on)
+import { isBootReady } from '../app/bootReadiness.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
 import { createPicker, readMemory } from './components/picker.ts';
@@ -497,7 +499,7 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
   load: () => import('./camoSwatchPainter.ts'),
-  isPlayable: () => window.__GAME_READY === true,
+  isPlayable: isBootReady,
 });
 
 function scheduleCamoSwatchLoad(immediate = false) {
@@ -1001,7 +1003,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
     };
     const activateWhenPlayable = () => {
-      if (window.__GAME_READY === true) {
+      if (isBootReady()) {
         if (typeof requestIdleCallback === 'function') {
           requestIdleCallback(() => activate('low'), { timeout: 1400 });
         } else setTimeout(() => activate('low'), 500);
@@ -3324,7 +3326,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const loadHotspots = (): void => {
     if (hotspots || hotspotsLoading) return;
-    if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
+    if (!isBootReady()) { setTimeout(loadHotspots, 300); return; }
     hotspotsLoading = true;
     // the hotspots' sheet rides with their module, off the Garage's first paint
     void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
@@ -3955,7 +3957,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployStyled = true;
     }));
   const preloadDeployStyles = (): void => {
-    if (window.__GAME_READY !== true) { setTimeout(preloadDeployStyles, 250); return; }
+    if (!isBootReady()) { setTimeout(preloadDeployStyles, 250); return; }
     if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
     else setTimeout(() => { void ensureDeployStyles(); }, 800);
   };
