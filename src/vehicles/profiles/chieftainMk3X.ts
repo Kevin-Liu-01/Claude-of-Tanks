@@ -1,0 +1,210 @@
+// The Chieftain Mk 3 on the source-built Mk 5 X (chieftain5X.ts): the earlier tank on the same hull and turret
+// castings. Release 268b (owner 2026-11-02: "the cheiftain mk 3 and mk 9s look identical and way way too smimilar to the
+// inspirations, make them look much more different inn editing the turret and hull appearances to like like
+// precessors"). The Mk 3 (1969-72) against the Mk 5 (1972):
+// - the 12.7 mm L21 ranging gun over the main gun (Royal_Ordnance_L11; the laser sight replaced it from the Mk 3/3);
+// - no large NBC case across the turret rear ("the large NBC pack that the Mk5 has fitted to the rear of the turret" is
+//   the modellers' clearest Mk 3/Mk 5 difference): the original, smaller pack low on the bustle's rear wall inside an
+//   open bar basket across the bustle (the 1968 Leusderheide Mk 2s: the grille-sided basket at the turret rear);
+// - two jerry cans on the right of the turret where later marks carry a stowage box (kitmaker forum, the Mk 2 cue;
+//   period-plausible on an early Mk 3);
+// - Larkspur whips in sockets on the turret, without the tuning boxes the Mk 5 standard brought (kitmaker forum);
+// - the early engine deck with fewer covers (armortek forum: "less deck covers and access covers") -
+//   chieftain5XSourceHullEquipment.ts's early option;
+// - the glacis splash board and the tubular rail behind it, and the nose's towing clevises (the Iranian Mk 3P, 1980s);
+// - canvas hoods over the smoke dischargers' mouths (the 1968 Leusderheide Mk 2s; period-plausible on a peacetime Mk 3);
+// - lifting eyes on the glacis corners and the turret's shoulders.
+// Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain3/. First-party: Kevin B. Liu.
+import * as THREE from 'three';
+import { antennaPart } from './antennaPart.ts';
+import { KIT, FITTINGS } from './kit.ts';
+import { sectionSolid } from './sectionSolid.ts';
+import { liftingEye, tubeThrough } from './chieftainMarksX.ts';
+import { chieftain5SourceSmokeMouths } from './chieftain5XSourceApplique.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+
+type Point = readonly [number, number, number];
+type Add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx?: number, ry?: number, rz?: number) => void;
+const { box, cylX, cylY, cylZ } = KIT;
+
+/** A lathe about +Z from [radius, z] pairs (a closed profile turns into a solid of revolution). */
+function latheZ(profile: readonly (readonly [number, number])[], segments: number): THREE.BufferGeometry {
+  return new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), segments).rotateX(Math.PI / 2);
+}
+
+/** A welded case: a box whose top edges are chamfered (the Mk 5 X's caseSolid section). */
+function caseSolid(width: number, height: number, depth: number): THREE.BufferGeometry {
+  return sectionSolid([-.5, .5].map((z) => ({ z: z * depth,
+    ring: [[-width / 2, -height / 2], [width / 2, -height / 2], [width / 2, height * .36], [width * .43, height / 2],
+      [-width * .43, height / 2], [-width / 2, height * .36]],
+  })));
+}
+
+/**
+ * The L21 ranging gun on the main gun's cradle (it elevates with the gun and does not recoil with it): an armoured
+ * housing seated in the crown of the root hood (2.027 at z 1.78 falling to 1.990 at 2.18), the .50 heavy barrel out of
+ * its front, 0.9 m of it clear of the cover, and an open flash hider whose mouth is a real recess. The axis is parallel
+ * to the bore, 17 cm over it, and clears the main tube's crown by 8-30 mm.
+ */
+function rangingGun(P: TankBuilderPort, trunnion: Point): void {
+  const part = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
+    P.add(bucket, g, x - trunnion[0], y - trunnion[1], z - trunnion[2]);
+  const x = -.004, y = 2.032;
+  part('gunMount', caseSolid(.118, .100, .42), x, y + .006, 2.00);
+  part('gunMount', latheZ([[0, 0], [.040, 0], [.040, .014], [.030, .046], [0, .046]], 16), x, y, 2.206);
+  part('gunMountDark', cylZ(.0200, .86, 12), x, y, 2.66);
+  // Flash hider: outer wall to the mouth, a lip and a 34 mm deep bore.
+  part('gunMountDark', latheZ([[.0190, 0], [.0275, .008], [.0275, .086], [.0130, .086],
+    [.0130, .052], [0, .052]], 14), x, y, 3.084);
+}
+
+/** The original NBC pack on the back of the turret: a 0.86 m case low on the bustle's rear wall (the Mk 5's is a
+ * 1.44 m case standing to the roof line), its rear top edge rolled, its front seated 12 mm into the casting's rear
+ * (z -1.659), its filter louvres and clamp handles on its rear face. */
+function earlyNbcPack(add: Add): void {
+  const x0 = -.43, x1 = .43, front = 1.647, rear = 1.925, bottom = 1.842, top = 2.182, roll = .10;
+  const ring: [number, number][] = [[front, bottom], [rear, bottom], [rear, top - roll]];
+  for (let k = 1; k < 6; k++) {
+    const a = k * Math.PI / 12;
+    ring.push([rear - roll + roll * Math.cos(a), top - roll + roll * Math.sin(a)]);
+  }
+  ring.push([front, top]);
+  // the ring is drawn in (depth aft, height): turned so its loft runs along +X, depth lands on -Z
+  const g = sectionSolid([x0, x1].map((z) => ({ z, ring: ring.map(([u, v]): [number, number] => [u, v]) }))).rotateY(Math.PI / 2);
+  add('turretDetail', g, 0, 0, 0);
+  const w = x1 - x0;
+  for (let i = 0; i < 4; i++) add('turretDark', box(w * .56, .020, .014), 0, bottom + .07 + i * .05, -rear - .004);
+  for (const dx of [-w * .40, w * .40]) add('turretDetail', box(.026, .060, .020), dx, top - .17, -rear - .008);
+}
+
+/** The open bar basket across the bustle behind the pack, closing the two side baskets' rear ends (z -1.721): rails
+ * that carry on at each side basket's own floor and top heights (starboard 1.850/2.195, port 1.802/2.255), uprights
+ * on the rear rail, floor bars, two feet bearing on the casting's rear, and a rolled tarpaulin and a kit bag inside. */
+function rearBasket(add: Add): void {
+  const x0 = -1.402, x1 = 1.686, front = -1.721, rear = -2.235;
+  const low = (x: number): number => 1.850 + (1.802 - 1.850) * (x - x0) / (x1 - x0);
+  const high = (x: number): number => 2.195 + (2.255 - 2.195) * (x - x0) / (x1 - x0);
+  for (const y of [low, high]) {
+    add('turretOpenLattice', tubeThrough([[x0, y(x0), rear], [x1, y(x1), rear]], .011, 8), 0, 0, 0);
+    for (const x of [x0, x1]) add('turretOpenLattice', cylZ(.011, front - rear, 10), x, y(x), (front + rear) / 2);
+  }
+  for (let i = 0; i <= 10; i++) {
+    const x = x0 + (x1 - x0) * i / 10;
+    add('turretOpenLattice', cylY(.007, .007, high(x) - low(x), 8), x, (high(x) + low(x)) / 2, rear);
+  }
+  for (let i = 0; i < 6; i++) {
+    const x = x0 + .11 + (x1 - x0 - .22) * i / 5;
+    add('turretOpenLattice', box(.026, .012, front - rear), x, low(x), (front + rear) / 2);
+  }
+  for (const x of [-.70, .70]) add('turretDetail', box(.050, .080, .070), x, low(x) - .029, -1.690);
+  add('turretCloth', sectionSolid([-.29, .29].map((dz) => ({ z: dz, ring: Array.from({ length: 10 }, (_, k): [number, number] => {
+    const a = k * Math.PI / 5;
+    return [Math.cos(a) * .115, Math.sin(a) * .105];
+  }) }))).rotateY(Math.PI / 2), -.86, low(-.86) + .105, -1.98);
+  add('turretCloth', caseSolid(.30, .25, .30), .80, low(.80) + .131, -1.99);
+}
+
+/** Two jerry cans in a welded rack on the right of the turret (where the Mk 5 carries its stowage box): a tray on two
+ * brackets from the casting, the pressed cans (FITTINGS.jerryCans) facing outboard, a back bar to the casting. */
+function jerryCans(P: TankBuilderPort, add: Add, pivot: Point): void {
+  const x = -1.335, y = 1.832, z = -.205;
+  add('turretDetail', box(.20, .016, .74), x + .005, y - .008, z);
+  for (const dz of [-.30, .30]) add('turretDetail', box(.20, .060, .030), x + .045, y - .044, z + dz);
+  add('turretDetail', box(.030, .030, .74), -1.205, y + .30, z);
+  if (!P.mats || !P.turretG) return;
+  const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, gap: .05, seed: 1969, slot: 'canvasCloth',
+    rotation: [0, -Math.PI / 2, 0] });
+  cans.name = 'chieftainMk3JerryCans';
+  cans.position.set(x - pivot[0], y - pivot[1], z - pivot[2]);
+  P.turretG.add(cans);
+}
+
+/** Larkspur whips in sockets on the casting's rear shoulders: a socket boss bedded in the stock and its insulator, no
+ * tuning box. */
+function larkspurWhips(add: Add): void {
+  for (const [x, y, z] of [[.80, 2.268, -1.40], [-.84, 2.262, -1.38]]) {
+    add('turretDetail', cylY(.050, .056, .040, 14), x, y + .012, z);
+    add('turretDark', new THREE.LatheGeometry([[0, 0], [.034, 0], [.034, .030], [.022, .085], [.010, .130], [0, .130]]
+      .map(([r, h]) => new THREE.Vector2(r, h)), 12), x, y + .030, z);
+    add('turretDark', antennaPart(cylY(.0032, .010, 2.05, 8)), x, y + .155 + 1.025, z);
+  }
+}
+
+/** The Mk 5 X tub's top at (x, z) (chieftain5XSourceHull.ts rows: [z, roof, crown]; the section falls by 0.3 crown to
+ * x 0.398 and by the whole crown to the 0.978 edge). */
+function hullRoof(x: number, z: number): number {
+  const rows = [[1.25, 1.409, 0], [1.65, 1.523, .075], [2.15, 1.393, .090], [2.57, 1.324, .118], [2.73, 1.265, .023],
+    [3.02, 1.141, .026]] as const;
+  const i = Math.max(1, Math.min(rows.length - 1, rows.findIndex((r) => r[0] >= z)));
+  const a = rows[i - 1], b = rows[i], t = Math.max(0, Math.min(1, (z - a[0]) / (b[0] - a[0])));
+  const roof = a[1] + (b[1] - a[1]) * t, crown = a[2] + (b[2] - a[2]) * t, u = Math.abs(x);
+  return u < .3976 ? roof - .3 * crown * u / .3976 : roof - crown * (.3 + .7 * Math.min(1, (u - .3976) / .5804));
+}
+
+/** The glacis: the splash board standing on the upper plate ahead of the driver's hatch, the tubular rail behind it on
+ * its uprights (both under the gun's lowest sweep), the nose's towing clevises in the tow eyes and two lifting eyes at
+ * the glacis corners. */
+function glacis(P: TankBuilderPort): void {
+  const add: Add = (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) => P.addEquipment(bucket, g, x, y, z, rx, ry, rz);
+  const roof = (z: number, x = 0): number => hullRoof(x, z);
+  // Splash board: 1.10 m, 13 cm tall, leaning 20 degrees forward, its foot 10 mm into the plate.
+  add('hullDetail', box(1.10, .135, .014), 0, roof(2.66, .40) + .055, 2.66, -.35);
+  for (const x of [-.48, 0, .48]) add('hullDetail', box(.014, .090, .080), x, roof(2.63, x) + .035, 2.625, -.35);
+  // The rail: a 32 mm tube 11 cm over the plate, across ahead of the hatch and back along both edges.
+  const rail: [number, number, number][] = [];
+  for (const [x, z] of [[-.84, 2.06], [-.82, 2.36], [-.70, 2.50], [0, 2.53], [.70, 2.50], [.82, 2.36], [.84, 2.06]] as const) {
+    rail.push([x, roof(z, x) + .110, z]);
+  }
+  add('hullDetail', tubeThrough(rail, .016, 8), 0, 0, 0);
+  for (const [x, z] of [[-.84, 2.08], [-.74, 2.47], [0, 2.53], [.74, 2.47], [.84, 2.08]] as const) {
+    add('hullDetail', cylY(.012, .012, .118, 6), x, roof(z, x) + .052, z);
+  }
+  // Towing clevises hung in the nose's tow eyes (torus .058 at x +-.862, y 1.047, z 3.218): a U through the eye's
+  // lower bow and the pin across its mouth.
+  for (const side of [-1, 1]) {
+    const u = new THREE.TorusGeometry(.040, .014, 6, 10, Math.PI).rotateY(Math.PI / 2).rotateX(Math.PI);
+    add('hullDetail', u, side * .862, .995, 3.218);
+    add('hullDetail', cylX(.012, .118, 8), side * .862, .990, 3.218);
+  }
+  for (const side of [-1, 1]) liftingEye(add, 'hullDetail', side * .86, roof(2.30, .86) - .002, 2.30, Math.PI / 2);
+}
+
+/** Canvas hoods laced over the two smoke-discharger banks' mouths, as the 1968 Leusderheide Mk 2s carried them in
+ * peacetime: each a padded cover over the bank's eight mouths (chieftain5SourceSmokeMouths), its back 50 mm down the
+ * tubes and its face 45 mm proud of the mouths, rounded at the edges. */
+function smokeHoods(add: Add): void {
+  const mouths = chieftain5SourceSmokeMouths();
+  for (const bank of [mouths.slice(0, 8), mouths.slice(8)]) {
+    const axis = bank[0].axis.clone();
+    const u = new THREE.Vector3(0, 1, 0).cross(axis).normalize(), v = axis.clone().cross(u).normalize();
+    const c = bank.reduce((t, m) => t.add(m.center), new THREE.Vector3()).multiplyScalar(1 / bank.length);
+    let u0 = 0, u1 = 0, v0 = 0, v1 = 0;
+    for (const m of bank) {
+      const d = m.center.clone().sub(c);
+      u0 = Math.min(u0, d.dot(u)); u1 = Math.max(u1, d.dot(u)); v0 = Math.min(v0, d.dot(v)); v1 = Math.max(v1, d.dot(v));
+    }
+    const r = .052, ring = (grow: number): [number, number][] => {
+      const pts: [number, number][] = [];
+      for (const [cx, cy, a0] of [[u1, v0, -Math.PI / 2], [u1, v1, 0], [u0, v1, Math.PI / 2], [u0, v0, Math.PI]] as const) {
+        for (let k = 0; k < 3; k++) pts.push([cx + Math.cos(a0 + k * Math.PI / 4) * (r + grow), cy + Math.sin(a0 + k * Math.PI / 4) * (r + grow)]);
+      }
+      return pts;
+    };
+    const g = sectionSolid([[-.050, -.004], [.020, .006], [.045, -.012]].map(([z, grow]) => ({ z, ring: ring(grow) })));
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(u, v, axis));
+    add('turretCloth', g, c.x, c.y, c.z);
+  }
+}
+
+export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: Point): void {
+  const add: Add = (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) =>
+    P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
+  rangingGun(P, trunnion);
+  earlyNbcPack(add);
+  rearBasket(add);
+  jerryCans(P, add, pivot);
+  larkspurWhips(add);
+  smokeHoods(add);
+  for (const side of [-1, 1]) liftingEye(add, 'turretDetail', side * .78, 2.282, .55, 0);
+  glacis(P);
+}
