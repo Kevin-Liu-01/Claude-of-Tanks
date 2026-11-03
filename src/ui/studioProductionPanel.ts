@@ -129,6 +129,11 @@ interface StudioWorkspaceHosts {
   readonly guides?: HTMLElement;
   /** The Studio's toast (the kit's notices): what an action did, or why it failed. */
   readonly notice?: (text: string, tone?: 'info' | 'error', detail?: string) => void;
+  /**
+   * (audit F9) The host's reading of what holds the Studio (the Studio app's panel: its render queue's run, a time or sun
+   * change in flight, and the Studio's own holders); without a host, the Studio's own (S.busy()).
+   */
+  readonly busy?: () => boolean;
 }
 
 function button(text: string, action: () => void, className = ''): HTMLButtonElement {
@@ -169,7 +174,7 @@ function segments<V extends string>(label: string, key: string, choices: readonl
 
 export function mountStudioProductionPanel(
   S: StudioPanelApi, root: HTMLElement, dock: HTMLElement, refreshAll: () => void, hosts: StudioWorkspaceHosts = {},
-): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void; openTemplates(): void } {
+): { refresh(): void; setVisible(visible: boolean): void; activate(id: WorkspaceId): void; openTemplates(): void; busy(): boolean } {
   let visible = false;
   function syncPreviewViewport(): void {
     if (visible) document.body.dataset.studioWorkspace = root.dataset.controlsCollapsed === 'true' ? 'collapsed' : 'open';
@@ -276,11 +281,13 @@ export function mountStudioProductionPanel(
     onChoose: (template) => useTemplate(template),
   });
   /**
-   * (2026-11-02 audit F9) A scene replacement is in flight or the take is recording: every way to stage a template asks
-   * this one question (staging a sequence once ignored a take still loading, and the last to finish won).
+   * (2026-11-02 audit F9) Something holds the Studio: the Director's own staging or take fetch, or the host's holders (a
+   * render queue's run, a time or sun change, and the Studio's own: a recording, a film or its export, a scene, a
+   * battlefield change, an undo). Every way to stage a template, record or reframe asks this one question (staging a
+   * sequence once ignored a take still loading, and the last to finish won; neither knew a queued still at every shot).
    */
   function sceneBusy(): boolean {
-    return staging || loadingTake || S.recordingStatus().active;
+    return staging || loadingTake || (hosts.busy ? hosts.busy() : S.busy() !== null);
   }
   function openTemplates(): void {
     if (sceneBusy()) return;
@@ -487,6 +494,7 @@ export function mountStudioProductionPanel(
   }, KIT_BUTTON);
   const video = button(productionLabel('video'), () => {
     if (S.recordingStatus().active) { S.stopRecording(); return; }
+    if (sceneBusy()) return; // (audit F9) a take records over nothing else in flight
     S.recordVideo({ fps: 30, download: true }).then(() => say(productionLabel('saved'))).catch(failure);
     refresh();
   }, KIT_BUTTON);
@@ -562,18 +570,19 @@ export function mountStudioProductionPanel(
     const locked = staging || recording.active;
     toggle.disabled = recording.active;
     for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
-    stage.disabled = sceneBusy();
+    const held = sceneBusy();
+    stage.disabled = held;
     tanks.setDisabled(locked);
-    frame.lock(locked);
+    frame.lock(held); // (audit F9) a reframe under a build, a film or a queued still at every shot mixed two framings
     lens.lock(locked);
-    feature.disabled = locked || loadingTake;
-    browse.disabled = locked || loadingTake;
-    shelfBrowse.disabled = locked || loadingTake;
-    for (const element of shelfCards.values()) element.disabled = locked || loadingTake;
+    feature.disabled = held;
+    browse.disabled = held;
+    shelfBrowse.disabled = held;
+    for (const element of shelfCards.values()) element.disabled = held;
     for (const element of rigs.querySelectorAll('button')) element.disabled = locked || S._internal.actors.length === 0;
     play.textContent = productionLabel(S.playing ? 'pause' : 'play');
     video.textContent = productionLabel(recording.active ? 'stop' : 'video');
-    video.disabled = staging || !recording.supported;
+    video.disabled = (held && !recording.active) || !recording.supported; // a recording's own button stops it
     video.title = recording.supported ? '' : productionLabel('unsupported');
     scrub.max = String(S.durationMs);
     if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
@@ -599,5 +608,5 @@ export function mountStudioProductionPanel(
   // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
   // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
   loadSiteTakes();
-  return { refresh, setVisible, activate, openTemplates };
+  return { refresh, setVisible, activate, openTemplates, busy: () => staging || loadingTake };
 }
