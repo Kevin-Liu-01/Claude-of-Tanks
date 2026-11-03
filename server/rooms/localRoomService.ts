@@ -172,8 +172,12 @@ export function createLocalRoomService({
 
   const serviceHost = matchTransport === 'service' ? createInProcessMatchHost({
     matchService, matchUrl, world, countdownS, battleLimitS,
-    // The verdict callback lands on the actor's tick: poll the room right away instead of waiting 10 s.
-    onVerdict: (roomId) => { const room = rooms.get(roomId); if (room) queueMicrotask(() => { void room.observeMatchNow(); }); },
+    // The verdict callback lands on the actor's tick: poll the room right away instead of waiting 10 s, as one more of the
+    // room's events (review round 2: the poll is a room tick, and it ran in the middle of whatever event the queue awaited)
+    onVerdict: (roomId) => {
+      const room = rooms.get(roomId);
+      if (room) void serialize(room, async () => { await room.observeMatchNow(); forgetIfEmpty(roomId, room); });
+    },
   }) : null;
   // A p2p host is bound to one room (the actor binds it), so every room gets its own (audit S1: the first one was
   // handed again to any room created while the map was empty, and rebinding it moved the first room's view away).

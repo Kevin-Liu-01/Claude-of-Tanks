@@ -6,6 +6,8 @@
 // once. The LAN pad service removed pairings by code: an old socket's close deleted a new pairing under the same code.
 //   - a room's events run one at a time, in order;
 //   - a forgotten room's late schedule neither clears nor fires the next room's timer;
+//   - the in-process match's verdict polls its room as one of the room's events (review round 2: it ran the room's tick
+//     in the middle of the event the queue awaited), and a room the poll leaves empty is forgotten;
 //   - every p2p room has its own match host;
 //   - a pairing's old socket closing late leaves the new pairing under its code.
 import assert from 'node:assert/strict';
@@ -82,6 +84,44 @@ const closed = (ws) => new Promise((resolve) => { if (ws.readyState === WebSocke
   }
 }
 
+// ---- the in-process match's verdict polls the room in its queue (an in-process host over a stand-in match service)
+{
+  const verdicts = new Map();
+  const matchService = {
+    actors: new Map(), matchStatusSource: () => null, removeActor() { return false; },
+    createActor(options) { verdicts.set(options.roomId, options.onVerdict); return {}; },
+  };
+  const lan = createLocalRoomService({ matchService, seatSecret: SEAT_SECRET, matchTransport: 'service' });
+  const server = await serve((request, socket, head) => lan.handleUpgrade(request, socket, head));
+  const start = (roomId) => lan.matchHost.start({ roomId, matchId: `m-${roomId}`, mapId: 'verdant', mode: 'standard', seed: 1, seats: [], bots: [], arrangement: null, campaignOperationId: null });
+  try {
+    const room = lan.room('VERDCT');
+    const order = [];
+    room.handleMessage = async (_socketId, text) => { order.push(`start ${text}`); await sleep(60); order.push(`end ${text}`); };
+    room.observeMatchNow = async () => { order.push('verdict poll'); };
+    await start('VERDCT');
+    assert.equal(typeof verdicts.get('VERDCT'), 'function', 'setup: the match service was handed the verdict callback');
+    const client = new WebSocket(`${server.url}/rooms/VERDCT`);
+    await opened(client);
+    client.send(Buffer.from('slow'));
+    await until(() => order.length === 1, 'the slow message started');
+    verdicts.get('VERDCT')({ result: 'alpha', reason: 'test' }); // the actor's verdict lands mid-event
+    await until(() => order.length === 3, 'the message and the poll ran');
+    assert.deepEqual(order, ['start slow', 'end slow', 'verdict poll'], `the verdict's poll waits for the room's event (${order.join(', ')})`);
+    client.close();
+    await closed(client);
+    // a room the verdict's poll leaves empty is forgotten, as after every other tick
+    const lone = lan.room('LONELY');
+    lone.observeMatchNow = async () => {};
+    await start('LONELY');
+    verdicts.get('LONELY')({ result: 'draw', reason: 'test' });
+    await until(() => lan.rooms.get('LONELY') !== lone, 'the empty room is forgotten after the verdict poll', 1000);
+  } finally {
+    await lan.close();
+    await server.close();
+  }
+}
+
 // ---- every p2p room gets its own host, the first room created on an empty map too
 {
   const lan = createLocalRoomService({ matchService: null, seatSecret: SEAT_SECRET, matchTransport: 'p2p' });
@@ -127,4 +167,4 @@ const closed = (ws) => new Promise((resolve) => { if (ws.readyState === WebSocke
     await server.close();
   }
 }
-console.log('lanServices: a LAN room runs its events one at a time and owns its timer and its p2p host; a pairing is removed only as itself');
+console.log('lanServices: a LAN room runs its events one at a time, a verdict\'s poll among them, and owns its timer and its p2p host; a pairing is removed only as itself');
