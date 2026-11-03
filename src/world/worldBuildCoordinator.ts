@@ -3,6 +3,7 @@ import {
   createOpaqueLoadingYielder,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
+import { resolvePresetName } from '../engine/quality.ts';
 import {
   disposeObject3DResourcesSteps,
   residentResourceLimits,
@@ -117,6 +118,11 @@ export interface WorldBuildCoordinatorDependencies<World extends WorldScene = Wo
     stillValid: () => boolean,
   ) => Promise<BackgroundWorkLease | null>;
   resourceLimits?: ResourceLimits;
+  /**
+   * (2026-11-02 audit R1) The quality class a build reads at its start (the resolved preset: texture scales, Ultra Low's
+   * light world, the preset name several builders read). Default: the live preset (engine/quality.ts).
+   */
+  buildClass?: () => string;
 }
 
 interface WorldBuildRequest<World extends WorldScene = WorldScene> {
@@ -136,6 +142,13 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   enforceCacheBudget(): void;
   /** A cached world released now (never the current one, one still building or one held); false when there was none to release. */
   releaseCached(id: string): boolean;
+  /**
+   * (2026-11-02 audit R1) The world cached under `id` if it was built for the quality class in effect now, else null: one
+   * built under another preset is retired (released, or kept under a retired key while it is still on screen or held,
+   * for the budget to release) so the id builds afresh. The cache was keyed by map alone, so after a change to or from
+   * Ultra Low a cached map came back with live-following lite terrain under its build-time vegetation.
+   */
+  cached(id: string): World | null;
   /**
    * (2026-11-02 audit R1) Hold the world cached (or about to be cached) under `id` against eviction while an activation
    * warms it; the returned release drops the hold (once) and lets the residency budget run again.
@@ -190,6 +203,14 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     new Promise<void>((resolve) => setTimeout(resolve, durationMs)));
   const cache = new Map<string, World>();
   const builds = new Map<string, BuildRecord<World>>();
+  const buildClass = dependencies.buildClass ?? (() => {
+    try { return resolvePresetName(); } catch { return 'default'; }
+  });
+  // (audit R1) each cached world's quality class, read when its build started
+  const classOf = new WeakMap<World, string>();
+  // worlds retired while still on screen or held: never handed out again, released as soon as they are evictable
+  const retired = new Set<string>();
+  let retiredSerial = 0;
   const limits = dependencies.resourceLimits
     ?? residentResourceLimits(dependencies.deviceTier) as ResourceLimits;
   const stats: WorldPrefetchStats = {
@@ -291,6 +312,14 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
   );
 
   const enforceCacheBudget = (): void => {
+    for (const id of retired) {
+      const world = cache.get(id);
+      if (!world) { retired.delete(id); continue; }
+      if (!evictable(id, world)) continue;
+      retired.delete(id);
+      cache.delete(id);
+      releaseWorld(id, world);
+    }
     if (!Number.isFinite(limits.worldScenes)) return;
     for (const [id, cached] of cache) {
       if (cache.size <= limits.worldScenes) break;
@@ -308,6 +337,22 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return true;
   };
 
+  const cached = (id: string): World | null => {
+    const world = cache.get(id);
+    if (!world) return null;
+    const built = classOf.get(world);
+    if (built === undefined || built === buildClass()) return world;
+    cache.delete(id);
+    if (evictable(id, world)) releaseWorld(id, world, true);
+    else {
+      const key = `${id}~${built}#${++retiredSerial}`;
+      cache.set(key, world);
+      retired.add(key);
+      for (const hold of holds) if (hold.key === id) hold.key = key;
+    }
+    return null;
+  };
+
   const retain = (id: string): (() => void) => {
     const hold = { key: id };
     holds.add(hold);
@@ -322,10 +367,10 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     onProgress: ProgressListener | null = null,
     options: { background?: boolean; waitForGarageLull?: boolean; loadingPace?: boolean } = {},
   ): WorldBuildRequest<World> => {
-    const cached = cache.get(mapId);
-    if (cached) {
+    const resident = cached(mapId);
+    if (resident) {
       return {
-        promise: Promise.resolve(cached), listeners: null, fraction: 1, label: 'Ready',
+        promise: Promise.resolve(resident), listeners: null, fraction: 1, label: 'Ready',
         stageTimings: {},
       };
     }
@@ -462,6 +507,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         await paceBuild();
       };
 
+      let builtClass = '';
       const startBuild = async (): Promise<World> => {
         // A late old assembly can register same-ID destructible callbacks.
         // Wait for its disposal before building the fresh request; observing
@@ -471,6 +517,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         }
         const { createMapAsync } = await loadModule();
         throwIfCancelled();
+        builtClass = buildClass();
         // 'mapId#assault-trenches' builds the Frontline Assault variant of the map;
         // the cache and build records keep the full key, the world keeps mapId.
         const [baseMapId, terrainVariant] = mapId.split('#');
@@ -489,6 +536,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         if (created.phase === 'cancelled') releaseWorld(mapId, next);
         throwIfCancelled();
         cache.set(mapId, next);
+        classOf.set(next, builtClass);
         if (startedInBackground) {
           stats.completed += 1;
           stats.lastMap = mapId;
@@ -526,7 +574,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
   ): Promise<World | null> | null => {
     // (audit R1) a cancelled record still settling is no build: the prefetch starts the fresh one, which waits for it
     // (before, the same map's prefetch was silently skipped until the cancelled one settled)
-    if (!mapId || mapId === 'random' || cache.has(mapId)) return null;
+    if (!mapId || mapId === 'random' || cached(mapId)) return null;
     if (builds.has(mapId) && builds.get(mapId)?.phase !== 'cancelled') return null;
     if (Number.isFinite(limits.worldScenes) && cache.size >= limits.worldScenes) {
       stats.skippedCapacity += 1;
@@ -556,6 +604,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     loadModule,
     enforceCacheBudget,
     releaseCached,
+    cached,
     retain,
     beginBuild,
     prefetch,

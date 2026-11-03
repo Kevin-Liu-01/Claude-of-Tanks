@@ -535,9 +535,11 @@ export function createWorldActivationRuntime<
     const request: ActivationRequest = { ticket: activationTicket, id, state: 'resolving' };
     latestRequest = request;
     coordinator.cancelBackgroundExcept(id);
+    // (audit R1) a world built under another quality preset is retired here (it builds afresh; on screen, it stays until
+    // the fresh one replaces it), so the dormant release below takes a retired dormant battlefield too
+    const cached = coordinator.cached(id);
     // another battlefield: the dormant one goes before this one builds (its memory is not held through the build's peak)
     releaseDormantExcept(id);
-    const cached = cache.get(id) ?? null;
     // (audit R1) the world stays resident while this request warms it: another activation's budget cannot release it
     const releaseHold = coordinator.retain(id);
     const startedAt = now();
@@ -647,7 +649,7 @@ export function createWorldActivationRuntime<
         supersedeActivations();
         return current;
       }
-      const cached = cache.get(mapId);
+      const cached = coordinator.cached(mapId);
       return cached ? activate(cached) : ensure(mapId);
     },
     ensure,

@@ -52,6 +52,8 @@ const coordinator = {
   cancelBackgroundExcept(mapId) { this.cancelledTo = mapId; },
   // (2026-11-02 audit R1) an activation holds the world it warms against eviction
   retain() { return () => {}; },
+  // (audit R1) and reads a cached world only if it was built for the quality preset in effect
+  cached(id) { return this.cache.get(id) ?? null; },
 };
 
 const events = [];
