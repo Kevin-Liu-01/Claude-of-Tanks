@@ -10,6 +10,11 @@
  * only callers that passed no tick remain). With no live caller left the relay rejects and the install stops where it
  * is (its flags keep the finished parts), so a later call starts a fresh one. A job started without a tick runs without
  * yielding, as before. No DOM; Node-runnable.
+ *
+ * A job closes (takes no more members) synchronously at the moment it commits to end: before its members are settled
+ * when the install finishes or fails, and before the relay throws when every caller has gone. A call made after that,
+ * even in a settled caller's own continuation or rejection handler, starts a fresh install; it never joins a finished
+ * job (which would never settle it) or a dead one (whose fate it would inherit).
  */
 export type InstallTick = () => Promise<void>;
 
@@ -25,20 +30,35 @@ interface Member {
   reject(error: unknown): void;
 }
 
+interface Job {
+  /** true once the job has committed to end; a closed job takes no more members */
+  closed: boolean;
+  readonly members: Member[];
+  promise: Promise<void> | null;
+}
+
 export function createSharedInstall(
   run: (tick?: InstallTick) => Promise<void>,
   onJob?: (job: Promise<void> | null) => void,
 ): (tick?: InstallTick) => Promise<void> {
-  let job: Promise<void> | null = null;
-  let members: Member[] = [];
-  const settle = (list: Member[], error: unknown, failed: boolean): void => {
-    for (const member of list) {
+  let current: Job | null = null;
+  const close = (job: Job): void => {
+    if (job.closed) return;
+    job.closed = true;
+    if (current !== job) return;
+    current = null;
+    onJob?.(null);
+  };
+  const settle = (job: Job, error: unknown, failed: boolean): void => {
+    close(job);
+    for (const member of job.members) {
       if (member.done) continue;
       member.done = true;
       if (failed) member.reject(error); else member.resolve();
     }
   };
-  const relay = (list: Member[]): InstallTick => async () => {
+  const relay = (job: Job): InstallTick => async () => {
+    const list = job.members;
     for (;;) {
       let member: Member | null = null;
       for (let i = list.length - 1; i >= 0; i--) {
@@ -47,6 +67,7 @@ export function createSharedInstall(
       if (!member) {
         // only callers that asked for no yields remain: finish for them without yielding
         if (list.some((entry) => !entry.done)) return;
+        close(job);
         throw new InstallCallersGoneError();
       }
       try {
@@ -59,17 +80,12 @@ export function createSharedInstall(
   };
   return (tick) => new Promise<void>((resolve, reject) => {
     const member: Member = { tick, done: false, resolve, reject };
-    if (job) { members.push(member); return; }
-    const list: Member[] = [member];
-    members = list;
-    const started = Promise.resolve().then(() => run(tick ? relay(list) : undefined));
-    job = started;
+    if (current && !current.closed) { current.members.push(member); return; }
+    const job: Job = { closed: false, members: [member], promise: null };
+    current = job;
+    const started = Promise.resolve().then(() => run(tick ? relay(job) : undefined));
+    job.promise = started;
     onJob?.(started);
-    started.then(() => settle(list, null, false), (error) => settle(list, error, true)).finally(() => {
-      if (job !== started) return;
-      job = null;
-      members = [];
-      onJob?.(null);
-    });
+    started.then(() => settle(job, null, false), (error) => settle(job, error, true));
   });
 }

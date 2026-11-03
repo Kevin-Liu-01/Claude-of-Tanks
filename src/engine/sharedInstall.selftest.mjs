@@ -62,6 +62,38 @@ function tickOf(label, log, { failAt = Infinity } = {}) {
 }
 
 {
+  // (review round 1) a call made straight in a settled caller's continuation or rejection handler, with no flush, starts
+  // a fresh install: it never joins the finished job (which would never settle it) or the dead one (whose fate it would
+  // inherit). The job closes synchronously when it commits to end, before its members resume.
+  const within = (promise, ms = 200) => Promise.race([
+    promise.then(() => 'resolved', (error) => `rejected: ${error?.name}`),
+    new Promise((resolve) => setTimeout(() => resolve('pending'), ms)),
+  ]);
+  const live = () => Promise.resolve();
+  let runs = 0;
+  const jobs = [];
+  const install = createSharedInstall(async (tick) => { runs += 1; await tick(); }, (job) => jobs.push(job === null ? 'idle' : 'busy'));
+  await install(live);
+  assert.equal(await within(install(live)), 'resolved', 'a call in the first caller\'s own continuation settles');
+  assert.equal(runs, 2, 'and runs its own install');
+  assert.equal(await within(install(live).then(() => install(live))), 'resolved', 'so does a call chained in .then');
+  assert.equal(runs, 4);
+  assert.deepEqual(jobs, ['busy', 'idle', 'busy', 'idle', 'busy', 'idle', 'busy', 'idle'], 'each job closes before the next starts');
+
+  let retries = 0;
+  const retry = createSharedInstall(async (tick) => { retries += 1; for (let i = 0; i < 3; i++) await tick(); });
+  const retried = retry(() => Promise.reject(new Error('superseded'))).catch(() => retry(live));
+  assert.equal(await within(retried), 'resolved', 'a retry in the rejection handler, with a live tick, does not inherit the departed caller\'s fate');
+  assert.equal(retries, 2, 'it runs a fresh install');
+
+  let failing = 0;
+  const broken = createSharedInstall(async () => { failing += 1; if (failing === 1) throw new Error('bake failed'); });
+  const again = broken().catch(() => broken());
+  assert.equal(await within(again), 'resolved', 'a retry after the install itself failed runs again');
+  assert.equal(failing, 2);
+}
+
+{
   // a joiner that passed no tick still completes when the tick callers are gone (without yields for it)
   const install = createSharedInstall(async (tick) => { for (let i = 0; i < 3; i++) await tick(); });
   const ticked = install(() => Promise.reject(new Error('superseded')));
