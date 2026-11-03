@@ -35,7 +35,8 @@ as `audio:caption`; the renderer reads text from `captionScript.generated.ts`
 (both tables from `tools/audio/build-captions.mjs`, run after any crew-line edit).
 `lazyAudio.ts` owns gesture-time context creation and mixer transfer (it makes
 no sound of its own) and the device's lifecycle (an interrupted or suspended
-context re-arms the gesture unlock); `listenerPoseRuntime.ts` owns
+context re-arms the gesture unlock; a muted or silent game's gesture keeps it,
+and unmuting resumes a stopped device); `listenerPoseRuntime.ts` owns
 the hybrid camera/vehicle listener. `battleMode.ts` declares the engine's
 battle mode (garage, loading, live, over, presented, with the pause and
 kill-cam overlays) and its one transition, `stepAudioBattleMode`, shared by
