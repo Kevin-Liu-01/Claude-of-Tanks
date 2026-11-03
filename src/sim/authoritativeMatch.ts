@@ -36,7 +36,7 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, resolveHullImpact, resolveRamPairDamage,
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, resetHullCrashMemory, resolveHullImpact, resolveRamPairDamage,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
@@ -142,6 +142,7 @@ import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
 import { createCrushPressLedger } from './crushPress.ts';
+import { autoRightsItself } from './botDriven.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
@@ -1239,6 +1240,8 @@ export function createAuthoritativeMatch({
     initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
+    // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
+    resetHullCrashMemory(tank);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
@@ -2612,7 +2615,8 @@ export function createAuthoritativeMatch({
 
   function advanceRollover(dt: number): void {
     for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed || !entity.bot) continue;
+      // the hulls no player drives right themselves (sim/botDriven.ts autoRightsItself, the solo step's gate)
+      if (!autoRightsItself(entity)) continue;
       if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
     }
   }

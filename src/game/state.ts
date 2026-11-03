@@ -70,7 +70,8 @@ import {
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, normalizeRamContact, resolveHullImpact, resolveRamPairDamage,
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, normalizeRamContact, resetHullCrashMemory, resolveHullImpact,
+  resolveRamPairDamage,
   type HullImpactKind, type HullImpactResult, type RamModuleHit,
 } from '../sim/impact.ts';
 import {
@@ -119,6 +120,7 @@ import { getStoredDifficulty } from './input.ts';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { createCrushPressLedger, type CrushPressLedger } from '../sim/crushPress.ts';
+import { autoRightsItself } from '../sim/botDriven.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -903,8 +905,7 @@ function initializeBattleEntity(
   entity._destroyedAnnounced = false;
   entity._openingRoute = null;
   entity._lastImpactT = -1;
-  entity._impactAccumMps = 0;
-  entity._impactAccumT = -1e9;
+  resetHullCrashMemory(entity);
   entity.ai = null;
   entity._provingMark = null;
   entity._provingPatrol = null;
@@ -1511,6 +1512,8 @@ export function setupBattle(
       ent.input.aimLocked = false;
       ent.input.aimPoint.copy(ent.state.aimPoint);
       ent._destroyedAnnounced = false;
+      // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the authority's revive too)
+      resetHullCrashMemory(ent);
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);
@@ -2999,7 +3002,8 @@ function resolveRamContacts(
 
 function stepRolloverRecovery(game: SoloGameState, bus: EventBus): void {
   for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.combat.destroyed || entity.isPlayer) continue;
+    // the hulls no player drives right themselves (sim/botDriven.ts autoRightsItself, the authority's gate)
+    if (!autoRightsItself(entity)) continue;
     if (stepRolloverLifecycle(entity.state, SIM_DT)) {
       bus.emit('tank:autoflip', { id: entity.id, specId: entity.specId });
     }

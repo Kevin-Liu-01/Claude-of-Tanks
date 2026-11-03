@@ -242,6 +242,22 @@ export function resolveHullImpact(input: HullImpactInput): HullImpactResult | nu
   return { kind, damage, destroyed, modulesHit, crewHit };
 }
 
+/** A hull's crash memory: the closing speed a crash still resolving has priced, and when it began (both drivers). */
+export interface HullCrashMemory {
+  _impactAccumMps?: number;
+  _impactAccumT?: number;
+}
+
+/**
+ * Forget the crash a hull's previous life was resolving: every life starts here on both drivers (a battle's seat and a
+ * mode's revive), so a revive inside the 0.3 s crash window (a Turbo Ball goal revives every hull) never prices the old
+ * life's closing speed into its first blow (2026-11-02 audit M6).
+ */
+export function resetHullCrashMemory(hull: HullCrashMemory): void {
+  hull._impactAccumMps = 0;
+  hull._impactAccumT = -1e9;
+}
+
 // ---- tank on tank -----------------------------------------------------------------------------------------
 
 /** The slice of a movement state a ram reads and shoves. */
