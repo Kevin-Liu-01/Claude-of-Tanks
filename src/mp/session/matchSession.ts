@@ -123,6 +123,35 @@ export const STANDBY_HOST_DELAY_MS = 20_000;
 export type SessionRole = 'host' | 'peer' | null;
 
 /**
+ * This seat's part in the round's peer-to-peer match (audit M2, 2026-11-02): one declared state, written only by
+ * `moveRole`, which refuses a move `ROLE_MOVES` does not list. It used to be read from which objects existed (`host`,
+ * `peerTransport`), and nothing ended a host when its match did: a finished round's host still read as the running host.
+ * - none: no part (the lobby, the WebSocket path, a round left or over).
+ * - booting_host: this seat's host actor is starting (a fresh match, or an election onto this seat).
+ * - live_host: the actor runs the match.
+ * - finished_host: the round settled (a verdict, a loss): the actor plays out its end; nothing hands it on, and the
+ *   host is dropped when its own seat's link closes (the actor's MATCH_ENDED after its linger) or the round is left.
+ * - stepping_down: the room replaced this host; its actor stops and a peer link takes the loopback's place.
+ * - peer: linked to another seat's host.
+ * - migrating: a peer following an election to another seat's host, until the new host welcomes it.
+ */
+export type SessionRoleState = 'none' | 'booting_host' | 'live_host' | 'finished_host' | 'stepping_down' | 'peer' | 'migrating';
+
+const ROLE_MOVES: Readonly<Record<SessionRoleState, readonly SessionRoleState[]>> = {
+  none: ['booting_host', 'peer'],
+  // a superseded or failed election boot falls back to the peer link the seat still holds
+  booting_host: ['live_host', 'finished_host', 'stepping_down', 'peer', 'none'],
+  // a live host whose actor failed, elected again, boots anew
+  live_host: ['finished_host', 'stepping_down', 'booting_host', 'none'],
+  finished_host: ['none'],
+  stepping_down: ['peer', 'none'],
+  peer: ['migrating', 'booting_host', 'none'],
+  migrating: ['peer', 'booting_host', 'none'],
+};
+
+const HOSTING: ReadonlySet<SessionRoleState> = new Set(['booting_host', 'live_host']);
+
+/**
  * Why this seat told the room it will not host (audit M2, 2026-11-02): one declared state, written only by `setDecline`.
  * - null: willing; the room may elect it.
  * - 'unable': it cannot host at all (no host thread, the mobile tier, the never-host switch) — the seat's own, said once
@@ -233,6 +262,8 @@ export class MatchSession {
   private started = false;
   private disposed = false;
   // ---- peer-to-peer
+  /** This seat's part in the match (SessionRoleState); `host` is set in the host states, `peerTransport` as a peer. */
+  private roleState: SessionRoleState = 'none';
   private host: MatchHost | null = null;
   private peerTransport: WebRtcTransport | null = null;
   private migrating: MigratingTransport | null = null;
@@ -302,7 +333,12 @@ export class MatchSession {
   get verdict(): { verdict: VerdictId; reason: string; matchId: string } | null { return this.lastVerdict; }
   get presentationAdapter(): PresentationAdapter | null { return this.presentation?.adapter ?? null; }
   /** This seat's part in a peer-to-peer match (null on the WebSocket path or outside a match). */
-  get role(): SessionRole { return this.host ? 'host' : this.peerTransport ? 'peer' : null; }
+  get role(): SessionRole {
+    const state = this.roleState;
+    return state === 'none' ? null : state === 'peer' || state === 'migrating' || state === 'stepping_down' ? 'peer' : 'host';
+  }
+  /** The declared role state (diagnostics and the proofs). */
+  get roleStatus(): SessionRoleState { return this.roleState; }
 
   get matchHost(): MatchHost | null { return this.host; }
   /** The peer-to-peer facts, written in place on every read (the status model samples it). */
@@ -349,6 +385,42 @@ export class MatchSession {
 
   private log(level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>): void {
     this.p2pOptions?.onLog?.(level, message, fields);
+  }
+
+  /** The one writer of `roleState`: a move the table does not list is refused (false) and logged. */
+  private moveRole(next: SessionRoleState, detail: string): boolean {
+    const from = this.roleState;
+    if (from === next) return true;
+    if (!ROLE_MOVES[from].includes(next)) {
+      this.log('warn', 'role move refused', { from, to: next, detail });
+      return false;
+    }
+    this.roleState = next;
+    return true;
+  }
+
+  /** Watch a host this seat boots: its actor running moves the role from booting to live. */
+  private watchHost(host: MatchHost): void {
+    const off = host.onState((state) => {
+      if (this.host !== host) { off(); return; }
+      if (state === 'live' && this.roleState === 'booting_host') this.moveRole('live_host', 'host live');
+      if (state === 'stopped' || state === 'failed') off();
+    });
+  }
+
+  /** The match is over (a verdict, the room's loss, the actor's own end): a host this seat runs serves only its end. */
+  private settleHostRole(detail: string): void {
+    if (HOSTING.has(this.roleState)) this.moveRole('finished_host', detail);
+  }
+
+  /** A finished round's host is dropped once its own seat's link closes: the actor played out its end (or the link went). */
+  private releaseFinishedHost(detail: string): void {
+    const host = this.host;
+    if (this.roleState !== 'finished_host' || !host) return;
+    this.host = null;
+    host.stop(CLOSE_REASON.MATCH_ENDED, detail);
+    this.moveRole('none', detail);
+    this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
   }
 
   // ------------------------------------------------------------ lifecycle
@@ -425,7 +497,7 @@ export class MatchSession {
       const generation = this.room.generation;
       if (parseP2pMatchUrl(payload.matchUrl) && generation > this.runningGeneration && this.migrating) {
         const me = this.room.playerId;
-        if (this.host && this.room.hostId !== me) this.stepDown('match_start re-sent');
+        if (HOSTING.has(this.roleState) && this.room.hostId !== me) this.stepDown('match_start re-sent');
         else if (this.peerTransport) { this.runningGeneration = generation; this.peerTransport.retarget('match_start re-sent'); }
       }
       return this.matchClient;
@@ -502,9 +574,13 @@ export class MatchSession {
       if (phase === 'failed' && this.currentPhase === 'match') this.setPhase('lost', detail);
       if (phase === 'closed' && this.currentPhase === 'match') {
         const reason = client.lastCloseReason;
-        if (reason === CLOSE_REASON.MATCH_ENDED) this.setPhase(this.lastVerdict ? 'ended' : 'lost', 'match ended');
+        if (reason === CLOSE_REASON.MATCH_ENDED) { this.settleHostRole('match ended'); this.setPhase(this.lastVerdict ? 'ended' : 'lost', 'match ended'); }
         else if (reason !== CLOSE_REASON.CLIENT_LEAVE) this.setPhase('lost', detail);
       }
+      // A finished round's host goes once its own seat's link closes: the actor played out its end (its MATCH_ENDED).
+      // A host whose own link failed while its match runs stays a host: its peers still play on it, and its leave hands
+      // the match on.
+      if ((phase === 'closed' || phase === 'failed') && this.roleState === 'finished_host') this.releaseFinishedHost(`own link ${phase}`);
     });
     this.roundsEntered++;
     this.setPhase('match', payload.matchId);
@@ -593,7 +669,7 @@ export class MatchSession {
     if (!p2p || p2p.hostHeadroom === false || !this.canHost) return;
     this.headroom ??= createHostHeadroomMonitor(p2p.hostHeadroom ?? {});
     this.headroom.frame(frameMs);
-    if (this.currentPhase !== 'lobby' || this.host || this.room.phase !== 'joined') return;
+    if (this.currentPhase !== 'lobby' || this.roleState !== 'none' || this.room.phase !== 'joined') return;
     const weak = this.headroom.weak;
     if (weak && this.decline === null) {
       this.log('info', 'frames too slow to host well: declining to host', { p50FrameMs: this.headroom.p50FrameMs });
@@ -621,7 +697,8 @@ export class MatchSession {
    */
   handOffHosting(reason: string): boolean {
     const host = this.host;
-    if (!host || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
+    // a finished round's host has nothing to hand on (its match is over), a booting or live one does
+    if (!host || !HOSTING.has(this.roleState) || host.state === 'stopped' || host.state === 'failed' || this.handedOff) return false;
     if (this.room.phase !== 'joined' || this.room.hostId !== this.room.playerId) return false;
     const me = this.room.playerId;
     const successor = this.room.room?.players.some((player) => player.id !== me && player.team !== 'spectator' && player.connected) ?? false;
@@ -776,7 +853,7 @@ export class MatchSession {
   private closeEarlyPeerLink(early: { migrating: MigratingTransport; peer: WebRtcTransport } | null, reason: string): void {
     if (!early) return;
     if (this.migrating === early.migrating) this.migrating = null;
-    if (this.peerTransport === early.peer) this.peerTransport = null;
+    if (this.peerTransport === early.peer) { this.peerTransport = null; this.moveRole('none', reason); }
     early.migrating.close(undefined, reason);
   }
 
@@ -821,6 +898,8 @@ export class MatchSession {
       };
       const host = this.createHost();
       this.host = host;
+      this.moveRole('booting_host', 'fresh match');
+      this.watchHost(host);
       void host.start(config).catch((error: unknown) => {
         if (this.host !== host) return;
         this.log('error', 'host boot failed', { error: error instanceof Error ? error.message : String(error) });
@@ -837,6 +916,7 @@ export class MatchSession {
       }
       const peer = this.createPeerTransport();
       this.peerTransport = peer;
+      this.moveRole('peer', 'match link');
       inner = peer;
       this.p2pListeners.emit({ kind: 'role', role: 'peer', generation: this.room.generation });
     }
@@ -850,6 +930,7 @@ export class MatchSession {
     this.migrationActive = false;
     const hostId = this.migrationHostId ?? '';
     this.migrationHostId = null;
+    if (this.roleState === 'migrating') this.moveRole('peer', detail);
     this.p2pListeners.emit({ kind: 'migration', phase: 'end', hostId, generation: this.room.generation, role: this.role, detail });
   }
 
@@ -857,12 +938,13 @@ export class MatchSession {
   private stepDown(detail: string): void {
     const host = this.host;
     const migrating = this.migrating;
-    if (!host || !migrating) return;
+    if (!host || !migrating || !this.moveRole('stepping_down', detail)) return;
     this.log('warn', 'stepping down', { detail, generation: this.room.generation });
     host.stop(CLOSE_REASON.REPLACED, detail);
     this.host = null;
     const peer = this.createPeerTransport();
     this.peerTransport = peer;
+    this.moveRole('peer', detail);
     this.runningGeneration = this.room.generation;
     // a newer generation's blobs outrank the one this seat hosted, whatever tick an earlier host stamped on them
     this.matchClient?.migration.setGeneration(this.room.generation);
@@ -917,16 +999,18 @@ export class MatchSession {
       await this.becomeHost(client, round, change, migrating, previousHostId);
       return;
     }
-    if (this.host) {
+    if (this.host && this.moveRole('stepping_down', 'host changed')) {
       // Replaced by the room (this seat's room socket was absent past the grace): the actor stops, this seat follows the new host.
       this.host.stop(CLOSE_REASON.REPLACED, 'host changed');
       this.host = null;
       const peer = this.createPeerTransport();
       this.peerTransport = peer;
+      this.moveRole('peer', 'host changed');
       migrating.replace(peer, 'host changed');
       this.p2pListeners.emit({ kind: 'role', role: 'peer', generation: change.generation });
       return;
     }
+    if (this.peerTransport && this.migrationActive) this.moveRole('migrating', 'host changed');
     this.peerTransport?.retarget('host changed');
   }
 
@@ -948,6 +1032,8 @@ export class MatchSession {
     // election, and their offers must find an acceptor (the core holds their HELLOs until the actor runs).
     const host = this.createHost();
     this.host = host;
+    this.moveRole('booting_host', 'elected');
+    this.watchHost(host);
     const retained = client.retainedMigration();
     const welcome = client.welcome;
     let resume: HostBootConfig['resume'] = null;
@@ -991,7 +1077,7 @@ export class MatchSession {
     try {
       await host.start(config);
     } catch (error) {
-      if (this.host === host) this.host = null;
+      if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot failed'); }
       this.log('error', 'elected host failed to boot', { error: error instanceof Error ? error.message : String(error) });
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'boot failed' });
       this.migrationActive = false;
@@ -999,9 +1085,14 @@ export class MatchSession {
       this.setDecline('match', { declined: true, unable: true });
       return;
     }
-    if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') { if (this.host === host) this.host = null; host.stop(); return; }
+    if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') {
+      if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot superseded'); }
+      host.stop();
+      return;
+    }
     const previous = this.peerTransport;
     this.peerTransport = null;
+    this.moveRole('live_host', 'elected host live');
     migrating.replace(host.transport, 'host migration');
     previous?.close(undefined, 'became host');
     this.p2pListeners.emit({ kind: 'role', role: 'host', generation: change.generation });
@@ -1013,6 +1104,7 @@ export class MatchSession {
     this.verdictsSeen++;
     this.presentation?.onVerdict?.(verdict, reason);
     this.verdictListeners.emit(this.lastVerdict);
+    this.settleHostRole('verdict');
     this.setPhase('ended', reason);
   }
 
@@ -1022,6 +1114,8 @@ export class MatchSession {
       const verdict: VerdictId = payload.verdict.result === 'alpha' ? VERDICT.ALPHA : payload.verdict.result === 'bravo' ? VERDICT.BRAVO : VERDICT.DRAW;
       this.settleVerdict(verdict, payload.verdict.reason, payload.matchId);
     } else if (payload.status === 'lost' && this.currentPhase !== 'ended') {
+      // the room ended the match for every seat: nothing of it is left to hand on
+      this.settleHostRole('match_lost');
       this.setPhase('lost', 'match_lost');
     }
   }
@@ -1046,7 +1140,7 @@ export class MatchSession {
     const stalled = nowMs - this.lastUpdateAt > 500;
     this.lastUpdateAt = nowMs;
     const count = client?.snapshotsAcceptedCount ?? -1;
-    if (!client || this.host || !this.peerTransport || this.currentPhase !== 'match' || this.migrationActive
+    if (!client || this.roleState !== 'peer' || !this.peerTransport || this.currentPhase !== 'match' || this.migrationActive
         || this.welcomedGeneration !== this.room.generation || this.room.phase !== 'joined' || stalled || count !== this.hostHeardCount) {
       this.hostHeardCount = count;
       this.hostHeardAt = nowMs;
@@ -1073,7 +1167,7 @@ export class MatchSession {
     // Only a host leaving a round that is still running hands it on. A settled round (its verdict, a loss) has nothing
     // to hand on, and a rematch's leave runs after the room already elected this seat for the next round: a decline
     // then reads as the NEW round's host declining as unable, and the room ends that round at once (audit M2, 2026-11-02).
-    const handsOn = reason !== 'rematch' && (this.currentPhase === 'loading' || this.currentPhase === 'match');
+    const handsOn = reason !== 'rematch' && HOSTING.has(this.roleState);
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
     this.closeStandby(`leave: ${reason}`);
@@ -1082,6 +1176,7 @@ export class MatchSession {
     this.currentRound = null;
     this.host = null;
     this.peerTransport = null;
+    this.moveRole('none', `leave: ${reason}`);
     this.migrating = null;
     this.migrationActive = false;
     this.migrationHostId = null;
