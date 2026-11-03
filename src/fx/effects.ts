@@ -217,6 +217,8 @@ interface FxVisual {
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
   /** Wreck visuals report true; a revived/reset visual reports false (wreck r1 reads this). */
   isDestroyed?(): boolean;
+  /** (2026-11-02 audit F10) The visual's life: bumped by every reset and its disposal (a deferred wreck checks it). */
+  wreckLife?(): number;
   applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
 }
 
@@ -2256,7 +2258,8 @@ function* createFxSteps(
       // (2026-10-08, the owner's black screens) never brighter than the kill light itself (a hull burst asked 1.4x)
       const k = Math.min(1, Math.max(0, peakK));
       if (delayS <= 0) { flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * k, -delayS, durS, pw, hex); return; }
-      timers.push({ t: delayS, fn: () => flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * k, 0, durS, pw, hex) });
+      // (2026-11-02 audit F10) a light is a moment: one due under the killcam's suppression stays dark (advanceTimers)
+      timers.push({ t: delayS, fn: () => { if (!replaySuppressed) flashLight(lightStates[1], _pulseV.set(x, y, z), EXPLOSION_LIGHT_PEAK * k, 0, durS, pw, hex); } });
     },
     glow: (x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number) => {
       if (replaySuppressed) return;
@@ -3989,8 +3992,11 @@ function* createFxSteps(
     if (!visual) return;
     impactDecals.clearVehicle(visual);
     const delay = 0.15 + birthOffset;
-    if (delay <= 0) visual.setDestroyed({ pop: rack, ageS: -delay });
-    else timers.push({ t: delay, fn: () => visual.setDestroyed({ pop: rack }) });
+    if (delay <= 0) { visual.setDestroyed({ pop: rack, ageS: -delay }); return; }
+    // (2026-11-02 audit F10) made for this life of the visual: a reset (a Studio actor restaged) or a disposal inside
+    // the delay cancels it, never re-wrecks what stands again
+    const life = visual.wreckLife?.();
+    timers.push({ t: delay, fn: () => { if (visual.wreckLife?.() === life) visual.setDestroyed({ pop: rack }); } });
   }
 
   /**
@@ -4587,7 +4593,10 @@ function* createFxSteps(
     let live = 0;
     for (const timer of timers) if (timer.t > 0) timers[live++] = timer;
     timers.length = live;
-    if (!replaySuppressed) for (const timer of _due) timer.fn();
+    // (2026-11-02 audit F10) every due beat fires, suppressed or not: its particles join the hidden emitters, which keep
+    // aging (setReplaySuppressed), so a kill's smoke takeover due under the killcam is there when it ends (it was dropped
+    // for good); a light checks the suppression itself, and a wreck its visual's life
+    for (const timer of _due) timer.fn();
     _due.length = 0;
   }
 

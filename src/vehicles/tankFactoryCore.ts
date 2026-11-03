@@ -1363,6 +1363,9 @@ export interface TankVisual {
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
   /** (2026-11-02 audit F10) The wreck as its one declared state (wreckLifecycle.ts): intact, plain, cook-off, disposed. */
   wreckState(): TankWreckState;
+  /** (2026-11-02 audit F10) This visual's life: bumped by every reset and its disposal, so a beat deferred for one life
+   *  (an FX timer's wreck, fx/effects.ts) never lands on the next. */
+  wreckLife(): number;
   /**
    * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
    * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
@@ -10225,6 +10228,7 @@ export function* createTankRuntimeSteps(
   // (2026-11-02 audit F10) the wreck: one declared state, moved only by moveWreck below (wreckLifecycle.ts); `destroyed`
   // mirrors "a wreck stands" for the readers that only ask that
   let wreckState: TankWreckState = 'intact';
+  let wreckLife = 0;
   let destroyed = false;
   let recoilT = 1e9;
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
@@ -10966,6 +10970,7 @@ export function* createTankRuntimeSteps(
     const move = tankWreckMove(wreckState, event, wreckAge);
     wreckState = tankWreckNext(wreckState, move, event.kind === 'destroy' && event.pop);
     destroyed = isWreckState(wreckState);
+    if (move === 'reset' || move === 'dispose') wreckLife++;
     return move;
   }
 
@@ -11744,6 +11749,8 @@ export function* createTankRuntimeSteps(
     isDestroyed() { return destroyed; },
 
     wreckState() { return wreckState; },
+
+    wreckLife() { return wreckLife; },
 
     /**
      * Install the burn-mask shader hook (DISARMED, uBurnT -1) on every
