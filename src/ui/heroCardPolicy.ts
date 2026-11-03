@@ -199,7 +199,9 @@ export const HERO_BUDGETS = Object.freeze({
   tankWebp480: 30 * 1024,
   flagAvif: 12 * 1024, // either AVIF rung of a nation's flag layer
   flagWebp: 20 * 1024, // the 480 WebP fallback (non-AVIF browsers only)
-  directory: 12 * 1024 * 1024,
+  // release 269: 13 MiB for the South African and Australian trees' twelve cards (main stood 7.9 KB under 12 MiB with
+  // 284 tanks at about 44 KB each, no orphan files); about ten cards of headroom
+  directory: 13 * 1024 * 1024,
   manifest: 100 * 1024,
 });
 
