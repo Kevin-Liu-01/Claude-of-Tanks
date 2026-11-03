@@ -79,8 +79,12 @@ export interface RoomConnectionOptions {
    * before an admission while a remembered limit lasts, so no socket is opened into the limit. Null: never asked.
    */
   serviceLimit?: RoomServiceLimit | null;
-  /** The room's `match_start` reached this seat: enter the match (every seat, the host included). */
-  onHostStart?(state: SerializedLobby, connection: RoomConnection): void;
+  /**
+   * The room's `match_start` reached this seat: enter the match (every seat, the host included). `owner` names whose seat
+   * it is (audit F6, 2026-11-02): the menu's own, or one it released to the session owner with `forget()` — a later
+   * round of the battle owner's room, which the menu must not take back as its own.
+   */
+  onHostStart?(state: SerializedLobby, connection: RoomConnection, owner: 'menu' | 'released'): void;
   /** The room is gone for the menu-owned seat (never after `forget()`: the session owner holds it then). */
   onClose?(reason: string): void;
   onStatus?(status: { state: 'connecting' | 'reconnecting' | 'connected' }): void;
@@ -141,7 +145,8 @@ export function createRoomConnectionAdapter({
   if (required.some((entry) => typeof entry !== 'function')) throw new TypeError('room connection adapter requires every lifecycle port');
 
   let generation = 0;
-  let pending: { generation: number; client: RoomClient } | null = null;
+  /** The attempt in flight; its client is null while the daily-limit check runs (no socket yet). */
+  let pending: { generation: number; client: RoomClient | null } | null = null;
   let current: RoomConnection | null = null;
   /** After `forget()` the session owner holds the room; the menu's onClose stays silent. */
   let released: RoomConnection | null = null;
@@ -198,7 +203,8 @@ export function createRoomConnectionAdapter({
     }));
     subscriptions.push(client.onMatchStart((payload) => {
       lastMatchStart = payload;
-      if (current === connection || released === connection) onHostStart(lobby, connection);
+      if (current === connection) onHostStart(lobby, connection, 'menu');
+      else if (released === connection) onHostStart(lobby, connection, 'released');
     }));
     let limitAsked = false;
     subscriptions.push(client.onPhase(({ phase }) => {
@@ -242,7 +248,7 @@ export function createRoomConnectionAdapter({
     clearObservation();
     const attempt = pending;
     pending = null;
-    if (attempt) attempt.client.dispose();
+    if (attempt) attempt.client?.dispose();
     const connected = current;
     current = null;
     released = null;
@@ -254,21 +260,32 @@ export function createRoomConnectionAdapter({
     if (pending || current) throw new Error('a room connection already owns this menu');
     const roomsUrl = String(request.roomsUrl).trim();
     const limited = serviceLimit?.appliesTo(roomsUrl) ? serviceLimit : null;
-    if (limited?.until() != null && await limited.check() === 'limited') {
-      // a remembered limit that still holds: no socket into the refusal
-      const refusal = new RoomServiceLimitError(limited.until() ?? 0);
-      onError(refusal);
-      throw refusal;
-    }
+    // The attempt is this menu's before anything is awaited (audit F6, 2026-11-02): the daily-limit check used to run
+    // first, so a close during it found nothing to cancel and the connect went on to seat the player in a room the menu
+    // had left (and two connects inside it both passed the one-owner guard above).
     const attemptGeneration = ++generation;
+    const attempt: { generation: number; client: RoomClient | null } = { generation: attemptGeneration, client: null };
+    pending = attempt;
+    const superseded = (): boolean => pending !== attempt || generation !== attemptGeneration;
+    if (limited?.until() != null) {
+      let state: Awaited<ReturnType<RoomServiceLimit['check']>> | null = null;
+      try { state = await limited.check(); } catch { state = null; }
+      if (superseded()) return null;
+      if (state === 'limited') {
+        // a remembered limit that still holds: no socket into the refusal
+        pending = null;
+        const refusal = new RoomServiceLimitError(limited.until() ?? 0);
+        onError(refusal);
+        throw refusal;
+      }
+    }
     const client = createRoomClient({
       endpoint: roomsUrl,
       player: { id: request.player.id, name: request.player.name },
       storage,
       clientBuild,
     });
-    const attempt = { generation: attemptGeneration, client };
-    pending = attempt;
+    attempt.client = client;
     onStatus({ state: 'connecting' });
     const mode: RoomMode = request.mode === 'lan' ? 'lan' : 'private';
     const selection = {
@@ -282,14 +299,14 @@ export function createRoomConnectionAdapter({
           settings: { teamSize: request.teamSize, mapId: request.selection.mapId, gameMode: request.selection.gameMode || 'standard', arrangement: request.selection.arrangement },
         })
         : await client.join({ roomCode: normalizeRoomCode(request.roomCode), selection });
-      if (pending !== attempt || generation !== attemptGeneration) { client.dispose(); return null; }
+      if (superseded()) { client.dispose(); return null; }
       const connection = buildConnection(client, room, room.mode, attemptGeneration);
       current = connection;
       pending = null;
       onStatus({ state: 'connected' });
       return connection;
     } catch (error) {
-      const canceled = pending !== attempt || generation !== attemptGeneration;
+      const canceled = superseded();
       if (pending === attempt) pending = null;
       client.dispose();
       if (canceled) return null;
@@ -326,7 +343,7 @@ export function createRoomConnectionAdapter({
       clearObservation();
       const attempt = pending;
       pending = null;
-      if (attempt) attempt.client.dispose();
+      if (attempt) attempt.client?.dispose();
       current = null;
     },
     get current() { return current; },
