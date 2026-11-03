@@ -255,7 +255,10 @@ export class MatchSession {
   private currentRound: SessionRound | null = null;
   // players this seat's host already revoked this round (a kick or leave seen in room_state)
   private readonly revokedSeats = new Set<string>();
+  /** The round entry's sequence token: an entry, and every leave, moves it; an entry whose token moved is superseded. */
   private generation = 0;
+  /** The entry in flight (its match and promise): a match_start re-sent while the world loads joins it. */
+  private entering: { matchId: string; promise: Promise<MatchClient> } | null = null;
   private roundsEntered = 0;
   private verdictsSeen = 0;
   private lastVerdict: { verdict: VerdictId; reason: string; matchId: string } | null = null;
@@ -490,6 +493,21 @@ export class MatchSession {
   /** Enter (or re-enter) the announced match: presentation, transport on the seat token, client. */
   async enterMatch(payload: RoomMatchStartPayload): Promise<MatchClient> {
     if (this.disposed) throw new Error('session disposed');
+    // The same match re-sent while its world still loads (a room-socket blip resumed: the room re-sends match_start on
+    // every admission; audit M2, 2026-11-02): the entry in flight goes on — it reads the room's newest host and secret
+    // when the world is ready. It used to need a match client, so the blip tore the loading round down and loaded again.
+    const inFlight = this.entering;
+    if (inFlight && inFlight.matchId === payload.matchId && !this.matchClient) return inFlight.promise;
+    const promise = this.enterRound(payload);
+    this.entering = { matchId: payload.matchId, promise };
+    try {
+      return await promise;
+    } finally {
+      if (this.entering?.promise === promise) this.entering = null;
+    }
+  }
+
+  private async enterRound(payload: RoomMatchStartPayload): Promise<MatchClient> {
     if (this.currentRound?.matchStart.matchId === payload.matchId && this.matchClient) {
       // The same match re-sent to a seat back from a room-socket blip (P3, 2026-09-28): the room may have elected another host
       // meanwhile and this seat missed the host_changed. The room client now reads the current generation from the URL: a host
@@ -1201,6 +1219,9 @@ export class MatchSession {
     // to hand on, and a rematch's leave runs after the room already elected this seat for the next round: a decline
     // then reads as the NEW round's host declining as unable, and the room ends that round at once (audit M2, 2026-11-02).
     const handsOn = reason !== 'rematch' && HOSTING.has(this.roleState);
+    // a leave supersedes an entry still loading (audit M2, 2026-11-02): its token check after the world's await ends it
+    this.generation++;
+    this.entering = null;
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
     this.closeStandby(`leave: ${reason}`);
