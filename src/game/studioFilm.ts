@@ -150,8 +150,8 @@ interface SavedState {
   height: number;
   pixelRatio: number;
   aspect: number;
-  taaEnabled: boolean;
-  temporalAccumulation: boolean;
+  /** (2026-11-02 audit R4) the film's temporal-AA hold: the post preset owns the pass, the film only holds it off. */
+  temporalHold: { release(): void };
   /** (2026-11-02 audit R3) the film's own governor hold, released on leave (no snapshot of anyone else's). */
   adaptiveHold: { release(): void };
   flareDt: number | null;
@@ -233,8 +233,10 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       height: size.y,
       pixelRatio: renderer.getPixelRatio(),
       aspect: camera.aspect,
-      taaEnabled: post.taa.enabled,
-      temporalAccumulation: post.upscaler.temporalAccumulation,
+      // The jittered accumulation replaces temporal AA (and its wall-clock history), and spatial RCAS only: the 0.5
+      // temporal floor (TAA's box-filter softness) printed a pixel stipple over the accumulated frame in the 2026-10-01
+      // A/B; the jittered gaussian reconstruction needs no extra lift. One hold switches both off.
+      temporalHold: post.holdTemporalAA('studio-film'),
       adaptiveHold: post.holdAdaptive('studio-film'),
       flareDt: post.lensFlare.fixedDt,
     };
@@ -243,12 +245,6 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       post.pinDynScale(1);
       post.resetPerfTrims();
       applyFilmSize(width, height);
-      // The jittered accumulation replaces temporal AA (and its wall-clock history).
-      post.taa.enabled = false;
-      // Spatial RCAS only. The 0.5 temporal floor (TAA's box-filter softness)
-      // printed a pixel stipple over the accumulated frame in the 2026-10-01
-      // A/B; the jittered gaussian reconstruction needs no extra lift.
-      post.upscaler.temporalAccumulation = false;
       pass = new FilmAccumulatePass(renderer, post.sceneAA.sceneTarget.width, post.sceneAA.sceneTarget.height);
       const passes = post.composer.passes;
       const at = passes.indexOf(post.lateFx);
@@ -276,9 +272,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
     tailEnabled.length = 0;
     if (!state) { ports.setFilmMode(false); return; }
     post.lensFlare.fixedDt = state.flareDt;
-    post.taa.enabled = state.taaEnabled;
-    post.taa.resetHistory();
-    post.upscaler.temporalAccumulation = state.temporalAccumulation;
+    state.temporalHold.release();
     renderer.setPixelRatio(state.pixelRatio);
     renderer.setSize(state.width, state.height, false);
     camera.aspect = state.aspect;

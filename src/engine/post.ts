@@ -128,6 +128,8 @@ import { createNamedHolds, type NamedHold } from './namedHolds.ts';
  * A restore during a covered load releases only its own hold, so loading frames still never govern.
  */
 export type AdaptiveHoldReason = 'loading' | 'context-lost' | 'studio-film';
+/** (2026-11-02 audit R4) who holds temporal AA off: a Studio film's jittered accumulation replaces it. */
+export type TemporalAaHoldReason = 'studio-film';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
 const hazeTermsScratch = { x: 0, y: 0 };
 
@@ -189,6 +191,11 @@ export interface PostRuntime {
   /** Temporal anti-aliasing (2026-09-12); enabled per quality preset. */
   taa: TemporalAAPass;
   readonly taaEnabled: boolean;
+  /**
+   * (2026-11-02 audit R4) hold temporal AA (and the upscaler's temporal floor) off; the pass follows the preset again when
+   * the last hold releases. The preset listener is the pass's one owner: nobody snapshots and restores `taa.enabled`.
+   */
+  holdTemporalAA(reason: TemporalAaHoldReason): NamedHold<TemporalAaHoldReason>;
   upscaler: FsrUpscalePass;
   sceneAA: SceneAAPass;
   lateFx: LateFxPass;
@@ -2232,9 +2239,11 @@ export function createPost(
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
   let taaEnabled = !!preset.taa;
+  // (2026-11-02 audit R4) a named hold keeps the pass off (holdTemporalAA); the published state is the effective one
+  let taaHeld = false;
   const publishAAState = (): void => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = `${taaEnabled ? 'taa+' : ''}smaa-high+fsr1`;
+    renderer.domElement.dataset.postAa = `${taaEnabled && !taaHeld ? 'taa+' : ''}smaa-high+fsr1`;
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve
@@ -2667,6 +2676,18 @@ export function createPost(
   upscaler.temporalAccumulation = taaEnabled;
   upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
   composer.addPass(upscaler);
+  /** The temporal AA's effective state: the preset's, unless a named hold stands. */
+  function applyTemporalAA(): void {
+    const on = taaEnabled && !taaHeld;
+    taa.enabled = on;
+    taa.resetHistory();
+    upscaler.temporalAccumulation = on;
+    publishAAState();
+  }
+  const taaHolds = createNamedHolds<TemporalAaHoldReason>((held) => {
+    taaHeld = held;
+    applyTemporalAA();
+  });
   {
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
     const renderUpscaler = upscaler.render.bind(upscaler);
@@ -3270,9 +3291,7 @@ export function createPost(
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
     taaEnabled = !!preset.taa;
-    taa.enabled = taaEnabled;
-    taa.resetHistory();
-    upscaler.temporalAccumulation = taaEnabled;
+    applyTemporalAA();
     upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
     publishAAState();
     resolveLightFx();
@@ -3359,6 +3378,7 @@ export function createPost(
     get msaaSamples() { return sceneTarget.samples; },
     taa,
     get taaEnabled() { return taaEnabled; },
+    holdTemporalAA(reason) { return taaHolds.acquire(reason); },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */

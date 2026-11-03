@@ -948,6 +948,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit R3: the preset broadcast's one owner (isolated, never nested) and governor steps under a recovery cap
     'src/engine/qualityBroadcast.selftest.mjs',
     'src/engine/temporalAA.selftest.mjs',
+    // 2026-11-02 audit R4: one temporal-AA owner; a Studio film holds it off and restores nothing stale
+    'src/engine/temporalAaHolds.selftest.mjs',
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',

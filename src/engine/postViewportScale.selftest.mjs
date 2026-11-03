@@ -78,6 +78,7 @@ function createSizing(ports) {
   const onPresetChange = fn => { onPreset = fn; };
   const applyAoSampling = () => {};
   const publishAAState = () => {};
+  const applyTemporalAA = () => {}; // (2026-11-02 audit R4) the preset gates temporal AA through its owner (stubbed here)
   const resolveLightFx = () => {}; // round 69: the light-effect levers re-resolve on a preset change (stubbed like the AA state)
   ${presetChange}
   // (local-fps-265) the governor's own tier change: the raster it stood at rides the switch (post.ts applyAdaptiveQualityAction)
