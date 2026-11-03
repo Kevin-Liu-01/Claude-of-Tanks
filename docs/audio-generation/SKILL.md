@@ -32,7 +32,7 @@ scheduling) and the [audio skill](../../src/audio/SKILL.md) before touching
    generation is not.
 3. Write the prompt from the cookbook template of its kind: one event, the
    perspective and material, the exclusions, "Seamless loop" or "One-shot",
-   under 450 characters, no bright words. For a crew line, write all 13
+   under 450 characters, no bright words. For a crew line, write all 17
    languages in the procedure register with the same number of takes, a role, a
    delivery and a context.
 4. Estimate the credits (`--dry`), cap the run (`--budget`), then generate.

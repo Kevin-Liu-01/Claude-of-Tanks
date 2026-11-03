@@ -1873,7 +1873,7 @@ manifests (in `npm test`). Browser gates:
 `node tools/sfx-smoke.mjs` checks every scene's assets, the calibre ladder,
 the distance crossfade and propagation delay, jitter and volley headroom;
 `node tools/voice-smoke.mjs` checks the national crew, live language
-switching and all 13 packs through the radio chain;
+switching and every crew pack through the radio chain;
 `node tools/audio-spatial-killcam-probe.mjs` covers arcade/sniper
 perspective, cannon and engine distance falloff, rams and the kill-cam
 replay; `node tools/pause-probe.mjs` covers the pause duck.
