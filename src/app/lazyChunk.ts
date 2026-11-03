@@ -42,8 +42,9 @@ export interface LazyChunk<T> {
   /** Failed for the rest of the document: its stylesheet did not arrive, or the re-ask budget is spent. */
   readonly terminal: boolean;
   /**
-   * The chunk: resolves at once when ready, shares the request in flight, and after a failure either asks again (see
-   * the module comment) or rejects with the kept failure. The returned promise is handled, so a caller may drop it.
+   * The chunk: the settled request once ready, the request in flight while loading, and after a failure either a new
+   * ask (see the module comment) or the kept failure. The same promise until the state moves, and a handled one, so a
+   * caller may drop it or ask every frame.
    */
   load(): Promise<T>;
 }
@@ -97,9 +98,9 @@ export function createLazyChunk<T>(load: () => PromiseLike<T> | T, options: Lazy
     get error() { return error; },
     get terminal() { return terminal; },
     load(): Promise<T> {
-      if (state === 'ready') return Promise.resolve(value as T);
       if (state === 'idle') return ask();
-      if (state === 'loading' || terminal || !online()) return request!;
+      // ready, in flight, or a failure that stands: the same promise (a caller that asks every frame allocates nothing)
+      if (state !== 'failed' || terminal || !online()) return request!;
       const wait = importRetryDelayMs(failures, policy) ?? Infinity;
       return now() - failedAt < wait ? request! : ask();
     },

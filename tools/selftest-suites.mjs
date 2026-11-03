@@ -1878,6 +1878,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
+    // 2026-11-02 audit R6/F2: a failed deferred-warm or mission-attachment chunk no longer fails every later battle
+    'src/app/battleEntryLoadFailure.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
     'src/app/mainBattleHudRuntime.selftest.mjs',

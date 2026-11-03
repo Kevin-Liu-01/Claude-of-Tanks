@@ -31,6 +31,7 @@ assert.equal(isStylesheetFailure(null), false);
   assert.equal(chunk.state, 'ready');
   assert.equal(chunk.value, 'module');
   assert.equal(await chunk.load(), 'module');
+  assert.equal(chunk.load(), chunk.load(), 'ready: the same settled promise (a per-frame caller allocates nothing)');
   assert.equal(calls, 1);
 }
 
@@ -47,6 +48,7 @@ assert.equal(isStylesheetFailure(null), false);
   assert.equal(chunk.terminal, false);
   assert.match(String(chunk.error), /dynamically imported module/);
   await assert.rejects(chunk.load(), /dynamically imported module/, 'inside the backoff the kept failure answers');
+  assert.equal(chunk.load(), chunk.load(), 'the same kept promise');
   assert.equal(calls, 1, 'nothing asked again inside the backoff');
   clock = 2_000;
   onLine = false;

@@ -23,6 +23,7 @@ import {
 import type { DeferredCombatWarmRuntime, FirstBattleWarmTrace } from '../game/deferredCombatWarmRuntime.ts';
 import type { BattleVisualStreamer } from '../game/battleVisualStreamer.ts';
 import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
+import { createLazyChunk } from './lazyChunk.ts';
 import type {
   MainEntity,
   MainFxRuntime,
@@ -227,15 +228,14 @@ export function createCombatWarmComposition({
     devTrace,
   };
   let deferredRuntime: DeferredCombatWarmRuntime | null = null;
-  let deferredModule: Promise<typeof import('../game/deferredCombatWarmRuntime.ts')> | null = null;
-  const loadDeferred = () => {
-    // (a chunk that did not arrive is not asked for again in this document, so its failure stands: components/loadFailure.ts)
-    deferredModule ??= import('../game/deferredCombatWarmRuntime.ts');
-    return deferredModule;
-  };
+  // (2026-11-02 audit R6/F2) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, so one failed idle
+  // prefetch, which the player never asked for, failed every later solo entry at "Preparing effects"; a module that did
+  // not arrive is asked again by the next battle past the backoff
+  const deferredModule = createLazyChunk(() => import('../game/deferredCombatWarmRuntime.ts'));
+  const loadDeferred = () => deferredModule.load();
   {
     const host = globalThis as { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number };
-    const prefetch = (): void => { void loadDeferred().catch(() => { /* retried by the battle that schedules it */ }); };
+    const prefetch = (): void => { void loadDeferred().catch(() => { /* asked again by the battle that schedules it */ }); };
     if (typeof host.requestIdleCallback === 'function') host.requestIdleCallback(prefetch, { timeout: 4000 });
     else setTimeout(prefetch, 1500);
   }
@@ -288,7 +288,17 @@ export function createCombatWarmComposition({
       (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = skipped;
       return skipped;
     }
-    const module = await loadDeferred();
+    let module: Awaited<ReturnType<typeof loadDeferred>>;
+    try {
+      module = await loadDeferred();
+    } catch (error) {
+      // optional (soloBattleLoadingRuntime.ts): the entry goes on and the deferred warm does it in play; not marked
+      // warmed, so the next battle whose chunk lands runs it
+      console.warn('[warm] the first battle\'s covered warm did not load (the deferred warm does it in play):', error);
+      const skipped: FirstBattleWarmTrace = { ran: false, stages: {}, totalMs: 0, failed: 'load' };
+      (globalThis as { __BATTLE_FIRST_WARM?: FirstBattleWarmTrace }).__BATTLE_FIRST_WARM = skipped;
+      return skipped;
+    }
     const trace = await module.runFirstBattleCoveredWarm({
       renderer: renderer as unknown as Parameters<typeof module.runFirstBattleCoveredWarm>[0]['renderer'],
       getBattleVisuals, combatWarm, warmVisionSteps, devTrace,

@@ -1312,14 +1312,15 @@ const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' 
 /** The parked chip's id in the battle's notice region (battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
 const AIM_NOTICE_ID = 'cot-aim-warning';
 // (the region loads with the first parked chip, as the pointer lock's notice loads it: pointerLockFeedbackRuntime.ts)
-let aimNoticePort: Promise<BattleNoticePort> | null = null;
+// (2026-11-02 audit R6) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, so after one failed chunk no
+// parked warning ever showed; the next chip past the backoff asks again, and a dismiss never fetches
+const aimNoticePort = createLazyChunk(() => import('./battleNotices.ts').then((module) => module.battleNotices));
 const aimNotices: BattleNoticePort = {
   show(options) {
-    aimNoticePort ??= import('./battleNotices.ts').then((module) => module.battleNotices);
-    void aimNoticePort.then((port) => { port.show(options); }, () => {});
+    void aimNoticePort.load().then((port) => { port.show(options); }, () => {});
   },
   dismiss(id) {
-    if (aimNoticePort) void aimNoticePort.then((port) => { port.dismiss(id); }, () => {});
+    if (aimNoticePort.state === 'ready' || aimNoticePort.state === 'loading') void aimNoticePort.load().then((port) => { port.dismiss(id); }, () => {});
   },
 };
 const MODULE_ALERT_ICON_IDS = new Set([
@@ -1340,6 +1341,7 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // SPOTTING SECTION: single source of truth for the sixth-sense timing —
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 // The battle clock is the ruleset's: the frame carries timeLimitS (solo), otherwise the mode's own
 // ruleset answers; null means no clock (Endless Horde counts up).
 function battleClockLimitS(frame: HudFrame, modeId: string | null | undefined): number | null {
