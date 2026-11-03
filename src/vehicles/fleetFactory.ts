@@ -20,7 +20,7 @@ import {
   ensureVehicleMarkingSeatsForIds,
   isVehicleMarkingSeatsReady,
 } from './vehicleMarkingSeatLoader.ts';
-import { ensureAllInteriorFills, ensureInteriorFills } from './interiorFills.ts';
+import { ensureAllInteriorFills, ensureInteriorFills, isInteriorFillsReady } from './interiorFills.ts';
 import {
   ensureAllCombatAnatomyGroups,
   ensureCombatAnatomyCalibration,
@@ -36,6 +36,7 @@ import {
   type VehicleProfileRecord,
 } from './profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createLazyChunk, type LazyChunk } from '../app/lazyChunk.ts';
 
 type GroupLoader = () => Promise<object | void>;
 type TankVisual = ReturnType<typeof createTankCore>;
@@ -84,26 +85,19 @@ export function battleStaticDrawMerge(_specId: string): NonNullable<CreateTankOp
 }
 
 let profileKit: ProfileBuildFunctions | null = null;
-let factoryReady = false;
-let factoryReadyPromise: Promise<void> | null = null;
+// (2026-11-02 audit R6) the kit and every group are one lazyChunk each (app/lazyChunk.ts): a failed chunk is asked again
+// by the next ensure past the backoff, as these loads always were, under the one policy every lazy chunk follows
+const factoryKit = createLazyChunk(() => import('./profiles/kit.ts').then((kit) => {
+  configureTankFactory({
+    canonicalBuilderPacks: [],
+    profiledBuilders: {},
+    fittings: kit.FITTINGS,
+  });
+  profileKit = kit;
+}));
 
 function ensureFactoryReady(): Promise<void> {
-  if (factoryReady) return Promise.resolve();
-  if (!factoryReadyPromise) {
-    factoryReadyPromise = import('./profiles/kit.ts').then((kit) => {
-      configureTankFactory({
-        canonicalBuilderPacks: [],
-        profiledBuilders: {},
-        fittings: kit.FITTINGS,
-      });
-      profileKit = kit;
-      factoryReady = true;
-    }).catch((error) => {
-      factoryReadyPromise = null;
-      throw error;
-    });
-  }
-  return factoryReadyPromise;
+  return factoryKit.load();
 }
 
 function registerProfiles(profiles: VehicleProfileRecord): void {
@@ -234,23 +228,21 @@ const GROUP_LOADERS = Object.freeze({
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   sheridan: () => import('./profiles/sheridan.ts').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
-const groupPromises = new Map<FleetGroup, Promise<void>>();
-const readyGroups = new Set<FleetGroup>();
+const groupLoads = new Map<FleetGroup, LazyChunk<void>>();
 const tankSpecs = TANK_SPECS;
 
-function ensureGroup(group: FleetGroup | undefined): Promise<void> {
-  if (!group || readyGroups.has(group)) return ensureFactoryReady();
-  let pending = groupPromises.get(group);
-  if (!pending) {
-    pending = ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => {
-      readyGroups.add(group);
-    }).catch((error) => {
-      groupPromises.delete(group);
-      throw error;
-    });
-    groupPromises.set(group, pending);
+function groupLoad(group: FleetGroup): LazyChunk<void> {
+  let load = groupLoads.get(group);
+  if (!load) {
+    load = createLazyChunk(() => ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => undefined));
+    groupLoads.set(group, load);
   }
-  return pending;
+  return load;
+}
+
+function ensureGroup(group: FleetGroup | undefined): Promise<void> {
+  if (!group) return ensureFactoryReady();
+  return groupLoad(group).load();
 }
 
 export function ensureTankBuilder(specId: string): Promise<void> {
@@ -264,7 +256,9 @@ export function ensureTankBuilder(specId: string): Promise<void> {
   });
 }
 
-let ridingPartsPrebuildAsked = false;
+// the riding stations' prebuild chunk: a failed import is asked again by a later ask (it latched before its import, so
+// one failure lost the prebuild for the session); the prebuild itself starts once (ridingPartsPrebuild.ts)
+const ridingPartsPrebuild = createLazyChunk(() => import('./ridingPartsPrebuild.ts'));
 
 export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
   const groups = new Set<FleetGroup>();
@@ -281,9 +275,8 @@ export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
     for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
     // the first ask for builders ahead of their builds starts the riding stations' off-thread prebuild, these tanks
     // first (UI-LOCKDOWN E): every such ask comes after the Garage's first tank, and its chunk loads only here
-    if (!ridingPartsPrebuildAsked && typeof Worker === 'function') {
-      ridingPartsPrebuildAsked = true;
-      void import('./ridingPartsPrebuild.ts').then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
+    if (typeof Worker === 'function') {
+      void ridingPartsPrebuild.load().then(({ startRidingPartsPrebuild }) => startRidingPartsPrebuild(specIds), () => {});
     }
   });
 }
@@ -299,12 +292,16 @@ export function ensureFullFleet(): Promise<void> {
   });
 }
 
+/** Whether everything ensureTankBuilder(specId) awaits is resident: the kit, the group, the marking seats, the
+ *  calibration and (2026-11-02 audit R6) the interior fills, which it skipped. A build that passes it finalizes the
+ *  spec's combat anatomy first (idempotent), so a build never runs ahead of the ensure's own finalize. */
 export function isTankBuilderReady(specId: string): boolean {
   const group = FLEET_GROUP_BY_ID[specId];
-  return factoryReady
-    && (!group || readyGroups.has(group))
+  return factoryKit.state === 'ready'
+    && (!group || groupLoad(group).state === 'ready')
     && isVehicleMarkingSeatsReady(specId)
-    && isCombatAnatomyCalibrationReady(specId);
+    && isCombatAnatomyCalibrationReady(specId)
+    && isInteriorFillsReady(specId);
 }
 
 export function createTank(
@@ -315,6 +312,7 @@ export function createTank(
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
+  finalizeCombatAnatomy(tankSpecs[specId]);
   return createTankCore(specId, engineCtx, opts);
 }
 
@@ -327,6 +325,7 @@ export function createTankSteps(
   if (!isTankBuilderReady(specId)) {
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
+  finalizeCombatAnatomy(tankSpecs[specId]);
   return createTankCoreSteps(specId, engineCtx, opts);
 }
 

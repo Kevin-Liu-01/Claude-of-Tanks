@@ -444,7 +444,10 @@ export default defineConfig({
             // 2026-10-31 (shot-card-damage-266): the hit's hull points reader (game/hullPointsRemoved.ts: the profile's tally at
             // boot, the lazy HUD, killcam, hit format and service record) is a leaf the same three pages load; on its own it
             // was one more game, cn and Gallery boot request.
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-11-02 (audit R6): the one lazy-chunk failure policy (app/lazyChunk.ts and the backoff it reads,
+            // app/lazyImportRetry.ts, 2 KB together) is a pair of leaves the ring loader, the fleet facade and the Garage
+            // and Gallery openers load at boot on the same three pages; it rides here rather than in a chunk of its own.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas|app[\\/](?:lazyChunk|lazyImportRetry))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one

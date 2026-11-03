@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from './interiorFillLoaders.generated.ts';
 import { interiorFillSurface, type InteriorFillSurface } from './interiorFillSurface.ts';
+import { createLazyChunk, type LazyChunk } from '../app/lazyChunk.ts';
 
 export interface InteriorFillRecord {
   /** Fine voxel size in metres (box indices are in these units). */
@@ -37,8 +38,10 @@ type InteriorFillComponent = 'hull' | 'turret' | 'gun';
 type InteriorFillBox = readonly [cx: number, cy: number, cz: number, sx: number, sy: number, sz: number];
 
 const registry = new Map<string, InteriorFillRecord>();
-const loadedGroups = new Set<string>();
-const pendingGroups = new Map<string, Promise<void>>();
+// (2026-11-02 audit R6) each group's chunk is one lazyChunk: a failed load no longer stands for the session (it was
+// kept as the group's pending promise, so every tank of the group failed its ensureTankBuilder until a reload); the
+// next ask past the backoff loads it again
+const groupLoads = new Map<string, LazyChunk<void>>();
 
 function registerInteriorFills(records: Readonly<Record<string, InteriorFillRecord>>): void {
   for (const [id, record] of Object.entries(records)) registry.set(id, record);
@@ -48,20 +51,26 @@ function interiorFillGroupOf(specId: string): string {
   return FLEET_GROUP_BY_ID[specId] || 'core';
 }
 
-function ensureInteriorFillGroup(group: string): Promise<void> {
-  if (loadedGroups.has(group)) return Promise.resolve();
+/** The group's load, or null for a group with no fills. */
+function groupLoad(group: string): LazyChunk<void> | null {
   const loader = (INTERIOR_FILL_GROUP_LOADERS as Readonly<Record<string, (() => Promise<{ INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> }>) | undefined>>)[group];
-  if (!loader) { loadedGroups.add(group); return Promise.resolve(); }
-  let pending = pendingGroups.get(group);
-  if (!pending) {
-    pending = loader().then((module) => {
-      registerInteriorFills(module.INTERIOR_FILLS);
-      loadedGroups.add(group);
-      pendingGroups.delete(group);
-    });
-    pendingGroups.set(group, pending);
+  if (!loader) return null;
+  let load = groupLoads.get(group);
+  if (!load) {
+    load = createLazyChunk(() => loader().then((module) => registerInteriorFills(module.INTERIOR_FILLS)));
+    groupLoads.set(group, load);
   }
-  return pending;
+  return load;
+}
+
+function ensureInteriorFillGroup(group: string): Promise<void> {
+  return groupLoad(group)?.load() ?? Promise.resolve();
+}
+
+/** Whether the fills `specId`'s build applies are resident (what ensureInteriorFills awaits). */
+export function isInteriorFillsReady(specId: string): boolean {
+  const load = groupLoad(interiorFillGroupOf(specId));
+  return !load || load.state === 'ready';
 }
 
 /** Load the fill groups the given tank ids need (no-op for groups already resident). */
