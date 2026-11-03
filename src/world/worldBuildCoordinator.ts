@@ -3,7 +3,7 @@ import {
   createOpaqueLoadingYielder,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
-import { resolvePresetName } from '../engine/quality.ts';
+import { getPreset, type QualityPreset } from '../engine/quality.ts';
 import {
   disposeObject3DResourcesSteps,
   residentResourceLimits,
@@ -119,8 +119,8 @@ export interface WorldBuildCoordinatorDependencies<World extends WorldScene = Wo
   ) => Promise<BackgroundWorkLease | null>;
   resourceLimits?: ResourceLimits;
   /**
-   * (2026-11-02 audit R1) The quality class a build reads at its start (the resolved preset: texture scales, Ultra Low's
-   * light world, the preset name several builders read). Default: the live preset (engine/quality.ts).
+   * (2026-11-02 audit R1) The quality class a build reads at its start: what the build captures in what it builds
+   * (worldBuildClassOf). Default: the live preset's (engine/quality.ts).
    */
   buildClass?: () => string;
 }
@@ -144,7 +144,7 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   releaseCached(id: string): boolean;
   /**
    * (2026-11-02 audit R1) The world cached under `id` if it was built for the quality class in effect now, else null: one
-   * built under another preset is retired (released, or kept under a retired key while it is still on screen or held,
+   * built under another class is retired (released, or kept under a retired key while it is still on screen or held,
    * for the budget to release) so the id builds afresh. The cache was keyed by map alone, so after a change to or from
    * Ultra Low a cached map came back with live-following lite terrain under its build-time vegetation.
    */
@@ -180,6 +180,21 @@ function isMaterial(resource: DisposableResource): resource is THREE.Material {
     && resource.isMaterial === true;
 }
 
+/**
+ * (2026-11-02 audit R1, review) The part of a quality preset a world build captures in what it builds, the key a cached
+ * battlefield is reused under: Ultra Low's light world (presetLightWorld at build: the vegetation's near band, the grass's
+ * pressure field, the litter, the water ripples, the Hinterland, whether the FFT ocean is built at all) and the world
+ * texture scale and cap (texSize). The rest a build reads from the preset is capacity sized at build — the track-mark ring
+ * (map.ts trackMarkSegmentsFor), the FFT ocean's grid and stride (terrain.ts, oceanFft.ts) — which a world keeps through
+ * the battle it was built for after any live step anyway; the terrain material and the per-frame levers follow the live
+ * preset. A step between High, Medium and Low (desktop Auto's frame governor and the context-loss recovery change the
+ * preset name mid-battle) keeps the cached battlefield, so Battle Again stays instant; a step into or out of Ultra Low
+ * builds the battlefield afresh.
+ */
+export function worldBuildClassOf(preset: Pick<QualityPreset, 'lightWorld' | 'textureScale' | 'textureCap'>): string {
+  return `${preset.lightWorld === true ? 'light' : 'full'}:${preset.textureScale || 1}:${preset.textureCap || 0}`;
+}
+
 /** The background yielder (engine/backgroundYield.ts), its module loaded with the build's first background slice. */
 function lazyBackgroundYielder(): WorkYielder {
   let yielder: WorkYielder | null = null;
@@ -204,7 +219,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
   const cache = new Map<string, World>();
   const builds = new Map<string, BuildRecord<World>>();
   const buildClass = dependencies.buildClass ?? (() => {
-    try { return resolvePresetName(); } catch { return 'default'; }
+    try { return worldBuildClassOf(getPreset()); } catch { return 'default'; }
   });
   // (audit R1) each cached world's quality class, read when its build started
   const classOf = new WeakMap<World, string>();

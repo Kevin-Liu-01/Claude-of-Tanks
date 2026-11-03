@@ -548,7 +548,7 @@ export function createWorldActivationRuntime<
     const request: ActivationRequest = { ticket: activationTicket, id, state: 'resolving', world: null };
     latestRequest = request;
     coordinator.cancelBackgroundExcept(id);
-    // (audit R1) a world built under another quality preset is retired here (it builds afresh; on screen, it stays until
+    // (audit R1) a world built under another quality class is retired here (it builds afresh; on screen, it stays until
     // the fresh one replaces it), so the dormant release below takes a retired dormant battlefield too
     const cached = coordinator.cached(id);
     // another battlefield: the dormant one goes before this one builds (its memory is not held through the build's peak)

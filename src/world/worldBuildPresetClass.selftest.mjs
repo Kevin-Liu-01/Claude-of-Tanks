@@ -7,10 +7,18 @@
 // 2. a dormant battlefield built under the old preset is replaced on the next entry and released, never shown again;
 // 3. one still on screen stays until the fresh world replaces it, then the budget releases it;
 // 4. a prefetch under the new preset is not skipped as a cache hit.
+// 5. (review) the class is what a build captures (worldBuildClassOf: Ultra Low's light world, the texture scale and cap), not
+//    the preset name: desktop Auto's frame governor and the context-loss recovery step the preset name mid-battle, and a
+//    name key rebuilt the dormant battlefield for Battle Again after a High -> Medium step (a different track-mark ring
+//    size). On the real quality module: those steps keep it (no build), a step into or out of Ultra Low rebuilds it.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createWorldBuildCoordinator } from './worldBuildCoordinator.ts';
+import { createWorldBuildCoordinator, worldBuildClassOf } from './worldBuildCoordinator.ts';
 import { createWorldActivationRuntime } from './worldActivationRuntime.ts';
+import {
+  MOBILE_PRESET_ORDER, PRESETS, PRESET_ORDER, noteGraphicsContextLoss, reportSustainedOverload, reportSustainedRecovery,
+  resolvePresetName, setPresetName,
+} from '../engine/quality.ts';
 
 let preset = 'high';
 let builds = 0;
@@ -88,4 +96,68 @@ const turn = async () => { for (let i = 0; i < 6; i++) await new Promise((resolv
   assert.equal([...runtime.cache.values()].includes(rematch), false);
 }
 
-console.log('worldBuildPresetClass.selftest: a cached battlefield is reused only under the preset it was built for (rebuilt and released otherwise: a dormant one at once, one on screen once replaced; a prefetch is no stale hit) PASS');
+// ---- 5. the class is what the build captures, on the real quality module
+{
+  const classOf = (name) => worldBuildClassOf(PRESETS[name]);
+  for (const name of ['ultra', 'high', 'medium', 'low']) assert.equal(classOf(name), classOf('high'), `${name} builds the full world`);
+  assert.notEqual(classOf('ultralow'), classOf('high'), 'Ultra Low builds the light world');
+  for (const name of ['mobile-high', 'mobile', 'mobile-low']) assert.equal(classOf(name), classOf('mobile'), `${name}: the phone's world`);
+  assert.notEqual(classOf('mobile-ultralow'), classOf('mobile'));
+  assert.notEqual(classOf('mobile'), classOf('high'), 'the phones scale their world textures');
+  assert.equal(PRESET_ORDER.length + MOBILE_PRESET_ORDER.length, Object.keys(PRESETS).length, 'every preset is classed above');
+
+  const scene = new THREE.Scene();
+  const runtime = createWorldActivationRuntime({
+    initialMapId: 'verdant',
+    coordinatorDependencies: dependencies(scene, { buildClass: undefined }), // the default: the live preset's class
+    swapSceneWorld() {}, setSceneWorldActive() {}, ensureCloudTextures() {}, awaitInitialCloudWarm: async () => {},
+    applySkyPreset() {}, applySkyPresentation() {}, setSun() {}, getFogDensity: () => 0, onFogDensityChanged() {},
+    canCreateCollider: () => false, createCollider: () => null, placeGarage() {},
+    isMinimapReady: () => false, buildMinimap() {}, loadMinimapAsset: async () => false,
+    compilePrograms() {}, linkerBreathingSlices: function* () {}, updateShadowFrustums() {}, warmShadowFrame() {},
+    nextFrame: async () => {}, now: () => 0,
+  });
+  const info = console.info;
+  console.info = () => {}; // the governor's own notes
+  try {
+    // a desktop the hardware heuristics leave uncapped (engine/quality.ts heuristicAutoCap: more than four cores)
+    Object.defineProperty(globalThis.navigator, 'hardwareConcurrency', { value: 16, configurable: true });
+    setPresetName('auto');
+    assert.equal(resolvePresetName(), 'high', 'desktop Auto starts at High');
+    // a battle, then Battle Again after a live step: the battlefield waits dormant under the Garage meanwhile
+    const battle = await runtime.ensure('verdant', null, { precompile: false });
+    const rematch = async (step, expected) => {
+      runtime.setDormant(true);
+      step();
+      assert.equal(resolvePresetName(), expected);
+      const before = builds;
+      const world = await runtime.ensure('verdant', null, { precompile: false });
+      return { world, built: builds - before };
+    };
+    // the context-loss recovery steps one tier down
+    let next = await rematch(() => noteGraphicsContextLoss(), 'medium');
+    assert.equal(next.world, battle, 'after the recovery step the cached battlefield is reused');
+    assert.equal(next.built, 0, 'with no build: Battle Again stays instant');
+    setPresetName('auto'); // clears the recovery
+    next = await rematch(() => assert.ok(reportSustainedOverload()), 'medium');
+    assert.equal(next.world, battle, 'a governor step High -> Medium keeps the cached battlefield');
+    assert.equal(next.built, 0);
+    next = await rematch(() => assert.ok(reportSustainedOverload()), 'low');
+    assert.equal(next.world, battle, 'Medium -> Low keeps it too');
+    assert.equal(next.built, 0);
+    next = await rematch(() => assert.ok(reportSustainedOverload()), 'ultralow');
+    assert.notEqual(next.world, battle, 'a step into Ultra Low builds the light battlefield');
+    assert.equal(next.built, 1);
+    await turn();
+    assert.ok(released.includes(battle.group.name), 'and releases the full one');
+    const light = next.world;
+    next = await rematch(() => assert.ok(reportSustainedRecovery()), 'low');
+    assert.notEqual(next.world, light, 'a step out of Ultra Low builds the full battlefield again');
+    assert.equal(next.built, 1);
+  } finally {
+    console.info = info;
+    setPresetName('auto');
+  }
+}
+
+console.log('worldBuildPresetClass.selftest: a cached battlefield is reused only under the build class it was built for (rebuilt and released otherwise: a dormant one at once, one on screen once replaced; a prefetch is no stale hit); the class is what the build captures, so governor and recovery steps between High, Medium and Low keep it, and Ultra Low rebuilds it PASS');
