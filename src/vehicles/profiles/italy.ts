@@ -659,17 +659,9 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       const upperCheekBottom: Quad = [[s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)]];
       const upperCheekTop: Quad = [[s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]];
       P.add('turret', slab(...upperCheekBottom, ...upperCheekTop));              // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-      if (!c2) {
-        // Release 240 (C1 ERA, see c1EraReceipt): four columns by two rows of the C2's cheek cassettes seated on the raked
-        // face, clear of the gun slot's side cheeks (x 0.375-0.42) and under the lifting lugs; the C2 lays its field on
-        // its own add-on carrier over this face
-        const face0: Quad = [upperCheekBottom[0], upperCheekBottom[1], upperCheekTop[1], upperCheekTop[0]];
-        for (const u of [0.28, 0.48, 0.68, 0.88]) for (const v of [0.25, 0.66]) {
-          const face = sampleArmorFace(...face0, u, v, [s, 1, 1]);
-          faceSeatedArmorCassette(P, 'turret', face, face.dv, 0.13, 0.055, 0.20, C2_ERA_EMBED_M);
-          c1EraReceipt.turretCheekCassettes++;
-        }
-      }
+      // (268b round 2, both blind critics: the C1 prototype's 2x4 cassette tiles on each raked cheek "read as reactive-
+      // armour bricks"; the real turret's cheeks are plain plate and its launchers are tubes on the flanks. The tiles are
+      // gone (its skirt run keeps the release-240 cassettes); the flank smoke tubes are buildArieteMkTurretStage2's.)
       P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
         [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
         [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
@@ -752,9 +744,19 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       P.add('turret', box(0.22, 0.16, 0.06), s * 1.14, 0.62, L(-2.03));         // rear basket-to-panel bridge; overlaps both structures
       // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
       P.add('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
-      P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
-      addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05,
-        pitch: -0.40, slot: 'detail', seed: 30 + (s > 0 ? 1 : 0) }), s * 1.31, 0.56, L(-0.62));
+      if (c2) {
+        P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
+        addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05,
+          pitch: -0.40, slot: 'detail', seed: 30 + (s > 0 ? 1 : 0) }), s * 1.31, 0.56, L(-0.62));
+      } else {
+        // 268b round 2 (series C1 photographs 2 and 6; the blind critics: "the smoke launchers are tubes on the turret
+        // flanks"): four 80 mm tubes in a row along the platform, each angled up 30 degrees and out 35 degrees toward the
+        // bow, standing clear of the wall where the side view sees them (their old bank lay low behind a dark plate)
+        for (const [k, dz] of [-0.24, -0.08, 0.08, 0.24].entries()) {
+          addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 1, r: 0.04, len: 0.26, splay: s * 0.62,
+            pitch: -0.52, slot: 'detail', base: false, seed: 30 + k + (s > 0 ? 4 : 0) }), s * 1.335, 0.58, L(-0.62) + dz);
+        }
+      }
       // s5322-B4 cable conduit run bustle -> cheek riding the wall-top
       // shoulder (turret-owned; INBOARD of the lower wall band's own plan
       // outline — the first wall-face seats poked the tapering walls by up to
