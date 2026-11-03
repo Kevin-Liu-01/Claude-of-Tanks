@@ -1609,6 +1609,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',
+    'src/mp/session/playMenuAdapterSeat.selftest.mjs', // 2026-11-02 audit F6: a close during the limit check cancels the attempt; a released seat's round names its owner
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',

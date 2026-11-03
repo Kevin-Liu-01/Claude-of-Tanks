@@ -69,10 +69,11 @@ assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(st
   'rejoin hands the room back through the same network start');
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
-assert.match(source, /if \(activeSession === session\) handedOff = true;/, 'the handoff flag guards the menu\'s own session only');
-assert.match(source, /!handedOff && !activeRoom && hasMatchStart\(session\);/,
+// (audit F6, 2026-11-02) the handoff moves the menu's own seat only, through its one writer (src/ui/playMenuSeat.ts)
+assert.match(source, /const own = activeSession === session;\s*if \(own\) \{\s*moveSeat\('handed_off', 'battle handoff'\);/, 'the handoff flag guards the menu\'s own session only');
+assert.match(source, /shouldAutoHandoff\(\{ seat, role, phase: next\.phase, matchId: matchIdOf\(session\), refusedMatchId: refusedHandoffMatchId \}\)\s*&& !activeRoom && hasMatchStart\(session\);/,
   'a client auto-hands off into a running match only with its own match_start');
-assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
+assert.match(source, /room\.setAttribute\('aria-busy', String\(connecting\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);
 // (2026-10-25 gauntlet r3) a focused failure wears the kit's one focus ring
