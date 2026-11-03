@@ -349,6 +349,20 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'add-actor'), 'no tank is staged');
 }
 
+// 11. A recording that began in the export's module gap: the export's own begin refuses it (no film opens under a
+// recording at film size with its clock stopped), as beginFilm's filmBusy does.
+{
+  const h = makeStudio();
+  const film = track(h.studio.exportFilmFile({ download: false }));
+  await settle();
+  h.studio.recording = { promise: Promise.resolve() };
+  h.releaseExportModule();
+  const exported = await outcome(film);
+  assert.ok(!h.calls.includes('film-open'), 'no film opens under a recording');
+  assert.equal(exported, 'Error', 'the export is refused, not cancelled');
+  assert.equal(h.studio.filmExport, null);
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');

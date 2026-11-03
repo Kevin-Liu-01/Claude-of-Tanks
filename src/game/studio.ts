@@ -4528,7 +4528,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function recordVideo(opts: VideoOptions = {}): Promise<VideoResult> {
     if (recording) return recording.promise;
-    if (filming) return Promise.reject(new Error(t('studio.error.finishFilm')));
+    // (audit F9) the one busy reading: an open film or an export from its request (its module's import is a gap a
+    // recording once started in, the film then opening under it) refuses a recording, as does a session that is not
+    // open or a scene, battlefield or history change in flight
+    const holder = busy();
+    if (holder === 'film' || holder === 'export') return Promise.reject(new Error(t('studio.error.finishFilm')));
+    if (holder) return Promise.reject(new Error(t('studio.error.busy')));
     if (typeof MediaRecorder === 'undefined' || !renderer.domElement.captureStream) {
       return Promise.reject(new Error(t('studio.error.recordUnsupported')));
     }
@@ -5031,6 +5036,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return exportFilm({
         begin: () => {
           stillOpen();
+          // (audit F9) the film opens over nothing else: a recording or another film refuses it as beginFilm's filmBusy
+          // does; the export's own flag is the one holder it opens under
+          const refusal = busy() === 'export' ? null : filmBusy();
+          if (refusal) throw new Error(refusal);
           filmCues = withAudio ? [] : null;
           const session = openFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
           // The opening seek replays every earlier event: keep only those at the film's first instant.

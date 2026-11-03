@@ -217,7 +217,9 @@ seconds. The result is `{ blob, size, mimeType, durationMs }`. Recording hides
 the camera rail and pauses on the final frame. The video contains the rendered
 picture only; Studio does not currently mix game audio into the capture stream.
 It records in real time and can drop frames on a busy machine; use the film
-renderer below for deliverables.
+renderer below for deliverables. A recording is refused while a film is open or
+an export runs (from its request), and while the Studio is entering, exiting,
+loading a scene, changing battlefield or restoring an undo.
 
 ### Film renderer
 
