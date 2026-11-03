@@ -2371,6 +2371,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // 2026-11-02 audit M9: the height field's build modes are scoped (a throwing read keeps the live field's cuttings)
+    'src/world/terrainBuildModes.selftest.mjs',
     // the map-revival lane (Skybridge round 4): Lake Powell's arm and Glen Canyon Dam in the battlefield
     'src/world/maps/reservoirDam.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
