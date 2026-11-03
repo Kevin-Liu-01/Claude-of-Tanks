@@ -11914,8 +11914,8 @@
       {
         "volumeId": "M08",
         "name": "ammoRack",
-        "min": [-0.7093,0.4553,-0.4662],
-        "max": [0.1207,0.8474,-0.3002],
+        "min": [-0.661,0.4782,-0.4565],
+        "max": [0.0724,0.8245,-0.3099],
         "turretLocal": true
       },
       {
@@ -12022,7 +12022,7 @@
     ]
   },
   "geometryHash": "94ad52b2",
-  "metadataHash": "e93ff3a2",
+  "metadataHash": "577c66d5",
   "presentationAnchor": {
     "xM": -0.0031,
     "zM": -0.0327
@@ -12089,8 +12089,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38000,
-      "sha256": "9e489eaf70bba1c51b75295748ad82a1ed46d2a8f602b8820b81b2ce8b60ae36"
+      "bytes": 37850,
+      "sha256": "d2f7e911493c6dc6773cf39ebf95401fbeab52dd6b0ebdf0ea017a5ac924debe"
     },
     "armorSide": {
       "file": "bmpt_terminator2_armor_side.webp",

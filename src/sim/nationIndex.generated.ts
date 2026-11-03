@@ -193,6 +193,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["tos1a_tagil","russia","modern",5],
   ["upior","poland","next-generation",10],
   ["bmpt_t90","russia","modern",6],
+  ["bmpt_terminator","russia","modern",6],
   ["m551_sheridan","usa","cold-war",2],
   ["m551a1_tts","usa","modern",4],
   ["leo2a7v","germany","modern",10],

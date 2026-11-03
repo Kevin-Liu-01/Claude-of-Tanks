@@ -318,6 +318,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
     'src/vehicles/profiles/awSecondWaveGeometry.selftest.mjs',
     'src/vehicles/profiles/baseShellResidualRepairs.selftest.mjs',
+    'src/vehicles/profiles/bmptTerminator.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
     'src/vehicles/profiles/bradleyRunningGear.selftest.mjs',
     'src/vehicles/profiles/carro45tRoof.selftest.mjs',

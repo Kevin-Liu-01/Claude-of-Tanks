@@ -207,8 +207,11 @@ function addCannonPlant(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     const barrel = side < 0 ? 0 : 1, x = side * RAMKA_BARREL_X;
     // each cannon's own rounded canvas-bagged mantlet (photo 10) out of the common rounded front, bulging and sagging a
-    // little, gathered to the collar; within the cradle's width until it is ahead of the humps' fronts
+    // little, gathered to the collar; within the cradle's width until it is ahead of the humps' fronts. Its root starts
+    // inside the cradle (5 cm behind the front, under the crown) so the gun line stays covered where the cradle's front
+    // falls below the bore (gun-junction census 268: a 20 mm see-through slot at 0.67-0.69 m)
     P.add('gunMountCloth', sectionSolid([
+      { z: 0.64, ring: ellipseRing(x, -0.01, 0.030, 0.085) },
       { z: 0.69, ring: ellipseRing(x, -0.01, 0.030, 0.085) },
       { z: 0.73, ring: ellipseRing(x, -0.01, 0.072, 0.110) },
       { z: 0.80, ring: ellipseRing(x, -0.015, 0.087, 0.125) },

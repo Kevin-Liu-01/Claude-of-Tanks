@@ -174,8 +174,9 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 // 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
   "the T49 carries the M551's one guided channel");
+// 267: the BMPT Terminator (Ob'yekt 199 "Ramka") adds its Ataka channel to the established fleet: 23 -> 24
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
-  && spec.id !== 't49').length, 23,
+  && spec.id !== 't49').length, 24,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
