@@ -2546,9 +2546,11 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   wakeFrameLoop: () => frameLoop.restart(),
   // (audit F2) every accepted entry supersedes the previous entry's scene watchdog before its start can arm one
   onEntry: () => { sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
-  // (audit F2) a reveal waits only for a battle that can still present a frame, and only on a presentable page
+  // (audit F2) a reveal waits only for a battle that can still present a frame, and counts only the time the frame
+  // owner can present one: a live context and a scheduler that is not backgrounded (its own focus rule: a window that
+  // lost focus stays `visible` but runs no tick, frameLoopScheduler.ts isBackgrounded)
   canReveal: () => game.phase === 'battle',
-  isPresentable: () => !graphicsContextLost && (typeof document === 'undefined' || !document.hidden),
+  isPresentable: () => !graphicsContextLost && frameLoop.presenting,
   // sides (2026-09-18): a 14 v 14 or 1 v 41 field compiles more programs on its first frame than the 7 v 7 budget allows
   revealTimeoutMs: () => revealTimeoutForField(game.tanks.length),
   getRevealContext: () => ({

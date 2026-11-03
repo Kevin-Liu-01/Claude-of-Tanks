@@ -4,6 +4,8 @@
 // its own (main read the scene watchdog's counter, which spectating advances).
 import assert from 'node:assert/strict';
 import * as entryLifecycle from './battleEntryLifecycle.ts';
+import { createFrameLoopScheduler } from '../engine/frameLoopScheduler.ts';
+import { mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
 
 const { createBattleEntryLifecycle, REVEAL_ABANDON_BUDGETS = 10 } = entryLifecycle;
 const isAbandoned = (error) => error?.name === 'BattleRevealAbandonedError' && error.code === 'battle_reveal_abandoned';
@@ -105,4 +107,75 @@ function stalledFrames({ msPerFrame = 100, maxFrames = 2000 } = {}) {
   assert.equal(settled, true, 'the settle edge resolves its waiters');
 }
 
-console.log('battleEntryReveal.selftest: reveal exits (left, stalled, hidden pauses), entry edges and serial passed');
+// (audit F2 review) main's actual reveal ports over the real frame-loop scheduler. A window that lost focus stays
+// `visible` (document.hidden false) while the scheduler runs no tick (its own focus rule), so no battle frame can come;
+// counting that time toward the abandon ceiling failed a healthy entry back to the Garage when the player switched
+// windows during loading. The ceiling counts only the time the scheduler can present.
+{
+  const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+  const revealWith = async ({ focusedAtStart, presentsBattleFrames }) => {
+    let focused = focusedAtStart;
+    const listeners = new Map();
+    const target = {
+      addEventListener: (type, listener) => listeners.set(type, [...(listeners.get(type) ?? []), listener]),
+      removeEventListener: (type, listener) => listeners.set(type, (listeners.get(type) ?? []).filter((entry) => entry !== listener)),
+      dispatch: (type) => { for (const listener of listeners.get(type) ?? []) listener({ type }); },
+    };
+    const documentState = { get hidden() { return false; }, hasFocus: () => focused, ...target };
+    const frames = [];
+    let tickCount = 0;
+    const scope = {
+      game: { phase: 'battle', tanks: [] },
+      graphicsContextLost: false,
+      document: documentState,
+      // a 40 ms reveal budget: the abandon ceiling is REVEAL_ABANDON_BUDGETS of them (400 ms) of presentable time
+      revealTimeoutForField: () => 40,
+      nextFrame: () => sleep(5),
+      createBattleEntryLifecycle: entryLifecycle.createBattleEntryLifecycle,
+      sceneWatchdogEntryGeneration: 0,
+      coveredBattleWatchdog: null,
+    };
+    const lifecycle = runMainStatements(mainStatement('const battleEntryLifecycle = createBattleEntryLifecycle({'),
+      scope, 'battleEntryLifecycle');
+    scope.frameLoop = createFrameLoopScheduler({
+      tick: () => { tickCount += 1; if (presentsBattleFrames) lifecycle.noteBattleFrame(); },
+      isBootComplete: () => true,
+      requestFrame: (callback) => { frames.push(callback); return frames.length; },
+      cancelFrame: () => {},
+      now: () => performance.now(),
+      setRecurring: () => 0, clearRecurring: () => {},
+      setDelayed: () => 0, clearDelayed: () => {},
+      documentState,
+      inputTarget: target,
+    });
+    const pump = () => { for (const callback of frames.splice(0)) callback(performance.now()); };
+    if (!focusedAtStart) target.dispatch('blur');
+    else scope.frameLoop.restart();
+    let outcome = null;
+    const entry = lifecycle.run(() => lifecycle.primeReveal(), 'busy')
+      .then((receipt) => { outcome = receipt; }, (error) => { outcome = error; });
+    // three abandon ceilings of wall time with the window blurred (or focused, for the control)
+    const until = performance.now() + 1200;
+    while (performance.now() < until && outcome === null) { pump(); await sleep(10); }
+    const blurredOutcome = outcome;
+    if (!focusedAtStart) {
+      focused = true;
+      target.dispatch('focus'); // the player comes back: the scheduler restarts and presents
+      while (outcome === null) { pump(); await sleep(5); }
+    }
+    await entry;
+    scope.frameLoop.dispose();
+    return { blurredOutcome, outcome, tickCount, lifecycle };
+  };
+
+  const blurred = await revealWith({ focusedAtStart: false, presentsBattleFrames: true });
+  assert.equal(blurred.blurredOutcome, null, 'a blurred, visible window never abandons the reveal (no tick could present)');
+  assert.equal(blurred.outcome?.primed, true, 'focus returns, the first battle frame presents, and the reveal completes');
+  assert.equal(blurred.lifecycle.pending, false);
+
+  const stalled = await revealWith({ focusedAtStart: true, presentsBattleFrames: false });
+  assert.ok(isAbandoned(stalled.blurredOutcome), 'a focused frame owner that ticks and never presents a battle frame still abandons');
+  assert.ok(stalled.tickCount > 0, 'the control case did tick');
+}
+
+console.log('battleEntryReveal.selftest: reveal exits (left, stalled, hidden and blurred pause), entry edges and serial passed');
