@@ -22,6 +22,10 @@
  *                                                                # site origin alone, so this is the only way to prove it); the
  *                                                                # diagnostics hook is up because puppeteer sets navigator.webdriver
  *                                                                # its log (the election record, the host's reports) take the pages' facts
+ *   node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio --mode=private --host-pause=1500,3000 --separate-browsers \
+ *     --game-mode=capture_the_flag --no-bots --timings=report   # the production migration proof on a busy machine (268):
+ *                                                                # no bots in a round only its clock or flag limit ends,
+ *                                                                # timings reported with their load, correctness strict
  *
  * The honest-check options (2026-10-13, the MP stream; MP-SINCE-0930 plan steps 7 and 14):
  *   --mode=private          an internet room (the Play menu's Private): every connection asks the room for its ICE
@@ -44,7 +48,8 @@
  * The production proof on a busy machine (268, Main 2026-11-03: the machine is never quiet, so the proof runs at whatever
  * load there is and is judged on correctness):
  *   --no-bots              the admin turns the room's bot fill off before Ready (the room's own set_bots_fill, sent on A's
- *                          room socket: the lobby's room client is not exposed), so only the measured steps can end the
+ *                          room socket, which the page recorder finds by sniffing the envelopes the page's WebSockets
+ *                          send: the lobby's room client is not exposed), so only the measured steps can end the
  *                          round; pair it with a mode that never ends on an empty side (--game-mode=capture_the_flag: its
  *                          flag limit or its clock), since a standard round with no enemy is an elimination at once
  *   --timings=report       the rate floors (C's snapshots in the play window and on the new host) become findings with
@@ -327,10 +332,10 @@ function installPageRecorder(forceRelay = false) {
     Object.setPrototypeOf(Recorded, Native);
     window.RTCPeerConnection = Recorded;
   }
-  // (268) the page's room socket, found by its envelopes (window.__MULTIPLAYER_V2 comes with the battle, the lobby's room
-  // client never shows): `command` sends a room command on it as this seat (the room's reply carries a request id the page's
-  // client never made, which the client drops; the room's state broadcast reaches it as usual), and every match_report the
-  // page sends is paired with the room's reply, by its generation
+  // (268) the page's room socket, found by sniffing the envelopes it sends (window.__MULTIPLAYER_V2 comes with the battle,
+  // the lobby's room client never shows): `command` sends a room command on it as this seat (the room's reply carries a
+  // request id the page's client never made, which the client drops; the room's state broadcast reaches it as usual), and
+  // every match_report the page sends is paired with the room's reply, by its generation
   const roomWire = window.__MP_E2E_ROOM = { socket: null, settings: null, replies: {}, reports: { sent: 0, acked: 0, refused: 0, byGeneration: {} }, command: () => null };
   const NativeSocket = window.WebSocket;
   if (typeof NativeSocket === 'function') {
