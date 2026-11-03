@@ -16,8 +16,9 @@
 //   withCaptureHold now).
 // - No unchecked nesting (round 2): COT_LANE_HOLD=1 skipped the capture FIFO and the session mutex in three tools with
 //   nothing checking that a live hold backed it (its helper, tools/tmp-lane-hold.mjs, is gone), so a leftover export ran
-//   GPU work unlocked. A child nests through its hold's token (capture-lock nestedEnv, checked against the owner record);
-//   only capture-lock.mjs reads the flag (to say it is retired), and frame-budget-probe's receipt (to prove it is ignored).
+//   GPU work unlocked. A child nests through its hold's token (capture-lock nestedEnv, checked against the owner record),
+//   or on the flag only in a live hold an ancestor of it owns (round 3): only capture-lock.mjs reads the flag, and the
+//   receipts that set it (capture-lock-reentry, frame-budget-probe) to prove that check. No tool skips a lock on it.
 // The census lists the sources (tracked and new) and reads code only (comments removed); its controls prove the pattern.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -171,13 +172,13 @@ const DIRECT_ACQUIRER_RECEIPTS = Object.freeze([
 
 // a read of the retired nesting flag (built from parts so this file is not its own finding)
 const LANE_HOLD = new RegExp(['\\benv\\??\\.COT_LANE', '_HOLD\\b|\\[[\'"`]COT_LANE', '_HOLD[\'"`]\\]'].join(''));
-const LANE_HOLD_READERS = new Set(['tools/capture-lock.mjs', 'tools/frame-budget-probe.selftest.mjs']);
+const LANE_HOLD_READERS = new Set(['tools/capture-lock.mjs', 'tools/capture-lock-reentry.selftest.mjs', 'tools/frame-budget-probe.selftest.mjs']);
 const laneHoldReads = (file, text) => (LANE_HOLD_READERS.has(file) ? [] : code(text).split('\n')
   .flatMap((line, index) => (LANE_HOLD.test(line) ? [`${index + 1}: ${line.trim().slice(0, 140)}`] : [])));
 assert.equal(laneHoldReads('tools/a.mjs', `if (process.env.${'COT_LANE'}_HOLD === '1') return;`).length, 1, 'a bypass');
 assert.equal(laneHoldReads('tools/a.mjs', `const on = process.env['${'COT_LANE'}_HOLD'];`).length, 1, 'a bracket read');
 assert.equal(laneHoldReads('tools/a.mjs', `// ${'COT_LANE'}_HOLD=1 is retired`).length, 0, 'a comment');
-assert.equal(laneHoldReads('tools/capture-lock.mjs', `if (process.env.${'COT_LANE'}_HOLD) note();`).length, 0, 'the lock says it is retired');
+assert.equal(laneHoldReads('tools/capture-lock.mjs', `if (process.env.${'COT_LANE'}_HOLD) check();`).length, 0, 'the lock checks it against an ancestor\'s hold');
 
 const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'api', 'scripts', 'server', 'src', 'tools'],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
@@ -192,7 +193,7 @@ const gates = [...sources].flatMap(([file, text]) => memguardReads(text).map((hi
 assert.deepEqual(gates, [], `the memory guard is retired: nothing reads its PAUSE or WARN files\n  ${gates.join('\n  ')}`);
 
 const bypasses = [...sources].flatMap(([file, text]) => laneHoldReads(file, text).map((hit) => `${file}:${hit}`));
-assert.deepEqual(bypasses, [], `COT_LANE_HOLD is retired: nest through the hold's token (capture-lock nestedEnv), never skip the lock on a flag\n  ${bypasses.join('\n  ')}`);
+assert.deepEqual(bypasses, [], `never skip a lock on COT_LANE_HOLD: capture-lock nests a child in an ancestor's live hold on it, or through the hold's token (nestedEnv)\n  ${bypasses.join('\n  ')}`);
 
 const early = [...sources].flatMap(([file, text]) => releaseBeforeClose(text).map((line) => `${file}:${line}`));
 assert.deepEqual(early, [], `close the browser before the capture lock is released (the next holder's GPU work would overlap it)\n  ${early.join('\n  ')}`);

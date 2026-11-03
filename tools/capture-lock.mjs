@@ -845,13 +845,19 @@ export function sessionMutexState(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } =
  *  its own parent (2026-11-02 audit S4, round 2). */
 export function sessionMutexHeldByAncestor(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } = {}) {
   const { state, pid } = sessionMutexState(dir, { lockStaleMs });
-  if (state !== 'live' || !(pid > 1)) return false;
+  return state === 'live' && pid > 1 && ancestorPids().has(pid);
+}
+
+/** This process's ancestors, its parent first, up the ppid chain (stops at pid 1, a failed `ps`, or 64 levels); this
+ *  process itself is not among them. */
+function ancestorPids() {
+  const pids = new Set();
   let at = process.ppid;
-  for (let depth = 0; depth < 64 && at > 1; depth++) {
-    if (at === pid) return true;
-    try { at = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { return false; }
+  for (let depth = 0; depth < 64 && at > 1 && !pids.has(at); depth++) {
+    pids.add(at);
+    try { at = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { break; }
   }
-  return false;
+  return pids;
 }
 
 /** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */
@@ -1019,8 +1025,8 @@ export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAUL
 // ---- nested holds (2026-11-02 audit S4) -------------------------------------------------------------------------------
 // A process that holds the lock and starts a child that takes the lock itself used to queue that child behind its own
 // parent's live pid (a live owner is never reaped) until the child's timeout, 45 min to 3 h; three tools skipped the lock
-// under COT_LANE_HOLD=1, whose wrapper is gone, with no check that any hold backed it (a leftover export captured unlocked;
-// retired in round 2: acquire() says so once and queues). Now the holder hands its children a token, NESTED_HOLD_ENV=<pid>:<nonce>
+// under COT_LANE_HOLD=1 with no check that any hold backed it (a leftover export captured unlocked). Now the holder hands
+// its children a token, NESTED_HOLD_ENV=<pid>:<nonce>
 // (`nestedEnv()`, merged into the child's environment by the wrappers that spawn under a hold: capture-command.mjs,
 // media-r5/with-capture-lock.mjs, the changed-only chain's GPU children). A child's acquire that finds the token naming the
 // live owner record at its own lock directory (owner.json's pid and nonce, or a render member's slot) nests in that hold at
@@ -1028,6 +1034,10 @@ export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAUL
 // release() and checkpoint() leave it alone, and the child hands the same token on. A token naming no live hold there (a
 // stale one, another lock directory's) is ignored and the child queues as usual. The token is never exported by the lock
 // itself: a holder's every child would then carry a fresh random value, and the receipts' cache keys every variable read.
+// COT_LANE_HOLD=1 with no token (lane-hold helpers outside the repo take the FIFO, then run a probe under the flag; round 3)
+// is checked, never trusted: the child nests only when the live owner record (or a live render slot) at its lock directory
+// belongs to an ancestor of it (its parent, or further up the ppid chain). Otherwise (someone else's hold, a free lock, a
+// hold of this same process) acquire() says so once and queues as usual; this process's own other holds never count.
 const NESTED_HOLD_ENV = 'COT_SHOTS_HELD';
 
 /** The live hold `token` (`<pid>:<nonce>`) names at `lockDir`: { pid, nonce, lockClass }, or null (no token, a malformed
@@ -1048,6 +1058,23 @@ function nestedParent(token, lockDir, lockStaleMs) {
   if (owner.token.id !== at.id || owner.token.nonce !== nonce || owner.token.pid !== pid) return null;
   return ownerLiveness(owner.token, Date.now() - at.mtimeMs, lockStaleMs).alive
     ? { pid, nonce, lockClass: LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'timing' } : null;
+}
+
+/** The live hold at `lockDir` an ancestor of this process owns (the owner record, or a live render member's slot), as
+ *  nestedParent describes it, or null (COT_LANE_HOLD=1 with no token: see nested holds above). */
+function ancestorHold(lockDir, lockStaleMs) {
+  let at;
+  try { at = pathId(lockDir); } catch { return null; }
+  if (!at.isDir) return null;
+  const owner = readOwner(lockDir);
+  if (owner.state !== 'ok') return null;
+  const holders = isGroupToken(owner.token, at.id) ? readSlots(lockDir).map((slot) => slot.record).filter(Boolean) : [owner.token];
+  const ancestors = holders.length ? ancestorPids() : new Set();
+  for (const holder of holders) {
+    const parent = ancestors.has(holder.pid) ? nestedParent(`${holder.pid}:${holder.nonce}`, lockDir, lockStaleMs) : null;
+    if (parent) return parent;
+  }
+  return null;
 }
 
 /**
@@ -1126,20 +1153,24 @@ export function createCaptureLock({
   async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
     holdCapMinutes = null, holdCapReason = null, priority = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
-    // a child of a holder nests in its parent's hold (see nested holds above): read by name, the one variable it is
-    const parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs);
-    if (process.env.COT_LANE_HOLD && !parent) {
-      noteOnce('cot-lane-hold', '[capture-lock] COT_LANE_HOLD is retired and ignored (no hold backed it): a child nests in its parent\'s '
-        + `hold through ${NESTED_HOLD_ENV} (lock.nestedEnv()); queueing as usual`, log);
+    // a child of a holder nests in its parent's hold (see nested holds above): read by name, the variables they are
+    let parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs), via = NESTED_HOLD_ENV;
+    if (!parent && process.env.COT_LANE_HOLD) {
+      parent = ancestorHold(lockDir, lockStaleMs);
+      via = 'COT_LANE_HOLD, an ancestor\'s live hold';
+      if (!parent) {
+        noteOnce(`cot-lane-hold:${lockDir}`, `[capture-lock] COT_LANE_HOLD is set, but no ancestor of this process holds ${lockDir} (a leftover `
+          + 'export, someone else\'s hold, or a free lock): queueing as usual', log);
+      }
     }
     if (parent) {
       const prepared = typeof prepare === 'function' ? await prepare() : undefined;
       hold = { nested: true, parent, lockDir, pid: process.pid, ticket: null, lostNoted: false, token: { startedAt: new Date().toISOString() } };
       heldSince = Date.now();
       holdTerms = { lockClass: parent.lockClass, classFrom: 'nested', capMs: holdCapMs, timeoutMs, command, holdCapMinutes, holdCapReason };
-      log(`[capture-lock] nested in the ${parent.lockClass} hold of pid ${parent.pid} (${NESTED_HOLD_ENV}): no ticket, no claim`);
+      log(`[capture-lock] nested in the ${parent.lockClass} hold of pid ${parent.pid} (${via}): no ticket, no claim`);
       appendHoldLog(logFile, { e: 'nest', pid: process.pid, parent: parent.pid, lockClass: parent.lockClass,
-        command: process.argv.slice(1).join(' ').slice(0, 300) });
+        ...(via === NESTED_HOLD_ENV ? {} : { via: 'lane-hold' }), command: process.argv.slice(1).join(' ').slice(0, 300) });
       return prepared;
     }
     const classed = resolveLockClass({ option: lockClass, command });

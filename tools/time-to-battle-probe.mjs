@@ -17,7 +17,7 @@
 // rule), the High preset and 14 v 14. Runs alternate the builds' order map by map. --profile adds a CDP CPU profile over
 // each entry (attribution only: a profiled run's timings are not comparable with an unprofiled one).
 // Locks: the capture FIFO with --session-mutex (frame-budget-probe's acquireProbeLocks); a child of a hold nests in it
-// (the hold's token; COT_LANE_HOLD=1 is retired, 2026-11-02 audit S4).
+// (the hold's token, or COT_LANE_HOLD=1 under an ancestor's live hold: capture-lock checks it; 2026-11-02 audit S4).
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';

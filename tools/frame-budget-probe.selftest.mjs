@@ -297,8 +297,9 @@ assert.equal(stats([]).med, null);
   assert.match(logs[0], /queued behind us/);
 }
 {
-  // (2026-11-02 audit S4, round 2) COT_LANE_HOLD=1 skipped both locks with nothing checking that a hold backed it: it is
-  // retired, so a leftover export takes both; a mutex an ancestor holds is nested (neither taken nor released here)
+  // (2026-11-02 audit S4) COT_LANE_HOLD=1 skipped both locks with nothing checking that a hold backed it: the probe no
+  // longer reads it (capture-lock's acquire nests on it only in an ancestor's live hold: capture-lock-reentry.selftest),
+  // so with a lock that holds nothing it takes both; a mutex an ancestor holds is nested (neither taken nor released here)
   const saved = process.env.COT_LANE_HOLD;
   process.env.COT_LANE_HOLD = '1';
   try {

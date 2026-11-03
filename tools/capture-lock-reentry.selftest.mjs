@@ -6,6 +6,9 @@
 // that finds the token naming the live owner record at its lock directory nests inside the parent's hold at once (no
 // ticket, no claim; refresh, release and checkpoint leave the parent's hold alone). A stale or foreign token queues as
 // usual. On the base a child of a holder queued behind its own parent's live pid until its timeout (45 min to 3 h).
+// COT_LANE_HOLD=1 with no token (round 3): a child nests only in a live hold an ancestor of it owns (a lane-hold helper's
+// probe, parent or grandparent); a leftover export and this process's own other holds queue. On the lane's round 2 the flag
+// was ignored and a helper's probe queued behind its own parent's hold until its timeout.
 // Every hold is private (a temporary lock and queue directory); no machine lock is touched.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -130,6 +133,83 @@ try {
     const after = await child(env, 2_000);
     assert.deepEqual([after.ok, after.nested], [true, false], 'after the parent released, the token is stale: the child holds on its own');
   }
+  // ---- COT_LANE_HOLD=1 with no token: nests only in a live hold an ancestor of this process owns (round 3) ------------
+  // Lane-hold helpers outside the repo (fifo-hold.mjs: take the FIFO, then run a probe with COT_LANE_HOLD=1 and no token)
+  // waited behind their own parent once round 2 ignored the flag. It is honoured again, checked: the live owner record
+  // (or a live render slot) must belong to a parent, grandparent or further ancestor. A leftover export (no ancestor holds:
+  // someone else's hold, or a free lock) and this process's own other holds (tank-release-check runs several) queue.
+  {
+    const laneChild = (dirs, timeoutMs, { viaShell = false } = {}) => new Promise((done) => {
+      const script = `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const notes = [];
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: (line) => notes.push(line) });
+        const t0 = Date.now();
+        try {
+          await lock.acquire(${timeoutMs});
+          const ms = Date.now() - t0, nested = lock.nested, heldClass = lock.heldClass, env = lock.nestedEnv().COT_SHOTS_HELD ?? null;
+          const refreshed = lock.refresh(), released = lock.release();
+          console.log(JSON.stringify({ ok: true, ms, nested, heldClass, env, refreshed, released, notes, ppid: process.ppid }));
+        } catch (error) { console.log(JSON.stringify({ ok: false, ms: Date.now() - t0, error: error.message, notes })); }`;
+      const args = ['--input-type=module', '-e', script];
+      // through a shell that stays (a command after the node one, so it is not exec'd): the holder is a grandparent
+      const proc = viaShell ? spawn('/bin/sh', ['-c', '"$0" "$@"; exit $?', process.execPath, ...args], { env: { ...process.env, COT_LANE_HOLD: '1' }, stdio: ['ignore', 'pipe', 'inherit'] })
+        : spawn(process.execPath, args, { env: { ...process.env, COT_LANE_HOLD: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+      let out = '';
+      proc.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+      proc.once('close', () => done(JSON.parse(out.trim().split('\n').at(-1))));
+    });
+    const dirs = rig('lane');
+    const parent = createCaptureLock(dirs);
+    await parent.acquire(2_000);
+    const child = await laneChild(dirs, 2_000);
+    assert.equal(child.ok, true, `a child under its parent's hold nests on COT_LANE_HOLD=1: ${JSON.stringify(child)}`);
+    assert.ok(child.ms < 1_500, `at once (${child.ms} ms), not behind its parent's live pid`);
+    assert.deepEqual([child.nested, child.heldClass, child.refreshed, child.released], [true, 'timing', true, false],
+      'nested in the parent\'s class; refresh reports it standing; release leaves it');
+    assert.equal(child.env, parent.nestedEnv().COT_SHOTS_HELD, 'and it hands the parent\'s token on to its own children');
+    assert.ok(child.notes.some((line) => line.includes(`hold of pid ${process.pid}`) && line.includes('an ancestor')), child.notes.join('\n'));
+    const grandchild = await laneChild(dirs, 2_000, { viaShell: true });
+    assert.deepEqual([grandchild.ok, grandchild.nested], [true, true], `a grandchild (under a shell) nests too: ${JSON.stringify(grandchild)}`);
+    assert.notEqual(grandchild.ppid, process.pid, 'the shell stayed between them: the holder is the grandchild\'s grandparent');
+    assert.ok(existsSync(dirs.lockDir) && parent.refresh(), 'the parent still holds after its children released');
+    // this process's own other instance is no child of the hold: it queues (here it times out)
+    process.env.COT_LANE_HOLD = '1';
+    try {
+      const sibling = createCaptureLock(dirs);
+      await assert.rejects(sibling.acquire(500), /cot-shots lock timeout/, 'the holder\'s own process never nests on the flag');
+    } finally {
+      delete process.env.COT_LANE_HOLD;
+    }
+    parent.release();
+    // a render hold: the child nests in the ancestor's render slot
+    const renderDirs = rig('lane-render');
+    const renderParent = createCaptureLock(renderDirs);
+    await renderParent.acquire(2_000, { lockClass: 'render' });
+    const renderChild = await laneChild(renderDirs, 2_000);
+    assert.deepEqual([renderChild.ok, renderChild.nested, renderChild.heldClass], [true, true, 'render'], JSON.stringify(renderChild));
+    renderParent.release();
+    // a leftover export: the lock is held by a process that is no ancestor (a sibling), so the child queues and says why
+    const foreignDirs = rig('lane-foreign');
+    const holder = spawn(process.execPath, ['--input-type=module', '-e', `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(foreignDirs.lockDir)}, queueDir: ${JSON.stringify(foreignDirs.queueDir)}, log: () => {} });
+      await lock.acquire(2000); console.log('held'); process.stdin.resume(); process.stdin.once('end', () => { lock.release(); process.exit(0); });`],
+    { stdio: ['pipe', 'pipe', 'inherit'] });
+    try {
+      await new Promise((resolve, reject) => {
+        holder.stdout.setEncoding('utf8').on('data', (chunk) => { if (chunk.includes('held')) resolve(); });
+        holder.once('close', (code) => reject(new Error(`the sibling holder exited ${code} before it held`)));
+      });
+      const leftover = await laneChild(foreignDirs, 700);
+      assert.deepEqual([leftover.ok, leftover.error], [false, 'cot-shots lock timeout'], `another process's hold does not open on the flag: ${JSON.stringify(leftover)}`);
+      assert.ok(leftover.notes.some((line) => /COT_LANE_HOLD/.test(line) && /no ancestor/.test(line)), `the leftover export is said: ${leftover.notes.join('\n')}`);
+    } finally {
+      holder.stdin.end();
+      await new Promise((resolve) => (holder.exitCode !== null ? resolve() : holder.once('close', resolve)));
+    }
+    // and on a free lock the flag changes nothing: the child takes the lock on its own
+    const free = await laneChild(rig('lane-free'), 2_000);
+    assert.deepEqual([free.ok, free.nested], [true, false], `a free lock: held on its own, not nested: ${JSON.stringify(free)}`);
+  }
   // ---- the wrapper hands the token down: a tool under runCapturedCommand that takes the lock itself nests ------------
   {
     const dirs = rig('wrapped');
@@ -147,7 +227,7 @@ try {
     assert.equal(existsSync(dirs.lockDir), false, 'and the wrapper releases its own hold after');
   }
   assert.deepEqual(LOCK_ENV.filter((name) => process.env[name] !== undefined), [], 'no lock variable is set at the end');
-  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), checkpoint re-queues, and a child nests in its parent\'s hold through the token (runCapturedCommand hands it down)');
+  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), checkpoint re-queues, and a child nests in its parent\'s hold through the token (runCapturedCommand hands it down) or, on COT_LANE_HOLD=1, in an ancestor\'s live hold only');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

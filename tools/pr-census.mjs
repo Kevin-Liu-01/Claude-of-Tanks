@@ -21,7 +21,8 @@
 // queue map-major so a map's roots share a batch) is staged in its own page, which is then frozen; inside the hold each
 // page in turn comes to the front and is read. More jobs take further holds. A job that failed twice is given up;
 // resumable: a job whose record says ok is skipped. Under a hold that already holds the FIFO (its token, capture-lock
-// nestedEnv) each batch nests in it at once (COT_LANE_HOLD=1 is retired, 2026-11-02 audit S4).
+// nestedEnv, or COT_LANE_HOLD=1 under an ancestor's live hold, checked by capture-lock) each batch nests in it at once
+// (2026-11-02 audit S4).
 //
 // Read the counts with three facts of the renderer in mind (the report applies them):
 // - the static shadow-caster cache (src/engine/shadowStaticCache.ts) reuses its copies under a still camera, so each view is

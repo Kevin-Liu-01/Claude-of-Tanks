@@ -739,11 +739,11 @@ export function foreignGpuCpu() {
 
 /**
  * The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO.
- * Nested holds (2026-11-02 audit S4, round 2): COT_LANE_HOLD=1 skipped both with no check that any hold backed it (its
- * helper, tools/tmp-lane-hold.mjs, is gone), so a leftover export ran GPU probes unlocked. It is retired (the lock says so
- * and queues): a child of a hold nests in the FIFO through the hold's token (capture-lock nestedEnv, checked by acquire()
- * against the live owner record), and in the session mutex only while the mutex's live owner is this process's ancestor
- * (`mutexNested`), where it used to wait behind its own parent.
+ * Nested holds (2026-11-02 audit S4): COT_LANE_HOLD=1 skipped both with no check that any hold backed it, so a leftover
+ * export ran GPU probes unlocked. A child of a hold nests in the FIFO through the hold's token (capture-lock nestedEnv), or
+ * on COT_LANE_HOLD=1 (a lane-hold helper's probe) only when the FIFO's live owner is an ancestor of it: acquire() checks
+ * both against the live owner record and otherwise queues. It nests in the session mutex only while the mutex's live owner
+ * is an ancestor (`mutexNested`), where it used to wait behind its own parent.
  */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
