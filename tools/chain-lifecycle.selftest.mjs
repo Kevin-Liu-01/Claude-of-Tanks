@@ -139,17 +139,41 @@ try {
     }
   }
 
+  // ---- a budget: the teardown runs before the exit ---------------------------------------------------------------------
+  {
+    const budget = (mode, pidFile) => `import { spawn } from 'node:child_process';
+      import { writeFileSync } from 'node:fs';
+      import { armBudget, once } from ${JSON.stringify(MODULE)};
+      const server = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      writeFileSync(${JSON.stringify(pidFile)}, String(server.pid));
+      if (${JSON.stringify(mode)} === 'old') setTimeout(() => process.exit(3), 200).unref();
+      else armBudget(200, { code: 3, teardown: once(async () => { server.kill(); await new Promise((r) => server.once('exit', r)); }) });
+      setInterval(() => {}, 1000);`;
+    for (const mode of ['old', 'new']) {
+      const pidFile = join(root, `budget-${mode}.pid`);
+      const result = await node(budget(mode, pidFile)).closed;
+      const server = readPid(pidFile);
+      started.add(server);
+      assert.equal(result.code, 3, `${mode}: the budget exits 3`);
+      await sleep(100);
+      if (mode === 'old') assert.ok(alive(server), 'control: process.exit(3) left the spawned server running');
+      else assert.equal(alive(server), false, 'the teardown stopped the server before the exit');
+    }
+  }
+
   // ---- the callers --------------------------------------------------------------------------------------------------
   {
     const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
-    const chain = read('./tank-regen-changed.mjs');
+    const chain = read('./tank-regen-changed.mjs'), census = read('./mp-room-census.mjs');
     assert.match(chain, /takeChainLock\(/, 'the regen chain takes the owned chain lock');
     assert.doesNotMatch(chain, /writeFileSync\(lockPath/, 'and writes no bare pid lock');
     assert.match(chain, /children\.spawn\(/, 'its steps run in their own process groups');
     assert.match(chain, /stopOnSignal\(children/, 'and a stop reaches them before the lock goes');
     assert.doesNotMatch(chain, /process\.on\(signal, \(\) => \{ unlock\(\); process\.exit/, 'no unlock-and-exit handler is left');
+    assert.match(census, /armBudget\(budgetMin \* 60_000, \{ teardown/, 'mp-room-census tears down past its budget');
+    assert.doesNotMatch(census, /setTimeout\(\(\) => \{[^}]*process\.exit\(3\)/, 'and no budget timer exits past the finally');
   }
-  console.log('chain-lifecycle.selftest: one chain holds the owned lock (the old pid file let several in), a stop signals and sweeps every child group before the unlock, and the regen chain uses them');
+  console.log('chain-lifecycle.selftest: one chain holds the owned lock (the old pid file let several in), a stop signals and sweeps every child group before the unlock, a budget tears down before its exit, and the regen chain and mp-room-census use them');
 } finally {
   for (const pid of started) { if (pid && pid !== process.pid) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } } }
   rmSync(root, { recursive: true, force: true });
