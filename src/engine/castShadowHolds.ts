@@ -8,8 +8,10 @@
  * off while any hold stands, and when the last hold goes the flag returns to its value from before the first hold, only
  * if it still holds the false the holds wrote (a write by anyone else in between stands).
  *
- * Synchronous toggles that restore in the same call (shadowPrime's batches, the static cache's mutes, the near
- * vehicle detail) need no hold. No DOM; Node-runnable.
+ * A synchronous toggle needs no hold: one that reads the flag when it starts and restores that value before the call
+ * returns (the static cache's mutes, the near vehicle detail's cascade flips, each of shadowPrime's warm batches, which
+ * read their casters' flags at the batch's start, never from the collection made before the warm's awaits).
+ * No DOM; Node-runnable.
  */
 interface CastShadowTarget { castShadow: boolean }
 
@@ -35,6 +37,11 @@ export function releaseCastShadowHold(object: CastShadowTarget, owner: object): 
   if (record.owners.size > 0) return;
   holds.delete(object);
   if (object.castShadow === false) object.castShadow = record.base;
+}
+
+/** Whether any owner holds `object` off. */
+export function castShadowHeld(object: CastShadowTarget): boolean {
+  return (holds.get(object)?.owners.size ?? 0) > 0;
 }
 
 /** Whether an owner other than `owner` holds `object` off. */

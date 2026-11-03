@@ -3,6 +3,7 @@ import {
   type BufferGeometry, type Camera, type DirectionalLight, type Material,
   type Object3D, type Scene, type WebGLRenderer,
 } from 'three';
+import { castShadowHeld } from './castShadowHolds.ts';
 import { vehicleShadowDetailOf } from './nearVehicleShadowDetail.ts';
 import { SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
@@ -120,6 +121,7 @@ type PrimeState = ReturnType<typeof capturePrimeState>;
 
 interface CasterState {
   object: Object3D;
+  /** The caster's flags as they stood when the current batch began (readWarmCasters), given back before it returns. */
   castShadow: boolean;
   receiveShadow: boolean;
   frustumCulled: boolean;
@@ -293,6 +295,22 @@ function warmBatches(casters: readonly CasterState[], options: ShadowCasterWarmu
   return batches;
 }
 
+/**
+ * (2026-11-02 audit R4, review round 2) a batch reads its casters' flags as they stand when it begins and gives those
+ * back before it returns, so the toggle is synchronous in fact. The collection's snapshot dates from before the warm's
+ * awaits: writing it back after one undid any owner's write in between (an articulated shadow batch that took authored
+ * proxies over between two batches saw them cast again beside it, for its whole life).
+ */
+function readWarmCasters(casters: readonly CasterState[]): void {
+  for (const caster of casters) {
+    const object = caster.object;
+    caster.castShadow = object.castShadow;
+    caster.receiveShadow = object.receiveShadow;
+    caster.frustumCulled = object.frustumCulled;
+    if (caster.perObjectCulled !== null) caster.perObjectCulled = (object as BatchedCaster).perObjectFrustumCulled === true;
+  }
+}
+
 function restoreWarmCasters(casters: readonly CasterState[]): void {
   const cleanup = cleanupRunner();
   for (const prior of casters) {
@@ -366,6 +384,7 @@ function renderWarmBatch(
   state: PrimeState, scene: Scene, target: WebGLRenderTarget,
   casters: readonly CasterState[], start: number, end: number,
 ): void {
+  readWarmCasters(casters);
   let failed = false;
   try {
     const vsm = state.shadowMap.type === VSMShadowMap;
@@ -376,7 +395,8 @@ function renderWarmBatch(
       // frame that frames it, at the battle's light counts (nav-perf's program log, root-p: five such programs at 1.2 s).
       if (index >= start && index < end) {
         object.frustumCulled = false;
-        if (casters[index]!.forceCast) object.castShadow = true;
+        // (a caster an owner holds off, castShadowHolds.ts, stays off: its owner casts for it)
+        if (casters[index]!.forceCast && !castShadowHeld(object)) object.castShadow = true;
         // a batched caster (the field boundary works) culls its items again inside its own shadow hook: all of them
         // outside the box submit nothing, so its depth program waited too. Rebuild its list with every item in it.
         if (casters[index]!.perObjectCulled) {
