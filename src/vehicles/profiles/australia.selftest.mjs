@@ -19,7 +19,7 @@ const M113 = 'aus-m113-20261102.json', ABRAMS = 'aus-abrams-20261102.json';
 const IDS = {
   'm113a1_fsv': { tier: 1, role: 'light', caliber: 76, packet: M113, muzzle: null },
   'm113a1_mrv': { tier: 1, role: 'light', caliber: 76, packet: M113, muzzle: null },
-  'm113as4': { tier: 2, role: 'ifv', caliber: 12.7, packet: M113, muzzle: null },
+  'm113as4': { tier: 3, role: 'ifv', caliber: 12.7, packet: M113, muzzle: null },
   'leopard_as1': { tier: 1, role: 'mbt', caliber: 105, packet: 'aus-leopard-as1-20261102.json', muzzle: 6.078 },
   'm1a1_aim_sa_aus': { tier: 8, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.80 },
   'm1a2_sepv3_aus': { tier: 9, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.809 },

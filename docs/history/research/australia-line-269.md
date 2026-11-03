@@ -22,7 +22,7 @@ vehicle in refs/aus/NOTES.md and manifest.tsv beside it (97 images, reference on
 
 The tree (`src/techTree/nations/australia.ts`): one root, the Leopard AS1, and three lines from it: "Leopard and Abrams"
 (leopard_as1 I, m1a1_aim_sa_aus VIII, m1a2_sepv3_aus IX), "Centurion" (centurion5_1_aus II) and "M113 and Redback"
-(m113a1_fsv I, m113a1_mrv I, m113as4 II, redback VI). The UK tree's nations drop Australia; the tech-tree pin is re-cut
+(m113a1_fsv I, m113a1_mrv I, m113as4 II, redback VI; 2026-11-03: the M113s' TOW, the AS4 to III by Main's ruling on its TOW-2A duels). The UK tree's nations drop Australia; the tech-tree pin is re-cut
 (`5dd32509a8806d96`, `src/techTree/techTree.selftest.mjs`). The tiers are provisional: a new id's fitted combat envelope
 comes from the regen (`combatAnatomyGroups/<group>.generated.ts`), so the same-tier duels are only valid after it (on its
 raw cloned envelope the AIM SA lost 12-0 to the m1a1). The AS4 already moved from I to II beside the Ares APC on its

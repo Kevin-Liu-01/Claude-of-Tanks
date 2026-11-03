@@ -224,6 +224,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
 // the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
 // lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
-// drop Australia.
-assert.equal(digest, '5dd32509a8806d96', `tree content changed: re-pin to ${digest} if deliberate`);
+// drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
+assert.equal(digest, '48d822f67d08bd00', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
