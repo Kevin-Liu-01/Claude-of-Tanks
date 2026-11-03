@@ -131,6 +131,7 @@ export function createLazyAudio({
   // (a backgrounded tab, an autoplay policy) or, on WebKit, 'interrupted' (a phone call, another app's audio). Either
   // is resumed by the next gesture anywhere: the unlock re-arms whenever the device stops, and steps aside while it
   // runs. A page that becomes visible again also tries at once, where the browser allows it without a gesture.
+  const audible = (): boolean => !muted && masterVolume > 0;
   const halted = (): boolean => {
     const state: string | undefined = context?.state;
     return state === 'suspended' || state === 'interrupted';
@@ -152,16 +153,24 @@ export function createLazyAudio({
   // inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup does. Engines
   // without the activation API keep the in-gesture unlock, and so does a device already open: resuming it is cheap,
   // and WebKit resumes an interrupted context only inside the gesture.
+  // A muted or silent game leaves the device alone and keeps the unlock: the gesture after it is heard again resumes.
   function onGesture(): void {
+    if (!audible()) return;
     const sticky = hasStickyActivation();
     const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
     if (!sticky && activationKnown) return;
     disarmGesture();
-    if (muted || masterVolume <= 0) return;
     if (context || !sticky) { resume(); return; }
     void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
   }
   const onDeviceState = (): void => { if (halted()) armGesture(); };
+  // Heard again (unmuted, or the master raised from zero): a device the browser stopped meanwhile resumes now (inside
+  // the unmute press, the usual case) or on the next gesture, and one never opened waits for the next gesture.
+  const onAudible = (): void => {
+    if (!gestureBound) return; // the first bind arms the unlock itself
+    if (context && halted()) resume();
+    else if (!context || !real) armGesture();
+  };
   const onVisibility = (): void => {
     if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !halted()) return;
     armGesture();
@@ -190,7 +199,9 @@ export function createLazyAudio({
 
   const latchMasterVolume = (value: number): void => {
     if (!Number.isFinite(value)) return;
+    const was = audible();
     masterVolume = Math.max(0, Math.min(1, value));
+    if (!was && audible()) onAudible();
   };
 
   const settleReal = (created: AudioMixer): AudioMixer => {
@@ -335,8 +346,10 @@ export function createLazyAudio({
       real?.setMasterVolume(masterVolume);
     },
     mute(on: boolean) {
+      const was = audible();
       muted = !!on;
       real?.mute(muted);
+      if (!was && audible()) onAudible();
     },
     playGarageSting() {
       if (real) real.playGarageSting();
