@@ -139,9 +139,9 @@ export function arieteProtoMantlet(P: ArieteTurretPort): void {
   // collar (photographs 2 and 4: a fat round shield sleeve, its front edge chamfered)
   P.addGunExtra(convexBlock([...ring(0.17, 0.58), ...ring(0.17, 0.98), ...ring(0.150, 1.06, -0.13)]));
   // mantlet block filling the slot behind and under it (photograph 4: squared under the collar), its back on the slot's
-  // wall, its top under the brow, its upper front raked back behind the collar
+  // wall, its top under the brow to the brow's front edge, its upper front raked back behind the collar
   P.addGunExtra(convexBlock([-0.225, 0.225].flatMap((x) => [[x, -0.145, 0.35], [x, -0.145, 0.64], [x, 0.02, 0.64],
-    [x, 0.23, 0.44], [x, 0.23, 0.35]] as V3[])));
+    [x, 0.23, 0.545], [x, 0.23, 0.35]] as V3[])));
   // coax MG 42/59: its port housing on the collar's flank, the throat, the stub muzzle and booster
   P.addGunExtra(KIT.cylZ(0.046, 0.20, 10), 0.165, 0.10, 0.80);
   P.addGunExtraDark(KIT.cylZ(0.030, 0.03, 8), 0.165, 0.10, 0.895);
@@ -189,7 +189,7 @@ function c1TurmsSight(P: ArieteTurretPort, x: number, z: number): void {
   P.add('turretGlass', KIT.box(w * 0.42, 0.072, 0.012), x + w * 0.17, wy, zf + 0.004);        // day window (outboard)
   P.add('turretGlass', KIT.box(w * 0.26, 0.072, 0.012), x - w * 0.22, wy, zf + 0.004);        // thermal window
   P.add('turret', KIT.box(0.018, 0.09, 0.022), x - w * 0.05, wy, zf + 0.002);                 // mullion
-  // the armoured cover hinged at the top's front edge, swung up to stand 12 degrees past vertical
+  // the armoured cover hinged at the top's front edge, swung up to stand leaning 12 degrees back from vertical
   const hz = zf - 0.05;
   P.add('turret', KIT.xform(KIT.xform(KIT.box(w * 0.92, 0.022, 0.20), 0, 0.011, -0.10), 0, 0, 0, Math.PI / 2 - 0.21, 0, 0),
     x, top, hz);
@@ -281,8 +281,8 @@ function wallLouvre(P: ArieteTurretPort, s: number, wallX: number, z0: number, z
   }
 }
 
-/** The rear roof's stowage: the long box along the right eave and the transverse box behind the hatches (print roof
- * map; series C1 photographs 1 and 6). Tops 12 cm over the roof. */
+/** The rear roof's stowage: the long boxes along both eaves and the transverse box behind the hatches (print roof map;
+ * series C1 photographs 1 and 6, C2 photograph 4). Tops 10 cm over the crown. */
 function rearRoofBoxes(P: ArieteTurretPort): { transverseTop: number } {
   const eave = arieteProtoRoofY(W, -1.4), top = CROWN + 0.10;
   P.addEquipment('turret', convexBlock([[-1.25, eave - 0.02, -0.95], [-1.25, eave - 0.02, -1.90], [-1.02, crown(1.02) - 0.02, -0.95],
@@ -303,6 +303,9 @@ function rearRoofBoxes(P: ArieteTurretPort): { transverseTop: number } {
 /** The rear box's two bins on its rear face (rear view), a centre pair of brackets; `apu` puts the C2's APU on the
  * right instead of the bin. */
 function rearBins(P: ArieteTurretPort, apu: boolean): void {
+  // the stowage box's lid: its seam across the top and two hinges at its front edge
+  P.add('turretDark', KIT.box(2.15, 0.006, 0.012), 0, BOX_TOP + 0.002, -2.36);
+  for (const xx of [-0.6, 0.6]) P.add('turretDetail', KIT.box(0.12, 0.025, 0.04), xx, BOX_TOP + 0.008, -1.97);
   for (const s of [-1, 1]) {
     if (apu && s < 0) continue;
     P.addEquipment('turret', KIT.box(0.46, 0.38, 0.13), s * 0.82, 0.565, BOX_REAR - 0.05);
@@ -420,12 +423,21 @@ function c2Package(P: ArieteTurretPort, receipt: ArieteProtoTurretReceipt, c2Era
     c2Era.turretSideCassettes++;
     // two add-on boxes on the wall behind it (C2 photograph 4: two doors side by side, handles and hinges), each faced
     // with a bolted 25 mm plate (the old shoulder modules' four)
-    for (const [z0, z1] of [[-0.52, -0.07], [-0.05, 0.40]] as const) {
-      wallBox(P, s, W, z0, z1, 0.25, 0.80, 0.13);
+    for (const [z0, z1] of [[-0.98, -0.30], [-0.28, 0.40]] as const) {
+      // (10 cm proud with its plate: a load the fleet decor hangs on it finds the wall above it for its strap's cleat)
+      const y0 = 0.205, y1 = 0.80, d = 0.075, zc = (z0 + z1) / 2;
+      // the box: a flat underside, its top's outer edge chamfered (photograph 4), 1 cm into the wall
+      P.addEquipment('turret', convexBlock(mirror([[W - 0.01, y0, z0], [W - 0.01, y0, z1], [W + d, y0, z0], [W + d, y0, z1],
+        [W - 0.01, y1, z0], [W - 0.01, y1, z1], [W + d - 0.03, y1, z0], [W + d - 0.03, y1, z1],
+        [W + d, y1 - 0.03, z0], [W + d, y1 - 0.03, z1]], s)));
+      // its face: one bolted 25 mm plate over the whole door (a single flat plane for anything hung on it), the door's
+      // handle and hinge strip on it
       cluster(() => {
-        P.add('turret', KIT.box(0.025, 0.46, z1 - z0 - 0.06), s * (W + 0.13 + 0.0075), 0.52, (z0 + z1) / 2);
-        bolts(P, [[z0 + 0.05, 0.31], [z1 - 0.05, 0.31], [z0 + 0.05, 0.73], [z1 - 0.05, 0.73]].map(([zz, yy]) =>
-          new THREE.Vector3(s * (W + 0.145), yy, zz)), new THREE.Vector3(s, 0, 0));
+        P.add('turret', KIT.box(0.025, y1 - 0.03 - y0, z1 - z0), s * (W + d + 0.0125 - 0.002), (y0 + y1 - 0.03) / 2, zc);
+        bolts(P, [[z0 + 0.05, y0 + 0.05], [z1 - 0.05, y0 + 0.05], [z0 + 0.05, y1 - 0.08], [z1 - 0.05, y1 - 0.08]].map(([zz, yy]) =>
+          new THREE.Vector3(s * (W + d + 0.023), yy, zz)), new THREE.Vector3(s, 0, 0));
+        P.add('turretDetail', KIT.box(0.03, 0.12, 0.025), s * (W + d + 0.033), 0.52, z1 - 0.07);              // handle
+        P.add('turretDark', KIT.box(0.014, y1 - y0 - 0.12, 0.03), s * (W + d + 0.028), (y0 + y1 - 0.03) / 2, z0 + 0.03); // hinge
       });
       receipt.shoulderModules++;
       c2Era.turretSideCassettes++;
@@ -511,9 +523,18 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
       bolts(P, [[0.42, 0.74], [0.64, 0.52], [0.85, 0.32], [1.10, 0.30], [1.50, 0.30]].map(([zz, yy]) =>
         new THREE.Vector3(s * (W + 0.015), yy, zz)), n);
       smokeRow(P, s, -0.55, W, 30 + (s > 0 ? 4 : 0));
+      // photograph 6's wall fittings: the tow-hook pair low on the cheek module, a grab bracket over it and a hook high on
+      // the wall behind the seam
+      const xo = s * (W + 0.015);
+      for (const dz of [-0.06, 0.06]) P.add('turretDetail', KIT.box(0.035, 0.09, 0.03), xo + s * 0.015, 0.33, 1.32 + dz);
+      P.add('turretDetail', KIT.xform(KIT.torus(0.035, 0.011, P.q ? 10 : 6, 5), 0, 0, 0, 0, 0, Math.PI / 2), xo + s * 0.03, 0.31, 1.32);
+      P.add('turretDetail', KIT.box(0.03, 0.16, 0.025), xo + s * 0.03, 0.58, 1.02);
+      for (const dy of [-0.07, 0.07]) P.add('turretDetail', KIT.box(0.035, 0.025, 0.025), xo + s * 0.012, 0.58 + dy, 1.02);
+      P.add('turretDetail', KIT.box(0.035, 0.05, 0.06), s * (W + 0.015), 0.73, -0.02);
+      P.add('turretDetail', KIT.xform(KIT.torus(0.03, 0.009, P.q ? 10 : 6, 5), 0, 0, 0, 0, 0, Math.PI / 2), s * (W + 0.035), 0.70, -0.02);
     } else {
-      // (C2 photographs 1 and 4: the row lower on the bustle's wall, at about half its height)
-      smokeRow(P, s, -1.02, W, 30 + (s > 0 ? 4 : 0), 0.45);
+      // (C2 photographs 1 and 4: the row aft on the bustle's wall behind the add-on boxes, at about half its height)
+      smokeRow(P, s, -1.40, W, 30 + (s > 0 ? 4 : 0), 0.45);
     }
   }
   if (!c2) {
@@ -543,6 +564,7 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
   // commander (right): cupola with six periscopes; loader (left): flat hatch
   cupola(P, -0.76, -0.29, { r: 0.28, h: c2 ? 0.10 : 0.12, periscopes: 6, arc: 3.6, arcCentre: -0.35, hinge: [0, 0, -1] });
   flatHatch(P, 0.72, -0.24, 0.29, 1);
+  // the whips stand on the rear roof boxes, their tips where the old roof-mounted rods' were (the photo packets' envelope)
   const whip = (x: number, y: number, z: number, h: number, seed: number): void => {
     P.add('turretDark', KIT.cylY(0.04, 0.05, 0.07, 8), x, y + 0.03, z);
     addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.02, rake: 0, seed }), x, y + 0.06, z);
@@ -561,7 +583,7 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
     P.add('turretDark', KIT.box(0.085, 0.02, 0.02), 0.35, CROWN + 0.06, -1.68);
     P.add('turretDark', KIT.cylY(0.016, 0.016, 0.03, 6), 0.35, CROWN + 0.035, -1.68);
     // one working whip on the right; the left base stowed (the prototype's single set)
-    whip(-0.30, transverseTop, -1.16, 1.27, 48);
+    whip(-0.30, transverseTop, -1.16, 1.11, 48);
     P.add('turretDark', KIT.cylY(0.035, 0.045, 0.09, 8), 1.135, transverseTop + 0.04, -1.15);
     receipt.c1CheekEra = c1CheekEra(o.seat, receipt);
   } else {
@@ -573,8 +595,8 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
     mg.userData.remoteControlled = true;
     addFitting(P, 'turret', mg, 0.76, arieteProtoRoofY(0.76, 0.22), 0.22, [0, 0, 0]);
     c2MetMast(P, 0.05, transverseTop, -1.17);
-    whip(-0.30, transverseTop, -1.16, 1.27, 48);
-    whip(1.135, transverseTop, -1.15, 1.05, 52);
+    whip(-0.30, transverseTop, -1.16, 1.11, 48);
+    whip(1.135, transverseTop, -1.15, 0.89, 52);
     if (o.c2Era) c2Package(P, receipt, o.c2Era);
   }
   rearBins(P, c2);

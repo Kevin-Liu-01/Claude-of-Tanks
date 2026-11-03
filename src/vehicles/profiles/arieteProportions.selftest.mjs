@@ -156,9 +156,8 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
   assert.equal(shell?.revision, 'r269-photo-turret', `${id}: the photograph-built turret replaced the old one`);
   assert.equal(shell.owner, 'turret', `${id}: the new turret belongs to the articulated turret`);
   assert.equal(shell.followsTurretYaw, true, `${id}: the new turret follows the turret's yaw`);
-  assert.ok(Math.abs(shell.wallHalfWidthM * 1.1
-    - Math.abs(spec.armor.turretPlates.find((plate) => plate.name === 'turret_side_R').verts[0][0])) < 1e-9,
-  `${id}: its walls stand on the spec's turret side plates`);
+  // (the armour template's turret half-width, modern3Specs.ts tw 1.28: the regenerated anatomy fits its plates to them)
+  assert.equal(shell.wallHalfWidthM, 1.28, `${id}: its walls stand on the armour template's turret width`);
   assert.ok(shell.cheekRakeDeg >= 45 && shell.cheekRakeDeg <= 55,
     `${id}: the cheek faces rake back as the photographs show (${shell.cheekRakeDeg} deg from vertical)`);
   assert.ok(shell.cheekSweepDeg >= 12 && shell.cheekSweepDeg <= 22, `${id}: the cheek faces sweep back into an arrow plan`);

@@ -615,8 +615,8 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       // passed 13 mm over it, inside the gun's 25 mm hull keep)
       P.add('hull', box(0.26, 0.08, 0.16), 0.0, 1.399, 1.75);                    // driver thermal camera pod on the glacis
       P.add('hullGlass', box(0.16, 0.04, 0.02), 0.0, 1.404, 1.835);
-      // 269: the number on the right bustle side, aft of the smoke tubes (the side boxes carry the wall ahead of them)
-      P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.55, -1.62], -Math.PI / 2, 0, -0.02);
+      // 269: the number on the right bustle side over the smoke tubes (the add-on boxes carry the wall ahead of them)
+      P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.70, -1.40], -Math.PI / 2, 0, -0.02);
     } else {
       // 269: the number on the right wall under the smoke tubes' shelf, ahead of the bustle's louvre
       P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.38, -0.45], -Math.PI / 2, 0, -0.02);
