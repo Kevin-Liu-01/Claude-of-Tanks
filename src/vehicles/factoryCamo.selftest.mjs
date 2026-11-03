@@ -109,14 +109,10 @@ for (const patternId of CAMO_PATTERN_IDS) {
   assert.equal(paletteKey(resolveCamoVisual(getSpec('m1a1_abrams_hc'), patternId)), paletteKey(resolveCamoVisual(getSpec('t90am'), patternId)),
     `${patternId}: renders identically on hulls from different nations`);
 }
-// 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet. 2026-10-29 (release
-// 265): 34 with the Danish line's coats and the M41 family's period paints (the Bundeswehr's Gelboliv, the JGSDF's OD).
-// Integration 266: 44 with every 266 head's coats together (the Danish two, the Challenger 1 pick's two, the Brazil line's
-// seven, on 265's Centurion and PT-84 paints). Release 269: 52 on main with 267's Japan and Danish coats (past the old cap
-// of 50), 56 with the South Africa line's own coat on each of the Semel, the Olifant Mk 1 and the Mk 1A (owner 2026-11-03:
-// no plain coats); the cap leaves room for the plain-coat pass over the rest of the fleet, still one paint per distinct
-// recipe, never one per vehicle.
-assert.ok(paints >= 10 && paints <= 80, `the authored paint catalog is compact (${paints} entries)`);
+// the catalog grows with the fleet's own coats (owner 2026-11-03: every tank wears a proper camo), so its ceiling is
+// structural, never a hand count raised each release: each paint is led by a fleet vehicle, and the no-duplicates block
+// below keeps it curated
+assert.ok(paints >= 10 && paints <= ALL_TANK_IDS.length, `the authored paint catalog holds 10 to one paint per tank (${paints} entries)`);
 // no duplicates: no paint_* repeats (or shades) any other preset's recipe, and paint labels are unique and never
 // reuse another catalog label
 {
