@@ -541,7 +541,9 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.match(main, /studioBoot\.scene = runtime\.bootScene\?\.\(\) \?\? null;\n\s+const sceneMap = studioBoot\.scene \? await studioBoot\.scene\.map : null;\n\s+return runtime\.enter\(\{\n\s+map: sceneMap \|\| STUDIO_BOOT_MAP,/,
     'the direct boot enters on the linked scene\'s battlefield');
   assert.match(main, /window\.__GAME_READY = true;\nstudioBoot\.scene\?\.open\(STUDIO_BOOT_MAP\)/, 'the direct boot opens the linked scene once ready');
-  assert.match(studio, /if \(!active \|\| loading \|\| entering \|\| filmRenderer\.active \|\| recording\) \{\n\s+restoreAddress\(\);/,
+  // (2026-11-02 audit F9) idle is the Studio's one busy reading (a load, a staging, a map change, a film, an export, an
+  // entry or an exit), no longer a list of its own
+  assert.match(studio, /if \(busy\(\)\) \{\n\s+restoreAddress\(\);/,
     'a pasted link waits for an idle Studio and otherwise puts the address back');
   assert.match(studio, /const failure = sceneLinkOpenFailure\(result\);\n\s+panel\.notice\(failure\.message, 'error', failure\.detail\);/,
     'a refused link is explained on screen');

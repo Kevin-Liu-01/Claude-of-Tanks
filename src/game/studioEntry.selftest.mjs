@@ -4,13 +4,15 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
+import { createStudioSession } from './studioSession.ts';
 
 // Execute the actual Studio enter/doEnter/doExit callers without constructing
 // the renderer, panel DOM or full fleet. This catches caller ordering; a test
 // of setSunTrim alone cannot reproduce first-use Studio with no world.
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage']);
+// (2026-11-02 audit F9) the session's teardown, shared by an exit and a failed entry, and its atmosphere preparation
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere']);
 // (UI-LOCKDOWN E) the first view's program preparation is a port here; its place in the entry is pinned below
 const functions = [];
 function visit(node) {
@@ -18,14 +20,14 @@ function visit(node) {
   ts.forEachChild(node, visit);
 }
 visit(source);
-assert.equal(functions.length, 4);
+assert.equal(functions.length, names.size);
 
 const noop = () => {};
 async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
-  const acquisition = new Promise((resolve, reject) => {
+  const acquire = () => new Promise((resolve, reject) => {
     releaseWorld = () => {
       if (fail) { reject(new Error('world acquisition failed')); return; }
       world = { mapId: 'whiteout', skyConfig: { sunIntensity: 2.8, sunColorHex: 0xd9e8ff },
@@ -34,6 +36,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
       resolve(world);
     };
   });
+  let acquisition = acquire();
   const garageSky = { sunIntensity: 4.2, sunColorHex: 0xffffff };
   const game = { phase: 'garage' };
   const presentation = createGaragePhasePresentationRuntime({
@@ -49,7 +52,10 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const ports = {
     timeOfDay: time,
     studioLight: null, // media r5: the scene's sun override, forwarded with the time
-    ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
+    ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]),
+      restoreStudioAtmosphere: () => calls.push('atmosphere-restored') },
+    // the Studio session (studioSession.ts) and the film a teardown ends
+    session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
     // the rest of the fleet warms when the Studio is up, never inside the entry (247)
     window: { __GAME_READY: !directBoot, requestIdleCallback: (callback) => { calls.push('idle'); callback(); } }, game, camera,
     warmFleet: () => { calls.push('fleet-warm'); return Promise.resolve(); },
@@ -88,7 +94,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
-    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false, exitRun = null;
+    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false, exitRun = null, closing = null;
     class EntryAbandoned extends Error {}
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
@@ -129,7 +135,25 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     await assert.rejects(pending, /world acquisition failed/);
     assert.equal(game.phase, 'garage');
     assert.equal(studio.active(), false);
-    assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'sun'), false);
+    // (2026-11-02 audit F9) the failed entry leaves as an exit does: the panel goes, the battlefield gets its own light back
+    // and the Garage returns (its showroom, spots and sun trim; only active and the phase were reset, the Garage stayed hidden)
+    assert.ok(calls.includes('panel-hidden'), 'the Studio\'s panel goes');
+    assert.ok(calls.includes('atmosphere-restored') && calls.indexOf('atmosphere-restored') < calls.indexOf('enter-garage'),
+      'the battlefield\'s own light is back before the Garage returns');
+    assert.ok(calls.includes('enter-garage'), 'the Garage returns');
+    // never a battlefield preset: the only sun is the Garage's own trim, set by its return
+    const suns = calls.filter((entry) => Array.isArray(entry) && entry[0] === 'sun');
+    assert.ok(suns.length > 0 && suns.every((entry) => entry[1].sunIntensity === garageSky.sunIntensity * 0.55),
+      'no battlefield sun; the Garage\'s trim');
+    // and a second press enters again
+    fail = false;
+    acquisition = acquire();
+    const retry = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    releaseWorld();
+    await retry;
+    assert.equal(studio.active(), true, 'a retry after a failed entry opens the Studio');
+    await studio.doExit();
     return;
   }
   await pending;

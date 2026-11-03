@@ -315,8 +315,9 @@ assert.match(mainSource, /createCombatWarmComposition\(\{/,
 assert.match(battleWarmSource,
   /function warmStudioEffects[\s\S]{0,1400}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1400}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
+// (2026-11-02 audit F9: the build takes its session's token first, 600 for the line)
 assert.match(studioSource,
-  /async function replaceLoadActors\([\s\S]{0,500}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
+  /async function replaceLoadActors\([\s\S]{0,600}await yieldForFrameBudget\(\)[\s\S]{0,300}for \(const cfg of json\.actors \|\| \[\]\)[\s\S]{0,120}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
   'Studio actor replacement must yield before and between full-quality procedural actors');
 // Validate the scheduler binding and awaited call in the actual load function.
 // Input validation and comments may grow without changing the scheduling contract.

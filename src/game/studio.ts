@@ -128,6 +128,8 @@ import { smokeBankBase, smokeHoldInside, smokeWallRoom, smokeWindForMap, type Sm
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
+import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBusy } from './studioSession.ts';
+import type { StudioBusy, StudioSessionToken } from './studioSession.ts';
 import { WHEEL_DOLLY_MAX_UNITS, wheelDollyFactor, wheelNotchUnits } from './wheelNotches.ts';
 import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
 import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
@@ -728,13 +730,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   };
 
   // --- studio state ----------------------------------------------------------
-  let active = false;
+  let active = false;          // the Studio owns the frame: from the entry's shell to the exit's teardown
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
   // (248) an exit during an entry abandons it: its battlefield keeps streaming into the world cache, and the next entry
   // shows its own shell at once and joins that build (the coordinator shares it, progress included). An abandoned entry
   // stops at its next await, so its late steps never move the Garage's camera or route.
-  let entryGeneration = 0;
-  class EntryAbandoned extends Error {}
+  // (2026-11-02 audit F9) the session owns that generation (studioSession.ts): the entry, a battlefield change, a scene
+  // load, a light change and a film export each check their session's token after every await, and the exit cancels or
+  // waits for what is still in flight before the Garage takes the battlefield back.
+  const session = createStudioSession();
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
   // the whole fleet's builders (247): warmed once the Studio is up, never part of its entry (__STUDIO.ready() awaits it)
@@ -1828,7 +1832,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           const cfg: StudioActorInput = { id: placeArmed, pos: snapped ? [_snapPoint.x, _snapPoint.z] : [_v3.x, _v3.z],
             ...(snapped ? { facingDeg: _snapPoint.facingDeg } : {}) };
           // the armed tank's builder loads when it is armed (_internal.placeArmed); a click that beats it waits for it
-          const place = (): void => { if (active) selectActor(addActor(cfg)); };
+          const owner = session.token(); // (audit F9) a builder that lands after an exit places nothing in a later session
+          const place = (): void => { if (owner.current()) selectActor(addActor(cfg)); };
           if (isTankBuilderReady(placeArmed)) place();
           else void ensureTankBuilder(placeArmed).then(place).catch((error: unknown) => console.error('[studio] tank load failed', error));
           placeArmed = null;
@@ -4832,10 +4837,24 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     });
   }
 
+  /**
+   * (audit F9) What holds the Studio, read the same way by every entry point (studioSession.ts studioBusy): a recording,
+   * a film at film size, a film export, a session that is not open, a scene load or staging, a battlefield change, an
+   * undo or redo. The transport asks transportHeld(busy()).
+   */
+  function busy(): StudioBusy | null {
+    return studioBusy({
+      open: session.phase === 'open', recording: !!recording, filming, exporting: !!filmExport,
+      scene: loading || productionLoading, mapChange: !!mapChange, restoring: restoringHistory,
+    });
+  }
+
   function filmBusy(): string | null {
-    if (recording) return 'Stop recording before rendering a film';
-    if (loading || mapChange || productionLoading) return 'Finish the current Studio operation first';
-    if (filmRenderer.active) return 'A film render is already active';
+    const reason = busy();
+    if (reason === 'recording') return 'Stop recording before rendering a film';
+    if (reason === 'film') return 'A film render is already active';
+    if (reason === 'export') return t('studio.error.exportRunning');
+    if (reason === 'session' || reason === 'scene' || reason === 'map') return 'Finish the current Studio operation first';
     return null;
   }
 
@@ -4846,8 +4865,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * restores the live Studio.
    */
   function beginFilm(opts: FilmBeginOptions = {}): FilmSessionInfo {
-    const busy = filmBusy();
-    if (busy) throw new Error(busy);
+    const reason = filmBusy();
+    if (reason) throw new Error(reason);
+    return openFilm(opts);
+  }
+
+  /** The film itself, for beginFilm and an export's own begin (which its export flag would refuse). */
+  function openFilm(opts: FilmBeginOptions): FilmSessionInfo {
     const settings = filmSettingsFor(opts);
     const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
       : productionFormat === 'square' ? [1080, 1080] : productionFormat === 'card' ? [2062, 1080] : [1920, 1080];
@@ -4893,8 +4917,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function captureFilmStill(width: number, height: number, opts: CaptureOptions) {
-    const busy = filmBusy();
-    if (busy) throw new Error(busy);
+    const reason = filmBusy();
+    if (reason) throw new Error(reason);
     let dataURL = '', samples = 1, exposureMs = 0;
     const exposure = Math.max(0, Number(opts.exposureMs) || 0);
     filmShake = exposure > 0 ? Math.min(2, Math.max(0, opts.shake ?? sceneFilm?.shake ?? 1)) : 1;
@@ -4931,6 +4955,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   // --- in-browser offline export (studioFilmExport.ts, lazy) ----------------------
   let filmExport: { controller: AbortController; progress: FilmExportProgress | null } | null = null;
+  function filmExportAborted(): Error { return new DOMException(t('studio.error.exportCancelled'), 'AbortError'); }
 
   /**
    * Render the storyboard as a film and encode it in the browser (WebCodecs:
@@ -4940,8 +4965,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function exportFilmFile(opts: FilmExportRequest = {}): Promise<FilmExportResult> {
     if (filmExport) return Promise.reject(new Error(t('studio.error.exportRunning')));
-    const busy = filmBusy();
-    if (busy) return Promise.reject(new Error(busy));
+    const reason = filmBusy();
+    if (reason) return Promise.reject(new Error(reason));
     let settings: FilmSettings;
     let size: { width: number; height: number };
     try {
@@ -4954,15 +4979,22 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     const playhead = clockMs;
     const controller = new AbortController();
-    const session = { controller, progress: null as FilmExportProgress | null };
-    filmExport = session;
+    const exportSession = { controller, progress: null as FilmExportProgress | null };
+    filmExport = exportSession;
+    // (audit F9) the export belongs to its Studio session: an exit cancels it, waits for its end (the live viewport back)
+    // and the film never opens on the Garage (its module's import was the gap)
+    const owner = session.token();
+    const stillOpen = (): void => { if (controller.signal.aborted || !owner.current()) throw filmExportAborted(); };
+    const releaseCancel = session.onEnd(() => controller.abort());
     const run = async (): Promise<FilmExportResult> => {
       const { exportFilm } = await import('./studioFilmExport.ts');
+      stillOpen();
       const withAudio = opts.audio !== false;
       return exportFilm({
         begin: () => {
+          stillOpen();
           filmCues = withAudio ? [] : null;
-          const session = beginFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
+          const session = openFilm({ ...settings, width: size.width, height: size.height, startMs: opts.startMs, endMs: opts.endMs });
           // The opening seek replays every earlier event: keep only those at the film's first instant.
           if (filmCues) filmCues = filmCues.filter((cue) => cue.timelineMs >= session.startMs - 1e-3);
           return session;
@@ -4975,6 +5007,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         end: () => { filmCues = null; endFilm(); },
         canvas: renderer.domElement,
         soundtrack: withAudio ? async (session) => {
+          stillOpen(); // a cancel during the encoder's flush mixes nothing over a closed Studio
           const cues = filmCues ?? [];
           filmCues = null;
           const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
@@ -4998,11 +5031,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         bitrate: opts.bitrate,
         container: opts.container,
         signal: controller.signal,
-        onProgress(progress) { session.progress = progress; opts.onProgress?.(progress); },
+        onProgress(progress) { exportSession.progress = progress; opts.onProgress?.(progress); },
         onFrame: opts.onFrame ? (canvas) => opts.onFrame?.(canvas) : undefined,
       });
     };
-    return run().then((result) => {
+    return session.hold(run()).then((result) => {
       if (opts.download !== false) {
         const url = URL.createObjectURL(result.blob);
         const link = document.createElement('a');
@@ -5015,7 +5048,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       return result;
     }).finally(() => {
-      if (filmExport === session) filmExport = null;
+      releaseCancel();
+      if (filmExport === exportSession) filmExport = null;
+      if (!owner.current()) return; // the exit's teardown owns the playhead now
       seekTimeline(playhead);
       panel.refreshAll();
     });
@@ -5027,8 +5062,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * peaks over the timeline. The playhead returns where it was; null while the Studio is busy or playing.
    */
   async function soundPreview(buckets: number): Promise<{ readonly peaks: Float32Array; readonly cues: number } | null> {
-    if (recording || filming || filmExport || loading || productionLoading || restoringHistory || timeScale > 0 || reverseRate > 0
-      || filmCues || pointerHeld || dragActor || dragging || !active) return null;
+    if (busy() || timeScale > 0 || reverseRate > 0 || filmCues || pointerHeld || dragActor || dragging) return null;
+    const owner = session.token();
     const count = Math.max(1, Math.min(2000, buckets | 0));
     const playhead = clockMs;
     let cues: FilmSoundCue[] = [];
@@ -5042,6 +5077,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     if (!cues.length) return { peaks: new Float32Array(count), cues: 0 };
     const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
+    if (!owner.current()) return null; // the Studio closed while the mixer loaded
     const aspect = renderer.domElement.width / Math.max(1, renderer.domElement.height);
     const buffer = await renderFilmSoundtrack(cues, {
       listenerAt(timelineMs, out) {
@@ -5240,6 +5276,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     try {
       await restoreDocument(JSON.parse(target) as StudioSceneInput);
     } catch (error) {
+      if (isStudioSessionEnded(error)) return false; // the Studio closed under the restore (audit F9)
       console.error('[studio] undo/redo could not restore the scene', error);
     }
     historyHead = JSON.stringify(documentJson()); // the restored scene as this build writes it
@@ -5265,6 +5302,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function restoreDocument(doc: StudioSceneInput): Promise<void> {
     if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
     restoringHistory = true;
+    const owner = session.token();
     try {
       const world = getWorld();
       if (!world || world.mapId !== doc.map || !sameActorSet(doc)) {
@@ -5274,6 +5312,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const light = normalizeStudioLight(doc.light);
       if ((doc.timeOfDay ?? 'day') !== studioTimeFor(world.mapId, timeOfDay) || !sameLight(light, studioLight)) {
         await setTimeOfDay(doc.timeOfDay ?? 'day', light);
+        owner.check(); // an exit during the relight: the tanks it would patch are gone
       }
       applyFxSettings(normalizeStudioFx(doc.fx));
       timeScale = 0;
@@ -5309,17 +5348,22 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return json ? { picture: json } : {};
   }
 
-  async function ensureLoadMap(json: StudioSceneInput): Promise<void> {
+  /** Enter (or switch to) the scene's battlefield; resolves with the session the scene is built into (audit F9). */
+  async function ensureLoadMap(json: StudioSceneInput): Promise<StudioSessionToken> {
     const mapId = resolveMapId(json.map || 'verdant', () => 0.01);
     if (!active) await enter({ map: mapId });
+    const owner = session.token();
+    owner.check(); // an exit took the entry back
     const world = getWorld();
     if (!world || world.mapId !== mapId) await setMap(mapId);
+    return owner;
   }
 
   async function replaceLoadActors(
     json: StudioSceneInput,
     yieldForFrameBudget: () => Promise<void>,
   ): Promise<void> {
+    const owner = session.token();
     sceneMeta.seed = json.seed != null ? json.seed : 5000;
     sceneMeta.sections = json.destruction?.sections !== false;
     timeScale = 0;
@@ -5328,9 +5372,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // the scene's own tanks, not the fleet (247: the entry no longer loads every builder)
     await ensureTankBuilders((json.actors || []).map((cfg) => cfg.id || cfg.specId || DEFAULT_ACTOR_ID));
     await yieldForFrameBudget();
+    owner.check(); // (audit F9) an exit between tanks stops the build: none joins a closed Studio
     for (const cfg of json.actors || []) {
       const a = addActor(cfg);
       await yieldForFrameBudget();
+      owner.check();
       // a siege vehicle's aim is part of its pose: the scene's sight-line elevation runs the real hydropneumatic aim, so
       // the pitched hull and its loaded track runs round-trip through state() (the home page's suspension still)
       if (Number.isFinite(cfg.suspensionAimDeg)) setHydropneumaticAim(a, Number(cfg.suspensionAimDeg));
@@ -5401,7 +5447,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     productionAspect(loadedFormat); // Validate before replacing any scene state.
     if (!opts.keepView) lookThrough = true; // an undo keeps the view it was given; a new scene looks through its shots
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
-    if (filmRenderer.active) throw new Error(t('studio.error.finishFilmBeforeLoad'));
+    // (audit F9) an export is a film from its request: its module's import was a gap a load could replace the scene in
+    if (filmRenderer.active || filmExport) throw new Error(t('studio.error.finishFilmBeforeLoad'));
     if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError(t('studio.error.unknownTime'));
     const loadedLight = normalizeStudioLight(json.light); // throws on a malformed block before any state changes
     const loadedPicture = resolvePicture(json.picture); // validate before replacing scene state
@@ -5410,8 +5457,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
-      await ensureLoadMap(json);
+      // (audit F9) the build checks its session after every await: an exit mid-load stops it (replaceLoadActors checks
+      // between its tanks)
+      const owner = await ensureLoadMap(json);
       await setTimeOfDay(json.timeOfDay ?? 'day', loadedLight);
+      owner.check();
       applyFxSettings(normalizeStudioFx(json.fx));
       await replaceLoadActors(json, yieldForFrameBudget);
       storyboard = loadedStoryboard(json);
@@ -5419,6 +5469,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       selectedShotId = storyboard.shots[0]?.id || null;
       rail.rebuild();
       await yieldForFrameBudget();
+      owner.check();
       if (json.camera) applyCamera(json.camera);
       // Canonical timeline: log every authored event, then deterministically
       // rebuild the visible frame at the requested playhead. Future events
@@ -5426,6 +5477,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const fxMs = clampStudioTime(json.fxTime || 0, storyboard.durationMs);
       replaceLoadEffects(json, fxMs);
       await yieldForFrameBudget();
+      owner.check();
       productionFormat = loadedFormat; // Camera keys already carry this framing; never reframe on load.
       sceneFilm = loadedFilm;
       picture = loadedPicture;
@@ -5443,10 +5495,23 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     (a?.sunAzimuthDeg ?? null) === (b?.sunAzimuthDeg ?? null) && (a?.sunElevationDeg ?? null) === (b?.sunElevationDeg ?? null)
     && (a?.headlights ?? true) === (b?.headlights ?? true);
 
+  /**
+   * (audit F9) Light the battlefield for the session: the exit waits for a preparation in flight (session.hold) before
+   * it restores the battlefield's own light, so a late one never re-lights the world the Garage hands to a battle.
+   */
+  function prepareAtmosphere(time: StudioTimeOfDay, light: StudioLight | null): Promise<unknown> {
+    return session.hold(Promise.resolve(ctx.prepareStudioAtmosphere?.(time, light)));
+  }
+
   /** Re-light the active world (a covered transition for time changes; slider-rate sun moves stay uncovered). */
   async function applyStudioLight(time: StudioTimeOfDay, light: StudioLight | null, covered: boolean): Promise<void> {
+    // (audit F9) a change the exit overtook (its cover superseded, or its light landing under the exit's) applies nothing
+    const owner = session.token();
+    owner.check();
     const work = async (): Promise<void> => {
-      await ctx.prepareStudioAtmosphere?.(time, light);
+      owner.check();
+      await prepareAtmosphere(time, light);
+      owner.check();
       timeOfDay = time;
       studioLight = light;
       lighting.updateFrustums();
@@ -5454,8 +5519,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       panel.refreshMap();
       invalidate();
     };
-    if (covered) await transition.run(work, { title: t('studio.settingLight') });
-    else await work();
+    if (!covered) { await work(); return; }
+    try {
+      await transition.run(work, { title: t('studio.settingLight') });
+    } catch (error) {
+      if (!owner.current()) throw new StudioSessionEnded(); // the exit's cover took this one over
+      throw error;
+    }
   }
 
   /**
@@ -5464,8 +5534,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   async function setTimeOfDay(time: StudioTimeOfDay, light?: StudioLight | null): Promise<StudioTimeOfDay> {
     if (!isStudioTime(time)) throw new RangeError(t('studio.error.unknownTime'));
-    if (recording) throw new Error(t('studio.error.stopRecordingLight'));
-    if (filming) throw new Error(t('studio.error.finishFilm'));
+    const reason = busy();
+    if (reason === 'recording') throw new Error(t('studio.error.stopRecordingLight'));
+    if (reason === 'film' || reason === 'export') throw new Error(t('studio.error.finishFilm'));
     // a new time keeps the bearing and the headlights choice; its elevation band is its own
     const kept = studioLight ? normalizeStudioLight({ sunAzimuthDeg: studioLight.sunAzimuthDeg, headlights: studioLight.headlights }) : null;
     const nextLight = light !== undefined ? normalizeStudioLight(light) : time === timeOfDay ? studioLight : kept;
@@ -5478,8 +5549,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * elevation is clamped into the current time's band (getLight().band).
    */
   async function setLight(patch: StudioLight | null): Promise<ReturnType<typeof getLight>> {
-    if (recording) throw new Error(t('studio.error.stopRecordingLight'));
-    if (filming) throw new Error(t('studio.error.finishFilm'));
+    const reason = busy();
+    if (reason === 'recording') throw new Error(t('studio.error.stopRecordingLight'));
+    if (reason === 'film' || reason === 'export') throw new Error(t('studio.error.finishFilm'));
     if (patch !== null && (typeof patch !== 'object' || Array.isArray(patch))) throw new TypeError(t('studio.error.lightObjectOrNull'));
     const next = patch === null ? null : normalizeStudioLight({ ...(studioLight ?? {}), ...patch });
     const mapId = getWorld()?.mapId ?? 'verdant';
@@ -5512,11 +5584,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   async function setMap(mapId: string): Promise<string> {
+    // (audit F9) a battlefield change belongs to its session: after an exit it never wakes the world or re-lights it
+    const owner = session.token();
+    owner.check();
     const id = resolveMapId(mapId, () => 0.01);
     const current = getWorld();
     if (current && current.mapId === id) return id;
-    if (mapChange) {
-      await mapChange;
+    // one change at a time, in request order: a request made during another waits for it (two waiting requests once both
+    // built at once, and the first to finish cleared the latch the other still held)
+    while (mapChange) {
+      await mapChange.catch(() => undefined);
+      owner.check();
       const latest = getWorld();
       if (latest && latest.mapId === id) return id;
     }
@@ -5525,9 +5603,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       await ensureWorld(id, (f: number, label: string) => {
         progress(0.03 + f * 0.86, label);
       }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(id, timeOfDay)) });
+      owner.check();
       setWorldDormant(false);
       // a space map renders its authored day; the requested time returns on the next terrestrial map
-      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
+      await prepareAtmosphere(timeOfDay, studioLight);
+      owner.check();
       setCamoBiome(id);
       // Only Studio actors can be seen. Repainting every cached garage/battle
       // texture on a biome change turned a map pick into seconds of unrelated
@@ -5546,6 +5626,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (groundOcclusion) {
         groundOcclusion.setInstant(true);
         await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+        owner.check();
       }
       const world = getWorld();
       if (world) world.setWindTime(0.35 + clockMs / 1000);
@@ -5554,11 +5635,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       progress(1, 'Studio ready');
       return world?.mapId || id;
     };
-    mapChange = withStage(id, work);
+    const mine = withStage(id, work, owner.current);
+    mapChange = mine;
     try {
-      return await mapChange;
+      return await mine;
     } finally {
-      mapChange = null;
+      if (mapChange === mine) mapChange = null;
     }
   }
 
@@ -5594,6 +5676,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function enter(opts: EnterOptions = {}): Promise<void> {
     // a press while the exit's transition runs waits for the Garage, then enters (it was dropped: the exit still held active)
     if (exitRun) return exitRun.then(() => enter(opts), () => enter(opts));
+    if (closing) return closing.then(() => enter(opts), () => enter(opts)); // a direct teardown (a failed entry's) lands first
     if (active) return Promise.resolve();
     if (entering) return entering; // share the in-flight entry (load() awaits it)
     const mine: Promise<void> = doEnter(opts).finally(() => { if (entering === mine) entering = null; });
@@ -5636,9 +5719,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   async function doEnter(opts: EnterOptions): Promise<void> {
-    const generation = ++entryGeneration;
-    const owns = (): boolean => generation === entryGeneration;
-    const stillOwned = (): void => { if (!owns()) throw new EntryAbandoned(); };
+    // (audit F9) the session's entry: its token goes stale at an exit, and every step below checks it after its await
+    const owner = session.beginEntry();
+    if (!owner) throw new Error(t('studio.error.busy'));
+    const owns = owner.current;
+    const stillOwned = owner.check;
     // never race the boot tail: everything the studio touches exists once
     // the game declares readiness. Direct /studio boot is explicitly invoked
     // by main.ts from its final covered stage, where all Studio dependencies
@@ -5715,7 +5800,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       trace.labels = labels;
       mark('worldAndFx');
       setWorldDormant(false);
-      await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
+      await prepareAtmosphere(timeOfDay, studioLight);
       stillOwned();
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
@@ -5800,12 +5885,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (opts.coveredByBoot) await work(opts.onProgress || (() => {}));
       else await withStage(mapId, work, owns);
     } catch (error) {
-      if (error instanceof EntryAbandoned) return; // an exit took it back; a later entry runs its own
-      active = false;
-      panel.hide();
+      // an exit took it back (or its step failed after one); a later entry runs its own
+      if (!owns()) return;
+      // (audit F9) a failed entry leaves as an exit does: the Garage, its showroom and spots, the dormant battlefield
+      // and its own light come back (only the active flag and the phase did before)
+      session.beginExit();
+      try { await leaveForGarage(); } catch (rollback) { console.error('[studio] the failed entry\'s Garage return failed', rollback); }
       game.phase = 'garage';
       throw error;
     }
+    if (!session.open(owner)) return; // an exit landed between the entry's last step and its open: it is the exit's now
     trace.totalMs = Math.round(performance.now() - startedAt);
     window.__STUDIO_LOAD = trace;
     // the rest of the fleet, while the first frames are on screen
@@ -5821,24 +5910,54 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * and back"). The studio keeps ticking while the veil fades in, so no
    * half-torn frame is ever visible; the actual teardown runs covered.
    */
-  let exiting = false;
   let exitRun: Promise<unknown> | null = null;
+  let closing: Promise<void> | null = null; // the teardown in flight (an exit's or a failed entry's)
   function exit() {
     camoTryOn.preview(null, null);
     commitHistory(); // the last edit reaches the autosave before the Studio closes
-    if (!active || exiting) return;
-    exiting = true;
+    if (!active || session.phase === 'exiting') return;
+    // (audit F9) the press ends the session at once: every in-flight step stops at its next await, a film export is
+    // cancelled, and the teardown below waits for what is still landing (studioSession.ts)
+    session.beginExit();
     exitRun = transition.run(() => doExit(), {
       kicker: t('transition.kicker.sceneStudio'), title: t('transition.title.garage'),
       mapId: getWorld()?.mapId,
       progress: false, minShowMs: 250,
-    }).finally(() => { exiting = false; exitRun = null; });
+    })
+      // a cover another transition took over before the teardown ran still leaves (uncovered); a failed teardown is the
+      // console's, never an unhandled rejection
+      .catch((error: unknown) => (active ? doExit() : Promise.reject(error)))
+      .catch((error: unknown) => { console.error('[studio] exit failed', error); })
+      .finally(() => { exitRun = null; });
   }
 
   async function doExit() {
     if (!active) return;
     // an entry still loading is abandoned (the next entry starts its own); its plate goes with the panel
-    entryGeneration++;
+    session.beginExit(); // (a no-op when exit() began it)
+    await leaveForGarage();
+  }
+
+  /**
+   * The teardown an exit and a failed entry share (audit F9): the session's in-flight work lands or is cancelled first
+   * (an atmosphere preparation that resolved after the restore re-lit the battlefield the Garage hands to the next
+   * battle; an export kept rendering at film size over the Garage), then the Studio hands everything back.
+   */
+  function leaveForGarage(): Promise<void> {
+    closing ??= (async () => {
+      try {
+        await session.settled();
+        if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
+        await tearDownToGarage();
+      } finally {
+        session.close();
+        closing = null;
+      }
+    })();
+    return closing;
+  }
+
+  async function tearDownToGarage(): Promise<void> {
     entering = null;
     buildPlateUp = false;
     panel.setStage(null);
@@ -6095,9 +6214,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     },
     get ambience() { return fxSettings.ambience; },
     cinematicStats: () => cinematics?.stats() ?? null,
-    setMap: (id: string) => recording || filming
-      ? Promise.reject(new Error(t(filming ? 'studio.error.finishFilm' : 'studio.error.stopRecordingMap')))
-      : setMap(id),
+    setMap: (id: string) => {
+      const reason = busy();
+      if (reason === 'recording') return Promise.reject(new Error(t('studio.error.stopRecordingMap')));
+      if (reason === 'film' || reason === 'export') return Promise.reject(new Error(t('studio.error.finishFilm')));
+      return setMap(id);
+    },
     get active() { return active; },
     /** The Studio entered and every tank's builder in (the scripted addActor's precondition; load() needs only its own). */
     ready: async (): Promise<void> => {
@@ -6303,6 +6425,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     const json = result.scene as StudioSceneInput;
     await enter({ map: json.map || fallbackMap });
+    if (!active) return; // (audit F9) an exit took the entry back: load() would enter the Studio again
     try {
       await load(json);
       // what opened: its battlefield, its tanks and its length
@@ -6311,6 +6434,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         map: getMapConfig(mapId).name || mapId, tanks: actors.length, seconds: (storyboard.durationMs / 1000).toFixed(1),
       }));
     } catch (error) {
+      if (isStudioSessionEnded(error)) return; // the Studio closed while the scene built
       console.error('[studio] scene link failed to stage', error);
       panel.notice(t('studio.sceneLink.loadFailed'), 'error');
     }
@@ -6353,7 +6477,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       map: scene.then((json) => (typeof json?.map === 'string' ? json.map : null)),
       open: (fallbackMap) => whenGameReady().then(() => scene).then(async (json) => {
         await enter({ map: json?.map || fallbackMap });
-        if (json) await load(json);
+        if (json && active) await load(json); // (audit F9) never re-enters a Studio an exit closed
       }),
     };
   }
@@ -6376,7 +6500,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
     void decodeSceneLink(value).then((result) => {
       // the Studio may have closed, or begun a load, an entry or a film while the link decoded
-      if (!active || loading || entering || filmRenderer.active || recording) {
+      if (busy()) {
         restoreAddress();
         return undefined;
       }
