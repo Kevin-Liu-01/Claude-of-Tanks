@@ -55,8 +55,11 @@ export const TUNGUSKA = Object.freeze({
   /** the broad round lower turret: an oval plan 2.76 x 2.94 m, its centre 0.27 m ahead of the ring (photograph 02:
    * z -0.93..1.78, photograph 05: its front 1.71), 0.30 m tall with a rounded top edge */
   tub: Object.freeze({ halfWidth: 1.38, halfLength: 1.47, centreZ: 0.27, bottomY: 0.012, topY: 0.305 }),
-  /** the upper body on it, its roof's front edge rounded down onto the front plate (photograph 02: radius ~0.22 m) */
-  body: Object.freeze({ halfWidth: 0.80, bottomY: 0.22, roofY: 1.02, rearZ: -1.30, frontZ: 1.20, browZ: 0.98, browY: 0.80 }),
+  /** the upper body on it, its roof's front edge rounded down onto the front plate (photograph 02: radius ~0.22 m); its
+   * walls run down to the seated turret's underside (3 cm over the deck), so where its back corners pass the tub's
+   * rounded rear edge they stand on the deck instead of roofing a sliver of air over the shoulder (268 roof-pocket
+   * census: 1876 cm2 at 0.22) */
+  body: Object.freeze({ halfWidth: 0.80, bottomY: 0.03, roofY: 1.02, rearZ: -1.30, frontZ: 1.20, browZ: 0.98, browY: 0.80 }),
   /** the search radar's tall housing at the back */
   radarBox: Object.freeze({ halfWidth: 0.78, bottomY: 0.20, topY: 1.10, rearZ: -2.00, frontZ: -1.20 }),
   /** the tracking radar's drum, standing ahead of the body on its neck (photograph 02: face 1.93 m ahead of the ring,
