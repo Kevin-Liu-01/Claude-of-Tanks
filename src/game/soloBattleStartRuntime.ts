@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
-import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { HudRuntime } from '../ui/hud.ts';
 
@@ -184,6 +184,9 @@ export function createSoloBattleStartRuntime({
       };
 
       const game = state.game;
+      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before the roster, the map or the HUD
+      // move: the phase write below would throw only after all of them
+      assertAppPhaseTransition(game, 'battle', 'solo-start');
       const fx = round.getFx();
       // (audit F1) the countdown's owner: the player path arms the count its reveal opens; the debug entry skips it
       transitionBattleCountdown(game, preBattleHold ? 'arm' : 'live');

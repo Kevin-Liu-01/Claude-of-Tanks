@@ -5,8 +5,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  APP_PHASE_EDGES, AppPhaseTransitionError, appLifecycleOf, battleSubPhase, createAppLifecycle,
-  deriveAppLifecycleState, transitionAppPhase,
+  APP_PHASE_EDGES, AppPhaseTransitionError, appLifecycleOf, assertAppPhaseTransition, battleSubPhase,
+  createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
 } from './appLifecycle.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
@@ -153,4 +153,23 @@ assert.match(main, /getPhase: \(\) => appLifecycle\.state,/, 'the Studio key ope
 assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ configurable: true, get: \(\) => appLifecycle\.snapshot\(\) \}\)/,
   'tools read the lifecycle read-only');
 
-console.log('appLifecycle.selftest: guarded edges, every phase announced, screen vs scene, derived battle sub-phases passed');
+// (2026-11-02 audit F1 review) the edge check alone, for writers that set their scene up before the phase write: the
+// same table, the same error, nothing written and nothing announced
+{
+  const legal = (from, to) => { try { assertAppPhaseTransition({ phase: from }, to, 'check'); return true; } catch { return false; } };
+  for (const [from, targets] of Object.entries(APP_PHASE_EDGES)) {
+    for (const to of Object.keys(APP_PHASE_EDGES)) assert.equal(legal(from, to), targets.includes(to), `${from} -> ${to}`);
+  }
+  assert.equal(legal('ended', 'battle'), true, 'an unknown current value may move anywhere, as in transitionAppPhase');
+  assert.throws(() => assertAppPhaseTransition({ phase: 'garage' }, 'ended', 'check'), TypeError, 'an unknown phase is refused');
+  const heard = [];
+  const session = { phase: 'battle', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+  createAppLifecycle({ game: session, announce: (announcement) => heard.push(announcement) });
+  assert.throws(() => assertAppPhaseTransition(session, 'studio', 'studio:enter'),
+    (error) => error instanceof AppPhaseTransitionError && error.from === 'battle' && error.to === 'studio');
+  assertAppPhaseTransition(session, 'garage', 'leave');
+  assert.equal(session.phase, 'battle', 'the check never writes');
+  assert.deepEqual(heard, [], 'and never announces');
+}
+
+console.log('appLifecycle.selftest: guarded edges (and the write-free check), every phase announced, screen vs scene, derived battle sub-phases passed');

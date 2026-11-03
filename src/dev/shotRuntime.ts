@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
-import { transitionAppPhase, type AppPhase } from '../game/appLifecycle.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../game/appLifecycle.ts';
 import { awaitMapCaptureReadiness, type CaptureWorld } from './mapCaptureReadiness.ts';
 import type { ShotViewName } from './shotContract.ts';
 import type {
@@ -392,6 +392,8 @@ export async function setShotView(
     context.preloadArmorAimOverlay(),
   ]);
 
+  // (2026-11-02 audit F1 review) a still never takes a Studio's scene: refuse before the showroom or the shot mode move
+  assertAppPhaseTransition(context.game as { phase: AppPhase }, 'shot', 'shot:view');
   context.showroom.stop();
   context.setShotMode(true);
   context.setCaptureHidden(true);

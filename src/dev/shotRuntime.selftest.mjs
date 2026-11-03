@@ -154,6 +154,18 @@ for (const name of SHOT_VIEWS) {
   fixture.assertOwned();
 }
 
+// (2026-11-02 audit F1 review) a still over the Studio's scene (studio -> shot is no edge) is refused before the
+// showroom, the shot mode or the capture veil move: the phase write used to throw after them
+{
+  const refused = createFixture();
+  refused.context.game.phase = 'studio';
+  refused.setTarget('garage');
+  await assert.rejects(setShotView('garage', refused.context),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'shot');
+  assert.equal(refused.events.includes('shot:true'), false, 'the shot mode never moved');
+  assert.equal(refused.context.game.phase, 'studio');
+}
+
 // Cold Garage, Garage→battle, cached same-map battle, map-switch battle, then
 // battle→Garage: the recipe and every later paint see one presentation owner.
 const complete = createFixture();

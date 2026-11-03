@@ -238,6 +238,15 @@ export function isGarageScreenSettled(game: { phase: AppPhase }): boolean {
 }
 
 /**
+ * (2026-11-02 audit F1 review) Refuse an illegal hand-over before a writer's first mutation: the same error
+ * `transitionAppPhase` throws, with nothing written. A writer that sets up its scene (a roster, a map, the HUD, the
+ * showroom) and only then writes the phase checks here first, so a refusal never lands mid-flight.
+ */
+export function assertAppPhaseTransition(game: { phase: AppPhase }, next: AppPhase, reason: string): void {
+  assertEdge(game.phase, next, reason);
+}
+
+/**
  * The one phase writer. With a bound lifecycle it announces `phase:change`; a bare session (a Node selftest's game
  * double) still gets the edge check and the write, with nobody to announce to.
  */

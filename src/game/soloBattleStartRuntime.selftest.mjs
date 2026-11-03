@@ -162,6 +162,19 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
   assert.ok(!harness.events.includes('phase:battle'));
 }
 
+{
+  // (2026-11-02 audit F1 review) a start over the Studio's scene (studio -> battle is no edge) is refused before the
+  // count, the roster, the map, the Garage or the HUD move: the phase write used to throw only after all of them
+  const harness = createHarness();
+  harness.game.phase = 'studio';
+  harness.game.preBattleS = 0;
+  assert.throws(() => harness.runtime.start('m1a1_abrams_hc', 'winter', { preBattleHold: true }),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'battle');
+  assert.deepEqual(harness.events, [], 'nothing moved');
+  assert.equal(harness.game.phase, 'studio');
+  assert.equal(harness.game.preBattleS, 0, 'the count was not armed');
+}
+
 
 for (const deferVisuals of [false, true]) {
   // Exercise actual activation plus the production in-place shader hook. The

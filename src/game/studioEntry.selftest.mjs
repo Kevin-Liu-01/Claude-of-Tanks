@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
-import { transitionAppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, createAppLifecycle, transitionAppPhase } from './appLifecycle.ts';
 
 // Execute the actual Studio enter/doEnter/doExit callers without constructing
 // the renderer, panel DOM or full fleet. This catches caller ordering; a test
@@ -22,7 +22,7 @@ visit(source);
 assert.equal(functions.length, 4);
 
 const noop = () => {};
-async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false }) {
+async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false, refusedOver = null }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -36,7 +36,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     };
   });
   const garageSky = { sunIntensity: 4.2, sunColorHex: 0xffffff };
-  const game = { phase: 'garage' };
+  const game = { phase: refusedOver ?? 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+  const announcements = [];
+  if (refusedOver) createAppLifecycle({ game, announce: ({ from, phase, reason }) => announcements.push(`${from}>${phase}:${reason}`) });
   const presentation = createGaragePhasePresentationRuntime({
     scene: new THREE.Scene(), stageRoot: new THREE.Group(), dressingRoot: new THREE.Group(),
     garagePosition: new THREE.Vector3(), sunDirection: new THREE.Vector3(0, 1, 0),
@@ -86,7 +88,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     // the entry's own frames between its two first-view preparations (2026-10-26)
     nextFrame: async () => {},
     // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
-    transitionAppPhase,
+    transitionAppPhase, assertAppPhaseTransition,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -101,6 +103,17 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   `);
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
   const pending = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
+  if (refusedOver) {
+    // (2026-11-02 audit F1 review) an entry over a battle's scene (Window.__STUDIO.load, a press whose module arrived
+    // after a battle started) is refused before the stage, the panel or any write; its catch used to write 'garage'
+    // and announce it in the middle of the live battle (battle -> garage is an edge), with no Garage return run
+    await assert.rejects(pending, (error) => error?.name === 'AppPhaseTransitionError' && error.from === refusedOver);
+    assert.equal(game.phase, refusedOver, 'the battle keeps its scene');
+    assert.deepEqual(announcements, [], 'nothing is announced');
+    assert.deepEqual(calls, [], 'nothing moved');
+    assert.equal(studio.active(), false);
+    return;
+  }
   await Promise.resolve();
   if (reenter) {
     // (248) an exit while the battlefield streams, then a second entry: it shows its own shell at once and joins the
@@ -186,6 +199,7 @@ await scenario({ directBoot: false, time: 'sunset' });
 await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
+await scenario({ directBoot: false, refusedOver: 'battle' });
 // the build's wait leaves the way out live: Exit stays outside the inert parts, and its press abandons the entry (doExit's
 // entryGeneration step; the loading census 262: the whole app went inert, Exit included)
 const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url), 'utf8');

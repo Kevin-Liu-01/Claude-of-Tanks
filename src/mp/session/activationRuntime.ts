@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
-import { transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
@@ -146,6 +146,8 @@ export function createActivationRuntime({
       if (!viewerId || !own?.specId || !mapId || !bridge || !fx) {
         throw new TypeError('network battle activation requires a complete request');
       }
+      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before any presentation moves
+      assertAppPhaseTransition(game as { phase: AppPhase }, 'battle', 'network-activation');
       const hud = getHud();
       const damagePanel = getDamagePanel();
       if (typeof hud?.shotInfo?.setPlayer !== 'function'

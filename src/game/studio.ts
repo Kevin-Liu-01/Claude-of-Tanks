@@ -1,5 +1,5 @@
 import { t } from '../ui/i18n.ts';
-import { isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
@@ -5654,6 +5654,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       });
       stillOwned();
     }
+    // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the veil or any write
+    assertAppPhaseTransition(game as { phase: AppPhase }, 'studio', 'studio:enter');
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
     const trace: {
       mapId: string;
@@ -5807,8 +5809,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (error instanceof EntryAbandoned) return; // an exit took it back; a later entry runs its own
       active = false;
       panel.hide();
-      // (audit F1) a failed entry hands the scene back with its announcement (main's Garage cleanup, settings, audio)
-      transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
+      // (audit F1) a failed entry hands the scene back with its announcement (main's Garage cleanup, settings, audio),
+      // only when the Studio took it: a refused entry (another presentation owns the scene) writes nothing (F1 review)
+      if (game.phase === 'studio') transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
       throw error;
     }
     trace.totalMs = Math.round(performance.now() - startedAt);
