@@ -231,8 +231,9 @@ interface GarageOptions {
 
 export interface GarageRuntime {
   readonly root: HTMLElement;
-  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves). */
-  frameHotspots(camera: PerspectiveCamera, model: Object3D | null): void;
+  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves).
+   *  `modelSpecId` names the vehicle `model` shows: the plates stand only on the vehicle their figures describe. */
+  frameHotspots(camera: PerspectiveCamera, model: Object3D | null, modelSpecId?: string | null): void;
   /** Read-only: the screen's one open state (garageScreen.ts); show() and hide() are its only writers. */
   readonly isOpen: boolean;
   show(selected?: string): void;
@@ -3348,6 +3349,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
+  // the vehicle the figures describe
+  let hotspotFactsSpecId: string | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => {
     hotspotFacts = facts;
     if (calloutsShown && hotspots) { hotspots.setFacts(facts); opts.onOverlayChange?.(); }
@@ -3454,6 +3457,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    hotspotFactsSpecId = spec.id;
     setHotspotFacts({
       // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
       // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there
@@ -4844,10 +4848,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     root,
     get isOpen() { return garageScreen.isOpen; },
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
-    frameHotspots(camera, model) {
+    frameHotspots(camera, model, modelSpecId = null) {
       noteHeroModel(model);
       if (!calloutsShown || !hotspots) return;
-      hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+      // (2026-11-02 audit, 05-ui-2 #9) the figures follow the selection at once and the model when it lands: on the
+      // previous tank's model (a switch still landing past the pedestal's grace) the plates wait
+      const described = !modelSpecId || !hotspotFactsSpecId || modelSpecId === hotspotFactsSpecId;
+      hotspots.frame(camera, described ? model : null, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
     },
 
