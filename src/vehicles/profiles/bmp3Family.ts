@@ -86,7 +86,7 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   ]));
   // lifting eyes on the roof edge (bent bars standing on the plate)
   for (const [x, z] of [[0.86, 0.36], [-0.86, 0.36], [0.58, -0.86], [-0.58, -0.86]] as Array<[number, number]>) {
-    if (rok && x > 0 && z > 0) continue;                                              // ROK: the thermal head stands here
+    if (rok && x > 0 && z > 0) continue;                                            // ROK: its sight housing stands here
     P.add('turretDetail', hoop(0.045, 0.012, false), x, ROOF_Y - 0.008, z);
   }
 
@@ -97,20 +97,21 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   P.add('turretDetail', cylX(0.024, 0.17, 10), 0.44, ROOF_Y + 0.045, -0.585);          // hinge knuckle
   P.add('turretDetail', box(0.12, 0.022, 0.024), 0.44, ROOF_Y + 0.078, -0.20);          // lid handle
   periscope(P, 'turretDetail', 0.44, ROOF_Y + 0.040, -0.08, 0);
-  // 1K13-2: armoured box leaning back at the front, day and guidance windows side by side, its lamp on top
+  // 1K13-2: armoured box leaning back at the front, day and guidance windows side by side, its lamp on top (ROK: one
+  // long sight housing that carries the 1K13-2 and the Vesna-K module, its new lamp seated on top, bmp3RokTurretFit.ts)
   const sx0 = 0.33, sx1 = 0.62, sz0 = 0.02, sz1 = 0.36, sTop = 0.79;
-  P.addEquipment('turret', orientedSlab(
-    [sx0, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz0], [sx0, ROOF_Y - 0.010, sz0],
-    [sx0 + 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz0 + 0.02],
-    [sx0 + 0.02, sTop, sz0 + 0.02]));
-  const lean = Math.atan2(0.07, sTop - ROOF_Y);
-  const faceZ = (y: number): number => sz1 - (y - ROOF_Y) * Math.tan(lean);
-  for (const [x, y, r] of [[0.415, 0.66, 0.058], [0.545, 0.67, 0.042]] as Array<[number, number, number]>) {
-    P.add('turretDark', xform(cylZ(r + 0.018, 0.03, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.004);
-    P.add('turretGlass', xform(cylZ(r, 0.012, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.016);
-  }
-  P.add('turretDetail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
-  if (!rok) {                                     // ROK: the new IR searchlight on its yoke (bmp3RokTurretFit.ts)
+  if (!rok) {
+    P.addEquipment('turret', orientedSlab(
+      [sx0, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz1], [sx1, ROOF_Y - 0.010, sz0], [sx0, ROOF_Y - 0.010, sz0],
+      [sx0 + 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz1 - 0.07], [sx1 - 0.02, sTop, sz0 + 0.02],
+      [sx0 + 0.02, sTop, sz0 + 0.02]));
+    const lean = Math.atan2(0.07, sTop - ROOF_Y);
+    const faceZ = (y: number): number => sz1 - (y - ROOF_Y) * Math.tan(lean);
+    for (const [x, y, r] of [[0.415, 0.66, 0.058], [0.545, 0.67, 0.042]] as Array<[number, number, number]>) {
+      P.add('turretDark', xform(cylZ(r + 0.018, 0.03, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.004);
+      P.add('turretGlass', xform(cylZ(r, 0.012, 14), 0, 0, 0, -lean, 0, 0), x, y, faceZ(y) + 0.016);
+    }
+    P.add('turretDetail', xform(box(0.27, 0.02, 0.09), 0, 0, 0, -lean, 0, 0), 0.475, 0.745, faceZ(0.745) + 0.035); // visor
     P.add('turretDetail', cylY(0.03, 0.035, 0.06, 10), 0.475, sTop + 0.02, 0.17);
     P.add('turretDetail', cylZ(0.062, 0.11, 14), 0.475, sTop + 0.10, 0.19);
     P.add('turretGlass', cylZ(0.050, 0.012, 14), 0.475, sTop + 0.10, 0.248);
@@ -166,13 +167,6 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
     // grab rail along the upper side: two standoffs welded to the side plate and the bar
     for (const z of [-0.30, 0.22]) P.add('turretDetail', box(0.075, 0.024, 0.024), s * 1.165, 0.33, z);
     P.add('turretDetail', cylZ(0.013, 0.60, 8), s * 1.195, 0.33, -0.04);
-    if (rok && s < 0) {
-      // ROK service fit: a stowage bin low on the right flank under the grab rail (the left flank carries the radio
-      // mast and the bin round its rear corner, bmp3RokTurretFit.ts)
-      P.add('turret', box(0.11, 0.16, 0.48), s * 1.185, 0.215, -0.18);
-      P.add('turretDark', box(0.10, 0.012, 0.42), s * 1.19, 0.297, -0.18);
-      for (const z of [-0.33, -0.03]) P.add('turretDetail', box(0.02, 0.10, 0.03), s * 1.245, 0.215, z);
-    }
   }
 
   // ---- gun plant: each variant keeps its own (calibres, positions, muzzles); a chamfered mantlet replaces the box ----
