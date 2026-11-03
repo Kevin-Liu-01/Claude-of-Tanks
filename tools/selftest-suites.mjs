@@ -1950,6 +1950,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
     'src/vehicles/materialQuality.selftest.mjs',
+    // 2026-11-02 audit R5: one paint owner for a shared camo entry (A-B-A, sync over chunked, private promotion), release
+    // by identity
+    'src/vehicles/camoPaintOwner.selftest.mjs',
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
