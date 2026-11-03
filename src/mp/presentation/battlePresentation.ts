@@ -1,4 +1,5 @@
 import { createGunshipBattleVisual } from '../../game/gunshipVisual.ts';
+import { transitionBattleCountdown } from '../../game/preBattleCountdown.ts';
 import type { AerialView } from '../../sim/aerialCombat.ts';
 import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
@@ -1112,7 +1113,8 @@ export function createBattlePresentation({
       lastSmokeJson=frame.meta.smokeJson||'';
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
     }
-    game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
+    // (2026-11-02 audit F1) the countdown's one writer: this client follows the authority's count
+    transitionBattleCountdown(game, 'follow', frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0);
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     // the destruction log is settled state, as the destroyed list is: what this seat did not see happen lands at its end

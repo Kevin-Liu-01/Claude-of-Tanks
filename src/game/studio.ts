@@ -1,5 +1,5 @@
 import { t } from '../ui/i18n.ts';
-import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
@@ -1877,7 +1877,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (filming) return; // an offline film owns the Studio until it ends
     if (e.code === 'F8' && !e.repeat) {
       if (active) { exit(); e.preventDefault(); return; }
-      if (game.phase === 'garage') {
+      // (2026-11-02 audit F1) a settled Garage screen, as the Studio button's: behind the battle report (perf-246's
+      // preparation) or under a return's veil the scene is already the Garage's, and F8 opened the Studio over them
+      if (isGarageScreenSettled(game as { phase: AppPhase })) {
         enter().catch((err: RuntimeValue) => console.error('[studio] enter failed', err));
         e.preventDefault();
       }

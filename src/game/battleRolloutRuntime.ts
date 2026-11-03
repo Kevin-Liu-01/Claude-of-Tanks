@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { battleCountdownState, transitionBattleCountdown } from './preBattleCountdown.ts';
 
 interface BattleRolloutGame {
   preBattleS: number;
@@ -49,11 +50,12 @@ export function createBattleRolloutRuntime({
       if (!Number.isFinite(preBattleSeconds) || preBattleSeconds < 0) {
         throw new TypeError('battle rollout countdown must be finite and non-negative');
       }
-      if (game.preBattleS === Infinity) game.preBattleS = preBattleSeconds;
+      // (audit F1) the countdown's owner opens an armed count only; a running or open count is never reopened
+      transitionBattleCountdown(game, 'open', preBattleSeconds);
       getHud()?.preBattleCountdown(game.preBattleS);
       audio.resume();
       audio.ambientOn(true);
-      if (game.preBattleS <= 0) rollout();
+      if (battleCountdownState(game.preBattleS) === 'open') rollout();
     },
   });
 }

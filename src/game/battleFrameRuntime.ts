@@ -1,7 +1,7 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
-import { warmHoldActive, warmHoldElapsed } from './preBattleCountdown.ts';
+import { battleCountdownState, transitionBattleCountdown, warmHoldActive, warmHoldElapsed } from './preBattleCountdown.ts';
 
 interface BattlePauseInfo {
   paused: boolean;
@@ -218,8 +218,8 @@ export function createBattleFrameRuntime({
 
   // hot-path: every countdown frame
   const advanceCountdown = (wallDtSeconds: number): void => {
-    // armed, not yet opened: a new battle's count
-    if (game.preBattleS === Infinity) { resetCountdownEdges(); return; }
+    // armed, not yet opened: a new battle's count (the countdown owner's state, preBattleCountdown.ts)
+    if (battleCountdownState(game.preBattleS) === 'armed') { resetCountdownEdges(); return; }
     const heldSeconds = game.preBattleS;
     const warmRequested = countdown.isWarmPending();
     warmHeldS = warmHoldElapsed(warmHeldS, heldSeconds, wallDtSeconds, warmRequested);
@@ -229,16 +229,17 @@ export function createBattleFrameRuntime({
       holdExpiryReported = true;
       countdown.holdExpired?.(warmHeldS);
     }
-    game.preBattleS = countdown.advance(
+    // (audit F1) the countdown's one writer: an advance never reopens or raises the count
+    transitionBattleCountdown(game, 'advance', countdown.advance(
       game.preBattleS,
       wallDtSeconds,
       warmPending,
-    );
+    ));
     // Countdown 2026-09-14 (owner: "seems to stall at 3"): the presentation is told when the
     // count is held for warm work, so it shows PREPARING instead of a frozen numeral.
     countdown.show(game.preBattleS, warmPending);
     reportSecond(game.preBattleS, warmPending);
-    if (heldSeconds > 0 && game.preBattleS === 0) rollout(false);
+    if (battleCountdownState(heldSeconds) === 'counting' && battleCountdownState(game.preBattleS) === 'open') rollout(false);
   };
 
   /**
@@ -249,9 +250,10 @@ export function createBattleFrameRuntime({
   // hot-path: every networked countdown frame
   const followNetworkCountdown = (): void => {
     const seconds = game.preBattleS;
-    if (seconds === Infinity) { resetCountdownEdges(); return; }
+    const state = battleCountdownState(seconds);
+    if (state === 'armed') { resetCountdownEdges(); return; }
     if (!Number.isFinite(seconds)) return;
-    if (seconds > 0) { reportSecond(seconds, false); return; }
+    if (state === 'counting') { reportSecond(seconds, false); return; }
     if (!rolledOut) rollout(!countSeen);
   };
 
@@ -279,7 +281,8 @@ export function createBattleFrameRuntime({
       countdown.show(game.preBattleS);
       followNetworkCountdown();
       simulationAccumulator = 0;
-    } else if (game.preBattleS > 0) {
+    } else if (battleCountdownState(game.preBattleS) !== 'open') {
+      // armed (the count resets its edges) or counting: no simulation step until the count opens
       frameStages?.stage(FRAME_STAGE.countdown);
       advanceCountdown(wallDtSeconds);
       simulationAccumulator = 0;

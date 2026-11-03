@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { transitionBattleCountdown } from '../../game/preBattleCountdown.ts';
 
 export interface RoundState {
   result: RuntimeValue;
@@ -12,5 +13,5 @@ export function resetRoundState(game: RoundState): void {
   game.result = null;
   game.resultReason = null;
   game.timeS = 0;
-  game.preBattleS = Infinity;
+  transitionBattleCountdown(game, 'arm'); // (2026-11-02 audit F1) the countdown's one writer: a new round's count
 }

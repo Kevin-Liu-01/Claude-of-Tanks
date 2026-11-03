@@ -1,12 +1,14 @@
 import { endingHoldExpired, type MatchRuleset } from '../sim/matchRuleset.ts';
+import { battleCountdownState } from './preBattleCountdown.ts';
 
 /**
  * The app's lifecycle (2026-11-02 audit F1). `game.phase` says who owns the scene and the simulation; it is written
  * only through `transitionAppPhase`, which checks the edge, writes the phase and announces it as `phase:change`
  * through the lifecycle bound to that session. Everything finer — the Garage still behind the report, the battle's
  * loading, countdown, live, verdict hold and report — is derived here from the fields their own owners write (the
- * entry lifecycle, the Garage return, the simulation's `preBattleS`, `result`, `resultTimeS`), so no second writer
- * keeps a copy that can disagree. Pure: no DOM, no WebGL (src/mp and Node selftests import it).
+ * entry lifecycle, the Garage return, the countdown owner's `preBattleS` (preBattleCountdown.ts
+ * `transitionBattleCountdown`, its one writer), the simulation's `result`, `resultTimeS`), so no second writer keeps a
+ * copy that can disagree. Pure: no DOM, no WebGL (src/mp and Node selftests import it).
  */
 
 /** Who owns the scene and the simulation (`game.phase`). */
@@ -139,10 +141,11 @@ function assertEdge(from: AppPhase, to: AppPhase, reason: string): void {
   if (isAppPhase(from) && !APP_PHASE_EDGES[from].includes(to)) throw new AppPhaseTransitionError(from, to, reason);
 }
 
-/** The battle's sub-phase: Infinity is armed-not-opened, a count above 0 counts, 0 plays until a verdict. */
+/** The battle's sub-phase: the countdown owner's state (armed: loading, counting: countdown), then the verdict fields. */
 export function battleSubPhase(game: Pick<AppLifecycleGame, 'preBattleS' | 'result' | 'resultTimeS' | 'timeS' | 'ruleset'>): BattleSubPhase {
-  if (game.preBattleS === Infinity) return 'loading';
-  if (game.preBattleS > 0) return 'countdown';
+  const countdown = battleCountdownState(game.preBattleS);
+  if (countdown === 'armed') return 'loading';
+  if (countdown === 'counting') return 'countdown';
   if (game.result === null || game.result === undefined) return 'live';
   if (!game.ruleset) return 'verdict';
   return endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS) ? 'report' : 'verdict';
@@ -222,6 +225,16 @@ export function createAppLifecycle({ game, announce, readers: initialReaders = {
 /** The lifecycle bound to this session, if any. */
 export function appLifecycleOf(game: object): AppLifecycle | null {
   return owners.get(game) ?? null;
+}
+
+/**
+ * The player is at a settled Garage screen: the lifecycle's 'garage' state (not a return under its veil, a
+ * preparation behind the battle report, or an entry's cover). A bare session (no lifecycle) reads its scene phase.
+ * For readers that open something over the Garage UI (the Studio's F8).
+ */
+export function isGarageScreenSettled(game: { phase: AppPhase }): boolean {
+  const owner = owners.get(game);
+  return owner ? owner.state === 'garage' : game.phase === 'garage';
 }
 
 /**

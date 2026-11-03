@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { HudRuntime } from '../ui/hud.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
@@ -184,7 +185,8 @@ export function createSoloBattleStartRuntime({
 
       const game = state.game;
       const fx = round.getFx();
-      game.preBattleS = preBattleHold ? Infinity : 0;
+      // (audit F1) the countdown's owner: the player path arms the count its reveal opens; the debug entry skips it
+      transitionBattleCountdown(game, preBattleHold ? 'arm' : 'live');
       state.setShotMode(false);
       state.setCaptureHidden(false);
       fx.setFrozen(false);

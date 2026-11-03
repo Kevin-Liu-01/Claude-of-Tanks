@@ -1,6 +1,7 @@
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import { t } from '../ui/i18n.ts';
 import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
 
 /**
@@ -466,7 +467,7 @@ export function createGarageReturnRuntime<Visual = object>(
     else network.closeMatch('returned_to_garage');
     markStage('networkRelease');
 
-    game.preBattleS = 0;
+    transitionBattleCountdown(game, 'clear');
     warm.invalidate();
     warm.cancel();
     warm.setPending(false);

@@ -1,7 +1,11 @@
-// 2026-11-02 audit F1: the countdown's two hazards. `battle:rollout` had two emitters with different guards (the
-// rollout runtime's open() at 0, unlatched; the frame runtime's count edge, latched), and the warm hold froze the
-// count on PREPARING with no limit when its release never came.
+// 2026-11-02 audit F1: the countdown's hazards. `battle:rollout` had two emitters with different guards (the
+// rollout runtime's open() at 0, unlatched; the frame runtime's count edge, latched); the warm hold froze the count on
+// PREPARING with no limit when its release never came (and, in review, its limit counted a frame's whole wall delta,
+// so one frame after a long focus loss expired it); and `preBattleS` had seven writers with no owner.
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createBattleFrameRuntime } from './battleFrameRuntime.ts';
 import { createBattleRolloutRuntime } from './battleRolloutRuntime.ts';
@@ -77,13 +81,33 @@ function createCountdown({ warmPending = () => false } = {}) {
 {
   const { game, events, expiries, frame, rollout } = createCountdown({ warmPending: () => true });
   rollout.open(5);
+  const dt = 0.1;
   let frames = 0;
-  while (game.preBattleS > 0 && frames < 200) { frame.advance(1, 1, frames * 1000, false); frames += 1; }
+  while (game.preBattleS > 0 && frames < 1000) { frame.advance(dt, dt, frames * 100, false); frames += 1; }
   assert.equal(game.preBattleS, 0, 'a warm whose release never came no longer holds the count forever');
   assert.equal(events.length, 1);
   assert.equal(expiries.length, 1, 'the expiry is reported once');
-  assert.ok(expiries[0] >= countdownPolicy.PRE_BATTLE_WARM_HOLD_LIMIT_S);
-  assert.ok(frames >= countdownPolicy.PRE_BATTLE_WARM_HOLD_LIMIT_S + 2, 'the hold still held the count for its limit');
+  assert.ok(expiries[0] >= countdownPolicy.PRE_BATTLE_WARM_HOLD_LIMIT_S - 1e-9);
+  assert.ok(frames * dt >= countdownPolicy.PRE_BATTLE_WARM_HOLD_LIMIT_S + 2, 'the hold still held the count for its limit');
+}
+
+// (review) The limit counts the frames that ran at the hold, each capped as the frame owner caps its delta: one frame
+// after a focus loss or a hidden tab (a 40 s wall delta; the warm itself did not progress while the loop slept) is
+// one frame at the hold. It used to expire the hold and roll the battle out at once, with no 3-2-1.
+{
+  let pending = true;
+  const { game, events, expiries, frame, rollout } = createCountdown({ warmPending: () => pending });
+  rollout.open(3);
+  for (let at = 0; at < 240; at += 1) frame.advance(1 / 60, 1 / 60, at * 16, false);
+  assert.equal(game.preBattleS, 3, 'held on its top numeral for four seconds');
+  frame.advance(0.1, 40, 44_000, false);
+  assert.equal(game.preBattleS, 3, 'a single 40 s frame does not end the hold');
+  assert.deepEqual(expiries, []);
+  assert.equal(events.length, 0, 'and does not roll the battle out');
+  pending = false;
+  for (let at = 0; at < 5 && game.preBattleS > 0; at += 1) frame.advance(1, 1, 45_000 + at * 1000, false);
+  assert.equal(game.preBattleS, 0, 'the released warm counts 3-2-1');
+  assert.equal(events.length, 1);
 }
 
 // A warm released inside the limit keeps today's behaviour (PREPARING on 3, then 3-2-1).
@@ -100,12 +124,66 @@ function createCountdown({ warmPending = () => false } = {}) {
   assert.deepEqual(expiries, []);
 }
 
-const { warmHoldActive, warmHoldElapsed, PRE_BATTLE_WARM_HOLD_LIMIT_S } = countdownPolicy;
-assert.equal(warmHoldElapsed(0, 4, 1, true), 0, 'counting down to the hold is not holding');
-assert.equal(warmHoldElapsed(0, 3, 1, true), 1);
+const { warmHoldActive, warmHoldElapsed, PRE_BATTLE_WARM_HOLD_LIMIT_S, WARM_HOLD_FRAME_CAP_S } = countdownPolicy;
+assert.equal(warmHoldElapsed(0, 4, 0.05, true), 0, 'counting down to the hold is not holding');
+assert.equal(warmHoldElapsed(0, 3, 0.05, true), 0.05);
+assert.equal(warmHoldElapsed(0, 3, 40, true), WARM_HOLD_FRAME_CAP_S, 'one frame adds at most the frame cap');
 assert.equal(warmHoldElapsed(2, 3, 1, false), 2);
 assert.equal(warmHoldElapsed(0, Infinity, 1, true), 0);
 assert.equal(warmHoldActive(PRE_BATTLE_WARM_HOLD_LIMIT_S - 0.01, true), true);
 assert.equal(warmHoldActive(PRE_BATTLE_WARM_HOLD_LIMIT_S, true), false);
 
-console.log('battleCountdownEdges.selftest: one rollout a battle, and a warm hold with a limit passed');
+// (review) The countdown's owner: one transition function, an edge table, bad moves ignored or refused.
+{
+  const { transitionBattleCountdown: move, battleCountdownState: stateOf, BATTLE_COUNTDOWN_EDGES } = countdownPolicy;
+  assert.deepEqual(Object.keys(BATTLE_COUNTDOWN_EDGES).sort(), ['armed', 'counting', 'open']);
+  assert.deepEqual([Infinity, 3, 0.5, 0].map(stateOf), ['armed', 'counting', 'counting', 'open']);
+  const game = { preBattleS: 0 };
+  assert.equal(move(game, 'open', 3), false, 'a countdown that was never armed is not opened');
+  assert.equal(game.preBattleS, 0);
+  assert.equal(move(game, 'advance', 0), false, 'no count runs: nothing to advance');
+  assert.equal(move(game, 'arm'), true);
+  assert.equal(game.preBattleS, Infinity);
+  assert.equal(move(game, 'advance', 2), false, 'an armed count is opened, never advanced');
+  assert.equal(move(game, 'open', 3), true);
+  assert.equal(game.preBattleS, 3);
+  assert.equal(move(game, 'open', 5), false, 'a running count is never reopened');
+  assert.equal(move(game, 'advance', 4), false, 'a count never rises');
+  assert.equal(game.preBattleS, 3);
+  assert.equal(move(game, 'advance', 2.5), true);
+  assert.equal(move(game, 'advance', Number.NaN), false);
+  assert.equal(move(game, 'follow', Infinity), false);
+  assert.equal(move(game, 'follow', -1), false);
+  assert.equal(game.preBattleS, 2.5, 'a count that is not a count writes nothing');
+  assert.equal(move(game, 'advance', 0), true);
+  assert.equal(stateOf(game.preBattleS), 'open');
+  assert.equal(move(game, 'follow', 4), true, 'the network authority is followed from any state');
+  assert.equal(game.preBattleS, 4);
+  assert.equal(move(game, 'clear'), true);
+  assert.equal(game.preBattleS, 0);
+  assert.equal(move(game, 'arm'), true, 'a new battle arms over the last one');
+  assert.equal(move(game, 'live'), true, 'the debug entry skips the count');
+  assert.equal(game.preBattleS, 0);
+}
+
+// Source contract: every `preBattleS` writer in src/ goes through the owner (seven writers in six files before).
+{
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const writers = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) { walk(full); continue; }
+      if (!/\.(ts|js|mjs)$/.test(name) || /\.selftest\.mjs$|\.test-support\.mjs$/.test(name)) continue;
+      const lines = readFileSync(full, 'utf8').split('\n');
+      lines.forEach((line, index) => {
+        if (/\.preBattleS\s*(=(?!=)|\+=|-=)/.test(line)) writers.push(`${relative(root, full)}:${index + 1}`);
+      });
+    }
+  };
+  walk(root);
+  assert.deepEqual(writers.map((entry) => entry.split(':')[0]), ['game/preBattleCountdown.ts'],
+    `every preBattleS write goes through transitionBattleCountdown (found ${writers.join(', ')})`);
+}
+
+console.log('battleCountdownEdges.selftest: one rollout a battle, a capped warm hold with a limit, one countdown writer passed');

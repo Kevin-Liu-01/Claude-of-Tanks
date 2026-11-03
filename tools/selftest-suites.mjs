@@ -1889,7 +1889,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
     'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
-    'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; the warm hold has a limit
+    'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; a capped warm-hold limit; one countdown writer
     'src/game/battleWarmHold.selftest.mjs', // 2026-11-02 audit F2: one warm-hold owner; a successor never inherits a stale warm
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
