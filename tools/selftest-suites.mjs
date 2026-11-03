@@ -1511,6 +1511,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/destructionSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
+    // 2026-11-02 audit F11: an interrupted transmission takes its scheduled release click, crackle and static swell with it
+    'src/audio/crewRadioInterrupt.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',
