@@ -2389,8 +2389,8 @@
       {
         "volumeId": "M08",
         "name": "ammoRack",
-        "min": [-0.9731,0.5386,-1.2201],
-        "max": [0.9731,1.0409,0.0673],
+        "min": [-0.9731,0.54,-1.25],
+        "max": [0.9731,0.84,0.0972],
         "turretLocal": true
       },
       {
@@ -2457,7 +2457,7 @@
     ]
   },
   "geometryHash": "55aca712",
-  "metadataHash": "78845b5f",
+  "metadataHash": "d97f9f20",
   "presentationAnchor": {
     "xM": -0.0006,
     "zM": -0.0128
@@ -2570,8 +2570,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 36002,
-      "sha256": "d3668eb5a44e2dae121cf20d90c33cf0721db4ee7fd495f5777f72fae83b01ba"
+      "bytes": 35722,
+      "sha256": "a92ad37d5e8bd38cd30f23b410a41a7e9a42797156664ffb6fa324a7958a9b32"
     },
     "crewSide": {
       "file": "pantsir_s1_crew_side.webp",
@@ -2592,8 +2592,8 @@
     "technicalLabels": {
       "file": "pantsir_s1_technical.json",
       "mime": "application/json",
-      "bytes": 5686,
-      "sha256": "7ffa823d48f45732dc9896b9a4b6690fc5d1cf3d917e74072e3a731d27e0efb7"
+      "bytes": 5684,
+      "sha256": "40a0bc5d6ad0453956896a90c2ad167116fb006a9d44b664092c394e89b2970d"
     }
   }
 }
