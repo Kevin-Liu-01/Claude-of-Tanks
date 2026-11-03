@@ -1382,8 +1382,13 @@ try {
   report.rejoinTiming = { openedAtMs: a2OpenedAtMs, garageAfterMs: null, revealedAfterMs: null };
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
-  await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
-  report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
+  // (268) the resumed seat may re-enter the running match during its boot, its Garage never ready (production 11-03: A2's
+  // link opened 32 s in and its battle revealed at 140 s while this wait ran out at 240 s): its session in the match ends
+  // the wait too, the Garage recorded as skipped, and the return reads as the 'auto' path below
+  await waitFor(pages.a2, () => (window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage')
+    || window.__MULTIPLAYER_V2?.stats?.()?.session?.phase === 'match', 'A2 garage ready or back in the match', 240_000);
+  report.rejoinTiming.garageSkipped = await pages.a2.evaluate(() => window.__MULTIPLAYER_V2?.stats?.()?.session?.phase === 'match').catch(() => false);
+  report.rejoinTiming.garageAfterMs = report.rejoinTiming.garageSkipped ? null : elapsedMs() - a2OpenedAtMs;
   // (2026-10-20, item/mp-rejoin-229) the returning tab's boot by stage (main.ts BOOT_TIMINGS: numbers only)
   report.a2BootTimings = await pages.a2.evaluate(() => Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {})
     .filter(([, value]) => typeof value === 'number').map(([key, value]) => [key, Math.round(value)]))).catch(() => null);
