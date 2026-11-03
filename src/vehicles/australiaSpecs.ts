@@ -26,10 +26,10 @@ const australian = (id: string, donor: string, name: string, era: 'cold-war' | '
 };
 
 // The Australian Army's disruptive pattern: a tan base under olive and black in broad patches (the Abrams, AS1, AS4 and
-// Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s
+// Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s (the Centurion Mk 5/1's coat)
 const ausDisruptive = (number: string) => ({ scheme: 'blotch' as const, base: '#8a7656', weather: '#95825f',
   patches: ['#57593c', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2 });
-const raacOliveDrab = (number: string) => ({ scheme: 'solid' as const, base: '#55573a', weather: '#606244', patches: [] as string[],
+const raacOliveDrab = (number: string) => ({ scheme: 'solid' as const, base: '#5a5c30', weather: '#696b3d', patches: [] as string[],
   marking: 'number' as const, number, camoScale: 0.55 });
 
 // ---------------------------------------------------------------------------------------------------- M113s --

@@ -147,16 +147,22 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * drab under chocolate brown (the photo critic: the family's sage-and-tan service paint read as no JGSDF coat), and the
  * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
+/** Release 269: the Australia line's disruptive three-tone (australiaSpecs.ts): tan under olive and black, on the Leopard AS1,
+ * the M113AS4, both Abrams and the Redback (the M113A1s wear the Centurion Mk 5/1's RAAC olive drab). Appended after 267's
+ * saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_268[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -198,6 +204,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_264,
   ...AUTHORED_PAINT_IDS_AFTER_265,
   ...AUTHORED_PAINT_IDS_AFTER_266,
+  ...AUTHORED_PAINT_IDS_AFTER_268,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -925,6 +932,15 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
+  // release 269: the Australia line: the RAAC's olive drab on the M113A1 FSV and MRV (the Centurion Mk 5/1's), the
+  // disruptive three-tone from the Leopard AS1 on
+  m113a1_fsv: 'paint_centurion5_1_aus',
+  m113a1_mrv: 'paint_centurion5_1_aus',
+  leopard_as1: 'paint_leopard_as1',
+  m113as4: 'paint_leopard_as1',
+  m1a1_aim_sa_aus: 'paint_leopard_as1',
+  m1a2_sepv3_aus: 'paint_leopard_as1',
+  redback: 'paint_leopard_as1',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
