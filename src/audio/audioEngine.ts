@@ -2082,7 +2082,7 @@ export function createAudio({
     for (let i = 0; i < list.length; i++) {
       const entity = toEntity(list[i]);
       if (!entity?.aerial?.kind) continue;
-      if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET); void library.load(AERIAL_SET); }
+      if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET, false, 'aerial'); void library.load(AERIAL_SET); }
       if (entity.id === listenerOwnerId) me = entity;
       if (entity.aerial.kind !== 'gunship' || entity.combat?.destroyed || entity.id === listenerOwnerId) continue;
       // A gunship circling overhead, heard from the ground.
@@ -2109,7 +2109,7 @@ export function createAudio({
       let rig = droneRigs.get(shell.id);
       if (!rig) {
         if (aerialFrame.rel.distance > 520) continue;
-        if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET); void library.load(AERIAL_SET); }
+        if (!aerialWarmed) { aerialWarmed = true; library.pin(AERIAL_SET, false, 'aerial'); void library.load(AERIAL_SET); }
         rig = createAerialRig(aerialDeps(), 'drone', 'world');
         droneRigs.set(shell.id, rig);
         logSound('aerial:start', { id: shell.id, kind: 'drone' });
@@ -2199,12 +2199,16 @@ export function createAudio({
     ownDroneFlying = false;
     aerialWarmed = false;
     droneWarned.clear();
+    // the aircraft set goes with the aircraft (the next battle pins its own)
+    library?.pin([], true, 'aerial');
   }
 
   function stopWorld(reason: string): void {
     stopAerial();
     for (const [id, rig] of rigs) { rig.kill(0.3); logSound('engine:stop', { id, reason }); }
     rigs.clear();
+    // the rigs' loops go with the rigs (the next battle's rigs pin their own)
+    library?.pin([], true, 'rigs');
     surfaceCache.clear();
     for (const wreck of wrecks) {
       const doomed = new Set(wreck.voices.filter(Boolean));
@@ -2414,7 +2418,8 @@ export function createAudio({
       onTransmit: (id, take, lang, durationS, priority) => { captions.radio(id, take, lang, durationS, priority); } });
     // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
     ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => battleMode.rolledOut });
-    library.pin([...UI_SET, ...RADIO_SET]);
+    // the session's own pins: the interface and the radio net stay decoded whatever the battle warm pins
+    library.pin([...UI_SET, ...RADIO_SET], false, 'session');
     void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
     if (playerId || crewVoice !== 'national') applyCrewLanguage();
@@ -2921,8 +2926,9 @@ export function createAudio({
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
     if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
-    // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops).
-    library.pin(ids, true);
+    // The battle set stays decoded for the whole battle (rigs and scenes pin their own loops): a new warm replaces the
+    // battle's pins only, never the session's radio net, the aircraft set or a live rig's loop (2026-11-02 audit F11).
+    library.pin(ids, true, 'battle');
     return Promise.all([library.load(presence, { front: true }), library.load(ids)]).then(() => {});
   }
 
@@ -2965,6 +2971,8 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      /** Whether any owner pins an asset (2026-11-02 audit F11: the battle warm replaces the battle's pins only). */
+      pinned: (id: string) => library?.isPinned(id) ?? false,
       /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
       libraryIdle: () => library?.idle() ?? Promise.resolve(),
       /** The countdown's presence set, decoded first by the battle warm: this battle's roster, or the one given. */
