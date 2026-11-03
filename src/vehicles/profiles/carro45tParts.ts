@@ -9,7 +9,9 @@
 // +x the vehicle's left.
 import * as THREE from 'three';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
-import { FITTINGS, KIT } from './kit.ts';
+import { KIT } from './kit.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -170,7 +172,6 @@ export function carroMantletGeometry(): THREE.BufferGeometry {
 // the Breda pintle, the rear rack) stay in the builder, which owns their seats.
 
 type KitPort = Pick<TankBuilderPort, 'add' | 'addEquipment' | 'addModuleVisual' | 'addHatch' | 'addCupola' | 'q'>;
-type BowPort = KitPort & Pick<TankBuilderPort, 'mats' | 'hullG'>;
 
 /** Roof-sight head: a side-profile housing (CLOCKWISE (z, y) relative to the station's z), its raked window and a
  *  lifted visor plate hinged on the window's top edge. */
@@ -346,25 +347,22 @@ export function addCarroSkirts(P: KitPort): void {
 const glacisY = (z: number): number => 1.468 - (z - 2.24) * (0.228 / 0.86);
 const GLACIS_TILT = Math.atan2(0.228, 0.86);
 
-export function addCarroBowKit(P: BowPort): void {
+export function addCarroBowKit(P: KitPort): void {
   const { box, cylY, cylX } = KIT;
   const seg = P.q ? 22 : 12;
   // driver's hatch (right front) on the upper glacis, its three periscopes ahead of it
   const hx = -0.48, hz = 2.42, hy = glacisY(hz);
   const nY = Math.cos(GLACIS_TILT), nZ = Math.sin(GLACIS_TILT);
-  // r268b (owner: "add more upper glacis and roof details"): the lid sits in a raised welded coaming ring
-  P.addCupola('hull', cylY(0.305, 0.315, 0.018, seg), hx, hy + nY * 0.001, hz + nZ * 0.001, GLACIS_TILT, 0, 0);
   P.addHatch('hull', cylY(0.25, 0.262, 0.034, seg), hx, hy + nY * 0.012, hz + nZ * 0.012, GLACIS_TILT, 0, 0);
   P.add('hullDark', KIT.torus(0.256, 0.008, seg), hx, hy + nY * 0.004, hz + nZ * 0.004, GLACIS_TILT, 0, 0);
-  // r268b: the lid lifts and swings on an outboard pivot (OF-40 / Leopard 1 pattern): a pivot boss on the coaming, the
-  // swing arm over the lid's edge onto its centre boss, and a spring housing along the coaming (was a plain block)
+  // r268b (owner: "add more upper glacis and roof details"; round 2, the blind critics: "ring and bracket clutter"):
+  // one clean lid and one compact outboard hinge, a barrel on a welded bracket with a strap onto the lid (was a block)
   // plate frame at the hatch centre: x across, h along the glacis normal, lz down the slope (forward)
   const onPlate = (g: THREE.BufferGeometry, lx: number, h: number, lz: number): THREE.BufferGeometry =>
     g.translate(lx, h, lz).applyMatrix4(new THREE.Matrix4().makeRotationX(GLACIS_TILT)).translate(hx, hy, hz);
-  P.addHatch('hull', onPlate(cylY(0.045, 0.05, 0.06, 12), -0.29, 0.025, 0), 0, 0, 0);              // pivot boss
-  P.addHatch('hull', onPlate(box(0.21, 0.022, 0.06), -0.20, 0.058, 0), 0, 0, 0);                   // swing arm
-  P.addHatch('hull', onPlate(cylY(0.05, 0.05, 0.024, 12), -0.10, 0.038, 0), 0, 0, 0);              // lid boss
-  P.add('hullDark', onPlate(KIT.cylZ(0.022, 0.18, 10), -0.30, 0.018, -0.14), 0, 0, 0);             // spring housing
+  P.addHatch('hull', onPlate(box(0.05, 0.036, 0.13), -0.285, 0.011, 0), 0, 0, 0);                  // hinge bracket
+  P.add('hullDark', onPlate(KIT.cylZ(0.022, 0.15, 10), -0.278, 0.030, 0), 0, 0, 0);                // hinge barrel
+  P.addHatch('hull', onPlate(box(0.10, 0.012, 0.045), -0.215, 0.033, 0), 0, 0, 0);                 // strap onto the lid
   P.add('hullDetail', box(0.15, 0.02, 0.02), hx + 0.05, hy + nY * 0.040, hz + nZ * 0.040 - 0.06, GLACIS_TILT, 0, 0); // grab
   // r268b: the three driver's periscopes are heads with raked dark windows looking forward (were plain blocks)
   for (const k of [-1, 0, 1]) {
@@ -373,16 +371,7 @@ export function addCarroBowKit(P: BowPort): void {
     P.addModuleVisual('optics', 'hull', housing, px, py, pz, GLACIS_TILT, k * 0.22, 0);
     P.addModuleVisual('optics', 'hullGlass', glass, px, py, pz, GLACIS_TILT, k * 0.22, 0);
   }
-  addCarroGlacisJoints(P);
-  // r268b: a course of five spare links of the vehicle's own 0.56 m track across the left half of the upper glacis (the
-  // C1 Ariete carries its spare links across the glacis front), its carrier's feet 6 mm into the plate, clear of the
-  // driver's periscopes (x -0.69..-0.27) and the left lift eye (x 1.05), 4 cm under the 105's -8 degree line
-  const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 5, width: 0.56, seed: 4507 });
-  links.updateMatrixWorld(true);
-  const lift = -new THREE.Box3().setFromObject(links).min.y - 0.006, lz = 2.76;   // the carrier's underside, local
-  links.rotation.set(GLACIS_TILT, Math.PI / 2, 0);                                 // the course along x, on the slope
-  links.position.set(0.50, glacisY(lz) + Math.cos(GLACIS_TILT) * lift, lz + Math.sin(GLACIS_TILT) * lift);
-  P.hullG.add(links);
+  addCarroNoseLinks(P);
   // lamp clusters on the nose corners: a squared housing, two lenses and a bar guard (C1 Ariete pattern), its
   // underside on the nose wedge's lowest point under it (the back sinks into the sloping plate). The lenses are the
   // vehicle's driving lights (vehicle-controls-inventory requires them; night lighting emits from them)
@@ -409,21 +398,27 @@ export function addCarroBowKit(P: BowPort): void {
   }
 }
 
-/** r268b: the bow's tow eyes (OF-40 pattern): one on the nose plate either side of centre, a lug welded to the plate
- *  with its ring. (No raised weld beads across the plate joints: the photographs show clean plates, and the round's
- *  first blind A/B read joint strips over a glacis as clutter.) */
-function addCarroGlacisJoints(P: KitPort): void {
-  const knuckleY = glacisY(3.08);
-  // nose plate (3.08, 1.245) -> (3.37, 1.06): 32.5 degrees; each eye 0.12 m down it, its lug 10 mm into the plate
-  const nose = Math.atan2(knuckleY - 1.06, 3.37 - 3.08), dirZ = Math.cos(nose), dirY = -Math.sin(nose);
-  const z0 = 3.08 + dirZ * 0.12, y0 = knuckleY + dirY * 0.12, tilt = new THREE.Matrix4().makeRotationX(nose);
-  // inboard of the lamp housings (x 0.99..1.29): a cast lug 9 cm tall, 15 mm into the plate, its ring through it
-  for (const side of [-1, 1] as const) {
-    const at = (g: THREE.BufferGeometry, h: number): THREE.BufferGeometry =>
-      g.translate(0, h, 0).applyMatrix4(tilt).translate(side * 0.84, y0, z0);
-    P.add('hullDetail', at(KIT.box(0.055, 0.09, 0.15), 0.030), 0, 0, 0);
-    P.add('hullDark', at(new THREE.TorusGeometry(0.062, 0.020, 6, P.q ? 16 : 10).rotateY(Math.PI / 2), 0.092), 0, 0, 0);
-  }
+/** r268b round 2 (the blind critics, after the C1 Ariete's photograph: "a single full-width row of about 8 to 10 spare
+ *  track blocks along the top edge of the glacis"): ten spare links in one row across the top of the nose plate, just
+ *  under its knuckle with the upper glacis and between the lamp housings (x 0.99..1.29), butted with 4 mm seams. Each
+ *  is the fleet's spare link (spareLinkGeometry.ts: shoe, hinge barrels, end connectors, grouser) 0.20 m across the
+ *  track down the plate, with two rubber pads either side of its grouser, held by a bar along the row's lower edge;
+ *  6 mm into the plate, one registered run (spareTrackSeat.ts). Under the driver's periscope line (the knuckle already
+ *  sets it) and 18 cm under the 105's -8 degree line. */
+function addCarroNoseLinks(P: KitPort): void {
+  const knuckleY = glacisY(3.08), nose = Math.atan2(knuckleY - 1.06, 3.37 - 3.08);
+  const frame = new THREE.Matrix4().makeRotationX(nose).setPosition(0, knuckleY, 3.08);
+  const at = (g: THREE.BufferGeometry, x: number, h: number, s: number): THREE.BufferGeometry =>
+    g.translate(x, h, s).applyMatrix4(frame);
+  withSpareTrackRun(P, { site: 'carro45t-nose-links', source: 'adhoc', rotation: [nose, 0, 0] }, (R) => {
+    const n = 10, pitch = 0.19, thick = 0.055, across = 0.20, s0 = 0.012 + across / 2, h0 = thick / 2 - 0.006;
+    for (let i = 0; i < n; i++) {
+      const x = (i - (n - 1) / 2) * pitch;
+      R.add('hullTrack', at(spareLinkBlock(pitch - 0.004, thick, across), x, h0, s0), 0, 0, 0);
+      for (const dx of [-0.055, 0.055]) R.add('hullRubber', at(KIT.box(0.048, 0.016, 0.15), x + dx, h0 + 0.001, s0), 0, 0, 0);
+    }
+    R.add('hullDetail', at(KIT.box(n * pitch + 0.02, 0.026, 0.03), 0, 0.013 - 0.006, s0 + across / 2 + 0.012), 0, 0, 0);
+  });
 }
 
 export function addCarroSternKit(P: KitPort): void {
@@ -456,13 +451,11 @@ export function addCarroSternKit(P: KitPort): void {
 export function addCarroEngineDeck(P: KitPort): void {
   P.add('hull', KIT.box(2.80, 0.06, 1.07), 0, 1.425, -2.785);                   // engine deck plate 1.395..1.455 (z -3.32..-2.25)
   // r268b (owner: "add more upper glacis and roof details"): the engine's side access plates either side of the
-  // louvre field (x 1.07..1.37, z -3.17..-2.51, aft of the fuel caps), each with a folded lifting handle in a welded
-  // guard (no bolt rows: the round's first A/B read them as a rivet grid); 9 mm proud, under the louvre frames' 1.470
+  // louvre field (x 1.07..1.37, z -3.17..-2.51, aft of the fuel caps): plain plates 7 mm proud, flush and quiet (round 2:
+  // the critics read handles in guards and bolt rows there as stacked small items)
   for (const side of [-1, 1] as const) {
     const px = side * 1.22, pz = -2.84;
-    P.add('hull', roofPlate(0.30, 0.66, 0.012, 0.03), px, 1.458, pz);
-    P.add('hullDetail', KIT.box(0.11, 0.010, 0.014), px, 1.468, pz + 0.17);       // folded handle bar
-    for (const dx of [-0.05, 0.05]) P.add('hullDetail', KIT.box(0.012, 0.014, 0.03), px + dx, 1.466, pz + 0.17);
+    P.add('hull', roofPlate(0.30, 0.66, 0.010, 0.03), px, 1.457, pz);
   }
 }
 
@@ -483,12 +476,17 @@ export function addCarroDeckLouvres(P: Pick<TankBuilderPort, 'add'>): void {
   field(-1.95, -1.45, 0.90, 1.490, 5);                                          // cooling intake ahead of the engine, under the mantlet's sweep
 }
 
-/** Upper glacis and nose wedge as one side-profile loft (the retained frustum and wedge lines), cut every 0.35 m
- *  across and in thirds along the slope so the hull's baked shading has no long diagonal seam across the plate. */
+/** Upper glacis and nose wedge as side-profile lofts (the retained frustum and wedge lines), cut every 0.35 m across
+ *  and in thirds along the slope so the hull's baked shading has no long diagonal seam across the plate. r268b round 2
+ *  (the blind critics, both builds: "a thin flat plate sticks out at an angle from the front hull corner and looks
+ *  unattached"): the nose wedge ends at the lamp housings' outer faces (x ±1.29) instead of running on to ±1.40 as a
+ *  knife-edged fin over the track; the upper glacis keeps its full width to the fenders. */
 export function carroGlacisGeometry(): THREE.BufferGeometry {
-  const profile: (readonly [number, number])[] = [[2.20, 1.24], [2.20, 1.468], [2.24, 1.468], [2.52, glacisY(2.52)],
-    [2.80, glacisY(2.80)], [3.08, glacisY(3.08)], [3.37, 1.06], [3.06, 1.06], [3.06, 1.24]];
-  const stations: [number, number][] = [];
-  for (let k = 0; k <= 8; k++) stations.push([-1.40 + k * 0.35, 1]);
-  return carroSideLoft(profile, stations);
+  const upper: (readonly [number, number])[] = [[2.20, 1.24], [2.20, 1.468], [2.24, 1.468], [2.52, glacisY(2.52)],
+    [2.80, glacisY(2.80)], [3.08, glacisY(3.08)], [3.08, 1.235]];
+  const nose: (readonly [number, number])[] = [[3.06, 1.06], [3.06, 1.24], [3.08, glacisY(3.08)], [3.37, 1.06]];
+  const across: [number, number][] = [];
+  for (let k = 0; k <= 8; k++) across.push([-1.40 + k * 0.35, 1]);
+  const noseAcross: [number, number][] = [[-1.29, 1], ...across.slice(1, -1), [1.29, 1]];
+  return KIT.mergeAll([carroSideLoft(upper, across), carroSideLoft(nose, noseAcross)]);
 }

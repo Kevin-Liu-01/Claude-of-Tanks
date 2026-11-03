@@ -60,44 +60,45 @@ function grabHandle(P: TankBuilderPort, owner: 'hull' | 'turret', x: number, y: 
 }
 
 /** The driver's station (left front, x 0.39..1.06): the source's raised hatch housing as a closed welded box on the
- *  deck (it replaces the 4 cm plate whose front stood 16 cm off the deck, tilted the wrong way), its lid's seam, rear
- *  hinge and handle, and three periscopes on the housing's sloped front looking ahead (photographs: the K21's driver
- *  sits front left, his periscopes in front of the hatch). */
+ *  deck (it replaces the 4 cm plate whose front stood 16 cm off the deck, tilted the wrong way), three periscopes on its
+ *  sloped front looking ahead (photographs: the K21's driver sits front left, his periscopes in front of the hatch), and
+ *  on its top a round hatch lid (round 2, the blind critics: "make the lid read as a hatch") with its seam ring, an
+ *  outboard hinge and a grab handle. Inside the basket's reach (2.17 m off the ring axis) nothing stands over 2.015. */
 function addK21DriverStation(P: TankBuilderPort): void {
   const cx = 0.725;
-  // [z, half width at the foot, half width at the top, top]: a near-level top (2.012 -> 2.000) under the basket's
-  // sweep, then the sloped front down to the deck
-  const st: readonly (readonly [number, number, number, number])[] = [[1.17, 0.335, 0.31, 2.012],
-    [1.86, 0.335, 0.31, 2.0], [2.16, 0.18, 0.17, frontDeckY(2.16) + 0.005]];
+  // [z, half width at the foot, half width at the top, top]: a near-level top (1.997 -> 1.990), then the sloped front
+  const st: readonly (readonly [number, number, number, number])[] = [[1.17, 0.335, 0.31, 1.997],
+    [1.86, 0.335, 0.31, 1.990], [2.16, 0.18, 0.17, frontDeckY(2.16) + 0.005]];
   equipment(P, 'hull', 'Detail', sectionSolid(st.map(([z, hb, ht, top]) => {
     const foot = frontDeckY(z) - 0.02;
     return { z, ring: [[cx - hb, foot], [cx + hb, foot], [cx + ht, top], [cx - ht, top]] as SectionPoint[] };
   }), { sideQuadDiagonal: 'convex' }), 0, 0, 0);
-  // the lid's seam: a dark strip frame 3 mm proud of the top (z 1.22..1.80, x ±0.27)
-  const topAt = (z: number): number => 2.012 - (z - 1.17) * (0.012 / 0.69);
-  const zf = 1.80, zr = 1.22, hw = 0.27, slope = Math.atan2(0.012, 0.69);
-  for (const s of [-1, 1]) {
-    equipment(P, 'hull', 'Dark', box(0.012, 0.008, zf - zr), cx + s * hw, (topAt(zf) + topAt(zr)) / 2 + 0.001, (zf + zr) / 2, slope, 0, 0);
-  }
-  for (const z of [zr, zf]) equipment(P, 'hull', 'Dark', box(hw * 2 + 0.012, 0.008, 0.012), cx, topAt(z) + 0.001, z);
-  // the lid hinges on the housing's rear face: a barrel along x below the top and two knuckle blocks
-  equipment(P, 'hull', 'Detail', cylX(0.02, 0.50, 10), cx, 1.988, 1.163);
-  for (const s of [-1, 1]) equipment(P, 'hull', 'Detail', box(0.07, 0.034, 0.03), cx + s * 0.17, 1.99, 1.175);
-  // the lid's grab handle, forward on it (2.33 m off the ring axis, past the basket)
-  grabHandle(P, 'hull', cx, topAt(1.70) - 0.003, 1.70, 0.16, 0.03, slope);
+  const topAt = (z: number): number => 1.997 - (z - 1.17) * (0.007 / 0.69), slope = Math.atan2(0.007, 0.69);
+  // the round lid (r 0.24, 18 mm, 2 mm into the top) and its dark seam ring at the top
+  const lz = 1.50, seg = P.q ? 28 : 16;
+  equipment(P, 'hull', 'Detail', cylY(0.235, 0.245, 0.018, seg), cx, topAt(lz) + 0.007, lz, slope, 0, 0);
+  equipment(P, 'hull', 'Dark', KIT.torus(0.246, 0.006, seg), cx, topAt(lz) + 0.0005, lz, slope, 0, 0);
+  // the hinge on the lid's outboard edge (2.27 m off the ring axis, past the basket): a bracket on the housing's top, a
+  // barrel along z and a strap onto the lid
+  equipment(P, 'hull', 'Detail', box(0.05, 0.03, 0.15), cx + 0.268, topAt(lz) + 0.012, lz);
+  equipment(P, 'hull', 'Dark', cylZ(0.02, 0.17, 10), cx + 0.262, topAt(lz) + 0.030, lz);
+  equipment(P, 'hull', 'Detail', box(0.11, 0.010, 0.045), cx + 0.205, topAt(lz) + 0.019, lz);
+  // the lid's grab handle, on its inboard front (2.26 m off the ring axis)
+  grabHandle(P, 'hull', cx - 0.06, topAt(1.62) + 0.012, 1.62, 0.15, 0.03, slope);
   // three periscopes on the sloped front (z 1.86 -> 2.16, 20 degrees), splayed 12 degrees
-  const front = Math.atan2(2.0 - (frontDeckY(2.16) + 0.005), 0.30);
-  const zp = 1.965, yp = 2.0 - (zp - 1.86) * Math.tan(front);
+  const front = Math.atan2(1.990 - (frontDeckY(2.16) + 0.005), 0.30);
+  const zp = 1.965, yp = 1.990 - (zp - 1.86) * Math.tan(front);
   for (const k of [-1, 0, 1]) periscope(P, 'hull', cx + k * 0.13, yp, zp - Math.abs(k) * 0.012, front, k * 0.21, 0.055);
 }
 
 /** The engine deck right of the driver (the powerpack is front right): the cooling-air grille in front of the turret
  *  (x -0.06..-0.70, z 0.75..1.62, its rear under the turret front's overhang, as the photographs' covered grille sits),
- *  a level-topped frame round a dark well with eight transverse louvres; and the access plate outboard of it
- *  (x -0.86..-1.38) with two lifting handles. They replace a second round hatch and three driver's periscopes drawn
+ *  round 2 (the blind critics): a thin level frame round a flush covered mesh, no deep well and no proud louvres; and
+ *  the access plate outboard of it
+ *  (x -0.86..-1.38). They replace a second round hatch and three driver's periscopes drawn
  *  over the engine (the source and the photographs have neither). */
 function addK21EngineDeck(P: TankBuilderPort): void {
-  const x0 = -0.70, x1 = -0.06, z0 = 0.75, z1 = 1.62, top = 2.012, w = 0.045;
+  const x0 = -0.70, x1 = -0.06, z0 = 0.75, z1 = 1.62, top = 2.012, w = 0.03;
   const xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
   // frame strips: level top at 2.012, feet 15 mm into the roof (deeper toward the bow as the roof falls)
   const strip = (xa: number, xb: number, za: number, zb: number): void => {
@@ -109,33 +110,46 @@ function addK21EngineDeck(P: TankBuilderPort): void {
   };
   strip(x0, x0 + w, z0, z1); strip(x1 - w, x1, z0, z1);
   strip(x0 + w, x1 - w, z0, z0 + w); strip(x0 + w, x1 - w, z1 - w, z1);
-  // the dark well floor 4 mm over the roof (it falls with the roof), and the louvres raked 34 degrees across it, their
-  // upper edges 4 mm under the frame's top
-  const roofTilt = Math.atan(0.042 / 1.0289);
-  equipment(P, 'hull', 'Dark', box(x1 - x0 - 2 * w, 0.006, z1 - z0 - 2 * w), xc, frontDeckY(zc) + 0.004, zc, roofTilt, 0, 0);
-  const n = P.q ? 8 : 5, step = (z1 - z0 - 2 * w) / n, rake = 0.6, depth = Math.min(0.07, step * 0.9);
-  for (let k = 0; k < n; k++) {
-    const z = z0 + w + step * (k + 0.5);
-    equipment(P, 'hull', 'Detail', box(x1 - x0 - 2 * w, 0.006, depth), xc, top - 0.004 - Math.sin(rake) * depth / 2, z, rake, 0, 0);
+  // the covered mesh: a dark cover 4 mm under the frame's top, with a coarse grid of thin flat bars 2 mm proud of it
+  const roofTilt = Math.atan(0.042 / 1.0289), iw = x1 - x0 - 2 * w, il = z1 - z0 - 2 * w;
+  equipment(P, 'hull', 'Dark', box(iw, 0.006, il), xc, top - 0.007, zc);
+  if (P.q) {
+    const bars: THREE.BufferGeometry[] = [];
+    for (let k = 1; k < 4; k++) bars.push(box(0.01, 0.004, il).translate(x0 + w + iw * k / 4, 0, zc));
+    for (let k = 1; k < 7; k++) bars.push(box(iw, 0.004, 0.01).translate(xc, 0, z0 + w + il * k / 7));
+    equipment(P, 'hull', 'Detail', KIT.mergeAll(bars), 0, top - 0.003, 0);
   }
-  // outboard access plate: 9 mm proud, two folding lifting handles (inside the basket's reach: under 2.015); no bolt
-  // ring (a row of bolt heads the photographs do not show reads as a rivet grid)
+  // outboard access plate: 7 mm proud and plain (no bolt ring, no handles in guards: the critics read such rows of
+  // small items as clutter)
   const px = -1.12, pz = 1.30, pw = 0.50, pl = 0.86, c = 0.05;
   const shape = new THREE.Shape();
   shape.moveTo(-pw / 2 + c, -pl / 2);
   for (const [a, b] of [[pw / 2 - c, -pl / 2], [pw / 2, -pl / 2 + c], [pw / 2, pl / 2 - c], [pw / 2 - c, pl / 2],
     [-pw / 2 + c, pl / 2], [-pw / 2, pl / 2 - c], [-pw / 2, -pl / 2 + c]] as const) shape.lineTo(a, b);
   shape.closePath();
-  const plate = new THREE.ExtrudeGeometry(shape, { depth: 0.014, bevelEnabled: false, steps: 1 }).rotateX(-Math.PI / 2);
+  const plate = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false, steps: 1 }).rotateX(-Math.PI / 2);
   equipment(P, 'hull', 'Detail', plate, px, frontDeckY(pz) - 0.005, pz, roofTilt, 0, 0);
-  for (const dz of [-0.2, 0.2]) {
-    equipment(P, 'hull', 'Detail', box(0.13, 0.010, 0.014), px, frontDeckY(pz + dz) + 0.014, pz + dz, roofTilt, 0, 0);
-    for (const s of [-1, 1]) equipment(P, 'hull', 'Detail', box(0.014, 0.016, 0.03), px + s * 0.058, frontDeckY(pz + dz) + 0.011, pz + dz);
+}
+
+/** r268b round 2 (the blind critics on both builds: "the upper glacis 2 x 6 grid of appliqué tiles"; the photographs
+ *  show a plain sloped plate with the lamp clusters at the corners): the source's fourteen clamped blocks become two
+ *  plain plates on the blocks' own top plane (so the measured bow line stays the source's), closed down to the deck,
+ *  chamfered round their top edges and parted by one 15 mm seam where the source's columns part (x 0.34..0.42).
+ *  Frame: the blocks' pitch about x, origin midway between the two block rows' centres. */
+export function addK21GlacisPlates(P: TankBuilderPort, pitch: number): void {
+  // the rear face 3 cm forward of the blocks' rear edge, so the deck behind keeps the bow receipt's source witness at
+  // z 2.65 (it lay in the gap under the stood-off blocks)
+  const top = 0.0549, foot = -0.1164, rear = -0.3112, half = 0.3412, c = 0.035, ends = 0.06;
+  for (const [x0, x1] of [[-1.1058, 0.370], [0.385, 1.4977]]) {
+    const ring = (t: number): SectionPoint[] => [[x0, foot], [x1, foot], [x1, t - c], [x1 - c, t], [x0 + c, t], [x0, t - c]];
+    const plate = sectionSolid([{ z: rear, ring: ring(top - ends) }, { z: rear + ends, ring: ring(top) },
+      { z: half - ends, ring: ring(top) }, { z: half, ring: ring(top - ends) }], { sideQuadDiagonal: 'convex' });
+    equipment(P, 'hull', 'Detail', plate, 0, 1.7423055, 2.9944655, pitch);
   }
 }
 
 /** The bow deck's service lid: a U grab handle on its open rear corner (x -0.58, z 2.53, behind the glacis armour
- *  tiles), as the photographs show the lid's handles. */
+ *  plates), as the photographs show the lid's handles. */
 function addK21LidHandles(P: TankBuilderPort): void {
   const slope = 0.2266 / 0.7793, lidTop = (z: number): number => 1.8329 + slope * 2.4551 - slope * z;
   grabHandle(P, 'hull', -0.58, lidTop(2.53) - 0.004, 2.53, 0.17, 0.035, Math.atan(slope));

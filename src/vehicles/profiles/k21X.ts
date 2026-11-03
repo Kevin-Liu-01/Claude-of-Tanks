@@ -8,7 +8,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
-import { addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
+import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
 const { box, cylX, cylY, cylZ } = KIT;
@@ -197,7 +197,7 @@ function bowFascia(P: TankBuilderPort): void {
     equipment(P, 'hull', 'Detail', cylX(.03125, 2.915, P.q ? 16 : 12).scale(1, 1, .0371 / .03125), .003565, 1.41975, 3.6094);
 }
 function bowDeckPanels(P: TankBuilderPort): void {
-    const pitch = Math.atan2(.27694, .96089), c = Math.cos(pitch), s = Math.sin(pitch);
+    const pitch = Math.atan2(.27694, .96089);
     // Actual thin upper receiver, with source-width lamp recesses at the nose.
     const deck = sectionSolid([{ z: 1.8428, ring: [[-1.4861, 1.9515], [1.4885, 1.9515], [1.4885, 1.9667], [-1.4861, 1.9667]] },
         { z: 3.3867, ring: [[-1.4861, 1.5023], [1.4885, 1.5023], [1.4885, 1.5175], [-1.4861, 1.5175]] }]);
@@ -231,16 +231,10 @@ function bowDeckPanels(P: TankBuilderPort): void {
         web.applyMatrix4(new THREE.Matrix4().set(1, 0, 0, 0, 0, 1, -slope, 0, 0, 0, 1, 0, 0, 0, 0, 1));
         equipment(P, 'hull', 'Detail', web, x, intercept - slope * z - .0295, z);
     }
-    const xs = [-.929555, -.565825, -.202105, .161745, .593965, .957735, 1.321455];
-    for (const x of xs)
-        for (const [y, z] of [[1.7901885, 2.82828], [1.694423, 3.160651]]) {
-            equipment(P, 'hull', 'Detail', new THREE.BoxGeometry(.3524, .1098, .3365), x, y, z, pitch);
-            for (const side of [-1, 1])
-                for (const offset of (P.q ? [-.08065, -.00315, .07435, .15185] : [-.08065, .15185])) {
-                    const localY = -.027;
-                    equipment(P, 'hull', 'Detail', new THREE.BoxGeometry(.0278, .175, .0154), x + side * .16135, y + localY * c - offset * s, z + localY * s + offset * c, pitch);
-                }
-        }
+    // r268b round 2 (the blind critics on both builds: "the upper glacis 2 x 6 grid of appliqué tiles"; the photographs
+    // show a plain sloped plate): the source's fourteen clamped blocks become two plain plates on their own top plane,
+    // closed to the deck, with one thin seam (k21DeckKit.ts addK21GlacisPlates)
+    addK21GlacisPlates(P, pitch);
 }
 function addK21HullSides(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
