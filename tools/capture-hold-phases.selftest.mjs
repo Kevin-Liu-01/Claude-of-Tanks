@@ -5,10 +5,11 @@
 // closed pages); and a shoot that never called checkpoint() kept its hold past the cap however many waited. Driven with a
 // fake lock (a cap of tens of milliseconds, a waiter count, a checkpoint that yields as the real one does) and fake pages
 // that refuse a freeze or a thaw once their browser is closed. The last case runs withCaptureHold on a real private lock
-// in a child process and stops it with SIGTERM.
+// in a child process and stops it with SIGTERM; then two runCapturedCommand holds in one process (one holding, one
+// queued) meet one SIGTERM.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWarmHold, withCaptureHold } from './capture-hold.mjs';
@@ -70,6 +71,24 @@ const watchAbort = (signal, events) => signal.addEventListener('abort', () => ev
   assert.ok(events.includes('abort') && events.includes('close'), `the budget stopped the shoot and the grace closed it (${events.join(' ')})`);
   assert.ok(!events.includes('yield'), 'no checkpoint yields after the stop');
   assert.ok(events.indexOf('close') < events.lastIndexOf('release'), 'closed before the release');
+}
+
+// ---- (i b) a slow close: the release waits for the teardown the grace began (round 2) -------------------------------
+{
+  // a shoot ends as soon as its browser starts closing (its page calls reject with 'Target closed'); the teardown's promise
+  // was dropped, so the lock went while Chrome still closed
+  const events = [];
+  let closing;
+  const closeStarted = new Promise((done) => { closing = done; });
+  await runWarmHold({ lock: fakeLock({ events }), log: () => {}, maxFrozenMinutes: 0, capCheckMs: 10, holdMinutes: 0.002, graceSeconds: 0.05,
+    freeze: async () => 'session', thaw: async () => {}, check: async () => ({ ok: true }), rewarm: async () => {},
+    warm: async () => ({ pages: [{ name: 'p' }], close: async () => { events.push('close start'); closing(); await sleep(300); events.push('close done'); } }),
+    shoot: async () => { await closeStarted; events.push('shoot ends'); } });
+  events.push('returned');
+  assert.ok(events.indexOf('close done') >= 0 && events.indexOf('close done') < events.indexOf('release'),
+    `the lock goes once the close is done, not when the shoot ends (${events.join(', ')})`);
+  assert.equal(events.filter((event) => event === 'close start').length, 1, 'one teardown');
+  assert.equal(events.at(-1), 'returned');
 }
 
 // ---- (ii) a long batch past the cap: stopped (not cooperative), and its late checkpoint never yields mid-grace ---------
@@ -174,6 +193,54 @@ for (const waiters of [1, 0]) {
     assert.equal(code, 143, 'it exits 128 + SIGTERM');
     assert.ok(existsSync(marker) && Number(readFileSync(marker, 'utf8')) > 0, 'its teardown ran');
     assert.equal(existsSync(lockDir), false, 'and its hold was released');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- several holds in one process (round 2): a signal stops them all before the one exit ------------------------------
+// tank-release-check runs its capture steps four at a time through runCapturedCommand: one holding, the others queued.
+// Each hold had its own handler and exited after its own teardown, so a queued hold's (nothing to tear down) exited at
+// once: the holder's lock went by its 'exit' listener while its command ran on, and the command's SIGKILL timer died.
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-signals-'));
+  try {
+    const events = join(root, 'events'), writes = join(root, 'writes');
+    writeFileSync(events, '');
+    writeFileSync(writes, '');
+    // the holder's command takes 800 ms to stop after its SIGTERM, writing all the while
+    const command = `const { appendFileSync } = require('node:fs');
+      appendFileSync(${JSON.stringify(events)}, 'child up ' + process.pid + '\\n');
+      setInterval(() => appendFileSync(${JSON.stringify(writes)}, 'x'), 50);
+      process.on('SIGTERM', () => { appendFileSync(${JSON.stringify(events)}, 'child TERM\\n');
+        setTimeout(() => { appendFileSync(${JSON.stringify(events)}, 'child exit\\n'); process.exit(0); }, 800); });`;
+    const driver = `import { appendFileSync } from 'node:fs';
+      import { runCapturedCommand } from ${JSON.stringify(new URL('./capture-command.mjs', import.meta.url).href)};
+      const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+      const fake = (name, holds) => { let held = false; return {
+        acquire: async () => { if (!holds) return new Promise(() => {}); held = true; note(name + ' hold'); },
+        refresh: () => held, release: () => { if (held) note(name + ' release'); held = false; return true; } }; };
+      process.on('exit', (code) => note('driver exit ' + code));
+      runCapturedCommand(process.execPath, ['-e', ${JSON.stringify(command)}], { stdio: 'ignore' }, { lock: fake('A', true) })
+        .then(() => note('A returned'), () => note('A failed'));
+      runCapturedCommand(process.execPath, ['-e', 'setTimeout(() => {}, 1e6)'], { stdio: 'ignore' }, { lock: fake('B', false) })
+        .then(() => note('B returned'), () => note('B failed'));`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', driver], { stdio: ['ignore', 'ignore', 'inherit'] });
+    const read = () => readFileSync(events, 'utf8').trim().split('\n').filter(Boolean);
+    for (let i = 0; i < 800 && !read().some((line) => line.startsWith('child up')); i++) await sleep(25);
+    const childPid = Number(read().find((line) => line.startsWith('child up'))?.split(' ')[2]);
+    assert.ok(childPid > 0, 'the holder\'s command is running');
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status, signal) => done(status ?? signal)));
+    const written = readFileSync(writes, 'utf8').length;
+    await sleep(250);
+    const lines = read();
+    assert.equal(code, 143, `the driver exits 128 + SIGTERM once (${lines.join(', ')})`);
+    const at = (line) => lines.indexOf(line);
+    assert.ok(at('child exit') >= 0 && at('child exit') < at('A release') && at('A release') < at('driver exit 143'),
+      `the holder's command stops, then its lock goes, then the process exits (${lines.join(', ')})`);
+    assert.ok(!lines.includes('A returned') && !lines.includes('B returned'), 'no caller sees its step end during the stop');
+    assert.equal(readFileSync(writes, 'utf8').length, written, 'nothing writes after the driver is gone');
+    assert.throws(() => process.kill(childPid, 0), /ESRCH/, 'the command is gone');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

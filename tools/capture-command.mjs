@@ -2,7 +2,9 @@
 // (capture-lock.mjs nestedEnv, 2026-11-02 audit S4): a tool that acquires the queue itself nests in this hold instead of
 // queueing behind its own parent's live pid until its timeout. The hold is capture-hold.mjs withCaptureHold's (the one
 // hold wrapper): refresh, signals and exit; a signal ends the command (SIGTERM, then SIGKILL after 15 s) before the lock
-// is released. A command cannot yield, so past the cap it is logged, not stopped (atCap: 'keep').
+// is released, for every hold of the process at once (tank-release-check runs several: capture-hold's one signal owner,
+// so a queued hold no longer exits the process under a holder's running command). A command cannot yield, so past the
+// cap it is logged, not stopped (atCap: 'keep').
 import { spawn } from 'node:child_process';
 import { withCaptureHold } from './capture-hold.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
