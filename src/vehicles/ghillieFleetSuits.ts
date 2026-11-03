@@ -64,6 +64,26 @@ function face(panel: FacePanel): FacePanel { return panel; }
 /** Group B (the owner: "a ton more netting and camo leaves all over"): denser garnish, more of it cut boughs. */
 const DENSE = { density: 1.8, leafScale: 0.94, boughShare: 0.42 } as const;
 /**
+ * A gun's net (the gun owner, in the gun's own frame: z along the bore from the trunnions; the owner, 2026-11-02: "in
+ * this case even drape ghillie acrross the top of mantlet and cheeks"): one net over the mantlet's top, and one over the
+ * tube from the mantlet to short of the muzzle, laid on its top and hanging free past its sides (no armour holds it
+ * there), its edges seated to the cord (a tube's strip leaves no 9 cm margin), draped down both sides to just under the
+ * centreline; the underside stays bare so the gun keeps its depression over the decks.
+ */
+function gunNet(mantlet: { x0: number; x1: number; z0: number; z1: number; y: number },
+  tube: { z0: number; z1: number; y: number }, seed: number) {
+  const nz = Math.max(8, Math.round((tube.z1 - tube.z0) / 0.08));
+  return {
+    top: [
+      laid({ ...mantlet, nx: 12, nz: Math.max(6, Math.round((mantlet.z1 - mantlet.z0) / 0.08)), garnishRiseM: 0.12,
+        garnishDensity: 2.0, garnishOpeningMarginM: 0.03, seed }),
+      laid({ x0: -0.22, x1: 0.22, z0: tube.z0, z1: tube.z1, nx: 10, nz, y: tube.y, clipToArmour: false, garnishRiseM: 0.14,
+        garnishDensity: 3.0, garnishOpeningMarginM: 0.02, seed: seed + 2 }),
+    ],
+    side: flanks(tube.z0, tube.z1, tube.y - 0.01, tube.y + 0.03, 0.16, seed + 4, { nz, ny: 4 }),
+  };
+}
+/**
  * Group A (the owner: "add our new ghillie and netting on the cv90, cv9040c, merkava mk 4b, merkava mk 3c"): 2026-10-12
  * (cam-netting) at the Group B garnish density; the fix round's 0.95 left 4-6 cards a square metre of net against the
  * Group B hulls' 10-15, and the four read as bare plate with a few patches.
@@ -103,6 +123,16 @@ function profile(stations: ReadonlyArray<readonly [number, number]>): (z: number
 /** The Strv 103B's and 103A's hull deck lines (the round-5 suits' measured profiles, ghillieSuit.ts). */
 const STRV103B_DECK = profile([[-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63], [2.61, 1.53], [3.22, 1.55]]);
 const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
+
+/**
+ * Release 269 (the owner, 2026-11-03: "the olifant mk 1 and mk 1 a look way too close to eeach other. lets make mk 1a and
+ * mk 1 have a ton of ghillie on them among other differences"): the two Olifants' field nets, heavy, in two bush
+ * palettes so the nets themselves part them: the Mk 1's green (the 1980s South West Africa bush), the Mk 1A's dry straw
+ * (the Angolan winter of 1987-88).
+ */
+const SA_HEAVY = { density: 2.3, leafScale: 0.98, boughShare: 0.5 } as const;
+const SA_BUSH_GREEN = { light: 0x6c7a44, dark: 0x2c3a21, netColor: 'rgba(40,52,29,0.86)', netTextureSeed: 1101 } as const;
+const SA_DRY_STRAW = { light: 0xa6925c, dark: 0x5b4e30, netColor: 'rgba(98,86,54,0.86)', netTextureSeed: 1101 } as const;
 
 export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Object.freeze({
   // ---- Group A: the new ghillie and netting --------------------------------------------------------------------
@@ -1024,5 +1054,48 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         bottomAt: (z: number) => 1.02 + Math.sin(z * 2.7) * 0.04,
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
+  },
+  // ---- Release 269: the Olifant Mk 1 and Mk 1A (the owner, 2026-11-03: "a ton of ghillie on them among other
+  // differences"). Both run without skirts (the Horstmann bogies bare: their tell against the Semel), so neither hangs a
+  // drape over the running gear.
+  // Olifant Mk 1: the green net over the turret roof to the bustle's back wall, the net rack and its rolled nets left
+  // bare behind it, drapes down the turret's sides over the bins; the front deck and the raised engine deck netted; the
+  // 20-pdr bare.
+  olifant_mk1: {
+    id: 'olifant_mk1', seed: 2693, style: 'leafy', ...SA_HEAVY, ...SA_BUSH_GREEN,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.75, hemFloorM: 1.0,
+    clothClearsGunStops: true,
+    turret: {
+      top: [laid({ x0: -1.30, x1: 1.30, z0: -1.30, z1: 0.92, nx: 34, nz: 30, y: 0.96, garnishRiseM: 0.18, garnishDensity: 1.4,
+        seed: 11 })],
+      side: flanks(-1.30, 0.70, 0.82, 0.44, 1.40, 17),
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.45, x1: 1.45, z0: 1.55, z1: 2.70, nx: 30, nz: 14, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.45, x1: 1.45, z0: -3.65, z1: -1.05, nx: 30, nz: 30, y: 1.90, garnishRiseM: 0.16, garnishDensity: 1.3, seed: 37 }),
+      ],
+    },
+  },
+  // Olifant Mk 1A: the straw net over the turret roof and on over the long bustle box to its back, drapes down the
+  // turret's and the box's sides and a drape over the box's back; both decks netted; and the 105 mm netted from the
+  // mantlet to short of the muzzle (the Mk 1's 20-pdr stays bare). The bush bar ahead of the nose stays bare.
+  olifant_mk1a: {
+    id: 'olifant_mk1a', seed: 2694, style: 'leafy', ...SA_HEAVY, ...SA_DRY_STRAW,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.75, hemFloorM: 1.0,
+    clothClearsGunStops: true,
+    turret: {
+      top: [laid({ x0: -1.30, x1: 1.30, z0: -2.30, z1: 0.95, nx: 34, nz: 44, y: 0.94, garnishRiseM: 0.18, garnishDensity: 1.5,
+        seed: 11 })],
+      side: flanks(-2.20, 0.60, 0.84, 0.46, 1.40, 17),
+      face: [face({ z: -2.28, x0: -0.90, x1: 0.90, y0: 0.40, y1: 0.90, nx: 18, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.45, x1: 1.45, z0: 1.55, z1: 2.70, nx: 30, nz: 14, y: 1.70, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.45, x1: 1.45, z0: -3.65, z1: -1.05, nx: 30, nz: 30, y: 1.90, garnishRiseM: 0.16, garnishDensity: 1.3, seed: 37 }),
+      ],
+    },
+    gun: gunNet({ x0: -0.55, x1: 0.55, z0: 0.05, z1: 0.45, y: 0.40 }, { z0: 0.55, z1: 4.40, y: 0.11 }, 61),
   },
 });

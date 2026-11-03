@@ -3243,7 +3243,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // rack). The era field load seated a second bank mid-side (read as the Mk 1's), a roof gun and a lamp, and packs and a
   // net roll over the Mk 1A's box (read as the Mk 1's rack): they carry the Mk 2's deck load only. The TTD, one
   // demonstrator, carries none (the field load's bank on its turret wall read as the 2A4's Wegmann launchers).
-  if (['semel', 'olifant_mk1', 'olifant_mk1a', 'olifant_mk1b'].includes(spec.id)) return [
+  // The netted Mk 1 and Mk 1A (2026-11-03) carry none: roof and deck loads under a field net draw it into a hoop.
+  if (spec.id === 'olifant_mk1' || spec.id === 'olifant_mk1a') return [];
+  if (['semel', 'olifant_mk1b'].includes(spec.id)) return [
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
   ];

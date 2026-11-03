@@ -16,6 +16,7 @@ import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -1813,6 +1814,8 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
       bustle: m.sa === 'mk1' ? 'net-rack' : m.sa === 'mk1a' ? 'box' : m.sa === 'mk1b' ? 'can-rack' : 'bin',
       searchlight: m.sa === 'mk1b', sightPost: false, bushBar: m.sa === 'mk1a',
     });
+    // the Olifant Mk 1's and Mk 1A's field nets (ghillieFleetSuits.ts; the owner, 2026-11-03)
+    if (m.sa === 'mk1' || m.sa === 'mk1a') addVehicleGhillieSuit(P);
   }
   P.topY = 1.0;
 }
