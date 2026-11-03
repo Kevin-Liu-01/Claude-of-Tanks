@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **279 saved vehicle records**: **279 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **284 saved vehicle records**: **284 production-visible**, **0 local development models**, and **0 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -287,6 +287,11 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 277 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | VIII | Modern | Production |
 | 278 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | VIII | Modern | Production |
 | 279 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | VIII | Modern | Production |
+| 280 | PROD | `tunguska_m` | 2K22M Tunguska-M | Russia | V | Modern | Production |
+| 281 | PROD | `pantsir_s1` | Pantsir-S1 (tracked) | Russia | VI | Modern | Production |
+| 282 | PROD | `gepard_1a2` | Flakpanzer Gepard 1A2 | Germany | V | Modern | Production |
+| 283 | PROD | `pgz95` | PGZ-95 | China | V | Modern | Production |
+| 284 | PROD | `pgz09` | PGZ-09 | China | VI | Modern | Production |
 
 ## Policy ownership
 
