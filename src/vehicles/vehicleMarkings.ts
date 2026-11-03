@@ -310,7 +310,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   carro45t: anchor('turret', 'right', 0.46, 0.47, 0.24, -1),
   c1_ariete_preserie: anchor('turret', 'left', 0.41, 0.45, 0.25, 1),
   c1_ariete_proto_serie1: anchor('turret', 'right', 0.43, 0.41, 0.23, -1),
-  c2_ariete_proto: anchor('turret', 'left', 0.45, 0.40, 0.23, 1),
+  // 269 (the C2 prototype's new turret, profiles/arieteProtoTurret.ts): its walls carry the add-on boxes and the smoke
+  // rows; the insignia seats on the bare wall over the row, the designation on the roof's flat eave ahead of it
+  c2_ariete_proto: anchor('turret', 'right', 0.45, 0.47, 0.23, 1),
   amx40_proto: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   leo1a2a1: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
