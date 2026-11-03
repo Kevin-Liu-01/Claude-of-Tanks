@@ -103,7 +103,7 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     registerWorldNightLighting, setWorldNightFixtureActive, mats,
     destructibles: records, dPools: pools, obstacles, looseRecords: bodies, activeLoose: [],
     heightField: { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) },
-    group, mapId: 'authority-fixture', seed: 7719, drng: rng, mulberry32: seeded,
+    group, mapId: 'authority-fixture', worldKey: 'authority-fixture', seed: 7719, drng: rng, mulberry32: seeded,
     utilityNetwork: null, poleIM: null, crushables: records.flatMap((r) => r.loopRef ? [r.loopRef] : []),
     // Poles are absent. The tested runtime still executes every destruction/
     // loose-body/reset function; only unrelated earlier pole LOD is inert.
