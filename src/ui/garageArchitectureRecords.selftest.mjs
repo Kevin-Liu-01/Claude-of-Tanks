@@ -12,7 +12,7 @@ const flush = async () => { for (let i = 0; i < 24; i++) await Promise.resolve()
 const outdoor = GARAGE_VARIANTS.filter((variant) => variant.architecture !== 'field_shed');
 const verdant = GARAGE_VARIANTS.find((variant) => variant.architecture === 'field_shed');
 
-function fakeKit({ prepares = new Map(), texture = () => null } = {}) {
+function fakeKit({ prepares = new Map(), texture = () => null, texturesReady = () => Promise.resolve() } = {}) {
   const built = [];
   const disposed = [];
   const kit = {
@@ -28,7 +28,7 @@ function fakeKit({ prepares = new Map(), texture = () => null } = {}) {
       root.add(map ? new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map })) : new THREE.Group());
       Object.assign(root.userData, { ready: true, mode: 'garage-environment', source: 'authentic-garage-scene-pack' });
       return {
-        root, stats: root.userData, texturesReady: Promise.resolve(),
+        root, stats: root.userData, texturesReady: texturesReady(variant),
         dispose() { disposed.push(variant.architecture); root.removeFromParent(); },
       };
     },
@@ -153,6 +153,30 @@ try {
     assert.equal(uploads.length, 2, 'its textures upload again on the restored context');
     controller.dispose();
     canvas.dispatchEvent(new Event('webglcontextlost'));
+  }
+
+  // 6. A prewarm cancelled mid-warm stays built; the next request for it (another hover) warms it after all.
+  {
+    const [a, b] = outdoor;
+    const shared = new THREE.Texture();
+    shared.needsUpdate = true;
+    const held = deferred();
+    const { kit } = fakeKit({ texture: () => shared,
+      texturesReady: (variant) => (variant.architecture === a.architecture ? held.promise : Promise.resolve()) });
+    const controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
+      async () => kit);
+    const first = controller.prepareVariant(a);
+    await flush();
+    controller.setVariant(b); // a selection elsewhere cancels a's warm while it waits for its textures
+    held.resolve();
+    await first;
+    assert.equal((await controller.whenReady()).ready, true);
+    assert.equal(controller.packPhases().find((pack) => pack.key === a.architecture)?.phase, 'attached',
+      'the cancelled prewarm stopped before warming, still built');
+    await controller.prepareVariant(a);
+    assert.equal(controller.packPhases().find((pack) => pack.key === a.architecture)?.phase, 'warmed',
+      'a fresh request revives it');
+    controller.dispose();
   }
 } finally {
   if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
