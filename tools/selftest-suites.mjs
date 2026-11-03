@@ -885,6 +885,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
+    // 2026-11-02 audit S4: the capture-hold census (no retired memory-guard gate; the hold wrapper and its direct acquirers)
+    'tools/capture-hold-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
