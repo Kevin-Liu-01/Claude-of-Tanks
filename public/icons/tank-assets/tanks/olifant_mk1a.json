@@ -21,8 +21,8 @@
   "nation": "South Africa",
   "countryCode": "za",
   "era": "cold-war",
-  "tier": 3,
-  "tierNumeral": "III",
+  "tier": 2,
+  "tierNumeral": "II",
   "dimensionsM": {
     "hullLength": 7.56,
     "overallLength": 9.62,
@@ -793,17 +793,17 @@
       }
     ]
   },
-  "geometryHash": "2071e270",
-  "metadataHash": "9884b96c",
+  "geometryHash": "e8c63a71",
+  "metadataHash": "922dc2e0",
   "presentationAnchor": {
     "xM": 0,
-    "zM": -0.0103
+    "zM": 0.0269
   },
-  "presentationHash": "062b3c10",
+  "presentationHash": "e9639956",
   "presentationProjection": {
     "centerYM": 2.4479,
-    "topHalfM": 6.2698,
-    "sideHalfM": 3.1349
+    "topHalfM": 6.23,
+    "sideHalfM": 3.115
   },
   "appearance": {
     "version": 1,
@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27798,
-      "sha256": "4546ca17cb7d6bdd91c7265108b0b5c0ce5bced1939a2cf4de267226d59eb190",
+      "bytes": 27818,
+      "sha256": "e74ab574cee978e5db06dfcf19949ab5ffb5cac584332e8227364563c86a3f72",
       "thumbnail": {
         "file": "thumbs/olifant_mk1a_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11516,
-        "sha256": "a07211559fd5df68a9f2e18d51c5d81404c65db76e9275b9abda882b73044f6e"
+        "bytes": 11470,
+        "sha256": "50b057d629762941a01be41a8e4f714343c4f2f3124623f438800ff31a14c15d"
       }
     },
     "top": {
@@ -871,56 +871,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10758,
-      "sha256": "5d5b5683c50baeb5617d602985595ec46769459deeb0f613c4228f30aac300a3"
+      "bytes": 10294,
+      "sha256": "f700023d9ba1a0e164a99ec03dec27ea7cc489e0e5d31308b107d90edf329fb6"
     },
     "side": {
       "file": "olifant_mk1a_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13490,
-      "sha256": "679478080ceffd72bee50931d6c5204a5c7c47c05adb4d1bad41502381c455c2"
+      "bytes": 13934,
+      "sha256": "57958b7b5a4d6de64041341555287377235ed4a35dc343d83488c7bfcb72005e"
     },
     "topSilhouette": {
       "file": "olifant_mk1a_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1199,
-      "sha256": "f3ff170bb03a9b5debb2d6cb9c1c51f7ddf2fd8636f1941be01d2b974680d1e5"
+      "bytes": 1151,
+      "sha256": "bffb1b298209628c60427f826ee51220a3afce5a3b854cb2822090fffb5b71f3"
     },
     "sideSilhouette": {
       "file": "olifant_mk1a_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4924,
-      "sha256": "22eaed430be21de654b66c404915655819b03aa172dc2ebf425674ba1040f261"
+      "bytes": 5099,
+      "sha256": "7bdce1341d577b6febd7c7e7faa42a524414f52f3919c8abc56ebd633d01d9fb"
     },
     "armorSide": {
       "file": "olifant_mk1a_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29972,
-      "sha256": "4639d98b97102be89e9797d4f99ea1eeb0dde4d7408fab17147361719e2a42ab"
+      "bytes": 30182,
+      "sha256": "246080b350abefd9b66e86f7671f6523529ee761d5f911c332666f78721203d2"
     },
     "modulesSide": {
       "file": "olifant_mk1a_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29136,
-      "sha256": "13fe7f4fb4816cee5f00621c19d1c5455e3b55de838727552fbb9ef5410f6c71"
+      "bytes": 29508,
+      "sha256": "701f50cd338295ac6e12d120fda6f9fe041f796a3400ff493dc6a3e2f87148ad"
     },
     "crewSide": {
       "file": "olifant_mk1a_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28456,
-      "sha256": "ef3fb456793adfd653d16f840033791d9ad1cc953cb5f2bae1519ba6f826967b"
+      "bytes": 28584,
+      "sha256": "f60928b9d1e3e07eae18d8a5528fe96e7705a1ffb36587ff81ae859ca3554242"
     },
     "markings": {
       "file": "olifant_mk1a_markings.png",
@@ -933,8 +933,8 @@
     "technicalLabels": {
       "file": "olifant_mk1a_technical.json",
       "mime": "application/json",
-      "bytes": 5466,
-      "sha256": "a0e0a6bd76692c5f9d5e0c8147e872293c6cd07f5f2df058cd957f0686291ee4"
+      "bytes": 5449,
+      "sha256": "a5a972ba32b8dbb1e8d16f546546bc74ec7188b2020cc00175bed9ab118c32c0"
     }
   }
 }

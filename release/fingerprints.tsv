@@ -293,7 +293,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	086d56e3d30ab26c
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	43ad2a288321a53b
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	4fdf69a4b50c89e9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	c0ceb9a52440cf21
-file	centering	src/vehicles/presentationAnchors.generated.ts	c00dc7b5bfd57196
+file	centering	src/vehicles/presentationAnchors.generated.ts	741ed01ee8690153
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	8d8e67f025521262
 file	controls	src/vehicles/auxiliaryInventory.generated.ts	f5882649f0c356e2
@@ -385,7 +385,7 @@ file	fills	src/vehicles/interiorFillGroups/type10X.generated.ts	8baa68b03cda3862
 file	fills	src/vehicles/interiorFillGroups/type89SourceX.generated.ts	ac10431d311dcf81
 file	fills	src/vehicles/interiorFillGroups/type90X.generated.ts	6cb8097ea7dea9be
 file	fills	src/vehicles/interiorFillGroups/type96bX.generated.ts	7b9f66b738aa5475
-file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	372d1ad14df58b67
+file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	76def7387b189e69
 file	fills	src/vehicles/interiorFillGroups/ukraine.generated.ts	f72294f8e0915ce6
 file	fills	src/vehicles/interiorFillGroups/xk2.generated.ts	00db8fbca2bafbaa
 file	fills	src/vehicles/interiorFillLoaders.generated.ts	d581cf2ea07269a5
@@ -709,7 +709,7 @@ file	icons	public/icons/tank-assets/tanks/namer_ifv.json	750576ec94c8388c
 file	icons	public/icons/tank-assets/tanks/object148_proto.json	c797eba51b9fcbb2
 file	icons	public/icons/tank-assets/tanks/object695.json	35fbbfd7b323e366
 file	icons	public/icons/tank-assets/tanks/olifant_mk1.json	045612e80d813fd0
-file	icons	public/icons/tank-assets/tanks/olifant_mk1a.json	663b6c03c0dcfe4f
+file	icons	public/icons/tank-assets/tanks/olifant_mk1a.json	5b75d52a30e73bfc
 file	icons	public/icons/tank-assets/tanks/olifant_mk1b.json	6cb842e8ad27e629
 file	icons	public/icons/tank-assets/tanks/olifant_mk2.json	289449a942572fa2
 file	icons	public/icons/tank-assets/tanks/osorio_p1.json	770d98aa2efa6d55
@@ -796,7 +796,7 @@ file	icons	public/icons/tank-assets/tanks/t90sm_2013.json	b6c7e2204fc56bab
 file	icons	public/icons/tank-assets/tanks/tamoyo1.json	f6d653d79dd6ae7c
 file	icons	public/icons/tank-assets/tanks/tamoyo3.json	9a04778f131453aa
 file	icons	public/icons/tank-assets/tanks/tos1a_tagil.json	e139bad809b14b4a
-file	icons	public/icons/tank-assets/tanks/ttd.json	9a51a7a93a4a133a
+file	icons	public/icons/tank-assets/tanks/ttd.json	a528e197cd70b1d5
 file	icons	public/icons/tank-assets/tanks/type10.json	3324c3568b0c5691
 file	icons	public/icons/tank-assets/tanks/type100.json	033a6a537a015066
 file	icons	public/icons/tank-assets/tanks/type10_dozer.json	766f4fa349eae598
@@ -837,7 +837,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	7b228f05dd51f849
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	7cff05c879d79023
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	644eefabbee55408
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	d4d731800d51bf50
-file	ledger	docs/references/fleet-geometry-ledger.json	a34476023c521088
+file	ledger	docs/references/fleet-geometry-ledger.json	78d9ed29a77cc256
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -928,9 +928,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	196ed822
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	c60a14e86b514670
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	9518890ed11cff2a
-file	seats	src/sim/missionAttachmentSeats.generated.ts	55a5d9f1afd5f29f
+file	seats	src/sim/missionAttachmentSeats.generated.ts	2c88342c59d04e56
 file	seats	src/sim/missionDockSeats.generated.ts	51465d3eee950e6f
-file	spareTrack	docs/geometry-gate/spare-track.json	2dd1a5077f9157e7
+file	spareTrack	docs/geometry-gate/spare-track.json	9171f12cc9f0cef7
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1839567789750174
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -947,7 +947,7 @@ group	arieteX	4dbd84908cf74820
 group	bmp3mDragun125X	368818df400b0e48
 group	borsuk	35cb6e3a6b0f566d
 group	brazil	0ccc372fe54d00cd
-group	challenger	ac86c6f3831ec6ef
+group	challenger	b667155790de4f18
 group	challenger1X	e4715446aacadc35
 group	chieftain10X	aae76e9e8f48472a
 group	chieftain5X	761ea6a7e4c42265
@@ -956,7 +956,7 @@ group	cv90105TmlSourceX	092318e79fe95992
 group	cv9040CSourceX	da8db63e524a0f69
 group	cv90MkivSourceX	134c76dc9c0db19f
 group	dardo	c9ecb5ad74861576
-group	denmark	7d3f4faf7fcc5cd3
+group	denmark	d370e266efa38698
 group	franceCore	cdf4e598a18dc74d
 group	fv510MilanX	08099afb61659905
 group	griffin50X	568d582416919715
@@ -995,10 +995,10 @@ group	russia	a1b80711c2adaa25
 group	sabraMk2SourceX	e8f0be07cc4d4a37
 group	sheridan	468ace90211d01e4
 group	sinoSovietConcepts	955a6871506e3cf4
-group	southAfrica	0ded57ef6b64e290
+group	southAfrica	a0ef1e0b6c801d53
 group	sovietHeavy	83799325e97db339
 group	strv122X	0061e6f707a4b6cd
-group	sweden	27d3da05d2aac301
+group	sweden	40671f02b959be67
 group	t14X	9dcc2ac0e0d259bc
 group	t62mv1X	2cb588dc51c14a4d
 group	t72	6bfce54936bd251b
@@ -1019,7 +1019,7 @@ group	type10X	81381fcf1ba586c3
 group	type89SourceX	76f2119702cba4ed
 group	type90X	8aed76931d05f119
 group	type96bX	fdbadf7c869c9d64
-group	uk	1efe1e0aa1466ec9
+group	uk	ce31b858f42a8025
 group	ukraine	c10e5242029d9a04
 group	xk2	3b70dfeca6522c98
 key	anatomy	abramsx	ad39d1435023a4b1	aff5e7b00792d887
@@ -1177,9 +1177,9 @@ key	anatomy	merkava4b	e4adcfd53a03862d	ef7fdeb0b466526a
 key	anatomy	namer_ifv	2f3de0735e1f3c2f	5ae58fd4013006d6
 key	anatomy	object148_proto	6d2a0c11bea86774	0abe6e163d06df16
 key	anatomy	object695	8c51831d7b55ecb0	080bc3875972be46
-key	anatomy	olifant_mk1	8eb08927428ff8e9	a247fdf537d559c6
-key	anatomy	olifant_mk1a	51aa045abae61486	d384c980559238e6
-key	anatomy	olifant_mk1b	fd9d8fd5d37f2978	b9a82631b0261831
+key	anatomy	olifant_mk1	dcf92fcb04d5cfa2	a247fdf537d559c6
+key	anatomy	olifant_mk1a	f2f357f6a19d06b6	d384c980559238e6
+key	anatomy	olifant_mk1b	97c47188a5074993	b9a82631b0261831
 key	anatomy	olifant_mk2	52399e5a0bd65bf1	cd1bc2dd29e7e70b
 key	anatomy	osorio_p1	b0cb3640edee8e11	4576978931e8cc71
 key	anatomy	osorio_p2	eb8af946de899995	137a42a61957a3d3
@@ -1194,7 +1194,7 @@ key	anatomy	pt91m	57462607c9ce0715	24a6958cef96b96c
 key	anatomy	puma_s1	f4f51aa8281b15ae	8f7d86969bdb4380
 key	anatomy	raiju_ifv	623f3e3d0df5a33d	bc866cd8d4efe302
 key	anatomy	sabra_mk2	cf7d5b0bfcc662ff	4c5edb7ab15d5666
-key	anatomy	semel	fd93b91b3df78d17	4ee4d74a398bf56e
+key	anatomy	semel	2bc32f4213ac2d92	4ee4d74a398bf56e
 key	anatomy	shot_kal	70e8fedb670fdaf8	e4533710779f2680
 key	anatomy	spz_puma	e30fe887f82433d3	4407b3eac64c6cb8
 key	anatomy	spz_wotan	d8bac28080b32fd5	41c69477158b690f
@@ -1265,7 +1265,7 @@ key	anatomy	t90sm_2013	b9b3b49bb8c4d603	1d8a541fa6c8cef4
 key	anatomy	tamoyo1	6e6504e1cd8399f4	17e5e9f89b50bdb3
 key	anatomy	tamoyo3	cf6d1ff17909e7bf	a57d957866436662
 key	anatomy	tos1a_tagil	0befe7e58c997085	ab310d349a43f3c0
-key	anatomy	ttd	8a8f25c665ae0996	8fc51174411f97f2
+key	anatomy	ttd	04d5c572f0c7daf1	8fc51174411f97f2
 key	anatomy	type10	027bbe03e56069b6	a9909e2ad204fb6c
 key	anatomy	type100	b40d4dccc802a972	0f12b263ac13e228
 key	anatomy	type10_dozer	f62563ca0af6fc6a	2db4b253eaf0fb13
@@ -1461,9 +1461,9 @@ key	centering	merkava4b	66d6706f33a84b7b	f8eeee4ff7b60874
 key	centering	namer_ifv	04f806597135a0e7	d2fed46b1309eebe
 key	centering	object148_proto	db65ab4887a8f216	7edfd7e7211d02c1
 key	centering	object695	df6dc35fc70bc0a9	dcdf681044a7f875
-key	centering	olifant_mk1	762c39a6be51ecb4	7cefc698dbdd57df
-key	centering	olifant_mk1a	b059701339ea8fea	3318bcd8e089a37d
-key	centering	olifant_mk1b	ec2b4a7ba037b62e	56189d9added745d
+key	centering	olifant_mk1	f768a58821889943	7cefc698dbdd57df
+key	centering	olifant_mk1a	374e6b19cd494a9b	3c1f86fddc3f9d63
+key	centering	olifant_mk1b	90a143b4800f7c87	56189d9added745d
 key	centering	olifant_mk2	01cd274b2c29715b	56189d9added745d
 key	centering	osorio_p1	ffde64d7dfecb863	f6a1eeca3fec2683
 key	centering	osorio_p2	5a39ddd256f99d2b	0644f95e8e5501a1
@@ -1478,7 +1478,7 @@ key	centering	pt91m	058571aac2793126	d8fc7909c8bc830c
 key	centering	puma_s1	bd4b04a87d80526e	11279c5a4e87a8ae
 key	centering	raiju_ifv	03e9836a2fea04ef	c4839045691d8fbd
 key	centering	sabra_mk2	a34b7be7955c4fcd	6a86eaea54394b77
-key	centering	semel	b6597a8e02f7c2fa	1e9bf69a13861d08
+key	centering	semel	dd575fedf51e151a	1e9bf69a13861d08
 key	centering	shot_kal	ac77c59f074795ce	7084b8ee3c6ed3f1
 key	centering	spz_puma	69c549d9b9cd65e2	ff6e1a8b775aa38e
 key	centering	spz_wotan	210ed110b842c632	1f778dfa542eb4c0
@@ -1549,7 +1549,7 @@ key	centering	t90sm_2013	a52b23b5b0583258	af2ac8392573613a
 key	centering	tamoyo1	e6dd2129f38233f0	250c7a293a263643
 key	centering	tamoyo3	ed1f83a44c8eaf16	4e07327cff754132
 key	centering	tos1a_tagil	69b91960f563971d	e6a70cd2ecdb41d7
-key	centering	ttd	d91fb58907e8b37b	d995b13c6830f61f
+key	centering	ttd	19bc79079fc7db52	14b5c3e42ec7917f
 key	centering	type10	61b0e7c4cb3dd1e7	9ffa8421e0bb5bc8
 key	centering	type100	b9c0ad2a1a4552d2	92eda6e5b2e55752
 key	centering	type10_dozer	2603237c761f1004	efc63c2536f46ed8
@@ -1778,9 +1778,9 @@ key	controls	merkava4b	d251d62fac1c93af	daa8f78b3c95e4a8
 key	controls	namer_ifv	f3d98d0191929b67	03a848ebc7824752
 key	controls	object148_proto	934165b00af231f9	70ff8332e467fe29
 key	controls	object695	681525bc0c1711f9	ffb5a79607910155
-key	controls	olifant_mk1	54acd7fc9b557006	940b47c9a19de960
-key	controls	olifant_mk1a	db574a387645b139	940b47c9a19de960
-key	controls	olifant_mk1b	756ca84d4a5505f3	02b327554d5e35e1
+key	controls	olifant_mk1	8e49facb4ad42112	940b47c9a19de960
+key	controls	olifant_mk1a	2a8c539a442205f8	940b47c9a19de960
+key	controls	olifant_mk1b	4ac032ce29cb528f	02b327554d5e35e1
 key	controls	olifant_mk2	b8ac8ba481173566	02b327554d5e35e1
 key	controls	osorio_p1	2fea536ea1a7999b	252d38409e7a63e4
 key	controls	osorio_p2	24005e0057df797a	f3d778211c153906
@@ -1795,7 +1795,7 @@ key	controls	pt91m	9b469a572804b379	66741f4c6c719dc3
 key	controls	puma_s1	6dc5f6be0c8578c3	efd5868d38f5eeb6
 key	controls	raiju_ifv	8dba234cb58493eb	f5be43212770a91f
 key	controls	sabra_mk2	f829eac8d4007740	750fb7d91a4073f6
-key	controls	semel	14ca67ec8174feb6	e294d73689ba3a79
+key	controls	semel	4da8612f9b5e3fd3	e294d73689ba3a79
 key	controls	shot_kal	fe5f36ba47d202db	2630ed48a3e57513
 key	controls	spz_puma	a55b1120b034d642	f6d5c40193ff95ad
 key	controls	spz_wotan	65fefa0f7eb6bb37	01024601c261d2a4
@@ -1866,7 +1866,7 @@ key	controls	t90sm_2013	cee1761eed2dafe5	a5f2e811296b19f1
 key	controls	tamoyo1	d0c19efb30c4a807	bff77c97550b7b77
 key	controls	tamoyo3	695b207ef79bd4c0	29265bc133d5db01
 key	controls	tos1a_tagil	cc5e96adb2efbf44	c9108b6b3b11b745
-key	controls	ttd	7f47cb8099ed8190	f83f47aa90c84b7f
+key	controls	ttd	b869db8c2b0744bd	f83f47aa90c84b7f
 key	controls	type10	b59addaca479972a	11db75b2303f73ea
 key	controls	type100	e92ddf415dcf063e	5e15b8a9108fe2bb
 key	controls	type10_dozer	f556542f3a566b8a	5cf8f41d163380b7
@@ -2062,9 +2062,9 @@ key	fills	merkava4b	f294afd9dc8ef6e9	9d37c1ae978a0160
 key	fills	namer_ifv	f085c70fa7af7772	3f21a0d8893b2b89
 key	fills	object148_proto	4c9ade9db675c074	816eaf9102279a98
 key	fills	object695	b4097a8db07ba463	8b6b1508e1ca6d41
-key	fills	olifant_mk1	ebb2c3c27e4bcaf4	690fc5bec39e30f8
-key	fills	olifant_mk1a	67a70e2cb93330be	574e5e4a3a66c22c
-key	fills	olifant_mk1b	3505bca3bf382f7d	2532af744525c6bf
+key	fills	olifant_mk1	11ed58c4879e535d	690fc5bec39e30f8
+key	fills	olifant_mk1a	9dfa419edeba411a	c2885502aa0f4e7d
+key	fills	olifant_mk1b	bf7648e4806bb164	2532af744525c6bf
 key	fills	olifant_mk2	481b310a460e1834	acec1bea98968f74
 key	fills	osorio_p1	ccdcb1555c9659bc	3af387d4d37a36d9
 key	fills	osorio_p2	1dcac617d72329c8	655e8f9d85fe4adf
@@ -2079,7 +2079,7 @@ key	fills	pt91m	20a666b5f8209abe	c8355d9a1bb90b48
 key	fills	puma_s1	69d56ee6d30e262d	dfff529798d091d3
 key	fills	raiju_ifv	a32f777d8b6ae320	9490671471450b15
 key	fills	sabra_mk2	d4e9e1a14f2d53f5	fcc987f928a2d8a0
-key	fills	semel	cd36a30016c7f866	5b027bcbdfb1ccfd
+key	fills	semel	af0288c78a2589f7	5b027bcbdfb1ccfd
 key	fills	shot_kal	d2b388c745250b93	f98a091cdef98b36
 key	fills	spz_puma	4eb3ed9425e0e1d1	f18e606254d83189
 key	fills	spz_wotan	15bcd66ec2ceab7b	8c6d37104ec37576
@@ -2150,7 +2150,7 @@ key	fills	t90sm_2013	8b0cf128ed8cea48	994775add50fcab3
 key	fills	tamoyo1	574145e1faff1d21	34b229ee9359c7ab
 key	fills	tamoyo3	d1917d10fab1efeb	62a3ad76e4bc3bdf
 key	fills	tos1a_tagil	c879f0f0d536d108	86bde78f6e1919f8
-key	fills	ttd	20daf1d3fe17c06b	14502aba3a79a51b
+key	fills	ttd	49e8bafc90d87919	14502aba3a79a51b
 key	fills	type10	16a5f833a7e75bd0	471ddbb5978c1614
 key	fills	type100	38452152a69873e7	65e680d4ec6496ef
 key	fills	type10_dozer	5ce74137373a5b21	4527fdedd247ab24
@@ -2335,9 +2335,9 @@ key	gate	merkava4b	656f7ce4a444ff98	bafadb06825197f7
 key	gate	namer_ifv	86e20e8960f34bc2	3455e0ab71020acf
 key	gate	object148_proto	bcce7f0cc247ec12	c813af6bad2cb313
 key	gate	object695	80e9dd26d110bc3c	8f2a47ef0dbdb385
-key	gate	olifant_mk1	a636eddc03c72f38	2a91139109c96403
-key	gate	olifant_mk1a	6da9b56bb19259d0	2a91139109c96403
-key	gate	olifant_mk1b	0d5c2b6e7bda73e8	2a91139109c96403
+key	gate	olifant_mk1	2780c5a07f0082a7	2a91139109c96403
+key	gate	olifant_mk1a	eaa3adb4c5691965	2a91139109c96403
+key	gate	olifant_mk1b	78bd7d396712c346	2a91139109c96403
 key	gate	olifant_mk2	1687f9c8cf91f243	2a91139109c96403
 key	gate	osorio_p1	cc3b368b8510e3d1	2a91139109c96403
 key	gate	osorio_p2	7eb89186e39f2040	2a91139109c96403
@@ -2352,7 +2352,7 @@ key	gate	pt91m	0f1b2aad04b0704b	537a687264a33055
 key	gate	puma_s1	ab7a202f76cc1a10	fe38622e66e908b8
 key	gate	raiju_ifv	c043fd628c707595	2a91139109c96403
 key	gate	sabra_mk2	f3bd9e7a8d638e67	5a279372729b186b
-key	gate	semel	2368017408cbdc12	2a91139109c96403
+key	gate	semel	42a9d18772d14446	2a91139109c96403
 key	gate	shot_kal	4caf80446903f381	2a91139109c96403
 key	gate	spz_puma	8a535b8d5971e994	35ce47e7a4f60d72
 key	gate	spz_wotan	6c797d786203f52b	2a91139109c96403
@@ -2423,7 +2423,7 @@ key	gate	t90sm_2013	8d17354489da76e4	3848544ab369237d
 key	gate	tamoyo1	2eb368b9b8d7ec38	2a91139109c96403
 key	gate	tamoyo3	179f1902dbba6ea8	2a91139109c96403
 key	gate	tos1a_tagil	61b5f8dbed9db769	2a91139109c96403
-key	gate	ttd	4286e16536ba7463	2a91139109c96403
+key	gate	ttd	6313ca2beaf9f7c8	2a91139109c96403
 key	gate	type10	1408bcfbfd275d40	9d5ed496e356c76e
 key	gate	type100	72ee47cc4ce83c82	2a91139109c96403
 key	gate	type10_dozer	a579266faac01363	2a91139109c96403
@@ -2618,9 +2618,9 @@ key	gunLines	merkava4b	2ee72fb77105b007	3d103e9d32eaa8e3
 key	gunLines	namer_ifv	04274111fd7f3639	f53ada023cb8e5e4
 key	gunLines	object148_proto	6dc46228ab27bb70	046e2d41cc3303ce
 key	gunLines	object695	670b28fc069793ff	1ddc17b3a87dea73
-key	gunLines	olifant_mk1	9796a98b9b04eff8	2cc7c20e5f5d107b
-key	gunLines	olifant_mk1a	ccaa735e52b5f086	07eab02283402407
-key	gunLines	olifant_mk1b	abfb01e023c828e6	a11db9817ce6dd18
+key	gunLines	olifant_mk1	b8b4f78d1182bb1d	2cc7c20e5f5d107b
+key	gunLines	olifant_mk1a	4570cf79d4e66084	07eab02283402407
+key	gunLines	olifant_mk1b	f6b09802f985789d	a11db9817ce6dd18
 key	gunLines	olifant_mk2	8b304bef4fab4633	e57131ef30a1108a
 key	gunLines	osorio_p1	8c6b52335cdd7d24	a55b9f5cec485394
 key	gunLines	osorio_p2	a48c554842d553a8	398f1269267521d6
@@ -2635,7 +2635,7 @@ key	gunLines	pt91m	b7e0adeec6cae938	8d4ccbc6bbccbb97
 key	gunLines	puma_s1	32d18161a3ce96eb	e240096cd3941630
 key	gunLines	raiju_ifv	cc8af34cd632971e	14f38a1f6dc7018d
 key	gunLines	sabra_mk2	f9eaf3f2ef175afa	b3e4599f4ceacb47
-key	gunLines	semel	1ea84ff14214d04b	a00412593cfe3902
+key	gunLines	semel	efb0c88732ac6387	a00412593cfe3902
 key	gunLines	shot_kal	0ce3a1e5edea2724	f0b7509120fa2223
 key	gunLines	spz_puma	3d733760c054f788	c3b96429147b5d76
 key	gunLines	spz_wotan	2d446938ce675974	dc628b00486d15d5
@@ -2706,7 +2706,7 @@ key	gunLines	t90sm_2013	432a2ead5f1724cb	77199da94253af88
 key	gunLines	tamoyo1	aa33b345adcfed15	9bd039535512b846
 key	gunLines	tamoyo3	07c7977d4461155d	c5112fa832dd35e4
 key	gunLines	tos1a_tagil	9d06d1edb7a0ce30	6f771a4a7bdff1c4
-key	gunLines	ttd	1d723b862290c4ea	cb1d176343b63a16
+key	gunLines	ttd	9da25a608fa0a534	cb1d176343b63a16
 key	gunLines	type10	6490d032bba44772	976628fdb928b585
 key	gunLines	type100	e3c80be2b13760e5	c755b83b73108deb
 key	gunLines	type10_dozer	f5fcef4deb8163bb	3a0e65fc6b7a970c
@@ -2902,9 +2902,9 @@ key	icons	merkava4b	2cf5a92e6a1a2705	92ee8079870377eb
 key	icons	namer_ifv	0baf2e24261e566d	c1dbe0f107f1ead2
 key	icons	object148_proto	265098461eb96d5f	d5ed964bd110510b
 key	icons	object695	708a1f795ef2d3cf	938e7a719992277e
-key	icons	olifant_mk1	c0f26f832b2561f3	c5394095df510325
-key	icons	olifant_mk1a	84957d278dcd7754	b1107aaa654a6264
-key	icons	olifant_mk1b	26e8775c22238804	dbd338f3a3c52586
+key	icons	olifant_mk1	a2ba796604d84aee	c5394095df510325
+key	icons	olifant_mk1a	d93468f5601db5e7	72ceda33dc6b63a5
+key	icons	olifant_mk1b	e7a6bb197bccf234	dbd338f3a3c52586
 key	icons	olifant_mk2	70c190b588c91246	ddd334fca83cc3cd
 key	icons	osorio_p1	f2a5966adcee2ca1	048925362081d0e6
 key	icons	osorio_p2	d41203467799c93d	4b4bed02b18edd13
@@ -2919,7 +2919,7 @@ key	icons	pt91m	7ffd55921433cf05	00010b554180509a
 key	icons	puma_s1	3ef75f0ff4c26402	c6b8a98c1d0d5686
 key	icons	raiju_ifv	60a0355eef1ed5e4	48eef799e7b3e932
 key	icons	sabra_mk2	0137244786fd6e93	0e4ac654a20e08a2
-key	icons	semel	bc8692508f3c251b	d77193537369521a
+key	icons	semel	bd5232a96f9184d2	d77193537369521a
 key	icons	shot_kal	d80c013d84ad4c0a	36a1ce32cc53ec92
 key	icons	spz_puma	50232f5d06202f57	1badae1a129ae634
 key	icons	spz_wotan	11bcfc7af7a15d7c	604110a9959b202a
@@ -2990,7 +2990,7 @@ key	icons	t90sm_2013	bfd2f6853ea1eec6	21195e28042e70f5
 key	icons	tamoyo1	bfb5ad464de63c68	a1834c6484fae78d
 key	icons	tamoyo3	d329ec46cab0e17e	f5aabdcd234d9b24
 key	icons	tos1a_tagil	4ca65027f78c4e8e	d389c3fefecbed5a
-key	icons	ttd	7f25db4646a0fd0a	e98dcfb2fae6dc43
+key	icons	ttd	f3b10dd76830c5a6	aa629c9de0d10902
 key	icons	type10	fda84bcbd2ac7ae7	3b04d9caed85c95c
 key	icons	type100	8602a51a2b8e8825	7cd57d4ab743c26a
 key	icons	type10_dozer	961f35c36b5fb492	f855687f160f6612
@@ -3186,9 +3186,9 @@ key	ledger	merkava4b	a95f9b4bd15df245	86225031c3e1c2cd
 key	ledger	namer_ifv	aff23611ddcf49a6	e3eeed3286065653
 key	ledger	object148_proto	947db9608e9bde9b	6ad6edc0bdce515c
 key	ledger	object695	f9568a1121b215b1	589fcc94b2c88642
-key	ledger	olifant_mk1	707afe5c3c69e49b	7cdfc2b62514f013
-key	ledger	olifant_mk1a	79ec0125c9377839	f4b707564c791933
-key	ledger	olifant_mk1b	3e36e499c9b3bf39	2bd7cc2f1ceac88d
+key	ledger	olifant_mk1	4ce7cf4d6f5c6da6	7cdfc2b62514f013
+key	ledger	olifant_mk1a	9a5ce7e61991830b	21fc5b532cf12f82
+key	ledger	olifant_mk1b	cbbd7675860a6efe	2bd7cc2f1ceac88d
 key	ledger	olifant_mk2	22fbd906aa6e64e4	a09125a8a566f17a
 key	ledger	osorio_p1	d3bf4ef2ec15fce9	9466069bdc93225b
 key	ledger	osorio_p2	8146c73a57fd7133	bc6654c415212921
@@ -3203,7 +3203,7 @@ key	ledger	pt91m	f36f605e039afe80	fcc221a0303d9503
 key	ledger	puma_s1	bb8b681579554d5a	6da3d80b645daf62
 key	ledger	raiju_ifv	c4f3033485063c7d	ed29e3740d4b0742
 key	ledger	sabra_mk2	3b49b5e01e6d4aa0	4ac33d40a7f5e787
-key	ledger	semel	bf63edd7240005d8	682854e1e5e3e2f7
+key	ledger	semel	8ed9514db0ddcc4e	682854e1e5e3e2f7
 key	ledger	shot_kal	79adbe833f2da320	6768e2c36abd731a
 key	ledger	spz_puma	fa792e832ea517c7	ed1c8cbd2219582d
 key	ledger	spz_wotan	2df3c6fb48e5b8ce	43c465bec3d46974
@@ -3274,7 +3274,7 @@ key	ledger	t90sm_2013	29ca9c32b681cce9	e438c2eaab9f1500
 key	ledger	tamoyo1	8539ddb33d302461	48c8b5949d0c79a8
 key	ledger	tamoyo3	88c970045b8453d1	3bf0114ab3de28c5
 key	ledger	tos1a_tagil	e2c2391988ea34a8	d5cd20aaed6bf767
-key	ledger	ttd	96a3aa0570ef40c5	4f6c5da91609608c
+key	ledger	ttd	a77cff36f7fd26f3	c34aea2f1fe2a618
 key	ledger	type10	8e46454b84a61e58	b029c911fb595878
 key	ledger	type100	fe4ad82efe63f550	b987dff69a367809
 key	ledger	type10_dozer	899c45da75a4930f	83bf6b9c1289a655
@@ -3470,9 +3470,9 @@ key	marking	merkava4b	97f223b5249ec929	684f91c3eed6f7d1
 key	marking	namer_ifv	7017d8c8397bede7	6f56874b8dfbd3c9
 key	marking	object148_proto	9fa437970c52761e	d344b8c88a2c0e9e
 key	marking	object695	991899a06782d46b	bf4be4684b6a95ca
-key	marking	olifant_mk1	3d0ffcc017a0defc	c2a6812231ec10c5
-key	marking	olifant_mk1a	44a3be00cf380bd7	fd928574f377768b
-key	marking	olifant_mk1b	99ee8a5941b6b7cc	97f300296c5128fb
+key	marking	olifant_mk1	047ab574e7a6c248	c2a6812231ec10c5
+key	marking	olifant_mk1a	e0648c741b1cdcdf	fd928574f377768b
+key	marking	olifant_mk1b	2ba09bf3cf05b73e	97f300296c5128fb
 key	marking	olifant_mk2	931feac0a1ef3c1b	67ed82ce39fad8db
 key	marking	osorio_p1	fd81e8f7ba66d092	70bb6f0f3c5e0096
 key	marking	osorio_p2	d5586a290ceb1b2a	6c4615137f29b65d
@@ -3487,7 +3487,7 @@ key	marking	pt91m	db1e29cbb5819fde	d1344231651ce0d6
 key	marking	puma_s1	190582b66029cfc6	85780db8b64bcb36
 key	marking	raiju_ifv	f132d0254c96f05b	60e9e04690adf96c
 key	marking	sabra_mk2	5f6c455145bf2e55	e25d95c2ee5586e4
-key	marking	semel	3e62d62a22430914	a71e0ee0b95c0e4d
+key	marking	semel	521caa87fe1b72fe	a71e0ee0b95c0e4d
 key	marking	shot_kal	9803c89c16cc0268	2d3ba34a4e797f25
 key	marking	spz_puma	c86071c3c14b602e	14a40e2e8b4f65a2
 key	marking	spz_wotan	959a5d8fecd3be38	9cf8e55f2cbf589c
@@ -3558,7 +3558,7 @@ key	marking	t90sm_2013	52fb6409c30a0a12	c6993f42026bacfd
 key	marking	tamoyo1	5154c4e0bb2cd7f8	e29d99479fabb781
 key	marking	tamoyo3	654700dbc7767efa	52fa2b4562cb86db
 key	marking	tos1a_tagil	b95c6ad417d6e52f	172eb00d8acad14c
-key	marking	ttd	d3c0af7b64932fe8	1b54c5b8ec9ed026
+key	marking	ttd	643d18f3844175f1	1b54c5b8ec9ed026
 key	marking	type10	01128bf0c3f759a6	d7eb38c3fb8878bb
 key	marking	type100	a7fc880fb1962af3	e7a55eb89c7be430
 key	marking	type10_dozer	1ffcc3268849aa08	a50df336ab76239a
@@ -3754,9 +3754,9 @@ key	seats	merkava4b	af2b15a132557693	f10b32c9a492b5a8
 key	seats	namer_ifv	62c306349a11395f	1d07827c3ce7a356
 key	seats	object148_proto	638698d1784c0444	f759fccde6b9cef9
 key	seats	object695	93ea38aa058a6578	8cb0ab1bf6c5b4cf
-key	seats	olifant_mk1	ecbf07d2c4655631	c73c5c877b98ba12
-key	seats	olifant_mk1a	3b6c98e27075e7ba	65e611167938d04d
-key	seats	olifant_mk1b	13b4f48c5b180158	097d53acb4e2950f
+key	seats	olifant_mk1	eda8085c49bc190d	c73c5c877b98ba12
+key	seats	olifant_mk1a	b48b1d572fb3bc74	4bd7a7e9f7bc0183
+key	seats	olifant_mk1b	0a9cf7d4143700e9	097d53acb4e2950f
 key	seats	olifant_mk2	3ef4997829cc810f	8cc1bd30bf3e8ea5
 key	seats	osorio_p1	820acec44243ac04	4317213dd1cda42d
 key	seats	osorio_p2	3369e96c889deb7a	fed815c0653a77d7
@@ -3771,7 +3771,7 @@ key	seats	pt91m	9d21acdc642a649e	96995102d1fb5b06
 key	seats	puma_s1	f1bd04801bfd94ec	763d2f7f4c795780
 key	seats	raiju_ifv	e2089e2bdfb374bf	1e76b6df8860b359
 key	seats	sabra_mk2	1c2b2f97f0828821	fca06d51615517e0
-key	seats	semel	795c65318d0bc721	7b89253eb671c157
+key	seats	semel	2c342e2234d97045	7b89253eb671c157
 key	seats	shot_kal	34ee081b0567dd10	908753edd7980797
 key	seats	spz_puma	524e7725d3134645	3580dd115c0aa262
 key	seats	spz_wotan	1666ef99a55c02b9	593e1aa481b43c5a
@@ -3842,7 +3842,7 @@ key	seats	t90sm_2013	bfac27510859c0fc	784e518fa52c7f12
 key	seats	tamoyo1	de5c0ca71c7e5028	642b8bb6baf41a0a
 key	seats	tamoyo3	aae600380c9d6f95	7f7d22bf5a5acd45
 key	seats	tos1a_tagil	081c0887e9807f9b	720934437cc7d5f9
-key	seats	ttd	c872977473667d33	ef110beac3a3047b
+key	seats	ttd	5ef1f7f546375271	3b926a29ab69f013
 key	seats	type10	4ceebdd548228a68	3d2b815f5b3a2f5e
 key	seats	type100	3100aca130c06e34	59b71b1d22c0bdbf
 key	seats	type10_dozer	7ff3b460c2d1f7d6	5ac3822c34d702de
@@ -4038,9 +4038,9 @@ key	spareTrack	merkava4b	497c0f2766b20ead	592ef22d22ee875c
 key	spareTrack	namer_ifv	a3033ea9c1727a05	0aecffbcf6d0b948
 key	spareTrack	object148_proto	13f734c6d6e28b04	dcabd3b5385d7d50
 key	spareTrack	object695	9794a695597beb10	3cbc97e3449e39aa
-key	spareTrack	olifant_mk1	0d2e609864df3f66	f375c0ab6f2e6d46
-key	spareTrack	olifant_mk1a	6b42eeaf46d72dbb	1d94aa8118b258ce
-key	spareTrack	olifant_mk1b	fdba4904820fe638	c045e6ef8dd3db48
+key	spareTrack	olifant_mk1	ce3ac9f7a7a306e3	f375c0ab6f2e6d46
+key	spareTrack	olifant_mk1a	1bc35bfdd1afc8aa	56b899634aba67f2
+key	spareTrack	olifant_mk1b	fcea4cebf87aa1df	c045e6ef8dd3db48
 key	spareTrack	olifant_mk2	a174c2588db1882a	c7cc872dedaa9c39
 key	spareTrack	osorio_p1	9d37b3efe13b8c59	e8996b9aa9657ce6
 key	spareTrack	osorio_p2	6a2f532676c09eb6	ecc974e7ff247c12
@@ -4055,7 +4055,7 @@ key	spareTrack	pt91m	07e01b8fb30fdb1d	d38f19a10bd065c8
 key	spareTrack	puma_s1	049219dc65dd4cb7	5d0a35aca00095e5
 key	spareTrack	raiju_ifv	91076ce4138ffed5	cc676b0d0357ff6f
 key	spareTrack	sabra_mk2	8a095cb7d71e6cb5	29105c0b9d79aef4
-key	spareTrack	semel	8c1e65d587393559	5488e225c5cfd233
+key	spareTrack	semel	bec74239fb23fa23	5488e225c5cfd233
 key	spareTrack	shot_kal	db986ae2dfa5120d	32b6ed4fd7022a62
 key	spareTrack	spz_puma	073d8d7942569057	282a8cf20a84ef2a
 key	spareTrack	spz_wotan	a16d38343fb03b9e	91eb0117f33d967d
@@ -4126,7 +4126,7 @@ key	spareTrack	t90sm_2013	41c2eee9e831e195	6b4fd78c73b813aa
 key	spareTrack	tamoyo1	62e468a223e46a79	94c89f502147bdbe
 key	spareTrack	tamoyo3	39d542e25bde4a51	e9ee99eae1c03e81
 key	spareTrack	tos1a_tagil	c1943f0c6d76c059	c74c8fbcbb47c3fa
-key	spareTrack	ttd	372d419908e26401	635087fd296c8ac6
+key	spareTrack	ttd	2fe98ee3052b795b	ee4b215406e42098
 key	spareTrack	type10	200ccdda59803e1f	2b75bdda1d8f4b4f
 key	spareTrack	type100	d3ed0678398baa83	967e0b35b4759e87
 key	spareTrack	type10_dozer	85aad057f683e950	97ad0ae271368219
@@ -5885,7 +5885,7 @@ row	geometryLedger	namer_ifv	500e45e5e5c82fe7
 row	geometryLedger	object148_proto	9d3c4f287de057bf
 row	geometryLedger	object695	12bc6e4e72b2b75c
 row	geometryLedger	olifant_mk1	af3883d5e9124e34
-row	geometryLedger	olifant_mk1a	88cd3a775bd820f8
+row	geometryLedger	olifant_mk1a	cae1e4ba08d6d067
 row	geometryLedger	olifant_mk1b	0966e49d5b80b026
 row	geometryLedger	olifant_mk2	fd1a46d015334fef
 row	geometryLedger	osorio_p1	3b349b6f2b7624d6
@@ -5972,7 +5972,7 @@ row	geometryLedger	t90sm_2013	6388d42d78b6d4d7
 row	geometryLedger	tamoyo1	a30e08ab3e98b7a4
 row	geometryLedger	tamoyo3	261ca34ad2909ce2
 row	geometryLedger	tos1a_tagil	dea4de696de8aea6
-row	geometryLedger	ttd	06d0a348129c3050
+row	geometryLedger	ttd	4c69a74f070afd6f
 row	geometryLedger	type10	100588aee28aecd4
 row	geometryLedger	type100	a94b866ee46d53ff
 row	geometryLedger	type10_dozer	b8aa4327263d7987
@@ -6453,7 +6453,7 @@ row	interiorFills	namer_ifv	762f323551d4e65a
 row	interiorFills	object148_proto	678470b90d598a59
 row	interiorFills	object695	f2100b4b769c7dc6
 row	interiorFills	olifant_mk1	c34bb231432c87cd
-row	interiorFills	olifant_mk1a	f5a3b671b01b9ee0
+row	interiorFills	olifant_mk1a	0bae92020e7197ab
 row	interiorFills	olifant_mk1b	1265581f8895615f
 row	interiorFills	olifant_mk2	6502449c4b712fa1
 row	interiorFills	osorio_p1	99dee2b9c5064435
@@ -7020,7 +7020,7 @@ row	missionAttachmentSeats	namer_ifv	7815a2400f5e82b4
 row	missionAttachmentSeats	object148_proto	c1803dc63461491e
 row	missionAttachmentSeats	object695	598f3c8095af39df
 row	missionAttachmentSeats	olifant_mk1	4e0f08f25a845dbc
-row	missionAttachmentSeats	olifant_mk1a	31252ab0a173609f
+row	missionAttachmentSeats	olifant_mk1a	94131e71a598418d
 row	missionAttachmentSeats	olifant_mk1b	7c01f3439bba9cbe
 row	missionAttachmentSeats	olifant_mk2	434f1938fdeeb4ad
 row	missionAttachmentSeats	osorio_p1	77aaca2a5f2bb6d5
@@ -7107,7 +7107,7 @@ row	missionAttachmentSeats	t90sm_2013	5fc6a984ee5e2ca8
 row	missionAttachmentSeats	tamoyo1	22864e359794155f
 row	missionAttachmentSeats	tamoyo3	ac554b042c8ce3ed
 row	missionAttachmentSeats	tos1a_tagil	194563d9670a19e3
-row	missionAttachmentSeats	ttd	2641f948b9074924
+row	missionAttachmentSeats	ttd	91f0e515cc12cc88
 row	missionAttachmentSeats	type10	ad686cc51354cd6e
 row	missionAttachmentSeats	type100	2d9e3d3a7337427b
 row	missionAttachmentSeats	type10_dozer	8331dce29cdb39c1
@@ -7594,7 +7594,7 @@ row	presentationAnchors	namer_ifv	f20e3caa9537251e
 row	presentationAnchors	object148_proto	bc1d66b159fdaa6d
 row	presentationAnchors	object695	86501179fca2573a
 row	presentationAnchors	olifant_mk1	30be802c7b9732f8
-row	presentationAnchors	olifant_mk1a	36b37eaa47c845b8
+row	presentationAnchors	olifant_mk1a	6f3e3e4545a42b22
 row	presentationAnchors	olifant_mk1b	369819985ce5d309
 row	presentationAnchors	olifant_mk2	369819985ce5d309
 row	presentationAnchors	osorio_p1	760f708c23120e8b
@@ -7681,7 +7681,7 @@ row	presentationAnchors	t90sm_2013	93f107f84342af93
 row	presentationAnchors	tamoyo1	bdebd8d9289ca0f6
 row	presentationAnchors	tamoyo3	12345e51c1249697
 row	presentationAnchors	tos1a_tagil	7a79ee5fd3205e96
-row	presentationAnchors	ttd	99f878a44983fcd7
+row	presentationAnchors	ttd	87e6a5a11a8e8ce3
 row	presentationAnchors	type10	007d57cd8c1b59a3
 row	presentationAnchors	type100	d36685aa56c507c9
 row	presentationAnchors	type10_dozer	c6a06a59795b9c7c
@@ -7878,7 +7878,7 @@ row	presentationProjections	namer_ifv	ff15d43e26fad69f
 row	presentationProjections	object148_proto	66a2a9e88748c175
 row	presentationProjections	object695	e4e55bcc63defb5d
 row	presentationProjections	olifant_mk1	3b4c6d9ee2c0be84
-row	presentationProjections	olifant_mk1a	0b0199ce6350559b
+row	presentationProjections	olifant_mk1a	e34dcfd49eaa2b36
 row	presentationProjections	olifant_mk1b	38d596c140cfcbef
 row	presentationProjections	olifant_mk2	38d596c140cfcbef
 row	presentationProjections	osorio_p1	a7e9f7a3f668af1a
@@ -7965,7 +7965,7 @@ row	presentationProjections	t90sm_2013	e2016914214d591c
 row	presentationProjections	tamoyo1	47851980b941712c
 row	presentationProjections	tamoyo3	0be29bb152b7d995
 row	presentationProjections	tos1a_tagil	0bf9b4f8d98002b7
-row	presentationProjections	ttd	d249593cabdcf5e6
+row	presentationProjections	ttd	2a65814481f8e682
 row	presentationProjections	type10	1fb9a1343b89855a
 row	presentationProjections	type100	cf4f860af5bf57e5
 row	presentationProjections	type10_dozer	2ec8cabdbb57a2c8
@@ -8446,7 +8446,7 @@ row	spareTrackLedger	namer_ifv	a2648130c37c0b1f
 row	spareTrackLedger	object148_proto	e5c54d2ee28d0732
 row	spareTrackLedger	object695	2b0e1c65d5c017fa
 row	spareTrackLedger	olifant_mk1	85335dc8e4f0d056
-row	spareTrackLedger	olifant_mk1a	21fcebb06138cf44
+row	spareTrackLedger	olifant_mk1a	6aa3cfa4770bd524
 row	spareTrackLedger	olifant_mk1b	ce5d959e213c66f5
 row	spareTrackLedger	olifant_mk2	18ac407e8a6187af
 row	spareTrackLedger	osorio_p1	1da0b6d91653a488
@@ -8533,7 +8533,7 @@ row	spareTrackLedger	t90sm_2013	5fa126d52df5dff4
 row	spareTrackLedger	tamoyo1	602aed6b1149ec5a
 row	spareTrackLedger	tamoyo3	5051fc6b9ca947a0
 row	spareTrackLedger	tos1a_tagil	b4a62947e78a5df9
-row	spareTrackLedger	ttd	a0eddb2f8f40e5ce
+row	spareTrackLedger	ttd	8d03d06ef2891c12
 row	spareTrackLedger	type10	7076de8c248cf66c
 row	spareTrackLedger	type100	521e6bef44022bc1
 row	spareTrackLedger	type10_dozer	f4eb777c528dfdb2
@@ -9329,7 +9329,7 @@ row	tankAssets	namer_ifv	b4403a22275f87e7
 row	tankAssets	object148_proto	8b06d7a6799e217c
 row	tankAssets	object695	33854433718a14d8
 row	tankAssets	olifant_mk1	9f4782e48d687448
-row	tankAssets	olifant_mk1a	55cb8901748ab09e
+row	tankAssets	olifant_mk1a	382860a5f56ef8fa
 row	tankAssets	olifant_mk1b	cf19b53964a9f5c6
 row	tankAssets	olifant_mk2	1e49c9f62bde46eb
 row	tankAssets	osorio_p1	682491ce6b073708
@@ -9416,7 +9416,7 @@ row	tankAssets	t90sm_2013	2f793db9ee6b0876
 row	tankAssets	tamoyo1	1d16fdfc6dbcdb63
 row	tankAssets	tamoyo3	12138b9bfb9f2f6d
 row	tankAssets	tos1a_tagil	1509d563c5ac0589
-row	tankAssets	ttd	e45f087fc173c0d6
+row	tankAssets	ttd	dff4d512ca0d8203
 row	tankAssets	type10	95f3530b9f0713bb
 row	tankAssets	type100	ec0bbd9565f6bfa9
 row	tankAssets	type10_dozer	0eb953dbf418fb8c
@@ -9470,14 +9470,14 @@ stamp	gate	merkava3d	c5169d7ff253645f	9997f408c8042254	oracle-absent	public/mode
 stamp	gate	merkava4	7a8550db790dbd68	8a08f6f0be74ae91	oracle-absent	public/models/community-candidates/merkava4_source.glb	oracle absent here (/models/community-candidates/merkava4_source.glb)
 stamp	gate	type89	75a12202d90a29a8	3f6fff507d37d77d	oracle-absent	public/models/community-candidates/type89_x_source.glb	oracle absent here (/models/community-candidates/type89_x_source.glb)
 tool	anatomy	ec06eb614847cca2
-tool	centering	2810ceefdad86a90
+tool	centering	3e85615959b56d8e
 tool	controls	e22ca4a12022c981
 tool	fills	384657f2143d5ce5
 tool	gate	12201de0f8b903e2
 tool	gunLines	0bbe9e464815a49a
-tool	icons	c6867b4fb588daec
+tool	icons	b5f67c273c2217f2
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
-tool	seats	9f35644e7eee127f
+tool	seats	be3729eeb10d19ac
 tool	spareTrack	5be101cb2fbd6f03
 toolchain	c690d39fe44d5b27	schema:1	node:v24.22.1	platform:darwin/arm64	package-lock:f31ac1f3ac931fab5451658524d9e2c3ae94407e8f42bdef1cd20713ab5975bc
