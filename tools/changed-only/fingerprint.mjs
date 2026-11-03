@@ -22,6 +22,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
+import { cpuLimited } from './childBudget.mjs';
 import { AGGREGATES, BALANCE, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
   CATALOG_FILES, MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, SPEC_COMBAT, SPEC_REST, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS,
   stepDefinition } from './steps.mjs';
@@ -75,12 +76,14 @@ export function parseGroupLoaders(text, filename = GROUP_LOADERS_FILE) {
   return groups;
 }
 
+/** The rows child's CPU budget: about 60 s of CPU warm. Its limit is CPU, never wall: at load ~500 (2026-10-20) a healthy
+ *  read overran a 5-minute wall limit and failed the chain, and 30 minutes only moved the load where it fails (268). */
+const ROWS_CPU_S = 1800;
+
 function readRows(root, env, tableModule = null) {
-  const out = execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
-    ...(tableModule ? [tableModule] : [])], {
-    // 2026-10-20: 30 minutes (was 5): at load average ~500 the rows read after a finished seats step overran 5 minutes
-    // and failed the chain with ETIMEDOUT though the step's outputs were written; the traces allow 30-60 minutes
-    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 1_800_000,
+  const out = execFileSync(...cpuLimited(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
+    ...(tableModule ? [tableModule] : [])], ROWS_CPU_S), {
+    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
     env: { ...env, NODE_OPTIONS: '' }, stdio: ['ignore', 'pipe', 'pipe'],
   });
   return JSON.parse(out);
@@ -565,21 +568,42 @@ export function loadBase(root, base) {
   } catch { return null; }
 }
 
-/** The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run). */
-export function refreshComponents(manifest, state) {
-  manifest.toolchain = state.toolchain;
-  manifest.toolchainParts = [...state.toolchainParts];
-  manifest.roster = state.roster;
-  manifest.core = state.core;
-  manifest.groups = { ...state.groups };
-  manifest.tools = Object.fromEntries(Object.entries(state.steps).map(([name, step]) => [name, step.tool]));
-  manifest.rows = {};
-  for (const table of state.tableNames) {
-    const rows = state.rows[table] ?? {};
-    if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+/** The world step a world component line names (world:<kind>:<step>[:<map>]); null for the world's own lines. */
+const worldStepOf = (key, steps) => (steps.includes(key.split(':')[2]) ? key.split(':')[2] : null);
+
+/**
+ * The manifest's component lines refreshed from a state (keys and files are recorded by the chain as steps run): what
+ * the resolver names when a step's keys move (reasonsFor). (268) `ran`: the steps this run recorded (every step when
+ * omitted). Only their own lines move: a tank step's tool key, a world step's tool, map and donor keys. `shared`: the
+ * lines every step reads (the toolchain, roster, core, groups, rows and the world's own) move too. The chain passes
+ * false on a partial chain (--steps, --no-gpu, --no-world). A step that did not run then keeps the lines its keys were
+ * taken against. Its keys embed them, so it stays due either way, but its reasons stay true: --steps=gate used to
+ * relabel four steps whose tools had moved "inputs rewritten after this step ran".
+ */
+export function refreshComponents(manifest, state, { ran = null, shared = true } = {}) {
+  const moves = (name) => !ran || ran.includes(name);
+  if (shared) {
+    manifest.toolchain = state.toolchain;
+    manifest.toolchainParts = [...state.toolchainParts];
+    manifest.roster = state.roster;
+    manifest.core = state.core;
+    manifest.groups = { ...state.groups };
+    manifest.rows = {};
+    for (const table of state.tableNames) {
+      const rows = state.rows[table] ?? {};
+      if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
+    }
   }
-  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them.
-  if (state.world) manifest.comps = { ...state.world.comps };
+  manifest.tools = { ...manifest.tools,
+    ...Object.fromEntries(Object.entries(state.steps).filter(([name]) => moves(name)).map(([name, step]) => [name, step.tool])) };
+  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them. A world
+  // step that moves replaces its own lines (a map it no longer has drops out).
+  if (state.world) {
+    const worldSteps = Object.keys(state.world.steps), comps = (manifest.comps ??= {});
+    const owned = (key) => { const step = worldStepOf(key, worldSteps); return step ? moves(step) : shared; };
+    for (const key of Object.keys(comps)) if (owned(key)) delete comps[key];
+    for (const [key, value] of Object.entries(state.world.comps)) if (owned(key)) comps[key] = value;
+  }
   return manifest;
 }
 
