@@ -1355,12 +1355,14 @@ function buildOlifantMantlet(P: TankBuilderPort, m: MarkDesign): void {
     // the Mk 1B's infra-red/white searchlight "added above the main gun" (TE, Olifant Mk 1B): a square armoured box on the
     // housing's top left, laid with the gun, its glass forward behind a louvred shutter (the Tempe left and front
     // photographs; the illustration's box stands as tall as the housing)
-    const lx = 0.30, ly = 0.50, lz = 1.02;
+    // (269 blind critics: at 0.44 x 0.40 m it was lost against the Mk 2's slab turret) 0.54 x 0.46 m, its depth and
+    // rear face kept so its sweep over the elevation arc stays the measured one
+    const lx = 0.32, ly = 0.50, lz = 1.02;
     P.add('gunMountDark', box(0.16, 0.20, 0.24), lx, 0.37, lz - 0.02);
-    P.add('gunMount', box(0.44, 0.40, 0.42), lx, ly + 0.10, lz);
-    P.add('gunMountGlass', markVehicleNightLens(box(0.34, 0.30, 0.012), 'headlight', { searchlight: true }), lx, ly + 0.10, lz + 0.216);
-    for (let k = 0; k < 5; k++) P.add('gunMountDark', box(0.36, 0.012, 0.014), lx, ly - 0.02 + k * 0.06, lz + 0.226);
-    P.add('gunMountDark', box(0.46, 0.03, 0.06), lx, ly + 0.315, lz + 0.20);
+    P.add('gunMount', box(0.54, 0.46, 0.42), lx, ly + 0.12, lz);
+    P.add('gunMountGlass', markVehicleNightLens(box(0.44, 0.36, 0.012), 'headlight', { searchlight: true }), lx, ly + 0.12, lz + 0.216);
+    for (let k = 0; k < 6; k++) P.add('gunMountDark', box(0.46, 0.012, 0.014), lx, ly - 0.03 + k * 0.06, lz + 0.226);
+    P.add('gunMountDark', box(0.56, 0.03, 0.06), lx, ly + 0.365, lz + 0.20);
   }
 }
 
@@ -1432,11 +1434,12 @@ function buildOlifantBustleStowage(P: TankBuilderPort, m: MarkDesign): void {
   if (m.sa === 'mk1') {
     mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.70, d: 0.52, h: 0.46, fill: 0, rails: 2, seed: 7101 }),
       0, 0.36, -1.76);
-    // the two rolled camouflage nets across the rack, fat enough to read over the bustle at range (269 blind critics:
-    // the rack's mixed load did not read as nets), each tied twice
-    for (const dz of [-0.125, 0.125]) {
-      P.add('turretCloth', cylX(0.12, 1.56, P.q ? 16 : 10), 0, 0.53, -1.76 + dz);
-      for (const dx of [-0.48, 0.48]) P.add('turretDark', cylX(0.126, 0.03, P.q ? 16 : 10), dx, 0.53, -1.76 + dz);
+    // the rolled camouflage nets across the rack, two on its floor and one on them over the roof line, fat enough to
+    // read over the bustle from the front at range (269 blind critics: the rack's mixed load did not read as nets, and
+    // low rolls showed only from the side), each tied twice
+    for (const [dz, y] of [[-0.14, 0.54], [0.14, 0.54], [0, 0.80]] as const) {
+      P.add('turretCloth', cylX(0.15, 1.56, P.q ? 16 : 10), 0, y, -1.76 + dz);
+      for (const dx of [-0.48, 0.48]) P.add('turretDark', cylX(0.156, 0.03, P.q ? 16 : 10), dx, y, -1.76 + dz);
     }
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.05, 0.05, 0.14), s * 0.62, 0.38, -1.48);
@@ -1467,15 +1470,15 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
     P.add('hullDark', xform(cylZ(r, len, seg), 0, 0, 0, Math.atan2(-d[1], d[2]), Math.asin(d[0] / len), 0),
       (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   };
-  const tip: V3 = [0, NOSE_Y + 0.14, NOSE_Z + 0.55];
+  const tip: V3 = [0, NOSE_Y + 0.24, NOSE_Z + 0.60];
   for (const s of [-1, 1]) {
     // the V's arm from the shackle lug to the tip, and its stay back to the front guard's tip
     const lug: V3 = [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04];
-    tube(lug, tip, 0.05, 10);
-    tube([s * 0.28, (lug[1] + tip[1]) / 2, (lug[2] + tip[2]) / 2], [s * 1.30, 1.10, 3.76], 0.035, 8);
+    tube(lug, tip, 0.06, 12);
+    tube([s * 0.28, (lug[1] + tip[1]) / 2, (lug[2] + tip[2]) / 2], [s * 1.30, 1.10, 3.76], 0.045, 10);
     P.add('hullDark', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
   }
-  P.add('hullDark', box(0.14, 0.14, 0.10), tip[0], tip[1], tip[2]);
+  P.add('hullDark', box(0.18, 0.18, 0.12), tip[0], tip[1], tip[2]);
   // the frame's mesh panels, one in each bay (the V's two halves, the bays behind the stays), each run back under the
   // nose's edge: left open, the bays read through to the ground from above (the standard check's contiguity, release
   // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay). The stay bays stop 2.5 cm inside the
