@@ -36,6 +36,7 @@ import { createHeightField } from '../../terrain.ts';
 import { MAP_IDS, getMapConfig } from '../index.ts';
 import { bindStructureSpans, describeStructure, tagStructureVertices } from '../../structureDamageSeam.ts';
 import { createStructureDamage } from '../../../sim/structureDamage.ts';
+import { worldBuildKey } from '../../destructibles.ts';
 import { settleCatalogCuts } from '../railKit.ts'; // (integ/226: props.ts settles the catalog's cut halls after the catalog pass)
 import { registerHooks } from 'node:module';
 
@@ -296,12 +297,15 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   rebuildRegionalStructureSteps: function* (...args) { return recordingRebuild(...args); },
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage, settleCatalogCuts,
+  // (2026-11-02 audit R2) a structure's measures queue under its world's build key (props.ts worldKey = worldBuildKey(cfg))
+  worldBuildKey,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
 const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* place(config, heightField) {
   const P = { sideSkip: 0.25, spacingPad: 9, buildingLat: [10, 4], maxSpread: 1.7, wallStoneChance: 0.25, ...config.props };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
+  const worldKey = worldBuildKey(config);
   const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const seed = 2002, rng = mulberry32(seed), detailUvRng = () => 0.5;
   const buckets = Object.fromEntries(${JSON.stringify(names)}.map(name => [name, []]));
