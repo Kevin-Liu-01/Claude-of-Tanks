@@ -659,9 +659,18 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       const upperCheekBottom: Quad = [[s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)]];
       const upperCheekTop: Quad = [[s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]];
       P.add('turret', slab(...upperCheekBottom, ...upperCheekTop));              // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-      // (268b round 2, both blind critics: the C1 prototype's 2x4 cassette tiles on each raked cheek "read as reactive-
-      // armour bricks"; the real turret's cheeks are plain plate and its launchers are tubes on the flanks. The tiles are
-      // gone (its skirt run keeps the release-240 cassettes); the flank smoke tubes are buildArieteMkTurretStage2's.)
+      if (!c2) {
+        // Release 240 (C1 ERA, see c1EraReceipt): four columns by two rows of the C2's cheek cassettes seated on the raked
+        // face, clear of the gun slot's side cheeks (x 0.375-0.42) and under the lifting lugs; the C2 lays its field on
+        // its own add-on carrier over this face. (268b round 2 dropped these for the photographs' plain plate; the
+        // owner's release-240 order for the C1's ERA reapplication stands, so they stay beside the flank smoke tubes.)
+        const face0: Quad = [upperCheekBottom[0], upperCheekBottom[1], upperCheekTop[1], upperCheekTop[0]];
+        for (const u of [0.28, 0.48, 0.68, 0.88]) for (const v of [0.25, 0.66]) {
+          const face = sampleArmorFace(...face0, u, v, [s, 1, 1]);
+          faceSeatedArmorCassette(P, 'turret', face, face.dv, 0.13, 0.055, 0.20, C2_ERA_EMBED_M);
+          c1EraReceipt.turretCheekCassettes++;
+        }
+      }
       P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
         [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
         [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
