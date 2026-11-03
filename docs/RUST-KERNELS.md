@@ -21,6 +21,27 @@ reading a record's crushed state itself, since a match changes it. A world built
 (`createHeadlessCollisionWorld`) gets its own instance: its own lattice, overlay and record table. The module imports one
 function, `env.terrain_height`, the map's height function.
 
+## Protocols (2026-11-02 audit S2)
+
+One instance keeps one world's state across calls, so the calls that only make sense in an order carry that order in
+the kernel (`crates/cot-sim-wasm` `State`), checked per call. A call out of order, or naming a stale walk or handle, is
+refused with a code (`REFUSED_*`, `protocol_refusal` names the last) and never answered from a half-made state;
+`src/world/wasmWorldKernels.ts` asserts on every code, so a host's slip throws where it happens.
+
+- **Contact lattice:** each corner and fold split is written once (`lattice_set_vertex`, `lattice_fill`,
+  `lattice_set_flip_from_centre`): the same value again is taken, another refused, a split waits for its corners. There
+  is no raw write pointer. `contact_status` is the last call's, `contact_cell_flipped`'s included.
+- **A hull's support:** `support_query` (refused before `records_load`) → the host writes the candidates' flags →
+  `support_begin` at the same point (refused with no query since the last begin, or at another point) → the samples
+  (refused between a query and its begin: NaN, or −1 for a count).
+- **The clearance walks:** `clearance_begin` returns the walk's id, which its `*_next` and `clearance_entry` calls name.
+  A walk begun inside another supersedes it, and the outer walk's next call is refused (`WALK_STALE`); `records_load`
+  ends any walk.
+- **Grids:** a handle names a grid of the instance that made it; one never made, or freed (`grid_free`), is refused. The
+  hosts build a world's grids once, with its instance.
+- **The overlay mirror:** the kernel's clock is unset (NaN, `overlay_time`) on a fresh or reset overlay, as the
+  TypeScript's `clockS`.
+
 ## Turning them off
 
 - **Dedicated server:** on unless `COT_SIM_KERNELS=ts` (`server/match/simKernels.ts`). The server compiles
@@ -57,6 +78,8 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | Command | Proves |
 |---|---|
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
+| `cargo test -p cot-sim-wasm --lib` | The cross-call protocols on an instance's own state (a native test links `terrain_height`) |
+| `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |

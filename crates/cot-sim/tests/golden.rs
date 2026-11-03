@@ -471,13 +471,13 @@ fn supply(lattice: &mut ContactLattice, missing: Sample) {
             for (vx, vz) in [(ix, iz), (ix + 1, iz), (ix, iz + 1), (ix + 1, iz + 1)] {
                 if !lattice.vertex_ready(vx, vz) {
                     let h = steep_height(lattice.vertex_coordinate(vx), lattice.vertex_coordinate(vz));
-                    lattice.set_vertex(vx, vz, h);
+                    lattice.set_vertex(vx, vz, h).expect("a corner supplied once");
                 }
             }
         }
         Sample::MissingFlip(ix, iz) => {
             let (cx, cz) = lattice.cell_centre(ix, iz);
-            lattice.set_flip_from_centre(ix, iz, steep_height(cx, cz));
+            lattice.set_flip_from_centre(ix, iz, steep_height(cx, cz)).expect("a split decided once");
         }
         other => panic!("nothing to supply for {other:?}"),
     }

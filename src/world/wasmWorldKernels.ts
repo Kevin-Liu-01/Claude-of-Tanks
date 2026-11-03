@@ -10,6 +10,10 @@
  * (server/match/simKernels.ts) and the browser host unless ?simKernels=ts (docs/RUST-KERNELS.md). One instance per
  * world: its lattice, its overlay and its records are that world's own. Node-runnable and DOM-free, like every authority
  * module.
+ *
+ * The kernel checks its cross-call protocols per call (2026-11-02 audit S2: a hull's query, flags, begin and samples; a
+ * clearance walk named by its id; grid handles; a write-once lattice) and refuses a call out of order with a code; every
+ * code is asserted here (`refused`), so an order slip throws where it happens instead of answering from a half-made state.
  */
 import type { ClearanceScan, CollisionRecord, ObstacleQuery, SimpleCollisionShape } from './collision.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -23,6 +27,7 @@ export type WorldKernelModule = WebAssembly.Module;
 interface CotSimExports {
   readonly memory: WebAssembly.Memory;
   scratch_ptr(bytes: number): number;
+  protocol_refusal(): number;
   contact_height(x: number, z: number): number;
   contact_flipped(x: number, z: number): number;
   grid_new(boxes: number, n: number, cellSize: number): number;
@@ -33,13 +38,15 @@ interface CotSimExports {
   overlay_add_course(cx: number, cz: number, c: number, s: number, hw: number, skirtM: number, profile: number, n: number): void;
   overlay_reset(): void;
   overlay_set_time(timeS: number): void;
+  overlay_revision(): number;
+  overlay_time(): number;
   records_load(data: number, len: number, grid: number): number;
   record_flags_ptr(): number;
   support_query(x: number, z: number): number;
   support_candidates_ptr(): number;
   support_begin(x: number, z: number, bellyY: number, posed: number, centerX: number, centerZ: number, forwardX: number,
     forwardZ: number, rightX: number, rightZ: number, halfLength: number, halfWidth: number, centerRise: number,
-    riseAlong: number, riseAcross: number, frontLift: number, rearLift: number): void;
+    riseAlong: number, riseAcross: number, frontLift: number, rearLift: number): number;
   support_contact(x: number, z: number): number;
   terrain_contact(x: number, z: number): number;
   support_top(x: number, z: number, ground: number): number;
@@ -47,11 +54,25 @@ interface CotSimExports {
   support_standing(): number;
   sampling_frame_ptr(): number;
   sampling_out_ptr(): number;
-  support_sample_hull(): void;
+  support_sample_hull(): number;
   clearance_begin(minX: number, minZ: number, maxX: number, maxZ: number): number;
-  clearance_point_next(x: number, z: number, margin: number, skip: number): number;
-  clearance_lane_next(sx: number, sz: number, dx: number, dz: number, reach: number, margin: number, skip: number): number;
-  clearance_entry(): number;
+  clearance_point_next(walk: number, x: number, z: number, margin: number, skip: number): number;
+  clearance_lane_next(walk: number, sx: number, sz: number, dx: number, dz: number, reach: number, margin: number, skip: number): number;
+  clearance_entry(walk: number): number;
+}
+
+/** crates/cot-sim-wasm's refusals by code (REFUSED_*, its protocol_refusal): what the call lacked. */
+const REFUSALS = ['accepted', 'the records are not loaded', 'out of its order', 'another hull than the one queried',
+  'a write-once entry changed', 'out of range', 'a handle this instance never made', 'in use', 'a corner missing',
+  'a walk superseded by a later begin'];
+/** A count refused (REFUSED_COUNT, u32::MAX, as the module's i32 reads in JavaScript). */
+const REFUSED_COUNT = -1;
+/** A clearance walk's next refused: a later begin superseded the walk (WALK_STALE). */
+const WALK_STALE = -2;
+/** The kernel refused `call`: an order slip in this host, thrown where it happens. */
+function refused(w: CotSimExports, call: string): Error {
+  const code = w.protocol_refusal();
+  return new Error(`world kernels: ${call} refused (${REFUSALS[code] ?? `code ${code}`})`);
 }
 
 /** crates/cot-sim-wasm support_sample_hull's frame and output (support_sampling.rs: FIT_MAX, BED_MAX, INNER_MAX). */
@@ -125,8 +146,11 @@ function createObstacleGridKernel(w: CotSimExports, records: CollisionRecord[], 
     boxes[i * 4] = r.min[0]; boxes[i * 4 + 1] = r.min[2]; boxes[i * 4 + 2] = r.max[0]; boxes[i * 4 + 3] = r.max[2];
   }
   const handle = w.grid_new(ptr, n, cellSize);
-  // the answer buffer is reserved for every record once, so it never moves
-  const base = w.grid_out_ptr(handle) >>> 2;
+  // the answer buffer is reserved for every record once, so it never moves (a handle lives as long as this instance: the
+  // world's grids are built once, with it)
+  const out = w.grid_out_ptr(handle);
+  if (out === 0) throw refused(w, 'grid_out_ptr');
+  const base = out >>> 2;
   const query = w.grid_query;
   let u32 = new Uint32Array(w.memory.buffer);
   const slotOf = new Map<CollisionRecord, number>();
@@ -137,6 +161,7 @@ function createObstacleGridKernel(w: CotSimExports, records: CollisionRecord[], 
     indexed,
     query: Object.assign(function kernelQuery(minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]) {
       const m = query(handle, minX, minZ, maxX, maxZ);
+      if (m === REFUSED_COUNT) throw refused(w, 'grid_query');
       if (u32.buffer !== w.memory.buffer) u32 = new Uint32Array(w.memory.buffer);
       out.length = 0;
       for (let k = 0; k < m; k++) out.push(indexed[u32[base + k]]);
@@ -145,19 +170,35 @@ function createObstacleGridKernel(w: CotSimExports, records: CollisionRecord[], 
   };
 }
 
-/** The bots' clearance walk over the obstacles' table (collision.ts ClearanceScan; crates/cot-sim-wasm clearance_begin). */
+/**
+ * The bots' clearance walk over the obstacles' table (collision.ts ClearanceScan; crates/cot-sim-wasm clearance_begin):
+ * each walk named by the id its begin returned, so a walk read after another began (a nested scan) throws here instead
+ * of reading the other's place in the table.
+ */
 function createClearanceScan(w: CotSimExports, records: CollisionRecord[]): ClearanceScan {
+  const superseded = (walk: number) => new Error(`world kernels: clearance walk ${walk >>> 0} read after a later walk began (a nested scan)`);
   return {
-    begin(minX, minZ, maxX, maxZ) { w.clearance_begin(minX, minZ, maxX, maxZ); },
-    point(x, z, margin, skip) {
-      const index = w.clearance_point_next(x, z, margin, skip);
+    begin(minX, minZ, maxX, maxZ) {
+      const walk = w.clearance_begin(minX, minZ, maxX, maxZ);
+      if (walk === 0) throw refused(w, 'clearance_begin');
+      return walk;
+    },
+    point(walk, x, z, margin, skip) {
+      const index = w.clearance_point_next(walk, x, z, margin, skip);
+      if (index === WALK_STALE) throw superseded(walk);
       return index < 0 ? null : records[index];
     },
-    lane(sx, sz, dx, dz, reach, margin, skip) {
-      const index = w.clearance_lane_next(sx, sz, dx, dz, reach, margin, skip);
+    lane(walk, sx, sz, dx, dz, reach, margin, skip) {
+      const index = w.clearance_lane_next(walk, sx, sz, dx, dz, reach, margin, skip);
+      if (index === WALK_STALE) throw superseded(walk);
       return index < 0 ? null : records[index];
     },
-    get entry() { return w.clearance_entry(); },
+    entry(walk) {
+      const entry = w.clearance_entry(walk);
+      // (NaN: the walk was superseded, or it handed out no lane's record yet)
+      if (Number.isNaN(entry)) throw superseded(walk);
+      return entry;
+    },
   };
 }
 
@@ -187,7 +228,7 @@ function loadSupportRecords(w: CotSimExports, records: CollisionRecord[], grid: 
   }
   const ptr = w.scratch_ptr(flat.length * 8);
   new Float64Array(w.memory.buffer, ptr, flat.length).set(flat);
-  w.records_load(ptr, flat.length, grid);
+  if (w.records_load(ptr, flat.length, grid) === REFUSED_COUNT) throw refused(w, 'records_load');
   return records;
 }
 
@@ -263,8 +304,10 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
     getTerrainContactHeightAt: w.terrain_contact,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
+    // the hull's protocol in one call: its query, its candidates' flags, its begin (the kernel refuses any other order)
     beginHull(x, z, bellyY, pose) {
       count = w.support_query(x, z);
+      if (count === REFUSED_COUNT) throw refused(w, 'support_query');
       if (flags.buffer !== w.memory.buffer) {
         // (the pointer before the buffer, as views())
         const flagsAt = w.record_flags_ptr();
@@ -279,15 +322,18 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
         candidates[k] = record;
         flags[ids[k]] = (record.crushed ? 1 : 0) | (record.dead ? 2 : 0);
       }
-      if (pose) {
-        w.support_begin(x, z, bellyY, 1, pose.centerX, pose.centerZ, pose.forwardX, pose.forwardZ, pose.rightX, pose.rightZ,
-          pose.halfLength, pose.halfWidth, pose.centerRise, pose.riseAlong, pose.riseAcross, pose.frontLift, pose.rearLift);
-      } else {
-        w.support_begin(x, z, bellyY, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0);
-      }
+      const begun = pose
+        ? w.support_begin(x, z, bellyY, 1, pose.centerX, pose.centerZ, pose.forwardX, pose.forwardZ, pose.rightX, pose.rightZ,
+          pose.halfLength, pose.halfWidth, pose.centerRise, pose.riseAlong, pose.riseAcross, pose.frontLift, pose.rearLift)
+        : w.support_begin(x, z, bellyY, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+      if (begun !== 0) throw refused(w, 'support_begin');
     },
     get candidateCount() { return count; },
-    get standingDeck() { return w.support_standing() === 1; },
+    get standingDeck() {
+      const standing = w.support_standing();
+      if (standing === REFUSED_COUNT) throw refused(w, 'support_standing');
+      return standing === 1;
+    },
     get recordReads() { return w.support_record_reads(); },
     topEdgeStations(quad, stations, max) { return topEdgeStationsIn(candidates, count, quad, stations, max, terrainFast); },
     // movement.ts sampleOuterTrackLines and sampleSupportFan for the hull begun: its frame in, one call, the aggregates and
@@ -304,7 +350,7 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
       frame[25] = job.gearBottomY; frame[26] = job.halfWidth; frame[27] = job.rigidGear ? 1 : 0; frame[28] = job.refY;
       frame[29] = job.rootX; frame[30] = job.rootZ; frame[31] = job.lineY; frame[32] = job.risePerM; frame[33] = job.trackSinRoll;
       frame[34] = job.forwardX; frame[35] = job.forwardZ;
-      w.support_sample_hull();
+      if (w.support_sample_hull() !== 0) throw refused(w, 'support_sample_hull');
       views();
       s.sumHeightZ = out[0]; s.sumZZ = out[1]; s.sumLeft = out[2]; s.sumRight = out[3]; s.sideCount = out[4]; s.outerMax = out[5];
       s.outerX = out[6]; s.outerZ = out[7]; s.settleDeficitSum = out[8]; s.deficitCount = out[9]; s.deepestZ = out[10];

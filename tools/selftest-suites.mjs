@@ -2024,6 +2024,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainContactSurface.selftest.mjs',
     // 2026-10-25 (workstream #3, the Rust core's flagged kernels): the WebAssembly contact surface and grids, bit for bit
     'src/world/wasmWorldKernels.selftest.mjs',
+    // 2026-11-02 audit S2: the kernels' cross-call protocols checked per call (write-once lattice, walk ids, a hull's
+    // query/begin/samples, grid handles), on the package and at the seam
+    'src/world/wasmKernelProtocols.selftest.mjs',
     // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
     'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
