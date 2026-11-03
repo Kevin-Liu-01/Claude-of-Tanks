@@ -5,7 +5,8 @@
 //  - a building's stages: a replayed or doubled stage event lays nothing again (its dust, the mask's collapse stamp, the
 //    stage builders ran twice: a building stood up and fell again);
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
-//    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
+//    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes; the scan
+//    reads only hulls this viewer sees (a hidden one's frozen record re-lit a column for ever) and never evicts a column;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
 //    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
 //    building;
@@ -116,6 +117,36 @@ function fakeVisual() {
   entities.get('burner').combat.fire.burning = false; // its burning:false lost
   frames(3);
   assert.ok(!live().includes('burner'), 'a fire seen burning goes out with the combat record');
+  fx.resetAll();
+}
+
+// ---- the burn scan: only a hull this viewer sees, only into a free slot ----
+{
+  const hull = (id, x, extra = {}) => ({ id, visual: { root: new THREE.Group() }, state: { pos: new THREE.Vector3(x, 0, 12) },
+    combat: { destroyed: false, fire: { burning: true } }, ...extra });
+  const entities = new Map([['hidden', hull('hidden', 20, { networkVisible: false })], ['seen', hull('seen', -20)]]);
+  const { fx, bus, frames } = runtime(entities);
+  const live = () => fx.getAttachmentDebug().subjects.map((s) => s.id).filter((id) => !id.startsWith('wreck:')).sort();
+  frames(40);
+  assert.deepEqual(live(), ['seen'], "a hidden hull's last-sample burning record lights no column (a peer's out-of-sight actor)");
+  // a hull seen burning that goes out of sight still burning (its record frozen at burning): its column runs out on its
+  // own time and is never lit again at its last-seen place (it was, every half second, for ever)
+  entities.get('seen').networkVisible = false;
+  frames(200, 0.5);
+  assert.deepEqual(live(), [], 'a column whose hull went out of sight ends on its own time');
+  fx.resetAll();
+  // the cap (four): four fires' columns from their events, and a fifth burning hull the scan finds
+  entities.clear();
+  for (const [i, id] of ['a', 'b', 'c', 'd'].entries()) {
+    entities.set(id, hull(id, i * 6));
+    bus.emit('tank:fire', { id, burning: true });
+  }
+  entities.set('e', hull('e', 30));
+  frames(40);
+  assert.deepEqual(live(), ['a', 'b', 'c', 'd'], 'the scan never evicts a column for a hull it found');
+  entities.get('a').combat.fire.burning = false;
+  frames(40);
+  assert.deepEqual(live(), ['b', 'c', 'd', 'e'], 'and lights one when a slot frees');
   fx.resetAll();
 }
 

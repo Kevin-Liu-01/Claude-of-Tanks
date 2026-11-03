@@ -4542,14 +4542,26 @@ function* createFxSteps(
       }
       const subject = resolveSubject(col.key);
       // (2026-11-02 audit F10) level, not only the tank:fire edge: a fire seen burning that the combat record says is
-      // out retires its column (a lost burning:false left it 40 s plus a 35 s smoulder)
-      const burning = subject?.combat?.fire?.burning;
+      // out retires its column (a lost burning:false left it 40 s plus a 35 s smoulder). A hull this viewer cannot see
+      // has only its last sample's record: unknown, its column runs on its own time
+      const burning = hullHidden(subject) ? undefined : subject?.combat?.fire?.burning;
       if (burning === true) col.sawBurning = true;
       else if (burning === false && col.sawBurning && !replaySuppressed) continue;
       col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
       columns[live++] = col;
     }
     columns.length = live;
+  }
+
+  /**
+   * (2026-11-02 audit F10) A hull this viewer cannot see (a peer's actor out of its spotting, networkVisible false; the
+   * page's visibility hook): its combat record is the last sample's, not now's (battlePresentation writes it only when
+   * a sample arrives), so its fire is unknown.
+   */
+  function hullHidden(entity: object | null | undefined): boolean {
+    if (!entity) return false;
+    if ((entity as { networkVisible?: boolean }).networkVisible === false) return true;
+    return !!auxiliaryVisible && auxiliaryVisible(entity as AuxiliaryVisualEntity) === false;
   }
 
   /** A position for a hull's event: the last one an event carried, else where the hull stands now (recorded). */
@@ -4575,7 +4587,10 @@ function* createFxSteps(
 
   /**
    * (2026-11-02 audit F10) A burning hull's column from its combat record too, twice a second: a late joiner (no
-   * tank:fire edge for a fire already burning), or a fire raised without a hit before it, still smokes.
+   * tank:fire edge for a fire already burning), or a fire raised without a hit before it, still smokes. Only a hull this
+   * viewer sees (a hidden one's record is its last sample's: it re-lit a column at its last-seen place for ever), and
+   * only into a free slot: the scan never evicts a column (the cap's eviction stays the tank:fire / kill events' own,
+   * as it was).
    */
   const BURN_SCAN_S = 0.5;
   let burnScanIn = 0;
@@ -4584,14 +4599,17 @@ function* createFxSteps(
     burnScanIn -= tickDt;
     if (burnScanIn > 0) return;
     burnScanIn = BURN_SCAN_S;
+    if (columns.length >= columnCap) return;
     for (const entity of auxiliaryEntities()) {
       const combat = (entity as { combat?: FxEntity['combat'] }).combat;
       if (!combat || combat.destroyed || combat.fire?.burning !== true || typeof entity.id !== 'string') continue;
+      if (hullHidden(entity)) continue;
       let has = false;
       for (const col of columns) if (col.key === entity.id) { has = true; break; }
       if (has) continue;
       const p = knownPosOf(entity.id);
       if (p) startLiveColumn(entity.id, p);
+      if (columns.length >= columnCap) return;
     }
   }
 
@@ -7843,6 +7861,7 @@ function* createFxSteps(
       burstAt.clear();
       roundEndedAt.clear();
       hullBlast.armed = false;
+      wreckLit = null; // (2026-11-02 audit F10) never a column of the last battle
       shellMunitions.clear();
       lastTickS = particles.getTime();
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
