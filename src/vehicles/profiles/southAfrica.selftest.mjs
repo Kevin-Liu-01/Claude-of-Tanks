@@ -26,9 +26,7 @@ await ensureInteriorFills(Object.keys(IDS));
 const within = (actual, expected, label, fraction = 0.03) =>
   assert.ok(Math.abs(actual - expected) <= expected * fraction, `${label}: ${actual.toFixed(3)} m, expected ${expected} m within ${fraction * 100} %`);
 
-// the TTD on TE's figures: 7.78 m of hull, 9.41 m over the 51-calibre GT3, seven road wheels a side
-within(2 * TTD_DATUMS.hull.noseZ, 7.78, 'TTD hull', 0.005);
-within(TTD_DATUMS.muzzleHullZ + TTD_DATUMS.hull.noseZ, 9.41, 'TTD over the gun', 0.005);
+// the TTD on the fleet's Leopard 2 (the owner, 2026-11-02): its seven road wheels a side on Leopard 2-type torsion bars
 assert.equal(TTD_DATUMS.roadWheelZs.length, 7, 'the TTD: seven road wheels a side');
 
 for (const [id, row] of Object.entries(IDS)) {
@@ -77,7 +75,8 @@ assert.deepEqual([mk1a.bushBar, mk1b.searchlight, mk1b.sightPost, mk1b.suspensio
   [true, true, false, 'torsion', 'horstmann'], 'the Mk 1A\'s bush bar; the Mk 1B\'s searchlight over the gun, no sight post, its torsion bars');
 assert.equal(receipt('olifant_mk2', 'olifantMarkReceipt').mark, undefined, 'the Mk 2 keeps its own 262 build (its sight post)');
 const ttd = receipt('ttd', 'ttdTurretReceipt');
-assert.deepEqual([ttd.dischargers, ttd.sunkenCupola], [8, true], 'the TTD\'s two banks of four and its sunken cupola');
+assert.deepEqual([ttd.base, ttd.dischargers, ttd.sheetedDischargers], ['leopard2a4-block', 8, true],
+  'the TTD on the Leopard 2A4\'s block turret, its two banks of four behind their sheets');
 
 // the tree: the Mk 1 its root with the Semel its twin, the Mk 2 moved in from the UK tree, the TTD its special
 const sa = TECH_TREES.find((entry) => entry.id === 'south_africa');
