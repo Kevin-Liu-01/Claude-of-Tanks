@@ -10974,6 +10974,14 @@ export function* createTankRuntimeSteps(
     return move;
   }
 
+  /** setDestroyed's entry (wreckLifecycle.ts): true when a new wreck is to be laid. A young plain wreck's late cook-off
+   *  cause upgrades it here; every other repeat, and a disposed visual, does nothing. */
+  function enterWreck(opts: { pop?: boolean } | undefined): boolean {
+    const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop) });
+    if (move === 'upgrade') upgradeToCookOff();
+    return move === 'wreck';
+  }
+
   /**
    * (2026-11-02 audit F10) A young plain wreck learns it was a cook-off (a network peer: the row's DESTROYED flag
    * landed before the tank_destroyed event that carries the cause): the cook-off's char spread and gun bend, and its
@@ -11684,9 +11692,7 @@ export function* createTankRuntimeSteps(
      *   (screenshot composers freeze mid-flight). Default: settled pose.
      */
     setDestroyed(opts) {
-      const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop) });
-      if (move === 'upgrade') { upgradeToCookOff(); return; }
-      if (move !== 'wreck') return;
+      if (!enterWreck(opts)) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
       if (gearLodActive) setGearLod(false);
@@ -11841,11 +11847,12 @@ export function* createTankRuntimeSteps(
      * tank (ERA/track restore still runs — a survivor may have lost both).
      */
     resetDestroyed() {
-      const wasWreck = destroyed;
-      if (moveWreck({ kind: 'reset' }) !== 'reset') return; // a disposed visual
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      // (2026-11-02 audit F10) a disposed visual stops here (the three above are idempotent and touch no GPU resource)
+      const wasWreck = destroyed;
+      if (moveWreck({ kind: 'reset' }) !== 'reset') return;
       turretRing.hide();
       reopenInteriorFills();
       if (wasWreck) {
