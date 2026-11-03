@@ -246,6 +246,9 @@ interface RoundRecord {
   halo: readonly number[];
   seed: number;
   seen: boolean;
+  /** (2026-11-02 audit F10) frames it has been missing (0: seen this frame); its strike reported (an explicit end) */
+  missed: number;
+  ended: boolean;
   /** last frame's head and streak tail (drawn once more after the round ends, so a short life still shows) */
   hx: number; hy: number; hz: number; tx: number; ty: number; tz: number; k: number;
   /** last frame's speed (m/s) */
@@ -499,7 +502,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     let r = records.get(shell.id);
     if (r) return r;
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
-      seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0, lens: 0, lx: 0, ly: 0, lz: 0, lr: 1 };
+      seen: false, missed: 0, ended: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0, lens: 0, lx: 0, ly: 0,
+      lz: 0, lr: 1 };
     const who = o.shooter(shell.shooterId);
     const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true, _roundClass);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
@@ -519,6 +523,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;
+    r.missed = 0;
+    r.ended = false;
     r.k = 0;
     r.lens = 0;
     records.set(shell.id, r);
@@ -654,10 +660,17 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   // hoisted Map callbacks: the per-frame walks allocate nothing
   const unsee = (r: RoundRecord): void => { r.seen = false; };
   const release = (r: RoundRecord): void => { r.k = 0; free.push(r); };
+  /** (2026-11-02 audit F10) A round missing from one frame without a strike is held one more: seen again (a dropped
+   *  row) it keeps its record, its belt's tracer choice (it was re-rolled: a tracer switching on or off mid-flight). */
   const retire = (r: RoundRecord, id: ShellKey): void => {
     if (r.seen) return;
-    // its last dash once more (moved into its strike when one was reported), then the record is reused
-    if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
+    if (r.missed === 0) {
+      // its last dash once more (moved into its strike when one was reported), then the record is reused
+      if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
+      r.k = 0;
+      r.missed = 1;
+      if (!r.ended) return;
+    }
     records.delete(id);
     release(r);
   };
@@ -677,6 +690,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       if (shell.dead) return;
       const r = record(shell);
       r.seen = true;
+      r.missed = 0;
       if (!r.lit) return;
       const v = shell.vel;
       const speed = Math.hypot(v.x, v.y, v.z);
@@ -756,6 +770,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     strike(id, pos, water = false) {
       if (id == null) return;
       const r = records.get(id);
+      if (r) r.ended = true;
       if (!r || !r.lit || !(r.k > 0)) return;
       const x = pos[0] ?? r.hx, y = pos[1] ?? r.hy, z = pos[2] ?? r.hz;
       if (!Number.isFinite(x + y + z)) return;

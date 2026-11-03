@@ -51,10 +51,14 @@ const STRAND_GAP = 0.035;
 
 interface MissileWires {
   readonly mesh: THREE.Mesh;
-  /** A wire for round `key`, `strands` (1 or 2), paid out from the tube mouth at (x, y, z) at fx time `now`. */
+  /** A wire for round `key`, `strands` (1 or 2), paid out from the tube mouth at (x, y, z) at fx time `now`.
+   *  (2026-11-02 audit F10) A key whose wire has parted (its round gone from view, then seen again) lays a new wire: the
+   *  parted one fades keyless. */
   begin(key: number, strands: number, x: number, y: number, z: number, now: number): number;
   /** The slot `key` holds, or -1. */
   slotOf(key: number): number;
+  /** Whether a slot's wire has parted (it pays out no more). */
+  parted(slot: number): boolean;
   /** The launcher's tube mouth now: the wire's fixed end (it follows the vehicle and the turret). */
   anchor(slot: number, x: number, y: number, z: number): void;
   /** The missile's tail now: the wire pays out to it and is laid where it passes. */
@@ -329,9 +333,14 @@ export function createMissileWires(light: SceneLightUniforms): MissileWires {
   return {
     mesh,
     begin(key, strands, x, y, z, now) {
+      // its own wire while taut (a parted one fades on under no key: its round seen again lays a new one)
+      for (let i = 0; i < WIRE_SLOTS; i++) {
+        if (!used[i] || keys[i] !== key) continue;
+        if (cutAt[i] < 0) return i;
+        keys[i] = NaN;
+      }
       let slot = -1, oldest = Infinity;
       for (let i = 0; i < WIRE_SLOTS; i++) {
-        if (used[i] && keys[i] === key) return i;
         // a free slot, else the parted wire that parted first, else the oldest wire
         const rank = !used[i] ? -Infinity : cutAt[i] >= 0 ? cutAt[i] - 1e6 : bornAt[i];
         if (rank < oldest) { oldest = rank; slot = i; }
@@ -348,6 +357,9 @@ export function createMissileWires(light: SceneLightUniforms): MissileWires {
     slotOf(key) {
       for (let i = 0; i < WIRE_SLOTS; i++) if (used[i] && keys[i] === key) return i;
       return -1;
+    },
+    parted(slot) {
+      return slot >= 0 && slot < WIRE_SLOTS && !!used[slot] && cutAt[slot] >= 0;
     },
     anchor(slot, x, y, z) {
       if (slot < 0 || !used[slot] || cutAt[slot] >= 0) return;

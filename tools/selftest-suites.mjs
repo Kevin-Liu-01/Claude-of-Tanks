@@ -491,6 +491,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
     'src/fx/killLight.selftest.mjs',
+    'src/fx/absenceGrace.selftest.mjs', // 2026-11-02 audit F10: a round missing from a frame has not ended (tracers, trails, wires, drones)
     'src/fx/fxLifecycles.selftest.mjs', // 2026-11-02 audit F10: the battle FX runtime's deferred beats, stage ledger, columns, visibility, HE dedupe, bus binding
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',

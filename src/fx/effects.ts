@@ -304,6 +304,8 @@ function isRingVisible(ring: ShockRingState | MuzzleRingState): boolean {
 interface GuidedTrail {
   age: number;
   seen: boolean;
+  /** (2026-11-02 audit F10) gone from the frames past MISSILE_ABSENCE_GRACE_S: its wire parted and its trail ended, once */
+  lost?: boolean;
   /** (fx 9a) the round's look, seed, launch point and the distance flown last frame; (FX lane 10-14) its smoke trail's
    *  slot and the distance of the trail's next point */
   look?: MissileLook;
@@ -660,6 +662,9 @@ function bufferAttribute(
 
 /** a missile's record lingers this long after its round is gone (its wire parts and its trail ends where it was) */
 const MISSILE_RECORD_LINGER_S = 0.48;
+/** (2026-11-02 audit F10) A round missing from the frames this long (fx s) has ended (no event raised it here: a networked
+ *  round that left the snapshot); a shorter absence (a dropped frame, a spotting blink) is not an end. As a drone's. */
+const MISSILE_ABSENCE_GRACE_S = 0.12;
 /** an APS interceptor's flash lives two frames at 60 Hz: a bright frame, never a glow (apsIntercept) */
 const APS_FLASH_LIFE_S = 1 / 30;
 /** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
@@ -4936,6 +4941,7 @@ function* createFxSteps(
     const trail = missileRecord(shell);
     trail.age = 0;
     trail.seen = true;
+    trail.lost = false;
     const look = trail.look as MissileLook;
     const seed = trail.seed as number;
     const seedU = ((seed >>> 0) % 10007) / 10007;
@@ -5092,7 +5098,8 @@ function* createFxSteps(
   function payOutWire(trail: GuidedTrail, shell: LiveShell, look: MissileLook, dir: THREE.Vector3): void {
     const key = trail.seed as number;
     let slot = wires.slotOf(key);
-    if (slot < 0) {
+    // (2026-11-02 audit F10) a parted wire (the round was gone a while, and is seen again) is laid anew from its launch
+    if (slot < 0 || wires.parted(slot)) {
       // first seen in flight (no shot event here): its wire from where it was first seen
       const L0 = trail.launch ?? [shell.pos.x, shell.pos.y, shell.pos.z];
       slot = wires.begin(key, look.wires, L0[0], L0[1], L0[2], particles.getTime());
@@ -5371,7 +5378,8 @@ function* createFxSteps(
     const tl = trail.pylon ? (trail.lensK !== undefined ? lensTrailOf(base) : gunshipTrailOf(base)) : base;
     const key = trail.seed as number;
     let slot = trail.smokeSlot ?? -1;
-    if (slot < 0 || smokeTrails.slotOf(key) !== slot) {
+    // (2026-11-02 audit F10) an ended trail (the round was gone a while, and is seen again) lays a new one
+    if (slot < 0 || smokeTrails.slotOf(key) !== slot || smokeTrails.ended(slot)) {
       slot = smokeTrails.begin(key, smokeTrails.lookIndex(tl), seedU);
       trail.smokeSlot = slot;
       trail.nextSmokeD = Math.max(look.igniteM, drawnD - 60);
@@ -5478,10 +5486,15 @@ function* createFxSteps(
   function ageMissileRecords(tickDt: number): void {
     for (const [id, trail] of guidedTrails) {
       if (trail.seen) continue;
-      // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
-      // wire parts where it was last seen
-      if (trail.age === 0 && trail.look) { if (trail.look.wires > 0) partWire(id); endTrail(id); }
       trail.age += tickDt;
+      // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
+      // wire parts where it was last seen. (2026-11-02 audit F10) Past a grace, once: a frame's blink parted wires and
+      // ended trails for good (and a frozen clock repeated it every frame)
+      if (!trail.lost && trail.age >= MISSILE_ABSENCE_GRACE_S && trail.look) {
+        trail.lost = true;
+        if (trail.look.wires > 0) partWire(id);
+        endTrail(id);
+      }
       if (trail.age >= MISSILE_RECORD_LINGER_S) guidedTrails.delete(id);
     }
   }
@@ -6455,9 +6468,14 @@ function* createFxSteps(
 
     /** Render-side ATGM visibility telemetry used by the browser lifecycle gate. */
     getGuidedMissileDebug() {
+      // (2026-11-02 audit F10) the rounds on record whose smoke trail has ended (gone past the absence grace, or struck)
+      let endedTrails = 0;
+      for (const trail of guidedTrails.values()) if ((trail.smokeSlot ?? -1) >= 0 && smokeTrails.ended(trail.smokeSlot as number)) endedTrails++;
       return {
         bodies: renderedAtgmBodies,
         trailSegments: renderedAtgmTrailSegments,
+        records: guidedTrails.size,
+        endedTrails,
       };
     },
 

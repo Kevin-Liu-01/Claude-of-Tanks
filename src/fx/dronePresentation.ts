@@ -266,7 +266,8 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       track.pos.copy(position);track.vel.copy(velocity);track.ownerId=ownerId;track.nation=droneNation(nation??'USA');track.ageS=ageS;
       returns.delete(id);
       if(hidden){let state=attitudes.get(id);if(!state){state=createDroneAttitude();attitudes.set(id,state);}state.seen=frame;return;}
-      if(count>=CAPACITY)return;
+      // (2026-11-02 audit F10) past the pool's capacity a drone is tracked, not drawn: never read as a flight that ended
+      if(count>=CAPACITY){let state=attitudes.get(id);if(!state){state=createDroneAttitude();attitudes.set(id,state);}state.seen=frame;return;}
       const entry=variant(nation??'USA');
       const far=hasCamera&&position.distanceToSquared(camera)>DRONE_LITE_DISTANCE_M*DRONE_LITE_DISTANCE_M;
       if(far&&!entry.lite)entry.lite=buildDetail(entry.nation,'lite');
@@ -334,14 +335,20 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
     end(){
       // Flights that ended in the air this frame begin their flight home (unless an impact claimed them); every flight
       // home advances and draws into the same pools before they are committed.
+      // (2026-11-02 audit F10) its airframe kept through the return's grace: seen again inside it (a dropped frame, a
+      // spotting blink) the flight goes on as it was (its attitude, its launch frame), not a fresh airframe
       for(const [id,state] of attitudes)if(state.seen!==frame){
+        if(returns.get(id)?.phase==='grace')continue;
         const track=tracks.get(id);
         if(!track)options.onReturnEvent?.(id,'skip','no track');
         else if(impacted.has(id))options.onReturnEvent?.(id,'skip','impact');
         else if(options.resolveCarrier)startReturn(id,track);
-        attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);
+        if(returns.get(id)?.phase!=='grace'){attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);}
       }
-      for(const [id,r] of returns)if(!stepReturn(r))returns.delete(id);
+      for(const [id,r] of returns){
+        if(!stepReturn(r)){returns.delete(id);if(attitudes.get(id)?.seen!==frame){attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);}}
+        else if(r.phase!=='grace'&&attitudes.get(id)?.seen!==frame){attitudes.delete(id);launchFrames.delete(id);tracks.delete(id);}
+      }
       for(const [id,at] of impacted)if(frame-at>120)impacted.delete(id);
       for(const v of variants.values())for(const pool of [v.full,v.lite]){
         if(!pool)continue;

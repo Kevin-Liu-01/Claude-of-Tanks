@@ -66,10 +66,13 @@ export interface MissileTrails {
   /** (ac130-fx-228 r3) A registered look's near fade (m from the camera; 0 none), set for this frame's camera: the
    *  gunship's own missile thins out near its gimbal lens and nowhere else (no-op for a look not yet registered). */
   setNear(look: MissileTrail, nearM: number): void;
-  /** Start a trail for `key` (any number: a round's id hash); returns its slot. */
+  /** Start a trail for `key` (any number: a round's id hash); returns its slot. (2026-11-02 audit F10) A key whose
+   *  trail has ended (its round gone from view, then seen again) begins a new trail: the ended one dissolves keyless. */
   begin(key: number, look: number, seed: number): number;
   /** The slot `key` holds, or -1. */
   slotOf(key: number): number;
+  /** Whether a slot's trail has ended (it lays nothing more). */
+  ended(slot: number): boolean;
   /** Lay a point the nozzle passed at fx time `birth`, `flightS` seconds after its motor lit, `step` metres after the last. */
   point(slot: number, x: number, y: number, z: number, birth: number, flightS: number): void;
   /** The nozzle now: the trail's newest stretch reaches it this frame. */
@@ -530,10 +533,15 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       if (i !== undefined) uLook.value[i * 6 + 3].w = nearM;
     },
     begin(key, look, seed) {
-      // its own slot, else the lowest free one, else the trail whose newest smoke dissolves soonest
+      // its own slot while it draws (an ended one goes on dissolving under no key: its round seen again lays anew)
+      for (let i = 0; i <= topSlot; i++) {
+        if (!used[i] || keys[i] !== key) continue;
+        if (!ended[i]) return i;
+        keys[i] = NaN;
+      }
+      // else the lowest free one, else the trail whose newest smoke dissolves soonest
       let slot = -1, soonest = Infinity;
       for (let i = 0; i < TRAIL_SLOTS; i++) {
-        if (used[i] && keys[i] === key) return i;
         if (!used[i]) { slot = i; break; }
         const out = newest[i] + lifeOfLook[lookOf[i]] + (ended[i] ? 0 : 1e6);
         if (out < soonest) { soonest = out; slot = i; }
@@ -547,6 +555,9 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
     slotOf(key) {
       for (let i = 0; i <= topSlot; i++) if (used[i] && keys[i] === key) return i;
       return -1;
+    },
+    ended(slot) {
+      return slot >= 0 && slot < TRAIL_SLOTS && !!used[slot] && !!ended[slot];
     },
     point(slot, x, y, z, birth, flightS) {
       if (slot < 0 || !used[slot] || ended[slot]) return;
