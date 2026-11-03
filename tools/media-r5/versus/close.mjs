@@ -70,7 +70,7 @@ function clearGap(id) {
 }
 
 // the lens's frame axes, as frameOf builds them (the eye and look point in world space, roll applied)
-function axesOf(model, c) {
+export function axesOf(model, c) {
   const eye = [c.pos[0], model.heightAt(c.pos[0], c.pos[2]) + c.pos[1], c.pos[2]];
   const look = [c.lookAt[0], model.heightAt(c.lookAt[0], c.lookAt[2]) + c.lookAt[1], c.lookAt[2]];
   const fw = look.map((x, k) => x - eye[k]), fl = Math.hypot(...fw), w = fw.map((x) => x / fl);

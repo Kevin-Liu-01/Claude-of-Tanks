@@ -406,10 +406,10 @@
   "map": "titan_gorge",
   "time": "day",
   "anchor": [
-   -42,
+   -87,
    -42
   ],
-  "heading": 70,
+  "heading": 185,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -1243,10 +1243,10 @@
   "map": "longleaf",
   "time": "night",
   "anchor": [
-   -87,
+   -177,
    -222
   ],
-  "heading": 12,
+  "heading": 344,
   "template": 38,
   "action": "kill",
   "lineup": [
@@ -1386,10 +1386,10 @@
   "map": "ruinspires",
   "time": "night",
   "anchor": [
-   138,
-   138
+   273,
+   183
   ],
-  "heading": 163,
+  "heading": 341,
   "template": 18,
   "action": "kill",
   "lineup": [
@@ -3385,10 +3385,10 @@
   "map": "blackglass",
   "time": "golden",
   "anchor": [
-   93,
-   3
+   -312,
+   -87
   ],
-  "heading": 103,
+  "heading": 281,
   "template": 29,
   "action": "kill",
   "lineup": [
@@ -4301,10 +4301,10 @@
   "map": "coastal",
   "time": "morning",
   "anchor": [
-   -357,
-   -357
+   -132,
+   93
   ],
-  "heading": 356,
+  "heading": 175,
   "template": 4,
   "action": "column",
   "lineup": [
@@ -4735,10 +4735,10 @@
   "map": "frontier",
   "time": "morning",
   "anchor": [
-   -356,
-   -380
+   138,
+   -42
   ],
-  "heading": 7.1,
+  "heading": 357,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -5355,8 +5355,8 @@
   "map": "badlands",
   "time": "day",
   "anchor": [
-   148,
-   232
+   246.3,
+   201.9
   ],
   "heading": 107,
   "template": 39,
@@ -5757,10 +5757,10 @@
   "map": "reservoir",
   "time": "night",
   "anchor": [
-   -177,
-   3
+   -4,
+   78
   ],
-  "heading": 167,
+  "heading": 15,
   "template": 18,
   "action": "kill",
   "lineup": [
@@ -5793,10 +5793,10 @@
   "map": "oasis",
   "time": "day",
   "anchor": [
-   -87,
-   138
+   322.6,
+   -252.6
   ],
-  "heading": 98,
+  "heading": 172.9,
   "template": 20,
   "action": "returnFire",
   "lineup": [
@@ -5831,10 +5831,10 @@
   "map": "alpine",
   "time": "day",
   "anchor": [
-   -336.1,
-   -215.3
+   -346,
+   -306.9
   ],
-  "heading": 189.1,
+  "heading": 180,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -6087,10 +6087,10 @@
   "map": "skybridge",
   "time": "morning",
   "anchor": [
-   -267,
-   183
+   183,
+   -267
   ],
-  "heading": 89,
+  "heading": 163,
   "template": 21,
   "action": "assault",
   "lineup": [
@@ -6235,10 +6235,10 @@
   "map": "railyard",
   "time": "golden",
   "anchor": [
-   -265,
-   -122.5
+   138,
+   -312
   ],
-  "heading": 2.1,
+  "heading": 102,
   "template": 4,
   "action": "column",
   "lineup": [
@@ -6453,10 +6453,10 @@
   "map": "cliffbridge",
   "time": "day",
   "anchor": [
-   183,
-   -222
+   138,
+   -267
   ],
-  "heading": 255,
+  "heading": 340,
   "template": 18,
   "action": "kill",
   "lineup": [
@@ -6562,10 +6562,10 @@
   "map": "badlands",
   "time": "night",
   "anchor": [
-   -236.7,
-   -219.8
+   -247.1,
+   -263.4
   ],
-  "heading": 276.7,
+  "heading": 193.5,
   "template": 33,
   "action": "night",
   "lineup": [
@@ -6598,10 +6598,10 @@
   "map": "mangrove",
   "time": "day",
   "anchor": [
-   -267,
-   -267
+   -84,
+   84
   ],
-  "heading": 108,
+  "heading": 90,
   "template": 24,
   "action": "kill",
   "lineup": [
@@ -6817,10 +6817,10 @@
   "map": "alpine",
   "time": "night",
   "anchor": [
-   3,
+   -42,
    183
   ],
-  "heading": 101,
+  "heading": 281,
   "template": 33,
   "action": "night",
   "lineup": [
@@ -6924,10 +6924,10 @@
   "map": "fjord",
   "time": "morning",
   "anchor": [
-   -132,
+   -42,
    -267
   ],
-  "heading": 343,
+  "heading": 287,
   "template": 21,
   "action": "assault",
   "lineup": [
@@ -6999,10 +6999,10 @@
   "map": "urban",
   "time": "day",
   "anchor": [
-   3,
-   318
+   -177,
+   -312
   ],
-  "heading": 12,
+  "heading": 176,
   "template": 26,
   "action": "onTheMove",
   "lineup": [
@@ -7108,10 +7108,10 @@
   "map": "oasis",
   "time": "golden",
   "anchor": [
-   183,
-   -132
+   -87,
+   138
   ],
-  "heading": 281,
+  "heading": 98,
   "template": 23,
   "action": "hold",
   "lineup": [
@@ -7145,9 +7145,9 @@
   "time": "golden",
   "anchor": [
    3,
-   -42
+   -87
   ],
-  "heading": 164,
+  "heading": 191,
   "template": 39,
   "action": "fires",
   "lineup": [
@@ -7288,10 +7288,10 @@
   "map": "mangrove",
   "time": "sunset",
   "anchor": [
-   -312,
-   273
+   -87,
+   -87
   ],
-  "heading": 3,
+  "heading": 80,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -7324,10 +7324,10 @@
   "map": "longleaf",
   "time": "sunset",
   "anchor": [
-   3,
-   3
+   183,
+   48
   ],
-  "heading": 75,
+  "heading": 269,
   "template": 29,
   "action": "kill",
   "lineup": [
@@ -7360,10 +7360,10 @@
   "map": "steppe",
   "time": "day",
   "anchor": [
-   -42,
-   -87
+   363,
+   -222
   ],
-  "heading": 79,
+  "heading": 345,
   "template": 39,
   "action": "fires",
   "lineup": [
@@ -7471,10 +7471,10 @@
   "map": "badlands",
   "time": "day",
   "anchor": [
-   -193.3,
-   333.3
+   134,
+   332.7
   ],
-  "heading": 173,
+  "heading": 207.7,
   "template": 26,
   "action": "onTheMove",
   "lineup": [
@@ -7579,10 +7579,10 @@
   "map": "coastal",
   "time": "day",
   "anchor": [
-   273,
-   -312
+   228,
+   138
   ],
-  "heading": 11,
+  "heading": 16,
   "template": 5,
   "action": "column",
   "lineup": [
@@ -7615,10 +7615,10 @@
   "map": "polders",
   "time": "day",
   "anchor": [
-   363,
-   138
+   -132,
+   48
   ],
-  "heading": 288,
+  "heading": 7,
   "template": 4,
   "action": "column",
   "lineup": [
@@ -7653,10 +7653,10 @@
   "map": "saltwind",
   "time": "morning",
   "anchor": [
-   40.7,
-   126.4
+   -42,
+   -87
   ],
-  "heading": 204.3,
+  "heading": 2,
   "template": 19,
   "action": "fires",
   "lineup": [
@@ -8016,10 +8016,10 @@
   "map": "whiteout",
   "time": "day",
   "anchor": [
-   228,
-   273
+   273,
+   363
   ],
-  "heading": 194,
+  "heading": 254,
   "template": 49,
   "action": "column",
   "lineup": [
