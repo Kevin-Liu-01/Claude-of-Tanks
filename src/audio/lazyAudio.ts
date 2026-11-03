@@ -16,6 +16,10 @@ import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe, AudioWorld } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
+import {
+  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  type AudioBattleEvent, type AudioBattleMode,
+} from './battleMode.ts';
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
@@ -35,6 +39,7 @@ interface AudioMixerModule {
     getTeamRoster?: () => readonly RuntimeValue[] | null;
     getVehicleSpec?: (specId: string) => RuntimeValue;
     initialPhase?: string;
+    initialMode?: Readonly<AudioBattleMode>;
   }): AudioMixer;
 }
 
@@ -109,7 +114,9 @@ export function createLazyAudio({
   let bus: EventBus | null = null;
   let stopPhaseTracking: (() => void) | null = null;
   let stopVolumeTracking: (() => void) | null = null;
-  let latestPhase = 'garage';
+  // The battle mode as the bus moves it while no mixer exists (battleMode.ts, the mixer's own owner): the mixer created
+  // after a battle edge, its rollout, a pause or a kill-cam starts where they left it (2026-11-02 audit F11).
+  const mode = createAudioBattleMode();
   let loadingRequested = false;
   let ambientRequested = false;
   let muted = false;
@@ -177,7 +184,9 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ ...world, context, preparedBuffers, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({
+          ...world, context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
+        }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -239,14 +248,23 @@ export function createLazyAudio({
             && typeof event.master === 'number') latchMasterVolume(event.master);
         // The bound mixer independently owns the canonical full channel event.
       });
-      // The mixer may arrive after the battle phase edge. Carry that state
-      // across the deferred transfer without re-emitting a global event.
-      stopPhaseTracking = nextBus.on('phase:change', (event) => {
-        if (!event || typeof event !== 'object' || !('phase' in event)
-            || typeof event.phase !== 'string') return;
-        latestPhase = event.phase;
-        if (latestPhase !== 'battle') ambientRequested = false;
+      // The mixer may arrive after the battle phase edge, its rollout or an overlay. Carry that state across the
+      // deferred transfer without re-emitting a global event.
+      const track = (event: string, fact: (payload: Record<string, unknown>) => AudioBattleEvent | null) => nextBus.on(event, (payload) => {
+        const next = fact(payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
+        if (!next || !stepAudioBattleMode(mode, next)) return;
+        if (next.kind === 'phase' && mode.phase !== 'battle') ambientRequested = false;
       });
+      const stops = [
+        track('phase:change', (e) => (typeof e.phase === 'string' ? { kind: 'phase', phase: e.phase } : null)),
+        track('battle:rollout', (e) => ({ kind: 'rollout', late: !!e.late })),
+        track('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e.result) })),
+        track('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e.result) })),
+        track('ui:pause', (e) => ({ kind: 'pause', on: !!e.on })),
+        track('killcam:begin', () => ({ kind: 'killcam', on: true })),
+        track('killcam:done', () => ({ kind: 'killcam', on: false })),
+      ];
+      stopPhaseTracking = () => { for (const stop of stops) stop(); };
       if (real) real.bindBus(nextBus);
       // The garage has sound of its own (its hangar, its controls): the first
       // gesture anywhere unlocks the context inside the gesture and loads the

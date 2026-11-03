@@ -60,9 +60,13 @@ import {
   type ReloadCuePlan, type ReloadCueType,
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
+import {
+  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  type AudioBattleEdge, type AudioBattleEvent, type AudioBattleMode,
+} from './battleMode.ts';
 
 type Vec3 = readonly [number, number, number];
-type ResultKind = 'victory' | 'defeat' | 'draw';
+const UNPLACED: Vec3 = Object.freeze([NaN, NaN, NaN]) as Vec3;
 
 /** Terrain queries the engine needs (the live height-field proxy satisfies it). */
 export interface AudioTerrainProbe {
@@ -109,6 +113,8 @@ interface AudioMixerOptions {
    */
   getVehicleSpec?(specId: string): RuntimeValue;
   initialPhase?: string;
+  /** The battle mode as the lazy facade tracked it while this mixer loaded (its phase, rollout, verdict, overlays). */
+  initialMode?: Readonly<AudioBattleMode>;
   tier?: DeviceTier;
 }
 
@@ -444,6 +450,7 @@ export function createAudio({
   getTeamRoster,
   getVehicleSpec,
   initialPhase = 'garage',
+  initialMode,
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
   const getLandmarks = givenLandmarks ?? (getWorld ? () => getWorld()?.getMinimapFeatures?.().buildings ?? null : undefined);
@@ -499,7 +506,7 @@ export function createAudio({
    *  whose sound is scheduled later (a shell's crack as it passes, an aircraft's pass) is captioned when it is heard. */
   function caption(id: CaptionSoundId, x?: number, y?: number, z?: number, delayS = 0): void {
     if (delayS > 0.05) { setTimeout(() => caption(id, x, y, z), delayS * 1000); return; }
-    if (phase !== 'battle' || battleOver) return;
+    if (battleMode.phase !== 'battle' || battleMode.over) return;
     if (x === undefined || y === undefined || z === undefined || !listenerValid) { captions.sound(id, null); return; }
     toListenerFrame(frame, x, y, z, captionRel);
     captions.sound(id, captionRel);
@@ -509,11 +516,9 @@ export function createAudio({
   let listenerOwnerId: string | null = null;
   let listenerScoped = false;
   let wasScoped = false;
-  let phase = initialPhase;
-  let battleOver = false;
-  let pendingResult: ResultKind | null = null;
-  let paused = false;
-  let killcam = false;
+  // The battle mode (battleMode.ts): the phase, the stage (loading, live, over, presented), the overlays (paused,
+  // kill-cam) and the battle's serial. Its one writer is applyMode(), fed by the bus facts that move it.
+  const battleMode: AudioBattleMode = initialMode ? copyAudioBattleMode(initialMode) : createAudioBattleMode(initialPhase);
   let loading: Rig | null = null;
   let loadingActive = false;
   let ambientWanted = false;
@@ -522,6 +527,9 @@ export function createAudio({
   let atmosphere: AtmosphereProfile = atmosphereForMap(null);
   let scene: EnvironmentScene = GARAGE_SCENE;
   const tanks = new Map<string, TankInfo>();
+  // One death a life (2026-11-02 audit F11): a hull whose death was heard, until it is seen destroyed and then alive
+  // again (a respawn), or a mode announces its respawn. The value is whether it has been seen destroyed since.
+  const deathLatch = new Map<string, boolean>();
   const rigs = new Map<string, VehicleRig>();
   const moduleStates = new Map<string, string>();
   const wrecks: { until: number; voices: ReturnType<VoicePool['play']>[]; nextCreak: number; x: number; y: number; z: number }[] = [];
@@ -533,8 +541,7 @@ export function createAudio({
   // The listener's main-gun rounds in flight (muzzle and unit direction), for the gunner's miss call.
   const ownRounds = new Map<number, { x: number; y: number; z: number; dx: number; dy: number; dz: number }>();
 
-  // Player battle bookkeeping.
-  let rolledOut = false;
+  // Player battle bookkeeping (every field below is per battle: resetBattleFields() sets each back).
   let bossId: string | null = null;
   let bossChecked = false;
   let movedOnce = false;
@@ -652,7 +659,7 @@ export function createAudio({
 
   function say(id: string, options?: Parameters<CrewRadio['say']>[1]): boolean {
     let why: string | undefined;
-    if (!radio || phase !== 'battle') why = 'phase';
+    if (!radio || battleMode.phase !== 'battle') why = 'phase';
     else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
@@ -667,14 +674,14 @@ export function createAudio({
    * Step two: fire." follows only when the net is quiet again and the commander's line was the last thing said.
    */
   function requestThink(): void {
-    if (thoughtThisBattle || thinkStage !== 'idle' || !ctx || phase !== 'battle' || battleOver) return;
+    if (thoughtThisBattle || thinkStage !== 'idle' || !ctx || battleMode.phase !== 'battle' || battleMode.over) return;
     thinkStage = 'wait';
     thinkUntil = ctx.currentTime + THINK_WAIT_S;
   }
 
   function updateThink(now: number): void {
     if (thinkStage === 'idle' || !radio) return;
-    if (now > thinkUntil || battleOver || phase !== 'battle') { thinkStage = 'idle'; return; }
+    if (now > thinkUntil || battleMode.over || battleMode.phase !== 'battle') { thinkStage = 'idle'; return; }
     if (!radio.quiet) return;
     if (thinkStage === 'wait') {
       if (!say('think_step_by_step')) { thinkStage = 'idle'; return; }
@@ -723,7 +730,7 @@ export function createAudio({
   }
 
   function updateQuietRadio(now: number): void {
-    if (!radio || !mixer || phase !== 'battle' || battleOver || !rolledOut || killcam || paused) return;
+    if (!radio || !mixer || battleMode.phase !== 'battle' || battleMode.over || !battleMode.rolledOut || battleMode.killcam || battleMode.paused) return;
     const me = latestPlayer;
     if (!me || me.id !== playerId || me.combat?.destroyed) return;
     const speed = Math.abs(Number(me.state?.speed) || 0);
@@ -934,7 +941,7 @@ export function createAudio({
   }
 
   function onPredictedWeapon(event: ShellFiredEvent): void {
-    if (!ctx || phase !== 'battle' || battleOver || !event.isPlayer) return;
+    if (!ctx || battleMode.phase !== 'battle' || battleMode.over || !event.isPlayer) return;
     if (listenerOwnerId == null || event.shooterId !== listenerOwnerId) return;
     // Intent-only report: no flyby, crew call or shell bookkeeping.
     fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, true, event.muzzleIndex, false, null, event.shellName ?? null);
@@ -947,7 +954,7 @@ export function createAudio({
    * (setting-gated). Strength falls off across the bore-scaled radius.
    */
   function blastNearHull(distance: number, caliberMm: number): void {
-    if (!concussionFx || !mixer || !listenerValid || phase !== 'battle' || playerEntityInfo()?.alive === false) return;
+    if (!concussionFx || !mixer || !listenerValid || battleMode.phase !== 'battle' || playerEntityInfo()?.alive === false) return;
     const radius = Math.min(CONCUSSION.maxRadiusM, CONCUSSION.radiusPer100mmM * Math.max(0.4, caliberMm / 100));
     if (distance >= radius) return;
     const strength = clamp(1 - distance / radius, 0, 1);
@@ -1244,7 +1251,9 @@ export function createAudio({
    * down at the replay's slow-motion rate, timed to the slowed launch.
    */
   function onTankDestroyed(event: TankDestroyedEvent, cinematic = false, slowRate = 1): void {
-    const [x, y, z] = event.pos;
+    // An older host's event for a hull this seat never presented carries no position: the death counts, unheard.
+    const placed = Array.isArray(event.pos);
+    const [x, y, z] = placed ? event.pos : UNPLACED;
     const cause = event.cause === 'ammorack' || event.cause === 'fire' ? event.cause : 'shot';
     const bus = cinematic ? { bus: 'cinematic' as const } : {};
     const slow = cinematic ? { ...bus, rate: slowRate } : bus;
@@ -1263,9 +1272,9 @@ export function createAudio({
       play('debris_metal', { x, y, z, delayS: 0.25 * stretch, focus, ...slow });
       // (physics lane, 2026-10-10) the turret's landing plays where and when its body hits (bindBus: onTurretLanding)
     }
-    if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
+    if (!cinematic && placed && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
     if (!cinematic && event.id !== playerId && listenerValid && distanceTo(x, y, z) < 600) caption('explosion', x, y, z);
-    if (!cinematic && ctx) {
+    if (!cinematic && placed && ctx) {
       const now = ctx.currentTime;
       const voices: ReturnType<VoicePool['play']>[] = [];
       if (cause === 'ammorack') voices.push(pool?.play('cookoff_loop', { x, y, z, loop: true, delayS: 0.8 }) ?? null);
@@ -1488,7 +1497,7 @@ export function createAudio({
       play('track_break', at(info.pos));
     }
     if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(rank(event.state) as 0 | 1 | 2);
-    if (playerId == null || event.id !== playerId || phase !== 'battle') return;
+    if (playerId == null || event.id !== playerId || battleMode.phase !== 'battle') return;
     if (event.source === 'hit') {
       if (worse && event.module === 'ammoRack') { play('alarm_ammo', { delayS: 0.01 }); caption('ammoRack'); }
       return;
@@ -1526,7 +1535,7 @@ export function createAudio({
   }
 
   function onReload(event: ReloadEvent): void {
-    if (!ctx || phase !== 'battle' || battleOver) return;
+    if (!ctx || battleMode.phase !== 'battle' || battleMode.over) return;
     // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
     // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
     // starts afresh. The mode's unlimited rounds never read spent where this entity really refills (sim/matchRuleset
@@ -1639,6 +1648,8 @@ export function createAudio({
         if (team === ours) play('ui_score');
         break;
       case 'respawn':
+        // a respawn re-arms that hull's death (one this seat never saw alive again included)
+        if (typeof payload.id === 'string') deathLatch.delete(payload.id);
         if (playerId != null && payload.id === playerId) {
           // A fresh hull: alive before the next frame reads it (the event lands inside the sim step), and a new life's
           // one-shot calls (low hull, low ammunition) armed again.
@@ -1687,7 +1698,7 @@ export function createAudio({
     const alive = !combat?.destroyed;
     if (!alive) return;
     // Critical damage heartbeat.
-    if (alarmHeartbeat && combat && combat.maxHp > 0 && !battleOver) {
+    if (alarmHeartbeat && combat && combat.maxHp > 0 && !battleMode.over) {
       const frac = combat.hp / combat.maxHp;
       if (frac > 0.25) heartbeatBelow = 0;
       else if (heartbeatBelow === 0 || frac < heartbeatBelow - 0.05) {
@@ -1698,7 +1709,7 @@ export function createAudio({
       }
     }
     // First move after rollout.
-    if (rolledOut && !movedOnce && Math.abs(state.speed) > 2.5) {
+    if (battleMode.rolledOut && !movedOnce && Math.abs(state.speed) > 2.5) {
       movedOnce = true;
       say('on_the_move', { delayS: 0.1 });
     }
@@ -1722,7 +1733,7 @@ export function createAudio({
     // Stuck: full throttle, no progress, on the ground. Never while our throttle flies the drone (the tank sits
     // still under it), in the gunship, or before the battle rolls out.
     const throttle = Math.abs(entity.input?.throttle ?? 0);
-    const throttleDrivesTank = rolledOut && !entity.aerial?.active && entity.aerial?.kind !== 'gunship';
+    const throttleDrivesTank = battleMode.rolledOut && !entity.aerial?.active && entity.aerial?.kind !== 'gunship';
     if (throttleDrivesTank && throttle > 0.6 && Math.abs(state.speed) < 0.35 && state.grounded !== false && !state.overturned && moduleHealth(entity, 'trackL') !== 'red' && moduleHealth(entity, 'trackR') !== 'red' && moduleHealth(entity, 'engine') !== 'red') {
       stuckS += dt;
       if (stuckS > 2.6) {
@@ -1780,7 +1791,7 @@ export function createAudio({
    * nothing.
    */
   function updateTeamCounts(): void {
-    if (!playerId || phase !== 'battle' || battleOver || !rolledOut) return;
+    if (!playerId || battleMode.phase !== 'battle' || battleMode.over || !battleMode.rolledOut) return;
     const me = tanks.get(playerId);
     if (!me || !me.alive) return;
     let allies = 0;
@@ -1870,6 +1881,14 @@ export function createAudio({
       }
       info.lastX = p.x; info.lastY = p.y; info.lastZ = p.z;
       info.alive = !entity.combat?.destroyed;
+      if (deathLatch.size) {
+        // a latched death re-arms once its hull has been seen destroyed and then alive again (a respawn)
+        const seenDead = deathLatch.get(entity.id);
+        if (seenDead !== undefined) {
+          if (!info.alive) { if (!seenDead) deathLatch.set(entity.id, true); }
+          else if (seenDead) deathLatch.delete(entity.id);
+        }
+      }
       if (info.suited == null) info.suited = fieldSuitOf(list[i]);
       if (entity.isPlayer && playerId !== entity.id) {
         playerId = entity.id;
@@ -2201,9 +2220,9 @@ export function createAudio({
 
   function chooseSnapshot(): void {
     if (!mixer) return;
-    if (phase !== 'battle') { mixer.setSnapshot('garage', 0.4); return; }
-    if (paused) { mixer.setSnapshot('paused', 0.2); return; }
-    if (killcam) { mixer.setSnapshot('killcam', 0.15); return; }
+    if (battleMode.phase !== 'battle') { mixer.setSnapshot('garage', 0.4); return; }
+    if (battleMode.paused) { mixer.setSnapshot('paused', 0.2); return; }
+    if (battleMode.killcam) { mixer.setSnapshot('killcam', 0.15); return; }
     const me = playerId ? tanks.get(playerId) : null;
     if (listenerKind === 'spectated-tank' || (me && !me.alive)) { mixer.setSnapshot('spectating', 0.5); return; }
     mixer.setSnapshot(listenerScoped ? 'scoped' : 'battle', listenerScoped ? 0.18 : 0.3);
@@ -2214,7 +2233,7 @@ export function createAudio({
   function applyScene(): void {
     if (!ambience || !mixer || !pool) return;
     bellTowers = null;
-    if (phase === 'battle') {
+    if (battleMode.phase === 'battle') {
       const mapId = getMapId?.() || 'verdant';
       scene = sceneForMap(mapId);
       atmosphere = atmosphereForMap(mapId);
@@ -2226,6 +2245,144 @@ export function createAudio({
       pool.setAtmosphere(atmosphere);
       ambience.play(GARAGE_SCENE, false);
     }
+  }
+
+  // ------------------------------------------------------------- battle mode ---
+
+  /**
+   * Every per-battle field back to a new battle's (2026-11-02 audit F11): the one place they are reset, at every battle
+   * edge (from the garage, or from the last battle: a network match's next round). A field that lives for one battle
+   * is reset here, beside its siblings, never by hand in an event branch.
+   */
+  function resetBattleFields(): void {
+    tanks.clear();
+    deathLatch.clear();
+    moduleStates.clear();
+    structureSounds.clear();
+    ownRounds.clear();
+    playerId = null;
+    playerTeam = null;
+    latestPlayer = null;
+    lastPlayerYaw = null;
+    bossId = null;
+    bossChecked = false;
+    movedOnce = false;
+    lowHpCalled = false;
+    ammoLowCalled = false;
+    lastStanding = { mine: false, theirs: false, outnumbered: false };
+    spottedField = false;
+    lastKillAt = -99;
+    thinkStage = 'idle';
+    thinkUntil = 0;
+    thoughtThisBattle = false;
+    firstShotHeard = false;
+    lastSpots = [];
+    lastSpotCallAt = -99;
+    lastSixthSenseAt = -99;
+    lastSixthAlertAt = -99;
+    heartbeatBelow = 0;
+    playerBurning = false;
+    wasOverturned = false;
+    wasDeep = false;
+    stuckS = 0;
+    wasAtLimit = false;
+    lastGunLimitAt = -99;
+    slewS = 0;
+    lastTurretStopAt = -99;
+    lastTurretStartAt = -99;
+    lastPitch = null;
+    lastSmokeBorn = -1;
+    auxGunOn = null;
+    auxLights = null;
+    startEngineSoon = true;
+    startEngineUntil = -1;
+    resetQuietRadio();
+    captions.reset();
+  }
+
+  /** A battle's world torn down: on leaving it, or as the next one opens over it. */
+  function teardownBattle(reason: string): void {
+    stopWorld(reason);
+    fireAlarm?.stop(); fireAlarm = null;
+    heartbeatRig?.stop(); heartbeatRig = null;
+    radio?.silence();
+    playerBurning = false;
+    listenerOwnerId = null;
+    listenerScoped = false;
+  }
+
+  /**
+   * The battle mode's one writer: a bus fact moves it (battleMode.ts ignores a move it rejects: a second rollout, verdict
+   * or presentation), and the edge it took has its effects here. Facts arrive whether or not the graph exists; their
+   * sounds wait for it, and resume() reads the mode back.
+   */
+  function applyMode(fact: AudioBattleEvent): void {
+    const prev = battleMode.phase;
+    const edge = stepAudioBattleMode(battleMode, fact);
+    if (edge) modeEdge(edge, prev);
+  }
+
+  function modeEdge(edge: AudioBattleEdge, prev: string): void {
+    switch (edge) {
+      case 'enter-battle':
+        void warmBattle();
+        teardownBattle('battle-reset');
+        resetBattleFields();
+        radio?.setRadioDamage(0);
+        applyScene();
+        break;
+      case 'leave-battle':
+        loadingOn(false);
+        teardownBattle(`phase:${battleMode.phase}`);
+        applyScene();
+        break;
+      case 'phase':
+        if (battleMode.phase === 'garage' && prev !== 'garage') {
+          loadingOn(false);
+          applyScene();
+        }
+        break;
+      case 'rollout':
+      case 'rollout-late':
+        resetQuietRadio();
+        if (edge === 'rollout-late' || !ready()) { logSound('battle:rollout', { late: edge === 'rollout-late' }); break; }
+        rolloutCues();
+        break;
+      case 'ended':
+        radio?.cancelPending(['shot_result'], true);
+        fireAlarm?.stop(); fireAlarm = null;
+        break;
+      case 'presented': {
+        if (!ready()) break;
+        const result = battleMode.result ?? 'draw';
+        play(result === 'victory' ? 'sting_victory' : result === 'defeat' ? 'sting_defeat' : 'sting_draw');
+        say(result, { delayS: 0.4 });
+        break;
+      }
+      case 'killcam':
+        if (ready()) play(battleMode.killcam ? 'killcam_in' : 'killcam_out');
+        break;
+      case 'pause':
+        break;
+    }
+    if (edge === 'enter-battle' || edge === 'leave-battle' || edge === 'phase') {
+      reloadCalled = false;
+      reload.active = false;
+      reload.plan = null;
+    }
+    chooseSnapshot();
+  }
+
+  function rolloutCues(): void {
+    const gameMode = getGameMode?.() || 'standard';
+    if (gameMode !== 'realistic') {
+      const opener = MODE_OPENER[gameMode] ?? 'sting_battle';
+      play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
+    }
+    // The commander buttons up as the column moves off (a gunship crew has no hatch).
+    if (latestPlayer?.aerial?.kind !== 'gunship') play('hatch', hullOptions({ gainDb: -4, delayS: 0.15 }));
+    play('ui_countdown_go', { gainDb: -6 });
+    say('battle_start', { delayS: 0.5 });
   }
 
   // ------------------------------------------------------------- public API ---
@@ -2248,7 +2405,7 @@ export function createAudio({
     radio = createCrewRadio({ mixer, library, random,
       onTransmit: (id, take, lang, durationS, priority) => { captions.radio(id, take, lang, durationS, priority); } });
     // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
-    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut });
+    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => battleMode.rolledOut });
     library.pin([...UI_SET, ...RADIO_SET]);
     void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
@@ -2257,7 +2414,7 @@ export function createAudio({
     applyScene();
     chooseSnapshot();
     // Adopted after the battle phase edge: warm the battle set now (its edge has passed).
-    if (phase === 'battle') void warmBattle();
+    if (battleMode.phase === 'battle') void warmBattle();
   }
 
   /** The garage's and menus' controls (interfaceSounds.ts classifies the pressed element). */
@@ -2289,7 +2446,7 @@ export function createAudio({
    */
   function interfaceSound(sound: InterfaceSound, inMenu: boolean): void {
     const pressedAt = nowMs();
-    if (!ready() || (phase === 'battle' && !inMenu)) return;
+    if (!ready() || (battleMode.phase === 'battle' && !inMenu)) return;
     const asset = INTERFACE_ASSET[sound];
     if (library && !library.has(asset)) {
       if (pressPending || nowMs() - pressedAt > FIRST_PRESS_MS) return;
@@ -2317,8 +2474,10 @@ export function createAudio({
 
   function bindBus(bus: EventBus): void {
     captionBus = bus;
+    const listen = (event: string, listener: (payload: unknown) => void): void => { bus.on(event, listener); };
+    // A cue sounds only through a built graph: its event is dropped until then.
     const on = <T>(event: string, listener: (payload: T) => void): void => {
-      bus.on(event, (payload) => { if (ready()) listener(payload as T); });
+      listen(event, (payload) => { if (ready()) listener(payload as T); });
     };
     // physics lane (2026-10-10): a popped turret lands where its rigid body hits, heard there (a hard landing, louder)
     detachTurretLanding?.();
@@ -2336,13 +2495,19 @@ export function createAudio({
       play('rubble_chunk_land', { x, y, z, gainDb: clamp(-10 + 4 * Math.log10(mass / 20) + (speed - 2.5) * 0.8, -10, 0) });
     });
     on<{ id: string; x: number; y: number; z: number; caliberMm: number }>('auxiliary:fired', (e) => {
-      if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
+      if (battleMode.phase === 'battle' && !battleMode.over) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
     });
     on<ShellFiredEvent>('shell:fired', onShellFired);
     on<ShellFiredEvent>('weapon:predicted', onPredictedWeapon);
     on<ShellHitEvent>('shell:hit', onShellHit);
     on<ShellExpiredEvent>('shell:expired', onShellExpired);
-    on<TankDestroyedEvent>('tank:destroyed', (e) => { onTankDestroyed(e); updateTeamCounts(); });
+    on<TankDestroyedEvent>('tank:destroyed', (e) => {
+      // A hull dies once a life: a re-sent network event (a host migration's replay) adds no second wreck, blast or call.
+      if (!e?.id || deathLatch.has(e.id)) return;
+      deathLatch.set(e.id, false);
+      onTankDestroyed(e);
+      updateTeamCounts();
+    });
     on<TankImpactEvent>('tank:impact', onTankImpact);
     on<TankRamEvent>('tank:ram', (e) => onTankRam(e));
     on<PropEvent>('prop:crushed', (e) => onProp(e, false));
@@ -2397,7 +2562,7 @@ export function createAudio({
     });
     on<ModuleStateEvent>('module:state', (e) => { if (e) onModuleState(e); });
     on<{ id: string; team?: string; spotterId?: string | null }>('tank:spotted', (e) => {
-      if (!e || phase !== 'battle' || playerTeam == null || e.team !== playerTeam) return;
+      if (!e || battleMode.phase !== 'battle' || playerTeam == null || e.team !== playerTeam) return;
       const info = tanks.get(e.id);
       if (!info || info.team === playerTeam || e.spotterId !== playerId) return;
       const now = ctx?.currentTime ?? 0;
@@ -2420,7 +2585,7 @@ export function createAudio({
     });
     on<undefined>('player:spotted', () => {
       const now = ctx?.currentTime ?? 0;
-      if (phase !== 'battle' || battleOver) return;
+      if (battleMode.phase !== 'battle' || battleMode.over) return;
       // The lamp lights 3 s after we are seen and burns for 8: its alert sounds each time it lights, the crew's
       // call once per exposure.
       if (now - lastSixthAlertAt > 12) {
@@ -2433,7 +2598,7 @@ export function createAudio({
       }
     });
     on<{ slot?: number }>('ui:consumableUsed', (e) => {
-      if (!e || phase !== 'battle' || battleOver) return;
+      if (!e || battleMode.phase !== 'battle' || battleMode.over) return;
       if (e.slot === 0) { play('repair_kit', hullOptions()); say('repairs', { delayS: 1.4 }); }
       else if (e.slot === 1) { play('first_aid', hullOptions()); say('crew_recovered', { delayS: 1.2 }); }
       else if (e.slot === 2) { play('extinguisher', hullOptions()); say('extinguishing', { delayS: 0.05 }); }
@@ -2479,13 +2644,13 @@ export function createAudio({
     // a press while the drone is still recharging or flying home, or a recall before its feed is live, is refused.
     on<undefined>('ui:drone', () => {
       const view = latestPlayer?.aerial;
-      if (phase === 'battle' && view?.kind === 'drone' && (view.active ? (view.recallS ?? 0) > 0 : (view.cooldownS ?? 0) > 0)) play('ui_error');
+      if (battleMode.phase === 'battle' && view?.kind === 'drone' && (view.active ? (view.recallS ?? 0) > 0 : (view.cooldownS ?? 0) > 0)) play('ui_error');
     });
     // The optics' sensor changing (the tank sight or the drone and gunship cameras).
-    on<undefined>('ui:visionChanged', () => { if (phase === 'battle') play('zoom_step', hullOptions({ gainDb: -6 })); });
+    on<undefined>('ui:visionChanged', () => { if (battleMode.phase === 'battle') play('zoom_step', hullOptions({ gainDb: -6 })); });
     on<{ id?: string }>('service:medal', (e) => { if (e?.id && THINK_MEDALS.has(e.id)) requestThink(); });
     on<{ isPlayer?: boolean }>('shell:fired', (e) => {
-      if (!e?.isPlayer || firstShotHeard || phase !== 'battle') return;
+      if (!e?.isPlayer || firstShotHeard || battleMode.phase !== 'battle') return;
       firstShotHeard = true;
       if (thinkRandom() < THINK_FIRST_SHOT_P) requestThink();
     });
@@ -2515,7 +2680,7 @@ export function createAudio({
       if (!e?.pos) return;
       play('distant_artillery', { ...at(e.pos), gainDb: gainToDb(clamp(e.size ?? 0.6, 0.3, 1.4)) });
       // the loader hears the far guns, rarely (flavour that yields to any real call)
-      if (phase === 'battle' && !battleOver && rolledOut) say('artillery_far', { prob: 0.25, delayS: 1.2 });
+      if (battleMode.phase === 'battle' && !battleMode.over && battleMode.rolledOut) say('artillery_far', { prob: 0.25, delayS: 1.2 });
     });
     on<{ pos?: Vec3; delayS?: number }>('atmosphere:flak', (e) => { if (e?.pos) play('distant_flak', { ...at(e.pos), delayS: Math.max(0, e.delayS ?? 0) }); });
     on<{ pos?: Vec3; shots?: number; gapS?: number }>('atmosphere:aa', (e) => { if (e?.pos) play('distant_mg', at(e.pos)); });
@@ -2524,7 +2689,7 @@ export function createAudio({
       const half = clamp(e.durationS ?? 20, 4, 60) / 2;
       play(flyoverAsset(e.aircraft), { x: e.p0[0] + e.v[0] * half, y: e.p0[1] + e.v[1] * half, z: e.p0[2] + e.v[2] * half, propagate: false, delayS: Math.max(0, half - 3.5) });
       // the crew notes aircraft that pass near (the path's closest approach to us within 900 m), now and then
-      if (listenerValid && phase === 'battle' && !battleOver) {
+      if (listenerValid && battleMode.phase === 'battle' && !battleMode.over) {
         const vv = e.v[0] * e.v[0] + e.v[1] * e.v[1] + e.v[2] * e.v[2];
         const tc = vv > 1e-6 ? clamp(((frame.x - e.p0[0]) * e.v[0] + (frame.y - e.p0[1]) * e.v[1] + (frame.z - e.p0[2]) * e.v[2]) / vv, 0, half * 2) : 0;
         if (distanceTo(e.p0[0] + e.v[0] * tc, e.p0[1] + e.v[1] * tc, e.p0[2] + e.v[2] * tc) < 900) {
@@ -2534,100 +2699,26 @@ export function createAudio({
       }
     });
     on<ReloadEvent>('player:reload', onReload);
-    on<{ phase?: string }>('phase:change', (e) => {
-      const next = e?.phase || 'garage';
-      const prev = phase;
-      phase = next;
-      battleOver = false;
-      pendingResult = null;
-      reloadCalled = false;
-      reload.active = false;
-      reload.plan = null;
-      if (next === 'battle' && prev !== 'battle') {
-        structureSounds.clear();
-        void warmBattle();
-        stopWorld('battle-reset');
-        tanks.clear();
-        moduleStates.clear();
-        playerId = null;
-        playerTeam = null;
-        rolledOut = false;
-        bossId = null;
-        bossChecked = false;
-        movedOnce = false;
-        lowHpCalled = false;
-        ammoLowCalled = false;
-        lastStanding = { mine: false, theirs: false, outnumbered: false };
-        spottedField = false;
-        heartbeatBelow = 0;
-        lastSmokeBorn = -1;
-        auxGunOn = null;
-        auxLights = null;
-        thinkStage = 'idle';
-        thinkUntil = 0;
-        thoughtThisBattle = false;
-        firstShotHeard = false;
-        radio?.setRadioDamage(0);
-        applyScene();
-        startEngineSoon = true;
-        startEngineUntil = -1;
-      } else if (next !== 'battle' && prev === 'battle') {
-        // Leaving from the pause menu or a kill-cam must not carry their mix into the next battle.
-        paused = false;
-        killcam = false;
-        loadingOn(false);
-        stopWorld(`phase:${next}`);
-        fireAlarm?.stop(); fireAlarm = null;
-        heartbeatRig?.stop(); heartbeatRig = null;
-        radio?.silence();
-        playerBurning = false;
-        listenerOwnerId = null;
-        listenerScoped = false;
-        applyScene();
-      } else if (next === 'garage' && prev !== 'garage') {
-        loadingOn(false);
-        applyScene();
-      }
-      chooseSnapshot();
-    });
+    // The battle mode's facts are state, not cues: they are taken whether or not the graph exists yet (resume() replays
+    // the mode), and only their sounds wait for it (2026-11-02 audit F11).
+    const onFact = <T>(event: string, fact: (payload: T | undefined) => AudioBattleEvent): void => {
+      listen(event, (payload) => { applyMode(fact(payload as T | undefined)); });
+    };
+    onFact<{ phase?: string }>('phase:change', (e) => ({ kind: 'phase', phase: e?.phase || 'garage' }));
     // The battle rolls out once (a second edge never sounds the horn twice). A client that joins a running battle (a late
     // join, a rejoin, a host migration: `late`) rolls out with no cues: it never saw the count.
-    on<{ late?: boolean } | undefined>('battle:rollout', (e) => {
-      if (phase !== 'battle' || battleOver || rolledOut) return;
-      rolledOut = true;
-      resetQuietRadio();
-      if (e?.late) { logSound('battle:rollout', { late: true }); return; }
-      const mode = getGameMode?.() || 'standard';
-      if (mode !== 'realistic') {
-        const opener = MODE_OPENER[mode] ?? 'sting_battle';
-        play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
-      }
-      // The commander buttons up as the column moves off (a gunship crew has no hatch).
-      if (latestPlayer?.aerial?.kind !== 'gunship') play('hatch', hullOptions({ gainDb: -4, delayS: 0.15 }));
-      play('ui_countdown_go', { gainDb: -6 });
-      say('battle_start', { delayS: 0.5 });
-    });
+    onFact<{ late?: boolean }>('battle:rollout', (e) => ({ kind: 'rollout', late: !!e?.late }));
+    onFact<{ result?: string }>('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e?.result) }));
+    onFact<{ result?: string }>('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e?.result) }));
+    onFact<undefined>('killcam:begin', () => ({ kind: 'killcam', on: true }));
+    onFact<undefined>('killcam:done', () => ({ kind: 'killcam', on: false }));
+    onFact<{ on?: boolean }>('ui:pause', (e) => ({ kind: 'pause', on: !!e?.on }));
     // The count's last whole seconds tick (the frame owner reports each whole second once, never while PREPARING holds it).
     on<{ seconds?: number }>('battle:countdown', (e) => {
       const seconds = e?.seconds;
-      if (phase !== 'battle' || battleOver || rolledOut || typeof seconds !== 'number' || seconds < 1 || seconds > COUNTDOWN_TICK_S) return;
+      if (battleMode.phase !== 'battle' || battleMode.over || battleMode.rolledOut || typeof seconds !== 'number' || seconds < 1 || seconds > COUNTDOWN_TICK_S) return;
       play('ui_countdown_tick', { gainDb: -8 });
     });
-    on<{ result?: ResultKind }>('battle:ended', (e) => {
-      if (battleOver) return;
-      battleOver = true;
-      pendingResult = e?.result || 'draw';
-      radio?.cancelPending(['shot_result'], true);
-      fireAlarm?.stop(); fireAlarm = null;
-    });
-    on<{ result?: ResultKind }>('battle:presented', (e) => {
-      const result = e?.result || pendingResult || 'draw';
-      play(result === 'victory' ? 'sting_victory' : result === 'defeat' ? 'sting_defeat' : 'sting_draw');
-      if (radio) radio.say(result, { delayS: 0.4 });
-      pendingResult = null;
-    });
-    on<undefined>('killcam:begin', () => { killcam = true; chooseSnapshot(); play('killcam_in'); });
-    on<undefined>('killcam:done', () => { killcam = false; chooseSnapshot(); play('killcam_out'); });
     on<{ pos: Vec3; cause?: string; timeScale?: number }>('killcam:impact', (e) => {
       if (!e?.pos) return;
       const slowRate = clamp(e.timeScale ?? 0.55, 0.25, 1);
@@ -2641,7 +2732,6 @@ export function createAudio({
       logSound('killcam:shot', { shooterId: e.shooterId, caliberMm: e.caliberMm });
     });
     on<TankRamEvent>('killcam:collision', (e) => onTankRam(e, true));
-    on<{ on?: boolean }>('ui:pause', (e) => { paused = !!e?.on; chooseSnapshot(); });
     // Preferences are state, so retain them even before the first audio gesture.
     bus.on('ui:volumes', (payload) => {
       const v = payload as VolumeEvent | undefined;
@@ -2669,7 +2759,7 @@ export function createAudio({
   let latestPlayer: AudioEntity | null = null;
 
   function onShellSelect(slot: number | undefined): void {
-    if (slot == null || phase !== 'battle') return;
+    if (slot == null || battleMode.phase !== 'battle') return;
     const shells = latestPlayer?.spec?.gun?.shells;
     const shell = shells?.[slot];
     if (latestPlayer?.aerial?.kind === 'gunship') play('gunship_weapon_select', hullOptions());
@@ -2703,7 +2793,7 @@ export function createAudio({
     pool.setListener(frame);
     if (listenerScoped !== wasScoped) {
       // Track the edge everywhere so a garage trip never leaves a stale scope state.
-      if (phase === 'battle') play(listenerScoped ? 'scope_in' : 'scope_out', hullOptions({ gainDb: -8 }));
+      if (battleMode.phase === 'battle') play(listenerScoped ? 'scope_in' : 'scope_out', hullOptions({ gainDb: -8 }));
       wasScoped = listenerScoped;
     }
     const now = ctx.currentTime;
@@ -2720,7 +2810,7 @@ export function createAudio({
           if (entity && entity.id === playerId) { latestPlayer = entity; lastPlayerYaw = entity.state.yaw ?? null; break; }
         }
       }
-      if (phase === 'battle') {
+      if (battleMode.phase === 'battle') {
         updateRigs(list, dt);
         updateAerial(list, shells, dt);
         trackOwnSystems();
@@ -2862,6 +2952,8 @@ export function createAudio({
       get killcamSfxLog() { return killcamLog; },
       get soundLog() { return soundLog; },
       get loadingActive() { return !!loading; },
+      /** The battle mode and the per-battle intents it gates (2026-11-02 audit F11). */
+      battleState: () => ({ ...battleMode, ambientWanted, startEngineArmed: startEngineSoon, deathsLatched: deathLatch.size }),
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
@@ -2956,7 +3048,7 @@ export function createAudio({
         const engine = (g.own / BUS_LEVELS.own) * g.ownSnap;
         const sfx = (g.weapons / BUS_LEVELS.weapons) * g.worldSnap;
         const music = g.music / BUS_LEVELS.music;
-        return { ...g, engine, sfx, music, chanVol: { ...chan }, pauseK: paused ? 0 : 1, duckK: killcam ? 0.35 : 1, uiVolEvents: volumeEvents, snapshot: mixer.snapshot };
+        return { ...g, engine, sfx, music, chanVol: { ...chan }, pauseK: battleMode.paused ? 0 : 1, duckK: battleMode.killcam ? 0.35 : 1, uiVolEvents: volumeEvents, snapshot: mixer.snapshot };
       },
       get _nodes() { return mixer ? { master: mixer.master } : {}; },
     };
@@ -2994,7 +3086,7 @@ export function createAudio({
       ambientWanted = !!on;
       if (!ready() || !ambience) return;
       if (on) applyScene();
-      else if (phase === 'battle') ambience.stop(0.5);
+      else if (battleMode.phase === 'battle') ambience.stop(0.5);
     },
   };
 }

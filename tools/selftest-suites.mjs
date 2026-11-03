@@ -1523,6 +1523,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/countdownAudio.selftest.mjs',
     // 2026-10-14: every vehicle's countdown bank is the one its rig plays (the warm resolves each hull from its whole spec)
     'src/audio/presenceFamilies.selftest.mjs',
+    // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
+    // and presentations, facts before the graph, the lazy carry)
+    'src/audio/battleMode.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
