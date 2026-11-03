@@ -70,7 +70,8 @@ const lowVelocity76 = (hesh: string, he: string) => [
 
 // The TOW (owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles"): two rounds in
 // the twin launcher on the turret's right flank (profiles/m113.ts, fleetLauncherMuzzles.ts) and spares stowed, at the
-// Bradley's flight speed; the 1970s BGM-71A on the FSV and MRV, the TOW-2A on the AS4
+// Bradley's flight speed; the 1970s BGM-71A on the FSV and MRV (six: two ready in the box, four stowed; Main 2026-11-03),
+// the TOW-2A on the AS4
 const tow = (name: string, pen: number, dmg: number, count: number, reloadS: number) => ({ name, type: 'HEAT' as const,
   caliberMm: 152, pen100Mm: pen, pen1000Mm: pen, pen2000Mm: pen, dmg, velocityMps: 195, moduleDmg: 152, tracer: 'HEAT' as const,
   reloadS, count, guided: true, soundProfile: 'tow-launch', launcherTubes: 2 });
@@ -82,7 +83,7 @@ Object.assign(m113a1_fsv.dims, { hullLengthM: 4.86, overallLengthM: 5.62, widthM
 Object.assign(m113a1_fsv, { hp: 900, ...m113Mobility(11.9, 212, 64) });
 m113a1_fsv.armor = m113Armor('fsv', { tw: 0.80, tFrontZ: 0.76, tRearZ: -0.84, tH: 0.56 }, 1.66, 0.06);
 m113a1_fsv.gun = { ...m113a1_fsv.gun, caliberMm: 76, reloadS: 5.2, baseAccuracy: 0.36, aimTimeS: 2.0,
-  shells: [...lowVelocity76('L29 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 4, 3.0)] };
+  shells: [...lowVelocity76('L29 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 6, 3.0)] };
 applyFleetLauncherMuzzles(m113a1_fsv);
 m113a1_fsv.visual = { ...m113a1_fsv.visual, ...raacBands('41A') };
 
@@ -92,7 +93,7 @@ Object.assign(m113a1_mrv.dims, { hullLengthM: 4.86, overallLengthM: 5.36, widthM
 Object.assign(m113a1_mrv, { hp: 900, ...m113Mobility(12.5, 212, 62) });
 m113a1_mrv.armor = m113Armor('mrv', { tw: 0.80, tFrontZ: 0.80, tRearZ: -1.10, tH: 0.50 }, 1.42, 0.055);
 m113a1_mrv.gun = { ...m113a1_mrv.gun, caliberMm: 76, reloadS: 5.0, baseAccuracy: 0.34, aimTimeS: 1.9,
-  shells: [...lowVelocity76('L32 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 4, 3.0)] };
+  shells: [...lowVelocity76('L32 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 6, 3.0)] };
 applyFleetLauncherMuzzles(m113a1_mrv);
 m113a1_mrv.visual = { ...m113a1_mrv.visual, ...raacThreeTone('21B') };
 
