@@ -174,16 +174,20 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 // 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
   "the T49 carries the M551's one guided channel");
-// 269: the Redback fires its Spike LR2 from its own launcher, one guided channel counted beside the established fleet
+// 269: the Redback fires its Spike LR2 from its own launcher, one guided channel counted beside the established fleet; the
+// three M113s their twin TOW (owner 2026-11-03: "more firepoweer/tow missiles"), one channel each
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'redback').map(({round}) => round.name), ['Spike LR2'],
   'the Redback carries its one guided channel');
+const m113Tows = ['m113a1_fsv', 'm113a1_mrv', 'm113as4'];
+assert.deepEqual(guidedRounds.filter(({spec}) => m113Tows.includes(spec.id)).map(({spec, round}) => `${spec.id} ${round.name}`),
+  ['m113a1_fsv BGM-71A TOW', 'm113a1_mrv BGM-71A TOW', 'm113as4 BGM-71E TOW-2A'], 'each M113 carries its one TOW channel');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
-  && spec.id !== 't49' && spec.id !== 'redback').length, 23,
+  && spec.id !== 't49' && spec.id !== 'redback' && !m113Tows.includes(spec.id)).length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 40, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks; 269: + the Redback's Spike LR2
+assert.equal(guidedRounds.length, 43, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks; 269: + the Redback's Spike LR2 and the M113s' three TOW
 // (+ the T49's Shillelagh, 266)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
@@ -248,7 +252,7 @@ const laterChannelCounts = {
   // 267: the Leopard 2A7 DK (the 2A7V's three rounds) and the Centurion Mk 5/2 DK (the Mk 5/2's three)
   leo2a7dk: 3, centurion5_2dk: 3,
   // 269: the Australian line (the M113A1 FSV's and MRV's two 76 mm rounds; three for the rest)
-  m113a1_fsv: 2, m113a1_mrv: 2, m113as4: 3, leopard_as1: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
+  m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
 };
 const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback']
   .reduce((n, id) => n + laterChannelCounts[id], 0);

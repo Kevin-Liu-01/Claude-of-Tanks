@@ -7,7 +7,7 @@
   "targets": {
     "m113a1_fsv": {
       "name": "M113A1 FSV",
-      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113A1 Fire Support Vehicle (15 converted from 1970) on the lane's first-party M113 builder (profiles/m113.ts) under the Saladin's turret and 76 mm L5A1. No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113A1 Fire Support Vehicle (15 converted from 1970) on the lane's first-party M113 builder (profiles/m113.ts) under the Saladin's turret and 76 mm L5A1. No registered 3D comparison exists. Numerical 3D comparison remains unverified. The twin TOW launcher on the turret's right flank (and the FSV's and MRV's .50 and spare rounds) is the owner's 2026-11-03 request (\"make our m113s look much much cooler annd have more firepoweer/tow missiles\"), first-party and not on the service vehicles: the photographs govern everything else.",
       "sources": [
         "https://rmsothebys.com/auctions/lc14/lots/r0068-m113a1-fire-support-vehicle-fsv/",
         "https://commons.wikimedia.org/wiki/File:M113_FSV.JPG",
@@ -20,7 +20,7 @@
       "tallestM": 4.13,
       "envelopeBasis": "The as-built envelope: the M113A1 hull 4.86 m long and 2.69 m over its tracks (RM Sotheby's 4.86 x 2.69 m), the 76 mm tube ahead of the nose; the tallest point is the whip, the cupola standing 2.78 m.",
       "caliberMm": 76,
-      "launcherTubes": 0,
+      "launcherTubes": 2,
       "roofMachineGuns": 1,
       "crew": 4,
       "unmannedTurret": false,
@@ -28,7 +28,7 @@
     },
     "m113a1_mrv": {
       "name": "M113A1 MRV",
-      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113A1 Medium Reconnaissance Vehicle (from 1978) on the same builder under the Scorpion's turret and 76 mm L23A1, with its buoyancy pods. No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113A1 Medium Reconnaissance Vehicle (from 1978) on the same builder under the Scorpion's turret and 76 mm L23A1, with its buoyancy pods. No registered 3D comparison exists. Numerical 3D comparison remains unverified. The twin TOW launcher on the turret's right flank (and the FSV's and MRV's .50 and spare rounds) is the owner's 2026-11-03 request (\"make our m113s look much much cooler annd have more firepoweer/tow missiles\"), first-party and not on the service vehicles: the photographs govern everything else.",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:Puckapunyal-M113-MRV-1-1.jpg",
         "https://commons.wikimedia.org/wiki/File:M113_Medium_Reconnaissance_Vehicle_at_the_Army_Museum_of_WA_June_2018.jpg",
@@ -40,7 +40,7 @@
       "tallestM": 4.13,
       "envelopeBasis": "The as-built envelope: the M113A1 hull widened by the buoyancy pods to 2.85 m, the short L23A1 ahead of the nose; the tallest point is the whip.",
       "caliberMm": 76,
-      "launcherTubes": 0,
+      "launcherTubes": 2,
       "roofMachineGuns": 1,
       "crew": 4,
       "unmannedTurret": false,
@@ -48,7 +48,7 @@
     },
     "m113as4": {
       "name": "M113AS4",
-      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113AS4 (from 2007) on the same builder stretched 0.666 m with a sixth road wheel, the ceramic appliqué, rear fuel tanks and the Tenix turret's 12.7 mm M2 (its main weapon, not a roof gun). No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "authority": "Main ruled the Australia line on 2026-11-02 (DECISIONS) on the owner's request the same day (\"flesh out south african and australian tank trees\", \"no senntinnel please\"). The M113AS4 (from 2007) on the same builder stretched 0.666 m with a sixth road wheel, the ceramic appliqué, rear fuel tanks and the Tenix turret's 12.7 mm M2 (its main weapon, not a roof gun). No registered 3D comparison exists. Numerical 3D comparison remains unverified. The twin TOW launcher on the turret's right flank (and the FSV's and MRV's .50 and spare rounds) is the owner's 2026-11-03 request (\"make our m113s look much much cooler annd have more firepoweer/tow missiles\"), first-party and not on the service vehicles: the photographs govern everything else.",
       "sources": [
         "https://army.gov.au/equipment/vehicles-and-surveillance/m113as4-armoured-personnel-carrier",
         "https://www.armyrecognition.com/military-products/army/armoured-personnel-carriers/tracked-vehicles/m113as4-apc",
@@ -61,7 +61,7 @@
       "tallestM": 4.13,
       "envelopeBasis": "The as-built envelope: the stretched hull 5.53 m over its appliqué and 6.09 m over the rear fuel tanks, 2.72 m wide; the tallest point is the whip.",
       "caliberMm": 12.7,
-      "launcherTubes": 0,
+      "launcherTubes": 2,
       "roofMachineGuns": 0,
       "crew": 2,
       "unmannedTurret": false,

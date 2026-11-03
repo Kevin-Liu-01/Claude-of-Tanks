@@ -16,6 +16,16 @@ export const M113_BASE = Object.freeze({
  * compartment behind the driver). */
 const RING_BACK: Readonly<Record<M113Mark, number>> = Object.freeze({ fsv: 1.95, mrv: 1.95, as4: 2.55 });
 
+/** The twin TOW launcher on the turret's right flank (owner 2026-11-03: "more firepoweer/tow missiles"; profiles/m113.ts
+ * builds it), turret frame: the tubes' x, their two heights over the roof, the mouths' z, the encased round's 1.17 m and the
+ * turret wall's x the arms start from. fleetLauncherMuzzles.ts launches from these mouths. */
+export const M113_TOW: Readonly<Record<M113Mark, { x: number; ys: readonly [number, number]; mouthZ: number; len: number;
+  wallX: number }>> = Object.freeze({
+  fsv: { x: -1.00, ys: [0.27, 0.51], mouthZ: 0.30, len: 1.17, wallX: -0.70 },
+  mrv: { x: -1.00, ys: [0.24, 0.48], mouthZ: 0.30, len: 1.17, wallX: -0.62 },
+  as4: { x: -0.86, ys: [0.20, 0.44], mouthZ: 0.05, len: 1.17, wallX: -0.52 },
+});
+
 interface M113Datums {
   readonly length: number; readonly noseZ: number; readonly sternZ: number; readonly glacisTopZ: number;
   readonly wheelZs: readonly number[]; readonly ringZ: number;

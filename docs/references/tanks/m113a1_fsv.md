@@ -30,9 +30,10 @@ Implementation: DONE; qualification: the packet's envelope PASS, regeneration an
 | 1 | the rounded cast Saladin turret, set centre-forward | the APC's cupola | a drum 1.60 m across on its ring, sloping in to a flat roof, its front flattened behind the mantlet; the ring 1.95 m behind the nose |
 | 2 | the short 76 mm, no fume extractor | — | the L5A1 1.66 m ahead of the trunnion, its root under a canvas mantlet cover, no extractor |
 | 3 | smoke clusters on both front flanks of the turret (tube count unverified **[?]**) | — | three dischargers a side on a block |
-| 4 | the .30 cal on the hatch | — | a 7.62 mm pintle gun (the fleet's MAG model) on the commander's cupola on the right; the loader's hatch on the left |
+| 4 | the .30 cal on the hatch | — | a 12.7 mm M2 on the commander's cupola on the right (the owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles"; the photographs' .30 before); the loader's hatch on the left |
 | 5 | the standard M113A1 hull: front sprocket, the trim vane on the glacis, guarded headlights, the rear ramp | the builder's hull | kept: the vane folded flat on its hinges and stays, the lamp clusters in their guards on the glacis' top corners, the driver's hatch front left and the engine grille front right, the ramp's outline on the rear plate, two whips at the roof's rear corners |
-| 6 | olive drab; the unit triangle "41 A", registration 1347xx, names ("ARGUS") | — | `paint_centurion5_1_aus` "RAAC Plain Olive Drab" (#5a5c30, the Centurion Mk 5/1's), number 41A; the Army's kangaroo (the line's insignia: the notes record none on an FSV **[?]**) |
+| 9 | — (owner's request) | — | a twin TOW launcher on the turret's right flank (the owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles", first-party, not on the service vehicle; m113Datums.ts `M113_TOW`): an armoured two-tube box on two arms from the drum, its sight on top, two spare rounds strapped on the roof's rear left; its mouths launch the BGM-71A TOW (430 mm, 320; four rounds) (fleetLauncherMuzzles.ts, launcherTubes 2) |
+| 6 | olive drab; the unit triangle "41 A", registration 1347xx, names ("ARGUS") | — | `paint_m113a1_fsv` "RAAC Bands Woodland": the olive drab (#5a5c30) under broad black and earth field bands (owner 2026-11-03: no plain coats), number 41A on the left hull side; the Army's kangaroo |
 | 7 | a round item on the right front, perhaps a spare wheel **[?]** | — | not drawn |
 
 ### Datums

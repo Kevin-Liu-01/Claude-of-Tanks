@@ -2,6 +2,7 @@ import type { FleetTankSpec } from './specContracts.ts';
 import type { LauncherMuzzle } from '../sim/launcherPolicy.ts';
 
 import * as detMath from '../sim/detMath.ts';
+import { M113_TOW, type M113Mark } from './m113Datums.ts';
 // Terminal centers measured from the native builders, in final metre frames.
 // These are launch exits, never spare tubes, smoke dispensers or cannon bores.
 // Batteries with authored layouts keep their existing shared geometry datums.
@@ -11,6 +12,10 @@ function turret(x: number, y: number, z: number, pitch = 0, yaw = 0): LauncherMu
 function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y, z }; }
 // 2026-10-21: the TOW collars' mouths on the flat-fronted pod (modern3.ts), 8.5 cm ahead of the old sloped face.
 const bradley = [mouth(-.97, .04, .23), mouth(-.97, -.20, .23)];
+const towMouths = (mark: M113Mark): LauncherMuzzle[] => {
+  const T = M113_TOW[mark];
+  return T.ys.map((y) => turret(T.x, y, T.mouthZ + 0.05));
+};
 const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   m2a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
@@ -19,6 +24,10 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
   // 269: the Spike LR2 twin launcher's canister faces on the turret's left wall (profiles/redback.ts, leftX + 0.11)
   redback: [.33, .55].map(y => turret(1.23, y, -.108)),
+  // 269: the M113s' twin TOW on the turret's right flank (m113Datums.ts M113_TOW), lower tube first
+  m113a1_fsv: towMouths('fsv'),
+  m113a1_mrv: towMouths('mrv'),
+  m113as4: towMouths('as4'),
   borsuk: [.545,.795].map(y => turret(1.34,y,.91)),
   // 2026-10-21: the Jyu-MAT canister collars stand 4 cm proud of the duct front (profiles/type89SourceX.ts).
   type89: [-1,1].map(side => turret(side*1.25,.63,.40)),

@@ -26,11 +26,12 @@ Implementation: DONE; qualification: the packet's envelope PASS, regeneration an
 | 1 | the low, flat-sided Scorpion turret set well forward, a cupola | the APC's cupola | the faceted aluminium turret on its 1.52 m ring 1.95 m behind the nose: upper and lower front plates sloping back, the sides leaning in, a flat roof; the commander's cupola at the left rear, the gunner's sight on the right, a searchlight box at the left front; a bustle box with two jerrycans |
 | 2 | the very short 76 mm | — | the L23A1 1.42 m ahead of the trunnion in a narrow mantlet, a collar at its middle |
 | 3 | smoke dischargers on the turret's front (the count is not in the notes **[?]**) | — | four a side on the front cheeks, in two pairs |
-| 4 | the coaxial and pintle .30 cal | — | a 7.62 mm pintle gun (the fleet's MAG model) on the commander's cupola |
+| 4 | the coaxial and pintle .30 cal | — | a 12.7 mm M2 on the commander's cupola (the owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles"; the photographs' .30 before) |
 | 5 | slab buoyancy pods on the upper hull's sides and front (`side_R_amwa2025`) | — | two slab panels a side, 0.14 m thick and 0.80 m deep, from the glacis' top to the rear plate; no front pod across the glacis (the folded trim vane stands there) **[?]** |
-| 6 | olive drab; call signs such as "21▽B" | — | `paint_centurion5_1_aus` "RAAC Plain Olive Drab", number 21B; the Army's kangaroo |
+| 9 | — (owner's request) | — | a twin TOW launcher on the turret's right flank (the owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles", first-party, not on the service vehicle; m113Datums.ts `M113_TOW`): an armoured two-tube box on two arms from the turret wall, its sight on top, two spare rounds strapped on the roof's rear left; its mouths launch the BGM-71A TOW (430 mm, 320; four rounds) (fleetLauncherMuzzles.ts, launcherTubes 2) |
+| 6 | olive drab; call signs such as "21▽B" | — | `paint_m113a1_mrv` "RAAC Three-Tone Woodland": olive drab (#555a34) under brown and black field three-tone (owner 2026-11-03: no plain coats), number 21B on the turret's left flank; the Army's kangaroo |
 
-The proposal gave the MRV the Australian three-tone; the photographs show olive drab, and the build follows them.
+The proposal gave the MRV the Australian three-tone; the photographs show olive drab, which the build kept until the owner's 2026-11-03 "any tank without a proper camo": the olive drab stays the base under a 1980s field three-tone.
 
 ### Datums
 

@@ -5,7 +5,8 @@
 // plate, the side skirts left off in the jungle and mesh baskets round the turret (5rar.asn.au; HistoryNet, Australia's
 // Centurion Mark 5; the War Thunder wiki, Centurion Mk.5/1). Built as the family's 'mk5_1_aus' mark
 // (profiles/centurionFamily.ts; docs/references/tanks/centurion5_1_aus.md). It clones the Strv 81 (the Mk 5 with the
-// 20-pdr Type B) and flies Australia's flag, drawn in the UK tree's special lane; the RAAC's plain olive drab.
+// 20-pdr Type B) and flies Australia's flag, drawn in the UK tree's special lane; the RAAC's olive drab under a disruptive
+// (2026-11-03).
 import './classicFleetSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
@@ -24,9 +25,11 @@ Object.assign(spec.dims, { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.28
 Object.assign(spec, { weightTons: 51.8, topSpeedKmh: 35, reverseSpeedKmh: 12 });
 spec.visual = {
   ...spec.visual,
-  // the RAAC's khaki green of Vietnam, yellower than the European olive greens; the squadron's number on the basket
-  scheme: 'solid', base: '#5a5c30', weather: '#696b3d', patches: [],
-  marking: 'number', number: '1B', camoScale: 0.55,
+  // the RAAC's khaki green of Vietnam, yellower than the European olive greens, under the field disruption the squadrons
+  // put on it: dark green fields with sand and black bars (owner 2026-11-03: the Mk 5/1 needs a proper camo, no plain
+  // coats); the squadron's number on the basket
+  scheme: 'merdc', base: '#5a5c30', weather: '#696b3d', patches: ['#3d4226', '#8a7d55', '#262620'],
+  marking: 'number', number: '1B', camoScale: 0.55, patchK: 1.3,
 };
 
 registerFleetSpecs(registries, ['centurion5_1_aus'], { centurion5_1_aus: spec });

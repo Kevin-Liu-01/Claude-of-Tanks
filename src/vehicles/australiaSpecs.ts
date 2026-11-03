@@ -28,12 +28,16 @@ const australian = (id: string, donor: string, name: string, era: 'cold-war' | '
 };
 
 // The Australian Army's disruptive pattern: a tan base under olive and black in broad patches (the Abrams, AS1, AS4 and
-// Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s (the Centurion Mk 5/1's coat)
+// Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s under field disruption
+// (owner 2026-11-03: no plain coats): the FSV's broad black and earth bands of Vietnam, the MRV's brown and black three-tone
+// of the 1980s
 const ausDisruptive = (number: string) => ({ scheme: 'blotch' as const, base: '#8a7656', weather: '#95825f',
   patches: ['#57593c', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2,
   insignia: 'au-army-kangaroo' });
-const raacOliveDrab = (number: string) => ({ scheme: 'solid' as const, base: '#5a5c30', weather: '#696b3d', patches: [] as string[],
-  marking: 'number' as const, number, camoScale: 0.55, insignia: 'au-army-kangaroo' });
+const raacBands = (number: string) => ({ scheme: 'stripes' as const, base: '#5a5c30', weather: '#696b3d',
+  patches: ['#26271f', '#5d4a31'], marking: 'number' as const, number, camoScale: 0.5, insignia: 'au-army-kangaroo' });
+const raacThreeTone = (number: string) => ({ scheme: 'nato' as const, base: '#555a34', weather: '#62673f',
+  patches: ['#4a3d2a', '#22231d'], marking: 'number' as const, number, camoScale: 0.5, patchK: 1.4, insignia: 'au-army-kangaroo' });
 
 // ---------------------------------------------------------------------------------------------------- M113s --
 // The aluminium M113A1 hull (4.863 x 2.686 m, 0.43 m clearance; 12-38 mm) on the build's datums (profiles/m113.ts)
@@ -64,6 +68,13 @@ const lowVelocity76 = (hesh: string, he: string) => [
   { name: he, type: 'HE', caliberMm: 76, pen100Mm: 20, pen1000Mm: 20, pen2000Mm: 20, dmg: 260, velocityMps: 520, moduleDmg: 70, tracer: 'HE' },
 ];
 
+// The TOW (owner 2026-11-03: "make our m113s look much much cooler annd have more firepoweer/tow missiles"): two rounds in
+// the twin launcher on the turret's right flank (profiles/m113.ts, fleetLauncherMuzzles.ts) and spares stowed, at the
+// Bradley's flight speed; the 1970s BGM-71A on the FSV and MRV, the TOW-2A on the AS4
+const tow = (name: string, pen: number, dmg: number, count: number, reloadS: number) => ({ name, type: 'HEAT' as const,
+  caliberMm: 152, pen100Mm: pen, pen1000Mm: pen, pen2000Mm: pen, dmg, velocityMps: 195, moduleDmg: 152, tracer: 'HEAT' as const,
+  reloadS, count, guided: true, soundProfile: 'tow-launch', launcherTubes: 2 });
+
 // The M113A1 FSV (15 converted at Bandiana from 1970; six to Vietnam in 1971; reserve to 1986): the Saladin's turret and
 // 76 mm L5A1, 4.86 x 2.69 x 2.78 m to the cupola, 11.9 t, the GM 6V53 of 212 hp (RM Sotheby's)
 const m113a1_fsv = australian('m113a1_fsv', 'm41a3', 'M113A1 FSV', 'cold-war', 'light');
@@ -71,8 +82,9 @@ Object.assign(m113a1_fsv.dims, { hullLengthM: 4.86, overallLengthM: 5.62, widthM
 Object.assign(m113a1_fsv, { hp: 900, ...m113Mobility(11.9, 212, 64) });
 m113a1_fsv.armor = m113Armor('fsv', { tw: 0.80, tFrontZ: 0.76, tRearZ: -0.84, tH: 0.56 }, 1.66, 0.06);
 m113a1_fsv.gun = { ...m113a1_fsv.gun, caliberMm: 76, reloadS: 5.2, baseAccuracy: 0.36, aimTimeS: 2.0,
-  shells: lowVelocity76('L29 HESH', 'L24 HE') };
-m113a1_fsv.visual = { ...m113a1_fsv.visual, ...raacOliveDrab('41A') };
+  shells: [...lowVelocity76('L29 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 4, 3.0)] };
+applyFleetLauncherMuzzles(m113a1_fsv);
+m113a1_fsv.visual = { ...m113a1_fsv.visual, ...raacBands('41A') };
 
 // The M113A1 MRV (48 from 1978, withdrawn 1996): the Scorpion's turret and 76 mm L23A1, its buoyancy pods
 const m113a1_mrv = australian('m113a1_mrv', 'm41a3', 'M113A1 MRV', 'cold-war', 'light');
@@ -80,15 +92,20 @@ Object.assign(m113a1_mrv.dims, { hullLengthM: 4.86, overallLengthM: 5.36, widthM
 Object.assign(m113a1_mrv, { hp: 900, ...m113Mobility(12.5, 212, 62) });
 m113a1_mrv.armor = m113Armor('mrv', { tw: 0.80, tFrontZ: 0.80, tRearZ: -1.10, tH: 0.50 }, 1.42, 0.055);
 m113a1_mrv.gun = { ...m113a1_mrv.gun, caliberMm: 76, reloadS: 5.0, baseAccuracy: 0.34, aimTimeS: 1.9,
-  shells: lowVelocity76('L32 HESH', 'L24 HE') };
-m113a1_mrv.visual = { ...m113a1_mrv.visual, ...raacOliveDrab('21B') };
+  shells: [...lowVelocity76('L32 HESH', 'L24 HE'), tow('BGM-71A TOW', 430, 320, 4, 3.0)] };
+applyFleetLauncherMuzzles(m113a1_mrv);
+m113a1_mrv.visual = { ...m113a1_mrv.visual, ...raacThreeTone('21B') };
 
 // The M113AS4 (340 from 2007): the hull stretched 0.666 m, the MTU 6V199 of 350 hp, 18 t, ceramic appliqué, the Tenix
-// turret's 12.7 mm M2 (the Ares APC's precedent at II)
+// turret's 12.7 mm M2 (the Ares APC's precedent at II) and the twin TOW-2A
 const m113as4 = australian('m113as4', 'ares_apc', 'M113AS4', 'modern', 'ifv');
 Object.assign(m113as4.dims, { hullLengthM: 5.53, overallLengthM: 6.05, widthM: 2.69, heightM: 2.60 });
 Object.assign(m113as4, { hp: 1300, ...m113Mobility(18, 350, 65) });
 m113as4.armor = driverFrontLeft(m113Armor('as4', { tw: 0.66, tFrontZ: 0.70, tRearZ: -0.66, tH: 0.46 }, 1.10, 0.03));
+// (a gun shows three channels at most: the M2's API-T belt gives way to the TOW, its AP-T and ball kept)
+m113as4.gun = { ...m113as4.gun, shells: [m113as4.gun.shells.find((s) => s.type === 'AP')!,
+  ...m113as4.gun.shells.filter((s) => s.type === 'HE'), tow('BGM-71E TOW-2A', 900, 450, 6, 2.8)] };
+applyFleetLauncherMuzzles(m113as4);
 m113as4.visual = { ...m113as4.visual, ...ausDisruptive('22A') };
 
 // ------------------------------------------------------------------------------------------------- Leopard AS1 --

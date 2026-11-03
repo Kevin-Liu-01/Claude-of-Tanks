@@ -319,6 +319,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // release 269: the AS1's kangaroo on the right (its left cheek carries the SABCA laser's drum)
   leopard_as1: anchor('turret', 'right', 0.50, 0.40, 0.20, -1),
   redback: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
+  // the M113s (2026-11-03: the release check found no seat on their small turrets): the FSV's on the bare left hull side
+  // above the track; the MRV's buoyancy pods and the AS4's appliqué hold their hull sides, so theirs go on the turret's
+  // left flank (the TOW launcher is on the right)
+  m113a1_fsv: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  m113a1_mrv: anchor('turret', 'left', 0.35, 0.45, 0.22, 1),
+  m113as4: anchor('turret', 'left', 0.30, 0.50, 0.20, 1),
   // the kangaroo on the turret's forward flank, as on the 2024-26 photographs
   m1a1_aim_sa_aus: anchor('turret', 'right', 0.40, 0.44, 0.27, -1),
   m1a2_sepv3_aus: anchor('turret', 'right', .25, .70, .24, -1),

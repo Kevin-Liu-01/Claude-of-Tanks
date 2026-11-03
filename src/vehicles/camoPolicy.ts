@@ -148,9 +148,9 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
 /** Release 269: the Australia line's disruptive three-tone (australiaSpecs.ts): tan under olive and black, on the Leopard AS1,
- * the M113AS4, both Abrams and the Redback (the M113A1s wear the Centurion Mk 5/1's RAAC olive drab). Appended after 267's
- * saved catalog indices. */
-const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1'] as const);
+ * the M113AS4, both Abrams and the Redback; then the M113A1s' RAAC olive drab under field disruption, a coat of its own on
+ * each (owner 2026-11-03: no plain coats). Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
@@ -932,10 +932,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
-  // release 269: the Australia line: the RAAC's olive drab on the M113A1 FSV and MRV (the Centurion Mk 5/1's), the
-  // disruptive three-tone from the Leopard AS1 on
-  m113a1_fsv: 'paint_centurion5_1_aus',
-  m113a1_mrv: 'paint_centurion5_1_aus',
+  // release 269: the Australia line: the RAAC's olive drab under field disruption on the M113A1 FSV (bands) and MRV
+  // (three-tone), the disruptive three-tone from the Leopard AS1 on
+  m113a1_fsv: 'paint_m113a1_fsv',
+  m113a1_mrv: 'paint_m113a1_mrv',
   leopard_as1: 'paint_leopard_as1',
   m113as4: 'paint_leopard_as1',
   m1a1_aim_sa_aus: 'paint_leopard_as1',
