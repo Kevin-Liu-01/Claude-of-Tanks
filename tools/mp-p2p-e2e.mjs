@@ -41,6 +41,18 @@
  * Every step records the 1-min load; a phase that times out above 3 per core is named STARVED and the run exits 75, the
  * STARVED verdict (tools/selftest-verdict.mjs), so a starved machine never reads as a product red.
  *
+ * The production proof on a busy machine (268, Main 2026-11-03: the machine is never quiet, so the proof runs at whatever
+ * load there is and is judged on correctness):
+ *   --no-bots              the admin turns the room's bot fill off before Ready (the room's own set_bots_fill, sent on A's
+ *                          room socket: the lobby's room client is not exposed), so only the measured steps can end the
+ *                          round; pair it with a mode that never ends on an empty side (--game-mode=capture_the_flag: its
+ *                          flag limit or its clock), since a standard round with no enemy is an elimination at once
+ *   --timings=report       the rate floors (C's snapshots in the play window and on the new host) become findings with
+ *                          the load they were read at; continuity stays strict (snapshots keep coming, B's hull continuous)
+ *   Always: each open link's selected candidate pair has both types; against the real service B's match reports are read
+ *   from B's own room socket (each report paired with the room's reply); every page's peer connections are counted
+ *   created, closed and live at once (report.pcLife), so a re-offer storm reads as churn or as connections left open.
+ *
  * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
  * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (since
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
@@ -121,6 +133,8 @@ const windowProfile = process.argv.includes('--window-profile');
 // the returning tab A2 opens in A's browser. The default (one browser, three contexts) shares one GPU process, whose
 // contention turned the returning tab's synchronous program links into minutes (the 224 Garage freeze)
 const separateBrowsers = process.argv.includes('--separate-browsers');
+const noBots = process.argv.includes('--no-bots');
+const timingsReport = argValue('timings', '') === 'report';
 const extraBrowsers = [];
 
 function freePort() {
@@ -136,7 +150,7 @@ const startedAt = performance.now();
 const elapsedMs = () => Math.round(performance.now() - startedAt);
 
 const report = { pass: false, failures: [], findings: [], errors: [], steps: [], screenshots: [], mobile, viewport:testViewport, playS, graceMs, wallMs: 0, room: null, start: {}, play: {}, migration: {}, rejoin: {}, roomEvents: [],
-  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS, separateBrowsers },
+  options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS, separateBrowsers, noBots, timingsReport },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
 /** (2026-10-17) the room ended the match before the migration: the run's later steps have nothing to measure. */
@@ -286,19 +300,88 @@ function installPageRecorder(forceRelay = false) {
   const Native = window.RTCPeerConnection;
   if (typeof Native === 'function') {
     const pcs = window.__MP_E2E_PCS = [];
+    // (268) live = made and not yet closed: a re-offer that replaces its connection keeps it at one per link
+    const life = { live: 0, peakLive: 0 };
     const Recorded = function RTCPeerConnection(configuration, ...rest) {
       if (forceRelay) configuration = { ...(configuration ?? {}), iceTransportPolicy: 'relay' };
       const pc = new Native(configuration, ...rest);
       pcs.push(pc);
+      const index = pcs.length - 1;
+      life.live++; life.peakLive = Math.max(life.peakLive, life.live);
+      let ended = false;
+      const end = (how) => { if (ended) return; ended = true; life.live--; push({ kind: 'pc-close', index, how, live: life.live }); };
+      const close = pc.close.bind(pc);
+      pc.close = () => { end('close'); return close(); };
+      pc.addEventListener('connectionstatechange', () => {
+        const state = pc.connectionState;
+        if (state === 'connected' || state === 'failed') push({ kind: 'pc-state', index, state });
+        if (state === 'closed') end('closed');
+      });
       pc.addEventListener('datachannel', (event) => watchChannel(event.channel));
       const create = pc.createDataChannel.bind(pc);
       pc.createDataChannel = (...args) => { const channel = create(...args); watchChannel(channel); return channel; };
-      push({ kind: 'pc', index: pcs.length - 1, ...schemes(configuration?.iceServers), relayOnly: configuration?.iceTransportPolicy === 'relay' });
+      push({ kind: 'pc', index, ...schemes(configuration?.iceServers), relayOnly: configuration?.iceTransportPolicy === 'relay', live: life.live });
       return pc;
     };
     Recorded.prototype = Native.prototype;
     Object.setPrototypeOf(Recorded, Native);
     window.RTCPeerConnection = Recorded;
+  }
+  // (268) the page's room socket, found by its envelopes (window.__MULTIPLAYER_V2 comes with the battle, the lobby's room
+  // client never shows): `command` sends a room command on it as this seat (the room's reply carries a request id the page's
+  // client never made, which the client drops; the room's state broadcast reaches it as usual), and every match_report the
+  // page sends is paired with the room's reply, by its generation
+  const roomWire = window.__MP_E2E_ROOM = { socket: null, settings: null, replies: {}, reports: { sent: 0, acked: 0, refused: 0, byGeneration: {} }, command: () => null };
+  const NativeSocket = window.WebSocket;
+  if (typeof NativeSocket === 'function') {
+    const encoder = new TextEncoder(), decoder = new TextDecoder();
+    const envelopeOf = (data) => {
+      const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : null;
+      try { return bytes ? JSON.parse(decoder.decode(bytes)) : null; } catch { return null; }
+    };
+    const reportReplies = new Map();
+    let sequence = 0;
+    const RecordedSocket = function WebSocket(...args) {
+      const socket = new NativeSocket(...args);
+      const send = socket.send.bind(socket);
+      socket.send = (data) => {
+        const envelope = envelopeOf(data);
+        if (typeof envelope?.type === 'string' && envelope.type.startsWith('room_')) {
+          roomWire.socket = socket;
+          const command = envelope.payload?.command;
+          if (envelope.type === 'room_command' && command?.type === 'match_report' && typeof envelope.requestId === 'string') {
+            const row = roomWire.reports.byGeneration[String(command.generation ?? '?')] ??= { sent: 0, acked: 0, refused: 0, lastError: null };
+            roomWire.reports.sent++; row.sent++;
+            if (reportReplies.size < 500) reportReplies.set(envelope.requestId, row);
+          }
+        }
+        return send(data);
+      };
+      socket.addEventListener('message', (event) => {
+        const envelope = envelopeOf(event.data);
+        if (!envelope) return;
+        if (envelope.payload?.room?.settings) roomWire.settings = envelope.payload.room.settings;
+        const id = envelope.requestId;
+        if (typeof id !== 'string') return;
+        const refused = envelope.type === 'error';
+        if (id.startsWith('mp-e2e-')) roomWire.replies[id] = refused ? { error: envelope.payload?.code ?? 'error' } : { type: envelope.type };
+        const row = reportReplies.get(id);
+        if (!row) return;
+        reportReplies.delete(id);
+        if (refused) { roomWire.reports.refused++; row.refused++; row.lastError = envelope.payload?.code ?? 'error'; }
+        else { roomWire.reports.acked++; row.acked++; }
+      });
+      return socket;
+    };
+    RecordedSocket.prototype = NativeSocket.prototype;
+    Object.setPrototypeOf(RecordedSocket, NativeSocket);
+    window.WebSocket = RecordedSocket;
+    roomWire.command = (command) => {
+      if (roomWire.socket?.readyState !== NativeSocket.OPEN) return null;
+      const requestId = `mp-e2e-${++sequence}`;
+      roomWire.socket.send(encoder.encode(JSON.stringify({ type: 'room_command', requestId, payload: { command } })));
+      return requestId;
+    };
   }
   let room = null;
   let session = null;
@@ -984,6 +1067,17 @@ try {
     }
   }
   if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null, roomGameMode: live ? null : rooms.room(report.room.code)?.room?.settings?.gameMode ?? null });
+  // --no-bots (268): the admin turns the room's bot fill off on its own room socket before anyone readies (the command
+  // resets readiness); the room must answer it and its state carry it
+  if (noBots) {
+    const requestId = await pages.a.evaluate(() => window.__MP_E2E_ROOM?.command({ type: 'set_bots_fill', botsFill: false }) ?? null);
+    if (!requestId) throw new Error('--no-bots: A has no open room socket');
+    await waitFor(pages.a, (id) => !!window.__MP_E2E_ROOM?.replies?.[id], '--no-bots: the room answers set_bots_fill', 15_000, { args: [requestId] });
+    const reply = await pages.a.evaluate((id) => window.__MP_E2E_ROOM.replies[id], requestId);
+    if (reply?.error) throw new Error(`--no-bots: the room refused set_bots_fill (${reply.error})`);
+    await waitFor(pages.a, () => window.__MP_E2E_ROOM?.settings?.botsFill === false, '--no-bots: the room state carries no bot fill', 15_000);
+    step('bots-fill', { botsFill: false, reply: reply?.type ?? null });
+  }
   await activate(pages.c,'.cot-play [data-action="ready"]');
   await activate(pages.b,'.cot-play [data-action="ready"]');
   await activate(pages.a,'.cot-play [data-action="ready"]');
@@ -1059,6 +1153,7 @@ try {
     if (!entry.welcomed) failures.push(`${label.toUpperCase()} was not welcomed`);
   }
   if (!stripA.host) failures.push(`A's strip shows no HOST badge: ${stripA.text}`);
+  if (noBots && report.start.a.actors !== 3) failures.push(`--no-bots: the round fields ${report.start.a.actors} actors, not the three seats`);
   if (simKernelSeats.size) {
     report.simKernels = { seats: [...simKernelSeats], hosts: [await hostKernels(pages.a, 'A')] };
     const host = report.simKernels.hosts[0];
@@ -1122,6 +1217,12 @@ try {
   const linksAfter = { A: await linkStats(pages.a), B: await linkStats(pages.b), C: await linkStats(pages.c) };
   report.bandwidth = Object.fromEntries(Object.keys(linksAfter).map((label) => [label, bandwidthBetween(linksBefore[label], linksAfter[label])]));
   step('bandwidth', Object.fromEntries(Object.entries(report.bandwidth).map(([label, row]) => [label, row ? { upKbps: row.upKbps, downKbps: row.downKbps, pairs: row.pairs.map((pair) => `${pair.local ?? '?'}/${pair.remote ?? '?'}`).join(',') } : null])));
+  // (268) the pair types: every connected link has a selected candidate pair with both types; A serves two, B and C one each
+  for (const [label, want] of [['A', 2], ['B', 1], ['C', 1]]) {
+    const pairs = (report.bandwidth[label]?.pairs ?? []).filter((pair) => pair.state === 'connected');
+    const typed = pairs.filter((pair) => pair.local && pair.remote);
+    if (typed.length < want || typed.length !== pairs.length) failures.push(`${label}'s connected links have ${typed.length} typed candidate pairs of ${pairs.length} (want ${want}): ${pairs.map((pair) => `${pair.local ?? '?'}/${pair.remote ?? '?'}`).join(',') || 'none'}`);
+  }
   if(mobile||touchPages.has(pages.b))await pages.b.touchscreen.touchEnd();
   else{await pages.b.keyboard.up('KeyA');await pages.b.keyboard.up('KeyW');}
   const after = { b: await sample(pages.b, ids.c), c: await sample(pages.c, ids.b) };
@@ -1129,7 +1230,10 @@ try {
   report.play = { ...report.play, movedBAsCSaw: movedM, snapshotsC: after.c.snapshots - before.c.snapshots, snapshotsB: after.b.snapshots - before.b.snapshots, keyframesRetainedC: await pages.c.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.match ? true : null) };
   step('played', report.play);
   if (movedM < 2) failures.push(`C saw B move ${movedM.toFixed(2)} m in ${playS} s`);
-  if (report.play.snapshotsC < playS * 15) failures.push(`C received ${report.play.snapshotsC} snapshots in ${playS} s`);
+  // (268) snapshots: continuity is strict; the rate floor is a finding under --timings=report, read with its load
+  report.timings = { play: { seconds: playS, snapshotsPerSC: round1(report.play.snapshotsC / playS), snapshotsPerSB: round1(report.play.snapshotsB / playS), load1: report.steps.at(-1)?.load1 ?? null } };
+  if (!(report.play.snapshotsC > 0)) failures.push(`C received no snapshots in ${playS} s`);
+  else if (report.play.snapshotsC < playS * 15) (timingsReport ? report.findings : failures).push(`C received ${report.play.snapshotsC} snapshots in ${playS} s (${report.timings.play.snapshotsPerSC}/s at 1-min load ${report.timings.play.load1})`);
 
   // ---- shots (2026-10-14, the §7 side-by-side): the host (A) and a peer (B) press fire on the battle canvas about once a
   // second; each page's own record pairs a press with its predicted flash, the authority's shell_fired and the round's
@@ -1209,7 +1313,9 @@ try {
     ? (bAfter ? { hostId: bAfter.hostId, generation: bAfter.generation, reason: heard?.reason ?? 'unobserved', resumeTick: heard?.resumeTick ?? null } : null)
     : report.roomEvents.find((event) => event.kind === 'host_changed' && event.hostId === ids.b && event.generation === startGeneration + 1)
       ?? report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === startGeneration + 1);
-  const reportsFromB = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
+  // live (268): the reports B sent as the new host that the room answered, from B's own room socket
+  const bReports = () => pages.b.evaluate((generation) => window.__MP_E2E_ROOM?.reports?.byGeneration?.[String(generation)] ?? null, startGeneration + 1).catch(() => null);
+  const reportsFromB = live ? (await bReports())?.acked ?? 0 : report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
   const stripB = await pages.b.evaluate(() => ({ host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false, banner: document.querySelector('.cot-battle-notices .cot-mp-notice:not([data-state="exit"]) .cot-c-notice__text')?.textContent ?? null }));
   report.migration = {
     electedAfterMs, resumedAfterMs, election: election ? { hostId: election.hostId, generation: election.generation, reason: election.reason, resumeTick: election.resumeTick } : null, hostTickBefore,
@@ -1222,7 +1328,9 @@ try {
   if (electedAfterMs < graceMs && election?.reason !== 'declined') failures.push(`B hosted before the grace (${electedAfterMs} ms, ${election?.reason ?? 'no reason'})`);
   if (report.migration.b?.role !== 'host' || report.migration.b?.peersConnected < 1) failures.push(`B ${JSON.stringify(report.migration.b)}`);
   if (report.migration.c?.role !== 'peer' || report.migration.c?.hostId !== ids.b) failures.push(`C ${JSON.stringify(report.migration.c)}`);
-  if (report.migration.cSnapshotsAfterMigration < 40) failures.push(`C received ${report.migration.cSnapshotsAfterMigration} snapshots in 4 s on the new host`);
+  report.timings = { ...report.timings, migration: { electedAfterMs, resumedAfterMs, snapshotsPerSCOnB: round1(report.migration.cSnapshotsAfterMigration / 4), load1: report.steps.at(-1)?.load1 ?? null } };
+  if (!(report.migration.cSnapshotsAfterMigration > 0)) failures.push('C received no snapshots in 4 s on the new host');
+  else if (report.migration.cSnapshotsAfterMigration < 40) (timingsReport ? report.findings : failures).push(`C received ${report.migration.cSnapshotsAfterMigration} snapshots in 4 s on the new host (at 1-min load ${report.timings.migration.load1})`);
   if (jumpM === null || jumpM > 8) failures.push(`B's hull as C saw it moved ${jumpM} m across the migration (a reset would be a spawn away)`);
   if (cAfter.phase !== 'battle' || cAfter.result) failures.push(`C's battle ended in the migration (${cAfter.phase}, ${cAfter.result})`);
   if (!live && reportsFromB < 1) failures.push('the room heard no report from B');
@@ -1455,6 +1563,14 @@ try {
   if (report.rejoin.peersOnB !== 2) failures.push(`B serves ${report.rejoin.peersOnB} peers after A's return`);
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
   }
+  // live (268): by the run's end the room has answered at least one of B's reports as the new host (it reports on its
+  // phase changes and every ROOM_MATCH_REPORT_INTERVAL_MS); a refused one is named
+  if (live) {
+    const row = await bReports();
+    report.migration.reportsFromBAtEnd = row;
+    if (!(row?.acked > 0)) failures.push(`the room answered no match report from B at generation ${startGeneration + 1} by the run's end: ${JSON.stringify(row)}`);
+    if (row?.refused) report.findings.push(`the room refused ${row.refused} of B's ${row.sent} reports at generation ${startGeneration + 1} (${row.lastError})`);
+  }
 } catch (error) {
   if (error instanceof MatchEndedEarly) {
     report.inconclusive = [...(report.inconclusive ?? []), error.message];
@@ -1470,6 +1586,15 @@ try {
   // every election each page heard, with the room's reason: the ones before the reveal are MP-S03's entry elections
   report.elections = Object.fromEntries(Object.entries(report.roomLog).map(([label, entries]) => [label,
     (entries ?? []).filter((entry) => entry.kind === 'host_changed' || entry.kind === 'decline').map((entry) => ({ atMs: entry.atMs, kind: entry.kind, hostId: entry.hostId ?? null, generation: entry.generation ?? null, reason: entry.reason ?? null, unable: entry.unable ?? null }))]));
+  // (268) each page's peer connections: made, closed, the most alive at once (a re-offer replaces its connection, so a
+  // healthy page holds one per link however many it makes), connected and failed; `capped` when the bounded log filled
+  report.pcLife = Object.fromEntries(Object.entries(report.roomLog).map(([label, entries]) => {
+    const rows = entries ?? [];
+    const made = rows.filter((entry) => entry.kind === 'pc');
+    return [label, { created: made.length, closed: rows.filter((entry) => entry.kind === 'pc-close').length, peakLive: Math.max(0, ...made.map((entry) => entry.live ?? 0)),
+      connected: rows.filter((entry) => entry.kind === 'pc-state' && entry.state === 'connected').length, failed: rows.filter((entry) => entry.kind === 'pc-state' && entry.state === 'failed').length,
+      capped: rows.length >= 600 }];
+  }));
   report.wallMs = elapsedMs();
   const relevant = errors.filter((entry) => !/favicon|ERR_ABORTED/i.test(entry.text));
   if (relevant.length) failures.push(`${relevant.length} browser error(s): ${relevant.slice(0, 3).map((entry) => `${entry.page} ${entry.kind}: ${entry.text.slice(0, 240)}`).join(' | ')}`);
@@ -1499,6 +1624,11 @@ else {
       + `(above ${report.load.starvedAbove}); the load was ${report.load.atStart} at the start. Re-run on a quieter machine before reading this as a red.`);
   }
   for (const finding of report.findings) console.log(`  FINDING: ${finding}`);
+  // (268) the timings with the load they were read at, and each page's peer connections
+  const { play: tp, migration: tm } = report.timings ?? {};
+  if (tp || tm) console.log(`  TIMINGS: play C ${tp?.snapshotsPerSC ?? '-'}/s, B ${tp?.snapshotsPerSB ?? '-'}/s snapshots at load ${tp?.load1 ?? '-'}; `
+    + `A closed → B hosting ${tm?.electedAfterMs ?? '-'} ms, C live on B ${tm?.resumedAfterMs ?? '-'} ms, then ${tm?.snapshotsPerSCOnB ?? '-'}/s at load ${tm?.load1 ?? '-'}`);
+  console.log(`  PEER CONNECTIONS: ${Object.entries(report.pcLife ?? {}).map(([label, row]) => `${label} ${row.created} made, ${row.closed} closed, ${row.peakLive} alive at most`).join('; ') || '-'}`);
   for (const item of report.inconclusive ?? []) console.log(`  INCONCLUSIVE: ${item}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
   console.log(report.pass ? 'mp p2p e2e: PASS' : `mp p2p e2e: FAIL${report.load.starved ? ' (STARVED)' : ''}`);
