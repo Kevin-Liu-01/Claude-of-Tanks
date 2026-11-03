@@ -57,8 +57,9 @@ const m41_bw = m41('m41_bw', 'M41 (Bundeswehr)', 'Germany');
 // from the German, Japanese and KV-2 coats and the JGSDF's, so it stays its own paint)
 // r5 (critics: still warm, a reddish chocolate; Gelboliv leans yellow; the mottle heavy): a yellower olive-brown, the
 // wash lighter (its blue kept 15 under the German national olive's, so it stays its own paint)
-m41_bw.visual = { ...m41_bw.visual, scheme: 'solid', base: '#474028', weather: '#544b34', patches: [], marking: 'number', number: '231', camoScale: 0.5,
-  insignia: 'de-cross-1956', solidWeatheringIntensity: 0.35 };
+// 2026-11-03 (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the Gelboliv under soft dark-olive and earth masses, a field coat over the national colour
+m41_bw.visual = { ...m41_bw.visual, scheme: 'blotch', base: '#474028', weather: '#544b34', patches: ['#262517', '#6a5f3e'],
+  marking: 'number', number: '231', camoScale: 0.55, patchK: 2.0, insignia: 'de-cross-1956' };
 
 // The JGSDF's M41, in the Ground Self-Defense Force's olive drab of its service years (1961 to the 1980s; the two-tone
 // came after it), warmer and greener than the Bundeswehr's Gelboliv.
@@ -69,8 +70,9 @@ const m41_jgsdf = m41('m41_jgsdf', 'M41 (JGSDF)', 'Japan');
 // KV-2's and the national colours, so it stays its own paint)
 // r5 (critics: lighter and yellower than the period's dull olive drab, the mottle blotchy): darker and duller, the wash a
 // browner drab (its red 16 over the KV-2's, the base's 15 under the Bundeswehr's, so both stay their own paints)
-m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'solid', base: '#383b28', weather: '#504b36', patches: [], marking: 'number', number: '12', camoScale: 0.5,
-  insignia: 'jp-jgsdf-sakura', solidWeatheringIntensity: 0.35 };
+// 2026-11-03 (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the olive drab in interlocking fields with chocolate brown, and light and black bars
+m41_jgsdf.visual = { ...m41_jgsdf.visual, scheme: 'merdc', base: '#383b28', weather: '#504b36', patches: ['#4f4232', '#6d6b4c', '#1e1f18'],
+  marking: 'number', number: '12', camoScale: 0.5, patchK: 1.3, insignia: 'jp-jgsdf-sakura' };
 
 // The Danish M41 DK-1 of the late 1980s: the Cummins diesel, skirts, the thermal sight and laser rangefinder, the AAI
 // APFSDS at the tier II footing.

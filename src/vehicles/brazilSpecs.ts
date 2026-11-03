@@ -221,8 +221,10 @@ x1_pioneiro.armor = x1Armor({ hl: 2.52, hw: 1.12, inW: 0.74, roofY: 1.62, trkTop
   barrelLenM: 2.70, tw: 0.92, tFrontZ: 1.02, tRearZ: -1.54, tH: 0.66, glacis: 38, lower: 44, side: 25, loader: true });
 x1_pioneiro.visual = {
   ...x1_pioneiro.visual,
-  // the Army's plain grey olive drab of the 1970s and 80s (Gaydos' profile); the white turret ring
-  scheme: 'solid', base: '#4c5038', weather: '#575b43', patches: [], marking: 'number', number: '31', camoScale: 0.5,
+  // the Army's grey olive drab of the 1970s and 80s (Gaydos' profile) under brown and black field bands (owner 2026-11-03: "any tank without a proper camo need a proper camoo"); the
+  // white turret ring
+  scheme: 'stripes', base: '#4c5038', weather: '#575b43', patches: ['#6a5235', '#24261e'], marking: 'number', number: '31',
+  camoScale: 0.5,
   trackWidthM: 0.40, insignia: 'br-ring',
 };
 

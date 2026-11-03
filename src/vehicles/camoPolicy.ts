@@ -147,16 +147,23 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * drab under chocolate brown (the photo critic: the family's sage-and-tan service paint read as no JGSDF coat), and the
  * Type 10 paint. Appended after 266's saved catalog indices, the Danish coats first. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10'] as const);
+/** Release 269, the plain-coat pass (owner 2026-11-03: "any tank without a proper camo need a proper camoo"): the three
+ * Magachs each in a field coat over the IDF's Sinai grey (they wore the Merkava 2D's plain service grey), and the X1
+ * Pioneiro's olive drab under brown and black bands. The plain paints the Sho't Kal, the Challenger 1 Mk 3, the Leopard
+ * 1A5 DK-1 and both M41s led keep their ids with patterned recipes. Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_PLAIN_269 = Object.freeze(['paint_magach3', 'paint_magach6b', 'paint_magach7c', 'paint_x1_pioneiro'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
+  | typeof AUTHORED_PAINT_IDS_PLAIN_269[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_PLAIN_269 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -198,6 +205,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_264,
   ...AUTHORED_PAINT_IDS_AFTER_265,
   ...AUTHORED_PAINT_IDS_AFTER_266,
+  ...AUTHORED_PAINT_IDS_PLAIN_269,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -925,6 +933,12 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
+  // release 269, the plain-coat pass (owner 2026-11-03): the Magachs off the Merkava 2D's plain service grey, each in a
+  // field coat of its own, and the X1 Pioneiro in its banded olive drab (it painted its spec's coat as Factory)
+  magach3: 'paint_magach3',
+  magach6b: 'paint_magach6b',
+  magach7c: 'paint_magach7c',
+  x1_pioneiro: 'paint_x1_pioneiro',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

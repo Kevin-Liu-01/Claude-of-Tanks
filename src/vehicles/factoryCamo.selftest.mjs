@@ -112,8 +112,10 @@ for (const patternId of CAMO_PATTERN_IDS) {
 // 2026-09-23: 19 -> 13 entries when the six retired hidden hulls that led paints left the fleet. 2026-10-29 (release
 // 265): 34 with the Danish line's coats and the M41 family's period paints (the Bundeswehr's Gelboliv, the JGSDF's OD).
 // Integration 266: 44 with every 266 head's coats together (the Danish two, the Challenger 1 pick's two, the Brazil line's
-// seven, on 265's Centurion and PT-84 paints).
-assert.ok(paints >= 10 && paints <= 50, `the authored paint catalog is compact (${paints} entries)`);
+// seven, on 265's Centurion and PT-84 paints). Release 269: 52 on main with 267's Japan and Danish coats (past the old cap
+// of 50), 56 with the plain-coat pass's Magach and X1 paints (owner 2026-11-03: no plain coats); the cap leaves room for
+// the 269 lines' coats, still one paint per distinct recipe, never one per vehicle.
+assert.ok(paints >= 10 && paints <= 80, `the authored paint catalog is compact (${paints} entries)`);
 // no duplicates: no paint_* repeats (or shades) any other preset's recipe, and paint labels are unique and never
 // reuse another catalog label
 {
