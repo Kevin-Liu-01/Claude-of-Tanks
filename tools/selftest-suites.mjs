@@ -2584,6 +2584,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
+    'src/ui/touchClimbRelease.selftest.mjs', // 2026-11-02 audit F8: leaving the battle releases a held climb
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
     'src/ui/minimapObjectives.selftest.mjs',

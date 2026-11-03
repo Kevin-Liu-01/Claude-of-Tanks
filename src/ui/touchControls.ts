@@ -495,7 +495,8 @@ export function createTouchControls({
     const aircraft=getFlightKind()==='gunship';
     scope.innerHTML=`${aircraft?uiIconSVG('zoomIn',34):SCOPE}<span class="lb">${t(aircraft?'gallery.view.modeDockHelpZoom':'touch.scope')}</span>`;
     scope.setAttribute('aria-label',t(aircraft?'action.zoomIn':'touch.scopeAria'));
-    if (!layout || !battle) { resetMove(); cancelFireGesture(); }
+    // (2026-11-02 audit F8) the flight's climb rail holds the virtual handbrake: a hidden rail may never see the lift
+    if (!layout || !battle) { resetMove(); cancelFireGesture(); input.releaseVirtual('handbrake'); }
   }
 
   // -------------------------------------------------------------------------
