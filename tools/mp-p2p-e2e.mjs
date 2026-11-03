@@ -36,6 +36,11 @@
  *   live mode the election's reason comes from there. report.bandwidth: getStats bytes per page and data channel over
  *   the play window, and each link's selected candidate pair (host / srflx / relay).
  *
+ * The way in and the load (268): A opens the rooms panel the way the page offers it in its layout (tools/mp-rooms-entry.mjs:
+ * the surface registry's recipe; the persistent panels hide .cot-multiplayer-entry at 1024x640), never by one selector.
+ * Every step records the 1-min load; a phase that times out above 3 per core is named STARVED and the run exits 75, the
+ * STARVED verdict (tools/selftest-verdict.mjs), so a starved machine never reads as a product red.
+ *
  * During A's return the two tabs still rendering (B hosting, C playing) draw at 320×200: two full battle frames starve the
  * shared headless GPU process while A2 compiles its programs, and the strict preparation is wall-clock bounded (since
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
@@ -50,6 +55,8 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
+import { openRooms, pressControl } from './mp-rooms-entry.mjs';
+import { machineLoad, SELFTEST_STARVED_EXIT, STARVED_LOAD_PER_CORE } from './selftest-verdict.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -134,7 +141,21 @@ const report = { pass: false, failures: [], findings: [], errors: [], steps: [],
 const failures = report.failures;
 /** (2026-10-17) the room ended the match before the migration: the run's later steps have nothing to measure. */
 class MatchEndedEarly extends Error {}
-const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
+// (268) the machine's load beside every phase: a phase that times out above STARVED_LOAD_PER_CORE per core is named
+// STARVED and the run exits SELFTEST_STARVED_EXIT (tools/selftest-verdict.mjs), so a starved run is never read as a
+// product red
+const loadAtStart = machineLoad();
+report.load = { cores: loadAtStart.cores, starvedAbove: loadAtStart.starvedAbove, atStart: loadAtStart.load1, starved: null };
+const step = (name, detail = {}) => { const { load1 } = machineLoad(); report.steps.push({ name, atMs: elapsedMs(), load1, ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s, load ${load1})${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
+/** Whether an error is a phase's timeout (puppeteer's TimeoutError, a wait or a page load). */
+const timedOut = (error) => error?.name === 'TimeoutError' || /\btimeout\b|timed out/i.test(String(error?.message ?? ''));
+/** A phase's timeout, named STARVED when the 1-min load is past STARVED_LOAD_PER_CORE per core (the first one is kept). */
+const starvedNote = (label) => {
+  const { load1, cores, starved } = machineLoad();
+  if (!starved) return '';
+  report.load.starved ??= { label, load1, atMs: elapsedMs() };
+  return `STARVED (1-min load ${load1} on ${cores} cores, above ${STARVED_LOAD_PER_CORE} per core): `;
+};
 const errors = report.errors;
 function observe(page, label) {
   page.on('pageerror', (error) => errors.push({ page: label, kind: 'pageerror', text: error.stack || error.message }));
@@ -144,14 +165,9 @@ function observe(page, label) {
 const BOOT_QUERY = 'nosplash=1&tier=desktop&gfxreset=1';
 /** Pages driven by touch: every page with --mobile, the phone seat's with --phone. */
 const touchPages = new WeakSet();
-async function activate(page,selector){
-  if(!mobile&&!touchPages.has(page))return page.click(selector);
-  const el=await page.waitForSelector(selector,{visible:true});await el.scrollIntoView();
-  const box=await el.boundingBox();
-  if(!box||box.width<43.5||box.height<43.5)throw new Error(`Mobile control too small: ${selector} ${JSON.stringify(box)}`);
-  if(!await el.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(hit===el||el.contains(hit));}))throw new Error(`Mobile control blocked: ${selector}`);
-  await el.tap();
-}
+/** Press a control as a player can (tools/mp-rooms-entry.mjs): shown, in view, not covered; a touch seat taps a 44 px target. */
+const touchOf = (page) => mobile || touchPages.has(page);
+const activate = (page, selector) => pressControl(page, selector, { touch: touchOf(page) });
 
 /**
  * The page's own record of its room and links (2026-10-13), installed before any script: the RTCPeerConnections it makes,
@@ -727,7 +743,7 @@ async function waitFor(page, predicate, label, timeoutMs, options = {}) {
       loaderLabel: document.querySelector('.cot-bl .label, .cot-bl .progress-label')?.textContent ?? '',
       v2: window.__MULTIPLAYER_V2?.stats?.() ?? null, entryFailure: window.__NETWORK_ENTRY_FAILURE ?? null, load: window.__NETWORK_LOAD ?? null,
     })).catch(() => null);
-    throw new Error(`${label}: ${error.message}; diagnostics ${JSON.stringify(diagnostics)}`);
+    throw new Error(`${timedOut(error) ? starvedNote(label) : ''}${label}: ${error.message}; diagnostics ${JSON.stringify(diagnostics)}`);
   } finally {
     if (watch !== null) clearInterval(watch);
   }
@@ -883,9 +899,11 @@ try {
   await pages.a.goto(`${origin}/?${BOOT_QUERY}${simKernelSeats.size ? `&simKernels=${simKernelSeats.has('a') ? 'wasm' : 'ts'}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
   step('a-garage-ready');
-  // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
-  await activate(pages.a,'.cot-multiplayer-entry');
+  // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo. (268)
+  // Its way in follows the page's layout (the persistent panels hide .cot-multiplayer-entry): tools/mp-rooms-entry.mjs.
+  const roomsEntry = await openRooms(pages.a, { touch: touchOf(pages.a) });
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
+  step('a-rooms-open', { layout: roomsEntry.layout, pressed: roomsEntry.pressed });
   await activate(pages.a,`.cot-play .modes [data-value="${roomKind}"]`);
   await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-value="${kind}"]`)?.getAttribute('aria-checked') === 'true', `A ${roomKind} mode`, 10_000, { args: [roomKind] });
   await pages.a.evaluate(() => {
@@ -1349,9 +1367,11 @@ try {
       if (!state.roomPhase && !state.sessionPhase && !state.inRoom && !manualJoin && performance.now() - returnStartedAt > 60_000) {
         manualJoin = true;
         report.findings.push(`A2 (${roomKind}) was not back in the room 60 s after reopening the invite; joined by code`);
+        // the rooms panel by the page's own way in (tools/mp-rooms-entry.mjs), as at A's start
+        if (!await pages.a2.evaluate(() => document.querySelector('.cot-play')?.classList.contains('show')).catch(() => true)) {
+          await openRooms(pages.a2, { touch: touchOf(pages.a2) }).catch((error) => report.findings.push(`A2's rooms panel did not open: ${error.message}`));
+        }
         await pages.a2.evaluate((code) => {
-          const entry = document.querySelector('.cot-multiplayer-entry');
-          if (!document.querySelector('.cot-play')?.classList.contains('show')) entry?.click();
           const input = document.querySelector('.cot-play [data-field="code"]');
           if (input) { input.value = code; input.dispatchEvent(new Event('input', { bubbles: true })); }
           document.querySelector('.cot-play [data-action="join"]')?.click();
@@ -1439,7 +1459,9 @@ try {
   if (error instanceof MatchEndedEarly) {
     report.inconclusive = [...(report.inconclusive ?? []), error.message];
   } else {
-  failures.push(error instanceof Error ? error.stack || error.message : String(error));
+  // a timeout outside waitFor (a page load) is a phase's timeout too
+  const starved = timedOut(error) && !String(error?.message ?? '').startsWith('STARVED') ? starvedNote('a page load or wait') : '';
+  failures.push(`${starved}${error instanceof Error ? error.stack || error.message : String(error)}`);
   // (2026-10-15) a page whose renderer hangs never answers a screenshot: each one is bounded, so the report is still written
   for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await Promise.race([screenshot(page,`${label}-failure.png`).catch(()=>{}),sleep(15_000)]);
   }
@@ -1471,12 +1493,18 @@ else {
     `A closed → B hosted after ${report.migration?.electedAfterMs ?? '-'} ms (generation ${report.migration?.election?.generation ?? '-'}), C live on B with +${report.migration?.cSnapshotsAfterMigration ?? '-'} snapshots in 4 s, B's hull ${report.migration?.bHullJumpAsCSaw?.toFixed?.(2) ?? '-'} m from where C saw it, ${report.migration?.reportsFromB ?? '-'} reports from B; ` +
     `A rejoined as ${report.rejoin?.p2p?.role ?? '-'} of ${report.rejoin?.p2p?.hostId ?? '-'} (B serving ${report.rejoin?.peersOnB ?? '-'}; ${report.rejoin?.path ?? '-'} path, ${report.rejoin?.attempts ?? '-'} attempt(s), compile ${report.rejoin?.entry?.stages?.compile ?? '-'} ms${report.rejoin?.entry?.stages?.compileRetry !== undefined ? ` + retry ${report.rejoin.entry.stages.compileRetry} ms` : ''}); ${report.errors.length} browser errors; ${report.wallMs} ms wall`);
   for (const failure of failures) console.log(`  FAIL: ${failure}`);
+  // (268) a run whose phase timed out on a starved machine says so: it is no product red
+  if (report.load.starved) {
+    console.log(`  STARVED: ${report.load.starved.label} timed out at 1-min load ${report.load.starved.load1} on ${report.load.cores} cores `
+      + `(above ${report.load.starvedAbove}); the load was ${report.load.atStart} at the start. Re-run on a quieter machine before reading this as a red.`);
+  }
   for (const finding of report.findings) console.log(`  FINDING: ${finding}`);
   for (const item of report.inconclusive ?? []) console.log(`  INCONCLUSIVE: ${item}`);
   console.log(`  screenshots: ${report.screenshots.join(', ')}`);
-  console.log(report.pass ? 'mp p2p e2e: PASS' : 'mp p2p e2e: FAIL');
+  console.log(report.pass ? 'mp p2p e2e: PASS' : `mp p2p e2e: FAIL${report.load.starved ? ' (STARVED)' : ''}`);
 }
-process.exitCode = report.pass ? 0 : 1;
+// (268) a red whose phase timed out on a starved machine exits the STARVED verdict: try again later, not a product red
+process.exitCode = report.pass ? 0 : report.load.starved ? SELFTEST_STARVED_EXIT : 1;
 // (2026-10-17) a browser, preview server or rooms double that ignored close() keeps the event loop alive until the caller's
 // alarm (a failed run held the capture lock 15 minutes past its report): once the report is out, exit. Unref'd, so a clean
 // teardown still ends the process at once.
