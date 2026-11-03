@@ -143,4 +143,67 @@ function fixture(onRestored, { beforeLost, onLost } = {}) {
   assert.match(main, /const isCurrentRestoration = \(\) => !signal\.aborted && /);
 }
 
+{
+  // (review round 1) the production restoration, executed: main.ts onRestored hands its currency to the Garage GPU
+  // restore, so a newer loss stops that restore at its next checkpoint (restorePresentationGpu's assertCurrent between
+  // stages) and the next restoration starts as soon as it settles. Before, restoreGpu() got no currency check: the
+  // superseded restore uploaded to its end beside the newer loss, and the next restoration waited for the 3 s bound.
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const body = main.match(/async onRestored\(signal: AbortSignal\) \{([\s\S]*?)\n  \},\n\};/)?.[1];
+  assert.ok(body, 'exercise the production context-restored adapter');
+  const pendingFrames = [];
+  const frame = () => new Promise((resolve) => { pendingFrames.push(resolve); });
+  const releaseFrame = async () => { for (const resolve of pendingFrames.splice(0)) resolve(); await flush(); };
+  const uploads = [];
+  let rearmed = 0;
+  const garagePhasePresentation = {
+    // the Garage restore pipeline's shape: stages across frames, a currency check before each stage commits
+    async restoreGpu(isCurrent) {
+      const call = uploads.push(0) - 1;
+      for (let stage = 0; stage < 4; stage += 1) {
+        await frame();
+        if (isCurrent && !isCurrent()) throw new Error('Garage GPU restore superseded');
+        uploads[call] += 1;
+      }
+    },
+  };
+  const onRestored = new Function('ports', `
+    const { renderer, game, garagePhasePresentation } = ports;
+    const noop = () => {};
+    const lighting = { invalidateShadowMaps: noop, update: noop };
+    const combatWarmComposition = { resetRendererWarmState: noop };
+    const applyGraphicsRecovery = noop;
+    const pedestal = { trim: noop };
+    const worldRuntime = { enforceCacheBudget: noop };
+    const nextFrame = async () => {};
+    const viewport = { apply: noop };
+    const post = { resetAdaptiveResolution: noop, render: noop, setAdaptiveHold: noop, setAdaptiveSuspended: noop };
+    const sky = { bakeEnvironment: noop };
+    const garageReturn = { recoverAfterContextRestore: async () => false };
+    const rearmRafAfterContext = ports.rearm;
+    let graphicsContextLost = true;
+    let garagePresentationDirty = true;
+    return async (signal) => { ${body} };
+  `)({
+    renderer: { info: {}, getContext: () => ({ isContextLost: () => false }) },
+    game: { phase: 'garage' },
+    garagePhasePresentation,
+    rearm: () => { rearmed += 1; },
+  });
+  const f = fixture(onRestored);
+  f.lost(); f.restored(); await flush();
+  assert.equal(uploads.length, 1, 'the Garage restore is under way');
+  await releaseFrame();
+  assert.equal(uploads[0], 1);
+  f.lost(); f.restored(); await flush();
+  await releaseFrame();
+  assert.equal(uploads[0], 1, 'the superseded Garage restore stopped at its next checkpoint');
+  assert.equal(uploads.length, 2, 'and the newer restoration started once it settled, not at the 3 s bound');
+  assert.equal(f.timers.filter((timer) => timer.ms > 1000).every((timer) => !timer.live), true, 'the bound was never needed');
+  for (let i = 0; i < 4; i += 1) await releaseFrame();
+  assert.equal(uploads[1], 4, 'the current restoration restores the Garage to the end');
+  assert.equal(f.controller.state, 'live');
+  assert.equal(rearmed, 1, 'only the current restoration resumes the frame loop');
+}
+
 console.log('contextRestoreOwner selftest: aborted, serialized restorations; loss counted first; typed restore outcome');

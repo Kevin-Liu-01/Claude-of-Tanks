@@ -2117,7 +2117,9 @@ renderer.userData.contextRecovery = {
       const recoveredReturn = await garageReturn.recoverAfterContextRestore(isCurrentRestoration);
       if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
       if (game.phase === 'garage') {
-        if (!recoveredReturn) await garagePhasePresentation.restoreGpu();
+        // (2026-11-02 audit R3) the Garage GPU restore checks this restoration's currency between its stages, so a
+        // newer loss stops it at its next checkpoint rather than letting it upload to the end beside the next one
+        if (!recoveredReturn) await garagePhasePresentation.restoreGpu(isCurrentRestoration);
         if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
         garagePresentationDirty = false;
       }
