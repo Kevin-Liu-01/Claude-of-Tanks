@@ -72,19 +72,26 @@ Owner, verbatim: "the m2a3 bradley needs a lot more decorrations and props too."
 Node rasters and the contact probe sees it. No roof gun (the owner's field standard 2026-10-08); no cope cage (the
 references show none on this mark).
 
-- BRAT (photographed, research/ua_m2a3_bradley 1, 2, 5): two rows along the side plates' clear stretches (face x 1.57,
-  the lower row on the skirt ledge, the upper 2 cm under the plate top), two rows of three across the upper glacis
-  between the deck break and the trim vane, four across the vane, a column of two on the turret's left wall aft of the
-  stowed launcher.
-- Spare track links: the shared run down the glacis' right column, and two two-link runs on the nose shelf.
-- Turret bustle: field bags in the rack, a camouflage-net bundle lashed across its top, a rucksack hung on its back.
-- An unditching log nested in the right roof gutter (against the side plate's inner face and the roof), strapped.
+- BRAT (photographed, research/ua_m2a3_bradley 1, 2, 4, 5, 6; round 3, blind A/B b2): two unbroken rows of thirteen
+  0.36 × 0.32 m tiles along the whole upper side band on both sides (face x 1.57, the lower row on the skirt ledge 1.27,
+  the upper under the plate top 1.93), from the stern to where the side's top falls along the glacis, the lower row on
+  one more tile to the bow box; they cover the side boxes, vent and exhaust grille, which this vehicle leaves off
+  (`bradleyFlankDressing(P, { sideFittings: false })`). Two rows of four across the upper glacis inside the deck crown,
+  six across the folded trim vane, a column of two on the turret's left wall aft of the stowed launcher.
+- Spare track links: two two-link runs on the nose shelf and one standing on the bow plate between the tow shackles
+  (the shared glacis course gives way to the glacis tiles).
+- Turret rear (round 3): an open railed cage of round bars (floor grate, posts, two rail courses, two brackets into the
+  rear wall) in place of the small bundle rack, holding the kit bag, a camouflage-net bundle, two rucksacks, a bedroll
+  and an ammunition chest. No mast box (the M2A2 ODS carries none): two whips on the roof's rear corners.
+- An unditching log nested in the right roof gutter and a camouflage-net roll in the left, against the side plates'
+  inner faces and the roof.
 - Right rear: a welded basket hung outboard of the BRAT course from the plate top, standing on the skirt top: an
   ammunition chest with an ammunition can on its lid, a rucksack, a bedroll across its end rails.
 - Left rear: a shelf on the skirt top with two brackets to the skirt face, two jerrycans on it against the BRAT course
-  behind a strap on two posts.
+  behind a strap on two posts, a net roll along their handles.
 
 Everything clears the sweeps: the turret's low parts pass 2.18 m and over within 1.66 m of the ring, the 25 mm at −9°
 passes 2.13 m and over to its 2.85 m reach; nothing of the kit stands above 2.0 m inside them (the nose links lie beyond
 the muzzle). Triangles HIGH/LOW: the vehicle on the final shell without the kit 83,248 / 65,406, with it 89,192 / 70,282
-(the kit 5,944 / 4,876; the pre-268 vehicle 94,740 / 76,588).
+(the kit 5,944 / 4,876; the pre-268 vehicle 94,740 / 76,588); round 3 (full BRAT rows, glacis tiles, bustle cage, net
+rolls, bow links, no mast box) 91,216 / 72,018.

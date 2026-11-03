@@ -274,38 +274,38 @@ function buildBMP3ROK(P: AfvBuilderPort): void {
 }
 
 // 268 (owner: "update all the bradleys"): the Ukrainian M2A2 ODS-SA as the captured vehicles show it (research/
-// ua_m2a3_bradley 1-6, Saratov and Moscow): BRAT tiles in two rows along the upper side plates (face x 1.57, between the
-// skirt ledge 1.27 and the plate top 1.93) wherever the side is clear (the side stowage boxes, the left vent and the
-// right exhaust grille keep their places), one lower row on to the bow box, a row of tiles across the
-// folded trim vane, a column on the turret's left (+X) wall aft of the stowed TOW launcher;
-// field stowage in the bustle rack and two cans on the rear deck's right; no roof gun (the owner's field standard
-// 2026-10-08: the 25 mm, the M240C coax and TOW).
+// ua_m2a3_bradley 1-6, Saratov and Moscow). Round 3 (blind A/B b2, both critics: the photos show two unbroken rows):
+// BRAT tiles in two unbroken rows of thirteen along the whole upper side band on both sides (face x 1.57, the lower
+// row on the skirt ledge 1.27, the upper 1.2 cm under the plate top 1.93; research notes: ~0.36 x 0.38 m tiles, 13 a
+// row), from the stern to where the side's top falls along the glacis, the lower row on one more tile to the bow box;
+// they cover the side boxes, vent and grille, which stay off this vehicle (bradleyFlankDressing sideFittings false).
+// Two rows of four across the upper glacis and six across the folded trim vane (photo 6), a column on the turret's
+// left (+X) wall aft of the stowed TOW launcher; no roof gun (the owner's field standard 2026-10-08: the 25 mm, the
+// M240C coax and TOW).
 const UA_BRAT = Object.freeze({
-  // the lower row stands on the skirt ledge (1.27), the upper row 2 cm under the plate top
-  depth: 0.085, tileZ: 0.35, tileY: 0.31, pitchZ: 0.368, rowsY: [1.423, 1.743] as const,
-  // [side, z0, z1, rows]: the clear stretches of each side plate (rows 2 = both, 1 = the lower row only)
-  runs: [
-    [1, -3.04, -2.06, 2], [1, -1.14, -0.16, 2], [1, 0.64, 1.80, 2], [1, 1.82, 2.12, 1],
-    [-1, -3.04, -2.06, 2], [-1, -1.14, 0.95, 2], [-1, 1.65, 2.12, 1],
-  ] as const,
+  depth: 0.085, tileZ: 0.36, tileY: 0.32, pitchZ: 0.368, rowsY: [1.428, 1.758] as const,
+  rowStartZ: -3.00, tilesPerRow: 13, lowerExtraZ: [1.97] as const,
 });
 
 function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   const { box } = KIT;
   const B = UA_BRAT;
   const x = BRADLEY_HULL.sideX + B.depth / 2 - 0.002;
-  for (const [side, z0, z1, rows] of B.runs) {
-    const n = Math.max(1, Math.floor((z1 - z0 - B.tileZ) / B.pitchZ) + 1);
-    const start = (z0 + z1) / 2 - (n - 1) * B.pitchZ / 2;
-    for (let k = 0; k < n; k++) {
-      for (const y of B.rowsY.slice(0, rows)) P.add('hull', box(B.depth, B.tileY, B.tileZ), side * x, y, start + k * B.pitchZ);
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < B.tilesPerRow; k++) {
+      const z = B.rowStartZ + B.tileZ / 2 + k * B.pitchZ;
+      for (const y of B.rowsY) P.add('hull', box(B.depth, B.tileY, B.tileZ), side * x, y, z);
     }
+    for (const z of B.lowerExtraZ) P.add('hull', box(B.depth, B.tileY, B.tileZ), side * x, B.rowsY[0], z);
   }
-  // a row of tiles laid on the folded trim vane (modern3.ts addBradleyBowKit: vane centre 3.05 cm off the glacis plane,
-  // 4.5 cm thick)
+  // across the upper glacis (two rows of four inside the deck crown's ±0.85) and the folded trim vane (six: vane centre
+  // 3.05 cm off the glacis plane, 4.5 cm thick); the shared glacis link course gives way (addUkrainianBradleyFieldKit)
   const G = BRADLEY_GLACIS, n = G.normalOutward;
-  // (the right two stations stay clear: the shared spare-link course runs down the glacis over the vane there)
-  for (let i = 2; i < 6; i++) {
+  for (const tz of [1.88, 2.16]) for (const tx of [-0.63, -0.21, 0.21, 0.63]) {
+    const lift = 0.0405;
+    P.add('hull', box(0.40, 0.085, 0.30), tx, G.yAt(tz) + n.y * lift, tz + n.z * lift, G.angleRad, 0, 0);
+  }
+  for (let i = 0; i < 6; i++) {
     const tx = -0.925 + i * 0.37, tz = 2.48, lift = 0.0305 + 0.0225 + 0.035;
     P.add('hull', box(0.34, 0.07, 0.30), tx, G.yAt(tz) + n.y * lift, tz + n.z * lift, G.angleRad, 0, 0);
   }
@@ -313,8 +313,6 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   for (const z of [-0.93]) for (const y of [0.43, 0.65]) {
     P.add('turret', box(0.08, 0.22, 0.29), 0.87, y, z);
   }
-  // field stowage: bags in the bustle rack
-  KIT.stowage(P, 'turretCloth', P.rng, [[0.14, 0.60, -1.42, 0.96, 0.20, 0.36]]);
   P.decal('turret', 'number', 'UA B3', 0.21, [1.365, 0.53, -0.25], Math.PI / 2);                // on the stowed TOW box
   addUkrainianBradleyFieldKit(P);
   P.topY = Math.max(P.topY || 0, 1.43);
@@ -323,10 +321,12 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
 // ---- the frontline kit (268, the owner: "the m2a3 bradley needs a lot more decorrations and props too") -------------
 // Seated on the shared hull's measured surfaces (modern3.ts BRADLEY_HULL, BRADLEY_GLACIS) and kept out of every sweep:
 // the turret's low parts pass 2.18 m and over within 1.66 m of the ring, the 25 mm at -9 deg passes 2.13 m and over to
-// its 2.85 m reach, so nothing below stands above 2.0 m within them. Photographed (research/ua_m2a3_bradley 1, 2, 5): the
-// BRAT courses on the sides and across the upper glacis. Field kit: spare links on the nose, a camouflage-net bundle and
-// a rucksack on the bustle rack, a log in the right roof gutter, a side basket on the right rear (ammunition chest and
-// can, rucksack, bedroll) and a jerrycan shelf on the left rear, both hung outboard of the BRAT course.
+// its 2.85 m reach, so nothing below stands above 2.0 m within them. Spare links on the nose shelf and the bow plate
+// (the shared glacis course gives way to the BRAT); round 3 (blind A/B b2): an open railed cage across the turret rear
+// in place of the small bundle rack, holding a camouflage-net bundle, two rucksacks, a bedroll and an ammunition chest
+// beside the shared kit bag; a log in the right roof gutter and a net roll in the left; a side basket on the right
+// rear (ammunition chest and can, rucksack, bedroll) and a jerrycan shelf on the left rear with a net roll on the
+// cans, both hung outboard of the BRAT course.
 const UA_KIT = Object.freeze({
   // the BRAT tiles' outer face on the side plates, and the skirt ledge and skirt face the side racks stand on
   tileFaceX: BRADLEY_HULL.sideX + UA_BRAT.depth - 0.002, ledgeY: 1.27, skirtX: 1.70,
@@ -343,30 +343,32 @@ const uaRestY = (spec: FabricSpec) => spec.hh * (1 - (spec.flatten ?? 0)) - 0.00
 
 function addUkrainianBradleyFieldKit(P: AfvBuilderPort): void {
   const { box } = KIT;
-  const K = UA_KIT, G = BRADLEY_GLACIS, n = G.normalOutward;
-  // BRAT across the upper glacis (photo 5): two rows of three tiles between the deck break and the trim vane, the
-  // fourth column the shared spare-link course on the right
-  for (const tz of [1.88, 2.16]) for (const tx of [-0.15, 0.25, 0.65]) {
-    const lift = 0.0405;
-    P.add('hull', box(0.38, 0.085, 0.30), tx, G.yAt(tz) + n.y * lift, tz + n.z * lift, G.angleRad, 0, 0);
+  const K = UA_KIT;
+  // the shared glacis link course gives way to the BRAT across the glacis; two short runs lie on the nose shelf (1.40,
+  // z 2.84..3.18) and one stands on the bow plate (z 3.265, y 0.98..1.32) between the tow shackles, beyond the muzzle
+  for (const child of [...P.hullG.children]) {
+    if (child.name === 'fitting_spareTrackLinks' && child.position.z > 2.0 && child.position.z < 2.4) P.hullG.remove(child);
   }
-  // two short runs of spare links lying on the nose shelf (1.40, z 2.84..3.18), beyond the muzzle's reach
   for (const side of [-1, 1]) {
     mount(P, 'hull', FITTINGS.spareTrackLinks({ mats: P.mats, links: 2, width: 0.48, seed: 31 + side }),
       side * 0.42, BRADLEY_HULL.noseY + 0.03, 3.00);
   }
-  // the bustle rack (modern3.ts addBradleyTurretKit: floor 0.28, rails to 0.70 over z -1.59..-1.21): a camouflage-net
-  // bundle lashed across its top, a rucksack hung on its back
-  const net: FabricSpec = { len: 0.94, hw: 0.17, hh: 0.11, exponent: 2.8, endScale: 0.62, endLength: 0.10, flatten: 0.30,
-    wrinkle: 0.09, cinch: [-0.32, 0, 0.32], cinchDepth: 0.10 };
-  uaSoftLoad(P, 'turretCloth', 'turretDark', net, [0.14, 0.70 + uaRestY(net), -1.40], Math.PI / 2);
-  KIT.stowage(P, 'turretCloth', P.rng, [[0.42, 0.48, -1.70, 0.30, 0.36, 0.22]]);
+  mount(P, 'hull', FITTINGS.spareTrackLinks({ mats: P.mats, links: 2, width: 0.48, seed: 33 }),
+    0, 1.15, BRADLEY_HULL.bowZ + 0.03, [Math.PI / 2, 0, 0]);
+  addUkrainianBradleyBustleCage(P);
   // an unditching log nested in the right roof gutter (x -1.51 plate, 1.67 gutter, the roof falling 0.59 a metre):
   // touching the plate's inner face and the roof, 20 cm under the turret bin's floor as it turns
   const logR = 0.11, logX = -(BRADLEY_HULL.edgeX - logR);
   const roofAt = 2.06 - 0.591 * (-logX - BRADLEY_HULL.crownX);
   mount(P, 'hull', FITTINGS.unditchingLog({ mats: P.mats, len: 1.80, r: logR, straps: 2, seed: 2681, axis: 'z' }),
     logX, roofAt + logR / Math.cos(Math.atan(0.591)), -1.55);
+  // a camouflage-net roll in the left roof gutter (the roof falling 0.70 a metre to 1.60), alongside the turret, 39 cm
+  // under the stowed launcher's floor as it turns
+  const rollR = 0.10, rollX = BRADLEY_HULL.edgeX - rollR, slope = 0.46 / 0.66;
+  const netRoll: FabricSpec = { len: 1.30, hw: rollR, hh: rollR, exponent: 2.2, endScale: 0.85, endLength: 0.08, flatten: 0.12,
+    wrinkle: 0.07, cinch: [-0.42, 0, 0.42], cinchDepth: 0.06 };
+  uaSoftLoad(P, 'hullCloth', 'hullDark', netRoll,
+    [rollX, 2.06 - slope * (rollX - BRADLEY_HULL.crownX) + rollR / Math.cos(Math.atan(slope)) + 0.01, -0.25], 0);
   // right rear: a welded basket hung outboard of the BRAT course from the plate top, standing on the skirt top
   const [z0, z1] = K.rearZ, zc = (z0 + z1) / 2, len = z1 - z0;
   const bx0 = -(K.tileFaceX + 0.002), bx1 = -1.985, bxc = (bx0 + bx1) / 2, bw = bx0 - bx1;
@@ -406,13 +408,59 @@ function addUkrainianBradleyFieldKit(P: AfvBuilderPort): void {
     for (const g of [c.body, ...c.stamps, c.spine, ...c.grips]) P.addEquipment('hullCloth', g, canX, K.ledgeY + 0.03, z);
     if (c.spout) P.addEquipment('hullDark', c.spout, canX, K.ledgeY + 0.03, z);
   }
+  // a net roll lashed along the cans' handles
+  const canRoll: FabricSpec = { len: 0.70, hw: 0.075, hh: 0.075, exponent: 2.2, endScale: 0.85, endLength: 0.08,
+    flatten: 0.20, wrinkle: 0.06, cinch: [-0.22, 0.22], cinchDepth: 0.05 };
+  uaSoftLoad(P, 'hullCloth', 'hullDark', canRoll, [canX, K.ledgeY + 0.03 + 0.44 + 0.036 + uaRestY(canRoll), z0 + 0.39], 0);
+}
+
+// Round 3 (blind A/B b2): the open railed cage across the turret rear (turret frame) in place of the shared bundle rack:
+// a floor grate of round bars, corner and middle posts, two rail courses, two brackets into the rear wall; inside, beside
+// the shared kit bag (modern3.ts addBradleyTurretKit: x -0.26..0.54, z -1.55..-1.25 on 0.35), a camouflage-net bundle,
+// two rucksacks, a bedroll and an ammunition chest. Its floor passes 13 cm over the raised troop roof as it turns.
+const UA_CAGE = Object.freeze({ x0: -0.86, x1: 0.80, zf: -1.21, zr: -1.76, floorY: 0.338, midY: 0.56, topY: 0.80 });
+
+function addUkrainianBradleyBustleCage(P: AfvBuilderPort): void {
+  const { box, cylX, cylY, cylZ } = KIT;
+  const C = UA_CAGE, w = C.x1 - C.x0, d = C.zf - C.zr, xc = (C.x0 + C.x1) / 2, zc = (C.zf + C.zr) / 2;
+  for (const child of [...P.turretG.children]) if (child.name === 'fitting_stowageRack') P.turretG.remove(child);
+  const bar = 0.011, floorTop = C.floorY + bar;
+  for (const z of [C.zf - 0.03, zc, C.zr + 0.03]) P.addEquipment('turretDetail', cylX(bar, w, 8), xc, C.floorY, z);
+  for (const x of [C.x0 + 0.015, -0.30, 0.25, C.x1 - 0.015]) {
+    P.addEquipment('turretDetail', cylZ(bar, d, 8), x, C.floorY - 2 * bar, zc);
+  }
+  const postH = C.topY - (C.floorY - 3 * bar);
+  for (const [x, z] of [[C.x0 + 0.015, C.zr + 0.015], [C.x1 - 0.015, C.zr + 0.015], [-0.30, C.zr + 0.015], [0.25, C.zr + 0.015],
+    [C.x0 + 0.015, C.zf - 0.015], [C.x1 - 0.015, C.zf - 0.015]] as const) {
+    P.addEquipment('turretDetail', cylY(0.014, 0.014, postH, 8), x, (C.topY + C.floorY - 3 * bar) / 2, z);
+  }
+  for (const y of [C.midY, C.topY]) {
+    P.addEquipment('turretDetail', cylX(0.013, w, 8), xc, y, C.zr + 0.015);
+    for (const x of [C.x0 + 0.015, C.x1 - 0.015]) P.addEquipment('turretDetail', cylZ(0.013, d, 8), x, y, zc);
+  }
+  P.addEquipment('turretDetail', cylX(0.013, w, 8), xc, C.topY, C.zf - 0.015);
+  // two welded brackets from the rear wall (its face at z -1.20, x -0.84..0.70 at this height) down on to the floor bar
+  for (const x of [-0.60, 0.45]) P.addEquipment('turretDetail', box(0.05, 0.13, 0.05), x, 0.40, C.zf - 0.02);
+  // the loads, each clear of its neighbours
+  const net: FabricSpec = { len: 0.80, hw: 0.085, hh: 0.10, exponent: 2.8, endScale: 0.62, endLength: 0.10, flatten: 0.30,
+    wrinkle: 0.09, cinch: [-0.26, 0, 0.26], cinchDepth: 0.08 };
+  uaSoftLoad(P, 'turretCloth', 'turretDark', net, [0.10, floorTop + uaRestY(net), -1.636], Math.PI / 2);
+  const bed: FabricSpec = { len: 0.48, hw: 0.085, hh: 0.085, exponent: 2.2, endScale: 0.82, endLength: 0.08, flatten: 0.22,
+    wrinkle: 0.05, cinch: [-0.14, 0.14], cinchDepth: 0.07 };
+  uaSoftLoad(P, 'turretCloth', 'turretDark', bed, [-0.40, floorTop + uaRestY(bed), -1.48], 0);
+  KIT.stowage(P, 'turretCloth', P.rng, [[0.67, floorTop + 0.20, -1.38, 0.20, 0.40, 0.26],
+    [0.67, floorTop + 0.18, -1.64, 0.20, 0.36, 0.20]]);
+  const chest = fieldChestParts(0.30, 0.26, 0.44, { high: P.q !== false, handles: false });
+  for (const g of chest.paint) P.addEquipment('turret', g, -0.67, floorTop, -1.49);
+  for (const g of chest.dark) P.addEquipment('turretDark', g, -0.67, floorTop, -1.49);
 }
 
 function buildUAM2A3(P: AfvBuilderPort): void {
   buildBradley(P);
   addUkrainianBradleyPackage(P);
   // OWNER BRADLEY ORDER (2026-08-17): the shared internal-fill and side-armour grammar (modern3.ts).
-  bradleyFlankDressing(P);
+  // (round 3: the full BRAT course covers the side plates, so their boxes, vent, grille and side markings stay off)
+  bradleyFlankDressing(P, { sideFittings: false });
   const turretReceipt = P.turretG.userData.bradleyA2TurretClosureReceipt;
   P.turretG.userData.uaBradleyRoofSeatingReceipt = Object.freeze({
     revision: 'source-roof-r3',

@@ -3297,6 +3297,9 @@ function addBradleyTurretShell(P: Modern3BuilderPort): void {
   P.add('turret', box(bayW, 0.10, 0.30), bayX, T.bottomY + 0.05, 0.84);
   P.add('turret', box(bayW, 0.05, 0.14), bayX, T.roofY - 0.025, 0.76);
   P.add('turretDark', box(0.06, 0.05, 0.08), bayX - 0.20, 0.52, 1.03);                     // M240C coax port
+  // round 3: the floor under the right wall stays level (0.12) where the shell's floor rises aft to the rear's 0.24,
+  // closing the pocket over the collar's rim there (roof-pocket census)
+  P.add('turret', box(0.34, 0.12, 0.32), -0.77, T.bottomY + 0.06, -0.56);
   P.turretG.userData.bradleyA2TurretClosureReceipt = Object.freeze({
     revision: 'source-turret-r3',
     roofY: T.roofY,
@@ -3338,10 +3341,8 @@ function addBradleyTurretKit(P: Modern3BuilderPort): void {
   const B = BRADLEY_BIN;
   P.add('turretDark', box(0.014, 0.016, B.z1 - B.z0 - 0.08), B.outerX - 0.008, B.shoulderY, (B.z0 + B.z1) / 2 - 0.08);
   for (const z of [-0.20, 0.30]) P.add('turretDetail', box(0.03, 0.06, 0.07), B.outerX - 0.012, (B.bottomY + B.shoulderY) / 2, z);
-  // the right-rear antenna mast: its block on the corner and the housing over it (source: world x −1.29..−0.90,
-  // y 2.62..3.59, z −1.50..−1.05)
-  P.add('turretDetail', box(0.40, 0.44, 0.44), -0.955, 0.78, -0.86);
-  P.add('turretDetail', box(0.34, 0.53, 0.38), -0.955, 1.265, -0.86);
+  // (round 3, blind A/B b2: the source's tall mast box at the right rear is gone, the M2A2 ODS carries none; the two
+  // whips stand on the roof's rear corners)
   // 2x4 smoke dischargers on the cheek fronts (§6.5)
   for (const s of [-1, 1]) {
     const bank = FITTINGS.smokeBank({
@@ -3358,7 +3359,7 @@ function addBradleyTurretKit(P: Modern3BuilderPort): void {
   rack.position.set(0.14, 0.28, T.rearZ - 0.20);
   P.turretG.add(rack);
   stowage(P, 'turretCloth', P.rng, [[0.14, 0.50, T.rearZ - 0.20, 0.80, 0.30, 0.30]]);
-  for (const [x, y, z, seed] of [[-0.955, 1.53, -0.86, 5], [0.50, T.roofY, -1.02, 8]] as const) {
+  for (const [x, y, z, seed] of [[-0.62, T.roofY, -1.02, 5], [0.50, T.roofY, -1.02, 8]] as const) {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.62, rake: 0.04, seed });
     whip.position.set(x, y, z);
     P.turretG.add(whip);
@@ -3436,7 +3437,7 @@ function bradleyEdgeY(z: number): number {
   return z <= H.glacisTopZ ? H.edgeY : Math.min(H.edgeY, BRADLEY_GLACIS.yAt(z)) - 0.005;
 }
 
-function addBradleySideArmor(P: Modern3BuilderPort): void {
+function addBradleySideArmor(P: Modern3BuilderPort, sideFittings = true): void {
   const S = BRADLEY_SIDE;
   const { box, cylX, mergeAll, xform } = KIT;
   const skirtProfile: Array<[number, number]> = [
@@ -3486,6 +3487,8 @@ function addBradleySideArmor(P: Modern3BuilderPort): void {
       P.add('hullDetail', box(0.012, 0.018, 0.24), side * (S.skirtOut + 0.045), y, z);
       for (const dz of [-0.11, 0.11]) P.add('hullDetail', box(0.047, 0.018, 0.018), side * (S.skirtOut + 0.0215), y, z + dz);
     }
+    // (sideFittings false: a full-length tile course covers the side, its boxes, vent and grille: the Ukrainian BRAT)
+    if (!sideFittings) continue;
     // side stowage box aft of the turret (source: both sides, z -2.0..-1.2, out to 1.655)
     P.add('hull', box(0.10, 0.655, 0.80), side * (S.faceX + 0.04), 1.5925, -1.60);           // down on to the ledge
     P.add('hullDark', box(0.012, 0.50, 0.012), side * (S.faceX + 0.091), 1.61, -1.60);
@@ -3555,7 +3558,8 @@ function addBradleyStern(P: Modern3BuilderPort): void {
   }
 }
 
-function addBradleyHullMarkings(P: Modern3BuilderPort): void {
+function addBradleyHullMarkings(P: Modern3BuilderPort, sideMarkings = true): void {
+  if (!sideMarkings) return;
   const S = BRADLEY_SIDE;
   const label = P.spec.visual.number ?? 'C-21';
   for (const side of [-1, 1]) {
@@ -3585,14 +3589,15 @@ function addBradleyTurretSeat(P: Modern3BuilderPort, flush = false): void {
 /** The Bradley playables' shared dressing (m2a2_bradley directly; m3a3_bradley, ua_m2a3_bradley and m6_linebacker
  *  through their wrappers; the Marder takes none of it): the turret seat (`turretSeat`: true under the A2 turret,
  *  'flush' under a turret seating its own floor on the pre-268 sunk seat, false for a turret that brings its own), the
- *  side armour, bow kit, stern and markings. */
+ *  side armour, bow kit, stern and markings (`sideFittings` false: the side boxes, vent, grille and side markings stay off
+ *  for a vehicle whose tile course covers the upper side). */
 export function bradleyFlankDressing(P: Modern3BuilderPort,
-  { turretSeat = true }: { turretSeat?: boolean | 'flush' } = {}): void {
+  { turretSeat = true, sideFittings = true }: { turretSeat?: boolean | 'flush'; sideFittings?: boolean } = {}): void {
   if (turretSeat) addBradleyTurretSeat(P, turretSeat === 'flush');
-  addBradleySideArmor(P);
+  addBradleySideArmor(P, sideFittings);
   addBradleyBowKit(P);
   addBradleyStern(P);
-  addBradleyHullMarkings(P);
+  addBradleyHullMarkings(P, sideFittings);
   const S = BRADLEY_SIDE;
   P.hullG.userData.bradleySideArmorReceipt = Object.freeze({
     revision: 'source-side-armor-r2',

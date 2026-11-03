@@ -932,7 +932,7 @@ BRADLEY_BIN, BRADLEY_TOW, BRADLEY_TURRET_RING). Datum table (registered source /
 | turret walls | left +0.68..0.71, right −1.08..−1.15 | +0.70, −1.12 (the shell 0.14 m off its ring) |
 | turret roof | plate 2.83; hatch rings 2.92–2.975; ISU x −0.05..0.70, z −0.40..0.15, top 3.19 | 2.83; 2.93 / 2.99; ISU x 0.06..0.66, z −0.33..0.13, top 3.18 |
 | right stowage bin | to x −1.50 over y 2.20–2.68, z −0.95..0.30 | −1.49, 2.20–2.68, z −0.95..0.40 |
-| antenna mast (right rear) | x −1.29..−0.90, y 2.62..3.59, z −1.50..−1.05 | the same |
+| antenna mast (right rear) | x −1.29..−0.90, y 2.62..3.59, z −1.50..−1.05 | none (round 3, blind A/B b2: the M2A2 ODS carries no mast box; its two whips stand on the roof's rear corners) |
 | gun line, muzzle | x −0.20, y 2.525; muzzle z 2.37 | the same |
 | TOW launcher | erected for firing: x 0.75..1.37, y 2.90..3.33, z −1.10..0.20, its pivot at the box's inner lower edge (0.75, 2.90) | built stowed: folded 90° down and out about that pivot, x 0.75..1.18, y 2.28..2.90 |
 
