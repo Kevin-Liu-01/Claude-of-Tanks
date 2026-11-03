@@ -68,3 +68,55 @@ export function createGarageScreen({ warn = (message: string, error: unknown) =>
   };
   return screen;
 }
+
+export type LazyPanelPhase = 'idle' | 'loading' | 'mounted';
+
+/** A panel the Garage mounts on its first press (the roster filter). */
+export interface LazyPanel {
+  readonly isOpen: boolean;
+  toggle(): void;
+}
+
+export interface LazyPanelToggle<P extends LazyPanel> {
+  readonly phase: LazyPanelPhase;
+  /** The mounted panel, or null before its load lands. */
+  readonly panel: P | null;
+  /** A press of the panel's button. */
+  press(): void;
+}
+
+/**
+ * A lazily mounted panel's button (2026-11-02 audit F5). A press before the mount means "open": the first one starts the
+ * load, and a repeat press while it loads changes nothing (the player saw nothing happen; two impatient presses used to
+ * queue two toggles and leave the panel closed). Once mounted, a press toggles. The mount opens the panel only while
+ * the Garage still shows the span of the latest press, so a load that lands after the Garage hid opens nothing. A failed
+ * load goes back to idle: the next press asks again (the lazy-chunk failure policy is the loaders lane's).
+ */
+export function createLazyPanelToggle<P extends LazyPanel>(
+  screen: Pick<GarageScreen, 'ticket'>,
+  load: () => Promise<P>,
+): LazyPanelToggle<P> {
+  let phase: LazyPanelPhase = 'idle';
+  let panel: P | null = null;
+  let wanted: GarageScreenTicket | null = null;
+  return {
+    get phase() { return phase; },
+    get panel() { return panel; },
+    press() {
+      if (panel) { panel.toggle(); return; }
+      wanted = screen.ticket();
+      if (phase === 'loading') return;
+      phase = 'loading';
+      load().then((mounted) => {
+        panel = mounted;
+        phase = 'mounted';
+        const open = wanted?.current() === true;
+        wanted = null;
+        if (open && !mounted.isOpen) mounted.toggle();
+      }, () => {
+        phase = 'idle';
+        wanted = null;
+      });
+    },
+  };
+}

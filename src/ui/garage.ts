@@ -39,7 +39,7 @@ import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipme
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
-import { createGarageScreen } from './garageScreen.ts';
+import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
 import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -2839,19 +2839,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
   let facetPanel: Promise<GarageFacetPanel> | null = null;
-  let facetPanelMounted: GarageFacetPanel | null = null;
-  // (2026-11-02 audit F5) presses made while the panel loads flip one intent the mount applies (two presses used to
-  // queue two toggles and leave it closed), and only while the Garage still shows the span they were made in
-  let facetWantedOpen = false;
-  let facetTicket = garageScreen.ticket();
-  facetToggle.addEventListener('click', () => {
-    emit('ui:click', {});
-    if (facetPanelMounted) { facetPanelMounted.toggle(); return; }
-    facetWantedOpen = !facetWantedOpen;
-    facetTicket = garageScreen.ticket();
-    if (facetPanel) return;
+  // (2026-11-02 audit F5) a press while the panel loads means open (a second impatient press used to close it again), a
+  // press after the mount toggles, and the mount opens it only while the Garage still shows the latest press's span
+  const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
     // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
-    facetPanel = Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
+    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
       import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
       .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
         anchor: countryRailEl,
@@ -2861,12 +2853,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         click: () => emit('ui:click', {}),
         onOpenChange: (open) => root.classList.toggle('facets-open', open),
       }));
-    facetPanel.then((panel) => {
-      facetPanelMounted = panel;
-      const wanted = facetWantedOpen && facetTicket.current();
-      facetWantedOpen = false;
-      if (wanted && !panel.isOpen) panel.toggle();
-    }, () => { facetPanel = null; facetWantedOpen = false; });
+    const loading = facetPanel;
+    loading.catch(() => { if (facetPanel === loading) facetPanel = null; });
+    return loading;
+  });
+  facetToggle.addEventListener('click', () => {
+    emit('ui:click', {});
+    facetPanelToggle.press();
   });
   // --- END roster filter ------------------------------------------------------
 
@@ -4930,8 +4923,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       quickMenus?.field.close();
       techTreeScreen?.close({ restoreFocus: false });
       closePhoto?.();
-      facetWantedOpen = false;
-      facetPanelMounted?.close();
+      facetPanelToggle.panel?.close();
       if (facetSelectTimer !== null) { clearTimeout(facetSelectTimer); facetSelectTimer = null; }
       root.style.display = 'none';
       // and whatever else stands open from the Garage, or no longer shows: none keeps a place on the stack (and the

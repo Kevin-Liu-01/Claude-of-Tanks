@@ -4,7 +4,7 @@
 // the owners are driven here, and the Garage's wiring is pinned in its source.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createGarageScreen } from './garageScreen.ts';
+import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
 import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsumables.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
@@ -141,7 +141,7 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
   const hide = source.slice(source.indexOf('    hide() {'), source.indexOf('/** Normalize packaged tank portraits'));
   for (const closer of ['garageScreen.hide()', 'closeEqPicker({ restoreFocus: false })', 'garageConsumables?.close({ restoreFocus: false })',
     'rivalMenu?.close()', 'quickMenus?.mode.close()', 'quickMenus?.field.close()', 'techTreeScreen?.close({ restoreFocus: false })',
-    'closePhoto?.()', 'facetPanelMounted?.close()', 'clearTimeout(facetSelectTimer)', 'closeSurfacesWithin(root)',
+    'closePhoto?.()', 'facetPanelToggle.panel?.close()', 'clearTimeout(facetSelectTimer)', 'closeSurfacesWithin(root)',
     'sweepHiddenSurfaces()']) {
     assert.ok(hide.includes(closer), `hide() runs ${closer}`);
   }
@@ -153,8 +153,10 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
     'and photo mode');
   assert.match(source, /if \(!quickMenus \|\| !ticket\.current\(\)\) return;/, 'and the quick menus');
   assert.match(source, /customCamoStudioAccess\?\.open\(garageScreen\.ticket\(\)\.current\)/, 'and the custom camo studio');
-  assert.match(source, /const wanted = facetWantedOpen && facetTicket\.current\(\);/,
-    'presses made while the filter loads apply one intent, not a toggle each');
+  assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{/,
+    'the filter button is the lazy toggle (case 6 drives it)');
+  assert.match(source, /facetToggle\.addEventListener\('click', \(\) => \{\n\s+emit\('ui:click', \{\}\);\n\s+facetPanelToggle\.press\(\);\n\s+\}\);/,
+    'and every press goes through it');
   assert.match(source, /if \(!garageScreen\.isOpen\) return;\n\s+if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;/,
     'the filter\'s auto-select never changes the selection after the Garage hid');
   assert.match(source, /if \(battleMode === 'solo' && remembered && normalizeGameMode\(remembered\) !== battleGameMode\) setBattleGameMode\(remembered\);/,
@@ -164,4 +166,79 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
   assert.doesNotMatch(source, /\.battle-word'\)\.textContent = t\(/);
 }
 
-console.log('garageOpenState.selftest: one open state, lapsing tickets, one ready wait, the consumables wait, the Garage wiring PASS');
+// 6. The roster filter's lazy toggle: a press while the panel loads means open (two impatient presses used to queue two
+//    toggles and leave it closed), a press after the mount toggles, a hide during the load opens nothing, a failed load
+//    is asked for again.
+{
+  const panel = () => ({ isOpen: false, toggles: 0, toggle() { this.toggles += 1; this.isOpen = !this.isOpen; } });
+  const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const loads = [];
+    const toggle = createLazyPanelToggle(screen, () => { const load = deferred(); loads.push(load); return load.promise; });
+    assert.equal(toggle.phase, 'idle');
+    toggle.press();
+    toggle.press();
+    assert.equal(loads.length, 1, 'one load however many presses come before the mount');
+    assert.equal(toggle.phase, 'loading');
+    const mounted = panel();
+    loads[0].resolve(mounted);
+    await flush();
+    assert.equal(toggle.phase, 'mounted');
+    assert.equal(mounted.isOpen, true, 'two presses during the load end open');
+    assert.equal(mounted.toggles, 1);
+    toggle.press();
+    assert.equal(mounted.isOpen, false, 'a press after the mount toggles');
+    toggle.press();
+    assert.equal(mounted.isOpen, true);
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const load = deferred();
+    const toggle = createLazyPanelToggle(screen, () => load.promise);
+    toggle.press();
+    screen.hide();
+    const mounted = panel();
+    load.resolve(mounted);
+    await flush();
+    assert.equal(mounted.isOpen, false, 'a load that lands after the Garage hid opens nothing');
+    screen.show();
+    assert.equal(mounted.isOpen, false, 'nor when the Garage comes back');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const load = deferred();
+    const toggle = createLazyPanelToggle(screen, () => load.promise);
+    toggle.press();
+    screen.hide();
+    screen.show();
+    toggle.press();
+    const mounted = panel();
+    load.resolve(mounted);
+    await flush();
+    assert.equal(mounted.isOpen, true, 'a press in the new span opens it');
+  }
+  {
+    const screen = createGarageScreen();
+    screen.show();
+    const loads = [];
+    const toggle = createLazyPanelToggle(screen, () => { const load = deferred(); loads.push(load); return load.promise; });
+    toggle.press();
+    loads[0].reject(new Error('offline'));
+    await flush();
+    assert.equal(toggle.phase, 'idle', 'a failed load goes back to idle');
+    assert.equal(toggle.panel, null);
+    toggle.press();
+    assert.equal(loads.length, 2, 'and the next press asks again');
+    const mounted = panel();
+    loads[1].resolve(mounted);
+    await flush();
+    assert.equal(mounted.isOpen, true);
+  }
+}
+
+console.log('garageOpenState.selftest: one open state, lapsing tickets, one ready wait, the consumables wait, the filter lazy toggle, the Garage wiring PASS');
