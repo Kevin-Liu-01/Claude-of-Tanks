@@ -234,8 +234,9 @@ async function main() {
     await p.setViewport({ width: vw, height: vh, deviceScaleFactor: 1 });
     p.setDefaultTimeout(entryTimeoutMs);
     await p.evaluateOnNewDocument((presetName) => {
-      // The covered solo entry skips its scene watchdog under automation: report what a player's browser reports.
-      Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+      // The covered solo entry skips its scene watchdog on the harness path: ask for the player's path
+      // (src/app/automationPath.ts; tools/game-readiness.mjs) so it reports what a player's browser reports.
+      window.__COT_AUTOMATION = 'player';
       try {
         localStorage.setItem('cot.telemetry', 'off');
         if (presetName) localStorage.setItem('cot.gfxPreset', presetName);

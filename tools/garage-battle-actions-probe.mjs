@@ -43,6 +43,7 @@ import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
 import { installSourcedTextureReadiness, checkSourcedTextureReadiness } from './sourced-texture-readiness.mjs';
+import { requestAutomationPath } from './game-readiness.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -234,10 +235,9 @@ try {
   if (cpuRate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   page.on('pageerror', error => report.errors.push(String(error)));
   page.on('console', entry => { if (entry.type() === 'error') report.errors.push(entry.text()); });
-  await page.evaluateOnNewDocument(() => {
-    // Match player fades. No quality, simulation, renderer or readiness overrides.
-    Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
-  });
+  // Match player fades: the player's path (src/app/automationPath.ts). No quality, simulation, renderer or readiness
+  // overrides.
+  await requestAutomationPath(page, 'player');
   await page.evaluateOnNewDocument(installGarageActionTiming, { canvasActions });
   if (sourceReadinessGate) await page.evaluateOnNewDocument(installSourcedTextureReadiness);
   if (garageGestureAudioGate || bootAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);

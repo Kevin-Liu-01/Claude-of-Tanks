@@ -18,8 +18,9 @@
  *
  * HARNESS CONTRACT (docs/SCREENSHOT_CONTRACT.md): every headless probe drives
  * the page through window.__SHOTS / window.__DEBUG and never presses a key, so
- * the gate AUTO-SKIPS under automation (navigator.webdriver) and for an
- * explicit ?nosplash / ?nogate flag. window.__COT_FORCE_SPLASH=true (set by
+ * the gate AUTO-SKIPS on the harness path (src/app/automationPath.ts: navigator.webdriver's default, or an explicit
+ * __COT_AUTOMATION / ?automation=harness) and for an explicit ?nosplash / ?nogate flag; a player-path receipt
+ * (?automation=player) sees the gate. window.__COT_FORCE_SPLASH=true (set by
  * tools/boot-probe.mjs before navigation) re-arms it so the boot screens can
  * still be captured.
  */
@@ -28,6 +29,7 @@ import { TRANSITION_SHOTS } from './featuredShots.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import { preloadImage } from './imagePreload.ts';
 import { t } from './i18n.ts';
+import { harnessPath } from '../app/automationPath.ts';
 
 declare global {
   interface Window {
@@ -250,7 +252,8 @@ function bootGateSkipped() {
   let q = '';
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&](nosplash|nogate)\b/.test(q)) return true;
-  return !!(navigator && navigator.webdriver);
+  // (2026-11-02 audit S3) the one automation reader, never navigator.webdriver here
+  return harnessPath();
 }
 
 /**

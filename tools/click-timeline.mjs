@@ -22,9 +22,9 @@
 // `shown` and `done`. `--report` folds the samples into p50 / p95 per path and build and resolves each script's
 // position through the build's hidden source maps (`vite build --sourcemap hidden`) to a source file and line.
 //
-// The probe hides navigator.webdriver, so the transitions, veils and idle warm-ups run as they do for a player. The
-// battle document boots with it visible (the game then installs `__DEBUG`, which the battle paths use to end a
-// battle) and hides it once the Garage is up.
+// The probe asks for the player's path (src/app/automationPath.ts), so the transitions, veils and idle warm-ups run as
+// they do for a player. The battle document boots on the harness path (the game then installs `__DEBUG`, which the
+// battle paths use to end a battle) and takes the player's once the Garage is up.
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -52,10 +52,10 @@ const RENDERER_LIMIT_KB = 6 * 1024 * 1024;
 const INPUT_EVENTS = ['pointerdown', 'pointerup', 'click', 'mousedown', 'mouseup', 'keydown', 'keyup', 'touchstart', 'touchend'];
 
 /** The in-page recorder: event timing, long animation frames and long tasks from document start, and the visibility
- *  test the paths use. `window.__cotAutomation` decides what navigator.webdriver reads. */
+ *  test the paths use. `window.__cotAutomation` decides which automation path the game reads. */
 const PROBE = `(() => {
   if (window.__click) return;
-  Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => window.__cotAutomation === true, configurable: true });
+  Object.defineProperty(window, '__COT_AUTOMATION', { get: () => (window.__cotAutomation === true ? 'harness' : 'player'), configurable: true });
   const rec = window.__click = { events: [], loafs: [], longtasks: [] };
   rec.visible = (el) => { if (!el || el.nodeType !== 1) return false;
     const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false;

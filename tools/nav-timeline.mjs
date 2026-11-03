@@ -211,7 +211,7 @@ function parseBases() {
 /** The in-page probe: layout shifts with their sources and the step's content / ready predicates, every frame. */
 const PROBE = `(() => {
   if (window.__navProbe) return;
-  Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+  window.__COT_AUTOMATION = 'player'; // the player's path (src/app/automationPath.ts): every veil and fade runs
   const probe = window.__navProbe = { shifts: [], contentAt: null, readyAt: null, inputAt: null, spec: window.__navSpec || null, lcp: null,
     longtasks: [], interactions: [] };
   // A prerendered page (tools/viteSpeculationRules.ts) was built before the click and shown at its activation; the probe

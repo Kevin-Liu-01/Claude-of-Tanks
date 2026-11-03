@@ -14,9 +14,9 @@
  * (NaN / Inf / zero / luma per pass), the cloud layer's state and render targets, non-finite uniforms, context-loss
  * events and offscreen probe renders of the scene with the cloud dome / environment / fog removed.
  *
- * Every run reports navigator.webdriver false (the covered entry's scene watchdog runs as on a player's machine), enters
- * through the real Garage controls (the map card, the BATTLE button) with the mode stored as a player's choice, and
- * holds the shared capture lock (tools/capture-lock.mjs) per part (a fresh ticket, holds under --hold-min minutes).
+ * Every run takes the player's automation path (src/app/automationPath.ts: the covered entry's scene watchdog runs as on a
+ * player's machine), enters through the real Garage controls (the map card, the BATTLE button) with the mode stored as a
+ * player's choice, and holds the shared capture lock (tools/capture-lock.mjs) per part (a fresh ticket, holds under --hold-min minutes).
  *
  * Options:
  *   --target=prod|dev|<url>  prod: https://cot.kevinliu.studio; dev: a Vite dev server of this tree (started here)
@@ -280,7 +280,7 @@ async function baseUrl() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// browser: the real GPU (ANGLE Metal), webdriver false, no automation background overrides
+// browser: the real GPU (ANGLE Metal), the player's automation path, no automation background overrides
 // ---------------------------------------------------------------------------------------------------------------------
 let browser = null;
 let profileDir = null;
@@ -383,7 +383,8 @@ async function newPage(time) {
     if (hiddenDesc?.get) Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get() { return window.__bwrForceHidden ? true : hiddenDesc.get.call(this); } });
     if (visDesc?.get) Object.defineProperty(Document.prototype, 'visibilityState', { configurable: true, get() { return window.__bwrForceHidden ? 'hidden' : visDesc.get.call(this); } });
     try { if (presetName) localStorage.setItem('cot.gfxPreset', presetName); } catch { /* storage blocked */ }
-    Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+    // the player's path (src/app/automationPath.ts): the covered entry's scene watchdog runs as on a player's machine
+    window.__COT_AUTOMATION = 'player';
     try {
       localStorage.setItem('cot.telemetry', 'off');
       if (modeId) localStorage.setItem('cot.game.mode.v1', modeId);
@@ -502,7 +503,7 @@ async function boot(page, base) {
     return { version: document.querySelector('meta[name="application-version"]')?.content ?? null, gpu,
       // (round 2, D3) a Vite dev server injects its client: the build kind, whatever host serves it
       devServer: !!document.querySelector('script[src*="/@vite/client"]'),
-      webdriver: navigator.webdriver, preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
+      automation: window.__AUTOMATION_PATH?.path ?? null, preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
   });
   return { bootMs: Date.now() - t0, browser: await browser.version(), ...info };
 }
@@ -1636,7 +1637,7 @@ try {
           // the target as the summary names it: the public production site, a dev server, or a production build served here
           summary.targetKind ??= target === 'prod' ? 'prod' : b.devServer ? 'dev'
             : /127\.0\.0\.1|localhost/.test(String(base)) ? 'local-prod' : 'url';
-          log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, webdriver ${b.webdriver}, preset ${b.preset}`);
+          log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, path ${b.automation}, preset ${b.preset}`);
           if (!plain) await page.evaluate(installDiagnostics);
           entryCdp = null;
           await applyEntryThrottle(page);

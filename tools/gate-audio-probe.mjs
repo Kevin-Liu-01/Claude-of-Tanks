@@ -28,9 +28,10 @@ if (bases.length !== 2) throw new Error('pass --base=<label>=<url> twice');
 const out = resolve(option('out', 'gate-audio-out'));
 const runs = Number(option('runs', '4'));
 
-/** Installed before the page's scripts: the gate shows (no webdriver), and the audio graph and timings are recorded. */
+/** Installed before the page's scripts: the gate shows (the player's path, src/app/automationPath.ts), and the audio
+ *  graph and timings are recorded. */
 const PROBE = `(() => {
-  Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+  window.__COT_AUTOMATION = 'player';
   const rec = window.__gateAudio = { contexts: [], sounds: [], interactions: [], longtasks: [], pressAt: null, gateGoneAt: null };
   const AC = window.AudioContext;
   if (AC) {
