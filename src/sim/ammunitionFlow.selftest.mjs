@@ -181,7 +181,7 @@ assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conce
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 39, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+assert.equal(guidedRounds.length, 40, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks; 267: + the BMPT Terminator's Ataka
 // (+ the T49's Shillelagh, 266)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
@@ -245,6 +245,8 @@ const laterChannelCounts = {
   ua_cv9040c: 3,
   // 267: the Leopard 2A7 DK (the 2A7V's three rounds) and the Centurion Mk 5/2 DK (the Mk 5/2's three)
   leo2a7dk: 3, centurion5_2dk: 3,
+  // 267: the BMPT Terminator (Ob'yekt 199 "Ramka"): 3UBR8 APDS, 9M120-1 Ataka-T and 3UOF8 HE-I
+  bmpt_terminator: 3,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -319,7 +321,8 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
-  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b, 560,
+  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b
+  - laterChannelCounts.bmpt_terminator, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
