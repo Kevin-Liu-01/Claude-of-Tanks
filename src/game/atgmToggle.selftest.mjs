@@ -78,4 +78,26 @@ game.phase = 'garage';
 input.press('atgm');
 assert.equal(player.combat.shellSlot, 1, 'the Garage ignores Q');
 
-console.log('atgmToggle.selftest: Q and the HUD tile toggle the guided round and back from the game state, with no HUD loaded');
+// (reviewer, 2026-11-03) a network client: every snapshot row rewrites combat.shellSlot with the authority's slot, which
+// lags the player's pick by a round trip, while input.shellSlot keeps the pick until the authority itself moves
+// (mp/presentation/battlePresentation.ts). The toggle and its return slot read the pick, as the HUD's tile did.
+game.phase = 'battle';
+const row = (authoritySlot) => { player.combat.shellSlot = authoritySlot; };
+input.press('shell1');
+row(0);
+assert.equal(player.input.shellSlot, 0);
+input.press('atgm');
+assert.equal(player.input.shellSlot, 2, 'Q picks the guided round on a client');
+row(0); // the authority has not seen the pick yet
+input.press('atgm');
+assert.equal(player.input.shellSlot, 0, 'a second Q within one round trip toggles back, not onto the missile again');
+row(0);
+input.press('shell2');
+row(0); // the HEAT pick is still on its way
+input.press('atgm');
+assert.equal(player.input.shellSlot, 2);
+row(0);
+input.press('atgm');
+assert.equal(player.input.shellSlot, 1, 'Q returns to the round the digit picked, not the lagging row\'s cannon round');
+
+console.log('atgmToggle.selftest: Q and the HUD tile toggle the guided round and back from the game state, with no HUD loaded and through a lagging network row');
