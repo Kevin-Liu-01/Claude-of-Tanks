@@ -1274,6 +1274,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // light change or a film export lands nothing after the teardown
     'src/game/studioSession.selftest.mjs',
     'src/game/studioSessionExit.selftest.mjs',
+    // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
+    'src/game/studioTransport.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film

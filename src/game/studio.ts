@@ -128,7 +128,7 @@ import { smokeBankBase, smokeHoldInside, smokeWallRoom, smokeWindForMap, type Sm
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
-import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBusy } from './studioSession.ts';
+import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBusy, transportHeld } from './studioSession.ts';
 import type { StudioBusy, StudioSessionToken } from './studioSession.ts';
 import { WHEEL_DOLLY_MAX_UNITS, wheelDollyFactor, wheelNotchUnits } from './wheelNotches.ts';
 import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
@@ -1845,6 +1845,21 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
+  /**
+   * (audit F9) A pointer the browser takes back (a touch turned scroll or system gesture, a lost capture) is a release
+   * that places nothing: with no listener, pointerHeld stayed set until the next pointerup and history's flush re-armed
+   * itself every settle period.
+   */
+  function onPointerCancel(): void {
+    pointerHeld = false;
+    if (active && dragActor) {
+      updateActor(dragActor, {}); // the dragged tank settles where the pointer left it
+      panel.refreshSelected();
+    }
+    dragActor = null;
+    dragging = false;
+  }
+
   // The canvas is the Studio's camera surface: a wheel or a trackpad pinch (ctrl+wheel) over it is camera zoom,
   // never a page zoom. 2026-10-15: the zoom follows the distance scrolled (wheelNotches.ts), as the Garage
   // showroom and the gun sight do — a mouse click is still one 12 % orbit notch or one fly step, but a pinch's
@@ -1921,6 +1936,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.addEventListener('pointerdown', onPointerDown, true);
   window.addEventListener('pointermove', onPointerMove, true);
   window.addEventListener('pointerup', onPointerUp, true);
+  window.addEventListener('pointercancel', onPointerCancel, true);
   window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   window.addEventListener('blur', () => keys.clear());
   window.addEventListener('pagehide', () => commitHistory());
@@ -3372,7 +3388,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function seekTimeline(timeMs: number, opts: SeekOptions = {}): number {
-    if ((recording && !opts.recording) || filming) return Math.round(clockMs);
+    // (audit F9) the take owns the playhead (transportHeld); only a recording's own opening seek passes
+    if (transportHeld(busy()) && !(opts.recording && recording)) return Math.round(clockMs);
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
     reverseRate = 0;
@@ -3436,7 +3453,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   /** J/K/L: forward doubles the play rate up to 4x, back runs the reverse shuttle at 1x, 2x, 4x, and K stops both. */
   function shuttle(direction: -1 | 0 | 1): void {
-    if (recording || filming) return;
+    if (transportHeld(busy())) return;
     if (direction === 0) {
       reverseRate = 0;
       pauseTimeline();
@@ -3467,8 +3484,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     panel.refreshTime();
   }
 
+  // (audit F9) play, pause, the rate, the shuttle, a seek and an export step ask one question, transportHeld(busy()): Play
+  // during a recording's priming hold once set the clock running before the encoder's first chunk (its opening was lost)
   function playTimeline() {
-    if (filming) return false;
+    if (transportHeld(busy())) return false;
     reverseRate = 0;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
     flareToWallClock();
@@ -3480,7 +3499,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function pauseTimeline() {
-    if (recording) return Math.round(clockMs);
+    if (transportHeld(busy())) return Math.round(clockMs);
     timeScale = 0;
     reverseRate = 0;
     rail.updateVisibility();
@@ -5215,8 +5234,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /** Settled edits commit as one step (a held pointer, a load or a restore waits). */
   function flushHistory(): void {
     historyTimer = 0;
-    if (restoringHistory) return;
-    if (pointerHeld || dragActor || dragging || loading || productionLoading) {
+    // a closed Studio commits nothing (its exit committed the last edit) and never re-arms
+    if (restoringHistory || session.phase !== 'open') return;
+    if (pointerHeld || dragActor || dragging || busy()) {
       historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
       return;
     }
@@ -5224,7 +5244,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   function commitHistory(): void {
     if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
-    if (restoringHistory || loading || recording || filming || !active) return;
+    if (busy()) return;
     const doc = documentJson();
     const text = JSON.stringify(doc);
     if (text === historyHead) return;
@@ -5260,7 +5280,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   async function restoreAutosave(): Promise<boolean> {
     const saved = readAutosave();
-    if (!saved || recording || filming || loading) return false;
+    if (!saved || busy()) return false;
     await load(saved.doc);
     commitHistory(); // opening the saved scene is a step: undo returns to the empty Studio
     return true;
@@ -5268,7 +5288,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function undo(): Promise<boolean> { return stepHistory(undoStack, redoStack); }
   async function redo(): Promise<boolean> { return stepHistory(redoStack, undoStack); }
   async function stepHistory(from: string[], to: string[]): Promise<boolean> {
-    if (restoringHistory || loading || recording || filming || !active) return false;
+    if (busy()) return false;
     commitHistory(); // a pending edit becomes its own step first
     const target = from.pop();
     if (target == null || historyHead == null) return false;
@@ -6171,7 +6191,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     exit,
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
-      if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError(t('studio.error.invalidExportStep'));
+      if (transportHeld(busy()) || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError(t('studio.error.invalidExportStep'));
       timeScale = 0;
       if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
@@ -6264,7 +6284,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     },
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),
     setTimeScale: (v: number) => {
-      if (recording || filming) return timeScale;
+      if (transportHeld(busy())) return timeScale;
       reverseRate = 0;
       const next = Math.max(0, Math.min(4, v));
       if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
