@@ -67,6 +67,13 @@ interface SoloBattleEntryRuntimeOptions {
    * under its veil, a menu start) waits for it here, holding the entry latch, instead of racing its restore.
    */
   whenGarageSettled?(): Promise<void> | null | void;
+  /**
+   * (2026-11-02 audit F2 review) Record what this entry asked for beyond its tank and map (main: battleEntryIntent,
+   * the mode's battlefield variant, its campaign operation, a watched battle), for every accepted entry: the Garage
+   * button, the Play menu and the ladder, and a failure notice's retry, whose recovery return cleared the record.
+   * Runs once no Garage return is in flight (a return's 'garage' announcement clears the record), before the cover.
+   */
+  recordIntent?(options: SoloBattleLoadingStartOptions | undefined): void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -114,11 +121,12 @@ export function createSoloBattleEntryRuntime({
   onFailure = () => {},
   announce = () => {},
   whenGarageSettled = () => {},
+  recordIntent = () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled];
+    onFailure, announce, whenGarageSettled, recordIntent];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -143,6 +151,8 @@ export function createSoloBattleEntryRuntime({
       // (no return in flight: no wait, so the cover still lands inside the press's task)
       const returning = whenGarageSettled();
       if (returning) await returning;
+      // the entry's whole intent, after the return's 'garage' announcement (which clears it), before the cover
+      recordIntent(options);
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;

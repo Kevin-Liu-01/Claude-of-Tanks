@@ -4,10 +4,12 @@
 // menu's and campaign's battles recorded no profile history without `announce: ... ui:battleStart`.
 import assert from 'node:assert/strict';
 import { createAppLifecycle } from '../game/appLifecycle.ts';
+import { createBattleEntryIntent } from '../game/battleEntryIntent.ts';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 import { createBattleFrameRuntime } from '../game/battleFrameRuntime.ts';
 import { advancePreBattleCountdown, PRE_BATTLE_WARM_HOLD_LIMIT_S, transitionBattleCountdown } from '../game/preBattleCountdown.ts';
 import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts';
+import { terrainVariantFor } from '../sim/matchRuleset.ts';
 import { mainSource, mainStatement, runMainStatements } from './mainComposition.test-support.mjs';
 
 const flush = async (turns = 12) => { for (let index = 0; index < turns; index += 1) await Promise.resolve(); };
@@ -15,10 +17,20 @@ const flush = async (turns = 12) => { for (let index = 0; index < turns; index +
 // The solo entry: main's announce, whenGarageSettled and presentReturnFailure bindings.
 const entryStatement = mainStatement('const soloBattleEntry = createSoloBattleEntryRuntime({');
 assert.equal(entryStatement.split("import('./ui/garageReturnFailure.ts')").length, 2, 'one lazy notice import in the entry composition');
-function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {} } = {}) {
+/** main's top-level function declaration that begins with `head`, through its closing `}` line. */
+function mainFunction(head) {
+  const start = mainSource.indexOf(`\n${head}`);
+  const end = mainSource.indexOf('\n}\n', start + 1);
+  assert.ok(start >= 0 && end > start, `main.ts declares ${head}`);
+  return mainSource.slice(start + 1, end + 2);
+}
+function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {} } = {}) {
   const events = [];
   const scope = {
     createSoloBattleEntryRuntime,
+    battleEntryIntent: createBattleEntryIntent(),
+    terrainVariantFor,
+    campaignOperationById: (id) => (id ? { id, mapId: 'op-map' } : null),
     battleEntryLifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
     bus: { emit: (type, payload) => events.push([type, payload]) },
     garageReturn: { whenSettled },
@@ -30,12 +42,26 @@ function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGara
     VISIBLE_TANK_IDS: ['m1a1_abrams_hc', 'leopard2a4'],
     garage: { getSelected: () => 'm1a1_abrams_hc', getSelectedMap: () => 'desert', noteBattleLoadFailed() {} },
     isChunkFailure: () => false,
-    loadFailure: async () => ({ showSoloEntryFailure: () => events.push(['entry-notice']) }),
+    loadFailure: async () => ({ showSoloEntryFailure: (error, retry) => { events.push(['entry-notice']); onEntryNotice(error, retry); } }),
     presentGarageReturnFailure: (error, retry) => { events.push(['return-notice', error.message, typeof retry]); },
     console: { error() {}, warn() {}, info() {} },
   };
-  const entry = runMainStatements(entryStatement.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()'), scope, 'soloBattleEntry');
-  return { entry, events, lifecycle: scope.battleEntryLifecycle };
+  // main's entry composition with the two local entries that call it (the Garage button's, the Play menu's and ladder's)
+  const { soloBattleEntry: entry, beginLocalBattleEntry, beginLocalBattle } = runMainStatements([
+    entryStatement.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()'),
+    mainFunction('function beginLocalBattleEntry('), mainFunction('function beginLocalBattle('),
+  ], scope, '{ soloBattleEntry, beginLocalBattleEntry, beginLocalBattle }');
+  return { entry, events, lifecycle: scope.battleEntryLifecycle, intent: scope.battleEntryIntent, beginLocalBattleEntry, beginLocalBattle };
+}
+/** main's phase:change listener (a Garage phase clears the solo intent, keeping watched); returns its handler. */
+function phaseListener(game, battleEntryIntent) {
+  let handler = null;
+  runMainStatements(mainStatement("bus.on('phase:change', () => {"), {
+    bus: { on: (type, listener) => { if (type === 'phase:change') handler = listener; } },
+    game, battleEntryIntent, clearMatchSession() {}, frameLoop: { restart() {} },
+  }, 'null');
+  assert.equal(typeof handler, 'function');
+  return () => { game.phase = 'garage'; handler({ phase: 'garage' }); };
 }
 
 {
@@ -76,6 +102,62 @@ function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGara
   assert.deepEqual(events.slice(-2), [['hide'], ['return-notice', 'restore failed', 'function']],
     'the cover comes down and the return notice offers its retry');
   assert.equal(lifecycle.renderingCovered, false);
+}
+
+{
+  // (audit F2 review) A failed Frontline Assault sortie's Retry replays its whole intent. The recovery's return
+  // announces 'garage', main's listener clears the record, and the notice's retry went straight to the loading: its
+  // world was built without trenches and its brief had no operation (the batch-19 bug).
+  let failures = 1;
+  let retry = null;
+  let announceGarage = () => {};
+  const worlds = [];
+  const solo = soloEntry({
+    // main's ensureWorld: a battle-context build that names no variant takes the solo entry's
+    begin: async () => {
+      worlds.push([solo.intent.resolveTerrainVariant(undefined, true), solo.intent.campaignOperationId]);
+      if (failures-- > 0) throw new Error('world build failed');
+    },
+    enterGarage: async () => announceGarage(),
+    onEntryNotice: (_error, again) => { retry = again; },
+  });
+  announceGarage = phaseListener({ phase: 'battle' }, solo.intent);
+  const quiet = console.error;
+  console.error = () => {}; // the entry's default reportError
+  try {
+    await solo.beginLocalBattle({ specId: 'leopard2a4', gameMode: 'frontline_assault', campaignOperationId: 'op-2' });
+    assert.equal(solo.intent.terrainVariant, null, "the recovery's 'garage' cleared the record");
+    assert.equal(typeof retry, 'function', 'the entry notice offers its retry');
+    retry();
+    await flush(40);
+  } finally { console.error = quiet; }
+  assert.deepEqual(worlds, [['assault-trenches', 'op-2'], ['assault-trenches', 'op-2']],
+    "the retry builds the sortie's trenches and keeps its operation");
+  assert.equal(solo.events.filter(([type]) => type === 'load').at(-1)[2], 'op-map', "a ladder operation fights on its own map");
+}
+
+{
+  // A start accepted under a Garage return keeps its intent through that return's 'garage' announcement.
+  let settle;
+  const solo = soloEntry({ whenSettled: () => new Promise((resolve) => { settle = resolve; }) });
+  const announceGarage = phaseListener({ phase: 'garage' }, solo.intent);
+  const pending = solo.beginLocalBattleEntry('leopard2a4', 'desert', { gameMode: 'frontline_assault', watch: true });
+  await flush();
+  announceGarage(); // the return's screen handoff
+  settle();
+  await pending;
+  assert.equal(solo.intent.terrainVariant, 'assault-trenches');
+  assert.equal(solo.intent.watched, true, 'a watched Garage battle is recorded as watched');
+  // A refused (busy) start never overwrites the intent of the entry it could not displace.
+  let finish;
+  const busy = soloEntry({ begin: () => new Promise((resolve) => { finish = resolve; }) });
+  const first = busy.beginLocalBattle({ gameMode: 'frontline_assault', campaignOperationId: 'op-3' });
+  await flush();
+  await busy.beginLocalBattle({ gameMode: 'standard' });
+  assert.equal(busy.intent.terrainVariant, 'assault-trenches', 'the pending entry keeps its intent');
+  assert.equal(busy.intent.campaignOperationId, 'op-3');
+  finish();
+  await first;
 }
 
 // The reveal: main's canReveal reads the battle's scene (isPresentable runs over the real scheduler in
@@ -153,4 +235,4 @@ assert.match(mainStatement('const soloBattleEntry = createSoloBattleEntryRuntime
 assert.match(mainStatement('const battleAgainAction = createBattleAgainAction({'),
   /getRetry: \(\) => \(garageReturn\.state === 'failed' \? retryGarageReturn : null\),/, "Battle Again's notice");
 
-console.log('mainFlowPorts.selftest: main binds the entry announce, return wait and notice, reveal, lifecycle readers and countdown beacons passed');
+console.log('mainFlowPorts.selftest: main binds the entry announce, intent (retries included), return wait and notice, reveal, lifecycle readers and countdown beacons passed');

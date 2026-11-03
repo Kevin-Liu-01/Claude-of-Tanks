@@ -1111,7 +1111,8 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
 // (2026-11-02 audit F2) the current solo entry's intent — its battlefield variant, campaign operation and watched
-// flag — as one record every solo entry replaces whole (src/game/battleEntryIntent.ts)
+// flag — as one record every solo entry replaces whole once accepted (soloBattleEntry's recordIntent, retries included;
+// src/game/battleEntryIntent.ts)
 const battleEntryIntent = createBattleEntryIntent();
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
@@ -3299,15 +3300,7 @@ function beginLocalBattleEntry(
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
-  // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
-  // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  battleEntryIntent.begin({
-    terrainVariant: terrainVariantFor(options?.gameMode), // the mode's battlefield, as the authority builds it
-    // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
-    campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
-    // the last solo entry was a watched battle (Battle Again watches again)
-    watched: options?.watch === true,
-  });
+  // (the entry records its own intent once accepted: soloBattleEntry's recordIntent below)
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
@@ -3319,18 +3312,14 @@ function beginLocalBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  battleEntryIntent.begin({
-    terrainVariant: terrainVariantFor(gameMode),
-    // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
-    campaignOperationId: gameMode === 'frontline_assault' ? campaignOperationId : null,
-    // (audit F2) a menu or ladder start is never a watched battle: Battle Again after it fights again
-    watched: false,
-  });
+  // campaign slice 5: the mission brief names the ladder operation when the sortie came from it (the entry records
+  // its intent once accepted: soloBattleEntry's recordIntent below; a menu or ladder start is never a watched battle)
+  const operationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
-  const operation = campaignOperationById(battleEntryIntent.campaignOperationId);
+  const operation = campaignOperationById(operationId);
   return soloBattleEntry.beginSelected({
     // Mars changes the rules and sky on the selected battlefield.
-    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: battleEntryIntent.campaignOperationId,
+    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: operationId,
   });
 }
 
@@ -3558,6 +3547,16 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   announce: (payload) => bus.emit('ui:battleStart', payload),
   // (audit F3) a start accepted while a Garage return is in flight waits for it instead of racing its restore
   whenGarageSettled: () => garageReturn.whenSettled(),
+  // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
+  // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
+  // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.
+  recordIntent: (options) => battleEntryIntent.begin({
+    terrainVariant: terrainVariantFor(options?.gameMode), // the mode's battlefield, as the authority builds it
+    // a campaign operation (the ladder, or launched from the Deploy screen) names its sortie: its brief and its map
+    campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
+    // a watched battle (the Deploy foot's Watch): Battle Again watches again
+    watched: options?.watch === true,
+  }),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
