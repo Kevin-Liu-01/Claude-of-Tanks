@@ -914,13 +914,14 @@ function buildAMX40(P: FranceBuilderPort): void {
   // fronts read +0.42 on four plan columns.
   // 268 (the mantlet met the deck: the 267 sweep found the fixed mount on the hull roof at level ahead and in the
   // engine deck turned aft, at full elevation from yaw 154): its underside hung 3-13 cm under the print's (gun frame y
-  // -0.27..-0.31 to the print's -0.14..-0.27). The web, cradle, saddle, shoulder, camera box, coax housing, cheek ring,
-  // tunnel, collar and boot end at the print's underside or above (gun frame -0.19 under the web, -0.17 under the cradle,
-  // -0.12 at the camera box, -0.16 at the collar; the cradle ends at 0.44, short of the engine deck's grille band at
-  // yaw 180), so the whole gun keeps its clearance at the published stops (franceSpecs.ts).
+  // -0.27..-0.31 to the print's -0.14..-0.27). Its feet now sit at or over the print's (gun frame): the web -0.19 rising
+  // to -0.15 at its face (that edge swung over the engine deck's grille lip at +3..+8 deg turned aft), the cradle -0.17
+  // and ending at 0.44 (short of the grille band at yaw 180), the saddle -0.14, the camera box -0.12, the shoulder -0.14,
+  // the coax housing -0.11, so the whole gun keeps its clearance at the published stops (franceSpecs.ts). The gun root's
+  // round parts keep their 267 tops (eggRing below).
   const buildWeaponSystem = (): void => {
   P.addGunExtra(slab(                                                           // source-height canted outer mantlet web; its soft facet encloses the oval tunnel without a rectangular shoulder block
-    [-0.72, -0.16, 0.02], [0.62, -0.16, 0.02], [0.58, -0.16, 0.38], [-0.66, -0.16, 0.38],
+    [-0.72, -0.16, 0.02], [0.62, -0.16, 0.02], [0.58, -0.125, 0.38], [-0.66, -0.125, 0.38],
     [-0.62, 0.43, 0.02], [0.54, 0.43, 0.02], [0.51, 0.29, 0.38], [-0.58, 0.29, 0.38]));
   // 266 (both photo critics: "a black ellipse round the gun root reads as a hole into the turret"): the deep oval recess and
   // the oval tunnel take the mantlet's paint, so the cradle and collar read as one solid mantlet.
