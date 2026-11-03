@@ -138,9 +138,12 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35
-assert.equal(ids.length, 36, 'review every missile/rocket vehicle when the roster changes');
-assert.equal(throughGun, 7, 'gun-launched exceptions remain explicit');
+// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 with 266's T49, whose M551
+// Shillelagh fires through its gun (an eighth gun-launched exception; the pins were not moved when it joined); 40 with
+// 268's three SAM vehicles (the Tunguska-M's eight 9M311M, the Pantsir-S1's twelve 57E6 and the PGZ-95's four QW-2, all
+// from their own tubes)
+assert.equal(ids.length, 40, 'review every missile/rocket vehicle when the roster changes');
+assert.equal(throughGun, 8, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();
 console.log(JSON.stringify({ vehicles: ids.length, externalRounds: external, gunLaunchedRounds: throughGun, launches, stockProbes }));

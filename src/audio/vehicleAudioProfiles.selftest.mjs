@@ -17,6 +17,9 @@ const cases = [
   ['xk2_black_panther', 'mbt', 55, 'diesel_v12_modern'], ['namer_ifv', 'ifv', 63.5, 'diesel_v12_modern'], ['abramsx', 'mbt', 49, 'diesel_v12_modern'],
   ['m2a2_bradley', 'ifv', 30.4, 'diesel_ifv'], ['cv90', 'ifv', 37, 'diesel_ifv'], ['bmp2', 'ifv', 14.3, 'diesel_ifv'],
   ['centurion5_2', 'mbt', 52, 'gasoline_v12'], ['jpz_e100', 'td', 130, 'gasoline_v12'],
+  // 268: the twin-cannon air defence (the PLA pair's small diesels stay on the IFV family)
+  ['tunguska_m', 'ifv', 34, 'diesel_v12_soviet'], ['pantsir_s1', 'ifv', 35, 'diesel_v12_soviet'],
+  ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
 ];
 for (const [id, role, weightTons, family] of cases) {
   assert.equal(resolveEngineFamily({ id, role, weightTons, era: 'modern' }), family, `${id} → ${family}`);

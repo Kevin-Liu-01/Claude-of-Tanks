@@ -925,6 +925,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
+  // release 268: the twin-cannon air defence in existing coats (no new paint; saved catalog indices hold): the Russian pair
+  // in Russia's plain service green (the photographs' solid coat), the PGZ-95 in the PLA green-and-sand organic coat (the
+  // Type 59's Signature recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature,
+  // the ZTZ-20's stock; the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5.
+  tunguska_m: 'national_ru',
+  pantsir_s1: 'national_ru',
+  pgz95: 'sig_type59',
+  pgz09: 'sig_ztz100_x',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

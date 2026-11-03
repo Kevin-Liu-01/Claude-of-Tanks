@@ -238,6 +238,13 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   tos1a_tagil: { doctrine: 'siege', viewM: 345, still: 0.111, moving: 0.061 },
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
+  // 268: the twin-cannon air defence takes the M6 Linebacker's recon doctrine (search radars see far; the tall turrets and
+  // radar masts cost concealment against the Linebacker's 0.25/0.22)
+  tunguska_m: { doctrine: 'recon', viewM: 440, still: 0.230, moving: 0.200 },
+  pantsir_s1: { doctrine: 'recon', viewM: 455, still: 0.215, moving: 0.185 },
+  gepard_1a2: { doctrine: 'recon', viewM: 450, still: 0.225, moving: 0.195 },
+  pgz95: { doctrine: 'recon', viewM: 430, still: 0.240, moving: 0.210 },
+  pgz09: { doctrine: 'recon', viewM: 445, still: 0.230, moving: 0.200 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
   // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
   m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },

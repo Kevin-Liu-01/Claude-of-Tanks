@@ -221,5 +221,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
-assert.equal(digest, '46b1a3a9307d8466', `tree content changed: re-pin to ${digest} if deliberate`);
+// 268 (the twin-cannon air defence; tiers by capability on the coordinator's suggestion): Russia's Tunguska and Pantsir
+// line (the 2K22M Tunguska-M at V off the BMP-3, lane 13 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
+// Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
+// PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
+assert.equal(digest, '26ff3f763c699ea6', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

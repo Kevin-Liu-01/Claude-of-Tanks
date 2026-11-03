@@ -445,6 +445,14 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),
+  // 268: the twin-cannon air defence. The photographs carry the Russian pair's numbers and the PLA star on the hull side
+  // and the Bundeswehr cross on the Gepard's turret side (its number on the turret, "422", Munster); the guns, radars
+  // and launchers ride the turret sides of the others
+  tunguska_m: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pantsir_s1: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  gepard_1a2: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).

@@ -129,6 +129,10 @@ export const FLEET_GROUP_IDS = Object.freeze({
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_tk_x', 'type10_dozer', 'type90b']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
+  // 268: the twin-cannon air-defence round, three self-contained groups (the TOS-1A's pattern)
+  gm352AirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
+  gepard: Object.freeze(['gepard_1a2']),
+  chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

@@ -174,14 +174,19 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 // 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
   "the T49 carries the M551's one guided channel");
+// 268: the twin-cannon air defence's three SAM channels (the Tunguska-M's 9M311M, the Pantsir-S1's 57E6, the PGZ-95's
+// QW-2), each from its own tubes on the M6 Linebacker's Stinger handling; the Gepard 1A2 and the PGZ-09 carry none
+const airDefense268Ids = new Set(['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09']);
+assert.deepEqual(guidedRounds.filter(({spec}) => airDefense268Ids.has(spec.id)).map(({spec, round}) => `${spec.id}/${round.name}`),
+  ['tunguska_m/9M311M', 'pantsir_s1/57E6', 'pgz95/QW-2'], 'the 268 air defence carries three guided channels');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
-  && spec.id !== 't49').length, 23,
+  && spec.id !== 't49' && !airDefense268Ids.has(spec.id)).length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 39, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
-// (+ the T49's Shillelagh, 266)
+assert.equal(guidedRounds.length, 42, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+// (+ the T49's Shillelagh, 266; + the 268 air defence's three SAMs)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -244,6 +249,8 @@ const laterChannelCounts = {
   ua_cv9040c: 3,
   // 267: the Leopard 2A7 DK (the 2A7V's three rounds) and the Centurion Mk 5/2 DK (the Mk 5/2's three)
   leo2a7dk: 3, centurion5_2dk: 3,
+  // 268: the twin-cannon air defence: the SAM carriers' AP, SAM and HE; the Gepard's and the PGZ-09's AP and HE
+  tunguska_m: 3, pantsir_s1: 3, gepard_1a2: 2, pgz95: 3, pgz09: 2,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -257,6 +264,8 @@ const centurionFamilyChannels = ['shot_kal', 'centurion13', 'strv105', 'olifant_
 const pt84Channels = ['pt84_orzel', 'pt84_sokol', 'pt84_zbik'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1',
   'cv9035dk', 't49', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
+const airDefense268Channels = [...airDefense268Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
+assert.equal(airDefense268Channels, 13, 'the five 268 air-defence vehicles add thirteen channels');
 const brazil266Channels = ['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
   'ee_t4_osorio'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -318,7 +327,7 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
-  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b, 560,
+  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

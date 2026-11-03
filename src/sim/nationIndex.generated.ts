@@ -283,4 +283,9 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["t80u_bars_m","russia","modern",8],
   ["t72b3m_bulat_m","russia","modern",8],
   ["t72b3_bastion_m","russia","modern",8],
+  ["tunguska_m","russia","modern",5],
+  ["pantsir_s1","russia","modern",6],
+  ["gepard_1a2","germany","modern",5],
+  ["pgz95","china","modern",5],
+  ["pgz09","china","modern",6],
 ];

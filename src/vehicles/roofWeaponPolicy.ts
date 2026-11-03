@@ -37,6 +37,12 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   hayate_ifv: 'Type 89 IFV: 35 mm KDE, a coaxial 7.62 mm Type 74 and two Type 79 Jyu-MAT launchers; no roof machine gun.',
   cv9035dk: 'CV9035 DK (the Danish Army\'s CV90): 35 mm Bushmaster III and a coaxial 7.62 mm machine gun in the two-man '
     + 'turret; no roof or pintle machine gun.',
+  // 268: the twin-cannon air defence carries no roof machine gun: its crews rely on personal arms
+  tunguska_m: '2K22M Tunguska-M: two 2A38M twin-barrel 30 mm and eight 9M311M; no machine gun.',
+  pantsir_s1: 'Pantsir-S1: two 2A38M twin-barrel 30 mm and twelve 57E6 in two banks; no machine gun.',
+  gepard_1a2: 'Flakpanzer Gepard 1A2: two 35 mm Oerlikon KDA and two quad smoke dischargers; no machine gun.',
+  pgz95: 'PGZ-95: four 25 mm and four QW-2; no machine gun.',
+  pgz09: 'PGZ-09: two 35 mm PG99 and the smoke dischargers; no machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
   kv2: 'KV-2: the 152 mm M-10 and three 7.62 mm DT machine guns in ball mounts (coaxial, turret rear and hull bow); no '
