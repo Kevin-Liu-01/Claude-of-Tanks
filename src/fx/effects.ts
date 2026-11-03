@@ -236,7 +236,7 @@ interface FxEntity {
     yaw?: number;
   };
   /** Solo/authority entities carry the combat record; a revived one reads destroyed:false. */
-  combat?: { destroyed?: boolean } | null;
+  combat?: { destroyed?: boolean; fire?: { burning?: boolean } } | null;
 }
 
 interface FxDebugSurface {
@@ -337,6 +337,8 @@ interface SmokeColumn {
    */
   wreckOf?: string | null;
   sawWreck?: boolean;
+  /** (2026-11-02 audit F10) a live fire's column saw its hull burning (its combat record): it goes out with the fire */
+  sawBurning?: boolean;
   pos: MutableVec3;
   localPos?: number[];
   anchorSpace?: object;
@@ -4472,10 +4474,58 @@ function* createFxSteps(
         continue;
       }
       const subject = resolveSubject(col.key);
+      // (2026-11-02 audit F10) level, not only the tank:fire edge: a fire seen burning that the combat record says is
+      // out retires its column (a lost burning:false left it 40 s plus a 35 s smoulder)
+      const burning = subject?.combat?.fire?.burning;
+      if (burning === true) col.sawBurning = true;
+      else if (burning === false && col.sawBurning && !replaySuppressed) continue;
       col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
       columns[live++] = col;
     }
     columns.length = live;
+  }
+
+  /** A position for a hull's event: the last one an event carried, else where the hull stands now (recorded). */
+  function knownPosOf(id: string): MutableVec3 | null {
+    const known = lastKnownPos.get(id);
+    if (known) return known;
+    const ent = decalEntityFor(id);
+    const pos = ent?.state?.pos ?? ent?.visual?.root?.position ?? null;
+    if (!pos) return null;
+    const p: MutableVec3 = [pos.x, pos.y, pos.z];
+    lastKnownPos.set(id, p);
+    return p;
+  }
+
+  /** One live column per burning hull (refreshed if it burns on): from tank:fire, or the combat scan below. */
+  function startLiveColumn(id: string, p: MutableVec3): void {
+    for (const col of columns) if (col.key === id) { col.ttl = SMOKE_COLUMN_S; return; }
+    const col: SmokeColumn = { key: id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
+    columns.push(col);
+    emitColumnPuff(col); // ignition is visible even on a frozen frame
+    capColumns();
+  }
+
+  /**
+   * (2026-11-02 audit F10) A burning hull's column from its combat record too, twice a second: a late joiner (no
+   * tank:fire edge for a fire already burning), or a fire raised without a hit before it, still smokes.
+   */
+  const BURN_SCAN_S = 0.5;
+  let burnScanIn = 0;
+  function scanBurningHulls(tickDt: number): void {
+    if (!auxiliaryEntities || replaySuppressed) return;
+    burnScanIn -= tickDt;
+    if (burnScanIn > 0) return;
+    burnScanIn = BURN_SCAN_S;
+    for (const entity of auxiliaryEntities()) {
+      const combat = (entity as { combat?: FxEntity['combat'] }).combat;
+      if (!combat || combat.destroyed || combat.fire?.burning !== true || typeof entity.id !== 'string') continue;
+      let has = false;
+      for (const col of columns) if (col.key === entity.id) { has = true; break; }
+      if (has) continue;
+      const p = knownPosOf(entity.id);
+      if (p) startLiveColumn(entity.id, p);
+    }
   }
 
   // (EF.10, MASTER 19: "headlights and fires light the smoke") the local lights the smoke and dust take, every frame
@@ -6520,6 +6570,7 @@ function* createFxSteps(
       const tickDt = advanceFxClock();
       battleFreshS += tickDt;
       syncColumnAnchors(resolveSubject);
+      scanBurningHulls(tickDt);
       updateClockDrivenLights();
       sweepImpactDecals(dt);
       updateWreckLight();
@@ -6823,7 +6874,8 @@ function* createFxSteps(
         // slump and road-wheel scatter live on the visual — tankFactory
         // setTrackState — this is the particle side of the same beat)
         if ((e.module === 'trackL' || e.module === 'trackR') && e.state === 'red') {
-          const p = lastKnownPos.get(e.id);
+          // (2026-11-02 audit F10) where the hull stands when no hit event named it first
+          const p = knownPosOf(e.id);
           if (!p) return;
           // r5: the whole beat scaled ~3x and lifted above the grass line —
           // the r4 live test at 10 m in field grass showed no readable event
@@ -6866,23 +6918,11 @@ function* createFxSteps(
       });
       onFxEvent(bus, 'tank:fire', (e) => {
         if (e.burning) {
-          const p = lastKnownPos.get(e.id);
+          // (2026-11-02 audit F10) where the hull stands when no hit event named it first
+          const p = knownPosOf(e.id);
           if (!p) return;
           // one column per tank id; refresh if already burning
-          const existing = columns.find((c) => c.key === e.id);
-          if (existing) existing.ttl = SMOKE_COLUMN_S;
-          else {
-            const col: SmokeColumn = {
-              key: e.id,
-              pos: [p[0], p[1], p[2]],
-              acc: 0,
-              ttl: SMOKE_COLUMN_S,
-              scale: 0.8,
-            };
-            columns.push(col);
-            emitColumnPuff(col); // ignition is visible even on a frozen frame
-            capColumns();
-          }
+          startLiveColumn(e.id, p);
         } else {
           retireSubjectColumn(e.id);
         }

@@ -4,6 +4,8 @@
 //    the next (a Studio actor reset inside the delay was wrecked again);
 //  - a building's stages: a replayed or doubled stage event lays nothing again (its dust, the mask's collapse stamp, the
 //    stage builders ran twice: a building stood up and fell again);
+//  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
+//    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -18,7 +20,8 @@ const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.5, 5000);
 camera.position.set(0, 3, -40); camera.lookAt(0, 2, 0); camera.updateMatrixWorld(true);
 function runtime(entities = new Map()) {
   const fx = createFx({ scene, camera, renderer: null, anisotropy: 1, setupShadowMaterial: () => {}, releaseShadowMaterial: () => {} },
-    { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) }, { seed: 5, resolveEntity: (id) => entities.get(id) ?? null });
+    { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) },
+    { seed: 5, resolveEntity: (id) => entities.get(id) ?? null, auxiliaryEntities: () => entities.values() });
   scene.add(fx.group);
   const handlers = new Map();
   const bus = { on(n, f) { (handlers.get(n) ?? handlers.set(n, []).get(n)).push(f); return () => { const l = handlers.get(n); l.splice(l.indexOf(f), 1); }; },
@@ -88,4 +91,24 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once');
+// ---- smoke columns follow the fire, not only its events ----
+{
+  const hull = (id, x, burning) => ({ id, visual: { root: new THREE.Group() }, state: { pos: new THREE.Vector3(x, 0, 12) },
+    combat: { destroyed: false, fire: { burning } } });
+  const entities = new Map([['burner', hull('burner', 5, true)], ['late', hull('late', -8, true)]]);
+  const { fx, bus, frames } = runtime(entities);
+  const live = () => fx.getAttachmentDebug().subjects.map((s) => s.id).sort();
+  bus.emit('tank:fire', { id: 'burner', burning: true });
+  frames(3);
+  assert.ok(live().includes('burner'), 'a fire raised with no hit before it smokes where its hull stands');
+  const at = fx.getAttachmentDebug().subjects.find((s) => s.id === 'burner');
+  assert.ok(Math.abs(at.pos[0] - 5) < 1.5 && Math.abs(at.pos[2] - 12) < 1.5, `at the hull (${at.pos.map((v) => v.toFixed(1))})`);
+  frames(40);
+  assert.ok(live().includes('late'), "a late joiner's already-burning hull smokes (no tank:fire edge reached it)");
+  entities.get('burner').combat.fire.burning = false; // its burning:false lost
+  frames(3);
+  assert.ok(!live().includes('burner'), 'a fire seen burning goes out with the combat record');
+  fx.resetAll();
+}
+
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire');
