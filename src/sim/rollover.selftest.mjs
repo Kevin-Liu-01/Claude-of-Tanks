@@ -5,8 +5,10 @@ import {
   SELF_RIGHT_LAUNCH_MPS,
   canSelfRightTank,
   requestTankSelfRight,
+  stepBotRollovers,
   stepRolloverLifecycle,
 } from './rollover.ts';
+import { readFileSync } from 'node:fs';
 
 function state() {
   return {
@@ -65,4 +67,20 @@ function state() {
   assert.equal(tank.rolloverCountdownS, 0, 'upright recovery clears the rollover lifecycle');
 }
 
-console.log('rollover.selftest: manual and assisted recovery assertions passed');
+// (268) one rule for both drivers: a bot (a hull its controller drives) rights itself on the timer; a human (the player, a
+// couch seat, a network seat) presses SELF_RIGHT; a wreck and an inactive hull are left alone
+{
+  const hull = (id, extra) => ({ id, combat: { destroyed: false }, state: state(), ...extra });
+  const bot = hull('bot', { aiCtl: {} });
+  const seat = hull('seat-2', { aiCtl: null });
+  const wreck = hull('wreck', { aiCtl: {}, combat: { destroyed: true } });
+  const parked = hull('parked', { aiCtl: {}, modeActive: false });
+  const righted = [];
+  for (let i = 0; i < ROLLOVER_AUTO_RIGHT_S * 60 + 1; i++) stepBotRollovers([bot, seat, wreck, parked], 1 / 60, (entity) => righted.push(entity.id));
+  assert.deepEqual(righted, ['bot'], 'only the bot rights itself on the timer');
+  for (const [file, call] of [['../game/state.ts', /stepBotRollovers\(game\.tanks, SIM_DT,/], ['./authoritativeMatch.ts', /stepBotRollovers\(entities, dt,/]]) {
+    assert.match(readFileSync(new URL(file, import.meta.url), 'utf8'), call, `${file} runs the one rollover rule`);
+  }
+}
+
+console.log('rollover.selftest: manual and assisted recovery assertions passed; a bot rights itself on the timer on both drivers, a seat, a wreck and an inactive hull never');

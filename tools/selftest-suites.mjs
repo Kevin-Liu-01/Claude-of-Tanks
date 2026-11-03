@@ -1695,6 +1695,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impactParity.selftest.mjs',
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     'src/sim/driverStepParity.selftest.mjs',
+    // 268 (couch mode): one seat's input stage, the authority's and the local seats' alike
+    'src/sim/playerInputStage.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
@@ -1792,6 +1794,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 268 (Main item 9): Frontline's opening line out of the attack's reach and sight on 64 seeds (manual: pacing).
+    'src/sim/frontlineLineGuard.selftest.mjs',
     // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
     // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
@@ -1832,6 +1836,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.zoneHold.selftest.mjs',
     // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
     'src/game/ai.cornerHold.selftest.mjs',
+    // 268 (Main item 10): a planned leg is judged by the planner's clearance; a hull off it rejoins it before corners.
+    'src/game/ai.plannedLeg.selftest.mjs',
+    // 268 (Main item 10b): exactly one hull of an ally pair yields; the follower in a following pair, whatever the ids.
+    'src/game/ai.allyYield.selftest.mjs',
+    // 268 (Main item 10 (A)): a hull pressed into a static solid with no way releases at once (Desert seed 12's boulder gap).
+    'src/game/ai.rockWedge.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).

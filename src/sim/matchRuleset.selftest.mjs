@@ -204,7 +204,7 @@ assert.equal(assault.enemies, 12, 'twelve defenders in the formation pool'); ass
 assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM], counterAttack: { ...assault.assault.counterAttack },
   lineGuard: { ...assault.assault.lineGuard } }, {
   initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20, captureS: 8,
-  defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 },
+  defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, backSteps: 12, acrossSteps: 8 },
   counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
   reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40,
   holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,

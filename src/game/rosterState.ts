@@ -24,6 +24,8 @@ import { tankTier } from '../vehicles/tier.ts';
 import type { SoloNationalMode, SoloNationalPlan } from './soloRosterPlan.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
+import { botCamoRoll } from '../sim/camoPaint.ts';
+import type { BotCamo } from '../sim/camoPaint.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type { MovementContactGeometry, TankState } from '../sim/movement.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
@@ -700,30 +702,41 @@ export function planBattleParticipantIds(
     .map((entity) => entity.specId);
 }
 
-export function autoCamoIdsForBattle(
-  participants: RosterEntity[],
-  playerSpecId: string,
-  mapId: string,
-  randomize: boolean,
-  battleOrdinal: number,
-) {
-  if (!randomize) return [];
-  const camoRng = mulberry32(8600 + battleOrdinal);
-  const forceAuto = mapId === 'winter' || mapId === 'desert';
-  const autoIds = [];
-  for (const ent of participants) {
-    if (ent.specId === playerSpecId) continue;
-    const roll = camoRng();
-    if (forceAuto || roll < 0.6) autoIds.push(ent.specId);
-  }
-  return autoIds;
+/** The solo battle's base seed (game/state.ts resetBattleSession): a staged roster's match seed, a random one's base. */
+export const SOLO_MATCH_SEED = 6000;
+
+/**
+ * A solo battle's match seed (268, Main item 7: one seed rule): every stream of the battle reads it, as the authority's
+ * read its match seed (the bots, combat, spotting, the paint roll, the mode, the wreck turrets). A random battle's is the
+ * base plus the battles before it (a fresh session's first keeps 6000), a staged roster's (boot, the screenshot contract)
+ * the fixed base.
+ */
+export function soloMatchSeed(battlesBefore: number, random: boolean): number {
+  return random ? SOLO_MATCH_SEED + battlesBefore : SOLO_MATCH_SEED;
 }
 
 /**
- * Resolve the next battle's deterministic bot AUTO-camouflage overrides
- * without mutating game or material state. The loading coordinator uses this
- * to paint the exact roster while the independent world is still building;
- * setupBattle consumes the same helper after it commits the battle ordinal.
+ * A solo hull's paint at its roster index (268, Main item 6: one bot paint rule for both drivers): a random roster's bots
+ * wear what the authority would roll for them (sim/camoPaint.ts botCamoRoll, from the match seed and the index), a staged
+ * roster's (boot, the screenshot contract) their stock scheme; the player, and a bot on the player's own spec (it wears the
+ * player's paint), none.
+ */
+export function soloBotCamo(
+  index: number,
+  specId: string,
+  playerSpecId: string,
+  mapId: string,
+  randomize: boolean,
+  seed: number,
+): BotCamo | null {
+  if (index === 0 || specId === playerSpecId) return null;
+  return randomize ? botCamoRoll(seed, index, mapId) : 'factory';
+}
+
+/**
+ * The next battle's bots that wear AUTO (soloBotCamo; every other bot wears its stock scheme), without mutating game or
+ * material state. The loading coordinator paints the exact roster with it while the independent world is still building;
+ * setupBattle rolls each bot the same at its roster index.
  */
 export function planBattleCamoOverrides(
   game: RosterGameState,
@@ -737,9 +750,9 @@ export function planBattleCamoOverrides(
 ) {
   const battleOrdinal = game.battleCount + 1;
   const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, national);
-  return autoCamoIdsForBattle(
-    participants, playerSpecId, mapId, randomize, battleOrdinal,
-  );
+  return participants
+    .filter((entity, index) => soloBotCamo(index, entity.specId, playerSpecId, mapId, randomize, soloMatchSeed(game.battleCount, randomize)) === 'auto')
+    .map((entity) => entity.specId);
 }
 
 /**

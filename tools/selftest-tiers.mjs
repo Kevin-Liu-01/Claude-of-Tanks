@@ -127,6 +127,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/sim/deployment.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
+    'src/sim/frontlineLineGuard.selftest.mjs',
   ], { hits: true }),
   bots: suite('bot behaviour played out on the authority (every mode, objectives, levels, approaches)', [
     'server/authoritativeBots.selftest.mjs',
