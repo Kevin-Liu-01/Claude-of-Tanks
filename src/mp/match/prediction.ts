@@ -709,9 +709,7 @@ export class LocalPredictor {
     target.speed = source.speed;
     target.verticalSpeed = source.verticalSpeed;
     setHullGrounded(target, source.grounded);
-    target.overturned = source.overturned;
-    target._body.tumbling = source._body.tumbling;
-    target._body.autoRighting = source._body.autoRighting;
+    restoreHullBodyMode(target, source.overturned, source._body.tumbling, source._body.autoRighting);
     target.landingImpactMps = source.landingImpactMps;
     target.slopeBlocked = source.slopeBlocked;
     target.yawRate = source.yawRate;
