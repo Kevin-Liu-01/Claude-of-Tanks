@@ -803,8 +803,8 @@
       {
         "volumeId": "M07",
         "name": "ammoRack",
-        "min": [-0.5952,-0.5566,-0.9243],
-        "max": [0.5952,0.0126,-0.3],
+        "min": [0.1015,0.3102,-1.15],
+        "max": [0.863,0.7643,0.3],
         "turretLocal": true
       },
       {
@@ -868,14 +868,14 @@
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [-0.2866,-1.28,-0.2963],
-        "max": [0.1728,-0.03,0.5463],
+        "min": [-0.6069,-1.2596,-0.6963],
+        "max": [-0.2272,0.1281,0.1463],
         "turretLocal": true
       }
     ]
   },
   "geometryHash": "d9ce19a7",
-  "metadataHash": "592c4a7c",
+  "metadataHash": "aec4156e",
   "presentationAnchor": {
     "xM": 0.0015,
     "zM": -0.0041
@@ -985,16 +985,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 43902,
-      "sha256": "e8780e62d2569f5d769f5053c818120a3938893b9bfce0a717ebd9335d3c4204"
+      "bytes": 44474,
+      "sha256": "347967d398689c81777551595a5bdb8c6eb22158380d27db5a23d21e8a113aaf"
     },
     "crewSide": {
       "file": "pgz09_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42134,
-      "sha256": "8f5d940d1dc31aedf310c3f5d0c087d32e64c11bf17ce4936eee5909612b8e4d"
+      "bytes": 42538,
+      "sha256": "9d648f42f47815f401f5b3c58d5488eabb9de57d61b74a5463a88a3404ce2c0a"
     },
     "markings": {
       "file": "pgz09_markings.png",
@@ -1007,8 +1007,8 @@
     "technicalLabels": {
       "file": "pgz09_technical.json",
       "mime": "application/json",
-      "bytes": 4710,
-      "sha256": "b367642bc069deb1069793877814e1d1716307f5cbadef40156bfdb1c53f194a"
+      "bytes": 4708,
+      "sha256": "ce7cefd3145cbba83bf81d8ddb32151dc754b453708c13a149ed1a2fee03f5cd"
     }
   }
 }

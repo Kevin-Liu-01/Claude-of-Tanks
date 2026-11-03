@@ -80,10 +80,10 @@
         "module": "gun",
         "turretLocal": true,
         "gunFollow": true,
-        "min": [-0.88,0.77,-0.72],
-        "max": [-0.72,0.91,-0.26],
+        "min": [-0.91,0.77,-0.72],
+        "max": [-0.69,0.91,-0.26],
         "physicalMm": 10,
-        "surfaceFingerprint": "8403a2f5"
+        "surfaceFingerprint": "50993c55"
       },
       {
         "module": "gun",
@@ -116,10 +116,10 @@
         "module": "gun",
         "turretLocal": true,
         "gunFollow": true,
-        "min": [0.72,0.77,-0.72],
-        "max": [0.88,0.91,-0.26],
+        "min": [0.69,0.77,-0.72],
+        "max": [0.91,0.91,-0.26],
         "physicalMm": 10,
-        "surfaceFingerprint": "3a2eb8e7"
+        "surfaceFingerprint": "a2960ceb"
       },
       {
         "module": "gun",
@@ -2456,8 +2456,8 @@
       }
     ]
   },
-  "geometryHash": "512fd852",
-  "metadataHash": "3fc8090c",
+  "geometryHash": "55aca712",
+  "metadataHash": "78845b5f",
   "presentationAnchor": {
     "xM": -0.0006,
     "zM": -0.0128
@@ -2514,15 +2514,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27300,
-      "sha256": "5f1ccac8deaf2461b1134a3de24be098a0f68341016531f9b794316042d359ff",
+      "bytes": 27306,
+      "sha256": "fd51e47ee59aef64d1d3654ac45517d57fc75d958697802dd08833bbe83c88d0",
       "thumbnail": {
         "file": "thumbs/pantsir_s1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11874,
-        "sha256": "f404f752ab7995b3100235bfb7ec658a4a4ad4a26c9d1faedad8dc5a768eac79"
+        "bytes": 11832,
+        "sha256": "30c1cb932b94c6eba68cfeca9957a89954c1f74aaf79c31928c8efdf7f70d238"
       }
     },
     "top": {
@@ -2530,8 +2530,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10356,
-      "sha256": "b7f5db1099e9957fea92b283b6317d230f1b3ce929d4d8c3ad2c98cb9da3ddbe"
+      "bytes": 10232,
+      "sha256": "2ffb7e840164542525020a87c70c23bf5c3884fac8b9e184190bc59bb60ac2b6"
     },
     "side": {
       "file": "pantsir_s1_side.webp",
@@ -2562,16 +2562,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 32680,
-      "sha256": "dd8cdc36e8f11fa48f7a2501aed5c2bb29343a37f769fb690c3e85a4ee84c557"
+      "bytes": 32634,
+      "sha256": "6456daa4aac00ce76b0a61a886c35be6c509ed425a4aa2b127f5b40d48d540d3"
     },
     "modulesSide": {
       "file": "pantsir_s1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35940,
-      "sha256": "601c1521a20b0c98ae6fbf0dde7625e00eba1ebc4c2fb3e3030f26d5c53578e3"
+      "bytes": 36002,
+      "sha256": "d3668eb5a44e2dae121cf20d90c33cf0721db4ee7fd495f5777f72fae83b01ba"
     },
     "crewSide": {
       "file": "pantsir_s1_crew_side.webp",

@@ -177,7 +177,7 @@
   "olifant_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e420a8e0afa781fd","gun":"5e407245d22f7502"}},
   "osorio_p1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"55eeabb26110dae1","gun":"a9862671716e2921"}},
   "osorio_p2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e2486f253ac37472","gun":"6d048ba8046f7932"}},
-  "pantsir_s1": {"status":"gap","kind":"turret","mouths":2,"worstMm":36,"openings":8,"geometry":{"turret":"c1e6d40c24ad2328","gun":"9d31c0ec5b2a3703"}},
+  "pantsir_s1": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"c1e6d40c24ad2328","gun":"9f5babe0cd529a86"}},
   "pgz09": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"86d9cdc44a99a8ee","gun":"8bb61661c8af7bc0"}},
   "pgz95": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"62b0fae80d6aa108","gun":"b20348c8a56d37a3"}},
   "pl01": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"acd82c13a208a259","gun":"aece4b5aaba36198"}},

@@ -170,7 +170,7 @@
   "olifant_mk2": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"5a9bc1b453306247","turret":"e420a8e0afa781fd","gun":"5e407245d22f7502"}},
   "osorio_p1": {"turretRaisedCm2":1908,"turretBaseCm2":0,"hullCm2":0,"pockets":2,"geometry":{"hull":"b0e633c40d29a3bf","turret":"55eeabb26110dae1","gun":"a9862671716e2921"}},
   "osorio_p2": {"turretRaisedCm2":1820,"turretBaseCm2":0,"hullCm2":0,"pockets":2,"geometry":{"hull":"75039bd654379985","turret":"e2486f253ac37472","gun":"6d048ba8046f7932"}},
-  "pantsir_s1": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"75a65ece495466dd","turret":"c1e6d40c24ad2328","gun":"9d31c0ec5b2a3703"}},
+  "pantsir_s1": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"75a65ece495466dd","turret":"c1e6d40c24ad2328","gun":"9f5babe0cd529a86"}},
   "pgz09": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"9a369fe5e8febef7","turret":"86d9cdc44a99a8ee","gun":"8bb61661c8af7bc0"}},
   "pgz95": {"turretRaisedCm2":0,"turretBaseCm2":0,"hullCm2":0,"pockets":0,"geometry":{"hull":"0c5d4e71599d7134","turret":"62b0fae80d6aa108","gun":"b20348c8a56d37a3"}},
   "pl01": {"turretRaisedCm2":228,"turretBaseCm2":4160,"hullCm2":0,"pockets":9,"geometry":{"hull":"4ba51b9418e418a0","turret":"acd82c13a208a259","gun":"aece4b5aaba36198"}},
