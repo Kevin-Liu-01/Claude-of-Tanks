@@ -1635,6 +1635,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/roomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
+    'src/ui/playMenuSeat.selftest.mjs', // 2026-11-02 audit F6: the Play menu's seat is one declared state; the handoff stops the hidden lobby
     'src/mp/session/compositionAccess.selftest.mjs',
     'src/mp/session/intentCover.selftest.mjs',
     'src/mp/session/lobbyPreloader.selftest.mjs',
