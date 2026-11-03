@@ -1034,6 +1034,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
     // every surface the source opens registered with its owner and its place
     'src/ui/components/surfaceStack.selftest.mjs',
+    // 2026-11-02 audit F5: a hidden page takes its surfaces with it; the stack is the one "a modal is open" truth
+    'src/ui/components/surfaceStackOwnership.selftest.mjs',
+    // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
+    'src/ui/garageOpenState.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode

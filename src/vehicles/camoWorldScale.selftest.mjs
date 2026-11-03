@@ -284,7 +284,9 @@ for (const patternId of ['service_usa_desert', 'paint_chieftain5', 'national_de'
   setCamoSwatchDrainGate(null);
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   assert.match(garage, /loaded\.setCamoSwatchDrainGate\(swatchDrainOpen\);/, 'the Garage installs its gate');
-  assert.match(garage, /const swatchDrainOpen = \(\): boolean => garageSwatchOpen && !garageSwatchCover\(\);/);
+  // (2026-11-02 audit F5) the open half reads the Garage screen's one state (garageScreen.ts)
+  assert.match(garage, /const swatchDrainOpen = \(\): boolean => garageSwatchOpen\(\) && !garageSwatchCover\(\);/);
+  assert.match(garage, /garageSwatchOpen = \(\) => garageScreen\.isOpen;/);
   const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   assert.match(mainSource, /garage\.setDecorativeWorkGate\(\(\) => battleLoad\.covering\);/, 'main covers it with the battle loader');
 }

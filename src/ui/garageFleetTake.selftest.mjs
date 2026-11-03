@@ -13,6 +13,7 @@ import { runInNewContext } from 'node:vm';
 import { createFakeDom, settle } from './fleetTakes.test-support.mjs';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
 import { t } from './i18n.ts';
+import { createGameReadyWaiter } from './gameReady.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
@@ -52,7 +53,12 @@ function mountPanel(module) {
   const column = dom.document.createElement('div');
   column.className = 'cot-leftcol';
   root.append(column);
-  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: { __GAME_READY: false } };
+  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: { __GAME_READY: false },
+    closers: [] };
+  // (2026-11-02 audit F5) the panel waits on the shared ready wait (gameReady.ts) and gives the Garage screen its closer
+  const gameReady = createGameReadyWaiter({ isReady: () => harness.window.__GAME_READY === true, hasFailed: () => false,
+    schedule: dom.setTimeout, cancel: dom.clearTimeout });
+  const garageScreen = { onHide(closer) { harness.closers.push(closer); return () => {}; } };
   const context = {
     root, FEATURED_SHOTS: SHOTS, document: dom.document, t, uiIconSVG: () => '',
     requiredElement(parent, selector) {
@@ -67,6 +73,7 @@ function mountPanel(module) {
     setInterval(callback) { const id = harness.nextInterval++; harness.intervals.set(id, callback); return id; },
     clearInterval(id) { harness.intervals.delete(id); },
     IntersectionObserver: dom.IntersectionObserver,
+    gameReady, garageScreen,
     __importFleetTakes() { harness.imports++; return module(); },
     Promise, console,
   };
@@ -143,6 +150,11 @@ assert.equal(garagePanel.intervals.size, 1, 'the rotation resumes for a viewer w
 [...garagePanel.intervals.values()][0]();
 await settle();
 assert.equal(garagePanel.preloads.at(-1), SHOTS[1].img, 'and advances');
+// (2026-11-02 audit F5) the Garage hiding stops the rotation (it ran through every battle after one hover)
+for (const closer of garagePanel.closers) closer();
+assert.equal(garagePanel.intervals.size, 0, 'a hidden Garage rotates nothing');
+garagePanel.shot.dispatchEvent({ type: 'mouseleave' });
+assert.equal(garagePanel.intervals.size, 1, 'the next hover arms it again');
 garagePanel.panel.setVehicle('t90sm_2013');
 assert.equal(garagePanel.intervals.size, 0, 'the take suspends it again');
 assert.equal(video.src, take.loop);

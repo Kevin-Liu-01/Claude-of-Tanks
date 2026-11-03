@@ -7,7 +7,8 @@ export interface CustomCamoStudioController {
 
 export interface CustomCamoStudioAccess {
   preload(): Promise<CustomCamoStudioController>;
-  open(): Promise<CustomCamoStudioController>;
+  /** Load, then open unless `stillWanted` says the page that asked is gone (2026-11-02 audit F5: the Garage hid). */
+  open(stillWanted?: () => boolean): Promise<CustomCamoStudioController>;
   peek(): CustomCamoStudioController | null;
 }
 
@@ -43,9 +44,9 @@ export function createCustomCamoStudioAccess(
 
   return {
     preload: acquire,
-    async open() {
+    async open(stillWanted) {
       const loaded = await acquire();
-      loaded.open();
+      if (!stillWanted || stillWanted()) loaded.open();
       return loaded;
     },
     peek: () => controller,
