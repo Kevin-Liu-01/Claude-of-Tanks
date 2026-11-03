@@ -27,6 +27,7 @@ import type { RoomEnvelope } from '../../src/mp/room/protocol.ts';
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
 import { signSeatToken } from '../match/seatToken.ts';
 import { statusOf } from '../match/control.ts';
+import { matchConcluded } from '../match/matchActor.ts';
 import type { MatchService } from '../match/service.ts';
 import { silentLogger, type Logger } from '../match/log.ts';
 
@@ -91,7 +92,7 @@ export function createInProcessMatchHost({
     transport: 'service',
     async start(config: MatchHostStartConfig) {
       const existing = matchService.actors.get(config.roomId);
-      if (existing && !existing.stopped && !existing.ended) throw new Error('a match is already running for this room');
+      if (existing && !matchConcluded(existing.phase)) throw new Error('a match is already running for this room');
       if (existing) matchService.removeActor(config.roomId);
       matchService.createActor({
         roomId: config.roomId, mapId: config.mapId, mode: config.mode, seed: config.seed,
@@ -105,11 +106,10 @@ export function createInProcessMatchHost({
     },
     async status(roomId: string): Promise<MatchHostStatus | null> {
       const actor = matchService.actors.get(roomId);
+      // the actor's one status phase (matchActor.ts matchStatusPhase): the rooms' vocabulary, nothing left to map
       const status = statusOf(roomId, actor, matchIds.get(roomId) ?? null);
       if (!status) return null;
-      const phase = status.phase === 'loading' || status.phase === 'countdown' || status.phase === 'playing' || status.phase === 'ended' || status.phase === 'stopped'
-        ? status.phase : 'unknown';
-      return { roomId, matchId: status.matchId, phase, verdict: status.verdict };
+      return { roomId, matchId: status.matchId, phase: status.phase, verdict: status.verdict };
     },
     async stop(roomId: string) {
       matchService.removeActor(roomId);

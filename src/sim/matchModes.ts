@@ -402,6 +402,12 @@ export interface MatchModeController<
   /** Confirmed enemy destruction; ignored for goals/captures and duplicate receipts. */
   recordDestruction(victimId: string, killerId: string | null): void;
   step(dt: number, timeS: number): MatchModeResult | null;
+  /**
+   * The match's verdict, decided outside the mode (audit M3, 2026-11-02: the authority's time limit or elimination): the
+   * controller takes it as its own result, so through the ending hold it scores, respawns and starts waves no more and
+   * never announces another winner. A result the mode already reached stands.
+   */
+  matchEnded(winner: ObjectiveTeam | 'draw', reason: string): void;
   requestSupply(entityId:string,kind:'ammo'|'heal',timeS:number):boolean;
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
@@ -2506,6 +2512,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'endless_horde') return stepHorde(timeS);
       if (id === 'frontline_assault') return stepAssault(dt, timeS);
       return null;
+    },
+    matchEnded(winner, reason) {
+      if (!result) result = { result: winner, reason };
     },
     requestSupply,
     tryHitBall(shell) {

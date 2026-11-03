@@ -2357,6 +2357,8 @@ export function createAuthoritativeMatch({
     result = nextResult;
     resultReason = reason;
     resultTimeS = timeS;
+    // the mode controller hears the verdict it did not reach itself (audit M3): no scoring, respawns or waves in the hold
+    modeController.matchEnded(nextResult, reason);
     emit('match_ended', { result, reason: resultReason });
   }
 
@@ -3024,6 +3026,7 @@ export function createAuthoritativeMatch({
       result = nextResult;
       resultReason = String(reason ?? '');
       resultTimeS = timeS - ENDING_HOLD_LIMIT_S;
+      modeController.matchEnded(nextResult, resultReason);
     },
     restoreWreckTurret(id, pose) {
       const entity = entityById.get(id);

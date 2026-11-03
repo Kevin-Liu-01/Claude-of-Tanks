@@ -17,7 +17,7 @@ import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
-import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
+import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
@@ -224,6 +224,28 @@ export interface ActorClientStats {
   interest: InterestStats;
 }
 
+/**
+ * The match's one phase (audit M3, 2026-11-02), owned by the actor and read through MatchActor.phase: the authority's
+ * loading | countdown | playing, then `ending` (the verdict is in and the ruleset's ending hold runs: the field alive,
+ * guns silent), `ended` (the hold is spent: the field stands still while the actor lingers, publishing it) and
+ * `stopped` (the actor released the room). Before, the authority's MatchPhase stopped at playing, the actor layered
+ * `ended`/`stopped` booleans on it, and the full phase was rebuilt three ways (the actor's stats, the control API and
+ * the LAN host's status, which fell back to 'unknown').
+ */
+export type MatchActorPhase = 'loading' | 'countdown' | 'playing' | 'ending' | 'ended' | 'stopped';
+/** The phase in the rooms' status vocabulary (MatchHostStatus.phase): the hold and its end are both 'ended'. */
+export type MatchStatusPhase = 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped';
+
+/** The one status reading of a match phase (the control API, the LAN host, the actor's stats and the host core's reports). */
+export function matchStatusPhase(phase: MatchActorPhase): MatchStatusPhase {
+  return phase === 'ending' ? 'ended' : phase;
+}
+
+/** A match past its verdict, or stopped: a new start may replace it. */
+export function matchConcluded(phase: MatchActorPhase): boolean {
+  return phase === 'ending' || phase === 'ended' || phase === 'stopped';
+}
+
 export interface MatchActorStats {
   roomId: string;
   mapId: string;
@@ -264,6 +286,8 @@ export interface MatchActor {
   /** The ruleset the match plays by (the WELCOME's rulesetJson): the mode's table bent by the room's arrangement. */
   readonly ruleset: MatchRuleset;
   readonly tick: number;
+  /** The match's phase (MatchActorPhase): the one reading every status and restart gate goes through. */
+  readonly phase: MatchActorPhase;
   readonly ended: boolean;
   readonly stopped: boolean;
   readonly authority: AuthoritativeMatch;
@@ -1188,12 +1212,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return totals;
   }
 
+  function phaseOf(): MatchActorPhase {
+    if (stopped) return 'stopped';
+    if (ended || authority.result) return endingHoldExpired(ruleset, authority.resultTimeS, authority.timeS) ? 'ended' : 'ending';
+    return authority.phase;
+  }
+
   function stats(): MatchActorStats {
     let spectators = 0;
     for (const client of clients.keys()) if (client.spectator) spectators++;
     const lag = lagComp.stats;
     return {
-      roomId, mapId, mode, tick: loop.tick, phase: ended ? 'ended' : authority.phase,
+      roomId, mapId, mode, tick: loop.tick, phase: matchStatusPhase(phaseOf()),
       clients: clients.size, spectators, seatsFilled: clients.size - spectators, bots: bots.length,
       ...totals,
       tickMs: loop.tickCost.summary(),
@@ -1215,6 +1245,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     roomId,
     ruleset,
     get tick() { return loop.tick; },
+    get phase() { return phaseOf(); },
     get ended() { return ended; },
     get stopped() { return stopped; },
     authority,

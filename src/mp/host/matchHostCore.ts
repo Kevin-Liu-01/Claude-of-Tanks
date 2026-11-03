@@ -11,7 +11,7 @@
  */
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../wire/destructionLog.ts';
-import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { createMatchActor, matchStatusPhase } from '../../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { hostRulesetFor } from './hostRuleset.ts';
 import type { ActorWorldCollision, MatchActor } from '../../../server/match/matchActor.ts';
@@ -349,10 +349,14 @@ export function createMatchHostCore({
 
   // ------------------------------------------------------------ reports and migration state
 
+  /**
+   * The report's phase: the actor's status phase (matchActor.ts matchStatusPhase). The report has no word for a stopped
+   * actor: a stop before any verdict reports the authority's own phase, the last heartbeat (the main thread's drain
+   * holds back every non-ended report of a stopped host), and one after it reports the end.
+   */
   function currentPhase(live: MatchActor): HostMatchReport['phase'] {
-    if (live.ended) return 'ended';
-    const phase = live.authority.phase;
-    return phase === 'countdown' ? 'countdown' : phase === 'playing' ? 'playing' : 'loading';
+    const phase = matchStatusPhase(live.phase);
+    return phase !== 'stopped' ? phase : live.authority.result ? 'ended' : live.authority.phase;
   }
 
   function report(live: MatchActor, nowMs: number): void {
@@ -393,7 +397,8 @@ export function createMatchHostCore({
       meta: captureMeta({ ...meta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
       modeStateJson: meta.modeState ? JSON.stringify(meta.modeState) : null,
     };
-    const phase = live.ended || live.authority.result ? 'ended' : live.authority.phase === 'countdown' ? 'countdown' : 'playing';
+    const status = currentPhase(live);
+    const phase = status === 'ended' ? 'ended' : status === 'playing' ? 'playing' : 'countdown';
     return { tick, battleTimeMs, phase, frame, entities: captureEntityExtras(live), modeCheckpoint: live.authority.captureModeCheckpoint() };
   }
 
