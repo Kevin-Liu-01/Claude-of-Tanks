@@ -93,7 +93,8 @@ export function createMudguardFenderSeatingAudit() {
       // section solid per side, not this receipt's raked flange and terminal web; release 265: the 2A4 and the 2A4 OTCO
       // followed them with the 2A4 family's rebuild, profiles/leopard2A4Family.ts)
       // (268: the Chieftain Mk 3 and Mk 9 left uk.ts's closed shoulder for the Mk 5 X's own bow guards,
-      // profiles/chieftain5XSourceHullEquipment.ts, with the source-built Mk 5)
+      // profiles/chieftain5XSourceHullEquipment.ts, with the source-built Mk 5; 268b: the Mk 9 moved on to the Mk 10 X's,
+      // profiles/chieftain10XFenders.ts)
       const expectedClosedShoulders = [
         't90ms_2011',
         'kf51_evo', 'kf51_u',

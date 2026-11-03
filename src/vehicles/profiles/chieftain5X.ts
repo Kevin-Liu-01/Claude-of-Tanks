@@ -8,7 +8,7 @@ import { addChieftain5XSourceHullEquipment } from './chieftain5XSourceHullEquipm
 import { addChieftain5XSourceTurretEquipment } from './chieftain5XSourceTurretEquipment.ts';
 import { addChieftain5XSourceApplique } from './chieftain5XSourceApplique.ts';
 import { addChieftain5XSourceClosure } from './chieftain5XSourceClosure.ts';
-import { addChieftainMk3Kit, addChieftainMk9Kit } from './chieftainMarksX.ts';
+import { addChieftainMk3Kit } from './chieftainMk3X.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
@@ -29,8 +29,9 @@ export const CHIEFTAIN5_X_DATUMS = Object.freeze({
 });
 const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 
-/** The marks built on this Mk 5 (chieftainMarksX.ts): they share its hull and turret castings and differ in fittings. */
-type ChieftainMk5FamilyMark = 'mk3' | 'mk5' | 'mk9';
+/** The marks built on this Mk 5: the Mk 3 (chieftainMk3X.ts) shares its hull and turret castings and carries the early
+ * marks' turret stowage, NBC pack, radios, engine deck and fittings (the `early` options of the shared parts). */
+type ChieftainMk5FamilyMark = 'mk3' | 'mk5';
 
 function buildChieftainMk5Family(P: TankBuilderPort, mark: ChieftainMk5FamilyMark): void {
   P.hullG.position.set(0, 0, 0);
@@ -46,14 +47,14 @@ function buildChieftainMk5Family(P: TankBuilderPort, mark: ChieftainMk5FamilyMar
   P.topY = D.structuralRoofY - D.turretPivot[1];
   addChieftain5XSourceHull(P);
   addChieftain5XSourceGear(P);
-  addChieftain5XSourceHullEquipment(P);
+  const early = mark === 'mk3';
+  addChieftain5XSourceHullEquipment(P, early);
   addChieftain5XSourceClosure(P);
   addChieftain5XSourceTurret(P, D.turretPivot);
-  addChieftain5XSourceTurretEquipment(P, D.turretPivot);
+  addChieftain5XSourceTurretEquipment(P, D.turretPivot, early);
   addChieftain5XSourceApplique(P, D.turretPivot);
   addChieftain5XSourceGun(P, D.trunnion);
-  if (mark === 'mk3') addChieftainMk3Kit(P, D.trunnion);
-  if (mark === 'mk9') addChieftainMk9Kit(P, D.turretPivot, D.trunnion);
+  if (mark === 'mk3') addChieftainMk3Kit(P, D.turretPivot, D.trunnion);
   // The source projector is an optic, not a complete roof weapon. Do not
   // relabel it as an MG or silently retain the obsolete inferred photo weapon.
   P.muzzleZ = D.muzzleZ - D.trunnion[2];
@@ -68,5 +69,4 @@ export function buildChieftain5X(P: TankBuilderPort): void {
 export const CHIEFTAIN5_X_PROFILES = Object.freeze({
   chieftain5: { build: buildChieftain5X },
   chieftain3: { build: (P: TankBuilderPort) => buildChieftainMk5Family(P, 'mk3') },
-  chieftain_mk9: { build: (P: TankBuilderPort) => buildChieftainMk5Family(P, 'mk9') },
 });

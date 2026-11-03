@@ -1,62 +1,12 @@
-// The Chieftain marks built on the source-measured Mk 5 X (chieftain5X.ts): what each mark carries that the Mk 5 does
-// not. Release 268 (owner 2026-11-02, "also update the cheiftainn mk 3 and mk 9"): the Mk 3 and the Mk 9 share the Mk 5's
-// hull and turret castings, so they are the Mk 5 X with their own fittings, never a second casting.
-// - Mk 3 (1969-72): the 12.7 mm L21 ranging gun "fitted over the barrel" until the Barr & Stroud laser sight replaced it
-//   from 1971 (en.wikipedia.org/wiki/Royal_Ordnance_L11). The Yad la-Shiryon Mk 3 carries a full-width box on the
-//   turret rear as the Mk 5 does, so the pack stays the Mk 5's.
-// - Mk 9 (1979): a Mk 6 (ex-Mk 2) after every phase of Totem Pole, IFCS and the muzzle reference system of 1975 (its
-//   mirror on the muzzle), no Stillbrew (that went to the Mk 10, 11 and 12 in 1984-86, en.wikipedia.org/wiki/
-//   Chieftain_(tank)), and the BAOR crews' later stowage: a camouflage net rolled on the bustle and a bundle in the
-//   basket. Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/<id>/.
+// Shared fittings of the Chieftain marks built on the source-measured castings (release 268b, owner 2026-11-02: "make
+// them look much more different inn editing the turret and hull appearances to like like precessors"): the Mk 3 on the
+// Mk 5 X (chieftainMk3X.ts) and the Mk 9 on the Mk 10 X (chieftainMk9X.ts). Rolled cloth, lifting eyes and closed lofts.
 // First-party construction: Kevin B. Liu.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
-import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { sectionSolid } from './sectionSolid.ts';
 
-type Point = readonly [number, number, number];
-const { cylZ } = KIT;
-
-/** A gun-frame part from hull-frame metres. */
-function gunPart(P: TankBuilderPort, bucket: string, g: THREE.BufferGeometry, trunnion: Point,
-  x: number, y: number, z: number): void {
-  P.add(bucket, g, x - trunnion[0], y - trunnion[1], z - trunnion[2]);
-}
-
-/** A lathe about +Z from [radius, z] pairs (a closed profile turns into a solid of revolution). */
-function latheZ(profile: readonly (readonly [number, number])[], segments: number): THREE.BufferGeometry {
-  return new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), segments).rotateX(Math.PI / 2);
-}
-
-/**
- * The Mk 3's L21 ranging gun on the main gun's cradle (it elevates with the gun and does not recoil with it): an
- * armoured sleeve seated in the top of the root hood above the bore, the .50 heavy barrel out of it and an open
- * flash hider whose mouth is a real recess. The axis is parallel to the bore, 17 cm over it.
- */
-function rangingGun(P: TankBuilderPort, trunnion: Point): void {
-  const x = -.004, y = 2.032;
-  // The sleeve: its underside lies 2-39 mm inside the hood's falling crown (2.027 at z 1.78, 1.990 at z 2.18).
-  gunPart(P, 'gunMount', cylZ(.044, .40, 20), trunnion, x, y, 1.98);
-  gunPart(P, 'gunMount', latheZ([[0, 0], [.044, 0], [.044, .012], [.034, .040], [0, .040]], 20),
-    trunnion, x, y, 2.176);
-  gunPart(P, 'gunMountDark', cylZ(.0155, .56, 12), trunnion, x, y, 2.47);
-  // Flash hider: outer wall to the mouth, a lip and a 30 mm deep bore.
-  gunPart(P, 'gunMountDark', latheZ([[.0150, 0], [.0215, .006], [.0215, .074], [.0105, .074],
-    [.0105, .044], [0, .044]], 14), trunnion, x, y, 2.744);
-}
-
-/** The Mk 9's muzzle reference system mirror: a saddle housing on the barrel crown behind the muzzle, its hood's dark
- * window facing back down the barrel at the sight. Its underside runs 10-26 mm into the 0.102 m barrel. */
-function mrsMirror(P: TankBuilderPort, trunnion: Point): void {
-  const x = trunnion[0], z0 = 6.60, z1 = 6.785;
-  const crown = trunnion[1] + .1020;
-  const section = (z: number): SolidSection => ({ z, ring: [[-.056, crown - .026], [.056, crown - .026],
-    [.056, crown + .030], [.040, crown + .046], [-.040, crown + .046], [-.056, crown + .030]] });
-  P.add('gun', sectionSolid([section(z0), section(z1)]), x - trunnion[0], -trunnion[1], -trunnion[2]);
-  // The mirror's hood stands 3 mm into the housing's aft end; the dark window lies on the hood's aft face.
-  gunPart(P, 'gun', KIT.box(.086, .046, .040), trunnion, x, crown + .066, z0 + .040);
-  gunPart(P, 'gunDark', KIT.box(.064, .030, .004), trunnion, x, crown + .066, z0 + .0185);
-}
+const { box } = KIT;
 
 /** One section of a soft rolled bundle at station s (-0.5..0.5 of its length): a rounded section whose folds wander
  * along the roll, with a flattened belly that sags a little more mid-length. Counter-clockwise from the belly. */
@@ -73,36 +23,59 @@ function rollRing(radius: number, s: number, sag: number, grow = 1): [number, nu
 }
 
 /** A rolled camouflage net or tarpaulin along +X; its tied ends draw in and lift off the surface it lies on. */
-function clothRoll(length: number, radius: number, sag: number): THREE.BufferGeometry {
+export function clothRoll(length: number, radius: number, sag: number): THREE.BufferGeometry {
   const stations = [-.5, -.47, -.40, -.15, .15, .40, .47, .5];
   return sectionSolid(stations.map((s) => ({ z: s * length, ring: rollRing(radius, s, sag) }))).rotateY(Math.PI / 2);
 }
 
 /** Webbing straps round a clothRoll at `strapAt` (fractions of its length), 3.5 % proud of the cloth. */
-function rollStraps(length: number, radius: number, sag: number, strapAt: readonly number[]): THREE.BufferGeometry[] {
+export function rollStraps(length: number, radius: number, sag: number, strapAt: readonly number[]): THREE.BufferGeometry[] {
   return strapAt.map((s) => sectionSolid([-.018, .018].map((dz) => ({ z: s * length + dz,
     ring: rollRing(radius, s, sag, 1.035) }))).rotateY(Math.PI / 2));
 }
 
-function laterStowage(P: TankBuilderPort, pivot: Point): void {
-  const add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
-    P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2]);
-  // The net rolled across the NBC pack's top (2.2443): its flattened belly 12 mm into the lid.
-  const rollY = 2.2443 + .118 * .55 - .012;
-  add('turretCloth', clothRoll(1.24, .118, .004), 0, rollY, -1.93);
-  for (const strap of rollStraps(1.24, .118, .004, [-.27, .27])) add('turretDark', strap, 0, rollY, -1.93);
-  // A net bundle on the floor bars of the starboard basket (bottom 1.850, inner wall x -.934), clear of the drum
-  // behind it (z -1.135) and the basket's front rail (z -.645).
-  const bundleY = 1.850 + .148 * .55 - .010;
-  add('turretCloth', clothRoll(.40, .148, .010).rotateY(Math.PI / 2), -1.168, bundleY, -.895);
-  for (const strap of rollStraps(.40, .148, .010, [0])) add('turretDark', strap.rotateY(Math.PI / 2), -1.168, bundleY, -.895);
+type Placer = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx?: number, ry?: number) => void;
+
+/** A lifting eye: a 30 mm plate on its 16 mm pad with a round eye through it, its foot 8 mm into the stock at (x, y, z)
+ *  and the plate's face turned by `yaw` (0: the eye looks along Z). */
+export function liftingEye(place: Placer, bucket: string, x: number, y: number, z: number, yaw: number): void {
+  place(bucket, box(.11, .016, .11), x, y, z, 0, yaw);
+  const plate = new THREE.Shape();
+  plate.moveTo(-.050, 0); plate.lineTo(.050, 0); plate.lineTo(.034, .060);
+  plate.absarc(0, .066, .036, -.17, Math.PI + .17, false);
+  plate.lineTo(-.050, 0);
+  plate.holes.push(new THREE.Path().absarc(0, .068, .019, 0, Math.PI * 2, true));
+  const g = new THREE.ExtrudeGeometry(plate, { depth: .030, bevelEnabled: false, curveSegments: 6 }).translate(0, 0, -.015);
+  place(bucket, g, x, y - .008, z, 0, yaw);
 }
 
-export function addChieftainMk3Kit(P: TankBuilderPort, trunnion: Point): void {
-  rangingGun(P, trunnion);
+/** A closed loft through rings of points (each ring the same count, its ends capped with fans), flat-shaded. */
+export function loftRings(rings: readonly (readonly THREE.Vector3[])[]): THREE.BufferGeometry {
+  const m = rings[0].length, positions: number[] = [], index: number[] = [];
+  for (const ring of rings) for (const p of ring) positions.push(p.x, p.y, p.z);
+  for (let i = 0; i < rings.length - 1; i++) for (let k = 0; k < m; k++) {
+    const a = i * m + k, b = i * m + (k + 1) % m, c = a + m, d = b + m;
+    index.push(a, c, b, b, c, d);
+  }
+  for (const [ring, flip] of [[0, true], [rings.length - 1, false]] as const) {
+    const base = ring * m;
+    for (let k = 1; k < m - 1; k++) index.push(...(flip ? [base, base + k + 1, base + k] : [base, base + k, base + k + 1]));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(index);
+  const flat = g.toNonIndexed();
+  g.dispose();
+  flat.computeVertexNormals();
+  // a box-free planar uv (x along, y up) so the loft merges with its bucket's other stock
+  const p = flat.getAttribute('position'), uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { uv[2 * i] = p.getX(i) + p.getZ(i); uv[2 * i + 1] = p.getY(i); }
+  flat.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return flat;
 }
 
-export function addChieftainMk9Kit(P: TankBuilderPort, pivot: Point, trunnion: Point): void {
-  mrsMirror(P, trunnion);
-  laterStowage(P, pivot);
+/** A round tube through points (a rail or a stalk), `radius` and `sides` round, its ends open (they bed into stock). */
+export function tubeThrough(points: readonly (readonly [number, number, number])[], radius: number, sides = 8): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)), false, 'centripetal', .2);
+  return new THREE.TubeGeometry(curve, Math.max(2, (points.length - 1) * 6), radius, sides, false);
 }
