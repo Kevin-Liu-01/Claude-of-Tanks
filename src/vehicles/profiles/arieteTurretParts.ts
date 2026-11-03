@@ -186,13 +186,14 @@ export function arieteDriverPeriscopes(P: ArieteParts, x: number, yDeck: number,
   }
 }
 
-/** The driver's hatch lid (a flat round lid in a low ring with its hinge and handle), flush on the deck. */
-export function arieteDriverHatch(P: ArieteParts, x: number, yDeck: number, z: number, r = 0.25, rx = 0): void {
-  const seg = P.q ? 18 : 10, S = HULL_SLOTS;
-  P.add(S.body, KIT.cylY(r + 0.03, r + 0.04, 0.026, seg), x, yDeck + 0.006, z, rx, 0, 0);
-  P.add(S.dark, KIT.cylY(r + 0.004, r + 0.004, 0.006, seg), x, yDeck + 0.020, z, rx, 0, 0);
-  P.add(S.body, KIT.cylY(r - 0.01, r, 0.016, seg), x, yDeck + 0.024, z, rx, 0, 0);
-  P.add(S.detail, KIT.box(0.12, 0.012, 0.022), x, yDeck + 0.035, z, rx, 0, 0);                         // handle
+/** The driver's hatch lid (a flat round lid in a low ring with its handle) on the deck; `flush` keeps it within 7 mm
+ * of the deck where the gun's mantlet sweeps over it at its depression stops. */
+export function arieteDriverHatch(P: ArieteParts, x: number, yDeck: number, z: number, r = 0.25, rx = 0, flush = false): void {
+  const seg = P.q ? 18 : 10, S = HULL_SLOTS, k = flush ? 0.25 : 1;
+  P.add(S.body, KIT.cylY(r + 0.03, r + 0.04, 0.026 * k, seg), x, yDeck + 0.006 - (1 - k) * 0.008, z, rx, 0, 0);
+  P.add(S.dark, KIT.cylY(r + 0.004, r + 0.004, 0.006, seg), x, yDeck + (flush ? 0.003 : 0.020), z, rx, 0, 0);
+  P.add(S.body, KIT.cylY(r - 0.01, r, 0.016 * k, seg), x, yDeck + (flush ? 0.004 : 0.024), z, rx, 0, 0);
+  if (!flush) P.add(S.detail, KIT.box(0.12, 0.012, 0.022), x, yDeck + 0.035, z, rx, 0, 0);              // handle
 }
 
 /** A lower-plate clevis tow hook (series C1 photograph 4: two tall clevis brackets on the lower front plate, a hook

@@ -830,7 +830,7 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
       [-0.37, -0.05, 1.34], [0.37, -0.05, 1.34], [-0.37, 0.07, 1.34], [0.37, 0.07, 1.34],
     ]));                                                                         // mantlet face plate, its front edges chamfered
     P.addGunExtra(cylZ(0.135, 0.40, 24), 0, 0.03, 1.32);                         // gun-shield collar (z_w 1.83..2.23; underside on the old root collar's line)
-    P.addGunExtraDark(cylZ(0.114, 0.02, 20), 0, 0, 1.525);                       // collar mouth ring round the sleeve
+    P.addGunExtraDark(cylZ(0.100, 0.02, 20), 0, 0, 1.525);                       // collar mouth: a dark disc where the tube leaves it (inside the root collar's 0.105 line, so the -4.94 deg stop at yaw 47 keeps 25 mm)
     P.addGunExtra(geometryXform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
       [1.52, 0.70, 0.65]), 0, -0.01, 0.55);                                     // rounded armored root surround
     P.addGunExtraDark(cylZ(0.026, 0.05, 8), 0.27, 0.0, 1.345);                    // coax port in the mantlet face, left of the collar

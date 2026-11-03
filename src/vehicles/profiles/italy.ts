@@ -286,13 +286,15 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       P.add('hullDark', box(0.05, 0.016, 0.03), s * 0.50, 1.196, 3.652);
     }
     // 268b (the owner: "add more upper glacis and roof details"; series C1 photographs 1 and 4, C2 photograph 5): the
-    // glacis' perforated intake grille across its front between the lamp clusters (a raised framed plate, 2.5 cm proud:
-    // the C1's -6.4 deg stop ahead passes 2.4 cm over its rear bar after the 25 mm keep), and the driver's station on the
-    // right just ahead of the turret: his round lid on the fore strip and his three-periscope block on the glacis, both
-    // under the cheeks' 13 cm sweep.
-    arieteGlacisGrille(P, { halfW: 0.95, zRear: 3.12, zFront: 3.52, yRear: 1.2623, yFront: 1.2217, frameH: 0.025, rows: 3, cols: 17 });
-    arieteDriverHatch(P, -0.55, 1.40, 1.47, 0.19);
-    arieteDriverPeriscopes(P, -0.55, 1.366, 1.79, { h: 0.04, rx: 0.064, w: 0.42 });
+    // glacis' perforated intake grille across its front between the lamp clusters (a raised framed plate 1.8 cm proud,
+    // its corners inside the tube's path at the C1's -6.7 deg stops at yaw 16-21, and 5 cm under it at the -5.5 deg stop
+    // at yaw 15, after the 25 mm keep), and the driver's station on the
+    // right just ahead of the turret: his round lid flush on the fore strip (the mantlet sweeps 4 cm over it at the C1's
+    // -6.7 deg stop at yaw 17-21) and his three-periscope block on the glacis beyond the mantlet's 2.07 m reach, under
+    // the tube's path with 4 cm to spare.
+    arieteGlacisGrille(P, { halfW: 0.88, zRear: 3.18, zFront: 3.54, yRear: 1.2562, yFront: 1.2197, frameH: 0.018, rows: 3, cols: 16 });
+    arieteDriverHatch(P, -0.55, 1.40, 1.47, 0.19, 0, true);
+    arieteDriverPeriscopes(P, -0.55, 1.347, 2.12, { h: 0.04, rx: 0.064, w: 0.42 });
     // s5322-C3 woven glacis GRILLE band (§5.283 debt): dark intake field +
     // crossing weave strips riding the §5.299 raked plane A (pitch 0.0638;
     // tops <= surface+0.020 — the read is tone relief, budgeted inside the
