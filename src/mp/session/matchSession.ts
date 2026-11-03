@@ -164,6 +164,8 @@ const HOSTING: ReadonlySet<SessionRoleState> = new Set(['booting_host', 'live_ho
  *   Over with that match: the room resets every decline at a match's end (roomPolicy finishMatch), and this seat
  *   forgets its own once the room is back to waiting. It used to be a latch for the seat's life (`declinedHosting`),
  *   which kept a capable seat out of the admin-first election and shut its headroom path.
+ * 'reentry' and 'match' are said again on an admission whose room record lost them while this seat's round of that
+ * match still runs (2026-11-03): the command went out into a room-socket blip and the room never read it.
  */
 export type HostDecline = null | 'unable' | 'headroom' | 'reentry' | 'match';
 
@@ -279,6 +281,8 @@ export class MatchSession {
   private migrationsSeen = 0;
   /** Why this seat declines to host (HostDecline; null: willing). */
   private decline: HostDecline = null;
+  /** The current decline was said with `unable` (a decline said again carries the flag it was said with). */
+  private declineUnable = false;
   /** The room's record of this seat's decline at its last snapshot (null before one): a true → false edge is a reset. */
   private declineRecord: boolean | null = null;
   /** The hosting tab already told the room it is going (pagehide): leaving the match must not decline twice. */
@@ -464,6 +468,8 @@ export class MatchSession {
    */
   private setDecline(next: HostDecline, say?: { declined: boolean; unable?: boolean; onFail?: () => void }): void {
     this.decline = next;
+    if (next === null) this.declineUnable = false;
+    else if (say?.declined) this.declineUnable = say.unable === true;
     if (!say) return;
     void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).catch(() => { say.onFail?.(); /* the room may predate the command */ });
   }
@@ -473,7 +479,8 @@ export class MatchSession {
    * says so once it is in the room, so the election never names it — and again when the room's record of it reads
    * willing on an admission or after a reset (best effort: an older room ignores it). A decline made for one match is
    * over once the room is back to waiting: the room reset it, and a decline that reached the room after that reset is
-   * withdrawn here.
+   * withdrawn here. While that match runs, an admission whose record lost the decline (a command sent into a room-socket
+   * blip) says it again.
    */
   private syncDecline(admitted: boolean): void {
     if (!this.p2pOptions || this.room.phase !== 'joined') return;
@@ -496,9 +503,17 @@ export class MatchSession {
     // Only an admission or a move of the room's record re-says anything: a room that never echoes a decline is not asked
     // again on every snapshot.
     if (record === (this.decline !== null) || !(admitted || previousRecord !== record)) return;
+    const roundMatch = room.match && room.match.id === this.currentRound?.matchStart.matchId ? room.match : null;
     // the seat's own decline, which the room's record lost (a reset at a match's end, a room that forgot): said again
     if (this.decline === 'unable') this.setDecline('unable', { declined: true, unable: true });
     else if (this.decline === 'headroom') this.setDecline('headroom', { declined: true });
+    // a decline for the match this seat's round still runs (match, reentry) that never reached the room (sent into a
+    // room-socket blip): said again, with the flag it was said with, on the admission that ends the blip. Without it a
+    // seat elected while its world loads stayed the room's host until its world was ready (audit M2, 2026-11-03).
+    else if (this.decline !== null && admitted && room.phase !== 'waiting' && roundMatch && (roundMatch.status === 'starting' || roundMatch.status === 'playing')) {
+      this.log('info', 'a decline for the running match the room never read: said again', { decline: this.decline });
+      this.setDecline(this.decline, { declined: true, ...(this.declineUnable ? { unable: true } : {}) });
+    }
     // a decline this seat no longer means (one that reached the room after the reset of its match): withdrawn
     else if (this.decline === null && room.phase === 'waiting' && this.canHost) this.setDecline(null, { declined: false });
   }
