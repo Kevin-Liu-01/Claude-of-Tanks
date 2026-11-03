@@ -318,6 +318,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   // release 269: the AS1's kangaroo on the right (its left cheek carries the SABCA laser's drum)
   leopard_as1: anchor('turret', 'right', 0.50, 0.40, 0.20, -1),
+  redback: anchor('hull', 'right', 0.62, 0.55, 0.30, -1),
   m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
   t49: anchor('turret', 'right', 0.62, 0.46, 0.24, 1),
   m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),

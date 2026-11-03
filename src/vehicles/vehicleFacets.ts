@@ -220,7 +220,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'ajax', 'amx10p', 'amx10p_25', 'bmp2', 'bmp3', 'bmp3_rok', 'borsuk', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'hayate_ifv', 'k21', 'kf41_lynx',
     'kurganets25', 'lrmv_lynx', 'm2a2_bradley', 'm3a3_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'puma_s1',
-    'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
+    'raiju_ifv', 'redback', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
   ]),
   apc: Object.freeze([
     'ares_apc', 'm113as4',
@@ -290,7 +290,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
     'kf41_lynx', 'kurganets25', 'm2a2_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'object695', 'puma_s1',
-    'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior',
+    'raiju_ifv', 'redback', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior',
     'warrior_tes_h',
   ]),
 });
@@ -312,7 +312,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3', 'm6_linebacker', 'magach3',
     'magach6b', 'magach7c', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
     'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'olifant_mk2',
-    'pt91a_twardy', 'pt91m', 'puma_s1', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
+    'pt91a_twardy', 'pt91m', 'puma_s1', 'redback', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b',
     'strv121', 'strv122', 'strv81', 't55a', 't62_1975', 't62mv1', 't64b1v_2022', 't64bm1m', 't64bv', 't64bv1',
     't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022', 't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar',
     't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004',

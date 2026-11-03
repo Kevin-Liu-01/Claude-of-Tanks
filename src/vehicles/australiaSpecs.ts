@@ -7,6 +7,7 @@
 import './m41Specs.ts';
 import './aresApcXSpecs.ts';
 import './denmarkSpecs.ts';
+import './ifvReplicaSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { modernArmor } from './specHelpers.ts';
@@ -22,10 +23,10 @@ const australian = (id: string, donor: string, name: string, era: 'cold-war' | '
   return spec;
 };
 
-// The Australian Army's disruptive pattern: olive, brown and black in broad patches (every service photograph since the
-// 1990s); and the RAAC's olive drab of the 1970s and 1980s
-const ausDisruptive = (number: string) => ({ scheme: 'blotch' as const, base: '#5d5a3c', weather: '#686545',
-  patches: ['#6e5236', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2 });
+// The Australian Army's disruptive pattern: a tan base under olive and black in broad patches (the Abrams, AS1, AS4 and
+// Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s
+const ausDisruptive = (number: string) => ({ scheme: 'blotch' as const, base: '#8a7656', weather: '#95825f',
+  patches: ['#57593c', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2 });
 const raacOliveDrab = (number: string) => ({ scheme: 'solid' as const, base: '#55573a', weather: '#606244', patches: [] as string[],
   marking: 'number' as const, number, camoScale: 0.55 });
 
@@ -93,5 +94,16 @@ leopard_as1.gun = { ...leopard_as1.gun, baseAccuracy: +(leopard_as1.gun.baseAccu
 leopard_as1.visual = { ...leopard_as1.visual, ...ausDisruptive('27') };
 delete leopard_as1.visual.insignia;
 
-registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1'],
-  { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1 });
+// ------------------------------------------------------------------------------------------------- AS21 Redback --
+// 129 ordered (December 2023; Hanwha, Geelong; deliveries from 2027): the EOS/Elbit T2000 turret with the 30 mm Mk44S, a
+// MAG 58 and two Spike LR2, Iron Fist active protection, the EOS R400 station; the MTU of 1,000 hp, the Allison X1100,
+// Soucy composite rubber tracks, in-arm hydropneumatics; 42 t; 8.8 m over the gun, 3.6 m wide, 3.8 m high (Hanwha; Janes
+// 7.9 x 3.64 x 3.75 m). On the Puma S1's footing (VI: the 30 mm, the Spike, the 43 t; its LAND 400 rival the KF41 at V).
+const redback = australian('redback', 'puma_s1', 'AS21 Redback', 'modern', 'ifv');
+Object.assign(redback.dims, { hullLengthM: 7.9, overallLengthM: 8.8, widthM: 3.6, heightM: 3.75 });
+Object.assign(redback, { hp: 2700, weightTons: 42, enginePowerHp: 1000, topSpeedKmh: 65, reverseSpeedKmh: 30,
+  protectionSuite: { hardKillAps: true, softKillAps: false } });
+redback.visual = { ...redback.visual, ...ausDisruptive('31A') };
+
+registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback'],
+  { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1, redback });
