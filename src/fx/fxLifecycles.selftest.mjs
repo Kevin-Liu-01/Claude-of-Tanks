@@ -6,11 +6,14 @@
 //    stage builders ran twice: a building stood up and fell again);
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
-//  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two;
+//  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two; a
+//    direct hull hit (no expiry ever follows it) bursts on the next update, and a late wall expiry still strikes its
+//    building;
 //  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
 //    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for;
 //  - a bus takes one runtime: binding twice, or a second runtime (a failed initializer's retry) binding the same bus,
-//    never doubles the effects or leaves the first reacting;
+//    never doubles the effects or leaves the first reacting; one runtime bound to two buses (the page's, then the
+//    Studio's) keeps hearing both (the Studio's binding dropped the page's: no battle FX after a Studio visit);
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -23,10 +26,10 @@ globalThis.document ??= { createElement: () => createCanvas(1, 1) };
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.5, 5000);
 camera.position.set(0, 3, -40); camera.lookAt(0, 2, 0); camera.updateMatrixWorld(true);
-function runtime(entities = new Map()) {
+function runtime(entities = new Map(), options = {}) {
   const fx = createFx({ scene, camera, renderer: null, anisotropy: 1, setupShadowMaterial: () => {}, releaseShadowMaterial: () => {} },
     { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) },
-    { seed: 5, resolveEntity: (id) => entities.get(id) ?? null, auxiliaryEntities: () => entities.values() });
+    { seed: 5, resolveEntity: (id) => entities.get(id) ?? null, auxiliaryEntities: () => entities.values(), ...options });
   scene.add(fx.group);
   const handlers = new Map();
   const bus = { on(n, f) { (handlers.get(n) ?? handlers.set(n, []).get(n)).push(f); return () => { const l = handlers.get(n); l.splice(l.indexOf(f), 1); }; },
@@ -118,26 +121,58 @@ function fakeVisual() {
 
 // ---- one burst per HE round, whatever frames its events land on ----
 {
-  const { fx, bus, frames } = runtime();
+  // the building a wall expiry consults (its look, its strike's seam): counted, so a skipped strike shows
+  let asked = 0;
+  const world = { structureDamage: () => { asked++; return null; } };
+  const { fx, bus, frames } = runtime(new Map(), { world: () => world });
   // the media bodies drawn: a hull's plate burst ~25, the ground's ~100, both ~125
   const bodies = () => fx.group.getObjectByName('fx-volume-media').children[0].geometry.instanceCount;
+  const flash = () => fx.getReplaySuppressionDebug().lightIntensities[1];
   const near = (a, b) => Math.abs(a - b) <= 5;
   let id = 100;
   const fired = (shellId) => bus.emit('shell:fired', { shellId, shooterId: 'g', pos: [0, 30, -60], muzzlePos: [0, 30, -60], dir: [0, -0.4, 0.9],
     shellType: 'HE', caliberMm: 125, shellName: '125 mm HE', munition: 'he', chargeKg: 3.4 });
-  const hit = (shellId) => bus.emit('shell:hit', { shellId, attackerId: 'g', targetId: 't', kind: 'he_splash', damage: 40, pos: [1, 0.8, 0],
-    normal: [0, 1, 0], caliberMm: 125, shellType: 'HE', destroyed: false });
+  // the detonation the solo step (and a peer, from the shell_hit's blast) raises on the struck hull before its hull event
+  const hullBlast = (munition = 'he') => bus.emit('munition:blast', { munition, chargeKg: 3.4, x: 1, y: 0.8, z: 0, nx: 0, ny: 1, nz: 0,
+    surface: 'tank' });
+  const hit = (shellId, kind = 'he_splash', extra = {}) => bus.emit('shell:hit', { shellId, attackerId: 'g', targetId: 't', kind,
+    damage: 40, pos: [1, 0.8, 0], normal: [0, 1, 0], caliberMm: 125, shellType: 'HE', destroyed: false, ...extra });
   const expired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 0, 0], hitTerrain: true, munition: 'he', chargeKg: 3.4,
     caliberMm: 125, shellType: 'HE' });
+  const wallExpired = (shellId) => bus.emit('shell:expired', { shellId, pos: [0, 1.5, 3], hitTerrain: false, hitKind: 'prop',
+    structureId: 7, normal: [0, 0, -1], munition: 'he', chargeKg: 3.4, caliberMm: 125, shellType: 'HE' });
   const run = (script) => { fx.resetAll(); frames(2); const shellId = id++; fired(shellId); script(shellId); frames(12); return bodies(); };
-  // the solo order: the hull event and the expiry in one step: the ground's burst, the hull's fragments
+  // a ground burst in one step (the solo step's world hit: its hull events, then its expiry): the ground's burst, the
+  // hull's fragments
   const sameFrame = run((s) => { hit(s); expired(s); frames(1); });
+  // a direct hull hit (the solo step's tank hit: the hull blast, then the hull event, and no expiry ever): its burst
+  // draws on the next update (it waited 0.1 s for an expiry that never comes, its flash cut)
+  let firstFlash = -1;
+  const direct = run((s) => { hullBlast(); hit(s, 'he_pen'); frames(1); firstFlash = flash(); });
+  assert.ok(firstFlash > 0, `a direct hull hit flashes on the next update (${firstFlash})`);
+  assert.ok(direct > 0 && direct < sameFrame, `and bursts on the hull (${direct})`);
+  // a peer's direct hit carries its blast on the hull event
+  const peerDirect = run((s) => { hit(s, 'he_pen', { blast: [1, 0.8, 0, 0, 1, 0] }); frames(1); firstFlash = flash(); });
+  assert.ok(firstFlash > 0 && near(peerDirect, direct), `a peer's direct hit bursts on the next update too (${firstFlash}, ${peerDirect})`);
+  // a network peer's split orders (its budgeted queue lands a round's events up to 4 ticks apart): one burst
   const hullThenExpiry = run((s) => { hit(s); frames(2); expired(s); });
   assert.ok(near(hullThenExpiry, sameFrame), `a hull event, then its expiry two frames later: one burst (${hullThenExpiry} vs ${sameFrame})`);
   const expiryThenHull = run((s) => { expired(s); frames(2); hit(s); });
   assert.ok(near(expiryThenHull, sameFrame), `an expiry, then its hull event two frames later: one burst (${expiryThenHull} vs ${sameFrame})`);
+  // a cook-off's blast on a hull names no round: the next splash still waits for its expiry
+  const afterCookOff = run((s) => { hullBlast('cook_off'); hit(s); frames(2); expired(s); });
+  assert.ok(near(afterCookOff, sameFrame), `a cook-off's blast does not make a splash a direct hit (${afterCookOff} vs ${sameFrame})`);
   const hullOnly = run((s) => { hit(s); });
-  assert.ok(hullOnly > 0 && hullOnly < sameFrame, `a hull event whose expiry never lands bursts on the hull after its wait (${hullOnly})`);
+  assert.ok(hullOnly > 0 && hullOnly < sameFrame, `a splash whose expiry never lands bursts on the hull after its wait (${hullOnly})`);
+  // a wall expiry later than the wait: no second burst, but the wall still takes its strike (its hole, its own dust)
+  asked = 0;
+  const wallInTime = run((s) => { hit(s); wallExpired(s); frames(1); });
+  const askedInTime = asked;
+  asked = 0;
+  const wallLate = run((s) => { hit(s); frames(10); wallExpired(s); });
+  assert.ok(askedInTime > 0 && asked === askedInTime, `a late wall expiry still strikes its building (${asked} vs ${askedInTime})`);
+  // (the wall's own burst is ~19 bodies: on top of the hull's it would read ~44)
+  assert.ok(near(wallLate, hullOnly), `and draws no second burst (${wallLate} vs the hull's ${hullOnly}; the wall's own ${wallInTime})`);
   fx.resetAll();
 }
 

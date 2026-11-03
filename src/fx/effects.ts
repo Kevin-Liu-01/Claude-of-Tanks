@@ -457,6 +457,8 @@ interface ShellHitEvent {
   impactLocalDir?: WireVec3;
   localPos?: WireVec3;
   localDir?: WireVec3;
+  /** a peer's direct hit: the round's detonation on this hull (battlePresentation shell_hit; splash hits carry none) */
+  blast?: readonly number[];
 }
 
 interface ShellExpiredEvent {
@@ -2315,10 +2317,14 @@ function* createFxSteps(
   interface PendingHeHit {
     shellId: ShellId | null; x: number; y: number; z: number; nx: number; ny: number; nz: number;
     caliberMm: number; at: number;
+    /** (2026-11-02 audit F10) its round burst elsewhere (no detonation on a hull named it): an expiry is coming */
+    expiryDue: boolean;
   }
   const PENDING_HE_MAX = 48;
   const pendingHe: PendingHeHit[] = [];
-  for (let i = 0; i < PENDING_HE_MAX; i++) pendingHe.push({ shellId: null, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, caliberMm: 0, at: 0 });
+  for (let i = 0; i < PENDING_HE_MAX; i++) {
+    pendingHe.push({ shellId: null, x: 0, y: 0, z: 0, nx: 0, ny: 1, nz: 0, caliberMm: 0, at: 0, expiryDue: false });
+  }
   let pendingHeCount = 0;
   /**
    * (2026-11-02 audit F10) rounds whose burst was drawn (fx time), by their shell:expired or by a hull event, kept
@@ -2326,9 +2332,24 @@ function* createFxSteps(
    * were cleared every frame, so a hull event resolved on one frame and the expiry on the next drew two explosions.
    */
   const HE_BURST_KEEP_S = 0.5;
-  /** A hull event waits at most this long (fx s) for its round's expiry (a peer's queue lands events up to 4 ticks
-   *  apart): the burst is the expiry's when it draws one (the ground's, the wall's), else the first hull's. */
+  /** A hull event whose round has an expiry coming waits at most this long (fx s) for it (a peer's queue lands events up
+   *  to 4 ticks apart): the burst is the expiry's when it draws one (the ground's, the wall's), else the first hull's. A
+   *  round that burst on a hull (a direct hit) has no expiry, and its hull events resolve on the next update. */
   const HE_WAIT_S = 0.1;
+  /**
+   * (2026-11-02 audit F10) A round's detonation on a hull (munition:blast on surface 'tank', a shell's, never a
+   * cook-off's or a fuel fire's) is raised just before the round's first hull event, in the solo step
+   * (resolveTankShellImpact) and on a peer (battlePresentation emits it from the direct shell_hit's blast). The next
+   * shell:hit takes it; an update drops one nobody took.
+   */
+  const hullBlast = { armed: false };
+  /** Whether a hull event opens a round that burst on a hull (it has no expiry to wait for): the hull blast just before
+   *  it, or the peer's blast it carries. Takes the armed hull blast either way. */
+  function takeDirectHullHit(e: ShellHitEvent): boolean {
+    const armed = hullBlast.armed;
+    hullBlast.armed = false;
+    return armed || Array.isArray(e.blast);
+  }
   const burstAt = new Map<ShellId, number>();
   /** rounds whose shell:expired has landed (fx time), kept as long */
   const roundEndedAt = new Map<ShellId, number>();
@@ -2346,10 +2367,11 @@ function* createFxSteps(
   const pruneBurst = (t: number, id: ShellId): void => { if (burstPruneNow - t > HE_BURST_KEEP_S) burstAt.delete(id); };
   const pruneEnded = (t: number, id: ShellId): void => { if (burstPruneNow - t > HE_BURST_KEEP_S) roundEndedAt.delete(id); };
 
-  function queueHeHit(e: ShellHitEvent): boolean {
+  function queueHeHit(e: ShellHitEvent, direct: boolean): boolean {
     if (!blast) return false;
     if (pendingHeCount >= PENDING_HE_MAX) return false;
     const r = pendingHe[pendingHeCount++];
+    r.expiryDue = !direct;
     r.shellId = e.shellId ?? null;
     r.x = e.pos[0]; r.y = e.pos[1]; r.z = e.pos[2];
     r.nx = e.normal[0]; r.ny = e.normal[1]; r.nz = e.normal[2];
@@ -2363,13 +2385,16 @@ function* createFxSteps(
     burstPruneNow = now;
     if (burstAt.size) burstAt.forEach(pruneBurst);
     if (roundEndedAt.size) roundEndedAt.forEach(pruneEnded);
+    hullBlast.armed = false;
     if (!blast || pendingHeCount === 0) return;
     let waiting = 0;
     for (let i = 0; i < pendingHeCount; i++) {
       const r = pendingHe[i];
       const id = r.shellId;
-      // (2026-11-02 audit F10) its round's expiry not landed yet: it waits (at most HE_WAIT_S; a frozen capture never)
-      if (id != null && !frozen && !burstRecent(id) && !recent(roundEndedAt, id) && now - r.at < HE_WAIT_S) {
+      // (2026-11-02 audit F10) its round burst elsewhere and the expiry has not landed yet: it waits (at most HE_WAIT_S;
+      // a frozen capture never). A direct hit's never does: its round has no expiry (the solo step and a peer's
+      // shell_hit end it on the hull), and its burst draws on the next update as it always did
+      if (r.expiryDue && id != null && !frozen && !burstRecent(id) && !recent(roundEndedAt, id) && now - r.at < HE_WAIT_S) {
         pendingHe[i] = pendingHe[waiting]; pendingHe[waiting++] = r;
         continue;
       }
@@ -6742,6 +6767,8 @@ function* createFxSteps(
         } else lastBlast.structureId = -1;
         lastGroundBlast.x = b.x; lastGroundBlast.z = b.z;
         lastGroundBlast.craterId = typeof b.craterId === 'number' ? b.craterId : -1;
+        // (2026-11-02 audit F10) a round's burst on a hull names the hull event that follows it (takeDirectHullHit)
+        hullBlast.armed = b.surface === 'tank' && b.munition !== 'cook_off' && b.munition !== 'fuel';
         // (dcore 2026-10-10, wave 351) the vehicles round it take the near miss: dents, glass, a shove (props.ts)
         if (Number.isFinite(b.chargeKg)) notifyBlast(b.x, b.y, b.z, b.chargeKg);
       });
@@ -6806,6 +6833,8 @@ function* createFxSteps(
         else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
+        // (2026-11-02 audit F10) taken by every hull event, so a hull blast names only the one raised right after it
+        const directHull = takeDirectHullHit(e);
         if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
         if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); endTrail(e.shellId, e.pos); }
@@ -6851,7 +6880,7 @@ function* createFxSteps(
         // A terminal ERA absorb already received its exact activation above.
         // Legacy payloads still fall through to their ordinary `era` impact.
         // destruction-fx lane: an HE round's hull events resolve to one burst at the next update (queueHeHit)
-        if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e)) return;
+        if ((e.kind === 'he_pen' || e.kind === 'he_splash') && queueHeHit(e, directHull)) return;
         if (e.kind !== 'era' || !eraActivations.length) {
           fx.impact(e.kind, _v3, _v4, e.caliberMm);
         }
@@ -6910,10 +6939,12 @@ function* createFxSteps(
         }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         // (2026-11-02 audit F10) the round has ended (its waiting hull events resolve now); a hull event that drew its
-        // burst already (it waited past HE_WAIT_S) leaves the expiry none: one explosion a round
+        // burst already (its wait ran out first) leaves the expiry no burst of its own: one explosion a round. The wall
+        // still takes its hole and its own dust (stages.strike, a non-explosive wallStrike)
+        let burstDrawn = false;
         if (e.shellId != null) {
           note(roundEndedAt, e.shellId);
-          if (burstRecent(e.shellId)) return;
+          burstDrawn = burstRecent(e.shellId);
         }
         if (e.hitKind === 'prop') {
           if (Array.isArray(e.normal)) _v4.set(e.normal[0], e.normal[1], e.normal[2]).normalize();
@@ -6921,7 +6952,8 @@ function* createFxSteps(
           if (blast) {
             // destruction-fx lane: the round bursts on (or chips) the wall in the wall's own material
             const m = info ?? munitionOfExpiry(e);
-            const explosive = isExplosive(m.munition) && m.chargeKg > 0;
+            const charged = isExplosive(m.munition) && m.chargeKg > 0;
+            const explosive = charged && !burstDrawn;
             // the building the event names (any round), else the one the blast named (munition:blast, raised just before
             // this event), else the struck kind
             const struckId = typeof e.structureId === 'number' && e.structureId >= 0 ? e.structureId
@@ -6949,7 +6981,7 @@ function* createFxSteps(
             // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
             // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
             // its own smaller hole, spalled (machine-gun and autocannon rounds chip the wall: wallStrike above)
-            if ((explosive || m.munition === 'kinetic') && struckId >= 0 && stages) {
+            if ((charged || m.munition === 'kinetic') && struckId >= 0 && stages) {
               const dx = arrival ? arrival.x : -_v4.x, dz = arrival ? arrival.z : -_v4.z;
               stages.strike(struckId, seamOf(struckId), _v3.x, _v3.y, _v3.z, dx, dz, m.munition, m.chargeKg, m.caliberMm);
             }
@@ -6960,6 +6992,7 @@ function* createFxSteps(
           return;
         }
         if (e.hitTerrain) {
+          if (burstDrawn) return;
           const water = !!e.hitWater || shellPointOnWater(_v3);
           if (mediaGroundHit(_v3, info ?? munitionOfExpiry(e), water, arrival)) {
             if (e.shellId != null) noteBurst(e.shellId);
@@ -7809,6 +7842,7 @@ function* createFxSteps(
       pendingHeCount = 0;
       burstAt.clear();
       roundEndedAt.clear();
+      hullBlast.armed = false;
       shellMunitions.clear();
       lastTickS = particles.getTime();
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
