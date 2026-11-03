@@ -220,6 +220,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
+    // 2026-11-02 audit M4: a red roof-gun module silences the station without throwing its switch; the repair restores it
+    'src/sim/roofGunRepair.selftest.mjs',
     'src/vehicles/detachedGear.selftest.mjs',
     'src/vehicles/weaponDamageVisuals.selftest.mjs',
     'src/game/objectiveSurface.selftest.mjs',

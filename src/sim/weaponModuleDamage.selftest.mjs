@@ -46,11 +46,12 @@ for(const id of ['object148_proto','t90m_proryv','challenger3_proto']){
  assert.equal(combat.modules.roofGun.state,'red');
  assert.equal(requestAuxiliary(target,'roofGun',1),false,'broken roof gun cannot activate');
  combat.auxiliary={gunOn:true,gunYaw:0,gunPitch:0,nextShot:0,shots:0};
- assert.equal(stepRoofGun(target,1,1/60,{entities:[],visible:()=>true,clear:()=>true}),false);
- assert.equal(combat.auxiliary.gunOn,false,'damage disables active automatic fire');
+ assert.equal(stepRoofGun(target,1,1/60,{entities:[],visible:()=>true,clear:()=>true}),false,'damage silences active automatic fire');
+ // 2026-11-02 audit M4: without throwing the crew's switch (it stayed off after the repair; roofGunRepair.selftest)
+ assert.equal(combat.auxiliary.gunOn,true,'the switch stays as the crew left it');
  assert.equal(selectedWeaponModuleState(combat,spec.gun,spec.gun.shells[0]),'ok','main gun remains usable');
  assert(tickModuleRepairs(combat,60).includes('roofGun'),'repair restores the independent roof station');
  assert.equal(combat.modules.roofGun.state,'yellow');
- assert.equal(requestAuxiliary(target,'roofGun',61),true,'repaired roof gun can reactivate');
+ assert.equal(requestAuxiliary(target,'roofGun',61),true,'a repaired roof gun takes the toggle again');
 }
 console.log('weaponModuleDamage: independent launchers/feed/roof damage and three articulated roof stations passed');
