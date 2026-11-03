@@ -11945,11 +11945,12 @@ export function* createTankRuntimeSteps(
     setVisible(v) { root.visible = v; },
 
     dispose() {
-      // (2026-11-02 audit F10) latched: a second dispose, and any late wreck or reset after it, does nothing
-      if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
-      turretDriver?.reset();
       equipmentDamage.dispose();
       turretRing.dispose();
+      // (2026-11-02 audit F10) latched (the two above are idempotent): a second dispose, and any late wreck or reset after
+      // it, does nothing more
+      if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
+      turretDriver?.reset();
       reopenInteriorFills();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
