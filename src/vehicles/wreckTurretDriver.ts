@@ -55,6 +55,12 @@ export interface WreckTurretDriver {
   setExternal(pose: ArrayLike<number> | null): void;
   /** An authority will send this turret's pose (a body-carrying host): hold the seat until it does, never simulate. */
   awaitExternal(): void;
+  /**
+   * (2026-11-02 audit F10) A late cook-off cause on a plain kill (wreckLifecycle.ts 'upgrade'): the trail from now on,
+   * and a turret this driver throws itself goes again with the cook-off's launch law. An authority's turret flies as
+   * its authority threw it.
+   */
+  upgradePop(): void;
   /** Place the turret for wreck age `ageS` (fx clock), `adv` seconds after the last call. Returns true while it flies. */
   update(ageS: number, adv: number): boolean;
   /** The turret's world position (frame origin) as last placed, into `out`; false before a placement. */
@@ -287,6 +293,14 @@ export function createWreckTurretDriver(o: WreckTurretDriverOptions): WreckTurre
       externalSeen = true;
     },
     awaitExternal() { externalSeen = true; },
+    upgradePop() {
+      if (!active || pop) return;
+      pop = true;
+      // our own launch (no authority, no continuation of one): thrown again from the seat on the next update
+      if (!externalSeen && extLastAge < 0) {
+        world = null; localSlot = -1; localDone = false; trackLength = 0; localSteps = 0; localStartAge = 0; trailAcc = 0;
+      }
+    },
     update(ageS, adv) {
       if (!active) return false;
       let have = false;

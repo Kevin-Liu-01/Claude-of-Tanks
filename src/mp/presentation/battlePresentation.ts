@@ -779,6 +779,8 @@ export function createBattlePresentation({
   function updateDestruction(actor: MatchActor, destroyed: boolean): void {
     if (destroyed) {
       const pop = destructionCause.get(actor.id) === 'ammo_rack';
+      // a cause after the flag calls again: the visual's wreck owner upgrades a young plain wreck to the cook-off and
+      // ignores any other repeat (vehicles/wreckLifecycle.ts, 2026-11-02 audit F10)
       if (actor._networkDestroyed && actor._networkDestroyPop === pop) return;
       actor._networkDestroyed = true;
       actor._networkDestroyPop = pop;
@@ -793,6 +795,9 @@ export function createBattlePresentation({
       actor.visual.resetDestroyed?.();
       actor._networkDestroyed = false;
       actor._networkDestroyPop = false;
+      // (2026-11-02 audit F10) the cause was this life's: the next death's flag may land before its own event, and must
+      // not first draw this one's wreck (a late cook-off cause still upgrades it: vehicles/wreckLifecycle.ts)
+      destructionCause.delete(actor.id);
     }
   }
 

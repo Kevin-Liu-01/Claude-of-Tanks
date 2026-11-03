@@ -124,6 +124,9 @@ import {
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
 import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import {
+  isWreckState, tankWreckMove, tankWreckNext, type TankWreckEvent, type TankWreckMove, type TankWreckState,
+} from './wreckLifecycle.ts';
 import type { WreckTurretDriver } from './wreckTurretDriver.ts';
 import {
   bakeTurretRigScale, isTurretSectionFrame, TURRET_SECTION_SCALE_KEY, turretSectionScaleOf, type TurretSectionScale,
@@ -1358,6 +1361,8 @@ export interface TankVisual {
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** (2026-11-02 audit F10) The wreck as its one declared state (wreckLifecycle.ts): intact, plain, cook-off, disposed. */
+  wreckState(): TankWreckState;
   /**
    * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
    * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
@@ -10129,6 +10134,7 @@ export function* createTankRuntimeSteps(
     presentationTrackFloorYM, ownsTree,
   } = env;
   let { launcherCursor } = env;
+  const launcherCursorAtBuild = launcherCursor;
   const continuousRootFloor = (): number | undefined => {
     const floor = P.gear?.continuousShoeFloorYM;
     if (floor !== undefined) assertShoeFloorFrame(hullG, root.scale);
@@ -10212,6 +10218,9 @@ export function* createTankRuntimeSteps(
   }
 
   // ---- state ----
+  // (2026-11-02 audit F10) the wreck: one declared state, moved only by moveWreck below (wreckLifecycle.ts); `destroyed`
+  // mirrors "a wreck stands" for the readers that only ask that
+  let wreckState: TankWreckState = 'intact';
   let destroyed = false;
   let recoilT = 1e9;
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
@@ -10922,6 +10931,34 @@ export function* createTankRuntimeSteps(
     applyPop();
   }
 
+  /** The one writer of wreckState and its `destroyed` mirror (wreckLifecycle.ts): the move this event makes. */
+  function moveWreck(event: TankWreckEvent): TankWreckMove {
+    const move = tankWreckMove(wreckState, event, wreckAge);
+    wreckState = tankWreckNext(wreckState, move, event.kind === 'destroy' && event.pop);
+    destroyed = isWreckState(wreckState);
+    return move;
+  }
+
+  /**
+   * (2026-11-02 audit F10) A young plain wreck learns it was a cook-off (a network peer: the row's DESTROYED flag
+   * landed before the tank_destroyed event that carries the cause): the cook-off's char spread and gun bend, and its
+   * turret thrown as a cook-off's. A body the authority owns flies as the authority threw it (only its trail changes);
+   * a turret thrown here goes again from its seat (a plain kill's hop is a few centimetres: no visible jump).
+   */
+  function upgradeToCookOff(): void {
+    burnU.uBurnK.value.z = BURN_SPREAD_COOKOFF_S;
+    resetLiveCrumple();
+    planLiveCrumple(true);
+    if (turretDriver?.active) { turretDriver.upgradePop(); return; }
+    turretG.position.copy(wreckSeat);
+    turretG.rotation.set(0, popYaw0, 0);
+    popScale = 1;
+    popActive = true;
+    popT = 0;
+    popTrailAcc = 0;
+    applyPop();
+  }
+
   let releaseBattleGeometry: (() => void) | undefined;
   const visual: TankVisual = {
     root,
@@ -11612,7 +11649,9 @@ export function* createTankRuntimeSteps(
      *   (screenshot composers freeze mid-flight). Default: settled pose.
      */
     setDestroyed(opts) {
-      if (destroyed) return;
+      const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop) });
+      if (move === 'upgrade') { upgradeToCookOff(); return; }
+      if (move !== 'wreck') return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
       if (gearLodActive) setGearLod(false);
@@ -11629,7 +11668,6 @@ export function* createTankRuntimeSteps(
       const restoreDetachedBattleDetails = battleDetailGroups.length > 0
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
-      destroyed = true;
       captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
@@ -11666,6 +11704,8 @@ export function* createTankRuntimeSteps(
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
+
+    wreckState() { return wreckState; },
 
     /**
      * Install the burn-mask shader hook (DISARMED, uBurnT -1) on every
@@ -11756,13 +11796,14 @@ export function* createTankRuntimeSteps(
      * tank (ERA/track restore still runs — a survivor may have lost both).
      */
     resetDestroyed() {
+      const wasWreck = destroyed;
+      if (moveWreck({ kind: 'reset' }) !== 'reset') return; // a disposed visual
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
       turretRing.hide();
       reopenInteriorFills();
-      if (destroyed) {
-        destroyed = false;
+      if (wasWreck) {
         // restore the EXACT captured visibility (never a blanket `true` —
         // that resurrected hidden placeholder hulls over GLB models, r4)
         for (const [mesh, mat, wasVisible] of originalMats) {
@@ -11798,6 +11839,11 @@ export function* createTankRuntimeSteps(
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
+      // (2026-11-02 audit F10) the shot cursors and the clocks a rematch must not inherit
+      muzzleAltCursor = 0;
+      launcherCursor = launcherCursorAtBuild;
+      lastFxS = null;
+      gearAccumDt = 0;
       recoilG.position.z = 0;
       recoilG.rotation.z = 0;
       for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
@@ -11833,8 +11879,6 @@ export function* createTankRuntimeSteps(
     resetForGaragePresentation() {
       this.resetDestroyed();
       groundSampler = null;
-      gearAccumDt = 0;
-      lastFxS = null;
       root.rotation.set(0, 0, 0, 'YXZ');
       turretG.rotation.set(0, 0, 0);
       gunG.rotation.set(0, 0, 0);
@@ -11855,6 +11899,9 @@ export function* createTankRuntimeSteps(
     setVisible(v) { root.visible = v; },
 
     dispose() {
+      // (2026-11-02 audit F10) latched: a second dispose, and any late wreck or reset after it, does nothing
+      if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
+      turretDriver?.reset();
       equipmentDamage.dispose();
       turretRing.dispose();
       reopenInteriorFills();

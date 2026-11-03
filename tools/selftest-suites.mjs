@@ -1566,6 +1566,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: the host Worker carries specs, not vehicles; the roster's anatomy loads at boot.
     'src/mp/host/hostFleet.selftest.mjs',
     'src/mp/presentation/battlePresentation.selftest.mjs',
+    'src/mp/presentation/wreckCause.selftest.mjs', // 2026-11-02 audit F10: a late cook-off cause reaches the wreck; a respawn forgets the last life's cause
     // 2026-10-07 (destruction core lane): the authority's stages on a peer's world, the log on the wire and through a migration.
     'src/mp/presentation/destructionMirror.selftest.mjs',
     // 2026-10-08 (destruction core lane, crater-render-spec §F): craters across the network — stamped once on a live view
@@ -1702,6 +1703,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
     'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
+    'src/vehicles/wreckLifecycle.selftest.mjs', // 2026-11-02 audit F10: one wreck state per visual: cook-off upgrade, reset cursors, disposed latch
     // 2026-10-09 (vehicle-contact lane, owner: "tracks shouldnt glitch through the bridge"): the drawn tracks rest on the
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
