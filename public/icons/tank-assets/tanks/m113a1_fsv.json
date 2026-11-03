@@ -687,16 +687,16 @@
       }
     ]
   },
-  "geometryHash": "e7ff9685",
+  "geometryHash": "26799ded",
   "metadataHash": "ed8fd048",
   "presentationAnchor": {
-    "xM": 0.001,
-    "zM": -0.0953
+    "xM": -0.0002,
+    "zM": -0.0026
   },
-  "presentationHash": "115828e6",
+  "presentationHash": "9ab0b299",
   "presentationProjection": {
     "centerYM": 2.0649,
-    "topHalfM": 3.1701,
+    "topHalfM": 3.0709,
     "sideHalfM": 2.2095
   },
   "appearance": {
@@ -712,9 +712,9 @@
       "trackPad": 1,
       "trackPadSimplified": 1,
       "armorPaint": 11,
-      "gunmetal": 6,
+      "gunmetal": 5,
       "opticGlass": 2,
-      "unclassified": 13,
+      "unclassified": 3,
       "gearShadow": 2,
       "canvas": 1,
       "machineGun": 3,
@@ -745,15 +745,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22654,
-      "sha256": "31d1f69a15eee13e9c53b0786e4c83a3c634c6c54963004e5ca6fdda4d0b1d6c",
+      "bytes": 22026,
+      "sha256": "e60ad7f1915cf2057661a5449ee697859754c41b95482047b936a9a85959f119",
       "thumbnail": {
         "file": "thumbs/m113a1_fsv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9800,
-        "sha256": "6827f15294aa00e213a578dcee5d368f2d80c903d4f154f85d131a9c8c5aac55"
+        "bytes": 9502,
+        "sha256": "8bb62f7de0989565bebbbe1b0a48039bf6c62c1033f7d37bd775d35756098bf3"
       }
     },
     "top": {
@@ -761,56 +761,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 12862,
-      "sha256": "1fb507e118cf660f4b415a08aee4ab50bba16fe6cc6ff678540ae6d95b128a12"
+      "bytes": 10208,
+      "sha256": "278d014f819e92f21db876c6467388d48b47cc9eac94f085aa26e1e3b62242a5"
     },
     "side": {
       "file": "m113a1_fsv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9958,
-      "sha256": "dca9d3ee3e70c4cb6997e9c68fa9644358de2b8b2d595ced77c351b6c998ada5"
+      "bytes": 10556,
+      "sha256": "a0674c64b7ed539e586e4e411fe4f84b0a9dde68621b3a84f9d364fc34abad98"
     },
     "topSilhouette": {
       "file": "m113a1_fsv_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1341,
-      "sha256": "509d4e487349a7836f6aad2a594ad86a08574e3883a538950d600f8e573bcdb9"
+      "bytes": 1127,
+      "sha256": "e33caf13037c831000a68a8e99c12c112e5021bc71ad9522568dc7820cfd81ca"
     },
     "sideSilhouette": {
       "file": "m113a1_fsv_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4936,
-      "sha256": "0a58f461b209d9429646633ffe84e7fcb3504f1b3f3b1ba3da9c3e05087fb257"
+      "bytes": 4588,
+      "sha256": "c48abb98f42c4f9348d830dba785c72e23e5031eba54d6f236ef8310a44fc479"
     },
     "armorSide": {
       "file": "m113a1_fsv_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24890,
-      "sha256": "af8fd874472ad564c77a1a4bb637c7cf9a0f4d6a2f7f0fd397bd45a3293d5ba5"
+      "bytes": 23860,
+      "sha256": "5a5f269a8de33d6c050644954d4ecac9192fc12a4a2a21cbdc95998b66aa6e1a"
     },
     "modulesSide": {
       "file": "m113a1_fsv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26624,
-      "sha256": "9aa1e70444a0daae79ff2ef2a1f9f43bb4c88f6d310ecb94b32dacd54330e711"
+      "bytes": 25648,
+      "sha256": "cb0dc594f05e5f0857e7b67d59711085013ed119d13f432d22acc702abc8d844"
     },
     "crewSide": {
       "file": "m113a1_fsv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24636,
-      "sha256": "d93440f8a63740e7a4eacc4a8eed39d7b8411410eddc50d3cab8c6b60b612a05"
+      "bytes": 23324,
+      "sha256": "258d83f6e7c4dac9ff998c059b3ad480cccec87b8ff767a0f5863073ae4627dc"
     },
     "markings": {
       "file": "m113a1_fsv_markings.png",
@@ -823,8 +823,8 @@
     "technicalLabels": {
       "file": "m113a1_fsv_technical.json",
       "mime": "application/json",
-      "bytes": 3780,
-      "sha256": "da1c46ed57da2e73f58283caeb0ea5ef4645f5320c0dd73612d2d48742f0e68a"
+      "bytes": 4037,
+      "sha256": "435b059b4c9e717856129e0dec873b11d57cf4e4bd427a76a23644ff38aacfb8"
     }
   }
 }

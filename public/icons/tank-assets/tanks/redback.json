@@ -838,16 +838,16 @@
       }
     ]
   },
-  "geometryHash": "51567102",
+  "geometryHash": "b2ded0f1",
   "metadataHash": "5c8d798f",
   "presentationAnchor": {
-    "xM": -0.0034,
-    "zM": -0.0367
+    "xM": 0,
+    "zM": -0.0002
   },
-  "presentationHash": "c73d11ca",
+  "presentationHash": "23302ce8",
   "presentationProjection": {
     "centerYM": 2.2334,
-    "topHalfM": 4.6667,
+    "topHalfM": 4.5901,
     "sideHalfM": 2.4036
   },
   "appearance": {
@@ -865,7 +865,7 @@
       "armorPaint": 15,
       "gunmetal": 9,
       "opticGlass": 2,
-      "unclassified": 21,
+      "unclassified": 5,
       "gearShadow": 2,
       "fittingPaint": 1
     }
@@ -894,15 +894,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30318,
-      "sha256": "1cf939c6ac1940ee06911a9c41f16920a56f88fb0ff5a647b1469d6f9ecf5d43",
+      "bytes": 29886,
+      "sha256": "0d9975b330f11bba4f0da7bc618d0be3e5bbb9ec3738aaf15767a63bac2dfd5e",
       "thumbnail": {
         "file": "thumbs/redback_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12334,
-        "sha256": "68c21de74cc9748ee9a3cbd6caaab34fee78a0aa9296d6c73e8b4f5c8930edde"
+        "bytes": 12234,
+        "sha256": "31ef178d6c0a049732a0fe4775ee742c20e54bf15b36cc16330fd4f00c626037"
       }
     },
     "top": {
@@ -910,56 +910,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 19144,
-      "sha256": "6ff3bf4db595e5a303614a5044b29d216c4458270c3b4036acd83d857e1c04c3"
+      "bytes": 17818,
+      "sha256": "4c2e813c745c13c38a5e883d0bbd3792dafb608c9cf39361ea67a8cacfa7a7fd"
     },
     "side": {
       "file": "redback_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 18612,
-      "sha256": "a56b519a4bcefc3eb609d431ee5a5ed693d2db41add5dacd22c2643746c490d3"
+      "bytes": 16888,
+      "sha256": "549d8e8059e5b24601cbd48f43015ae6ac74523151a4c6be50f37c3828521673"
     },
     "topSilhouette": {
       "file": "redback_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1254,
-      "sha256": "eb4e0e57e0cf1dd3963ce9d50a24c4fee3b5f341d450eada27632baa86cfde0f"
+      "bytes": 1155,
+      "sha256": "0163f89b9154a01084be400768f9247a35ec986a00e125e8f73bdef7ecf7e675"
     },
     "sideSilhouette": {
       "file": "redback_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 5534,
-      "sha256": "15626d6cf00aa94540d8e69d754a9ad1ad720689ecf657d27b3b692924e2f7e5"
+      "bytes": 5120,
+      "sha256": "2fbfa28098f9debc2d7fda457d2e038cbf478befb895609457bcf4fc59026ccf"
     },
     "armorSide": {
       "file": "redback_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 42324,
-      "sha256": "849e8f66eb4557a5999b314e31dea1149a4e4e4c104447caa12988c5e9571e9b"
+      "bytes": 39512,
+      "sha256": "2c972f50c5e6a0f7b3a5c80c1b2cc44df26ca850aac63c99d7f18299566df55f"
     },
     "modulesSide": {
       "file": "redback_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41908,
-      "sha256": "571e7e9b328801af9fcfa7b91098268b086725d4e346d9b0db24e4926d777a4b"
+      "bytes": 40058,
+      "sha256": "d5f38dd9f921f18c068be57a60f16399f8582ef31ab17e7a3c035d33b3f6675a"
     },
     "crewSide": {
       "file": "redback_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 35724,
-      "sha256": "ce948d784a76de3bb9868500c757556066b702de912eeaccc388e8dca91e434f"
+      "bytes": 34042,
+      "sha256": "527311c901e147067c9024948005d656df641d837d0a459b7e6033770e402100"
     },
     "markings": {
       "file": "redback_markings.png",
@@ -972,8 +972,8 @@
     "technicalLabels": {
       "file": "redback_technical.json",
       "mime": "application/json",
-      "bytes": 5293,
-      "sha256": "b3d0863c0ce89617e2285cf05817c8720e5515c72e0821c4293e27cd2147bcdd"
+      "bytes": 5184,
+      "sha256": "ac03045488b60a00c7fad4be84ddc95f91194676d4d2850d1502cf0c2d1fb320"
     }
   }
 }

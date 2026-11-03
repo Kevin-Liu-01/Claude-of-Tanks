@@ -98,7 +98,7 @@ comp	world:donors:wreckPlan:urban	b76f81ccc83f1139
 comp	world:donors:wreckPlan:verdant	d8f01d8a86a41728
 comp	world:donors:wreckPlan:whiteout	cc2e690a4ee73f1f
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
-comp	world:fleet	a8126791a90d8421
+comp	world:fleet	a08fe45d1dc3e425
 comp	world:map:collision:airfield	653bb1ba31589e19
 comp	world:map:collision:alpine	093933e44d61cf22
 comp	world:map:collision:autumn	4a47aa8f76c63e0f
@@ -202,7 +202,7 @@ comp	world:roster	c3797f6fbc261c2e
 comp	world:tool:collision	c7e90eef8f450f98
 comp	world:tool:trenches	40b69b47bb67aeeb
 comp	world:tool:wreckPlan	c77bfaa007751285
-core	5b7e1498fd2c7990
+core	6e6840cded601791
 file	anatomy	src/vehicles/combatAnatomyCalibrations.ts	04c0f30b38d7668f
 file	anatomy	src/vehicles/combatAnatomyGroups/abrams.generated.ts	64981c4a45b9177b
 file	anatomy	src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts	6571985a5c2a8d3a
@@ -293,10 +293,10 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	b9f647308d4330ff
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	43ad2a288321a53b
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	4fdf69a4b50c89e9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	e8281145ce6143f9
-file	centering	src/vehicles/presentationAnchors.generated.ts	3ceb547e0b5c53ce
+file	centering	src/vehicles/presentationAnchors.generated.ts	755c67e693fdfb6e
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
-file	controls	src/ui/garageAuxiliarySummary.generated.ts	27e0088052f66dd4
-file	controls	src/vehicles/auxiliaryInventory.generated.ts	b57adcfe181a9611
+file	controls	src/ui/garageAuxiliarySummary.generated.ts	5036a361a47f22c5
+file	controls	src/vehicles/auxiliaryInventory.generated.ts	b7be8ce9d82998a6
 file	controls	src/vehicles/auxiliaryRoofGuns.generated.ts	cefb5789eaad15c5
 file	controls	src/vehicles/inertDrawnWeapons.generated.ts	38b586123e4eb814
 file	fills	docs/geometry-gate/moving-clearance-air.json	5d2ddc7759c260f6
@@ -310,7 +310,7 @@ file	fills	src/vehicles/interiorFillGroups/amx30X.generated.ts	43ab34858c15bbe3
 file	fills	src/vehicles/interiorFillGroups/amx40X.generated.ts	f46a0a121f10c83d
 file	fills	src/vehicles/interiorFillGroups/aresApcX.generated.ts	63b0b1bec4d430c8
 file	fills	src/vehicles/interiorFillGroups/arieteX.generated.ts	b29827b5fd3fe644
-file	fills	src/vehicles/interiorFillGroups/australia.generated.ts	1914a7befe6383d6
+file	fills	src/vehicles/interiorFillGroups/australia.generated.ts	4f91502a3b678014
 file	fills	src/vehicles/interiorFillGroups/bmp3mDragun125X.generated.ts	e9d4bb21bce2dea1
 file	fills	src/vehicles/interiorFillGroups/borsuk.generated.ts	3aef4005496fd81b
 file	fills	src/vehicles/interiorFillGroups/brazil.generated.ts	52ddbf928590e0a8
@@ -551,7 +551,7 @@ file	gate	docs/geometry-gate/ztz100_prototype.json	6db27603016d9c37
 file	gate	docs/geometry-gate/ztz85_iii.json	a2b6b1985e5f375e
 file	gate	docs/geometry-gate/ztz99_longwei.json	009852eda62f87db
 file	gate	docs/geometry-gate/ztz99a2.json	5158653d8b9c615e
-file	gunLines	docs/geometry-gate/gun-junction.json	4fbf0b54b8a7bee6
+file	gunLines	docs/geometry-gate/gun-junction.json	989e4db81f196be3
 file	icons	public/icons/tank-assets/index.json	46881c9fd0046165
 file	icons	public/icons/tank-assets/tanks/abramsx.json	701cda33d4f19025
 file	icons	public/icons/tank-assets/tanks/aft10.json	4f16506552c8e9de
@@ -659,23 +659,23 @@ file	icons	public/icons/tank-assets/tanks/leo2a6m.json	06135bb14adedf20
 file	icons	public/icons/tank-assets/tanks/leo2a7dk.json	d9a7832fad47c4bc
 file	icons	public/icons/tank-assets/tanks/leo2a7v.json	93ab4306e41caf4b
 file	icons	public/icons/tank-assets/tanks/leopard2_proto.json	e0bbbf2e8a85220f
-file	icons	public/icons/tank-assets/tanks/leopard_as1.json	f3ecdc88742ad35f
+file	icons	public/icons/tank-assets/tanks/leopard_as1.json	fea51bf409075e3f
 file	icons	public/icons/tank-assets/tanks/lrmv_lynx.json	d6ecd11f84975366
-file	icons	public/icons/tank-assets/tanks/m113a1_fsv.json	d177f759cbc02c54
-file	icons	public/icons/tank-assets/tanks/m113a1_mrv.json	d0e01e3dadf848aa
-file	icons	public/icons/tank-assets/tanks/m113as4.json	77c7ddfed1bf8ffd
+file	icons	public/icons/tank-assets/tanks/m113a1_fsv.json	0c3edeb656e59905
+file	icons	public/icons/tank-assets/tanks/m113a1_mrv.json	db33ac7e6f193c5c
+file	icons	public/icons/tank-assets/tanks/m113as4.json	65f632ea4f5adc32
 file	icons	public/icons/tank-assets/tanks/m1a1.json	f39e8e86e0c56937
 file	icons	public/icons/tank-assets/tanks/m1a1_abrams_aim.json	140734f0d81cd1be
 file	icons	public/icons/tank-assets/tanks/m1a1_abrams_fep.json	2f21dc5a9f541789
 file	icons	public/icons/tank-assets/tanks/m1a1_abrams_hc.json	8823fca92db85adc
 file	icons	public/icons/tank-assets/tanks/m1a1_abrams_sa.json	df8c0e554bf2de3e
-file	icons	public/icons/tank-assets/tanks/m1a1_aim_sa_aus.json	510794b8b5a09234
+file	icons	public/icons/tank-assets/tanks/m1a1_aim_sa_aus.json	cd648cffee377358
 file	icons	public/icons/tank-assets/tanks/m1a1ha.json	b70729b5b28cf255
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams.json	6a732b31918473f1
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_sepv2.json	416b25e57dac9a5d
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_sepv3.json	2c8932a3bfcc5bee
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_tusk.json	81c70e637eb63a58
-file	icons	public/icons/tank-assets/tanks/m1a2_sepv3_aus.json	95904bdd109a079d
+file	icons	public/icons/tank-assets/tanks/m1a2_sepv3_aus.json	95d4af68cf9918a8
 file	icons	public/icons/tank-assets/tanks/m1a3.json	42a3209ef9d856b9
 file	icons	public/icons/tank-assets/tanks/m2a2_bradley.json	e4b70f514eb6946b
 file	icons	public/icons/tank-assets/tanks/m3a3_bradley.json	1add008623c24c58
@@ -727,7 +727,7 @@ file	icons	public/icons/tank-assets/tanks/pt91a_twardy.json	c08cbca97d17aa70
 file	icons	public/icons/tank-assets/tanks/pt91m.json	cbf7d9eacd700d86
 file	icons	public/icons/tank-assets/tanks/puma_s1.json	5e09d435d7d6fa6a
 file	icons	public/icons/tank-assets/tanks/raiju_ifv.json	924e126874e35b8e
-file	icons	public/icons/tank-assets/tanks/redback.json	5f354a89bda5aad6
+file	icons	public/icons/tank-assets/tanks/redback.json	147dd62f770f140a
 file	icons	public/icons/tank-assets/tanks/sabra_mk2.json	b563d2abcec51a4e
 file	icons	public/icons/tank-assets/tanks/shot_kal.json	595fbcafb21f6736
 file	icons	public/icons/tank-assets/tanks/spz_puma.json	4cbbfc6871ae4d4f
@@ -839,7 +839,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	7b228f05dd51f849
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	7cff05c879d79023
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	644eefabbee55408
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	d4d731800d51bf50
-file	ledger	docs/references/fleet-geometry-ledger.json	beecf84c5ef0923e
+file	ledger	docs/references/fleet-geometry-ledger.json	3ee412b74d230e4a
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -930,43 +930,43 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	196ed822
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	df4c58d1be253271
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	dcf6d3e1dd99633c
-file	seats	src/sim/missionAttachmentSeats.generated.ts	99ccd58e637cea8e
+file	seats	src/sim/missionAttachmentSeats.generated.ts	cd3149f199d4f341
 file	seats	src/sim/missionDockSeats.generated.ts	63b52b27e6afae80
-file	spareTrack	docs/geometry-gate/spare-track.json	1de41992d24fa67b
+file	spareTrack	docs/geometry-gate/spare-track.json	0c0ee7d9eb0af0ae
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1839567789750174
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
-group	abrams	698ad207a48a6afa
-group	abramsSourceX	054bdb74c953d759
+group	abrams	7844de07d2ef9faa
+group	abramsSourceX	564fb4f214b234c4
 group	aft10X	2497cac863d2f627
-group	afv	889ebd9eba79283f
+group	afv	a951030e61e81e40
 group	ajaxX	af7a90a9811b56cb
 group	amx10p	4713630aa12b1c04
 group	amx30X	409402e260293854
 group	amx40X	612bac4f222fbf55
 group	aresApcX	ce5f0651f254ac85
-group	arieteX	422ec0cdcba4fdc1
-group	australia	0baee0ead2dcbbd1
+group	arieteX	8696b295325be9c5
+group	australia	cf53dba30f9926b1
 group	bmp3mDragun125X	368818df400b0e48
 group	borsuk	35cb6e3a6b0f566d
 group	brazil	0ccc372fe54d00cd
-group	challenger	baa6c2298fea3edd
+group	challenger	8f978826b7ba3ba5
 group	challenger1X	e4715446aacadc35
 group	chieftain10X	aae76e9e8f48472a
 group	chieftain5X	761ea6a7e4c42265
-group	christian2	d0b2d93f28133d8e
+group	christian2	82116e868277277f
 group	cv90105TmlSourceX	092318e79fe95992
-group	cv9040CSourceX	98f3a79aec1b42cb
+group	cv9040CSourceX	24aeb5d2807ea8ac
 group	cv90MkivSourceX	134c76dc9c0db19f
 group	dardo	c9ecb5ad74861576
-group	denmark	ba396f7c46d868a0
+group	denmark	775a99761dce5975
 group	franceCore	cdf4e598a18dc74d
 group	fv510MilanX	08099afb61659905
 group	griffin50X	568d582416919715
-group	griffinViper	5e626b6664214dc3
-group	italy	4fd6eb7a7a94af28
+group	griffinViper	7b6c556b879d2a7e
+group	italy	4e3cb8f9c47aae41
 group	jagdpanzerE100X	352b94d4b495b13d
-group	japan	a79e34df85c8e5b3
+group	japan	1e65bc5757c32cb0
 group	k1a1X	148d4560da34c440
 group	k21X	67221df8f19c3f83
 group	k2X	68fff6151c01dd8c
@@ -975,54 +975,54 @@ group	kf51X	1485c3b42c209e99
 group	korea	18fd941a67c46fb6
 group	kurganetsX	3f4e57c5ef3264e1
 group	leclercClassicX	e62186a29ade80d7
-group	leclercX	1f5f548a4ea9d71f
-group	leopard	e21408ed90468391
+group	leclercX	605377de9fb70e68
+group	leopard	55eac985dc644557
 group	leopard2a3B4	0ea83c19217f2a10
-group	leopard2a4Family	467a97e764a0e96b
-group	leopardA6X	4381820c050fe43c
-group	leopardX	a59165453396dbd7
-group	lrmvLynx	68ce706c9a87479d
+group	leopard2a4Family	113bf8362910ec29
+group	leopardA6X	a266222fbda56524
+group	leopardX	6bff95108466a798
+group	lrmvLynx	d9078f8ad18b1b27
 group	m41	3df6a6742ef9a1ef
 group	m6Linebacker	ab387b44ac72662b
 group	marder2	d98b82494041fd25
-group	merkava	eccd88f3475d3dd1
+group	merkava	49422a07ac4ee6c3
 group	merkavaX	5f3e53627fb16a48
-group	misc	2492019ef5109de9
-group	modern2	2ef2fb956bd977a8
+group	misc	ecf8565175f5a5b5
+group	modern2	e8797bb5a87a1514
 group	modern3Core	5431e27f47a3ff71
-group	nationalModernization	00677e32a67b56e4
+group	nationalModernization	5f14aab6c4f5230c
 group	patton	1fd251322c1017bb
-group	poland	ae346ac171a835de
+group	poland	d3875a2782d1eb3b
 group	pumaS1SourceX	b76c9d271e2abf5f
-group	russia	d4dcf76bc95722f1
+group	russia	e580d20e25247b49
 group	sabraMk2SourceX	e8f0be07cc4d4a37
 group	sheridan	468ace90211d01e4
-group	sinoSovietConcepts	c1031ce26e2f6d80
+group	sinoSovietConcepts	dbb5ff9fea22570e
 group	sovietHeavy	83799325e97db339
 group	strv122X	0061e6f707a4b6cd
-group	sweden	1843e9f5460296ce
+group	sweden	4c64f2b55f527a0d
 group	t14X	9dcc2ac0e0d259bc
-group	t62mv1X	7aa3394c9dce548a
-group	t72	5743d48f380a1ee2
+group	t62mv1X	8b713de3237e6274
+group	t72	9db2577bb466427d
 group	t72Rys	25315b064cfae50f
 group	t72b1987X	f8b83d33793d877e
 group	t72b3X	d75672acaa7c5438
 group	t72b3mX	cb2d80d21a22b050
 group	t72buX	6caa3d8cba3d3b85
-group	t80	5df893f9ff0b4159
+group	t80	a3f129d622e1d618
 group	t80uX	bdee898a95210f2e
 group	t90AwX	263af6c5631b3562
-group	t90BurlakX	8351ac7f4c5322b3
+group	t90BurlakX	6a0a19e1aeed863d
 group	t90X	a1e4922f27e8fd32
-group	t90_1992	6f209b1c37e9d199
+group	t90_1992	1970fdfaf05d6450
 group	t90msX	baa790f6e1247627
 group	tos1aTagil	309e7bc2024054cf
 group	type10X	81381fcf1ba586c3
 group	type89SourceX	76f2119702cba4ed
 group	type90X	8aed76931d05f119
-group	type96bX	e4a2a4ab9389e70a
+group	type96bX	0e7b1248867305ce
 group	uk	73ab9c831232bab7
-group	ukraine	457b7360a092beea
+group	ukraine	49aa0403f81c8502
 group	xk2	3b70dfeca6522c98
 key	anatomy	abramsx	ad39d1435023a4b1	aff5e7b00792d887
 key	anatomy	aft10	b1cf63dcafef56bf	6399ea1c6acb00be
@@ -1130,23 +1130,23 @@ key	anatomy	leo2a6m	8a30c4f21548081e	e6108faa22d93a63
 key	anatomy	leo2a7dk	8fd569ee2df96ca7	a5a13dbfebfe0ccf
 key	anatomy	leo2a7v	545fc6736b2909a3	f68cefb1339d5ff8
 key	anatomy	leopard2_proto	dc6589d99b6ad25e	10f9deb9b72a73a5
-key	anatomy	leopard_as1	b7f55025ba206cb4	8b71a92dfa4dbb86
+key	anatomy	leopard_as1	e806133e98fa9bce	8b71a92dfa4dbb86
 key	anatomy	lrmv_lynx	f0383e3139c7e7b3	a54cae6207e19573
-key	anatomy	m113a1_fsv	6061335003e8c762	b23d7108be309d71
-key	anatomy	m113a1_mrv	83fe0e9bef621008	464fdac4056d4c13
-key	anatomy	m113as4	69a4c22f8fe897ae	79a0ce5252d7f421
+key	anatomy	m113a1_fsv	820f294897e8a5ec	b23d7108be309d71
+key	anatomy	m113a1_mrv	f48541be0961cdc6	464fdac4056d4c13
+key	anatomy	m113as4	cebf0bbc3e2b6147	79a0ce5252d7f421
 key	anatomy	m1a1	9a54d9af5cf81901	33c43f28996047b7
 key	anatomy	m1a1_abrams_aim	dcba636c7e874741	9cb7f78c2cb7e13c
 key	anatomy	m1a1_abrams_fep	05c7f466ee59fd1e	2a7a7efc2d5be0c3
 key	anatomy	m1a1_abrams_hc	8893b4814bd5ec93	00ef9ae57c5e9150
 key	anatomy	m1a1_abrams_sa	0479167f99d06711	22a4290ebadb94fc
-key	anatomy	m1a1_aim_sa_aus	01f18db623ac4899	2e9f0035077e8108
+key	anatomy	m1a1_aim_sa_aus	af330aabd289ba4f	2e9f0035077e8108
 key	anatomy	m1a1ha	0b71f3714b976317	04d5da769f3cb395
 key	anatomy	m1a2_abrams	1aa55a4b6ccac90a	e337c46abf9e96c5
 key	anatomy	m1a2_abrams_sepv2	91da7a3d0392adfe	a319a2af55a3cf44
 key	anatomy	m1a2_abrams_sepv3	4d511ab2a69b97ec	5f2eab19d1ae424c
 key	anatomy	m1a2_abrams_tusk	51698fa89af781ac	e46f8c375e027842
-key	anatomy	m1a2_sepv3_aus	874ed6f4221f9a43	5a246f6d9572a0c5
+key	anatomy	m1a2_sepv3_aus	e5b0a13adaab47f9	5a246f6d9572a0c5
 key	anatomy	m1a3	c5d84b2cda8ec7c3	4f96a3767f0c520f
 key	anatomy	m2a2_bradley	dd2d9d63e93504bc	8f27dc7937e59e49
 key	anatomy	m3a3_bradley	84fd419998d2bc6c	ac306d37e21fb4e7
@@ -1198,7 +1198,7 @@ key	anatomy	pt91a_twardy	2cfda1f324e3ac01	d6a5f289a5febfa9
 key	anatomy	pt91m	57462607c9ce0715	24a6958cef96b96c
 key	anatomy	puma_s1	f4f51aa8281b15ae	8f7d86969bdb4380
 key	anatomy	raiju_ifv	623f3e3d0df5a33d	bc866cd8d4efe302
-key	anatomy	redback	54b9ec8a3256550c	34c6bf8a6ecd0f67
+key	anatomy	redback	4dc1b44e60d428a1	34c6bf8a6ecd0f67
 key	anatomy	sabra_mk2	cf7d5b0bfcc662ff	4c5edb7ab15d5666
 key	anatomy	shot_kal	70e8fedb670fdaf8	e4533710779f2680
 key	anatomy	spz_puma	e30fe887f82433d3	4407b3eac64c6cb8
@@ -1416,23 +1416,23 @@ key	centering	leo2a6m	b5cdffd6388c011f	15599245e1aa29b4
 key	centering	leo2a7dk	7bad827ac84fef1e	d9e017f4bc7f6d4c
 key	centering	leo2a7v	b693d34f019e6394	1344f75146199622
 key	centering	leopard2_proto	89b71f5a960bc786	27e4e8da0494b792
-key	centering	leopard_as1	86c313f0f98deec0	d2353e4ebcf66a81
+key	centering	leopard_as1	fac160254faa8d19	ef0db63de4ed58ec
 key	centering	lrmv_lynx	579e6d93f6799b44	ea68af22ffc09b7c
-key	centering	m113a1_fsv	4d08a4a3359c284a	7cfd19656be450bb
-key	centering	m113a1_mrv	f27df8331e9be451	8866c74a2a0ef663
-key	centering	m113as4	80d526cb1506d20a	aa0e65f5d90edc08
+key	centering	m113a1_fsv	9022c73b2fd2e53d	da00732fe42eb5b3
+key	centering	m113a1_mrv	91aa6fe3df6f9b32	9590ee6b21831bf3
+key	centering	m113as4	124071c1bbf3e36f	a41873570a2b2820
 key	centering	m1a1	b2bb83a2bf48198e	7d16625ae989f3d1
 key	centering	m1a1_abrams_aim	1424524f759b163d	9764838f8336b28d
 key	centering	m1a1_abrams_fep	17cf795e80cdbb0b	8afaa9b055022fcc
 key	centering	m1a1_abrams_hc	df32e67513980061	141558dfd8697914
 key	centering	m1a1_abrams_sa	a444532cee3a2272	568702fa10290828
-key	centering	m1a1_aim_sa_aus	756296341f9645a1	74640b72bfbdb448
+key	centering	m1a1_aim_sa_aus	98aae2029fefe270	74640b72bfbdb448
 key	centering	m1a1ha	7108d6a3d6276a7b	4e25ecc3fc6f7222
 key	centering	m1a2_abrams	e3dcbadf90d32bc1	11d2789a0400dbde
 key	centering	m1a2_abrams_sepv2	2548f066894cab44	4112fb0c0be6f05f
 key	centering	m1a2_abrams_sepv3	a7e4e2cae2ebfa5f	27eabe8670d9f9f9
 key	centering	m1a2_abrams_tusk	cee86de438623983	07fa5c280d2ddcf9
-key	centering	m1a2_sepv3_aus	f844dd9711254262	98ed5234cd5ee9ed
+key	centering	m1a2_sepv3_aus	d840215bc609bc3a	98ed5234cd5ee9ed
 key	centering	m1a3	79a926bfef551034	577d70fa1ff91d37
 key	centering	m2a2_bradley	ffff5f1fac4dbf99	08d0b5aa6d7ef1d3
 key	centering	m3a3_bradley	08fb14350d551b12	5f593c708f4aca8f
@@ -1484,7 +1484,7 @@ key	centering	pt91a_twardy	617721e7832318d9	90d40c86c18e043d
 key	centering	pt91m	058571aac2793126	d8fc7909c8bc830c
 key	centering	puma_s1	bd4b04a87d80526e	11279c5a4e87a8ae
 key	centering	raiju_ifv	03e9836a2fea04ef	c4839045691d8fbd
-key	centering	redback	eaf71e3a1240431e	81c87e78fb54c39f
+key	centering	redback	131817f6c6e867e4	81a3a1199fd2f4ce
 key	centering	sabra_mk2	a34b7be7955c4fcd	6a86eaea54394b77
 key	centering	shot_kal	ac77c59f074795ce	7084b8ee3c6ed3f1
 key	centering	spz_puma	69c549d9b9cd65e2	ff6e1a8b775aa38e
@@ -1735,23 +1735,23 @@ key	controls	leo2a6m	62e6346149622255	24d37ccbc48f84a4
 key	controls	leo2a7dk	1d903009a58f7a8c	77793a3101c0908e
 key	controls	leo2a7v	23eb356a970c16ce	b277db1e77e01a51
 key	controls	leopard2_proto	fab7d1a6481b968e	3fd5743337f3ecf5
-key	controls	leopard_as1	a7348f08fb9a722c	b737f817766b40b2
+key	controls	leopard_as1	bb164207ed9fea32	45f0b46e512c6a8b
 key	controls	lrmv_lynx	61f698f00ed474c2	3f983bf03693b4ec
-key	controls	m113a1_fsv	5930f98603e60f40	fa485b8ce7d67878
-key	controls	m113a1_mrv	02fa71605acc1860	f6f7d2a9c54592ac
-key	controls	m113as4	bb7bec2de28f8558	70b9eaec77d32e11
+key	controls	m113a1_fsv	010efaa4a5cd033a	e536206d50d595e0
+key	controls	m113a1_mrv	4a882fbbebbbb40f	191a2a14e25a27f0
+key	controls	m113as4	e68cea5600cf293d	4eb36848f81820da
 key	controls	m1a1	efca353bcb9baa93	ccd3257398842dd7
 key	controls	m1a1_abrams_aim	423ccf51de5ec50c	f236442bf99e4a24
 key	controls	m1a1_abrams_fep	90700d2db74e4a07	7bb75ad85efc5ab5
 key	controls	m1a1_abrams_hc	b71f6548787eae40	435f9dc37005f138
 key	controls	m1a1_abrams_sa	116c7b385815c174	24a4c10cc2ee06dc
-key	controls	m1a1_aim_sa_aus	916a05ad5643cbbc	e19f655105cb13bb
+key	controls	m1a1_aim_sa_aus	ee350ffb91320711	df9d9e87671d6f0c
 key	controls	m1a1ha	fb8ee759d3b6c4c0	d7c8eb28a252b1ec
 key	controls	m1a2_abrams	51d9fa02e4111422	e7aaf9964470e986
 key	controls	m1a2_abrams_sepv2	c92c4c933f8de454	b342d3439641467d
 key	controls	m1a2_abrams_sepv3	17c39767708d46f4	5e070234503800c4
 key	controls	m1a2_abrams_tusk	7cfaabcdd0a586a3	b342d3439641467d
-key	controls	m1a2_sepv3_aus	675833feca37c0bc	5e070234503800c4
+key	controls	m1a2_sepv3_aus	6626a15ea7449af5	5e070234503800c4
 key	controls	m1a3	5ab480d91e1f32b7	e687753ffee116f2
 key	controls	m2a2_bradley	9afeeb6af27e9965	95306ef24ea2a9cb
 key	controls	m3a3_bradley	d5c9da02746db312	d4d175846e585ac1
@@ -1803,7 +1803,7 @@ key	controls	pt91a_twardy	79cd8c97ced40b51	f150bd4defe0b715
 key	controls	pt91m	9b469a572804b379	66741f4c6c719dc3
 key	controls	puma_s1	6dc5f6be0c8578c3	efd5868d38f5eeb6
 key	controls	raiju_ifv	8dba234cb58493eb	f5be43212770a91f
-key	controls	redback	3d9780ed6804d481	4bab7cdada88551d
+key	controls	redback	fdbb34d4b836e29c	2650ca032ea35278
 key	controls	sabra_mk2	f829eac8d4007740	750fb7d91a4073f6
 key	controls	shot_kal	fe5f36ba47d202db	2630ed48a3e57513
 key	controls	spz_puma	a55b1120b034d642	f6d5c40193ff95ad
@@ -2021,23 +2021,23 @@ key	fills	leo2a6m	658021e54574573d	704c55392e3996ab
 key	fills	leo2a7dk	3ac4fea178ade3df	70df07bf0d9f2e61
 key	fills	leo2a7v	a09f8db3e071ea09	4116688db9aba543
 key	fills	leopard2_proto	a2ab65fc43d429a6	65188563d37a7a54
-key	fills	leopard_as1	7494ee39dadc9b11	ee43bc6c88a28703
+key	fills	leopard_as1	781b28c918e05031	ee43bc6c88a28703
 key	fills	lrmv_lynx	5541905d1f2e92d9	415361132a370d25
-key	fills	m113a1_fsv	3dc9889204c7902e	68ac2d02e2c7c00a
-key	fills	m113a1_mrv	493272e1f38a6e5a	9166727b2586b7fa
-key	fills	m113as4	b13264e698b5f8ab	e7a43181330e3742
+key	fills	m113a1_fsv	1cd0c16743de3313	2bd62f6a3a92e386
+key	fills	m113a1_mrv	f8bccca6956429a2	c28d70d331e636da
+key	fills	m113as4	4cbf3a2ed776140d	2523f601c31e630f
 key	fills	m1a1	45ea3ee599cca3d4	fe3f34b7fe44c5e5
 key	fills	m1a1_abrams_aim	bdbd4df633c4ace9	44dd43db56137155
 key	fills	m1a1_abrams_fep	c7db7813927c6f6d	94d7514cb04487f8
 key	fills	m1a1_abrams_hc	00897b1537a802ae	9a4cf20bb1035a0c
 key	fills	m1a1_abrams_sa	f3e09badc04f3f3c	bccccff2004bb428
-key	fills	m1a1_aim_sa_aus	a1196a6f7e6ca85d	ce625b8c1847f8ce
+key	fills	m1a1_aim_sa_aus	f40b14fa99117ef6	ebaa517fe0a6d0a9
 key	fills	m1a1ha	e459814bcc96cadd	a57449d089f52d1b
 key	fills	m1a2_abrams	2194b2ea6acf9b14	766152798a0c918a
 key	fills	m1a2_abrams_sepv2	a8199826b436a612	ffe690f141d8fd79
 key	fills	m1a2_abrams_sepv3	ea2028319d8b7aa3	0f58f4b0563d4548
 key	fills	m1a2_abrams_tusk	628a9736ec98760c	43a82437a0b25da4
-key	fills	m1a2_sepv3_aus	83c1532b59b86a90	481e2f9ab63a03b3
+key	fills	m1a2_sepv3_aus	283495ab2cf455ce	481e2f9ab63a03b3
 key	fills	m1a3	970fa5a6df7b95e5	1b7e8cedf944f2f2
 key	fills	m2a2_bradley	4e43efa4720bbfd5	545118c13fb41290
 key	fills	m3a3_bradley	d91bbc7eb5396fbc	bf751100acf23248
@@ -2089,7 +2089,7 @@ key	fills	pt91a_twardy	37d75947807ec0e3	886198a6503ef557
 key	fills	pt91m	20a666b5f8209abe	c8355d9a1bb90b48
 key	fills	puma_s1	69d56ee6d30e262d	dfff529798d091d3
 key	fills	raiju_ifv	a32f777d8b6ae320	9490671471450b15
-key	fills	redback	07d72d111f08d8a7	fec5f4f60c09e950
+key	fills	redback	219c11486447dbe2	fec5f4f60c09e950
 key	fills	sabra_mk2	d4e9e1a14f2d53f5	fcc987f928a2d8a0
 key	fills	shot_kal	d2b388c745250b93	f98a091cdef98b36
 key	fills	spz_puma	4eb3ed9425e0e1d1	f18e606254d83189
@@ -2299,23 +2299,23 @@ key	gate	leo2a6m	bebdaa730ab96598	d4712b8303434abd
 key	gate	leo2a7dk	f85eb0e303a213ff	2a91139109c96403
 key	gate	leo2a7v	415802fdce4851ef	04e3afb4f2f164d0
 key	gate	leopard2_proto	e9e17f45d147d24a	8200710983ccf84b
-key	gate	leopard_as1	3a0129d5b2cd103a	2a91139109c96403
+key	gate	leopard_as1	c5058ce8059ec7c0	2a91139109c96403
 key	gate	lrmv_lynx	66aadc69d964cfbe	2a91139109c96403
-key	gate	m113a1_fsv	f7a372586746eaec	2a91139109c96403
-key	gate	m113a1_mrv	b3ac053a593a9be0	2a91139109c96403
-key	gate	m113as4	31025fd8b5127a14	2a91139109c96403
+key	gate	m113a1_fsv	03120db4dc50f625	2a91139109c96403
+key	gate	m113a1_mrv	5aa5cda211c639a5	2a91139109c96403
+key	gate	m113as4	c9e99f04f947b591	2a91139109c96403
 key	gate	m1a1	07c5421b18c3a359	444e06d16509dbe6
 key	gate	m1a1_abrams_aim	1b25aa4c20f051bb	96877a94935a7842
 key	gate	m1a1_abrams_fep	677fa8aca0526ecf	eeb0332053418636
 key	gate	m1a1_abrams_hc	26ec4d022044629b	0588793b1b1458c7
 key	gate	m1a1_abrams_sa	2b5d971d9123d171	96d58e3865878412
-key	gate	m1a1_aim_sa_aus	21a6ffb5d21eac38	2a91139109c96403
+key	gate	m1a1_aim_sa_aus	588fb38f12668e73	2a91139109c96403
 key	gate	m1a1ha	541e308a40b4b6d2	18246f33ff0b7c2c
 key	gate	m1a2_abrams	a7825eb9de0246d4	2a91139109c96403
 key	gate	m1a2_abrams_sepv2	6053a418427ecfc4	b2b23bce225527ff
 key	gate	m1a2_abrams_sepv3	5496861982d330ab	2a91139109c96403
 key	gate	m1a2_abrams_tusk	a040ab011a60b92e	2a91139109c96403
-key	gate	m1a2_sepv3_aus	9adce141fcdbfb15	2a91139109c96403
+key	gate	m1a2_sepv3_aus	12ed94efe0aea0e0	2a91139109c96403
 key	gate	m1a3	467930b53a2f8c86	2a91139109c96403
 key	gate	m2a2_bradley	c5d9f34a668f7785	1d9d38ba7448b19a
 key	gate	m3a3_bradley	b058ddc0dabd86bd	a77b80280edacc59
@@ -2364,7 +2364,7 @@ key	gate	pt91a_twardy	381eb40dda279f1b	68edc2b7192f16fb
 key	gate	pt91m	0f1b2aad04b0704b	537a687264a33055
 key	gate	puma_s1	ab7a202f76cc1a10	fe38622e66e908b8
 key	gate	raiju_ifv	c043fd628c707595	2a91139109c96403
-key	gate	redback	f5343a889b2eacdc	2a91139109c96403
+key	gate	redback	0c11856bc432ad1f	2a91139109c96403
 key	gate	sabra_mk2	f3bd9e7a8d638e67	5a279372729b186b
 key	gate	shot_kal	4caf80446903f381	2a91139109c96403
 key	gate	spz_puma	8a535b8d5971e994	35ce47e7a4f60d72
@@ -2581,23 +2581,23 @@ key	gunLines	leo2a6m	ae17906acfe84592	4db0300fb9dbb83c
 key	gunLines	leo2a7dk	dce149799d048d40	d94c23680dada706
 key	gunLines	leo2a7v	ba1b07e6ce97462d	1be5fb7b85bcd6a2
 key	gunLines	leopard2_proto	043b52af4298afb8	efeccb9bccb1f4cb
-key	gunLines	leopard_as1	1f1ca95d6635173e	4593b03df113dc9c
+key	gunLines	leopard_as1	31d77eb8a27d03ed	4593b03df113dc9c
 key	gunLines	lrmv_lynx	82a12d51be5c6abf	7a835c309d74e8ea
-key	gunLines	m113a1_fsv	18853a9e37113c9f	6c31bfe8e7c8854b
-key	gunLines	m113a1_mrv	7f948a6c3e5fd427	5134d2b1da8a5dbd
-key	gunLines	m113as4	241077918133e1f1	585235bc00119574
+key	gunLines	m113a1_fsv	e4d46672fcaf9f4d	6c31bfe8e7c8854b
+key	gunLines	m113a1_mrv	2dc6b476f275fd08	5134d2b1da8a5dbd
+key	gunLines	m113as4	dea12867eccb46b9	585235bc00119574
 key	gunLines	m1a1	f216a91bd0be94ea	bb3098a579f9346a
 key	gunLines	m1a1_abrams_aim	d0d47108e4ad2954	b7696de3392302f1
 key	gunLines	m1a1_abrams_fep	a7958b56b6b9ca69	25f3ddb7eb69d372
 key	gunLines	m1a1_abrams_hc	a48e70132d820eaa	77c03f604fab27ac
 key	gunLines	m1a1_abrams_sa	1416ebb97a95c04e	7b9c4bf2a9461170
-key	gunLines	m1a1_aim_sa_aus	87ad8ab9f6ea52b1	1ac8d293301e5f1b
+key	gunLines	m1a1_aim_sa_aus	69822c8182ae602c	d4bd9c514fe9d4f8
 key	gunLines	m1a1ha	13d8a5cda4be81e8	b41170482e60ab40
 key	gunLines	m1a2_abrams	0b8f3dfbefe25331	e3ab706370a239be
 key	gunLines	m1a2_abrams_sepv2	d530f046bd662261	ea803951dd96e4b8
 key	gunLines	m1a2_abrams_sepv3	4cdeda3d02dc0603	e264f08a7f3154ad
 key	gunLines	m1a2_abrams_tusk	178d61e85a4776b6	27b6dfb54d1a87e6
-key	gunLines	m1a2_sepv3_aus	09773df5a8c55139	699b876a4a98e3f6
+key	gunLines	m1a2_sepv3_aus	5fe4899d9443cfb4	b8a95a9ab09e7f7d
 key	gunLines	m1a3	703ef1d83138c5b9	581cb7a42fd7f366
 key	gunLines	m2a2_bradley	ccb43e3aafe7c08e	5cf3efeb6331c592
 key	gunLines	m3a3_bradley	6d082443d8f10c56	ea1d5a7ba4be1521
@@ -2649,7 +2649,7 @@ key	gunLines	pt91a_twardy	445877f253c286d8	027307fa9f364c36
 key	gunLines	pt91m	b7e0adeec6cae938	8d4ccbc6bbccbb97
 key	gunLines	puma_s1	32d18161a3ce96eb	e240096cd3941630
 key	gunLines	raiju_ifv	cc8af34cd632971e	14f38a1f6dc7018d
-key	gunLines	redback	1787c87dda17d70a	7fd0312bfe217619
+key	gunLines	redback	5f2f7bf80929b8ad	7fd0312bfe217619
 key	gunLines	sabra_mk2	f9eaf3f2ef175afa	b3e4599f4ceacb47
 key	gunLines	shot_kal	0ce3a1e5edea2724	f0b7509120fa2223
 key	gunLines	spz_puma	3d733760c054f788	c3b96429147b5d76
@@ -2867,23 +2867,23 @@ key	icons	leo2a6m	81f41ec8d62ccede	426ee676caf282c7
 key	icons	leo2a7dk	160d24c4a3dc6c03	1e33c4a577eb9064
 key	icons	leo2a7v	cd62578cddf4801c	f38ff7ce079b1228
 key	icons	leopard2_proto	30561bcc6e6f2924	feacfdcd4ecb7206
-key	icons	leopard_as1	10dba4b0ea419d88	88b11f7ef69bfb7c
+key	icons	leopard_as1	3ce48eb98ac9190f	1216aa273ba786ea
 key	icons	lrmv_lynx	7421cc9c631371c7	cd16a9d83e55889a
-key	icons	m113a1_fsv	1cedd731336c467d	d88dc9c75400ee46
-key	icons	m113a1_mrv	297aa6f6c31cb34a	c721a61166cdf76b
-key	icons	m113as4	f1777dccb728e0ab	ee7ca19cd4097b09
+key	icons	m113a1_fsv	4e26c24bd6e2d7f4	e28fc4cf8cb32ab5
+key	icons	m113a1_mrv	2533f98b30516ead	4bd2eec58134a380
+key	icons	m113as4	e150bf4da8cdac60	f68ee3827f44f3a9
 key	icons	m1a1	21db7872a09012f4	600269db16e896e3
 key	icons	m1a1_abrams_aim	f2acb47fdceae2ad	772c0d2af2ffa629
 key	icons	m1a1_abrams_fep	32cf051b40843d4d	3f7abf31e74beaf5
 key	icons	m1a1_abrams_hc	c2ecffad2ff41b6f	4d02c6060c86fb55
 key	icons	m1a1_abrams_sa	ff6a270506d9c111	4d7b075e2bba25a2
-key	icons	m1a1_aim_sa_aus	1878e5b21eeaf57a	538fe3f312727e12
+key	icons	m1a1_aim_sa_aus	a8d6ae41cf7c6f56	6a14b213f699e989
 key	icons	m1a1ha	71c7e9e4a2af5fa0	cf66b61dd319758f
 key	icons	m1a2_abrams	2ae0fd7acfb637c8	6d7e36b14fddb1bf
 key	icons	m1a2_abrams_sepv2	83b74ad2110a209a	ba54ddf1db028a20
 key	icons	m1a2_abrams_sepv3	3ed5d5c2a9fb8eab	9e9d83eb3c15612f
 key	icons	m1a2_abrams_tusk	205523b8934a7433	2ff3e8b9147b2a83
-key	icons	m1a2_sepv3_aus	25e34720eb15a166	b3c3c9d65655a2a5
+key	icons	m1a2_sepv3_aus	bb329682084ea812	a211e85f166e670f
 key	icons	m1a3	cd3a22a5a6ca7dfc	1e0afd0cd0d7b42d
 key	icons	m2a2_bradley	9b0384a88925488d	057074825061cf40
 key	icons	m3a3_bradley	eb851016e13c2b14	28dc1c0bd00be21b
@@ -2935,7 +2935,7 @@ key	icons	pt91a_twardy	a2f786d09b00817b	6a3d714a34dbcfa0
 key	icons	pt91m	7ffd55921433cf05	00010b554180509a
 key	icons	puma_s1	3ef75f0ff4c26402	c6b8a98c1d0d5686
 key	icons	raiju_ifv	60a0355eef1ed5e4	48eef799e7b3e932
-key	icons	redback	ba24d0328db8086e	e0c9c5eecdd2fd65
+key	icons	redback	dcac1b22d2e077bf	01edd4533f179eae
 key	icons	sabra_mk2	0137244786fd6e93	0e4ac654a20e08a2
 key	icons	shot_kal	d80c013d84ad4c0a	36a1ce32cc53ec92
 key	icons	spz_puma	50232f5d06202f57	1badae1a129ae634
@@ -3153,23 +3153,23 @@ key	ledger	leo2a6m	0505a57ab5241eef	af7a4f47f35c7089
 key	ledger	leo2a7dk	d357413d28a50e45	753dabfee15e41b4
 key	ledger	leo2a7v	b19c3fc613d8ab07	3fd0a9436589002a
 key	ledger	leopard2_proto	c5b04b5b62cb631d	d3a50c77b774800d
-key	ledger	leopard_as1	243655d086b92ae0	46bb47e568fccf0f
+key	ledger	leopard_as1	b71aff71ef30cab2	46bb47e568fccf0f
 key	ledger	lrmv_lynx	e227237b52bc8506	683b0c407f50b131
-key	ledger	m113a1_fsv	733af87dcea28a16	e173dfa33d6a4782
-key	ledger	m113a1_mrv	1e7238003155cc9f	efcfa7298f0f7fa6
-key	ledger	m113as4	8d9d4e1e3fe42c82	42876059459ac02b
+key	ledger	m113a1_fsv	c39e8eb8bd876a55	e3b28d40f198d7f3
+key	ledger	m113a1_mrv	a9e360e1c56fa9d5	1ff3c36ea6bb0e68
+key	ledger	m113as4	e9d5d651fadba7d7	d09ff454c9fc8edf
 key	ledger	m1a1	bbb882e0b47ebad4	5409d8fd19b3caa1
 key	ledger	m1a1_abrams_aim	cb938a4c1f2ddaa3	930ecaa2e0be94a3
 key	ledger	m1a1_abrams_fep	74b2aaab4ecdb174	76e2fd9e3077674d
 key	ledger	m1a1_abrams_hc	efb39bb43d2137bb	8d56d0a8c1fec172
 key	ledger	m1a1_abrams_sa	957e1c13945401d5	f814f2c63e54a22e
-key	ledger	m1a1_aim_sa_aus	a89074b7c172dc23	b39885bc0d289724
+key	ledger	m1a1_aim_sa_aus	fe1ce6cb18dc6998	b6bcf304048d4d1a
 key	ledger	m1a1ha	1d77f0ca66225f98	ac1d8d16d380b073
 key	ledger	m1a2_abrams	87ebe787a26e30d5	40668b52dd86cad3
 key	ledger	m1a2_abrams_sepv2	9a3b88c7688f053e	f2216f8b6f893fa9
 key	ledger	m1a2_abrams_sepv3	10542dfab2465d43	53d69823368874cf
 key	ledger	m1a2_abrams_tusk	bd414d22d72af7a7	ca130423433fd184
-key	ledger	m1a2_sepv3_aus	8151a4f306d16e71	27b31df60da73126
+key	ledger	m1a2_sepv3_aus	74b6f04a520f7920	a2fb64cf713741a9
 key	ledger	m1a3	9fb5beff6f417ac1	31a01375156520b2
 key	ledger	m2a2_bradley	093b59754f2306e1	c6424ad262c0d720
 key	ledger	m3a3_bradley	ee6f9db753f8fc83	f6c52e804b229b82
@@ -3221,7 +3221,7 @@ key	ledger	pt91a_twardy	2b9c2b27f93ac42f	09521253928c13a4
 key	ledger	pt91m	f36f605e039afe80	fcc221a0303d9503
 key	ledger	puma_s1	bb8b681579554d5a	6da3d80b645daf62
 key	ledger	raiju_ifv	c4f3033485063c7d	ed29e3740d4b0742
-key	ledger	redback	1940d7a5c36de472	92bb7515f99061ed
+key	ledger	redback	2ebdc55efffd9503	92bb7515f99061ed
 key	ledger	sabra_mk2	3b49b5e01e6d4aa0	4ac33d40a7f5e787
 key	ledger	shot_kal	79adbe833f2da320	6768e2c36abd731a
 key	ledger	spz_puma	fa792e832ea517c7	ed1c8cbd2219582d
@@ -3439,23 +3439,23 @@ key	marking	leo2a6m	c9d331215b68eb7a	f9c6f97f909b96a7
 key	marking	leo2a7dk	63d78deb1530e4fd	ae0915fe421410ed
 key	marking	leo2a7v	261946444d20094a	605cfcc4ce736496
 key	marking	leopard2_proto	929285fa397ecefe	81ddfd2ca7816137
-key	marking	leopard_as1	ab1a7267964b65a5	0171dd12f28226b4
+key	marking	leopard_as1	11e5a56769923f43	0171dd12f28226b4
 key	marking	lrmv_lynx	d8749ffe8acc032c	d4ad0be3e8acd161
-key	marking	m113a1_fsv	ff8284871aea951f	ba6d9fec9afed6e0
-key	marking	m113a1_mrv	60a84305d70e4482	ba6d9fec9afed6e0
-key	marking	m113as4	1e5b08d58b16f2ad	ba6d9fec9afed6e0
+key	marking	m113a1_fsv	1e950a76dcb7ca4d	ba6d9fec9afed6e0
+key	marking	m113a1_mrv	b62ec12b7ab93f75	ba6d9fec9afed6e0
+key	marking	m113as4	685dbaefa238c74a	ba6d9fec9afed6e0
 key	marking	m1a1	f8448cb148b68dd2	aef419b1881614b7
 key	marking	m1a1_abrams_aim	2a8fea43485e8ada	25165a83db2d7192
 key	marking	m1a1_abrams_fep	f2512aeae3a64176	df37f89a5df304e7
 key	marking	m1a1_abrams_hc	46dd957977fc8245	c20ad7f0b675a66e
 key	marking	m1a1_abrams_sa	2804a28f201cdc0a	83e7cf9d36747d31
-key	marking	m1a1_aim_sa_aus	b1aa7e8649b8f0e5	699819c6372f7351
+key	marking	m1a1_aim_sa_aus	e3153da115ab8c46	699819c6372f7351
 key	marking	m1a1ha	1c9d2e36c348796b	ad69bb445555eba2
 key	marking	m1a2_abrams	4db0ee7ec8925a4c	27fe572bba7b91d3
 key	marking	m1a2_abrams_sepv2	88283271abae3ef2	72dae7d080c35635
 key	marking	m1a2_abrams_sepv3	544db78d968d0621	78181e34b1fc4c80
 key	marking	m1a2_abrams_tusk	b47dd928740650d6	efbba9dcdf8bb113
-key	marking	m1a2_sepv3_aus	7da05ad76e4b18fd	37373781aaea4859
+key	marking	m1a2_sepv3_aus	32f12e4f7cdae2f6	37373781aaea4859
 key	marking	m1a3	af135b8827a8102b	fd44f451358e61d4
 key	marking	m2a2_bradley	d1db4d9a1facf664	ac9f31b854bc8074
 key	marking	m3a3_bradley	2dddfa8c068fb222	597bda6d18518d40
@@ -3507,7 +3507,7 @@ key	marking	pt91a_twardy	6e25fef5cddcde44	5410b838ecfbc5be
 key	marking	pt91m	db1e29cbb5819fde	d1344231651ce0d6
 key	marking	puma_s1	190582b66029cfc6	85780db8b64bcb36
 key	marking	raiju_ifv	f132d0254c96f05b	60e9e04690adf96c
-key	marking	redback	059742f07a39f56e	2629094f5608e9d7
+key	marking	redback	a76d1186970329eb	2629094f5608e9d7
 key	marking	sabra_mk2	5f6c455145bf2e55	e25d95c2ee5586e4
 key	marking	shot_kal	9803c89c16cc0268	2d3ba34a4e797f25
 key	marking	spz_puma	c86071c3c14b602e	14a40e2e8b4f65a2
@@ -3725,23 +3725,23 @@ key	seats	leo2a6m	152188eb4b4aa2db	4c1bc6200c212bec
 key	seats	leo2a7dk	6dd3293849affabf	fc98ad56b624610e
 key	seats	leo2a7v	7e110f5cc6f1202b	fd2fac3947052b22
 key	seats	leopard2_proto	9a87f0cd454547d9	be1afdf75c2dc88a
-key	seats	leopard_as1	1ed6d7a8a3c40821	ff4322aa2e6c9114
+key	seats	leopard_as1	1df41fd4fc027797	ff4322aa2e6c9114
 key	seats	lrmv_lynx	0ea0424411f4c8a3	ed862630f95d97b7
-key	seats	m113a1_fsv	2bf31d1ec7c105fe	b727179a56da9c50
-key	seats	m113a1_mrv	7af5e82b0a825133	4606603ed6cb1245
-key	seats	m113as4	e2fa018bae6d6d39	43d0e2f922104ea4
+key	seats	m113a1_fsv	c551c5467e6f2580	18f0379eb911d993
+key	seats	m113a1_mrv	d4e0aed2159260e9	d8a6de101effb027
+key	seats	m113as4	0ba20d0c94187639	002f3caefa23de6e
 key	seats	m1a1	d1d18f3eb11a9ab9	1c4f2d88ee29776c
 key	seats	m1a1_abrams_aim	169ecc677fc163a1	ba0d0cef714a7ee1
 key	seats	m1a1_abrams_fep	f5bed7fdffc9065e	e9ff0f8be4effd60
 key	seats	m1a1_abrams_hc	7ce5425bf34b1abf	af29ce029ac483d0
 key	seats	m1a1_abrams_sa	6add7f716d5d5182	3b97963d3add39be
-key	seats	m1a1_aim_sa_aus	9431bdd0eb1d69ed	072b2ae64e72e53a
+key	seats	m1a1_aim_sa_aus	4ce0d8f6764ace8e	002e9b65f4ae2456
 key	seats	m1a1ha	e1ab922289431759	c528c62101995625
 key	seats	m1a2_abrams	8f47d32de71dbd2e	04c40d9863afb163
 key	seats	m1a2_abrams_sepv2	a9aeda6e63d01093	bc8c99fdb1cc123e
 key	seats	m1a2_abrams_sepv3	5801fa69243c6164	71dcc8cae5d6227d
 key	seats	m1a2_abrams_tusk	48b485478f60beea	e80c012bc9b05db6
-key	seats	m1a2_sepv3_aus	bda27ccda4101b95	1fb3c12e88214bed
+key	seats	m1a2_sepv3_aus	a93b711e5dfec1d8	b1443ff83ee9509c
 key	seats	m1a3	83f45946286a5d67	3f1b6d1a67b6b207
 key	seats	m2a2_bradley	ad93e31e42e69a33	ca94ef9adfa33e21
 key	seats	m3a3_bradley	8d9a7d6a82942759	a1ff6242e721ba24
@@ -3793,7 +3793,7 @@ key	seats	pt91a_twardy	f18222fcaca049ec	eafbfb74f825c45b
 key	seats	pt91m	9d21acdc642a649e	96995102d1fb5b06
 key	seats	puma_s1	f1bd04801bfd94ec	763d2f7f4c795780
 key	seats	raiju_ifv	e2089e2bdfb374bf	1e76b6df8860b359
-key	seats	redback	f56a015f669138b6	fe83ff5ddc5dabe3
+key	seats	redback	527985309eb519f3	fe83ff5ddc5dabe3
 key	seats	sabra_mk2	1c2b2f97f0828821	fca06d51615517e0
 key	seats	shot_kal	34ee081b0567dd10	908753edd7980797
 key	seats	spz_puma	524e7725d3134645	3580dd115c0aa262
@@ -4011,23 +4011,23 @@ key	spareTrack	leo2a6m	8b3b2299b8804de9	6a57df0aa51d63ed
 key	spareTrack	leo2a7dk	5743e898e8cfd057	c96e916476f94c19
 key	spareTrack	leo2a7v	91261a0a14a5c60e	0bbbb462e2e3dcfa
 key	spareTrack	leopard2_proto	cbaed211039ff30d	a021b2b5473fe24a
-key	spareTrack	leopard_as1	c72068b941aea753	90f2529622e9354d
+key	spareTrack	leopard_as1	ac840e9ad3aa0758	ff4eb38b56501639
 key	spareTrack	lrmv_lynx	937f9de5164d3d03	c4020940ead1a18d
-key	spareTrack	m113a1_fsv	26594eceb3ec6977	5e154adee6c61778
-key	spareTrack	m113a1_mrv	05a8ee0a384268fd	4ada84835b07bf33
-key	spareTrack	m113as4	9911dcd09b9811a9	a1b26eac8f0e56ad
+key	spareTrack	m113a1_fsv	bb0521c5c37ce190	3532a5851b6bdc00
+key	spareTrack	m113a1_mrv	d7c4f26db0e5233a	54ddf846a63975ff
+key	spareTrack	m113as4	24e536bf4ff8559d	30b38a130a45380f
 key	spareTrack	m1a1	297349f231e5341d	2a6417767354f84e
 key	spareTrack	m1a1_abrams_aim	88d1e524d863ce07	b04c6329f54adcf9
 key	spareTrack	m1a1_abrams_fep	740a417bce7e8d41	3d2d187e028875ff
 key	spareTrack	m1a1_abrams_hc	09b49201da3fdfd7	95a5562bb362f110
 key	spareTrack	m1a1_abrams_sa	065f7c23e203b0c2	d32a89d64930f256
-key	spareTrack	m1a1_aim_sa_aus	df39771bd8bab4e0	368a271ac05c07ca
+key	spareTrack	m1a1_aim_sa_aus	e1e8425c4ada1d14	6ce46d22d0d0a2b5
 key	spareTrack	m1a1ha	33d18592b8eb0d75	be6493ee6a26fa8f
 key	spareTrack	m1a2_abrams	26fca19c9d39f587	78d69935a0e0f431
 key	spareTrack	m1a2_abrams_sepv2	8b3eb8995105f5bc	31ca872e5d46edba
 key	spareTrack	m1a2_abrams_sepv3	8b9b69d5fa77f483	a29ca80087c59558
 key	spareTrack	m1a2_abrams_tusk	7910c98d9f84c6ef	9678e7f8280adb1b
-key	spareTrack	m1a2_sepv3_aus	94dda2ce4d60cddf	ef909a5d45909757
+key	spareTrack	m1a2_sepv3_aus	c2d3853fabacbe15	0486bef9ce8e721f
 key	spareTrack	m1a3	b91a979c54be2a0b	32b862aa3b3ca277
 key	spareTrack	m2a2_bradley	c76e697e511246b3	d685942590f57162
 key	spareTrack	m3a3_bradley	57bd001c3c8d0f88	89b076213559e04a
@@ -4079,7 +4079,7 @@ key	spareTrack	pt91a_twardy	73046dd428254397	ec8f569dc3809837
 key	spareTrack	pt91m	07e01b8fb30fdb1d	d38f19a10bd065c8
 key	spareTrack	puma_s1	049219dc65dd4cb7	5d0a35aca00095e5
 key	spareTrack	raiju_ifv	91076ce4138ffed5	cc676b0d0357ff6f
-key	spareTrack	redback	78c283d0d441df80	20758fe02d0bb1b4
+key	spareTrack	redback	be778c04c7849e25	bda65036c83696bc
 key	spareTrack	sabra_mk2	8a095cb7d71e6cb5	29105c0b9d79aef4
 key	spareTrack	shot_kal	db986ae2dfa5120d	32b6ed4fd7022a62
 key	spareTrack	spz_puma	073d8d7942569057	282a8cf20a84ef2a
@@ -4364,17 +4364,17 @@ row	auxiliaryInventory	leo2a6m	03ad9cad34503164
 row	auxiliaryInventory	leo2a7dk	f96ba556b0b977fb
 row	auxiliaryInventory	leo2a7v	df6cf9e7c2452cd4
 row	auxiliaryInventory	leopard2_proto	385033cb03bae8c9
-row	auxiliaryInventory	leopard_as1	9958af742df46fab
+row	auxiliaryInventory	leopard_as1	720ba2d8edf11b2a
 row	auxiliaryInventory	lrmv_lynx	9cb88fc5e776e86d
-row	auxiliaryInventory	m113a1_fsv	6baa3b3e0418700a
-row	auxiliaryInventory	m113a1_mrv	dd01fc081da5a004
-row	auxiliaryInventory	m113as4	849ac7bdd6c333b8
+row	auxiliaryInventory	m113a1_fsv	55087fcba7c5b5e7
+row	auxiliaryInventory	m113a1_mrv	ce80aa8dc7f163e1
+row	auxiliaryInventory	m113as4	fa9afe775d3cd5e1
 row	auxiliaryInventory	m1a1	4806c7a485f173a2
 row	auxiliaryInventory	m1a1_abrams_aim	07eb0d39b88a1ff6
 row	auxiliaryInventory	m1a1_abrams_fep	6db6a69b3ef9b87c
 row	auxiliaryInventory	m1a1_abrams_hc	defc498d53f664bf
 row	auxiliaryInventory	m1a1_abrams_sa	2953f9b4d4f98220
-row	auxiliaryInventory	m1a1_aim_sa_aus	9c67ee1faba60655
+row	auxiliaryInventory	m1a1_aim_sa_aus	1dac850057f1d3b2
 row	auxiliaryInventory	m1a1ha	d59905f7e144c48c
 row	auxiliaryInventory	m1a2_abrams	6a0d08fb7ebda7b6
 row	auxiliaryInventory	m1a2_abrams_sepv2	8acd4dd068e96c95
@@ -4432,7 +4432,7 @@ row	auxiliaryInventory	pt91a_twardy	77c8cca2e6aaf8a0
 row	auxiliaryInventory	pt91m	5c7ff67b3da642e0
 row	auxiliaryInventory	puma_s1	2542d7dc8412581e
 row	auxiliaryInventory	raiju_ifv	1ad97a285271c5d8
-row	auxiliaryInventory	redback	e0ddb49d6a5c5296
+row	auxiliaryInventory	redback	874fee94cc0452ac
 row	auxiliaryInventory	sabra_mk2	259d2e45fa9691c4
 row	auxiliaryInventory	shot_kal	2a93294cd0b4a16f
 row	auxiliaryInventory	spz_puma	d37a6994aeb5d0a3
@@ -5303,17 +5303,17 @@ row	garageAuxiliarySummary	leo2a6m	5a8a799edb03031b
 row	garageAuxiliarySummary	leo2a7dk	1b7df81893a0a795
 row	garageAuxiliarySummary	leo2a7v	3eae5e43391e44d4
 row	garageAuxiliarySummary	leopard2_proto	3cc1e97fab3946d7
-row	garageAuxiliarySummary	leopard_as1	a53f914a1064f8bb
+row	garageAuxiliarySummary	leopard_as1	433cbe8ada2b1b60
 row	garageAuxiliarySummary	lrmv_lynx	d39ee4439c770ee9
-row	garageAuxiliarySummary	m113a1_fsv	f916f84e41ca1c59
-row	garageAuxiliarySummary	m113a1_mrv	622be7a678dbce9c
-row	garageAuxiliarySummary	m113as4	d09199581f0ac533
+row	garageAuxiliarySummary	m113a1_fsv	bc5ef4e4eff5a123
+row	garageAuxiliarySummary	m113a1_mrv	544e67fd3c74896a
+row	garageAuxiliarySummary	m113as4	f20c88b888480ff9
 row	garageAuxiliarySummary	m1a1	d23f560ac9bb3e27
 row	garageAuxiliarySummary	m1a1_abrams_aim	ffb36581ce0d8f1d
 row	garageAuxiliarySummary	m1a1_abrams_fep	ffb36581ce0d8f1d
 row	garageAuxiliarySummary	m1a1_abrams_hc	ffb36581ce0d8f1d
 row	garageAuxiliarySummary	m1a1_abrams_sa	ffb36581ce0d8f1d
-row	garageAuxiliarySummary	m1a1_aim_sa_aus	622be7a678dbce9c
+row	garageAuxiliarySummary	m1a1_aim_sa_aus	c2880c5ca7359010
 row	garageAuxiliarySummary	m1a1ha	622be7a678dbce9c
 row	garageAuxiliarySummary	m1a2_abrams	ffb36581ce0d8f1d
 row	garageAuxiliarySummary	m1a2_abrams_sepv2	ffb36581ce0d8f1d
@@ -5371,7 +5371,7 @@ row	garageAuxiliarySummary	pt91a_twardy	d23f560ac9bb3e27
 row	garageAuxiliarySummary	pt91m	622be7a678dbce9c
 row	garageAuxiliarySummary	puma_s1	d39ee4439c770ee9
 row	garageAuxiliarySummary	raiju_ifv	1b7df81893a0a795
-row	garageAuxiliarySummary	redback	d39ee4439c770ee9
+row	garageAuxiliarySummary	redback	12198c6240224a2a
 row	garageAuxiliarySummary	sabra_mk2	7f6e9af3ddde7bcd
 row	garageAuxiliarySummary	shot_kal	ffb36581ce0d8f1d
 row	garageAuxiliarySummary	spz_puma	a68fc440da743477
@@ -5867,21 +5867,21 @@ row	geometryLedger	leo2a7v	78b311fdb575ab3e
 row	geometryLedger	leopard2_proto	93562cad385e8b67
 row	geometryLedger	leopard_as1	c72ce65a91239a74
 row	geometryLedger	lrmv_lynx	b1645f9d2b65aef4
-row	geometryLedger	m113a1_fsv	3afbb0e16b92f913
-row	geometryLedger	m113a1_mrv	126871238a6b3b5e
-row	geometryLedger	m113as4	138a21a41f9ad6b0
+row	geometryLedger	m113a1_fsv	6f32d40c2f4ae44e
+row	geometryLedger	m113a1_mrv	0735af165549d0de
+row	geometryLedger	m113as4	f8a13c3a1471ee17
 row	geometryLedger	m1a1	7101ed91016249d9
 row	geometryLedger	m1a1_abrams_aim	c4291c09814db088
 row	geometryLedger	m1a1_abrams_fep	0f1b0a576bf127d4
 row	geometryLedger	m1a1_abrams_hc	d3eca7e8fe067dd9
 row	geometryLedger	m1a1_abrams_sa	60bf511d34e5072a
-row	geometryLedger	m1a1_aim_sa_aus	bd67c17336e5c13d
+row	geometryLedger	m1a1_aim_sa_aus	8280649f9f69598f
 row	geometryLedger	m1a1ha	851a854bb5fabee5
 row	geometryLedger	m1a2_abrams	5b1635e24f58bca5
 row	geometryLedger	m1a2_abrams_sepv2	383e5dd1991b7caf
 row	geometryLedger	m1a2_abrams_sepv3	d80abb9edabe7ffd
 row	geometryLedger	m1a2_abrams_tusk	c3aad65a01adddba
-row	geometryLedger	m1a2_sepv3_aus	28df3982ea18ed69
+row	geometryLedger	m1a2_sepv3_aus	886703f9f54d3af3
 row	geometryLedger	m1a3	73f744ad2c0ea02c
 row	geometryLedger	m2a2_bradley	9df9faf46c5ef359
 row	geometryLedger	m3a3_bradley	50b2188bfaa18968
@@ -6161,13 +6161,13 @@ row	gunJunction	m1a1_abrams_aim	e57eecf051ce2761
 row	gunJunction	m1a1_abrams_fep	2b3e4e0d5e2a09e3
 row	gunJunction	m1a1_abrams_hc	8b4caccfc40679b0
 row	gunJunction	m1a1_abrams_sa	6f209bbd451f2735
-row	gunJunction	m1a1_aim_sa_aus	9e82bfa1a2540fa7
+row	gunJunction	m1a1_aim_sa_aus	6a08860192aac829
 row	gunJunction	m1a1ha	751904cc23c9744e
 row	gunJunction	m1a2_abrams	a0fbd1b6675a6ce5
 row	gunJunction	m1a2_abrams_sepv2	d5e03fdd34d60aa3
 row	gunJunction	m1a2_abrams_sepv3	7829255c42b9b8a7
 row	gunJunction	m1a2_abrams_tusk	702a90ebd48d8ff6
-row	gunJunction	m1a2_sepv3_aus	eaf2c18cf635d42e
+row	gunJunction	m1a2_sepv3_aus	3c2c0e725b681b9a
 row	gunJunction	m1a3	1ad7403a192350ed
 row	gunJunction	m2a2_bradley	ffb0dde7de503c8b
 row	gunJunction	m3a3_bradley	5c1de8623a0ece1e
@@ -6439,15 +6439,15 @@ row	interiorFills	leo2a7v	e94ae2a12dd89b0c
 row	interiorFills	leopard2_proto	aac9ac4e54e9744b
 row	interiorFills	leopard_as1	3a6f34a5f22ba460
 row	interiorFills	lrmv_lynx	abb499d0a9913d41
-row	interiorFills	m113a1_fsv	eb11bf16a671d7be
-row	interiorFills	m113a1_mrv	f5076e1f35c15e12
-row	interiorFills	m113as4	eca73337258745fc
+row	interiorFills	m113a1_fsv	1c6556a8000de39e
+row	interiorFills	m113a1_mrv	0b71d29208dd66e2
+row	interiorFills	m113as4	bd8ba140db64d80a
 row	interiorFills	m1a1	cab794c574c77424
 row	interiorFills	m1a1_abrams_aim	1255c587183be4ba
 row	interiorFills	m1a1_abrams_fep	3f5b19eb3c0c89a1
 row	interiorFills	m1a1_abrams_hc	54ec3606f4b6fcc6
 row	interiorFills	m1a1_abrams_sa	6571abed22e7e47b
-row	interiorFills	m1a1_aim_sa_aus	d939299f7606a499
+row	interiorFills	m1a1_aim_sa_aus	c527952e4924aa92
 row	interiorFills	m1a1ha	3c6da6a59a49d3f5
 row	interiorFills	m1a2_abrams	68d6c0c3e11d90ed
 row	interiorFills	m1a2_abrams_sepv2	e6a082c4da5d3f0c
@@ -7011,21 +7011,21 @@ row	missionAttachmentSeats	leo2a7v	65deb45e26b9ee4f
 row	missionAttachmentSeats	leopard2_proto	9d8e65e0ba714e01
 row	missionAttachmentSeats	leopard_as1	139a774b1e228b63
 row	missionAttachmentSeats	lrmv_lynx	a39a512f0648f827
-row	missionAttachmentSeats	m113a1_fsv	8d9ce183f2fadb75
-row	missionAttachmentSeats	m113a1_mrv	ae5d7fcc8bcd1d6f
-row	missionAttachmentSeats	m113as4	beb64e1b3d51678c
+row	missionAttachmentSeats	m113a1_fsv	df3e6e837a0be796
+row	missionAttachmentSeats	m113a1_mrv	c0920c60f141b713
+row	missionAttachmentSeats	m113as4	d99bb893adf22abc
 row	missionAttachmentSeats	m1a1	345e1696a8ce7a8b
 row	missionAttachmentSeats	m1a1_abrams_aim	62c1b3b767ffc0e1
 row	missionAttachmentSeats	m1a1_abrams_fep	9e0f81f777d79d84
 row	missionAttachmentSeats	m1a1_abrams_hc	e92781e282a6fd1e
 row	missionAttachmentSeats	m1a1_abrams_sa	83ab54734994014b
-row	missionAttachmentSeats	m1a1_aim_sa_aus	291701fadd2af552
+row	missionAttachmentSeats	m1a1_aim_sa_aus	6bab7a1ed8d132f0
 row	missionAttachmentSeats	m1a1ha	0f0afd2f603cee2a
 row	missionAttachmentSeats	m1a2_abrams	a95bab3a01becd16
 row	missionAttachmentSeats	m1a2_abrams_sepv2	95578b98729b3695
 row	missionAttachmentSeats	m1a2_abrams_sepv3	8161c49efaf32636
 row	missionAttachmentSeats	m1a2_abrams_tusk	8d1caed0fddb84aa
-row	missionAttachmentSeats	m1a2_sepv3_aus	c8ef9eeaa816f389
+row	missionAttachmentSeats	m1a2_sepv3_aus	f8a7abbab88c90c4
 row	missionAttachmentSeats	m1a3	3f3565e9ba388dce
 row	missionAttachmentSeats	m2a2_bradley	936f2976c4361b1a
 row	missionAttachmentSeats	m3a3_bradley	236d593b20c11fe5
@@ -7586,11 +7586,11 @@ row	presentationAnchors	leo2a6m	d3668a209f5e8557
 row	presentationAnchors	leo2a7dk	c4f271c930526e6d
 row	presentationAnchors	leo2a7v	2feba24f7e897282
 row	presentationAnchors	leopard2_proto	1519128260a18c66
-row	presentationAnchors	leopard_as1	6202e704d3e92a25
+row	presentationAnchors	leopard_as1	05f8a64a00f78747
 row	presentationAnchors	lrmv_lynx	49ad3725a615be2c
-row	presentationAnchors	m113a1_fsv	70a6c62ab5a439b1
-row	presentationAnchors	m113a1_mrv	78367403f04fe9b3
-row	presentationAnchors	m113as4	c02d9e416fec6334
+row	presentationAnchors	m113a1_fsv	21af51a2e6eb8160
+row	presentationAnchors	m113a1_mrv	882601e0b71431f6
+row	presentationAnchors	m113as4	4f22c9faa3738383
 row	presentationAnchors	m1a1	3f06b94447820d15
 row	presentationAnchors	m1a1_abrams_aim	43e33afa1858b890
 row	presentationAnchors	m1a1_abrams_fep	62d5b00008f4a24f
@@ -7654,7 +7654,7 @@ row	presentationAnchors	pt91a_twardy	ed5adcf9108d33c6
 row	presentationAnchors	pt91m	1c0bafe9bac542b6
 row	presentationAnchors	puma_s1	37eb90869ec55b8e
 row	presentationAnchors	raiju_ifv	bb0ada0b681046b8
-row	presentationAnchors	redback	b51e19396c68d578
+row	presentationAnchors	redback	f50e0dce04d0c737
 row	presentationAnchors	sabra_mk2	c16c672a969b688a
 row	presentationAnchors	shot_kal	b801eac2ba1fed1f
 row	presentationAnchors	spz_puma	8208bbda7e6b84bc
@@ -7872,11 +7872,11 @@ row	presentationProjections	leo2a6m	c8d2ad015dfd84ce
 row	presentationProjections	leo2a7dk	3776038d68f0274c
 row	presentationProjections	leo2a7v	223f3eb38b615dc7
 row	presentationProjections	leopard2_proto	0c919d8d2e8052a1
-row	presentationProjections	leopard_as1	e5784fa8e0e19e62
+row	presentationProjections	leopard_as1	7936710d12b776cb
 row	presentationProjections	lrmv_lynx	606170fa9d15b027
-row	presentationProjections	m113a1_fsv	e4db9df64c7e35ac
-row	presentationProjections	m113a1_mrv	762040095f164c12
-row	presentationProjections	m113as4	1a659361b94b5a41
+row	presentationProjections	m113a1_fsv	f25960b1dc626d3d
+row	presentationProjections	m113a1_mrv	c81555efff3cce12
+row	presentationProjections	m113as4	e9dcb8b1624f2e79
 row	presentationProjections	m1a1	e3562a225626f16f
 row	presentationProjections	m1a1_abrams_aim	6d4da1deea1f88aa
 row	presentationProjections	m1a1_abrams_fep	f4d09af19f80ab26
@@ -7940,7 +7940,7 @@ row	presentationProjections	pt91a_twardy	df7f3843f9548796
 row	presentationProjections	pt91m	cc0c8deb0ca29888
 row	presentationProjections	puma_s1	52536afe1b45ec59
 row	presentationProjections	raiju_ifv	8a7f4e53271fe4a0
-row	presentationProjections	redback	e01ef948bd15ce5c
+row	presentationProjections	redback	f84e96fd5b76dfc3
 row	presentationProjections	sabra_mk2	c1b84a2d93909618
 row	presentationProjections	shot_kal	5991ea706b7930ba
 row	presentationProjections	spz_puma	78f5cb942caca8e1
@@ -8444,23 +8444,23 @@ row	spareTrackLedger	leo2a6m	10d39a880727e013
 row	spareTrackLedger	leo2a7dk	10e8e71292abdf7a
 row	spareTrackLedger	leo2a7v	cd3dc9fa1c212da1
 row	spareTrackLedger	leopard2_proto	8cd0d261c98f40ac
-row	spareTrackLedger	leopard_as1	c35e4d82b8cd1164
+row	spareTrackLedger	leopard_as1	fbf083006961ea1d
 row	spareTrackLedger	lrmv_lynx	865a4d8edd5a3501
-row	spareTrackLedger	m113a1_fsv	be90582fcd85085c
-row	spareTrackLedger	m113a1_mrv	7882693100b25067
-row	spareTrackLedger	m113as4	4af759420204ae60
+row	spareTrackLedger	m113a1_fsv	9ec276d3045f6aed
+row	spareTrackLedger	m113a1_mrv	30641608ce6114d3
+row	spareTrackLedger	m113as4	4a8b6624a5177e06
 row	spareTrackLedger	m1a1	a2a05ca607ed8838
 row	spareTrackLedger	m1a1_abrams_aim	780e93cbcfe232a2
 row	spareTrackLedger	m1a1_abrams_fep	50f4b651840d42f1
 row	spareTrackLedger	m1a1_abrams_hc	3427243424cdebd6
 row	spareTrackLedger	m1a1_abrams_sa	17146650fcfd37a1
-row	spareTrackLedger	m1a1_aim_sa_aus	0235381e970c3798
+row	spareTrackLedger	m1a1_aim_sa_aus	496533a210c0b792
 row	spareTrackLedger	m1a1ha	09074c2a70d3dc1a
 row	spareTrackLedger	m1a2_abrams	b2e5852ec2444cdd
 row	spareTrackLedger	m1a2_abrams_sepv2	eea1eafa5cab7409
 row	spareTrackLedger	m1a2_abrams_sepv3	087be7a67baf7b37
 row	spareTrackLedger	m1a2_abrams_tusk	0a6eb9027e64c418
-row	spareTrackLedger	m1a2_sepv3_aus	a96989606f015b10
+row	spareTrackLedger	m1a2_sepv3_aus	a373e5c348a924ce
 row	spareTrackLedger	m1a3	6f0bd1dc097cc577
 row	spareTrackLedger	m2a2_bradley	32e4b93d9a406541
 row	spareTrackLedger	m3a3_bradley	7ea7ec99bf7e260c
@@ -8512,7 +8512,7 @@ row	spareTrackLedger	pt91a_twardy	3249e487f3b0f79c
 row	spareTrackLedger	pt91m	3990c00e0fb8b9fd
 row	spareTrackLedger	puma_s1	088fc3578f09fac8
 row	spareTrackLedger	raiju_ifv	335b4b7e07bd03ae
-row	spareTrackLedger	redback	8efc218500dc8b21
+row	spareTrackLedger	redback	c963788f1f556583
 row	spareTrackLedger	sabra_mk2	e6eaa020d5bbac8c
 row	spareTrackLedger	shot_kal	2360876780deebbe
 row	spareTrackLedger	spz_puma	b5afea8dbd953049
@@ -9333,23 +9333,23 @@ row	tankAssets	leo2a6m	418390560f57bfb6
 row	tankAssets	leo2a7dk	f76149318093244b
 row	tankAssets	leo2a7v	fb6869ccaf611538
 row	tankAssets	leopard2_proto	99a20a90df93b98a
-row	tankAssets	leopard_as1	e31f66d552f78f42
+row	tankAssets	leopard_as1	2e13eb1b6e09069d
 row	tankAssets	lrmv_lynx	0fc53b4533a4b930
-row	tankAssets	m113a1_fsv	a0efb7210343844c
-row	tankAssets	m113a1_mrv	151770ae5ea88dde
-row	tankAssets	m113as4	a1dccd0c87134604
+row	tankAssets	m113a1_fsv	fdc532d070cc1a40
+row	tankAssets	m113a1_mrv	b83ca5427dd24153
+row	tankAssets	m113as4	2ebdfd7b7f16f197
 row	tankAssets	m1a1	04305085ba970b0f
 row	tankAssets	m1a1_abrams_aim	4d908e89be16ef7c
 row	tankAssets	m1a1_abrams_fep	570d271980535c27
 row	tankAssets	m1a1_abrams_hc	bf539f9307848970
 row	tankAssets	m1a1_abrams_sa	a5207ff38731c35c
-row	tankAssets	m1a1_aim_sa_aus	d3d139ed0b9f1c62
+row	tankAssets	m1a1_aim_sa_aus	bef8701ce3fcd2ec
 row	tankAssets	m1a1ha	912948f034cb0e9f
 row	tankAssets	m1a2_abrams	42c43d76238955dc
 row	tankAssets	m1a2_abrams_sepv2	d47de9616092185a
 row	tankAssets	m1a2_abrams_sepv3	66cafb364dce27cf
 row	tankAssets	m1a2_abrams_tusk	456a132aecaa9ab1
-row	tankAssets	m1a2_sepv3_aus	a96fec2db2a58fd6
+row	tankAssets	m1a2_sepv3_aus	e767d966e9a112b8
 row	tankAssets	m1a3	d1cf51b49735c345
 row	tankAssets	m2a2_bradley	b2caa8e0b883593e
 row	tankAssets	m3a3_bradley	fae8fd001cb53373
@@ -9401,7 +9401,7 @@ row	tankAssets	pt91a_twardy	8c4866d6b88c57a8
 row	tankAssets	pt91m	7d3fcaab684b245c
 row	tankAssets	puma_s1	e720da0007e15dfe
 row	tankAssets	raiju_ifv	19b924f52cc1dbe6
-row	tankAssets	redback	ba151f239f27be4a
+row	tankAssets	redback	04db7bd9b470c6e5
 row	tankAssets	sabra_mk2	7237e433b0d7e44f
 row	tankAssets	shot_kal	acef1b007c7927bc
 row	tankAssets	spz_puma	d445142dfb2ad57d
@@ -9525,13 +9525,13 @@ stamp	gate	m41a3	477790ee3b0f2718	2a91139109c96403	oracle-absent	public/models/c
 stamp	gate	merkava3d	c5169d7ff253645f	9997f408c8042254	oracle-absent	public/models/community-candidates/merkava3d_source.glb	oracle absent here (/models/community-candidates/merkava3d_source.glb)
 stamp	gate	merkava4	7a8550db790dbd68	8a08f6f0be74ae91	oracle-absent	public/models/community-candidates/merkava4_source.glb	oracle absent here (/models/community-candidates/merkava4_source.glb)
 stamp	gate	type89	75a12202d90a29a8	3f6fff507d37d77d	oracle-absent	public/models/community-candidates/type89_x_source.glb	oracle absent here (/models/community-candidates/type89_x_source.glb)
-tool	anatomy	e72252c7dd4d6194
-tool	centering	e0e6e9e0201e5803
+tool	anatomy	d781c24e12461b42
+tool	centering	9ee5f96862cb06c1
 tool	controls	e22ca4a12022c981
 tool	fills	384657f2143d5ce5
 tool	gate	ad25eda48dea2807
 tool	gunLines	0bbe9e464815a49a
-tool	icons	3478c4c7bca3cd74
+tool	icons	3dc9a9046c1df085
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
 tool	seats	be3729eeb10d19ac
