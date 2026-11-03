@@ -29,6 +29,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statfsS
 import { join, resolve } from 'node:path';
 import { SHOTS, TOOL } from './paths.mjs';
 import { CAPTURE_LOCK_DIR, CAPTURE_QUEUE_DIR } from '../capture-lock.mjs';
+import { CINEMA_LEASE_OVER_EXIT } from '../media-production/lease-exit.mjs';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => { const [k, v = 'true'] = a.slice(2).split('='); return [k, v]; }));
@@ -252,7 +253,7 @@ async function renderJobs(label, all, file) {
     if (!stopping) writeFileSync(leaseMark, new Date().toISOString());
     if (fifo2) fifo2Base = fifo2Holds() ?? fifo2Base;
     if (stopping) throw new Error(`stopped by a signal in ${label}`);
-    if (code === 75 && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
+    if (code === CINEMA_LEASE_OVER_EXIT && keepPlace) continue; // lease over: the remaining jobs rejoin the queue at the stamp
     if (code === 0) continue; // every job rendered: the next pass finds nothing pending
     const newly = jobs.filter(j => !done(j) && errorsOf(j).length);
     if (!newly.length) throw new Error(`${label} failed (${code})`);

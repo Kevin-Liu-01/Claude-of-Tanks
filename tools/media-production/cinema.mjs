@@ -17,6 +17,7 @@ import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createCaptureLock, stampBehindWaiting, ticketAt } from '../capture-lock.mjs';
 import { digest, sourceDigest, contactSheet, leaseClock, cinemaLeaseMs, CINEMA_LEASE_CAP_MIN } from './pipeline.mjs';
+import { CINEMA_LEASE_OVER_EXIT } from './lease-exit.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
 const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
@@ -31,9 +32,9 @@ const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,po
   [--out=shots/cinema] [--resume=true] [--port=5381] [--cache-dir=<vite cache>] [--ticket-stamp=<ms>] [--lease-min=<minutes>]
   or --jobs=jobs.json: an array of jobs with the same keys (without "--"); every job needs its own "out".
 --ticket-stamp joins the capture queue at that place (a run split over leases keeps its first ticket's place);
---lease-min ends the capture lease before a film that would carry it past the budget, exit 75: resume the rest.
+--lease-min ends the capture lease before a film that would carry it past the budget, exit ${CINEMA_LEASE_OVER_EXIT}: resume the rest.
   The budget is the 18-min hold cap unless --lease-min asks for less; a take still running two minutes past it stops at
-  its next frame (exit 75; the resumed batch renders it again).
+  its next frame (exit ${CINEMA_LEASE_OVER_EXIT}; the resumed batch renders it again).
 --fresh-page=0 keeps one page for the whole batch; by default a film that follows another loads the Studio afresh.
 Film settings default to the scene's "film" block, then the Studio defaults (30 fps, 180°, 8 samples
 adaptive to 64 on fast motion, gaussian). Speed ramps come from the scene's film.speed keys.`;
@@ -467,5 +468,5 @@ try {
   }
 }
 if (jobs.some(job => job.receipt.errors.length)) process.exitCode = 1;
-else if (leaseOver) process.exitCode = 75;
+else if (leaseOver) process.exitCode = CINEMA_LEASE_OVER_EXIT; // lease over: not the selftests' STARVED 75
 for (const job of jobs) console.log(`[cinema] receipt ${job.receiptFile}`);

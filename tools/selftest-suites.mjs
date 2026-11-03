@@ -813,6 +813,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
+    // 2026-11-02 audit S5: cinema's lease-over exit is its own number, not the selftests' STARVED 75
+    'tools/media-production/lease-exit.selftest.mjs',
     'tools/media-r5/motion-type.selftest.mjs',
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
