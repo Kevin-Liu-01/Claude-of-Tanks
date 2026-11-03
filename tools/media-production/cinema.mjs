@@ -195,7 +195,9 @@ const errors = [];
 let pageMap = null, pageFilmed = false;
 const openStudio = async (mapId) => {
   const map = mapId ?? 'verdant';
-  await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: READY_MS });
+  // _bootretry at the page's cap: index.html replaces a document that is silent for a minute before ready, and a
+  // loaded dev server's slow transform is that minute; capped, the page keeps its frame and READY_MS decides (lab.mjs)
+  await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag&_bootretry=9-lab`, { waitUntil: 'domcontentloaded', timeout: READY_MS });
   await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: READY_MS, polling: 500 });
   await page.evaluate(async () => {
     const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');

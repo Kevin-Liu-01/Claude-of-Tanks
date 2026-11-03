@@ -246,7 +246,12 @@ try {
         await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
       }
       try {
-        await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: BOOT_MS });
+        // _bootretry at the page's cap (index.html: a silent minute before ready replaces the document, at most
+        // MAX_AUTO_RELOADS times, the count read from the URL): a dev server's slow transform under load is that silent
+        // minute, and the page's own reload lost the lab's frame mid-wait (11-03: s98 and s54, "context was destroyed",
+        // then "detached Frame"). Capped, the page shows its retry notice (DOM only, never in a capture) and the lab's
+        // own boot waits and retries decide.
+        await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag&_bootretry=9-lab`, { waitUntil: 'domcontentloaded', timeout: BOOT_MS });
         await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: BOOT_MS });
         pageMap = map; pageUsed = false;
         return;
@@ -286,6 +291,100 @@ try {
   }, camera);
   const capture = (w, h) => page.evaluate(size => window.__STUDIO.capture(size), { width: w, height: h });
   const save = (path, cap) => { writeFileSync(path, Buffer.from(cap.dataURL.split(',')[1], 'base64')); return path; };
+  // The hero's cover on a review film's frames (11-03: two blind critics' FIXes were things the world model cannot see,
+  // grass, bushes, low walls, props, wires and dust across the hull, and the hull small, at an edge or dark). At one
+  // instant, straight through the renderer at 320x180 (no post chain: its grain and jitter move every pixel between two
+  // renders): the hero alone in flat white on black (its outline, F), then the whole scene, the late FX layer's dust and
+  // smoke included, once with the hero flat white (W) and once flat black (K). Only the hero's colour differs between W
+  // and K, so (W - K) / F is how much of the hull shows through whatever lies nearer the lens: 0 behind a wall, 1 - alpha
+  // behind dust, 1 in the open. One capture of the frame as filmed gives the hull's and its surround's brightness.
+  // Per frame: size (outline share of the frame), visible (mean seen share over the outline), hidden (share of the
+  // outline under half seen), edgePx (outline pixels on the frame's border), bbox, lum and ringLum.
+  // <take>.cover.json beside the frames; COT_LAB_HERO_COVER=0 leaves it out; a failure is logged, never fatal.
+  const COVER = process.env.COT_LAB_HERO_COVER !== '0';
+  const heroCover = () => Promise.race([page.evaluate(async ({ w, h, lateFx }) => {
+    const D = window.__DEBUG, S = window.__STUDIO, scene = D.scene, a = S.listActors()[0];
+    if (!a) return { error: 'no hero' };
+    let root = null, best = Infinity;
+    for (const c of scene.children) {
+      if (c.name !== `tank_${a.id}`) continue;
+      const d = Math.hypot(c.position.x - a.pos[0], c.position.z - a.pos[1]);
+      if (d < best) { best = d; root = c; }
+    }
+    if (!root || best > 4) return { error: `no hero root (${best.toFixed(1)} m)` };
+    if (!window.__LAB_WHITE) {
+      let basic = null;
+      scene.traverse((o) => { if (!basic && o.isMesh && o.material?.type === 'MeshBasicMaterial') basic = o.material; });
+      if (!basic) return { error: 'no basic material to clone' };
+      const m = basic.clone();
+      Object.assign(m, { map: null, alphaMap: null, transparent: false, opacity: 1, fog: false, vertexColors: false, toneMapped: false, depthTest: true, depthWrite: true });
+      m.color.setRGB(1, 1, 1); m.needsUpdate = true;
+      const k = m.clone(); k.color.setRGB(0, 0, 0); k.needsUpdate = true;
+      window.__LAB_WHITE = m; window.__LAB_BLACK = k;
+    }
+    const WHITE = window.__LAB_WHITE, BLACK = window.__LAB_BLACK;
+    const img = new Image(); img.src = S.capture({ width: w, height: h }).dataURL; await img.decode();
+    const bc = new OffscreenCanvas(w, h), bg2 = bc.getContext('2d'); bg2.drawImage(img, 0, 0, w, h);
+    const B = bg2.getImageData(0, 0, w, h).data;
+    const r = D.renderer, cam = D.camera, size = cam.position.clone();
+    const raw = () => {
+      r.getSize(size); const pr = r.getPixelRatio(), aspect = cam.aspect, mask = cam.layers.mask;
+      try {
+        r.setPixelRatio(1); r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+        cam.layers.mask = mask | (1 << lateFx);
+        r.setRenderTarget(null); r.render(scene, cam);
+        const c = new OffscreenCanvas(w, h), g = c.getContext('2d'); g.drawImage(r.domElement, 0, 0, w, h);
+        return g.getImageData(0, 0, w, h).data;
+      } finally {
+        cam.layers.mask = mask;
+        r.setPixelRatio(pr); r.setSize(size.x, size.y, false); cam.aspect = aspect; cam.updateProjectionMatrix();
+      }
+    };
+    const parts = []; root.traverse((o) => { if (o.material) parts.push([o, o.material]); });
+    const paint = (m) => { for (const [o] of parts) o.material = m; };
+    const kids = scene.children, shown = kids.map((k) => k.visible);
+    const bgd = scene.background, fog = scene.fog, clear = r.getClearColor(WHITE.color.clone()), alpha = r.getClearAlpha();
+    let F, Wt, K;
+    try {
+      paint(WHITE); Wt = raw();
+      paint(BLACK); K = raw();
+      paint(WHITE); scene.background = null; scene.fog = null; r.setClearColor(0x000000, 1);
+      kids.forEach((k) => { k.visible = k === root; }); F = raw();
+    } finally {
+      for (const [o, m] of parts) o.material = m;
+      kids.forEach((k, i) => { k.visible = shown[i]; });
+      scene.background = bgd; scene.fog = fog; r.setClearColor(clear, alpha);
+    }
+    const n = w * h, fp = new Uint8Array(n), dil = new Uint8Array(n), tmp = new Uint8Array(n);
+    const sum = (P, j) => P[j] + P[j + 1] + P[j + 2];
+    let fpN = 0, edgePx = 0, x0 = w, y0 = h, x1 = -1, y1 = -1, seen = 0, hidden = 0, lum = 0, lumW = 0;
+    const luma = (j) => 0.2126 * B[j] + 0.7152 * B[j + 1] + 0.0722 * B[j + 2];
+    for (let i = 0; i < n; i++) {
+      const f = sum(F, i * 4);
+      if (f <= 60) continue;
+      fp[i] = 1; fpN++;
+      const v = Math.max(0, Math.min(1, (sum(Wt, i * 4) - sum(K, i * 4)) / f));
+      seen += v; if (v < 0.5) hidden++;
+      lum += v * luma(i * 4); lumW += v;
+      const x = i % w, y = (i / w) | 0;
+      if (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) edgePx++;
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    if (!fpN) return { size: 0, visible: null, hidden: null, edgePx: 0 };
+    const R = 4; // the outline grown 4 px: its ring is the surround
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let on = 0; for (let k = Math.max(0, x - R); k <= Math.min(w - 1, x + R) && !on; k++) on = fp[y * w + k]; tmp[y * w + x] = on;
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let on = 0; for (let k = Math.max(0, y - R); k <= Math.min(h - 1, y + R) && !on; k++) on = tmp[k * w + x]; dil[y * w + x] = on;
+    }
+    let ring = 0, ringN = 0;
+    for (let i = 0; i < n; i++) if (dil[i] && !fp[i]) { ring += luma(i * 4); ringN++; }
+    const r3 = (v) => Math.round(v * 1000) / 1000;
+    return { size: r3(fpN / n), visible: r3(seen / fpN), hidden: r3(hidden / fpN), edgePx,
+      bbox: [r3(x0 / w), r3(y0 / h), r3((x1 + 1) / w), r3((y1 + 1) / h)],
+      lum: Math.round(lumW ? lum / lumW : 0), ringLum: Math.round(ringN ? ring / ringN : 0) };
+  }, { w: 320, h: 180, lateFx: 30 /* src/fx/layers.ts LATE_FX_LAYER */ }), new Promise((_, no) => setTimeout(() => no(new Error('hero cover timed out')), 90000))]);
   const tankIds = await page.evaluate(() => window.__STUDIO.TANK_IDS);
   writeFileSync(join(out, 'tank-ids.json'), JSON.stringify(tankIds, null, 1));
   const defaultLineup = ['abramsx', 'kf51b', 'leo2a7v', 'challenger_3', 'm1a2_sepv3', 'leclerc_xlr', 't14', 'k2', 'type10b', 't90m']
@@ -580,12 +679,21 @@ try {
           // --film-frames=N: review sheets only (N evenly spaced captures; the timeline still steps every frame)
           const sparse = args['film-frames'] ? Number(args['film-frames']) : 0;
           const want = sparse ? new Set(Array.from({ length: sparse }, (_, i) => Math.round(i * (frames - 1) / Math.max(1, sparse - 1)))) : null;
+          // the hero's cover on about 12 of a review's frames (every 8th of 99)
+          const coverAt = new Set(COVER && want ? [...want].sort((p, q) => p - q).filter((_, i, all) => i % Math.max(1, Math.round(all.length / 12)) === 0) : []);
+          const cover = [];
           for (let f = 0; f < frames; f++) {
             if (f) await page.evaluate(target => window.__STUDIO.advanceFrame(target - window.__STUDIO.fxTimeMs), f * 1000 / fps);
             else await page.evaluate(() => window.__STUDIO.advanceFrame(0));
             if (want && !want.has(f)) continue;
             if (f % 15 === 0 || want) await page.evaluate(async () => { const D = window.__DEBUG; for (let j = 0; j < 24; j++) { if (!D.world.warmTerrainLookahead(D.camera.position, 1)) break; await new Promise(r => requestAnimationFrame(r)); } });
             save(join(dir, `f${String(f).padStart(5, '0')}.png`), await capture(WIDTH, HEIGHT));
+            if (coverAt.has(f)) cover.push({ f, ...(await heroCover().catch((e) => ({ error: String(e?.message ?? e).split('\n')[0].slice(0, 160) }))) });
+          }
+          if (cover.length) {
+            writeFileSync(join(out, `${job.name}.cover.json`), JSON.stringify({ fps, w: 320, h: 180, frames: cover }, null, 1));
+            const bad = cover.filter((c) => c.error);
+            if (bad.length) console.log(`[lab] ${job.name}: hero cover failed on ${bad.length} of ${cover.length} frames (${bad[0].error})`);
           }
           const mp4 = join(out, `${job.name}.mp4`);
           const { execFileSync } = await import('node:child_process');
