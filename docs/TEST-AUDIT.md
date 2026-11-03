@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1507 | 163.3 |
+| KEEP | 1508 | 163.5 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1144.5 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2163 | 1308.2 | 231.5 |
-| After: the default tier | 1507 | 163.3 | 36.9 |
+| Before: every receipt (npm test without the tiers) | 2164 | 1308.3 | 231.5 |
+| After: the default tier | 1508 | 163.5 | 36.9 |
 
 Default tier: 12.5 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
 
@@ -802,7 +802,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/module-outside-share.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite) | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1507)
+## KEEP (1508)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -1107,6 +1107,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/ui/garageFacetFilter.selftest.mjs` | 6.8 | KEEP | interface contract, 6.8 s: Receipt: the Garage roster filter narrows the real fleet by class, role, era and facet search, its chip counts | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/gunFacePlates.selftest.mjs` | 6.8 | KEEP | vehicle rule, 6.8 s: 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/viteCssInTsMinify.selftest.mjs` | 6.6 | KEEP | tool contract, 6.6 s: 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/southAfrica.selftest.mjs` | 6.5 | KEEP | vehicle rule, 6.5 s: release 269 (owner: "flesh out south african and australian tank trees"): the South African line's Semel and O | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/owner-kit-targets.selftest.mjs` | 6.1 | KEEP | tool contract, 6.1 s: 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/audioEngine.selftest.mjs` | 6.0 | KEEP | audio contract, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/audio/countdownAudio.selftest.mjs` | 6.0 | KEEP | audio contract, 6.0 s: 2026-10-14: the countdown is heard (the hull, the tanks, the world, once; 3-2-1 and one horn, solo and network | default tier (npm test, the release gate; lane mode by its closure) |

@@ -621,6 +621,18 @@
    "name": "Object 695",
    "card": "/brand/og-r2/tanks/object695-card.jpg"
   },
+  "olifant_mk1": {
+   "name": "Olifant Mk 1",
+   "card": null
+  },
+  "olifant_mk1a": {
+   "name": "Olifant Mk 1A",
+   "card": null
+  },
+  "olifant_mk1b": {
+   "name": "Olifant Mk 1B",
+   "card": null
+  },
   "olifant_mk2": {
    "name": "Olifant Mk 2",
    "card": null
@@ -675,6 +687,10 @@
   },
   "sabra_mk2": {
    "name": "Sabra Mk 2",
+   "card": null
+  },
+  "semel": {
+   "name": "Semel",
    "card": null
   },
   "shot_kal": {
@@ -956,6 +972,10 @@
   "tos1a_tagil": {
    "name": "TOS-1A Tagil",
    "card": "/brand/og-r2/tanks/tos1a_tagil-card.jpg"
+  },
+  "ttd": {
+   "name": "Olifant TTD",
+   "card": null
   },
   "type10": {
    "name": "Type 10",
