@@ -945,6 +945,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
+    // 2026-11-02 audit R3: the preset broadcast's one owner (isolated, never nested) and governor steps under a recovery cap
+    'src/engine/qualityBroadcast.selftest.mjs',
     'src/engine/temporalAA.selftest.mjs',
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
