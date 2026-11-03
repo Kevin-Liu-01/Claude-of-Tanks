@@ -582,8 +582,9 @@ export function createGarageArchitectureController(
   const ensure = (variant: GarageVariant, speculative: boolean): Promise<GarageEnvironmentBuild | null> => {
     const existing = packs.get(variant.architecture);
     if (existing) {
-      // a selection takes over a prewarm of the same pack: it is no longer cancellable
-      if (!speculative) { existing.speculative = false; existing.cancelled = false; }
+      // a fresh request revives a cancelled pack; a selection takes over a prewarm of it (no longer cancellable)
+      existing.cancelled = false;
+      if (!speculative) existing.speculative = false;
       if (existing.phase === 'building' && existing.promise) return existing.promise;
       return Promise.resolve(existing.build);
     }
