@@ -233,6 +233,11 @@ own; a seat that goes stale stops its tank and nobody else's.
 Each step lands with its receipts: the actor's selftest grows the lobby cases; a couch e2e drives several phone pages
 against one battle (the pad e2e's harness, several phones); a frame-time receipt per layout.
 
+Step 1's e2e is `tools/couch-e2e.browser.mjs`, run by hand. It opens the lobby, joins up to eight phone pages from
+the QR code's address and checks that each seat drives only its own tank, with no bot and no multiplayer session. It
+measures the input latency with every phone linked and checks that a phone which vanishes stops its tank. Run it with
+`node tools/couch-e2e.browser.mjs --phones=8 --joinPhones=4`.
+
 ## Decided on the owner's behalf
 
 - Split screen stops at four panes. Five to eight players share one camera, because eight panes on one TV are each about

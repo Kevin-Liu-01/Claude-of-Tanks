@@ -9,6 +9,7 @@ import { createModal } from './modal.ts';
 import type { ModalController } from './modal.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
+import { segmented, wireRoving } from './components/components.ts';
 import { formatPadCode, padPageUrl, PAD_LOBBY_SEATS } from '../pad/padProtocol.ts';
 import { encodeQr, qrSvgPath } from '../pad/qr.ts';
 import type { PadLobbyView } from '../pad/padLobby.ts';
@@ -32,8 +33,6 @@ const LOBBY_CSS = `
 .cot-couch-seat[data-state='here']{border-style:solid;border-color:var(--accent);color:var(--ink-1);background:var(--accent-wash);}
 .cot-couch-seat[data-state='away']{border-style:solid;color:var(--ink-3);}
 .cot-couch-seat[data-side='bravo'][data-state='here']{border-color:var(--team-enemy);}
-.cot-couch-sides{display:flex;gap:var(--s2);}
-.cot-couch-sides button[aria-pressed='true']{border-color:var(--accent);color:var(--ink-1);}
 .cot-couch-note{margin:0;font-size:var(--fs-14);color:var(--ink-2);}
 @media (max-width:640px){.cot-couch{grid-template-columns:1fr;justify-items:start;}}
 `;
@@ -99,18 +98,10 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
     seatCells.push(cell);
   }
   const togetherOnly = (COUCH_RULES.togetherOnly as readonly string[]).includes(request.gameMode);
-  const sidesRow = side.appendChild(document.createElement('div'));
-  sidesRow.className = 'cot-couch-sides';
-  sidesRow.setAttribute('role', 'group');
-  sidesRow.setAttribute('aria-label', t('couch.sides'));
   let sides: CouchSides = 'together';
-  const sideButtons = (['together', 'teams'] as const).map((value) => {
-    const control = button(sidesRow, 'secondary', t(`couch.sides.${value}`));
-    control.dataset.sides = value;
-    control.disabled = togetherOnly && value === 'teams';
-    control.addEventListener('click', () => { sides = value; paint(lobby.view); });
-    return control;
-  });
+  side.insertAdjacentHTML('beforeend', segmented({ label: t('couch.sides'), className: 'cot-couch-sides', value: sides,
+    options: (['together', 'teams'] as const).map((value) => ({ value, label: t(`couch.sides.${value}`), disabled: togetherOnly && value === 'teams' })) }));
+  wireRoving(side.lastElementChild as HTMLElement, (value) => { sides = value as CouchSides; paint(lobby.view); });
 
   const end = button(footer, 'quiet', t('couch.end'));
   const reopen = button(footer, 'secondary', t('couch.reopen'));
@@ -151,7 +142,6 @@ export function openCouchLobby(runtime: CouchRuntime, request: CouchLobbyRequest
       cell.dataset.side = sideOf.get(seat) ?? 'alpha';
       cell.setAttribute('aria-label', t(entry ? (entry.presence === 'here' ? 'couch.seat.here' : 'couch.seat.away') : 'couch.seat.free', { n: seat }));
     }
-    for (const control of sideButtons) control.setAttribute('aria-pressed', String(control.dataset.sides === sides));
     start.disabled = !inPlay.length || view.state === 'ended';
   }
   paint(lobby.view);

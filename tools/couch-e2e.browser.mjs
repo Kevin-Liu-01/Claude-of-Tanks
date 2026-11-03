@@ -125,7 +125,7 @@ try {
 
   // ---- the battle -----------------------------------------------------------------------------------------------------
   report.step = 'battle';
-  if (phones > 4) await desktop.evaluate(() => document.querySelector('.cot-couch-sides [data-sides="teams"]')?.click());
+  if (phones > 4) await desktop.evaluate(() => document.querySelector('.cot-couch-sides [data-value="teams"]')?.click());
   await desktop.evaluate(() => document.querySelector('.cot-couch-modal .cot-c-btn--primary')?.click());
   await desktop.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.couch && window.__DEBUG.game.preBattleS <= 0,
     { timeout: 300_000, polling: 250 });
