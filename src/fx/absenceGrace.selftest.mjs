@@ -3,7 +3,10 @@
 // ended their trails for good on the first missing frame, a reappearing missile kept its ended trail slot (it flew
 // trail-less), and the 43rd drone of a frame was never marked seen (it was read as a flight that ended). Now:
 //  - a missile trail and a wire seen again after they ended begin anew (the ended one dissolves or fades keyless);
-//  - a tracer missing one frame keeps its record (its belt place), a struck one still goes at once;
+//  - a tracer missing from the frames keeps its record (its belt place) and draws no stale dash through
+//    TRACER_ABSENCE_GRACE_S of the clock (review r2: a peer's dropped row hides a round a whole snapshot interval, 50 ms
+//    at 20 Hz: 3 frames at 60 Hz, 7 at 144; the grace was one frame), a struck one still goes at once, and past the
+//    grace a missing one is released;
 //  - a guided round ends its trail and wire only past MISSILE_ABSENCE_GRACE_S, once (a frozen clock repeated it);
 //  - a drone past the pool's capacity is tracked, not ended.
 import assert from 'node:assert/strict';
@@ -11,7 +14,7 @@ import { createRequire } from 'node:module';
 import * as THREE from 'three';
 import { createMissileTrails } from './missileTrails.ts';
 import { createMissileWires } from './missileWires.ts';
-import { createProjectileTracers } from './projectileTracers.ts';
+import { TRACER_ABSENCE_GRACE_S, createProjectileTracers } from './projectileTracers.ts';
 import { createDronePresentation } from './dronePresentation.ts';
 import { createSceneLightUniforms } from './sceneLight.ts';
 import { createFx } from './effects.ts';
@@ -46,23 +49,41 @@ globalThis.document ??= { createElement: () => createCanvas(1, 1) };
   assert.equal(wires.parted(w1), false);
 }
 
-// ---- a tracer missing one frame keeps its belt place ----
-{
-  const tr = createProjectileTracers({ shooter: () => ({ id: 'm1a1_abrams_hc', nation: 'USA' }), scene: new THREE.Scene(), now: () => 10, capacity: 64 });
+// ---- a tracer missing from the frames for a snapshot interval keeps its belt place and draws no stale dash ----
+for (const hz of [60, 144]) {
+  let now = 10;
+  const tr = createProjectileTracers({ shooter: () => ({ id: 'm1a1_abrams_hc', nation: 'USA' }), scene: new THREE.Scene(), now: () => now, capacity: 64 });
   const shell = (id, x) => ({ id, shooterId: 'a', pos: new THREE.Vector3(x, 2, 50), vel: new THREE.Vector3(0, 0, 850), ageS: 0.2, distM: 170,
     spec: { type: 'AP', caliberMm: 12.7 } });
-  const frame = (shells) => { tr.begin(); for (const s of shells) tr.write(s); tr.end(); return tr.mesh.geometry.instanceCount; };
+  const frame = (shells) => { now += 1 / hz; tr.begin(); for (const s of shells) tr.write(s); tr.end(); return tr.mesh.geometry.instanceCount; };
+  const gapFrames = Math.round(0.05 * hz); // one 20 Hz snapshot interval
   // a NATO belt: the first of every five rounds glows
   const burst = Array.from({ length: 5 }, (_, i) => shell(100 + i, i));
-  assert.equal(frame(burst), 1, 'one tracer in five');
-  frame(burst.filter((s) => s.id !== 101)); // a dark round drops out of one frame
-  assert.equal(frame(burst), 1, 'seen again, it is still dark: its belt place kept (a new record took the next, a tracer)');
+  assert.equal(frame(burst), 1, `${hz} Hz: one tracer in five`);
+  // a dark round's row drops out of one snapshot
+  for (let f = 0; f < gapFrames; f++) frame(burst.filter((s) => s.id !== 101));
+  assert.equal(tr.stats().tracked, 5, `${hz} Hz: a round missing 50 ms is still tracked`);
+  assert.equal(frame(burst), 1, `${hz} Hz: seen again, it is still dark: its belt place kept (a new record took the next, a tracer)`);
+  // the lit round's row drops out: no last dash is drawn for a round that has not ended
+  for (let f = 0; f < gapFrames; f++) {
+    assert.equal(frame(burst.slice(1)), 0, `${hz} Hz: a lit round missing (frame ${f + 1} of ${gapFrames}) draws no stale dash`);
+  }
+  assert.equal(frame(burst), 1, `${hz} Hz: seen again it glows on`);
   // struck: gone at once
   tr.strike(100, [0, 2, 60]);
   frame(burst.slice(1));
-  assert.equal(tr.stats().tracked, 4, 'a struck round is released at once');
+  assert.equal(tr.stats().tracked, 4, `${hz} Hz: a struck round is released at once`);
+  // a round missing past the grace has ended
+  let missed = 0;
+  while (missed + 1 / hz < TRACER_ABSENCE_GRACE_S - 1e-9) { frame([]); missed += 1 / hz; }
+  assert.equal(tr.stats().tracked, 4, `${hz} Hz: inside the grace the rounds are held`);
   frame([]); frame([]);
-  assert.equal(tr.stats().tracked, 0, 'rounds missing two frames are released');
+  assert.equal(tr.stats().tracked, 0, `${hz} Hz: past it they are released`);
+  // a frozen clock holds a missing round (no time has passed)
+  frame(burst);
+  for (let f = 0; f < 20; f++) { tr.begin(); tr.end(); }
+  assert.equal(tr.stats().tracked, 5, `${hz} Hz: a frozen clock ages no absence`);
+  tr.reset();
 }
 
 // ---- the 43rd drone of a frame is tracked, not ended ----
@@ -111,4 +132,4 @@ globalThis.document ??= { createElement: () => createCanvas(1, 1) };
   fx.resetAll();
 }
 
-console.log('absenceGrace.selftest: a round missing from a frame has not ended; trails and wires seen again begin anew; tracers keep their belt place; every drone is tracked');
+console.log('absenceGrace.selftest: a round missing from a frame has not ended; trails and wires seen again begin anew; tracers keep their belt place and draw no stale dash through a 50 ms absence at 60 and 144 Hz; every drone is tracked');
