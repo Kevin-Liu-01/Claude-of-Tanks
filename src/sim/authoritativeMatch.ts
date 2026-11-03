@@ -100,7 +100,7 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
+import { createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
@@ -142,6 +142,7 @@ import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
 import { createCrushPressLedger } from './crushPress.ts';
+import { botShotClear, deliverShellHit, deliverShotFired } from './botEvents.ts';
 import { autoRightsItself } from './botDriven.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
@@ -1898,18 +1899,6 @@ export function createAuthoritativeMatch({
     return shellSpec;
   }
 
-  function botShotIsClear(
-    entity: AuthoritativeEntity,
-    shellSpec: AuthoritativeSpec['gun']['shells'][number],
-  ): boolean {
-    if (!entity.bot) return true;
-    const friendlyRisk = botFriendlyFireRisk(
-      entity, entity.input.aimPoint, shellSpec, entities,
-    );
-    if (!friendlyRisk) return true;
-    entity.aiCtl?.notifyFriendlyBlocked?.(friendlyRisk);
-    return false;
-  }
 
   function selectFallbackAfterShot(
     entity: AuthoritativeEntity,
@@ -1922,13 +1911,6 @@ export function createAuthoritativeMatch({
     if (!entity.bot) emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
   }
 
-  function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
-    if(isGunship(entity))return;
-    for (const other of entities) {
-      if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
-      if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
-    }
-  }
 
   function emitShellFired(
     entity: AuthoritativeEntity,
@@ -1961,7 +1943,8 @@ export function createAuthoritativeMatch({
 
   function tryFire(entity: AuthoritativeEntity): void {
     const shellSpec = selectedShellForFire(entity);
-    if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
+    // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the solo step's gate too)
+    if (!shellSpec || !botShotClear(entity, entity.input.aimPoint, shellSpec, entities)) return;
     const combat = entity.combat;
     const gun = gunWorldPose(entity, shellSpec);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
@@ -1985,7 +1968,8 @@ export function createAuthoritativeMatch({
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
-    notifyEnemyBotsOfShot(entity);
+    // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
+    deliverShotFired(entities, entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
   }
 
@@ -1996,18 +1980,9 @@ export function createAuthoritativeMatch({
   ): void {
     // (the scoreboard's damage is the hull points the hits took off, the figure every readout shows: hpRemoved)
     if (shooter && hit.hpRemoved > 0) shooter.damage += hit.hpRemoved;
-    if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
-      ...hit,
-      targetId: target?.id || null,
-    });
-    // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
-    if (!shooter || !target || isGunship(shooter)) return;
-    for (const ally of entities) {
-      if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
-          (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {
-        selfHit: ally === target, damaging: hit.damage > 0, kind: hit.kind,
-      });
-    }
+    // the shooter's controller hears the result, then (bot philosophy r1: a bounce is still a shot at the team) the struck
+    // hull reacts and its teammates gain intel — sim/botEvents.ts, the solo step's delivery (2026-11-02 audit M6)
+    deliverShellHit(entities, shooter, target, shooter?.aiCtl ? { ...hit, targetId: target?.id || null } : hit);
   }
 
   /**

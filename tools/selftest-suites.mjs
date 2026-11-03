@@ -1760,6 +1760,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
     'src/sim/hiddenWorldEvents.selftest.mjs',
+    'src/sim/botEvents.selftest.mjs', // 2026-11-02 audit M6: shots, hits and blocked shots reach the bots through one delivery on both drivers
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',

@@ -121,6 +121,7 @@ import { getStoredDifficulty } from './input.ts';
 import { createMatchSpotting, CAMO_PAINT_BONUS } from '../sim/spotting.ts';
 import { createCrushPressLedger, type CrushPressLedger } from '../sim/crushPress.ts';
 import { autoRightsItself } from '../sim/botDriven.ts';
+import { botShotClear, deliverShellHit, deliverShotFired } from '../sim/botEvents.ts';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.ts';
 // EQUIPMENT SYSTEM (game/equipment.ts): per-tank loadouts — the player's
 // persisted picks, per-role AI defaults, and the equipMults record the
@@ -1933,25 +1934,6 @@ function emitHitStateEvents(bus: EventBus, event: SoloHitEvent): void {
   }
 }
 
-function notifyTeamUnderFire(
-  game: SoloGameState,
-  shooter: SoloPooledEntity | undefined,
-  target: SoloPooledEntity | null,
-  event: SoloHitEvent,
-): void {
-  if (!isActiveSoloEntity(shooter) || !isActiveSoloEntity(target) ||
-      shooter.team === target.team || isGunship(shooter)) return;
-  for (const entity of game.tanks) {
-    if (entity.team !== target.team || !entity.aiCtl || entity.combat.destroyed) continue;
-    if (entity !== target &&
-        entity.state.pos.distanceToSquared(target.state.pos) > 200 * 200) continue;
-    // bot philosophy r1: the struck hull learns it was ITS hull (reaction picker), and whether the shell bit
-    entity.aiCtl.notifyUnderFire?.(shooter, {
-      selfHit: entity === target, damaging: (event.damage || 0) > 0, kind: event.kind,
-    });
-  }
-}
-
 /** Emit the derived bus events flagged inside one HitEvent. */
 function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
   shellSpec: KillSourceShell | null = null): void {
@@ -1968,9 +1950,10 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
     announceDestroyed(game, bus, target, event.attackerId,
       event.ammoRacked ? 'ammorack' : 'shot', event.attackerSource ?? null);
   }
+  // the shooter's controller hears the result, then the struck side's under fire (bot philosophy r1: the struck hull learns
+  // it was ITS hull, and whether the shell bit) — sim/botEvents.ts, the authority's delivery (2026-11-02 audit M6)
   const shooter = game.tankById.get(event.attackerId);
-  shooter?.aiCtl?.notifyShellResult(event);
-  notifyTeamUnderFire(game, shooter, target, event);
+  deliverShellHit(game.tanks, isActiveSoloEntity(shooter) ? shooter : null, isActiveSoloEntity(target) ? target : null, event);
 }
 
 function announceDestroyed(
@@ -2114,16 +2097,6 @@ function emitShellFired(
   bus.emit('shell:fired', _firedEv);
 }
 
-function notifyEnemyShot(game: SoloGameState, shooter: SoloEntity): void {
-  if(isGunship(shooter))return;
-  for (const entity of game.tanks) {
-    if (entity.team === shooter.team || !entity.aiCtl || entity.combat.destroyed) continue;
-    if (entity.state.pos.distanceToSquared(shooter.state.pos) <= 500 * 500) {
-      entity.aiCtl.notifyEnemyFired?.(shooter);
-    }
-  }
-}
-
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
 function tryFire(
   game: SoloGameState,
@@ -2133,6 +2106,9 @@ function tryFire(
 ): void {
   const shellSpec = readyShellForFire(entity, bus);
   if (!shellSpec) return;
+  // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the authority's gate;
+  // 2026-11-02 audit M6: the solo step fired it)
+  if (!botShotClear(entity, entity.input.aimPoint, shellSpec, game.tanks)) return;
   const muzzleIndex = prepareMuzzleDirection(entity, shellSpec);
   if (muzzleIndex == null) return;
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -2167,7 +2143,8 @@ function tryFire(
   }
   // the round's own caliber prices the bloom, as the authority's does (spotting.ts fireCamoLossFor; 2026-11-02 audit M6)
   game.spotting?.notifyFired(entity.id, game.timeS, shellSpec.caliberMm);
-  notifyEnemyShot(game, entity);
+  // the other side's brains within earshot hear it (sim/botEvents.ts, the authority's delivery)
+  deliverShotFired(game.tanks, entity);
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   const shooter = game.tankById.get(shell.shooterId);
