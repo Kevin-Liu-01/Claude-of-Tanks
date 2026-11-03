@@ -8,10 +8,12 @@ import './m41Specs.ts';
 import './aresApcXSpecs.ts';
 import './denmarkSpecs.ts';
 import './ifvReplicaSpecs.ts';
+import './abramsSourceXSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { modernArmor } from './specHelpers.ts';
 import { m113Datums, type M113Mark } from './m113Datums.ts';
+import { ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -105,5 +107,42 @@ Object.assign(redback, { hp: 2700, weightTons: 42, enginePowerHp: 1000, topSpeed
   protectionSuite: { hardKillAps: true, softKillAps: false } });
 redback.visual = { ...redback.visual, ...ausDisruptive('31A') };
 
-registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback'],
-  { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1, redback });
+// ------------------------------------------------------------------------------------------------------ Abrams --
+// Australia fires tungsten, never depleted uranium: GD-OTS's 120 mm KEW-A2 APFSDS-T (the 2008 contract), with the M830A1
+// multipurpose round and the M908 obstacle-reduction round; KEW-A2's penetration at the M829A1's footing
+const kewA2 = { name: 'KEW-A2 APFSDS', type: 'APFSDS', caliberMm: 120, pen100Mm: 740, pen1000Mm: 680, pen2000Mm: 615,
+  dmg: 520, velocityMps: 1680, moduleDmg: 120, tracer: 'APFSDS' } as const;
+const ausAbramsShells = (base: typeof TANK_SPECS[string]['gun']['shells']) => [
+  { ...base.find((s) => s.type === 'APFSDS')!, ...kewA2 },
+  ...base.filter((s) => s.type !== 'APFSDS'),
+];
+
+// The M1A1 AIM SA (59 from 2006-07, 1st Armoured Regiment; retired 2024-26): a rebuilt US Army M1A1 to the AIM standard
+// with export armour (no depleted-uranium layer), the AGT1500 of 1,500 hp, about 61 t (the M1A2 "about five tonnes
+// heavier", Asian Military Review 2024); the Australian kit on the plain M1A1 build: the TMAPU on the bustle rack, the
+// longer two-tier rack, call-sign plates, the kangaroo and the disruptive three-tone (profiles/abramsAus.ts)
+const m1a1_aim_sa_aus = australian('m1a1_aim_sa_aus', 'm1a1', 'M1A1 AIM SA', 'modern', 'mbt');
+Object.assign(m1a1_aim_sa_aus.dims, { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 });
+Object.assign(m1a1_aim_sa_aus, { hp: 2400, weightTons: 61.3, enginePowerHp: 1500, topSpeedKmh: 67, reverseSpeedKmh: 25 });
+m1a1_aim_sa_aus.gun = { ...m1a1_aim_sa_aus.gun, reloadS: 6.2, baseAccuracy: 0.31, aimTimeS: 1.80,
+  shells: ausAbramsShells(m1a1_aim_sa_aus.gun.shells.map((s) => s.type === 'HEAT'
+    ? { ...s, name: 'M830A1 MPAT', pen100Mm: 600, pen1000Mm: 600, velocityMps: 1400 } : s)) };
+m1a1_aim_sa_aus.visual = { ...m1a1_aim_sa_aus.visual, ...ausDisruptive('21B') };
+
+// The M1A2 SEPv3 (75 ordered under LAND 907 Phase 2, deliveries from 2024): new SEPv3 turrets on rebuilt hulls, the
+// CROWS-LP, Trophy "fitted for future installation" and no ARAT (the 2024-26 photographs: the stock skirts and turret
+// flanks, empty Trophy brackets); 66 t. The US SEPv3's study build with its 'mounts' fit (profiles/abramsSourceX.ts);
+// its ARAT banks go from the armour, its width back to the stock skirts'
+const m1a2_sepv3_aus = australian('m1a2_sepv3_aus', 'm1a2_abrams_sepv3', 'M1A2 SEPv3 (Aus)', 'modern', 'mbt');
+Object.assign(m1a2_sepv3_aus.dims, { hullLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.structuralHullLengthM,
+  overallLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.overallLengthM, widthM: ABRAMS_SOURCE_X_MEASUREMENTS.standardWidthM, heightM: 3.18 });
+m1a2_sepv3_aus.armor = { ...m1a2_sepv3_aus.armor,
+  hullPlates: m1a2_sepv3_aus.armor.hullPlates.filter((plate) => plate.kind !== 'era'),
+  turretPlates: m1a2_sepv3_aus.armor.turretPlates.filter((plate) => plate.kind !== 'era') };
+Object.assign(m1a2_sepv3_aus, { hp: 2650, weightTons: 66, enginePowerHp: 1500, topSpeedKmh: 67, reverseSpeedKmh: 25 });
+m1a2_sepv3_aus.gun = { ...m1a2_sepv3_aus.gun, shells: ausAbramsShells(m1a2_sepv3_aus.gun.shells) };
+m1a2_sepv3_aus.visual = { ...m1a2_sepv3_aus.visual, ...ausDisruptive('42A') };
+delete m1a2_sepv3_aus.sourceStudyStatus;
+
+registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
+  { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1, redback, m1a1_aim_sa_aus, m1a2_sepv3_aus });

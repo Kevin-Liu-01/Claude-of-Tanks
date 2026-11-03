@@ -28,10 +28,15 @@ const member = (P: TankBuilderPort, owner: Owner, bucket: string, part: string, 
   put(P, owner, bucket, part, roundMember(a, b, r), [0, 0, 0]);
 const add3 = (p: XYZ, v: THREE.Vector3, s: number): XYZ => [p[0] + v.x * s, p[1] + v.y * s, p[2] + v.z * s];
 
+/** The Trophy fit: 'fitted' (the US SEPv3) or 'mounts', the brackets with no launcher, radar, counterweight or
+ * controller (release 269: Australia's M1A2 SEPv3 of 2024, "fitted for future installation" of Trophy). */
+export type Sepv3TrophyFit = 'fitted' | 'mounts';
+
 /** Trophy HV launcher assembly on one inclined turret flank: wall plate with bolts, four arms, the
  * launcher body with its armoured lid, dark countermeasure face and two MEFP muzzles, a bumper bar and
- * the cable run to the roof. Outer face at |x| 1.79 m, inside the 1.83 m skirt width. */
-function trophyLauncher(P: TankBuilderPort, side: -1 | 1): void {
+ * the cable run to the roof. Outer face at |x| 1.79 m, inside the 1.83 m skirt width. 'mounts' keeps the wall
+ * plate, bolts and arms and closes the arms with the launcher's empty interface plate. */
+function trophyLauncher(P: TankBuilderPort, side: -1 | 1, fit: Sepv3TrophyFit = 'fitted'): void {
   const plane: Plane = side > 0 ? RIGHT_SIDE : LEFT_SIDE;
   const { u, v, n } = planeFrame(plane);
   const basis = new THREE.Matrix4().makeBasis(u, v, n);
@@ -50,6 +55,10 @@ function trophyLauncher(P: TankBuilderPort, side: -1 | 1): void {
     const wall = Math.abs(turretSideX(side, y)) + .02, inner = outer - D;
     const len = Math.max(.05, inner - wall);
     put(P, 'turret', 'turretDark', 'trophy-arm', box(len, .05, .06), [s(inner - len / 2), y, zc + dz]);
+  }
+  if (fit === 'mounts') {
+    put(P, 'turret', 'turret', 'trophy-interface', box(.03, .34, .68), [s(outer - D + .015), yc, zc]);
+    return;
   }
   // launcher body, armoured lid, countermeasure face and muzzles
   put(P, 'turret', 'turret', 'trophy-launcher', box(D, H, L), [xc, yc, zc]);
@@ -139,11 +148,13 @@ function sponsonBox(P: TankBuilderPort): void {
 
 /** Roof electronics: Trophy controller with its conduit, two ammunition data link boxes, a GPS antenna
  * and the wind sensor. */
-function roofElectronics(P: TankBuilderPort): void {
+function roofElectronics(P: TankBuilderPort, fit: Sepv3TrophyFit = 'fitted'): void {
   const at = (x: number, z: number, lift: number): XYZ => [x, turretRoofY(x, z) + lift, z];
-  put(P, 'turret', 'turret', 'trophy-controller', box(.34, .22, .30), at(-.40, -1.75, .11));
-  put(P, 'turret', 'turretDark', 'trophy-controller-lid', box(.36, .014, .32), at(-.40, -1.75, .227));
-  member(P, 'turret', 'turretDark', 'trophy-cable', at(-.58, -1.75, .05), at(-1.02, -1.60, .03), .016);
+  if (fit === 'fitted') {
+    put(P, 'turret', 'turret', 'trophy-controller', box(.34, .22, .30), at(-.40, -1.75, .11));
+    put(P, 'turret', 'turretDark', 'trophy-controller-lid', box(.36, .014, .32), at(-.40, -1.75, .227));
+    member(P, 'turret', 'turretDark', 'trophy-cable', at(-.58, -1.75, .05), at(-1.02, -1.60, .03), .016);
+  }
   for (const x of [.35, .55]) put(P, 'turret', 'turretDark', 'adl-box', box(.16, .09, .12), at(x, -1.95, .045));
   put(P, 'turret', 'turretDetail', 'gps-antenna', cylY(.07, .07, .045, 16), at(.20, -2.08, .0225));
   put(P, 'turret', 'turretDark', 'wind-sensor', cylY(.012, .012, .36, 8), at(-.95, -1.85, .18));
@@ -165,12 +176,14 @@ function fenderStowage(P: TankBuilderPort): void {
   for (const z of [-2.45, -2.05]) put(P, 'hull', 'hullDetail', 'jerry-can', box(.18, .26, .35), [1.52, 1.405 + .13, z]);
 }
 
-export function buildAbramsSourceXSepv3Kit(P: TankBuilderPort): void {
-  for (const side of [-1, 1] as const) trophyLauncher(P, side);
-  trophyRadars(P);
-  trophyCounterweights(P);
+export function buildAbramsSourceXSepv3Kit(P: TankBuilderPort, fit: Sepv3TrophyFit = 'fitted'): void {
+  for (const side of [-1, 1] as const) trophyLauncher(P, side, fit);
+  if (fit === 'fitted') {
+    trophyRadars(P);
+    trophyCounterweights(P);
+  }
   auxiliaryPowerUnit(P);
   sponsonBox(P);
-  roofElectronics(P);
+  roofElectronics(P, fit);
   fenderStowage(P);
 }

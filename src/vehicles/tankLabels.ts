@@ -378,6 +378,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   strv105: { displayName: 'Strv 105', searchAliases: ['Stridsvagn 105', 'Strv 104', 'Swedish Centurion'] },
   olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
   redback: { displayName: 'AS21 Redback', shortName: 'Redback', searchAliases: ['Redback', 'AS21', 'Hanwha Redback', 'LAND 400 IFV', 'K21 Redback'] },
+  m1a1_aim_sa_aus: { displayName: 'M1A1 AIM SA', shortName: 'M1A1 SA', searchAliases: ['Australian Abrams', 'M1A1 AIM SA', 'M1A1 SA', 'Abrams Australia'] },
+  m1a2_sepv3_aus: { displayName: 'M1A2 SEPv3 (Aus)', shortName: 'M1A2 SEPv3', searchAliases: ['Australian M1A2', 'M1A2C Australia', 'Abrams SEPv3 Australia', 'LAND 907'] },
   leopard_as1: { displayName: 'Leopard AS1', searchAliases: ['Leopard 1 AS1', 'Australian Leopard', 'Leopard AS-1', 'RAAC Leopard'] },
   m113a1_fsv: { displayName: 'M113A1 FSV', searchAliases: ['M113 FSV', 'Fire Support Vehicle', 'M113 Saladin', 'Saladin turret M113', 'RAAC'] },
   m113a1_mrv: { displayName: 'M113A1 MRV', searchAliases: ['M113 MRV', 'Medium Reconnaissance Vehicle', 'M113 Scorpion', 'Scorpion turret M113', 'RAAC'] },
