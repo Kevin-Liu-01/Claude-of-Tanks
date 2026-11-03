@@ -1077,7 +1077,14 @@ export class MatchSession {
     try {
       await host.start(config);
     } catch (error) {
-      if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot failed'); }
+      // A newer election stopped this boot (the replaced path, audit M2 2026-11-02): its own migration runs on. Reporting
+      // a failure here cleared the newer migration's flag and told the room a capable seat is unable to host.
+      if (this.host !== host) {
+        this.log('info', 'elected host boot superseded by a newer election', { generation: change.generation, running: this.runningGeneration });
+        return;
+      }
+      this.host = null;
+      this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot failed');
       this.log('error', 'elected host failed to boot', { error: error instanceof Error ? error.message : String(error) });
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'boot failed' });
       this.migrationActive = false;
