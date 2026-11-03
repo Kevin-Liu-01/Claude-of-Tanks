@@ -7,6 +7,7 @@ import { shellPart, mirroredSurfaceError } from '../../../tools/base-shell-audit
 import { shellEdgeTopology, properSurfaceCrossings, weldedPanelConcavity } from '../../../tools/base-shell-integrity.mjs';
 import '../../../tools/tank-surface-collect.mjs';
 import { createTank } from '../tankFactory.ts';
+import { TYPE10_X_DATUMS } from './type10X.ts';
 
 const close = (a,b,message,tolerance=0.000003) => assert.ok(Math.abs(a-b)<tolerance,`${message}: ${a} vs ${b}`);
 function panelFaces(part, count) {
@@ -85,7 +86,11 @@ const targets={
   // (11-1)×6×2 sides + 2×4 caps = 128 triangles, 80 before
   sabra_mk2:{expected:3,select:p=>(p.site.includes('buildSabraHull (')&&p.part.triangles.length===128)||(p.site.includes('buildSabraTurretArmor (')&&p.bucket==='turret'&&p.part.triangles.length===44),mirror:true},
   type96b:{expected:3,select:p=>p.part.triangles.length>24&&((p.site.includes('buildType96Hull (')&&p.bucket==='hull'&&p.part.geometryType!=='ExtrudeGeometry')||(p.site.includes('buildType96Turret (')&&p.bucket==='turret'&&p.part.triangles.length===68)),mirror:true},
-  type10b:{expected:3,select:p=>(p.site.includes('addType10BPackage (')&&p.bucket==='turret'&&p.part.vertices.length===8&&p.part.bounds.max.y>.6&&p.part.bounds.min.y<.06)||(p.site.includes('buildType10Native2026TurretStage1 (')&&p.bucket==='turret'&&p.part.triangles.length===108&&p.part.size.z>4)},
+  // release 267: the 10B on the true-size Type 10's welded turret (profiles/type10X.ts turretArmor: the shell, 10 stations
+  // of a 12-point ring, 236 triangles, and a cheek nose either side of the boot, 7 stations of 7, 94, measured unequal)
+  // with the upgrade's two add-on wedges over the cheeks (japan.ts addType10BWedges, 3 stations of 4, 20, laid in
+  // turretDetail). The wedges' side panels are the contours read here: the Type 10 turret's own quads are not convex-split.
+  type10b:{expected:5,buckets:['turretDetail'],select:p=>p.part.geometryType==='BufferGeometry'&&((p.bucket==='turret'&&p.site.includes('turretArmor (')&&p.site.includes('/type10X.ts:')&&((p.part.vertices.length===120&&p.part.triangles.length===236)||(p.part.vertices.length===49&&p.part.triangles.length===94)))||(p.bucket==='turretDetail'&&p.site.includes('addType10BWedges (')&&p.part.vertices.length===12&&p.part.triangles.length===20)),sectionContour:p=>p.bucket==='turretDetail'?4:null},
   k1a1:{expected:2,select:p=>(p.site.includes('hullBody (')&&p.bucket==='hull'&&p.part.bounds.min.z>2&&p.part.bounds.max.z<3.49)||(p.site.includes('turretBody (')&&p.bucket==='turret'&&p.part.triangles.length===92)},
   // release 262: the STB-1 and the Type 74 share one family hull (profiles/type74Family.ts addHullBody), the welded tub
   // between the tracks (6-point section) and the two sponsons over them (5-point sections)
@@ -100,7 +105,7 @@ let checked=0;
 for(const [id,config]of Object.entries(targets))for(const quality of ['high','low']){
   const emissions=[];
   const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,
-    partCensus(bucket,g,source){if(source==='add'&&(['hull','turret','turretExternalArmor','turretDark'].includes(bucket)||g.userData.nativeShellFixtureRole))emissions.push({bucket,g,site:new Error().stack??''});}});
+    partCensus(bucket,g,source){if(source==='add'&&(['hull','turret','turretExternalArmor','turretDark',...config.buckets??[]].includes(bucket)||g.userData.nativeShellFixtureRole))emissions.push({bucket,g,site:new Error().stack??''});}});
   try{
     const parts=emissions.map(p=>({...p,part:shellPart(p.g,{geometryType:p.g.type})})).filter(config.select);
     assert.equal(parts.length,config.expected,`${id}/${quality} complete repaired stock is present`);
@@ -137,7 +142,12 @@ for(const [id,config]of Object.entries(targets))for(const quality of ['high','lo
         if(id==='stb1'&&part.bounds.min.x*part.bounds.max.x>0)for(const face of part.triangles){const n=face.triangle.getNormal(new Vector3());
           for(const v of part.vertices)assert.ok(n.dot(new Vector3(...v).sub(face.triangle.a))<.000003,'STB sponson is outward convex stock');}
       }
-      if(id==='type10b'&&part.triangles.length===108){panelFaces(part,72);close(mirroredSurfaceError(part,part).maxM,0,'native Type10 hull-derived turret symmetry');}
+      if(id==='type10b'&&entry.bucket==='turretDetail'){
+        // the wedges mirror each other about the hull's centreline, 2.76 mm off the turret's own frame (its pivot's x)
+        const hullFrame=e=>{const moved=e.g.clone().translate(TYPE10_X_DATUMS.turretPivot[0],0,0),shell=shellPart(moved);moved.dispose();return shell;};
+        const peer=parts.find(p=>p!==entry&&p.bucket==='turretDetail');assert.ok(peer,`${id}/${quality} opposite wedge present`);
+        close(mirroredSurfaceError(hullFrame(entry),hullFrame(peer)).maxM,0,`${id}/${quality} paired wedges`);
+      }
       if(config.mirror)close(mirroredSurfaceError(part,part).maxM,0,`${id}/${quality} mirror interiors`);
       if(config.cap){
         const top=part.bounds.max.y,roof=part.triangles.filter(t=>t.points.every(p=>Math.abs(p[1]-top)<.000001));
