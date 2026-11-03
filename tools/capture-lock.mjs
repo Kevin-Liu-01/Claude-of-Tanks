@@ -968,6 +968,8 @@ export function createCaptureLock({
   let lastTicket = null;
   // the hold's terms (its class, cap and the acquire arguments a checkpoint re-queues with) and when it began
   let holdTerms = null, heldSince = 0;
+  // (2026-11-02 audit S4) one acquire at a time per instance: queued while an acquire waits, then held until release()
+  let acquiring = false;
   const queueRules = { staleMs: ticketStaleMs, silentMs: ticketSilentMs, log };
 
   /**
@@ -982,8 +984,23 @@ export function createCaptureLock({
    * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
    * `lockClass` ('timing' or 'render'), `command` (the command a wrapper runs, to classify it), `holdCapMinutes` and
    * `holdCapReason` (2026-10-27): see lock classes and the hold cap above.
+   * (2026-11-02 audit S4) An instance owns at most one hold and runs at most one acquire: acquire() on an instance that
+   * holds, or whose earlier acquire still waits, rejects at once. A second hold overwrote the first: a render slot then
+   * leaked until the process exited, and an exclusive acquire waited on its own live pid until its timeout. Release first
+   * (checkpoint() does), or use another instance.
    */
-  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
+  async function acquire(timeoutMs = 10 * 60 * 1000, options = {}) {
+    if (hold) throw new Error(`capture lock: acquire() while this instance already holds (${holdName(hold)}); release() it first`);
+    if (acquiring) throw new Error('capture lock: acquire() while this instance is already queued for the lock');
+    acquiring = true;
+    try {
+      return await acquireOnce(timeoutMs, options);
+    } finally {
+      acquiring = false;
+    }
+  }
+
+  async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
     holdCapMinutes = null, holdCapReason = null, priority = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     const classed = resolveLockClass({ option: lockClass, command });
