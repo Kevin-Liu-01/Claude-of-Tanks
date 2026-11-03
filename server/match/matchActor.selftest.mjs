@@ -268,7 +268,8 @@ assert.ok(p4b.welcome, 'p4 re-attached after the flood');
   assert.equal(p2.frames.length, p2Before, 'a peer over the skip bound receives no snapshot');
   assert.equal(actor.clientStats().find((entry) => entry.playerId === 'p2').droppedSnapshots - skipped, 15, 'every skipped snapshot is counted');
   assert.ok(p3.frames.length - p3Before >= 14, `the other peers keep their cadence (${p3.frames.length - p3Before} in 30 ticks)`);
-  assert.ok(!p2.closed, 'a skip never closes the link');
+  // (2026-11-02 audit S1) a transient skip; a viewer starved past SNAPSHOT_STARVED_CLOSE_MS is closed (skipStarvation.selftest)
+  assert.ok(!p2.closed, 'a transient skip never closes the link');
   p2.link.client.pressure = 0;
   await advanceTicks(actor, 4, driveP1);
   const resumed = p2.packets.at(-1);

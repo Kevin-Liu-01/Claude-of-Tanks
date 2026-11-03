@@ -1659,6 +1659,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/skipStarvation.selftest.mjs', // 2026-11-02 audit S1: a viewer withheld snapshots past the starvation limit is closed; a transient skip is not
     'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher

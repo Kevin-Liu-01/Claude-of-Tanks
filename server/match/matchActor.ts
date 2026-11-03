@@ -345,6 +345,8 @@ interface ActorClient {
   droppedSnapshots: number;
   malformed: number;
   pressureSinceMs: number | null;
+  /** The first snapshot backpressure withheld since this client's last published one (SNAPSHOT_STARVED_CLOSE_MS); null while it is fed. */
+  starvedSinceMs: number | null;
   /** When the WELCOME went out: the start of the client's entry grace (ENTRY_BACKPRESSURE_GRACE_MS). */
   welcomedAtMs: number;
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
@@ -370,6 +372,16 @@ export const VIEWER_CHECKPOINT_EVERY_SNAPSHOTS = 1;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
+/**
+ * The longest a viewer may go without a published snapshot while backpressure withholds them (audit S1, 2026-11-02),
+ * outside its entry grace (inside it: the entry's sustained limit). The skip band (SNAPSHOT_SKIP_BYTES up to the soft
+ * bound) never closed a link, and the soft band's clock restarted whenever a reading dipped to the soft bound or
+ * under, so a link stalled in the skip band, or swinging across the soft bound, starved its viewer indefinitely. This
+ * clock runs from the first withheld snapshot across both bands and every dip, and only a published snapshot stops it.
+ * Past it the link closes as BACKPRESSURE "starved" and the seat comes back on a fresh link with a keyframe. It is past
+ * the client's own stall clock (5 s, match/recovery.ts), so a client that can still ask for a fresh link does so first.
+ */
+export const SNAPSHOT_STARVED_CLOSE_MS = 10_000;
 /**
  * 2026-10-10 (the black-screen lane; an ABBA under load ~110: the room found the creator's tab silent while its own entry
  * blocked it and elected the next seat, whose actor then closed both peers, the demoted creator and the third seat, with
@@ -449,6 +461,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   /** The continuous soft pressure that closes this client now: longer while it is still in its entry grace. */
   const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
+  );
+  /** The time without a published snapshot that closes this client (SNAPSHOT_STARVED_CLOSE_MS; the entry's sustained limit in its grace). */
+  const starvedLimitMs = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : SNAPSHOT_STARVED_CLOSE_MS
   );
   /** The buffered bytes that close this client at once: ENTRY_BACKPRESSURE_HARD_BYTES while it is in its entry grace. */
   const hardPressureBytes = (client: ActorClient, nowMs: number): number => (
@@ -1004,6 +1020,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     };
   }
 
+  /** Backpressure withheld this client's snapshot: true when that closed it (starved past its limit). */
+  function starved(client: ActorClient, nowMs: number): boolean {
+    client.starvedSinceMs ??= nowMs;
+    if (nowMs - client.starvedSinceMs <= starvedLimitMs(client, nowMs)) return false;
+    totals.backpressureCloses++;
+    detach(client, CLOSE_REASON.BACKPRESSURE, 'starved');
+    return true;
+  }
+
   function publishSnapshots(tick: number): void {
     const nowMs = now();
     // every viewer's row budget this snapshot: the host's uplink target shared by its viewers (interestTiers.ts)
@@ -1023,14 +1048,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         else if (nowMs - client.pressureSinceMs > sustainedPressureLimitMs(client, nowMs)) {
           totals.backpressureCloses++;
           detach(client, CLOSE_REASON.BACKPRESSURE, 'sustained');
+          continue;
         }
+        starved(client, nowMs);
         continue;
       }
       client.pressureSinceMs = null;
       if (buffered > SNAPSHOT_SKIP_BYTES) {
-        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be)
+        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be); a
+        // transient skip never closes the link, a viewer starved past its limit does (SNAPSHOT_STARVED_CLOSE_MS)
         client.droppedSnapshots++;
         totals.droppedSnapshots++;
+        starved(client, nowMs);
         continue;
       }
       let published: { bytes: Uint8Array; keyframe: boolean } | null;
@@ -1061,6 +1090,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
+        client.starvedSinceMs = null;
       }
       if (profile) profile.sendMs += profile.clock() - sent;
     }
@@ -1196,7 +1226,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       input: createSeatInputBuffer(),
       publisher: createViewerPublisher({ keyframeSlotTicks: keyframeSlotFor(claims.seat), snapshotEveryTicks }),
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
-      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, welcomedAtMs: now(),
+      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
     };
     clients.set(client, true);
