@@ -1317,11 +1317,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldActivationRuntime.selftest.mjs',
     'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
     'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
+    'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/world/terrainStreaming.selftest.mjs',
     'src/world/terrainSplatFields.selftest.mjs',
+    'src/world/terrainPresetListeners.selftest.mjs', // 2026-11-02 audit R1: a closed terrain build leaves no preset listener
     'src/world/textureUploadOrientation.selftest.mjs',
     'src/world/normalMapOrientation.selftest.mjs',
     'src/world/roadPathStyles.selftest.mjs',
@@ -2432,6 +2434,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
     'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
+    'src/world/propsShellPoolCancel.selftest.mjs', // 2026-11-02 audit R1: a cancelled props build stops its shell pool's workers
     'src/world/brokenVehiclePool.selftest.mjs', // perf-248: pooled broken vehicle bodies equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',

@@ -8436,11 +8436,9 @@ function* createSplatMaterialSteps(
   const landBakeN = mask.image.width;
   // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
   const landTier = { value: landUseTierOf(resolvePresetName()) };
-  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (both Ultra Low presets end in 'ultralow';
   // read inline: the streaming receipts evaluate these steps in a sandbox that supplies only resolvePresetName)
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
-  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
@@ -8457,6 +8455,13 @@ function* createSplatMaterialSteps(
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  // (2026-11-02 audit R1) the live preset subscriptions start with the material that ends them: subscribed before the
+  // land-use bake's yields, a build cancelled during them left both listeners in the global set for good. Read again here,
+  // so a change during the bake is not missed.
+  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
+  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
+  landTier.value = landUseTierOf(resolvePresetName());
+  liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0;
   mat.addEventListener('dispose', () => { offLandTier(); });
   mat.addEventListener('dispose', () => { offLiteTerrain(); }); // Ultra Low (2026-10-13)
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
@@ -9181,8 +9186,9 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
+  const owned: { material: THREE.Material | null } = { material: null };
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
-    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation, owned);
   let completed = false;
   try {
     let r = g.next();
@@ -9203,6 +9209,8 @@ export async function buildTerrainMeshesAsync(
       try { sourcePreparation.cancel?.(); } catch { /* preserve the original build failure */ }
       // Close private CPU continuations; this is not partial asset disposal.
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
+      // (audit R1) but the splat material it made goes with it, and with it its live preset subscriptions
+      try { owned.material?.dispose(); } catch { /* preserve the original pacing failure */ }
     }
   }
 }
@@ -9335,6 +9343,7 @@ function* terrainBuildSteps(
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
+  owned: { material: THREE.Material | null } | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
@@ -9369,6 +9378,9 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures, sourcedReady } = materialStep.value;
+  // (2026-11-02 audit R1) the material is the driver's to dispose until the group returns with it (its dispose ends the
+  // live preset subscriptions): a build closed during the chunk rows dropped it with both listeners still subscribed
+  if (owned) owned.material = mat;
   // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
   {
     const form = (cfg?.splat as { formation?: TerrainFormation } | undefined)?.formation;

@@ -23,7 +23,7 @@ interface WorldMapModule<World extends WorldScene> {
     engineContext: object,
     options: { mapId: string; seed: number },
     progress: (label: string, fraction: number) => Promise<void>,
-    slicing: { fineSlices: boolean },
+    slicing: { fineSlices: boolean; abandon?(roots: THREE.Object3D[]): void },
   ): Promise<World>;
 }
 
@@ -213,19 +213,18 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return modulePromise;
   };
 
-  const releaseWorld = (id: string, world: World, paced = false): void => {
-    world.dispose?.();
+  const releaseRoot = (id: string, root: THREE.Object3D, paced: boolean): void => {
     const preserveRoots = dependencies.scene.children.filter(
-      (child) => child !== world.group,
+      (child) => child !== root,
     );
     // Dormant cached worlds may be detached from the scene but still share
     // immutable geometry/materials with the discarded completed build.
     for (const retained of cache.values()) {
-      if (retained.group !== world.group && !preserveRoots.includes(retained.group)) {
+      if (retained.group !== root && !preserveRoots.includes(retained.group)) {
         preserveRoots.push(retained.group);
       }
     }
-    const steps = disposeObject3DResourcesSteps(world.group, {
+    const steps = disposeObject3DResourcesSteps(root, {
       preserveRoots,
       onDispose: (type: string, resource: DisposableResource) => {
         if (type === 'material' && isMaterial(resource)) {
@@ -248,7 +247,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     // (2026-11-02 audit R1) the keep list is read again at every slice: a world cached or a root added to the scene since
     // the release began keeps what it shares (the list was a snapshot taken when the release started)
     const seen = new Set<THREE.Object3D>(preserveRoots);
-    seen.add(world.group);
+    seen.add(root);
     const lateRoots = (): THREE.Object3D[] | undefined => {
       let late: THREE.Object3D[] | undefined;
       const consider = (root: THREE.Object3D): void => {
@@ -268,6 +267,16 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       else setTimeout(slice, 0);
     };
     slice();
+  };
+
+  const releaseWorld = (id: string, world: World, paced = false): void => {
+    world.dispose?.();
+    releaseRoot(id, world.group, paced);
+  };
+
+  /** (2026-11-02 audit R1) A build that ended part way: the subsystems it had built, released as a world is. */
+  const abandonPartial = (id: string, roots: THREE.Object3D[]): void => {
+    for (const root of roots) releaseRoot(id, root, true);
   };
 
   // (2026-11-02 audit R1) the worlds an activation is warming: a world neither current nor building was evictable mid-warm,
@@ -467,7 +476,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         const [baseMapId, terrainVariant] = mapId.split('#');
         return createMapAsync(dependencies.engineContext,
           { mapId: baseMapId, seed: 1337, ...(terrainVariant ? { terrainVariant: terrainVariant as 'assault-trenches' } : {}) },
-          handleProgress, { fineSlices: true });
+          handleProgress, { fineSlices: true, abandon: (roots) => abandonPartial(mapId, roots) });
       };
 
       const promise = startBuild().then((next) => {

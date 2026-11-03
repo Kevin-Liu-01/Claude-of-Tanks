@@ -353,7 +353,8 @@ await withFixture(async f => {
   assert.match(String(terrain.buildTerrainMeshes), /terrainBuildSteps\(heightField, engineCtx, cfg\)/);
   assert.doesNotMatch(String(terrain.buildTerrainMeshes), /sourcePreparation|prepareSourcedTerrain/);
   assert.match(String(terrain.buildTerrainMeshesAsync), /sourcePreparation = prepareSourcedTerrain/);
-  assert.match(String(terrain.buildTerrainMeshesAsync), /terrainBuildSteps\(heightField, engineCtx, cfg, streamOpts, sourcePreparation\)/);
+  // (2026-11-02 audit R1) and the material's ownership until the group returns (a closed build disposes it)
+  assert.match(String(terrain.buildTerrainMeshesAsync), /terrainBuildSteps\(heightField, engineCtx, cfg, streamOpts, sourcePreparation, owned\)/);
   // round 40 (2026-09-22): the material call also hands over the sea openings (edgeWater.ts) after the source preparation;
   // round 42 (2026-09-23): and the map's sky preset, from which the material derives the sun for the sky light on steep faces
   // item 3 (2026-10-12, no painted water): and last the map's land-use profile, whose flooded paddies the material holds

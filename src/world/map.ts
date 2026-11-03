@@ -48,6 +48,7 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
+import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { loadEarthLand, skyDrawsEarth } from '../engine/earthLandAccess.ts';
 import type { StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { createStructureGroundOcclusion } from '../engine/structureGroundOcclusionRuntime.ts';
@@ -107,6 +108,12 @@ interface WorldOptions {
 
 interface WorldSlicingOptions {
   fineSlices?: boolean;
+  /**
+   * (2026-11-02 audit R1) The owner of a build that fails or is cancelled part way: it releases the subsystems already
+   * built (their roots), with the same keep rules as a released world (worldBuildCoordinator.ts). Absent (receipts), the
+   * build disposes them itself, keeping whatever the scene still shows.
+   */
+  abandon?(roots: THREE.Object3D[]): void;
 }
 
 type WorldBuildProgress = (label: string, fraction: number) => Promise<void> | void;
@@ -420,7 +427,7 @@ export async function createMapAsync(
   engineContext: RuntimeValue,
   { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
   onStep: WorldBuildProgress | null = null,
-  { fineSlices = false }: WorldSlicingOptions = {},
+  { fineSlices = false, abandon }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
   const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
@@ -466,6 +473,11 @@ export async function createMapAsync(
   if (ringSource) supplyHorizonRing(ringSource);
   if (hinterlandSource) supplyHinterland(hinterlandSource);
   let completed = false;
+  // (2026-11-02 audit R1) the subsystems built so far: a build that ends before its world exists releases them (they were
+  // dropped, and with them the terrain material's live preset subscriptions and the vegetation's runtime)
+  let builtTerrain: TerrainRoot | null = null;
+  let builtVegetation: VegetationRuntime | null = null;
+  let builtProps: PropsRuntime | null = null;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
       if (onStep) await onStep(label, fraction);
@@ -496,10 +508,12 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
+    builtTerrain = terrain;
     submitPrograms(terrain);
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
+    builtVegetation = vegetation;
     submitPrograms(vegetation.group);
     await step('Placing structures', 0.82);
     const kitsAwaitStart = performance.now();
@@ -509,6 +523,7 @@ export async function createMapAsync(
     const propModelsAwaitEnd = performance.now();
     const props = await createPropsAsync(heightField, engineCtx, 2002, config,
       sub('Placing structures', 0.82, 0.96), fineSlices, vegetation, wreckPrefetch, surfacePrefetch);
+    builtProps = props;
     if (props._buildDetail) {
       const elapsedMs = propModelsAwaitEnd - propModelsAwaitStart;
       // Time at the consumer's await, not the overlapped archive transfer's
@@ -548,6 +563,17 @@ export async function createMapAsync(
     if (hinterlandSource) { withdrawHinterland(hinterlandSource); if (!completed) hinterlandSource.dispose(); }
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
+      // (audit R1) the partial build's rollback: the vegetation's own teardown, then the built roots released
+      try { builtVegetation?.dispose(); } catch { /* preserve the original build failure */ }
+      const roots: THREE.Object3D[] = [];
+      for (const root of [builtTerrain, builtVegetation?.group, builtProps?.group]) if (root) roots.push(root);
+      if (roots.length) {
+        try {
+          for (const root of roots) root.removeFromParent();
+          if (abandon) abandon(roots);
+          else for (const root of roots) disposeObject3DResources(root, { preserveRoots: engineCtx.scene.children.filter((child) => !roots.includes(child)) });
+        } catch { /* preserve the original build failure */ }
+      }
     }
   }
 }
