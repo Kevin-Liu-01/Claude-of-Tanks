@@ -17,6 +17,8 @@ import type { CouchSeatControls, CouchSeatInput, CouchSession } from '../game/co
 import { solveCouchPose } from '../game/couchCamera.ts';
 import type { CouchPoint } from '../game/couchCamera.ts';
 import type { CouchRules } from '../sim/matchRuleset.ts';
+import { applyPlayerInput } from '../sim/playerInputStage.ts';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 
 /** A battle tank as the runtime reads it: the phone's readout facts and the hull's pose. */
 export interface CouchEntity {
@@ -25,7 +27,14 @@ export interface CouchEntity {
   state: { pos: CouchPoint; yaw: number; turretYaw: number; speed?: number } | null;
 }
 
-export interface CouchRuntimePorts<E extends CouchEntity> {
+/** A seat's hull as the core's player input stage writes it (sim/playerInputStage.ts). */
+type SeatHull = Parameters<typeof applyPlayerInput>[0];
+/** The same tank as the roster holds it: its combat and pose stay null until the battle builds them. */
+type SeatTank = Omit<SeatHull, 'combat' | 'state'> & { combat: SeatHull['combat'] | null; state: SeatHull['state'] | null };
+
+const builtHull = <T extends SeatTank>(entity: T): entity is T & SeatHull => !!entity.combat && !!entity.state;
+
+export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   game: {
     readonly phase: string;
     readonly couch?: CouchSession<E> | null;
@@ -42,9 +51,8 @@ export interface CouchRuntimePorts<E extends CouchEntity> {
   /** A shell type's code as every locale prints it (src/ui/shellLabels.ts shellTypeCode). */
   shellCode(type: string): string;
   togglePause(): void;
-  /** The core's player input stage (sim/playerInputStage.ts applyPlayerInput), handed in by the composition root. Null:
-   *  no phone drives the seat (it left): the stage's neutral input, braking, holding fire. */
-  applyInput(entity: E, input: CouchSeatInput | null): void;
+  /** The battle's event bus, for what the input stage reports (a shell it could not load). */
+  emit(type: string, payload: Record<string, RuntimeValue>): unknown;
   /** The battle HUD shows the field, not one tank (body.cot-spectating), while a couch battle runs. */
   setSpectating(on: boolean): void;
 }
@@ -67,7 +75,7 @@ export interface CouchRuntime {
 /** How fast the camera closes on its pose (per second, exponential). */
 const CAMERA_FOLLOW = 3;
 
-export function createCouchRuntime<E extends CouchEntity>(ports: CouchRuntimePorts<E>): CouchRuntime {
+export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: CouchRuntimePorts<E>): CouchRuntime {
   const controls = new Map<number, CouchSeatControls>();
   const input: CouchSeatInput = { throttle: 0, steer: 0, brake: false, fire: false, aimLocked: false, shellSlot: 0,
     actionBits: 0, aimYaw: 0, aimPitch: 0, aimDistance: 0 };
@@ -153,7 +161,8 @@ export function createCouchRuntime<E extends CouchEntity>(ports: CouchRuntimePor
       if (session !== aimedFor) beginBattle(session);
       for (const { seat, entity } of session.seats) {
         const seatControls = controls.get(seat);
-        ports.applyInput(entity, seatControls ? seatControls.take(input) : null);
+        // a seat no phone drives (it left) takes the stage's neutral input: braking, holding fire
+        if (builtHull(entity)) applyPlayerInput(entity, seatControls ? seatControls.take(input) : null, ports.emit);
       }
     },
   };

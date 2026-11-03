@@ -76,6 +76,8 @@ export interface RosterEntity {
     aimLocked: boolean;
     aimPoint: Vector3;
     shellSlot: number;
+    /** This tick's presses (sim/playerActions.ts PLAYER_ACTION_BITS), consumed for every hull by sim/hullActions.ts. */
+    actionBits: number;
   };
   visual: BattleVisual | null;
   rigidGear: boolean;
@@ -133,7 +135,7 @@ function createRosterEntity(specId: string, id: string, seed: number, matchReinf
     input: {
       throttle: 0, steer: 0, brake: false, fire: false,
       aimLocked: false,
-      aimPoint: new Vector3(), shellSlot: 0,
+      aimPoint: new Vector3(), shellSlot: 0, actionBits: 0,
     },
     visual: null,
     // True when the rendered running gear lacks a complete wheel + belt
