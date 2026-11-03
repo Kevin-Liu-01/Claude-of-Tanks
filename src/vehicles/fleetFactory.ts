@@ -86,7 +86,7 @@ export function battleStaticDrawMerge(_specId: string): NonNullable<CreateTankOp
 
 let profileKit: ProfileBuildFunctions | null = null;
 // (2026-11-02 audit R6) the kit and every group are one lazyChunk each (app/lazyChunk.ts): a failed chunk is asked again
-// by the next ensure past the backoff, as these loads always were, under the one policy every lazy chunk follows
+// by the next ensure, as these loads always were, under the one policy every lazy chunk follows
 const factoryKit = createLazyChunk(() => import('./profiles/kit.ts').then((kit) => {
   configureTankFactory({
     canonicalBuilderPacks: [],
@@ -330,7 +330,7 @@ export function createTankSteps(
 }
 
 // (2026-11-02 audit R6) the client's chunk under the one lazy-chunk policy: a failed import leaves those tanks in-line and
-// the next stepped build past the backoff asks again
+// the next stepped build asks again
 const decorPlanClient = createLazyChunk(() => import('./decorPlanClient.ts'));
 
 /**

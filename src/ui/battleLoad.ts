@@ -86,7 +86,7 @@ function mapArtGradient(mapId: string | undefined): string {
 // without a request while the boot bundle stays as it was.
 let mapLqip: Readonly<Record<string, string>> | null = null;
 // (2026-11-02 audit R6) the chunk under the one lazy-chunk policy (app/lazyChunk.ts): a failed chunk is asked again by a
-// later call past the backoff, never by itself
+// later call (at once, then past a backoff), never by itself
 const mapLqipChunk = createLazyChunk(() => import('./mapLqip.ts').then((module) => { mapLqip = module.MAP_LQIP; }));
 /** Load the placeholder chunk (once; a failed chunk may be asked again by a later call). */
 export function primeMapLqip(): Promise<void> {

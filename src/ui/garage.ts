@@ -985,7 +985,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         fleet = module;
         fleetIndex = await module.loadFleetTakes();
         applyVehicleTake();
-      }).catch(() => { fleetRequest = null; }); // (audit R6: lazyChunk asks the chunk again past its backoff; the index's fetch too)
+      }).catch(() => { fleetRequest = null; }); // (audit R6: lazyChunk asks the chunk again; the index's fetch too)
       return fleetRequest;
     };
     if (typeof IntersectionObserver === 'function') {
@@ -2773,7 +2773,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     favouritesOnly = false;
     renderFavourites();
     setRosterFacetFilter(rosterFacetMatch);
-    if (facetPanel.state === 'ready') facetPanel.value?.clear();
+    if (facetPanel.state === 'ready' || facetPanel.state === 'loading') void facetPanel.load().then((panel) => panel.clear(), () => {});
   });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
@@ -4116,7 +4116,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let deployModes: import('./modePicker.ts').ModePicker | null = null;
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
   // (audit R6) the Deploy sheet's mode picker, loaded in idle time and with the sheet (no trigger of its own): a chunk
-  // that did not arrive leaves the sheet without it, and the next opening past the backoff asks again (app/lazyChunk.ts)
+  // that did not arrive leaves the sheet without it, and the next opening asks again (app/lazyChunk.ts)
   const deployModesChunk = createLazyChunk(() => Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
       const cards = modeCards;
       deployModeCards = cards;
@@ -4166,11 +4166,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       quickMenus = { mode, field };
-    }).then(() => {
+    }, () => reportLoadFailure('cot-quick-load', t('loadFailed.generic'), [quickBtn])).then(() => {
       if (!quickMenus) return;
       quickMenus.mode.setValue(battleGameMode);
       quickMenus.mode.open(quickBtn);
-    }, () => reportLoadFailure('cot-quick-load', t('loadFailed.generic'), [quickBtn]));
+    });
   }
   quickBtn.addEventListener('click', () => {
     if (quickBtn.getAttribute('aria-expanded') === 'true') { quickMenus?.mode.close(); quickMenus?.field.close(); return; }
@@ -4876,7 +4876,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
-      if (facetPanel.state === 'ready') facetPanel.value?.close();
+      if (facetPanel.state === 'ready' || facetPanel.state === 'loading') void facetPanel.load().then((panel) => panel.close(), () => {});
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;

@@ -40,7 +40,7 @@ type InteriorFillBox = readonly [cx: number, cy: number, cz: number, sx: number,
 const registry = new Map<string, InteriorFillRecord>();
 // (2026-11-02 audit R6) each group's chunk is one lazyChunk: a failed load no longer stands for the session (it was
 // kept as the group's pending promise, so every tank of the group failed its ensureTankBuilder until a reload); the
-// next ask past the backoff loads it again
+// next ask loads it again (app/lazyChunk.ts: at once, then past a backoff)
 const groupLoads = new Map<string, LazyChunk<void>>();
 
 function registerInteriorFills(records: Readonly<Record<string, InteriorFillRecord>>): void {

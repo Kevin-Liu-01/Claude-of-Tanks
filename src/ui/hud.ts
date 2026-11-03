@@ -1313,7 +1313,7 @@ const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' 
 const AIM_NOTICE_ID = 'cot-aim-warning';
 // (the region loads with the first parked chip, as the pointer lock's notice loads it: pointerLockFeedbackRuntime.ts)
 // (2026-11-02 audit R6) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, so after one failed chunk no
-// parked warning ever showed; the next chip past the backoff asks again, and a dismiss never fetches
+// parked warning ever showed; the next chip asks again, and a dismiss never fetches
 const aimNoticePort = createLazyChunk(() => import('./battleNotices.ts').then((module) => module.battleNotices));
 const aimNotices: BattleNoticePort = {
   show(options) {

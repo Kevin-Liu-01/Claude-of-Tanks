@@ -230,7 +230,7 @@ export function createCombatWarmComposition({
   let deferredRuntime: DeferredCombatWarmRuntime | null = null;
   // (2026-11-02 audit R6/F2) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, so one failed idle
   // prefetch, which the player never asked for, failed every later solo entry at "Preparing effects"; a module that did
-  // not arrive is asked again by the next battle past the backoff
+  // not arrive is asked again by the next battle
   const deferredModule = createLazyChunk(() => import('../game/deferredCombatWarmRuntime.ts'));
   const loadDeferred = () => deferredModule.load();
   {

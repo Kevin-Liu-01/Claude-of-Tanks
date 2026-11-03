@@ -913,7 +913,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
-    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet terminal, a module asked again past the backoff)
+    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet terminal, a module asked again, then past a backoff)
     'src/app/lazyChunk.selftest.mjs',
     // 2026-11-02 audit R6: the named lazy chunks hold their load in app/lazyChunk.ts; no new hand-made `??= import(` memo
     'src/app/lazyChunkSites.selftest.mjs',

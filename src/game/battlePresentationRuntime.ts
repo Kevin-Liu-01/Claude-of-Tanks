@@ -27,7 +27,7 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
 // loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
 // (2026-11-02 audit R6/F2) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, and the FX gate awaits it, so
 // one failed chunk stopped every later battle, Studio and shot frame. The visual is presentation: a failure resolves
-// (no tank carries a mount yet), and the next ask past the backoff (the next FX gate, an aerial tank's frame) loads it.
+// (no tank carries a mount yet), and the next ask (the next FX gate, an aerial tank's frame) loads it.
 let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
 const missionAttachmentVisual = createLazyChunk(() => import('./missionAttachmentVisual.ts').then((module) => {
   syncMissionAttachment = module.syncMissionAttachment;

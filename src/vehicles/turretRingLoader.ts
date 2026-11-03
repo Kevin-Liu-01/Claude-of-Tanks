@@ -12,7 +12,7 @@ type TurretRingModule = Pick<typeof TurretRingWell, 'createTurretRingPresentatio
 
 let ringModule: TurretRingModule | null = null;
 // (2026-11-02 audit R6) one lazyChunk: a failed chunk no longer stands for the session (`loading ??=` kept the
-// rejection, so no kill left a ring until a reload); the next visual's ask past the backoff loads it again
+// rejection, so no kill left a ring until a reload); the next visual's ask loads it again
 const loading = createLazyChunk((): Promise<TurretRingModule> | TurretRingModule =>
   ringModule ?? import('./turretRingWell.ts').then((module) => (ringModule = module)));
 
