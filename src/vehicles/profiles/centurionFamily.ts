@@ -1465,10 +1465,11 @@ function buildOlifantBustleStowage(P: TankBuilderPort, m: MarkDesign): void {
  * Hull frame. */
 function buildOlifantBushBar(P: TankBuilderPort): void {
   // a tube from a to b (three's XYZ Euler turns +Z by the yaw first, then the pitch), in the hull's paint: the frame
-  // reads against the shadow under the nose and its dark mesh bays (269 blind critics: dark tubes were lost there)
+  // reads against the shadow under the nose and its dark mesh bays (269 blind critics: dark tubes were lost there); as
+  // equipment, never the structural hull (the combat hull box keeps its bow at the nose)
   const tube = (a: V3, b: V3, r: number, seg: number): void => {
     const d: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
-    P.add('hull', xform(cylZ(r, len, seg), 0, 0, 0, Math.atan2(-d[1], d[2]), Math.asin(d[0] / len), 0),
+    P.addEquipment('hull', xform(cylZ(r, len, seg), 0, 0, 0, Math.atan2(-d[1], d[2]), Math.asin(d[0] / len), 0),
       (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
   };
   const tip: V3 = [0, NOSE_Y + 0.24, NOSE_Z + 0.60];
@@ -1477,9 +1478,9 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
     const lug: V3 = [s * 0.56, NOSE_Y - 0.06, NOSE_Z + 0.04];
     tube(lug, tip, 0.06, 12);
     tube([s * 0.28, (lug[1] + tip[1]) / 2, (lug[2] + tip[2]) / 2], [s * 1.30, 1.10, 3.76], 0.045, 10);
-    P.add('hull', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
+    P.addEquipment('hull', box(0.10, 0.08, 0.06), s * 1.30, 1.10, 3.76);
   }
-  P.add('hull', box(0.18, 0.18, 0.12), tip[0], tip[1], tip[2]);
+  P.addEquipment('hull', box(0.18, 0.18, 0.12), tip[0], tip[1], tip[2]);
   // the frame's mesh panels, one in each bay (the V's two halves, the bays behind the stays), each run back under the
   // nose's edge: left open, the bays read through to the ground from above (the standard check's contiguity, release
   // 269: 36 cells at z 3.72-3.74 either side of the gun and behind the left stay). The stay bays stop 2.5 cm inside the
