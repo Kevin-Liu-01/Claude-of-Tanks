@@ -31,7 +31,8 @@
 // With --check, the ids COUNTER_DRONE_PINS pins (the lone anchors m1a1 and t90a_2004, seeds 1-8; the 30 mm + 7.62 roofs, one
 // seed each) must also fly every pinned level run exactly (outcome, rounds, ticks), every station of a pinned roof must
 // fire in each, a pinned roof's bow hover must match, and the lone anchors must down 4-11 of their 48 pinned runs (the
-// owner's band). npm test flies the same pins (src/sim/counterDroneRuns.selftest.mjs); tank:release:check runs `--ids=<the
+// owner's band); the carrier's dock, which every pinned flight leaves from, must sit where the pins were flown from (a
+// moved dock moves every pinned run, 268). npm test flies the same pins (src/sim/counterDroneRuns.selftest.mjs); tank:release:check runs `--ids=<the
 // pinned vehicles the release names> --check` without a capture lease.
 // Changed-only: name the ids whose stations changed; nothing here builds geometry (the authority reads specs: about
 // 3 s to load, then roughly 0.1 s a run).
@@ -41,7 +42,7 @@ import { SIM_DT } from '../src/sim/movement.ts';
 import {
   COUNTER_DRONE_APPROACHES, COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_SETS, LEVEL_APPROACHES, counterDroneCell,
   hoverCounterDrone, prepareCounterDrone, roofStations, stationClass,
-  COUNTER_DRONE_PINS, pinnedRunRow,
+  COUNTER_DRONE_PINS, carrierDock, pinnedRunRow,
 } from '../src/sim/counterDroneEngagement.test-support.mjs';
 
 const arg = (name, fallback = null) => { const a = process.argv.find((x) => x.startsWith(`--${name}=`)); return a ? a.slice(name.length + 3) : fallback; };
@@ -64,6 +65,13 @@ const report = { runs, seed0, approaches, vehicles: {} };
 const pinnedDowned = {};
 let failures = 0;
 const pct = (x) => Number.isFinite(x) ? x.toFixed(1) : '-';
+// every pinned flight leaves from the carrier's dock: a moved dock moves every pinned run (268), so it is named first
+if (flag('check')) {
+  const dock = carrierDock(), same = dock === COUNTER_DRONE_PINS.carrierDock;
+  if (!same) failures++;
+  console.log(`carrier dock (every pinned flight launches from it): ${same ? `${dock} exact`
+    : `MOVED ${COUNTER_DRONE_PINS.carrierDock} -> ${dock}: the pinned runs move with it whether or not a station's lethality moved`}`);
+}
 for (const id of ids) {
   // an id joined with '+' is a group: the first tank is attacked, the rest park 12-25 m round it (their stations join in)
   const group = id.split('+');
