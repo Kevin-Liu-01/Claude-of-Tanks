@@ -1254,6 +1254,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/deploymentShadowWarm.selftest.mjs',
+    // 2026-11-02 audit R4: named castShadow holds (the covered warm and an articulated batch give back only their own)
+    'src/engine/castShadowHolds.selftest.mjs',
     'src/engine/deploymentUploadPrograms.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
     'src/engine/capabilityGate.selftest.mjs',
