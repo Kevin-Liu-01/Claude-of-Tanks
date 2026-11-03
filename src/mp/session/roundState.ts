@@ -4,6 +4,7 @@ import { transitionBattleCountdown } from '../../game/preBattleCountdown.ts';
 export interface RoundState {
   result: RuntimeValue;
   resultReason: RuntimeValue;
+  resultTimeS?: number | null;
   timeS: number;
   preBattleS: number;
 }
@@ -12,6 +13,7 @@ export interface RoundState {
 export function resetRoundState(game: RoundState): void {
   game.result = null;
   game.resultReason = null;
+  game.resultTimeS = null; // (2026-11-02 audit F1 review) a previous battle's verdict time never times this round's
   game.timeS = 0;
   transitionBattleCountdown(game, 'arm'); // (2026-11-02 audit F1) the countdown's one writer: a new round's count
 }
