@@ -409,9 +409,10 @@ function c2Package(P: ArieteTurretPort, receipt: ArieteProtoTurretReceipt, c2Era
       c2Era.turretCheekForwardNormalDotMin = Math.min(c2Era.turretCheekForwardNormalDotMin,
         new THREE.Vector3(FSW, C2_RAKE, 1).normalize().z);
     }
-    // the cheek module's side: one bolted plate 5 cm proud, its rear edge raked like the C1's seam, its front on the
-    // add-on front (C2 photographs 1 and 4), with the oval access panel on it
-    const zt = 0.30, zbk = 0.80, yBot = FLOOR + CHAMF;
+    // the cheek module's side: one bolted plate 5 cm proud, its front on the add-on front (C2 photographs 1 and 4), with
+    // the oval access panel on it
+    // (its rear edge stands against the fore add-on box, C2 photograph 4: no bare wall between them)
+    const zt = 0.38, zbk = 0.42, yBot = FLOOR + CHAMF;
     const [tz, ty] = [topFront(W)[0], topFront(W)[1] - 0.01];
     const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, ty, tz], [x, ty, c2FrontZ(W, ty) - 0.004],
       [x, yBot, c2FrontZ(W, yBot) - 0.004], [x, yBot, zbk]];
