@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
 import {
-  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_GUN_SIDE, HERO_NAME_LINE_HEIGHT, HERO_POSE, HERO_SIDE_MARGIN, flagMaskStops,
+  HERO_BUDGETS, HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_GUN_SIDE, HERO_NAME_LINE_HEIGHT, HERO_POSE, HERO_SIDE_MARGIN, flagMaskStops,
   heroCenterX, heroFlagMaskCss, heroFlagPolicy, heroGunSide, heroTurretTraverseDeg, heroTurretTraverseLimitDeg, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import { applyFlagMask, composeCard, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
@@ -253,6 +253,16 @@ for (const gunSide of ['left', 'right']) {
   assert.match(page, /minimumMechanicalGunPitch\(spec, yaw\)/, 'the gun rises only where the spec\'s rear-deck curve needs it');
   assert.match(page, /gunSide: muzzle\.x >= pivot\.x \? 'right' : 'left'/, 'the gun side is measured by projecting the muzzle');
   assert.match(page, /bowSide: hull1\.x >= hull0\.x \? 'right' : 'left'/, 'the bow side is measured by projecting the hull axis');
+}
+
+// The directory's budget is a mean allowance per card (Main 11-02, 268): no flat total a growing fleet trips, and a card's
+// allowance stays below its three tank layers at their p95 caps (the flags and the manifest share it)
+assert.equal(HERO_BUDGETS.directory, undefined, 'no flat directory total');
+assert.ok(HERO_BUDGETS.directoryPerCard > 0 && HERO_BUDGETS.directoryPerCard < HERO_BUDGETS.tankAvif480 + HERO_BUDGETS.tankAvif960 + HERO_BUDGETS.tankWebp480,
+  `directory allowance ${HERO_BUDGETS.directoryPerCard} B a card is under the three layers' p95 caps`);
+{
+  const check = readFileSync(new URL('./hero-cards-check.mjs', import.meta.url), 'utf8');
+  assert.match(check, /HERO_BUDGETS\.directoryPerCard \* ids\.length/, 'the receipt scales the directory allowance by the manifest\'s card count');
 }
 
 console.log('hero-cards selftest: ok');

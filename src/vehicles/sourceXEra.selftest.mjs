@@ -20,6 +20,12 @@ const pose=tankPoseFromState(state());
 const eraRows=spec=>['hull','turret'].flatMap(owner=>spec.armor[`${owner}Plates`]
   .filter(p=>p.kind==='era').map(plate=>({owner,plate})));
 const stats=p=>JSON.stringify({physicalMm:p.physicalMm,keMm:p.keMm,ceMm:p.ceMm,era:p.era});
+// ERA an X id draws and its donor's own build does not (267, Main's ruling "armour and visuals agree in both
+// directions"): the T-90AM draws the T-90SM source build, so t90MarkFrames.ts agreeDrawnEra drops its Proryv flank
+// plates after the registration-time copies, and the T-90M, which draws the Relikt skirt and turret-flank boxes, keeps
+// them at the rating it copied. Exact: a listed plate the id lacks, or one its donor has too, fails.
+const RELIKT_FLANK=stats({physicalMm:15,keMm:15,ceMm:15,era:{keReduction:.18,ceFlatMm:400}});
+const ID_ONLY_ERA={t90m:{skirt_era_L:RELIKT_FLANK,skirt_era_R:RELIKT_FLANK,side_era_L:RELIKT_FLANK,side_era_R:RELIKT_FLANK}};
 
 function bufferHash(root,permanentOnly=false){
   const hash=createHash('sha256');
@@ -72,7 +78,10 @@ let zones=0,faces=0;
 for(const id of ids)for(const quality of ['high','low']){
   const original=getSpec(id),donor=getSpec(SOURCE_X_DONORS[id]);
   const donorStats=new Map(eraRows(donor).map(({plate})=>[plate.name,stats(plate)]));
-  for(const {plate} of eraRows(original))assert.equal(stats(plate),donorStats.get(plate.name),`${id}: donor ERA values retained`);
+  const own=ID_ONLY_ERA[id]??{},ownNames=new Set(eraRows(original).map(({plate})=>plate.name));
+  for(const {plate} of eraRows(original))assert.equal(stats(plate),donorStats.get(plate.name)??own[plate.name],`${id}: donor ERA values retained`);
+  for(const name of donorStats.keys())assert.ok(ownNames.has(name),`${id}: donor ERA plate ${name} kept`);
+  for(const name of Object.keys(own))assert.ok(ownNames.has(name)&&!donorStats.has(name),`${id}: ${name} is ERA its donor does not draw`);
   const visual=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,batchStatic:false});
   try{
     visual.root.updateMatrixWorld(true);

@@ -6,7 +6,7 @@
 //   - each row's flag is its nation's flag (src/ui/flagCodes.ts) and that flag layer is shipped;
 //   - every named file exists with the recorded sha256 prefix and byte count, and nothing else is there;
 //   - no layer was CLIPPED, and the whole tank fits every card kind inside the side margins;
-//   - byte budgets: tank layers (p95 per rung), flag layers, the directory and the manifest;
+//   - byte budgets: tank layers (p95 per rung), flag layers, the directory (a mean allowance per card) and the manifest;
 //   - changed-only: rows whose inputs (geometry, look, flag) moved are reported for a re-render
 //     (a failure with --strict; a warning otherwise, so a geometry landing is not blocked by the GPU step).
 // First-party tooling: Kevin B. Liu (NOTICE.md).
@@ -127,7 +127,7 @@ const budgets = [
   ['largest flag AVIF', Math.max(0, ...Object.values(manifest.flags || {}).flatMap((row) => (row.bytes || []).slice(0, 2))), HERO_BUDGETS.flagAvif],
   ['largest flag WebP', Math.max(0, ...Object.values(manifest.flags || {}).map((row) => row.bytes?.[2] || 0)), HERO_BUDGETS.flagWebp],
   ['manifest', statSync(HERO_MANIFEST_PATH).size, HERO_BUDGETS.manifest],
-  ['public/icons/hero', readdirSync(HERO_DIR).reduce((sum, file) => sum + statSync(resolve(HERO_DIR, file)).size, 0), HERO_BUDGETS.directory],
+  [`public/icons/hero (${ids.length} cards)`, readdirSync(HERO_DIR).reduce((sum, file) => sum + statSync(resolve(HERO_DIR, file)).size, 0), HERO_BUDGETS.directoryPerCard * ids.length],
 ];
 for (const [label, value, budget] of budgets) if (value > budget) fail(`${label} ${value} B over its ${budget} B budget`);
 
