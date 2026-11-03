@@ -47,11 +47,12 @@ delete spec.label;
 delete spec.roster;
 delete spec.variantOf;
 // The guns' own stops over the stern (builder G): the full -10 degrees all round but over the engine deck, where the
-// muzzle heads meet the outlets' and the exhaust's covers from yaw 140; measured with gunHullClearance's probe at the
-// sweep's 26 mm (.qa-dev/gepard/sweepfast.mjs, 0.5-degree grid bisected to 0.05) and fitted by
-// tools/gun-depression-sweep.mjs --envelope. (The Leopard 1A5's own curve, for its 105 mm, does not apply.)
-spec.gunPitchByYawDeg = [[0, -10], [139, -10], [140, -9.5], [142, -9], [144, -9], [145, -9.1], [149, -9.7], [151, -9.3],
-  [172, -9], [175, -9], [180, -9.4]];
+// v0 heads meet the outlets' and the exhaust's covers from yaw 135 (at most 2 degrees since fix round 1 lowered the
+// guns 6 cm); measured with gunHullClearance's probe at the sweep's 26 mm (.qa-dev/gepard/sweepfast.mjs, 0.5-degree grid
+// bisected to 0.05) and fitted by tools/gun-depression-sweep.mjs --envelope. (The Leopard 1A5's own curve, for its 105
+// mm, does not apply.)
+spec.gunPitchByYawDeg = [[0, -10], [134, -10], [136, -9.3], [139, -8.4], [141, -8], [143, -8], [146, -8.4], [173, -8.1],
+  [174, -8.1], [180, -8.5]];
 stripSilhouetteDimensions(spec.dims);
 // de.wikipedia (Flugabwehrkanonenpanzer Gepard, the 1A2 data): ~47.5 t (15.5 t turret), 7.68 m overall, 3.27 m wide,
 // 3.29 m with the search radar folded (4.22 m raised), the MTU MB 838 CaM-500 at 610 kW (830 PS), ~65 km/h, crew 3,
@@ -63,8 +64,9 @@ Object.assign(spec, {
 });
 spec.dims = { hullLengthM: 7.09, overallLengthM: 7.68, widthM: 3.27, heightM: 3.29 };
 // the Leopard 1 hull's turret station (profiles/leopard1Hull.ts) and the drawn turret (profiles/gepardFrame.ts): the
-// elevation bearing on each flank of the upper body, the bores 0.17 m over its axis, the muzzle heads 4.05 m ahead of it
-// (7.72 m overall with the guns forward: the published 7.68 and 7.76 m)
+// elevation bearing on each flank of the upper body, the bores 0.15 m over its axis, the bore mouths (the muzzle brakes'
+// faces) 3.74 m ahead of it inside the v0 heads' prongs, whose tips make 7.71 m overall with the guns forward (the
+// published 7.68 and 7.76 m)
 spec.armor.turretPivot = [...GEPARD_RING];
 spec.armor.gunPivot = [...GEPARD_TRUNNION];
 spec.armor.gunBarrel = { lengthM: GEPARD_MUZZLE_Z, radiusM: .05, collision: false };

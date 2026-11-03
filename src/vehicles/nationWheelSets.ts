@@ -262,6 +262,9 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
   // 268: the Gepard is a Leopard 1 hull under an air-defence turret: the Leopard 1A5's wheel, not the Germany IFV's Lynx
   gepard_1a2: { donor: 'leo2a4', reason: 'Leopard 1 MBT hull under an SPAA role → Germany MBT donor (the Leopard 1A5\'s)' },
+  // 268: the PLA air-defence pair roll on solid dished wheels with a raised hub (photos), China's MBT standard, not the IFV ribs
+  pgz95: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a raised hub → China MBT standard (ZTZ-100 recessed web)' },
+  pgz09: { donor: 'ztz100', reason: 'photographs show solid dished road wheels with a bolted hub → China MBT standard (ZTZ-100 recessed web)' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
   ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },

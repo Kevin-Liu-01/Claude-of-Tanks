@@ -6,14 +6,14 @@
 - Updated: 2026-11-02 (release 268, registrar R0; measured build, builder R).
 - Owner request: "love your work on the terminnators. that made me realize we should add more double barrel vehicels"
   (2026-11-02); the coordinator settled five new playable ids, nothing existing changes.
-- Implementation status: BUILT (builder R, 2026-11-02). The registrar's BMP-3 placeholder is gone: the measured GM-352
+- Implementation status: BUILT (builder R, 2026-11-02; fix round 1 on the photo critics, 2026-11-03). The registrar's BMP-3 placeholder is gone: the measured GM-352
   chassis (`src/vehicles/profiles/gm352Chassis.ts`, shared with `pantsir_s1` as an option) under the 2K22M turret
   (`src/vehicles/profiles/tunguskaM.ts`); every datum the spec reads lives in one table,
   `src/vehicles/profiles/gm352Layout.ts`, read by the builders and by `src/vehicles/gm352AirDefenseSpecs.ts`.
 - Qualification status: physical receipts in the build section below. Photographic qualification (a dated packet under
   `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`, with a fixture selftest) is still owed:
-  the as-built box is 8.08 x 3.25 x 4.05 m to the raised dish, 4.26 m to the whip's tip (hull 7.93 m; the stern
-  stowage box stands 0.13 m proud of the plate).
+  the as-built box is 8.08 x 3.25 x 3.38 m to the gunner's sight head (the search radar folded, round 2), 4.26 m to
+  the whip's tip (hull 7.93 m; the stern stowage box stands 0.13 m proud of the plate).
 - Publication status: not published; worktree `~/cot-lanes/twin-aa-268`, branch `item/twin-aa-268` (from origin/main
   7cc204ab32), uncommitted.
 - Current next action (coordinator): register `src/vehicles/profiles/gm352AirDefense.selftest.mjs`, then the generated
@@ -46,7 +46,7 @@ canisters above and outboard of it, plain Russian green.
 | Crew | 4 (commander, driver, gunner, radar operator) | Wikipedia "2K22 Tunguska" |
 | Combat weight | ~34 t (the M1 ~35 t) | brief; Wikipedia (M1) |
 | Length / width | 7.93 m / 3.24 m (M1: ~7.90 m / ~3.25 m) | brief; Wikipedia (M1) |
-| Height | 3.36 m search radar folded, 4.02 m raised (M1: ~3.35 m / ~4.0 m); the build shows it raised, `dims.heightM` 4.02 | brief; Wikipedia (M1) |
+| Height | 3.36 m search radar folded, 4.02 m raised (M1: ~3.35 m / ~4.0 m); the build shows it folded (round 2), `dims.heightM` 3.38 | brief; Wikipedia (M1) |
 | Guns | two 2A38M twin-barrel 30 mm (4 barrels), 3,900-5,000 rpm combined, 1,904 rounds | Wikipedia |
 | Gun arc | -10 to +87 degrees | Wikipedia |
 | Missiles | eight 9M311M, four a side | Wikipedia |
@@ -98,52 +98,58 @@ Scale from photograph 02 (Kuzmin's near-orthographic right side): hull 1,815 px 
 
 | Part | Built | Photograph / basis |
 | --- | --- | --- |
-| Hull | 7.93 m (z +/-3.965), sides +/-1.50, fender bands to +/-1.62 (3.24 m), roof 2.00 m, sponsons' undersides 1.29 m, belly 0.45 m, lower hull +/-1.06 between the tracks | 02, 05: roof 650 px (1.99 m), fender band 805-850 px (1.11-1.31 m); published 7.93 x 3.24 m |
+| Hull | 7.93 m (z +/-3.965), sides +/-1.50, roof 2.00 m, sponsons' undersides 1.29 m, belly 0.45 m, lower hull +/-1.06 between the tracks; the fender plate along each side sloping 27 degrees out and down from the side's foot (1.335 m at x 1.49) to its outer edge (1.08 m at x 1.62, the published 3.24 m over both), 3 cm thick, four butt straps; over the bow (z 3.40 ... 3.93) its lower edge drops to 0.97 m and its top rises to the nose's corner, the front end raked; rubber flaps behind the sprockets and under the bow ends (r2) | 02: roof 650 px (1.99 m), fender 803-858 px (1.08-1.33 m), joints at x 405/775/1165/1555, bow end dropping to 883 px (0.97 m) at the nose; 01, 05, 06: the bevelled plate and its angular bow end; published 7.93 x 3.24 m |
 | Bow | upper glacis 36 degrees from the roof's front edge (z 3.15) to the nose edge (1.40 m), lower glacis 57 degrees to the belly at z 3.35 | 02, 05, 06, 13 |
 | Stern | rear deck sloping from z -3.40 to the stern plate's top (1.84 m), vertical plate, sloped lower plate with four tow eyes, rubber flaps behind the sprockets | 03, 04 |
 | Running gear | six road wheels r 0.34 m at z 2.43 ... -2.52 (0.99 m pitch), sprocket z -3.30 / 0.86 m / r 0.32, idler z 2.98 / 0.86 m / r 0.30, three return rollers, track 0.36 m on xc 1.29 | 02: wheel centres 390-1520 px, r 79 px; sprocket and idler hubs 905 px (0.87 m) |
 | Hull fittings | driver's raised vision box front left with its glass and hatch; equipment box front right; headlight boxes on the glacis' corners; tow cable on the glacis; side access panels; right side's radiator grille and louvres; left side's long exhaust grille; engine-deck hatches and grille; stern door and stowage box | 01, 02, 05, 06, 13 |
-| Turret ring | hull (0, 2.00, 0.35) | the lower turret's centre, 02 and 05 |
-| Lower turret | regular octagon, apothem 1.12 to 1.06 m, 0.26 m tall, 12 mm over the deck on its collar | 02, 05, 06: the wide faceted base, ~2.6-2.9 m across |
-| Upper body / radar housing | 1.60 m wide, z -1.30 ... 1.20, roof 3.02 m; housing 1.56 m wide, z -2.00 ... -1.20, top 3.10 m | 02: roof 400 px (3.08 m); 03, 04: the housing's back |
-| Search radar | raised: pedestal, yoke and the 1.60 x 0.72 m elliptical dish facing back, top 4.05 m (the dish is open equipment, drawn at every range: `turretCupola`) | 09-11 (raised); published 4.02 m |
-| Tracking radar | 0.84 m drum on the body's front, centre 2.56 m, its side arms and the drive housing under it | 01, 06, 10 (the dish ~0.9 m) |
+| Turret ring | hull (0, 2.00, 0.35) | 02 and 05 |
+| Lower turret | broad oval base 2.76 x 2.94 m (lathe, semi-axes 1.38 / 1.47), centre 0.27 m ahead of the ring (turret z -1.20 ... 1.74), 0.30 m tall, sides leaning in, top edge rounded, 12 mm over the deck on its collar (r2) | 02: base 830-1450 px (z -0.93 ... 1.78), top 585 px (0.27 m over the roof); 05: front 1.71, ~0.33 m tall; 06, 09, 13: the wide round base |
+| Upper body / radar housing | 1.60 m wide, z -1.30 ... 1.20, roof 3.02 m, the roof's front edge rounded down (0.22 m) onto the front plate (r2); housing 1.56 m wide, z -2.00 ... -1.20, top 3.10 m | 02: roof 400 px (3.08 m), front edge falling 405 -> 460 px; 03, 04: the housing's back |
+| Search radar | folded for travel (r2): drive head 0.60 x 0.30 m over the housing's back (z -2.55 ... -1.95, top 3.22 m) on the elevation drive's column, the reflector plate 1.70 m across, 0.78 m deep, D-shaped and arched 0.16 m across its width, 5 cm thick, hinged low in the head and folded back 11 degrees down over the engine deck (outer edge z -3.06, ~0.9 m over the deck), eight triangular pockets on its ribbed back; raised equipment drawn at every range (`turretCupola`). Overall height is the gunner's sight head, 3.38 m | 01-06 (stowed), 03 (1.7 m across, arched), 02 (z -2.11 ... -2.94, 0.96 -> 0.83 m over the deck), 12-13 (the plate raised: its pockets); published 3.36 m stowed |
+| Tracking radar | 0.76 m drum (r 0.38), 0.38 m deep, face 1.90 m ahead of the ring, centre 2.58 m, standing ahead of the body on a 0.50 m neck with its yoke arms and on the drive's chin from the base's foot, the face gently domed with its rim (r2) | 02: face 1485 px (1.93 m ahead of the ring), centre 517 px (2.57 m), 0.68-0.78 m tall in 02/05; 01, 06, 10 |
 | Roof | commander's cupola front left, gunner's hatch and sight head front right (top 3.38 m), vision blocks, whip: the crew stations `internalLayoutRegistry.ts` spaaTunguska gives | 01, 02, 05; published 3.36 m (radar folded) |
-| 2A38M x 2 | trunnion turret-local (0, 0.72, 0.18) = 2.72 m; guns at x +/-1.00, bores 0.11 m apart in bare dark steel, perforated cooling jackets (grooved lathe at HIGH), muzzle braces, mouths 2.20 m ahead of the trunnion; one shared builder (`tunguskaM.ts` cannon2A38M) for both modules | 02: gun axis 485 px (2.71 m); 01, 06, 12: black barrels side by side |
-| 9M311M racks x 2 | rounded cradle box x 1.18-1.62, z -0.42 ... 0.70, y -0.34 ... 0.16 (gun-local); four containers r 0.10, two by two, mouths at z 1.72; behind each, on the turret flank, the racks' drive housing carrying the rounded profile aft (turret z -1.25 ... -0.45), built out from the body side | 02, 05: the long rounded box over the flank (1.46 x 0.48 m at 2.60 m); 09, 12 (containers forward of it) |
+| 2A38M x 2 | trunnion turret-local (0, 0.72, 0.18) = 2.72 m; guns at x +/-1.00, bores 0.11 m apart in bare dark steel (jacket 0.10 m, barrel 0.072 m), perforated cooling jackets (grooved lathe at HIGH), muzzle braces, mouths 2.03 m ahead of the trunnion (2.21 m ahead of the ring, r2), receiver 0.92 m; one shared builder (`tunguskaM.ts` cannon2A38M) for both modules | 02: gun axis 485 px (2.71 m), muzzles 1550 px (2.21 m ahead of the ring); 12: jacket ~0.10 m, barrel ~0.065 m against the 0.20 m containers; 01, 06: black barrels side by side |
+| 9M311M launchers x 2 | one flat side box a flank, 1.40 m long (turret z -1.00 ... 0.40), 0.50 m tall (0.34-0.84 m over the deck), x 1.18 (fixed part from the body side 0.79) ... 1.60, flush outboard: its front part (gun-local z to 0.22) elevates with the containers, its back an arc r 0.40 m about the trunnion; its back part is fixed on the turret behind a concave arc r 0.43 m, so the box reads as one at rest; four containers r 0.10, two by two (x 1.29 / 1.49, y -0.20 / 0.02), z 0.05 ... 1.45 gun-local (covers 1.63 m ahead of the ring, 0.27 m behind the drum's face), two thin bands (r2) | 02: box 815-1150 px (z -1.00 ... 0.47), 455-580 px (0.29-0.84 m over the deck); 08, 09, 12: the 2x2 containers ahead of the box, ~1.4 m showing |
 
 Design decisions:
-- The racks pitch with the guns (the game's one elevation; the real racks elevate independently). Their backs stand
-  0.42 m behind the trunnion (the real cradle box runs ~1 m behind it), so at every elevation to +87 degrees they keep
-  over the deck: the lowest corner passes 0.195 m over the roof (2.195 m). The rest of the photographs' long rounded
-  box is the fixed drive housing behind it, clear of the 0.54 m the cradle's corners sweep round the trunnion.
-- The driver's and the right front boxes start at z 2.88, past the 2.85 m the racks' corners reach at any bearing.
-- The search radar is shown raised (as most photographs show the radar), the dish facing back as it stows.
+- Round 2 (fix round 1, critics A and B): the search radar is the 2K22M's folding plate stowed, as photographs 01-06
+  show it, not the M1's dish (09-11) nor the plate raised (12, 13); the overall height is therefore the published
+  stowed 3.36 m (built 3.38 m, the gunner's sight head). The broad oval base, the drum standing forward on its neck,
+  the one-piece flat launcher box with the containers ahead of it and the sloped fender follow the photographs above.
+- The launchers pitch with the guns (the game's one elevation; the real racks elevate independently). The box's
+  elevating part turns about the trunnion inside a 0.40 m arc; the fixed part's concave front stands 3 cm outside it,
+  so the two never meet through -10 ... +87 degrees and the seam stays 3 cm at every pitch. The receivers' backs stay
+  within 0.33 m of the pitch axis, over the base's top (0.305 m) at every elevation.
+- The driver's and the right front boxes start at z 2.88, past the 2.29 m the containers' covers reach at any bearing.
+- Not changed in round 2: road wheels (B: 0.76 m) stay 0.68 m, photograph 02's centre wheel measuring 150 px (0.66 m);
+  the barrels (B: 0.15 m) stay 0.10 m over the jackets, photograph 12 measuring them against the 0.20 m containers, and
+  the muzzle is photograph 12's brace and plain collar, with no perforated brake. The double road-wheel tyre (B) is the
+  shared running gear's, not changed here.
 
-Receipts (builder R, final chain f1 on the finished build; logs in `~/cot-lanes/twin-aa-268-evidence/R/logs/f1-*.log`):
+Receipts (builder R, fix round 1 / round 2, chain r2 on the finished build; logs in
+`~/cot-lanes/twin-aa-268-evidence/R/logs/r2-*.log`, round 1's in `f1-*.log`):
 - `src/vehicles/profiles/gm352AirDefense.selftest.mjs`: PASS (spec = layout; rig seats, fire axes on bore faces in
   barrel groups 0/1, painted barrel stock on each fire axis, 0/1/0 firing order, 8 / 12 launch exits on dark covers in
   rig_gun, tube census, HIGH and LOW; the Pantsir's hull shell holds every Tunguska shell triangle, its extra ones all
   aft of z -2.5; guns and launchers at least 0.065 m off the hull (nothing within the probe's 6.5 cm reach) at every 2
-  degrees of yaw at full depression, level, half and full elevation (keep 0.025); 0.030 m (Tunguska) / 0.060 m
-  (Pantsir) off their own turret through the arc in 3-degree steps, trunnion journals excepted).
-- Roof pockets (`tools/roof-pocket-census.mjs --ids=tunguska_m,pantsir_s1`): 0 for both.
+  degrees of yaw at full depression, level, half and full elevation (keep 0.025); 0.022 m (Tunguska: the launcher box's
+  arc seam and the receivers over the base) / 0.050 m (Pantsir) off their own turret through the arc in 3-degree steps,
+  trunnion journals excepted).
+- Roof pockets (`tools/roof-pocket-census.mjs --ids=tunguska_m,pantsir_s1`): 0 for both (the drum's chin closes the
+  slot under the Tunguska's drum; the Pantsir's search antenna is raised equipment on its mast).
 - Accessory contact (`.qa-dev/contactprobe.mjs`): 0 floating, 0 clipping on both (22 accessory pieces).
-- Posed renders (turret yaw / gun pitch yaw 30 / +87, yaw 0 / -10, yaw 120 / +45): `~/cot-lanes/twin-aa-268-evidence/R/after/f1_pose_*.png`.
-- Gun and launcher sweep: the fleet's own measure (`gunHullProbe`, keep 0.025 m, recoil in battery and at 0.135 m) at
-  every 3 degrees of yaw round the circle and every 5 degrees of pitch over -10 ... +87 degrees (2520 poses): none
-  below the keep, nothing within the probe's 6.5 cm reach, so no `gunPitchByYawDeg` curve is needed.
-  `tools/gun-depression-sweep.mjs --no-suit` (1-degree pitch steps at every whole yaw, about 35,000 probe calls an id)
-  needs about 2 h an id here (~0.2 s a probe call under load ~200); builder R stopped it (after 11 and 2 minutes, no line yet)
-  rather than let my chain's 40-minute alarm cut it. The coordinator may rerun it where it fits.
+- Gun and launcher sweep (`densesweep.mjs`, the fleet's `gunHullProbe`, keep 0.025 m, recoil in battery and at 0.135 m):
+  every 3 degrees of yaw and every 5 degrees of pitch over the whole arc (2,520 / 2,280 poses): none below the keep,
+  nothing within the probe's 6.5 cm reach. The formal `tools/gun-depression-sweep.mjs` is left to the coordinator.
 - Geometry digest (`.qa-dev/geodigest2.mjs` over 25 ids against the coordinator's baseline): the 23 neighbours of the
   shared code (BMP family, BMPTs, Leopard 1 family, TOS-1A, M6, ...) identical; only `tunguska_m` and `pantsir_s1` moved.
-- Selftests naming the ids (f1): vehicleAudioProfiles, ammunitionFlow, afvBalance, camoCatalogProductionIndices,
-  nationWheelSets, vehicleFacets, guidedLauncherTubes (censuses tunguska_m 8, pantsir_s1 12), launcherOrigins PASS.
-  recoilRig FAILS its twin-plant roster guard for every 268 id that authors `gun.muzzles` (TWIN_PLANT needs them; the
-  build meets its per-tube law, which this id's own selftest holds). fleetBalance fails on x1_pioneiro / x1a2_carcara
-  (cold-war/1/light penetration), as in the registrar's run: not this id.
-- Typecheck (f1): no diagnostic in these files (the run's one is builder C's `chineseAirDefenseSpecs.ts` unused `Point`).
+- Selftests naming the ids: vehicleAudioProfiles, ammunitionFlow, afvBalance, camoCatalogProductionIndices,
+  nationWheelSets, vehicleFacets, guidedLauncherTubes (censuses tunguska_m 8, pantsir_s1 12), launcherOrigins and
+  recoilRig PASS; fleetBalance fails only on x1_pioneiro / x1a2_carcara (cold-war/1/light penetration), not these ids.
+- Typecheck: clean (TypeScript, unused symbols, oxlint).
+- Posed renders (yaw / pitch 30 / top of the arc, 0 / full depression, +/-120 / +45): `~/cot-lanes/twin-aa-268-evidence/R/r2/f1_pose_*.png`;
+  the nine views `R/r2/<id>_f1_*.png` (round 1's cameras and names, round 1's in `R/after/`).
 - Not run here (coordinator): the combat-anatomy update and check, marking seats, interior fill, presentation anchors,
   auxiliary inventory, tank assets, the photographic packet, tank:release:check.
 

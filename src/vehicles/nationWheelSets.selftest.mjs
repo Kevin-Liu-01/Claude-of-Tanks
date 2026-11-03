@@ -102,8 +102,9 @@ expect('fv510', 'warrior_tes_h'); expect('ajax', 'warrior_tes_h'); expect('ares_
 expect('t62_1975', 't90_1992'); expect('t55a', T54_STARFISH_WHEELS ? 'type59' : 't90_1992'); // 262: the T-54/T-55 starfish exception while the switch holds expect('t80u', 't90am'); expect('t72b3m_2022', 't90am'); expect('t90_1992', 't90am'); expect('t90', 't90am');
 expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
 expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_tagil', 't90am');
-// 268: the GM-352 pair and the PLA air defence take their nations' IFV wheels; the Gepard rides the Leopard 1A5's
-expect('tunguska_m', 'bmp3m_dragun125'); expect('pantsir_s1', 'bmp3m_dragun125'); expect('pgz95', 'type100'); expect('pgz09', 'type100');
+// 268: the GM-352 pair takes Russia's IFV wheel; the PLA air defence rolls on the ZTZ-100's solid dished wheel (photos);
+// the Gepard rides the Leopard 1A5's
+expect('tunguska_m', 'bmp3m_dragun125'); expect('pantsir_s1', 'bmp3m_dragun125'); expect('pgz95', 'ztz100'); expect('pgz09', 'ztz100');
 expect('gepard_1a2', 'leo2a4'); assert.equal(resolveNationWheel(TANK_SPECS.gepard_1a2).donor, resolveNationWheel(TANK_SPECS.leo1a5).donor);
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel

@@ -186,6 +186,16 @@ export function buildPgz09Chassis(P: TankBuilderPort): void {
     ] as P3[])));
     cagedHeadlight(P, s * 1.39, y + 0.13, z);
   }
+  // the deep side plates over the front 1.5 m (fix round 1, both critics, photograph 02): flush with the sponson side
+  // above, down to 0.85 m with a vertical rear edge, standing 7 mm proud of the sprockets' hub faces; an access hatch on
+  // each
+  for (const s of [-1, 1]) {
+    P.add('hull', convexBody([[1.596, 1.24, 2.06], [1.596, 1.24, L.glacisFrontZ], [1.614, 0.85, 2.06], [1.614, 0.85, 3.40],
+      [1.628, 1.24, 2.06], [1.628, 1.24, L.glacisFrontZ], [1.628, 0.85, 2.06], [1.628, 0.85, 3.40]]
+      .map(([x, y, z]) => [s * x, y, z] as P3)));
+    P.add('hullDetail', box(0.012, 0.22, 0.30), s * 1.632, 0.99, 2.62);
+    for (const z of [2.52, 2.72]) P.add('hullDark', box(0.010, 0.04, 0.05), s * 1.636, 1.11, z);
+  }
   // the driver's hatch front left with its vision blocks, the engine grille front right, the left side's air louvre
   P.addHatch('hull', cylY(0.27, 0.27, 0.04, P.q ? 22 : 14), 0.66, L.roofY + 0.015, 2.20);
   P.add('hullDark', KIT.torus(0.27, 0.011, P.q ? 22 : 14, 4), 0.66, L.roofY + 0.035, 2.20);

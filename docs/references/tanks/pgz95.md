@@ -120,3 +120,18 @@ Also drawn: the gunner's sight head on the director box, the access door in the 
 | `tools/roof-pocket-census.mjs` | PASS (no pockets) |
 | `npm run -s typecheck` | PASS |
 | Geometry digest: 15 neighbouring ids (BMP-3 family, Type 100, AFT-10, Type 59, ZTZ-100/20/85-III/99A2, VT-4A1, both BMPTs, M6, TOS-1A) | byte-identical to the coordinator's baseline |
+
+### Fix round 1 (2026-11-03, critics A and B on round-1 renders)
+
+- Search radar: the CLC-1 reflector is now a 1.15 x 0.78 m shovel, curved about a vertical axis only (0.22 m deep),
+  with a straight top edge and its lower corners rounding in, tilted back 12 degrees, on a 0.40 m pedestal (turntable
+  housing, column, yoke, back frame): its lower edge 0.56 m and its top 1.37 m over the turret roof, 3.91 m over the
+  ground (was a 1.40 x 1.10 m dish on a 1.25 m pole, 4.47 m). Spec height 3.91 m.
+- Gun and missile pods: the trunnion moved 0.60 m aft and 0.30 m up (turret-local (0, 0.92, -0.45): a third of the
+  turret's length ahead of its rear face, level with its roof on side brackets); receivers 1.10 m long, running back
+  past the trunnion; muzzle plane 2.25 m (0.85 m ahead of the turret front at 0 degrees); QW-2 caps level with the
+  receivers' fronts, launch exits at z 0.66, tubes trailing back to -0.62. Barrels r 0.028 (was 0.026).
+- Turret roof: the flat grey cover plate on the front left (0.54 x 0.48 m); the gunner's hatch moved forward.
+- Road wheels: the photographs show solid dished wheels with a raised hub; the fleet's China IFV standard (the Type 100's
+  pressed ribs) reads as spokes. Requested: the wheel-standard exception to China's ZTZ-100 recessed web
+  (`nationWheelSets.ts`, a shared table).

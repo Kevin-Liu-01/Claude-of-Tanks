@@ -17,21 +17,23 @@
 
 type P3 = readonly [number, number, number];
 
-/** The over-under 25 mm pair of one PGZ-95 side and the QW-2 pair above it, gun-local (trunnion at the origin). */
+/** The over-under 25 mm pair of one PGZ-95 side and the QW-2 pair above it, gun-local (trunnion at the origin). Fix
+ * round 1 (both critics, photographs 01-02): the long gun bodies run back past the trunnion toward the turret's rear
+ * corner and the missile caps stand level with the receivers' fronts, the tubes trailing back over them. */
 export const PGZ95_GUNS = Object.freeze({
   /** pod centreline, each side */
   podX: 1.08,
   /** the over-under pair: upper and lower bores */
   boreY: Object.freeze([0.17, -0.17] as const),
-  receiverRearZ: -0.29, receiverFrontZ: 0.63,
-  jacketFrontZ: 0.95, brakeRearZ: 2.24,
-  /** the flash hider's mouth: the fire anchor plane */
-  muzzleZ: 2.43,
-  barrelR: 0.026, jacketR: 0.040, brakeR: 0.038,
+  receiverRearZ: -0.55, receiverFrontZ: 0.55,
+  jacketFrontZ: 0.85, brakeRearZ: 2.06,
+  /** the flash hider's mouth: the fire anchor plane (0.85 m ahead of the turret front at 0 degrees) */
+  muzzleZ: 2.25,
+  barrelR: 0.028, jacketR: 0.042, brakeR: 0.040,
   /** QW-2 launch tubes, stacked over the pair, slightly outboard */
-  tubeX: 1.11, tubeY: Object.freeze([0.41, 0.56] as const), tubeR: 0.046, tubeRearZ: 0.06, headRearZ: 1.40,
+  tubeX: 1.11, tubeY: Object.freeze([0.41, 0.56] as const), tubeR: 0.046, tubeRearZ: -0.62, headRearZ: 0.48,
   /** the seeker caps' front faces: the launch exits */
-  launchZ: 1.58,
+  launchZ: 0.66,
 });
 
 /** PGZ-95: the hull (6.71 x 3.20 m), the running gear, the turret ring and the trunnion. */
@@ -43,8 +45,9 @@ export const PGZ95_LAYOUT = Object.freeze({
   rearChinZ: -3.10, rearPlateBottomY: 0.62,
   /** ring at the hull roof, the turret on the rear half */
   turretPivot: Object.freeze([0, 1.62, -1.20] as const) as P3,
-  /** turret-local trunnion: the pods' common elevation axis */
-  gunPivot: Object.freeze([0, 0.62, 0.15] as const) as P3,
+  /** turret-local trunnion: the pods' common elevation axis, a third of the turret's length ahead of its rear face and
+   * level with its roof on the side brackets (fix round 1: 0.60 m aft and 0.30 m up) */
+  gunPivot: Object.freeze([0, 0.92, -0.45] as const) as P3,
   gear: Object.freeze({
     wheelR: 0.31, wheelW: 0.20, wheelY: 0.37, xc: 1.38, trackW: 0.40, topY: 0.97,
     wheelZs: Object.freeze([2.22, 1.33, 0.44, -0.45, -1.34, -2.23] as const),
@@ -55,17 +58,24 @@ export const PGZ95_LAYOUT = Object.freeze({
   /** turret-local body: base and roof outlines */
   turret: Object.freeze({ baseHalf: 0.84, roofHalf: 0.74, rearZ: -1.15, frontZ: 0.95, roofY: 0.92, roofFrontZ: 0.55,
     noseY: 0.40, sideX: 0.84 }),
-  /** the CLC-1 search antenna raised as photographed, turret-local: centre, width, height, depth of the reflector */
-  radar: Object.freeze({ x: 0, y: 2.30, z: -0.78, width: 1.40, height: 1.10, depth: 0.22, thick: 0.03, mastZ: -0.92 }),
+  /** the CLC-1 search antenna raised as photographed, turret-local: the shovel reflector's centre, width, height and
+   * depth (curved about a vertical axis, straight top edge, tilted back), on a short pedestal: its lower edge 0.55 m and
+   * its top 1.33 m over the turret roof (fix round 1, both critics) */
+  radar: Object.freeze({ x: 0, y: 1.86, z: -0.74, width: 1.15, height: 0.78, depth: 0.22, thick: 0.03, tilt: 0.21,
+    mastZ: -0.73, pedestalTopY: 1.32 }),
 });
 
-/** The PGZ-09's PG99 35 mm guns, one a side in its armoured housing, gun-local. */
+/** The PGZ-09's PG99 35 mm guns, one a side in its armoured housing, gun-local. Fix round 1 (critic A, photograph 02):
+ * each housing is a tall angular box 1.42 m long whose top is the turret's rear roof (the turret's shoulders), its
+ * underside a wedge pointing down to its lowest point 56 % of the way from its rear; the trunnion sits over that
+ * point and the barrel leaves the front face 0.14 m above its bottom edge. */
 export const PGZ09_GUNS = Object.freeze({
-  gunX: 1.25, housingInner: 1.06, housingOuter: 1.44,
-  housingRearZ: -0.76, housingFrontZ: 0.47, housingTopY: 0.22, housingBottomY: -0.24, housingRearBottomY: -0.04,
-  collarFrontZ: 0.66, brakeRearZ: 2.98,
+  gunX: 1.22, housingInner: 1.02, housingOuter: 1.42,
+  housingRearZ: -0.795, housingFrontZ: 0.625, housingTopY: 0.43, housingFrontBottomY: -0.14, housingKeelY: -0.17,
+  housingKeelZ: 0, housingRearBottomY: 0.08,
+  collarFrontZ: 0.80, brakeRearZ: 3.10,
   /** the velocity booster's mouth: the fire anchor plane */
-  muzzleZ: 3.40,
+  muzzleZ: 3.52,
   barrelR: 0.046, collarR: 0.085, brakeR: 0.072,
 });
 
@@ -76,7 +86,7 @@ export const PGZ09_LAYOUT = Object.freeze({
   glacisZ: 2.65, glacisFrontZ: 3.47, glacisFrontY: 1.32, noseY: 0.95, chinZ: 3.18, chinY: 0.52,
   rearChinZ: -3.20, rearPlateBottomY: 0.72,
   turretPivot: Object.freeze([0, 1.74, -1.10] as const) as P3,
-  gunPivot: Object.freeze([0, 0.84, -0.45] as const) as P3,
+  gunPivot: Object.freeze([0, 0.84, -0.575] as const) as P3,
   gear: Object.freeze({
     wheelR: 0.37, wheelW: 0.26, wheelY: 0.45, xc: 1.34, trackW: 0.48, topY: 1.16,
     wheelZs: Object.freeze([2.19, 1.276, 0.362, -0.552, -1.466, -2.38] as const),
@@ -84,13 +94,16 @@ export const PGZ09_LAYOUT = Object.freeze({
     idler: Object.freeze({ z: -3.34, y: 0.76, r: 0.33 }),
     rollerY: 0.99, rollerR: 0.09, rollerZs: Object.freeze([1.74, 0, -1.74] as const),
   }),
-  /** turret-local: the lower band (base to beltY), the upper body to the roof, the front column under the EO head */
-  turret: Object.freeze({ baseHalf: 0.92, bodyHalf: 1.00, roofHalf: 0.84, rearZ: -1.78, frontZ: 1.27, baseFrontZ: 1.55,
-    beltY: 0.45, beltFrontZ: 1.80, shoulderY: 1.15, roofY: 1.30 }),
-  /** the tracking radar's round antenna at the front, turret-local */
-  trackingRadar: Object.freeze({ y: 0.77, z: 1.93, r: 0.29 }),
-  /** the folded search antenna on its pedestal, turret-local: its top is the published 3.40 m */
-  searchRadar: Object.freeze({ z: -0.62, width: 1.36, depth: 0.74, thick: 0.13, topY: 1.66 }),
+  /** turret-local (fix round 1, critic B against the photograph 02 silhouette): the base tier from the ring to beltY,
+   * set in under the upper body; the upper body, its rear part up to the roof at roofY (the housings' tops) and its front
+   * part, from stepZ forward, stepped down to frontRoofY; the front column under the EO head */
+  turret: Object.freeze({ baseHalf: 0.82, beltHalf: 0.88, bodyHalf: 0.98, roofHalf: 0.90, rearZ: -1.78, frontZ: 1.27,
+    baseFrontZ: 1.50, beltFrontZ: 1.72, beltY: 0.40, shoulderY: 1.22, roofY: 1.27, stepZ: 0.62, frontRoofY: 1.06 }),
+  /** the tracking radar's round antenna at the front, turret-local (0.60 m across, 0.26 m deep) */
+  trackingRadar: Object.freeze({ y: 0.77, z: 1.95, r: 0.30 }),
+  /** the folded search antenna on its stepped pedestal, fore-aft on the rear roof, turret-local: its top is the
+   * published 3.40 m */
+  searchRadar: Object.freeze({ z: -0.57, width: 0.92, depth: 0.76, thick: 0.26, topY: 1.66 }),
 });
 
 /** Launch exits, gun frame (they pitch with the guns): two QW-2 a side on the PGZ-95. */

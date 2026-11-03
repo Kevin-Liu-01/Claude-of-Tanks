@@ -118,3 +118,22 @@ Also drawn: the loading door on the turret rear wall and the lifting lugs on its
 | `tools/roof-pocket-census.mjs` | PASS (no pockets) |
 | `npm run -s typecheck` | PASS |
 | Geometry digest: 15 neighbouring ids (BMP-3 family, Type 100, AFT-10, Type 59, ZTZ-100/20/85-III/99A2, VT-4A1, both BMPTs, M6, TOS-1A) | byte-identical to the coordinator's baseline |
+
+### Fix round 1 (2026-11-03, critics A and B on round-1 renders)
+
+Photograph 02's top silhouette, measured per column at the same scale: the turret's rear part (the gun housings' tops,
+the roof between them) stands 1.27 m over the ring, its front part 1.06 m from z -0.47 (hull) forward, the EO head
+1.24 m, the folded search antenna 1.62-1.67 m from z -1.99 to -1.35 with a box behind it to 1.62 m.
+
+- Gun housings: tall angular boxes 1.42 m long, their tops the rear roof (1.27 m over the ring), 0.40 m wide outboard of
+  the upper body (x 1.02-1.42), the front face 0.57 m deep, the underside a wedge down to its keel 56 % of the way from
+  the rear; the trunnion over the keel (turret-local (0, 0.84, -0.575)); muzzle plane 3.52 m, still 1.85 m ahead of the
+  hull centre.
+- Turret: a base tier from the ring to a 0.40 m ledge, set in under the upper body; the upper body stepped from the
+  1.27 m rear roof down to a 1.06 m front part at turret-local z 0.62.
+- Search antenna: a 0.92 x 0.76 x 0.26 m box lying fore and aft on a two-step pedestal, its front top edge chamfered,
+  its rear edge 0.83 m ahead of the turret's rear face; the rear box behind it.
+- Tracking radar: 0.60 m across (kept: photograph 02, 150 px of the full-resolution frame) and 0.26 m deep (was 0.15).
+- Hull: the deep side plates over the front 1.42 m, down to 0.85 m, with an access hatch.
+- Rear wall: four hinge latches and the antenna base.
+- Road wheels: as the PGZ-95 (requested: the ZTZ-100 recessed-web exception).

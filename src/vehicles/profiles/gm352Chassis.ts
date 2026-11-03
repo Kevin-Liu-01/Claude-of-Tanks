@@ -3,8 +3,8 @@
 // the M1E carries the two raised engine-cooling boxes with their big grilles over the rear corners (Kuzmin's
 // Engineering Technologies 2012 rear views, photographs 05-07), so that is an option here, not a second hull.
 //
-// The long, low, flat-sided hull (gm352Layout.ts GM352_HULL): vertical upper sides over the tracks with a sloped fender
-// band along each, the full-width upper glacis falling 36 degrees from the roof to the nose edge and the steep lower
+// The long, low, flat-sided hull (gm352Layout.ts GM352_HULL): vertical upper sides over the tracks with the fender
+// plate sloping out and down from each side's foot, turned down over the bow, the full-width upper glacis falling 36 degrees from the roof to the nose edge and the steep lower
 // glacis under it, the sloped rear deck onto the vertical stern plate, the narrower lower hull between the tracks. The
 // driver sits front left under his raised vision box; a second equipment box stands front right; the headlight boxes
 // at the bow's corners; the side access panels, the right side's radiator grille and louvres and the left side's long
@@ -62,36 +62,84 @@ function hullShell(P: TankBuilderPort): void {
       [x, H.sternFootY, -L + 0.01]);
   }
   P.add('hull', convexSolid(lower));
-  // The fender bands: sloped plates along each side over the track, their inner face into the hull side, the front end
-  // raked like the sponson's front, the rear end square at the stern.
+  // The fender bands (photographs 01, 02, 05, 06): a plate along each side, sloping 27 degrees out and down from the
+  // hull side's foot over the track, its rear end square at the stern. Over the bow it turns down: its lower edge drops
+  // and its top rises toward the nose, the front end raked up to the nose's corner.
   for (const side of [-1, 1]) {
-    const xi = side * (H.sideX - 0.01), xo = side * H.fenderX, rear = -L + 0.035;
-    P.add('hull', convexSolid([
-      [xi, H.fenderInnerBottomY, rear], [xi, H.fenderTopY, rear], [xo, H.fenderOuterTopY, rear], [xo, H.fenderOuterBottomY, rear],
-      [xi, H.fenderInnerBottomY, L - 0.07], [xi, H.fenderTopY, L - 0.035], [xo, H.fenderOuterTopY, L - 0.05],
-      [xo, H.fenderOuterBottomY, L - 0.19],
-    ]));
-    // the band's joint lines: three butt straps over its top face
-    for (const z of [-1.95, 0.0, 1.95]) {
-      P.add('hullDetail', convexSolid([
-        [side * (H.sideX - 0.005), H.fenderTopY + 0.004, z - 0.03], [side * (H.sideX - 0.005), H.fenderTopY + 0.004, z + 0.03],
-        [side * (H.fenderX + 0.004), H.fenderOuterTopY + 0.004, z - 0.03], [side * (H.fenderX + 0.004), H.fenderOuterTopY + 0.004, z + 0.03],
-        [side * (H.sideX - 0.005), H.fenderTopY - 0.02, z - 0.03], [side * (H.sideX - 0.005), H.fenderTopY - 0.02, z + 0.03],
-        [side * (H.fenderX + 0.004), H.fenderOuterBottomY + 0.02, z - 0.03], [side * (H.fenderX + 0.004), H.fenderOuterBottomY + 0.02, z + 0.03],
-      ]));
+    const band = fenderSection(side, H.fenderTopY, H.fenderBottomY);
+    P.add('hull', convexSolid([...band(-L + 0.035), ...band(H.fenderBowZ)]));
+    const tip = fenderSection(side, H.fenderTipTopY, H.fenderTipBottomY);
+    P.add('hull', convexSolid([...band(H.fenderBowZ), ...tip(H.fenderTipZ).map(([x, y, z]) => [x, y,
+      z - (y < H.fenderTopY ? 0.07 : 0)] as P3)]));
+    // the band's butt joints: straps 6 cm wide over its outer face
+    const n = fenderNormal(H.fenderTopY, H.fenderBottomY);
+    for (const z of H.fenderJointZs) {
+      P.add('hullDetail', convexSolid([z - 0.03, z + 0.03].flatMap((jz) => [
+        [side * (H.sideX + 0.004), H.fenderTopY + 0.004, jz], [side * (H.fenderX + n[0] * 0.006), H.fenderBottomY + n[1] * 0.006, jz],
+        [side * (H.sideX - 0.004), H.fenderTopY - 0.012, jz], [side * (H.fenderX - n[0] * 0.012), H.fenderBottomY - n[1] * 0.012, jz],
+      ] as P3[])));
     }
-    // the rear mud flaps behind the sprockets, hung from the sponson's underside, and the rubber strips along the
-    // fender band's outer edge over the idlers (photographs 10, 13)
+    // the rear mud flaps behind the sprockets, hung from the sponson's underside, and the rubber flap under the
+    // fender's bow end, ahead of the idler
     P.addMudguard('gm352-rear-flap', 'hullRubber', KIT.box(0.40, 0.48, 0.025), side * 1.30, H.sponsonY - 0.23, -L + 0.03);
-    P.addMudguard('gm352-bow-strip', 'hullRubber', KIT.box(0.025, 0.25, 0.40), side * 1.597, 1.045, 3.50);
+    P.addMudguard('gm352-bow-strip', 'hullRubber', KIT.box(0.025, 0.16, 0.36), side * (H.fenderX - 0.03), 0.96, 3.62);
   }
 }
 
-/** A raised access panel on a hull side (+x left, -x right), 1 cm into the plate. */
+/** The fender plate's outward normal in the (x, y) section: out and up, square to its slope. */
+function fenderNormal(topY: number, bottomY: number): [number, number] {
+  const dx = H.fenderX - (H.sideX - 0.01), dy = topY - bottomY, l = Math.hypot(dx, dy);
+  return [dy / l, dx / l];
+}
+
+/** The fender plate's section at a station: its outer face's top (into the hull side) and bottom edges, and the same
+ * two edges on its underside, the plate's thickness in from them. */
+function fenderSection(side: number, topY: number, bottomY: number): (z: number) => P3[] {
+  const [nx, ny] = fenderNormal(topY, bottomY), t = H.fenderThickness, xi = H.sideX - 0.01;
+  return (z) => [
+    [side * xi, topY, z], [side * H.fenderX, bottomY, z],
+    [side * (xi - nx * t), topY - ny * t, z], [side * (H.fenderX - nx * t), bottomY - ny * t, z],
+  ];
+}
+
+/** A box with rounded edges in its side (z-y) profile, swept across x from x0 to x1. */
+export function roundedSideBox(x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, radius: number,
+  segments: number): THREE.BufferGeometry {
+  return profileSolid(x0, x1, roundedRect(z0, z1, y0, y1, radius), segments);
+}
+
+/** The outline of a rectangle with rounded corners in the (z, y) plane, as a shape. */
+function roundedRect(z0: number, z1: number, y0: number, y1: number, radius: number): THREE.Shape {
+  const shape = new THREE.Shape();
+  shape.moveTo(z0 + radius, y0);
+  shape.lineTo(z1 - radius, y0);
+  shape.quadraticCurveTo(z1, y0, z1, y0 + radius);
+  shape.lineTo(z1, y1 - radius);
+  shape.quadraticCurveTo(z1, y1, z1 - radius, y1);
+  shape.lineTo(z0 + radius, y1);
+  shape.quadraticCurveTo(z0, y1, z0, y1 - radius);
+  shape.lineTo(z0, y0 + radius);
+  shape.quadraticCurveTo(z0, y0, z0 + radius, y0);
+  return shape;
+}
+
+/** A side (z-y) outline swept across x from x0 to x1: shape x is the hull's z, the extrusion its x. */
+export function profileSolid(x0: number, x1: number, outline: THREE.Shape | readonly (readonly [number, number])[],
+  segments = 1): THREE.BufferGeometry {
+  const shape = outline instanceof THREE.Shape ? outline
+    : new THREE.Shape(outline.map(([z, y]) => new THREE.Vector2(z, y)));
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: x1 - x0, bevelEnabled: false, curveSegments: segments, steps: 1 });
+  return geometry.rotateY(-Math.PI / 2).translate(x1, 0, 0);
+}
+
+/** A raised access panel on a hull side (+x left, -x right): a rounded-corner plate 3 cm proud of the side, 1 cm into
+ * it, its two hinge lugs on the front edge (photographs 02, 05: the rounded hinged doors). */
 function sidePanel(P: TankBuilderPort, side: number, z: number, y: number, length: number, height: number): void {
-  P.add('hullDetail', KIT.box(0.024, height, length), side * (H.sideX + 0.002), y, z);
-  if (P.q) for (const dz of [-0.5, 0.5]) {
-    P.add('hullDark', KIT.box(0.02, 0.05, 0.035), side * (H.sideX + 0.018), y + height * 0.22, z + dz * (length - 0.06));
+  const [x0, x1] = side > 0 ? [H.sideX - 0.01, H.sideX + 0.03] : [-(H.sideX + 0.03), -(H.sideX - 0.01)];
+  P.add('hullDetail', roundedSideBox(x0, x1, z - length / 2, z + length / 2, y - height / 2, y + height / 2, 0.07,
+    P.q ? 3 : 1));
+  if (P.q) for (const dy of [-0.28, 0.28]) {
+    P.add('hullDark', KIT.box(0.03, 0.07, 0.05), side * (H.sideX + 0.035), y + dy * height, z + length / 2 + 0.01);
   }
 }
 
@@ -114,8 +162,8 @@ function sideGrille(P: TankBuilderPort, side: number, z: number, y: number, leng
 
 function hullSides(P: TankBuilderPort, variant: Gm352ChassisOptions['variant']): void {
   // Right side (-x): the access panels, the radiator grille and the louvres behind it (photograph 02).
-  for (const [z, y, l, h] of [[-3.09, 1.61, 0.46, 0.40], [-1.29, 1.65, 0.70, 0.38], [-0.37, 1.62, 0.72, 0.44],
-    [1.57, 1.62, 0.55, 0.42], [2.86, 1.64, 0.92, 0.42]] as const) sidePanel(P, -1, z, y, l, h);
+  for (const [z, y, l, h] of [[-3.09, 1.61, 0.50, 0.42], [-1.29, 1.65, 0.72, 0.42], [-0.37, 1.62, 0.76, 0.46],
+    [1.57, 1.62, 0.58, 0.44], [2.86, 1.64, 0.92, 0.44]] as const) sidePanel(P, -1, z, y, l, h);
   sideGrille(P, -1, -2.16, 1.64, 0.32, 0.50, 6, true);
   sideGrille(P, -1, -1.79, 1.52, 0.20, 0.28, 5, false);
   // Left side (+x): the panels forward, the long exhaust grille along the engine bay (photograph 05).
@@ -239,12 +287,12 @@ function gm352m1eStern(P: TankBuilderPort): void {
   // the deck's hatch between the boxes, ahead of the camera
   P.add('hullHatch', KIT.box(1.10, 0.025, 0.55), 0.04, H.deckY + 0.008, -2.70);
   // the rear-view camera's hood on the deck between the boxes (photograph 04): a hooded box open to the rear, the lens
-  P.add('hullDetail', KIT.box(0.30, 0.16, 0.30), 0, H.deckY + 0.06, -3.22);
-  P.add('hullDetail', convexSolid([-0.17, 0.17].flatMap((x) => [
-    [x, H.deckY + 0.13, -3.08], [x, H.deckY + 0.36, -3.08], [x, H.deckY + 0.36, -3.30], [x, H.deckY + 0.30, -3.40],
-    [x, H.deckY + 0.13, -3.40],
+  P.add('hullDetail', KIT.box(0.34, 0.20, 0.34), 0, H.deckY + 0.08, -3.22);
+  P.add('hullDetail', convexSolid([-0.20, 0.20].flatMap((x) => [
+    [x, H.deckY + 0.17, -3.06], [x, H.deckY + 0.48, -3.06], [x, H.deckY + 0.48, -3.30], [x, H.deckY + 0.40, -3.42],
+    [x, H.deckY + 0.17, -3.42],
   ] as P3[])));
-  P.add('hullGlass', KIT.cylZ(0.05, 0.012, P.q ? 16 : 10), 0, H.deckY + 0.24, -3.404);
+  P.add('hullGlass', KIT.cylZ(0.065, 0.012, P.q ? 16 : 10), 0, H.deckY + 0.30, -3.424);
 }
 
 function runningGear(P: TankBuilderPort): void {

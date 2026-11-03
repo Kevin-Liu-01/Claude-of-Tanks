@@ -6,7 +6,7 @@
 - Updated: 2026-11-02 (release 268, registrar R0; measured build, builder R).
 - Owner request: "love your work on the terminnators. that made me realize we should add more double barrel vehicels"
   (2026-11-02); the coordinator settled five new playable ids, nothing existing changes.
-- Implementation status: BUILT (builder R, 2026-11-02). The registrar's BMP-3 placeholder is gone: the measured GM-352
+- Implementation status: BUILT (builder R, 2026-11-02; fix round 1 on the photo critics, 2026-11-03). The registrar's BMP-3 placeholder is gone: the measured GM-352
   chassis (`src/vehicles/profiles/gm352Chassis.ts`) with its GM-352M1E option (the raised, grilled cooling boxes over the
   stern and the rear-view camera's hood) under the Pantsir-S1 combat module (`src/vehicles/profiles/pantsirS1.ts`);
   every datum the spec reads lives in `src/vehicles/profiles/gm352Layout.ts`, read by the builders and by
@@ -98,46 +98,55 @@ chassis is the Tunguska's GM-352 (one builder, `gm352Chassis.ts`), with the GM-3
 
 | Part | Built | Photograph / basis |
 | --- | --- | --- |
-| Chassis | the GM-352 hull and running gear as `tunguska_m.md` records (7.93 x 3.24 m, roof 2.00 m, six road wheels) | 01, 03, 07 |
-| GM-352M1E stern | raised cooling box over the right rear corner (x -1.515 ... -0.62, z -3.975 ... -2.58, top 2.42 m) with its big grille on the back and a side grille; lower box over the left rear corner (x 0.70 ... 1.515, to z -2.74, top 2.30 m, raked front) with its side grille; the rear-view camera's hooded box on the deck between them | 05, 06, 07 (the boxes), 04 (the camera hood) |
+| Chassis | the GM-352 hull and running gear as `tunguska_m.md` records (7.93 x 3.24 m, roof 2.00 m, six road wheels), with its sloped fender plate turned down over the bow (round 2, one change in `gm352Chassis.ts` for both ids) | 01, 03, 07, 15 (the bevelled fender) |
+| GM-352M1E stern | raised cooling box over the right rear corner (x -1.515 ... -0.62, z -3.975 ... -2.58, top 2.42 m) with its big grille on the back and a side grille; lower box over the left rear corner (x 0.70 ... 1.515, to z -2.74, top 2.30 m, raked front) with its side grille; the rear-view camera's hooded box on the deck between them, 0.40 m wide, 0.48 m tall (round 2) | 05, 06, 07 (the boxes: the tall louvred block ends over the rearmost road wheel), 04, 06 (the camera hood) |
 | Ring | hull (0, 2.00, 0.35), as the Tunguska's | |
 | Platform | regular octagon, apothem 1.04 to 0.98 m, 0.19 m tall | 03, 09 |
-| Central body | 1.10 m wide, z -1.25 ... 0.55, top 2.95 m, its back sloped; the gunner's and commander's hatches down its right side (the stations `internalLayoutRegistry.ts` gives the two-man module), vision blocks, two whips, the back's equipment box; the guns' two ammunition boxes with their stencilled crosses on the platform behind | 05, 06, 09, 10 |
+| Central body | 1.10 m wide, z -1.25 ... 0.55, top 2.95 m, its back sloped; the gunner's and commander's hatches down its right side (the stations `internalLayoutRegistry.ts` gives the two-man module), vision blocks, two whips on its roof ahead of the search radar, the back's equipment box; the guns' two ammunition boxes with their stencilled crosses on the platform behind | 05, 06, 09, 10 |
 | Tracking radar | drum r 0.50 m along z (0.30 ... 1.05), centre 2.80 m, on its drive housing from the body's front; the 0.94 m radome (pale finish) on its face; the small antenna housing on its upper left with its own cap | 01, 02 (dome ~0.95 m), 03 |
-| Search radar | mast r 0.22 to 3.30 m, the 1.30 x 0.95 x 0.28 m panel leaning 6 degrees back, top 4.10 m, antenna face (frame, centre strip, IFF rod) to the rear | 05, 06, 07, 12 |
-| 2A38M x 2 | trunnion turret-local (0, 0.86, 0.12) = 2.86 m; guns at x +/-0.80 (inboard of the banks), bores 0.11 m apart in bare dark steel, mouths 2.35 m ahead of the trunnion; the Tunguska's 2A38M builder (`tunguskaM.ts` cannon2A38M) | 02: guns at about +/-0.73 m, dark barrels |
-| 57E6 banks x 2 | six containers r 0.085, columns x 1.20 / 1.42, rows y -0.19 / 0.08 / 0.35 (gun-local), z -0.50 ... 2.10; cradle box under the back half, armoured side box (rounded, lid panel) below the outer column, two frames | 01, 02, 08, 09, 14 |
+| Search radar | mast r 0.22 to 3.30 m; a landscape box antenna 1.24 x 0.85 x 0.45 m (1.46 : 1), its top corners chamfered 0.14 m, leaning 6 degrees back, top 4.10 m; on its back face a column of fan grilles down each side and the raised centre panels; under the back face the IFF bracket with two horizontal rows (rod, two bodies, a flared horn out 0.24 m past the box's side, the upper row's to the left, the lower's to the right); the box is raised equipment on its mast, drawn at every range (`turretCupola`), open air under it (round 2) | 06 (chamfered outline), 07, 09, 12 (the back face: fans, horns) |
+| 2A38M x 2 | trunnion turret-local (0, 0.86, -0.70) = 2.86 m up, at the module's back under the slabs' back ends (round 2); guns at x +/-0.80 (inboard of the banks), receivers 0.12 ... 1.04 m out along the bores on their cradle arms, bores 0.11 m apart in bare dark steel, mouths 2.77 m ahead of the trunnion (2.07 m ahead of the ring, 0.40 m aft of round 1); the Tunguska's 2A38M builder (`tunguskaM.ts` cannon2A38M) | 02: guns at about +/-0.73 m, dark barrels; 03, 12 |
+| 57E6 banks x 2 | six containers r 0.085, columns x 1.20 / 1.42, rows y -0.19 / 0.08 / 0.35 (gun-local), z -0.08 ... 2.52 (turret z -0.78 ... 1.82: the domed covers 0.77 m past the drum's face); the cradle under them; outboard the armoured slab 2.20 x 0.70 x 0.10 m (turret z -1.10 ... 1.10, its back level with the search radar's mast, its foot 0.30 m under the lowest container) with its recessed rounded panel; the ribbed casing along the inner column; two thin bands round the six (round 2: the square frames gone, the bank 0.40 m aft) | 09 (slab ~11.5 x 3.8 container diameters, its back at the mast, the covers 0.6-0.8 m past the drum), 02, 03, 05 (domed covers), 14 |
 
 Design decisions:
-- The banks pitch with the guns over the -5 ... +85 degree envelope (the real banks elevate on their own); they stand
-  0.55 m behind the trunnion and outboard of the platform, so their lowest corner passes 0.15 m over the roof.
-- The raised stern boxes start at z -2.58 / -2.74, aft of the hull z -2.33 the banks' tips reach at any bearing.
+- Round 2 (fix round 1, critics A and B): the banks pitch with the guns over the -5 ... +85 degree envelope (the real
+  banks elevate on their own) about a trunnion moved to the module's back, under the slabs' back ends, so the long
+  slabs and banks swing up off it and never down: their lowest corner (0.70 m from the axis) passes 0.16 m over the
+  deck. The search radar stands between the guns' receivers at full elevation (the box 1.24 m wide, the guns' covers
+  from x 0.675), its horns behind the guns' reach.
+- The slab's three asked numbers (2.4 m long, its back at the mast, the covers 0.7 m past the drum) cannot all hold
+  with the 2.6 m containers: the build keeps its back at the mast and the covers 0.77 m past the drum, so the slab is
+  2.2 m over the containers' back 72 % (A asked 2.4 m over the back 55 %).
+- The raised stern boxes start at z -2.58 / -2.74, aft of the 2.4 m the containers' covers reach from the ring.
+- Not changed in round 2: the right rear box (B: 2.1 m) stays 1.4 m, photograph 07 showing the tall louvred block
+  ending over the rearmost road wheel with a lower step and a separate low grille box ahead of it; the tracking drum
+  keeps its 1.0 m (A: keep) and its second small window and chin housing (B); the guns keep the shared 2A38M's
+  jackets (photographs 03, 12: no separate shroud beyond them).
 - The radome is drawn in the fleet's pale finish (`turretCanvasPale`), the nearest material to its yellow.
 
-Receipts (builder R, final chain f1 on the finished build; logs in `~/cot-lanes/twin-aa-268-evidence/R/logs/f1-*.log`):
+Receipts (builder R, fix round 1 / round 2, chain r2 on the finished build; logs in
+`~/cot-lanes/twin-aa-268-evidence/R/logs/r2-*.log`, round 1's in `f1-*.log`):
 - `src/vehicles/profiles/gm352AirDefense.selftest.mjs`: PASS (spec = layout; rig seats, fire axes on bore faces in
   barrel groups 0/1, painted barrel stock on each fire axis, 0/1/0 firing order, 8 / 12 launch exits on dark covers in
   rig_gun, tube census, HIGH and LOW; the Pantsir's hull shell holds every Tunguska shell triangle, its extra ones all
   aft of z -2.5; guns and launchers at least 0.065 m off the hull (nothing within the probe's 6.5 cm reach) at every 2
-  degrees of yaw at full depression, level, half and full elevation (keep 0.025); 0.030 m (Tunguska) / 0.060 m
-  (Pantsir) off their own turret through the arc in 3-degree steps, trunnion journals excepted).
-- Roof pockets (`tools/roof-pocket-census.mjs --ids=tunguska_m,pantsir_s1`): 0 for both.
+  degrees of yaw at full depression, level, half and full elevation (keep 0.025); 0.022 m (Tunguska: the launcher box's
+  arc seam and the receivers over the base) / 0.050 m (Pantsir) off their own turret through the arc in 3-degree steps,
+  trunnion journals excepted).
+- Roof pockets (`tools/roof-pocket-census.mjs --ids=tunguska_m,pantsir_s1`): 0 for both (the drum's chin closes the
+  slot under the Tunguska's drum; the Pantsir's search antenna is raised equipment on its mast).
 - Accessory contact (`.qa-dev/contactprobe.mjs`): 0 floating, 0 clipping on both (22 accessory pieces).
-- Posed renders (turret yaw / gun pitch yaw 30 / +85, yaw 0 / -5, yaw -120 / +45): `~/cot-lanes/twin-aa-268-evidence/R/after/f1_pose_*.png`.
-- Gun and launcher sweep: the fleet's own measure (`gunHullProbe`, keep 0.025 m, recoil in battery and at 0.135 m) at
-  every 3 degrees of yaw round the circle and every 5 degrees of pitch over -5 ... +85 degrees (2280 poses): none
-  below the keep, nothing within the probe's 6.5 cm reach, so no `gunPitchByYawDeg` curve is needed.
-  `tools/gun-depression-sweep.mjs --no-suit` (1-degree pitch steps at every whole yaw, about 35,000 probe calls an id)
-  needs about 2 h an id here (~0.2 s a probe call under load ~200); builder R stopped it (after 11 and 2 minutes, no line yet)
-  rather than let my chain's 40-minute alarm cut it. The coordinator may rerun it where it fits.
+- Gun and launcher sweep (`densesweep.mjs`, the fleet's `gunHullProbe`, keep 0.025 m, recoil in battery and at 0.135 m):
+  every 3 degrees of yaw and every 5 degrees of pitch over the whole arc (2,520 / 2,280 poses): none below the keep,
+  nothing within the probe's 6.5 cm reach. The formal `tools/gun-depression-sweep.mjs` is left to the coordinator.
 - Geometry digest (`.qa-dev/geodigest2.mjs` over 25 ids against the coordinator's baseline): the 23 neighbours of the
   shared code (BMP family, BMPTs, Leopard 1 family, TOS-1A, M6, ...) identical; only `tunguska_m` and `pantsir_s1` moved.
-- Selftests naming the ids (f1): vehicleAudioProfiles, ammunitionFlow, afvBalance, camoCatalogProductionIndices,
-  nationWheelSets, vehicleFacets, guidedLauncherTubes (censuses tunguska_m 8, pantsir_s1 12), launcherOrigins PASS.
-  recoilRig FAILS its twin-plant roster guard for every 268 id that authors `gun.muzzles` (TWIN_PLANT needs them; the
-  build meets its per-tube law, which this id's own selftest holds). fleetBalance fails on x1_pioneiro / x1a2_carcara
-  (cold-war/1/light penetration), as in the registrar's run: not this id.
-- Typecheck (f1): no diagnostic in these files (the run's one is builder C's `chineseAirDefenseSpecs.ts` unused `Point`).
+- Selftests naming the ids: vehicleAudioProfiles, ammunitionFlow, afvBalance, camoCatalogProductionIndices,
+  nationWheelSets, vehicleFacets, guidedLauncherTubes (censuses tunguska_m 8, pantsir_s1 12), launcherOrigins and
+  recoilRig PASS; fleetBalance fails only on x1_pioneiro / x1a2_carcara (cold-war/1/light penetration), not these ids.
+- Typecheck: clean (TypeScript, unused symbols, oxlint).
+- Posed renders (yaw / pitch 30 / top of the arc, 0 / full depression, +/-120 / +45): `~/cot-lanes/twin-aa-268-evidence/R/r2/f1_pose_*.png`;
+  the nine views `R/r2/<id>_f1_*.png` (round 1's cameras and names, round 1's in `R/after/`).
 - Not run here (coordinator): the combat-anatomy update and check, marking seats, interior fill, presentation anchors,
   auxiliary inventory, tank assets, the photographic packet, tank:release:check.
 

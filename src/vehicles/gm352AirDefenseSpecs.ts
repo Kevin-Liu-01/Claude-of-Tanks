@@ -37,6 +37,28 @@ function prismPlates(name: string, w: number, profile: Profile, keMm: number, ce
     face(`${name}_right`, profile.map(([z, y]) => [-w, y, z] as Point), keMm, ceMm)];
 }
 
+/** A convex face with its corners wound counter-clockwise seen from outside: from the side away from `inside`. */
+function outwardFace(name: string, verts: Point[], inside: Point, keMm: number, ceMm: number): ArmorPlate {
+  const [a, b, c] = verts, u = b.map((v, i) => v - a[i]), w = c.map((v, i) => v - a[i]);
+  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  const out = n[0] * (a[0] - inside[0]) + n[1] * (a[1] - inside[1]) + n[2] * (a[2] - inside[2]);
+  return face(name, out >= 0 ? verts : [...verts].reverse(), keMm, ceMm);
+}
+
+/** The Tunguska's oval lower turret (TUNGUSKA.tub, the rings TUB_PROFILE leans in through): sixteen facets round each
+ * band, and its top. */
+function tubPlates(name: string, keMm: number, ceMm: number): ArmorPlate[] {
+  const { tub } = TUNGUSKA, k = 16;
+  const rings = [[0, tub.bottomY], [-0.05, 0.20], [-0.20, 0.30]].map(([dr, y]) => Array.from({ length: k }, (_, i) => {
+    const a = (i + 0.5) * 2 * Math.PI / k, rx = (tub.halfWidth + dr) / Math.cos(Math.PI / k);
+    return [rx * Math.sin(a), y, tub.centreZ + rx * (tub.halfLength / tub.halfWidth) * Math.cos(a)] as Point;
+  }));
+  const inside: Point = [0, (tub.bottomY + 0.30) / 2, tub.centreZ];
+  const flanks = rings.slice(1).flatMap((ring, band) => ring.map((_, i) => outwardFace(`${name}_${band}_${i}`,
+    [rings[band][i], rings[band][(i + 1) % k], ring[(i + 1) % k], ring[i]], inside, keMm, ceMm)));
+  return [...flanks, outwardFace(`${name}_top`, [...rings[2]], inside, keMm, ceMm)];
+}
+
 /** The regular octagonal lower turret: eight tapered flanks and its top. */
 function octagonPlates(name: string, bottomApothem: number, topApothem: number, bottomY: number, topY: number,
   keMm: number, ceMm: number): ArmorPlate[] {
@@ -56,6 +78,16 @@ function drumPlates(name: string, r: number, y: number, z0: number, z1: number, 
   const at = (k: number, z: number): Point => [r * Math.cos(k * Math.PI / 6), y + r * Math.sin(k * Math.PI / 6), z];
   return [...Array.from({ length: 12 }, (_, k) => face(`${name}_${k}`, [at(k, z0), at(k + 1, z0), at(k + 1, z1), at(k, z1)],
     keMm, ceMm)), face(`${name}_front`, Array.from({ length: 12 }, (_, k) => at(k, z1)), keMm, ceMm)];
+}
+
+/** A flat antenna box (the Pantsir's search radar): its outline across the face (x, up) swept through its depth, then
+ * leaned back about its centre. */
+function antennaBoxPlates(name: string, outline: readonly (readonly [number, number])[], depth: number,
+  at: (x: number, up: number, out: number) => Point, keMm: number, ceMm: number): ArmorPlate[] {
+  const inside = at(0, 0, 0), front = outline.map(([x, up]) => at(x, up, depth / 2)), back = outline.map(([x, up]) => at(x, up, -depth / 2));
+  return [outwardFace(`${name}_front`, front, inside, keMm, ceMm), outwardFace(`${name}_back`, back, inside, keMm, ceMm),
+    ...outline.map((_, i) => outwardFace(`${name}_${i}`, [front[i], front[(i + 1) % outline.length], back[(i + 1) % outline.length],
+      back[i]], inside, keMm, ceMm))];
 }
 
 /** The GM-352 hull's plates (gm352Layout.ts GM352_HULL, the shells gm352Chassis.ts draws), each at the thickness the
@@ -139,7 +171,7 @@ function airDefenseVariant(row: AirDefenseRow): FleetTankSpec {
 // ---- 2K22M Tunguska-M ---------------------------------------------------------------------------------------------
 // The 2K22M's 9M311M ride outboard of the 2A38M guns, four a side, two by two (Wikipedia 2K22: "eight ready-to-fire 9M311M
 // missiles, four per side"): the launch exits on the containers' front covers.
-const { rack: TR, body: TB, radarBox: TRB, drum: TD } = TUNGUSKA;
+const { rack: TR, body: TB, radarBox: TRB, trackRadar: TT } = TUNGUSKA;
 const tunguska = airDefenseVariant({
   id: 'tunguska_m', name: '2K22M Tunguska-M', gunPivot: TUNGUSKA.gunPivot, gunX: TUNGUSKA.gunX, boreDx: TUNGUSKA.boreDx,
   muzzleZ: TUNGUSKA.muzzleZ, tubes: rackMouths(TR.tubeXs, TR.tubeYs, TR.mouthZ),
@@ -150,24 +182,26 @@ Object.assign(tunguska, {
   hp: 2300, enginePowerHp: 780, weightTons: 34, topSpeedKmh: 65, reverseSpeedKmh: 18, hullTraverseDegS: 40,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 87, gunDepressionDeg: 10,
 });
-// the build shows the search radar raised, as most photographs do: the published 4.02 m raised height
-tunguska.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 4.02 };
+// the build shows the search radar folded, as photographs 01-06 do: the gunner's sight head is its top (the published
+// 3.36 m stowed height)
+tunguska.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: +(GM352_RING[1] + TB.roofY + 0.36).toFixed(2) };
 {
   const gp = TUNGUSKA.gunPivot;
   // the turret: 7.62 mm and splinter protection (Wikipedia 2K22), the lower turret, the upper body, the radar housing
   tunguska.armor.turretPlates = [
-    ...octagonPlates('tg_lower', TD.bottomApothem, TD.topApothem, TD.bottomY, TD.topY, 15, 20),
+    ...tubPlates('tg_lower', 15, 20),
     ...prismPlates('tg_body', TB.halfWidth, [[TB.rearZ, TB.bottomY], [TB.frontZ, TB.bottomY], [TB.frontZ, TB.browY],
       [TB.browZ, TB.roofY], [TB.rearZ, TB.roofY]], 15, 20),
     ...prismPlates('tg_radar', TRB.halfWidth, [[TRB.rearZ, TRB.bottomY], [TRB.frontZ, TRB.bottomY], [TRB.frontZ, TRB.topY],
       [TRB.rearZ + 0.08, TRB.topY], [TRB.rearZ, TRB.topY - 0.08]], 15, 20),
+    ...drumPlates('tg_track', TT.r, TT.y, TT.rearZ, TT.frontZ, 10, 12),
   ];
   tunguska.armor.modules.push(
     moduleBox('radio', [-0.70, 0.30, TRB.rearZ + 0.10], [0.70, 1.00, TRB.frontZ - 0.10], true),
     moduleBox('optics', [-0.55, TB.roofY, 0.37], [-0.29, TB.roofY + 0.36, 0.63], true),
-    { ...moduleBox('gun', [-(TUNGUSKA.gunX + 0.14), gp[1] - 0.13, gp[2] - 0.40], [TUNGUSKA.gunX + 0.14, gp[1] + 0.13, gp[2] + 0.62],
+    { ...moduleBox('gun', [-(TUNGUSKA.gunX + 0.14), gp[1] - 0.13, gp[2] - 0.32], [TUNGUSKA.gunX + 0.14, gp[1] + 0.13, gp[2] + 0.64],
       true), external: true },
-    { ...moduleBox('missileRack', [-TR.outerX, gp[1] + TR.bottomY, gp[2] + TR.rearZ], [TR.outerX, gp[1] + TR.topY, gp[2] + TR.mouthZ],
+    { ...moduleBox('missileRack', [-TR.outerX, gp[1] + TR.bottomY, gp[2] - TR.arcR], [TR.outerX, gp[1] + TR.topY, gp[2] + TR.mouthZ],
       true), gunFollow: true, external: true },
   );
   tunguska.armor.crew.push(
@@ -212,12 +246,12 @@ Object.assign(pantsir, {
 // the "~7.8 m" the brief gives for the tracked option is not a published datum; the shared GM-352 hull builds 7.93 m
 pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 4.10 };
 {
-  const gp = PANTSIR.gunPivot, tilt = 0.10, cy = (PS.panelBottomY + PS.panelTopY) / 2;
-  // the search radar's panel, leaning back on its mast
-  const panel = prismPlates('ps_search', PS.halfWidth, [[PS.z - PS.depth / 2, PS.panelBottomY], [PS.z + PS.depth / 2, PS.panelBottomY],
-    [PS.z + PS.depth / 2, PS.panelTopY], [PS.z - PS.depth / 2, PS.panelTopY]], 8, 10).map((p) => ({ ...p,
-    verts: p.verts.map(([x, y, z]) => [x, cy + (y - cy) * Math.cos(tilt) - (z - PS.z) * Math.sin(tilt),
-      PS.z + (y - cy) * Math.sin(tilt) + (z - PS.z) * Math.cos(tilt)] as Point) }));
+  const gp = PANTSIR.gunPivot, tilt = 0.10, cy = (PS.panelBottomY + PS.panelTopY) / 2, h = PS.panelTopY - PS.panelBottomY;
+  // the search radar's box antenna, its top corners chamfered, leaning back on its mast (pantsirS1.ts searchRadar)
+  const w = PS.halfWidth, c = PS.chamfer;
+  const panel = antennaBoxPlates('ps_search', [[-w, -h / 2], [w, -h / 2], [w, h / 2 - c], [w - c, h / 2], [-w + c, h / 2], [-w, h / 2 - c]],
+    PS.depth, (x, up, out) => [x, cy + up * Math.cos(tilt) - out * Math.sin(tilt), PS.z + up * Math.sin(tilt) + out * Math.cos(tilt)],
+    8, 10);
   pantsir.armor.turretPlates = [
     ...octagonPlates('ps_platform', PP.bottomApothem, PP.topApothem, PP.bottomY, PP.topY, 15, 20),
     ...prismPlates('ps_body', PBD.halfWidth, [[PBD.rearZ, PBD.bottomY], [PBD.frontZ, PBD.bottomY], [PBD.frontZ, PBD.topY],
@@ -229,10 +263,10 @@ pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM:
     moduleBox('radio', [-0.45, 0.25, PBD.rearZ + 0.10], [0.45, 0.85, -0.55], true),
     // the tracking radar is the module's sight: its drum
     moduleBox('optics', [-PR.r, PR.y - PR.r, PR.rearZ + 0.10], [PR.r, PR.y + PR.r, PR.frontZ + 0.10], true),
-    { ...moduleBox('gun', [-(PANTSIR.gunX + 0.14), gp[1] - 0.13, gp[2] - 0.40], [PANTSIR.gunX + 0.14, gp[1] + 0.13, gp[2] + 0.60],
-      true), external: true },
-    { ...moduleBox('missileRack', [-PB.sideOuterX, gp[1] + PB.sideBottomY, gp[2] + PB.cradleRearZ],
-      [PB.sideOuterX, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
+    { ...moduleBox('gun', [-(PANTSIR.gunX + 0.14), gp[1] - 0.13, gp[2] + PANTSIR.gunDz - 0.32],
+      [PANTSIR.gunX + 0.14, gp[1] + 0.13, gp[2] + PANTSIR.gunDz + 0.64], true), external: true },
+    { ...moduleBox('missileRack', [-PB.slabOuterX, gp[1] + PB.slabBottomY, gp[2] + PB.slabRearZ],
+      [PB.slabOuterX, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
   );
   pantsir.armor.crew.push(
     // internalLayoutRegistry.ts IFV_TWO_MAN_TURRET: gunner front right (-x), commander rear right
