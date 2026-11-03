@@ -224,6 +224,16 @@ export interface HudTank {
   spec?: (FleetTankSpec & SpecialActionSpec) | null;
   visual?: HudTankVisual | null;
   specialAction?: SpecialActionState | null;
+  /** The tank's own consumable kits (sim/consumableRules.ts ConsumableState) where the frame carries them: a solo battle,
+   *  a Watch seat. A network client's entity carries none (the tray follows the authority's events there). */
+  consumables?: HudConsumableState | null;
+}
+
+/** The parts of a consumable state the tray reads (sim/consumableRules.ts ConsumableState is structurally one). */
+interface HudConsumableState {
+  readonly items: readonly string[];
+  readonly readyAt: readonly number[];
+  readonly charges: readonly (number | null)[];
 }
 
 type HudTargetTank = HudTank & { state: TankState; combat: CombatState };
@@ -3306,6 +3316,41 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateConsumableCooldowns(timeS: number): void {
     for (let i = 0; i < conSlots.length; i++) {
       conSlots[i].render(cooldownRemaining(timeS, conReadyAt[i]), conCooldownS[i]);
+    }
+  }
+  /**
+   * (2026-11-02 audit M4) The tray reads the player's own consumable state each frame where the frame carries it, as the
+   * smoke, lights and roof-gun tiles read combat.auxiliary: a revive's fresh kits (state.ts revive, the authority's
+   * reviveForMode make a new state at spawn and send no tray event), a Watch seat taken mid-cooldown and a reconnect
+   * cannot drift from the authority. Each value is written only when it changes. A network client's entity carries no
+   * kits: its tray stays on the authority's events, and its own mode:respawn refills it (resetConsumableTray).
+   */
+  function syncConsumableTray(state: HudConsumableState | null | undefined): void {
+    if (!state) return;
+    for (let i = 0; i < conEls.length; i++) {
+      const item = state.items[i];
+      if (item !== undefined && item !== conItems[i] && isConsumableId(item)) setConsumableTile(i, item);
+      const readyAt = state.readyAt[i];
+      if (readyAt !== undefined && readyAt !== conReadyAt[i]) conReadyAt[i] = readyAt;
+      const charges = state.charges[i];
+      if (charges !== undefined && charges !== conCharges[i]) {
+        conCharges[i] = charges;
+        conEls[i].classList.toggle('empty', charges === 0);
+      }
+    }
+  }
+  /** Every tile ready with its item's full uses: a battle start, and the player's own revive on a network client. */
+  function resetConsumableTray(): void {
+    for (let i = 0; i < conEls.length; i++) {
+      conReadyAt[i] = 0;
+      const timing = consumableTiming(conItems[i]!);
+      conCooldownS[i] = timing.cooldownS;
+      conCharges[i] = timing.charges;
+      conEls[i].classList.remove('empty');
+      // Render through the retained slot so its memo cannot diverge from the
+      // tray; only the click-feedback classes are outside its ownership.
+      conSlots[i].render(0, conCooldownS[i]);
+      conEls[i].classList.remove('used', 'deny');
     }
   }
   /** The consumable the moment calls for (the direction's suggested tile, on the tungsten hairline): the repair kit while
@@ -8449,19 +8494,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
   });
-  on('ui:consumableReset', () => {
-    for (let i = 0; i < conEls.length; i++) {
-      conReadyAt[i] = 0;
-      const timing = consumableTiming(conItems[i]!);
-      conCooldownS[i] = timing.cooldownS;
-      conCharges[i] = timing.charges;
-      conEls[i].classList.remove('empty');
-      // Render through the retained slot so its memo cannot diverge from the
-      // tray; only the click-feedback classes are outside its ownership.
-      conSlots[i].render(0, conCooldownS[i]);
-      conEls[i].classList.remove('used', 'deny');
-    }
-  });
+  on('ui:consumableReset', () => resetConsumableTray());
   // an APS charge met a round (sim/consumableRules.ts): the crew it saved, or the shooter whose round it stopped
   on('aps:intercept', ({ id, shooterId }) => {
     if (playerId == null) return;
@@ -8559,6 +8592,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
     reviveCountdown.hide();
+    // a revive makes a fresh consumable state at spawn (2026-11-02 audit M4): a frame that carries the state re-reads it
+    resetConsumableTray();
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
   });
   on('mode:flag_taken', ({ team }) => {
@@ -8884,6 +8919,7 @@ export function initHud(bus: EventBus): HudRuntime {
     lastTanksRef = frame.tanks || lastTanksRef;
     state.dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
     lastTimeS = frame.timeS;
+    syncConsumableTray(frame.player?.consumables);
     updateConsumableCooldowns(lastTimeS);
     if (frame.mode && frame.mode !== mode) {
       mode = frame.mode;

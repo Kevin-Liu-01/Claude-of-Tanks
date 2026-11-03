@@ -2527,6 +2527,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    'src/ui/hudConsumableTray.selftest.mjs', // 2026-11-02 audit M4: a revive refills the tray (the state, or the own respawn)
     // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
     'src/ui/hudTeamPips.selftest.mjs',
     // (UI-LOCKDOWN A) the one canvas primitive's rule (sizing, hidden release, no compounding, a DPR flip) and the census
