@@ -1870,6 +1870,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
     'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
+    'src/game/atgmToggle.selftest.mjs', // 2026-11-02 audit F8: Q's ATGM toggle is the game's, not the HUD tile's
     'src/game/battleKeyActions.selftest.mjs',
     // 2026-10-25 (owner): one vehicle-action table, each action on its own key and in one order on every vehicle
     'src/game/vehicleActions.selftest.mjs',

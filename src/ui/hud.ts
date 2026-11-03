@@ -3013,16 +3013,14 @@ export function initHud(bus: EventBus): HudRuntime {
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
   const missileLabel=requireElement<HTMLElement>(missileButton,'.sl'),missileKey=requireElement<HTMLElement>(missileButton,'.sk');
-  let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
+  // the tile asks for the toggle the Q key asks for (input.ts 'atgm'); playerBattleActions.ts decides it from the game's
+  // state, the guided round and back to the cannon round it left (2026-11-02 audit F8: the HUD decided it, so Q waited on
+  // the HUD chunk)
   function toggleExtraMissile(){
-    if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
-    const slot=guidedMissileSlot(missilePlayer.spec);
-    if(slot<0)return;
-    bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
+    if(missileButton.hidden||missileButton.disabled)return;
+    bus.emit('ui:atgmToggle',{});
   }
   bindControl(missileButton, toggleExtraMissile);
-  // Q (input.ts 'atgm', playerBattleActions.ts) toggles the same way the tile does
-  bus.on('ui:atgmToggle', toggleExtraMissile);
   const reloadButton=el('button','cot-auxiliary cot-reload-control',controlsRow);reloadButton.type='button';reloadButton.hidden=true;
   reloadButton.innerHTML=`<span class="si">${uiIconSVG('autoloader',18)}</span><span class="sl">${t(vehicleAction('reload').label)}</span><span class="sk">C</span><small class="system-status"></small>`;
   reloadButton.dataset.tip=t(vehicleAction('reload').help);reloadButton.setAttribute('aria-label',t(vehicleAction('reload').label));
@@ -3116,7 +3114,6 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     const descriptor = readSpecialAction(player?.spec);
     if (descriptor) {
-      previousConventionalSlot = Math.max(0, player?.spec?.gun?.shells.findIndex(shell => !shell.guided) ?? 0);
       specialKind = descriptor.kind;
       const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
       specialLabel.dataset.short = t(vehicleAction('suspension').label);
@@ -3124,7 +3121,6 @@ export function initHud(bus: EventBus): HudRuntime {
       specialButton.classList.toggle('show', suspension);
       specialButton.hidden = !suspension;
     }
-    missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
     setHidden(missileButton,extraMissileSlot<0||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
     const autoloaded=!!player?.spec?.gun?.autoloader;
@@ -3136,7 +3132,6 @@ export function initHud(bus: EventBus): HudRuntime {
     // Owner 2026-10-17 (out of ammo): a spent launcher shows its struck icon in the danger ink; the count is spoken only.
     missileButton.classList.toggle('empty',missileEmpty);
     const missileSelected=player?.combat?.shellSlot===extraMissileSlot;
-    if(player?.combat&&!missileSelected)previousConventionalSlot=player.combat.shellSlot;
     missileButton.classList.toggle('active',missileSelected&&!missileEmpty);setAttr(missileButton,'aria-pressed',String(missileSelected));
     const action = player?.specialAction;
     // Missile selection is ordinary ammunition state. Keep the E shortcut

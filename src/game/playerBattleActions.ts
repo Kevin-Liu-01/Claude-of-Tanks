@@ -143,6 +143,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     disposeCallbacks.push(input.onAction(action, listener));
   };
 
+  /** The last cannon round the player was on (the ATGM toggle returns to it), or -1 before any selection. */
+  let atgmReturnSlot = -1;
   const battleInputAllowed = (): boolean =>
     game.phase === 'battle' && !isSettingsOpen();
   const livePlayer = (): (TEntity & { combat: ActionCombat }) | null => {
@@ -190,12 +192,30 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:specialAction', { pad: typeof code === 'string' && code.startsWith('Pad') });
   });
 
-  // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (hud.ts: the guided
-  // round, then back to the cannon round it left)
+  // Q (vehicleActions.ts, owner 2026-10-25): the ATGM on every launcher, the HUD's tile's toggle (the guided round, then
+  // back to the cannon round it left)
   onAction('atgm', () => {
     if (!battleInputAllowed()) return;
     bus.emit('ui:atgmToggle', {});
     bus.emit('ui:click', {});
+  });
+  // (2026-11-02 audit F8) the toggle is decided here, from the game's own state, for the key and the HUD's tile alike: it
+  // was the HUD tile's (a slot latch kept in presentation state), so Q did nothing until the HUD chunk loaded. A struck
+  // (empty) launcher does nothing, as its disabled tile did.
+  listen('ui:atgmToggle', () => {
+    if (!battleInputAllowed()) return;
+    const player = livePlayer();
+    if (!player) return;
+    const shells = player.spec.gun.shells;
+    const missile = rules.guidedMissileSlot(player.spec);
+    if (missile < 0 || !shells.some((shell) => !shell.guided)) return;
+    if (player.combat.shellSlot !== missile) {
+      if (rules.hasAmmunition(player.combat, missile)) bus.emit('ui:shellSelect', { slot: missile });
+      return;
+    }
+    const back = atgmReturnSlot >= 0 && atgmReturnSlot < shells.length && !shells[atgmReturnSlot]?.guided
+      ? atgmReturnSlot : Math.max(0, shells.findIndex((shell) => !shell.guided));
+    bus.emit('ui:shellSelect', { slot: back });
   });
 
   for (const action of ['smoke','lights','roofGun'] as const) {
@@ -269,6 +289,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = livePlayer();
     if (!player || !Number.isInteger(requestedSlot) || requestedSlot < 0) return;
     const slot = Math.min(player.spec.gun.shells.length - 1, requestedSlot | 0);
+    // the cannon round a guided selection leaves, by any key (the ATGM toggle's way back)
+    if (player.spec.gun.shells[player.combat.shellSlot]?.guided !== true) atgmReturnSlot = player.combat.shellSlot;
     if (!rules.hasAmmunition(player.combat, slot)) {
       bus.emit('ui:ammoSelectionDenied', {
         slot,
