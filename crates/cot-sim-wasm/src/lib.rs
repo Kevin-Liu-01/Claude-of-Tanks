@@ -404,13 +404,13 @@ pub extern "C" fn overlay_add_course(cx: f64, cz: f64, c: f64, s: f64, hw: f64, 
     state().overlay.add_course(cx, cz, c, s, hw, skirt_m, knots);
 }
 
-/// `reset`.
+/// `reset`: every stamp gone and the clock unset.
 #[unsafe(no_mangle)]
 pub extern "C" fn overlay_reset() {
     state().overlay.reset();
 }
 
-/// `setTime`.
+/// `setTime` (a time that is not finite unsets the clock).
 #[unsafe(no_mangle)]
 pub extern "C" fn overlay_set_time(time_s: f64) {
     state().overlay.set_time(time_s);
@@ -420,6 +420,12 @@ pub extern "C" fn overlay_set_time(time_s: f64) {
 #[unsafe(no_mangle)]
 pub extern "C" fn overlay_revision() -> u32 {
     state().overlay.revision()
+}
+
+/// The overlay's clock (`clockS`): NaN while unset (a fresh or reset overlay), else the time `overlay_set_time` gave it.
+#[unsafe(no_mangle)]
+pub extern "C" fn overlay_time() -> f64 {
+    state().overlay.time()
 }
 
 // ------------------------------------------------------- records and support ----

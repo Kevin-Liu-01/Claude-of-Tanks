@@ -155,14 +155,23 @@ export interface TerrainDeformation {
   /** A crater; false when its buckets are full (the caller then makes it a mark). */
   addCrater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number): boolean;
   /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high, rising
-   * from `t0` (the overlay's clock; default now, or risen at once when no clock was set) over RUBBLE_GROW_S. */
+   * from `t0` (the overlay's clock; default now, or risen at once while the clock is unset) over RUBBLE_GROW_S. */
   addRubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0?: number): void;
   /** A graded earthwork (CourseStamp): always lands, risen at once. */
   addCourse(stamp: CourseStamp): void;
-  /** Every stamp gone (a cached world's next battle). */
+  /** Every stamp gone and the clock unset (a cached world's next battle: nothing rises on the last one's time). */
   reset(): void;
-  /** The overlay's clock (s, the match's own): a heap rises with it (physics stream, 2026-10-13). */
+  /** The overlay's clock (s, the match's own): a heap rises with it (physics stream, 2026-10-13). A time that is not
+   * finite unsets it. */
   setTime(timeS: number): void;
+  /**
+   * The clock (2026-11-02 audit S2): NaN while unset — a fresh overlay's, and a reset one's until its battle's first
+   * step sets it. While unset nothing grows: a heap laid without a start stands whole at once, and one with a start reads
+   * whole until the clock reaches it.
+   */
+  readonly clockS: number;
+  /** The lattice offsets' cache epoch: moves whenever the ground can read differently (a receipt's probe). */
+  readonly cacheEpoch: number;
   /** Whether a heap is still rising. */
   readonly growing: boolean;
   /** Grows by one with every clock step that moved a rising heap (a renderer re-reads those heaps' ground). */
@@ -184,6 +193,10 @@ function bucketIndex(value: number): number {
  * take to come down onto it, so a hull beside or on the footprint rides it up at under 2 m/s.
  */
 export const RUBBLE_GROW_S = 2;
+/** The overlay's clock unset (TerrainDeformation.clockS): a fresh or reset overlay's, until setTime gives it a time. */
+const CLOCK_UNSET = NaN;
+/** A heap reads whole this long past its rise, whatever `t0 + RUBBLE_GROW_S` rounded to. */
+const SETTLED_SLACK_S = 1;
 /** The share of its height a heap stands `elapsedS` after it began to rise (smoothstep over RUBBLE_GROW_S). */
 export function rubbleGrowth(elapsedS: number, growS = RUBBLE_GROW_S): number {
   if (!(elapsedS < growS)) return 1;
@@ -350,7 +363,7 @@ export function createTerrainDeformation(): TerrainDeformation {
   let revision = 0;
   let maxRaise = 0;
   let courseRaise = 0;
-  let now = NaN;
+  let now = CLOCK_UNSET;
   let growthRevision = 0;
   /** Rubble stamps still rising (indices into `stamps`). */
   const rising: number[] = [];
@@ -358,14 +371,21 @@ export function createTerrainDeformation(): TerrainDeformation {
     stamp.kind === 'rubble' && Number.isFinite(stamp.t0) && Number.isFinite(now) ? rubbleGrowth(now - stamp.t0, stamp.growS) : 1;
   // (perf-249, the battle-scale profile: a contact read near a crater re-summed every stamp at three lattice corners, a
   // crater's profile six sines and an atan2, ~5 % of a 16 v 16 Verdant step) the lattice vertices' offsets, kept per vertex
-  // until the overlay can read differently: a stamp added, a reset, or a clock step while a timed heap stands (its growth
-  // is the clock's). A slot holds offsetAt's own value, so a read is the same number to the bit.
+  // until the overlay can read differently: a stamp added, a reset, or a clock step while a heap on the clock can still
+  // rise (its growth is the clock's). A slot holds offsetAt's own value, so a read is the same number to the bit.
   const latticeKeys = new Int32Array(LATTICE_CACHE_SLOTS).fill(-1);
   const latticeEpochs = new Uint32Array(LATTICE_CACHE_SLOTS);
   const latticeValues = new Float64Array(LATTICE_CACHE_SLOTS);
   let latticeEpoch = 1;
-  /** Rubble stamps on the clock (a finite t0): while any stands, a clock step can move the ground. */
-  let timedHeaps = 0;
+  /**
+   * When the last heap on the clock (a finite t0) is fully risen, t0 + RUBBLE_GROW_S (−Infinity with none): a clock
+   * step at or past it moves no ground (2026-11-02 audit S2: a count of timed heaps that never fell dropped the cache
+   * every step of a battle once its first building had come down).
+   */
+  let risingUntil = -Infinity;
+  /** Whether the ground at time `t` can read otherwise than with every heap risen: a heap still rising at `t`, or not
+   * yet begun (past `risingUntil`, and its slack against the sum's rounding, every heap stands whole, as with no clock). */
+  const clockMovesGround = (t: number): boolean => Number.isFinite(t) && t < risingUntil + SETTLED_SLACK_S;
   function invalidateLattice(): void {
     if (++latticeEpoch > 0xfffffff0) { latticeEpoch = 1; latticeKeys.fill(-1); }
   }
@@ -476,7 +496,7 @@ export function createTerrainDeformation(): TerrainDeformation {
         c: detMath.cos(yaw), s: detMath.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S,
         crown: heapCrown(cx, cz, hw, hd, new Float64Array(CROWN_PARAMS)) };
       if (Number.isFinite(start) && growthOf(stamp) < 1) rising.push(stamps.length);
-      if (Number.isFinite(start)) timedHeaps++;
+      if (Number.isFinite(start) && start + RUBBLE_GROW_S > risingUntil) risingUntil = start + RUBBLE_GROW_S;
       const ex = Math.abs(stamp.s) * hd + Math.abs(stamp.c) * hw + falloff;
       const ez = Math.abs(stamp.c) * hd + Math.abs(stamp.s) * hw + falloff;
       admit(stamp, cx - ex, cz - ez, cx + ex, cz + ez, true);
@@ -496,12 +516,15 @@ export function createTerrainDeformation(): TerrainDeformation {
       maxRaise = 0;
       courseRaise = 0;
       rising.length = 0;
-      timedHeaps = 0;
+      risingUntil = -Infinity;
+      // (2026-11-02 audit S2) the clock with the stamps: the next battle's first heap never starts on this one's last time
+      now = CLOCK_UNSET;
       invalidateLattice();
     },
     setTime(timeS) {
-      if (timedHeaps > 0 && !Object.is(timeS, now)) invalidateLattice();
-      now = timeS;
+      const next = Number.isFinite(timeS) ? timeS : CLOCK_UNSET;
+      if (!Object.is(next, now) && (clockMovesGround(now) || clockMovesGround(next))) invalidateLattice();
+      now = next;
       if (!rising.length) return;
       growthRevision++;
       // a heap fully risen leaves the list (its ground moves no more)
@@ -509,6 +532,8 @@ export function createTerrainDeformation(): TerrainDeformation {
       for (let i = 0; i < rising.length; i++) if (growthOf(stamps[rising[i]]) < 1) rising[kept++] = rising[i];
       rising.length = kept;
     },
+    get clockS() { return now; },
+    get cacheEpoch() { return latticeEpoch; },
     get growing() { return rising.length > 0; },
     get growthRevision() { return growthRevision; },
     stampGrowth(index) {

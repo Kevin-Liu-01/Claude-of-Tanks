@@ -1744,6 +1744,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
+    // 2026-11-02 audit S2: the overlay's clock as a state: reset unsets it (no heap starts on the last battle's time), and
+    // a risen ground keeps its lattice cache while the clock runs
+    'src/sim/terrainOverlayClock.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionLogBudget.selftest.mjs', // 243 security C3: the destruction log's budget

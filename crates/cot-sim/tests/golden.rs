@@ -533,6 +533,8 @@ enum DeformationOp {
     #[serde(rename_all = "camelCase")]
     Course { cx: JsNum, cz: JsNum, c: JsNum, s: JsNum, hw: JsNum, skirt_m: JsNum, profile: Vec<JsNum> },
     Reset,
+    /// The phase's reads are due here (the script's later phases name their reads).
+    Read { phase: u32 },
 }
 
 #[derive(Deserialize)]
@@ -607,6 +609,10 @@ fn deformation_matches() {
                 overlay.reset();
                 read_phase(&mut overlay, &mut ledger, 3, &mut reads, points);
                 phase = 3;
+            }
+            DeformationOp::Read { phase: due } => {
+                phase = *due;
+                read_phase(&mut overlay, &mut ledger, phase, &mut reads, points);
             }
         }
     }
