@@ -15,6 +15,7 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT, FITTINGS } from './kit.ts';
 import { antennaPart } from './antennaPart.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 
 type V3 = readonly [number, number, number];
@@ -320,6 +321,87 @@ export function addK1E1FrontFender(P: Modern3BuilderPort, side: number): void {
   P.hangMudguard('k1e1-front-flap', 'hullRubber', KIT.box(0.64, 0.36, 0.024), side * 1.46, 0.83, 3.505);
 }
 
+/**
+ * r268b (owner 2026-11-02: "add more upper glacis and roof details"; research/k1e1 photos 3, 4, 6): the K1 turret's bolted
+ * cheek armour shows a row of bolt heads along the top of each cheek face and short columns at its ends; the roof carries
+ * the bolted gun-removal plate over the breech, and the loader's hatch lifts on a hinge block at its rear.
+ */
+function addCheekBoltsAndHinges(P: Modern3BuilderPort): void {
+  const { box } = KIT;
+  const T = K1E1_TURRET, roof = T.roofY;
+  // the cheek face: from the slot (x 0.40, z 1.66) swept back to the corner (x 1.41, z 1.02), leaning back 3 cm by 0.50
+  const faceZ = (x: number, y: number): number => T.cheekFrontZ - (x - T.slotX) * (0.64 / 1.01) - (y - FOOT_Y) * (0.03 / 0.34);
+  const yaw = Math.atan2(0.64, 1.01);                                        // the face normal's angle off +z
+  const nx = Math.sin(yaw), nz = Math.cos(yaw);
+  for (const s of [-1, 1]) {
+    const bolt = (x: number, y: number): void => {
+      // a domed head (a dot from every side; a hex prism seen across the swept face read as a chevron), 4 mm into the face
+      P.add('turretDetail', new THREE.SphereGeometry(0.022, 8, 3, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2), s * (x - nx * 0.004), y, faceZ(x, y) - nz * 0.004, 0, s * yaw, 0);
+    };
+    for (let k = 0; k < 8; k++) bolt(0.48 + k * 0.122, 0.455);
+    for (const y of [0.235, 0.345]) { bolt(0.48, y); bolt(1.334, y); }
+  }
+  // the bolted gun-removal plate over the breech (the Abrams-pattern roof the K1 shares), between the sight's periscope and
+  // the loader's, 1 cm proud of the roof, a bolt ring round it
+  const gx0 = -0.19, gx1 = 0.35, gz0 = 0.10, gz1 = 0.62;
+  P.add('turret', box(gx1 - gx0, 0.014, gz1 - gz0), (gx0 + gx1) / 2, roof + 0.003, (gz0 + gz1) / 2);
+  for (let k = 0; k <= 4; k++) for (const z of [gz0 + 0.035, gz1 - 0.035]) {
+    P.add('turretDetail', KIT.cylY(0.016, 0.016, 0.012, 6), gx0 + 0.035 + k * (gx1 - gx0 - 0.07) / 4, roof + 0.012, z);
+  }
+  for (let k = 1; k <= 3; k++) for (const x of [gx0 + 0.035, gx1 - 0.035]) {
+    P.add('turretDetail', KIT.cylY(0.016, 0.016, 0.012, 6), x, roof + 0.012, gz0 + 0.035 + k * (gz1 - gz0 - 0.07) / 4);
+  }
+  // loader's hatch hinge block behind the lid (the hatch at x 0.56, z -0.36, ring r 0.32), its pin across
+  P.add('turretDetail', box(0.22, 0.05, 0.08), 0.56, roof + 0.035, -0.70);
+  P.add('turretDark', KIT.cylX(0.016, 0.26, 8), 0.56, roof + 0.05, -0.70);
+}
+
+/**
+ * r268b: the K1E1's upper nose (hull frame, modern3.ts buildK1A1Hull's nose): a lamp housing at each end of the upper
+ * nose plate under the glacis lip (photos 1, 3, 4: the K1's headlights inboard of the fenders, the left-hand one paired
+ * with a square driving lamp), an amber marker on each fender face, and the weld bead where the nose plate meets the
+ * chin. Everything on the nose stays under the 1.24 lip, the line the gun depresses to over the bow.
+ */
+export function addK1E1HullFurniture(P: Modern3BuilderPort): void {
+  const { box, cylX, cylZ } = KIT;
+  const noseZ = (y: number): number => 3.68 + (y - 1.02) * (0.04 / 0.22), tilt = Math.atan(0.04 / 0.22);
+  for (const s of [-1, 1]) {
+    const lx = s * 0.84, ly = 1.115, lz = noseZ(ly);
+    P.add('hullDark', box(0.24, 0.15, 0.012), lx, ly, lz - 0.002, tilt, 0, 0);
+    for (const dy of [-0.082, 0.082]) P.add('hull', box(0.27, 0.02, 0.05), lx, ly + dy, lz + 0.018, tilt, 0, 0);
+    for (const dx of [-0.125, 0.125]) P.add('hull', box(0.02, 0.18, 0.05), lx + dx, ly, lz + 0.018, tilt, 0, 0);
+    P.add('hullDetail', box(0.29, 0.012, 0.08), lx, ly + 0.098, lz + 0.032, tilt, 0, 0);               // rain visor
+    const hx = s > 0 ? lx + 0.045 : lx;                                       // the left-hand housing pairs it with a square lamp
+    P.add('hullDetail', cylZ(0.055, 0.05, P.q ? 14 : 10), hx, ly - 0.005, lz + 0.02, tilt, 0, 0);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.042, 0.008, P.q ? 14 : 10), 'headlight'), hx, ly - 0.005, lz + 0.046, tilt, 0, 0);
+    if (s > 0) {
+      P.add('hullDetail', box(0.075, 0.075, 0.045), lx - 0.068, ly - 0.005, lz + 0.018, tilt, 0, 0);
+      P.add('hullGlass', box(0.05, 0.05, 0.006), lx - 0.068, ly - 0.005, lz + 0.042, tilt, 0, 0);
+    }
+  }
+  P.add('hullDetail', cylX(0.012, 1.94, 6), 0, 1.022, 3.684);                                       // nose-to-chin weld bead
+  // the driver's hatch pivots on a hinge block on its left (the hatch at x 0, z 2.30 on its 6.4-degree bed plate, top 1.435);
+  // its top 1.465 stays under the ring's 1.471, and 3.5 cm under the gun's floor where the barrel crosses it (yaw 24)
+  P.add('hullDetail', box(0.06, 0.04, 0.20), 0.29, 1.445, 2.30, 0.112, 0, 0);
+  P.add('hullDark', cylZ(0.014, 0.22, 8), 0.29, 1.452, 2.30, 0.112, 0, 0);
+  for (const s of [-1, 1]) {                                                    // amber markers on the fender faces (z 3.53)
+    P.add('hull', box(0.12, 0.09, 0.04), s * 1.60, 1.175, 3.545);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.032, 0.012, 12), 'marker', { tint: 'warm' }), s * 1.60, 1.175, 3.569);
+  }
+}
+
+/** r268b: the K1E1's engine deck (top 1.61): a frame round the grille field (2.30 x 1.30 at z -2.85) and bolt rows on
+ * its edge plates, its top 1.627 (4 mm over the grille plate, under the 1.629 slats that set the gun's floor astern); modern3.ts builds it in the grille's seat role (the spare-link solver's). */
+export function addK1E1DeckFrame(P: Modern3BuilderPort): void {
+  const { box, cylY } = KIT;
+  for (const z of [-2.185, -3.515]) P.add('hull', box(2.36, 0.02, 0.035), 0, 1.617, z);
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.035, 0.02, 1.30), s * 1.165, 1.617, -2.85);
+    P.add('hullDark', box(0.016, 0.006, 1.32), s * 1.36, 1.611, -2.85);                              // edge-plate joint
+    for (let k = 0; k < 6; k++) P.add('hullDetail', cylY(0.016, 0.016, 0.012, 6), s * 1.44, 1.612, -2.30 - k * 0.235);
+  }
+}
+
 /** The complete K1E1 turret shell and roof (the gun and its shield: modern3.ts finishK1A1Turret). */
 export function buildK1E1Turret(P: Modern3BuilderPort): void {
   addShell(P);
@@ -328,4 +410,5 @@ export function buildK1E1Turret(P: Modern3BuilderPort): void {
   addSmokeBanks(P);
   addBasket(P);
   addRoofFittings(P);
+  addCheekBoltsAndHinges(P);
 }

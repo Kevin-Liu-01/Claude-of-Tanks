@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { KIT, convexSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 
 /** Skirt datums (m). */
@@ -111,4 +112,113 @@ export function addK2Skirts(P: Modern3BuilderPort): void {
       [side * 1.40, glacisAt(2.70), 2.70], [side * S.innerX, glacisAt(2.70), 2.70],
       [side * S.innerX, glacisAt(3.40), 3.40], [side * 1.40, glacisAt(3.40), 3.40]));
   }
+}
+
+/** buildK2's upper glacis plane: 1.24 at its lip (z 3.53) rising 10.7 degrees to the 1.66 crest (z 1.30). */
+const K2_GLACIS = Object.freeze({ lipY: 1.24, lipZ: 3.53, slope: 0.42 / 2.23 });
+const k2GlacisY = (z: number): number => K2_GLACIS.lipY + (K2_GLACIS.lipZ - z) * K2_GLACIS.slope;
+/** The glacis's rake about x: a part turned by it stands on the plate's normal. */
+const K2_GLACIS_TILT = Math.atan(K2_GLACIS.slope);
+/** The nose lip face under the glacis edge (buildK2's nose slab, x +-1.08): 3.51 at y 0.90, 3.555 at its 1.18 top. */
+const k2NoseZ = (y: number): number => 3.51 + (y - 0.90) * (0.045 / 0.28);
+const K2_NOSE_TILT = Math.atan(0.045 / 0.28);
+
+/**
+ * The K2 hull's upper glacis and nose furniture (r268b, owner 2026-11-02: "add more upper glacis and roof details"),
+ * shared by the two buildK2 hulls (XK2 and K2B; research/xk2_black_panther photos 1, 5 and research/k2b photo 1, the
+ * K2/XK2 bows at the Hyundai Rotem displays):
+ * - the bolted upper-glacis armour: two transverse plate joints and a bolt row aft of each, a bolt row along the lip and
+ *   down both edges (the photographs' rows of bolt heads over the plate);
+ * - the driver's vision block: the three periscopes in one low armoured frame at the crest (the pre-r268b two loose
+ *   blocks), the hatch's hinge block and grab handle;
+ * - the nose: a recessed lamp housing at each end of the upper nose plate (a headlight in each, the right-hand one with
+ *   the driving camera beside it), the bolted lower nose plate's bolt rows and joints, lifting eyes on the front corners.
+ * Every part stays inside the gun's swept floor at full depression (the before-tree's map: 17-24 cm of air over the front
+ * half, 7-9 cm over the crest's periscopes) and under the turret's 1.69 seat plane.
+ */
+export function addK2GlacisFurniture(P: Modern3BuilderPort, k2bBow: boolean): void {
+  const { box, cylY, cylZ, liftEye } = KIT;
+  const bolt = (x: number, z: number): void => {                                // 5 mm into the plate, 9 mm proud
+    P.add('hullDetail', cylY(0.017, 0.017, 0.014, 6), x, k2GlacisY(z) + 0.002, z, K2_GLACIS_TILT, 0, 0);
+  };
+  const seam = (x0: number, x1: number, z: number): void => {
+    P.add('hullDark', box(x1 - x0, 0.008, 0.016), (x0 + x1) / 2, k2GlacisY(z) - 0.001, z, K2_GLACIS_TILT, 0, 0);
+  };
+  // the plate joints and their bolt rows; on the K2B the corner fender boxes (x 1.14..1.80, from z 2.97) close the
+  // front corners, so the forward rows stop short of them
+  const hatch = { x0: -0.74, x1: -0.10, z0: 1.70, z1: 2.34 };
+  const clearOf = (x: number, z: number): boolean => !(x > hatch.x0 && x < hatch.x1 && z > hatch.z0 && z < hatch.z1);
+  // (forward of z 2.80 the XK2's rows also stop short of the raised bow-shoulder plates at its corners)
+  const reach = (z: number): number => (z > 2.92 && k2bBow ? 1.06 : z > 2.80 ? 1.30 : 1.52);
+  for (const z of [3.06, 2.50]) {
+    seam(-reach(z), reach(z), z);
+    for (let x = -reach(z) + 0.06; x <= reach(z) - 0.05; x += 0.215) if (clearOf(x, z - 0.06)) bolt(x, z - 0.06);
+  }
+  for (let x = -reach(3.42) + 0.06; x <= reach(3.42) - 0.05; x += 0.215) bolt(x, 3.42);
+  for (const s of [-1, 1]) for (let z = 1.86; z <= 2.75; z += 0.215) bolt(s * 1.50, z);
+  // driver's vision block: one low armoured frame over three periscopes at the crest, its foot 1 cm into the plate, its
+  // top 1.655 (under the old blocks' 1.66: the gun keeps 6-7 cm over it at full depression), its forward face laid back
+  // 35 degrees with the three dark glass blocks on it
+  const zf = 1.60, zb = 1.46, yTop = 1.655, zTop = zf - 0.05;
+  P.add('hull', convexSlab(
+    [-0.70, k2GlacisY(zb) - 0.01, zb], [-0.22, k2GlacisY(zb) - 0.01, zb], [-0.22, k2GlacisY(zf) - 0.01, zf], [-0.70, k2GlacisY(zf) - 0.01, zf],
+    [-0.70, yTop, zb], [-0.22, yTop, zb], [-0.22, yTop, zTop], [-0.70, yTop, zTop]));
+  const faceTilt = -Math.atan2(zf - zTop, yTop - (k2GlacisY(zf) - 0.01));                   // the face's normal: up and forward
+  const fy = (k2GlacisY(zf) + yTop) / 2, fz = zf - (fy - (k2GlacisY(zf) - 0.01)) / (yTop - (k2GlacisY(zf) - 0.01)) * (zf - zTop);
+  const fn = new THREE.Vector3(0, -Math.sin(faceTilt), Math.cos(faceTilt));
+  for (const x of [-0.62, -0.46, -0.30]) {
+    P.add('hullDark', box(0.14, 0.040, 0.008), x, fy + fn.y * 0.002, fz + fn.z * 0.002, faceTilt, 0, 0);
+    P.add('hullGlass', box(0.11, 0.024, 0.006), x, fy + fn.y * 0.005, fz + fn.z * 0.005, faceTilt, 0, 0);
+  }
+  // hatch hinge block (outboard side of the ring) and a grab handle on the lid, both on the bed plate's rake
+  const hy = (z: number): number => k2GlacisY(z) + 0.004;
+  P.add('hullDetail', box(0.07, 0.045, 0.20), -0.72, hy(2.02) + 0.02, 2.02, K2_GLACIS_TILT, 0, 0);
+  P.add('hullDark', cylZ(0.016, 0.22, 8), -0.72, hy(2.02) + 0.04, 2.02, K2_GLACIS_TILT, 0, 0);
+  for (const dz of [-0.06, 0.06]) P.add('hullDetail', cylY(0.009, 0.009, 0.03, 6), -0.42, hy(2.02 + dz) + 0.032, 2.02 + dz, K2_GLACIS_TILT, 0, 0);
+  P.add('hullDetail', cylZ(0.009, 0.14, 6), -0.42, hy(2.02) + 0.046, 2.02, K2_GLACIS_TILT, 0, 0);
+  // the nose: a recessed lamp housing at each end of the upper nose plate, under the glacis edge
+  for (const s of [-1, 1]) {
+    const lx = s * 0.80, ly = 1.065, lz = k2NoseZ(ly);
+    P.add('hullDark', box(0.34, 0.15, 0.012), lx, ly, lz - 0.002, K2_NOSE_TILT, 0, 0);          // recess back
+    for (const dy of [-0.082, 0.082]) P.add('hull', box(0.37, 0.02, 0.045), lx, ly + dy, lz + 0.016, K2_NOSE_TILT, 0, 0);
+    for (const dx of [-0.175, 0.175]) P.add('hull', box(0.02, 0.18, 0.045), lx + dx, ly, lz + 0.016, K2_NOSE_TILT, 0, 0);
+    const hx = lx + s * 0.05;
+    P.add('hullDetail', cylZ(0.058, 0.05, P.q ? 14 : 10), hx, ly, lz + 0.018, K2_NOSE_TILT, 0, 0); // headlight body
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.044, 0.008, P.q ? 14 : 10), 'headlight'), hx, ly, lz + 0.044, K2_NOSE_TILT, 0, 0);
+    if (s > 0) {                                                                // the driving camera beside the right-hand lamp
+      P.add('hullDetail', box(0.08, 0.09, 0.06), lx - 0.09, ly, lz + 0.02, K2_NOSE_TILT, 0, 0);
+      P.add('hullGlass', box(0.04, 0.04, 0.006), lx - 0.09, ly + 0.01, lz + 0.051, K2_NOSE_TILT, 0, 0);
+    }
+  }
+  // the bolted lower nose plate: bolt rows along its top and foot and two vertical joints with their bolts
+  const noseBolt = (x: number, y: number): void => {
+    P.add('hullDetail', cylZ(0.016, 0.014, 6), x, y, k2NoseZ(y) + 0.002, K2_NOSE_TILT, 0, 0);
+  };
+  for (let x = -1.00; x <= 1.001; x += 0.125) {
+    noseBolt(x, 0.935);
+    if (Math.abs(Math.abs(x) - 0.80) > 0.22) noseBolt(x, 1.145);
+  }
+  for (const s of [-1, 1]) {
+    P.add('hullDark', box(0.014, 0.25, 0.010), s * 0.42, 1.04, k2NoseZ(1.04) - 0.002, K2_NOSE_TILT, 0, 0);
+    for (const y of [0.99, 1.09]) noseBolt(s * 0.46, y);
+  }
+  // tow clevises under the bolted nose plate (photo 5): two ear plates on the chin face, a pin, and a shackle hanging
+  // from it, leaning off the face (they replace buildK2's plain hook blocks)
+  const chinZ = (y: number): number => 3.33 + (y - 0.40) * 0.36, chinTilt = Math.atan(0.36 / 1.0);
+  for (const s of [-1, 1]) {
+    const cx = s * 0.62, cy = 0.77, cz = chinZ(cy);
+    for (const dx of [-0.045, 0.045]) P.add('hullDetail', box(0.025, 0.11, 0.10), cx + dx, cy, cz + 0.025, chinTilt, 0, 0);
+    P.add('hullDark', KIT.cylX(0.020, 0.13, 8), cx, cy - 0.01, cz + 0.05);
+    const shackle = new THREE.TorusGeometry(0.045, 0.014, 6, P.q ? 12 : 8, Math.PI);
+    shackle.rotateZ(Math.PI).rotateX(-0.35);
+    P.add('hullDark', shackle, cx, cy - 0.01, cz + 0.05);
+  }
+  // the XK2's amber marker on each fender face (the canted wedge's upright face, z 3.715; photo 1's "PV"/"ADD" fenders);
+  // the K2B's corner fender boxes carry its own lamps
+  if (!k2bBow) for (const s of [-1, 1]) {
+    P.add('hull', box(0.13, 0.10, 0.05), s * 1.53, 1.115, 3.705);
+    P.add('hullGlass', markVehicleNightLens(cylZ(0.034, 0.012, 12), 'marker', { tint: 'warm' }), s * 1.53, 1.115, 3.733);
+  }
+  // lifting eyes on the glacis's front corners, inboard of the fenders
+  for (const s of [-1, 1]) liftEye(P, 'hullDetail', s * 0.98, k2GlacisY(3.24) + 0.012, 3.24);
 }

@@ -16,8 +16,8 @@ import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
 import { declareLaunchBore, launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
 import { K2_ROAD_WHEELS, k2WheelGear } from './profiles/k2RoadWheels.ts';
-import { addK1E1FrontFender, buildK1E1Turret, k1e1GunShield } from './profiles/k1e1.ts';
-import { addK2Skirts } from './profiles/xk2Hull.ts';
+import { addK1E1DeckFrame, addK1E1FrontFender, addK1E1HullFurniture, buildK1E1Turret, k1e1GunShield } from './profiles/k1e1.ts';
+import { addK2GlacisFurniture, addK2Skirts } from './profiles/xk2Hull.ts';
 import { efficientReturnRoller } from './efficientReturnRoller.ts';
 import { buildBmp2Turret, buildBmpBoatHull } from './profiles/bmpBoatHull.ts';
 import './modern3Specs.ts';
@@ -265,7 +265,7 @@ export function buildK2(P: Modern3BuilderPort,
   chin.userData.primaryStockRole = 'k2-bow-chin';
   P.add('hull', chin);
   P.add('hull', box(1.50, 0.14, 0.22), 0, 0.49, 3.22);                         // narrow toe beam reveals both fender shoulders
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.14, 0.12, 0.16), s * 0.62, 0.55, 3.37); // bow tow hooks
+  // r268b: the bow tow hooks are clevises with shackles under the bolted nose plate (xk2Hull.ts addK2GlacisFurniture)
   };
   buildK2HullBody();
   const buildK2RearHull = (): void => {
@@ -422,18 +422,12 @@ export function buildK2(P: Modern3BuilderPort,
     P.add('hull', cylY(0.205, 0.205, 0.020, seg).translate(0, 0.008, 0), ...place);                          // lid
     P.add('hullDark', lathe([0.205, 0.016], [0.205, 0.022], [0.180, 0.022], [0.180, 0.016]), ...place);      // lid rim seam
   }
-  periscope(P, 'hullDetail', -0.58, 1.625, 1.52);
-  periscope(P, 'hullDetail', -0.30, 1.635, 1.50);
+  // r268b (owner 2026-11-02: "add more upper glacis and roof details"): the driver's three periscopes in one armoured
+  // frame, the hatch hinge and handle, the bolted glacis and nose plates, the nose lamp housings, tow clevises and
+  // lifting eyes (xk2Hull.ts addK2GlacisFurniture). The XK2's guard-top headlight cluster gives way to the nose lamps
+  // and an amber marker on each fender face (XK2 photo 1: "PV" / "ADD" fenders); the K2B's corner boxes carry its own.
+  addK2GlacisFurniture(P, k2bBow);
   {
-    for (const s of [-1, 1]) {
-      if (k2bBow) continue;                                                    // the K2B's own corner housings carry its lamps (korea.ts)
-      P.add('hull', box(0.26, 0.13, 0.11), s * 1.36, 1.25, 3.375);             // headlight housing
-      P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.27, 1.26, 3.46);
-      P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.45, 1.26, 3.46);
-      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.15, rake: -0.19, seed: 3 + s });
-      lc.position.set(s * 1.36, 1.26, 3.44);
-      P.hullG.add(lc);
-    }
     // 267 round 2: the spare-link run is gone. Its stern seat fails the seat rules, so the solver racked it on the
     // lower bow plate, where it hung at an angle in front of the left track (critic: "reads as a loose part").
     const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.20, d: 0.26, h: 0.26, fill: 0.75, seed: 17, rotation: [0, Math.PI, 0] });
@@ -904,6 +898,11 @@ export function buildK2(P: Modern3BuilderPort,
   // the bustle falls away). The lids hovered 6 cm over the loft's falling roof skin, wells the K2B's PL-01 overlay had
   // hidden; this is the K2B's turret alone (the XK2 builds hullOnly).
   P.add('turret', box(2.10, 0.06, 1.65), 0, 0.675, -0.975);
+  // r268b (owner 2026-11-02: "add more ... roof details"): the turret's four lifting eyes on that deck's corners, inside
+  // the panel rails and clear of the stations, the whips (x 1.00) and the antenna pair (x 0.79, z -1.72)
+  for (const [x, z] of [[-0.88, -0.24], [0.88, -0.24], [-0.60, -1.60], [0.60, -1.60]] as const) {
+    liftEye(P, 'turretDetail', x, 0.715, z);
+  }
   };
   buildK2RoofStations();
   const buildK2RoofComms = (): void => {
@@ -1103,8 +1102,15 @@ export function buildK2(P: Modern3BuilderPort,
     ]);
   };
   finishK2Bustle();
-  ammoCan(P, 'turretDark', -1.50, 0.50, 0.30, 0.15);
-  ammoCan(P, 'turretDark', -1.50, 0.50, 0.64, -0.12);
+  if (addOnFront) {
+    // r268b: on the K2B the right-hand cans ride the tops of its bolted cheek-pod armour boxes (korea.ts addK2BCheekPod,
+    // top 0.42, outer face 1.77), 5 mm into them
+    ammoCan(P, 'turretDark', -1.64, 0.515, 0.21, 0);
+    ammoCan(P, 'turretDark', -1.64, 0.515, -0.19, 0);
+  } else {
+    ammoCan(P, 'turretDark', -1.50, 0.50, 0.30, 0.15);
+    ammoCan(P, 'turretDark', -1.50, 0.50, 0.64, -0.12);
+  }
   };
   buildK2Bustle();
   const buildK2SmokeBanks = (): void => {
@@ -1351,15 +1357,10 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
     P.add('hullDetail', box(0.88, 0.042, 0.065), s * 0.52, 1.37, 2.72, 0.112, s * 0.32, 0); // splash V-strip
   }
   {
-    for (const s of [-1, 1]) {
-      // 267: the lamp group stands on the boxed fender's front edge (it sat behind the new face plate)
-      P.add('hull', box(0.24, 0.12, 0.10), s * 1.50, 1.305, 3.41);             // headlight housing box (critic r1)
-      P.add('hullDetail', box(0.02, 0.14, 0.02), s * 1.42, 1.315, 3.49);       // brush-guard bar
-      P.add('hullDetail', box(0.02, 0.14, 0.02), s * 1.58, 1.315, 3.49);
-      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, rake: -0.11, seed: 3 + s });
-      lc.position.set(s * 1.50, 1.315, 3.47);
-      P.hullG.add(lc);
-    }
+    // r268b (research/k1e1 photos 3, 4): the K1's headlights are in housings on the upper nose plate, and each boxed
+    // fender's face carries an amber marker at its outer top corner (profiles/k1e1.ts addK1E1HullFurniture); the
+    // headlight cluster on the fender tops is gone
+    addK1E1HullFurniture(P);
     // 267 round 2: one tow cable looped across the forward glacis between the fenders (the K1 photos' stowage). The
     // two cables that ran up the glacis to the turret front read in the side view as a loose rod off the turret cheek.
     const tc = FITTINGS.towCable({ mats: P.mats, r: 0.019, seed: 8,
@@ -1378,6 +1379,7 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
     for (const k of KIT.grilleIndices(P.q, 5, 3)) {
       P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
     }
+    addK1E1DeckFrame(P);                                                       // r268b: the grille's frame and edge-plate bolts
   });
   for (const s of [-1, 1]) {
     P.add('hullDark', torus(0.26, 0.013, P.q ? 22 : 14), s * 0.72, 1.614, -2.35); // fan rings
