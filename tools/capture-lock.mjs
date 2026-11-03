@@ -927,6 +927,39 @@ export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAUL
   return behind;
 }
 
+// ---- nested holds (2026-11-02 audit S4) -------------------------------------------------------------------------------
+// A process that holds the lock and starts a child that takes the lock itself used to queue that child behind its own
+// parent's live pid (a live owner is never reaped) until the child's timeout, 45 min to 3 h; three tools skipped the lock
+// under COT_LANE_HOLD=1, whose wrapper is gone. Now the holder hands its children a token, NESTED_HOLD_ENV=<pid>:<nonce>
+// (`nestedEnv()`, merged into the child's environment by the wrappers that spawn under a hold: capture-command.mjs,
+// media-r5/with-capture-lock.mjs, the changed-only chain's GPU children). A child's acquire that finds the token naming the
+// live owner record at its own lock directory (owner.json's pid and nonce, or a render member's slot) nests in that hold at
+// once: no ticket, no claim, its prepare run straight away; refresh() reports whether the parent's hold still stands,
+// release() and checkpoint() leave it alone, and the child hands the same token on. A token naming no live hold there (a
+// stale one, another lock directory's) is ignored and the child queues as usual. The token is never exported by the lock
+// itself: a holder's every child would then carry a fresh random value, and the receipts' cache keys every variable read.
+const NESTED_HOLD_ENV = 'COT_SHOTS_HELD';
+
+/** The live hold `token` (`<pid>:<nonce>`) names at `lockDir`: { pid, nonce, lockClass }, or null (no token, a malformed
+ *  one, or no live hold of that pid and nonce there now). */
+function nestedParent(token, lockDir, lockStaleMs) {
+  const match = /^(\d+):([0-9a-f]{24})$/.exec(String(token ?? ''));
+  if (!match) return null;
+  const pid = Number(match[1]), nonce = match[2];
+  let at;
+  try { at = pathId(lockDir); } catch { return null; }
+  if (!at.isDir) return null;
+  const owner = readOwner(lockDir);
+  if (owner.state !== 'ok') return null;
+  if (isGroupToken(owner.token, at.id)) {
+    const slot = readSlots(lockDir).find((entry) => entry.record?.nonce === nonce && entry.record.pid === pid);
+    return slot && slotLive(slot, lockStaleMs) ? { pid, nonce, lockClass: 'render' } : null;
+  }
+  if (owner.token.id !== at.id || owner.token.nonce !== nonce || owner.token.pid !== pid) return null;
+  return ownerLiveness(owner.token, Date.now() - at.mtimeMs, lockStaleMs).alive
+    ? { pid, nonce, lockClass: LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'timing' } : null;
+}
+
 /**
  * The FIFO capture lock. `lockStaleMs`: a lock this long without a refresh gets its owner's process identity checked (a
  * reused pid is a dead owner); a live owner's lock is never reaped however late its refresh. `orphanStaleMs`: the age
@@ -1003,6 +1036,18 @@ export function createCaptureLock({
   async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
     holdCapMinutes = null, holdCapReason = null, priority = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
+    // a child of a holder nests in its parent's hold (see nested holds above): read by name, the one variable it is
+    const parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs);
+    if (parent) {
+      const prepared = typeof prepare === 'function' ? await prepare() : undefined;
+      hold = { nested: true, parent, lockDir, pid: process.pid, ticket: null, lostNoted: false, token: { startedAt: new Date().toISOString() } };
+      heldSince = Date.now();
+      holdTerms = { lockClass: parent.lockClass, classFrom: 'nested', capMs: holdCapMs, timeoutMs, command, holdCapMinutes, holdCapReason };
+      log(`[capture-lock] nested in the ${parent.lockClass} hold of pid ${parent.pid} (${NESTED_HOLD_ENV}): no ticket, no claim`);
+      appendHoldLog(logFile, { e: 'nest', pid: process.pid, parent: parent.pid, lockClass: parent.lockClass,
+        command: process.argv.slice(1).join(' ').slice(0, 300) });
+      return prepared;
+    }
     const classed = resolveLockClass({ option: lockClass, command });
     const cap = resolveHoldCap(holdCapMinutes, holdCapReason, holdCapMs);
     const release = resolvePriority(priority) === 'release';
@@ -1118,6 +1163,15 @@ export function createCaptureLock({
     ? holdCapMs : holdTerms.capMs);
 
   function refresh() {
+    if (hold?.nested) {
+      // the parent refreshes its own hold; a nested one only reports whether that hold still stands
+      const standing = Boolean(nestedParent(`${hold.parent.pid}:${hold.parent.nonce}`, lockDir, lockStaleMs));
+      if (!standing && !hold.lostNoted) {
+        hold.lostNoted = true;
+        log(`[capture-lock] the hold of pid ${hold.parent.pid} this one nests in is gone: this process works unlocked now`);
+      }
+      return standing;
+    }
     const refreshed = refreshOwnedLock(hold, { log });
     if (refreshed && Date.now() - heldSince > capNow()) {
       noteOnce(`${hold.nonce}:cap`, `[capture-lock] this ${holdTerms.lockClass} hold (${holdName(hold)}) is past its ${capNow() / 60_000}-min cap; `
@@ -1134,6 +1188,8 @@ export function createCaptureLock({
    */
   async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null } = {}) {
     if (!hold) throw new Error('checkpoint(): this lock holds nothing (call it between batches, while the lock is held)');
+    // a nested hold is its parent's to yield
+    if (hold.nested) return { yielded: false, heldMs: Date.now() - heldSince, capMs: null, waitedMs: 0, nested: true };
     const heldMs = Date.now() - heldSince, terms = holdTerms, capMs = capNow();
     if (heldMs < capMs) return { yielded: false, heldMs, capMs, waitedMs: 0 };
     const waiters = waiting();
@@ -1156,6 +1212,12 @@ export function createCaptureLock({
   /** `reason` (optional) is recorded on the hold-log line (the browser guard's release says why). */
   function release(reason = null) {
     if (!hold) return false;
+    if (hold.nested) {
+      // the parent's hold is left as it is: nothing of this instance's own to release
+      appendHoldLog(logFile, { e: 'unnest', pid: process.pid, parent: hold.parent.pid, heldMs: Date.now() - heldSince });
+      hold = null;
+      return false;
+    }
     const releasing = hold;
     hold = null;
     heldLocks.delete(api);
@@ -1186,8 +1248,19 @@ export function createCaptureLock({
     }).length;
   }
 
-  const api = { acquire, refresh, release, checkpoint, waiting, get lastTicket() { return lastTicket; },
-    get heldTicket() { return hold?.ticket ?? null; }, get heldClass() { return hold ? holdTerms.lockClass : null; } };
+  /** The environment a child started under this hold needs to nest in it ({} while nothing is held). */
+  function nestedEnv() {
+    if (!hold) return {};
+    return { [NESTED_HOLD_ENV]: hold.nested ? `${hold.parent.pid}:${hold.parent.nonce}` : `${process.pid}:${hold.nonce}` };
+  }
+
+  const api = { acquire, refresh, release, checkpoint, waiting, nestedEnv, get lastTicket() { return lastTicket; },
+    get heldTicket() { return hold?.ticket ?? null; }, get heldClass() { return hold ? holdTerms.lockClass : null; },
+    /** Whether the hold is a nested one (a child's, inside its parent's hold). */
+    get nested() { return Boolean(hold?.nested); },
+    /** The running hold's cap (the base cap while a release ticket waits behind a raised one), or null: nothing held, or
+     *  a nested hold (its parent's cap applies). */
+    get heldCapMs() { return hold && !hold.nested ? capNow() : null; } };
   return api;
 }
 

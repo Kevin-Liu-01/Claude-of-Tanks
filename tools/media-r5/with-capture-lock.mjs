@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Run one command holding the shared capture lock (tools/capture-lock.mjs), queued at the media lane's place
 // (ticket stamp 1791397979999), released when the command ends or this process is signalled: for GPU work outside
-// cinema.mjs, such as a HyperFrames film render (motion/rerender.zsh).
+// cinema.mjs, such as a HyperFrames film render (motion/rerender.zsh). The command gets the hold's nested-hold token
+// (capture-lock.mjs nestedEnv, 2026-11-02 audit S4): a tool under it that takes the lock itself nests in this hold.
 //   node tools/media-r5/with-capture-lock.mjs <command> [args...]
 import { spawn } from 'node:child_process';
 import { createCaptureLock, ticketAt } from '../capture-lock.mjs';
@@ -11,7 +12,7 @@ const lock = createCaptureLock();
 console.log(`[lock] waiting for the capture lock ${new Date().toTimeString().slice(0, 8)}`);
 await lock.acquire(6 * 60 * 60 * 1000, { ticket: ticketAt(1791397979999) });
 console.log(`[lock] held ${new Date().toTimeString().slice(0, 8)}: ${cmd} ${args.join(' ')}`);
-const child = spawn(cmd, args, { stdio: 'inherit' });
+const child = spawn(cmd, args, { stdio: 'inherit', env: { ...process.env, ...lock.nestedEnv() } });
 const stop = (signal) => { child.kill(signal); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);
 const refresh = setInterval(() => { try { lock.refresh?.(); } catch { /* the lock module refreshes on its own */ } }, 30000);

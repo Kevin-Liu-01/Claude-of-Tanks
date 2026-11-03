@@ -1,5 +1,6 @@
-// Compose an existing browser tool with the shared capture queue. Tools that
-// already acquire the queue themselves must not be wrapped a second time.
+// Compose an existing browser tool with the shared capture queue. The command runs with the hold's nested-hold token
+// (capture-lock.mjs nestedEnv, 2026-11-02 audit S4): a tool that acquires the queue itself nests in this hold instead of
+// queueing behind its own parent's live pid until its timeout.
 import { spawn } from 'node:child_process';
 import { createCaptureLock } from './capture-lock.mjs';
 
@@ -23,7 +24,7 @@ export async function runCapturedCommand(command,args,options={},capture={}) {
   const refresher=setInterval(()=>lock.refresh(),capture.refreshMs ?? 30000);
   refresher.unref();
   try {
-    await runCommand(command,args,options);
+    await runCommand(command,args,{...options,env:{...(options.env ?? process.env),...(lock.nestedEnv?.() ?? {})}});
   } finally {
     clearInterval(refresher);
     process.removeListener('exit',release);

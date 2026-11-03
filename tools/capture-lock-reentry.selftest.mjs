@@ -13,6 +13,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runCapturedCommand } from './capture-command.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 // the lock reads these by name; this receipt pins its own semantics, so it owns all of them (as capture-lock.selftest)
@@ -82,8 +83,71 @@ try {
     assert.equal(lock.release(), true);
   }
 
+  // ---- nested holds: a child under its parent's token nests at once; a foreign or stale token queues ------------------
+  {
+    const dirs = rig('nested');
+    const parent = createCaptureLock(dirs);
+    assert.deepEqual(parent.nestedEnv(), {}, 'no hold: no token to hand down');
+    await parent.acquire(2_000);
+    const env = parent.nestedEnv();
+    assert.match(env.COT_SHOTS_HELD ?? '', new RegExp(`^${process.pid}:[0-9a-f]{24}$`), 'the token names the holder and its hold');
+    // a child process acquires the same lock directory under the token: it holds at once and leaves the parent's hold
+    const child = (extraEnv, timeoutMs) => new Promise((done) => {
+      const script = `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: () => {} });
+        const t0 = Date.now();
+        try {
+          const prepared = await lock.acquire(${timeoutMs}, { prepare: async () => 'warm' });
+          const ms = Date.now() - t0, nested = lock.nested, env = lock.nestedEnv().COT_SHOTS_HELD ?? null;
+          const refreshed = lock.refresh(), cp = await lock.checkpoint(), released = lock.release();
+          console.log(JSON.stringify({ ok: true, ms, nested, prepared, refreshed, cp, released, env }));
+        } catch (error) { console.log(JSON.stringify({ ok: false, ms: Date.now() - t0, error: error.message })); }`;
+      const proc = spawn(process.execPath, ['--input-type=module', '-e', script], {
+        env: { ...process.env, ...extraEnv }, stdio: ['ignore', 'pipe', 'inherit'] });
+      let out = '';
+      proc.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+      proc.once('close', () => done(JSON.parse(out.trim().split('\n').at(-1))));
+    });
+    const nested = await child(env, 2_000);
+    assert.equal(nested.ok, true, `the child holds under its parent's token: ${JSON.stringify(nested)}`);
+    assert.ok(nested.ms < 1_500, `at once (${nested.ms} ms), not behind its parent's live pid`);
+    assert.equal(nested.nested, true);
+    assert.equal(nested.prepared, 'warm', 'its prepare still runs and its result comes back');
+    assert.deepEqual([nested.refreshed, nested.cp.yielded, nested.released], [true, false, false],
+      'refresh reports the parent hold standing; checkpoint never yields the parent\'s hold; release leaves it');
+    assert.equal(nested.env, env.COT_SHOTS_HELD, 'a nested child hands the same token on to its own children');
+    assert.ok(existsSync(dirs.lockDir) && parent.refresh(), 'the parent still holds after the nested child released');
+    // a stale token (no such hold: another nonce) or a foreign directory's token queues as usual: here it times out
+    const stale = await child({ COT_SHOTS_HELD: `${process.pid}:${'0'.repeat(24)}` }, 700);
+    assert.deepEqual([stale.ok, stale.error], [false, 'cot-shots lock timeout'], 'a token naming no live hold here waits in the queue');
+    const other = createCaptureLock(rig('nested-other'));
+    await other.acquire(2_000);
+    const foreign = await child(other.nestedEnv(), 700);
+    assert.deepEqual([foreign.ok, foreign.error], [false, 'cot-shots lock timeout'], 'another lock directory\'s token does not open this one');
+    other.release();
+    // a dead parent's token: the hold is gone once the parent releases, so the child queues and takes the free lock
+    parent.release();
+    const after = await child(env, 2_000);
+    assert.deepEqual([after.ok, after.nested], [true, false], 'after the parent released, the token is stale: the child holds on its own');
+  }
+  // ---- the wrapper hands the token down: a tool under runCapturedCommand that takes the lock itself nests ------------
+  {
+    const dirs = rig('wrapped');
+    const result = join(root, 'wrapped.json');
+    const script = `import { writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: () => {} });
+      const t0 = Date.now();
+      try { await lock.acquire(1500); writeFileSync(${JSON.stringify(result)}, JSON.stringify({ ok: true, nested: lock.nested, ms: Date.now() - t0 })); lock.release(); }
+      catch (error) { writeFileSync(${JSON.stringify(result)}, JSON.stringify({ ok: false, error: error.message })); }`;
+    const lock = createCaptureLock(dirs);
+    await runCapturedCommand(process.execPath, ['--input-type=module', '-e', script], { stdio: 'ignore' }, { lock, timeoutMs: 2_000 });
+    const seen = JSON.parse(readFileSync(result, 'utf8'));
+    assert.deepEqual([seen.ok, seen.nested], [true, true], `the wrapped tool nests in the wrapper's hold: ${JSON.stringify(seen)}`);
+    assert.equal(existsSync(dirs.lockDir), false, 'and the wrapper releases its own hold after');
+  }
   assert.deepEqual(LOCK_ENV.filter((name) => process.env[name] !== undefined), [], 'no lock variable is set at the end');
-  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), and checkpoint re-queues');
+  console.log('capture-lock-reentry.selftest: a holding or queued instance refuses a second acquire (no leaked render slot, no wait on its own pid), checkpoint re-queues, and a child nests in its parent\'s hold through the token (runCapturedCommand hands it down)');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
