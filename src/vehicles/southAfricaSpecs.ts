@@ -112,6 +112,9 @@ for (const plate of [...ttd.armor.hullPlates, ...ttd.armor.turretPlates]) {
 }
 Object.assign(ttd, { hp: 2200, weightTons: 58.3, enginePowerHp: 1234, topSpeedKmh: 71, reverseSpeedKmh: 30,
   hullTraverseDegS: 32, turretTraverseDegS: 36, gunElevationDeg: 20, gunDepressionDeg: 10 });
+// as built on the Leopard 2 (docs/references/tanks/ttd.md): its 7.72 m hull and 2.64 m roof, 10.06 m over the gun and
+// 3.67 m over the skirts (the clone carried the 2A4's registration-time 10.97 m, before the family settled it)
+Object.assign(ttd.dims, { hullLengthM: 7.72, overallLengthM: 10.06, widthM: 3.67, heightM: 2.64 });
 // the GT3's 105 mm and the Mk 2's rounds (olifantMk2Specs.ts)
 ttd.gun = { ...ttd.gun, caliberMm: 105, reloadS: 6.4, baseAccuracy: 0.24, aimTimeS: 1.65,
   shells: registries.tankSpecs.olifant_mk2.gun.shells.map((shell) => ({ ...shell })) };
