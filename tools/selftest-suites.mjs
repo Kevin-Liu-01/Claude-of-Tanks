@@ -1064,6 +1064,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageVariants.selftest.mjs',
     'src/game/garageWallLayout.selftest.mjs',
     'src/ui/garageArchitecture.selftest.mjs',
+    // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
+    'src/ui/garageArchitectureRecords.selftest.mjs',
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',

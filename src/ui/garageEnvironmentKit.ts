@@ -1383,6 +1383,16 @@ interface PreparedGarageStructures {
   readonly backdrop: THREE.BufferGeometry | null;
 }
 const preparedStructures = new Map<string, PreparedGarageStructures>();
+// (2026-11-02 audit R5) the holds on each variant's prepared structures, refcounted like the kit and skyline pins: the
+// first release used to dispose structures a concurrent prepare for the same variant had just built for its own bake
+const preparedStructurePins = new Map<string, number>();
+// one preparation per variant at a time: a second concurrent prepare waits for the first instead of building again
+const preparingStructures = new Map<string, Promise<void>>();
+
+/** Diagnostics: whether a variant's prepared structures wait for its bake (garageArchitectureRecords.selftest.mjs). */
+export function hasPreparedGarageStructures(variantId: string): boolean {
+  return preparedStructures.has(variantId);
+}
 
 function disposePreparedStructures(id: string): void {
   const prepared = preparedStructures.get(id);
@@ -2890,8 +2900,20 @@ export function buildGarageEnvironment(
 export function pinGarageEnvironmentCaches(variant: GarageVariant): () => void {
   const releaseKit = pinGarageKitMap(variant.mapId);
   const releaseSkyline = pinGarageSkyline(variant.mapId);
-  // the bake takes its prepared structures; a prepare whose bake never ran (a disposed controller) drops them here
-  return () => { releaseKit(); releaseSkyline(); disposePreparedStructures(variant.id); };
+  preparedStructurePins.set(variant.id, (preparedStructurePins.get(variant.id) ?? 0) + 1);
+  let released = false;
+  // the bake takes its prepared structures; a prepare whose bake never ran (a disposed controller) drops them here,
+  // once the last hold on that variant lets go
+  return () => {
+    if (released) return;
+    released = true;
+    releaseKit();
+    releaseSkyline();
+    const holds = (preparedStructurePins.get(variant.id) ?? 1) - 1;
+    if (holds > 0) { preparedStructurePins.set(variant.id, holds); return; }
+    preparedStructurePins.delete(variant.id);
+    disposePreparedStructures(variant.id);
+  };
 }
 
 /**
@@ -2927,6 +2949,16 @@ const nextSlice = (): Promise<void> => new Promise<void>((resolve) => { setTimeo
 /** Its biome backdrop and each structure in a slice of their own, before the bake (garage-architecture budget, 248). */
 async function prepareGarageStructures(variant: GarageVariant, recipe: GarageEnvironmentRecipe): Promise<void> {
   if (preparedStructures.has(variant.id)) return;
+  const inFlight = preparingStructures.get(variant.id);
+  if (inFlight) return inFlight;
+  const task = buildPreparedStructures(variant, recipe);
+  preparingStructures.set(variant.id, task);
+  const clear = (): void => { if (preparingStructures.get(variant.id) === task) preparingStructures.delete(variant.id); };
+  task.then(clear, clear);
+  return task;
+}
+
+async function buildPreparedStructures(variant: GarageVariant, recipe: GarageEnvironmentRecipe): Promise<void> {
   const patch = getGarageTerrainPatch(variant.mapId);
   const heights = garageEnvironmentHeights(recipe, patch);
   const seed = hashVariant(variant.id);
