@@ -50,6 +50,17 @@ interface SoloBattleEntryRuntimeOptions {
   presentFailure?(error: RuntimeValue, retry: () => void): Promise<RuntimeValue> | RuntimeValue;
   /** Beacon port: the bounded outcome of a failed solo entry. */
   onFailure?(error: RuntimeValue): void;
+  /**
+   * (2026-11-02 audit F2) "A battle entry began" (`ui:battleStart`) for an entry its caller did not announce: the Play
+   * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button announces its own press before it
+   * calls `begin`. Runs once the entry is accepted, before its cover, inside the press's task.
+   */
+  announce?(payload: { specId: string; mapId: string | null; gameMode: string; campaignOperationId: string | null }): void;
+  /**
+   * (2026-11-02 audit F3) Resolves when no Garage return is in flight. An entry accepted during a return (a press
+   * under its veil, a menu start) waits for it here, holding the entry latch, instead of racing its restore.
+   */
+  whenGarageSettled?(): Promise<void> | null | void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -94,20 +105,37 @@ export function createSoloBattleEntryRuntime({
   reportError = (message, error) => console.error(message, error),
   presentFailure = () => {},
   onFailure = () => {},
+  announce = () => {},
+  whenGarageSettled = () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
-    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, onFailure];
+    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, onFailure,
+    announce, whenGarageSettled];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
 
-  const begin = (
+  const run = (
     specId: string,
-    mapId: string | null = null,
-    options: SoloBattleLoadingStartOptions | undefined = undefined,
+    mapId: string | null,
+    options: SoloBattleLoadingStartOptions | undefined,
+    announced: boolean,
   ): Promise<void> => lifecycle.run(async () => {
     try {
+      if (!announced) {
+        try {
+          announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
+            campaignOperationId: options?.campaignOperationId ?? null });
+        } catch (error) {
+          // the press's listeners never block the entry (garage.ts launchBattle contains them the same way)
+          reportError('[battle] battle-start listener failed', error);
+        }
+      }
+      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
+      // (no return in flight: no wait, so the cover still lands inside the press's task)
+      const returning = whenGarageSettled();
+      if (returning) await returning;
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
@@ -129,7 +157,7 @@ export function createSoloBattleEntryRuntime({
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
       try {
-        await presentFailure(error, () => { void begin(specId, mapId, options); });
+        await presentFailure(error, () => { void run(specId, mapId, options, false); });
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
       }
@@ -137,7 +165,10 @@ export function createSoloBattleEntryRuntime({
   }, undefined);
 
   return Object.freeze({
-    begin,
+    /** The Garage BATTLE button's entry: the button announced its press (`ui:battleStart`) itself. */
+    begin: (specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined) => (
+      run(specId, mapId, options, true)
+    ),
     beginSelected({
       specId,
       mapId,
@@ -146,9 +177,9 @@ export function createSoloBattleEntryRuntime({
       campaignOperationId = null,
     }: SoloBattleEntryRequest = {}) {
       const selected = specId && isVisibleSpecId(specId) ? specId : getSelectedSpecId();
-      return begin(selected, mapId || getSelectedMapId(), {
+      return run(selected, mapId || getSelectedMapId(), {
         randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}),
-      });
+      }, false);
     },
   });
 }

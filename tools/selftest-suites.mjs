@@ -1257,6 +1257,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
+    'src/game/battleEntryReveal.selftest.mjs', // 2026-11-02 audit F2: the reveal has exits; entry edges and serial (F3 waits)
+    'src/game/soloBattleEntryAnnounce.selftest.mjs', // 2026-11-02 audit F2/F3: every solo start announces; waits for a return
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
     'src/game/soloBattleFxReadiness.selftest.mjs',
     'src/game/deploymentFxPrograms.selftest.mjs',
@@ -1309,6 +1311,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleAgainAction.selftest.mjs',
     'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
+    'src/game/battleEntryIntent.selftest.mjs', // 2026-11-02 audit F2: one solo intent record; a room world never inherits it
     'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',
@@ -1877,6 +1880,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/combatWarmComposition.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
+    'src/app/programOriginWatch.selftest.mjs', // 2026-11-02 audit F2: one shared draw wrapper; any stop order restores it
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
@@ -1885,6 +1889,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
     'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; the warm hold has a limit
+    'src/game/battleWarmHold.selftest.mjs', // 2026-11-02 audit F2: one warm-hold owner; a successor never inherits a stale warm
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
     'src/game/ammoSelectionPresentation.selftest.mjs',

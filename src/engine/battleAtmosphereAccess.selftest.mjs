@@ -173,7 +173,8 @@ const loadNetworkWorld = mainCallback('loadWorld', {
 });
 const worldProgress = () => {};
 assert.equal(loadNetworkWorld('winter', worldProgress), 'prepared-world');
-assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atmosphere: 'covered-battle' }]],
+// (2026-11-02 audit F2) the room's variant is passed whole: null for a standard room, never a solo leftover
+assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atmosphere: 'covered-battle', terrainVariant: null }]],
   'actual network world adapter explicitly defers intermediate IBL until the authority-selected atmosphere');
 {
   const effects = [], activeWorld = {}, scene = new THREE.Scene();

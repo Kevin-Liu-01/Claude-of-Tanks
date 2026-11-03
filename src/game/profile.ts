@@ -243,6 +243,13 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
       startedAt: Date.now(),
     };
   });
+  // (2026-11-02 audit F2) a battle left without its result (a quit) keeps no tally: the Garage's phase drops it, so
+  // a later battle can never be recorded under the earlier one's vehicle, map or start time. Every entry path now
+  // announces itself (ui:battleStart: the Garage button, the network roster, the solo entry owner for the Play menu
+  // and the campaign ladder), so its result has a tally of its own.
+  bus.on('phase:change', (payload) => {
+    if (recordOf(payload)?.phase === 'garage') tally = null;
+  });
   bus.on('shell:hit', (payload) => {
     const event = recordOf(payload) ?? {};
     if (tally && event.attackerId === tally.playerId

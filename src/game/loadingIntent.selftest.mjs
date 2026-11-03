@@ -174,7 +174,8 @@ assert.match(browserComposition,
 const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
   main.indexOf('recordTrace: (trace) => { window.__NETWORK_LOAD = trace; }'));
 // batch 27 (2026-09-15): a Frontline Assault room also hands the trench terrain variant through
-const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', \.\.\.\(terrainVariant \? \{ terrainVariant \} : \{\}\) \}\)/;
+// (2026-11-02 audit F2) passed whole, null included: a standard room never inherits a solo sortie's trench variant
+const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', terrainVariant \}\)/;
 assert.match(networkWorldAdapter, coveredWorldOptions,
   'network acquisition must defer Garage-light compilation and select covered battle atmosphere');
 assert.doesNotMatch(networkWorldAdapter.replace("atmosphere: 'covered-battle'", "atmosphere: 'garage'"),

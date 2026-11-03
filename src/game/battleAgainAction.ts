@@ -64,6 +64,12 @@ export function createBattleAgainAction({
       if (pendingAction === pending) pendingAction = null;
     }, (error) => {
       if (pendingAction === pending) pendingAction = null;
+      // (2026-11-02 audit F3) a Battle Again refused because a Leave holds the return is not a failure: the Leave
+      // keeps the screen, and no failure notice opens over its Garage
+      if (Reflect.get(Object(error), 'code') === 'garage_return_busy') {
+        reportError('Battle Again ignored while the Garage return is busy', error);
+        return;
+      }
       // A failure dialog's transfer must not keep the action latch occupied.
       return showFailure(error, revision);
     });

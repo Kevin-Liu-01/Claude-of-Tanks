@@ -27,8 +27,30 @@ export function revealTimeoutForField(vehicles: number, base = REVEAL_BUDGET_BAS
 interface SlowRevealReceipt {
   budgetMs: number;
   waitedMs: number;
-  /** `extended`: the budget passed once and the wait continues for another budget; `stalled`: that passed too. */
-  phase: 'extended' | 'stalled';
+  /**
+   * `extended`: the budget passed once and the wait continues for another budget; `stalled`: that passed too;
+   * `abandoned`: REVEAL_ABANDON_BUDGETS budgets of presentable time passed with no battle frame, or the battle left
+   * the screen, and the reveal failed its entry (2026-11-02 audit F2).
+   */
+  phase: 'extended' | 'stalled' | 'abandoned';
+}
+
+/**
+ * Budgets of presentable time (a visible document with a live graphics context) a reveal waits for its first battle
+ * frame before it fails the entry into the Garage recovery. A frame owner that stopped presenting battle frames
+ * used to hold the entry latch forever, so every later entry was refused as busy.
+ */
+export const REVEAL_ABANDON_BUDGETS = 10;
+
+/** A reveal that can never complete: no battle frame within its ceiling, or its battle left the screen. */
+export class BattleRevealAbandonedError extends Error {
+  readonly code = 'battle_reveal_abandoned';
+  readonly waitedMs: number;
+  constructor(message: string, waitedMs: number) {
+    super(message);
+    this.name = 'BattleRevealAbandonedError';
+    this.waitedMs = waitedMs;
+  }
 }
 
 interface BattleEntryLifecycleOptions {
@@ -40,6 +62,12 @@ interface BattleEntryLifecycleOptions {
   getRevealContext?: () => Record<string, RuntimeValue>;
   onReveal?: (receipt: RevealReceipt) => void;
   onSlowReveal?: (receipt: SlowRevealReceipt) => void;
+  /** Accepted entry, before its task runs (the composition's per-entry invalidations: the scene watchdog's arm). */
+  onEntry?: () => void;
+  /** The battle a reveal waits for still owns the screen (false: it can never present a battle frame). */
+  canReveal?: () => boolean;
+  /** Time counts toward the reveal's abandon ceiling only while frames can present (visible, context live). */
+  isPresentable?: () => boolean;
 }
 
 export interface BattleEntryLifecycle {
@@ -48,8 +76,14 @@ export interface BattleEntryLifecycle {
   uncoverRendering(): void;
   noteBattleFrame(): void;
   primeReveal(): Promise<RevealReceipt>;
+  /** Resolves when no entry is pending (now, or when the pending one settles). */
+  whenSettled(): Promise<void>;
+  /** Resolves when an entry's cover owns rendering (now, or at the next cover). */
+  whenCovered(): Promise<void>;
   readonly pending: boolean;
   readonly renderingCovered: boolean;
+  /** Accepted entries so far: the identity of "the entry", which nothing else (spectating, watchdogs) advances. */
+  readonly entrySerial: number;
 }
 
 /**
@@ -65,9 +99,13 @@ export function createBattleEntryLifecycle({
   getRevealContext = () => ({}),
   onReveal = () => {},
   onSlowReveal = () => {},
+  onEntry = () => {},
+  canReveal = () => true,
+  isPresentable = () => true,
 }: BattleEntryLifecycleOptions): BattleEntryLifecycle {
   if (typeof nextFrame !== 'function' || typeof wakeFrameLoop !== 'function' || typeof now !== 'function'
-    || typeof getRevealContext !== 'function' || typeof onReveal !== 'function' || typeof onSlowReveal !== 'function') {
+    || typeof getRevealContext !== 'function' || typeof onReveal !== 'function' || typeof onSlowReveal !== 'function'
+    || typeof onEntry !== 'function' || typeof canReveal !== 'function' || typeof isPresentable !== 'function') {
     throw new TypeError('battle entry lifecycle requires frame, clock, and receipt ports');
   }
   const checkedTimeout = (value: RuntimeValue): number => {
@@ -82,23 +120,34 @@ export function createBattleEntryLifecycle({
   let pending = false;
   let renderingCovered = false;
   let presentedBattleFrameSerial = 0;
+  let entrySerial = 0;
+  // Edge waiters (2026-11-02 audit F3: Battle Again waited on these by polling every 150 ms and 16 ms)
+  const settledWaiters: Array<() => void> = [];
+  const coveredWaiters: Array<() => void> = [];
+  const release = (waiters: Array<() => void>): void => {
+    for (const resolve of waiters.splice(0)) resolve();
+  };
 
   return {
     async run<T>(task: () => Promise<T>, busyValue: T): Promise<T> {
       if (pending) return busyValue;
       if (typeof task !== 'function') throw new TypeError('battle entry task must be callable');
       pending = true;
+      entrySerial += 1;
       try {
+        onEntry();
         return await task();
       } finally {
         renderingCovered = false;
         pending = false;
+        release(settledWaiters);
       }
     },
 
     coverRendering() {
       if (renderingCovered) return;
       renderingCovered = true;
+      release(coveredWaiters);
       // Remote entry has no input event to cancel a settled Garage's idle
       // timer. Wake its existing frame owner only after the cover is owned.
       wakeFrameLoop();
@@ -118,15 +167,30 @@ export function createBattleEntryLifecycle({
       // the wait by one more budget and reports it; a second miss reports a
       // stall; the reveal then continues with the frame that does arrive.
       // A truly black scene is still refused by the black-frame verdict.
+      // (2026-11-02 audit F2) The wait has an exit: it fails the entry into its recovery when its battle left the
+      // screen, or after REVEAL_ABANDON_BUDGETS budgets of presentable time with no battle frame. A hidden tab or a
+      // lost context pauses that ceiling (the frames return with the page), never the beacons above.
       let phase: SlowRevealReceipt['phase'] | null = null;
+      let presentableMs = 0;
+      let sampledAt = startedAt;
       while (presentedBattleFrameSerial < firstRequiredSerial) {
-        const waitedMs = now() - startedAt;
+        const at = now();
+        const waitedMs = at - startedAt;
+        if (isPresentable()) presentableMs += Math.max(0, at - sampledAt);
+        sampledAt = at;
         if (phase === null && waitedMs > budgetMs) {
           phase = 'extended';
           onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase });
         } else if (phase === 'extended' && waitedMs > budgetMs * 2) {
           phase = 'stalled';
           onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase });
+        }
+        const left = !canReveal();
+        if (left || presentableMs > budgetMs * REVEAL_ABANDON_BUDGETS) {
+          onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase: 'abandoned' });
+          throw new BattleRevealAbandonedError(left
+            ? 'The battle left the screen before its first frame.'
+            : 'The battle did not present its first frame. Please try again.', Math.round(waitedMs));
         }
         await nextFrame();
       }
@@ -142,7 +206,17 @@ export function createBattleEntryLifecycle({
       return receipt;
     },
 
+    whenSettled() {
+      if (!pending) return Promise.resolve();
+      return new Promise<void>((resolve) => { settledWaiters.push(resolve); });
+    },
+    whenCovered() {
+      if (renderingCovered) return Promise.resolve();
+      return new Promise<void>((resolve) => { coveredWaiters.push(resolve); });
+    },
+
     get pending() { return pending; },
     get renderingCovered() { return renderingCovered; },
+    get entrySerial() { return entrySerial; },
   };
 }

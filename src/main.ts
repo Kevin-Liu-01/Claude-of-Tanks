@@ -102,6 +102,7 @@ import {
   type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
 import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
+import { createProgramOriginWatcher, type ProgramOriginRenderer } from './app/programOriginWatch.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -252,6 +253,8 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { createAppLifecycle } from './game/appLifecycle.ts';
+import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
+import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
@@ -768,8 +771,11 @@ spawnTanks(game, engineCtx);
 // The covered entry warm awaits it before the wreck dances (burnt bakes copy
 // the camo canvases, so paint must be final first).
 let camoSweepP = Promise.resolve();
-let battleWarmPending = false;
-let battleWarmGeneration = 0;
+// (2026-11-02 audit F2) the countdown's warm hold: armed by a deployment for its generation, lifted only by that
+// generation's release, superseded at once by an invalidation (src/game/battleWarmHold.ts)
+const battleWarmHold = createBattleWarmHold();
+/** The warm ports' setPending(false): lift the current generation's hold (their callers check the generation first). */
+const releaseCurrentWarmHold = (pending: boolean): void => { if (!pending) battleWarmHold.release(battleWarmHold.generation); };
 let sceneWatchdogEntryGeneration = 0;
 let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = null;
 
@@ -804,28 +810,13 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string):
-  { readonly origins: readonly string[]; stop(): void } {
-  const origins: string[] = [];
-  const previous = renderer.renderBufferDirect;
-  const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
-    const before = renderer.info.programs?.length ?? 0;
-    previous.call(this, camera, drawScene, geometry, material, object, group);
-    if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
-      const path: string[] = [material.type];
-      for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
-    }
-  };
-  renderer.renderBufferDirect = watched;
-  let stopped = false;
-  const stop = (): void => {
-    if (stopped) return;
-    stopped = true;
-    if (renderer.renderBufferDirect === watched) renderer.renderBufferDirect = previous;
-  };
-  setTimeout(stop, ORIGIN_WATCH_MS);
-  return { origins, stop };
+// (2026-11-02 audit F2) one shared wrapper, removed when the last watch stops (src/app/programOriginWatch.ts): each
+// watch used to wrap whatever was on top, and two stopped in arm order left one on every draw for good
+const programOriginWatcher = createProgramOriginWatcher(
+  renderer as unknown as ProgramOriginRenderer<THREE.Material, THREE.Object3D>, { watchMs: ORIGIN_WATCH_MS },
+);
+function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): ProgramOriginWatch {
+  return programOriginWatcher.watch(annotate);
 }
 /**
  * (2026-10-27, the room-stalls lane) The Garage return's lateLinks receipt (programReceipt.ts): the programs linked after
@@ -1119,7 +1110,9 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 });
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
-let pendingCampaignOperationId: string | null = null;
+// (2026-11-02 audit F2) the current solo entry's intent — its battlefield variant, campaign operation and watched
+// flag — as one record every solo entry replaces whole (src/game/battleEntryIntent.ts)
+const battleEntryIntent = createBattleEntryIntent();
 // transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
 // (killcam.ts setBattleLights), so a return relinks nothing its boot linked
 let garageLightsUp = true;
@@ -1390,20 +1383,22 @@ function switchMap(mapId: string) {
 // battle world is the map's 'assault-trenches' variant (its own cache entry);
 // only covered battle loads take it (never the garage staging area, Studio or
 // minimap captures), and the flag clears when the battle returns to the garage.
-let pendingTerrainVariant: 'assault-trenches' | null = null;
 function ensureWorld(
   mapId?: string | null,
   onProgress?: ((fraction: number, label: string) => void) | null,
-  opts?: WorldActivationOptions | null,
+  opts?: (Omit<WorldActivationOptions, 'terrainVariant'> & { terrainVariant?: BattleTerrainVariant }) | null,
 ) {
   // Every battle-context ensure (covered entry, then the battle owner's own
   // re-ensure) builds the variant; Studio and minimap captures (services off,
   // no covered atmosphere) and the garage staging area (switchMap) keep the
   // standard map.
   const battleContext = opts?.atmosphere === 'covered-battle' || opts?.services !== false;
-  // an explicit variant (network rooms) wins; the solo entries leave theirs in pendingTerrainVariant
-  const terrainVariant = opts?.terrainVariant ?? (pendingTerrainVariant && battleContext ? pendingTerrainVariant : null);
-  return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...(opts ?? {}), terrainVariant } : opts);
+  // (audit F2) an explicit variant wins, null included (a network room's standard battlefield): only a build that
+  // names none takes the solo entry's, so a solo Frontline choice never carves trenches into a room's world
+  const terrainVariant = battleEntryIntent.resolveTerrainVariant(opts?.terrainVariant, battleContext);
+  if (!opts) return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { terrainVariant } : opts);
+  const { terrainVariant: _requested, ...activation } = opts;
+  return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...activation, terrainVariant } : activation);
 }
 
 /**
@@ -1547,16 +1542,17 @@ const playSurface = createPlaySurfaceRuntime({
   ]),
 });
 
-// Battle entry owns the play modal's visibility. Every player-facing entry
-// path emits this event, so first matches, retained-room rematches,
-// and solo all dismiss the operation picker before the next painted frame.
+// Battle entry owns the play modal's visibility. Every player-facing entry path emits this event (the Garage BATTLE
+// button its press, the network roster its round, and the solo entry owner every other start: the Play menu, the
+// campaign ladder, a failure notice's retry; 2026-11-02 audit F2), so first matches, retained-room rematches,
+// and solo all dismiss the operation picker before the next painted frame. (The debug entry still skips it.)
 // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
 // adoption) before the mode preview's clear, which leaves a parked skin alone
+// (audit F2) The scene watchdog's per-entry reset moved to the entry lifecycle's acceptance (onEntry below), which
+// always precedes the start that arms it; here it depended on this event arriving before the arm.
 bus.on('ui:battleStart', () => {
-  sceneWatchdogEntryGeneration++;
   if(pedestal.current)parkGarageTankEnergyVisual(pedestal.current.root);
   garageModePreview.clear();
-  coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
@@ -2054,8 +2050,8 @@ const combatWarmComposition = createCombatWarmComposition({
     if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
     return battleVisuals;
   },
-  getGeneration: () => battleWarmGeneration,
-  setPending: (pending: boolean) => { battleWarmPending = pending; },
+  getGeneration: () => battleWarmHold.generation,
+  setPending: releaseCurrentWarmHold,
   prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
   prepareModeVisuals: () => battlePresentation.prepareModeVisuals(),
@@ -2471,9 +2467,10 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       return result;
     },
     awaitProgramLinks: awaitRendererProgramLinks,
-    getGeneration: () => battleWarmGeneration,
-    advanceGeneration: () => ++battleWarmGeneration,
-    setPending: (pending: boolean) => { battleWarmPending = pending; },
+    getGeneration: () => battleWarmHold.generation,
+    // the deployment's arm is its hold (its setPending(true) has nothing left to do)
+    advanceGeneration: () => battleWarmHold.arm(),
+    setPending: releaseCurrentWarmHold,
     setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
     devTrace,
   }),
@@ -2547,6 +2544,11 @@ const battleRollout = createBattleRolloutRuntime({
 const battleEntryLifecycle = createBattleEntryLifecycle({
   nextFrame,
   wakeFrameLoop: () => frameLoop.restart(),
+  // (audit F2) every accepted entry supersedes the previous entry's scene watchdog before its start can arm one
+  onEntry: () => { sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
+  // (audit F2) a reveal waits only for a battle that can still present a frame, and only on a presentable page
+  canReveal: () => game.phase === 'battle',
+  isPresentable: () => !graphicsContextLost && (typeof document === 'undefined' || !document.hidden),
   // sides (2026-09-18): a 14 v 14 or 1 v 41 field compiles more programs on its first frame than the 7 v 7 budget allows
   revealTimeoutMs: () => revealTimeoutForField(game.tanks.length),
   getRevealContext: () => ({
@@ -2943,8 +2945,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           // weather. Early world warming compiles a different light variant;
           // retain world/services here and the covered real-frame gates below.
           // batch 27: a Frontline Assault room carves the trench variant on every client
+          // (audit F2) the room's variant is passed whole, null included: a standard room never inherits a solo leftover
           loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant: 'assault-trenches' | null = null) => (
-            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', ...(terrainVariant ? { terrainVariant } : {}) })
+            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', terrainVariant })
           ),
           recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
           rememberRound,
@@ -3222,7 +3225,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             if (!waiting) hud?.setPreBattleRules(game.ruleset.mode === normalizeGameMode(game.gameMode) ? game.ruleset : matchRulesetFor(normalizeGameMode(game.gameMode)));
             // campaign slice 5: the brief opens with the countdown and fades a few seconds into play
             if (!waiting && game.gameMode === 'frontline_assault') {
-              missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
+              missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
             }
           },
           setGarageLighting: (active: boolean) => {
@@ -3271,9 +3274,6 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
     };
 }
 
-/** The last solo entry was a watched battle (Battle Again watches again). */
-let lastEntryWatched = false;
-
 /** A solo battle's both teams as the load card draws them, planned before its world (rosterState.planBattleSeats). */
 function plannedCardTeams(specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) {
   const plan = planBattleSeats(game, specId, request);
@@ -3298,10 +3298,13 @@ function beginLocalBattleEntry(
 ) {
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
-  pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
-  // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
-  pendingCampaignOperationId = options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null;
-  lastEntryWatched = options?.watch === true;
+  battleEntryIntent.begin({
+    terrainVariant: terrainVariantFor(options?.gameMode), // the mode's battlefield, as the authority builds it
+    // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
+    campaignOperationId: options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null,
+    // the last solo entry was a watched battle (Battle Again watches again)
+    watched: options?.watch === true,
+  });
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
@@ -3313,14 +3316,18 @@ function beginLocalBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  pendingTerrainVariant = terrainVariantFor(gameMode);
-  // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
-  pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
+  battleEntryIntent.begin({
+    terrainVariant: terrainVariantFor(gameMode),
+    // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
+    campaignOperationId: gameMode === 'frontline_assault' ? campaignOperationId : null,
+    // (audit F2) a menu or ladder start is never a watched battle: Battle Again after it fights again
+    watched: false,
+  });
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
-  const operation = campaignOperationById(pendingCampaignOperationId);
+  const operation = campaignOperationById(battleEntryIntent.campaignOperationId);
   return soloBattleEntry.beginSelected({
     // Mars changes the rules and sky on the selected battlefield.
-    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
+    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: battleEntryIntent.campaignOperationId,
   });
 }
 
@@ -3390,9 +3397,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     closeMatch: (reason: string) => { onlineMatch.current?.closeMatch(reason); },
   },
   warm: {
-    invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
+    invalidate: () => { battleWarmHold.invalidate(); sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
     cancel: cancelDeferredCombatWarm,
-    setPending: (pending: boolean) => { battleWarmPending = pending; },
+    setPending: releaseCurrentWarmHold,
   },
   work: {
     noteActivity: () => garageDressingScheduler.noteActivity(),
@@ -3431,7 +3438,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     startShowroom: () => showroom.start(),
     triggerBattle: () => {
       // Battle Again replays the entry it follows: a watched battle is watched again (the Deploy foot's Watch)
-      const button = document.querySelector<HTMLButtonElement>(lastEntryWatched ? '[data-battle-watch]' : '.cot-battle');
+      const button = document.querySelector<HTMLButtonElement>(battleEntryIntent.watched ? '[data-battle-watch]' : '.cot-battle');
       if (!button || button.disabled) return false;
       button.click();
       return true;
@@ -3510,6 +3517,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   battleLoad,
   audio,
   enterGarage,
+  // (2026-11-02 audit F2) the Play menu's and the campaign ladder's starts announce their battle like the Garage button
+  announce: (payload) => bus.emit('ui:battleStart', payload),
   nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
@@ -3549,7 +3558,9 @@ const battleAgainAction = createBattleAgainAction({
   action: (trigger) => garageReturn.battleAgain(trigger),
   loadFailure: () => import('./ui/garageReturnFailure.ts'),
   getPhase: () => game.phase,
-  getEntryGeneration: () => sceneWatchdogEntryGeneration,
+  // (audit F2) the entry's identity is the entry lifecycle's serial: a spectator switch or a watchdog re-arm is not
+  // a new battle and no longer suppresses a failed Battle Again's notice
+  getEntryGeneration: () => battleEntryLifecycle.entrySerial,
   getRoom: () => onlineMatch.current?.room ?? null,
   reportError: (message, error) => console.error(message, error),
 });
@@ -3581,7 +3592,7 @@ bus.on('network:roomState', (payload) => { multiplayerLobby?.handleRoomState(pay
 bus.on('ui:missionBrief', () => {
   if (game.phase !== 'battle' || game.gameMode !== 'frontline_assault') return;
   if (missionBrief.isShowing()) { missionBrief.hide(); return; }
-  missionBrief.show({ operationId: game.campaignOperationId ?? pendingCampaignOperationId, mapId: game.mapId, durationS: 14 });
+  missionBrief.show({ operationId: game.campaignOperationId ?? battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: 14 });
 });
 bus.on('ui:campaignNext', (payload) => {
   const request = payload && typeof payload === 'object' ? payload as { operationId?: unknown; mapId?: unknown } : null;
@@ -3754,7 +3765,7 @@ const battleFrame = createBattleFrameRuntime({
     pump: onlinePump.pump,
   },
   countdown: {
-    isWarmPending: () => battleWarmPending,
+    isWarmPending: () => battleWarmHold.pending,
     advance: advancePreBattleCountdown,
     show: (seconds: number, warmPending = false) => {
       currentHud()?.preBattleCountdown(seconds, warmPending);
@@ -3762,7 +3773,7 @@ const battleFrame = createBattleFrameRuntime({
       currentHud()?.setPreBattleRules(game.ruleset);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
       if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
-        missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
+        missionBrief.show({ operationId: battleEntryIntent.campaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
     // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
@@ -3905,9 +3916,9 @@ invalidateGaragePresentation = () => {
 onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier(); });
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
-    pendingTerrainVariant = null;
     // batch 19: the finished match's objective state, ruleset and operation never outlive the return
-    pendingCampaignOperationId = null;
+    // (audit F2: the solo intent's watched flag stays for Battle Again, which replays the entry it follows)
+    battleEntryIntent.begin({ terrainVariant: null, campaignOperationId: null, watched: battleEntryIntent.watched });
     clearMatchSession(game);
   }
   frameLoop.restart();
