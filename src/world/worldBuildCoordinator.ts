@@ -50,6 +50,18 @@ interface BackgroundWorkLease {
   release(): void;
 }
 
+/**
+ * (2026-11-02 audit R1) A build record's phase, once three independent flags (background, cancelled and a one-shot
+ * interrupt): background (speculative, paced behind the Garage) → foreground (promoted by a demand) or cancelled. Nothing
+ * leaves foreground or cancelled, so the one-shot interrupt fires exactly once, on the way out of background.
+ */
+type BuildPhase = 'background' | 'foreground' | 'cancelled';
+const BUILD_MOVES: Readonly<Record<BuildPhase, readonly BuildPhase[]>> = {
+  background: ['foreground', 'cancelled'],
+  foreground: [],
+  cancelled: [],
+};
+
 interface BuildRecord<World extends WorldScene> {
   id: string;
   fraction: number;
@@ -59,13 +71,20 @@ interface BuildRecord<World extends WorldScene> {
   stageTimings: Record<string, number>;
   stageLabel: string | null;
   stageMark: number;
-  background: boolean;
+  phase: BuildPhase;
   waitForGarageLull: boolean;
   /** A background build paced like a covered load (prefetch pace 'loading'): a returning tab's battlefield under its boot. */
   loadingPace: boolean;
-  cancelled: boolean;
   backgroundInterrupted: Promise<void>;
   interruptBackgroundWait(): void;
+}
+
+/** The record's one transition: a refused move (a promoted or cancelled record) changes nothing and reports false. */
+function moveBuild<World extends WorldScene>(record: BuildRecord<World>, next: BuildPhase): boolean {
+  if (!BUILD_MOVES[record.phase].includes(next)) return false;
+  record.phase = next;
+  record.interruptBackgroundWait();
+  return true;
 }
 
 export interface WorldPrefetchStats {
@@ -226,9 +245,24 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     }
     // (battle-spikes-253) the dormant battlefield's release disposes its resources in 6 ms slices between tasks (one task
     // of a whole world's GPU deletes was nav-perf's 1.0 s room leave); the world left the cache and the scene at once
+    // (2026-11-02 audit R1) the keep list is read again at every slice: a world cached or a root added to the scene since
+    // the release began keeps what it shares (the list was a snapshot taken when the release started)
+    const seen = new Set<THREE.Object3D>(preserveRoots);
+    seen.add(world.group);
+    const lateRoots = (): THREE.Object3D[] | undefined => {
+      let late: THREE.Object3D[] | undefined;
+      const consider = (root: THREE.Object3D): void => {
+        if (seen.has(root)) return;
+        seen.add(root);
+        (late ??= []).push(root);
+      };
+      for (const child of dependencies.scene.children) consider(child);
+      for (const retained of cache.values()) consider(retained.group);
+      return late;
+    };
     const slice = (): void => {
       const started = now();
-      let step = steps.next();
+      let step = steps.next(lateRoots());
       while (!step.done && now() - started < 6) step = steps.next();
       if (step.done) finish(step.value);
       else setTimeout(slice, 0);
@@ -290,11 +324,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     const background = options.background ?? false;
     const waitForGarageLull = options.waitForGarageLull ?? true;
     let record = builds.get(mapId);
-    const cancelledPredecessor = record?.cancelled ? record.promise : null;
-    if (record?.cancelled) record = undefined;
-    if (record && !background && record.background) {
-      record.background = false;
-      record.interruptBackgroundWait();
+    const cancelledPredecessor = record?.phase === 'cancelled' ? record.promise : null;
+    if (record?.phase === 'cancelled') record = undefined;
+    if (record && !background && moveBuild(record, 'foreground')) {
       stats.joined += 1;
       stats.promoted += 1;
     }
@@ -313,10 +345,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         stageTimings: {},
         stageLabel: null,
         stageMark: now(),
-        background,
+        phase: background ? 'background' : 'foreground',
         waitForGarageLull,
         loadingPace: options.loadingPace ?? false,
-        cancelled: false,
         backgroundInterrupted,
         interruptBackgroundWait,
       };
@@ -345,7 +376,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         ?? lazyBackgroundYielder();
 
       const throwIfCancelled = (): void => {
-        if (!created.cancelled) return;
+        if (created.phase !== 'cancelled') return;
         stats.cancelled += 1;
         throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
       };
@@ -368,7 +399,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       };
 
       const pollGarageLull = async (): Promise<void> => {
-        while (created.background && created.waitForGarageLull && !created.cancelled) {
+        while (created.phase === 'background' && created.waitForGarageLull) {
           const activity = dependencies.getGarageActivity();
           const idle = activity.phase === 'garage' && !activity.transitionActive &&
             now() - activity.lastActivityAt >= 1200;
@@ -385,11 +416,11 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       };
 
       const acquireBackgroundLease = async (): Promise<void> => {
-        if (!created.background || !dependencies.acquireBackgroundWork) return;
+        if (created.phase !== 'background' || !dependencies.acquireBackgroundWork) return;
         const kind = created.waitForGarageLull ? 'world' : 'world-intent';
         const pendingLease = dependencies.acquireBackgroundWork(
           kind,
-          () => created.background && !created.cancelled,
+          () => created.phase === 'background',
         );
         backgroundLease = await Promise.race([
           pendingLease,
@@ -400,7 +431,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       };
 
       const paceBuild = async (): Promise<void> => {
-        if (!created.background) {
+        if (created.phase === 'foreground') {
           await yieldForeground();
           return;
         }
@@ -411,7 +442,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         // must not each cost a display frame. Passive speculation stays forced.
         // A loading-paced build (a returning tab under its boot screen) takes
         // the covered load's slices while it still holds its background lease.
-        if (created.background && backgroundLease && !created.loadingPace) await yieldBackground(created.waitForGarageLull);
+        if (created.phase === 'background' && backgroundLease && !created.loadingPace) await yieldBackground(created.waitForGarageLull);
         else await yieldForeground();
       };
 
@@ -446,7 +477,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         // Cancellation during the final pacing yield must finish assembly so
         // a real world owns every resource before this final-disposal path.
         // Earlier partial-builder rollback remains outside this coordinator.
-        if (created.cancelled) releaseWorld(mapId, next);
+        if (created.phase === 'cancelled') releaseWorld(mapId, next);
         throwIfCancelled();
         cache.set(mapId, next);
         if (startedInBackground) {
@@ -484,7 +515,10 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     mapId: string,
     options: { intent?: boolean; pace?: 'background' | 'loading' } = {},
   ): Promise<World | null> | null => {
-    if (!mapId || mapId === 'random' || cache.has(mapId) || builds.has(mapId)) return null;
+    // (audit R1) a cancelled record still settling is no build: the prefetch starts the fresh one, which waits for it
+    // (before, the same map's prefetch was silently skipped until the cancelled one settled)
+    if (!mapId || mapId === 'random' || cache.has(mapId)) return null;
+    if (builds.has(mapId) && builds.get(mapId)?.phase !== 'cancelled') return null;
     if (Number.isFinite(limits.worldScenes) && cache.size >= limits.worldScenes) {
       stats.skippedCapacity += 1;
       return null;
@@ -501,10 +535,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
 
   const cancelBackgroundExcept = (mapId: string | null = null): void => {
     for (const record of builds.values()) {
-      if (record.background && record.id !== mapId) {
-        record.cancelled = true;
-        record.interruptBackgroundWait();
-      }
+      if (record.id !== mapId) moveBuild(record, 'cancelled');
     }
   };
 
