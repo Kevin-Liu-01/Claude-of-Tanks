@@ -1594,6 +1594,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/qr.selftest.mjs',
     'server/rooms/localPadService.selftest.mjs',
     'server/rooms/roomEvents.selftest.mjs', // 2026-11-02 audit S1: Room and PadPair end every event through one end and deallocate by one rule
+    'server/rooms/lanServices.selftest.mjs', // 2026-11-02 audit S1: a LAN room runs its events in order and owns its timer and p2p host; a pairing is removed only as itself
     'tools/mp-rooms-e2e.selftest.mjs',
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',

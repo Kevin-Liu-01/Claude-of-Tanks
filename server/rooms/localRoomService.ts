@@ -157,7 +157,13 @@ export function createLocalRoomService({
   const origins = allowedOrigins && allowedOrigins.length ? new Set(allowedOrigins.map((origin) => origin.trim())) : null;
   const rooms = new Map<string, RoomActor>();
   const sockets = new Map<string, WebSocket>();
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  // (audit S1, 2026-11-02) a room's timer, its event queue and its removal are the actor's own, never its code's: a
+  // room deleted while its async work was pending (a relay mint, the match host's start) could clear the next room's
+  // timer under the same code when that work rescheduled, an old timer ticked whichever room held the code, and an old
+  // socket's close deleted it.
+  const timers = new Map<RoomActor, ReturnType<typeof setTimeout>>();
+  /** Each room's events run one at a time in arrival order, as the Durable Object's input gate runs them (audit S1). */
+  const queues = new Map<RoomActor, Promise<void>>();
   /** P1b: the wall clock of each socket's newest keepalive frame, answered here without the actor (the Worker's auto-response). */
   const keepalives = new Map<string, number>();
   let socketSeq = 0;
@@ -169,11 +175,31 @@ export function createLocalRoomService({
     // The verdict callback lands on the actor's tick: poll the room right away instead of waiting 10 s.
     onVerdict: (roomId) => { const room = rooms.get(roomId); if (room) queueMicrotask(() => { void room.observeMatchNow(); }); },
   }) : null;
-  // A p2p host is bound to one room (the actor binds it), so every room gets its own.
+  // A p2p host is bound to one room (the actor binds it), so every room gets its own (audit S1: the first one was
+  // handed again to any room created while the map was empty, and rebinding it moved the first room's view away).
   const matchHostFor = (): MatchHost => serviceHost ?? createP2pMatchHost();
+  /** The service's match host; with p2p, an unbound one (every room makes its own). */
   const matchHost = matchHostFor();
 
-  function ports(code: string, host: MatchHost): RoomActorPorts {
+  /** Run one event of `actor` after the ones before it; a failure is logged and the queue goes on. */
+  function serialize(actor: RoomActor, work: () => void | Promise<void>): Promise<void> {
+    const next = (queues.get(actor) ?? Promise.resolve()).then(work).catch((error: unknown) => {
+      roomLog.warn('room event failed', { room: actor.roomCode, error: error instanceof Error ? error.message : String(error) });
+    });
+    queues.set(actor, next);
+    void next.then(() => { if (queues.get(actor) === next) queues.delete(actor); });
+    return next;
+  }
+
+  /** Forget a room that holds nothing, only while its code still names it; its timer goes with it. */
+  function forgetIfEmpty(code: string, actor: RoomActor): void {
+    if (!actor.empty || rooms.get(code) !== actor) return;
+    rooms.delete(code);
+    const timer = timers.get(actor);
+    if (timer) { clearTimeout(timer); timers.delete(actor); }
+  }
+
+  function ports(code: string, host: MatchHost, self: () => RoomActor | null): RoomActorPorts {
     return {
       now: wallClock,
       random,
@@ -194,17 +220,20 @@ export function createLocalRoomService({
         try { socket?.close(1000, reason); } catch { /* already closed */ }
       },
       schedule(atMs) {
-        const pending = timers.get(code);
-        if (pending) { clearTimeout(pending); timers.delete(code); }
-        if (atMs === null || closed) return;
+        const actor = self();
+        if (!actor) return;
+        const pending = timers.get(actor);
+        if (pending) { clearTimeout(pending); timers.delete(actor); }
+        // a room no longer under its code (deleted while this work was pending) arms nothing
+        if (atMs === null || closed || rooms.get(code) !== actor) return;
         const delay = Math.max(0, atMs - wallClock());
         const timer = setTimeout(() => {
-          timers.delete(code);
-          const actor = rooms.get(code);
-          if (actor) void actor.tick().then(() => { if (actor.empty) rooms.delete(code); });
+          if (timers.get(actor) === timer) timers.delete(actor);
+          if (rooms.get(code) !== actor) return;
+          void serialize(actor, async () => { await actor.tick(); forgetIfEmpty(code, actor); });
         }, Math.min(delay, 2_147_000_000));
         timer.unref?.();
-        timers.set(code, timer);
+        timers.set(actor, timer);
       },
       persist() { /* in-memory */ },
       // P1b: what the Worker reads from the runtime (getWebSocketAutoResponseTimestamp), this service records itself.
@@ -219,7 +248,9 @@ export function createLocalRoomService({
   function room(code: string): RoomActor {
     let actor = rooms.get(code);
     if (!actor) {
-      actor = new RoomActor(code, ports(code, rooms.size === 0 ? matchHost : matchHostFor()));
+      let created: RoomActor | null = null;
+      created = new RoomActor(code, ports(code, matchHostFor(), () => created));
+      actor = created;
       rooms.set(code, actor);
     }
     return actor;
@@ -232,7 +263,7 @@ export function createLocalRoomService({
     const actor = room(route.code);
     const socketId = `s${++socketSeq}`;
     sockets.set(socketId, socket);
-    actor.handleOpen(socketId);
+    void serialize(actor, () => actor.handleOpen(socketId));
     socket.on('message', (raw: RawData, isBinary: boolean) => {
       const text = socketText(raw, isBinary);
       if (text === null) { socket.close(1009, 'invalid_payload'); return; }
@@ -243,13 +274,12 @@ export function createLocalRoomService({
         try { socket.send(ROOM_KEEPALIVE_RESPONSE); } catch { /* closing */ }
         return;
       }
-      void actor.handleMessage(socketId, text);
+      void serialize(actor, () => actor.handleMessage(socketId, text));
     });
     socket.once('close', () => {
       sockets.delete(socketId);
       keepalives.delete(socketId);
-      actor.handleClose(socketId);
-      if (actor.empty) rooms.delete(route.code);
+      void serialize(actor, () => { actor.handleClose(socketId); forgetIfEmpty(route.code, actor); });
     });
     socket.on('error', () => { /* close follows */ });
   });
@@ -289,6 +319,7 @@ export function createLocalRoomService({
       for (const socket of sockets.values()) { try { socket.close(1001, 'server_drain'); } catch { /* closed */ } }
       sockets.clear();
       rooms.clear();
+      queues.clear();
       // `wss.close` resolves only once every client socket is gone; a peer that never answers the close
       // handshake would hold the drain for ws's own 30 s timer (or a dead process for good), so the
       // sockets still open after a short grace are terminated.
