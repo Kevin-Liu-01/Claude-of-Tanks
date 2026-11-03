@@ -16,6 +16,7 @@
 // Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain3/. First-party: Kevin B. Liu.
 import * as THREE from 'three';
 import { antennaPart } from './antennaPart.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { chamferedCase, grabRail, liftingEye, periscopeHead, sightBox, stowedRods, tubeThrough } from './chieftainMarksX.ts';
@@ -238,4 +239,8 @@ export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: P
   for (const side of [-1, 1]) liftingEye(add, 'turretDetail', side * .78, 2.282, .55, 0);
   glacis(P);
   oldTurretKit(P, add, pivot);
+  // release 269 (the owner, 2026-11-03: "for the mk3 add. abunch of nts and ghillie on the guns and turret and hull
+  // coverinng all suerfaces"): the field net, garnish and barrel scrim (ghillieFleetSuits.ts chieftain3), laid on the
+  // assembled build
+  addVehicleGhillieSuit(P);
 }
