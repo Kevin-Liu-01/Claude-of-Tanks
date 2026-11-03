@@ -3156,6 +3156,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The pitching battery and retained Tagil chassis already own their fittings.
   // Turret-roof hatches/whips would be mounted on the moving launcher instead.
   if (spec.id === 'tos1a_tagil') return [];
+  // Release 269 (the Australian line): every Australian build authors its own dischargers and roof guns (the M113s'
+  // Saladin, Scorpion and Tenix turrets, the Leopard AS1 on the Danish build, the Abrams pair on the M1A1 and the SEPv3
+  // study with the TMAPU, racks and kit, the Redback's T2000 and Iron Fist). The era field load doubled them (a second
+  // discharger pair, a roof gun) and heaped cargo where the Abrams' field nets lie (the decor raises field nets), as on
+  // the Danish Leopards it was cloned beside and the South African Centurions' blind critics (269).
+  if (['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
