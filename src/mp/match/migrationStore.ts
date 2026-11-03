@@ -52,6 +52,9 @@ export class MigrationStore {
    * over every later host's (security audit 2026-10-22). Completed blobs stay (the elected seat resumes from them);
    * partial chunks from the old host are dropped.
    */
+  /** The newest host generation the session followed (0 before any host change). */
+  get hostGeneration(): number { return this.generation; }
+
   setGeneration(generation: number): void {
     if (!Number.isInteger(generation) || generation <= this.generation) return;
     this.generation = generation;
