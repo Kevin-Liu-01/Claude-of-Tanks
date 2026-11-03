@@ -1,5 +1,6 @@
 // 2026-11-02 audit M7: what reaches a bot between two updates (gunshots heard, its own shell results, hits on its
-// team, a commander's order) is queued and applied at the top of the next update in one declared order. The
+// team, a commander's order) is queued and applied in one declared order: by the drivers' flush (ai.newsFlush.selftest
+// pins where), or, for a controller stepped alone as here, at the top of its next update. The
 // integrations call these callbacks in their own orders (the solo step and the authority loop and filter differently;
 // a commander's answer lands whenever it arrives), and each one changed the mode, started flanks or hit reactions and
 // drew from the bot's seeded stream on the spot, so the same step told in another order made another bot. Reproduced
@@ -74,7 +75,7 @@ for (const spotted of [new Set(), new Set(['a-left', 'b-right'])]) {
   ok(da.reactions >= 1 && da.ordersTaken === 1, `the news was taken (reactions ${da.reactions}, orders ${da.ordersTaken})`);
 }
 
-console.log('[2] news waits for the next update and lands before that tick\'s decisions');
+console.log('[2] with no flush, news waits for the next update and lands before that tick\'s decisions');
 {
   const s = scene(new Set(['a-left', 'b-right']));
   s.run(0.1);

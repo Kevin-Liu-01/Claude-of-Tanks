@@ -104,7 +104,7 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
-import { createAI, roleOf, type AiOrder } from './ai.ts';
+import { applyPendingBotNews, createAI, roleOf, type AiOrder } from './ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks,
   type NavigationWreck,
@@ -244,6 +244,8 @@ interface SoloAiController {
   readonly targetId?: string | null;
   readonly state?: string;
   setOrder?(order: AiOrder | null): void;
+  /** Apply what reached the brain since its last update (ai.ts applyPendingBotNews; audit M7). */
+  applyPendingNews?(): void;
 }
 
 interface ReloadPresentationEvent {
@@ -2549,6 +2551,10 @@ function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void 
     if (!shell.dead) stepLiveShell(game, bus, world, shell);
   }
   recycleDeadShells(game.shells);
+  // the fire-and-shells phase's news (shots heard, shell results, hits) reaches the bots here, in one declared order,
+  // where the callbacks always ran: before spotting and the mode step read the field (audit M7; the authority's
+  // advanceWeapons ends the same way)
+  applyPendingBotNews(game.tanks);
 }
 
 
@@ -2608,6 +2614,8 @@ function retargetObjectiveBots(game: SoloGameState): void {
 }
 
 function stepBotControllers(game: SoloGameState): void {
+  // what reached the bots since the last flush (the commander's orders) lands before the first of them thinks (audit M7)
+  applyPendingBotNews(game.tanks);
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,

@@ -141,6 +141,12 @@ interface AiController {
   notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
   /** Take (or clear) a commander's standing order; see AiOrder. */
   setOrder(order: AiOrder | null): void;
+  /**
+   * Apply the news queued since this controller's last update (the four callbacks above, setOrder) in its declared
+   * order. The drivers call it for every hull through applyPendingBotNews at their two flush points; update() applies
+   * whatever is still queued (audit M7).
+   */
+  applyPendingNews(): void;
   hasClearShot(targetId: string): boolean;
   readonly terrainBlocked: boolean;
   readonly targetId: string | null;
@@ -1134,6 +1140,19 @@ export const AI_DOCTRINE_STARTS = Object.freeze([
   'penDeniedFlank', 'fallback', 'squadManeuver',
 ] as const);
 export type AiDoctrineStart = (typeof AI_DOCTRINE_STARTS)[number];
+
+/**
+ * The drivers' flush of the bots' news (2026-11-02 audit M7): every hull's controller, in the hulls' order, applies
+ * what reached it since its last update (createAI's between-tick inputs). Both drivers call it at the same two points
+ * of their step: at the end of the fire-and-shells phase that reports the shots and hits (solo state.ts stepShells,
+ * the authority's advanceWeapons), so the news is applied where the callbacks always ran, before spotting, the mode
+ * step and the next step's controllers read anything; and before the first controller of a step updates (a
+ * commander's orders arrive between those two). A hull with no controller, or one without the method, is skipped.
+ * Allocation-free.
+ */
+export function applyPendingBotNews(hulls: ReadonlyArray<{ readonly aiCtl?: { applyPendingNews?(): void } | null }>): void {
+  for (let i = 0; i < hulls.length; i++) hulls[i].aiCtl?.applyPendingNews?.();
+}
 
 /**
  * Create the shared AI controller for one non-player tank on either team.
@@ -6854,8 +6873,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function update(dt: number, timeS: number): void {
-    // what reached the bot since the last tick lands first, in its declared order, at that tick's clock and live
-    // objective (the between-tick inputs, audit M7)
+    // anything still queued lands first, in its declared order (the drivers flush it earlier: applyPendingBotNews;
+    // this is the fallback for a caller that steps the controller alone, audit M7)
     drainPendingEvents();
     objectiveTick++;
     inUpdate = true;
@@ -6989,12 +7008,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // The integrations report shell results, hits, gunshots and orders between two updates, each in its own order (the
   // solo step and the authority filter and loop differently; a commander's order lands on whichever tick its answer
   // arrives), and these start flanks and hit reactions, change the mode and draw from this bot's seeded stream. They
-  // are queued and applied at the top of the next update(), before anything else that tick, at the clock and live
-  // objective the callbacks always saw (the last tick's), in one declared order: gunshots heard, then this bot's own
-  // shell results, then hits on its team, then the commander's orders; within a kind by the shooter's id (a hit on
-  // this hull before a teammate's report) or the struck hull's id, and arrival order only among events with the same
-  // key. So a bot's decisions are a function of what reached it in a step, not of the order it was told. What each
-  // event does is unchanged (the apply* functions below); the validity checks still run when the event arrives.
+  // are queued, and applied together in one declared order: gunshots heard, then this bot's own shell results, then
+  // hits on its team, then the commander's orders; within a kind by the shooter's id (a hit on this hull before a
+  // teammate's report) or the struck hull's id, and arrival order only among events with the same key. So a bot's
+  // decisions are a function of what reached it in a phase, not of the order it was told. What each event does is
+  // unchanged (the apply* functions below); the validity checks still run when the event arrives.
+  // Where they are applied is the drivers' (applyPendingBotNews, at the end of their fire-and-shells phase and again
+  // before the first controller updates), so the news lands where the callbacks always ran: at the last tick's clock,
+  // with the spotting, the mode's objective and this bot's target and mode as the phase left them, and every teammate
+  // that thinks first in the next step reads this bot's answer (refreshFocusCounts, the squad's flank election, the
+  // commander's team document). Against callbacks applied one at a time, two things differ, both inside one phase: the
+  // declared order, and that an event no longer sees what a later shell of the same phase did (a hull it destroyed) or
+  // what a teammate's earlier news in the phase changed in that teammate before this bot's turn (the hulls' order
+  // decides). update() applies anything still queued first (a caller that steps a controller alone).
   // notifyFriendlyBlocked stays immediate: it only raises a timer to a floor and counts, the same in any order, and
   // draws nothing.
   const PENDING_ENEMY_FIRED = 0, PENDING_SHELL_RESULT = 1, PENDING_UNDER_FIRE = 2, PENDING_ORDER = 3;
@@ -7076,7 +7102,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * Feedback for shells this tank fired (integration calls this per §3.6 lock).
    * Two consecutive non-penetrating results on the current target trigger a flank;
    * every result also resamples the aim error and forces a fresh weak-spot probe.
-   * Queued for the next update (see the between-tick inputs above).
+   * Queued until the drivers' flush (see the between-tick inputs above).
    * @param {object} hitEvent HitEvent (§2.6)
    */
   function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void {
@@ -7107,7 +7133,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** Direct hits provoke retaliation; nearby team reports provide awareness.
-   * Neither event overrides a closer fight merely because its shooter is human. Queued for the next update. */
+   * Neither event overrides a closer fight merely because its shooter is human. Queued until the flush. */
   function notifyUnderFire(shooter: AiEntity, info: HitReactionInfo = {}): void {
     if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
     if (draining) { applyUnderFire(shooter, info); return; }
@@ -7139,7 +7165,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /** An audible gunshot is a contact hint, not an order to abandon a fight.
-   * Both teams and human/bot shooters use this same policy. Queued for the next update. */
+   * Both teams and human/bot shooters use this same policy. Queued until the flush. */
   function notifyEnemyFired(shooter: AiEntity): void {
     if (!shooter?.state || !shooter.combat || shooter.combat.destroyed || shooter.team === entity.team) return;
     if (draining) { applyEnemyFired(shooter); return; }
@@ -7187,7 +7213,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /**
    * Take a commander's order (game/jevCommander.ts). The posture's immediate effects start here; the
    * gated reads above (hold band, cover discipline, target claim, fire discipline, engage driving)
-   * carry it until `untilS`, when the classic brain resumes by itself. Queued for the next update (orders keep
+   * carry it until `untilS`, when the classic brain resumes by itself. Queued until the flush (orders keep
    * their arrival order: the last one stands).
    */
   function setOrder(next: AiOrder | null): void {
@@ -7238,6 +7264,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyEnemyFired,
     notifyFriendlyBlocked,
     setOrder,
+    applyPendingNews: drainPendingEvents,
     resume,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
@@ -7289,7 +7316,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       searching, searchKind, searchLegs, searchFailures,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length, routeOwner, // audit M7: who wrote the waypoints
-      pendingEvents: pendingCount, // audit M7: between-tick inputs waiting for the next update
+      pendingEvents: pendingCount, // audit M7: between-tick inputs waiting for the drivers' flush
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
       lastRun, lastRuns,
