@@ -34,6 +34,10 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // C1 Ariete, the K1A1) show other variants and are deregistered (Main's ruling 2026-10-28); the K2B had no 3D target
   'docs/references/photos/ariete-prototypes-20261101.json':Object.freeze(['c1_ariete_proto_serie1','c2_ariete_proto']),
   'docs/references/photos/korea-k1e1-k2b-20261101.json':Object.freeze(['k1e1','k2b']),
+  // 269 (the owner, 2026-11-02: "also update the cheiftainn mk 3 and mk 9"): the Chieftain Mk 9 on the source-built Mk 10
+  // castings without Stillbrew (the Mk 5 to the Mk 9 looked externally the same), proved by photographs of its base Mk 6
+  // and of 1979-90 BAOR Chieftains, with no 3D model to follow
+  'docs/references/photos/chieftain-mk9-20261102.json':Object.freeze(['chieftain_mk9']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

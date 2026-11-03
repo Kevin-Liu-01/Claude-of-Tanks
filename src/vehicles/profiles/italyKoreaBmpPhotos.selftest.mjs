@@ -1,6 +1,7 @@
 // Release 268 (the owner, 2026-11-01: "now update the c2 protottype, c1 prototype s1, ariete preserie, carro 45t, K2B,
-// xK2, bmp2, bmp 3 rok, bwp-1, k1e1"): the rebuilds that take stage A's photo route hold their packets
-// (docs/references/photos/{ariete-prototypes,korea-k1e1-k2b,bmp-family}-20261101.json):
+// xK2, bmp2, bmp 3 rok, bwp-1, k1e1"; 2026-11-02: "also update the cheiftainn mk 3 and mk 9"): the rebuilds that take
+// stage A's photo route hold their packets (docs/references/photos/{ariete-prototypes,korea-k1e1-k2b,bmp-family}-20261101
+// .json and chieftain-mk9-20261102.json):
 // - each holds its as-built envelope, calibre, crew, launcher tubes and roof guns (the gate's roof-weapon census);
 // - bmp3_rok draws the fleet's BMP-3 hull and sits its turret on the BMP-3's ring, not the BMP-2's;
 // - bwp1's RCWS-30 is unmanned: every crew seat is in the hull, and the station carries the Spike-LR canister.
@@ -12,9 +13,10 @@ import { getSpec } from '../specs.ts';
 import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
 
 const FIXTURE = 'src/vehicles/profiles/italyKoreaBmpPhotos.selftest.mjs';
-const IDS = ['c1_ariete_proto_serie1', 'c2_ariete_proto', 'k1e1', 'k2b', 'bmp3_rok', 'bwp1'];
+const IDS = ['c1_ariete_proto_serie1', 'c2_ariete_proto', 'k1e1', 'k2b', 'bmp3_rok', 'bwp1', 'chieftain_mk9'];
 const checked = [];
-for (const file of ['ariete-prototypes-20261101.json', 'korea-k1e1-k2b-20261101.json', 'bmp-family-20261101.json']) {
+for (const file of ['ariete-prototypes-20261101.json', 'korea-k1e1-k2b-20261101.json', 'bmp-family-20261101.json',
+  'chieftain-mk9-20261102.json']) {
   const packet = JSON.parse(readFileSync(new URL(`../../../docs/references/photos/${file}`, import.meta.url), 'utf8'));
   for (const [id, target] of Object.entries(packet.targets)) {
     assert.equal(target.test, FIXTURE, `${id}: the packet names this fixture`);
