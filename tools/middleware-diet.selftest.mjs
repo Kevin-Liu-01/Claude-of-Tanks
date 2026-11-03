@@ -16,7 +16,7 @@ for (const path of ['/', '/index.html', '/?tank=leo1a5', '/?_bootretry=1-x', '/g
   assert.equal(decide(path), false, `${path} only needs the deployment pin`);
 }
 for (const path of ['/?room=HKP5XW', '/?room=', '/index.html?room=HKP5XW&host=x', '/studio', '/studio/', '/cn', '/cn/', '/cn/studio',
-  '/cn/docs/build', '/cn/nope', '/cn/?room=HKP5XW']) {
+  '/cn/docs/build', '/cn/nope', '/cn/?room=HKP5XW', '/gallery?id=m1a1', '/gallery.html?id=m1a1', '/cn/gallery?id=m1a1']) {
   assert.equal(decide(path), true, `${path} may need metadata or the localized 404`);
 }
 
@@ -33,11 +33,13 @@ const plain = await middleware(new Request('https://cot.kevinliu.studio/', { hea
 const afterPlain = heavy();
 const gallery = await middleware(new Request('https://cot.kevinliu.studio/gallery?room=ABC123', { headers: { accept: 'text/html' } }));
 const afterGallery = heavy();
+const tank = await middleware(new Request('https://cot.kevinliu.studio/gallery?id=m1a1', { headers: { accept: 'text/html' } }));
+const afterTank = heavy(), tankBody = await tank.text();
 const cnPage = await middleware(new Request('https://cot.kevinliu.studio/cn/docs/build', { headers: { accept: 'text/html' } }));
 const afterCnPage = heavy();
 const studio = await middleware(new Request('https://cot.kevinliu.studio/studio', { headers: { accept: 'text/html' } }));
 const afterStudio = heavy();
-console.log(JSON.stringify({ afterPlain, afterGallery, afterCnPage, afterStudio, plain: plain.status, gallery: gallery.status, studio: studio.status,
+console.log(JSON.stringify({ afterPlain, afterGallery, afterTank, tankShared: tankBody.includes('M1A1'), afterCnPage, afterStudio, plain: plain.status, gallery: gallery.status, studio: studio.status,
   plainNext: plain.headers.get('x-middleware-next'), cnPageNext: cnPage.headers.get('x-middleware-next'), studioBody: (await studio.text()).includes('Scene Studio') }));
 `;
 const run = spawnSync(process.execPath, ['--input-type=module', '-e', probe], { cwd: root, encoding: 'utf8', timeout: 60_000 });
@@ -45,6 +47,8 @@ assert.equal(run.status, 0, `the probe ran: ${run.stderr.slice(-800)}`);
 const result = JSON.parse(run.stdout.trim().split('\n').at(-1));
 assert.deepEqual(result.afterPlain, [], 'a plain / loads none of the metadata or localization modules');
 assert.deepEqual(result.afterGallery, [], 'the gallery (even with a room-like query) loads none of them');
+assert.deepEqual(result.afterTank, [], 'a tank link loads its share table and none of them');
+assert.equal(result.tankShared, true, 'a tank link shares its tank');
 assert.deepEqual(result.afterCnPage, ['localeRouting.ts'], 'a static /cn page reads the route table and nothing else (nav-perf-240)');
 assert.equal(result.cnPageNext, '1', 'a static /cn page passes through to its build-time document');
 assert.deepEqual(result.afterStudio, ['i18nCatalog.ts', 'localeRouting.ts', 'localizedHtml.ts', 'siteMetadata.ts'],

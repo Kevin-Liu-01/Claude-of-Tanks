@@ -33,13 +33,24 @@ const NOSE: readonly Crown[] = [
   [3.921,1.42763,1.44179,[1.03829,1.03837,1.03854,1.03871,1.03896,1.03963,1.03975,1.03904,1.03868,1.03846,1.03832],.00098,[1.03879,1.03886]],
 ];
 
+// 267 (S1, blind critics: "the bow mudguards read as oversized wedges"): the nose's outer edge turns down as a 7 cm lip
+// below its rolled shoulder (it folded 15-34 cm down at z 3.615-3.80, a hanging beak). The measured crown, shoulders and
+// plan are unchanged. (267 fix: no front skirt panel hangs under it; the front idler stays exposed, as photographed.)
+const OUTER_LIP_M = .07;
+function crownTop([, inner, outer, heights, , shoulders]: Crown): (readonly [number, number])[] {
+  const top = FRACTIONS.map((u, index) => [inner + (outer - inner) * u,
+    index === FRACTIONS.length - 1 ? Math.max(heights[index], heights[index - 1] - OUTER_LIP_M) : heights[index]] as const);
+  if (shoulders) {
+    top.splice(8, 0, [inner + (outer - inner) * .85, shoulders[1]]);
+    top.splice(4, 0, [inner + (outer - inner) * .15, shoulders[0]]);
+  }
+  return top;
+}
+
 function skin(side: number, rows: readonly Crown[]): ReturnType<typeof sectionSolid> {
-  return sectionSolid(rows.map(([z, inner, outer, heights, depth, shoulders]): SolidSection => {
-    const top = FRACTIONS.map((u, index) => [inner + (outer - inner) * u, heights[index]] as const);
-    if (shoulders) {
-      top.splice(8, 0, [inner + (outer - inner) * .85, shoulders[1]]);
-      top.splice(4, 0, [inner + (outer - inner) * .15, shoulders[0]]);
-    }
+  return sectionSolid(rows.map((row): SolidSection => {
+    const [z, , , , depth] = row;
+    const top = crownTop(row);
     const ring: readonly (readonly [number, number])[] = [
       ...top.map(([x, y]) => [x, y - depth] as const), ...[...top].reverse(),
     ];

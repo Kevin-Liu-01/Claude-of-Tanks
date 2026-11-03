@@ -86,16 +86,13 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
+function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true):void {
   for(const side of [-1,1]){
     const left=side<0?-1.103:.014,right=side<0?-.014:1.103;
     if(nativeEra)P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
       const cover=roofSheet([[2.00,left,right,1.4934,1.4934],[2.61,left,right,1.2725,1.2725],[3.25,left,right,1.0232,1.0232]],.040);
       P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
-      for(const z of [2.14,2.45,2.78,3.07])for(const x of [side*.30,side*.73]){
-        const y=1.4934-(z-2)*.382;
-        P.addExternalArmor('hull',markEraFurniture(box(.294,.012,.023)),x,y+.008,z,.365);
-      }
+      if(containers)glacisContainers(P,side);
     });
     const lane=side<0?-1.962:1.958;
     for(const [a,b,top,low]of SKIRT_SPANS){
@@ -117,6 +114,76 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
       P.addMudguard('t72b3m-x-rear-curtain','hullRubber',box(.004,.14,.825),lane-side*.009,.730,-2.143);
     }
   }
+  if(nativeEra&&containers)splashBoard(P);
+}
+
+// 267 (Main: "Relikt glacis in distinct rows of containers with seams and a stepped face"). The source raft
+// (t72b3m_x_source.glb, Object_6, 1 cm height field against the glacis plane y 1.517 - .389 (z - 1.94)): the upper glacis
+// from the driver's plate to z 2.33 lies in the plane; from there forward the reactive raft stands proud of it (+15..22
+// mm) to its bolted front edge at z 3.30-3.34, its access plates another 15 mm up (z 2.68-2.84 at |x| .08-.32 and
+// .49-.77, z 3.07-3.25 at |x| .19-.48), crossed at z 2.89-2.92 by the splash board standing 0.13 m square to the plate
+// between the headlights, with its seams at |x| .20 and .48 in the front row. Here: the 40 mm cover keeps its hit faces
+// (the armour binding) and carries the containers as furniture of the same cluster, in two rows of closed boxes with 12 mm
+// seams, the rear row (z 2.335-2.900) two a side, the front row (z 2.940-3.244) three a side, every lid in one plane
+// (1.5359 - .382 (z - 2)), 30-36 mm over the cover, chamfered 6 mm on the top edges, their feet 6 mm into the cover. (The
+// obr. 2022 lays its own block grid instead, on the bare cover: buildT72B3MXHull glacisContainers.) The rear row's back edge is the glacis step; the front row's
+// face over the cover's edge is the bolted toe (two hex heads a box); the source's two bolt groups and the access plates sit
+// on the lids. Gun sweep: the upper glacis under the mantlet (z < 2.335) is unchanged.
+const GLACIS_COVER:readonly(readonly[z:number,y:number])[]=[[2.00,1.4934],[2.61,1.2725],[3.25,1.0232]];
+function glacisCoverY(z:number):number {
+  const [a,b,c]=GLACIS_COVER;
+  const [z0,y0,z1,y1]=z<=b[0]?[a[0],a[1],b[0],b[1]]:[b[0],b[1],c[0],c[1]];
+  return y0+(y1-y0)*(z-z0)/(z1-z0);
+}
+const GLACIS_LID_SLOPE=.382,GLACIS_ALPHA=Math.atan(GLACIS_LID_SLOPE);
+const glacisLidY=(z:number)=>1.5359-GLACIS_LID_SLOPE*(z-2);
+const GLACIS_ROWS:readonly(readonly[z0:number,z1:number])[]=[[2.335,2.900],[2.940,3.244]];
+/** The bare glacis cover's top at z: what a frontal package that replaces the containers (buildT72B3MXHull
+ * glacisContainers: false; the obr. 2022's block grid, t72b3m2022Kit.ts glacisRows) seats on. */
+export function t72b3mGlacisCoverY(z:number):number { return glacisCoverY(z); }
+/** A closed container box between |x| a..b and z z0..z1: its foot 6 mm into the cover (following the cover's kink at z
+ * 2.61), its lid in the glacisLidY plane, top edges chamfered 6 mm (the ends' top edges too); a plate: 10 mm, 3 mm into
+ * the lid, chamfered 3 mm. */
+function glacisBox(side:number,a:number,b:number,z0:number,z1:number,plate=false):THREE.BufferGeometry {
+  const x0=Math.min(side*a,side*b),x1=Math.max(side*a,side*b),ch=plate?.003:.006;
+  const ring=(z:number,drop:number):SectionPoint[]=>{
+    const foot=plate?glacisLidY(z)-.003:glacisCoverY(z)-.006,lid=glacisLidY(z)+(plate?.007:0)-drop;
+    return [[x0,foot],[x1,foot],[x1,lid-ch],[x1-ch,lid],[x0+ch,lid],[x0,lid-ch]];
+  };
+  const zs=[z0,z0+ch,...(z0+ch<GLACIS_COVER[1][0]&&GLACIS_COVER[1][0]<z1-ch?[GLACIS_COVER[1][0]]:[]),z1-ch,z1];
+  return sectionSolid(zs.map((z,i)=>({z,ring:ring(z,i===0||i===zs.length-1?ch:0)})));
+}
+/** A hex bolt head on a lid (axis on the lid's normal, 3 mm into it) or on a box's front face (axis +z). */
+function glacisBolt(x:number,z:number,onFace=false):[THREE.BufferGeometry,number,number,number] {
+  if(onFace)return [cylZ(.010,.013,6),x,(glacisCoverY(z)+glacisLidY(z)-.006)/2-.003,z+.0035];
+  return [KIT.cylY(.015,.015,.012,6).rotateX(GLACIS_ALPHA),x,glacisLidY(z)+.003,z];
+}
+function glacisContainers(P:TankBuilderPort,side:number):void {
+  const fur=(g:THREE.BufferGeometry,x=0,y=0,z=0)=>P.addExternalArmor('hull',markEraFurniture(g),x,y,z);
+  const FRONT=GLACIS_ROWS[1][1];
+  const [[A0,A1],[B0]]=GLACIS_ROWS;
+  for(const [a,b]of [[.020,.455],[.467,1.065]])fur(glacisBox(side,a,b,A0,A1));
+  for(const [a,b]of [[.020,.195],[.207,.475],[.487,1.065]]){
+    fur(glacisBox(side,a,b,B0,FRONT));
+    // the toe: two hex heads on the box's face over the cover's front edge
+    for(const x of [a+.045,b-.045]){const [g,bx,by,bz]=glacisBolt(side*x,FRONT,true);fur(g,bx,by,bz);}
+  }
+  // access plates: 10 mm, chamfered, 3 mm into the lid
+  for(const [a,b,z0,z1]of [[.080,.320,2.680,2.840],[.490,.770,2.680,2.840],[.225,.457,3.060,3.215]])
+    fur(glacisBox(side,a,b,z0,z1,true));
+  // the source's bolt group on the rear row's outer box
+  for(const [x,z]of [[.61,2.50],[.61,2.56],[.73,2.50],[.73,2.56],[.73,2.62]]){const [g,bx,by,bz]=glacisBolt(side*x,z);fur(g,bx,by,bz);}
+}
+/** 267: the splash board across the glacis between the headlights' inner guard bars (|x| .72), standing in the 40 mm
+ * seam between the container rows, 12 mm thick and square to the plate (the source's board leans forward with it), its
+ * top 0.13 m over the cover with the source photo's shallow notch over the centre (30 mm down for |x| < .14), its foot down
+ * through the cover onto the hull glacis (the hull's own fitting: it stays when the reactive cover is stripped). */
+function splashBoard(P:TankBuilderPort):void {
+  const W=.72,H=.130,notch=.030,t=.012,foot=2.910,root=-.047;
+  const outline:SectionPoint[]=[[-W,root],[W,root],[W,H-.008],[W-.008,H],[.14+notch,H],[.14,H-notch],[-.14,H-notch],
+    [-.14-notch,H],[-W+.008,H],[-W,H-.008]];
+  const g=sectionSolid([{z:-t/2,ring:outline},{z:t/2,ring:outline}]).rotateX(GLACIS_ALPHA);
+  P.addEquipment('hullDetail',g,0,glacisCoverY(foot),foot);
 }
 
 // The nine side-skirt cassette spans a side: [rear z, front z, top, bottom] (source stations).
@@ -274,23 +341,19 @@ function cheekCassettes(P:TankBuilderPort,finish=false):void {
     // 266 (familyFinish; blind critics over three rounds: "a fan of small separate bricks hanging down over the turret
     // front", "too thin, droop too low", "the real cassettes are thick wedges whose tops meet the roof line"): each
     // cassette keeps its measured plan station and heading but stands CHEEK_LIFT higher, at CHEEK_TILT of its measured
-    // tilt, CHEEK_DEPTH deep, 12 % wider and 20 % longer, so each cheek's fan closes into one thick brow whose rear edge
-    // meets the roof's front; t72b3mXGeometry's covers receipt pins the new exposed planes (cheekCellPlane).
-    const [x,,,,,,w0,d0]=cell,w=w0*1.12,d=d0*1.2,{point,normal,yaw,pitch}=cheekCellPlane(cell);
-    const g=markEraHitFaces(box(w,CHEEK_DEPTH,d),[0,1,0]).rotateX(pitch).rotateY(yaw);
-    const center=point.clone().addScaledVector(normal,-CHEEK_DEPTH/2);
-    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',g,center.x-YAW[0],center.y-YAW[1],center.z-YAW[2]));
-    // the cassette's container body: a vertical prism from its underside (6 mm up into it) down to CHEEK_BODY_BASE_Y,
-    // 5 mm wider a side, so the pack's front reads as tall, near-vertical faces on a solid block, not tiles on struts
-    // (the support beam it hid went with it). ERA furniture: it leaves with its cassette and adds no hit face.
-    const frame=new THREE.Matrix4().makeRotationY(yaw).multiply(new THREE.Matrix4().makeRotationX(pitch)).setPosition(center);
-    const under=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([sx,sz])=>new THREE.Vector3(sx*(w/2+.005),-CHEEK_DEPTH/2+.006,sz*d/2).applyMatrix4(frame));
-    const local=(p:THREE.Vector3):V3=>[p.x-YAW[0],p.y-YAW[1],p.z-YAW[2]];
-    const body=loft([under.map(p=>local(new THREE.Vector3(p.x,CHEEK_BODY_BASE_Y,p.z))),under.map(local)]);
-    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraFurniture(body)));
+    // tilt, 12 % wider and 20 % longer, so each cheek's fan closes into one thick brow whose rear edge meets the roof's
+    // front; t72b3mXGeometry's covers receipt pins the exposed planes (cheekCellPlane).
+    // 267 (Main: "the turret cheek Relikt/Kontakt-5 wedge packs with real depth, the 2016's characteristic boxy cheek
+    // modules"): the rounded 0.20 m slab on its upright prism (two stacked bricks from the front) is one sharp-edged wedge
+    // (cheekWedge), as the source's cassettes are (Object_14, islands 8832/9442/10078/10463: a sloping lid, a short upright
+    // end cap at the front, an underside rising from the casting to it), with the slab's exposed lid plane and extent.
+    const [x]=cell;
+    const g=cheekWedge(cell);
+    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',g));
+    for(const b of cheekCapBolts(cell))P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraFurniture(b)));
   }
 }
-const CHEEK_LIFT=.10,CHEEK_TILT=.6,CHEEK_DEPTH=.20;
+const CHEEK_LIFT=.10,CHEEK_TILT=.6;
 /** A cheek cassette's exposed plane (266): the measured station (x, z) and heading, CHEEK_LIFT higher, at CHEEK_TILT of
  * the measured tilt (t72b3mXGeometry's covers receipt pins three of them). */
 function cheekCellPlane(cell:Cheek):{point:THREE.Vector3;normal:THREE.Vector3;yaw:number;pitch:number} {
@@ -298,7 +361,50 @@ function cheekCellPlane(cell:Cheek):{point:THREE.Vector3;normal:THREE.Vector3;ya
   const yaw=Math.atan2(nx,nz),pitch=Math.acos(measured.y)*CHEEK_TILT;
   return {point:new THREE.Vector3(x,y+CHEEK_LIFT,z),normal:new THREE.Vector3(Math.sin(pitch)*Math.sin(yaw),Math.cos(pitch),Math.sin(pitch)*Math.cos(yaw)),yaw,pitch};
 }
-const CHEEK_BODY_BASE_Y=1.65;
+/** The wedge's base (the 266 prism's foot) and its front: an upright end cap CHEEK_CAP deep under the lid's front edge, the
+ * underside rising from the casting to the cap's foot at CHEEK_UNDER (the source's lower faces rise 13-15 degrees under
+ * its 32-degree lids; under the 266 brow's flatter lids 22 degrees keeps the reference photos' deep angled undersides
+ * below each end cap, where 15 degrees left a thin dark sliver and the pack read as slabs on air), down to the 266
+ * prism's foot or, on the short cells, into the casting at the lid's rear. */
+const CHEEK_BODY_BASE_Y=1.65,CHEEK_CAP=.095,CHEEK_UNDER=22*Math.PI/180,CHEEK_EDGE=.010;
+/** The cassette frame: x along the heading (horizontal), y up, z across (x cross y), origin at the lid's centre point. */
+function cheekFrame(cell:Cheek):{frame:THREE.Matrix4;sF:number;yF:number;sR:number;yR:number;w:number} {
+  const [,,,,,,w0,d0]=cell,{point,yaw,pitch}=cheekCellPlane(cell),d=d0*1.2;
+  const h=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)),up=new THREE.Vector3(0,1,0),a=h.clone().cross(up);
+  const frame=new THREE.Matrix4().makeBasis(h,up,a).setPosition(point.x-YAW[0],point.y-YAW[1],point.z-YAW[2]);
+  const c=Math.cos(pitch)*d/2,v=Math.sin(pitch)*d/2;
+  return {frame,sF:c,yF:-v,sR:-c,yR:v,w:w0*1.12};
+}
+/** One cassette (267): the lid plane and extent of the 266 slab (hit faces), its front an upright cap, its underside rising
+ * at CHEEK_UNDER from the casting to the cap's foot, its back down to CHEEK_BODY_BASE_Y inside the casting; every edge on
+ * the sides chamfered CHEEK_EDGE. One closed solid in the turret frame. */
+function cheekWedge(cell:Cheek):THREE.BufferGeometry {
+  const {frame,sF,yF,sR,yR,w}=cheekFrame(cell),{point}=cheekCellPlane(cell);
+  const base=CHEEK_BODY_BASE_Y-point.y,capFoot=yF-CHEEK_CAP;
+  const run=(capFoot-base)/Math.tan(CHEEK_UNDER);
+  const profile:[number,number][]=sF-run>sR+.02?[[sR,yR],[sR,base],[sF-run,base],[sF,capFoot],[sF,yF]]
+    :[[sR,yR],[sR,capFoot-(sF-sR)*Math.tan(CHEEK_UNDER)],[sF,capFoot],[sF,yF]];
+  // counter-clockwise in (x, y) seen from +z
+  let area=0;for(let i=0;i<profile.length;i++){const p=profile[i],q=profile[(i+1)%profile.length];area+=p[0]*q[1]-q[0]*p[1];}
+  if(area<0)profile.reverse();
+  const inner=insetConvex(profile,CHEEK_EDGE),c=CHEEK_EDGE;
+  const g=sectionSolid([{z:-w/2,ring:inner},{z:-w/2+c,ring:profile},{z:w/2-c,ring:profile},{z:w/2,ring:inner}]);
+  const {normal}=cheekCellPlane(cell),local=normal.clone().transformDirection(new THREE.Matrix4().copy(frame).invert());
+  return markEraHitFaces(g,[local.x,local.y,local.z]).applyMatrix4(frame);
+}
+/** Two hex heads on each cassette's end cap, 3 mm into it (ERA furniture: they leave with it). */
+function cheekCapBolts(cell:Cheek):THREE.BufferGeometry[] {
+  const {frame,sF,yF,w}=cheekFrame(cell);
+  return [-1,1].map(k=>cylX(.013,.012,6).translate(sF+.003,yF-CHEEK_CAP*.45,k*(w/2-.045)).applyMatrix4(frame));
+}
+/** A convex counter-clockwise polygon moved in by `c` along every edge's inward normal. */
+function insetConvex(poly:readonly(readonly[number,number])[],c:number):SectionPoint[] {
+  const n=poly.length;
+  const lines=poly.map((p,i)=>{const q=poly[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],l=Math.hypot(dx,dy);
+    return {p:[p[0]-dy/l*c,p[1]+dx/l*c],d:[dx/l,dy/l]};});
+  return poly.map((_,i)=>{const a=lines[(i+n-1)%n],b=lines[i],den=a.d[0]*b.d[1]-a.d[1]*b.d[0];
+    const t=((b.p[0]-a.p[0])*b.d[1]-(b.p[1]-a.p[1])*b.d[0])/den;return [a.p[0]+t*a.d[0],a.p[1]+t*a.d[1]] as const;});
+}
 
 function roofCassettes(P:TankBuilderPort):void {
   const rows:readonly(readonly[number,number,number,number])[]=[
@@ -481,11 +587,15 @@ function sleeveHardware(P:TankBuilderPort):void {
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
  * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
 interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean;
+  /** false (267): the reactive cover stays, without the 2016's containers, plates, bolts and splash board over it, for a
+   * frontal package that lays its own glacis blocks on the bare cover (buildT72B3MX: wherever the cheek cells give way to
+   * the build's own, the obr. 2022's t72b3m2022Kit.ts). */
+  glacisContainers?:boolean;
 }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
+  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false,options.glacisContainers!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={},hullOptions:T72B3MXHullOptions={}):void {

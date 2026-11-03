@@ -1,8 +1,8 @@
 // Endless rounds in the special modes (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"):
-// the competitive and realistic modes keep the vehicle's own loadout, every special and arcade mode plays unlimited
-// rounds, the rule card says so, a cache under unlimited rounds is always a repair (Gravity Mode's timed drop through the
-// controller here; zombieBalance and matchModes pin the Horde's), and a fired channel refills on both fire paths: the
-// network authority's and the solo battle's (game/state.ts tryFire).
+// the competitive and realistic modes and Drone keep the vehicle's own loadout, every other special and arcade mode
+// plays unlimited rounds, the rule card says so, a cache under unlimited rounds is always a repair (Gravity Mode's timed
+// drop through the controller here; zombieBalance and matchModes pin the Horde's), and a fired channel refills on both
+// fire paths: the network authority's and the solo battle's (game/state.ts tryFire).
 import assert from 'node:assert/strict';
 import { Group, Vector3 } from 'three';
 import '../vehicles/tankFactory.ts';
@@ -16,8 +16,9 @@ import { cacheHealChance, matchRulesetFor, refillUnlimitedAmmunition, rulesetLin
 
 const AMMO = {
   standard: 'spec', capture_the_flag: 'spec', zone_control: 'spec', realistic: 'spec',
+  drone: 'spec', // owner 2026-11-02: "drone mode shouldnt have infinite ammo"
   turbo_ball: 'unlimited', gun_game: 'unlimited', ac130: 'unlimited',
-  juggernaut: 'unlimited', infected: 'unlimited', endless_horde: 'unlimited', mars: 'unlimited', drone: 'unlimited', frontline_assault: 'unlimited',
+  juggernaut: 'unlimited', infected: 'unlimited', endless_horde: 'unlimited', mars: 'unlimited', frontline_assault: 'unlimited',
   proving_ground: 'unlimited', // 230: the test drive's range (matchRuleset.ts PROVING_GROUND ammo: 'unlimited')
 };
 assert.deepEqual(Object.keys(AMMO).sort(), [...GAME_MODE_IDS].sort(), 'every mode is classed');

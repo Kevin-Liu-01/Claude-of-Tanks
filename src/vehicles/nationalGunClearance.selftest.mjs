@@ -65,6 +65,7 @@ const CURVES = {
   m41_jgsdf: [],
   m41dk1: [],
   t49: [], // the M551's turret and gun-launcher on the M41's hull (the owner 2026-10-30)
+  leo2a7dk: [], // its measured curve over the rear deck (the 2A7V publishes none)
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
@@ -128,6 +129,9 @@ const CURVES = {
   osorio_p2: [],
   ee_t3_osorio: [],
   ee_t4_osorio: [],
+  // 267: the mantlet with its camera saddle sits on the deck (the sweep's mountConflicts: +7.1 deg ahead, +18 to +20 aft
+  // and touching at full elevation from 154), geometry older than 267 and its fix owed; the barrel is held there
+  amx40_proto: [[0, 71], [108, 180]],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

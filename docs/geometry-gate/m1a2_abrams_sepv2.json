@@ -1412,5 +1412,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/m1a2_sepv2_dc_source.glb",
+  "sha256": "7fc3216da131d26e6389c4d40818f70ba03603c99812c5ae42c2f8b798910d16"
+ }
 }

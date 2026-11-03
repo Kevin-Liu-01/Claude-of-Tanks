@@ -1062,5 +1062,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/kf41_lynx_x_source.glb",
+  "sha256": "999a4238c86319612a94b5b1204b477304c46b4e8ea9899097f4a9a7a3377b9f"
+ }
 }

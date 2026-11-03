@@ -183,7 +183,12 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   ricochet, ERA, tracks and spaced armor included), blended from up to three
   samples on the collision faces the authority gives each plate. Sampling is
   spread across 48-query frame batches to avoid periodic render stalls; battle
-  exit releases every zone table.
+  exit releases every zone table. Since 267 a round whose face's plate cannot
+  meet it (a front-top bevel scored to the roof, met level) reads the plate
+  across its path as a hit on that plate, its angle and ricochet test
+  (`sim/armor.ts` plateAlongShot); the paint follows, a whole
+  panel through a row the overlay resolves per view, a split one among its
+  zones per fragment.
 - Damage panel (`ui/damagePanel.ts`): reads CombatState directly per frame;
   exact module and crew volume centers project through their authored hull or
   turret frame before a tightly source-bounded screen-space collision pass.

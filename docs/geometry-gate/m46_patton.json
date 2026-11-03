@@ -9,12 +9,12 @@
  "dimensionTarget": "published specification",
  "qualityBar": "fleet",
  "gatePassed": true,
- "rawGeoMin": 90.99382055036439,
+ "rawGeoMin": 90.96177034504252,
  "rawComponents": {
   "hullCurves": 91.87284044813259,
   "stations": 93.47716540755223,
-  "turretCurves": 90.99382055036439,
-  "wholeCurves": 92.19574763773352,
+  "turretCurves": 90.96177034504252,
+  "wholeCurves": 92.13343996494964,
   "dims": 100,
   "floaters": 100
  },
@@ -22,7 +22,7 @@
   "hullCurves": 91.9,
   "stations": 93.5,
   "turretCurves": 91,
-  "wholeCurves": 92.2,
+  "wholeCurves": 92.1,
   "dims": 100,
   "floaters": 100
  },
@@ -138,7 +138,7 @@
    ]
   },
   "side_whole": {
-   "score": 92.45997393545777,
+   "score": 92.44109992565711,
    "meanPct": 0.56,
    "p95Pct": 1.42,
    "coverPct": 0,
@@ -570,8 +570,8 @@
    ]
   },
   "front_whole": {
-   "score": 92.19574763773352,
-   "meanPct": 0.57,
+   "score": 92.13343996494964,
+   "meanPct": 0.58,
    "p95Pct": 1.53,
    "coverPct": 0,
    "reg": {
@@ -680,7 +680,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 90.99382055036439,
+   "score": 90.96177034504252,
    "meanPct": 0.66,
    "p95Pct": 1.84,
    "coverPct": 0,
@@ -1083,7 +1083,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 183772,
+     "area": 183780,
      "minX": 155,
      "minY": 322,
      "maxX": 986,
@@ -1097,7 +1097,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 181901,
+     "area": 181911,
      "minX": 222,
      "minY": 322,
      "maxX": 986,
@@ -1111,7 +1111,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 183145,
+     "area": 183154,
      "minX": 222,
      "minY": 322,
      "maxX": 986,
@@ -1125,7 +1125,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 181555,
+     "area": 181563,
      "minX": 159,
      "minY": 322,
      "maxX": 986,
@@ -1139,7 +1139,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 184142,
+     "area": 184150,
      "minX": 172,
      "minY": 322,
      "maxX": 986,
@@ -1147,5 +1147,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/tanks/community/recovered/m46_patton.glb",
+  "sha256": "1dc7d3e2b17e5eee6e3543313135258ff5679b51e95c832cadee52511dd8f2ff"
+ }
 }

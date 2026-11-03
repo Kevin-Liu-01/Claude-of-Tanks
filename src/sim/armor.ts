@@ -26,6 +26,7 @@ import type { ModuleId } from './moduleCatalog.ts';
 
 import * as detMath from './detMath.ts';
 import { gunFaceSplitPlate, type GunFaceSplit } from './gunFaceSplit.ts';
+import { zoneAlongShot, zonePlates, type ZonePlate } from './armorPlanes.ts';
 type FrameIndex = 0 | 1 | 2 | 3 | 4;
 type Vec3Tuple = readonly [number, number, number];
 type TrackModuleId = 'trackL' | 'trackR';
@@ -526,8 +527,8 @@ type PanelPlateResolver = (
   out: PanelPlateHit,
 ) => boolean;
 /**
- * Zone plates (262, off by default): sim/armorZonePlates.ts installs its resolver here when switched on, so this module
- * (in every boot) carries no zone code. Null: each cell face's own plate and normal, as ever.
+ * Zone plates (262, off by default): sim/armorZonePlates.ts installs its resolver here when switched on. Null: each cell
+ * face's own plate and normal, but for a plate the shot cannot meet (plateAlongShot, 267).
  */
 let panelPlateResolver: PanelPlateResolver | null = null;
 /** With zone plates, the cells a frame traces: its slices with their seams sealed (sim/armorZonePlates.ts). */
@@ -543,6 +544,35 @@ export function tracedCollisionCells<T extends readonly ArmorCollisionCell[] | u
 }
 /** The zone a cell's entry point meets (scratch: the trace allocates nothing for it). */
 const _panelHit: PanelPlateHit = { plate: null, nx: 0, ny: 0, nz: 0 };
+
+/** A frame's main plates as planes and outlines (sim/armorPlanes.ts), built once per plate list. */
+const shotZones = new WeakMap<readonly ArmorPlate[], ZonePlate[]>();
+
+/**
+ * (267) Where a shot enters a frame's cells on a face whose plate cannot meet it (the plate faces away from the shot: a
+ * roof under a level round, a side ahead of the bow; or it is a gun plate and the entry lies off its window): the main
+ * plate facing the shot whose outline the shot's line crosses nearest the entry (sim/armorPlanes.ts zoneAlongShot), as
+ * the authored armour stands. Null where the face's plate stands. The hit is then a hit on that plate (Main's ruling,
+ * 267): its thickness, its angle to the shot, its ricochet test, so a bevel never out-protects the plate it belongs to
+ * (the KF51's 750 mm front read ~2,000 mm through its 70-degree bevel at the face's angle); the struck face only decides
+ * that the shot is read again.
+ */
+function plateAlongShot(
+  plates: readonly ArmorPlate[], plate: ArmorPlate, x: number, y: number, z: number, frame: FrameIndex,
+): ZonePlate | null {
+  let zones = shotZones.get(plates);
+  if (!zones) { zones = zonePlates(plates); shotZones.set(plates, zones); }
+  let own = -1;
+  for (let index = 0; index < zones.length; index++) if (zones[index].plate === plate) { own = index; break; }
+  // a model copied through JSON (a receipt's exact copy) keeps its faces' plates apart from its plate list: by name
+  if (own < 0) for (let index = 0; index < zones.length; index++) {
+    if ((zones[index].plate as ArmorPlate).name === plate.name) { own = index; break; }
+  }
+  if (own < 0) return null;
+  const d = _dirN[frame];
+  const along = zoneAlongShot(zones, own, x, y, z, d.x, d.y, d.z);
+  return along === own ? null : zones[along];
+}
 
 function traceCollisionShell(
   cells: readonly ArmorCollisionCell[] | undefined,
@@ -585,6 +615,11 @@ function traceCollisionShell(
         plate = _panelHit.plate as ArmorPlate;
         if (_panelHit.nx === _panelHit.nx) { nx = _panelHit.nx; ny = _panelHit.ny; nz = _panelHit.nz; }
       }
+    }
+    if (plates) {
+      const along = plateAlongShot(plates, plate, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, frame);
+      // a hit on that plate: its normal sets the angle, the ricochet test and the deflection (the entry stays the face's)
+      if (along) { plate = along.plate as ArmorPlate; nx = along.normal[0]; ny = along.normal[1]; nz = along.normal[2]; }
     }
     const cosI = Math.min(1, Math.max(0,
       -(_dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));

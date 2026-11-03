@@ -6,11 +6,7 @@ const sizeOf = (part) => part.max.map((value, axis) => value - part.min[axis]);
 const centerOf = (part) => part.max.map((value, axis) => (value + part.min[axis]) / 2);
 
 const cases = Object.freeze([
-  Object.freeze({
-    id: 'leclerc_s1', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: 'gunMountDark',
-    bodySize: [0.18, 0.15, 0.36], faceSize: [0.11, 0.08, 0.025],
-    bodyZ: 5.02, faceZ: 5.21, supportRadiusM: 0.112,
-  }),
+  // 267 round 4: the AMX 56 (leclerc_s1) carries no muzzle-reference unit (both photo critics: the Saumur barrels are plain)
   Object.freeze({
     id: 'mbt70', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: 'gunMountDark',
     bodySize: [0.18, 0.14, 0.28], faceSize: [0.10, 0.065, 0.025],

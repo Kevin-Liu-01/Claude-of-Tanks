@@ -395,7 +395,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // the same asset ATTRIBUTION.md rejected 2026-07-27; THE ONE ABSOLUTE
   // RULE, type_89 precedent). type10_tk_x's author rip-history hold was
   // ADJUDICATED CLEARED by the owner 2026-08-06 ("build the type 10 ...
-  // using the real glbs") — registered below.
+  // using the real glbs"); 267 moved the TK-X to its photo packet (below).
   challenger2: {
     // "Challenger II" by buh (CC-BY-4.0). Batch 48d repartitions the
     // material-fused source bucket into true turret, HullParts, and Gun
@@ -442,24 +442,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
       yawOffset:-Math.PI/2,
     },
   },
-  type10_tk_x: {
-    // Owner-source deterministic repair: the original flat material split
-    // fused turret/gun and hull/roof furniture. The bake re-emits semantic
-    // Hull/TrackGuards/DonorRunningGear/Turret/Gun nodes at published data,
-    // without altering the owner-supplied source GLB.
-    source:'glb',
-    glb:{
-      path:'/models/tanks/community/type-10_main_battle_tank_repaired.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      paintUntextured:true,
-      // The repaired Turret tree correctly includes its hidden internal
-      // basket down to y=.789 while the visible deck is ~1.60 m. It remains
-      // mandatory for yaw/ownership, but its isolated mask is not a valid
-      // exterior-shell target. Hull, cannon, tracks and every whole view stay
-      // mandatory; suppress only this misleading component cell.
-      turretComponentMasks:false,
-    },
-  },
+  // 267 (Main 2026-10-31, the Japan line): type10_tk_x is not registered here. It draws the TK-X prototype on the modern
+  // Type 10 (profiles/type10X.ts), and the repaired production Type 10 print (type-10_main_battle_tank_repaired.glb, the
+  // source the modern Type 10 measures through its own second-wave registration) is not the prototype; stage A takes it on
+  // its photo packet (docs/references/photos/type10-tk-x-20261031.json, tools/photo-reference-policy.mjs).
   // Owner-supplied high-detail NullOps Type 74 oracle (2026-08-11).  It is
   // local-only reference material and never ships as MODEL_SOURCE or as a
   // public asset.  Skinned armature (bones carry no meshes) requires
@@ -633,6 +619,12 @@ window.__REFERENCE_SOURCES = Object.fromEntries(referenceIds.map((tankId) => [
   tankId,
   (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb?.path || null,
 ]));
+// 267: every public file a registration loads (tools/geometry-gate.mjs serves, pins and keys each): its oracle and the
+// graft source its certificate seats in it
+window.__REFERENCE_FILES = Object.fromEntries(referenceIds.map((tankId) => {
+  const glb = (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb;
+  return [tankId, [glb?.path, glb?.graft?.path].filter(Boolean)];
+}));
 window.__REFERENCE_QUALITY_BARS = Object.fromEntries(referenceIds.map((tankId) => [
   tankId,
   (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.qualityBar || 'fleet',

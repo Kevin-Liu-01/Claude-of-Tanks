@@ -1078,7 +1078,6 @@
   ],
   "reference": []
  },
- "oracleComparison": "whole against whole: the oracle names no roof fittings",
  "floaterFails": 0,
  "floaterRows": [
   {
@@ -1151,5 +1150,9 @@
     }
    ]
   }
- ]
+ ],
+ "oracle": {
+  "path": "/models/community-candidates/ariete_c1_arrafi.glb",
+  "sha256": "02043219575d2ac02c9846666efca20c8087727808e4c51245a28588242e26b4"
+ }
 }

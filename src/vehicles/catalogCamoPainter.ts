@@ -13,7 +13,7 @@ export const CATALOG_CAMO_ART_IDS = [
   'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
   'mono', 'carbon', 'prism',
 ] as const;
-export type CatalogCamoArtId = typeof CATALOG_CAMO_ART_IDS[number] | 'enamel' | 'service-stripes' | 'caunter';
+export type CatalogCamoArtId = typeof CATALOG_CAMO_ART_IDS[number] | 'enamel' | 'service-stripes' | 'caunter' | 'barracuda';
 const ids = new Set<string>(CATALOG_CAMO_ART_IDS);
 export function catalogCamoArtId(id: string): CatalogCamoArtId | undefined {
   return ids.has(id) ? id as CatalogCamoArtId : undefined;
@@ -25,7 +25,7 @@ export function fleetCamoArtId(scheme = 'solid'): CatalogCamoArtId | undefined {
     solid: 'enamel', nato: 'summer', stripes: 'service-stripes', digital: 'digital',
     desert: 'desert', splinter: 'm90', fleck: 'flecktarn', blotch: 'amoeba',
     amoeba: 'amoeba', chip6: 'chocchip', caunter: 'caunter', hexfield: 'hexfield',
-    brush: 'dpm', 'russian-digital': 'digital', woodland: 'summer',
+    brush: 'dpm', 'russian-digital': 'digital', woodland: 'summer', barracuda: 'barracuda',
   };
   return families[scheme];
 }
@@ -409,6 +409,59 @@ function paintSubstrate<C extends MaterialCanvas>(
   ctx.drawImage(scratch, 0, 0, size, size);
 }
 
+/** A fitted multispectral cover (release 267; the Danish Leopard 2A7 DK's Barracuda, the Latvia photograph at full
+ * size): flat panels in brick rows with dark seams, one a tile brown-tan, under a fine, sparse, soft-edged
+ * dark-green lace (a quarter of the ground).
+ * The base and the first patch are the panels' greens, the second the tan panels', the third the lace. Fourteen
+ * panels a tile (two metres), the lace a few centimetres; periodic in both directions. */
+function paintBarracuda<C extends MaterialCanvas>(
+  ctx: Context, size: number, visual: MaterialVisual, rng: Rng, scratch: C,
+): void {
+  const n = Math.min(256, size);
+  scratch.width = scratch.height = n;
+  const raster = scratch.getContext('2d') as Context;
+  const image = raster.createImageData(n, n);
+  const [green, greenB, tan, lace] = [visual.base, ...(visual.patches || [])].map(parse);
+  const rows = 4, cols = [3, 4, 3, 4];
+  const stagger = Array.from({ length: rows }, () => rng());
+  // exactly one brown-tan panel a tile (a chance per panel left some coats none, others a row of them)
+  const tanRow = Math.floor(rng() * rows), tanCol = Math.floor(rng() * cols[tanRow]);
+  const tones = Array.from({ length: rows * 4 }, (_, k) => {
+    const pick = rng();
+    const isTan = Math.floor(k / 4) === tanRow && k % 4 === tanCol;
+    return { colour: isTan ? tan ?? green : pick < .5 ? green : greenB ?? green, light: 1 + (rng() - .5) * .08 };
+  });
+  const fine = noise(rng, 60), mid = noise(rng, 20), pigment = noise(rng, 5);
+  const field = new Float32Array(n * n);
+  for (let index = 0; index < n * n; index++) {
+    const u = (index % n) / n, v = Math.floor(index / n) / n;
+    field[index] = fine(u, v) * .55 + mid(u, v) * .45;
+  }
+  const histogram = new Uint32Array(512);
+  for (const value of field) histogram[Math.max(0, Math.min(511, Math.floor(value * 511)))]++;
+  let cut = 1, sum = 0;
+  for (let bin = 0; bin < 512; bin++) { sum += histogram[bin]; if (sum >= .24 * field.length) { cut = (bin + .5) / 511; break; } }
+  // the lace's edge blended over a few hundredths of the field, not stepped at one texel
+  const soft = .025;
+  const seam = 1.7 / n;
+  for (let index = 0; index < n * n; index++) {
+    const x = index % n, y = Math.floor(index / n), u = x / n, v = y / n;
+    const row = Math.min(rows - 1, Math.floor(v * rows)), across = cols[row];
+    const uu = wrap(u + stagger[row] / across, 1), col = Math.min(across - 1, Math.floor(uu * across));
+    const panel = tones[row * 4 + col];
+    const edge = Math.min(uu * across - col, col + 1 - uu * across) / across, rim = Math.min(v * rows - row, row + 1 - v * rows) / rows;
+    const t = Math.max(0, Math.min(1, (cut + soft - field[index]) / (2 * soft)));
+    const dark = lace ?? green, c: Color = [0, 1, 2].map((ch) => panel.colour[ch] * (1 - t) + dark[ch] * t) as Color;
+    let light = panel.light * (1 + (pigment(u, v) - .5) * .06);
+    if (Math.min(edge, rim) < seam) light *= .72;
+    const at = index * 4;
+    for (let ch = 0; ch < 3; ch++) image.data[at + ch] = c[ch] * light;
+    image.data[at + 3] = 255;
+  }
+  raster.putImageData(image, 0, 0);
+  ctx.drawImage(scratch, 0, 0, size, size);
+}
+
 export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (w: number, h: number) => C) {
   let fieldScratch: C | null = null;
   return (ctx: Context, size: number, visual: MaterialVisual, rng: Rng): void => {
@@ -420,6 +473,10 @@ export function createCatalogCamoPainter<C extends MaterialCanvas>(makeCanvas: (
     if (id === 'enamel' || id === 'carbon' || id === 'mono' || id === 'prism') {
       fieldScratch ??= makeCanvas(192, 192);
       paintSubstrate(ctx, size, visual, rng, fieldScratch);
+    } else if (id === 'barracuda') {
+      fieldScratch ??= makeCanvas(256, 256);
+      paintBarracuda(ctx, size, visual, rng, fieldScratch);
+      return;
     } else if (!graphic.includes(id) && !geometric.includes(id) && id !== 'normandy44' && id !== 'berlin45') {
       fieldScratch ??= makeCanvas(256, 256);
       paintField(ctx, size, visual, rng, fieldScratch);

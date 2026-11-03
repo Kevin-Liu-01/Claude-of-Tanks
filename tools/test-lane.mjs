@@ -8,7 +8,7 @@
 //     declarations (run-selftests.mjs selftestReadOf; a match through the broad fallback alone is not a read), and the
 //     closures of the tools it spawns (tools/test-diff.mjs laneReadOf, from the cache's run set);
 //   - a default-tier or `tanks` receipt that names a changed tank id (the changed-only fleet partition: a group's files,
-//     a table's moved rows, a path naming the id: tools/test-diff.mjs changedTankIds);
+//     a table's moved rows, a source or generated path naming the id: tools/test-diff.mjs changedTankIds);
 //   - a `tanks` receipt whose closure holds a changed path outside the shared fleet core. One that reads only core
 //     files is not run here: every id may move, so `npm run test:recommend` lists the whole suite for the owner.
 //     Nor are a lane's pins when they come to more than a quarter of the suite's CPU (a whole-fleet regeneration

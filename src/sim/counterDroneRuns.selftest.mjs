@@ -7,7 +7,10 @@
 //      rounds and ticks from launch, and the owner's band on them (4-11 of 48 downed; 9 at 1.1, 14 at the old 1);
 //   2. the 30 mm + 7.62 one-roof Leopard 2A7V, 2A5, Revolution and Leclerc XLR, one seed each: every run exact with
 //      both stations firing in each, and each roof's bow hover about 33 m out.
-// A failure means counter-drone lethality moved: re-measure with `node tools/counter-drone-engage.mjs
+// Every pinned flight leaves from the carrier's drone dock (the KV-2's, COUNTER_DRONE_PINS.carrierDock), so a carrier
+// rebuild moves every run with no station's lethality moving (268: two KV-2 dock moves did); the dock is checked first
+// and named. Every id is measured before the receipt fails, so one failure names all that moved. Any other failure
+// means counter-drone lethality moved: re-measure with `node tools/counter-drone-engage.mjs
 // --set=reference,pair --check`, re-rule with the owner, then re-pin. About 7 s CPU (the authority's module graph and
 // 64 flights). The selftest cache keys it on its closure (472 inputs: sim, roof stations, vehicle specs, the world it
 // reaches) once item/tests-speed-229's i18nChunkImport.ts removes i18nDictionaries' computed import() from every
@@ -16,13 +19,20 @@ import assert from 'node:assert/strict';
 import { AERIAL_RULES } from './matchRuleset.ts';
 import { SIM_DT } from './movement.ts';
 import {
-  COUNTER_DRONE_PINS, LEVEL_APPROACHES, counterDroneCell, hoverCounterDrone, pinnedRunRow, prepareCounterDrone, roofStations,
+  COUNTER_DRONE_PINS, LEVEL_APPROACHES, carrierDock, counterDroneCell, hoverCounterDrone, pinnedRunRow, prepareCounterDrone,
+  roofStations,
 } from './counterDroneEngagement.test-support.mjs';
 
 const OWNER = 'owner 2026-10-16 on the 226 preview: "machine guns targeting drones is a lil too punishinng"';
 const ids = Object.keys(COUNTER_DRONE_PINS.runs);
 await prepareCounterDrone(ids);
 
+const failures = [];
+const dock = carrierDock();
+if (dock !== COUNTER_DRONE_PINS.carrierDock) {
+  failures.push(`the carrier's drone dock moved (${COUNTER_DRONE_PINS.carrierDock} -> ${dock}): every pinned flight launches from it, `
+    + 'so the runs below move with it whether or not a station\'s lethality moved');
+}
 const downed = {};
 for (const id of ids) {
   const pin = COUNTER_DRONE_PINS.runs[id];
@@ -30,26 +40,29 @@ for (const id of ids) {
   const rows = cell.rows.filter((r) => LEVEL_APPROACHES.includes(r.approach));
   const measured = rows.map(pinnedRunRow), expected = pin.rows.split(' ');
   const moved = expected.map((want, k) => (measured[k] === want ? null : `${rows[k]?.approach}:${rows[k]?.seed} ${want} -> ${measured[k]}`)).filter(Boolean);
-  assert.deepEqual(moved, [], `${OWNER}: ${id}'s pinned level runs (seeds ${pin.seed0}-${pin.seed0 + pin.runs - 1}) moved (hitsToDown ${AERIAL_RULES.drone.hitsToDown})`);
-  assert.equal(measured.length, expected.length);
+  if (moved.length || measured.length !== expected.length) {
+    failures.push(`${id}'s pinned level runs (seeds ${pin.seed0}-${pin.seed0 + pin.runs - 1}) moved ${moved.length} of ${expected.length}: ${moved.join('; ')}`);
+  }
   if (roofStations(id).length > 1) {
     const silent = rows.filter((r) => r.rounds[0].some((n) => !(n > 0))).map((r) => `${r.approach}:${r.seed}`);
-    assert.deepEqual(silent, [], `${id}: every station of the roof answers the drone in every pinned run`);
+    if (silent.length) failures.push(`${id}: a station of the roof is silent in pinned runs ${silent.join(', ')}`);
   }
   downed[id] = rows.filter((r) => r.outcome === 'downed').length;
 }
 for (const [id, pin] of Object.entries(COUNTER_DRONE_PINS.hovers)) {
-  const h = hoverCounterDrone({ specId: id });
-  assert.deepEqual([h.rounds, h.downedS === null ? null : Math.round(h.downedS / SIM_DT)], pin,
-    `${id}: two stations on one roof add their capped shares on a drone hovering 33 m off the bow`);
+  const h = hoverCounterDrone({ specId: id }), got = [h.rounds, h.downedS === null ? null : Math.round(h.downedS / SIM_DT)];
+  if (JSON.stringify(got) !== JSON.stringify(pin)) failures.push(`${id}'s bow hover moved: ${JSON.stringify(pin)} -> ${JSON.stringify(got)}`);
 }
 const { loneBand } = COUNTER_DRONE_PINS;
 const loneDowned = loneBand.ids.reduce((sum, id) => sum + downed[id], 0);
-assert.ok(loneDowned >= loneBand.downed[0] && loneDowned <= loneBand.downed[1],
-  `${OWNER}: a lone machine gun downs ${loneBand.downed[0]}-${loneBand.downed[1]} of ${loneBand.of} level runs; it downed ${loneDowned}`);
+if (loneDowned < loneBand.downed[0] || loneDowned > loneBand.downed[1]) {
+  failures.push(`a lone machine gun downs ${loneBand.downed[0]}-${loneBand.downed[1]} of ${loneBand.of} level runs; it downed ${loneDowned}`);
+}
+assert.deepEqual(failures, [], `${OWNER} (hitsToDown ${AERIAL_RULES.drone.hitsToDown})`);
 // the authority is deterministic: one seed, one outcome
 const first = counterDroneCell({ specIds: [ids[0]], runs: 1 }).rows[0];
 assert.equal(pinnedRunRow(first), COUNTER_DRONE_PINS.runs[ids[0]].rows.split(' ')[0], 'one seed, one outcome');
 
 console.log(`counterDroneRuns: ${Object.values(COUNTER_DRONE_PINS.runs).reduce((n, p) => n + 3 * p.runs, 0)} pinned level runs exact on the authority `
-  + `(lone 7.62 and 12.7 down ${loneDowned} of ${loneBand.of}, the owner's band ${loneBand.downed.join('-')}); the 30 mm + 7.62 roofs fire both stations in every run; their bow hovers hold`);
+  + `from the carrier's dock (${dock}; lone 7.62 and 12.7 down ${loneDowned} of ${loneBand.of}, the owner's band ${loneBand.downed.join('-')}); `
+  + 'the 30 mm + 7.62 roofs fire both stations in every run; their bow hovers hold');

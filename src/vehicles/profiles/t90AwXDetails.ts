@@ -35,10 +35,63 @@ export function addT90AWMeteo(P:TankBuilderPort):void{
   sensorHousing(P,[[2.98978,.0502,.1157,.012],[3.02008,.0502,.1157,.012],[3.04938,.0502,.0879,.012]]);
 }
 
+/** A glacis band of ERA containers: its rear and front z, |x| of its inner and outer edge, the plate it lies on (y at
+ * stations along z), its rows and columns, and each container's height over the plate at its rear and front edge. */
+export interface GlacisEraBand{
+  readonly z0:number;readonly z1:number;readonly x0:number;readonly x1:number;
+  readonly plate:readonly(readonly[z:number,y:number])[];
+  readonly rows:number;readonly cols:number;readonly h0:number;readonly h1:number;
+}
+const plateY=(plate:GlacisEraBand['plate'],z:number):number=>{
+  if(z<=plate[0][0])return plate[0][1]+(plate[1][1]-plate[0][1])*(z-plate[0][0])/(plate[1][0]-plate[0][0]);
+  for(let i=1;i<plate.length;i++)if(z<=plate[i][0]||i===plate.length-1){
+    const[a,ya]=plate[i-1],[b,yb]=plate[i];return ya+(yb-ya)*(z-a)/(b-a);
+  }
+  return plate[plate.length-1][1];
+};
+/** 267 (lane t90-family-267, S3; the 266 blind critics: "the glacis armour reads flat"): a glacis band as rows of
+ * distinct welded ERA containers, not one slab under surface lines: each a closed box 4 mm into the plate with 8 mm
+ * chamfers round its lid, 12 mm seams to its neighbours, its front edge standing higher than its rear so the rows step
+ * down the glacis, and two bolt heads square to its lid. Returns the containers (the cluster's hit skin) and the bolts
+ * (its furniture, which callers lay at high quality), merged, in the hull frame; at low quality (`fine` false) the
+ * containers' ends are square. Shared by the T-90 AW and T-90MS builds. */
+export function glacisEraContainers(side:number,band:GlacisEraBand,fine:boolean,gap=.012,c=.008):{cover:THREE.BufferGeometry;bolts:THREE.BufferGeometry}{
+  const len=(band.z1-band.z0-(band.rows-1)*gap)/band.rows,wid=(band.x1-band.x0-(band.cols-1)*gap)/band.cols;
+  const boxes:THREE.BufferGeometry[]=[],bolts:THREE.BufferGeometry[]=[];
+  for(let r=0;r<band.rows;r++)for(let k=0;k<band.cols;k++){
+    const za=band.z0+r*(len+gap),zb=za+len,xa=band.x0+k*(wid+gap),xb=xa+wid;
+    const h=(z:number)=>band.h0+(band.h1-band.h0)*(z-za)/len,base=(z:number)=>plateY(band.plate,z)-.004;
+    const ring=(z:number,inset:number):Array<readonly[number,number]>=>{
+      const b=base(z),t=plateY(band.plate,z)+h(z)-inset,l=xa+inset,rr=xb-inset;
+      const pts:Array<readonly[number,number]>=[[l,b],[rr,b],[rr,t-c],[rr-c,t],[l+c,t],[l,t-c]];
+      return side<0?pts.map(([x,y])=>[-x,y] as const).reverse():pts;
+    };
+    const knees=band.plate.map(([z])=>z).filter(z=>z>za+c+.01&&z<zb-c-.01);
+    boxes.push(sectionSolid(fine?[{z:za,ring:ring(za,c)},...[za+c,...knees,zb-c].map(z=>({z,ring:ring(z,0)})),{z:zb,ring:ring(zb,c)}]
+      :[za,...knees,zb].map(z=>({z,ring:ring(z,0)}))));
+    const zBolt=za+len*.24,slope=(plateY(band.plate,zBolt+.01)-plateY(band.plate,zBolt-.01))/.02+(band.h1-band.h0)/len;
+    for(const u of [.25,.75])bolts.push(KIT.box(.020,.012,.020).rotateX(Math.atan(-slope))
+      .translate(side*(xa+wid*u),plateY(band.plate,zBolt)+h(zBolt)+.002,zBolt));
+  }
+  return {cover:KIT.mergeAll(boxes),bolts:KIT.mergeAll(bolts)};
+}
+
 function sideCassette(P:TankBuilderPort,side:number,outer:number,inner:number,rim:number,low:number,z:number):void{
   const high=low+.5024,backLow=low+.0512,backHigh=high-.0455;
+  // 267 (S3): the cassette's cover is a welded container with 10 mm chamfers round its face, and three bolt heads along
+  // its upper and lower edges (high quality), not a plain block (the 266 critics: "plain slabs"). Its face keeps the
+  // source's outer cassette plane; the bolt heads stand 5 mm proud of it.
+  const c=.010,d=.6352,face=outer,ring=(inset:number):Array<readonly[number,number]>=>{
+    const pts:Array<readonly[number,number]>=[[rim,low+inset],[face-c-inset,low+inset],[face-inset,low+c+inset],
+      [face-inset,high-c-inset],[face-c-inset,high-inset],[rim,high-inset]];
+    return side<0?pts.map(([x,y])=>[-x,y] as const).reverse():pts;
+  };
+  const cover=sectionSolid(P.q?[{z:z-d/2,ring:ring(c)},{z:z-d/2+c,ring:ring(0)},{z:z+d/2-c,ring:ring(0)},{z:z+d/2,ring:ring(c)}]
+    :[{z:z-d/2,ring:ring(0)},{z:z+d/2,ring:ring(0)}]);
+  const bolts=KIT.mergeAll([low+.032,high-.032].flatMap(y=>[-.24,0,.24].map(dz=>KIT.box(.008,.022,.022).translate(side*(face+.001),y,z+dz))));
   P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
-    P.addExternalArmor('hull',markEraHitFaces(KIT.box(outer-rim,.5024,.6352),[side,0,0]),side*(outer+rim)/2,(low+high)/2,z);
+    P.addExternalArmor('hull',markEraHitFaces(cover,[side,0,0]));
+    if(P.q)P.addExternalArmor('hull',markEraFurniture(bolts));
     P.addExternalArmor('hull',markEraFurniture(KIT.box(rim-inner,backHigh-backLow,.5401)),side*(rim+inner)/2,(backLow+backHigh)/2,z+.00145);
   });
   // Source narrow hinge leaves at each cassette end, not a solid backing slab.

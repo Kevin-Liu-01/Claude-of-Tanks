@@ -242,6 +242,8 @@ for (const [id, donorId, name] of entries) {
   delete spec.publicVisualFallback;
   delete spec.label;
   delete spec.roster;
+  // 267: the AMX-40 prototype's measured gun stops are its own build's (franceSpecs.ts); the X build is another hull
+  if (id === 'amx40') delete spec.gunPitchByYawDeg;
   if (PRODUCTION_NUMBERS[id]) spec.visual.number = PRODUCTION_NUMBERS[id];
   // 266 (owner 2026-10-31, the Challenger 1 camo sheet): the Op Granby Mk 3 in plain light stone, as the Bovington Gulf
   // tanks; its Mk 2 donor wears the 1980s BAOR green and black (additionalFleetSpecs.ts)

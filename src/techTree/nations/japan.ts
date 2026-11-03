@@ -23,7 +23,7 @@ export const JAPAN_TREE: NationTree = Object.freeze({
     node({ id: 'stb1', tier: 1, line: 'type', lane: 1, parents: [], slot: 'line' }),
     node({ id: 'type74', tier: 1, line: 'type', lane: 0, parents: ['stb1'], slot: 'line' }),
     node({
-      id: 'type90', tier: 8, line: 'type', lane: 0, parents: ['type74'], slot: 'line', builds: ['type90_kyumaru'],
+      id: 'type90', tier: 8, line: 'type', lane: 0, parents: ['type74'], slot: 'line', builds: ['type90_kyumaru', 'type90b'],
     }),
     node({ id: 'type90a', tier: 8, line: 'type', lane: 1, parents: ['type90'], slot: 'line' }),
     node({ id: 'type10_tk_x', tier: 9, line: 'type', lane: 1, parents: ['type90a'], slot: 'line' }),
