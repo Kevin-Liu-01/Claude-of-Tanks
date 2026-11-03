@@ -18,6 +18,9 @@ import { getSpec } from '../src/vehicles/specs.ts';
 
 const HARNESS = fileURLToPath(new URL('./mode-aggression-harness.mjs', import.meta.url));
 const TARGETS = fileURLToPath(new URL('./mode-aggression-targets.json', import.meta.url));
+// (268, item 10; Main, 2026-11-02, DECISIONS) the Horde sweep's 24 deals are pinned as dealt at 02cac3264a, where the paired
+// ratchet's vector was recorded: a fleet addition re-deals nothing, so the paired differences compare the same battles
+const PINNED_ROSTERS = fileURLToPath(new URL('./mode-aggression-rosters.json', import.meta.url));
 
 // --------------------------------------------------------------------------------------------- the targets file ---
 const spec = JSON.parse(readFileSync(TARGETS, 'utf8'));
@@ -84,7 +87,8 @@ try {
 // the pool re-dealt seed 1's seat from the M60A2 to the M48A5 Patton, and the sortie read 3/6); the seed still deals the
 // roster, the map and every draw after the seat, so a fleet addition no longer moves these receipts.
 const run = (mode, capS, seed, player) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`, `--player=${player}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const pin = mode === 'endless_horde' ? [`--pinRoster=${PINNED_ROSTERS}`] : [];
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`, `--player=${player}`, ...pin], { stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '', err = '';
   child.stdout.on('data', (d) => { out += d; });
   child.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
@@ -191,6 +195,25 @@ function pairedOutcome(headKills) {
   const down = planted(-3), up = planted(3);
   assert.ok(down.verdict === 'fail' && Math.abs(down.sigmas + 3) < 1e-9, `a head 3 SE down fails (${down.sigmas.toFixed(2)} SE)`);
   assert.ok(up.verdict === 'rise' && Math.abs(up.sigmas - 3) < 1e-9, `a head 3 SE up raises the vector (${up.sigmas.toFixed(2)} SE)`);
+}
+
+// the pin fails closed: a deal whose pinned vehicle the fleet no longer has ends the run by that name (Main's control)
+{
+  const pins = JSON.parse(readFileSync(PINNED_ROSTERS, 'utf8'));
+  assert.equal(Object.keys(pins.deals).length, 24, 'every deal of the Horde sweep is pinned');
+  const dir = mkdtempSync(join(tmpdir(), 'mode-aggression-pin-'));
+  try {
+    const gone = 'no_such_tank_268';
+    const deal = pins.deals['1'];
+    const file = join(dir, 'rosters.json');
+    writeFileSync(file, JSON.stringify({ ...pins, deals: { 1: { ...deal, tanks: [...deal.tanks.slice(0, -1), gone] } } }));
+    const missing = spawnSync(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', '--mode=endless_horde', '--seed=1', '--capS=1',
+      '--player=m60a2', `--pinRoster=${file}`], { encoding: 'utf8' });
+    assert.notEqual(missing.status, 0, 'a pinned vehicle the fleet does not have fails the run');
+    assert.match(missing.stderr, new RegExp(`seed 1 pins ${gone}, which the fleet does not have`), 'by its name');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 const sweepStarted = Date.now();

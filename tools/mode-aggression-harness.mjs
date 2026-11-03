@@ -23,6 +23,7 @@
 // Commands
 //   node tools/mode-aggression-harness.mjs run --mode=frontline_assault --seed=3 [--engine=solo|authority] [--map=ID]
 //        [--capS=N] [--arrangement='{json}'] [--difficulty=normal] [--player=specId]          one JSON line on stdout
+//        [--pinRoster=FILE] (solo: the seed's deal as FILE pins it, tools/mode-aggression-rosters.json)
 //   node tools/mode-aggression-harness.mjs batch --modes=standard,frontline_assault,endless_horde,capture_the_flag,turbo_ball
 //        --seeds=1-8 --jobs=6 --out=DIR [--engine=solo] [--wallS=3600] [run options]       one capped child per run,
 //                                                                                       DIR/runs/<mode>.<seed>.json
@@ -368,13 +369,21 @@ function playerSpecFor(seed) {
   return pool[Math.floor(mulberry(seed * 7919 + 13)() * pool.length)];
 }
 
-/** One solo battle set up exactly as the game does (random roster, the mode's ruleset and arrangement). */
-function setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes }) {
+/** One solo battle set up exactly as the game does (random roster, the mode's ruleset and arrangement), or on a pinned deal. */
+function setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes, pin = null }) {
   const game = createGameState({ rosterSeed: seed });
   game.mapId = mapId;
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = headlessVisual(entity);
   const playerSpecId = playerSpecFor(seed);
+  if (pin) {
+    if (pin.tanks[0] !== playerSpecId || pin.mapId !== mapId) {
+      throw new Error(`pinned roster: seed ${seed} was dealt for ${pin.tanks[0]} on ${pin.mapId}, not ${playerSpecId} on ${mapId}`);
+    }
+    // the solo setup fields a forced roster exactly (game/state.ts SoloDebugFlags) with the deal's allies and nations
+    const debug = globalThis.__DEBUG ??= {};
+    debug.flags = { ...debug.flags, forceRoster: pin.tanks.slice(1), rosterExact: true, forceAllies: pin.allies, forceTeamNations: pin.teamNations };
+  }
   // (268, item 7) the battle's match seed (setupBattle's seed: every stream of it) is the one a solo battle plays after
   // run-seed battles (rosterState soloMatchSeed), handed in, never steered through the session's battle counter
   setupBattle(game, playerSpecId, world, {
@@ -382,6 +391,12 @@ function setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes }
     deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes,
   });
   for (const entity of game.tanks) if (!entity.visual) entity.visual = headlessVisual(entity);
+  if (pin) {
+    const fielded = game.tanks.map((entity) => entity.specId), allies = game.tanks.slice(1).filter((entity) => normTeam(entity.team) === 'alpha');
+    if (fielded.join() !== pin.tanks.join() || allies.map((entity) => entity.id).sort().join() !== [...pin.allies].sort().join()) {
+      throw new Error(`pinned roster: seed ${seed} fielded [${fielded.join(', ')}], pinned [${pin.tanks.join(', ')}]`);
+    }
+  }
   return { game, playerSpecId };
 }
 
@@ -614,6 +629,22 @@ const STAND_MIN_S = Number(arg('standMinS', STAND_MIN_TICKS * SIM_DT));
 // A held hull destroyed before its stand ends is replaced by the next one (three tries).
 const PLANT_STAND_S = Number(arg('plantStand', 0));
 const PLANT_FROM_S = Number(arg('plantFromS', 20));
+// --pinRoster=FILE (268, item 10; Main: the receipt's Horde deals are pinned): the battle fields FILE's deal for its seed
+// as it was dealt where the paired ratchet was recorded (the participants in order, the allied seats, the nations
+// record), so a fleet addition re-deals nothing. Fails closed: a seed without a deal, or a pinned id the fleet no longer
+// has, ends the run by name before the world loads; a battle that fields anything else ends it after the setup.
+const pinFile = arg('pinRoster', null);
+const pinnedRoster = pinFile ? (() => {
+  const pins = JSON.parse(readFileSync(pinFile, 'utf8'));
+  const deal = pins.mode === mode ? pins.deals?.[seed] : null;
+  if (!deal) throw new Error(`pinned roster ${pinFile}: no ${mode} deal for seed ${seed}`);
+  for (const id of deal.tanks) {
+    let known = false;
+    try { known = !!getSpec(id); } catch {}
+    if (!known) throw new Error(`pinned roster ${pinFile}: seed ${seed} pins ${id}, which the fleet does not have`);
+  }
+  return deal;
+})() : null;
 const plant = { id: null, holding: false, leaving: false, from: null, still0: 0, slow: 0, done: false, tries: 0 };
 // --teamSurvival (Endless Horde only): every alpha seat reads as human while the mode controller steps, so the overrun
 // comes when the whole team is down instead of when the harness-driven player seat dies (a measurement shim, as the
@@ -631,7 +662,7 @@ const recorded = [];
 let recorderErrors = 0;
 let adapter;
 if (engine === 'solo') {
-  const { game, playerSpecId } = setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes: false });
+  const { game, playerSpecId } = setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes: false, pin: pinnedRoster });
   const bus = createBus((name, payload) => {
     try {
       if (name === 'shell:fired') recorded.push({ kind: 'fired', shooterId: payload.shooterId });

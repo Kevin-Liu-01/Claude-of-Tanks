@@ -594,6 +594,9 @@ interface SoloDebugFlags {
   rosterExact?: boolean;
   /** A pinned debug roster (rosterState.forcedBattleCandidates) bypasses TEAM NATIONS like every other draw. */
   forceRoster?: string[];
+  /** With forceRoster, a dealt national battle's allied seats and nations record (268: the mode receipt replays its deals). */
+  forceAllies?: string[];
+  forceTeamNations?: BattleTeamNations | null;
 }
 
 function soloDebugFlags(): SoloDebugFlags | null {
@@ -1083,6 +1086,11 @@ export function setupBattle(
   } else {
     game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
       rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national) as SoloEntity[];
+    const flags = soloDebugFlags();
+    if (flags?.forceRoster?.length && flags.forceAllies) {
+      game._nationalAllyIds = new Set(flags.forceAllies);
+      game.teamNations = flags.forceTeamNations ?? null;
+    }
   }
   for (const entity of game.tanks) if (entity.matchReinforcement) {
     game.allTanks.push(entity);
