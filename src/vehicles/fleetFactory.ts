@@ -329,6 +329,10 @@ export function createTankSteps(
   return createTankCoreSteps(specId, engineCtx, opts);
 }
 
+// (2026-11-02 audit R6) the client's chunk under the one lazy-chunk policy: a failed import leaves those tanks in-line and
+// the next stepped build past the backoff asks again
+const decorPlanClient = createLazyChunk(() => import('./decorPlanClient.ts'));
+
 /**
  * Stage 2b pass 1 (UI-LOCKDOWN E): the decor worker's planner, for a stepped build whose driver awaits the waits it
  * yields (the Garage pedestal, the battle streamer); null where no Worker runs (the Node tools). Asking for it starts the
@@ -337,7 +341,7 @@ export function createTankSteps(
  */
 export function offThreadDecorPlanner(): DecorPlanner | null {
   if (typeof Worker !== 'function') return null;
-  const client = import('./decorPlanClient.ts');
+  const client = decorPlanClient.load();
   client.then(({ startDecorWorker }) => startDecorWorker(), () => {});
   return (args) => client.then(({ planDecoration }) => planDecoration(args));
 }

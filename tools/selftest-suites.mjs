@@ -2650,6 +2650,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/decorPlanWire.selftest.mjs',
+    // 2026-11-02 audit R6: one worker-client pattern (a deadline from dispatch, messageerror, a fresh worker after a failure)
+    'src/vehicles/workerClients.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',
