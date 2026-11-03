@@ -195,7 +195,26 @@ function fakeVisual() {
   const wreckOf = (fx) => fx.getAttachmentDebug().subjects.some((c) => c.id === 'wreck:x');
   assert.equal(wreckOf(second.fx), true, 'the runtime that bound the bus last reacts');
   assert.equal(wreckOf(first.fx), false, 'the one it replaced no longer does');
-  for (const r of [once, twice, first, second]) r.fx.resetAll();
+  // one runtime on two buses (the page's, then the Studio's private one): binding the second keeps the first, and
+  // rebinding either undoes only that bus's earlier binding
+  const page = runtime();
+  const studioHandlers = new Map();
+  const studioBus = { on(n, f) { (studioHandlers.get(n) ?? studioHandlers.set(n, []).get(n)).push(f);
+    return () => { const l = studioHandlers.get(n); l.splice(l.indexOf(f), 1); }; },
+  emit(n, p) { for (const f of [...(studioHandlers.get(n) ?? [])]) f(p); } };
+  const listeners = (handlers) => [...handlers.values()].reduce((n, l) => n + l.length, 0);
+  const pageListeners = listeners(page.bus.handlers);
+  page.fx.bindBus(studioBus);
+  page.fx.bindBus(studioBus);
+  assert.equal(listeners(page.bus.handlers), pageListeners, 'binding a second bus keeps the first bus\'s subscriptions');
+  assert.equal(listeners(studioHandlers), pageListeners, 'and the second, bound twice, holds one set');
+  page.bus.emit('tank:destroyed', { id: 'p', cause: 'shot', pos: [3, 0, 3] });
+  studioBus.emit('tank:destroyed', { id: 's', cause: 'shot', pos: [-3, 0, 3] });
+  const wrecks = page.fx.getAttachmentDebug().subjects.map((c) => c.id).filter((id) => id.startsWith('wreck:')).sort();
+  assert.deepEqual(wrecks, ['wreck:p', 'wreck:s'], `the runtime reacts once to each bus (${wrecks})`);
+  page.fx.resetAll(); page.frames(2); groundBurst(page.bus, 503); page.frames(6);
+  assert.ok(Math.abs(media(page.fx) - single) <= 5, `the page bus still bursts once after the Studio's binding (${media(page.fx)} vs ${single})`);
+  for (const r of [once, twice, first, second, page]) r.fx.resetAll();
 }
 
 console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');

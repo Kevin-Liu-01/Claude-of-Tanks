@@ -248,7 +248,8 @@ interface FxDebugSurface {
 type FxEventBus = Pick<EventBus, 'on'>;
 
 /**
- * (2026-11-02 audit F10) The runtime bound to each bus: a bus takes one fx runtime. The page's initializer
+ * (2026-11-02 audit F10) The runtime bound to each bus: a bus takes one fx runtime (a runtime may hear several buses:
+ * the page's and the Studio's private one, see the runtime's busBindings). The page's initializer
  * (main.ts) binds the bus before it can still fail; the runtime its retry builds takes the bus over, so the partial one
  * never keeps reacting into a detached group (a second subscription doubled every effect).
  */
@@ -6433,9 +6434,11 @@ function* createFxSteps(
     for (const [child, wanted] of replayHidden) child.visible = wanted;
     replayHidden.clear();
   }
-  const noBinding = (): void => {};
-  /** (2026-11-02 audit F10) undo this runtime's bus binding (bindBus) */
-  let unbindBus: () => void = noBinding;
+  /**
+   * (2026-11-02 audit F10) this runtime's binding of each bus it heard (bindBus), keyed by bus: the page binds its bus
+   * and the Studio its private one to the same runtime, and binding one never undoes the other
+   */
+  const busBindings = new Map<FxEventBus, () => void>();
   const fx: FxRuntime = {
     group,
 
@@ -6681,9 +6684,10 @@ function* createFxSteps(
      * @param {object} bus injected event bus
      */
     bindBus(source: FxEventBus): void {
-      // (2026-11-02 audit F10) idempotent: this runtime's earlier binding goes, and so does another runtime's on this
-      // bus; every subscription below is recorded so the binding can be undone whole
-      unbindBus();
+      // (2026-11-02 audit F10) idempotent per bus: this runtime's earlier binding of THIS bus goes, and so does another
+      // runtime's on it; its bindings of other buses stay. Every subscription below is recorded so the binding can be
+      // undone whole
+      busBindings.get(source)?.();
       busBinders.get(source)?.();
       const offs: Array<() => void> = [];
       const bus: FxEventBus = {
@@ -6697,9 +6701,9 @@ function* createFxSteps(
         for (const off of offs) off();
         offs.length = 0;
         if (busBinders.get(source) === unbind) busBinders.delete(source);
-        if (unbindBus === unbind) unbindBus = noBinding;
+        if (busBindings.get(source) === unbind) busBindings.delete(source);
       };
-      unbindBus = unbind;
+      busBindings.set(source, unbind);
       busBinders.set(source, unbind);
       // (FX lane 2026-10-17) a network screen drifts on this map's wind, the one its authority stamped (no wire field)
       bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens, smokeWindForMap(world?.()?.mapId)); });
