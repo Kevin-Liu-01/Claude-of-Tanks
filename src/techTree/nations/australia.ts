@@ -34,7 +34,8 @@ export const AUSTRALIA_TREE: NationTree = Object.freeze({
     // the AS21 Redback (LAND 400 Phase 3, 2027)
     node({ id: 'm113a1_fsv', tier: 1, line: 'cavalry', lane: 2, parents: ['leopard_as1'], slot: 'line' }),
     node({ id: 'm113a1_mrv', tier: 1, line: 'cavalry', lane: 3, parents: ['m113a1_fsv'], slot: 'line' }),
-    node({ id: 'm113as4', tier: 1, line: 'cavalry', lane: 4, parents: ['m113a1_mrv'], slot: 'line' }),
-    node({ id: 'redback', tier: 6, line: 'cavalry', lane: 4, parents: ['m113as4'], slot: 'line' }),
+    // the AS4 at II with the Ares APC it shares its 12.7 mm and its footing with (capability 0.205 against the Ares's 0.208)
+    node({ id: 'm113as4', tier: 2, line: 'cavalry', lane: 3, parents: ['m113a1_mrv'], slot: 'line' }),
+    node({ id: 'redback', tier: 6, line: 'cavalry', lane: 3, parents: ['m113as4'], slot: 'line' }),
   ]),
 });

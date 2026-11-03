@@ -158,5 +158,23 @@ m1a2_sepv3_aus.gun = { ...m1a2_sepv3_aus.gun, shells: ausAbramsShells(m1a2_sepv3
 m1a2_sepv3_aus.visual = { ...m1a2_sepv3_aus.visual, ...ausDisruptive('42A') };
 delete m1a2_sepv3_aus.sourceStudyStatus;
 
+// The line's measured gun depression by yaw (tools/gun-depression-sweep.mjs --no-suit, 2026-11-02; no mount conflicts,
+// nothing blocked at full elevation): the M113s' short 76 mm guns held up over the front corners by the trim vane and the
+// headlamp guards and over the stern by the ramp's hinge line; the AS4's Tenix M2 low over the nose and the appliqué
+// corners; the AS1 the full nine degrees round to the engine deck; the AIM SA the M1A1's, the deck astern of 138.
+m113a1_fsv.gunPitchByYawDeg = [[0, -9.7], [19, -9.7], [20, -9.5], [21, -8.2], [23, -7.3], [24, -7], [28, -7], [29, -5.6],
+  [30, -5], [31, -4.7], [39, -4], [42, -4], [46, -4.5], [47, -4.9], [51, -7], [56, -7], [58, -7.9], [59, -8.5], [60, -9.7],
+  [133, -9.7], [134, -9.5], [136, -9], [141, -8.4], [146, -7], [147, -6.8], [180, -6.8]];
+m113a1_mrv.gunPitchByYawDeg = [[0, -9.7], [23, -9.7], [27, -9], [28, -6.1], [29, -4.6], [30, -4], [33, -3.9], [43, -3.9],
+  [49, -4.5], [50, -5], [51, -6.3], [52, -8.3], [53, -9.7], [133, -9.7], [134, -9.6], [142, -7.6], [143, -7.4], [180, -7.4]];
+m113as4.gunPitchByYawDeg = [[0, -10], [5, -10], [6, -8.6], [7, -8], [8, -7.9], [30, -7.9], [31, -8.4], [32, -9.9],
+  [34, -9.6], [35, -9.5], [40, -9.5], [42, -9.6], [43, -9.5], [47, -9.5], [48, -10], [180, -10]];
+leopard_as1.gunPitchByYawDeg = [[0, -9], [147, -9], [148, -7.5], [149, -5.4], [150, -4.9], [155, -3], [156, -2.5],
+  [159, -2], [161, -2], [162, -2.4], [164, -1.6], [165, -0.6], [166, -0.1], [167, 0.1], [168, 0.2], [172, 0.2], [173, -0.1],
+  [175, -1.5], [176, -1.9], [177, -2.7], [180, -2.7]];
+m1a1_aim_sa_aus.gunPitchByYawDeg = [[0, -10], [18, -10], [21, -9.9], [33, -9.7], [35, -10], [137, -10], [138, -9.5],
+  [139, -7.7], [141, -4.7], [142, -3.4], [143, -2.2], [144, -1.5], [147, -1.2], [160, -0.9], [161, -0.6], [179, -0.5],
+  [180, -0.8]];
+
 registerFleetSpecs(registries, ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'redback', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
   { m113a1_fsv, m113a1_mrv, m113as4, leopard_as1, redback, m1a1_aim_sa_aus, m1a2_sepv3_aus });
