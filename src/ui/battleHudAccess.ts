@@ -65,6 +65,11 @@ export function createBattleHudAccess(
       const hud = hudModule.initHud(bus);
       const damagePanel = damagePanelModule.createDamagePanel();
       hud.setDamagePanel(damagePanel);
+      // (2026-11-02 audit, 04-ui-1 #7) the return to the Garage ends the battle's panel: a mask retry still pending for
+      // its tank never runs a build in the Garage, and the battle's visual is let go
+      bus.on('phase:change', (payload) => {
+        if ((payload as { phase?: string } | null)?.phase === 'garage') damagePanel.clear();
+      });
       current = Object.freeze({ hud, damagePanel });
       return current;
     }).catch((error: RuntimeValue) => {

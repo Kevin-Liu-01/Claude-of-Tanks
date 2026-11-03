@@ -7,6 +7,7 @@
 // the v2 client folds into a session note the shared validator accepts. A new tank cancels a pending retry and
 // ignores late callbacks from the old build.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createDamagePanel, DAMAGE_PANEL_MASK_RETRY } from './damagePanel.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { createEntryTelemetry } from '../entry/telemetry.ts';
@@ -291,6 +292,40 @@ try {
     assert.equal(h.panel.debugState().specId, 'receipt-other');
     assert.deepEqual(warnings, []);
     assert.deepEqual(h.telemetry.events, []);
+  }
+
+  // 2026-11-02 audit (04-ui-1 #7): the battle's end clears the panel. A retry pending for the last battle's tank
+  // never runs its build in the Garage, a late callback is inert, and the battle's visual is let go.
+  {
+    const h = harness();
+    const visual = { root: {}, dispose() {} };
+    let lateReady = null;
+    h.masks.plan((call) => {
+      lateReady = call.onReady;
+      queueMicrotask(() => call.onReady(false, failure('top_mask_program_timeout', 0)));
+      return null;
+    });
+    h.panel.setTank(spec, visual);
+    await flush();
+    assert.equal(h.clock.list.length, 1, 'attempt 2 is pending');
+    h.panel.clear();
+    assert.equal(h.clock.list[0].cancelled, true, 'the clear cancels it');
+    h.clock.list[0].callback();
+    lateReady(true);
+    await flush();
+    assert.equal(h.masks.calls.length, 1, 'no mask build after the battle');
+    assert.equal(h.panel.debugState().specId, null, 'the panel holds no tank');
+    assert.equal(h.panel.debugState().masksReady, false);
+    h.masks.plan(cached(maskEntry()));
+    h.panel.setTank(spec, null);
+    assert.equal(h.panel.debugState().masksReady, true, 'the next battle sets its tank as before');
+    assert.deepEqual(warnings, []);
+    assert.deepEqual(h.telemetry.events, []);
+  }
+  {
+    const source = readFileSync(new URL('./battleHudAccess.ts', import.meta.url), 'utf8');
+    assert.match(source, /bus\.on\('phase:change', \(payload\) => \{\n\s+if \(\(payload as \{ phase\?: string \} \| null\)\?\.phase === 'garage'\) damagePanel\.clear\(\);/,
+      'the return to the Garage clears the battle HUD\'s panel');
   }
 
   // Without an injected sink (Node has no page beacon) the terminal failure
