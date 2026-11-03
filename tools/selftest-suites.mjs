@@ -1535,6 +1535,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/ambienceTeardown.selftest.mjs',
     // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
     'src/audio/wantedLoops.selftest.mjs',
+    // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed
+    'src/audio/audioLatches.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.

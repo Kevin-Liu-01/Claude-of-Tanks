@@ -525,13 +525,27 @@ export function createAudio({
   });
   const captionRel: RelativePosition = { right: 0, up: 0, ahead: 0, distance: 0 };
   /** Caption a cue heard at a world point (its direction from the listener), or inside our own tank (no point); a cue
-   *  whose sound is scheduled later (a shell's crack as it passes, an aircraft's pass) is captioned when it is heard. */
+   *  whose sound is scheduled later (a shell's crack as it passes, an aircraft's pass) is captioned when it is heard:
+   *  due on the audio clock (a suspended device holds it with its sound), and only in the battle that scheduled it. */
   function caption(id: CaptionSoundId, x?: number, y?: number, z?: number, delayS = 0): void {
-    if (delayS > 0.05) { setTimeout(() => caption(id, x, y, z), delayS * 1000); return; }
+    if (delayS > 0.05) {
+      if (ctx) pendingCaptions.push({ id, x, y, z, at: ctx.currentTime + delayS, battle: battleMode.battle });
+      return;
+    }
     if (battleMode.phase !== 'battle' || battleMode.over) return;
     if (x === undefined || y === undefined || z === undefined || !listenerValid) { captions.sound(id, null); return; }
     toListenerFrame(frame, x, y, z, captionRel);
     captions.sound(id, captionRel);
+  }
+  // Captions of cues heard later, due on the audio clock (flushCaptions in update; 2026-11-02 audit F11).
+  const pendingCaptions: { id: CaptionSoundId; x?: number; y?: number; z?: number; at: number; battle: number }[] = [];
+  function flushCaptions(now: number): void {
+    for (let i = 0; i < pendingCaptions.length;) {
+      const due = pendingCaptions[i];
+      if (due.at > now) { i++; continue; }
+      pendingCaptions.splice(i, 1);
+      if (due.battle === battleMode.battle) caption(due.id, due.x, due.y, due.z);
+    }
   }
   let listenerValid = false;
   let listenerKind: AudioListenerPose['kind'] = 'camera';
@@ -2372,6 +2386,7 @@ export function createAudio({
     startEngineUntil = -1;
     resetQuietRadio();
     captions.reset();
+    pendingCaptions.length = 0;
   }
 
   /** A battle's world torn down: on leaving it, or as the next one opens over it. */
@@ -2888,6 +2903,7 @@ export function createAudio({
     }
     const now = ctx.currentTime;
     pool.prune(now);
+    if (pendingCaptions.length) flushCaptions(now);
     mixer.update(dt);
     radio?.update();
     updateThink(now);
@@ -2911,6 +2927,9 @@ export function createAudio({
           if (rig) {
             if (startEngineUntil < 0) startEngineUntil = now + START_WAIT_S;
             if (rig.startEngine() || now >= startEngineUntil) startEngineSoon = false;
+          } else if (latestPlayer?.id === playerId && latestPlayer.aerial?.kind === 'gunship') {
+            // the AC-130 has no ground rig (it is heard from its cabin): no start-up to wait for (2026-11-02 audit F11)
+            startEngineSoon = false;
           }
         }
         updateTeamCounts();
