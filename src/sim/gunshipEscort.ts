@@ -8,8 +8,9 @@ export interface EscortState {
   x:number; y:number; z:number;
 }
 /** Ground troops use the normal navigation, combat and destruction simulation.
- * Arrival is spatial, never a timer pretending that the convoy moved. */
-export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Entity[], destination:{x:number;y:number;z:number}, setActive:(entity:Entity,active:boolean)=>void) {
+ * Arrival is spatial, never a timer pretending that the convoy moved. `rescue` takes an extracted hull off the field:
+ * the mode controller's life transition (matchModes.ts setLife 'rescued', audit M4), the hull's one life writer. */
+export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Entity[], destination:{x:number;y:number;z:number}, rescue:(entity:Entity)=>void) {
   const friends=entities.filter(e=>e.bot && e.team!=='bravo' && e.team!=='enemy');
   const rescued=new Set<string>();
   const starting=new Map(friends.map(e=>[e.id,Math.max(1,detMath.hypot(e.state.pos.x-destination.x,e.state.pos.z-destination.z))]));
@@ -29,7 +30,7 @@ export function createGunshipEscort<Entity extends MatchModeEntity>(entities:Ent
     }
     state.alive=alive;state.rescued=rescued.size;state.progress=friends.length?progress/friends.length:0;
   }
-  function hideRescued(friend:Entity):void { friend.modeActive=false;friend.state.speed=0;setActive(friend,false); }
+  function hideRescued(friend:Entity):void { rescue(friend); }
   return {
     state,
     step(timeS:number,limitS:number):MatchModeResult|null {
