@@ -19,6 +19,7 @@ import { KIT } from '../tankFactoryCore.ts';
 import { FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { weaponAssembly } from './weaponStock.ts';
+import { hoop } from './bentBarHoop.ts';
 import type { Modern3BuilderPort } from '../modern3.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -83,6 +84,15 @@ function sidePoint(z: number, y: number): { x: number; lean: number } {
 }
 
 const GLACIS_TOP = (z: number): number => 1.545 - 0.2264 * (z - 1.84);
+// Release 268 (both critics: "the bow's front face reads tall and flat; the real prow is a sharper wedge"; the armour
+// receipts roofStations/rocketBattery/roofHoldFire): the prow is drawn as the BMP-1/2's knife edge. The lower bow plate
+// rakes straight from the belly (PROW_FOOT) to the edge (PROW_EDGE) at 31 degrees (the print's line: 33); the ribbed
+// upper glacis runs at its own slope to z 3.25, where a short nose plate (53 degrees) drops to the edge under the
+// folded trim vane's front. No near-vertical face stands at the nose any more.
+const PROW_FOOT: readonly [number, number] = [2.20, 0.40]; // z, y
+const PROW_EDGE: readonly [number, number] = [3.345, 1.10];
+const PROW_RAKE = (PROW_EDGE[1] - PROW_FOOT[1]) / (PROW_EDGE[0] - PROW_FOOT[0]);
+const NOSE_Z = 3.25; // the glacis' front edge, where the nose plate begins
 
 export type BmpHullPort = Modern3BuilderPort;
 
@@ -181,9 +191,11 @@ function addGlacis(P: Modern3BuilderPort): void {
     [1.72, 1.37, BODY_BOTTOM_Y, 1.545, 1.15, 1.612],
     [1.84, 1.37, BODY_BOTTOM_Y, 1.500, 1.21, GLACIS_TOP(1.84)],
     [2.60, 1.37, BODY_BOTTOM_Y, 1.355, 1.23, GLACIS_TOP(2.60)],
-    [2.97, 1.37, 1.12, 1.262, 1.24, GLACIS_TOP(2.97)],
-    [3.20, 1.10, 1.02, 1.245, 1.02, 1.272],
-    [3.36, 1.065, 1.00, 1.262, 0.98, 1.285],
+    // the nose: the glacis runs on to z 3.25, the nose plate drops from there to the knife edge, and the loft's underside
+    // is buried in the lower bow plate (the old 3.20 / 3.36 stations stood a 0.28 m vertical nose face over the prow)
+    [2.97, 1.37, 0.94, 1.262, 1.24, GLACIS_TOP(2.97)],
+    [NOSE_Z, 1.08, 1.08, 1.20, 1.00, GLACIS_TOP(NOSE_Z)],
+    [PROW_EDGE[0], 1.045, PROW_EDGE[1] - 0.012, PROW_EDGE[1] - 0.006, 0.98, PROW_EDGE[1]],
   ];
   const sections: SolidSection[] = st.map(([z, sx, bot, sTop, tx, top]) => ({
     z, ring: mirrorRing([[sx, bot], [sx, sTop], [tx, top]]),
@@ -200,20 +212,29 @@ function addGlacis(P: Modern3BuilderPort): void {
   P.add('hullDetail', KIT.box(2.18, 0.06, 0.05), 0, 1.585, 1.745);
 }
 
-/** Prow below the glacis: the certified boat-run planes, belly pan and no-air closure plates (unchanged lines). */
+/** Prow below the glacis: the lower bow plate to the knife edge, the folded trim vane (bodywork), belly pan, no-air
+ * closure plates and tow hooks. */
 function addProw(P: Modern3BuilderPort): void {
-  const { box, frustum, slab } = KIT;
-  P.add('hull', frustum(0.98, 2.276, 2.136, 1.02, 3.176, 3.056, 0.40, 1.03));     // prow plane A (boat run)
-  P.add('hull', frustum(1.02, 3.176, 3.056, 1.055, 3.365, 3.28, 1.03, 1.225));   // prow plane B (knuckle -> lip)
-  // folded trim vane: the board lying on the nose plate (gate tip band 0.33 thick keeps the published 6.72)
-  P.add('hull', slab(
-    [-1.065, 1.00, 3.365], [1.065, 1.00, 3.365], [1.065, 1.00, 3.13], [-1.065, 1.00, 3.13],
-    [-1.065, 1.33, 3.365], [1.065, 1.33, 3.365], [1.065, 1.42, 3.13], [-1.065, 1.42, 3.13]));
-  P.add('hullDark', box(1.96, 0.03, 0.035), 0, 1.395, 3.16, -0.38, 0, 0);       // vane frame lip
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.10, 0.06, 0.20), s * 0.80, 1.385, 3.24, -0.38, 0, 0); // vane hinge brackets
+  const { box, frustum, xform, torus } = KIT;
+  // the lower bow plate, one raked plane from the belly to the knife edge (it was two planes rising to a lip at 1.225
+  // under a vertical nose face)
+  P.add('hull', frustum(0.98, PROW_FOOT[0], PROW_FOOT[0] - 0.14, 1.045, PROW_EDGE[0], PROW_EDGE[0] - 0.14,
+    PROW_FOOT[1], PROW_EDGE[1]));
+  // folded trim vane: the board lying on the glacis' front, its front edge over the nose plate's top. Painted bodywork,
+  // not the hull's armour (release 264's envelope honesty: as `hull` its tall vertical front read as the 28 mm lower
+  // plate square on, roofStations.selftest §10). The nose plate under it carries the published 6.72 length.
+  const vane = (z: number, off: number): number => GLACIS_TOP(z) + off;
+  const vz0 = 2.94, vz1 = NOSE_Z + 0.008;
+  P.add('hullFixedPaintedBodywork', orientedSlabLocal(
+    [-1.00, vane(vz1, -0.012), vz1], [1.00, vane(vz1, -0.012), vz1], [1.08, vane(vz0, -0.01), vz0],
+    [-1.08, vane(vz0, -0.01), vz0],
+    [-1.00, vane(vz1, 0.055), vz1], [1.00, vane(vz1, 0.055), vz1], [1.08, vane(vz0, 0.06), vz0],
+    [-1.08, vane(vz0, 0.06), vz0]));
+  const slope = Math.atan(0.2264);
+  for (const s of [-1, 1]) {                                                   // vane hinge brackets at its front edge
+    P.add('hullDetail', xform(box(0.10, 0.035, 0.10), 0, 0, 0, slope, 0, 0), s * 0.80, vane(3.22, 0.066), 3.22);
   }
-  P.add('hull', box(1.96, 0.06, 0.56), 0, 0.435, 1.98);                         // belly pan: tub front -> plane A
+  P.add('hull', box(1.96, 0.06, 0.51), 0, 0.435, 1.955);                        // belly pan: tub front -> bow plate
   for (const s of [-1, 1]) {
     const m = (x: number): number => (s < 0 ? -x : x);
     P.add('hull', orientedSlabLocal(
@@ -223,11 +244,14 @@ function addProw(P: Modern3BuilderPort): void {
       [m(0.92), 0.38, 2.16], [m(0.98), 0.38, 2.16], [m(0.98), 0.38, 1.90], [m(0.92), 0.38, 1.90],
       [m(0.92), 1.470, 2.16], [m(0.98), 1.470, 2.16], [m(0.98), 1.527, 1.90], [m(0.92), 1.527, 1.90]));
     P.add('hull', orientedSlabLocal(
-      [m(0.92), 0.92, 2.94], [m(0.98), 0.92, 2.94], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
-      [m(0.92), 1.298, 2.94], [m(0.98), 1.298, 2.94], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
-    // bow tow hooks (print: the U hooks at the nose corners)
-    P.add('hullDark', KIT.xform(KIT.torus(0.06, 0.016, 10, 6), 0, 0, 0, Math.PI / 2, 0, 0), m(0.86), 1.06, 3.36);
-    P.add('hullDetail', box(0.10, 0.08, 0.10), m(0.86), 1.06, 3.30);
+      [m(0.92), 0.94, 2.97], [m(0.98), 0.94, 2.97], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
+      [m(0.92), 1.29, 2.97], [m(0.98), 1.29, 2.97], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
+    // bow tow hooks on the lower bow plate near its corners (photo: the open hooks under the nose): a pad on the plate
+    // and the hook ring standing out of it along the plate's normal, half buried
+    const len = Math.hypot(1, PROW_RAKE), t: [number, number] = [PROW_RAKE / len, 1 / len], n: [number, number] = [-1 / len, PROW_RAKE / len];
+    const tilt = Math.atan2(t[1], t[0]), ys = 0.98, zs = PROW_FOOT[0] + (ys - PROW_FOOT[1]) / PROW_RAKE;
+    P.add('hullDetail', xform(box(0.14, 0.12, 0.04), 0, 0, 0, tilt, 0, 0), m(0.80), ys + n[0] * 0.01, zs + n[1] * 0.01);
+    P.add('hullDark', xform(torus(0.055, 0.015, 10, 6), 0, 0, 0, tilt, 0, 0), m(0.80), ys + n[0] * 0.035, zs + n[1] * 0.035);
   }
 }
 
@@ -366,9 +390,16 @@ function addDeck(P: Modern3BuilderPort, variant: BmpHullVariant): void {
     const w = Math.min(0.56, 2 * (bodyAt(h.z).deck - 0.08));
     P.add('hull', box(w, 0.035, h.l), xc, DECK_Y + 0.008, h.z);
     P.add('hullDark', box(w - 0.06, 0.012, 0.025), xc, DECK_Y + 0.028, h.z + h.l / 2 - 0.05);
-    P.add('hullDetail', box(0.05, 0.03, 0.10), s * 0.10, DECK_Y + 0.02, h.z + h.l * 0.25);
-    P.add('hullDetail', box(0.05, 0.03, 0.10), s * 0.10, DECK_Y + 0.02, h.z - h.l * 0.25);
-    P.add('hullDetail', box(0.14, 0.025, 0.03), xc, DECK_Y + 0.036, h.z - h.l / 2 + 0.10);
+    // round 268b: the lid's pressed stiffening panel, hinge knuckles (round barrels on their leaves) along the inner
+    // edge, and a bent lifting handle
+    P.add('hull', box(w - 0.10, 0.014, h.l - 0.12), xc, DECK_Y + 0.030, h.z - 0.01);
+    for (const dz of [h.l * 0.28, -h.l * 0.28]) {
+      P.add('hullDetail', KIT.cylZ(0.022, 0.13, 10), s * 0.09, DECK_Y + 0.030, h.z + dz);
+      P.add('hullDetail', box(0.07, 0.012, 0.11), s * 0.115, DECK_Y + 0.026, h.z + dz);
+    }
+    // (the handle keeps the old bar's 1.677 m top: the BMP-2's gun sweeps this deck at full depression)
+    for (const dx of [-0.06, 0.06]) P.add('hullDetail', box(0.016, 0.024, 0.016), xc + dx, DECK_Y + 0.036, h.z - h.l / 2 + 0.10);
+    P.add('hullDetail', KIT.cylX(0.008, 0.14, 6), xc, DECK_Y + 0.040, h.z - h.l / 2 + 0.10);
   }
   // fuel filler caps and the antenna base on the rear deck
   P.add('hullDetail', cylY(0.065, 0.07, 0.025, 12), 0.0, DECK_Y + 0.008, -2.85);
@@ -416,6 +447,41 @@ function addBowFittings(P: Modern3BuilderPort, variant: BmpHullVariant): void {
   }
 }
 
+/** Round 268b (the owner: "add more upper glacis and roof details"): the driver's hatch lid in its ring with the rear
+ * hinge barrel and the lid handle, the BMP-2 commander's lid, hinge and handle, lifting eyes at the roof corners (the
+ * BMP-2 front pair only), and on the BMP-1 bow the bent-tube hoop guards over the lamp clusters (photo: research/bwp1
+ * 5). Discrete seated items the photographs show; no bolt rows or joint strips on the glacis plate. */
+function addGlacisAndRoofDetail(P: Modern3BuilderPort, variant: BmpHullVariant): void {
+  const { box, cylX, cylY } = KIT;
+  P.add('hull', cylY(0.175, 0.185, 0.022, 18), 0.60, DECK_Y + 0.036, 1.42);
+  P.add('hullDark', box(0.16, 0.012, 0.012), 0.60, DECK_Y + 0.047, 1.30);
+  P.add('hullDetail', cylX(0.024, 0.20, 10), 0.60, DECK_Y + 0.026, 1.215);
+  P.add('hullDetail', box(0.11, 0.022, 0.024), 0.60, DECK_Y + 0.052, 1.46);
+  if (variant === 'bmp2') {
+    P.add('hull', cylY(0.155, 0.165, 0.02, 16), 0.68, DECK_Y + 0.031, 0.99);
+    P.add('hullDetail', cylX(0.022, 0.16, 10), 0.68, DECK_Y + 0.022, 0.80);
+    P.add('hullDetail', box(0.10, 0.02, 0.022), 0.68, DECK_Y + 0.046, 1.06);
+  }
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', hoop(0.042, 0.011, false), s * 0.94, DECK_Y - 0.006, 1.64);
+    // (the BMP-2's 2A42 sweeps the rear deck at full depression over the stern: its rear eyes would raise the floor
+    // there, so only the BWP-1, whose RCWS gun rides higher, carries them)
+    if (variant === 'bwp1') P.add('hullDetail', hoop(0.042, 0.011, false), s * 0.50, DECK_Y - 0.006, -2.98);
+  }
+  if (variant === 'bmp2') return;
+  // BMP-1 lamps: two bent hoops over each cluster, their legs standing on the glacis plate either side
+  for (const [x, half] of [[0.90, 0.135], [-0.92, 0.075]] as Array<[number, number]>) {
+    const yc = GLACIS_TOP(2.79) + 0.10;
+    for (const z of [2.735, 2.855]) {
+      const foot = GLACIS_TOP(z) - 0.012;
+      // (the legs run 8 mm past the arch's open ends, which close inside them)
+      for (const dx of [-half, half]) P.add('hullDetail', cylY(0.012, 0.012, yc - foot + 0.008, 6), x + dx, (yc + foot + 0.008) / 2, z);
+      P.add('hullDetail', hoop(half, 0.011, true), x, yc, z);
+    }
+    P.add('hullDetail', KIT.cylZ(0.011, 0.14, 6), x, yc + half, 2.795);
+  }
+}
+
 /** The owner's BMP-2M modernization package (2026-08-14, PROGRAM-STATE §5.238), rebuilt on the lofted hull:
  * seven cassettes a side on a continuous carrier rail along the raked sides (they cover the firing ports, as on a
  * field-modernized protection fit, and stay on the fender shelf, far above the track return), and two staggered
@@ -430,15 +496,35 @@ function addBmp2mHullPackage(P: Modern3BuilderPort): void {
       const right: SectionPoint[] = [[f - 0.02, 1.235], [f + 0.07, 1.235], [f + 0.07, 1.30], [f - 0.02, 1.325]];
       return { z, ring: s > 0 ? right : right.slice().reverse().map(([x, y]) => [-x, y] as SectionPoint) };
     })));
+    // Release 268 (roofHoldFire's 130, 140 and 150-degree scenes): each cassette stands on the rail, its inner face on
+    // the raked plate and its outer face leaning in 22 degrees from 15 cm off the side's foot (never inboard of x 1.42
+    // there), so the row runs straight along the fender bins where the troop compartment's walls converge, as the
+    // BMP-2M's boxes do. Lying on the raked plate they twisted the combat hull's side facet toward the rear quarter,
+    // where a 12.7 mm round met 18 mm at the edge of its reach (one ghost flight in sixteen) instead of the track and
+    // rear plate it defeats.
+    const outerX = (z: number): number => Math.max(sidePoint(z, 1.30).x + 0.15, 1.42);
+    const lean = Math.tan(22 * Math.PI / 180);
+    const inner = (z: number, y: number): Vec3Tuple => { const p = bmpSidePoint(s, z, y, -0.01); return [p.x, p.y, z]; };
+    const outer = (z: number, y: number): Vec3Tuple => [s * (outerX(z) - (y - 1.30) * lean), y, z];
     sideZ.forEach((zc, k) => {
       const len = k === 0 || k === sideZ.length - 1 ? 0.48 : 0.52;
       const zf = zc + len / 2, zr = zc - len / 2;
       const y1 = Math.min(bodyAt(zf).top[1], bodyAt(zr).top[1]) - 0.012;
-      P.add('hull', bmpSidePlate(s, zf, zr, 1.30, y1, -0.01, 0.12));                 // cassette on rail and plate
-      P.add('hullDark', bmpSidePlate(s, zf - 0.04, zr + 0.04, y1 - 0.045, y1 - 0.03, 0.105, 0.02)); // lid seam
+      P.add('hull', orientedSlabLocal(inner(zf, 1.30), outer(zf, 1.30), outer(zr, 1.30), inner(zr, 1.30),
+        inner(zf, y1), outer(zf, y1), outer(zr, y1), inner(zr, y1)));                 // cassette on rail and plate
+      // the cassette's sill: painted bodywork closing the slot between its underside and the fender shelf, outboard of
+      // the rail (no armour: the combat hull's side facet stays the cassette's)
+      const sill = (z: number, y: number, out: boolean): Vec3Tuple =>
+        [s * (out ? outerX(z) - 0.004 : bodyAt(z).foot + 0.05), y, z];
+      P.add('hullFixedPaintedBodywork', orientedSlabLocal(sill(zf, 1.235, false), sill(zf, 1.235, true),
+        sill(zr, 1.235, true), sill(zr, 1.235, false), sill(zf, 1.31, false), sill(zf, 1.31, true), sill(zr, 1.31, true),
+        sill(zr, 1.31, false)));
+      const yaw = s * Math.atan2(outerX(zf) - outerX(zr), zf - zr);              // the face follows the side's plan
+      const yl = y1 - 0.0375;                                                       // lid seam on the leaning face
+      P.add('hullDark', box(0.012, 0.015, len - 0.08), s * (outerX(zc) - (yl - 1.30) * lean + 0.004), yl, zc,
+        0, yaw, s * Math.atan(lean));
       for (const z of [zf - 0.07, zr + 0.07]) {
-        const b = bmpSidePoint(s, z, 1.36, 0.118);
-        P.add('hullDetail', xform(cylX(0.018, 0.02, 6), 0, 0, 0, 0, 0, s * b.lean), b.x, b.y, z); // retaining bolts
+        P.add('hullDetail', cylX(0.018, 0.02, 6), s * (outerX(z) - 0.06 * lean + 0.006), 1.36, z); // retaining bolts
       }
     });
     // forward return: the first cassette closes into the glacis shoulder
@@ -485,6 +571,7 @@ export function buildBmpBoatHull(P: Modern3BuilderPort, variant: BmpHullVariant)
   o.ports[1].forEach((z) => addFiringPort(P, -1, z, o.bmp2m, o.portStandoff));
   addDeck(P, variant);
   addBowFittings(P, variant);
+  addGlacisAndRoofDetail(P, variant);
   if (o.bmp2m) addBmp2mHullPackage(P);
   else {
     // pioneer shovel and a duffel on the left fender shelf, spare links on the right (the BMP-2M's cassettes fill them)
