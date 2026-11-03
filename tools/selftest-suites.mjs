@@ -889,6 +889,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit S4: one acquire per instance (no leaked render slot, no wait on its own pid) and nested holds
     'tools/capture-lock-reentry.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-11-02 audit S4: one owner of a hold's cap, budget, grace and yield (withCaptureHold, runWarmHold)
+    'tools/capture-hold-phases.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
     // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',

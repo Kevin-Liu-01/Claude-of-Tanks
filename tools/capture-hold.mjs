@@ -19,9 +19,13 @@
 //     shoot: async ({ page, signal }) => { /* shots only; stop when signal.aborted */ },
 //   });
 //
-// The hold's own limit (`holdMinutes`, default 18) starts when the lock is taken: at the limit `signal` aborts, and a
-// shoot still running after `graceSeconds` has its warm resources closed (the browser stops drawing) before the lock is
-// released. The wait (`waitHours`) is the queue's, never the hold's: do not wrap the process in a short alarm.
+// The hold's limit is the lock's own cap (2026-11-02 audit S4; it was `holdMinutes`, 18 by default, below the cap, so a
+// yield could never come before the abort): past the cap while anyone waits, a shoot that calls checkpoint() yields at its
+// next one, and one that never does has `signal` aborted; `holdMinutes`, when given, is the caller's own budget per hold
+// segment (an abort, waiters or not). A shoot still running `graceSeconds` after the abort has its warm resources closed
+// (the browser stops drawing) before the lock is released. The wait (`waitHours`) is the queue's, never the hold's: do not
+// wrap the process in a short alarm. The hold itself is withCaptureHold's, the one hold wrapper (below), which any tool
+// that holds the GPU without warming pages uses directly.
 //
 // Frozen pages that reload (2026-10-23, world-polish and maps lanes): a page on a Vite dev server keeps the Vite client's
 // HMR socket. When that socket closed (another lane's server on the same port, or a re-bundle broadcast during a ~50-min
@@ -34,7 +38,8 @@
 // `timing` hold (exclusive) by its command (genHeroCards, genIcons, genDrawings, gauntlet and sheet tools render), or by
 // `lockClass`; `holdCapMinutes` (with a `holdCapReason`) raises the 20-min cap for this ticket. shoot gets
 // `checkpoint()`: call it between batches. Past the cap with anyone waiting, it freezes the pages, gives the lock up,
-// re-queues at the back, and thaws (and checks) the pages once the lock is held again; the hold limit starts again.
+// re-queues at the back, and thaws (and checks) the pages once the lock is held again; the hold segment starts again. A
+// checkpoint after an abort never yields.
 //
 // Runaway browsers (2026-10-26, item 244): launch the hold's browser with tools/browser-launch.mjs launchGuardedBrowser.
 // A renderer past 6 GB (or its tree past 10 GB), warming or shooting, has the browser killed, a `[browser-guard]` line
@@ -201,23 +206,179 @@ async function closeWarm(warmed, say) {
   try { await warmed.close(); } catch (error) { say(`closing the warm resources failed: ${error?.message ?? error}`); }
 }
 
+// ---- the hold's phases (2026-11-02 audit S4) ---------------------------------------------------------------------------
+// runWarmHold had two timers that disagreed: its own hold limit (`holdMinutes`, 18 by default) and the lock's 20-minute
+// cap, honoured only at checkpoint(). The limit always fired first, so a yield could never happen before the abort and
+// the browser close 60 s later; a checkpoint after that froze closed pages and threw, and a yield after an abort left the
+// grace timer running, which closed the browser during the re-queue wait (the thaw then hit closed pages). One owner now:
+//   holding → (yield-due →) yielding → holding … → stopping (abort: the work is asked to stop) → torn-down (the grace
+//   passed: teardown, nothing draws) → released.
+// - The cap is the lock's own (lock.heldCapMs, the base cap while a release ticket waits). Past it with anyone waiting, a
+//   work that has called checkpoint() is yield-due: its next checkpoint yields; none within the grace, it is stopped. A
+//   work that never checkpoints is stopped at once. With nobody waiting it keeps the lock (the lock's rule).
+// - `holdMinutes` (optional) is the caller's own budget per hold segment: past it the work is stopped, waiters or not.
+// - The abort is final: a checkpoint after it never yields ({ yielded: false, stopped: true }), so the grace can never fire
+//   mid-yield. A yield stops every timer; the resume starts the segment again.
+// - A nested hold (capture-lock nestedEnv: a child inside its parent's hold) runs no cap: the parent's is the one.
+function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capCheckMs = 30_000, say, onAbort, onTeardown,
+  onYield = null, onResume = null }) {
+  let phase = 'holding', cooperative = false, segmentAt = Date.now();
+  let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null;
+  const clear = () => { clearTimeout(budgetTimer); clearInterval(capTimer); clearTimeout(dueTimer); budgetTimer = capTimer = dueTimer = null; };
+  const stop = (why) => {
+    if (phase !== 'holding' && phase !== 'yield-due') return;
+    clear();
+    phase = 'stopping';
+    say(`${why}; asking the work to stop`);
+    onAbort(new Error(why));
+    graceTimer = setTimeout(() => {
+      if (phase !== 'stopping') return;
+      phase = 'torn-down';
+      say(`still running ${graceSeconds} s past the stop: tearing down before the release`);
+      void Promise.resolve().then(onTeardown);
+    }, graceSeconds * 1000);
+  };
+  const capCheck = () => {
+    if (phase !== 'holding') return;
+    const capMs = lock.nested ? null : lock.heldCapMs;
+    if (!(capMs > 0) || Date.now() - segmentAt < capMs) return;
+    const waiters = typeof lock.waiting === 'function' ? lock.waiting() : 0;
+    if (!waiters) return; // past the cap with nobody waiting: the hold keeps the lock
+    if (!cooperative) { stop(`hold cap ${(capMs / 60_000).toFixed(1)} min with ${waiters} waiting, and no checkpoint`); return; }
+    phase = 'yield-due';
+    say(`hold cap ${(capMs / 60_000).toFixed(1)} min with ${waiters} waiting: the next checkpoint yields`);
+    dueTimer = setTimeout(() => stop(`hold cap: no checkpoint within ${graceSeconds} s`), graceSeconds * 1000);
+  };
+  const arm = () => {
+    segmentAt = Date.now();
+    if (holdMinutes !== null && holdMinutes !== undefined) {
+      budgetTimer = setTimeout(() => stop(`hold limit ${holdMinutes} min`), holdMinutes * 60_000);
+    }
+    if (!lock.nested && typeof lock.waiting === 'function') {
+      capTimer = setInterval(capCheck, capCheckMs);
+      capTimer.unref?.();
+    }
+  };
+  arm();
+  return {
+    get phase() { return phase; },
+    get tornDown() { return phase === 'torn-down'; },
+    /** Between batches: yields past the cap while anyone waits (the lock decides), never after a stop. */
+    async checkpoint() {
+      if (phase !== 'holding' && phase !== 'yield-due') return { yielded: false, stopped: true };
+      cooperative = true;
+      if (typeof lock.checkpoint !== 'function') return { yielded: false };
+      const result = await lock.checkpoint({
+        beforeYield: async () => {
+          clear();
+          phase = 'yielding';
+          if (onYield) await onYield();
+        },
+        afterResume: async () => {
+          if (onResume) await onResume();
+          phase = 'holding';
+          arm();
+        },
+      });
+      if (!result?.yielded && phase === 'yield-due') { clearTimeout(dueTimer); dueTimer = null; phase = 'holding'; } // nobody waits now
+      return result ?? { yielded: false };
+    },
+    finish() { clear(); clearTimeout(graceTimer); graceTimer = null; if (phase !== 'torn-down') phase = 'released'; },
+  };
+}
+
+const SIGNALS = ['SIGTERM', 'SIGINT', 'SIGHUP'];
+const bounded = (promise, ms) => Promise.race([promise, sleep(ms)]);
+
+/**
+ * One capture hold, owned in one place (2026-11-02 audit S4): the documented way to hold the GPU (direct lock.acquire()
+ * callers each set their own timers, limits and signal handlers; tools/capture-hold-census.selftest.mjs lists them and
+ * refuses a new one). It queues (`prepare` runs while queued, its result is `prepared`), refreshes, owns the cap and the
+ * yield (createHoldPhases above), ends cleanly on SIGTERM/SIGINT/SIGHUP (teardown, release, exit 128 + n) and at exit
+ * (release), and tears down before the release, so nothing draws once the lock is gone.
+ *   const shots = await withCaptureHold(async ({ signal, checkpoint }) => { ... }, { label: 'my-probe', timeoutMs,
+ *     teardown: async () => { await browser?.close(); await server?.close(); } });
+ * `work({ prepared, signal, checkpoint, heldAt, say })` runs inside the hold: stop when `signal` aborts, call
+ * `checkpoint()` between batches. `teardown(prepared)` stops what draws (a stop past its grace, a signal, a failed wait
+ * with something prepared); `beforeRelease(prepared)` runs on the normal way out before the release (default: teardown),
+ * `afterRelease(prepared)` after it; `onYield()`/`onResume()` run around a checkpoint yield. `holdMinutes`, `graceSeconds`:
+ * see the phases. The acquire options (`place`, `ticket`, `lockClass`, `command`, `holdCapMinutes`, `holdCapReason`,
+ * `priority`) go to the lock. `signals: []` leaves signals to the caller (a chain that stops its own children first).
+ */
+export async function withCaptureHold(work, { label = 'capture', lock = createCaptureLock(), timeoutMs = 45 * 60_000, place = null,
+  ticket = null, lockClass = null, command = null, holdCapMinutes = null, holdCapReason = null, priority = null, prepare = null,
+  holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, teardown = null, beforeRelease = null,
+  afterRelease = null, onYield = null, onResume = null, signals = SIGNALS, log = console.log } = {}) {
+  if (typeof work !== 'function') throw new TypeError('withCaptureHold needs work()');
+  const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
+  let prepared, held = false;
+  const tear = async (value) => { if (teardown) { try { await teardown(value); } catch (error) { say(`teardown failed: ${error?.message ?? error}`); } } };
+  // A signal ends the run cleanly, queued or holding: puppeteer's own SIGTERM handler closes the browser but leaves the
+  // process waiting in the queue (2026-10-22), so tear down, release and exit here.
+  const onSignal = async (signal) => {
+    say(`${signal}: tearing down and releasing`);
+    await bounded(tear(prepared), 15_000);
+    lock.release();
+    process.exit(128 + (constants.signals[signal] ?? 15));
+  };
+  for (const signal of signals) process.once(signal, onSignal);
+  const dropSignals = () => { for (const signal of signals) process.removeListener(signal, onSignal); };
+  const queuedAt = Date.now();
+  try {
+    prepared = await lock.acquire(timeoutMs, { place, ticket, lockClass, command, holdCapMinutes, holdCapReason, priority,
+      ...(typeof prepare === 'function' ? { prepare: async () => (prepared = await prepare()) } : {}) });
+  } catch (error) {
+    dropSignals();
+    if (error?.prepared !== undefined) await tear(error.prepared);
+    throw error;
+  }
+  held = true;
+  const heldAt = Date.now();
+  say(`lock held after ${((heldAt - queuedAt) / 60_000).toFixed(1)} min in the queue${lock.nested ? ' (nested in its parent\'s hold)' : ''}`);
+  const release = () => lock.release();
+  process.once('exit', release);
+  const refresher = setInterval(() => lock.refresh(), refreshMs);
+  refresher.unref();
+  const controller = new AbortController();
+  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, say, onYield, onResume,
+    onAbort: (reason) => controller.abort(reason), onTeardown: () => tear(prepared) });
+  try {
+    return await work({ prepared, signal: controller.signal, checkpoint: () => phases.checkpoint(), heldAt, say });
+  } finally {
+    const tornDown = phases.tornDown;
+    phases.finish();
+    clearInterval(refresher);
+    process.removeListener('exit', release);
+    dropSignals();
+    if (!tornDown) {
+      const step = beforeRelease ?? teardown;
+      if (step) { try { await step(prepared); } catch (error) { say(`before the release: ${error?.message ?? error}`); } }
+    }
+    if (held) lock.release();
+    say(`released after ${((Date.now() - heldAt) / 1000).toFixed(0)} s`);
+    if (!tornDown && afterRelease) { try { await afterRelease(prepared); } catch (error) { say(`after the release: ${error?.message ?? error}`); } }
+  }
+}
+
 /**
  * Warm while queued, hold for the shots only. Returns shoot's result. `warm()` returns anything; its `pages` (puppeteer
  * pages) are frozen once warm and thawed when the hold starts, and its `close()` runs after the hold (or after a failed
- * wait). `shoot({ ...warmed, signal, heldAt })` runs inside the hold. A `warm` that throws closes what it opened itself.
- * `place` (a job key) or `ticket` (a stamped ticket, capture-lock ticketAt) keeps a queue place across runs.
+ * wait). `shoot({ ...warmed, signal, heldAt, checkpoint })` runs inside the hold. A `warm` that throws closes what it
+ * opened itself. `place` (a job key) or `ticket` (a stamped ticket, capture-lock ticketAt) keeps a queue place across runs.
  * Every page is checked after the thaw (checkPage) and re-warmed (rewarmPage) when it lost its context; a page frozen
  * longer than `maxFrozenMinutes` (0: never) is checked while still queued, so its re-warm costs no hold time.
+ * The hold is withCaptureHold's: the cap and its yield, the optional `holdMinutes` budget and the grace are its phases
+ * (2026-11-02 audit S4: `holdMinutes` no longer defaults to 18, below the lock's cap; with none, the lock's cap applies).
  */
-export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes = 18, graceSeconds = 60, waitHours = 4,
+export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes = null, graceSeconds = 60, waitHours = 4,
   place = null, ticket = null, maxFrozenMinutes = 20, lock = createCaptureLock(), log = console.log, freeze = freezePage,
-  thaw = thawPage, check = checkPage, rewarm = rewarmPage, lockClass = null, holdCapMinutes = null, holdCapReason = null } = {}) {
+  thaw = thawPage, check = checkPage, rewarm = rewarmPage, lockClass = null, holdCapMinutes = null, holdCapReason = null,
+  capCheckMs = 30_000 } = {}) {
   if (typeof warm !== 'function' || typeof shoot !== 'function') throw new Error('runWarmHold needs warm() and shoot()');
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
   setBrowserGuardContext({ hold: label });
   const queuedAt = Date.now();
   const sessions = new Map(), frozenAt = new Map();
-  let warmed, current = null;
   // While queued, a page frozen past maxFrozenMinutes is woken, checked, re-warmed if it lost its warm state, and frozen
   // again (one page at a time; the hold waits for a check in progress before it thaws the pages itself).
   const maxFrozenMs = maxFrozenMinutes * 60_000;
@@ -245,28 +406,35 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
     if (healthTimer) clearInterval(healthTimer);
     await pageWork;
   };
-  // A signal ends the run cleanly: puppeteer's own SIGTERM handler closes the browser but leaves the process waiting in
-  // the queue (2026-10-22), so release, close and exit here.
-  const onSignal = async (signal) => {
-    say(`${signal}: releasing the lock and closing`);
-    lock.release();
-    await closeWarm(current, say);
-    process.exit(128 + (constants.signals[signal] ?? 15));
+  const thawAll = async (where) => {
+    for (const [page, session] of sessions) await thaw(page, session);
+    // A page that lost its warm state while frozen (a reload, a crash) is loaded again before shoot sees it.
+    for (const page of sessions.keys()) {
+      const state = await check(page);
+      if (state.ok) continue;
+      const started = Date.now();
+      say(`a page lost its warm state ${where} (${state.why}); re-warming it inside the hold`);
+      try {
+        await rewarm(page);
+        say(`re-warmed in ${((Date.now() - started) / 1000).toFixed(0)} s`);
+      } catch (error) {
+        say(`re-warm failed (${error?.message ?? error}); shoot gets the page as it is`);
+      }
+    }
   };
-  const SIGNALS = ['SIGTERM', 'SIGINT', 'SIGHUP'];
-  for (const signal of SIGNALS) process.once(signal, onSignal);
+  const freezeAll = async () => { for (const page of sessions.keys()) { try { sessions.set(page, await freeze(page)); } catch { /* closed or crashed */ } } };
   say('queued; warms once near the head of the queue');
   try {
-    warmed = await lock.acquire(waitHours * 3600 * 1000, {
-      place,
-      ticket,
-      lockClass,
-      holdCapMinutes,
-      holdCapReason,
+    return await withCaptureHold(async ({ prepared: warmed, signal, checkpoint, heldAt }) => {
+      await stopChecks();
+      await thawAll('at the thaw');
+      return shoot({ ...warmed, signal, heldAt, checkpoint });
+    }, {
+      label, lock, log, timeoutMs: waitHours * 3600 * 1000, place, ticket, lockClass, holdCapMinutes, holdCapReason, holdMinutes,
+      graceSeconds, capCheckMs,
       prepare: async () => {
         const warmStarted = Date.now();
         const result = await warm();
-        current = result;
         try {
           for (const page of result?.pages ?? []) {
             sessions.set(page, await freeze(page));
@@ -284,86 +452,21 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
           + `(${sessions.size} page(s) frozen); waiting for the lock`);
         return result;
       },
-    });
-  } catch (error) {
-    await stopChecks();
-    for (const signal of SIGNALS) process.removeListener(signal, onSignal);
-    await closeWarm(error?.prepared, say);
-    throw error;
-  }
-  await stopChecks();
-  const heldAt = Date.now();
-  say(`lock held after ${((heldAt - queuedAt) / 60_000).toFixed(1)} min in the queue`);
-  const release = () => lock.release();
-  process.once('exit', release);
-  const refresher = setInterval(() => lock.refresh(), 30_000);
-  refresher.unref();
-  const controller = new AbortController();
-  let alarm = null;
-  const arm = () => {
-    clearTimeout(alarm);
-    alarm = setTimeout(() => {
-      say(`hold limit: ${holdMinutes} min; asking shoot to stop`);
-      controller.abort(new Error(`hold limit ${holdMinutes} min`));
-    }, holdMinutes * 60 * 1000);
-  };
-  arm();
-  const thawAll = async (where) => {
-    for (const [page, session] of sessions) await thaw(page, session);
-    // A page that lost its warm state while frozen (a reload, a crash) is loaded again before shoot sees it.
-    for (const page of sessions.keys()) {
-      const state = await check(page);
-      if (state.ok) continue;
-      const started = Date.now();
-      say(`a page lost its warm state ${where} (${state.why}); re-warming it inside the hold`);
-      try {
-        await rewarm(page);
-        say(`re-warmed in ${((Date.now() - started) / 1000).toFixed(0)} s`);
-      } catch (error) {
-        say(`re-warm failed (${error?.message ?? error}); shoot gets the page as it is`);
-      }
-    }
-  };
-  // Past the hold cap with anyone waiting: freeze, give the lock up, re-queue, and thaw once it is held again.
-  const checkpoint = async () => {
-    if (typeof lock.checkpoint !== 'function') return { yielded: false };
-    return lock.checkpoint({
-      timeoutMs: waitHours * 3600 * 1000,
-      beforeYield: async () => {
-        clearTimeout(alarm);
-        for (const page of sessions.keys()) sessions.set(page, await freeze(page));
+      // a stop past its grace, a signal or a failed wait with warm resources: close them (the browser stops drawing)
+      teardown: async (warmed) => { await stopChecks(); await closeWarm(warmed, say); },
+      // the normal way out: nothing draws after the release (the pages are frozen again), the browser closes after it
+      beforeRelease: () => freezeAll(),
+      afterRelease: (warmed) => closeWarm(warmed, say),
+      onYield: async () => {
+        await freezeAll();
         say('hold cap reached with tickets waiting: pages frozen, lock given up, re-queued');
       },
-      afterResume: async () => {
+      onResume: async () => {
         say('lock held again after the hold-cap yield');
         await thawAll('after the hold-cap yield');
-        arm();
       },
     });
-  };
-  let closed = false;
-  try {
-    await thawAll('at the thaw');
-    const shooting = Promise.resolve().then(() => shoot({ ...warmed, signal: controller.signal, heldAt, checkpoint }));
-    // Past the limit and the grace, the browser is closed so nothing draws after the lock is gone.
-    const stopped = new Promise((done) => controller.signal.addEventListener('abort', done, { once: true }))
-      .then(() => sleep(graceSeconds * 1000)).then(() => 'grace');
-    const outcome = await Promise.race([shooting.then(() => 'done', () => 'done'), stopped]);
-    if (outcome === 'grace') {
-      say(`shoot still running ${graceSeconds} s past the limit: closing its browser before the release`);
-      closed = true;
-      await closeWarm(warmed, say);
-    }
-    return await shooting;
   } finally {
-    clearTimeout(alarm);
-    clearInterval(refresher);
-    process.removeListener('exit', release);
-    for (const signal of SIGNALS) process.removeListener(signal, onSignal);
-    // Nothing draws after the release: the pages are frozen again (the browser closes after it).
-    if (!closed) for (const page of sessions.keys()) { try { await freeze(page); } catch { /* closed or crashed */ } }
-    lock.release();
-    say(`released after ${((Date.now() - heldAt) / 1000).toFixed(0)} s`);
-    if (!closed) await closeWarm(warmed, say);
+    await stopChecks();
   }
 }
