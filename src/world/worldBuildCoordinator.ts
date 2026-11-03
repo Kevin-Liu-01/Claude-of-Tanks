@@ -115,8 +115,13 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   readonly lastRelease: ReleaseReceipt | null;
   loadModule(): Promise<WorldMapModule<World>>;
   enforceCacheBudget(): void;
-  /** A cached world released now (never the current one or one still building); false when there was none to release. */
+  /** A cached world released now (never the current one, one still building or one held); false when there was none to release. */
   releaseCached(id: string): boolean;
+  /**
+   * (2026-11-02 audit R1) Hold the world cached (or about to be cached) under `id` against eviction while an activation
+   * warms it; the returned release drops the hold (once) and lets the residency budget run again.
+   */
+  retain(id: string): () => void;
   beginBuild(
     mapId: string,
     onProgress?: ProgressListener | null,
@@ -231,11 +236,22 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     slice();
   };
 
+  // (2026-11-02 audit R1) the worlds an activation is warming: a world neither current nor building was evictable mid-warm,
+  // so another activation's budget could release it and the warm then activated a released world (mobile keeps one)
+  const holds = new Set<{ key: string }>();
+  const held = (id: string): boolean => {
+    for (const hold of holds) if (hold.key === id) return true;
+    return false;
+  };
+  const evictable = (id: string, world: World): boolean => (
+    world !== dependencies.getCurrentWorld() && !builds.has(id) && !held(id)
+  );
+
   const enforceCacheBudget = (): void => {
     if (!Number.isFinite(limits.worldScenes)) return;
     for (const [id, cached] of cache) {
       if (cache.size <= limits.worldScenes) break;
-      if (cached === dependencies.getCurrentWorld() || builds.has(id)) continue;
+      if (!evictable(id, cached)) continue;
       cache.delete(id);
       releaseWorld(id, cached);
     }
@@ -243,10 +259,19 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
 
   const releaseCached = (id: string): boolean => {
     const cached = cache.get(id);
-    if (!cached || cached === dependencies.getCurrentWorld() || builds.has(id)) return false;
+    if (!cached || !evictable(id, cached)) return false;
     cache.delete(id);
     releaseWorld(id, cached, true);
     return true;
+  };
+
+  const retain = (id: string): (() => void) => {
+    const hold = { key: id };
+    holds.add(hold);
+    return () => {
+      if (!holds.delete(hold)) return;
+      enforceCacheBudget();
+    };
   };
 
   const beginBuild = (
@@ -491,6 +516,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     loadModule,
     enforceCacheBudget,
     releaseCached,
+    retain,
     beginBuild,
     prefetch,
     cancelBackgroundExcept,

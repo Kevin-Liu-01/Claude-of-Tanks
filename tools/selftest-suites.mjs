@@ -1315,6 +1315,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liveHeightFieldProxy.selftest.mjs',
     'src/world/worldBuildCoordinator.selftest.mjs',
     'src/world/worldActivationRuntime.selftest.mjs',
+    'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',

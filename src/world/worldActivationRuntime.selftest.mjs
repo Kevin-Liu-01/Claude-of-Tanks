@@ -50,6 +50,8 @@ const coordinator = {
   async prefetch(mapId) { return this.cache.get(mapId) ?? null; },
   cancelledTo: undefined,
   cancelBackgroundExcept(mapId) { this.cancelledTo = mapId; },
+  // (2026-11-02 audit R1) an activation holds the world it warms against eviction
+  retain() { return () => {}; },
 };
 
 const events = [];

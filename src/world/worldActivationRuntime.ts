@@ -77,6 +77,45 @@ export interface WorldActivationOptions {
 
 type WorldSceneActivationOptions = Pick<WorldActivationOptions, 'services' | 'atmosphere'>;
 
+/**
+ * (2026-11-02 audit R1) An activation request's life: it resolves (cache or build), warms, then activates — or a later
+ * request (another ensure, a direct activate or switchMap) supersedes it first and it never presents. The entry
+ * barriers are Promise.all (battleEntryAcquisition.ts), so a failed sibling leaves its entry's ensure running while the
+ * next entry, the Studio or a capture starts its own: before this owner, whichever finished last became current.
+ */
+type ActivationRequestState = 'resolving' | 'warming' | 'activated' | 'superseded' | 'failed';
+const ACTIVATION_MOVES: Readonly<Record<ActivationRequestState, readonly ActivationRequestState[]>> = {
+  resolving: ['warming', 'superseded', 'failed'],
+  warming: ['activated', 'superseded', 'failed'],
+  activated: [],
+  superseded: [],
+  failed: [],
+};
+
+interface ActivationRequest {
+  readonly ticket: number;
+  readonly id: string;
+  state: ActivationRequestState;
+}
+
+/** The rejection a superseded ensure settles with: a later request owns the battlefield on screen. */
+export class WorldActivationSupersededError extends Error {
+  readonly superseded = true;
+  readonly mapId: string;
+  constructor(mapId: string) {
+    super(`Battlefield activation for ${mapId} was superseded by a later request`);
+    this.name = 'WorldActivationSuperseded';
+    this.mapId = mapId;
+  }
+}
+
+function moveActivationRequest(request: ActivationRequest, next: ActivationRequestState): void {
+  if (!ACTIVATION_MOVES[request.state].includes(next)) {
+    throw new Error(`world activation ${request.id}: ${request.state} cannot become ${next}`);
+  }
+  request.state = next;
+}
+
 type CoordinatorDependencies<World extends ActiveWorld> = Omit<
   WorldBuildCoordinatorDependencies<World>,
   'getCurrentWorld'
@@ -183,6 +222,16 @@ export function createWorldActivationRuntime<
   let skyMapId = options.initialMapId;
   let skyPresentationDirty = false;
   let skyEnvironmentDeferred = false;
+  // (2026-11-02 audit R1) the latest activation request: an ensure, a direct activate or a switchMap takes the next ticket
+  let activationTicket = 0;
+  let latestRequest: ActivationRequest | null = null;
+  const supersedeActivations = (): void => {
+    activationTicket += 1;
+    if (latestRequest && (latestRequest.state === 'resolving' || latestRequest.state === 'warming')) {
+      moveActivationRequest(latestRequest, 'superseded');
+    }
+    latestRequest = null;
+  };
 
   const coordinatorDependencies = options.coordinatorDependencies;
   let coordinator = options.coordinator;
@@ -264,7 +313,7 @@ export function createWorldActivationRuntime<
     options.setSun(skyConfig);
   };
 
-  const activate = (world: World, { services = true, atmosphere }: WorldSceneActivationOptions = {}): World => {
+  const presentWorld = (world: World, { services = true, atmosphere }: WorldSceneActivationOptions = {}): World => {
     options.swapSceneWorld(current?.group ?? null, world.group);
     current = world;
     dormant = false;
@@ -278,6 +327,12 @@ export function createWorldActivationRuntime<
     }
     coordinator.enforceCacheBudget();
     return world;
+  };
+
+  /** A direct activation is a request too: it supersedes any ensure still resolving or warming. */
+  const activate = (world: World, sceneOptions: WorldSceneActivationOptions = {}): World => {
+    supersedeActivations();
+    return presentWorld(world, sceneOptions);
   };
 
   const timingStages: readonly WorldActivationStage[] = [
@@ -476,10 +531,15 @@ export function createWorldActivationRuntime<
     }
     const baseId = mapId || pendingMapId;
     const id = activationOptions?.terrainVariant ? `${baseId}#${activationOptions.terrainVariant}` : baseId;
+    supersedeActivations();
+    const request: ActivationRequest = { ticket: activationTicket, id, state: 'resolving' };
+    latestRequest = request;
     coordinator.cancelBackgroundExcept(id);
     // another battlefield: the dormant one goes before this one builds (its memory is not held through the build's peak)
     releaseDormantExcept(id);
     const cached = cache.get(id) ?? null;
+    // (audit R1) the world stays resident while this request warms it: another activation's budget cannot release it
+    const releaseHold = coordinator.retain(id);
     const startedAt = now();
     const trace: WorldActivationTrace = {
       id,
@@ -489,19 +549,38 @@ export function createWorldActivationRuntime<
       stageIntervals: [{ stage: 'build', startTime: startedAt }],
     };
     const timer = createStageMarker(trace);
+    /**
+     * (audit R1) After every wait: a later request supersedes this one, which settles without presenting — with the world
+     * when that later request already presents this very world (a direct activation of it), else rejected.
+     */
+    const supersededBy = (world: World): boolean => {
+      if (request.ticket === activationTicket) return false;
+      if (request.state === 'resolving' || request.state === 'warming') moveActivationRequest(request, 'superseded');
+      if (current !== world) throw new WorldActivationSupersededError(id);
+      return true;
+    };
     try {
       const next = await resolveWorld(id, cached, trace, onProgress);
+      if (supersededBy(next)) {
+        timer.complete();
+        return next;
+      }
       timer.mark('build');
+      moveActivationRequest(request, 'warming');
       await warmWorldForActivation(next, activationOptions, timer.mark);
 
       await options.awaitInitialCloudWarm();
       await options.ensureCloudTexturesChunked?.(options.nextFrame);
+      if (supersededBy(next)) {
+        timer.complete();
+        return next;
+      }
       timer.mark('clouds');
 
       const needsServices = activationOptions?.services !== false
         && servicesMapId !== next.mapId;
       if (current !== next || dormant) {
-        activate(next, {
+        presentWorld(next, {
           services: activationOptions?.services !== false,
           atmosphere: activationOptions?.atmosphere,
         });
@@ -511,10 +590,12 @@ export function createWorldActivationRuntime<
         if (!activationOptions?.atmosphere && skyEnvironmentDeferred) restoreAtmosphere(next);
         if (needsServices) prepareServices(next);
       }
+      moveActivationRequest(request, 'activated');
       timer.mark('activate');
       timer.complete();
       return next;
     } catch (error) {
+      if (request.state === 'resolving' || request.state === 'warming') moveActivationRequest(request, 'failed');
       let detail = { name: 'Error', message: 'Unprintable activation error' };
       try {
         detail = error instanceof Error
@@ -523,6 +604,8 @@ export function createWorldActivationRuntime<
       } catch { /* arbitrary thrown values need not be printable */ }
       timer.fail(detail);
       throw error;
+    } finally {
+      releaseHold();
     }
   };
 
@@ -559,7 +642,11 @@ export function createWorldActivationRuntime<
       // A Frontline Assault variant of the same map satisfies the request: the
       // battle owner re-selects its map a few seconds in, and the garage staging
       // area may keep the trench build until the next standard battle loads.
-      if (current?.mapId === mapId) return current;
+      // (audit R1) it is a request for the battlefield on screen: an ensure still in flight never presents over it
+      if (current?.mapId === mapId) {
+        supersedeActivations();
+        return current;
+      }
       const cached = cache.get(mapId);
       return cached ? activate(cached) : ensure(mapId);
     },
