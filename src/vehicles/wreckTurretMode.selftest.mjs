@@ -7,7 +7,7 @@
 //  - a kill before the physics had loaded keeps the scripted arc only until an authority's pose arrives: the wreck asks
 //    for the physics and hands its turret to the body, so the turret drawn and the turret shells meet agree;
 //  - a restaged victim (the killcam) re-wrecked at a late age with its authority's pose declared first lies there, not
-//    where a local body would have settled it.
+//    where a local body would have settled it; the killcam's wreck receipt does the same for a restaged attacker.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { getSpec } from './specs.ts';
@@ -16,6 +16,7 @@ import * as pageLoader from './wreckTurretDriverLoader.ts';
 import { createTank } from './tankFactory.ts';
 import { createTankState } from '../sim/movement.ts';
 import { wreckTurretProfile } from '../sim/wreckTurrets.ts';
+import { recordKillcamWreck, restoreKillcamWreck } from '../game/killcamWreckReceipt.ts';
 
 const spec = getSpec('m1a1_abrams_hc');
 const profile = wreckTurretProfile(spec);
@@ -136,6 +137,19 @@ assert.equal(pageLoader.wreckTurretDriverReady(), false, 'nothing has loaded the
   t.visual.syncFromState(t.state, 0, 60);
   const back = worldOf(t.turret).distanceTo(target);
   assert.ok(back < 1, `the re-wrecked turret lies where its authority had it (${back.toFixed(2)} m off)`);
+
+  // the killcam's receipt (game/killcamWreckReceipt.ts) for any restaged wreck, an attacker that cooked off after firing
+  // too: read before the lift, it comes back a cook-off at its authority's pose (the attacker's re-wreck was plain, its
+  // turret thrown and settled by a local body by its seat)
+  const receipt = recordKillcamWreck(t.visual);
+  assert.equal(receipt.pop, true, 'the receipt reads the cook-off');
+  t.visual.resetDestroyed();
+  t.visual.syncFromState(t.state, 0, 60);
+  restoreKillcamWreck(t.visual, receipt);
+  t.visual.syncFromState(t.state, 0, 60);
+  assert.equal(t.visual.wreckState(), 'cookoff', 'and the restored wreck is one');
+  const restored = worldOf(t.turret).distanceTo(target);
+  assert.ok(restored < 1, `its turret lies where its authority had it (${restored.toFixed(2)} m off)`);
 }
 
 console.log('wreckTurretMode.selftest: one declared turret mode; an authority declared before the kill holds, a failed physics load is reported and retried, a scripted turret hands over to its authority, a re-wreck lies where its authority had it');

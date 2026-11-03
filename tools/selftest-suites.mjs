@@ -1900,6 +1900,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamGhostPolicy.selftest.mjs',
     'src/game/killcamPresentation.selftest.mjs',
     'src/game/killcamObserverInput.selftest.mjs',
+    'src/game/killcamWreckReceipt.selftest.mjs', // 2026-11-02 audit F10: a restaged wreck, victim or attacker, keeps its look and its authority's turret pose
     // watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig
     'src/game/watchController.selftest.mjs',
     // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
