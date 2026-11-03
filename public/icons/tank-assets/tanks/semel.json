@@ -855,15 +855,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25386,
-      "sha256": "101002bac42729d1e29a7e38e5c1d5940f4c42be87bba9f93daa340ff23783d7",
+      "bytes": 27214,
+      "sha256": "24a5b61f5f86a6e6e5a32430677300ee903faecb95f77193746438d96a73f62a",
       "thumbnail": {
         "file": "thumbs/semel_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10504,
-        "sha256": "54d1b3722d616913c69b511471307b48f13d61fe1ffe11076f3d99a490b650a7"
+        "bytes": 11186,
+        "sha256": "d0ce527cb919c9fc184e58769a8657cd7151957aee305484406e19f836bcb837"
       }
     },
     "top": {
@@ -871,16 +871,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 8982,
-      "sha256": "17173fc7759e1c5b2779de2997961b883d56dd56a60841525b07d7af826f6caf"
+      "bytes": 11240,
+      "sha256": "5134434b7dc472c307addc8172c9579a75ef63a49ccd755ac2efdaab93c6aaeb"
     },
     "side": {
       "file": "semel_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10786,
-      "sha256": "33c362a1b95d38f4f2b9cb82f983012200ef140db30a5071e2ffb919278c52bb"
+      "bytes": 11840,
+      "sha256": "b35b0c7360e2cd33e06c0f6ed0db537bbe2736eb478f20c7f8806866480faecd"
     },
     "topSilhouette": {
       "file": "semel_top_silhouette.png",
@@ -903,24 +903,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23656,
-      "sha256": "094772387cddb8113ebba15646c13c20fb99b69ecb3c2efd13c6611e2f5833b3"
+      "bytes": 25952,
+      "sha256": "1d22728f453826f097ba4786d65ab9995d2587b3a01c240923f6f5ac52d59fa2"
     },
     "modulesSide": {
       "file": "semel_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22832,
-      "sha256": "f8f2d4ec4a0c009d662eb37f8e090af4abc96b273546f1ac7a7dc09af2d18a0f"
+      "bytes": 24990,
+      "sha256": "0ea4d7ef93d9cf125f3e9bf23b3da1c9c57847379693843af22d79fe09c83899"
     },
     "crewSide": {
       "file": "semel_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20904,
-      "sha256": "3179d21a9df93a9d7905d81ed665ebc5f5066564cab21f4c680b95b75202a018"
+      "bytes": 22770,
+      "sha256": "2d1b43833b3c314e6df244997c9d64e59d96464822981083234b8c7f8a5547b6"
     },
     "markings": {
       "file": "semel_markings.png",
