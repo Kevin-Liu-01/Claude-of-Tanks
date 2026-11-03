@@ -2492,6 +2492,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckWorkerFallback.selftest.mjs', // 2026-10-09: a failed or silent wreck worker never fails the props build
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
+    'src/world/felledTrees.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',

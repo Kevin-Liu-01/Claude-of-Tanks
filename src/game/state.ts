@@ -451,6 +451,8 @@ interface SoloWorld {
     out: SoloObstacle[],
   ) => SoloObstacle[];
   getConcealment?(): ConcealerDisc[];
+  /** (map.ts) Stand every prop, tree and canopy the last battle brought down: the world's own destruction reset. */
+  resetDestructibles?(): void;
   /** The battle's ground overlay for the drawn ground and the decals to follow (world/map.ts; crater-render-spec §B). */
   bindGroundOverlay?(overlay: TerrainDeformation | null): void;
   /** DST-04: the map's pre-placed craters (world/mapCraters.ts). */
@@ -1292,7 +1294,10 @@ export function setupBattle(
   const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
   game._provingRange = provingLayout;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
-  restoreConcealers(world.getConcealment ? world.getConcealment() : null);
+  // (2026-11-02 audit M9) a world that owns its felled trees (map.ts: vegetation's felledTrees.ts) stands their canopies
+  // with them in its resetDestructibles, before the battle (soloBattleStartRuntime.ts); a bare collision world has no
+  // such owner and its canopies are restored here
+  if (!world.resetDestructibles) restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
     rules: game.ruleset.destruction, obstacles: world.getObstacles(), colliders: worldColliders,

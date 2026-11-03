@@ -12,7 +12,7 @@ import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.t
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone, type HeightField, type TerrainPlacementSampler } from './terrain.ts';
-import { setToppleAxis, settledToppleAngle } from './topple.ts';
+import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
@@ -9271,83 +9271,30 @@ function* vegetationBuildSteps(
   // (props.ts crushProp pattern) and writes it through the existing near/far
   // slot plumbing (writeTreeSlot handles the ranged GPU uploads), so the
   // felled trunk persists as set dressing exactly where it dropped.
-  interface TreeCrushAnimation {
-    t: TreeRecord;
-    base: THREE.Matrix4;
-    x: number;
-    y: number;
-    z: number;
-    ax: number;
-    az: number;
-    u: number;
-    maxAng: number;
-  }
-  const treeCrushAnims: TreeCrushAnimation[] = [];
-  const _tcq = new THREE.Quaternion();
-  const _tcax = new THREE.Vector3();
-  const _tcm1 = new THREE.Matrix4();
-  const _tcm2 = new THREE.Matrix4();
+  // (2026-11-02 audit M9) the felled-tree transition (felledTrees.ts): the tree, its trunk's records and its canopy's
+  // concealment discs fall and stand together; its upright pose is its placement before any crater lift; one driver a
+  // frame advances a fall (the Studio's timeline, else this update)
+  const felledTrees = createFelledTrees<TreeRecord>({
+    trees, records: treeObstacles, concealers, heightField,
+    write: (t) => {
+      if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
+      if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
+    },
+    poseChanged: () => { nearTierHeightVersion++; },
+    standingChanged: () => { nearCullStale = true; },
+  });
   // `settled` (multiplayer world state, 2026-10-01): a trunk the authority had already felled before this viewer saw it
   // (a late joiner, a reconnect, the persistent destroyed list) starts at the end of its fall — the next update writes
   // the final pose once and retires the animation — so nothing falls at the wrong time and nothing sounds.
   function crushTree(ob: TreeObstacle, dx: number, dz: number, settled = false): boolean {
-    const t = trees[ob.treeIdx];
-    if (!t || t.crushed) return false;
-    if (!t.uprightMat) t.uprightMat = t.mat.clone();
-    t.crushed = true;
-    nearCullStale = true; // trees perf: a falling tree draws from the next update wherever it stood (nearTreeInVolume)
-    ob.crushed = true;
-    ob.dead = true;
-    setToppleAxis(_tcax, dx, dz);
-    treeCrushAnims.push({
-      t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
-      ax: _tcax.x, az: _tcax.z, u: settled ? 1.1 : 0,
-      maxAng: settledToppleAngle(heightField, t.x, ob.min[1], t.z, dx, dz,
-        t.fallH!, t.fallR!),
-    });
-    return true;
+    return felledTrees.fell(ob, dx, dz, settled);
   }
   function resetToppled(): void {
-    nearTierHeightVersion++;
-    treeCrushAnims.length = 0;
-    nearCullStale = true; // trees perf: the righted trees are culled again from the next update
+    felledTrees.restoreAll();
+    // the hulls' press on the trunks starts over (the press timers, read by both drivers' crush step)
     for (const ob of treeObstacles) {
-      ob.crushed = false;
-      ob.dead = false;
       ob._pressS = 0;
       ob._pressT = -1e9;
-      const t = trees[ob.treeIdx];
-      if (!t || !t.crushed || !t.uprightMat) continue;
-      t.crushed = false;
-      t.mat.copy(t.uprightMat);
-      if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
-      if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
-    }
-  }
-  function updateTreeCrush(dt: number): void {
-    nearTierHeightVersion++; // a falling trunk's matrix is rewritten each tick
-    for (let k = treeCrushAnims.length - 1; k >= 0; k--) {
-      const a = treeCrushAnims[k];
-      a.u = Math.min(a.u + dt / 1.15, 1.1);
-      const e = Math.min(a.u / 0.82, 1);
-      // Terrain-seated fall along the ram direction + a small settle bounce.
-      let ang = a.maxAng * e * e * (3 - 2 * e);
-      if (a.u > 0.82) {
-        ang = a.maxAng - 0.035 * Math.sin((a.u - 0.82) * 17) * Math.exp(-(a.u - 0.82) * 5.5);
-      }
-      _tcax.set(a.ax, 0, a.az).normalize();
-      _tcq.setFromAxisAngle(_tcax, ang);
-      a.t.mat.makeTranslation(a.x, a.y, a.z)
-        .multiply(_tcm1.makeRotationFromQuaternion(_tcq))
-        .multiply(_tcm2.makeTranslation(-a.x, -a.y, -a.z))
-        .multiply(a.base);
-      if (a.t.slot >= 0) {
-        writeTreeSlot(nearMeshes[a.t.species][a.t.variant], a.t.slot, a.t, a.t.fade);
-      }
-      if (a.t.fslot >= 0) {
-        writeTreeSlot(farMeshes[a.t.species][a.t.fv], a.t.fslot, a.t, 0);
-      }
-      if (a.u >= 1.1) treeCrushAnims.splice(k, 1); // final pose persists in t.mat
     }
   }
 
@@ -9542,7 +9489,7 @@ function* vegetationBuildSteps(
     uWindTime.value += dt;
     uLeafTransmission.value = (engineCtx.scene?.userData.lightModel as { mode?: string } | undefined)?.mode === 'physical'
       ? LEAF_TRANSMISSION : 0;
-    if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
+    felledTrees.advance(dt, 'frame'); // gameplay_feel r6 topples (yields to the Studio's timeline when it drives them)
     uCamPos.value.copy(camPos);
     if (camFwd) uCamFwd.value.copy(camFwd);
     updateNearTierShadowReach(camPos);
@@ -9932,7 +9879,7 @@ function* vegetationBuildSteps(
     return batch.trees.length;
   }
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, groundCoverSealSteps, treeObstacles, concealers,
-    crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, advanceToppled: (dt: number) => felledTrees.advance(dt, 'timeline'), _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _seeThrough: () => ({ on: seeThrough, sweeps: occlusionSweeps, sniperTarget: sniperFadeTarget, crownReach: uCrownNearReach.value,
       shrubReach: uShrubNearReach.value, nearSee: uCotNearSee.value }),
     _woodsMask: woodsMask,

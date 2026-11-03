@@ -6,6 +6,7 @@ import { createDeformedHeightField, type TerrainDeformation } from '../sim/terra
 import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { instantiateWorldKernels, type WorldKernelModule } from './wasmWorldKernels.ts';
 import type { StructureSupportField, SupportHeightField } from '../sim/structureSupport.ts';
+import { fellConcealersAt } from '../sim/spotting.ts';
 
 /**
  * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
@@ -306,6 +307,8 @@ export function createHeadlessCollisionWorld(
       const same = obstacle.propIdx != null ? byProp!.get(obstacle.propIdx) : byTree!.get(obstacle.treeIdx!);
       // (2026-11-02 audit M9) the page world's transition, on every record of the prop or tree (collision.ts)
       if (same) setCrushedRecords(same.obstacles, same.colliders, true);
+      // and a felled tree's canopy stops concealing with it, as the page world's felled trees own it (felledTrees.ts)
+      if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(concealers, obstacle.shape2.cx, obstacle.shape2.cz);
     }
     return true;
   }
