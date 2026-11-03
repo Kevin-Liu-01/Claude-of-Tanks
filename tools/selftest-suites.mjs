@@ -1537,6 +1537,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    // 2026-11-02 audit M8: wire 10's TUMBLING and STACKED flags; the clients' hull copies split tank contacts as the authority
+    'src/mp/match/hullBodyRow.selftest.mjs',
     'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/migrationStore.selftest.mjs', // 242 security round 2 (3a55e00a60); in no suite since

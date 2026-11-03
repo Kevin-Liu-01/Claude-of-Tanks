@@ -320,12 +320,23 @@ function ensureBodyState(state: TankBodyState) {
   });
 }
 
+/**
+ * The hull bears on another hull's body: it rests on a roof (the contact pass's restSupportY), the pass held it this tick
+ * (dynamicSupport), or it rides more than STACK_ELEVATED_M above its own static support. A snapshot row carries the answer
+ * (ENTITY_FLAGS.STACKED, wire 10; src/mp/match/hullBodyRow.ts): a client's copy of another hull runs no contact pass and
+ * has no support cache of its own (audit M8, 2026-11-02).
+ */
+export function hullBearsOnBody(state: {
+  pos: { y: number }; _sup?: { y: number; top?: number }; _body?: { dynamicSupport?: boolean; restSupportY?: number };
+}): boolean {
+  return state._body?.dynamicSupport === true || Number.isFinite(state._body?.restSupportY) ||
+    state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+}
+
 function isDynamicBodyContact(entity: TankBodyEntity): boolean {
   const state = entity.state;
-  return state.grounded === false || state.overturned === true ||
-    state._body?.tumbling === true || state._body?.dynamicSupport === true ||
-    Number.isFinite(state._body?.restSupportY) ||
-    state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+  return state.grounded === false || state.overturned === true || state._body?.tumbling === true ||
+    hullBearsOnBody(state);
 }
 
 /** How deep an upper hull's bottom may sit in a lower roof and still be a landing on it (see STACK_ENTRY_M). */

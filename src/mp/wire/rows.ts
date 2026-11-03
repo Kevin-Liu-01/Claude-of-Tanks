@@ -9,7 +9,7 @@ import { WireError, utf8ByteLength } from './bytes.ts';
 import {
   ENTITY_FLAG_BITS, MAX_ENTITIES, MAX_ERA_PER_ROW, MAX_POS_REL_MM, MAX_TILT_REL_UNITS, ROW_GROUP, ROW_GROUP_MASK_MAX,
   STATUS_FLAGS_SHIFT, STATUS_GUN_RELOAD_KIND_SHIFT, STATUS_GUN_RELOAD_MIRRORS, STATUS_RELOAD_KIND_SHIFT,
-  STATUS_SHELL_SLOT_SHIFT, WRECK_BODY_Q_SCALE,
+  STATUS_SHELL_SLOT_SHIFT, STATUS_WORD_MAX, WRECK_BODY_Q_SCALE,
 } from './constants.ts';
 import type { EntityRow, EntityRowPatch, WreckBodyRow } from './messages.ts';
 import { angleUnitsDelta } from './quantize.ts';
@@ -271,7 +271,7 @@ export function writeEntityRowDelta(writer: ByteWriter | null, row: EntityRow, b
     if (mask & ROW_GROUP.GUN_RELOAD) bytes += 4;
     if (mask & ROW_GROUP.MAGAZINE) bytes += 2;
     if (mask & ROW_GROUP.AMMO) bytes += varintBytes(row.ammo0) + varintBytes(row.ammo1) + varintBytes(row.ammo2);
-    if (mask & ROW_GROUP.STATUS) bytes += 2;
+    if (mask & ROW_GROUP.STATUS) bytes += varintBytes(status);
     if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) bytes += indexListBytes(row.eraSpent, eraAdd ? base!.eraSpent : null);
     if (mask & ROW_GROUP.AGE) bytes += varintBytes(packetTick - row.tick!);
     if (mask & ROW_GROUP.AUXILIARY) { const length = utf8ByteLength(auxiliary); bytes += varintBytes(length) + length; }
@@ -294,7 +294,7 @@ export function writeEntityRowDelta(writer: ByteWriter | null, row: EntityRow, b
   if (mask & ROW_GROUP.GUN_RELOAD) { writer.u16(row.gunReload); writer.u16(row.gunReloadTotal); }
   if (mask & ROW_GROUP.MAGAZINE) { writer.u8(row.magazineRounds); writer.u8(row.magazineCapacity); }
   if (mask & ROW_GROUP.AMMO) { writer.varint(row.ammo0); writer.varint(row.ammo1); writer.varint(row.ammo2); }
-  if (mask & ROW_GROUP.STATUS) writer.u16(status);
+  if (mask & ROW_GROUP.STATUS) writer.varint(status);
   if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) writeIndexListSkipping(writer, row.eraSpent, eraAdd ? base!.eraSpent : null, MAX_ERA_PER_ROW);
   if (mask & ROW_GROUP.AGE) writer.varint(packetTick - row.tick!);
   if (mask & ROW_GROUP.AUXILIARY) writer.string(auxiliary, 512);
@@ -398,7 +398,7 @@ export function writeEntityRowPatch(writer: ByteWriter, patch: EntityRowPatch, b
   if (mask & ROW_GROUP.GUN_RELOAD) { writer.u16(fields.gunReload!); writer.u16(fields.gunReloadTotal!); }
   if (mask & ROW_GROUP.MAGAZINE) { writer.u8(fields.magazineRounds!); writer.u8(fields.magazineCapacity!); }
   if (mask & ROW_GROUP.AMMO) { writer.varint(fields.ammo0!); writer.varint(fields.ammo1!); writer.varint(fields.ammo2!); }
-  if (mask & ROW_GROUP.STATUS) writer.u16(statusFromPatch(patch));
+  if (mask & ROW_GROUP.STATUS) writer.varint(statusFromPatch(patch));
   if (mask & (ROW_GROUP.ERA_ADD | ROW_GROUP.ERA_RESET)) writeIndexList(writer, patch.era || [], MAX_ERA_PER_ROW);
   if (mask & ROW_GROUP.AGE) {
     const tick = fields.tick;
@@ -457,7 +457,9 @@ export function readEntityRowPatch(reader: ByteReader, resolveBase: (entityId: n
   if (mask & ROW_GROUP.MAGAZINE) { fields.magazineRounds = reader.u8(); fields.magazineCapacity = reader.u8(); }
   if (mask & ROW_GROUP.AMMO) { fields.ammo0 = reader.count(0xffff); fields.ammo1 = reader.count(0xffff); fields.ammo2 = reader.count(0xffff); }
   if (mask & ROW_GROUP.STATUS) {
-    const status = reader.u16();
+    // wire 10: a varint (TUMBLING and STACKED took the word past 16 bits)
+    const status = reader.varint();
+    if (status > STATUS_WORD_MAX) throw new WireError('range', `status word out of range: ${status}`);
     Object.assign(fields, statusFields(status));
     mirrors = (status & STATUS_GUN_RELOAD_MIRRORS) !== 0;
   }

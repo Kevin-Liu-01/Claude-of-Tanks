@@ -26,6 +26,7 @@ import {
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
 import { applyMovementCheckpoint } from './movementCheckpoint.ts';
+import { applyHullBodyRowFlags } from './hullBodyRow.ts';
 import { publishedTrackContact } from '../../sim/trackContact.ts';
 import { lerpAngle } from './interpolation.ts';
 import type { PredictionControl } from './inputStream.ts';
@@ -157,7 +158,8 @@ const REST_HORIZONTAL_DEADZONE_M = 0.03;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_ANGLE_DEADZONE_RAD = 0.0035;
 const REST_YAW_RATE_RAD_S = 0.0035;
-const ACTIVE_BODY_FLAGS = ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING;
+/** The authority hull is in flight or in its rigid phase (wire 10 names a plain tumble too, as simAtRest reads it). */
+const ACTIVE_BODY_FLAGS = ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING | ENTITY_FLAGS.TUMBLING;
 /** Tick poses kept for the display blend (the replay window is 24 ticks). */
 const POSE_RING = 32;
 
@@ -236,12 +238,9 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.visualRoll = dequantizeAngle(row.roll);
   state.turretYaw = dequantizeAngle(row.turretYaw);
   state.gunPitch = dequantizeAngle(row.gunPitch);
-  setHullGrounded(state, !(row.flags & ENTITY_FLAGS.AIRBORNE));
-  // the row carries the rigid phase's two sub-states, not a plain tumble: the viewer checkpoint restores the true bit
-  // right after (restoreCheckpoint); without one, the hull holds the mode those two flags imply (hullBodyMode.ts)
-  const overturned = !!(row.flags & ENTITY_FLAGS.OVERTURNED);
-  const autoRighting = !!(row.flags & ENTITY_FLAGS.AUTO_RIGHTING);
-  restoreHullBodyMode(state, overturned, overturned || autoRighting, autoRighting);
+  // ground contact and the body mode, the rigid phase itself included (wire 10, hullBodyRow.ts); the viewer checkpoint
+  // restores them again right after (restoreCheckpoint)
+  applyHullBodyRowFlags(state, row.flags);
   state._prevSpeed = state.speed;
   // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
   // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's
@@ -710,6 +709,13 @@ export class LocalPredictor {
     target.verticalSpeed = source.verticalSpeed;
     setHullGrounded(target, source.grounded);
     restoreHullBodyMode(target, source.overturned, source._body.tumbling, source._body.autoRighting);
+    // the tank contacts' support terms (tankBodyContacts.ts hullBearsOnBody): the battle's prediction world judges the own
+    // hull's stacks on this copy, whose own support cache was never filled (audit M8: it read the origin's, so the own
+    // hull counted as stacked anywhere above 0.5 m of world height)
+    target._sup.y = source._sup.y;
+    target._sup.top = source._sup.top;
+    target._body.dynamicSupport = source._body.dynamicSupport;
+    target._body.restSupportY = source._body.restSupportY;
     target.landingImpactMps = source.landingImpactMps;
     target.slopeBlocked = source.slopeBlocked;
     target.yawRate = source.yawRate;

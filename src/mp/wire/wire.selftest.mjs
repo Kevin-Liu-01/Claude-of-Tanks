@@ -4,7 +4,7 @@ import {smokeScreenSummary} from '../../sim/smokeScreen.ts';
 import {AUXILIARY_INVENTORY} from '../../vehicles/auxiliaryInventory.generated.ts';
 import assert from 'node:assert/strict';
 import {
-  ACTION_BIT_MASK, CLOSE_REASON, CLOSE_REASON_NAMES, ENTITY_FLAGS, EVENT_KIND_NAMES, MAX_ENTITIES, MAX_MESSAGE_BYTES,
+  ACTION_BIT_MASK, CLOSE_REASON, CLOSE_REASON_NAMES, ENTITY_FLAGS, ENTITY_FLAG_BITS, EVENT_KIND_NAMES, MAX_ENTITIES, MAX_MESSAGE_BYTES,
   MESSAGE_TYPE, NO_ENTITY, NO_SEAT, NO_TICK, PHASE, ROW_GROUP, SHELL_TYPE_NAMES, TEAM, VERDICT, VIEWER_EQUIPMENT,
   VIEWER_MODULES, WIRE_VERSION, WireError,
   applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage, peekMessageType,
@@ -59,7 +59,7 @@ function randomRow(entityId, options = {}) {
     gunReloadKind: distinct ? int(0, 3) : reloadKind,
     magazineRounds: int(0, 12), magazineCapacity: int(0, 12), shellSlot: int(0, 2),
     ammo0: int(0, 750), ammo1: int(0, 750), ammo2: int(0, 750),
-    flags: int(0, 511),
+    flags: int(0, (1 << ENTITY_FLAG_BITS) - 1),
     eraSpent: [],
   };
   if (rng() < 0.3) {
@@ -147,7 +147,7 @@ function evolveFrame(frame, tick) {
       next.tick = rng() < 0.7 ? tick : Math.max(row.tick, tick - int(1, 4));
     }
     if (rng() < 0.1) { next.x += 40000; }
-    if (rng() < 0.2) { next.hp = int(0, next.maxHp); next.flags ^= 1 << int(0, 8); }
+    if (rng() < 0.2) { next.hp = int(0, next.maxHp); next.flags ^= 1 << int(0, ENTITY_FLAG_BITS - 1); }
     if (rng() < 0.2) { next.reload = int(0, 3000); if (next.gunReload === row.reload) next.gunReload = next.reload; }
     if (rng() < 0.1) { next.gunReload = int(0, 3000); next.gunReloadKind = int(0, 3); }
     if (rng() < 0.15) { next.eraSpent = [...new Set([...next.eraSpent, int(0, 2400)])].sort((a, b) => a - b); }

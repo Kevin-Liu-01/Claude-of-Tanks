@@ -114,9 +114,9 @@ export function resetHullBodyMode(state: HullBodyState): void {
 }
 
 /**
- * Restore the mode from the authority's bits (the viewer checkpoint, or a snapshot row's OVERTURNED and AUTO_RIGHTING
- * flags with `tumbling` = either of them). The bits of a legal authority mode restore it exactly; any other combination
- * keeps its rigid phase, so a restored hull never holds a dead end either.
+ * Restore the mode from the authority's bits (the viewer checkpoint, or a snapshot row's TUMBLING, OVERTURNED and
+ * AUTO_RIGHTING flags: src/mp/match/hullBodyRow.ts, wire 10). The bits of a legal authority mode restore it exactly; any
+ * other combination keeps its rigid phase, so a restored hull never holds a dead end either.
  */
 export function restoreHullBodyMode(
   state: HullBodyState, overturned: boolean, tumbling: boolean, autoRighting: boolean,

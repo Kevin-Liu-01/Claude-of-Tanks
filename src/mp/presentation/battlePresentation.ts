@@ -22,7 +22,6 @@ import type { CombatState } from '../../sim/damage.ts';
 import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
 import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
-import { restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
@@ -43,6 +42,7 @@ import {
 } from '../wire/index.ts';
 import type { RosterEntry, TeamId, VerdictId, WireEvent } from '../wire/index.ts';
 import { createEntitySample, decodeRow } from '../match/interpolation.ts';
+import { applyPresentedHullRowFlags } from '../match/hullBodyRow.ts';
 import type { EntitySample, ShellSample } from '../match/interpolation.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
@@ -812,11 +812,9 @@ export function createBattlePresentation({
     }
     state.pos.set(sample.x * POS_SCALE, sample.y * POS_SCALE, sample.z * POS_SCALE);
     state.verticalSpeed = sample.vy;
-    setHullGrounded(state, (sample.flags & ENTITY_FLAGS.AIRBORNE) === 0);
-    // the rigid phase's two sub-states ride the row, a plain tumble does not (hullBodyMode.ts restores a legal mode)
-    const overturned = (sample.flags & ENTITY_FLAGS.OVERTURNED) !== 0;
-    const autoRighting = (sample.flags & ENTITY_FLAGS.AUTO_RIGHTING) !== 0;
-    restoreHullBodyMode(state, overturned, overturned || autoRighting, autoRighting);
+    // ground contact, the body mode and the stack, as the authority judged them (wire 10): the prediction world's tank
+    // contacts read them
+    applyPresentedHullRowFlags(state, sample.flags);
     state._ride.y = sample.y;
     state._ride.v = sample.vy;
     state.yaw = sample.yaw;

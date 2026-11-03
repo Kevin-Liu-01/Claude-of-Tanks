@@ -113,12 +113,12 @@ present groups in bit order:
 | 10 | GUN_RELOAD | 4 | remaining, total of the gun channel; absent when the status mirror bit is set |
 | 11 | MAGAZINE | 2 | rounds `u8`, capacity `u8` (the reticle's multi-round indicator) |
 | 12 | AMMO | 3–6 | three varints |
-| 13 | STATUS | 2 | `u16`: bits 0–1 reloadKind, 2–3 gunReloadKind, 4–5 shellSlot, 6 gunReloadMirrors, 7–15 `ENTITY_FLAGS` |
+| 13 | STATUS | 1–3 | `varint` (wire 10; `u16` before): bits 0–1 reloadKind, 2–3 gunReloadKind, 4–5 shellSlot, 6 gunReloadMirrors, 7–17 `ENTITY_FLAGS` (bit 16 TUMBLING, the hull's rigid phase; bit 17 STACKED, the hull bearing on another hull) |
 | 14 | ERA_ADD | var | index list of ERA cassettes spent since the baseline |
 | 15 | ERA_RESET | var | index list replacing the spent set (keyframes; a revive) |
 | 16 | AGE | var | `varint` packet tick − the tick the row was captured at; present only when the row predates its packet (protocol 2, P3b interest tiers) |
 
-A keyframe row carries groups 0, 2, 3, 4, 6–9, 11–13 (44 B for a typical
+A keyframe row carries groups 0, 2, 3, 4, 6–9, 11–13 (43 B for a typical
 tank), plus GUN_RELOAD when the gun channel differs from the main reload
 channel and ERA_RESET when cassettes are spent. A delta row carries only the
 groups that changed against the baseline row (a tank driving on rough ground
@@ -239,3 +239,16 @@ Nothing else in the layout moved. The snapshot encoder writes the same bytes fro
 (`codec.ts encodeSnapshotFrame`, `rows.ts writeEntityRowDelta`), and a client merges sorted patches into its baseline
 without maps (`applySnapshotPacket`), with the same frames. Receipts: `eventPayload.selftest.mjs`, and in
 `wire.selftest.mjs` the direct encoder against the packet path and the merged apply against the general algorithm.
+
+### The tumbling and stacked row flags (wire 10, 2026-11-02, audit M8)
+
+`WIRE_VERSION` 10, `PROTOCOL_VERSION` 11: `ENTITY_FLAGS` gains `TUMBLING` (bit 9), the hull's rigid phase
+(`src/sim/hullBodyMode.ts`; `OVERTURNED` and `AUTO_RIGHTING` are its sub-states), and `STACKED` (bit 10), the hull
+bearing on another hull (`tankBodyContacts.ts hullBearsOnBody`: a roof rest, the contact pass's support, or riding above
+its own static support). The row's STATUS word, now 18 bits, is a varint (1 byte for a row with no flags, 2 up to
+`AIRBORNE`, 3 with a body-mode or stack bit; the `u16` took 2 always). Before, a client rebuilt the tumble as
+overturned-or-righting and judged a stack from a support cache its copy of the hull never filled (zero, from the copy's
+creation at the origin), so the prediction world's tank contacts and the authority's split the same pair: a plain tumble
+or a roof rest below 0.5 m of world height was a supported hull to the client, and any hull standing higher was a stack,
+hill traffic included. `src/mp/match/hullBodyRow.ts` packs the bits on the authority and restores them onto every client
+copy. Receipt: `src/mp/match/hullBodyRow.selftest.mjs`.
