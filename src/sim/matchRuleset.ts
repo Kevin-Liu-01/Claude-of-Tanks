@@ -1365,10 +1365,11 @@ const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
 });
 
 // Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
-// realistic modes (Standard, Capture the Flag, Zone Control, Realistic) keep the vehicle's own loadout; every special
-// and arcade mode plays unlimited rounds — the AC-130's escorts excepted, whose rounds are what the gunship's airdrop is
-// for (state.ts and the authority refill only the gunship there). Unlimited rounds turn every cache into a repair
-// (cacheHealChance): an ammunition cache could never be taken.
+// realistic modes (Standard, Capture the Flag, Zone Control, Realistic) and Drone (owner 2026-11-02: "drone mode
+// shouldnt have infinite ammo") keep the vehicle's own loadout; every other special and arcade mode plays unlimited
+// rounds — the AC-130's escorts excepted, whose rounds are what the gunship's airdrop is for (state.ts and the authority
+// refill only the gunship there). Unlimited rounds turn every cache into a repair (cacheHealChance): an ammunition cache
+// could never be taken.
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
   standard: STANDARD,
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
@@ -1532,7 +1533,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, ammo: 'unlimited', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true, equipmentBan: SCOUTING_OFF,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
