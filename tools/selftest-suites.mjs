@@ -1848,6 +1848,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.wedgeRelease.selftest.mjs',
     // 2026-11-02 audit M7: the drive owners, doctrine starts and drive layers run from declared tables in the old order
     'src/game/ai.driveOwner.selftest.mjs',
+    // 2026-11-02 audit M7: every mode change runs the exit actions of the mode it leaves (a flank's count, a cover roll)
+    'src/game/ai.modeExit.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

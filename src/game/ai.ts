@@ -2369,7 +2369,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     flankIndex = 0;
     flankUntilS = timeS + FLANK_TIMEOUT_S;
-    mode = 'flank';
+    setMode('flank');
   }
 
   /** Aspect angle between the target's nose and the bearing target→self. */
@@ -3642,7 +3642,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function driveRememberedContact(input: AiInput, timeS: number): void {
     if (timeS - lastSeenAtS < TARGET_MEMORY_S + 6 &&
         !chaseToXZ(input, lastSeen.x, lastSeen.z, 0.9)) return;
-    mode = 'patrol';
+    setMode('patrol');
     drivePatrol(input);
   }
 
@@ -4757,9 +4757,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // ---- state machine -------------------------------------------------------
 
+  /**
+   * The one writer of `mode` (2026-11-02 audit M7). Every change runs the exit actions of the mode it leaves, so a
+   * writer outside the switch below (a ram run, the press, a hit reaction, a commander's order…) can no longer skip
+   * them: a flank's non-penetration count restarts however the flank ends (a ram run, the press or an ordered retreat
+   * that took a flank left the count at 2, and the next bounce started a new flank), and a cover leg's point, its
+   * reload roll and the engage crest it interrupted go with it (a stale roll sent the hull straight back to cover next
+   * tick, through a push that suspends cover-seeking). Entry actions stay with the transitions that own them.
+   */
+  function setMode(next: AiMode): void {
+    if (next === mode) return;
+    if (mode === 'flank') {
+      nonPenCount = 0;
+    } else if (mode === 'seekCover') {
+      hasMoveTarget = false;
+      hasCoverPoint = false;
+      coverRolled = false;
+    }
+    mode = next;
+  }
+
   function stepPatrolState(): void {
     if (!target || !losClear) return;
-    mode = 'engage';
+    setMode('engage');
     hasMoveTarget = false;
     coverTimer = 0;
   }
@@ -4785,12 +4805,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (!coverRollPassed || !findCrest(coverPoint, true)) return;
     hasCoverPoint = true;
-    mode = 'seekCover';
+    setMode('seekCover');
   }
 
   function stepEngageState(timeS: number): void {
     if (!target && timeS - lastSeenAtS > TARGET_MEMORY_S + 6) {
-      mode = 'patrol';
+      setMode('patrol');
       return;
     }
     updateEngageCoverSearch();
@@ -4800,16 +4820,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function stepSeekCoverState(): void {
     const reload = entity.combat && entity.combat.reload;
     if (reload && reload.t > 0.6 && hasCoverPoint) return;
-    mode = 'engage';
-    hasMoveTarget = false;
-    hasCoverPoint = false;
-    coverRolled = false;
+    setMode('engage'); // its exit actions clear the cover point, the roll and the engage crest
   }
 
   function stepFlankState(timeS: number): void {
     if (!target || !enemyAlive(target)) {
-      mode = target ? 'engage' : 'patrol';
-      nonPenCount = 0;
+      setMode(target ? 'engage' : 'patrol'); // (the flank's exit restarts the non-penetration count)
       return;
     }
     // Round 60: Coastal seed 3's Strv 103 stood at 69° on the M1A2's side with the gate still closed, and every
@@ -4819,8 +4835,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (timeS <= flankUntilS && !flankOpen && flankIndex < 3) {
       return;
     }
-    mode = 'engage';
-    nonPenCount = 0;
+    setMode('engage');
     hasMoveTarget = false;
     probeTimer = 0;
   }
@@ -4992,7 +5007,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     wpIndex = 0;
     autoPatrolBuilt = true;
     loopWaypoints = false;
-    if (mode === 'seekCover') mode = 'engage';
+    if (mode === 'seekCover') setMode('engage');
   }
 
   // Round 62 pacing (2026-09-24, server/battlePacing: Urban seeds 0 and 2, Ruinspires seed 3). The survivor had
@@ -5059,7 +5074,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     hasMoveTarget = false;
     hasCoverPoint = false;
     hasVantage = false;
-    if (mode === 'seekCover' || mode === 'engage') mode = 'patrol';
+    if (mode === 'seekCover' || mode === 'engage') setMode('patrol');
   }
 
   function beginSearchLeg(enemy: AiEntity, timeS: number): void {
@@ -5135,7 +5150,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         pressUntilS = timeS + STALEMATE_PUSH_S;
         hasMoveTarget = false;
         hasCoverPoint = false;
-        if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
+        if (mode === 'seekCover' || mode === 'patrol') setMode('engage');
         if (target && !losClear && findVantage()) hasVantage = true;
         // the push's halt waits until the gun may fire on the contact (the reaction gate; see SETTLE_STARVED_S)
         if (target && losClear && !conserving && !emptyRack && timeS - acquiredAtS >= tier.reactionS && !doctrineOf().rush) {
@@ -5189,7 +5204,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     arcScoot = arc;
     hasMoveTarget = false;
     hasCoverPoint = false;
-    if (mode === 'seekCover') mode = 'engage';
+    if (mode === 'seekCover') setMode('engage');
     beginLeg(2, scootPoint.x - entity.state.pos.x, scootPoint.z - entity.state.pos.z);
     if (arc) nudgeUntilS = -1; // the arc limit's leg owns the hull: a back-up under way ends (see LEG_DEAD_M)
   }
@@ -5483,7 +5498,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       scootUntilS = -1;
       settleUntilS = -1;
       passivePressing = false;
-      if (mode === 'seekCover' || mode === 'flank') mode = 'engage';
+      if (mode === 'seekCover' || mode === 'flank') setMode('engage');
     }
   }
 
@@ -5792,7 +5807,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressing = true;
       passivePressRepickS = timeS + PASSIVE_PRESS_REPICK_S;
       passivePresses++;
-      if (mode === 'flank' || mode === 'seekCover') mode = 'engage';
+      if (mode === 'flank' || mode === 'seekCover') setMode('engage');
       hasMoveTarget = false;
       hasCoverPoint = false;
       hasVantage = false;
@@ -5887,7 +5902,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       lastSeen.x = position.x;
       lastSeen.z = position.z;
       lastSeenAtS = timeS;
-      if (mode === 'patrol') mode = 'engage'; // move to contact on the flash, gun waits for a spot
+      if (mode === 'patrol') setMode('engage'); // move to contact on the flash, gun waits for a spot
     }
   }
 
@@ -5940,7 +5955,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     reactions++;
     hasMoveTarget = false;
     hasCoverPoint = false;
-    if (mode === 'seekCover') mode = 'engage';
+    if (mode === 'seekCover') setMode('engage');
   }
 
   /** Drive the live reaction; true while it owns the hull this tick. */
@@ -6990,13 +7005,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       burstDamage = 0;
       hasMoveTarget = false;
       hasCoverPoint = false;
-      if (mode === 'seekCover' || mode === 'flank') mode = 'engage'; // driveFallback lives in the engage driver
+      if (mode === 'seekCover' || mode === 'flank') setMode('engage'); // driveFallback lives in the engage driver
       return;
     }
     if (!support) return;
     // no target to fall back from: drive to the support as a route
     setWaypoints([[support.state.pos.x, support.state.pos.z]], { loop: false });
-    mode = 'patrol';
+    setMode('patrol');
   }
 
   /**
@@ -7025,13 +7040,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         pressUntilS = Math.max(pressUntilS, next.untilS);
         hasMoveTarget = false;
         hasCoverPoint = false;
-        if (mode === 'seekCover') mode = 'engage';
+        if (mode === 'seekCover') setMode('engage');
         break;
       case 'capture':
       case 'support':
         if (next.point && (!target || !enemyAlive(target) || mode === 'patrol')) {
           setWaypoints([[next.point.x, next.point.z]], { loop: false });
-          if (mode !== 'patrol' && mode !== 'engage') mode = 'engage';
+          if (mode !== 'patrol' && mode !== 'engage') setMode('engage');
         }
         break;
       default:
