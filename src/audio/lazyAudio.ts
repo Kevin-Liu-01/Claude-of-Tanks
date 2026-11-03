@@ -28,6 +28,8 @@ interface AudioMixerModule {
   prepareInterfaceSounds?(): Promise<void>;
   createAudio(options: {
     context: AudioContext | null;
+    /** The facade's device: a mixer built before the first gesture adopts it at resume (never a second context). */
+    getContext?: () => AudioContext | null;
     preparedBuffers?: unknown;
     getMapId?: () => string | null;
     getGameMode?: () => string | null;
@@ -229,7 +231,7 @@ export function createLazyAudio({
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
         return settleReal(module.createAudio({
-          ...world, context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
+          ...world, context, getContext: () => context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
         }));
       }).finally(() => {
         if (!real) realPromise = null;

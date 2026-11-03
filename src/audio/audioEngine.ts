@@ -78,6 +78,11 @@ export interface AudioTerrainProbe {
 
 interface AudioMixerOptions {
   context?: AudioContext | null;
+  /**
+   * The device's owner (the lazy facade): a mixer built before the first gesture adopts that context when it resumes,
+   * and never opens a second one of its own (2026-11-02 audit F11). Without it a mixer opens its own at resume().
+   */
+  getContext?(): AudioContext | null;
   getMapId?(): string | null;
   /** The battle's game mode (each mode opens on its own sound). */
   getGameMode?(): string | null;
@@ -456,6 +461,7 @@ export function prepareInterfaceSounds(): Promise<void> {
 
 export function createAudio({
   context: initialContext = null,
+  getContext,
   getMapId,
   getGameMode,
   getObjectiveTeam,
@@ -2459,6 +2465,11 @@ export function createAudio({
   // ------------------------------------------------------------- public API ---
 
   function resume(): void {
+    if (!ctx && getContext) {
+      // the facade owns the device: adopt its context, or wait for it (never a second one)
+      ctx = getContext();
+      if (!ctx) return;
+    }
     if (!ctx) {
       const scope = globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext };
       const AC = scope.AudioContext || scope.webkitAudioContext;
@@ -2538,6 +2549,7 @@ export function createAudio({
   }
 
 
+  const busSubscriptions: (() => void)[] = [];
   let detachTurretLanding: (() => void) | null = null;
   let detachDebrisLanding: (() => void) | null = null;
   let lastRubbleAt = -1;
@@ -2549,8 +2561,10 @@ export function createAudio({
   }
 
   function bindBus(bus: EventBus): void {
+    // a rebinding retires the last bus's subscriptions: a second bindBus never doubles a cue (2026-11-02 audit F11)
+    for (const off of busSubscriptions.splice(0)) off();
     captionBus = bus;
-    const listen = (event: string, listener: (payload: unknown) => void): void => { bus.on(event, listener); };
+    const listen = (event: string, listener: (payload: unknown) => void): void => { busSubscriptions.push(bus.on(event, listener)); };
     // A cue sounds only through a built graph: its event is dropped until then.
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       listen(event, (payload) => { if (ready()) listener(payload as T); });
@@ -2809,7 +2823,7 @@ export function createAudio({
     });
     on<TankRamEvent>('killcam:collision', (e) => onTankRam(e, true));
     // Preferences are state, so retain them even before the first audio gesture.
-    bus.on('ui:volumes', (payload) => {
+    listen('ui:volumes', (payload) => {
       const v = payload as VolumeEvent | undefined;
       if (!v) return;
       if (typeof v.master === 'number') { masterVolume = clamp(v.master, 0, 1); mixer?.setMaster(masterVolume); }

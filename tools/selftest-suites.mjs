@@ -2636,6 +2636,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
     // 'interrupted' resumes like 'suspended')
     'src/audio/audioDevice.selftest.mjs',
+    // 2026-11-02 audit F11: one device across the facade and a mixer built before any gesture; a rebound mixer listens once
+    'src/audio/audioHandoff.selftest.mjs',
     'src/vehicles/profiles/centurionFamily.selftest.mjs',
     'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',
