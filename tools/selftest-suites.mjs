@@ -1688,6 +1688,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
+    // 2026-11-02 audit M4: a revive is a life boundary for lag compensation's pose history (no rewind into a wreck's pose)
+    'server/match/lagCompensationLife.selftest.mjs',
     'src/sim/movement.selftest.mjs',
     // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
     'src/sim/trackContact.selftest.mjs',
