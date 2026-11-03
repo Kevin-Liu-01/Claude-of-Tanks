@@ -613,9 +613,8 @@ export class MatchSession {
     this.stopEntryReports('restart');
     const p2p = this.p2pOptions;
     const me = this.room.playerId;
-    const secret = (payload as { hostSecret?: unknown }).hostSecret;
     if (!p2p || !parseP2pMatchUrl(payload.matchUrl) || (this.room.hostId ?? payload.hostId ?? null) !== me || !this.canHost) return;
-    if (typeof secret !== 'string' || secret.length < 16 || round.room.match?.status === 'playing') return;
+    if (!this.hostSecretFor(payload) || round.room.match?.status === 'playing') return;
     const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
     const setTimer = timers.setTimer ?? ((callback: () => void, delayMs: number) => setTimeout(callback, delayMs));
     const clearTimer = timers.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
@@ -652,6 +651,25 @@ export class MatchSession {
 
   private stopEntryReports(reason: string): void {
     this.entryReports?.stop(reason);
+  }
+
+  /**
+   * The per-match host secret this seat holds for `payload`'s match (audit M2, 2026-11-02): the newest election naming
+   * this seat carries it (RoomClient.lastHostChanged), the room's newest match_start of the match carries it once this
+   * seat hosts (re-sent on a resume), else the payload's own. An election that named this seat while its world loaded
+   * used to be dropped, and the loaded seat, named without the secret, declined as unable.
+   */
+  private hostSecretFor(payload: RoomMatchStartPayload): string | null {
+    const me = this.room.playerId;
+    const election = this.room.lastHostChanged;
+    const latest = this.room.matchStart;
+    const candidates: unknown[] = [
+      election?.hostId === me ? election.hostSecret : undefined,
+      latest?.matchId === payload.matchId ? (latest as { hostSecret?: unknown }).hostSecret : undefined,
+      (payload as { hostSecret?: unknown }).hostSecret,
+    ];
+    for (const candidate of candidates) if (typeof candidate === 'string' && candidate.length >= 16) return candidate;
+    return null;
   }
 
   /**
@@ -866,8 +884,7 @@ export class MatchSession {
     // was sent when it hosted, while the room may have elected another host since (its host_changed is newer).
     const hostId = this.room.hostId ?? payload.hostId ?? null;
     this.servingHostId = hostId;
-    const secret = (payload as { hostSecret?: unknown }).hostSecret;
-    this.hostSecret = typeof secret === 'string' && secret.length >= 16 ? secret : null;
+    this.hostSecret = this.hostSecretFor(payload);
     let inner: Transport;
     this.runningGeneration = Math.max(parseP2pMatchUrl(payload.matchUrl)?.generation ?? 0, this.room.generation);
     // Named host for a match already playing (a reload inside the host grace): this seat holds no state to resume from,
@@ -977,7 +994,16 @@ export class MatchSession {
     // 2026-10-20 (item/mp-rejoin-229, the 229 e2e under load): a match link its client already closed (recovery past
     // its grace: the round is lost for this seat) carries no migration; replacing it threw "transport closed" as an
     // unhandled rejection in the page
-    if (!client || !round || !migrating || migrating.state === 'closed' || !parseP2pMatchUrl(round.matchStart.matchUrl)) return;
+    if (!client || !round || !migrating || migrating.state === 'closed' || !parseP2pMatchUrl(round.matchStart.matchUrl)) {
+      // An election that lands while this seat's world still loads (no match client yet; audit M2, 2026-11-02) is kept by
+      // the room client with its secret, and the round's entry acts on it once the world is ready (openPeerToPeer reads
+      // the room's newest host and hostSecretFor). Elected meanwhile, the seat reports loading as an elected host does.
+      if (!client && round && !this.matchClient && change.hostId === this.room.playerId && parseP2pMatchUrl(round.matchStart.matchUrl)) {
+        this.log('info', 'elected while the world loads: the entry boots the host', { generation: change.generation });
+        this.startEntryReports(round, round.matchStart);
+      }
+      return;
+    }
     const me = this.room.playerId;
     if (change.generation <= this.runningGeneration) {
       // The election that named the host at the start (the URL's generation), or one this seat already runs: nothing moves —

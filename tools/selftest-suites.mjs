@@ -1617,6 +1617,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/matchSessionDecline.selftest.mjs', // 2026-11-02 audit M2: a host decline lasts its match; a seat that cannot host says so again
     'src/mp/session/matchSessionRole.selftest.mjs', // 2026-11-02 audit M2: the session's p2p role is one declared state; a finished host hands nothing on
     'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
+    'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',
