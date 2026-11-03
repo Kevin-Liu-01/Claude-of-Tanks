@@ -37,7 +37,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import { arieteLampCluster, arieteSideLouvre } from './arieteMkParts.ts';
 import { arieteDriverHatch, arieteGlacisGrille, arieteHatch, arietePanoHead, arieteTowClevis, arieteTurmsSight, arieteVentDome,
-  boltRow, convexBlock, sidePoints } from './arieteTurretParts.ts';
+  convexBlock, sidePoints } from './arieteTurretParts.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -539,8 +539,8 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
   const buildArieteMarkingsStage1 = (): void => {
     // (267: the sunk headlight pods at ±1.40 / 1.20 / 3.30 became the corner lamp clusters, buildArieteHullStage2; the
     // round-1 nose grille is gone again, round 2: "the photos show a plain glacis")
-    // 268b (series C1 photograph 4): the lower front plate's two clevis tow hooks (they were two thin rings at its foot)
-    for (const s of [-1, 1]) arieteTowClevis(P, s * 0.60, 0.82, 3.451, -0.698);
+    // 268b (series C1 photograph 4): the front plate's two clevis tow hooks (they were two thin rings at its foot)
+    for (const s of [-1, 1]) arieteTowClevis(P, s * 0.60, 1.12, 3.502, -0.685);   // on the nose plate under the grille, wholly over its lower edge
     // 268b (series C1 photographs 1 and 4): the perforated intake grille across the nose's top between the lamp clusters
     // (round 2 removed a grille with the cable and rail; this one is the photographs' raised framed plate, 3 cm proud,
     // 6.8 cm under the gun's -4.3 deg stop ahead)
@@ -679,7 +679,7 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
       { height: [0.54, 0.54, 0.63, 0.69, 0.70, 0.68, 0.62, 0.62, 0.68, 0.70, 0.69, 0.63],
         inset: [0.84, 0.84, 0.87, 0.90, 0.91, 0.92, 0.93, 0.93, 0.92, 0.91, 0.90, 0.87] },
     ]));
-    P.add('turretDark', KIT.polyTurret(ARIETE_PLINTH_PLAN, 0.08, 1.02, 1.0), 0, -0.035, 0); // dark RING PLINTH at the base, dropped to the deck line 1.445 (ref front-zone bottoms 1.405 — SS-B2 contact-shadow device)
+    P.add('turretDark', KIT.polyTurret(ARIETE_PLINTH_PLAN, 0.08, 1.02, 1.0, true), 0, -0.035, 0); // (268b: its bottom closed, so the plinth is one solid: its open top face read as the turret body's exit to every roof-pocket column, so the census counted the whole loft as air) // dark RING PLINTH at the base, dropped to the deck line 1.445 (ref front-zone bottoms 1.405 — SS-B2 contact-shadow device)
     for (const s of [-1, 1]) P.add('turret', box(0.18, 0.26, 0.52), s * 1.15, 0.28, -1.90); // terminal shoulders overlap the integrated loft
     // 268b (series C1 top photograph and the oracle print's roof: the two hatches stand side by side at mid-turret on one
     // flat roof, not in a well behind it): the mid roof plate runs on to z 0.30 under the hatches (the front and side
@@ -852,17 +852,7 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
         v(CHEEK_F), v(CHEEK_G), v(CHEEK_H), [0.42, 0.72, 1.40],
         [0.42, 0.83, 0.75], [1.12, 0.83, 0.62], [1.17, 0.70, 0.62], [1.30, 0.645, 0.62], [1.29, 0.645, 1.05],
       ], s)));
-      // bolt heads on both front facets (photograph 4: rows of heads on the cheek faces)
-      const S = new THREE.Vector3(s, 1, 1);
-      for (const [p0, p1, p2, p3] of [[CHEEK_A, CHEEK_B, CHEEK_G, CHEEK_F], [CHEEK_B, CHEEK_C, CHEEK_H, CHEEK_G]]) {
-        const a = p0.clone().multiply(S), b = p1.clone().multiply(S), c = p2.clone().multiply(S), d = p3.clone().multiply(S);
-        const nrm = new THREE.Vector3().crossVectors(b.clone().sub(a), d.clone().sub(a)).normalize();
-        if (nrm.z < 0) nrm.negate();
-        for (const vv of [0.28, 0.74]) {
-          boltRow(P, 'turretDetail', a.clone().lerp(d, vv).lerp(b.clone().lerp(c, vv), 0.18),
-            a.clone().lerp(d, vv).lerp(b.clone().lerp(c, vv), 0.82), 3, nrm);
-        }
-      }
+      // (clean faces: the pre-series carried none of the series C1's add-on armour bolt points, research notes.md)
     }
     P.add('turret', convexBlock([
       [-0.42, 0.28, 0.75], [0.42, 0.28, 0.75], [-0.42, 0.83, 0.75], [0.42, 0.83, 0.75],

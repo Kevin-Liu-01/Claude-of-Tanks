@@ -765,7 +765,7 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
     // 268b (the owner: "fix all sides of the c1 arietes turrets, fix em all"; series C1 front and top photographs): the
     // gunner's TURMS stands at the roof's right front (-x), ahead of the commander's stack and panoramic sight, its two
     // windows forward under its open armoured doors; it stood on the left, where the real tank's loader works.
-    arieteTurmsSight(P, -0.80, 0.77, L(0.68));
+    arieteTurmsSight(P, -0.80, 0.72, L(0.68));                                   // plinth sunk into the roof's fall (0.69-0.77 under it)
     P.addEquipment('turret', cylY(0.13, 0.15, 0.16, 12), -0.76, 0.94, L(-0.16));          // pano pedestal
     P.addEquipment('turret', cylY(0.16, 0.16, 0.15, 12), -0.76, 1.095, L(-0.16));         // pano head to 2.47 (p95 datum)
     P.add('turretGlass', box(0.17, 0.08, 0.02), -0.76, 1.095, L(-0.005));
@@ -782,9 +782,9 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
     // on his ring; C2: the shielded 12.7 mm beside it). 268b: the commander's hatch is the right one, behind his panoramic
     // sight, its periscopes round the ring's outboard-rear arc clear of the stack (it was the loader's, carrying the C1's
     // MG on the right).
-    arieteHatch(P, -0.42, 0.875, L(-0.62), { r: 0.22, periscopes: 5, hingeSide: 1, arcCentre: -2.0 });
+    arieteHatch(P, -0.42, 0.835, L(-0.62), { r: 0.22, periscopes: 5, hingeSide: 1, arcCentre: -2.0 }); // coaming foot 1 cm into the 0.83 roof
     periscope(P, 'turretDetail', 0.30, 0.878, L(-0.10), 0.1);                   // loader's forward periscope
-    arieteVentDome(P, 0.05, 0.875, L(-0.88));                                    // fume extractor vent behind the hatches
+    arieteVentDome(P, 0.05, 0.84, L(-0.88));                                      // fume extractor vent behind the hatches
   };
   buildArieteMkTurretStage2();
   yield 'buildArieteMkTurretStage2';
@@ -877,8 +877,8 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
             ];
             // 267 (C2 photographs 2-5): the field is the C2's bolted add-on plating, flush chamfered plates with corner
             // bolts that close into one panelled front, not ERA bricks with dark lids
-            // 268b (C2 photographs 1 and 5: each cheek's front is one broad bolted plate): the ten plates close into one
-            // field with hairline joints, its bolt heads along the field's top and bottom edges, not on every tile
+            // 268b (C2 photographs 1 and 5: each cheek's front is one broad plate with a few big bolt heads): the ten
+            // plates close into one field with hairline joints, five heads scattered on it, not four on every tile
             for (const u of [0.10, 0.30, 0.50, 0.70, 0.90]) for (const v of [0.27, 0.73]) {
               const face = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
               faceSeatedArmorCassette(P, 'turret', face, face.dv,
@@ -890,12 +890,11 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
               }
             }
 
-            if (P.q) for (const v of [0.08, 0.92]) {
-              const heads = [0.08, 0.29, 0.50, 0.71, 0.92].map((u) => {
+            if (P.q) {
+              for (const [u, v] of [[0.20, 0.88], [0.78, 0.88], [0.50, 0.50], [0.28, 0.12], [0.74, 0.12]] as const) {
                 const f = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
-                return f.point.clone().addScaledVector(f.normal, 0.045 + 0.001);
-              });
-              boltHeads(P, 'turretDetail', heads, sampleArmorFace(...cheekFrontFace, 0.5, v, [s, 1, 1]).normal);
+                boltHeads(P, 'turretDetail', [f.point.clone().addScaledVector(f.normal, 0.045 + 0.001)], f.normal);
+              }
             }
 
             // The C2 shoulder boxes are already turret-owned armor carriers. Seat

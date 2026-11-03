@@ -156,20 +156,20 @@ export function arieteGlacisGrille(P: ArieteParts, o: {
     const m = at(u, fh / 2 - 0.008);
     P.add(S.body, KIT.box(o.halfW * 2 + 0.012, fh + 0.016, bar), 0, m.y, m.z, rx, 0, 0);
   }
-  for (const xs of [-1 / 3, 1 / 3]) {
-    const m = at(0.5, fh / 2 - 0.006);
-    P.add(S.detail, KIT.box(0.022, fh + 0.008, len - 0.02), xs * o.halfW * 2 * 0.5, m.y, m.z, rx, 0, 0);
+  // the bars between the rows of openings run across the vehicle (photograph 1)
+  for (const u of [1 / 3, 2 / 3]) {
+    const m = at(u, fh / 2 - 0.006);
+    P.add(S.detail, KIT.box(o.halfW * 2 - 2 * bar, fh + 0.004, 0.022), 0, m.y, m.z, rx, 0, 0);
   }
   // staggered oblong openings, flush dark on the plate's top
   const rows = o.rows ?? 3, cols = o.cols ?? 14, usable = o.halfW * 2 - 2 * bar - 0.04;
   const pitch = usable / cols;
   for (let r = 0; r < rows; r++) {
-    const u = 0.18 + 0.64 * (rows === 1 ? 0.5 : r / (rows - 1));
+    const u = (r + 0.5) / rows;
     const m = at(u, fh - 0.01 + 0.001);
     const shift = r % 2 ? pitch / 2 : 0;
     for (let c = 0; c < cols - (r % 2); c++) {
       const xx = -usable / 2 + pitch * (c + 0.5) + shift;
-      if (Math.abs(Math.abs(xx) - o.halfW * 2 / 6) < 0.035) continue;                                 // under a divider
       P.add(S.dark, KIT.box(pitch * 0.62, 0.004, len * 0.16), xx, m.y, m.z, rx, 0, 0);
     }
   }
@@ -202,21 +202,11 @@ export function arieteTowClevis(P: ArieteParts, x: number, y: number, z: number,
   const put = (slot: string, g: THREE.BufferGeometry, gx: number, gy: number, gz: number): void => {
     P.add(slot, KIT.xform(KIT.xform(g, gx, gy, gz), 0, 0, 0, rx, 0, 0), x, y, z);
   };
-  put(S.body, KIT.box(0.15, 0.20, 0.05), 0, 0, 0.015);                                                    // base plate, 1 cm into the plate
-  put(S.body, KIT.box(0.115, 0.17, 0.12), 0, -0.01, 0.07);                                                 // clevis body (one block: no well between cheeks)
+  // (fittings, not armour: the census reads only the armour body's undersides as roofs)
+  put(S.detail, KIT.box(0.15, 0.20, 0.05), 0, 0, 0.015);                                                   // base plate, 1 cm into the plate
+  put(S.detail, KIT.box(0.115, 0.17, 0.12), 0, -0.01, 0.07);                                               // clevis body (one block: no well between cheeks)
   put(S.dark, KIT.cylX(0.018, 0.13, seg), 0, 0.03, 0.10);                                                 // pin ends
   put(S.dark, KIT.box(0.06, 0.012, 0.13), 0, -0.095, 0.07);                                               // hook slot shadow
   put(S.detail, KIT.box(0.05, 0.10, 0.05), 0, -0.10, 0.09);                                               // hook shank
   put(S.detail, KIT.xform(KIT.torus(0.035, 0.016, seg, 6), 0, 0, 0, 0, 0, Math.PI / 2), 0, -0.115, 0.10); // hook curl, upright
 }
-
-/** Bolt rows on an armour face: `n` heads evenly from `a` to `b` (both on the face), normal `nrm`. */
-export function boltRow(P: ArieteParts, slot: string, a: THREE.Vector3, b: THREE.Vector3, n: number, nrm: THREE.Vector3): void {
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm.clone().normalize());
-  const e = new THREE.Euler().setFromQuaternion(q, 'XYZ');
-  for (let i = 0; i < n; i++) {
-    const p = a.clone().lerp(b, n === 1 ? 0.5 : i / (n - 1)).addScaledVector(nrm, 0.002);
-    P.add(slot, KIT.cylY(0.018, 0.021, 0.012, 6), p.x, p.y, p.z, e.x, e.y, e.z);
-  }
-}
-
