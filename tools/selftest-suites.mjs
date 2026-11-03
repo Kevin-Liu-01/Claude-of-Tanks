@@ -1850,6 +1850,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.driveOwner.selftest.mjs',
     // 2026-11-02 audit M7: every mode change runs the exit actions of the mode it leaves (a flank's count, a cover roll)
     'src/game/ai.modeExit.selftest.mjs',
+    // 2026-11-02 audit M7: the waypoints carry their writer; a route ending where the mission's does is not the mission's
+    'src/game/ai.routeOwner.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

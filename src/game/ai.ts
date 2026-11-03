@@ -68,6 +68,8 @@ import * as detMath from '../sim/detMath.ts';
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
+/** Who wrote a controller's waypoints (audit M7; see claimWaypoints). */
+type RouteOwner = 'none' | 'patrol' | 'route' | 'destination' | 'sector' | 'search' | 'level';
 /** Hit reaction (bot philosophy r1): what a struck hull does for the next few seconds. */
 type Reaction = 'cover' | 'backoff' | 'angle' | 'jink';
 type RandomSource = () => number;
@@ -1273,6 +1275,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let wpIndex = 0;
   let autoPatrolBuilt = false;
   let loopWaypoints = true;
+  // Who wrote the waypoints (2026-11-02 audit M7): ownership is this tag, written with the list, never inferred from
+  // where the route ends. 'destination' is a single point resolved through the grid by setWaypoints (the mission's
+  // objective, a commander's point, the support a retreat drives to); 'route' an integration's own list (an opening
+  // or patrol route); 'patrol' the auto loop; 'sector', 'search' and 'level' the controller's own legs.
+  let routeOwner: RouteOwner = 'none';
+  /** Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here. */
+  function claimWaypoints(owner: RouteOwner, loop: boolean): void {
+    waypoints.length = 0;
+    wpIndex = 0;
+    autoPatrolBuilt = true;
+    loopWaypoints = loop;
+    routeOwner = owner;
+  }
 
   const moveTarget = { x: 0, z: 0 };         // hull-down / approach point
   let hasMoveTarget = false;
@@ -3611,6 +3626,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const r = 45 + rng() * 40;
     const a0 = rng() * TAU;
+    claimWaypoints('patrol', true);
     for (let i = 0; i < 4; i++) {
       const a = a0 + (i / 4) * TAU + (rng() - 0.5) * 0.5;
       waypoints.push({
@@ -3618,9 +3634,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         z: clamp(st.pos.z + detMath.cos(a) * r, -500, 500),
       });
     }
-    wpIndex = 0;
-    autoPatrolBuilt = true;
-    loopWaypoints = true;
   }
 
   function drivePatrol(input: AiInput): void {
@@ -5001,12 +5014,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = entity.state.pos;
     const sectorX = Math.round(enemy.state.pos.x / 50) * 50;
     const sectorZ = Math.round(enemy.state.pos.z / 50) * 50;
-    waypoints.length = 0;
+    claimWaypoints('sector', false);
     waypoints.push({ x: (position.x + sectorX) / 2, z: (position.z + sectorZ) / 2 });
     waypoints.push({ x: sectorX, z: sectorZ });
-    wpIndex = 0;
-    autoPatrolBuilt = true;
-    loopWaypoints = false;
     if (mode === 'seekCover') setMode('engage');
   }
 
@@ -5051,12 +5061,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return !hf.getNormalAt || hf.getNormalAt(out.x, out.z).y >= SPOT_NORMAL_Y_MIN;
   }
 
-  function setSearchWaypoints(route: ReadonlyArray<readonly [number, number]>): void {
-    waypoints.length = 0;
+  function setSearchWaypoints(
+    route: ReadonlyArray<readonly [number, number]>, owner: 'search' | 'level' = 'search',
+  ): void {
+    claimWaypoints(owner, false);
     for (let i = 0; i < route.length; i++) waypoints.push({ x: route[i][0], z: route[i][1] });
-    wpIndex = 0;
-    autoPatrolBuilt = true;
-    loopWaypoints = false;
   }
 
   function startSearchLeg(kind: string, goalX: number, goalZ: number, routeLengthM: number, timeS: number): void {
@@ -5101,12 +5110,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
           previousZ = route[p][1];
         }
       } else {
-        waypoints.length = 0;
+        claimWaypoints('search', false);
         waypoints.push({ x: (position.x + goal.x) / 2, z: (position.z + goal.z) / 2 });
         waypoints.push({ x: goal.x, z: goal.z });
-        wpIndex = 0;
-        autoPatrolBuilt = true;
-        loopWaypoints = false;
       }
       startSearchLeg(kind, goal.x, goal.z, routeLength, timeS);
       return;
@@ -5540,8 +5546,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function endLevelRoute(): void {
     levelRouting = false;
     levelRouteTargetId = null;
-    waypoints.length = 0;
-    wpIndex = 0;
+    // the leg clears only its own route: one another driver wrote over it (a commander's point, the mode's route push)
+    // is that driver's, and it stays
+    if (routeOwner === 'level') claimWaypoints('none', loopWaypoints);
   }
 
   function markUnbearable(candidate: AiEntity, timeS: number): void {
@@ -5566,7 +5573,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       previousZ = route[i][1];
     }
     if (length > LEVEL_ROUTE_MAX_M) return false;
-    setSearchWaypoints(route);
+    setSearchWaypoints(route, 'level');
     levelRouting = true;
     levelRouteTargetId = candidate.id;
     levelRouteUntilS = timeS + length / LEVEL_ROUTE_SPEED_MPS + LEVEL_ROUTE_SLACK_S;
@@ -6131,11 +6138,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
-  /** The waypoints hold the mission's own route (its planned end), not a search leg's or another driver's. */
+  /** The waypoints are the mission's own route (setWaypoints' destination wrote them), not another driver's. */
   function waypointsAreMission(): boolean {
     const last = waypoints[waypoints.length - 1];
     if (!last) return true; // an empty plan is the mission's (missionRouteEnded reads it)
-    return last.x === missionRouteEndX && last.z === missionRouteEndZ;
+    return routeOwner === 'destination'; // (a search leg ending on the mission's last cell is the search's)
   }
 
   /**
@@ -6888,7 +6895,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function missionRouteEnded(): boolean {
     const last = waypoints[waypoints.length - 1];
     if (!last) return missionRouteAtS > -Infinity && Number.isNaN(missionRouteEndX);
-    return last.x === missionRouteEndX && last.z === missionRouteEndZ && routeUsedUp();
+    return routeOwner === 'destination' && routeUsedUp();
   }
 
   function setWaypoints(
@@ -6898,7 +6905,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Live modes and Jev supply destinations, not terrain-safe paths. Resolve
     // those through the same navigation grid as opening/search routes. Keep an
     // unchanged route's cursor between frequent moving-objective refreshes.
-    if (!loop && points.length === 1) {
+    const destination = !loop && points.length === 1;
+    if (destination) {
       const [x, z] = points[0];
       if (!missionRouteNeedsRefresh(x, z)) return;
       missionRouteX = x; missionRouteZ = z; missionRouteAtS = nowS;
@@ -6915,13 +6923,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       missionRouteX = missionRouteZ = Infinity;
       missionRouteEndX = missionRouteEndZ = NaN;
     }
-    waypoints.length = 0;
+    // (a user route supersedes the auto loop)
+    claimWaypoints(destination ? 'destination' : points.length ? 'route' : 'none', !!loop);
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
     }
-    wpIndex = 0;
-    autoPatrolBuilt = true; // user route supersedes the auto loop
-    loopWaypoints = !!loop;
   }
 
   /**
@@ -7110,7 +7116,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // round 62 pacing: the search for a lost enemy and the empty rack
       searching, searchKind, searchLegs, searchFailures,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
-      wpIndex, wpCount: waypoints.length,
+      wpIndex, wpCount: waypoints.length, routeOwner, // audit M7: who wrote the waypoints
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
       lastRun, lastRuns,
