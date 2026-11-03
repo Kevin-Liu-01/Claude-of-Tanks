@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // Shared FIFO lock for GPU/browser capture harnesses. Keeping one owner avoids
 // copy drift between screenshot, audio, Studio, and marketing verification.
+// Hold it through tools/capture-hold.mjs withCaptureHold (or runWarmHold, which warms pages while queued): the one
+// wrapper that owns a hold's refresh, cap, yield, signals and teardown (2026-11-02 audit S4). A tool that calls acquire()
+// itself sets all of that up on its own; tools/capture-hold-census.selftest.mjs lists those and refuses a new one.
 
 import {
   appendFileSync,

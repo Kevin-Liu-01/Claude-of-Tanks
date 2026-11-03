@@ -60,8 +60,9 @@ const watchAbort = (signal, events) => signal.addEventListener('abort', () => ev
 
 // ---- (i) a budget below the cap: a checkpoint after the stop and its grace never freezes closed pages ---------------
 {
-  const { events, options } = rig({ capMs: 300, waiters: 1 });
-  await runWarmHold({ ...options, holdMinutes: 0.004, graceSeconds: 0.05, shoot: async ({ signal, checkpoint }) => {
+  // the budget (120 ms) and its grace (50 ms) end well before the cap (400 ms); the shoot checkpoints on past both
+  const { events, options } = rig({ capMs: 400, waiters: 1 });
+  await runWarmHold({ ...options, holdMinutes: 0.002, graceSeconds: 0.05, shoot: async ({ signal, checkpoint }) => {
     watchAbort(signal, events);
     const until = Date.now() + 600;
     while (Date.now() < until) { await sleep(30); await checkpoint(); } // a shoot that keeps checkpointing past its stop
@@ -115,6 +116,17 @@ for (const waiters of [1, 0]) {
   } else {
     assert.ok(!events.includes('abort'), 'past the cap with nobody waiting, the hold keeps the lock');
   }
+}
+
+// ---- atCap: 'keep' (a wrapped command that cannot yield or stop part-way): past the cap it is logged, not stopped ------
+{
+  const events = [], lines = [];
+  const lock = fakeLock({ capMs: 40, waiters: 1, events });
+  await withCaptureHold(async ({ signal }) => { watchAbort(signal, events); await sleep(250); },
+    { lock, atCap: 'keep', capCheckMs: 10, graceSeconds: 0.05, log: (line) => lines.push(line) });
+  assert.ok(!events.includes('abort'), 'a declared keep is never stopped by the cap');
+  assert.equal(lines.filter((line) => /cannot yield \(atCap: keep\)/.test(line)).length, 1, 'and says so once');
+  await assert.rejects(withCaptureHold(async () => {}, { lock: fakeLock({ events: [] }), atCap: 'never', log: () => {} }), /atCap/);
 }
 
 // ---- a nested hold runs no cap: its parent's is the one -------------------------------------------------------------

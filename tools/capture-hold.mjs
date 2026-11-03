@@ -220,9 +220,13 @@ async function closeWarm(warmed, say) {
 // - The abort is final: a checkpoint after it never yields ({ yielded: false, stopped: true }), so the grace can never fire
 //   mid-yield. A yield stops every timer; the resume starts the segment again.
 // - A nested hold (capture-lock nestedEnv: a child inside its parent's hold) runs no cap: the parent's is the one.
-function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capCheckMs = 30_000, say, onAbort, onTeardown,
+// - `atCap: 'keep'` is a work that can neither checkpoint nor stop without losing its whole run (a wrapped command such as
+//   a release-gate step or a film render): past the cap it is logged, not stopped, as the lock alone did. It is declared
+//   at the call site, so the advisory holders are the ones that say so.
+function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capCheckMs = 30_000, atCap = 'stop', say, onAbort, onTeardown,
   onYield = null, onResume = null }) {
-  let phase = 'holding', cooperative = false, segmentAt = Date.now();
+  if (atCap !== 'stop' && atCap !== 'keep') throw new TypeError(`atCap: 'stop' or 'keep', not ${JSON.stringify(atCap)}`);
+  let phase = 'holding', cooperative = false, segmentAt = Date.now(), keptNoted = false;
   let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null;
   const clear = () => { clearTimeout(budgetTimer); clearInterval(capTimer); clearTimeout(dueTimer); budgetTimer = capTimer = dueTimer = null; };
   const stop = (why) => {
@@ -244,6 +248,11 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
     if (!(capMs > 0) || Date.now() - segmentAt < capMs) return;
     const waiters = typeof lock.waiting === 'function' ? lock.waiting() : 0;
     if (!waiters) return; // past the cap with nobody waiting: the hold keeps the lock
+    if (!cooperative && atCap === 'keep') {
+      if (!keptNoted) say(`past the ${(capMs / 60_000).toFixed(1)}-min hold cap with ${waiters} waiting: this hold cannot yield (atCap: keep)`);
+      keptNoted = true;
+      return;
+    }
     if (!cooperative) { stop(`hold cap ${(capMs / 60_000).toFixed(1)} min with ${waiters} waiting, and no checkpoint`); return; }
     phase = 'yield-due';
     say(`hold cap ${(capMs / 60_000).toFixed(1)} min with ${waiters} waiting: the next checkpoint yields`);
@@ -304,12 +313,14 @@ const bounded = (promise, ms) => Promise.race([promise, sleep(ms)]);
  * `afterRelease(prepared)` after it; `onYield()`/`onResume()` run around a checkpoint yield. `holdMinutes`, `graceSeconds`:
  * see the phases. The acquire options (`place`, `ticket`, `lockClass`, `command`, `holdCapMinutes`, `holdCapReason`,
  * `priority`) go to the lock. `signals: []` leaves signals to the caller (a chain that stops its own children first).
+ * `atCap: 'keep'` declares a work that cannot yield or stop part-way (see the phases).
  */
 export async function withCaptureHold(work, { label = 'capture', lock = createCaptureLock(), timeoutMs = 45 * 60_000, place = null,
   ticket = null, lockClass = null, command = null, holdCapMinutes = null, holdCapReason = null, priority = null, prepare = null,
-  holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, teardown = null, beforeRelease = null,
+  holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, atCap = 'stop', teardown = null, beforeRelease = null,
   afterRelease = null, onYield = null, onResume = null, signals = SIGNALS, log = console.log } = {}) {
   if (typeof work !== 'function') throw new TypeError('withCaptureHold needs work()');
+  if (atCap !== 'stop' && atCap !== 'keep') throw new TypeError(`withCaptureHold atCap: 'stop' or 'keep', not ${JSON.stringify(atCap)}`);
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
   let prepared, held = false;
   const tear = async (value) => { if (teardown) { try { await teardown(value); } catch (error) { say(`teardown failed: ${error?.message ?? error}`); } } };
@@ -340,7 +351,7 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   const refresher = setInterval(() => lock.refresh(), refreshMs);
   refresher.unref();
   const controller = new AbortController();
-  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, say, onYield, onResume,
+  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, atCap, say, onYield, onResume,
     onAbort: (reason) => controller.abort(reason), onTeardown: () => tear(prepared) });
   try {
     return await work({ prepared, signal: controller.signal, checkpoint: () => phases.checkpoint(), heldAt, say });
