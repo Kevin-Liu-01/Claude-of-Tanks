@@ -14,6 +14,7 @@ import { startWreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck, bakeTankWreckSteps } from './wrecks.ts';
 import { outputIdentity } from '../../tools/wreck-paint-bench.mjs';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('export async function createPropsAsync(');
@@ -67,10 +68,11 @@ function harness({ steps, modes, timeoutMs = 60, acquire = async () => {}, mainB
     workers.push(worker);
     return worker;
   }, timeoutMs);
+  // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    'bakeTankWreckSteps', 'console', `${wrapper}\nreturn createPropsAsync;`)(build, acquire, function Worker() {},
-    makeClient, performance, mainBake ?? (function* () { throw new Error('unexpected main-thread bake'); }),
-    { ...console, warn: (...args) => warnings.push(args.join(' ')) });
+    'bakeTankWreckSteps', 'console', 'assertNoBuildScopeOpen', `${wrapper}\nreturn createPropsAsync;`)(build, acquire,
+    function Worker() {}, makeClient, performance, mainBake ?? (function* () { throw new Error('unexpected main-thread bake'); }),
+    { ...console, warn: (...args) => warnings.push(args.join(' ')) }, assertNoBuildScopeOpen);
   return { run: () => run({}, {}, 2002, null, tick, true, null, prefetch), workers, events, warnings };
 }
 
