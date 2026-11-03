@@ -154,6 +154,9 @@ export interface StructureFracture {
   /** Bodies in the pool now (the pool steps while any owner has some). */
   liveBodies(): number;
   reset(): void;
+  /** (2026-11-02 audit R7) Move every fx-clock stamp by `delta` (the runtime's clock rebase: a capture's pin, the
+   *  Studio's reset at every load and seek): a collapse's face hold, the watch and merge cadences, the sound gap. */
+  shiftTime(delta: number): void;
   stats(): { buildings: number; faces: number; bodies: number; baked: number; skipped: number };
 }
 
@@ -423,6 +426,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */
   const cracking: LiveBody[] = [];
   let lastUpdateS = o.now();
+  /** (2026-11-02 audit R7) the pool's dropped time at the last update: its bodies age by what the pool stepped */
+  let poolDropped = o.pool.droppedS();
   let bakedCount = 0;
 
   o.pool.onImpact((x, y, z, speed, mass, handle) => {
@@ -2395,7 +2400,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (work.length) advanceWork(workUnits);
       profEnd('fr.work', tWork);
       const t = o.now();
-      const dt = Math.max(0, Math.min(0.25, t - lastUpdateS));
+      // (2026-11-02 audit R7) less what the pool could not step since (its advance runs after this update: a frame late)
+      const droppedNow = o.pool.droppedS();
+      const lost = Math.max(0, droppedNow - poolDropped); // (a pool reset starts its count over)
+      poolDropped = droppedNow;
+      const dt = Math.max(0, Math.min(0.25, t - lastUpdateS) - lost);
       lastUpdateS = t;
       const tCrack = profStart();
       // a chunk a frame cracks (its clumps' geometry is made then): the rest wait whole, still moving
@@ -2446,6 +2455,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       profEnd('fr.poses', tPose);
     },
     liveBodies() { return bodies.size; },
+    shiftTime(delta) {
+      for (const r of releasing) r.at += delta;
+      for (const live of lives.values()) { live.touchedAt += delta; live.watchedAt += delta; live.mergedAt += delta; }
+      lastUpdateS += delta;
+      if (lastSoundS >= 0) lastSoundS += delta;
+    },
     reset() {
       for (const b of list) { o.pool.release(b.handle); for (const m of b.meshes) { m.removeFromParent(); m.geometry.dispose(); } }
       bodies.clear();

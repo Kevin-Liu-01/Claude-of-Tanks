@@ -86,6 +86,7 @@ import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } f
 import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { getDeviceTier, onPresetChange, resolvePresetName } from '../engine/quality.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
+import { createFxTimeShiftRegistry } from './timeShift.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -540,6 +541,8 @@ export interface FxRuntime {
   readonly group: THREE.Group;
   setReplaySuppressed(suppressed: boolean): void;
   getReplaySuppressionDebug(): object;
+  /** (2026-11-02 audit R7) the parts whose fx-clock stamps a rebase moves, in order (timeShift.ts) */
+  timeShiftNames?(): readonly string[];
   getGuidedMissileDebug(): object;
   getAttachmentDebug(): object;
   warmTextures(): void;
@@ -1087,6 +1090,10 @@ function* createFxSteps(
     seed: (seed ^ 0x51f7a3) >>> 0,
   });
   const particles = createParticleSystem(engineCtx, { seed });
+  // (2026-11-02 audit R7) every part that stamps fx-clock times registers its shift where it is made (timeShift.ts):
+  // rebaseFxClock walks this, never a hand list
+  const timeShifts = createFxTimeShiftRegistry();
+  timeShifts.add('particles', particles);
   // (fx 9, the owner 2026-10-11: the driving dust, exhaust and smoke "correct for the times of days") the pooled dust,
   // smoke and debris take the scene's light (sceneLightTint.ts: white by day, warm at dusk, a dim blue at night), every
   // frame in update() below; the emissive pools (fire's core, sparks, flashes) never do
@@ -1200,9 +1207,11 @@ function* createFxSteps(
       heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1),
       heatSmoke: (camera) => (imagesHeat(camera) ? THERMAL_SMOKE_ALPHA : 1) })
     : null;
+  timeShifts.add('volumeMedia', vol);
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
     : null;
+  timeShifts.add('debrisChunks', chunks);
   // World state, every tier: the marks a crater leaves, a building coming down in the world's own geometry (the world
   // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
@@ -1210,10 +1219,10 @@ function* createFxSteps(
   // (orange-rings-230) both lit as the ground they lie on: the engine's cascades with the marks' shader hook
   const craterMarksOptions = { setupMaterial: (material: THREE.Material, hook: NonNullable<THREE.Material['onBeforeCompile']>) =>
     engineCtx?.setupShadowMaterial?.(material, hook) };
-  const craters: CraterMarks | null = createCraterMarks(craterMarksOptions);
+  const craters: CraterMarks | null = timeShifts.add('craterMarks', createCraterMarks(craterMarksOptions));
   // DST-04 (2026-10-15): the map's pre-placed craters' surfaces (world/mapCraters.ts) in slots of their own, so a
   // battle's craters never recycle them: laid once the world's bound ground holds them, again after every reset
-  const mapCraterMarks: CraterMarks | null = createCraterMarks(craterMarksOptions);
+  const mapCraterMarks: CraterMarks | null = timeShifts.add('mapCraterMarks', createCraterMarks(craterMarksOptions));
   let mapCratersLaidEpoch = -1;
   // a mark that dug nothing clears the cover it blew away, through the world's presentation-only seam (a dug crater's
   // cover is the overlay's own law, on every peer: the core, 2026-10-08)
@@ -1221,7 +1230,7 @@ function* createFxSteps(
     const w = world ? world() : null;
     w?.clearCoverAt?.(x, z, radiusM);
   };
-  const structMask: StructureMask | null = createStructureMask(4096, { holes: mediaTier });
+  const structMask: StructureMask | null = timeShifts.add('structureMask', createStructureMask(4096, { holes: mediaTier }));
   // (2026-10-12, the owner: one physics engine for everything that falls) a building's larger falling pieces are bodies
   // of the engine the turret pops run on (sim/rigidBody.ts): the ground as drawn, the world's walls and records, each
   // other. The phone keeps every piece in the program (its pools are small and its frame tight)
@@ -1245,6 +1254,7 @@ function* createFxSteps(
         ?? bucketAliases(bucket).map((alias) => bucketMaterials.get(alias)?.material).find(Boolean) ?? null,
       setupMaterial: (material) => engineCtx?.setupShadowMaterial?.(material) })
     : null;
+  timeShifts.add('rubbleBodies', rubble);
   if (rubble) group.add(rubble.group);
   const structDebris: StructureDebris | null = createStructureDebris({
     bodies: rubble,
@@ -1255,6 +1265,7 @@ function* createFxSteps(
     baseGroundY: (x, z) => (heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z)),
     poolCapacity: mediaTier ? 256 : 24, pieceCap: mediaTier ? 1024 : 160,
   });
+  timeShifts.add('structureDebris', structDebris);
   group.add(structDebris.group);
   // ---- the world's structure seam (DESTRUCTION.md §16.4): each stage's builder through the writers, its cuts into the
   // mask, its hides flattened, the static shadow cache touched while the GPU reshapes a building
@@ -1317,6 +1328,7 @@ function* createFxSteps(
     hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
     ...(mediaTier ? {} : { sweepOnly: true, capacity: 16, poolShare: 0, hangingSteps: 4, hangingSlice: 4000 }),
   });
+  timeShifts.add('fractureStages', fractureStages);
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
       materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15,
@@ -1324,6 +1336,7 @@ function* createFxSteps(
       onLanding: pieceLanding,
       onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); } })
     : null;
+  timeShifts.add('structureStages', stages);
   /** Each struck building's last burst (fx seconds), the dust load in the air round it then (the bursts' scales, each
    *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
    *  own size, unless it is far bigger than what raised the load (dcore 2026-10-11, waves 397/401). */
@@ -1351,9 +1364,9 @@ function* createFxSteps(
   // (FX lane 10-14) a missile's smoke trail, a soft tube born at its nozzle (missileTrails.ts), and a wire-guided missile's
   // command wire, fixed to its launcher's tube: every tier (one draw each), in the time of day's light
   const missileLight = createSceneLightUniforms();
-  const smokeTrails = createMissileTrails(missileLight, particles.softParticles);
+  const smokeTrails = timeShifts.add('missileTrails', createMissileTrails(missileLight, particles.softParticles));
   group.add(smokeTrails.mesh);
-  const wires = createMissileWires(missileLight);
+  const wires = timeShifts.add('missileWires', createMissileWires(missileLight));
   group.add(wires.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
@@ -1400,6 +1413,7 @@ function* createFxSteps(
     { light: explosionLight, bornAt: -1e9, dur: EXPLOSION_LIGHT_S, peak: EXPLOSION_LIGHT_PEAK, pow: 2.6, baseDur: EXPLOSION_LIGHT_S,
       basePow: 2.6 },
   ];
+  timeShifts.on('lights', (delta) => { for (const state of lightStates) state.bornAt += delta; });
 
   /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
   const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
@@ -1515,6 +1529,7 @@ function* createFxSteps(
     // (ac130-barrels-230) a gunship round seen from its own lens leaves its gun drawn beside the lens
     lens: (heavy, ox, oy, oz, dx, dy, dz, out) => lensOffset(heavy ? 'howitzer' : 'cannon', ox, oy, oz, dx, dy, dz, out),
   });
+  timeShifts.add('projectileTracers', tracers);
   group.add(tracers.mesh);
   // ---- atmospherics lane (end)
 
@@ -1656,6 +1671,7 @@ function* createFxSteps(
   const shockGeo = new THREE.CircleGeometry(1, 48);
   shockGeo.rotateX(-Math.PI / 2); // face up
   const shockRings: ShockRingState[] = [];
+  timeShifts.on('shockRings', (delta) => { for (const ring of shockRings) ring.bornAt += delta; });
   // (ac130-fx-228 r3, the blind critic's night "full-lens tan wash" through the gunship's lens, the base build's too) the
   // ring is dust, not light: unlit, it drew its daylight tan at every hour, and at night the camera's exposure lifted it
   // into a glowing band; through the 3.6x lens its 20-26 m sweep crossed the whole frame. It takes the pools' light tint
@@ -1738,6 +1754,7 @@ function* createFxSteps(
   const MUZZLE_RING_DUR = 0.2;
   const muzzleRingGeo = new THREE.PlaneGeometry(2, 2);
   const muzzleRings: MuzzleRingState[] = [];
+  timeShifts.on('muzzleRings', (delta) => { for (const ring of muzzleRings) ring.bornAt += delta; });
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
@@ -1924,6 +1941,15 @@ function* createFxSteps(
   const printPos = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 3), 3);
   const printUv = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 2), 2);
   const printBirth = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4).fill(-1e9), 1);
+  timeShifts.on('trackPrints', (delta) => {
+    const births = printBirth.array;
+    for (let index = 0; index < births.length; index++) {
+      if (births[index] > -1e8) births[index] += delta;
+    }
+    printBirth.clearUpdateRanges();
+    printBirth.addUpdateRange(0, births.length);
+    printBirth.needsUpdate = true;
+  });
   // 0 = earth, 1 = water, 2 = sand, 3 = snow. Sharing the same dynamic
   // quad ring keeps wet interaction inside the existing single draw call.
   const printSurface = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4), 1);
@@ -2083,6 +2109,7 @@ function* createFxSteps(
   const _sweepSeen = new Set<ShellId>();
   /** r4: clock cursor for delta-driven emitters (see update()) */
   let lastTickS = 0;
+  timeShifts.on('tickCursor', (delta) => { lastTickS += delta; });
   /** r4: seconds since battle start (resetAll) — drives the exhaust
    *  cold-start belch during the opening flyby */
   let battleFreshS = 999;
@@ -4448,6 +4475,7 @@ function* createFxSteps(
   // and flashes light their smoke at a third (the sun outshines them); a headlight burns only at night.
   let nightPool: THREE.Object3D | null | undefined;
   let nightPoolLookedAt = -1e9;
+  timeShifts.on('nightPoolLookup', (delta) => { nightPoolLookedAt += delta; });
   const _wreckFire = new THREE.Color(EXPLOSION_LIGHT_HEX);
   function writeLocalLights(): void {
     beginLocalLights();
@@ -5679,30 +5707,8 @@ function* createFxSteps(
   function rebaseFxClock(atTimeS: number, exact = false): void {
     const delta = atTimeS - particles.getTime();
     if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
-    particles.shiftTime(delta);
-    vol?.shiftTime(delta);
-    smokeTrails.shiftTime(delta);
-    wires.shiftTime(delta);
-    chunks?.shiftTime(delta);
-    craters?.shiftTime(delta);
-    mapCraterMarks?.shiftTime(delta);
-    structMask?.shiftTime(delta);
-    structDebris?.shiftTime(delta);
-    rubble?.shiftTime(delta);
-    stages?.shiftTime(delta);
-    fractureStages?.shiftTime(delta);
-    tracers.shiftTime(delta);
-    for (const state of lightStates) state.bornAt += delta;
-    for (const ring of shockRings) ring.bornAt += delta;
-    for (const ring of muzzleRings) ring.bornAt += delta;
-    const births = printBirth.array;
-    for (let index = 0; index < births.length; index++) {
-      if (births[index] > -1e8) births[index] += delta;
-    }
-    printBirth.clearUpdateRanges();
-    printBirth.addUpdateRange(0, births.length);
-    printBirth.needsUpdate = true;
-    lastTickS += delta;
+    // (2026-11-02 audit R7) every registered stamp (timeShift.ts), then the shared clock's readers
+    timeShifts.shift(delta);
     noteFxClockShift(delta);
   }
 
@@ -6314,6 +6320,8 @@ function* createFxSteps(
     },
 
     /** Read-only killcam/visual-regression telemetry. */
+    timeShiftNames() { return timeShifts.names(); },
+
     getReplaySuppressionDebug() {
       return {
         suppressed: replaySuppressed,

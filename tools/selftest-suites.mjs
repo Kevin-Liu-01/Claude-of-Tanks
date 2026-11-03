@@ -990,6 +990,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
+    'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
