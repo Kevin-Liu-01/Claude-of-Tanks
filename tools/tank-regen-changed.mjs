@@ -106,6 +106,9 @@ const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`);
 const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
 const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
+/** (268) A chain that leaves some step out (--steps, --no-gpu, --no-world): it writes only the lines of the steps it ran. */
+const PARTIAL = [...STEPS, ...WORLD_STEPS].some((entry) => !selected(entry.name) || (NO_GPU && entry.device === 'gpu')
+  || (NO_WORLD && WORLD_NAMES.includes(entry.name)));
 // Flags that make a tool read a file the step key cannot see (a git revision, a hints file) are refused.
 for (const step of [...STEPS, ...WORLD_STEPS]) if (step.flags.some((flag) => /^--(?:uniform-from|hints)\b/.test(flag))) {
   throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);
@@ -279,7 +282,9 @@ async function runGpuStep(step, ids, state) {
 }
 
 let manifest = readManifest(root) ?? emptyManifest();
-const persist = (state) => { refreshComponents(manifest, state); writeManifest(root, manifest); };
+/** Write the table after a step ran (268): that step's own component lines move; the shared ones only in a chain that
+ *  selects every step, so a partial chain leaves every step it did not run as its keys were taken. */
+const persist = (state, ran) => { refreshComponents(manifest, state, { ran, shared: !PARTIAL }); writeManifest(root, manifest); };
 const fresh = () => {
   const started = Date.now();
   const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path });
@@ -365,7 +370,7 @@ async function step(name, { forceFull = false, restrict = false } = {}) {
       + `${unnamed.length ? `, ${unnamed.length} left due (no stamp names the reason): ${unnamed.slice(0, 6).join(', ')}` : ''}`);
   }
   recordStep(manifest, name, scoped, stampedInKeys(state, afterView, name, inKeys), afterView, { skip: new Set(Object.keys(skipped)), stamps });
-  persist(after);
+  persist(after, [name]);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;
 }

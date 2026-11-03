@@ -32,6 +32,15 @@ export function budgetVerdict({ cpuS, budgetS, idleS, hangS, wallS }) {
   return null;
 }
 
+/**
+ * A synchronous child bounded by its own CPU, never by wall time (268: execFileSync has only a wall timeout): the
+ * kernel stops `command` past `cpuS` seconds of CPU (RLIMIT_CPU, SIGXCPU). For a child that spawns none of its own;
+ * a tree is watched (watchChild). Returns [file, args] for execFileSync.
+ */
+export function cpuLimited(command, args, cpuS) {
+  return ['/bin/sh', ['-c', `ulimit -t ${Math.ceil(cpuS)} && exec "$0" "$@"`, command, ...args]];
+}
+
 const psRows = () => new Promise((done) => {
   execFile('ps', ['-A', '-o', 'pid=,ppid=,time='], { maxBuffer: 1 << 24, timeout: 15_000 }, (error, stdout) => {
     done(error ? null : String(stdout).split('\n').map((line) => line.match(/^\s*(\d+)\s+(\d+)\s+(\S+)/)).filter(Boolean)
@@ -42,10 +51,12 @@ const psRows = () => new Promise((done) => {
 /**
  * Watch child `pid`'s process tree: past `budgetS` of its CPU, or `hangS` without CPU progress, it calls `onStop(verdict)`
  * once and stops its tree by exact pids (TERM, then KILL after `graceMs`). `stop()` ends the watch; a failed ps sample is
- * skipped, never a verdict.
+ * skipped, never a verdict. The tree's CPU is every member's last sampled CPU, kept after it exits (268): summed over
+ * the live members alone, a chain of short children overspent unseen, and the tree fell below its old peak each time a
+ * child exited, so a healthy tree read as no progress (a hang).
  */
 export function watchChild(pid, { budgetS, hangS = 1800, pollMs = 15_000, graceMs = 15_000, onStop = () => {} }) {
-  const startedAt = Date.now();
+  const startedAt = Date.now(), spent = new Map();
   let lastCpuS = 0, lastProgressAt = startedAt, timer = null, stopped = false, verdict = null;
   const tick = async () => {
     if (stopped) return;
@@ -54,9 +65,11 @@ export function watchChild(pid, { budgetS, hangS = 1800, pollMs = 15_000, graceM
     if (rows) {
       const tree = treeCpu(rows, pid);
       if (!tree.pids.length) { timer = setTimeout(tick, pollMs); return; } // exited; 'close' ends the watch
+      for (const row of rows) if (tree.pids.includes(row.pid)) spent.set(row.pid, Math.max(spent.get(row.pid) ?? 0, row.cpuS));
+      const cpuS = [...spent.values()].reduce((sum, each) => sum + each, 0);
       const now = Date.now();
-      if (tree.cpuS > lastCpuS + 0.05) { lastCpuS = tree.cpuS; lastProgressAt = now; }
-      verdict = budgetVerdict({ cpuS: tree.cpuS, budgetS, idleS: (now - lastProgressAt) / 1000, hangS, wallS: (now - startedAt) / 1000 });
+      if (cpuS > lastCpuS + 0.05) { lastCpuS = cpuS; lastProgressAt = now; }
+      verdict = budgetVerdict({ cpuS, budgetS, idleS: (now - lastProgressAt) / 1000, hangS, wallS: (now - startedAt) / 1000 });
       if (verdict) {
         onStop(verdict);
         for (const member of tree.pids) { try { process.kill(member, 'SIGTERM'); } catch { /* gone */ } }
