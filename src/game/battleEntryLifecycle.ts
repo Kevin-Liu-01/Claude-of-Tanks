@@ -42,6 +42,14 @@ interface SlowRevealReceipt {
  */
 export const REVEAL_ABANDON_BUDGETS = 10;
 
+/**
+ * Most presentable time one reveal sample may credit toward the abandon ceiling (2026-11-02 audit F2 review). A
+ * suspension (an app switch freezes page JS, a throttled hidden tab wakes once a minute, a laptop sleeps) shows up as
+ * one long gap between samples, and the first sample after the resume runs before the frame loop's first tick; that
+ * gap is not time a frame could present. The warm hold caps its frames the same way (WARM_HOLD_FRAME_CAP_S).
+ */
+export const REVEAL_SAMPLE_CAP_MS = 250;
+
 /** A reveal that can never complete: no battle frame within its ceiling, or its battle left the screen. */
 export class BattleRevealAbandonedError extends Error {
   readonly code = 'battle_reveal_abandoned';
@@ -171,13 +179,17 @@ export function createBattleEntryLifecycle({
       // screen, or after REVEAL_ABANDON_BUDGETS budgets of presentable time with no battle frame. A hidden tab or a
       // lost context pauses that ceiling (the frames return with the page), never the beacons above.
       let phase: SlowRevealReceipt['phase'] | null = null;
+      // An interval counts only when both of its ends were presentable, and at most REVEAL_SAMPLE_CAP_MS of it.
       let presentableMs = 0;
       let sampledAt = startedAt;
+      let wasPresentable = isPresentable();
       while (presentedBattleFrameSerial < firstRequiredSerial) {
         const at = now();
         const waitedMs = at - startedAt;
-        if (isPresentable()) presentableMs += Math.max(0, at - sampledAt);
+        const presentableNow = isPresentable();
+        if (wasPresentable && presentableNow) presentableMs += Math.min(REVEAL_SAMPLE_CAP_MS, Math.max(0, at - sampledAt));
         sampledAt = at;
+        wasPresentable = presentableNow;
         if (phase === null && waitedMs > budgetMs) {
           phase = 'extended';
           onSlowReveal({ budgetMs, waitedMs: Math.round(waitedMs), phase });

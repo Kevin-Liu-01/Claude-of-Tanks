@@ -80,6 +80,41 @@ function stalledFrames({ msPerFrame = 100, maxFrames = 2000 } = {}) {
   assert.equal(receipt.slow, 'stalled');
 }
 
+// (audit F2 review) A suspension is not presentable time. An app switch freezes page JS, a throttled hidden tab wakes
+// once a minute, a laptop sleeps: the first sample after the resume runs before the frame loop's first tick (the
+// reveal's overdue timer fires first), so crediting that whole gap failed a healthy entry one frame before its battle
+// frame. 1500 ms is the 7 v 7 budget, so the ceiling is 15 s.
+for (const [label, hideBeforeFreeze] of [['a hidden frame, then a 20 s gap', true], ['a 20 s freeze seen from two presentable samples', false]]) {
+  let now = 0;
+  let presentable = true;
+  let frames = 0;
+  let lifecycle;
+  lifecycle = createBattleEntryLifecycle({
+    now: () => now,
+    revealTimeoutMs: 1500,
+    isPresentable: () => presentable,
+    nextFrame: async () => {
+      frames += 1;
+      if (frames === 3 && hideBeforeFreeze) presentable = false; // the page is backgrounded
+      if (frames === 4) { now += 20_000; presentable = true; } // the page returns: the overdue timer resolves first
+      else now += 16;
+      if (frames === 5) lifecycle.noteBattleFrame(); // the frame loop's first tick after the return presents
+      if (frames > 50) throw new Error('the reveal never completed');
+    },
+  });
+  const receipt = await lifecycle.run(() => lifecycle.primeReveal(), 'busy');
+  assert.equal(receipt.primed, true, `${label} does not abandon a healthy reveal`);
+  assert.equal(frames, 5);
+}
+
+// The per-sample cap still leaves an exit: a frame owner that never presents, seen only through long gaps, abandons.
+{
+  const clock = stalledFrames({ msPerFrame: 20_000, maxFrames: 200 });
+  await assert.rejects(createBattleEntryLifecycle({ nextFrame: clock.nextFrame, now: clock.now, revealTimeoutMs: 1000 })
+    .primeReveal(), isAbandoned, 'capped samples still reach the ceiling');
+  assert.equal(clock.frames, 1000 * REVEAL_ABANDON_BUDGETS / (entryLifecycle.REVEAL_SAMPLE_CAP_MS ?? 250) + 1);
+}
+
 // The edges Battle Again waits on, the entry's own serial, and the acceptance hook before the task.
 {
   const order = [];
@@ -178,4 +213,4 @@ function stalledFrames({ msPerFrame = 100, maxFrames = 2000 } = {}) {
   assert.ok(stalled.tickCount > 0, 'the control case did tick');
 }
 
-console.log('battleEntryReveal.selftest: reveal exits (left, stalled, hidden and blurred pause), entry edges and serial passed');
+console.log('battleEntryReveal.selftest: reveal exits (left, stalled, hidden, suspended and blurred pause), entry edges and serial passed');
