@@ -11,7 +11,7 @@
 //   Stillbrew collar stands there);
 // - the BAOR crews' late-1970s/1980s stowage: a camouflage net rolled on the NBC pack and a tarpaulin roll in the open
 //   carrier (NATO exercise photographs, 1979-90);
-// - glacis and roof fittings: the glacis' lifting eyes and the turret's front lifting eyes.
+// - the turret's two front lifting eyes (glacis eyes do not fit under this gun's full depression over the bow).
 // Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain_mk9/. First-party: Kevin B. Liu.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -156,15 +156,9 @@ function laterStowage(P: TankBuilderPort, pivot: Point): void {
   for (const strap of rollStraps(.46, t, .008, [-.22, .22])) add('turretDark', strap.rotateY(Math.PI / 2), -1.265, tarpY, -1.13);
 }
 
-/** The glacis' two lifting eyes at its upper corners. */
-function glacisFittings(P: TankBuilderPort): void {
-  const hull = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0): void =>
-    P.addEquipment(bucket, g, x, y, z, rx, ry);
-  for (const side of [-1, 1]) liftingEye(hull, 'hullDetail', side * 1.17, 1.436, 2.86, Math.PI / 2);
-}
-
-/** The turret-ring splash lip on the hull roof ahead of the turret: a 45 mm bar on an arc about the ring's axis that
- * runs round the front of the driver's hatch, beyond the turret's lower casting as it turns. */
+/** The turret-ring splash lip on the hull roof ahead of the turret: a 30 mm bar on an arc about the ring's axis that
+ * runs round the front of the driver's hatch, beyond the turret's lower casting as it turns and under the gun's full
+ * depression (at 46 mm it held the recoiled cradle 1 cm short of the sweep's keep at 30 degrees of yaw). */
 function splashLip(P: TankBuilderPort, ringZ: number): void {
   const radius = 1.73, n = 28, a0 = -.86, a1 = .86;
   // the hull roof under it (hull(): 1.558 at z 1.85, 1.528 at 2.33, 1.4115 at the glacis joint 3.0149)
@@ -173,7 +167,7 @@ function splashLip(P: TankBuilderPort, ringZ: number): void {
     const a = a0 + (a1 - a0) * i / n;
     const x = radius * Math.sin(a), z = ringZ + radius * Math.cos(a), y = roof(z);
     const out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-    return [[-.016, -.010], [.016, -.010], [.016, .036], [.006, .046], [-.016, .046]].map(([u, v]) =>
+    return [[-.016, -.010], [.016, -.010], [.016, .022], [.006, .030], [-.016, .030]].map(([u, v]) =>
       new THREE.Vector3(x + out.x * u, y + v, z + out.z * u));
   });
   P.addEquipment('hullDetail', loftRings(sections));
@@ -201,7 +195,6 @@ export function addChieftainMk9Kit(P: TankBuilderPort, pivot: Point, trunnion: P
   mantletCover(P, trunnion);
   closures(P, pivot);
   laterStowage(P, pivot);
-  glacisFittings(P);
   splashLip(P, pivot[2]);
   turretLiftingEyes(P, pivot);
   keepDecorOffSideBox(P, pivot);
