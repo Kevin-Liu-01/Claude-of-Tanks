@@ -29,9 +29,10 @@ const australian = (id: string, donor: string, name: string, era: 'cold-war' | '
 // The Australian Army's disruptive pattern: a tan base under olive and black in broad patches (the Abrams, AS1, AS4 and
 // Redback service photographs since the 1990s); and the RAAC's olive drab of the 1970s and 1980s (the Centurion Mk 5/1's coat)
 const ausDisruptive = (number: string) => ({ scheme: 'blotch' as const, base: '#8a7656', weather: '#95825f',
-  patches: ['#57593c', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2 });
+  patches: ['#57593c', '#262620'], marking: 'number' as const, number, camoScale: 0.55, patchK: 2.2,
+  insignia: 'au-army-kangaroo' });
 const raacOliveDrab = (number: string) => ({ scheme: 'solid' as const, base: '#5a5c30', weather: '#696b3d', patches: [] as string[],
-  marking: 'number' as const, number, camoScale: 0.55 });
+  marking: 'number' as const, number, camoScale: 0.55, insignia: 'au-army-kangaroo' });
 
 // ---------------------------------------------------------------------------------------------------- M113s --
 // The aluminium M113A1 hull (4.863 x 2.686 m, 0.43 m clearance; 12-38 mm) on the build's datums (profiles/m113.ts)
@@ -93,9 +94,8 @@ Object.assign(leopard_as1.dims, { hullLengthM: 7.09, overallLengthM: 9.543, widt
 Object.assign(leopard_as1, { weightTons: 42.4, enginePowerHp: 830, topSpeedKmh: 65 });
 leopard_as1.gun = { ...leopard_as1.gun, baseAccuracy: +(leopard_as1.gun.baseAccuracy * 0.95).toFixed(3),
   aimTimeS: +(leopard_as1.gun.aimTimeS * 0.92).toFixed(2) };
-// (the Danish flag goes; Australia's kangaroo is the country's own insignia)
+// (the Danish flag gives way to the Army's kangaroo)
 leopard_as1.visual = { ...leopard_as1.visual, ...ausDisruptive('27') };
-delete leopard_as1.visual.insignia;
 
 // ------------------------------------------------------------------------------------------------- AS21 Redback --
 // 129 ordered (December 2023; Hanwha, Geelong; deliveries from 2027): the EOS/Elbit T2000 turret with the 30 mm Mk44S, a

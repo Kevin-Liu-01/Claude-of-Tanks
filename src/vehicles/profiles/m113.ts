@@ -258,7 +258,7 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     P.add('gunDark', cylZ(0.032, 0.10, 10), 0, 0, 1.05);
     muzzleBore(P, { len: 1.10, r: 0.022 });
     P.muzzleZ = 1.10;
-    P.decal('turret', 'flag', 'au-kangaroo', 0.20, [0, 0.36, 0.64], 0);
+    P.decal('turret', 'flag', 'au-army-kangaroo', 0.20, [0, 0.36, 0.64], 0);
   }
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,
