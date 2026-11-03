@@ -52,6 +52,8 @@ const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   'landingImpactMps', '_autoTraverse'] as const;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
+/** Where the hit/recoil rock rode until audit M9 (2026-11-02; presentation only since): kept so the layout stands. */
+const RESERVED_ROCK_VALUES = 4;
 const TERRAIN = ['pitch', 'roll', 'fitPitch', 'tipPitch', 'tipRoll'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
@@ -100,7 +102,8 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   append(values, state._spring, SPRING);
   append(values, state._terr, TERRAIN);
   append(values, state._susp, ROCK);
-  append(values, state._flinch, ROCK);
+  // four reserved values: the hull's hit/recoil rock until audit M9 made it the visual's own; written as zeros
+  values.push(0, 0, 0, 0);
   append(values, state._ride, RIDE);
   append(values, state.trackScroll, TRACK);
   append(values, state._sup, SUPPORT);
@@ -145,7 +148,7 @@ export function applyMovementCheckpoint(
   offset = restore(state._spring, SPRING, values, offset);
   offset = restore(state._terr, TERRAIN, values, offset);
   offset = restore(state._susp, ROCK, values, offset);
-  offset = restore(state._flinch, ROCK, values, offset);
+  offset += RESERVED_ROCK_VALUES; // the retired hit/recoil rock (audit M9): read past, never applied
   offset = restore(state._ride, RIDE, values, offset);
   offset = restore(state.trackScroll, TRACK, values, offset);
   offset = restore(state._sup, SUPPORT, values, offset);

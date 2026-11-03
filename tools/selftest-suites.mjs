@@ -2003,6 +2003,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
+    // 2026-11-02 audit M9: the hit/recoil hull rock is the visual's own spring; the sim never reads or carries it
+    'src/vehicles/hullFlinchPresentation.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
     'src/game/garageDressingFleet.selftest.mjs',

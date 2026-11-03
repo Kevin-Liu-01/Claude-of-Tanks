@@ -399,7 +399,6 @@ export interface TankState {
   /** The held posture off a whole-track seat (an edge, a crest, a trench): the tracks are seated at it, and it relaxes at
    * the rock's rate while the hold builds again over planted tracks. Part of the hull's attitude like the hold. */
   _holdSeat: RockState;
-  _flinch: RockState;
   _ride: RideState;
   _body: RigidBodyState;
   _rollover: { elapsedS: number; expired: boolean };
@@ -1439,17 +1438,10 @@ const STOP_OMEGA = 30;
 const SUSP_VIS_P = 2.2;
 const SUSP_VIS_R = 1.9;
 const SWAY_VIS = 2.4;
-// Mirror of tankFactory's hit-flinch rock (FLINCH_W/FLINCH_Z in the visual
-// layer): a large-caliber hit kicks flinchPV up to ~0.36 rad/s ⇒ peak rock
-// ~1.6°, which over a 3.5 m half-length transiently dips a track end ~10 cm —
-// far past the 1.5 cm SUPPORT_MARGIN. The oscillator is therefore integrated
-// HERE (state._flinch, once per sim tick) and folded into the support solve;
-// tankFactory reads state._flinch for rendering and routes its hit/recoil
-// impulses into it (see docs/history/research/movement-physics.md).
-// RENDER SIGN: rotation.x = -(visualPitch + suspP) + flinchP, so flinch pitch
-// SUBTRACTS from the movement-space pitch; flinch roll adds like the others.
-const FLINCH_W = 13;
-const FLINCH_Z = 0.32;
+// The hit and recoil hull rock (tankFactory hitFlinch/recoilKick) is presentation only (audit M9, 2026-11-02): the
+// visual owns its spring and lifts its own root clear of the ground at the rocked pose. It used to be routed into
+// state._flinch and integrated here, but no authority writes it, so the solo sim took impulses at render cadence and
+// a multiplayer client's never rocked. The deterministic rock every driver applies is fireRecoil / applyShellKnock.
 // Genuine mechanical limits retain a short dwell to avoid flashing while the
 // hull rocks. Terrain never overrides the player's requested gun elevation.
 const GUN_LIMIT_LABEL_DIST_M = 120; // hydraulic fixed-gun label distance
@@ -2162,7 +2154,6 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0, c: 0, cv: 0 }, // mirror of the visual susp rock layer
     _hold: { p: 0, r: 0, pv: 0, rv: 0 }, // the posture held over the tracks on a grade (part of the attitude)
     _holdSeat: { p: 0, r: 0, pv: 0, rv: 0 }, // that posture seated with the tracks off a whole-track seat
-    _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
       solverLift: 0,
@@ -3320,9 +3311,8 @@ function pushOffTerrainWalls(
   // the hull as it is drawn (the support solve's rendered pose, with the dive): a nose that dips against a face on a hard
   // stop dips into it otherwise (the bodyPen receipt reads this pose)
   const susp = state._susp;
-  const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0) - (state._flinch?.p ?? 0);
-  const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS +
-    (state._flinch?.r ?? 0);
+  const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0);
+  const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS;
   const cosYaw = detMath.cos(state.yaw);
   const sinYaw = detMath.sin(state.yaw);
   const cosNegPitch = detMath.cos(-pitch);
@@ -3416,26 +3406,6 @@ function pushOffTerrainWalls(
     state.impactNz = normalZ;
   }
   if (lost > 1.5) state._spool = 0;
-}
-
-function updateFlinchRock(state: TankState, dt: number): void {
-  const flinch = state._flinch;
-  if (!flinch) return;
-  const active = flinch.p !== 0 || flinch.r !== 0 || flinch.pv !== 0 || flinch.rv !== 0;
-  if (!active) return;
-  flinch.pv += (-FLINCH_W * FLINCH_W * flinch.p -
-    2 * FLINCH_Z * FLINCH_W * flinch.pv) * dt;
-  flinch.p += flinch.pv * dt;
-  flinch.rv += (-FLINCH_W * FLINCH_W * flinch.r -
-    2 * FLINCH_Z * FLINCH_W * flinch.rv) * dt;
-  flinch.r += flinch.rv * dt;
-  if (Math.abs(flinch.p) + Math.abs(flinch.pv) +
-      Math.abs(flinch.r) + Math.abs(flinch.rv) < 1e-4) {
-    flinch.p = 0;
-    flinch.r = 0;
-    flinch.pv = 0;
-    flinch.rv = 0;
-  }
 }
 
 function fixedHydraulicPitchRequest(
@@ -5515,15 +5485,6 @@ export function updateTank(
   state._swayEst += (swayTarget - state._swayEst) *
     (1 - detMath.exp(-dt / SWAY_TAU_S));
 
-  // ---- hit-flinch rock: integrate the visual layer's damped oscillator ------
-  // (constants in lockstep with tankFactory FLINCH_W/FLINCH_Z; impulses arrive
-  // via state._flinch.pv/rv from the visual's hitFlinch/recoil rock). Stepped
-  // once per sim tick BEFORE the support sampling so both the sample pass and
-  // the final clamp see the exact pose syncFromState will render this tick.
-  updateFlinchRock(state, dt);
-  const flP = state._flinch?.p ?? 0;
-  const flR = state._flinch?.r ?? 0;
-
   const susp = state._susp;
 
   // ---- hull attitude spring: terrain target + inertial pitch (nose dip/lift) ----
@@ -5600,8 +5561,8 @@ export function updateTank(
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
-  // suspP×VIS) + flinchP ⇒ flinch pitch enters with a MINUS sign here; roll
-  // adds. The susp/sway layers carry the renderer's visibility amplification.
+  // suspP×VIS); roll adds. The susp/sway layers carry the renderer's visibility
+  // amplification (the hit/recoil flinch is the visual's own, audit M9).
   // Sampling, plane fit and clamp all run at THIS post-step attitude in one
   // pass — sampling at the pre-step attitude left a Δattitude × lever × slope
   // height error that the visibility amplification turned into multi-cm
@@ -5610,8 +5571,8 @@ export function updateTank(
   // imperceptible at 60 Hz, and exactly the pre-existing contract).
   // the tracks are seated at the attitude without the dive (SuspensionRockState.d) or the posture held over them
   // (state._hold): the hull pitches and rolls over them; off a whole-track seat that posture is seated with them
-  const pitchEff = spr.pitch + holdSeat.p + (susp.p - susp.d) * SUSP_VIS_P - flP;
-  const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
+  const pitchEff = spr.pitch + holdSeat.p + (susp.p - susp.d) * SUSP_VIS_P;
+  const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
