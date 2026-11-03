@@ -171,14 +171,20 @@ function glacis(P: TankBuilderPort): void {
  * and kit bag, the two Larkspur whips, the cupola's L37. The casting's surfaces are read from its rows
  * (chieftain5XSourceTurret.ts, chieftain5XSourceApplique.ts) and measured on the build (heights within 3 mm).
  */
-function oldTurretKit(P: TankBuilderPort, add: Add, pivot: Point): void {
-  searchlightLens(add);
-  sideBin(add);
+function oldTurretKit(P: TankBuilderPort, place: Add, pivot: Point): void {
+  // each part tagged with its item (chieftainFidelity.selftest.mjs reads the tags)
+  const item = (name: string): Add => (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    g.userData.chieftainOldKit = name;
+    place(bucket, g, x, y, z, rx, ry, rz);
+  };
+  const add = item('grabRail');
+  searchlightLens(item('searchlightLens'));
+  sideBin(item('sideBin'));
   // the loader's two periscopes ahead of his hatch (the old build's roof boxes ahead of the cupola), turned out a little
-  periscopeHead(add, 'turretDetail', 'turretGlass', .34, 2.311, .08, -.10);
-  periscopeHead(add, 'turretDetail', 'turretGlass', .57, 2.311, .06, .12);
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .34, 2.311, .08, -.10);
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .57, 2.311, .06, .12);
   // the sight box beside the cupola, behind the loader's hatch, its window forward
-  sightBox(add, 'turretDetail', 'turretDark', 'turretGlass', .10, 2.314, -.86, 0, .20, .14, .20);
+  sightBox(item('sightBox'), 'turretDetail', 'turretDark', 'turretGlass', .10, 2.314, -.86, 0, .20, .14, .20);
   // the roof grab rails where the old build's bars crossed the roof shoulders: forward of the loader's periscopes and
   // beside the gunner's sight, and behind the cupola and the loader's hatch
   grabRail(add, 'turretDetail', [.30, 2.309, .40], [.64, 2.307, .40]);

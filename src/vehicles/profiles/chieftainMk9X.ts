@@ -149,11 +149,12 @@ function laterStowage(P: TankBuilderPort, pivot: Point): void {
   const add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2]);
   const r = .125, rollY = 2.3056 + r * .55 - .012;
-  add('turretCloth', clothRoll(1.30, r, .004), -.02, rollY, -1.86);
-  for (const strap of rollStraps(1.30, r, .004, [-.30, .30])) add('turretDark', strap, -.02, rollY, -1.86);
+  const tag = (g: THREE.BufferGeometry): THREE.BufferGeometry => { g.userData.chieftainMk9 = 'laterStowage'; return g; };
+  add('turretCloth', tag(clothRoll(1.30, r, .004)), -.02, rollY, -1.86);
+  for (const strap of rollStraps(1.30, r, .004, [-.30, .30])) add('turretDark', tag(strap), -.02, rollY, -1.86);
   const t = .105, tarpY = 1.942 + t * .55 - .010;
-  add('turretCloth', clothRoll(.46, t, .008).rotateY(Math.PI / 2), -1.265, tarpY, -1.13);
-  for (const strap of rollStraps(.46, t, .008, [-.22, .22])) add('turretDark', strap.rotateY(Math.PI / 2), -1.265, tarpY, -1.13);
+  add('turretCloth', tag(clothRoll(.46, t, .008).rotateY(Math.PI / 2)), -1.265, tarpY, -1.13);
+  for (const strap of rollStraps(.46, t, .008, [-.22, .22])) add('turretDark', tag(strap.rotateY(Math.PI / 2)), -1.265, tarpY, -1.13);
 }
 
 /** The turret-ring splash lip on the hull roof ahead of the turret: a 30 mm bar on an arc about the ring's axis that
@@ -200,34 +201,37 @@ function keepDecorOffSideBox(P: TankBuilderPort, pivot: Point): void {
  * smoke banks, the whips, the cupola's L37. Heights are the casting's roof as measured on the build (within 3 mm).
  */
 function oldTurretKit(P: TankBuilderPort, pivot: Point): void {
-  const add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void =>
+  // each part tagged with its item (chieftainFidelity.selftest.mjs reads the tags)
+  const item = (name: string): Add => (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    g.userData.chieftainOldKit = name;
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
-  sightHead(add);
-  periscopeHead(add, 'turretDetail', 'turretGlass', .14, 2.425, .30, -.08);
-  periscopeHead(add, 'turretDetail', 'turretGlass', .33, 2.425, .30, .10);
-  sightBox(add, 'turretDetail', 'turretDark', 'turretGlass', .12, 2.407, -.98, 0, .20, .14, .20);
-  grabRail(add, 'turretDetail', [.28, 2.389, .82], [.66, 2.378, .82]);
-  grabRail(add, 'turretDetail', [-.15, 2.411, .62], [-.55, 2.392, .62]);
-  grabRail(add, 'turretDetail', [.40, 2.407, -1.02], [.80, 2.407, -1.02]);
-  grabRail(add, 'turretDetail', [-.30, 2.407, -1.02], [-.68, 2.407, -1.02]);
-  wallRods(add);
-  bustleBasket(P, add, pivot);
+  };
+  sightHead(item('sightHead'));
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .14, 2.425, .30, -.08);
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .33, 2.425, .30, .10);
+  sightBox(item('sightBox'), 'turretDetail', 'turretDark', 'turretGlass', .12, 2.407, -.98, 0, .20, .14, .20);
+  grabRail(item('grabRail'), 'turretDetail', [.28, 2.389, .82], [.66, 2.378, .82]);
+  grabRail(item('grabRail'), 'turretDetail', [-.15, 2.411, .62], [-.55, 2.392, .62]);
+  grabRail(item('grabRail'), 'turretDetail', [.40, 2.407, -1.02], [.80, 2.407, -1.02]);
+  grabRail(item('grabRail'), 'turretDetail', [-.30, 2.407, -1.02], [-.68, 2.407, -1.02]);
+  wallRods(item('stowedRods'));
+  bustleBasket(P, item('bustleBasket'), pivot);
 }
 
 /** The armoured sight head of the old Mk 9 (its window forward) on the roof ahead of the loader's hatches (their front
- * leaf reaches z 0.205) and inboard of the antenna support (x 0.854): a cast plinth bedded into the falling roof (2.425
- * at its inner rear corner, 2.36 at its outer front), the head on it, the dark window with its glass and hood, and the
- * lid plate. */
+ * leaf, hinged at z 0.205, stands open over it 85 mm short of the head) and inboard of the antenna support (x 0.854): a
+ * cast plinth bedded into the falling roof (2.425 at its inner rear corner, 2.37 at its outer front), the head on it, the
+ * dark window with its glass and hood, and the lid plate. */
 function sightHead(add: Add): void {
-  const x = .69, z = .45, foot = 2.355;
-  add('turretDetail', chamferedCase(.40, .10, .40), x, foot + .05, z);
-  add('turretDetail', chamferedCase(.44, .24, .42), x, foot + .10 + .11, z);
-  const top = foot + .10 + .23, front = z + .21;
-  add('turretDetail', box(.46, .020, .40), x, top + .006, z - .01);
-  add('turretDark', box(.30, .115, .016), x, foot + .225, front + .004);
-  add('turretGlass', box(.23, .082, .004), x, foot + .225, front + .014);
-  add('turretDetail', box(.34, .012, .070), x, foot + .300, front + .030, -.22);
-  for (const dx of [-.16, .16]) add('turretDetail', box(.014, .115, .040), x + dx, foot + .225, front + .016);
+  const x = .65, z = .50, foot = 2.355;
+  add('turretDetail', chamferedCase(.36, .10, .38), x, foot + .05, z);
+  add('turretDetail', chamferedCase(.40, .24, .40), x, foot + .10 + .11, z);
+  const top = foot + .10 + .23, front = z + .20;
+  add('turretDetail', box(.42, .020, .38), x, top + .006, z - .01);
+  add('turretDark', box(.28, .115, .016), x, foot + .225, front + .004);
+  add('turretGlass', box(.21, .082, .004), x, foot + .225, front + .014);
+  add('turretDetail', box(.32, .012, .070), x, foot + .300, front + .030, -.22);
+  for (const dx of [-.15, .15]) add('turretDetail', box(.014, .115, .040), x + dx, foot + .225, front + .016);
 }
 
 type Add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx?: number, ry?: number, rz?: number) => void;

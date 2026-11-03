@@ -30,7 +30,8 @@ function survey(id) {
       if (source !== 'add') return;
       g.computeBoundingBox();
       parts.push({ bucket, min: g.boundingBox.min.clone(), max: g.boundingBox.max.clone(), bytes: digest(g),
-        stillbrew: g.userData.chieftain10Stillbrew, horn: g.userData.chieftain10Horn, mk9: g.userData.chieftainMk9 });
+        stillbrew: g.userData.chieftain10Stillbrew, horn: g.userData.chieftain10Horn, mk9: g.userData.chieftainMk9,
+        oldKit: g.userData.chieftainOldKit });
     } });
   try {
     const rig = (name) => tank.root.getObjectByName(name).position.toArray().map((v) => +v.toFixed(6));
@@ -90,9 +91,23 @@ assert.equal(count(mk3, 'turretDetail', (p) => wide(.86)(p) && p.max.y - p.min.y
 assert.ok(count(mk3, 'turretOpenLattice') > count(mk5, 'turretOpenLattice') + 20, 'chieftain3: the open rear basket');
 assert.ok(mk3.jerryCans && !mk5.jerryCans, 'chieftain3: jerry cans where the Mk 5 carries its stowage box');
 
-// Mk 9: its stowage (a net rolled on the NBC pack and a tarpaulin in the open carrier, each tied by two straps).
-assert.equal(count(mk9, 'turretCloth') - count(mk10, 'turretCloth'), 2, 'chieftain_mk9: net roll and tarpaulin roll');
-assert.equal(count(mk9, 'turretDark') - count(mk10, 'turretDark'), 4, 'chieftain_mk9: four webbing straps');
+// Mk 9: its stowage (a net rolled on the NBC pack and a tarpaulin in the open carrier, each tied by two straps). Release
+// 269 tags these parts (chieftainMk9X.ts laterStowage): the bustle basket's two rolls and the old kit's dark parts came
+// with the old turret kit below.
+const later = (p) => p.mk9 === 'laterStowage';
+assert.equal(count(mk9, 'turretCloth', later), 2, 'chieftain_mk9: net roll and tarpaulin roll');
+assert.equal(count(mk9, 'turretDark', later), 4, 'chieftain_mk9: four webbing straps');
+
+// Release 269 (the owner, 2026-11-03: "for the cheiftain mk 3 and mk 9, add on all the equipment we had on teh turrets
+// from before onto the currennt mk 3 and mk 9"): the retired upper assembly's turret kit on each mark's casting (each
+// part tagged with its item), and none of it on the Mk 5 or the Mk 10.
+const items = (s) => [...new Set(s.parts.filter((p) => p.oldKit).map((p) => p.oldKit))].sort();
+assert.deepEqual(items(mk3), ['grabRail', 'periscope', 'searchlightLens', 'sideBin', 'sightBox'],
+  'chieftain3: the old searchlight lens, side bin and rods, loader\'s periscopes, sight box and roof grab rails');
+assert.deepEqual(items(mk9), ['bustleBasket', 'grabRail', 'periscope', 'sightBox', 'sightHead', 'stowedRods'],
+  'chieftain_mk9: the old sight head, loader\'s periscopes, sight box, grab rails, stowed rods and bustle basket');
+for (const [id, s] of [['chieftain5', mk5], ['chieftain_mk10', mk10]]) assert.deepEqual(items(s), [], `${id}: none of the old kit`);
+assert.equal(count(mk3, 'turretDetail', (p) => p.oldKit === 'grabRail'), 12, 'chieftain3: four grab rails, each a bar on two pads');
 
 // LOW builds stay whole.
 for (const id of ['chieftain3', 'chieftain_mk9']) {
@@ -104,4 +119,4 @@ for (const id of ['chieftain3', 'chieftain_mk9']) {
     assert.ok(new THREE.Box3().setFromObject(tank.root).max.z > 6.7, `${id}: LOW build keeps its gun`);
   } finally { tank.dispose(); }
 }
-console.log('chieftainFidelity.selftest: Mk 3 on the Mk 5 X castings with the early turret, ranging gun and cans; Mk 9 on the Mk 10 X castings without Stillbrew, bare nose and late stowage; LOW builds whole');
+console.log('chieftainFidelity.selftest: Mk 3 on the Mk 5 X castings with the early turret, ranging gun and cans; Mk 9 on the Mk 10 X castings without Stillbrew, bare nose and late stowage; both with the old turret kit; LOW builds whole');
