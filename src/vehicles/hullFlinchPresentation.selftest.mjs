@@ -105,5 +105,23 @@ const root = visual.root;
   assert.ok(worst > -1e-6, `no track corner drops below its seat while the hull rocks (worst ${worst.toFixed(5)} m)`);
 }
 
+// ---- two shots between one pair of frames rock the hull twice (no pending kick is dropped) ------------------------
+{
+  const state = createTankState(spec, new THREE.Vector3(0, 0, 0), 0);
+  const peakAfter = (kicks) => {
+    for (let i = 0; i < 300; i++) visual.syncFromState(state, 1 / 60);
+    const rest = root.rotation.x;
+    for (let k = 0; k < kicks; k++) visual.recoilKick(0, 0.36, k);
+    let peak = 0;
+    for (let i = 0; i < 20; i++) {
+      visual.syncFromState(state, 1 / 60);
+      peak = Math.max(peak, Math.abs(root.rotation.x - rest));
+    }
+    return peak;
+  };
+  const one = peakAfter(1), two = peakAfter(2);
+  assert.ok(two > one * 1.3, `a second belt shot inside the frame adds its rock (one ${one.toFixed(4)}, two ${two.toFixed(4)} rad)`);
+}
+
 visual.dispose();
 console.log('hullFlinchPresentation.selftest: the drawn rock never reaches the sim, rocks unstepped states and keeps the tracks seated');

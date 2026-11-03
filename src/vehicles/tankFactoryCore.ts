@@ -11496,7 +11496,8 @@ export function* createTankRuntimeSteps(
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
-      recoilPendingScale = recoilScale;
+      // a second shot before the next frame adds its rock to the pending one (hitFlinch caps the sum), never replaces it
+      recoilPendingScale = recoilPending ? recoilPendingScale + recoilScale : recoilScale;
       recoilPending = true;
       if (spec.gun.fixedLaunchCanisters) {
         // An indexed missile launch leaves its tube and cradle seated.
