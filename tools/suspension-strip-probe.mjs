@@ -33,6 +33,7 @@ import {
   isMainModule, openGamePage, parseProbeArgs, probeHelp, runProbeCli, sleep, withDistProbeSession, withMapProbeSession,
   writeProbeReceipt,
 } from './map-probe-runtime.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const TOOL = 'suspension-strip-probe';
 const ACCEPTS = ['root', 'out', 'tag', 'spec', 'ids', 'cache-dir', 'dist'];
@@ -902,7 +903,7 @@ async function runStripProbe(options) {
         await page.evaluate((value) => { localStorage.setItem('cot.game.teams.v1', value); }, arrangement);
         await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); },
           { specId: caseDef.spec ?? options.spec, mapId: caseDef.map, gameMode: caseDef.mode });
-        await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 300000, polling: 250 });
+        await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 300000, polling: 250 });
         await sleep(1500);
         cases[caseId] = await runCase(page, caseId, caseDef, options, build);
         const rc = cases[caseId].renderCheck;

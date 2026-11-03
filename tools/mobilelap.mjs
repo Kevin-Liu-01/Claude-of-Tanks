@@ -14,6 +14,7 @@ import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const opt = (n, f) => {
@@ -106,7 +107,7 @@ if (selectedProfile.cpuRate > 1) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: selectedProfile.cpuRate });
 }
 await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 360000 });
-await page.waitForFunction('window.__GAME_READY === true', { timeout: 360000 });
+await waitForBootLoaded(page, { timeout: 360000 });
 if (PRODUCTION) {
   await page.waitForFunction('window.__QA_TRACE?.enabled === true', { timeout: 30000 });
 }
@@ -238,8 +239,7 @@ await page.evaluate(() => {
     .find((el) => /^\s*BATTLE\s*$/i.test(el.textContent));
   if (b) b.click(); else throw new Error('BATTLE button not found');
 });
-await page.waitForFunction(
-  () => window.__DEBUG.game.phase === 'battle' && window.__DEBUG.game.preBattleS <= 0,
+await page.waitForFunction(readinessExpression('controlsReleased'),
   { timeout: 120000, polling: 100 });
 await end();
 const battleLoadStages = await page.evaluate(() => window.__BATTLE_LOAD || null);
@@ -354,8 +354,7 @@ await shot('02-battle-fight');
 console.log('[lap] rematch');
 await begin('rematch');
 await page.evaluate((id) => window.__DEBUG.startBattle(id), TANK);
-await page.waitForFunction(
-  () => window.__DEBUG.game.phase === 'battle' && window.__DEBUG.game.preBattleS <= 0,
+await page.waitForFunction(readinessExpression('controlsReleased'),
   { timeout: 120000, polling: 100 });
 await end();
 

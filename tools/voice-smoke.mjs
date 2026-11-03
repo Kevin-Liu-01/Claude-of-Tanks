@@ -29,6 +29,7 @@ import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const LANGUAGES = ['en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he'];
 const outDir = resolve('shots/voice-smoke');
@@ -109,7 +110,7 @@ async function openPage() {
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await waitForBootLoaded(page, { timeout: 90000 });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;

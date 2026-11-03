@@ -1314,6 +1314,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
     'src/app/bootReadiness.selftest.mjs', // 2026-11-02 audit S3: a product boot latch; the harness flag is its write-only mirror
     'src/app/automationPath.selftest.mjs', // 2026-11-02 audit S3: one automation reader, an explicit player path, the tools census
+    'tools/game-readiness.selftest.mjs', // 2026-11-02 audit S3: one readiness probe over the published lifecycle; hand-built waits listed
     'src/game/networkVerdictPhase.selftest.mjs', // 2026-11-02 audit F1: a network verdict owns its time; its report follows the hold
     'src/game/battleEntryIntent.selftest.mjs', // 2026-11-02 audit F2: one solo intent record; a room world never inherits it
     'src/game/battleClientAccess.selftest.mjs',

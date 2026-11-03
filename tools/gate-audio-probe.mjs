@@ -17,6 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -67,7 +68,7 @@ async function probe(base) {
     page.on('pageerror', (e) => consoleLog.push({ type: 'error', text: `pageerror: ${String(e?.message || e).split('\n')[0]}` }));
     await page.evaluateOnNewDocument(PROBE);
     await page.goto(new URL('/', base.url).href, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction(() => window.__GAME_READY === true && document.querySelector('#cot-boot-gate.on'), { timeout: 240000, polling: 200 });
+    await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!document.querySelector('#cot-boot-gate.on')`, { timeout: 240000, polling: 200 });
     await new Promise((r) => setTimeout(r, 1500));
     const bootConsole = consoleLog.splice(0);
     await page.evaluate(() => {

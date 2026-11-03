@@ -11,6 +11,7 @@ import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 export function garageDrawRangeUrl(input) {
   const url = new URL(input);
@@ -239,8 +240,8 @@ async function main() {
     });
     const response = await page.goto(url.href, { waitUntil: 'networkidle0', timeout: 120_000 });
     report.buildIndexHash = createHash('sha256').update(await response.buffer()).digest('hex');
-    await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.garageDressing?.isBuilt()
-      && window.__DEBUG.garageDressing.group.userData.optimizationReceipt, { timeout: 120_000 });
+    await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.garageDressing?.isBuilt()
+      && window.__DEBUG.garageDressing.group.userData.optimizationReceipt`, { timeout: 120_000 });
     report.baseCamera = await page.evaluate(() => {
       const camera = window.__DEBUG.camera;
       return { position: camera.position.toArray(), quaternion: camera.quaternion.toArray(), projection: camera.projectionMatrix.toArray() };

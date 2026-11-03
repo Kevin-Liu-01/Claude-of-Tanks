@@ -29,6 +29,7 @@ import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
 
 import {BATTLE_REEL_SCENARIOS, DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const FEATURE_SCENE_FILES = [
   '61_action_desert_duel_leclerc_kill.json',
@@ -257,7 +258,7 @@ try {
     timeout: 180_000,
   });
   await page.waitForFunction(
-    "window.__GAME_READY === true && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'desert'",
+    `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true && window.__STUDIO.mapId === 'desert'`,
     { timeout: 180_000 },
   );
 

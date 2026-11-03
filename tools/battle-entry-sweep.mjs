@@ -63,6 +63,7 @@ import { createReadStream, existsSync, mkdirSync, mkdtempSync, statSync, writeFi
 import { loadavg, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readinessExpression } from './game-readiness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const WATCHDOG_THRESHOLD = 6;
@@ -278,7 +279,7 @@ async function main() {
     const t0 = Date.now();
     const res = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180000 });
     if (!res || res.status() >= 400) throw new Error(`document status ${res?.status()}`);
-    await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG && window.__DEBUG.game?.phase === "garage"', { timeout: 180000, polling: 250 });
+    await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 180000, polling: 250 });
     report.version ??= await page.evaluate(() => document.querySelector('meta[name="application-version"]')?.content ?? null);
     bootedTime = time;
     bootedControl = control;
@@ -432,7 +433,7 @@ async function main() {
       if (row.entry === 'revealed' && fresh === 'none') {
         try {
           await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-          await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 120000, polling: 250 });
+          await page.waitForFunction(readinessExpression('garage'), { timeout: 120000, polling: 250 });
         } catch { try { await page.close(); } catch { /* closed */ } page = null; }
       }
     }

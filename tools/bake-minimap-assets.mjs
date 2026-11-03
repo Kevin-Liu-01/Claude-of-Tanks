@@ -19,6 +19,7 @@ import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { requireMinimapCapture } from './map-art-guards.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -95,7 +96,7 @@ async function openPage() {
     if (message.type() === 'warn' && message.text().includes('[sourcedTextures]')) errors.push(message.text());
   });
   await fresh.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await fresh.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(fresh, { timeout: 120000 });
 }
 async function bakeMap(mapId) {
   try {

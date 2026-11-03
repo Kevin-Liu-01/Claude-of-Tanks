@@ -43,7 +43,7 @@ import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
 import { installSourcedTextureReadiness, checkSourcedTextureReadiness } from './sourced-texture-readiness.mjs';
-import { requestAutomationPath } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, requestAutomationPath } from './game-readiness.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -245,7 +245,7 @@ try {
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   if (!navigation?.ok()) throw new Error(`Navigation failed: ${navigation?.status()}`);
   report.buildIndexHash = hash(await navigation.text());
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.garage);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.garage`);
   if (bootAudioGate) {
     await page.waitForSelector('#cot-boot-gate.on', { visible: true });
     report.bootAudioIntent = { before: await page.evaluate(readGarageAudioIntent) };

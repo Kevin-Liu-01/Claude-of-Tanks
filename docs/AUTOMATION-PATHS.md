@@ -147,3 +147,52 @@ The reveal latch (`window.__BATTLE_REVEAL`, reset to see the next reveal):
 - `tools/battle-entry-sweep.mjs`
 - `tools/click-timeline.mjs`
 <!-- /census -->
+
+## Waiting on the game's state
+
+Wait through `tools/game-readiness.mjs`, never on a hand-built predicate. The audit counted eight definitions of
+"the battle is playable" (the phase, `preBattleS`, the loader's classes read four ways, the HUD's display,
+`__BATTLE_REVEAL`, `result`, `timeS`) and three of "the Garage is ready"; `__GAME_READY && phase === 'garage'` was
+true under a return's veil and behind the battle report, and `phase === 'battle' && preBattleS <= 0` under a network
+join's cover. The module reads the game's published lifecycle (`window.__APP_LIFECYCLE`, src/game/appLifecycle.ts):
+
+| readiness | lifecycle states | use it for |
+|---|---|---|
+| `garage` | garage | a settled Garage screen: the boot splash gone, no return under its veil, not behind the report |
+| `battleRevealed` | countdown, live, verdict, report | the battle is on screen (its cover is gone) |
+| `controlsReleased` | live, verdict, report | the countdown is over (what `phase === 'battle' && preBattleS <= 0` meant) |
+| `battleLive` | live | controls released and no verdict |
+| `battleEnded` | verdict, report | the verdict landed |
+| `studio` | studio | the Studio owns the scene |
+
+`readinessExpression(name, { since })` is the in-page expression (add a tool's own conditions with `&&`);
+`waitForReady(page, name, options)` waits and returns the facts; `since` takes a lifecycle `transitions` count so a
+wait means the next battle, not the one on screen. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's
+harness mirror (`window.__GAME_READY`, written by src/app/bootReadiness.ts): the boot finished loading, while the
+entry gate may still wait on the player (the lifecycle's 'boot' state until it is dismissed).
+
+The tools that still read the mirror or build a phase or countdown wait by hand, and why:
+
+<!-- census:handBuiltWaits -->
+- `tools/battle-memory-probe.mjs`: its entry time is measured to the phase edge itself
+- `tools/battle-spike-census.mjs`: another lane's open edits (tools-chains); migrate after it lands
+- `tools/click-timeline.mjs`: measures the Garage's paint and the entry gate (visual edges), not readiness
+- `tools/cold-load-probe.mjs`: records the mirror inside a page function as a receipt field
+- `tools/frame-budget-probe.mjs`: another lane's open edits (tools-chains)
+- `tools/garage-variants-probe.mjs`: a page function closed over the tool's own selection id
+- `tools/ground-banding-shots.mjs`: another lane's open edits (tools-chains)
+- `tools/map-probe-runtime.mjs`: another lane's open edits (tools-chains)
+- `tools/marketing-shots/mode-battle-shots.mjs`: another lane's file (tools-chains)
+- `tools/media-production/cinema.mjs`: another lane's file (tools-chains)
+- `tools/media-production/produce.mjs`: another lane's file (tools-chains)
+- `tools/media-r5/lab.mjs`: another lane's file (tools-chains)
+- `tools/media-r5/studio-ui.mjs`: another lane's file (tools-chains)
+- `tools/mobilelap.mjs`: the map cycle's waits close over the next map id
+- `tools/mp-room-census.mjs`: another lane's file (tools-chains)
+- `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
+- `tools/pr-census.mjs`: another lane's open edits (tools-chains)
+- `tools/render-stability-audit.mjs`: records the mirror inside a page function as a receipt field
+- `tools/solo-kernels-probe.mjs`: another lane's open edits (tools-chains)
+- `tools/time-to-battle-probe.mjs`: another lane's open edits (tools-chains)
+- `tools/track-system-audit.mjs`: a page function closed over the tank id
+<!-- /census -->

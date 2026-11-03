@@ -30,6 +30,7 @@ import { MAP_PROBE_BROWSER_ARGS, beginSoloBattle, isMainModule, sleep } from './
 import {
   acquireProbeLocks, awaitTextures, freezeBattle, grassSettled, installObservers, openPreview, pinnedOpponents, poseView,
 } from './frame-budget-probe.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 function parseArgs(argv) {
   const o = { root: null, maps: ['verdant'], out: path.resolve('.qa-dev', 'reports', 'shadow-cache-truth'), port: 5395,
@@ -398,7 +399,7 @@ async function run(options) {
         await page.setViewport({ width: options.viewport[0], height: options.viewport[1], deviceScaleFactor: 1 });
         await page.evaluateOnNewDocument(installObservers, { preset: 'high', allies: options.sides[0], enemies: options.sides[1] });
         await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop${options.query ? `&${options.query}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-        await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+        await waitForBootLoaded(page, { timeout: 300000 });
         const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
         const opponents = pinnedOpponents(catalog, options.spec, options.sides[0] + options.sides[1]);
         await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, opponents);

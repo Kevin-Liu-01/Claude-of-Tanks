@@ -29,7 +29,7 @@
 
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { requestAutomationPath } from './game-readiness.mjs';
+import { requestAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
 import { build, createServer, preview } from 'vite';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os, { tmpdir } from 'node:os';
@@ -351,7 +351,7 @@ async function openPage(search = '', { transitions = false } = {}) {
   await page.goto(`${baseUrl}${search}`, {
     waitUntil: 'domcontentloaded', timeout: pageTimeoutMs,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: pageTimeoutMs });
+  await waitForBootLoaded(page, { timeout: pageTimeoutMs });
   const readyWallMs = Date.now() - startedAt;
   return { context, page, errors, readyWallMs };
 }

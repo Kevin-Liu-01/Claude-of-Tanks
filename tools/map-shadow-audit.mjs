@@ -17,6 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { MAP_IDS } from '../src/world/maps/index.ts';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const session = process.argv[2] || 'cot-shadow-audit';
 const outPath = resolve(process.argv[3] || '.qa-dev/map-shadow-audit.json');
@@ -47,7 +48,7 @@ function evaluate(script) {
   return envelope.data.result;
 }
 
-if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.sampleShadowContribution')) {
+if (!evaluate(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.sampleShadowContribution`)) {
   throw new Error('game/shadow debug facade is not ready in the audit browser');
 }
 const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');

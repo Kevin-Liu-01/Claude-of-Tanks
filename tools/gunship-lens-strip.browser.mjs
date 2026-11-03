@@ -17,6 +17,7 @@ import { resolve } from 'node:path';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { createCaptureLock, ticketAt } from './capture-lock.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const out = resolve(arg('out', '.qa-dev/gunship-lens'));
@@ -98,11 +99,11 @@ async function filmBuild(run, manifest) {
       const tier = viewName === 'phone' ? 'mobile' : 'desktop';
       const t0 = Date.now();
       await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=${tier}&gfxreset=1`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-      try { await page.waitForFunction('window.__GAME_READY === true', { timeout: 600000, polling: 1000 }); }
+      try { await waitForBootLoaded(page, { timeout: 600000, polling: 1000 }); }
       catch (error) { await page.screenshot({ path: resolve(out, `${run.tag}-${viewName}-boot-failure.png`) }); log('boot failed', errors.slice(0, 5)); throw error; }
       log(`${run.tag} ${viewName} game ready in ${Math.round((Date.now() - t0) / 1000)} s`);
       await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'ac130' }), 0); });
-      await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 900000, polling: 1000 });
+      await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 900000, polling: 1000 });
       log(`${run.tag} ${viewName} battle up in ${Math.round((Date.now() - t0) / 1000)} s`);
       await sleep(2500);
       // the lens guns draw with the airframe's program (its covered compile serves them: no first-use compile mid-battle)

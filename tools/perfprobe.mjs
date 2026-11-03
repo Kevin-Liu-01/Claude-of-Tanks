@@ -51,6 +51,7 @@ import { installPerfDrawAttribution } from './perfprobe-draw-attribution.mjs';
 import { installPerfSchedulerTrace } from './perfprobe-scheduler-trace.mjs';
 import { REFERENCE_MIXED_ROSTER, createPerfRosterRequest, inspectPerfRosterEligibility,
   recordPerfRosterCheckpoint, recordPerfRosterEdges, preservePerfRosterFailure, requirePerfRoster } from './perfprobe-roster.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 // Standalone functions are also exercised in the browser-free focused test.
 function perfModes(args, scene, entry) {
@@ -617,7 +618,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await waitForBootLoaded(page, { timeout: 90000 });
       navigationAttempts.push({ attempt: attempt + 1, ready: true });
       break;
     } catch (err) {
@@ -694,7 +695,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       // visible countdown still owns control release. Hold W before that edge.
       if (earlyWindow) await page.keyboard.down('KeyW');
       await page.waitForFunction(
-        'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
+        readinessExpression('controlsReleased'),
         { timeout: 120000 },
       );
     }

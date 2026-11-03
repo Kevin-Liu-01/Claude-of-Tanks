@@ -52,6 +52,7 @@ import net from 'node:net';
 import os from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readinessExpression } from '../game-readiness.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 process.chdir(ROOT);
@@ -521,7 +522,7 @@ async function openPlayer(context, label, specId, errors) {
 
 async function bootGarage(page, origin, label) {
   await page.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 480_000);
+  await waitFor(page, readinessExpression('garage'), `${label} garage ready`, 480_000);
 }
 
 async function openLanMenu(page, label) {

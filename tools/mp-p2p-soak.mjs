@@ -42,6 +42,7 @@ import net from 'node:net';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -163,7 +164,7 @@ async function openGamePage(origin, peer) {
   await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
   observe(page, peer.id);
   await page.goto(`${origin}/?${GAME_BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${peer.id} garage ready`, 240_000);
+  await waitFor(page, readinessExpression('garage'), `${peer.id} garage ready`, 240_000);
   peer.page = page;
   peer.opens++;
   return page;

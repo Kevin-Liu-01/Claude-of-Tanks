@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const option = name => process.argv.slice(2).find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const base = option('url'), revision = option('revision'), output = option('out');
@@ -39,7 +40,7 @@ try {
   // quality, camouflage and resource ownership stay on the normal Garage path.
   url.searchParams.set('qa', '1'); url.searchParams.set('nosplash', '1');
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction(() => window.__GAME_READY && window.__DEBUG?.pedestalOnStage,
+  await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,
     { timeout: 120000 });
   await page.waitForSelector('#cot-boot', { hidden: true, timeout: 30000 });
   await page.waitForFunction(() => window.__GARAGE_WORKSHOP?.stats().architecture?.presented,

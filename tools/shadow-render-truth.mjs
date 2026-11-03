@@ -19,6 +19,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -45,9 +46,9 @@ try {
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
   page.setDefaultTimeout(300000);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+  await waitForBootLoaded(page, { timeout: 180000 });
   await page.evaluate((id) => window.__DEBUG.beginSoloBattle({ mapId: id }), mapId);
-  await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle', { timeout: 240000 });
+  await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 240000 });
   await page.evaluate(() => new Promise((r) => setTimeout(r, 5000)));
 
   const result = await page.evaluate(() => {

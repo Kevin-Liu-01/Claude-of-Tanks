@@ -31,6 +31,7 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createRoomsServer } from '../server/rooms/serve.ts';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -208,7 +209,7 @@ try {
 
   // ---- A: boot, open the LAN room from the Garage's battle menu, create
   await pageA.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await waitFor(pageA, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
+  await waitFor(pageA, readinessExpression('garage'), 'A garage ready', 240_000);
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
   await pageA.click('.cot-multiplayer-entry');
@@ -236,7 +237,7 @@ try {
   // ---- B: open the invite, join
   for (const [key, value] of new URLSearchParams(BOOT_QUERY)) invite.searchParams.set(key, value);
   await pageB.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await waitFor(pageB, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'B garage ready', 240_000);
+  await waitFor(pageB, readinessExpression('garage'), 'B garage ready', 240_000);
   step('b-garage-ready');
   await waitFor(pageB, () => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2
     || document.querySelector('.cot-play .status')?.classList.contains('err'), 'B joined the lobby', 60_000);
@@ -384,7 +385,7 @@ try {
 
   // ---- B leaves cleanly: battle → Garage (the room is kept), reopen the room, leave it
   await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-  await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage' && window.__MULTIPLAYER_V2?.stats?.().active === false, 'B back in the Garage', 60_000);
+  await waitFor(pageB, `${readinessExpression('garage')} && window.__MULTIPLAYER_V2?.stats?.().active === false`, 'B back in the Garage', 60_000);
   const garageStats = await stats(pageB);
   report.leave.roomKeptInGarage = !!garageStats?.room;
   if (!garageStats?.room) failures.push('B lost the room on the Garage return');
@@ -410,7 +411,7 @@ try {
   if (report.rejoin.matchPhase !== 'live' || !report.rejoin.revealed) failures.push(`B's rejoin is ${report.rejoin.matchPhase} / revealed ${report.rejoin.revealed}`);
   if (!report.rejoin.strip?.visible) failures.push('B has no network strip after the rejoin');
   await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-  await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage' && window.__MULTIPLAYER_V2?.stats?.().active === false, 'B back in the Garage after the rejoin', 60_000);
+  await waitFor(pageB, `${readinessExpression('garage')} && window.__MULTIPLAYER_V2?.stats?.().active === false`, 'B back in the Garage after the rejoin', 60_000);
   await pageB.click('.cot-room-reminder'); // 2026-09-30: with a room kept the Garage hides the multiplayer entry; its room strip (ui:roomOpen) reopens the lobby
   await waitFor(pageB, () => document.querySelector('.cot-play')?.classList.contains('show') && document.querySelector('.cot-play .lobby')?.classList.contains('show'), 'B reopened the room again', 30_000);
   await pageB.click('.cot-play [data-action="leave"]');
@@ -421,7 +422,7 @@ try {
   if (roomOnServer && roomOnServer.players.some((player) => player.id === bId)) failures.push('the room still seats B after the explicit leave');
   step('b-left', report.leave);
   await screenshot(pageB, 'b-garage-after-leave.png');
-  await waitFor(pageB, () => window.__DEBUG?.game?.phase === 'garage', 'B garage after leave', 10_000);
+  await waitFor(pageB, readinessExpression('garage'), 'B garage after leave', 10_000);
 } catch (error) {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
 } finally {

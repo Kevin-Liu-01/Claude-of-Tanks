@@ -57,6 +57,7 @@ import { createServer as createViteServer } from 'vite';
 import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
 import { openRooms, pressControl } from './mp-rooms-entry.mjs';
 import { machineLoad, SELFTEST_STARVED_EXIT, STARVED_LOAD_PER_CORE } from './selftest-verdict.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -788,7 +789,7 @@ async function joinAsAlly(page, label, invite) {
   if (label.toLowerCase() === phoneSeat) url.searchParams.set('tier', 'mobile');
   if (simKernelSeats.size) url.searchParams.set('simKernels', simKernelSeats.has(label.toLowerCase()) ? 'wasm' : 'ts');
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 240_000);
+  await waitFor(page, readinessExpression('garage'), `${label} garage ready`, 240_000);
   await waitFor(page, () => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2 || document.querySelector('.cot-play .status')?.classList.contains('err'), `${label} joined the lobby`, 60_000);
   const joinError = await page.evaluate(() => (document.querySelector('.cot-play .status')?.classList.contains('err') ? document.querySelector('.cot-play .status').textContent : ''));
   if (joinError) throw new Error(`${label} could not join the room: ${joinError}`);
@@ -897,7 +898,7 @@ try {
 
   // ---- A: boot, create the LAN room with three seats per side
   await pages.a.goto(`${origin}/?${BOOT_QUERY}${simKernelSeats.size ? `&simKernels=${simKernelSeats.has('a') ? 'wasm' : 'ts'}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await waitFor(pages.a, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A garage ready', 240_000);
+  await waitFor(pages.a, readinessExpression('garage'), 'A garage ready', 240_000);
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo. (268)
   // Its way in follows the page's layout (the persistent panels hide .cot-multiplayer-entry): tools/mp-rooms-entry.mjs.
@@ -1268,7 +1269,7 @@ try {
   report.rejoinTiming = { openedAtMs: a2OpenedAtMs, garageAfterMs: null, revealedAfterMs: null };
   await pages.a2.goto(invite.href, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
-  await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
+  await waitFor(pages.a2, readinessExpression('garage'), 'A2 garage ready', 240_000);
   report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
   // (2026-10-20, item/mp-rejoin-229) the returning tab's boot by stage (main.ts BOOT_TIMINGS: numbers only)
   report.a2BootTimings = await pages.a2.evaluate(() => Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {})

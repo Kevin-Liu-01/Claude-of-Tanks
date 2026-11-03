@@ -46,6 +46,7 @@ import {
 } from './visual-census-views.mjs';
 import { buildSheets, censusViewsOf, compareCensus, loadCensus, measureCensus, openCensus, saveCensus, writeIndex } from './visual-census-report.mjs';
 import { CENSUS_MAP_POSES } from './visual-census-map-poses.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'visual-census';
 const PORT_SPAN = 20;
@@ -446,7 +447,7 @@ async function bootPage(browser, baseUrl) {
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
   await page.goto(`${baseUrl}/?${GAME_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 300000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 600000, polling: 500 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__SHOTS && !!window.__DEBUG`, { timeout: 600000, polling: 500 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   const env = await page.evaluate(pageEnvironment);
   if (env.preset !== 'high') throw new Error(`boot preset is ${env.preset}, expected high`);

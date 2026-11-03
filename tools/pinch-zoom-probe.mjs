@@ -36,6 +36,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 export const DEFAULT_SURFACES = Object.freeze([
   'home', 'home-scrolled', 'docs', 'docs-topic', 'gallery', 'dossier', 'notfound', 'hud', 'splash', 'garage', 'battle', 'studio',
@@ -99,23 +100,23 @@ const SURFACES = {
   },
   splash: {
     route: '/', kind: 'game', title: 'the game page on arrival (the press-any-key splash)', forceSplash: true,
-    ready: 'window.__GAME_READY === true',
+    ready: BOOT_LOADED_EXPRESSION,
     keys: ['#app', '#cot-boot', '#cot-boot > *', '#cot-boot-hero'],
   },
   garage: {
-    route: `/?${GAME_QUERY}`, kind: 'game', title: 'the garage', ready: 'window.__GAME_READY === true',
+    route: `/?${GAME_QUERY}`, kind: 'game', title: 'the garage', ready: BOOT_LOADED_EXPRESSION,
     // after the splash it is the same page: a click past the press-any-key gate, as a player enters
     continuesFrom: 'splash', dismissSplash: true,
     pinchOver: '.cot-garage .cot-brand-rail',
     keys: ['#app', '.cot-garage', '.cot-garage > *'],
   },
   battle: {
-    route: `/?${GAME_QUERY}`, kind: 'game', title: 'a battle HUD', ready: 'window.__GAME_READY === true', battle: true,
+    route: `/?${GAME_QUERY}`, kind: 'game', title: 'a battle HUD', ready: BOOT_LOADED_EXPRESSION, battle: true,
     continuesFrom: 'garage', keys: ['#app', '.cot-hud', '.cot-hud > *'],
   },
   studio: {
     route: `/studio?${GAME_QUERY}`, kind: 'game', title: 'the studio',
-    ready: 'window.__GAME_READY === true && !!document.querySelector(".cot-studio .dock")',
+    ready: `${BOOT_LOADED_EXPRESSION} && !!document.querySelector(".cot-studio .dock")`,
     // over the right dock, which stops 'wheel' propagation (a bubble-phase guard used to miss a pinch there)
     pinchOver: '.cot-studio .dock',
     keys: ['#app', '.cot-studio', '.cot-studio > *'],
@@ -507,7 +508,7 @@ async function enterBattle(page, options) {
   // settled: the countdown over and the loading veil (.cot-bl) out of layout, or its stage text changing mid-probe reads
   // as a moved box; and the FPS meter (.cot-net) shown, which the HUD reveals after 30 live frames (minutes on
   // SwiftShader: it appeared mid-probe on 2026-10-16) unless the profile opted out, so at most 10 minutes for it
-  await page.waitForFunction('window.__DEBUG?.game?.phase === "battle" && window.__DEBUG.game.preBattleS <= 0'
+  await page.waitForFunction(readinessExpression('controlsReleased')
     + ' && !!document.querySelector(".cot-hud") && !document.querySelector(".cot-bl.on, .cot-bl.leaving")'
     + ' && ((window.__PINCH_BATTLE_SETTLE ??= performance.now()), true)'
     + ' && (document.querySelector(".cot-hud .cot-net")?.style.display !== "none"'

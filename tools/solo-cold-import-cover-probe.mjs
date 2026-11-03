@@ -14,7 +14,7 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
-import { requestAutomationPath } from './game-readiness.mjs';
+import { readinessExpression, requestAutomationPath } from './game-readiness.mjs';
 import { resolveColdLoadingAsset, createColdImportHold, installColdImportCoverObserver,
   checkColdImportCover } from './solo-cold-import-cover.mjs';
 
@@ -169,8 +169,8 @@ try {
   await page.evaluateOnNewDocument(installColdImportCoverObserver);
   const response = await run('navigation', () => page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: remaining() }));
   if (!response?.ok() || hash(await response.buffer()) !== report.buildIndexHash) throw new Error('served_build_index_mismatch');
-  await run('garage-ready', () => page.waitForFunction(() => window.__GAME_READY === true
-    && window.__DEBUG?.game?.phase === 'garage' && window.__DEBUG?.pedestalOnStage, { timeout: remaining() }));
+  await run('garage-ready', () => page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,
+    { timeout: remaining() }));
   report.graphics = await page.evaluate(readGraphics);
   await run('solo-mode-picker', async () => {
     await page.click('.cot-battle-mode');

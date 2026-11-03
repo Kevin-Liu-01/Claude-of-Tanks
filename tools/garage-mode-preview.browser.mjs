@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/garage-mode-preview');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;const timings=[];
 async function selectMode(page,mode){
@@ -64,7 +65,7 @@ try{
     await page.waitForFunction(start=>window.__DEBUG.game.timeS>start+1,{timeout:30000},battleTime);
     assert.deepEqual(errors,[],'SEP v3 Juggernaut advances without render exceptions');
     await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
-    await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage'&&window.__GARAGE_ENTRY?.presentationUnready===false,{timeout:180000});
+    await page.waitForFunction(readinessExpression('garage'),{timeout:180000});
     await page.waitForFunction(fn=>{const s=(0,eval)(`(${fn})`)();return s&&!s.pending&&s.shield>0;},{timeout:30000},previewState.toString());
     const returned=await page.evaluate(previewState);
     await page.evaluate(()=>new Promise(resolve=>{let frames=0;function sample(){if(++frames===60)resolve();else requestAnimationFrame(sample);}requestAnimationFrame(sample);}));

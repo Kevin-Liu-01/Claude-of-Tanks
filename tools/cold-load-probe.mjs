@@ -6,6 +6,7 @@
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -140,7 +141,7 @@ async function constrainedColdLoad({ name, noHero }) {
   url.searchParams.set('coldProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = { name, ...(await metrics(page, startedAt)), errors };
   if (result.duplicateScriptTransfers.length) {
     throw new Error(`${name} transferred boot scripts more than once: ` +
@@ -174,7 +175,7 @@ async function failedMainChunkRecovery() {
   url.searchParams.set('recoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-main-auto-recovery',
     ...(await metrics(page, startedAt)),
@@ -214,7 +215,7 @@ async function failedMainEvaluationRecovery() {
   url.searchParams.set('evaluationRecoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-main-evaluation-auto-recovery',
     ...(await metrics(page, startedAt)),
@@ -262,7 +263,7 @@ async function failedSelectedBuilderRecovery() {
   url.searchParams.set('builderRecoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-selected-builder-auto-recovery',
     ...(await metrics(page, startedAt)),

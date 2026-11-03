@@ -86,6 +86,7 @@ import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sampleCoverage } from './black-world-repro-summary.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -341,7 +342,7 @@ async function startStressGame(base) {
   await p.evaluateOnNewDocument(() => { try { localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.game.mode.v1', 'drone'); } catch { /* none */ } });
   const url = new URL(base); url.searchParams.set('nosplash', '1'); url.searchParams.set('telemetry', 'off');
   await p.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await p.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
+  await p.waitForFunction(`${readinessExpression('garage')} && !!document.querySelector('.cot-battle')`, { timeout: 240_000, polling: 250 });
   await chooseMap(p, stressGame);
   await p.evaluate(() => document.querySelector('.cot-battle')?.click());
   await p.waitForFunction(() => { const h = document.querySelector('.cot-hud'); return !!h && getComputedStyle(h).display !== 'none' && !document.querySelector('.cot-bl.on'); }, { timeout: 240_000, polling: 500 }).catch(() => {});
@@ -489,8 +490,8 @@ async function boot(page, base) {
   const t0 = Date.now();
   const res = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   if (!res || res.status() >= 400) throw new Error(`document status ${res?.status()}`);
-  await page.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
-  if (!plain) await page.waitForFunction(() => !!window.__DEBUG && window.__DEBUG.game?.phase === 'garage', { timeout: 120_000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('garage')} && !!document.querySelector('.cot-battle')`, { timeout: 240_000, polling: 250 });
+  if (!plain) await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 120_000, polling: 250 });
   const info = await page.evaluate(() => {
     let gpu = null;
     try {

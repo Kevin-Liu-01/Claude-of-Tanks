@@ -5,6 +5,7 @@ import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const failures = [];
 let checks = 0;
@@ -44,7 +45,7 @@ async function openGame(browser) {
   await page.goto(`http://localhost:${server.config.server.port}/?nosplash`, {
     waitUntil: 'domcontentloaded', timeout: 90000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+  await waitForBootLoaded(page, { timeout: 90000 });
   return page;
 }
 

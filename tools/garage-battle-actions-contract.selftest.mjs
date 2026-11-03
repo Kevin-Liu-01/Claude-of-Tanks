@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectGarageActionOutcome, waitForGarageAction } from './garage-action-failure.mjs';
 import { withGarageActionProfile, withGarageActionTrace } from './garage-action-timing.mjs';
-import { requestAutomationPath } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, requestAutomationPath } from './game-readiness.mjs';
 
 const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
   const returning = action === 'return-to-garage';
@@ -285,7 +285,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       checkGarageActionWarmReadiness,
       installSourcedTextureReadiness() {},
       // (2026-11-02 audit S3) the probe asks for the player's automation path (tools/game-readiness.mjs)
-      requestAutomationPath,
+      requestAutomationPath, BOOT_LOADED_EXPRESSION,
       checkSourcedTextureReadiness: row => sourceReady || row.action === 'return-to-garage'
         ? [] : [`${row.action}: source was not ready at reveal`],
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),

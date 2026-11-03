@@ -9,6 +9,7 @@ import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-bro
 import {settleMapTextures,captureTimingBackend} from './map-environment-acquisition.mjs';
 import {settleResidencyTerrain} from './world-residency-acquisition.mjs';
 import {selectBattleWeather} from '../src/engine/battleWeatherPolicy.ts';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 const option=name=>process.argv.find(a=>a.startsWith(`--${name}=`))?.slice(name.length+3);
 const url=option('url'),map=option('map'),poses=option('poses'),out=option('out');
 const tier=option('tier')??'desktop',night=process.argv.includes('--night');
@@ -28,7 +29,7 @@ try{
  const page=await browser.newPage();await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
  page.on('pageerror',e=>report.errors.push(String(e)));
  await page.goto(new URL(`/?debug=1&nosplash=1&tier=${tier}&gfxreset=1`,url).href,{waitUntil:'domcontentloaded',timeout:180000});
- await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG&&window.__SHOTS,{timeout:180000});
+ await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG && !!window.__SHOTS`,{timeout:180000});
  report.backend=await page.evaluate(captureTimingBackend);
  if(report.backend.contextLost||/swiftshader|llvmpipe|software/i.test(report.backend.renderer))
   throw Error('Material experiment requires a live hardware WebGL context');
@@ -38,8 +39,8 @@ try{
    await D.beginSoloBattle({specId:'m1a1',mapId,randomRoster:false});
    if(D.game.phase!=='battle'||!D.game.player)throw Error('Night water probe failed to enter battle');
   },map);
-  await page.waitForFunction(()=>{const D=window.__DEBUG;return D.game.phase==='battle'
-   &&D.game.player?.visual&&D.game.preBattleS<=0&&D.game.tanks.every(t=>t.visual);},{timeout:180000});
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.player?.visual
+   && window.__DEBUG.game.tanks.every(t => t.visual)`,{timeout:180000});
   // The day/night hash is biome-independent; the actual map preparation
   // retains its own authored biome, which is recorded and verified below.
   let seed=1;while(selectBattleWeather(seed,'temperate').timeOfDay!=='night')seed++;

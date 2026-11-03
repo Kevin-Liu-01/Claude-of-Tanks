@@ -41,6 +41,7 @@ import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name, fallback = null) => {
@@ -91,7 +92,7 @@ async function openProbePage(browser) {
     await page.evaluateOnNewDocument((variant) => { try { localStorage.setItem('cot.garage.variant', variant); } catch {} }, garages[0]);
   }
   await page.goto(`${baseUrl}/?debug=1&nosplash=1&tier=desktop&gfxreset=1`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 300_000 });
+  await waitForBootLoaded(page, { timeout: 300_000 });
   await sleep(2500);
 
   // ---- page-side probe: pose, frames, tank mask, scene-target alpha, display luminance

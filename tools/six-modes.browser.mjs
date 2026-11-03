@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 const remote=process.env.COT_MODE_VERIFY_URL;
 const out=resolve(process.env.COT_MODE_LIST==='realistic'?'.qa-dev/scope-views':remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
@@ -172,7 +173,7 @@ try{
    if(objective)assert.ok(objective.left>=-1&&objective.right<=569&&objective.bottom<=320,`${mode} objective fits landscape`);
    if(mode==='juggernaut')await page.evaluate(()=>{window.__juggernautReturnRoot=window.__DEBUG.game.player.visual.root;});
    await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
-   await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage',{timeout:180000});
+   await page.waitForFunction(readinessExpression('garage'),{timeout:180000});
    if(mode==='juggernaut'){
     assert.equal(await page.evaluate(()=>{
      let leaked=false;window.__juggernautReturnRoot.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.name==='Juggernaut surface highlight'))leaked=true;});
@@ -194,7 +195,7 @@ async function openPublishedPage(browser,url,viewport){
  const page=await browser.newPage(),errors=[];
  await page.setViewport({...viewport,deviceScaleFactor:1});page.on('pageerror',error=>errors.push(String(error.message)));
  await page.goto(url+'/?nosplash=1&tier=desktop&gfxreset=1',{waitUntil:'domcontentloaded',timeout:180000});
- await page.waitForFunction('window.__GAME_READY === true',{timeout:300000});
+ await waitForBootLoaded(page, {timeout:300000});
  return {page,errors};
 }
 

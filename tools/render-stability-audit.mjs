@@ -12,6 +12,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const session = process.argv[2] || 'cot-render-stability';
 const outPath = resolve(process.argv[3] || '.qa-dev/render-stability-audit.json');
@@ -45,7 +46,7 @@ async function waitForEvaluation(script, timeoutMs = 180_000) {
   throw lastError || new Error('browser evaluation did not become ready');
 }
 
-if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.lighting')) {
+if (!evaluate(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.lighting`)) {
   throw new Error('game/render debug facade is not ready in the audit browser');
 }
 const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');

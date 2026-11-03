@@ -33,6 +33,7 @@ import {
   collectResidencyPrograms, writeResidencyPrograms,
   residencyAllocationPlan, createResidencyAllocationSampler,
 } from './world-residency-diagnostics.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -224,7 +225,7 @@ try {
     report.allocationSampling = allocationSampler.receipt;
   }
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.renderer && window.__SHOTS?.set);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.renderer && !!window.__SHOTS?.set`);
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   if (diagnosticsDir) await page.evaluate(installResidencyGeometryTracker);
   report.metadata.gpuRenderer = await page.evaluate(() => {
