@@ -2694,6 +2694,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure nothing
     // they set
     'tools/hud-self-measure.browser.selftest.mjs',
+    // 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout offers
+    // it, at the tool's 1024x640 and a desktop's 1440x900
+    'tools/mp-rooms-entry.browser.selftest.mjs',
     // local-fps-266: a regional window's stack (dark, pane, frame) draws the same at 20-700 m in any draw order
     'tools/pane-stack-layer.browser.selftest.mjs',
     // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
