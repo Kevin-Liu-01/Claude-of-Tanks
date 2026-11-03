@@ -128,8 +128,8 @@ function addOpenYokeAuxRWS(P: ProceduralBuilderPort): void {
  * line). Each module carries a proud add-on wedge plate (K2B_CHEEK).
  * The modules only meet on shared end planes (no interpenetration), mirror-exact either side; every module carries its
  * own bolt line. buildK2 builds this turret with `addOnFront`, so the K2's own blunt nose, cheek armour and banks are not
- * under it. Behind the modules a side armour block runs back along each flank, with the 2x3 smoke-grenade bank on its
- * front shoulder and an APS sensor head on the outer module.
+ * under it. An APS sensor head stands on the outer module; beside it, at each cheek corner, the bolted cheek pod (r268b:
+ * launcher housing with the 2x3 smoke-grenade dischargers, armour boxes on brackets along the flank; addK2BCheekPod).
  * Turret frame: the K2 ring [0, 1.66, -0.30]; +x is the tank's left; the seat floor is 0.03 (deck 1.66 + the seam).
  */
 const K2B_CHEEK = Object.freeze({
@@ -180,7 +180,7 @@ function cheekBackZ(x: number): number {
 }
 
 function addK2BTurretFront(P: ProceduralBuilderPort & Modern3BuilderPort): void {
-  const { box, cylZ } = KIT;
+  const { box } = KIT;
   const C = K2B_CHEEK;
   for (const side of [-1, 1]) {
     for (const m of C.modules) {
@@ -241,36 +241,113 @@ function addK2BTurretFront(P: ProceduralBuilderPort & Modern3BuilderPort): void 
     P.add('turretDetail', box(0.15, 0.13, 0.17), side * sx, sy + 0.055, sz);
     P.add('turretDark', box(0.11, 0.085, 0.012), side * sx, sy + 0.06, sz + 0.088);
     P.add('turretGlass', box(0.065, 0.045, 0.006), side * sx, sy + 0.06, sz + 0.095);
-    // Side armour block from the modules' back along the flank, its foot buried in the loft wall, an APS panel on it.
-    // Round 6: its front continues the outer module's face line (swept and leaning alike) past the cheek's end at x 1.40,
-    // so the arrowhead runs on to the flank; its inner front stays behind the outer module's face.
-    const sideFront = (x: number, y: number): number => cheekFaceZ(x, y, C.modules[2].step) - 0.02;
-    P.add('turret', convexSlab(
-      [side * 1.30, 0.04, sideFront(1.30, 0.04) - 0.06], [side * 1.58, 0.04, sideFront(1.58, 0.04)],
-      [side * 1.58, 0.06, -0.22], [side * 1.36, 0.06, -0.22],
-      [side * 1.30, 0.44, sideFront(1.30, 0.44) - 0.06], [side * 1.52, 0.44, sideFront(1.52, 0.44)],
-      [side * 1.52, 0.44, -0.22], [side * 1.32, 0.46, -0.22]));
-    P.add('turretDark', box(0.012, 0.18, 0.24), side * 1.582, 0.24, 0.20);
-    P.add('turretGlass', box(0.008, 0.10, 0.14), side * 1.588, 0.24, 0.20);
-    for (const z of [-0.08, 0.40]) P.add('turretDark', box(0.010, 0.30, 0.016), side * 1.581, 0.23, z);
-    // 2x3 smoke-grenade bank on the side block's front shoulder, just behind the modules, looking forward, out and up
-    const bank = new THREE.Matrix4().compose(new THREE.Vector3(side * 1.61, 0.30, 0.48),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.32, side * 0.55, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
-    const bracket = box(0.30, 0.22, 0.10);
-    bracket.translate(side * -0.02, 0, -0.03);
-    bracket.applyMatrix4(bank);
-    P.add('turretDetail', bracket);
-    for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-      const tube = markSmokeTube(cylZ(0.045, 0.24, P.q ? 12 : 8));
-      tube.translate((col - 1) * 0.095, (row - 0.5) * 0.095, 0.12);
-      tube.applyMatrix4(bank);
-      P.add('turretDetail', tube);
-      const mouth = new THREE.CircleGeometry(0.034, P.q ? 12 : 8);
-      mouth.translate((col - 1) * 0.095, (row - 0.5) * 0.095, 0.2415);
-      mouth.applyMatrix4(bank);
-      P.add('turretDark', mouth);
+    // r268b: the round-6 side block and its loose 2x3 bank give way to the bolted cheek pods (addK2BCheekPod)
+    addK2BCheekPod(P, side);
+  }
+}
+
+/**
+ * The K2B's cheek pods (r268b, owner 2026-11-02: "add back the protruding side bits on the k2bs cheeks as attachments";
+ * research/k2b photos 1, 4, 6). The live K2B carried the K2's stepped side boxes with their smoke launchers standing out
+ * of the cheek corners (buildK2's cheek side armour and banks, which `addOnFront` leaves out); round 268 had laid them
+ * flat into the arrowhead. They come back as bolted add-on equipment beside the round-6 front, which is unchanged:
+ * - a launcher housing at each cheek corner, butted 1 cm into the outer cheek module's end and standing 0.41 m out from
+ *   it, its front swept back only 32 degrees in plan (the cheek's V is 60, so the housing steps out of it as the K2
+ *   photographs' corner boxes do) and laid back 22 degrees, a step down from the module's top, the 2x3 smoke-grenade
+ *   discharger tubes standing 0.28 m out of its face, up and out (photo 6's launcher wedge, photo 4's tube bundles);
+ * - behind it two bolted armour boxes in line along the flank (photo 6's side modules), their outer faces 3 cm inboard of
+ *   the housing's, a 1.5 cm joint between them, bolt heads in rows, an APS warning panel on the front box;
+ * - the boxes stand on bracket plates off the turret's leaning wall: an open gap of 8-26 cm shows between box and wall.
+ * Turret frame; +x is the tank's left. Everything stays under 0.47 (the roof line is 0.70-0.78) and over the 0.03 seat.
+ */
+const K2B_POD = Object.freeze({
+  footY: 0.05,
+  /** Launcher housing: inner face 1 cm into the outer module's end (x 1.40), front foot corners, back, tops, lean. */
+  housing: Object.freeze({ xIn: 1.39, xOut: 1.80, zFrontIn: 1.12, zFrontOut: 0.86, zBack: 0.42,
+    topIn: 0.47, topOut: 0.44, lean: 0.40, chamfer: 0.05 }),
+  /** The armour boxes behind it (z spans), their faces and top, the outer top chamfer. */
+  boxes: Object.freeze([Object.freeze({ z0: 0.02, z1: 0.415 }), Object.freeze({ z0: -0.40, z1: 0.005 })]),
+  boxXIn: 1.53, boxXOut: 1.77, boxTop: 0.42, boxChamfer: 0.04,
+  /** Bracket plates (z) carrying the boxes off the wall, and their height band. */
+  brackets: Object.freeze([0.33, 0.10, -0.08, -0.31]), bracketY0: 0.08, bracketY1: 0.38,
+});
+
+/** buildK2's turret loft wall (stations z 0.45 and -0.35, roof lifted -0.05): its half-width at height y, station z. */
+function k2TurretWallX(y: number, z: number): number {
+  const t = Math.min(1, Math.max(0, (0.45 - z) / 0.80));
+  const bw = 1.50 + 0.02 * t, by = -0.10 + 0.02 * t, tw = 1.18 + 0.07 * t, ty = 0.64;
+  return bw + (tw - bw) * (y - by) / (ty - by);
+}
+
+function addK2BCheekPod(P: ProceduralBuilderPort & Modern3BuilderPort, side: number): void {
+  const { box, cylX, cylZ } = KIT;
+  const D = K2B_POD, H = D.housing, yb = D.footY, seg = P.q ? 12 : 8;
+  const sx = (x: number): number => side * x;
+  // the housing: a raked front (foot corners zFrontIn/zFrontOut, laid back `lean` per metre), a vertical outer face whose
+  // top edge is chamfered, a top falling outboard, a vertical back
+  const frontZ = (x: number, y: number): number =>
+    H.zFrontIn + (H.zFrontOut - H.zFrontIn) * (x - H.xIn) / (H.xOut - H.xIn) - (y - yb) * H.lean;
+  const topAt = (x: number): number => H.topIn + (H.topOut - H.topIn) * (x - H.xIn) / (H.xOut - H.xIn);
+  const xc = H.xOut - H.chamfer, yc = H.topOut - H.chamfer;
+  P.add('turret', convexStock([
+    [sx(H.xIn), yb, frontZ(H.xIn, yb)], [sx(H.xOut), yb, frontZ(H.xOut, yb)], [sx(H.xOut), yb, H.zBack], [sx(H.xIn), yb, H.zBack],
+    [sx(H.xIn), H.topIn, frontZ(H.xIn, H.topIn)], [sx(xc), topAt(xc), frontZ(xc, topAt(xc))],
+    [sx(H.xOut), yc, frontZ(H.xOut, yc)], [sx(H.xOut), yc, H.zBack], [sx(xc), topAt(xc), H.zBack], [sx(H.xIn), H.topIn, H.zBack],
+  ]));
+  // a lid joint across the housing top and a bolt row along its outer face
+  const lidZ = H.zBack + 0.13;
+  P.add('turretDark', box(H.xOut - H.xIn - 0.08, 0.008, 0.018), sx((H.xIn + H.xOut) / 2 - 0.02), topAt((H.xIn + H.xOut) / 2) + 0.001, lidZ);
+  for (const z of [0.48, 0.60, 0.72]) P.add('turretDark', cylX(0.016, 0.014, 6), sx(H.xOut + 0.004), 0.33, z);
+  // the 2x3 dischargers (r268b round 2, both critics: round 1's 13 cm stubs read as "flat round discs pressed into the
+  // cheek"): a bundle of real launcher tubes 0.28 m proud of the housing face, aimed up and out as the K2's are (27
+  // degrees up, 43 out from dead ahead, 13 off the face's own normal), each seated 8 cm into the housing through a collar
+  // buried in the face all round (4 cm deep, its rim at most 1.3 cm off the face plane), a dark band near the mouth and a
+  // dark mouth
+  const fi = new THREE.Vector3(sx(H.xIn), yb, frontZ(H.xIn, yb)), fo = new THREE.Vector3(sx(H.xOut), yb, frontZ(H.xOut, yb));
+  const ex = fo.clone().sub(fi).normalize(), ey = new THREE.Vector3(0, 1, -H.lean).normalize();
+  const ez = new THREE.Vector3().crossVectors(ex, ey).normalize();
+  if (ez.z < 0) ez.negate();
+  const faceMid = new THREE.Vector3(sx((H.xIn + H.xOut) / 2), 0.26, frontZ((H.xIn + H.xOut) / 2, 0.26));
+  const aim = ez.clone().add(new THREE.Vector3(side * 0.25, 0.25, 0)).normalize();
+  const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), aim);
+  const tubeAt = (g: THREE.BufferGeometry, at: THREE.Vector3, along: number): THREE.BufferGeometry =>
+    g.applyQuaternion(turn).translate(at.x + aim.x * along, at.y + aim.y * along, at.z + aim.z * along);
+  const TUBE = Object.freeze({ r: 0.045, proud: 0.28, seat: 0.08 });
+  for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
+    const at = faceMid.clone().addScaledVector(ex, (col - 1) * 0.105).addScaledVector(ey, (row - 0.5) * 0.10);
+    P.add('turretDark', tubeAt(cylZ(0.056, 0.06, seg), at, -0.01));                     // collar, 4 cm into the face
+    P.add('turretDetail', tubeAt(markSmokeTube(cylZ(TUBE.r, TUBE.proud + TUBE.seat, seg)), at,
+      (TUBE.proud - TUBE.seat) / 2));                                                  // tube, 8 cm into the housing
+    P.add('turretDark', tubeAt(cylZ(TUBE.r + 0.004, 0.025, seg), at, TUBE.proud - 0.04)); // band near the mouth
+    P.add('turretDark', tubeAt(new THREE.CircleGeometry(0.035, seg), at, TUBE.proud + 0.0015)); // mouth
+  }
+  // the armour boxes behind: chamfered outer top edge, bolt heads in two rows on the outer face, a joint between them
+  for (const [k, b] of D.boxes.entries()) {
+    const xo = D.boxXOut, xi = D.boxXIn, xh = xo - D.boxChamfer, yt = D.boxTop, yh = yt - D.boxChamfer;
+    P.add('turret', convexStock([
+      [sx(xi), yb, b.z0], [sx(xo), yb, b.z0], [sx(xo), yb, b.z1], [sx(xi), yb, b.z1],
+      [sx(xi), yt, b.z0], [sx(xh), yt, b.z0], [sx(xh), yt, b.z1], [sx(xi), yt, b.z1],
+      [sx(xo), yh, b.z0], [sx(xo), yh, b.z1],
+    ]));
+    for (const y of [0.11, 0.33]) for (const t of [0.12, 0.5, 0.88]) {
+      P.add('turretDark', cylX(0.016, 0.014, 6), sx(xo + 0.004), y, b.z0 + (b.z1 - b.z0) * t);
+    }
+    if (k === 0) {                                                               // APS warning panel on the front box
+      P.add('turretDark', box(0.012, 0.15, 0.20), sx(xo + 0.003), 0.22, (b.z0 + b.z1) / 2);
+      P.add('turretGlass', box(0.008, 0.085, 0.12), sx(xo + 0.008), 0.22, (b.z0 + b.z1) / 2);
     }
   }
+  // bracket plates from the leaning wall (buried 2 cm) out to the boxes' inner faces (5 mm into them), and a foot rail
+  for (const z of D.brackets) {
+    const w0 = k2TurretWallX(D.bracketY0, z) - 0.02, w1 = k2TurretWallX(D.bracketY1, z) - 0.02, xo = D.boxXIn + 0.005;
+    P.add('turretDetail', convexSlab(
+      [sx(w0), D.bracketY0, z - 0.015], [sx(xo), D.bracketY0, z - 0.015], [sx(xo), D.bracketY0, z + 0.015], [sx(w0), D.bracketY0, z + 0.015],
+      [sx(w1), D.bracketY1, z - 0.015], [sx(xo), D.bracketY1, z - 0.015], [sx(xo), D.bracketY1, z + 0.015], [sx(w1), D.bracketY1, z + 0.015]));
+  }
+  const railZ0 = D.boxes[1].z0 + 0.02, railZ1 = H.zBack + 0.02, railX0 = k2TurretWallX(0.07, railZ0) - 0.02;
+  P.add('turretDetail', convexSlab(
+    [sx(railX0), 0.055, railZ0], [sx(D.boxXIn + 0.01), 0.055, railZ0], [sx(D.boxXIn + 0.01), 0.055, railZ1], [sx(railX0), 0.055, railZ1],
+    [sx(railX0), 0.09, railZ0], [sx(D.boxXIn + 0.01), 0.09, railZ0], [sx(D.boxXIn + 0.01), 0.09, railZ1], [sx(railX0), 0.09, railZ1]));
 }
 
 /**

@@ -112,3 +112,59 @@ export function addK2Skirts(P: Modern3BuilderPort): void {
       [side * S.innerX, glacisAt(3.40), 3.40], [side * 1.40, glacisAt(3.40), 3.40]));
   }
 }
+
+/** buildK2's upper glacis plane: 1.24 at its lip (z 3.53) rising 10.7 degrees to the 1.66 crest (z 1.30). */
+const K2_GLACIS = Object.freeze({ lipY: 1.24, lipZ: 3.53, slope: 0.42 / 2.23 });
+const k2GlacisY = (z: number): number => K2_GLACIS.lipY + (K2_GLACIS.lipZ - z) * K2_GLACIS.slope;
+/** The glacis's rake about x: a part turned by it stands on the plate's normal. */
+const K2_GLACIS_TILT = Math.atan(K2_GLACIS.slope);
+
+/**
+ * The K2 hull's upper glacis furniture (r268b, owner 2026-11-02: "add more upper glacis and roof details"), shared by
+ * the two buildK2 hulls (XK2 and K2B; research/xk2_black_panther photos 1, 5 and research/k2b photo 1). The photographed
+ * plate is smooth: only the real, seated items are on it (r268b round 2, both blind critics: the round-1 bolt rows, plate
+ * joints and nose-plate lamp housings "read as clutter the real vehicle does not carry"; the lights are in the boxes on
+ * the mudguard tips):
+ * - the driver's vision block: the three periscopes in one low armoured frame at the crest (the pre-r268b two loose
+ *   blocks), the hatch's hinge block and grab handle;
+ * - a lifting eye on each front corner of the plate;
+ * - the tow clevises with their shackles on the chin (they replace buildK2's plain hook blocks).
+ * Every part stays inside the gun's swept floor at full depression (the before-tree's map: 17-24 cm of air over the front
+ * half, 7-9 cm over the crest's periscopes) and under the turret's 1.69 seat plane.
+ */
+export function addK2GlacisFurniture(P: Modern3BuilderPort): void {
+  const { box, cylY, cylZ, liftEye } = KIT;
+  // driver's vision block: one low armoured frame over three periscopes at the crest, its foot 1 cm into the plate, its
+  // top 1.655 (under the old blocks' 1.66: the gun keeps 6-7 cm over it at full depression), its forward face laid back
+  // 35 degrees with the three dark glass blocks on it
+  const zf = 1.60, zb = 1.46, yTop = 1.655, zTop = zf - 0.05;
+  P.add('hull', convexSlab(
+    [-0.70, k2GlacisY(zb) - 0.01, zb], [-0.22, k2GlacisY(zb) - 0.01, zb], [-0.22, k2GlacisY(zf) - 0.01, zf], [-0.70, k2GlacisY(zf) - 0.01, zf],
+    [-0.70, yTop, zb], [-0.22, yTop, zb], [-0.22, yTop, zTop], [-0.70, yTop, zTop]));
+  const faceTilt = -Math.atan2(zf - zTop, yTop - (k2GlacisY(zf) - 0.01));                   // the face's normal: up and forward
+  const fy = (k2GlacisY(zf) + yTop) / 2, fz = zf - (fy - (k2GlacisY(zf) - 0.01)) / (yTop - (k2GlacisY(zf) - 0.01)) * (zf - zTop);
+  const fn = new THREE.Vector3(0, -Math.sin(faceTilt), Math.cos(faceTilt));
+  for (const x of [-0.62, -0.46, -0.30]) {
+    P.add('hullDark', box(0.14, 0.040, 0.008), x, fy + fn.y * 0.002, fz + fn.z * 0.002, faceTilt, 0, 0);
+    P.add('hullGlass', box(0.11, 0.024, 0.006), x, fy + fn.y * 0.005, fz + fn.z * 0.005, faceTilt, 0, 0);
+  }
+  // hatch hinge block (outboard side of the ring) and a grab handle on the lid, both on the bed plate's rake
+  const hy = (z: number): number => k2GlacisY(z) + 0.004;
+  P.add('hullDetail', box(0.07, 0.045, 0.20), -0.72, hy(2.02) + 0.02, 2.02, K2_GLACIS_TILT, 0, 0);
+  P.add('hullDark', cylZ(0.016, 0.22, 8), -0.72, hy(2.02) + 0.04, 2.02, K2_GLACIS_TILT, 0, 0);
+  for (const dz of [-0.06, 0.06]) P.add('hullDetail', cylY(0.009, 0.009, 0.03, 6), -0.42, hy(2.02 + dz) + 0.032, 2.02 + dz, K2_GLACIS_TILT, 0, 0);
+  P.add('hullDetail', cylZ(0.009, 0.14, 6), -0.42, hy(2.02) + 0.046, 2.02, K2_GLACIS_TILT, 0, 0);
+  // tow clevises on the chin under the nose plate (photo 5): two ear plates on the chin face, a pin, and a shackle hanging
+  // from it, leaning off the face (they replace buildK2's plain hook blocks)
+  const chinZ = (y: number): number => 3.33 + (y - 0.40) * 0.36, chinTilt = Math.atan(0.36 / 1.0);
+  for (const s of [-1, 1]) {
+    const cx = s * 0.62, cy = 0.77, cz = chinZ(cy);
+    for (const dx of [-0.045, 0.045]) P.add('hullDetail', box(0.025, 0.11, 0.10), cx + dx, cy, cz + 0.025, chinTilt, 0, 0);
+    P.add('hullDark', KIT.cylX(0.020, 0.13, 8), cx, cy - 0.01, cz + 0.05);
+    const shackle = new THREE.TorusGeometry(0.045, 0.014, 6, P.q ? 12 : 8, Math.PI);
+    shackle.rotateZ(Math.PI).rotateX(-0.35);
+    P.add('hullDark', shackle, cx, cy - 0.01, cz + 0.05);
+  }
+  // lifting eyes on the glacis's front corners, inboard of the fenders
+  for (const s of [-1, 1]) liftEye(P, 'hullDetail', s * 0.98, k2GlacisY(3.24) + 0.012, 3.24);
+}
