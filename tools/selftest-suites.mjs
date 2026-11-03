@@ -986,6 +986,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/garageFramePacer.selftest.mjs',
     'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/phaseGpuResidency.selftest.mjs',
+    // 2026-11-02 audit R5: the Garage GPU restore is a state; a suspend or context loss during it is kept, overlapping
+    // restores share one upload
+    'src/engine/phaseGpuResidencyRestoreRace.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
