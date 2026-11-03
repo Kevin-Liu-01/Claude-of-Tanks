@@ -84,6 +84,14 @@ function sidePoint(z: number, y: number): { x: number; lean: number } {
 }
 
 const GLACIS_TOP = (z: number): number => 1.545 - 0.2264 * (z - 1.84);
+// Release 268 (both critics: "the bow's front face reads tall and flat; the real prow is a sharper wedge"; the armour
+// receipts roofStations/rocketBattery/roofHoldFire): the prow is drawn as the BMP-1/2's knife edge. The lower bow plate
+// rakes straight from the belly (0.40 at z 2.276) to the edge (PROW_EDGE), at the print's own 33 degrees; the ribbed
+// upper glacis runs into a short nose bevel (26.6 degrees, the plate the folded trim vane lies on) that meets it there.
+// No near-vertical face stands at the nose any more.
+const PROW_EDGE: readonly [number, number] = [3.345, 1.10]; // z, y
+const PROW_RAKE = (PROW_EDGE[1] - 0.40) / (PROW_EDGE[0] - 2.276);
+const NOSE_BEVEL = (z: number): number => PROW_EDGE[1] + 0.5 * (PROW_EDGE[0] - z);
 
 export type BmpHullPort = Modern3BuilderPort;
 
@@ -182,9 +190,11 @@ function addGlacis(P: Modern3BuilderPort): void {
     [1.72, 1.37, BODY_BOTTOM_Y, 1.545, 1.15, 1.612],
     [1.84, 1.37, BODY_BOTTOM_Y, 1.500, 1.21, GLACIS_TOP(1.84)],
     [2.60, 1.37, BODY_BOTTOM_Y, 1.355, 1.23, GLACIS_TOP(2.60)],
-    [2.97, 1.37, 1.12, 1.262, 1.24, GLACIS_TOP(2.97)],
-    [3.20, 1.10, 1.02, 1.245, 1.02, 1.272],
-    [3.36, 1.065, 1.00, 1.262, 0.98, 1.285],
+    // the nose: the glacis meets the nose bevel at z 2.964; the bevel runs down to the knife edge, the loft's underside
+    // buried in the lower bow plate (the old 3.20 / 3.36 stations stood a 0.28 m vertical nose face over the prow)
+    [2.97, 1.37, 0.94, 1.262, 1.24, GLACIS_TOP(2.97)],
+    [3.20, 1.10, 1.01, 1.15, 1.02, NOSE_BEVEL(3.20)],
+    [PROW_EDGE[0], 1.045, PROW_EDGE[1] - 0.012, PROW_EDGE[1] - 0.006, 0.98, PROW_EDGE[1]],
   ];
   const sections: SolidSection[] = st.map(([z, sx, bot, sTop, tx, top]) => ({
     z, ring: mirrorRing([[sx, bot], [sx, sTop], [tx, top]]),
@@ -201,18 +211,26 @@ function addGlacis(P: Modern3BuilderPort): void {
   P.add('hullDetail', KIT.box(2.18, 0.06, 0.05), 0, 1.585, 1.745);
 }
 
-/** Prow below the glacis: the certified boat-run planes, belly pan and no-air closure plates (unchanged lines). */
+/** Prow below the glacis: the lower bow plate to the knife edge, the folded trim vane (bodywork), belly pan, no-air
+ * closure plates and tow hooks. */
 function addProw(P: Modern3BuilderPort): void {
-  const { box, frustum, slab } = KIT;
-  P.add('hull', frustum(0.98, 2.276, 2.136, 1.02, 3.176, 3.056, 0.40, 1.03));     // prow plane A (boat run)
-  P.add('hull', frustum(1.02, 3.176, 3.056, 1.055, 3.365, 3.28, 1.03, 1.225));   // prow plane B (knuckle -> lip)
-  // folded trim vane: the board lying on the nose plate (gate tip band 0.33 thick keeps the published 6.72)
-  P.add('hull', slab(
-    [-1.065, 1.00, 3.365], [1.065, 1.00, 3.365], [1.065, 1.00, 3.13], [-1.065, 1.00, 3.13],
-    [-1.065, 1.33, 3.365], [1.065, 1.33, 3.365], [1.065, 1.42, 3.13], [-1.065, 1.42, 3.13]));
-  P.add('hullDark', box(1.96, 0.03, 0.035), 0, 1.395, 3.16, -0.38, 0, 0);       // vane frame lip
-  for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.10, 0.06, 0.20), s * 0.80, 1.385, 3.24, -0.38, 0, 0); // vane hinge brackets
+  const { box, frustum, xform, torus } = KIT;
+  // the lower bow plate, one raked plane from the belly to the knife edge (it was two planes rising to a lip at 1.225
+  // under a vertical nose face)
+  P.add('hull', frustum(0.98, 2.276, 2.136, 1.045, PROW_EDGE[0], PROW_EDGE[0] - 0.14, 0.40, PROW_EDGE[1]));
+  // folded trim vane: the board lying on the nose bevel, its front edge at the nose (the published 6.72 length). Painted
+  // bodywork, not the hull's armour (release 264's envelope honesty: as `hull` its tall vertical front read as the
+  // 28 mm lower plate square on, roofStations.selftest §10)
+  const vane = (z: number, off: number): number => NOSE_BEVEL(z) + off;
+  const vz0 = 3.00, vz1 = PROW_EDGE[0] + 0.015;
+  P.add('hullFixedPaintedBodywork', orientedSlabLocal(
+    [-0.98, vane(vz1, -0.01), vz1], [0.98, vane(vz1, -0.01), vz1], [1.07, vane(vz0, -0.01), vz0],
+    [-1.07, vane(vz0, -0.01), vz0],
+    [-0.98, vane(vz1, 0.055), vz1], [0.98, vane(vz1, 0.055), vz1], [1.07, vane(vz0, 0.06), vz0],
+    [-1.07, vane(vz0, 0.06), vz0]));
+  const bevel = Math.atan(0.5);
+  for (const s of [-1, 1]) {                                                   // vane hinge brackets at its front edge
+    P.add('hullDetail', xform(box(0.10, 0.035, 0.10), 0, 0, 0, bevel, 0, 0), s * 0.80, vane(3.30, 0.068), 3.30);
   }
   P.add('hull', box(1.96, 0.06, 0.56), 0, 0.435, 1.98);                         // belly pan: tub front -> plane A
   for (const s of [-1, 1]) {
@@ -224,11 +242,14 @@ function addProw(P: Modern3BuilderPort): void {
       [m(0.92), 0.38, 2.16], [m(0.98), 0.38, 2.16], [m(0.98), 0.38, 1.90], [m(0.92), 0.38, 1.90],
       [m(0.92), 1.470, 2.16], [m(0.98), 1.470, 2.16], [m(0.98), 1.527, 1.90], [m(0.92), 1.527, 1.90]));
     P.add('hull', orientedSlabLocal(
-      [m(0.92), 0.92, 2.94], [m(0.98), 0.92, 2.94], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
-      [m(0.92), 1.298, 2.94], [m(0.98), 1.298, 2.94], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
-    // bow tow hooks (print: the U hooks at the nose corners)
-    P.add('hullDark', KIT.xform(KIT.torus(0.06, 0.016, 10, 6), 0, 0, 0, Math.PI / 2, 0, 0), m(0.86), 1.06, 3.36);
-    P.add('hullDetail', box(0.10, 0.08, 0.10), m(0.86), 1.06, 3.30);
+      [m(0.92), 0.94, 2.97], [m(0.98), 0.94, 2.97], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
+      [m(0.92), 1.29, 2.97], [m(0.98), 1.29, 2.97], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
+    // bow tow hooks on the lower bow plate near its corners (photo: the open hooks under the nose): a pad on the plate
+    // and the hook ring standing out of it along the plate's normal, half buried
+    const len = Math.hypot(1, PROW_RAKE), t: [number, number] = [PROW_RAKE / len, 1 / len], n: [number, number] = [-1 / len, PROW_RAKE / len];
+    const tilt = Math.atan2(t[1], t[0]), ys = 0.98, zs = 2.276 + (ys - 0.40) / PROW_RAKE;
+    P.add('hullDetail', xform(box(0.14, 0.12, 0.04), 0, 0, 0, tilt, 0, 0), m(0.80), ys + n[0] * 0.01, zs + n[1] * 0.01);
+    P.add('hullDark', xform(torus(0.055, 0.015, 10, 6), 0, 0, 0, tilt, 0, 0), m(0.80), ys + n[0] * 0.035, zs + n[1] * 0.035);
   }
 }
 
