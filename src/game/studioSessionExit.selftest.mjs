@@ -14,7 +14,7 @@ const CORE = ['setMap', 'withStage', 'doExit', 'exit', 'load', 'ensureLoadMap', 
   'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm', 'directProduction'];
 // the session's helpers where the file has them
 const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
-  'productionBusy'];
+  'ensureSessionWorld', 'productionBusy'];
 const found = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
@@ -412,6 +412,52 @@ for (const [name, hold, message] of [
     `no battlefield switch or wake under ${name}`);
 }
 
+// 14. A battlefield build that outlives the exit (Exit stays live through a cold build and never waits for it): the world
+// runtime activates it when it lands, awake under its own sky and sun, over the Garage the teardown handed back. Once the
+// teardown is done the Garage's presentation comes back (ctx.restoreGarageWorld: asleep, its sky and its trim); never
+// while a battle holds the phase, and nothing for a build its live session still owns.
+for (const phaseAtLanding of ['garage', 'battle']) {
+  let landWorld = null, h = null;
+  h = makeStudio({
+    ensureWorld: (id) => new Promise((resolve) => {
+      h.calls.push(['ensure-world', id]);
+      // worldActivationRuntime.activate: the world swapped in, awake, its sky and its sun (restoreAtmosphere's setSun)
+      landWorld = () => {
+        h.ports.world = { ...h.ports.world, mapId: id };
+        h.calls.push(['world-in', id], ['dormant', false], 'battlefield-sun');
+        resolve(h.ports.world);
+      };
+    }),
+  });
+  h.ports.ctx.restoreGarageWorld = () => h.calls.push(['dormant', true], 'garage-sun');
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  h.studio.exit();
+  await settle();
+  assert.ok(h.calls.includes('enter-garage'), 'the exit went on without waiting for the build');
+  h.ports.game.phase = phaseAtLanding;
+  landWorld();
+  await settle();
+  const lastDormant = h.calls.findLast((c) => Array.isArray(c) && c[0] === 'dormant');
+  const lastSun = h.calls.findLast((c) => c === 'battlefield-sun' || c === 'garage-sun');
+  if (phaseAtLanding === 'garage') {
+    assert.deepEqual(lastDormant, ['dormant', true], 'the Garage ends with the battlefield asleep');
+    assert.equal(lastSun, 'garage-sun', 'and under its own sun trim, not the late world\'s');
+  } else {
+    assert.ok(!h.calls.includes('garage-sun'), 'a battle that took the phase keeps the world it was handed');
+  }
+  assert.equal(await outcome(switching), 'AbortError');
+}
+{
+  const h = makeStudio();
+  h.ports.ctx.restoreGarageWorld = () => h.calls.push('garage-sun');
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.equal(await outcome(switching), 'resolved');
+  assert.ok(!h.calls.includes('garage-sun'), 'a build its live session still owns is the Studio\'s');
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -422,6 +468,12 @@ for (const [name, hold, message] of [
   assert.ok(stale > body.indexOf('await studioLightRuntime') && stale < body.indexOf('.apply(time, light)')
     && stale < body.indexOf('setDensityOverride(1)'), 'the stale check follows the last await and precedes the light and the ambience override');
   assert.match(body, /return owner && !owner\.current\(\) \? null : applied;/, 'a session that ended before it finished reports no light to undo');
+  // and its Garage presentation after a late Studio build: only while the Garage owns the screen (a battle being
+  // assembled from the Garage keeps the phase there and owns the world it builds)
+  const port = main.slice(main.indexOf('restoreGarageWorld: () => {'), main.indexOf('setGarageSpots, setGarageSunTrim, enterGarage,'));
+  assert.ok(port.length > 0 && port.length < 600, 'main.ts hands the Studio the Garage\'s presentation');
+  assert.match(port, /if \(game\.phase !== 'garage' \|\| battleEntryLifecycle\.pending \|\| battleLoad\.covering \|\| garageReturn\.transitioning\) return;/);
+  assert.match(port, /garageEnvironmentPresentation\.activate\(selectedGarageVariantId\)/, 'the Garage\'s own presentation: asleep, its sky and trim');
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves');
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves');

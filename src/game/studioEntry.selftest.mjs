@@ -12,7 +12,9 @@ import { createStudioSession } from './studioSession.ts';
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 // (2026-11-02 audit F9) the session's teardown, shared by an exit and a failed entry, and its atmosphere preparation
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere']);
+// (2026-11-03) and the session's trailed battlefield build
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere',
+  'ensureSessionWorld']);
 // (UI-LOCKDOWN E) the first view's program preparation is a port here; its place in the entry is pinned below
 const functions = [];
 function visit(node) {
@@ -23,7 +25,7 @@ visit(source);
 assert.equal(functions.length, names.size);
 
 const noop = () => {};
-async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false }) {
+async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false, abandon = false }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -33,6 +35,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
       world = { mapId: 'whiteout', skyConfig: { sunIntensity: 2.8, sunColorHex: 0xd9e8ff },
         spawnPoints: { player: { pos: [4, 2, 6], yaw: 0 } } };
       calls.push('world-activated');
+      // worldActivationRuntime.activate: the world comes in awake, under its own sky and sun (restoreAtmosphere's setSun)
+      if (abandon) { calls.push(['dormant', false]); calls.push(['sun', world.skyConfig]); }
       resolve(world);
     };
   });
@@ -53,7 +57,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     timeOfDay: time,
     studioLight: null, // media r5: the scene's sun override, forwarded with the time
     ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]),
-      restoreStudioAtmosphere: () => calls.push('atmosphere-restored') },
+      restoreStudioAtmosphere: () => calls.push('atmosphere-restored'),
+      // main.ts: the Garage's own presentation (asleep, its sky and trim) while the Garage owns the screen
+      restoreGarageWorld: () => { calls.push('garage-world', ['dormant', true]); presentation.setSunTrim(true); } },
     // the Studio session (studioSession.ts) and the film a teardown ends
     session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
     // the rest of the fleet warms when the Studio is up, never inside the entry (247)
@@ -105,6 +111,27 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
   const pending = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
   await Promise.resolve();
+  if (abandon) {
+    // (2026-11-03 audit F9) an exit while the battlefield streams, and the build lands after the teardown: the world
+    // runtime activates it over the Garage (awake, its own sun); the Garage gets its presentation back once the teardown is
+    // done, and the abandoned entry does nothing else
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    await studio.doExit();
+    assert.equal(game.phase, 'garage');
+    const mark = calls.push('--teardown-done') - 1;
+    releaseWorld();
+    await pending;
+    for (let i = 0; i < 6; i++) await new Promise((resolve) => setImmediate(resolve));
+    const late = calls.slice(mark);
+    assert.ok(late.includes('world-activated') && late.includes('garage-world'), 'the late world is followed by the Garage\'s presentation');
+    assert.deepEqual(late.findLast((entry) => Array.isArray(entry) && entry[0] === 'dormant'), ['dormant', true],
+      'the battlefield ends asleep under the Garage');
+    assert.equal(late.findLast((entry) => Array.isArray(entry) && entry[0] === 'sun')[1].sunIntensity, garageSky.sunIntensity * 0.55,
+      'under the Garage\'s trim, not the late world\'s sun');
+    assert.ok(!late.some((entry) => Array.isArray(entry) && entry[0] === 'atmosphere'), 'the abandoned entry lights nothing');
+    assert.equal(studio.active(), false);
+    return;
+  }
   if (reenter) {
     // (248) an exit while the battlefield streams, then a second entry: it shows its own shell at once and joins the
     // build; the abandoned entry never touches the plate, the atmosphere or the fleet again
@@ -207,10 +234,11 @@ await scenario({ directBoot: false, time: 'sunset' });
 await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
+await scenario({ directBoot: false, abandon: true });
 // the build's wait leaves the way out live: Exit stays outside the inert parts, and its press abandons the entry (doExit's
 // entryGeneration step; the loading census 262: the whole app went inert, Exit included)
 const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url), 'utf8');
 assert.match(panelSource, /setStage\(stage\) \{[^]{0,900}?if \(part !== exitBtn\) \(part as HTMLElement\)\.inert = waiting;/,
   'every part of the Studio waits through a build but Exit');
 assert.doesNotMatch(panelSource, /app\.inert = /, 'the app itself is never inert (Exit is inside it)');
-console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load and Garage return ordering pass');
+console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit and Garage return ordering pass');

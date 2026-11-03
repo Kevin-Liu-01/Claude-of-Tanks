@@ -167,6 +167,51 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
   assert.equal(logged.length, 1, 'a throwing undo is logged, never thrown');
 }
 
+// Trailed work (a battlefield build the exit does not wait for, which the world runtime activates when it lands): its undo
+// runs only when it fulfils after its session ended, once the teardown is done, and never under a newer live session or
+// for a build that failed (it activated nothing).
+{
+  const session = createStudioSession({ setTimeout: () => 0, clearTimeout: () => {} });
+  const turn = () => new Promise((resolve) => setImmediate(resolve));
+  const undone = [];
+  const deferred = () => {
+    let land, fail;
+    const work = new Promise((resolve, reject) => { land = resolve; fail = reject; });
+    return { work, land, fail };
+  };
+  session.open(session.beginEntry());
+  const own = deferred();
+  assert.strictEqual(session.trail(own.work, () => undone.push('own')), own.work, 'trail returns the work itself');
+  own.land(); await turn();
+  assert.deepEqual(undone, [], 'a build its live session still owns is never undone');
+
+  const duringExit = deferred(), afterClose = deferred(), failed = deferred();
+  session.trail(duringExit.work, () => undone.push('during-exit'));
+  session.trail(afterClose.work, () => undone.push('after-close'));
+  session.trail(failed.work, () => undone.push('failed'));
+  session.beginExit();
+  let waited = null;
+  void session.settled().then((value) => { waited = value; });
+  await turn();
+  assert.equal(waited, true, 'the exit never waits for trailed work');
+  duringExit.land(); await turn();
+  assert.deepEqual(undone, [], 'a build landing before the teardown is done waits for it');
+  session.close();
+  assert.deepEqual(undone, ['during-exit'], 'its undo follows the teardown');
+  afterClose.land(); await turn();
+  assert.deepEqual(undone, ['during-exit', 'after-close'], 'a build landing after the close is undone at once');
+  failed.fail(new Error('build failed')); await turn();
+  assert.deepEqual(undone, ['during-exit', 'after-close'], 'a failed build activated nothing: no undo');
+
+  const outlived = deferred();
+  session.open(session.beginEntry());
+  session.trail(outlived.work, () => undone.push('outlived'));
+  session.beginExit(); session.close();
+  session.open(session.beginEntry()); // the user entered again before the old build landed
+  outlived.land(); await turn();
+  assert.deepEqual(undone, ['during-exit', 'after-close'], 'no undo under a newer live session');
+}
+
 // One busy reading, in a fixed order; the take owns the transport only while it records, renders or exports.
 {
   const free = { open: true, recording: false, filming: false, exporting: false, scene: false, mapChange: false, restoring: false,
@@ -187,4 +232,4 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
     [true, true, true, false, false, false, false, false, false], 'a load, a map change, an undo or a light change leaves the playhead alone');
 }
 
-console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound and its late undo, and the busy reading pass');
+console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound and its late undo, the late undo of trailed builds, and the busy reading pass');

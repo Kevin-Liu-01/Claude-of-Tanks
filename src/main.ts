@@ -4115,6 +4115,12 @@ const studioAccess = createStudioAccess({
       }
     },
     setWorldDormant,
+    // (audit F9) a Studio battlefield build an exit outlived activates its world when it lands (awake, under its own sky
+    // and sun): while the Garage still owns the screen, its own presentation comes back (the world asleep, its sky and trim)
+    restoreGarageWorld: () => {
+      if (game.phase !== 'garage' || battleEntryLifecycle.pending || battleLoad.covering || garageReturn.transitioning) return;
+      void garageEnvironmentPresentation.activate(selectedGarageVariantId);
+    },
     setGarageSpots, setGarageSunTrim, enterGarage,
     // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
     // reset restores the sky); the demand-loaded Studio light runtime applies the plan over it and restores the

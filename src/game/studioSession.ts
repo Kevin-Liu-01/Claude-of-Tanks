@@ -7,7 +7,9 @@
  * with the session (a film export's abort) and waits, bounded, for the work it holds (an atmosphere preparation, an
  * export's own end) before the Garage takes the battlefield back: nothing of a closed session lands after its teardown.
  * Held work that outlives the bound gets its undo (hold's afterEnd) once the teardown is done, unless a newer session is
- * live by then: the teardown's restore stays the last word however slow the work.
+ * live by then: the teardown's restore stays the last word however slow the work. Work the exit does not wait for at all
+ * (a battlefield build, which the world runtime activates when it lands) is trailed: a late result gets its undo the same
+ * way, once the teardown is done.
  *
  *   closed ──beginEntry──▶ entering ──open──▶ open
  *                            │                 │
@@ -72,6 +74,13 @@ export interface StudioSession {
    * the Studio already closed), and never while a newer session is live (that session owns what the work touched).
    */
   hold<T>(work: Promise<T>, afterEnd?: () => void): Promise<T>;
+  /**
+   * Work the exit does not wait for (a battlefield build: Exit stays quick through one), whose late effect `afterEnd`
+   * undoes: it runs when `work` fulfils after its session ended, once that teardown is done (at close, or at once when the
+   * Studio already closed), and never while a newer session is live. A rejected work changed nothing: no undo. Returns
+   * `work` itself.
+   */
+  trail<T>(work: Promise<T>, afterEnd: () => void): Promise<T>;
   /** Resolves once every held work settled, or after settleMs (true when everything settled). */
   settled(): Promise<boolean>;
 }
@@ -151,6 +160,17 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
         else if (phase === 'exiting' && waitedGeneration === generation) afterClose.push(afterEnd);
         // exiting and still waiting: the teardown runs after this work; entering or open: a newer session owns it
       });
+      return work;
+    },
+    trail(work, afterEnd) {
+      const issued = generation;
+      const owned = live();
+      void work.then(() => {
+        if (owned && issued === generation) return; // still its own live session's
+        if (phase === 'closed') undo(afterEnd);
+        else if (phase === 'exiting') afterClose.push(afterEnd); // after the teardown, whatever it still waits for
+        // entering or open: a newer session owns what the work touched
+      }, () => undefined);
       return work;
     },
     settled() {

@@ -248,6 +248,12 @@ interface StudioContext {
   ensureWorld(mapId: string, onProgress?: ProgressListener, options?: { readonly earlyPrograms?: boolean }): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
   /**
+   * (audit F9) The Garage's own presentation of the battlefield (main.ts: the world asleep, the Garage's sky and its sun
+   * trim), put back after a Studio build that an exit outlived activated its world over the Garage. A no-op unless the
+   * Garage still owns the screen (no battle being assembled, no Garage return in flight).
+   */
+  restoreGarageWorld?(): void;
+  /**
    * Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). It lights the world
    * itself, after its own awaits: `owner` is the Studio session asking (audit F9), and once it is no longer current the
    * preparation applies no light and no ambience override (the exit restored the battlefield's own). Resolves with the
@@ -5673,6 +5679,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  /**
+   * (audit F9) The session's battlefield build. Exit stays live through a build and never waits for one (a cold build takes
+   * seconds, the teardown well under one), so a build can land after the teardown handed the Garage back, and the world
+   * runtime then activates its world: in the scene, awake, under its own sky and sun, over the Garage. The session trails
+   * the build: one that lands after its session ended gives the Garage its presentation back once the teardown is done
+   * (ctx.restoreGarageWorld), never while a newer Studio session is live, and only while the Garage holds the phase.
+   */
+  function ensureSessionWorld(...request: Parameters<StudioContext['ensureWorld']>): Promise<WorldRuntime> {
+    return session.trail(ensureWorld(...request), () => {
+      if (game.phase === 'garage') ctx.restoreGarageWorld?.();
+    });
+  }
+
   async function setMap(mapId: string): Promise<string> {
     // (audit F9) a battlefield change belongs to its session: after an exit it never wakes the world or re-lights it
     const owner = session.token();
@@ -5690,7 +5709,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     const work = async (progress: ProgressListener): Promise<string> => {
       progress(0.03, 'Surveying battlefield');
-      await ensureWorld(id, (f: number, label: string) => {
+      await ensureSessionWorld(id, (f: number, label: string) => {
         progress(0.03 + f * 0.86, label);
       }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(id, timeOfDay)) });
       owner.check();
@@ -5876,7 +5895,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // own builders, and the rest of the fleet warms once the Studio is up (fleetReady); on a cold /studio boot the full
       // fleet's download held the battlefield's survey back by about ten seconds.
       await Promise.all([
-        timed('world', ensureWorld(mapId, (f: number, label: string) => {
+        timed('world', ensureSessionWorld(mapId, (f: number, label: string) => {
           worldProgress = Math.max(worldProgress, f);
           report(label);
         }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(mapId, timeOfDay)) })),
