@@ -2211,6 +2211,9 @@ export function createAudio({
       pool?.stop((v) => doomed.has(v), 0.4);
     }
     wrecks.length = 0;
+    // The ambience director's scene goes with its loops (2026-11-02 audit F11): left holding a scene whose voices this
+    // teardown kills, its self-repair (ensureLoops) brought the garage hangar back under the battle loader.
+    ambience?.stop(0.4);
     // every world loop, never the loader's bed: a solo battle starts behind the loader, which keeps its sound to the reveal
     pool?.stop((v) => v.end === Infinity && !(loadingActive && v.id === LOADING_BED), 0.4);
     probeSolo = null;
@@ -2323,6 +2326,14 @@ export function createAudio({
   }
 
   function modeEdge(edge: AudioBattleEdge, prev: string): void {
+    if (edge === 'enter-battle' || edge === 'leave-battle' || edge === 'phase') {
+      // The battle's world is wanted per battle, from its reveal (ambientOn): a new battle starts behind its loader in
+      // silence, and leaving one ends the intent (as the lazy facade's copy does).
+      ambientWanted = false;
+      reloadCalled = false;
+      reload.active = false;
+      reload.plan = null;
+    }
     switch (edge) {
       case 'enter-battle':
         void warmBattle();
@@ -2364,11 +2375,6 @@ export function createAudio({
         break;
       case 'pause':
         break;
-    }
-    if (edge === 'enter-battle' || edge === 'leave-battle' || edge === 'phase') {
-      reloadCalled = false;
-      reload.active = false;
-      reload.plan = null;
     }
     chooseSnapshot();
   }

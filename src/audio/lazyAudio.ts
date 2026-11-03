@@ -253,7 +253,8 @@ export function createLazyAudio({
       const track = (event: string, fact: (payload: Record<string, unknown>) => AudioBattleEvent | null) => nextBus.on(event, (payload) => {
         const next = fact(payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
         if (!next || !stepAudioBattleMode(mode, next)) return;
-        if (next.kind === 'phase' && mode.phase !== 'battle') ambientRequested = false;
+        // the battle's world is wanted per battle (the mixer's rule): any phase edge ends the intent
+        if (next.kind === 'phase') ambientRequested = false;
       });
       const stops = [
         track('phase:change', (e) => (typeof e.phase === 'string' ? { kind: 'phase', phase: e.phase } : null)),

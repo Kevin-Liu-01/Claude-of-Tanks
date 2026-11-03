@@ -1526,6 +1526,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
     // and presentations, facts before the graph, the lazy carry)
     'src/audio/battleMode.selftest.mjs',
+    // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
+    // battle's ambience intent is per battle)
+    'src/audio/ambienceTeardown.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
