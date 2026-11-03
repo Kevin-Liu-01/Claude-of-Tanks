@@ -23,19 +23,25 @@
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 // --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays; a take rendered
 // without one gets it from the master first).
+// Resume (2026-11-02 audit S5): every output is written under a partial name and renamed into place once whole
+// (atomic-output.mjs), so a file at a final name is always complete, and a take is up to date only when its poster, the
+// last format written, is newer than its film and still: a run killed mid-encode re-encodes the take.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { SHOTS } from './paths.mjs';
 import { filterStill, filteredFilm, masterFilter } from './master-filter.mjs';
 import { XFADE_MS } from './site50.mjs';
+import { copyFileAtomic, sweepPartials, writeAtomic, writeFileAtomic } from './atomic-output.mjs';
 
 const argv = process.argv.slice(2), flags = new Set(argv.filter(a => a.startsWith('--'))), pos = argv.filter(a => !a.startsWith('--'));
 const renders = resolve(pos[0] ?? join(SHOTS, 'site50/renders'));
 const deliver = resolve(pos[1] ?? join(SHOTS, 'site50/deliver'));
 const only = pos[2]?.split(',');
-const ff = (...a) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...a], { stdio: ['ignore', 'ignore', 'inherit'] });
+const ffRaw = (...a) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...a], { stdio: ['ignore', 'ignore', 'inherit'] });
+/** One ffmpeg encode: its last argument is the output, written under a partial name and renamed into place once whole. */
+const ff = (...a) => writeAtomic(a.at(-1), (partial) => ffRaw(...a.slice(0, -1), partial));
 const probe = f => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim());
 const heightOf = f => Number(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim());
 const pick = (dir, re) => existsSync(dir) ? readdirSync(dir).filter(f => re.test(f)).sort().map(f => join(dir, f))[0] : null;
@@ -81,14 +87,20 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const files = {};
   let L = null, uhd = false;
   if (!stillsOnly) {
-  // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
-  const shareGif = join(out, `${id}-share.gif`);
-  const done = existsSync(join(out, `${id}.mp4`)) && (!GIF.length || existsSync(shareGif)) && (!still || existsSync(join(out, `${id}-4k.png`)));
+  // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes). The
+  // formats are written in order, each renamed into place once whole, and the poster last: a poster newer than the
+  // inputs means every format before it was written whole after them (a run killed mid-encode left no poster, or an
+  // older one).
+  const shareGif = join(out, `${id}-share.gif`), poster = join(out, `${id}.jpg`);
+  const done = existsSync(join(out, `${id}.mp4`)) && existsSync(poster) && (!GIF.length || existsSync(shareGif))
+    && (!still || existsSync(join(out, `${id}-4k.png`)));
   const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
-  if (done && !flags.has('--force') && (!GIF.length || statSync(shareGif).mtimeMs > newest) && statSync(join(out, `${id}.mp4`)).mtimeMs > newest) {
+  if (done && !flags.has('--force') && (!GIF.length || statSync(shareGif).mtimeMs > newest) && statSync(join(out, `${id}.mp4`)).mtimeMs > newest
+    && statSync(poster).mtimeMs > newest) {
     console.log(`${id}: formats up to date`); continue;
   }
   mkdirSync(out, { recursive: true });
+  for (const name of sweepPartials(out)) console.log(`${id}: removed ${name}, a partial a stopped run left`);
   const D = probe(master), X = XFADE_MS / 1000;
   L = +(D - X).toFixed(3); uhd = heightOf(master) >= 2160;
   if (!(L >= 2)) throw new Error(`${id}: take of ${D}s is too short for a ${X}s crossfade`);
@@ -125,32 +137,33 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     L = +(probe(join(out, `${id}.mp4`))).toFixed(3);
   }
   const scene = join(renders, 'films', 'scenes', `${id}.json`);
-  if (existsSync(scene)) { copyFileSync(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
+  if (existsSync(scene)) { copyFileAtomic(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
   if (still) {
-    const png = filterStill(still, join(out, `${id}-4k.png`), `${id}-still`, FILTER);
+    const png = writeAtomic(join(out, `${id}-4k.png`), (partial) => filterStill(still, partial, `${id}-still`, FILTER));
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
-    writeFileSync(join(out, `${id}-4k.jpg`), full.toBuffer('image/jpeg', 95));
+    writeFileAtomic(join(out, `${id}-4k.jpg`), full.toBuffer('image/jpeg', 95));
     const c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    writeFileSync(join(out, `${id}.webp`), c.toBuffer('image/webp', 92));
+    writeFileAtomic(join(out, `${id}.webp`), c.toBuffer('image/webp', 92));
     Object.assign(files, { still4k: `${id}/${id}-4k.png`, still4kJpg: `${id}/${id}-4k.jpg`, still: `${id}/${id}.webp` });
   }
   if (closeStill) {
     // the close portrait (owner 2026-10-06): the 4K master, a q95 JPEG and a 1920 px WebP beside the still
-    const png = filterStill(closeStill, join(out, `${id}-close-4k.png`), `${id}-close`, FILTER);
+    const png = writeAtomic(join(out, `${id}-close-4k.png`), (partial) => filterStill(closeStill, partial, `${id}-close`, FILTER));
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
-    writeFileSync(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));
+    writeFileAtomic(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));
     const c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    writeFileSync(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
+    writeFileAtomic(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
     Object.assign(files, { close4k: `${id}/${id}-close-4k.png`, close4kJpg: `${id}/${id}-close-4k.jpg`, close: `${id}/${id}-close.webp` });
   }
   if (filmMaster && flags.has('--drop-film-masters') && !stillsOnly) {
     // the raw take stays for the films' cuts (motion/sync-footage.mjs links <stem>-proxy.mp4): a finals run without
     // cinema's proxy (--film-proxy=false, launch night 2026-10-08: its encode held the GPU lease ~5 min a take) gets it
-    // here, on the CPU, from the master and with cinema's settings, before the master goes
+    // here, on the CPU, from the master and with cinema's settings, before the master goes (whole or not at all: a
+    // truncated proxy at its final name let the master go, the only good copy)
     const proxy = filmMaster.replace(/-master\.mov$/, '-proxy.mp4');
     if (proxy !== filmMaster && !existsSync(proxy)) {
       ff('-i', filmMaster, '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
@@ -172,5 +185,5 @@ const merged = readdirSync(deliver).filter(d => /^s\d{2,3}-/.test(d) && existsSy
   const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
   return { id, loopS, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, statSync(join(deliver, f)).size])) };
 });
-writeFileSync(index, JSON.stringify(merged, null, 1));
+writeFileAtomic(index, JSON.stringify(merged, null, 1));
 console.log(`${rows.length} shots delivered -> ${deliver} (${merged.length} in the index)`);
