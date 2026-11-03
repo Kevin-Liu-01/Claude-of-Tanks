@@ -1584,6 +1584,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
+    'src/mp/room/roomClientLeave.selftest.mjs', // 2026-11-02 audit M2: a leave while reconnecting leaves on the resume; a disconnect keeps no stale host
     // 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model and QR
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
