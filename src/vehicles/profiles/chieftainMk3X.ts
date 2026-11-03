@@ -12,7 +12,6 @@
 // - the early engine deck with fewer covers (armortek forum: "less deck covers and access covers") -
 //   chieftain5XSourceHullEquipment.ts's early option;
 // - the glacis splash board and the tubular rail behind it, and the nose's towing clevises (the Iranian Mk 3P, 1980s);
-// - canvas hoods over the smoke dischargers' mouths (the 1968 Leusderheide Mk 2s; period-plausible on a peacetime Mk 3);
 // - lifting eyes on the glacis corners and the turret's shoulders.
 // Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain3/. First-party: Kevin B. Liu.
 import * as THREE from 'three';
@@ -20,7 +19,6 @@ import { antennaPart } from './antennaPart.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { liftingEye, tubeThrough } from './chieftainMarksX.ts';
-import { chieftain5SourceSmokeMouths } from './chieftain5XSourceApplique.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
@@ -169,33 +167,6 @@ function glacis(P: TankBuilderPort): void {
   for (const side of [-1, 1]) liftingEye(add, 'hullDetail', side * .86, roof(2.30, .86) - .002, 2.30, Math.PI / 2);
 }
 
-/** Canvas hoods laced over the two smoke-discharger banks' mouths, as the 1968 Leusderheide Mk 2s carried them in
- * peacetime: each a padded cover over the bank's eight mouths (chieftain5SourceSmokeMouths), its back 50 mm down the
- * tubes and its face 45 mm proud of the mouths, rounded at the edges. */
-function smokeHoods(add: Add): void {
-  const mouths = chieftain5SourceSmokeMouths();
-  for (const bank of [mouths.slice(0, 8), mouths.slice(8)]) {
-    const axis = bank[0].axis.clone();
-    const u = new THREE.Vector3(0, 1, 0).cross(axis).normalize(), v = axis.clone().cross(u).normalize();
-    const c = bank.reduce((t, m) => t.add(m.center), new THREE.Vector3()).multiplyScalar(1 / bank.length);
-    let u0 = 0, u1 = 0, v0 = 0, v1 = 0;
-    for (const m of bank) {
-      const d = m.center.clone().sub(c);
-      u0 = Math.min(u0, d.dot(u)); u1 = Math.max(u1, d.dot(u)); v0 = Math.min(v0, d.dot(v)); v1 = Math.max(v1, d.dot(v));
-    }
-    const r = .052, ring = (grow: number): [number, number][] => {
-      const pts: [number, number][] = [];
-      for (const [cx, cy, a0] of [[u1, v0, -Math.PI / 2], [u1, v1, 0], [u0, v1, Math.PI / 2], [u0, v0, Math.PI]] as const) {
-        for (let k = 0; k < 3; k++) pts.push([cx + Math.cos(a0 + k * Math.PI / 4) * (r + grow), cy + Math.sin(a0 + k * Math.PI / 4) * (r + grow)]);
-      }
-      return pts;
-    };
-    const g = sectionSolid([[-.050, -.004], [.020, .006], [.045, -.012]].map(([z, grow]) => ({ z, ring: ring(grow) })));
-    g.applyMatrix4(new THREE.Matrix4().makeBasis(u, v, axis));
-    add('turretCloth', g, c.x, c.y, c.z);
-  }
-}
-
 export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: Point): void {
   const add: Add = (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) =>
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
@@ -204,7 +175,6 @@ export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: P
   rearBasket(add);
   jerryCans(P, add, pivot);
   larkspurWhips(add);
-  smokeHoods(add);
   for (const side of [-1, 1]) liftingEye(add, 'turretDetail', side * .78, 2.282, .55, 0);
   glacis(P);
 }
