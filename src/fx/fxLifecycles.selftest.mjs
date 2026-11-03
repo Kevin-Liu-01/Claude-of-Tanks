@@ -7,6 +7,8 @@
 //  - smoke columns: a fire raised with no hit before it smokes where its hull stands, a fire seen burning whose
 //    burning:false was lost goes out with the combat record, and a late joiner's already-burning hull smokes;
 //  - one HE round, one burst: its hull event and its expiry split across frames (a network peer's queue) drew two;
+//  - under the killcam's suppression the runtime keeps its scene graph hidden whatever its subsystems write each frame
+//    (they re-showed themselves), hides a child added meanwhile, and the release restores what each owner asked for;
 //  - a bus takes one runtime: binding twice, or a second runtime (a failed initializer's retry) binding the same bus,
 //    never doubles the effects or leaves the first reacting;
 import assert from 'node:assert/strict';
@@ -139,6 +141,36 @@ function fakeVisual() {
   fx.resetAll();
 }
 
+// ---- the scene graph stays hidden under the suppression ----
+{
+  const { fx, frames } = runtime();
+  frames(2);
+  const shown = () => fx.group.children.filter((c) => !c.isLight && c.visible).map((c) => c.name || c.type);
+  // live rounds keep their subsystems writing every frame: a tracer, a wire-guided missile
+  const shells = [
+    { id: 71, pos: new THREE.Vector3(0, 2, 10), vel: new THREE.Vector3(0, 0, 1500), spec: { tracer: 'TANK' }, shooterId: 'g', ageS: 0.05, distM: 60 },
+    { id: 72, pos: new THREE.Vector3(4, 3, 20), vel: new THREE.Vector3(0, 0, 250), spec: { guided: true, tracer: 'ATGM' }, shooterId: 'g', ageS: 1, distM: 250 },
+  ];
+  frames(3, 1 / 60, shells);
+  const before = shown();
+  assert.ok(before.length > 0, `live rounds draw (${before})`);
+  const ownerHidden = fx.group.children.find((c) => !c.isLight && !c.visible);
+  fx.setReplaySuppressed(true);
+  assert.deepEqual(shown(), [], 'the suppression hides the scene graph at once');
+  frames(3, 1 / 60, shells);
+  assert.deepEqual(shown(), [], 'and keeps it hidden through the subsystems\' own per-frame writes');
+  const late = new THREE.Group();
+  late.name = 'late-child';
+  fx.group.add(late);
+  frames(1, 1 / 60, shells);
+  assert.equal(late.visible, false, 'a child added under the suppression is hidden too');
+  fx.setReplaySuppressed(false);
+  assert.ok(before.every((name) => shown().includes(name)), 'the release shows what its owners asked for');
+  if (ownerHidden) assert.equal(ownerHidden.visible, false, 'never a mesh its owner had hidden');
+  fx.group.remove(late);
+  fx.resetAll();
+}
+
 // ---- a bus takes one runtime, once ----
 {
   const groundBurst = (bus, shellId) => {
@@ -166,4 +198,4 @@ function fakeVisual() {
   for (const r of [once, twice, first, second]) r.fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round; a bus takes one runtime');
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once; smoke columns follow the fire; one burst per HE round; the scene graph stays hidden under the suppression; a bus takes one runtime');

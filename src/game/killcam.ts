@@ -2706,7 +2706,10 @@ export function createKillCam(deps: KillcamDeps) {
    */
   function hideFx() {
     const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
-    if (fxs && fxs.setReplaySuppressed) fxs.setReplaySuppressed(true);
+    // (2026-11-02 audit F10) the fx runtime owns its group's visibility under the suppression (effects.ts
+    // holdReplayHidden: its subsystems' per-frame writes re-showed what this hid); the list below is the fallback for
+    // an fx group with no runtime to ask
+    if (fxs && fxs.setReplaySuppressed) { fxs.setReplaySuppressed(true); return; }
     if (!pb || !pb.fxGroup) return;
     if (!pb.fxHidden) pb.fxHidden = [];
     for (const child of pb.fxGroup.children) {

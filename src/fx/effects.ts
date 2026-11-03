@@ -6398,6 +6398,27 @@ function* createFxSteps(
   }) : null;
 
   let cinematicPortState: FxCinematicPort | null = null;
+  /**
+   * (2026-11-02 audit F10) Under the killcam's suppression the runtime owns its scene graph's visibility: every non-light
+   * child of the group stays hidden whatever its subsystem's update writes (they write `mesh.visible = n > 0` every
+   * frame, which re-showed what the killcam had hidden; a child added meanwhile, the lens guns, was never hidden), and
+   * the release gives each the visibility its owner last asked for (the killcam's blanket true showed meshes their owners
+   * had emptied). Pooled lights stay in the scene (the light count keeps the programs). Value: what the owner wants.
+   */
+  const replayHidden = new Map<THREE.Object3D, boolean>();
+  function holdReplayHidden(): void {
+    const children = group.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if ((child as THREE.Light).isLight) continue;
+      if (child.visible) { replayHidden.set(child, true); child.visible = false; }
+      else if (!replayHidden.has(child)) replayHidden.set(child, false);
+    }
+  }
+  function releaseReplayHidden(): void {
+    for (const [child, wanted] of replayHidden) child.visible = wanted;
+    replayHidden.clear();
+  }
   const noBinding = (): void => {};
   /** (2026-11-02 audit F10) undo this runtime's bus binding (bindBus) */
   let unbindBus: () => void = noBinding;
@@ -6411,12 +6432,14 @@ function* createFxSteps(
      * zero intensity to preserve shader-program stability.
      */
     setReplaySuppressed(suppressed: boolean): void {
+      const was = replaySuppressed;
       replaySuppressed = !!suppressed;
       if (replaySuppressed) {
         for (const st of lightStates) st.light.intensity = 0;
         for (const r of shockRings) { r.mesh.visible = false; r.mat.opacity = 0; }
         for (const r of muzzleRings) { r.mesh.visible = false; r.mat.opacity = 0; }
-      }
+        holdReplayHidden();
+      } else if (was) releaseReplayHidden();
     },
 
     /** Read-only killcam/visual-regression telemetry. */
@@ -6627,6 +6650,8 @@ function* createFxSteps(
         readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
       ageMissileRecords(tickDt);
+      // (2026-11-02 audit F10) last, over whatever the subsystems wrote this frame
+      if (replaySuppressed) holdReplayHidden();
     },
 
     /**
@@ -7732,6 +7757,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll(options?: { running?: boolean }) {
       replaySuppressed = false;
+      releaseReplayHidden();
       auxiliaryClock = null;
       auxiliary?.reset(); drones.reset();
       lensGuns?.hide(); lensUp = false; lensCarrier = null;
