@@ -5,14 +5,19 @@
 // name and renamed into place once whole (atomic-output.mjs), and a take is up to date only once every output it should
 // have is there and its completion record, written after the last of them, is newer than its inputs. Round 2: the poster
 // had been taken for the last output, but the scene and the stills come after it, so a run stopped between the poster
-// and the stills left the old still delivered under a "formats up to date".
+// and the stills left the old still delivered under a "formats up to date". Round 3: the outputs come in groups, each from
+// one input (the formats from the film, the stills from the still masters), the scene is copied when its bytes differ, and
+// the record keeps each group's input as it was made. Round 2 counted the scene as an input of every format, and
+// cinema-jobs rewrites it unchanged on every finals launch: each delivered take was re-encoded on a relaunch, one whose
+// master was dropped from its H.264 proxy.
 // The real site-loops.mjs runs on a fixture take with a stand-in ffmpeg and ffprobe on PATH (shell scripts: ffmpeg writes
 // "complete <name>" to its last argument, or, for the name FAKE_FFMPEG_FAIL matches, a few bytes and exits 1 as an encode
-// stopped part-way would); a stand-in master filter copies stills and films, or SIGKILLs the run at a still (FAKE_FILTER_KILL).
+// stopped part-way would, and logs each output it was asked for); a stand-in master filter copies stills and films, or
+// SIGKILLs the run at a still (FAKE_FILTER_KILL).
 // Nothing real is encoded and nothing outside a temporary directory is written.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +48,7 @@ try {
   mkdirSync(bin);
   writeFileSync(join(bin, 'ffmpeg'), `#!/bin/sh
 for last; do :; done
+[ -n "$FAKE_FFMPEG_LOG" ] && basename "$last" >> "$FAKE_FFMPEG_LOG"
 case "$(basename "$last")" in
   *"\${FAKE_FFMPEG_FAIL:-<none>}"*) printf 'trunc' > "$last"; exit 1 ;;
 esac
@@ -66,8 +72,16 @@ esac
     mkdirSync(join(renders, 'films', id, 'films'), { recursive: true });
     writeFileSync(join(renders, 'films', id, 'films', `${id}-master.mov`), 'the master');
   }
+  const ffLog = join(root, 'ffmpeg.log');
   const run = (ids, fail = null, ...flags) => spawnSync(process.execPath, [TOOL, renders, deliver, ids, ...flags], { encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEDIA_R5_FEATURES: 'off', COT_MASTER_FILTER: '', ...(fail ? { FAKE_FFMPEG_FAIL: fail } : {}) } });
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEDIA_R5_FEATURES: 'off', COT_MASTER_FILTER: '', FAKE_FFMPEG_LOG: ffLog,
+      ...(fail ? { FAKE_FFMPEG_FAIL: fail } : {}) } });
+  // the outputs ffmpeg was asked for since the last call (by their final names: each is written under a partial one)
+  const encodes = () => {
+    const names = existsSync(ffLog) ? readFileSync(ffLog, 'utf8').split('\n').filter(Boolean) : [];
+    rmSync(ffLog, { force: true });
+    return names.map((name) => name.replace(/^\.(.+)\.partial-\d+(\.[^.]*)?$/, '$1'));
+  };
   const out = (id, name) => join(deliver, id, name);
   const text = (id, name) => (existsSync(out(id, name)) ? readFileSync(out(id, name), 'utf8') : null);
 
@@ -109,24 +123,80 @@ esac
     const [stillA, stillB] = [png('#c03020'), png('#2040c0')];
     const stillFile = join(stills, `${id}-still-1000ms.png`), delivered = () => readFileSync(out(id, `${id}-4k.png`));
     const filtered = (extra = {}) => spawnSync(process.execPath, [TOOL, renders, deliver, id], { encoding: 'utf8',
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEDIA_R5_FEATURES: 'off', COT_MASTER_FILTER: filter, ...extra } });
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEDIA_R5_FEATURES: 'off', COT_MASTER_FILTER: filter, FAKE_FFMPEG_LOG: ffLog, ...extra } });
     writeFileSync(stillFile, stillA);
     const first = filtered();
     assert.equal(first.status, 0, first.stderr);
     assert.ok(delivered().equals(stillA), 'the still is delivered');
-    writeFileSync(stillFile, stillB); // a new still master, newer than every delivered output
+    // a new film and a new still master: the next run re-encodes the formats, and is stopped at the still
+    writeFileSync(join(renders, 'films', id, 'films', `${id}-master.mov`), 'the master, rendered again');
+    writeFileSync(stillFile, stillB);
+    encodes();
     const killed = filtered({ FAKE_FILTER_KILL: '1' });
     assert.equal(killed.signal, 'SIGKILL', `the run is stopped at the still (${killed.status} ${killed.signal})`);
     assert.ok(statSync(out(id, `${id}.jpg`)).mtimeMs > statSync(stillFile).mtimeMs, 'after its poster was renamed into place');
+    assert.ok(encodes().includes(`${id}.jpg`), 'the stopped run re-encoded the formats');
     const resumed = filtered();
     assert.equal(resumed.status, 0, resumed.stderr);
     assert.doesNotMatch(resumed.stdout, /formats up to date/, `a take stopped before its stills is not up to date (${resumed.stdout.trim()})`);
     assert.ok(delivered().equals(stillB), 'the next run delivers the new still');
+    assert.deepEqual(encodes(), [], 'and only the still: the formats made whole before the stop are not encoded again');
     assert.match(filtered().stdout, /s03-test: formats up to date/, 'then the take is up to date');
+    // a newer still alone: only the stills are made again
+    writeFileSync(stillFile, stillA);
+    const stillOnly = filtered();
+    assert.match(stillOnly.stdout, /s03-test: formats current, not re-encoded; delivering the still/, stillOnly.stdout);
+    assert.deepEqual(encodes(), [], 'a new still re-encodes no format');
+    assert.ok(delivered().equals(stillA));
+  }
+
+  // ---- round 3: a relaunch rewrites the scene with the same bytes; a dropped master's take is never re-encoded ----------
+  {
+    const id = 's04-test', films = join(renders, 'films', id, 'films'), sceneFile = join(renders, 'films', 'scenes', `${id}.json`);
+    mkdirSync(films, { recursive: true });
+    mkdirSync(join(renders, 'films', 'scenes'), { recursive: true });
+    const scene = `${JSON.stringify({ id, map: 'test' }, null, 1)}\n`;
+    // cinema rendered the master and its proxy, and cinema-jobs wrote the scene, before the run
+    writeFileSync(join(films, `${id}-master.mov`), 'the master');
+    writeFileSync(join(films, `${id}-proxy.mp4`), 'the cinema proxy');
+    writeFileSync(sceneFile, scene);
+    const past = new Date(Date.now() - 120_000);
+    for (const file of [join(films, `${id}-master.mov`), join(films, `${id}-proxy.mp4`), sceneFile]) utimesSync(file, past, past);
+    encodes();
+    const first = run(id, null, '--drop-film-masters');
+    assert.equal(first.status, 0, first.stderr);
+    assert.ok(encodes().includes(`${id}.mp4`), 'the formats are encoded from the master');
+    assert.equal(existsSync(join(films, `${id}-master.mov`)), false, 'the master is dropped');
+    assert.equal(readFileSync(join(films, `${id}-proxy.mp4`), 'utf8'), 'the cinema proxy', 'cinema\'s proxy stays as it was');
+    assert.equal(readFileSync(out(id, `${id}.scene.json`), 'utf8'), scene, 'the scene is delivered');
+    assert.match(run(id, null, '--drop-film-masters').stdout, /s04-test: formats up to date/);
+    // the finals' film-jobs step rewrites the scene with the same bytes on every launch
+    const relaunch = () => { writeFileSync(sceneFile, scene); return run(id, null, '--drop-film-masters'); };
+    const relaunched = relaunch();
+    assert.match(relaunched.stdout, /s04-test: formats up to date/, `a rewritten, unchanged scene changes nothing (${relaunched.stdout.trim()})`);
+    assert.deepEqual(encodes(), [], 'and nothing is re-encoded from the proxy');
+    // a take delivered before the record: its outputs are newer than the film (the proxy), whatever the scene's time
+    rmSync(out(id, `.${id}.complete.json`));
+    const legacy = relaunch();
+    assert.match(legacy.stdout, /s04-test: formats up to date/, `a take delivered before the record is not re-encoded wholesale (${legacy.stdout.trim()})`);
+    assert.deepEqual(encodes(), []);
+    // a scene whose bytes changed is copied; no format is made again
+    const changed = `${JSON.stringify({ id, map: 'test', hour: 18 }, null, 1)}\n`;
+    writeFileSync(sceneFile, changed);
+    const sceneRun = run(id, null, '--drop-film-masters');
+    assert.match(sceneRun.stdout, /s04-test: formats current, not re-encoded; delivering the scene/, sceneRun.stdout);
+    assert.deepEqual(encodes(), [], 'a new scene re-encodes no format');
+    assert.equal(readFileSync(out(id, `${id}.scene.json`), 'utf8'), changed, 'the new scene is delivered');
+    assert.match(run(id).stdout, /s04-test: formats up to date/, 'then the take is up to date (recorded from its times)');
+    // a film rendered again (a new proxy, the master gone) is a new input: the formats are made again
+    writeFileSync(join(films, `${id}-proxy.mp4`), 'the cinema proxy, rendered again');
+    encodes();
+    assert.doesNotMatch(run(id).stdout, /s04-test: formats up to date/, 'a new film is not up to date');
+    assert.ok(encodes().includes(`${id}.mp4`), 'its formats are encoded again');
   }
   const index = JSON.parse(readFileSync(join(deliver, 'deliver-index.json'), 'utf8'));
-  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test', 's03-test'], 'the index lists the whole takes');
-  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master; a run stopped between the poster and the stills delivers the new still next time');
+  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test', 's03-test', 's04-test'], 'the index lists the whole takes');
+  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master; a run stopped between the poster and the stills delivers the new still next time; each group follows its own input (an unchanged scene rewrite or a new still re-encodes no format, a dropped master\'s take stays current on its proxy)');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
