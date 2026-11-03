@@ -3357,6 +3357,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
     clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
+      currentDamagePanel()?.clear(); // (2026-11-02 audit, 04-ui-1 item 7) no mask retry or tank visual outlives the battle
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);

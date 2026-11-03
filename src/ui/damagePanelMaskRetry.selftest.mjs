@@ -293,6 +293,43 @@ try {
     assert.deepEqual(h.telemetry.events, []);
   }
 
+  // 2026-11-02 audit (04-ui-1 item 7): the battle ends (the Garage return's clearBattle) while a retry waits. The
+  // pending retry is cancelled, a build still in flight is inert when it lands, and the battle's visual is let go: the
+  // panel had no teardown, so the retry fired for the last battle's tank in the Garage (a 700-1,000 ms mask build) and
+  // the visual stayed referenced until the next battle.
+  {
+    const h = harness();
+    const live = { root: {}, dispose() {} };
+    let lateReady = null;
+    h.masks.plan(failing(failure('top_mask_program_timeout', 0)));
+    h.panel.setTank(spec, live);
+    await flush();
+    assert.equal(h.clock.list.length, 1, 'a retry waits');
+    assert.equal(h.panel.debugState().holdsSourceVisual, true);
+    h.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h.panel.clear();
+    assert.equal(h.clock.list[0].cancelled, true, 'the battle teardown cancels the pending retry');
+    assert.equal(h.panel.debugState().holdsSourceVisual, false, "and lets the battle's tank visual go");
+    h.clock.list[0].callback(); // a timer that fired anyway
+    await flush();
+    assert.equal(h.masks.calls.length, 1, 'no mask build runs for the last battle in the Garage');
+    // a build in flight at the teardown lands after it: inert
+    const h2 = harness();
+    h2.masks.plan((call) => { lateReady = call.onReady; return null; });
+    h2.panel.setTank(spec, live);
+    h2.panel.clear();
+    lateReady(false, failure('top_mask_program_timeout', 0));
+    await flush();
+    assert.deepEqual(h2.clock.list, [], 'a failure that lands after the teardown schedules no retry');
+    lateReady(true);
+    assert.equal(h2.panel.debugState().masksReady, false);
+    // the next battle starts afresh
+    h2.masks.plan(cached(maskEntry()));
+    h2.panel.setTank(spec, live);
+    assert.equal(h2.panel.debugState().masksReady, true);
+    assert.deepEqual(warnings, []);
+  }
+
   // Without an injected sink (Node has no page beacon) the terminal failure
   // still warns and never throws.
   {
@@ -314,4 +351,4 @@ try {
 }
 
 console.log('damagePanelMaskRetry.selftest: race retry without the borrowed visual, 1.5 s / 8 s backoff, '
-  + 'one warning + one accepted hud_mask_failed beacon, and tank-switch cancellation pass');
+  + 'one warning + one accepted hud_mask_failed beacon, tank-switch cancellation and the battle teardown pass');
