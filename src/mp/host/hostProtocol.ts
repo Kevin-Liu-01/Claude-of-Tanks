@@ -79,6 +79,16 @@ export interface HostResumeState {
   keyframeTick?: number;
   /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
   timeS?: number;
+  /**
+   * The hulls a mode revived between the keyframe and their newer rows, by wire id (audit M1, review round 2): the
+   * keyframe's row has them destroyed, the newer row alive. Their extras describe the life they left.
+   */
+  revivedEntityIds?: number[];
+  /**
+   * The tick of each entity's newest `mode_respawn` this seat was told of after the keyframe, by authoritative id: a revive
+   * of a hull that was alive (a Turbo Ball goal's kick-off) leaves both its rows alive.
+   */
+  respawnTicks?: [id: string, tick: number][];
 }
 
 export interface HostBootConfig {

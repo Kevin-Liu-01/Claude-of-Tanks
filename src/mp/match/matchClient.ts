@@ -146,6 +146,12 @@ export interface RetainedMigrationState {
   /** Every destruction entry a `structure_stage` (later a breach or a crater) named this round: like `fallen`, a link
    * reset clears the queue, never this. */
   destruction?: readonly DestructionLogEntry[];
+  /**
+   * The tick of each entity's newest `mode_respawn` this client was told of, by authoritative id (audit M1, review round
+   * 2): a hull a mode revived after the keyframe lives a life its extras never saw (migrationState.ts
+   * resumeStateFromRetained). Every viewer receives mode events.
+   */
+  respawns?: readonly (readonly [id: string, tick: number])[];
 }
 
 export interface MatchClientStats {
@@ -314,6 +320,8 @@ export class MatchClient {
   private readonly fallenObstacles = new Set<number>();
   /** Every stage a `structure_stage` named this round (RetainedMigrationState.destruction). */
   private readonly retainedDestruction: DestructionLogEntry[] = [];
+  /** The tick of each entity's newest `mode_respawn` this round, by authoritative id (RetainedMigrationState.respawns). */
+  private readonly respawnTicks = new Map<string, number>();
   private latestDestruction: readonly DestructionLogEntry[] = [];
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
@@ -432,6 +440,7 @@ export class MatchClient {
       keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
       fallen: [...this.fallenObstacles],
       destruction: this.retainedDestruction.slice(),
+      respawns: [...this.respawnTicks],
     };
   }
 
@@ -931,6 +940,8 @@ export class MatchClient {
       if (event.kind === 'world_prop_destroyed') {
         const index = Number(event.payload.obstacleIndex);
         if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+      } else if (event.kind === 'mode_respawn') {
+        if (typeof event.payload.id === 'string') this.respawnTicks.set(event.payload.id, message.tick);
       } else if (event.kind === 'structure_stage') {
         const structureId = Number(event.payload.structureId), stage = event.payload.stage;
         if (Number.isSafeInteger(structureId) && structureId >= 0

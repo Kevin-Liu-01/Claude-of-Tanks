@@ -217,6 +217,55 @@ interface ResumeReading {
   readonly clockS: number | null;
 }
 
+const isDestroyedRow = (row: EntityRow): boolean => (row.flags & ENTITY_FLAGS.DESTROYED) !== 0 || row.hp <= 0;
+
+/**
+ * The hulls a mode revived after their extras were captured (audit M1, review round 2), by authoritative id: a newer row
+ * of a hull the keyframe's row had destroyed (HostResumeState.revivedEntityIds), or one this seat was told respawned
+ * after the keyframe and no later than its row (respawnTicks: a hull revived while alive, a Turbo Ball goal's kick-off).
+ * The revive built the hull's combat state and kit anew (authoritativeMatch.ts reviveForMode), so its extras are the life
+ * it left: written onto the fresh hull they brought back the dead crew, the red modules at 0 hp, the spent charges and
+ * cooldowns, the old reload channels.
+ */
+function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasTick: number): Set<string> {
+  const revived = new Set<string>();
+  const byRow = new Set(state.revivedEntityIds ?? []);
+  const respawned = new Map(state.respawnTicks ?? []);
+  if (!byRow.size && !respawned.size) return revived;
+  for (const row of state.frame.entities) {
+    if (row.tick <= extrasTick) continue;
+    const entity = actor.entityForWireId(row.entityId);
+    if (!entity) continue;
+    const at = respawned.get(entity.id);
+    if (byRow.has(row.entityId) || (at !== undefined && at > extrasTick && at <= row.tick)) revived.add(entity.id);
+  }
+  return revived;
+}
+
+/**
+ * The keyframe's mode checkpoint with the bookkeeping each of those revives did (matchModes.ts reviveAtSpawn: the pending
+ * respawn dropped, alive, its death unscored, back on the field and no longer resting). Without it the new host's mode
+ * revived the hull a second time when the keyframe's respawn fell due: back on its spawn, its fight reset again.
+ */
+function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
+  if (!revived.size || !checkpoint.mode) return checkpoint;
+  const mode = checkpoint.mode, waves = mode.waves;
+  return {
+    ...checkpoint,
+    mode: {
+      ...mode,
+      respawns: mode.respawns.filter(([id]) => !revived.has(id)),
+      destroyed: mode.destroyed.map(([id, dead]): [string, boolean] => [id, dead && !revived.has(id)]),
+      scored: mode.scored.filter((id) => !revived.has(id)),
+      ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
+    },
+  };
+}
+
+/** What a revive leaves of an entity's extras (reviveForMode: a fresh combat state and kit): its tallies alone. */
+const freshLife = (extras: MigrationEntityExtras): MigrationEntityExtras =>
+  ({ entityId: extras.entityId, kills: extras.kills, damage: extras.damage, modules: {}, crew: {}, burning: false });
+
 /** The authority's fire tick (authoritativeMatch.ts FIRE_TICK_S; damage.ts tickFire is "one 0.5 s fire tick"). */
 const FIRE_TICK_S = 0.5;
 /** The multipliers a timed item bends (consumableRules.ts applyConsumableMultipliers). */
@@ -378,6 +427,8 @@ function restoreRowCounts(combat: CombatState, row: EntityRow, spec: DamageTankS
  * stood the prop again, a hull crushed it a second time and every peer crunched a tree the old host had felled. The
  * list is the base's plus those falls, at the base's revision plus one per fall it adds — the old host counted each
  * when it destroyed it — and never below the list's length (the host actor republishes its list when the revision moves).
+ * A hull a mode revived between the keyframe and its newer row is named (revivedEntityIds, respawnTicks from the
+ * `mode_respawn` ticks this seat was told of): the keyframe's extras are the life it left.
  */
 export function resumeStateFromRetained(
   keyframe: MigrationKeyframe,
@@ -386,6 +437,7 @@ export function resumeStateFromRetained(
   latestAtMs: number | null,
   fallen: readonly number[],
   destructionEvents: readonly DestructionLogEntry[] = [],
+  respawns: readonly (readonly [id: string, tick: number])[] = [],
 ): { state: HostResumeState; baseTick: number; baseAtMs: number } {
   // the extras stay the keyframe's, dated by its tick, when a newer frame moves `tick` on (applyResumeState ages them)
   const state: HostResumeState = { ...keyframe, keyframeTick: keyframe.tick };
@@ -395,10 +447,16 @@ export function resumeStateFromRetained(
     // What this viewer saw is exact to its newest frame: overlay those rows; hidden entities keep the sealed keyframe's,
     // and so does an entity whose row this viewer holds from before the keyframe (a far tier's held row is older).
     const rows = new Map(state.frame.entities.map((row) => [row.entityId, row]));
+    const revived: number[] = [];
     for (const row of latest.entities) {
       const held = rows.get(row.entityId);
+      if (held && row.tick > held.tick && isDestroyedRow(held) && !isDestroyedRow(row)) revived.push(row.entityId);
       if (!held || row.tick >= held.tick) rows.set(row.entityId, row);
     }
+    if (revived.length) state.revivedEntityIds = revived;
+    const respawned = respawns.filter(([id, tick]) => typeof id === 'string' && Number.isInteger(tick) && tick > keyframe.tick && tick <= latest.tick)
+      .map(([id, tick]): [string, number] => [id, tick]);
+    if (respawned.length) state.respawnTicks = respawned;
     state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson,
       // the destruction log only grows: the newer frame's is the longer (destruction, docs/DESTRUCTION.md §8.3)
       destruction: (latest.destruction ?? []).length >= (state.frame.destruction ?? []).length ? latest.destruction : state.frame.destruction };
@@ -493,11 +551,12 @@ export function resumeHoldSeats(
  * until the new revision climbed past the old.
  */
 export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
-  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(state.modeCheckpoint);
+  const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
+  const revived = revivedSinceKeyframe(actor, state, extrasTick);
+  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(checkpointAfterRevives(state.modeCheckpoint, revived));
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));
-  const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
   for (const row of state.frame.entities) {
     const entity = actor.entityForWireId(row.entityId);
     if (!entity) { skipped++; continue; }
@@ -515,7 +574,7 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     const combat = entity.combat;
     combat.hp = row.hp;
     combat.maxHp = Math.max(1, row.maxHp);
-    combat.destroyed = (row.flags & 1) !== 0 || row.hp <= 0;
+    combat.destroyed = isDestroyedRow(row);
     if (Array.isArray(combat.ammo)) {
       const ammo = [row.ammo0, row.ammo1, row.ammo2];
       for (let slot = 0; slot < combat.ammo.length && slot < ammo.length; slot++) combat.ammo[slot] = ammo[slot]!;
@@ -544,14 +603,17 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     const gapS = Math.max(0, row.tick - extrasTick) * TICK_MS / 1000;
     const reading: ResumeReading = { row, gapS, clockS: typeof state.timeS === 'number' ? state.timeS + gapS : null };
     if (extras) {
+      // the tallies run on across lives; the fight is the extras' only while the hull lives the life they saw (a revived
+      // hull keeps the fresh state the new host built, and what its newer row carries)
       entity.kills = extras.kills;
       entity.damage = extras.damage;
-      for (const [moduleId, moduleState] of Object.entries(extras.modules)) {
+      const life = revived.has(entity.id) ? freshLife(extras) : extras;
+      for (const [moduleId, moduleState] of Object.entries(life.modules)) {
         const module = (combat.modules as Record<string, { state?: string } | undefined>)[moduleId];
         if (module && (moduleState === 'ok' || moduleState === 'yellow' || moduleState === 'red')) module.state = moduleState;
       }
-      for (const [crewId, able] of Object.entries(extras.crew)) if (crewId in combat.crew) combat.crew[crewId] = able;
-      restoreCombatExtras(combat, entity.consumables, extras, actor.authority.timeS, reading);
+      for (const [crewId, able] of Object.entries(life.crew)) if (crewId in combat.crew) combat.crew[crewId] = able;
+      restoreCombatExtras(combat, entity.consumables, life, actor.authority.timeS, reading);
     }
     // the selected and cannon channels as the row has them, unless the extras are as new and exact (review round 1:
     // the keyframe's channels written over a newer row gave a tank that fired since the keyframe a loaded gun)

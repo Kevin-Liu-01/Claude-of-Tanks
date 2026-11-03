@@ -235,6 +235,8 @@ export class ScriptedMatchServer {
     entity.combat.destroyed = false;
     entity.hp = entity.maxHp;
     entity.reloadS = 0;
+    // the authority's revive event (matchModes.ts reviveAtSpawn), which every viewer receives
+    this.broadcastEvent({ kind: 'mode_respawn', payload: { id: entity.playerId, team: entity.team === TEAM.BRAVO ? 'bravo' : 'alpha' } });
   }
 
   /** A destroyed prop for the persistent destroyed list. */
