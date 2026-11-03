@@ -6,6 +6,9 @@
 // (B) a handoff the battle owner rejected re-showed the menu, whose render began the same handoff again, without end;
 // (C) every lobby render stored the room's mode as the player's own preference (a guest came home with the host's);
 // (D) the host's mode choice was shown at once and never rolled back when the room refused it.
+// (E) (2026-11-03, the round-1 review) a seat the menu released to the battle owner had no handoff latch: every
+//     match_start the room re-sent (one per admission, so per room-socket blip) ran the composition's round entry
+//     again, and its busy answer revealed the lobby over the loading battle.
 // Plus the pure table (src/ui/playMenuSeat.ts) and the one locked rule every rules control reads.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -34,11 +37,11 @@ const settle = async () => { for (let index = 0; index < 20; index++) await Prom
   assert.equal(nextPlayMenuSeat('attached', 'handed_off'), null);
   assert.equal(nextPlayMenuSeat('connecting', 'handed_off'), null);
   assert.deepEqual(['none', 'connecting', 'lobby', 'handed_off', 'attached'].filter(seatRendersLobby), ['lobby'], 'only the menu\'s own lobby renders from the room');
-  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'starting', matchId: 'm1', refusedMatchId: null }), true);
-  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'starting', matchId: 'm1', refusedMatchId: 'm1' }), false, 'a refused match is not begun again');
-  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'playing', matchId: 'm2', refusedMatchId: 'm1' }), true, 'the next match is');
-  assert.equal(shouldAutoHandoff({ seat: 'handed_off', role: 'client', phase: 'playing', matchId: 'm2', refusedMatchId: null }), false);
-  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'host', phase: 'playing', matchId: 'm2', refusedMatchId: null }), false, 'the host enters through its match_start');
+  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'starting', matchId: 'm1', handedOffMatchId: null }), true);
+  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'starting', matchId: 'm1', handedOffMatchId: 'm1' }), false, 'a refused match is not begun again');
+  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'client', phase: 'playing', matchId: 'm2', handedOffMatchId: 'm1' }), true, 'the next match is');
+  assert.equal(shouldAutoHandoff({ seat: 'handed_off', role: 'client', phase: 'playing', matchId: 'm2', handedOffMatchId: null }), false);
+  assert.equal(shouldAutoHandoff({ seat: 'lobby', role: 'host', phase: 'playing', matchId: 'm2', handedOffMatchId: null }), false, 'the host enters through its match_start');
   assert.equal(roomRulesLocked({ inLobby: false, role: null, phase: null }), false, 'outside a room the rules are the player\'s');
   assert.equal(roomRulesLocked({ inLobby: true, role: 'host', phase: 'waiting' }), false);
   assert.equal(roomRulesLocked({ inLobby: true, role: 'host', phase: 'playing' }), true);
@@ -65,7 +68,7 @@ function handoffRig({ start }) {
   const context = {
     console, Promise,
     seat: 'lobby', session: own, activeRoom: null, state: lobby, role: 'client', handedOff: false, connecting: false,
-    refusedHandoffMatchId: null,
+    handedOffMatchId: null,
     unsubscribeState: () => { calls.unobserve++; },
     nextPlayMenuSeat, shouldAutoHandoff,
     roomConnection: { current: { session: own }, observe(listener) { calls.observe++; listener(lobby); return () => { calls.unobserve++; }; } },
@@ -97,12 +100,67 @@ function handoffRig({ start }) {
   assert.equal(calls.starts, 1, `one attempt for the refused match (${calls.starts})`);
   assert.equal(context.seat, 'lobby', 'the menu holds its lobby again');
   assert.equal(calls.observe, 1, 'and observes the room again');
-  assert.equal(context.refusedHandoffMatchId, 'm1-0000a0a0');
+  assert.equal(context.handedOffMatchId, 'm1-0000a0a0');
   assert.ok(calls.statuses.some(([text, error]) => error && /chunk/.test(text)), 'the refusal is on the status line');
   // the room's next match is entered on its own again
   context.session.lastMatchStart = { matchId: 'm2-0000b0b0' };
   context.renderLobby(lobby);
   assert.equal(calls.starts, 2, 'the next match hands off');
+}
+
+// ---- (E) the attached seat: one automatic handoff per match; a Rejoin press may try again
+function attachedRig({ start }) {
+  const calls = { starts: 0, shows: 0 };
+  const released = { lastMatchStart: { matchId: 'm2-0000c0c0' }, roomInfo: { peerId: 'me' } };
+  const lobby = { phase: 'starting', hostId: 'admin', players: [] };
+  const connection = { session: released, role: 'client' };
+  const context = {
+    console, Promise,
+    seat: 'attached', session: null, activeRoom: { session: released }, state: lobby, role: 'client', handedOff: false, connecting: false,
+    handedOffMatchId: null, unsubscribeState: null,
+    nextPlayMenuSeat, shouldAutoHandoff,
+    roomConnection: { current: null, observe() { return () => {}; } },
+    onNetworkStart: () => { calls.starts++; return start(calls.starts); },
+    notifyLobbyChange: () => {}, hide: () => {}, setStatus: () => {}, errorMessage: (error) => String(error?.message ?? error),
+    t: (key) => key, clearFailure: () => {},
+    show: () => { calls.shows++; },
+  };
+  runInNewContext(['moveSeat', 'hasMatchStart', 'matchIdOf', 'beginNetworkHandoff', 'returnToLobby', 'adoptRoomConnection', 'hostStarted'].map(cut).join('\n'), context);
+  return { context, calls, lobby, connection, released };
+}
+{
+  // the composition's round entry runs under lifecycle.run: busy (false) while the first entry is still pending
+  const { context, calls, lobby, connection, released } = attachedRig({ start: (count) => (count === 1 ? new Promise(() => {}) : Promise.resolve(false)) });
+  context.hostStarted(lobby, connection, 'released');
+  await settle();
+  context.hostStarted(lobby, connection, 'released');
+  await settle();
+  assert.equal(calls.starts, 1, `a re-sent match_start does not enter the round again (${calls.starts} entries)`);
+  assert.equal(calls.shows, 0, 'nor reveals the lobby over the loading battle');
+  assert.equal(context.seat, 'attached', 'the battle owner keeps the seat');
+  assert.equal(context.session, null, 'the menu never takes the released room back as its own');
+  // Rejoin battle is a press: it may try the same match again, and its refusal shows the room
+  assert.equal(context.beginNetworkHandoff(lobby, 'client', { pressed: true }), true);
+  await settle();
+  assert.equal(calls.starts, 2);
+  assert.equal(calls.shows, 1, 'a Rejoin the battle owner could not present shows the room again');
+  // the room's next round is entered on its own
+  released.lastMatchStart = { matchId: 'm3-0000d0d0' };
+  context.hostStarted(lobby, connection, 'released');
+  await settle();
+  assert.equal(calls.starts, 3, 'the next match hands off');
+  assert.equal(calls.shows, 1, 'and an automatic false answer leaves the battle alone');
+}
+{
+  // the menu's own seat hands off its round, the battle owner attaches the room, and the room re-sends that match_start
+  const { context, calls, lobby, connection, released } = attachedRig({ start: () => new Promise(() => {}) });
+  Object.assign(context, { seat: 'lobby', session: released, activeRoom: null });
+  context.hostStarted(lobby, connection, 'menu');
+  assert.equal(context.seat, 'handed_off');
+  Object.assign(context, { seat: 'attached', handedOff: false, session: null, activeRoom: { session: released } });
+  context.hostStarted(lobby, connection, 'released');
+  await settle();
+  assert.equal(calls.starts, 1, 'the round the menu handed off is not entered again once attached');
 }
 
 // ---- (C) and (D): the mode the menu shows and the one it stores
@@ -153,4 +211,4 @@ function modeRig({ commandResult }) {
   await settle();
   assert.deepEqual(accepted.stored, [['cot.mode', 'mars']], 'an accepted choice is the host\'s own preference');
 }
-console.log('playMenuSeat.selftest: one seat writer and table; the handoff stops the lobby\'s observation; a refused handoff is not begun again; the room\'s mode is never stored; a refused mode rolls back');
+console.log('playMenuSeat.selftest: one seat writer and table; the handoff stops the lobby\'s observation; a refused handoff is not begun again; the room\'s mode is never stored; a refused mode rolls back; a re-sent match_start never re-enters a round already handed off');

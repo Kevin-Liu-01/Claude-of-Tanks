@@ -1180,8 +1180,12 @@ export function createPlayMenu({
   let handedOff = false;
   let activeRoom: ActiveRoomAdapter | null = null;
   let connecting = false;
-  /** The match whose automatic handoff the battle owner rejected: the lobby's render does not begin it again. */
-  let refusedHandoffMatchId: string | null = null;
+  /**
+   * The match the menu last handed to the battle owner, whether it was taken or refused (audit F6, 2026-11-02). No
+   * automatic trigger begins it again: a lobby render after a refusal, or a match_start the room re-sent after a socket
+   * blip (it re-ran the attached seat's handoff over its loading or live battle). Rejoin battle, a press, may.
+   */
+  let handedOffMatchId: string | null = null;
   let lastConnectionKind: 'create' | 'join' | null = null;
   let requestGeneration = 0;
   let returnFocus: HTMLElement | null = null;
@@ -1508,18 +1512,21 @@ export function createPlayMenu({
     clearFailure();
   }
 
+  /** The room's match_start reached a seat the menu holds, or one it released to the battle owner (`owner`). */
+  function hostStarted(lobbyState: SerializedLobby, connection: RoomConnection, owner: 'menu' | 'released'): void {
+    // A round on the seat the menu released to the battle owner hands off through the attached room; the menu never
+    // takes it back as its own (audit F6, 2026-11-02). The seat's own role goes with it (it was 'host' for every seat).
+    if (owner === 'menu') adoptRoomConnection(connection);
+    beginNetworkHandoff(lobbyState, connection.role);
+  }
+
   // The room host applies the vehicle / camo / map policy; the menu carries the seat's lifecycle only.
   const connectionOptions: RoomConnectionOptions = {
     storage: localStorage,
     clientBuild: import.meta.env.MODE,
     // the rooms Worker's daily limit (Workers Free): one status ask after a failure, no socket into the refusal
     serviceLimit: createRoomServiceLimit({ storage: localStorage }),
-    onHostStart: (lobbyState, connection, owner) => {
-      // A round on the seat the menu released to the battle owner hands off through the attached room; the menu never
-      // takes it back as its own (audit F6, 2026-11-02). The seat's own role goes with it (it was 'host' for every seat).
-      if (owner === 'menu') adoptRoomConnection(connection);
-      beginNetworkHandoff(lobbyState, connection.role);
-    },
+    onHostStart: hostStarted,
     onClose: (reason) => {
       const wasHandedOff = handedOff || !!activeRoom;
       closeCurrentSession(reason, { skipTransportClose: true });
@@ -1725,7 +1732,7 @@ export function createPlayMenu({
     state = null;
     role = null;
     moveSeat('none', reason);
-    refusedHandoffMatchId = null;
+    handedOffMatchId = null;
     // the room's mode was only shown, never stored: the player's own preference shows again
     if (hadLobby) showSelectedGameMode(preferredGameMode());
     notifyLobbyChange(null);
@@ -1742,6 +1749,7 @@ export function createPlayMenu({
   function beginNetworkHandoff(
     next: SerializedLobby,
     nextRole: RoomRole | null = role,
+    { pressed = false }: { pressed?: boolean } = {},
   ): boolean {
     if (handedOff) return false;
     // A composition-held v2 room (the seat kept across a Garage return) hands its own session back for a rejoin.
@@ -1750,6 +1758,11 @@ export function createPlayMenu({
       setStatus(t('playMenu.status.sessionUnavailable'), true);
       return false;
     }
+    // One automatic handoff per match (audit F6, 2026-11-03): the attached seat has no handoff flag to latch (the battle
+    // owner holds its session), and the room re-sends match_start on every admission. A repeat ran the composition's
+    // round entry again over the loading or live battle, and its busy answer revealed the lobby over it.
+    const matchId = matchIdOf(activeSession);
+    if (!pressed && matchId !== null && matchId === handedOffMatchId) return false;
     // The battle owner already owns an attached room's session: the handoff guards the menu's own only.
     const own = activeSession === session;
     if (own) {
@@ -1759,6 +1772,7 @@ export function createPlayMenu({
       if (unsubscribeState) unsubscribeState();
       unsubscribeState = null;
     }
+    handedOffMatchId = matchId;
     let start;
     try {
       // The callback's synchronous prefix mounts the opaque battle cover.
@@ -1777,8 +1791,9 @@ export function createPlayMenu({
     notifyLobbyChange(null);
     hide(false);
     start.then((entered) => {
-      // A rejoin that could not present (the match ended meanwhile) shows the room again with its status.
-      if (entered === false && activeRoom && activeSession !== session) show();
+      // A Rejoin press that could not present (the match ended meanwhile) shows the room again with its status. An
+      // automatic handoff's false answer (the battle owner busy entering the round) leaves the battle's surface alone.
+      if (entered === false && pressed && activeRoom && activeSession !== session) show();
     }, (error: RuntimeValue) => {
       if (own) returnToLobby(activeSession);
       show();
@@ -1789,10 +1804,10 @@ export function createPlayMenu({
 
   /**
    * A handoff the battle owner refused: the menu holds its lobby again and observes the room. That match's handoff is
-   * not begun again by the lobby's own render (it re-showed the menu and began again, without end); Rejoin battle stays.
+   * not begun again by the lobby's own render (it re-showed the menu and began again, without end; `handedOffMatchId`
+   * still names it); Rejoin battle stays.
    */
   function returnToLobby(handed: RoomSession): void {
-    refusedHandoffMatchId = matchIdOf(handed);
     if (seat !== 'handed_off' || session !== handed || !moveSeat('lobby', 'handoff refused')) return;
     if (!unsubscribeState && roomConnection.current?.session === handed) unsubscribeState = roomConnection.observe(renderLobby);
   }
@@ -1816,7 +1831,7 @@ export function createPlayMenu({
   }
 
   function shouldBeginClientHandoff(next: SerializedLobby): boolean {
-    return shouldAutoHandoff({ seat, role, phase: next.phase, matchId: matchIdOf(session), refusedMatchId: refusedHandoffMatchId })
+    return shouldAutoHandoff({ seat, role, phase: next.phase, matchId: matchIdOf(session), handedOffMatchId })
       && !activeRoom && hasMatchStart(session);
   }
 
@@ -2195,7 +2210,7 @@ export function createPlayMenu({
     hide(false);
   });
   rejoinBtn.addEventListener('click', () => {
-    if (state && canRejoinBattle(state) && !versionRefusal) beginNetworkHandoff(state, role);
+    if (state && canRejoinBattle(state) && !versionRefusal) beginNetworkHandoff(state, role, { pressed: true });
   });
   function startRound(): boolean {
     if (!state || rulesLocked(true)) return false;
@@ -2330,7 +2345,7 @@ export function createPlayMenu({
     state = null;
     role = null;
     moveSeat('none', 'room detached');
-    refusedHandoffMatchId = null;
+    handedOffMatchId = null;
     if (hadLobby) showSelectedGameMode(preferredGameMode());
     clearRoomUrl();
     resetInvitation();

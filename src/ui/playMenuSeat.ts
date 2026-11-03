@@ -37,16 +37,16 @@ export function seatRendersLobby(seat: PlayMenuSeat): boolean {
 }
 
 /**
- * A guest enters the round the room starts on its own (the lobby's state names it), once per match: a handoff the
- * battle owner rejected is not begun again for the same match by the next lobby render (it used to loop: the
- * rejection re-showed the menu, whose render began the handoff again, without end or backoff). Rejoin battle still
- * retries on the player's press.
+ * A guest enters the round the room starts on its own (the lobby's state names it), once per match: a match the menu
+ * already handed off (`handedOffMatchId`; back in the lobby, the battle owner refused it) is not begun again by the next
+ * lobby render (it used to loop: the rejection re-showed the menu, whose render began the handoff again, without end
+ * or backoff). Rejoin battle still retries on the player's press.
  */
-export function shouldAutoHandoff({ seat, role, phase, matchId, refusedMatchId }: {
-  seat: PlayMenuSeat; role: 'host' | 'client' | null; phase: string; matchId: string | null; refusedMatchId: string | null;
+export function shouldAutoHandoff({ seat, role, phase, matchId, handedOffMatchId }: {
+  seat: PlayMenuSeat; role: 'host' | 'client' | null; phase: string; matchId: string | null; handedOffMatchId: string | null;
 }): boolean {
   return seat === 'lobby' && role === 'client' && (phase === 'starting' || phase === 'playing')
-    && !!matchId && matchId !== refusedMatchId;
+    && !!matchId && matchId !== handedOffMatchId;
 }
 
 /** The room's rules (mode, arrangement, map, size, operation) are the host's to change, and only while the room waits. */
