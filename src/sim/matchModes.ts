@@ -365,6 +365,14 @@ export interface ModeCheckpoint {
   /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
    *  at its first sector, every hostile revived). Mode time throughout (the elapsedS base). */
   waves?: WaveCheckpoint;
+  /** The objective modes' pitch (audit M1, 2026-11-02: a migrated host reset Zone Control, Mars, CTF and Turbo Ball to
+   *  kick-off): flags, zones outside Frontline's line, the ball and its clocks. Mode time throughout. */
+  objectives?: ObjectiveCheckpoint;
+}
+interface ObjectiveCheckpoint {
+  flags: { team: ObjectiveTeam; x: number; y: number; z: number; status: FlagState['status']; carrierId: string | null; returnAtS: number | null }[];
+  zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[];
+  ball: BallState | null; ballActiveAtS: number; lastBallTouchS: number | null;
 }
 /** Endless Horde's wave and queue, Frontline's line, counter-attack and trickle, and which pool identities rest. */
 interface WaveCheckpoint {
@@ -2547,7 +2555,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
-        ...(waves ? { waves } : {}) };
+        ...(waves ? { waves } : {}),
+        ...(flags.length || ball || (zones.length && !ruleset.assault) ? { objectives: {
+          flags: flags.map((flag) => ({ team: flag.team, x: flag.x, y: flag.y, z: flag.z, status: flag.status, carrierId: flag.carrierId, returnAtS: flag.returnAtS })),
+          zones: ruleset.assault ? [] : zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })),
+          ball: ball ? { ...ball } : null, ballActiveAtS, lastBallTouchS: Number.isFinite(lastBallTouchS) ? lastBallTouchS : null,
+        } } : {}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -2566,6 +2579,24 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       escort?.restore(checkpoint.escortRescued??[]);
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
       if (checkpoint.waves) restoreWaves(checkpoint.waves);
+      if (checkpoint.objectives) {
+        const saved = checkpoint.objectives;
+        for (const entry of saved.flags) {
+          const flag = flagForTeam(entry.team);
+          if (!flag) continue;
+          flag.x = entry.x; flag.y = entry.y; flag.z = entry.z; flag.status = entry.status; flag.carrierId = entry.carrierId; flag.returnAtS = entry.returnAtS;
+          // the carrier keeps its slower pace (stampPhysics above reset every hull to the base speed)
+          const carrier = entry.status === 'carried' && entry.carrierId ? entityById.get(entry.carrierId) : null;
+          if (carrier) stampPhysics(carrier, baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE));
+        }
+        for (const entry of saved.zones) {
+          const zone = zones.find((candidate) => candidate.id === entry.id);
+          if (zone) { zone.control = entry.control; zone.owner = entry.owner; zone.contested = entry.contested; }
+        }
+        if (ball && saved.ball) Object.assign(ball, saved.ball);
+        ballActiveAtS = saved.ballActiveAtS;
+        lastBallTouchS = saved.lastBallTouchS ?? -Infinity;
+      }
     },
     serialize,
   };
