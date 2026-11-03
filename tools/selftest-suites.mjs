@@ -2519,6 +2519,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/settingsAccess.selftest.mjs',
     'src/ui/battleInputOwner.selftest.mjs', // 2026-11-02 audit F4: one battle input owner (presentation > menu > veil > play)
     'src/ui/battleReportGate.selftest.mjs', // 2026-11-02 audit F4: the report gate holds for every presentation, decides again
+    'src/ui/battleReportGateHud.selftest.mjs', // 2026-11-02 audit F4: shotInfo's report gate through the real HUD (replay, stale decision)
     'src/ui/hudMagazine.selftest.mjs',
     // 2026-10-17 (owner): out of ammo, every reload indicator shows its empty state; unlimited rounds never run dry
     'src/ui/hudAmmoOut.selftest.mjs',
