@@ -187,7 +187,6 @@ The tools that still read the mirror or build a phase or countdown wait by hand,
 - `tools/media-production/produce.mjs`: another lane's file (tools-chains)
 - `tools/media-r5/lab.mjs`: another lane's file (tools-chains)
 - `tools/media-r5/studio-ui.mjs`: another lane's file (tools-chains)
-- `tools/mobilelap.mjs`: the map cycle's waits close over the next map id
 - `tools/mp-room-census.mjs`: another lane's file (tools-chains)
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
 - `tools/pr-census.mjs`: another lane's open edits (tools-chains)
@@ -196,3 +195,8 @@ The tools that still read the mirror or build a phase or countdown wait by hand,
 - `tools/time-to-battle-probe.mjs`: another lane's open edits (tools-chains)
 - `tools/track-system-audit.mjs`: a page function closed over the tank id
 <!-- /census -->
+
+A Garage return is awaited before the page does anything else: `await page.evaluate(() => window.__DEBUG.enterGarage())`
+(or the leave), then `readinessExpression('garage')`. A page function that fires the return as a bare statement and
+starts a battle in the same breath measures a race a player cannot make (`tools/mobilelap.mjs`'s map cycle did, until
+2026-11-03); the readiness selftest refuses it outside the exit-timing probe that polls for the Garage itself.

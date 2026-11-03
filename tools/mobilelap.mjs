@@ -14,7 +14,7 @@ import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
+import { readGameReadiness, readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const opt = (n, f) => {
@@ -361,19 +361,28 @@ await end();
 // Mobile browsers account hidden worlds against the same graphics budget as
 // the visible battlefield. Move to a different map and prove that the prior
 // scene is evicted rather than accumulating across random battles.
+/**
+ * (2026-11-02 audit S3) Battle -> Garage -> the next battle on `mapId`, in order: the Garage return is awaited and
+ * settled (tools/game-readiness.mjs) before the next battle starts, and the wait is for that battle's own released
+ * controls (`since` the lifecycle's count before the cycle), never the one it replaced. It used to call enterGarage()
+ * without awaiting it and start the battle in the same breath, so the cycle measured a race between a Garage return
+ * and a battle entry that no player can make.
+ */
+async function cycleToBattle(mapId, request) {
+  const before = await readGameReadiness(page);
+  await page.evaluate(() => window.__DEBUG.enterGarage());
+  await page.waitForFunction(readinessExpression('garage', { since: before.transitions }), { timeout: 120000, polling: 100 });
+  await page.evaluate((battle) => window.__DEBUG.beginSoloBattle(battle), { ...request, mapId });
+  await page.waitForFunction(
+    `${readinessExpression('controlsReleased', { since: before.transitions })} && window.__DEBUG.world?.mapId === ${JSON.stringify(mapId)}`,
+    { timeout: 120000, polling: 100 });
+}
+
 console.log('[lap] map_cycle');
 await begin('map_cycle');
 const cycleFromMap = await page.evaluate(() => window.__DEBUG.world?.mapId || 'verdant');
 const cycleToMap = cycleFromMap === 'desert' ? 'verdant' : 'desert';
-await page.evaluate((mapId, specId) => {
-  window.__DEBUG.enterGarage();
-  return window.__DEBUG.beginSoloBattle({ specId, mapId });
-}, cycleToMap, TANK);
-await page.waitForFunction(
-  (mapId) => window.__DEBUG.game.phase === 'battle'
-    && window.__DEBUG.game.preBattleS <= 0
-    && window.__DEBUG.world?.mapId === mapId,
-  { timeout: 120000, polling: 100 }, cycleToMap);
+await cycleToBattle(cycleToMap, { specId: TANK });
 await sleep(1000);
 await end();
 const mobileResidency = await page.evaluate(() => ({
@@ -419,15 +428,7 @@ for (let cycle = 1; cycle <= SOAK_CYCLES; cycle++) {
   const station = `soak_${cycle}`;
   console.log(`[lap] ${station} (${nextMap}, ${SOAK_SECONDS}s)`);
   await begin(station);
-  await page.evaluate((mapId, specId) => {
-    window.__DEBUG.enterGarage();
-    return window.__DEBUG.beginSoloBattle({ specId, mapId, randomRoster: false });
-  }, nextMap, TANK);
-  await page.waitForFunction(
-    (mapId) => window.__DEBUG.game.phase === 'battle'
-      && window.__DEBUG.game.preBattleS <= 0
-      && window.__DEBUG.world?.mapId === mapId,
-    { timeout: 120000, polling: 100 }, nextMap);
+  await cycleToBattle(nextMap, { specId: TANK, randomRoster: false });
   await page.evaluate(() => {
     const D = window.__DEBUG;
     D.aimAtNearest();

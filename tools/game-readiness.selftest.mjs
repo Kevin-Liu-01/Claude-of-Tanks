@@ -138,4 +138,25 @@ const evaluate = (win, expression) => new Function('window', `return (${expressi
   assert.deepEqual(listed, found, 'docs/AUTOMATION-PATHS.md handBuiltWaits: the tools as they are');
 }
 
+// A Garage return is awaited before anything else happens to the page: a page function that fires enterGarage() or
+// leaveBattleToGarage() as a bare statement and goes on (mobilelap's map cycle started the next battle in the same
+// breath) measures a race no player can make. The one exception times the exit with its own poll in that function.
+{
+  const files = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const file = join(dir, name);
+      if (statSync(file).isDirectory()) { if (name !== 'node_modules' && !name.startsWith('.')) walk(file); continue; }
+      if (/\.(mjs|js|cjs|ts)$/.test(name) && !/\.(selftest|test-support)\.mjs$/.test(name)) files.push(file);
+    }
+  };
+  walk(join(ROOT, 'tools'));
+  const unawaited = /(?:^|[;{]|\n)\s*(?:window\.__DEBUG|D|d|debug)\.(?:enterGarage|leaveBattleToGarage)\(\);/;
+  const fired = files.map((file) => relative(ROOT, file)).filter((file) => unawaited.test(stripComments(read(file)))).sort();
+  assert.deepEqual(fired, ['tools/loading-budget-probe.mjs'], 'tools that fire a Garage return and go on without it');
+  assert.match(read('tools/loading-budget-probe.mjs'),
+    /window\.__DEBUG\.leaveBattleToGarage\(\);\n\s+while \(window\.__DEBUG\.game\.phase !== 'garage'/,
+    'the exit timing polls for the Garage in the same function');
+}
+
 console.log('game-readiness.selftest: one readiness probe over the published lifecycle; the hand-built waits listed');
