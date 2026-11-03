@@ -166,17 +166,31 @@ export interface GarageEnvironmentBuild {
 }
 
 /**
- * A surface set's residency (2026-11-02 audit, 05-ui-2 #4): its two loads, then ready, or failed when either did not
- * arrive. A failed set used to stay resident image-less for the session (the cap never evicted it); now it is dropped
- * as soon as no pack holds it, so the next pack that asks loads it again.
+ * A surface set's residency (2026-11-02 audit, 05-ui-2 #4): an attempt's loads, then ready, or failed when one of them
+ * did not arrive. A failed set used to stay resident image-less for the session (the cap never evicted it). Now the
+ * next request for a failed set (a pack's acquire, warmAll, a selection's retryFailed) asks for its missing images
+ * again, into the same textures, so every pack already holding the set heals in place; a failed set nothing holds
+ * leaves at once.
  */
 type TextureEntryPhase = 'loading' | 'ready' | 'failed';
+
+/** One image of a set that did not arrive: the texture the packs' materials hold, and where its image comes from. */
+interface MissingSurfaceImage {
+  readonly texture: THREE.Texture;
+  readonly url: string;
+}
 
 interface TextureEntry {
   phase: TextureEntryPhase;
   color: THREE.Texture | null;
   normal: THREE.Texture | null;
+  /** Loads of the current attempt still in flight; the attempt settles when this reaches zero. */
+  pending: number;
+  /** Images of the settled attempts that did not arrive; the next request loads these again. */
+  missing: MissingSurfaceImage[];
+  /** The current attempt's settle (a retry starts a new one; handles keep the one current at their acquire). */
   ready: Promise<void>;
+  resolveReady: () => void;
   references: number;
   lastUse: number;
   /** One listener per handle (every pack passes the same requestRender: one release removed it for all). */
@@ -209,6 +223,8 @@ export interface GarageEnvironmentAssetLibrary {
   prepareTreeGroves(species: readonly TreeSpecies[]): Promise<void>;
   warmAll(requestRender: () => void): void;
   retainedTextures(): Iterable<THREE.Texture>;
+  /** Asks again for every failed set a pack still holds (a selection runs it: switching between cached packs bakes none). */
+  retryFailed(): void;
   diagnostics(): Readonly<{ residentSets: number; referencedSets: number; failedSets: number }>;
   dispose(): void;
 }
@@ -227,7 +243,7 @@ const SURFACE_FILES: Readonly<Record<GarageSurfaceKey, readonly [string, string]
 
 // The table holds nine surfaces and warmAll keeps all of them resident after first paint (the Garage GPU budget fits
 // them): the cap equals the table and binds only if the table grows. A set that failed to load does not wait for it: it
-// leaves as soon as nothing holds it.
+// leaves as soon as nothing holds it, and a held one is loaded again on the next request.
 const MAX_RESIDENT_TEXTURE_SETS = 9;
 
 /**
@@ -358,39 +374,73 @@ export function createGarageEnvironmentAssetLibrary(
     if (color) texture.colorSpace = THREE.SRGBColorSpace;
   };
 
+  const startAttempt = (entry: TextureEntry, loads: number): void => {
+    entry.phase = 'loading';
+    entry.pending = loads;
+    entry.ready = new Promise<void>((resolve) => { entry.resolveReady = resolve; });
+  };
+
+  const settleLoad = (key: GarageSurfaceKey, entry: TextureEntry, missing: MissingSurfaceImage | null): void => {
+    const current = !disposed && entries.get(key) === entry;
+    if (missing && current) entry.missing.push(missing);
+    entry.pending = Math.max(0, entry.pending - 1);
+    if (entry.pending > 0) return;
+    entry.phase = entry.missing.length ? 'failed' : 'ready';
+    entry.resolveReady();
+    // nothing holds it (warmAll's prefetch): it leaves now, so the next pack loads it afresh
+    if (current && entry.phase === 'failed') trim();
+  };
+
+  /**
+   * One image load of an attempt. A first load creates the texture the packs' materials will hold; a retry (into) loads
+   * a stand-in and moves its image into the held texture, which three then uploads (its version moves).
+   */
   const load = (
     key: GarageSurfaceKey,
+    entry: TextureEntry,
     url: string,
     color: boolean,
-    entry: TextureEntry,
-    settle: () => void,
+    into: THREE.Texture | null = null,
   ): THREE.Texture | null => {
     if (!loader) {
-      settle();
-      return null;
+      settleLoad(key, entry, null);
+      return into;
     }
-    const texture = loader.load(url, () => {
+    const texture = loader.load(url, (loaded) => {
       if (disposed || entries.get(key) !== entry) {
         texture.dispose();
-        settle();
+        settleLoad(key, entry, null);
         return;
       }
+      if (into) {
+        into.image = loaded.image;
+        into.needsUpdate = true;
+        texture.dispose();
+      }
       for (const listener of entry.listeners) listener();
-      settle();
+      settleLoad(key, entry, null);
     }, undefined, () => {
+      if (into) texture.dispose();
       if (disposed || entries.get(key) !== entry) {
-        settle();
+        settleLoad(key, entry, null);
         return;
       }
-      entry.phase = 'failed';
       for (const listener of entry.listeners) listener();
-      settle();
-      // nothing holds it (warmAll's prefetch): it leaves now, so the next pack loads it again
-      trim();
+      settleLoad(key, entry, { texture: into ?? texture, url });
     });
+    if (into) return into;
     prepare(texture, color);
     retainedTextures.add(texture);
     return texture;
+  };
+
+  /** A failed set is asked for again: its missing images load into the textures its holders already draw with. */
+  const retry = (key: GarageSurfaceKey, entry: TextureEntry): void => {
+    if (entry.phase !== 'failed') return;
+    const missing = entry.missing.splice(0);
+    if (!missing.length) { entry.phase = 'ready'; return; }
+    startAttempt(entry, missing.length);
+    for (const image of missing) load(key, entry, image.url, false, image.texture);
   };
 
   const evict = (key: GarageSurfaceKey, entry: TextureEntry): void => {
@@ -421,26 +471,21 @@ export function createGarageEnvironmentAssetLibrary(
       if (disposed) return { color: null, normal: null, ready: Promise.resolve(), release() {} };
       let entry = entries.get(key);
       if (!entry) {
-        let resolveReady = (): void => {};
-        const ready = new Promise<void>((resolve) => { resolveReady = resolve; });
-        let remainingLoads = 2;
-        const settle = (): void => {
-          remainingLoads = Math.max(0, remainingLoads - 1);
-          if (remainingLoads > 0) return;
-          if (created.phase === 'loading') created.phase = 'ready';
-          resolveReady();
-        };
         const created: TextureEntry = {
           phase: 'loading',
           color: null,
           normal: null,
-          ready,
+          pending: 0,
+          missing: [],
+          ready: Promise.resolve(),
+          resolveReady: () => {},
           references: 0,
           lastUse: ++tick,
           listeners: new Set(),
         };
         entry = created;
         entries.set(key, entry);
+        startAttempt(entry, 2);
         const [colorUrl, normalUrl] = SURFACE_FILES[key];
         const sandCanvas = key === 'sand' ? proceduralSandAlbedo() : null;
         if (sandCanvas) {
@@ -448,11 +493,14 @@ export function createGarageEnvironmentAssetLibrary(
           prepare(sand, true);
           retainedTextures.add(sand);
           entry.color = sand;
-          settle();
+          settleLoad(key, entry, null);
         } else {
-          entry.color = load(key, colorUrl, true, entry, settle);
+          entry.color = load(key, entry, colorUrl, true);
         }
-        entry.normal = load(key, normalUrl, false, entry, settle);
+        entry.normal = load(key, entry, normalUrl, false);
+      } else {
+        // (05-ui-2 #4) a set that failed while a pack held it is asked for again by the next pack that wants it
+        retry(key, entry);
       }
       entry.references += 1;
       entry.lastUse = ++tick;
@@ -503,12 +551,16 @@ export function createGarageEnvironmentAssetLibrary(
     warmAll(requestRender) {
       // Nine compressed albedo/normal pairs stay under the established Garage
       // GPU budget. Warming them after first paint keeps switches hitch-free;
-      // the surface table bounds residency (see MAX_RESIDENT_TEXTURE_SETS), and a set
-      // that fails to arrive leaves at once.
+      // the surface table bounds residency (see MAX_RESIDENT_TEXTURE_SETS); a set
+      // that fails to arrive leaves at once, or is asked for again while held.
       for (const key of Object.keys(SURFACE_FILES) as GarageSurfaceKey[]) {
         const handle = this.acquire(key, requestRender);
         handle.release();
       }
+    },
+    retryFailed() {
+      if (disposed) return;
+      for (const [key, entry] of entries) if (entry.references > 0) retry(key, entry);
     },
     retainedTextures: () => retainedTextures,
     diagnostics: () => Object.freeze({

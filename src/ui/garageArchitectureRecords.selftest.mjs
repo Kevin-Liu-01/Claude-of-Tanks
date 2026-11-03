@@ -15,9 +15,11 @@ const verdant = GARAGE_VARIANTS.find((variant) => variant.architecture === 'fiel
 function fakeKit({ prepares = new Map(), texture = () => null, texturesReady = () => Promise.resolve() } = {}) {
   const built = [];
   const disposed = [];
+  const retries = { count: 0 };
   const kit = {
     createGarageEnvironmentAssetLibrary: () => ({
       retainedTextures: () => [], diagnostics: () => ({ residentSets: 0, referencedSets: 0 }), warmAll() {}, dispose() {},
+      retryFailed() { retries.count += 1; },
     }),
     pinGarageEnvironmentCaches: () => () => {},
     prepareGarageEnvironmentAssets: async (_assets, variant) => { await prepares.get(variant.architecture)?.promise; },
@@ -33,7 +35,7 @@ function fakeKit({ prepares = new Map(), texture = () => null, texturesReady = (
       };
     },
   };
-  return { kit, built, disposed };
+  return { kit, built, disposed, retries };
 }
 
 const originalDocument = globalThis.document;
@@ -178,9 +180,29 @@ try {
       'a fresh request revives it');
     controller.dispose();
   }
+
+  // 7. (05-ui-2 #4) Every selection asks the surface library to reload the failed sets its packs hold, also one that only
+  // shows a cached pack (no bake, so no acquire would ask): two cached packs toggled still heal a set that failed.
+  {
+    const [a, b] = outdoor;
+    const { kit, built, retries } = fakeKit();
+    const controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
+      async () => kit);
+    controller.setVariant(a);
+    await controller.whenReady();
+    controller.setVariant(b);
+    await controller.whenReady();
+    const before = retries.count;
+    assert.ok(before >= 1, 'a selection after the library exists asks it');
+    controller.setVariant(a);
+    assert.equal((await controller.whenReady()).key, a.architecture);
+    assert.deepEqual(built, [a.architecture, b.architecture], 'the cached pack shows without a bake');
+    assert.equal(retries.count, before + 1, 'and its selection still asks the library to reload failed sets');
+    controller.dispose();
+  }
 } finally {
   if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
   if (originalRaf === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = originalRaf;
 }
 
-console.log('garageArchitectureRecords.selftest: one record per pack, cancellable prewarms, a true upload latch, context-loss renewal PASS');
+console.log('garageArchitectureRecords.selftest: one record per pack, cancellable prewarms, a true upload latch, context-loss renewal, selections retry failed surfaces PASS');

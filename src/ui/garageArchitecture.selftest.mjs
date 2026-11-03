@@ -380,6 +380,7 @@ const fakeAssets = {
   retainedTextures: () => [],
   diagnostics: () => ({ residentSets: 0, referencedSets: 0 }),
   warmAll() {},
+  retryFailed() {},
   dispose() {},
 };
 // every pack build holds its Garage's kit and skyline caches from its prepare to its bake, then releases them
@@ -483,6 +484,7 @@ try {
     retainedTextures: () => [sharedTexture],
     diagnostics: () => ({ residentSets: 1, referencedSets: 1 }),
     warmAll() { textureLibraryWarms += 1; },
+    retryFailed() {},
     dispose() {},
   };
   const uploadKit = {

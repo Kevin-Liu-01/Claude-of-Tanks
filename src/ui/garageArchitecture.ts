@@ -723,6 +723,9 @@ export function createGarageArchitectureController(
   function setVariant(variant: GarageVariant): GarageArchitectureStats {
     selected = variant;
     const generation = ++selectionGeneration;
+    // (2026-11-02 audit 05-ui-2 #4) a surface set that failed while a cached pack held it is asked for again on every
+    // selection, so switching between two cached packs (no bake, no acquire) still heals it
+    assets?.retryFailed();
     cancelPrewarms(variant.architecture);
     const record = packs.get(variant.architecture);
     const shown = !!record && record.phase === 'warmed' && show(variant, record);
