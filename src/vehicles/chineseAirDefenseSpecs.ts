@@ -178,7 +178,9 @@ const pgz09 = plaVariant('pgz09', 'PGZ-09');
     moduleBox('turretRing', [-1.02, ty - 0.16, tz - 1.02], [1.02, ty + 0.04, tz + 1.02]),
     moduleBox('trackL', [-1.58, 0, -3.70], [-1.10, L.gear.topY, 3.30]),
     moduleBox('trackR', [1.10, 0, -3.70], [1.58, L.gear.topY, 3.30]),
-    moduleBox('ammoRack', [-0.85, -0.50, -1.40], [0.85, 0.40, -0.30], true),
+    // the ready rounds in the upper body's right side, beside the crew on the left and under the feed (the ring's basket,
+    // 0.93 m, cannot hold a 1.7 m rack below the deck: 268 internalPlacement)
+    moduleBox('ammoRack', [0.10, 0.34, -1.15], [0.85, 0.78, 0.30], true),
     moduleBox('radio', [0.30, 0.50, -1.70], [0.85, 1.10, -1.20], true),
     moduleBox('optics', [-0.34, T.beltY, 1.18], [0.34, 1.24, T.columnFrontZ + 0.04], true),
     { ...moduleBox('gun', [-G.housingOuter, gp[1] + G.housingKeelY, gp[2] + G.housingRearZ],

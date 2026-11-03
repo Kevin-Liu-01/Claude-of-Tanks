@@ -249,6 +249,10 @@
    "name": "FV510 Warrior MILAN",
    "card": null
   },
+  "gepard_1a2": {
+   "name": "Flakpanzer Gepard 1A2",
+   "card": null
+  },
   "griffin50mm": {
    "name": "Griffin 50 mm",
    "card": "/brand/og-r2/tanks/griffin50mm-card.jpg"
@@ -633,6 +637,18 @@
    "name": "EE-T1 Osório (120)",
    "card": null
   },
+  "pantsir_s1": {
+   "name": "Pantsir-S1 (tracked)",
+   "card": null
+  },
+  "pgz09": {
+   "name": "PGZ-09",
+   "card": null
+  },
+  "pgz95": {
+   "name": "PGZ-95",
+   "card": null
+  },
   "pl01": {
    "name": "PL-01",
    "card": "/brand/og-r2/tanks/pl01-card.jpg"
@@ -956,6 +972,10 @@
   "tos1a_tagil": {
    "name": "TOS-1A Tagil",
    "card": "/brand/og-r2/tanks/tos1a_tagil-card.jpg"
+  },
+  "tunguska_m": {
+   "name": "2K22M Tunguska-M",
+   "card": null
   },
   "type10": {
    "name": "Type 10",

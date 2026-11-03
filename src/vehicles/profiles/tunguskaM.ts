@@ -217,8 +217,9 @@ export function cannon2A38M(P: TankBuilderPort, side: number, gunX: number, bore
   P.add('gunMount', KIT.cylX(0.085, shaft[1] - shaft[0], n), side * (shaft[0] + shaft[1]) / 2, 0, 0);
   // the receiver: 0.92 m from just behind the trunnion (its back stays inside 0.33 m of the pitch axis)
   P.addModuleVisual('gun', 'gunMount', KIT.box(0.26, 0.25, 0.92), gx, 0, dz + 0.16);
-  // out along the bores, the cradle arm from the journal forward to the receiver
-  if (dz > 0) P.add('gunMount', KIT.box(0.16, 0.14, dz + 0.04), gx, -0.02, dz / 2);
+  // out along the bores, the cradle arm from the journal forward to the receiver, wide enough to close both bores' lines
+  // between the journal and the receiver (268 gun-junction census: 36 mm open at 0.16 m with the bores 0.15 m apart)
+  if (dz > 0) P.add('gunMount', KIT.box(2 * boreDx + 0.07, 0.14, dz + 0.04), gx, -0.02, dz / 2);
   P.add('gunMount', KIT.box(0.25, 0.035, 0.74), gx, 0.135, dz + 0.08);
   P.add('gunMountDark', KIT.box(0.22, 0.12, 0.08), gx, 0, dz + 0.64);
   const jacket = 0.62, j0 = dz + 0.58;

@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from '../internalLayoutRegistry.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
@@ -39,14 +40,23 @@ const layout = INTERNAL_LAYOUT_BY_TANK[ID];
 assert.equal(layout.layoutKey, 'spaaGepard');
 assert.deepEqual(layout.crew.map((c) => c.role).sort(), ['commander', 'driver', 'gunner']);
 const T = GEPARD_TURRET;
+// the turret crew's boxes are their fitted seats once the anatomy row exists (crew-seat-fit, crewSeats): inside the
+// turret's plan with the head in its upper body under the roof, the legs down through the ring into the basket, never
+// below the hull's floor
+const hullFloorY = combatAnatomyCalibration(ID).hull.min[1] - GEPARD_RING[1];
+assert.deepEqual(spec.armor.crew.filter((c) => c.turretLocal).map((c) => c.crew).sort(), ['commander', 'gunner']);
 for (const box of spec.armor.crew.filter((c) => c.turretLocal)) {
-  assert.ok(box.min[0] >= -T.bodyHalfW && box.max[0] <= T.bodyHalfW && box.min[1] >= T.floorY && box.max[1] <= T.roofY
-    && box.min[2] >= T.rearFrontZ - 0.80 && box.max[2] <= T.frontZ, `${box.crew} sits inside the turret`);
+  assert.ok(box.min[0] >= -T.bodyHalfW && box.max[0] <= T.bodyHalfW && box.max[1] > T.floorY && box.max[1] <= T.roofY
+    && box.min[1] >= hullFloorY && box.min[2] >= T.rearFrontZ - 0.80 && box.max[2] <= T.frontZ,
+  `${box.crew} sits inside the turret`);
 }
 assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, 'the gunner on the left (+x)');
-// the turret's plates stay on the drawn shell's envelope
+// the turret's plates stay on the drawn shell's envelope: its plan and roof, its floor where the anatomy row measures
+// the seated underside (the turret seated over its ring), the crew's measured cupolas standing on the roof
+const seatedFloorY = Math.min(T.floorY, combatAnatomyCalibration(ID).turret.min[1]);
 for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
-  assert.ok(Math.abs(x) <= T.rearHalfW + 1e-9 && y >= T.floorY - 1e-9 && y <= T.roofY + 1e-9 && z >= T.rearZ - 1e-9
+  const topY = /cupola/.test(p.name) ? T.roofY + 0.10 : T.roofY;
+  assert.ok(Math.abs(x) <= T.rearHalfW + 1e-9 && y >= seatedFloorY - 1e-9 && y <= topY + 1e-9 && z >= T.rearZ - 1e-9
     && z <= T.frontZ + 1e-9, `${p.name} within the drawn turret`);
 }
 
