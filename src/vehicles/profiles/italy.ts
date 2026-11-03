@@ -450,8 +450,9 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
           for (const z of [-0.83, -1.67, -2.50]) {
             P.add(skirtBucket, box(0.018, 0.05, 0.10), s * 1.686, skirtBottomAt(ARIETE_SKIRT, z) - 0.02, z);
           }
-          // 268b (series C1 photographs 2 and 6): the engine compartment's long louvred air grille on the rear apron
-          arieteSideLouvre(P, { dark: skirtDarkBucket, detail: skirtBucket }, s, 1.682, 0.92, 1.22, -2.84, -1.36, 6);
+          // 268b (series C1 photographs 2 and 6): the engine compartment's long louvred air grille on the rear apron, a narrow
+          // strip under the apron's top edge running to its aft end (269 blind critic: the photographs carry it high)
+          arieteSideLouvre(P, { dark: skirtDarkBucket, detail: skirtBucket }, s, 1.682, 1.17, 1.35, -2.86, -1.36, 4);
         }
         // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
         // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
