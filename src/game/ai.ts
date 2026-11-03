@@ -154,9 +154,10 @@ interface AiController {
   readonly difficulty: AiDifficulty;
   /**
    * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat): what the
-   * controller measures between its own ticks restarts from the hull as it stands now (audit M7).
+   * controller measures between its own ticks, and the clocks of its own record (its last round, its last
+   * penetration), restart from the hull as it stands now (audit M7). `timeS` is the match clock at the hand-back.
    */
-  resume(): void;
+  resume(timeS?: number): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -6823,6 +6824,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // ---- main update ----------------------------------------------------------
 
+  let recordClocksStale = false; // a resume is waiting for the first tick back (restartRecordClocks)
   /**
    * The resume entry point (2026-11-02 audit M7). Watch mode parks a bot's controller while the watcher drives its hull
    * (game/watchSeat.ts) and hands it back on Leave; the controller was not stepped in between, so what it measures
@@ -6831,10 +6833,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the watcher's last shot as this bot's (its spot's count, a miss at its target), and the stuck and dwell clocks ran
    * on from where the hull stood. They restart from the hull as it stands now; the mission re-plans from here at its
    * next step, and a leg, crest, cover point or vantage picked where the hull stood is dropped. Windows on match time
-   * expire by themselves and stay; news queued before the park is dropped. Allocation-free.
+   * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. The clocks that time this
+   * bot's own record since an event grew through the park as well, though the bot saw none of it (the watcher fired,
+   * not the bot): they restart at its first tick back (restartRecordClocks), so a park longer than the doctrine's
+   * stalemate silence is no silence of the bot's (a stalemate push, a search leg) and no stretch without a
+   * penetration (the passive press). `timeS`, the match clock at the hand-back, is the clock news handed over before
+   * that tick reads. A brain never stepped (the battle opening's hand-off) has no record to restart. Allocation-free.
    */
-  function resume(): void {
+  function resume(timeS?: number): void {
     clearPendingEvents();
+    if (timeS !== undefined && Number.isFinite(timeS)) nowS = timeS;
+    if (objectiveTick > 0) recordClocksStale = true;
     const st = entity.state;
     lastHp = combatHitPoints(entity);
     burstDamage = 0;
@@ -6871,6 +6880,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     missionRouteX = missionRouteZ = Infinity;
     missionRouteAtS = -Infinity;
   }
+  /** The first tick after a resume: the bot's own record restarts here (see resume). */
+  function restartRecordClocks(timeS: number): void {
+    recordClocksStale = false;
+    lastFiredAtS = timeS;        // the stalemate push, the search gate and the settle's starved test count silence from here
+    lastPenAtS = timeS;          // the passive press waits PASSIVE_PRESS_NO_PEN_S of its own shells again
+    targetActivityId = null;     // the target's stillness and last shot re-baseline at the next look (updateTargetActivity)
+    missStreak = 0;              // rounds in a row from one spot: the watcher's rounds broke the row
+    missStreakTargetId = null;
+    if (searching) searchLegStartS = timeS; // a search leg's budget is the bot's driving, not the park
+  }
 
   function update(dt: number, timeS: number): void {
     // anything still queued lands first, in its declared order (the drivers flush it earlier: applyPendingBotNews;
@@ -6883,6 +6902,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateTick(dt: number, timeS: number): void {
     if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
+    if (recordClocksStale) restartRecordClocks(timeS);
     const input = entity.input;
     const cb = entity.combat;
     const allyYieldingPrev = allyYielding;
