@@ -194,7 +194,7 @@ import {
 import { townRowPlotClear } from './townRowAdditions.ts';
 import {
   cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setCircleShape, setCompoundShape, setConvexShape,
-  setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
+  setCrushedRecords, setObbShape, DENSE_HUT_SLAB_KINDS, type SimpleCollisionShape,
 } from './collision.ts';
 import {
   applyRockCollisionProfile, localShellSlabs, placeLocalShellSlabs, rockCollisionProfile, rockFootprint, rockFormOf, rockGroundAt,
@@ -3335,6 +3335,9 @@ function registerDestructibleContact(
   recordIndex: number,
 ): void {
   if (meta.contact === 'ob') {
+    // (2026-11-02 audit M9) a loose body is kicked, never broken (breakRecord): cover records on one would turn ghost under
+    // the authority's crush while the prop still stands, and a cosmetic kick would reach them
+    if (meta.cls === 'physics') throw new Error(`world/props: ${record.kind} is a loose physics kind with cover records (contact 'ob')`);
     registerDestructibleObstacle(context, meta, record, recordIndex);
     return;
   }
@@ -12612,6 +12615,16 @@ ${snowCap ? `
     pool.imB.instanceMatrix.needsUpdate = true;
   }
 
+  // (2026-11-02 audit M9) a prop's collision records (its movement and shell records, a clutter's whole set) through the
+  // one crush transition both worlds run (collision.ts setCrushedRecords); `warnedCosmeticCover` says a refusal once
+  const _noRecords: CollisionRecord[] = [];
+  let warnedCosmeticCover = false;
+  function crushRecordsOf(rec: DestructibleRecord, crushed: boolean): void {
+    if (rec.clutter) { setCrushedRecords(rec.clutter.obstacles, rec.clutter.colliders, crushed); return; }
+    if (!rec.ob && !rec.col) return;
+    setCrushedRecords(rec.ob ? [rec.ob] : _noRecords, rec.col ? [rec.col] : _noRecords, crushed);
+  }
+
   /**
    * Break/topple/toss one destructible record. All trigger paths land here
    * (hull-overrun obstacle seam, hull-radius loop, shell sweep/impact).
@@ -12620,6 +12633,8 @@ ${snowCap ? `
    * @param {number} [speed=0] impact speed m/s (hull overrun) — debris throw
    *   inherits it; 0 = shell-grade base energy
    * @param {string} [cause='shell'] 'ram' | 'shell' | 'blast'
+   * @param {boolean} [authority=false] the authority's crush (the crushObstacle seam: solo hit resolution, a network
+   *   destruction event, the Studio's plan); every other caller is presentation and may not open cover
    * @returns {boolean} true if the record broke now
    */
   function breakRecord(
@@ -12629,9 +12644,16 @@ ${snowCap ? `
     speed = 0,
     cause: LoosePropKickCause = 'shell',
     settled = false,
+    authority = false,
   ): boolean {
     const rec = destructibles[idx];
     if (!rec || rec.state) return false;
+    // (2026-11-02 audit M9) cover (a movement or a shell record) opens only by the authority's crush: a cosmetic path
+    // (a shell's flight or burst, a drum chain, the hull loop) that reaches one is refused here, not by its callers' habit
+    if (!authority && (rec.ob || rec.col)) {
+      if (!warnedCosmeticCover) { warnedCosmeticCover = true; console.warn(`[props] a cosmetic break reached ${rec.kind}'s cover records: refused`); }
+      return false;
+    }
     const pool = dPools.get(rec.kind);
     if (!rec.clutter && (!pool || !pool.imI)) return false;
     // Loose dressing is displaced, never consumed. Shells/blasts kick it too,
@@ -12639,11 +12661,11 @@ ${snowCap ? `
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
     if (pool?.imI) setWorldNightFixtureActive(pool.imI, rec.slot, false);
-    if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
-    if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
+    // ghost for collision + AI; shells/LOS pass the breach (collision.ts setCrushedRecords: the headless world's transition)
+    crushRecordsOf(rec, true);
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
-    if (rec.clutter) rec.clutter.setCrushed(true);
+    if (rec.clutter) rec.clutter.setCrushed(true); // (its pose; its records' flags are crushRecordsOf's above)
     else if (pool && crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
     else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.
@@ -12709,7 +12731,7 @@ ${snowCap ? `
     cause: LoosePropKickCause = 'ram',
     settled = false,
   ): boolean {
-    return breakRecord(propIdx, dx, dz, speed, cause, settled);
+    return breakRecord(propIdx, dx, dz, speed, cause, settled, true);
   }
 
   // Cosmetic shell paths (effects.ts forwards flight/impact presentation).
@@ -13076,12 +13098,11 @@ ${snowCap ? `
    * topples righted and any in-flight anims dropped.
    */
   function restoreDestructibleRecord(rec: DestructibleRecord): void {
+    crushRecordsOf(rec, false); // (2026-11-02 audit M9) every cover record of the prop stands again
     if (rec.ob) {
-      rec.ob.crushed = false;
       rec.ob._pressS = 0;
       rec.ob._pressT = -1e9;
     }
-    if (rec.col) rec.col.dead = false;
     if (rec.loopRef) rec.loopRef.toppled = false;
     if (rec.body) {
       resetLoosePropBody(rec.body);

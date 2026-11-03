@@ -2445,6 +2445,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/battleResetLeftovers.selftest.mjs',
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
+    // 2026-11-02 audit M9: one crush transition for a destructible's records in the page and headless worlds, the guards
+    'src/world/crushRecords.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/maps/utilityPoles.selftest.mjs', // 2026-10-14 props lane A (#21): each region's line (its pole, its timber, its conductors on its insulators)
     'src/world/wrecks.selftest.mjs',

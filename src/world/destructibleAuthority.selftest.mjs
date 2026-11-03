@@ -20,7 +20,7 @@ import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
-import { shellSparesStoppedRecord } from './collision.ts';
+import { setCrushedRecords, shellSparesStoppedRecord } from './collision.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -34,7 +34,7 @@ assert.ok(source.slice(start, end).includes(BROKEN_JOIN), 'the runtime tail join
 const SHELL_JOIN = 'yield* joinStructureShells(); // (Plan W)';
 assert.ok(source.slice(start, end).includes(SHELL_JOIN), 'the runtime tail joins the structure shell pool (Plan W)');
 const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end).replace(BROKEN_JOIN, 'void 0;').replace(SHELL_JOIN, 'joinStructureShells(); // (Plan W)')}
-return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
+return { crushDestructible, crushProp, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
 }`);
 const runtimeBody = runtimeSource.slice(runtimeSource.indexOf('{') + 1, runtimeSource.lastIndexOf('}'));
 
@@ -101,7 +101,7 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   const events = [];
   seam.setDestroyedEventSink((event) => events.push(event));
   const context = {
-    THREE, ...seam, ...loose, createLoosePropBodies, setToppleAxis, settledToppleAngle,
+    THREE, ...seam, ...loose, createLoosePropBodies, setToppleAxis, settledToppleAngle, setCrushedRecords,
     registerWorldNightLighting, setWorldNightFixtureActive, mats,
     destructibles: records, dPools: pools, obstacles, looseRecords: bodies, activeLoose: [],
     heightField: { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) },
@@ -156,7 +156,7 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     material.dispose(); Object.values(mats).forEach(mat => mat.dispose());
     group.removeFromParent(); seam.setDestroyedEventSink(null);
   }
-  return { ...runtime, records, pools, events, dispose };
+  return { ...runtime, records, pools, events, crushables: context.crushables, obstacles, dispose };
 }
 
 function assertCoverIntact(f, label) {
@@ -296,6 +296,44 @@ for (const [mode, cap] of [['sweep', 3], ['impact', 6]]) {
     else seam.notifyShellImpact(0, 0.2, 0, { r: 4.6, he: true });
     assert.equal(f.records.filter((r) => r.state).length, cap, `${mode}: original per-call cap preserved`);
   } finally { f.dispose(); }
+}
+
+// ---- 2026-11-02 audit M9: a cosmetic caller that reaches cover is refused by breakRecord itself (not by its callers' habit):
+// a crushable entry naming a wall (a new hull-loop path, a kit gone wrong) leaves its records closed
+const guarded = fixture([['wallstone', 0, 0], ['barrel', 0, 0]]);
+try {
+  guarded.crushables.push({ x: 0, y: 0, z: 0, r: 1.6, h: 1.15, recIdx: 0, kind: 'wallstone', toppled: false });
+  const warn = console.warn; console.warn = () => {};
+  try { assert.equal(guarded.crushProp(guarded.crushables.length - 1, 1, 0, 8), false, 'the hull loop cannot break a wall'); }
+  finally { console.warn = warn; }
+  assertCoverIntact(guarded, 'cosmetic caller on cover');
+  assert.ok(guarded.crushDestructible(0, 1, 0, 8, 'ram'), 'the authority\'s crush still breaks it');
+} finally { guarded.dispose(); }
+
+// ---- 2026-11-02 audit M9: the page world's crush writes what the headless authority's writes, record for record
+// (collision.ts setCrushedRecords): the movement record ghost, the shell record ghost and out of the casts
+{
+  const { createHeadlessCollisionWorld } = await import('./headlessCollisionWorld.ts');
+  const { packWorldCollision } = await import('../../tools/headlessWorldCollision.mjs');
+  const page = fixture([['crate', 0, 0], ['wallstone', 3, 0], ['wallstone', 6, 0]]);
+  try {
+    const colliders = page.records.flatMap((r) => r.col ? [r.col] : []);
+    const headless = createHeadlessCollisionWorld({ mapId: 'authority-fixture',
+      heightField: { getHeightAt: () => 0, getNormalAt: () => new THREE.Vector3(0, 1, 0) },
+      manifest: packWorldCollision({ obstacles: page.obstacles, colliders, concealers: [] }) });
+    const flags = (r) => r ? [!!r.crushed, !!r.dead] : null;
+    for (const [i, record] of page.records.entries()) {
+      assert.ok(page.crushDestructible(i, 1, 0, 8, 'ram'), `${record.kind}: the page world breaks it`);
+      const ob = headless.getObstacles().find((o) => o.propIdx === i);
+      assert.ok(headless.crushObstacle(ob), `${record.kind}: the headless world crushes it`);
+      const col = headless.getColliders().find((c) => c.propIdx === i);
+      assert.deepEqual(flags(record.ob), flags(ob), `${record.kind}: the same movement record flags in both worlds`);
+      assert.deepEqual(flags(record.col), flags(col), `${record.kind}: the same shell record flags in both worlds`);
+    }
+    page.resetDestructibles();
+    for (const record of page.records) assert.deepEqual([flags(record.ob), flags(record.col)], [[false, false], record.col ? [false, false] : null],
+      `${record.kind}: the rematch stands every record`);
+  } finally { page.dispose(); }
 }
 
 // ---- 2026-11-02 audit R2: a tossed prop lands where it landed the battle before (the build's destruction stream, never

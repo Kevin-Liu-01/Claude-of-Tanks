@@ -1,5 +1,5 @@
 import {BufferAttribute, BufferGeometry, InstancedMesh, Matrix4, Vector3} from 'three';
-import type {CollisionRecord} from './collision.ts';
+import {setCrushedRecords, type CollisionRecord} from './collision.ts';
 
 // The smallest colliding stones are loose dressing. Authored tactical cover
 // and the larger outcrop class retain their solid collision.
@@ -66,8 +66,7 @@ export class CrushableClutter {
   }
 
   setCrushed(crushed: boolean): void {
-    for (const record of this.obstacles) record.crushed = crushed;
-    for (const record of this.colliders) { record.crushed = crushed; record.dead = crushed; }
+    setCrushedRecords(this.obstacles, this.colliders, crushed); // (2026-11-02 audit M9: the one crush transition)
     for (const span of this.spans) this.poseSpan(span, crushed);
     for (const {mesh, slot, home} of this.instances) {
       const matrix = home.clone();

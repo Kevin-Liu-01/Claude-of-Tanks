@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay } from './collision.ts';
+import { convexOutlineInPlace, createObstacleGrid, nearestColliderHitAlongRay as nearestRecordHitAlongRay, setCrushedRecords } from './collision.ts';
 import type { ColliderRayHit, CollisionRecord } from './collision.ts';
 import type { HeightField } from './terrain.ts';
 import { createDeformedHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -304,13 +304,8 @@ export function createHeadlessCollisionWorld(
     if (obstacle.propIdx != null || obstacle.treeIdx != null) {
       if (!byProp) recordIndex();
       const same = obstacle.propIdx != null ? byProp!.get(obstacle.propIdx) : byTree!.get(obstacle.treeIdx!);
-      if (same) {
-        for (const record of same.obstacles) record.crushed = true;
-        for (const record of same.colliders) {
-          record.crushed = true;
-          record.dead = true;
-        }
-      }
+      // (2026-11-02 audit M9) the page world's transition, on every record of the prop or tree (collision.ts)
+      if (same) setCrushedRecords(same.obstacles, same.colliders, true);
     }
     return true;
   }
