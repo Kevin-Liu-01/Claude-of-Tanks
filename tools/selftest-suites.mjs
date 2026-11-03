@@ -890,6 +890,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
     // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
+    // 2026-11-02 audit S4: a trip that keeps the process running releases only the holds its caller names
+    'tools/browser-guard-holds.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
     // 2026-11-02 audit S4: the capture-hold census (no retired memory-guard gate; the hold wrapper and its direct acquirers)
     'tools/capture-hold-census.selftest.mjs',
