@@ -15,6 +15,7 @@ import { modernArmor } from './specHelpers.ts';
 import { m113Datums, type M113Mark } from './m113Datums.ts';
 import { ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 import { REDBACK } from './redbackDatums.ts';
+import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -101,7 +102,9 @@ leopard_as1.visual = { ...leopard_as1.visual, ...ausDisruptive('27') };
 // 129 ordered (December 2023; Hanwha, Geelong; deliveries from 2027): the EOS/Elbit T2000 turret with the 30 mm Mk44S, a
 // MAG 58 and two Spike LR2, Iron Fist active protection, the EOS R400 station; the MTU of 1,000 hp, the Allison X1100,
 // Soucy composite rubber tracks, in-arm hydropneumatics; 42 t; 8.8 m over the gun, 3.6 m wide, 3.8 m high (Hanwha; Janes
-// 7.9 x 3.64 x 3.75 m). On the Puma S1's footing (VI: the 30 mm, the Spike, the 43 t; its LAND 400 rival the KF41 at V).
+// 7.9 x 3.64 x 3.75 m). At VI with the Puma S1 it was cloned from (the 30 mm, the Spike, the 43 t; its LAND 400 rival
+// the KF41 at V); it keeps the clone's registration-time gun: on the Puma's final gun it lost every tier VI duel (0.01
+// against 0.14 on its own, 2026-11-03), and the Puma's 0.48 there is draws, its MBTs barely scratching it in 90 s.
 const redback = australian('redback', 'puma_s1', 'AS21 Redback', 'modern', 'ifv');
 // as built (redbackDatums.ts): the 7.9 m hull, 8.37 m over the rear step frames and lamp guards (the 30 mm muzzle 0.8 m
 // inside the nose, as the 2021 live-fire profile shows: Hanwha's 8.8 m is not reached), 3.64 m over the appliqué
@@ -117,8 +120,9 @@ redback.armor = modernArmor({
 });
 Object.assign(redback, { hp: 2700, weightTons: 42, enginePowerHp: 1000, topSpeedKmh: 65, reverseSpeedKmh: 30,
   protectionSuite: { hardKillAps: true, softKillAps: false } });
-// its two Spike LR2 (the Puma's MELLS is the same family)
+// its two Spike LR2 (the Puma's MELLS is the same family) from its own launcher (fleetLauncherMuzzles.ts)
 redback.gun = { ...redback.gun, shells: redback.gun.shells.map((shell) => (shell.type === 'HEAT' ? { ...shell, name: 'Spike LR2' } : shell)) };
+applyFleetLauncherMuzzles(redback);
 redback.visual = { ...redback.visual, ...ausDisruptive('31A') };
 
 // ------------------------------------------------------------------------------------------------------ Abrams --

@@ -17,6 +17,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   bmp2: [turret(.06, .655 + .025 * detMath.sin(.02), .155 + .025 * detMath.cos(.02), .02)],
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
   puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
+  // 269: the Spike LR2 twin launcher's canister faces on the turret's left wall (profiles/redback.ts, leftX + 0.11)
+  redback: [.33, .55].map(y => turret(1.23, y, -.108)),
   borsuk: [.545,.795].map(y => turret(1.34,y,.91)),
   // 2026-10-21: the Jyu-MAT canister collars stand 4 cm proud of the duct front (profiles/type89SourceX.ts).
   type89: [-1,1].map(side => turret(side*1.25,.63,.40)),

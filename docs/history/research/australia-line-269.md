@@ -28,6 +28,15 @@ comes from the regen (`combatAnatomyGroups/<group>.generated.ts`), so the same-t
 raw cloned envelope the AIM SA lost 12-0 to the m1a1). The AS4 already moved from I to II beside the Ares APC on its
 capability score (0.205 against the Ares's 0.208).
 
+Tiers (2026-11-03, after the regen's combat anatomy; `runBalanceSeries` at 120 m against the tier's MBTs, strength the
+mean score, with the fleet's own baselines re-run beside them): the Leopard AS1 0.18 at I (the Danish 1A3 DK 0.11 and 1A5 DK
+0.16 there; the AS1 against the 1A3 DK 0.54); the FSV and MRV 0.05 at I (the M41A3 0.007); the AS4 0 at II (the Ares APC
+0.021); the AIM SA 0.24 at VIII (the M1A1 0.26); the SEPv3 0.34 at IX (0.16 at X, where the US SEPv3 holds 0.26); the
+Redback 0.14 at VI (0 at V, 0.08 at VII). The Puma S1 it was cloned from holds 0.48 at VI on draws: its MBTs deal it
+1,000-1,500 in a 90 s series against the Redback's 2,700 in 40 s, so the Redback keeps its own gun (on the Puma's final
+gun it fell to 0.01) and fires its Spike LR2 from its own launcher (`fleetLauncherMuzzles.ts`; the clone had the
+Puma's mouths). Every tier stands as drawn.
+
 Out: the Sentinel AC1, AC3 and AC4 (the owner); the wheeled ASLAV and Boxer CRV (Main: the sim has no wheeled drivetrain);
 the Matilda II and its Frog, the M3 Lee/Grant, the M3 Stuart, the Churchill trials batch and the Yeramba (Main: the Denmark
 M24 ruling, stock with no national kit); the M1150 ABV and M1074 JAB (non-combat).
