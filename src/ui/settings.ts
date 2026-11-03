@@ -54,6 +54,9 @@ import {
 } from './settingsIcons.ts';
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
+import {
+  battleInputOwnerFor, createBattleInputOwner, type BattleInputOwner, type VeilTrigger,
+} from './battleInputOwner.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
@@ -186,6 +189,8 @@ export interface SettingsOptions {
   readonly isGamePaused?: () => boolean;
   readonly gear?: HTMLButtonElement;
   readonly registerMenuAction?: boolean;
+  /** The battle input owner (battleInputOwner.ts) the access shares; absent, the bus's own (or a local one). */
+  readonly inputOwner?: BattleInputOwner;
   /** The local player's battle facts for a paired phone (docs/PHONE-CONTROLLER.md): ammunition, reload, scope. */
   readonly phoneSource?: () => PadStatusSource | null;
 }
@@ -544,15 +549,8 @@ const GEAR_SVG = uiIconSVG('settings', 22);
 const ESC_HOLD_MS = 700; // hold Esc this long during capture to bind Escape itself
 const PAD_START_BUTTON = 9; // START closes the panel for controller players
 const MAX_PAD_BUTTONS = 17;
-// controls_gunnery r7: menu-suppression grace after a kill-cam replay
-// releases the screen. The ANY-KEY skip that finishes a replay is handled by
-// the kill-cam's CAPTURE-phase keydown listener, which emits 'killcam:done'
-// synchronously — the input layer's BUBBLE-phase listener then sees the very
-// same keydown and would fire the settingsMenu action with the replay flag
-// already cleared, opening the options menu on the skip press itself. The
-// grace window absorbs that same-event race (sub-ms in practice); a human
-// deliberately opening the menu after a skip is always slower than 250 ms.
-const KC_DONE_GRACE_MS = 250;
+// (controls_gunnery r7's menu-suppression grace after a replay releases the screen, and the kill-cam / ending-beat
+// latch, are the battle input owner's: battleInputOwner.ts PRESENTATION_DONE_GRACE_MS, 2026-11-02 audit F4)
 
 /** The first-battle controls strip (247): driving, the gun, the right button's role, the sight and the menu. The shell
  *  and consumable keys stay off it, since the HUD tray's tiles carry their own caps. */
@@ -605,6 +603,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   else setTimeout(behaviours, 1000);
   ensureFonts();
   const { input, bus } = opts;
+  // who owns battle input (2026-11-02 audit F4): presentation (a replay or an ending beat), the menu, the veil, play
+  const inputOwner = opts.inputOwner ?? (bus ? battleInputOwnerFor(bus) : createBattleInputOwner());
   const isBattleActive = opts.isBattleActive || (() => false);
   const canLeaveBattle = opts.canLeaveBattle || isBattleActive;
   const onLeaveBattle = opts.onLeaveBattle || null;
@@ -729,12 +729,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   /** `relock`: the browser refused a pointer relock (aim-focus 243); `pause`: the battle lost the page (a focus loss, a
    *  background tab, an app switch) and waits for the player. Touch never locks, so it never shows the first; it does show
    *  the second, with the touch line (Watch 243: a touch layout taps). */
-  function showResumeVeil(trigger: 'relock' | 'pause' = 'pause') {
-    if (open || resume.classList.contains('show')) return;
-    // KILL-CAM: the replay owns the screen — a veil on top would sit over the
-    // cinematic and its mousedown would eat the click players aim at the
-    // 'ANY KEY — SKIP' prompt.
-    if (kcReplay) return;
+  function showResumeVeil(trigger: VeilTrigger = 'pause') {
+    // KILL-CAM / ENDING BEAT: the presentation owns the screen — a veil on top would sit over the cinematic and its
+    // mousedown would eat the click players aim at the 'ANY KEY — SKIP' prompt (the owner refuses it, as it does over the
+    // open panel or a veil already up)
+    if (open || inputOwner.veil !== null || inputOwner.state === 'presentation') return;
     // CURSOR-AIM FALLBACK: the veil exists to re-grab pointer lock inside a
     // fresh click gesture after focus loss. With the lock unavailable the aim
     // never depended on it — showing the veil would only swallow the next
@@ -742,20 +741,28 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // A touch layout never holds the lock either.
     if (input.isCursorAim && input.isCursorAim()) return;
     if (trigger === 'relock' && input.isTouchLayout && input.isTouchLayout()) return;
+    if (!inputOwner.showVeil(trigger)) return;
     // Settings carries the menu's current key (the cap hides on a touch layout: Watch 243, a touch layout taps)
     resumeSettingsKey.textContent = bindLabel('settingsMenu');
     hideHints();
-    resume.classList.add('show');
+    syncResumeVeil();
     emit('ui:click', {});
   }
 
-  // (it writes only when the veil is up: updateGear's 150 ms sweep calls it in every state, and a classList.remove of an
-  // absent class still rewrites the attribute, 7 writes a second for as long as the page lived, 266)
-  function hideResumeVeil() {
-    if (resume.classList.contains('show')) resume.classList.remove('show');
-    if (relockRetry !== null) clearTimeout(relockRetry);
-    relockRetry = null;
+  // The veil's class is a projection of the input owner's veil (2026-11-02 audit F4): every raise and drop goes through
+  // the owner, and an owner that drops it itself (a presentation begins, the menu opens) drops the class and the retry.
+  // (it writes only when the class must change: updateGear's 150 ms sweep calls hideResumeVeil in every state, and a
+  // classList.remove of an absent class still rewrites the attribute, 7 writes a second for as long as the page lived, 266)
+  function syncResumeVeil() {
+    const up = inputOwner.veil !== null;
+    if (up !== resume.classList.contains('show')) resume.classList.toggle('show', up);
+    if (!up && relockRetry !== null) { clearTimeout(relockRetry); relockRetry = null; }
   }
+  function hideResumeVeil() {
+    inputOwner.hideVeil();
+    syncResumeVeil();
+  }
+  inputOwner.onChange(syncResumeVeil);
 
   // aim-focus 243: a relock the browser refused leaves this veil up instead of
   // a dead mouse (the refusal never latches cursor aim: input.ts). Chrome
@@ -766,11 +773,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function relockRefused(retryInMs: number): void {
     if (open || !isBattleActive()) return;
     showResumeVeil('relock');
-    if (retryInMs <= 0 || relockRetry !== null || !resume.classList.contains('show')) return;
+    if (retryInMs <= 0 || relockRetry !== null || inputOwner.veil === null) return;
     if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.isActive) return;
     relockRetry = setTimeout(() => {
       relockRetry = null;
-      if (open || !isBattleActive() || !resume.classList.contains('show')) return;
+      if (open || !isBattleActive() || inputOwner.veil === null) return;
       input.requestLock({ fromUi: true });
     }, retryInMs);
   }
@@ -787,7 +794,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   });
   // a keyboard press on Resume (a pointer press resumed on mousedown, so the veil is gone by its click)
   requiredElement<HTMLButtonElement>(resume, '.rz-go').addEventListener('click', () => {
-    if (resume.classList.contains('show')) resumeBattle();
+    if (inputOwner.veil !== null) resumeBattle();
   });
   resumeSettings.addEventListener('click', () => {
     emit('ui:click', {});
@@ -796,13 +803,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- state ---------------------------------------------------------------------
   let open = false;
-  // Replays own skip input; their done grace absorbs the finishing keypress.
+  // Replays and ending beats own skip input; their done grace absorbs the finishing keypress (the input owner).
   // A spectator keeps mouse capture until Esc explicitly releases it.
-  let kcReplay = false;
-  let kcDoneMs = -Infinity; // when the last replay released the screen
-  const nowMs = () =>
-    (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
+  const replayOwnsScreen = () => inputOwner.presentationOwns();
   let activeTab: SettingsTab = 'controls';
   /** The open tab's picker menus (their popovers live in the body): disposed when the tab re-renders. */
   const tabMenus: PickerMenu[] = [];
@@ -1972,7 +1975,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     keepsEscape: () => !!capture || !!conflict,
   };
   function openPanel() {
-    if (open) return;
+    // every opening (the access's menu action and gear, the veil's Settings, the pointer-unlock path) asks the input
+    // owner: never over a kill-cam replay or an ending beat, nor on the press that skipped one
+    if (open || !inputOwner.openMenu()) return;
     open = true;
     openSurface(surface);
     hideResumeVeil(); // the panel supersedes the click-to-resume veil
@@ -2014,6 +2019,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     open = false;
+    inputOwner.closeMenu();
     closeSurface(surface);
     root.classList.remove('open');
     root.classList.remove('paused'); // PAUSE: tag never outlives the panel
@@ -2089,9 +2095,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   // Esc (or the rebound menu key / pad START) opens the panel whenever the
-  // layer is live. NOT while a kill-cam replay owns the screen: there Esc is
-  // just another ANY-KEY skip (the replay handles it in capture phase), and
-  // the done-grace absorbs the skip keypress itself — see KC_DONE_GRACE_MS.
+  // layer is live. NOT while a kill-cam replay or an ending beat owns the screen:
+  // there Esc is just another ANY-KEY skip (the presentation handles it in capture
+  // phase), and the done-grace absorbs the skip keypress itself (battleInputOwner.ts).
   if (opts.registerMenuAction !== false) {
     input.onAction('settingsMenu', (code) => {
       if (code === 'Escape' && opts.isSpectating?.()) { input.releaseLock(); return; }
@@ -2155,7 +2161,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     if (!isBattleActive()) hideResumeVeil();
     refreshPausedTag(); // PAUSE: tag follows phase/result while the panel is up
   }
-  gear.addEventListener('click', () => { if (!open) openPanel(); });
+  // the access owner (settingsAccess.ts) wires its own gear click through its gates (the loading cover, a modal, a
+  // presentation); a second click handler here opened past them (2026-11-02 audit F4)
+  if (opts.registerMenuAction !== false) gear.addEventListener('click', () => { if (!open) openPanel(); });
   if (bus) {
     bus.on('phase:change', (ev) => {
       updateGear();
@@ -2165,24 +2173,22 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         : undefined;
       battleUiVisibility.setBattle(phase === 'battle');
       if (phase !== 'battle') { hideResumeVeil(); hideHints(); }
-      // belt for the kill-cam flag: killcam.cancel() only emits killcam:done
-      // while a replay is live, so a phase flip is the reset of last resort
-      kcReplay = false;
+      // (a phase flip is the input owner's reset of last resort for a presentation whose done never came)
     });
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
     bus.on('ui:consumableLoadout', adoptConsumableLoadout); // item 259: the slots show the chosen tank's items
-    bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
+    // the verdict ends the battle the veil belongs to (the 150 ms sweep stays the belt for an un-evented result)
+    bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); hideResumeVeil(); });
     bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
     // the player's first hit given or taken this battle (hud.ts): the strip has done its work
     bus.on('ui:playerEngaged', () => fadeHints());
-    // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
+    // KILL-CAM ownership window (controls_gunnery r7 MAJOR — the input owner holds it).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react
     // to. While live: no auto-open, no resume veil, no Esc-menu — and a panel
     // the player left open must not sit over the replay swallowing its
     // ANY-KEY skip (onPanelKey is a capture-phase stopPropagation handler).
     bus.on('killcam:begin', () => {
-      kcReplay = true;
       hideResumeVeil();
       hideHints();
       // never relock out of this close — the cursor must stay free for the
@@ -2190,20 +2196,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       // the cursor-aim fallback)
       if (open) { relockOnClose = false; closePanel(); }
     });
-    bus.on('killcam:done', () => {
-      kcReplay = false;
-      kcDoneMs = nowMs();
-    });
     // battle endings (2026-09-25): the director's camera beats own the screen the same way — their
     // any-key skip must win over the Esc menu and the resume veil
     bus.on('ending:begin', () => {
-      kcReplay = true;
       hideResumeVeil();
       if (open) { relockOnClose = false; closePanel(); }
-    });
-    bus.on('ending:done', () => {
-      kcReplay = false;
-      kcDoneMs = nowMs();
     });
   }
   setInterval(updateGear, 150); // fallback only — events above hide/show instantly
