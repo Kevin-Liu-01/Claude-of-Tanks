@@ -1619,6 +1619,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
     'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
     'src/mp/session/matchSessionEntry.selftest.mjs', // 2026-11-02 audit M2: a leave cancels a loading entry; a re-sent match_start joins it
+    'src/mp/session/matchSessionTimers.selftest.mjs', // 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',

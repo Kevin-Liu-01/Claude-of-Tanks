@@ -96,8 +96,9 @@ export interface MatchSessionP2pOptions {
   reentryElectionWaitMs?: number;
   /**
    * The elected host's entry reports (plan step 8, 2026-10-13): from the match_start until its own actor reports, the
-   * host's tab tells the room it is still loading every this often (ROOM_MATCH_REPORT_INTERVAL_MS, 10 s), so the room's
-   * 30 s report budget does not hand the match to a peer while the host is building its world. Receipts shorten it.
+   * host's tab tells the room it is still loading every this often (ROOM_MATCH_REPORT_INTERVAL_MS, 30 s), so the room's
+   * 90 s report budget (ROOM_MATCH_REPORT_STALE_AFTER_MS) does not hand the match to a peer while the host is building its
+   * world. Receipts shorten it.
    */
   entryReportIntervalMs?: number;
   /** ... and for at most this long (ENTRY_REPORT_CEILING_MS, 150 s): a host whose entry never ends is still replaced. */
@@ -168,8 +169,8 @@ export type HostDecline = null | 'unable' | 'headroom' | 'reentry' | 'match';
 
 /**
  * How long an elected host's tab may hold the match with loading reports before its actor runs (plan step 8): the
- * slowest measured entries (a cold compile, the 145 s welcomed-compiling rejoin) fit; a wedged entry is replaced 30 s
- * after the last report, as before.
+ * slowest measured entries (a cold compile, the 145 s welcomed-compiling rejoin) fit; a wedged entry is replaced 90 s
+ * (ROOM_MATCH_REPORT_STALE_AFTER_MS) after the last report, as before.
  */
 export const ENTRY_REPORT_CEILING_MS = 150_000;
 
@@ -287,7 +288,7 @@ export class MatchSession {
   private entryReports: { stop(reason: string): void } | null = null;
   /** A peer's standby host thread (§13.21): prepared after its welcome, taken by the next boot of this seat's host. */
   private standby: { port: HostPort<HostToWorkerMessage, WorkerToHostMessage>; unsubscribe: Unsubscribe; matchId: string; prepared: boolean } | null = null;
-  private standbyTimer: ReturnType<typeof setTimeout> | null = null;
+  private standbyTimer: unknown = null;
   // host-loss evidence (§13.22): when this peer last heard its host (a snapshot accepted), its last claim, its claims
   private hostHeardAt = 0;
   private hostHeardCount = -1;
@@ -388,6 +389,18 @@ export class MatchSession {
 
   private log(level: 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>): void {
     this.p2pOptions?.onLog?.(level, message, fields);
+  }
+
+  /** The injected timers (receipts drive them), else the platform's: every timer of the session's own phases. */
+  private setTimer(callback: () => void, delayMs: number): unknown {
+    const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
+    return timers.setTimer ? timers.setTimer(callback, delayMs) : setTimeout(callback, delayMs);
+  }
+
+  private clearTimer(handle: unknown): void {
+    const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
+    if (timers.clearTimer) timers.clearTimer(handle as never);
+    else clearTimeout(handle as ReturnType<typeof setTimeout>);
   }
 
   /** The one writer of `roleState`: a move the table does not list is refused (false) and logged. */
@@ -620,7 +633,7 @@ export class MatchSession {
   }
 
   /**
-   * Plan step 8 (2026-10-13; MP-SINCE-0930 MP-S03): the room replaces a host whose reports stop for 30 s, and an
+   * Plan step 8 (2026-10-13; MP-SINCE-0930 MP-S03): the room replaces a host whose reports stop for 90 s, and an
    * elected host's actor boots only after its presentation has built the world — a slow entry (a cold compile, a busy
    * machine) used to cost the match its host before it began, and the peers a migration onto a seat that was loading
    * too. From the match_start until its actor's first report, the elected host reports `loading` (tick 0) every
@@ -765,7 +778,8 @@ export class MatchSession {
     if (!parseP2pMatchUrl(round.matchStart.matchUrl)) return;
     if (this.standby?.matchId === round.matchStart.matchId || this.standbyTimer !== null) return;
     const delayMs = Math.max(0, (p2p.standbyHost ? p2p.standbyHost.delayMs : undefined) ?? STANDBY_HOST_DELAY_MS);
-    this.standbyTimer = setTimeout(() => {
+    // the injected timers, as every other phase of the session (audit M2, 2026-11-02: this one used the global setTimeout)
+    this.standbyTimer = this.setTimer(() => {
       this.standbyTimer = null;
       if (this.disposed || this.matchClient !== client || this.currentRound !== round || this.host || !this.canHost) return;
       this.closeStandby('replaced');
@@ -798,7 +812,7 @@ export class MatchSession {
   }
 
   private closeStandby(reason: string): void {
-    if (this.standbyTimer !== null) { clearTimeout(this.standbyTimer); this.standbyTimer = null; }
+    if (this.standbyTimer !== null) { this.clearTimer(this.standbyTimer); this.standbyTimer = null; }
     const standby = this.standby;
     this.standby = null;
     if (!standby) return;
@@ -913,14 +927,10 @@ export class MatchSession {
       this.log('warn', 'named host of a running match without its state: declining so a peer resumes', { matchId: payload.matchId });
       this.p2pListeners.emit({ kind: 'declined' });
       this.setDecline('reentry', { declined: true });
-      const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
-      const setTimer = timers.setTimer ?? ((callback, delayMs) => setTimeout(callback, delayMs));
-      const client = this.matchClient;
-      setTimer(() => {
+      this.setTimer(() => {
         if (this.currentRound !== round || this.host || this.room.hostId !== me || !this.migrating) return;
         // No election came: the room kept this seat (no other commander). Boot fresh through the election path.
-        void this.handleHostChanged({ hostId: me, generation: this.room.generation + 1, resumeTick: 0, reason: 'declined', hostSecret: this.hostSecret ?? undefined });
-        void client;
+        this.bootKeptHost(round, 'no election followed the re-entry decline');
       }, this.p2pOptions?.reentryElectionWaitMs ?? 10_000);
     }
     if (hostId === me && this.canHost && this.hostSecret && !reentryAsNamedHost) {
@@ -967,6 +977,29 @@ export class MatchSession {
     this.migrationHostId = null;
     if (this.roleState === 'migrating') this.moveRole('peer', detail);
     this.p2pListeners.emit({ kind: 'migration', phase: 'end', hostId, generation: this.room.generation, role: this.role, detail });
+  }
+
+  /**
+   * Boot this seat's host for the election the room kept (audit M2, 2026-11-02): a re-entry decline the room had nobody
+   * to hand on to leaves this seat the host at the room's own generation. The fallback used to run a made-up election at
+   * `generation + 1` through handleHostChanged: the seat then ran ahead of the room, its reports carried a generation the
+   * room never issued, and the room's next real election (at that generation, naming another seat) read as "not newer"
+   * and was ignored.
+   */
+  private bootKeptHost(round: SessionRound, detail: string): void {
+    const client = this.matchClient;
+    const migrating = this.migrating;
+    if (!client || !migrating || migrating.state === 'closed' || this.currentRound !== round) return;
+    const me = this.room.playerId;
+    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: 0, reason: 'declined', ...(this.hostSecret ? { hostSecret: this.hostSecret } : {}) };
+    this.runningGeneration = Math.max(this.runningGeneration, change.generation);
+    this.migrationsSeen++;
+    this.migrationActive = true;
+    const previousHostId = this.servingHostId;
+    this.servingHostId = me;
+    this.migrationHostId = me;
+    this.p2pListeners.emit({ kind: 'migration', phase: 'begin', hostId: me, generation: change.generation, role: this.role, detail });
+    void this.becomeHost(client, round, change, migrating, previousHostId);
   }
 
   /** The room replaced this host (a host_only on a report): the actor stops, this seat follows the room's current host as a peer. */
