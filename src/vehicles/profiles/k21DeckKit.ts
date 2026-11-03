@@ -68,7 +68,7 @@ function addK21DriverStation(P: TankBuilderPort): void {
   // [z, half width at the foot, half width at the top, top]: a near-level top (2.012 -> 2.000) under the basket's
   // sweep, then the sloped front down to the deck
   const st: readonly (readonly [number, number, number, number])[] = [[1.17, 0.335, 0.31, 2.012],
-    [1.86, 0.335, 0.31, 2.0], [2.16, 0.20, 0.17, frontDeckY(2.16) + 0.012]];
+    [1.86, 0.335, 0.31, 2.0], [2.16, 0.18, 0.17, frontDeckY(2.16) + 0.005]];
   equipment(P, 'hull', 'Detail', sectionSolid(st.map(([z, hb, ht, top]) => {
     const foot = frontDeckY(z) - 0.02;
     return { z, ring: [[cx - hb, foot], [cx + hb, foot], [cx + ht, top], [cx - ht, top]] as SectionPoint[] };
@@ -86,14 +86,14 @@ function addK21DriverStation(P: TankBuilderPort): void {
   // the lid's grab handle, forward on it (2.33 m off the ring axis, past the basket)
   grabHandle(P, 'hull', cx, topAt(1.70) - 0.003, 1.70, 0.16, 0.03, slope);
   // three periscopes on the sloped front (z 1.86 -> 2.16, 20 degrees), splayed 12 degrees
-  const front = Math.atan2(2.0 - (frontDeckY(2.16) + 0.012), 0.30);
+  const front = Math.atan2(2.0 - (frontDeckY(2.16) + 0.005), 0.30);
   const zp = 1.965, yp = 2.0 - (zp - 1.86) * Math.tan(front);
   for (const k of [-1, 0, 1]) periscope(P, 'hull', cx + k * 0.13, yp, zp - Math.abs(k) * 0.012, front, k * 0.21, 0.055);
 }
 
 /** The engine deck right of the driver (the powerpack is front right): the cooling-air grille in front of the turret
  *  (x -0.06..-0.70, z 0.75..1.62, its rear under the turret front's overhang, as the photographs' covered grille sits),
- *  a level-topped frame round a dark well with eight transverse louvres; and the bolted access plate outboard of it
+ *  a level-topped frame round a dark well with eight transverse louvres; and the access plate outboard of it
  *  (x -0.86..-1.38) with two lifting handles. They replace a second round hatch and three driver's periscopes drawn
  *  over the engine (the source and the photographs have neither). */
 function addK21EngineDeck(P: TankBuilderPort): void {
@@ -118,7 +118,8 @@ function addK21EngineDeck(P: TankBuilderPort): void {
     const z = z0 + w + step * (k + 0.5);
     equipment(P, 'hull', 'Detail', box(x1 - x0 - 2 * w, 0.006, depth), xc, top - 0.004 - Math.sin(rake) * depth / 2, z, rake, 0, 0);
   }
-  // outboard access plate: 9 mm proud, 10 bolts, two folding lifting handles (inside the basket's reach: under 2.015)
+  // outboard access plate: 9 mm proud, two folding lifting handles (inside the basket's reach: under 2.015); no bolt
+  // ring (a row of bolt heads the photographs do not show reads as a rivet grid)
   const px = -1.12, pz = 1.30, pw = 0.50, pl = 0.86, c = 0.05;
   const shape = new THREE.Shape();
   shape.moveTo(-pw / 2 + c, -pl / 2);
@@ -127,37 +128,10 @@ function addK21EngineDeck(P: TankBuilderPort): void {
   shape.closePath();
   const plate = new THREE.ExtrudeGeometry(shape, { depth: 0.014, bevelEnabled: false, steps: 1 }).rotateX(-Math.PI / 2);
   equipment(P, 'hull', 'Detail', plate, px, frontDeckY(pz) - 0.005, pz, roofTilt, 0, 0);
-  for (const [bx, bz] of [[-0.21, -0.39], [0.21, -0.39], [-0.21, -0.13], [0.21, -0.13], [-0.21, 0.13], [0.21, 0.13],
-    [-0.21, 0.39], [0.21, 0.39], [0, -0.39], [0, 0.39]]) {
-    equipment(P, 'hull', 'Dark', cylY(0.013, 0.013, 0.010, 6), px + bx, frontDeckY(pz + bz) + 0.010, pz + bz);
-  }
   for (const dz of [-0.2, 0.2]) {
     equipment(P, 'hull', 'Detail', box(0.13, 0.010, 0.014), px, frontDeckY(pz + dz) + 0.014, pz + dz, roofTilt, 0, 0);
     for (const s of [-1, 1]) equipment(P, 'hull', 'Detail', box(0.014, 0.016, 0.03), px + s * 0.058, frontDeckY(pz + dz) + 0.011, pz + dz);
   }
-}
-
-/** Bolt heads on the glacis armour tiles (k21X.ts bowDeckPanels: 7 x 2 blocks 0.3524 wide, 0.3365 long, pitched with
- *  the deck): three along each tile's front edge and the front row's rear edges, 8 mm proud, HIGH only. None inside
- *  the 40 mm's reach
- *  (3.50 m off the ring axis; the muzzle's -8 degree arc over the front tiles already sets the gun's depression there),
- *  and none within 3 cm of the bow receipt's witness lines (x 0 and -0.76). */
-function addK21TileBolts(P: TankBuilderPort): void {
-  if (!P.q) return;
-  const pitch = Math.atan2(0.27694, 0.96089), head = cylY(0.012, 0.012, 0.010, 6), parts: THREE.BufferGeometry[] = [];
-  const toWorld = new THREE.Matrix4();
-  for (const x of [-0.929555, -0.565825, -0.202105, 0.161745, 0.593965, 0.957735, 1.321455]) {
-    for (const [y, z] of [[1.7901885, 2.82828], [1.694423, 3.160651]]) {
-      toWorld.makeRotationX(pitch).setPosition(x, y, z);
-      for (const bz of z < 3 ? [0.14] : [-0.14, 0.14]) for (const bx of [-0.13, 0, 0.13]) {
-        const at = new THREE.Vector3(bx, 0.0549 + 0.003, bz).applyMatrix4(toWorld);
-        if (Math.hypot(at.x, at.z + 0.55) < 3.50 || Math.abs(at.x) < 0.03 || Math.abs(at.x + 0.76) < 0.03) continue;
-        parts.push(head.clone().translate(bx, 0.0549 + 0.003, bz).applyMatrix4(toWorld));
-      }
-    }
-  }
-  head.dispose();
-  equipment(P, 'hull', 'Dark', KIT.mergeAll(parts), 0, 0, 0);
 }
 
 /** The bow deck's service lid: a U grab handle on its open rear corner (x -0.58, z 2.53, behind the glacis armour
@@ -198,7 +172,7 @@ function addK21RearStowage(P: TankBuilderPort): void {
 }
 
 /** Turret roof: the two crew hatches' torsion-spring housings and lid handles, a periscope in each lid's outboard
- *  edge, two periscopes ahead of the left hatch, and the source's rear-roof fittings: a bolted mount ring on the right, a twin
+ *  edge, two periscopes ahead of the left hatch, and the source's rear-roof fittings: a mount ring on the right, a twin
  *  sensor head at the centre and two vent caps on the left. Turret builder frame (world metres before the 0.90 size). */
 function addK21TurretRoofKit(P: TankBuilderPort): void {
   const roofAt = (z: number): number => z < -1.26 ? 2.59 + (z + 1.91) * (0.016 / 0.65) : 2.606;
@@ -213,14 +187,10 @@ function addK21TurretRoofKit(P: TankBuilderPort): void {
   }
   // the left hatch's two forward periscopes on the roof ahead of it, inboard of the panoramic sight
   for (const [px, yaw] of [[0.20, -0.20], [0.38, 0]]) periscope(P, 'turret', px, roofAt(-0.62), -0.62, 0, yaw, 0.055);
-  // bolted mount ring (right rear): a plate ring with twelve bolt heads and a plug
+  // mount ring (right rear): a low ring plate and its plug
   const mx = -0.74, mz = -1.40, my = roofAt(mz), seg = P.q ? 24 : 14;
   equipment(P, 'turret', 'Detail', cylY(0.15, 0.15, 0.016, seg), mx, my + 0.002, mz);
   equipment(P, 'turret', 'Detail', cylY(0.05, 0.055, 0.03, 12), mx, my + 0.012, mz);
-  if (P.q) for (let k = 0; k < 12; k++) {
-    const a = k * Math.PI / 6;
-    equipment(P, 'turret', 'Dark', cylY(0.011, 0.011, 0.01, 6), mx + Math.sin(a) * 0.12, my + 0.012, mz + Math.cos(a) * 0.12);
-  }
   // twin sensor head (rear centre): a base block and two upright cylinders side by side
   const tz = -1.55, ty = roofAt(tz);
   equipment(P, 'turret', 'Detail', box(0.30, 0.04, 0.14), 0, ty + 0.015, tz);
@@ -240,7 +210,6 @@ export function addK21HullDeckKit(P: TankBuilderPort): void {
   addK21DriverStation(P);
   addK21EngineDeck(P);
   addK21LidHandles(P);
-  addK21TileBolts(P);
   addK21RearStowage(P);
 }
 

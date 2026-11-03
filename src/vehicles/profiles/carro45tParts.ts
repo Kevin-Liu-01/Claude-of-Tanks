@@ -247,13 +247,9 @@ export function addCarroHatches(P: KitPort): void {
     P.addModuleVisual('optics', 'turretDark', housing, lx + dx, roof, lz + 0.36, 0, dx * 0.9, 0);
     P.addModuleVisual('optics', 'turretGlass', glass, lx + dx, roof, lz + 0.36, 0, dx * 0.9, 0);
   }
-  // r268b: the whips' mounts are square bolted base plates under their pots (italy.ts seats the pots at x ±0.82,
-  // z -1.42), and a third lift-eye pair is not needed: the roof's four eyes stay
+  // r268b: the whips' mounts are square base plates under their pots (italy.ts seats the pots at x ±0.82, z -1.42)
   for (const s of [-1, 1]) {
     P.add('turretDetail', roofPlate(0.17, 0.17, 0.014, 0.025), s * 0.82, roof + 0.002, -1.42);
-    for (const [bx, bz] of [[-0.06, -0.06], [0.06, -0.06], [-0.06, 0.06], [0.06, 0.06]]) {
-      P.add('turretDark', cylY(0.011, 0.011, 0.010, 6), s * 0.82 + bx, roof + 0.012, -1.42 + bz);
-    }
   }
   // crosswind sensor mast at the rear of the roof (C1 Ariete pattern): pot, mast and a horizontal probe head
   P.add('turretDetail', cylY(0.045, 0.055, 0.05, 12), -0.34, roof + 0.015, -1.56);
@@ -413,14 +409,11 @@ export function addCarroBowKit(P: BowPort): void {
   }
 }
 
-/** r268b: the bow's plate joints and tow eyes (OF-40 pattern). A fillet weld runs across the step where the deck plate
- *  meets the upper glacis (z 2.20), a bead over the knuckle where the upper glacis turns down into the nose plate
- *  (z 3.08), and a tow eye stands on the nose plate either side of centre, a lug welded to the plate with its ring. */
+/** r268b: the bow's tow eyes (OF-40 pattern): one on the nose plate either side of centre, a lug welded to the plate
+ *  with its ring. (No raised weld beads across the plate joints: the photographs show clean plates, and the round's
+ *  first blind A/B read joint strips over a glacis as clutter.) */
 function addCarroGlacisJoints(P: KitPort): void {
-  P.add('hull', carroSideLoft([[2.196, 1.464], [2.196, 1.490], [2.214, 1.475], [2.236, 1.464]], [[-1.37, 1], [1.37, 1]]));
-  // the knuckle bead's axis 6 mm inside the corner along the two plates' bisector, so it stands 6 mm proud of both
   const knuckleY = glacisY(3.08);
-  P.add('hull', KIT.cylX(0.012, 2.74, 8), 0, knuckleY - 0.006 * 0.915, 3.08 - 0.006 * 0.403);
   // nose plate (3.08, 1.245) -> (3.37, 1.06): 32.5 degrees; each eye 0.12 m down it, its lug 10 mm into the plate
   const nose = Math.atan2(knuckleY - 1.06, 3.37 - 3.08), dirZ = Math.cos(nose), dirY = -Math.sin(nose);
   const z0 = 3.08 + dirZ * 0.12, y0 = knuckleY + dirY * 0.12, tilt = new THREE.Matrix4().makeRotationX(nose);
@@ -463,15 +456,11 @@ export function addCarroSternKit(P: KitPort): void {
 export function addCarroEngineDeck(P: KitPort): void {
   P.add('hull', KIT.box(2.80, 0.06, 1.07), 0, 1.425, -2.785);                   // engine deck plate 1.395..1.455 (z -3.32..-2.25)
   // r268b (owner: "add more upper glacis and roof details"): the engine's side access plates either side of the
-  // louvre field (x 1.07..1.37, z -3.17..-2.51, aft of the fuel caps), bolted round their edge, each with a folded lifting
-  // handle in a welded guard; 9 mm proud, under the louvre frames' 1.470 so the 105's stern sweep is unchanged
+  // louvre field (x 1.07..1.37, z -3.17..-2.51, aft of the fuel caps), each with a folded lifting handle in a welded
+  // guard (no bolt rows: the round's first A/B read them as a rivet grid); 9 mm proud, under the louvre frames' 1.470
   for (const side of [-1, 1] as const) {
     const px = side * 1.22, pz = -2.84;
     P.add('hull', roofPlate(0.30, 0.66, 0.012, 0.03), px, 1.458, pz);
-    for (const [bx, bz] of [[-0.12, -0.30], [0.12, -0.30], [-0.12, -0.10], [0.12, -0.10], [-0.12, 0.10], [0.12, 0.10],
-      [-0.12, 0.30], [0.12, 0.30]]) {
-      P.add('hullDark', KIT.cylY(0.012, 0.012, 0.010, 6), px + bx, 1.465, pz + bz);
-    }
     P.add('hullDetail', KIT.box(0.11, 0.010, 0.014), px, 1.468, pz + 0.17);       // folded handle bar
     for (const dx of [-0.05, 0.05]) P.add('hullDetail', KIT.box(0.012, 0.014, 0.03), px + dx, 1.466, pz + 0.17);
   }
