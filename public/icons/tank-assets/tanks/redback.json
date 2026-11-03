@@ -715,9 +715,9 @@
       {
         "volumeId": "M04",
         "name": "missileRack",
-        "min": [0.0536,0.4116,-1.3789],
-        "max": [0.8044,0.8084,0.0473],
-        "turretLocal": true
+        "min": [0.0546,0.6116,-0.4896],
+        "max": [0.8183,1.0084,0.58],
+        "turretLocal": false
       },
       {
         "volumeId": "M05",
@@ -743,15 +743,15 @@
       {
         "volumeId": "M08",
         "name": "ammoRack",
-        "min": [-0.8938,0.26,-1.58],
-        "max": [0.8938,0.7255,-0.1712],
-        "turretLocal": true
+        "min": [-0.7851,0.5301,0.0747],
+        "max": [0.0995,1.0299,0.4023],
+        "turretLocal": false
       },
       {
         "volumeId": "M09",
         "name": "radio",
-        "min": [-0.624,0.0913,-1.3476],
-        "max": [-0.079,0.3258,-0.7279],
+        "min": [0.079,0.0913,-1.3476],
+        "max": [0.624,0.5018,-0.7279],
         "turretLocal": true
       },
       {
@@ -818,28 +818,28 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.6576,0.4723,2.0763],
-        "max": [-0.1982,1.6047,3.2378],
+        "min": [0.2482,0.5216,2.3148],
+        "max": [0.7076,1.5416,3.5994],
         "turretLocal": false
       },
       {
         "volumeId": "C02",
         "name": "gunner",
-        "min": [-1.1817,0.6185,-0.4257],
-        "max": [-0.7223,1.9707,0.3957],
-        "turretLocal": false
+        "min": [-0.7339,-0.7,-0.3448],
+        "max": [-0.2745,0.6521,0.4325],
+        "turretLocal": true
       },
       {
         "volumeId": "C03",
         "name": "commander",
-        "min": [0.7223,0.5999,-0.4363],
-        "max": [1.1817,1.9876,0.4063],
-        "turretLocal": false
+        "min": [-0.6414,-0.9,-0.6004],
+        "max": [-0.2517,0.4877,0.2422],
+        "turretLocal": true
       }
     ]
   },
   "geometryHash": "b2ded0f1",
-  "metadataHash": "5c8d798f",
+  "metadataHash": "a18f2c4b",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0002
@@ -950,16 +950,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 40058,
-      "sha256": "d5f38dd9f921f18c068be57a60f16399f8582ef31ab17e7a3c035d33b3f6675a"
+      "bytes": 39432,
+      "sha256": "1e10aae40510bcfaaf9ea84731ffaee912746df572ee698a24a14e98c5d65ab2"
     },
     "crewSide": {
       "file": "redback_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 34042,
-      "sha256": "527311c901e147067c9024948005d656df641d837d0a459b7e6033770e402100"
+      "bytes": 34922,
+      "sha256": "63da8c2fb9d52c11450fe14fdf178d2ae1f31ab53d93476520142c21357e4408"
     },
     "markings": {
       "file": "redback_markings.png",
@@ -972,8 +972,8 @@
     "technicalLabels": {
       "file": "redback_technical.json",
       "mime": "application/json",
-      "bytes": 5184,
-      "sha256": "ac03045488b60a00c7fad4be84ddc95f91194676d4d2850d1502cf0c2d1fb320"
+      "bytes": 5287,
+      "sha256": "990d9b697a3b0cc2af461637bd503bfc86389539f9817a4dd58a89d5da2ee25d"
     }
   }
 }

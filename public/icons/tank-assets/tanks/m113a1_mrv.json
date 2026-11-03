@@ -589,8 +589,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [0.602,0.5166,0.8258],
-        "max": [1.0017,1.8426,1.6358],
+        "min": [0.592,0.547,0.8485],
+        "max": [1.0017,1.837,1.6385],
         "turretLocal": false
       },
       {
@@ -616,8 +616,8 @@
       }
     ]
   },
-  "geometryHash": "32425a1f",
-  "metadataHash": "143583a1",
+  "geometryHash": "2a4b16c6",
+  "metadataHash": "84ea2927",
   "presentationAnchor": {
     "xM": 0,
     "zM": -0.0178
@@ -673,15 +673,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22634,
-      "sha256": "91dc200b104a0d0ee3e592a812f2cc2440e9774b47392a0868366815e2820374",
+      "bytes": 23290,
+      "sha256": "eada9c79f31b4c13ea86d046847f807b34c0fbcb704fb4f5cdb7825a74800286",
       "thumbnail": {
         "file": "thumbs/m113a1_mrv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9578,
-        "sha256": "e069c5a5ec6d63258aeb0204d4cf60cafb5d1e7831f41a0f07c4d63f04678e27"
+        "bytes": 9708,
+        "sha256": "0dc548ff124421e8674e04fafa9df09cde28a53829c4583dadade7edc10429bf"
       }
     },
     "top": {
@@ -689,16 +689,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10858,
-      "sha256": "4dc38e996723896a306a25e965c4ddd97ee29f97f6ddec746c52953c01246765"
+      "bytes": 10790,
+      "sha256": "5a6b061679853098da61a3751938a6be6844cfa7f5bb7ac529cfb1be408e7cb1"
     },
     "side": {
       "file": "m113a1_mrv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10918,
-      "sha256": "9226379f5fd5c4a6b087aecb065bab34503b3a3bd904a138785e7dfcc8b00c2a"
+      "bytes": 10952,
+      "sha256": "ddd9b5f6c8c36c86d35f8ce39282f6b502a1c082751c9990744765ee8e740b6c"
     },
     "topSilhouette": {
       "file": "m113a1_mrv_top_silhouette.png",
@@ -721,24 +721,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23956,
-      "sha256": "a305333d876072441c78a81c0f5108f57cc83a657184677a989eff34d5a9ce27"
+      "bytes": 23698,
+      "sha256": "52e66af1b777db3419aa98a11c94608ea99c0cd6b661b38cf2d8fed95ae8e309"
     },
     "modulesSide": {
       "file": "m113a1_mrv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 26100,
-      "sha256": "36e016fb80dbc20dd079f66d93e353de3b301dc2f2b8d352dbeecd36abf65279"
+      "bytes": 26198,
+      "sha256": "d6c1d6447f1fefe658d8b61684315a39877fd5a37814b8608a3eb48aa2866917"
     },
     "crewSide": {
       "file": "m113a1_mrv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24524,
-      "sha256": "f0123c658a793a8a929e7092a7632a70e483074685760df7257c516703838049"
+      "bytes": 24686,
+      "sha256": "76679b55322878de9444cfbc159436865e921d2ca71b2fd80df6bb40fc65f8b3"
     },
     "markings": {
       "file": "m113a1_mrv_markings.png",
@@ -752,7 +752,7 @@
       "file": "m113a1_mrv_technical.json",
       "mime": "application/json",
       "bytes": 3993,
-      "sha256": "6a533c003e5a95137a709f392eb587f94e46f9fb87cd72b15088e1d363c63b8e"
+      "sha256": "4abad7c19d5c5f98ea8b3c1db45e6b150735d3ae783d231ec113238ebaaa4c8e"
     }
   }
 }

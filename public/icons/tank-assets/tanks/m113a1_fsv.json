@@ -660,8 +660,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [0.602,0.5166,0.8258],
-        "max": [1.0017,1.8426,1.6358],
+        "min": [0.592,0.547,0.8485],
+        "max": [1.0017,1.837,1.6385],
         "turretLocal": false
       },
       {
@@ -687,8 +687,8 @@
       }
     ]
   },
-  "geometryHash": "26799ded",
-  "metadataHash": "ed8fd048",
+  "geometryHash": "f0a3ce4c",
+  "metadataHash": "25431476",
   "presentationAnchor": {
     "xM": -0.0002,
     "zM": -0.0026
@@ -745,15 +745,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 22026,
-      "sha256": "e60ad7f1915cf2057661a5449ee697859754c41b95482047b936a9a85959f119",
+      "bytes": 22660,
+      "sha256": "97ab88f6539a1715a3356a8f126a46307a5330f27da4389a7ad434ac33920b7e",
       "thumbnail": {
         "file": "thumbs/m113a1_fsv_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 9502,
-        "sha256": "8bb62f7de0989565bebbbe1b0a48039bf6c62c1033f7d37bd775d35756098bf3"
+        "bytes": 9740,
+        "sha256": "3be63db2d1999cfa230763be6feba320213f1ddf6b27ce2be1e3f359cb1389fc"
       }
     },
     "top": {
@@ -761,16 +761,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 10208,
-      "sha256": "278d014f819e92f21db876c6467388d48b47cc9eac94f085aa26e1e3b62242a5"
+      "bytes": 10216,
+      "sha256": "9ef065cd4d4be11c5ae4fdb9baa37d84f1972815a715784f3a57fd6976ec780a"
     },
     "side": {
       "file": "m113a1_fsv_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 10556,
-      "sha256": "a0674c64b7ed539e586e4e411fe4f84b0a9dde68621b3a84f9d364fc34abad98"
+      "bytes": 10562,
+      "sha256": "51bfd7b0036e6ce73fb0ed640aa685e5bc63b56d9cc1a85c6d2d350a29129c2b"
     },
     "topSilhouette": {
       "file": "m113a1_fsv_top_silhouette.png",
@@ -793,24 +793,24 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23860,
-      "sha256": "5a5f269a8de33d6c050644954d4ecac9192fc12a4a2a21cbdc95998b66aa6e1a"
+      "bytes": 23720,
+      "sha256": "a75765cdb3a9083431b48847a7c1219f866112da6c147914097859ba9dc6886c"
     },
     "modulesSide": {
       "file": "m113a1_fsv_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25648,
-      "sha256": "cb0dc594f05e5f0857e7b67d59711085013ed119d13f432d22acc702abc8d844"
+      "bytes": 25722,
+      "sha256": "b15303cab8e2b058f1326877e208b61946a3abffe0a070674e788ae401f51930"
     },
     "crewSide": {
       "file": "m113a1_fsv_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 23324,
-      "sha256": "258d83f6e7c4dac9ff998c059b3ad480cccec87b8ff767a0f5863073ae4627dc"
+      "bytes": 23292,
+      "sha256": "3bbcfb2aac97f31acab97ff437ea83f3dd8969d7f268f3d83070ba50eded535c"
     },
     "markings": {
       "file": "m113a1_fsv_markings.png",
@@ -823,8 +823,8 @@
     "technicalLabels": {
       "file": "m113a1_fsv_technical.json",
       "mime": "application/json",
-      "bytes": 4037,
-      "sha256": "435b059b4c9e717856129e0dec873b11d57cf4e4bd427a76a23644ff38aacfb8"
+      "bytes": 4034,
+      "sha256": "90b315bf44904567dc83ea7a391f4b68a59c263d43bf7575a06de39b503f3556"
     }
   }
 }
