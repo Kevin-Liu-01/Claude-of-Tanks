@@ -7,7 +7,9 @@
  * tell its own null from a newer owner's: a sky re-bake that validated invalid (enforceEnvValidity) also leaves null,
  * and the revert wrote back the pre-ladder texture, which that re-bake may have released. Each writer notes its write
  * here; a holder restores only while the field's counter is still the one its own write returned, and never restores
- * a texture its owner retired. No DOM; Node-runnable.
+ * a texture its owner retired. Key a counter on an object that lives as long as the field does: three replaces
+ * renderer.shadowMap on every context restore, so the shadow switch counts on the renderer (deviceDiag setShadowSwitch).
+ * No DOM; Node-runnable.
  */
 const counters = new WeakMap<object, Map<string, number>>();
 const retired = new WeakSet<object>();

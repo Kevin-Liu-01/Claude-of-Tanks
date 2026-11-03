@@ -329,6 +329,19 @@ export function runDeviceDiag(renderer: THREE.WebGLRenderer): DeviceDiagResult {
 }
 
 /**
+ * (2026-11-02 audit R4) the counted shadow switch. Its write counter is keyed on the renderer, never on
+ * renderer.shadowMap: three replaces that object on every context restore (initGLContext) and copies `enabled` across
+ * without a counted write, so a counter on the old map read as "a newer owner wrote" and a held stage never reverted.
+ */
+const SHADOW_SWITCH = 'shadowMap.enabled';
+
+/** Write the shadow switch and count the write (fieldWrites.ts); returns the write's number. */
+export function setShadowSwitch(renderer: THREE.WebGLRenderer, enabled: boolean): number {
+  renderer.shadowMap.enabled = enabled;
+  return noteFieldWrite(renderer, SHADOW_SWITCH);
+}
+
+/**
  * Degrade the renderer so the device renders SOMETHING correct.
  * @returns {?string} rescue applied ('shadows-off') or null
  */
@@ -339,8 +352,7 @@ export function applyDiagRescue(
   if (diag.lit && !diag.litShadow) {
     // flat-lit beats black: the shadow depth-compare path is the only stage
     // this device fails — run the session without shadow maps.
-    renderer.shadowMap.enabled = false;
-    noteFieldWrite(renderer.shadowMap, 'enabled');
+    setShadowSwitch(renderer, false);
     return 'shadows-off';
   }
   return null;
@@ -962,14 +974,12 @@ export function createWatchdogStages(
       can: () => renderer.shadowMap.enabled,
       apply() {
         previousShadowEnabled = renderer.shadowMap.enabled;
-        renderer.shadowMap.enabled = false;
-        shadowWrite = noteFieldWrite(renderer.shadowMap, 'enabled');
+        shadowWrite = setShadowSwitch(renderer, false);
         recompileScene(scene);
       },
       revert() {
-        if (renderer.shadowMap.enabled !== false || fieldWriteNumber(renderer.shadowMap, 'enabled') !== shadowWrite) return;
-        renderer.shadowMap.enabled = previousShadowEnabled;
-        noteFieldWrite(renderer.shadowMap, 'enabled');
+        if (renderer.shadowMap.enabled !== false || fieldWriteNumber(renderer, SHADOW_SWITCH) !== shadowWrite) return;
+        setShadowSwitch(renderer, previousShadowEnabled);
         recompileScene(scene);
       },
     },
@@ -1433,8 +1443,7 @@ export function reclaimShadows(
   try {
     const before = probe.measure(scene, camera);
     if (before < 6) return { reclaimed: false, reason: 'scene-black' };
-    renderer.shadowMap.enabled = true;
-    noteFieldWrite(renderer.shadowMap, 'enabled');
+    setShadowSwitch(renderer, true);
     recompileScene(scene);
     // warmup render before judging (same flake defense as the boot probes)
     probe.measure(scene, camera);
@@ -1444,16 +1453,14 @@ export function reclaimShadows(
       appendRescue('shadows-reclaimed');
       return { reclaimed: true, reason: 'healthy' };
     }
-    renderer.shadowMap.enabled = false;
-    noteFieldWrite(renderer.shadowMap, 'enabled');
+    setShadowSwitch(renderer, false);
     recompileScene(scene);
     note(`shadow reclaim failed (band ${after.toFixed(1)}) — staying off`);
     return { reclaimed: false, reason: 'still-black' };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     note(`reclaim threw: ${message.slice(0, 160)}`);
-    renderer.shadowMap.enabled = false;
-    noteFieldWrite(renderer.shadowMap, 'enabled');
+    setShadowSwitch(renderer, false);
     return { reclaimed: false, reason: 'threw' };
   } finally {
     probe.dispose();
