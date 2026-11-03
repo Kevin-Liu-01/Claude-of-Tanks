@@ -2,17 +2,21 @@
 // final name and called a take up to date when its <id>.mp4 was newer than the master, so an encode killed mid-run left a
 // truncated format the next run reported "formats up to date" (and site-media shipped); a truncated film proxy at its
 // final name let --drop-film-masters delete the master, the only good copy. Each output is now written under a partial
-// name and renamed into place once whole (atomic-output.mjs), and a take is up to date only once its poster, the last
-// format, is newer than its inputs.
+// name and renamed into place once whole (atomic-output.mjs), and a take is up to date only once every output it should
+// have is there and its completion record, written after the last of them, is newer than its inputs. Round 2: the poster
+// had been taken for the last output, but the scene and the stills come after it, so a run stopped between the poster
+// and the stills left the old still delivered under a "formats up to date".
 // The real site-loops.mjs runs on a fixture take with a stand-in ffmpeg and ffprobe on PATH (shell scripts: ffmpeg writes
 // "complete <name>" to its last argument, or, for the name FAKE_FFMPEG_FAIL matches, a few bytes and exits 1 as an encode
-// stopped part-way would). Nothing real is encoded and nothing outside a temporary directory is written.
+// stopped part-way would); a stand-in master filter copies stills and films, or SIGKILLs the run at a still (FAKE_FILTER_KILL).
+// Nothing real is encoded and nothing outside a temporary directory is written.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createCanvas } from '@napi-rs/canvas';
 import { copyFileAtomic, partialPath, sweepPartials, writeAtomic, writeFileAtomic } from './atomic-output.mjs';
 
 const TOOL = fileURLToPath(new URL('./site-loops.mjs', import.meta.url));
@@ -47,8 +51,16 @@ printf 'complete %s\\n' "$(basename "$last")" > "$last"
   writeFileSync(join(bin, 'ffprobe'), `#!/bin/sh
 case "$*" in *stream=height*) echo 2160 ;; *) echo 10.000 ;; esac
 `);
+  const filter = join(root, 'master-filter');
+  writeFileSync(filter, `#!/bin/sh
+case "$1" in
+  still) if [ -n "$FAKE_FILTER_KILL" ]; then kill -9 $PPID; sleep 5; fi; cp "$2" "$3" ;;
+  *) cp "$2" "$3" ;;
+esac
+`);
   chmodSync(join(bin, 'ffmpeg'), 0o755);
   chmodSync(join(bin, 'ffprobe'), 0o755);
+  chmodSync(filter, 0o755);
   const renders = join(root, 'renders'), deliver = join(root, 'deliver');
   for (const id of ['s01-test', 's02-test']) {
     mkdirSync(join(renders, 'films', id, 'films'), { recursive: true });
@@ -85,9 +97,36 @@ case "$*" in *stream=height*) echo 2160 ;; *) echo 10.000 ;; esac
   assert.equal(dropped.status, 0, dropped.stderr);
   assert.match(readFileSync(join(films, 's02-test-proxy.mp4'), 'utf8'), /^complete /, 'the proxy is encoded whole before the master goes');
   assert.equal(existsSync(join(films, 's02-test-master.mov')), false, 'then the master is dropped');
+  assert.match(run('s02-test').stdout, /s02-test: formats up to date/, 'the record follows the proxy: no re-encode from it');
+
+  // ---- round 2: a run stopped between the poster and the stills delivers the new still on the next run --------------
+  {
+    const id = 's03-test', stills = join(renders, 'stills', id, 'stills');
+    mkdirSync(join(renders, 'films', id, 'films'), { recursive: true });
+    mkdirSync(stills, { recursive: true });
+    writeFileSync(join(renders, 'films', id, 'films', `${id}-master.mov`), 'the master');
+    const png = (colour) => { const canvas = createCanvas(8, 8); const g = canvas.getContext('2d'); g.fillStyle = colour; g.fillRect(0, 0, 8, 8); return canvas.toBuffer('image/png'); };
+    const [stillA, stillB] = [png('#c03020'), png('#2040c0')];
+    const stillFile = join(stills, `${id}-still-1000ms.png`), delivered = () => readFileSync(out(id, `${id}-4k.png`));
+    const filtered = (extra = {}) => spawnSync(process.execPath, [TOOL, renders, deliver, id], { encoding: 'utf8',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEDIA_R5_FEATURES: 'off', COT_MASTER_FILTER: filter, ...extra } });
+    writeFileSync(stillFile, stillA);
+    const first = filtered();
+    assert.equal(first.status, 0, first.stderr);
+    assert.ok(delivered().equals(stillA), 'the still is delivered');
+    writeFileSync(stillFile, stillB); // a new still master, newer than every delivered output
+    const killed = filtered({ FAKE_FILTER_KILL: '1' });
+    assert.equal(killed.signal, 'SIGKILL', `the run is stopped at the still (${killed.status} ${killed.signal})`);
+    assert.ok(statSync(out(id, `${id}.jpg`)).mtimeMs > statSync(stillFile).mtimeMs, 'after its poster was renamed into place');
+    const resumed = filtered();
+    assert.equal(resumed.status, 0, resumed.stderr);
+    assert.doesNotMatch(resumed.stdout, /formats up to date/, `a take stopped before its stills is not up to date (${resumed.stdout.trim()})`);
+    assert.ok(delivered().equals(stillB), 'the next run delivers the new still');
+    assert.match(filtered().stdout, /s03-test: formats up to date/, 'then the take is up to date');
+  }
   const index = JSON.parse(readFileSync(join(deliver, 'deliver-index.json'), 'utf8'));
-  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test'], 'the index lists both whole takes');
-  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master');
+  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test', 's03-test'], 'the index lists the whole takes');
+  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master; a run stopped between the poster and the stills delivers the new still next time');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

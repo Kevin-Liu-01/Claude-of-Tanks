@@ -24,10 +24,15 @@
 // --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays; a take rendered
 // without one gets it from the master first).
 // Resume (2026-11-02 audit S5): every output is written under a partial name and renamed into place once whole
-// (atomic-output.mjs), so a file at a final name is always complete, and a take is up to date only when its poster, the
-// last format written, is newer than its film and still: a run killed mid-encode re-encodes the take.
+// (atomic-output.mjs), so a file at a final name is always complete. A take is up to date only when every output it
+// should have is there (the formats, the poster, the scene, the stills and the close stills) and its completion record
+// (.<id>.complete.json in its folder, written whole after its last output, a dropped master's proxy included) is newer
+// than every input (film, still, close still, scene). The record goes before the take's first output is written; a take
+// without one (a stopped run's, or one delivered before the record) is up to date only when each of its outputs is newer
+// than every input. So a run stopped anywhere in a take (mid-encode, or between the poster and the stills: round 2, the
+// poster was not the last output) delivers what its inputs changed again.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { SHOTS } from './paths.mjs';
@@ -85,21 +90,22 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const out = join(deliver, id);
   const stillsOnly = flags.has('--stills-only');
   const files = {};
+  const complete = join(out, `.${id}.complete.json`);
   let L = null, uhd = false;
   if (!stillsOnly) {
-  // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes). The
-  // formats are written in order, each renamed into place once whole, and the poster last: a poster newer than the
-  // inputs means every format before it was written whole after them (a run killed mid-encode left no poster, or an
-  // older one).
-  const shareGif = join(out, `${id}-share.gif`), poster = join(out, `${id}.jpg`);
-  const done = existsSync(join(out, `${id}.mp4`)) && existsSync(poster) && (!GIF.length || existsSync(shareGif))
-    && (!still || existsSync(join(out, `${id}-4k.png`)));
-  const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
-  if (done && !flags.has('--force') && (!GIF.length || statSync(shareGif).mtimeMs > newest) && statSync(join(out, `${id}.mp4`)).mtimeMs > newest
-    && statSync(poster).mtimeMs > newest) {
+  // up to date (several passes may cover one shot; --force re-encodes): see Resume above
+  const expected = [`${id}.mp4`, `${id}.jpg`, ...(GIF.length ? [`${id}-share.gif`] : []), ...(existsSync(sceneFile) ? [`${id}.scene.json`] : []),
+    ...(still ? [`${id}-4k.png`, `${id}-4k.jpg`, `${id}.webp`] : []), ...(closeStill ? [`${id}-close-4k.png`, `${id}-close-4k.jpg`, `${id}-close.webp`] : [])]
+    .map((name) => join(out, name));
+  const newest = Math.max(...[master, still, closeStill, sceneFile].filter((f) => f && existsSync(f)).map((f) => statSync(f).mtimeMs));
+  const whole = expected.every((f) => existsSync(f));
+  const current = whole && (existsSync(complete) ? statSync(complete).mtimeMs > newest : expected.every((f) => statSync(f).mtimeMs > newest));
+  if (!flags.has('--force') && current) {
     console.log(`${id}: formats up to date`); continue;
   }
   mkdirSync(out, { recursive: true });
+  // in progress from here: a run stopped anywhere in this take leaves no record, and the next one delivers it again
+  rmSync(complete, { force: true });
   for (const name of sweepPartials(out)) console.log(`${id}: removed ${name}, a partial a stopped run left`);
   const D = probe(master), X = XFADE_MS / 1000;
   L = +(D - X).toFixed(3); uhd = heightOf(master) >= 2160;
@@ -171,6 +177,8 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     }
     unlinkSync(filmMaster);
   }
+  // the take is whole: its record, written last (an encode pass only; --stills-only checks no format against its film)
+  if (!stillsOnly) writeFileAtomic(complete, `${JSON.stringify({ at: new Date().toISOString(), outputs: Object.values(files).sort() }, null, 1)}\n`);
   const size = f => statSync(join(deliver, f)).size, mb = k => files[k] ? `${(size(files[k]) / 1e6).toFixed(1)} MB` : '—';
   rows.push({ id, loopS: L, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, size(f)])) });
   console.log(`${id}: loop ${L}s${uhd ? ' (2160p)' : ''}; 4k ${mb('mp4k')}, mp4 ${mb('mp4')}, webm ${mb('webm')}, mobile ${mb('mobile')}, gif ${mb('gif')}, share ${mb('gifShare')}${still ? ', still' : ', no still yet'}`);
