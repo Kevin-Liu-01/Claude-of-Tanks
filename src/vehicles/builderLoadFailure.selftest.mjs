@@ -6,7 +6,8 @@
 // streamer), the turret ring kept `loading ??=` (no kill left a ring), and the riding-parts prebuild latched before its
 // import. isTankBuilderReady skipped the interior fills ensureTankBuilder awaits, so createTank could build a tank
 // without them, and a build passed the guard before its spec's combat anatomy was finalized. Each chunk is now one
-// app/lazyChunk.ts (a module failure is asked again by the next ask, at once after one failure, then past a backoff),
+// app/lazyChunk.ts (a module failure is asked again by the next ask, at once after one failure, then past a backoff
+// capped at a minute, with no budget that leaves a group unbuildable),
 // the predicate is exactly what the ensure awaits, and a build finalizes first.
 //
 // The fleet facade's heavy neighbours (the factory core, the fleet registration, the specs, the profile packs) are
@@ -19,7 +20,9 @@ import { registerHooks } from 'node:module';
 let clock = 0;
 performance.now = () => clock; // the lazy chunks' default clock
 
-const failing = new Set();
+// a chunk name and how many more times its resolve fails
+const failing = new Map();
+failing.add = (name, times = 1) => failing.set(name, times);
 const asked = [];
 const blip = (specifier) => new TypeError(`Failed to fetch dynamically imported module: ${specifier}`);
 const data = (source) => `data:text/javascript,${encodeURIComponent(source)}`;
@@ -40,7 +43,11 @@ const FACADE_STUBS = {
 const RING_STUB = data('export function createTurretRingPresentation() { return {}; } export function capTurretRingDents() {}');
 const hook = registerHooks({
   resolve(specifier, context, next) {
-    for (const name of failing) if (specifier.endsWith(name)) { failing.delete(name); throw blip(specifier); }
+    for (const [name, times] of failing) {
+      if (!specifier.endsWith(name)) continue;
+      if (times <= 1) failing.delete(name); else failing.set(name, times - 1);
+      throw blip(specifier);
+    }
     const parent = context.parentURL ?? '';
     if (parent.endsWith('/src/vehicles/fleetFactory.ts')) {
       asked.push(specifier);
@@ -113,5 +120,22 @@ const sibling = 'leo2_revolution';
   delete globalThis.Worker;
 }
 
+// ---- a fleet group whose chunk fails five times in a row (an outage with navigator.onLine true) still mends: no
+// re-ask budget spends it for the document (the base re-asked without a bound; a spent budget left the group, every tank
+// in it, unbuildable until a reload)
+{
+  const korean = 'k2b';
+  const before = asked.filter((specifier) => specifier === './profiles/korea.ts').length;
+  failing.add('./profiles/korea.ts', 5);
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(ensureTankBuilder(korean), /dynamically imported module/);
+    clock += 60_000;
+  }
+  assert.equal(isTankBuilderReady(korean), false);
+  await ensureTankBuilder(korean);
+  assert.equal(isTankBuilderReady(korean), true, 'the sixth ask, past the capped backoff, loads the group');
+  assert.ok(asked.filter((specifier) => specifier === './profiles/korea.ts').length > before);
+}
+
 hook.deregister();
-console.log('builderLoadFailure.selftest: a failed fills, ring or prebuild chunk is asked again by the next ask; isTankBuilderReady needs the fills; a build finalizes first');
+console.log('builderLoadFailure.selftest: a failed fills, ring, prebuild or group chunk is asked again by the next ask (five failures in a row too); isTankBuilderReady needs the fills; a build finalizes first');

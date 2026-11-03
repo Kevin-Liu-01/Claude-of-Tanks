@@ -1,10 +1,11 @@
 // lazyChunk.selftest.mjs — the one failure policy for a lazy chunk (2026-11-02 audit R6): a failure is kept and nothing
-// asks again by itself; a failed stylesheet is terminal (the chunk would run unstyled); any other failure is asked again
-// by the next caller once the INFRA-P11 backoff has passed, never offline, and stops after the budget.
+// asks again by itself; a failed stylesheet (in any part of the load) or a removed chunk (404) is terminal, the removed
+// one with the reload surface; any other failure is asked again by the next caller once the INFRA-P11 backoff has
+// passed, capped at a minute and never spent, never offline, at once back online.
 // Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
-import { createLazyChunk, isStylesheetFailure } from './lazyChunk.ts';
+import { createLazyChunk, importAll, isStylesheetFailure } from './lazyChunk.ts';
 
 const unhandled = [];
 process.on('unhandledRejection', (reason) => unhandled.push(reason));
@@ -93,19 +94,119 @@ assert.equal(isStylesheetFailure(null), false);
   assert.equal(calls, 1, 'an opener never asks again in its document');
 }
 
-// ---- the budget: the fifth failure is terminal (lazyImportRetry LAZY_IMPORT_RETRY.maxFailures)
+// ---- no budget: a builder or a notice mends when the network does, however long it failed (an outage with
+// navigator.onLine true: a captive portal, a CDN 5xx); the backoff stops growing at the policy's minute
 {
   let clock = 0;
   let calls = 0;
-  const chunk = createLazyChunk(async () => { calls++; throw moduleFailure(); }, { now: () => clock });
-  for (let i = 0; i < 5; i++) {
-    await assert.rejects(chunk.load());
-    clock += 60_000;
-  }
-  assert.equal(calls, 5);
-  assert.equal(chunk.terminal, true);
+  let broken = true;
+  const chunk = createLazyChunk(async () => { calls++; if (broken) throw moduleFailure(); return 'mended'; },
+    { now: () => clock });
+  // the reviewer's outage: an ask every 500 ms for 16 s
+  for (; clock <= 16_000; clock += 500) await chunk.load().catch(() => {});
+  assert.equal(calls, 5, 'the backoff spaced the asks (0, 2, 4, 8 s after each failure)');
+  assert.equal(chunk.terminal, false, 'five failures are not terminal');
+  for (let i = 0; i < 6; i++) { clock += 120_000; await chunk.load().catch(() => {}); }
+  assert.equal(calls, 11);
+  clock += 59_999;
   await assert.rejects(chunk.load());
-  assert.equal(calls, 5, 'a spent budget asks no more');
+  assert.equal(calls, 11, 'inside the capped wait the kept failure answers');
+  clock += 1;
+  await assert.rejects(chunk.load());
+  assert.equal(calls, 12, 'eleven failures in a row wait a minute, never more');
+  broken = false;
+  clock += 600_000;
+  assert.equal(await chunk.load(), 'mended', 'ten minutes on, the network back, the next ask loads');
+  assert.equal(chunk.state, 'ready');
+}
+
+// ---- a failure seen offline is asked again at once when the browser is back online (whatever the count)
+{
+  let clock = 0;
+  let onLine = true;
+  let calls = 0;
+  let fail = 3;
+  const chunk = createLazyChunk(async () => { calls++; if (fail-- > 0) throw moduleFailure(); return 'back'; },
+    { now: () => clock, online: () => onLine });
+  await assert.rejects(chunk.load());
+  await assert.rejects(chunk.load());
+  assert.equal(calls, 2);
+  clock = 2_000;
+  const third = chunk.load();
+  onLine = false; // the network dropped while the third ask was in flight
+  await assert.rejects(third);
+  await assert.rejects(chunk.load());
+  assert.equal(calls, 3, 'offline: nothing asked');
+  onLine = true;
+  clock = 2_001;
+  assert.equal(await chunk.load(), 'back', 'back online: asked at once, not after the 4 s backoff');
+  assert.equal(calls, 4);
+}
+
+// ---- a removed chunk (a hashed chunk that answers 404): terminal, the reload surface once, never asked again
+{
+  let clock = 0;
+  let calls = 0;
+  const surfaced = [];
+  const classified = [];
+  const chunk = createLazyChunk(async () => { calls++; throw moduleFailure(); }, {
+    now: () => clock,
+    classify: async (error) => { classified.push(error); return 'missing'; },
+    onMissing: (error) => surfaced.push(error),
+  });
+  await assert.rejects(chunk.load());
+  await settle();
+  assert.equal(chunk.terminal, true);
+  assert.equal(surfaced.length, 1, 'the reload surface shows');
+  clock = 3_600_000;
+  await assert.rejects(chunk.load());
+  await settle();
+  assert.equal(calls, 1, 'a removed chunk is never asked again');
+  assert.equal(surfaced.length, 1);
+  assert.equal(classified.length, 1);
+  // a transient verdict keeps the re-ask; an opener or a stylesheet is terminal without a probe
+  let probes = 0;
+  const transient = createLazyChunk(async () => { throw moduleFailure(); }, { classify: async () => { probes++; return 'transient'; } });
+  await assert.rejects(transient.load());
+  await settle();
+  assert.equal(transient.terminal, false);
+  const opener = createLazyChunk(async () => { throw moduleFailure(); }, { opener: true, classify: async () => { probes++; return 'missing'; } });
+  await assert.rejects(opener.load());
+  await settle();
+  assert.equal(probes, 1, 'an opener is not probed (its trigger reloads)');
+  // outside a document the platform classifier sends no probe (no fetch in a Node receipt)
+  const realFetch = globalThis.fetch;
+  let fetched = 0;
+  globalThis.fetch = async () => { fetched++; return { status: 404 }; };
+  const plain = createLazyChunk(async () => { throw moduleFailure(); });
+  await assert.rejects(plain.load());
+  await settle();
+  globalThis.fetch = realFetch;
+  assert.equal(fetched, 0);
+  assert.equal(plain.terminal, false);
+}
+
+// ---- a load of several parts: a module that failed first cannot hide its stylesheet's failure (Promise.all keeps the
+// first rejection; importAll settles every part)
+{
+  const parts = () => {
+    const css = new Promise((_, reject) => setTimeout(() => reject(cssFailure()), 5));
+    const module = Promise.reject(moduleFailure());
+    css.catch(() => {});
+    module.catch(() => {});
+    return [module, css];
+  };
+  const raced = createLazyChunk(() => Promise.all(parts()));
+  await assert.rejects(raced.load(), /dynamically imported module/);
+  assert.equal(raced.terminal, false, 'Promise.all: the module rejected first and the stylesheet failure is lost');
+  let calls = 0;
+  const settledParts = createLazyChunk(() => { calls++; return importAll(parts()); });
+  await assert.rejects(settledParts.load(), /preload CSS/);
+  assert.equal(settledParts.terminal, true, 'importAll: a stylesheet failure in any part is terminal');
+  await assert.rejects(settledParts.load(), /preload CSS/);
+  assert.equal(calls, 1, 'never asked again: it would run unstyled');
+  assert.deepEqual(await importAll([Promise.resolve(1), 'two', Promise.resolve(3)]), [1, 'two', 3]);
+  await assert.rejects(importAll([Promise.resolve(1), Promise.reject(moduleFailure())]), /dynamically imported module/);
 }
 
 // ---- a loader that throws synchronously fails the same way; a dropped promise is never an unhandled rejection
@@ -138,4 +239,4 @@ assert.equal(isStylesheetFailure(null), false);
 
 await settle();
 assert.deepEqual(unhandled, []);
-console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet or an opener\'s chunk is terminal; a module failure is asked again at once, then past the 2/4 s backoff, never offline, five at most');
+console.log('lazyChunk.selftest: idle/loading/ready/failed; a failed stylesheet (any part), a removed chunk or an opener\'s chunk is terminal; a module failure is asked again at once, then past the backoff capped at a minute, never offline, with no budget');

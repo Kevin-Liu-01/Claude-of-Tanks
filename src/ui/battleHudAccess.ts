@@ -1,4 +1,4 @@
-import { createLazyChunk } from '../app/lazyChunk.ts';
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 /**
  * Retryable owner for the battle-only HUD graph (2026-11-02 audit R6: its chunks under the one lazy-chunk policy,
  * app/lazyChunk.ts: a failed module is asked again by the next battle, a failed stylesheet never, so the HUD never runs
@@ -41,7 +41,7 @@ export interface BattleHudAccess {
 const DEFAULT_LOADERS: BattleHudLoaders = {
   // The aerial instruments' stylesheet loads beside the HUD, never from inside its graph:
   // plain-Node selftests import hud.ts, and Node cannot load a stylesheet.
-  hud: async () => (await Promise.all([import('./hud.ts'), import('./aerialHud.css')]))[0],
+  hud: async () => (await importAll([import('./hud.ts'), import('./aerialHud.css')]))[0],
   damagePanel: async () => await import('./damagePanel.ts'),
   tankThumbs: () => import('./tankThumbs.ts'),
 };
@@ -51,7 +51,9 @@ export function createBattleHudAccess(
   engineCtx: TankThumbEngineContext,
   loaders: BattleHudLoaders = DEFAULT_LOADERS,
 ): BattleHudAccess {
-  const bundle = createLazyChunk(() => Promise.all([
+  // (every part settles first, importAll: a module that failed first must not hide aerialHud.css's failure, or the
+  // next battle would ask again and run the HUD without it)
+  const bundle = createLazyChunk(() => importAll([
     loaders.hud(),
     loaders.damagePanel(),
     loaders.tankThumbs(),
