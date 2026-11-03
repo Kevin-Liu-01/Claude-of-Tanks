@@ -2,6 +2,8 @@
 //  - deferred beats: a beat due under the killcam's suppression fires (its particles join the hidden emitters; it was
 //    dropped for good), a light due then stays dark, and a deferred wreck made for one life of a visual never lands on
 //    the next (a Studio actor reset inside the delay was wrecked again);
+//  - a building's stages: a replayed or doubled stage event lays nothing again (its dust, the mask's collapse stamp, the
+//    stage builders ran twice: a building stood up and fell again);
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -55,4 +57,35 @@ function fakeVisual() {
   fx.resetAll();
 }
 
-console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life');
+// ---- a building's stages are laid once ----
+{
+  const { fx, bus, frames } = runtime();
+  frames(2);
+  // what the stage threw: its chunks (and any media), summed over the pools
+  const media = () => {
+    let n = 0;
+    fx.group.traverse((o) => { if (/^fx-(chunks-|volume-media)/.test(o.name) && o.geometry) n += o.geometry.instanceCount ?? 0; });
+    return n;
+  };
+  const stage = (stage, previous) => ({ structureId: 3, massClass: 'house', cx: 10, cz: 5, hw: 4, hd: 5, yaw: 0, baseY: 0, topY: 7,
+    stage, previous, cause: 'blast', munition: 'he', x: 10, y: 2, z: 0, dirX: 0, dirZ: 1, points: 300, integrity: 0 });
+  bus.emit('structure:stage', stage('collapsed', 'breached'));
+  frames(6);
+  const once = media();
+  assert.ok(once > 0, `a collapse throws its debris (${once} pieces)`);
+  fx.resetAll();
+  frames(2);
+  bus.emit('structure:stage', stage('collapsed', 'breached'));
+  bus.emit('structure:stage', stage('collapsed', 'breached'));
+  bus.emit('structure:stage', stage('breached', 'damaged'));
+  frames(6);
+  assert.equal(media(), once, 'a doubled collapse and a late lower stage lay nothing again');
+  fx.resetAll();
+  frames(2);
+  bus.emit('structure:stage', stage('collapsed', 'breached'));
+  frames(6);
+  assert.equal(media(), once, 'a reset forgets what was laid: the next match lays it again');
+  fx.resetAll();
+}
+
+console.log('fxLifecycles.selftest: deferred beats fire under suppression and never outlive their visual\'s life; a building\'s stages are laid once');

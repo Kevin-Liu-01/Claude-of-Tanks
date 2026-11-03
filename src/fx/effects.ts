@@ -87,6 +87,7 @@ import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { getDeviceTier, onPresetChange, resolvePresetName } from '../engine/quality.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { createFxTimeShiftRegistry } from './timeShift.ts';
+import { createStructureStageLedger } from './structureStageLedger.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -1345,6 +1346,8 @@ function* createFxSteps(
   const strikeDust = new Map<number, [number, number, number]>();
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
+  /** (2026-11-02 audit F10) what each building has laid here: a replayed or doubled stage or breach lays nothing again */
+  const stageLedger = createStructureStageLedger();
   let patchedWorld: FxWorldSeam | null = null;
   function attachWorld(): void {
     if (!structMask || !world) return;
@@ -6547,6 +6550,7 @@ function* createFxSteps(
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
+        if (!stageLedger.admitStage(e)) return;
         const stageSeam = seamOf(e.structureId);
         stages?.stage(e, stageSeam);
         if (e.settled) return;
@@ -6563,6 +6567,7 @@ function* createFxSteps(
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
+        if (!stageLedger.admitBreach(e)) return;
         stages?.breach(e, seamOf(e.structureId));
         fractureStages?.breach(e);
         // a section's fall (P2): its dust in the building's own colour
@@ -7638,6 +7643,7 @@ function* createFxSteps(
       rubble?.reset();
       stages?.reset();
       fractureStages?.reset();
+      stageLedger.reset();
       strikeDust.clear();
       landingGround.clear();
       skirtHead = 0; skirtCount = 0;
