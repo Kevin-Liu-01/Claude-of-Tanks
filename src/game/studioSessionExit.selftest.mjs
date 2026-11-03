@@ -335,6 +335,20 @@ const outcome = async (step) => { await settle(); return step.state; };
   assert.equal(h.calls.filter((c) => c === 'atmosphere-restored').length, 1, 'nothing lit late, so nothing restored twice');
 }
 
+// 10. A load asked for in a session that ended (a take whose fetch, or a JSON file whose read, lands after the exit):
+// refused as a cancel, and the Studio an exit closed is never entered again over the Garage.
+{
+  const h = makeStudio();
+  const owner = h.ports.session.token(); // the take is chosen in the open Studio
+  h.studio.exit();
+  await settle();
+  assert.equal(h.studio.active, false);
+  const loaded = track(h.studio.load({ map: 'verdant', actors: [{ id: 'leo2a4' }] }, { owner }));
+  assert.equal(await outcome(loaded), 'AbortError', 'the closed session\'s load ends as a cancel');
+  assert.ok(!h.calls.includes('studio-enter'), 'the load never enters the Studio again');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'add-actor'), 'no tank is staged');
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');

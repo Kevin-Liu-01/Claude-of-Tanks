@@ -2,6 +2,7 @@ import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/st
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
+import type { StudioSessionToken as StudioPanelSessionToken } from '../game/studioSession.ts';
 import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, shotRuns, type WorkspaceId } from './studioProductionPanel.ts';
 import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
 import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
@@ -298,7 +299,10 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
   getFilm(): StudioFilmSettings | null;
   setFilm(patch: Readonly<Record<string, RuntimeValue>> | null): RuntimeValue;
-  load(state: RuntimeValue): Promise<RuntimeValue>;
+  /** `owner`: the session the load was asked for in (sessionToken()); after its exit the load is refused (audit F9). */
+  load(state: RuntimeValue, options?: { readonly owner?: StudioPanelSessionToken | null }): Promise<RuntimeValue>;
+  /** The live Studio session's token, stale once that session ends (audit F9). */
+  sessionToken(): StudioPanelSessionToken;
   updateEffect(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeEffect(id: string): RuntimeValue;
   selectEffect(id: string): RuntimeValue;
@@ -1785,7 +1789,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   fileIn.addEventListener('change', () => {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
-    f.text().then((txt) => S.load(JSON.parse(txt)))
+    const owner = S.sessionToken(); // (audit F9) a file read that lands after an exit never re-enters the Studio
+    f.text().then((txt) => S.load(JSON.parse(txt), { owner }))
       .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })));
     fileIn.value = '';
   });

@@ -606,6 +606,17 @@ interface EnterOptions {
   onProgress?: ProgressListener;
 }
 
+interface LoadOptions {
+  /** An undo keeps the view it was given. */
+  readonly keepView?: boolean;
+  /**
+   * (audit F9) The session the load was asked for in (api.sessionToken()): once that session ended the load is refused
+   * (StudioSessionEnded) instead of entering the Studio again. A take or a file read that lands after an exit is the
+   * closed session's, never a reason to come back over the Garage.
+   */
+  readonly owner?: { check(): void } | null;
+}
+
 interface SeekOptions {
   pause?: boolean;
   recording?: boolean;
@@ -4023,6 +4034,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function directProduction(options: ProductionOptions): Promise<ReturnType<typeof stateJson>> {
     if (recording || loading || productionLoading) throw new Error(t('studio.error.busy'));
     const preset = productionPreset(options.presetId);
+    const owner = session.token(); // (audit F9) its own load belongs to the session it staged in
     productionLoading = true;
     try {
       await setMap(preset.map);
@@ -4042,7 +4054,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const recipe = createProductionScene(options, (x, z) => hfProxy.getHeightAt(x, z), sees);
       // Built from this build's presets: current ids, stamped so load() never renames them (SSOT 2.19).
       productionOwnsLoad = true; // this load is the staging's own (load() reads and clears it before any await)
-      const result = await load({ ...recipe, ...TANK_IDS.stamp() });
+      const result = await load({ ...recipe, ...TANK_IDS.stamp() }, { owner });
       selectActor('lead');
       setRailVisible(false);
       return result;
@@ -5466,12 +5478,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   async function load(
     json: StudioSceneInput = {},
-    opts: Readonly<Record<string, RuntimeValue>> = {},
+    opts: LoadOptions = {},
   ): Promise<ReturnType<typeof stateJson>> {
     // (audit F9) a staging sequence (directProduction) holds the scene until its own load, the one call it lets through:
     // a take or a JSON file loaded during its battlefield change raced it, and the last to finish won
     const stagedByProduction = productionOwnsLoad;
     productionOwnsLoad = false;
+    opts.owner?.check(); // (audit F9) asked for in a session that ended: never enters the Studio again
     if (productionLoading && !stagedByProduction) throw new Error(t('studio.error.loadInFlight'));
     // A scene names its vehicles under the id schema it was written in (SSOT 2.19).
     json = sceneInCurrentTankIds(json);
@@ -6211,6 +6224,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // session control
     enter: (opts: EnterOptions = {}) => enter(opts),
     exit,
+    /** (audit F9) The live session's token, stale once it ends: a caller's later load({ owner }) is refused after an exit. */
+    sessionToken: (): StudioSessionToken => session.token(),
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
       if (transportHeld(busy()) || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError(t('studio.error.invalidExportStep'));

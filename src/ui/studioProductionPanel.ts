@@ -186,7 +186,10 @@ export function mountStudioProductionPanel(
   let staging = false;
   let shotSignature = '';
   const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
-  const failure = (error: unknown): void => { say(error instanceof Error ? error.message : String(error), true); };
+  const failure = (error: unknown): void => {
+    if (error instanceof Error && error.name === 'AbortError') return; // a cancel (the Studio's exit), never a failure
+    say(error instanceof Error ? error.message : String(error), true);
+  };
   const librarySection = node('section', 'production-templates');
   librarySection.append(heading('film', productionLabel('templates')));
   // The templates (owner 2026-10-27: "make template presentation a lotttt more and better"): the Director's sequences, the
@@ -411,6 +414,9 @@ export function mountStudioProductionPanel(
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
     if (!path || sceneBusy()) return;
+    // (audit F9) the take belongs to the session it was chosen in: one that an exit closed during the fetch refuses it,
+    // instead of load() entering the Studio again over the Garage
+    const owner = S.sessionToken();
     loadingTake = true;
     refresh();
     say(productionLabel('takeLoading'));
@@ -419,7 +425,7 @@ export function mountStudioProductionPanel(
         if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
         return response.json();
       })
-      .then((json) => S.load(json))
+      .then((json) => S.load(json, { owner }))
       .then(() => {
         markCurrent(`take:${take.id}`);
         say(productionLabel('takeLoaded'));

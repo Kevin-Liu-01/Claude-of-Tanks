@@ -25,6 +25,11 @@ let clearHandler = null;
 for (const name of CORE) assert.ok(found.has(name), `studioPanel.ts declares ${name}`);
 assert.ok(clearHandler, 'the queue has a Clear handler');
 
+// Load JSON reads its file under the session it was chosen in: a read that lands after an exit is refused by load()
+// (StudioSessionEnded) instead of entering the Studio again over the Garage
+assert.match(text, /const owner = S\.sessionToken\(\);[^\n]*\n\s*f\.text\(\)\.then\(\(txt\) => S\.load\(JSON\.parse\(txt\), \{ owner \}\)\)/,
+  'the file load carries its session\'s token');
+
 function makePanel({ display = 'block', soundPreview = async () => null } = {}) {
   const calls = [];
   const timers = [];

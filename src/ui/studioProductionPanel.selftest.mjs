@@ -114,7 +114,14 @@ const S = {
   addCameraShot() { calls.push(['saveCamera']); },
   setProductionFormat(format) { this.productionFormat = format; calls.push(['format', format]); },
   applyProductionCamera(rig) { calls.push(['rig', rig]); }, setCamera(camera) { calls.push(['camera', camera]); },
-  load(json) { calls.push(['load', json]); return Promise.resolve(json); },
+  // the Studio's session (studioSession.ts): a token goes stale once its session ends; load refuses a stale owner
+  sessionGeneration: 1,
+  sessionToken() {
+    const issued = this.sessionGeneration;
+    const current = () => issued === this.sessionGeneration;
+    return { current, check() { if (!current()) throw Object.assign(new Error('The Studio session ended'), { name: 'AbortError' }); } };
+  },
+  load(json, options) { options?.owner?.check(); calls.push(['load', json]); return Promise.resolve(json); },
 };
 const root = new Element('div'), dock = new Element('div'); root.append(dock);
 const panelSource = readFileSync(new URL('./studioPanel.ts', import.meta.url), 'utf8');
@@ -245,6 +252,18 @@ assert.ok(!all().some(element => /production-status/.test(element.className ?? '
   assert.equal(calls.filter(call => call[0] === 'stage').length, stagesBefore, 'a sequence chosen while a take loads stages nothing');
   await tick(); await tick();
   assert.equal(stage.disabled, false, 'the loaded take releases Stage');
+}
+// (2026-11-02 audit F9) a take whose scene is still being fetched when the Studio exits belongs to the closed session: it
+// is never loaded (load() entered the Studio again over the Garage), and its cancel is no error toast
+{
+  const loadsBefore = calls.filter(call => call[0] === 'load').length;
+  const noticesBefore = notices.length;
+  byData('siteTake', 's01-street').fire('click');
+  S.sessionGeneration++; // the exit, while the take's scene is fetched
+  await tick(); await tick();
+  assert.equal(calls.filter(call => call[0] === 'load').length, loadsBefore, 'the closed session\'s take loads nothing');
+  assert.ok(!notices.slice(noticesBefore).some((entry) => entry[1] === 'error'), 'a cancel is no failure');
+  assert.equal(byData('siteTake', 's01-street').disabled, false, 'the take releases its controls');
 }
 byText('Capture PNG').fire('click'); await tick();
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'capture')[1]), JSON.stringify({ width: 2160, height: 3840, download: true }));
