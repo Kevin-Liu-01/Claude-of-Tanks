@@ -1079,6 +1079,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit 05-ui-2 #4: a failed surface set leaves once unheld and reloads; per-handle render listeners
     'src/ui/garageTextureResidency.selftest.mjs',
     'src/ui/garageDisplayAtlas.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #5: a failed display atlas load is asked for again by the next display
+    'src/ui/garageDisplayAtlasRetry.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
     // garage 231 (2026-10-21): the slideshow's CRT clear of every deck, rail, column, structure and kit piece
