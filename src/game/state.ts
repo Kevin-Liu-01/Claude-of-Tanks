@@ -62,7 +62,6 @@ import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spottin
 import type { CollisionRecord } from '../world/collision.ts';
 import type { EventBus, RandomSource } from './stateCore.ts';
 import type { RosterEntity, RosterGameState } from './rosterState.ts';
-import type { ModuleId } from '../sim/moduleCatalog.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { validatedContactGeometry } from '../sim/trackContact.ts';
@@ -71,8 +70,8 @@ import {
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
-  type HullImpactKind, type HullImpactResult,
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, normalizeRamContact, resolveHullImpact, resolveRamPairDamage,
+  type HullImpactKind, type HullImpactResult, type RamModuleHit,
 } from '../sim/impact.ts';
 import {
   prefersVerticalTankContact,
@@ -88,7 +87,7 @@ import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../si
 import {
   createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
+  startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -500,12 +499,6 @@ interface RamContact {
   vertical: boolean;
 }
 
-interface RamModuleHit {
-  module: ModuleId;
-  newState: 'red';
-  dmg: number;
-}
-
 interface SoloRamEvent {
   aId: string;
   bId: string;
@@ -528,33 +521,6 @@ interface RamResolution {
   b: SoloEntity;
   bWasWreck: boolean;
   event: SoloRamEvent;
-}
-
-/** A lethal hull collision physically disables the struck running gear and
- * nearest drivetrain module. This is authoritative damage state, not a
- * kill-cam-only decoration; the replay consumes the same receipts the HUD and
- * tank visual receive. */
-function applyLethalRamModuleDamage(
-  ent: SoloEntity,
-  normalX: number,
-  normalZ: number,
-): RamModuleHit[] {
-  if (!ent.combat?.destroyed || !ent.combat.modules || !ent.state) return [];
-  const rightDot = normalX * Math.cos(ent.state.yaw) - normalZ * Math.sin(ent.state.yaw);
-  const nearTrack: ModuleId = rightDot >= 0 ? 'trackR' : 'trackL';
-  const drivetrain: ModuleId = ent.combat.modules.transmission ? 'transmission' : 'engine';
-  const names: ModuleId[] = [nearTrack, drivetrain];
-  const hits: RamModuleHit[] = [];
-  for (const name of names) {
-    const module = ent.combat.modules[name];
-    if (!module || module.state === 'red') continue;
-    const hpBefore = Math.max(0, module.hp || 0);
-    module.hp = 0;
-    module.state = 'red';
-    module.repairT = 0;
-    hits.push({ module: name, newState: 'red', dmg: Math.round(hpBefore) });
-  }
-  return hits;
 }
 
 interface CrushContact {
@@ -738,8 +704,10 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   for (const entity of game.allTanks) entity.spec = getSpec(entity.specId);
   game.nextShellId = 1;
   game.timeS = 0;
-  // the clock restarts: no press of the last battle survives into this one (sim/crushPress.ts; 2026-11-02 audit M6)
+  // the clock restarts: no press or ram cooldown of the last battle survives into this one (sim/crushPress.ts; the
+  // authority's are its match's; 2026-11-02 audit M6)
   game._crushPress?.clear();
+  game._ramPairT?.clear();
   game.auxiliarySmokeScreens = [];
   auxiliaryContexts.delete(game);
   game.fireTickAcc = 0;
@@ -2916,15 +2884,6 @@ function ramPairKey(contact: RamContact): string {
     : `${contact.b.id}|${contact.a.id}`;
 }
 
-function normalizeRamContact(contact: RamContact): void {
-  if (contact.nx * contact.nx + contact.nz * contact.nz >= 1e-6) return;
-  contact.nx = contact.b.state.pos.x - contact.a.state.pos.x;
-  contact.nz = contact.b.state.pos.z - contact.a.state.pos.z;
-  const inverseLength = 1 / Math.max(1e-6, Math.hypot(contact.nx, contact.nz));
-  contact.nx *= inverseLength;
-  contact.nz *= inverseLength;
-}
-
 function emitRamModuleHits(
   bus: EventBus,
   entity: SoloEntity,
@@ -2947,30 +2906,13 @@ function resolveRamDamage(
   if (previousContactS !== undefined && game.timeS >= previousContactS &&
       game.timeS - previousContactS < RAM_PAIR_COOLDOWN_S) return null;
   const { a, b } = contact;
-  if (a.combat.destroyed) return null;
-  normalizeRamContact(contact);
-  // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-  const afx = Math.sin(a.state.yaw), afz = Math.cos(a.state.yaw);
-  const bfx = Math.sin(b.state.yaw), bfz = Math.cos(b.state.yaw);
-  const damage = ramShares(
-    game.ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
-    ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
-    contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
-    contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
-  );
-  if (damage.total <= 0) return null;
+  // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
+  // lethal ram reddens the struck track and the drivetrain — the authority's one rule (sim/impact.ts resolveRamPairDamage;
+  // a wreck rams nothing, and teammates separate without damage or a kill credit: 2026-11-02 audit M6)
+  const dealt = resolveRamPairDamage(game.ruleset.physics, contact);
+  if (!dealt) return null;
   cooldowns.set(key, game.timeS);
-  const bWasWreck = b.combat.destroyed;
-  const damageA = hullDamageTaken(a.combat, damage.toA);
-  const damageB = bWasWreck ? 0 : hullDamageTaken(b.combat, damage.toB);
-  a.combat.hp = Math.max(0, a.combat.hp - damageA);
-  if (!bWasWreck) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-  a.combat.destroyed ||= a.combat.hp <= 0;
-  if (!bWasWreck) b.combat.destroyed ||= b.combat.hp <= 0;
-  const aModulesHit = a.combat.destroyed
-    ? applyLethalRamModuleDamage(a, contact.nx, contact.nz) : [];
-  const bModulesHit = b.combat.destroyed && !bWasWreck
-    ? applyLethalRamModuleDamage(b, -contact.nx, -contact.nz) : [];
+  const { damageA, damageB, bWasDestroyed: bWasWreck, aModulesHit, bModulesHit } = dealt;
   return {
     a,
     b,

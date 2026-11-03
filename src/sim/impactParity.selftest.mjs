@@ -20,7 +20,9 @@ const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.ur
 const modes = readFileSync(new URL('./matchModes.ts', import.meta.url), 'utf8');
 
 // ---- structural parity ------------------------------------------------------------------------------------------
-for (const name of ['exchangeRamMomentum', 'fallAttitudeFactor', 'hullVelocityAlong', 'ramAggression', 'ramShares', 'resolveHullImpact']) {
+// (2026-11-02 audit M6: the ram's pricing — the split, the struck faces, the teammate gate, the lethal ram's modules — is
+// one sim/impact.ts function both drivers call, resolveRamPairDamage, no longer a copy in each)
+for (const name of ['exchangeRamMomentum', 'fallAttitudeFactor', 'hullVelocityAlong', 'resolveHullImpact', 'resolveRamPairDamage']) {
   assert.match(solo, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '../sim/impact.ts'`), `the solo step imports ${name} from sim/impact.ts`);
   assert.match(authority, new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from './impact.ts'`), `the authority imports ${name} from sim/impact.ts`);
 }
@@ -34,8 +36,7 @@ for (const text of [solo, authority]) {
   assert.match(text, /const closing = prior \+ impact;/, 'the crash accumulates its closing speed in both sims');
   assert.match(text, /priorClosingMps: prior/, 'and prices only the new energy in both sims');
   assert.match(text, /kind: 'fall',\s*closingMps: landing, priorClosingMps: 0, faceForward: 0, sideSign: 0, attitudeFactor, rng/, 'a landing is priced on the vertical closing speed and the attitude in both sims');
-  assert.match(text, /ramAggression\(contact\.closing, -contact\.vAn\), ramAggression\(contact\.closing, contact\.vBn\)/, 'the ram aggression split is shared');
-  assert.match(text, /contact\.vertical \? 0 : -\(contact\.nx \* afx \+ contact\.nz \* afz\)/, 'the rammer\'s struck face is shared');
+  assert.match(text, /resolveRamPairDamage\((game\.)?ruleset\.physics, contact\)/, 'a ram is priced by the one shared rule');
   assert.match(text, /if \(!contact\.vertical\) \{/, 'roof landings skip the horizontal exchange in both sims');
   assert.match(text, /vAn: -closing, vBn: 0, vertical: true/, 'a roof landing queues the upper hull as the aggressor in both sims');
   assert.match(text, /const vAn = hullVelocityAlong\((self|entity)\.state, (normalX|nx), (normalZ|nz)\);\s*const vBn = hullVelocityAlong\(other\.state, (normalX|nx), (normalZ|nz)\);\s*const closing = vBn - vAn;/,
@@ -45,6 +46,11 @@ assert.match(solo, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, c
   'the solo step exchanges momentum with the ruleset restitution');
 assert.match(authority, /exchangeRamMomentum\(contact\.a\.state, contact\.b\.state, contact\.nx, contact\.nz,\s*contact\.a\.spec\.weightTons, contact\.b\.spec\.weightTons, contact\.vAn, contact\.vBn, ruleset\.physics\.ramRestitution\)/,
   'the authority exchanges momentum with the ruleset restitution');
+{
+  const impact = readFileSync(new URL('./impact.ts', import.meta.url), 'utf8');
+  assert.match(impact, /ramAggression\(contact\.closing, -contact\.vAn\), ramAggression\(contact\.closing, contact\.vBn\)/, 'the ram aggression split is shared');
+  assert.match(impact, /contact\.vertical \? 0 : -\(contact\.nx \* afx \+ contact\.nz \* afz\)/, 'the rammer\'s struck face is shared');
+}
 assert.match(modes, /entity\.modePhysics = ruleset\.physics;/, 'the mode controller stamps the physics block on every entity');
 assert.match(authority, /emit\('tank_destroyed', \{ id: entity\.id, killerId: entity\.id, cause: kind \}\)/, 'a self-inflicted destruction names its cause and its own hull as the killer on the wire');
 

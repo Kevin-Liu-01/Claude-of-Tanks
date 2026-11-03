@@ -36,7 +36,7 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, resolveHullImpact, resolveRamPairDamage,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
@@ -69,7 +69,6 @@ import {
   tickReload,
   tickFire,
   tickModuleRepairs,
-  hullDamageTaken,
 } from './damage.ts';
 import type {
   CombatState,
@@ -1690,14 +1689,9 @@ export function createAuthoritativeMatch({
     pendingRams.length = 0;
   }
 
-  function ramPairCanDamage(key: string, contact: PendingRam): boolean {
+  function ramPairCooling(key: string): boolean {
     const last = ramPairTime.get(key);
-    if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) return false;
-    const { a, b } = contact;
-    if (!a.combat || !b.combat || a.combat.destroyed) return false;
-    // Teammates still resolve physical separation, but contact can never
-    // become friendly-fire damage or a kill credit.
-    return a.team !== b.team;
+    return last != null && timeS - last < RAM_PAIR_COOLDOWN_S;
   }
 
   function recordRamDestructions(
@@ -1719,26 +1713,15 @@ export function createAuthoritativeMatch({
   }
 
   function resolveRamPair(key: string, contact: PendingRam): void {
-    if (!ramPairCanDamage(key, contact)) return;
+    if (ramPairCooling(key)) return;
     const { a, b } = contact;
-    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-    const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
-    const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
-    const damage = ramShares(
-      ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
-      ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
-      contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
-      contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
-    );
-    if (damage.total <= 0) return;
+    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
+    // lethal ram reddens the struck track and the drivetrain — the solo step's one rule (sim/impact.ts resolveRamPairDamage;
+    // a wreck rams nothing, and teammates separate without friendly-fire damage or a kill credit: 2026-11-02 audit M6)
+    const dealt = resolveRamPairDamage(ruleset.physics, contact);
+    if (!dealt) return;
     ramPairTime.set(key, timeS);
-    const bWasDestroyed = b.combat.destroyed;
-    const damageA = hullDamageTaken(a.combat, damage.toA);
-    const damageB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
-    a.combat.hp = Math.max(0, a.combat.hp - damageA);
-    if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-    a.combat.destroyed = a.combat.hp <= 0;
-    if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
+    const { damageA, damageB, bWasDestroyed } = dealt;
     emit('tank_ram', {
       aId: a.id,
       bId: b.id,
@@ -2609,9 +2592,12 @@ export function createAuthoritativeMatch({
     upper: AuthoritativeEntity,
     lower: AuthoritativeEntity,
     closing: number,
+    nx = 0,
+    nz = 0,
   ): void {
-    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse
-    pendingRams.push({ a: upper, b: lower, closing, nx: 0, nz: 0, vAn: -closing, vBn: 0, vertical: true });
+    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse. The contact's
+    // normal rides it, as the solo step's queueRam takes it (a lethal landing reddens the track on that side)
+    pendingRams.push({ a: upper, b: lower, closing, nx, nz, vAn: -closing, vBn: 0, vertical: true });
   }
 
   function advanceTankContacts(dt: number): void {

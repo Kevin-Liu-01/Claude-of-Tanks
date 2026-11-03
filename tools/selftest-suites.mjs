@@ -1692,6 +1692,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    'src/sim/ramModuleLaw.selftest.mjs', // 2026-11-02 audit M6: one module law, and a lethal ram's module damage on both drivers
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
     'src/sim/driverStepParity.selftest.mjs',
     'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
