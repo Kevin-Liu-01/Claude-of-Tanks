@@ -2,7 +2,7 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/sim/terrainDeformation.ts",
- "sourceSha256": "3735517c9063dadfb85fb7a401e931330957d370289c6b074056264567b5260b",
+ "sourceSha256": "b9d6cb9e5788d46c0861601ecf24d30056ed87d476096a04fda0aefadefa953a",
  "ops": [
   {
    "op": "setTime",

@@ -137,6 +137,21 @@ export function stampBounds(stamp: TerrainStamp, out: number[] | Float64Array): 
   return out;
 }
 
+/**
+ * A copy of an overlay's ground kept in step with it (2026-11-02 audit S2: a world kernel's overlay, wasmWorldKernels.ts),
+ * told each change after the overlay has made it: a crater it admitted, a heap with its start as it resolved it, a course,
+ * a reset, the clock. A mirror bound to the overlay (`TerrainDeformation.mirror`) is told every change once until its
+ * unbind, so a copy never wraps the overlay's own methods and never hears a stamp twice.
+ */
+export interface TerrainDeformationMirror {
+  crater(stamp: CraterStamp): void;
+  rubble(stamp: RubbleStamp): void;
+  course(stamp: CourseStamp): void;
+  reset(): void;
+  /** The clock set (NaN: unset). */
+  time(timeS: number): void;
+}
+
 export interface TerrainDeformation {
   /** Stamps in the order they were added (the order every peer adds them). */
   readonly stamps: readonly TerrainStamp[];
@@ -172,6 +187,9 @@ export interface TerrainDeformation {
   readonly clockS: number;
   /** The lattice offsets' cache epoch: moves whenever the ground can read differently (a receipt's probe). */
   readonly cacheEpoch: number;
+  /** Tell `mirror` every later change (TerrainDeformationMirror) until the returned unbind; a mirror bound already is
+   * refused (it would hear each change twice). */
+  mirror(mirror: TerrainDeformationMirror): () => void;
   /** Whether a heap is still rising. */
   readonly growing: boolean;
   /** Grows by one with every clock step that moved a rising heap (a renderer re-reads those heaps' ground). */
@@ -367,6 +385,8 @@ export function createTerrainDeformation(): TerrainDeformation {
   let growthRevision = 0;
   /** Rubble stamps still rising (indices into `stamps`). */
   const rising: number[] = [];
+  /** The copies kept in step (`mirror`): each told every change once, after the overlay made it. */
+  const mirrors: TerrainDeformationMirror[] = [];
   const growthOf = (stamp: TerrainStamp): number =>
     stamp.kind === 'rubble' && Number.isFinite(stamp.t0) && Number.isFinite(now) ? rubbleGrowth(now - stamp.t0, stamp.growS) : 1;
   // (perf-249, the battle-scale profile: a contact read near a crater re-summed every stamp at three lattice corners, a
@@ -484,7 +504,10 @@ export function createTerrainDeformation(): TerrainDeformation {
       const reach = radiusM * CRATER_REACH * 1.1;
       const stamp: CraterStamp = { kind: 'crater', x, z, radiusM, depthM, rimM, seed: seed >>> 0, p1, p2, p3 };
       const admitted = admit(stamp, x - reach, z - reach, x + reach, z + reach, false);
-      if (admitted) maxRaise = Math.min(MAX_RAISE_M, maxRaise + rimM * (1 + RIM_BREAK));
+      if (admitted) {
+        maxRaise = Math.min(MAX_RAISE_M, maxRaise + rimM * (1 + RIM_BREAK));
+        for (let i = 0; i < mirrors.length; i++) mirrors[i].crater(stamp);
+      }
       return admitted;
     },
     addRubble(cx, cz, hw, hd, yaw, heightM, t0) {
@@ -501,6 +524,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       const ez = Math.abs(stamp.c) * hd + Math.abs(stamp.s) * hw + falloff;
       admit(stamp, cx - ex, cz - ez, cx + ex, cz + ez, true);
       maxRaise = Math.min(MAX_RAISE_M, maxRaise + height);
+      for (let i = 0; i < mirrors.length; i++) mirrors[i].rubble(stamp);
     },
     addCourse(stamp) {
       courseExtent(stamp, _courseBox);
@@ -508,6 +532,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       let top = 0;
       for (let k = 1; k < stamp.profile.length; k += 2) top = Math.max(top, stamp.profile[k]);
       courseRaise = Math.min(MAX_COURSE_M, courseRaise + top);
+      for (let i = 0; i < mirrors.length; i++) mirrors[i].course(stamp);
     },
     reset() {
       stamps.length = 0;
@@ -520,11 +545,13 @@ export function createTerrainDeformation(): TerrainDeformation {
       // (2026-11-02 audit S2) the clock with the stamps: the next battle's first heap never starts on this one's last time
       now = CLOCK_UNSET;
       invalidateLattice();
+      for (let i = 0; i < mirrors.length; i++) mirrors[i].reset();
     },
     setTime(timeS) {
       const next = Number.isFinite(timeS) ? timeS : CLOCK_UNSET;
       if (!Object.is(next, now) && (clockMovesGround(now) || clockMovesGround(next))) invalidateLattice();
       now = next;
+      for (let i = 0; i < mirrors.length; i++) mirrors[i].time(now);
       if (!rising.length) return;
       growthRevision++;
       // a heap fully risen leaves the list (its ground moves no more)
@@ -534,6 +561,14 @@ export function createTerrainDeformation(): TerrainDeformation {
     },
     get clockS() { return now; },
     get cacheEpoch() { return latticeEpoch; },
+    mirror(mirror) {
+      if (mirrors.includes(mirror)) throw new Error('terrain deformation: this mirror is bound already (it would hear each change twice)');
+      mirrors.push(mirror);
+      return () => {
+        const at = mirrors.indexOf(mirror);
+        if (at >= 0) mirrors.splice(at, 1);
+      };
+    },
     get growing() { return rising.length > 0; },
     get growthRevision() { return growthRevision; },
     stampGrowth(index) {

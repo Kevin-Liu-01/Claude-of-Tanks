@@ -97,7 +97,11 @@ interface WorldKernels {
    * grid carries the bots' clearance scans over it).
    */
   obstacleGrid(records: CollisionRecord[], cellSize?: number, support?: boolean): ObstacleQuery;
-  /** Mirror the match's overlay (its stamps so far, then every change, in the order the TypeScript makes them). */
+  /**
+   * Mirror the match's overlay (its clock and stamps so far, then every change, in the order the TypeScript makes them),
+   * or none (null). One overlay at a time (2026-11-02 audit S2): binding the overlay mirrored already changes nothing,
+   * binding another unbinds the last first, so no overlay's change reaches the kernel twice or after its unbind.
+   */
   mirrorOverlay(overlay: TerrainDeformation | null): void;
   /** The structure support field (structureSupport.ts) over `terrain`, the match's deformed field, on the kernel. */
   supportField(terrain: SupportHeightField): StructureSupportField;
@@ -112,7 +116,8 @@ export function compileWorldKernels(bytes: BufferSource): Promise<WorldKernelMod
 export function instantiateWorldKernels(module: WorldKernelModule, heightAt: (x: number, z: number) => number): WorldKernels {
   const w = new WebAssembly.Instance(module, { env: { terrain_height: heightAt } }).exports as unknown as CotSimExports;
   let supportRecords: CollisionRecord[] | null = null;
-  let mirrored: TerrainDeformation | null = null;
+  /** The ground binding: none, or the overlay the kernel mirrors and its unbind. */
+  let ground: { readonly overlay: TerrainDeformation; readonly unbind: () => void } | null = null;
   return {
     contactSurface: () => ({ heightAt: w.contact_height, cellFlippedAt: (x, z) => w.contact_flipped(x, z) === 1 }),
     obstacleGrid(records, cellSize = 24, support = false) {
@@ -122,9 +127,12 @@ export function instantiateWorldKernels(module: WorldKernelModule, heightAt: (x:
       return Object.assign(grid.query, { clearance: createClearanceScan(w, grid.indexed) });
     },
     mirrorOverlay(overlay) {
+      // (its every change already reached the kernel, once)
+      if (ground && ground.overlay === overlay) return;
+      ground?.unbind();
+      ground = null;
       w.overlay_reset();
-      mirrored = overlay;
-      if (overlay) mirrorOverlay(w, overlay, () => mirrored === overlay);
+      if (overlay) ground = { overlay, unbind: mirrorOverlay(w, overlay) };
     },
     supportField(terrain) {
       if (!supportRecords) throw new Error('the support field needs the obstacles grid built with support');
@@ -232,42 +240,51 @@ function loadSupportRecords(w: CotSimExports, records: CollisionRecord[], grid: 
   return records;
 }
 
-/** Replay `overlay`'s stamps into the kernel, then forward its every change while `live()`. */
-function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation, live: () => boolean): void {
+/**
+ * Replay `overlay`'s clock and stamps into the (reset) kernel, then keep it in step: the overlay tells its mirrors each
+ * change (terrainDeformation.ts TerrainDeformationMirror) until the returned unbind. A heap goes over with its start as the
+ * overlay resolved it, so the kernel's copy never rests on its own clock's history (a heap laid between a bind and the
+ * next clock step started on the kernel's unset clock: risen at once there, rising here); the revisions are asserted in
+ * step after every stamp, so a change told twice, or one the kernel refused, throws where it happens.
+ */
+function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation): () => void {
   const course = (stamp: { cx: number; cz: number; c: number; s: number; hw: number; skirtM: number; profile: Float64Array }) => {
     const ptr = w.scratch_ptr(stamp.profile.length * 8);
     new Float64Array(w.memory.buffer, ptr, stamp.profile.length).set(stamp.profile);
     w.overlay_add_course(stamp.cx, stamp.cz, stamp.c, stamp.s, stamp.hw, stamp.skirtM, ptr, stamp.profile.length);
   };
+  // the clock first: the replayed heaps read it as the overlay's do
+  w.overlay_set_time(overlay.clockS);
   for (const stamp of overlay.stamps) {
     // (each stamp as it was admitted: a heap with its resolved start, so a replay rises on the same clock)
     if (stamp.kind === 'crater') w.overlay_add_crater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed);
     else if (stamp.kind === 'rubble') w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0, 1);
     else course(stamp);
   }
-  const { addCrater, addRubble, addCourse, reset, setTime } = overlay;
-  Object.assign(overlay, {
-    addCrater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number) {
-      const admitted = addCrater(x, z, radiusM, depthM, rimM, seed);
-      if (live()) w.overlay_add_crater(x, z, radiusM, depthM, rimM, seed >>> 0);
-      return admitted;
+  const offset = overlay.revision - w.overlay_revision();
+  const inStep = (what: string): void => {
+    if (overlay.revision - w.overlay_revision() !== offset) throw new Error(`world kernels: the mirrored ground left the overlay's step at ${what}`);
+  };
+  return overlay.mirror({
+    crater(stamp) {
+      if (w.overlay_add_crater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed) !== 1) {
+        throw new Error('world kernels: the mirrored ground refused a crater the overlay admitted');
+      }
+      inStep('a crater');
     },
-    addRubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0?: number) {
-      addRubble(cx, cz, hw, hd, yaw, heightM, t0);
-      if (live()) w.overlay_add_rubble(cx, cz, hw, hd, yaw, heightM, t0 ?? 0, t0 === undefined ? 0 : 1);
+    rubble(stamp) {
+      w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0, 1);
+      inStep('a heap');
     },
-    addCourse(stamp: Parameters<TerrainDeformation['addCourse']>[0]) {
-      addCourse(stamp);
-      if (live()) course(stamp);
+    course(stamp) {
+      course(stamp);
+      inStep('a course');
     },
     reset() {
-      reset();
-      if (live()) w.overlay_reset();
+      w.overlay_reset();
+      inStep('a reset');
     },
-    setTime(timeS: number) {
-      setTime(timeS);
-      if (live()) w.overlay_set_time(timeS);
-    },
+    time(timeS) { w.overlay_set_time(timeS); },
   });
 }
 

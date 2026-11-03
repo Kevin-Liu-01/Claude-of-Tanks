@@ -2027,6 +2027,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit S2: the kernels' cross-call protocols checked per call (write-once lattice, walk ids, a hull's
     // query/begin/samples, grid handles), on the package and at the seam
     'src/world/wasmKernelProtocols.selftest.mjs',
+    // 2026-11-02 audit S2: the kernel's copy of the match's ground is a binding (bound twice, rebound, unbound: each change
+    // once), and a heap laid on a clock that ran before the bind rises on it on both
+    'src/world/wasmGroundMirror.selftest.mjs',
     // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
     'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
