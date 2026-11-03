@@ -7,7 +7,8 @@ import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { barrel, equipment, hatch, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
+import { barrel, equipment, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
+import { addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
 const { box, cylX, cylY, cylZ } = KIT;
@@ -321,12 +322,11 @@ function buildK21Hull(P: TankBuilderPort): void {
         rearLampGuard(P, side);
     frontLampHoods(P);
     frontLampReceivers(P);
-    hatch(P, 'hull', -.69, 2.005, .93, .35);
-    // 2026-10-19 (owner float sweep): the outer periscopes stood 29 mm above the roof (only the middle one sits on
-    // the hatch ring); they now sit on the roof.
-    for (const x of [-1.01, -.69, -.37])
-        optic(P, 'hull', x, x === -.69 ? 2.05 : 2.021, 1.28, .21, .09, .08);
-    panel(P, 'hull', .725, 2.022, 1.695, .67, .93, .042, .085, -.13);
+    // r268b (owner: "add more upper glacis and roof details"): the driver's station is the source's raised hatch
+    // housing on the left (the 4 cm plate there floated up to 16 cm off the deck, tilted the wrong way), and the
+    // engine deck on the right carries its grille and access plate (a second round hatch and three driver's
+    // periscopes stood over the engine there): k21DeckKit.ts, with the bow lid's handle and the rear-roof tools.
+    addK21HullDeckKit(P);
     bowTowFittings(P);
     bowFascia(P);
     bowDeckPanels(P);
@@ -556,6 +556,8 @@ function buildK21Turret(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Dark', antennaPart(cylY(.0058, .0126, tip - bottom, P.q ? 8 : 6)), x, (bottom + tip) / 2, -1.61599);
     }
     addBasket(P);
+    // r268b: the hatches' spring housings, handles and periscopes, and the rear roof's mount ring, sensor and vents
+    addK21TurretDeckKit(P);
     weaponAssembly(P, () => addK21Launcher(P));
     // 2026-11-01: the former 340 x 370 x 530 mm cradle box sat inside the turret and rose through the roof at
     // elevation; the measured mantlet and its well replace it.
