@@ -110,7 +110,8 @@ function rig(id, options = {}) {
 //   bmpt_t90 (§5.368) the same grammar sized up on a T-90A hull, x ±0.20
 // Any future `spec.gun.muzzles` id must be added here (the roster guard at
 // the end of this block fails the build if one is missing).
-const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90'];
+// 268: the Tunguska-M's and Pantsir-S1's two 2A38M, one fire axis each on its inner barrel (profiles/gm352Layout.ts)
+const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'tunguska_m', 'pantsir_s1'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);

@@ -2,56 +2,101 @@
 // realize we should add more double barrel vehicels"): the Russian pair on the GM-352 chassis family, the 2K22M
 // Tunguska-M and the Pantsir-S1 on the tracked GM-352M1E (docs/references/tanks/tunguska_m.md, pantsir_s1.md).
 //
-// REGISTRAR PLACEHOLDER (268 R0): the combat rows below are final-intent (published numbers, the BMPT twin 2A42 rows'
-// ammunition and cadence model); the armour envelope and every spatial datum are the placeholder build's
-// (profiles/gm352AirDefense.ts: the BMP-3 hull and running gear under a box turret, two barrels and the SAM tubes).
-// Builder R replaces both files with the measured GM-352 build and keeps the datums here equal to the geometry.
+// The combat rows are the registrar's (268 R0: published numbers, the BMPT twin 2A42 rows' ammunition and cadence model).
+// Builder R's measured build (profiles/gm352Chassis.ts, tunguskaM.ts, pantsirS1.ts) and this spec read one datum table,
+// profiles/gm352Layout.ts: the hull's plates, the ring, the trunnion, the twin fire axes, the launch exits, the turret's
+// plates, modules and crew all stand on the geometry they describe.
 // Combat numbers are game tuning on published figures, not weapon specifications. First-party: Kevin B. Liu (NOTICE.md).
 import './afvFamily.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { crewBox, moduleBox, plate, shell, type ArmorPlate } from './specHelpers.ts';
+import { crewBox, frontPlate, leftSidePlate, modernArmor, moduleBox, plate, rearPlate, rightSidePlate, roofPlate, shell,
+  type ArmorPlate } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
+import { GM352_GEAR, GM352_HULL as H, GM352_RING, PANTSIR, TUNGUSKA, rackMouths } from './profiles/gm352Layout.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 type Point = [number, number, number];
+type Profile = readonly (readonly [number, number])[];
 
-/** The placeholder turret body (turret-local: ring plane y 0, +z forward), the same box profiles/gm352AirDefense.ts draws.
- * Its floor stands over the BMP-3 deck's raised mid strip (1.29 m behind the ring, 0.10 m over its plane) at every
- * bearing; the ring collar fills the space under it. */
-const BODY = Object.freeze({ halfWidth: .95, floorY: .12, roofY: .97, rearZ: -1.40, frontZ: 1.00 });
+/** One convex planar face, its corners counter-clockwise seen from outside. */
+function face(name: string, verts: readonly Point[], keMm: number, ceMm: number): ArmorPlate {
+  return { ...plate(name, keMm, verts[0], verts[1], verts[verts.length - 1], { keMm, ceMm, kind: 'main' }),
+    verts: verts.map((v) => [...v] as Point), convexPolygon: true };
+}
 
-// A convex box of six outward-wound faces (the TOS-1A cradle's supportBox, tos1aTagilSpecs.ts).
-function boxPlates(name: string, min: Point, max: Point, keMm: number, ceMm: number): ArmorPlate[] {
-  const c: Point = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
-  const h: Point = [(max[0] - min[0]) / 2, (max[1] - min[1]) / 2, (max[2] - min[2]) / 2];
-  const at = (x: number, y: number, z: number): Point => [c[0] + x * h[0], c[1] + y * h[1], c[2] + z * h[2]];
-  return ([
-    ['left', [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]]],
-    ['right', [[1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]]],
-    ['floor', [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]]],
-    ['roof', [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]]],
-    ['rear', [[1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, 1, -1]]],
-    ['front', [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]]],
-  ] as const).map(([face, corners]) => {
-    const verts = corners.map(([x, y, z]) => at(x, y, z));
-    return { ...plate(`${name}_${face}`, keMm, verts[0], verts[1], verts[2], { keMm, ceMm, kind: 'main' }),
-      verts, convexPolygon: true };
+/** A side profile (z, y; counter-clockwise with z to the right) swept across x = -w..w: one face per profile edge and
+ * the two flanks. */
+function prismPlates(name: string, w: number, profile: Profile, keMm: number, ceMm: number): ArmorPlate[] {
+  const edges = profile.map(([z, y], i) => {
+    const [z1, y1] = profile[(i + 1) % profile.length];
+    return face(`${name}_${i}`, [[-w, y, z], [w, y, z], [w, y1, z1], [-w, y1, z1]], keMm, ceMm);
   });
+  return [...edges,
+    face(`${name}_left`, profile.map(([z, y]) => [w, y, z] as Point).reverse(), keMm, ceMm),
+    face(`${name}_right`, profile.map(([z, y]) => [-w, y, z] as Point), keMm, ceMm)];
+}
+
+/** The regular octagonal lower turret: eight tapered flanks and its top. */
+function octagonPlates(name: string, bottomApothem: number, topApothem: number, bottomY: number, topY: number,
+  keMm: number, ceMm: number): ArmorPlate[] {
+  const at = (apothem: number, y: number, k: number): Point => {
+    const a = Math.PI / 8 + k * Math.PI / 4, r = apothem / Math.cos(Math.PI / 8);
+    return [r * Math.sin(a), y, r * Math.cos(a)];
+  };
+  const flanks = Array.from({ length: 8 }, (_, k) => face(`${name}_${k}`, [at(bottomApothem, bottomY, k - 1),
+    at(bottomApothem, bottomY, k), at(topApothem, topY, k), at(topApothem, topY, k - 1)], keMm, ceMm));
+  // seen from above, counter-clockwise runs from +z toward +x (the angle's own sense)
+  const top = face(`${name}_top`, Array.from({ length: 8 }, (_, k) => at(topApothem, topY, k)), keMm, ceMm);
+  return [...flanks, top];
+}
+
+/** A drum along z (the Pantsir's tracking radar): twelve facets and its front face. */
+function drumPlates(name: string, r: number, y: number, z0: number, z1: number, keMm: number, ceMm: number): ArmorPlate[] {
+  const at = (k: number, z: number): Point => [r * Math.cos(k * Math.PI / 6), y + r * Math.sin(k * Math.PI / 6), z];
+  return [...Array.from({ length: 12 }, (_, k) => face(`${name}_${k}`, [at(k, z0), at(k + 1, z0), at(k + 1, z1), at(k, z1)],
+    keMm, ceMm)), face(`${name}_front`, Array.from({ length: 12 }, (_, k) => at(k, z1)), keMm, ceMm)];
+}
+
+/** The GM-352 hull's plates (gm352Layout.ts GM352_HULL, the shells gm352Chassis.ts draws), each at the thickness the
+ * registrar's BMP-3-class envelope gave its namesake (aluminium-and-steel light armour: the GM-352's 7.62 mm and
+ * splinter protection). */
+function gm352HullPlates(donor: readonly ArmorPlate[]): ArmorPlate[] {
+  const mm = (name: string): [number, { keMm: number; ceMm: number }] => {
+    const p = donor.find((candidate) => candidate.name === name);
+    if (!p) throw new Error(`gm352 hull: the donor envelope has no ${name}`);
+    return [p.physicalMm, { keMm: p.keMm, ceMm: p.ceMm }];
+  };
+  const L = H.halfLength;
+  const [glacis, glacisArmor] = mm('upper_glacis'), [lowerMm, lowerArmor] = mm('lower_front');
+  const [sideMm, sideArmor] = mm('hull_side_upper_R'), [rearMm] = mm('hull_rear'), [roofMm] = mm('hull_roof');
+  return [
+    frontPlate('upper_glacis', glacis, H.sideX, H.noseY, L, H.deckY, H.glacisTopZ, glacisArmor),
+    frontPlate('lower_front', lowerMm, H.tubX, H.bellyY, H.lowerFootZ, H.noseY, L, lowerArmor),
+    rightSidePlate('hull_side_upper_R', sideMm, H.sideX, H.sponsonY, H.sideX, H.deckY, -L, H.glacisTopZ, sideArmor),
+    leftSidePlate('hull_side_upper_L', sideMm, H.sideX, H.sponsonY, H.sideX, H.deckY, -L, H.glacisTopZ, sideArmor),
+    rightSidePlate('hull_side_lower_R', sideMm, H.tubX, H.bellyY, H.tubX, H.sponsonY, H.sternBellyZ, H.lowerFootZ, sideArmor),
+    leftSidePlate('hull_side_lower_L', sideMm, H.tubX, H.bellyY, H.tubX, H.sponsonY, H.sternBellyZ, H.lowerFootZ, sideArmor),
+    rightSidePlate('track_R', 20, GM352_GEAR.xc + GM352_GEAR.trackW / 2, 0.12, GM352_GEAR.xc + GM352_GEAR.trackW / 2,
+      GM352_GEAR.topY, -L, L, { kind: 'external', moduleLink: 'trackR' }),
+    leftSidePlate('track_L', 20, GM352_GEAR.xc + GM352_GEAR.trackW / 2, 0.12, GM352_GEAR.xc + GM352_GEAR.trackW / 2,
+      GM352_GEAR.topY, -L, L, { kind: 'external', moduleLink: 'trackL' }),
+    rearPlate('hull_rear', rearMm, H.sideX, H.sternFootY, -L, H.sternTopY, -L),
+    roofPlate('hull_roof', roofMm, H.sideX, H.deckY, H.deckRearZ, H.glacisTopZ),
+  ];
 }
 
 interface AirDefenseRow {
   readonly id: string;
   readonly name: string;
-  readonly gunPivot: Point;
+  readonly gunPivot: readonly [number, number, number];
   readonly gunX: number;
+  readonly boreDx: number;
   readonly muzzleZ: number;
   readonly tubes: readonly { x: number; y: number; z: number }[];
 }
 
 function airDefenseVariant(row: AirDefenseRow): FleetTankSpec {
-  // The BMP-3's hull and running gear carry the placeholder (profiles/gm352AirDefense.ts), so its hull armour and hull
-  // modules do too: aluminium-and-steel light armour, the class of the GM-352's 7.62 mm and splinter protection.
   const spec = cloneFleetVariant(registries.tankSpecs, row.id, 'bmp3', {
     name: row.name, nation: 'Russia', era: 'modern', role: 'ifv',
   });
@@ -61,42 +106,43 @@ function airDefenseVariant(row: AirDefenseRow): FleetTankSpec {
   delete spec.roster;
   delete spec.variantOf;
   stripSilhouetteDimensions(spec.dims);
-  const { gunPivot } = row;
-  spec.armor.gunPivot = [...gunPivot];
-  spec.armor.gunBarrel = { lengthM: row.muzzleZ, radiusM: .045, collision: false };
-  // The turret body: splinter and 7.62 mm protection (Tunguska: Wikipedia, "7.62 mm small arms fire and shell splinters")
-  spec.armor.turretPlates = boxPlates('ad_turret', [-BODY.halfWidth, BODY.floorY, BODY.rearZ], [BODY.halfWidth, BODY.roofY, BODY.frontZ],
-    15, 20);
-  spec.armor.modules = [
-    ...spec.armor.modules.filter((box) => !box.turretLocal),
-    moduleBox('radio', [-.80, .30, -1.30], [-.40, .70, -.90], true),
-    moduleBox('optics', [.30, .55, .60], [.70, .84, .95], true),
-    { ...moduleBox('gun', [-row.gunX - .16, gunPivot[1] - .22, gunPivot[2] - .45],
-      [row.gunX + .16, gunPivot[1] + .22, gunPivot[2] + .65], true), external: true },
-    { ...moduleBox('missileRack', [-1.66, gunPivot[1] - .12, gunPivot[2] - .78], [1.66, gunPivot[1] + .40, gunPivot[2] + .88], true),
-      gunFollow: true, external: true },
-  ];
-  spec.armor.crew = [
-    ...spec.armor.crew.filter((box) => !box.turretLocal),
-    crewBox('gunner', [.10, .08, -.40], [.75, .80, .40], true),
-    crewBox('commander', [-.75, .08, -.40], [-.10, .80, .40], true),
-  ];
+  const gunPivot: Point = [...row.gunPivot];
+  // The GM-352 envelope (the shared fighting-compartment template on this hull's numbers), then the measured plates
+  const envelope = modernArmor({
+    hl: H.halfLength, hw: H.sideX, inW: H.tubX, floor: H.bellyY, trkTop: GM352_GEAR.topY, roofY: H.deckY,
+    turretPivot: [GM352_RING[0], GM352_RING[1], GM352_RING[2]], gunPivot, barrelLenM: row.muzzleZ, barrelRadM: 0.044,
+    glacis: [35, 45, 60], lower: [30, 35, 40], side: [25, 28, 30], skirt: null, rear: 20, roof: 10,
+    tw: 1.0, tFrontZ: 1.0, tRearZ: -1.0, tH: 0.9, cheek: [15, 15, 20], tSide: [15, 15, 20], tRear: 15, tRoof: 10,
+    mantlet: [15, 15, 20],
+  });
+  spec.armor = {
+    ...envelope,
+    gunBarrel: { lengthM: row.muzzleZ, radiusM: 0.044, collision: false },
+    hullPlates: gm352HullPlates(spec.armor.hullPlates),
+    // the driver sits front left (+x), under his vision box
+    crew: [crewBox('driver', [0.30, H.bellyY + 0.15, 2.30], [1.00, H.deckY - 0.05, 3.10])],
+    modules: envelope.modules.filter((box) => !box.turretLocal),
+  };
   spec.gun = {
     ...spec.gun,
-    muzzles: [{ x: -row.gunX, y: 0 }, { x: row.gunX, y: 0 }],
+    // one fire axis per 2A38M, on its inner bore (barrel groups 0 and 1, firing alternately)
+    muzzles: [{ x: -(row.gunX - row.boreDx), y: 0 }, { x: row.gunX - row.boreDx, y: 0 }],
     launcherMuzzles: row.tubes.map((tube) => ({ ...tube })),
   };
   for (const key of ['launcherSalvo', 'autoloader', 'fixedLaunchCanisters', 'primaryGuided', 'muzzleBoreSegments'] as const) {
     delete spec.gun[key];
   }
+  spec.visual = { ...spec.visual, trackWidthM: GM352_GEAR.trackW };
   return spec;
 }
 
-// The 2K22M's SAMs ride outboard of the 2A38M guns, four a side in two rows (Wikipedia 2K22: "eight ready-to-fire 9M311M
-// missiles, four per side"); the placeholder's gun-frame mouths, 0.17 m apart.
-const tunguskaTubes = [-1, 1].flatMap((side) => [1.33, 1.50].flatMap((x) => [.10, .28].map((y) => ({ x: side * x, y, z: 1.30 }))));
+// ---- 2K22M Tunguska-M ---------------------------------------------------------------------------------------------
+// The 2K22M's 9M311M ride outboard of the 2A38M guns, four a side, two by two (Wikipedia 2K22: "eight ready-to-fire 9M311M
+// missiles, four per side"): the launch exits on the containers' front covers.
+const { rack: TR, body: TB, radarBox: TRB, drum: TD } = TUNGUSKA;
 const tunguska = airDefenseVariant({
-  id: 'tunguska_m', name: '2K22M Tunguska-M', gunPivot: [0, .55, .45], gunX: 1.10, muzzleZ: 2.60, tubes: tunguskaTubes,
+  id: 'tunguska_m', name: '2K22M Tunguska-M', gunPivot: TUNGUSKA.gunPivot, gunX: TUNGUSKA.gunX, boreDx: TUNGUSKA.boreDx,
+  muzzleZ: TUNGUSKA.muzzleZ, tubes: rackMouths(TR.tubeXs, TR.tubeYs, TR.mouthZ),
 });
 // Wikipedia 2K22 (the M1 data for the M): ~35 t (34 t for the M), 7.90-7.93 m, 3.25 m, 3.35 m radar stowed and 4.0 m
 // raised, the V-46 at 780 hp (710 hp governed), 65 km/h, crew 4; 1,904 30 mm rounds; the guns -10 to +87 degrees.
@@ -104,7 +150,33 @@ Object.assign(tunguska, {
   hp: 2300, enginePowerHp: 780, weightTons: 34, topSpeedKmh: 65, reverseSpeedKmh: 18, hullTraverseDegS: 40,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 87, gunDepressionDeg: 10,
 });
-tunguska.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 3.36 };
+// the build shows the search radar raised, as most photographs do: the published 4.02 m raised height
+tunguska.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 4.02 };
+{
+  const gp = TUNGUSKA.gunPivot;
+  // the turret: 7.62 mm and splinter protection (Wikipedia 2K22), the lower turret, the upper body, the radar housing
+  tunguska.armor.turretPlates = [
+    ...octagonPlates('tg_lower', TD.bottomApothem, TD.topApothem, TD.bottomY, TD.topY, 15, 20),
+    ...prismPlates('tg_body', TB.halfWidth, [[TB.rearZ, TB.bottomY], [TB.frontZ, TB.bottomY], [TB.frontZ, TB.browY],
+      [TB.browZ, TB.roofY], [TB.rearZ, TB.roofY]], 15, 20),
+    ...prismPlates('tg_radar', TRB.halfWidth, [[TRB.rearZ, TRB.bottomY], [TRB.frontZ, TRB.bottomY], [TRB.frontZ, TRB.topY],
+      [TRB.rearZ + 0.08, TRB.topY], [TRB.rearZ, TRB.topY - 0.08]], 15, 20),
+  ];
+  tunguska.armor.modules.push(
+    moduleBox('radio', [-0.70, 0.30, TRB.rearZ + 0.10], [0.70, 1.00, TRB.frontZ - 0.10], true),
+    moduleBox('optics', [-0.55, TB.roofY, 0.37], [-0.29, TB.roofY + 0.36, 0.63], true),
+    { ...moduleBox('gun', [-(TUNGUSKA.gunX + 0.14), gp[1] - 0.13, gp[2] - 0.40], [TUNGUSKA.gunX + 0.14, gp[1] + 0.13, gp[2] + 0.62],
+      true), external: true },
+    { ...moduleBox('missileRack', [-TR.outerX, gp[1] + TR.bottomY, gp[2] + TR.rearZ], [TR.outerX, gp[1] + TR.topY, gp[2] + TR.mouthZ],
+      true), gunFollow: true, external: true },
+  );
+  tunguska.armor.crew.push(
+    // internalLayoutRegistry.ts spaaTunguska: commander front left (+x), gunner front right, radar operator rear left
+    crewBox('gunner', [-0.70, TB.bottomY + 0.05, -0.40], [-0.05, TB.roofY - 0.08, 0.40], true),
+    crewBox('commander', [0.05, TB.bottomY + 0.05, -0.40], [0.70, TB.roofY - 0.08, 0.40], true),
+    crewBox('radioOperator', [0.05, TB.bottomY + 0.05, -1.25], [0.70, TB.roofY - 0.08, -0.45], true),
+  );
+}
 // The BMPT Terminator 2's twin 2A42 package (afvFamily.ts, at the shown-tier floor fleetBalancePass applyShownTierFloors
 // gave it): the 2A38M fires the same 30 x 165 mm ammunition. The 1,904 rounds split evenly, as the BMPT's 850.
 tunguska.gun = {
@@ -118,25 +190,56 @@ tunguska.gun = {
     shell('3UOF8 HE-I', 'HE', 30, 8, 8, 48, 960, { pen2000Mm: 8, reloadS: .30, count: 952 }),
   ],
 };
-tunguska.armor.crew.push(crewBox('radioOperator', [-.60, .08, -1.25], [0, .75, -.55], true));
 // Russia's plain service green: the photographs' solid coat is the national_ru preset's (camoPolicy.ts), worn as stock
 tunguska.visual = { ...tunguska.visual, scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [],
   marking: 'number', number: '211' };
 
-// The Pantsir-S1 combat module: twelve 57E6 in two six-tube banks (Wikipedia Pantsir: "up to twelve 57E6"), three
-// columns of two a side, outboard of the 2A38M guns.
-const pantsirTubes = [-1, 1].flatMap((side) => [1.28, 1.42, 1.56].flatMap((x) => [.12, .27].map((y) => ({ x: side * x, y, z: 1.40 }))));
+// ---- Pantsir-S1 (tracked) -----------------------------------------------------------------------------------------
+// The Pantsir-S1 combat module: twelve 57E6 in two six-tube banks (Wikipedia Pantsir: "up to twelve 57E6"), two
+// columns of three a side, outboard of the 2A38M guns.
+const { bank: PB, body: PBD, radar: PR, platform: PP, searchRadar: PS } = PANTSIR;
 const pantsir = airDefenseVariant({
-  id: 'pantsir_s1', name: 'Pantsir-S1 (tracked)', gunPivot: [0, .55, .40], gunX: 1.08, muzzleZ: 2.60, tubes: pantsirTubes,
+  id: 'pantsir_s1', name: 'Pantsir-S1 (tracked)', gunPivot: PANTSIR.gunPivot, gunX: PANTSIR.gunX, boreDx: PANTSIR.boreDx,
+  muzzleZ: PANTSIR.muzzleZ, tubes: rackMouths(PB.tubeXs, PB.tubeYs, PB.mouthZ),
 });
 // The tracked option on the GM-352M1E (Engineering Technologies 2012; Wikipedia lists it under prototypes): no weight is
-// published; the GM-352 family's 34-35 t and the Tunguska's 780 hp V-46 are the estimate. ~7.8 m long; crew 3; 700
-// rounds a gun (1,400); the system's -5 to +85 degree envelope.
+// published; the GM-352 family's 34-35 t and the Tunguska's 780 hp V-46 are the estimate. Crew 3; 700 rounds a gun
+// (1,400); the system's -5 to +85 degree envelope.
 Object.assign(pantsir, {
   hp: 2450, enginePowerHp: 780, weightTons: 35, topSpeedKmh: 65, reverseSpeedKmh: 18, hullTraverseDegS: 39,
   turretTraverseDegS: 72, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 5,
 });
-pantsir.dims = { hullLengthM: 7.80, overallLengthM: 7.80, widthM: 3.25, heightM: 4.10 };
+// the "~7.8 m" the brief gives for the tracked option is not a published datum; the shared GM-352 hull builds 7.93 m
+pantsir.dims = { hullLengthM: 7.93, overallLengthM: 7.93, widthM: 3.24, heightM: 4.10 };
+{
+  const gp = PANTSIR.gunPivot, tilt = 0.10, cy = (PS.panelBottomY + PS.panelTopY) / 2;
+  // the search radar's panel, leaning back on its mast
+  const panel = prismPlates('ps_search', PS.halfWidth, [[PS.z - PS.depth / 2, PS.panelBottomY], [PS.z + PS.depth / 2, PS.panelBottomY],
+    [PS.z + PS.depth / 2, PS.panelTopY], [PS.z - PS.depth / 2, PS.panelTopY]], 8, 10).map((p) => ({ ...p,
+    verts: p.verts.map(([x, y, z]) => [x, cy + (y - cy) * Math.cos(tilt) - (z - PS.z) * Math.sin(tilt),
+      PS.z + (y - cy) * Math.sin(tilt) + (z - PS.z) * Math.cos(tilt)] as Point) }));
+  pantsir.armor.turretPlates = [
+    ...octagonPlates('ps_platform', PP.bottomApothem, PP.topApothem, PP.bottomY, PP.topY, 15, 20),
+    ...prismPlates('ps_body', PBD.halfWidth, [[PBD.rearZ, PBD.bottomY], [PBD.frontZ, PBD.bottomY], [PBD.frontZ, PBD.topY],
+      [PBD.rearZ + 0.20, PBD.topY], [PBD.rearZ, PBD.topY - 0.18]], 15, 20),
+    ...drumPlates('ps_radar', PR.r, PR.y, PR.rearZ, PR.frontZ, 10, 12),
+    ...panel,
+  ];
+  pantsir.armor.modules.push(
+    moduleBox('radio', [-0.45, 0.25, PBD.rearZ + 0.10], [0.45, 0.85, -0.55], true),
+    // the tracking radar is the module's sight: its drum
+    moduleBox('optics', [-PR.r, PR.y - PR.r, PR.rearZ + 0.10], [PR.r, PR.y + PR.r, PR.frontZ + 0.10], true),
+    { ...moduleBox('gun', [-(PANTSIR.gunX + 0.14), gp[1] - 0.13, gp[2] - 0.40], [PANTSIR.gunX + 0.14, gp[1] + 0.13, gp[2] + 0.60],
+      true), external: true },
+    { ...moduleBox('missileRack', [-PB.sideOuterX, gp[1] + PB.sideBottomY, gp[2] + PB.cradleRearZ],
+      [PB.sideOuterX, gp[1] + PB.tubeYs[2] + PB.tubeR, gp[2] + PB.mouthZ], true), gunFollow: true, external: true },
+  );
+  pantsir.armor.crew.push(
+    // internalLayoutRegistry.ts IFV_TWO_MAN_TURRET: gunner front right (-x), commander rear right
+    crewBox('gunner', [-0.48, PBD.bottomY + 0.05, -0.30], [-0.05, PBD.topY - 0.08, 0.20], true),
+    crewBox('commander', [-0.48, PBD.bottomY + 0.05, -0.85], [-0.05, PBD.topY - 0.08, -0.35], true),
+  );
+}
 // The BMPT T-90's twin 2A42 package (afvFamily.ts) at the Pantsir's tier VI
 pantsir.gun = {
   ...pantsir.gun, caliberMm: 30, reloadS: .28, baseAccuracy: .25, aimTimeS: 1.05, soundProfile: 'twin-2a42',

@@ -169,6 +169,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/dragunAssaultBalance.selftest.mjs',
     'src/vehicles/missileConceptCombat.selftest.mjs',
     'src/vehicles/profiles/tos1aTagil.selftest.mjs',
+    // 268: the GM-352 air-defence pair (Tunguska-M, Pantsir-S1): datums, fire axes, launch exits, the shared chassis, sweeps
+    'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
