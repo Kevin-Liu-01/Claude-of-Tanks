@@ -1254,6 +1254,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/bootLifecycle.selftest.mjs',
     'src/engine/capabilityGate.selftest.mjs',
     'src/engine/capabilityGateCache.selftest.mjs',
+    // 2026-11-02 audit R3: a worker refusal seen before confirm() is this boot's answer only (no 14-day record)
+    'src/engine/capabilityGateRefusal.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
