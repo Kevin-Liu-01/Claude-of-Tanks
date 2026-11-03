@@ -217,6 +217,10 @@ export function createFrameLoopScheduler({
   // can report `hidden` while they are visibly focused, whereas an occluded
   // browser window can remain `visible` after the user switches apps. In both
   // ordinary tab switches and window blur, no presentation work is useful.
+  // (2026-11-02 audit R3, decided: kept) a visible but unfocused window is backgrounded on purpose. A solo battle's sim
+  // advances only with presented ticks, so clicking away pauses it (drawing there would run the sim unattended); an
+  // occluded window reports `visible`; a network seat keeps its transport/authority backgroundTick (20 Hz while
+  // visible, frameLoopScheduler.selftest). Watching on a second, unfocused screen is therefore not supported.
   const isBackgrounded = () => !documentState.hasFocus();
 
   const runTick = (timestampMs: number, wallMs = now()) => {
