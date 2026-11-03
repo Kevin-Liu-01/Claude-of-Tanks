@@ -12,7 +12,7 @@ land South Africa and Australia as two heads). Research: ~/cot-lanes/sa-aus-tree
 | olifant_mk1a | Olifant Mk 1A | III | Centurion family mark | [olifant_mk1a.md](../../references/tanks/olifant_mk1a.md) |
 | olifant_mk1b | Olifant Mk 1B | III | Centurion family mark (the Olifant kit) | [olifant_mk1b.md](../../references/tanks/olifant_mk1b.md) |
 | olifant_mk2 | Olifant Mk 2 | III (moved from the UK special lane) | unchanged (262) | [olifant_mk2.md](../../references/tanks/olifant_mk2.md) |
-| ttd | Olifant TTD | IV (special) | on the fleet's Leopard 2 (the owner, 2026-11-02: "the ttd needs to properly be based on an actual leopard 2"), `profiles/ttd.ts` | [ttd.md](../../references/tanks/ttd.md) |
+| ttd | Olifant TTD | III (special; IV ruled, III by its duels) | on the fleet's Leopard 2 (the owner, 2026-11-02: "the ttd needs to properly be based on an actual leopard 2"), `profiles/ttd.ts` | [ttd.md](../../references/tanks/ttd.md) |
 
 Out (Main): the wheeled Ratel, Rooikat, Eland and Badger (no wheeled drivetrain); the Sherman Firefly and Comet (the
 Denmark M24 ruling: stock, no national kit; a possible second batch); the Mk 1A ARV and Mk 1B bridgelayer (non-combat);

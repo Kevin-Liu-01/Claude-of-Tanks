@@ -3,8 +3,8 @@
 ## Current status (release 269, 2026-11-02): a new South African build on the Leopard 2
 
 Project Loggim's Tank Technology Demonstrator (one prototype, finished 1992; Reumech OMC the hull, Lyttelton Engineering
-Works the turret and gun; at the SA Armour Museum since 1996-97): the South African special at tier IV (Main's ruling
-2026-11-02). The owner, the same day: "the ttd needs to properly be based on an actual leopard 2". Built on the fleet's
+Works the turret and gun; at the SA Armour Museum since 1996-97): the South African special, ruled at tier IV (Main, 2026-11-02) and drawn at III by
+its same-tier duels (0.49 at III, 0.21 at IV: its 105 mm against the tier's 120 mm guns; capability score 0.528). The owner, the same day: "the ttd needs to properly be based on an actual leopard 2". Built on the fleet's
 Leopard 2 (`src/vehicles/profiles/ttd.ts`): the release's Leopard 2-pattern hull and seven-wheel gear
 (`profiles/leopard2Hull.ts`) and the 2A4 turret with its square block front (`profiles/leopard2A4Turret.ts`), composed
 through their exported builders, no shared file edited; the TTD's own fit over them. Spec `southAfricaSpecs.ts`: the

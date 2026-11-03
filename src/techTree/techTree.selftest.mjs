@@ -223,6 +223,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
 // 2026-11-02 re-pin (269, Main's ruling on the South Africa tree, head A): the South Africa tree, its root the Olifant Mk 1
 // (II) with the Semel as its twin, the Mk 1A and Mk 1B (III) and the Olifant Mk 2 (III) moved here from the UK tree's
-// special lane; the TTD the special (IV). The UK tree's nations drop South Africa.
-assert.equal(digest, 'cfe7630b6ca95d6f', `tree content changed: re-pin to ${digest} if deliberate`);
+// special lane; the TTD the special (III by its same-tier duels; IV ruled). The UK tree's nations drop South Africa.
+assert.equal(digest, 'a3ac9444db3dc50b', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
