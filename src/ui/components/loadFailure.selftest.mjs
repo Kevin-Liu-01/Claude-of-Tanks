@@ -244,6 +244,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ['src/ui/garage.ts', "the battle card's quick menus", /reloadsForFailure\(quickBtn, /, /reportLoadFailure\('cot-quick-load'/],
     // (audit R6) the Gallery's 1-5 keys open a layer as its press does, so they reload as it does
     ['src/gallery/gallery.ts', "the Gallery's layer keys", /const mode = GALLERY_MODES\[Number\(event\.key\) - 1\];[^]{0,200}?if \(!pressFailed\(modeButtons\.find\(/, /markLoadFailed\(modeButtons\.filter/],
+    // (audit, 16-audio-gallery item 8) a fleet row whose vehicle did not load: every way to it (a click, the [ ] keys,
+    // the history) goes through loadTank, which reloads once it failed
+    ['src/gallery/gallery.ts', "the Gallery's fleet rows", /async function loadTank\([^]{0,200}?\{\n\s*if \(pressFailed\(rowFor\(requestedId/, /if \(row\) markLoadFailed\(\[row\], /],
   ];
   for (const [file, name, press, mark] of OPENERS) {
     const source = blankComments(readFileSync(join(ROOT, file), 'utf8'));

@@ -229,8 +229,8 @@ export interface AnatomyView {
   readonly count: number;
   /**
    * Build the vehicle's layer off screen and link its programs before it first draws (click-perf-248: the first
-   * Armor/Modules/Crew press per tank compiled them in its first frame). Resolves once they are linked; a layer already
-   * showing another vehicle state is rebuilt in place by show instead.
+   * Armor/Modules/Crew press per tank compiled them in its first frame). Resolves once they are linked; while a layer
+   * shows another vehicle state, the next state builds and links beside it, and show swaps it in.
    */
   prepare(vehicle: AnatomyVehicle): Promise<void>;
   show(mode: AnatomyMode, vehicle: AnatomyVehicle): void;
@@ -413,18 +413,32 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     item.element.style.setProperty('--co-dy', `${dy}px`);
   }
 
-  /** The vehicle's anatomy scene, built once per vehicle state (its key) and kept off screen until a layer shows it. */
+  /** A vehicle state's anatomy scene, off screen (hidden) in the stage's scene. */
+  function buildScene(nextVehicle: AnatomyVehicle): AnatomyScene {
+    const built = buildAnatomyScene(nextVehicle.armor, { caliberMm: nextVehicle.caliberMm, modern: nextVehicle.modern, metric });
+    built.frames.root.matrixAutoUpdate = false;
+    built.frames.root.visible = false;
+    host.scene.add(built.frames.root);
+    return built;
+  }
+
+  /** The vehicle's anatomy scene, built once per vehicle state (its key) and kept off screen until a layer shows it: the
+   *  one prepare staged beside a showing layer when it is that state's, else built here. */
   function ensureScene(nextVehicle: AnatomyVehicle): void {
     if (anatomy && vehicle?.key === nextVehicle.key) return;
     const keep = pickKey(selected);
     anatomy?.dispose();
     restoreExterior();
     vehicle = nextVehicle;
-    linked = null;
-    anatomy = buildAnatomyScene(nextVehicle.armor, { caliberMm: nextVehicle.caliberMm, modern: nextVehicle.modern, metric });
-    anatomy.frames.root.matrixAutoUpdate = false;
-    anatomy.frames.root.visible = false;
-    host.scene.add(anatomy.frames.root);
+    if (staged?.key === nextVehicle.key) {
+      anatomy = staged.scene;
+      linked = staged.linked;
+      staged = null;
+    } else {
+      dropStaged();
+      linked = null;
+      anatomy = buildScene(nextVehicle);
+    }
     measureHeroPoints(nextVehicle.root);
     buildBadges();
     selected = findPick(keep);
@@ -433,10 +447,17 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   // The layer's programs, linked before it first draws: the anatomy's own materials, and the depth and glass overrides
   // as they draw over each exterior mesh (KHR_parallel_shader_compile where the GPU has it). Once per vehicle state.
   let linked: Promise<void> | null = null;
-  function linkPrograms(exteriorRoot: THREE.Object3D): Promise<void> {
-    if (!anatomy) return Promise.resolve();
+  // (2026-11-02 audit, 16-audio-gallery item 9) the next state's scene while a layer shows another (a damage-lab change
+  // under the Armor layer): built and linked off screen beside the one on screen, and swapped in by show. prepare
+  // returned early there, so show built the scene in place and its programs linked in its first frame (click-perf-248).
+  let staged: { key: string; scene: AnatomyScene; linked: Promise<void> } | null = null;
+  function dropStaged(): void {
+    staged?.scene.dispose();
+    staged = null;
+  }
+  function linkPrograms(layer: AnatomyScene, exteriorRoot: THREE.Object3D): Promise<void> {
     const { renderer, scene, camera } = host;
-    const waits: Promise<unknown>[] = [renderer.compileAsync(anatomy.frames.root, camera, scene)];
+    const waits: Promise<unknown>[] = [renderer.compileAsync(layer.frames.root, camera, scene)];
     // the meshes hideExterior moves to the glass pass
     const exterior: Array<{ mesh: THREE.Mesh; material: THREE.Mesh['material'] }> = [];
     exteriorRoot.traverse((object) => {
@@ -718,9 +739,19 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         + (v.crew ? anatomy.stations.length : 0);
     },
     async prepare(nextVehicle) {
-      if (mode && !(anatomy && vehicle?.key === nextVehicle.key)) return;
+      if (mode && !(anatomy && vehicle?.key === nextVehicle.key)) {
+        // a layer shows another state: the next one builds and links beside it (the exterior is the glass pass's now,
+        // its overrides linked when the layer first showed), and show swaps it in
+        if (staged?.key !== nextVehicle.key) {
+          dropStaged();
+          const scene = buildScene(nextVehicle);
+          staged = { key: nextVehicle.key, scene, linked: linkPrograms(scene, nextVehicle.root) };
+        }
+        await staged.linked;
+        return;
+      }
       ensureScene(nextVehicle);
-      linked ??= linkPrograms(nextVehicle.root);
+      linked ??= linkPrograms(anatomy!, nextVehicle.root);
       await linked;
     },
     show(nextMode, nextVehicle) {
@@ -880,6 +911,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       if (!ARMOR_METRICS.includes(next) || next === metric) return;
       metric = next;
       anatomy?.setMetric(metric);
+      staged?.scene.setMetric(metric);
       if (selected) host.onSelect(selected, anatomyReadout(selected, metric));
       renderBar();
       renderLegend();
@@ -905,6 +937,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     },
     release() {
       view.hide();
+      dropStaged();
       anatomy?.dispose();
       anatomy = null;
       vehicle = null;
