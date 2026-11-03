@@ -423,11 +423,19 @@ export function buildK2(P: Modern3BuilderPort,
     P.add('hullDark', lathe([0.205, 0.016], [0.205, 0.022], [0.180, 0.022], [0.180, 0.016]), ...place);      // lid rim seam
   }
   // r268b (owner 2026-11-02: "add more upper glacis and roof details"): the driver's three periscopes in one armoured
-  // frame, the hatch hinge and handle, the bolted glacis and nose plates, the nose lamp housings, tow clevises and
-  // lifting eyes (xk2Hull.ts addK2GlacisFurniture). The XK2's guard-top headlight cluster gives way to the nose lamps
-  // and an amber marker on each fender face (XK2 photo 1: "PV" / "ADD" fenders); the K2B's corner boxes carry its own.
-  addK2GlacisFurniture(P, k2bBow);
+  // frame, the hatch hinge and handle, lifting eyes on the plate's front corners and the tow clevises; the plate itself
+  // stays smooth, as photographed (xk2Hull.ts addK2GlacisFurniture)
+  addK2GlacisFurniture(P);
   {
+    for (const s of [-1, 1]) {
+      if (k2bBow) continue;                                                    // the K2B's own corner housings carry its lamps (korea.ts)
+      P.add('hull', box(0.26, 0.13, 0.11), s * 1.36, 1.25, 3.375);             // headlight housing
+      P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.27, 1.26, 3.46);
+      P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.45, 1.26, 3.46);
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.15, rake: -0.19, seed: 3 + s });
+      lc.position.set(s * 1.36, 1.26, 3.44);
+      P.hullG.add(lc);
+    }
     // 267 round 2: the spare-link run is gone. Its stern seat fails the seat rules, so the solver racked it on the
     // lower bow plate, where it hung at an angle in front of the left track (critic: "reads as a loose part").
     const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.20, d: 0.26, h: 0.26, fill: 0.75, seed: 17, rotation: [0, Math.PI, 0] });

@@ -254,7 +254,7 @@ function addK2BTurretFront(P: ProceduralBuilderPort & Modern3BuilderPort): void 
  * - a launcher housing at each cheek corner, butted 1 cm into the outer cheek module's end and standing 0.41 m out from
  *   it, its front swept back only 32 degrees in plan (the cheek's V is 60, so the housing steps out of it as the K2
  *   photographs' corner boxes do) and laid back 22 degrees, a step down from the module's top, the 2x3 smoke-grenade
- *   dischargers seated in its face looking forward, out and up (photo 6's launcher wedge);
+ *   discharger tubes standing 0.28 m out of its face, up and out (photo 6's launcher wedge, photo 4's tube bundles);
  * - behind it two bolted armour boxes in line along the flank (photo 6's side modules), their outer faces 3 cm inboard of
  *   the housing's, a 1.5 cm joint between them, bolt heads in rows, an APS warning panel on the front box;
  * - the boxes stand on bracket plates off the turret's leaning wall: an open gap of 8-26 cm shows between box and wall.
@@ -298,21 +298,28 @@ function addK2BCheekPod(P: ProceduralBuilderPort & Modern3BuilderPort, side: num
   const lidZ = H.zBack + 0.13;
   P.add('turretDark', box(H.xOut - H.xIn - 0.08, 0.008, 0.018), sx((H.xIn + H.xOut) / 2 - 0.02), topAt((H.xIn + H.xOut) / 2) + 0.001, lidZ);
   for (const z of [0.48, 0.60, 0.72]) P.add('turretDark', cylX(0.016, 0.014, 6), sx(H.xOut + 0.004), 0.33, z);
-  // the 2x3 dischargers in the housing face: a flange seated in the face, the tube standing 13 cm proud, a dark mouth
+  // the 2x3 dischargers (r268b round 2, both critics: round 1's 13 cm stubs read as "flat round discs pressed into the
+  // cheek"): a bundle of real launcher tubes 0.28 m proud of the housing face, aimed up and out as the K2's are (27
+  // degrees up, 43 out from dead ahead, 13 off the face's own normal), each seated 8 cm into the housing through a collar
+  // buried in the face all round (4 cm deep, its rim at most 1.3 cm off the face plane), a dark band near the mouth and a
+  // dark mouth
   const fi = new THREE.Vector3(sx(H.xIn), yb, frontZ(H.xIn, yb)), fo = new THREE.Vector3(sx(H.xOut), yb, frontZ(H.xOut, yb));
   const ex = fo.clone().sub(fi).normalize(), ey = new THREE.Vector3(0, 1, -H.lean).normalize();
   const ez = new THREE.Vector3().crossVectors(ex, ey).normalize();
   if (ez.z < 0) ez.negate();
   const faceMid = new THREE.Vector3(sx((H.xIn + H.xOut) / 2), 0.26, frontZ((H.xIn + H.xOut) / 2, 0.26));
-  const aim = ez.clone().add(new THREE.Vector3(0, 0.22, 0)).normalize();
+  const aim = ez.clone().add(new THREE.Vector3(side * 0.25, 0.25, 0)).normalize();
   const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), aim);
   const tubeAt = (g: THREE.BufferGeometry, at: THREE.Vector3, along: number): THREE.BufferGeometry =>
     g.applyQuaternion(turn).translate(at.x + aim.x * along, at.y + aim.y * along, at.z + aim.z * along);
+  const TUBE = Object.freeze({ r: 0.045, proud: 0.28, seat: 0.08 });
   for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-    const at = faceMid.clone().addScaledVector(ex, (col - 1) * 0.125).addScaledVector(ey, (row - 0.5) * 0.12);
-    P.add('turretDark', tubeAt(cylZ(0.056, 0.03, seg), at, 0.0));                       // flange on the face
-    P.add('turretDetail', tubeAt(markSmokeTube(cylZ(0.044, 0.21, seg)), at, 0.025)); // tube, 8 cm into the housing
-    P.add('turretDark', tubeAt(new THREE.CircleGeometry(0.033, seg), at, 0.1315));     // mouth
+    const at = faceMid.clone().addScaledVector(ex, (col - 1) * 0.105).addScaledVector(ey, (row - 0.5) * 0.10);
+    P.add('turretDark', tubeAt(cylZ(0.056, 0.06, seg), at, -0.01));                     // collar, 4 cm into the face
+    P.add('turretDetail', tubeAt(markSmokeTube(cylZ(TUBE.r, TUBE.proud + TUBE.seat, seg)), at,
+      (TUBE.proud - TUBE.seat) / 2));                                                  // tube, 8 cm into the housing
+    P.add('turretDark', tubeAt(cylZ(TUBE.r + 0.004, 0.025, seg), at, TUBE.proud - 0.04)); // band near the mouth
+    P.add('turretDark', tubeAt(new THREE.CircleGeometry(0.035, seg), at, TUBE.proud + 0.0015)); // mouth
   }
   // the armour boxes behind: chamfered outer top edge, bolt heads in two rows on the outer face, a joint between them
   for (const [k, b] of D.boxes.entries()) {
