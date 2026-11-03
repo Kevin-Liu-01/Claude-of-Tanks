@@ -132,7 +132,10 @@ const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55
  */
 const SA_HEAVY = { density: 2.3, leafScale: 0.98, boughShare: 0.5 } as const;
 const SA_BUSH_GREEN = { light: 0x6c7a44, dark: 0x2c3a21, netColor: 'rgba(40,52,29,0.86)', netTextureSeed: 1101 } as const;
-const SA_DRY_STRAW = { light: 0xa6925c, dark: 0x5b4e30, netColor: 'rgba(98,86,54,0.86)', netTextureSeed: 1101 } as const;
+// (r5 blind critic: the straw net read as green tufts, the field net's green sprays over a dark cloth: the cloth now
+// paler than the hull, the garnish dry cut strips with bare branches among them: ghillieSuit.ts fieldNetPalette)
+const SA_DRY_STRAW = { light: 0xc8b07a, dark: 0x8a7650, netColor: 'rgba(176,156,104,0.88)', netTextureSeed: 1101,
+  fieldNetPalette: 'straw' } as const;
 
 export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Object.freeze({
   // ---- Group A: the new ghillie and netting --------------------------------------------------------------------

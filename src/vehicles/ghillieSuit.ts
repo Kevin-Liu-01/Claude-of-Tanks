@@ -13,7 +13,7 @@ import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghi
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import {
-  FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
+  FIELD_NET_PALETTES, STRAW_FIELD_NET_PALETTE, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
   type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
 import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
@@ -200,6 +200,11 @@ export interface GhillieConfig {
   hemFloorM?: number;
   /** The share of the garnish's bunches that are cut boughs rather than strips (default: the theatre palette's). */
   boughShare?: number;
+  /**
+   * Release 269 (the Olifant Mk 1A): a field net's palette set by the row rather than the hull's theatre: 'straw', the
+   * dry-season cover (STRAW_FIELD_NET_PALETTE, bare-branch boughs). Needs a field net (fieldClearanceM on a leafy suit).
+   */
+  fieldNetPalette?: 'straw';
   /**
    * The garnish tucked into the net: a species spray atlas of the trees lane (src/world/treeSprayAtlas.ts) for
    * leafy suits, or a painted multispectral cut garnish. Defaults by style (leafy: oak; ulcans / nakidka: woodland).
@@ -3365,7 +3370,8 @@ function makeNet(
   // shared per theatre or palette and seed (never disposed with a visual); the height map takes the cloth's bump slot
   // (the cloned canvas already samples one), so neither adds a shader variant
   const leafy = cfg.style === 'leafy';
-  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1)
+  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1,
+    isStrawNet(cfg))
     : cutLeafCoverTextures(cover, cfg.seed);
   return makeCloth(P, (m) => {
     m.color.setHex(0xffffff);
@@ -5342,6 +5348,11 @@ function turretPivotZ(P: GhillieBuilderPort): number {
 
 /** A fleet field net (the netting lane: fieldClearanceM on a leafy suit) takes the fix round's garnish and palette. */
 const isFieldNet = (cfg: GhillieConfig): boolean => cfg.fieldClearanceM !== undefined && cfg.style === 'leafy';
+/** A row's straw field net (fieldNetPalette 'straw' on a field net). */
+const isStrawNet = (cfg: GhillieConfig): boolean => isFieldNet(cfg) && cfg.fieldNetPalette === 'straw';
+/** A suit's garnish palette: the row's straw, a field net's theatre palette or the issue net's. */
+const suitNetPalette = (cfg: GhillieConfig, theatre: SuitTheatre): NetPalette => (isStrawNet(cfg) ? STRAW_FIELD_NET_PALETTE
+  : (isFieldNet(cfg) ? FIELD_NET_PALETTES : NET_PALETTES)[theatre]);
 
 function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
   const wheels = P.mats.wheels;
@@ -5383,6 +5394,8 @@ function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [Spray
   // 2026-10-12 (cam-netting; the wave builder's read of the sand hulls: "the garnish reads as sparse olive patches at
   // hero distance"): pine needles and olive sprigs are too fine to read as cover on sand paint; a crew in dry country
   // cuts the dense evergreen scrub there, holm oak, with the olive
+  // (269) a straw net's crew cut dry bush: bare branches, its own species first where the row names one
+  if (cfg.fieldNetPalette === 'straw') return [own ?? 'birch-bare', 'birch-bare'];
   if (theatre === 'desert') return [own ?? 'holmOak', 'olive'];
   if (theatre === 'snow') return [own ?? 'spruce', 'birch-bare'];
   return [own ?? 'spruce', 'beech'];
@@ -5573,7 +5586,7 @@ function* addGhillieOwner(
   const surfacesAt = probe?.surfacesAt ? probe.surfacesAt.bind(probe) : null;
   if (cfg.foliage !== false) {
     const ctx: FieldTuftContext = {
-      cfg, pal: (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity,
+      cfg, pal: suitNetPalette(cfg, theatre), q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity,
       hemFloor: support.hemFloor, theatre, owner,
       floorAt: owner === 'turret' && clearance ? (x, z) => clearance.turretHemFloor(x, z) - 0.02 : undefined,
       envOk, columns: clearance ? clearance.keepColumns(owner) : undefined,
@@ -5637,7 +5650,7 @@ function* addGhillieOwner(
   if (netMesh && !netShared && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
-      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1)
+      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1, isStrawNet(cfg))
         : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
       if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
     });
@@ -5672,14 +5685,14 @@ function* addGhillieOwner(
     parent.add(mesh);
     // the garnish was tinted for the build's theatre; on a pattern switch its colour shifts to the new theatre's
     if (P.mats.wheels && !leavesShared) {
-      const built = meanStrip(theatre, field);
+      const built = meanStrip(suitNetPalette(cfg, theatre));
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
         if (!leafy) {
           mat.map = drainSteps(coverGarnishAtlasSteps(cfg, t));
           return;
         }
-        const now = meanStrip(t, field);
+        const now = meanStrip(suitNetPalette(cfg, t));
         mat.color.setRGB(now[0] / built[0], now[1] / built[1], now[2] / built[2]);
       });
     }
@@ -5717,9 +5730,9 @@ function buildCoverPalette(P: GhillieBuilderPort, theatre: SuitTheatre): CoverPa
 }
 
 /** A theatre's garnish strips, their share-weighted mean in linear RGB (the garnish follows a scheme switch by it). */
-function meanStrip(theatre: SuitTheatre, field = false): [number, number, number] {
+function meanStrip(pal: NetPalette): [number, number, number] {
   const out: [number, number, number] = [0, 0, 0];
-  for (const [c, w] of (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre].strips) for (let k = 0; k < 3; k++) out[k] += srgbLin(c[k]) * w;
+  for (const [c, w] of pal.strips) for (let k = 0; k < 3; k++) out[k] += srgbLin(c[k]) * w;
   return out;
 }
 
