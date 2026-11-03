@@ -1529,6 +1529,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
+    'src/mp/transport/transportLifecycle.selftest.mjs', // 2026-11-02 audit M2: one retry timer per reconnect; a reopened WebRTC link hears signals; the swap names its state
     'src/mp/match/clock.selftest.mjs',
     'src/mp/match/inputStream.selftest.mjs',
     'src/mp/match/snapshotStream.selftest.mjs',
