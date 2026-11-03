@@ -1025,6 +1025,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
+    // 2026-11-02 audit R5: each pedestal visual's residency is declared (lent stays lent until the return adopts it)
+    'src/game/garagePedestalResidency.selftest.mjs',
     'src/game/garageCamoTryOn.selftest.mjs',
     'src/ui/camoPicker.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
