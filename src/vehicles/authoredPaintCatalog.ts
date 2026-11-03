@@ -2,13 +2,14 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 52 entries over 129 vehicles.
+// 53 entries over 130 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
   'paint_ares_apc_x',
   'paint_bm_oplot_m',
   'paint_bm_oplot_t',
+  'paint_bmpt_terminator',
   'paint_bmpt_terminator2',
   'paint_centurion5_1_aus',
   'paint_centurion5_2dk',
@@ -79,6 +80,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_ares_apc_x',lead: 'ares_apc',sourceTankIds: ['ares_apc'],nation: 'UK',label: 'British Three-Tone Woodland',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4e5940',weather: '#60694f',patches: ['#252a22','#544233','#72745d'],camoScale: 0.44}},
   {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Digital Woodland',tags: ['ua','woodland','digital','signature'],visual: {scheme: 'digital',base: '#68693f',weather: '#7a7b52',patches: ['#39442c','#6f563a','#9a9268'],camoScale: 0.5}},
   {id: 'paint_bm_oplot_t',lead: 'bm_oplot_t',sourceTankIds: ['bm_oplot_t'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Desert',tags: ['ua','desert','organic','signature'],visual: {scheme: 'nato',base: '#b39466',weather: '#c3a578',patches: ['#7e4c37','#5c4232','#a17f58'],camoScale: 0.58}},
+  {id: 'paint_bmpt_terminator',lead: 'bmpt_terminator',sourceTankIds: ['bmpt_terminator'],nation: 'Russia',label: 'Russian Three-Tone Desert',tags: ['ru','desert','organic','signature'],visual: {scheme: 'nato',base: '#a6936a',weather: '#b3a27a',patches: ['#5f6748','#7b6142'],camoScale: 0.6,solidWeatheringIntensity: 0.03}},
   {id: 'paint_bmpt_terminator2',lead: 'bmpt_terminator2',sourceTankIds: ['bmpt_terminator2'],nation: 'Russia',label: 'Russian Digital Woodland',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#35452f',weather: '#3f4d36',patches: ['#243128','#4d4a37','#5a523e'],camoScale: 0.5,solidWeatheringIntensity: 0.03}},
   {id: 'paint_centurion5_1_aus',lead: 'centurion5_1_aus',sourceTankIds: ['centurion5_1_aus'],nation: 'Australia',label: 'RAAC Plain Olive Drab',tags: ['woodland','geometric','signature'],visual: {scheme: 'solid',base: '#5a5c30',weather: '#696b3d',patches: []}},
   {id: 'paint_centurion5_2dk',lead: 'centurion5_2dk',sourceTankIds: ['centurion5_2dk'],nation: 'Denmark',label: 'Danish Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#454b34',weather: '#4d533b',patches: ['#3d3226','#2a2d22'],camoScale: 0.48}},

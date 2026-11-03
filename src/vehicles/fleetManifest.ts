@@ -124,7 +124,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'bmp3_rok', 'ua_m2a3_bradley',
     'bmpt_terminator2', 'bwp1', 'marder1a3', 'm3a3_bradley', 'spz_puma', 'spz_wotan',
     'raiju_ifv',
-    'bmp3', 'upior', 'bmpt_t90',
+    'bmp3', 'upior', 'bmpt_t90', 'bmpt_terminator',
   ]),
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_tk_x', 'type10_dozer', 'type90b']),

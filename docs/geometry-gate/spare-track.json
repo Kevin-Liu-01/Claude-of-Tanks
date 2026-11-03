@@ -306,8 +306,14 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "bmpt_terminator": {
+   "inputHash": "775c19156efe0625",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "bmpt_terminator2": {
-   "inputHash": "c1472d84187c34be",
+   "inputHash": "e66e943247d37c3d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

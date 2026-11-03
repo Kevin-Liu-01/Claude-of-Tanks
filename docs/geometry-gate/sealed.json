@@ -5321,6 +5321,21 @@
     -0.05,
     4.5
    ]
+  },
+  "bmpt_terminator": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 107,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 134854,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.9
+   ]
   }
  }
 }

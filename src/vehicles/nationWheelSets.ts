@@ -260,6 +260,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
+  bmpt_terminator: { donor: 't90am', reason: 'release 267: T-72 MBT hull under an IFV role → T-90M wheel' },
   // 268: the Gepard is a Leopard 1 hull under an air-defence turret: the Leopard 1A5's wheel, not the Germany IFV's Lynx
   gepard_1a2: { donor: 'leo2a4', reason: 'Leopard 1 MBT hull under an SPAA role → Germany MBT donor (the Leopard 1A5\'s)' },
   // 268: the PLA air-defence pair roll on solid dished wheels with a raised hub (photos), China's MBT standard, not the IFV ribs

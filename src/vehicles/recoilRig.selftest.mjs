@@ -108,12 +108,14 @@ function rig(id, options = {}) {
 // twin-plant id off its OWN authored bore table:
 //   bmpt_terminator2  twin 30 mm at x ±0.16 (§5.330 knob origin)
 //   bmpt_t90 (§5.368) the same grammar sized up on a T-90A hull, x ±0.20
+//   bmpt_terminator (267) the original Ramka's cradle on the T-72 hull, x ±0.15
 // Any future `spec.gun.muzzles` id must be added here (the roster guard at
 // the end of this block fails the build if one is missing).
 // 268: the Tunguska-M's and Pantsir-S1's two 2A38M, one fire axis each on its inner barrel (profiles/gm352Layout.ts);
 // the Gepard's two KDA in their flank bays (profiles/gepardFrame.ts); the PGZ-95's two side pairs, one fire axis each on its
-// upper gun with both guns of a side in that side's group (profiles/chineseAirDefenseLayout.ts); the PGZ-09's two 35 mm
-const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'];
+// upper gun with both guns of a side in that side's group (profiles/chineseAirDefenseLayout.ts); the PGZ-09's two 35 mm, one
+// a turret side (profiles/chineseAirDefenseLayout.ts)
+const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);

@@ -247,6 +247,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'BMPT T-90', shortName: 'BMPT T-90',
     searchAliases: ['Terminator 3', 'BMPT-90', 'T-90 Terminator'],
   },
+  // 267: the original Ob'yekt 199 "Ramka" (2009-2013, Kazakhstan's)
+  bmpt_terminator: {
+    displayName: 'BMPT Terminator', shortName: 'Terminator',
+    searchAliases: ['BMPT', 'Object 199', "Ob'yekt 199", 'Ramka', 'Ramka-99', 'Terminator 1'],
+  },
   bwp1: {
     displayName: 'BWP-1 (Bojowy Wóz Piechoty 1)', shortName: 'BWP-1',
     searchAliases: ['Bojowy Wóz Piechoty 1', 'BWP 1', 'Polish BMP-1', 'BMP-1 Poland'],

@@ -628,7 +628,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmp1: ['bwp1'],
   puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],
   bmp3: ['bmp3', 'bmp3_rok'],
-  bmptFive: ['bmpt_t90'],
+  bmptFive: ['bmpt_t90', 'bmpt_terminator'],
   bmptThree: ['bmpt_terminator2'],
   spaaTunguska: ['tunguska_m'],
   spaaPantsir: ['pantsir_s1'],

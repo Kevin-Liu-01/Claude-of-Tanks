@@ -442,6 +442,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —
   // the broad §5.350 skirt-ERA panel field carries the painted designation.
   bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
+  // 267 bmpt_terminator: the Kazakh vehicles' place for it (photos 13-15), the side boxes' face over the skirt rows
+  bmpt_terminator: anchor('hull', 'right', 0.46, 0.82, 0.22, -1),
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),

@@ -238,6 +238,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   tos1a_tagil: { doctrine: 'siege', viewM: 345, still: 0.111, moving: 0.061 },
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
+  // 267: the original Terminator between the BMPT-72 and the BMPT T-90 (its 2009 sight set, the T-72 hull's signature)
+  bmpt_terminator: { doctrine: 'armored-support', viewM: 410, still: 0.174, moving: 0.114 },
   // 268: the twin-cannon air defence takes the M6 Linebacker's recon doctrine (search radars see far; the tall turrets and
   // radar masts cost concealment against the Linebacker's 0.25/0.22)
   tunguska_m: { doctrine: 'recon', viewM: 440, still: 0.230, moving: 0.200 },

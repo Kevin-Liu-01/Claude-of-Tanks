@@ -77,6 +77,10 @@
    "name": "BMPT T-90",
    "card": "/brand/og-r2/tanks/bmpt_t90-card.jpg"
   },
+  "bmpt_terminator": {
+   "name": "BMPT Terminator",
+   "card": null
+  },
   "bmpt_terminator2": {
    "name": "BMPT Terminator 2",
    "card": "/brand/og-r2/tanks/bmpt_terminator2-card.jpg"

@@ -7,7 +7,8 @@ import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 import {COMBAT_GUN_RIGS} from './combatGunRigs.generated.ts';
 
-const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u',t84:'t72b3m_2016',
+// 267: the BMPT-72 (bmpt_terminator2) rides the T-72B3M (2016) X hull (it was the T-80U's)
+const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t72b3m_2016',t84:'t72b3m_2016',
   type96_72_long:'t72b3',type96_80_feng:'t80u',type96_72m_lei:'t72b3m_2016'};
 const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
 assert.equal(getSpec('t72b3m_2022').name,'T-72B3M obr. 2022');

@@ -756,6 +756,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
+    // 267 (lane bmpt-family-267): the Ob'yekt 199 "Ramka" BMPT Terminator's native fixture (frame, tubes, crew, height)
+    'src/vehicles/profiles/bmptTerminator.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
     // release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',

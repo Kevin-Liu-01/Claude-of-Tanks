@@ -138,11 +138,12 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 with 266's T49, whose M551
-// Shillelagh fires through its gun (an eighth gun-launched exception; the pins were not moved when it joined); 40 with
-// 268's three SAM vehicles (the Tunguska-M's eight 9M311M, the Pantsir-S1's twelve 57E6 and the PGZ-95's four QW-2, all
-// from their own tubes)
-assert.equal(ids.length, 40, 'review every missile/rocket vehicle when the roster changes');
+// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 at 266 (the roster's later
+// guided ids, among them the BMPT T-90, the TOS-1A Tagil, the T49 and the Griffin Viper); 38 with the original BMPT
+// Terminator's open Ataka tube pairs (bmpt_terminator, 267); 41 with 268's three SAM vehicles (the Tunguska-M's eight
+// 9M311M, the Pantsir-S1's twelve 57E6 and the PGZ-95's four QW-2, all from their own tubes)
+assert.equal(ids.length, 41, 'review every missile/rocket vehicle when the roster changes');
+// 8 since the T49's MGM-51C Shillelagh (266) joined the Sheridans', the MBT-70's, the M60A2's, the BMP-3s' and the M1A3's
 assert.equal(throughGun, 8, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();

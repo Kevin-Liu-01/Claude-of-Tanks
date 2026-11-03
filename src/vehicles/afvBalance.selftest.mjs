@@ -35,6 +35,8 @@ const EXPECTED = Object.freeze({
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 50.9, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1820, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [158, 143, 128], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
+  // 267: the original Terminator between the BMPT-72 and the BMPT T-90
+  bmpt_terminator:    { hp: 2820, speed: 60, reverse: 18, traverse: 31, damage: 51, pen: [123, 111, 99], reload: 0.29, sound: 'twin-2a42', missile: [520, 'ataka-launch'] },
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 57.2, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
   kurganets25:      { hp: 2750, speed: 70, reverse: 30, traverse: 53, damage: 82, pen: [210, 192, 174], reload: 0.38, sound: 'mk30-2', missile: [720, 'spike-launch'] },
@@ -70,7 +72,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 48, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 268: the five twin-cannon air-defence vehicles.
+assert.equal(ifvIds.length, 49, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
@@ -139,9 +141,10 @@ assert.equal(getSpec('bmp3').gun.shells[2].soundProfile, 'bmp3-100mm',
   'BMP-3 100 mm report does not masquerade as its 30 mm autocannon');
 // The authored axes are source-frame stations; the installed spec carries the owner's whole-vehicle size
 // (bmpt_t90 at 1.05 with the T-90 family, 2026-10-02 main 245aa4e4e) exactly once.
-for (const id of ['bmpt_terminator2', 'bmpt_t90']) {
+for (const id of ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator']) {
   assert.deepEqual(getSpec(id).gun.muzzles.map((muzzle) => muzzle.x),
-    (id === 'bmpt_t90' ? [-0.20, 0.20] : [-0.16, 0.16]).map((x) => x * (VEHICLE_SIZE_FACTORS[id] ?? 1)),
+    (id === 'bmpt_t90' ? [-0.20, 0.20] : id === 'bmpt_terminator' ? [-0.15, 0.15] : [-0.16, 0.16])
+      .map((x) => x * (VEHICLE_SIZE_FACTORS[id] ?? 1)),
     `${id}: authentic twin-barrel fire axes`);
 }
 
