@@ -123,6 +123,21 @@ export const STANDBY_HOST_DELAY_MS = 20_000;
 export type SessionRole = 'host' | 'peer' | null;
 
 /**
+ * Why this seat told the room it will not host (audit M2, 2026-11-02): one declared state, written only by `setDecline`.
+ * - null: willing; the room may elect it.
+ * - 'unable': it cannot host at all (no host thread, the mobile tier, the never-host switch) — the seat's own, said once
+ *   it is in the room and again whenever the room's record of it reads willing (a fresh admission, a room that reset
+ *   its declines at a match's end).
+ * - 'headroom': its frames run too slow to host well while it waits in the room; withdrawn when they recover.
+ * - 'reentry': it re-entered a running match without the match's state; withdrawn at its welcome.
+ * - 'match': it gave up hosting one match (left it, failed its boot, its tab went, it was named without the secret).
+ *   Over with that match: the room resets every decline at a match's end (roomPolicy finishMatch), and this seat
+ *   forgets its own once the room is back to waiting. It used to be a latch for the seat's life (`declinedHosting`),
+ *   which kept a capable seat out of the admin-first election and shut its headroom path.
+ */
+export type HostDecline = null | 'unable' | 'headroom' | 'reentry' | 'match';
+
+/**
  * How long an elected host's tab may hold the match with loading reports before its actor runs (plan step 8): the
  * slowest measured entries (a cold compile, the 145 s welcomed-compiling rejoin) fit; a wedged entry is replaced 30 s
  * after the last report, as before.
@@ -227,11 +242,10 @@ export class MatchSession {
   /** The host this seat's match runs on (the match_start's, then each election's): an election's previous host. */
   private servingHostId: string | null = null;
   private migrationsSeen = 0;
-  private declinedHosting = false;
-  /** This seat declined only because it re-entered a running match without its state; its welcome withdraws the decline. */
-  private declinedForReentry = false;
-  /** This seat declined because its frames ran too slow to host well (plan step 10); recovered, it offers again. */
-  private declinedForHeadroom = false;
+  /** Why this seat declines to host (HostDecline; null: willing). */
+  private decline: HostDecline = null;
+  /** The room's record of this seat's decline at its last snapshot (null before one): a true → false edge is a reset. */
+  private declineRecord: boolean | null = null;
   /** The hosting tab already told the room it is going (pagehide): leaving the match must not decline twice. */
   private handedOff = false;
   private headroom: HostHeadroomMonitor | null = null;
@@ -349,20 +363,56 @@ export class MatchSession {
     this.roomSubscriptions.push(this.room.onMatchStatus((payload) => this.matchStatus(payload)));
     this.roomSubscriptions.push(this.room.onClosed(() => { void this.leaveMatch('room_closed'); }));
     this.roomSubscriptions.push(this.room.onHostChanged((change) => { void this.handleHostChanged(change); }));
-    this.roomSubscriptions.push(this.room.onPhase(({ phase }) => { if (phase === 'joined') this.declineIfUnable(); }));
-    this.roomSubscriptions.push(this.room.onState((room) => this.revokeRemovedSeats(room)));
-    this.declineIfUnable();
+    this.roomSubscriptions.push(this.room.onPhase(({ phase }) => { if (phase === 'joined') this.syncDecline(true); }));
+    this.roomSubscriptions.push(this.room.onState((room) => { this.revokeRemovedSeats(room); this.syncDecline(false); }));
+    this.syncDecline(true);
     const pending = this.room.matchStart;
     if (pending && this.autoEnter) void this.enterMatch(pending).catch(() => { /* reported through the phase */ });
   }
 
-  /** A seat that cannot host says so once it is in the room, so the election never names it (best effort: an older room ignores it). */
-  private declineIfUnable(): void {
-    if (!this.p2pOptions || this.canHost || this.declinedHosting || this.room.phase !== 'joined') return;
-    this.declinedHosting = true;
-    this.p2pListeners.emit({ kind: 'declined' });
-    // `unable` (2026-09-30): this seat cannot host at all — elected as the last resort, its decline ends the match at once
-    void this.room.declineHost(true, { unable: true }).catch(() => { this.declinedHosting = false; });
+  /**
+   * The one writer of `decline`. `say` tells the room (true: declined, false: willing again; `unable` with it when the
+   * seat cannot run the match at all); omitted, only this seat's own record moves (the room already knows).
+   */
+  private setDecline(next: HostDecline, say?: { declined: boolean; unable?: boolean; onFail?: () => void }): void {
+    this.decline = next;
+    if (!say) return;
+    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).catch(() => { say.onFail?.(); /* the room may predate the command */ });
+  }
+
+  /**
+   * Keep the room's record of this seat's decline in step with the seat (audit M2, 2026-11-02). A seat that cannot host
+   * says so once it is in the room, so the election never names it — and again when the room's record of it reads
+   * willing on an admission or after a reset (best effort: an older room ignores it). A decline made for one match is
+   * over once the room is back to waiting: the room reset it, and a decline that reached the room after that reset is
+   * withdrawn here.
+   */
+  private syncDecline(admitted: boolean): void {
+    if (!this.p2pOptions || this.room.phase !== 'joined') return;
+    const room = this.room.room;
+    const record = room?.players.find((player) => player.id === this.room.playerId)?.hostDeclined ?? null;
+    const previousRecord = this.declineRecord;
+    this.declineRecord = record;
+    if (!this.canHost && this.decline !== 'unable') {
+      // `unable` (2026-09-30): this seat cannot host at all — elected as the last resort, its decline ends the match at once
+      this.p2pListeners.emit({ kind: 'declined' });
+      this.setDecline('unable', { declined: true, unable: true, onFail: () => { if (this.decline === 'unable') this.decline = null; } });
+      return;
+    }
+    if (record === null || !room) return;
+    if ((this.decline === 'match' || this.decline === 'reentry') && room.phase === 'waiting') {
+      this.log('info', 'the match a decline was made for is over: willing to host again', { decline: this.decline });
+      this.setDecline(null, record ? { declined: false } : undefined);
+      return;
+    }
+    // Only an admission or a move of the room's record re-says anything: a room that never echoes a decline is not asked
+    // again on every snapshot.
+    if (record === (this.decline !== null) || !(admitted || previousRecord !== record)) return;
+    // the seat's own decline, which the room's record lost (a reset at a match's end, a room that forgot): said again
+    if (this.decline === 'unable') this.setDecline('unable', { declined: true, unable: true });
+    else if (this.decline === 'headroom') this.setDecline('headroom', { declined: true });
+    // a decline this seat no longer means (one that reached the room after the reset of its match): withdrawn
+    else if (this.decline === null && room.phase === 'waiting' && this.canHost) this.setDecline(null, { declined: false });
   }
 
   /** Enter (or re-enter) the announced match: presentation, transport on the seat token, client. */
@@ -545,17 +595,13 @@ export class MatchSession {
     this.headroom.frame(frameMs);
     if (this.currentPhase !== 'lobby' || this.host || this.room.phase !== 'joined') return;
     const weak = this.headroom.weak;
-    if (weak && !this.declinedHosting) {
-      this.declinedHosting = true;
-      this.declinedForHeadroom = true;
+    if (weak && this.decline === null) {
       this.log('info', 'frames too slow to host well: declining to host', { p50FrameMs: this.headroom.p50FrameMs });
       this.p2pListeners.emit({ kind: 'declined' });
-      void this.room.declineHost(true).catch(() => { this.declinedHosting = false; this.declinedForHeadroom = false; });
-    } else if (!weak && this.declinedForHeadroom) {
-      this.declinedHosting = false;
-      this.declinedForHeadroom = false;
+      this.setDecline('headroom', { declined: true, onFail: () => { if (this.decline === 'headroom') this.decline = null; } });
+    } else if (!weak && this.decline === 'headroom') {
       this.log('info', 'frames recovered: willing to host again', { p50FrameMs: this.headroom.p50FrameMs });
-      void this.room.declineHost(false).catch(() => { /* the room may predate the command */ });
+      this.setDecline(null, { declined: false });
     }
   }
 
@@ -585,14 +631,14 @@ export class MatchSession {
     }
     this.handedOff = true;
     this.log('info', 'hosting tab going away: handing the match on', { reason, generation: this.room.generation });
-    void this.room.declineHost(true).catch(() => { /* the page is going; the socket lease still covers it */ });
+    this.setDecline('match', { declined: true }); // the page is going; the socket lease still covers a refusal
     this.stepDown(reason);
     return true;
   }
 
   /** The tab's frame headroom as the host choice reads it (diagnostics). */
   get hostHeadroom(): { weak: boolean; p50FrameMs: number | null; declined: boolean } | null {
-    return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.declinedForHeadroom } : null;
+    return this.headroom ? { weak: this.headroom.weak, p50FrameMs: this.headroom.p50FrameMs, declined: this.decline === 'headroom' } : null;
   }
 
   /**
@@ -654,12 +700,10 @@ export class MatchSession {
   }
 
   private withdrawReentryDecline(): void {
-    if (!this.declinedForReentry) return;
-    this.declinedForReentry = false;
-    if (!this.canHost || this.room.phase !== 'joined') return;
-    this.declinedHosting = false;
+    if (this.decline !== 'reentry') return;
+    if (!this.canHost || this.room.phase !== 'joined') { this.setDecline(null); return; }
     this.log('info', 'welcomed after a re-entry decline: willing to host again');
-    void this.room.declineHost(false).catch(() => { /* the room may predate the command */ });
+    this.setDecline(null, { declined: false });
   }
 
   private createPeerTransport(): WebRtcTransport {
@@ -755,10 +799,8 @@ export class MatchSession {
     const reentryAsNamedHost = hostId === me && this.canHost && !!this.hostSecret && round.room.match?.status === 'playing';
     if (reentryAsNamedHost) {
       this.log('warn', 'named host of a running match without its state: declining so a peer resumes', { matchId: payload.matchId });
-      this.declinedHosting = true;
-      this.declinedForReentry = true;
       this.p2pListeners.emit({ kind: 'declined' });
-      void this.room.declineHost(true).catch(() => { /* the room may predate the command */ });
+      this.setDecline('reentry', { declined: true });
       const timers = this.transportOptions as Partial<WebSocketTransportOptions>;
       const setTimer = timers.setTimer ?? ((callback, delayMs) => setTimeout(callback, delayMs));
       const client = this.matchClient;
@@ -790,9 +832,8 @@ export class MatchSession {
       if (hostId === me && !reentryAsNamedHost) {
         // The room named this seat but it cannot host (no thread, the mobile tier, no secret): decline and wait for the election.
         this.log('warn', 'named host cannot host; declining', { canHost: this.canHost, secret: !!this.hostSecret });
-        this.declinedHosting = true;
         this.p2pListeners.emit({ kind: 'declined' });
-        void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+        this.setDecline(this.canHost ? 'match' : 'unable', { declined: true, unable: true });
       }
       const peer = this.createPeerTransport();
       this.peerTransport = peer;
@@ -898,8 +939,8 @@ export class MatchSession {
       this.migrationActive = false;
       this.migrationHostId = null;
       // the last resort that cannot host: the room ends the match now when nobody else can (2026-09-30), instead of
-      // keeping this seat as a host that never reports for the 30 s budget
-      void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+      // keeping this seat as a host that never reports for the report budget
+      this.setDecline(this.canHost ? 'match' : 'unable', { declined: true, unable: true });
       return;
     }
     this.hostSecret = secret;
@@ -955,7 +996,7 @@ export class MatchSession {
       this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'boot failed' });
       this.migrationActive = false;
       this.migrationHostId = null;
-      void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+      this.setDecline('match', { declined: true, unable: true });
       return;
     }
     if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') { if (this.host === host) this.host = null; host.stop(); return; }
@@ -1055,10 +1096,7 @@ export class MatchSession {
       // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
       // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).
       host.stop(CLOSE_REASON.CLIENT_LEAVE, reason);
-      if (handsOn) {
-        if (this.room.phase === 'joined' && !handedOff) void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
-        this.declinedHosting = true;
-      }
+      if (handsOn && !handedOff) this.setDecline('match', this.room.phase === 'joined' ? { declined: true, unable: true } : undefined);
       this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
     }
     presentation?.dispose();

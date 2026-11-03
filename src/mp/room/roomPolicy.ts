@@ -659,6 +659,11 @@ export function finishMatch(
   };
   room.phase = 'waiting';
   resetReadiness(room);
+  // A decline lasts the match it was made for (audit M2, 2026-11-02): a host that left its match, failed its boot or
+  // handed it on was read as declined for the rest of its seat's life, and the admin-hosts-first rule stopped holding
+  // after the first match. A seat that cannot host at all says so again (MatchSession.syncDecline) — before it can be
+  // ready again, so before any start that could elect it: readiness resets here too.
+  for (const player of room.players) player.hostDeclined = false;
   touch(room, now);
   return room.lastResult;
 }
