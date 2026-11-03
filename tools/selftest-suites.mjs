@@ -1261,6 +1261,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-02 audit R3: a worker refusal seen before confirm() is this boot's answer only (no 14-day record)
     'src/engine/capabilityGateRefusal.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: an abandoned Garage restore never re-freezes the cascades; the enclosure apart from the far sleep
+    'src/engine/shadowLatchOwners.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
