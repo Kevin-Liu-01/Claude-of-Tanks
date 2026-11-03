@@ -188,11 +188,56 @@ const framePlugin = {
 };
 
 const lock = createCaptureLock();
-let server, browser, interrupted = false;
+let server, browser, page, origin, interrupted = false;
+// the page's ready budget (2026-10-15: a loaded machine took past the fixed 300 s); COT_CINEMA_READY_MS raises it
+const READY_MS = Number(process.env.COT_CINEMA_READY_MS) || 300000;
+const errors = [];
+let pageMap = null, pageFilmed = false;
+const openStudio = async (mapId) => {
+  const map = mapId ?? 'verdant';
+  await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: READY_MS });
+  await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: READY_MS, polling: 500 });
+  await page.evaluate(async () => {
+    const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
+    await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
+    window.__STUDIO.pause(); window.__DEBUG.post.pinDynScale(1);
+    window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
+  });
+  pageMap = map; pageFilmed = false;
+};
+// The warm-up (2026-11-02: on a loaded machine the server, browser and first Studio page took ~14 of an 18-min lease):
+// it runs while the ticket waits (capture-lock acquire's `prepare`), so the lease renders from its first minute.
+const warm = async () => {
+  const port = Number(args.port ?? 5381);
+  server = await createServer({ root: process.cwd(), logLevel: 'error', plugins: [framePlugin],
+    ...(args['cache-dir'] ? { cacheDir: resolve(args['cache-dir']) } : {}),
+    server: { host: '127.0.0.1', port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } } });
+  await server.listen();
+  // Vite's own SIGTERM handler exits the process (code 143) before the finally below can release the capture lock: the
+  // stop below owns SIGTERM, so a stopped batch always ends its lease.
+  for (const listener of process.listeners('SIGTERM')) if (listener !== stop) process.off('SIGTERM', listener);
+  origin = server.resolvedUrls?.local?.[0]?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
+    protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
+  page = await browser.newPage();
+  page.on('pageerror', error => errors.push(String(error)));
+  page.on('console', message => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()); });
+  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+  await openStudio(jobs[0].scene.map);
+};
+// A call that times out leaves the browser wedged (2026-10-07: a still spun the GPU process for 30 minutes under memory
+// pressure): the batch ends there, its error recorded, and the caller starts the rest in a fresh browser.
+let wedged = false;
+const timedOut = (error) => /timed out/i.test(String(error?.message ?? error));
+const stop = () => { interrupted = true; void browser?.close().catch(() => {}); };
+process.once('SIGINT', stop); process.once('SIGTERM', stop);
 // a place-keeping lease lets a waiting perf cost hold in first (the coordinator, 2026-10-13): it rejoins one past the
 // last perf band ticket waiting, read as it joins
 const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(stampBehindWaiting(Number(args['ticket-stamp'])));
-await lock.acquire(6 * 60 * 60 * 1000, { ticket });
+await lock.acquire(6 * 60 * 60 * 1000, { ticket, prepare: warm }).catch(async (error) => {
+  await browser?.close().catch(() => {}); await server?.close().catch(() => {});
+  throw error;
+});
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
 let leaseOver = false, leaseStopped = false;
 // endBefore() ends the lease before a film its longest take would carry past the budget; a take that runs past the budget
@@ -203,45 +248,8 @@ const leaseLimit = setTimeout(() => {
 }, leaseMs + LEASE_GRACE_MS);
 leaseLimit.unref();
 if (leaseMs < CINEMA_LEASE_CAP_MIN * 60000) console.log(`[cinema] lease budget ${leaseMs / 60000} min`);
-// A call that times out leaves the browser wedged (2026-10-07: a still spun the GPU process for 30 minutes under memory
-// pressure): the batch ends there, its error recorded, and the caller starts the rest in a fresh browser.
-let wedged = false;
-const timedOut = (error) => /timed out/i.test(String(error?.message ?? error));
-const stop = () => { interrupted = true; void browser?.close().catch(() => {}); };
-process.once('SIGINT', stop); process.once('SIGTERM', stop);
 const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
 try {
-  const port = Number(args.port ?? 5381);
-  server = await createServer({ root: process.cwd(), logLevel: 'error', plugins: [framePlugin],
-    ...(args['cache-dir'] ? { cacheDir: resolve(args['cache-dir']) } : {}),
-    server: { host: '127.0.0.1', port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } } });
-  await server.listen();
-  // Vite's own SIGTERM handler exits the process (code 143) before the finally below can release the capture lock: the
-  // stop above owns SIGTERM, so a stopped batch always ends its lease.
-  for (const listener of process.listeners('SIGTERM')) if (listener !== stop) process.off('SIGTERM', listener);
-  const origin = server.resolvedUrls?.local?.[0]?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
-  browser = await launchGuardedBrowser(puppeteer, { headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
-    protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
-  // the page's ready budget (2026-10-15: a loaded machine took past the fixed 300 s); COT_CINEMA_READY_MS raises it
-  const READY_MS = Number(process.env.COT_CINEMA_READY_MS) || 300000;
-  const page = await browser.newPage(), errors = [];
-  page.on('pageerror', error => errors.push(String(error)));
-  page.on('console', message => { if (message.type() === 'error' && !message.text().includes('favicon')) errors.push(message.text()); });
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-  let pageMap = null, pageFilmed = false;
-  const openStudio = async (mapId) => {
-    const map = mapId ?? 'verdant';
-    await page.goto(`${origin}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: READY_MS });
-    await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: READY_MS, polling: 500 });
-    await page.evaluate(async () => {
-      const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
-      await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
-      window.__STUDIO.pause(); window.__DEBUG.post.pinDynScale(1);
-      window.__DEBUG.post.resetPerfTrims(); window.__DEBUG.post.setAdaptiveSuspended(true);
-    });
-    pageMap = map; pageFilmed = false;
-  };
-  await openStudio(jobs[0].scene.map);
   const rendererInfo = await page.evaluate(() => {
     const r = window.__DEBUG.renderer, gl = r.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info');
     return { gpu: e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), maxTextureSize: r.capabilities.maxTextureSize,
