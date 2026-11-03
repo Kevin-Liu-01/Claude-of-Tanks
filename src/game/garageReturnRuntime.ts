@@ -1,5 +1,6 @@
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import { t } from '../ui/i18n.ts';
+import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
 
 export interface GarageReturnTrace {
@@ -97,7 +98,6 @@ interface GarageReturnRosterPort<Visual> {
 interface GarageReturnUiPort {
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
-  emitGaragePhase(): void;
   hideEndOverlay(): void;
   exitPointerLock(): void;
   hideHud(): void;
@@ -114,7 +114,7 @@ interface GarageReturnAudioPort {
 }
 
 interface GarageReturnGameState {
-  phase: 'garage' | 'battle' | 'ended' | 'shot' | 'studio';
+  phase: AppPhase;
   preBattleS: number;
   mapId: string;
 }
@@ -214,7 +214,7 @@ function validateGarageReturnPorts<Visual>(
     checkedIntegrationPort<GarageReturnUiPort>(
       options.ui ?? {},
       'garage return interface',
-      ['setGarageSpots', 'setGarageSunTrim', 'emitGaragePhase', 'hideEndOverlay',
+      ['setGarageSpots', 'setGarageSunTrim', 'hideEndOverlay',
         'exitPointerLock', 'hideHud', 'showGarage', 'poseGarageCamera',
         'startShowroom', 'triggerBattle'],
     );
@@ -374,7 +374,9 @@ export function createGarageReturnRuntime<Visual = object>(
     presentation.setShotMode(false);
     presentation.setCaptureHidden(false);
     presentation.unfreezeEffects();
-    game.phase = 'garage';
+    // The scene is the Garage's from here; the screen changes hands (the announcement) at showGarageScreen, or at
+    // the handoff of a preparation behind the report.
+    transitionAppPhase(game, 'garage', { reason: prepareOnly ? 'garage-return:prepare' : 'garage-return', announce: false });
 
     // The published unready trace and Garage phase now suppress all ordinary
     // scene frames. Never yield earlier while reset roots could still render.
@@ -446,7 +448,9 @@ export function createGarageReturnRuntime<Visual = object>(
 
   /** The Garage's screen: its phase event, the end of the battle UI, the Garage UI (the entry's own order). */
   function showGarageScreen(selectedSpecId: string, markStage: (name: string) => void): void {
-    ui.emitGaragePhase();
+    // The screen changes hands: the lifecycle announces the Garage (phase:change). A return whose scene another
+    // presentation already took (a battle started under it) announces nothing and never takes the scene back.
+    if (game.phase === 'garage') transitionAppPhase(game, 'garage', { reason: 'garage-return:screen' });
     ui.hideEndOverlay();
     ui.exitPointerLock();
     ui.hideHud();

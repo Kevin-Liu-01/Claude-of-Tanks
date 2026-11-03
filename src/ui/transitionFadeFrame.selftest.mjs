@@ -5,6 +5,7 @@ import { createMainFrameRuntime } from '../app/mainFrameRuntime.ts';
 import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 import { createGarageReturnRuntime } from '../game/garageReturnRuntime.ts';
 import { createGameState } from '../game/stateCore.ts';
+import { createAppLifecycle } from '../game/appLifecycle.ts';
 import { createTransition } from './transition.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
@@ -154,6 +155,8 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
   let reportVisible = true;
   const lifecycle = name => () => lifecycleCalls.push(name);
   const frame = name => () => frameCalls.push(name);
+  // (2026-11-02 audit F1) the session's lifecycle announces the Garage phase
+  createAppLifecycle({ game, announce: ({ phase }) => { if (phase === 'garage') lifecycleCalls.push('garage-phase'); } });
   const garageReturn = createGarageReturnRuntime({
     game,
     getSelectedSpecId: () => 'm1a1_abrams_hc',
@@ -207,7 +210,6 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     ui: {
       setGarageSpots: lifecycle('garage-spots'),
       setGarageSunTrim: lifecycle('garage-sun'),
-      emitGaragePhase: lifecycle('garage-phase'),
       hideEndOverlay: () => { lifecycleCalls.push('hide-report'); reportVisible = false; },
       exitPointerLock: lifecycle('exit-pointer-lock'),
       hideHud: lifecycle('hide-hud'),

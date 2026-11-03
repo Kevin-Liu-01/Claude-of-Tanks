@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import { createGarageReturnRuntime } from './garageReturnRuntime.ts';
 import { createGameState } from './stateCore.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
 
 function createFixture({
   transitionGate = false, battleCoverDelay = 0, pendingClearsAfter = 2,
@@ -15,6 +16,8 @@ function createFixture({
   game.preBattleS = 3;
   game.mapId = 'verdant';
   const calls = [];
+  // (2026-11-02 audit F1) the Garage phase is announced by the session's lifecycle, not a return port
+  createAppLifecycle({ game, announce: ({ phase }) => { if (phase === 'garage') calls.push(['emitGaragePhase', game.phase]); } });
   const traces = [];
   let now = 100;
   let preserveRoom = true;
@@ -82,7 +85,6 @@ function createFixture({
     ui: {
       setGarageSpots: (value) => calls.push(['garageSpots', value]),
       setGarageSunTrim: (value) => calls.push(['garageSunTrim', value]),
-      emitGaragePhase: () => calls.push(['emitGaragePhase', game.phase]),
       hideEndOverlay: () => calls.push(['hideEndOverlay']),
       exitPointerLock: () => calls.push(['exitPointerLock']),
       hideHud: () => calls.push(['hideHud']),
@@ -383,7 +385,7 @@ for (const failure of ['placement', 'restore', 'missing-receipt']) {
     `${failure}: settling the failed promise does not declare Garage presentation ready`);
   assert.equal(isCovered(fixture), true, `${failure}: ordinary frames cannot cold-render after failure unwind`);
   assert.equal(fixture.calls.some(([name]) => name === 'adaptive'), false);
-  for (const phase of ['battle', 'ended', 'shot']) {
+  for (const phase of ['battle', 'studio', 'shot']) {
     fixture.game.phase = phase;
     assert.equal(isCovered(fixture), false, `${phase}: stale failed Garage state cannot freeze an alternate phase`);
   }
@@ -523,7 +525,7 @@ for (const preserveRoom of [true, false]) {
   assert.equal(fixture.calls.filter(([name]) => name === 'clearPresentation').length, 2);
 }
 
-for (const phase of ['battle', 'ended', 'shot']) {
+for (const phase of ['battle', 'studio', 'shot']) {
   const fixture = createFixture({ placement: async () => { throw new Error('lost device'); } });
   await assert.rejects(fixture.runtime.enter(), /lost device/);
   fixture.game.phase = phase;

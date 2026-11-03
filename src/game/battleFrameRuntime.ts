@@ -1,6 +1,7 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
+import { warmHoldActive, warmHoldElapsed } from './preBattleCountdown.ts';
 
 interface BattlePauseInfo {
   paused: boolean;
@@ -42,6 +43,8 @@ interface BattleFrameCountdownPort {
   rollout(late?: boolean): void;
   /** A whole second of the running count begins (presentation only; never while PREPARING holds the count). */
   second?(seconds: number): void;
+  /** (2026-11-02 audit F1) The warm hold outlasted its limit and the count runs on (once a battle; a beacon port). */
+  holdExpired?(heldSeconds: number): void;
 }
 
 interface BattleFramePresentationPort {
@@ -75,6 +78,11 @@ export interface BattleFrameRuntime {
     cameraLocked: boolean,
   ): BattleFrameReceipt;
   resetSimulationAccumulator(): void;
+  /**
+   * (2026-11-02 audit F1) The battle's one rollout edge: every emitter (the countdown's fall to 0 here, the rollout
+   * runtime's open at 0) goes through this latch, so a battle rolls out once. True when this call rolled it out.
+   */
+  rollout(late?: boolean): boolean;
 }
 
 /**
@@ -119,6 +127,9 @@ export function createBattleFrameRuntime({
   let rolledOut = false;
   let countSeen = false;
   let lastWholeSecond = Infinity;
+  // wall seconds the count has waited at its warm hold this battle, and whether the limit has been reported
+  let warmHeldS = 0;
+  let holdExpiryReported = false;
   const pauseInfo: BattlePauseInfo = {
     paused: false,
     resumes: 0,
@@ -147,6 +158,8 @@ export function createBattleFrameRuntime({
     rolledOut = false;
     countSeen = false;
     lastWholeSecond = Infinity;
+    warmHeldS = 0;
+    holdExpiryReported = false;
   };
 
   const resetSimulationAccumulator = (): void => {
@@ -155,9 +168,11 @@ export function createBattleFrameRuntime({
     resetCountdownEdges();
   };
 
-  const rollout = (late: boolean): void => {
+  const rollout = (late = false): boolean => {
+    if (rolledOut) return false;
     rolledOut = true;
     countdown.rollout(late);
+    return true;
   };
 
   const reportSecond = (seconds: number, warmPending: boolean): void => {
@@ -206,7 +221,14 @@ export function createBattleFrameRuntime({
     // armed, not yet opened: a new battle's count
     if (game.preBattleS === Infinity) { resetCountdownEdges(); return; }
     const heldSeconds = game.preBattleS;
-    const warmPending = countdown.isWarmPending();
+    const warmRequested = countdown.isWarmPending();
+    warmHeldS = warmHoldElapsed(warmHeldS, heldSeconds, wallDtSeconds, warmRequested);
+    // (audit F1) the hold has a limit: past it the count runs on and the warm finishes behind live play
+    const warmPending = warmHoldActive(warmHeldS, warmRequested);
+    if (warmRequested && !warmPending && !holdExpiryReported) {
+      holdExpiryReported = true;
+      countdown.holdExpired?.(warmHeldS);
+    }
     game.preBattleS = countdown.advance(
       game.preBattleS,
       wallDtSeconds,
@@ -348,5 +370,6 @@ export function createBattleFrameRuntime({
     receipt,
     advance,
     resetSimulationAccumulator,
+    rollout,
   };
 }

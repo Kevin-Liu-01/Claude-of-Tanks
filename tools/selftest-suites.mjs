@@ -1308,6 +1308,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageTankLifecycle.selftest.mjs',
     'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleAgainAction.selftest.mjs',
+    'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
     'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',
@@ -1883,6 +1884,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
     'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
+    'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; the warm hold has a limit
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
     'src/game/ammoSelectionPresentation.selftest.mjs',

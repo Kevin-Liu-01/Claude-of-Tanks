@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
+import { transitionAppPhase, type AppPhase } from '../game/appLifecycle.ts';
 import { awaitMapCaptureReadiness, type CaptureWorld } from './mapCaptureReadiness.ts';
 import type { ShotViewName } from './shotContract.ts';
 import type {
@@ -396,7 +397,8 @@ export async function setShotView(
   context.setCaptureHidden(true);
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
-  context.game.phase = 'shot';
+  // (2026-11-02 audit F1) the one phase writer: a still is announced (phase:change) like every other phase
+  transitionAppPhase(context.game as { phase: AppPhase }, 'shot', { reason: 'shot:view' });
   // Use the ordinary phase owner: battlefield captures must detach the whole
   // workshop (including its archive timer), not merely hide its DOM panels.
   context.setGarageSpots(name === 'garage');

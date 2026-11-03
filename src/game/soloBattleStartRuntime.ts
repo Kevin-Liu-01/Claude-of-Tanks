@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
+import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import type { HudRuntime } from '../ui/hud.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
@@ -29,7 +30,7 @@ interface SoloBattlePlayer {
 interface SoloBattleGame {
   preBattleS: number;
   mapId: string;
-  phase: string;
+  phase: AppPhase;
   player?: SoloBattlePlayer | null;
   tanks: Array<{ specId: string; isPlayer?: boolean }>;
 }
@@ -115,7 +116,6 @@ export interface SoloBattleStartRuntimeOptions {
     hideEndOverlay(): void;
     resetBattleResult(): void;
     setGarageLighting(active: boolean): void;
-    emitPhaseChange(phase: string): void;
     emitConsumableReset(): void;
     rig: { release(): void; snapArcade(distance: number, yaw: number, pitch: number): void };
     stopShowroom(): void;
@@ -156,7 +156,7 @@ export function createSoloBattleStartRuntime({
     ui?.playerActions?.setTank, ui?.playerActions?.resetConsumables,
     ui?.damagePanel?.setTank, ui?.damagePanel?.setEquipment, ui?.hideGarage,
     ui?.hideEndOverlay, ui?.resetBattleResult, ui?.setGarageLighting,
-    ui?.emitPhaseChange, ui?.emitConsumableReset, ui?.rig?.release,
+    ui?.emitConsumableReset, ui?.rig?.release,
     ui?.rig?.snapArcade, ui?.stopShowroom, ui?.openBattle, now, recordTrace];
   if (!state?.game || required.some((value) => typeof value !== 'function')) {
     throw new TypeError('solo battle start runtime requires every activation port');
@@ -249,9 +249,9 @@ export function createSoloBattleStartRuntime({
       ui.hideEndOverlay();
       ui.resetBattleResult();
       ui.hud.setMode('battle');
-      game.phase = 'battle';
-      ui.setGarageLighting(false);
-      ui.emitPhaseChange('battle');
+      // (2026-11-02 audit F1) the one phase writer: checks the edge (a Studio never hands its scene to a battle),
+      // writes the phase and announces it; the Garage lights go out between the write and the announcement, as before
+      transitionAppPhase(game, 'battle', { reason: 'solo-start', beforeAnnounce: () => ui.setGarageLighting(false) });
       ui.playerActions.resetConsumables();
       ui.emitConsumableReset();
       ui.rig.release();

@@ -251,6 +251,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
+import { createAppLifecycle } from './game/appLifecycle.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
@@ -715,6 +716,12 @@ const game: MainGameState = createGameState<
 // Completed matches remain the ordinal base. Independent session entropy keeps
 // reloads/abandoned battles from replaying the same roster at that ordinal.
 game.battleCount = battleOrdinalBase();
+// (2026-11-02 audit F1) the app's one lifecycle: every game.phase writer goes through transitionAppPhase, which checks
+// the edge and announces phase:change here; tools read the derived state from window.__APP_LIFECYCLE (read-only)
+const appLifecycle = createAppLifecycle({ game, announce: (announcement) => bus.emit('phase:change', announcement) });
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__APP_LIFECYCLE', { configurable: true, get: () => appLifecycle.snapshot() });
+}
 // Medals and achievements read the battle from the same state in solo and network play.
 installServiceRecord(bus, {
   playerId: () => game.player?.id ?? null,
@@ -1282,13 +1289,14 @@ const pedestal = createGaragePedestalRuntime({
 // still start at the press. Wheel and resize move the view itself, so they wake it at once.
 let garageActivityAfterPaint = false;
 const noteGarageViewActivity = () => {
-  if (game.phase !== 'garage') return;
+  // (audit F1) activity over the battle report, or under a return's veil, is not the Garage's
+  if (appLifecycle.screenPhase !== 'garage') return;
   invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
 };
 const noteGarageActivity = () => {
-  if (game.phase !== 'garage') return;
+  if (appLifecycle.screenPhase !== 'garage') return;
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
   if (garageActivityAfterPaint) return;
@@ -2272,8 +2280,6 @@ async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
 }
-// perf-246: bound once the Garage return owner exists (below); settings is composed first.
-let garageAwaitingHandoff = (): boolean => false;
 const settings = createSettingsAccess({
   input,
   bus,
@@ -2282,10 +2288,12 @@ const settings = createSettingsAccess({
   isBattleActive: battlePhase.canOpenBattleSettings,
   isSpectating: () => !!killcam.spectate?.active,
   // perf-246: a Garage prepared behind the battle report is still the battle's end to the player: its Esc menu
-  // leaves (the handoff) and the Garage gear stays hidden until the handoff.
-  canLeaveBattle: () => battlePhase.canLeaveBattle() || garageAwaitingHandoff(),
+  // leaves (the handoff) and the Garage gear stays hidden until the handoff. (audit F1) Both read the screen's phase,
+  // the one the lifecycle last announced: a return still under its veil, or one that failed before its handoff, keeps
+  // the battle's Leave (which retries the return) and hides the Garage gear.
+  canLeaveBattle: () => appLifecycle.screenPhase === 'battle',
   onLeaveBattle: () => leaveBattleToGarage(),
-  gearVisible: () => battlePhase.isGarage() && !garageAwaitingHandoff(),
+  gearVisible: () => appLifecycle.screenPhase === 'garage',
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
   // livePaused from (kill-cam replays close the panel themselves; the end
@@ -2487,7 +2495,7 @@ input.onAction('networkPanel', () => { onlineMatch.current?.toggleStatusPanel();
 input.onAction('leaveBattle', () => {
   const v2 = onlineMatch.current;
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
-  if (battlePhase.canLeaveBattle() || garageAwaitingHandoff()) settings.open();
+  if (appLifecycle.screenPhase === 'battle') settings.open();
 });
 // The proving ground (v2 progression, 2026-10-17): R resets the range, Y switches moving targets; the range card's buttons
 // say the same through the bus. Inert in every other battle (a network battle's local session never plays the range).
@@ -2519,7 +2527,8 @@ const PRE_BATTLE_HOLD_S = 5;
 const MIN_VISIBLE_PRE_BATTLE_S = 3; // countdown 2026-09-13: always a whole 3-2-1 after the loader (was 2)
 const battleRollout = createBattleRolloutRuntime({
   game,
-  bus,
+  // (2026-11-02 audit F1) the battle's one rollout edge is the battle frame runtime's latch (composed below)
+  rollout: () => { battleFrame.rollout(false); },
   audio,
   getHud: currentHud,
   defaultPreBattleSeconds: PRE_BATTLE_HOLD_S,
@@ -2648,7 +2657,6 @@ const soloBattleStart = createSoloBattleStartAccess({
         setGarageSpots(active);
         setGarageSunTrim(active);
       },
-      emitPhaseChange: (phase: string) => bus.emit('phase:change', { phase }),
       emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
       rig,
       stopShowroom: () => showroom.stop(),
@@ -3256,7 +3264,6 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           resetBattleResult: () => battleResultPresentation.reset(),
           setGarageSpots,
           setGarageSunTrim,
-          emitPhaseChange: (phase) => bus.emit('phase:change', { phase }),
           emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
           stopShowroom: () => showroom.stop(),
         },
@@ -3416,7 +3423,6 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   ui: {
     setGarageSpots,
     setGarageSunTrim,
-    emitGaragePhase: () => bus.emit('phase:change', { phase: 'garage' }),
     hideEndOverlay: endOverlay.hide,
     exitPointerLock: () => { if (document.exitPointerLock) document.exitPointerLock(); },
     hideHud: () => currentHud()?.setMode?.('hidden'),
@@ -3456,7 +3462,11 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   }),
 });
 const enterGarage = garageReturn.enter;
-garageAwaitingHandoff = () => garageReturn.awaitingHandoff;
+// (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
+appLifecycle.setReaders({
+  isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
+  isReturnOwed: () => garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.awaitingHandoff,
+});
 // perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
 // battle, off the boot graph; it registers itself as the report's backdrop owner (src/ui/reportBackdrop.ts).
 let battleEndGarageWarmLoad: Promise<void> | null = null;
@@ -3483,7 +3493,8 @@ const loadBattleEndGarageWarm = (): void => {
   });
 };
 bus.on('ui:battleStart', loadBattleEndGarageWarm);
-bus.on('phase:change', loadBattleEndGarageWarm);
+// (audit F1: the Studio and stills announce their phase now; only a battle needs the battle-end warm)
+bus.on('phase:change', (payload) => { if (Reflect.get(Object(payload), 'phase') === 'battle') loadBattleEndGarageWarm(); });
 const leaveBattleToGarage = (): Promise<void> => {
   const v2 = onlineMatch.current;
   if (v2?.active && battleEntryLifecycle.pending) {
@@ -3758,6 +3769,8 @@ const battleFrame = createBattleFrameRuntime({
     rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
     // the running count's whole seconds (the audio ticks 3, 2, 1)
     second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
+    // (audit F1) the warm hold outlasted its limit: the count ran on without it
+    holdExpired: (heldSeconds: number) => console.warn(`[warm] the countdown's warm hold passed ${Math.round(heldSeconds)} s; rolling out without it`),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,
@@ -4178,7 +4191,9 @@ const studioAccess = createStudioAccess({
     borrowLight: () => sniperFill.light,
   }),
   // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
-  getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
+  // (audit F1) the lifecycle's state: F8 and the Studio button open only over a settled Garage screen (never behind
+  // the battle report, under a return's veil or over a battle entry's cover)
+  getPhase: () => appLifecycle.state,
   keyTarget: window,
   // the Garage's Studio links read busy while the Studio's code loads (garage.css)
   onPending: (pending) => {

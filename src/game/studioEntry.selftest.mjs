@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
+import { transitionAppPhase } from './appLifecycle.ts';
 
 // Execute the actual Studio enter/doEnter/doExit callers without constructing
 // the renderer, panel DOM or full fleet. This catches caller ordering; a test
@@ -84,6 +85,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     prepareFirstViewPrograms: async () => { calls.push('first-view-programs'); },
     // the entry's own frames between its two first-view preparations (2026-10-26)
     nextFrame: async () => {},
+    // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
+    transitionAppPhase,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {

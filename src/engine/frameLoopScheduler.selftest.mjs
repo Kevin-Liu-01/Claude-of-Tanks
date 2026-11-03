@@ -689,11 +689,14 @@ assert.equal(runInNewContext(`${garageBoot}\ngaragePresentationDirty = false;
 function garageActivityFixture(harness, phase, legacy = false, paints = null) {
   const game = { phase }, effects = [], listeners = new Map();
   const callbacks = `${garageInvalidate}\n${garageActivity}`;
-  const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '') : callbacks;
+  // (2026-11-02 audit F1) Garage input reads the screen's phase (appLifecycle.screenPhase): the Garage behind the
+  // battle report is not the screen; here the screen and the scene agree
+  const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '')
+    .replaceAll("  if (appLifecycle.screenPhase !== 'garage') return;\n", '') : callbacks;
   const api = runInNewContext(`${garageBoot}\n${body}\n${garageListeners}
     ({ invalidate: () => invalidateGaragePresentation(),
        isDirty: () => garagePresentationDirty, clearDirty: () => { garagePresentationDirty = false; } });`, {
-    game, frameLoop: harness.scheduler, performance: { now: () => 1234 },
+    game, appLifecycle: { get screenPhase() { return game.phase; } }, frameLoop: harness.scheduler, performance: { now: () => 1234 },
     garageFramePacer: { noteActivity: at => effects.push(['pacer', at]) },
     lighting: { setStaticPresentationDormant: value => effects.push(['lighting', value]) },
     garageDressingScheduler: { noteActivity: () => effects.push(['dressing']) },

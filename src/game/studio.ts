@@ -1,4 +1,5 @@
 import { t } from '../ui/i18n.ts';
+import { transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
@@ -5669,7 +5670,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
     const work = async (p: ProgressListener): Promise<void> => {
       p(0.02, 'Preparing studio');
-      game.phase = 'studio';
+      // (2026-11-02 audit F1) the one phase writer announces the Studio (phase:change) like every other phase
+      transitionAppPhase(game as { phase: AppPhase }, 'studio', { reason: 'studio:enter' });
       post.resetAdaptiveResolution?.();
       garage.hide();
       showroom.stop();
@@ -5803,7 +5805,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (error instanceof EntryAbandoned) return; // an exit took it back; a later entry runs its own
       active = false;
       panel.hide();
-      game.phase = 'garage';
+      // (audit F1) a failed entry hands the scene back with its announcement (main's Garage cleanup, settings, audio)
+      transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
       throw error;
     }
     trace.totalMs = Math.round(performance.now() - startedAt);

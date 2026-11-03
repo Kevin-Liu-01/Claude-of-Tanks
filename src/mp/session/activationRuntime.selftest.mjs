@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createActivationRuntime } from './activationRuntime.ts';
+import { createAppLifecycle } from '../../game/appLifecycle.ts';
 
 function createHarness({ spectator = false, observerReady = true, cameraReady = true, gunship = false } = {}) {
   const calls = [];
@@ -10,6 +11,8 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
     phase: 'garage',
     player: { aerial: gunship ? {kind:'gunship'} : undefined, spec: { id: 'm1a1_abrams_hc' }, visual: { id: 'visual' }, equip: { rammer: true }, state: { yaw: 1.2 } },
   };
+  // (2026-11-02 audit F1) the session's lifecycle announces the phase the activation moves
+  createAppLifecycle({ game, announce: ({ phase }) => calls.push(['phase', phase]) });
   const bridge = { setPerspective: (id) => calls.push(['perspective', id]) };
   const runtime = createActivationRuntime({
     game,
@@ -65,7 +68,6 @@ function createHarness({ spectator = false, observerReady = true, cameraReady = 
       resetBattleResult: () => calls.push(['result']),
       setGarageSpots: (value) => calls.push(['spots', value]),
       setGarageSunTrim: (value) => calls.push(['sun', value]),
-      emitPhaseChange: (phase) => calls.push(['phase', phase]),
       emitConsumableReset: () => calls.push(['consumableEvent']),
       stopShowroom: () => calls.push(['showroom']),
     },

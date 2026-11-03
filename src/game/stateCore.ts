@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
+import type { AppPhase } from './appLifecycle.ts';
 import type { WatchSession } from './watchSeat.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
@@ -24,7 +25,12 @@ export interface EventBus {
 }
 
 export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, MatchModeState = RuntimeValue> {
-  phase: 'garage' | 'battle' | 'ended' | 'shot' | 'studio';
+  /**
+   * Who owns the scene and the simulation. Written only through appLifecycle.ts `transitionAppPhase` (2026-11-02
+   * audit F1); a battle's end is its `result`, the finer states (loading, countdown, verdict hold, report, the Garage
+   * behind the report) are the lifecycle's derived `state`.
+   */
+  phase: AppPhase;
   preBattleS: number;
   mapId: string;
   tanks: Entity[];

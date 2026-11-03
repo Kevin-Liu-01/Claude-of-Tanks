@@ -27,6 +27,31 @@ export function advancePreBattleCountdown(
 }
 
 /**
+ * (2026-11-02 audit F1) The warm hold's limit: wall seconds the count may wait at its hold for warm work. The hold
+ * had no limit, so a warm whose release never came (a stale generation's slot, a lost release) left the count on
+ * PREPARING for good. The warm is optional (a battle plays without it; its stages then link at first use), so past
+ * the limit the count runs on and the warm finishes behind live play.
+ */
+export const PRE_BATTLE_WARM_HOLD_LIMIT_S = 30;
+
+/** Wall seconds spent at the hold so far: `dtS` counts only while warm work holds a count at or below the hold. */
+export function warmHoldElapsed(
+  heldS: number,
+  seconds: number,
+  dtS: number,
+  warmPending: boolean,
+  holdAtS = PRE_BATTLE_WARM_HOLD_S,
+): number {
+  if (!warmPending || !Number.isFinite(seconds) || seconds <= 0 || seconds > Math.max(0, holdAtS)) return heldS;
+  return heldS + (Number.isFinite(dtS) ? Math.max(0, dtS) : 0);
+}
+
+/** The warm still holds the count: pending, and its hold has not yet outlasted the limit. */
+export function warmHoldActive(heldS: number, warmPending: boolean, limitS = PRE_BATTLE_WARM_HOLD_LIMIT_S): boolean {
+  return warmPending && !(heldS >= limitS);
+}
+
+/**
  * The shortest count the player sees after the loader: three whole numerals,
  * so the deployment cue always reads 3 → 2 → 1 (was 2, which could open on "2"
  * or flash "3" for a fraction of a second).
