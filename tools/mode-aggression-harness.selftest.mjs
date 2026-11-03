@@ -162,6 +162,37 @@ const plantRun = (standS) => new Promise((resolve, reject) => {
   });
 });
 
+// The Horde outcome ratchet is paired (Main, 2026-11-02, DECISIONS): the 24 per-deal wave-1 kills of the run that set it
+// (02cac3264a, mean 4.958), seed by seed. A head is judged by its per-deal change against that vector: the mean change
+// and the standard error of the 24 differences (the pairing removes the seed-to-seed spread; the SD of the head's own
+// deals would make the band meaninglessly wide). It fails below -2 SE; the vector rises only when a head beats it by more
+// than +2 SE (the receipt prints the vector to store) and never falls without a ruling. At 24 deals the sweep cannot
+// resolve less than about 2 SE: a 1 SE band false-fails about one neutral head in six, and a band that moves down with
+// each landing lets small drops pile up. The controls: the stored run itself passes at 0, a planted vector 3 SE down
+// fails, one 3 SE up rises.
+const OUTCOME_RATCHET = Object.freeze({ setBy: '02cac3264a', kills: Object.freeze([3, 4, 6, 4, 4, 4, 6, 6, 6, 6, 6, 3, 4, 6, 5, 6, 3, 5, 6, 6, 4, 4, 6, 6]) });
+const OUTCOME_BAND_SE = 2;
+/** A head's per-deal wave-1 kills against the stored vector: the mean change, its standard error, and the verdict. */
+function pairedOutcome(headKills) {
+  const base = OUTCOME_RATCHET.kills, n = base.length;
+  assert.equal(headKills.length, n, `the paired ratchet reads ${n} deals, seed by seed`);
+  const diffs = headKills.map((k, i) => k - base[i]);
+  const change = diffs.reduce((sum, d) => sum + d, 0) / n;
+  const se = Math.sqrt(diffs.reduce((sum, d) => sum + (d - change) ** 2, 0) / (n - 1) / n);
+  const verdict = change < -OUTCOME_BAND_SE * se ? 'fail' : change > OUTCOME_BAND_SE * se ? 'rise' : 'pass';
+  return { change, se, sigmas: se > 0 ? change / se : 0, verdict };
+}
+{
+  const stored = pairedOutcome([...OUTCOME_RATCHET.kills]);
+  assert.ok(stored.verdict === 'pass' && stored.change === 0, 'the stored run passes its own ratchet at 0');
+  // planted: a spread of +-1 kill round a shift of 3 SE (the spread's SE is sqrt(24/23)/sqrt(24))
+  const se = Math.sqrt(24 / 23) / Math.sqrt(24);
+  const planted = (sigmas) => pairedOutcome(OUTCOME_RATCHET.kills.map((k, i) => k + sigmas * se + (i % 2 ? 1 : -1)));
+  const down = planted(-3), up = planted(3);
+  assert.ok(down.verdict === 'fail' && Math.abs(down.sigmas + 3) < 1e-9, `a head 3 SE down fails (${down.sigmas.toFixed(2)} SE)`);
+  assert.ok(up.verdict === 'rise' && Math.abs(up.sigmas - 3) < 1e-9, `a head 3 SE up raises the vector (${up.sigmas.toFixed(2)} SE)`);
+}
+
 const sweepStarted = Date.now();
 const PLANTS = [3, 1.5 * T_REV_S];
 const finished = await pool([...battles.map((b) => () => run(b.mode, b.capS, b.seed, b.player)), ...PLANTS.map((standS) => () => plantRun(standS))], RECEIPT_JOBS);
@@ -232,28 +263,25 @@ for (const [mapId, n] of maps) assert.equal(n, 3, `three deals on ${mapId}`);
 const asks = (d) => d.kills >= d.enemies - 2 && d.advance >= 0.8 && d.still <= 0.05;
 const meeting = deals.filter(asks).length, meanKills = mean(deals, (d) => d.kills), meanAdvance = mean(deals, (d) => d.advance);
 // Main's bars (2026-11-02). OUTCOME, chaotic deal by deal: the owner's bar is 21 of the 24 meeting the three asks and the
-// wave's mean kills at least 5.0 of 6. It is held as a KNOWN ratchet (Main, 2026-11-02): the receipt fails below the level
-// the honest code reaches (the shortfall is the human sortie's fire, not the zombies' conduct) and tightens to each new
-// level a fix reaches; every run prints the owner's bar and the gap, so a pass never reads as the bar met. Reset once, by
-// Main's ruling: first set at 19 of 24, 4.79, a level that counted a deal a defect helped (item 10's hold-off turned a
-// rusher with its orbit off any hull, ai.honestSenses red; scoped to its own target, seed 17 fell 5 -> 3 and seed 20
-// 6 -> 5), it recorded 18 of 24, 4.67; the rusher's held back-off (RUSH_DRIVE.backOffHoldS) tightened it to 19 of 24,
-// 4.71, and the rock-wedge release with the stopped-ally pass (1bda84c2a1) to 4.96. Main's ruling (2026-11-02): the ratchet
-// is the MEAN alone, tightened to the best mean measured; the deal count is printed beside the owner's 21/24 and no
-// longer gates (a defect fix re-deals 24 chaotic battles, and one deal flipping on a count bar blocked a correct fix:
-// item 10b, 18/24 at 4.75). The mean advance is held at 0.8, the engagement distance at
-// 50 m on the mean, and first contact 8-25 s after the wave starts on 21 of the 24.
-const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 }, OUTCOME_RATCHET_MEAN = 4.96;
+// wave's mean kills at least 5.0 of 6. It is held as a KNOWN ratchet (the shortfall is the human sortie's fire, not the
+// zombies' conduct), paired since 2026-11-02 (OUTCOME_RATCHET above; before it, one mean: 4.79, reset to 4.67 by ruling,
+// then 4.71 and 4.96); every run prints the owner's bar and the gap, so a pass never reads as the bar met. The deal count
+// is printed beside the owner's 21/24 and does not gate. The mean advance is held at 0.8, the engagement distance at 50 m
+// on the mean, and first contact 8-25 s after the wave starts on 21 of the 24.
+const OWNER_OUTCOME = { deals: 21, meanKills: 5.0 };
 const table = deals.map((d) => `  seed ${d.seed} ${d.mapId}: kills ${d.kills}/${d.enemies}, advance ${d.advance}, still ${d.still}, first shot ${d.firstShotS} s${asks(d) ? '' : ' (misses an ask)'}`).join('\n');
 const killsAt = Math.round(meanKills * 100) / 100;
+assert.deepEqual(deals.map((d) => d.seed), SEEDS(24), 'the deals in seed order, as the paired vector');
+const paired = pairedOutcome(deals.map((d) => d.kills));
 const shortDeals = Math.max(0, OWNER_OUTCOME.deals - meeting), shortKills = Math.max(0, Math.round((OWNER_OUTCOME.meanKills - killsAt) * 100) / 100);
-const outcome = `OUTCOME mean ${killsAt.toFixed(2)}, ratchet mean ≥ ${OUTCOME_RATCHET_MEAN.toFixed(2)} (deals ${meeting}/24, owner `
-  + `${OWNER_OUTCOME.deals}/24 · ${OWNER_OUTCOME.meanKills.toFixed(1)}: `
+const outcome = `OUTCOME mean ${killsAt.toFixed(2)}, paired change ${paired.change >= 0 ? '+' : ''}${paired.change.toFixed(3)} kills = `
+  + `${paired.sigmas >= 0 ? '+' : ''}${paired.sigmas.toFixed(1)} SE against ${OUTCOME_RATCHET.setBy} (SE ${paired.se.toFixed(3)}; fails below -${OUTCOME_BAND_SE} SE) `
+  + `(deals ${meeting}/24, owner ${OWNER_OUTCOME.deals}/24 · ${OWNER_OUTCOME.meanKills.toFixed(1)}: `
   + (shortDeals || shortKills ? `short ${shortDeals} deal${shortDeals === 1 ? '' : 's'}, ${shortKills.toFixed(2)} kills)` : 'met)');
 console.log(outcome);
-if (killsAt > OUTCOME_RATCHET_MEAN) console.log(`  the KNOWN ratchet can tighten to mean ≥ ${killsAt.toFixed(2)}`);
+if (paired.verdict === 'rise') console.log(`  the paired ratchet can rise to this run: kills [${deals.map((d) => d.kills).join(', ')}]`);
 const misses = [];
-if (killsAt < OUTCOME_RATCHET_MEAN) misses.push(`mean wave-1 kills ${killsAt.toFixed(2)} (the KNOWN ratchet holds ${OUTCOME_RATCHET_MEAN.toFixed(2)}; ${outcome})`);
+if (paired.verdict === 'fail') misses.push(`wave-1 kills fell ${paired.sigmas.toFixed(1)} SE against the paired ratchet (${outcome})`);
 if (meanAdvance < 0.8) misses.push(`Horde mean advance ${meanAdvance.toFixed(3)} (want >= 0.8)`);
 const engaged = deals.filter((d) => d.engageDistM != null), engageDistM = mean(engaged, (d) => d.engageDistM);
 if (engageDistM > 50) misses.push(`zombies fight close: ${engageDistM.toFixed(1)} m on the mean (want <= 50)`);
