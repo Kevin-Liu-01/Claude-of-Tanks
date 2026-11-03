@@ -174,13 +174,16 @@ assert.deepEqual(guidedRounds.filter(({spec}) => ifvBatchIds.has(spec.id)).map((
 // 266: the T49 fires the M551's MGM-51 Shillelagh through its M81, one guided channel counted beside the established fleet
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}) => round.name), ['MGM-51C Shillelagh ATGM'],
   "the T49 carries the M551's one guided channel");
+// 269: the Redback fires its Spike LR2 from its own launcher, one guided channel counted beside the established fleet
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'redback').map(({round}) => round.name), ['Spike LR2'],
+  'the Redback carries its one guided channel');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
-  && spec.id !== 't49').length, 23,
+  && spec.id !== 't49' && spec.id !== 'redback').length, 23,
   'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10', 'cv90_mk4', 'k21', 'kurganets25', 'kurganets25', 'warrior_tes_h'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 39, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+assert.equal(guidedRounds.length, 40, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks; 269: + the Redback's Spike LR2
 // (+ the T49's Shillelagh, 266)
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
@@ -244,7 +247,11 @@ const laterChannelCounts = {
   ua_cv9040c: 3,
   // 267: the Leopard 2A7 DK (the 2A7V's three rounds) and the Centurion Mk 5/2 DK (the Mk 5/2's three)
   leo2a7dk: 3, centurion5_2dk: 3,
+  // 269: the Australian line (the M113A1 FSV's and MRV's two 76 mm rounds; three for the rest)
+  m113a1_fsv: 2, m113a1_mrv: 2, m113as4: 3, leopard_as1: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
 };
+const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback']
+  .reduce((n, id) => n + laterChannelCounts[id], 0);
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -313,12 +320,12 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
-// and the Type 90 (B)'s three (267).
+// and the Type 90 (B)'s three (267), and the Australian line's seven (269).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
-  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b, 560,
+  - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - australia269Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
