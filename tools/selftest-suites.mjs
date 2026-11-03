@@ -1076,6 +1076,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #4: a failed surface set leaves once unheld and reloads; per-handle render listeners
+    'src/ui/garageTextureResidency.selftest.mjs',
     'src/ui/garageDisplayAtlas.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',

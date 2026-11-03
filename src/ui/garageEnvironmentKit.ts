@@ -165,14 +165,26 @@ export interface GarageEnvironmentBuild {
   dispose(): void;
 }
 
+/**
+ * A surface set's residency (2026-11-02 audit, 05-ui-2 #4): its two loads, then ready, or failed when either did not
+ * arrive. A failed set used to stay resident image-less for the session (the cap never evicted it); now it is dropped
+ * as soon as no pack holds it, so the next pack that asks loads it again.
+ */
+type TextureEntryPhase = 'loading' | 'ready' | 'failed';
+
 interface TextureEntry {
+  phase: TextureEntryPhase;
   color: THREE.Texture | null;
   normal: THREE.Texture | null;
   ready: Promise<void>;
   references: number;
   lastUse: number;
+  /** One listener per handle (every pack passes the same requestRender: one release removed it for all). */
   listeners: Set<() => void>;
 }
+
+/** What the library loads textures with (three's TextureLoader in a page; the residency selftest's fake in Node). */
+export type GarageTextureLoader = Pick<THREE.TextureLoader, 'load'>;
 
 interface TextureHandle {
   readonly color: THREE.Texture | null;
@@ -197,7 +209,7 @@ export interface GarageEnvironmentAssetLibrary {
   prepareTreeGroves(species: readonly TreeSpecies[]): Promise<void>;
   warmAll(requestRender: () => void): void;
   retainedTextures(): Iterable<THREE.Texture>;
-  diagnostics(): Readonly<{ residentSets: number; referencedSets: number }>;
+  diagnostics(): Readonly<{ residentSets: number; referencedSets: number; failedSets: number }>;
   dispose(): void;
 }
 
@@ -213,6 +225,9 @@ const SURFACE_FILES: Readonly<Record<GarageSurfaceKey, readonly [string, string]
   brick: ['/textures/garage/Bricks097_1K-JPG_Color.webp', '/textures/garage/Bricks097_1K-JPG_NormalGL.webp'],
 });
 
+// The table holds nine surfaces and warmAll keeps all of them resident after first paint (the Garage GPU budget fits
+// them): the cap equals the table and binds only if the table grows. A set that failed to load does not wait for it: it
+// leaves as soon as nothing holds it.
 const MAX_RESIDENT_TEXTURE_SETS = 9;
 
 /**
@@ -327,12 +342,12 @@ function buildSharedGarageTreeGrove(
 /** Reference-counted PBR residency shared by the active and previous pack. */
 export function createGarageEnvironmentAssetLibrary(
   engineCtx: GarageEnvironmentEngineContext,
+  { loader = typeof document === 'undefined' ? null : new THREE.TextureLoader() }: { loader?: GarageTextureLoader | null } = {},
 ): GarageEnvironmentAssetLibrary {
   const entries = new Map<GarageSurfaceKey, TextureEntry>();
   const treeGroves = new Map<TreeSpecies, SharedGarageTreeGrove>();
   const treeGrovePending = new Map<TreeSpecies, Promise<void>>();
   const retainedTextures = new Set<THREE.Texture>();
-  const loader = typeof document === 'undefined' ? null : new THREE.TextureLoader();
   let tick = 0;
   let disposed = false;
 
@@ -363,31 +378,47 @@ export function createGarageEnvironmentAssetLibrary(
       for (const listener of entry.listeners) listener();
       settle();
     }, undefined, () => {
-      if (entries.get(key) === entry) for (const listener of entry.listeners) listener();
+      if (disposed || entries.get(key) !== entry) {
+        settle();
+        return;
+      }
+      entry.phase = 'failed';
+      for (const listener of entry.listeners) listener();
       settle();
+      // nothing holds it (warmAll's prefetch): it leaves now, so the next pack loads it again
+      trim();
     });
     prepare(texture, color);
     retainedTextures.add(texture);
     return texture;
   };
 
+  const evict = (key: GarageSurfaceKey, entry: TextureEntry): void => {
+    entries.delete(key);
+    if (entry.color) retainedTextures.delete(entry.color);
+    if (entry.normal) retainedTextures.delete(entry.normal);
+    entry.color?.dispose();
+    entry.normal?.dispose();
+    entry.listeners.clear();
+  };
+
   const trim = (): void => {
     const candidates = [...entries.entries()]
       .filter(([, entry]) => entry.references === 0)
       .sort((a, b) => a[1].lastUse - b[1].lastUse);
-    while (entries.size > MAX_RESIDENT_TEXTURE_SETS && candidates.length) {
-      const [key, entry] = candidates.shift()!;
-      entries.delete(key);
-      if (entry.color) retainedTextures.delete(entry.color);
-      if (entry.normal) retainedTextures.delete(entry.normal);
-      entry.color?.dispose();
-      entry.normal?.dispose();
-      entry.listeners.clear();
+    // a failed set nobody holds leaves whatever the count
+    for (const [key, entry] of candidates) if (entry.phase === 'failed') evict(key, entry);
+    const live = candidates.filter(([, entry]) => entry.phase !== 'failed');
+    while (entries.size > MAX_RESIDENT_TEXTURE_SETS && live.length) {
+      const [key, entry] = live.shift()!;
+      evict(key, entry);
     }
   };
 
   return {
     acquire(key, requestRender) {
+      // a library disposed under a late build lends nothing (and loads nothing)
+      if (disposed) return { color: null, normal: null, ready: Promise.resolve(), release() {} };
       let entry = entries.get(key);
       if (!entry) {
         let resolveReady = (): void => {};
@@ -395,9 +426,12 @@ export function createGarageEnvironmentAssetLibrary(
         let remainingLoads = 2;
         const settle = (): void => {
           remainingLoads = Math.max(0, remainingLoads - 1);
-          if (remainingLoads === 0) resolveReady();
+          if (remainingLoads > 0) return;
+          if (created.phase === 'loading') created.phase = 'ready';
+          resolveReady();
         };
-        entry = {
+        const created: TextureEntry = {
+          phase: 'loading',
           color: null,
           normal: null,
           ready,
@@ -405,6 +439,7 @@ export function createGarageEnvironmentAssetLibrary(
           lastUse: ++tick,
           listeners: new Set(),
         };
+        entry = created;
         entries.set(key, entry);
         const [colorUrl, normalUrl] = SURFACE_FILES[key];
         const sandCanvas = key === 'sand' ? proceduralSandAlbedo() : null;
@@ -421,7 +456,8 @@ export function createGarageEnvironmentAssetLibrary(
       }
       entry.references += 1;
       entry.lastUse = ++tick;
-      entry.listeners.add(requestRender);
+      const listener = (): void => requestRender();
+      entry.listeners.add(listener);
       let released = false;
       return {
         color: entry.color,
@@ -432,12 +468,14 @@ export function createGarageEnvironmentAssetLibrary(
           released = true;
           entry!.references = Math.max(0, entry!.references - 1);
           entry!.lastUse = ++tick;
-          entry!.listeners.delete(requestRender);
+          entry!.listeners.delete(listener);
           trim();
         },
       };
     },
     treeGrove(species) {
+      // (05-ui-2 #4) a late build after the dispose gets a grove the library does not keep: it never re-fills the caches
+      if (disposed) return buildSharedGarageTreeGrove(engineCtx, species);
       let grove = treeGroves.get(species);
       if (!grove) {
         grove = buildSharedGarageTreeGrove(engineCtx, species);
@@ -464,8 +502,9 @@ export function createGarageEnvironmentAssetLibrary(
     },
     warmAll(requestRender) {
       // Nine compressed albedo/normal pairs stay under the established Garage
-      // GPU budget. Warming them after first paint keeps switches hitch-free
-      // while the reference-counted nine-set cap still bounds residency.
+      // GPU budget. Warming them after first paint keeps switches hitch-free;
+      // the surface table bounds residency (see MAX_RESIDENT_TEXTURE_SETS), and a set
+      // that fails to arrive leaves at once.
       for (const key of Object.keys(SURFACE_FILES) as GarageSurfaceKey[]) {
         const handle = this.acquire(key, requestRender);
         handle.release();
@@ -475,6 +514,7 @@ export function createGarageEnvironmentAssetLibrary(
     diagnostics: () => Object.freeze({
       residentSets: entries.size,
       referencedSets: [...entries.values()].filter((entry) => entry.references > 0).length,
+      failedSets: [...entries.values()].filter((entry) => entry.phase === 'failed').length,
     }),
     dispose() {
       disposed = true;
