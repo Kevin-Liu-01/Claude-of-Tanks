@@ -879,6 +879,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 267: test:lane's red classes (OWN, INHERITED, FLAKY) and the base results kept by input fingerprint
     'tools/lane-reds.selftest.mjs',
     'tools/release.selftest.mjs',
+    // 2026-11-02 audit S5: a live deploy recorded before verify, an owned cache lock, each Worker's commit on record
+    'tools/release-record.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
