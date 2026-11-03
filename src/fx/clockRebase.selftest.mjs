@@ -7,7 +7,10 @@
 //    moment their hold began), through the fracture stages that own it;
 //  - a live runtime registers every part, and a pinned clock keeps an ember's age;
 //  - the debris pool reports what it cannot step under ~15 fps, and a collapse's pieces age by the pool's time (they
-//    aged by frame time while their bodies fell on the pool's).
+//    aged by frame time while their bodies fell on the pool's);
+//  - (review r2) a building's falling rubble keeps its pool's time too: a body thrown with a delay (a collapse front, a
+//    topple's landing) is let go, falls and lands at 8 fps as at 60 (it came due on the fx clock before its pool let it
+//    go, and was given up on: it vanished), and a rebase of the fx clock never moves its release.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -16,6 +19,7 @@ import { createVolumeMedia } from './volumeMedia.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture } from './structureFracture.ts';
 import { createCollapseBodies } from './collapseBodies.ts';
+import { createRubbleBodies } from './rubbleBodies.ts';
 import { createFx } from './effects.ts';
 import { fxClockNow } from './clock.ts';
 import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from '../world/maps/regional/index.ts';
@@ -177,4 +181,39 @@ function seamOf(styleId, id, [w, d, h], structureIdx) {
   assert.ok(Math.abs(clock - pooled) <= 1 / 60 + 1e-9, `the pieces age on the pool's time (clock ${clock.toFixed(3)} s, pool ${pooled.toFixed(3)} s)`);
 }
 
-console.log('clockRebase.selftest: one registry of fx-clock shifts; embers and the fracture\'s face hold move with a rebase; the pieces age on the debris pool\'s time');
+// ---- a delayed rubble body under 8 fps ----
+{
+  const throwOne = (bodies) => bodies.throw('stone', 'block', 0, 4, 0, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 0.6, 0.5, 0.4, 1.2);
+  const lowest = (bodies) => {
+    const mesh = bodies.group.children.find((m) => m.count > 0 && m.name === 'fx-rubble-body-block');
+    const m = new THREE.Matrix4();
+    mesh.getMatrixAt(0, m);
+    return new THREE.Vector3().setFromMatrixPosition(m).y;
+  };
+  for (const [label, dt] of [['8 fps', 0.125], ['60 fps', 1 / 60]]) {
+    let now = 0;
+    const bodies = createRubbleBodies({ now: () => now, environment: () => ({ groundAt: () => 0 }), materialFor: () => null, capacity: 8 });
+    assert.equal(throwOne(bodies), true);
+    // 8 s of frames: at 8 fps the pool steps a little over half of it, the body's 1.2 s delay on the pool's time
+    for (let t = 0; t < 8 - 1e-9; t += dt) { now += dt; bodies.update(); }
+    const st = bodies.stats();
+    assert.equal(st.live, 1, `${label}: the delayed body is still there (${JSON.stringify(st)})`);
+    assert.equal(st.bodies, 1, `${label}: in the pool's world`);
+    assert.ok(Math.abs(st.clockS - bodies.pool.stats().timeS) <= 1 / 60 + 1e-9,
+      `${label}: the bodies' clock is the pool's (${st.clockS} s vs ${bodies.pool.stats().timeS} s)`);
+    const y = lowest(bodies);
+    assert.ok(y > 0 && y < 0.6, `${label}: it fell and lies on the ground (centre ${y.toFixed(2)} m)`);
+  }
+  // a rebase of the fx clock (a capture's pin) neither releases a waiting body early nor holds it back
+  let now = 50;
+  const bodies = createRubbleBodies({ now: () => now, environment: () => ({ groundAt: () => 0 }), materialFor: () => null, capacity: 8 });
+  throwOne(bodies);
+  for (let f = 0; f < 30; f++) { now += 1 / 60; bodies.update(); }
+  now += 100; bodies.shiftTime(100);
+  for (let f = 0; f < 30; f++) { now += 1 / 60; bodies.update(); }
+  assert.ok(bodies.stats().clockS < 1.2 && bodies.stats().live === 1, 'one second in, still waiting');
+  for (let f = 0; f < 60; f++) { now += 1 / 60; bodies.update(); }
+  assert.equal(bodies.stats().bodies, 1, 'and let go on its own time');
+}
+
+console.log('clockRebase.selftest: one registry of fx-clock shifts; embers and the fracture\'s face hold move with a rebase; the pieces and the rubble age on the debris pool\'s time');
