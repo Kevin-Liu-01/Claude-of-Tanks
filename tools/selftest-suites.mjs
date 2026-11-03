@@ -1853,6 +1853,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.wedgeRelease.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
+    // (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the commander's
+    // forward-only life, the session's halt)
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/serviceRecord.selftest.mjs',

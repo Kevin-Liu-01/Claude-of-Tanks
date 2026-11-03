@@ -65,6 +65,9 @@ interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   fireTickAcc: number;
   nextShellId: number;
   openingRouteJobs?: RuntimeValue[];
+  /** The battle's Jev commander (game/jevCommander.ts), when the battle had one. */
+  jev?: { dispose(): void } | null;
+  _jevView?: RuntimeValue | null;
 }
 
 export function resetBattleTankForGarage({
@@ -178,4 +181,9 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
   game.fireTickAcc = 0;
   game.nextShellId = 1;
   game.openingRouteJobs?.splice(0);
+  // a quit or a finished battle leaves no Jev commander behind: its in-flight requests abort and late answers land
+  // nowhere (2026-11-02 audit M6; the next battle's setup disposed it before, long after the Garage return)
+  game.jev?.dispose();
+  game.jev = null;
+  game._jevView = null;
 }

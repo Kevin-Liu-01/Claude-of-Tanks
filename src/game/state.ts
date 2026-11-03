@@ -56,7 +56,7 @@ import {
 } from './teamArrangement.ts';
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
-import { createJevCommander, createJevFetchTransport, type JevBattleView, type JevCommander } from './jevCommander.ts';
+import { createJevCommander, createJevFetchTransport, createJevSession, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -1210,8 +1210,11 @@ function jevEndpointUrl(): string {
   return typeof configured === 'string' && configured.trim() ? configured.trim() : '/api/jev';
 }
 
-/** One browser transport per page: the proxy budgets the session, not the battle. */
-let jevTransport: ReturnType<typeof createJevFetchTransport> | null = null;
+/**
+ * The page's one Jev session (jevCommander.ts createJevSession): the transport the proxy budgets per page load, and the
+ * owner of its halt — a halted session hands no transport, so the next battle runs the classic brain.
+ */
+const jevSession = createJevSession(() => createJevFetchTransport({ url: jevEndpointUrl() }));
 
 function createJevBattleView(game: SoloGameState): JevBattleView {
   return {
@@ -1236,10 +1239,10 @@ function attachBattleCommander(game: SoloGameState): void {
   // the proving ground's targets have no brain to command
   const teams: TeamId[] = game.ruleset.provingGround ? []
     : brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
-  // a transport Jev halted this session (out of credit, a TypeSafe 429, the budget spent) leaves the classic brain
-  if (teams.length && !jevTransport?.halted) {
-    jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
-    game.jev = createJevCommander({ transport: jevTransport, teams });
+  // a session Jev halted (out of credit, a TypeSafe 429, the budget spent) hands no transport: the classic brain commands
+  const transport = teams.length ? jevSession.transport() : null;
+  if (transport) {
+    game.jev = createJevCommander({ transport, teams });
     game._jevView = createJevBattleView(game);
   }
   for (const entity of game.tanks) entity.brain = game.jev?.commands(entity) ? 'jev' : 'classic';

@@ -17,6 +17,20 @@
  * Node-runnable and DOM-free: the battle view is an interface both the solo
  * integration (game/state.ts) and, later, the authoritative match can satisfy;
  * the transport is injected (createJevFetchTransport for the browser).
+ *
+ * Determinism (2026-11-02 audit M6). The answers are the battle's external
+ * input, as a second player's keys would be: when one arrives is the network's,
+ * so a Jev battle is not a function of its seed and the player's inputs alone.
+ * It is a function of those plus its ORDER INPUT LOG: every order the commander
+ * hands a controller is applied at a step boundary, stamped with the sim second
+ * it was applied on (JevOrderBatch), and createJevReplayCommander applies the
+ * same batches on the same sim seconds with no network, so a replay of the
+ * inputs is the battle again. Nothing on the wall clock decides anything inside
+ * the step: a request's deadline is sim seconds (requestDeadlineS); the wall
+ * clock (`now`) only times the answer's latency for the stats. The commander's
+ * life is one declared phase (active, stopped at the verdict, disposed at the
+ * next battle or the Garage return), and the page's halt of Jev is one session
+ * owner (createJevSession).
  */
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { roleOf, type AiOrder, type AiOrderPosture } from './ai.ts';
@@ -84,7 +98,9 @@ interface JevTransport {
   send(body: JevRequestBody, signal: AbortSignal): Promise<JevTransportResult>;
   /** No further request this session (out of credit, a TypeSafe 429, the budget spent); the classic brain commands. */
   readonly halted?: boolean;
-  halt?(): void;
+  /** Why it halted (the first session-ending answer), null while live. */
+  readonly haltReason?: string | null;
+  halt?(reason?: string): void;
 }
 
 /**
@@ -149,23 +165,43 @@ interface JevCommanderOptions {
   minFocusConfidence?: number;
   /** Order log capacity (the debug HUD reads it). */
   logCapacity?: number;
+  /**
+   * Sim seconds a request may stay in flight before the team gives up on it and asks again (2026-11-02 audit M6: the
+   * deadline was 5 s of wall clock read inside the step, so a killcam freeze or a pause aborted the request the moment
+   * the battle ran again). The transport's own wall timeout (createJevFetchTransport timeoutMs) ends the fetch itself.
+   */
+  requestDeadlineS?: number;
   /** Wall clock for latency accounting (never for the simulation). */
   now?: () => number;
 }
+
+/** The orders one answer became, applied together at one step boundary: the battle's recorded Jev input. */
+export interface JevOrderBatch {
+  /** The sim second (the battle's clock) the orders were applied on, before the controllers stepped. */
+  readonly timeS: number;
+  readonly team: string;
+  readonly orders: readonly { readonly id: string; readonly order: Readonly<AiOrder> }[];
+}
+
+/** The commander's life (2026-11-02 audit M6): it only moves forward, active → stopped → disposed. */
+export type JevCommanderPhase = 'active' | 'stopped' | 'disposed';
 
 export interface JevCommander {
   /** One call per simulation step, before the controllers update; cheap while nothing is due. */
   step(view: JevBattleView): void;
   /** Stop issuing requests (the battle ended); in-flight answers are ignored. */
   stop(): void;
-  /** Stop and abort in-flight requests. */
+  /** Stop and abort in-flight requests; late answers are ignored for good. */
   dispose(): void;
   /** True for a bot this commander orders. */
   commands(entity: { readonly team: string; readonly bot?: boolean; readonly isPlayer?: boolean }): boolean;
   readonly teams: readonly string[];
   readonly active: boolean;
+  readonly phase: JevCommanderPhase;
   stats(team?: string): JevTeamStats;
   readonly orderLog: readonly JevOrderLogEntry[];
+  /** Every order batch applied this battle, in order: what a replay applies again (createJevReplayCommander). */
+  readonly inputLog: readonly JevOrderBatch[];
 }
 
 const CLASS_WORDS: Readonly<Record<string, string>> = Object.freeze({
@@ -460,7 +496,6 @@ export function buildJevTeamState(
 interface PendingRequest {
   readonly team: string;
   readonly issuedAtS: number;
-  readonly startedAtMs: number;
   readonly snapshot: TeamSnapshot;
   readonly controller: AbortController;
 }
@@ -487,9 +522,27 @@ function choice(answer: JevAnswer | undefined): { choice: string; confidence: nu
   return answer && answer.type === 'choice' ? { choice: answer.choice, confidence: answer.confidence } : null;
 }
 
+/** The step boundary's application of one batch (the live commander's and the replay's one path to the controllers). */
+function applyOrderBatch(view: JevBattleView, batch: JevOrderBatch): number {
+  let applied = 0;
+  for (const { id, order } of batch.orders) {
+    const entity = view.tanks.find((tank) => tank.id === id);
+    if (!entity || !alive(entity) || !entity.aiCtl?.setOrder) continue;
+    entity.aiCtl.setOrder({ ...order, point: order.point ? { ...order.point } : null });
+    applied++;
+  }
+  return applied;
+}
+
+/** True for a bot a commander of these teams orders (never the human, never a watcher's taken seat). */
+function commandsEntity(commanded: ReadonlySet<string>, entity: { readonly team: string; readonly bot?: boolean; readonly isPlayer?: boolean }): boolean {
+  return !!entity.bot && !entity.isPlayer && commanded.has(entity.team);
+}
+
 export function createJevCommander({
   transport, teams, cadenceS = 2, quietCadenceS = 8, orderTtlS = 5, staleAfterS = 6, requestsPerTeam = 450,
-  minPostureConfidence = 0.3, minTargetConfidence = 0.4, minFocusConfidence = 0.45, logCapacity = 64, now = Date.now,
+  minPostureConfidence = 0.3, minTargetConfidence = 0.4, minFocusConfidence = 0.45, logCapacity = 64, requestDeadlineS = 5,
+  now = Date.now,
 }: JevCommanderOptions): JevCommander {
   const commanded = new Set(teams);
   const stats = new Map<string, JevTeamStats>();
@@ -503,8 +556,19 @@ export function createJevCommander({
   const inFlight = new Map<string, PendingRequest>();
   const arrivals: Arrival[] = [];
   const orderLog: JevOrderLogEntry[] = [];
-  let active = true;
-  let disposed = false;
+  const inputLog: JevOrderBatch[] = [];
+  let phase: JevCommanderPhase = 'active';
+
+  /** The one writer of the phase: forward only (active → stopped → disposed); any other move is ignored. */
+  function enter(next: JevCommanderPhase): boolean {
+    const order: Record<JevCommanderPhase, number> = { active: 0, stopped: 1, disposed: 2 };
+    if (order[next] <= order[phase]) return false;
+    phase = next;
+    for (const pending of inFlight.values()) pending.controller.abort();
+    inFlight.clear();
+    arrivals.length = 0;
+    return true;
+  }
 
   const teamStats = (team: string): JevTeamStats => {
     let row = stats.get(team);
@@ -538,13 +602,14 @@ export function createJevCommander({
     lastSentS.set(team, view.timeS);
     row.requests++;
     const controller = new AbortController();
-    const pending: PendingRequest = { team, issuedAtS: view.timeS, startedAtMs: now(), snapshot, controller };
+    const pending: PendingRequest = { team, issuedAtS: view.timeS, snapshot, controller };
     inFlight.set(team, pending);
+    // the stopwatch only: the latency rides the stats, never a decision of the step
     const startedAt = now();
     const body: JevRequestBody = { v: JEV_PROTOCOL_VERSION, sid: transport.sid, kind: 'team_orders', state: snapshot.state };
     transport.send(body, controller.signal).then(
-      (result) => { if (!disposed) arrivals.push({ pending, result, latencyMs: now() - startedAt }); },
-      (error) => { if (!disposed) arrivals.push({ pending, result: { ok: false, error: error instanceof Error ? error.name === 'AbortError' ? 'aborted' : error.message : String(error) }, latencyMs: now() - startedAt }); },
+      (result) => { if (phase !== 'disposed') arrivals.push({ pending, result, latencyMs: now() - startedAt }); },
+      (error) => { if (phase !== 'disposed') arrivals.push({ pending, result: { ok: false, error: error instanceof Error ? error.name === 'AbortError' ? 'aborted' : error.message : String(error) }, latencyMs: now() - startedAt }); },
     );
   }
 
@@ -566,6 +631,7 @@ export function createJevCommander({
     const ours = view.tanks.filter((entity) => entity.team === team && alive(entity));
     let focusAssignments = 0;
     const supported = new Map<string, number>();
+    const batch: { id: string; order: AiOrder }[] = [];
     for (const [label, entityId] of snapshot.labels.botIds) {
       const entity = byId.get(entityId);
       const posture = choice(answers[`posture_${label}`]);
@@ -649,11 +715,16 @@ export function createJevCommander({
       const fire: AiOrder['fire'] = (entity.combat!.reload?.t ?? 0) > 0.05 ? null : fireAnswer && fireAnswer.type === 'noul'
         ? fireAnswer.noul >= 0.7 ? 'press' : fireAnswer.noul <= 0.3 ? 'hold' : null : null;
       const order: AiOrder = { posture: mapped, targetId, fire, threat, point, untilS: issuedAtS + orderTtlS };
-      entity.aiCtl.setOrder(order);
+      batch.push({ id: entityId, order });
       row.ordersApplied++;
       if (!mapped) row.targetOnly++;
       entry(true, mapped ? 'applied' : 'target_only', order);
     }
+    if (!batch.length) return;
+    // the answer becomes the battle's input on this step's boundary, recorded as it is applied (a replay applies it again)
+    const recorded: JevOrderBatch = { timeS: view.timeS, team, orders: batch.map(({ id, order }) => ({ id, order: { ...order, point: order.point ? { ...order.point } : null } })) };
+    inputLog.push(recorded);
+    applyOrderBatch(view, recorded);
   }
 
   function settle(view: JevBattleView): void {
@@ -672,12 +743,12 @@ export function createJevCommander({
         row.lastError = null;
         row.backoffS = 0;
         failures.set(team, 0);
-        if (active) applyAnswers(view, arrival, arrival.result.body);
+        if (phase === 'active') applyAnswers(view, arrival, arrival.result.body);
         continue;
       }
       row.failed++;
       row.lastError = arrival.result.error;
-      if (SESSION_ENDING_ERRORS.has(arrival.result.error)) transport.halt?.();
+      if (SESSION_ENDING_ERRORS.has(arrival.result.error)) transport.halt?.(arrival.result.error);
       // back off: doubling from two seconds to thirty, or what the proxy asked for
       const count = (failures.get(team) ?? 0) + 1;
       failures.set(team, count);
@@ -690,8 +761,10 @@ export function createJevCommander({
 
   return {
     teams,
-    get active() { return active; },
+    get active() { return phase === 'active'; },
+    get phase() { return phase; },
     orderLog,
+    inputLog,
     stats(team?: string): JevTeamStats {
       if (team) return teamStats(team);
       const total = emptyStats();
@@ -710,14 +783,15 @@ export function createJevCommander({
       return total;
     },
     commands(entity) {
-      return !!entity.bot && !entity.isPlayer && commanded.has(entity.team);
+      return commandsEntity(commanded, entity);
     },
     step(view: JevBattleView): void {
       settle(view);
-      if (!active) return;
+      if (phase !== 'active') return;
       for (const team of teams) {
         const pending = inFlight.get(team);
-        if (pending && now() - pending.startedAtMs > 5000) {
+        // the deadline is sim seconds: a pause or a killcam freeze stops it with the battle (2026-11-02 audit M6)
+        if (pending && view.timeS - pending.issuedAtS > requestDeadlineS) {
           pending.controller.abort();
           inFlight.delete(team);
           const row = teamStats(team);
@@ -730,18 +804,86 @@ export function createJevCommander({
       }
     },
     stop(): void {
-      active = false;
-      for (const pending of inFlight.values()) pending.controller.abort();
-      inFlight.clear();
-      arrivals.length = 0;
+      enter('stopped');
     },
     dispose(): void {
-      active = false;
-      disposed = true;
-      for (const pending of inFlight.values()) pending.controller.abort();
-      inFlight.clear();
-      arrivals.length = 0;
+      enter('disposed');
     },
+  };
+}
+
+/**
+ * A commander that replays a battle's recorded Jev input (JevCommander.inputLog) with no network: each batch is applied on
+ * the sim second it was applied on live, through the same step boundary, so the battle's controllers take the same orders
+ * on the same ticks (2026-11-02 audit M6). It asks nothing and its stats stay empty.
+ */
+export function createJevReplayCommander({ inputLog, teams }: { inputLog: readonly JevOrderBatch[]; teams: readonly string[] }): JevCommander {
+  const commanded = new Set(teams);
+  const batches = inputLog.slice();
+  let next = 0;
+  let phase: JevCommanderPhase = 'active';
+  const stats = new Map<string, JevTeamStats>();
+  const statsOf = (team: string): JevTeamStats => {
+    let row = stats.get(team);
+    if (!row) { row = emptyStats(); stats.set(team, row); }
+    return row;
+  };
+  return {
+    teams,
+    get active() { return phase === 'active'; },
+    get phase() { return phase; },
+    orderLog: [],
+    inputLog: batches,
+    stats(team?: string): JevTeamStats {
+      if (team) return statsOf(team);
+      const total = emptyStats();
+      for (const row of stats.values()) total.ordersApplied += row.ordersApplied;
+      return total;
+    },
+    commands(entity) {
+      return commandsEntity(commanded, entity);
+    },
+    step(view: JevBattleView): void {
+      if (phase !== 'active') return;
+      // (the clock a replay steps is the live battle's to the bit, so the stamp compares exactly; the slack only forgives a
+      // log carried through a lossy channel)
+      while (next < batches.length && batches[next]!.timeS <= view.timeS + 1e-9) {
+        const batch = batches[next++]!;
+        statsOf(batch.team).ordersApplied += applyOrderBatch(view, batch);
+      }
+    },
+    stop(): void { if (phase === 'active') phase = 'stopped'; },
+    dispose(): void { phase = 'disposed'; },
+  };
+}
+
+/** The page's Jev session state (2026-11-02 audit M6): live while Jev may be asked, halted for good once it said so. */
+export type JevSessionState = 'idle' | 'live' | 'halted';
+
+/**
+ * The page's one Jev session: the transport the proxy budgets (one session id per page load) and its halt — the owner of
+ * the latch that ends Jev for the page (out of credit, a TypeSafe 429, the session budget spent; docs/JEV-COMMANDER.md).
+ * By design a halt is not lifted within the page session (the credit is hard-capped and shared); `reset` is the one
+ * explicit way to start another session, a new id and a live transport, and nothing calls it on its own.
+ */
+export interface JevSession {
+  readonly state: JevSessionState;
+  readonly haltReason: string | null;
+  /** The live transport (made on first use), or null once the session halted: the battle then runs the classic brain. */
+  transport(): JevTransport | null;
+  reset(): void;
+}
+
+export function createJevSession(makeTransport: () => JevTransport): JevSession {
+  let current: JevTransport | null = null;
+  return {
+    get state() { return !current ? 'idle' : current.halted ? 'halted' : 'live'; },
+    get haltReason() { return current?.halted ? current.haltReason ?? 'halted' : null; },
+    transport() {
+      current ??= makeTransport();
+      return current.halted ? null : current;
+    },
+    reset() { current = null; },
   };
 }
 
@@ -762,10 +904,16 @@ export function createJevFetchTransport({
   url = '/api/jev', fetch = globalThis.fetch, timeoutMs = 3500, sid = sessionId(),
 }: { url?: string; fetch?: typeof globalThis.fetch; timeoutMs?: number; sid?: string } = {}): JevTransport {
   let halted = false;
+  let haltReason: string | null = null;
   return {
     sid,
     get halted() { return halted; },
-    halt() { halted = true; },
+    get haltReason() { return haltReason; },
+    halt(reason = 'halted') {
+      if (halted) return; // the first session-ending answer names the halt
+      halted = true;
+      haltReason = reason;
+    },
     async send(body, signal) {
       if (halted) return { ok: false, error: 'halted' };
       const controller = new AbortController();
