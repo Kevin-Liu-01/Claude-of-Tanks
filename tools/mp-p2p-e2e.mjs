@@ -1034,14 +1034,20 @@ try {
   }
   // --game-mode / --map: the admin sets them in the lobby (the controls the player uses), before anyone readies
   if (gameModeOption) {
-    // (2026-10-17) the room lobby keeps the rule cards in a section it does not lay out, so a pointer click finds no box
-    // ("Node is either not clickable or not an Element"): the card's own click handler sends set_game_mode as the host
-    await pages.a.evaluate((mode) => {
-      const card = document.querySelector(`.cot-play [data-game-mode="${mode}"]`);
-      if (!card) throw new Error(`no game mode card ${mode}`);
-      card.click();
-    }, gameModeOption);
-    await waitFor(pages.a, (mode) => document.querySelector(`.cot-play [data-game-mode="${mode}"]`)?.classList.contains('on'), `A game mode ${gameModeOption}`, 15_000, { args: [gameModeOption] });
+    // (268) the lobby picks its mode from the Mode trigger's picker (the cards went with the 10-26 pickers; 268's first
+    // bot-free production run stopped on "no game mode card"): the trigger opens it and the option's own click chooses,
+    // which sends set_game_mode as the host. Element clicks, as before: the lobby's sections are not always laid out.
+    const option = (mode) => `.cot-play [data-picker="rooms-mode"] .cot-c-picker__opt[data-id="${mode}"]`;
+    await pages.a.evaluate(() => {
+      const trigger = document.querySelector('.cot-play [data-control="mode"] [data-select-trigger]');
+      if (!trigger) throw new Error('no Mode trigger in the lobby');
+      trigger.click();
+    });
+    await waitFor(pages.a, (selector) => !!document.querySelector(selector), `A's mode picker lists ${gameModeOption}`, 15_000, { args: [option(gameModeOption)] });
+    await pages.a.evaluate((selector) => document.querySelector(selector).click(), option(gameModeOption));
+    await waitFor(pages.a, (selector) => document.querySelector(selector)?.getAttribute('aria-selected') === 'true', `A game mode ${gameModeOption}`, 15_000, { args: [option(gameModeOption)] });
+    // the deployed service's own state, as A's room socket heard it
+    if (live) await waitFor(pages.a, (mode) => window.__MP_E2E_ROOM?.settings?.gameMode === mode, `the room plays ${gameModeOption}`, 15_000, { args: [gameModeOption] });
     if (!live) {
       const roomMode = () => rooms.room(report.room.code)?.room?.settings?.gameMode ?? null;
       for (let waited = 0; roomMode() !== gameModeOption && waited < 15_000; waited += 100) await sleep(100);
@@ -1066,7 +1072,7 @@ try {
       if (roomMap() !== mapOption) report.findings.push(`--map ${mapOption} did not take: the room plays ${roomMap()}`);
     }
   }
-  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null, roomGameMode: live ? null : rooms.room(report.room.code)?.room?.settings?.gameMode ?? null });
+  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null, roomGameMode: live ? await pages.a.evaluate(() => window.__MP_E2E_ROOM?.settings?.gameMode ?? null) : rooms.room(report.room.code)?.room?.settings?.gameMode ?? null });
   // --no-bots (268): the admin turns the room's bot fill off on its own room socket before anyone readies (the command
   // resets readiness); the room must answer it and its state carry it
   if (noBots) {
