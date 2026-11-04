@@ -21,7 +21,12 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
 // 9 (consumables-260, 2026-10-26): the viewer's equipment multipliers gain `power` (VIEWER_EQUIPMENT), a Governor
 // Override's engine burst (sim/consumableRules.ts), so the predictor drives at the authority's power.
-export const WIRE_VERSION = 9;
+// 10 (audit M8, 2026-11-02): ENTITY_FLAGS gains TUMBLING, the hull's rigid phase itself (src/sim/hullBodyMode.ts), and
+// STACKED, the hull bearing on another hull (tankBodyContacts.ts hullBearsOnBody); the row's status word becomes a varint
+// (18 bits; 1 to 3 bytes, a flagless row's 1 where the u16 took 2). Before, a client rebuilt the tumble as
+// overturned-or-righting and judged a stack from a support cache its copy of the hull never filled, so the prediction
+// world's tank contacts and the authority's split the same pair (src/mp/match/hullBodyRow.ts).
+export const WIRE_VERSION = 10;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -37,7 +42,9 @@ export const WIRE_VERSION = 9;
 // a 251 tab and a 252 tab never share a match (the joining side reads "Refresh to join this match").
 // 10 (consumables-260, 2026-10-26): wire 9 and the consumable catalog (each seat's consumables; consumable_used names
 // its item and charges): a 259 tab and a 260 tab never share a match.
-export const PROTOCOL_VERSION = 10; // wire 9, consumable loadouts
+// 11 (audit M8, 2026-11-02): wire 10, the TUMBLING and STACKED row flags the clients' hull copies restore their body mode
+// and their tank contacts from.
+export const PROTOCOL_VERSION = 11; // wire 10, the tumbling and stacked row flags
 
 export const TICK_HZ = 60;
 /**
@@ -151,7 +158,7 @@ export const HELLO_CAPABILITY = Object.freeze({
 export const RELOAD_KIND = Object.freeze({ READY: 0, SHELL: 1, INTRA_CLIP: 2, MAGAZINE: 3 } as const);
 export const RELOAD_KIND_NAMES = Object.freeze(['ready', 'shell', 'intraClip', 'magazine'] as const);
 
-/** Nine presentation flags, identical values to v1's SNAPSHOT_FLAGS. */
+/** Eleven presentation flags, identical values to v1's SNAPSHOT_FLAGS (src/sim/worldSnapshot.ts). */
 export const ENTITY_FLAGS = Object.freeze({
   DESTROYED: 1 << 0,
   BURNING: 1 << 1,
@@ -162,8 +169,20 @@ export const ENTITY_FLAGS = Object.freeze({
   AIRBORNE: 1 << 6,
   OVERTURNED: 1 << 7,
   AUTO_RIGHTING: 1 << 8,
+  /**
+   * The rigid phase (wire 10, audit M8): tumbling or righting (src/sim/hullBodyMode.ts). OVERTURNED and AUTO_RIGHTING are
+   * its sub-states; a plain tumble (a hull rolling on the ground after a stack kick or a landing on its side) is this bit
+   * alone, which the tank contacts read as a dynamic body (tankBodyContacts.ts isDynamicBodyContact).
+   */
+  TUMBLING: 1 << 9,
+  /**
+   * The hull bears on another hull (wire 10, audit M8): on its roof, held by the contact pass, or riding above its own
+   * static support (tankBodyContacts.ts hullBearsOnBody). A client's copy of the hull has neither a contact pass nor a
+   * support cache, so its tank contacts read this bit instead (src/mp/match/hullBodyRow.ts).
+   */
+  STACKED: 1 << 10,
 } as const);
-export const ENTITY_FLAG_BITS = 9;
+export const ENTITY_FLAG_BITS = 11;
 
 /**
  * The authority holds a seat's last control this many ticks past its last fresh one, then releases drive and fire
@@ -214,7 +233,7 @@ export const ROW_GROUP = Object.freeze({
   GUN_RELOAD: 1 << 10, // remaining, total u16 (2 ms units)
   MAGAZINE: 1 << 11,   // rounds u8, capacity u8
   AMMO: 1 << 12,       // 3 x varint
-  STATUS: 1 << 13,     // u16 status word (kinds, slot, mirror bit, flags)
+  STATUS: 1 << 13,     // varint status word (kinds, slot, mirror bit, flags; wire 10, was u16)
   ERA_ADD: 1 << 14,    // varint count + gap-coded plate indices added to the baseline set
   ERA_RESET: 1 << 15,  // varint count + gap-coded plate indices replacing the set
   /**
@@ -241,6 +260,8 @@ export const STATUS_GUN_RELOAD_KIND_SHIFT = 2;
 export const STATUS_SHELL_SLOT_SHIFT = 4;
 export const STATUS_GUN_RELOAD_MIRRORS = 1 << 6;
 export const STATUS_FLAGS_SHIFT = 7;
+/** The widest status word the decoder admits (wire 10: 7 + ENTITY_FLAG_BITS bits, a varint). */
+export const STATUS_WORD_MAX = (1 << (STATUS_FLAGS_SHIFT + ENTITY_FLAG_BITS)) - 1;
 
 /** Quantization: integers on the wire, SI units in the simulation. */
 export const POSITION_SCALE = 1000;          // mm

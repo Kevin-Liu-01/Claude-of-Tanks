@@ -9,6 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { magazineIndicator } from './magazineIndicator.ts';
 import type { MagazineIndicator, MagazineIndicatorSpec } from './magazineIndicator.ts';
 import * as detMath from './detMath.ts';
+import { hullBearsOnBody } from './tankBodyContacts.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
@@ -34,6 +35,10 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   AIRBORNE: 1 << 6,
   OVERTURNED: 1 << 7,
   AUTO_RIGHTING: 1 << 8,
+  /** The rigid phase itself (audit M8, 2026-11-02; the wire's ENTITY_FLAGS.TUMBLING, wire 10). */
+  TUMBLING: 1 << 9,
+  /** The hull bears on another hull (tankBodyContacts.ts hullBearsOnBody; the wire's ENTITY_FLAGS.STACKED, wire 10). */
+  STACKED: 1 << 10,
 });
 
 type VectorAxis = 0 | 1 | 2;
@@ -49,7 +54,7 @@ interface SnapshotStateSource {
   gunPitch?: RuntimeValue;
   grounded?: boolean;
   overturned?: boolean;
-  _body?: { autoRighting?: boolean } | null;
+  _body?: { autoRighting?: boolean; tumbling?: boolean } | null;
   _ride?: { v?: RuntimeValue } | null;
 }
 
@@ -192,6 +197,8 @@ function entityFlags(entity: SnapshotEntitySource): number {
   if (entity.state?.grounded === false) flags |= SNAPSHOT_FLAGS.AIRBORNE;
   if (entity.state?.overturned) flags |= SNAPSHOT_FLAGS.OVERTURNED;
   if (entity.state?._body?.autoRighting) flags |= SNAPSHOT_FLAGS.AUTO_RIGHTING;
+  if (entity.state?._body?.tumbling) flags |= SNAPSHOT_FLAGS.TUMBLING;
+  if (entity.state?.pos && hullBearsOnBody(entity.state as Parameters<typeof hullBearsOnBody>[0])) flags |= SNAPSHOT_FLAGS.STACKED;
   return flags;
 }
 

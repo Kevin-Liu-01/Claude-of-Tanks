@@ -707,7 +707,6 @@ interface TankPoseState {
   turretYaw: number;
   gunPitch: number;
   trackScroll: { l: number; r: number };
-  _flinch?: VisualSpringState;
   _susp?: Pick<VisualSpringState, 'p' | 'r'>;
   _swayEst?: number;
 }
@@ -10306,15 +10305,52 @@ export function* createTankRuntimeSteps(
   let sway = 0;                      // turn-lean roll (rad), smoothed
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
-  // Hit/recoil impulses accumulate here and are routed into the SIM's flinch
-  // mirror (state._flinch, integrated by movement.ts) on the next
-  // syncFromState — the terrain-contact support solve then clears the ground
-  // at the flinched pose too (a 1-2° large-caliber rock over a 3.5 m
-  // half-length used to dip a track end ~10 cm past the 1.5 cm margin).
-  // The local flinchP/flinchR oscillator remains ONLY as a fallback for
-  // staged/ghost states without the mirror (killcam ghosts, garage poses).
+  // Hit/recoil impulses accumulate here until the next syncFromState steps this
+  // spring on the fx clock. It is presentation only (audit M9, 2026-11-02): the
+  // sim never reads it, so it rocks every state the visual draws (a solo sim
+  // state, a multiplayer presented state or mirror, a ghost) and never writes
+  // one. It used to be routed into the sim's state._flinch, which only the solo
+  // page sim integrated (at render cadence) and no multiplayer state ever did.
+  // A 1-2° large-calibre rock over a 3.5 m half-length dips a track end ~10 cm,
+  // so the root rises by the rock's own corner drop (flinchContactLift) and the
+  // wheels conform at that lifted pose.
   let pendFlinchPV = 0, pendFlinchRV = 0;
   const FLINCH_W = 13, FLINCH_Z = 0.32;
+  const FLINCH_MAX_STEP_S = 1 / 60, FLINCH_MAX_ADVANCE_S = 2;
+  let flinchLift = 0;                // root rise (m) that keeps the rocked contact rectangle at its seat
+  const flinchLiftPose: TankPoseState = {
+    pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, yawRate: 0, speed: 0, turretYaw: 0, gunPitch: 0,
+    trackScroll: { l: 0, r: 0 },
+  };
+  /** How far the rock lowers the contact rectangle's lowest-going corner below where the unrocked pose (root pitch
+   * `rx`, roll `rz`, as root.rotation.x/z) holds it: the root rises that much, so every corner stays at or above its
+   * seat. Euler 'YXZ': a hull-local point's height over the root is (x sin z + y cos z) cos x - z' sin x. */
+  function flinchContactLift(rx: number, rz: number): number {
+    if (!contactGeom || (flinchP === 0 && flinchR === 0)) return 0;
+    const ca0 = Math.cos(rx), sa0 = Math.sin(rx), cc0 = Math.cos(rz), sc0 = Math.sin(rz);
+    const ca1 = Math.cos(rx + flinchP), sa1 = Math.sin(rx + flinchP);
+    const cc1 = Math.cos(rz + flinchR), sc1 = Math.sin(rz + flinchR);
+    const y = contactGeom.bottomYM;
+    let lift = 0;
+    for (let corner = 0; corner < 4; corner++) {
+      const x = corner & 1 ? contactGeom.halfWidM : -contactGeom.halfWidM;
+      const z = contactGeom.zCenterM + (corner & 2 ? contactGeom.halfLenM : -contactGeom.halfLenM);
+      const drop = ((x * sc0 + y * cc0) * ca0 - z * sa0) - ((x * sc1 + y * cc1) * ca1 - z * sa1);
+      if (drop > lift) lift = drop;
+    }
+    return lift * root.scale.y;
+  }
+  /** The pose the wheels conform at while the rock lifts the root (scratch, no allocation). */
+  function liftedPose(renderState: TankPoseState): TankPoseState {
+    flinchLiftPose.pos.x = renderState.pos.x;
+    flinchLiftPose.pos.y = renderState.pos.y + flinchLift;
+    flinchLiftPose.pos.z = renderState.pos.z;
+    flinchLiftPose.yaw = renderState.yaw;
+    flinchLiftPose.visualPitch = renderState.visualPitch;
+    flinchLiftPose.visualRoll = renderState.visualRoll;
+    flinchLiftPose.trackScroll = renderState.trackScroll;
+    return flinchLiftPose;
+  }
   // Suspension spring: restrained pitch/roll movement layered on the sim's
   // stiff 4-corner attitude — squat on accel, dive on braking, settle over ruts.
   // Works in visualPitch/visualRoll space (nose-up positive / right-down
@@ -11035,9 +11071,9 @@ export function* createTankRuntimeSteps(
       const presentationState = presentationStateValue == null
         ? null
         : requireTankPoseState(presentationStateValue);
-      // The authority state remains the mutation target for queued recoil /
-      // flinch impulses. A presentation state is a read-only, allocation-free
-      // interpolated view used only for transforms and running-gear phase.
+      // Neither state is ever written: queued recoil / flinch impulses drive the
+      // visual's own spring (audit M9). A presentation state is a read-only,
+      // allocation-free interpolated view used for transforms and running-gear phase.
       const renderState = presentationState || state;
       const syncFromStateAssemblyStage1 = (): void => {
         if (battleDetailGroups.length) {
@@ -11134,35 +11170,25 @@ export function* createTankRuntimeSteps(
         }
       };
       syncFromStateGunStage1();
-      // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
-      // Sim-mirrored path (terrain-contact guard): route pending impulses
-      // into state._flinch and RENDER the sim's values — movement.ts
-      // integrates the oscillator once per fixed tick and support-solves
-      // pos.y against this exact pose, so a hit can never rock a track end
-      // below the heightfield. Fallback path self-integrates as before.
+      // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll, the
+      // visual's own spring (audit M9) stepped on the fx clock like the other
+      // self-timed timelines, in steps short enough to stay stable.
       const syncFromStateAssemblyStage3 = (): void => {
-        if (state._flinch) {
-          if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
-            state._flinch.pv += pendFlinchPV;
-            state._flinch.rv += pendFlinchRV;
-            pendFlinchPV = pendFlinchRV = 0;
-          }
-          flinchP = renderState._flinch ? renderState._flinch.p : state._flinch.p;
-          flinchR = renderState._flinch ? renderState._flinch.r : state._flinch.r;
-        } else {
-          if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
-            flinchPV += pendFlinchPV;
-            flinchRV += pendFlinchRV;
-            pendFlinchPV = pendFlinchRV = 0;
-          }
-          if (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0) {
-            flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * dt;
-            flinchP += flinchPV * dt;
-            flinchRV += (-FLINCH_W * FLINCH_W * flinchR - 2 * FLINCH_Z * FLINCH_W * flinchRV) * dt;
-            flinchR += flinchRV * dt;
-            if (Math.abs(flinchP) + Math.abs(flinchPV) + Math.abs(flinchR) + Math.abs(flinchRV) < 1e-4) {
-              flinchP = flinchR = flinchPV = flinchRV = 0;
-            }
+        if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
+          flinchPV += pendFlinchPV;
+          flinchRV += pendFlinchRV;
+          pendFlinchPV = pendFlinchRV = 0;
+        }
+        let left = Math.min(Math.max(0, adv), FLINCH_MAX_ADVANCE_S);
+        while (left > 1e-9 && (flinchP !== 0 || flinchR !== 0 || flinchPV !== 0 || flinchRV !== 0)) {
+          const h = Math.min(left, FLINCH_MAX_STEP_S);
+          left -= h;
+          flinchPV += (-FLINCH_W * FLINCH_W * flinchP - 2 * FLINCH_Z * FLINCH_W * flinchPV) * h;
+          flinchP += flinchPV * h;
+          flinchRV += (-FLINCH_W * FLINCH_W * flinchR - 2 * FLINCH_Z * FLINCH_W * flinchRV) * h;
+          flinchR += flinchRV * h;
+          if (Math.abs(flinchP) + Math.abs(flinchPV) + Math.abs(flinchR) + Math.abs(flinchRV) < 1e-4) {
+            flinchP = flinchR = flinchPV = flinchRV = 0;
           }
         }
       };
@@ -11191,6 +11217,9 @@ export function* createTankRuntimeSteps(
         }
         root.rotation.set(-(renderState.visualPitch + suspP) + flinchP, renderState.yaw,
           renderState.visualRoll + suspR + sway + flinchR, 'YXZ');
+        // the sim seated the tracks at the unrocked pose: the rock pivots the hull on them, not through the ground
+        flinchLift = flinchContactLift(-(renderState.visualPitch + suspP), renderState.visualRoll + suspR + sway);
+        if (flinchLift > 0) root.position.y = renderState.pos.y + flinchLift;
       };
       syncFromStateAssemblyStage4();
       const syncFromStateAssemblyStage5 = (): void => {
@@ -11300,7 +11329,8 @@ export function* createTankRuntimeSteps(
           // gameplay_feel r5: conform at the EXACT rendered attitude (see the
           // conform() jsdoc) — root.rotation was just set from these terms.
             gearSettling = !!P.gear.conform(
-              renderState, groundSampler, gearPitch, gearRoll, gearStepDt, root.scale.x,
+              flinchLift > 0 ? liftedPose(renderState) : renderState, groundSampler, gearPitch, gearRoll, gearStepDt,
+              root.scale.x,
             );
           }
           P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
@@ -11466,7 +11496,8 @@ export function* createTankRuntimeSteps(
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;
-      recoilPendingScale = recoilScale;
+      // a second shot before the next frame adds its rock to the pending one (hitFlinch caps the sum), never replaces it
+      recoilPendingScale = recoilPending ? recoilPendingScale + recoilScale : recoilScale;
       recoilPending = true;
       if (spec.gun.fixedLaunchCanisters) {
         // An indexed missile launch leaves its tube and cradle seated.
@@ -11806,6 +11837,7 @@ export function* createTankRuntimeSteps(
       mats.burnt.emissiveIntensity = 0.018;
       flinchP = flinchR = flinchPV = flinchRV = 0;
       pendFlinchPV = pendFlinchRV = 0;
+      flinchLift = 0;
       suspP = suspR = 0;
       if (P.gear && P.gear.setBroken) {
         P.gear.setBroken('trackL', false);

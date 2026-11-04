@@ -38,6 +38,10 @@ import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 import { publishedTrackContact } from './trackContact.ts';
 
 import * as detMath from './detMath.ts';
+import {
+  enterHullTumble, finishHullRighting, hullBodyMode, resetHullBodyMode, setHullGrounded, settleHullOnTracks,
+  updateHullOverturn,
+} from './hullBodyMode.ts';
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
@@ -396,7 +400,6 @@ export interface TankState {
   /** The held posture off a whole-track seat (an edge, a crest, a trench): the tracks are seated at it, and it relaxes at
    * the rock's rate while the hold builds again over planted tracks. Part of the hull's attitude like the hold. */
   _holdSeat: RockState;
-  _flinch: RockState;
   _ride: RideState;
   _body: RigidBodyState;
   _rollover: { elapsedS: number; expired: boolean };
@@ -1372,8 +1375,8 @@ function landingTurnRate(rate: number, error: number, closing: number, lever: nu
 }
 const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
 const TUMBLE_EXIT_UP_Y = 0.88;     // hysteresis: settle close to upright only
-const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
-const OVERTURN_EXIT_UP_Y = 0.48;
+// the overturn's own thresholds (enter -0.08: the centre of mass past the side; exit 0.48) live with the body-mode owner
+const RIGHTED_UP_Y = 0.94;         // the righting torque hands back to the tracks within ~20° of the ground's plane
 const GROUND_TUMBLE_DAMP_S = 1.7;
 const GROUND_TUMBLE_GRAVITY = 3.1;
 const AUTO_RIGHT_OMEGA = 3.4;
@@ -1436,17 +1439,10 @@ const STOP_OMEGA = 30;
 const SUSP_VIS_P = 2.2;
 const SUSP_VIS_R = 1.9;
 const SWAY_VIS = 2.4;
-// Mirror of tankFactory's hit-flinch rock (FLINCH_W/FLINCH_Z in the visual
-// layer): a large-caliber hit kicks flinchPV up to ~0.36 rad/s ⇒ peak rock
-// ~1.6°, which over a 3.5 m half-length transiently dips a track end ~10 cm —
-// far past the 1.5 cm SUPPORT_MARGIN. The oscillator is therefore integrated
-// HERE (state._flinch, once per sim tick) and folded into the support solve;
-// tankFactory reads state._flinch for rendering and routes its hit/recoil
-// impulses into it (see docs/history/research/movement-physics.md).
-// RENDER SIGN: rotation.x = -(visualPitch + suspP) + flinchP, so flinch pitch
-// SUBTRACTS from the movement-space pitch; flinch roll adds like the others.
-const FLINCH_W = 13;
-const FLINCH_Z = 0.32;
+// The hit and recoil hull rock (tankFactory hitFlinch/recoilKick) is presentation only (audit M9, 2026-11-02): the
+// visual owns its spring and lifts its own root clear of the ground at the rocked pose. It used to be routed into
+// state._flinch and integrated here, but no authority writes it, so the solo sim took impulses at render cadence and
+// a multiplayer client's never rocked. The deterministic rock every driver applies is fireRecoil / applyShellKnock.
 // Genuine mechanical limits retain a short dwell to avoid flashing while the
 // hull rocks. Terrain never overrides the player's requested gun elevation.
 const GUN_LIMIT_LABEL_DIST_M = 120; // hydraulic fixed-gun label distance
@@ -2159,7 +2155,6 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0, c: 0, cv: 0 }, // mirror of the visual susp rock layer
     _hold: { p: 0, r: 0, pv: 0, rv: 0 }, // the posture held over the tracks on a grade (part of the attitude)
     _holdSeat: { p: 0, r: 0, pv: 0, rv: 0 }, // that posture seated with the tracks off a whole-track seat
-    _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
       solverLift: 0,
@@ -2203,7 +2198,7 @@ export function resetTankVerticalState(
   }
   state.pos.y = y;
   state.verticalSpeed = Number.isFinite(verticalSpeed) ? verticalSpeed : 0;
-  state.grounded = grounded !== false;
+  setHullGrounded(state, grounded !== false);
   state.landingImpactMps = 0;
   state.fallImpactMps = 0;
   const ride = state._ride;
@@ -2211,7 +2206,6 @@ export function resetTankVerticalState(
   ride.v = state.verticalSpeed;
   ride.supportY = NaN;
   ride.groundV = 0;
-  ride.grounded = state.grounded;
   ride.airTime = 0;
   ride.bounces = 0;
   ride.rebound = 0;
@@ -2222,7 +2216,9 @@ export function resetTankVerticalState(
   state._body.dynamicSupport = false;
   state._body.restSupportY = NaN;
   state._body.bodyRest = 0;
-  if (grounded !== false && !state.overturned) state._body.tumbling = false;
+  // an upright hull on the ground is supported, its tumble and any righting with it (audit M8: the righting latch
+  // outlived a reset that cleared only the tumble)
+  if (grounded !== false) resetHullBodyMode(state);
 }
 
 function initializeRideState(state: TankState, supportY: number): RideState {
@@ -2239,7 +2235,7 @@ function initializeRideState(state: TankState, supportY: number): RideState {
   if (state.grounded !== false) {
     ride.y = supportY;
     ride.v = 0;
-    ride.grounded = true;
+    setHullGrounded(state, true);
   }
   ride.supportY = supportY;
   ride.groundV = 0;
@@ -2826,8 +2822,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   } else if (state.landingImpactMps > 0) {
     landAlongGrade(state, ride);
   }
-  state.grounded = grounded;
-  ride.grounded = grounded;
+  setHullGrounded(state, grounded);
   state.verticalSpeed = ride.v;
   state.pos.y = ride.y;
 }
@@ -3315,9 +3310,8 @@ function pushOffTerrainWalls(
   // the hull as it is drawn (the support solve's rendered pose, with the dive): a nose that dips against a face on a hard
   // stop dips into it otherwise (the bodyPen receipt reads this pose)
   const susp = state._susp;
-  const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0) - (state._flinch?.p ?? 0);
-  const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS +
-    (state._flinch?.r ?? 0);
+  const pitch = (state.visualPitch || 0) + (susp ? susp.p * SUSP_VIS_P : 0);
+  const roll = (state.visualRoll || 0) + (susp ? susp.r * SUSP_VIS_R : 0) + (state._swayEst || 0) * SWAY_VIS;
   const cosYaw = detMath.cos(state.yaw);
   const sinYaw = detMath.sin(state.yaw);
   const cosNegPitch = detMath.cos(-pitch);
@@ -3411,26 +3405,6 @@ function pushOffTerrainWalls(
     state.impactNz = normalZ;
   }
   if (lost > 1.5) state._spool = 0;
-}
-
-function updateFlinchRock(state: TankState, dt: number): void {
-  const flinch = state._flinch;
-  if (!flinch) return;
-  const active = flinch.p !== 0 || flinch.r !== 0 || flinch.pv !== 0 || flinch.rv !== 0;
-  if (!active) return;
-  flinch.pv += (-FLINCH_W * FLINCH_W * flinch.p -
-    2 * FLINCH_Z * FLINCH_W * flinch.pv) * dt;
-  flinch.p += flinch.pv * dt;
-  flinch.rv += (-FLINCH_W * FLINCH_W * flinch.r -
-    2 * FLINCH_Z * FLINCH_W * flinch.rv) * dt;
-  flinch.r += flinch.rv * dt;
-  if (Math.abs(flinch.p) + Math.abs(flinch.pv) +
-      Math.abs(flinch.r) + Math.abs(flinch.rv) < 1e-4) {
-    flinch.p = 0;
-    flinch.r = 0;
-    flinch.pv = 0;
-    flinch.rv = 0;
-  }
 }
 
 function fixedHydraulicPitchRequest(
@@ -3536,7 +3510,7 @@ function applyLandingAttitudeImpulse(
       _landingTurn.halfWidth, _landingTurn.height);
   }
   body.landingBlendS = LANDING_CONTACT_BLEND_S;
-  if (upYAtStart < TUMBLE_ENTER_UP_Y) body.tumbling = true;
+  if (upYAtStart < TUMBLE_ENTER_UP_Y) enterHullTumble(state);
 }
 
 function updateRigidAttitude(
@@ -3579,15 +3553,16 @@ function updateRigidAttitude(
   const relativeUpY = detMath.cos(wrapAngle(spring.pitch - state._terr.pitch)) *
     detMath.cos(wrapAngle(spring.roll - state._terr.roll));
   if ((!groundedAtStart || landingImpact > 0) && upY < TUMBLE_ENTER_UP_Y) {
-    body.tumbling = true;
+    enterHullTumble(state);
   }
+  // the rigid phase ends on the ground fit (terrain-relative), and the overturn ends with it (hullBodyMode.ts)
   const settledSpeed = Math.abs(spring.pitchV) + Math.abs(spring.rollV);
-  if (groundedAtStart && body.autoRighting && relativeUpY > 0.94 && settledSpeed < 0.18) {
-    body.autoRighting = false;
-    body.tumbling = false;
-  } else if (groundedAtStart && body.tumbling && !body.autoRighting &&
+  const mode = hullBodyMode(state);
+  if (groundedAtStart && mode === 'righting' && relativeUpY > RIGHTED_UP_Y && settledSpeed < 0.18) {
+    finishHullRighting(state, upY);
+  } else if (groundedAtStart && mode === 'tumbling' &&
       relativeUpY > TUMBLE_EXIT_UP_Y && settledSpeed < 0.12 && landingImpact <= 0) {
-    body.tumbling = false;
+    settleHullOnTracks(state, upY);
   }
 }
 
@@ -3677,10 +3652,7 @@ function updateHullAttitude(
   }
   state.visualPitch = state._spring.pitch;
   state.visualRoll = state._spring.roll;
-  const upY = detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll);
-  state.overturned = state.overturned
-    ? upY < OVERTURN_EXIT_UP_Y
-    : upY < OVERTURN_ENTER_UP_Y;
+  updateHullOverturn(state, detMath.cos(state._spring.pitch) * detMath.cos(state._spring.roll));
 }
 
 /** A rock corner's ground as the wheels there feel it: as it is within their reach below the hull's track plane, its
@@ -5461,11 +5433,8 @@ export function updateTank(
   // A grounded tank on extreme authored terrain still belongs to the normal
   // support solver. Enter the rigid tumble phase automatically only after the
   // center of mass has genuinely crossed the side; lesser tilts need a launch
-  // or landing/contact impulse.
-  if (upYAtStart < OVERTURN_ENTER_UP_Y) body.tumbling = true;
-  state.overturned = state.overturned
-    ? upYAtStart < OVERTURN_EXIT_UP_Y
-    : upYAtStart < OVERTURN_ENTER_UP_Y;
+  // or landing/contact impulse (hullBodyMode.ts owns the overturn's hysteresis).
+  updateHullOverturn(state, upYAtStart);
   const landingImpactAtStart = Number.isFinite(state.landingImpactMps)
     ? state.landingImpactMps : 0;
   state.slopeBlocked = false;
@@ -5514,15 +5483,6 @@ export function updateTank(
   const swayTarget = clamp(state.yawRate * state.speed * SWAY_GAIN, -SWAY_CLAMP, SWAY_CLAMP);
   state._swayEst += (swayTarget - state._swayEst) *
     (1 - detMath.exp(-dt / SWAY_TAU_S));
-
-  // ---- hit-flinch rock: integrate the visual layer's damped oscillator ------
-  // (constants in lockstep with tankFactory FLINCH_W/FLINCH_Z; impulses arrive
-  // via state._flinch.pv/rv from the visual's hitFlinch/recoil rock). Stepped
-  // once per sim tick BEFORE the support sampling so both the sample pass and
-  // the final clamp see the exact pose syncFromState will render this tick.
-  updateFlinchRock(state, dt);
-  const flP = state._flinch?.p ?? 0;
-  const flR = state._flinch?.r ?? 0;
 
   const susp = state._susp;
 
@@ -5600,8 +5560,8 @@ export function updateTank(
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
-  // suspP×VIS) + flinchP ⇒ flinch pitch enters with a MINUS sign here; roll
-  // adds. The susp/sway layers carry the renderer's visibility amplification.
+  // suspP×VIS); roll adds. The susp/sway layers carry the renderer's visibility
+  // amplification (the hit/recoil flinch is the visual's own, audit M9).
   // Sampling, plane fit and clamp all run at THIS post-step attitude in one
   // pass — sampling at the pre-step attitude left a Δattitude × lever × slope
   // height error that the visibility amplification turned into multi-cm
@@ -5610,8 +5570,8 @@ export function updateTank(
   // imperceptible at 60 Hz, and exactly the pre-existing contract).
   // the tracks are seated at the attitude without the dive (SuspensionRockState.d) or the posture held over them
   // (state._hold): the hull pitches and rolls over them; off a whole-track seat that posture is seated with them
-  const pitchEff = spr.pitch + holdSeat.p + (susp.p - susp.d) * SUSP_VIS_P - flP;
-  const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
+  const pitchEff = spr.pitch + holdSeat.p + (susp.p - susp.d) * SUSP_VIS_P;
+  const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
@@ -5729,9 +5689,8 @@ function liftTankRide(state: LiftableState, upMps: number): void {
     ride.v = Math.max(ride.v || 0, 0) + upMps;
     ride.airTime = 0;
     if (Number.isFinite(ride.y)) ride.y = (ride.y as number) + RIDE_DETACH_CLEARANCE_M + 0.005;
-    ride.grounded = false;
   }
-  state.grounded = false;
+  setHullGrounded(state, false);
 }
 
 /**

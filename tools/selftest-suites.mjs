@@ -1548,6 +1548,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/recovery.selftest.mjs',
     'src/mp/match/movementCheckpoint.selftest.mjs',
     'src/mp/match/prediction.selftest.mjs',
+    // 2026-11-02 audit M8: wire 10's TUMBLING and STACKED flags; the clients' hull copies split tank contacts as the authority
+    'src/mp/match/hullBodyRow.selftest.mjs',
     'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
     'src/mp/match/migrationStore.selftest.mjs', // 242 security round 2 (3a55e00a60); in no suite since
@@ -1715,6 +1717,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the game's own rigid bodies, and a dead hull's turret as one.
     'src/sim/rigidBody.selftest.mjs',
     'src/sim/wreckTurrets.selftest.mjs',
+    // 2026-11-02 audit 11-sim-2 #9: one owner for a wreck turret's phase; revived, benched and parked hulls, a full world, reset
+    'src/sim/wreckTurretLifecycle.selftest.mjs',
     'src/vehicles/wreckTurretDriver.selftest.mjs',
     // 2026-10-11 (218's bundle budget): the tank factory reaches the wreck physics only through its lazy loader.
     'src/vehicles/wreckTurretDriverLoader.selftest.mjs',
@@ -1723,6 +1727,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/hullLifeParity.selftest.mjs', // 2026-11-02 audit M6: a revive's crash memory and the rollover gate, alike on both drivers
+    // 2026-11-02 audit M8: one owner for the hull body mode; no overturned or righting latch outside the rigid phase
+    'src/sim/hullBodyMode.selftest.mjs',
+    // 2026-11-02 audit (sim-movement lane): ground contact's two copies have one writer, a checkpoint restore included
+    'src/sim/groundContactCopies.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
@@ -2029,6 +2037,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
+    // 2026-11-02 audit M9: the hit/recoil hull rock is the visual's own spring; the sim never reads or carries it
+    'src/vehicles/hullFlinchPresentation.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
     'src/game/garageDressingFleet.selftest.mjs',

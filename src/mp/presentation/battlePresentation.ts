@@ -42,6 +42,7 @@ import {
 } from '../wire/index.ts';
 import type { RosterEntry, TeamId, VerdictId, WireEvent } from '../wire/index.ts';
 import { createEntitySample, decodeRow } from '../match/interpolation.ts';
+import { applyPresentedHullRowFlags } from '../match/hullBodyRow.ts';
 import type { EntitySample, ShellSample } from '../match/interpolation.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
@@ -811,13 +812,11 @@ export function createBattlePresentation({
     }
     state.pos.set(sample.x * POS_SCALE, sample.y * POS_SCALE, sample.z * POS_SCALE);
     state.verticalSpeed = sample.vy;
-    state.grounded = (sample.flags & ENTITY_FLAGS.AIRBORNE) === 0;
-    state.overturned = (sample.flags & ENTITY_FLAGS.OVERTURNED) !== 0;
-    state._body.autoRighting = (sample.flags & ENTITY_FLAGS.AUTO_RIGHTING) !== 0;
-    state._body.tumbling = state.overturned || state._body.autoRighting;
+    // ground contact, the body mode and the stack, as the authority judged them (wire 10): the prediction world's tank
+    // contacts read them
+    applyPresentedHullRowFlags(state, sample.flags);
     state._ride.y = sample.y;
     state._ride.v = sample.vy;
-    state._ride.grounded = state.grounded;
     state.yaw = sample.yaw;
     state.visualPitch = sample.pitch;
     state.visualRoll = sample.roll;

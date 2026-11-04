@@ -382,8 +382,8 @@ prediction section, mode state JSON), EVENT (kind byte + bounded JSON payload), 
 ERROR. Rows: `u8` entity id, a varint group mask, then only the present groups — position
 `3 × i32` mm (or `3 × i16` relative), speed + vertical speed `i16` cm/s, five angles `u16` turns
 (tilt also as `i8` deltas), hp/maxHp `u16`, reload channels `u16` in 2 ms steps, magazine
-`u8 × 2`, ammo varints, a `u16` status word (reload kinds, slot, gun-reload mirror bit, nine
-flags), ERA cassettes as gap-coded spec-order plate indices. Entity ids are 1..64, seats 0..63.
+`u8 × 2`, ammo varints, a status word (reload kinds, slot, gun-reload mirror bit, nine
+flags; since wire 10 a varint with eleven, TUMBLING and STACKED added: src/mp/wire/README.md), ERA cassettes as gap-coded spec-order plate indices. Entity ids are 1..64, seats 0..63.
 
 ### Lag-compensation rule
 

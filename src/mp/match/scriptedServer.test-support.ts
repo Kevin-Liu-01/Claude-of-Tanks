@@ -23,6 +23,7 @@ import type {
   ControlFrame, EntityRow, InputMessage, RosterEntry, ShellRow, SnapshotFrame, TeamId, ViewerState, WireEvent,
 } from '../wire/index.ts';
 import { captureMovementCheckpoint } from './movementCheckpoint.ts';
+import { hullBodyRowFlags } from './hullBodyRow.ts';
 
 export interface ScriptedBot {
   entityId: number;
@@ -566,8 +567,8 @@ export class ScriptedMatchServer {
       gunReload: reload, gunReloadTotal: quantizeReloadS(this.reloadS), gunReloadKind: reload > 0 ? RELOAD_KIND.SHELL : RELOAD_KIND.READY,
       magazineRounds: 0, magazineCapacity: 0, shellSlot: entity.shellSlot,
       ammo0: entity.ammo, ammo1: 0, ammo2: 0,
-      flags: (entity.combat.destroyed ? ENTITY_FLAGS.DESTROYED : 0) | (state.grounded ? 0 : ENTITY_FLAGS.AIRBORNE) |
-        (state.overturned ? ENTITY_FLAGS.OVERTURNED : 0) | (entity.lastFireTick === this.tick ? ENTITY_FLAGS.FIRING : 0),
+      flags: (entity.combat.destroyed ? ENTITY_FLAGS.DESTROYED : 0) | hullBodyRowFlags(state) |
+        (entity.lastFireTick === this.tick ? ENTITY_FLAGS.FIRING : 0),
       eraSpent: [],
     };
   }
