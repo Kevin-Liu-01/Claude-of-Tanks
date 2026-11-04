@@ -1515,6 +1515,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
+    // (crew-lines-269) every mode's crew calls, the AC-130 crew's, the team counts by deathsAreFinal
+    'src/audio/voiceLines.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/interfacePress.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',

@@ -271,7 +271,9 @@ interface ModeCrew {
   readonly turned?: CrewSwap;
 }
 
-/** A respawning mode's counts are not news: a hull that comes back six seconds later was never the last. */
+/** A respawning or wave mode's counts are not news: a hull that comes back six seconds later, or the next wave, makes no
+ * "last". The same rule as a network seat's counts (matchRuleset.ts deathsAreFinal); voiceLines.selftest holds the table
+ * to it. */
 const NO_TEAM_COUNTS: CrewSwap = Object.freeze({ last_tank: null, last_enemy: null, outnumbered: null });
 
 /** Every mode's crew calls: a new mode fails typecheck until it names its own. */
@@ -281,9 +283,9 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   zone_control: { swap: { battle_start: 'start_zones', ...NO_TEAM_COUNTS } },
   // a goal's kick-off revives every tank: not "back in the fight" (CrewLineContext.kickoff)
   turbo_ball: { swap: { battle_start: 'start_ball', ...NO_TEAM_COUNTS } },
-  endless_horde: { swap: { battle_start: 'start_horde' }, results: { defeat: { horde_overrun: 'defeat_overrun' } } },
+  endless_horde: { swap: { battle_start: 'start_horde', ...NO_TEAM_COUNTS }, results: { defeat: { horde_overrun: 'defeat_overrun' } } },
   frontline_assault: {
-    swap: { battle_start: 'start_assault' },
+    swap: { battle_start: 'start_assault', ...NO_TEAM_COUNTS },
     results: { victory: { line_held: 'victory_assault' }, defeat: { assault_overrun: 'defeat_overrun' } },
   },
   mars: { swap: { battle_start: 'start_mars', ...NO_TEAM_COUNTS } },
@@ -294,8 +296,9 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   },
   // a survivor who falls turns (mode_infected): the infected call is the news, not "we lost one"
   infected: {
-    swap: { battle_start: 'start_survivors', last_tank: 'last_survivor', last_enemy: null, ally_destroyed: null },
-    turned: { last_survivor: null, outnumbered: null },
+    // (the infected respawn, the survivors never come back as survivors: the last one standing is the one count)
+    swap: { battle_start: 'start_survivors', ...NO_TEAM_COUNTS, last_tank: 'last_survivor', ally_destroyed: null },
+    turned: { last_survivor: null },
     results: { victory: { survivors_extracted: 'victory_survivors' } },
   },
   realistic: { swap: {} },

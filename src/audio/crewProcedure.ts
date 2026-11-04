@@ -141,6 +141,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
   let commandTarget: string | null = null;
   let identifyUntil = -1;
   let commandedShotAt = -1e9;
+  let ownShotAt = -1e9;
   // a round that left its target alive (shell id → target), the re-engage it asks for
   const ownShots = new Map<number, string | null>();
   let reengage: { target: string | null; at: number } | null = null;
@@ -180,6 +181,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     commandTarget = null;
     identifyUntil = -1;
     commandedShotAt = -1e9;
+    ownShotAt = -1e9;
     ownShots.clear();
     reengage = null;
     ceaseAt = -1;
@@ -273,10 +275,11 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     identifyUntil = gunship ? -1 : now + IDENTIFY_S + 2;
   }
 
-  /** The gunner's answer, once the commander's command has been spoken and the net is free, still laid on. */
+  /** The gunner's answer, once the commander's command has been spoken and the net is free, still laid on and not yet
+   *  fired (after the shot it would follow the result). */
   function updateIdentify(now: number): void {
     if (identifyUntil < 0) return;
-    if (now > identifyUntil) { identifyUntil = -1; return; }
+    if (now > identifyUntil || ownShotAt >= commandAt) { identifyUntil = -1; return; }
     if (!host.radioQuiet()) return;
     const last = host.lastTransmission();
     identifyUntil = -1;
@@ -435,6 +438,7 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       if (!e?.isPlayer || !host.live()) return;
       const now = host.now();
       const caliber = e.caliberMm || 0;
+      ownShotAt = now;
       if (e.weaponSound === 'gunship-missile') host.say('gunship_rifle', { delayS: 0.1 });
       else if (seat() === 'tank' && caliber >= 60 && now - commandAt < COMMANDED_SHOT_S && now - commandedShotAt > COMMANDED_SHOT_S) {
         // the shot the fire command called for: "on the way"
@@ -455,8 +459,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       const { target, at } = reengage;
       reengage = null;
       if (host.now() - at > REENGAGE_S) return;
+      // the round's own target, or what the sight was on when it fired; a miss at nothing is not re-engaged
       const t = target ? host.tanks().get(target) : null;
-      if (target == null || (t && t.alive)) host.say('re_engage', { delayS: 0.15 });
+      if (t?.alive) host.say('re_engage', { delayS: 0.15 });
     });
     on<undefined>('ui:magazineReloadStarted', () => { loaded = false; });
     on<{ targetId?: string | null; attackerId?: string | null; damage?: number; destroyed?: boolean; shellId?: number; caliberMm?: number; pos?: Vec3 }>('shell:hit', (e) => {

@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 17 crew radio packs × 121 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | PACK_SIZE per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -409,7 +409,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 121 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 190 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -446,8 +446,70 @@ What the crew says for the tank's own systems and the modes (2026-10-04):
 | Enemy on a point we hold (`mode_zone_contested`) | — | "They're contesting the point" |
 | Respawn | respawn | "Back in the fight" (and the one-per-life calls re-armed) |
 | Countdown (3, 2, 1, never while PREPARING holds it) | a tick each second | — |
-| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance" |
+| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance", or the mode's own opening (below) |
 | A reasoning medal (`service:medal` Chain of Thought or Let Me Think Step by Step), or 3 % of first shots | — | "Let me think step by step." then the gunner: "Step one: aim. Step two: fire." |
+
+#### The crew's procedure and each mode's own calls (2026-11-03, crew-lines-269)
+
+The owner: "more and better voice lines of more military terms and of things
+happening, more special terms for AC-130, all the special modes, in all the
+languages". 69 lines and 20 more takes on thin ones, in all 17 packs, each in
+its army's register. Two parts:
+
+- **A line asks for a moment in a tank crew's words; `resolveCrewLine`
+  (`voiceLines.ts`) turns it into what this crew says there.** `MODE_CREW` is
+  one exhaustive `Record<GameModeId, …>`, so a new mode fails typecheck until
+  it names its calls: its opening (the rollout's `battle_start` becomes "Get
+  their flag. Guard ours.", "Defensive positions. Hold this ground.", "We're the
+  Juggernaut…" or, for a hunter, "Find the Juggernaut…", "Range is hot."), its
+  results by the ending's reason (`mode_completed`, `battle:ended`: "Last line's
+  ours." for `line_held`, "We're overrun." for `horde_overrun` and
+  `assault_overrun`, "Time. We held out." for `survivors_extracted`, "Juggernaut's
+  down." for the hunters), and the team counts it has no use for. The counts
+  follow the network seat's rule in a solo battle too: said only where a death
+  is final (`deathsAreFinal`), so no "We're the last tank" for a Juggernaut
+  alone by design, no "One enemy left" in a respawning mode, and Infected's one
+  count is its own, "We're the last survivor". `GUNSHIP_CREW` is the AC-130
+  crew's own call for a tank crew's ("Cleared hot" for the opening, "Splash" for
+  a miss or a round with no effect, "Good hits" for a hit, "Friendly armor down"
+  for any escort lost, wherever it was) and silence where an aircraft has no
+  such moment (no "Moving", no driver, no last tank, never outnumbered by what
+  it hunts). A Turbo Ball kick-off revives every tank; it is not "Back in the
+  fight", and neither is the Proving Ground's reset. `voiceLines.selftest.mjs`
+  holds the tables to the script and the counts to `deathsAreFinal`.
+- **`crewProcedure.ts` voices the moments the sound handlers leave unvoiced**,
+  from the same bus events and frames, through the engine's `say`:
+
+| Moment | Crew |
+|---|---|
+| Our sight settles (0.35 s) on a spotted enemy, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
+| Our kill left no spotted enemy within 1.5 km | "Target. Cease fire." |
+| A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
+| Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
+| ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled home, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
+| Reversing within 6 s of a hit or of being seen | "Backing up." |
+| Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
+| Airborne 0.45 s (a Mars or Turbo Ball jump, a crest) | "Hold on." / "Brace for landing." |
+| The countdown, four seconds or more | "Crew, report." and the gunner's "Gunner ready. Loader up. Driver ready." (flavour the rollout's call cuts) |
+| Capture the Flag: a flag dropped either way, theirs recovered, ours captured | "They dropped our flag. Recover it.", "We dropped their flag.", "They've recovered their flag.", "They captured our flag." |
+| Zone Control: our side on their point | "We're contesting their point." |
+| Turbo Ball: a goal against us, the ball's idle reset | "They scored.", "Ball's reset." |
+| Horde: a runner or a swarm wave (after the wave's own call) | "Fast movers this wave.", "Big wave. Lots of them." |
+| Frontline: a counter-attack, the final line live | "Counter-attack!", "Last line. Take it." |
+| Infected: a teammate turned, our own crew turned | "They got one of ours. He's turned.", "We've turned. Hunt the survivors." |
+| Gun Game: our last weapon, an enemy's | "Last weapon. Finish it.", "Enemy's on the last weapon." |
+| Juggernaut: the boss sighted by our side (hunters) | "Juggernaut spotted!" |
+| AC-130: the sight on an enemy / on a new one far from the last kill | "Tally. Armor moving." / "Shifting fire." |
+| AC-130: a missile away, a heavy round by a friendly tank, three heavy rounds then 7 s quiet, a friendly extracted | "Rifle.", "Danger close.", "Rounds complete.", "Friendly extracted." |
+
+Every one of them has its moment in `voiceTriggers.selftest.mjs`, which drives
+the engine through each mode's opening and endings too. Two of the moments
+reach only a solo battle: the network authority's `drone_down` has no case in
+the presentation, and `tank:jump` returns before its event there (the airborne
+call reads the frame, so it works in both).
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
@@ -626,7 +688,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 121 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 190 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  17 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -670,6 +732,13 @@ crew-lines.json ─┐                    crew-voices.json
 5. **Mastering**. The `voice` preset: trim, fades, −18 LUFS integrated, 24 kHz
    mono Opus at 32 kbps. The radio character is not baked in: it is the live
    intercom chain, so it can degrade with the radio module.
+
+`--dry` counts the takes whose first attempt is not cached and their
+characters (speech bills a credit per character) without calling the API.
+`--append` keeps every line's shipped takes and builds only the takes the
+script added after them: a rebuild re-picks among a take's cached attempts and
+re-encodes it, so a line that gains a take would otherwise churn the ones
+already approved (the Afrikaans "Laai nou." came back a different attempt).
 
 ### Rounds
 
