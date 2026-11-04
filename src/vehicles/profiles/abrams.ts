@@ -5335,12 +5335,16 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // (release 268 builder E, the A/B polish: the owner's model's shell has no roof-edge shelf over the left flank, so
         // there is no well to fill; the plate stood 8 cm off its 26-degree wall at an angle)
         if (!t.m1a1Source) flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
+        // (release 268 builder E, the A/B craft fix: on the owner's model's shell the roof lies at 0.709, so the bases stood
+        // 4 cm over it and the short mast 2 cm over its base, touching nothing; each mast now stands on its base and the
+        // pair drops onto the roof, or the plate, under it)
         for (const [x, z, h] of [[-1.15, -0.96, 0.42], [1.12, -1.08, 0.34], [0.84, -1.48, 0.28]]) {
           const buildTejasFamilyTurretCourse9 = (): void => {
             P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);
-            P.add('turretDark', box(0.038, h, 0.038), x, 1.01, z);
+            P.add('turretDark', box(0.038, h, 0.038), x, t.m1a1Source ? 0.85 + h / 2 : 1.01, z);
           };
-          buildTejasFamilyTurretCourse9();
+          if (t.m1a1Source) P.snapGroup(`tejas-antenna-${x}`, buildTejasFamilyTurretCourse9, { reachM: 0.06, mode: 'down' });
+          else buildTejasFamilyTurretCourse9();
         }
         // SEPv3's newest array is a dense, irregular 16-block turret field.
         // It keeps the fine modern pitch, but each cassette now has a deep body,
@@ -5380,9 +5384,14 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
           };
           buildTejasFamilyTurretCourse11();
         }
-        P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, 0.72, -3.492); // rear IFF panel
-        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.755, -3.497);
-        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.675, -3.497);
+        // (release 268 builder E, the A/B craft fix: on the owner's model's shell the rack ends 0.5 m further forward, so
+        // the panel hung in mid-air behind it; it hangs from the rack's top rear rail, its top at the rail's top, its face
+        // on the rail's rear face)
+        const iffY = t.m1a1Source ? t.rackTop - (t.rackRearDrop ?? 0) - 0.12 : 0.72;
+        const iffZ = t.m1a1Source ? t.zRear - (t.rackDepth ?? 0.42) - 0.0225 - 0.005 : -3.492;
+        P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, iffY, iffZ); // rear IFF panel
+        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY + 0.035, iffZ - 0.005);
+        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY - 0.045, iffZ - 0.005);
         // (release 268: the IFLIR cheek plates stood on the print-era GPS seat on the loader's side; the FEP's
         // second-generation FLIR head now rides the gunner's sight itself, abramsM1A1Identity.ts addFepFit)
         // (release 268 round 3: the pioneer tools that lay on the glacis are gone; the glacis is bare but for the driver's

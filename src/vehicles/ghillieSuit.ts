@@ -188,6 +188,8 @@ interface SidePanel {
   garnishDensity?: number;
   /** Release 268 builder E: garnish only over this span [z0, z1] of the drape (clear of an end that meets a corner). */
   garnishZ?: readonly [number, number];
+  /** Release 268 builder E: no tuft point stands further than this off the axis (|x|): tufts lie on a skirt cover. */
+  garnishMaxX?: number;
 }
 
 interface FacePanel {
@@ -2116,6 +2118,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       // (release 268, SidePanel.flat / taut: the hem is clean, no spray hangs below it)
       && (!(panel.flat || panel.taut) || p[1] >= bottomAt(p[2]) + 0.01)
       && (!panel.garnishZ || (p[2] >= panel.garnishZ[0] && p[2] <= panel.garnishZ[1]))
+      && (panel.garnishMaxX === undefined || Math.abs(p[0]) <= panel.garnishMaxX)
       && !cuts.some(([c0, c1, , hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] < hi + 0.04),
   };
 }
@@ -3881,7 +3884,9 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         // shoe through the cloth while the upper edge still reads attached.
         // (release 268 builder E: the flat cover stands at least 1.92 off the axis, the stand-off that keeps the gun clear,
         // and just outside the tiles' faces where they stand further out)
-        outAt: () => 1.92, seed: 21 + side })),
+        // (the A/B craft fix: a tuft bunch stood 7 cm proud of the right cover, outside the skirt line in plan and off
+        // the drape's front seen from the bow: the tufts lie within 2.3 cm of the cloth)
+        outAt: () => 1.92, garnishMaxX: 2.02, seed: 21 + side })),
       // (release 268: the bow net stops at the source-measured bow's 1.21 m top edge, as on ua_m1a1)
       face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.21, nx: 14, ny: 4,
         outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.08], [0.72, 1.21], [-0.72, 1.21], [-1.10, 1.08]],
