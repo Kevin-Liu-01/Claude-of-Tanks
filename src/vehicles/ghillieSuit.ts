@@ -185,19 +185,6 @@ interface SidePanel {
    * roof line. They hang down the drape like its other boughs, under the main gun's low sweep over that stretch.
    */
   boughsHangAt?: readonly (readonly [number, number])[];
-  /**
-   * Release 269 round 4 (the Chieftain Mk 3's skirts: "flat vertical strips with no sag, thickness or hem"): the drape is
-   * tied at its hem ties (hemTies) and hangs in swags between them, outward over the solid wall it hangs on: each swells
-   * off the wall by up to this much toward the hem (m; within the suit's half-width), a tied top sags between the ties
-   * by one and a half times that, and its folds are half a plain drape's (the swell is the cloth's depth).
-   */
-  swagM?: number;
-  /** Release 269 round 4: the farthest a garnish card stands off this drape's cloth (default FIELD_DRAPE_OFF_M). */
-  garnishHugM?: number;
-  /** Release 269 round 4: scales this drape's garnish count (default 1). */
-  garnishDensity?: number;
-  /** Release 269 round 4: the smallest piece (triangles) this field drape keeps (default 24; a short hanging bunch). */
-  minPieceTris?: number;
 }
 
 interface FacePanel {
@@ -222,29 +209,6 @@ interface FacePanel {
    * as a plain face drape's and its hem drops between the ties by up to twice the swell.
    */
   swagM?: number;
-  /**
-   * Release 269 round 4 (the Mk 3's bustle basket: "one flat, boxy sheet"; wanted "the net over a visible basket frame
-   * ... so it sags between the rails"): a hanging face net thrown over an open frame lies on its uprights (`ties`, owner x)
-   * and rails (`rails`, owner y) and dips in between them by up to `dipM` toward what the frame holds, never into it; the
-   * bars stand through it as ridges.
-   */
-  frame?: {
-    readonly ties: readonly number[]; readonly rails: readonly number[]; readonly dipM: number;
-    /**
-     * Round 5 (the critics on round 4's: "upright panel strips that read as a fence"): the share of the inner uprights
-     * lost under slack cloth (it stands off them instead of dipping beside them), and the depth of the slack folds run
-     * diagonally across the bays (m); each bay also dips its own depth (0.35 to 1 of dipM).
-     */
-    readonly slackP?: number; readonly foldM?: number;
-  };
-  /** Release 269 round 4: the farthest a garnish card stands off this drape's cloth (default FIELD_DRAPE_OFF_M). */
-  garnishHugM?: number;
-  /**
-   * Release 269 round 5 (the Mk 3's rear plate: its cover's columns were cut from the deck's edge down where the gun's
-   * stern clearance refused the roll over the edge, leaving "a flat boxy rectangle" between the exhausts): the hanging
-   * net is tied along this owner height instead of rolling over the plate's top (SidePanel.tiedTop's cut).
-   */
-  tiedTopY?: number;
 }
 
 /**
@@ -278,11 +242,9 @@ interface SleevePanel {
    * in lumps round the barrel (default 0: a smooth sleeve).
    */
   bunchM?: number;
-  /** Round 4: bays 8 to 32 cm long, some bound nearly flat, each swelling most off its middle (default: round 3's even bays). */
-  irregularBays?: boolean;
   /**
-   * Round 6 (Opus on round 5: "hard, stepped edges between bands"): over this length at each end (m) the cloth's loft and
-   * swell taper down to 2 mm off the barrel, so one band runs into the next instead of stepping (default 0).
+   * Round 6 (Opus on round 5: "hard, stepped edges between bands"): over this length at each end (m) the cloth's loft
+   * tapers down to 2 mm off the barrel, so one band runs into the next instead of stepping (default 0).
    */
   taperM?: number;
   /**
@@ -297,32 +259,12 @@ interface SleevePanel {
 /** A sleeve's flank as its cloth surface reads it (the drapes' `side`). */
 interface SleeveSide extends SleevePanel { readonly side: number }
 
-/**
- * Release 269 round 5 (the Chieftain Mk 3's barrel; the critics on hanging strips: "an evenly spaced comb of vertical
- * strips, like shards", "flat cards or paper shreds with zigzag ends"; the coordinator: "thick bundled strands ... each
- * with volume: a twisted narrow tube or crossed ribbons, never one flat card"): a clump of scrim strands tied under a
- * barrel (owner z along the bore), each a twisted flattened tube of its own length, width and sway, tapering to a point
- * or ending in a knot and a short tassel; the far tier keeps every other strand.
- */
-interface StrandClump {
-  z: number;
-  count: number;
-  /** The clump's spread along the bore (m) and its strands' lengths [shortest, longest] (m). */
-  spreadM?: number;
-  lengthM: readonly [number, number];
-  /** How far round from under the barrel the strands are tied, either way (degrees; default 35). */
-  aroundDeg?: number;
-  seed?: number;
-}
-
 interface GhilliePanels {
   top?: readonly TopPanel[];
   side?: readonly SidePanel[];
   face?: readonly FacePanel[];
   /** Release 269: nets bound round a barrel (the gun owner's; SleevePanel). */
   sleeve?: readonly SleevePanel[];
-  /** Release 269 round 5: clumps of scrim strands tied under a barrel (the gun owner's; StrandClump). */
-  strands?: readonly StrandClump[];
 }
 
 export interface GhillieConfig {
@@ -1064,7 +1006,7 @@ interface ClothSurface {
   holeAt?(x: number, z: number): boolean;
   /** Whether a garnish card's vertex may sit here (clear of openings, never under its own carrier). */
   cardOk(p: readonly number[]): boolean;
-  readonly panel: TopPanel | SidePanel | FacePanel | SleeveSide | StrandClump;
+  readonly panel: TopPanel | SidePanel | FacePanel | SleeveSide;
   readonly owner: 'side' | 'face' | 'top';
 }
 
@@ -1818,8 +1760,6 @@ interface CurtainSpec {
   readonly marks?: readonly number[];
   /** Release 269 round 3: the curtain's row pitch down its section (default DRAPE_ROW_M; a bunched sleeve's lumps). */
   readonly rowM?: number;
-  /** Release 269 round 4: the smallest piece a field curtain keeps (default 24 triangles). */
-  readonly minPieceTris?: number;
   /** Release 269 round 6: the closest two of its stations stand (default 5.5 cm; a sleeve's hanging sack). */
   readonly minStationM?: number;
 }
@@ -1983,7 +1923,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
     });
     columns.push({ a, pts: vertex[c], normals, t: sec.t });
   }
-  if (spec.field) dropIslands(positions, uvs, spec.minPieceTris ?? 24, 8);
+  if (spec.field) dropIslands(positions, uvs, 24, 8);
   else dropIslands(positions, uvs);
   return { geometry: makeGeometry(positions, uvs), columns };
 }
@@ -2089,8 +2029,6 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const ties = hemTies(panel, cfg.seed);
   const s = panelSeed(panel, cfg.seed) ^ (side > 0 ? 0x2b : 0x71);
   const maxOut = (cfg.maxHalfWidth ?? Infinity) - 0.002;
-  // release 269 round 4 (SidePanel.swagM): swags between the hem ties
-  const swagM = support.fitted ? 0 : panel.swagM ?? 0;
   const probe = support.probe;
   const hem = (z: number): number => {
     const authored = bottomAt(z + side * HEM_PHASE_M);
@@ -2139,9 +2077,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       // the netting lane: under a roof net's edge with no wall outboard to lie on (a turret's sides sloping in under
       // its roof), the cloth falls free from that edge
       const free = !sec && start && support.clothOk && !panel.tiedTop ? freeHang(start, hemY) : null;
-      // (release 269 round 4, SidePanel.swagM: a tied top sags between its ties)
-      const hung = panel.tiedTop && sec ? sectionBelow(sec, swagM > 0 ? topAt(z) - 1.5 * swagM * hemAt(ties, z).span : topAt(z))
-        : sec ?? free;
+      const hung = panel.tiedTop && sec ? sectionBelow(sec, topAt(z)) : sec ?? free;
       // the netting lane: a hull drape whose roll over the deck's edge lies in the turret's sweep (or in another of the
       // vehicle's clearances) is tied lower on its wall instead, from the highest height its cloth keeps every clearance
       // all the way down to the hem (a drape beside the turret hangs from the skirt's top, not over the deck under it)
@@ -2172,17 +2108,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       // a cut runs from its top down to the hem (cloth never hangs on below a cut)
       && !cuts.some(([c0, c1, , hi]) => Math.max(za, zb) > c0 && Math.min(za, zb) < c1 && up < hi) } : {}),
   };
-  // a swag swells off its wall below its top, the most toward its hem and midway between its ties (never past the
-  // suit's half-width); its folds are half a plain drape's
-  const kept: CurtainSpec = panel.minPieceTris !== undefined ? { ...spec, minPieceTris: panel.minPieceTris } : spec;
-  const swagged: CurtainSpec = !(swagM > 0) ? kept : { ...kept, foldK: 0.5,
-    section(z, hemY) {
-      const sec = spec.section(z, hemY);
-      if (!sec || sec.pts.length < 2) return sec;
-      const top = sec.pts[0][1], w = 0.3 + 0.7 * hemAt(ties, z).span;
-      return { corner: sec.corner, pts: sec.pts.map(([o, u]): [number, number] => [Math.min(maxOut, o + swagM * w * smooth01(0.02, 0.3, top - u)), u]) };
-    } };
-  const { geometry, columns } = buildCurtain(swagged, uvk, panelUvOffset(panel, cfg.seed), side < 0);
+  const { geometry, columns } = buildCurtain(spec, uvk, panelUvOffset(panel, cfg.seed), side < 0);
   const underTurret = support.hull && !support.turretless, topRow = curtainTopAt(columns);
   return {
     kind: 'drape', owner: 'side', panel, geometry, domain: [z0, z1, 0.06, 0.97],
@@ -2239,42 +2165,30 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
   // round 3 (SleevePanel.bunchM): the bindings along the bore (both flanks share them) and each bay's own swell and lumps;
   // the lumps' phase round the barrel is shared at the crown and under it, where the two flanks meet
   const bunchM = panel.bunchM ?? 0, bs = panelSeed(panel, cfg.seed);
-  // (round 4, SleevePanel.irregularBays; the critics: "rigid, stepped sleeves with lumpy bulges": bays 8 to 32 cm long,
-  // some bound nearly flat, each swelling most off its middle, its lumps round the barrel its own)
-  const irregular = panel.irregularBays === true;
-  const binds: Array<{ at: number; k: number; ph: number; tw: number; pk: number }> = [];
-  if (irregular) {
-    for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.06; z += 0.08 + hash01(bs, ++k, 0x73) * 0.24) {
-      binds.push({ at: z, k: 0.15 + hash01(bs, k, 0x75) * 0.85, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283,
-        pk: 0.3 + hash01(bs, k, 0x7b) * 0.4 });
-    }
-  } else {
-    for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.08; z += 0.12 + hash01(bs, ++k, 0x73) * 0.10) {
-      binds.push({ at: z, k: 0.55 + hash01(bs, k, 0x75) * 0.45, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283, pk: 0.5 });
-    }
+  const binds: Array<{ at: number; k: number; ph: number; tw: number }> = [];
+  for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.08; z += 0.12 + hash01(bs, ++k, 0x73) * 0.10) {
+    binds.push({ at: z, k: 0.55 + hash01(bs, k, 0x75) * 0.45, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283 });
   }
   // (and one at its end: a length bound off where the next begins)
-  if (binds.length) binds.push({ at: z1 - 0.02, k: 0, ph: 0, tw: 0, pk: 0.5 });
+  if (binds.length) binds.push({ at: z1 - 0.02, k: 0, ph: 0, tw: 0 });
   const bunch = (z: number, phi: number): number => {
     if (!(bunchM > 0) || binds.length < 2) return 0;
     if (z <= binds[0].at || z >= binds[binds.length - 1].at) return 0;
     let i = 0;
     while (i < binds.length - 2 && binds[i + 1].at < z) i++;
-    const b = binds[i], g = THREE.MathUtils.clamp((z - b.at) / Math.max(1e-3, binds[i + 1].at - b.at), 0, 1);
-    const f = !irregular ? g : g < b.pk ? 0.5 * g / b.pk : 0.5 + 0.5 * (g - b.pk) / (1 - b.pk);
-    const round = !irregular ? 0.62 + 0.24 * Math.sin(2 * phi + b.ph) + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw)
-      : 0.6 + 0.22 * Math.sin(2 * phi + b.ph) + 0.12 * Math.sin(5 * phi + b.tw) + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw);
+    const b = binds[i], f = THREE.MathUtils.clamp((z - b.at) / Math.max(1e-3, binds[i + 1].at - b.at), 0, 1);
+    const round = 0.62 + 0.24 * Math.sin(2 * phi + b.ph) + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw);
     // bound tight at its hem (or under the barrel, bound right round)
     const hemTie = 1 - 0.7 * smooth01(0.5 * wrap, wrap, phi);
     return bunchM * b.k * Math.pow(Math.sin(Math.PI * f), 0.7) * round * hemTie;
   };
-  // round 6 (SleevePanel.taperM): the ends' taper; (SleevePanel.sack) the sack let down under the length's middle,
-  // the same on both flanks under the barrel, where they meet
+  // round 6 (SleevePanel.taperM): the ends' taper; (SleevePanel.sack) the sack let down under the length's middle, the
+  // same on both flanks under the barrel, where they meet: the barrel's circle let out into an ellipse under it, widthM
+  // across and dropM down at the length's middle, blended in from the flanks, its bottom round; a plateau along the
+  // length with rounded ends
   const taperM = panel.taperM ?? 0, sack = panel.sack;
   const ends = (z: number): number => (taperM > 0 ? smooth01(z0, z0 + taperM, z) * smooth01(z1, z1 - taperM, z) : 1);
   const ph1 = hash01(bs, 1, 0x91) * 6.283, ph2 = hash01(bs, 2, 0x93) * 6.283;
-  // (the sack's section: the barrel's circle let out into an ellipse under it, widthM across and dropM down at the
-  // length's middle, blended in from the flanks, its bottom round; a plateau along the length with rounded ends)
   const sackAt = (z: number, phi: number): [number, number] => {
     if (!sack) return [0, 0];
     const u = THREE.MathUtils.clamp((z - z0) / Math.max(1e-3, z1 - z0), 0, 1);
@@ -2287,15 +2201,10 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
   const spec: CurtainSpec = {
     a0: z0, a1: z1, seed: s, foldK: SLEEVE_FOLD_K, maxOut: Infinity,
     hem: () => -Infinity,
-    ...(bunchM > 0 && !irregular ? { rowM: 0.055, marks: binds.flatMap((b, i) => (i + 1 < binds.length ? [b.at, (b.at + binds[i + 1].at) / 2] : [b.at]))
+    ...(bunchM > 0 ? { rowM: 0.055, marks: binds.flatMap((b, i) => (i + 1 < binds.length ? [b.at, (b.at + binds[i + 1].at) / 2] : [b.at]))
       // (round 6: a sack's length drawn every 3 cm, its rounded ends and plateau not cut to a point)
-      .concat(panel.sack ? Array.from({ length: Math.floor((z1 - z0) / 0.03) }, (_, k) => z0 + 0.015 + k * 0.03) : []),
-      ...(panel.sack ? { minStationM: 0.025 } : {}) } : {}),
-    ...(bunchM > 0 && irregular ? { rowM: 0.045, marks: binds.flatMap((b, i) => {
-      if (i + 1 >= binds.length) return [b.at];
-      const L = binds[i + 1].at - b.at;
-      return [b.at, b.at + L * b.pk * 0.5, b.at + L * b.pk, b.at + L * (b.pk + (1 - b.pk) * 0.5)];
-    }) } : {}),
+      .concat(sack ? Array.from({ length: Math.floor((z1 - z0) / 0.03) }, (_, k) => z0 + 0.015 + k * 0.03) : []),
+      ...(sack ? { minStationM: 0.025 } : {}) } : {}),
     section(z) {
       const r = radiusAt(z);
       if (r === null) return null;
@@ -2330,61 +2239,6 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
         && !blocked(p[0], p[1], p[2])
         && (!(bunchM > 0) || wrap >= Math.PI - 1e-6 || Math.atan2(Math.abs(p[0] - ax), p[1] - ay) <= wrap);
     },
-  };
-}
-
-/**
- * Release 269 round 5 (StrandClump): a clump of strands tied under a barrel, each a twisted, flattened four-sided tube
- * hanging from just off the barrel's underside (inside its sleeve), swaying a little as it falls, tapering to a point or
- * knotted near its end with a short tassel below the knot. No garnish is tied to the strands (they are the garnish).
- */
-function strandCloth(clump: StrandClump, cfg: GhillieConfig, support: OwnerSupport, uvk: number, high: boolean): ClothSurface {
-  const { z, count, spreadM = 0.16, lengthM: [lo, hi], aroundDeg = 35 } = clump;
-  const s = panelSeed(clump, cfg.seed), probe = support.probe;
-  const radius = (zz: number): number => {
-    let r = 0.1;
-    for (const f of [-1, 1]) { const o = probe?.side(0, zz, f); if (o !== null && o !== undefined && Math.abs(o) < 0.25) r = Math.max(r, Math.abs(o)); }
-    return r;
-  };
-  const positions: number[] = [], uvs: number[] = [];
-  const quad = (a: Point3, b: Point3, c: Point3, d: Point3, ua: [number, number], ub: [number, number], uc: [number, number], ud: [number, number]): void => {
-    for (const [p, q] of [[a, ua], [b, ub], [c, uc], [a, ua], [c, uc], [d, ud]] as const) { positions.push(p[0], p[1], p[2]); uvs.push(q[0], q[1]); }
-  };
-  for (let i = 0; i < count; i++) {
-    const h = (k: number): number => hash01(s, i, k);
-    // (the far tier keeps every other strand; every draw is made first, so the near tier's strands lie as at HIGH)
-    const zi = z + (h(1) - 0.5) * spreadM * (0.6 + 0.8 * h(2)), th = (h(3) - 0.5) * 2 * THREE.MathUtils.degToRad(aroundDeg);
-    const L = lo + (hi - lo) * Math.pow(h(4), 0.8), w0 = 0.02 + h(5) * 0.018, flat = 0.55 + h(6) * 0.35;
-    const turns = (0.6 + h(7) * 1.2) * (h(8) < 0.5 ? -1 : 1), spin = h(9) * Math.PI;
-    const swayX = (h(10) - 0.5) * 0.07, swayZ = (h(11) - 0.5) * 0.06, knot = h(12) < 0.45 ? 0.78 + h(13) * 0.12 : -1;
-    if (!high && i % 2 === 1) continue;
-    // (its top ring, level, tied 4 mm off the barrel at its nearest point: within the contact rule's 15 mm, never in it)
-    const r = radius(zi) + w0 * Math.abs(Math.sin(th)) + 0.004;
-    const ax = Math.sin(th) * r, ay = -Math.cos(th) * r;
-    const ts = knot > 0 ? [0, 0.12, 0.28, 0.45, 0.62, knot - 0.05, knot, knot + 0.05, 1] : [0, 0.12, 0.28, 0.45, 0.62, 0.78, 0.9, 1];
-    const rings: Point3[][] = ts.map((t) => {
-      // the strand's width: tapering to its tip, swelling at its knot, a point at its end
-      let w = w0 * Math.max(0.3, 1 - 0.7 * Math.pow(t, 1.2));
-      if (knot > 0 && Math.abs(t - knot) < 0.051) w = w0 * (Math.abs(t - knot) < 0.01 ? 1.7 : 1.15);
-      if (t >= 1) w = 0;
-      const cx = ax + swayX * t * t, cy = ay - L * t, cz = zi + swayZ * t * t;
-      const a = spin + turns * Math.PI * 2 * t;
-      return [0, 1, 2, 3].map((k): Point3 => {
-        const phi = k * Math.PI / 2, u = Math.cos(phi) * w, v = Math.sin(phi) * w * flat;
-        return [cx + u * Math.cos(a) - v * Math.sin(a), cy, cz + u * Math.sin(a) + v * Math.cos(a)];
-      });
-    });
-    for (let j = 0; j + 1 < rings.length; j++) {
-      const va = ts[j] * L * uvk, vb = ts[j + 1] * L * uvk, u0 = (i * 0.37 + h(14)) % 1;
-      for (let k = 0; k < 4; k++) {
-        const k1 = (k + 1) % 4, ua = u0 + k * 0.02 * uvk, ub = u0 + (k + 1) * 0.02 * uvk;
-        quad(rings[j][k], rings[j][k1], rings[j + 1][k1], rings[j + 1][k], [ua, va], [ub, va], [ub, vb], [ua, vb]);
-      }
-    }
-  }
-  return {
-    kind: 'drape', owner: 'side', panel: clump, geometry: makeGeometry(positions, uvs), domain: [z - spreadM, z + spreadM, 0.06, 0.97],
-    sample: () => null, allowed: () => false, cardOk: () => false,
   };
 }
 
@@ -2476,73 +2330,15 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
       return !holes.some((hole) => insidePoly(x, up, hole));
     },
   };
-  // (release 269 round 5, FacePanel.tiedTopY: tied along a line under the plate's top instead of rolled over it)
-  const tiedTopY = tied ? undefined : panel.tiedTopY;
-  const hung: CurtainSpec = tiedTopY === undefined ? spec : { ...spec, section(x, hemY) {
-    const sec = spec.section(x, hemY);
-    return sec ? sectionBelow(sec, tiedTopY) : sec;
-  } };
   // a swag swells out of its frame below the roll over the frame's top, the most toward its hem
-  const swagged: CurtainSpec = !(swagM > 0) ? hung : { ...hung, section(x, hemY) {
-    const sec = hung.section(x, hemY);
+  const swagged: CurtainSpec = !(swagM > 0) ? spec : { ...spec, section(x, hemY) {
+    const sec = spec.section(x, hemY);
     if (!sec) return sec;
     const top = sec.pts[Math.min(sec.corner + 1, sec.pts.length - 1)][1], w = swag(x);
     return { corner: sec.corner, pts: sec.pts.map(([o, u], k): [number, number] => (k <= sec.corner + 1 ? [o, u]
       : [o + swagM * (0.25 + 0.75 * w) * smooth01(0.03, 0.35, top - u), u])) };
   } };
-  // release 269 round 4 (FacePanel.frame): thrown over an open frame, the cloth lies on its bars and dips in between
-  // them toward what the frame holds (never into it), the bars standing through it as ridges
-  const frame = tied ? undefined : panel.frame;
-  const tiesX = frame ? [...frame.ties].sort((a, b) => a - b) : [], railsY = frame ? [...frame.rails].sort((a, b) => a - b) : [];
-  const bay = (list: readonly number[], v: number): number => {
-    for (let i = 0; i + 1 < list.length; i++) {
-      if (v >= list[i] && v <= list[i + 1]) return Math.pow(Math.sin(Math.PI * (v - list[i]) / Math.max(1e-3, list[i + 1] - list[i])), 0.8);
-    }
-    return 0;
-  };
-  // (round 5, frame.slackP / foldM: each bay its own depth, some uprights lost under slack cloth, diagonal folds)
-  const fs = panelSeed(panel, cfg.seed) ^ 0x3c;
-  const lost = tiesX.map((_, i) => i > 0 && i < tiesX.length - 1 && hash01(fs, i, 0x41) < (frame?.slackP ?? 0));
-  const bayK = (x: number): number => {
-    let i = 0;
-    while (i < tiesX.length - 2 && tiesX[i + 1] < x) i++;
-    return frame?.slackP === undefined && frame?.foldM === undefined ? 1 : 0.35 + 0.65 * hash01(fs, i, 0x43);
-  };
-  const slack = (x: number, u: number): number => {
-    let out = 0;
-    tiesX.forEach((t, i) => {
-      if (!lost[i]) return;
-      const d = Math.abs(x - t);
-      if (d < 0.14) out = Math.max(out, 0.022 * Math.cos(Math.PI * d / 0.28) ** 2 * (0.6 + 0.4 * Math.sin(u * 9 + i)));
-    });
-    return out;
-  };
-  const diagonal = (x: number, u: number): number => {
-    const f = frame?.foldM ?? 0;
-    if (!(f > 0)) return 0;
-    const a = 0.7 + 0.5 * hash01(fs, 1, 0x45), l = 0.34 + 0.2 * hash01(fs, 2, 0x47), ph = 6.283 * hash01(fs, 3, 0x49);
-    return f * Math.max(0, Math.sin((x * Math.cos(a) + u * Math.sin(a)) * 2 * Math.PI / l + ph)) ** 2;
-  };
-  const framed: CurtainSpec = !frame || !probe ? swagged : { ...swagged, rowM: 0.05,
-    marks: tiesX.flatMap((t, i) => (i + 1 < tiesX.length ? [t, (3 * t + tiesX[i + 1]) / 4, (t + tiesX[i + 1]) / 2, (t + 3 * tiesX[i + 1]) / 4] : [t])),
-    section(x, hemY) {
-      const sec = swagged.section(x, hemY);
-      if (!sec || sec.pts.length <= sec.corner + 1) return sec;
-      // the cloth's hanging line (its outermost below the roll over the frame's top: a section hung free from the roof
-      // net's edge has no points between its roll and its hem), redrawn every 2.5 cm down to the hem with its dips
-      const bx = bay(tiesX, x), kx = bayK(x), head = sec.pts.slice(0, sec.corner + 1);
-      let plane = -Infinity;
-      for (let k = sec.corner + 1; k < sec.pts.length; k++) plane = Math.max(plane, sec.pts[k][0]);
-      const pts: Array<[number, number]> = [...head];
-      for (let u = head[head.length - 1][1] - 0.025; u > hemY + 1e-4; u -= 0.025) {
-        const by = bay(railsY, u), d = (frame.dipM * kx + diagonal(x, u)) * bx * by - slack(x, u) * by;
-        const behind = d > 0 ? probe.face(x, u, facing) : null;
-        pts.push([Math.max(plane - d, behind !== null && behind < plane - 0.01 ? behind + gap : -Infinity), u]);
-      }
-      pts.push([plane, hemY]);
-      return { corner: sec.corner, pts };
-    } };
-  const { geometry, columns } = buildCurtain(framed, uvk, panelUvOffset(panel, cfg.seed), facing < 0);
+  const { geometry, columns } = buildCurtain(swagged, uvk, panelUvOffset(panel, cfg.seed), facing < 0);
   const underTurret = support.hull && !support.turretless, topRow = curtainTopAt(columns);
   return {
     kind: 'drape', owner: 'face', panel, geometry, domain: [x0, x1, 0.06, 0.97],
@@ -3336,7 +3132,7 @@ function* addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Fiel
     * (top ? (panel.garnishDensity ?? 1) : (surface.panel as Partial<SleeveSide>).garnishDensity ?? 1);
   const clothAt = clothDistance(surface.geometry);
   // netting-225: a drape's card hugs its cloth (FIELD_DRAPE_OFF_M), its face's nine points measured to the cloth round them
-  const clothNear = top ? null : clothWithin(surface.geometry, (surface.panel as { garnishHugM?: number }).garnishHugM ?? FIELD_DRAPE_OFF_M);
+  const clothNear = top ? null : clothWithin(surface.geometry, FIELD_DRAPE_OFF_M);
   // tuck points: a seeded point process under the crew's stuffing field, 30-55 cm apart (no lattice)
   const fa = 0.7 + rng() * 1.3, fb = 0.7 + rng() * 1.3, fc = 1.1 + rng() * 1.6, fd = 0.9 + rng() * 1.4;
   const pa = rng() * Math.PI * 2, pb = rng() * Math.PI * 2;
@@ -3353,9 +3149,7 @@ function* addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Fiel
   };
   // release 269 round 3: a bunched sleeve's garnish is tied in small clumps close together (a clump's 15-27 cm
   // round fits once in a barrel's length of it)
-  // (round 4: and the short strips hung in bunches under a barrel, SidePanel.minPieceTris)
-  const seatK = !top && (((surface.panel as Partial<SleeveSide>).bunchM ?? 0) > 0
-    || (surface.panel as Partial<SidePanel>).minPieceTris !== undefined) ? 0.45 : 1;
+  const seatK = !top && ((surface.panel as Partial<SleeveSide>).bunchM ?? 0) > 0 ? 0.45 : 1;
   for (let attempt = 0; attempt < 60 + want * 60 && seats.length < want; attempt++) {
     const u = u0 + rng() * spanU, v = v0 + (top ? rng() : 0.04 + rng() * 0.93) * spanV;
     const r = (0.15 + rng() * 0.12) * seatK;
@@ -6017,7 +5811,6 @@ function* addGhillieOwner(
     for (const side of [-1, 1]) surfaces.push(sleeveCloth(panel, side, cfg, support, uvk));
     yield;
   }
-  for (const clump of panels.strands ?? []) surfaces.push(strandCloth(clump, cfg, support, uvk, P.q !== false));
   yield;
   if (leafy && cage.length && gunFloor) {
     for (const [i, wing] of cage.entries()) {
