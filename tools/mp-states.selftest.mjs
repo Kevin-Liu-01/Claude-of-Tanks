@@ -51,6 +51,8 @@ assert.equal(JSON.stringify({ phase: SESSION_PHASE.lobby }), '{"phase":"lobby"}'
     SESSION_ROLE, TRANSPORT_STATE].flatMap(words));
   const literal = new RegExp(`\\.(?:phase|role|state|hostState|status|matchPhase)\\s*[!=]==\\s*'(?:${[...all].join('|')})'`, 'g');
   const exceptions = {
+    // (268, origin/main) the e2e's RTCPeerConnection rows count the browser's own connectionState words, not a protocol state
+    'tools/mp-p2p-e2e.mjs': ["entry.state === 'failed'"],
     // the headless peer harness reports its own match phases ('ended' among them): two vocabularies (findings 24 #8)
     'tools/mp-p2p-soak.mjs': ["entry.phase === 'closed'", "entry.phase === 'ended'", "entry.phase === 'failed'"],
     // the authority's own MatchPhase (src/sim/authoritativeMatch.ts), not a protocol state
