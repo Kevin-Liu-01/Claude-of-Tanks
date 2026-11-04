@@ -1750,13 +1750,13 @@
   },
   "featured": [
     {
-      "id": "s21-fields-assault",
-      "still": "close",
+      "versus": "f6-leo2a6-steinburg-r7",
+      "bootVersus": "f6-leo2a6-steinburg-r7-boot",
       "maps": [
-        "verdant"
+        "urban"
       ],
       "boot": true,
-      "focal": "45% 62%"
+      "focal": "46% 60%"
     },
     {
       "id": "s07-lake-shellfire",
