@@ -1250,7 +1250,24 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   edge). The explosions carry the ear proxy's `explosion` class and sit on the
   verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
   loudest take (the loudness receipt's momentary maximum), so a gate no longer
-  rides on the take the seeded stream drew.
+  rides on the take the seeded stream drew. The first `sfx-smoke` on the boom
+  banks found the calibre ladder inverted: every 17 cm take carried less of its
+  energy under 150 Hz than every 76 mm take (0.51–0.70 against 0.70–0.77; its
+  "huge sideways blast from the brake" came back a bright blast, and the
+  engine turns a brake's blast by the row's brake anyway; "earth-shaking"
+  still rumbled broadband). Re-prompted for plain depth, all 8 takes pass the
+  ear proxy and the bank ships at a mean 0.82 against the 76 mm's 0.74
+  (1,540 credits over two prompts). The ladder's pairs live in
+  `tools/audio/gun-ladder.mjs`; the loudness receipt records each ladder
+  bank's shipped low share (`low150`) and `sfxLoudness.selftest.mjs` holds
+  the pairs on those means, so a bank generated or picked out of order fails
+  in Node. In the browser `sfx-smoke` captures each ladder bank on every
+  variant, held in turn, and compares the means (one held take compared two
+  takes: the 17 cm's loudest is its brightest); every other scene holds the
+  mix receipt's loudest takes (`tools/audio/held-takes.mjs`). It lands a
+  popped turret through the fx clock's landing: since 2026-10-10 the turret's
+  rigid body reports where it hits, and the smoke had still expected the
+  landing from the destruction event.
 
 - **2026-11-03, every calibre and its reload (gun-reports-269).** The owner:
   "better cannonn sounds for all calibers, interior sounds for shell reloads

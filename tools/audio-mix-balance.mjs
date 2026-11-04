@@ -46,22 +46,12 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
+import { loudestTakes } from './audio/held-takes.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
-
-/**
- * The take every asset is held on: a measured asset's loudest by momentary loudness (tools/audio/sfx-loudness.json, the
- * files as they ship), any other its first, so no pick is left to the stream.
- */
-function loudestTakes() {
-  const record = JSON.parse(readFileSync(resolve('tools/audio/sfx-loudness.json'), 'utf8'));
-  const shipped = JSON.parse(readFileSync(resolve('tools/audio/.sfx-manifest.json'), 'utf8'));
-  return Object.fromEntries(Object.keys(shipped).map((id) => [id, (record[id]?.variants ?? [])
-    .reduce((best, v, i, all) => ((v.mMax ?? -Infinity) > (all[best].mMax ?? -Infinity) ? i : best), 0)]));
-}
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
