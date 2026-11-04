@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createLocalPadService } from '../../server/rooms/localPadService.ts';
 import { createPadLink } from './padLink.ts';
-import { createPadInputMapper } from './padInput.ts';
-import { PAD_RELAY_HZ, decodePadAxes, encodePadAxes } from './padProtocol.ts';
+import { createPadInputMapper, decodePadAxes } from './padDesk.ts';
+import { PAD_RELAY_HZ, encodePadAxes } from './padProtocol.ts';
 
 const server = http.createServer();
 const pads = createLocalPadService();

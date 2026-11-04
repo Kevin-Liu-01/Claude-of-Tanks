@@ -6,9 +6,8 @@
  */
 import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState } from './padLink.ts';
-import { createPadInputMapper } from './padInput.ts';
-import type { PadInputPort } from './padInput.ts';
-import { PAD_STALE_MS, decodePadAxes, decodePadTour } from './padProtocol.ts';
+import { PAD_STALE_MS, createPadInputMapper, decodePadAxes, decodePadTour } from './padDesk.ts';
+import type { PadInputPort } from './padDesk.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { showPadTour } from './padTourScreen.ts';
@@ -202,8 +201,10 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
       else if (message.k === 'pong') publish({ rttMs: Math.max(0, performance.now() - message.t) });
       else if (message.k === 'tour') {
         // the phone's guide opens here too, battle or not; Skip here ends it on the phone
-        hideTour?.();
         const layout = message.on && message.l ? decodePadTour(message.l) : null;
+        // a picture that does not decode is refused whole (the reader checked only its shape)
+        if (message.l && !layout) return;
+        hideTour?.();
         hideTour = layout ? showPadTour(layout, () => { hideTour = null; link.sendCtl({ k: 'tour', on: false }); }) : null;
       }
       else if (message.k === 'pause' || (driving && message.k !== 'status')) mapper.applyCtl(message);

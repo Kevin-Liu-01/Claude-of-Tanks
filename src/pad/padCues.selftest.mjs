@@ -2,7 +2,8 @@
 // (its gun, the hits it gives and takes, its modules, fire, crashes, kills and death), the events that name no tank are
 // the page's player's alone, every cue survives the wire, and every buzz has a pattern and its ticks.
 import assert from 'node:assert/strict';
-import { PAD_CUE_EVENTS, padBuzzPattern, padBuzzTicks, padCueOf } from './padCues.ts';
+import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
+import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { PAD_CUES, readPadCtl } from './padProtocol.ts';
 
 const me = { id: 'p1', player: true };

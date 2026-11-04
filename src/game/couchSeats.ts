@@ -61,7 +61,7 @@ export interface CouchSeatInput {
   aimDistance: number;
 }
 
-/** The aim pad's drag, in the mapper's units (padInput.ts PAD_AIM_GAIN applied), turned into radians of bearing. */
+/** The aim pad's drag, in the mapper's units (padDesk.ts PAD_AIM_GAIN applied), turned into radians of bearing. */
 const AIM_RAD_PER_UNIT = 0.0035;
 /** A seat's sight sits this far out along its bearing until something nearer is in the way (the driver may shorten it). */
 export const COUCH_AIM_DISTANCE_M = 400;
@@ -80,7 +80,7 @@ const TAP_BITS: Partial<Record<PadTapAction, number>> = {
 const SHELL_TAPS: Partial<Record<PadTapAction, number>> = { shell1: 0, shell2: 1, shell3: 2 };
 
 /**
- * One seat's controls, driven by its phone receiver as the touch HUD drives the input layer (padInput.ts PadInputPort),
+ * One seat's controls, driven by its phone receiver as the touch HUD drives the input layer (padDesk.ts PadInputPort),
  * read by the local driver once per tick. Levels (stick, fire, brake) hold until they change; a tap is a press the next
  * tick carries once, then clears (the core consumes action bits each tick: a held bit would press again every tick).
  */

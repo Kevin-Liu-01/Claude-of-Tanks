@@ -44,7 +44,11 @@ Pass rule:
   (`cloudflare/rooms/src/padPair.ts`) and the LAN helper (`server/rooms/localPadService.ts`, mounted by
   `server/rooms/serve.ts`) host the same code, so receipts run it in Node.
 - `src/pad/padLink.ts`: the transport both pages use: the signaling socket, the RTC peer, the relay fallback.
-- `src/pad/padInput.ts`: the steering model (phone) and the frame-to-action mapping (desktop), pure.
+- `src/pad/padInput.ts`: the steering and aim models, and `src/pad/padBuzz.ts`: each cue's buzz; the phone's, pure.
+- `src/pad/padDesk.ts`: the desktop's half, pure: the frame-to-action mapping, the axes and guide decoders, the pairing
+  page's address. With `src/pad/padCues.ts` (which events are cues) the phone's page never imports it: a module both
+  sides import rides whole to the phone, so each export lives on the side that runs it
+  (`src/pad/padPhoneHalf.selftest.mjs`).
 - `src/pad/padReceiver.ts` + `src/pad/padConnectCard.ts`: the desktop side, one lazy chunk behind `src/pad/padAccess.ts`.
 - `site/pad.html` + `src/pad/padPage.ts` + `src/pad/pad.css`: the phone page.
 - `src/pad/qr.ts`: a small QR encoder (byte mode, level M), drawn as SVG.
@@ -150,7 +154,7 @@ hands the moment they happen:
   battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
   a billed request and counts against the pairing's relay budget, a cue waits 500 ms after the last (a kill and a
   death never wait). No Worker change: the relay carries `ctl` text without reading it.
-- The phone plays each one's pattern (`padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration
+- The phone plays each one's pattern (`padBuzz.ts` `padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration
   API; it ticks once when a switch control toggles (iOS 18), so the page toggles a hidden switch for each tick of the
   pattern (`padBuzzTicks`: one tick per pulse, a long pulse ticks on every 50 ms, six at most).
 - The phone's own buzzes: a tick per press; at the trigger, the shot's kick at once when the gun is loaded (the
@@ -274,7 +278,8 @@ a battle, while paused and while its tab is hidden (the pause button still works
 
 - Receipts: `src/pad/padProtocol.selftest.mjs` (codes, routes, frame codec), `src/pad/padActor.selftest.mjs` (a code
   expires, is single use, a wrong code is refused, resume, limits, relay budget), `src/pad/padInput.selftest.mjs` (the
-  steering model and the action mapping), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
+  steering model and the action mapping), `src/pad/padPhoneHalf.selftest.mjs` (no desktop-only export rides to the
+  phone), `src/pad/qr.selftest.mjs`, `server/rooms/localPadService.selftest.mjs` (real
   sockets), `cloudflare/rooms/test/pad.test.ts` (the Worker route and the DO).
 - `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic orientation and touch events drive a tank
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before

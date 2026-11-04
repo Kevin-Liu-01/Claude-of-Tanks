@@ -2,9 +2,10 @@
 // 24-byte axes frame (round trip, clamps, wrapping totals and seq), the relay text and the phone page's address.
 import assert from 'node:assert/strict';
 import {
-  PAD_AXES_BYTES, PAD_CODE_ALPHABET, decodePadAxes, encodePadAxes, formatPadCode, padAxesFromRelay, padAxesToRelay,
-  PAD_RELAY_CTL, PAD_RELAY_DATA_MAX, PAD_TOUR_MAX_PARTS, PAD_TOUR_PARTS, PAD_TOUR_STOPS, decodePadTour, encodePadTour, padPageUrl, padSeqNewer, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
+  PAD_AXES_BYTES, PAD_CODE_ALPHABET, encodePadAxes, formatPadCode, padAxesFromRelay, padAxesToRelay,
+  PAD_RELAY_CTL, PAD_RELAY_DATA_MAX, PAD_TOUR_MAX_PARTS, PAD_TOUR_PARTS, PAD_TOUR_STOPS, encodePadTour, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
 } from './padProtocol.ts';
+import { decodePadAxes, decodePadTour, padPageUrl, padSeqNewer } from './padDesk.ts';
 import { resolvePadServiceUrl } from './padEndpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST } from '../officialHost.ts';
 
@@ -53,7 +54,8 @@ assert.equal(readPadCtl('{"k":"tap","a":"settingsMenu"}'), null, 'only the phone
 assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq');
 
 // the controls guide's picture of the phone: the game screen draws it, so it crosses the wire whole or not at all, and
-// it fits one relay payload (a longer one is invalid to the actor and would end the pairing)
+// it fits one relay payload (a longer one is invalid to the actor and would end the pairing). The reader checks its
+// shape; the desktop decodes it (padDesk.ts), so the decoder never rides to a phone.
 {
   const layout = { w: 812, h: 366, parts: [['key', 400, 0, 48, 48], ['fire', 700, 250, 104, 104]],
     stops: [['fire', 700, 250, 104, 104, 752, 302, 1, 0], ['aim', 500, 60, 300, 300, 650, 80, 2, 1]] };
@@ -61,7 +63,9 @@ assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq'
   assert.deepEqual(decodePadTour(l), layout, 'the picture round-trips');
   assert.deepEqual(readPadCtl(JSON.stringify({ k: 'tour', on: true, l })), { k: 'tour', on: true, l });
   assert.deepEqual(readPadCtl('{"k":"tour","on":false}'), { k: 'tour', on: false }, 'an ending carries no picture');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: 'AAAA' })), null, 'a picture that does not decode');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: 'AAAA' })), null, 'shorter than the smallest picture');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: `${l.slice(0, -4)}<b>` })), null, 'not base64');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: 'A'.repeat(432) })), null, 'longer than the largest picture');
   assert.equal(readPadCtl('{"k":"tour"}'), null);
   const bytes = Uint8Array.from(atob(l), (c) => c.charCodeAt(0));
   const tampered = (at, value) => { const copy = bytes.slice(); copy[at] = value; return btoa(String.fromCharCode(...copy)); };
@@ -77,6 +81,8 @@ assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq'
   const big = `${PAD_RELAY_CTL}${JSON.stringify({ k: 'tour', on: true, l: encodePadTour({ w: 2732, h: 2048, parts, stops }) })}`;
   assert.ok(big.length <= PAD_RELAY_DATA_MAX, `the biggest picture fits one relay payload (${big.length} of ${PAD_RELAY_DATA_MAX})`);
   assert.equal(decodePadTour(encodePadTour({ w: 2732, h: 2048, parts, stops })).parts.length, PAD_TOUR_MAX_PARTS, 'past the cap, parts are left out');
+  const biggest = encodePadTour({ w: 2732, h: 2048, parts, stops });
+  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: biggest })), { k: 'tour', on: true, l: biggest }, 'the reader takes the largest picture');
 }
 const status = { battle: true, alive: true, paused: false, sniper: false, slot: 1, shells: [{ type: 'AP', icon: 'shellAp', count: 30 }], reloadS: 1.2, reloadTotalS: 6 };
 assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: status })), { k: 'status', s: status });

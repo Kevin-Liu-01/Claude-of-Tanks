@@ -24,8 +24,8 @@ import type { PadLink, PadLinkState } from './padLink.ts';
 import {
   DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle, wheelAngleDeg,
 } from './padInput.ts';
-import { padBuzzPattern, padBuzzTicks } from './padCues.ts';
-import type { PadBuzz } from './padCues.ts';
+import { padBuzzPattern, padBuzzTicks } from './padBuzz.ts';
+import type { PadBuzz } from './padBuzz.ts';
 import {
   PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
 } from './padProtocol.ts';
@@ -388,7 +388,7 @@ function applyMode(): void {
 // nothing else; a lost capture lets go. iOS's own gestures never get a finger: the controller cancels their default
 // (double-tap zoom, the callout, selection, the page's rubber band), and touch-action is none on the whole page.
 //
-// Every press and every cue is felt (padCues.ts names each buzz): the Vibration API plays the pattern where there is one
+// Every press and every cue is felt (padBuzz.ts names each buzz): the Vibration API plays the pattern where there is one
 // (Android); iOS Safari has none, but ticks once when a switch control toggles (iOS 18), so a hidden switch is toggled
 // for each tick of the pattern. Whether iOS ticks outside a touch's own handler (a cue off the link) is unverified on
 // hardware: the simulator has no haptics.

@@ -5,10 +5,11 @@
 import assert from 'node:assert/strict';
 import { ACTION_DEFS } from '../game/input.ts';
 import {
-  AIM_CURVE, DEFAULT_STEERING, PAD_AIM_GAIN, aimGain, aimSpeed, createPadInputMapper, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
+  AIM_CURVE, DEFAULT_STEERING, aimGain, aimSpeed, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
   wheelAngleDeg, wrapDeg,
 } from './padInput.ts';
-import { PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, decodePadAxes, encodePadAxes } from './padProtocol.ts';
+import { PAD_AIM_GAIN, createPadInputMapper, decodePadAxes } from './padDesk.ts';
+import { PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, encodePadAxes } from './padProtocol.ts';
 
 const near = (a, b, eps, label) => assert.ok(Math.abs(a - b) <= eps, `${label}: ${a} vs ${b}`);
 const DEG = Math.PI / 180;
