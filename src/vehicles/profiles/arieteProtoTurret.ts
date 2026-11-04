@@ -141,9 +141,10 @@ export function arieteProtoMantlet(P: ArieteTurretPort): void {
   P.addGunExtra(convexBlock([...ring(0.17, 0.58), ...ring(0.17, 0.98), ...ring(0.150, 1.06, -0.13)]));
   // mantlet block filling the slot behind and under it (photograph 4: squared under the collar), its back on the slot's
   // wall (inside the turret), its top under the brow, its upper front raked back behind the collar
-  // (its lower outer edges chamfered 5.5 cm: the side stops' keep over the hull slab's edge)
-  P.addGunExtra(convexBlock([-1, 1].flatMap((s) => [[s * 0.17, -0.145, 0.35], [s * 0.17, -0.145, 0.64], [s * 0.225, -0.09, 0.35],
-    [s * 0.225, -0.09, 0.64], [s * 0.225, 0.02, 0.64], [s * 0.225, 0.20, 0.545], [s * 0.225, 0.20, 0.35]] as V3[])));
+  // (its lower outer edges chamfered 11 cm in, the old mantlet plate's footprint ahead of the slot's back wall: the gun keeps
+  // its measured stops at the arcs' ends, where the hull slab's corners pass under the mantlet)
+  P.addGunExtra(convexBlock([-1, 1].flatMap((s) => [[s * 0.12, -0.145, 0.35], [s * 0.12, -0.145, 0.64], [s * 0.225, -0.035, 0.35],
+    [s * 0.225, -0.035, 0.64], [s * 0.225, 0.02, 0.64], [s * 0.225, 0.20, 0.545], [s * 0.225, 0.20, 0.35]] as V3[])));
   // coax MG 42/59: its port housing on the collar's flank, the throat, the stub muzzle and booster
   P.addGunExtra(KIT.cylZ(0.046, 0.20, 10), 0.165, 0.10, 0.80);
   P.addGunExtraDark(KIT.cylZ(0.030, 0.03, 8), 0.165, 0.10, 0.895);
