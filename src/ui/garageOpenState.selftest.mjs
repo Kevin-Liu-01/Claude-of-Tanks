@@ -8,6 +8,7 @@ import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
 import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsumables.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 // 1. The screen: one state, an epoch per open span, tickets that lapse on hide, closers run once per hide.
 {
@@ -161,6 +162,9 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
     'and every press goes through it');
   assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{\n\s+const loading = facetPanel\.load\(\);/,
     'the toggle loads the opener chunk');
+  assert.match(source, /onOpenChange: \(open\) => root\.classList\.toggle\('facets-open', open\),\n\s+\}\)\), \{ opener: true \}\);/,
+    'the facet panel is an opener chunk (case 6 drives the toggle over one)');
+  assert.match(source, /void loading\.then\(\(\) => \{\}, \(\) => reportLoadFailure\('cot-facets-load', /, 'whose failure marks the button');
   assert.match(source, /if \(!garageScreen\.isOpen\) return;\n\s+if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;/,
     'the filter\'s auto-select never changes the selection after the Garage hid');
   assert.match(source, /if \(battleMode === 'solo' && remembered && normalizeGameMode\(remembered\) !== battleGameMode\) setBattleGameMode\(remembered\);/,
@@ -171,8 +175,10 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 }
 
 // 6. The roster filter's lazy toggle: a press while the panel loads means open (two impatient presses used to queue two
-//    toggles and leave it closed), a press after the mount toggles, a hide during the load opens nothing, a failed load
-//    is asked for again.
+//    toggles and leave it closed), a press after the mount toggles, a hide during the load opens nothing, and after a
+//    failed load the toggle goes back to idle (a loader that asks again then loads on the next press). In the Garage the
+//    loader is loaders-workers' opener chunk, whose failure is kept: the last sub-case drives that wiring (the failure
+//    marks the button, a second load asks nothing, and garage.ts's next press reloads the page, case 5).
 {
   const panel = () => ({ isOpen: false, toggles: 0, toggle() { this.toggles += 1; this.isOpen = !this.isOpen; } });
   const deferred = () => { let resolve, reject; const promise = new Promise((ok, no) => { resolve = ok; reject = no; }); return { promise, resolve, reject }; };
@@ -242,6 +248,37 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
     loads[1].resolve(mounted);
     await flush();
     assert.equal(mounted.isOpen, true);
+  }
+  {
+    // (integration review r1) the Garage's wiring (garage.ts facetPanel / facetPanelToggle): the toggle over an opener
+    // chunk (createLazyChunk { opener: true }), whose failure is terminal for the document
+    const screen = createGarageScreen();
+    screen.show();
+    let imports = 0;
+    const marks = [];
+    const facetPanel = createLazyChunk(() => { imports += 1; return Promise.reject(new Error('offline')); },
+      { opener: true, online: () => true, classify: () => Promise.resolve('transient') });
+    const toggle = createLazyPanelToggle(screen, () => {
+      const loading = facetPanel.load();
+      void loading.then(() => {}, () => marks.push('cot-facets-load'));
+      return loading;
+    });
+    toggle.press();
+    await flush();
+    assert.equal(imports, 1, 'one press imports once');
+    assert.equal(toggle.phase, 'idle', 'the toggle goes back to idle');
+    assert.equal(toggle.panel, null);
+    assert.deepEqual(marks, ['cot-facets-load'], 'the failure reaches the button\'s mark (reportLoadFailure)');
+    assert.equal(facetPanel.state, 'failed');
+    assert.equal(facetPanel.terminal, true, 'the opener chunk keeps its failure');
+    await assert.rejects(facetPanel.load(), /offline/, 'a second load returns the kept failure');
+    assert.equal(imports, 1, 'without a second import');
+    // garage.ts's click takes the next press to reloadsForFailure first (case 5); a press that reached the toggle asks nothing
+    toggle.press();
+    await flush();
+    assert.equal(imports, 1, 'a press after the failure imports nothing');
+    assert.equal(toggle.phase, 'idle');
+    assert.equal(marks.length, 2, 'and marks the button again');
   }
 }
 
