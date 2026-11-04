@@ -1122,6 +1122,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/technicalDrawing.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
+    // plates-overlap-269 (owner 2026-11-04): the hull bars over tanks on their own seats, overlapping, never pushed apart
+    'src/ui/hullBarMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
     'src/ui/damagePanelEntryMasks.selftest.mjs',
     // 2026-10-13 (owner: "even if im destroyed, the tank in bottom left corner can have its turret rotating"): a
