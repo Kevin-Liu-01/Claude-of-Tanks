@@ -40,8 +40,8 @@ const FAMILIES = {
   // range (down, degrees), the pair's span, the least width each tank fills, and a shell burst in frame (burst)
   // (the least widths are a share of the span: the hero about half of the pair's, the foe about a quarter, so the guns'
   // 2 m clearance, which sets the foe 10-18 m off, still leaves a pair that fills the frame)
-  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 45], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
-  crane: { h: [16, 20, 26], d: [18, 24, 32], roll: [0, 4, -4], fov: 40, down: [30, 55], span: 1.4, hero: 0.62, foe: 0.3, burst: true, burstTop: 0.75 },
+  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 40], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
+  crane: { h: [16, 20, 26], d: [18, 24, 32], roll: [0, 4, -4], fov: 40, down: [30, 45], span: 1.4, hero: 0.62, foe: 0.3, burst: true, burstTop: 0.75 },
   ridge: { h: [10, 15, 22], d: [45, 60, 80], roll: [0, 4, -4], fov: 16, down: [10, 25], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
 };
 const SPAN = 1.55, EDGE = 0.92;
@@ -51,8 +51,10 @@ const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const byName = (s, n) => s.actors.find((a) => a.name === n);
 
 /** The scene with its foe brought in to `gapM` from the hero along the same bearing, turrets laid on each other. */
-export function regroup(s, gapM) {
-  const hero = byName(s, 'hero'), foe = byName(s, 'foe0'), from = foe.pos, to = polar(hero.pos, bearingOf(hero.pos, from), gapM).map(r2);
+// (round 13) turnDeg turns the foe's bearing from the hero by that much first: the same duel on another line across the
+// map's backdrop and sun, so the elevated lenses find other arcs
+export function regroup(s, gapM, turnDeg = 0) {
+  const hero = byName(s, 'hero'), foe = byName(s, 'foe0'), from = foe.pos, to = polar(hero.pos, bearingOf(hero.pos, from) + turnDeg, gapM).map(r2);
   const dx = to[0] - from[0], dz = to[1] - from[1], dy = ground(s.map, ...to) - ground(s.map, ...from);
   foe.pos = to;
   hero.turretDeg = r2(wrap(bearingOf(hero.pos, foe.pos) - hero.facingDeg));
@@ -75,9 +77,9 @@ export function regroup(s, gapM) {
 /** The first gap from 9 to 18 m whose foe footprint is clear (no record contact, slope ≤ 0.2, wet ≤ 0.3) and that keeps
  *  the two guns, laid on each other, 2 m apart muzzle to muzzle (round 13's elevated look showed 9 m crossing them:
  *  each gun reaches ~6 m from its hull's centre), or null. */
-function clearGap(id) {
+function clearGap(id, turn = 0) {
   for (let gap = 9; gap <= 18; gap++) {
-    const s = regroup(SCENES[id](), gap), model = modelOf(s.map), foe = byName(s, 'foe0'), d = dimsOf(foe.id), h = dimsOf(byName(s, 'hero').id);
+    const s = regroup(SCENES[id](), gap, turn), model = modelOf(s.map), foe = byName(s, 'foe0'), d = dimsOf(foe.id), h = dimsOf(byName(s, 'hero').id);
     const tooClose = dist2(foe.pos, byName(s, 'hero').pos) < Math.max((d[0] + h[0]) * 0.9, d[2] + h[2] + 2);
     if (!tooClose && !model.hullContacts(foe.pos[0], foe.pos[1], foe.facingDeg * DEG, d[0], d[1]).length
       && model.slopeAt(foe.pos[0], foe.pos[1]) <= 0.2 && model.wetAt(foe.pos[0], foe.pos[1]) <= 0.3) return gap;
@@ -137,6 +139,11 @@ function judge(model, s, c, ownBearing, fam = {}) {
   const A = axesOf(model, c), eye2 = [A.eye[0], A.eye[2]];
   const offH = Math.abs(wrap(bearingOf(hero.pos, eye2) - hero.facingDeg)), offF = Math.abs(wrap(bearingOf(foe.pos, eye2) - foe.facingDeg));
   if (offH > 40 || offF > 65) return null;
+  // (round 13) an elevated lens also sees each gun's own side: within 100° of the hero's gun, 110° of the foe's, so the
+  // turret shows its face or its gun in profile, never its bustle (batch A: "rear quarter", the hull's nose 23° off and
+  // its gun 103° away)
+  const gunOff = (a) => Math.abs(wrap(bearingOf(a.pos, eye2) - a.facingDeg - (a.turretDeg ?? 0)));
+  if (fam.burst && (gunOff(hero) > 100 || gunOff(foe) > 110)) return null;
   const ox = Math.max(0, Math.min(H.x1, Fo.x1) - Math.max(H.x0, Fo.x0)), oy = Math.max(0, Math.min(H.y1, Fo.y1) - Math.max(H.y0, Fo.y0));
   if (Fo.z < H.z && ox * oy > 0.15 * hw * (H.y1 - H.y0)) return null;
   if (H.z <= Fo.z && ox * oy > 0.35 * fw * (Fo.y1 - Fo.y0)) return null;
@@ -186,32 +193,35 @@ function burstFor(model, s, A, F, boxes, top = 0.55) {
   const away = bearingOf([A.eye[0], A.eye[2]], mid), T = s.fxTime;
   for (const beyond of [4, 8, 12, 16, 22]) for (const side of [0, -5, 5, -9, 9, -13, 13]) {
     const p = polar(polar(mid, away, beyond), away + 90, side).map(r2), gy = model.heightAt(p[0], p[1]);
+    if (dist2(p, hero.pos) < 9 || dist2(p, foe.pos) < 9) continue;
     if (model.wetAt(p[0], p[1]) > 0.3 || model.slopeAt(p[0], p[1]) > 0.35 || insideRecord(model, [p[0], gy + 1, p[1]], 2)) continue;
     const q = F.project([p[0], gy + 1, p[1]]);
     if (!q || Math.abs(q[0]) > 0.8 || q[1] > top || q[1] < -0.85) continue;
-    if (boxes.some((b) => q[0] > b.x0 - 0.06 && q[0] < b.x1 + 0.06 && q[1] < b.y1 + 0.18)) continue;
+    if (boxes.some((b) => q[0] > b.x0 - 0.08 && q[0] < b.x1 + 0.08 && q[1] < b.y1 + 0.3)) continue;
     return [fx('explosion', p, T - 280, { size: 'large', munition: 'he', cause: 'shot' }),
       fx('debris', [p[0], r2(gy + 1.4), p[1]], T - 255, { count: 40, speedMps: 16, hot: 0.5, scale: 1.3 })];
   }
   return null;
 }
 
-function solve(id) {
-  const gap = clearGap(id);
+function solve(id, turn = 0) {
+  const gap = clearGap(id, turn);
   if (gap === null) return { id, gap: null, best: {} };
-  return { id, gap, best: lensesFor(regroup(SCENES[id](), gap)) };
+  return { id, gap, best: lensesFor(regroup(SCENES[id](), gap, turn)) };
 }
 
 /** (round 13) A fleet take (a filmed scene, site50/fleet-268/scenes/<id>.json) frozen at its still for the judge: every
  *  tracked actor where it stands then, named in schema-1 spellings (the dims' key), the hero and its nearest tank
- *  within 30 m as the pair (named hero and foe0, the judge's names), the take's own camera at the still as the round's
- *  lens; null when no tank is that near or the hero has no dims. */
-function takeSnapshot(take) {
-  const T = take.still?.tMs ?? take.meta?.still?.tMs, tracks = take.storyboard?.actorTracks ?? [];
+ *  within 30 m and out of any moving tank's dust as the pair (named hero and foe0, the judge's names), the take's own
+ *  camera at the still as the round's lens; null when the hero has no dims or drives in dust, or no such tank stands. */
+function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs) {
+  const tracks = take.storyboard?.actorTracks ?? [];
   const at = (keys) => {
     const k = Math.max(0, keys.findLastIndex((x) => x.tMs <= T)), a = keys[k], b = keys[k + 1] ?? a, u = b.tMs > a.tMs ? (T - a.tMs) / (b.tMs - a.tMs) : 0;
+    const dt = (b.tMs - a.tMs) / 1000 || 1;
     return { pos: [r2(a.pos[0] + (b.pos[0] - a.pos[0]) * u), r2(a.pos[1] + (b.pos[1] - a.pos[1]) * u)],
-      facingDeg: r2(a.facingDeg + wrap(b.facingDeg - a.facingDeg) * u), turretDeg: a.turretDeg ?? 0 };
+      facingDeg: r2(a.facingDeg + wrap(b.facingDeg - a.facingDeg) * u), turretDeg: a.turretDeg ?? 0,
+      vel: [(b.pos[0] - a.pos[0]) / dt, (b.pos[1] - a.pos[1]) / dt] };
   };
   const actors = [];
   for (const a of take.actors) {
@@ -220,9 +230,16 @@ function takeSnapshot(take) {
     const tr = tracks.find((t) => t.actor === a.name);
     actors.push({ ...a, id, ...(tr ? at(tr.keys) : {}) });
   }
+  // (batch A: the second tank "swallowed by dust") a tank 30 m or less behind a tank moving 3 m/s or more, within 40°
+  // of its track, stands in that tank's dust
+  const inDust = (x) => actors.some((m) => {
+    if (m === x || !m.vel || Math.hypot(...m.vel) < 3 || dist2(x.pos, m.pos) > 30) return false;
+    return Math.abs(wrap(bearingOf(m.pos, x.pos) - bearingOf([0, 0], m.vel) - 180)) <= 40;
+  });
   const hero = actors.find((a) => a.name === 'hero');
-  const mate = actors.filter((a) => a !== hero && dimsOf(a.id) && !a.state).sort((a, b) => dist2(a.pos, hero.pos) - dist2(b.pos, hero.pos))[0];
-  if (!hero || !dimsOf(hero.id) || !mate || dist2(mate.pos, hero.pos) > 30) return null;
+  if (!hero || !dimsOf(hero.id) || inDust(hero)) return null;
+  const mate = actors.filter((a) => a !== hero && dimsOf(a.id) && !a.state && !inDust(a)).sort((a, b) => dist2(a.pos, hero.pos) - dist2(b.pos, hero.pos))[0];
+  if (!mate || dist2(mate.pos, hero.pos) > 30) return null;
   const mateName = mate.name;
   for (const a of actors) if (a.name === 'foe0') a.name = 'foe0-take';
   mate.name = 'foe0';
@@ -268,13 +285,15 @@ const VIEWS = Number(process.argv.find((a) => a.startsWith('--views='))?.slice(8
 // --round=<n> (default 11): the round a write names its scenes and rows file for (12: the second pass, 11-02)
 const ROUND = Number(process.argv.find((a) => a.startsWith('--round='))?.slice(8) ?? 11);
 const ROWS = `zz-close-r${ROUND}.mjs`;
-const newId = (id, fam, view = 1) => `${id.replace(/-r\d+(-front)?$/, '')}-${fam}${view > 1 ? view : ''}-r${ROUND}`;
+// --turns=0,40,-40 (round 13): the foe turns a solve and a write search (default none); a turned id says so (-t40, -tm40)
+const TURNS = (process.argv.find((a) => a.startsWith('--turns='))?.slice(8).split(',') ?? ['0']).map(Number);
+const newId = (id, fam, view = 1, turn = 0) => `${id.replace(/-r\d+(-front)?$/, '')}-${fam}${view > 1 ? view : ''}${turn ? `-t${turn < 0 ? 'm' : ''}${Math.abs(turn)}` : ''}-r${ROUND}`;
 function cli([mode, ...args]) {
   const rest = args.filter((a) => !a.startsWith('--'));
   if (mode === 'solve') {
-    for (const id of rest) {
-      const { gap, best } = solve(id);
-      console.log(`${id}: ${gap === null ? 'no clear spot for the foe within 18 m' : `foe at ${gap} m`}`);
+    for (const id of rest) for (const turn of TURNS) {
+      const { gap, best } = solve(id, turn);
+      console.log(`${id}${turn ? ` (turned ${turn}°)` : ''}: ${gap === null ? 'no clear spot for the foe within 18 m' : `foe at ${gap} m`}`);
       for (const [fam, views] of Object.entries(best)) for (const [k, b] of views.entries()) {
         const f = (x) => x.toFixed(2);
         console.log(`  ${`${fam}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${f(b.score)}  hero ${(50 * b.hw).toFixed(0)} %  foe ${(50 * b.fw).toFixed(0)} %  hero ${b.offH.toFixed(0)}° foe ${b.offF.toFixed(0)}° off nose  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}, roll ${b.lens.rollDeg}${b.extra.length ? ', a burst beyond' : ''}`);
@@ -284,13 +303,14 @@ function cli([mode, ...args]) {
   } else if (mode === 'write') {
     const rows = [];
     for (const p of rest) {
-      const [id, fam, view = '1'] = p.split(':'), { gap, best } = solve(id), b = best[fam]?.[Number(view) - 1];
-      if (!b) throw Error(`${id}: no ${fam} lens ${view} passes`);
-      rows.push([newId(id, fam, Number(view)), id, gap, fam, { ...b.lens, name: 'a' }, b.extra]);
-      console.log(`[close] ${newId(id, fam, Number(view))}: ${id}, foe at ${gap} m, ${fam} ${view}`);
+      const [id, fam, view = '1', turn = '0'] = p.split(':'), { gap, best } = solve(id, Number(turn)), b = best[fam]?.[Number(view) - 1];
+      if (!b) throw Error(`${id}: no ${fam} lens ${view} passes${Number(turn) ? ` turned ${turn}°` : ''}`);
+      const nid = newId(id, fam, Number(view), Number(turn));
+      rows.push([nid, id, gap, fam, { ...b.lens, name: 'a' }, b.extra, Number(turn)]);
+      console.log(`[close] ${nid}: ${id}, foe at ${gap} m${Number(turn) ? `, turned ${turn}°` : ''}, ${fam} ${view}`);
     }
     const body = rows.map((r) => `  ${JSON.stringify(r)},`).join('\n');
-    writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'v6', ROWS), `// Round ${ROUND} (close.mjs write): each row is [id, source scene, foe gap in m, family, lens, added effects], picked
+    writeFileSync(join(dirname(fileURLToPath(import.meta.url)), 'v6', ROWS), `// Round ${ROUND} (close.mjs write): each row is [id, source scene, foe gap in m, family, lens, added effects, foe turn], picked
 // from close.mjs solve. The source's staging, effects, light and picture stand; regroup() brings the foe in, the lens is
 // the pick's, and an elevated family's burst beyond the pair joins the effects.
 import { SCENES } from '../versus.mjs';
@@ -299,9 +319,9 @@ import { regroup } from '../close.mjs';
 const ROWS = [
 ${body}
 ];
-for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = []] of ROWS) {
+for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = [], TURN = 0] of ROWS) {
   SCENES[ID] = () => {
-    const s = regroup(SCENES[SRC](), GAP);
+    const s = regroup(SCENES[SRC](), GAP, TURN);
     return { ...s, effects: [...s.effects, ...EXTRA], lenses: [{ ...LENS }],
       meta: { ...s.meta, id: ID, round: ${ROUND}, source: SRC, idea: 'the ' + (EXTRA.length ? 'elevated' : 'close') + ' group, ' + FAMILY + ' lens' } };
   };
@@ -309,24 +329,34 @@ for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = []] of ROWS) {
 `);
     console.log(`[close] v6/${ROWS}: ${rows.length} scenes`);
   } else if (mode === 'take-solve' || mode === 'take-write') {
-    // (round 13) fleet takes: take-solve <scene.json> ...; take-write <scene.json>:<family>[:view] ... --out=<dir>
+    // (round 13) fleet takes: take-solve <scene.json> ... [--times=fire]; take-write <scene.json>:<family>[:view[:tMs]] ...
+    // --out=<dir>. --times=fire searches the take's still and 100 ms after each shot in it (its fire effects: the flash
+    // alive, the tracer out) for each family's best moment (batch A: the take's own still often caught the pair in a
+    // column's dust); a write names the moment it takes
     const out = args.find((a) => a.startsWith('--out='))?.slice(6);
     if (mode === 'take-write' && !out) throw Error('take-write needs --out=<dir>');
     for (const p of rest) {
-      const [path, fam, view = '1'] = mode === 'take-write' ? p.split(':') : [p];
-      const take = JSON.parse(readFileSync(path, 'utf8')), snap = takeSnapshot(take);
-      if (!snap) { console.log(`${take.meta.id}: no tank within 30 m of the hero at the still, or an id outside the dims`); continue; }
-      const best = lensesFor(snap);
+      const [path, fam, view = '1', tArg] = mode === 'take-write' ? p.split(':') : [p];
+      const take = JSON.parse(readFileSync(path, 'utf8')), own = take.still?.tMs ?? take.meta?.still?.tMs;
+      const shots = (take.effects ?? []).filter((e) => e.type === 'fire' && Number.isFinite(e.tMs)).map((e) => e.tMs + 100);
+      const times = tArg ? [Number(tArg)] : args.includes('--times=fire') ? [...new Set([own, ...shots])].sort((a, b) => a - b) : [own];
+      const best = {}, at = {};
+      for (const T of times) {
+        const snap = takeSnapshot(take, T);
+        if (!snap) continue;
+        for (const [f, views] of Object.entries(lensesFor(snap))) if (!best[f] || views[0].score > best[f][0].score) { best[f] = views; at[f] = snap; }
+      }
+      if (!Object.keys(best).length) { console.log(`${take.meta.id}: no moment with a tank within 30 m of the hero, out of dust, that a lens passes`); continue; }
       if (mode === 'take-solve') {
-        console.log(`${take.meta.id}: the hero and ${snap.mate} at ${snap.fxTime} ms (${take.map})`);
+        console.log(`${take.meta.id}: ${take.map}`);
         for (const [f, views] of Object.entries(best)) for (const [k, b] of views.entries()) {
-          console.log(`  ${`${f}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${b.score.toFixed(2)}  hero ${(50 * b.hw).toFixed(0)} %  mate ${(50 * b.fw).toFixed(0)} %  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}`);
+          console.log(`  ${`${f}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${b.score.toFixed(2)}  hero ${(50 * b.hw).toFixed(0)} %  mate ${(50 * b.fw).toFixed(0)} %  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}, at ${at[f].fxTime} ms with ${at[f].mate}`);
         }
         continue;
       }
       const b = best[fam]?.[Number(view) - 1];
       if (!b) throw Error(`${take.meta.id}: no ${fam} lens ${view} passes`);
-      const scene = takeFinal(take, snap, fam, Number(view), b);
+      const scene = takeFinal(take, at[fam], fam, Number(view), b);
       writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));
       console.log(`[close] ${scene.meta.id}: ${take.meta.id}, ${fam} ${view}`);
     }
