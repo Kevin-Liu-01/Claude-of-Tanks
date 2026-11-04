@@ -610,15 +610,32 @@ function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.topY = 1.00;
 }
 
-function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
+/** The family's hull and running gear, in their build order (the turret follows). */
+function addT54FamilyHull(P: TankBuilderPort): void {
   addHullBody(P);
   addFenders(P);
   addRunningGear(P);
   addHullFront(P);
   addFenderStowage(P);
   addHullRear(P);
+}
+
+function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
+  addT54FamilyHull(P);
   buildFamilyTurret(P, v);
-  P.hullG.userData.t54FamilyReceipt = Object.freeze({
+  P.hullG.userData.t54FamilyReceipt = t54FamilyHullReceipt(v);
+  P.turretG.userData.t54FamilyReceipt = Object.freeze({
+    variant: v.id, revision: v.revision,
+    dome: Object.freeze({ widthM: DOME.side * 2, lengthM: DOME.front + DOME.rear, heightM: DOME.H, apexZ: DOME.cz }),
+    pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
+    muzzleLocalZ: MUZZLE_Z, evacuatorLengthM: EVACUATOR_LEN, evacuatorAtMuzzle: true, muzzleCounterweight: false,
+    commanderCupolaSide: 'left', loaderHatchSide: 'right', searchlightSide: 'right', coaxSide: 'right',
+    searchlightDiameterM: v.searchlightR * 2, ventilatorDome: v.ventDome, roofMachineGuns: Object.freeze(v.dshk ? [v.dshkLabel] : []),
+  });
+}
+
+function t54FamilyHullReceipt(v: T54Variant): Readonly<Record<string, unknown>> {
+  return Object.freeze({
     variant: v.id, revision: v.revision, oracleScale: 1.15,
     hullBodyM: Object.freeze({ rearZ: REAR_Z, noseZ: NOSE_Z, fenderTipZ: 3.05, halfWidth: HULL_HALF_W, tubHalfWidth: TUB_HALF_W,
       roofY: ROOF_Y, bellyY: BELLY_Y }),
@@ -628,14 +645,6 @@ function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
     roadWheelPitchM: WHEEL_ZS[2] - WHEEL_ZS[3], firstGapM: WHEEL_ZS[0] - WHEEL_ZS[1],
     trackWidthM: TRACK_W, trackGaugeM: TRACK_XC * 2, returnRollers: 0,
     rearFuelDrums: 2, externalFuelTanksRight: 4, exhaustSide: 'left', driverSide: 'left',
-  });
-  P.turretG.userData.t54FamilyReceipt = Object.freeze({
-    variant: v.id, revision: v.revision,
-    dome: Object.freeze({ widthM: DOME.side * 2, lengthM: DOME.front + DOME.rear, heightM: DOME.H, apexZ: DOME.cz }),
-    pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
-    muzzleLocalZ: MUZZLE_Z, evacuatorLengthM: EVACUATOR_LEN, evacuatorAtMuzzle: true, muzzleCounterweight: false,
-    commanderCupolaSide: 'left', loaderHatchSide: 'right', searchlightSide: 'right', coaxSide: 'right',
-    searchlightDiameterM: v.searchlightR * 2, ventilatorDome: v.ventDome, roofMachineGuns: Object.freeze(v.dshk ? [v.dshkLabel] : []),
   });
 }
 
@@ -647,4 +656,23 @@ export function buildType59(P: TankBuilderPort): void {
 /** The T-55A (1963): the family construction as the owner-supplied model draws it. */
 export function buildT55A(P: TankBuilderPort): void {
   buildT54Family(P, VARIANTS.t55a);
+}
+
+/** The T-55A hull's turret station for a turret of another build (hull frame). */
+interface T55AHullStation {
+  /** The hull roof, the turret-ring plane (m). */
+  readonly roofY: number;
+  /** The ring's centre on the roof (the T-55A's turret pivot). */
+  readonly ringPivot: readonly [number, number, number];
+}
+
+/**
+ * The T-55A's hull and running gear alone, exactly as the T-55A builds them, for a vehicle that seats a turret of its own
+ * on the T-55's ring (release 269: Finland's ItPsv 90, the Marconi Marksman turret on the T-55, profiles/marksman.ts).
+ * The T-55A and the Type 59 build as before (buildT54Family).
+ */
+export function buildT55AHull(P: TankBuilderPort): T55AHullStation {
+  addT54FamilyHull(P);
+  P.hullG.userData.t54FamilyReceipt = t54FamilyHullReceipt(VARIANTS.t55a);
+  return Object.freeze({ roofY: ROOF_Y, ringPivot: Object.freeze([...TURRET_PIVOT] as [number, number, number]) });
 }

@@ -1,84 +1,40 @@
-// Release 269 REGISTRAR PLACEHOLDER (R0): the two Marksmen, Finland's ItPsv 90 on the fleet's T-55A hull and running gear
-// (profiles/t54Family.ts) and the ItPsv Leopard 2 on its Leopard 2A4 hull and running gear (profiles/leopard2A4Family.ts),
-// their real chassis, each under the one box turret with a 35 mm barrel on each side, so both ids are complete playable
-// vehicles while builder M authors the measured Marksman turret (one module, both hulls) in this group. Every firing datum
-// is read from the spec (marksmanSpecs.ts): the ring, the trunnion and the twin fire axes.
-// First-party procedural geometry: Kevin B. Liu (NOTICE.md).
+// The two Marksmen (release 269, builder M; the owner 2026-11-03: "UK Marksman", the Finnish ItPsv 90, then the Leopard 2
+// Marksman, "produced in 2014 and 15 and started its service in 2016 under the designation ItPsv Leopard 2"): one Marconi
+// Marksman turret (profiles/marksmanTurret.ts, its datums profiles/marksmanFrame.ts) on each hull's own ring.
+//   - marksman_t55, Finland's ItPsv 90 (photo 01, Helsinki, "Ps465-22"): the fleet's T-55A hull and running gear exactly
+//     as the T-55A builds them (profiles/t54Family.ts buildT55AHull: five road wheels, the T-55's deck, the fender tanks
+//     and the two drums across the stern), the turret on the T-55 ring's adapter, its pods in the turret's paint;
+//   - itpsv_leopard2, the ItPsv Leopard 2 (photos 02-08): the Leopard 2A4's hull and running gear with the 2A4's own
+//     options (profiles/leopard2Hull.ts, as profiles/leopard2A4Family.ts builds the leo2a4: seven road wheels, the skirts,
+//     the round-rod exhaust grilles, the fuel fillers, the forward lift eyes on the glacis) and the 2A4's hull kit without
+//     its German rear number (profiles/leopard2A4Kit.ts), the turret on the Leopard 2 race's wider adapter, its pods dark
+//     as in the 2015 photographs.
+// docs/references/tanks/marksman_t55.md, itpsv_leopard2.md. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { KIT } from './kit.ts';
-import { buildT55A } from './t54Family.ts';
-import { LEOPARD2A4_FAMILY_PROFILES } from './leopard2A4Family.ts';
+import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
+import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { EARLY_LEOPARD2_FORE_SKIRT_DROP_M, EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z } from '../leopard2a3B4Armor.ts';
+import { buildT55AHull } from './t54Family.ts';
+import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
+import { buildLeopard2Hull } from './leopard2Hull.ts';
+import { addLeo2A4HullKit } from './leopard2A4Kit.ts';
+import { buildMarksmanTurret } from './marksmanTurret.ts';
 
-const { box, cylX, cylY, cylZ } = KIT;
-
-/** The placeholder Marksman turret body, as the spec's turret plates (marksmanSpecs.ts BODY). */
-const BODY = Object.freeze({ halfWidth: 1.20, floorY: .04, roofY: 1.05, rearZ: -1.60, frontZ: 1.20 });
-
-/** Every bucket the donor's turret, mantlet and gun draw into (tankFactoryCore.ts BUCKET_DEF: turretG, gunG, recoilG). */
-const DONOR_TURRET_BUCKETS = Object.freeze([
-  'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor', 'turretEquipment', 'turretDetail', 'turretDark',
-  'turretWeaponSteel', 'turretPaintedDetail', 'turretPermanentMarkingSurface', 'turretOpenLattice',
-  'turretOpenLatticeDark', 'turretCloth', 'turretGlass', 'turretCanvasPale', 'turretFittingPaint', 'turretBark',
-  'turretTrack', 'turretTrackLinks', 'turretRubber', 'turretShadow',
-  'gun', 'gunDark', 'gunCanvasPale', 'gunMount', 'gunMountLamp', 'gunMountDark', 'gunMountCloth', 'gunMountCanvasPale',
-  'gunMountCanvasSkin', 'gunMountGlass',
-]);
-
-function removeDonorTurret(P: TankBuilderPort): void {
-  P.clear(...DONOR_TURRET_BUCKETS);
-  P.clearDecals('turret');
-  for (const child of [...P.turretG.children]) if (child !== P.gunG) P.turretG.remove(child);
-  for (const child of [...P.gunG.children]) if (child !== P.recoilG) P.gunG.remove(child);
-  for (const child of [...P.recoilG.children]) if (!child.name.startsWith('rig_barrel_')) P.recoilG.remove(child);
-  // the donor's main-gun bore declarations belong to its single centred tube
-  P.physicalMuzzleBore = undefined;
-  P.muzzleMouth = undefined;
-  P.muzzleAxisY = undefined;
+function* buildMarksmanT55Steps(P: TankBuilderPort): TankProfileBuild {
+  const hull = buildT55AHull(P);
+  yield 'buildMarksmanT55Hull';
+  buildMarksmanTurret(P, { adapter: 't55', ring: hull.ringPivot, darkPods: false });
 }
 
-function twinStation(P: TankBuilderPort, barrelR: number): void {
-  const spec = P.spec;
-  const [tx, ty, tz] = spec.armor.turretPivot;
-  const [gx, gy, gz] = spec.armor.gunPivot;
-  P.turretG.position.set(tx, ty, tz);
-  P.gunG.position.set(gx, gy, gz);
-  const n = P.q ? 20 : 12;
-  // the ring collar, sunk 2 cm into the deck and 2 cm into the body's floor, and the closed body on it
-  P.add('turret', cylY(1.00, 1.04, BODY.floorY + .04, P.q ? 32 : 20), 0, (BODY.floorY + .04) / 2 - .02, 0);
-  P.add('turret', box(BODY.halfWidth * 2, BODY.roofY - BODY.floorY, BODY.frontZ - BODY.rearZ), 0,
-    (BODY.roofY + BODY.floorY) / 2, (BODY.frontZ + BODY.rearZ) / 2);
-  // the sight head on the roof, seated 1 cm into it
-  P.add('turretDetail', box(.44, .26, .36), .52, BODY.roofY + .12, BODY.frontZ - .40);
-  P.add('turretGlass', box(.30, .12, .012), .52, BODY.roofY + .13, BODY.frontZ - .215);
-  const muzzleZ = spec.armor.gunBarrel.lengthM;
-  (spec.gun.muzzles ?? []).forEach((axis, index) => {
-    const x = axis.x ?? 0, y = axis.y ?? 0;
-    const side = Math.sign(x) || 1;
-    // the trunnion from inside the body out into the gun's cradle: a body of revolution about the pitch axis
-    const inner = BODY.halfWidth - .10, outer = Math.abs(x) + .04;
-    P.addGunExtra(cylX(.14, outer - inner, n), side * (inner + outer) / 2, y, 0);
-    P.addGunExtra(box(.30, .36, .95), x, y, .05);
-    P.add(`gunBarrel${index}`, cylZ(barrelR, muzzleZ - .48, n), x, y, (muzzleZ + .48) / 2);
-    P.add(`gunBarrel${index}Dark`, cylZ(barrelR * 1.35, .22, n), x, y, muzzleZ - .11);
-    P.add(`gunBarrel${index}Dark`, cylZ(barrelR * .5, .02, n), x, y, muzzleZ - .005);
-  });
-  P.muzzleZ = muzzleZ;
-  P.topY = BODY.roofY + .25;
-}
-
-export function buildMarksmanT55(P: TankBuilderPort): void {
-  buildT55A(P);
-  removeDonorTurret(P);
-  twinStation(P, P.spec.armor.gunBarrel.radiusM);
-}
-
-export function buildItpsvLeopard2(P: TankBuilderPort): void {
-  LEOPARD2A4_FAMILY_PROFILES.leo2a4.build(P);
-  removeDonorTurret(P);
-  twinStation(P, P.spec.armor.gunBarrel.radiusM);
+function* buildItpsvLeopard2Steps(P: TankBuilderPort): TankProfileBuild {
+  buildLeopard2Hull(P, { flapName: 'itpsv-leopard2-rear-flap', exhaust: 'rods', foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M,
+    fuelFillers: true, forwardLiftEyeZ: EARLY_LEOPARD2_FORWARD_LIFT_EYE_Z });
+  addLeo2A4HullKit(P, { rearNumber: false });
+  yield 'buildItpsvLeopard2Hull';
+  buildMarksmanTurret(P, { adapter: 'leopard2', ring: LEOPARD2_HULL.ring, darkPods: true });
 }
 
 export const MARKSMAN_PROFILES = {
-  marksman_t55: { build: buildMarksmanT55 },
-  itpsv_leopard2: { build: buildItpsvLeopard2 },
-} as const;
+  marksman_t55: { build: steppedBuilder(buildMarksmanT55Steps) },
+  itpsv_leopard2: { build: steppedBuilder(buildItpsvLeopard2Steps) },
+} satisfies VehicleProfileRecord;
