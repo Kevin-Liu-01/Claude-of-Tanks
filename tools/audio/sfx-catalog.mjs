@@ -38,35 +38,63 @@ function sfx(id, group, prompt, dur, { inf = 0.45, loop = false, variants = 1, t
 // echo" prompts, picked for low-end weight, came back as explosions that swell into a low boom 0.1–0.3 s after
 // the shot. A gun is an instant pressure crack; its weight is the punch under the crack and the echo after it.
 const REAL = `Realistic documentary field recording, not cinematic, no explosion, no rumble swell, no debris, ${NO_MUSIC}. One isolated shot.`;
-// The report decays more slowly as the bore (and charge) grows.
-const CANNONS = [
-  ['gun_90', '90 mm', 'an extremely sharp, cracking muzzle blast with a lighter body', [10, 65, -21]],
-  ['gun_105', '105 mm', 'an extremely sharp, ear-splitting muzzle-blast crack', [10, 70, -21]],
-  ['gun_120', '120 mm smoothbore', 'a violent, extremely sharp muzzle-blast crack', [12, 80, -20]],
-  ['gun_125', '125 mm smoothbore', 'a violent, very sharp muzzle-blast crack with a deeper report', [12, 85, -20]],
-  ['gun_130', '130 mm', 'a massive, sharp muzzle-blast crack with a deep report', [14, 90, -19]],
-  ['gun_152', '152 mm heavy', 'a colossal, sharp muzzle blast with a deep, heavy report', [15, 105, -18]],
+
+/** The API rejects a prompt over 450 characters: fail here, before any credit is spent. */
+function short(entry) {
+  if (entry.prompt.length >= 450) throw new Error(`${entry.id}: prompt is ${entry.prompt.length} characters (under 450)`);
+  return entry;
+}
+
+// Gun reports by bore and ammunition construction (gun-reports-269, owner 2026-11-03: "better cannonn sounds for all
+// calibers"). Every cannon class the fleet fires (src/audio/weaponAudio.ts WEAPON_ROWS, keyed bore/construction) has
+// its own four reports: the close report 30 m beside it, the crew's own from the open hatch, the closed turret's
+// interior close-miked at the loader's station, and the distant boom. The words carry what makes each gun its own:
+// the bore, rifling and barrel, the muzzle brake's side blast, a howitzer's or a gun-launcher's blunt low-pressure bang.
+// [asset prefix, the gun, its crack, the closed turret's blast, the distant boom, close shape, size]
+const GUN_REPORTS = [
+  ['gun_76', '76 mm rifled light-tank gun with a muzzle brake', 'a sharp, snapping crack and a harsh side blast from the brake, light in body', 'a hard muffled thump through the hull', 'a muffled boom with a soft attack and a short rolling echo', [9, 60, -21], 'light'],
+  ['gun_84', '84 mm long-barrelled rifled tank gun', 'an extremely sharp, whip-like high-velocity crack, lighter in body', 'a hard muffled thump through the hull', 'a muffled boom with a soft attack and a short rolling echo', [9, 62, -21], 'light'],
+  ['gun_90', '90 mm rifled tank gun with a muzzle brake', 'a sharp, cracking blast and a harsh sideways blast from the brake', 'a hard muffled thump through the hull', 'a muffled boom with a soft attack and a rolling echo', [10, 65, -21], 'light'],
+  ['gun_100', '100 mm rifled tank gun', 'a hard, heavy, flat high-velocity crack with a solid body', 'an enormous muffled thump pressing through the hull', 'a muffled heavy boom and a rolling thunder-like echo', [10, 70, -21], 'medium'],
+  ['gun_100lp', 'short low-pressure 100 mm gun on an infantry vehicle', 'a hollow, blunt bang, duller than a tank gun\'s crack', 'a dull muffled bang through the hull', 'a dull hollow thud and a short low echo', [12, 90, -19], 'medium'],
+  ['gun_105', '105 mm high-velocity rifled tank gun', 'an extremely sharp, ear-splitting muzzle-blast crack', 'an enormous muffled thump pressing through the hull', 'a muffled heavy boom and a rolling thunder-like echo', [10, 70, -21], 'medium'],
+  ['gun_120', '120 mm smoothbore tank cannon', 'a violent, extremely sharp, high-pressure muzzle-blast crack', 'a massive muffled concussion pressing on the ears', 'a deep heavy boom and a low echo rolling across hills', [12, 80, -20], 'heavy'],
+  ['gun_120r', '120 mm rifled tank gun firing a bagged charge', 'a violent, sharp crack with a rounder, heavier report than a smoothbore', 'a massive muffled concussion pressing on the ears', 'a deep heavy boom and a low echo rolling across hills', [12, 85, -20], 'heavy'],
+  ['gun_125', '125 mm smoothbore tank cannon', 'a violent, very sharp muzzle-blast crack with a deeper, harder report', 'a massive muffled concussion pressing on the ears', 'a deep heavy boom and a low echo rolling across hills', [12, 85, -20], 'heavy'],
+  ['gun_130', '130 mm smoothbore tank cannon', 'a massive, sharp, very high-pressure crack with a deep report', 'a crushing muffled blast shaking the whole hull', 'an enormous deep boom and a long rolling thunder echo', [14, 90, -19], 'heavy'],
+  ['gun_152h', '152 mm short-barrelled tank howitzer', 'a deep, heavy, thunderous bang with a blunt attack, no whip crack', 'a crushing muffled blast shaking the whole hull', 'a dull, deep thud and a long low rolling echo', [16, 120, -17], 'superheavy'],
+  ['gun_152gl', '152 mm short wide-bore gun-launcher on a light tank', 'a loud, blunt, heavy bang, deep and hollow, less whip than a long gun', 'a crushing muffled blast shaking the whole hull', 'a dull, deep thud and a long low rolling echo', [14, 105, -18], 'superheavy'],
+  ['gun_165', '165 mm short demolition gun on an engineer tank', 'a deep, flat, thudding boom with a blunt attack, like a heavy mortar', 'a crushing muffled blast shaking the whole hull', 'a dull, deep thud and a long low rolling echo', [18, 125, -17], 'superheavy'],
+  ['gun_170', '170 mm long heavy gun with a double-baffle muzzle brake', 'a colossal, ear-splitting crack and a huge sideways blast from the brake', 'a crushing muffled blast shaking the whole hull', 'an enormous deep boom and a long rolling thunder echo', [15, 105, -18], 'superheavy'],
 ];
+// The recoil past the loader: lighter guns clack, the big ones slam.
+const RECOIL = { light: 'a sharp steel clack', medium: 'a heavy steel slam', heavy: 'a violent heavy steel slam', superheavy: 'a violent, massive steel slam' };
+
+const gunReports = GUN_REPORTS.flatMap(([id, gun, crack, inside, boom, shape, size]) => [
+  short(sfx(`${id}_close`, 'weapons',
+    `Gunshot sound effect: one single shot of a ${gun} at a military range, recorded 30 metres beside it: instantaneous, ${crack}, a hard concussive punch off the ground, then a dry echo off distant hills. ${REAL}`,
+    3.5, { inf: 0.6, variants: 3, takes: 8, proc: 'gunshot', shape })),
+  short(sfx(`${id}_own`, 'weapons',
+    `Gunshot sound effect: one single shot of a ${gun} heard from the open hatch beside it: instantaneous, ${crack}, a pressure slap, the turret ringing and the breech clanking back, then a short echo. ${REAL}`,
+    4, { inf: 0.6, variants: 3, takes: 8, proc: 'gunshot', shape: [shape[0] + 2, shape[1] + 10, shape[2] + 3] })),
+  short(sfx(`${id}_interior`, 'weapons',
+    `One-shot heard inside the closed steel turret of a tank as its own ${gun.replace(/ on an? [a-z -]+$/, '')} fires, close-miked at the loader's station: ${inside}, the breech recoiling past with ${RECOIL[size]}, the steel walls ringing short and hard. No outside echo, no crack, ${NO_MUSIC}.`,
+    2.6, { inf: 0.55, variants: 2, takes: 6, proc: 'weapon-close' })),
+  short(sfx(`${id}_far`, 'weapons',
+    `One-shot of a ${gun} fired about one kilometre away: ${boom} across open terrain, no crack. ${FIELD}, ${NO_MUSIC}.`,
+    size === 'light' ? 4.5 : 5, { variants: 2, takes: 4, proc: 'weapon-far' })),
+]);
 
 const weapons = [
-  ...CANNONS.map(([id, bore, crack, shape]) => sfx(`${id}_close`, 'weapons',
-    `Gunshot sound effect: one single shot of a ${bore} tank cannon at a military range, recorded 30 metres beside it: instantaneous, ${crack}, a hard concussive punch as the pressure wave slaps off the ground, then a dry echo rolling off distant hills. ${REAL}`,
-    3.5, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),
+  ...gunReports,
+  // gun_152_close and the grouped distant banks stay for the Studio's films (src/game/studioFilmAudio.ts); battles
+  // play the per-bore banks above.
+  sfx('gun_152_close', 'weapons',
+    `Gunshot sound effect: one single shot of a 152 mm heavy tank cannon at a military range, recorded 30 metres beside it: instantaneous, a colossal, sharp muzzle blast with a deep, heavy report, a hard concussive punch as the pressure wave slaps off the ground, then a dry echo rolling off distant hills. ${REAL}`,
+    3.5, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape: [15, 105, -18] }),
   sfx('gun_far_light', 'weapons', `One-shot of a tank cannon fired about one kilometre away: muffled boom with a soft attack and a rolling thunder-like echo across open terrain, no crack. ${FIELD}, ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
   sfx('gun_far_medium', 'weapons', `One-shot of a large-calibre tank gun fired far away, over a kilometre: deep heavy boom, low rumbling echo rolling across hills, no crack. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'weapon-far' }),
   sfx('gun_far_heavy', 'weapons', `One-shot of a very heavy gun fired far in the distance: enormous low thud and long rolling thunder echo, no crack. ${FIELD}, ${NO_MUSIC}.`, 5.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
-  sfx('gun_interior_medium', 'weapons', `One-shot heard from inside a tank turret as its own 105 mm main gun fires: enormous muffled thump through the hull, steel resonance, recoil slam of the breech, no outside echo. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'weapon-close' }),
-  sfx('gun_interior_large', 'weapons', `One-shot heard from inside a tank turret as its own 125 mm main gun fires: massive muffled concussion, steel hull ringing, heavy recoil slam of the breech block. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'weapon-close' }),
-  sfx('gun_interior_heavy', 'weapons', `One-shot heard from inside a heavy armoured vehicle as its own huge gun fires: crushing muffled blast, deep hull boom, violent recoil slam. ${NO_MUSIC}.`, 2.8, { variants: 2, takes: 2, proc: 'weapon-close' }),
-  // The crew's own gun, heard from the hatch beside it: the report the player hears on every shot,
-  // fuller and more detailed than anyone else's (the interior reports above cover the sight).
-  ...[
-    ['gun_own_medium', '105 mm', 'a deafening muzzle-blast crack', [12, 80, -17]],
-    ['gun_own_large', '120 mm smoothbore', 'a violent, deafening muzzle-blast crack', [12, 90, -17]],
-    ['gun_own_heavy', '152 mm', 'a colossal muzzle-blast crack with a deep report', [14, 105, -16]],
-  ].map(([id, bore, crack, shape]) => sfx(id, 'weapons',
-    `Gunshot sound effect: one single shot of a ${bore} tank gun heard from the commander's open hatch beside it: instantaneous, ${crack} and a concussive pressure slap, the steel turret ringing briefly, the clank of the recoiling breech, then a short outdoor echo. ${REAL}`,
-    4, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),
   // The punch under a close report (2026-10-03, replacing the rendered pressure pulse): the air slam a crack
   // alone lacks, felt as much as heard, and the suck of air behind it. Layered under the report by bore.
   ...[
@@ -87,9 +115,23 @@ const AUTOCANNONS = [
   ['ac_20', '20 mm', 'snappy crack', [6, 30, -22]],
   ['ac_25', '25 mm chain gun', 'sharp crack', [6, 33, -22]],
   ['ac_30', '30 mm', 'hard, sharp crack', [7, 38, -22]],
+  ['ac_35', '35 mm', 'hard, heavy crack and a muzzle-brake blast', [7, 42, -22]],
   ['ac_40', '40 mm', 'heavy, sharp crack', [8, 45, -21]],
   ['ac_50', '50 mm', 'heavy, deep crack', [9, 55, -21]],
 ];
+// gun-reports-269: each autocannon's own report from the hatch beside it, its closed two-man turret, and its distant
+// thump (until 2026-11-03 the crew heard the close bank everyone else heard, and two distant banks served five bores).
+const acReports = AUTOCANNONS.flatMap(([id, bore, report, shape]) => [
+  short(sfx(`${id}_own`, 'weapons',
+    `Gunshot sound effect: one single shot of the ${bore} autocannon of an infantry fighting vehicle, heard from the commander's open hatch beside the gun: an instant, extremely sharp ${report} with a hard punch, the bolt cycling with a steel clatter, then a short outdoor echo. ${REAL}`,
+    2, { inf: 0.75, variants: 3, takes: 8, proc: 'gunshot', shape: [shape[0] + 1, shape[1] + 6, shape[2] + 2] })),
+  short(sfx(`${id}_interior`, 'weapons',
+    `Gunshot sound effect: one single shot heard inside the closed two-man turret of an infantry fighting vehicle as its own ${bore} autocannon fires, close-miked: a hard muffled thump through the armour, the bolt and feed cycling with a sharp steel clack, a spent case clinking. No outside echo. One isolated shot, ${NO_MUSIC}.`,
+    1.6, { inf: 0.7, variants: 3, takes: 8, proc: 'gunshot', shape: [shape[0] + 2, shape[1] + 10, shape[2] + 3] })),
+  short(sfx(`${id}_far`, 'weapons',
+    `Gunshot sound effect: a single ${bore} autocannon shot heard about 700 metres away: ${/^ac_(20|25|30)$/.test(id) ? 'a short dull thump with a quick outdoor echo' : 'a muffled heavy thud with a rolling echo'}. One isolated shot.`,
+    2.2, { inf: 0.7, variants: 3, takes: 6, proc: 'weapon-far' })),
+]);
 
 // Pilots (2026-10-02): short "one-shot of a single round" prompts at 0.6–1.4 s
 // came back quiet and smeared; the "Gunshot sound effect … very loud … hard
@@ -101,6 +143,7 @@ const autocannons = [
     2, { inf: 0.75, variants: 4, takes: 6, proc: 'gunshot', shape })),
   sfx('ac_far_light', 'weapons', `Gunshot sound effect: a single autocannon shot heard about 600 metres away, short dull thump with a quick outdoor echo. One isolated shot.`, 2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
   sfx('ac_far_heavy', 'weapons', `Gunshot sound effect: a single heavy autocannon shot heard far away, muffled thud with a rolling echo. One isolated shot.`, 2.2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
+  ...acReports,
 ];
 
 // -------------------------------------------------------- machine guns ---
@@ -108,6 +151,16 @@ const machineGuns = [
   sfx('mg_rifle_close', 'weapons', `Gunshot sound effect: one single shot of a 7.62 mm machine gun at a firing range, recorded close beside it: an instant, extremely sharp, dry crack, a tight punchy report and a faint metallic click of the action, then a short outdoor echo. ${REAL}`, 1.2, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [4, 25, -26] }),
   sfx('mg_heavy_close', 'weapons', `Gunshot sound effect: one single shot of a .50 calibre heavy machine gun at a firing range, recorded close beside it: an instant, very loud, sharp and deep crack with a hard punch and a heavy metallic clack of the action, then a short outdoor echo. ${REAL}`, 1.4, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [6, 35, -24] }),
   sfx('mg_far', 'weapons', `Gunshot sound effect: a single gunshot heard a few hundred metres away, small hollow pop with a short echo. One isolated shot.`, 1.2, { inf: 0.7, variants: 3, takes: 4, proc: 'weapon-far' }),
+  // gun-reports-269: the roof gun of our own vehicle beside its open hatch and through its closed roof, and each
+  // machine gun's own distant pop.
+  ...[
+    ['mg_rifle', '7.62 mm machine gun', 'an instant, extremely sharp, dry crack, a tight punch and the clack of the action, a spent case tinkling on the roof', 'a dull, muffled knock through the roof armour and a faint click of its action', 'a small sharp hollow pop with a short echo', 400, [5, 28, -24]],
+    ['mg_heavy', '.50 calibre heavy machine gun', 'an instant, very loud, deep crack, a hard punch and the heavy clack of the action, a spent case clinking on the roof', 'a heavy muffled knock through the roof armour and the dull clack of its action', 'a deeper hollow thump with a short echo', 600, [7, 38, -22]],
+  ].flatMap(([id, gun, own, inside, far, metres, shape]) => [
+    short(sfx(`${id}_own`, 'weapons', `Gunshot sound effect: one single shot of a ${gun} on a tank's roof mount, heard from the open hatch right beside it: ${own}. ${REAL}`, 1.3, { inf: 0.75, variants: 3, takes: 8, proc: 'gunshot', shape })),
+    short(sfx(`${id}_interior`, 'weapons', `Gunshot sound effect: one single shot heard inside a closed tank turret as the ${gun} on the roof above fires: ${inside}. No outside echo. One isolated shot, ${NO_MUSIC}.`, 1.2, { inf: 0.75, variants: 3, takes: 8, proc: 'gunshot', shape: [shape[0] + 2, shape[1] + 8, shape[2] + 2] })),
+    short(sfx(`${id}_far`, 'weapons', `Gunshot sound effect: a single ${gun} shot heard about ${metres} metres away: ${far}. One isolated shot.`, 1.3, { inf: 0.7, variants: 3, takes: 6, proc: 'weapon-far' })),
+  ]),
 ];
 
 // ------------------------------------------------------------ launchers ---
@@ -131,19 +184,49 @@ const mechanisms = [
   sfx('case_eject_stub', 'mechanism', `One-shot of the spent metal stub base of a tank round kicked out of the breech: a dull metallic clunk and a short skittering rattle across steel, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('shell_grab', 'mechanism', `One-shot of a tank loader pulling a heavy 120 mm round out of a steel ready rack: a long metallic scrape, the round knocking against the rack and a solid clunk as it comes free, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('shell_ram', 'mechanism', `One-shot of a tank loader ramming a heavy round into the gun breech with his fist: a fast metallic slide along the tray ending in a solid seating thunk, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 4, proc: 'foley' }),
-  sfx('charge_ram', 'mechanism', `One-shot of a separate propellant charge pushed into a big gun's breech behind the shell: a soft heavy thud with a short scrape of the charge casing on steel, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('ammo_door_open', 'mechanism', `One-shot of the armoured ammunition door of a tank's turret bustle sliding open at the touch of a knee switch: a heavy steel door rumbling along its rail with a hydraulic hiss, ${TURRET}. ${NO_MUSIC}.`, 1.4, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('ammo_door_close', 'mechanism', `One-shot of the armoured ammunition door of a tank's turret bustle sliding shut: a short rumble along its rail and a heavy armoured thud, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('autoloader_carousel', 'mechanism', `One-shot of a tank's carousel autoloader turning under the turret floor to bring up the next round: an electric motor whirring with heavy chain and ratchet clatter, stopping with a solid clunk, ${TURRET}. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('autoloader_lift', 'mechanism', `One-shot of a tank autoloader lifting an ammunition cassette up to the breech: a short electric-hydraulic whine and a heavy steel clunk as it locks, ${TURRET}. ${NO_MUSIC}.`, 1.3, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('autoloader_chain_ram', 'mechanism', `One-shot of a tank autoloader's chain rammer driving a round into the breech: a fast steel chain rattle ending in a hard seating thud, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('bustle_index', 'mechanism', `One-shot of a turret bustle autoloader indexing the next round into line: a quick servo whir and a precise heavy mechanical clack, ${TURRET}. ${NO_MUSIC}.`, 1.3, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('drum_rotate', 'mechanism', `One-shot of a revolver ammunition drum in a tank turret turning one position to the next round: a heavy ratchet click and a solid metallic clunk, ${TURRET}. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 4, proc: 'foley' }),
-  sfx('drum_load_round', 'mechanism', `One-shot of a single heavy tank shell pushed into a revolver ammunition drum: a short metal slide and a firm click as it locks in, ${TURRET}. ${NO_MUSIC}.`, 0.9, { variants: 3, takes: 4, proc: 'foley' }),
   sfx('ac_feed', 'mechanism', `One-shot of an autocannon's ammunition feed and bolt cycling inside a turret: a crisp heavy clatter of belt links and steel, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('magazine_swap', 'mechanism', `One-shot of a heavy ammunition box latched into an autocannon feed: metallic clatter, belt links sliding and a firm latch, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('missile_tube_load', 'mechanism', `One-shot of a missile canister slid into a vehicle launcher tube: a long hollow metal scrape and a heavy locking latch, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
   sfx('launcher_raise', 'mechanism', `One-shot of a vehicle's missile launcher arm swinging up into firing position: a hydraulic whine and a heavy locking clunk. ${NO_MUSIC}.`, 2, { variants: 1, takes: 3, proc: 'foley' }),
+  // gun-reports-269 (owner 2026-11-03: "interior sounds for shell reloads for different claibers"): the loader's work
+  // by the round's construction and weight (weaponAudio.ts RELOAD_BY_BUILD): a unitary round's brass case thrown out
+  // and clanging on the floor, weighed by its bore; only the stub of a combustible case; a two-piece round's stub out
+  // through the hatch or back into its tray; a rifled gun's vent tube and bagged charge; a separate-loading heavy
+  // gun's projectile and then its case; the autoloaders by make; missile tubes and rocket racks; the dual feed.
+  ...[
+    ['case_eject_brass_light', `a spent 90 mm brass tank gun case thrown out of the breech onto the steel turret floor: a bright ringing brass clang, a bounce and a short rolling rattle`, 1.6],
+    ['case_eject_steel', `a spent 100 mm lacquered steel tank gun case thrown out of the breech onto the steel turret floor: a hard, dull steel clank, a bounce and a short scraping roll`, 1.6],
+    ['case_eject_brass_heavy', `an enormous spent brass cartridge case of a 152 mm gun pulled out of the breech and dropped on the steel floor: a deep heavy brass clang, a hollow boom of the long case and a slow rolling rumble`, 2.2],
+    ['stub_port_eject', `the spent steel stub of a 125 mm charge thrown out through the small ejection hatch in the turret rear: the spring-loaded hatch flap banging open, a steel clank as the stub flies out, the flap slamming shut`, 1.4],
+    ['stub_catch', `the spent steel stub of a 125 mm charge caught by a tank's autoloader and dropped back into its empty cassette tray: a hard steel clunk into a metal tray and a short rattle`, 1.1],
+    ['vent_tube_eject', `the tiny spent brass vent tube primer flicked out of the breech of a rifled tank gun: a small, light metallic tink and a brief skitter on steel`, 0.8],
+    ['vent_tube_load', `the vent tube magazine on the breech of a rifled tank gun indexing a fresh primer: a small sharp mechanical click-clack`, 0.8],
+    ['bag_charge_load', `a tank loader pushing a cloth-bagged propellant charge into the breech behind the shell: a soft heavy thud, the rustle of the bag and a dull push home`, 1.3],
+    ['charge_case_load', `a heavy brass propellant case slid into the breech of a 152 mm gun behind the shell: a long brass-on-steel scrape ending in a solid seating clank`, 1.4],
+    ['shell_grab_light', `a tank loader pulling a 90 mm round out of a steel ready rack: a quick metallic scrape, a light knock against the rack and a firm clunk as it comes free`, 1.2],
+    ['shell_grab_medium', `a tank loader pulling a 105 mm round out of a steel ready rack: a metallic scrape, the round knocking against the rack and a solid clunk as it comes free`, 1.4],
+    ['shell_grab_superheavy', `two hands heaving a 50 kg 152 mm projectile out of its steel rack: a slow heavy scrape, a dull knock of the heavy shell and a strained clunk as it comes free`, 1.8],
+    ['shell_ram_light', `a tank loader thumbing a 90 mm round into the gun breech with his fist: a short quick slide and a crisp seating clack`, 0.9],
+    ['shell_ram_staff', `a rammer staff driving a heavy 152 mm projectile into a big gun's breech: a rasping slide along the tray and a hard metallic seating clank`, 1.3],
+    ['breech_open_heavy', `the heavy breech of a 152 mm gun swung open: a massive steel latch released with a clank, the block swinging out with a grinding rumble`, 1.4],
+    ['breech_close_heavy', `the heavy breech of a 152 mm gun swung shut and locked: a massive steel swing, a grinding quarter-turn and a deep locking clank`, 1.4],
+    ['scavenger_blast', `the closed-breech scavenger of a short tank gun blowing compressed air through the barrel after the shot: a hard pneumatic hiss and a rush of air through the bore`, 1.2],
+    ['basket_turn', `a tank's conveyor autoloader rotating its ring of vertical ammunition cassettes around the turret basket: a long electric motor whine with heavy chain clatter, stopping with a hard clunk`, 2],
+    ['bustle_ram', `a turret bustle autoloader's electric rammer pushing a round from the magazine into the breech: a fast servo whine and a firm seating clunk`, 1.1],
+    ['magazine_drop', `the next round dropping from a turretless tank's hull magazine onto the gun's loading tray: a heavy metal drop and a solid clank`, 1],
+    ['case_eject_outside', `a spent brass case thrown out of the rear hatch of a turretless tank: a hatch flap banging, a muffled clang outside the hull`, 1.2],
+    ['ifv_autoloader', `the autoloader of an infantry fighting vehicle's 100 mm gun turning its conveyor round the turret ring and ramming the next round: a compact electric whir, a chain rattle and a firm seating thud`, 1.8],
+    ['missile_canister_lift', `a crewman lifting a long missile canister out of its stowage and onto a vehicle launcher through an open roof hatch: a hollow knock of the canister on steel and a heavy shuffle`, 1.6],
+    ['missile_round_load', `a long guided missile round slid by hand into a tank gun's breech: a smooth hollow slide and a soft seating clunk`, 1.2],
+    ['rocket_crane_load', `a heavy unguided rocket lowered by a reloading crane and pushed into a launcher tube: a hydraulic crane whine, a long hollow scrape and a hard steel clank`, 2.4],
+    ['dual_feed_switch', `an autocannon's dual-feed selector switching ammunition belts inside a turret: a firm solenoid clack and a short rattle of belt links`, 0.9],
+  ].map(([id, action, dur]) => short(sfx(id, 'mechanism', `One-shot of ${action}, ${TURRET}. ${NO_MUSIC}.`, dur, { variants: 2, takes: 5, proc: 'foley' }))),
 ];
 
 // --------------------------------------------------------------- flybys ---

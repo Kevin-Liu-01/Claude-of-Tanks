@@ -7,6 +7,8 @@
  * to); a short override table tunes the assets that differ. Pure data.
  */
 
+import { WEAPON_ROWS } from './weaponAudio.ts';
+
 export type BusId =
   | 'weapons' | 'impacts' | 'vehicles' | 'own' | 'ownCombat' | 'interior' | 'environment'
   | 'ambience' | 'ui' | 'music' | 'voice' | 'alarm' | 'cinematic';
@@ -91,9 +93,6 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   tail_forest: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.45, send: 0.1, gainDb: -4 }),
   tail_urban: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -3 }),
   tail_mountain: o({ refM: 70, rolloff: 0.65, maxM: 3000, absorb: 0.35, send: 0.1, gainDb: -3 }),
-  gun_interior_medium: o({ bus: 'ownCombat', space: 'hull', loudDb: 140 }),
-  gun_interior_large: o({ bus: 'ownCombat', space: 'hull', loudDb: 142 }),
-  gun_interior_heavy: o({ bus: 'ownCombat', space: 'hull', loudDb: 144 }),
   missile_flight_loop: o({ priority: 70, maxM: 900, loudDb: 128 }),
   rocket_salvo: o({ loudDb: 150, maxM: 3000 }),
   smoke_launcher: o({ priority: 60, refM: 8, maxM: 400, loudDb: 120, gainDb: -2 }),
@@ -205,6 +204,35 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   garage_clank: o({ bus: 'ambience', space: 'world', refM: 6, rolloff: 0.9, maxM: 80, absorb: 0.3, send: 0.45, loudDb: 100, gainDb: -2 }),
 });
 
+/**
+ * The per-bore report banks (gun-reports-269), placed from their row's loudness (weaponAudio.ts WEAPON_ROWS): the
+ * closed turret's report on our own hull, a roof machine gun's own report as local as its close one, and each distant
+ * bank carrying across the battlefield as the grouped banks it replaced did (a 120 mm's as gun_far_medium's, a 130 mm's
+ * as gun_far_heavy's). An explicit override above still wins.
+ */
+const WEAPON_BANK_CUES: Readonly<Record<string, Partial<CueProfile>>> = (() => {
+  const out: Record<string, Partial<CueProfile>> = {};
+  const unit = (v: number): number => Math.max(0, Math.min(1, v));
+  for (const row of Object.values(WEAPON_ROWS)) {
+    if (row.interior) out[row.interior] = o({ bus: 'ownCombat', space: 'hull', loudDb: Math.max(112, Math.min(147, row.loudDb - 5)) });
+    if (row.family === 'mg' && row.own) {
+      out[row.own] = o({ maxInstances: 8, refM: row.boreMm < 9 ? 14 : 16, rolloff: 0.7, maxM: 600, loudDb: row.boreMm < 9 ? 120 : 126, gainDb: -1, pitch: [0.95, 1.05] });
+    }
+    if (!/^(gun_\w+|ac_\d+|mg_(rifle|heavy))_far$/.test(row.far)) continue;
+    if (row.family === 'cannon') {
+      const t = unit((row.loudDb - 138) / 14);
+      out[row.far] = o({ refM: 78 + 24 * t, rolloff: 0.62, maxM: 2500 + 500 * t, absorb: 0.52 - 0.12 * t, send: 0.3, loudDb: Math.max(135, Math.min(149, row.loudDb - 3)) });
+    } else if (row.family === 'autocannon') {
+      const t = unit((row.loudDb - 128) / 9);
+      out[row.far] = o({ refM: 50 + 10 * t, rolloff: 0.68, maxM: 1600 + 300 * t, absorb: 0.55, send: 0.26, loudDb: row.loudDb - 2 });
+    } else {
+      const heavy = row.boreMm >= 9;
+      out[row.far] = o({ refM: heavy ? 45 : 40, rolloff: 0.72, maxM: heavy ? 1100 : 900, absorb: 0.6, send: 0.24, loudDb: heavy ? 120 : 116, gainDb: -2 });
+    }
+  }
+  return Object.freeze(out);
+})();
+
 const profileCache = new Map<string, CueProfile>();
 
 /** Effective playback profile of one asset id within its manifest group. */
@@ -213,7 +241,7 @@ export function cueProfile(assetId: string, group: string): CueProfile {
   let profile = profileCache.get(key);
   if (!profile) {
     const base = GROUP_PROFILES[group] ?? GROUP_PROFILES.impacts;
-    profile = Object.freeze({ ...base, ...(CUE_OVERRIDES[assetId] ?? {}) });
+    profile = Object.freeze({ ...base, ...(WEAPON_BANK_CUES[assetId] ?? {}), ...(CUE_OVERRIDES[assetId] ?? {}) });
     profileCache.set(key, profile);
   }
   return profile;

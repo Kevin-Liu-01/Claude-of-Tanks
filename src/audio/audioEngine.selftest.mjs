@@ -6,7 +6,7 @@ import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
-import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { GUNSHIP_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -129,13 +129,13 @@ assert.ok(quietAfter && quietAfter.g < quietAlone.g * 0.5, `small sounds give wa
 since = mark();
 bus.emit('shell:fired', { shellId: 2, shooterId: 'far', muzzlePos: [0, 2, 700], dir: [1, 0, 0], caliberMm: 30, shellType: 'APFSDS', weaponSound: '2a42' });
 names = logSince(since).map((e) => e.n);
-assert.ok(names.includes('ac_far_light'), `700 m autocannon is a distant report (${names})`);
+assert.ok(names.includes('ac_30_far'), `700 m autocannon is its bore's distant report (${names})`);
 assert.ok(!names.includes('ac_30_close'), 'no close report at 700 m');
 
 // A volley that overflows the voice budget steals one-shots, never the ambience bed.
 // Every bore at 60 m, so distinct report assets (not per-asset instance caps) fill the pool.
 let volleyId = 100;
-for (const caliberMm of [7.62, 12.7, 20, 25, 30, 40, 57, 90, 105, 120, 125, 130, 152]) {
+for (const caliberMm of [7.62, 12.7, 20, 25, 30, 35, 40, 50, 76, 90, 105, 120, 125, 130, 152]) {
   for (let k = 0; k < 4; k++) {
     bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [-30 + k * 20, 2, 60], dir: [0, 0, 1], caliberMm, shellType: 'HE' });
   }
@@ -150,7 +150,7 @@ audio.update(1 / 60, listener, tanks);
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
 names = logSince(since).map((e) => e.n);
-assert.equal(logSince(since).find((e) => e.n === 'gun_own_large')?.b, 'ownCombat', `our own gun has its own report, on the gunfire channel (${names})`);
+assert.equal(logSince(since).find((e) => e.n === 'gun_125_own')?.b, 'ownCombat', `our own gun has its bore's own report, on the gunfire channel (${names})`);
 assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank everyone else hears');
 assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
@@ -158,15 +158,16 @@ since = mark();
 for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
 bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
 names = logSince(since).map((e) => e.n);
-for (const id of ['case_eject_stub', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
-  assert.ok(names.includes(id), `carousel reload plays ${id} (${names})`);
+for (const id of ['stub_port_eject', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
+  assert.ok(names.includes(id), `the T-72's AZ carousel reload plays ${id} (${names})`);
 }
+assert.equal(names.filter((n) => n === 'autoloader_chain_ram').length, 2, `the chain rammer drives the projectile, then the charge (${names})`);
 since = mark();
-for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress }); }
-bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true });
+for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress, magazineCapacity: 4 }); }
+bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true, magazineCapacity: 4 });
 names = logSince(since).map((e) => e.n);
-assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
-assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
+assert.equal(names.filter((n) => n === 'shell_grab').length, 4, `a bustle magazine is refilled round by round (${names})`);
+assert.ok(names.includes('bustle_index') && names.includes('bustle_ram') && names.at(-1) === 'latch_ready', 'the magazine indexes, rams and the gun locks ready');
 // Owner 2026-10-17 (out of ammo): the post-shot cycle of an empty gun loads nothing — no cue, no latch, no call.
 {
   const stowed = me.combat.ammo.slice();
@@ -469,6 +470,10 @@ delete me.aerial;
 // gunship's howitzer from the sky.
 settle(4);
 me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 0 };
+// the AC-130's guns replace the hull's (sim/modeLoadout.ts setModeWeapon), its howitzer the selected weapon for the reload
+const hullSpec = me.spec;
+me.spec = { ...hullSpec, gun: { caliberMm: GUNSHIP_WEAPONS[0].caliberMm, shells: GUNSHIP_WEAPONS } };
+me.combat.shellSlot = 1;
 ctx.advance(0.2);
 audio.update(1 / 60, listener, tanks);
 // The aircraft set (the gunship's reports among it) decodes on first sight of one.
@@ -493,11 +498,13 @@ since = mark();
 bus.emit('ui:shellSelectionChanged', { slot: 1 });
 assert.ok(logSince(since).some((e) => e.n === 'gunship_weapon_select'), 'the selector arms the next gun');
 delete me.aerial;
+me.spec = hullSpec;
+me.combat.shellSlot = 0;
 ctx.advance(0.6);
 since = mark();
 bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [40, 240, 120], dir: [0, -0.8, -0.6], caliberMm: 152, shellType: 'HE', weaponSound: 'gunship-howitzer' });
 names = logSince(since).map((e) => e.n);
-assert.ok(names.includes('gunship_howitzer_far') && !names.includes('gun_152_close'), `a gunship's howitzer is heard from the sky (${names})`);
+assert.ok(names.includes('gunship_howitzer_far') && !names.includes('gun_152_close') && !names.includes('gun_152h_close'), `a gunship's howitzer is heard from the sky (${names})`);
 
 // Modes: each opens on its own sound and marks its own events.
 settle(2);

@@ -204,21 +204,49 @@ centred, with the cabin extras).
 
 ### Weapons
 
-`weaponAudio.ts` classifies every gun into one of eighteen report classes:
-rifle and heavy machine guns, 20/25/30/40/50 mm autocannons,
-90/105/120/125/130/152 mm cannons, ATGM and heavy rocket launchers, and the
-AC-130's autocannon, howitzer and missiles (sound profiles refine the trim,
-e.g. the BMP-3's low-pressure 100 mm, or name a class outright, as the
-gunship's shells do). Each class has a close bank and a distant bank
-crossfaded by range (a cannon keeps its close report to about 150 m), a gun
-tail matched to the map (open, forest, urban, mountain; a machine-gun burst
-gets it once per 0.22 s beat, not once per round), and for the occupied gun
-in the sight an interior report. Our own gun has a dedicated report per bore
-(`gun_own_medium` for 90–105 mm, `gun_own_large` for 120–125 mm,
-`gun_own_heavy` for 130–152 mm, and `missile_launch_own` for launchers),
-fuller and more detailed than anyone else's, as World of Tanks keeps the
-player's shot apart, with the breech's recoil and run-out (`gun_recoil_mech`)
-under it.
+`weaponAudio.ts` keys every weapon by its bore class and ammunition
+construction (gun-reports-269, 2026-11-03): one table, `WEAPON_ROWS`, of 27
+rows from the rifle and heavy machine guns through the 20–50 mm autocannons,
+the 76, 84, 90, 100 and 105 mm unitary-brass guns, the BMP-3's low-pressure
+2A70, the combustible-case 120 and 130 mm smoothbores, the L11/L30 rifled
+120 mm with its bagged charges, the two-piece 125 mm, the KV-2's 152 mm
+howitzer and the M81-family 152 mm gun-launchers, the L9 demolition gun and the
+E-100's 17 cm, the TOS-1A's rockets, every guided round, and the AC-130's three
+guns. A weapon's key comes from its vehicle's own spec (`weaponMounts`): the
+gun's bore, and the construction its rounds imply (a guided or rocket round, a
+belt below 61 mm, British L-series ammunition on a BL gun, a 152 mm that also
+fires a gun-launched missile, the Soviet-pattern 125 mm, a combustible case
+from 115 mm, a separate cased charge from 146 mm, a unitary brass case below).
+The gun decides the report, never the round's damage calibre: a Centurion 3's
+20-pounder fires rounds the damage model sizes at 120 mm and is heard as an
+84 mm gun. Each mount of a gun is its own (the BMP-3's 30 mm, its 2A70 and the
+Arkan fired through it; a Bradley's 25 mm and its TOW), and a shot picks its
+mount by the round it names.
+
+`tools/audio/weapon-census.mjs` walks the fleet, the Gun Game ladder and the
+AC-130 and writes `weaponCensus.generated.ts` (the key union `FLEET_ROWS` must
+cover, so a new weapon fails typecheck until it has a row; each autoloaded main
+gun's loader make and the ready-rack doors, from
+`vehicles/internalLayoutRegistry.ts`) and the census by key and by vehicle in
+[`audio-generation/weapon-census.md`](audio-generation/weapon-census.md);
+`weaponCensus.selftest.mjs` fails when either no longer matches the fleet.
+
+Each row names four reports: the close report 30 m beside the gun, the crew's
+own from the open hatch, the closed turret's close-miked at the loader's
+station (heard in the sight), and the distant boom, crossfaded by range (a
+cannon keeps its close report to about 150 m). A row also carries its muzzle:
+with nothing on it the blast is loudest ahead of the gun (+1.5 dB in front,
+−1.5 behind), a muzzle brake throws it sideways and back (a double-baffle
+brake +2.5 dB beside the gun), which our own report hears only as the brake's
+blast thrown back at the hatch. A gun tail matched to the map (open, forest,
+urban, mountain) follows every report, once per 0.22 s beat for a machine-gun
+burst. Our own roof gun or autocannon in the sight is heard only through its
+closed turret; our own cannon keeps its hatch report under the closed turret's,
+with the breech's recoil and run-out (`gun_recoil_mech`) under it. The battle
+warm decodes the close and distant reports of the roster's mounts (and of the
+roof stations' machine guns and 30 mm cannons; every row when the roster is
+unknown or in the Gun Game); our own reports and our loader's machinery load
+and are pinned once our hull is known.
 
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
@@ -242,16 +270,40 @@ velocity.
 ### Your own tank: loading and machinery
 
 Reloads play the loader's choreography (`resolveReloadCuePlan`) at the matching
-reload progress, close-miked in the turret on the interior bus:
+reload progress, close-miked in the turret on the interior bus. What the breech
+gives up comes from the round's construction, the new round going in from the
+loader's make; every cue is anchored in seconds to the cycle's start or end,
+stretched by the round's heft (a 90 mm round ×0.8, a 50 kg 152 mm projectile
+×1.45), so the breech always closes just before the gun is ready however long
+the authoritative reload, and a heavier round's work takes longer.
 
-| Loader | Sequence |
+| Construction | What the breech gives up |
 |---|---|
-| Manual | breech drops open, the case is thrown out, the ready-rack door slides open, a round comes out, the door shuts, the round is rammed home (a separate charge for 152 mm), the breech closes |
-| Carousel autoloader | the stub is kicked out, the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
-| Bustle autoloader | the case is ejected, the next round indexes, the ram, the breech closes |
-| Drum magazine | the drum turns to its first empty chamber, four rounds are fed in one by one, the drum indexes, the breech closes; between rounds of a clip, the drum turns and a round is rammed |
-| Autocannon | the box latches into the feed, the belt and bolt clatter, the latch |
-| Missile | the canister slides into the tube, the second one, the launcher arm swings up, the latch |
+| Unitary brass (76–105 mm) | the case is thrown out and clangs on the floor, weighed by its bore (a 90 mm's light ring, a 100 mm's lacquered steel, a 105 mm's) |
+| Combustible case (120, 130 mm) | only the stub drops out |
+| Two-piece (125 mm) | the steel stub: out through the turret's rear hatch on the AZ carousel, back into its tray on the MZ basket |
+| Separate, bagged (L11/L30 120 mm, L9 165 mm) | the vent tube flicks out; projectile, then the bag charge (the L9's rides in its base), the breech, a fresh vent tube |
+| Separate, cased (152 mm howitzer, 17 cm) | the huge case is pulled out; the projectile is hefted and rammed with a staff, then the cased charge, the heavy breech swung shut |
+| Caseless (152 mm gun-launchers) | the closed-breech scavenger blows the bore clear |
+
+| Loader | The new round |
+|---|---|
+| Manual | the breech drops open, the ready-rack door opens (the bustle and protected racks only), a round comes out, the door shuts, the round is rammed home, the breech closes |
+| AZ carousel (T-72, T-90, Type 96/99) | the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
+| MZ basket (T-64, T-80, T-84) | the conveyor basket turns, the cassette lifts, two rams, the breech closes |
+| T-14 carousel | the AZ cycle under the unmanned turret |
+| Bustle (Leclerc, Type 90/10, K2, KF51, M1A3) | the next round indexes, the rammer, the breech closes; a magazine refill hands each round in and pushes it into its cell |
+| Strv 103 | the case is thrown out of the hull's rear, the next round drops from the hull magazine, the ram, the breech closes |
+| BMP-3 2A70 | the autoloader turns and rams; a 9M117 is loaded by hand |
+| Roof launcher | the hatch, the canister out of stowage, into the tube, the launcher up, the latch |
+| TOS-1A | the reloading crane lowers rockets into the tubes |
+| AC-130 | the howitzer's breech drops open, a round is hefted and rammed, the breech closes; a pylon missile arms with its relay |
+
+An autocannon's or machine gun's per-shot cycle is its own action, heard with
+the shot (`ac_feed`); selecting another round on a dual-feed autocannon
+switches belts with a solenoid clack, on an autoloader turns the carousel or
+basket, on a bustle loader indexes it. The simulation never reloads a belt, a
+roof gun or a smoke discharger, so none of those has a reload sound.
 
 Every cycle ends in the lock that says the gun is ready. The turret drive has
 a start when a real slew begins (never on a servo flicker), its electric or

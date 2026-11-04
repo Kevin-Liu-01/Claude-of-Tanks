@@ -58,7 +58,7 @@ const MECHANICAL = new Set(['mechanism']);
 const SPARSE_GROUPS = new Set(['spots', 'ambience', 'stingers']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
-const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
+const SINGLE_SHOT = /^(mg_|ac_\d+_(close|own|interior|far)|ac_far_|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
 
 /**
  * Cut a single-shot take before its second report (some generations answer a

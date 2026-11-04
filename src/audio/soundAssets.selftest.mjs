@@ -7,7 +7,7 @@ import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
-import { LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR } from './weaponAudio.ts';
+import { LAUNCH_ASSET, WEAPON_ROWS, eventMount, reloadAssets } from './weaponAudio.ts';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -44,8 +44,17 @@ for (const source of [engine, rig, radio]) for (const m of source.matchAll(liter
 for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MODE_SET|RADIO_SET) = \[([\s\S]*?)\];/g)) {
   for (const m of block[1].matchAll(/'([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
-// the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
-for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
+// every row's report banks (weaponAudio.ts WEAPON_ROWS, gun-reports-269), every missile family's launch, and every
+// recording a row's reload can play by any loader make
+for (const row of Object.values(WEAPON_ROWS)) for (const id of [row.close, row.far, row.own, row.interior]) if (id) referenced.add(id);
+for (const id of Object.values(LAUNCH_ASSET)) referenced.add(id);
+for (const row of Object.values(WEAPON_ROWS)) {
+  const m = { key: row.key, row, rounds: [], throughGun: false, loadRow: row };
+  for (const loader of ['manual', 'carousel_az', 'basket_mz', 'carousel_unmanned', 'bustle', 'fixed_ram', 'ifv_autoloader', 'launcher', 'rocket_rack', 'gunship', 'pylon']) {
+    for (const id of reloadAssets(m, loader)) referenced.add(id);
+  }
+}
+assert.ok(eventMount(120, null).row, 'a 120 mm shot keys a row');
 for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
@@ -64,7 +73,7 @@ for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a ship
 }
 assert.ok(referenced.size > 120, `engine reference scan found ${referenced.size} assets`);
 for (const tail of ['open', 'forest', 'urban', 'mountain']) assert.ok(SFX_ASSETS[`tail_${tail}`], `tail_${tail}`);
-for (const kind of ['interior_medium', 'interior_large', 'interior_heavy']) assert.ok(SFX_ASSETS[`gun_${kind}`]);
+for (const row of Object.values(WEAPON_ROWS)) if (row.interior) assert.ok(SFX_ASSETS[row.interior], `${row.key}: its closed turret's report ${row.interior}`);
 
 // ---- every powertrain has its full bank, every hull its running gear.
 for (const family of ENGINE_FAMILY_IDS) {
