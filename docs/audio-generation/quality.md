@@ -67,6 +67,9 @@ that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 | A correct take is flagged as wrong | Homophones and digits in the transcript | Reported for review, never auto-rejected |
 | An alarm pierces | A bright take (2.4 kHz) | Pinned a lower take; "muffled by the hull" |
 | A thud or a twang loses to rumble | The weight score (`4·low`) on the `impact` preset rewards a take whose body is low-band noise over one with the event (a telegraph wire's twang; a pole's thud 31 dB down that mastering would lift 30 dB) | Pinned (`pole_wires`, `pole_fall`, 2026-10-06); look at the sheet before trusting a weight-scored pick |
+| A strike that drops out every few hits | A near-silent take (269: a bullet into sand peaking at -39 dBFS) ranked fourth on its low-band weight; the master's gain stops at +30 dB, so it shipped 15 dB under its siblings | `build-sfx.mjs`: a take peaking under -30 dBFS loses 6 |
+| A bullet strike that is an 80 ms click | The single-shot cut took the strike's own grit and chips for a second report; clicks shipped under the impact preset's loudness floor (`sfxLoudness.selftest.mjs`) | Every single-shot family drops takes cut under 0.25 s while two usable remain; a prompt asking for a continuous hiss or rustle after the hit instead of chips |
+| A wreck or a flyby that is all rumble | The weight score (`4·low`) ranked bass rumble over the knock; the flat-scored `oneshot` preset ships its first takes | Look at the sheet (`sfx-qa.mjs --sheets`) and pin (`strike_wreck`, `flyby_*`, `ricochet_whine`) |
 
 When a player reports something "occasional", suspect one bad variant first:
 with two variants that never repeat, a defect plays on every other use.

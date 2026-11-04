@@ -106,6 +106,18 @@ immediate hard attack." with prompt influence at least 0.6.
 Slow-onset events (rollovers, debris rain, collapses, a parachuted crate) opt
 out with `punch: false`.
 
+What a round strikes besides armour (269) names the part and keeps the ring
+out of every take that is not steel: "a flat heavy slap and a ripping tear of
+rubber and fabric … No metal, no ring, no clang, no ricochet whine, no
+explosion". The ricochet's whine is its own layer, asked for alone: "the
+ricochet whine of a heavy round deflected off steel armour … one single high
+whistling whine that bends down in pitch … Only the whine". Asked as "only
+the high fluttering whine of the spinning round" every take came back as
+noise, clicks or low flutter. A supersonic near miss needs the bullet framing
+("snapping past very close to the listener … one extremely sharp, loud crack
+… like a whip"): "a sharp loud crack of its shock wave and a heavy tearing
+rush" returned rushes with no crack.
+
 ### Weight layers: punch and sub
 
 The punch under a close report and the low end under blasts are separate
