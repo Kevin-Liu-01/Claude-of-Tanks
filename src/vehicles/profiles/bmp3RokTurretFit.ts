@@ -158,43 +158,49 @@ function mastBracket(P: TankBuilderPort, slot: string, reach: number, shelfY: nu
   ), 0, 0, 0);
 }
 
-/** A unit pennant flown from a whip (c2: the 1st batch's whips each fly cloth pennants): a cloth sleeve round the rod
- * over the hoist and an 8 mm cloth panel streaming `fly` (plan unit vector), drooping and rippled. The rod's own path
- * (whipAntennaParts at rake 0: bowed toward -side by amp at the tip) is followed so the sleeve rides the rod. */
+/** A unit pennant flown at a whip's tip (c2: the 1st batch flew cloth flags, the cyan one a triangular pennant): a cloth
+ * sleeve round the rod over the hoist, and a triangular cloth fly (8 mm) streaming `fly` (plan unit vector), drooping 20
+ * degrees, waving along its length, its foot sagging, its tip ragged. The rod's own path (whipAntennaParts at rake 0:
+ * bowed toward -side by amp at the tip) is followed so the sleeve rides the rod. */
 function pennant(P: TankBuilderPort, base: readonly [number, number, number], h: number, seed: number, fly: Vec2,
-  s0: number, s1: number, len: number): void {
+  hoist: number, len: number): void {
   const side = seed % 2 ? 1 : -1, amp = h * 0.022 + 0.004;
   const shape = (u: number): number => (u * u * (6 - 4 * u + u * u)) / 3;
   const rodX = (u: number): number => base[0] - side * amp * shape(u);
-  const hf = h * (s1 - s0), t = 0.004;
-  P.add('turretCloth', KIT.cylY(0.016, 0.016, hf + 0.02, 10), (rodX(s0) + rodX(s1)) / 2, base[1] + h * (s0 + s1) / 2, base[2]);
-  const wave = [0, 0.024, -0.016, 0.02], drop = [0, -0.012, -0.03, -0.055];
-  const flag = sectionSolid(wave.map((xo, k) => ({
-    z: 0.008 + k * (len - 0.008) / 3,
-    ring: ccw([[xo - t, drop[k]], [xo + t, drop[k]], [xo + t, hf + drop[k] * 0.6], [xo - t, hf + drop[k] * 0.6]]),
-  })));
-  P.add('turretCloth', flag, rodX(s0), base[1] + h * s0, base[2], 0, Math.atan2(fly[0], fly[1]), 0);
+  const s1 = 0.975, s0 = s1 - hoist / h, t = 0.004, droop = Math.tan(20 * Math.PI / 180);
+  P.add('turretCloth', KIT.cylY(0.015, 0.015, hoist + 0.02, 10), (rodX(s0) + rodX(s1)) / 2,
+    base[1] + h * (s0 + s1) / 2, base[2]);
+  // stations along the fly: top and foot close to a ragged tip, the whole drooping, a sag in the foot, a travelling wave
+  const us = [0.008, 0.07, 0.135, 0.20, 0.265, len];
+  const sections = us.map((u, k) => {
+    const f = u / len, dip = u * droop, wave = 0.028 * Math.sin(f * Math.PI * 2.4) * (0.35 + 0.65 * f);
+    let top = -(hoist / 2) * f - dip + 0.006 * Math.sin(f * 9);
+    let foot = -hoist + (hoist / 2) * f - dip - 0.018 * Math.sin(Math.PI * f);
+    if (k === us.length - 1) { top = -hoist / 2 - dip + 0.012; foot = top - 0.035; }
+    return { z: u, ring: ccw([[wave - t, foot], [wave + t, foot], [wave + t, top], [wave - t, top]]) };
+  });
+  P.add('turretCloth', sectionSolid(sections), rodX(s1), base[1] + h * s1, base[2], 0, Math.atan2(fly[0], fly[1]), 0);
 }
 
-/** Both pennants stream one way (the wind): aft and to the vehicle's left. */
+/** The pennant streams aft and to the vehicle's left (the wind), clear of the turret in every turret view. */
 const WIND: Vec2 = [0.73, -0.683];
 
 function addRadioMasts(P: TankBuilderPort, roofY: number): void {
   const shelfY = 0.400;
   // left flank, just behind the grab rail at the flank/quarter junction (r1: the mast's bell at the roof edge)
-  const lz = -0.41, lreach = 0.062, lh = 0.695;
+  const lz = -0.41, lreach = 0.062, lh = 0.755;
   mastBracket(P, 'turretDetail', lreach, shelfY, 0.09, [1.14, lz], 0);
   antennaMast(P, 1.14 + lreach, shelfY, lz, lh, 0, 3260);
-  pennant(P, [1.14 + lreach, shelfY + 0.25, lz], lh, 3260, WIND, 0.54, 0.92, 0.46);
+  pennant(P, [1.14 + lreach, shelfY + 0.25, lz], lh, 3260, WIND, 0.22, 0.34);
   // right rear corner, out along the corner's bisector (c1: the bell hung outboard of the corner, the mast standing
-  // clear); the bracket's root is sunk 3 cm into the corner so its plate meets both faces
+  // clear); the bracket's root is sunk 3 cm into the corner so its plate meets both faces. It flies no pennant: from
+  // the turret's rear-right quarter any flag at its tip would stand over the roof.
   const bx = -0.465, bz = -0.885, bl = Math.hypot(bx, bz);
   const b: Vec2 = [bx / bl, bz / bl];
   const root: Vec2 = [-0.72 - b[0] * 0.03, -1.08 - b[1] * 0.03], rreach = 0.13, rh = 0.755;
   const rx = root[0] + b[0] * rreach, rz = root[1] + b[1] * rreach;
   mastBracket(P, 'turretDetail', rreach, shelfY, 0.09, root, Math.atan2(-b[1], b[0]));
   antennaMast(P, rx, shelfY, rz, rh, 0, 3261);
-  pennant(P, [rx, shelfY + 0.25, rz], rh, 3261, WIND, 0.54, 0.92, 0.46);
   // the Russian left roof base stays as a low capped plate, its whip gone (r1: a dark stub on the rear-left roof)
   P.add('turretDetail', KIT.box(0.13, 0.035, 0.13), 0.80, roofY + 0.0075, -0.78);
   P.add('turretDark', KIT.cylY(0.042, 0.048, 0.03, 12), 0.80, roofY + 0.040, -0.78);
@@ -254,13 +260,16 @@ function addGunnerSightHousing(P: TankBuilderPort, d: Bmp3RokTurretDatums): void
   P.add('turretDetail', box(0.13, 0.15, 0.012), 0.76, foot + 0.17, rOut - 0.004);
   P.add('turretDetail', xform(hoop(0.05, 0.010, true), 0, 0, 0, 0, 0, -Math.PI / 2), 0.854, foot + 0.17, 0.08);
 
-  // the new gunner IR searchlight on its bent stalk over the thermal module (c1: the lamp raised on a stalk): a base
-  // flange, a 48 mm tube up and over into the lamp's belly, the head a drum about as deep as it is wide with a rimmed back
-  const lx = 0.52, lz = 0.075, lr = 0.083, ll = 0.15, ly = rTop + 0.19;
-  P.add('turretDetail', KIT.cylY(0.05, 0.055, 0.016, 14), lx, rTop + 0.004, lz - 0.05);
-  P.add('turretDetail', tube([lx, rTop - 0.01, lz - 0.05], [lx, ly - lr - 0.03, lz - 0.05], 0.024));
-  P.add('turretDetail', tube([lx, ly - lr - 0.035, lz - 0.052], [lx, ly - lr + 0.012, lz - 0.005], 0.024));
-  P.add('turretDetail', KIT.cylY(0.03, 0.03, 0.03, 12), lx, ly - lr - 0.005, lz);
+  // the new gunner IR searchlight on its cranked stalk over the thermal module (c1: the lamp held up on a bent arm): a
+  // base flange, a 52 mm post up from the block's top, an elbow, the arm angled forward into the lamp's belly, the head a
+  // drum about as deep as it is wide with a rimmed back
+  const lx = 0.52, lz = 0.16, lr = 0.083, ll = 0.15, ly = rTop + 0.19;
+  const footZ = 0.07, kneeY = rTop + 0.085;
+  P.add('turretDetail', KIT.cylY(0.05, 0.055, 0.016, 14), lx, rTop + 0.004, footZ);
+  P.add('turretDetail', tube([lx, rTop - 0.01, footZ], [lx, kneeY, footZ], 0.026));
+  P.add('turretDetail', KIT.sph(0.032, 10), lx, kneeY, footZ);
+  P.add('turretDetail', tube([lx, kneeY, footZ], [lx, ly - lr + 0.016, lz - 0.03], 0.026));
+  P.add('turretDetail', KIT.cylY(0.034, 0.034, 0.03, 12), lx, ly - lr + 0.004, lz - 0.03);
   P.addEquipment('turret', cylZ(lr, ll, 18, lr - 0.004), lx, ly, lz);
   P.add('turretDetail', cylZ(lr - 0.002, 0.016, 18), lx, ly, lz - ll / 2 - 0.006);
   P.add('turretDetail', cylZ(0.026, 0.02, 10), lx, ly, lz - ll / 2 - 0.022);
