@@ -530,6 +530,9 @@ function chooseMap(page, map) {
 }
 
 async function selectMapAndBattle(page, map, dwell = true) {
+  // (2026-11-02 audit S3) press on a settled Garage (tools/game-readiness.mjs), never under a return's veil: a press
+  // there used to start nothing (the game now queues it under the return, app-flow F3); the re-press below stays a guard
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 120_000, polling: 250 });
   if (dwell && garageDwellS > 0) await sleep(garageDwellS * 1000);
   const picked = await chooseMap(page, map);
   if (!picked) throw new Error(`map card ${map} not found or not selected`);
