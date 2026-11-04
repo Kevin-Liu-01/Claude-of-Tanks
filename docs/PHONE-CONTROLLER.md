@@ -147,7 +147,9 @@ hands the moment they happen:
   hurt or glanced off), `hurt` (stronger for more damage) and `glance` (a hit taken), `module` (a module knocked out,
   never a repair's report), `burning`, `impact` (a crash or a ram, by the closing speed), `kill`, `dead`; and for the
   page's player alone, the events that name no tank: `spotted` (the sixth sense), `denied` (a consumable or a shell the
-  battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none.
+  battle refused) and `lock` / `unlock`. A paused battle or a hidden tab sends none. On the relay, where each message is
+  a billed request and counts against the pairing's relay budget, a cue waits 500 ms after the last (a kill and a
+  death never wait). No Worker change: the relay carries `ctl` text without reading it.
 - The phone plays each one's pattern (`padBuzzPattern`) with `navigator.vibrate` (Android). iOS Safari has no Vibration
   API; it ticks once when a switch control toggles (iOS 18), so the page toggles a hidden switch for each tick of the
   pattern (`padBuzzTicks`: one tick per pulse, a long pulse ticks on every 50 ms, six at most).

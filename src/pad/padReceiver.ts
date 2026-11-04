@@ -88,6 +88,9 @@ export interface PadReceiver {
   disconnect(): void;
 }
 
+/** On the relay (each message a billed request) a cue waits this long after the last; a kill and a death never wait. */
+const RELAY_CUE_GAP_MS = 500;
+
 const IDLE_STATUS: PadStatus = Object.freeze({ battle: false, alive: false, paused: false, sniper: false, slot: 0, shells: [], reloadS: 0, reloadTotalS: 0 }) as PadStatus;
 
 /** Diagnostics for the pad e2e and the owner's latency check (dev builds and `?padDebug`). */
@@ -201,13 +204,19 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   // The cues: each of the tank's events goes to the phone the moment the bus carries it, while the phone drives (a
   // paused battle or a hidden tab feels nothing); the sight's lock is also the status's, so the phone's key lights.
   let locked = false;
+  let lastCueAt = -Infinity;
   const owner = { id: null as string | null, player: ports.ownsPlayer !== false };
   const unlisten = ports.listen ? PAD_CUE_EVENTS.map((type) => ports.listen!(type, (payload) => {
     if (type === 'ui:autoAimState' && owner.player) locked = !!(payload && typeof payload === 'object' && Reflect.get(payload, 'on') === true);
     if (!driving || view.state.kind !== 'live') return;
+    const relay = view.state.path === 'relay';
     owner.id = ports.source()?.player?.id ?? null;
     const cue = padCueOf(type, payload, owner);
-    if (!cue || !link.sendCtl({ k: 'cue', ...cue })) return;
+    if (!cue) return;
+    const now = performance.now();
+    if (relay && now - lastCueAt < RELAY_CUE_GAP_MS && cue.c !== 'kill' && cue.c !== 'dead') return;
+    if (!link.sendCtl({ k: 'cue', ...cue })) return;
+    lastCueAt = now;
     if (debug) debug.cues[cue.c] = (debug.cues[cue.c] ?? 0) + 1;
   })) : [];
 
