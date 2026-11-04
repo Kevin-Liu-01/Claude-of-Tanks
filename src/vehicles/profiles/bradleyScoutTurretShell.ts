@@ -72,6 +72,14 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
     {z:.60,ring:[[-.42,.601],[.30,.601],[.30,.666],[-.42,.666]]},
   ]));
   P.add('turret',KIT.box(.72,.06,1.18),-.06,.025,.49);
+  // 268 round 4 (roof-pocket census, 56 cm2): the compartment's front plate under that plate, between the cheeks: its
+  // face 255 mm behind the pitch axis (outside the cradle's 0.25 m lower sweep, 42 mm behind the mask's rearmost reach
+  // at -9/+30), its gun port inside the mask's outline (x -0.30..0.18, from 0.245 up after the conversion), and its toe
+  // on the bay floor where the sweep stands 10 cm off (below 0.15). Open, the bay showed the empty compartment past the
+  // mask's side; the gun still enters the turret through its port.
+  P.add('turret',KIT.box(.48,.281,.04),-.06,.1655,.505);
+  for (const x of [-.36,.24]) P.add('turret',KIT.box(.12,.625,.04),x,.3375,.505);
+  P.add('turret',KIT.box(.72,.1625,.095),-.06,.10625,.5725);
   // A finite lower sill ties both cheeks to the bay floor. It ends below
   // the rocking shoe's full sweep, leaving a working seam, not an open slot
   // down to the hull. Coordinates here undergo the same 0.80 Y conversion.

@@ -95,6 +95,22 @@ function turretBody(P: TankBuilderPort): void {
   P.add('turret', new THREE.ExtrudeGeometry(crown, {
     depth: .78, steps: 1, bevelEnabled: false,
   }).rotateY(-Math.PI / 2), .39, 0, 0);
+  // 268 round 4 (roof-pocket census, 1792 cm2): the compartment's lower front wall under the crown, the recess's lower
+  // quarter on the same 0.305 m radius (33 mm off the receiver's swept back) down to the cradle floor. Open, the crown
+  // roofed the empty compartment, seen under the receiver's chin.
+  const breast = new THREE.Shape();
+  breast.moveTo(-.05, .10);
+  breast.lineTo(.90, .10);
+  breast.lineTo(.90, .175);
+  for (let step = 1; step <= 8; step++) {
+    const angle = 1.5 * Math.PI - step * (Math.PI / 2) / 8;
+    breast.lineTo(.90 + .305 * Math.cos(angle), .48 + .305 * Math.sin(angle));
+  }
+  breast.lineTo(-.05, .48);
+  breast.closePath();
+  P.add('turret', new THREE.ExtrudeGeometry(breast, {
+    depth: .78, steps: 1, bevelEnabled: false,
+  }).rotateY(-Math.PI / 2), .39, 0, 0);
   for (const side of [-1,1]) {
     const cheek=sectionSolid([
       {z:-.05,ring:[[.37,.06],[1.08,.06],[1.34,.50],[1.15,.91],[.37,.91]]},
@@ -193,8 +209,12 @@ function turretFieldKit(P: TankBuilderPort): void {
   for(const side of [-1,1]){
     // Bradley-style layered flank cassettes. Their inner polygon intersects
     // the actual sloped shell; the outer knee carries bolts and smoke banks.
-    for(const z of [-.96,-.57,-.18]){
-      const ring: [number,number][]=[[1.20,.28],[1.40,.28],[1.48,.50],[1.35,.77],[1.17,.77]];
+    // 268 round 4 (roof-pocket census, 108 cm2): the course runs a fourth cassette aft to the basket floor, closing the
+    // slot the bustle's flared underside roofed between the third cassette and the basket. The bustle narrows aft, so
+    // that one's inner face reaches in to x 1.00/1.05 to meet the shell (the shell lies at 1.02-1.19 over its length).
+    for(const z of [-1.35,-.96,-.57,-.18]){
+      const [inLow,inHigh]=z<-1.2?[1.00,1.05]:[1.20,1.17];
+      const ring: [number,number][]=[[inLow,.28],[1.40,.28],[1.48,.50],[1.35,.77],[inHigh,.77]];
       const cassette=sectionSolid([{z:z-.175,ring},{z:z+.175,ring}]);
       P.addExternalArmor('turret',side<0?mirrorX(cassette):cassette);
       for(const dz of [-.115,.115])P.addEquipment('turretDetail',cylX(.024,.028,10),side*1.483,.50,z+dz);
