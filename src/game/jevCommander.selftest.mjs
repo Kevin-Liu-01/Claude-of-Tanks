@@ -4,9 +4,10 @@ import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, SIM_DT } from '../sim/movement.ts';
-import { applyPendingBotNews, createAI, mulberry32 } from './ai.ts';
+import { createAI, mulberry32 } from './ai.ts';
 import { buildJevTeamState, createJevCommander, createJevFetchTransport } from './jevCommander.ts';
 import { buildJevQuestions, jevLocalThreat, JEV_FOCUS_NONE, JEV_TARGET_NONE, validateJevRequest, validateJevState } from './jevProtocol.ts';
+import { applyPendingBotNews } from './ai.ts'; // the drivers' flush of the bots' news (audit M7)
 
 // The commander is driven headless with real controllers (game/ai.ts) on a
 // fixture battle and a fake transport: the team document, the question set
