@@ -322,7 +322,7 @@ export function addM1A1VariantIdentity(P: AbramsIdentityPort): void {
   const host = P.hullG.userData.m1a1BaseHost;
   if (typeof host === 'string' && host !== P.spec.id) return;
   switch (P.spec.id) {
-    case 'm1a1ha': addTrackWidthMinePlow(P); addDesertStormStowage(P); break;
+    case 'm1a1ha': addTrackWidthMinePlow(P, { chainOnSkids: true }); addDesertStormStowage(P); break;
     case 'm1a1_abrams_hc': addHeavyCommonStowage(P); break;
     case 'm1a1_abrams_aim': addAimFit(P); break;
     case 'm1a1_abrams_fep': addFepFit(P); break;

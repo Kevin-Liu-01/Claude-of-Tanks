@@ -2387,6 +2387,13 @@ function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
       plate(body, 0.035 * s, headH + 0.27 * s, headD + 0.08 * s,
         side * (headW / 2 + 0.06 * s), headY + 0.08 * s, 0.04 * s,
         0, 0, side * 0.06);
+      // (release 268 builder E, the floating-kit class: the side shield stood 4 cm off the head on nothing; two stand-off
+      // blocks from the head's side carry it, fore and aft, ending 1 mm short of its back so neither cuts the other)
+      const standOff = 0.0425 * s - 0.001;
+      for (const dz of [-0.11, 0.11]) {
+        plate('dark', standOff, 0.035 * s, 0.05 * s,
+          side * (headW / 2 + standOff / 2), headY + 0.08 * s, (0.04 + dz) * s);
+      }
     }
   } else if (hunter) {
     // (release 230: the sensor box keeps its place against the head's top, and its mast stands outboard of the service

@@ -4301,6 +4301,20 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   };
 }
 
+/**
+ * Release 268 builder E (the floating-kit class): a roof post of the M1A1 marks, a warning sensor's or an antenna's base
+ * with its mast. Authored for the print-era shells' roof (0.75-0.79 over the ring), on the owner's model's 0.709 roof
+ * the bases stood 4 cm over it and some masts short of their base, touching nothing. The mast stands on its base's top
+ * and the pair drops onto the roof, or the plate, under it (P.snapGroup down), as every rested kit does.
+ */
+function tejasRoofPost(P: AbramsBuilderPort, x: number, z: number, mastH: number, mastW: number,
+  base: { readonly rTop: number; readonly rBot: number; readonly h: number; readonly y: number }): void {
+  P.snapGroup(`tejas-antenna-${x}`, () => {
+    P.add('turretDetail', cylY(base.rTop, base.rBot, base.h, 10), x, base.y, z);
+    P.add('turretDark', box(mastW, mastH, mastW), x, base.y + base.h / 2 + mastH / 2, z);
+  }, { reachM: 0.06, mode: 'down' });
+}
+
 function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankProfileBuild {
   let g = TEJAS_HULL;
   // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's rise stays under the
@@ -4679,7 +4693,10 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
               // Follow the outward sweep of the bow fender without entering the
               // animated front return.  The former innermost carrier reached the
               // track band at x=1.72 on the last two cassettes.
-              const bowCarrier = g.skirt.x + 0.07 - k * 0.045;
+              // (release 268 builder E, the floating-kit class: the owner's model's skirt runs straight to the bow at
+              // g.skirt.x, with no outward sweep; stepped off it, the middle cassette stood 2 cm clear of it touching
+              // nothing and the last sank 3 cm into it. Each now sits on the skirt, as the upper course does.)
+              const bowCarrier = src ? g.skirt.x : g.skirt.x + 0.07 - k * 0.045;
               const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
                 0.11, h, 0.27, 1.08, z);
               skirtArmorBox(P, 'hull', side, bowOuter - 0.003,
@@ -4945,11 +4962,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // the shared left-side CROWS it gives TUSK two deliberate, separated,
         // forward-firing machine guns; retain only the warning sensors here.
         for (const [x, z, h] of [[-1.08, -0.86, 0.34], [1.06, -0.95, 0.28]]) {
-          const buildTejasFamilyTurretCourse4 = (): void => {
-            P.add('turretDetail', cylY(0.065, 0.075, 0.09, 10), x, 0.79, z);
-            P.add('turretDark', box(0.035, h, 0.035), x, 0.98, z);
-          };
-          buildTejasFamilyTurretCourse4();
+          tejasRoofPost(P, x, z, h, 0.035, { rTop: 0.065, rBot: 0.075, h: 0.09, y: 0.79 });
         }
         // TUSK UNIFIED CHEEK CASSETTES (owner correction 2026-08-15).  The old
         // 2x2 XM32 layout made each cheek read as four separate tiles.  Use one
@@ -5142,11 +5155,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // duplicate the owner saw crossing the turret; keep only its two small
         // warning-sensor posts below.
         for (const [x, z, h] of [[-1.12, -0.92, 0.38], [1.10, -1.02, 0.31]]) {
-          const buildTejasFamilyTurretCourse6 = (): void => {
-            P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);
-            P.add('turretDark', box(0.038, h, 0.038), x, 1.01, z);
-          };
-          buildTejasFamilyTurretCourse6();
+          tejasRoofPost(P, x, z, h, 0.038, { rTop: 0.07, rBot: 0.08, h: 0.10, y: 0.80 });
         }
         // SEPv2 uses fewer, broader composite/ERA cassettes than TUSK. The
         // layered faces and flush cross details come from the successful early
@@ -5335,16 +5344,8 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // (release 268 builder E, the A/B polish: the owner's model's shell has no roof-edge shelf over the left flank, so
         // there is no well to fill; the plate stood 8 cm off its 26-degree wall at an angle)
         if (!t.m1a1Source) flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
-        // (release 268 builder E, the A/B craft fix: on the owner's model's shell the roof lies at 0.709, so the bases stood
-        // 4 cm over it and the short mast 2 cm over its base, touching nothing; each mast now stands on its base and the
-        // pair drops onto the roof, or the plate, under it)
         for (const [x, z, h] of [[-1.15, -0.96, 0.42], [1.12, -1.08, 0.34], [0.84, -1.48, 0.28]]) {
-          const buildTejasFamilyTurretCourse9 = (): void => {
-            P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);
-            P.add('turretDark', box(0.038, h, 0.038), x, t.m1a1Source ? 0.85 + h / 2 : 1.01, z);
-          };
-          if (t.m1a1Source) P.snapGroup(`tejas-antenna-${x}`, buildTejasFamilyTurretCourse9, { reachM: 0.06, mode: 'down' });
-          else buildTejasFamilyTurretCourse9();
+          tejasRoofPost(P, x, z, h, 0.038, { rTop: 0.07, rBot: 0.08, h: 0.10, y: 0.80 });
         }
         // SEPv3's newest array is a dense, irregular 16-block turret field.
         // It keeps the fine modern pitch, but each cassette now has a deep body,
