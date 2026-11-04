@@ -185,7 +185,8 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     assert.equal(equipment.remoteControlled, true, 'C2 roof weapon is remotely controlled');
     // 269 (C2 photographs 3 and 5): the loader's shielded gun stands on the turret's left, ahead of his hatch
     assert.equal(equipment.remoteWeaponSide, 'left', 'C2 roof gun is left mounted');
-    assert.equal(equipment.rotatingShoulderModules, 4, 'all four marked shoulder modules are turret owned');
+    // (269 round 3: three flank modules a side, the photographs' row)
+    assert.equal(equipment.rotatingShoulderModules, 6, 'all six marked flank modules are turret owned');
     assert.equal(equipment.rotatingApuAssembly, true, 'marked rear APU assembly is turret owned');
     const remoteRws = turret.getObjectByName('arieteC2RemoteRws');
     assert.ok(remoteRws, 'C2 T-90-style automated tower is present');
@@ -207,12 +208,13 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     // 269 (C2 photographs 1-5, the new turret): two front plates a side, a side plate over each cheek module and a faced
     // plate on each of the two wall boxes a side; the photographs show no plates on the bustle
     assert.equal(era.turretCheekCassettes, 4, 'C2 carries two front plates on each cheek');
-    assert.equal(era.turretSideCassettes, 6, 'C2 carries a cheek side plate and two faced wall boxes a side');
+    // (269 round 3: the flank's two boxes became the photographs' three separate modules a side)
+    assert.equal(era.turretSideCassettes, 8, 'C2 carries a cheek side module and three faced flank modules a side');
     assert.equal(era.turretBustleCassettes, 0, 'C2 bustle carries no add-on plates');
-    assert.equal(era.totalTurretCassettes, 10, 'C2 turret carries ten add-on plates');
+    assert.equal(era.totalTurretCassettes, 12, 'C2 turret carries twelve add-on plates');
     // (release 240: the profile run's raked end bays keep their upper row only: 52 -> 48)
     assert.equal(era.sideSkirtCassettes, 48, 'C2 skirts carry two rows across the 13 bays, one on the raked end bays');
-    assert.equal(era.totalCassettes, 58, 'C2 upgrade contains fifty-eight seated plates (48 on the skirts)');
+    assert.equal(era.totalCassettes, 60, 'C2 upgrade contains sixty seated plates (48 on the skirts)');
     const hullExternalArmor = hullRig.getObjectByName('hullExternalArmor');
     assert.ok(hullExternalArmor?.geometry, 'C2 skirt ERA uses the hull external-armor mesh');
     hullExternalArmor.geometry.computeBoundingBox();

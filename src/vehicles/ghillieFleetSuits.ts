@@ -565,21 +565,27 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // loader's 12.7 mm is opened by the builder); the flank drapes hang on the bustle behind the smoke rows (they run
     // forward of 1.93 now, under the add-on boxes' rear ends), the rear drape between the left bin and the APU
     // 269 round 2 (blind A/B arieter269t, both critics: "cloth flares past the front cheek corners in the top view", "the
-    // cloth sheet over the turret rear is a big flat patch ... it spills over the rear view"): the roof net stops behind
-    // the new add-on cheek modules' tops (1.34), inside the walls' plan (+-1.50) and 15 cm short of the stowage box's rear
-    // edge (-2.55), the rear drape is gone, and the
-    // openings follow the moved fittings: the Lothar box and the Attila drum (now 0.45-1.45), the loader's gun on its
+    // cloth sheet over the turret rear is a big flat patch ... it spills over the rear view"): the rear drape is gone and
+    // the openings follow the moved fittings: the Lothar box and the Attila drum (0.45-1.45), the loader's gun on its
     // plinth, the met mast's hanging rods
+    // 269 round 3 (the round-2 blind A/B: "cloth within about 5 cm of the outline with a continuous hem", "the net kept
+    // within the roof outline with the shards trimmed"): the roof net is laid on 5 cm cells inside an outline 5 cm in from
+    // the roof's walls and the stowage box's rear, behind the cheek wedges' tops, so its edge is one unbroken hem (the
+    // panel's torn perimeter cells all fall outside it); no garnish seats within 12 cm of that hem; the flank drapes are
+    // gone, and the garnish is thinned (0.7) so the station, hatches and sights read through it
     turret: {
       top: [laid({
-        x0: -1.50, x1: 1.50, z0: -2.55, z1: 1.34, nx: 38, nz: 49, y: 0.97,
+        x0: -1.62, x1: 1.62, z0: -2.85, z1: 1.80, nx: 65, nz: 93, y: 0.97,
+        outline: [[-1.36, 1.34], [-0.52, 1.57], [-0.30, 1.45], [0.30, 1.45], [0.52, 1.57], [1.36, 1.34], [1.36, -2.10],
+          [1.22, -2.60], [-1.22, -2.60], [-1.36, -2.10]],
+        foliageExclude: [rect(1.24, 1.40, -2.65, 1.40), rect(-1.40, -1.24, -2.65, 1.40), rect(-1.40, 1.40, -2.65, -2.46),
+          rect(-1.40, -0.40, 1.22, 1.60), rect(0.40, 1.40, 1.22, 1.60), rect(-0.40, 0.40, 1.33, 1.60)],
         holes: [rect(-1.18, -0.52, 0.40, 1.50), rect(-1.28, -0.40, -0.76, 0.12), rect(0.37, 1.25, -0.68, 0.15),
           rect(0.56, 0.98, 0.23, 0.65), rect(-0.43, -0.23, 0.93, 1.09), rect(0.23, 0.43, 0.93, 1.09),
           rect(-0.14, 0.14, -1.02, -0.74), rect(-0.15, 0.26, -1.49, -1.08), rect(-0.42, -0.24, -1.37, -1.18),
           rect(1.16, 1.34, -1.36, -1.17)],
-        garnishRiseM: 0.16, seed: 11,
+        garnishRiseM: 0.16, garnishDensity: 0.7, seed: 11,
       })],
-      side: flanks(-2.62, -1.96, 0.92, 0.44, 1.68, 17),
     },
     hull: {
       top: [

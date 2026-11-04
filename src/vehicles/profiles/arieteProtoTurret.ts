@@ -68,7 +68,12 @@ const BOX_FRONT = -1.93, BOX_REAR = -2.45, BOX_TOP = 0.82, BOX_BOT = 0.35, BOX_W
 // vertical faces either side of the mantlet, reaching about roof height and projecting ahead of the gun cradle"): a front
 // raked only 20 degrees, standing 14 cm off the cheek faces' foot and 0.57 m off their top edge, its top flat at 0.76,
 // carried back over the roof's front edge; it keeps the cheeks' 17 degree sweep
-const C2_RAKE = Math.tan(20 * Math.PI / 180), C2_YB = 0.24, C2_TOP = 0.76, C2_FRONT_Z = 2.26, C2_FRONT_X = 0.47;
+const C2_RAKE = Math.tan(20 * Math.PI / 180), C2_YB = 0.24, C2_FRONT_Z = 2.26, C2_FRONT_X = 0.47;
+// r269 round 3 (C2 photographs 1, 2 and 4, the coordinator's read: "the cheek modules' tops slope DOWN toward the mantlet
+// as a wedge in side view, from the roof line to the gun root"): the upright bolted face stands to 0.44, the gun root's
+// height, and the module's top slopes from there back up to the roof's front edge (about 22 degrees); the cheek's side
+// module slopes from the eave over the flank modules down to the same front edge (about 14 degrees)
+const C2_FACE_TOP = 0.44;
 
 const crown = (ax: number): number => (ax <= FLAT ? CROWN : CROWN - (CROWN - EAVE) * (ax - FLAT) / (W - FLAT));
 /** The roof's height at (x, z). */
@@ -434,78 +439,124 @@ function c2LoaderShield(mg: THREE.Group): void {
 }
 
 // ---- C2 package ------------------------------------------------------------------------------------------------------
-/** The C2's add-on cheek front, side plates and wall boxes. Each plate is one visual ERA course (italy.ts's cluster
- * name), counted on the receipt; the boxes are equipment. */
+/** The C2's add-on cheek wedges, their side modules and the flank modules. Each plate is one visual ERA course (italy.ts's
+ * cluster name), counted on the receipt; the flank modules' boxes are equipment. */
 function c2Package(P: ArieteTurretPort, receipt: ArieteProtoTurretReceipt, c2Era: C2EraCounts): void {
   const cluster = (fill: () => void): void => P.visualEraCluster('italy-layered-turret', 'turret', fill);
-  const yb = C2_YB;
+  const yb = C2_YB, yf = C2_FACE_TOP;
   for (const s of [-1, 1]) {
-    // the front: an inner module beside the gun and the main module to the corner (C2 photographs 3 and 5), each a block
-    // from the cheek face (12 mm into it) to the upright add-on front, its top flat at 0.76 over the roof's front edge,
-    // its front edges chamfered
+    // the front: an inner module beside the gun and the main module to the corner (C2 photographs 3 and 5), each a wedge
+    // from the cheek face (12 mm into it): its upright bolted face to the gun root's height, its top sloping from there
+    // up and back to the roof's front edge, which it caps (photographs 1, 2 and 4)
     for (const [xa, xb] of [[BEV_X + 0.01, 0.68], [0.69, W - 0.03]] as const) {
       const pts: V3[] = [];
+      const front = (ax: number): V3 => [ax, yf, c2FrontZ(ax, yf)];
+      const rear = (ax: number): V3 => { const [tz, ty] = topFront(ax); return [ax, ty + 0.012, tz - 0.03]; };
       for (const [ax, inset] of [[xa, 0.02], [xb, -0.02]] as const) {
-        const [tz, ty] = topFront(ax), xi = ax + inset;
-        pts.push([ax, yb, faceZ(ax, yb) - 0.012], [ax, ty - 0.012, faceZ(ax, ty - 0.012) - 0.012], [ax, C2_TOP, tz - 0.06],
-          [ax, yb + 0.02, c2FrontZ(ax, yb + 0.02) - 0.02], [ax, C2_TOP - 0.02, c2FrontZ(ax, C2_TOP - 0.02) - 0.02],
-          [xi, yb + 0.02, c2FrontZ(xi, yb + 0.02)], [xi, C2_TOP - 0.02, c2FrontZ(xi, C2_TOP - 0.02)],
-          [xi, yb, c2FrontZ(xi, yb) - 0.02], [xi, C2_TOP, c2FrontZ(xi, C2_TOP) - 0.02]);
+        const [, ty] = topFront(ax), xi = ax + inset;
+        pts.push([ax, yb, faceZ(ax, yb) - 0.012], [ax, ty - 0.012, faceZ(ax, ty - 0.012) - 0.012], rear(ax),
+          [ax, yb + 0.02, c2FrontZ(ax, yb + 0.02) - 0.02], [ax, yf - 0.01, c2FrontZ(ax, yf - 0.01) - 0.02],
+          [xi, yb + 0.02, c2FrontZ(xi, yb + 0.02)], [xi, yb, c2FrontZ(xi, yb) - 0.02], front(xi));
       }
       cluster(() => {
         P.add('turret', convexBlock(mirror(pts, s)));
-        // big bolt heads on the faces (C2 photograph 5: five or six on each cheek's main plate)
+        // bolt rows on the face (C2 photograph 5) and on the slope (photograph 4)
         const n = new THREE.Vector3(s * FSW, C2_RAKE, 1).normalize();
         const at = (ax: number, y: number): THREE.Vector3 => new THREE.Vector3(s * ax, y, c2FrontZ(ax, y));
-        bolts(P, xb - xa > 0.3 ? [at(xa + 0.09, 0.32), at(xb - 0.09, 0.32), at((xa + xb) / 2, 0.49), at(xa + 0.09, 0.66),
-          at(xb - 0.09, 0.66)] : [at((xa + xb) / 2, 0.34), at((xa + xb) / 2, 0.64)], n);
-        // the module's top lifting lug
-        if (xb - xa > 0.3) liftingEye(P, s * (xa + xb) / 2, C2_TOP, c2FrontZ((xa + xb) / 2, C2_TOP) - 0.25);
+        const main = xb - xa > 0.3, mid = (xa + xb) / 2;
+        bolts(P, (main ? [xa + 0.08, mid, xb - 0.08] : [mid]).flatMap((ax) => [at(ax, 0.30), at(ax, 0.395)]), n);
+        const f0 = new THREE.Vector3(...front(xa)), f1 = new THREE.Vector3(...front(xb)), r0 = new THREE.Vector3(...rear(xa));
+        const ns = new THREE.Vector3().subVectors(f1, f0).cross(new THREE.Vector3().subVectors(r0, f0)).normalize();
+        if (ns.y < 0) ns.negate();
+        const onSlope = (ax: number, t: number): THREE.Vector3 => {
+          const f = new THREE.Vector3(...front(ax)), r = new THREE.Vector3(...rear(ax));
+          return f.lerp(r, t).addScaledVector(ns, 0.002).multiply(new THREE.Vector3(s, 1, 1));
+        };
+        bolts(P, (main ? [[xa + 0.08, 0.2], [mid, 0.2], [xb - 0.08, 0.2], [xa + 0.08, 0.65], [xb - 0.08, 0.65]] : [[mid, 0.25], [mid, 0.65]])
+          .map(([ax, t]) => onSlope(ax, t)), ns.clone().multiply(new THREE.Vector3(s, 1, 1)));
       });
       receipt.c2CheekPlates++;
       c2Era.turretCheekCassettes++;
       c2Era.turretCheekForwardNormalDotMin = Math.min(c2Era.turretCheekForwardNormalDotMin,
         new THREE.Vector3(FSW, C2_RAKE, 1).normalize().z);
     }
-    // the cheek module's side: one bolted module 20 cm proud (C2 photograph 3: the side modules' fronts stand proud at the
-    // turret's corners; r269 round 2, the critics: deeper flank modules), its front on the add-on front and its top
-    // running up to the front modules' top (C2 photographs 1 and 4), with the oval access panel on it
-    // (its rear edge stands against the fore add-on box, C2 photograph 4: no bare wall between them)
-    const zt = 0.38, zbk = 0.42, yBot = FLOOR + CHAMF;
-    const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, C2_TOP - 0.005, c2FrontZ(W, C2_TOP) - 0.025],
+    // the cheek's side module: one bolted module 20 cm proud (C2 photograph 3: the side modules' fronts stand proud at the
+    // turret's corners), its front on the add-on front, its top a long wedge from the eave over the flank modules down to
+    // the face's top (photographs 1 and 4: the bolted side plate under the sloping edge), the oval access panel on it
+    const zt = 0.38, zbk = 0.42, yBot = FLOOR + CHAMF, zf = c2FrontZ(W, yf) - 0.004;
+    const topAt = (z: number): number => EAVE - 0.01 - (EAVE - 0.01 - yf) * (z - SZ0) / (zf - SZ0);
+    const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, yf, zf],
       [x, yBot, c2FrontZ(W, yBot) - 0.004], [x, yBot, zbk]];
     cluster(() => {
       P.add('turret', convexBlock(mirror([...side(W - 0.045), ...side(W + 0.20)], s)));
-      P.add('turret', KIT.box(0.02, 0.24, 0.42), s * (W + 0.208), 0.47, 1.05);                   // access panel
-      bolts(P, [[0.85, 0.34], [0.62, 0.62], [1.40, 0.34], [1.60, 0.34], [1.25, 0.68]].map(([zz, yy]) =>
-        new THREE.Vector3(s * (W + 0.20), yy, zz)), new THREE.Vector3(s, 0, 0));
+      P.add('turret', KIT.box(0.02, 0.18, 0.40), s * (W + 0.208), 0.42, 1.05);                   // access panel
+      // a bolt row under its sloping top edge and one along its foot (photographs 1 and 4)
+      const row: Array<[number, number]> = [0.55, 0.80, 1.05, 1.30, 1.55, 1.80].map((zz) => [zz, topAt(zz) - 0.035]);
+      for (const zz of [0.55, 0.85, 1.15, 1.45, 1.75]) row.push([zz, yBot + 0.04]);
+      bolts(P, row.map(([zz, yy]) => new THREE.Vector3(s * (W + 0.20), yy, zz)), new THREE.Vector3(s, 0, 0));
     });
     receipt.c2SidePlates++;
     c2Era.turretSideCassettes++;
-    // two add-on boxes on the wall behind it (C2 photograph 4: two doors side by side, handles and hinges), each faced
-    // with a bolted 25 mm plate (the old shoulder modules' four)
-    for (const [z0, z1] of [[-0.98, -0.30], [-0.28, 0.40]] as const) {
-      // (24 cm proud with its plates, to the eave: the photographs' and the blind critics' deep flank modules, the turret
-      // filling more of the hull's width in plan)
-      const y0 = 0.205, y1 = EAVE, d = 0.22, zc = (z0 + z1) / 2;
-      // the box: a flat underside, its top's outer edge chamfered (photograph 4), 1 cm into the wall
-      P.addEquipment('turret', convexBlock(mirror([[W - 0.01, y0, z0], [W - 0.01, y0, z1], [W + d, y0, z0], [W + d, y0, z1],
-        [W - 0.01, y1, z0], [W - 0.01, y1, z1], [W + d - 0.03, y1, z0], [W + d - 0.03, y1, z1],
+    // the flank modules behind it (C2 photographs 1, 2 and 4: an even row of three separate boxed modules, flush top and
+    // bottom with the wall, shadow gaps between them; photograph 2's order from the rear: a long one, a medium one with the
+    // square sensor window, a narrow one), each a box standing 3 cm off the wall on its brackets, faced with a bolted 25 mm
+    // plate: the long one carries its door with the cut top corner, latches and hinge (photograph 4) and a lifting eye on
+    // its top, the others a handle each
+    // (the long module spans round 2's aft box, a single face under the fleet decor's rear side load: shorter modules
+    // there left its arms straddling a module's end, its straps crossing them)
+    const gap = 0.03, d = 0.22, y0 = 0.205, y1 = EAVE, xo = W + d + 0.023;
+    const modules = [[-0.98, -0.30], [-0.26, 0.16], [0.20, 0.36]] as const;
+    modules.forEach(([z0, z1], k) => {
+      const zc = (z0 + z1) / 2, len = z1 - z0;
+      P.addEquipment('turret', convexBlock(mirror([[W + gap, y0, z0], [W + gap, y0, z1], [W + d, y0, z0], [W + d, y0, z1],
+        [W + gap, y1, z0], [W + gap, y1, z1], [W + d - 0.03, y1, z0], [W + d - 0.03, y1, z1],
         [W + d, y1 - 0.03, z0], [W + d, y1 - 0.03, z1]], s)));
-      // its face: two bolted 25 mm door plates, side by side over the box, a 2 cm seam between them (r269 round 2: the
-      // critics' "rows of vertical boxed modules"; each plate a flat plane for anything hung on it), each door's handle
-      // and hinge strip on it
+      for (const zz of [z0 + 0.05, z1 - 0.05]) for (const yy of [0.30, 0.68]) {
+        P.addEquipment('turret', KIT.box(gap + 0.02, 0.06, 0.05), s * (W + gap / 2), yy, zz);   // stand-off brackets
+      }
+      if (k === 0) liftingEye(P, s * (W + 0.125), y1, zc, Math.PI / 2);
       cluster(() => {
-        for (const [za, zb] of [[z0, zc - 0.01], [zc + 0.01, z1]] as const) {
-          P.add('turret', KIT.box(0.025, y1 - 0.03 - y0, zb - za), s * (W + d + 0.0125 - 0.002), (y0 + y1 - 0.03) / 2, (za + zb) / 2);
-          bolts(P, [[za + 0.045, y0 + 0.05], [zb - 0.045, y0 + 0.05], [za + 0.045, y1 - 0.08], [zb - 0.045, y1 - 0.08]].map(([zz, yy]) =>
-            new THREE.Vector3(s * (W + d + 0.023), yy, zz)), new THREE.Vector3(s, 0, 0));
-          P.add('turretDetail', KIT.box(0.03, 0.12, 0.025), s * (W + d + 0.033), 0.52, zb - 0.06);            // handle
-          P.add('turretDark', KIT.box(0.014, y1 - y0 - 0.12, 0.03), s * (W + d + 0.028), (y0 + y1 - 0.03) / 2, za + 0.03); // hinge
+        P.add('turret', KIT.box(0.025, y1 - 0.04 - y0, len - 0.02), s * (W + d + 0.0125 - 0.002), (y0 + y1 - 0.04) / 2, zc);
+        const nb = Math.max(2, Math.round(len / 0.11));
+        const pts: THREE.Vector3[] = [];
+        for (let i = 0; i < nb; i++) {
+          const zz = z0 + 0.04 + (len - 0.08) * i / (nb - 1);
+          pts.push(new THREE.Vector3(s * xo, y0 + 0.045, zz), new THREE.Vector3(s * xo, y1 - 0.085, zz));
+        }
+        bolts(P, pts, new THREE.Vector3(s, 0, 0));
+        const xd = s * (W + d + 0.026);
+        if (k > 0) P.add('turretDetail', KIT.box(0.03, 0.12, 0.025), s * (W + d + 0.033), 0.46, z1 - 0.05);                // handle
+        if (k === 1) {
+          P.add('turretDark', KIT.box(0.008, 0.13, 0.15), xd, 0.60, zc - 0.03);                // sensor window
+          P.add('turretGlass', KIT.box(0.006, 0.10, 0.12), xd + s * 0.002, 0.60, zc - 0.03);
+        }
+        if (k === 0) {
+          // the door: a seam round it, its top rear corner cut (photograph 4), two latches and the hinge strip
+          const za = z0 + 0.07, zb = z1 - 0.07, ya = 0.27, yt = 0.70, cut = 0.14;
+          P.add('turretDark', KIT.box(0.006, 0.012, zb - za), xd, ya, (za + zb) / 2);
+          P.add('turretDark', KIT.box(0.006, 0.012, zb - za - cut), xd, yt, (za + cut + zb) / 2);
+          P.add('turretDark', KIT.box(0.006, yt - ya, 0.012), xd, (ya + yt) / 2, zb);
+          P.add('turretDark', KIT.box(0.006, yt - ya - cut, 0.012), xd, (ya + yt - cut) / 2, za);
+          P.add('turretDark', KIT.box(0.006, cut * Math.SQRT2, 0.012), xd, yt - cut / 2, za + cut / 2, Math.PI / 4, 0, 0);
+          for (const yy of [0.38, 0.60]) P.add('turretDetail', KIT.box(0.025, 0.05, 0.06), s * (W + d + 0.033), yy, zb - 0.06);
+          P.add('turretDark', KIT.box(0.014, yt - ya - 0.04, 0.03), s * (W + d + 0.03), (ya + yt) / 2, za + 0.035);
         }
       });
       receipt.shoulderModules++;
       c2Era.turretSideCassettes++;
+    });
+  }
+}
+
+/** The C2's rear stowage box sides: a louvred grille panel on each (C2 photograph 1), on the box's tapered side. */
+function c2BoxGrille(P: ArieteTurretPort): void {
+  const taper = (z: number): number => W - 0.005 - (W - 0.005 - BOX_W1) * (BOX_FRONT - z) / (BOX_FRONT - BOX_REAR);
+  const ry = Math.atan((W - 0.005 - BOX_W1) / (BOX_FRONT - BOX_REAR)), zc = -2.17, yc = 0.58;
+  for (const s of [-1, 1]) {
+    const x = taper(zc);
+    P.add('turretDark', KIT.box(0.012, 0.24, 0.30), s * (x + 0.001), yc, zc, 0, s * ry, 0);
+    for (let k = 0; k < 6; k++) {
+      P.add('turretDetail', KIT.box(0.014, 0.016, 0.28), s * (x + 0.006), yc - 0.10 + k * 0.04, zc, 0, s * ry, 0);
     }
   }
 }
@@ -675,6 +726,7 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
     whip(-0.30, transverseTop, -1.16, 1.11, 48);
     whip(1.135, transverseTop, -1.15, 0.89, 52);
     if (o.c2Era) c2Package(P, receipt, o.c2Era);
+    c2BoxGrille(P);
   }
   rearBins(P, c2);
   return receipt;
