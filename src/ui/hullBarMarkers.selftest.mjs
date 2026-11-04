@@ -3,7 +3,8 @@
 // and stuff get pushed away from where thae tanks actualy are, which is a regression that should be fixed").
 // damagePanelMarkers' law applied to the plates over tanks: every hull bar sits exactly on its own tank's projected seat,
 // co-located tanks' bars coincide, bars of tanks close in view overlap instead of being pushed apart, and where they
-// overlap the enemy's draws over the ally's and the nearer over the farther. The kept 10-26 r20 rule is held too: a bar
+// overlap the enemy's draws over the ally's and the nearer over the farther, the one under faint so the top name reads
+// (glyph plates at full ink struck through each other, the 269 stills). The kept 10-26 r20 rule is held too: a bar
 // whose seat leaves the window slides back whole onto it, its pointer still over its tank. Headless: the REAL battle HUD
 // (initHud) runs over the recording DOM (hudDomHarness) through a camera, and the negative control loads hud.ts with the
 // old bar-versus-bar push (35782a9496, gauntlet r15) restored, which the same law must reject.
@@ -23,8 +24,8 @@ import { initHud } from './hud.ts';
 // ---- the negative control's module: hud.ts as it was, each bar tested against the bars placed before it ----
 const HUD_URL = new URL('./hud.ts', import.meta.url).href;
 const OLD_PUSH = [
-  ['    hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;\n    for (let i = 0; i < order.length; i++) {',
-    '    hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;\n    oldPushPlaced.length = 0;\n    for (let i = 0; i < order.length; i++) {'],
+  ['    hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;\n    let stacked = 0;\n',
+    '    hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;\n    let stacked = 0;\n    oldPushPlaced.length = 0;\n'],
   ['      seen.add(bar);\n      positionHpBar(bar);\n    }',
     '      oldPushPlaced.push([x0 + bar.seatDx, y0 + bar.seatDy, x1 + bar.seatDx, y1 + bar.seatDy]);\n      seen.add(bar);\n      positionHpBar(bar);\n    }'],
   ['  function hpBarClear(x0: number, y0: number, x1: number, y1: number): boolean {\n',
@@ -38,6 +39,10 @@ for (const [from, to] of OLD_PUSH) {
   mutant = mutant.replace(from, to);
 }
 assert.doesNotMatch(source, /hpBarPlaced|oldPushPlaced/, 'hud.ts keeps no list of placed bars to push a bar off its tank');
+// a bar's box until measured (the recording DOM measures nothing) and the crossing past which the lower draws faint
+const BAR_H = Number(/const HP_BAR_H = (\d+)/.exec(source)?.[1]);
+const UNDER_PX = Number(/const HP_BAR_UNDER_PX = (\d+);/.exec(source)?.[1]);
+assert.ok(BAR_H > 0 && UNDER_PX > 0, 'hud.ts keeps HP_BAR_H and HP_BAR_UNDER_PX');
 registerHooks({
   load(url, context, nextLoad) {
     if (url !== `${HUD_URL}?old-push`) return nextLoad(url, context);
@@ -111,7 +116,8 @@ function createScene(init) {
         assert.ok(move, `a shown bar carries its seat's transform (${el.style.transform})`);
         const id = el.querySelector('.nm span').textContent;
         out.set(id, { x: Number(move[1]), y: Number(move[2]), k: Number(move[3]), width: parseFloat(el.style.width),
-          z: Number(el.style.zIndex), ally: el.classes.has('ally'), pointerDx: parseFloat(el.style.getPropertyValue('--hpb-anch-dx')) || 0 });
+          z: Number(el.style.zIndex), ally: el.classes.has('ally'), under: el.classes.has('under'),
+          pointerDx: parseFloat(el.style.getPropertyValue('--hpb-anch-dx')) || 0 });
       }
       return out;
     },
@@ -157,6 +163,17 @@ function proveFrame(scene, staged, label) {
     if (ranked[i - 1].dist === ranked[i].dist && ranked[i - 1].ally === ranked[i].ally) continue;
     assert.ok(above.z > below.z, `${label}: ${ranked[i - 1].id} draws over ${ranked[i].id} (z ${above.z} over ${below.z})`);
   }
+  // the one under draws faint, the one on top at full ink: a bar is faint where one above it in the stack crosses it by
+  // more than HP_BAR_UNDER_PX on both axes
+  const box = (bar) => { const x0 = bar.x + (bar.width * (1 - bar.k)) / 2, y1 = bar.y + BAR_H;
+    return { x0, x1: x0 + bar.width * bar.k, y0: y1 - BAR_H * bar.k, y1 }; };
+  const stack = staged.map((t) => ({ id: t.id, bar: bars.get(t.id) })).sort((a, b) => b.bar.z - a.bar.z);
+  for (let i = 0; i < stack.length; i++) {
+    const own = box(stack[i].bar);
+    const covered = stack.slice(0, i).some(({ bar }) => { const o = box(bar);
+      return Math.min(own.x1, o.x1) - Math.max(own.x0, o.x0) > UNDER_PX && Math.min(own.y1, o.y1) - Math.max(own.y0, o.y0) > UNDER_PX; });
+    assert.equal(stack[i].bar.under, covered, `${label}: ${stack[i].id}'s bar ${covered ? 'draws faint under one above it' : 'draws at full ink'}`);
+  }
   return bars;
 }
 
@@ -185,7 +202,15 @@ function proveLaw(init, label) {
     proveFrame(scene, crowd, `${label}/crowd`);
   });
 
-  // 3. an enemy driving across an ally at one range: every pose, both bars on their own tanks, the enemy's on top
+  // 3. two hulls far apart in view: neither bar crosses the other, so both draw at full ink
+  judge('apart', () => {
+    const apart = [tank('enemy-far', 'bravo', [-60, 0, 380]), tank('ally-far', 'alpha', [20, 0, 380])];
+    settle(apart);
+    const bars = proveFrame(scene, apart, `${label}/apart`);
+    assert.ok(apart.every((t) => !bars.get(t.id).under), `${label}/apart: bars that cross nothing draw at full ink`);
+  });
+
+  // 4. an enemy driving across an ally at one range: every pose, both bars on their own tanks, the enemy's on top
   judge('crossing', () => {
     const ally = tank('ally-x', 'alpha', [-6, 0, 400]);
     const enemy = tank('enemy-x', 'bravo', [-26, 0, 400]);
@@ -198,6 +223,7 @@ function proveLaw(init, label) {
   });
   return { scene, frames, failures };
 }
+const faint = (bars) => [...bars.values()].filter((bar) => bar.under).length;
 
 // ---- the law on the real HUD ----
 const { scene, frames, failures } = proveLaw(initHud, 'hud');
@@ -229,4 +255,5 @@ for (const staging of ['co-located', 'crowd', 'crossing']) {
 }
 
 console.log(`hullBarMarkers.selftest: ${frames} frames of the real HUD — each hull bar on its own tank, co-located bars `
-  + 'coincide, a crowd and a crossing overlap unpushed, the enemies\' and the nearer on top; the edge slide kept');
+  + 'coincide, a crowd and a crossing overlap unpushed, the enemies\' and the nearer on top, the ones under faint; the edge '
+  + `slide kept (${faint(scene.bars())} faint at the end)`);

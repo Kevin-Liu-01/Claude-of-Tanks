@@ -522,8 +522,10 @@ interface HpBar {
   seatDy: number;
   slideWait: number;
   lastPointerDx: number;
-  /** Its place in the bars' stack as last written (updateHpBars: the enemies' over the allies', the nearer on top). */
+  /** Its place in the bars' stack as last written (updateHpBars: the enemies' over the allies', the nearer on top), and
+   *  whether it draws faint under one above it (.under). */
   z: number;
+  under: boolean;
 }
 interface SpotMemory {
   vis: boolean;
@@ -2131,6 +2133,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb{position:absolute;width:128px;text-align:center;will-change:transform;transform-origin:50% 100%;
   contain:layout paint style;transform:translate3d(0,0,0);display:flex;flex-direction:column;
   text-shadow:var(--battle-control-label-halo);}
+/* under a bar above it in the stack (updateHpBars): on its own tank still, faint, so the one on top reads */
+.cot-hpb.under{opacity:.3;}
 /* one block on the tank (owner 2026-10-27): the name line, the silhouette and whoever holds the hull, the vehicle under
    it in the quieter ink, the bar the block's width and the side's pointer; a hull with no callsign keeps the vehicle on
    the name line alone (.solo); a short or narrow window's bar keeps only the name (.short: a phone's narrow band between
@@ -6031,8 +6035,12 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- world-space tank nameplates ----------
   const hpBarsSeen = new Set<HpBar>();
-  /** The frame's bars in view, the enemies' first and the nearest first (updateHpBars: reused, never reallocated). */
+  /** The frame's bars in view, the enemies' first and the nearest first, and the boxes of those shown, the stack's top
+   *  first (updateHpBars: reused; the boxes grow only past their most). */
   const hpBarOrder: HpBar[] = [];
+  const hpBarStack: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  /** How far two bars must cross on both axes before the lower draws faint (a pointer's tip under a name is not one). */
+  const HP_BAR_UNDER_PX = 8;
   /** A hull bar's box until measured (.cot-hpb: the name and vehicle lines, the bar and the side's pointer; solo). */
   const HP_BAR_H = 52, HP_BAR_SOLO_H = 39, HP_BAR_SHORT_H = 36;
   /** Under this tall or this wide (the short height band, the phone width band) every bar keeps its name alone (.short):
@@ -6105,6 +6113,7 @@ export function initHud(bus: EventBus): HudRuntime {
       slideWait: 0,
       lastPointerDx: 0,
       z: 0,
+      under: false,
       layoutH: HP_BAR_H,
       solo: false,
     };
@@ -6228,10 +6237,13 @@ export function initHud(bus: EventBus): HudRuntime {
     // Each bar on its own tank (owner 2026-11-04: "make tank indicators be able to overlap with each other, rn they push
     // each other up and prevent overlap, which actually makes it so that tank names and stuff get pushed away from where
     // thae tanks actualy are"): the bars of tanks close in view overlap, and none moves off its tank for another. Where
-    // two overlap, the enemy's draws over the ally's and the nearer over the farther, so the nearest name reads. A bar
-    // still keeps whole on the screen and off the target plate, the sight's ring, the HUD's furniture and the plates'
-    // obstacles (sightFurniture, measured each relayout), the 10-26 r20 rulings.
+    // two overlap, the enemy's draws over the ally's and the nearer over the farther, and the one under draws faint, so
+    // the nearest name reads (the plates are glyphs over a halo, no panel: at full ink a crowd's names struck through
+    // each other into one line, the 269 stills). A bar still keeps whole on the screen and off the target plate, the
+    // sight's ring, the HUD's furniture and the plates' obstacles (sightFurniture, measured each relayout), the 10-26
+    // r20 rulings.
     hpBarRingOut = lastDrawnR + HP_BAR_RING_GAP;
+    let stacked = 0;
     for (let i = 0; i < order.length; i++) {
       const bar = order[i];
       const half = bar.layoutW * bar.k * 0.5, y1 = bar.sy - bar.lift;
@@ -6247,6 +6259,17 @@ export function initHud(bus: EventBus): HudRuntime {
       // (the first in the order on top; written only when its place in the stack moves)
       const z = order.length - i;
       if (z !== bar.z) { bar.root.style.zIndex = String(z); bar.z = z; }
+      const bx0 = x0 + bar.seatDx, by0 = y0 + bar.seatDy, bx1 = x1 + bar.seatDx, by1 = y1 + bar.seatDy;
+      let under = false;
+      for (let k = 0; k < stacked && !under; k++) {
+        const above = hpBarStack[k];
+        under = Math.min(bx1, above.x1) - Math.max(bx0, above.x0) > HP_BAR_UNDER_PX
+          && Math.min(by1, above.y1) - Math.max(by0, above.y0) > HP_BAR_UNDER_PX;
+      }
+      if (under !== bar.under) { bar.root.classList.toggle('under', under); bar.under = under; }
+      if (stacked === hpBarStack.length) hpBarStack.push({ x0: 0, y0: 0, x1: 0, y1: 0 });
+      const box = hpBarStack[stacked++];
+      box.x0 = bx0; box.y0 = by0; box.x1 = bx1; box.y1 = by1;
       seen.add(bar);
       positionHpBar(bar);
     }
