@@ -2,101 +2,101 @@
 comp	world:donors:collision:airfield	c7b2477ec23f9eed
 comp	world:donors:collision:alpine	e3b0c44298fc1c14
 comp	world:donors:collision:autumn	e3b0c44298fc1c14
-comp	world:donors:collision:badlands	30148ade3f180018
+comp	world:donors:collision:badlands	9c50eb7417dc5a84
 comp	world:donors:collision:blackglass	e3b0c44298fc1c14
-comp	world:donors:collision:caldera	3fde74a015a1e06c
-comp	world:donors:collision:cliffbridge	8f48a56781fd9b54
-comp	world:donors:collision:coastal	8c4f612f00353800
-comp	world:donors:collision:copper_mesa	b6d230904218550a
-comp	world:donors:collision:delta	78411bd46a513960
-comp	world:donors:collision:desert	1cedfd4e5384bd78
+comp	world:donors:collision:caldera	b2d9bb188d23088f
+comp	world:donors:collision:cliffbridge	956174337400caf5
+comp	world:donors:collision:coastal	600c72c26a2d058e
+comp	world:donors:collision:copper_mesa	35d82f58f2e96ad6
+comp	world:donors:collision:delta	b47588b3a179d0fe
+comp	world:donors:collision:desert	ace251a0205d1bf9
 comp	world:donors:collision:fjord	e3b0c44298fc1c14
 comp	world:donors:collision:foundry	e3b0c44298fc1c14
-comp	world:donors:collision:frontier	bbc927d41551a505
+comp	world:donors:collision:frontier	50f887360fdafb9a
 comp	world:donors:collision:longleaf	e3b0c44298fc1c14
-comp	world:donors:collision:mangrove	b0475a04e7a9664e
-comp	world:donors:collision:mars	f334cf931aec1ed3
+comp	world:donors:collision:mangrove	46ddbf942609e2b9
+comp	world:donors:collision:mars	3bd9d9f018e0b76d
 comp	world:donors:collision:monsoon	e3b0c44298fc1c14
 comp	world:donors:collision:moon	e3b0c44298fc1c14
-comp	world:donors:collision:oasis	c41984c6164fed21
-comp	world:donors:collision:orchard	725494d3913ab00d
+comp	world:donors:collision:oasis	b330189d3828c347
+comp	world:donors:collision:orchard	2a03ba639825565d
 comp	world:donors:collision:polders	e3b0c44298fc1c14
-comp	world:donors:collision:railyard	5c8a4cc21084b0ff
+comp	world:donors:collision:railyard	c63eb053a0f413f2
 comp	world:donors:collision:reservoir	e3b0c44298fc1c14
-comp	world:donors:collision:ruinspires	a4503fa98cfce690
-comp	world:donors:collision:saltwind	a4503fa98cfce690
-comp	world:donors:collision:skybridge	0872aaa09d830fb8
-comp	world:donors:collision:steppe	78411bd46a513960
-comp	world:donors:collision:titan_gorge	0872aaa09d830fb8
-comp	world:donors:collision:urban	b76f81ccc83f1139
+comp	world:donors:collision:ruinspires	cb9cabc49f77d094
+comp	world:donors:collision:saltwind	cb9cabc49f77d094
+comp	world:donors:collision:skybridge	920532373c5b9fbc
+comp	world:donors:collision:steppe	b47588b3a179d0fe
+comp	world:donors:collision:titan_gorge	920532373c5b9fbc
+comp	world:donors:collision:urban	3a03578b0aa871a2
 comp	world:donors:collision:verdant	d8f01d8a86a41728
-comp	world:donors:collision:whiteout	cc2e690a4ee73f1f
+comp	world:donors:collision:whiteout	5f3cf70610024b6b
 comp	world:donors:collision:winter	e3b0c44298fc1c14
 comp	world:donors:trenches:airfield	c7b2477ec23f9eed
 comp	world:donors:trenches:alpine	e3b0c44298fc1c14
 comp	world:donors:trenches:autumn	e3b0c44298fc1c14
-comp	world:donors:trenches:badlands	30148ade3f180018
+comp	world:donors:trenches:badlands	9c50eb7417dc5a84
 comp	world:donors:trenches:blackglass	e3b0c44298fc1c14
-comp	world:donors:trenches:caldera	3fde74a015a1e06c
-comp	world:donors:trenches:cliffbridge	8f48a56781fd9b54
-comp	world:donors:trenches:coastal	8c4f612f00353800
-comp	world:donors:trenches:copper_mesa	b6d230904218550a
-comp	world:donors:trenches:delta	78411bd46a513960
-comp	world:donors:trenches:desert	1cedfd4e5384bd78
+comp	world:donors:trenches:caldera	b2d9bb188d23088f
+comp	world:donors:trenches:cliffbridge	956174337400caf5
+comp	world:donors:trenches:coastal	600c72c26a2d058e
+comp	world:donors:trenches:copper_mesa	35d82f58f2e96ad6
+comp	world:donors:trenches:delta	b47588b3a179d0fe
+comp	world:donors:trenches:desert	ace251a0205d1bf9
 comp	world:donors:trenches:fjord	e3b0c44298fc1c14
 comp	world:donors:trenches:foundry	e3b0c44298fc1c14
-comp	world:donors:trenches:frontier	bbc927d41551a505
+comp	world:donors:trenches:frontier	50f887360fdafb9a
 comp	world:donors:trenches:longleaf	e3b0c44298fc1c14
-comp	world:donors:trenches:mangrove	b0475a04e7a9664e
-comp	world:donors:trenches:mars	f334cf931aec1ed3
+comp	world:donors:trenches:mangrove	46ddbf942609e2b9
+comp	world:donors:trenches:mars	3bd9d9f018e0b76d
 comp	world:donors:trenches:monsoon	e3b0c44298fc1c14
 comp	world:donors:trenches:moon	e3b0c44298fc1c14
-comp	world:donors:trenches:oasis	c41984c6164fed21
-comp	world:donors:trenches:orchard	725494d3913ab00d
+comp	world:donors:trenches:oasis	b330189d3828c347
+comp	world:donors:trenches:orchard	2a03ba639825565d
 comp	world:donors:trenches:polders	e3b0c44298fc1c14
-comp	world:donors:trenches:railyard	5c8a4cc21084b0ff
+comp	world:donors:trenches:railyard	c63eb053a0f413f2
 comp	world:donors:trenches:reservoir	e3b0c44298fc1c14
-comp	world:donors:trenches:ruinspires	a4503fa98cfce690
-comp	world:donors:trenches:saltwind	a4503fa98cfce690
-comp	world:donors:trenches:skybridge	0872aaa09d830fb8
-comp	world:donors:trenches:steppe	78411bd46a513960
-comp	world:donors:trenches:titan_gorge	0872aaa09d830fb8
-comp	world:donors:trenches:urban	b76f81ccc83f1139
+comp	world:donors:trenches:ruinspires	cb9cabc49f77d094
+comp	world:donors:trenches:saltwind	cb9cabc49f77d094
+comp	world:donors:trenches:skybridge	920532373c5b9fbc
+comp	world:donors:trenches:steppe	b47588b3a179d0fe
+comp	world:donors:trenches:titan_gorge	920532373c5b9fbc
+comp	world:donors:trenches:urban	3a03578b0aa871a2
 comp	world:donors:trenches:verdant	d8f01d8a86a41728
-comp	world:donors:trenches:whiteout	cc2e690a4ee73f1f
+comp	world:donors:trenches:whiteout	5f3cf70610024b6b
 comp	world:donors:trenches:winter	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:airfield	c7b2477ec23f9eed
 comp	world:donors:wreckPlan:alpine	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:autumn	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:badlands	30148ade3f180018
+comp	world:donors:wreckPlan:badlands	9c50eb7417dc5a84
 comp	world:donors:wreckPlan:blackglass	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:caldera	3fde74a015a1e06c
-comp	world:donors:wreckPlan:cliffbridge	8f48a56781fd9b54
-comp	world:donors:wreckPlan:coastal	8c4f612f00353800
-comp	world:donors:wreckPlan:copper_mesa	b6d230904218550a
-comp	world:donors:wreckPlan:delta	78411bd46a513960
-comp	world:donors:wreckPlan:desert	1cedfd4e5384bd78
+comp	world:donors:wreckPlan:caldera	b2d9bb188d23088f
+comp	world:donors:wreckPlan:cliffbridge	956174337400caf5
+comp	world:donors:wreckPlan:coastal	600c72c26a2d058e
+comp	world:donors:wreckPlan:copper_mesa	35d82f58f2e96ad6
+comp	world:donors:wreckPlan:delta	b47588b3a179d0fe
+comp	world:donors:wreckPlan:desert	ace251a0205d1bf9
 comp	world:donors:wreckPlan:fjord	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:foundry	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:frontier	bbc927d41551a505
+comp	world:donors:wreckPlan:frontier	50f887360fdafb9a
 comp	world:donors:wreckPlan:longleaf	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:mangrove	b0475a04e7a9664e
-comp	world:donors:wreckPlan:mars	f334cf931aec1ed3
+comp	world:donors:wreckPlan:mangrove	46ddbf942609e2b9
+comp	world:donors:wreckPlan:mars	3bd9d9f018e0b76d
 comp	world:donors:wreckPlan:monsoon	e3b0c44298fc1c14
 comp	world:donors:wreckPlan:moon	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:oasis	c41984c6164fed21
-comp	world:donors:wreckPlan:orchard	725494d3913ab00d
+comp	world:donors:wreckPlan:oasis	b330189d3828c347
+comp	world:donors:wreckPlan:orchard	2a03ba639825565d
 comp	world:donors:wreckPlan:polders	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:railyard	5c8a4cc21084b0ff
+comp	world:donors:wreckPlan:railyard	c63eb053a0f413f2
 comp	world:donors:wreckPlan:reservoir	e3b0c44298fc1c14
-comp	world:donors:wreckPlan:ruinspires	a4503fa98cfce690
-comp	world:donors:wreckPlan:saltwind	a4503fa98cfce690
-comp	world:donors:wreckPlan:skybridge	0872aaa09d830fb8
-comp	world:donors:wreckPlan:steppe	78411bd46a513960
-comp	world:donors:wreckPlan:titan_gorge	0872aaa09d830fb8
-comp	world:donors:wreckPlan:urban	b76f81ccc83f1139
+comp	world:donors:wreckPlan:ruinspires	cb9cabc49f77d094
+comp	world:donors:wreckPlan:saltwind	cb9cabc49f77d094
+comp	world:donors:wreckPlan:skybridge	920532373c5b9fbc
+comp	world:donors:wreckPlan:steppe	b47588b3a179d0fe
+comp	world:donors:wreckPlan:titan_gorge	920532373c5b9fbc
+comp	world:donors:wreckPlan:urban	3a03578b0aa871a2
 comp	world:donors:wreckPlan:verdant	d8f01d8a86a41728
-comp	world:donors:wreckPlan:whiteout	cc2e690a4ee73f1f
+comp	world:donors:wreckPlan:whiteout	5f3cf70610024b6b
 comp	world:donors:wreckPlan:winter	e3b0c44298fc1c14
 comp	world:fleet	cfc7686a7bf85da6
 comp	world:map:collision:airfield	653bb1ba31589e19
@@ -292,7 +292,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	b9f647308d4330ff
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	43ad2a288321a53b
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	4fdf69a4b50c89e9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	81234ac9ea0a30c5
-file	centering	src/vehicles/presentationAnchors.generated.ts	4a516b205dac4d7f
+file	centering	src/vehicles/presentationAnchors.generated.ts	b31b2faf3e658063
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	ea624210f1ace30b
 file	controls	src/vehicles/auxiliaryInventory.generated.ts	acfe2598863bf7f0
@@ -668,7 +668,7 @@ file	icons	public/icons/tank-assets/tanks/m1a2_abrams.json	6a732b31918473f1
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_sepv2.json	416b25e57dac9a5d
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_sepv3.json	2c8932a3bfcc5bee
 file	icons	public/icons/tank-assets/tanks/m1a2_abrams_tusk.json	81c70e637eb63a58
-file	icons	public/icons/tank-assets/tanks/m1a3.json	42a3209ef9d856b9
+file	icons	public/icons/tank-assets/tanks/m1a3.json	9752363d11c84b06
 file	icons	public/icons/tank-assets/tanks/m2a2_bradley.json	e4b70f514eb6946b
 file	icons	public/icons/tank-assets/tanks/m3a3_bradley.json	1add008623c24c58
 file	icons	public/icons/tank-assets/tanks/m41_bw.json	82b6700f6a392df0
@@ -926,36 +926,36 @@ file	spareTrack	docs/geometry-gate/spare-track.json	ca235fbc6e63e917
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1839567789750174
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
-group	abrams	7007fb2fd13bca50
-group	abramsSourceX	a3ca2ec24ec422d1
+group	abrams	411604f8e6ca80ef
+group	abramsSourceX	0fa6c84d7abf7e28
 group	aft10X	2497cac863d2f627
-group	afv	fa195ce00cee6215
+group	afv	2c054af1046d7b61
 group	ajaxX	af7a90a9811b56cb
 group	amx10p	4713630aa12b1c04
 group	amx30X	409402e260293854
 group	amx40X	612bac4f222fbf55
 group	aresApcX	ce5f0651f254ac85
-group	arieteX	4dbd84908cf74820
+group	arieteX	40a047933ef9b1ae
 group	bmp3mDragun125X	368818df400b0e48
 group	borsuk	35cb6e3a6b0f566d
 group	brazil	0ccc372fe54d00cd
-group	challenger	c1eaeed30af82327
+group	challenger	de36a91e48b5735b
 group	challenger1X	e4715446aacadc35
 group	chieftain10X	aae76e9e8f48472a
 group	chieftain5X	761ea6a7e4c42265
-group	christian2	4e2a5d9ff0e49b7f
+group	christian2	1114948a961e3bbb
 group	cv90105TmlSourceX	092318e79fe95992
-group	cv9040CSourceX	da8db63e524a0f69
+group	cv9040CSourceX	e93e1e5d7d24b9e6
 group	cv90MkivSourceX	134c76dc9c0db19f
 group	dardo	c9ecb5ad74861576
-group	denmark	655de91f6962b759
+group	denmark	f545de1be34b06b0
 group	franceCore	cdf4e598a18dc74d
 group	fv510MilanX	08099afb61659905
 group	griffin50X	568d582416919715
-group	griffinViper	45d8c088c8efab53
-group	italy	012f9ca7b273c09d
+group	griffinViper	fc5bb442b6d502b8
+group	italy	f38dac517dc0a662
 group	jagdpanzerE100X	352b94d4b495b13d
-group	japan	cba41fb900b37955
+group	japan	bf56ca6033d68775
 group	k1a1X	148d4560da34c440
 group	k21X	67221df8f19c3f83
 group	k2X	68fff6151c01dd8c
@@ -964,52 +964,52 @@ group	kf51X	1485c3b42c209e99
 group	korea	18fd941a67c46fb6
 group	kurganetsX	3f4e57c5ef3264e1
 group	leclercClassicX	e62186a29ade80d7
-group	leclercX	411a159fa5bc4e1b
-group	leopard	cc456a066ff18f28
+group	leclercX	e31ccfa860508817
+group	leopard	6019fa60eb5976b2
 group	leopard2a3B4	0ea83c19217f2a10
-group	leopard2a4Family	10526cf8bcdd2579
-group	leopardA6X	eb3604da9e6291f2
-group	leopardX	60269d82c7f24079
-group	lrmvLynx	b93e6c50b06e5e86
+group	leopard2a4Family	0a35a3419e97ad55
+group	leopardA6X	b0896ac2d3978030
+group	leopardX	dcfe3630abcd6438
+group	lrmvLynx	70795d3b266d4a7f
 group	m41	3df6a6742ef9a1ef
 group	m6Linebacker	ab387b44ac72662b
 group	marder2	d98b82494041fd25
-group	merkava	a921a28d986b2b13
+group	merkava	9e327f4fcbe9d6fb
 group	merkavaX	5f3e53627fb16a48
-group	misc	db454257273515bd
-group	modern2	7a2fbb2220ba0a88
+group	misc	9670b49b0dd0629b
+group	modern2	8d445bab2f572ab0
 group	modern3Core	5431e27f47a3ff71
-group	nationalModernization	1fb951e85764ba9d
+group	nationalModernization	61d1cc63c891ad1e
 group	patton	1fd251322c1017bb
-group	poland	e0450d028747758a
+group	poland	4833e32e2337a29f
 group	pumaS1SourceX	b76c9d271e2abf5f
-group	russia	a1b80711c2adaa25
+group	russia	3676a03328fce2e0
 group	sabraMk2SourceX	e8f0be07cc4d4a37
 group	sheridan	468ace90211d01e4
-group	sinoSovietConcepts	955a6871506e3cf4
+group	sinoSovietConcepts	a628601f815db3c9
 group	sovietHeavy	83799325e97db339
 group	strv122X	0061e6f707a4b6cd
-group	sweden	7c183213b7bfbbcd
+group	sweden	a370af58e793f4a8
 group	t14X	9dcc2ac0e0d259bc
-group	t62mv1X	2cb588dc51c14a4d
-group	t72	6bfce54936bd251b
+group	t62mv1X	851434f256a42b95
+group	t72	c68fb999da4f75d0
 group	t72Rys	25315b064cfae50f
 group	t72b1987X	f8b83d33793d877e
 group	t72b3X	d75672acaa7c5438
 group	t72b3mX	cb2d80d21a22b050
 group	t72buX	6caa3d8cba3d3b85
-group	t80	3022e91667116574
+group	t80	f1b6a5d3edf0e0a5
 group	t80uX	bdee898a95210f2e
 group	t90AwX	263af6c5631b3562
-group	t90BurlakX	767078ce5e1d3946
+group	t90BurlakX	6f94dbdf1309ecaf
 group	t90X	a1e4922f27e8fd32
-group	t90_1992	a14503438501638c
+group	t90_1992	5a2ddb47609a47da
 group	t90msX	baa790f6e1247627
 group	tos1aTagil	309e7bc2024054cf
 group	type10X	81381fcf1ba586c3
 group	type89SourceX	76f2119702cba4ed
 group	type90X	8aed76931d05f119
-group	type96bX	fdbadf7c869c9d64
+group	type96bX	abc7d0ae202088a7
 group	uk	73ab9c831232bab7
 group	ukraine	8b2f897110514db7
 group	xk2	3b70dfeca6522c98
@@ -1130,7 +1130,7 @@ key	anatomy	m1a2_abrams	1aa55a4b6ccac90a	e337c46abf9e96c5
 key	anatomy	m1a2_abrams_sepv2	91da7a3d0392adfe	a319a2af55a3cf44
 key	anatomy	m1a2_abrams_sepv3	4d511ab2a69b97ec	5f2eab19d1ae424c
 key	anatomy	m1a2_abrams_tusk	51698fa89af781ac	e46f8c375e027842
-key	anatomy	m1a3	c5d84b2cda8ec7c3	4f96a3767f0c520f
+key	anatomy	m1a3	f589070666832288	4f96a3767f0c520f
 key	anatomy	m2a2_bradley	dd2d9d63e93504bc	8f27dc7937e59e49
 key	anatomy	m3a3_bradley	84fd419998d2bc6c	ac306d37e21fb4e7
 key	anatomy	m41_bw	5d5a25f5e8eb5d3c	a879f5a418e3bf8c
@@ -1409,7 +1409,7 @@ key	centering	m1a2_abrams	e3dcbadf90d32bc1	11d2789a0400dbde
 key	centering	m1a2_abrams_sepv2	2548f066894cab44	4112fb0c0be6f05f
 key	centering	m1a2_abrams_sepv3	a7e4e2cae2ebfa5f	27eabe8670d9f9f9
 key	centering	m1a2_abrams_tusk	cee86de438623983	07fa5c280d2ddcf9
-key	centering	m1a3	79a926bfef551034	577d70fa1ff91d37
+key	centering	m1a3	aae9e5b958fc55cf	d5c560c8fa129506
 key	centering	m2a2_bradley	ffff5f1fac4dbf99	08d0b5aa6d7ef1d3
 key	centering	m3a3_bradley	08fb14350d551b12	5f593c708f4aca8f
 key	centering	m41_bw	a41aecbe0c5650dc	1a398f586057e6e1
@@ -1587,7 +1587,7 @@ key	collision	foundry	143758e212d299c3	28880b73030656cb
 key	collision	frontier	ea1ed8a2c5bb863e	1727191539d6d73e
 key	collision	longleaf	9cc6605a1438dc6c	e692bf053c367f6d
 key	collision	mangrove	ca359716b073eea2	b8d58e2f0626ea4d
-key	collision	mars	b3ed88f376da9a3f	ac9831044c9f7937
+key	collision	mars	1e2c787745e9c13f	ac9831044c9f7937
 key	collision	monsoon	4029e3314d5e815c	da8157ffa7ea5f46
 key	collision	moon	95cda05d83fa6a87	4b7c58da04eeaea3
 key	collision	oasis	f99fcd4212733567	43e93ebed92495a3
@@ -1721,7 +1721,7 @@ key	controls	m1a2_abrams	51d9fa02e4111422	e7aaf9964470e986
 key	controls	m1a2_abrams_sepv2	c92c4c933f8de454	b342d3439641467d
 key	controls	m1a2_abrams_sepv3	17c39767708d46f4	5e070234503800c4
 key	controls	m1a2_abrams_tusk	7cfaabcdd0a586a3	b342d3439641467d
-key	controls	m1a3	5ab480d91e1f32b7	e687753ffee116f2
+key	controls	m1a3	733472f59bd1098e	e687753ffee116f2
 key	controls	m2a2_bradley	9afeeb6af27e9965	95306ef24ea2a9cb
 key	controls	m3a3_bradley	d5c9da02746db312	d4d175846e585ac1
 key	controls	m41_bw	dd974ad3c3977eb3	a6e420e25b34d225
@@ -2000,7 +2000,7 @@ key	fills	m1a2_abrams	2194b2ea6acf9b14	766152798a0c918a
 key	fills	m1a2_abrams_sepv2	a8199826b436a612	ffe690f141d8fd79
 key	fills	m1a2_abrams_sepv3	ea2028319d8b7aa3	0f58f4b0563d4548
 key	fills	m1a2_abrams_tusk	628a9736ec98760c	43a82437a0b25da4
-key	fills	m1a3	970fa5a6df7b95e5	1b7e8cedf944f2f2
+key	fills	m1a3	c29340840108a4c1	1b7e8cedf944f2f2
 key	fills	m2a2_bradley	4e43efa4720bbfd5	545118c13fb41290
 key	fills	m3a3_bradley	d91bbc7eb5396fbc	bf751100acf23248
 key	fills	m41_bw	19435c75c012d129	6ba8ce150165d620
@@ -2272,7 +2272,7 @@ key	gate	m1a2_abrams	a7825eb9de0246d4	2a91139109c96403
 key	gate	m1a2_abrams_sepv2	6053a418427ecfc4	b2b23bce225527ff
 key	gate	m1a2_abrams_sepv3	5496861982d330ab	2a91139109c96403
 key	gate	m1a2_abrams_tusk	a040ab011a60b92e	2a91139109c96403
-key	gate	m1a3	467930b53a2f8c86	2a91139109c96403
+key	gate	m1a3	9fa7478290cce183	2a91139109c96403
 key	gate	m2a2_bradley	c5d9f34a668f7785	1d9d38ba7448b19a
 key	gate	m3a3_bradley	b058ddc0dabd86bd	a77b80280edacc59
 key	gate	m41_bw	7160dcfac9db3917	2a91139109c96403
@@ -2547,7 +2547,7 @@ key	gunLines	m1a2_abrams	0b8f3dfbefe25331	e3ab706370a239be
 key	gunLines	m1a2_abrams_sepv2	d530f046bd662261	ea803951dd96e4b8
 key	gunLines	m1a2_abrams_sepv3	4cdeda3d02dc0603	e264f08a7f3154ad
 key	gunLines	m1a2_abrams_tusk	178d61e85a4776b6	27b6dfb54d1a87e6
-key	gunLines	m1a3	703ef1d83138c5b9	581cb7a42fd7f366
+key	gunLines	m1a3	0209cfe82e65f754	8586952ce4319008
 key	gunLines	m2a2_bradley	ccb43e3aafe7c08e	5cf3efeb6331c592
 key	gunLines	m3a3_bradley	6d082443d8f10c56	ea1d5a7ba4be1521
 key	gunLines	m41_bw	14009af9bb73a957	2f94ed7b6327aff4
@@ -2826,7 +2826,7 @@ key	icons	m1a2_abrams	2ae0fd7acfb637c8	6d7e36b14fddb1bf
 key	icons	m1a2_abrams_sepv2	83b74ad2110a209a	ba54ddf1db028a20
 key	icons	m1a2_abrams_sepv3	3ed5d5c2a9fb8eab	9e9d83eb3c15612f
 key	icons	m1a2_abrams_tusk	205523b8934a7433	2ff3e8b9147b2a83
-key	icons	m1a3	cd3a22a5a6ca7dfc	1e0afd0cd0d7b42d
+key	icons	m1a3	88e03b6ff961aa8e	49fb462304258b00
 key	icons	m2a2_bradley	9b0384a88925488d	057074825061cf40
 key	icons	m3a3_bradley	eb851016e13c2b14	28dc1c0bd00be21b
 key	icons	m41_bw	5a65906ee1b61543	1b6043b395eebdd4
@@ -3105,7 +3105,7 @@ key	ledger	m1a2_abrams	87ebe787a26e30d5	40668b52dd86cad3
 key	ledger	m1a2_abrams_sepv2	9a3b88c7688f053e	f2216f8b6f893fa9
 key	ledger	m1a2_abrams_sepv3	10542dfab2465d43	53d69823368874cf
 key	ledger	m1a2_abrams_tusk	bd414d22d72af7a7	ca130423433fd184
-key	ledger	m1a3	9fb5beff6f417ac1	31a01375156520b2
+key	ledger	m1a3	87ba9f64fd76d46b	4aecea84206e95ee
 key	ledger	m2a2_bradley	093b59754f2306e1	c6424ad262c0d720
 key	ledger	m3a3_bradley	ee6f9db753f8fc83	f6c52e804b229b82
 key	ledger	m41_bw	8e3bec50aa587936	d275e4ee7e874a2e
@@ -3384,7 +3384,7 @@ key	marking	m1a2_abrams	4db0ee7ec8925a4c	27fe572bba7b91d3
 key	marking	m1a2_abrams_sepv2	88283271abae3ef2	72dae7d080c35635
 key	marking	m1a2_abrams_sepv3	544db78d968d0621	78181e34b1fc4c80
 key	marking	m1a2_abrams_tusk	b47dd928740650d6	efbba9dcdf8bb113
-key	marking	m1a3	af135b8827a8102b	fd44f451358e61d4
+key	marking	m1a3	5c38cce949705572	fd44f451358e61d4
 key	marking	m2a2_bradley	d1db4d9a1facf664	ac9f31b854bc8074
 key	marking	m3a3_bradley	2dddfa8c068fb222	597bda6d18518d40
 key	marking	m41_bw	9a70bc2355ac18db	74552fea9e634302
@@ -3663,7 +3663,7 @@ key	seats	m1a2_abrams	8f47d32de71dbd2e	04c40d9863afb163
 key	seats	m1a2_abrams_sepv2	a9aeda6e63d01093	bc8c99fdb1cc123e
 key	seats	m1a2_abrams_sepv3	5801fa69243c6164	71dcc8cae5d6227d
 key	seats	m1a2_abrams_tusk	48b485478f60beea	e80c012bc9b05db6
-key	seats	m1a3	83f45946286a5d67	3f1b6d1a67b6b207
+key	seats	m1a3	b38ca615743a2f8f	5255146eb494e0ce
 key	seats	m2a2_bradley	ad93e31e42e69a33	ca94ef9adfa33e21
 key	seats	m3a3_bradley	8d9a7d6a82942759	a1ff6242e721ba24
 key	seats	m41_bw	880715e3240574c7	bab9675c5537aadf
@@ -3942,7 +3942,7 @@ key	spareTrack	m1a2_abrams	26fca19c9d39f587	78d69935a0e0f431
 key	spareTrack	m1a2_abrams_sepv2	8b3eb8995105f5bc	31ca872e5d46edba
 key	spareTrack	m1a2_abrams_sepv3	8b9b69d5fa77f483	a29ca80087c59558
 key	spareTrack	m1a2_abrams_tusk	7910c98d9f84c6ef	9678e7f8280adb1b
-key	spareTrack	m1a3	b91a979c54be2a0b	32b862aa3b3ca277
+key	spareTrack	m1a3	5c5b483e5b180d12	042e2d918667bd86
 key	spareTrack	m2a2_bradley	c76e697e511246b3	d685942590f57162
 key	spareTrack	m3a3_bradley	57bd001c3c8d0f88	89b076213559e04a
 key	spareTrack	m41_bw	7f544c97dde1f770	cabdfbf9f7cc503c
@@ -4120,7 +4120,7 @@ key	trenches	foundry	fed531ea5e8b8576	d2af8181036492d9
 key	trenches	frontier	0cd2a9499636ef6b	60c21f1d7034c699
 key	trenches	longleaf	0f2af3fdb2b241d2	c032580ac215b6e5
 key	trenches	mangrove	0009a1fb6701cf61	c5a4bb7c3e2fbfac
-key	trenches	mars	5dc05f460f87978f	6b401e343f090841
+key	trenches	mars	2ae79709a303f226	6b401e343f090841
 key	trenches	monsoon	455e3d3bb1eb7d1e	165a7854dfe23a00
 key	trenches	moon	cb9fddaf878da41f	2f8c1452849da554
 key	trenches	oasis	a1b9f0a9d28911cf	14722fb89e1cb942
@@ -4153,7 +4153,7 @@ key	wreckPlan	foundry	49e6e1bd29282960	19f700552e567e8f
 key	wreckPlan	frontier	6a75b4b2071eacd3	fffa199239d82318
 key	wreckPlan	longleaf	cb7c0ea1c722deba	19f700552e567e8f
 key	wreckPlan	mangrove	f69de291172dd24f	c3481ef583b8ab8f
-key	wreckPlan	mars	d58bfa4cbd23fb90	09b2965ecb29f58d
+key	wreckPlan	mars	940f8ac544c6f73e	09b2965ecb29f58d
 key	wreckPlan	monsoon	769a99fca725d398	19f700552e567e8f
 key	wreckPlan	moon	1941df2d4b4d0983	19f700552e567e8f
 key	wreckPlan	oasis	901ddb1971a364f9	f50eedf3b7b5ed27
@@ -5764,7 +5764,7 @@ row	geometryLedger	m1a2_abrams	5b1635e24f58bca5
 row	geometryLedger	m1a2_abrams_sepv2	383e5dd1991b7caf
 row	geometryLedger	m1a2_abrams_sepv3	d80abb9edabe7ffd
 row	geometryLedger	m1a2_abrams_tusk	c3aad65a01adddba
-row	geometryLedger	m1a3	73f744ad2c0ea02c
+row	geometryLedger	m1a3	e383da1b2d02a669
 row	geometryLedger	m2a2_bradley	9df9faf46c5ef359
 row	geometryLedger	m3a3_bradley	50b2188bfaa18968
 row	geometryLedger	m41_bw	37a9dc3d483c82d5
@@ -6043,7 +6043,7 @@ row	gunJunction	m1a2_abrams	a0fbd1b6675a6ce5
 row	gunJunction	m1a2_abrams_sepv2	d5e03fdd34d60aa3
 row	gunJunction	m1a2_abrams_sepv3	7829255c42b9b8a7
 row	gunJunction	m1a2_abrams_tusk	702a90ebd48d8ff6
-row	gunJunction	m1a3	1ad7403a192350ed
+row	gunJunction	m1a3	ad293ef7ba4416c0
 row	gunJunction	m2a2_bradley	ffb0dde7de503c8b
 row	gunJunction	m3a3_bradley	5c1de8623a0ece1e
 row	gunJunction	m41_bw	a45fd5de42ec0f3e
@@ -6880,7 +6880,7 @@ row	missionAttachmentSeats	m1a2_abrams	a95bab3a01becd16
 row	missionAttachmentSeats	m1a2_abrams_sepv2	95578b98729b3695
 row	missionAttachmentSeats	m1a2_abrams_sepv3	8161c49efaf32636
 row	missionAttachmentSeats	m1a2_abrams_tusk	8d1caed0fddb84aa
-row	missionAttachmentSeats	m1a3	3f3565e9ba388dce
+row	missionAttachmentSeats	m1a3	7bc2b511c666b9b8
 row	missionAttachmentSeats	m2a2_bradley	936f2976c4361b1a
 row	missionAttachmentSeats	m3a3_bradley	236d593b20c11fe5
 row	missionAttachmentSeats	m41_bw	b336038b054de9e2
@@ -7443,7 +7443,7 @@ row	presentationAnchors	m1a2_abrams	87f0844267d734d0
 row	presentationAnchors	m1a2_abrams_sepv2	0cc1388346bb8ee0
 row	presentationAnchors	m1a2_abrams_sepv3	bd2ef478edd4185a
 row	presentationAnchors	m1a2_abrams_tusk	f4476e825024876c
-row	presentationAnchors	m1a3	1fde2a6e50f22299
+row	presentationAnchors	m1a3	6f41385c02049201
 row	presentationAnchors	m2a2_bradley	9266d081ea2fedca
 row	presentationAnchors	m3a3_bradley	ac3b24c488cc9a88
 row	presentationAnchors	m41_bw	f5532e1a5387a64c
@@ -7722,7 +7722,7 @@ row	presentationProjections	m1a2_abrams	6c12ccdf9aef3725
 row	presentationProjections	m1a2_abrams_sepv2	2872ed045360eb92
 row	presentationProjections	m1a2_abrams_sepv3	219365a71ca4e73d
 row	presentationProjections	m1a2_abrams_tusk	9ec4882077e5f2b9
-row	presentationProjections	m1a3	9969bcf7b2cd0c03
+row	presentationProjections	m1a3	ce2d378b58df7e77
 row	presentationProjections	m2a2_bradley	2e9e3556f8a0e516
 row	presentationProjections	m3a3_bradley	ac25cd2e6fd86be2
 row	presentationProjections	m41_bw	0c7e4761a482f196
@@ -8280,7 +8280,7 @@ row	spareTrackLedger	m1a2_abrams	b2e5852ec2444cdd
 row	spareTrackLedger	m1a2_abrams_sepv2	eea1eafa5cab7409
 row	spareTrackLedger	m1a2_abrams_sepv3	087be7a67baf7b37
 row	spareTrackLedger	m1a2_abrams_tusk	0a6eb9027e64c418
-row	spareTrackLedger	m1a3	6f0bd1dc097cc577
+row	spareTrackLedger	m1a3	d4936759446c5428
 row	spareTrackLedger	m2a2_bradley	32e4b93d9a406541
 row	spareTrackLedger	m3a3_bradley	7ea7ec99bf7e260c
 row	spareTrackLedger	m41_bw	a5e4fbe1eb46dd0e
@@ -9148,7 +9148,7 @@ row	tankAssets	m1a2_abrams	42c43d76238955dc
 row	tankAssets	m1a2_abrams_sepv2	d47de9616092185a
 row	tankAssets	m1a2_abrams_sepv3	66cafb364dce27cf
 row	tankAssets	m1a2_abrams_tusk	456a132aecaa9ab1
-row	tankAssets	m1a3	d1cf51b49735c345
+row	tankAssets	m1a3	1c877eb00c218e7b
 row	tankAssets	m2a2_bradley	b2caa8e0b883593e
 row	tankAssets	m3a3_bradley	fae8fd001cb53373
 row	tankAssets	m41_bw	08443907fe0307d5

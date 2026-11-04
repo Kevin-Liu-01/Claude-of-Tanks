@@ -1910,7 +1910,7 @@
    "openViews": 0,
    "insideOutPx": 56,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4382,
+   "netSeeThroughPx": 0,
    "tris": 121819,
    "frame": [
     0,
@@ -1967,6 +1967,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 4256
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the owner removed the M1E3 field net on 2026-11-02 (remove the ghillie on the m1e3), so it declares no netting",
+     "by": "kevinliu",
+     "date": "2026-11-03",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4382
      }
     }
    ]
