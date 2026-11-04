@@ -896,6 +896,18 @@ const FONT_RANGE_TAG = `600 11.5px ${FONT_NUM}`;
 const FONT_AIM_WARNING = `700 13px ${FONT_COND}`;
 const AIM_WARNING_TRACK_PX = 13 * 0.08;
 const FONT_RACK_OVERFLOW = `700 11px ${FONT_NUM}`;
+/**
+ * Glacis's figures stand 56/1000 of an em apart and its colon 56 from either neighbour (Plex Mono's about 200): a readout
+ * set in them opens its tracking by this share of its size (blind critics, glacis-269: "14:00" and "9:00" fused into one
+ * blob, "×8.0" touched, "24" crowded). CSS and the canvas both add it after every glyph, the last one included.
+ */
+const GLACIS_NUM_TRACK = 0.1;
+const glacisTrackPx = (sizePx: number): string => `${(sizePx * GLACIS_NUM_TRACK).toFixed(2)}px`;
+const TRACK_COUNTDOWN = glacisTrackPx(COUNTDOWN_SIZE);
+const TRACK_SCOPE_ZOOM = glacisTrackPx(16);
+const TRACK_SCOPE_COUNT = glacisTrackPx(13.5);
+const TRACK_RANGE_TAG = glacisTrackPx(11.5);
+const TRACK_RACK_OVERFLOW = glacisTrackPx(11);
 /** (UI-LOCKDOWN A) the sight's text runs, DOM over its canvas (canvasText.ts): five hit labels and their crit words
  *  (2i, 2i + 1), then the readouts. */
 const SIGHT_TEXT_HIT = 0;
@@ -1594,8 +1606,9 @@ const HUD_CSS = `
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
 .cot-top .tm-label:empty{display:none;}
 /* (longhands, not the font shorthand: a shorthand here resets .num's tabular figures, which Plex Mono never showed and
-   Glacis's proportional figures do) */
-.cot-top .tm{font-family:${FONT_NUM};font-size:18px;line-height:1;font-weight:500;color:var(--ink-1);letter-spacing:.02em;}
+   Glacis's proportional figures do; Glacis's tracking, GLACIS_NUM_TRACK, indented as far again so the time stays centred) */
+.cot-top .tm{font-family:${FONT_NUM};font-size:18px;line-height:1;font-weight:500;color:var(--ink-1);
+  letter-spacing:${GLACIS_NUM_TRACK}em;text-indent:${GLACIS_NUM_TRACK}em;}
 /* (DECISIONS 2026-11-03) the HUD's counting readouts set in Glacis: those that tick in place keep .num's tabular figures,
    Glacis's tnum (one 560-unit advance: 11:11 sets as wide as 88:88), in place of .num's Plex Mono. .num's family is its
    token, so these readouts point the token at Glacis on themselves alone (their labels keep the mono face) */
@@ -1623,10 +1636,10 @@ const HUD_CSS = `
 .cot-net-unit{min-width:42px;display:grid;grid-template-columns:auto auto;align-items:baseline;
   justify-content:center;column-gap:var(--s1);color:var(--ink-1);}
 .cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:var(--s2);}
-.cot-net .metric{font-size:var(--battle-fs-11);font-weight:700;line-height:1;letter-spacing:.02em;}
+.cot-net .metric{font-size:var(--battle-fs-11);font-weight:700;line-height:1;letter-spacing:${GLACIS_NUM_TRACK}em;}
 .cot-net .label{font-size:var(--battle-fs-11);font-weight:700;line-height:1;letter-spacing:.03em;color:var(--ink-2);}
 .cot-net-unit.good .metric{color:var(--ok)}.cot-net-unit.warn .metric{color:var(--warn)}
-.cot-net-unit.bad .metric{color:var(--danger)}.cot-net-unit.local .metric{color:var(--ink-2);font-size:var(--battle-fs-11);letter-spacing:.01em}
+.cot-net-unit.bad .metric{color:var(--danger)}.cot-net-unit.local .metric{color:var(--ink-2);font-size:var(--battle-fs-11)}
 body.cot-debug-hud .cot-net{display:none!important;}
 /* (249, the owner's performance push) The plates are their own layout and paint roots: a count, a name or a row that
    changes relayouts and repaints its plate, never the HUD around it. Paint containment only where nothing draws past
@@ -2064,7 +2077,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
   font-family:${FONT_NUM};
-  color:var(--ink-1);letter-spacing:.02em;z-index:4;}
+  color:var(--ink-1);letter-spacing:${GLACIS_NUM_TRACK}em;margin-right:-${GLACIS_NUM_TRACK}em;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
@@ -2075,7 +2088,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
   letter-spacing:0;white-space:nowrap;z-index:4;}
 /* (the codes at the face's own tracking, as every label: tightened, APFSDS's letters touched, gauntlet r7) */
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
-.cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;}
+.cot-shell.wide .cnt{right:3px;font-size:var(--battle-fs-12);letter-spacing:0;margin-right:0;}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
   background:var(--battle-veil);pointer-events:none;z-index:3;}
 .cot-shell .tip{display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);
@@ -2112,7 +2125,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 /* (its count in the corner every count of the rack and the controls takes, the top right: under the glyph at the bottom
    right it was the one count off that corner, gauntlet r18) */
 .cot-con .cnt{position:absolute;top:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
-  font-family:${FONT_NUM};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
+  font-family:${FONT_NUM};letter-spacing:${GLACIS_NUM_TRACK}em;margin-right:-${GLACIS_NUM_TRACK}em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(var(--battle-veil) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
 /* the consumable the moment calls for (the direction's .tile.sugg): a repair kit while a module is down, a medkit while
@@ -4557,6 +4570,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const valueRadius = frame.radius + paint.thickness + (indicator.numeric ? 14 : 16);
     ctx.save();
     ctx.font = `700 ${fontPx}px ${indicator.numeric ? FONT_NUM : FONT_COND}`;
+    ctx.letterSpacing = indicator.numeric ? glacisTrackPx(fontPx) : '0px';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'miter';
@@ -4580,6 +4594,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const critRadius = valueRadius + fontPx + 5;
       const critFontPx = Math.max(sightWordFloorPx(), Math.round(fontPx * 0.55)); // the 11 px floor (13 in Chinese)
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
+      ctx.letterSpacing = '0px';
       // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
       const crit = t('hud.dmg.crit');
       const mark = critFontPx * 0.32;
@@ -5040,10 +5055,12 @@ export function initHud(bus: EventBus): HudRuntime {
     if (magazine.overflow > 0) {
       ctx.fillStyle = shellInk;
       ctx.font = FONT_RACK_OVERFLOW;
+      ctx.letterSpacing = TRACK_RACK_OVERFLOW;
       ctx.textAlign = 'left';
       // 3 px past the turned outer shell's contour (the capture's rack gap)
       sightText.placeAs(SIGHT_TEXT_OVERFLOW, `+${magazine.overflow}`, draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3,
         y0 + shellH, ctx);
+      ctx.letterSpacing = '0px';
       ctx.textAlign = 'center';
     }
     if (magazine.dry) paintDrySlash(draw.cx, y0 + AUTOLOADER_HUD_ARC_DEPTH * 0.5 + shellH * 0.5, totalW * 0.5 + 3, shellH * 0.5 + 2);
@@ -5218,13 +5235,15 @@ export function initHud(bus: EventBus): HudRuntime {
 
   let countdownMeasured = '';
   let countdownMeasuredW = 0;
-  /** The countdown's width: its figures Glacis's tnum advances, from the outlines and once per text (the canvas measures
-   *  proportional figures); a word (SWITCHING) sets in the shell face, which the canvas measures. */
+  /** The countdown's width: its figures Glacis's tnum advances and their tracking after each, from the outlines and once
+   *  per text (the canvas measures proportional figures); a word (SWITCHING) sets in the shell face, which the canvas
+   *  measures. */
   function reloadCountdownWidth(text: string): number {
     if (!glacisSetsNumerals(text)) return ctx.measureText(text).width;
     if (text !== countdownMeasured) {
       countdownMeasured = text;
-      countdownMeasuredW = glacisWidth(text, { size: COUNTDOWN_SIZE, tabular: true });
+      countdownMeasuredW = glacisWidth(text, { size: COUNTDOWN_SIZE, tabular: true })
+        + text.length * COUNTDOWN_SIZE * GLACIS_NUM_TRACK;
     }
     return countdownMeasuredW;
   }
@@ -5300,8 +5319,10 @@ export function initHud(bus: EventBus): HudRuntime {
     noteSightInk(x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT);
     ctx.textAlign = 'left';
     ctx.font = FONT_COUNTDOWN;
+    if (glacisSetsNumerals(text)) ctx.letterSpacing = TRACK_COUNTDOWN;
     sightText.placeAs(SIGHT_TEXT_COUNTDOWN, text, x, y, ctx);
     ctx.font = FONT_COUNTDOWN_UNIT;
+    ctx.letterSpacing = '0px';
     sightText.placeAs(SIGHT_TEXT_COUNTDOWN_UNIT, unit, x + textW, y, ctx);
     ctx.textAlign = 'center';
   }
@@ -5333,8 +5354,10 @@ export function initHud(bus: EventBus): HudRuntime {
     const line = sniperReadoutLine(draw);
     row.lineW = line.round + line.countW + line.typeW;
     ctx.font = FONT_SCOPE_ZOOM;
+    ctx.letterSpacing = TRACK_SCOPE_ZOOM;
     // the plate's rules reach 32 px past its text, and their 1.2 px stroke 0.6 px past their ends
     row.zoomW = ctx.measureText(sniperZoomText(view)).width + 24 + 40 + 1.2;
+    ctx.letterSpacing = '0px';
     row.chipW = draw.warningY ? draw.warningW : 0;
     // The line stays centred under the marker. How far each part's ink reaches over and under the row's baseline: the
     // line's digits 10 and 1.1 (the compact stack's struck round, leading the line, 14.7 and 4.7 with its strike's dark
@@ -5616,8 +5639,10 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     line.type = shell.type || '';
     ctx.font = FONT_SCOPE_COUNT;
+    ctx.letterSpacing = TRACK_SCOPE_COUNT;
     line.countW = ctx.measureText(line.label).width;
     ctx.font = FONT_SCOPE_TYPE;
+    ctx.letterSpacing = '0px';
     line.typeW = ctx.measureText(line.type).width;
     // Out of ammo on the compact stack, the struck round leads the line: [round] 0 APFSDS.
     line.round = draw.dry && !draw.magazine && compactSniperStack(draw) ? COMPACT_DRY_ROUND_W + 8 : 0;
@@ -5643,7 +5668,9 @@ export function initHud(bus: EventBus): HudRuntime {
     tag.x0 = draw.cx + Math.max(offset, rackClear, HIT_SHARD_CLEAR) + 4;
     tag.y = draw.cy + offset + 12;
     ctx.font = FONT_RANGE_TAG;
+    ctx.letterSpacing = TRACK_RANGE_TAG;
     tag.x1 = tag.x0 + ctx.measureText(tag.text).width;
+    ctx.letterSpacing = '0px';
     tag.y0 = tag.y - 11.5 * 0.74;
     tag.y1 = tag.y + 11.5 * 0.08;
     draw.tagTopY = Infinity;
@@ -5667,9 +5694,11 @@ export function initHud(bus: EventBus): HudRuntime {
     if (round) paintStruckRound(x - round, y - COMPACT_DRY_ROUND_H + 2, COMPACT_DRY_ROUND_W, COMPACT_DRY_ROUND_H);
     ctx.textAlign = 'left';
     ctx.font = FONT_SCOPE_COUNT;
+    ctx.letterSpacing = TRACK_SCOPE_COUNT;
     ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
     sightText.placeAs(SIGHT_TEXT_AMMO_COUNT, label, x, y, ctx);
     ctx.font = FONT_SCOPE_TYPE;
+    ctx.letterSpacing = '0px';
     ctx.fillStyle = 'rgba(159,176,191,0.9)';
     sightText.placeAs(SIGHT_TEXT_AMMO_TYPE, type, x + countW, y, ctx);
     ctx.textAlign = 'center';
@@ -5681,7 +5710,9 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(208,221,232,0.8)';
     ctx.font = FONT_RANGE_TAG;
+    ctx.letterSpacing = TRACK_RANGE_TAG;
     sightText.placeAs(SIGHT_TEXT_RANGE, tag.text, tag.x0, tag.y, ctx);
+    ctx.letterSpacing = '0px';
     ctx.textAlign = 'center';
   }
 
@@ -5693,9 +5724,11 @@ export function initHud(bus: EventBus): HudRuntime {
     // (in the ring's own green, its rules a translucent one: a paler green of its own beside the ring read as two greens,
     // gauntlet r4)
     ctx.font = FONT_SCOPE_ZOOM;
+    ctx.letterSpacing = TRACK_SCOPE_ZOOM;
     ctx.fillStyle = PEN_GREEN;
     sightText.placeAs(SIGHT_TEXT_ZOOM, text, x, y, ctx);
     const halfWidth = ctx.measureText(text).width / 2 + 12;
+    ctx.letterSpacing = '0px';
     ctx.strokeStyle = ZOOM_RULE_INK;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
