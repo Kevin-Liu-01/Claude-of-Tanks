@@ -6,9 +6,9 @@ import { VOICE_LINES } from './voiceLines.ts';
 import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
+import { impactAssetIds } from './impactMaterials.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR } from './weaponAudio.ts';
-import { impactAssetIds } from './impactMaterials.ts';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -47,9 +47,9 @@ for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MOD
 }
 // the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
 for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
+for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 // every impact by material, near miss, spall and debris the engine resolves (impactMaterials.ts, impact-materials-269)
 for (const id of impactAssetIds()) referenced.add(id);
-for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
   'radio_key_in', 'radio_key_out', 'radio_static_loop', 'strike_track', 'graze_earth', 'ricochet_whine', 'spall_engine',

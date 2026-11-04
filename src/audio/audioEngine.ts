@@ -2864,11 +2864,11 @@ export function createAudio({
     for (const id of MODE_SET) ids.add(id);
     // Every report bank: any calibre may appear (roof guns, mixed rosters, network joins).
     for (const id of Object.values(WEAPON_CLOSE)) ids.add(id);
+    // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
+    for (const id of propSoundAssets()) ids.add(id);
     // Every impact by material, the near misses, the spall and the debris (impactMaterials.ts): any round may strike any
     // material from the first shot.
     for (const id of impactAssetIds()) ids.add(id);
-    // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
-    for (const id of propSoundAssets()) ids.add(id);
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
     if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
