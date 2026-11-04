@@ -3224,10 +3224,13 @@ function bradleyTurretRing(bottomHalfW: number, halfW: number, edgeHalfW: number
 }
 
 // One cheek of the beak: a welded wedge from the wall face forward to the beak edge; its inner face is the gun bay's.
+// Its floor stays level (bottomY) to the stowage bin's nose (z 0.80) before it rises to the beak: rising from 0.72, the
+// right cheek's underside roofed a 2-4 cm slot over the bin's nose (roof-pocket census, 268 round 4: 200 cm2).
+const BRADLEY_CHEEK_KNEE_Z = 0.80;
 function bradleyTurretCheek(side: number): THREE.BufferGeometry {
-  const T = BRADLEY_TURRET;
+  const T = BRADLEY_TURRET, knee = BRADLEY_CHEEK_KNEE_Z;
   const inner = side > 0 ? T.bayRightX : -T.bayLeftX, inset = side > 0 ? T.plusInset : 0;
-  const lower = (z: number) => z <= 0.72 ? T.bottomY : T.bottomY + (T.beakBottomY - T.bottomY) * (z - 0.72) / (T.beakZ - 0.72);
+  const lower = (z: number) => z <= knee ? T.bottomY : T.bottomY + (T.beakBottomY - T.bottomY) * (z - knee) / (T.beakZ - knee);
   const upper = (z: number) => z <= T.faceZ ? T.roofY : T.roofY - (T.roofY - T.beakTopY) * (z - T.faceZ) / (T.beakZ - T.faceZ);
   const outer = (z: number) => (z <= 0.66 ? T.halfW : T.halfW - (T.halfW - T.beakHalfW) * (z - 0.66) / (T.beakZ - 0.66)) - inset;
   const station = (z: number) => {
@@ -3236,7 +3239,7 @@ function bradleyTurretCheek(side: number): THREE.BufferGeometry {
       [xo - 0.02, yb + 0.91 * h], [xo - 0.08, yt], [inner, yt]];
     return { z, ring: side > 0 ? right : right.map(([x, y]) => [-x, y] as [number, number]).reverse() };
   };
-  return sectionSolid([0.62, 0.72, 0.94, T.beakZ].map(station), { sideQuadDiagonal: 'convex' });
+  return sectionSolid([0.62, 0.72, knee, 0.94, T.beakZ].map(station), { sideQuadDiagonal: 'convex' });
 }
 
 // ODS appliqué bolted on a cheek's upper front plate: 35 mm proud on the plate's own plane, two rows of three bolts.
@@ -3294,14 +3297,16 @@ function addBradleyTurretShell(P: Modern3BuilderPort): void {
     P.add('turret', bradleyTurretCheek(side));
     P.add('turret', bradleyTurretCheekPlate(side).plate);
   }
-  // gun-bay floor and roof lip between the cheeks, both outside the mantlet's swept envelope
+  // gun-bay floor between the cheeks, outside the mantlet's swept envelope; the bay stays open above the mantlet, as the
+  // source's is (268 round 4: the 14 cm roof lip that stood over it here, which the source does not carry, roofed a 10 cm
+  // slot over the mantlet's sweep: roof-pocket census, 432 cm2)
   const bayX = (T.bayLeftX + T.bayRightX) / 2, bayW = T.bayRightX - T.bayLeftX;
   P.add('turret', box(bayW, 0.10, 0.30), bayX, T.bottomY + 0.05, 0.84);
-  P.add('turret', box(bayW, 0.05, 0.14), bayX, T.roofY - 0.025, 0.76);
   P.add('turretDark', box(0.06, 0.05, 0.08), bayX - 0.20, 0.52, 1.03);                     // M240C coax port
   // round 3: the floor under the right wall stays level (0.12) where the shell's floor rises aft to the rear's 0.24,
-  // closing the pocket over the collar's rim there (roof-pocket census)
-  P.add('turret', box(0.34, 0.12, 0.32), -0.77, T.bottomY + 0.06, -0.56);
+  // closing the pocket over the collar's rim there (roof-pocket census); round 4: in to x -0.44, over the collar's rim
+  // (from -0.60 it left a 2 cm slot between its inner face and the collar: 68 cm2)
+  P.add('turret', box(0.50, 0.12, 0.32), -0.69, T.bottomY + 0.06, -0.56);
   P.turretG.userData.bradleyA2TurretClosureReceipt = Object.freeze({
     revision: 'source-turret-r3',
     roofY: T.roofY,

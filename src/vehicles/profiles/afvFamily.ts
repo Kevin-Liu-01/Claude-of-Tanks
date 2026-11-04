@@ -885,6 +885,11 @@ function addM3A3Turret(P: AfvBuilderPort): void {
     P.add('turret', box(0.24, 0.28, 0.46), 0.76, 0.53, -0.18);
     P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), 0.88, 0.57, -0.18);
     P.add('turret', box(0.11, 0.33, 0.64), 0.91, 0.60, -0.20, -0.05, 0, 0);
+    // 268 round 4 (roof-pocket census, 48 cm2): the bracket's forward web, brought down onto the cheek's outer slope and
+    // in against the side cassette; the bracket ended 15 cm over the cheek, roofing a slot between root and cassette.
+    P.add('turret', orientedSlab(
+      [0.855, 0.08, 0.125], [0.955, 0.29, 0.125], [0.955, 0.29, -0.11], [0.855, 0.08, -0.11],
+      [0.855, 0.46, 0.125], [0.955, 0.46, 0.125], [0.955, 0.46, -0.11], [0.855, 0.46, -0.11]));
     // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the box is an open pack, four walls and a back
     // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar around a dark liner and a
     // sealed terminal 6 cm behind the face, 152 mm bore (the dark face and two painted discs read as a closed lid).
