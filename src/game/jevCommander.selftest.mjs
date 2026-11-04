@@ -4,7 +4,7 @@ import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, SIM_DT } from '../sim/movement.ts';
-import { createAI, mulberry32 } from './ai.ts';
+import { applyPendingBotNews, createAI, mulberry32 } from './ai.ts';
 import { buildJevTeamState, createJevCommander, createJevFetchTransport } from './jevCommander.ts';
 import { buildJevQuestions, jevLocalThreat, JEV_FOCUS_NONE, JEV_TARGET_NONE, validateJevRequest, validateJevState } from './jevProtocol.ts';
 
@@ -51,10 +51,10 @@ function wire(tanks, seedBase = 41) {
   return tanks;
 }
 
-/** The controllers take the orders delivered since their last update (2026-11-02 audit M7: news between ticks waits
- * for the bot's next update), as the step after the commander's would. */
+/** The controllers take the orders the commander delivered, as the solo step does before any controller thinks
+ * (2026-11-02 audit M7: orders are queued; the drivers' flush, ai.ts applyPendingBotNews, applies them). */
 function takeOrders(f) {
-  for (const tank of f.tanks) if (tank.aiCtl) tank.aiCtl.update(SIM_DT, f.view.timeS);
+  applyPendingBotNews(f.tanks);
 }
 
 /** A 3+human v 3 fixture on a zone map: the enemy team is spotted except one hull the spotting sim hides. */
