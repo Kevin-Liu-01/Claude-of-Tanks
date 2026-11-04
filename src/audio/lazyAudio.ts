@@ -16,6 +16,10 @@ import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { AudioLandmark, AudioMixer, AudioStructureMakeup, AudioTerrainProbe, AudioWorld } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
+import {
+  audioBattleResult, copyAudioBattleMode, createAudioBattleMode, stepAudioBattleMode,
+  type AudioBattleEvent, type AudioBattleMode,
+} from './battleMode.ts';
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
@@ -24,6 +28,8 @@ interface AudioMixerModule {
   prepareInterfaceSounds?(): Promise<void>;
   createAudio(options: {
     context: AudioContext | null;
+    /** The facade's device: a mixer built before the first gesture adopts it at resume (never a second context). */
+    getContext?: () => AudioContext | null;
     preparedBuffers?: unknown;
     getMapId?: () => string | null;
     getGameMode?: () => string | null;
@@ -35,6 +41,7 @@ interface AudioMixerModule {
     getTeamRoster?: () => readonly RuntimeValue[] | null;
     getVehicleSpec?: (specId: string) => RuntimeValue;
     initialPhase?: string;
+    initialMode?: Readonly<AudioBattleMode>;
   }): AudioMixer;
 }
 
@@ -109,7 +116,9 @@ export function createLazyAudio({
   let bus: EventBus | null = null;
   let stopPhaseTracking: (() => void) | null = null;
   let stopVolumeTracking: (() => void) | null = null;
-  let latestPhase = 'garage';
+  // The battle mode as the bus moves it while no mixer exists (battleMode.ts, the mixer's own owner): the mixer created
+  // after a battle edge, its rollout, a pause or a kill-cam starts where they left it (2026-11-02 audit F11).
+  const mode = createAudioBattleMode();
   let loadingRequested = false;
   let ambientRequested = false;
   let muted = false;
@@ -118,10 +127,64 @@ export function createLazyAudio({
   let loadingRevision = 0;
   let gestureBound = false;
 
+  // ---- the device's lifecycle (2026-11-02 audit F11). The browser can stop the context under the game: suspended
+  // (a backgrounded tab, an autoplay policy) or, on WebKit, 'interrupted' (a phone call, another app's audio). Either
+  // is resumed by the next gesture anywhere: the unlock re-arms whenever the device stops, and steps aside while it
+  // runs. A page that becomes visible again also tries at once, where the browser allows it without a gesture.
+  const audible = (): boolean => !muted && masterVolume > 0;
+  const halted = (): boolean => {
+    const state: string | undefined = context?.state;
+    return state === 'suspended' || state === 'interrupted';
+  };
+  const GESTURES = ['pointerdown', 'pointerup', 'keydown'] as const;
+  let gestureArmed = false;
+  const disarmGesture = (): void => {
+    if (!gestureArmed) return;
+    gestureArmed = false;
+    for (const type of GESTURES) document.removeEventListener(type, onGesture, true);
+  };
+  const armGesture = (): void => {
+    if (gestureArmed || typeof document === 'undefined') return;
+    gestureArmed = true;
+    for (const type of GESTURES) document.addEventListener(type, onGesture, true);
+  };
+  // Opening the device is synchronous and can take hundreds of milliseconds (click-perf-244: 585 ms of a first Garage
+  // press's handlers). Where activation is verified the press paints first and the device opens one frame later,
+  // inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup does. Engines
+  // without the activation API keep the in-gesture unlock, and so does a device already open: resuming it is cheap,
+  // and WebKit resumes an interrupted context only inside the gesture.
+  // A muted or silent game leaves the device alone and keeps the unlock: the gesture after it is heard again resumes.
+  function onGesture(): void {
+    if (!audible()) return;
+    const sticky = hasStickyActivation();
+    const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
+    if (!sticky && activationKnown) return;
+    disarmGesture();
+    if (context || !sticky) { resume(); return; }
+    void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
+  }
+  const onDeviceState = (): void => { if (halted()) armGesture(); };
+  // Heard again (unmuted, or the master raised from zero): a device the browser stopped meanwhile resumes now (inside
+  // the unmute press, the usual case) or on the next gesture, and one never opened waits for the next gesture.
+  const onAudible = (): void => {
+    if (!gestureBound) return; // the first bind arms the unlock itself
+    if (context && halted()) resume();
+    else if (!context || !real) armGesture();
+  };
+  const onVisibility = (): void => {
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !halted()) return;
+    armGesture();
+    if (!muted && masterVolume > 0) resume();
+  };
+
   const unlockContext = (): AudioContext | null => {
-    if (!context) context = createContext();
+    if (!context) {
+      context = createContext();
+      if (context && typeof context.addEventListener === 'function') context.addEventListener('statechange', onDeviceState);
+    }
     if (!context) return null;
-    if (context.state === 'suspended') void context.resume().catch(() => {});
+    // a refused resume (no activation yet, the call still holding the device) leaves the next gesture to try again
+    if (halted()) void context.resume().catch(() => { if (halted()) armGesture(); });
     return context;
   };
 
@@ -136,7 +199,9 @@ export function createLazyAudio({
 
   const latchMasterVolume = (value: number): void => {
     if (!Number.isFinite(value)) return;
+    const was = audible();
     masterVolume = Math.max(0, Math.min(1, value));
+    if (!was && audible()) onAudible();
   };
 
   const settleReal = (created: AudioMixer): AudioMixer => {
@@ -177,7 +242,9 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ ...world, context, preparedBuffers, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({
+          ...world, context, getContext: () => context, preparedBuffers, initialPhase: mode.phase, initialMode: copyAudioBattleMode(mode),
+        }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -239,34 +306,33 @@ export function createLazyAudio({
             && typeof event.master === 'number') latchMasterVolume(event.master);
         // The bound mixer independently owns the canonical full channel event.
       });
-      // The mixer may arrive after the battle phase edge. Carry that state
-      // across the deferred transfer without re-emitting a global event.
-      stopPhaseTracking = nextBus.on('phase:change', (event) => {
-        if (!event || typeof event !== 'object' || !('phase' in event)
-            || typeof event.phase !== 'string') return;
-        latestPhase = event.phase;
-        if (latestPhase !== 'battle') ambientRequested = false;
+      // The mixer may arrive after the battle phase edge, its rollout or an overlay. Carry that state across the
+      // deferred transfer without re-emitting a global event.
+      const track = (event: string, fact: (payload: Record<string, unknown>) => AudioBattleEvent | null) => nextBus.on(event, (payload) => {
+        const next = fact(payload && typeof payload === 'object' ? payload as Record<string, unknown> : {});
+        if (!next || !stepAudioBattleMode(mode, next)) return;
+        // the battle's world is wanted per battle (the mixer's rule): any phase edge ends the intent
+        if (next.kind === 'phase') ambientRequested = false;
       });
+      const stops = [
+        track('phase:change', (e) => (typeof e.phase === 'string' ? { kind: 'phase', phase: e.phase } : null)),
+        track('battle:rollout', (e) => ({ kind: 'rollout', late: !!e.late })),
+        track('battle:ended', (e) => ({ kind: 'ended', result: audioBattleResult(e.result) })),
+        track('battle:presented', (e) => ({ kind: 'presented', result: audioBattleResult(e.result) })),
+        track('ui:pause', (e) => ({ kind: 'pause', on: !!e.on })),
+        track('killcam:begin', () => ({ kind: 'killcam', on: true })),
+        track('killcam:done', () => ({ kind: 'killcam', on: false })),
+      ];
+      stopPhaseTracking = () => { for (const stop of stops) stop(); };
       if (real) real.bindBus(nextBus);
       // The garage has sound of its own (its hangar, its controls): the first
       // gesture anywhere unlocks the context inside the gesture and loads the
       // mixer, so neither waits for a first battle.
       if (!gestureBound && typeof document !== 'undefined') {
         gestureBound = true;
-        // Opening the device is synchronous and can take hundreds of milliseconds (click-perf-244: 585 ms of a first
-        // Garage press's handlers). Where activation is verified the press paints first and the device opens one frame
-        // later, inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup
-        // does. Engines without the activation API keep the in-gesture unlock.
-        const gestures = ['pointerdown', 'pointerup', 'keydown'] as const;
-        const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
-        const onGesture = (): void => {
-          const sticky = hasStickyActivation();
-          if (!sticky && activationKnown) return;
-          for (const type of gestures) document.removeEventListener(type, onGesture, true);
-          if (!sticky) { if (!muted && masterVolume > 0) resume(); return; }
-          void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
-        };
-        for (const type of gestures) document.addEventListener(type, onGesture, true);
+        // the first gesture opens the device and loads the mixer (unless both already happened)
+        if (!context || !real || halted()) armGesture();
+        document.addEventListener('visibilitychange', onVisibility);
         // Boot idle after the first frame (AU.07, 2026-10-13): the mixer module and the interface's press sounds, decoded
         // with no device, so the first press anywhere is neither silent nor late.
         void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));
@@ -280,8 +346,10 @@ export function createLazyAudio({
       real?.setMasterVolume(masterVolume);
     },
     mute(on: boolean) {
+      const was = audible();
       muted = !!on;
       real?.mute(muted);
+      if (!was && audible()) onAudible();
     },
     playGarageSting() {
       if (real) real.playGarageSting();

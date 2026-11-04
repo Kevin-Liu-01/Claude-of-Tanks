@@ -34,8 +34,15 @@ LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 as `audio:caption`; the renderer reads text from `captionScript.generated.ts`
 (both tables from `tools/audio/build-captions.mjs`, run after any crew-line edit).
 `lazyAudio.ts` owns gesture-time context creation and mixer transfer (it makes
-no sound of its own); `listenerPoseRuntime.ts` owns
-the hybrid camera/vehicle listener. The two `*.generated.ts` manifests are
+no sound of its own) and the device's lifecycle (an interrupted or suspended
+context re-arms the gesture unlock; a muted or silent game's gesture keeps it,
+and unmuting resumes a stopped device); `listenerPoseRuntime.ts` owns
+the hybrid camera/vehicle listener. `battleMode.ts` declares the engine's
+battle mode (garage, loading, live, over, presented, with the pause and
+kill-cam overlays) and its one transition, `stepAudioBattleMode`, shared by
+the engine and the facade: route a new battle fact through it, take it
+ungated (it is state, not a cue), and reset a per-battle field only in the
+engine's `resetBattleFields()` (2026-11-02 audit F11). The two `*.generated.ts` manifests are
 written by `tools/audio/build-sfx.mjs` and `tools/audio/build-voices.mjs`.
 
 ## Patterns to follow / invariants
@@ -74,7 +81,10 @@ PCM and `tools/audio-probe.mjs` for the canonical event and bus matrix.
 Camera direction and occupied-tank position form a hybrid listener;
 screen-right is `forward × up` (a three.js camera looking along +Z has world
 −X on its right). Network events may arrive late or duplicated, so
-presentation must key/dedupe them. Scope is an interior/headset perspective,
+presentation must key/dedupe them (the engine latches a death per life and a
+presentation per battle). A looping cue the engine wants goes through
+`loopRig` (it starts once its recording decodes); a pin names its owner
+group (`library.pin(ids, replace, group)`). Scope is an interior/headset perspective,
 never a mute. Keep the occupied rig regardless of distance, rank remote rigs
 by proximity under the LOD budget, and tear all world loops down when leaving
 battle. Node selftests run under type stripping: no enums or parameter

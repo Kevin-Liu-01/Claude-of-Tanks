@@ -1525,7 +1525,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/propSounds.selftest.mjs',
     'src/audio/destructionSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
+    // 2026-11-02 audit F11: failed assets retried after a backoff, owned pins (the battle warm replaces its own only)
+    'src/audio/assetLibraryRetry.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
+    // 2026-11-02 audit F11: an interrupted transmission takes its scheduled release click, crackle and static swell with it
+    'src/audio/crewRadioInterrupt.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',
@@ -1538,6 +1542,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/countdownAudio.selftest.mjs',
     // 2026-10-14: every vehicle's countdown bank is the one its rig plays (the warm resolves each hull from its whole spec)
     'src/audio/presenceFamilies.selftest.mjs',
+    // 2026-11-02 audit F11: the engine's battle mode is one state with one transition function (next round, duplicate deaths
+    // and presentations, facts before the graph, the lazy carry)
+    'src/audio/battleMode.selftest.mjs',
+    // 2026-11-02 audit F11: under the battle loader only its bed (the director's scene goes with the teardown's loops; the
+    // battle's ambience intent is per battle)
+    'src/audio/ambienceTeardown.selftest.mjs',
+    // 2026-11-02 audit F11: wanted loops (loader, fire alarm, cook-off, heartbeat) start once decoded, never after their battle
+    'src/audio/wantedLoops.selftest.mjs',
+    // 2026-11-02 audit F11: delayed captions on the audio clock and per battle, the gunship start-up disarmed
+    'src/audio/audioLatches.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
     // 2026-10-10 (physics lane): wire 5's WRECK_BODY group — a wreck's turret body on the rows.
@@ -2701,6 +2715,11 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
+    // 2026-11-02 audit F11: the audio device's lifecycle (an interruption re-arms the gesture unlock, visibility retries,
+    // 'interrupted' resumes like 'suspended')
+    'src/audio/audioDevice.selftest.mjs',
+    // 2026-11-02 audit F11: one device across the facade and a mixer built before any gesture; a rebound mixer listens once
+    'src/audio/audioHandoff.selftest.mjs',
     'src/vehicles/profiles/centurionFamily.selftest.mjs',
     'src/vehicles/profiles/centurionGunClearance.selftest.mjs',
     'src/vehicles/profiles/pt91mPendekarFidelity.selftest.mjs',

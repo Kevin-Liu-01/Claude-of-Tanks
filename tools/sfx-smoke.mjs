@@ -250,7 +250,8 @@ try {
     { name: 'he_splash', ev: 'shell:hit', p: hit('he_splash', false, 120), holdMs: 2400, expect: ['he_armor', 'expl_he_medium'] },
     { name: 'shell_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(8,-1.5,20), hitTerrain:true, caliberMm:105}`, holdMs: 1500, expect: ['ground_'] },
     { name: 'bullet_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(4,-1.5,9), hitTerrain:true, caliberMm:7.62}`, holdMs: 900, minRms: 1e-4, expect: ['bullet_dirt'] },
-    // destruction and contact
+    // destruction and contact. The mixer hears a hull die once a life (2026-11-02 audit F11: a re-sent network death
+    // adds no second wreck), and the sim enemy stays alive under these synthetic deaths: each one revives it first.
     { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
       expect: ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop'] },
@@ -270,7 +271,9 @@ try {
 
   const sceneLogs = {};
   const sceneAudio = {};
+  const reviveEnemy = () => emit('mode:respawn', '{id:window.__P.enemyId}');
   for (const sc of SCENES) {
+    if (sc.ev === 'tank:destroyed') await reviveEnemy();
     const mark = await page.evaluate(() => window.__P.sfxMark());
     await tapStart();
     await sleep(250);
@@ -357,8 +360,10 @@ try {
     await emit('shell:fired', fire(i % 2 ? 120 : 125, -14 + i * 4, 9 + (i % 3) * 3));
     await sleep(35);
   }
+  await reviveEnemy();
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(-6,-1.5,24), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(120);
+  await reviveEnemy();
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(9,-1.5,21), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(4500);
   const vI16 = await tapStopAndFetch();
