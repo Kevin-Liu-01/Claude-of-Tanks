@@ -193,6 +193,11 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/code-text.mjs': lists('tools/**/*.{mjs,js,cjs,ts}'),
   // the MP harnesses spell no protocol state word
   'tools/mp-states.selftest.mjs': lists('tools/mp-*.mjs'),
+  // 2026-11-02 audit F1 (app-flow): the one-writer censuses
+  // nothing under src writes game.phase but the lifecycle's transitionAppPhase
+  'src/game/appLifecycle.selftest.mjs': lists('src/**/*.ts'),
+  // nothing under src writes preBattleS but the countdown owner
+  'src/game/battleCountdownEdges.selftest.mjs': lists('src/**/*.{ts,js,mjs}'),
 
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
