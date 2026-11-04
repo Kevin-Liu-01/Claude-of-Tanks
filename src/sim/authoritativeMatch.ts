@@ -100,9 +100,8 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { createAI, roleOf } from '../game/ai.ts';
-import type { AiDifficulty } from '../game/ai.ts';
-import { applyPendingBotNews } from '../game/ai.ts'; // the drivers' flush of the bots' news (audit M7)
+// applyPendingBotNews: the drivers' flush of the bots' news (audit M7)
+import { applyPendingBotNews, createAI, roleOf, type AiDifficulty } from '../game/ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
