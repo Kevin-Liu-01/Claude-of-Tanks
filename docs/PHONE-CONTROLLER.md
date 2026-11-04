@@ -175,7 +175,11 @@ the phone"), because the big screen is where the player looks:
 
 - With the guide the phone sends its picture of itself on `ctl` (`tour`, `PadTourLayout`): its frame, every control's
   box (as outlines: keys, round keys, dials, the lever, the sight, the trigger), each stop's ring and where its name
-  sits, in whole frame px (a full panel is about 700 characters; a ctl message holds 2,048).
+  sits, in whole frame px. It travels as compact text (`encodePadTour`: base64 of 9 bytes a part and 14 a stop, about
+  340 characters for a full panel), because the guide opens while a pairing may still be on the relay, whose payload
+  the actor takes up to 512 characters. The first build sent it as JSON, about 700 characters: the actor dropped the
+  phone's socket as invalid and the pairing ended at once (pad-e2e, 2026-11-03). `padLink` now refuses to relay any
+  ctl message past that limit, so no message can end a pairing that way again.
 - The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
   the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own, the same
   ghost strokes, and Skip with the ten seconds running out under it. It stands in the top layer (a manual popover, as

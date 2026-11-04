@@ -8,7 +8,7 @@ import { createPadLink } from './padLink.ts';
 import type { PadLink, PadLinkState } from './padLink.ts';
 import { createPadInputMapper } from './padInput.ts';
 import type { PadInputPort } from './padInput.ts';
-import { PAD_STALE_MS, decodePadAxes } from './padProtocol.ts';
+import { PAD_STALE_MS, decodePadAxes, decodePadTour } from './padProtocol.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { showPadTour } from './padTourScreen.ts';
@@ -203,8 +203,8 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
       else if (message.k === 'tour') {
         // the phone's guide opens here too, battle or not; Skip here ends it on the phone
         hideTour?.();
-        hideTour = message.on && message.layout
-          ? showPadTour(message.layout, () => { hideTour = null; link.sendCtl({ k: 'tour', on: false }); }) : null;
+        const layout = message.on && message.l ? decodePadTour(message.l) : null;
+        hideTour = layout ? showPadTour(layout, () => { hideTour = null; link.sendCtl({ k: 'tour', on: false }); }) : null;
       }
       else if (message.k === 'pause' || (driving && message.k !== 'status')) mapper.applyCtl(message);
     },

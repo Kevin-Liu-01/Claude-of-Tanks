@@ -84,6 +84,13 @@ assert.equal(phone.sendCtl({ k: 'down', a: 'fire', s: (axes.seq + 1) & 0xffff })
 assert.equal(phone.sendCtl({ k: 'tap', a: 'shell2' }), true);
 await until(() => calls.some((c) => c[0] === 'tap' && c[1] === 'shell2'), 'the tap arrives');
 assert.ok(calls.some((c) => c[0] === 'press' && c[1] === 'fire'), 'the hold arrives');
+// a ctl message past the relay's payload limit is refused here, never sent: the actor would drop the socket as invalid
+// and end the pairing (pad-e2e 2026-11-03: the controls guide's first picture, 700 characters, did exactly that)
+assert.equal(phone.sendCtl({ k: 'status', s: { battle: false, alive: false, paused: false, sniper: false, slot: 0, reloadS: 0, reloadTotalS: 0,
+  shells: [{ type: 'X'.repeat(600), icon: 'shell', count: 1 }] } }), false, 'an oversized ctl is refused over the relay');
+assert.equal(phone.sendCtl({ k: 'tap', a: 'shell3' }), true);
+await until(() => calls.some((c) => c[0] === 'tap' && c[1] === 'shell3'), 'the pairing lives on after the refusal');
+assert.equal(phone.state.kind, 'live');
 
 // Disconnect from the phone ends both sides
 phone.end();
@@ -93,4 +100,4 @@ assert.equal(phone.state.kind, 'ended');
 desktop.dispose();
 await pads.close();
 server.close();
-console.log('padLink: PASS — pair over real sockets, settle on the relay without WebRTC, frames and ctl drive the mapper, relay rate, Disconnect');
+console.log('padLink: PASS — pair over real sockets, settle on the relay without WebRTC, frames and ctl drive the mapper, relay rate, an oversized ctl refused, Disconnect');

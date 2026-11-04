@@ -16,6 +16,9 @@ export const PAD_PAIR_MAX_MS = 6 * 3600_000;
 export const PAD_DESKTOP_GRACE_MS = 5 * 60_000;
 /** The longest envelope either side may send (an SDP offer with candidates fits in a few KB). */
 export const PAD_MAX_MESSAGE_BYTES = 8192;
+/** The longest relay payload the pairing actor takes: a longer one is invalid and drops the socket that sent it, so
+ *  padLink refuses to relay one. */
+export const PAD_RELAY_DATA_MAX = 512;
 /** Signals each side may relay in one window. */
 export const PAD_SIGNAL_LIMIT = 60;
 export const PAD_SIGNAL_WINDOW_MS = 60_000;
@@ -148,7 +151,7 @@ export function readPadClientMessage(text: string): PadClientMessage | null {
     case 'ice': return { t: 'ice' };
     case 'relay':
       if (record.seat !== undefined && seatOf(record.seat) === undefined) return null;
-      return typeof record.data === 'string' && record.data.length <= 512
+      return typeof record.data === 'string' && record.data.length <= PAD_RELAY_DATA_MAX
         ? { t: 'relay', data: record.data, ...(record.seat !== undefined ? { seat: record.seat as number } : {}) } : null;
     case 'lobby': return typeof record.open === 'boolean' ? { t: 'lobby', open: record.open } : null;
     case 'kick': { const seat = seatOf(record.seat); return seat === undefined ? null : { t: 'kick', seat }; }
@@ -231,7 +234,8 @@ export type PadCue = (typeof PAD_CUES)[number];
 
 /** The controls guide's picture of the phone (phone → desktop while the guide shows, so the game screen shows it too):
  *  the phone's frame, every control's box in it, and the guide's stops, each with its ring and where its name sits.
- *  Whole frame px; the desktop names each stop in its own language. */
+ *  Whole frame px; the desktop names each stop in its own language. It travels as compact text (encodePadTour): the
+ *  guide opens while a pairing may still be on the relay, whose payload is at most PAD_RELAY_DATA_MAX. */
 export const PAD_TOUR_PARTS = ['chip', 'key', 'round', 'dial', 'lever', 'sight', 'fire'] as const;
 export const PAD_TOUR_STOPS = ['tilt', 'throttle', 'stick', 'aim', 'fire', 'scope', 'lock'] as const;
 export type PadTourPart = (typeof PAD_TOUR_PARTS)[number];
@@ -290,24 +294,88 @@ export type PadCtlMessage =
   | { k: 'status'; s: PadStatus }
   /** `m`: the cue's strength, 0..1 (a heavier gun, a deeper hit, a harder crash). */
   | { k: 'cue'; c: PadCue; m?: number }
-  /** The controls guide opened (with the phone's picture) or ended, on either side: Skip on one ends it on both. */
-  | { k: 'tour'; on: boolean; layout?: PadTourLayout };
+  /** The controls guide opened (with the phone's picture, `l`, encodePadTour's) or ended, on either side: Skip on one
+   *  ends it on both. */
+  | { k: 'tour'; on: boolean; l?: string };
 
 const HOLDS = new Set<string>(PAD_HOLD_ACTIONS);
 const TAPS = new Set<string>(PAD_TAP_ACTIONS);
 const CUES = new Set<string>(PAD_CUES);
-const TOUR_PARTS = new Set<string>(PAD_TOUR_PARTS);
-const TOUR_STOPS = new Set<string>(PAD_TOUR_STOPS);
-const framePx = (value: unknown): boolean => Number.isInteger(value) && (value as number) >= -4096 && (value as number) <= 8192;
 
-function isTourLayout(value: unknown): value is PadTourLayout {
-  if (!value || typeof value !== 'object') return false;
-  const layout = value as Record<string, unknown>;
-  return framePx(layout.w) && framePx(layout.h) && (layout.w as number) > 0 && (layout.h as number) > 0
-    && Array.isArray(layout.parts) && layout.parts.length <= 40 && layout.parts.every((part) => Array.isArray(part) && part.length === 5
-      && TOUR_PARTS.has(part[0]) && part.slice(1).every(framePx))
-    && Array.isArray(layout.stops) && layout.stops.length <= PAD_TOUR_STOPS.length && layout.stops.every((stop) => Array.isArray(stop)
-      && stop.length === 9 && TOUR_STOPS.has(stop[0]) && stop.slice(1).every(framePx) && stop[7] <= 2 && stop[8] <= 2);
+// ---- The guide's picture as text (base64 of bytes, big-endian) ----------------------------------------------------
+// [0] version 1, [1..4] the frame's w and h (uint16), [5] the part count, then per part its kind (uint8) and its x, y,
+// w, h (uint16); then the stop count, and per stop its id (uint8), its ring's x, y, w, h and its name's centre x, y
+// (uint16) and ring << 2 | stroke (uint8). A full panel (18 parts, 6 stops) is 255 bytes, 340 characters.
+const TOUR_VERSION = 1;
+const TOUR_PART_BYTES = 9;
+const TOUR_STOP_BYTES = 14;
+/** The most parts the picture carries: with every stop, the message still fits one relay payload. */
+export const PAD_TOUR_MAX_PARTS = 24;
+
+const toBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!);
+  return btoa(binary);
+};
+const fromBase64 = (text: string): Uint8Array | null => {
+  try {
+    const binary = atob(text);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  } catch { return null; }
+};
+
+export function encodePadTour(layout: PadTourLayout): string {
+  const parts = layout.parts.slice(0, PAD_TOUR_MAX_PARTS);
+  const stops = layout.stops.slice(0, PAD_TOUR_STOPS.length);
+  const bytes = new Uint8Array(6 + parts.length * TOUR_PART_BYTES + 1 + stops.length * TOUR_STOP_BYTES);
+  const view = new DataView(bytes.buffer);
+  const u16 = (at: number, value: number): void => view.setUint16(at, Math.max(0, Math.min(0xffff, Math.round(value) || 0)));
+  bytes[0] = TOUR_VERSION;
+  u16(1, layout.w);
+  u16(3, layout.h);
+  bytes[5] = parts.length;
+  let at = 6;
+  for (const [kind, x, y, w, h] of parts) {
+    bytes[at] = PAD_TOUR_PARTS.indexOf(kind);
+    u16(at + 1, x); u16(at + 3, y); u16(at + 5, w); u16(at + 7, h);
+    at += TOUR_PART_BYTES;
+  }
+  bytes[at++] = stops.length;
+  for (const [id, x, y, w, h, cx, cy, ring, stroke] of stops) {
+    bytes[at] = PAD_TOUR_STOPS.indexOf(id);
+    u16(at + 1, x); u16(at + 3, y); u16(at + 5, w); u16(at + 7, h); u16(at + 9, cx); u16(at + 11, cy);
+    bytes[at + 13] = ((ring & 3) << 2) | (stroke & 3);
+    at += TOUR_STOP_BYTES;
+  }
+  return toBase64(bytes);
+}
+
+/** The picture from its text, or null (a wrong version or length, an unknown part or stop, an empty frame). */
+export function decodePadTour(text: string): PadTourLayout | null {
+  const bytes = typeof text === 'string' && text.length <= 1024 ? fromBase64(text) : null;
+  if (!bytes || bytes.length < 7 || bytes[0] !== TOUR_VERSION) return null;
+  const view = new DataView(bytes.buffer);
+  const layout: PadTourLayout = { w: view.getUint16(1), h: view.getUint16(3), parts: [], stops: [] };
+  const partCount = bytes[5]!;
+  const stopsAt = 6 + partCount * TOUR_PART_BYTES;
+  if (!layout.w || !layout.h || partCount > PAD_TOUR_MAX_PARTS || bytes.length < stopsAt + 1) return null;
+  const stopCount = bytes[stopsAt]!;
+  if (stopCount > PAD_TOUR_STOPS.length || bytes.length !== stopsAt + 1 + stopCount * TOUR_STOP_BYTES) return null;
+  for (let at = 6; at < stopsAt; at += TOUR_PART_BYTES) {
+    const kind = PAD_TOUR_PARTS[bytes[at]!];
+    if (!kind) return null;
+    layout.parts.push([kind, view.getUint16(at + 1), view.getUint16(at + 3), view.getUint16(at + 5), view.getUint16(at + 7)]);
+  }
+  for (let at = stopsAt + 1; at < bytes.length; at += TOUR_STOP_BYTES) {
+    const id = PAD_TOUR_STOPS[bytes[at]!];
+    const flags = bytes[at + 13]!;
+    if (!id || flags >> 2 > 2 || (flags & 3) > 2) return null;
+    layout.stops.push([id, view.getUint16(at + 1), view.getUint16(at + 3), view.getUint16(at + 5), view.getUint16(at + 7),
+      view.getUint16(at + 9), view.getUint16(at + 11), flags >> 2, flags & 3]);
+  }
+  return layout;
 }
 
 export function readPadCtl(text: string): PadCtlMessage | null {
@@ -332,8 +400,8 @@ export function readPadCtl(text: string): PadCtlMessage | null {
         : { k: 'cue', c: record.c as PadCue };
     case 'tour':
       if (typeof record.on !== 'boolean') return null;
-      if (record.layout === undefined) return { k: 'tour', on: record.on };
-      return record.on && isTourLayout(record.layout) ? { k: 'tour', on: true, layout: record.layout } : null;
+      if (record.l === undefined) return { k: 'tour', on: record.on };
+      return record.on && typeof record.l === 'string' && decodePadTour(record.l) ? { k: 'tour', on: true, l: record.l } : null;
     default: return null;
   }
 }
@@ -424,19 +492,12 @@ export const PAD_RELAY_CTL = 'c';
 
 /** The axes frame as relay text (base64 of the 24 bytes): the relay envelope is JSON. */
 export function padAxesToRelay(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!);
-  return btoa(binary);
+  return toBase64(bytes);
 }
 
 export function padAxesFromRelay(data: string): Uint8Array | null {
-  try {
-    const binary = atob(data);
-    if (binary.length !== PAD_AXES_BYTES) return null;
-    const bytes = new Uint8Array(PAD_AXES_BYTES);
-    for (let i = 0; i < PAD_AXES_BYTES; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-  } catch { return null; }
+  const bytes = fromBase64(data);
+  return bytes && bytes.length === PAD_AXES_BYTES ? bytes : null;
 }
 
 /** The phone page's address for a code. The code rides in the fragment, which a browser never sends to a server; the

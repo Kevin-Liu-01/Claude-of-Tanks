@@ -27,7 +27,7 @@ import {
 import { padBuzzPattern, padBuzzTicks } from './padCues.ts';
 import type { PadBuzz } from './padCues.ts';
 import {
-  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, formatPadCode, normalizePadCode,
+  PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, encodePadTour, formatPadCode, normalizePadCode,
 } from './padProtocol.ts';
 import type { PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourLayout, PadTourPart, PadTourStop } from './padProtocol.ts';
 import { padServiceUrl } from './padEndpoint.ts';
@@ -830,7 +830,7 @@ function showTour(): void {
     .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' });
   clearTimeout(tourTimer);
   tourTimer = setTimeout(() => endTour('timeout'), TOUR_MS);
-  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, layout: tourLayout });
+  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, l: encodePadTour(tourLayout) });
   if (debug) debug.tour = 'shown';
 }
 /** End the guide: skipped here, its time up, the pairing ended, or skipped on the game screen (`screen`). Skip and the

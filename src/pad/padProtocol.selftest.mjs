@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   PAD_AXES_BYTES, PAD_CODE_ALPHABET, decodePadAxes, encodePadAxes, formatPadCode, padAxesFromRelay, padAxesToRelay,
-  PAD_TOUR_PARTS, PAD_TOUR_STOPS, padPageUrl, padSeqNewer, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
+  PAD_RELAY_CTL, PAD_RELAY_DATA_MAX, PAD_TOUR_MAX_PARTS, PAD_TOUR_PARTS, PAD_TOUR_STOPS, decodePadTour, encodePadTour, padPageUrl, padSeqNewer, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
 } from './padProtocol.ts';
 import { resolvePadServiceUrl } from './padEndpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST } from '../officialHost.ts';
@@ -52,22 +52,31 @@ assert.equal(readPadCtl('{"k":"down","a":"leaveBattle","s":1}'), null, 'only the
 assert.equal(readPadCtl('{"k":"tap","a":"settingsMenu"}'), null, 'only the phone\'s tap actions');
 assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq');
 
-// the controls guide's picture of the phone: the game screen draws it, so it crosses the wire whole or not at all
+// the controls guide's picture of the phone: the game screen draws it, so it crosses the wire whole or not at all, and
+// it fits one relay payload (a longer one is invalid to the actor and would end the pairing)
 {
   const layout = { w: 812, h: 366, parts: [['key', 400, 0, 48, 48], ['fire', 700, 250, 104, 104]],
     stops: [['fire', 700, 250, 104, 104, 752, 302, 1, 0], ['aim', 500, 60, 300, 300, 650, 80, 2, 1]] };
-  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout })), { k: 'tour', on: true, layout });
+  const l = encodePadTour(layout);
+  assert.deepEqual(decodePadTour(l), layout, 'the picture round-trips');
+  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'tour', on: true, l })), { k: 'tour', on: true, l });
   assert.deepEqual(readPadCtl('{"k":"tour","on":false}'), { k: 'tour', on: false }, 'an ending carries no picture');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, parts: [['tank', 0, 0, 1, 1]] } })), null, 'an unknown part');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, stops: [['brake', 0, 0, 1, 1, 0, 0, 0, 0]] } })), null, 'an unknown stop');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, w: 0 } })), null, 'an empty frame');
-  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, parts: [['key', 1.5, 0, 1, 1]] } })), null, 'whole px only');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, l: 'AAAA' })), null, 'a picture that does not decode');
   assert.equal(readPadCtl('{"k":"tour"}'), null);
-  // the largest picture a panel draws (every part kind on a big tablet frame, every stop) still fits one ctl message
-  const parts = Array.from({ length: 24 }, (_, i) => [PAD_TOUR_PARTS[i % PAD_TOUR_PARTS.length], 1999, 1999, 1999, 1999]);
-  const stops = PAD_TOUR_STOPS.map((stop) => [stop, 1999, 1999, 1999, 1999, 1999, 1999, 2, 2]);
-  const big = JSON.stringify({ k: 'tour', on: true, layout: { w: 2732, h: 2048, parts, stops } });
-  assert.ok(readPadCtl(big), `the biggest picture fits a ctl message (${big.length} chars)`);
+  const bytes = Uint8Array.from(atob(l), (c) => c.charCodeAt(0));
+  const tampered = (at, value) => { const copy = bytes.slice(); copy[at] = value; return btoa(String.fromCharCode(...copy)); };
+  assert.equal(decodePadTour(tampered(0, 2)), null, 'an unknown version');
+  assert.equal(decodePadTour(tampered(6, 99)), null, 'an unknown part');
+  assert.equal(decodePadTour(btoa(String.fromCharCode(...bytes.slice(0, -1)))), null, 'a cut picture');
+  assert.equal(decodePadTour(encodePadTour({ ...layout, w: 0 })), null, 'an empty frame');
+  assert.deepEqual(decodePadTour(encodePadTour({ ...layout, parts: [['key', -3, 70000, 1.6, 2]] })).parts, [['key', 0, 65535, 2, 2]],
+    'boxes clamp to whole uint16 px');
+  // the largest picture (every part a panel may carry, every stop, big numbers) in its relay envelope fits the payload
+  const parts = Array.from({ length: PAD_TOUR_MAX_PARTS + 5 }, (_, i) => [PAD_TOUR_PARTS[i % PAD_TOUR_PARTS.length], 60000, 60000, 60000, 60000]);
+  const stops = PAD_TOUR_STOPS.map((stop) => [stop, 60000, 60000, 60000, 60000, 60000, 60000, 2, 2]);
+  const big = `${PAD_RELAY_CTL}${JSON.stringify({ k: 'tour', on: true, l: encodePadTour({ w: 2732, h: 2048, parts, stops }) })}`;
+  assert.ok(big.length <= PAD_RELAY_DATA_MAX, `the biggest picture fits one relay payload (${big.length} of ${PAD_RELAY_DATA_MAX})`);
+  assert.equal(decodePadTour(encodePadTour({ w: 2732, h: 2048, parts, stops })).parts.length, PAD_TOUR_MAX_PARTS, 'past the cap, parts are left out');
 }
 const status = { battle: true, alive: true, paused: false, sniper: false, slot: 1, shells: [{ type: 'AP', icon: 'shellAp', count: 30 }], reloadS: 1.2, reloadTotalS: 6 };
 assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: status })), { k: 'status', s: status });
