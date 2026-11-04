@@ -38,6 +38,28 @@ const LANGUAGE_QUERY = {
   'en-AU': { language: 'en', accent: 'australian' },
   af: { language: 'af' },
   'en-ZA': { language: 'en', accent: 'south african' },
+  // Crew languages with no country in the game (crew-languages-270): any player may choose them in Settings.
+  'es-ES': { language: 'es', accent: 'peninsular' },
+  'es-419': { language: 'es', accent: 'latin american' },
+  'pt-PT': { language: 'pt', accent: 'european' },
+  nl: { language: 'nl' },
+  no: { language: 'no' },
+  fi: { language: 'fi' },
+  el: { language: 'el' },
+  cs: { language: 'cs' },
+  hu: { language: 'hu' },
+  ro: { language: 'ro' },
+  tr: { language: 'tr' },
+  ar: { language: 'ar' },
+  fa: { language: 'fa' },
+  hi: { language: 'hi' },
+  ur: { language: 'ur' },
+  bn: { language: 'bn' },
+  id: { language: 'id' },
+  ms: { language: 'ms' },
+  vi: { language: 'vi' },
+  th: { language: 'th' },
+  fil: { language: 'fil' },
 };
 
 async function search(outFile, langs) {

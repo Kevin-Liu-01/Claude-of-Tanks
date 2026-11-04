@@ -37,9 +37,32 @@ const TEST_LINES = {
   'en-AU': ['Contact front. Enemy tank. Fire.', 'Loaded. Ready.'],
   af: ['Vyandelike tenk, reg voor. Vuur.', 'Gelaai. Gereed.'],
   'en-ZA': ['Contact front. Enemy tank. Fire.', 'Loaded. Ready.'],
+  'es-ES': ['Carro enemigo, al frente. Fuego.', 'Cargado. Listo.'],
+  'es-419': ['Tanque enemigo, al frente. Fuego.', 'Cargado. Listo.'],
+  'pt-PT': ['Carro inimigo, em frente. Fogo.', 'Carregado. Pronto.'],
+  nl: ['Vijandelijke tank, recht vooruit. Vuur.', 'Geladen. Gereed.'],
+  no: ['Fiendtlig stridsvogn, rett frem. Ild.', 'Ladd. Klar.'],
+  fi: ['Vihollisen panssarivaunu, edessä. Tulta.', 'Ladattu. Valmis.'],
+  el: ['Εχθρικό άρμα, εμπρός. Πυρ.', 'Γεμάτο. Έτοιμος.'],
+  cs: ['Nepřátelský tank, přímo. Pal.', 'Nabito. Připraven.'],
+  hu: ['Ellenséges harckocsi, elöl. Tűz.', 'Töltve. Kész.'],
+  ro: ['Tanc inamic, în față. Foc.', 'Încărcat. Gata.'],
+  tr: ['Düşman tankı, ileride. Ateş.', 'Dolduruldu. Hazır.'],
+  ar: ['دبابة معادية، في المقدمة. أطلق النار.', 'تم التلقيم. جاهز.'],
+  fa: ['تانک دشمن، روبه‌رو. آتش.', 'پر شد. آماده.'],
+  hi: ['दुश्मन टैंक, सामने। फ़ायर।', 'लोड हो गया। तैयार।'],
+  ur: ['دشمن کا ٹینک، سامنے۔ فائر۔', 'لوڈ ہو گیا۔ تیار۔'],
+  bn: ['শত্রু ট্যাংক, সামনে। ফায়ার।', 'লোড হয়েছে। প্রস্তুত।'],
+  id: ['Tank musuh, di depan. Tembak.', 'Sudah diisi. Siap.'],
+  ms: ['Kereta kebal musuh, di hadapan. Tembak.', 'Sudah diisi. Sedia.'],
+  vi: ['Xe tăng địch, phía trước. Bắn.', 'Đã nạp đạn. Sẵn sàng.'],
+  th: ['รถถังข้าศึก ด้านหน้า ยิง', 'บรรจุแล้ว พร้อม'],
+  fil: ['Tangke ng kalaban, sa harap. Fire.', 'Kargado na. Handa.'],
 };
 
-const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he', da: 'da', 'pt-BR': 'pt', 'en-AU': 'en', af: 'af', 'en-ZA': 'en' };
+const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he', da: 'da', 'pt-BR': 'pt', 'en-AU': 'en', af: 'af', 'en-ZA': 'en',
+  'es-ES': 'es', 'es-419': 'es', 'pt-PT': 'pt', nl: 'nl', no: 'no', fi: 'fi', el: 'el', cs: 'cs', hu: 'hu', ro: 'ro', tr: 'tr', ar: 'ar',
+  fa: 'fa', hi: 'hi', ur: 'ur', bn: 'bn', id: 'id', ms: 'ms', vi: 'vi', th: 'th', fil: 'fil' };
 
 // Candidates per language: [voice_id, name, role-intent].
 export const CANDIDATES = {
