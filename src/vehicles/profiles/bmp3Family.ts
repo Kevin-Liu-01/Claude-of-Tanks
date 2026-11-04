@@ -134,13 +134,16 @@ export function buildBmp3WeldedTurret(P: TankBuilderPort, variant: Bmp3TurretVar
   P.add('turretGlass', box(0.12, 0.04, 0.012), cx + 0.02, ROOF_Y + 0.105, 0.155);
   P.add('turretDetail', box(0.22, 0.025, 0.06), cx + 0.02, ROOF_Y + 0.170, 0.12);       // rain hood
   // searchlight frame: two posts on the roof right of the cupola, a cradle, the drum and lens, a link to the head
-  const lx = -0.80, lz = -0.06, ly = ROOF_Y + 0.27;
-  for (const dz of [-0.08, 0.08]) P.add('turretDetail', cylY(0.018, 0.022, 0.22, 8), lx, ROOF_Y + 0.10, lz + dz);
-  P.add('turretDetail', box(0.08, 0.04, 0.22), lx, ly - 0.115, lz);
-  P.addEquipment('turret', cylZ(0.105, 0.20, 18, 0.09), lx, ly, lz);
-  P.add('turretDark', xform(torus(0.098, 0.012, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
-  P.add('turretGlass', cylZ(0.090, 0.012, 18), lx, ly, lz + 0.098);
-  P.add('turretDetail', box(0.36, 0.025, 0.03), (lx + cx) / 2 + 0.02, ly - 0.10, lz + 0.05);
+  // (ROK: on its tall frame further aft, where the ROK Army photographs show it, bmp3RokTurretFit.ts)
+  if (!rok) {
+    const lx = -0.80, lz = -0.06, ly = ROOF_Y + 0.27;
+    for (const dz of [-0.08, 0.08]) P.add('turretDetail', cylY(0.018, 0.022, 0.22, 8), lx, ROOF_Y + 0.10, lz + dz);
+    P.add('turretDetail', box(0.08, 0.04, 0.22), lx, ly - 0.115, lz);
+    P.addEquipment('turret', cylZ(0.105, 0.20, 18, 0.09), lx, ly, lz);
+    P.add('turretDark', xform(torus(0.098, 0.012, 18, 6), 0, 0, 0, Math.PI / 2, 0, 0), lx, ly, lz + 0.10);
+    P.add('turretGlass', cylZ(0.090, 0.012, 18), lx, ly, lz + 0.098);
+    P.add('turretDetail', box(0.36, 0.025, 0.03), (lx + cx) / 2 + 0.02, ly - 0.10, lz + 0.05);
+  }
 
   // ---- 902V Tucha: 3+3 on the front cheeks, raised forward and out, each bank on a welded shelf ---------------------
   for (const s of [-1, 1]) {
