@@ -10,12 +10,6 @@ interface SkirtPort {
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-interface SkirtHull {
-  readonly idlerZ: number;
-  readonly idlerY: number;
-  readonly idlerR: number;
-}
-
 /** The measured datums (the source: outer face 1.854, inner 1.793, bottom 0.700, top 1.339). */
 export const M1A1_SKIRT = Object.freeze({
   outerX: 1.853, innerX: 1.793, ledgeX: 1.736, ledgeT: 0.035,
@@ -33,8 +27,8 @@ export const M1A1_SKIRT = Object.freeze({
   frontBottom: 0.55, dropZ0: 2.50, dropZ1: 2.60, chamferZ: 3.44,
   /** the outer top bevel starts here and falls 0.2 m per metre toward the bow */
   bevelZ: 2.80,
-  /** where the fender takes the top over from the hull deck */
-  fenderZ: 2.45, fenderInnerX: 1.065, noseZ: 3.944,
+  /** where the fender takes the top over from the hull deck; noseZ: the foot of its down-turned lip */
+  fenderZ: 2.45, fenderInnerX: 1.065, noseZ: 3.95,
 });
 
 const S = M1A1_SKIRT;
@@ -49,9 +43,16 @@ const lerpTable = (rows: readonly (readonly [number, number])[], z: number): num
 // Skirt top line at the face and the fender nose: level, then the model's straight chamfer (its side view: 1.324 at z 3.62,
 // 1.173 at 3.872) to the tip and the fender's front face (the A/B fix round: the measured curve read rounded).
 const SKIRT_TOP: readonly (readonly [number, number])[] = [[3.50, 1.339], [3.62, 1.324], [3.872, 1.173], [3.93, 1.110]];
-const NOSE_TOP: readonly (readonly [number, number])[] = [[3.50, 1.339], [3.62, 1.324], [3.872, 1.173], [3.944, 1.060]];
-const NOSE_BOTTOM: readonly (readonly [number, number])[] = [[3.50, 1.300], [3.58, 1.240], [3.65, 1.190], [3.725, 1.190],
-  [3.80, 1.170], [3.875, 1.100], [3.944, 0.980]];
+// Release 268 builder E (the critics in every round: "rounded humps / bulbous like a boat bow"): the fender's nose is the
+// model's (its section at x 1.40): the top falls from 1.339 at z 3.508 on a short convex course to a crisp edge at
+// (3.903, 1.111), and the down-turned lip drops from that edge to its foot at 0.93 by 3.95, its face at 75 degrees.
+const NOSE_TOP: readonly (readonly [number, number])[] = [[3.50, 1.339], [3.563, 1.331], [3.626, 1.323], [3.677, 1.302],
+  [3.736, 1.277], [3.780, 1.244], [3.831, 1.205], [3.864, 1.161], [3.903, 1.111], [3.920, 1.070], [3.935, 1.020],
+  [3.950, 0.940]];
+const NOSE_BOTTOM: readonly (readonly [number, number])[] = [[3.50, 1.300], [3.58, 1.240], [3.65, 1.190], [3.725, 1.185],
+  [3.798, 1.172], [3.833, 1.127], [3.863, 1.088], [3.903, 1.075], [3.920, 1.030], [3.935, 0.960], [3.950, 0.930]];
+/** The fender's underside over the track band: the model's plate, 39 mm under its 1.339 top, flat to the nose. */
+const FENDER_BOTTOM_Y = 1.300;
 // The rear notch: the main face's bottom arcs up behind the last wheel to the strip (source -2.63 .. -2.90).
 const REAR_BOTTOM: readonly (readonly [number, number])[] = [[-2.98, S.stripBottom], [-2.93, 1.205], [-2.88, 1.16],
   [-2.83, 1.08], [-2.78, 0.96], [-2.73, 0.83], [-2.68, 0.74], [S.rearZ, S.bottom]];
@@ -80,7 +81,7 @@ export interface M1A1SkirtOptions {
 
 /** Both skirts, rims and front fenders. Returns nothing; every solid is closed and sits outboard of the track band
  * (x <= 1.735) or over the idler's shoe envelope (r + 0.22) with the clearance release 268 kept. */
-export function addM1A1SkirtsAndFenders(P: SkirtPort, g: SkirtHull, { deckAt }: M1A1SkirtOptions): void {
+export function addM1A1SkirtsAndFenders(P: SkirtPort, { deckAt }: M1A1SkirtOptions): void {
   const xi = S.innerX, xo = S.outerX, xl = S.ledgeX, lt = S.ledgeT;
   // ---- main skirt + its top ledge to the hull wall, stern strip to the bow fender (7-point L section)
   const mainZs = [S.stripEndZ, ...REAR_BOTTOM.map(([z]) => z), -1.0, 1.0, S.fenderZ];
@@ -102,15 +103,14 @@ export function addM1A1SkirtsAndFenders(P: SkirtPort, g: SkirtHull, { deckAt }: 
     const yt = z <= 0.5 ? deckAt(z) : 1.415, x0 = z <= -2.60 ? xl : 1.722;
     return { z, ring: [[x0, S.top - lt], [xi + 0.002, S.top - lt], [xi + 0.002, yt], [x0, yt]] };
   });
-  // ---- front fender over the track band: level at the skirt top, a low arch over the idler's shoe envelope
-  // (bottom = envelope - 0.025, the clearance release 268 kept), and the source's down-turned nose.
-  const envR = g.idlerR + 0.22;
-  const archBottom = (z: number): number => Math.max(S.top - 0.039,
-    g.idlerY + Math.sqrt(Math.max(0, envR * envR - (z - g.idlerZ) ** 2)) - 0.025);
-  const fenderTop = (z: number): number => (z <= 3.50 ? Math.max(S.top, archBottom(z) + 0.035) : lerpTable(NOSE_TOP, z));
-  const fenderBottom = (z: number): number => (z <= 3.50 ? archBottom(z) : lerpTable(NOSE_BOTTOM, z));
-  const fenderZs = [S.fenderZ, 2.60, 2.68, 2.74, 2.80, 2.86, 2.94, 3.02, 3.10, 3.18, 3.26, 3.32, 3.38, 3.44, 3.50,
-    S.frontZ, 3.62, 3.725, 3.80, 3.872, S.noseZ];
+  // ---- front fender over the track band: the model's flat plate, level at the skirt top to the nose, and its down-turned
+  // nose and lip. (Release 268 builder E, the critics: "rounded humps / bulbous like a boat bow": it rose in a 1 m arch
+  // to 1.42 over a nominal idler shoe envelope, r + 0.22 = 1.41, that the model does not have. The live shoes wrapping
+  // our idler reach 1.264 at any phase, their corners included, so the flat 1.300 underside clears them by 3.6 cm.)
+  const fenderTop = (z: number): number => (z <= 3.50 ? S.top : lerpTable(NOSE_TOP, z));
+  const fenderBottom = (z: number): number => (z <= 3.50 ? FENDER_BOTTOM_Y : lerpTable(NOSE_BOTTOM, z));
+  const fenderZs = [S.fenderZ, 2.60, S.bevelZ, 3.20, 3.50, ...NOSE_TOP.slice(1).map(([z]) => z),
+    ...NOSE_BOTTOM.map(([z]) => z).filter((z) => z > 3.50 && !NOSE_TOP.some(([t]) => t === z))].sort((a, b) => a - b);
   const fx = S.fenderInnerX, fo = xi + 0.007;
   const fender: SolidSection[] = fenderZs.map((z) => {
     const yb = fenderBottom(z), yt = fenderTop(z);
@@ -128,8 +128,11 @@ export function addM1A1SkirtsAndFenders(P: SkirtPort, g: SkirtHull, { deckAt }: 
 }
 
 /** The fender's underside at z over the track band (the inner glacis wall closes up to it). */
-export function m1a1FenderBottomAt(g: SkirtHull, z: number): number {
-  const envR = g.idlerR + 0.22;
-  if (z > 3.50) return lerpTable(NOSE_BOTTOM, z);
-  return Math.max(S.top - 0.039, g.idlerY + Math.sqrt(Math.max(0, envR * envR - (z - g.idlerZ) ** 2)) - 0.025);
+export function m1a1FenderBottomAt(z: number): number {
+  return z > 3.50 ? lerpTable(NOSE_BOTTOM, z) : FENDER_BOTTOM_Y;
+}
+
+/** The fender's top at z over the track band (a cover laid on it follows it: ghillieSuit.ts, the FEP's and ua_m1a1's). */
+export function m1a1FenderTopAt(z: number): number {
+  return z > 3.50 ? lerpTable(NOSE_TOP, z) : S.top;
 }

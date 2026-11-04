@@ -4413,14 +4413,14 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
     g = { ...g, noRearFlap: true, frontFlapZ: 3.620, noSkirt: true,
       skirt: { x: M1A1_SKIRT.outerX, top: M1A1_SKIRT.top, bot: M1A1_SKIRT.bottom, z0: M1A1_SKIRT.rearZ, z1: M1A1_SKIRT.frontZ } };
     yield* abramsHullSteps(P, g);
-    addM1A1SkirtsAndFenders(P, g, { deckAt: (z) => deckAt(g, z) });
+    addM1A1SkirtsAndFenders(P, { deckAt: (z) => deckAt(g, z) });
     for (const side of [-1, 1]) {
       // Release 268: the owner's source glacis runs 6-12 cm under these fenders (which must stay over the idler's shoe
       // envelope), so each fender gets its inner wall: a 25 mm plate from just under the glacis edge up into the
       // fender's underside, inboard of the 1.11 m pin caps. It closes the slot into the idler bay.
       for (const [z0, z1] of [[2.59, 3.02], [3.01, 3.51]] as const) {
         const b0 = deckAt(g, z0) - 0.02, b1 = deckAt(g, z1) - 0.02;
-        const top0 = m1a1FenderBottomAt(g, z0) + 0.012, top1 = m1a1FenderBottomAt(g, z1) + 0.012;
+        const top0 = m1a1FenderBottomAt(z0) + 0.012, top1 = m1a1FenderBottomAt(z1) + 0.012;
         familySideSlab('hull', side,
           [1.065, b0, z0], [1.090, b0, z0], [1.090, b1, z1], [1.065, b1, z1],
           [1.065, top0, z0], [1.090, top0, z0], [1.090, top1, z1], [1.065, top1, z1]);

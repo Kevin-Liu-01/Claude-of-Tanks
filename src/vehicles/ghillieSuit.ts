@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {drapeSuitOverSpentEra, type EraDrapePort} from './eraSpentDrape.ts';
 import { KIT } from './profiles/kit.ts';
+import { m1a1FenderTopAt } from './profiles/m1a1Skirts.ts';
 import { cloneVehicleMaterial, followVehicleScheme, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
 import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
@@ -3601,9 +3602,9 @@ const sepv3HullY = (x: number, z: number): number => Math.max(abramsHullY(x, z),
  * chamfer to the nose (1.324 at 3.62, 1.173 at 3.872, 1.06 at the 3.944 front face). Over them (outboard of x 1.04, ahead
  * of z 2.45) a net lies 3 cm over the fender instead of the old 1.42-1.67 m carrier that stood up to 30 cm proud of it.
  */
-const M1A1_FENDER_TOP: readonly Point2[] = [[2.45, 1.339], [2.73, 1.339], [2.80, 1.374], [2.85, 1.394], [2.94, 1.414],
-  [3.02, 1.42], [3.10, 1.414], [3.19, 1.394], [3.24, 1.374], [3.31, 1.339], [3.62, 1.324], [3.872, 1.173], [3.944, 1.06]];
-const m1a1FenderNetY = (z: number): number => profileY(M1A1_FENDER_TOP, z) + 0.03;
+// (release 268 builder E: the cover follows the fender's own top, flat to the nose since the arch went;
+// profiles/m1a1Skirts.ts)
+const m1a1FenderNetY = (z: number): number => m1a1FenderTopAt(Math.min(z, 3.944)) + 0.03;
 const m1a1HullNetY = (deck: (x: number, z: number) => number) => (x: number, z: number): number =>
   (Math.abs(x) > 1.04 && z > 2.45 ? m1a1FenderNetY(z) : deck(x, z));
 /**
