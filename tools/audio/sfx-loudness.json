@@ -1346,12 +1346,12 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "617c01fd1e17c9d459807754993e08d12bf1f887490604e16dedd33793e0c316",
-    "bytes": 14416,
-    "durS": 1.38,
-    "mMax": -12.5,
-    "integrated": -15.8,
-    "truePeak": 0
+    "sha256": "f6c94e2ff445628756335a3bb532579fda8263d39dbece14cc9af114d9b7ed2d",
+    "bytes": 17661,
+    "durS": 1.414,
+    "mMax": -11.8,
+    "integrated": -13.8,
+    "truePeak": 0.2
    },
    {
     "sha256": "e8d4a095f0999d84312d5ae5be81bc6b6e8465fb5ebd9122528a68f763a1de07",
@@ -1362,12 +1362,12 @@
     "truePeak": 0.1
    },
    {
-    "sha256": "478c239a16e6699b54bb4c58ec6ed7510d8a8b66f86f748ac017a55750bf555a",
-    "bytes": 15786,
-    "durS": 1.38,
-    "mMax": -12.4,
-    "integrated": -15.1,
-    "truePeak": -0.2
+    "sha256": "c6cbaa09fa6805bbed4dacb491f3c6caf1b17d32d997b5eff2cc2706e86f71a7",
+    "bytes": 17142,
+    "durS": 1.6,
+    "mMax": -11.6,
+    "integrated": -14.8,
+    "truePeak": -0.1
    }
   ]
  },
@@ -1385,12 +1385,12 @@
     "truePeak": -0.2
    },
    {
-    "sha256": "4dae161c8b92728ed0ef8d1241bb5301a605565beff3353776f21db420271776",
-    "bytes": 14088,
-    "durS": 1.38,
-    "mMax": -13.4,
-    "integrated": -17.1,
-    "truePeak": -0.3
+    "sha256": "971ab498be2b2a9cc99de583b6bc0d074ff28fb844de8ec836af1d348d41735a",
+    "bytes": 17030,
+    "durS": 1.6,
+    "mMax": -12.2,
+    "integrated": -16,
+    "truePeak": -0.2
    },
    {
     "sha256": "6069bf01fc943bae950edeaa14bc048ab91b85c19889bafd6c9b2d66d9777088",
@@ -1408,12 +1408,12 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "e40359d9065dd39fea56f5d97667a9ea2b84e4f5f48f658797d78cd2e1e1e84f",
-    "bytes": 18578,
+    "sha256": "679e2ad91dd41ba8debf7f731d2aa7c518bc8bcf778c082282a886a533d4df5f",
+    "bytes": 19721,
     "durS": 1.6,
-    "mMax": -12.5,
-    "integrated": -15.6,
-    "truePeak": 0.1
+    "mMax": -16.1,
+    "integrated": -20.1,
+    "truePeak": -0.4
    },
    {
     "sha256": "99593fa62b95a098475c588726c222799063542734fb05ddf6e66a6b6477c91a",
@@ -1439,28 +1439,20 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "421d7d2db6b86626a232af387ddc0cb47836f017774dd966dd226bb9a286c19e",
-    "bytes": 14983,
-    "durS": 1.56,
-    "mMax": -10.3,
-    "integrated": -12.6,
-    "truePeak": 0.4
+    "sha256": "e92df0195a94f6c9f52bab280afa2068bbdea3b2d2c09063d5bca6d53bee1ddb",
+    "bytes": 14855,
+    "durS": 1.6,
+    "mMax": -10,
+    "integrated": -13.4,
+    "truePeak": -0.7
    },
    {
-    "sha256": "f92cf5940348d9fd85490c25dda54069a54e491d9eea70d6e59d0deeea1a410c",
-    "bytes": 14058,
-    "durS": 1.44,
+    "sha256": "9b887c55a67e91cc7b72ffb99fb4a02b6aab7f2a26d46ea134b8e06879db9cce",
+    "bytes": 15043,
+    "durS": 1.6,
     "mMax": -10.1,
-    "integrated": -12.1,
-    "truePeak": -0.2
-   },
-   {
-    "sha256": "7b325f987fb8e0cb0037bb0f0bace8b00b6b1a36e40e022eca7e6cc035471959",
-    "bytes": 13168,
-    "durS": 1.36,
-    "mMax": -10.3,
-    "integrated": -13,
-    "truePeak": -0.6
+    "integrated": -12.4,
+    "truePeak": -0.4
    }
   ]
  },
@@ -1470,28 +1462,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "aa6652e9cecc8d113605e46094c1d54c470a4804f2a6cf1ba62facbcf9542b4c",
-    "bytes": 16483,
-    "durS": 1.6,
-    "mMax": -13.5,
-    "integrated": -15.6,
-    "truePeak": -0.3
-   },
-   {
-    "sha256": "301cd4611c5bcda15f3098090ab6a8f4a36eec716edfa7dce03087e6779bdba9",
-    "bytes": 18096,
-    "durS": 1.6,
-    "mMax": -12.9,
-    "integrated": -16,
-    "truePeak": -0.2
-   },
-   {
-    "sha256": "42708254497aa8cf406bd89bb08064f2f4a67da74a5c15f58a5e819aca3c15b1",
-    "bytes": 13189,
-    "durS": 1.24,
-    "mMax": -13,
-    "integrated": -17.8,
+    "sha256": "1e09ee68cb0823988e523e9190bdf7d1523d4355e1b454981b0ade893918c783",
+    "bytes": 15157,
+    "durS": 1.3,
+    "mMax": -10.7,
+    "integrated": -12.5,
     "truePeak": 0
+   },
+   {
+    "sha256": "9a8bfc1d68aa2923fe9b2376964c236f412eb57b4d38344a825c43a495fa5c0c",
+    "bytes": 19008,
+    "durS": 1.52,
+    "mMax": -11.3,
+    "integrated": -14.5,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "a51ae995ba94d26405699d6478f548efdbc6861360e1f252ce5cc79f7fa8f12f",
+    "bytes": 17538,
+    "durS": 1.6,
+    "mMax": -10.8,
+    "integrated": -12.8,
+    "truePeak": 0.4
    }
   ]
  },
@@ -1509,11 +1501,11 @@
     "truePeak": 0
    },
    {
-    "sha256": "ef5494eb4c75c94f7c0b2257f4aed1b83314088efc479e48ff6b1d35133f7bac",
-    "bytes": 14594,
-    "durS": 1.298,
-    "mMax": -15.4,
-    "integrated": -17.3,
+    "sha256": "9949dfc25b0928208cdba334d23ae320283fe80539b2a62b1d3f1c9155707dc7",
+    "bytes": 15731,
+    "durS": 1.56,
+    "mMax": -14.1,
+    "integrated": -18,
     "truePeak": 0.1
    },
    {
@@ -2518,20 +2510,20 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "9d5932fe889543bd4ba8c45b2f4e1151031ef14901a85532508d1ffd7be88cd4",
-    "bytes": 21444,
-    "durS": 2.2,
-    "mMax": -13,
-    "integrated": -15.9,
-    "truePeak": -0.1
+    "sha256": "7f45cdcb392a666698c962ed426b1ae1790a8db3beecc978fa000b6fd80ec764",
+    "bytes": 11092,
+    "durS": 0.924,
+    "mMax": -11.4,
+    "integrated": -14.7,
+    "truePeak": -0.2
    },
    {
-    "sha256": "e335b65a9f7c8126b41b9976cf750fd67a2bd5ec455aec1bacafaebe0682c2b1",
-    "bytes": 12842,
-    "durS": 1.232,
-    "mMax": -13.4,
-    "integrated": -14.9,
-    "truePeak": -0.3
+    "sha256": "5c41de387ac3f1145884dea9229a943a0004b7a1467233965e3ce7c6a089e249",
+    "bytes": 21055,
+    "durS": 2.2,
+    "mMax": -10.5,
+    "integrated": -15.2,
+    "truePeak": 0.3
    }
   ]
  },
@@ -3083,28 +3075,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "172b22d89c21b18a8976718870e88fe37034a8fb9bede42f7a8307520c221b91",
-    "bytes": 14660,
+    "sha256": "2d3538f864009ec1c004e64ff1d6ba07ccd7576f80ed68ce827abe74051652ae",
+    "bytes": 15751,
     "durS": 1.36,
-    "mMax": -10.3,
-    "integrated": -13.1,
-    "truePeak": 0
+    "mMax": -10.1,
+    "integrated": -12.2,
+    "truePeak": 0.5
    },
    {
-    "sha256": "8c5df2ff89f91a4bf6df574000449e68967ea1e2d6bf4a0373b94830757c26ed",
-    "bytes": 16893,
-    "durS": 1.36,
-    "mMax": -11.3,
-    "integrated": -13.1,
-    "truePeak": 0.6
+    "sha256": "d26337e1b4fffa3d3a11a76a1e64b4951f40652bc4918441318376f3fcf9a6b1",
+    "bytes": 16005,
+    "durS": 1.136,
+    "mMax": -10.2,
+    "integrated": -12.4,
+    "truePeak": 0.2
    },
    {
-    "sha256": "871e9f05f8caf2803ffa59d08f38eb989bb678d96c13e8ddab4e280e664c27c6",
-    "bytes": 16849,
+    "sha256": "7b0bb193487ecce1228f8a8ddb30ce8b4823d049728243cf1fb935a71bf04b40",
+    "bytes": 14422,
     "durS": 1.36,
-    "mMax": -13.3,
-    "integrated": -14.7,
-    "truePeak": -0.1
+    "mMax": -10,
+    "integrated": -11.9,
+    "truePeak": -1.3
    }
   ]
  },
@@ -3114,12 +3106,12 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "c45bce7a300379c9beb0bec7a7ddf429b1feb8901a8f76a84f743a48ca2a3546",
-    "bytes": 15559,
-    "durS": 1.6,
-    "mMax": -10.6,
-    "integrated": -13,
-    "truePeak": 0.1
+    "sha256": "f97507c605431ae1ffded401e9e2dc7aa45ec5af08998746ec519c64ca0931a5",
+    "bytes": 15433,
+    "durS": 1.44,
+    "mMax": -11.1,
+    "integrated": -13.4,
+    "truePeak": 0
    },
    {
     "sha256": "07b328dea17db7defd39e6792fd5c99d335f49543496d8f51c406a60bd78a7bb",
@@ -3145,12 +3137,12 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "ee48af22de17e45d8f2c046a9026a9ced202207b9ffff4f45b557920d2a2d594",
-    "bytes": 16848,
+    "sha256": "ade3359c30c7982ac94b6270f09f33aa384ccd29c645c9bfe834d41abb4fb2db",
+    "bytes": 16070,
     "durS": 1.6,
-    "mMax": -11.9,
-    "integrated": -16.4,
-    "truePeak": -0.3
+    "mMax": -12.8,
+    "integrated": -17.9,
+    "truePeak": -0.2
    },
    {
     "sha256": "918f1339959ff4180c5242833d9ec5e39553926594bd3776fcb28807a595f839",
@@ -3207,28 +3199,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "3a15b4555371d21c0efbcd2b33b14420b5571a061b0f8b98029ba5877064c637",
-    "bytes": 15621,
-    "durS": 1.6,
-    "mMax": -14.9,
-    "integrated": -20.6,
-    "truePeak": -0.6
+    "sha256": "7be9d38cd07a6d5a7eecad9ac0f9c3acdb9c1544d5c8c1cd7a1d2bd7359035de",
+    "bytes": 12691,
+    "durS": 1.2,
+    "mMax": -12,
+    "integrated": -14.3,
+    "truePeak": -0.4
    },
    {
-    "sha256": "3671a178642daf33edd380c078a075e2344b10a2ac6ebfda46d3df0e58b33aa7",
-    "bytes": 13874,
-    "durS": 1.32,
-    "mMax": -13.1,
-    "integrated": -18,
-    "truePeak": -0.7
+    "sha256": "22e842fc2b803d0d06ae23038472061c8f48ae3542c66d684e07a9f638e761b8",
+    "bytes": 16295,
+    "durS": 1.6,
+    "mMax": -12.5,
+    "integrated": -15.7,
+    "truePeak": -0.8
    },
    {
-    "sha256": "950a22e1daf3d199308c8c05d20dea2e33c1b1c573ec7f9ee8a753b44a1cc0f6",
-    "bytes": 15869,
+    "sha256": "8e023bff80942601eb26ddf3a9a6cc8b95612fbe03f4ff06b9fb5ee489ee82fc",
+    "bytes": 16775,
     "durS": 1.6,
-    "mMax": -13.8,
-    "integrated": -19.9,
-    "truePeak": -0.7
+    "mMax": -13.2,
+    "integrated": -17.3,
+    "truePeak": 0
    }
   ]
  },

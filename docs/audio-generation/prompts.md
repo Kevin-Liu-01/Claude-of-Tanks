@@ -118,6 +118,19 @@ noise, clicks or low flutter. A supersonic near miss needs the bullet framing
 … like a whip"): "a sharp loud crack of its shock wave and a heavy tearing
 rush" returned rushes with no crack.
 
+Under the ear proxy (gun-reports-269's YAMNet, 2026-11-04), four impact prompts failed and were rewritten:
+- "the round tumbling away with a low flutter" was heard as a motorcycle, a fart or a zipper; "the round
+  whooshing away" was heard as a whoosh.
+- "a hissing sheet of sand" was heard as spray and tools.
+- A wreck's "hollow … knock … a short low boom inside the dead hull" was heard as a drum in 8 takes of 8.
+  "one heavy, dull, dead thud of thick scorched steel struck hard, like a sledgehammer on heavy steel plate"
+  passed 5 of 8, heard as a knock, a slam or a door.
+- The driver's "deafening bang in a cramped steel space" was heard as a drum. "one violent crash of steel
+  tearing open … fragments clattering and rattling off the walls" passed 2 of 6; two other takes were heard
+  as gunshots.
+
+A heavy strike passes as a thud, knock or slam. Its prompt names one blow and what it struck, never a boom.
+
 ### Weight layers: punch and sub
 
 The punch under a close report and the low end under blasts are separate

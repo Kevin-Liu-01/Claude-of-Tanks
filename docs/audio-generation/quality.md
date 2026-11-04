@@ -51,6 +51,18 @@ Single-shot assets (machine guns, autocannons, bullets, the radio key, the
 punches) are cut before a second report within 8 dB of the first, and a cut
 that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 
+Struck parts and grazes (impact-materials-269, 2026-11-04) were judged by gun-reports-269's YAMNet ear proxy
+under rules written before the run. A strike or spall must be heard as a hit (Bang, Thump, Thunk, Smash, Whack,
+Slam, Clang, Crunch or Breaking) at 0.05 or more and at twice any gun class. A rubber skirt, a rack or a ground
+graze must also be heard as its own material above any metal class (Clang, Ding, Ping, Chink, Coin dropping,
+Keys jangling). The verdict:
+- One shipped earth graze was heard as a coin dropping, and every shipped rubber-skirt strike was heard as keys
+  or coins. Those are the owner's "ricochets off ground shouldnt sound like metal", heard blind.
+- A wreck strike was heard as a drum in 8 takes of 8, and a snow graze as a fart.
+- Mastering moves a short take's verdict near the floor, so a pick is confirmed on the shipped file.
+
+All 39 shipped files pass.
+
 ## Failure modes
 
 | Symptom (what a player hears) | Cause | Caught by |
