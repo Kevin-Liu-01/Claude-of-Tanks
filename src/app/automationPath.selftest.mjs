@@ -199,17 +199,27 @@ function withGlobals(values, fn) {
   assert.match(read('tools/browser-launch.mjs'), /\n {2}await prepareToolBrowser\(target\);\n {2}let rootPid = null;/);
 }
 
-// The tools (and the selftests that drive a page): none hides navigator.webdriver by hand; docs/AUTOMATION-PATHS.md lists
-// exactly the tools on the player's path (each checks the path its page took), each battle entry's users, and the tools
-// that write the game's state outside its transitions; a browser a tool connects to (not one it launched) is prepared
-// as a launched one is; an agent-browser session tool checks the path its session's page took.
+/** The tools that define navigator.webdriver in a page, each with its reason (docs/AUTOMATION-PATHS.md names them). */
+const SPOOF_EXCEPTIONS = new Map([
+  ['tools/click-timeline.mjs', 'its battle document boots driven for __DEBUG on an A/B base that predates the owner, '
+    + 'which decides by navigator.webdriver alone while the driver is hidden at launch; the probe mirrors its one '
+    + 'choice (window.__cotAutomation) onto the request and the driver'],
+]);
+
+// The tools (and the selftests that drive a page): none hides navigator.webdriver by hand but the named exception;
+// docs/AUTOMATION-PATHS.md lists exactly the tools on the player's path (each checks the path its page took), each
+// battle entry's users, and the tools that write the game's state outside its transitions; a browser a tool connects to
+// (not one it launched) is prepared as a launched one is; an agent-browser session tool checks the path its session's
+// page took.
 {
   const files = toolCensusFiles(ROOT);
   assert.ok(files.includes('tools/black-world.browser.selftest.mjs') && files.includes('tools/destruction-first-use.browser.selftest.mjs'),
     'the census reads the selftests that drive a page');
   const raw = new Map(files.map((file) => [file, read(file)]));
   const spoofers = [...raw].filter(([, text]) => /Navigator\.prototype,\s*'webdriver'/.test(text)).map(([file]) => file);
-  assert.deepEqual(spoofers, [], 'tools that hide navigator.webdriver by hand instead of asking for a path');
+  assert.deepEqual(spoofers, [...SPOOF_EXCEPTIONS.keys()], 'tools that define navigator.webdriver by hand instead of asking for a path');
+  const never = read('docs/AUTOMATION-PATHS.md').match(/\nNever spoof `navigator\.webdriver`[^\n]*(?:\n[^\n]+)*/)?.[0] ?? '';
+  for (const file of SPOOF_EXCEPTIONS.keys()) assert.ok(never.includes(`\`${file}\``), `docs/AUTOMATION-PATHS.md names the exception ${file}`);
   const census = {
     player: /__COT_AUTOMATION\s*=\s*'player'|requestAutomationPath\(\s*\w+\s*,\s*'player'\s*\)|automationPathScript\(\s*'player'\s*\)|defineProperty\(window,\s*'__COT_AUTOMATION'/,
     startBattle: /\.startBattle\(/,
@@ -249,6 +259,53 @@ function withGlobals(values, fn) {
     assert.match(raw.get(file), /sessionPathProblem\(/, `${file}: checks the path its session's page took`);
     assert.match(raw.get(file), /automation=harness/, `${file}: its usage opens the session on the harness path`);
   }
+}
+
+// The exception, run: click-timeline's probe on both kinds of build. Its battle document must boot driven (the build
+// then installs __DEBUG, which the battle paths need) and hand over to the player's path once warm; its game document
+// is the player's throughout. A build before the owner decides by navigator.webdriver alone (item/sm-fix-app-flow
+// src/main.ts:702, `diagnosticsRequested = DEV || debugModeRequested() || navigator.webdriver`), and the tool hides the
+// driver at launch; round 1's probe made only the request, so such a build's battle document never installed __DEBUG
+// and never warmed (the A/B against main broke).
+{
+  const source = read('tools/click-timeline.mjs');
+  const probe = new Function(`return ${source.match(/\nconst PROBE = (`\(\(\) => \{[\s\S]*?\n\}\)\(\);`);\n/)[1]};`)();
+  assert.match(source, /'--disable-blink-features=AutomationControlled'/, 'click-timeline hides the driver at launch');
+  assert.match(source, /if \(DOCS\[doc\]\.automation\) await page\.evaluateOnNewDocument\('window\.__cotAutomation = true;'\);/);
+  assert.match(source, /after: async \(page\) => \{ await page\.evaluate\(\(\) => \{ window\.__cotAutomation = false; \}\); \}/);
+  /** One document: the launcher's request, the tool's scripts, then the build's boot decision. */
+  const open = (script, { owner, battle }) => {
+    class Navigator {}
+    Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false }); // AutomationControlled
+    const nav = new Navigator();
+    const win = { location: { search: '?nogate' } };
+    const run = (text) => new Function('window', 'location', 'Navigator', 'navigator', 'HTMLCanvasElement', 'requestAnimationFrame', text)(
+      win, win.location, Navigator, nav, class { getContext() { return null; } }, () => 0);
+    run(HARNESS_DEFAULT_SCRIPT);
+    if (battle) run('window.__cotAutomation = true;');
+    run(script);
+    if (owner) Object.defineProperty(win, '__AUTOMATION_PATH', { get: () => resolveAutomationMode({ flag: win.__COT_AUTOMATION, search: win.location.search }) });
+    const driven = owner ? win.__AUTOMATION_PATH.driven : nav.webdriver === true;
+    if (driven) win.__DEBUG = { slayEnemies() {} };
+    return { win, nav, debug: typeof win.__DEBUG?.slayEnemies === 'function' };
+  };
+  const handOver = async ({ win, nav }) => {
+    win.__cotAutomation = false; // DOCS.battle.after
+    return assertAutomationPath({ evaluate: async (fn) => withGlobals({ window: win, navigator: nav }, fn) }, 'player');
+  };
+  for (const owner of [false, true]) {
+    const battle = open(probe, { owner, battle: true });
+    assert.equal(battle.debug, true, `${owner ? 'a build with the owner' : 'an older build'}: the battle document boots driven`);
+    const took = await handOver(battle);
+    assert.deepEqual([took.path, took.legacy], ['player', !owner], 'and is timed on the player\'s path once warm');
+    const game = open(probe, { owner, battle: false });
+    assert.equal(game.debug, false, 'the game document is the player\'s from its boot');
+    assert.equal(game.nav.webdriver, false, 'analytics and telemetry see a player there, as before the owner');
+    assert.equal((await assertAutomationPath({ evaluate: async (fn) => withGlobals({ window: game.win, navigator: game.nav }, fn) }, 'player')).path, 'player');
+  }
+  const requestOnly = probe.replace(/\n {2}Object\.defineProperty\(Navigator\.prototype, 'webdriver'[^\n]*/, '');
+  assert.notEqual(requestOnly, probe);
+  assert.equal(open(requestOnly, { owner: false, battle: true }).debug, false, '(round 1: the older build never installed __DEBUG)');
 }
 
 console.log('automationPath.selftest: a requested path only, the launcher\'s harness request, the player path checked, the tools census');

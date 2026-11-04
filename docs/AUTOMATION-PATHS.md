@@ -29,10 +29,13 @@ left to the URL. An agent-browser session tool (`tools/map-shadow-audit.mjs`, `t
 `&automation=harness`, and it checks the path the session's page took (`sessionPathProblem`). A person or an agent
 browsing the game with no request gets the player's path; add `?automation=harness` for the shortcuts.
 
-Never spoof `navigator.webdriver` in a page to pick its path: a request is how a page picks it. Analytics and telemetry
-keep their own `navigator.webdriver` exclusion, so a tool that hides the driver at launch for an older build (below)
-counts as a player there on a production host, as every player-path tool did before 2026-11-03. The page publishes
-the path it resolved as `window.__AUTOMATION_PATH` (read-only), next to the app lifecycle (`window.__APP_LIFECYCLE`).
+Never spoof `navigator.webdriver` in a page to pick its path: a request is how a page picks it. The one exception is
+`tools/click-timeline.mjs`, whose battle document must boot driven on an older build too (below): its probe mirrors
+its one choice (`window.__cotAutomation`) onto the request and onto `navigator.webdriver`, which the owner never reads.
+Analytics and telemetry keep their own `navigator.webdriver` exclusion, so a tool that hides the driver at launch for
+an older build (below) counts as a player there on a production host, as every player-path tool did before
+2026-11-03. The page publishes the path it resolved as `window.__AUTOMATION_PATH` (read-only), next to the app
+lifecycle (`window.__APP_LIFECYCLE`).
 
 So every receipt not listed under the player's path certifies the harness path: no entry gate, no veils, no scene
 watchdogs. A regression in one of those machines is visible only to the player-path tools.
@@ -44,12 +47,16 @@ fails by name otherwise. A build before 2026-11-03 ignores the request and decid
 the tools that may load such a build (an A/B base, a deployment) also launch with
 `--disable-blink-features=AutomationControlled`, which gives that build the player's path too: battle-entry-sweep,
 black-world-repro, click-timeline, cold-load-probe, garage-battle-actions-probe, gate-audio-probe and nav-timeline.
+Hiding the driver also hides that build's QA surfaces (`window.__DEBUG`, installed there only under
+`navigator.webdriver` or `?debug=1`). click-timeline's battle document needs them, so on such a build it boots with
+`navigator.webdriver` reading true (the exception above) and hands over to the player's path once the Garage is up,
+as it does through the request on a newer build; its game document is the player's throughout.
 loading-budget-probe and solo-cold-import-cover-probe serve the checkout they run in.
 
 <!-- census:player -->
 - `tools/battle-entry-sweep.mjs`: the covered solo entry, its scene watchdog included, on every battlefield
 - `tools/black-world-repro.mjs`: the black-world hunt through the real Garage controls
-- `tools/click-timeline.mjs`: boots driven (harness) for `__DEBUG`, then takes the player's veils once the Garage is up
+- `tools/click-timeline.mjs`: the battle document boots driven (harness; `navigator.webdriver` on an older build) for `__DEBUG`, then takes the player's veils once the Garage is up
 - `tools/cold-load-probe.mjs`: a new player's cold load, with no QA runtime in its timings
 - `tools/garage-battle-actions-probe.mjs`: the Garage's BATTLE, Battle Again and return with real input
 - `tools/gate-audio-probe.mjs`: the entry gate and the audio it unlocks

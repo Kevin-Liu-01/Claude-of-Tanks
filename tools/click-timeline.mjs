@@ -24,7 +24,10 @@
 //
 // The probe asks for the player's path (src/app/automationPath.ts), so the transitions, veils and idle warm-ups run as
 // they do for a player. The battle document boots on the harness path (the game then installs `__DEBUG`, which the
-// battle paths use to end a battle) and takes the player's once the Garage is up.
+// battle paths use to end a battle) and takes the player's once the Garage is up. A build before the automation owner
+// (2026-11-03: an A/B base, a deployment) ignores the request and decides by navigator.webdriver alone, and the driver
+// is hidden at launch, so the probe also mirrors the same choice onto navigator.webdriver: the one tool that does
+// (docs/AUTOMATION-PATHS.md), or such a build's battle document would never install `__DEBUG` and never warm.
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -53,10 +56,13 @@ const RENDERER_LIMIT_KB = 6 * 1024 * 1024;
 const INPUT_EVENTS = ['pointerdown', 'pointerup', 'click', 'mousedown', 'mouseup', 'keydown', 'keyup', 'touchstart', 'touchend'];
 
 /** The in-page recorder: event timing, long animation frames and long tasks from document start, and the visibility
- *  test the paths use. `window.__cotAutomation` decides which automation path the game reads. */
+ *  test the paths use. `window.__cotAutomation` decides which automation path the game reads: the request for a build
+ *  with the automation owner, navigator.webdriver for a build before it (the owner never reads the driver; only
+ *  analytics and telemetry see it, during the battle document's boot). */
 const PROBE = `(() => {
   if (window.__click) return;
   Object.defineProperty(window, '__COT_AUTOMATION', { get: () => (window.__cotAutomation === true ? 'harness' : 'player'), configurable: true });
+  Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => window.__cotAutomation === true, configurable: true });
   const rec = window.__click = { events: [], loafs: [], longtasks: [] };
   rec.visible = (el) => { if (!el || el.nodeType !== 1) return false;
     const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return false;
