@@ -182,7 +182,7 @@ for (const end of ['deadline', 'dispose']) {
   if (end === 'deadline') h.advance(100); else h.client.dispose();
   assert.equal(await a, null); assert.equal(await b, null);
   assert.equal(h.workers[0].terminated, 1);
-  // (2026-11-02 audit R6) a deadline is one failure, not the session's (app/workerClientHealth.ts); a dispose is the end
+  // (2026-11-02 audit R6) a deadline is one failure, not the session's (src/workerClientHealth.ts); a dispose is the end
   assert.equal(h.client.available(), end === 'deadline');
   assert.equal(h.timers.size, 0);
   for (const item of pending) item.resolve(h.bitmap(item.image));

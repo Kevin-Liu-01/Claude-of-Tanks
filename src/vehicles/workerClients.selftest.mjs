@@ -1,5 +1,5 @@
 // workerClients.selftest.mjs — the decor planner's and the riding-parts prebuild's worker clients follow the one
-// worker-client pattern (2026-11-02 audit R6, app/workerClientHealth.ts). Copyright © 2026 Kevin B. Liu.
+// worker-client pattern (2026-11-02 audit R6, src/workerClientHealth.ts). Copyright © 2026 Kevin B. Liu.
 //
 // The decor client had no deadline and no messageerror handler, and its `broken` latch was permanent: a reply that could
 // not be read, or a plan that hung in the serial worker, stalled that stepped build forever (tankFactoryCore's
@@ -10,7 +10,7 @@
 // clients are proved in their own selftests (materialPainterWorker, sourcedTextureCompositionClient).
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
-import { MAX_CONSECUTIVE_WORKER_FAILURES, createWorkerClientHealth } from '../app/workerClientHealth.ts';
+import { MAX_CONSECUTIVE_WORKER_FAILURES, createWorkerClientHealth } from '../workerClientHealth.ts';
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 const within = (promise, ms = 400) => Promise.race([

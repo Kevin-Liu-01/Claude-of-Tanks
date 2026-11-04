@@ -15,7 +15,10 @@
  *   document (every job takes the fallback at once); one success starts the count again.
  *
  * Before, one slow job (or one hung or unreadable reply) turned the worker off for the session, or waited forever.
- * DOM-free: this holds only the count; each client owns its worker, its timers and its fallback.
+ * DOM-free: this holds only the count; each client owns its worker, its timers and its fallback. It is a shared leaf at
+ * src's root, not in src/app: the shared core reaches it (sim/authoritativeMatch.ts -> world/terrain.ts ->
+ * world/sourcedTextures.ts -> world/sourcedTextureCompositionClient.ts), and tools/driver-boundaries.mjs keeps driver
+ * code (src/app) and render-side modules (src/engine, src/ui) out of the core.
  */
 
 export const MAX_CONSECUTIVE_WORKER_FAILURES = 3;

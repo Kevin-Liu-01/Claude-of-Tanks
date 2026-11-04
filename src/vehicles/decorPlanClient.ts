@@ -2,7 +2,7 @@
 // (tankFactoryCore.ts DecorPlanner) is made in decorPlanWorker.ts over a replica of the tank, and this attaches nothing:
 // it posts the request and rebuilds the reply's plan. The worker starts with the first request and serves every later
 // one; a worker that fails to start or dies rejects what it holds, and those tanks plan in-line.
-// (2026-11-02 audit R6) the worker-client pattern (app/workerClientHealth.ts): the worker plans one request at a time in
+// (2026-11-02 audit R6) the worker-client pattern (src/workerClientHealth.ts): the worker plans one request at a time in
 // arrival order, so the oldest request held is its job, dispatched when it was posted to an idle worker or when the
 // reply before it came back, and its deadline runs from then. A deadline, an error or a messageerror closes the worker
 // and rejects what it held (those tanks plan in-line: a build's wait always settles, where a hung or unreadable reply
@@ -11,7 +11,7 @@
 import type { DecorationAttachmentArgs, DecorPlan } from './decorations.ts';
 import { decorPlanFrom, decorPlanRequest, type DecorPlanReply } from './decorPlanWire.ts';
 import type { DecorPlanMessage, DecorPlanResult } from './decorPlanWorker.ts';
-import { createWorkerClientHealth, type WorkerClientHealth } from '../app/workerClientHealth.ts';
+import { createWorkerClientHealth, type WorkerClientHealth } from '../workerClientHealth.ts';
 
 /** A job's deadline from its dispatch; a plan takes tens of milliseconds, a slow phone a few hundred. */
 export const DECOR_PLAN_DEADLINE_MS = 15_000;

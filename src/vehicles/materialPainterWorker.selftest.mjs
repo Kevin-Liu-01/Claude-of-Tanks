@@ -125,7 +125,7 @@ await test('cancelled idle callback cannot terminate a newly active job', async 
 });
 // 2026-11-02 audit R6: the deadline ran from paint() (a queued job's wait counted: 16 queued, or a laptop asleep mid-bake,
 // tripped it) and one timeout disabled the worker for the session; it runs from dispatch now, and a failure leaves the
-// next bake a fresh worker until three fail in a row (app/workerClientHealth.ts)
+// next bake a fresh worker until three fail in a row (src/workerClientHealth.ts)
 await test('a deadline runs from dispatch, not from the queue', async () => {
   const f = fixture({ timeoutMs: 7 }); const a = f.client.paint(request()), b = f.client.paint(request('queued'));
   const deadlines = () => f.timers.filter(timer => timer.delay === 7);

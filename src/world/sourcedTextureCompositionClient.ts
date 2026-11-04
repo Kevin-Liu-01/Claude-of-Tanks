@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
-import { createWorkerClientHealth } from '../app/workerClientHealth.ts';
+import { createWorkerClientHealth } from '../workerClientHealth.ts';
 import type { SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import {
   SOURCED_TEXTURE_COMPOSITION_PROTOCOL,
@@ -86,7 +86,7 @@ function usedImages(input: SourcedCompositionInput): SourcedCompositionImages {
 /** One serial worker and one bitmap preparation at a time. A joined consumer's
  * cancellation never interrupts another consumer. No textures or canvas cache
  * entries belong to this service; returned buffers belong to the caller.
- * (2026-11-02 audit R6) The worker-client pattern (app/workerClientHealth.ts): a failure closes the worker and settles
+ * (2026-11-02 audit R6) The worker-client pattern (src/workerClientHealth.ts): a failure closes the worker and settles
  * what it held with the main-thread fallback, and the next set starts a fresh worker; three in a row leave the client
  * unavailable. Before, one 15 s timeout sent every later composition in the session to the main thread. */
 export function createSourcedCompositionClient(

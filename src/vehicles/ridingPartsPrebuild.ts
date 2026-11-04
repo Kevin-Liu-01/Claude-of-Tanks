@@ -4,14 +4,14 @@
 // neighbour pass after its first tank, a deploy intent, a battle's roster: fleetFactory.ensureTankBuilders), a worker
 // builds every option set in the manifest, those tanks' first, and this seeds each into the cache as it arrives: a later
 // build copies it. A build that needs a key not seeded yet builds it in-line, as before.
-// (2026-11-02 audit R6) the worker-client pattern (app/workerClientHealth.ts): the prebuild is idle, running or done. A
+// (2026-11-02 audit R6) the worker-client pattern (src/workerClientHealth.ts): the prebuild is idle, running or done. A
 // worker that cannot start or fails (`error`) goes back to idle, so a later ask starts a fresh one for the keys still
 // missing (`have` is read at each start), three failures in a row at most; a `messageerror` loses that one part, which
 // builds in-line, and the rest go on. Before, a failed start latched the prebuild off for the session. It has no
 // deadline: nothing waits on it.
 import type { RidingPartsReply, RidingPartsRequest } from './ridingPartsWorker.ts';
 import { ridingPartKeys, seedRidingParts } from './ridingPartsWire.ts';
-import { createWorkerClientHealth } from '../app/workerClientHealth.ts';
+import { createWorkerClientHealth } from '../workerClientHealth.ts';
 
 type RidingPartsPrebuildState = 'idle' | 'running' | 'done';
 

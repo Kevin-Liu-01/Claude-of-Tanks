@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { createWorkerClientHealth } from '../app/workerClientHealth.ts';
+import { createWorkerClientHealth } from '../workerClientHealth.ts';
 import {
   isMaterialPainterRequest, readMaterialPainterReply,
   type MaterialPainterMessage, type MaterialPainterRequest, type MaterialPainterResult,
@@ -33,7 +33,7 @@ interface MaterialPainterClient {
 }
 
 /** One serial private worker; one consumer never cancels another shared bake. (2026-11-02 audit R6) The worker-client
- *  pattern (app/workerClientHealth.ts): a job's deadline runs from its dispatch, never its queueing (with 16 queued, or
+ *  pattern (src/workerClientHealth.ts): a job's deadline runs from its dispatch, never its queueing (with 16 queued, or
  *  a laptop that slept mid-bake, the old absolute deadline tripped on a healthy worker); a failure closes the worker and
  *  settles what it held with the main-thread fallback, and the next bake starts a fresh worker (a fresh realm loads its
  *  font again); three in a row leave the client unavailable. Before, one failure turned it off for the session. */
