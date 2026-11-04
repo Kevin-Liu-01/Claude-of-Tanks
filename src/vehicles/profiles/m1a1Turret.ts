@@ -32,7 +32,6 @@ const T = M1A1_TURRET;
 export const m1a1WallX = (y: number): number => T.WALL_C - T.WALL_K * y;
 export const m1a1RoofAt = (z: number): number => Math.min(T.ROOF, T.SLOPE_C - T.SLOPE_K * z);
 export const m1a1FaceZ = (x: number, y: number): number => T.FACE_C - T.FACE_X * Math.abs(x) - T.FACE_Y * y;
-const chinAt = (x: number, z: number): number => T.CHIN_Y0 + T.CHIN_X * (Math.abs(x) - T.SLOT) + T.CHIN_Z * (z - T.CHIN_Z0);
 
 type Plane = readonly [number, number, number, number]; // n . p = d
 const PLANES: Readonly<Record<string, Plane>> = {
