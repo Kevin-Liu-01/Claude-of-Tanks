@@ -2697,6 +2697,14 @@ function ridingYawPlate(parts: FittingParts, moving: RidingStationMoving | undef
   const pieces = ([[-ha, -hb, pa0, hb], [pa1, -hb, ha, hb], [pa0, -hb, pa1, pb0], [pa0, pb1, pa1, hb]] as const)
     .filter(([a0, b0, a1, b1]) => a1 - a0 >= 0.012 && b1 - b0 >= 0.012);
   if (pieces.reduce((area, [a0, b0, a1, b1]) => area + (a1 - a0) * (b1 - b0), 0) < 0.25 * 4 * ha * hb) return;
+  // (release 268 builder E: a port that leaves the whole face uncut, a sweep that only grazes an edge, draws the plate as
+  // authored, its own geometry; the HC brow's bearing stations were lost to a plain box, and the contact receipt read it
+  // as crossing the head's cover)
+  const [whole] = pieces, uncut = 1e-6;
+  if (pieces.length === 1 && whole[0] <= -ha + uncut && whole[1] <= -hb + uncut && whole[2] >= ha - uncut && whole[3] >= hb - uncut) {
+    parts.add(slot, geometry(), x, y, z, rx, ry, rz);
+    return;
+  }
   for (const [a0, b0, a1, b1] of pieces) {
     const size = [...dims], at = [0, 0, 0];
     size[fa] = a1 - a0; size[fb] = b1 - b0; at[fa] = (a0 + a1) / 2; at[fb] = (b0 + b1) / 2;
