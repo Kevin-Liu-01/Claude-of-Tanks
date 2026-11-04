@@ -1279,14 +1279,15 @@ function buildOlifantTurret(P: TankBuilderPort, m: MarkDesign): void {
       // the Mk 1B's stand at the roof edge on an open bracket, steeper and splayed further out, the whole bank over the
       // roof line (the Tempe rear photograph, DSCF4691; Main, 2026-11-04): a shelf level with the roof off the side's
       // top edge on two diagonal stays, a guard rail along its outer edge
-      // (the 269 blind critic: on a shelf below the roof edge the near bank's tubes sank behind the turret's top edge)
+      // (the 269 blind critics: on a shelf below the roof edge the near bank's tubes sank behind the turret's top edge;
+      // a black rail over the roof read as spindly legs, so the rail is the bracket's own painted steel)
       const bx = s * (T.hw + 0.10);
       P.add('turretDetail', box(0.24, 0.03, 0.64), bx, 0.92, -2.38);
       for (const sz of [-2.66, -2.10]) {
         P.add('turretDark', xform(box(0.03, 0.272, 0.03), 0, 0, 0, 0, 0, -s * 0.824), bx, 0.8125, sz);
-        P.add('turretDark', box(0.035, 0.14, 0.035), s * (T.hw + 0.205), 1.005, sz);
+        P.add('turretDetail', box(0.04, 0.14, 0.04), s * (T.hw + 0.205), 1.005, sz);
       }
-      P.add('turretDark', box(0.035, 0.035, 0.595), s * (T.hw + 0.205), 1.075, -2.38);
+      P.add('turretDetail', box(0.04, 0.04, 0.60), s * (T.hw + 0.205), 1.075, -2.38);
       for (let k = 0; k < 4; k++) {
         P.add('turretDetail', markSmokeTube(cylZ(0.046, 0.30, 12)), bx, 1.05, -2.60 + k * 0.16, -0.80, s * 0.35, 0);
       }
