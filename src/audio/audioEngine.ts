@@ -875,7 +875,8 @@ export function createAudio({
     const blastDb = closeK > 0.05 ? BLAST_DB[row.family] : undefined;
     if (blastDb != null && !(scopedInside && row.family !== 'cannon')) {
       const punch = punchFor(row.family, row.boreMm);
-      play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) });
+      // the punch is the muzzle blast itself: it turns with the report around the brake
+      play(punch.id, { ...base, rate: punch.rate, maxDurS: punch.maxDurS, loudDb: row.loudDb + 1, gainDb: (base.gainDb ?? 0) + blastDb + (own ? 2 : 0) + brakeDb });
     }
     if (scopedInside && row.family !== 'cannon') {
       play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate }));

@@ -242,7 +242,7 @@ export const SFX_ASSETS: Readonly<Record<string, SfxAssetRecord>> = {
   "gun_120r_far": {"g":"weapons","n":2,"d":[5,5],"c":1,"r":24000,"kb":66},
   "gun_120r_interior": {"g":"weapons","n":2,"d":[2.56,2.56],"c":1,"r":24000,"kb":50},
   "gun_120r_own": {"g":"weapons","n":3,"d":[3.5,3.5,3.5],"c":1,"r":24000,"kb":110},
-  "gun_125_close": {"g":"weapons","n":3,"d":[3.48,2.496,3.48],"c":1,"r":24000,"kb":108},
+  "gun_125_close": {"g":"weapons","n":3,"d":[2.22,1.88,3.48],"c":1,"r":24000,"kb":82},
   "gun_125_far": {"g":"weapons","n":2,"d":[5,5],"c":1,"r":24000,"kb":71},
   "gun_125_interior": {"g":"weapons","n":2,"d":[2.56,2.56],"c":1,"r":24000,"kb":55},
   "gun_125_own": {"g":"weapons","n":3,"d":[3.5,3.5,2.032],"c":1,"r":24000,"kb":103},

@@ -514,8 +514,8 @@ export const WEAPON_CLOSE: Readonly<Record<WeaponKey, string>> = Object.freeze(O
  * gases sideways and back, so the crew and anyone beside the gun hear it harsher.
  */
 const BRAKE_DB: Readonly<Record<MuzzleBrake, readonly [ahead: number, side: number, behind: number]>> = Object.freeze({
-  none: [1.5, 0, -1.5],
-  flash_hider: [1, 0, -1],
+  none: [1.5, 0, -1],
+  flash_hider: [1, 0, -0.5],
   deflector: [0.5, 1.5, 0.5],
   double_baffle: [0, 2.5, 1],
   multi_baffle: [0.5, 1.5, 0],

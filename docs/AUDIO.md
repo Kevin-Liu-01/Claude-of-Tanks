@@ -236,7 +236,7 @@ own from the open hatch, the closed turret's close-miked at the loader's
 station (heard in the sight), and the distant boom, crossfaded by range (a
 cannon keeps its close report to about 150 m). A row also carries its muzzle:
 with nothing on it the blast is loudest ahead of the gun (+1.5 dB in front,
-−1.5 behind), a muzzle brake throws it sideways and back (a double-baffle
+−1 behind, the punch under the report turning with it), a muzzle brake throws it sideways and back (a double-baffle
 brake +2.5 dB beside the gun), which our own report hears only as the brake's
 blast thrown back at the hatch. A gun tail matched to the map (open, forest,
 urban, mountain) follows every report, once per 0.22 s beat for a machine-gun
@@ -989,8 +989,10 @@ crew-lines.json ─┐                    crew-voices.json
   that fails typecheck for a weapon without a row, its loaders from the
   internal-layout registry. 107 assets were generated (676 takes, then 8 more
   for a roof gun's own report and 12 for two banks short of reports): every
-  cannon bore's close, own-hatch, closed-turret and distant reports (the 90–130 mm
-  closes regenerated with words for their own gun), each autocannon's and roof
+  cannon bore's close, own-hatch, closed-turret and distant reports (the 90, 105,
+  120 and 130 mm closes regenerated with words for their own gun; the 125 mm kept
+  its 10-02 takes, the mix tuned on them, when none of its eight new takes
+  measured as a report), each autocannon's and roof
   machine gun's own, closed-turret and distant report, the 35 mm close, and 26
   pieces of reload machinery weighed by calibre and construction. The scorer
   learnt three failure modes (quality.md): the distant echo cut as a second

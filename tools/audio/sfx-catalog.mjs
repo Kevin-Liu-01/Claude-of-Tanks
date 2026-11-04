@@ -72,8 +72,15 @@ const RECOIL = { light: 'a sharp steel clack', medium: 'a heavy steel slam', hea
 
 // Banks where too few of the first eight takes were reports rather than blasts (build-sfx's late-peak floor) get more.
 const MORE_TAKES = { gun_120_own: 14, gun_152h_close: 14 };
+// The 125 mm keeps its 2026-10-02 close report (owner-approved, the mix tuned on it): none of the eight takes of its new
+// prompt measured as a report (raw crest 4–11 dB, clipped peaks, every score under 1).
+const KEPT_CLOSE = {
+  gun_125: sfx('gun_125_close', 'weapons',
+    `Gunshot sound effect: one single shot of a 125 mm smoothbore tank cannon at a military range, recorded 30 metres beside it: instantaneous, a violent, very sharp muzzle-blast crack with a deeper report, a hard concussive punch as the pressure wave slaps off the ground, then a dry echo rolling off distant hills. ${REAL}`,
+    3.5, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape: [12, 85, -20] }),
+};
 const gunReports = GUN_REPORTS.flatMap(([id, gun, crack, inside, boom, shape, size]) => [
-  short(sfx(`${id}_close`, 'weapons',
+  KEPT_CLOSE[id] ?? short(sfx(`${id}_close`, 'weapons',
     `Gunshot sound effect: one single shot of a ${gun} at a military range, recorded 30 metres beside it: instantaneous, ${crack}, a hard concussive punch off the ground, then a dry echo off distant hills. ${REAL}`,
     3.5, { inf: 0.6, variants: 3, takes: MORE_TAKES[`${id}_close`] ?? 8, proc: 'gunshot', shape })),
   short(sfx(`${id}_own`, 'weapons',
