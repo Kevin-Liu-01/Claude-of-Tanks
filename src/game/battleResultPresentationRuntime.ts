@@ -108,12 +108,15 @@ interface RunningBeat {
 }
 
 const DEFAULT_DEATH_BEAT_MS = 2600;
+/** The most one update may advance the beat clock: a frame step with room for a slow device's frame (4 fps), never a
+ *  pause. */
+const MAX_BEAT_STEP_MS = 250;
 
 /**
  * Own the result/replay presentation state machine independently from the
- * fixed-step and render loop. The owner deliberately uses wall time only for
- * the cinematic death beat and the ending beats; gameplay state remains
- * simulation-authored. Battle endings (owner 2026-09-25): every verdict asks
+ * fixed-step and render loop. The owner deliberately uses presentation time
+ * (the beat clock: wall time while it is updated) only for the cinematic death
+ * beat and the ending beats; gameplay state remains simulation-authored. Battle endings (owner 2026-09-25): every verdict asks
  * the director (battleEnding.ts) for its beat — the final-kill replay through
  * the killcam, or a camera beat (time's up, objective orbit, wreck orbit,
  * pull-back) through the ending camera — before the report is presented.
@@ -145,6 +148,22 @@ export function createBattleResultPresentationRuntime({
   }
 
   const director = ending?.director ?? createBattleEndingDirector();
+  // The beat clock (2026-11-02 audit F4): the death beat and the ending beats run on presentation time, which advances
+  // only across update() calls, at most one frame step (MAX_BEAT_STEP_MS) each. update() runs only while the battle
+  // frame does (never while Settings pauses the battle, nor in a hidden tab), so a beat holds through a pause instead of
+  // firing the moment play resumes. It reads the wall clock (now()) at its first update, so unpaused frames keep
+  // wall-time deadlines.
+  let beatClockMs: number | null = null;
+  let lastWallMs = 0;
+  const advanceBeatClock = (): number => {
+    const wall = now();
+    if (beatClockMs === null) beatClockMs = wall;
+    else beatClockMs += Math.min(MAX_BEAT_STEP_MS, Math.max(0, wall - lastWallMs));
+    lastWallMs = wall;
+    return beatClockMs;
+  };
+  /** The beat clock as of this update (a port called before the first update reads the wall clock). */
+  const beatNow = (): number => beatClockMs ?? now();
   let endShown = false;
   let deathCamShown = false;
   let pending: PendingReplay | null = null;
@@ -212,7 +231,7 @@ export function createBattleResultPresentationRuntime({
       presentResult(result);
       return 'none';
     }
-    director.begin(cameraPlan, now());
+    director.begin(cameraPlan, beatNow());
     beat = { plan: cameraPlan, result };
     ending.emitBeat('begin', cameraPlan);
     return resolved.beat;
@@ -241,6 +260,7 @@ export function createBattleResultPresentationRuntime({
   };
 
   const update = (): void => {
+    const clock = advanceBeatClock();
     const result = game.result ?? null;
     // Reviving modes (owner 2026-09-16: "it should 3 2 1 and you're back at spawn") revive a destroyed player
     // at spawn; both branches below read the same two facts.
@@ -283,7 +303,7 @@ export function createBattleResultPresentationRuntime({
         rig.startDeathCam?.();
       };
       pending = {
-        deadline: now() + deathBeatMs,
+        deadline: clock + deathBeatMs,
         fire: () => {
           if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
           else afterDeath();
@@ -291,16 +311,15 @@ export function createBattleResultPresentationRuntime({
       };
     }
 
-    if (pending && now() >= pending.deadline) {
+    if (pending && clock >= pending.deadline) {
       const fire = pending.fire;
       pending = null;
       fire();
     }
 
     if (beat) {
-      const t = now();
-      ending?.camera.frame(director.progress(t));
-      if (director.finished(t)) finishBeat();
+      ending?.camera.frame(director.progress(clock));
+      if (director.finished(clock)) finishBeat();
     }
   };
 

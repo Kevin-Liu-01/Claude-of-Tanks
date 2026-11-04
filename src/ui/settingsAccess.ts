@@ -5,12 +5,13 @@ import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
+import { battleInputOwnerFor, createBattleInputOwner } from './battleInputOwner.ts';
 import type {
   SettingsOptions as SettingsPanelOptions,
   SettingsRuntime,
 } from './settings.ts';
 
-export type SettingsOptions = Omit<SettingsPanelOptions, 'gear' | 'registerMenuAction'>;
+export type SettingsOptions = Omit<SettingsPanelOptions, 'gear' | 'registerMenuAction' | 'inputOwner'>;
 
 type SettingsModule = typeof import('./settings.ts');
 
@@ -77,17 +78,20 @@ export function createSettingsAccess(
   const gear = environment.createGear();
   let current: SettingsRuntime | null = null;
   let pending: Promise<SettingsRuntime> | null = null;
-  let killcamActive = false;
-  let killcamDoneAt = -Infinity;
+  // (2026-11-02 audit F4) the one battle input owner: a kill-cam replay AND a battle-ending camera beat own the screen
+  // (the beat's skip listener does not stop the key, so the Esc that skips it reached this menu action), and the panel
+  // reads the same owner for its own openings, veil and pointer-unlock path
+  const inputOwner = options.bus
+    ? battleInputOwnerFor(options.bus, { now: environment.now })
+    : createBattleInputOwner({ now: environment.now });
 
   const updateTrigger = () => {
     if (current) return;
     gear.style.display = options.gearVisible?.() ? 'flex' : 'none';
   };
-  const replayOwnsScreen = () => killcamActive || environment.now() - killcamDoneAt < 250;
   // (2026-10-20, black-screen-228 round 2, D5) never under the battle entry's opaque loading cover: a pause panel there is
   // invisible, it pauses the battle behind the loader, and the entry held on PREPARING with the countdown frozen
-  const canOpen = () => !replayOwnsScreen() && !environment.modalOpen() && !environment.loadCovered?.();
+  const canOpen = () => !inputOwner.presentationOwns() && !environment.modalOpen() && !environment.loadCovered?.();
 
   const preload = (): Promise<SettingsRuntime> => {
     if (current) return Promise.resolve(current);
@@ -97,6 +101,7 @@ export function createSettingsAccess(
         ...options,
         gear,
         registerMenuAction: false,
+        inputOwner,
       });
       return current;
     }).catch((error: RuntimeValue) => {
@@ -140,13 +145,6 @@ export function createSettingsAccess(
     if (!access.isOpen()) open();
   });
   options.bus?.on('phase:change', updateTrigger);
-  options.bus?.on('killcam:begin', () => {
-    killcamActive = true;
-  });
-  options.bus?.on('killcam:done', () => {
-    killcamActive = false;
-    killcamDoneAt = environment.now();
-  });
   updateTrigger();
   return access;
 }

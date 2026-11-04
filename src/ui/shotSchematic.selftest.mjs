@@ -34,7 +34,8 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
     cancelAnimationFrame(id) { cancelled.push(id); frames.delete(id); },
     schematicUrl(...request) { requests.push(request); return Promise.resolve(null); },
     CARD_TOP_S: 96, CARD_SIDE_W: 184, CARD_SIDE_H: 92,
-    clearReportBuffer() { resets++; }, clearToasts() { toastClears++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
+    // (2026-11-02 audit F4: the buffered report is the report gate's, battleReportGate.ts)
+    reportGate: { clear() { resets++; } }, clearToasts() { toastClears++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
     // main 8c1ed73c9: reset() also clears the fired-round accuracy ledger and the battle kill ledger
     firedRounds: { clear() {} }, killLedger: { clear() {} },
     // main 395305d45: the state holds the missile splash ledger and reset() also clears the primary card's timers

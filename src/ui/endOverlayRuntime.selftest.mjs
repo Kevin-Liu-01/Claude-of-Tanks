@@ -52,4 +52,14 @@ assert.equal(returned, 1);
 overlay.hide();
 assert.equal(overlay.root.style.display, 'none');
 
+// 2026-11-02 audit F8: the end screen adopts the Return button into its own actions row (endScreen.ts adoptEndOverlay);
+// the emptied root is a fixed full-screen layer (inset 0, z 70) that only body.cot-es-armed hid, so a show() after the
+// adoption kept an invisible layer over the page once endScreen.hide() dropped the class first. It stays down instead.
+overlay.returnButton.parentNode = { tagName: 'DIV' }; // reparented by the end screen
+overlay.show('defeat');
+assert.equal(overlay.root.style.display, 'none', 'an emptied overlay root never shows');
+overlay.returnButton.parentNode = overlay.root; // a fresh battle's overlay with its own button again
+overlay.show('victory');
+assert.equal(overlay.root.style.display, 'flex');
+
 console.log('endOverlayRuntime.selftest: stable result action ownership passed');

@@ -233,12 +233,28 @@ interface SpectateState {
   fromFov: number;
 }
 
+/**
+ * Who drives the battle camera (2026-11-02 audit F7). One owner at a time, entered through the rig's one enter
+ * function, which runs the leaving owner's teardown (the flyby's letterbox, the spectate chase, the death orbit, the
+ * external pin), so no caller has to release() one owner before starting the next.
+ *   external   a pinned pose (killcam replay, ending beat, harness shots) until release() or a snap
+ *   spectate   the ally chase after the player's death replay, or a lobby observer
+ *   death      the slow orbit of the player's wreck
+ *   cinematic  the battle-open flyby (with its letterbox)
+ *   player     the player's own camera: ARCADE or SNIPER (rig.mode), the isometric overlay, and a flight while
+ *              player.aerial is active (the aerial camera then drives each frame; it ends a flyby, never a death orbit)
+ */
+export type CameraOwner = 'external' | 'spectate' | 'death' | 'cinematic' | 'player';
+
 export interface CameraRig {
   mode: 'ARCADE' | 'SNIPER';
   zoom: number;
   aimPoint: THREE.Vector3;
   aimDist: number;
-  externalActive: boolean;
+  /** The owner driving the camera (CameraOwner). */
+  readonly cameraOwner: CameraOwner;
+  /** True while an external pose pins the camera (cameraOwner === 'external'). */
+  readonly externalActive: boolean;
   _increasedZoom: boolean;
   readonly cinematicActive: boolean;
   readonly spectateActive: boolean;
@@ -358,7 +374,9 @@ export function createCameraRig(
   /** The lens shift camera.view carries (0: none). */
   let lensOn = 0;
 
-  let external = false;
+  // the camera's one owner (CameraOwner, 2026-11-02 audit F7); cine, death and spec are the owners' payloads, set only
+  // right after enterOwner and cleared only by its teardown
+  let owner: CameraOwner = 'player';
   let prevShift = false;
   let trauma = 0;
   let shakeT = 0;
@@ -939,13 +957,35 @@ export function createCameraRig(
     specFromFov = camera.fov;
   }
 
+  /**
+   * Hand the camera to `next`, running the leaving owner's teardown first (2026-11-02 audit F7). Every owner change goes
+   * through here. Handing it back to the player re-arms the scope edges, so a Shift held through a replay, a death orbit
+   * or a spectate chase is not a rising edge on the first player frame; the flyby is the exception: the sniper-toggle
+   * tap that skips it continues through the rising-edge handler in the same frame (advanceCinematic).
+   */
+  function enterOwner(next: CameraOwner): void {
+    const prev = owner;
+    if (prev === next) return;
+    if (prev === 'cinematic') { cine = null; setLetterbox(false); }
+    else if (prev === 'death') death = null;
+    else if (prev === 'spectate') spec = null;
+    owner = next;
+    if (next === 'player' && prev !== 'cinematic') rearmScopeEdges();
+  }
+
+  /** The scope keys need a fresh press: a held Shift reads as already held, an RMB hold as released. */
+  function rearmScopeEdges(): void {
+    prevShift = true;
+    prevAimHold = false;
+    aimHoldLatched = false;
+  }
+
   /** Hand control back to the arcade rig exactly where the flyby lands. */
   function endCinematic(player: CameraEntity | null): void {
     if (!cine) return;
     aimYaw = cine.endYaw;
     aimPitch = THREE.MathUtils.degToRad(-10);
-    cine = null;
-    setLetterbox(false);
+    enterOwner('player');
     rig.mode = 'ARCADE';
     step = 2;
     if (player) {
@@ -1137,7 +1177,8 @@ export function createCameraRig(
     /** True while setExternalPose pins the camera (harness/killcam framing).
      * Consumers (main.ts foliage occlusion focus) must not treat an external
      * capture pose as a chase camera — WoT never fades foliage in replays. */
-    externalActive: false,
+    get cameraOwner() { return owner; },
+    get externalActive() { return owner === 'external'; },
     /** Settings flag: unlock ×16/×25 sniper zoom steps ("increased zoom"). */
     _increasedZoom: false,
     /**
@@ -1169,11 +1210,11 @@ export function createCameraRig(
       // Shift-exit semantics (restore the pre-scope orbit step) keep the
       // arcade camera where the player last orbited.
       if (rig.mode === 'SNIPER' && isWreck(getPlayer())) rig.exitSniper(true);
-      if (external) return;
+      if (owner === 'external') return;
 
       // A lobby spectator has no player entity. The observer chase still has
       // a concrete target and must be solved before the player-only guard.
-      if (spec) {
+      if (owner === 'spectate') {
         solveSpectate(dt);
         return;
       }
@@ -1183,13 +1224,16 @@ export function createCameraRig(
 
       if (aerialCamera.update(player, camInput, dt)) {
         applyLens(0);
-        cine = null; cursorAimOn = false;
+        cursorAimOn = false;
         camera.getWorldDirection(_rayDir);
         const aerialHit = aimRaycast(camera.position, _rayDir, 1600);
         rig.aimDist = aerialHit?.dist ?? 1600;
         rig.aimPoint.copy(camera.position).addScaledVector(_rayDir, rig.aimDist);
         player.input?.aimPoint?.copy(rig.aimPoint);
         applyPlayerVisibility(player, player.aerial?.kind !== 'gunship');
+        // a flight ends the flyby through its teardown, letterbox and all (2026-11-02 audit F7: it set cine = null and
+        // left the bars on); a death orbit waits under the flight
+        if (owner === 'cinematic') enterOwner('player');
         return;
       }
       latchCursorAim(camInput);
@@ -1253,14 +1297,14 @@ export function createCameraRig(
      * @returns {void}
      */
     startCinematic(durS = 3): void {
-      spec = null; // SPECTATE never survives into a fresh battle flyby
+      // SPECTATE (or an external pin, a death orbit) never survives into a fresh battle flyby
+      enterOwner('cinematic');
       // r6 (critic: "battle-start flyby is ~2 s ... over with HUD up by
       // 2.2 s"): 4 s floor regardless of the caller's legacy constant — the
       // authored sweep + mid-arc hold beat needs the screen time, and every
       // input still skips it instantly.
       durS = Math.max(4.0, durS);
       const player = getPlayer();
-      death = null;
       trauma = 0;
       const endYaw = player && player.state ? player.state.yaw : aimYaw;
       // r5 authored path (world-frame offsets from the pivot, Catmull-Rom):
@@ -1316,9 +1360,8 @@ export function createCameraRig(
      * @returns {void}
      */
     startDeathCam(): void {
-      cine = null;
-      spec = null; // SPECTATE: a fresh death cam always retires the ally chase
-      setLetterbox(false);
+      // a fresh death cam retires the ally chase, the flyby and an external pin (no caller release needed)
+      enterOwner('death');
       trauma = 0;
       const player = getPlayer();
       death = { az: player && player.state ? player.state.yaw + Math.PI * 0.75 : 0 };
@@ -1343,9 +1386,8 @@ export function createCameraRig(
      */
     startSpectate(ent: CameraEntity): void {
       if (!ent || !ent.state) return;
-      death = null;
-      cine = null;
-      setLetterbox(false);
+      // spectate overrides a death orbit, the flyby and an external pin (the camera blends from wherever it is)
+      enterOwner('spectate');
       trauma = 0;
       specCaptureFrom();
       spec = {
@@ -1431,7 +1473,7 @@ export function createCameraRig(
     },
 
     /** Leave spectate (battle end / garage). The next owner sets the pose. */
-    stopSpectate(): void { spec = null; },
+    stopSpectate(): void { if (owner === 'spectate') enterOwner('player'); },
 
     /**
      * Enter sniper mode. Keeps the shared aim angles (no view snap); the own
@@ -1585,12 +1627,7 @@ export function createCameraRig(
      * @returns {void}
      */
     setExternalPose(pos: THREE.Vector3, lookAt: THREE.Vector3, fovDeg = 50): void {
-      external = true;
-      rig.externalActive = true;
-      cine = null;
-      spec = null; // SPECTATE never survives an external pose
-      setLetterbox(false);
-      death = null;
+      enterOwner('external'); // the flyby (letterbox), spectate and the death orbit never survive an external pose
       trauma = 0;
       camera.userData.scoped = false;
       applyPlayerVisibility(getPlayer(), true);
@@ -1611,20 +1648,14 @@ export function createCameraRig(
      * @returns {void}
      */
     snapArcade(step_: number, orbitYaw: number, orbitPitch: number): void {
-      external = false;
-      rig.externalActive = false;
-      cine = null;
-      spec = null; // SPECTATE: deterministic pose retires the ally chase
-      setLetterbox(false);
-      death = null;
+      enterOwner('player'); // deterministic pose: retires every other owner
       cursorAimOn = false; // deterministic pose: aim through screen center
       rig.mode = 'ARCADE';
       step = THREE.MathUtils.clamp(step_ | 0, 0, ORBIT_STEPS.length - 1);
       aimYaw = orbitYaw;
       aimPitch = THREE.MathUtils.clamp(orbitPitch, PITCH_MIN, PITCH_MAX);
       aimTouched = false; // gunnery r1: fresh battle/staged pose — dirt-guard re-arms
-      prevAimHold = false;
-      aimHoldLatched = false;
+      rearmScopeEdges();
       trauma = 0;
       shakeT = 0;
       const player = getPlayer();
@@ -1658,20 +1689,14 @@ export function createCameraRig(
      * @returns {void}
      */
     snapSniper(zoom: number, aimYaw_: number, aimPitch_: number): void {
-      external = false;
-      rig.externalActive = false;
-      cine = null;
-      spec = null; // SPECTATE: deterministic pose retires the ally chase
-      setLetterbox(false);
-      death = null;
+      enterOwner('player'); // deterministic pose: retires every other owner
       cursorAimOn = false; // deterministic pose: aim through screen center
       rig.mode = 'SNIPER';
       rig.zoom = zoom;
       aimYaw = aimYaw_;
       aimPitch = THREE.MathUtils.clamp(aimPitch_, PITCH_MIN, PITCH_MAX);
       aimTouched = false; // gunnery r1: staged pose — see snapArcade
-      prevAimHold = false;
-      aimHoldLatched = false;
+      rearmScopeEdges();
       trauma = 0;
       shakeT = 0;
       const player = getPlayer();
@@ -1688,14 +1713,13 @@ export function createCameraRig(
      * @returns {void}
      */
     release(): void {
-      external = false;
-      rig.externalActive = false;
+      if (owner === 'external') enterOwner('player');
     },
 
     get framing() { return framing; },
 
     previewFraming(dt: number): void {
-      if (external || spec || cine || death || rig.mode !== 'ARCADE' || isIsometric()) return;
+      if (owner !== 'player' || rig.mode !== 'ARCADE' || isIsometric()) return;
       const player = getPlayer();
       if (!player || player.aerial?.active || isWreck(player)) return;
       solveArcade(player, dt, false);

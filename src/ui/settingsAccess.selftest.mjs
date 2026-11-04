@@ -10,7 +10,8 @@ let spectating = false;
 let releases = 0;
 const busHandlers = new Map();
 const input = { releaseLock() { releases++; }, onAction(_id, handler) { action = handler; } };
-const bus = { on(event, handler) { busHandlers.set(event, handler); } };
+const bus = { on(event, handler) { busHandlers.set(event, [...(busHandlers.get(event) ?? []), handler]); } };
+const emit = (event, payload) => { for (const handler of busHandlers.get(event) ?? []) handler(payload); };
 const gear = new FakeGear();
 let now = 1000;
 let modalOpen = false;
@@ -82,11 +83,11 @@ assert.equal(access.isOpen(), true);
 access.close({ noRelock: true });
 assert.equal(closes, 1);
 
-busHandlers.get('killcam:begin')();
+emit('killcam:begin');
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'kill-cam owns the settings action');
-busHandlers.get('killcam:done')();
+emit('killcam:done');
 action();
 await Promise.resolve();
 assert.equal(opens, 1, 'the replay skip key is absorbed by the done grace');
@@ -94,6 +95,44 @@ now += 251;
 gear.dispatchEvent(new Event('click'));
 await Promise.resolve();
 assert.equal(opens, 2);
+access.close({ noRelock: true });
+
+// 2026-11-02 audit F4: a battle-ending camera beat (time's up, objective orbit, wreck orbit) owns the screen like a
+// replay. Its any-key skip is a capture-phase window listener that does not stop the key, so the live Esc path (this
+// access's settingsMenu action: the panel registers none) must refuse the menu for the whole beat and the skip press.
+emit('ending:begin', { beat: 'timesUp' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 2, 'an ending beat owns the settings action (the Esc that skips it opens nothing)');
+emit('ui:openSettings');
+gear.dispatchEvent(new Event('click'));
+await Promise.resolve();
+assert.equal(opens, 2, 'no trigger opens Settings over an ending beat');
+emit('ending:done', { beat: 'timesUp' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 2, 'the beat\'s skip key is absorbed by the done grace');
+now += 251;
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 3, 'the report keeps its Esc menu once the beat is over');
+access.close({ noRelock: true });
+// overlapping owners: the first done must not free the screen while the other still owns it
+emit('killcam:begin');
+emit('ending:begin', { beat: 'wreckOrbit' });
+emit('killcam:done');
+now += 251;
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 3, 'an ending beat still running keeps the screen after the replay\'s done');
+emit('ending:done', { beat: 'wreckOrbit' });
+now += 251;
+// a phase flip is the reset of last resort (a lost done)
+emit('ending:begin', { beat: 'timesUp' });
+emit('phase:change', { phase: 'garage' });
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 4, 'a phase change releases a presentation whose done never came');
 
 access.close();
 spectating = true;

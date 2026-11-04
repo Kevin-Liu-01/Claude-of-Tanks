@@ -224,6 +224,16 @@ export interface HudTank {
   spec?: (FleetTankSpec & SpecialActionSpec) | null;
   visual?: HudTankVisual | null;
   specialAction?: SpecialActionState | null;
+  /** The tank's own consumable kits (sim/consumableRules.ts ConsumableState) where the frame carries them: a solo battle,
+   *  a Watch seat. A network client's entity carries none (the tray follows the authority's events there). */
+  consumables?: HudConsumableState | null;
+}
+
+/** The parts of a consumable state the tray reads (sim/consumableRules.ts ConsumableState is structurally one). */
+interface HudConsumableState {
+  readonly items: readonly string[];
+  readonly readyAt: readonly number[];
+  readonly charges: readonly (number | null)[];
 }
 
 type HudTargetTank = HudTank & { state: TankState; combat: CombatState };
@@ -666,6 +676,14 @@ export interface HudRuntime {
    * driving or playing. The score, rosters, pips, plates, minimap and kill feed keep that frame whichever tank is ridden.
    */
   setWatchSide(team: string | null): void;
+  /**
+   * (2026-11-02 audit F8) A presentation veil over the HUD (a replay, the battle-open flyby: app/mainBattleHudRuntime.ts).
+   * The root's display is the HUD's one decision, from its mode and this veil: a scope flip never undoes a veil, a
+   * veil lifted after the HUD went hidden never shows it, and a battle starts unveiled.
+   */
+  setVeiled(veiled: boolean): void;
+  /** The minimap's team bases as the HUD reads them now (receipts), or null before the first battle frame. */
+  getSpawnFlags(): readonly { readonly side: 'own' | 'enemy'; readonly x: number; readonly z: number }[] | null;
   shotInfo: ShotInfoRuntime;
   /** (UI-LOCKDOWN A) the sight's words and figures, DOM over its canvas: receipts read the last repaint's runs. */
   sightText: Pick<CanvasText, 'placed'>;
@@ -1340,6 +1358,7 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // SPOTTING SECTION: single source of truth for the sixth-sense timing —
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
+import { setBodyFlag } from './bodyFlags.ts';
 // The battle clock is the ruleset's: the frame carries timeLimitS (solo), otherwise the mode's own
 // ruleset answers; null means no clock (Endless Horde counts up).
 function battleClockLimitS(frame: HudFrame, modeId: string | null | undefined): number | null {
@@ -2787,7 +2806,7 @@ export function initHud(bus: EventBus): HudRuntime {
     specPortrait.src = card.icon;
     specPortrait.hidden = !card.icon;
     specBar.classList.add('show');
-    document.body.classList.add('cot-spectating'); // own-tank furniture off
+    setBodyFlag('cot-spectating', 'spectate-bar', true); // own-tank furniture off (the Watch HUD's drone holds its own)
     if (first) {
       void specBar.offsetWidth; // arm the slide-in transition from the parked pose
       specBar.classList.add('in');
@@ -2800,7 +2819,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function specHide(): void {
     specAllies.close();
     specBar.classList.remove('in');
-    document.body.classList.remove('cot-spectating');
+    setBodyFlag('cot-spectating', 'spectate-bar', false);
     setTimeout(() => {
       if (!specBar.classList.contains('in')) specBar.classList.remove('show');
     }, 350);
@@ -2840,37 +2859,47 @@ export function initHud(bus: EventBus): HudRuntime {
   const rvKick = el('div', 'k', reviveEl);
   const rvNum = el('div', 'n num', reviveEl);
   let liveRuleset: MatchRuleset | null = null;
-  let reviveTimer: ReturnType<typeof setInterval> | null = null;
-  let reviveUntil = 0;
+  // (2026-11-02 audit F8) the count runs on the battle's clock (the frame's sim or authority seconds), ticked by the HUD
+  // frame: a paused battle holds it, and a battle that ends while it counts leaves no interval running in the Garage
+  let reviveCounting = false;
+  let reviveUntilS = 0;
+  /** The player's own revive landed; a frame still reading the wreck (a snapshot behind the event) starts no new count. */
+  let revivedAwaitingAlive = false;
   const reviveCountdown = {
     hide(): void {
-      if (reviveTimer !== null) clearInterval(reviveTimer);
-      reviveTimer = null;
+      reviveCounting = false;
       reviveEl.classList.remove('on');
     },
     /** A destroyed player in a reviving mode sees the seconds to the revive, never a garage bar. */
     onDestroyed(id: string | null | undefined): void {
       if (playerId == null || id !== playerId) return;
+      revivedAwaitingAlive = false;
       reviveCountdown.start();
     },
+    revived(): void {
+      reviveCountdown.hide();
+      revivedAwaitingAlive = true;
+    },
     /** Frame-driven fallback: a death the bus never announced (debug kills) still counts down. */
-    observe(dead: boolean): void {
-      if (dead && reviveTimer === null) reviveCountdown.start();
-      else if (!dead && reviveTimer !== null) reviveCountdown.hide();
+    observe(dead: boolean, timeS: number): void {
+      if (!dead) revivedAwaitingAlive = false;
+      if (dead && !reviveCounting && !revivedAwaitingAlive) reviveCountdown.start();
+      else if (!dead && reviveCounting) reviveCountdown.hide();
+      if (reviveCounting) reviveCountdown.tick(timeS);
     },
     start(): void {
       const respawnS = liveRuleset?.respawnS;
       if (respawnS == null) return;
       reviveCountdown.hide();
-      reviveUntil = performance.now() + respawnS * 1000;
+      reviveUntilS = lastTimeS + respawnS;
       rvKick.textContent = t('hud.revive.kicker');
-      const tick = (): void => {
-        const left = Math.max(1, Math.ceil((reviveUntil - performance.now()) / 1000));
-        rvNum.textContent = String(left);
-      };
-      tick();
+      reviveCounting = true;
+      reviveCountdown.tick(lastTimeS);
       reviveEl.classList.add('on');
-      reviveTimer = setInterval(tick, 100);
+    },
+    tick(timeS: number): void {
+      const left = String(Math.max(1, Math.ceil(reviveUntilS - timeS)));
+      if (rvNum.textContent !== left) rvNum.textContent = left;
     },
   };
 
@@ -2984,16 +3013,14 @@ export function initHud(bus: EventBus): HudRuntime {
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk">Q</span><small class="system-status"></small>`;
   missileButton.dataset.tip=t('systems.atgm.help');
   const missileLabel=requireElement<HTMLElement>(missileButton,'.sl'),missileKey=requireElement<HTMLElement>(missileButton,'.sk');
-  let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
+  // the tile asks for the toggle the Q key asks for (input.ts 'atgm'); playerBattleActions.ts decides it from the game's
+  // state, the guided round and back to the cannon round it left (2026-11-02 audit F8: the HUD decided it, so Q waited on
+  // the HUD chunk)
   function toggleExtraMissile(){
-    if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
-    const slot=guidedMissileSlot(missilePlayer.spec);
-    if(slot<0)return;
-    bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
+    if(missileButton.hidden||missileButton.disabled)return;
+    bus.emit('ui:atgmToggle',{});
   }
   bindControl(missileButton, toggleExtraMissile);
-  // Q (input.ts 'atgm', playerBattleActions.ts) toggles the same way the tile does
-  bus.on('ui:atgmToggle', toggleExtraMissile);
   const reloadButton=el('button','cot-auxiliary cot-reload-control',controlsRow);reloadButton.type='button';reloadButton.hidden=true;
   reloadButton.innerHTML=`<span class="si">${uiIconSVG('autoloader',18)}</span><span class="sl">${t(vehicleAction('reload').label)}</span><span class="sk">C</span><small class="system-status"></small>`;
   reloadButton.dataset.tip=t(vehicleAction('reload').help);reloadButton.setAttribute('aria-label',t(vehicleAction('reload').label));
@@ -3087,7 +3114,6 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     const descriptor = readSpecialAction(player?.spec);
     if (descriptor) {
-      previousConventionalSlot = Math.max(0, player?.spec?.gun?.shells.findIndex(shell => !shell.guided) ?? 0);
       specialKind = descriptor.kind;
       const suspension = specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
       specialLabel.dataset.short = t(vehicleAction('suspension').label);
@@ -3095,7 +3121,6 @@ export function initHud(bus: EventBus): HudRuntime {
       specialButton.classList.toggle('show', suspension);
       specialButton.hidden = !suspension;
     }
-    missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
     setHidden(missileButton,extraMissileSlot<0||!player?.spec?.gun?.shells.some(shell=>!shell.guided));
     const autoloaded=!!player?.spec?.gun?.autoloader;
@@ -3107,7 +3132,6 @@ export function initHud(bus: EventBus): HudRuntime {
     // Owner 2026-10-17 (out of ammo): a spent launcher shows its struck icon in the danger ink; the count is spoken only.
     missileButton.classList.toggle('empty',missileEmpty);
     const missileSelected=player?.combat?.shellSlot===extraMissileSlot;
-    if(player?.combat&&!missileSelected)previousConventionalSlot=player.combat.shellSlot;
     missileButton.classList.toggle('active',missileSelected&&!missileEmpty);setAttr(missileButton,'aria-pressed',String(missileSelected));
     const action = player?.specialAction;
     // Missile selection is ordinary ammunition state. Keep the E shortcut
@@ -3308,6 +3332,41 @@ export function initHud(bus: EventBus): HudRuntime {
       conSlots[i].render(cooldownRemaining(timeS, conReadyAt[i]), conCooldownS[i]);
     }
   }
+  /**
+   * (2026-11-02 audit M4) The tray reads the player's own consumable state each frame where the frame carries it, as the
+   * smoke, lights and roof-gun tiles read combat.auxiliary: a revive's fresh kits (state.ts revive, the authority's
+   * reviveForMode make a new state at spawn and send no tray event), a Watch seat taken mid-cooldown and a reconnect
+   * cannot drift from the authority. Each value is written only when it changes. A network client's entity carries no
+   * kits: its tray stays on the authority's events, and its own mode:respawn refills it (resetConsumableTray).
+   */
+  function syncConsumableTray(state: HudConsumableState | null | undefined): void {
+    if (!state) return;
+    for (let i = 0; i < conEls.length; i++) {
+      const item = state.items[i];
+      if (item !== undefined && item !== conItems[i] && isConsumableId(item)) setConsumableTile(i, item);
+      const readyAt = state.readyAt[i];
+      if (readyAt !== undefined && readyAt !== conReadyAt[i]) conReadyAt[i] = readyAt;
+      const charges = state.charges[i];
+      if (charges !== undefined && charges !== conCharges[i]) {
+        conCharges[i] = charges;
+        conEls[i].classList.toggle('empty', charges === 0);
+      }
+    }
+  }
+  /** Every tile ready with its item's full uses: a battle start, and the player's own revive on a network client. */
+  function resetConsumableTray(): void {
+    for (let i = 0; i < conEls.length; i++) {
+      conReadyAt[i] = 0;
+      const timing = consumableTiming(conItems[i]!);
+      conCooldownS[i] = timing.cooldownS;
+      conCharges[i] = timing.charges;
+      conEls[i].classList.remove('empty');
+      // Render through the retained slot so its memo cannot diverge from the
+      // tray; only the click-feedback classes are outside its ownership.
+      conSlots[i].render(0, conCooldownS[i]);
+      conEls[i].classList.remove('used', 'deny');
+    }
+  }
   /** The consumable the moment calls for (the direction's suggested tile, on the tungsten hairline): the repair kit while
    *  a module is knocked out, first aid while a crew member is down, the extinguisher while the tank burns. Each slot's
    *  class is written only when it changes. */
@@ -3484,6 +3543,7 @@ export function initHud(bus: EventBus): HudRuntime {
   let lastTimer = '';
   let lastTimerLabel = '';
   let spawnFlags: SpawnFlag[] | null = null; // team spawn markers, set per battle
+  let spawnFlagsSide: string | null = null; // the side the flags were captured from (ownSide())
 
   /** Clear every transient combat-feedback owner at a round/phase boundary. */
   function resetCombatPresentation(): void {
@@ -3523,6 +3583,15 @@ export function initHud(bus: EventBus): HudRuntime {
     hpPool.clear();
     lastScore = '';
     mmDirty = true;
+    // (2026-11-02 audit F8) a watcher who changed side reads the bases from the new side: the own base is where the new
+    // side spawned (the flags hold the spawn positions, captured once a battle; their inks stay own and enemy)
+    if (spawnFlags && spawnFlagsSide !== null && spawnFlagsSide !== ownSide() && spawnFlags.length === 2) {
+      const [own, enemy] = spawnFlags;
+      const { x, z } = own;
+      own.x = enemy.x; own.z = enemy.z;
+      enemy.x = x; enemy.z = z;
+      spawnFlagsSide = ownSide();
+    }
   }
 
   // The sight's layout box (projection and placement, CSS px). Its backing store is uiCanvas's: the box × min(DPR, 2)
@@ -7534,6 +7603,7 @@ export function initHud(bus: EventBus): HudRuntime {
       { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own'), side: 'own' },
       { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy'), side: 'enemy' },
     ];
+    spawnFlagsSide = ownSide();
   }
 
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
@@ -8449,19 +8519,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
   });
-  on('ui:consumableReset', () => {
-    for (let i = 0; i < conEls.length; i++) {
-      conReadyAt[i] = 0;
-      const timing = consumableTiming(conItems[i]!);
-      conCooldownS[i] = timing.cooldownS;
-      conCharges[i] = timing.charges;
-      conEls[i].classList.remove('empty');
-      // Render through the retained slot so its memo cannot diverge from the
-      // tray; only the click-feedback classes are outside its ownership.
-      conSlots[i].render(0, conCooldownS[i]);
-      conEls[i].classList.remove('used', 'deny');
-    }
-  });
+  on('ui:consumableReset', () => resetConsumableTray());
   // an APS charge met a round (sim/consumableRules.ts): the crew it saved, or the shooter whose round it stopped
   on('aps:intercept', ({ id, shooterId }) => {
     if (playerId == null) return;
@@ -8558,7 +8616,9 @@ export function initHud(bus: EventBus): HudRuntime {
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
-    reviveCountdown.hide();
+    reviveCountdown.revived();
+    // a revive makes a fresh consumable state at spawn (2026-11-02 audit M4): a frame that carries the state re-reads it
+    resetConsumableTray();
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
   });
   on('mode:flag_taken', ({ team }) => {
@@ -8824,11 +8884,96 @@ export function initHud(bus: EventBus): HudRuntime {
     document.body.classList.toggle('cot-gun-dry', dry);
   }
 
+  /**
+   * The HUD's battle lifecycle (2026-11-02 audit F8): every mode change goes through here, setMode and a frame's mode
+   * alike (prepareHudFrame), so leaving hidden always begins a battle (the per-battle reset) and entering hidden always
+   * ends one (the cleanup of everything the HUD raised, inside its root or outside it). battle <-> sniper is a scope flip.
+   */
+  function transitionMode(m: HudMode): void {
+    const wasHidden = mode === 'hidden';
+    mode = m;
+    if (m !== 'hidden' && wasHidden) veiled = false; // a battle starts unveiled (a replay's veil a cancel never lifted)
+    applyMode();
+    mmDirty = true; // guarantee a minimap draw on the next update()
+    // net readout: forced screenshot frames (single update after setMode)
+    // stay clean — hide the readout and reset the live counter
+    netEl.classList.remove('metered');
+    netFrames = 0;
+    netLastMs = 0;
+    netLastPaintMs = 0;
+    if (m === 'hidden') endBattle();
+    else if (wasHidden) beginBattle();
+  }
+
+  /** Everything the HUD raised for the battle leaves with it. */
+  function endBattle(): void {
+    vehicleStatus.clear();
+    collapseRosters();
+    preBattleOverlay.reset();
+    setTouchAmmoOpen(false);
+    ctx.clearRect(0, 0, w, h);
+    hideAerialHitMark();
+    sightText.clear();
+    aimTargetId = null;
+    if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
+    // spectate bar never survives leaving the battlefield (its picker of allies with it: the surface stack's entry)
+    specBar.classList.remove('in', 'show');
+    specAllies.close();
+    setBodyFlag('cot-spectating', 'spectate-bar', false);
+    resetCombatPresentation();
+    // the revive count, the parked aim notice (it lives in the page's battle notice region, outside root), the flight's
+    // body class and the reload ready pulse were not on the list: each outlived the battle into the Garage
+    reviveCountdown.hide();
+    revivedAwaitingAlive = false;
+    syncAimNotice(null);
+    document.body.classList.remove('cot-hud-aerial');
+    wasReloading = false;
+    readyPulseT = -1;
+    // SHOT-INFO SECTION: lifecycle forwarding (hide the end-of-battle stats card when the HUD leaves the battlefield)
+    shotInfo.hideStats();
+  }
+
+  /** A fresh battle: the last battle's memory goes (its sim clock restarted at 0). */
+  function beginBattle(): void {
+    shotInfo.reset();
+    resetCombatPresentation();
+    killLedger.clear(); aircraftById.clear();
+    // fresh battle: drop spotting memory, nicknames and team rosters
+    spotById.clear();
+    nickById.clear();
+    spawnFlags = null; // re-capture from the new battle's spawn frame
+    spawnFlagsSide = null;
+    // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
+    sixthPendingS = -1;
+    sixthUntilS = -1;
+    sixthOn = false;
+    sixthEl.classList.remove('on');
+    for (const row of earRows.values()) row.root.remove();
+    earRows.clear();
+    rosterIds.length = 0;
+    rosterPlayers.length = 0;
+    rosterTeams.length = 0;
+    for (const [, bar] of hpPool) bar.root.remove();
+    hpPool.clear();
+    lastScore = '';
+    lastTimer = '';
+    lastTimerLabel = '';
+  }
+
+  /** The root's display: the mode and the presentation veil, decided here alone (setVeiled). */
+  let veiled = false;
+  function applyVisibility(): void {
+    root.style.display = mode === 'hidden' || veiled ? 'none' : 'block';
+  }
+  // a replay owns the frame (the HUD gets none until it ends): a scoped HUD steps down to the battle sight, so the scope
+  // attribute (html[data-cot-scoped]: the kill ribbon, the hints, the layout) never rides the replay or the report
+  bus.on('killcam:begin', () => { if (mode === 'sniper') transitionMode('battle'); });
+
   let rootShown = false;
   function applyMode(): void {
     if (mode === 'hidden') playerEngaged = false;
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';markGunDry(false);}
-    root.style.display = mode === 'hidden' ? 'none' : 'block';
+    applyVisibility();
     // (UI-LOCKDOWN A) a HUD just shown paints in this task (a screenshot's forced frame, the HUD editor's preview): its
     // canvases read their boxes now rather than at the observer's next report (one layout read per show)
     if (rootShown !== (mode !== 'hidden')) {
@@ -8884,11 +9029,16 @@ export function initHud(bus: EventBus): HudRuntime {
     lastTanksRef = frame.tanks || lastTanksRef;
     state.dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
     lastTimeS = frame.timeS;
+    syncConsumableTray(frame.player?.consumables);
     updateConsumableCooldowns(lastTimeS);
     if (frame.mode && frame.mode !== mode) {
-      mode = frame.mode;
-      applyMode();
-      mmDirty = true;
+      // out of hidden this is a battle's start, through the lifecycle; in battle it is the scope flip
+      if (mode === 'hidden') transitionMode(frame.mode);
+      else {
+        mode = frame.mode;
+        applyMode();
+        mmDirty = true;
+      }
     }
     playerRef = frame.player || playerRef;
     // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
@@ -8967,7 +9117,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
     const aim = (!state.advancing && forced) ? forced : (frame.aim || {});
     assembleAimView(state.camera, aim);
-    reviveCountdown.observe(frame.player?.combat?.destroyed === true);
+    reviveCountdown.observe(frame.player?.combat?.destroyed === true, lastTimeS);
     aimView.selfRightLabel = frame.player?.combat?.destroyed !== true &&
       canSelfRightTank(frame.player?.state)
       ? (frame.selfRightKeyLabel || 'F')
@@ -9119,60 +9269,15 @@ export function initHud(bus: EventBus): HudRuntime {
      * Switch overall HUD mode.
      * @param {'battle'|'sniper'|'hidden'} m
      */
-    setMode(m: HudMode) {
-      const wasHidden = mode === 'hidden';
-      mode = m;
-      applyMode();
-      mmDirty = true; // guarantee a minimap draw on the next update()
-      // net readout: forced screenshot frames (single update after setMode)
-      // stay clean — hide the readout and reset the live counter
-      netEl.classList.remove('metered');
-      netFrames = 0;
-      netLastMs = 0;
-      netLastPaintMs = 0;
-      if (m === 'hidden') {
-        vehicleStatus.clear();
-        collapseRosters();
-        preBattleOverlay.reset();
-        setTouchAmmoOpen(false);
-        ctx.clearRect(0, 0, w, h);
-        hideAerialHitMark();
-        sightText.clear();
-        aimTargetId = null;
-        if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
-        // spectate bar never survives leaving the battlefield
-        specBar.classList.remove('in', 'show');
-        document.body.classList.remove('cot-spectating');
-        resetCombatPresentation();
-      }
-      // SHOT-INFO SECTION: lifecycle forwarding (reset per battle, hide the
-      // end-of-battle stats card when the HUD leaves the battlefield).
-      if (m === 'hidden') shotInfo.hideStats();
-      if (m === 'battle' && wasHidden) shotInfo.reset();
-      if (m === 'battle' && wasHidden) {
-        resetCombatPresentation();
-        killLedger.clear(); aircraftById.clear();
-        // fresh battle: drop spotting memory, nicknames and team rosters
-        spotById.clear();
-        nickById.clear();
-        spawnFlags = null; // re-capture from the new battle's spawn frame
-        // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
-        sixthPendingS = -1;
-        sixthUntilS = -1;
-        sixthOn = false;
-        sixthEl.classList.remove('on');
-        for (const row of earRows.values()) row.root.remove();
-        earRows.clear();
-        rosterIds.length = 0;
-        rosterPlayers.length = 0;
-        rosterTeams.length = 0;
-        for (const [, bar] of hpPool) bar.root.remove();
-        hpPool.clear();
-        lastScore = '';
-        lastTimer = '';
-        lastTimerLabel = '';
-      }
+    setMode(m: HudMode) { transitionMode(m); },
+
+    setVeiled(next: boolean) {
+      if (veiled === next) return;
+      veiled = next;
+      applyVisibility();
     },
+
+    getSpawnFlags() { return spawnFlags; },
 
     /**
      * Per-render-frame HUD refresh.

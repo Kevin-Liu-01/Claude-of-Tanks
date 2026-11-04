@@ -88,7 +88,10 @@ assert.match(hud, /setHidden\(missileButton,extraMissileSlot<0\|\|!player\?\.spe
   'every launcher beside a conventional round shows the ATGM tile');
 assert.match(hud, /setHidden\(reloadButton,!autoloaded\);/, 'every autoloader shows the reload tile');
 assert.match(hud, /specialButton\.hidden = !suspension;/, 'the special tile is the suspension alone');
-assert.match(hud, /bus\.on\('ui:atgmToggle', toggleExtraMissile\);/, 'Q toggles as the tile does');
+// (2026-11-02 audit F8: the toggle is the game's, playerBattleActions.ts; the tile asks for it as Q does)
+assert.match(hud, /function toggleExtraMissile\(\)\{\n\s*if\(missileButton\.hidden\|\|missileButton\.disabled\)return;\n\s*bus\.emit\('ui:atgmToggle',\{\}\);/,
+  'the tile asks for the toggle Q asks for');
+assert.match(read('./playerBattleActions.ts'), /listen\('ui:atgmToggle', \(\) => \{/, 'Q and the tile toggle in one place');
 assert.match(read('./playerBattleActions.ts'), /onAction\('atgm', \(\) => \{\n\s*if \(!battleInputAllowed\(\)\) return;\n\s*bus\.emit\('ui:atgmToggle', \{\}\);/,
   'Q reaches the battle');
 
