@@ -102,7 +102,7 @@ export const SFX_ASSETS: Readonly<Record<string, SfxAssetRecord>> = {
   "collapse_stone": {"g":"buildings","n":2,"d":[6,6],"c":1,"r":24000,"kb":81},
   "collapse_timber": {"g":"buildings","n":2,"d":[4.66,4.32],"c":1,"r":24000,"kb":57},
   "container_crush": {"g":"props","n":3,"d":[2,1.88,2],"c":1,"r":24000,"kb":60},
-  "cookoff_loop": {"g":"destruction","n":1,"d":[8.0907],"c":1,"r":48000,"l":[0.085333,8.005333],"kb":75},
+  "cookoff_loop": {"g":"destruction","n":1,"d":[8.0907],"c":1,"r":48000,"l":[0.085333,8.005333],"kb":69},
   "crate_break": {"g":"props","n":3,"d":[1.2,1.2,1.2],"c":1,"r":24000,"kb":38},
   "debris_dirt": {"g":"impacts","n":3,"d":[2.988,2.882,2.78],"c":1,"r":48000,"kb":104},
   "debris_metal": {"g":"destruction","n":3,"d":[3,3,3],"c":1,"r":48000,"kb":89},
@@ -526,6 +526,6 @@ export const SFX_ASSETS: Readonly<Record<string, SfxAssetRecord>> = {
   "water_wade_loop": {"g":"vehicle","n":1,"d":[6.0907],"c":1,"r":24000,"l":[0.085333,6.005333],"kb":47},
   "well_break": {"g":"props","n":2,"d":[2.48,2.48],"c":1,"r":24000,"kb":55},
   "wire_snag": {"g":"props","n":3,"d":[1.48,1.48,1.48],"c":1,"r":48000,"kb":43},
-  "wreck_fire_loop": {"g":"destruction","n":1,"d":[8.0907],"c":1,"r":48000,"l":[0.085333,8.005333],"kb":71},
+  "wreck_fire_loop": {"g":"destruction","n":1,"d":[8.0907],"c":1,"r":48000,"l":[0.085333,8.005333],"kb":69},
   "zoom_step": {"g":"edge","n":2,"d":[0.7,0.8],"c":1,"r":48000,"kb":19},
 };

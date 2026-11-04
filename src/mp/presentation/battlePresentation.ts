@@ -1287,6 +1287,10 @@ export function createBattlePresentation({
           shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
         return;
+      case 'drone_down':
+        // a carrier's drone shot down (sim/aerialCombat.ts strikeDrone): heard breaking up where it flew, as the solo step raises it
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
+        return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);

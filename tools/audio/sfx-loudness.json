@@ -738,6 +738,21 @@
    }
   ]
  },
+ "cookoff_loop": {
+  "group": "destruction",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a2bce4425e679db01b124cd0417bd3b4d789f385987caefc6b5a8856463febc0",
+    "bytes": 71057,
+    "durS": 8.091,
+    "mMax": -17.5,
+    "integrated": -18.8,
+    "truePeak": -0.3
+   }
+  ]
+ },
  "crate_break": {
   "group": "props",
   "preset": "impact",
@@ -4545,6 +4560,21 @@
     "mMax": -11.5,
     "integrated": -15.7,
     "truePeak": 0.1
+   }
+  ]
+ },
+ "wreck_fire_loop": {
+  "group": "destruction",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "86560ebf63d6be3c16d01744a183f9fb6029f653e0b8cc7cc47b4d1864e468cf",
+    "bytes": 70656,
+    "durS": 8.091,
+    "mMax": -17,
+    "integrated": -18.4,
+    "truePeak": -0.8
    }
   ]
  }

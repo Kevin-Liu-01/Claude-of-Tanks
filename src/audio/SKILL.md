@@ -23,8 +23,10 @@ Doppler, atmospheres, pan), `mixPolicy.ts` (levels, snapshots, HDR, budgets,
 LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 (report classes, reload choreography), `vehicleAudioProfiles.ts` +
 `vehicleAudioModel.ts` (powertrain identity, RPM/gear/track model),
-`environmentScenes.ts` (per-map scenes, bells, flyovers by era),
-`propSounds.ts` (what every world prop kind sounds like), `voiceLines.ts`
+`environmentScenes.ts` (per-map scenes, bells, flyovers by era, `SPOT_HOURS`
+and each scene's night life), `propSounds.ts` (what every world prop kind sounds
+like), `modeSounds.ts` (every mode's opener and every `mode_*` event's sounds,
+exhaustive; `worldSounds.selftest.mjs` scans the controller), `voiceLines.ts`
 (radio discipline, crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `captions.ts` owns the caption stream (BUI-F9): every keyed transmission

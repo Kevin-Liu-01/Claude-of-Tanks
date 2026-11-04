@@ -976,7 +976,8 @@ crew-lines.json ─┐                    crew-voices.json
   Turbo Ball's buoy for everyone and its reset, the flag by whose it is and an
   Infected ally turned got their sounds. 36 new assets, 19 families topped up
   to 3–5 variants, `scrape_loop` (no moment) and the flat `ui_ball_hit`
-  removed: 513 assets and 949 files, 25.3 MB (from 23.5). 15,224 credits.
+  removed; the cook-off loop (seams 4–8 dB) and the wreck fire (1.6–2.1 dB) re-picked from six takes (0.03 and
+  1.0 dB): 513 assets and 949 files, 25.3 MB (from 23.5). 16,184 credits.
   Pins (`sfx-picks.json`) keep `rubble_crunch`, `tree_fall`, `wire_snag` and
   the light snow track in the loudness receipt's range (`wire_snag`'s old takes
   1 and 2 crossed the true-peak ceiling once measured). The soft-ground scrub

@@ -202,8 +202,10 @@ const destruction = [
   sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('turret_land', 'destruction', `One-shot of a heavy steel tank turret crashing onto the ground: enormous metallic crunch and thud. ${NO_MUSIC}.`, 2, { variants: 4, takes: 8, proc: 'impact' }),
   sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
-  sfx('cookoff_loop', 'destruction', `Seamless loop of ammunition cooking off inside a burning tank: irregular popping bangs over crackling fire. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('wreck_fire_loop', 'destruction', `Seamless loop of a large vehicle fire: roaring flames, steady crackling and popping. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
+  // world-sfx-269 (2026-11-03): the two takes' seams stepped 4 and 8 dB, every 8 s through a 20-40 s cook-off: six takes
+  // and the beds' even-level wording
+  sfx('cookoff_loop', 'destruction', `Seamless loop of ammunition cooking off inside a burning tank: irregular sharp popping bangs and small detonations over a steady roaring fire. Continuous at an even level from start to end. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 6, proc: 'loop' }),
+  sfx('wreck_fire_loop', 'destruction', `Seamless loop of a large vehicle fire: roaring flames, steady crackling and popping. Continuous at an even level from start to end. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 6, proc: 'loop' }),
   sfx('fire_small_loop', 'destruction', `Seamless loop of an engine compartment fire: hissing flames and crackling. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('fire_ignite', 'destruction', `One-shot of fuel suddenly igniting: a whoosh into roaring flames. ${NO_MUSIC}.`, 2, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   sfx('metal_creak', 'destruction', `One-shot of hot steel of a burnt-out tank creaking and ticking as it cools. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'foley' }),
