@@ -9730,9 +9730,11 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // r16: the rear fender box blends the fascia out to the skirts' line (Commons KF-51U_03/05): from the fascia's face
       // forward to the fender's end (z -3.10), its top the fascia's falling to the fender, its underside 17 cm over the
       // sprocket's wrap, its outer top and bottom edges chamfered. r16b (blind A/B; Commons KF-51U_03, the real rear
-      // corner): a large faceted box, it projects 30 cm back past the fascia to a chamfered end face
+      // corner): a large faceted box, it projects 30 cm back past the fascia to a chamfered end face. r16c (269 release
+      // check, §B2: the 7 cm slot between its -3.10 front and the fender's end, -3.03, read as enclosed sky at two
+      // lattice phases): its front runs on level to z -3.01, over the fender's and the skirt course's ends
       P.add('hull', sectionSolid(([[-4.14, 1.46, 1.62, 1.54, 1.80], [-4.04, 1.38, 1.72, 1.48, 1.86], [-3.84, 1.36, 1.78, 1.46, 1.86],
-        [-3.40, 1.34, 1.78, 1.46, 1.86], [-3.10, 1.34, 1.62, 1.46, 1.86]] as const).map(([z, bottom, top, xi, xo]) => {
+        [-3.40, 1.34, 1.78, 1.46, 1.86], [-3.10, 1.34, 1.62, 1.46, 1.86], [-3.01, 1.34, 1.62, 1.46, 1.86]] as const).map(([z, bottom, top, xi, xo]) => {
         const ring: Array<[number, number]> = [[xi, bottom], [xo - 0.04, bottom], [xo, bottom + 0.04], [xo, top - 0.06], [xo - 0.06, top],
           [xi, top]];
         return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
