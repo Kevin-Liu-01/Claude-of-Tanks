@@ -48,8 +48,9 @@ export type GroundCover = 'meadow' | 'steppe' | 'verge' | 'reed' | 'dune' | 'sed
 interface GroundClassRow {
   readonly textures: GroundTextures;
   readonly macro: { readonly kind: GroundMacro; readonly strength: number };
-  /** The close detail, and the relief's greatest tilt (the horizontal share of a detail facet's normal: 0.32 ≈ 18°, a
-   * facet never turned past a mid sun's height, so the relief never draws a near-black blotch; 0 = no cap, rock). */
+  /** The close detail, and the relief's cap: the share of the sun's own slope a detail facet may turn away from the sun
+   * (0.3: the darkest facet keeps about 70 % of the flat ground's direct light, so the relief never draws a near-black
+   * blotch; the facets toward and across the sun keep theirs; 0 = no cap, rock). */
   readonly close: { readonly kind: GroundClose; readonly strength: number; readonly tilt: number };
   readonly cover: GroundCover;
   readonly sim: SimSurface;
@@ -75,9 +76,10 @@ export const GROUND_CLASS_IDS = Object.freeze([
 export type GroundClass = (typeof GROUND_CLASS_IDS)[number];
 
 const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
-/** The detail relief's greatest tilt by the class's macro law: turf soft, soils and yards rougher, rock uncapped. */
+/** The relief's cap by the class's macro law (a share of the sun's slope): turf soft, soils and yards rougher, rock
+ * uncapped. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  sward: 0.32, tussock: 0.36, soil: 0.5, yard: 0.45, rubble: 0.55, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.45,
+  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.4,
 });
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,

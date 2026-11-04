@@ -13,7 +13,7 @@
 //   domed, with its contact shadow down-sun; on the worn soil, the sward's thin patches and the town floor;
 // - the town floor (uGsTown.x 4 yard, 5 rubble): the village's worn ground is a yard of trodden earth and gravel with
 //   weeds and damp hollows, or a shelled city's dust over broken brick and masonry, not the woods' leaf litter.
-// Cost: three noise reads for the mosaic, two for the town, and one hash cell per stone layer (no loop, no neighbour
+// Cost: four noise reads for the mosaic, four for the town, and one hash cell per stone layer (no loop, no neighbour
 // search, no texture fetch of a layer). uLandTier sets the phones' share: 0 (Low and the phones' lower tiers) the
 // mosaic and the town's tones only, 1 adds the stones, 2 the full block.
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
@@ -29,15 +29,16 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5);
     if (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 && gsSwardW > 0.003) {
       vec2 gsM = nzq(uvW, 0.071, vec2(0.61, 0.17));
-      float gsF = nz(uv, 0.23, vec2(0.13, 0.77)).r;
+      float gsF = nzq(uv, 0.23, vec2(0.13, 0.77)).x;
       float tus = step(1.5, uGsOpen.x);
-      float lush = smoothstep(0.56, 0.80, gsM.x);
-      float cured = smoothstep(0.58, 0.84, gsM.y) * (1.0 - lush);
-      gsThin = smoothstep(mix(0.60, 0.48, tus), mix(0.86, 0.74, tus), gsF * 0.55 + (1.0 - gsM.x) * 0.45) * (1.0 - lush);
+      // (thresholds on the noise's measured spread: nzq p25 0.43, p50 0.51, p75 0.59, p90 0.66)
+      float lush = smoothstep(0.52, 0.64, gsM.x);
+      float cured = smoothstep(0.54, 0.66, gsM.y) * (1.0 - lush);
+      gsThin = smoothstep(mix(0.55, 0.50, tus), mix(0.65, 0.60, tus), gsF * 0.5 + (1.0 - gsM.x) * 0.5) * (1.0 - lush);
       float gsL = reduxLuma(a.rgb);
       vec3 soilC = uMeanD.rgb * uSoilTint * (0.80 + 0.40 * gsF) * mix(1.0, 1.10, cured);
       vec3 gsA = a.rgb;
-      gsA = mix(gsA, gsA * vec3(0.86, 0.95, 0.88), lush * 0.85);
+      gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
       gsA = mix(gsA, mix(gsA, vec3(gsL) * uTintA * 1.12, 0.55), cured * 0.75);
       gsA = mix(gsA, mix(gsA, soilC, 0.70), gsThin * 0.80);
       a.rgb = mix(a.rgb, gsA, min(1.0, gsSwardW));
@@ -49,31 +50,44 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       gsTownW = clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * keepM * (1.0 - seaSand) * gsOff * (1.0 - fR);
       if (gsTownW > 0.003) {
         vec2 tq = nzq(uvW, 0.11, vec2(0.37, 0.83));
-        float tf = nz(uv, 0.31, vec2(0.71, 0.29)).g;
-        float gL = reduxLuma(a.rgb);
-        vec3 grey = mix(vec3(gL), a.rgb, 0.30);
+        float tf = nzq(uv, 0.31, vec2(0.71, 0.29)).y;
+        // the floor's own tone: the map's soil greyed to a pale gravel (luminance 0.22, its hue a third kept), carrying a third
+        // of the drawn ground's grain (the woods' litter of the dirt set read as twigs and straw on a town's yards)
+        float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);
+        vec3 grey = mix(vec3(dL), uMeanD.rgb, 0.35) * uSoilTint;
+        grey *= (0.22 / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
         vec3 floorC;
         if (uGsTown.x < 4.5) {
           // yard: pale trodden gravel and earth, its paths paler, its hollows damp, weeds where nothing treads
-          float path = smoothstep(0.52, 0.78, tq.x);
-          float hollow = smoothstep(0.60, 0.86, tq.y) * (1.0 - path);
-          float weeds = smoothstep(0.62, 0.86, 1.0 - tq.x) * smoothstep(0.35, 0.70, tf);
-          floorC = grey * vec3(1.10, 1.05, 0.96) * 1.22 * (0.92 + 0.16 * tf);
+          float path = smoothstep(0.50, 0.62, tq.x);
+          float hollow = smoothstep(0.55, 0.67, tq.y) * (1.0 - path);
+          float weeds = smoothstep(0.56, 0.68, 1.0 - tq.x) * smoothstep(0.45, 0.60, tf);
+          floorC = grey * vec3(1.04, 1.02, 0.97) * (0.90 + 0.20 * tf);
           floorC *= mix(1.0, 1.10, path) * mix(1.0, 0.82, hollow);
           floorC = mix(floorC, uMeanG.rgb * gMeadowTint * (0.85 + 0.30 * tf), weeds * 0.80);
           a.a = mix(a.a, mix(0.95, 0.80, hollow), gsTownW);
         } else {
           // rubble: pale dust over broken masonry, brick-red and concrete-grey drifts, a little green through it
-          float brick = smoothstep(0.58, 0.82, tq.x);
-          float conc = smoothstep(0.55, 0.80, tq.y) * (1.0 - brick);
-          float weeds = smoothstep(0.70, 0.90, tf) * (1.0 - brick) * (1.0 - conc);
-          floorC = grey * vec3(1.08, 1.04, 0.98) * 1.30 * (0.90 + 0.18 * tf);
+          float brick = smoothstep(0.54, 0.66, tq.x);
+          float conc = smoothstep(0.52, 0.64, tq.y) * (1.0 - brick);
+          float weeds = smoothstep(0.60, 0.70, tf) * (1.0 - brick) * (1.0 - conc);
+          floorC = grey * vec3(1.06, 1.03, 0.99) * 1.10 * (0.88 + 0.24 * tf);
           floorC = mix(floorC, vec3(0.30, 0.17, 0.12) * (0.85 + 0.30 * tf), brick * 0.65);
           floorC = mix(floorC, vec3(0.34, 0.33, 0.31) * (0.85 + 0.30 * tf), conc * 0.60);
           floorC = mix(floorC, uMeanG.rgb * gMeadowTint, weeds * 0.60);
           a.a = mix(a.a, 0.96, gsTownW);
         }
         a.rgb = mix(a.rgb, floorC, gsTownW);
+        // the floor's fine grit: one small stone per 0.13 m cell, a shade off the floor and lit on its sun side (a second
+        // hash cell, the Low tier without it)
+        float gritW = gsTownW * tileVis(0.13) * (1.0 - smoothstep(18.0, 40.0, camDist)) * step(0.5, uLandTier);
+        if (gritW > 0.003) {
+          vec2 gq = wp.xz / 0.13, gi = floor(gq), gf = gq - gi - 0.5;
+          vec2 gh = cellHash2(gi + vec2(7.0, 101.0));
+          vec2 gd = (gf - (gh - 0.5) * 0.4) / mix(0.20, 0.34, gh.x);
+          float gdisc = (1.0 - smoothstep(0.7, 1.0, length(gd))) * step(gh.y, 0.62);
+          a.rgb *= 1.0 + gdisc * gritW * ((gh.x - 0.5) * 0.55 + 0.18 * dot(normalize(gd + 1e-4), gsSun));
+        }
       }
     }
     // the close stones: one per hash cell, on the worn soil, the sward's thin patches and the town floor

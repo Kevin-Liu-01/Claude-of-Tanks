@@ -141,7 +141,7 @@ assert.equal(raw.split('uniform vec4 uGsOpen, uGsWorn, uGsTown;').length, 2, 'th
 for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
 // the relief cap: set in splatCompute by the chunk, applied in the normal pass before the world normal is composed
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk sets the cap');
-const capAt = raw.indexOf('if (gGsTilt > 0.0) { float gsPl = length(pN.xz);');
+const capAt = raw.indexOf('if (gGsTilt > 0.0) {\n    float gsSl = max(length(uSunDirW.xz), 1e-4);');
 assert.ok(capAt > raw.indexOf('const SPLAT_NORMAL_FRAG') && capAt < raw.indexOf('vec3 wN = normalize(vec3(gN.x + pN.x', capAt), 'the cap before wN');
 
 console.log(`groundSurfaces: PASS (${GROUND_CLASS_IDS.length} classes, ${MAP_IDS.length} maps, ${residuals.length} named residuals)`);
