@@ -19,7 +19,7 @@ assert.equal(classifyShellSurface(world(0.1), hit(undefined)), 'terrain');
 
 // The three consumers read the same classification.
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
-assert.match(state, /import \{ classifyShellSurface, shellHitsWater \} from '\.\.\/sim\/shellSurface\.ts';/);
+assert.match(state, /import \{ classifyShellSurface, shellHitsWater, shellIncidenceDeg \} from '\.\.\/sim\/shellSurface\.ts';/);
 assert.match(state, /surfaceKind: classifyShellSurface\(world, hit\),/, 'shell:expired carries the water surface kind');
 assert.match(state, /hitWater: shellHitsWater\(world, hit\),/, 'shell:expired carries the water flag');
 const fx = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
@@ -31,7 +31,11 @@ assert.match(fx, /case 'terrain':\s*if \(mediaGroundHit\(pos, [^,]+, shellPointO
   'direct terrain impacts respect the water mask');
 const audio = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
 assert.match(audio, /event\.surfaceKind === 'water'/, 'audio plays a splash for water expiries');
-// (2026-10-13) a bullet off the water strikes what it hit (bulletStrikeAsset: masonry, steel, timber or dirt)
-assert.match(audio, /water \? 'bullet_water' : (?:'bullet_dirt'|bulletStrikeAsset\()/, 'small-arms splashes keep the water mask');
-assert.match(audio, /caliber >= 61 \? 'water_big' : 'water_small'/, 'shells splash by size in open water');
+// (impact-materials-269) a water expiry strikes the water's material, and the resolver splashes it by calibre; off the
+// water a round strikes the ground or the structure it hit
+assert.match(audio, /const material: StruckMaterial = water \? 'water' :/, 'expiries keep the water mask');
+const { impactLayers } = await import('../audio/impactMaterials.ts');
+assert.equal(impactLayers('water', 'stop', 'bullet')[0].id, 'bullet_water', 'small arms splash in open water');
+assert.equal(impactLayers('water', 'stop', 'autocannon')[0].id, 'water_small', 'an autocannon round splashes small');
+assert.equal(impactLayers('water', 'stop', 'cannon')[0].id, 'water_big', 'a shell splashes big');
 console.log('shellSurface.selftest: water classification, shore feather, prop/record precedence and the three consumers pass');
