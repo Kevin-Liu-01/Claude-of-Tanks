@@ -4,7 +4,8 @@
 // core used to pass its wall limit and be killed, which stopped the release chain. A separate, generous wall cap names
 // only a hang: no CPU progress in the tree for `hangS`. GPU children keep their wall limit (it bounds a capture hold).
 // First-party tooling: Kevin B. Liu.
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 
 /** Seconds of CPU from ps's `time` column ([[dd-]hh:]mm:ss.ss). */
 export function psCpuSeconds(text = '') {
@@ -33,12 +34,15 @@ export function budgetVerdict({ cpuS, budgetS, idleS, hangS, wallS }) {
 }
 
 /**
- * A synchronous child bounded by its own CPU, never by wall time (268: execFileSync has only a wall timeout): the
- * kernel stops `command` past `cpuS` seconds of CPU (RLIMIT_CPU, SIGXCPU). For a child that spawns none of its own;
- * a tree is watched (watchChild). Returns [file, args] for execFileSync.
+ * A synchronous child bounded by the CPU its process tree spends, never by wall time (268: execFileSync has only a wall
+ * timeout). This module, run as a script, spawns `command` and watches its tree (watchChild, `limits`: budgetS, hangS,
+ * pollMs, graceMs) while the caller blocks on it; `options` are execFileSync's, and `command`'s output is the caller's.
+ * Throws past the budget (named on stderr) or the hang cap, and on any other failure. One mechanism with the chain's
+ * own children: the kernel's CPU limit (ulimit -t) never stopped a node child that node had spawned (Main's probes,
+ * 2026-11-02: 3 s of CPU on a 1 s limit, exit 0), so the rows read ran unbounded.
  */
-export function cpuLimited(command, args, cpuS) {
-  return ['/bin/sh', ['-c', `ulimit -t ${Math.ceil(cpuS)} && exec "$0" "$@"`, command, ...args]];
+export function budgetedSync(command, args, { budgetS, hangS, pollMs, graceMs, ...options }) {
+  return execFileSync(process.execPath, [import.meta.filename, JSON.stringify({ budgetS, hangS, pollMs, graceMs }), command, ...args], options);
 }
 
 const psRows = () => new Promise((done) => {
@@ -84,4 +88,19 @@ export function watchChild(pid, { budgetS, hangS = 1800, pollMs = 15_000, graceM
     get verdict() { return verdict; },
     stop() { stopped = true; clearTimeout(timer); },
   };
+}
+
+// The runner budgetedSync starts: `node childBudget.mjs <limits JSON> <command> [args...]`. The child shares its stdio,
+// so its output reaches the caller as it writes it; a child stopped by its watch exits 1 with the verdict on stderr.
+const isEntry = (() => { try { return realpathSync(process.argv[1] ?? '') === import.meta.filename; } catch { return false; } })();
+if (isEntry) {
+  const [limits, command, ...args] = process.argv.slice(2);
+  const child = spawn(command, args, { stdio: 'inherit' });
+  const watch = watchChild(child.pid, { ...JSON.parse(limits), onStop: (verdict) => process.stderr.write(`${command} stopped: ${verdict.message}\n`) });
+  child.on('error', (error) => { watch.stop(); process.stderr.write(`${command}: ${error.message}\n`); process.exit(1); });
+  child.on('close', (status, signal) => {
+    watch.stop();
+    if (signal && !watch.verdict) process.stderr.write(`${command} stopped by ${signal}\n`);
+    process.exit(watch.verdict || status === null ? 1 : status);
+  });
 }
