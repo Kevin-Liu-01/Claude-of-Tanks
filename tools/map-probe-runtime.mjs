@@ -5,10 +5,11 @@
 // writes next to its captures. Owner approval to commit the round 41–47 QA probes as tools: 2026-09-23.
 //
 // The probe mutex is the CALLER's business. A run owns a vite dev server and a GPU browser for a minute or more, so
-// agents hold the shared scratch mutex around the whole process and run it at low priority:
-//   until mkdir "$SP/probe.lock" 2>/dev/null; do sleep 5; done
-//   nice -n 19 node tools/map-view-probe.mjs --root=<worktree> --out=<dir> --maps=badlands --views=sw-corner-close
-//   rmdir "$SP/probe.lock"
+// agents hold the shared scratch mutex around the whole process and run it at low priority (2026-11-02 audit S4: through
+// tools/with-session-mutex.mjs, an owned mutex reaped once its holder is dead; the old `until mkdir …; rmdir` loop left a
+// killed agent's mutex held for good):
+//   node tools/with-session-mutex.mjs "$SP/probe.lock" -- \
+//     nice -n 19 node tools/map-view-probe.mjs --root=<worktree> --out=<dir> --maps=badlands --views=sw-corner-close
 // These tools take neither that mutex nor the /tmp/cot-shots FIFO of the release harnesses (tools/capture-lock.mjs):
 // never run one beside `npm test` or `tank:release:check`. The server binds 127.0.0.1 on 5300 + (pid % 90) and
 // walks upward when busy (owner rule: probe servers live in 5300–5399, never on 5197–5199); vite serves the tree

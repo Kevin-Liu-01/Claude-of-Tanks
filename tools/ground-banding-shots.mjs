@@ -308,10 +308,13 @@ async function main(argv) {
     entry = await bootPage(browser, servers.get(job.dist).url, job.device);
     await stageMap(entry, mapId);
   };
+  // Chrome closes before the lock goes (2026-11-02 audit S4: the release came first on every way out, so the next holder's
+  // GPU work overlapped a closing browser), then the preview servers, which do not draw
   const close = async () => {
+    if (browser) await browser.close().catch(() => {});
+    browser = null;
     if (held) lock.release();
     held = false;
-    if (browser) await browser.close().catch(() => {});
     for (const server of servers.values()) await server.close().catch(() => {});
   };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {

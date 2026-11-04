@@ -23,6 +23,11 @@
 //   process holds is released at once (tools/capture-lock.mjs releaseAllCaptureHolds: the queue moves on), and the
 //   process exits 86 so the caller fails fast instead of freezing the Mac. `exit: false` keeps the process running
 //   (browserGuardOf(browser).tripped says why; the browser's pending calls reject as disconnected).
+// - What a trip releases (2026-11-02 audit S4): a trip that ends the process releases every hold the process has (they
+//   all end with it). One that keeps it running (`exit: false`) releases only what its caller names, `releaseHolds`:
+//   'all' (every hold of the process; the caller re-acquires before its next capture, as battle-spike-census does), an
+//   array of capture-lock instances (the holds tied to this browser), or 'none'. It is required with `exit: false`: a
+//   trip used to release every hold of the process, so another hold's work went on unlocked unless its owner noticed.
 // - close() stops the watchdog and kills whatever of the tree outlives it; so do the browser's disconnect, process exit
 //   (an uncaught error included) and a perl alarm (SIGALRM, still rc 142). Nothing is killed by pattern: only pids
 //   sampled in this browser's own process group.
@@ -39,6 +44,31 @@ import { randomBytes } from 'node:crypto';
 import { appendFileSync, writeSync } from 'node:fs';
 import { basename } from 'node:path';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
+
+/**
+ * Which capture holds a trip releases: every one when the trip ends the process; otherwise the caller's `releaseHolds`
+ * ('all', 'none', or an array of capture-lock instances), which `exit: false` must name. Returns the scope:
+ * { all: true } | { locks: [...] }. Throws a TypeError for a missing or malformed scope.
+ */
+export function tripReleaseScope({ exit = true, releaseHolds } = {}) {
+  if (exit !== false) return { all: true };
+  if (releaseHolds === 'all') return { all: true };
+  if (releaseHolds === 'none') return { locks: [] };
+  if (Array.isArray(releaseHolds) && releaseHolds.every((lock) => typeof lock?.release === 'function')) return { locks: [...releaseHolds] };
+  throw new TypeError('browser guard: exit: false needs releaseHolds (\'all\', \'none\' or the capture locks tied to this browser): '
+    + 'a trip that keeps the process running releases only what its caller names, and the caller re-acquires');
+}
+
+/** Release the holds `scope` names (tripReleaseScope); returns the tickets released. */
+export function releaseForTrip(scope, reason = null) {
+  if (scope.all) return releaseAllCaptureHolds(reason);
+  const tickets = [];
+  for (const lock of scope.locks) {
+    const ticket = lock.heldTicket ?? null;
+    if (lock.release(reason)) tickets.push(ticket);
+  }
+  return tickets;
+}
 
 /** The exit code of a process whose browser the guard killed. */
 export const BROWSER_GUARD_EXIT_CODE = 86;
@@ -335,6 +365,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
   const config = { ...browserGuardConfig(guardOptions), ...guardOptions.resolved };
   const label = guardOptions.label ?? (basename(process.argv[1] ?? 'node') || 'browser');
   const exit = guardOptions.exit !== false;
+  const releaseScope = tripReleaseScope(guardOptions);
   const say = guardOptions.log ?? ((line) => writeSync(2, `${line}\n`));
   const footprints = new Map();
   let timer = null, ticks = 0, stopped = false;
@@ -364,7 +395,7 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
     const killed = killTree(sample, guard);
     const stragglers = reapTree(guard); // a helper started between the sample and the kill
     const hold = context.hold ?? null;
-    const released = releaseAllCaptureHolds(`browser guard: ${why}`);
+    const released = releaseForTrip(releaseScope, `browser guard: ${why}`);
     guard.tripped = {
       at: new Date().toISOString(), label, hold, why, pid: process.pid, rootPid,
       rendererMb: Math.round(sample.rendererMb), rendererPid: sample.rendererPid, treeMb: Math.round(sample.treeMb),
@@ -437,13 +468,15 @@ export function browserGuardOf(browser) {
  * Launch a browser with the guard: `launcher` is puppeteer (or puppeteer-core) or a playwright browser type (chromium).
  * `options` are the launcher's own (args gain the guard's flags). `guard`: { label, method ('launch', 'launchServer',
  * 'launchPersistentContext'), userDataDir (persistent contexts), heapMb, rendererCapMb, treeCapMb, intervalMs,
- * rendererProcessLimit, exit (false: report and kill, keep the process), onTrip(report), log(line), logFile }.
+ * rendererProcessLimit, exit (false: report and kill, keep the process), releaseHolds (with exit: false: 'all', 'none' or
+ * the capture locks a trip releases), onTrip(report), log(line), logFile }.
  * A launcher that starts no browser of this process (a test double, or a fixture browser with a fake pid) gets its
  * result back unwatched: the guard only ever samples and kills a process tree this process started.
  */
 export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
   const method = guard.method ?? 'launch';
   if (typeof launcher?.[method] !== 'function') throw new TypeError(`launchGuardedBrowser: the launcher has no ${method}()`);
+  tripReleaseScope(guard); // a malformed scope fails before a browser starts
   const config = browserGuardConfig(guard);
   const token = randomBytes(8).toString('hex');
   // (267) no wall limit on the launch: the caller's timeout is a budget of the launching browser's CPU (watchLaunch)

@@ -133,7 +133,8 @@ try {
   }
 } finally {
   writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);
-  lock.release();
+  // (2026-11-02 audit S4) the browser closes before the lock goes: the next holder's GPU work never overlaps this Chrome
   await browser.close();
   await vite.close();
+  lock.release();
 }

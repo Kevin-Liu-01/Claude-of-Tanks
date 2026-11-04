@@ -826,6 +826,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
+    // 2026-11-02 audit S5: cinema's lease-over exit is its own number, not the selftests' STARVED 75
+    'tools/media-production/lease-exit.selftest.mjs',
     'tools/media-r5/motion-type.selftest.mjs',
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
@@ -834,6 +836,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
+    // 2026-11-02 audit S5: site-loops writes each format whole or not at all, and resumes only from whole takes
+    'tools/media-r5/site-loops-resume.selftest.mjs',
+    // 2026-11-02 audit S4: the media lane's payback to the normal band, one rule for the lab and the finals
+    'tools/media-r5/priority-yield.selftest.mjs',
     // brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds,
     // one still per page)
     'src/presentation/mediaPlayer.selftest.mjs',
@@ -888,17 +894,31 @@ export const SELFTEST_SUITES = Object.freeze({
     // 267: test:lane's red classes (OWN, INHERITED, FLAKY) and the base results kept by input fingerprint
     'tools/lane-reds.selftest.mjs',
     'tools/release.selftest.mjs',
+    // 2026-11-02 audit S5: a live deploy recorded before verify, an owned cache lock, each Worker's commit on record
+    'tools/release-record.selftest.mjs',
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    // 2026-11-02 audit S4: one acquire per instance (no leaked render slot, no wait on its own pid) and nested holds
+    'tools/capture-lock-reentry.selftest.mjs',
+    // 2026-11-02 audit S4: a lock class taken by default (exclusive) is said and recorded; the media renderers name theirs
+    'tools/capture-lock-class.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-11-02 audit S4: one owner of a hold's cap, budget, grace and yield (withCaptureHold, runWarmHold)
+    'tools/capture-hold-phases.selftest.mjs',
     // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
     // launch in the checkout goes through it; 266: every browser over tank ids takes its chunks from browser-id-chunks.mjs
     'tools/browser-launch.selftest.mjs',
+    // 2026-11-02 audit S4: a trip that keeps the process running releases only the holds its caller names
+    'tools/browser-guard-holds.selftest.mjs',
     'tools/browser-launch-census.selftest.mjs',
+    // 2026-11-02 audit S4: the capture-hold census (no retired memory-guard gate; the hold wrapper and its direct acquirers)
+    'tools/capture-hold-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
+    // 2026-11-02 audit S4: the probe mutex has an owner (a dead holder's reaped, a live or shell holder's never)
+    'tools/session-mutex.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
@@ -916,6 +936,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/world.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // 2026-11-02 audit S5: one chain per tree (an owned lock, no check-then-write), a stop that sweeps every child group
+    // before the unlock, and a budget that tears down before it exits
+    'tools/chain-lifecycle.selftest.mjs',
     // 268: the anatomy step's parallel parts merge byte for byte as one run; a part never writes a shared file
     'tools/combat-anatomy-parts.selftest.mjs',
     // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.

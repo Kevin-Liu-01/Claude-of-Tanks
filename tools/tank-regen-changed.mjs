@@ -37,8 +37,8 @@
 // Under COT_CAPTURE_PRIORITY=release (the integrator's release chain) CPU children run un-niced too
 // (tools/changed-only/childPriority.mjs, 267). A CPU child's limit is a budget of its process tree's CPU, not of wall
 // time, with a 30-minute no-progress cap for a hang (tools/changed-only/childBudget.mjs, 267).
-import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { emptyManifest, computeState, installDrift, MANIFEST_PATH, readManifest, recordStep, refreshComponents, resolveChanged,
@@ -51,6 +51,8 @@ import { expandGlobs } from './changed-only/globs.mjs';
 import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
+import { createChildGroups, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
+import { releaseAllCaptureHolds } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -114,18 +116,19 @@ for (const step of [...STEPS, ...WORLD_STEPS]) if (step.flags.some((flag) => /^-
   throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);
 }
 
-// One chain per tree.
-const lockPath = join(qaDir, 'chain.lock');
-if (existsSync(lockPath)) {
-  const pid = Number(readFileSync(lockPath, 'utf8'));
-  let alive = false;
-  try { process.kill(pid, 0); alive = true; } catch (error) { alive = error.code === 'EPERM'; }
-  if (alive) { console.error(`[regen] another chain (pid ${pid}) holds ${lockPath}`); process.exit(2); }
-}
-writeFileSync(lockPath, String(process.pid));
-const unlock = () => { try { if (readFileSync(lockPath, 'utf8') === String(process.pid)) renameSync(lockPath, `${lockPath}.done`); } catch {} };
+// One chain per tree (2026-11-02 audit S5, tools/chain-lifecycle.mjs): an owned lock directory, so two chains launched
+// together cannot both pass (the old check-then-write pid file let them), and only a dead owner's lock is reaped. An older
+// chain's pid file at chain.lock is honoured while its pid lives.
+const lockPath = join(qaDir, 'chain.lock.d');
+const chainLock = takeChainLock(lockPath, { legacyFile: join(qaDir, 'chain.lock'), log: (line) => console.error(line) });
+if (!chainLock.held) { console.error(`[regen] another chain (pid ${chainLock.owner.pid ?? 'unknown'}) holds ${lockPath}`); process.exit(2); }
+const unlock = () => chainLock.release();
 process.on('exit', unlock);
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { unlock(); process.exit(130); });
+// Every step child leads its own process group: a stop signals them all, waits for them, SIGKILLs what is left, then
+// releases the GPU step's capture hold and the chain lock, so nothing of this chain writes once the lock is free.
+const children = createChildGroups();
+stopOnSignal(children, { log: (line) => console.error(`[regen] ${line}`),
+  cleanup: (signal) => { releaseAllCaptureHolds(`regen chain stopped by ${signal}`); unlock(); } });
 
 const childEnv = { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' };
 
@@ -149,12 +152,12 @@ async function gate(gb) {
  * its budget or makes no CPU progress for HANG_S is stopped by exact pids, the reason named. A GPU child (never niced:
  * it runs inside a capture hold) keeps a wall-clock limit, which bounds the hold (TERM, then KILL after 15 s).
  */
-function runChild(argv, { niced, timeoutS, label }) {
+function runChild(argv, { niced, timeoutS, label, env = childEnv }) {
   return new Promise((done) => {
     const { command, args: fullArgs, prefix } = cpuChildCommand(process.execPath, argv, { niced });
     log(`[regen] ${label}: ${prefix}node ${argv.join(' ').slice(0, 400)}`);
     const out = join(qaDir, `${stamp}-${label.replace(/[^\w.-]+/g, '_')}.out`);
-    const child = spawn(command, fullArgs, { cwd: root, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = children.spawn(command, fullArgs, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     const sink = (chunk) => appendFileSync(out, chunk);
     child.stdout.on('data', sink); child.stderr.on('data', sink);
     let killed = false, timer = null, watch = null;
@@ -272,8 +275,10 @@ async function runGpuStep(step, ids, state) {
       // A whole-fleet run that fits one hold runs the tool's own whole-fleet mode (no --ids), exactly as a full regen.
       const scope = !ids && chunks.length === 1 ? step.full : step.scoped(chunk);
       const skippedFile = skipFile(step, index + 1);
+      // the GPU child runs inside this hold: a tool of it that takes the lock itself nests in it (capture-lock nestedEnv)
       const run = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
-        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}` });
+        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}`,
+          env: { ...childEnv, ...lock.nestedEnv() } });
       if (run.code !== 0) return run;
       Object.assign(skipped, readSkipped(skippedFile));
     } finally { clearInterval(refresh); lock.release(); }

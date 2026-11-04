@@ -23,19 +23,34 @@
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
 // --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays; a take rendered
 // without one gets it from the master first).
+// Resume (2026-11-02 audit S5): every output is written under a partial name and renamed into place once whole
+// (atomic-output.mjs), so a file at a final name is always complete. A take's outputs come in groups, each made from one
+// input: the formats and the poster from the film (the master, or the proxy once the master is dropped), the stills from
+// the still master, the close stills from the close still. The scene is copied whenever its bytes differ: cinema-jobs
+// rewrites it, unchanged, on every finals launch, so its time says nothing (round 3: counted as an input of every format,
+// it re-encoded each delivered take on a relaunch, a dropped master's from its proxy). The completion record
+// (.<id>.complete.json in the take's folder) keeps each group's input as it was when the group was last made whole (name,
+// size and mtime, read before the encode), and the proxy beside the master the formats came from (recorded before a
+// dropped master goes). A group is current when its outputs are all there and its input is the recorded one (for the
+// formats also: the master is gone and the film is that proxy). A group with no record (delivered before the record) is
+// current when each of its outputs is newer than its input, and is recorded so. Only stale groups are made again: a run
+// stopped anywhere in a take delivers again what its inputs changed, and nothing else.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync, unlinkSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { SHOTS } from './paths.mjs';
 import { filterStill, filteredFilm, masterFilter } from './master-filter.mjs';
 import { XFADE_MS } from './site50.mjs';
+import { copyFileAtomic, sweepPartials, writeAtomic, writeFileAtomic } from './atomic-output.mjs';
 
 const argv = process.argv.slice(2), flags = new Set(argv.filter(a => a.startsWith('--'))), pos = argv.filter(a => !a.startsWith('--'));
 const renders = resolve(pos[0] ?? join(SHOTS, 'site50/renders'));
 const deliver = resolve(pos[1] ?? join(SHOTS, 'site50/deliver'));
 const only = pos[2]?.split(',');
-const ff = (...a) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...a], { stdio: ['ignore', 'ignore', 'inherit'] });
+const ffRaw = (...a) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...a], { stdio: ['ignore', 'ignore', 'inherit'] });
+/** One ffmpeg encode: its last argument is the output, written under a partial name and renamed into place once whole. */
+const ff = (...a) => writeAtomic(a.at(-1), (partial) => ffRaw(...a.slice(0, -1), partial));
 const probe = f => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim());
 const heightOf = f => Number(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim());
 const pick = (dir, re) => existsSync(dir) ? readdirSync(dir).filter(f => re.test(f)).sort().map(f => join(dir, f))[0] : null;
@@ -57,6 +72,19 @@ const GIF = flags.has('--gifs') ? [
 ] : [];
 // 15 MB fits the common GIF limits; busy smoke-and-fire loops came out at 18-21 MB at 640 px / 20 fps (2026-10-03)
 const SHARE_GIF_MAX = 15e6, SHARE_LADDER = [[560, 18, 'bayer:bayer_scale=4'], [480, 16, 'bayer:bayer_scale=4'], [400, 15, 'bayer:bayer_scale=4']];
+// the outputs by their index keys (deliver-index.json)
+const KEYS = { master: '-loop-master.mov', mp4k: '-4k.mp4', mp4: '.mp4', webm: '.webm', mobile: '-mobile.mp4', gif: '.gif', gifShare: '-share.gif',
+  poster: '.jpg', still4k: '-4k.png', still4kJpg: '-4k.jpg', still: '.webp', close4k: '-close-4k.png', close4kJpg: '-close-4k.jpg',
+  close: '-close.webp', scene: '.scene.json' };
+// an input as the completion record keeps it: its name, size and mtime (a content hash would read every GB of a master)
+const fingerprint = (file) => (file && existsSync(file) ? (({ size, mtimeMs }) => ({ name: basename(file), size, mtimeMs }))(statSync(file)) : null);
+const sameInput = (a, b) => Boolean(a && b && a.name === b.name && a.size === b.size && a.mtimeMs === b.mtimeMs);
+/** The completion record's inputs (a copy to update), or {} (none yet, a torn one, or round 2's record without inputs). */
+const readRecord = (file) => {
+  try { const record = JSON.parse(readFileSync(file, 'utf8')); if (record?.inputs && typeof record.inputs === 'object') return { ...record.inputs }; } catch { /* none */ }
+  return {};
+};
+const proxyOf = (masterFile) => masterFile.replace(/-master\.mov$/, '-proxy.mp4');
 mkdirSync(deliver, { recursive: true });
 const rows = [];
 for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders, 'films')) : []).filter(d => /^s\d{2,3}-/.test(d)).sort()) {
@@ -77,18 +105,39 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   const closeStill = extra?.length ? stillAt(extra[0]) : (others[0] ?? null);
   if (!master) { console.log(`${id}: no film yet`); continue; }
   const out = join(deliver, id);
-  const stillsOnly = flags.has('--stills-only');
-  const files = {};
-  let L = null, uhd = false;
-  if (!stillsOnly) {
-  // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
-  const shareGif = join(out, `${id}-share.gif`);
-  const done = existsSync(join(out, `${id}.mp4`)) && (!GIF.length || existsSync(shareGif)) && (!still || existsSync(join(out, `${id}-4k.png`)));
-  const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
-  if (done && !flags.has('--force') && (!GIF.length || statSync(shareGif).mtimeMs > newest) && statSync(join(out, `${id}.mp4`)).mtimeMs > newest) {
+  const stillsOnly = flags.has('--stills-only'), force = flags.has('--force');
+  const complete = join(out, `.${id}.complete.json`), sceneOut = join(out, `${id}.scene.json`);
+  // which output groups are current (see Resume above): `made` is the record's inputs, each group's as it was made
+  const made = readRecord(complete);
+  const current = (key, input, names) => {
+    if (!input) return true; // nothing to make
+    if (force) return false;
+    const outs = names.map((name) => join(out, name));
+    if (!outs.every((f) => existsSync(f))) return false;
+    const now = fingerprint(input);
+    if (made[key]) return sameInput(made[key], now) || (key === 'film' && !filmMaster && sameInput(made.proxy, now));
+    // no record of this group (delivered before the record): current when each output is newer than its input, and
+    // recorded as made from it when the record is next written
+    if (!outs.every((f) => statSync(f).mtimeMs > now.mtimeMs)) return false;
+    made[key] = now;
+    return true;
+  };
+  const saveRecord = () => writeFileAtomic(complete, `${JSON.stringify({ at: new Date().toISOString(), inputs: made }, null, 1)}\n`);
+  const sceneCurrent = !existsSync(sceneFile) || (existsSync(sceneOut) && readFileSync(sceneOut).equals(readFileSync(sceneFile)));
+  const filmCurrent = stillsOnly || current('film', master, [`${id}.mp4`, `${id}.jpg`, ...(GIF.length ? [`${id}-share.gif`] : [])]);
+  // --stills-only delivers the stills again whatever their times (its purpose); a run with encodes checks them
+  const stillCurrent = !stillsOnly && current('still', still, [`${id}-4k.png`, `${id}-4k.jpg`, `${id}.webp`]);
+  const closeCurrent = !stillsOnly && current('close', closeStill, [`${id}-close-4k.png`, `${id}-close-4k.jpg`, `${id}-close.webp`]);
+  if (!stillsOnly && filmCurrent && stillCurrent && closeCurrent && sceneCurrent) {
     console.log(`${id}: formats up to date`); continue;
   }
+  if (stillsOnly && !existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
   mkdirSync(out, { recursive: true });
+  for (const name of sweepPartials(out)) console.log(`${id}: removed ${name}, a partial a stopped run left`);
+  let L = null, uhd = false;
+  if (!filmCurrent) {
+  // the inputs as they are before the encode: a film rewritten meanwhile no longer matches the record
+  const film0 = fingerprint(master), proxy0 = filmMaster ? fingerprint(proxyOf(filmMaster)) : null;
   const D = probe(master), X = XFADE_MS / 1000;
   L = +(D - X).toFixed(3); uhd = heightOf(master) >= 2160;
   if (!(L >= 2)) throw new Error(`${id}: take of ${D}s is too short for a ${X}s crossfade`);
@@ -105,11 +154,9 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
     ff(...inputs, '-filter_complex', `${loop};[loop]${post}[v]`, '-map', '[v]', '-an', ...enc, join(out, `${id}${suffix}`));
-    files[key] = `${id}/${id}${suffix}`;
   }
-  for (const [key, suffix, pre, gen, use] of GIF) {
+  for (const [, suffix, pre, gen, use] of GIF) {
     ff(...inputs, '-filter_complex', `${loop};[loop]${pre},split[g1][g2];[g1]${gen}[p];[g2][p]${use}[v]`, '-map', '[v]', '-loop', '0', join(out, `${id}${suffix}`));
-    files[key] = `${id}/${id}${suffix}`;
   }
   // the share GIF must fit common upload limits: step down size and rate until it is under SHARE_GIF_MAX
   for (const [w, fps, dither] of GIF.length ? SHARE_LADDER : []) {
@@ -118,59 +165,68 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
       '-map', '[v]', '-loop', '0', join(out, `${id}-share.gif`));
   }
   ff(...inputs, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
-  files.poster = `${id}/${id}.jpg`;
   if (film !== master) unlinkSync(film);
+  // the formats and the poster are whole: made from this film (and the proxy beside its master, which may replace it)
+  Object.assign(made, { film: film0, proxy: proxy0 });
+  saveRecord();
   } else {
-    if (!existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
-    L = +(probe(join(out, `${id}.mp4`))).toFixed(3);
+    L = +(probe(join(out, `${id}.mp4`))).toFixed(3); uhd = existsSync(join(out, `${id}-4k.mp4`));
+    if (!stillsOnly) console.log(`${id}: formats current, not re-encoded; delivering ${[!stillCurrent && 'the still', !closeCurrent && 'the close still', !sceneCurrent && 'the scene'].filter(Boolean).join(', ')}`);
   }
-  const scene = join(renders, 'films', 'scenes', `${id}.json`);
-  if (existsSync(scene)) { copyFileSync(scene, join(out, `${id}.scene.json`)); files.scene = `${id}/${id}.scene.json`; }
-  if (still) {
-    const png = filterStill(still, join(out, `${id}-4k.png`), `${id}-still`, FILTER);
+  // the scene: copied whenever its bytes differ (cinema-jobs rewrites it, unchanged, on every launch: no input of a format)
+  if (!sceneCurrent) copyFileAtomic(sceneFile, sceneOut);
+  if (still && !stillCurrent) {
+    const made0 = fingerprint(still);
+    const png = writeAtomic(join(out, `${id}-4k.png`), (partial) => filterStill(still, partial, `${id}-still`, FILTER));
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
-    writeFileSync(join(out, `${id}-4k.jpg`), full.toBuffer('image/jpeg', 95));
+    writeFileAtomic(join(out, `${id}-4k.jpg`), full.toBuffer('image/jpeg', 95));
     const c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    writeFileSync(join(out, `${id}.webp`), c.toBuffer('image/webp', 92));
-    Object.assign(files, { still4k: `${id}/${id}-4k.png`, still4kJpg: `${id}/${id}-4k.jpg`, still: `${id}/${id}.webp` });
+    writeFileAtomic(join(out, `${id}.webp`), c.toBuffer('image/webp', 92));
+    made.still = made0;
+    saveRecord();
   }
-  if (closeStill) {
+  if (closeStill && !closeCurrent) {
     // the close portrait (owner 2026-10-06): the 4K master, a q95 JPEG and a 1920 px WebP beside the still
-    const png = filterStill(closeStill, join(out, `${id}-close-4k.png`), `${id}-close`, FILTER);
+    const made0 = fingerprint(closeStill);
+    const png = writeAtomic(join(out, `${id}-close-4k.png`), (partial) => filterStill(closeStill, partial, `${id}-close`, FILTER));
     const im = await loadImage(readFileSync(png));
     const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
-    writeFileSync(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));
+    writeFileAtomic(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));
     const c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    writeFileSync(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
-    Object.assign(files, { close4k: `${id}/${id}-close-4k.png`, close4kJpg: `${id}/${id}-close-4k.jpg`, close: `${id}/${id}-close.webp` });
+    writeFileAtomic(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
+    made.close = made0;
+    saveRecord();
   }
   if (filmMaster && flags.has('--drop-film-masters') && !stillsOnly) {
     // the raw take stays for the films' cuts (motion/sync-footage.mjs links <stem>-proxy.mp4): a finals run without
     // cinema's proxy (--film-proxy=false, launch night 2026-10-08: its encode held the GPU lease ~5 min a take) gets it
-    // here, on the CPU, from the master and with cinema's settings, before the master goes
-    const proxy = filmMaster.replace(/-master\.mov$/, '-proxy.mp4');
+    // here, on the CPU, from the master and with cinema's settings, before the master goes (whole or not at all: a
+    // truncated proxy at its final name let the master go, the only good copy)
+    const proxy = proxyOf(filmMaster);
     if (proxy !== filmMaster && !existsSync(proxy)) {
       ff('-i', filmMaster, '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
         '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-color_range', 'tv', '-movflags', '+faststart', proxy);
     }
+    // recorded before the master goes: the formats came from it, so the proxy that replaces it as the film is current
+    made.proxy = fingerprint(proxy);
+    saveRecord();
     unlinkSync(filmMaster);
   }
+  saveRecord(); // the groups found current by their times, recorded as made from their inputs
+  const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(out, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
   const size = f => statSync(join(deliver, f)).size, mb = k => files[k] ? `${(size(files[k]) / 1e6).toFixed(1)} MB` : '—';
   rows.push({ id, loopS: L, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, size(f)])) });
   console.log(`${id}: loop ${L}s${uhd ? ' (2160p)' : ''}; 4k ${mb('mp4k')}, mp4 ${mb('mp4')}, webm ${mb('webm')}, mobile ${mb('mobile')}, gif ${mb('gif')}, share ${mb('gifShare')}${still ? ', still' : ', no still yet'}`);
 }
 // the index is rebuilt from the deliver folder itself, so overlapping runs (one per render chunk) never drop a shot
 const index = join(deliver, 'deliver-index.json');
-const KEYS = { master: '-loop-master.mov', mp4k: '-4k.mp4', mp4: '.mp4', webm: '.webm', mobile: '-mobile.mp4', gif: '.gif', gifShare: '-share.gif',
-  poster: '.jpg', still4k: '-4k.png', still4kJpg: '-4k.jpg', still: '.webp', close4k: '-close-4k.png', close4kJpg: '-close-4k.jpg',
-  close: '-close.webp', scene: '.scene.json' };
 const merged = readdirSync(deliver).filter(d => /^s\d{2,3}-/.test(d) && existsSync(join(deliver, d, `${d}.mp4`))).sort().map(id => {
   const files = Object.fromEntries(Object.entries(KEYS).filter(([, ext]) => existsSync(join(deliver, id, `${id}${ext}`))).map(([k, ext]) => [k, `${id}/${id}${ext}`]));
   const loopS = rows.find(r => r.id === id)?.loopS ?? +probe(join(deliver, id, `${id}.mp4`)).toFixed(3);
   return { id, loopS, files, bytes: Object.fromEntries(Object.entries(files).map(([k, f]) => [k, statSync(join(deliver, f)).size])) };
 });
-writeFileSync(index, JSON.stringify(merged, null, 1));
+writeFileAtomic(index, JSON.stringify(merged, null, 1));
 console.log(`${rows.length} shots delivered -> ${deliver} (${merged.length} in the index)`);

@@ -472,8 +472,10 @@ bad flag return before a server exists; every run writes
 | `suspension-strip-probe.mjs` | frame strips of the player hull for the visual gauntlet (physics lane, 2026-10-03): rough ground at speed, a hard stop, a landing in each gravity world, level drops onto flat ground (a case may name its hull), a rest on a slope and across one, a field trench and an assault sector line crossed at a held speed (round 7, watched from inside the trench); each frame stamped (root height, rendered pitch and roll, wheels in contact, each road wheel's travel) and checked against the sim state it was synced from, a landing's window anchored on its touchdown step | `--root=<checkout> --dist=<built dist> --out=<dir> --tag=after --ids=land-mars,hardstop` |
 | `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |
 
-The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run and
-use `nice -n 19`. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
+The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run with
+`node tools/with-session-mutex.mjs "$SP/probe.lock" -- nice -n 19 node tools/<probe>.mjs ...`
+(an owned mutex, reaped once its holder is dead; a bare `mkdir` loop left a killed
+agent's mutex held for good, 2026-11-02 audit S4). The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
 127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:

@@ -52,7 +52,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import {
@@ -60,7 +60,8 @@ import {
   resolveHullRelativePose, sleep,
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
-import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
+import { CAPTURE_QUEUE_DIR, claimSessionMutex, createCaptureLock, reapDeadSessionMutex, releaseSessionMutexAt,
+  sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
@@ -736,18 +737,27 @@ export function foreignGpuCpu() {
   } catch { return { cpu: -1, processes: -1 }; }
 }
 
-/** The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO. */
+/**
+ * The FIFO, then (optionally) the session mutex — taken only while the FIFO is ours; a busy mutex returns the FIFO.
+ * Nested holds (2026-11-02 audit S4): COT_LANE_HOLD=1 skipped both with no check that any hold backed it, so a leftover
+ * export ran GPU probes unlocked. A child of a hold nests in the FIFO through the hold's token (capture-lock nestedEnv), or
+ * on COT_LANE_HOLD=1 (a lane-hold helper's probe) only when the FIFO's live owner is an ancestor of it: acquire() checks
+ * both against the live owner record and otherwise queues. It nests in the session mutex only while the mutex's live owner
+ * is an ancestor (`mutexNested`), where it used to wait behind its own parent.
+ */
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
-  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
-  // a lane hold (one ticket for several probe steps, tools/tmp-lane-hold.mjs) already holds the FIFO and the mutex for
-  // the steps it spawns with COT_LANE_HOLD=1: they take nothing and release nothing
-  if (process.env.COT_LANE_HOLD === '1') { log('the capture FIFO and the session mutex are the lane hold\'s'); return { round: 0, release: () => {}, refresh: () => {} }; }
+  releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued,
+  mutexNested = defaultMutexNested } = {}) {
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
     await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
     ticket ??= lock.lastTicket ?? null;
     if (!sessionMutex) return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    if (mutexNested(sessionMutex)) {
+      log(`session mutex held by an ancestor of this process: nested in it (round ${round})`);
+      return { round, release: () => lock.release(), refresh: () => lock.refresh() };
+    }
     // a holder queued behind us cannot release while we hold the head: give the turn back at once; any other holder
     // (between its own captures) gets mutexWaitMs
     const queued = holderQueued(sessionMutex);
@@ -774,10 +784,14 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
 function mutexOwner(dir) {
   try { return Number(readFileSync(path.join(dir, 'pid'), 'utf8').trim()) || null; } catch { return null; }
 }
+// (2026-11-02 audit S4) the session mutex is an owned lock directory (capture-lock.mjs claimSessionMutex): a killed
+// holder's mutex is reaped, where a bare mkdir stayed held for good and cost every later round its 45-minute wait
 function defaultMutexBusy(dir) {
-  const owner = mutexOwner(dir);
-  if (!owner) return existsSync(dir);
-  try { process.kill(owner, 0); return true; } catch { return false; } // a dead owner's mutex is stale
+  const { state } = sessionMutexState(dir);
+  return state === 'live' || state === 'unowned';
+}
+function defaultMutexNested(dir) {
+  return sessionMutexHeldByAncestor(dir);
 }
 function defaultHolderQueued(dir) {
   const owner = mutexOwner(dir);
@@ -785,13 +799,11 @@ function defaultHolderQueued(dir) {
   try { return readdirSync(CAPTURE_QUEUE_DIR).some((name) => name.endsWith(`-${owner}.t`)); } catch { return false; }
 }
 function defaultTryMutex(dir) {
-  try { mkdirSync(dir); writeFileSync(path.join(dir, 'pid'), String(process.pid)); return true; } catch { return false; }
+  if (claimSessionMutex(dir)) return true;
+  return reapDeadSessionMutex(dir) && Boolean(claimSessionMutex(dir));
 }
 function defaultReleaseMutex(dir) {
-  try {
-    const owner = readFileSync(path.join(dir, 'pid'), 'utf8').trim();
-    if (owner === String(process.pid)) rmSync(dir, { recursive: true, force: true });
-  } catch { /* already gone */ }
+  releaseSessionMutexAt(dir);
 }
 
 export async function openPreview(root, port) {

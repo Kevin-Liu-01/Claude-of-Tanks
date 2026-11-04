@@ -36,6 +36,7 @@
 // runCapture takes its browser and capture lock as arguments, so tools/hud-ammo-frame-ink.selftest.mjs drives the whole
 // flow against a recording page.
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { withCaptureHold } from './capture-hold.mjs';
 import { resolve } from 'node:path';
 import { cropImage, decodePng, encodePng, inkGap, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
 
@@ -613,20 +614,31 @@ async function captureStage({ page, c, stage, out, writeFile }) {
 }
 
 /**
- * The whole capture: take the capture lock (`lock.acquire(timeoutMs, options)`, `lock.refresh()`, `lock.release()`),
- * open each case's page on the fixture and capture its stages, then write report.json. Returns the report.
+ * The whole capture: hold the capture lock (`lock.acquire(timeoutMs, options)`, `lock.refresh()`, `lock.release()`)
+ * through tools/capture-hold.mjs withCaptureHold (2026-11-02 audit S4, round 2: this flow acquired, refreshed and
+ * released it itself, with no signal handling; the browser now closes before the release on every way out, a signal
+ * included), open each case's page on the fixture and capture its stages, then write report.json. Returns the report.
+ * One pass with no checkpoint: past the lock's cap it is logged, not stopped (atCap 'keep').
  */
 export async function runCapture({ chromium, lock, url, out, cases = CASES, stageFilter = '', caseFilter = '', lockTimeoutMs,
   lockOptions = {}, writeFile, mkdir }) {
   await mkdir(out, { recursive: true });
   const reports = [];
   const failures = [];
-  await lock.acquire(lockTimeoutMs, lockOptions);
-  const heartbeat = setInterval(() => lock.refresh(), 30_000);
-  heartbeat.unref?.();
-  const startedAt = Date.now();
-  let browser = null;
+  let startedAt = Date.now();
+  let browser = null, held = false;
+  const closeBrowser = async () => { const open = browser; browser = null; await open?.close(); };
   try {
+    await withCaptureHold(() => capture(), { label: 'hud-capture', lock, timeoutMs: lockTimeoutMs, place: lockOptions.place ?? null,
+      ticket: lockOptions.ticket ?? null, lockClass: lockOptions.lockClass ?? null, atCap: 'keep', log: () => {}, teardown: closeBrowser });
+  } finally {
+    if (held) await writeFile(resolve(out, 'report.json'), JSON.stringify({ heldMs: Date.now() - startedAt, reports, failures }, null, 2));
+  }
+  return { reports, failures, heldMs: Date.now() - startedAt };
+
+  async function capture() {
+    held = true;
+    startedAt = Date.now();
     browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
     for (const c of cases.filter((item) => !caseFilter || caseFilter.split(',').includes(item.name))) {
       const context = await browser.newContext({ viewport: { width: c.width, height: c.height }, hasTouch: c.touch,
@@ -646,11 +658,5 @@ export async function runCapture({ chromium, lock, url, out, cases = CASES, stag
       }
       await context.close();
     }
-  } finally {
-    await browser?.close();
-    clearInterval(heartbeat);
-    lock.release();
-    await writeFile(resolve(out, 'report.json'), JSON.stringify({ heldMs: Date.now() - startedAt, reports, failures }, null, 2));
   }
-  return { reports, failures, heldMs: Date.now() - startedAt };
 }

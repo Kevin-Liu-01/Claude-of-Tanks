@@ -20,8 +20,9 @@
 // preview of each root's dist and one Chrome come up and each job of a batch (--pages of them: a map on a root, the
 // queue map-major so a map's roots share a batch) is staged in its own page, which is then frozen; inside the hold each
 // page in turn comes to the front and is read. More jobs take further holds. A job that failed twice is given up;
-// resumable: a job whose record says ok is skipped. A lane hold that already holds the FIFO runs it with COT_LANE_HOLD=1
-// (no queue: staged and read at once).
+// resumable: a job whose record says ok is skipped. Under a hold that already holds the FIFO (its token, capture-lock
+// nestedEnv, or COT_LANE_HOLD=1 under an ancestor's live hold, checked by capture-lock) each batch nests in it at once
+// (2026-11-02 audit S4).
 //
 // Read the counts with three facts of the renderer in mind (the report applies them):
 // - the static shadow-caster cache (src/engine/shadowStaticCache.ts) reuses its copies under a still camera, so each view is
@@ -457,13 +458,7 @@ async function capture(opt) {
   for (const batch of batches) {
     const keys = batch.map((job) => job.key).join(',');
     try {
-      if (process.env.COT_LANE_HOLD === '1') {
-        // a lane hold holds the FIFO for the steps it spawns: stage and read at once
-        const warmed = await warm(batch)();
-        try { await shoot(warmed); } finally { await warmed.close(); }
-      } else {
-        await runWarmHold({ label: `${TOOL} ${keys}`, place: `${TOOL}:${path.basename(out)}:${keys}`, holdMinutes, waitHours, warm: warm(batch), shoot });
-      }
+      await runWarmHold({ label: `${TOOL} ${keys}`, place: `${TOOL}:${path.basename(out)}:${keys}`, holdMinutes, waitHours, warm: warm(batch), shoot });
     } catch (error) {
       log(`hold for ${keys} failed: ${String(error?.message || error).slice(0, 300)}`);
     }

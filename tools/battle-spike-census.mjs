@@ -623,6 +623,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
     label: `battle-spike-census ${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}`,
     treeCapMb: Number(process.env.COT_BROWSER_TREE_CAP_MB) || BATTLE_TREE_CAP_MB,
     exit: false,
+    releaseHolds: 'all', // the census's FIFO and mutex go with the browser; it re-queues before the next battle
     onTrip: (report) => {
       guardReleasedLocks = true;
       if (aborted) return;

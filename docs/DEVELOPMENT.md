@@ -333,11 +333,13 @@ only:
   an unstubbed page at the thaw; the check caught it and the re-warm restored it. A stubbed page did not reload.
 - **Cinema leases.** `tools/media-production/cinema.mjs` holds every lease to the 18-minute cap unless `--lease-min`
   asks for less: 0, and longer values such as site50-finals' 45, become the cap. A take still running two minutes past
-  the cap stops at its next frame and exits 75, so a resumed batch renders it again. One cinema hold had run 44
+  the cap stops at its next frame and exits 76 (its own code since 2026-11-02; 75 is a selftest's STARVED), so a
+  resumed batch renders it again. One cinema hold had run 44
   minutes.
 - **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
   renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
-  while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
+  while queued and releases once the browser closes (a `withCaptureHold` hold since 2026-11-02, so a signal closes the
+  browser and releases too). `tank-standard-check` and `track-clip-audit` use it, and the
   standard check's contiguity stage, which is CPU-only, now runs after the release.
 
 A second concurrent capture lane for stills (parked 2026-10-15) is not the lever. Holds were long because of

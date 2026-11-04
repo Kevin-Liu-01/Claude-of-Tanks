@@ -12,9 +12,12 @@
 //                  tools/vercel-output-immutable.mjs and its --check. The pulled .vercel/.env*.local files
 //                  are deleted in a finally block. A build records nothing in the cache: it writes its own
 //                  file list to .vercel/cot-release.json beside the output (never uploaded).
-//   deploy <sha>   vercel deploy --prebuilt --prod --archive=tgz from that worktree with the git metadata of
-//                  <sha>, then verify, then record the release in the cache, then remove the worktree
-//                  (--keep keeps it, --no-verify skips verify).
+//   deploy <sha>   check the build's own file list, vercel deploy --prebuilt --prod --archive=tgz from that
+//                  worktree with the git metadata of <sha>, then record the release in the cache, then verify, then
+//                  remove the worktree (--keep keeps it, --no-verify skips verify). (2026-11-02 audit S5) The deploy is
+//                  irreversible and live at once, so the release is recorded before verify: a verify that fails (the
+//                  alias not moved yet) no longer leaves a live release out of the carry (the open-tabs 404 trap), and
+//                  each failure after the deploy names the stage and the command that finishes it.
 //   record <sha>   record a release deployed straight with the Vercel CLI: the served stamp must name <sha>
 //                  (--no-verify skips the check), then the build's own files go into the cache.
 //   verify <sha>   the served application-version stamp names <sha> (retried while the alias moves);
@@ -24,7 +27,10 @@
 //                  --to=<deployment url|id>. `vercel promote` also turns production-domain
 //                  auto-assignment back on, which a plain `vercel rollback` leaves off.
 //   workers <sha>  temporary worktree of <sha>; per Worker (rooms, telemetry; --only=<name>): npm ci,
-//                  typecheck, test, wrangler deploy --tag <sha12> --message "<sha12> <subject>".
+//                  typecheck, test, wrangler deploy --tag <sha12> --message "<sha12> <subject>". Each deployed
+//                  Worker's commit is recorded in the release cache (workers.json), so which web release pairs with
+//                  which Workers is on record (2026-11-02 audit S5); a failure part-way names the Workers left on
+//                  another commit.
 //   clean <sha>    remove the build worktree of <sha>.
 //
 // Options: --scope=<team> (env COT_VERCEL_SCOPE; default kl01s-projects), --site=<origin>
@@ -50,6 +56,7 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listHashedAssets } from './vercel-output-immutable.mjs';
+import { claimOwnedLock, reapDeadLock, releaseOwnedLock } from './capture-lock.mjs';
 
 export const RELEASE_DEFAULTS = Object.freeze({
   scope: 'kl01s-projects',
@@ -66,7 +73,7 @@ export const VERCEL_CLI_MAJOR = 58;
 export const ASSET_CARRY_DEFAULTS = Object.freeze({ releases: 3, maxBytes: 200 * 1024 * 1024 });
 const COMMANDS = new Set(['build', 'deploy', 'record', 'verify', 'rollback', 'workers', 'clean']);
 const NEEDS_SHA = new Set(['build', 'deploy', 'record', 'verify', 'workers', 'clean']);
-const USES_CACHE = new Set(['build', 'deploy', 'record']);
+const USES_CACHE = new Set(['build', 'deploy', 'record', 'workers']);
 
 /** The local release cache: --asset-cache, else COT_RELEASE_ASSET_CACHE, else ~/.cache/cot-release (never in a checkout). */
 export function defaultAssetCacheDir(env = process.env, home = homedir()) {
@@ -213,15 +220,43 @@ function safeAssetPath(path) {
 /** The build's own hashed files, written beside the output (`.vercel/`, never uploaded) for `deploy`/`record`. */
 export const RELEASE_MANIFEST = 'cot-release.json';
 
-/** Run `fn` holding the cache's lock directory; throws when another release step holds it. */
+const cacheLockLog = (line) => { try { process.stderr.write(`[release] ${line}\n`); } catch { /* closed */ } };
+
+/** Who holds the cache lock (its owner token), or null. */
+function cacheLockOwner(lock) {
+  try { return JSON.parse(readFileSync(join(lock, 'owner.json'), 'utf8')); } catch { return null; }
+}
+
+/**
+ * Run `fn` holding the cache's lock directory; throws when another release step holds it. (2026-11-02 audit S5) The lock
+ * is an owned lock directory (capture-lock.mjs claimOwnedLock: an owner token with the pid and its start time): a step
+ * killed while it held the lock (SIGKILL, a crash) no longer blocks every later release step until someone removes it by
+ * hand; its dead owner's lock is reaped, a live owner's never. A bare directory an older copy left is reaped once it is
+ * ten minutes old and empty.
+ */
 function withAssetCacheLock(cacheDir, fn) {
   mkdirSync(join(cacheDir, 'assets'), { recursive: true });
   const lock = join(cacheDir, '.lock');
-  try { mkdirSync(lock); } catch (error) {
-    if (error?.code === 'EEXIST') throw new Error(`another release build holds ${lock}; remove it if no build is running`);
-    throw error;
+  let hold = claimOwnedLock(lock);
+  if (!hold && reapDeadLock(lock, { log: cacheLockLog, lockStaleMs: 60_000, orphanStaleMs: 10 * 60_000 })) hold = claimOwnedLock(lock);
+  if (!hold) {
+    const owner = cacheLockOwner(lock);
+    throw new Error(`another release build holds ${lock}${owner?.pid ? ` (pid ${owner.pid}, since ${owner.startedAt ?? '?'})`
+      : ' (no owner token: an older copy\'s lock, reaped once ten minutes old and empty)'}`);
   }
-  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+  try { return fn(); } finally { releaseOwnedLock(hold, { log: cacheLockLog }); }
+}
+
+/** The first of a build's own files the output no longer holds at its recorded size, or null. */
+function ownFilesProblem(staticDir, files) {
+  if (!Array.isArray(files) || !files.length) return 'no own files listed';
+  for (const file of files) {
+    const source = join(staticDir, 'assets', String(file?.path));
+    if (!safeAssetPath(file?.path) || !existsSync(source) || statSync(source).size !== file.bytes) {
+      return `${source} is not the ${file?.bytes}-byte file the build emitted`;
+    }
+  }
+  return null;
 }
 
 /**
@@ -309,6 +344,52 @@ export function recordReleaseAssets({ staticDir, cacheDir, commit, files, keep =
 }
 
 // ---------------------------------------------------------------------------------------------
+// The Workers deployed with each release (2026-11-02 audit S5): `workers` deploys rooms and telemetry one by one, and a
+// failure part-way left them on different commits with nothing recording which web build pairs with which Worker. Each
+// deployed Worker's commit goes into the release cache's workers.json.
+
+const WORKER_INDEX = 'workers.json';
+const WORKER_INDEX_VERSION = 1;
+
+/** The Workers recorded in the cache: { <name>: { commit, deployedAt } } ({} for a cache without any). */
+export function readWorkerDeploys(cacheDir) {
+  const path = join(cacheDir, WORKER_INDEX);
+  if (!existsSync(path)) return {};
+  const index = JSON.parse(readFileSync(path, 'utf8'));
+  if (index?.version !== WORKER_INDEX_VERSION || typeof index.workers !== 'object' || !index.workers) {
+    throw new Error(`${path} is not a version-${WORKER_INDEX_VERSION} Worker index; move it aside to start a fresh one`);
+  }
+  return index.workers;
+}
+
+/** Record that Worker `name` now runs `commit` (under the cache lock). Returns every recorded Worker. */
+export function recordWorkerDeploy({ cacheDir, name, commit, now = () => new Date().toISOString() }) {
+  if (!/^[a-z][\w-]*$/.test(String(name))) throw new Error(`Not a Worker: ${name}`);
+  if (!/^[0-9a-f]{7,40}$/.test(String(commit))) throw new Error(`Not a commit: ${commit}`);
+  return withAssetCacheLock(cacheDir, () => {
+    const workers = { ...readWorkerDeploys(cacheDir), [name]: { commit, deployedAt: now() } };
+    const path = join(cacheDir, WORKER_INDEX);
+    writeFileSync(`${path}.tmp`, `${JSON.stringify({ version: WORKER_INDEX_VERSION, workers }, null, 1)}\n`);
+    renameSync(`${path}.tmp`, path);
+    return workers;
+  });
+}
+
+/** Which web release (the newest recorded) pairs with which Worker commits, from the cache. */
+export function releasePairing(cacheDir) {
+  const releases = readAssetCacheIndex(cacheDir).releases;
+  const workers = Object.fromEntries(Object.entries(readWorkerDeploys(cacheDir)).map(([name, entry]) => [name, entry.commit]));
+  return { web: releases.at(-1)?.commit ?? null, workers };
+}
+
+/** One line naming the pairing, each commit at 12 characters. */
+export function pairingLine({ web, workers }) {
+  const short = (sha) => (sha ? sha.slice(0, 12) : 'unrecorded');
+  const names = Object.keys(workers).sort();
+  return `release pairing: web ${short(web)}; ${names.length ? names.map((name) => `${name} ${short(workers[name])}`).join(', ') : 'no Worker recorded'}`;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Execution
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -391,13 +472,22 @@ function carryReleaseAssets(options, { commit, dir, runner }) {
   runner.note(`${result.own} own hashed files listed in ${manifest}; the cache records them when this build is deployed`);
 }
 
+/** The build's own file list for `commit` in `dir`, checked (it names the commit, and the output holds its files); throws. */
+function releaseManifest(dir, commit) {
+  const manifestPath = join(dir, '.vercel', RELEASE_MANIFEST);
+  if (!existsSync(manifestPath)) throw new Error(`no ${manifestPath}: build ${commit.slice(0, 12)} with this tools/release.mjs before recording it`);
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (manifest?.commit !== commit) throw new Error(`${manifestPath} lists ${manifest?.commit ?? 'no commit'}, not ${commit}`);
+  const problem = ownFilesProblem(join(dir, '.vercel', 'output', 'static'), manifest.files);
+  if (problem) throw new Error(`${manifestPath}: ${problem}; rebuild before deploying or recording`);
+  return { manifestPath, manifest };
+}
+
 /** Record a deployed build's own files in the release cache (deploy and record). */
 function recordRelease(options, { commit, dir, runner }) {
   const manifestPath = join(dir, '.vercel', RELEASE_MANIFEST);
   if (runner.dryRun) { runner.note(`record ${commit.slice(0, 12)}'s own hashed files (${manifestPath}) as the newest release in ${options.assetCache}`); return; }
-  if (!existsSync(manifestPath)) throw new Error(`no ${manifestPath}: build ${commit.slice(0, 12)} with this tools/release.mjs before recording it`);
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  if (manifest?.commit !== commit) throw new Error(`${manifestPath} lists ${manifest?.commit ?? 'no commit'}, not ${commit}`);
+  const { manifest } = releaseManifest(dir, commit);
   const result = recordReleaseAssets({ staticDir: join(dir, '.vercel', 'output', 'static'), cacheDir: options.assetCache, commit, files: manifest.files });
   runner.note(`recorded release ${commit.slice(0, 9)} (${result.recorded} own files); the cache holds ${result.releases.length} release(s) `
     + `${result.releases.map((sha) => sha.slice(0, 9)).join(' ')}; ${result.pruned} file(s) pruned`);
@@ -463,11 +553,31 @@ async function deploy(options, { root, runner, fetchImpl }) {
   const metadata = deployMetadata({ commit, subject: gitText(root, 'log', '-1', '--format=%s', commit),
     author: gitText(root, 'log', '-1', '--format=%an', commit), title: options.title, ref: options.ref,
     org: slug?.org, repo: slug?.repo && slug.repo.toLowerCase() === RELEASE_DEFAULTS.githubRepo.toLowerCase() ? RELEASE_DEFAULTS.githubRepo : slug?.repo });
+  // the build's own file list is checked before the irreversible step, so a wrong or missing one stops a release that is
+  // not live yet (it was found only once the release was live)
+  if (runner.dryRun) runner.note(`check ${join(dir, '.vercel', RELEASE_MANIFEST)} names ${commit.slice(0, 12)} and the output holds its files`);
+  else releaseManifest(dir, commit);
+  const sha12 = commit.slice(0, 12), dirFlag = options.dir ? ` --dir=${dir}` : '';
   const result = await runner.run([vercelBin(), 'deploy', '--prebuilt', '--prod', '--yes', '--archive=tgz', '--scope', options.scope, ...metadata], { cwd: dir, capture: true });
   const url = /https:\/\/[\w.-]+\.vercel\.app/.exec(`${result.stdout}\n${result.stderr}`)?.[0];
   runner.note(`deployment ${url ?? '(url printed above)'}`);
-  if (options.verify) await verify({ ...options, attempts: Math.max(options.attempts, 12) }, { root, runner, fetchImpl });
-  recordRelease(options, { commit, dir, runner });
+  // Live from here, whatever the alias says: record first, so the next build carries this release's chunks for the tabs
+  // that open it, then verify. Each failure names the stage and the command that finishes the release.
+  try {
+    recordRelease(options, { commit, dir, runner });
+  } catch (error) {
+    throw new Error(`${sha12} is deployed but not recorded (${error.message}); the next build will not carry its chunks until `
+      + `node tools/release.mjs record ${sha12} --no-verify${dirFlag}`);
+  }
+  if (!runner.dryRun) { try { runner.note(pairingLine(releasePairing(options.assetCache))); } catch (error) { runner.note(`release pairing unread: ${error.message}`); } }
+  if (options.verify) {
+    try {
+      await verify({ ...options, attempts: Math.max(options.attempts, 12) }, { root, runner, fetchImpl });
+    } catch (error) {
+      throw new Error(`${sha12} is deployed and recorded, but verify failed (${error.message}); the build worktree ${dir} is kept: `
+        + `node tools/release.mjs verify ${sha12}, then node tools/release.mjs clean ${sha12}${dirFlag}`);
+    }
+  }
   if (!options.keep) await runner.run(['git', 'worktree', 'remove', '--force', dir], { cwd: root });
 }
 
@@ -551,6 +661,7 @@ async function workers(options, { root, runner }) {
   if (options.only && !available.includes(options.only)) throw new Error(`no Worker cloudflare/${options.only}; expected ${available.join(' or ')}`);
   if (existsSync(dir)) throw new Error(`${dir} exists; remove it (git worktree remove --force ${dir})`);
   await runner.run(['git', 'worktree', 'add', '--detach', dir, commit], { cwd: root });
+  const sha12 = commit.slice(0, 12), deployed = [];
   try {
     for (const name of names) {
       const workerDir = join(dir, 'cloudflare', name);
@@ -558,10 +669,21 @@ async function workers(options, { root, runner }) {
       await runner.run([npm, 'run', 'typecheck'], { cwd: workerDir });
       await runner.run([npm, 'test'], { cwd: workerDir });
       await runner.run([npx, ...workerDeployArgs({ commit, subject })], { cwd: workerDir });
+      // the pairing is on record the moment the Worker runs this commit
+      if (runner.dryRun) runner.note(`record cloudflare/${name} at ${sha12} in ${join(options.assetCache, WORKER_INDEX)}`);
+      else recordWorkerDeploy({ cacheDir: options.assetCache, name, commit });
+      deployed.push(name);
     }
+  } catch (error) {
+    const known = runner.dryRun ? {} : (() => { try { return readWorkerDeploys(options.assetCache); } catch { return {}; } })();
+    const left = names.filter((name) => !deployed.includes(name))
+      .map((name) => `${name} (still ${known[name]?.commit?.slice(0, 12) ?? 'unrecorded'})`);
+    throw new Error(`${error.message}; Workers at ${sha12}: ${deployed.join(', ') || 'none'}; not deployed: ${left.join(', ')}. The Workers `
+      + `are on different commits until each is deployed: node tools/release.mjs workers ${sha12} --only=<name>`);
   } finally {
     await runner.run(['git', 'worktree', 'remove', '--force', dir], { cwd: root });
   }
+  if (!runner.dryRun) { try { runner.note(pairingLine(releasePairing(options.assetCache))); } catch (error) { runner.note(`release pairing unread: ${error.message}`); } }
   runner.note(`Workers ${names.join(', ')} ${runner.dryRun ? 'would deploy' : 'deployed'} at ${commit.slice(0, 12)}; roll back with \`npx wrangler rollback\` in the Worker's directory (never across a Durable Object migration tag)`);
 }
 

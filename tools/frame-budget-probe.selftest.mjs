@@ -297,6 +297,29 @@ assert.equal(stats([]).med, null);
   assert.match(logs[0], /queued behind us/);
 }
 {
+  // (2026-11-02 audit S4) COT_LANE_HOLD=1 skipped both locks with nothing checking that a hold backed it: the probe no
+  // longer reads it (capture-lock's acquire nests on it only in an ancestor's live hold: capture-lock-reentry.selftest),
+  // so with a lock that holds nothing it takes both; a mutex an ancestor holds is nested (neither taken nor released here)
+  const saved = process.env.COT_LANE_HOLD;
+  process.env.COT_LANE_HOLD = '1';
+  try {
+    const events = [];
+    const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
+    const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: () => false,
+      tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
+    held.release();
+    assert.deepEqual(events, ['fifo', 'mutex', 'mutex-release', 'fifo-release'], 'a leftover COT_LANE_HOLD=1 takes the FIFO and the mutex');
+  } finally {
+    if (saved === undefined) delete process.env.COT_LANE_HOLD; else process.env.COT_LANE_HOLD = saved;
+  }
+  const events = [];
+  const lock = { acquire: async () => events.push('fifo'), release: () => events.push('fifo-release'), refresh: () => {} };
+  const held = await acquireProbeLocks({ sessionMutex: '/m', lock, mutexNested: (dir) => dir === '/m',
+    tryMutex: () => (events.push('mutex'), true), releaseMutex: () => events.push('mutex-release') });
+  held.release();
+  assert.deepEqual(events, ['fifo', 'fifo-release'], 'an ancestor\'s mutex is nested in, never taken or released');
+}
+{
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',
     summary: { gpuFrame: { med: gpu, p25: gpu - 1 }, cpuFrame: { med: 5 }, calls: { med: 600 }, tris: { med: 1 }, segmentedOverWhole: 1,
       passes: { scene: { gpu: { med: gpu / 2 }, cpu: { med: 1 }, calls: { med: 300 } } } } }] });

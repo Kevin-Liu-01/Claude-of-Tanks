@@ -281,8 +281,14 @@ import { REPO_ROOT } from './selftest-cache.mjs';
   assert.match(deploy.stdout, new RegExp(`vercel-must-not-run deploy --prebuilt --prod --yes --archive=tgz --scope kl01s-projects -m githubDeployment=1 -m githubCommitRef=main -m githubCommitSha=${head}`));
   assert.match(deploy.stdout, /-m 'title=deploy 164: gate' -m gateHead=/);
   assert.match(deploy.stdout, /GET http:\/\/127\.0\.0\.1:9\/ until its application-version stamp names/);
-  assert.ok(deploy.stdout.indexOf('until its application-version stamp') < deploy.stdout.indexOf(`record ${head.slice(0, 12)}'s own hashed files`)
-    && deploy.stdout.indexOf('as the newest release in') < deploy.stdout.indexOf('git worktree remove'), 'deploy verifies, then records the release, then cleans up');
+  // 2026-11-02 audit S5: the deploy is live at once, so it is recorded before verify (a failed verify used to leave a live
+  // release out of the carry), and the build's own file list is checked before the deploy
+  const seen = (text) => deploy.stdout.indexOf(text);
+  assert.ok(seen('cot-release.json names') < seen('vercel-must-not-run deploy --prebuilt')
+    && seen('vercel-must-not-run deploy --prebuilt') < seen(`record ${head.slice(0, 12)}'s own hashed files`)
+    && seen('as the newest release in') < seen('until its application-version stamp')
+    && seen('until its application-version stamp') < seen('git worktree remove'),
+  'deploy checks the build\'s file list, deploys, records the release, then verifies, then cleans up');
   const recorded = run('record', 'HEAD');
   assert.equal(recorded.status, 0, recorded.stderr);
   assert.match(recorded.stdout, /until its application-version stamp names[\s\S]*own hashed files \(\S+\/\.vercel\/cot-release\.json\) as the newest release in/);
