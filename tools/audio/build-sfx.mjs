@@ -126,9 +126,6 @@ function score(m, entry, clip) {
   if (!entry.loop && m.split?.gapMs >= 400 && !SPARSE_GROUPS.has(entry.group)) s -= 4 + 4 * Math.min(1, (m.split.gapMs - 400) / 800);
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
-  // A near-silent take (impact-materials-269: a bullet into sand peaking at -39 dBFS, RMS -62 dB, ranked fourth): the
-  // master's gain stops at +30 dB, so it ships 15 dB under its siblings and plays as a dropout every few hits.
-  if (m.peakDb < -30) s -= 6;
   // A clunk or clack is one event, not a rattle of them.
   if (!entry.loop && entry.proc === 'foley' && (MECHANICAL.has(entry.group) || entry.group === 'vehicle')) s -= 0.15 * Math.max(0, m.onsets - 3);
   // Weight: a serious war game wants the low end in its guns and blasts, and
@@ -161,9 +158,7 @@ for (const entry of SFX_CATALOG) {
   const pinned = picks[entry.id];
   // A single-shot gun take that was really a burst is cut to its first report; one cut to a bare click
   // (under 0.25 s) is a lost take. Ship fewer variants rather than a click, while two usable takes remain.
-  // (impact-materials-269) A bullet's strike too: its grit or chips read as a second report, and a take cut to an 80 ms
-  // click ships under the impact preset's loudness floor (bullet_paved at -18.9 LUFS momentary).
-  const usable = SINGLE_SHOT.test(entry.id)
+  const usable = (entry.proc === 'gunshot' || entry.proc === 'punch') && SINGLE_SHOT.test(entry.id)
     ? ranked.filter((r) => firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
     : ranked;
   const pool = usable.length >= 2 ? usable : ranked;
