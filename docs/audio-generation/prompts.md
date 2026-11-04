@@ -205,7 +205,22 @@ intercom, in a terse procedure register, never as a literal translation:
 - Watch tank jargon: "hull down" means behind a crest, so the suspension line
   became "Hull lowered, set."
 - Two takes per line in every language (the same count everywhere) give the
-  radio variety without repeats.
+  radio variety without repeats. Take n means the same thing in every
+  language: the captions show the en-US or Chinese text of the take spoken.
+- Fire commands follow each army's own order (2026-11-03): US "Gunner, sabot,
+  tank" / "Identified" / "Re-engage" / "Target. Cease fire."; British "Target
+  stop"; German Feuerkommando "Richtschütze, Wuchtgeschoss, Panzer" / "Erkannt";
+  Russian «Наводчик, бронебойным, по танку» / «Цель вижу». Reuse the pack's own
+  words for the rounds and the order to fire.
+- Close-air-support brevity for the AC-130: NATO aircrews keep the English
+  words inside their own sentences where they really do ("Im Orbit. Cleared
+  hot."), the others use their own ("Работу разрешили", «Пуск», 着弾); say a
+  letter acronym only where that crew would ("R-T-B" in English, "Powrót do
+  bazy" in Polish).
+- A new line is written per language from its context by a writer who first
+  reads that language's shipped column (crew-lines-269 briefed five writers by
+  language family with `TRANSLATE-BRIEF.md`; their term choices are in the
+  round's notes), then checked by a second transcript of every new take.
 
 The engine adds the radio character live (band limit, compression, drive,
 damage dropouts), so takes are mastered dry.

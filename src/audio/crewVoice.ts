@@ -1,12 +1,13 @@
 /** Persisted crew choice shared by input, Settings and the lazy audio engine. */
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { CREW_LANGUAGES, crewLanguageForNation, type CrewLanguage } from './vehicleAudioProfiles.ts';
+import { CREW_LANGUAGES, crewLanguageForVehicle, type CrewLanguage } from './vehicleAudioProfiles.ts';
 
 /** One operating nation per shipped pack; reuse the UI's nation labels and flags. */
 export const CREW_VOICE_NATIONS: Readonly<Record<CrewLanguage, string>> = Object.freeze({
   'en-US': 'USA', 'en-GB': 'UK', de: 'Germany', ru: 'Russia', uk: 'Ukraine',
   zh: 'China', fr: 'France', sv: 'Sweden', ja: 'Japan', ko: 'South Korea',
   it: 'Italy', pl: 'Poland', he: 'Israel',
+  da: 'Denmark', 'pt-BR': 'Brazil', 'en-AU': 'Australia', af: 'South Africa',
 });
 
 export type CrewVoiceSetting = 'national' | CrewLanguage;
@@ -28,6 +29,7 @@ export function normalizeCrewVoiceSetting(value: RuntimeValue, interfaceLocale: 
   return 'national';
 }
 
-export function resolveCrewLanguage(nation: string | null | undefined, setting: CrewVoiceSetting = 'national'): CrewLanguage {
-  return setting === 'national' ? crewLanguageForNation(nation) : setting;
+/** The crew a vehicle speaks under a setting: National is its operator's (vehicleAudioProfiles.crewLanguageForVehicle). */
+export function resolveCrewLanguage(id: string | null | undefined, nation: string | null | undefined, setting: CrewVoiceSetting = 'national'): CrewLanguage {
+  return setting === 'national' ? crewLanguageForVehicle(id, nation) : setting;
 }

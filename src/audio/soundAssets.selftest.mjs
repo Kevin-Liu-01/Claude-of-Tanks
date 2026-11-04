@@ -90,7 +90,7 @@ for (const mapId of MAP_IDS) {
 assert.ok(SFX_ASSETS[GARAGE_SCENE.bed]?.l);
 for (const [spot] of GARAGE_SCENE.spots) assert.ok(SFX_ASSETS[spot], `garage spot ${spot}`);
 
-// ---- crew radio: script, catalog and the thirteen national packs agree.
+// ---- crew radio: script, catalog and the national packs agree.
 const script = JSON.parse(readFileSync(new URL('../../tools/audio/crew-lines.json', import.meta.url), 'utf8'));
 const scriptIds = new Set(script.lines.map((line) => line.id));
 for (const id of Object.keys(VOICE_LINES)) assert.ok(scriptIds.has(id), `catalog line ${id} is scripted`);
@@ -110,7 +110,10 @@ for (const lang of CREW_LANGUAGES) {
       assert.ok(dur > 0.15 && dur < 6, `${lang}/${line.id}_${i} duration ${dur}`);
     });
   }
-  assert.ok(langBytes < 2.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
+  // 2.5 MB until 2026-11-03; the owner asked for "more and better voice lines … all the special modes, in all the
+  // languages", so crew-lines-269 made a pack 190 lines and 371 takes (up to 3.29 MB) and the cap rose to 3.5 MB. Only
+  // the crew's own pack loads, and it decodes at 16 kHz (assetLibrary VOICE_DECODE_HZ).
+  assert.ok(langBytes < 3.5 * 1024 * 1024, `${lang} pack ${(langBytes / 1048576).toFixed(2)} MB`);
 }
 
 console.log(`soundAssets.selftest: ${Object.keys(SFX_ASSETS).length} assets (${(bytes / 1048576).toFixed(1)} MB), ${referenced.size} engine references, ${MAP_IDS.length} scenes, ${CREW_LANGUAGES.length} crew packs × ${scriptIds.size} lines passed`);

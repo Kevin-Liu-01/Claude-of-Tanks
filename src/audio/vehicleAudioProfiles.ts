@@ -10,6 +10,7 @@
  * fans of its air-cooled AVDS-1790.
  */
 
+import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 
 type EngineFamilyId =
@@ -30,10 +31,12 @@ export const ENGINE_FAMILY_IDS: readonly EngineFamilyId[] = Object.freeze([
 
 export type CrewLanguage =
   | 'en-US' | 'en-GB' | 'de' | 'ru' | 'uk' | 'zh' | 'fr'
-  | 'sv' | 'ja' | 'ko' | 'it' | 'pl' | 'he';
+  | 'sv' | 'ja' | 'ko' | 'it' | 'pl' | 'he'
+  | 'da' | 'pt-BR' | 'en-AU' | 'af';
 
 export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
   'en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he',
+  'da', 'pt-BR', 'en-AU', 'af',
 ]);
 
 export type TrackClass = 'light' | 'heavy';
@@ -106,28 +109,23 @@ interface VehicleAudioSpecInput {
   } | null;
 }
 
-const NATION_LANGUAGE: Readonly<Record<string, CrewLanguage>> = Object.freeze({
-  usa: 'en-US', 'united states': 'en-US', us: 'en-US',
-  uk: 'en-GB', 'united kingdom': 'en-GB', britain: 'en-GB',
-  germany: 'de', 'west germany': 'de',
-  russia: 'ru', ussr: 'ru', 'ussr/russia': 'ru', 'soviet union': 'ru',
-  ukraine: 'uk',
-  'south africa': 'en-GB',
-  australia: 'en-GB',
-  china: 'zh', prc: 'zh',
-  france: 'fr',
-  sweden: 'sv',
-  japan: 'ja',
-  'south korea': 'ko', korea: 'ko',
-  italy: 'it',
-  poland: 'pl',
-  israel: 'he',
+/**
+ * The crew each country's hulls carry: the operating army's own (crew voices 269). Exhaustive, so a new CountryId fails
+ * typecheck until it names a crew. Canada has no pack of its own yet: its crews speak American English.
+ */
+const COUNTRY_CREW: Readonly<Record<CountryId, CrewLanguage>> = Object.freeze({
+  usa: 'en-US', uk: 'en-GB', germany: 'de', russia: 'ru', ukraine: 'uk', china: 'zh', france: 'fr', sweden: 'sv',
+  japan: 'ja', south_korea: 'ko', italy: 'it', poland: 'pl', israel: 'he',
+  canada: 'en-US', denmark: 'da', brazil: 'pt-BR', australia: 'en-AU', south_africa: 'af',
 });
 
-/** The language a row's crew speaks: the nation that operates it. */
-export function crewLanguageForNation(nation: unknown): CrewLanguage {
-  const key = String(nation ?? '').trim().toLowerCase();
-  return NATION_LANGUAGE[key] ?? 'en-US';
+/**
+ * The language a vehicle's crew speaks: its operator's (countries.ts countryOfVehicle, so the Leopard 2A4M CAN's crew is
+ * Canadian although its spec names its German design). A hull with no country (dev, community) keeps American English.
+ */
+export function crewLanguageForVehicle(id: unknown, nation: unknown): CrewLanguage {
+  const country = countryOfVehicle(typeof id === 'string' ? id : null, typeof nation === 'string' ? nation : null);
+  return country ? COUNTRY_CREW[country] : 'en-US';
 }
 
 /** The schema-1 spelling (tankIdAliases.ts): an id rename never changes how a vehicle sounds. */
@@ -212,7 +210,7 @@ export function resolveVehicleAudioIdentity(spec: VehicleAudioSpecInput | null |
     turretDrive: soviet || (legacy && !/m1a|leo2/.test(id)) ? 'hydraulic' : 'electric',
     hydropneumatic: !!safe.hydropneumaticAim || /k2|type10|type90|type74|strv103/.test(id),
     loader: resolveLoader(safe, engine),
-    crew: crewLanguageForNation(safe.nation),
+    crew: crewLanguageForVehicle(safe.id, safe.nation),
     mass: massClass(tons),
   });
 }

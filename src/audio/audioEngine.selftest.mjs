@@ -363,17 +363,19 @@ for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, ta
 assert.equal(probe.voiceLog.at(-1)?.id, 'penetration', 'the gunner calls the penetration');
 
 // A main-gun miss is called too: "short" when the round came down before the enemy it was laid
-// on (the line's second take), a plain "miss" when it went over.
-const miss = (shellId, landedZ) => {
+// on (the line's second take), "over" when it came down beyond it (the third, crew-lines-269), a
+// plain "miss" when it went wide.
+const miss = (shellId, landedZ, landedX = 0) => {
   settle(9);
   bus.emit('shell:fired', { shellId, shooterId: 'me', muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
   ctx.advance(0.3);
-  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [0, 0, landedZ], hitTerrain: true, caliberMm: 125 });
+  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [landedX, 0, landedZ], hitTerrain: true, caliberMm: 125 });
   for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
   return [probe.voiceLog.at(-1)?.id, probe.voiceLog.at(-1)?.take];
 };
 assert.deepEqual(miss(9, 400), ['miss', 1], 'a round short of the target is called short');
-assert.deepEqual(miss(10, 900), ['miss', 0], 'a round over the target is a plain miss');
+assert.deepEqual(miss(10, 900), ['miss', 2], 'a round over the target is called over');
+assert.deepEqual(miss(11, 700, 30), ['miss', 0], 'a round wide of the target is a plain miss');
 
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
@@ -637,6 +639,7 @@ audio.loadingOn(false);
 assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whole session synthesizes nothing');
 
 // The real settings event reaches every radio call, across every shipped pack.
+const lastPack = Object.keys(CREW_VOICE_NATIONS).at(-1);
 for (const language of Object.keys(CREW_VOICE_NATIONS)) {
   bus.emit('ui:volumes', { crewVoice: language });
   assert.equal(probe.crewLanguage, language);
@@ -646,10 +649,10 @@ for (const language of Object.keys(CREW_VOICE_NATIONS)) {
   assert.equal(probe.voiceLog.at(-1).lang, language);
 }
 bus.emit('ui:volumes', { crewVoice: 'not-a-pack' });
-assert.equal(probe.crewLanguage, 'he', 'invalid live payload cannot replace the last valid choice');
+assert.equal(probe.crewLanguage, lastPack, 'invalid live payload cannot replace the last valid choice');
 me.spec.nation = 'Germany';
 audio.update(1 / 60, listener, tanks);
-assert.equal(probe.crewLanguage, 'he', 'fixed crew survives a vehicle change on the same entity');
+assert.equal(probe.crewLanguage, lastPack, 'fixed crew survives a vehicle change on the same entity');
 bus.emit('ui:volumes', { crewVoice: 'national' });
 assert.equal(probe.crewLanguage, 'de', 'restoring National uses the current hull, not its original nation');
 me.spec.nation = 'Ukraine';
@@ -662,6 +665,17 @@ audio.update(1 / 60, listener, [tank('new-player', { isPlayer: true, nation: 'Ja
 assert.equal(probe.crewLanguage, 'en-GB', 'fixed crew survives another battle and player entity');
 bus.emit('ui:volumes', { crewVoice: 'national' });
 assert.equal(probe.crewLanguage, 'ja', 'National restores the new player crew');
+// A crew speaks its operator's language (countries.ts countryOfVehicle), not its design nation's.
+const canadian = tank('canadian', { isPlayer: true, specId: 'leo2a4m_can', nation: 'Germany' });
+audio.update(1 / 60, listener, [canadian]);
+assert.equal(probe.crewLanguage, 'en-US', "the Leopard 2A4M CAN carries Canada's crew, not its German design's");
+canadian.specId = canadian.spec.id = 'leo2a4';
+audio.update(1 / 60, listener, [canadian]);
+assert.equal(probe.crewLanguage, 'de', 'a same-entity spec change under the same nation re-resolves the crew');
+for (const [specId, nation, language] of [['leo2a7dk', 'Denmark', 'da'], ['ee_t4_osorio', 'Brazil', 'pt-BR'], ['centurion5_1_aus', 'Australia', 'en-AU'], ['olifant_mk2', 'South Africa', 'af']]) {
+  audio.update(1 / 60, listener, [tank(`player-${specId}`, { isPlayer: true, specId, nation })]);
+  assert.equal(probe.crewLanguage, language, `${nation}'s crew speaks ${language}`);
+}
 
 const lateCtx = createFakeContext({ decode: () => fakeBuffer(1.5) });
 const late = createAudio({ context: lateCtx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop', initialPhase: 'battle' });

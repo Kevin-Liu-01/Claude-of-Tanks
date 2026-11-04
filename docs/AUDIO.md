@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.45 MB per language (52.45 MB in all) | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -46,7 +46,10 @@ embedded file, and decodes each asset on an `OfflineAudioContext` at the rate
 the build chose (24 kHz for assets with almost no energy above 12 kHz, else
 48 kHz; mobile caps everything at 24 kHz and keeps one variant per asset).
 Crew packs decode on their own lane so the first radio call never waits behind
-a battle's worth of sound effects. Sound effects share six decode slots in two
+a battle's worth of sound effects, at 16 kHz on every tier: every take plays
+through the radio's 3.4 kHz band and a speaker rolling off from 4.6 kHz, so
+nothing above 8 kHz is ever heard (a 371-take pack is about 40 MB decoded, 60 at
+24 kHz). Sound effects share six decode slots in two
 lanes: the front lane is served first, and an asset joins it when it is loaded
 `{ front: true }` or the first time something asks to play it before it has
 decoded (a rig's loop, an ambience bed, a report), so a sound wanted now never
@@ -441,7 +444,7 @@ ambience bus, under the radio and the ambience slider.
 
 ### Crew radio
 
-`voiceLines.ts` defines 119 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 190 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
 one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
 rather than played late. Survival calls cut anything below them, decisive
@@ -478,8 +481,71 @@ What the crew says for the tank's own systems and the modes (2026-10-04):
 | Enemy on a point we hold (`mode_zone_contested`) | — | "They're contesting the point" |
 | Respawn | respawn | "Back in the fight" (and the one-per-life calls re-armed) |
 | Countdown (3, 2, 1, never while PREPARING holds it) | a tick each second | — |
-| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance" |
+| Rollout (once a battle; a network battle joined after its count rolls out with no cues) | mode opener, hatch, horn | "All crews, advance", or the mode's own opening (below) |
 | A reasoning medal (`service:medal` Chain of Thought or Let Me Think Step by Step), or 3 % of first shots | — | "Let me think step by step." then the gunner: "Step one: aim. Step two: fire." |
+
+#### The crew's procedure and each mode's own calls (2026-11-03, crew-lines-269)
+
+The owner: "more and better voice lines of more military terms and of things
+happening, more special terms for AC-130, all the special modes, in all the
+languages". 69 lines and 20 more takes on thin ones, in all 17 packs, each in
+its army's register. Two parts:
+
+- **A line asks for a moment in a tank crew's words; `resolveCrewLine`
+  (`voiceLines.ts`) turns it into what this crew says there.** `MODE_CREW` is
+  one exhaustive `Record<GameModeId, …>`, so a new mode fails typecheck until
+  it names its calls: its opening (the rollout's `battle_start` becomes "Get
+  their flag. Guard ours.", "Defensive positions. Hold this ground.", "We're the
+  Juggernaut…" or, for a hunter, "Find the Juggernaut…", "Range is hot."), its
+  results by the ending's reason (`mode_completed`, `battle:ended`: "Last line's
+  ours." for `line_held`, "We're overrun." for `horde_overrun` and
+  `assault_overrun`, "Time. We held out." for `survivors_extracted`, "Juggernaut's
+  down." for the hunters), and the team counts it has no use for. The counts
+  follow the network seat's rule in a solo battle too: said only where a death
+  is final (`deathsAreFinal`), so no "We're the last tank" for a Juggernaut
+  alone by design, no "One enemy left" in a respawning mode, and Infected's one
+  count is its own, "We're the last survivor". `GUNSHIP_CREW` is the AC-130
+  crew's own call for a tank crew's ("Cleared hot" for the opening, "Splash" for
+  a miss or a round with no effect, "Good hits" for a hit, "Friendly armor down"
+  for any escort lost, wherever it was) and silence where an aircraft has no
+  such moment (no "Moving", no driver, no last tank, never outnumbered by what
+  it hunts). A Turbo Ball kick-off revives every tank; it is not "Back in the
+  fight", and neither is the Proving Ground's reset. `voiceLines.selftest.mjs`
+  holds the tables to the script and the counts to `deathsAreFinal`.
+- **`crewProcedure.ts` voices the moments the sound handlers leave unvoiced**,
+  from the same bus events and frames, through the engine's `say`:
+
+| Moment | Crew |
+|---|---|
+| Our sight settles (0.35 s) on a spotted enemy, gun loaded | the commander's fire command for the round in the breech ("Gunner, sabot, tank."), the gunner's "Identified." on a quiet net, "On the way." on the shot it called for |
+| Our round left the target standing (no penetration, a ricochet, ERA, their APS, a miss), gun loaded again | "Re-engage." |
+| Our kill left no spotted enemy within 1.5 km | "Target. Cease fire." |
+| A miss that came down beyond the hull it was laid on | "Over." (the miss's third take; "Short." the second) |
+| Our APS stopped their round / theirs stopped ours (no miss is called for it) | "A-P-S fired. Round defeated." / "Their A-P-S took it." |
+| ERA stopped their round / ours | "Reactive armor took it." / "Hit his reactive armor." |
+| Our drone: under 10 s of battery, 85 % of its link, recalled home, shot down; our roof gun downs theirs; our drone's kill | "Drone battery low.", "Drone link's weak.", "Drone recovered.", "Drone's shot down.", "Drone down.", "Drone strike. Target destroyed." |
+| An enemy hull's smoke launcher fires (matched by the launcher's position) | "Enemy's popping smoke." |
+| Reversing within 6 s of a hit or of being seen | "Backing up." |
+| Our tank drives through a wall, fence or tree (half the time, flavour) | "Going through." |
+| Airborne 0.45 s (a Mars or Turbo Ball jump, a crest) | "Hold on." / "Brace for landing." |
+| The countdown, four seconds or more | "Crew, report." and the gunner's "Gunner ready. Loader up. Driver ready." (flavour the rollout's call cuts) |
+| Capture the Flag: a flag dropped either way, theirs recovered, ours captured | "They dropped our flag. Recover it.", "We dropped their flag.", "They've recovered their flag.", "They captured our flag." |
+| Zone Control: our side on their point | "We're contesting their point." |
+| Turbo Ball: a goal against us, the ball's idle reset | "They scored.", "Ball's reset." |
+| Horde: a runner or a swarm wave (after the wave's own call) | "Fast movers this wave.", "Big wave. Lots of them." |
+| Frontline: a counter-attack, the final line live | "Counter-attack!", "Last line. Take it." |
+| Infected: a teammate turned, our own crew turned | "They got one of ours. He's turned.", "We've turned. Hunt the survivors." |
+| Gun Game: our last weapon, an enemy's | "Last weapon. Finish it.", "Enemy's on the last weapon." |
+| Juggernaut: the boss sighted by our side (hunters) | "Juggernaut spotted!" |
+| AC-130: the sight on an enemy / on a new one far from the last kill | "Tally. Armor moving." / "Shifting fire." |
+| AC-130: a missile away, a heavy round by a friendly tank, three heavy rounds then 7 s quiet, a friendly extracted | "Rifle.", "Danger close.", "Rounds complete.", "Friendly extracted." |
+
+Every one of them has its moment in `voiceTriggers.selftest.mjs`, which drives
+the engine through each mode's opening and endings too. A network seat hears
+the same calls: the presentation now relays the authority's `drone_down` as
+`drone:down` (it had no case and was dropped), and the jump call reads the
+frame's airborne state rather than `tank:jump`, which a network seat never
+raises.
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0
@@ -498,8 +564,14 @@ spotting side as the viewer sees it), `player:spotted` and `tank:autoflip`, and
 emits `player:reload` from the viewer's row, so spot calls, the sixth sense,
 the self-right and the loading machinery work there too.
 
-A hull's crew speaks its operating nation's language by default (en-US,
-en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he). **Settings → Sound →
+A hull's crew speaks its operator's language by default (en-US, en-GB, de,
+ru, uk, zh, fr, sv, ja, ko, it, pl, he, da, pt-BR, en-AU, af): the country
+`countryOfVehicle` (`src/sim/countries.ts`) seats the vehicle under, read
+through one exhaustive `Record<CountryId, CrewLanguage>` in
+`vehicleAudioProfiles.ts`, so a new country fails typecheck until it names a
+crew. The Leopard 2A4M CAN's spec names its German design, but its crew is
+Canada's (American English until Canada has a pack of its own); a hull with
+no country (dev, community) keeps American English. **Settings → Sound →
 Crew voices** offers **National crews**, or one nation's existing pack for
 every tank. The shared nation dropdown shows flags and localized nation
 names. Choosing a crew applies immediately and persists in the `crewVoice`
@@ -510,7 +582,7 @@ interface-language pack once (English if unsupported). Later UI locale changes
 do not change that fixed crew choice.
 
 The engine resolves the choice at first audio initialization, on live
-`ui:volumes` changes, and when the player's entity or operating nation changes
+`ui:volumes` changes, and when the player's entity, spec id or nation changes
 (including vehicle replacement on the same entity). Switching language stops
 the old transmission and clears queued calls. While a chosen pack decodes,
 the radio waits. No crew stands in for another: a take a pack lacked would be
@@ -652,8 +724,8 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 119 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
- 13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
+ 190 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 17 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
 
@@ -681,7 +753,11 @@ crew-lines.json ─┐                    crew-voices.json
 4. **Verification**. Each take is transcribed with `scribe_v2` and compared to
    the script (normalised Levenshtein similarity). A transcript that repeats
    the call back to back ("HE. HE.", a stuttered restart) is held under the
-   bar, since by edit distance alone a doubled short call scores 0.5. Below
+   bar, since by edit distance alone a doubled short call scores 0.5; so
+   is a phrase said twice inside a longer call ("开球，开球，去抢球", 0.7 by
+   edit distance), and a second transcript of the take behind a 20 ms lead-in
+   is read for that repeat alone, because one pass often smooths it out
+   (crew-lines-269: 19 of 2,652 takes). Below
    0.62 (0.34 for calls of four characters or fewer) a take is regenerated —
    three attempts by default, and because earlier attempts come from the
    cache, `--attempts 10` on the flagged lines pays only for the new ones — and
@@ -696,6 +772,13 @@ crew-lines.json ─┐                    crew-voices.json
 5. **Mastering**. The `voice` preset: trim, fades, −18 LUFS integrated, 24 kHz
    mono Opus at 32 kbps. The radio character is not baked in: it is the live
    intercom chain, so it can degrade with the radio module.
+
+`--dry` counts the takes whose first attempt is not cached and their
+characters (speech bills a credit per character) without calling the API.
+`--append` keeps every line's shipped takes and builds only the takes the
+script added after them: a rebuild re-picks among a take's cached attempts and
+re-encodes it, so a line that gains a take would otherwise churn the ones
+already approved (the Afrikaans "Laai nou." came back a different attempt).
 
 ### Rounds
 
@@ -953,6 +1036,81 @@ crew-lines.json ─┐                    crew-voices.json
   alive and hidden), so they now count the roster where a death is final and
   nothing otherwise; and the warm resolved engine families by id alone, so 40
   of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
+- **2026-11-03, crews for the new countries (lane crew-voices-269).** The
+  owner: "we need to have new voicelines for our new countries". Denmark and
+  Brazil had no row in the nation table and spoke American English, South
+  Africa and Australia spoke British English, and the Leopard 2A4M CAN spoke
+  German because the crew followed the spec's design nation. The class fix: a
+  crew speaks its operator's language, one exhaustive
+  `Record<CountryId, CrewLanguage>` read through `countries.ts`
+  `countryOfVehicle`, so a new country fails typecheck until it names a crew
+  (Canada en-US for now; a hull with no country keeps en-US). Four new packs
+  carry all 121 lines: Danish (`da`, Danish Army register: "Ild" is the order
+  to fire, so a vehicle fire is "Brand"), Brazilian Portuguese (`pt-BR`,
+  Exército Brasileiro: "guarnição", "flecha" for the dart, "Incêndio" for a
+  vehicle fire because "Fogo" is the order), Australian English (`en-AU`,
+  Commonwealth voice procedure with the ADF's Abrams-era "Up" and "On the
+  way", "bogged" for stuck) and Afrikaans (`af`, the SADF armour register:
+  "Vuur" fires, "Brand" burns, "rusperband" for the track). Afrikaans stayed
+  Afrikaans: the Voice Library has native speakers (Frederik, verified in
+  Afrikaans, and Charles Onselen), and `scribe_v2` with the code forced
+  transcribes their takes exactly. Cast by audition (33 candidates, all clean):
+  Claus Christensen / Peter, Eliel / Cassio Cruz, Steve Hogan / CS New,
+  Charles Onselen / Frederik. The build flagged two takes: the Australian
+  "Thirty mil." heard as "30 mil" (a digit, kept), and the Afrikaans "Laai."
+  heard as "Lie" on all ten attempts, rewritten "Laai nou.". A second,
+  independent transcript of all 860 shipped takes then caught what edit
+  distance lets through: four Afrikaans takes read the same wrong way every
+  time ("Ons sit vas." as the question "Is dit vas?", "Hom verloor." as "Ons
+  wil hoor"), rewritten in fuller forms ("Ons het vasgeval.", "Ek het hom
+  verloor.", "Enjin is beskadig.", "Bevelvoerder is getref.") and rebuilt
+  clean. The other takes under the bar are digits ("30 mil") and homophones
+  (Danish "Pil" as "Peel", Brazilian "Ricochete" as "Rico 7", Afrikaans
+  "Laai nou" as "Lie now", "enjin" as "engine"). Each pack is 215 takes,
+  1.4–1.6 MB, the size of the existing ones. 38,521 credits (speech 36,649,
+  transcription 1,872), auditions and the second transcript included.
+- **2026-11-03, the crew's procedure and every mode in every language (lane
+  crew-lines-269).** The owner: "more and better voice lines of more military
+  terms and of things happeninng. more special terrms for ac 130, all the
+  special moodes, in all the languages." A census of every bus event, frame
+  edge and mode found the moments with no line or a wrong one (the crew radio
+  section's table names the trigger of each): the fire
+  command and its answers, APS and ERA either way, the drone's battery, link,
+  recall and the counter-drone fight, enemy smoke, backing out, obstacles,
+  jumps, the countdown, every mode's opening, its own moments and its results,
+  and the AC-130's fire control. 69 new lines and 20 more takes on lines that
+  had one, so a pack is 190 lines and 371 takes. Each language was written by
+  a writer briefed on its army's register who first read that pack's shipped
+  column (Bundeswehr Feuerkommando "Richtschütze, Wuchtgeschoss, Panzer" /
+  "Erkannt", Russian «Наводчик, бронебойным, по танку» / «Цель вижу», British
+  "Target stop", Japanese 目標よし, Hebrew מעיל רוח for the Trophy APS; NATO
+  aircrews keep "Cleared hot", "Rifle" and "Danger close" inside their own
+  sentences, the others use their own: «Работу разрешили», «Пуск», 着弾).
+  Two class fixes came with it: the tank crew's lines in the AC-130 and in
+  modes where they made no sense (the gunship's "Moving." and "We're
+  outnumbered." at its start, the lone Juggernaut's "We're the last tank.",
+  "Back in the fight." after every Turbo Ball goal, solo side counts in
+  respawning modes) now resolve through `MODE_CREW` and `GUNSHIP_CREW`; and a
+  round an APS stopped is no longer called a miss, nor an enemy's ERA "No
+  penetration". `build-voices.mjs --append` built only the added takes (a full
+  rebuild of a line re-picks among its cached attempts: the Afrikaans "Laai
+  nou." came back a different take). A second, independent transcript of all
+  2,652 new takes found 19 where the model said a phrase twice inside the call
+  ("开球，开球，去抢球", "Rifle, rifle", "밀고 밀고 나간다") and edit distance
+  had passed them, so the build now holds that repeat under the bar and reads a
+  second transcript for it; the 69 new lines were rebuilt from the cache with
+  it (4,211 credits: 22 takes re-rolled, those 19 and three more the second
+  transcript caught, and three rewrites voiced; the Japanese "over" 遠弾 was
+  read とおだん, now 目標を越えた、修正。). After it no take repeats
+  and 6 sit under the bar, each heard as the script's sounds by three fresh
+  transcripts: the transcriber spelling a homophone (後退 / 交代, 奪取 /
+  ダッシュ, 帰投 / 祈祷) or hearing it right on the next pass ("Coups au but",
+  표적 식별, 저거너트).
+  Packs grew from 26.96 MB (1.41–1.77 MB each) to 52.45 MB (2.69–3.45 MB
+  each), still loaded only for the crew's language, and the crew's pack now
+  decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
+  where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
+  speech, 9,166 transcription) against its 3M cap.
 - **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
   owner: "make a lot better sounds for everything ... all the special
   moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
@@ -1025,6 +1183,16 @@ serious recast and rebuild of all 13 packs (10,873), the re-rolls of doubled
 calls (634), the incoming-drone call (172) and the nine lines for the tank's own
 systems, the gunship and its drops (1,202).
 
+Speech has billed one credit per character since 2026-10-14 (about eight times
+the first rounds' rate), so the four packs of 2026-11-03 cost 38,521 credits:
+a whole new pack (121 lines, 215 takes, its audition share,
+re-rolls and a second transcript) is about 9,600.
+
+crew-lines-269 (69 lines and 20 takes in all 17 packs, 2,652 takes) cost
+128,897 credits: 119,731 of speech, 9,166 of transcription (the build's check,
+its second transcript for repeats and the independent sweep); about 7,600 a
+pack.
+
 ## Changing or extending it
 
 Start from the [audio-generation skill](audio-generation/SKILL.md); the table
@@ -1034,7 +1202,7 @@ below is the short form.
 |---|---|
 | Add a sound | Add a catalog entry → `npm run audio:sfx:generate -- --ids <id>` → `npm run audio:sfx:build -- --ids <id>` → play it from the engine (and add a cue override if its group default does not fit) → `node src/audio/soundAssets.selftest.mjs` (it checks every engine reference exists in the manifest) |
 | Replace a weak take | Re-run `build-sfx --ids <id>` after adjusting the prompt or `takes`, or pin takes in `tools/audio/sfx-picks.json` |
-| Add or change a voice line | Edit `crew-lines.json` (all 13 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
+| Add or change a voice line | Edit `crew-lines.json` (all 17 languages, same number of variants) and its `VOICE_LINES` entry in `voiceLines.ts` → `npm run audio:voices:build -- --lines <id>` |
 | Rebuild one language | `npm run audio:voices:build -- --langs de` |
 | Re-roll flagged takes | `npm run audio:voices:build -- --langs ja --lines firing --attempts 10` (earlier attempts come from the cache; the shipped packs used this on their flagged lines, so rebuild those lines with the same flag to reproduce them) |
 | Remove a sound | Delete its catalog entry and run `build-sfx`: assets dropped from the catalog leave the manifest and the disk |
@@ -1079,8 +1247,8 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
 |---|---|
 | `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio at least 12 dB over the bed and at most 4 dB over a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
-| `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, all 13 packs through the radio chain |
-| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and all 13 packs decoded and played through Web Audio |
+| `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, every pack through the radio chain |
+| `node tools/crew-voice.browser.mjs --url=http://127.0.0.1:5173` | real Settings and persistence in English/Chinese on desktop, phone and landscape; flags, keyboard focus, dismissal, reset, reload, and every pack decoded and played through Web Audio |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
 | `node tools/audio-spatial-killcam-probe.mjs` | arcade/sniper perspective, cannon and engine distance falloff, rams, the kill-cam replay |
 | `node tools/pause-probe.mjs` | the pause duck and resume |

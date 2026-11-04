@@ -1288,7 +1288,8 @@ export function createBattlePresentation({
         });
         return;
       case 'drone_down':
-        // a carrier's drone shot down (sim/aerialCombat.ts strikeDrone): heard breaking up where it flew, as the solo step raises it
+        // a drone shot down (the authority's counter-drone strike, sim/aerialCombat.ts strikeDrone), as the solo step
+        // raises it: heard breaking up where it flew, and the crew calls its own drone lost to fire or the enemy's our gun downed
         bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
         return;
       case 'tank_destroyed': {

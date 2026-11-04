@@ -47,6 +47,16 @@ const short = desktop.voice('ru', 'miss', () => 0, 1);
 assert.ok(short && short !== desktop.voice('ru', 'miss', () => 0, 0), 'the requested take, not a random one');
 assert.equal(desktop.voice('ru', 'miss', () => 0, 1), short, 'and the same take every time');
 
+// Crew speech decodes at 16 kHz on every tier: the radio passes nothing above its 4.6 kHz speaker roll-off.
+for (const lowMemory of [false, true]) {
+  const rates = [];
+  const lib = createAssetLibrary({ ...options, lowMemory, createDecoder: (rate) => { rates.push(rate); return ctx; } });
+  await lib.ready;
+  rates.length = 0;
+  await lib.loadVoice('ru');
+  assert.deepEqual([...new Set(rates)], [16000], `${lowMemory ? 'mobile' : 'desktop'} crew packs decode at 16 kHz (${rates})`);
+}
+
 // Mobile: one variant per asset.
 fetched.length = 0;
 const mobile = createAssetLibrary({ ...options, lowMemory: true });
