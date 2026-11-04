@@ -86,8 +86,19 @@ function addRubberSkirts(P: T80BuilderPort): void {
   }
 }
 
+/** The glacis' Kontakt-1 mounting studs with no bricks on them (Kubinka): two studs at each of the T-80BV raft's 28
+ * brick stations (profiles/t80.ts buildT80BVHullKit), standing on the plate along its normal. Hull frame. */
+function addKontaktStuds(P: T80BuilderPort): void {
+  const tilt = Math.atan2(.438, .899);                       // the plate's outward normal (0, .899, .438)
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
+    const y = .84 + r * .115 - .045, z = 3.21 - r * .235 - .022;
+    for (const dx of [-.075, .075]) P.add('hullDetail', KIT.cylY(.022, .024, .05, 8), -.90 + c * .30 + dx, y, z, tilt, 0, 0);
+  }
+}
+
 function* buildObject292Turret(P: T80BuilderPort): TankProfileBuild {
   addRubberSkirts(P);
+  addKontaktStuds(P);
   // the T-80BV's casting, as the BV builds it, under the box
   buildT80CastTurret(P, {
     scaleY: .90, sz: .88, cz: .22, curved: true, reference: 't80/t80b/ua_t80u_kursk',
