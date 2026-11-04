@@ -194,6 +194,8 @@ export const SELFTEST_SCANS = Object.freeze({
   // 265: the core's roots are every module under src/sim (git ls-files)
   'tools/driver-boundaries.mjs': tracked('src/sim/**'),
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  // 2026-11-02 audit S4: the capture-hold census reads every source (tracked and new) for its hold rules
+  'tools/capture-hold-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),
@@ -233,6 +235,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/selftest-cache.mjs': caller("closureOf: the directories a receipt's closure names, its declared fixture patterns " +
     'and the patterns of this table, under the root its caller gives'),
   'tools/shared-main-preflight.mjs': caller('git diff --name-only between the two commits its caller names'),
+  'tools/media-r5/atomic-output.mjs': caller('sweepPartials(dir): the output folder its caller passes'),
 
   // ---- only outside this checkout's sources
   'tools/capture-lock.mjs': outside('the capture queue directory (tmpdir, or the queueDir its caller passes)'),
@@ -260,6 +263,15 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/battle-spike-census.mjs': outside('the census folder its CLI writes (--out, under .qa-dev) and the tmpdir fixtures its receipts judge'),
   'tools/battle-spike-budget.mjs': outside('the census folder it judges (--out under .qa-dev, or the selftest\'s tmpdir fixture)'),
   'tools/vercel-static-preview.mjs': outside('the build output it serves (dist/, or the fixture dist its caller passes)'),
+  // 2026-11-02 audit S4/S5 (tools-chains): its receipts, and the holders the capture-hold census names
+  'tools/capture-lock-reentry.selftest.mjs': outside('its own queue and lock directories under tmpdir'),
+  'tools/media-r5/priority-yield.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR, or the queueDir its caller passes)'),
+  'tools/media-r5/site-loops.mjs': outside('the renders and deliver folders its CLI names (shots/site50 by default, media output), ' +
+    'or the receipt\'s tmpdir fixture'),
+  'tools/media-r5/site-loops-resume.selftest.mjs': outside('its fixture take, renders and deliver folders under tmpdir'),
+  'tools/ground-banding-shots.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR), for its band ticket stamp'),
+  'tools/media-production/cinema.mjs': outside('the frame folders of its own job output (job.out, shots/cinema by default)'),
+  'tools/pad-e2e.browser.mjs': outside('dist/assets, the finished build it checks'),
 
   // ---- source digests for provenance records: no verdict depends on what they list
   'tools/appVersion.ts': identity("git status --porcelain: the version string's dirty mark"),
@@ -295,6 +307,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tank-regen-changed.mjs': cli('npm run tank:regen:changed fingerprints this checkout; the chain receipt runs it on its ' +
     'declared fixture repository'),
   'tools/pr-census.mjs': cli('report() lists the record directory --report names; its receipt imports the census helpers'),
+  // 2026-11-02 audit S4: tools the capture-hold census only names (it reads their source, never runs them)
+  'tools/media-r5/lab.mjs': cli('lists the --scenes directories its CLI names'),
+  'tools/road-border-corridor-pilot.mjs': cli('git status --porcelain of the frozen worktrees its CLI names'),
+  'tools/solo-cold-import-cover-probe.mjs': cli('git ls-files src of its --source-root and the --dist build\'s assets, as a command'),
 
   // ---- import a caller-directed lister for a constant
   'tools/gate.selftest.mjs': none('REPO_ROOT from selftest-cache.mjs; its gate runs list through tools/gate.mjs (above)'),
