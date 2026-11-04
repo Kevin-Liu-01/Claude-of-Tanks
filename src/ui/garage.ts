@@ -42,10 +42,12 @@ import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, ty
 import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
 import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
+import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -938,6 +940,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let fleet: FleetTakesModule | null = null;
     let fleetIndex: FleetTakeIndex | null = null;
     let fleetRequest: Promise<void> | null = null;
+    const fleetTakesChunk = createLazyChunk(() => import('./fleetTakes.ts'));
     let player: FleetTakePlayer | null = null;
     const show = (i: number, imageUrl = FEATURED_SHOTS[i].img): void => {
       front ^= 1;
@@ -1000,11 +1003,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     let panelVisible = typeof IntersectionObserver !== 'function';
     const requestFleetTakes = (): Promise<void> => {
       if (!panelVisible) return Promise.resolve();
-      fleetRequest ??= import('./fleetTakes.ts').then(async (module) => {
+      fleetRequest ??= fleetTakesChunk.load().then(async (module) => {
         fleet = module;
         fleetIndex = await module.loadFleetTakes();
         applyVehicleTake();
-      }, () => { fleetRequest = null; });
+      }).catch(() => { fleetRequest = null; }); // (audit R6: lazyChunk asks the chunk again; the index's fetch too)
       return fleetRequest;
     };
     if (typeof IntersectionObserver === 'function') {
@@ -2242,9 +2245,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the picker's projections (equipmentPreview.ts) load as the picker opens, ahead of its first hover (the tooltip waits
   // 360 ms) and its first fit: they left the game's boot entry (UI-LOCKDOWN E, 2026-10-25)
   let equipmentPreview: EquipmentPreviewModule | null = null;
-  let equipmentPreviewLoad: Promise<EquipmentPreviewModule> | null = null;
-  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> =>
-    (equipmentPreviewLoad ??= import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, and a choice
+  // waits on it, so no equipment could be fitted for the session; the next hover or choice asks again
+  const equipmentPreviewChunk = createLazyChunk(() => import('./equipmentPreview.ts').then((module) => (equipmentPreview = module)));
+  const loadEquipmentPreview = (): Promise<EquipmentPreviewModule> => equipmentPreviewChunk.load();
 
   const curLoadout = () =>
     selectedId ? loadEquipment(selectedId, specById.get(selectedId)) : [];
@@ -2793,7 +2797,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     favouritesOnly = false;
     renderFavourites();
     setRosterFacetFilter(rosterFacetMatch);
-    void facetPanel?.then((panel) => panel.clear(), () => {});
+    if (facetPanel.state === 'ready' || facetPanel.state === 'loading') void facetPanel.load().then((panel) => panel.clear(), () => {});
   });
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
@@ -2839,12 +2843,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }, 320);
   }
   let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
-  let facetPanel: Promise<GarageFacetPanel> | null = null;
-  // (2026-11-02 audit F5) a press while the panel loads means open (a second impatient press used to close it again), a
-  // press after the mount toggles, and the mount opens it only while the Garage still shows the latest press's span
-  const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
-    // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
-    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
+  // (audit R6) an opener: a chunk that did not arrive marks the toggle, and its next press reloads (components/loadFailure.ts)
+  // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
+  const facetPanel = createLazyChunk((): Promise<GarageFacetPanel> => Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
       import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
       .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
         anchor: countryRailEl,
@@ -2853,13 +2854,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         setFilter: setRosterFacetFilter,
         click: () => emit('ui:click', {}),
         onOpenChange: (open) => root.classList.toggle('facets-open', open),
-      }));
-    const loading = facetPanel;
-    loading.catch(() => { if (facetPanel === loading) facetPanel = null; });
+      })), { opener: true });
+  // (2026-11-02 audit F5) a press while the panel loads means open (a second impatient press used to close it again), a
+  // press after the mount toggles, and the mount opens it only while the Garage still shows the latest press's span; the
+  // load is the opener chunk above, whose failure marks the button (integration: garage-ui's toggle over loaders-workers'
+  // chunk, IR3)
+  const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
+    const loading = facetPanel.load();
+    loading.catch(() => reportLoadFailure('cot-facets-load', t('loadFailed.generic'), [facetToggle]));
     return loading;
   });
   facetToggle.addEventListener('click', () => {
     emit('ui:click', {});
+    // (audit R6) after a failed load the press reloads the page once online
+    if (reloadsForFailure(facetToggle, 'cot-facets-load', t('loadFailed.generic'))) return;
     facetPanelToggle.press();
   });
   // --- END roster filter ------------------------------------------------------
@@ -3045,9 +3053,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
   };
-  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([module]) => {
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph): the
+  // document's one hero card load (heroCardChunk.ts, 2026-11-02 audit R6), so a sheet that failed anywhere keeps the
+  // portraits here, never an unstyled card.
+  heroCardChunk.load()
+    .then((module) => {
       heroCards = module;
       return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
     })
@@ -3344,7 +3354,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let calloutsShown = false;
   try { calloutsShown = sessionStorage.getItem(CALLOUTS_KEY) === '1'; } catch (_) { /* this page only */ }
   let hotspots: GarageHotspots | null = null;
-  let hotspotsLoading = false;
+  // (audit R6) an opener: a chunk that did not arrive marks the callouts button, and its next press reloads
+  const hotspotsChunk = createLazyChunk(() => Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]), { opener: true });
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
   const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
@@ -3358,16 +3369,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // one shared ready wait, however many presses come before it (each press started its own poll chain)
   let hotspotsAwaitingReady = false;
   const loadHotspots = (): void => {
-    if (hotspots || hotspotsLoading) return;
+    if (hotspots || hotspotsChunk.state !== 'idle') return;
     if (gameReady.state !== 'ready') { if (!hotspotsAwaitingReady) { hotspotsAwaitingReady = true; gameReady.whenReady(() => { hotspotsAwaitingReady = false; loadHotspots(); }); } return; }
-    hotspotsLoading = true;
     // the hotspots' sheet rides with their module, off the Garage's first paint
-    void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
+    void hotspotsChunk.load().then(([{ createGarageHotspots }]) => {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(calloutsShown ? hotspotFacts : null);
       opts.onOverlayChange?.();
-    }, () => { hotspotsLoading = false; });
+    }, () => reportLoadFailure('cot-hotspots-load', t('loadFailed.generic'), [calloutsButton]));
   };
   const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
   function setCallouts(on: boolean): void {
@@ -3379,7 +3389,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     else loadHotspots();
     opts.onOverlayChange?.();
   }
-  calloutsButton.addEventListener('click', () => { emit('ui:click', {}); setCallouts(!calloutsShown); });
+  calloutsButton.addEventListener('click', () => {
+    emit('ui:click', {});
+    if (!reloadsForFailure(calloutsButton, 'cot-hotspots-load', t('loadFailed.generic'))) setCallouts(!calloutsShown);
+  });
   if (calloutsShown) setCallouts(true);
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
   const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
@@ -3822,10 +3835,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // battlefieldFacts (its name, landscape and the maps-r1 stills; the Rooms host's picker reads the same). It loads with
   // its first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
-  let deployFieldLoad: Promise<void> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the battlefield button, and its next press reloads
+  const deployFieldChunk = createLazyChunk(() => Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]), { opener: true });
   /** A phone's column scroll before the picker scrolled it into view (restored when the picker closes). */
   let deployFieldColumnScroll: number | null = null;
   function openDeployField(): void {
+    const fieldTrigger = root.querySelector<HTMLElement>('[data-deploy-field]');
+    if (reloadsForFailure(fieldTrigger, 'cot-deploy-field-load', t('loadFailed.generic'))) return;
     const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
     if (!pop.firstChild) {
       pop.innerHTML = `<div class="cot-deploy-field-head">${uiIconSVG('map', 16)}<span id="cot-deploy-field-label">${t('garage.battlefield.heading')}</span>` +
@@ -3866,9 +3882,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField.picker.focus();
       return;
     }
-    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
+    void deployFieldChunk.load().then(([
       { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
     ]) => {
+      // (one picker: an opening while the chunk was in flight waits on the same load)
+      if (deployField) { if (!pop.hidden) deployField.picker.focus(); return; }
       const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => battlefieldCards(battlefieldFacts);
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
@@ -3883,8 +3901,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       deployField = { picker, cards };
-    }, () => { deployFieldLoad = null; });
-    void deployFieldLoad.then(() => { if (!pop.hidden) deployField?.picker.focus(); });
+      if (!pop.hidden) picker.focus();
+    }, () => { closeDeployField(); reportLoadFailure('cot-deploy-field-load', t('loadFailed.generic'), [fieldTrigger]); });
   }
   /** The cards a mode can play: all of them, or the one its ruleset lays its range on (the proving ground's). */
   const playableFields = (cards: import('./battlefieldPicker.ts').BattlefieldCard[]): import('./battlefieldPicker.ts').BattlefieldCard[] => {
@@ -3952,9 +3970,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // Deploy's sheet (deploy.css) rides off the game entry: it loads once the Garage is playable and idle, or at the first
   // open, which waits for it, so the screen never paints unstyled (a failed load still opens it).
-  let deployStyles: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failure from the idle preload
+  // for the session; now a failed sheet stands (asked again it would not apply), and a failed screen module is asked
+  // again by the next open (importAll: the sheet's failure is never hidden by the module's)
   let deployStyled = false;
-  const ensureDeployStyles = (): Promise<void> => (deployStyles ??= Promise.all([import('./deploy.css'), import('./deployScreen.ts')])
+  const deployStylesChunk = createLazyChunk(() => importAll([import('./deploy.css'), import('./deployScreen.ts')])
     .then(([, { mountDeployScreen }]) => {
       deployScreen = mountDeployScreen({
         menu: battleMenu, options: soloOptions, mapIds: new Set(maps.map((map) => map.id)),
@@ -3990,20 +4010,28 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (battleMenu.dataset.deployTab === 'campaign') deployScreen.brief();
       deployStyled = true;
     }));
+  const ensureDeployStyles = (): Promise<void> => deployStylesChunk.load();
   const preloadDeployStyles = (): void => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
     else setTimeout(() => { void ensureDeployStyles(); }, 800);
   };
   gameReady.whenReady(preloadDeployStyles);
+  // (a failed load still opens the screen, this once: the next open asks the chunk again, app/lazyChunk.ts)
+  let deployOpenUnstyled = false;
   function openBattleMenu(): void {
-    if (!deployStyled) {
+    if (!deployStyled && !deployOpenUnstyled) {
       // (2026-11-02 audit F5) the sheet's load can outlast the Garage: a battle entered meanwhile must not find a modal
       // Deploy on the surface stack (it took the battle's first Escape)
       const ticket = garageScreen.ticket();
       const reopen = (): void => { if (ticket.current()) openBattleMenu(); };
-      void ensureDeployStyles().then(reopen, () => { deployStyled = true; reopen(); });
+      void ensureDeployStyles().then(reopen, () => {
+        if (!ticket.current()) return;
+        deployOpenUnstyled = true;
+        openBattleMenu();
+      });
       return;
     }
+    deployOpenUnstyled = false;
     openSurface(deploySurface, battleModeBtn);
     renderBattleOptions();
     renderDeployTank();
@@ -4025,7 +4053,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleMenuScroll.scrollTop = 0;
     // the mode picker takes the focus on the chosen mode (the screen's close until the picker has loaded)
     requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').focus({ preventScroll: true });
-    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); });
+    void openDeployModes().then(() => { if (battleMenu.classList.contains('open')) deployModes?.focus(); }, () => {});
   }
   function setBattleMode(nextMode: string | undefined): void {
     if (!nextMode || !(nextMode in battleModeMeta)) return;
@@ -4142,10 +4170,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
   }));
   let deployModes: import('./modePicker.ts').ModePicker | null = null;
-  let deployModesLoad: Promise<void> | null = null;
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
-  function openDeployModes(): Promise<void> {
-    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
+  // (audit R6) the Deploy sheet's mode picker, loaded in idle time and with the sheet (no trigger of its own): a chunk
+  // that did not arrive leaves the sheet without it, and the next opening asks again (app/lazyChunk.ts)
+  const deployModesChunk = createLazyChunk(() => importAll([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
       const cards = modeCards;
       deployModeCards = cards;
       deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {
@@ -4157,8 +4185,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           if (id === 'standard') setBattleMode('solo'); else setBattleGameMode(id);
         },
       });
-    }, () => { deployModesLoad = null; });
-    return deployModesLoad;
+    }));
+  function openDeployModes(): Promise<void> {
+    return deployModesChunk.load();
   }
   const idleLoad = (globalThis as { requestIdleCallback?: (run: () => void) => number }).requestIdleCallback;
   if (idleLoad) idleLoad(() => void openDeployModes()); else setTimeout(() => void openDeployModes(), 1200);
@@ -4167,9 +4196,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the card itself still opens the Deploy screen. The menus are made at its first press.
   const quickBtn = requiredElement<HTMLButtonElement>(root, '[data-battle-quick]');
   let quickMenus: { readonly mode: PickerMenu; readonly field: PickerMenu } | null = null;
-  let quickLoad: Promise<void> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the corner button, and its next press reloads
+  const quickChunk = createLazyChunk(() => import('./battlefieldFacts.ts'), { opener: true });
   function openQuickMenus(): void {
-    quickLoad ??= import('./battlefieldFacts.ts').then(({ battlefieldFacts }) => {
+    if (reloadsForFailure(quickBtn, 'cot-quick-load', t('loadFailed.generic'))) return;
+    // (2026-11-02 audit F5) the menus open only while the Garage that asked still shows
+    const ticket = garageScreen.ticket();
+    void quickChunk.load().then(({ battlefieldFacts }) => {
+      if (quickMenus) return;
       const hosts = requiredElement<HTMLElement>(root, '[data-battle-quick-hosts]');
       const field = createPickerMenu(requiredElement<HTMLElement>(hosts, '[data-quick-field]'), {
         id: 'garage-quick-battlefield', label: t('garage.battlefield.heading'), layout: 'cards', text: pickerText(),
@@ -4190,9 +4224,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         },
       });
       quickMenus = { mode, field };
-    }, () => { quickLoad = null; });
-    const ticket = garageScreen.ticket();
-    void quickLoad.then(() => {
+    }, () => reportLoadFailure('cot-quick-load', t('loadFailed.generic'), [quickBtn])).then(() => {
       if (!quickMenus || !ticket.current()) return;
       quickMenus.mode.setValue(battleGameMode);
       quickMenus.mode.open(quickBtn);
@@ -4255,16 +4287,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
-  let arrangementPanelLoad: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk (unhandled), and
+  // the mode settings and the TEAMS switch never rendered for the session; the next render asks again
+  const arrangementPanelChunk = createLazyChunk(() => import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
+    arrangementPanel = createBattleArrangementPanel(soloOptions, {
+      playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
+      customSides: sidesCustom,
+    });
+    arrangementPanel.render(battleGameMode);
+  }));
   const renderArrangementPanel = (): void => {
     if (arrangementPanel) { arrangementPanel.render(battleGameMode); return; }
-    arrangementPanelLoad ??= import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
-      arrangementPanel = createBattleArrangementPanel(soloOptions, {
-        playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
-        customSides: sidesCustom,
-      });
-      arrangementPanel.render(battleGameMode);
-    });
+    void arrangementPanelChunk.load();
   };
   // The Deploy screen (brand-ui S3). Every chip and rule reads the mode's ruleset (sim/matchRuleset.ts), so the screen
   // never promises a rule the battle does not keep.
@@ -4673,17 +4707,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // photo mode (the direction's Photo action): loaded at its first use, off the game entry
   const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
   let photo: GaragePhotoControl | null = null;
-  let photoMode: Promise<typeof import('./photoMode.ts')> | null = null;
+  // (audit R6) an opener: a chunk that did not arrive marks the Photo button, and its next press reloads
+  // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
+  const photoMode = createLazyChunk(() => Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode), { opener: true });
   // the open photo mode's close (the Garage's hide puts it away: it outlived the screen)
   let closePhoto: (() => void) | null = null;
   function openPhoto(): void {
     if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
+    if (reloadsForFailure(photoButton, 'cot-photo-load', t('loadFailed.generic'))) return;
     const control = photo;
     const ticket = garageScreen.ticket();
     emit('ui:click', {});
-    // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
-    photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
-    void photoMode.then(({ openPhotoMode }) => {
+    void photoMode.load().then(({ openPhotoMode }) => {
       // (2026-11-02 audit F5) the Garage that asked must still show, and Deploy not have opened over it meanwhile
       if (!ticket.current() || battleMenu.classList.contains('open')) return;
       closePhoto = openPhotoMode({
@@ -4691,7 +4726,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
         click: () => emit('ui:click', {}), onClose: () => { closePhoto = null; if (garageScreen.isOpen) photoButton.focus(); },
       });
-    }).catch(() => { photoMode = null; });
+    }, () => reportLoadFailure('cot-photo-load', t('loadFailed.generic'), [photoButton]));
   }
   photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
@@ -4722,7 +4757,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const ticket = garageScreen.ticket();
     try {
       const [{ createTechTreeScreen }] = await Promise.all([
-        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTree.ts'), import('./techTree.css'), heroCardChunk.load(),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
       // (2026-11-02 audit F5) a Garage that hid during the load opens nothing over what replaced it

@@ -1330,14 +1330,15 @@ const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' 
 /** The parked chip's id in the battle's notice region (battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
 const AIM_NOTICE_ID = 'cot-aim-warning';
 // (the region loads with the first parked chip, as the pointer lock's notice loads it: pointerLockFeedbackRuntime.ts)
-let aimNoticePort: Promise<BattleNoticePort> | null = null;
+// (2026-11-02 audit R6) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, so after one failed chunk no
+// parked warning ever showed; the next chip asks again, and a dismiss never fetches
+const aimNoticePort = createLazyChunk(() => import('./battleNotices.ts').then((module) => module.battleNotices));
 const aimNotices: BattleNoticePort = {
   show(options) {
-    aimNoticePort ??= import('./battleNotices.ts').then((module) => module.battleNotices);
-    void aimNoticePort.then((port) => { port.show(options); }, () => {});
+    void aimNoticePort.load().then((port) => { port.show(options); }, () => {});
   },
   dismiss(id) {
-    if (aimNoticePort) void aimNoticePort.then((port) => { port.dismiss(id); }, () => {});
+    if (aimNoticePort.state === 'ready' || aimNoticePort.state === 'loading') void aimNoticePort.load().then((port) => { port.dismiss(id); }, () => {});
   },
 };
 const MODULE_ALERT_ICON_IDS = new Set([
@@ -1359,6 +1360,7 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
 import { setBodyFlag } from './bodyFlags.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 // The battle clock is the ruleset's: the frame carries timeLimitS (solo), otherwise the mode's own
 // ruleset answers; null means no clock (Endless Horde counts up).
 function battleClockLimitS(frame: HudFrame, modeId: string | null | undefined): number | null {
@@ -2556,7 +2558,15 @@ export function initHud(bus: EventBus): HudRuntime {
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
   let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
-  let rangeCardLoad: Promise<void> | null = null;
+  // (2026-11-02 audit R6) under the one lazy-chunk policy (app/lazyChunk.ts): `??=` kept a failed chunk, so a proving
+  // ground never showed its card for the session; a later frame asks again past the backoff (a minute at most), logging
+  // once per ask, and asks nothing while the browser is offline
+  const rangeCardChunk = createLazyChunk(() => import('./provingRangeCard.ts').then((module) => {
+    rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
+  }, (error: unknown) => {
+    console.error('[hud] range card failed to load', error);
+    throw error;
+  }));
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- the top-right corner (owner 2026-10-24: "right should have fps and other data like that"; "have a way to access
@@ -9082,10 +9092,7 @@ export function initHud(bus: EventBus): HudRuntime {
     rangeLanes = range ? range.lanes : null;
     if (!range) { rangeCard?.hide(); return; }
     if (!rangeCard) {
-      rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
-        rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
-      // (asked once: a chunk that did not arrive is not asked for again in this document, and a frame's retry logged each frame)
-      }).catch((error) => { console.error('[hud] range card failed to load', error); });
+      void rangeCardChunk.load(); // (the same promise each frame until its state moves: no per-frame allocation)
       return;
     }
     const player = frame.player || playerRef;

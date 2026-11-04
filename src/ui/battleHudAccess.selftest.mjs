@@ -57,4 +57,19 @@ emitBus('phase:change', { phase: 'battle' });
 assert.equal(events.filter(([kind]) => kind === 'clear').length, 0, 'a battle phase keeps the panel');
 emitBus('phase:change', { phase: 'garage' });
 assert.deepEqual(events.filter(([kind]) => kind === 'clear'), [['clear', bundle.damagePanel]], 'the Garage phase clears it');
-console.log('battleHudAccess.selftest: retryable battle-only HUD owner passed');
+
+// 2026-11-02 audit R6: offline the HUD's stylesheet (aerialHud.css) and a module of the bundle both fail, and which one
+// rejects first is a race. A module's failure first must not hide the stylesheet's: asked again, Vite's preload would
+// skip the failed sheet and the HUD would run unstyled, so the bundle's failure stands (the battle button reloads).
+{
+  let asks = 0;
+  const offline = createBattleHudAccess(bus, engineCtx, {
+    hud: () => { asks++; return new Promise((_, reject) => setTimeout(() => reject(new Error('Unable to preload CSS for /assets/aerialHud-12345678.css')), 5)); },
+    damagePanel: () => Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/damagePanel-12345678.js')),
+    tankThumbs: loaders.tankThumbs,
+  });
+  await assert.rejects(offline.preload(), /Unable to preload CSS/, "the stylesheet's failure is the bundle's");
+  await assert.rejects(offline.preload(), /Unable to preload CSS/);
+  assert.equal(asks, 1, 'a bundle whose stylesheet failed is never asked again');
+}
+console.log('battleHudAccess.selftest: retryable battle-only HUD owner passed; a failed stylesheet in any part stands');

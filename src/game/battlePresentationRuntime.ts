@@ -19,17 +19,32 @@ import type { BattleClientAccess } from './battleClientAccess.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
 import { watchRevealsAll, type GameState } from './stateCore.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 // The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
 // (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
 // (boot-static-closure, the bundle budget). It loads with the battle's FX graph — the FX gate in main.ts awaits
 // loadMissionAttachmentVisual before any battle, Studio or shot frame — and a tank can carry no mount before it lands.
+// (2026-11-02 audit R6/F2) one lazyChunk (app/lazyChunk.ts): `??=` kept a rejected import, and the FX gate awaits it, so
+// one failed chunk stopped every later battle, Studio and shot frame. The visual is presentation: a failure resolves
+// (no tank carries a mount yet), and the next ask (the next FX gate, an aerial tank's frame) loads it.
 let syncMissionAttachment: typeof SyncMissionAttachment | null = null;
-let missionAttachmentVisualLoad: Promise<void> | null = null;
+const missionAttachmentVisual = createLazyChunk(() => import('./missionAttachmentVisual.ts').then((module) => {
+  syncMissionAttachment = module.syncMissionAttachment;
+}, (error: unknown) => {
+  console.warn('[mission attachment] the visual did not load (no mount drawn until it does):', error);
+  throw error;
+}));
+let missionAttachmentAsk: Promise<void> | null = null;
+let missionAttachmentAsked: Promise<void> | null = null;
 export function loadMissionAttachmentVisual(): Promise<void> {
-  return missionAttachmentVisualLoad ??= import('./missionAttachmentVisual.ts').then((module) => {
-    syncMissionAttachment = module.syncMissionAttachment;
-  });
+  const request = missionAttachmentVisual.load();
+  // the same settled promise until the load's state moves: an aerial tank asks every frame and allocates nothing
+  if (request !== missionAttachmentAsked) {
+    missionAttachmentAsked = request;
+    missionAttachmentAsk = request.then(() => undefined, () => undefined);
+  }
+  return missionAttachmentAsk!;
 }
 
 interface TankState {

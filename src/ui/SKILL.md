@@ -85,7 +85,7 @@ Decorative metadata such as repository stars must render a stable-width loading
 state or a bounded verified local cache, then refresh only through the cached
 same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
 Garage presentation depend on a third-party request.
-A lazy chunk that failed is never asked for again in its document: Chrome 151
+An opener's lazy chunk that failed is never asked for again in its document: Chrome 151
 keeps a failed import() and a failed modulepreload, Chrome 156 loads them once
 online, and in both a chunk's failed stylesheet never applies (Vite's preload
 skips it), so a reload is the one recovery that always works. No opener offers
@@ -93,7 +93,23 @@ an in-page retry of a chunk: its failure marks the trigger with
 `components/loadFailure.ts` `markLoadFailed` (a danger dot that needs no chunk),
 its next press goes through `pressFailed` (the page reloads once online, never
 by itself), and a page's enhancement asks once through `importWhenOnline`
-(`node src/ui/components/loadFailure.selftest.mjs`).
+(`node src/ui/components/loadFailure.selftest.mjs`). Every lazy chunk's load
+is one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6): a failed
+stylesheet (in any part of the load: a load of several parts settles them with
+`importAll`), a removed chunk (a hashed chunk that answers 404, which also shows
+the watchdog's reload action), or any failure of an opener's chunk
+(`opener: true`), is terminal; a caller with no trigger (a builder, a warm, a
+notice, decorative paint) asks a failed module again on its next need, at once
+after one failure and then past the INFRA-P11 backoff capped at a minute, with
+no budget that would spend it for the document, never by itself and never
+offline (`node src/app/lazyChunk.selftest.mjs`,
+`node src/app/lazyChunkSites.selftest.mjs`). The stylesheet guarantee holds per
+owner: Vite's preload keeps one `seen` map for the whole document, so a sheet
+that failed at one owner loads "successfully" without it at any other. Give
+each lazy stylesheet one owner per document (the hero cards' is
+`heroCardChunk.ts`; every surface asks it), held in a `createLazyChunk`, an
+`importWhenOnline`, or a kit opener; `lazyChunkSites.selftest.mjs` walks every
+page's imports and fails a second owner or a sheet asked again after a failure.
 Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
 space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
 writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`

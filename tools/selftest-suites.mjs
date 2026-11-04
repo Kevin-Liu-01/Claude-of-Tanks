@@ -73,6 +73,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
     'src/game/gunshipAirframe.selftest.mjs',
+    // 2026-11-02 audit R6 (review round 2): a failed airframe chunk is asked past the policy's backoff by its sync and the
+    // lens guns, which ask every frame (it was asked again on every frame)
+    'src/game/gunshipAirframeLoadFailure.selftest.mjs',
     // (ac130-barrels-230, the owner) the guns beside the gimbal lens: seen firing and recoiling, their rounds, missile and
     // smoke leaving their muzzles
     'src/fx/gunshipLens.selftest.mjs',
@@ -949,6 +952,23 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
+    // 2026-11-02 audit R6: one lazy-chunk failure policy (a failed stylesheet in any part, a removed chunk or an opener terminal;
+    // a module asked again past a backoff capped at a minute, with no budget)
+    'src/app/lazyChunk.selftest.mjs',
+    // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
+    // hand-made memo or failure-cleared latch; a default-policy load of several parts settles them with importAll; every
+    // lazy stylesheet is held and has one owner per document
+    'src/app/lazyChunkSites.selftest.mjs',
+    // 2026-11-02 audit R6 (review round 2): the hero cards' one load keeps a failed heroCard.css for every surface
+    'src/ui/heroCardChunk.selftest.mjs',
+    // 2026-11-02 audit R6: a failed notice kit or battle notice region chunk is asked again by the next battle notice
+    'src/ui/battleNoticesLoadFailure.selftest.mjs',
+    // 2026-11-02 audit R6: a failed paint is painted again (three in a row at most); no DOM still caches its null
+    'src/vehicles/paintCaches.selftest.mjs',
+    // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode
+    'src/ui/cachedFailures.selftest.mjs',
+    // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
+    'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
@@ -2041,6 +2061,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/vehicleActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
+    // 2026-11-02 audit R6/F2: a failed deferred-warm or mission-attachment chunk no longer fails every later battle
+    'src/app/battleEntryLoadFailure.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
     'src/app/mainBattleHudRuntime.selftest.mjs',
@@ -2851,6 +2873,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/ridingPartsWire.selftest.mjs',
     'src/vehicles/decorPlanWire.selftest.mjs',
+    // 2026-11-02 audit R6: one worker-client pattern (a deadline from dispatch, messageerror, a fresh worker after a failure)
+    'src/vehicles/workerClients.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',

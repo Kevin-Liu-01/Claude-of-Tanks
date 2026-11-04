@@ -16,7 +16,7 @@ import {
   FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
   type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
-import { castThroughAlphaCut, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
+import { castThroughAlphaCut, createPaintAttempts, floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -2111,6 +2111,7 @@ const srgbLin = (c: number): number => { const v = c / 255; return v <= 0.04045 
 /** Metres of cover per texture repeat (the paint's own patch scale). */
 const COVER_TILE_M = 1.6;
 const coverCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
+const settlesCover = createPaintAttempts();
 
 /** The cover's colours: the scheme's base and patches (sRGB), from the vehicle's active camouflage. */
 interface CoverPalette { readonly base: readonly [number, number, number]; readonly patches: ReadonlyArray<readonly [number, number, number]> }
@@ -2251,7 +2252,8 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Tex
       out = null;
     }
   }
-  if (typeof document !== 'undefined') coverCache.set(key, out);
+  // (2026-11-02 audit R6) a failed paint is counted, not kept as the no-DOM null (alphaCutTexture.ts createPaintAttempts)
+  if (typeof document !== 'undefined' && settlesCover(key, !!out)) coverCache.set(key, out);
   return out;
 }
 
