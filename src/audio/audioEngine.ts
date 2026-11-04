@@ -2658,7 +2658,21 @@ export function createAudio({
       reloadCalled = false;
       reload.active = false;
       reload.plan = null;
-      if (next === 'battle' && prev !== 'battle') {
+      // Every battle phase is a new battle, whatever came before it: a room's rematch starts from the result screen (its
+      // lobby attaches there), so it follows the last battle with no Garage between and must not inherit its alarms, its
+      // radio or its rollout (the count, the mode's opener and the horn would never play).
+      if (prev === 'battle') {
+        // Leaving from the pause menu or a kill-cam must not carry their mix into the next battle.
+        paused = false;
+        killcam = false;
+        fireAlarm?.stop(); fireAlarm = null;
+        heartbeatRig?.stop(); heartbeatRig = null;
+        radio?.silence();
+        playerBurning = false;
+        listenerOwnerId = null;
+        listenerScoped = false;
+      }
+      if (next === 'battle') {
         structureSounds.clear();
         void warmBattle();
         stopWorld('battle-reset');
@@ -2687,18 +2701,9 @@ export function createAudio({
         applyScene();
         startEngineSoon = true;
         startEngineUntil = -1;
-      } else if (next !== 'battle' && prev === 'battle') {
-        // Leaving from the pause menu or a kill-cam must not carry their mix into the next battle.
-        paused = false;
-        killcam = false;
+      } else if (prev === 'battle') {
         loadingOn(false);
         stopWorld(`phase:${next}`);
-        fireAlarm?.stop(); fireAlarm = null;
-        heartbeatRig?.stop(); heartbeatRig = null;
-        radio?.silence();
-        playerBurning = false;
-        listenerOwnerId = null;
-        listenerScoped = false;
         applyScene();
       } else if (next === 'garage' && prev !== 'garage') {
         loadingOn(false);

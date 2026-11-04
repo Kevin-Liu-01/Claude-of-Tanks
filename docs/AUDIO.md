@@ -985,7 +985,10 @@ crew-lines.json ─┐                    crew-voices.json
   1 and 2 crossed the true-peak ceiling once measured). The soft-ground scrub
   starts the first time it is heard: the rigs share the engine's seeded stream
   with the crew radio's take picks, and a loop starting on every hull moved
-  which take the radio spoke.
+  which take the radio spoke. Every battle phase is a new battle to the engine:
+  a room's rematch starts from the result screen with no Garage between, and
+  kept the last battle's engines, alarms and rollout (no count, no opener, no
+  horn).
 
 ### Cost
 

@@ -226,6 +226,20 @@ await probe.libraryIdle();
 seq = mark();
 bus.emit('battle:rollout', {});
 assert.ok(since(seq).includes('mode_ctf_opener'), `capture the flag opens on its own sound (${since(seq)})`);
+// a room's rematch starts from the result screen: a battle that follows a battle with no Garage between is a new battle
+// (none of the last one's engines; it counts down and opens on its mode's sound again). The battle runs past the opener's
+// repeat cooldown first, as any battle does.
+step(300);
+bus.emit('battle:ended', { result: 'victory' });
+bus.emit('phase:change', { phase: 'battle' });
+assert.equal(probe.engineState().length, 0, `the rematch starts with none of the last battle's engines (${probe.engineState().map((r) => r.id)})`);
+await probe.preload(['ui_countdown_tick']);
+await probe.libraryIdle();
+seq = mark();
+bus.emit('battle:countdown', { seconds: 2 });
+bus.emit('battle:rollout', {});
+assert.ok(since(seq).includes('ui_countdown_tick') && since(seq).includes('mode_ctf_opener'), `a rematch from the result screen counts down and opens again (${since(seq)})`);
+step(12);
 
 // every mode's opener and the count's one-shots decode before any loop but the idles (an AC-130 battle decoded its opener 56th and its
 // tick 79th of 85 files, behind every loop and the aircraft set: silent when due on a loaded machine)
