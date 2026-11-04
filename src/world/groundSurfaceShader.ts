@@ -28,8 +28,11 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     float gsSwardW = uGsOpen.y * meadowG * (1.0 - fR) * (1.0 - max(gCropW, gSoilW)) * (1.0 - woods) * gsOff
       * (1.0 - smoothstep(120.0, 240.0, camDist)) * tileVis(2.5);
     if (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 && gsSwardW > 0.003) {
-      vec2 gsM = nzq(uvW, 0.071, vec2(0.61, 0.17));
-      float gsF = nzq(uv, 0.23, vec2(0.13, 0.77)).x;
+      // (ab3: at a grazing view the fine field's metre features stretched into thin arcs across the turf) each field eases to
+      // its median once its features stop resolving — the patches' ~4 m and the fine field's ~1 m held while they span
+      // ten pixels along the footprint's long axis — so the mosaic leaves the far ground as its mean, never as streaks
+      vec2 gsM = mix(vec2(0.5), nzq(uvW, 0.071, vec2(0.61, 0.17)), tileVis(4.0));
+      float gsF = mix(0.5, nzq(uv, 0.23, vec2(0.13, 0.77)).x, tileVis(1.2));
       float tus = step(1.5, uGsOpen.x);
       // (thresholds on the noise's measured spread: nzq p25 0.43, p50 0.51, p75 0.59, p90 0.66)
       float lush = smoothstep(0.52, 0.64, gsM.x);
@@ -55,8 +58,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     if (uGsTown.x > 0.5) {
       gsTownW = clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * keepM * (1.0 - seaSand) * gsOff * (1.0 - fR);
       if (gsTownW > 0.003) {
-        vec2 tq = nzq(uvW, 0.11, vec2(0.37, 0.83));
-        float tf = nzq(uv, 0.31, vec2(0.71, 0.29)).y;
+        vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
+        float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));
         // the floor's own tone: the map's soil greyed to a pale gravel (luminance 0.22, its hue a third kept), carrying a third
         // of the drawn ground's grain (the woods' litter of the dirt set read as twigs and straw on a town's yards)
         float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);

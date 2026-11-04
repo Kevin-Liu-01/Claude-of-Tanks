@@ -391,6 +391,9 @@ async function shootMap(entry, options, frames) {
       const pv = parseVariant(variant);
       const n = await page.evaluate(pageSetUniforms, pv.sets);
       const hidden = await page.evaluate(pageHideDecals, pv.hide);
+      // (ab3, Steinburg: the clouds and their shadows moved between a pose's variants, a global difference the ground
+      // change did not make) the clouds pinned again before every variant's frame
+      await page.evaluate(stillClouds());
       await sleep(400);
       const tag = variant.replace(/[^A-Za-z0-9.=-]+/g, '_');
       if (pose.kind === 'spot') {

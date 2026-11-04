@@ -48,9 +48,9 @@ export type GroundCover = 'meadow' | 'steppe' | 'verge' | 'reed' | 'dune' | 'sed
 interface GroundClassRow {
   readonly textures: GroundTextures;
   readonly macro: { readonly kind: GroundMacro; readonly strength: number };
-  /** The close detail, and the relief's cap: the share of the sun's own slope a detail facet may turn away from the sun
-   * (0.3: the darkest facet keeps about 70 % of the flat ground's direct light, so the relief never draws a near-black
-   * blotch; the facets toward and across the sun keep theirs; 0 = no cap, rock). */
+  /** The close detail, and the relief's cap: the share of the smooth ground's direct light a detail facet may lose (0.3:
+   * the darkest facet keeps 70 % of it, so the relief never draws a near-black blotch; every facet that keeps its light
+   * keeps its relief; 0 = no cap, rock). */
   readonly close: { readonly kind: GroundClose; readonly strength: number; readonly tilt: number };
   readonly cover: GroundCover;
   readonly sim: SimSurface;
@@ -78,8 +78,8 @@ export type GroundClass = (typeof GROUND_CLASS_IDS)[number];
 const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
 /** The setts' joints' least tone as a share of their stone's (roadSurfaceShader.ts): sand and grit, never a black grid. */
 const SETTS_JOINT_FLOOR = 0.55;
-/** The relief's cap by the class's macro law (a share of the sun's slope): turf soft, soils and yards rougher, rock
- * uncapped. */
+/** The relief's cap by the class's macro law (the share of the direct light a facet may lose): turf soft, soils and yards
+ * rougher, rock uncapped. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
   sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.4,
 });
@@ -246,6 +246,7 @@ export function groundSurfaceUniformValues(mapId: string | null | undefined): {
     town: town && townMacro > 0 ? [townMacro, GROUND_CLOSE_CODE[town.close.kind], town.close.strength, 1] : [0, 0, 0, 0],
     // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them); and the
     // setts' joints' floor (a share of their stone's tone: sand and grit, not a black grid, on every map's paving)
-    near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, SETTS_JOINT_FLOOR, 0],
+    // (w: 1 — the land use's hardstanding repairs staggered and softened, no checkerboard)
+    near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, SETTS_JOINT_FLOOR, 1],
   };
 }

@@ -4586,8 +4586,9 @@ uniform float uThatch;
 // ground-269: the ground-surface table's classes as codes (groundSurfaces.ts groundSurfaceUniformValues): the open ground's
 // (macro, strength, close, strength), the worn ground's, and the town floor's (macro, close, strength, on)
 uniform vec4 uGsOpen, uGsWorn, uGsTown;
-// ground-269: the share of the sun's slope a detail facet may turn away from the sun on the open ground's class and on the
-// rest (x, y; 0 = no cap), and the share the splat's normal pass applies here (set in splatCompute)
+// ground-269: the share of the smooth ground's direct light a detail facet may lose, on the open ground's class and on
+// the rest (x, y; 0 = no cap; z the setts' joints' floor), and the share the splat's normal pass applies here (set in
+// splatCompute)
 uniform vec4 uGsNear;
 float gGsTilt = 0.0;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
@@ -6614,17 +6615,23 @@ void splatCompute() {
           hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
           float slabV = hFast ? tileVis(4.0) : 1.0;
           float slabH = slabV > 0.004 ? cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x : 0.5;
-          hard *= 0.92 + 0.16 * mix(0.5, slabH, slabV);
+          hard *= 0.92 + (uGsNear.w > 0.0 ? 0.10 : 0.16) * mix(0.5, slabH, slabV);
         }
-        vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
+        // (ground-269: the phone's Ruinspires read the repairs on their aligned 5.2 x 3.1 m grid as a light-and-dark
+        // checkerboard) where the table runs (uGsNear.w) the repair courses are staggered row by row and their tones nearer
+        // the pour's own, so a repaired surface reads as patched asphalt, not a board
+        vec2 hp = hq / vec2(5.2, 3.1);
+        if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0) + 0.23 * fract(floor(hp.y) * 0.618);
+        vec2 hpI = floor(hp), hpF = fract(hp);
         // (past its cells' visibility a repaired surface is its mean: three tenths repaired, half of them darker, half paler)
         float repV = hFast ? tileVis(3.1) : 1.0;
         vec2 hh = repV > 0.004 ? cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0)) : vec2(1.0, 0.0);
         float repair = step(hh.x, 0.30);
         vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
         float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
-        vec3 hardMean = hard * (0.70 + 0.30 * 0.5 * (0.78 + 0.5)) + 0.30 * 0.5 * 0.5 * vec3(0.13, 0.128, 0.122);
-        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair), repV);
+        float repD = uGsNear.w > 0.0 ? 0.88 : 0.78, repP = uGsNear.w > 0.0 ? 0.30 : 0.5; // (ground-269: the repairs' tones)
+        vec3 hardMean = hard * (0.70 + 0.15 * repD + 0.15 * (1.0 - repP)) + 0.15 * repP * vec3(0.13, 0.128, 0.122);
+        hard = mix(hardMean, mix(hard, hh.y > 0.5 ? hard * repD : mix(hard, vec3(0.13, 0.128, 0.122), repP), repair), repV);
         hard *= 1.0 - 0.45 * seamH;
         float crackV = tileVis(0.5);
         float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
@@ -8256,19 +8263,21 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
     pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
   }
-  // ground-269 (groundSurfaces.ts relief): no detail facet turns from the sun by more than its ground class's share of the
-  // sun's own slope. The stacked octaves (the soil's clods, the blades, the mid tussocks, the dapple, ×2 by the range
-  // gain) turned facets away from a low sun until they lost most of its light, and the turf drew soft near-black blotches
-  // a metre or two across — the owner's "black spaces". The share caps the darkest facet's direct light at about
-  // (1 − share) of the flat ground's; the facets turned toward the sun and across it keep their relief (0 = no cap)
-  if (gGsTilt > 0.0) {
-    float gsSl = max(length(uSunDirW.xz), 1e-4);
-    vec2 gsSH = uSunDirW.xz / gsSl;
-    float gsAway = -dot(pN.xz, gsSH), gsLim = gGsTilt * max(uSunDirW.y, 0.0) / max(gsSl, 0.05);
-    if (gsAway > gsLim) pN.xz += gsSH * (gsAway - gsLim);
-  }
   vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+  // ground-269 (groundSurfaces.ts relief): no detail facet loses more than its ground class's share of the direct light the
+  // smooth ground there receives from the key light. The stacked octaves (the soil's clods on turf, the blades, the mid
+  // tussocks, the dapple, x2 by the range gain) turned facets from a low sun until they lost most of it, and the turf
+  // drew soft near-black blotches a metre or two across — the owner's "black spaces". A facet past the share is eased
+  // back toward the smooth normal just far enough; every facet that keeps its light keeps its relief (0 = no cap)
+  #if NUM_DIR_LIGHTS > 0
+  if (gGsTilt > 0.0) {
+    vec3 gsL = directionalLights[0].direction;
+    vec3 gsG = normalize((viewMatrix * vec4(gN, 0.0)).xyz);
+    float gsGL = dot(gsG, gsL), gsNL = dot(normal, gsL);
+    if (gsGL > 0.02 && gsNL < gsGL * (1.0 - gGsTilt)) normal = normalize(mix(gsG, normal, clamp(gsGL * gGsTilt / max(gsGL - gsNL, 1e-4), 0.0, 1.0)));
+  }
+  #endif
 }
 `;
 
