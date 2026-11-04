@@ -549,11 +549,13 @@ try {
               if (bad.length) notes.push(`${tr.actor} PATH ${bad.slice(0, 3).join('; ')}${bad.length > 3 ? ` (+${bad.length - 3})` : ''}`);
             }
           }
-          // cameras are staged in the hero frame: when autoPlace moved the hero, move every camera with it
+          // cameras are staged in the hero frame: when autoPlace moved the hero, move every camera with it, keeping its
+          // height over the ground (an absolute height carried sideways went under a Mars dune; groundRel shots add
+          // the ground below)
           const d = scene.__heroDelta ?? [0, 0];
           if (d[0] || d[1]) {
-            const mv = v => v && [v[0] + d[0], v[1], v[2] + d[1]];
-            for (const shot of sb?.shots ?? []) { shot.pos = mv(shot.pos); shot.lookAt = mv(shot.lookAt); }
+            const mv = (v, rel) => v && [v[0] + d[0], v[1] + (rel ? 0 : H(v[0] + d[0], v[2] + d[1]) - H(v[0], v[2])), v[2] + d[1]];
+            for (const shot of sb?.shots ?? []) { shot.pos = mv(shot.pos, sb.groundRel && !shot.absY); shot.lookAt = mv(shot.lookAt, sb.groundRel && !shot.absY); }
             if (scene.camera?.pos) { scene.camera.pos = mv(scene.camera.pos); scene.camera.lookAt = mv(scene.camera.lookAt); }
             for (const fx of scene.effects ?? []) if (fx.heroRel && Array.isArray(fx.at)) fx.at = [fx.at[0] + d[0], fx.at[1] + d[1]];
             notes.push(`cameras follow hero ${Math.hypot(d[0], d[1]).toFixed(1)}m`);
