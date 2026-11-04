@@ -1204,12 +1204,15 @@ export class MatchSession {
       const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000 });
       if (fallback.kind === 'decline') {
         this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation });
-        if (this.host === host) this.host = null;
+        // through the session's role machine and its one decline writer, as the boot-failed path below (integration
+        // IR11: this branch was written before either existed; it left the role at 'booting_host' with no host, and its
+        // decline went past the session's own record)
+        if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'no state'); }
         host.stop();
         this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'no state' });
         this.migrationActive = false;
         this.migrationHostId = null;
-        void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+        this.setDecline('match', { declined: true, unable: true });
         return;
       }
       resume = { ...fallback.state, resumeTick: fallback.resumeTick };

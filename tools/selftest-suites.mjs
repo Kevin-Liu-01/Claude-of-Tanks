@@ -1641,6 +1641,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/matchSessionDecline.selftest.mjs', // 2026-11-02 audit M2: a host decline lasts its match; a seat that cannot host says so again
     'src/mp/session/matchSessionRole.selftest.mjs', // 2026-11-02 audit M2: the session's p2p role is one declared state; a finished host hands nothing on
     'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
+    // 2026-11-03 integration IR11 (audit M1 x M2): an elected seat with no state of a running battle declines through the role machine and setDecline
+    'src/mp/session/matchSessionFallbackDecline.selftest.mjs',
     'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
     'src/mp/session/matchSessionEntry.selftest.mjs', // 2026-11-02 audit M2: a leave cancels a loading entry; a re-sent match_start joins it
     'src/mp/session/matchSessionTimers.selftest.mjs', // 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers
