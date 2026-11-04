@@ -32,12 +32,12 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
       `${id}: ${name} rear edge is seated into the turret roof`);
     assert.ok(near(plate.frontBottomY, plate.frontRoofY - plate.seatDepthM),
       `${id}: ${name} front edge is seated into the turret roof`);
-    assert.ok(plate.rearBottomY > plate.frontBottomY,
-      `${id}: ${name} follows the forward roof pitch`);
+    // 2026-11-03 (release 268 builder E): the commander's station stands where the owner's model carries it, on the level
+    // roof behind the roof's knee (profiles/m1a1Turret.ts); its plates follow the roof under them, level there (the
+    // print-era seat lay on a roof falling 10 cm under the carrier, which this receipt pinned as > 0.095).
+    assert.ok(near(plate.rearBottomY - plate.frontBottomY, plate.rearRoofY - plate.frontRoofY),
+      `${id}: ${name} follows the roof under it`);
   }
-
-  assert.ok(receipt.roofCarrier.rearBottomY - receipt.roofCarrier.frontBottomY > 0.095,
-    `${id}: carrier removes the former 10 cm-plus forward hover gap`);
   assert.ok(near(receipt.cws.pedestalBottomY,
     receipt.cws.carrierMountTopY - 0.0025),
   `${id}: CWS pedestal is attached to the re-seated carrier`);
