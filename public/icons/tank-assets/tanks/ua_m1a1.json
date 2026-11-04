@@ -68,10 +68,10 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [-1.6201,1.1612,3.944],
-          [1.6201,1.1612,3.944],
-          [1.6201,1.7122,1.6379],
-          [-1.6201,1.7122,1.6379]
+          [-1.6201,1.1612,3.95],
+          [1.6201,1.1612,3.95],
+          [1.6201,1.7122,1.6421],
+          [-1.6201,1.7122,1.6421]
         ]
       },
       {
@@ -83,10 +83,10 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [-1.6201,0.5164,3.5429],
-          [1.6201,0.5164,3.5429],
-          [1.6201,1.1612,3.944],
-          [-1.6201,1.1612,3.944]
+          [-1.6201,0.5164,3.5486],
+          [1.6201,0.5164,3.5486],
+          [1.6201,1.1612,3.95],
+          [-1.6201,1.1612,3.95]
         ]
       },
       {
@@ -98,10 +98,10 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [1.853,1.2198,1.6379],
+          [1.853,1.2198,1.6421],
           [1.853,1.2198,-3.8768],
           [1.853,1.7122,-3.8768],
-          [1.853,1.7122,1.6379]
+          [1.853,1.7122,1.6421]
         ]
       },
       {
@@ -114,8 +114,8 @@
         "turretLocal": false,
         "verts": [
           [-1.853,1.2198,-3.8768],
-          [-1.853,1.2198,1.6379],
-          [-1.853,1.7122,1.6379],
+          [-1.853,1.2198,1.6421],
+          [-1.853,1.7122,1.6421],
           [-1.853,1.7122,-3.8768]
         ]
       },
@@ -128,10 +128,10 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [1.205,0.5164,3.5429],
-          [1.205,0.5164,-3.7766],
-          [1.205,1.2198,-3.7766],
-          [1.205,1.2198,3.5429]
+          [1.205,0.5164,3.5486],
+          [1.205,0.5164,-3.7765],
+          [1.205,1.2198,-3.7765],
+          [1.205,1.2198,3.5486]
         ]
       },
       {
@@ -143,10 +143,10 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [-1.205,0.5164,-3.7766],
-          [-1.205,0.5164,3.5429],
-          [-1.205,1.2198,3.5429],
-          [-1.205,1.2198,-3.7766]
+          [-1.205,0.5164,-3.7765],
+          [-1.205,0.5164,3.5486],
+          [-1.205,1.2198,3.5486],
+          [-1.205,1.2198,-3.7765]
         ]
       },
       {
@@ -263,8 +263,8 @@
         "kind": "main",
         "turretLocal": false,
         "verts": [
-          [-1.6201,1.7122,1.6379],
-          [1.6201,1.7122,1.6379],
+          [-1.6201,1.7122,1.6421],
+          [1.6201,1.7122,1.6421],
           [1.6201,1.7122,-3.937],
           [-1.6201,1.7122,-3.937]
         ]
@@ -476,29 +476,29 @@
       {
         "volumeId": "M02",
         "name": "turretRing",
-        "min": [-0.9619,1.3539,-0.7529],
-        "max": [0.9619,1.5883,1.4529],
+        "min": [-0.9619,1.3539,-0.7538],
+        "max": [0.9619,1.5883,1.4538],
         "turretLocal": false
       },
       {
         "volumeId": "M03",
         "name": "engine",
-        "min": [-1.0126,0.575,-3.0488],
-        "max": [1.0126,1.7181,-2.1214],
+        "min": [-1.0126,0.575,-3.0482],
+        "max": [1.0126,1.7181,-2.12],
         "turretLocal": false
       },
       {
         "volumeId": "M04",
         "name": "transmission",
-        "min": [-0.8708,0.8447,-3.6783],
-        "max": [0.8708,1.5432,-3.0476],
+        "min": [-0.8708,0.7865,-3.6781],
+        "max": [0.8708,1.5432,-3.047],
         "turretLocal": false
       },
       {
         "volumeId": "M05",
         "name": "fuelTank",
-        "min": [0.4557,0.575,2.44],
-        "max": [1.1645,1.3664,3.6432],
+        "min": [0.4557,0.575,2.4448],
+        "max": [1.1645,1.337,3.649],
         "turretLocal": false
       },
       {
@@ -519,7 +519,7 @@
         "volumeId": "M08",
         "name": "optics",
         "min": [-1.2,0.6445,-1.521],
-        "max": [0.14,1.2175,0.885],
+        "max": [0.14,1.2718,0.885],
         "parts": [
           {
             "min": [-1.025,0.802,-1.521],
@@ -534,8 +534,8 @@
             "max": [-0.4,0.884,0.885]
           },
           {
-            "min": [-0.14,1.1225,0.842],
-            "max": [0.14,1.2175,0.868]
+            "min": [-0.14,1.1768,0.842],
+            "max": [0.14,1.2718,0.868]
           }
         ],
         "turretLocal": true
@@ -588,8 +588,8 @@
       {
         "volumeId": "C01",
         "name": "driver",
-        "min": [-0.2297,0.9019,1.9614],
-        "max": [0.2297,1.2719,3.821],
+        "min": [-0.2297,0.8896,1.9666],
+        "max": [0.2297,1.2651,3.8262],
         "turretLocal": false
       },
       {
@@ -615,17 +615,17 @@
       }
     ]
   },
-  "geometryHash": "f6f6c661",
-  "metadataHash": "5e6f9c9e",
+  "geometryHash": "6ef5de8f",
+  "metadataHash": "e541046f",
   "presentationAnchor": {
-    "xM": -0.0062,
-    "zM": 0.0382
+    "xM": -0.0061,
+    "zM": 0.0335
   },
-  "presentationHash": "5d6156ad",
+  "presentationHash": "5bc52a20",
   "presentationProjection": {
-    "centerYM": 1.6399,
-    "topHalfM": 6.4112,
-    "sideHalfM": 3.2056
+    "centerYM": 1.6356,
+    "topHalfM": 6.4163,
+    "sideHalfM": 3.2081
   },
   "appearance": {
     "version": 1,
@@ -676,15 +676,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44328,
-      "sha256": "77e26194f1c4c9218c06917f9064f374e02bf3a2d13c6e53cf245bf226577444",
+      "bytes": 44286,
+      "sha256": "2c9fa6975e40d0c242e9c201194353083b6570f8bd38e23949dcdde0e6bf7da7",
       "thumbnail": {
         "file": "thumbs/ua_m1a1_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 15288,
-        "sha256": "8eb9ca676cd44351b0fa3a9a0ed4d3803857019bb70c4c0a7968cd821439682f"
+        "bytes": 15188,
+        "sha256": "68ebfe213d8ebcfecacb9ef76b7bd82d8a891d97b5de13e3338d073e2da8f0d3"
       }
     },
     "top": {
@@ -692,56 +692,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20654,
-      "sha256": "d0863bc83fe430731c4724af0cdcf036213edc0d0547c133abec44298cf9a652"
+      "bytes": 19836,
+      "sha256": "72839b0ac17cc757241f183195c8c1319564536e95838ef620ef3743e9d290a3"
     },
     "side": {
       "file": "ua_m1a1_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 17928,
-      "sha256": "e96d424ff66e8954d1310d0abc00d96c1450224cf0438eb11381e0c3809c35d1"
+      "bytes": 15422,
+      "sha256": "79afabfa990a4c6bef5e2fa73bc340af0bd132ffd97fda31477d31bb3dd8ca26"
     },
     "topSilhouette": {
       "file": "ua_m1a1_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1491,
-      "sha256": "6135f71533130914040ba9c71e2bb76068d003f8de2b474f866845ac3e8c3b3d"
+      "bytes": 1480,
+      "sha256": "53053727b4c859669e00feea7adae118c0bef0cdbbb6eaa7b809723535d1a5fd"
     },
     "sideSilhouette": {
       "file": "ua_m1a1_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 6480,
-      "sha256": "1f491a73072ff16e28d777b14656ab9febdfbccfdc024046887fa0f34c565b2c"
+      "bytes": 5922,
+      "sha256": "4bf7853dcf4e5e56b06963dec5ffb6449d92d88592461c62cc7220420451eded"
     },
     "armorSide": {
       "file": "ua_m1a1_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 41354,
-      "sha256": "95a461a6284f350138a2047ac47692d2ab54773a7201cef89205660b3ba87a72"
+      "bytes": 38688,
+      "sha256": "be47608bd848bc0823df823f8f72f55fee99d5e80de07d73a5be694ee303a820"
     },
     "modulesSide": {
       "file": "ua_m1a1_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 39440,
-      "sha256": "fe813b0f0d44904f46a7adca31d2c6298a0af496d97f35d624539bc82ebcca06"
+      "bytes": 37096,
+      "sha256": "663e12140d5b8596129f04baded17145375b67c140a382e36d53455737c417f1"
     },
     "crewSide": {
       "file": "ua_m1a1_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 38438,
-      "sha256": "3cd819154246c91ff0cee99ce9843809161d456668591a923036da32833a26ac"
+      "bytes": 35892,
+      "sha256": "aeb12699bb19dfb865f13b794000992bd0ecb35e4414682e2123ca1d327303f0"
     },
     "markings": {
       "file": "ua_m1a1_markings.png",
@@ -754,8 +754,8 @@
     "technicalLabels": {
       "file": "ua_m1a1_technical.json",
       "mime": "application/json",
-      "bytes": 4953,
-      "sha256": "3ab0f84c8164cd1f3a77d003a6c3e28f35bab86e4168da3ba11724d649359536"
+      "bytes": 4959,
+      "sha256": "933461d8a79e1966ce6beb76d072dbfe65c89ec52e22e2e1843beb111ffe3789"
     }
   }
 }

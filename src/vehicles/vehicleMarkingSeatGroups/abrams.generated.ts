@@ -259,22 +259,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.27,
         "pos": [
-          1.4729962,
-          0.30721,
-          -0.4151797
+          1.475051,
+          0.3098442,
+          -0.414995
         ],
         "quaternion": [
-          -0.1583015,
-          0.6743369,
-          0.1648348,
-          0.702168
+          -0.1569283,
+          0.678221,
+          0.1618352,
+          0.6994277
         ],
         "surfaceMesh": "m1a2_sepv3_ghillie_turret_net",
         "anchorProfile": "m1a1_abrams_fep",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.001278
+        "maximumSurfaceErrorM": 0.0017246
       },
       {
         "kind": "designation",
@@ -296,7 +296,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0006693
+        "maximumSurfaceErrorM": 0.003348
       }
     ]
   },

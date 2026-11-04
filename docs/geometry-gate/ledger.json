@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T11:51:07.258Z",
+ "generatedAt": "2026-11-04T13:58:04.656Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -64,7 +64,7 @@
     "stations": 0,
     "turretCurves": 0,
     "wholeCurves": 0,
-    "dims": 63.6,
+    "dims": 74.1,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -804,6 +804,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "m2a2_bradley",
+   "geoMin": 34.1,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 45.3,
+    "stations": 49.1,
+    "turretCurves": 64.2,
+    "wholeCurves": 34.1,
+    "dims": 44.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t80u_kursk",
    "geoMin": 35.4,
    "requiredMinimum": 90,
@@ -922,22 +938,6 @@
     "floaters": 100
    },
    "repinError": "photo supplement changed; fresh review required"
-  },
-  {
-   "id": "m2a2_bradley",
-   "geoMin": 52.7,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 64.9,
-    "stations": 52.7,
-    "turretCurves": 54.7,
-    "wholeCurves": 54.8,
-    "dims": 64.5,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "m1a1ha",

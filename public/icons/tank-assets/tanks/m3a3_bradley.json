@@ -89,10 +89,19 @@
         "module": "missileRack",
         "turretLocal": true,
         "gunFollow": false,
+        "min": [0.855,0.064,-0.11],
+        "max": [0.955,0.368,0.125],
+        "physicalMm": 10,
+        "surfaceFingerprint": "a56a0e0d"
+      },
+      {
+        "module": "missileRack",
+        "turretLocal": true,
+        "gunFollow": false,
         "min": [0.834,0.4861,0.2409],
         "max": [0.986,0.8334,0.3718],
         "physicalMm": 10,
-        "surfaceFingerprint": "204a7501"
+        "surfaceFingerprint": "9709a7ad"
       },
       {
         "module": "missileRack",
@@ -101,7 +110,7 @@
         "min": [0.7,0.475,-0.2457],
         "max": [1.12,0.501,-0.1943],
         "physicalMm": 10,
-        "surfaceFingerprint": "8b31c40e"
+        "surfaceFingerprint": "c3b96b0a"
       },
       {
         "module": "missileRack",
@@ -110,7 +119,7 @@
         "min": [0.7,0.571,-0.2457],
         "max": [1.12,0.597,-0.1943],
         "physicalMm": 10,
-        "surfaceFingerprint": "9797ad7c"
+        "surfaceFingerprint": "a9f9e8d8"
       },
       {
         "module": "missileRack",
@@ -119,7 +128,7 @@
         "min": [0.7,0.667,-0.2457],
         "max": [1.12,0.693,-0.1943],
         "physicalMm": 10,
-        "surfaceFingerprint": "5f7bee15"
+        "surfaceFingerprint": "dd776c71"
       },
       {
         "module": "missileRack",
@@ -128,7 +137,7 @@
         "min": [0.73,0.4234,-0.779],
         "max": [1.09,0.7126,-0.721],
         "physicalMm": 10,
-        "surfaceFingerprint": "e09b27b7"
+        "surfaceFingerprint": "80aed2ab"
       },
       {
         "module": "missileRack",
@@ -137,7 +146,7 @@
         "min": [0.71,0.3867,-0.7703],
         "max": [1.11,0.88,0.3726],
         "physicalMm": 10,
-        "surfaceFingerprint": "17a10bb4"
+        "surfaceFingerprint": "4b1d1706"
       }
     ],
     "turretPivot": [-0.14,2.06,-0.4],
@@ -2026,8 +2035,8 @@
       }
     ]
   },
-  "geometryHash": "8955ef43",
-  "metadataHash": "50fcca1d",
+  "geometryHash": "0c2e9846",
+  "metadataHash": "c7751eb5",
   "presentationAnchor": {
     "xM": -0.0008,
     "zM": -0.0359
@@ -2087,15 +2096,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 33714,
-      "sha256": "43d8110cb044e585c4660f2d735e0a3ab107e194e336c6f63dac601c52f3513a",
+      "bytes": 33704,
+      "sha256": "3a8056c40710953e4ee826298dd5cf183a3374179ff7825a8f04abeb4380decc",
       "thumbnail": {
         "file": "thumbs/m3a3_bradley_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 13130,
-        "sha256": "ce36270a84a3343ddf7cdf4f6f10f30aa761f516541a650d3128456a237928d7"
+        "bytes": 13110,
+        "sha256": "182bfc33aae608ead7d92ae080f626382fa3bebcd792dcccf358cafa8ff82258"
       }
     },
     "top": {
@@ -2103,8 +2112,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25274,
-      "sha256": "a138579a1648b9e9f2bbc15a8fa325f8832128779fbd465a03418b8ccd7f1a72"
+      "bytes": 25284,
+      "sha256": "49f4ab7fa71b537984623c4bf84fc57934a7fecd436dc14e828cf7685528e9f7"
     },
     "side": {
       "file": "m3a3_bradley_side.webp",
@@ -2135,8 +2144,8 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 45378,
-      "sha256": "efb5d564d941495565c9322f3b3e350878576e65f11f1f2ed88a3faaa219a0f4"
+      "bytes": 45442,
+      "sha256": "89f8add051260163644ef215fe4e022d3fd0a8746c6bfcf7620ab17abdf94357"
     },
     "modulesSide": {
       "file": "m3a3_bradley_modules_side.webp",
@@ -2165,8 +2174,8 @@
     "technicalLabels": {
       "file": "m3a3_bradley_technical.json",
       "mime": "application/json",
-      "bytes": 4845,
-      "sha256": "ea3de9d908b5e96464e647226db2846de09872650620782d33a3c80a0927e0f7"
+      "bytes": 4857,
+      "sha256": "b9ac816b7d82c751e227f216f610850ce1de822ed680cc3b76ff53ed9d13f3ef"
     }
   }
 }

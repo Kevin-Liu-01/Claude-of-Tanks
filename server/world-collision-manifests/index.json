@@ -26,8 +26,8 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 3514747,
-      "sha256": "f3eed9f610758c41a777ebc82876a33a94bbdbb0e904767d45eeab82af33dd79",
+      "bytes": 3514756,
+      "sha256": "a2ddef5c1ce825ec3a2401aed768278a88d955e48a7d445039d8f63f05cc0fd8",
       "obstacles": 2988,
       "colliders": 8124,
       "concealers": 2491
@@ -61,8 +61,8 @@
       "concealers": 1904
     },
     "frontier": {
-      "bytes": 2218853,
-      "sha256": "c6b402dc38b2db393ddf88a9cf1c8074c8be4e4e3533f3c0062151a7f360fdc1",
+      "bytes": 2218860,
+      "sha256": "ee1bfdedfd3ced3d353768c0db2756557422e297e0fb552e594d55bbe70c8511",
       "obstacles": 8357,
       "colliders": 9047,
       "concealers": 8325
@@ -166,8 +166,8 @@
       "concealers": 3872
     },
     "oasis": {
-      "bytes": 1262667,
-      "sha256": "27aa43e658b7dcc762d2003935bbfa43f725f8beae3b304244a0f60fb1e8eaa2",
+      "bytes": 1262679,
+      "sha256": "a92d4fb9129860e101dccd93ff1c3419796bb55766b6e0aa0f53e02a90a2b6c9",
       "obstacles": 1677,
       "colliders": 1938,
       "concealers": 874
@@ -216,7 +216,7 @@
     },
     "mars": {
       "bytes": 971816,
-      "sha256": "67c66e48ed94bcc683ea136c6cf0f85235149805c725c20e52b82b2519797c2d",
+      "sha256": "0f29c5ceb69d2c5bd33e0c669af97540aafb90bdf47a5c294d6a13e41c51300e",
       "obstacles": 963,
       "colliders": 973,
       "concealers": 0
@@ -260,8 +260,8 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 3663264,
-        "sha256": "69475821e63d1f14688b7a678bf9185f77bd8f3b9e8e5df38c1e0e1383171668",
+        "bytes": 3663273,
+        "sha256": "abedf25f3cd48fad4d83056d33170afc62757baa4cfdab39f816d70ee73ef23f",
         "obstacles": 3114,
         "colliders": 8166,
         "concealers": 2491
@@ -295,8 +295,8 @@
         "concealers": 1904
       },
       "frontier": {
-        "bytes": 2270315,
-        "sha256": "09411e943c7f9e02cc04e872899190b58d69cc5bc37770bfae105335adc3c14a",
+        "bytes": 2270322,
+        "sha256": "30f6950dffb19eda0c9bbae7043f4c180f2f7b02ded7711eb3e5ab5035d2b376",
         "obstacles": 8238,
         "colliders": 8830,
         "concealers": 7990
@@ -400,8 +400,8 @@
         "concealers": 3872
       },
       "oasis": {
-        "bytes": 1535224,
-        "sha256": "ac1810754129486f43394191a616ef2dee545b1e772aee53b919407dec923866",
+        "bytes": 1535236,
+        "sha256": "d42c0a5164c1f6ac6a39729f841dc03cc3f20086ef9aa21978cd130674349b52",
         "obstacles": 1835,
         "colliders": 2001,
         "concealers": 878
@@ -450,7 +450,7 @@
       },
       "mars": {
         "bytes": 1247986,
-        "sha256": "c00222f446652dde3b5d0b2620731e7d78f841e26c5956c84d1ee6cb984ffdb8",
+        "sha256": "584904a6f6f75d651bd3c564de7a1591021843557ec898c3b3995ecf235f6488",
         "obstacles": 1083,
         "colliders": 1011,
         "concealers": 0
