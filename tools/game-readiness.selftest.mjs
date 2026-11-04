@@ -130,6 +130,7 @@ const evaluate = (win, expression, doc = { querySelector: () => null }) =>
   assert.deepEqual(passing(), ['studio']);
   const facts = evaluate(win, `(${readinessInPage})()`, doc);
   assert.equal(facts.lifecycle, false, 'the facts say which definition decided');
+  assert.equal(facts.legacy.source, 'debug');
   assert.equal(facts.state, null);
 
   // waitForReady and waitForBootLoaded hand the caller's options to waitForFunction and return the facts
@@ -144,6 +145,83 @@ const evaluate = (win, expression, doc = { querySelector: () => null }) =>
   assert.equal((await readGameReadiness(page)).state, null);
   await waitForBootLoaded(page, { timeout: 7, polling: 100 });
   assert.deepEqual(page.calls.at(-1), { expression: BOOT_LOADED_EXPRESSION, options: { timeout: 7, polling: 100 } });
+}
+
+// The same build on the player's path without ?debug has no `__DEBUG` either (black-world-repro --plain against prod,
+// and its stress page): the round-1 fallback read only `__DEBUG.game`, so no readiness ever passed there and the tool's
+// boot wait (`garage && .cot-battle`, where the tool once waited on `__GAME_READY && .cot-battle`) timed out after
+// 240 s. Such a page answers from what it shows; what it cannot show (the countdown) is null and fails by name.
+{
+  const win = { __GAME_READY: false, getComputedStyle: (node) => node.style };
+  const dom = { splash: true, garage: 'awaiting-boot', veil: false, loader: false, hud: false, report: false, studio: false };
+  const box = (display, visibility = 'visible') => ({ style: { display, visibility } });
+  const doc = {
+    querySelector(selector) {
+      switch (selector) {
+        case '.cot-bl.on, .cot-bl.leaving': return dom.loader ? {} : null;
+        case '.cot-trans.on': return dom.veil ? {} : null;
+        case '#cot-boot:not(.cot-boot-out)': return dom.splash ? {} : null;
+        case '.cot-es.show': return dom.report ? {} : null;
+        case '.cot-garage': return box(dom.garage === 'none' ? 'none' : 'block', dom.garage === 'awaiting-boot' ? 'hidden' : 'visible');
+        case '.cot-hud': return box(dom.hud ? 'block' : 'none');
+        case '.cot-studio': return dom.studio ? box('block') : null;
+        case '.cot-battle': return {};
+        default: throw new Error(`the probe read an unexpected selector ${selector}`);
+      }
+    },
+  };
+  const ready = (name) => evaluate(win, readinessExpression(name), doc);
+  const passing = () => Object.keys(READY).filter((name) => ready(name));
+  // black-world-repro's own waits, as its source writes them
+  const bwr = read('tools/black-world-repro.mjs');
+  const bootWait = "${readinessExpression('garage')} && !!document.querySelector('.cot-battle')";
+  assert.equal(bwr.split(`await page.waitForFunction(\`${bootWait}\``).length - 1, 1, 'black-world-repro boots on garage && .cot-battle');
+  assert.ok(bwr.includes("await page.waitForFunction(readinessExpression('garage'), "), 'and presses BATTLE on garage');
+  const bootReady = () => evaluate(win, `${readinessExpression('garage')} && !!document.querySelector('.cot-battle')`, doc);
+
+  assert.deepEqual(passing(), [], 'nothing before the boot');
+  win.__GAME_READY = true;
+  assert.deepEqual(passing(), [], 'booted under the splash, the Garage still waiting on its dismissal');
+  dom.splash = false;
+  dom.garage = 'shown';
+  assert.deepEqual(passing(), ['garage'], 'a booted, settled Garage with no __DEBUG is the Garage');
+  assert.equal(bootReady(), true, 'black-world-repro --plain boots');
+  const facts = evaluate(win, `(${readinessInPage})()`, doc);
+  assert.equal(facts.lifecycle, false);
+  assert.equal(facts.legacy.source, 'dom', 'the facts say the screen decided');
+  assert.equal(facts.legacy.controlsReleased, null, 'and what it cannot tell');
+  dom.garage = 'none';
+  dom.loader = true;
+  assert.deepEqual(passing(), [], 'BATTLE pressed: loading under the cover');
+  dom.loader = false;
+  dom.hud = true;
+  assert.deepEqual(passing(), ['battleRevealed'], 'the cover is gone; the countdown cannot be read from the screen');
+  dom.report = true;
+  assert.deepEqual(passing(), ['battleRevealed', 'battleEnded'], 'the report');
+  dom.report = false;
+  dom.hud = false;
+  dom.veil = true;
+  dom.garage = 'shown';
+  assert.deepEqual(passing(), [], 'the Garage return, still under its veil');
+  dom.veil = false;
+  assert.deepEqual(passing(), ['garage'], 'the return settled: BATTLE may be pressed again');
+  dom.garage = 'none';
+  dom.studio = true;
+  assert.deepEqual(passing(), ['studio']);
+
+  // a wait the screen cannot answer fails by name, not as a bare timeout
+  const page = {
+    async waitForFunction(expression) {
+      if (!evaluate(win, expression, doc)) throw new Error('Waiting failed: 5ms exceeded');
+      return true;
+    },
+    async evaluate(fn) { return evaluate(win, `(${fn})()`, doc); },
+  };
+  await assert.rejects(waitForReady(page, 'battleLive', { timeout: 5 }),
+    /battleLive cannot be read on this page: .*no window\.__DEBUG \(open it with \?debug=1\) \(Waiting failed/);
+  await assert.rejects(waitForReady(page, 'battleRevealed', { timeout: 5 }), /^Error: Waiting failed: 5ms exceeded$/,
+    'a wait the page can answer keeps its own timeout');
+  assert.equal((await waitForReady(page, 'studio', { timeout: 5 })).legacy.studio, true);
 }
 
 // The census reads code, never comments, and a string that holds `/*` is code: the stripper the lane first used erased

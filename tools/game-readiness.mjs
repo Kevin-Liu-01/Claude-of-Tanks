@@ -100,7 +100,9 @@ export const READY = Object.freeze({
  * In-page (self-contained: waitForFunction and evaluate serialize it): the page's readiness facts. `booted` is the boot
  * latch's harness mirror (the entry gate may still wait on the player); `state` is the published lifecycle's, null on
  * a build that publishes none; `automation` the path the page resolved (docs/AUTOMATION-PATHS.md). On a build that
- * publishes no lifecycle (`lifecycle` false), `legacy` holds each readiness as that build's own harnesses defined it.
+ * publishes no lifecycle (`lifecycle` false), `legacy` holds each readiness as that build's own harnesses defined it:
+ * from `__DEBUG.game` (`source` 'debug'), or, on a page with no `__DEBUG`, from what the page shows (`source` 'dom';
+ * null for a readiness the page cannot tell).
  */
 export function readinessInPage() {
   let lifecycle = null;
@@ -114,17 +116,44 @@ export function readinessInPage() {
     // a build before the lifecycle (2026-11-03): the predicates its harnesses waited on, in one place
     let game = null;
     try { game = window.__DEBUG?.game ?? null; } catch { game = null; }
-    const battle = game?.phase === 'battle';
-    const countdownOver = battle && Number.isFinite(game?.preBattleS) && game.preBattleS <= 0;
     const covered = !!document.querySelector('.cot-bl.on, .cot-bl.leaving');
-    legacy = {
-      garage: booted && game?.phase === 'garage',
-      battleRevealed: battle && !covered,
-      controlsReleased: countdownOver,
-      battleLive: countdownOver && !game?.result,
-      battleEnded: battle && !!game?.result,
-      studio: game?.phase === 'studio',
-    };
+    if (game) {
+      const battle = game.phase === 'battle';
+      const countdownOver = battle && Number.isFinite(game.preBattleS) && game.preBattleS <= 0;
+      legacy = {
+        source: 'debug',
+        garage: booted && game.phase === 'garage',
+        battleRevealed: battle && !covered,
+        controlsReleased: countdownOver,
+        battleLive: countdownOver && !game.result,
+        battleEnded: battle && !!game.result,
+        studio: game.phase === 'studio',
+      };
+    } else {
+      // no `__DEBUG` either (a production build on the player's path without ?debug: black-world-repro --plain, its
+      // stress page): what the page shows, as the tools waited on it before the probe. The countdown is not on the
+      // page in a form a wait can trust, so the two readinesses that need it are null here (never pass; the facts say
+      // why): open such a build with ?debug=1 for them.
+      const shown = (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) return false;
+        let style = null;
+        try { style = window.getComputedStyle(node); } catch { style = null; }
+        return !!style && style.display !== 'none' && style.visibility !== 'hidden';
+      };
+      const veiled = !!document.querySelector('.cot-trans.on');
+      const splash = !!document.querySelector('#cot-boot:not(.cot-boot-out)');
+      const report = !!document.querySelector('.cot-es.show');
+      legacy = {
+        source: 'dom',
+        garage: booted && !splash && !veiled && !covered && !report && shown('.cot-garage'),
+        battleRevealed: !covered && shown('.cot-hud'),
+        controlsReleased: null,
+        battleLive: null,
+        battleEnded: report,
+        studio: !veiled && shown('.cot-studio'),
+      };
+    }
   }
   return {
     booted,
@@ -167,10 +196,21 @@ export function readGameReadiness(page) {
 
 /**
  * Wait until the page is `name` (a READY key). `options` are waitForFunction's (timeout, polling) plus `since`.
- * Returns the facts it saw (`lifecycle` false: the build's legacy predicate decided).
+ * Returns the facts it saw (`lifecycle` false: the build's legacy predicate decided). A wait the page cannot answer
+ * (a build with no lifecycle and no `__DEBUG`, for a readiness its screen cannot tell) fails naming that, not as a
+ * bare timeout.
  */
 export async function waitForReady(page, name, { since = null, ...options } = {}) {
-  await page.waitForFunction(readinessExpression(name, { since }), options);
+  try {
+    await page.waitForFunction(readinessExpression(name, { since }), options);
+  } catch (cause) {
+    const facts = await readGameReadiness(page).catch(() => null);
+    if (facts && !facts.lifecycle && facts.legacy?.[name] === null) {
+      throw new Error(`game-readiness: ${name} cannot be read on this page: the build publishes no lifecycle and no `
+        + `window.__DEBUG (open it with ?debug=1) (${String(cause?.message ?? cause).split('\n')[0]})`, { cause });
+    }
+    throw cause;
+  }
   return readGameReadiness(page);
 }
 

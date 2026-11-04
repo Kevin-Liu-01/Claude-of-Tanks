@@ -185,21 +185,24 @@ Wait through `tools/game-readiness.mjs`, never on a hand-built predicate. The au
 true under a return's veil and behind the battle report, and `phase === 'battle' && preBattleS <= 0` under a network
 join's cover. The module reads the game's published lifecycle (`window.__APP_LIFECYCLE`, src/game/appLifecycle.ts):
 
-| readiness | lifecycle states | use it for | on a build with no lifecycle |
-|---|---|---|---|
-| `garage` | garage | a settled Garage screen: the boot splash gone, no return under its veil, not behind the report | booted and `phase === 'garage'` |
-| `battleRevealed` | countdown, live, verdict, report | the battle is on screen (its cover is gone) | `phase === 'battle'`, no `.cot-bl.on` / `.leaving` |
-| `controlsReleased` | live, verdict, report | the countdown is over (what `phase === 'battle' && preBattleS <= 0` meant) | `phase === 'battle' && preBattleS <= 0` |
-| `battleLive` | live | controls released and no verdict | the same, and no `result` |
-| `battleEnded` | verdict, report | the verdict landed | `phase === 'battle'` and a `result` |
-| `studio` | studio | the Studio owns the scene | `phase === 'studio'` |
+| readiness | lifecycle states | use it for | on a build with no lifecycle | ... and no `__DEBUG` |
+|---|---|---|---|---|
+| `garage` | garage | a settled Garage screen: the boot splash gone, no return under its veil, not behind the report | booted and `phase === 'garage'` | booted, `.cot-garage` shown, no live `#cot-boot`, `.cot-trans.on`, `.cot-bl.on` / `.leaving` or `.cot-es.show` |
+| `battleRevealed` | countdown, live, verdict, report | the battle is on screen (its cover is gone) | `phase === 'battle'`, no `.cot-bl.on` / `.leaving` | `.cot-hud` shown, no `.cot-bl.on` / `.leaving` |
+| `controlsReleased` | live, verdict, report | the countdown is over (what `phase === 'battle' && preBattleS <= 0` meant) | `phase === 'battle' && preBattleS <= 0` | cannot be read (null) |
+| `battleLive` | live | controls released and no verdict | the same, and no `result` | cannot be read (null) |
+| `battleEnded` | verdict, report | the verdict landed | `phase === 'battle'` and a `result` | `.cot-es.show` (the report) |
+| `studio` | studio | the Studio owns the scene | `phase === 'studio'` | `.cot-studio` shown, no `.cot-trans.on` |
 
 `readinessExpression(name, { since })` is the in-page expression (add a tool's own conditions with `&&`);
 `waitForReady(page, name, options)` waits and returns the facts; `since` takes a lifecycle `transitions` count so a
 wait means the next battle, not the one on screen. A build that publishes no lifecycle (before 2026-11-03: a
 deployment, an A/B baseline) never passes a readiness on its boot alone: each readiness falls back to the predicate
-that build's own harnesses waited on (the last column), its facts say `lifecycle: false`, and `since` has no count
-there. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
+that build's own harnesses waited on (the fourth column), its facts say `lifecycle: false`, and `since` has no count
+there. Such a build opened on the player's path without `?debug=1` has no `__DEBUG` either (black-world-repro
+`--plain` against prod): each readiness then reads what the page shows (the last column; facts `legacy.source`
+'dom'), and the two that need the countdown cannot be read there, so `waitForReady` fails naming that instead of a
+bare timeout (open such a build with `?debug=1` for them). `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
 written by src/app/bootReadiness.ts): the boot finished loading, while the entry gate may still wait on the player
 (the lifecycle's 'boot' state until it is dismissed).
 
