@@ -4,7 +4,8 @@
 // AudioContext with real fleet specs and real events; every layer it starts (the recording and the variant, its start,
 // level, rate, bus and cut) is taken from the engine and its pool, then mixed with ffmpeg: the weapons buses' +3 dB low
 // shelf at 110 Hz and the master limiter, as the mixer applies them. The per-voice distance filters, the reverb and
-// the scope snapshot are not rendered.
+// the scope snapshot are not rendered. The battle's ambience is off (no bed, no spot director), so a render holds the
+// shot alone: until 11-04 the hangar scene the engine starts in kept playing its workshop spots under the shots.
 //
 //   node tools/audio/layered-render.mjs <out-dir> [--keys 120/combustible,7.62/belt]
 //
@@ -84,6 +85,8 @@ async function scene(key, specId, roundName, stationMm, burst, kind) {
   const list = shooter === me ? [me] : [tank('me', 'leo2a4', { team: 'player', isPlayer: true }), shooter];
   const listener = { pos: { x: 0, y: 2, z: 0 }, forward: { x: 0, y: 0, z: 1 }, kind: 'player-tank', ownerId: 'me', scoped: kind === 'sight' };
   bus.emit('phase:change', { phase: 'battle' });
+  // the shot alone: the battle's ambience off stops the hangar scene the engine opened in, its spots with it
+  audio.ambientOn(false);
   await audio.warmBattleEvents(list.map((t) => t.specId));
   for (let i = 0; i < 20; i++) { ctx.advance(1 / 30); audio.update(1 / 30, listener, list); }
   await probe.libraryIdle();
@@ -106,6 +109,8 @@ async function scene(key, specId, roundName, stationMm, burst, kind) {
   const log = probe.sfxLog.filter((e) => e.seq > since && !SKIP.test(e.n));
   const sources = ctx.started.slice(startedBefore);
   const layers = [];
+  const ambient = log.filter((e) => e.b === 'ambience');
+  if (ambient.length) throw new Error(`${key} ${kind}: ambience under the shot (${ambient.map((e) => e.n).join(', ')})`);
   for (const e of log) {
     const src = sources.find((s) => s.buffer?.name?.includes(`/${e.n}_`) && Math.abs((s.started?.at ?? -1) - e.t) < 1e-3 && !s._used);
     if (!src) continue;
