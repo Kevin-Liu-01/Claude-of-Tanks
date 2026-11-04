@@ -158,6 +158,14 @@ interface SidePanel {
    * roof line. They hang down the drape like its other boughs, under the main gun's low sweep over that stretch.
    */
   boughsHangAt?: readonly (readonly [number, number])[];
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, blind A/B: "crumpled net facets on skirts and fenders look crude"): a calm
+   * cover hung flat along the skirt line. Each column falls straight from its level top line (topAt) to a clean hem
+   * (bottomAt, neither scalloped nor torn), standing FITTED_GAP_M off the outermost armour within 0.24 m of it along the
+   * flank (so it spans the tile seams instead of pleating into them), never inside outAt; no roll over the deck's edge,
+   * no folds.
+   */
+  flat?: boolean;
 }
 
 interface FacePanel {
@@ -1651,6 +1659,8 @@ interface CurtainSpec {
   orphan?(a: number): boolean;
   /** The netting lane: a field suit's drape keeps no scrap (a piece under 24 cells or an eighth of the drape). */
   readonly field?: boolean;
+  /** Release 268 (SidePanel.flat): the hem row is kept whole (no torn cells). */
+  readonly cleanHem?: boolean;
   readonly maxOut: number;
   readonly seed: number;
   /** Fold depth multiplier (a tied-down face drape folds little). */
@@ -1797,7 +1807,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       const upMid = (sections[c].up[r] + sections[c].up[r + 1] + sections[c + 1].up[r] + sections[c + 1].up[r + 1]) / 4;
       if (spec.keep && !spec.keep((aA + aB) / 2, upMid, aA, aB)) continue;
       // the hem row tears here and there
-      if (r === rows - 1 && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
+      if (r === rows - 1 && !spec.cleanHem && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
       const uv = (cc: number, rr: number, a: number): [number, number] => [a * uvk + uvOffset[0], vlen[cc][rr] * uvk + uvOffset[1]];
       const quad: Array<[Point3, [number, number]]> = [[A, uv(c, r, aA)], [B, uv(c + 1, r, aB)], [C, uv(c + 1, r + 1, aB)], [D, uv(c, r + 1, aA)]];
@@ -1923,6 +1933,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const maxOut = (cfg.maxHalfWidth ?? Infinity) - 0.002;
   const probe = support.probe;
   const hem = (z: number): number => {
+    if (panel.flat) return bottomAt(z);
     const authored = bottomAt(z + side * HEM_PHASE_M);
     const h = hemAt(ties, z);
     // a ragged hem: scalloped between the ties, torn short and long from one column to the next
@@ -1952,10 +1963,21 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     return null;
   };
   const spec: CurtainSpec = {
-    a0: z0, a1: z1, seed: s, foldK: support.fitted ? 0.18 : 1, maxOut,
+    a0: z0, a1: z1, seed: s, foldK: panel.flat ? 0 : support.fitted ? 0.18 : 1, maxOut,
+    ...(panel.flat ? { cleanHem: true } : {}),
     hem,
     section(z, hemY) {
       if (!probe) return null;
+      if (panel.flat) {
+        const yTop = topAt(z);
+        let wall = -Infinity;
+        for (const dz of [-0.24, -0.12, 0, 0.12, 0.24]) for (let yy = yTop; yy >= hemY - 1e-6; yy -= 0.02) {
+          const w = probe.side(yy, z + dz, side);
+          if (w !== null) wall = Math.max(wall, w);
+        }
+        const x = Math.min(maxOut, Math.max(wall + FITTED_GAP_M, outAt(z, 1)));
+        return { pts: [[x, yTop], [x, hemY]], corner: 0 };
+      }
       const start = roofEdge(z);
       const yFrom = start ? start.up : topAt(z) + 0.05;
       if (support.fitted) return fittedSection((yy) => probe.side(yy, z, side), start, yFrom, hemY);
@@ -3734,20 +3756,19 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         foliageExclude: [[[-0.8, 1.6], [0.8, 1.6], [0.95, 3.7], [-0.95, 3.7]]],
         garnishEdgeBandM: 0.4, garnishRiseM: 0.08, reliefScale: 0.6, seed: 9 }],
       // (the A/B fix round: each drape ends at z 2.40, behind the bow's ARAT tiles, where its front end crumpled over
-      // them into the bulge at the nose)
-      side: [-1, 1].map((side) => ({ side, z0: -3.08, z1: 2.40, nz: 38, ny: 9,
-        topAt: (z) => (z > 2.45 ? m1a1FenderNetY(z) - 0.01 : abramsHullY(0, z)),
-        bottomAt: (z) => 0.72 + Math.sin(z * 2.5) * 0.030,
+      // them into the bulge at the nose. Release 268 builder E, the FEP round: "crumpled net facets on skirts and
+      // fenders": the cover hangs flat (SidePanel.flat) over the ARAT tiles from a level line 2 cm over the skirt's
+      // 1.339 top to a clean hem at 0.72, rising over the sprocket notch to the stern strip; no roll over the deck edge)
+      side: [-1, 1].map((side) => ({ side, z0: -3.08, z1: 2.40, nz: 38, ny: 9, flat: true,
+        topAt: () => 1.36,
+        bottomAt: (z) => (z < -2.60 ? Math.min(1.20, 0.72 + (-2.60 - z) * 1.4) : 0.72),
         // ULCANS hangs from stand-off battens outside the skirt rather than
         // lying in the live SEPv3 shoe/pin envelope (outer x ~= 1.72 m).
         // Keep the lower hem farther out so suspension travel cannot pull a
         // shoe through the cloth while the upper edge still reads attached.
-        // (release 268 builder E, the A/B fix round: held where it was; brought 4 cm in to the owner's model's 1.853 skirt
-        // face its shoulder roll stood 16 mm under the gun at yaw 76-97, -5.3 degrees: nationalGunClearance, the sweep)
-        outAt: (_z, t) => 1.92 + (1 - t) * 0.090, seed: 21 + side,
-        // round 3: the drape rolls over the fender edge into the deck cover instead of standing as a free edge
-        shoulder: { z0: -3.08, z1: 2.36, inAt: () => 1.6,
-          yAt: (z: number) => (z > 2.45 ? m1a1FenderNetY(z) : sepv3HullY(1.6, z)) - 0.004 } })),
+        // (release 268 builder E: the flat cover stands at least 1.92 off the axis, the stand-off that keeps the gun clear,
+        // and just outside the tiles' faces where they stand further out)
+        outAt: () => 1.92, seed: 21 + side })),
       // (release 268: the bow net stops at the source-measured bow's 1.21 m top edge, as on ua_m1a1)
       face: [{ z: 3.93, x0: -1.10, x1: 1.10, y0: 0.96, y1: 1.21, nx: 14, ny: 4,
         outline: [[-0.88, 0.96], [0.88, 0.96], [1.10, 1.08], [0.72, 1.21], [-0.72, 1.21], [-1.10, 1.08]],
