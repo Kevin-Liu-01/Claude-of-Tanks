@@ -41,7 +41,7 @@ import type { MatchHost } from '../host/matchHost.ts';
 import { planFromRoster, planHostBoot } from '../host/hostPlan.ts';
 import type { HostBootConfig, HostCoreStats, HostPort, HostToWorkerMessage, WorkerToHostMessage } from '../host/hostProtocol.ts';
 import type { HostBootPlan } from '../host/hostPlan.ts';
-import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob, resumeHoldSeats, resumeStateFromRetained } from '../host/migrationState.ts';
+import { decodeBootConfig, decodeMigrationKeyframe, deriveMigrationKey, migrationFallback, openMigrationBlob, resumeHoldSeats, resumeStateFromRetained } from '../host/migrationState.ts';
 
 export type SessionPhase = 'lobby' | 'loading' | 'match' | 'ended' | 'lost';
 
@@ -927,13 +927,29 @@ export class MatchSession {
       if (retained.keyframe) {
         const keyframe = decodeMigrationKeyframe(await openMigrationBlob(key, retained.keyframe.blob));
         // the newer of the keyframe and this viewer's newest frame, and every prop this seat was told fell (migrationState.ts)
-        const { state, baseTick, baseAtMs } = resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, retained.latestFrame, retained.latestFrameAtMs, retained.fallen, retained.destruction ?? []);
+        const { state, baseTick, baseAtMs } = resumeStateFromRetained(keyframe, retained.keyframe.receivedAtMs, retained.latestFrame, retained.latestFrameAtMs, retained.fallen, retained.destruction ?? [], retained.respawns ?? []);
         const elapsedTicks = Math.max(0, Math.ceil((this.clock() - baseAtMs) / TICK_MS));
         resume = { ...state, resumeTick: Math.max(change.resumeTick, baseTick + elapsedTicks) };
       }
     } catch (error) {
-      this.log('warn', 'retained migration state unreadable; booting fresh', { error: error instanceof Error ? error.message : String(error) });
+      this.log('warn', 'retained migration state unreadable', { error: error instanceof Error ? error.message : String(error) });
       resume = null;
+    }
+    // no readable keyframe (audit M1, migrationState.ts migrationFallback): a battle in progress is declined, never
+    // restarted at tick 0; before the battle the countdown starts over on the timeline the clients keep
+    if (!resume) {
+      const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000 });
+      if (fallback.kind === 'decline') {
+        this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation });
+        if (this.host === host) this.host = null;
+        host.stop();
+        this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'no state' });
+        this.migrationActive = false;
+        this.migrationHostId = null;
+        void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
+        return;
+      }
+      resume = { ...fallback.state, resumeTick: fallback.resumeTick };
     }
     if (!plan) {
       plan = welcome ? planFromRoster(welcome.roster, this.room.room) : planHostBoot(round.room, round.matchStart, me);

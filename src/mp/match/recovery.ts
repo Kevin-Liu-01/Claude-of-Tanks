@@ -8,6 +8,16 @@
  */
 import type { TransportState } from '../transport/transport.ts';
 
+/**
+ * The resume hold (2026-10-10; src/mp/host/matchHostCore.ts): a migrated host keeps its world still, and the HELLOs of
+ * the seats it awaits unanswered, for at most this long after its boot. Both clocks read it here (audit M1,
+ * 2026-11-02): the host's hold, and a seat's stall clock on a link to a newly elected host, which allows it before the
+ * WELCOME (RecoveryInput.holdAllowanceMs). Before, one missing seat held the world for the whole 3 s after a 3.4-4.3 s
+ * unprepared boot while every returning seat's 5 s stall clock ran from the election, so each could ask for a fresh
+ * link during the hold and renegotiate while the world was still held.
+ */
+export const RESUME_HOLD_MS = 3_000;
+
 export type ConnectionPhase =
   | 'idle' | 'connecting' | 'handshaking' | 'live' | 'stalled' | 'reconnecting' | 'failed' | 'left' | 'closed';
 
@@ -23,8 +33,15 @@ export interface RecoveryInput {
   welcomed: boolean;
   /** Local time of the last accepted snapshot on the current socket (null before the first). */
   lastAuthorityAtMs: number | null;
-  /** Local time the current socket opened (the stall clock starts here before the first snapshot). */
+  /** Local time the current socket opened (the stall clock starts here before the WELCOME). */
   openedAtMs: number | null;
+  /** Local time the WELCOME was accepted on the current socket (the stall clock starts here before the first snapshot). */
+  welcomedAtMs?: number | null;
+  /**
+   * How much longer than `stallMs` the current socket may wait for its WELCOME: RESUME_HOLD_MS on a link to a host the
+   * room just elected (it may hold this seat's HELLO that long), 0 otherwise.
+   */
+  holdAllowanceMs?: number;
   /**
    * The last local time this tab's own tasks were seen starved (a long task, or a loop yielding with scheduler.yield,
    * whose continuations run ahead of the data channel's message tasks): the stall clock restarts there. Null or absent:
@@ -91,7 +108,10 @@ export class ConnectionRecovery {
       // 2026-10-15 (the MP stream): a stall is authority missing while this tab could have read it. Every main rejoin of
       // the §7 side-by-side opened a second link 7 s in: its roster painting (6-7 s, yielding with scheduler.yield)
       // starved the channel's message tasks, the frames ran on, and 5 s without an accepted snapshot read as a dead host.
-      const progressMs = Math.max(input.lastAuthorityAtMs ?? input.openedAtMs ?? input.nowMs, input.starvedAtMs ?? -Infinity);
+      // The clock's origin is the newest of: the last accepted snapshot, the WELCOME (a held seat is welcomed when the hold
+      // ends), and the socket's open, plus the hold a newly elected host may keep it for (audit M1).
+      const handshakeFromMs = input.openedAtMs === null ? input.nowMs : input.openedAtMs + Math.max(0, input.holdAllowanceMs ?? 0);
+      const progressMs = Math.max(input.lastAuthorityAtMs ?? input.welcomedAtMs ?? handshakeFromMs, input.starvedAtMs ?? -Infinity);
       if (input.nowMs - progressMs >= this.stallMs) {
         next = 'stalled';
         if (this.lostAtMs === null) {

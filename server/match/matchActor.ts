@@ -17,7 +17,7 @@ import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
 } from '../../src/sim/authoritativeMatch.ts';
-import { matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
+import { endingHoldExpired, matchRulesetFor, terrainVariantFor, type MatchRuleset } from '../../src/sim/matchRuleset.ts';
 import { normalizeGameMode, type GameModeId } from '../../src/sim/matchModes.ts';
 import { SIM_DT } from '../../src/sim/movement.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
@@ -104,6 +104,15 @@ export interface MatchActorResume {
    * the clients' controls aimed that far ahead. Without it the loop starts at `tick` when it starts.
    */
   dueAtMs?: number;
+  /**
+   * The phase the old host was in (audit M1, 2026-11-02; 'playing' when absent). Every resume used to skip the countdown
+   * and run, so a host lost during the countdown went live at once while its peers were still in their covered entry,
+   * and a keyframe sealed after the verdict resumed as a running match. Now a countdown resumes with `countdownMs` left
+   * and an ended match stays ended with its `verdict` (the authority's restoreVerdict: no event, the hold spent).
+   */
+  phase?: 'countdown' | 'playing' | 'ended';
+  countdownMs?: number;
+  verdict?: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
 }
 
 export interface MatchActorOptions {
@@ -126,6 +135,8 @@ export interface MatchActorOptions {
   resume?: MatchActorResume | null;
   log?: Logger;
   onVerdict?: (verdict: MatchVerdict) => void;
+  /** The actor stopped (its own end after the verdict's linger, or a stop() from its owner); called once, after its clients are detached. */
+  onStop?: (reason: CloseReasonId) => void;
   now?: () => number;
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
@@ -215,6 +226,28 @@ export interface ActorClientStats {
   interest: InterestStats;
 }
 
+/**
+ * The match's one phase (audit M3, 2026-11-02), owned by the actor and read through MatchActor.phase: the authority's
+ * loading | countdown | playing, then `ending` (the verdict is in and the ruleset's ending hold runs: the field alive,
+ * guns silent), `ended` (the hold is spent: the field stands still while the actor lingers, publishing it) and
+ * `stopped` (the actor released the room). Before, the authority's MatchPhase stopped at playing, the actor layered
+ * `ended`/`stopped` booleans on it, and the full phase was rebuilt three ways (the actor's stats, the control API and
+ * the LAN host's status, which fell back to 'unknown').
+ */
+export type MatchActorPhase = 'loading' | 'countdown' | 'playing' | 'ending' | 'ended' | 'stopped';
+/** The phase in the rooms' status vocabulary (MatchHostStatus.phase): the hold and its end are both 'ended'. */
+export type MatchStatusPhase = 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped';
+
+/** The one status reading of a match phase (the control API, the LAN host, the actor's stats and the host core's reports). */
+export function matchStatusPhase(phase: MatchActorPhase): MatchStatusPhase {
+  return phase === 'ending' ? 'ended' : phase;
+}
+
+/** A match past its verdict, or stopped: a new start may replace it. */
+export function matchConcluded(phase: MatchActorPhase): boolean {
+  return phase === 'ending' || phase === 'ended' || phase === 'stopped';
+}
+
 export interface MatchActorStats {
   roomId: string;
   mapId: string;
@@ -255,6 +288,8 @@ export interface MatchActor {
   /** The ruleset the match plays by (the WELCOME's rulesetJson): the mode's table bent by the room's arrangement. */
   readonly ruleset: MatchRuleset;
   readonly tick: number;
+  /** The match's phase (MatchActorPhase): the one reading every status and restart gate goes through. */
+  readonly phase: MatchActorPhase;
   readonly ended: boolean;
   readonly stopped: boolean;
   readonly authority: AuthoritativeMatch;
@@ -310,6 +345,8 @@ interface ActorClient {
   droppedSnapshots: number;
   malformed: number;
   pressureSinceMs: number | null;
+  /** The first snapshot backpressure withheld since this client's last published one (SNAPSHOT_STARVED_CLOSE_MS); null while it is fed. */
+  starvedSinceMs: number | null;
   /** When the WELCOME went out: the start of the client's entry grace (ENTRY_BACKPRESSURE_GRACE_MS). */
   welcomedAtMs: number;
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
@@ -335,6 +372,16 @@ export const VIEWER_CHECKPOINT_EVERY_SNAPSHOTS = 1;
 const BACKPRESSURE_SOFT_BYTES = 64 * 1024;
 const BACKPRESSURE_HARD_BYTES = 512 * 1024;
 const BACKPRESSURE_SUSTAINED_MS = 2000;
+/**
+ * The longest a viewer may go without a published snapshot while backpressure withholds them (audit S1, 2026-11-02),
+ * outside its entry grace (inside it: the entry's sustained limit). The skip band (SNAPSHOT_SKIP_BYTES up to the soft
+ * bound) never closed a link, and the soft band's clock restarted whenever a reading dipped to the soft bound or
+ * under, so a link stalled in the skip band, or swinging across the soft bound, starved its viewer indefinitely. This
+ * clock runs from the first withheld snapshot across both bands and every dip, and only a published snapshot stops it.
+ * Past it the link closes as BACKPRESSURE "starved" and the seat comes back on a fresh link with a keyframe. It is past
+ * the client's own stall clock (5 s, match/recovery.ts), so a client that can still ask for a fresh link does so first.
+ */
+export const SNAPSHOT_STARVED_CLOSE_MS = 10_000;
 /**
  * 2026-10-10 (the black-screen lane; an ABBA under load ~110: the room found the creator's tab silent while its own entry
  * blocked it and elected the next seat, whose actor then closed both peers, the demoted creator and the third seat, with
@@ -387,13 +434,17 @@ function clampI16(value: number): number {
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
-    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
+    log = silentLogger, onVerdict, onStop, now = () => performance.now(), schedule, autoStart = true,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
   if (resume && (!Number.isInteger(resume.tick) || resume.tick < 0 || !(resume.battleTimeMs >= 0) || !Number.isFinite(resume.battleTimeMs)
       || (resume.dueAtMs !== undefined && !Number.isFinite(resume.dueAtMs)))) {
     throw new TypeError('resume needs an integer tick >= 0, a finite battleTimeMs >= 0 and a finite dueAtMs if any');
+  }
+  if (resume && ((resume.phase !== undefined && resume.phase !== 'countdown' && resume.phase !== 'playing' && resume.phase !== 'ended')
+      || (resume.countdownMs !== undefined && !(resume.countdownMs >= 0 && Number.isFinite(resume.countdownMs))))) {
+    throw new TypeError('resume phase must be countdown, playing or ended, and its countdownMs finite and >= 0');
   }
   const mode: GameModeId = normalizeGameMode(options.mode ?? 'standard');
   const ruleset = options.ruleset && options.ruleset.mode === mode ? options.ruleset : matchRulesetFor(mode);
@@ -411,6 +462,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
   );
+  /** The time without a published snapshot that closes this client (SNAPSHOT_STARVED_CLOSE_MS; the entry's sustained limit in its grace). */
+  const starvedLimitMs = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : SNAPSHOT_STARVED_CLOSE_MS
+  );
   /** The buffered bytes that close this client at once: ENTRY_BACKPRESSURE_HARD_BYTES while it is in its entry grace. */
   const hardPressureBytes = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? ENTRY_BACKPRESSURE_HARD_BYTES : BACKPRESSURE_HARD_BYTES
@@ -418,9 +473,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
   const publishFailures = new WeakSet<object>();
-  // A resumed match skips the countdown and its clock limit counts from where the old host left it.
+  // A resumed match continues its countdown or its battle where the old host left it (MatchActorResume.phase), its clock
+  // limit counting from the battle time already played.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
-  const countdownS = resume ? 0 : options.countdownS ?? 5;
+  const resumedVerdict = resume?.phase === 'ended' && resume.verdict ? resume.verdict : null;
+  const countdownS = resume ? (resume.phase === 'countdown' ? (resume.countdownMs ?? 0) / 1000 : 0) : options.countdownS ?? 5;
   const rulesetLimitS = typeof ruleset.timeLimitS === 'number' && Number.isFinite(ruleset.timeLimitS) ? ruleset.timeLimitS : null;
   const effectiveBattleLimitS = battleLimitS != null ? Math.max(1, battleLimitS - resumedBattleTimeMs / 1000)
     : resume && rulesetLimitS !== null ? Math.max(1, rulesetLimitS - resumedBattleTimeMs / 1000) : undefined;
@@ -476,6 +533,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     });
     lagComp = createLagCompensation({ entities: authority.entities });
     bound.hook = lagComp;
+    // an ended match resumes ended: the first tick settles the verdict it carried (settleVerdict), the field stays still
+    if (resumedVerdict) authority.restoreVerdict(resumedVerdict.result, resumedVerdict.reason);
   } catch (error) {
     releaseWorld();
     throw error;
@@ -579,14 +638,37 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     }
   }
 
+  /**
+   * The actor's own reliable events (roster changes, the room service's and the host's) wait while a batch is going out
+   * and follow it, stamped with the tick being stepped (audit M3, 2026-11-02): a detach inside a send loop (a send that
+   * threw) broadcast its roster event re-entrantly, so the remaining clients received it ahead of the batch being sent,
+   * stamped loop.tick, one tick behind that batch's during a step (the loop advances its tick after the callback).
+   */
+  const queuedEvents: WireEvent[] = [];
+  let sendingEvents = 0;
+  let steppingTick: number | null = null;
   function broadcastEvent(event: WireEvent): void {
-    const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: loop.tick, events: [event] };
-    let bytes: Uint8Array;
-    try { bytes = encodeMessage(message); } catch (error) {
-      actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
-      return;
+    queuedEvents.push(event);
+    flushQueuedEvents();
+  }
+
+  function flushQueuedEvents(): void {
+    if (sendingEvents > 0) return;
+    sendingEvents++;
+    try {
+      while (queuedEvents.length) {
+        const event = queuedEvents.shift()!;
+        const message: EventMessage = { type: MESSAGE_TYPE.EVENT, tick: steppingTick ?? loop.tick, events: [event] };
+        let bytes: Uint8Array;
+        try { bytes = encodeMessage(message); } catch (error) {
+          actorLog.warn('event dropped', { kind: event.kind, error: String(error) });
+          continue;
+        }
+        for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
+      }
+    } finally {
+      sendingEvents--;
     }
-    for (const client of clients.keys()) if (send(client, bytes)) { client.events++; totals.events++; }
   }
 
   function rateLimited(client: ActorClient, nowMs: number): boolean {
@@ -754,6 +836,14 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function deliverEvents(tick: number): void {
     if (authority.pendingEventCount === 0) return;
+    sendingEvents++;
+    try { deliverEventBatches(tick); } finally { sendingEvents--; }
+    // a roster change a failed send raised in the batches goes out after them (flushQueuedEvents)
+    flushQueuedEvents();
+    authority.afterEventBroadcast();
+  }
+
+  function deliverEventBatches(tick: number): void {
     for (const client of clients.keys()) {
       const events = authority.eventsForViewer(client.viewerId);
       if (!events.length) continue;
@@ -773,7 +863,6 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       }
       if (send(client, bytes)) { client.events += events.length; totals.events += events.length; }
     }
-    authority.afterEventBroadcast();
   }
 
   function rowFor(entity: AuthoritativeEntity, entityId: number, tick: number): EntityRow {
@@ -931,6 +1020,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     };
   }
 
+  /** Backpressure withheld this client's snapshot: true when that closed it (starved past its limit). */
+  function starved(client: ActorClient, nowMs: number): boolean {
+    client.starvedSinceMs ??= nowMs;
+    if (nowMs - client.starvedSinceMs <= starvedLimitMs(client, nowMs)) return false;
+    totals.backpressureCloses++;
+    detach(client, CLOSE_REASON.BACKPRESSURE, 'starved');
+    return true;
+  }
+
   function publishSnapshots(tick: number): void {
     const nowMs = now();
     // every viewer's row budget this snapshot: the host's uplink target shared by its viewers (interestTiers.ts)
@@ -950,14 +1048,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         else if (nowMs - client.pressureSinceMs > sustainedPressureLimitMs(client, nowMs)) {
           totals.backpressureCloses++;
           detach(client, CLOSE_REASON.BACKPRESSURE, 'sustained');
+          continue;
         }
+        starved(client, nowMs);
         continue;
       }
       client.pressureSinceMs = null;
       if (buffered > SNAPSHOT_SKIP_BYTES) {
-        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be)
+        // a slow peer: this snapshot is skipped (the next one is fresher than a queued copy of this one would be); a
+        // transient skip never closes the link, a viewer starved past its limit does (SNAPSHOT_STARVED_CLOSE_MS)
         client.droppedSnapshots++;
         totals.droppedSnapshots++;
+        starved(client, nowMs);
         continue;
       }
       let published: { bytes: Uint8Array; keyframe: boolean } | null;
@@ -988,6 +1090,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
+        client.starvedSinceMs = null;
       }
       if (profile) profile.sendMs += profile.clock() - sent;
     }
@@ -1022,6 +1125,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function onTick(tick: number, dt: number): void {
     if (stopped) return;
+    steppingTick = tick;
+    try { stepTick(tick, dt); } finally { steppingTick = null; }
+  }
+
+  function stepTick(tick: number, dt: number): void {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
@@ -1073,6 +1181,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     for (const client of [...clients.keys()]) detach(client, reason, detail);
     releaseWorld();
     actorLog.info('actor stopped', { reason, tick: loop.tick });
+    try { onStop?.(reason); } catch (error) { actorLog.error('stop callback failed', { error: String(error) }); }
   }
 
   const revokedPlayers = new Set<string>();
@@ -1117,7 +1226,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       input: createSeatInputBuffer(),
       publisher: createViewerPublisher({ keyframeSlotTicks: keyframeSlotFor(claims.seat), snapshotEveryTicks }),
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
-      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, welcomedAtMs: now(),
+      bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
     };
     clients.set(client, true);
@@ -1136,7 +1245,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       serverTick: loop.tick, serverTimeMs: serverTimeMs(loop.tick), seed: seed >>> 0, capabilities: client.capabilities,
       roomId, mapId, mode, rulesetJson, roster: rosterEntries.map((row) => ({ ...row })),
     });
-    if (!welcomed) return false;
+    // a link that closed under the WELCOME (send returns false on a closed link, without a throw) leaves the seat now
+    // (audit M3, 2026-11-02): before, the client stayed seated and marked connected until a close event that may not follow
+    if (!welcomed) { detach(client, CLOSE_REASON.NONE, 'welcome not sent'); return false; }
     actorLog.info('client welcomed', { seat: client.seat, player: client.playerId, spectator, build: hello.clientBuild.slice(0, 32) });
     if (entity) broadcastEvent({ kind: 'roster', payload: { entityId, playerId: client.playerId, connected: true } });
     return true;
@@ -1171,12 +1282,18 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     return totals;
   }
 
+  function phaseOf(): MatchActorPhase {
+    if (stopped) return 'stopped';
+    if (ended || authority.result) return endingHoldExpired(ruleset, authority.resultTimeS, authority.timeS) ? 'ended' : 'ending';
+    return authority.phase;
+  }
+
   function stats(): MatchActorStats {
     let spectators = 0;
     for (const client of clients.keys()) if (client.spectator) spectators++;
     const lag = lagComp.stats;
     return {
-      roomId, mapId, mode, tick: loop.tick, phase: ended ? 'ended' : authority.phase,
+      roomId, mapId, mode, tick: loop.tick, phase: matchStatusPhase(phaseOf()),
       clients: clients.size, spectators, seatsFilled: clients.size - spectators, bots: bots.length,
       ...totals,
       tickMs: loop.tickCost.summary(),
@@ -1198,6 +1315,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     roomId,
     ruleset,
     get tick() { return loop.tick; },
+    get phase() { return phaseOf(); },
     get ended() { return ended; },
     get stopped() { return stopped; },
     authority,

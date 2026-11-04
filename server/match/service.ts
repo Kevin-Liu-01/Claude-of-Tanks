@@ -23,7 +23,7 @@ import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createLocalRoomService, type LocalRoomOptions, type LocalRoomService } from './localRoomService.ts';
 import { verifySeatToken } from './seatToken.ts';
 import { createMatchControl } from './control.ts';
-import type { MatchStartRequest } from './control.ts';
+import type { MatchStartRequest, MatchStatusSource } from './control.ts';
 import { serverWorldKernels } from './simKernels.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import { simKernelsFailureReason, type SimKernelsStatus } from '../../src/world/simKernelsStatus.ts';
@@ -83,6 +83,8 @@ export interface MatchService {
   readonly url: string;
   readonly draining: boolean;
   readonly actors: ReadonlyMap<string, MatchActor>;
+  /** A room's match for a status read: its actor, or the final reading of one that stopped itself (control.ts MatchStatusSource). */
+  matchStatusSource(roomId: string): MatchStatusSource | undefined;
   /** The embedded room side (tokens + actors) the admin API and local tooling use. */
   readonly rooms: LocalRoomService;
   createActor(options: Omit<MatchActorOptions, 'log' | 'now'> & Partial<Pick<MatchActorOptions, 'log' | 'now'>>): MatchActor;
@@ -274,6 +276,19 @@ export async function createMatchService({
   const kernels: SimKernelsStatus = worldKernels ? { mode: 'wasm' } : { mode: 'ts', reason: kernelsFailure ?? 'off' };
   log.info('world kernels', { kernels: kernels.mode, ...(kernels.reason ? { reason: kernels.reason } : {}) });
   const actors = new Map<string, MatchActor>();
+  // (audit M3, 2026-11-02) an actor that stops itself (its linger after the verdict ran out) leaves `actors` at once,
+  // its authority, histories and per-viewer state with it; it lingered there, counted by /metrics and stats().actors,
+  // until the next createActor reclaimed it. Its final reading stays for the room's next poll (ROOM_MATCH_POLL_MS is
+  // 30 s, longer than the linger), until the room starts or removes its next match; the oldest go past the bound.
+  const concluded = new Map<string, MatchStatusSource>();
+  const MAX_CONCLUDED = 1024;
+  function concludeActor(roomId: string, actor: MatchActor): void {
+    if (actors.get(roomId) !== actor) return;
+    actors.delete(roomId);
+    const result = actor.authority.result, resultReason = actor.authority.resultReason;
+    concluded.set(roomId, Object.freeze({ phase: 'stopped', tick: actor.tick, authority: Object.freeze({ result, resultReason }) }));
+    while (concluded.size > MAX_CONCLUDED) concluded.delete(concluded.keys().next().value!);
+  }
   const startedAt = wallClock();
   const counters = { connections: 0, rejectedUpgrades: 0, rejectedHellos: 0 };
   let draining = false;
@@ -325,7 +340,9 @@ export async function createMatchService({
     for (const [roomId, actor] of actors) if (actor.stopped) actors.delete(roomId);
     if (actors.has(options.roomId)) throw new Error(`room ${options.roomId} already has a match`);
     if (actors.size >= maxActors) throw new Error(`match service is full (${maxActors})`);
-    const actor = createMatchActor({ log, now, worldKernels, ...options });
+    const actor: MatchActor = createMatchActor({ log, now, worldKernels, ...options,
+      onStop: (reason) => { concludeActor(options.roomId, actor); options.onStop?.(reason); } });
+    concluded.delete(options.roomId);
     actors.set(options.roomId, actor);
     log.info('actor created', { room: options.roomId, map: options.mapId, seats: options.seats.length, bots: options.bots?.length ?? 0 });
     return actor;
@@ -335,7 +352,7 @@ export async function createMatchService({
     controlSecret,
     matchPath: WS_PATH,
     port: {
-      actor: (roomId) => actors.get(roomId),
+      actor: (roomId) => actors.get(roomId) ?? concluded.get(roomId),
       createActor: (request: MatchStartRequest) => createActor({
         roomId: request.roomId, mapId: request.mapId, mode: request.mode, seed: request.seed, seats: request.seats, bots: request.bots,
         countdownS: request.countdownS, battleLimitS: request.battleLimitS ?? defaultBattleLimitS,
@@ -490,7 +507,8 @@ export async function createMatchService({
 
   function removeActor(roomId: string, reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED): boolean {
     const actor = actors.get(roomId);
-    if (!actor) return false;
+    const hadConcluded = concluded.delete(roomId);
+    if (!actor) return hadConcluded;
     actors.delete(roomId);
     actor.stop(reason);
     return true;
@@ -501,6 +519,7 @@ export async function createMatchService({
     get url() { return boundUrl(); },
     get draining() { return draining; },
     actors,
+    matchStatusSource: (roomId) => actors.get(roomId) ?? concluded.get(roomId),
     get rooms() { return rooms; },
     createActor,
     removeActor,

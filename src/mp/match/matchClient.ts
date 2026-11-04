@@ -31,7 +31,7 @@ import { RemoteInterpolator } from './interpolation.ts';
 import type { EntitySample, FrameMetaSample, InterpolatorOptions, ShellSample } from './interpolation.ts';
 import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
-import { ConnectionRecovery } from './recovery.ts';
+import { ConnectionRecovery, RESUME_HOLD_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
 import type { RetainedBlob } from './migrationStore.ts';
@@ -146,6 +146,12 @@ export interface RetainedMigrationState {
   /** Every destruction entry a `structure_stage` (later a breach or a crater) named this round: like `fallen`, a link
    * reset clears the queue, never this. */
   destruction?: readonly DestructionLogEntry[];
+  /**
+   * The tick of each entity's newest `mode_respawn` this client was told of, by authoritative id (audit M1, review round
+   * 2): a hull a mode revived after the keyframe lives a life its extras never saw (migrationState.ts
+   * resumeStateFromRetained). Every viewer receives mode events.
+   */
+  respawns?: readonly (readonly [id: string, tick: number])[];
 }
 
 export interface MatchClientStats {
@@ -291,6 +297,12 @@ export class MatchClient {
   private ownAuthorityAtMs: number | null = null;
   private lastAuthorityAtMs: number | null = null;
   private openedAtMs: number | null = null;
+  /** When the current socket's WELCOME was accepted (a held seat's comes when its new host's resume hold ends). */
+  private welcomedAtMs: number | null = null;
+  /** The host generation of the newest WELCOME: a socket opened under a newer one is a link to a newly elected host. */
+  private welcomedGeneration = 0;
+  /** The current socket's pre-WELCOME allowance (RecoveryInput.holdAllowanceMs). */
+  private holdAllowanceMs = 0;
   private lastPingAtMs = -Infinity;
   private pingsSent = 0;
   private pingKey = 0;
@@ -308,6 +320,8 @@ export class MatchClient {
   private readonly fallenObstacles = new Set<number>();
   /** Every stage a `structure_stage` named this round (RetainedMigrationState.destruction). */
   private readonly retainedDestruction: DestructionLogEntry[] = [];
+  /** The tick of each entity's newest `mode_respawn` this round, by authoritative id (RetainedMigrationState.respawns). */
+  private readonly respawnTicks = new Map<string, number>();
   private latestDestruction: readonly DestructionLogEntry[] = [];
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
@@ -426,6 +440,7 @@ export class MatchClient {
       keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
       fallen: [...this.fallenObstacles],
       destruction: this.retainedDestruction.slice(),
+      respawns: [...this.respawnTicks],
     };
   }
 
@@ -607,6 +622,9 @@ export class MatchClient {
     if (this.disposed) return;
     if (change.state === 'open') {
       this.openedAtMs = this.clock();
+      // a link to the host the room just elected (the session followed its host_changed: migration.setGeneration): that
+      // host may hold this seat's HELLO for its resume hold, so the stall clock allows it (audit M1, recovery.ts)
+      this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? RESUME_HOLD_MS : 0;
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
       // The hint is dated by the row's capture tick (the last time the authority captured the pose fresh), never the
@@ -618,6 +636,7 @@ export class MatchClient {
       if (hint) this.sendResumeHint(hint.tick, hint);
     } else if (change.state === 'reconnecting') {
       this.welcomeMessage = null;
+      this.welcomedAtMs = null;
       this.inputStream.clearPendingEdges();
       this.ownShots.cancel();
       this.pendingPings.length = 0;
@@ -651,6 +670,7 @@ export class MatchClient {
     this.ownAuthorityTick = -1;
     this.ownAuthorityAtMs = null;
     this.lastAuthorityAtMs = null;
+    this.welcomedAtMs = null;
     this.keyframeRequestedForGap = false;
     this.pendingSpectatorAck = NO_TICK;
   }
@@ -771,6 +791,8 @@ export class MatchClient {
       this.snapshots.setTicksPerSnapshot(TICK_HZ / welcome.snapshotHz);
     }
     this.welcomeMessage = welcome;
+    this.welcomedAtMs = nowMs;
+    this.welcomedGeneration = this.migration.hostGeneration;
     this.helloRetriesLeft = MAX_HELLO_RETRIES;
     this.timeUnwrap.reset();
     const serverTimeMs = this.timeUnwrap.unwrap(welcome.serverTimeMs);
@@ -918,6 +940,8 @@ export class MatchClient {
       if (event.kind === 'world_prop_destroyed') {
         const index = Number(event.payload.obstacleIndex);
         if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+      } else if (event.kind === 'mode_respawn') {
+        if (typeof event.payload.id === 'string') this.respawnTicks.set(event.payload.id, message.tick);
       } else if (event.kind === 'structure_stage') {
         const structureId = Number(event.payload.structureId), stage = event.payload.stage;
         if (Number.isSafeInteger(structureId) && structureId >= 0
@@ -1038,6 +1062,8 @@ export class MatchClient {
       welcomed: this.welcomeMessage !== null,
       lastAuthorityAtMs: this.lastAuthorityAtMs,
       openedAtMs: this.openedAtMs,
+      welcomedAtMs: this.welcomedAtMs,
+      holdAllowanceMs: this.holdAllowanceMs,
       starvedAtMs: this.starvedAtMs,
     });
     if (step.requestReconnect) {

@@ -3265,6 +3265,12 @@ function settleBattleResult(
   } else {
     applyTimedModeResult(game);
   }
+  // a verdict the mode did not reach latches as the mode controller's own (audit M3, as the authority's finishMatch
+  // tells it): through the ending hold the mode scores, respawns and starts waves no more, and names no other winner
+  if (game.result !== null && !modeOutcome) {
+    const winner = game.result === 'draw' ? 'draw' : (game.result === 'victory') === (playerTeam === 'alpha') ? 'alpha' : 'bravo';
+    game.matchModeController?.matchEnded(winner, game.resultReason ?? '');
+  }
   if (game.result !== null) {
     game.resultTimeS = game.timeS;
     game.jev?.stop();
