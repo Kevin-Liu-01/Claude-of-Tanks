@@ -214,14 +214,15 @@ interface TankInfo {
   vy: number;
   vz: number;
   identity: VehicleAudioIdentity;
+  /** The spec id and nation the crew is resolved from (a same-entity vehicle change re-resolves it). */
+  specId: string;
   nation: string;
   alive: boolean;
   spotted: boolean;
   /** Wears a field net and garnish (its visual's userData.fieldSuit; null until a visual has been seen). */
   suited: boolean | null;
-  /** The fleet id its weapons' loaders are read by (MAIN_GUN_LOADER), and its gun's mounts (rebuilt when the gun changes:
-   *  a Gun Game step or the AC-130 swaps the gun object). */
-  specId: string;
+  /** Its gun and the gun's mounts (rebuilt when the gun changes: a Gun Game step or the AC-130 swaps the gun object); the
+   *  mounts' loaders are read by `specId` (MAIN_GUN_LOADER). */
   gun: AudioSpec['gun'] | null;
   mounts: readonly WeaponMount[];
 }
@@ -1900,8 +1901,8 @@ export function createAudio({
       if (!info) {
         info = {
           team: String(entity.team ?? ''), isPlayer: !!entity.isPlayer, pos: p, lastX: p.x, lastY: p.y, lastZ: p.z,
-          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false, suited: null,
-          specId: String(entity.specId ?? entity.spec?.id ?? ''), gun: null, mounts: [],
+          vx: 0, vy: 0, vz: 0, identity: identityFor(entity), specId: String(entity.specId ?? entity.spec?.id ?? ''), nation: String(entity.spec?.nation ?? ''), alive: !entity.combat?.destroyed, spotted: false, suited: null,
+          gun: null, mounts: [],
         };
         tanks.set(entity.id, info);
       }
@@ -1913,8 +1914,10 @@ export function createAudio({
       }
       info.team = String(entity.team ?? info.team);
       info.isPlayer = !!entity.isPlayer;
+      const specId = String(entity.specId ?? entity.spec?.id ?? '');
       const nation = String(entity.spec?.nation ?? '');
-      const nationChanged = info.nation !== nation;
+      const vehicleChanged = info.nation !== nation || info.specId !== specId;
+      info.specId = specId;
       info.nation = nation;
       info.pos = p;
       if (dt > 1e-4) {
@@ -1932,7 +1935,7 @@ export function createAudio({
         applyCrewLanguage();
         preloadVehicle(info.identity);
         preloadOwnWeapons(info);
-      } else if (entity.isPlayer && nationChanged) applyCrewLanguage();
+      } else if (entity.isPlayer && vehicleChanged) applyCrewLanguage();
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
     if (!bossChecked && getGameMode?.() === 'juggernaut') markJuggernaut(list);
@@ -1997,8 +2000,8 @@ export function createAudio({
 
   function applyCrewLanguage(): void {
     if (!radio) return;
-    const nation = playerId ? tanks.get(playerId)?.nation : null;
-    radio.setLanguage(forcedCrewLanguage ?? resolveCrewLanguage(nation, crewVoice));
+    const player = playerId ? tanks.get(playerId) : null;
+    radio.setLanguage(forcedCrewLanguage ?? resolveCrewLanguage(player?.specId, player?.nation, crewVoice));
   }
 
   // Per-frame scratch (no allocation in the update loop).

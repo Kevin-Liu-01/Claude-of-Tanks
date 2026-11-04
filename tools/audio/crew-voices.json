@@ -1,5 +1,5 @@
 {
-  "$comment": "Crew radio cast per language (commander = voice A; gunner, loader and driver = voice B). Serious, mature Voice Library voices chosen by tools/audio/voice-audition.mjs (2026-10-02 recast: speech-to-text clean on the working-register test calls, lower and darker voices preferred; upbeat and energetic profiles removed). Spoken with eleven_v4 at stability 0.6.",
+  "$comment": "Crew radio cast per language (commander = voice A; gunner, loader and driver = voice B). Serious, mature Voice Library voices chosen by tools/audio/voice-audition.mjs (2026-10-02 recast: speech-to-text clean on the working-register test calls, lower and darker voices preferred; upbeat and energetic profiles removed). Spoken with eleven_v4 at stability 0.6. 2026-11-03 (crew voices 269): Danish, Brazilian Portuguese, Australian English and Afrikaans casts auditioned the same way; both Afrikaans voices are native speakers and scribe_v2 verifies their takes.",
   "model": "eleven_v4",
   "cast": {
     "en-US": {
@@ -285,6 +285,94 @@
           "sim": 1,
           "pitchHz": 142,
           "centroidHz": 2393
+        }
+      }
+    },
+    "da": {
+      "commander": {
+        "voice_id": "KLwMtB9otYg9CFf7AUWc",
+        "name": "Claus  Christensen",
+        "public_owner_id": "4dd8d6029ca59890b256cf1b4190de0b79a8ba78dcef938a98deb2c09499cbdf",
+        "audition": {
+          "sim": 0.94,
+          "pitchHz": 151,
+          "centroidHz": 2274
+        }
+      },
+      "crew": {
+        "voice_id": "qhEux886xDKbOdF7jkFP",
+        "name": "Peter - Natural, Crisp and Clear",
+        "public_owner_id": "1273e7ce7c67eafa8fe08178fa65acba3e0e1e51d0f83806be97de30415edf3d",
+        "audition": {
+          "sim": 0.94,
+          "pitchHz": 166,
+          "centroidHz": 1948
+        }
+      }
+    },
+    "pt-BR": {
+      "commander": {
+        "voice_id": "y3X5crcIDtFawPx7bcNq",
+        "name": "Eliel - Deep, Gravly and Commanding",
+        "public_owner_id": "af083559dc237b654a9a5cd11fa2a01323a971dcf7e0a84711ae50323d4ecc90",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 124,
+          "centroidHz": 1743
+        }
+      },
+      "crew": {
+        "voice_id": "TY3h8ANhQUsJaa0Bga5F",
+        "name": "Cassio Cruz - Confident and Direct",
+        "public_owner_id": "4a1e1e70443389dbbe011369dd2b5fa512154fed6d8299139adf74fdd140b216",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 156,
+          "centroidHz": 2168
+        }
+      }
+    },
+    "en-AU": {
+      "commander": {
+        "voice_id": "9B2Vd5yQ7rKaqNmzGdy1",
+        "name": "Steve Hogan - Australian deep tone",
+        "public_owner_id": "e33eb547f8af39719b57253a6230915455d19c17d3f7781cabe273337a2e5df2",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 159,
+          "centroidHz": 2096
+        }
+      },
+      "crew": {
+        "voice_id": "tWGXkYJGea4wMBN4mLD1",
+        "name": "CS New ",
+        "public_owner_id": "827b91fe3d066cb5a21cae526b174b54af914b4d10e2451be1438e16acfc031a",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 166,
+          "centroidHz": 1878
+        }
+      }
+    },
+    "af": {
+      "commander": {
+        "voice_id": "IT5cb4lfodSX8eyXUzyO",
+        "name": "Charles Onselen - Deep and Inviting",
+        "public_owner_id": "e203f96653293c0764cd4212bd065adf255eb9774f6b00eec18cd3ded5979d3b",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 147,
+          "centroidHz": 2395
+        }
+      },
+      "crew": {
+        "voice_id": "oCiGCF0Ba08sC5DE7Cfe",
+        "name": "Frederik - Corporate Resonant Narration",
+        "public_owner_id": "d572245729acf8303961f5a03fbcf4ecbeb0f4c889ec71c56c53af5c7309c5e1",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 168,
+          "centroidHz": 2293
         }
       }
     }
