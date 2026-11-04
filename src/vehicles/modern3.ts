@@ -1878,10 +1878,12 @@ export function* buildBradleyHullSteps(P: Modern3BuilderPort): TankProfileBuild 
   yield 'buildBradleyHullStage3';
   const buildBradleyRunningGearStage1 = (): void => {
     // VEH-13 spare links on the right upper glacis (the driver's periscopes hold the left), on the family's plane
+    // (268: at the station the seat solver found on the M3A2, where the measured plate meets the family's plane and the
+    // trim vane carries the lower rail; at the old z 2.18 the plate falls 6.7 cm under that plane and the run hovered)
     const links = FITTINGS.spareTrackLinks({
       mats: P.mats, links: 4, width: 0.48, seed: 9, rotation: [BRADLEY_GLACIS.angleRad, 0, 0],
     });
-    const lz = 2.18, lift = 0.03;
+    const lz = 2.444, lift = 0.03;
     links.position.set(-0.62, BRADLEY_GLACIS.yAt(lz) + BRADLEY_GLACIS.normalOutward.y * lift, lz + BRADLEY_GLACIS.normalOutward.z * lift);
     P.hullG.add(links);
     buildRunningGear(P, { ...BRADLEY_GEAR, wheelZs: [...BRADLEY_GEAR.wheelZs],
