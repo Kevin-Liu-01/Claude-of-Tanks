@@ -56,6 +56,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   k2X: Object.freeze(['k2_black_panther']),
   kf51X: Object.freeze(['kf51_panther']),
   t14X: Object.freeze(['t14_armata']),
+  // release 269: the Russian 152 mm line (profiles/russia152.ts)
+  russia152: Object.freeze(['object292', 'object477_molot', 'object195', 't14_152']),
   kurganetsX: Object.freeze(['kurganets25']),
   fv510MilanX: Object.freeze(['warrior_tes_h']),
   griffin50X: Object.freeze(['griffin50mm']),

@@ -156,6 +156,7 @@ const GROUP_LOADERS = Object.freeze({
   k2X: () => import('./profiles/k2X.ts').then((mod) => registerProfiles(mod.K2_X_PROFILES)),
   kf51X: () => import('./profiles/kf51X.ts').then((mod) => registerProfiles(mod.KF51_X_PROFILES)),
   t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
+  russia152: () => import('./profiles/russia152.ts').then((mod) => registerProfiles(mod.RUSSIA_152_PROFILES)),
   kurganetsX: () => import('./profiles/kurganetsX.ts')
     .then((mod) => registerProfiles(mod.KURGANETS_X_PROFILES)),
   fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ warrior_tes_h: { build: mod.buildFv510MilanX } })),

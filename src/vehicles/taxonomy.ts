@@ -95,6 +95,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
     // release 264: the Longwei family, fleet hulls under a modernized Longwei turret
     'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
+    // release 269: the Object 292, a T-80BV under a 152 mm turret (the 152 mm line's clean-sheet tanks are next generation)
+    'object292',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.
@@ -102,6 +104,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
     'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
     'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
+    // release 269: the Russian 152 mm line's clean-sheet tanks (the Object 292 is a T-80U and modern)
+    'object477_molot', 'object195', 't14_152',
   ]),
 });
 

@@ -60,6 +60,8 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
 import './type90bSpecs.ts';
+// release 269: the Russian 152 mm line (the T-14 152 clones the source-X T-14 registered above)
+import './russia152Specs.ts';
 import './christian2Specs.ts';
 import './m48VariantSpecs.ts';
 import './shotKalSpecs.ts';

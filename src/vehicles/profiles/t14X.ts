@@ -14,6 +14,8 @@ import { t14XReturnRollers } from './t14XReturnRollers.ts';
 const { box, cylY, cylZ, torus } = KIT;
 const RING_Y = 1.69;
 const RING_Z = -.22;
+/** The ring datum the T-14 152 (profiles/t14_152X.ts) builds its 2A83 gun house on. */
+export const T14X_RING = Object.freeze({ y: RING_Y, z: RING_Z });
 const localY = (worldY: number) => worldY - RING_Y;
 const localZ = (worldZ: number) => worldZ - RING_Z;
 
@@ -27,7 +29,8 @@ function tubSection(z: number, width: number, roof: number, bottom: number): Sol
     [-width + .10, roof], [-width, roof - .035], [-width, step], [-inner, step]] };
 }
 
-function addHull(P: TankBuilderPort): void {
+/** The Armata hull and running gear, shared by the T-14 and the T-14 152 (profiles/t14_152X.ts). */
+export function addHull(P: TankBuilderPort): void {
   P.add('hull', sectionSolid([
     tubSection(-3.878, 1.34, 1.66, 1.423),
     tubSection(-3.8052, 1.60, 1.67, 1.20),
@@ -429,7 +432,9 @@ function addSightCavity(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', cylZ(.065, .025674, 20), .80, localY(2.29), localZ(.664163));
 }
 
-function addTurret(P: TankBuilderPort): void {
+/** The unmanned turret. `gun152` (the T-14 152, profiles/t14_152X.ts): the 2A83's larger mantlet takes the gun
+ * opening, so its gun house replaces the 2A82's upper lintel and its lower bearing sits lower. */
+export function addTurret(P: TankBuilderPort, gun152 = false): void {
   P.add('turret', cylY(.98, .98, .14, 48), 0, .055, 0);
   // Narrow structural core does not fill the APS space underneath the shroud.
   P.add('turret', sectionSolid([
@@ -447,8 +452,8 @@ function addTurret(P: TankBuilderPort): void {
   ]));
   // Central gun opening has a real upper lintel and lower armored bearing,
   // leaving the moving mantlet unobstructed instead of building a front box.
-  frontPanel(P, 1, -.40, .40, 2.32, 2.51, .42);
-  P.add('turret', box(.78, .085, .68), 0, localY(1.84), localZ(.94));
+  if (!gun152) frontPanel(P, 1, -.40, .40, 2.32, 2.51, .42);
+  P.add('turret', box(.78, .085, .68), 0, localY(gun152 ? 1.775 : 1.84), localZ(.94));
   frontPanel(P, -1, .39, .48, 1.98, 2.50, .46);
   for (const [x0, x1] of [[.48, .70], [.70, .90], [.90, .99]]) {
     frontPanel(P, -1, x0, x1, 1.98, 2.25, .46);
@@ -493,8 +498,10 @@ function addTurret(P: TankBuilderPort): void {
   }
 }
 
-function addRoofEquipment(P: TankBuilderPort): void {
+/** The roof stations. `gun152`: the 2A83's gun house takes the centre column of roof panels. */
+export function addRoofEquipment(P: TankBuilderPort, gun152 = false): void {
   for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
+    if (gun152 && col === 1) continue;
     const x = (col - 1) * .48, z = .12 - row * .49;
     // each roof panel and its bolts lie on the roof under them (owner 2026-10-19 sweep: up to 5 cm over it)
     P.snapGroup('t14-roof-panel', () => {

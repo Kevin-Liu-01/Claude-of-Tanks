@@ -114,6 +114,8 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t90a:b32Heavy,t90a_vladimir:b32Heavy,t90m:b32Heavy,
   t90sm:b32Heavy,t90ms_tagil:b32Heavy,
   t14_armata:b32Rifle,object148_proto:ubr6,
+  // release 269: the 152 mm line's 30 mm cannons (the Object 195's 2A42, the Molot's GSh-30) and the T-14 152's T-14 station
+  object195:ubr6,object477_molot:ubr6,t14_152:b32Rifle,
   vt4a1:type54,ztz100:type54,ztz20:type54,
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
