@@ -993,11 +993,64 @@ const SPOTS_NIGHT = [
 const nightSpots = SPOTS_NIGHT.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
   `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants + 2, proc: 'spot' }));
 
+// impact-materials-269 (owner 2026-11-03: "ricochets off ground shouldnt sound like metal"): every impact sounds of the
+// material it struck (src/audio/impactMaterials.ts). The ground's skips, the running gear, skirts, cages, racks and wrecks
+// a round strikes, the steel ricochet's whine alone (under a steel strike, never anywhere else), the spall of the driver's
+// station and the engine bay, the near misses of autocannon and supersonic full-bore rounds, bullets and debris by the
+// ground. Nothing here rings or whines but the whine itself: every other prompt excludes them.
+const NO_RING = 'No metal, no ring, no clang, no ricochet whine, no explosion';
+const SKIP = 'One-shot of a solid tank shell skipping off';
+const STRIKE = 'One-shot of a tank shell';
+const impactMaterials = [
+  // a ground graze: the round skips off the ground at a shallow angle (impactAngleDeg >= 72)
+  sfx('graze_earth', 'impacts', `${SKIP} flat open ground at a shallow angle, recorded 30 metres away: a dull heavy thump into the earth, a spray of dirt and torn turf thrown forward, the round tumbling away with a low flutter. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  // graze_sand, graze_snow, strike_wreck and spall_driver were re-prompted under the ear proxy (gun-reports-269's YAMNet,
+  // 2026-11-04): a 'low flutter' was heard as a motorcycle, a fart or a zipper, a 'hissing sheet' of sand as spray paint
+  // and tools, a wreck's 'hollow boom' and the driver's 'deafening bang' as a drum.
+  sfx('graze_sand', 'impacts', `${SKIP} loose desert sand at a shallow angle, recorded 30 metres away: a heavy dull thud into the sand, a sheet of sand thrown forward and raining back down, the round whooshing away. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 12, proc: 'impact' }),
+  sfx('graze_mud', 'impacts', `${SKIP} wet muddy ground at a shallow angle, recorded 30 metres away: a heavy wet slap into the mud, mud and water spattering, the round tumbling away with a low flutter. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('graze_snow', 'impacts', `${SKIP} deep snow at a shallow angle, recorded 30 metres away: a heavy muffled thud into packed snow, a crunching spray of snow and ice chunks thrown forward and falling back, the round whooshing away. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('graze_paved', 'impacts', `${SKIP} an asphalt road at a shallow angle, recorded 30 metres away: a hard flat crack on the road surface, chips of asphalt and grit scattering across it, the round tumbling away with a low flutter. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('graze_water', 'impacts', `${SKIP} the flat surface of a lake at a shallow angle, recorded 30 metres away: a sharp slapping splash and a long tearing sheet of spray as the round skips on across the water. ${NO_RING}, ${NO_MUSIC}.`, 1.8, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  // what a round strikes on a tank besides its armour plate (sim/plateMaterial.ts)
+  sfx('strike_track', 'impacts', `${STRIKE} smashing into a tank's steel track at close range: a heavy hard clank of steel track links, link pins and broken links rattling and slapping against the road wheels. A short dull steel blow, no bell-like ring, no ricochet whine, no explosion, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('strike_wheel', 'impacts', `${STRIKE} smashing into a tank's road wheel at close range: a heavy deep dull blow of a steel wheel and its rubber tyre, the suspension arm clunking hard. No bell-like ring, no ricochet whine, no explosion, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('strike_rubber', 'impacts', `${STRIKE} tearing through a tank's thick rubber side skirt at close range: a flat heavy slap and a ripping tear of rubber and fabric, the torn skirt flapping. ${NO_RING}, ${NO_MUSIC}.`, 1.4, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('strike_cage', 'impacts', `${STRIKE} smashing into the slat armour cage of steel bars around a tank's turret: a loud clattering crash of steel bars bending and rattling, bolts snapping. No bell-like ring, no ricochet whine, no explosion, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('strike_stowage', 'impacts', `${STRIKE} tearing through a tank turret's bustle rack full of stowed kit: a heavy thump into packed canvas bags, tarpaulins and jerrycans, the steel mesh basket rattling, kit tumbling out. ${NO_RING}, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  sfx('strike_wreck', 'impacts', `${STRIKE} slamming into the side of a burnt-out tank wreck, recorded 20 metres away: one heavy, dull, dead thud of thick scorched steel struck hard, like a sledgehammer on heavy steel plate, loose burnt fittings rattling, ash and grit pouring down. No bright ring, no ricochet whine, no explosion, ${NO_MUSIC}.`, 1.6, { inf: 0.6, variants: 3, takes: 8, proc: 'impact' }),
+  // the deflected round leaving a steel face: under a steel strike only (impactMaterials.ts WHINE)
+  sfx('ricochet_whine', 'impacts', `Sound effect: the ricochet whine of a heavy round deflected off steel armour, heard close by: one single high whistling whine that bends down in pitch as the tumbling round flies off, fading away fast. Only the whine: no impact, no clang, no explosion. ${NO_MUSIC}.`, 1.4, { inf: 0.7, variants: 3, takes: 8, proc: 'oneshot' }),
+  // a penetration's spall by the compartment it bursts into (the fighting compartment's is pen_interior)
+  sfx('spall_driver', 'impacts', `One-shot recorded in the driver's seat inside a tank as an enemy shell punches through the front armour just ahead: one violent crash of steel tearing open in a cramped steel space, a shower of steel fragments clattering and rattling off the walls all around, then the hiss of a burst hydraulic line. ${NO_MUSIC}.`, 2.2, { inf: 0.6, variants: 2, takes: 6, proc: 'impact' }),
+  sfx('spall_engine', 'impacts', `One-shot heard inside a tank's crew compartment as an enemy shell punches into the engine compartment behind the bulkhead: a heavy muffled bang through the steel bulkhead, metal tearing in the engine bay, a burst of hissing coolant and steam. ${NO_MUSIC}.`, 2.2, { inf: 0.6, variants: 2, takes: 6, proc: 'impact' }),
+  // near misses by calibre and speed (impactMaterials.ts nearMissAsset)
+  sfx('flyby_autocannon', 'flyby', `Sound effect: a single 30 mm autocannon round snapping past very close to the listener: one sharp loud supersonic crack with a short tearing whizz. One isolated sound. ${NO_MUSIC}.`, 1, { inf: 0.7, variants: 3, takes: 8, proc: 'oneshot' }),
+  sfx('flyby_shell_crack', 'flyby', `Sound effect: a single large tank shell snapping past very close to the listener at supersonic speed: one extremely sharp, loud crack of its shock wave like a whip, at once a short heavy tearing rush of air that fades. One isolated sound. No explosion, ${NO_MUSIC}.`, 1.4, { inf: 0.7, variants: 3, takes: 8, proc: 'oneshot' }),
+  // machine-gun bullets into the ground and the soft parts of a tank (no ricochet whine: the 2026-10-03 lesson)
+  sfx('bullet_sand', 'impacts', `Sound effect: one single heavy machine-gun bullet striking loose dry sand: a soft short thud and a hiss of sand grains, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  sfx('bullet_snow', 'impacts', `Sound effect: one single heavy machine-gun bullet striking deep snow: a muffled soft puff and a crunch of snow, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  sfx('bullet_mud', 'impacts', `Sound effect: one single heavy machine-gun bullet striking wet mud: a short wet splat and a spatter of mud, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  sfx('bullet_paved', 'impacts', `Sound effect: one single heavy machine-gun bullet striking an asphalt road: one sharp hard crack with a soft gritty hiss of fine dust after it, a single hit, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  sfx('bullet_rubber', 'impacts', `Sound effect: one single heavy machine-gun bullet striking a tank's thick rubber side skirt: a short dull flat slap of heavy rubber, no metallic ping, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  sfx('bullet_stowage', 'impacts', `Sound effect: one single heavy machine-gun bullet striking a tank turret's stowage basket full of canvas bags and tarpaulins: one short dull thump into packed canvas with a soft rustle after it, a single hit, no ricochet whine. ${NO_MUSIC}. Very loud, with an immediate hard attack.`, 1, { inf: 0.7, variants: 4, takes: 8, proc: 'impact' }),
+  // what a close burst throws, by the ground it dug: on the ground round it, and on our hull
+  sfx('debris_sand', 'impacts', `One-shot of sand and fine grit raining down onto desert ground after an explosion nearby: a long hiss and patter of falling sand and small stones. ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'debris' }),
+  sfx('debris_mud', 'impacts', `One-shot of clods of wet mud and water splattering down onto soft ground after an explosion nearby: wet slaps, splats and drips. ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'debris' }),
+  sfx('debris_snow', 'impacts', `One-shot of snow and frozen clods falling back onto deep snow after an explosion nearby: soft dull thumps and a powdery hiss. ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'debris' }),
+  sfx('debris_grit', 'impacts', `One-shot of chunks of asphalt, concrete grit and small stones raining down onto a hard road after an explosion nearby: clattering chips and gravel. ${NO_MUSIC}.`, 3, { variants: 2, takes: 5, proc: 'debris' }),
+  sfx('hull_patter_sand', 'edge', `One-shot of sand and grit raining down onto a steel tank hull after a near miss: a hissing patter of sand and small stones on steel. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'foley' }),
+  sfx('hull_patter_mud', 'edge', `One-shot of wet mud clods slapping down onto a steel tank hull after a near miss: heavy wet splats and drips on steel. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'foley' }),
+  sfx('hull_patter_snow', 'edge', `One-shot of snow and frozen clods thumping down onto a steel tank hull after a near miss: soft dull thumps and a powdery hiss on steel. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'foley' }),
+  sfx('hull_patter_grit', 'edge', `One-shot of chips of asphalt, gravel and concrete grit rattling down onto a steel tank hull after a near miss on a road: hard clattering stones on steel. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'foley' }),
+  sfx('hull_patter_water', 'edge', `One-shot of a heavy shower of water spray falling back onto a steel tank hull after a shell landed in the water close by: a rushing downpour drumming on steel. ${NO_MUSIC}.`, 2, { variants: 2, takes: 5, proc: 'foley' }),
+];
+
 export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
-  ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes, ...netting,
+  ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes, ...netting, ...impactMaterials,
   ...runningGear, ...hullStrikes, ...worldBreaks, ...modeSounds, ...nightSpots,
 ]);
 

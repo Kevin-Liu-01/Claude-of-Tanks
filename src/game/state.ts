@@ -128,7 +128,7 @@ import {
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
-import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
+import { classifyShellSurface, shellHitsWater, shellIncidenceDeg } from '../sim/shellSurface.ts';
 import { createDestructionMatch, resetStructureRecords, type DestructionMatch } from '../sim/destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord, type FortifiedCoverLedger } from '../sim/fortifiedCover.ts';
 import {
@@ -2459,6 +2459,8 @@ function resolveWorldShellImpact(
     surfaceKind: classifyShellSurface(world, hit),
     hitWater: shellHitsWater(world, hit),
     normal: hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : null,
+    // (impact-materials-269, presentation) how the round met it: a graze skips, a plunge digs in
+    impactAngleDeg: shellIncidenceDeg(shell.vel, hit.normal),
     shellType: shell.spec.type,
     caliberMm: shell.spec.caliberMm,
     // the building it struck (2026-10-10: every round's hole on it, not only a burst's that names it in its blast)

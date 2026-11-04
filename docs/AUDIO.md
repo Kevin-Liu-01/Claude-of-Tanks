@@ -336,12 +336,39 @@ dropped as corny).
 There is no interface hit marker. A hit is confirmed the way a crew
 experiences it:
 
-- **The impact at the target.** Armour hits crossfade by range from the close
-  banks (tearing metal, a heavy clang, a dull thud) into distant banks (a
-  crack, knock or clang with an outdoor echo) between about 140 and 620 m, for
-  every shooter. HE and HEAT add their blasts, ERA its cassettes. Our own
-  rounds carry under the own-hit law above, so a penetration at 700 m is a
-  distant crack two seconds after the shell lands.
+- **The impact at the target, by what it struck.** One resolver
+  (`src/audio/impactMaterials.ts`, 269) plays every impact from the material
+  the round struck, what it did there (through, stopped, glanced off) and its
+  calibre band (bullet, autocannon, cannon). The materials are a closed set,
+  each table a `Record` over it, so a new one fails typecheck until it has its
+  sounds: a vehicle's parts as the damage law names them (armour plate, thin
+  steel, rubber skirt, track links, road wheel, ERA, cage, stowage rack, a
+  burnt-out wreck; `sim/plateMaterial.ts`, stamped on `shell:hit` as
+  `material`, and the outer screen the round passed as `screenMaterial`), the
+  ground under a landing (earth, sand, mud, snow, paved, water) and what a prop
+  is made of (steel, timber, earthwork, rock, concrete). Only steel rings or
+  whines: a ricochet off a rubber skirt slaps it, one off the running gear
+  clanks the links and the round whines away, a wreck knocks hollow, and a
+  round that went through a skirt or the wheels first is heard striking them,
+  with the plate behind 5 dB under. A solid round that meets the ground 72° or
+  more off its normal (`impactAngleDeg` on `shell:expired` and the authority's
+  `shell_impact`) skips: a surface-true graze, never a ring. Banks that swap
+  (armour, steel) crossfade by range from the close detail into a distant
+  crack, knock or clang between about 140 and 620 m, for every shooter; the
+  ground's distant thump adds under a gun round's landing past 200 m. HE and
+  HEAT add their blasts, ERA its cassettes. Our own rounds carry under the
+  own-hit law above, so a penetration at 700 m is a distant crack two seconds
+  after the shell lands.
+- **Inside our hull.** A penetration's spall bursts into the compartment it
+  struck (the turret and fighting compartment, the driver's station, the engine
+  bay) from that side; a blow that does not get through bongs the hull by the
+  part struck (armour fully, a track or a cage barely, a rubber skirt or a rack
+  not at all). A close burst rains back the ground it dug onto the ground and
+  our hull: dirt, sand, mud, snow, a road's grit, or a lake's spray.
+- **Near misses.** A round passing within a few metres goes by its calibre and
+  speed: a bullet's snap, an autocannon round's crack, a sabot's tearing
+  crack, a supersonic full-bore round's crack and rush, a subsonic shell's
+  whoosh, a missile's roar.
 - **The target going up.** A kill is the destruction itself (blast, sub-bass,
   debris, turret, cook-off), carried like our hits, with the far explosion
   layer beyond 600 m.
@@ -1269,6 +1296,40 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
   `tools/audio/layered-render.mjs` renders each row as the engine layers it.
   46,330 credits, the prompt pilots on the ship path included.
+
+- **2026-11-03, impact materials (lane impact-materials-269).** The owner:
+  "ricochets off ground shouldnt sound like metal". The engine chose an impact
+  by its result and calibre alone, so every ricochet rang like sloped steel:
+  off rubber skirts, tracks, wrecks, and off the running gear at ground level,
+  where all 134 grazing 120 mm rods of a sample along three hulls' sides
+  passed the track first and landed at a median 0.54 m. A round through a
+  track, a skirt or a rack (`screen_pierce`) played nothing, a ground graze
+  played the plunge, open earth rolled a rock 18 % of the time, and dirt
+  rained onto water. Fixed in the mechanism above (the struck material picks
+  every layer), with 32 new families: grazes per ground, the track, wheel,
+  rubber, cage, stowage and wreck strikes, the ricochet's whine alone (under a
+  steel strike only), driver and engine-bay spall (the fighting compartment
+  keeps `pen_interior`), autocannon and supersonic near misses, bullets into
+  sand, snow, mud, a road, a rubber skirt and a rack, and debris and hull
+  patter per ground. 4,052 credits of sound generation (the first pass 3,668;
+  a whine and a flyby crack re-prompted after every take came back as noise or
+  a rush, 224; two bullet prompts re-written after their grit read as a second
+  report, 160). The payload grew 1.15 MB (23.5 to 24.6 MB). Every one of its
+  32 families ships pinned takes (`sfx-picks.json`), so the ranking that
+  gun-reports-269 owns can change without changing what a strike sounds like
+  (docs/audio-generation/quality.md). Each new strike, debris, hull-patter and
+  spall asset keeps the playback policy of the one it replaced
+  (`soundCues.ts`): without it a bullet into sand had carried like a shell's
+  strike, 10 dB hot, uncapped and loud enough in the HDR window to duck the
+  battle, which the in-game render of the listening page showed.
+  Every shipped strike, spall and graze then went through gun-reports-269's
+  YAMNet ear proxy, judged on the file that ships: 23 of 40 passed. 11 banks
+  were re-pinned to takes that pass. Four were re-prompted: the wreck heard as
+  a drum, the snow and sand grazes heard as a zipper, a fart and spray, and
+  the driver's spall heard as a drum. That cost 580 more credits, 4,632 for
+  the round; 64 of them were four more sand takes, after only two of the
+  first eight passed once mastered. All 40 shipped files now pass
+  (docs/audio-generation/quality.md).
 
 ### Cost
 

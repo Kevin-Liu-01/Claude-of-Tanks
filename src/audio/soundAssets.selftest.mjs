@@ -6,6 +6,7 @@ import { VOICE_LINES } from './voiceLines.ts';
 import { MAP_SCENES, GARAGE_SCENE, BELL_ASSET } from './environmentScenes.ts';
 import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
+import { impactAssetIds } from './impactMaterials.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { LAUNCH_ASSET, WEAPON_ROWS, eventMount, reloadAssets } from './weaponAudio.ts';
 
@@ -59,9 +60,12 @@ for (const row of Object.values(WEAPON_ROWS)) {
 }
 assert.ok(eventMount(120, null).row, 'a 120 mm shot keys a row');
 for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
+// every impact by material, near miss, spall and debris the engine resolves (impactMaterials.ts, impact-materials-269)
+for (const id of impactAssetIds()) referenced.add(id);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
-  'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);
+  'radio_key_in', 'radio_key_out', 'radio_static_loop', 'strike_track', 'graze_earth', 'ricochet_whine', 'spall_engine',
+  'hull_patter_water', 'flyby_shell_crack']) assert.ok(referenced.has(id), `the scan sees ${id}`);
 for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a shipped asset: ${id}`);
 // Every sound is a recording (2026-10-03): no oscillator, synthesized fallback or rendered buffer anywhere in the
 // sound engine or the interface, so a missing asset is silent rather than replaced by a tone.

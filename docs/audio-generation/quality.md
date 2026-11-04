@@ -102,6 +102,18 @@ Verdicts sit beside the take cache (`critic.json`, by take) and are reused until
 `--force`. It is a proxy: AudioSet has no rocket class, so a launch is judged by
 its whoosh, and the owner's ear still rules.
 
+Struck parts and grazes (impact-materials-269, 2026-11-04) were judged by gun-reports-269's YAMNet ear proxy
+under rules written before the run. A strike or spall must be heard as a hit (Bang, Thump, Thunk, Smash, Whack,
+Slam, Clang, Crunch or Breaking) at 0.05 or more and at twice any gun class. A rubber skirt, a rack or a ground
+graze must also be heard as its own material above any metal class (Clang, Ding, Ping, Chink, Coin dropping,
+Keys jangling). The verdict:
+- One shipped earth graze was heard as a coin dropping, and every shipped rubber-skirt strike was heard as keys
+  or coins. Those are the owner's "ricochets off ground shouldnt sound like metal", heard blind.
+- A wreck strike was heard as a drum in 8 takes of 8, and a snow graze as a fart.
+- Mastering moves a short take's verdict near the floor, so a pick is confirmed on the shipped file.
+
+All 40 shipped files pass.
+
 ## Failure modes
 
 | Symptom (what a player hears) | Cause | Caught by |
@@ -118,6 +130,9 @@ its whoosh, and the owner's ear still rules.
 | A correct take is flagged as wrong | Homophones and digits in the transcript | Reported for review, never auto-rejected |
 | An alarm pierces | A bright take (2.4 kHz) | Pinned a lower take; "muffled by the hull" |
 | A thud or a twang loses to rumble | The weight score (`4·low`) on the `impact` preset rewards a take whose body is low-band noise over one with the event (a telegraph wire's twang; a pole's thud 31 dB down that mastering would lift 30 dB) | Pinned (`pole_wires`, `pole_fall`, 2026-10-06); look at the sheet before trusting a weight-scored pick |
+| A strike that drops out every few hits | A near-silent take (269: a bullet into sand peaking at -39 dBFS) ranked fourth on its low-band weight; the master's gain stops at +30 dB, so it shipped 15 dB under its siblings | Read the take's `peakDb` in the build report and pin a sibling (`sfx-picks.json`; every 269 impact family is pinned) |
+| A bullet strike that is an 80 ms click | The single-shot cut took the strike's own grit and chips for a second report; clicks shipped under the impact preset's loudness floor (`sfxLoudness.selftest.mjs`) | A prompt asking for a continuous hiss or rustle after the hit instead of chips, and the takes that survive the cut pinned |
+| A wreck or a flyby that is all rumble | The weight score (`4·low`) ranked bass rumble over the knock; the flat-scored `oneshot` preset ships its first takes | Look at the sheet (`sfx-qa.mjs --sheets`) and pin (`strike_wreck`, `flyby_*`, `ricochet_whine`) |
 
 | A distant autocannon shot is a 0.1 s blip | The single-shot cut treated the shot's own rolling echo (within 8 dB of the first report) as a second shot | Distant single-shot banks (`SINGLE_FAR`) cut only before a report within 3 dB of the first and lose 0.5 a point per onset past two; a take the cut leaves under 0.25 s is never shipped, even if only one usable take remains (gun-reports-269) |
 | A gun report sounds like an old-film blast although its take scored well | The rise term stops counting at 22 ms, so a take peaking 300 ms late with most of its energy 200–600 ms after the onset outranked real cracks (the 100 mm's own report) | −4 each for a rise over 45 ms and for more than 45 % of the energy in 200–600 ms; a take rising over 60 ms or holding over half its energy there is not shipped while any take is a report; banks left short get more takes (gun-reports-269) |

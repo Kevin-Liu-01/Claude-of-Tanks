@@ -66,6 +66,11 @@ import {
   resolveReloadCuePlan, resolveWeaponReport, stationMount, stationRows, weaponMounts, type ReloadCue, type ReloadCuePlan, type WeaponMount, type WeaponRow,
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
+import {
+  GROUND_DEBRIS, MATERIAL_SOUNDS, NEAR_MISS_REACH_M, SPALL, calibreBand, compartmentOf, distantBank, groundMaterial, hitMaterial,
+  impactAssetIds, impactLayers, landingResult, nearMissAsset, propMaterial,
+  type CalibreBand, type GroundMaterial, type ImpactResult, type StruckMaterial,
+} from './impactMaterials.ts';
 
 type Vec3 = readonly [number, number, number];
 type ResultKind = 'victory' | 'defeat' | 'draw';
@@ -296,9 +301,18 @@ interface ShellHitEvent {
   shellType?: string;
   eraPlate?: string | null;
   eraActivations?: readonly { plate: string; pos?: Vec3 }[];
+  /** (impact-materials-269) what the round struck (sim/plateMaterial.ts) and the outer screen it went through first */
+  material?: string;
+  screenMaterial?: string;
+  /** where it struck (the hull's or turret's frame) and the point in that frame: the compartment a penetration bursts into */
+  impactFrame?: string | null;
+  impactLocalPos?: Vec3 | null;
+  localPos?: Vec3 | null;
 }
 
 interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?: boolean; hitKind?: string; surfaceKind?: string; caliberMm?: number; pos?: Vec3;
+  /** (impact-materials-269) the round's incidence off the surface's normal (0 straight in, 90 grazing) */
+  impactAngleDeg?: number;
   /** the building the round struck (2026-10-10), when it struck one */
   structureId?: number;
   /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
@@ -426,12 +440,12 @@ const START_WAIT_S = 1;
 const COUNTDOWN_TICK_S = 3;
 
 /** A crash by the material of what the hull struck (world-sfx-269): exhaustive, so a new material needs its recording. */
-type StruckMaterial = 'rock' | 'steel' | 'masonry' | 'timber' | 'earth';
-const STRUCK_SOUND: Readonly<Record<StruckMaterial, string>> = Object.freeze({
+type HullStrikeMaterial = 'rock' | 'steel' | 'masonry' | 'timber' | 'earth';
+const STRUCK_SOUND: Readonly<Record<HullStrikeMaterial, string>> = Object.freeze({
   rock: 'hit_rock', steel: 'hit_metal', masonry: 'hit_wall', timber: 'hit_timber', earth: 'hit_earth',
 });
 /** A building's walls (destructionSounds.ts) as a hull strikes them. */
-const STRUCTURE_STRUCK: Readonly<Record<StructureSoundMaterial, StruckMaterial>> = Object.freeze({
+const STRUCTURE_STRUCK: Readonly<Record<StructureSoundMaterial, HullStrikeMaterial>> = Object.freeze({
   brick: 'masonry', stone: 'masonry', concrete: 'masonry', plaster: 'earth', timber: 'timber', steel: 'steel',
 });
 
@@ -1013,8 +1027,11 @@ export function createAudio({
     const miss = Math.hypot(cx - frame.x, cy - frame.y, cz - frame.z);
     const small = event.caliberMm < 40;
     const launcher = /launch/.test(String(event.weaponSound || ''));
-    const reach = small ? 6 : launcher ? 30 : 16;
     const velocity = event.velocityMps && event.velocityMps > 0 ? event.velocityMps : launcher ? 280 : 900;
+    // (impact-materials-269) the sound of the pass by calibre and speed: a bullet's snap, an autocannon round's crack, a
+    // sabot's tearing crack, a supersonic full-bore round's crack and rush, a subsonic shell's whoosh
+    const asset = nearMissAsset(event.caliberMm, velocity, launcher);
+    const reach = NEAR_MISS_REACH_M[asset];
     if (launcher && miss < 30 && !sameTeam(event.shooterId, playerId) && playerId && tanks.get(playerId)?.alive !== false) {
       play('missile_warning', { delayS: 0 });
       caption('missileWarning', mp[0], mp[1], mp[2]);
@@ -1022,9 +1039,7 @@ export function createAudio({
     }
     if (miss > reach) return;
     const passIn = along / velocity;
-    const asset = launcher ? 'missile_flyby' : small ? 'bullet_crack'
-      : event.shellType === 'HE' || event.shellType === 'HEAT' ? 'shell_flyby_he' : 'shell_flyby_sabot';
-    const lead = asset === 'bullet_crack' ? 0.01 : 0.12;
+    const lead = asset === 'bullet_crack' || asset === 'flyby_autocannon' ? 0.01 : 0.12;
     play(asset, { x: cx, y: cy, z: cz, propagate: false, delayS: Math.max(0, passIn - lead), gainDb: -3 * (miss / reach), priority: 82 });
     if (!sameTeam(event.shooterId, playerId)) caption('nearMiss', cx, cy, cz, Math.max(0, passIn - lead));
     if (!small && !launcher && miss < 9 && !sameTeam(event.shooterId, playerId)) say('near_miss', { prob: 0.25, delayS: passIn + 0.25 });
@@ -1092,18 +1107,20 @@ export function createAudio({
     const rate = clamp(1.08 - (caliberMm - 100) / 600, 0.86, 1.12);
     play(id, { x, y, z, rate, focus, ...(bus ? { bus } : {}) });
     if (distance > 700) play('expl_far', { x, y, z, gainDb: -4, focus });
-    if (distance < 40 && caliberMm >= 61) play('debris_dirt', { x, y, z, delayS: 0.35, gainDb: -4 });
+    // (impact-materials-269) what the burst throws up rains back by the ground it dug: earth, sand, mud, snow or a road's
+    // grit (on water the column's fall is the splash's own)
+    const debris = distance < 40 && caliberMm >= 61 ? GROUND_DEBRIS[groundAt(x, z)].ground : null;
+    if (debris) play(debris, { x, y, z, delayS: 0.35, gainDb: -4 });
   }
 
-  function groundImpactAsset(surface: SurfaceId, x: number, z: number): string {
-    switch (surface) {
-      case 'hard': return 'ground_concrete';
-      case 'sand': return 'ground_sand';
-      case 'snow': return 'ground_snow';
-      case 'mud': return 'ground_mud';
-      case 'water': return 'water_big';
-      default: return random() < 0.18 && (getTerrain?.()?.getGroundType(x, z) === 'medium') ? 'ground_rock' : 'ground_dirt';
-    }
+  /** The ground under a point as an impact material (impactMaterials.ts): a road, a bridge deck or ice is paved. */
+  function groundAt(x: number, z: number): GroundMaterial {
+    return groundMaterial(surfaceAt(x, z).surface);
+  }
+
+  /** The debris of a close burst or landing pattering on our hull, by the ground it was thrown from. */
+  function hullPatter(x: number, z: number, delayS: number, gainDb: number): void {
+    play(GROUND_DEBRIS[groundAt(x, z)].hull, hullOptions({ bus: 'ownCombat', delayS, gainDb }));
   }
 
   /** Whether a round came from the listener's tank (the occupied one, or the one being watched). */
@@ -1113,16 +1130,29 @@ export function createAudio({
   }
 
   /**
-   * An armour hit crossfaded by range: the close bank's detail within a few
-   * hundred metres, the distant bank's crack, knock or clang beyond. Machine-gun
-   * hits have no distant bank.
+   * An impact by what it struck (impactMaterials.ts): the material's close layers for what the round did there and its
+   * calibre, crossfaded by range into its distant bank. A bank that swaps (armour, steel) takes over from the close
+   * detail between a few hundred metres and 620 m, as armour hits always did; one that adds (the ground's thump) lies
+   * under a close sound that stays. The distant bank sits at the close bank's level. Machine-gun hits have none, and a
+   * steel ring or a ricochet's whine is only ever among a steel material's layers.
    */
-  function armourHit(close: string, far: string | null, x: number, y: number, z: number, gainDb: number, rate: number, focus: boolean): void {
+  function materialImpact(material: StruckMaterial, result: ImpactResult, band: CalibreBand, x: number, y: number, z: number,
+    focus: boolean, { gainDb = 0, rate = 1, far = true }: { gainDb?: number; rate?: number; far?: boolean } = {}): void {
+    const layers = impactLayers(material, result, band);
+    const bank = far ? distantBank(material, result, band) : null;
     const distance = distanceTo(x, y, z);
-    const closeK = far ? 1 - rampBetween(distance, 260, 620) : 1;
-    const farK = far ? rampBetween(distance, 140, 440) : 0;
-    if (closeK > 0.03) play(close, { x, y, z, rate, focus, gainDb: gainDb + gainToDb(closeK) });
-    if (far && farK > 0.03) play(far, { x, y, z, focus, gainDb: gainDb + gainToDb(farK) });
+    const swap = bank?.mode === 'swap';
+    // the ground's thump under a landing is a gun round's: an autocannon round's carries no further than its strike
+    const adds = bank?.mode === 'add' && band === 'cannon';
+    const closeK = swap ? 1 - rampBetween(distance, 260, 620) : 1;
+    const farK = swap ? rampBetween(distance, 140, 440) : adds ? rampBetween(distance, 200, 560) : 0;
+    if (closeK > 0.03) {
+      for (const layer of layers) {
+        play(layer.id, { x, y, z, focus, rate: layer.rate * rate, gainDb: gainDb + layer.gainDb + gainToDb(closeK),
+          ...(layer.delayS > 0 ? { delayS: layer.delayS } : {}) });
+      }
+    }
+    if (bank && farK > 0.03) play(bank.id, { x, y, z, focus, gainDb: gainDb + (layers[0]?.gainDb ?? 0) + bank.gainDb + gainToDb(farK) });
   }
 
   function playerHull(event: ShellHitEvent): boolean {
@@ -1130,14 +1160,21 @@ export function createAudio({
       || (listenerOwnerId == null && playerId != null && event.targetId === playerId);
   }
 
+  /**
+   * A round on a tank or a wreck, by what it struck (the hit's material, sim/plateMaterial.ts) and what it did there:
+   * through a plate or a screen, stopped by it, or glancing off. A screen the round went through first (a skirt, the
+   * running gear, a cage) takes the first blow, and the plate behind is heard through it. Our own hull answers inside by
+   * where it was struck.
+   */
   function impactSounds(event: ShellHitEvent, ownHull: boolean): void {
     const [x, y, z] = event.pos;
     const caliber = event.caliberMm || 100;
-    const small = caliber < 23;
-    const medium = caliber >= 23 && caliber < 61;
+    const band = calibreBand(caliber);
+    const small = band === 'bullet';
     const heat = event.shellType === 'HEAT';
     // Our own cannon and autocannon hits carry (OWN_HIT_FOCUS); machine-gun pings stay local.
     const focus = !small && listenerShot(event.attackerId);
+    const material = hitMaterial(event.material);
     // Reactive armour is additive to the deeper result: every positioned
     // cassette detonates, and a pass-through activation without positions
     // still gets its blast at the impact point.
@@ -1146,28 +1183,19 @@ export function createAudio({
       if (activation?.pos?.length === 3) { play('era_det', { ...at(activation.pos), focus }); cassettes++; }
     }
     if (!cassettes && isEraActivation(event) && event.kind !== 'era') play('era_det', { x, y, z, focus });
+    const result: ImpactResult | null = event.kind === 'pen' || event.kind === 'screen_pierce' ? 'through'
+      : event.kind === 'ricochet' ? 'glance'
+        : event.kind === 'nonpen' || event.kind === 'spaced_absorb' ? 'stop' : null;
+    if (result) {
+      // the outer screen it went through on its way: its own strike, and the plate behind heard through it
+      const screen = event.kind !== 'screen_pierce' && event.screenMaterial != null ? hitMaterial(event.screenMaterial) : null;
+      const screened = screen != null && screen !== material;
+      if (screened) materialImpact(screen, 'through', band, x, y, z, focus, { far: false });
+      materialImpact(material, result, band, x, y, z, focus, { gainDb: screened ? -5 : 0 });
+      if (heat && event.kind !== 'ricochet' && event.kind !== 'screen_pierce') play('heat_impact', { x, y, z, gainDb: event.kind === 'pen' ? -3 : -5, focus });
+    }
+    if (ownHull) ownHullImpact(event, material, band);
     switch (event.kind) {
-      case 'pen':
-        if (small) play('bullet_armor', { x, y, z });
-        else armourHit(medium ? 'pen_light' : 'pen_heavy', 'impact_far_pen', x, y, z, medium ? -5 : 0, 1, focus);
-        if (heat) play('heat_impact', { x, y, z, gainDb: -3, focus });
-        if (ownHull && (event.damage || 0) > 0) {
-          play('pen_interior', hullOptions({ bus: 'ownCombat', gainDb: small ? -14 : medium ? -6 : 0 }));
-          if (!small) play('hull_thud_sub', hullOptions({ bus: 'ownCombat', gainDb: medium ? -5 : 0 }));
-        }
-        break;
-      case 'ricochet':
-        if (small) play('ricochet_light', { x, y, z });
-        else armourHit(medium ? 'ricochet_light' : 'ricochet_heavy', 'impact_far_ricochet', x, y, z, medium ? -5 : 0, 1, focus);
-        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -10 : -5 }));
-        break;
-      case 'nonpen':
-      case 'spaced_absorb':
-        if (small) play('bullet_armor', { x, y, z });
-        else armourHit('nonpen_heavy', 'impact_far_nonpen', x, y, z, medium ? -4 : 0, medium ? 1.18 : 1, focus);
-        if (heat) play('heat_impact', { x, y, z, gainDb: -5, focus });
-        if (ownHull && !small) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: medium ? -8 : 0 }));
-        break;
       case 'era':
         if (!(event.eraActivations || []).length) play('era_det', { x, y, z, focus });
         break;
@@ -1175,20 +1203,57 @@ export function createAudio({
       case 'he_splash':
         play('he_armor', { x, y, z, focus });
         explosion(x, y, z, caliber, undefined, focus);
-        if (ownHull) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -2 }));
         break;
       case 'terrain': {
         explosion(x, y, z, caliber, undefined, focus);
-        const { surface } = surfaceAt(x, z);
-        play(groundImpactAsset(surface, x, z), { x, y, z, gainDb: -4, focus });
+        materialImpact(groundAt(x, z), 'stop', band, x, y, z, focus, { gainDb: -4, far: false });
         break;
       }
       default:
         break;
     }
-    // Hull-borne debris from a close blast.
+    // Hull-borne debris from a close blast, by the ground it was thrown from.
     if (!ownHull && (event.kind === 'he_splash' || event.kind === 'terrain') && listenerValid && distanceTo(x, y, z) < 14 && playerEntityInfo()?.alive) {
-      play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.3 }));
+      hullPatter(x, z, 0.3, 0);
+    }
+  }
+
+  /**
+   * A round on our own hull, heard inside: a penetration's spall bursting into the compartment it struck (the turret and
+   * fighting compartment, the driver's station, the engine bay), from that side; a blow that did not get through rings
+   * the hull by the part it struck (armour bongs, a track or a skirt barely).
+   */
+  function ownHullImpact(event: ShellHitEvent, material: StruckMaterial, band: CalibreBand): void {
+    const small = band === 'bullet';
+    const medium = band === 'autocannon';
+    const [x, y, z] = event.pos;
+    toListenerFrame(frame, x, y, z, rel);
+    const pan = listenerValid ? panFromRelative(rel, 0.5) : 0;
+    switch (event.kind) {
+      case 'pen':
+        if ((event.damage || 0) > 0) {
+          const where = event.impactLocalPos ?? event.localPos ?? null;
+          const spall = SPALL[compartmentOf(event.impactFrame, where?.[2])];
+          play(spall, hullOptions({ bus: 'ownCombat', gainDb: small ? -14 : medium ? -6 : 0, pan }));
+          if (!small) play('hull_thud_sub', hullOptions({ bus: 'ownCombat', gainDb: medium ? -5 : 0 }));
+        }
+        break;
+      case 'ricochet':
+      case 'nonpen':
+      case 'spaced_absorb':
+      case 'screen_pierce': {
+        const interiorDb = MATERIAL_SOUNDS[material].interiorDb;
+        if (small || interiorDb == null) break;
+        const base = event.kind === 'ricochet' ? (medium ? -10 : -5) : event.kind === 'screen_pierce' ? (medium ? -14 : -9) : (medium ? -8 : 0);
+        play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: base + interiorDb, pan }));
+        break;
+      }
+      case 'he_pen':
+      case 'he_splash':
+        play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -2 }));
+        break;
+      default:
+        break;
     }
   }
 
@@ -1334,12 +1399,12 @@ export function createAudio({
     // (2026-10-10, the owner: "proper audio like all things that can be destroyed") a burst on a wall or a prop detonates
     // as one on the ground does — it played the prop's impact thud alone
     if (blastCal > 0) explosion(x, y, z, blastCal, undefined, focus);
-    if (small) {
+    const band = calibreBand(caliber);
+    const structure = event.hitKind === 'prop' && (typeof event.structureId === 'number' || event.surfaceKind === 'structure');
+    if (small && structure) {
       // (2026-10-13) a bullet strikes what it hit: brick and stone crack, steel punches, timber thocks (every one was dirt)
-      play(water ? 'bullet_water' : bulletStrikeAsset(event, x, z), { x, y, z });
-    } else if (water) {
-      play(caliber >= 61 ? 'water_big' : 'water_small', { x, y, z, focus, ...(blastCal > 0 ? { gainDb: -4 } : {}) });
-    } else if (event.hitKind === 'prop' && (typeof event.structureId === 'number' || event.surfaceKind === 'structure')) {
+      play(structureBulletAsset(event.structureId), { x, y, z });
+    } else if (structure) {
       // a round into a building (2026-10-13): through its wall by what the wall is made of, the masonry crumbling out of
       // the hole, a burst against it throwing its bricks and stones, and past a few hundred metres the distant knock
       const sound = structureSound(event.structureId);
@@ -1348,20 +1413,21 @@ export function createAudio({
       if (masonry) layers.push({ id: 'rubble_crunch', delayS: 0.06, jitterS: 0.05, gainDb: blastCal > 0 ? -5 : -9 });
       if (masonry && blastCal >= 61) layers.push({ id: 'blast_masonry', delayS: 0, jitterS: 0, gainDb: -3 });
       structureLayers(layers, x, y, z, STRUCTURE_FAR.hit, -2, focus);
-    } else if (event.hitKind === 'prop') {
-      play(propImpactAsset(String(event.surfaceKind || '')), { x, y, z, focus });
     } else {
-      play(groundImpactAsset(surfaceAt(x, z).surface, x, z), { x, y, z, focus, rate: clamp(1.1 - caliber / 900, 0.9, 1.08),
-        ...(blastCal > 0 ? { gainDb: -4 } : {}) });
-      // a solid round striking the ground far off: its distant thump (a burst has the far explosion already)
-      const groundM = distanceTo(x, y, z);
-      if (blastCal === 0 && caliber >= 61 && groundM > 200) {
-        play('impact_far_ground', { x, y, z, focus, gainDb: gainToDb(rampBetween(groundM, 200, 560)) - 2 });
-      }
+      // (impact-materials-269) a prop by what it is made of, the ground by its surface; a solid round meeting the ground at
+      // a glancing angle skips off it (a graze: the dirt and the thump, never a ring), a burst digs in. A solid round's
+      // landing far off adds its distant thump (a burst has the far explosion already).
+      const ground = event.hitKind !== 'prop';
+      const material: StruckMaterial = water ? 'water' : ground ? groundAt(x, z) : propMaterial(String(event.surfaceKind || ''));
+      const result = ground ? landingResult(event.impactAngleDeg, blastCal > 0) : 'stop';
+      materialImpact(material, result, band, x, y, z, focus, {
+        gainDb: ground && blastCal > 0 ? -4 : 0,
+        rate: ground && !small && !water ? clamp(1.1 - caliber / 900, 0.9, 1.08) : 1,
+        far: blastCal === 0,
+      });
+      logSound('impact:material', { id: event.shellId, material, result, band });
     }
-    if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) {
-      play('hull_debris_patter', hullOptions({ bus: 'ownCombat', delayS: 0.25, gainDb: -3 }));
-    }
+    if (!small && listenerValid && playerEntityInfo()?.alive && distanceTo(x, y, z) < 10) hullPatter(x, z, 0.25, -3);
     logSound('shell:expired', { id: event.shellId, hitKind: water ? 'water' : (event.hitKind || 'terrain') });
   }
 
@@ -1473,17 +1539,10 @@ export function createAudio({
     if (far && farK > 0.03) play(far, { x, y, z, focus, gainDb: farDb + gainToDb(farK) });
   }
 
-  /** A machine-gun round's strike by what it hit: a building by its walls, a prop by its kind, the ground by its surface. */
-  function bulletStrikeAsset(event: ShellExpiredEvent, x: number, z: number): string {
-    if (event.hitKind === 'prop') {
-      if (typeof event.structureId === 'number' || event.surfaceKind === 'structure') {
-        const m = structureSound(event.structureId).material;
-        return m === 'timber' ? 'bullet_wood' : m === 'steel' ? 'bullet_metal' : 'bullet_masonry';
-      }
-      const hit = propImpactAsset(String(event.surfaceKind || ''));
-      return hit === 'ground_metal' ? 'bullet_metal' : hit === 'ground_wood' ? 'bullet_wood' : hit === 'ground_dirt' ? 'bullet_dirt' : 'bullet_masonry';
-    }
-    return surfaceAt(x, z).surface === 'hard' ? 'bullet_masonry' : 'bullet_dirt';
+  /** A machine-gun round's strike on a building, by its walls (props and the ground: impactMaterials.ts). */
+  function structureBulletAsset(structureId: number | undefined): string {
+    const m = structureSound(structureId).material;
+    return m === 'timber' ? 'bullet_wood' : m === 'steel' ? 'bullet_metal' : 'bullet_masonry';
   }
 
   /**
@@ -1504,19 +1563,6 @@ export function createAudio({
   }
 
   // ------------------------------------------------------ props/collisions ---
-
-  /**
-   * A round striking a prop sounds of what it struck (the hit's record kind): steel clangs, timber splinters, earthworks
-   * thump, stone and masonry crack, never a coin toss between wood and concrete.
-   */
-  function propImpactAsset(kind: string): string {
-    const k = kind.toLowerCase();
-    if (/car|truck|van|bus|jeep|vehicle|tractor|container|barrel|drum|tank|cylinder|hedgehog|tetra|metal|steel|iron|crane|gantry|wagon|locomotive|boat|ship|wreck|aagun|gun|artillery|pylon|mast|lamp/.test(k)) return 'ground_metal';
-    if (/tree|sapling|stump|trunk|palm|pine|bush|shrub|reed|fence|gate|post|crate|wood|timber|log|pallet|hut|shed|barn|shack|kiosk/.test(k)) return 'ground_wood';
-    if (/sandbag|bag|bale|berm|earth|trench|mound|dune|hay/.test(k)) return 'ground_dirt';
-    if (/rock|stone|boulder|cliff|outcrop/.test(k)) return 'ground_rock';
-    return 'ground_concrete';
-  }
 
   /**
    * A prop crushed, broken, toppled or knocked about sounds of what it is (propSounds.ts names every world kind): its
@@ -3104,6 +3150,9 @@ export function createAudio({
     for (const id of ownWeaponAssets(playerEntityInfo())) ids.add(id);
     // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
     for (const id of propSoundAssets()) ids.add(id);
+    // Every impact by material, the near misses, the spall and the debris (impactMaterials.ts): any round may strike any
+    // material from the first shot.
+    for (const id of impactAssetIds()) ids.add(id);
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);
     // The mode's opener plays at rollout, decoded by then (presence); the aircraft modes fly from their first second.
     if (mode === 'drone' || mode === 'ac130') aerialWarmed = true;
