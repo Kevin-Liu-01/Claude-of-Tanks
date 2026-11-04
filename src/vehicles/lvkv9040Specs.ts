@@ -70,13 +70,12 @@ Object.assign(spec, {
   turretTraverseDegS: 60, gunPitchDegS: 48, gunElevationDeg: 60, gunDepressionDeg: 8,
 });
 spec.dims = { hullLengthM: 6.622, overallLengthM: 6.87, widthM: 3.33, heightM: 3.40 };
-// The gun's measured stops on the Mk IV hull (builder S: gunHullClearance's probe at 2.6 cm, every degree of yaw, bisected
-// to 0.05 degrees and fitted by tools/gun-depression-sweep.mjs --envelope): the full 8 degrees but over the bow's corner
-// lamp receivers (to -6.6 at 12-16 degrees) and over the Mk IV's raised troop roof and rear ramp astern (to -3.1 at 166-169
-// degrees, -4.5 straight back).
-spec.gunPitchByYawDeg = Object.freeze([[0, -8], [8, -8], [9, -7.9], [10, -7.2], [11, -6.8], [12, -6.6], [16, -6.6], [23, -7.5],
-  [24, -8], [139, -8], [141, -6.9], [144, -6], [145, -5.1], [146, -4.9], [157, -4.5], [159, -4.1], [166, -3.1], [169, -3.1],
-  [170, -3.3], [171, -3.7], [172, -4.5], [180, -4.5]] as const);
+// The gun's measured stops on the Mk IV hull (builder S, fix round 1: gunHullClearance's probe at 2.6 cm, every degree of
+// yaw, bisected to 0.05 degrees and fitted by tools/gun-depression-sweep.mjs --envelope): the full 8 degrees over the bow
+// and the sides, held over the Mk IV's raised troop roof and rear ramp astern (to -4.9 at 146-170 degrees, -6 straight
+// back).
+spec.gunPitchByYawDeg = Object.freeze([[0, -8], [139, -8], [141, -6.9], [144, -6], [145, -5.2], [146, -4.9], [170, -4.9],
+  [171, -5], [172, -5.3], [173, -6], [180, -6]] as const);
 spec.armor.gunPivot = [...LVKV_TRUNNION];
 spec.armor.gunBarrel = { lengthM: LVKV_MUZZLE_Z, radiusM: LVKV_GUN.barrelR };
 // the welded turret (profiles/lvkv9040Frame.ts): the rear section to the seam, the front section to its front roof edge
@@ -110,7 +109,7 @@ spec.armor.modules = [
   ...spec.armor.modules.filter((box) => !box.turretLocal),
   moduleBox('optics', [gunner.x - gunner.w / 2, RF - 0.18, gunner.z - gunner.d / 2],
     [gunner.x + gunner.w / 2, RF + 0.10, gunner.z + gunner.d / 2], true),
-  moduleBox('gun', [-.18, gy - .24, gz - .95], [.18, gy + .24, gz + .55], true),
+  moduleBox('gun', [-.18, gy - .24, gz - .95], [.18, gy + .24, gz + .40], true),
   moduleBox('ammoRack', [-.17, .20, -.80], [.17, .60, gz - .99], true),
   moduleBox('radio', [-.78, .12, -1.12], [-.30, .50, -.66], true),
 ];

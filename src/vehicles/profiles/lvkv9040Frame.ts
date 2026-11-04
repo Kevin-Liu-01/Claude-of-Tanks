@@ -21,26 +21,28 @@ export const LVKV_TURRET = Object.freeze({
    * from its rear) */
   stepZ0: -0.20, stepZ1: -0.02,
   /** the gun slot between the cheeks: its rear wall, its half-width and the chin under it */
-  slotRearZ: 0.45, slotHalfW: 0.26, slotFloorY: 0.15, chinBreakZ: 1.40,
-  /** the sloped front plate: from the roof's front edge down to the foot */
-  roofFrontZ: 1.10, footZ: 1.70, footY: 0.12, footHalfW: 0.72, roofFrontHalfW: 0.84,
+  slotRearZ: 0.45, slotHalfW: 0.26, slotFloorY: 0.15, chinBreakZ: 1.00,
+  /** the sloped front plate, 35 degrees from vertical (photo 01; fix round 1, the blind critic: 42 was too laid back and
+   * its foot ran 0.4 m too far along the gun): from the roof's front edge down to the foot */
+  roofFrontZ: 0.82, footZ: 1.30, footY: 0.12, footHalfW: 0.72, roofFrontHalfW: 0.84,
 });
 
-/** The elevation axis (turret-local): centred, 0.32 m under the front roof (photo 02's gun axis), 0.54 m behind the front
+/** The elevation axis (turret-local): centred, 0.32 m under the front roof (photo 02's gun axis), 0.26 m behind the front
  * plate at its height. */
 export const LVKV_TRUNNION = Object.freeze([0, 0.48, 0.78] as const);
 
 /**
  * The 40 mm Bofors L/70 (gun-local, +z along the bore from the elevation axis). The mantlet drum about the elevation
- * axis fills the slot (3 cm from its walls, its rear wall and the chin at every pitch); the cradle's round cover (photo
- * 02: ~0.4 m across, 0.92 m out of the front plate), the ribbed jacket (0.37 m), the barrel and the flash eliminator; the
- * muzzle 3.40 m out, 0.8 m past the bow with the gun forward.
+ * axis fills the slot (3 cm from its walls, its rear wall and the chin at every pitch); the cradle's cover one long cone
+ * (photos 01-02; fix round 1, the blind critic: thickest at the turret face, about 0.4 of the drum's width, tapering
+ * steadily into the ribs), the band of eight ribs (0.46 m), the barrel and the flash eliminator; the muzzle 3.40 m out,
+ * 3.14 m ahead of the front plate.
  */
 export const LVKV_GUN = Object.freeze({
   mantletR: 0.30, mantletHalfW: 0.23,
-  shroudR: 0.20, shroudRearZ: 0.20, shroudTaperZ: 1.10, shroudFrontZ: 1.48, shroudFrontR: 0.12,
-  jacketRearZ: 1.43, jacketFrontZ: 1.73, jacketR: 0.085, ribR: 0.097,
-  barrelRearZ: 1.30, barrelR: 0.057, barrelFrontR: 0.052, deviceRearZ: 3.16, deviceR: 0.074, deviceRearR: 0.066,
+  coneRearZ: 0.20, coneRearR: 0.21, coneFrontZ: 1.30, coneFrontR: 0.11,
+  ribsRearZ: 1.26, ribsFrontZ: 1.72, ribsCoreR: 0.08, ribR: 0.095, ribCount: 8,
+  barrelRearZ: 1.10, barrelR: 0.057, barrelFrontR: 0.052, deviceRearZ: 3.16, deviceR: 0.074, deviceRearR: 0.066,
 });
 
 /** The bore mouth, gun-local z: the flash eliminator's face. */
@@ -48,16 +50,17 @@ export const LVKV_MUZZLE_Z = 3.40;
 
 /**
  * The PS-95 search radar's drum on the bustle roof, rear left (photo 02: on the far side of the turret, behind the
- * sight heads; ~1.06 m across, ~1.0 m tall, raised ~0.3 m on its column, daylight under it; its top the published
- * 3.45 m overall).
+ * sight heads; ~1.06 m across, ~1.0 m tall, its top's edge rounded; fix round 1, the blind critic: low on a dark base
+ * nearly its own width, open between its posts, a mast at its rear).
  */
 export const LVKV_RADAR = Object.freeze({
-  x: 0.45, z: -0.70, r: 0.53, bottomY: 0.89, topY: 1.85, lipH: 0.06, columnR: 0.30,
+  x: 0.45, z: -0.70, r: 0.53, bottomY: 0.89, topY: 1.85, rimR: 0.05, baseR: 0.46, postR: 0.39,
 });
 
-/** The sight heads on the front section's roof either side of the slot (photo 02): the commander's on the right (-x),
- * the gunner's on the left (+x); [x, z] of each head's centre. */
+/** The sight heads on the front section's roof either side of the slot (photos 01-02; fix round 1, the blind critic: the
+ * commander's chunkier, its raked window under a lid jutting forward; the gunner's a flat hood plate over an open sight):
+ * the commander's on the right (-x), the gunner's on the left (+x); [x, z] of each head's centre. */
 export const LVKV_SIGHTS = Object.freeze({
-  commander: Object.freeze({ x: -0.55, z: 0.22, w: 0.30, d: 0.40, h: 0.46 }),
+  commander: Object.freeze({ x: -0.55, z: 0.22, w: 0.34, d: 0.42, h: 0.46 }),
   gunner: Object.freeze({ x: 0.56, z: 0.26, w: 0.30, d: 0.40, h: 0.38 }),
 });

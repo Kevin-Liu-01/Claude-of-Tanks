@@ -87,32 +87,59 @@ function addTurretBody(P: TankBuilderPort): void {
 }
 
 /**
- * The PS-95 drum (photo 02): raised on its column over the rear section's left, the radome's rolled top lip and the three
- * bands under it; the column on a base flange on the roof.
+ * The PS-95 drum (photo 02; fix round 1, the blind critic): low on a dark base nearly its own width, a turntable plate on
+ * the roof, a core and a ring of eight posts with daylight between them up into its floor, a slim mast at its rear; the
+ * radome's top edge rounded, the three bands under it.
  */
 function addSearchRadar(P: TankBuilderPort): void {
-  const { cylY } = KIT;
-  const n = P.q ? 36 : 22, roof = T.bustleRoofY;
-  P.add('turretDark', cylY(R.columnR + 0.06, R.columnR + 0.08, 0.05, n), R.x, roof + 0.015, R.z);
-  P.add('turretDark', cylY(R.columnR - 0.03, R.columnR, R.bottomY - roof + 0.03, n), R.x, (R.bottomY + roof) / 2, R.z);
-  const bodyTop = R.topY - R.lipH;
-  P.addEquipment('turretDark', cylY(R.r, R.r, bodyTop - R.bottomY, n), R.x, (bodyTop + R.bottomY) / 2, R.z);
-  P.addEquipment('turretDark', cylY(R.r + 0.02, R.r + 0.005, R.lipH, n), R.x, bodyTop + R.lipH / 2, R.z);
-  for (const dy of [0.05, 0.095, 0.14]) P.add('turretDetail', cylY(R.r + 0.008, R.r + 0.008, 0.02, n), R.x, bodyTop - dy, R.z);
+  const { box, cylY, torus } = KIT;
+  const n = P.q ? 36 : 22, roof = T.bustleRoofY, postH = R.bottomY - roof + 0.04;
+  P.add('turretDark', cylY(R.baseR - 0.02, R.baseR, 0.04, n), R.x, roof + 0.01, R.z);
+  P.add('turretDark', cylY(0.16, 0.16, postH, P.q ? 20 : 12), R.x, roof + postH / 2, R.z);
+  for (let k = 0; k < 8; k++) {
+    const a = (k + 0.5) * Math.PI / 4;
+    P.add('turretDark', box(0.07, postH, 0.07), R.x + Math.cos(a) * R.postR, roof + postH / 2, R.z + Math.sin(a) * R.postR, 0, -a, 0);
+  }
+  // (2 cm into the drum's side)
+  P.add('turretDark', box(0.07, 0.43, 0.07), R.x + 0.395, roof + 0.205, R.z - 0.395, 0, Math.PI / 4, 0);
+  const rimY = R.topY - R.rimR;
+  P.addEquipment('turretDark', cylY(R.r, R.r, rimY - R.bottomY, n), R.x, (rimY + R.bottomY) / 2, R.z);
+  P.addEquipment('turretDark', torus(R.r - R.rimR, R.rimR, n, P.q ? 10 : 6), R.x, rimY, R.z);
+  P.addEquipment('turretDark', cylY(R.r - R.rimR, R.r - R.rimR, 0.04, n), R.x, R.topY - 0.025, R.z);
+  for (const dy of [0.05, 0.095, 0.14]) P.add('turretDetail', cylY(R.r + 0.008, R.r + 0.008, 0.02, n), R.x, rimY - dy, R.z);
 }
 
-/** The sight heads (photo 02: the commander's tall head with its hood on the right, the gunner's on the left), the
- * commander's hatch, the lamp on the right cheek and the whip at the right rear. */
+/** The sight heads (photos 01-02; fix round 1, the blind critic): the commander's chunky head on the right, its front
+ * raked back under a lid jutting forward, a large window in it; the gunner's on the left an open sight under a flat hood
+ * plate on two cheeks and a back plate. The commander's hatch, the lamp on the right cheek, the rack on the rear face and
+ * the whip at the right rear. */
 function addRoofKit(P: TankBuilderPort): void {
-  const { box, cylZ } = KIT;
+  const { box, cylX, cylZ, xform } = KIT;
   const roof = T.frontRoofY;
-  for (const sight of [LVKV_SIGHTS.commander, LVKV_SIGHTS.gunner]) {
-    const { x, z, w, d, h } = sight;
-    // the head 1.5 cm into the roof, its hood overhanging the window, the window frame and glass on its front
-    P.addEquipment('turretEquipment', box(w, h, d), x, roof - 0.015 + h / 2, z);
-    P.addEquipment('turretEquipment', box(w + 0.04, 0.04, d + 0.08), x, roof + h - 0.03, z + 0.03);
-    P.add('turretDark', box(w - 0.05, h * 0.36, 0.02), x, roof + h * 0.58, z + d / 2 + 0.005);
-    P.addModuleVisual('optics', 'turretGlass', box(w - 0.09, h * 0.26, 0.012), x, roof + h * 0.58, z + d / 2 + 0.017);
+  {
+    const { x, z, w, d, h } = LVKV_SIGHTS.commander, rake = 0.14, foot = roof - 0.015, top = roof + h;
+    P.addEquipment('turretEquipment', convex(mirror([
+      [w / 2, foot, z - d / 2], [w / 2, top, z - d / 2], [w / 2, foot, z + d / 2], [w / 2, top, z + d / 2 - rake],
+    ] as P3[], 1).concat(mirror([
+      [w / 2, foot, z - d / 2], [w / 2, top, z - d / 2], [w / 2, foot, z + d / 2], [w / 2, top, z + d / 2 - rake],
+    ] as P3[], -1)).map(([px, py, pz]) => [px + x, py, pz] as P3)));
+    // the lid: 1 cm into the head's top, jutting 0.17 m past the raked face's top edge
+    P.addEquipment('turretEquipment', box(w + 0.04, 0.035, d + 0.04), x, top + 0.0075, z + 0.03);
+    const a = Math.atan2(rake, top - foot), wy = foot + (top - foot) * 0.48, wz = z + d / 2 - rake * 0.48;
+    const nz = Math.cos(a), ny = Math.sin(a);
+    P.add('turretDark', xform(box(w - 0.06, h * 0.50, 0.02), 0, 0, 0, -a, 0, 0), x, wy - ny * 0.005, wz + nz * -0.005);
+    P.addModuleVisual('optics', 'turretGlass', xform(box(w - 0.10, h * 0.40, 0.012), 0, 0, 0, -a, 0, 0),
+      x, wy + ny * 0.009, wz + nz * 0.009);
+  }
+  {
+    const { x, z, w, d, h } = LVKV_SIGHTS.gunner, foot = roof - 0.015;
+    for (const s of SIDES) P.addEquipment('turretEquipment', box(0.03, h + 0.015, d), x + s * (w / 2 - 0.015), foot + (h + 0.015) / 2, z);
+    P.addEquipment('turretEquipment', box(w, h + 0.015, 0.03), x, foot + (h + 0.015) / 2, z - d / 2 + 0.015);
+    P.addEquipment('turretEquipment', box(w + 0.06, 0.03, d + 0.10), x, roof + h + 0.005, z + 0.04);
+    // the sight itself under the hood, low and back, its window forward
+    P.addEquipment('turretEquipment', box(w - 0.10, h * 0.50, d * 0.55), x, foot + h * 0.25, z - d * 0.20);
+    P.add('turretDark', box(w - 0.14, h * 0.26, 0.02), x, foot + h * 0.29, z - d * 0.20 + d * 0.275 + 0.005);
+    P.addModuleVisual('optics', 'turretGlass', box(w - 0.17, h * 0.18, 0.012), x, foot + h * 0.29, z - d * 0.20 + d * 0.275 + 0.017);
   }
   // the commander's hatch on the rear section's roof behind his sight
   const hatch = hatchParts(0.25, !!P.q, 1);
@@ -120,8 +147,13 @@ function addRoofKit(P: TankBuilderPort): void {
   for (const g of hatch.dark) P.add('turretDark', g, -0.50, T.bustleRoofY - 0.01, -0.47);
   // the lamp on the right cheek's wall under the roof edge (photo 02's bright lens), its housing 1 cm into the wall
   const lampX = -(wallX(0.66) + 0.075 - 0.012);
-  P.addEquipment('turretEquipment', cylZ(0.075, 0.14, P.q ? 18 : 12), lampX, 0.66, 0.86);
-  P.add('turretGlass', cylZ(0.06, 0.012, P.q ? 18 : 12), lampX, 0.66, 0.935);
+  P.addEquipment('turretEquipment', cylZ(0.075, 0.14, P.q ? 18 : 12), lampX, 0.66, 0.58);
+  P.add('turretGlass', cylZ(0.06, 0.012, P.q ? 18 : 12), lampX, 0.66, 0.655);
+  // the rack on the rear face (photo 02's rail behind the drum): two rails on four stand-offs, each 1 cm into the face
+  for (const y of [0.36, 0.56]) {
+    P.addEquipment('turretDetail', cylX(0.022, 1.30, P.q ? 12 : 8), 0, y, T.rearZ - 0.11);
+    for (const x of [-0.55, 0.55]) P.addEquipment('turretDetail', cylZ(0.02, 0.13, P.q ? 10 : 6), x, y, T.rearZ - 0.055);
+  }
   // the whip on the rear section's right rear corner
   mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.30, r: 0.010, seed: 9041 }), -0.84, T.bustleRoofY, -1.02);
 }
@@ -147,24 +179,27 @@ function addSmokeDischargers(P: TankBuilderPort): void {
 }
 
 // ------------------------------------------------------------------------ gun --
-/** The Bofors (gun-local): the mantlet drum, the cradle's round cover and the v0 radar on it (elevating, not recoiling);
- * the ribbed jacket, the barrel and the flash eliminator (recoiling, each seated into the part behind it). */
+/** The Bofors (gun-local; fix round 1, the blind critic, photos 01-02): the mantlet drum, the cradle's cover one long cone
+ * from the turret face into the ribs, its twin-tube sight near the face (elevating, not recoiling); the band of eight ribs,
+ * the barrel and the flash eliminator (recoiling, each seated into the part behind it). */
 function addGun(P: TankBuilderPort): void {
   const { box, cylX, cylZ, lathe, xform } = KIT;
   const n = P.q ? 28 : 16;
   P.addGunExtra(cylX(G.mantletR, G.mantletHalfW * 2, P.q ? 32 : 20), 0, 0, 0);
   P.addGunExtra(xform(lathe([
-    [0.001, G.shroudRearZ], [G.shroudR, G.shroudRearZ], [G.shroudR, G.shroudTaperZ],
-    [G.shroudR - 0.03, G.shroudTaperZ + 0.24], [G.shroudFrontR, G.shroudFrontZ], [0.001, G.shroudFrontZ],
+    [0.001, G.coneRearZ], [G.coneRearR, G.coneRearZ], [G.coneFrontR, G.coneFrontZ], [0.001, G.coneFrontZ],
   ], n), 0, 0, 0, Math.PI / 2, 0, 0));
-  // the v0 radar riding on the cover (the photo's cylinder over the gun), on two brackets
-  P.addGunExtra(cylZ(0.065, 0.34, P.q ? 18 : 12), -0.10, 0.29, 1.08);
-  P.addGunExtra(cylZ(0.035, 0.05, P.q ? 18 : 12, 0.065), -0.10, 0.29, 1.275);
-  for (const z of [0.98, 1.08]) P.addGunExtra(box(0.05, 0.10, 0.05), -0.10, 0.215, z);
-  // the recoiling tube: the ribbed jacket out of the cover, the barrel from inside the cover, the slotted flash eliminator
-  const jacketLen = G.jacketFrontZ - G.jacketRearZ;
-  P.add('gun', cylZ(G.jacketR, jacketLen, n), 0, 0, (G.jacketFrontZ + G.jacketRearZ) / 2);
-  for (let k = 0; k < 4; k++) P.add('gun', cylZ(G.ribR, 0.024, n), 0, 0, G.jacketRearZ + 0.10 + k * 0.058);
+  // the twin-tube sight on the cone's top right near the face: a bracket sunk into the cone, two tubes side by side on it
+  P.addGunExtra(box(0.14, 0.17, 0.20), -0.08, 0.165, 0.50);
+  for (const x of [-0.04, -0.13]) {
+    P.addGunExtra(cylZ(0.045, 0.30, P.q ? 16 : 10), x, 0.29, 0.50);
+    P.addGunExtraDark(cylZ(0.034, 0.012, P.q ? 16 : 10), x, 0.29, 0.652);
+  }
+  // the recoiling tube: the rib band out of the cone, the barrel from inside the cone, the slotted flash eliminator
+  const ribsLen = G.ribsFrontZ - G.ribsRearZ;
+  P.add('gun', cylZ(G.ribsCoreR, ribsLen, n), 0, 0, (G.ribsFrontZ + G.ribsRearZ) / 2);
+  const pitch = (ribsLen - 0.08) / (G.ribCount - 1);
+  for (let k = 0; k < G.ribCount; k++) P.add('gun', cylZ(G.ribR, 0.022, n), 0, 0, G.ribsRearZ + 0.06 + k * pitch);
   const barrelLen = G.deviceRearZ + 0.02 - G.barrelRearZ;
   P.add('gun', cylZ(G.barrelFrontR, barrelLen, n, G.barrelR), 0, 0, G.barrelRearZ + barrelLen / 2);
   const deviceLen = LVKV_MUZZLE_Z - G.deviceRearZ;
