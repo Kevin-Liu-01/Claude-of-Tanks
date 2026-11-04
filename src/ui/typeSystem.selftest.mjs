@@ -618,9 +618,9 @@ assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');
 assert.match(hud, /<b class="fe">0<\/b>/, 'the enemy score is a display numeral');
 assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_NUM\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the numerals face (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
-// The HUD's counting readouts that tick in place keep .num's tabular figures in Glacis's tnum: one rule names them, and
-// beats .num's family by specificity in the same layer.
-assert.match(hud, /\.cot-top \.tm\.num,\.cot-net \.num,\.cot-shell \.cnt\.num,\.cot-con \.cnt\.num\{font-family:\$\{FONT_NUM\}!important;\}/,
+// The HUD's counting readouts that tick in place keep .num's tabular figures in Glacis's tnum: one rule names them and
+// points .num's family token at FONT_NUM on those elements alone (no second !important against .num's).
+assert.match(hud, /\.cot-top \.tm\.num,\.cot-net \.num,\.cot-shell \.cnt\.num,\.cot-con \.cnt\.num\{--font-mono:\$\{FONT_NUM\};\}/,
   'the clock, link, ammo and consumable counts set .num\'s tabular figures in Glacis');
 assert.match(hud, /sightText\.tabular\(SIGHT_TEXT_COUNTDOWN\)/, 'the sight\'s reload countdown ticks in tabular figures');
 // The end screen's headline tallies and team scores are display numerals too: they count up once (1.05 s ease-out) and

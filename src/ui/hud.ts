@@ -1593,10 +1593,13 @@ const HUD_CSS = `
 .cot-top .tm-block .tm{order:1;}.cot-top .tm-block .tm-label{order:2;}
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
 .cot-top .tm-label:empty{display:none;}
-.cot-top .tm{font:500 18px/1 ${FONT_NUM};color:var(--ink-1);letter-spacing:.02em;}
+/* (longhands, not the font shorthand: a shorthand here resets .num's tabular figures, which Plex Mono never showed and
+   Glacis's proportional figures do) */
+.cot-top .tm{font-family:${FONT_NUM};font-size:18px;line-height:1;font-weight:500;color:var(--ink-1);letter-spacing:.02em;}
 /* (DECISIONS 2026-11-03) the HUD's counting readouts set in Glacis: those that tick in place keep .num's tabular figures,
-   Glacis's tnum (one 560-unit advance: 11:11 sets as wide as 88:88), in place of .num's Plex Mono */
-.cot-top .tm.num,.cot-net .num,.cot-shell .cnt.num,.cot-con .cnt.num{font-family:${FONT_NUM}!important;}
+   Glacis's tnum (one 560-unit advance: 11:11 sets as wide as 88:88), in place of .num's Plex Mono. .num's family is its
+   token, so these readouts point the token at Glacis on themselves alone (their labels keep the mono face) */
+.cot-top .tm.num,.cot-net .num,.cot-shell .cnt.num,.cot-con .cnt.num{--font-mono:${FONT_NUM};}
 /* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
 .cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp var(--dur-screen) steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:var(--warn);}

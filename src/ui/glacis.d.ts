@@ -40,16 +40,16 @@ export interface GlacisShape {
   readonly holes: Array<Array<[number, number]>>;
 }
 
-export const UPM: number;
-export const CAP_HEIGHT: number;
-export const ASCENDER: number;
-export const DESCENDER: number;
-export const GLYPHS: Readonly<Record<string, { readonly advance: number; readonly d: string }>>;
-export const CMAP: Readonly<Record<number, string>>;
-export function layout(text: string, opts?: GlacisOptions): GlacisLayout;
-export function drawText(
+export declare const UPM: number;
+export declare const CAP_HEIGHT: number;
+export declare const ASCENDER: number;
+export declare const DESCENDER: number;
+export declare const GLYPHS: Readonly<Record<string, { readonly advance: number; readonly d: string }>>;
+export declare const CMAP: Readonly<Record<number, string>>;
+export declare function layout(text: string, opts?: GlacisOptions): GlacisLayout;
+export declare function drawText(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   text: string, x: number, y: number, opts?: GlacisOptions,
 ): GlacisLayout;
-export function shapes(text: string, opts?: GlacisOptions): GlacisShape[];
-export function supports(text: string): boolean;
+export declare function shapes(text: string, opts?: GlacisOptions): GlacisShape[];
+export declare function supports(text: string): boolean;
