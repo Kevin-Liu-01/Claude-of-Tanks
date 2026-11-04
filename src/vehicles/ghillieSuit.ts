@@ -2310,7 +2310,8 @@ function strandCloth(clump: StrandClump, cfg: GhillieConfig, support: OwnerSuppo
     const turns = (0.6 + h(7) * 1.2) * (h(8) < 0.5 ? -1 : 1), spin = h(9) * Math.PI;
     const swayX = (h(10) - 0.5) * 0.07, swayZ = (h(11) - 0.5) * 0.06, knot = h(12) < 0.45 ? 0.78 + h(13) * 0.12 : -1;
     if (!high && i % 2 === 1) continue;
-    const r = radius(zi) + w0 + 0.003;
+    // (its top ring, level, tied 4 mm off the barrel at its nearest point: within the contact rule's 15 mm, never in it)
+    const r = radius(zi) + w0 * Math.abs(Math.sin(th)) + 0.004;
     const ax = Math.sin(th) * r, ay = -Math.cos(th) * r;
     const ts = knot > 0 ? [0, 0.12, 0.28, 0.45, 0.62, knot - 0.05, knot, knot + 0.05, 1] : [0, 0.12, 0.28, 0.45, 0.62, 0.78, 0.9, 1];
     const rings: Point3[][] = ts.map((t) => {
