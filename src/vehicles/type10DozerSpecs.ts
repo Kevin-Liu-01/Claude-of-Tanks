@@ -12,7 +12,9 @@ const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 // Owner order 2026-10-21: the Type 10 fitted with the JGSDF dozer kit (ドーザ装置付き). Same gun, fire control and armour
 // as the Type 10; the 2 t blade and its rams cost a little speed and pivot, and the bow blade makes it the family's
-// breaching tank. Paint: the green digital of the owner's reference render (plate 99-0239).
+// breaching tank. Paint (owner 2026-11-02: the digital woodland "is terrible"; the Type 10's service bands, "obv ...
+// more distinct", in "the type 90bs dark camo"): the JGSDF bands on the Type 90 (B)'s dark olive, with a warm brown and a
+// near-black green.
 const spec = cloneFleetVariant(registries.tankSpecs, 'type10_dozer', 'type10', { name: 'Type 10 Kaitaku', nation: 'Japan' });
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
@@ -26,8 +28,8 @@ Object.assign(spec, {
 });
 spec.visual = {
   ...spec.visual,
-  scheme: 'digital', base: '#3e4b33', weather: '#545e43', patches: ['#1f271b', '#5e7040', '#735a3c'],
-  marking: 'number', number: '24', camoScale: 0.40,
+  scheme: 'stripes', base: '#383c2b', weather: '#444838', patches: ['#4a3a29', '#262b1f'],
+  marking: 'number', number: '24', camoScale: 0.5,
 };
 
 // Owner 2026-10-22 ("side armor and turret armor"): the field kit's bolted modules are spaced armour over their faces.

@@ -792,7 +792,7 @@ file	icons	public/icons/tank-assets/tanks/tamoyo3.json	9a04778f131453aa
 file	icons	public/icons/tank-assets/tanks/tos1a_tagil.json	e139bad809b14b4a
 file	icons	public/icons/tank-assets/tanks/type10.json	3324c3568b0c5691
 file	icons	public/icons/tank-assets/tanks/type100.json	033a6a537a015066
-file	icons	public/icons/tank-assets/tanks/type10_dozer.json	766f4fa349eae598
+file	icons	public/icons/tank-assets/tanks/type10_dozer.json	7697f85d7a56f6a8
 file	icons	public/icons/tank-assets/tanks/type10_tk_x.json	f759c7fb66a589ed
 file	icons	public/icons/tank-assets/tanks/type10b.json	4cbd322b0f481da2
 file	icons	public/icons/tank-assets/tanks/type59.json	c0c876a8b27d3f1b
@@ -2950,7 +2950,7 @@ key	icons	tamoyo3	d329ec46cab0e17e	f5aabdcd234d9b24
 key	icons	tos1a_tagil	4ca65027f78c4e8e	d389c3fefecbed5a
 key	icons	type10	fda84bcbd2ac7ae7	3b04d9caed85c95c
 key	icons	type100	8602a51a2b8e8825	7cd57d4ab743c26a
-key	icons	type10_dozer	961f35c36b5fb492	f855687f160f6612
+key	icons	type10_dozer	739cd39866c4abc3	c039f39cb1468919
 key	icons	type10_tk_x	3e34378ab977a75d	fed243a8a44c928f
 key	icons	type10b	9cc45ed07bb1049a	00abadce456d081f
 key	icons	type59	87e920119ef7b07e	d688f4448b8d4a2f
@@ -3508,7 +3508,7 @@ key	marking	tamoyo3	654700dbc7767efa	52fa2b4562cb86db
 key	marking	tos1a_tagil	b95c6ad417d6e52f	172eb00d8acad14c
 key	marking	type10	01128bf0c3f759a6	d7eb38c3fb8878bb
 key	marking	type100	a7fc880fb1962af3	e7a55eb89c7be430
-key	marking	type10_dozer	1ffcc3268849aa08	a50df336ab76239a
+key	marking	type10_dozer	3c363da9f30ac296	a50df336ab76239a
 key	marking	type10_tk_x	1e85c765d9a7a492	773f5a9a65d68859
 key	marking	type10b	e00537f61a0b7f79	139fe14c99e7e1db
 key	marking	type59	103a070ddbd2c026	1cffa2eb6f489bfa
