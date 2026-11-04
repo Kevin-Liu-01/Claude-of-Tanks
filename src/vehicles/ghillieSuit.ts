@@ -135,6 +135,19 @@ interface TopPanel {
    * half-metre bays as a lid.
    */
   sagK?: number;
+  /**
+   * Release 269 round 3 (the Chieftain Mk 3's turret net: "a row of regular V-notch or loop cutouts along the turret side
+   * edges"): the steepest step in its armour a laid cell spans (m; default LAID_STEP_M, 0.25). A 5 cm cell laid down a
+   * casting's curved shoulder or steep front stretches into a tooth; a smaller step ends the net at the slope's break,
+   * where the drapes take over.
+   */
+  laidStepM?: number;
+  /**
+   * Release 269 round 3 (the same): the share of the cells along every cut edge (its outline, its openings and the
+   * armour's edge, not only the grid's own) torn away at random, so a cut down a diagonal or round a curved casting steps
+   * at irregular places instead of in a regular staircase (default 0).
+   */
+  edgeTearP?: number;
 }
 
 interface SidePanel {
@@ -1464,7 +1477,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       if (Number.isNaN(r)) continue;
       lo = Math.min(lo, r); hi = Math.max(hi, r);
     }
-    return hi - lo > LAID_STEP_M;
+    return hi - lo > (panel.laidStepM ?? LAID_STEP_M);
   };
   const clipped = (i: number, j: number): boolean => (panel.clipToArmour === true && !!probe
     && (armoured[j * NX + i] + armoured[j * NX + i + 1] + armoured[(j + 1) * NX + i] + armoured[(j + 1) * NX + i + 1] < 2 || stepped(i, j)))
@@ -1479,6 +1492,13 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const tri = (a: Point3, b: Point3, c: Point3): void => {
     for (const p of [a, b, c]) { positions.push(p[0], p[1], p[2]); uvs.push(p[0] * uvk + ou, p[2] * uvk + ov); }
   };
+  // release 269 round 3 (TopPanel.edgeTearP): whether a cell is laid by the rules above it (its neighbours, for a cut edge)
+  const tear = panel.edgeTearP ?? 0;
+  const cellIn = (i: number, j: number): boolean => {
+    if (i < 0 || j < 0 || i >= nx || j >= nz) return false;
+    const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
+    return !(outline && !insidePoly(cx, cz, outline)) && !insideAny(cx, cz, holeSet) && !clipped(i, j);
+  };
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
     if (outline && !insidePoly(cx, cz, outline)) continue;
@@ -1488,6 +1508,8 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     if (clipped(i, j)) continue;
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
     if (edge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    if (tear > 0 && !(cellIn(i - 1, j) && cellIn(i + 1, j) && cellIn(i, j - 1) && cellIn(i, j + 1))
+      && noise01(i * 7 + j * 131 + (panel.seed ?? 0) * 17, cfg.seed + 0x5e) < tear) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     tri(a, c, b); tri(a, d, c);
   }
@@ -1724,6 +1746,8 @@ interface CurtainSpec {
   readonly foldK: number;
   /** Release 269 round 3: stations the curtain must draw besides its even pitch and its folds (a sleeve's bindings). */
   readonly marks?: readonly number[];
+  /** Release 269 round 3: the curtain's row pitch down its section (default DRAPE_ROW_M; a bunched sleeve's lumps). */
+  readonly rowM?: number;
 }
 
 function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number], flip: boolean): {
@@ -1761,7 +1785,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
   // rows for the drape's typical section (a few long ones take longer rows)
   lengths.sort((p, q) => p - q);
   const typical = lengths.length ? lengths[Math.floor(lengths.length * 0.75)] : 0.6;
-  rows = THREE.MathUtils.clamp(Math.ceil(typical / DRAPE_ROW_M) + 1, 3, 12);
+  rows = THREE.MathUtils.clamp(Math.ceil(typical / (spec.rowM ?? DRAPE_ROW_M)) + 1, 3, 12);
   // one row runs along the roll over the wall's top edge (each section's vertex at `corner`): the rows split there, the
   // part on the roof and the drop each spaced evenly, so the roll is drawn where it lies instead of as a chord pushed off
   // it (round 5, 2026-10-08: over push 3b's screen top rails such a chord left the net's top row 3 cm in the air)
@@ -2147,7 +2171,7 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
   const spec: CurtainSpec = {
     a0: z0, a1: z1, seed: s, foldK: SLEEVE_FOLD_K, maxOut: Infinity,
     hem: () => -Infinity,
-    ...(bunchM > 0 ? { marks: binds.flatMap((b, i) => (i + 1 < binds.length ? [b.at, (b.at + binds[i + 1].at) / 2] : [b.at])) } : {}),
+    ...(bunchM > 0 ? { rowM: 0.055, marks: binds.flatMap((b, i) => (i + 1 < binds.length ? [b.at, (b.at + binds[i + 1].at) / 2] : [b.at])) } : {}),
     section(z) {
       const r = radiusAt(z);
       if (r === null) return null;
@@ -3085,9 +3109,12 @@ function* addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Fiel
     const at = surface.sample(u, v);
     return !!at && surface.cardOk([at.p[0] + at.n[0] * 0.05, at.p[1] + at.n[1] * 0.05, at.p[2] + at.n[2] * 0.05]);
   };
+  // release 269 round 3: a bunched sleeve's garnish is tied in small clumps close together (a clump's 15-27 cm
+  // round fits once in a barrel's length of it)
+  const seatK = !top && ((surface.panel as Partial<SleeveSide>).bunchM ?? 0) > 0 ? 0.45 : 1;
   for (let attempt = 0; attempt < 60 + want * 60 && seats.length < want; attempt++) {
     const u = u0 + rng() * spanU, v = v0 + (top ? rng() : 0.04 + rng() * 0.93) * spanV;
-    const r = 0.15 + rng() * 0.12;
+    const r = (0.15 + rng() * 0.12) * seatK;
     const accept = rng();
     if (!seatOk(u, v)) continue;
     if (accept > 0.25 + 0.75 * Math.pow(stuffing(u, v), 1.3)) continue;
