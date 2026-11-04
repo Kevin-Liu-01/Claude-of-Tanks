@@ -32,7 +32,7 @@ import { streetGritShare } from '../world/roadPave.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
-import { configureGunshipMaterials, GUNSHIP_BANK_RAD } from '../game/gunshipVisual.ts';
+import { configureGunshipMaterials, GUNSHIP_BANK_RAD, loadedGunshipAirframe, loadGunshipAirframe } from '../game/gunshipVisual.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -5011,7 +5011,6 @@ function* createFxSteps(
   /** the lens guns (built from the airframe's chunk the first time a gunship lens is seen), and whether they are posed on
    *  this frame's camera */
   let lensGuns: GunshipLensGuns | null = null;
-  let lensLoading = false;
   let lensUp = false;
   /** the aircraft whose gimbal point the camera rides (re-found at most every LENS_SCAN_FRAMES while none is) */
   let lensCarrier: unknown = null;
@@ -5046,14 +5045,12 @@ function* createFxSteps(
       return;
     }
     if (!lensGuns) {
-      if (!lensLoading) {
-        lensLoading = true;
-        void import('../game/gunshipAirframe.ts').then((module) => {
-          lensGuns = module.buildGunshipLensGuns({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
-          group.add(lensGuns.root);
-        }, (error: unknown) => { lensLoading = false; console.warn('[fx] the gunship lens guns did not load:', error); });
-      }
-      return;
+      // (2026-11-02 audit R6) the airframe's one chunk and its policy (game/gunshipVisual.ts): a latch of its own, cleared
+      // on failure, asked a failed chunk again on every lens frame
+      const airframe = loadedGunshipAirframe();
+      if (!airframe) { void loadGunshipAirframe(); return; }
+      lensGuns = airframe.buildGunshipLensGuns({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+      group.add(lensGuns.root);
     }
     lensGuns.pose(cam as THREE.PerspectiveCamera, dt, imagesHeat(cam));
     lensUp = true;
