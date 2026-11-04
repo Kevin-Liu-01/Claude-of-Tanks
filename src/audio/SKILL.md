@@ -25,7 +25,11 @@ LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 `vehicleAudioModel.ts` (powertrain identity, RPM/gear/track model),
 `environmentScenes.ts` (per-map scenes, bells, flyovers by era),
 `propSounds.ts` (what every world prop kind sounds like), `voiceLines.ts`
-(radio discipline, crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
+(radio discipline, and `resolveCrewLine`: each mode's and the AC-130 crew's own
+call for a tank crew's line, from the exhaustive `MODE_CREW` and `GUNSHIP_CREW`),
+`crewProcedure.ts` (the crew's procedure on moments the sound handlers leave
+unvoiced: the fire command and its answers, APS/ERA, the drone's flight, the
+modes' own moments, the gunship's fire control). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
 `captions.ts` owns the caption stream (BUI-F9): every keyed transmission
 (`crewRadio.ts` `onTransmit`, with the take spoken and the speaking role from

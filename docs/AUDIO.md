@@ -1029,6 +1029,34 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   "Laai nou" as "Lie now", "enjin" as "engine"). Each pack is 215 takes,
   1.4–1.6 MB, the size of the existing ones. 38,521 credits (speech 36,649,
   transcription 1,872), auditions and the second transcript included.
+- **2026-11-03, the crew's procedure and every mode in every language (lane
+  crew-lines-269).** The owner: "more and better voice lines of more military
+  terms and of things happeninng. more special terrms for ac 130, all the
+  special moodes, in all the languages." A census of every bus event, frame
+  edge and mode found the moments with no line or a wrong one (the crew radio
+  section's table names the trigger of each): the fire
+  command and its answers, APS and ERA either way, the drone's battery, link,
+  recall and the counter-drone fight, enemy smoke, backing out, obstacles,
+  jumps, the countdown, every mode's opening, its own moments and its results,
+  and the AC-130's fire control. 69 new lines and 20 more takes on lines that
+  had one, so a pack is 190 lines and 371 takes. Each language was written by
+  a writer briefed on its army's register who first read that pack's shipped
+  column (Bundeswehr Feuerkommando "Richtschütze, Wuchtgeschoss, Panzer" /
+  "Erkannt", Russian «Наводчик, бронебойным, по танку» / «Цель вижу», British
+  "Target stop", Japanese 目標よし, Hebrew מעיל רוח for the Trophy APS; NATO
+  aircrews keep "Cleared hot", "Rifle" and "Danger close" inside their own
+  sentences, the others use their own: «Работу разрешили», «Пуск», 着弾).
+  Two class fixes came with it: the tank crew's lines in the AC-130 and in
+  modes where they made no sense (the gunship's "Moving." and "We're
+  outnumbered." at its start, the lone Juggernaut's "We're the last tank.",
+  "Back in the fight." after every Turbo Ball goal, solo side counts in
+  respawning modes) now resolve through `MODE_CREW` and `GUNSHIP_CREW`; and a
+  round an APS stopped is no longer called a miss, nor an enemy's ERA "No
+  penetration". `build-voices.mjs --append` built only the added takes (a full
+  rebuild of a line re-picks among its cached attempts: the Afrikaans "Laai
+  nou." came back a different take). BUILD_FLAGS SWEEP_RESULT Packs grew from
+  BYTES_BEFORE to BYTES_AFTER (PACK_SIZE each), still loaded only for the
+  crew's language. CREDITS_LINE
 
 ### Cost
 
