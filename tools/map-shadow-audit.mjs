@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx vite --host 127.0.0.1
- *   agent-browser --session cot-shadow-audit open 'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1'
+ *   agent-browser --session cot-shadow-audit open 'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1&automation=harness'
  *   node tools/map-shadow-audit.mjs cot-shadow-audit
  *   node tools/map-shadow-audit.mjs cot-shadow-audit .qa-dev/delta.json --maps=delta
  *
@@ -17,7 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { MAP_IDS } from '../src/world/maps/index.ts';
-import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { AUTOMATION_PATH_EXPRESSION, BOOT_LOADED_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
 
 const session = process.argv[2] || 'cot-shadow-audit';
 const outPath = resolve(process.argv[3] || '.qa-dev/map-shadow-audit.json');
@@ -50,6 +50,10 @@ function evaluate(script) {
 
 if (!evaluate(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.sampleShadowContribution`)) {
   throw new Error('game/shadow debug facade is not ready in the audit browser');
+}
+{
+  const problem = sessionPathProblem(evaluate(AUTOMATION_PATH_EXPRESSION), 'harness');
+  if (problem) throw new Error(`map-shadow-audit: ${problem}`);
 }
 const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');
 const expectedCascadeCount = deviceTier === 'mobile' ? 3 : 4;

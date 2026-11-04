@@ -703,8 +703,9 @@ function worldRaycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistan
 // remote/mobile testers an optimized-build trace they can export themselves.
 // (2026-11-02 audit S3) the page's automation path, read in one place (src/app/automationPath.ts): `driven` installs the
 // QA surfaces (a boot decision), harnessPath() says whether to take the shortcuts (no entry gate, no veils, no scene
-// watchdogs; read where each one is decided); a tool asks for the player's path explicitly instead of hiding
-// navigator.webdriver. Published read-only for receipts (window.__AUTOMATION_PATH), beside the lifecycle.
+// watchdogs; read where each one is decided). Only an explicit request picks the path, never navigator.webdriver: a
+// tool's browser asks for the harness path, a player-path receipt for the player's. Published read-only for receipts
+// (window.__AUTOMATION_PATH), beside the lifecycle.
 const automationAtBoot = automationMode();
 const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || automationAtBoot.driven;
 const traceRequested = import.meta.env.DEV || debugModeRequested();

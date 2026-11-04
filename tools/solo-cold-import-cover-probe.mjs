@@ -14,7 +14,7 @@ import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
-import { readinessExpression, requestAutomationPath } from './game-readiness.mjs';
+import { assertAutomationPath, readinessExpression, requestAutomationPath } from './game-readiness.mjs';
 import { resolveColdLoadingAsset, createColdImportHold, installColdImportCoverObserver,
   checkColdImportCover } from './solo-cold-import-cover.mjs';
 
@@ -171,6 +171,8 @@ try {
   if (!response?.ok() || hash(await response.buffer()) !== report.buildIndexHash) throw new Error('served_build_index_mismatch');
   await run('garage-ready', () => page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,
     { timeout: remaining() }));
+  // (2026-11-02 audit S3) the cover is judged on the player's path, or the probe fails here by name
+  report.automation = await run('automation-path', () => assertAutomationPath(page, 'player', { label: 'solo-cold-import-cover-probe' }));
   report.graphics = await page.evaluate(readGraphics);
   await run('solo-mode-picker', async () => {
     await page.click('.cot-battle-mode');

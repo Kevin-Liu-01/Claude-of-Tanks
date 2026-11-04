@@ -1,30 +1,50 @@
 # Automation paths
 
 Which path the game runs for a browser tool, and which tools take which one (2026-11-02 audit S3). The lists below
-are checked against the tools by `src/app/automationPath.selftest.mjs`: a tool that changes path, adds a battle
-entry or starts writing the game's state must be listed here in the same change.
+are checked against the tools by `src/app/automationPath.selftest.mjs` and `tools/game-readiness.selftest.mjs`: a tool
+that changes path, adds a battle entry, starts writing the game's state or reads it to wait must be listed here in the
+same change.
 
 ## How a page picks its path
 
-The game reads its automation path in one place, `src/app/automationPath.ts`:
+The game reads its automation path in one place, `src/app/automationPath.ts`, and only from an explicit request; it
+never sniffs the driver (`navigator.webdriver`):
 
 | request | path | what the game does |
 |---|---|---|
-| none, `navigator.webdriver` true (every puppeteer page) | harness | QA surfaces on (`window.__DEBUG`, the drive test); the entry gate auto-skips; transitions run their work synchronously with no veil; the battle and Garage scene black watchdogs and the device-diag rescue stay off |
-| `window.__COT_AUTOMATION = 'harness'` or `?automation=harness` | harness | the same, without a driver |
+| `window.__COT_AUTOMATION = 'harness'` or `?automation=harness` | harness | QA surfaces on (`window.__DEBUG`, the drive test); the entry gate auto-skips; transitions run their work synchronously with no veil; the battle and Garage scene black watchdogs and the device-diag rescue stay off |
 | `window.__COT_AUTOMATION = 'player'` or `?automation=player` | player | everything as for a player: the entry gate waits for a key (`?nosplash` / `?nogate` still skip it), every veil and fade runs, the watchdogs run; no QA surfaces unless a dev server or `?debug=1` asks for them, as for any player |
-| none, no driver | player | a player's page |
+| none (a player, or any driver that asks for nothing) | player | a player's page |
 
-A tool asks before navigating: `requestAutomationPath(page, 'player')` from `tools/game-readiness.mjs` (or
-`window.__COT_AUTOMATION = 'player'` inside its own init script). Never hide `navigator.webdriver`: that also turned
-off the QA surfaces in a production build and let a robot count as a player in analytics and telemetry, which keep
-their own `navigator.webdriver` exclusion. The page publishes the path it resolved as `window.__AUTOMATION_PATH`
-(read-only), next to the app lifecycle (`window.__APP_LIFECYCLE`).
+Every browser a tool launches asks for the harness path: `tools/browser-launch.mjs` `launchGuardedBrowser` (the one
+launcher, `tools/browser-launch-census.selftest.mjs`) hands the browser to `prepareToolBrowser` in
+`tools/game-readiness.mjs`, which registers the request (`HARNESS_DEFAULT_SCRIPT`) on every page before the tool sees
+it: puppeteer's open pages, `Browser.newPage`, `BrowserContext.newPage` (`createBrowserContext`, the default context),
+and playwright's `newContext`, `Browser.newPage` and a persistent context. A browser a tool connects to instead
+(playwright's `launchServer` + `connect`) goes through `prepareToolBrowser` itself. The request is the page's first
+init script, so a tool that wants the player's path asks after it and wins: `requestAutomationPath(page, 'player')`
+(or `window.__COT_AUTOMATION = 'player'` inside its own init script), before navigating; a `?automation=` in the URL is
+left to the URL. An agent-browser session tool (`tools/map-shadow-audit.mjs`, `tools/render-stability-audit.mjs`,
+`tools/capture-world-collision-manifests.mjs`) is opened by its operator: its usage opens the session with
+`&automation=harness`, and it checks the path the session's page took (`sessionPathProblem`). A person or an agent
+browsing the game with no request gets the player's path; add `?automation=harness` for the shortcuts.
+
+Never spoof `navigator.webdriver` in a page to pick its path: a request is how a page picks it. Analytics and telemetry
+keep their own `navigator.webdriver` exclusion, so a tool that hides the driver at launch for an older build (below)
+counts as a player there on a production host, as every player-path tool did before 2026-11-03. The page publishes
+the path it resolved as `window.__AUTOMATION_PATH` (read-only), next to the app lifecycle (`window.__APP_LIFECYCLE`).
 
 So every receipt not listed under the player's path certifies the harness path: no entry gate, no veils, no scene
 watchdogs. A regression in one of those machines is visible only to the player-path tools.
 
 ## Tools on the player's path
+
+Each one checks after the boot that its page took the player's path (`assertAutomationPath(page, 'player')`), and
+fails by name otherwise. A build before 2026-11-03 ignores the request and decides by `navigator.webdriver` alone, so
+the tools that may load such a build (an A/B base, a deployment) also launch with
+`--disable-blink-features=AutomationControlled`, which gives that build the player's path too: battle-entry-sweep,
+black-world-repro, click-timeline, cold-load-probe, garage-battle-actions-probe, gate-audio-probe and nav-timeline.
+loading-budget-probe and solo-cold-import-cover-probe serve the checkout they run in.
 
 <!-- census:player -->
 - `tools/battle-entry-sweep.mjs`: the covered solo entry, its scene watchdog included, on every battlefield
@@ -80,7 +100,9 @@ Through `__DEBUG.beginSoloBattle` (the solo entry, its cover and countdown):
 - `tools/battle-entry-sweep.mjs`
 - `tools/battle-memory-probe.mjs`
 - `tools/battle-spike-census.mjs`
+- `tools/black-world.browser.selftest.mjs`
 - `tools/daynight-atmosphere-probe.mjs`
+- `tools/destruction-first-use.browser.selftest.mjs`
 - `tools/dev-perf-probe.mjs`
 - `tools/environment-motion-probe.mjs`
 - `tools/gunship-lens-strip.browser.mjs`
@@ -156,44 +178,85 @@ Wait through `tools/game-readiness.mjs`, never on a hand-built predicate. The au
 true under a return's veil and behind the battle report, and `phase === 'battle' && preBattleS <= 0` under a network
 join's cover. The module reads the game's published lifecycle (`window.__APP_LIFECYCLE`, src/game/appLifecycle.ts):
 
-| readiness | lifecycle states | use it for |
-|---|---|---|
-| `garage` | garage | a settled Garage screen: the boot splash gone, no return under its veil, not behind the report |
-| `battleRevealed` | countdown, live, verdict, report | the battle is on screen (its cover is gone) |
-| `controlsReleased` | live, verdict, report | the countdown is over (what `phase === 'battle' && preBattleS <= 0` meant) |
-| `battleLive` | live | controls released and no verdict |
-| `battleEnded` | verdict, report | the verdict landed |
-| `studio` | studio | the Studio owns the scene |
+| readiness | lifecycle states | use it for | on a build with no lifecycle |
+|---|---|---|---|
+| `garage` | garage | a settled Garage screen: the boot splash gone, no return under its veil, not behind the report | booted and `phase === 'garage'` |
+| `battleRevealed` | countdown, live, verdict, report | the battle is on screen (its cover is gone) | `phase === 'battle'`, no `.cot-bl.on` / `.leaving` |
+| `controlsReleased` | live, verdict, report | the countdown is over (what `phase === 'battle' && preBattleS <= 0` meant) | `phase === 'battle' && preBattleS <= 0` |
+| `battleLive` | live | controls released and no verdict | the same, and no `result` |
+| `battleEnded` | verdict, report | the verdict landed | `phase === 'battle'` and a `result` |
+| `studio` | studio | the Studio owns the scene | `phase === 'studio'` |
 
 `readinessExpression(name, { since })` is the in-page expression (add a tool's own conditions with `&&`);
 `waitForReady(page, name, options)` waits and returns the facts; `since` takes a lifecycle `transitions` count so a
-wait means the next battle, not the one on screen. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's
-harness mirror (`window.__GAME_READY`, written by src/app/bootReadiness.ts): the boot finished loading, while the
-entry gate may still wait on the player (the lifecycle's 'boot' state until it is dismissed).
+wait means the next battle, not the one on screen. A build that publishes no lifecycle (before 2026-11-03: a
+deployment, an A/B baseline) never passes a readiness on its boot alone: each readiness falls back to the predicate
+that build's own harnesses waited on (the last column), its facts say `lifecycle: false`, and `since` has no count
+there. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
+written by src/app/bootReadiness.ts): the boot finished loading, while the entry gate may still wait on the player
+(the lifecycle's 'boot' state until it is dismissed).
 
-The tools that still read the mirror or build a phase or countdown wait by hand, and why:
+`tools/game-readiness.selftest.mjs` reads every tool, and every selftest that drives a page, as code (comments
+blanked by TypeScript's parser, so a glob string such as `'**/*'` is not a comment) for the facts behind those
+definitions: the boot mirror, a comparison of the app phase or of the countdown, the loader's `on` / `leaving` classes
+or the loader element itself, the HUD's computed display, and a read of the reveal latch. Each tool that reads one
+itself is listed below with its reason.
+
+Waits and polls built by hand:
 
 <!-- census:handBuiltWaits -->
+- `tools/battle-entry-sweep.mjs`: the covered entry is its subject: each run samples the reveal latch and the loader to judge that entry
 - `tools/battle-memory-probe.mjs`: its entry time is measured to the phase edge itself
-- `tools/battle-spike-census.mjs`: another lane's open edits (tools-chains); migrate after it lands
-- `tools/click-timeline.mjs`: measures the Garage's paint and the entry gate (visual edges), not readiness
-- `tools/cold-load-probe.mjs`: records the mirror inside a page function as a receipt field
-- `tools/frame-budget-probe.mjs`: another lane's open edits (tools-chains)
-- `tools/garage-variants-probe.mjs`: a page function closed over the tool's own selection id
-- `tools/ground-banding-shots.mjs`: another lane's open edits (tools-chains)
-- `tools/map-probe-runtime.mjs`: another lane's open edits (tools-chains)
-- `tools/marketing-shots/mode-battle-shots.mjs`: another lane's file (tools-chains)
-- `tools/media-production/cinema.mjs`: another lane's file (tools-chains)
-- `tools/media-production/produce.mjs`: another lane's file (tools-chains)
-- `tools/media-r5/lab.mjs`: another lane's file (tools-chains)
-- `tools/media-r5/studio-ui.mjs`: another lane's file (tools-chains)
-- `tools/mp-room-census.mjs`: another lane's file (tools-chains)
+- `tools/battle-spike-census.mjs`: its trace starts at the phase edge itself (the covered load is the recorder's, the countdown and the fight are the trace's)
+- `tools/black-world-repro.mjs`: the black-world hunt: it watches the cover lift and the HUD show (the visual edge it hunts at) and samples the loader in its monitor
+- `tools/click-timeline.mjs`: measures the Garage's paint, the entry gate and the reveal latch (visual edges), not readiness
+- `tools/controls-probe.mjs`: times the loading cover's show from the click (a mutation observer on the loader)
+- `tools/garage-action-timing.mjs`: times the Garage's and the battle's visual edges (painted, the loader's classes), its subject
+- `tools/interaction-steps.mjs`: click-timeline's steps: the cover's show and the reveal latch are what it times
+- `tools/loading-budget-probe.mjs`: measures the loading screens and the exit, polling the phase inside the timed page function
+- `tools/marketing-shots/mode-battle-shots.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/media-production/cinema.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/media-production/produce.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/media-r5/lab.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/media-r5/studio-ui.mjs`: another lane's file (tools-chains); migrate after it lands
+- `tools/mobile-dynamic-aim-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase confirms the battle, with the tool's own tank and touch conditions
+- `tools/mp-room-census.mjs`: another lane's file (tools-chains); migrate after it lands
 - `tools/nav-timeline.mjs`: measures the cover's and the HUD's visual edges, its subject
-- `tools/pr-census.mjs`: another lane's open edits (tools-chains)
-- `tools/render-stability-audit.mjs`: records the mirror inside a page function as a receipt field
-- `tools/solo-kernels-probe.mjs`: another lane's open edits (tools-chains)
-- `tools/time-to-battle-probe.mjs`: another lane's open edits (tools-chains)
-- `tools/track-system-audit.mjs`: a page function closed over the tank id
+- `tools/pinch-zoom-probe.mjs`: measures box positions, so past the controls' release it waits for the loading veil out of layout (its leaving fade moves boxes)
+- `tools/render-stability-audit.mjs`: an agent-browser session: it waits on its own entry promise, and the phase confirms the battle
+- `tools/solo-cold-import-cover-probe.mjs`: the cold entry's cover is its subject: it judges the battle from its own cover observer's samples
+- `tools/solo-kernels-probe.mjs`: after `__DEBUG.startBattle` (no cover, no countdown) the phase alone confirms the battle
+- `tools/track-system-audit.mjs`: a page function closed over the tank id with its own conditions; the tool sets the countdown itself
+<!-- /census -->
+
+Checks and receipt fields that are not waits (a precondition, a loop guard, a branch, a recorded value):
+
+<!-- census:stateReads -->
+- `tools/bot-combat-probe.mjs`: a loop guard: it stops stepping when the battle ends
+- `tools/bot-targeting.browser.mjs`: a loop guard: the sample ends with the battle
+- `tools/cold-load-probe.mjs`: records the boot mirror as a receipt field (`ready`)
+- `tools/daynight-atmosphere-probe.mjs`: receipt fields (the first battle render's loader, the reveal latch) and guards around its own entries
+- `tools/environment-motion-probe.mjs`: a precondition and a receipt check that the battle is the requested one
+- `tools/garage-audio-intent.mjs`: a receipt check: both samples in the Garage
+- `tools/garage-camera-probe.mjs`: a receipt check: the boot lands in the Garage
+- `tools/garage-draw-range-probe.mjs`: a precondition: the Garage's draw range needs the Garage
+- `tools/garage-switch-probe.mjs`: a sampler guard: it samples only in the Garage
+- `tools/gunnery_gate.mjs`: loop guards: they stop when the battle ends
+- `tools/map-environment-acquisition.mjs`: a precondition: the Garage build stayed in the Garage
+- `tools/marketing-shots/capture-multiplayer-dual-screen.mjs`: a timeout's diagnostics (the loader) and a check that both views stayed in the live battle
+- `tools/marketing-shots/mode-battle-director.mjs`: a branch: the battle hooks run only in a battle
+- `tools/mp-browser-e2e.mjs`: a timeout's diagnostics (the loader), a receipt field (the reveal latch) and checks that the battle stayed live
+- `tools/mp-p2p-e2e.mjs`: a timeout's diagnostics and receipt fields (the loader) and a check that C's battle survived the migration
+- `tools/pause-probe.mjs`: receipt checks: Esc in the Garage
+- `tools/perfprobe-camera-input.mjs`: a precondition: the controls released before camera input
+- `tools/perfprobe-roster.mjs`: receipt checks: each snapshot in a battle with released controls
+- `tools/perfprobe.mjs`: a precondition in its early window (the controls released) and a receipt label
+- `tools/reviveprobe.mjs`: records the HUD's display as a receipt field
+- `tools/six-modes.browser.mjs`: stages the loading screen by hand (listed under loaderClasses) to read its rows
+- `tools/solo-cold-import-cover.mjs`: the cold-cover observer and its receipt checks (the cover is its subject)
+- `tools/sourced-texture-readiness.mjs`: an observer's sample: the first uncovered battle frame
+- `tools/studio-selftest.mjs`: receipt checks: the Studio phase, and the Garage after it
+- `tools/water-palette-probe.mjs`: a precondition: the battle entered
 <!-- /census -->
 
 A Garage return is awaited before the page does anything else: `await page.evaluate(() => window.__DEBUG.enterGarage())`

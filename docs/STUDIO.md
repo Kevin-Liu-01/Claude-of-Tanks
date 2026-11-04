@@ -69,8 +69,8 @@ Runtime entry from the garage and map changes use the shared transition screen
 with measured world-build progress. `window.__STUDIO_LOAD`, `__STUDIO_WARM`, and
 `__WORLD_LOAD` expose the most recent stage timings for diagnostics.
 
-Under WebDriver or the `?nogate` parameter, the boot input prompt closes
-automatically so headless capture tools can enter Studio.
+On the harness path (which every browser a tool launches asks for, docs/AUTOMATION-PATHS.md) or with the `?nogate`
+parameter, the boot input prompt closes automatically so headless capture tools can enter Studio.
 
 ## Interactive controls
 

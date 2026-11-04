@@ -32,6 +32,7 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { accessProblems } from './interaction-access.mjs';
 import { STEP_PATHS } from './interaction-steps.mjs';
+import { assertAutomationPath } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -1124,6 +1125,9 @@ async function main() {
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
     log(`warming ${base.label}:${doc} ${url}`);
     await rewarmPage(page);
+    // (2026-11-02 audit S3) every game document is timed on the player's path (the battle document once its warm-up
+    // hands over): a page that took another path fails here by name
+    if (doc !== 'gallery') await assertAutomationPath(page, 'player', { label: `${base.label}:${doc}` });
     // the boot's own stage timings (main.ts BOOT_TIMINGS), kept beside the run
     const boot = await page.evaluate(() => ({ ms: window.__BOOT_MS ?? null, timings: window.__BOOT_TIMINGS ?? null })).catch(() => null);
     if (boot?.timings) {

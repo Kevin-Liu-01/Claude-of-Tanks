@@ -86,7 +86,7 @@ import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sampleCoverage } from './black-world-repro-summary.mjs';
-import { readinessExpression } from './game-readiness.mjs';
+import { assertAutomationPath, readinessExpression } from './game-readiness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -504,8 +504,12 @@ async function boot(page, base) {
     return { version: document.querySelector('meta[name="application-version"]')?.content ?? null, gpu,
       // (round 2, D3) a Vite dev server injects its client: the build kind, whatever host serves it
       devServer: !!document.querySelector('script[src*="/@vite/client"]'),
-      automation: window.__AUTOMATION_PATH?.path ?? null, preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
+      preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
   });
+  // (2026-11-02 audit S3) the player's path, or a named failure: the default target (prod) may predate
+  // src/app/automationPath.ts, and takes the player's path there because the driver is hidden at launch
+  const took = await assertAutomationPath(page, 'player', { label: 'black-world-repro' });
+  info.automation = took.legacy ? 'player (a build before the automation owner: navigator.webdriver false)' : took.path;
   return { bootMs: Date.now() - t0, browser: await browser.version(), ...info };
 }
 

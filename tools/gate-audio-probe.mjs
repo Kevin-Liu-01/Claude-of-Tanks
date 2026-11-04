@@ -17,7 +17,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
-import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -59,7 +59,10 @@ async function probe(base) {
   const browser = await launchGuardedBrowser(puppeteer, { headless: false, defaultViewport: null,
     args: ['--mute-audio', '--window-size=1440,960', '--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist',
       // the builds are served as cot.test (a non-loopback name, as the other recorders serve them)
-      `--host-resolver-rules=MAP ${new URL(base.url).hostname} 127.0.0.1`] });
+      `--host-resolver-rules=MAP ${new URL(base.url).hostname} 127.0.0.1`,
+      // (2026-11-02 audit S3) an A/B of two builds: a build before src/app/automationPath.ts ignores the page's request
+      // and skips the gate under navigator.webdriver, so the driver is hidden from both (the request covers a newer one)
+      '--disable-blink-features=AutomationControlled'] });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 900 });
@@ -68,7 +71,10 @@ async function probe(base) {
     page.on('pageerror', (e) => consoleLog.push({ type: 'error', text: `pageerror: ${String(e?.message || e).split('\n')[0]}` }));
     await page.evaluateOnNewDocument(PROBE);
     await page.goto(new URL('/', base.url).href, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!document.querySelector('#cot-boot-gate.on')`, { timeout: 240000, polling: 200 });
+    await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 240000, polling: 200 });
+    // the gate shows only on the player's path: a build that took the harness path fails here by name, not at a timeout
+    const automation = await assertAutomationPath(page, 'player', { label: base.label });
+    await page.waitForFunction(`!!document.querySelector('#cot-boot-gate.on')`, { timeout: 240000, polling: 200 });
     await new Promise((r) => setTimeout(r, 1500));
     const bootConsole = consoleLog.splice(0);
     await page.evaluate(() => {
@@ -90,7 +96,7 @@ async function probe(base) {
         soundsStarted: rec.sounds.filter((t) => t >= from).length,
       };
     });
-    return { label: base.label, browser: await browser.version(), ...result, console: consoleLog, bootConsole };
+    return { label: base.label, browser: await browser.version(), automation, ...result, console: consoleLog, bootConsole };
   } finally {
     await browser.close().catch(() => {});
   }

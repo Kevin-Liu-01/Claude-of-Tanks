@@ -20,7 +20,7 @@
  *   node tools/mp-p2p-e2e.mjs --site=https://cot.kevinliu.studio  # the deployed site itself: no vite, no double; the pages use the
  *                                                                # room host the build was made with (the deployed Worker allows the
  *                                                                # site origin alone, so this is the only way to prove it); the
- *                                                                # diagnostics hook is up because puppeteer sets navigator.webdriver
+ *                                                                # diagnostics hook is up because the launcher asks for the harness path
  *                                                                # its log (the election record, the host's reports) take the pages' facts
  *
  * The honest-check options (2026-10-13, the MP stream; MP-SINCE-0930 plan steps 7 and 14):
@@ -752,7 +752,8 @@ async function waitFor(page, predicate, label, timeoutMs, options = {}) {
 }
 const stats = (page) => page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.() ?? null);
 const p2pOf = (page) => page.evaluate(() => window.__MULTIPLAYER_V2?.stats?.().session?.p2p ?? null);
-const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle' && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
+// (audit S3) the battle on screen (its cover gone) in a live match: the readiness probe, not a hand-built loader read
+const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
 
 async function screenshot(page, name) {
   const path = join(outputDir, name);

@@ -265,8 +265,7 @@ try {
   step('a-started');
 
   // ---- both reach the battle: activated, revealed, the loader off the screen
-  const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
-    && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
+  const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
   await Promise.all([
     waitFor(pageA, inBattle, 'A battle revealed', 240_000),
     waitFor(pageB, inBattle, 'B battle revealed', 240_000),

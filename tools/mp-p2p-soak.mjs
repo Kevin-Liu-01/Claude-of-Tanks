@@ -184,7 +184,7 @@ async function openPage(origin, peer) {
   peer.opens++;
   return page;
 }
-/** The game page's facts in the harness's shape (window.__MULTIPLAYER_V2 is up under puppeteer: navigator.webdriver).
+/** The game page's facts in the harness's shape (window.__MULTIPLAYER_V2 is up on the harness path the launcher asks for).
  *  `host` is SESSION_ROLE.host, passed in: the page function cannot import the vocabulary (tools/mp-states.mjs). */
 const gameStatus = (host) => {
   const v2 = window.__MULTIPLAYER_V2?.stats?.() ?? null;

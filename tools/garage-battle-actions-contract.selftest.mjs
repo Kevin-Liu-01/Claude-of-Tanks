@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectGarageActionOutcome, waitForGarageAction } from './garage-action-failure.mjs';
 import { withGarageActionProfile, withGarageActionTrace } from './garage-action-timing.mjs';
-import { BOOT_LOADED_EXPRESSION, requestAutomationPath } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath, requestAutomationPath } from './game-readiness.mjs';
 
 const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
   const returning = action === 'return-to-garage';
@@ -256,6 +256,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       },
       async evaluate(fn, ...args) {
         const body = String(fn);
+        if (body.includes('__AUTOMATION_PATH')) return { path: 'player', source: 'flag', webdriver: false };
         if (body.includes('__ACTION_TRACE.arm')) action = args[0];
         if (body.includes('__ACTION_TRACE.finish')) return { action,
           loadingTraces: { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: warmReady,
@@ -300,8 +301,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       checkGarageBattleActions: () => { calls.gate++; return []; }, checkGarageActionAudio: () => [],
       checkGarageActionWarmReadiness,
       installSourcedTextureReadiness() {},
-      // (2026-11-02 audit S3) the probe asks for the player's automation path (tools/game-readiness.mjs)
-      requestAutomationPath, BOOT_LOADED_EXPRESSION,
+      // (2026-11-02 audit S3) the probe asks for the player's automation path and checks its page took it
+      requestAutomationPath, assertAutomationPath, BOOT_LOADED_EXPRESSION,
       checkSourcedTextureReadiness: row => sourceReady || row.action === 'return-to-garage'
         ? [] : [`${row.action}: source was not ready at reveal`],
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),
@@ -319,6 +320,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       const accepted = (!warmGate || allWarmReady) && (!sourceGate || sourceReady);
       equal(report.pass, accepted, 'either requested readiness failure defeats functional success');
       equal(report.functionalPass, true, 'readiness gates do not reinterpret the functional receipt');
+      equal(report.automation, { path: 'player', source: 'flag', webdriver: false, legacy: false }, 'the path the page took is recorded');
       equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'], 'all existing actions remain');
       if (warmGate) {
         equal(report.passScope, sourceGate ? 'real-control-functional-and-warm-and-source-readiness'

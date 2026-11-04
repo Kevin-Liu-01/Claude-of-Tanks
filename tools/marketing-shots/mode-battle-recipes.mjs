@@ -2017,8 +2017,7 @@ Object.assign(RECIPES, {
         await A.page.click('.cot-play [data-action="ready"]');
         await A.page.waitForFunction(() => !document.querySelector('.cot-play [data-action="start"]')?.disabled, { timeout: 30000 });
         await A.page.click('.cot-play [data-action="start"]');
-        const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
-          && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
+        const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
         await Promise.all([A.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 }), B.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 })]);
         for (const client of [A, B]) {
           await client.page.evaluate(async () => {

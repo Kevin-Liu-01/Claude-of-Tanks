@@ -29,7 +29,7 @@
 
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { requestAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
+import { assertAutomationPath, requestAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
 import { build, createServer, preview } from 'vite';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os, { tmpdir } from 'node:os';
@@ -353,6 +353,8 @@ async function openPage(search = '', { transitions = false } = {}) {
   });
   await waitForBootLoaded(page, { timeout: pageTimeoutMs });
   const readyWallMs = Date.now() - startedAt;
+  // (2026-11-02 audit S3) the fades are measured on the player's path, or the scenario fails by name
+  if (transitions) await assertAutomationPath(page, 'player', { label: `loading-budget-probe ${search || '/'}` });
   return { context, page, errors, readyWallMs };
 }
 

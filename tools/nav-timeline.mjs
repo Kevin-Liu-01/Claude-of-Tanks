@@ -23,9 +23,10 @@
 //   abrupt     every frame that differs from the one before it (a jump, a swap, a flash; also a playing loop);
 //   cls        layout-shift score without recent input (the web-vitals definition); `shift` counts every shift,
 //              including those a click's 500 ms input window excuses (each jump a player sees), with their sources.
-// Frames come from a Chrome trace (devtools.screenshot). `navigator.webdriver` is hidden: the game skips its
-// transition veils and its boot gate under automation (src/ui/transition.ts, src/ui/bootScreen.ts), and a recording
-// must show what a player sees. Cold = a fresh browser context (empty HTTP cache); warm = the same context running
+// Frames come from a Chrome trace (devtools.screenshot). Every page asks for the player's path (src/app/automationPath.ts:
+// the harness path skips the transition veils and the boot gate), and `navigator.webdriver` is hidden so a base built
+// before that owner takes it too; a game journey fails by name if the page took another. A recording must show what a
+// player sees. Cold = a fresh browser context (empty HTTP cache); warm = the same context running
 // the journey again. --lock takes a normal ticket in the shared capture queue through tools/capture-hold.mjs (the
 // servers are checked and the browser starts while the ticket waits) and stops starting runs after --budget-min
 // minutes of the hold; --place=<key> keeps a killed run's place in the queue.
@@ -33,6 +34,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -517,15 +519,25 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir, grou
 async function runJourney({ page, helper, journey, profile, profileName, cacheName, base, outDir, over = () => false }) {
   const ctx = { base, touch: profile.viewport.hasTouch };
   const results = [];
+  // (2026-11-02 audit S3) a game journey times the player's path: once the game has booted, the page must have taken it
+  // (a named failure, never a timing of the harness path's skipped veils)
+  let pathChecked = journey.group !== 'game';
+  const checkPath = async () => {
+    if (pathChecked || !(await page.evaluate(BOOT_LOADED_EXPRESSION).catch(() => false))) return;
+    pathChecked = true;
+    await assertAutomationPath(page, 'player', { label: `${base} ${journey.id}` });
+  };
   await page.goto('about:blank');
   if (journey.start) {
     await page.goto(new URL(journey.start, base).href, { waitUntil: 'domcontentloaded', timeout: 180000 });
     if (journey.startReady) await waitFor(journey.startReady)(page);
     if (journey.setup) await journey.setup(page, ctx);
+    await checkPath();
     await new Promise((r) => setTimeout(r, 1200));
   }
   for (const step of journey.steps) {
     if (over()) break;
+    await checkPath();
     const stem = `${step.id}.${profileName}.${cacheName}`;
     const result = await recordStep({ page, helper, step, ctx, profile, stem, outDir, group: journey.group })
       .catch((error) => ({ step: step.id, group: journey.group, error: String(error?.message || error).split('\n')[0] }));

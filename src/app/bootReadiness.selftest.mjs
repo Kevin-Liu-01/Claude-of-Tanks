@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { bootReadiness, createBootReadiness, isBootReady, whenBootReady } from './bootReadiness.ts';
 import { createAppLifecycle, isGarageScreenSettled, transitionAppPhase } from '../game/appLifecycle.ts';
 import { mainSource, mainStatement, runMainStatements } from './mainComposition.test-support.mjs';
+import { codeText } from '../../tools/code-text.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -61,7 +62,9 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url));
       if (!/\.(ts|tsx|mjs|js)$/.test(name) || /\.(selftest|test-support)\.mjs$/.test(name) || /\.d\.ts$/.test(name)) continue;
       const rel = relative(ROOT, file);
       if (rel === 'src/app/bootReadiness.ts') continue;
-      if (/__GAME_READY/.test(stripComments(readFileSync(file, 'utf8')))) readers.push(rel);
+      // code only, read by TypeScript's parser (a string such as '**/*' is not a comment)
+      const text = readFileSync(file, 'utf8');
+      if (/__GAME_READY/.test(text) && /__GAME_READY/.test(codeText(text, name))) readers.push(rel);
     }
   };
   walk(join(ROOT, 'src'));

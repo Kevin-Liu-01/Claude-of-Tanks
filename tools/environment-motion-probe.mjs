@@ -14,7 +14,7 @@ import { stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environ
 import { outputResolution } from '../src/engine/resolutionPolicy.ts';
 import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScalePolicy.ts';
 import { PRESETS } from '../src/engine/quality.ts';
-import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, prepareToolBrowser, readinessExpression } from './game-readiness.mjs';
 
 export const MOTION_PROTOCOL = 'playwright-live-environment-v2';
 
@@ -709,7 +709,8 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
     server = await preview({ root, logLevel: 'error', preview: { host: '127.0.0.1', port: 5876, strictPort: true } });
     browserOwner = await launchGuardedBrowser(chromium, { headless: true, channel: 'chromium',
       args: ['--use-gl=angle', '--enable-webgl'], host: '127.0.0.1', timeout: 30000 }, { method: 'launchServer' });
-    browser = await chromium.connect(browserOwner.wsEndpoint(), { timeout: 30000 });
+    // (audit S3) a connected browser is not the launched one: its pages ask for the harness path like any other
+    browser = await prepareToolBrowser(await chromium.connect(browserOwner.wsEndpoint(), { timeout: 30000 }));
     report.browser = { version: browser.version(), executable: chromium.executablePath(),
       channel: 'chromium', headless: 'new', args: ['--use-gl=angle', '--enable-webgl'],
       pid: browserOwner.process().pid };

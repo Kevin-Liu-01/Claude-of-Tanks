@@ -272,12 +272,12 @@ try {
   await page.evaluate((id) => localStorage.setItem('cot.garage.variant', id), persistedOutdoorId);
   const persistedReloadStartedAt = Date.now();
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.waitForFunction((id) => {
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && (() => {
     const stats = window.__GARAGE_WORKSHOP?.stats();
-    return window.__GAME_READY === true && stats?.selected === id
+    return stats?.selected === ${JSON.stringify(persistedOutdoorId)}
       && stats?.architecture?.ready === true
       && stats.architecture.presented === true;
-  }, { timeout: 60_000 }, persistedOutdoorId);
+  })()`, { timeout: 60_000 });
   const persistedReload = await page.evaluate((id, elapsedMs) => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return {

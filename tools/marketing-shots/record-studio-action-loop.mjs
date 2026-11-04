@@ -31,6 +31,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
@@ -112,8 +113,8 @@ try {
     timeout: 180_000,
   });
   await page.waitForFunction(
-    (mapId) => window.__GAME_READY === true && window.__STUDIO?.active === true && window.__STUDIO.mapId === mapId,
-    { timeout: 180_000 }, scene.map || 'winter',
+    `${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true && window.__STUDIO.mapId === ${JSON.stringify(scene.map || 'winter')}`,
+    { timeout: 180_000 },
   );
 
   const staged = await page.evaluate(async (input, view) => {

@@ -43,6 +43,7 @@ import {
 import { installFramePassTimer, summarizePassFrames } from './frame-pass-timer.mjs';
 import { runWarmHold, startViteChild } from './capture-hold.mjs';
 import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'pr-census';
 /** The cost holds' staging (frame-budget-probe's defaults: --sides=13x14, the default --spec). */
@@ -325,7 +326,7 @@ async function stageJob(browser, baseUrl, job, { width, height, entryMs, dump })
     await page.evaluateOnNewDocument(installObservers, { preset: 'high', allies: ALLIES, enemies: ENEMIES });
     if (dump) await page.evaluateOnNewDocument(installGlslHook);
     await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 600000, polling: 1000 });
+    await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 600000, polling: 1000 });
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
     await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, pinnedOpponents(catalog, SPEC, ALLIES + ENEMIES));
     const entryAt = Date.now();

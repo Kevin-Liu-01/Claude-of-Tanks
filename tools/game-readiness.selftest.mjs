@@ -2,22 +2,23 @@
 // definitions (phase, preBattleS, the loader's classes read four ways, the HUD's display, __BATTLE_REVEAL, result,
 // timeS) and "the Garage is ready" was `__GAME_READY && phase === 'garage'`, true under a return's veil and behind the
 // battle report. tools/game-readiness.mjs is the one probe, built on the game's published lifecycle
-// (window.__APP_LIFECYCLE, src/game/appLifecycle.ts); docs/AUTOMATION-PATHS.md lists the hand-built waits that remain.
+// (window.__APP_LIFECYCLE, src/game/appLifecycle.ts); docs/AUTOMATION-PATHS.md lists every tool that still reads those
+// facts itself, with its reason, and this file keeps that list equal to the tools.
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   APP_LIFECYCLE_STATES, BOOT_LOADED_EXPRESSION, READY, readGameReadiness, readinessExpression, readinessInPage,
   waitForBootLoaded, waitForReady,
 } from './game-readiness.mjs';
+import { codeText, toolCensusFiles } from './code-text.mjs';
 import { createAppLifecycle, transitionAppPhase } from '../src/game/appLifecycle.ts';
 import { transitionBattleCountdown } from '../src/game/preBattleCountdown.ts';
 import { matchRulesetFor } from '../src/sim/matchRuleset.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
-const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
 
 // The vocabulary is the game's: the AppLifecycleState union, and every readiness names only its members.
 {
@@ -32,8 +33,9 @@ const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(
   assert.throws(() => readinessExpression('garage', { since: 'x' }), /transitions count/);
 }
 
-/** A page whose window is `win`: evaluate an in-page expression or function the way puppeteer would. */
-const evaluate = (win, expression) => new Function('window', `return (${expression});`)(win);
+/** A page whose window is `win` (and document `doc`): evaluate an in-page expression the way puppeteer would. */
+const evaluate = (win, expression, doc = { querySelector: () => null }) =>
+  new Function('window', 'document', `return (${expression});`)(win, doc);
 
 // The probe over a real lifecycle: one session walks the boot, the Garage, a covered battle entry, its countdown, live
 // play, the verdict and a Garage return; the page publishes the snapshot as main.ts does.
@@ -59,7 +61,8 @@ const evaluate = (win, expression) => new Function('window', `return (${expressi
   facts.booting = false;
   assert.equal(ready('garage'), true);
   const atGarage = evaluate(win, `(${readinessInPage})()`);
-  assert.deepEqual(atGarage, { booted: true, state: 'garage', phase: 'garage', screenPhase: 'garage', transitions: 0, automation: 'harness' });
+  assert.deepEqual(atGarage, { booted: true, lifecycle: true, state: 'garage', phase: 'garage', screenPhase: 'garage', transitions: 0,
+    automation: 'harness', legacy: null });
 
   // a covered entry: the cover is the screen, then the reveal opens the countdown, then the controls are released
   facts.covering = true;
@@ -98,65 +101,127 @@ const evaluate = (win, expression) => new Function('window', `return (${expressi
   assert.equal(ready('garage'), true);
 }
 
-// A booted page that publishes no lifecycle (a build before it) fails by name, never by timing out.
+// A build that publishes no lifecycle (before 2026-11-03: a deployment, an A/B baseline) never passes a readiness on
+// the boot alone (the lane's first probe did: `state === null` passed every wait at boot, the player still in the
+// Garage). Each readiness takes the predicate that build's own harnesses waited on.
 {
-  const win = { __GAME_READY: true, __DEBUG: { game: { phase: 'garage' } } };
-  assert.equal(evaluate(win, readinessExpression('garage')), true, 'the wait ends');
+  const game = { phase: 'garage', preBattleS: 0, result: null };
+  const win = { __GAME_READY: false, __DEBUG: { game } };
+  const loader = { on: false };
+  const doc = { querySelector: (selector) => (selector === '.cot-bl.on, .cot-bl.leaving' && loader.on ? {} : null) };
+  const ready = (name, options) => evaluate(win, readinessExpression(name, options), doc);
+  const names = Object.keys(READY);
+  const passing = () => names.filter((name) => ready(name));
+  assert.deepEqual(passing(), [], 'nothing before the boot');
+  win.__GAME_READY = true;
+  assert.deepEqual(passing(), ['garage'], 'a booted page in the Garage is the Garage, never a battle');
+  assert.equal(ready('controlsReleased', { since: 3 }), false, '(perfprobe\'s early window against such a baseline)');
+  game.phase = 'battle';
+  game.preBattleS = 999;
+  loader.on = true;
+  assert.deepEqual(passing(), [], 'loading under the cover');
+  loader.on = false;
+  assert.deepEqual(passing(), ['battleRevealed'], 'the countdown');
+  game.preBattleS = 0;
+  assert.deepEqual(passing(), ['battleRevealed', 'controlsReleased', 'battleLive']);
+  game.result = 'defeat';
+  assert.deepEqual(passing(), ['battleRevealed', 'controlsReleased', 'battleEnded']);
+  game.phase = 'studio';
+  assert.deepEqual(passing(), ['studio']);
+  const facts = evaluate(win, `(${readinessInPage})()`, doc);
+  assert.equal(facts.lifecycle, false, 'the facts say which definition decided');
+  assert.equal(facts.state, null);
+
+  // waitForReady and waitForBootLoaded hand the caller's options to waitForFunction and return the facts
   const page = {
     calls: [],
-    async waitForFunction(expression, options) { this.calls.push({ expression, options }); return evaluate(win, expression); },
-    async evaluate(fn) { return evaluate(win, `(${fn})()`); },
+    async waitForFunction(expression, options) { this.calls.push({ expression, options }); return evaluate(win, expression, doc); },
+    async evaluate(fn) { return evaluate(win, `(${fn})()`, doc); },
   };
-  await assert.rejects(waitForReady(page, 'garage', { timeout: 5 }), /publishes no window\.__APP_LIFECYCLE/);
+  const seen = await waitForReady(page, 'studio', { timeout: 5 });
   assert.deepEqual(page.calls[0].options, { timeout: 5 }, 'waitForFunction gets the caller\'s options, without since');
-  const facts = await readGameReadiness(page);
-  assert.equal(facts.state, null);
+  assert.equal(seen.lifecycle, false);
+  assert.equal((await readGameReadiness(page)).state, null);
   await waitForBootLoaded(page, { timeout: 7, polling: 100 });
   assert.deepEqual(page.calls.at(-1), { expression: BOOT_LOADED_EXPRESSION, options: { timeout: 7, polling: 100 } });
 }
 
-// The harnesses wait through the probe. What still reads the boot latch's mirror or builds a phase or countdown wait by
-// hand is listed in docs/AUTOMATION-PATHS.md with its reason (another lane's open edit, a measurement of the visual
-// edge itself, a composite this probe does not name); the list is the tools as they are.
+// The census reads code, never comments, and a string that holds `/*` is code: the stripper the lane first used erased
+// everything after vite's `watch: { ignored: ['**/*'] }` up to the next `*/`, and sfx-smoke's boot wait with it.
 {
-  const files = [];
-  const walk = (dir) => {
-    for (const name of readdirSync(dir)) {
-      const file = join(dir, name);
-      if (statSync(file).isDirectory()) { if (name !== 'node_modules' && !name.startsWith('.')) walk(file); continue; }
-      if (/\.(mjs|js|cjs|ts)$/.test(name) && !/\.(selftest|test-support)\.mjs$/.test(name)) files.push(file);
-    }
-  };
-  walk(join(ROOT, 'tools'));
-  const handBuilt = /window\.__GAME_READY|waitFor(?:Function)?\([^;]{0,400}?(?:game\??\.phase\s*===|preBattleS\s*<=)/s;
-  const found = files.map((file) => relative(ROOT, file))
-    .filter((file) => file !== 'tools/game-readiness.mjs' && handBuilt.test(stripComments(read(file)))).sort();
-  const doc = read('docs/AUTOMATION-PATHS.md');
-  const block = doc.match(/<!-- census:handBuiltWaits -->\n([\s\S]*?)<!-- \/census -->/)?.[1];
-  assert.ok(block, 'docs/AUTOMATION-PATHS.md lists the hand-built waits that remain');
-  const listed = [...block.matchAll(/^- `([^`]+)`/gm)].map((match) => match[1]).sort();
-  assert.deepEqual(listed, found, 'docs/AUTOMATION-PATHS.md handBuiltWaits: the tools as they are');
+  const source = "const server = { watch: { ignored: ['**/*'] } }; // a note\nawait page.waitForFunction('window.__GAME_READY === true'); /* x */";
+  const code = codeText(source);
+  assert.match(code, /window\.__GAME_READY === true/, 'a glob string is not a comment');
+  assert.doesNotMatch(code, /a note|\bx\b/, 'the comments are blanked');
+  assert.equal(code.length, source.length, 'offsets kept');
+  const naive = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(naive, /__GAME_READY/, '(the regex stripper lost it)');
+  assert.match(codeText("const r = /['\"]\\/\\*/; const t = `a ${'/*'} // b`; f(); // c"), /`a \$\{'\/\*'\} \/\/ b`/, 'regex and template literals stay whole');
+}
+
+// Every tool that reads the facts behind "ready" itself (the boot mirror, the app phase, the countdown, the loader's
+// classes or display, the HUD's display, the reveal latch) is in docs/AUTOMATION-PATHS.md, with its reason: a wait
+// built by hand (census:handBuiltWaits), or a check or a receipt field that is not a wait (census:stateReads). The
+// census reads every tool and every selftest that drives a page, as code (comments blanked), named page functions and
+// predicates in any form included; tools/game-readiness.mjs is the probe itself.
+const READS = Object.freeze({
+  bootMirror: /__GAME_READY/,
+  appPhase: /\.phase\s*[!=]==?\s*['"`](?:battle|garage|shot|studio)['"`]|['"`](?:battle|garage|shot|studio)['"`]\s*[!=]==?\s*[\w$.?]*\.phase\b/,
+  countdown: /preBattleS\s*(?:[<>]=?|[!=]==?)|(?:[<>]=?|[!=]==?)\s*[\w$.?]*preBattleS\b/,
+  loader: /\.cot-bl\.(?:on|leaving)(?![-\w])|['"`]\.cot-bl['"`]/,
+  hudDisplay: /(?:getComputedStyle\(|visible\(|shown\()[^\n]{0,60}['"`]\.cot-hud['"`]/,
+  reveal: /__BATTLE_REVEAL(?!\s*=(?!=))/,
+});
+const ANY_READ = new RegExp(Object.values(READS).map((pattern) => pattern.source).join('|'));
+const readsOf = (text) => Object.entries(READS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
+{
+  // each pattern names its definition, and a write is not a read
+  assert.deepEqual(readsOf("window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')"), ['appPhase', 'loader']);
+  assert.deepEqual(readsOf("getComputedStyle(document.querySelector('.cot-bl')).display === 'none'"), ['loader']);
+  assert.deepEqual(readsOf("const h = getComputedStyle(document.querySelector('.cot-hud')).display"), ['hudDisplay']);
+  assert.deepEqual(readsOf('!(window.__DEBUG.game.preBattleS > 0) && !!window.__BATTLE_REVEAL'), ['countdown', 'reveal']);
+  assert.deepEqual(readsOf("'battle' === g.phase"), ['appPhase']);
+  assert.deepEqual(readsOf('window.__BATTLE_REVEAL = null; game.preBattleS = 0; phase: g.phase'), [], 'writes and copies');
+  assert.deepEqual(readsOf("document.querySelector('.cot-bl .hero img')"), [], 'the loading screen\'s content is not its state');
+}
+const doc = read('docs/AUTOMATION-PATHS.md');
+const listed = (key) => {
+  const block = doc.match(new RegExp(`<!-- census:${key} -->\\n([\\s\\S]*?)<!-- /census -->`))?.[1];
+  assert.ok(block, `docs/AUTOMATION-PATHS.md has the ${key} list`);
+  const rows = [...block.matchAll(/^- `([^`]+)`(.*)$/gm)].map((match) => ({ file: match[1], reason: match[2].replace(/^:\s*/, '').trim() }));
+  for (const row of rows) assert.ok(row.reason.length > 8, `${key}: ${row.file} gives its reason`);
+  return rows.map((row) => row.file);
+};
+{
+  const found = [];
+  for (const file of toolCensusFiles(ROOT)) {
+    if (file === 'tools/game-readiness.mjs' || file === 'tools/code-text.mjs') continue;
+    const raw = read(file);
+    if (!ANY_READ.test(raw)) continue;
+    if (readsOf(codeText(raw, file)).length) found.push(file);
+  }
+  const census = toolCensusFiles(ROOT);
+  assert.ok(census.includes('tools/black-world.browser.selftest.mjs'), 'a selftest that drives a page is a harness');
+  assert.ok(!census.includes('tools/game-readiness.selftest.mjs'), 'a Node selftest is not');
+  const waits = listed('handBuiltWaits');
+  const reads = listed('stateReads');
+  assert.deepEqual(waits.filter((file) => reads.includes(file)), [], 'a tool is in one list');
+  assert.deepEqual([...waits, ...reads].sort(), found.sort(), 'docs/AUTOMATION-PATHS.md handBuiltWaits + stateReads: the tools as they are');
 }
 
 // A Garage return is awaited before anything else happens to the page: a page function that fires enterGarage() or
 // leaveBattleToGarage() as a bare statement and goes on (mobilelap's map cycle started the next battle in the same
 // breath) measures a race no player can make. The one exception times the exit with its own poll in that function.
 {
-  const files = [];
-  const walk = (dir) => {
-    for (const name of readdirSync(dir)) {
-      const file = join(dir, name);
-      if (statSync(file).isDirectory()) { if (name !== 'node_modules' && !name.startsWith('.')) walk(file); continue; }
-      if (/\.(mjs|js|cjs|ts)$/.test(name) && !/\.(selftest|test-support)\.mjs$/.test(name)) files.push(file);
-    }
-  };
-  walk(join(ROOT, 'tools'));
   const unawaited = /(?:^|[;{]|\n)\s*(?:window\.__DEBUG|D|d|debug)\.(?:enterGarage|leaveBattleToGarage)\(\);/;
-  const fired = files.map((file) => relative(ROOT, file)).filter((file) => unawaited.test(stripComments(read(file)))).sort();
+  const fired = toolCensusFiles(ROOT).filter((file) => {
+    const raw = read(file);
+    return /(?:enterGarage|leaveBattleToGarage)\(\);/.test(raw) && unawaited.test(codeText(raw, file));
+  });
   assert.deepEqual(fired, ['tools/loading-budget-probe.mjs'], 'tools that fire a Garage return and go on without it');
   assert.match(read('tools/loading-budget-probe.mjs'),
     /window\.__DEBUG\.leaveBattleToGarage\(\);\n\s+while \(window\.__DEBUG\.game\.phase !== 'garage'/,
     'the exit timing polls for the Garage in the same function');
 }
 
-console.log('game-readiness.selftest: one readiness probe over the published lifecycle; the hand-built waits listed');
+console.log('game-readiness.selftest: one readiness probe over the published lifecycle; every hand-built read listed');

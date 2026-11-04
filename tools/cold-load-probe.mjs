@@ -6,7 +6,7 @@
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
-import { waitForBootLoaded } from './game-readiness.mjs';
+import { assertAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -30,7 +30,10 @@ const maxFirstVisitAppMs = Math.max(500,
 const compactOutput = option('summary', '0') === '1';
 const launchBrowser = () => launchGuardedBrowser(puppeteer, {
   headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+  // (2026-11-02 audit S3) a --url deployment may predate src/app/automationPath.ts, which ignores the player's request
+  // and installs the QA runtime under navigator.webdriver: the driver is hidden so either build takes the player's path
+  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
+    '--disable-blink-features=AutomationControlled'],
 });
 let browser = await launchBrowser();
 
@@ -143,6 +146,8 @@ async function constrainedColdLoad({ name, noHero }) {
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = { name, ...(await metrics(page, startedAt)), errors };
+  // a cold load timed on the harness path would include the QA runtime: the player's path, or a named failure
+  result.automation = await assertAutomationPath(page, 'player', { label: name });
   if (result.duplicateScriptTransfers.length) {
     throw new Error(`${name} transferred boot scripts more than once: ` +
       JSON.stringify(result.duplicateScriptTransfers));

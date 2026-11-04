@@ -200,8 +200,9 @@ Battle entry is a per-deploy check of its own: `node tools/battle-entry-sweep.mj
 <url>|--dist=<dir> --tier=mobile|desktop --times=sunset,day,night --force-black` loads
 into every battlefield through the player's covered solo entry on the player's
 automation path (`window.__COT_AUTOMATION = 'player'`, src/app/automationPath.ts:
-the scene watchdog runs only off the harness path, so an ordinary smoke never sees
-a refusal; docs/AUTOMATION-PATHS.md lists every tool's path) and reports entered / refused
+the scene watchdog runs only off the harness path, which every launched browser asks
+for, so an ordinary smoke never sees a refusal; the sweep checks its page took the
+player's path; docs/AUTOMATION-PATHS.md lists every tool's path) and reports entered / refused
 / stuck / black / rescued per run, plus the negative control
 (`?diagforce=blackout` must be refused); a protected preview reads
 `COT_PROTECTION_BYPASS` from the environment.
