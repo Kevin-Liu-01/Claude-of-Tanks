@@ -150,9 +150,14 @@ function addSmokeClusters(P: TankBuilderPort): void {
     const frame = new THREE.Matrix4().makeBasis(u, v, aim).setPosition(centre);
     const parts: THREE.BufferGeometry[] = [], dark: THREE.BufferGeometry[] = [];
     parts.push(box(.27, .25, .06).translate(0, 0, -.03).applyMatrix4(frame));
+    // the tubes fan out 7 degrees from the bank's axis, as the photographs' dischargers do; their rear rims sit 10 mm
+    // into the cradle's face
     for (const [i, j] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      parts.push(markSmokeTube(cylZ(.052, .26, P.q ? 14 : 9)).translate(i * .062, j * .062, .13).applyMatrix4(frame));
-      dark.push(cylZ(.040, .012, P.q ? 14 : 9).translate(i * .062, j * .062, .256).applyMatrix4(frame));
+      const fan = new THREE.Matrix4().makeRotationY(i * .12).premultiply(new THREE.Matrix4().makeRotationX(-j * .12))
+        .setPosition(i * .055, j * .055, -.010).premultiply(frame);
+      // each tube is its own part: the factory reads its marked mouth as a smoke socket
+      equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.052, .26, P.q ? 14 : 9)).translate(0, 0, .13).applyMatrix4(fan), 0, 0, 0);
+      dark.push(cylZ(.040, .012, P.q ? 14 : 9).translate(0, 0, .256).applyMatrix4(fan));
     }
     // The carrying block: the cradle's rear face and its projection 6 mm into the cheek.
     const base = new THREE.Vector3(side * .85, 2.22, cheekZ(.85, 2.22)), corners: THREE.Vector3[] = [];
@@ -164,6 +169,22 @@ function addSmokeClusters(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', KIT.mergeAll(parts), 0, 0, 0);
     equipment(P, 'turret', 'Dark', KIT.mergeAll(dark), 0, 0, 0);
   }
+}
+
+/** A sparse bolt pattern on the front plates (photo 4): hex heads square to each face, 2 mm into it. */
+function addFrontBolts(P: TankBuilderPort): void {
+  const heads: THREE.BufferGeometry[] = [], up = new THREE.Vector3(0, 1, 0);
+  const head = (x: number, y: number, z: number, n: THREE.Vector3) => heads.push(KIT.cylY(.019, .019, .012, 6)
+    .applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, n))
+      .setPosition(x + n.x * .004, y + n.y * .004, z + n.z * .004)));
+  const panelNormal = new THREE.Vector3(0, .868, 1).normalize();
+  for (const side of [-1, 1]) {
+    for (const y of [2.12, 2.28, 2.44]) head(side * .22, y, panelZ(y), panelNormal);
+    const cheekNormal = new THREE.Vector3(side * 1.08, .266, 1).normalize();
+    for (const [ax, y] of [[.52, 2.18], [.62, 2.40], [.79, 2.53], [1.02, 2.31], [1.04, 2.11]] as const)
+      head(side * ax, y, cheekZ(ax, y), cheekNormal);
+  }
+  equipment(P, 'turret', 'Detail', KIT.mergeAll(heads), 0, 0, 0);
 }
 
 /** The gunner's twin-aperture sight on the roof behind the gun channel (source Object_8): a base plate, the body with
@@ -189,6 +210,7 @@ export function addK21Turret(P: TankBuilderPort): void {
   addSideKit(P);
   addCheekBoxes(P);
   addSmokeClusters(P);
+  addFrontBolts(P);
   addTwinSight(P);
 }
 

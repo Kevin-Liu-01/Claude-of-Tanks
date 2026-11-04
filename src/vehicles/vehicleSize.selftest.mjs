@@ -27,6 +27,11 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // 2026-11-01 (italy-korea-bmp-267): the K21's in-turret cradle box became its real mantlet (jacket, collar, housing with
 // the coaxial port) ahead of the turret face, so k21's gunMount box is re-measured as the current build / factor
 // (re-measured again after the same lane's round-2 jacket/housing refinement).
+// 2026-11-04 (owner: "tbf the k21 turret just neds to be completely redesigined. it just wrong"): the new K21 turret
+// (profiles/k21Turret.ts, measured from the source study) is a slab-sided box 2.20 m wide whose rear wall stands at
+// z -1.717 and whose raked central panel reaches z 0.799, and its gun mount is the long cradle housing lying in the
+// roof channel with the coaxial box and jacket ahead: k21's turret and gunMount boxes are re-measured as the current
+// build / factor. The roof (0.646 over the ring) and the seated underside are unchanged, so the turret's height is too.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];
