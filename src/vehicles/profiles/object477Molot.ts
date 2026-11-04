@@ -10,7 +10,7 @@
 // docs/references/photos/russia-152-20261104.json.
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { addHullTub, addSkirtPanels, add30mmCannon } from './russia152Kit.ts';
+import { addHullTub, addSkirtPanels, add30mmCannon, sideSolid } from './russia152Kit.ts';
 import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -81,10 +81,10 @@ function addRunningGear(P: TankBuilderPort): void {
   addSkirtPanels(P, { x: 1.71, z0: -3.30, z1: .55, y0: .70, y1: 1.58, n: 5, th: .04 });
   // the skirts' raked front panel down toward the prow
   for (const s of [-1, 1]) {
-    P.add('hull', sectionSolid([
+    P.add('hull', sideSolid([
       { z: 3.00, ring: [[1.685, .62], [1.775, .62], [1.775, 1.58], [1.685, 1.58]] },
       { z: 3.50, ring: [[1.685, .95], [1.775, .95], [1.775, noseY(3.50) + .06], [1.685, noseY(3.50) + .06]] },
-    ].map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
+    ], s));
   }
 }
 

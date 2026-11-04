@@ -9,7 +9,7 @@
 // Kevin B. Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { addHullTub, addSkirtPanels, add30mmCannon } from './russia152Kit.ts';
+import { addHullTub, addSkirtPanels, add30mmCannon, sideSolid } from './russia152Kit.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { OBJECT195_FRAME as F } from '../russia152Frames.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -92,10 +92,10 @@ function addRunningGear(P: TankBuilderPort): void {
   addSkirtPanels(P, { x: 1.755, z0: -3.86, z1: -3.10, y0: .86, y1: F.roofY - .10, n: 1, th: .05 });
   // the skirts' angled front panel down to the nose (both photographs)
   for (const s of [-1, 1]) {
-    P.add('hull', sectionSolid([
+    P.add('hull', sideSolid([
       { z: 3.10, ring: [[1.73, .68], [1.78, .68], [1.78, F.roofY - .02], [1.73, F.roofY - .02]] },
       { z: 3.62, ring: [[1.73, .98], [1.78, .98], [1.78, glacisY(3.62) + .02], [1.73, glacisY(3.62) + .02]] },
-    ].map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
+    ], s));
   }
 }
 

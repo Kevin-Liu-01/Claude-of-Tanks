@@ -3,7 +3,7 @@
 // carry beside the 152 mm gun (the 195's 2A42, the Molot's GSh-30). First-party procedural geometry: Kevin B. Liu
 // (NOTICE.md).
 import { KIT } from './kit.ts';
-import { sectionSolid, type SolidSection } from './sectionSolid.ts';
+import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -25,6 +25,12 @@ function tubSection([z, roof, bottom, outer, inner, step]: HullStation): SolidSe
 /** The closed hull tub through its stations (strictly increasing z). */
 export function addHullTub(P: TankBuilderPort, stations: readonly HullStation[]): void {
   P.add('hull', sectionSolid(stations.map(tubSection)));
+}
+
+/** A solid through its stations on the left (s > 0), or mirrored onto the right (s < 0) with its rings kept counter-clockwise. */
+export function sideSolid(sections: readonly SolidSection[], s: number): ReturnType<typeof sectionSolid> {
+  return sectionSolid(s > 0 ? sections : sections.map((section) => ({ ...section,
+    ring: section.ring.map(([x, y]): SectionPoint => [-x, y]).reverse() })));
 }
 
 /** A run of skirt panels at |x| = `x` from `z0` to `z1` (n panels, each with a recessed grab handle and a bolt row). */

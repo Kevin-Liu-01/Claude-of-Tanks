@@ -263,7 +263,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
   // release 269: the 152 mm line's T-80-family and T-90-type running gear
-  object292: { donor: 't90_1992', reason: 'the T-80BV hull and running gear → the T-80 family\'s older T-series donor' },
+  object292: { donor: 't90_1992', reason: 'the T-80U X hull and running gear (profiles/object292X.ts) → the T-80 family\'s older T-series donor' },
   object477_molot: { donor: 't90_1992', reason: 'the Molot runs on the T-80UD\'s running gear (Apukhtin) → the T-80 family\'s donor' },
   object195: { donor: 't90am', reason: 'the Object 195\'s road wheels are the T-90\'s (btvt) → the T-90M wheel' },
   ua_cv9040c: { donor: 'cv90_mk4', reason: 'Ukraine: the CV9040C base hull keeps its Swedish CV90 wheel' },

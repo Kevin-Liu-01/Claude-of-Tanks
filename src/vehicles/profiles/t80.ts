@@ -26,7 +26,7 @@ interface DisposableResource {
   dispose(): void;
 }
 
-export interface T80BuilderPort {
+interface T80BuilderPort {
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -77,72 +77,7 @@ const nonUniformXform = KIT.xform as (
   scale: number | readonly number[],
 ) => THREE.BufferGeometry;
 
-/**
- * The T-80BV hull's Kontakt-1 and the closures under it: the glacis raft, the shoulder returns beneath it, the fender
- * bridge caps and the skirt cassettes. Without `kontakt1` (the Object 292 as Kubinka keeps it, profiles/object292.ts) the
- * bricks are off and the closures stay.
- */
-function buildT80BVHullKit(P: T80BuilderPort, kontakt1: boolean): void {
-  const { box } = KIT;
-  if (kontakt1) P.visualEraCluster('t80bv-k1-hull-era', 'hull', () => {
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
-    // Four dense upper-glacis courses.  The array stays on the central
-    // armor plane (well inboard of both idler lanes) and follows the bow
-    // slope instead of hovering as one flat raft.
-    P.add('hull', box(0.30, 0.12, 0.18), -0.90 + c * 0.30, 0.84 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
-    P.add('hullDark', box(0.25, 0.018, 0.13), -0.90 + c * 0.30, 0.905 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
-  }
-  });
-  // Close the real shoulder returns beneath the broadened raft.  These
-  // shallow plates bridge the arrow nose to the retained corner shelves;
-  // without them the added ERA made three old plan pockets fully enclosed
-  // and therefore exposed as sky holes from above.  They remain 25 cm
-  // above the native return run and do not replace a guard or skirt.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.78, 0.10, 0.32), s * 1.42, 1.17, 3.13, -0.08, -s * 0.10, 0);
-  }
-  P.add('hull', box(0.90, 0.075, 0.18), 0, 1.205, 3.08, -0.10, 0, 0);
-  // Raised fender bridge caps close the visible plan seams at the idler
-  // and sprocket transitions. Their 1.37 m undersides remain above the
-  // measured 1.352 m animated shoe envelope, preserving a true gap.
-  // 2026-10-19 (owner float sweep): the caps stood 110 mm over the fender with nothing between; a riser plate at
-  // each cap's fender end (over the fender, clear of the raised shoes) steps the fender up into the cap.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.32, 0.04, 0.50), s * 1.58, 1.39, 2.65);
-    P.add('hull', box(0.32, 0.04, 0.70), s * 1.58, 1.39, -2.25);
-    P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, 2.41);
-    P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, -1.925);
-  }
-  P.hullG.userData.t80bvFenderBridgeReceipt = Object.freeze({
-    planSeamsOpen: 0,
-    bridgeCaps: 4,
-    bridgeUndersideY: 1.37,
-    animatedShoeEnvelopeTopY: 1.352,
-    minimumShoeClearanceM: 0.018,
-  });
-  // Full skirt-mounted K-1 cadence.  Modules overlap the retained skirt
-  // faces by 15 mm, so this is additive armor rather than a replacement
-  // band and cannot open the wheel well or alter the smart-track course.
-  if (kontakt1) P.visualEraCluster('t80bv-k1-skirt-era', 'hull', () => {
-  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
-    const z = 2.58 - i * 0.49;
-    const y = 1.09 + (i % 3 === 1 ? 0.025 : 0);
-    P.add('hull', box(0.065, 0.31, 0.42), s * 1.765, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
-    P.add('hullDark', box(0.014, 0.25, 0.34), s * 1.802, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
-  }
-  });
-}
-
-/**
- * A turret of its own on the T-80BV hull (release 269: the Object 292, profiles/object292.ts): its build replaces the cast
- * turret, its Kontakt-1, the 125 mm gun and the commander's NSVT; the hull keeps the BV's construction, its Kontakt-1
- * bricks off.
- */
-export interface T80OwnTurret {
-  readonly build: (P: T80BuilderPort) => TankProfileBuild;
-}
-
-function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant, own?: T80OwnTurret): TankProfileBuild {
+function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild {
   // v: 0 = T-80 (no ERA), 1 = T-80B (brow applique + 902 smokes),
   //    2 = T-80BV (Kontakt-1 field: cheeks via the k1 arc + glacis raft)
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
@@ -266,8 +201,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant, own?: T80OwnTurret
     // where the ref floor is ~0.81-0.85.
     P.add('hullDark', box(1.20, 0.32, 0.05), 0, 1.19, -3.095);
     for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.16, 0.04, 0.05), 0, 1.05 + k * 0.09, -3.085);
-    // (the Object 292 as Kubinka keeps it carries no drums on its stern)
-    if (!own) for (const s of [-1, 1]) {
+    for (const s of [-1, 1]) {
       // (r27c: drums z -3.15 -> -3.12 — their rear sliver crossed the -3.276
       // column boundary and printed 1.83/1.26 into the lip-only -3.34 column)
       P.add('hullDetail', cylY(0.135, 0.135, 0.58, 12), s * 1.02, 1.55, -3.12, 0, 0, s * 0.08);
@@ -348,12 +282,6 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant, own?: T80OwnTurret
   };
   buildT80LineHullStage2();
   yield 'buildT80LineHullStage2';
-  if (own) {
-    buildT80BVHullKit(P, false);
-    yield 'buildT80LineHullStage3';
-    yield* own.build(P);
-    return;
-  }
   // r26 dome recalibration from the registered tables: the ref crown is
   // WIDE-FLAT at 2.22-2.25 (raised crown 2.23, +1.4% inside the dims-grace
   // budget) with a LOW front-edge falloff (front cols 2.03@±1.19, 2.07@±1.05
@@ -750,7 +678,53 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant, own?: T80OwnTurret
         smoke.rotation.y = s * 1.00;
         P.turretG.add(smoke);
       }
-      buildT80BVHullKit(P, true);
+      P.visualEraCluster('t80bv-k1-hull-era', 'hull', () => {
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
+        // Four dense upper-glacis courses.  The array stays on the central
+        // armor plane (well inboard of both idler lanes) and follows the bow
+        // slope instead of hovering as one flat raft.
+        P.add('hull', box(0.30, 0.12, 0.18), -0.90 + c * 0.30, 0.84 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
+        P.add('hullDark', box(0.25, 0.018, 0.13), -0.90 + c * 0.30, 0.905 + r * 0.115, 3.21 - r * 0.235, -1.02, 0, 0);
+      }
+      });
+      // Close the real shoulder returns beneath the broadened raft.  These
+      // shallow plates bridge the arrow nose to the retained corner shelves;
+      // without them the added ERA made three old plan pockets fully enclosed
+      // and therefore exposed as sky holes from above.  They remain 25 cm
+      // above the native return run and do not replace a guard or skirt.
+      for (const s of [-1, 1]) {
+        P.add('hull', box(0.78, 0.10, 0.32), s * 1.42, 1.17, 3.13, -0.08, -s * 0.10, 0);
+      }
+      P.add('hull', box(0.90, 0.075, 0.18), 0, 1.205, 3.08, -0.10, 0, 0);
+      // Raised fender bridge caps close the visible plan seams at the idler
+      // and sprocket transitions. Their 1.37 m undersides remain above the
+      // measured 1.352 m animated shoe envelope, preserving a true gap.
+      // 2026-10-19 (owner float sweep): the caps stood 110 mm over the fender with nothing between; a riser plate at
+      // each cap's fender end (over the fender, clear of the raised shoes) steps the fender up into the cap.
+      for (const s of [-1, 1]) {
+        P.add('hull', box(0.32, 0.04, 0.50), s * 1.58, 1.39, 2.65);
+        P.add('hull', box(0.32, 0.04, 0.70), s * 1.58, 1.39, -2.25);
+        P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, 2.41);
+        P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, -1.925);
+      }
+      P.hullG.userData.t80bvFenderBridgeReceipt = Object.freeze({
+        planSeamsOpen: 0,
+        bridgeCaps: 4,
+        bridgeUndersideY: 1.37,
+        animatedShoeEnvelopeTopY: 1.352,
+        minimumShoeClearanceM: 0.018,
+      });
+      // Full skirt-mounted K-1 cadence.  Modules overlap the retained skirt
+      // faces by 15 mm, so this is additive armor rather than a replacement
+      // band and cannot open the wheel well or alter the smart-track course.
+      P.visualEraCluster('t80bv-k1-skirt-era', 'hull', () => {
+      for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
+        const z = 2.58 - i * 0.49;
+        const y = 1.09 + (i % 3 === 1 ? 0.025 : 0);
+        P.add('hull', box(0.065, 0.31, 0.42), s * 1.765, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
+        P.add('hullDark', box(0.014, 0.25, 0.34), s * 1.802, y, z, 0, 0, s * (i % 2 ? 0.025 : -0.018));
+      }
+      });
     }
   };
   buildT80LineHullStage3();
@@ -846,9 +820,6 @@ const buildT80 = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 0));
 const buildT80B = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 1));
 
 const buildT80BV = steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 2));
-
-/** The T-80BV hull under a turret of its own (the Object 292). */
-export const buildT80BVHullWithTurret = (own: T80OwnTurret) => steppedBuilder((P: T80BuilderPort) => buildT80LineSteps(P, 2, own));
 
 
 export const T80_PROFILES = {

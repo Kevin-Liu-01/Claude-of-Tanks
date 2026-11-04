@@ -298,9 +298,20 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT80UXHull(P:TankBuilderPort):void {
-  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);glacisEra(P);
+/** The hull, running gear and engine deck without the glacis Kontakt-5 (release 269: the Object 292's T-80BV-pattern
+ * glacis carries its own Kontakt-1 studs, profiles/object292X.ts). */
+export function buildT80UXHullBase(P:TankBuilderPort):void {
+  P.hullG.position.set(0,0,0);hull(P);runningGear(P);engineDeck(P);
 }
+
+export function buildT80UXHull(P:TankBuilderPort):void {
+  buildT80UXHullBase(P);glacisEra(P);
+}
+
+/** The cast turret alone, authored against the yaw datum (release 269: under the Object 292's welded box). */
+export function buildT80UXCasting(P:TankBuilderPort):void { casting(P); }
+/** The source's yaw datum and trunnion (hull frame, before the ring raise). */
+export const T80U_X_YAW=YAW,T80U_X_TRUNNION=GUN;
 
 export function buildT80UX(P:TankBuilderPort):void {
   // release 231 (t80uXArmor.ts T80U_X_RING_RAISE_M): the casting rides above the source's yaw datum on a stationary machined

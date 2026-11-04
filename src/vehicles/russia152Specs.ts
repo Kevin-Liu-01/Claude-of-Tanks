@@ -11,7 +11,8 @@ import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 import { crewBox, modernArmor, type ShellSpec } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
-import { MOLOT_FRAME, OBJECT195_FRAME, OBJECT292_GUN_FRAME, T14_152_GUN_FRAME } from './russia152Frames.ts';
+import { MOLOT_FRAME, OBJECT195_FRAME, OBJECT292_FRAME, T14_152_GUN_FRAME } from './russia152Frames.ts';
+import { T80U_X_GUN_PITCH_BY_YAW_DEG } from './t80uXArmor.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -41,14 +42,19 @@ const rounds = (gun: string, apfsds: [readonly number[], number, number], heat: 
 
 // ------------------------------------------------------------------------------------------------------ Object 292 --
 // The Kirov Plant's 1990 trials tank (one built, Kubinka): the serial T-80BV's hull and 1,100 hp GTD-1000TF turbine under
-// a reworked T-80 cast turret carrying a welded box for the LP-83 (profiles/object292.ts). 46 t, three crew; the LP-83's
-// loading mechanism was designed for the box bustle (30 rounds, 16 ready, six a minute) and never fitted to the
-// prototype. Its Kontakt-1 studs carry no bricks, so its hull is the BV's without the ERA plates.
-const object292 = variant('object292', 't80bv', 'Object 292', 'USSR', 'modern');
+// a reworked T-80 cast turret carrying a welded box for the LP-83. 46 t, three crew; the LP-83's loading mechanism was
+// designed for the box bustle (30 rounds, 16 ready, six a minute) and never fitted to the prototype. Owner 2026-11-04
+// ("dont use the old t80 hull only use modern new hulls like the nnew t80 x hulll"): it is built on the T-80U X hull and
+// casting (profiles/object292X.ts), so its rows follow the T-80U X's datums and hull plates (the same ratings as the BV's);
+// its Kontakt-1 studs carry no bricks, so the hull has no ERA plates.
+const object292 = variant('object292', 't80u', 'Object 292', 'USSR', 'modern');
 // Tier VII (Main 2026-11-04, on the lane's fairness numbers: 2,350 HP and 700 damage at 10 s scored 0 of 17 pairs fair at VII,
 // these levers 16 of 17, mean 0.397)
 Object.assign(object292, { hp: 2500, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
-Object.assign(object292.dims, { overallLengthM: 3.39 + OBJECT292_GUN_FRAME.muzzleZ, widthM: 3.525, heightM: 2.25 });
+// the T-80U X hull's 3.36 m stern to the muzzle; the box's roof is the structural roof
+Object.assign(object292.dims, { overallLengthM: 3.36 + OBJECT292_FRAME.muzzleZ, heightM: OBJECT292_FRAME.ringY + 0.86 });
+// the T-80U X casting's measured depression over the engine deck (t80uXArmor.ts) until the gate's sweep measures the LP-83's
+object292.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
 object292.gun = {
   // 9 s: the six a minute (10 s) was the design rate of a loading mechanism the prototype never got (GlobalSecurity,
   // militaryrussia: "not installed"), so the 9 s breaks no real figure
@@ -60,18 +66,17 @@ object292.armor.hullPlates = object292.armor.hullPlates.filter((plate) => plate.
 // over the cast turret's for the steel weight-imitator blocks welded on its front (War Thunder devblog 2024: "steel blocks
 // ... acting as weight imitators"; Main 2026-11-04, tier VII)
 object292.armor.turretPlates = modernArmor({
-  hl: 3.39, hw: 1.76, inW: 1.05, floor: 0.44, trkTop: 1.05, roofY: 1.45, turretPivot: [0, 1.45, 0],
-  gunPivot: [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ],
-  barrelLenM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, barrelRadM: 0.135,
+  hl: 3.36, hw: 1.80, inW: 1.04, floor: 0.48, trkTop: 1.17, roofY: 1.55, turretPivot: [0, OBJECT292_FRAME.ringY, OBJECT292_FRAME.ringZ],
+  gunPivot: [0, OBJECT292_FRAME.trunnionY - OBJECT292_FRAME.ringY, OBJECT292_FRAME.trunnionZ - OBJECT292_FRAME.ringZ],
+  barrelLenM: OBJECT292_FRAME.muzzleZ - OBJECT292_FRAME.trunnionZ, barrelRadM: 0.135,
   glacis: [0, 0, 0], lower: [0, 0, 0], side: [0, 0, 0], rear: 0, roof: 0,
-  tw: 1.12, tFrontZ: 1.40, tRearZ: -2.30, tH: 0.86,
+  tw: 1.42, tFrontZ: 1.40, tRearZ: -2.22, tH: 0.86,
   cheek: [620, 810, 890], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 513, 567],
 }).turretPlates;
-// the T-80BV hull's ring datum (profiles/t80.ts: the turret at y 1.45 over z 0; the BV row registered here still holds its
-// donor's 1.442 / 0.145 until its own frame pass)
-object292.armor.turretPivot = [0, 1.45, 0];
-object292.armor.gunPivot = [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ];
-object292.armor.gunBarrel = { lengthM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, radiusM: 0.135 };
+// the T-80U X casting's ring on its raised race and its trunnion (russia152Frames.ts)
+object292.armor.turretPivot = [0, OBJECT292_FRAME.ringY, OBJECT292_FRAME.ringZ];
+object292.armor.gunPivot = [0, OBJECT292_FRAME.trunnionY - OBJECT292_FRAME.ringY, OBJECT292_FRAME.trunnionZ - OBJECT292_FRAME.ringZ];
+object292.armor.gunBarrel = { lengthM: OBJECT292_FRAME.muzzleZ - OBJECT292_FRAME.trunnionZ, radiusM: 0.135 };
 // the plain green Kubinka shows (the national Russian plain, camoPolicy national_ru)
 object292.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '292',
   trackWidthM: 0.58 };

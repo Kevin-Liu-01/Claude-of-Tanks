@@ -7,7 +7,7 @@
   "targets": {
     "object292": {
       "name": "Object 292",
-      "authority": "Release 269 (owner 2026-11-04, \"object 292 for a full line of 152 mm variant tanks\", with an unlabelled game render the lane matched to it; DECISIONS \"2026-11-04 Russian 152 mm line\"). The Kirov Plant (KB-3, now Spetsmash) and VNIITransmash's 1990 trials tank, one built, fired at the Rzhev range in 1991 and kept at Kubinka since 22 October 2007. Its hull is the serial T-80BV's (the Spetsmash veterans' article via GlobalSecurity; the Kubinka photographs show the Kontakt-1 stud field with no bricks, the GTD-1000TF's grille and the rubber skirts), built on the T-80BV's builder with its bricks off (profiles/t80.ts, profiles/object292.ts). Its turret is a reworked T-80 cast turret with a welded box for the LP-83 152.4 mm smoothbore and its loading mechanism (designed for the box bustle, never fitted to the prototype): raked cheek blocks, a flat-sided body and a long bustle over the engine deck. The LP-83 has no bore evacuator (photographs; GlobalSecurity: an air purge). 46 t and three crew (infobox figures).",
+      "authority": "Release 269 (owner 2026-11-04, \"object 292 for a full line of 152 mm variant tanks\", with an unlabelled game render the lane matched to it; DECISIONS \"2026-11-04 Russian 152 mm line\"). The Kirov Plant (KB-3, now Spetsmash) and VNIITransmash's 1990 trials tank, one built, fired at the Rzhev range in 1991 and kept at Kubinka since 22 October 2007. Its hull is the serial T-80BV's (the Spetsmash veterans' article via GlobalSecurity; the Kubinka photographs show the Kontakt-1 stud field with no bricks, the GTD-1000TF's grille and the rubber skirts), built (owner 2026-11-04: \"dont use the old t80 hull only use modern new hulls like the nnew t80 x hulll\") on the T-80U X hull and casting by recipe reuse, the T-80U X base without its Kontakt-5 and the BV pattern's Kontakt-1 studs on its glacis (profiles/t80uX.ts, profiles/object292X.ts). Its turret is a reworked T-80 cast turret with a welded box for the LP-83 152.4 mm smoothbore and its loading mechanism (designed for the box bustle, never fitted to the prototype): raked cheek blocks, a flat-sided body and a long bustle over the engine deck. The LP-83 has no bore evacuator (photographs; GlobalSecurity: an air purge). 46 t and three crew (infobox figures).",
       "sources": [
         "https://commons.wikimedia.org/wiki/File:Object_292_1.jpg",
         "https://commons.wikimedia.org/wiki/File:Object_292_2.jpg",
@@ -20,10 +20,10 @@
         "https://en.wikipedia.org/wiki/Obiekt_292",
         "https://warthunder.com/en/news/8707-development-call-of-the-dragon-object-292-en"
       ],
-      "widthM": 3.643,
-      "overallLengthM": 10.24,
-      "tallestM": 3.74,
-      "envelopeBasis": "The as-built envelope (Box3 at both qualities): the T-80BV build's own width (its glacis shoulder returns reach 1.82 m a side; the published 3.525 m is the infobox's, unsourced), 10.24 m from the T-80BV's stern to the LP-83's muzzle (the Kubinka photographs put the muzzle about 3.5 m past the nose; no length is published), 3.74 m to the whip's tip (the welded box's roof at 2.31 m; the infobox's 2.193 m height).",
+      "widthM": 3.6,
+      "overallLengthM": 10.385,
+      "tallestM": 3.906,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities) on the T-80U X hull: its own 3.60 m width over the fenders (the published 3.525 m is the infobox's, unsourced), 10.385 m from the stern's empty drum cradles (z -3.525) to the LP-83's muzzle 3.5 m past the hull's nose (the Kubinka photographs; no length is published), 3.906 m to the whip's tip (the welded box's roof at 2.48 m, 0.24 m over the T-80U X casting's; the infobox's 2.193 m height is the T-80 casting's).",
       "caliberMm": 152,
       "launcherTubes": 0,
       "roofMachineGuns": 0,
