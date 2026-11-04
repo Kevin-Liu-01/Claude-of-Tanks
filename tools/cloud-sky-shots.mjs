@@ -8,7 +8,8 @@
 //               "maps": ["verdant", ...], "garage": ["verdant_motor_pool", ...], "poses": ["battle", "horizon", "high"] }]
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first unit staged while
-// it waits, every unit on its own page inside the hold, checkpoint() between units. A unit is a map (its battle, under
+// it waits, checkpoint() between units; units run job by job, a build's maps on one live page (six to a page, one page
+// alive at a time), each yard on its own. A unit is a map (its battle, under
 // the pinned scene and a day sky) or a Garage yard (its opening view). Poses of a map:
 //   battle  — the battle's chase rig (cameraRig snapArcade, the 13 m orbit step) behind the staged hull, pitched 12° up:
 //             the sky the driver sees over the battlefield;
@@ -225,6 +226,8 @@ async function main(argv) {
     job.manifest = existsSync(job.manifestFile) ? JSON.parse(readFileSync(job.manifestFile, 'utf8'))
       : { tool: TOOL, device: job.device, dist: job.dist, units: {} };
   }
+  // job by job (one build and tier at a time), the maps then the yards: a build's maps run on one live page (the browser
+  // guard's tree cap holds one page of the game, not one a job — 2026-11-04, three live pages passed 10 GB)
   const units = options.jobs.flatMap((job) => [
     ...job.maps.map((id) => ({ job, unit: { kind: 'map', id, key: id } })),
     ...job.garage.map((id) => ({ job, unit: { kind: 'garage', id, key: `garage-${id}` } })),
@@ -238,12 +241,29 @@ async function main(argv) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
   let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
+  // one live page a build for its maps (the cloudscape module stays in after its first battle, so only a page's first
+  // map pays the warm-up), recycled after MAPS_PER_PAGE maps; a yard boots its own page (its variant is a boot setting)
+  const MAPS_PER_PAGE = 6;
+  const pages = new Map();
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
   const openUnit = async ({ job, unit }) => {
-    browser ??= await launch();
-    pagesSinceLaunch++;
-    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null);
+    const kept = unit.kind === 'map' ? pages.get(job.name) : null;
+    if (kept && kept.uses < MAPS_PER_PAGE) {
+      entry = kept.entry;
+      kept.uses++;
+    } else {
+      // one live page: any other build's page closes before this one opens
+      for (const [name, other] of pages) { await other.entry.page.close().catch(() => {}); pages.delete(name); }
+      browser ??= await launch();
+      pagesSinceLaunch++;
+      entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null);
+      if (unit.kind === 'map') pages.set(job.name, { entry, uses: 1 });
+    }
     await stageUnit(entry, unit);
+  };
+  const drop = async (page) => {
+    for (const [name, kept] of pages) if (kept.entry.page === page) pages.delete(name);
+    await page.close().catch(() => {});
   };
   const close = async () => {
     if (held) lock.release();
@@ -265,7 +285,18 @@ async function main(argv) {
       const started = Date.now();
       let outcome = 'failed';
       try {
-        if (session) { await thawPage(entry.page, session); session = null; } else await openUnit(units[i]);
+        if (session) {
+          await thawPage(entry.page, session);
+          session = null;
+          // a page warmed long before its hold can come back without its game (a renderer reset while frozen): stage again
+          const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+          if (live !== unit.id && unit.kind === 'map') {
+            console.log(`[${label}] ${stamp()} ${job.name} ${unit.key}: the warm page lost its game (${live}); staging afresh`);
+            await drop(entry.page);
+            await openUnit(units[i]);
+          }
+        } else await openUnit(units[i]);
+        await entry.page.bringToFront();
         const shooting = (async () => {
           const receipt = await shootUnit(entry, { poses: job.poses }, job.frames);
           receipt.ms = Date.now() - started;
@@ -276,9 +307,11 @@ async function main(argv) {
         shooting.catch(() => {});
         outcome = await Promise.race([shooting, sleep(600_000).then(() => 'timeout')]);
       } catch (error) {
-        console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} failed: ${String(error?.message ?? error).slice(0, 200)}`);
+        console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} failed: ${String(error?.message ?? error).slice(0, 200)}`
+          + (entry?.errors?.length ? `; page errors: ${entry.errors.slice(0, 3).join(' | ').slice(0, 400)}` : ''));
       } finally {
-        if (entry) await entry.page.close().catch(() => {});
+        // a yard's page, and any page whose unit did not finish, closes; a build's map page stays for its next map
+        if (entry && (unit.kind === 'garage' || outcome !== 'shot')) await drop(entry.page);
         entry = null;
       }
       if (outcome === 'shot') {
@@ -288,7 +321,7 @@ async function main(argv) {
         failed++;
         console.log(`[${label}] ${stamp()} ${job.name} ${unit.key} ${outcome}`);
       }
-      if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
+      if (pagesSinceLaunch >= 12 && browser) { pages.clear(); await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
       if (i < units.length - 1) {
         const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
           beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });

@@ -105,7 +105,7 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
  * 0.73, where round 6's shell law held 0.84 of it to 0.55 and halved it only at 0.73 — the extrusion of its outline
  * under a flat lid).
  */
-export const CLOUD_DOME_CROWN = 0.45;
+export const CLOUD_DOME_CROWN = 0.4;
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;

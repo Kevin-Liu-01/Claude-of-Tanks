@@ -71,8 +71,8 @@ assert.ok(CLOUD2_PERIODS.streets >= 18000, 'the field\'s tile stands past the vi
 // ---- 2. the shape volume's lattice
 const mediaSrc = shaders.slice(shaders.indexOf('vec4 cl2Media('), shaders.indexOf('float cl2Extinction('));
 for (const line of [
-  'vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 4.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;',
-  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.5 * uShapePeriod );',
+  'vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;',
+  'sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.3 * uShapePeriod );',
 ]) assert.ok(mediaSrc.includes(line), `the shape lookup leaves the world's axes: ${line}`);
 assert.ok(mediaSrc.indexOf('sp.xz = mat2(') < mediaSrc.indexOf('textureLod( tShape'), 'before the shape fetch');
 

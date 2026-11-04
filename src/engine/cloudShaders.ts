@@ -50,7 +50,7 @@ export const CLOUD2_PERIODS = Object.freeze({
   /** the local weather (cloudNoise.ts bakeCloudLocalWeather) */
   local: 48000,
   /**
-   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 1.2 km
+   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 0.9 km
    * apart, so its tile's period stands past the views it fills and beats against the local weather's 48 km
    */
   streets: 18000,
@@ -162,7 +162,7 @@ vec4 cl2Weather( vec2 xz, float h, float lod ) {
 	if ( dot( uLayerStreets, uLayerStreets ) > 0.0 ) {
 		vec2 q = vec2( dot( xz, uWindDir2 ), dot( xz, vec2( -uWindDir2.y, uWindDir2.x ) ) ) + uStreetShift2;
 		// (clouds-269) a street sky's cumulus drawn out a little further along the wind: aligned, never ruled rows
-		q.x /= 1.0 + 0.6 * max( uLayerStreets.x - 0.4, 0.0 );
+		q.x /= 1.0 + 0.35 * max( uLayerStreets.x - 0.4, 0.0 );
 		float st = textureLod( tStreetField, q / CL2_STREETS, lod ).r;
 		w = mix( w, vec4( st ), uLayerStreets );
 	}
@@ -240,10 +240,12 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec3 sp = p + uShapeShift;
 	// clouds-269: the shape volume tiles every uShapePeriod (1.6–3.2 km) on the world's axes, so wherever the weather
 	// admitted a wide area the same billows stood in rows and columns. The lookup turns off the axes (a 3-4-5 rotation)
-	// and rides a smooth warp of up to half a period — the turbulence field's curl read at four times its own scale (one
-	// small 2D fetch), drifting with the shape — so no two neighbouring tiles line up
-	vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 4.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;
-	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.5 * uShapePeriod );
+	// and rides a smooth warp of up to 0.3 of a period — the turbulence field's curl read at eight times its own scale
+	// (one small 2D fetch), drifting with the shape — so no two neighbouring tiles line up. (The first GPU preview's half
+	// period at four times the scale stretched the billows up to twice over a kilometre: Verdant's big cumulus read as
+	// brushed streaks.)
+	vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 8.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;
+	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.3 * uShapePeriod );
 	if ( uTurbulence > 0.0 ) {
 		// the base drags with the wind's swirl: the lowest third of each lane, by its shell
 		float k = dot( shell, clamp( ( 0.3 - hf ) / 0.3, 0.0, 1.0 ) );
