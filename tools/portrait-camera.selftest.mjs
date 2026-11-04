@@ -14,8 +14,9 @@ const changed = new Set(['t72b3', 'strv122']);
 // Release 262: the Sho't Kal's tall IDF whips fit the card's height envelope at the more side-on 0.74 (portrait-camera.ts).
 // The Bernardini X1 and X1A2 (brazil-line-266): tall whips over a small chassis, widened like the Lynx and Barak.
 // Release 267: the T-80UK command fit's mast (the T-90 lane's 4595b27552) fits the height envelope at 0.70.
+// Release 269: the Australian M113A1 FSV's and MRV's whips over their short hulls, the X1's side-on view.
 const sourceDirections = new Map([['kf41_lynx', 0.86], ['merkava4_barak', 0.70], ['kf51_panther', 0.72], ['shot_kal', 0.74],
-  ['x1_pioneiro', 1.10], ['x1a2_carcara', 0.70], ['t80uk', 0.70]]);
+  ['x1_pioneiro', 1.10], ['x1a2_carcara', 0.70], ['t80uk', 0.70], ['m113a1_fsv', 1.10], ['m113a1_mrv', 1.10]]);
 for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
   const expected = sourceDirections.get(id) ?? (changed.has(id) ? 0.76 : 0.56);
   assert.equal(portraitSideRatio(id), expected, `${id}: exact portrait-only azimuth (bow to the left)`);

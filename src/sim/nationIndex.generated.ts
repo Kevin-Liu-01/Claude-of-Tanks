@@ -261,7 +261,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["m113a1_fsv","australia","cold-war",1],
   ["m113a1_mrv","australia","cold-war",1],
   ["leopard_as1","australia","cold-war",1],
-  ["m113as4","australia","modern",2],
+  ["m113as4","australia","modern",3],
   ["m1a1_aim_sa_aus","australia","modern",8],
   ["m1a2_sepv3_aus","australia","modern",9],
   ["redback","australia","modern",6],
