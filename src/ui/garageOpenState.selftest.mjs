@@ -155,8 +155,12 @@ import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
   assert.match(source, /customCamoStudioAccess\?\.open\(garageScreen\.ticket\(\)\.current\)/, 'and the custom camo studio');
   assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{/,
     'the filter button is the lazy toggle (case 6 drives it)');
-  assert.match(source, /facetToggle\.addEventListener\('click', \(\) => \{\n\s+emit\('ui:click', \{\}\);\n\s+facetPanelToggle\.press\(\);\n\s+\}\);/,
+  // (integration IR3) loaders-workers' opener chunk sits under the toggle: a press after a failed load reloads the page
+  // (components/loadFailure.ts) before it reaches the toggle
+  assert.match(source, /facetToggle\.addEventListener\('click', \(\) => \{\n\s+emit\('ui:click', \{\}\);\n(?:\s+\/\/[^\n]*\n)?\s+if \(reloadsForFailure\(facetToggle, 'cot-facets-load', t\('loadFailed\.generic'\)\)\) return;\n\s+facetPanelToggle\.press\(\);\n\s+\}\);/,
     'and every press goes through it');
+  assert.match(source, /const facetPanelToggle = createLazyPanelToggle\(garageScreen, \(\) => \{\n\s+const loading = facetPanel\.load\(\);/,
+    'the toggle loads the opener chunk');
   assert.match(source, /if \(!garageScreen\.isOpen\) return;\n\s+if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;/,
     'the filter\'s auto-select never changes the selection after the Garage hid');
   assert.match(source, /if \(battleMode === 'solo' && remembered && normalizeGameMode\(remembered\) !== battleGameMode\) setBattleGameMode\(remembered\);/,
