@@ -61,8 +61,14 @@ for (const { mapId, asset } of minimapAssets) {
 // ones"), picked in tools/media-r5/site-media/picks.json: the takes with battlefields rotate on the loading screens.
 const sitePicks = JSON.parse(await readFile(new URL('../../tools/media-r5/site-media/picks.json', import.meta.url), 'utf8'));
 const siteStills = `/media/${sitePicks.collection}/stills/`;
-// a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still
-const pickImg = (pick) => `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`;
+// a pick shows its key moment, its close portrait (`still: 'close'`) or, marked fourK, the 4K showcase still; or
+// (2026-11-03) a versus still, whose boot preview is the 1280 rung of its boot opener (bootVersus, else itself)
+const versusItems = new Map(JSON.parse(await readFile(new URL('../../public/media/versus-r1/manifest.json', import.meta.url), 'utf8')).items
+  .map((item) => [item.id, item]));
+const pickImg = (pick) => (pick.versus ? versusItems.get(pick.versus).path
+  : `${siteStills}${pick.id}${pick.fourK ? '-4k' : pick.still === 'close' ? '-close' : ''}.webp`);
+const pickBoot = (pick) => (pick.versus ? versusItems.get(pick.bootVersus ?? pick.versus).rungs.find((rung) => rung.width === 1280).path
+  : `${siteStills}${pick.id}-boot.webp`);
 const pickedTransitions = sitePicks.featured.filter((pick) => pick.maps?.length);
 assert.equal(FEATURED_SHOTS.length, sitePicks.featured.length, 'every picked still is in the Garage gallery');
 assert.equal(FEATURED_SHOTS.length, 20, 'the Garage gallery shows twenty of the site fifty');
@@ -75,7 +81,7 @@ assert.equal(
 );
 assert.equal(
   TRANSITION_SHOTS[0].bootImg,
-  `${siteStills}${pickedTransitions[0].id}-boot.webp`,
+  pickBoot(pickedTransitions[0]),
   'the featured panel must retain its screen-sized preview derivative',
 );
 const bootHeroAsset = await stat(new URL(`../../public${TRANSITION_SHOTS[0].bootImg}`, import.meta.url));
