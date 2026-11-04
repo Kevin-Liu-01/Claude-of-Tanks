@@ -32,6 +32,7 @@ import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { readinessExpression } from './game-readiness.mjs';
+import { MATCH_PHASE } from './mp-states.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -370,7 +371,7 @@ try {
   };
   const snapshotsDuringKeep = report.afterHostLeft.snapshotsAfter - report.afterHostLeft.snapshotsBefore;
   if (snapshotsDuringKeep < keepS * 10) failures.push(`B received ${snapshotsDuringKeep} snapshots in ${keepS} s after A left (expected ≥ ${keepS * 10})`);
-  if (report.afterHostLeft.matchPhase !== 'live') failures.push(`B's match link is ${report.afterHostLeft.matchPhase} after A left`);
+  if (report.afterHostLeft.matchPhase !== MATCH_PHASE.live) failures.push(`B's match link is ${report.afterHostLeft.matchPhase} after A left`);
   if (report.afterHostLeft.phase !== 'battle' || report.afterHostLeft.result) failures.push(`B's battle ended when A left (phase ${report.afterHostLeft.phase}, result ${report.afterHostLeft.result})`);
   // The room's admin follows A's disconnect after the reconnect grace (charter §5: 30 s), at once on an explicit leave.
   try {
@@ -408,7 +409,7 @@ try {
   step('b-rejoined', report.rejoin);
   await screenshot(pageB, 'b-rejoined.png');
   if (report.rejoin.matchId !== report.rejoin.roomMatchId) failures.push(`B rejoined ${report.rejoin.matchId}, the room runs ${report.rejoin.roomMatchId}`);
-  if (report.rejoin.matchPhase !== 'live' || !report.rejoin.revealed) failures.push(`B's rejoin is ${report.rejoin.matchPhase} / revealed ${report.rejoin.revealed}`);
+  if (report.rejoin.matchPhase !== MATCH_PHASE.live || !report.rejoin.revealed) failures.push(`B's rejoin is ${report.rejoin.matchPhase} / revealed ${report.rejoin.revealed}`);
   if (!report.rejoin.strip?.visible) failures.push('B has no network strip after the rejoin');
   await pageB.evaluate(() => window.__DEBUG.leaveBattleToGarage());
   await waitFor(pageB, `${readinessExpression('garage')} && window.__MULTIPLAYER_V2?.stats?.().active === false`, 'B back in the Garage after the rejoin', 60_000);

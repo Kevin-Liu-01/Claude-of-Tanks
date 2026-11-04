@@ -115,8 +115,11 @@ export const ROOM_RESUME_TOKEN_RE = /^[a-f0-9]{64}$/;
 
 export type RoomMode = 'private' | 'lan';
 export type RoomTeam = 'alpha' | 'bravo' | 'spectator';
-export type RoomPhase = 'waiting' | 'starting' | 'playing';
-export type RoomMatchStatus = 'starting' | 'playing' | 'ended' | 'lost';
+/** (2026-11-02 audit S3) runtime lists: the multiplayer harnesses import them (tools/mp-states.mjs) */
+export const ROOM_PHASES = Object.freeze(['waiting', 'starting', 'playing'] as const);
+export type RoomPhase = typeof ROOM_PHASES[number];
+export const ROOM_MATCH_STATUSES = Object.freeze(['starting', 'playing', 'ended', 'lost'] as const);
+export type RoomMatchStatus = typeof ROOM_MATCH_STATUSES[number];
 export type RoomResult = 'alpha' | 'bravo' | 'draw';
 
 export interface RoomPlayer {

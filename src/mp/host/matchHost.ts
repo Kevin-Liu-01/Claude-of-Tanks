@@ -352,3 +352,10 @@ export function createMatchHost({
     onState: (listener) => stateListeners.add(({ state: next, detail }) => listener(next, detail)),
   };
 }
+
+/**
+ * (2026-11-02 audit S3) The host runtime's states as a runtime list: the multiplayer harnesses import it
+ * (tools/mp-states.mjs) instead of spelling the words; tools/mp-states.selftest.mjs pins it to MatchHostState.
+ */
+export const MATCH_HOST_STATES = Object.freeze(
+  ['idle', 'booting', 'live', 'stopped', 'failed'] as const satisfies readonly MatchHostState[]);

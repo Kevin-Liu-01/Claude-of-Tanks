@@ -53,6 +53,15 @@ export interface SessionRound {
   playerId: string;
 }
 
+/**
+ * (2026-11-02 audit S3) The session's phases and roles as runtime lists: the multiplayer harnesses import these
+ * (tools/mp-states.mjs) instead of spelling the words, so a renamed phase fails a harness by name, not by timeout.
+ * tools/mp-states.selftest.mjs pins each list to its union.
+ */
+export const SESSION_PHASES = Object.freeze(
+  ['lobby', 'loading', 'match', 'ended', 'lost'] as const satisfies readonly SessionPhase[]);
+export const SESSION_ROLES = Object.freeze(['host', 'peer'] as const satisfies readonly NonNullable<SessionRole>[]);
+
 /** What a presentation factory hands back: the adapter and, once known, the viewer's prediction world and controls. */
 export interface SessionPresentation {
   adapter: PresentationAdapter;

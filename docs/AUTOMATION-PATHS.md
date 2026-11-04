@@ -200,3 +200,13 @@ A Garage return is awaited before the page does anything else: `await page.evalu
 (or the leave), then `readinessExpression('garage')`. A page function that fires the return as a bare statement and
 starts a battle in the same breath measures a race a player cannot make (`tools/mobilelap.mjs`'s map cycle did, until
 2026-11-03); the readiness selftest refuses it outside the exit-timing probe that polls for the Garage itself.
+
+## Multiplayer state words
+
+The multiplayer harnesses take the protocol's state words from `tools/mp-states.mjs`, which serves each owner's own
+runtime list (`SESSION_PHASES` and `SESSION_ROLES` in src/mp/session/matchSession.ts, `ROOM_PHASES` and
+`ROOM_MATCH_STATUSES` in src/mp/room/protocol.ts, `ROOM_CLIENT_PHASES`, `CONNECTION_PHASES` in src/mp/match/recovery.ts,
+`MATCH_HOST_STATES`, `TRANSPORT_STATES`): `ROOM_PHASE.playing`, never `'playing'`, and a word the owner does not have
+throws by name. A page function gets the word as an argument. `tools/mp-states.selftest.mjs` pins each list to its
+union and refuses a literal comparison in a harness; its named exceptions are other vocabularies (the authority's own
+MatchPhase, the headless peer harness's match phases).

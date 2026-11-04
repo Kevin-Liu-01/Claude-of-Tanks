@@ -43,6 +43,7 @@ import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { readinessExpression } from './game-readiness.mjs';
+import { HOST_STATE, MATCH_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -183,8 +184,9 @@ async function openPage(origin, peer) {
   peer.opens++;
   return page;
 }
-/** The game page's facts in the harness's shape (window.__MULTIPLAYER_V2 is up under puppeteer: navigator.webdriver). */
-const gameStatus = () => {
+/** The game page's facts in the harness's shape (window.__MULTIPLAYER_V2 is up under puppeteer: navigator.webdriver).
+ *  `host` is SESSION_ROLE.host, passed in: the page function cannot import the vocabulary (tools/mp-states.mjs). */
+const gameStatus = (host) => {
   const v2 = window.__MULTIPLAYER_V2?.stats?.() ?? null;
   const session = v2?.session ?? null;
   const match = session?.match ?? null;
@@ -193,9 +195,9 @@ const gameStatus = () => {
   const own = game?.player?.state?.pos ?? null;
   return {
     playerId: v2?.room?.playerId ?? session?.playerId ?? null, playerName: 'game', canHost: true, iceMode: 'game', predict: '1', stepHz: 0, uptimeMs: Math.round(performance.now()), nowMs: Math.round(performance.now()), wall: Date.now(),
-    room: v2?.room ? { phase: v2.room.phase, roomCode: v2.room.roomCode, players: v2.room.players, hostId: p2p?.hostId ?? null, generation: p2p?.generation ?? 0, isHost: p2p?.role === 'host', adminId: v2.room.adminId ?? null, matchStatus: null, seat: null, me: null, rttMs: v2.network?.rttMs ?? null, signalsSent: null, signalsReceived: null, signalsRefused: null } : null,
+    room: v2?.room ? { phase: v2.room.phase, roomCode: v2.room.roomCode, players: v2.room.players, hostId: p2p?.hostId ?? null, generation: p2p?.generation ?? 0, isHost: p2p?.role === host, adminId: v2.room.adminId ?? null, matchStatus: null, seat: null, me: null, rttMs: v2.network?.rttMs ?? null, signalsSent: null, signalsReceived: null, signalsRefused: null } : null,
     session: session ? { phase: session.phase, role: p2p?.role ?? null, migrations: session.migrations ?? 0, rounds: session.rounds ?? 0, matchUrl: session.matchUrl ?? null, p2p: p2p ? { ...p2p } : null } : null,
-    host: p2p?.role === 'host' ? { state: p2p.hostState, generation: p2p.generation, peersConnected: p2p.peersConnected, relayed: p2p.relayed, uplinkBytesPerS: p2p.uplinkBytesPerS, tick: null, phase: null, reports: null, core: null } : null,
+    host: p2p?.role === host ? { state: p2p.hostState, generation: p2p.generation, peersConnected: p2p.peersConnected, relayed: p2p.relayed, uplinkBytesPerS: p2p.uplinkBytesPerS, tick: null, phase: null, reports: null, core: null } : null,
     match: match ? { ...match, framesDropped: match.transport?.framesDropped ?? null, prediction: match.prediction ?? null } : null,
     own: own ? { tick: match?.snapshotsAccepted ?? 0, x: own.x, z: own.z, atMs: performance.now(), predicted: true } : null,
     lastSnapshotTick: null, framesSeen: null, welcomes: match?.welcomed ? 1 : 0, predictionReady: !!match?.prediction, predictionError: null, mapId: null, iceResolves: null,
@@ -205,7 +207,7 @@ const gameStatus = () => {
     errors: [], timelineLength: 0,
   };
 };
-const statusOf = (peer) => (peer.game ? peer.page.evaluate(gameStatus) : peer.page.evaluate(() => window.__peer.status()));
+const statusOf = (peer) => (peer.game ? peer.page.evaluate(gameStatus, SESSION_ROLE.host) : peer.page.evaluate(() => window.__peer.status()));
 const timelineOf = (peer, since = 0) => (peer.game ? Promise.resolve([]) : peer.page.evaluate((from) => window.__peer.timeline(from), since));
 const live = () => peers.filter((peer) => peer.page && !peer.page.isClosed());
 
@@ -338,13 +340,13 @@ try {
   await waitUntil(async () => {
     const statuses = await Promise.all(peers.map(statusOf));
     const welcomed = statuses.filter((status) => status.match?.welcomed).length;
-    const host = statuses.find((status) => status.session?.role === 'host');
+    const host = statuses.find((status) => status.session?.role === SESSION_ROLE.host);
     if (welcomed === seats && host && host.host?.peersConnected === seats - 1) return true;
     return false;
   }, `every seat welcomed and the host serving ${seats - 1} peers`, 180_000, 500);
   const entryStatuses = await Promise.all(peers.map(statusOf));
-  hostPeer = peers[entryStatuses.findIndex((status) => status.session?.role === 'host')];
-  generation = entryStatuses.find((status) => status.session?.role === 'host').session.p2p.generation;
+  hostPeer = peers[entryStatuses.findIndex((status) => status.session?.role === SESSION_ROLE.host)];
+  generation = entryStatuses.find((status) => status.session?.role === SESSION_ROLE.host).session.p2p.generation;
   hostPeer.hostedGenerations.push(generation);
   const entryTimelines = await Promise.all(peers.map((peer) => timelineOf(peer)));
   const joinMs = peers.map((peer, index) => { const welcome = entryTimelines[index].find((entry) => entry.kind === 'welcome'); return welcome ? welcome.wall - startWall : null; });
@@ -362,8 +364,8 @@ try {
     hostId: hostPeer.id, generation, matchUrl: entryStatuses[hostPeer.index].session.matchUrl,
     joinMs: { min: min(joinMs), median: median(joinMs), max: max(joinMs), perSeat: joinMs },
     hostPeersConnected: entryStatuses[hostPeer.index].host.peersConnected, hostState: entryStatuses[hostPeer.index].host.state,
-    candidateTypes: entryStatuses.filter((status) => status.session?.role === 'peer').map((status) => status.session.p2p.candidateType),
-    viaTurn: entryStatuses.filter((status) => status.session?.role === 'peer').map((status) => status.session.p2p.viaTurn),
+    candidateTypes: entryStatuses.filter((status) => status.session?.role === SESSION_ROLE.peer).map((status) => status.session.p2p.candidateType),
+    viaTurn: entryStatuses.filter((status) => status.session?.role === SESSION_ROLE.peer).map((status) => status.session.p2p.viaTurn),
     iceGather: { connections: gather.length, candidatesMedian: median(gather.map((entry) => entry.candidates)), candidatesMax: max(gather.map((entry) => entry.candidates)), relayMedian: median(gather.map((entry) => entry.relay)), gatherMsMedian: median(gather.map((entry) => entry.ms)), gatherMsMax: max(gather.map((entry) => entry.ms)) },
     roomMessagesStartBurst: startBurst, roomSocketCloses: entryTimelines.flatMap((timeline, index) => timeline.filter((entry) => entry.kind === 'room-socket:close').map((entry) => `${peers[index].id}@${Math.round(entry.wall - startWall)}ms:${entry.code}:${entry.reason}`)),
     predictionReady: entryStatuses.filter((status) => status.predictionReady).length, predictionErrors: entryStatuses.map((status) => status.predictionError).filter(Boolean),
@@ -410,7 +412,7 @@ try {
   while (performance.now() - playStartedAt < playMs && !stopping) {
     await sleep(sampleS * 1000);
     const { row } = await sampleAll();
-    const hostRow = row.peers.find((entry) => entry.role === 'host');
+    const hostRow = row.peers.find((entry) => entry.role === SESSION_ROLE.host);
     if (row.peers.length && row.peers.every((entry) => entry.phase === 'closed' || entry.phase === 'ended' || entry.phase === 'failed')) {
       // the match ended on its own (a verdict, the clock): the run's play is over
       const statuses = await Promise.all(live().map(statusOf));
@@ -459,7 +461,7 @@ try {
 async function migrate() {
   const k = report.migrations.length + 1;
   const before = await Promise.all(live().map(async (peer) => [peer, await statusOf(peer)]));
-  const hostEntry = before.find(([, status]) => status.session?.role === 'host');
+  const hostEntry = before.find(([, status]) => status.session?.role === SESSION_ROLE.host);
   if (!hostEntry) { failures.push(`migration ${k}: no seat hosts`); return; }
   const [oldHost, oldStatus] = hostEntry;
   const oldGeneration = oldStatus.session.p2p.generation;
@@ -483,7 +485,7 @@ async function migrate() {
   try {
     await waitUntil(async () => {
       const statuses = await Promise.all(remaining.map(statusOf));
-      const index = statuses.findIndex((status) => status.session?.role === 'host' && (status.session.p2p?.generation ?? 0) > oldGeneration && status.host?.state === 'live');
+      const index = statuses.findIndex((status) => status.session?.role === SESSION_ROLE.host && (status.session.p2p?.generation ?? 0) > oldGeneration && status.host?.state === HOST_STATE.live);
       if (index < 0) return false;
       newHost = remaining[index];
       newStatus = statuses[index];
@@ -514,7 +516,7 @@ async function migrate() {
       const first = after.find((entry) => entry.kind === 'frame:first');
       if (!first) pending++;
       perPeer.set(peer.id, {
-        id: peer.id, role: peer === newHost ? 'new host' : 'peer', team: null, allyOfNewHost: null,
+        id: peer.id, role: peer === newHost ? 'new host' : SESSION_ROLE.peer, team: null, allyOfNewHost: null,
         lossAfterMs: loss ? loss.wall - closedWall : null, hostChangedAfterMs: changed ? changed.wall - closedWall : null, hostLiveAfterMs: hostLive ? hostLive.wall - closedWall : null,
         welcomeAfterMs: welcome ? welcome.wall - closedWall : null, firstFrameAfterMs: first ? first.wall - closedWall : null,
         jumpM: first?.jumpM ?? null, rowJumpM: first?.rowJumpM ?? null, leadAtLossM: first?.leadAtLossM ?? null, beforeTick: first?.beforeTick ?? null, afterTick: first?.tick ?? null, tickContinuous: first?.tickContinuous ?? null, resumeTick: changed?.resumeTick ?? null,
@@ -541,9 +543,9 @@ async function migrate() {
     k, oldHost: oldHost.id, oldGeneration, oldTeam, newHost: newHost.id, newGeneration, newTeam, closedWall, reason: rows.find((row) => row.hostChangedReason)?.hostChangedReason ?? null,
     hostChangedAfterMs: median(rows.map((row) => row.hostChangedAfterMs)), newHostLiveAfterMs: rows.find((row) => row.role === 'new host')?.hostLiveAfterMs ?? null,
     firstFrame: { min: min(rows.map((row) => row.firstFrameAfterMs)), median: median(rows.map((row) => row.firstFrameAfterMs)), max: max(rows.map((row) => row.firstFrameAfterMs)), missing: rows.filter((row) => row.firstFrameAfterMs === null).map((row) => row.id) },
-    hullJump: { max: max(rows.map((row) => row.jumpM)), median: median(rows.map((row) => row.jumpM)), allies: max(rows.filter((row) => row.allyOfNewHost && row.role === 'peer').map((row) => row.jumpM)), enemies: max(rows.filter((row) => !row.allyOfNewHost && row.role === 'peer').map((row) => row.jumpM)), newHost: rows.find((row) => row.role === 'new host')?.jumpM ?? null },
+    hullJump: { max: max(rows.map((row) => row.jumpM)), median: median(rows.map((row) => row.jumpM)), allies: max(rows.filter((row) => row.allyOfNewHost && row.role === SESSION_ROLE.peer).map((row) => row.jumpM)), enemies: max(rows.filter((row) => !row.allyOfNewHost && row.role === SESSION_ROLE.peer).map((row) => row.jumpM)), newHost: rows.find((row) => row.role === 'new host')?.jumpM ?? null },
     // the same jump measured on the authority rows alone (the host's last row before the loss → the new host's first): the prediction's lead removed
-    rowJump: { max: max(rows.map((row) => row.rowJumpM)), median: median(rows.map((row) => row.rowJumpM)), allies: max(rows.filter((row) => row.allyOfNewHost && row.role === 'peer').map((row) => row.rowJumpM)), enemies: max(rows.filter((row) => !row.allyOfNewHost && row.role === 'peer').map((row) => row.rowJumpM)), newHost: rows.find((row) => row.role === 'new host')?.rowJumpM ?? null, leadAtLossMax: max(rows.map((row) => row.leadAtLossM)) },
+    rowJump: { max: max(rows.map((row) => row.rowJumpM)), median: median(rows.map((row) => row.rowJumpM)), allies: max(rows.filter((row) => row.allyOfNewHost && row.role === SESSION_ROLE.peer).map((row) => row.rowJumpM)), enemies: max(rows.filter((row) => !row.allyOfNewHost && row.role === SESSION_ROLE.peer).map((row) => row.rowJumpM)), newHost: rows.find((row) => row.role === 'new host')?.rowJumpM ?? null, leadAtLossMax: max(rows.map((row) => row.leadAtLossM)) },
     tickContinuous: rows.every((row) => row.tickContinuous !== false), oldHostTick: oldStatus.host?.core?.tick ?? null, resumeTick: rows.find((row) => row.resumeTick !== null)?.resumeTick ?? null,
     peersServed: newStatus.host?.peersConnected ?? null, peers: rows, rejoin: null, hints, acceptor,
   };
@@ -555,7 +557,7 @@ async function migrate() {
     const since = (await timelineOf(oldHost)).length;
     try {
       await oldHost.page.evaluate((code) => window.__peer.join({ code }), roomCode);
-      await waitUntil(async () => { const status = await statusOf(oldHost); return status.session?.role === 'peer' && status.session?.p2p?.hostId === newHost.id && status.match?.phase === 'live'; }, `migration ${k}: the old host stepped down to a live peer of ${newHost.id}`, 60_000, 250);
+      await waitUntil(async () => { const status = await statusOf(oldHost); return status.session?.role === SESSION_ROLE.peer && status.session?.p2p?.hostId === newHost.id && status.match?.phase === MATCH_PHASE.live; }, `migration ${k}: the old host stepped down to a live peer of ${newHost.id}`, 60_000, 250);
       const status = await statusOf(oldHost);
       const events = (await timelineOf(oldHost, since)).filter((entry) => /^(?:host-log:|p2p:|transport:|welcome|host:|match_start|room:)/.test(entry.kind)).slice(0, 40).map((entry) => ({ ms: entry.wall - rejoinWall, kind: entry.kind, ...(entry.message ? { message: entry.message } : {}), ...(entry.detail ? { detail: entry.detail } : {}), ...(entry.role ? { role: entry.role } : {}), ...(entry.hostId ? { hostId: entry.hostId } : {}) }));
       const stepped = events.find((entry) => entry.kind === 'host-log:warn' && entry.message === 'stepping down');
@@ -571,7 +573,7 @@ async function migrate() {
     try {
       await openPage(origin, oldHost);
       await oldHost.page.evaluate((options) => window.__peer.join(options), { code: roomCode, specId: oldHost.specId });
-      await waitUntil(async () => { const status = await statusOf(oldHost); return status.match?.welcomed && status.session?.role === 'peer' && status.match?.phase === 'live'; }, `migration ${k}: the old host back as a peer`, 120_000, 500);
+      await waitUntil(async () => { const status = await statusOf(oldHost); return status.match?.welcomed && status.session?.role === SESSION_ROLE.peer && status.match?.phase === MATCH_PHASE.live; }, `migration ${k}: the old host back as a peer`, 120_000, 500);
       const status = await statusOf(oldHost);
       migration.rejoin = { afterMs: Date.now() - rejoinStartedWall, role: status.session.role, hostId: status.session.p2p.hostId, generation: status.session.p2p.generation, candidateType: status.session.p2p.candidateType };
       step(`migration-${k}-rejoined`, migration.rejoin);
@@ -603,11 +605,11 @@ function rateSeries(field, roleFilter = null) {
 }
 
 function summarize() {
-  const peerRows = [...finalStatus.values()].filter((entry) => entry.status.session?.role === 'peer').map((entry) => entry.status);
-  const hostRows = [...finalStatus.values()].filter((entry) => entry.status.session?.role === 'host').map((entry) => entry.status);
-  const snapshotRates = rateSeries('snap', 'peer');
-  const hostUplink = rateSeries('rtcSent', 'host').map((value) => value * 8 / 1000);
-  const hostDownlink = rateSeries('rtcRecv', 'host').map((value) => value * 8 / 1000);
+  const peerRows = [...finalStatus.values()].filter((entry) => entry.status.session?.role === SESSION_ROLE.peer).map((entry) => entry.status);
+  const hostRows = [...finalStatus.values()].filter((entry) => entry.status.session?.role === SESSION_ROLE.host).map((entry) => entry.status);
+  const snapshotRates = rateSeries('snap', SESSION_ROLE.peer);
+  const hostUplink = rateSeries('rtcSent', SESSION_ROLE.host).map((value) => value * 8 / 1000);
+  const hostDownlink = rateSeries('rtcRecv', SESSION_ROLE.host).map((value) => value * 8 / 1000);
   // P3b: rows the interest tiers refreshed per tier per second over the populations → the refresh rate per tier (Hz per entity);
   // the skips; the peers' interpolation delay and the furthest any entity was continued past its own sample
   const tierRates = [0, 1, 2].map((tier) => {
@@ -618,26 +620,26 @@ function summarize() {
       const dtS = (current.atMs - previous.atMs) / 1000;
       if (dtS <= 0) continue;
       for (const entry of current.peers) {
-        if (entry.role !== 'host' || !entry.tierPub || !entry.tierPop) continue;
-        const earlier = previous.peers.find((candidate) => candidate.id === entry.id && candidate.role === 'host' && candidate.gen === entry.gen && candidate.tierPub);
+        if (entry.role !== SESSION_ROLE.host || !entry.tierPub || !entry.tierPop) continue;
+        const earlier = previous.peers.find((candidate) => candidate.id === entry.id && candidate.role === SESSION_ROLE.host && candidate.gen === entry.gen && candidate.tierPub);
         if (!earlier || entry.tierPop[tier] <= 0) continue;
         rates.push((entry.tierPub[tier] - earlier.tierPub[tier]) / dtS / entry.tierPop[tier]);
       }
     }
     return rates;
   });
-  const tierPopulations = [0, 1, 2].map((tier) => series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host' && entry.tierPop).map((entry) => entry.tierPop[tier])));
-  const hostSkips = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.skips)));
-  const hostHz = median(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.hz)));
-  const rowExtra = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.rowExtra)));
-  const delays = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.delay));
-  const peerDownlink = rateSeries('bIn', 'peer').map((value) => value * 8 / 1000);
-  const peerUplink = rateSeries('bOut', 'peer').map((value) => value * 8 / 1000);
-  const tickP95 = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.tickP95));
-  const tickP50 = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.tickP50));
-  const tickMax = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.tickMax));
-  const rtt = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.rtt));
-  const pcRtt = series.flatMap((row) => row.peers.filter((entry) => entry.role === 'peer').map((entry) => entry.pcRtt));
+  const tierPopulations = [0, 1, 2].map((tier) => series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host && entry.tierPop).map((entry) => entry.tierPop[tier])));
+  const hostSkips = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.skips)));
+  const hostHz = median(series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.hz)));
+  const rowExtra = max(series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.peer).map((entry) => entry.rowExtra)));
+  const delays = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.peer).map((entry) => entry.delay));
+  const peerDownlink = rateSeries('bIn', SESSION_ROLE.peer).map((value) => value * 8 / 1000);
+  const peerUplink = rateSeries('bOut', SESSION_ROLE.peer).map((value) => value * 8 / 1000);
+  const tickP95 = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.tickP95));
+  const tickP50 = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.tickP50));
+  const tickMax = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.tickMax));
+  const rtt = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.peer).map((entry) => entry.rtt));
+  const pcRtt = series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.peer).map((entry) => entry.pcRtt));
   const offsets = peerRows.map((status) => status.match?.serverOffsetMs ?? null);
   const offsetDrift = series.length > 1 ? peerRows.map((status) => { const first = series.find((row) => row.peers.some((entry) => entry.id === status.playerId && entry.off !== null))?.peers.find((entry) => entry.id === status.playerId)?.off; return first === undefined || status.match?.serverOffsetMs == null ? null : status.match.serverOffsetMs - first; }) : [];
   const hostCores = hostRows.map((status) => status.host?.core ?? null).filter(Boolean);
@@ -675,7 +677,7 @@ function summarize() {
     samples: series.length, playMinutes: round(playMinutes, 2),
     snapshotRateHz: { min: round(min(snapshotRates), 1), p05: round(percentile(snapshotRates, 0.05), 1), median: round(median(snapshotRates), 1), max: round(max(snapshotRates), 1) },
     hostTickMs: { p50: round(median(tickP50), 3), p95: round(median(tickP95), 3), p95Max: round(max(tickP95), 3), max: round(max(tickMax), 3), final: hostCores.map((core) => ({ tick: core.tick, p50: round(core.tickP50Ms, 3), p95: round(core.tickP95Ms, 3), max: round(core.tickMaxMs, 3), mean: round(core.tickMeanMs, 3), count: core.tickCount, droppedTicks: core.droppedTicks, stalls: core.stalls, lateWakeupMaxMs: round(core.lateWakeupMaxMs, 1), clients: core.clients })) },
-    hostUplinkKbit: { median: round(median(hostUplink), 0), p95: round(percentile(hostUplink, 0.95), 0), max: round(max(hostUplink), 0), acceptorSampleMedian: round(median(series.flatMap((row) => row.peers.filter((entry) => entry.role === 'host').map((entry) => entry.hostUp))) * 8 / 1000, 0) },
+    hostUplinkKbit: { median: round(median(hostUplink), 0), p95: round(percentile(hostUplink, 0.95), 0), max: round(max(hostUplink), 0), acceptorSampleMedian: round(median(series.flatMap((row) => row.peers.filter((entry) => entry.role === SESSION_ROLE.host).map((entry) => entry.hostUp))) * 8 / 1000, 0) },
     hostSnapshotHz: hostHz, hostSnapshotSkips: hostSkips,
     tiers: {
       refreshHz: tierRates.map((rates) => round(median(rates), 1)), refreshHzMin: tierRates.map((rates) => round(min(rates), 1)),
@@ -699,7 +701,7 @@ function summarize() {
   verdict('migration: host loss → first snapshot from the new host (worst seat, ms)', worstMigration, migrations.length ? worstMigration !== null && worstMigration <= BUDGET.migrationMs && migrations.every((migration) => migration.firstFrame.missing.length === 0) : null, `≤ ${BUDGET.migrationMs}`, migrations.length ? `${migrations.length} migration(s); host_changed after ${migrations.map((migration) => round(migration.hostChangedAfterMs, 0)).join(' / ')} ms; missing seats ${migrations.map((migration) => migration.firstFrame.missing.length).join(' / ')}` : 'no migration in this run');
   const worstJump = max(migrations.map((migration) => migration.hullJump.max));
   verdict('migration: own-hull jump (worst seat, m)', round(worstJump, 3), migrations.length ? worstJump !== null && worstJump <= BUDGET.hullJumpM : null, `≤ ${BUDGET.hullJumpM} (0.0 m)`, migrations.length ? `allies of the new host ${migrations.map((migration) => round(migration.hullJump.allies, 2)).join(' / ')} m, enemies ${migrations.map((migration) => round(migration.hullJump.enemies, 2)).join(' / ')} m, the new host itself ${migrations.map((migration) => round(migration.hullJump.newHost, 2)).join(' / ')} m; on the authority rows alone: allies ${migrations.map((migration) => round(migration.rowJump.allies, 2)).join(' / ')} m, enemies ${migrations.map((migration) => round(migration.rowJump.enemies, 2)).join(' / ')} m, new host ${migrations.map((migration) => round(migration.rowJump.newHost, 2)).join(' / ')} m; prediction lead at the loss up to ${migrations.map((migration) => round(migration.rowJump.leadAtLossMax, 2)).join(' / ')} m` : '');
-  verdict('migration: tick timeline continuous, no reset', migrations.every((migration) => migration.tickContinuous), migrations.length ? migrations.every((migration) => migration.tickContinuous) && migrations.every((migration) => migration.peers.every((peer) => peer.phase === 'live')) : null, 'every seat live on the new host at a tick ≥ its last', '');
+  verdict('migration: tick timeline continuous, no reset', migrations.every((migration) => migration.tickContinuous), migrations.length ? migrations.every((migration) => migration.tickContinuous) && migrations.every((migration) => migration.peers.every((peer) => peer.phase === MATCH_PHASE.live)) : null, 'every seat live on the new host at a tick ≥ its last', '');
   verdict('host tick p95 (ms, median of the samples)', report.steady.hostTickMs.p95, report.steady.hostTickMs.p95 !== null && report.steady.hostTickMs.p95 <= BUDGET.hostTickP95Ms, `≤ ${BUDGET.hostTickP95Ms}`, `p50 ${report.steady.hostTickMs.p50}, worst p95 sample ${report.steady.hostTickMs.p95Max}, max tick ${report.steady.hostTickMs.max}; stalls ${report.steady.lost.hostStalls}, dropped ticks ${report.steady.lost.hostDroppedTicks}`);
   verdict('host uplink (kbit/s, median)', report.steady.hostUplinkKbit.median, report.steady.hostUplinkKbit.median !== null && report.steady.hostUplinkKbit.median <= BUDGET.hostUplinkMbit * 1000, `≤ ${BUDGET.hostUplinkMbit * 1000} (reported; above it P3b)`, `p95 ${report.steady.hostUplinkKbit.p95}, max ${report.steady.hostUplinkKbit.max}; downlink median ${report.steady.hostDownlinkKbit.median}`);
   verdict('peer desync at the end (m, worst seat)', report.steady.desync.endMaxM, report.steady.desync.predicting > 0 ? report.steady.desync.endMaxM !== null && report.steady.desync.endMaxM <= BUDGET.desyncM : null, `≤ ${BUDGET.desyncM}`, `${report.steady.desync.predicting} of ${report.steady.desync.of} peers predicting; run max free ${report.steady.desync.runMaxFreeM} m, contact ${report.steady.desync.runMaxContactM} m, hard snaps ${report.steady.desync.hardSnaps}`);

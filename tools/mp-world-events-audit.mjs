@@ -49,6 +49,7 @@ import { decodeMigrationKeyframe, deriveMigrationKey, openMigrationBlob } from '
 import { createStructureDamage } from '../src/sim/structureDamage.ts';
 import { craterFor, munitionChargeKg, munitionClassForShell } from '../src/sim/munitionBlast.ts';
 import { isHeClass } from '../src/sim/damage.ts';
+import { HOST_STATE, MATCH_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
@@ -438,7 +439,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     }
   })();
   const welcomed = (peer) => !!peer.session.match?.welcome;
-  const live = (peer) => peer.session.match?.phase === 'live';
+  const live = (peer) => peer.session.match?.phase === MATCH_PHASE.live;
   const playing = (peer) => peer.session.match?.stats().matchPhase === PHASE.PLAYING;
   const hostEventsBetween = (fromMs, toMs, type) => hostLog.filter((e) => e.type === type && e.wallMs >= fromMs && e.wallMs < toMs);
   const uniqueBy = (list, key) => new Set(list.map(key)).size;
@@ -640,7 +641,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
     const knownBySeat = new Set([...(bootBase?.destroyed ?? []), ...fallsSentToSeat]);
     const knownFromEventsOnly = [...knownBySeat].filter((index) => !(bootBase?.destroyed ?? []).includes(index));
     await until(() => roomEvents.some((event) => event.kind === 'host_changed' && event.generation === 2), 'host_changed after the grace');
-    await until(() => p2.session.role === 'host' && p2.session.matchHost?.state === 'live', 'p2 hosts');
+    await until(() => p2.session.role === SESSION_ROLE.host && p2.session.matchHost?.state === HOST_STATE.live, 'p2 hosts');
     const core2 = hostCores.find((entry) => entry.id === 'p2');
     await until(() => core2?.hooked, 'the new host authority hooked');
     marks.newHostLiveAt = now();

@@ -58,6 +58,7 @@ import { createP2pRoomDouble } from './mp-p2p-room-double.ts';
 import { openRooms, pressControl } from './mp-rooms-entry.mjs';
 import { machineLoad, SELFTEST_STARVED_EXIT, STARVED_LOAD_PER_CORE } from './selftest-verdict.mjs';
 import { readinessExpression } from './game-readiness.mjs';
+import { MATCH_PHASE, SESSION_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 
@@ -1039,8 +1040,8 @@ try {
   // role-agnostic (2026-10-13): a slow entry can re-elect (MP-S03) — the seat hosting at the reveal is A from here on
   const roleAt = async () => Object.fromEntries(await Promise.all(['a', 'b', 'c'].map(async (label) => [label, (await p2pOf(pages[label]))?.role ?? null])));
   let revealRoles = await roleAt();
-  for (let waited = 0; !Object.values(revealRoles).includes('host') && waited < 30_000; waited += 250) { await sleep(250); revealRoles = await roleAt(); }
-  const hostLabel = Object.keys(revealRoles).find((label) => revealRoles[label] === 'host') ?? null;
+  for (let waited = 0; !Object.values(revealRoles).includes(SESSION_ROLE.host) && waited < 30_000; waited += 250) { await sleep(250); revealRoles = await roleAt(); }
+  const hostLabel = Object.keys(revealRoles).find((label) => revealRoles[label] === SESSION_ROLE.host) ?? null;
   report.roles.hostAtReveal = hostLabel ? { label: hostLabel, id: ids[hostLabel] } : null;
   report.roles.revealRoles = revealRoles;
   if (hostLabel && hostLabel !== 'a') swapSeats('a', hostLabel, `the room elected ${hostLabel.toUpperCase()} during the entry`);
@@ -1053,10 +1054,10 @@ try {
   report.start.stripA = stripA;
   step('battle-revealed', report.start);
   if (!/^rtc:\/\//.test(report.start.matchUrl ?? '')) failures.push(`the room started ${report.start.matchUrl}`);
-  if (report.start.a.role !== 'host' || report.start.a.peers !== 2) failures.push(`A is ${report.start.a.role} with ${report.start.a.peers} peers`);
+  if (report.start.a.role !== SESSION_ROLE.host || report.start.a.peers !== 2) failures.push(`A is ${report.start.a.role} with ${report.start.a.peers} peers`);
   for (const label of ['b', 'c']) {
     const entry = report.start[label];
-    if (entry.role !== 'peer' || entry.hostId !== ids.a || entry.transport !== 'open') failures.push(`${label.toUpperCase()} is ${entry.role} of ${entry.hostId} (${entry.transport})`);
+    if (entry.role !== SESSION_ROLE.peer || entry.hostId !== ids.a || entry.transport !== 'open') failures.push(`${label.toUpperCase()} is ${entry.role} of ${entry.hostId} (${entry.transport})`);
     if (!entry.welcomed) failures.push(`${label.toUpperCase()} was not welcomed`);
   }
   if (!stripA.host) failures.push(`A's strip shows no HOST badge: ${stripA.text}`);
@@ -1170,14 +1171,15 @@ try {
   step('a-closed');
   // role-agnostic (2026-10-13): whichever peer the room elects is B from here on (MP-S03: a seat that declined during
   // the entry is passed over; the e2e used to fail "B hosts" while the match lived on under C)
-  const hostingNow = () => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === 'host';
+  // (audit S3) page functions get the vocabulary's words as arguments (tools/mp-states.mjs cannot be imported in a page)
+  const hostingNow = (host) => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === host;
   const electedLabel = await new Promise((resolveElected, rejectElected) => {
     let settled = false;
     const deadline = setTimeout(() => { settled = true; rejectElected(new Error(`neither B nor C hosts ${graceMs + 90_000} ms after A closed`)); }, graceMs + 90_000);
     const poll = async () => {
       while (!settled) {
         for (const label of ['b', 'c']) {
-          if (await pages[label].evaluate(hostingNow).catch(() => false)) { settled = true; clearTimeout(deadline); resolveElected(label); return; }
+          if (await pages[label].evaluate(hostingNow, SESSION_ROLE.host).catch(() => false)) { settled = true; clearTimeout(deadline); resolveElected(label); return; }
         }
         await sleep(250);
       }
@@ -1190,9 +1192,9 @@ try {
     lastSeenByC = lastSeenByB;
     bOwnAtClose = cOwnAtClose;
   }
-  await waitFor(pages.b, (id) => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === 'host' && window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.hostId === id, 'B hosts', 30_000, { args: [ids.b], polling: 250 });
+  await waitFor(pages.b, (id, host) => window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.role === host && window.__MULTIPLAYER_V2?.stats?.().session?.p2p?.hostId === id, 'B hosts', 30_000, { args: [ids.b, SESSION_ROLE.host], polling: 250 });
   const electedAfterMs = Math.round(performance.now() - closedAt);
-  await waitFor(pages.c, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.hostId === id && p?.session?.p2p?.migrating === false && p?.session?.match?.phase === 'live'; }, 'C live on B', 90_000, { args: [ids.b], polling: 250 });
+  await waitFor(pages.c, (id, live) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.hostId === id && p?.session?.p2p?.migrating === false && p?.session?.match?.phase === live; }, 'C live on B', 90_000, { args: [ids.b, MATCH_PHASE.live], polling: 250 });
   // (2026-10-14) close → C live on the new host: the freeze a peer sees, the election plus the resume
   const resumedAfterMs = Math.round(performance.now() - closedAt);
   const firstSeenByC = await sample(pages.c, ids.b);
@@ -1221,8 +1223,8 @@ try {
   if (election?.hostId !== ids.b || election.generation !== startGeneration + 1) failures.push(`the election ${JSON.stringify(election)} (the start ran at generation ${startGeneration})`);
   // a host that leaves hands its match on at once (pagehide → host_decline, §13.19): only an election on the lease is bound by the grace
   if (electedAfterMs < graceMs && election?.reason !== 'declined') failures.push(`B hosted before the grace (${electedAfterMs} ms, ${election?.reason ?? 'no reason'})`);
-  if (report.migration.b?.role !== 'host' || report.migration.b?.peersConnected < 1) failures.push(`B ${JSON.stringify(report.migration.b)}`);
-  if (report.migration.c?.role !== 'peer' || report.migration.c?.hostId !== ids.b) failures.push(`C ${JSON.stringify(report.migration.c)}`);
+  if (report.migration.b?.role !== SESSION_ROLE.host || report.migration.b?.peersConnected < 1) failures.push(`B ${JSON.stringify(report.migration.b)}`);
+  if (report.migration.c?.role !== SESSION_ROLE.peer || report.migration.c?.hostId !== ids.b) failures.push(`C ${JSON.stringify(report.migration.c)}`);
   if (report.migration.cSnapshotsAfterMigration < 40) failures.push(`C received ${report.migration.cSnapshotsAfterMigration} snapshots in 4 s on the new host`);
   if (jumpM === null || jumpM > 8) failures.push(`B's hull as C saw it moved ${jumpM} m across the migration (a reset would be a spawn away)`);
   if (cAfter.phase !== 'battle' || cAfter.result) failures.push(`C's battle ended in the migration (${cAfter.phase}, ${cAfter.result})`);
@@ -1334,12 +1336,12 @@ try {
   step('a2-garage-ready');
   // The resumed seat returns one of two ways, both the product's: the room re-delivers match_start to it and the session
   // re-enters the running match on its own (the loader covers the lobby at once), or the lobby is up with Rejoin battle.
-  const returnState = () => {
+  const returnState = (matchPhase) => {
     const v2 = window.__MULTIPLAYER_V2?.stats?.();
     const button = document.querySelector('.cot-play [data-action="rejoin"]');
     const rejoin = (document.querySelector('.cot-play')?.classList.contains('show') ?? false) && !!button && !button.hidden;
     return {
-      path: v2?.active === true && v2?.session?.phase === 'match' ? 'auto' : rejoin ? 'rejoin' : null,
+      path: v2?.active === true && v2?.session?.phase === matchPhase ? 'auto' : rejoin ? 'rejoin' : null,
       v2: !!v2, active: v2?.active ?? null, sessionPhase: v2?.session?.phase ?? null, roomPhase: v2?.room?.phase ?? null,
       lobby: document.querySelector('.cot-play .lobby')?.classList.contains('show') ?? false, rejoin,
       inRoom: /\b[A-Z0-9]{6}\b/.test(document.querySelector('.cot-play .lobby.show')?.textContent ?? '') && (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) > 0,
@@ -1357,7 +1359,7 @@ try {
   let manualJoin = false;
   let lastState = '';
   while (performance.now() - returnStartedAt < 180_000) {
-    const state = await pages.a2.evaluate(returnState).catch(() => null);
+    const state = await pages.a2.evaluate(returnState, SESSION_PHASE.match).catch(() => null);
     if (state) {
       const key = JSON.stringify(state);
       if (key !== lastState) { returnTimeline.push({ atMs: Math.round(performance.now() - returnStartedAt), ...state }); lastState = key; }
@@ -1419,7 +1421,7 @@ try {
     report.rejoin = { ...report.rejoin, endedDuringReturn };
     report.inconclusive = [...(report.inconclusive ?? []), 'rejoin: the room ended the match before A2 was back in it'];
   } else {
-  await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
+  await waitFor(pages.a2, (id, peer, live) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === peer && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === live; }, 'A2 live as a peer of B', 90_000, { args: [ids.b, SESSION_ROLE.peer, MATCH_PHASE.live], polling: 250 });
   await stopEntryTrace();
   if (a2ProfileSession && a2ProfileEntry) {
     signalProfile = null;
@@ -1452,7 +1454,7 @@ try {
   step('b-c-restored', { viewport: `${testViewport.width}x${testViewport.height}`, a2Entry });
   report.rejoin = { ...report.rejoin, a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, attempts: a2Attempts, entry: a2Entry };
   step('a-rejoined', report.rejoin);
-  if (report.rejoin.p2p?.role !== 'peer' || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
+  if (report.rejoin.p2p?.role !== SESSION_ROLE.peer || report.rejoin.p2p?.hostId !== ids.b) failures.push(`A2 ${JSON.stringify(report.rejoin.p2p)}`);
   if (report.rejoin.peersOnB !== 2) failures.push(`B serves ${report.rejoin.peersOnB} peers after A's return`);
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
   }

@@ -25,7 +25,9 @@ import type {
 /** A relayed `room_signal` as this seat receives it (P1's validated fields plus `from`). */
 export type RoomRelayedSignal = RoomSignalPayload & { from: string };
 
-export type RoomClientPhase = 'idle' | 'connecting' | 'joined' | 'reconnecting' | 'closed';
+/** (2026-11-02 audit S3) a runtime list: the multiplayer harnesses import it (tools/mp-states.mjs) */
+export const ROOM_CLIENT_PHASES = Object.freeze(['idle', 'connecting', 'joined', 'reconnecting', 'closed'] as const);
+export type RoomClientPhase = typeof ROOM_CLIENT_PHASES[number];
 
 /**
  * The room host could not be reached: the socket closed (or timed out) before the room admitted the client. The Play
