@@ -9,7 +9,7 @@
 //  - from full depression to full elevation every gun part keeps 2 cm from the turret's own stock (the trunnion shafts and
 //    caps, bodies of revolution about the pitch axis, excepted), and 2.5 cm from the hull at every 5 degrees of yaw and
 //    pitch (gunHullClearance.test-support.mjs); the turret's own parts (bodies, basket, radar) keep 2.5 cm from the hull's
-//    roof stock at every 5 degrees of yaw.
+//    roof stock at every 5 degrees of yaw; a whip on each rear corner about twice the turret's height, outside the envelope.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -19,7 +19,7 @@ import '../fleetRegistration.ts';
 import { synchronizeK30BihoFrame } from '../k30BihoSpecs.ts';
 import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder } from '../gunHullClearance.test-support.mjs';
 import { K30_HULL, k200Driver, k200HullLayout, k200HullPlates } from './k200HullLayout.ts';
-import { K30_GUN_PIVOT, K30_GUNS, K30_TURRET_PIVOT } from './k30BihoLayout.ts';
+import { K30_GUN_PIVOT, K30_GUNS, K30_TURRET, K30_TURRET_PIVOT } from './k30BihoLayout.ts';
 
 const DEG = Math.PI / 180;
 const id = 'k30_biho';
@@ -78,9 +78,14 @@ try {
     const groupX = gun.worldToLocal(new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3())).x;
     assert.ok(Math.sign(groupX) === Math.sign(m.x), `recoil group ${index} carries its own side's barrel`);
   });
-  // envelope
+  // envelope (the whips, an antenna envelope over the published height, measured on their own)
+  const whips = [];
+  root.traverse((node) => { if (node.name === 'fitting_antennaWhip') whips.push(node); });
+  assert.equal(whips.length, 2, 'a whip at each rear corner');
+  const whipTop = Math.max(...whips.map((w) => new THREE.Box3().setFromObject(w).max.y));
+  near(whipTop - (K30_TURRET_PIVOT[1] + K30_TURRET.rear.roofY), 2 * K30_TURRET.rear.roofY, 0.25, 'the whips about twice the turret\'s height');
   const bounds = new THREE.Box3();
-  for (const mesh of meshesUnder(root)) { if (!mesh.userData.shadowOnly) bounds.union(new THREE.Box3().setFromObject(mesh)); }
+  for (const mesh of meshesUnder(root, whips)) { if (!mesh.userData.shadowOnly) bounds.union(new THREE.Box3().setFromObject(mesh)); }
   const size = bounds.getSize(new THREE.Vector3());
   near(size.x, spec.dims.widthM, spec.dims.widthM * 0.03, 'width');
   near(size.y, spec.dims.heightM, spec.dims.heightM * 0.03, 'height');
@@ -102,7 +107,8 @@ try {
     }
   }
   assert.ok(worst.d >= 0.02, `the guns keep 2 cm from the turret at every pitch (worst ${worst.d.toFixed(3)} m at ${worst.deg} deg, gun point ${worst.at})`);
-  // the turret's own parts against the hull's stock at every yaw (the race collar, seated in the deck, excepted)
+  // the turret's own parts against the hull's stock at every yaw (the race collar's foot, seated in the deck, excepted):
+  // the bodies stand 4 cm over the roof along the turret's length
   const hull = turret.parent, hInv = new THREE.Matrix4().copy(hull.matrixWorld).invert();
   const hullGrid = new SurfaceGrid(meshTriangles(meshesUnder(hull, [turret]).filter((m) => !/Track|Wheel|Gear/i.test(m.name)), hInv).tri,
     { cell: 0.05, rq: 0.08 });
@@ -112,7 +118,7 @@ try {
     const c = Math.cos(yd * DEG), s = Math.sin(yd * DEG);
     for (let i = 0; i < turretPts.length; i += 3) {
       const x = turretPts[i], y = turretPts[i + 1], z = turretPts[i + 2];
-      if (y < 0.10) continue;
+      if (y < 0.03) continue;
       const d = hullGrid.distance(turret.position.x + c * x + s * z, turret.position.y + y, turret.position.z - s * x + c * z);
       if (d < low.d) low = { d, yaw: yd, at: [x, y, z].map((n) => +n.toFixed(3)) };
     }

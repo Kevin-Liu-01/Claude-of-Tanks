@@ -2,9 +2,10 @@
 // five stations or the K30 Biho's stretched six. A few welded convex bodies (the upper body over the tracks with its
 // 23-degree glacis and the raked lower plate, the tub between the tracks) on the fleet's running gear (the drive sprocket
 // at the front, the idler at the rear, no return rollers), the rubber skirt hanging from the sponson between the steel
-// cheek plates over the sprocket and the idler, the folded trim vane across the nose between the boxed headlights, the
-// trim vane's arms and the grab handle on the glacis, the power pack's air box on the front right, the driver's hatch
-// with its periscopes front left, the ramp with its door in the rear plate and the boxed tail lights.
+// cheek plates over the sprocket and the idler, the folded trim vane across the nose between the guarded headlight
+// housings, a rear-view mirror on each front corner, the trim vane's arms and the grab handle on the glacis, the power
+// pack's air box lying on the glacis front right, the driver's hatch with its periscopes front left, the ramp with its
+// door in the rear plate and the boxed tail lights.
 // The roof behind the driver belongs to the vehicle: the K30 Biho's turret (profiles/k30Biho.ts), the K200A1's
 // commander's cupola and troop hatch. First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
@@ -61,29 +62,37 @@ function hullBodies(P: TankBuilderPort, L: K200HullLayout): void {
   }
 }
 
-/** The bow: the trim vane folded across the nose, the boxed headlights at its ends, the vane's arms and the grab handle on
+/** The bow: the trim vane folded across the nose, the guarded headlight housings at its ends, the mirrors, the vane's arms and the grab handle on
  * the glacis, the tow hooks on the lower plate. */
 function hullBow(P: TankBuilderPort, L: K200HullLayout): void {
   const glacisPitch = Math.atan2(L.roofY - L.noseY, L.noseZ - L.glacisBreakZ);
   const glacisAt = (y: number): number => L.glacisBreakZ + (L.roofY - y) / Math.tan(glacisPitch);
-  // the vane: its face ahead of the nose, its top lying back onto the glacis, its foot on the lower plate, both 1 cm in
-  const vaneHalf = 1.14, vaneBottom = 1.28, vaneTop = 1.46;
+  // the vane between the headlight housings: its face ahead of the nose, its top lying back onto the glacis, its foot on
+  // the lower plate, both 1 cm in
+  const vaneHalf = 1.02, vaneBottom = 1.28, vaneTop = 1.46;
   P.add('hullDetail', convexBody(mirrored([
     [vaneHalf, vaneBottom, L.bowZ], [vaneHalf, vaneTop, L.bowZ - 0.01], [vaneHalf, vaneTop, glacisAt(vaneTop + 0.014)],
     [vaneHalf, vaneBottom, L.lowerZ(vaneBottom) - 0.01],
   ])));
-  for (const x of [-0.70, 0, 0.70]) P.add('hullDark', box(0.12, 0.10, 0.016), x, (vaneBottom + vaneTop) / 2, L.bowZ + 0.002);
-  // the headlight boxes at the nose's corners, the lamps recessed in their faces (photographs 01-03)
+  for (const x of [-0.62, 0, 0.62]) P.add('hullDark', box(0.12, 0.10, 0.016), x, (vaneBottom + vaneTop) / 2, L.bowZ + 0.002);
+  // the headlight housings set into the nose at its ends (photographs 01, 02, 08): as deep as the vane and level with it,
+  // a recessed opening with the lamp inboard and the amber marker outboard behind a three-bar guard; a rear-view mirror
+  // on a stalk at each front corner (01, 02)
   for (const s of [-1, 1]) {
-    const x0 = 1.16, x1 = L.sideX - 0.01, top = 1.53, bottom = 1.27;
+    const x0 = vaneHalf + 0.02, x1 = L.sideX - 0.01, xc = (x0 + x1) / 2, top = vaneTop, bottom = vaneBottom - 0.01;
     P.add('hull', convexBody([x0, x1].flatMap((x) => [
-      [s * x, bottom, L.bowZ - 0.02], [s * x, top, L.bowZ - 0.03], [s * x, top, glacisAt(top + 0.012)],
+      [s * x, bottom, L.bowZ - 0.005], [s * x, top, L.bowZ - 0.012], [s * x, top, glacisAt(top + 0.012)],
       [s * x, bottom, L.lowerZ(bottom) - 0.01],
     ] as P3[])));
-    P.add('hullDark', box(0.24, 0.18, 0.02), s * 1.315, 1.40, L.bowZ - 0.02);
-    KIT.headlight(P, s * 1.30, 1.40, L.bowZ - 0.03, 0, 0.06);
-    // the amber marker on the box's outer corner
-    P.add('hullDetail', box(0.05, 0.04, 0.02), s * 1.43, 1.49, L.bowZ - 0.022);
+    P.add('hullDark', box(x1 - x0 - 0.08, 0.13, 0.02), s * xc, (top + bottom) / 2, L.bowZ - 0.012);
+    KIT.headlight(P, s * (xc - 0.08), (top + bottom) / 2, L.bowZ - 0.035, 0, 0.055);
+    P.add('hullDetail', box(0.07, 0.05, 0.02), s * (xc + 0.12), (top + bottom) / 2, L.bowZ - 0.010);
+    for (const y of [bottom + 0.012, top - 0.012]) P.add('hullDark', box(x1 - x0 - 0.04, 0.014, 0.05), s * xc, y, L.bowZ + 0.008);
+    for (const dx of [-0.12, 0, 0.12]) P.add('hullDark', box(0.014, top - bottom - 0.01, 0.014), s * (xc + dx), (top + bottom) / 2, L.bowZ + 0.032);
+    const mz = glacisAt(top + 0.02) + 0.01, mx = s * (L.sideX - 0.08);
+    P.add('hullDark', beamBetween([mx, top - 0.02, mz], [mx, 1.58, mz], 0.016, 8));
+    P.add('hullDark', box(0.22, 0.30, 0.04), mx, 1.72, mz);
+    P.add('hullGlass', box(0.19, 0.26, 0.006), mx, 1.72, mz - 0.022);
   }
   // the vane's two arms lying up the glacis on their brackets, and the grab handle in the middle
   for (const s of [-1, 1]) {
@@ -111,15 +120,13 @@ function hullBow(P: TankBuilderPort, L: K200HullLayout): void {
 
 /** The power pack's air box on the front right (photographs 01, 02, 08) and the driver's hatch front left. */
 function hullDeck(P: TankBuilderPort, L: K200HullLayout): void {
-  // the air box: its front face standing near the nose, its top flat, its floor on the glacis
-  const x0 = -1.30, x1 = -0.98, zb = L.glacisBreakZ + 0.42, zf = L.noseZ - 0.17, top = 1.77;
+  // the air box lying on the glacis, its top parallel to it 13 cm proud, its louvred front face near the nose
+  const x0 = -1.30, x1 = -0.98, zb = L.glacisBreakZ + 0.30, zf = L.noseZ - 0.20, lift = 0.13;
   P.add('hull', convexBody([x0, x1].flatMap((x) => [
-    [x, L.glacisY(zb) - 0.015, zb], [x, top, zb], [x, top - 0.02, zf], [x, L.glacisY(zf) - 0.015, zf],
+    [x, L.glacisY(zb) - 0.015, zb], [x, L.glacisY(zb) + lift, zb], [x, L.glacisY(zf) + lift, zf], [x, L.glacisY(zf) - 0.015, zf],
   ] as P3[])));
-  P.add('hullDark', box(0.24, (top - L.glacisY(zf)) - 0.08, 0.012), (x0 + x1) / 2, (top + L.glacisY(zf)) / 2 - 0.005, zf + 0.004);
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDetail', box(0.26, 0.014, 0.03), (x0 + x1) / 2, L.glacisY(zf) + 0.07 + k * 0.045, zf + 0.012);
-  }
+  P.add('hullDark', box(0.24, lift - 0.04, 0.012), (x0 + x1) / 2, L.glacisY(zf) + lift / 2, zf + 0.004);
+  for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.26, 0.014, 0.03), (x0 + x1) / 2, L.glacisY(zf) + 0.04 + k * 0.05, zf + 0.012);
   // the driver's hatch over his station, its three periscopes ahead of it at the roof's front edge, one to the left
   const hx = 0.55, hz = L.glacisBreakZ - 0.48;
   P.addHatch('hull', cylY(0.27, 0.27, 0.04, P.q ? 22 : 14), hx, L.roofY + 0.012, hz);
@@ -128,8 +135,8 @@ function hullDeck(P: TankBuilderPort, L: K200HullLayout): void {
   for (const dx of [-0.17, 0, 0.17]) KIT.periscope(P, 'hullDetail', hx + dx, L.roofY + 0.025, L.glacisBreakZ - 0.11);
   KIT.periscope(P, 'hullDetail', hx + 0.32, L.roofY + 0.025, hz + 0.05, Math.PI / 2);
   // the power pack's access plate on the roof's front right, its two handles
-  P.add('hullDetail', box(0.86, 0.016, 1.00), -0.55, L.roofY + 0.004, L.glacisBreakZ - 0.62);
-  for (const dz of [-0.30, 0.30]) P.add('hullDark', box(0.14, 0.025, 0.03), -0.55, L.roofY + 0.022, L.glacisBreakZ - 0.62 + dz);
+  P.add('hullDetail', box(0.86, 0.016, 0.90), -0.55, L.roofY + 0.004, L.glacisBreakZ - 0.57);
+  for (const dz of [-0.27, 0.27]) P.add('hullDark', box(0.14, 0.025, 0.03), -0.55, L.roofY + 0.022, L.glacisBreakZ - 0.57 + dz);
   // lifting eyes at the roof's rear corners (the front pair would stand in the guns' depressed sweep on the K30)
   for (const s of [-1, 1]) KIT.liftEye(P, 'hullDetail', s * (L.sideX - 0.12), L.roofY + 0.012, L.rearZ + 0.12);
 }

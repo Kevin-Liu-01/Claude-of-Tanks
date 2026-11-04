@@ -30,25 +30,24 @@ function sidePair(name: string, xB: number, yB: number, xT: number, yT: number, 
     leftSidePlate(`${name}_L`, 15, xB, yB, xT, yT, zR, zF, TURRET_ARMOUR)];
 }
 
-/** The turret's plates, turret-local, on the build's bodies (profiles/k30Biho.ts k30Turret). */
+/** The turret's plates, turret-local, on the build's bodies (profiles/k30Biho.ts k30Turret): the central body and its
+ * nose, the step over its deck, the rear body below the storage boxes, the boxes, the rear face and the roof. */
 function k30TurretPlates(): ArmorPlate[] {
-  const { front: F, rear: R, eots: E } = K30_TURRET;
-  // the rear body's front face beside the front body, each side (x from the front body's flank out to the shoulder)
-  const cheek = (s: number): ArmorPlate => plate(`turret_cheek_${s > 0 ? 'R' : 'L'}`, 15,
-    [s * F.halfX, R.bottomY, R.frontZ], [s * R.upHalf, R.bottomY, R.frontZ], [s * F.halfX, F.deckY, R.frontZ], TURRET_ARMOUR);
+  const { front: F, rear: R, boxes: X, eots: E } = K30_TURRET;
+  const boxFront = (s: number): ArmorPlate => plate(`turret_box_front_${s > 0 ? 'R' : 'L'}`, 15,
+    [s * X.inner, X.frontBottomY, X.frontZ], [s * X.outer, X.frontBottomY, X.frontZ], [s * X.inner, X.topY, X.frontZ], TURRET_ARMOUR);
   return [
     frontPlate('turret_front', 15, F.halfX - 0.06, F.bottomY + 0.08, F.frontZ, F.faceTopY, F.frontZ, TURRET_ARMOUR),
     frontPlate('turret_front_chamfer', 15, F.halfX - 0.04, F.faceTopY, F.frontZ, F.deckY, F.deckFrontZ, TURRET_ARMOUR),
     ...sidePair('turret_front_side', F.halfX, F.bottomY, F.halfX, F.deckY, F.rearZ, F.frontZ - 0.06),
     roofPlate('turret_front_deck', 15, F.halfX, F.deckY, R.frontZ, F.deckFrontZ, TURRET_ARMOUR),
     frontPlate('turret_step', 15, R.roofHalf, F.deckY, R.frontZ, R.roofY, R.frontZ, TURRET_ARMOUR),
-    cheek(1), cheek(-1),
-    ...sidePair('turret_base', R.lowHalf, R.bottomY, R.lowHalf, R.waistY, R.rearZ, R.frontZ),
-    ...sidePair('turret_side_lower', R.lowHalf, R.waistY, R.upHalf, R.shoulderY, R.rearZ, R.frontZ),
-    ...sidePair('turret_side', R.upHalf, R.shoulderY, R.upHalf, R.eaveY, R.rearZ, R.frontZ),
-    rearPlate('turret_rear', 15, R.upHalf, R.bottomY, R.rearZ, R.roofY, R.rearZ, TURRET_ARMOUR),
-    roofPlate('turret_roof', 15, R.roofHalf, R.roofY, R.rearZ, R.frontZ, TURRET_ARMOUR),
-    // the EOTS head's window on the deck
+    boxFront(1), boxFront(-1),
+    ...sidePair('turret_side_lower', R.halfX, R.bottomY, R.halfX, (X.frontBottomY + X.rearBottomY) / 2, R.rearZ, R.frontZ),
+    ...sidePair('turret_box', X.outer, (X.frontBottomY + X.rearBottomY) / 2, X.outer, X.eaveY, X.rearZ, X.frontZ),
+    rearPlate('turret_rear', 15, X.outer, R.bottomY, R.rearZ, R.roofY, R.rearZ, TURRET_ARMOUR),
+    roofPlate('turret_roof', 15, X.outer - 0.04, R.roofY, R.rearZ, R.frontZ, TURRET_ARMOUR),
+    // the EOTS head's window at the nose's tip
     plate('eots_window', 10, [-E.halfX, E.sillY, E.frontZ], [E.halfX, E.sillY, E.frontZ], [-E.halfX, E.topY, E.browZ],
       { keMm: 10, ceMm: 12, kind: 'external' }),
   ];
@@ -69,7 +68,7 @@ function applyK200Frame(own: FleetTankSpec): void {
   const L = K30_HULL, [, , ringZ] = K30_TURRET_PIVOT;
   own.armor.hullPlates = k200HullPlates(L);
   own.armor.turretPivot = [...K30_TURRET_PIVOT];
-  own.armor.modules = [...k200HullModules(L, ringZ, K30_TURRET.base.r + 0.02),
+  own.armor.modules = [...k200HullModules(L, ringZ, K30_TURRET.collar.r),
     ...own.armor.modules.filter((box) => box.turretLocal)];
   own.armor.crew = [k200Driver(L), ...own.armor.crew.filter((box) => box.turretLocal)];
   own.visual.trackWidthM = L.gear.trackW;
@@ -97,7 +96,7 @@ Object.assign(spec, {
 // the measured hull (photograph 07: 6.43 m from the trim vane's face to the rear plate; the published 6.77 m is longer by
 // 5 %, the packet records the conflict), the length over the tail lights' guards and the tow eyes, the published width
 // (the skirts' outer faces) and height (the IFF box on the raised antenna)
-spec.dims = { hullLengthM: K30_HULL.lengthM, overallLengthM: 6.58, widthM: 3.00, heightM: 4.05 };
+spec.dims = { hullLengthM: K30_HULL.lengthM, overallLengthM: 6.62, widthM: 3.00, heightM: 4.05 };
 spec.armor.gunPivot = [...K30_GUN_PIVOT];
 spec.armor.gunBarrel = { lengthM: K30_GUNS.muzzleZ, radiusM: K30_GUNS.barrelR, collision: false };
 spec.armor.turretPlates = k30TurretPlates();
@@ -105,27 +104,27 @@ spec.armor.turretPlates = k30TurretPlates();
   const G = K30_GUNS, T = K30_TURRET, [, gy, gz] = K30_GUN_PIVOT;
   spec.armor.modules = [
     ...spec.armor.modules.filter((box) => !box.turretLocal),
-    // the EOTS head and its laser rangefinder on the front deck
+    // the EOTS head and its laser rangefinder at the nose's tip
     moduleBox('optics', [-(T.eots.halfX + 0.09), T.eots.baseY - 0.01, T.eots.rearZ], [T.eots.halfX, T.eots.topY, T.eots.frontZ], true),
     // the two housings, pitching with the trunnion
-    { ...moduleBox('gun', [-G.housingOuter, gy + G.housingBottomY, gz - G.housingArcR], [G.housingOuter, gy + G.housingTopY,
+    { ...moduleBox('gun', [-G.housingOuter, gy + G.housingBottomY, gz + G.housingRearZ], [G.housingOuter, gy + G.housingTopY,
       gz + G.collarFrontZ], true), gunFollow: true, external: true },
-    // the 600 belted rounds in the central front body between the guns, under its deck, and the two belt feeds behind
-    // them (internalLayoutRegistry.ts spaaK30: ifvAmmoBoxes, dualBeltFeed; the feeds' own box, so the one combat anatomy
+    // the 600 belted rounds in the nose between and ahead of the guns, under its deck, and the two belt feeds behind them
+    // (internalLayoutRegistry.ts spaaK30: ifvAmmoBoxes, dualBeltFeed; the feeds' own box, so the one combat anatomy
     // derives from the housings does not land in the ammunition)
-    moduleBox('ammoRack', [-(T.front.halfX - 0.06), T.front.bottomY + 0.06, T.rear.frontZ + 0.27],
-      [T.front.halfX - 0.06, T.front.deckY - 0.06, T.front.deckFrontZ - 0.04], true),
+    moduleBox('ammoRack', [-(T.front.halfX - 0.06), T.front.bottomY + 0.06, T.rear.frontZ + 0.42],
+      [T.front.halfX - 0.06, T.front.deckY - 0.06, T.front.frontZ - 0.14], true),
     moduleBox('feedSystem', [-(T.front.halfX - 0.06), T.front.bottomY + 0.06, T.rear.frontZ + 0.01],
-      [T.front.halfX - 0.06, T.front.deckY - 0.06, T.rear.frontZ + 0.23], true),
+      [T.front.halfX - 0.06, T.front.deckY - 0.06, T.rear.frontZ + 0.38], true),
     // the radar's and the radios' electronics at the rear right
-    moduleBox('radio', [-(T.rear.lowHalf - 0.04), 0.30, T.rear.rearZ + 0.08], [-0.20, 0.85, T.rear.rearZ + 0.53], true),
+    moduleBox('radio', [-(T.rear.halfX - 0.04), 0.30, T.rear.rearZ + 0.08], [-0.20, 0.85, T.rear.rearZ + 0.53], true),
   ];
 }
 // crew 4 (internalLayoutRegistry.ts spaaK30): the driver in the hull (applyK200Frame); the gunner front left (+x) and the
 // commander front right in the rear body under their roof sight and hatch, the radar operator behind the gunner; all
-// three seated over the deck inside the body (0.97 m of headroom), its floor the turret's
+// three seated over the deck inside the body (0.89 m to the eaves), its floor the turret's
 {
-  const R = K30_TURRET.rear, floor = R.bottomY + 0.01, head = R.roofY - 0.04, side = R.lowHalf - 0.04;
+  const R = K30_TURRET.rear, floor = R.bottomY + 0.01, head = R.eaveY, side = R.halfX - 0.04;
   spec.armor.crew = [
     crewBox('gunner', [0.06, floor, -0.45], [side, head, 0.15], true),
     crewBox('commander', [-side, floor, -0.75], [-0.06, head, -0.05], true),

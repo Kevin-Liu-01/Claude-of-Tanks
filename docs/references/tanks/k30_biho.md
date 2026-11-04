@@ -82,20 +82,23 @@ A soldier on the roof reads short at this scale (about 1.6 m, stepping up); the 
 | Datum | Value | From |
 | --- | --- | --- |
 | Hull (trim vane's face to rear plate) | 6.43 m = the K200A1's 5.49 m + one 0.94 m station bay | photo 07, x 65 to 1645 |
-| Overall length | 6.60 m (tail-light guards, tow eyes); published 6.77 m: CONFLICT, 3 % short | photo 07 |
+| Overall length | 6.62 m (headlight guards, tail-light guards, tow eyes); published 6.77 m: CONFLICT, 2 % short | photo 07 |
 | Width | 2.96 m over the sponsons, 3.00 m over the skirts (published 3.0 m) | published |
 | Roof / sponson underside / skirt bottom / belly | 1.85 / 1.16 / 0.835 / 0.41 m | photo 07; belly the published clearance |
-| Glacis | 1.12 m long, 23 degrees, the nose at 1.40 m; lower plate raked 31 degrees | photo 07 |
+| Glacis | 1.12 m long, 23 degrees, the nose at 1.40 m; lower plate raked 31 degrees (fix round 1: the critic read 27 degrees in photo 07; re-measured at 2x, 20-23 degrees; the build's 14-degree look came from the air box, now laid on the glacis) | photo 07 |
 | Road wheels (behind the bow) | 1.351, 2.039, 2.946, 3.724, 4.481, 5.262 m; 0.62 m dual, no return rollers | photo 07 hubs |
 | Sprocket / idler | 0.602 m (front, r 0.27 at 0.67 m) / 5.991 m (rear, r 0.25 at 0.60 m) | photo 07 |
 | Track | 0.38 m (published 381 mm), lane 1.26 m off the centreline | published |
 | Turret ring | 1.20 m aft of the hull's middle, at the roof | photo 07, the turret body's middle |
-| Turret | 2.89 m long (front body to rear face; 3.45 m with the basket), roof 1.09 m over the ring (2.94 m) | photo 07 |
-| Central front body / rear body | 1.28 m wide / 1.90 m at the shoulder over a 1.40 m set-in base | photo 01 ratios (405 x 215 px) |
-| Gun housings | 1.09 m long, 0.80 m tall, 0.285 m wide, elevating with the guns (photo 02) | photos 07, 01 |
+| Turret (fix round 1) | 3.57 m from the EOTS face to the rear face, 3.90 m with the basket; starts 2.24 m behind the bow (35 % of the hull, critic: about 33 %); roof 0.98 m over the ring | photos 04, 05, 07 (the nose 0.6-1.0 m ahead of the near gun root); photo 07 reads 1.09 m over the front roof edge, the K200's roof stands 0.10 m higher aft (published 1.83 m front, 1.93 m hull top) |
+| Central body (nose) / rear body / storage boxes | 1.28 m wide, 0.81 m ahead of the housings / 1.40 m / 1.96 m over the boxes, their undersides rising from 0.22 to 0.56 m over the ring | photos 01, 04, 07 |
+| Bodies over the hull roof | 4 cm along the turret's length | photos 05, 07 |
+| Gun housings | 1.04 m long, 0.74 m tall, 0.285 m wide, angular, the top front edge bevelled, elevating with the guns | photos 02, 04, 07 |
 | Bores | 0.60 m over the ring (2.45 m over the ground), 1.51 m apart (photo 01: 1.46 m), muzzles 2.70 m ahead of the trunnion | photos 07, 01 |
 | TPS-830K antenna | 1.50 x 0.54 m reflector, IFF box at 4.05 m | photos 01, 08; published height |
-| EOTS head | 0.42 m wide on the front deck, window sloped 39 degrees | photos 01, 04 |
+| EOTS head | 0.42 m wide at the nose's tip, window sloped 38 degrees | photos 01, 04, 05 |
+| Baskets | round the rear and both rear flanks, 2.56 m across (85 % of the hull's width) | photos 01-03, 06, 08 |
+| Whips | 2.0 m on 0.12 m pots at the storage boxes' rear corners: tips 4.95 m over the ground (an antenna envelope over the published 4.05 m) | photos 01, 05, 06 |
 
 ## Builder K receipts (2026-11-03)
 
@@ -103,15 +106,15 @@ A soldier on the roof reads short at this scale (about 1.6 m, stepping up); the 
 the turret (2 cm) and the hull (2.5 cm, every 5 degrees of yaw and pitch) and the turret's to the hull. Evidence (renders,
 logs, comparison sheets) in `~/cot-lanes/twin-aa-269-evidence/K/`.
 
-| Check | Result |
+| Check (fix round 1, after the blind critic's 6/10) | Result |
 | --- | --- |
-| `k30Biho.selftest.mjs` | PASS: envelope 3.04 x 4.05 x 6.60 m; guns to turret 0.025 m; turret to hull >= 0.08 m at every 5 degrees of yaw; guns to hull 0.050 m over yaw 0-180 and -10 to +85 degrees (worst yaw 0, +75: the housings' rear arc over the roof) |
-| Contact probe (`.qa-dev/contactprobe.mjs`) | PASS: 0 floating, 0 clipping |
+| `k30Biho.selftest.mjs` | PASS: envelope 3.04 x 4.05 x 6.62 m (the whips measured on their own, tips 2.1 m over the roof); guns to turret 0.025 m; turret to hull 0.038 m at every 5 degrees of yaw (the bodies 4 cm over the roof); guns to hull 0.050 m over yaw 0-180 and -10 to +85 degrees |
+| Contact probe (`.qa-dev/contactprobe.mjs`) | PASS: 8 accessory pieces, 0 floating, 0 clipping |
 | Roof pockets (`tools/roof-pocket-census.mjs`) | PASS: none |
-| Gun line (`tools/gun-junction-census.mjs`) | PASS: CLOSED, 2 mouths, 3 poses |
-| Internal placement (`internalPlacement.selftest.mjs` checks on this id) | PASS: 4 sided stations, no ring crossings, volumes inside the armour, no overlaps (the fleet run fails only on `marksman_t55` and `itpsv_leopard2`, builder M's) |
-| Selftests naming the id | PASS: vehicleFacets, afvBalance, camoCatalogProductionIndices, vehicleAudioProfiles, ammunitionFlow, nationWheelSets, recoilRig |
-| Geometry digest (`.qa-dev/geodigest2.mjs`) | only `k30_biho` moved (24,507 to 19,252 triangles); `bmp3_rok`, `bmp3`, `pgz95`, `pgz09`, `k21`, `k1a1`, `k1e1`, `k2_black_panther`, `k2b` byte-identical to the registrar's after-digest |
+| Gun line (`tools/gun-junction-census.mjs`) | PASS: CLOSED |
+| Internal placement (`internalPlacement.selftest.mjs` checks on this id) | PASS: 4 sided stations, no ring crossings, volumes inside the armour, no overlaps |
+| Geometry digest (`.qa-dev/geodigest2.mjs`) | only `k30_biho` moved (20,532 triangles); `bmp3_rok`, `bmp3`, `pgz95`, `pgz09`, `k21`, `k1a1`, `k1e1`, `k2_black_panther`, `k2b` byte-identical to the registrar's after-digest |
+| Typecheck | this id's files clean (the run's one finding is `type87.ts`, builder J's) |
 
 ## Photographic references
 
