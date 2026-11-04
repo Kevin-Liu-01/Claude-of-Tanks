@@ -634,7 +634,7 @@
       }
     ]
   },
-  "geometryHash": "c844f763",
+  "geometryHash": "f26f5ed2",
   "metadataHash": "744bfe98",
   "presentationAnchor": {
     "xM": 0,
@@ -707,8 +707,8 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14674,
-      "sha256": "a345a349d9d41d16574c36b387ced3523ed481266c6b83317e4158b1c1fd7dba"
+      "bytes": 14692,
+      "sha256": "677d9844e6ac740e8ccf8c68d5675574941dfb13e967489d00ab4cd5d8818114"
     },
     "side": {
       "file": "m113a1_mrv_side.webp",
