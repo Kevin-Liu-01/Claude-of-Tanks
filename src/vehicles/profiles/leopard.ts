@@ -9445,6 +9445,7 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       material.color.setHex(0xa3261f);
       material.userData = { ...material.userData, appearanceRole: 'kf51uHubCap' };
     });
+    P.disposables.push(hubRed);                                       // released with the tank (269 release check)
     gearUnit.addRoadWheelLayer(cylX(0.046, 0.024, P.q ? 16 : 10), hubRed,
       { outset: 0.150, name: 'gearRoadWheelRedHubCaps', appearanceRole: 'kf51uHubCap' });
   }
