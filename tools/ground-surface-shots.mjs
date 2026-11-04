@@ -123,7 +123,7 @@ function pageTownPoint({ player, buildings }) {
   const hf = window.__DEBUG.world.heightField, rd = (x, z) => hf._roadDist(x, z);
   const B = buildings.map((b) => ({ x: b.x, z: b.z, r: Math.max(b.w, b.d) / 2 }));
   if (B.length < 6) return null;
-  let best = null;
+  const cands = [];
   for (let x = -444; x <= 444; x += 6) {
     for (let z = -444; z <= 444; z += 6) {
       const d0 = rd(x, z);
@@ -136,17 +136,40 @@ function pageTownPoint({ player, buildings }) {
       }
       if (!clear || n < 6) continue;
       const score = n - Math.hypot(x - player.x, z - player.z) * 0.002;
-      if (!best || score > best.score) best = { x, z, n, score };
+      cands.push({ x, z, n, score });
     }
   }
-  if (!best) return null;
-  const e = 1.5, gx = rd(best.x + e, best.z) - rd(best.x - e, best.z), gz = rd(best.x, best.z + e) - rd(best.x, best.z - e);
-  const gl = Math.hypot(gx, gz) || 1;
-  // along the road: the gradient turned a right angle, toward the side with more buildings ahead
-  let dx = -gz / gl, dz = gx / gl;
-  const ahead = (sx, sz) => B.filter((b) => (b.x - best.x) * sx + (b.z - best.z) * sz > 0 && Math.hypot(b.x - best.x, b.z - best.z) < 70).length;
-  if (ahead(-dx, -dz) > ahead(dx, dz)) { dx = -dx; dz = -dz; }
-  return { ...best, dx, dz, back: 0, gx: gx / gl, gz: gz / gl };
+  // (ab2, Ruinspires: a scaffold on the pavement filled the frame) the best-scored point whose view along its street is
+  // open: five rays from the 4 m eye toward the ground 24 m out across ±20°, at least four of them clear for 20 m
+  const D = window.__DEBUG, V = D.camera.position.constructor, h = (x, z) => hf.getHeightAt(x, z);
+  const along = (p) => {
+    const e = 1.5, gx = rd(p.x + e, p.z) - rd(p.x - e, p.z), gz = rd(p.x, p.z + e) - rd(p.x, p.z - e);
+    const gl = Math.hypot(gx, gz) || 1;
+    // along the road: the gradient turned a right angle, toward the side with more buildings ahead
+    let dx = -gz / gl, dz = gx / gl;
+    const ahead = (sx, sz) => B.filter((b) => (b.x - p.x) * sx + (b.z - p.z) * sz > 0 && Math.hypot(b.x - p.x, b.z - p.z) < 70).length;
+    if (ahead(-dx, -dz) > ahead(dx, dz)) { dx = -dx; dz = -dz; }
+    return { dx, dz, gx: gx / gl, gz: gz / gl };
+  };
+  const open = (p, a) => {
+    const y = h(p.x, p.z) + 4;
+    let ok = 0;
+    for (const deg of [-20, -10, 0, 10, 20]) {
+      const r = (deg * Math.PI) / 180, c = Math.cos(r), sn = Math.sin(r);
+      const vx = a.dx * c - a.dz * sn, vz = a.dx * sn + a.dz * c;
+      const tx = p.x + vx * 24, tz = p.z + vz * 24, ty = h(tx, tz);
+      const dir = new V(tx - p.x, ty - y, tz - p.z), len = dir.length();
+      const hit = D.world.raycast?.(new V(p.x, y, p.z), dir.normalize(), len);
+      if (!hit || !(hit.dist < 20)) ok++;
+    }
+    return ok >= 4;
+  };
+  cands.sort((a, b) => b.score - a.score);
+  for (const p of cands.slice(0, 80)) {
+    const a = along(p);
+    if (open(p, a)) return { ...p, ...a, back: 0 };
+  }
+  return null;
 }
 
 /** An open-ground point beside the hull: 6–16 m to a side, off the road and clear of buildings (null when none). */

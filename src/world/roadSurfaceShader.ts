@@ -214,7 +214,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             float settVis = tileVis(0.35);
             float jointS = (1.0 - smoothstep(0.010, 0.018 + 0.5 * gFootM, edgeD)) * settVis;
             vec3 sett = vec3(0.128, 0.125, 0.119) * (0.78 + 0.44 * sh.x) * vec3(1.0 + 0.08 * (sh.y - 0.5), 1.0, 1.0 - 0.06 * (sh.y - 0.5));
-            pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), vec3(0.040, 0.036, 0.031), jointS), 0.88);
+            // (ground-269: the Low tier's joints a shade under the stone too, not near black, where the table runs)
+            vec3 settJ = uGsNear.z > 0.0 ? sett * uGsNear.z : vec3(0.040, 0.036, 0.031);
+            pav = vec4(mix(mix(vec3(0.112, 0.109, 0.104), sett, settVis), settJ, jointS), 0.88);
             // a sett's worn, rounded top
             vec2 st2 = vec2(sf.x / 0.16 - 0.5, sf.y / sw - 0.5);
             pnn = vec4(vec2(0.5) + (st2.x * gRoadDir + st2.y * vec2(-gRoadDir.y, gRoadDir.x)) * 0.45 * settVis * (1.0 - jointS), 0.5, 1.0);
@@ -293,10 +295,14 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             vec3 jointC = mix(mix(stone * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
             // (228 r2) a civic square's joints sanded paler (uPaveSquare.y), so its field reads as stone, not a black grid
             if (!fr) jointC = mix(jointC, stone * 0.66, uPaveSquare.y);
+            // (ground-269, groundSurfaces.ts setts: the owner's "black spaces") sand-and-grit joints a shade under their stone,
+            // never a black grid, and a lost sett shows its sand bed, not a black hole (uGsNear.z: the joints' floor as a share
+            // of the stone; 0 = the old law)
+            if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);
             float lost = step(0.992, sh.y) * svs;
             vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.26) * (1.0 - 0.10 * wheelW);
             col = mix(mix(settMean, stone, sv), jointC, jointS);
-            col = mix(col, jointC * 0.6, lost);
+            col = mix(col, uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6, lost);
             vec2 st2 = vec2(sf.x / 0.17 - 0.5, sf.y / swd - 0.5);
             vec2 tilt = (cellHash2(vec2(si, ci) + 3.7) - 0.5) * 0.18;
             pN = ((st2.x * 0.80 + tilt.x) * al + (st2.y * 0.80 + tilt.y) * pr) * (1.0 - jointS) * (1.0 - lost) * svs;
@@ -304,6 +310,7 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
             // (roads lane R1 cost, 2026-10-10: past both sets of joints' resolution — a wide paved view's far half, where the
             // v3 series measured the paving's cost — the stones' limit at once: no per-sett hash, the same mean tone)
             vec3 jointM = mix(mix(vec3(0.150, 0.146, 0.139) * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
+            if (uGsNear.z > 0.0) jointM = max(jointM, vec3(0.150, 0.146, 0.139) * uGsNear.z); // ground-269
             col = mix(vec3(0.150, 0.146, 0.139), jointM, 0.26) * (1.0 - 0.10 * wheelW);
           }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;

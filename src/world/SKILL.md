@@ -31,6 +31,11 @@ hedgehog beams, pylon legs; all audited by `tools/world-collider-audit.mjs`), `m
 shallow-water field it reads for wakes, churn and splashes (null on the mobile tier and in receipts), and vegetation,
 props and toppling own their visual/runtime layers; `groundRedux.ts` (THREE-free) holds every map's ground profile
 (the terrain material's transition / fold / snow / strand knobs and the tall-grass biome — never a map-config edit),
+`groundSurfaces.ts` (THREE-free, ground-269) the ground-surface table — one row per visual class (textures, macro
+variation, close detail, cover, the sim surface it sits on, the relief cap) and one per map (open, worn, steep, wet
+ground and the town floor); a missing row fails typecheck, `groundSurfaces.selftest.mjs` holds the sim column to the
+world's surface law, and `groundSurfaceShader.ts` draws its laws in the splat by class code (the sward's mosaic, the
+close stones, the town floor, the detail facets' cap toward a low sun),
 `tallGrass.ts` the instanced blade rings the hulls press flat through `groundPressure.ts` (a world-anchored GPU field,
 null on mobile and in receipts); every terrain chunk vertex carries a `fold` byte (the relief's curvature) and, on the
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry

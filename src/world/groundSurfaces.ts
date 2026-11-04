@@ -76,6 +76,8 @@ export const GROUND_CLASS_IDS = Object.freeze([
 export type GroundClass = (typeof GROUND_CLASS_IDS)[number];
 
 const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
+/** The setts' joints' least tone as a share of their stone's (roadSurfaceShader.ts): sand and grit, never a black grid. */
+const SETTS_JOINT_FLOOR = 0.55;
 /** The relief's cap by the class's macro law (a share of the sun's slope): turf soft, soils and yards rougher, rock
  * uncapped. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
@@ -222,7 +224,7 @@ export function mapGround(mapId: string | null | undefined): MapGroundRow {
  * The terrain material's four vectors for a map (one vec4 each, no sampler — the program sits at the 16-unit budget):
  * (the open ground's macro code and strength, its close code and strength), the worn ground's likewise, the town floor's
  * (macro code, close code, close strength, 1 where the map draws a town floor of this table's) and the relief caps (the
- * open ground's greatest detail tilt, the worn ground's). A town floor whose class has no macro of the table's (cinder,
+ * open ground's cap, the worn ground's, the setts' joints' floor). A town floor whose class has no macro of the table's (cinder,
  * slag, setts, packed sand) keeps the material's own law there.
  */
 export function groundSurfaceUniformValues(mapId: string | null | undefined): {
@@ -242,7 +244,8 @@ export function groundSurfaceUniformValues(mapId: string | null | undefined): {
     open: pack(g.open),
     worn: pack(g.worn),
     town: town && townMacro > 0 ? [townMacro, GROUND_CLOSE_CODE[town.close.kind], town.close.strength, 1] : [0, 0, 0, 0],
-    // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them)
-    near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, 0, 0],
+    // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them); and the
+    // setts' joints' floor (a share of their stone's tone: sand and grit, not a black grid, on every map's paving)
+    near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, SETTS_JOINT_FLOOR, 0],
   };
 }

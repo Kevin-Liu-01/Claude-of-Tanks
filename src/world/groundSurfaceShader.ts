@@ -35,12 +35,18 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       float lush = smoothstep(0.52, 0.64, gsM.x);
       float cured = smoothstep(0.54, 0.66, gsM.y) * (1.0 - lush);
       gsThin = smoothstep(mix(0.55, 0.50, tus), mix(0.65, 0.60, tus), gsF * 0.5 + (1.0 - gsM.x) * 0.5) * (1.0 - lush);
+      // cured straw and bare soil in their own light, not the turf's (ab2: on Ruinspires' and Suzhou's muted turf the states
+      // as multiples of the green read as nothing): a sward's dead patches a pale straw (luminance ~0.15, the map's dry
+      // tint uTintA its hue), its bare earth the map's soil at ~0.10, each carrying part of the turf's own grain
       float gsL = reduxLuma(a.rgb);
-      vec3 soilC = uMeanD.rgb * uSoilTint * (0.80 + 0.40 * gsF) * mix(1.0, 1.10, cured);
+      float grain = clamp(gsL / max(reduxLuma(uMeanG.rgb * gMeadowTint), 0.02), 0.6, 1.5);
+      vec3 strawC = vec3(0.17, 0.15, 0.09) * uTintA / max(reduxLuma(uTintA), 0.3) * (0.85 + 0.30 * gsF) * mix(1.0, grain, 0.6);
+      vec3 soilC = uMeanD.rgb * uSoilTint;
+      soilC *= (0.10 / max(reduxLuma(soilC), 0.02)) * (0.80 + 0.40 * gsF) * mix(1.0, grain, 0.5);
       vec3 gsA = a.rgb;
       gsA = mix(gsA, gsA * vec3(0.80, 0.92, 0.82), lush * 0.85);
-      gsA = mix(gsA, mix(gsA, vec3(gsL) * uTintA * 1.12, 0.55), cured * 0.75);
-      gsA = mix(gsA, mix(gsA, soilC, 0.70), gsThin * 0.80);
+      gsA = mix(gsA, strawC, cured * 0.65);
+      gsA = mix(gsA, soilC, gsThin * 0.70);
       a.rgb = mix(a.rgb, gsA, min(1.0, gsSwardW));
       gsThin *= gsSwardW;
     }
