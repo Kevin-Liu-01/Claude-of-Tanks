@@ -5790,11 +5790,14 @@ function* decorationSteps(
           const alongX = cw >= cd;
           const footY = c.footY;
           const shift = new THREE.Matrix4().makeTranslation(0, -footY, 0);
+          // (release 268 builder E, decorationsStaging: the placement clones are kept to be released; the shift below
+          // replaced them on their meshes, and the release then freed the shifted copies twice and these never)
+          const placedClones = placed.map((mesh) => mesh.geometry);
           for (const mesh of meshes) mesh.geometry = mesh.geometry.clone().applyMatrix4(shift);
           const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.lid.min.z : c.lid.min.x,
             alongX ? c.lid.max.z : c.lid.max.x, y + h - footY);
           for (const mesh of meshes) mesh.geometry.dispose();
-          for (const mesh of placed) mesh.geometry.dispose();
+          for (const geometry of placedClones) geometry.dispose();
           if (!path) continue;
           const tie = withBoxUV(tieBand(path, alongX ? 'z' : 'x', alongX ? ccx : ccz, 0.038))
             .applyMatrix4(new THREE.Matrix4().makeTranslation(0, footY, 0))
