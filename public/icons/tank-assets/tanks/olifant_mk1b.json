@@ -710,7 +710,7 @@
       }
     ]
   },
-  "geometryHash": "09a46896",
+  "geometryHash": "ac456d25",
   "metadataHash": "6d8432a9",
   "presentationAnchor": {
     "xM": -0.0001,
@@ -739,10 +739,10 @@
       "hullRubber": 1,
       "gunmetal": 13,
       "opticGlass": 3,
-      "wood": 2,
-      "unclassified": 13,
+      "wood": 1,
+      "unclassified": 7,
       "gearShadow": 2,
-      "canvas": 2,
+      "canvas": 1,
       "fittingPaint": 5,
       "machineGun": 3
     }
@@ -771,15 +771,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 31102,
-      "sha256": "71e1b73fa764c05c3d6ca8281dc4a0406bd81bd0472566f6426d6747a5567bda",
+      "bytes": 31090,
+      "sha256": "83c7732b038953ad55d3c613b6f6f2564b5831b7f5480821a0fc6a730d5d6c27",
       "thumbnail": {
         "file": "thumbs/olifant_mk1b_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 12510,
-        "sha256": "e456b38ab2725b22a22af6f3727e1a776fdbeb7ce30a8e1346dc9a19ca6bd7ff"
+        "bytes": 12688,
+        "sha256": "6aecf64cddabe1ac39350a2f91b5b29e1dabe4fa70ac38db1e9009b4878150bb"
       }
     },
     "top": {
@@ -787,16 +787,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 13212,
-      "sha256": "a3c7a47a7450c29e01fc2c127f7cdb88d521e251be6e0d9b513100b018e65dd1"
+      "bytes": 12964,
+      "sha256": "8a00928cbd0bf5fbf1eaa4c148b85c84b6eb524e93d6ebc3f6105780787e897f"
     },
     "side": {
       "file": "olifant_mk1b_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 14190,
-      "sha256": "d0a5bce52cb9109349be88f561a1b3986f87ba0097f31318caa0ba464f192f37"
+      "bytes": 14502,
+      "sha256": "ca5903b9366d42759eae179f795a7a0320cadbaf46c7dee634306034ca215a6c"
     },
     "topSilhouette": {
       "file": "olifant_mk1b_top_silhouette.png",
@@ -811,32 +811,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4532,
-      "sha256": "cbe0767b1c826cdc27c71286f80195e93d4096a895cc6723c2b3a55014a2aa75"
+      "bytes": 4722,
+      "sha256": "5adb7c840d6c6da2eb41c5a9ed82b6a5966c4bae800b91f4ee18104e621acfdc"
     },
     "armorSide": {
       "file": "olifant_mk1b_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30792,
-      "sha256": "0738820580b05c9086d58b5174d6d5740676e333990e0ad9967bfa93c4514636"
+      "bytes": 31414,
+      "sha256": "932ce4e4130cb71220a269a1e5139f0378f225b6b733b1e26508048964254de6"
     },
     "modulesSide": {
       "file": "olifant_mk1b_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 29980,
-      "sha256": "dccea33c576cda13867495c2cc3634d04d152ed198eca9664b16c595830cac82"
+      "bytes": 30414,
+      "sha256": "95205ba6c48ee6ebf704adaa685131cc84a109dbf8f91c961804f9585f35593d"
     },
     "crewSide": {
       "file": "olifant_mk1b_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27824,
-      "sha256": "79a5f386fc3b67954f8a3ea783a12becb25191dd5e7a7d90da7de6ee60d7f7fb"
+      "bytes": 28258,
+      "sha256": "ca978171f375229143e661d6212b58e9ae8fee09bbaf9b982b340b466fad98c6"
     },
     "markings": {
       "file": "olifant_mk1b_markings.png",

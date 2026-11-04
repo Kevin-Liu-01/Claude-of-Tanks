@@ -289,14 +289,14 @@ file	anatomy	src/vehicles/combatAnatomyGroups/type10X.generated.ts	0a0b28cf64a3b
 file	anatomy	src/vehicles/combatAnatomyGroups/type89SourceX.generated.ts	342fdccc774ffc2f
 file	anatomy	src/vehicles/combatAnatomyGroups/type90X.generated.ts	462bfa45f0d52ec1
 file	anatomy	src/vehicles/combatAnatomyGroups/type96bX.generated.ts	501db320570a4c92
-file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	b6fb257e2c3fc50e
+file	anatomy	src/vehicles/combatAnatomyGroups/uk.generated.ts	67e3ac970f879800
 file	anatomy	src/vehicles/combatAnatomyGroups/ukraine.generated.ts	43ad2a288321a53b
 file	anatomy	src/vehicles/combatAnatomyGroups/xk2.generated.ts	4fdf69a4b50c89e9
 file	anatomy	src/vehicles/combatAnatomyLoaders.generated.ts	c0ceb9a52440cf21
 file	centering	src/vehicles/presentationAnchors.generated.ts	56fdb522cc675c56
 file	collision	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	controls	src/ui/garageAuxiliarySummary.generated.ts	02f37a3ee45b8b56
-file	controls	src/vehicles/auxiliaryInventory.generated.ts	d22b3cd23abf0a32
+file	controls	src/vehicles/auxiliaryInventory.generated.ts	6657b6d4814e5f4b
 file	controls	src/vehicles/auxiliaryRoofGuns.generated.ts	2a6cdd4557d7a679
 file	controls	src/vehicles/inertDrawnWeapons.generated.ts	38b586123e4eb814
 file	fills	docs/geometry-gate/moving-clearance-air.json	5d2ddc7759c260f6
@@ -385,7 +385,7 @@ file	fills	src/vehicles/interiorFillGroups/type10X.generated.ts	8baa68b03cda3862
 file	fills	src/vehicles/interiorFillGroups/type89SourceX.generated.ts	ac10431d311dcf81
 file	fills	src/vehicles/interiorFillGroups/type90X.generated.ts	6cb8097ea7dea9be
 file	fills	src/vehicles/interiorFillGroups/type96bX.generated.ts	7b9f66b738aa5475
-file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	64dd40e3a4783173
+file	fills	src/vehicles/interiorFillGroups/uk.generated.ts	d63ff6072bcfa27f
 file	fills	src/vehicles/interiorFillGroups/ukraine.generated.ts	f72294f8e0915ce6
 file	fills	src/vehicles/interiorFillGroups/xk2.generated.ts	00db8fbca2bafbaa
 file	fills	src/vehicles/interiorFillLoaders.generated.ts	d581cf2ea07269a5
@@ -551,7 +551,7 @@ file	gate	docs/geometry-gate/ztz100_prototype.json	6db27603016d9c37
 file	gate	docs/geometry-gate/ztz85_iii.json	a2b6b1985e5f375e
 file	gate	docs/geometry-gate/ztz99_longwei.json	009852eda62f87db
 file	gate	docs/geometry-gate/ztz99a2.json	5158653d8b9c615e
-file	gunLines	docs/geometry-gate/gun-junction.json	1a1c9aa445882736
+file	gunLines	docs/geometry-gate/gun-junction.json	43d0b74ec0e8c9fe
 file	icons	public/icons/tank-assets/index.json	46881c9fd0046165
 file	icons	public/icons/tank-assets/tanks/abramsx.json	701cda33d4f19025
 file	icons	public/icons/tank-assets/tanks/aft10.json	4f16506552c8e9de
@@ -710,7 +710,7 @@ file	icons	public/icons/tank-assets/tanks/object148_proto.json	c797eba51b9fcbb2
 file	icons	public/icons/tank-assets/tanks/object695.json	35fbbfd7b323e366
 file	icons	public/icons/tank-assets/tanks/olifant_mk1.json	826f12f663a877b1
 file	icons	public/icons/tank-assets/tanks/olifant_mk1a.json	9b42768bf8dba363
-file	icons	public/icons/tank-assets/tanks/olifant_mk1b.json	402bb73a54d7a69e
+file	icons	public/icons/tank-assets/tanks/olifant_mk1b.json	bdc66489dfbd593d
 file	icons	public/icons/tank-assets/tanks/olifant_mk2.json	289449a942572fa2
 file	icons	public/icons/tank-assets/tanks/osorio_p1.json	770d98aa2efa6d55
 file	icons	public/icons/tank-assets/tanks/osorio_p2.json	8ff8df9f8e02bb0a
@@ -837,7 +837,7 @@ file	icons	public/icons/tank-assets/tanks/ztz99_longwei.json	7b228f05dd51f849
 file	icons	public/icons/tank-assets/tanks/ztz99a.json	7cff05c879d79023
 file	icons	public/icons/tank-assets/tanks/ztz99a2.json	644eefabbee55408
 file	icons	public/icons/tank-assets/tanks/ztz99a2_qinglong.json	d4d731800d51bf50
-file	ledger	docs/references/fleet-geometry-ledger.json	8fe92d9c98a0db12
+file	ledger	docs/references/fleet-geometry-ledger.json	19d5cb2abd078d2b
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abrams.generated.ts	7eef2c074985af7d
 file	marking	src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts	ca8d19c7b4f666f3
 file	marking	src/vehicles/vehicleMarkingSeatGroups/aft10X.generated.ts	8af5ac48678898bc
@@ -928,9 +928,9 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	196ed822
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	c60a14e86b514670
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	9518890ed11cff2a
-file	seats	src/sim/missionAttachmentSeats.generated.ts	b379936bdc8807f6
+file	seats	src/sim/missionAttachmentSeats.generated.ts	c49de50381b22f4b
 file	seats	src/sim/missionDockSeats.generated.ts	51465d3eee950e6f
-file	spareTrack	docs/geometry-gate/spare-track.json	06c22cb49e5a16a7
+file	spareTrack	docs/geometry-gate/spare-track.json	4d716bc22a502340
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1839567789750174
 file	trenches	server/world-collision-manifests/index.json	e99d9787f5614b85
 file	wreckPlan	src/world/maps/wreckBakePlan.ts	d0b28db56a6715f6
@@ -947,7 +947,7 @@ group	arieteX	4c0e5e772737b196
 group	bmp3mDragun125X	368818df400b0e48
 group	borsuk	35cb6e3a6b0f566d
 group	brazil	0ccc372fe54d00cd
-group	challenger	b31515546767e694
+group	challenger	5f85f960238906b6
 group	challenger1X	e4715446aacadc35
 group	chieftain10X	aae76e9e8f48472a
 group	chieftain5X	761ea6a7e4c42265
@@ -956,7 +956,7 @@ group	cv90105TmlSourceX	092318e79fe95992
 group	cv9040CSourceX	81996ba8fece1c9c
 group	cv90MkivSourceX	134c76dc9c0db19f
 group	dardo	c9ecb5ad74861576
-group	denmark	2d58b7ac6e8711b2
+group	denmark	264e869d899695df
 group	franceCore	cdf4e598a18dc74d
 group	fv510MilanX	08099afb61659905
 group	griffin50X	568d582416919715
@@ -998,7 +998,7 @@ group	sinoSovietConcepts	0a41f6859371952c
 group	southAfrica	f5637fc8afe6d1e5
 group	sovietHeavy	83799325e97db339
 group	strv122X	0061e6f707a4b6cd
-group	sweden	49052660c266a899
+group	sweden	bacde5d3a1acdddb
 group	t14X	9dcc2ac0e0d259bc
 group	t62mv1X	71386c854f5ee8ef
 group	t72	6208fe5b7e2562d9
@@ -1019,7 +1019,7 @@ group	type10X	81381fcf1ba586c3
 group	type89SourceX	76f2119702cba4ed
 group	type90X	8aed76931d05f119
 group	type96bX	2a979dbc1b083ab4
-group	uk	0135fd57c35d6f4f
+group	uk	d5676a531e07aa11
 group	ukraine	ac8f7f01f8504ed7
 group	xk2	3b70dfeca6522c98
 key	anatomy	abramsx	ad39d1435023a4b1	aff5e7b00792d887
@@ -1179,7 +1179,7 @@ key	anatomy	object148_proto	6d2a0c11bea86774	0abe6e163d06df16
 key	anatomy	object695	8c51831d7b55ecb0	080bc3875972be46
 key	anatomy	olifant_mk1	c1423dab2f7fa3f6	bb81b7245dfc5942
 key	anatomy	olifant_mk1a	dd48ce6d83821aad	bff625095f5613ad
-key	anatomy	olifant_mk1b	65d350e2ed255781	b9a82631b0261831
+key	anatomy	olifant_mk1b	5e3a4bd301bf2544	8f09853d5e98db20
 key	anatomy	olifant_mk2	52399e5a0bd65bf1	cd1bc2dd29e7e70b
 key	anatomy	osorio_p1	b0cb3640edee8e11	4576978931e8cc71
 key	anatomy	osorio_p2	eb8af946de899995	137a42a61957a3d3
@@ -1463,7 +1463,7 @@ key	centering	object148_proto	db65ab4887a8f216	7edfd7e7211d02c1
 key	centering	object695	df6dc35fc70bc0a9	dcdf681044a7f875
 key	centering	olifant_mk1	95d698bf24e70bda	14388a3478fbf87b
 key	centering	olifant_mk1a	1e667c55164816cc	b441272f86faf4a1
-key	centering	olifant_mk1b	9db15b323b06267e	56189d9added745d
+key	centering	olifant_mk1b	37142d6b365919e3	56189d9added745d
 key	centering	olifant_mk2	01cd274b2c29715b	56189d9added745d
 key	centering	osorio_p1	ffde64d7dfecb863	f6a1eeca3fec2683
 key	centering	osorio_p2	5a39ddd256f99d2b	0644f95e8e5501a1
@@ -1780,7 +1780,7 @@ key	controls	object148_proto	934165b00af231f9	70ff8332e467fe29
 key	controls	object695	681525bc0c1711f9	ffb5a79607910155
 key	controls	olifant_mk1	4da4f83c522b01b4	940b47c9a19de960
 key	controls	olifant_mk1a	1674ad769389c79c	940b47c9a19de960
-key	controls	olifant_mk1b	60ed6d009fe05da9	02b327554d5e35e1
+key	controls	olifant_mk1b	0ed489bdd901f7ba	1b6212360910789e
 key	controls	olifant_mk2	b8ac8ba481173566	02b327554d5e35e1
 key	controls	osorio_p1	2fea536ea1a7999b	252d38409e7a63e4
 key	controls	osorio_p2	24005e0057df797a	f3d778211c153906
@@ -2064,7 +2064,7 @@ key	fills	object148_proto	4c9ade9db675c074	816eaf9102279a98
 key	fills	object695	b4097a8db07ba463	8b6b1508e1ca6d41
 key	fills	olifant_mk1	16ec882b69144acf	0cfcd7610070eee0
 key	fills	olifant_mk1a	fb2b66c0306fef2c	f04ff83a501e05a7
-key	fills	olifant_mk1b	4b31d940ff3f1078	2532af744525c6bf
+key	fills	olifant_mk1b	3d3220aab05d177e	90a995ec861e6cd6
 key	fills	olifant_mk2	481b310a460e1834	acec1bea98968f74
 key	fills	osorio_p1	ccdcb1555c9659bc	3af387d4d37a36d9
 key	fills	osorio_p2	1dcac617d72329c8	655e8f9d85fe4adf
@@ -2337,7 +2337,7 @@ key	gate	object148_proto	bcce7f0cc247ec12	c813af6bad2cb313
 key	gate	object695	80e9dd26d110bc3c	8f2a47ef0dbdb385
 key	gate	olifant_mk1	e16c1a771c073af8	2a91139109c96403
 key	gate	olifant_mk1a	bb8544fcae2b998d	2a91139109c96403
-key	gate	olifant_mk1b	9bc442cd7bbeb07a	2a91139109c96403
+key	gate	olifant_mk1b	0015cb736702688a	2a91139109c96403
 key	gate	olifant_mk2	1687f9c8cf91f243	2a91139109c96403
 key	gate	osorio_p1	cc3b368b8510e3d1	2a91139109c96403
 key	gate	osorio_p2	7eb89186e39f2040	2a91139109c96403
@@ -2620,7 +2620,7 @@ key	gunLines	object148_proto	6dc46228ab27bb70	046e2d41cc3303ce
 key	gunLines	object695	670b28fc069793ff	1ddc17b3a87dea73
 key	gunLines	olifant_mk1	4f743ab3a0d764dd	480aca1c25716d88
 key	gunLines	olifant_mk1a	1289ffb57771a50b	ada0a0f7139dc090
-key	gunLines	olifant_mk1b	cf8a029048b1568f	76c8e53e09e803c7
+key	gunLines	olifant_mk1b	cb92615673d2ebb9	503d3b90313c4a80
 key	gunLines	olifant_mk2	8b304bef4fab4633	e57131ef30a1108a
 key	gunLines	osorio_p1	8c6b52335cdd7d24	a55b9f5cec485394
 key	gunLines	osorio_p2	a48c554842d553a8	398f1269267521d6
@@ -2904,7 +2904,7 @@ key	icons	object148_proto	265098461eb96d5f	d5ed964bd110510b
 key	icons	object695	708a1f795ef2d3cf	938e7a719992277e
 key	icons	olifant_mk1	404e4746baa1769d	9576ec7310235f6e
 key	icons	olifant_mk1a	9091ef2bea1c1f5a	40629c7ef5cc979e
-key	icons	olifant_mk1b	545d3801c5d2d00c	835b994a6475341a
+key	icons	olifant_mk1b	23feaaeb95385c6d	d2e39f7d3752576d
 key	icons	olifant_mk2	70c190b588c91246	ddd334fca83cc3cd
 key	icons	osorio_p1	f2a5966adcee2ca1	048925362081d0e6
 key	icons	osorio_p2	d41203467799c93d	4b4bed02b18edd13
@@ -3188,7 +3188,7 @@ key	ledger	object148_proto	947db9608e9bde9b	6ad6edc0bdce515c
 key	ledger	object695	f9568a1121b215b1	589fcc94b2c88642
 key	ledger	olifant_mk1	6849ad40031862e7	d108813b84c4cd05
 key	ledger	olifant_mk1a	ec48735ec248a3e7	9bd47259b414e88d
-key	ledger	olifant_mk1b	3ed6c08d13e859d8	9f291a34deb59504
+key	ledger	olifant_mk1b	0e4585d210df3424	45745eb50fc31201
 key	ledger	olifant_mk2	22fbd906aa6e64e4	a09125a8a566f17a
 key	ledger	osorio_p1	d3bf4ef2ec15fce9	9466069bdc93225b
 key	ledger	osorio_p2	8146c73a57fd7133	bc6654c415212921
@@ -3472,7 +3472,7 @@ key	marking	object148_proto	9fa437970c52761e	d344b8c88a2c0e9e
 key	marking	object695	991899a06782d46b	bf4be4684b6a95ca
 key	marking	olifant_mk1	009b6de9951307fb	c2a6812231ec10c5
 key	marking	olifant_mk1a	19fb1e4b09072213	fd928574f377768b
-key	marking	olifant_mk1b	e5a329fac7d52637	97f300296c5128fb
+key	marking	olifant_mk1b	faebea8af3dd1b2d	97f300296c5128fb
 key	marking	olifant_mk2	931feac0a1ef3c1b	67ed82ce39fad8db
 key	marking	osorio_p1	fd81e8f7ba66d092	70bb6f0f3c5e0096
 key	marking	osorio_p2	d5586a290ceb1b2a	6c4615137f29b65d
@@ -3756,7 +3756,7 @@ key	seats	object148_proto	638698d1784c0444	f759fccde6b9cef9
 key	seats	object695	93ea38aa058a6578	8cb0ab1bf6c5b4cf
 key	seats	olifant_mk1	bc05d4f10220c202	5ddda02c48058da9
 key	seats	olifant_mk1a	f938bae742ce23b6	0dc31d2c60cef75d
-key	seats	olifant_mk1b	58621fc82a3fc745	b1665a2b0e4762f2
+key	seats	olifant_mk1b	faf6e9cea4c379a2	407349a8ab1ad49c
 key	seats	olifant_mk2	3ef4997829cc810f	8cc1bd30bf3e8ea5
 key	seats	osorio_p1	820acec44243ac04	4317213dd1cda42d
 key	seats	osorio_p2	3369e96c889deb7a	fed815c0653a77d7
@@ -4040,7 +4040,7 @@ key	spareTrack	object148_proto	13f734c6d6e28b04	dcabd3b5385d7d50
 key	spareTrack	object695	9794a695597beb10	3cbc97e3449e39aa
 key	spareTrack	olifant_mk1	fec20eb4a53acf21	cda83071fa870de2
 key	spareTrack	olifant_mk1a	d553c323fc4ccddb	6c9ed4679c85108d
-key	spareTrack	olifant_mk1b	f04439bbaed83407	9db467f9215d3e03
+key	spareTrack	olifant_mk1b	bcbbbdaa8b792635	a3f435737def0b27
 key	spareTrack	olifant_mk2	a174c2588db1882a	c7cc872dedaa9c39
 key	spareTrack	osorio_p1	9d37b3efe13b8c59	e8996b9aa9657ce6
 key	spareTrack	osorio_p2	6a2f532676c09eb6	ecc974e7ff247c12
@@ -4391,7 +4391,7 @@ row	auxiliaryInventory	object148_proto	90c98b4429a0686a
 row	auxiliaryInventory	object695	561a5ce58cfef719
 row	auxiliaryInventory	olifant_mk1	6a7461fa87e07237
 row	auxiliaryInventory	olifant_mk1a	6a7461fa87e07237
-row	auxiliaryInventory	olifant_mk1b	f88ab8e093b125de
+row	auxiliaryInventory	olifant_mk1b	c0d5e199b690477e
 row	auxiliaryInventory	olifant_mk2	f88ab8e093b125de
 row	auxiliaryInventory	osorio_p1	aeac881a99ef8d70
 row	auxiliaryInventory	osorio_p2	3025029c49a88a5e
@@ -4909,7 +4909,7 @@ row	combatAnatomy	object148_proto	2c67b293dcf7c2e9
 row	combatAnatomy	object695	e097a59128fc85f4
 row	combatAnatomy	olifant_mk1	b09a760abedab49e
 row	combatAnatomy	olifant_mk1a	d3d9413b8a3e9e4a
-row	combatAnatomy	olifant_mk1b	adebfb9a035fcb09
+row	combatAnatomy	olifant_mk1b	742fab1212bc8879
 row	combatAnatomy	olifant_mk2	88a188cbef9b6a51
 row	combatAnatomy	osorio_p1	5aa6cafa6ab9e456
 row	combatAnatomy	osorio_p2	2de5a63d1110f031
@@ -5886,7 +5886,7 @@ row	geometryLedger	object148_proto	9d3c4f287de057bf
 row	geometryLedger	object695	12bc6e4e72b2b75c
 row	geometryLedger	olifant_mk1	11befe2f5f021fcf
 row	geometryLedger	olifant_mk1a	0f2e6459339cb1e4
-row	geometryLedger	olifant_mk1b	3729ce2af0396081
+row	geometryLedger	olifant_mk1b	ca9b557ca0215a18
 row	geometryLedger	olifant_mk2	fd1a46d015334fef
 row	geometryLedger	osorio_p1	3b349b6f2b7624d6
 row	geometryLedger	osorio_p2	4c8373e619be0cc3
@@ -6170,7 +6170,7 @@ row	gunJunction	object148_proto	277cf40bcc681c23
 row	gunJunction	object695	417adca86fe844dc
 row	gunJunction	olifant_mk1	623fa6af2b1482e9
 row	gunJunction	olifant_mk1a	4cea2fd336c9962f
-row	gunJunction	olifant_mk1b	5ba075ec260b9189
+row	gunJunction	olifant_mk1b	333add93bbd7d89d
 row	gunJunction	olifant_mk2	83984b6f46eaa472
 row	gunJunction	osorio_p1	0a42737a910bffbd
 row	gunJunction	osorio_p2	12cfb5f8ad90e9ad
@@ -6454,7 +6454,7 @@ row	interiorFills	object148_proto	678470b90d598a59
 row	interiorFills	object695	f2100b4b769c7dc6
 row	interiorFills	olifant_mk1	faa39994b24581a7
 row	interiorFills	olifant_mk1a	ca03c258ce815001
-row	interiorFills	olifant_mk1b	1265581f8895615f
+row	interiorFills	olifant_mk1b	89f7aaad1fc81f29
 row	interiorFills	olifant_mk2	6502449c4b712fa1
 row	interiorFills	osorio_p1	99dee2b9c5064435
 row	interiorFills	osorio_p2	21bc553828b5d202
@@ -7021,7 +7021,7 @@ row	missionAttachmentSeats	object148_proto	c1803dc63461491e
 row	missionAttachmentSeats	object695	598f3c8095af39df
 row	missionAttachmentSeats	olifant_mk1	f7ef584c1b3b9454
 row	missionAttachmentSeats	olifant_mk1a	7741b948fcb761df
-row	missionAttachmentSeats	olifant_mk1b	b37da49996d89b6d
+row	missionAttachmentSeats	olifant_mk1b	090cf729e0314482
 row	missionAttachmentSeats	olifant_mk2	434f1938fdeeb4ad
 row	missionAttachmentSeats	osorio_p1	77aaca2a5f2bb6d5
 row	missionAttachmentSeats	osorio_p2	a1394281db1ff0f5
@@ -8447,7 +8447,7 @@ row	spareTrackLedger	object148_proto	e5c54d2ee28d0732
 row	spareTrackLedger	object695	2b0e1c65d5c017fa
 row	spareTrackLedger	olifant_mk1	a26e337388bf680d
 row	spareTrackLedger	olifant_mk1a	1a880375c7757912
-row	spareTrackLedger	olifant_mk1b	faac20d77ebffe25
+row	spareTrackLedger	olifant_mk1b	f2d871e3f18446df
 row	spareTrackLedger	olifant_mk2	18ac407e8a6187af
 row	spareTrackLedger	osorio_p1	1da0b6d91653a488
 row	spareTrackLedger	osorio_p2	ca22131a74f39219
@@ -9330,7 +9330,7 @@ row	tankAssets	object148_proto	8b06d7a6799e217c
 row	tankAssets	object695	33854433718a14d8
 row	tankAssets	olifant_mk1	556bff0e99a1bfc4
 row	tankAssets	olifant_mk1a	b302d8e24008fab6
-row	tankAssets	olifant_mk1b	4d325daa05c1e665
+row	tankAssets	olifant_mk1b	e2cec40a181127c2
 row	tankAssets	olifant_mk2	1e49c9f62bde46eb
 row	tankAssets	osorio_p1	682491ce6b073708
 row	tankAssets	osorio_p2	e243a5e6039a0bb3

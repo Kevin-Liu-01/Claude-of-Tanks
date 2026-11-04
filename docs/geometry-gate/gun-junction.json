@@ -175,7 +175,7 @@
   "object695": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"254ed784121a66c7","gun":"2a91b32ea38edb1a"}},
   "olifant_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2153e69778c0cf47","gun":"6cb513123aa0e407"}},
   "olifant_mk1a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1bc54a611d3bba3f","gun":"48ea718b0b29fb9d"}},
-  "olifant_mk1b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"df115459f328fd8a","gun":"53d2d1a12d77d6fa"}},
+  "olifant_mk1b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e500c539ec3f48a2","gun":"d4447cdc14a7c2a4"}},
   "olifant_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e420a8e0afa781fd","gun":"5e407245d22f7502"}},
   "osorio_p1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"55eeabb26110dae1","gun":"a9862671716e2921"}},
   "osorio_p2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e2486f253ac37472","gun":"6d048ba8046f7932"}},
