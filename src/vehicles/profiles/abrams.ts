@@ -7681,12 +7681,17 @@ function* buildAbramsX(P: AbramsBuilderPort): TankProfileBuild {
       // pale mounting frame behind the tubes (the new print's banks read as
       // dark tubes on a light bracket — camo alone ate the 0.034 cluster);
       // rx follows the band's back-lean, ry the plan chamfer (weld-seam 0.434)
-      P.add('turretDetail', box(0.30, 0.17, 0.016), side * 1.10, 0.13, 2.398, -0.28, side * 0.434, 0);
-      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040,
-        len: 0.22, splay: side * 0.72, pitch: -0.50, arc: 0.50,
-        spacing: 0.094, slot: 'dark', seed: 61 + side });
-      bank.position.set(side * 1.10, 0.14, 2.41);
-      P.turretG.add(bank);
+      // (release 268 builder E, the floating-kit class: the cheek under the left bank lies 3-5 cm behind its frame, so
+      // frame and tubes touched nothing; each frame and its bank are seated on the cheek (P.snapGroup, along the
+      // shortest gap), the right one already touching and staying as authored)
+      P.snapGroup(`abramsx-cheek-smoke-${side}`, () => {
+        P.add('turretDetail', box(0.30, 0.17, 0.016), side * 1.10, 0.13, 2.398, -0.28, side * 0.434, 0);
+        const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040,
+          len: 0.22, splay: side * 0.72, pitch: -0.50, arc: 0.50,
+          spacing: 0.094, slot: 'dark', seed: 61 + side });
+        bank.position.set(side * 1.10, 0.14, 2.41);
+        P.turretG.add(bank);
+      }, { reachM: 0.07 });
     }
     // XM360: axis 1.93 (oracle tube band 1.80..2.04), muzzle at the published
     // 9.77 overall (5.71 world against the -4.06 pintle tail; the oracle tube
