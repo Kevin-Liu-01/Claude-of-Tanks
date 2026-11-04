@@ -49,6 +49,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't80uk', 'strv81', 'strv105', 'udes03', 'strv103a', 'strv103b',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
+    // release 268: the M3A2 (1988), the M2A2's cavalry twin under the classic turret
+    'm3a2_bradley',
     'amx40_proto', 'leo1a5', 'leo1a2a1', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1',
     'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',

@@ -40,16 +40,22 @@ interface AbramsIdentityPort {
 }
 
 // Turret-local datums of the Tejas-family bustle (profiles/abrams.ts TEJAS_TURRET; turret rig at the ring).
-const RACK_TOP_Y = 0.87;            // rack rail tops (railTopFlush)
-const RACK_FLOOR_Y = 0.31;          // rack floor seat (rackCans rkY)
-const RACK_FRONT_Z = -3.165;        // bustle rear wall
-const RACK_REAR_Z = -3.505;         // rack rear fence
+// Release 268 builder E: the rack hangs on the owner's model's shorter bustle (rear face -2.56, 0.41 m deep, rails 0.68,
+// floor 0.25 + its 0.02 mesh); the print-era rack ran 0.70, 0.31, -3.165 .. -3.505.
+const RACK_TOP_Y = 0.68;            // rack rail tops (railTopFlush)
+const RACK_FLOOR_Y = 0.27;          // rack floor seat (rackCans rkY)
+const RACK_FRONT_Z = -2.595;        // bustle rear wall
+const RACK_REAR_Z = -3.005;         // rack rear fence
 const RACK_HALF_W = 1.07;
 const RACK_MID_Z = (RACK_FRONT_Z + RACK_REAR_Z) / 2;
-// Gunner's primary sight doghouse (tejasRoofKit, non-CWS roofs): head box (0.52 x 0.10 x 0.38) at (0.78, 0.60, 1.05).
-const GPS_X = 0.78;
-const GPS_TOP_Y = 0.65;
-const GPS_Z = 1.05;
+// Gunner's primary sight doghouse (profiles/abrams.ts M1A1_GPS_DOGHOUSE): release 268 moves it to the vehicle-right
+// front roof ahead of the commander (the photographed station, and the owner's source model's); its lid stands ~0.85 m
+// over the ring on the falling cheek roof.
+// Release 268 builder E: the doghouse at the owner's model's seat (profiles/abrams.ts M1A1_SOURCE_GPS: x -0.80, top
+// 0.884, front 0.78).
+const GPS_X = -0.80;
+const GPS_TOP_Y = 0.884;
+const GPS_Z = 0.66;
 
 /** A box beam of section w x h running from a to b (its length axis on the segment). */
 function beam(a: Vec3, b: Vec3, w: number, h: number): THREE.BufferGeometry {
@@ -186,13 +192,9 @@ function addCip(P: AbramsIdentityPort, label: string, center: Vec3, yaw: number,
 }
 
 function addAimFit(P: AbramsIdentityPort): void {
-  // Bustle-flank CIPs, vertical on brackets standing off the stowage bays, and a third on the rack's rear fence.
-  for (const side of [-1, 1]) {
-    const x = side * 1.80;
-    addCip(P, `m1a1aim-cip-${side > 0 ? 'right' : 'left'}`, [x, 0.42, -2.58], side * Math.PI / 2, 0.70, 0.56,
-      // feet sink into the tumblehome wall (x 1.61 at y 0.30, 1.53 at y 0.56) and the bays on the left flank
-      [[side * 1.56, 0.30, -2.40], [side * 1.45, 0.56, -2.76]]);
-  }
+  // The CIP on the rack's rear fence. (Release 268 builder E, the blind A/B fix round: the two bustle-flank CIPs that
+  // stood 0.3 m off the wall on brackets, at the hull's edge, read as upright plates at the hull's rear corners; on the
+  // owner's model's shell the flanks carry the open side-rail frames.)
   addCip(P, 'm1a1aim-cip-rear', [0.36, 0.58, RACK_REAR_Z - 0.06], 0, 0.72, 0.50,
     [[0.04, 0.58, RACK_REAR_Z + 0.01], [0.68, 0.58, RACK_REAR_Z + 0.01]]);
   // (The SINCGARS pair of long whips is the AIM's decoration manifest, decorations.ts.)
@@ -237,8 +239,11 @@ function addLoaderThermalSight(P: AbramsIdentityPort): void {
   const body = station?.getObjectByName('americanM240Body');
   const carrier = body?.parent;
   if (!station || !body || !carrier) return;
+  // (release 268 builder E: the frames are brought up to date before the receiver is measured; measured first, in its
+  // stale frame, the sight sat 1.33 m under the turret floor, inside the hull, where the roof net read it as the loader's
+  // weapon sweeping below the roof everywhere round its station)
+  carrier.updateWorldMatrix(true, true);
   const bodyBox = new THREE.Box3().setFromObject(body);
-  carrier.updateWorldMatrix(true, false);
   const toCarrier = new THREE.Matrix4().copy(carrier.matrixWorld).invert();
   // the receiver's top centre and its length, in the carrier's frame
   const top = new THREE.Vector3((bodyBox.min.x + bodyBox.max.x) / 2, bodyBox.max.y, (bodyBox.min.z + bodyBox.max.z) / 2)
@@ -271,8 +276,10 @@ function addFepFit(P: AbramsIdentityPort): void {
   addGpsFlirHead(P, 'm1a1fep-gps-flir', 0.46, 0.17, 0.30, false);
   addLoaderThermalSight(P);
   // Commander's remote thermal sight (CRTS) on a short armoured mast beside the commander's hatch.
+  // (release 268 builder E, the A/B craft fix: its foot stood at the old shell's 0.79 roof, 8 cm over the owner's model's
+  // 0.709 roof and just past the snap's reach, touching nothing; it stands on that roof)
   P.snapGroup('m1a1fep-crts', () => {
-    const x = -1.12, z = -0.30, base = 0.79;
+    const x = -1.12, z = -0.30, base = 0.709;
     P.addEquipment('turretDetail', cylY(0.07, 0.08, 0.04, P.q ? 16 : 10), x, base + 0.02, z);
     P.addEquipment('turret', cylY(0.042, 0.048, 0.18, 12), x, base + 0.13, z);
     P.addEquipment('turret', box(0.20, 0.14, 0.22), x, base + 0.29, z + 0.01);
@@ -295,39 +302,9 @@ function addFepFit(P: AbramsIdentityPort): void {
 
 function addSaFit(P: AbramsIdentityPort): void {
   addGpsFlirHead(P, 'm1a1sa-gps-flir', 0.40, 0.19, 0.28, true);
-  // Bustle-rack extension: a second open lattice basket hung behind the rack, loaded.
-  P.snapGroup('m1a1sa-bustle-rack-extension', () => {
-    const depth = 0.42;
-    const rack = FITTINGS.stowageRack({ mats: P.mats, w: 2.06, d: depth, h: 0.46, rails: 2, posts: 7, mesh: true,
-      fill: 0.82, seed: 2008, rotation: [0, Math.PI, 0] });
-    rack.position.set(0, RACK_FLOOR_Y - 0.02, RACK_REAR_Z - 0.03 - depth / 2);
-    rack.name = 'm1a1sa_bustle_rack_extension';
-    P.turretG.add(rack);
-    // hanger brackets from the rack's floor rail and top rail into the extension
-    // 2026-10-22 (owner float calls): the top brackets stood at RACK_TOP_Y, 0.2 m over this rack's own rear top rail
-    // (centre 0.6075) and 6 cm over the extension; they now bridge that rail (two halves, x 0.18..1.07) and the
-    // extension's front face.
-    for (const x of [-0.86, 0, 0.86]) {
-      P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, RACK_FLOOR_Y - 0.01, RACK_REAR_Z - 0.03);
-    }
-    for (const x of [-0.86, -0.30, 0.30, 0.86]) {
-      P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, 0.6075, RACK_REAR_Z - 0.03);
-    }
-  }, { reachM: 0.05 });
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the hull's jerry-can pair rides a bracket
-  // on the extension's rear fence, uprights against it and braced to its top rail. On the left rear deck its tops (2.2)
-  // stood 28 cm into the extension, which sweeps 4.06 m off the ring's axis above 1.92, past the deck's own end.
-  P.snapGroup('m1a1sa-rack-cans', () => {
-    const fenceZ = RACK_REAR_Z - 0.03 - 0.42, shelfZ = fenceZ - 0.205, floorY = RACK_FLOOR_Y - 0.02;
-    P.addEquipment('turretDetail', box(0.50, 0.025, 0.42), -0.55, floorY - 0.0125, shelfZ);
-    for (const x of [-0.79, -0.31]) {
-      P.addEquipment('turretDetail', beam([x, floorY - 0.02, shelfZ - 0.20], [x, floorY + 0.40, fenceZ - 0.01], 0.03, 0.03));
-    }
-    const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, gap: 0.04, slot: 'canvasCloth', seed: 9,
-      rotation: [0, Math.PI, 0] });
-    cans.position.set(-0.55, floorY, shelfZ);
-    P.turretG.add(cans);
-  }, { reachM: 0.05 });
+  // (Release 268 builder E, the blind A/B fix round: the bustle-rack extension, a second lattice basket hung behind the
+  // rack over the hull's rear, and the can pair on its fence are gone: the photographed M1A1 SA carries the standard
+  // rack only, and the tall braced frame over the rear deck read as a foreign structure.)
   // TUSK tank-infantry phone box on the right rear of the hull.
   P.snapGroup('m1a1sa-tusk-phone', () => {
     const x = 1.30, y = 1.50, z = -3.99;
@@ -340,8 +317,12 @@ function addSaFit(P: AbramsIdentityPort): void {
 
 /** The variant's identity kit; the base M1A1 (the family reference) and other hulls get none. */
 export function addM1A1VariantIdentity(P: AbramsIdentityPort): void {
+  // Release 268: a mark built on another mark's shell (ua_m1a1 on the m1a1ha) names itself in m1a1BaseHost and wears
+  // none of the donor's identity kit (profiles/ukraine.ts buildUAM1A1).
+  const host = P.hullG.userData.m1a1BaseHost;
+  if (typeof host === 'string' && host !== P.spec.id) return;
   switch (P.spec.id) {
-    case 'm1a1ha': addTrackWidthMinePlow(P); addDesertStormStowage(P); break;
+    case 'm1a1ha': addTrackWidthMinePlow(P, { chainOnSkids: true }); addDesertStormStowage(P); break;
     case 'm1a1_abrams_hc': addHeavyCommonStowage(P); break;
     case 'm1a1_abrams_aim': addAimFit(P); break;
     case 'm1a1_abrams_fep': addFepFit(P); break;

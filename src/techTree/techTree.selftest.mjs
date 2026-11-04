@@ -227,5 +227,9 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // line (the 2K22M Tunguska-M at V off the BMP-3, lane 14 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
 // Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
 // PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
-assert.equal(digest, 'bfd40f3a3d0dcc68', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-02 re-pin (268, lane abrams-bradley-268, the owner's ask): the M3A2 Bradley at II beside the M2A2 on the
+// Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
+// 268 integration (2026-11-04): both 268 trees together, the twin-cannon air defence's lanes and the M3A2 on the
+// Bradley line; neither moves the other's nodes (Russia/Germany/China vs USA).
+assert.equal(digest, 'd0148f5f6998fbdc', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

@@ -479,8 +479,10 @@ function fnv1a(str: string): number {
  * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
  * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/jgsdfDozer.ts), which keeps the bow
  * shackles and chain off the blade. The Type 90 (B) is the Type 90 with the same kit and a roof station (267).
+ * The M3A2 is the M2A2 under main's classic turret (268, profiles/m3a2Bradley.ts): it draws the M2A2's kit and seed.
  */
-const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90']]);
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10'], ['type90b', 'type90'],
+  ['m3a2_bradley', 'm2a2_bradley']]);
 
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
@@ -2605,6 +2607,13 @@ function appendEraHullKit(
   }
 }
 
+/** Release 268 builder E: a fleet-cargo row with the named routes left out (the M1A1 and HA, decorManifestFor below). */
+function m1a1CargoRoutes(row: DecorManifestRow, skip: readonly string[]): DecorManifestRow {
+  if (row.slot[0] !== 'fleetCargo') return row;
+  const args = row.slot[1];
+  return { ...row, slot: ['fleetCargo', { ...args, routes: (args.routes ?? []).filter((r) => !skip.includes(r[0])) }] };
+}
+
 function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const context: DefaultManifestContext = {
     era: decorEra(spec),
@@ -2872,8 +2881,18 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   ],
   // Release 233: the M1A1HA carries a track-width mine plow on its bow (profiles/abramsM1A1Identity.ts), so the default
   // draw keeps everything but its bow hardware (the shackle pair and the tow chain), which would hang on the raised plow.
+  // Release 268 (abrams-bradley-268): its tarp roll hangs on the left turret side. With the invented add-on
+  // cassettes gone from the Desert Storm walls, a roll drawn for the right side put one arm through the right stowage
+  // bay; the side draw stays consumed and every other row is unchanged (the namer_ifv precedent below).
+  // Release 268 builder E: on the owner's model's turret the bustle rack's side rails run along both walls of the bare
+  // M1A1 and HA (profiles/abrams.ts), so the turret-side and side-plate draws stay consumed and hang nothing there.
+  // The fleet cargo keeps its draws and routes but skips the turret sides (and on the HA the roof, where its loads
+  // straddled the model's raised blow-off panels).
+  m1a1: (spec, rng) => defaultManifest(spec, rng)
+    .map((row) => (row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1ha: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 } : row)),
+    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain'
+      || row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
@@ -3502,6 +3521,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
   // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
   // bustle too).
+  // Release 268 builder E: the M1A1's turret walls are the owner's model's 26-degree planes, and the HA's roof and bustle
+  // top carry the model's blow-off panels and stations: a load hung on a turret flank stood its wall feet inside the wall,
+  // and on the HA a can cradle laid on the bustle top stood across a panel's edge. Those routes are off; the hull's rear
+  // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
+  // frames now, which a hung load crossed.)
+  if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
+    return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
+  }
   if (spec.id === 'leo2a4') {
     const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
     return manifest.flatMap((row) => {
@@ -4071,8 +4098,10 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
-  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
+  // (268, lane abrams-bradley-268: m2a2_bradley and ua_m2a3_bradley adopt the re-seat with their source-measured
+  // turret, whose left wall moved in under the hung load's old foot)
+  'amx30b', 'hayate_ifv', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013',
 ]);
 /**
  * 267 (lane t90-family-267, the accessory-contact receipt on the T-90 family): three seat fixes, adopted per id as 240's
@@ -4085,6 +4114,9 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  */
 const CONTACT_SEAT_267: ReadonlySet<string> = new Set<string>([
   't90', 't90a_2006', 't90ms_2011', 't90ms_tagil', 't90m', 'type96_72m_lei',
+  // 268 (lane abrams-bradley-268, re-rendered on the source-measured shell: the M2A2's hung load's arm crossed its own
+  // strap, the M3A3's rear rack bracket the stern's falling corner)
+  'm2a2_bradley', 'm3a3_bradley',
 ]);
 
 /**
@@ -5765,11 +5797,14 @@ function* decorationSteps(
           const alongX = cw >= cd;
           const footY = c.footY;
           const shift = new THREE.Matrix4().makeTranslation(0, -footY, 0);
+          // (release 268 builder E, decorationsStaging: the placement clones are kept to be released; the shift below
+          // replaced them on their meshes, and the release then freed the shifted copies twice and these never)
+          const placedClones = placed.map((mesh) => mesh.geometry);
           for (const mesh of meshes) mesh.geometry = mesh.geometry.clone().applyMatrix4(shift);
           const path = hullTiePath(meshes, alongX ? 'z' : 'x', alongX ? ccx : ccz, alongX ? c.lid.min.z : c.lid.min.x,
             alongX ? c.lid.max.z : c.lid.max.x, y + h - footY);
           for (const mesh of meshes) mesh.geometry.dispose();
-          for (const mesh of placed) mesh.geometry.dispose();
+          for (const geometry of placedClones) geometry.dispose();
           if (!path) continue;
           const tie = withBoxUV(tieBand(path, alongX ? 'z' : 'x', alongX ? ccx : ccz, 0.038))
             .applyMatrix4(new THREE.Matrix4().makeTranslation(0, footY, 0))

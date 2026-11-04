@@ -485,6 +485,10 @@
    "name": "M2A2 Bradley",
    "card": "/brand/og-r2/tanks/m2a2_bradley-card.jpg"
   },
+  "m3a2_bradley": {
+   "name": "M3A2 Bradley",
+   "card": null
+  },
   "m3a3_bradley": {
    "name": "M3A3 Bradley CFV",
    "card": "/brand/og-r2/tanks/m3a3_bradley-card.jpg"

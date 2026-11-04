@@ -559,6 +559,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pumaS1.selftest.mjs',
     'src/vehicles/profiles/marder2.selftest.mjs',
     'src/vehicles/profiles/m6Linebacker.selftest.mjs',
+    // 268: the M3A2 under the classic turret (its photo packet fixture)
+    'src/vehicles/profiles/m3a2Bradley.selftest.mjs',
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/type89LightTiger.selftest.mjs',
     'src/vehicles/profiles/cv90.selftest.mjs',

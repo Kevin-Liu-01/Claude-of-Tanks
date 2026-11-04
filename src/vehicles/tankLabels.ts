@@ -298,6 +298,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'PGZ-09', shortName: 'PGZ-09',
     searchAliases: ['PGZ09', 'Type 09 SPAAA', 'Type 09 SPAAG', 'Type 09 self-propelled anti-aircraft gun', '09式自行高炮'],
   },
+  m3a2_bradley: {
+    displayName: 'M3A2 Bradley', shortName: 'M3A2 Bradley',
+    searchAliases: ['M3A2 ODS', 'M3A2 Cavalry Fighting Vehicle', 'Bradley CFV'],
+  },
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',
