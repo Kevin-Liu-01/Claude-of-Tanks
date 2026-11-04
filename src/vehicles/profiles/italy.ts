@@ -36,17 +36,16 @@ import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mount as addFitting } from './fittingMount.ts';
-import { arieteLampCluster, arieteSideLouvre, attilaSightHead, boltHeads, wedge } from './arieteMkParts.ts';
-import { arieteDriverHatch, arieteDriverPeriscopes, arieteGlacisGrille, arieteHatch, arieteTurmsSight, arieteVentDome } from './arieteTurretParts.ts';
-import { sampleArmorFace } from './armorFaceSampling.ts';
+import { arieteLampCluster, arieteSideLouvre, boltHeads, wedge } from './arieteMkParts.ts';
+import { arieteDriverHatch, arieteDriverPeriscopes, arieteGlacisGrille } from './arieteTurretParts.ts';
+import { arieteProtoMantlet, arieteProtoTurretFittings, arieteProtoTurretShell, type ArieteProtoTurretReceipt,
+  type SeatTurretCassette } from './arieteProtoTurret.ts';
 import { fitsInSkirt, profileSkirtGeometry, skirtBand, skirtBottomAt, skirtSegment, skirtTopAt, type ProfileSkirt } from './profileSkirt.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { ARIETE_PROTO_TURRET_LIFT_M } from '../modern3Specs.ts';
 import { drainTankBuild, steppedBuilder, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
-type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
-type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 type ArieteMark = 'c1' | 'c2';
 
 type ItalyBuilderPort = Omit<TankBuilderPort, 'addGunExtra' | 'addGunExtraDark'> & {
@@ -134,21 +133,6 @@ function faceSeatedArmorCassette(
   });
 }
 
-// flush hatch ring + coaming (shared by the italy builders)
-function cupolaRing(
-  P: ItalyBuilderPort,
-  x: number,
-  yLocal: number,
-  zLocal: number,
-  r: number,
-): void {
-  const { box, cylY, torus } = KIT;
-  P.add('turret', cylY(r, r + 0.015, 0.055, P.q ? 18 : 10), x, yLocal + 0.028, zLocal);
-  P.add('turretDark', torus(r * 0.96, 0.013, 16), x, yLocal + 0.062, zLocal);
-  P.add('turret', box(0.07, 0.04, 0.09), x + r * 0.9, yLocal + 0.03, zLocal);
-  P.add('turret', box(0.07, 0.04, 0.09), x - r * 0.9, yLocal + 0.03, zLocal);
-}
-
 // ---------------------------------------------------------------------------
 // C1 Ariete (production) + C2 Ariete (AMV upgrade package over the C1 base).
 // All lines cited from the gate-true decode (gatecurves, world frame):
@@ -176,8 +160,8 @@ const ARIETE_SKIRT: ProfileSkirt = { inner: 1.725, outer: 1.76, stations: [
 ] };
 // ---------------------------------------------------------------------------
 function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfileBuild {
-  const { box, cylY, cylZ, openRackGrid, torus, buildGun, buildRunningGear,
-    liftEye, periscope, towCable, stowage } = KIT;
+  const { box, cylY, cylZ, torus, buildGun, buildRunningGear,
+    liftEye, towCable, stowage } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const c2 = mark === 'c2';
@@ -189,8 +173,9 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
     faceNormalAlignmentDeg: 0,
     turretCheekCarrier: 'forward-face',
     turretCheekSides: 2,
-    turretCheekRows: 2,
-    turretCheekColumnsPerSide: 5,
+    // 269 (C2 photographs 3 and 5): each cheek's front is an inner plate beside the gun and one main plate to the corner
+    turretCheekRows: 1,
+    turretCheekColumnsPerSide: 2,
     turretCheekForwardNormalDotMin: 1,
     turretCheekCassettes: 0,
     turretSideCassettes: 0,
@@ -216,8 +201,6 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
   };
   buildArieteMkAssemblyStage1();
   yield 'buildArieteMkAssemblyStage1';
-  const L = (zWorld: number): number => zWorld + 0.10;                         // world z -> turret local
-  const localY = (yWorldBeforeLift: number): number => yWorldBeforeLift - 1.30;
 
   // ---- hull tub + sponsons -------------------------------------------------
   // Narrow buried belly core: the former ±0.95 m face occupied the linked
@@ -303,42 +286,13 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
     // "thin dark rods cross in an X on the glacis below the mantlet, like loose stray cables"): the glacis carries no intake
     // grille, no V splash rail and no draped tow cable (the rear plate keeps its stowed cable); it is the plain raked plate
     // of the photographs.
-    // The source groups mix fixed and rotating parts. Shoulder bins, roof
-    // furniture and the left cheek fairing belong to the turret on BOTH marks.
-    // Their source-space seats are preserved through localY/L; only the roof
-    // cover gains a shallow, seated lid above the crown that formerly hid it.
-    for (const side of [-1, 1]) {
-      P.addEquipment('turret', box(0.42, 0.49, 0.66), side * 1.25, localY(1.745), L(-0.06));
-      P.addEquipment('turret', box(0.42, 0.40, 0.62), side * 1.25, localY(1.70), L(0.62));
-      P.addEquipment('turretDark', box(0.38, 0.02, 0.58), side * 1.25, localY(1.99), L(-0.06));
-      P.addEquipment('turretDark', box(0.38, 0.02, 0.54), side * 1.25, localY(1.90), L(0.62));
-      P.addEquipment('turretDetail', box(0.43, 0.03, 0.03), side * 1.25, localY(1.80), L(-0.06));
-      P.addEquipment('turretDetail', box(0.43, 0.03, 0.03), side * 1.25, localY(1.78), L(0.62));
-    }
+    // (269: the turret's shoulder bins, left stack, cheek fairing and roof furniture that the print's source groups put
+    // here are gone with the old turret; arieteProtoTurret.ts builds the new turret whole)
     P.add('hull', cylY(0.84, 0.86, 0.08, P.q ? 26 : 14), 0, 1.48, 0.02); // fixed bearing race
     // release 231: the ring's outer race in the seam under the lifted turret (1 cm into the slab, 5 mm short of the
     // turret's underside), set 18 cm inside its narrowest reach so it reads as the ring in shadow
     P.add('hullDark', cylY(1.06, 1.06, ARIETE_PROTO_TURRET_LIFT_M - 0.005, P.q ? 40 : 24), 0,
       1.50 + (ARIETE_PROTO_TURRET_LIFT_M - 0.005) / 2, -0.10);
-    P.addEquipment('turret', box(0.57, 0.76, 0.80), -0.565, localY(1.82), L(0.02));
-    P.addEquipment('turret', box(0.08, 0.86, 0.22), -0.815, localY(1.90), L(0.06));
-    P.addEquipment('turretDark', box(0.06, 0.03, 0.18), -0.815, localY(2.33), L(0.06));
-    // Structural fairing remains part of the cheek armor, not hull furniture.
-    // release 231: its underside at 1.50 (1 cm into the hull's slab), its nose lip at 1.56: it dipped to 1.34 over the
-    // glacis and swung through the track guards and the glacis grille as the turret traversed
-    P.add('turret', slab(
-      [-0.85, 1.50, 0.42], [-0.48, 1.50, 0.42], [-0.48, 1.50, 1.05], [-0.85, 1.50, 1.05],
-      [-0.85, 2.02, 0.42], [-0.48, 2.02, 0.42], [-0.48, 1.95, 1.05], [-0.85, 1.95, 1.05]),
-    0, localY(0), L(0));
-    P.add('turret', slab(
-      [-0.85, 1.50, 1.05], [-0.48, 1.50, 1.05], [-0.48, 1.50, 1.78], [-0.85, 1.50, 1.78],
-      [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.56, 1.66], [-0.85, 1.56, 1.66]),
-    0, localY(0), L(0));
-    P.addEquipment('turret', box(0.58, 0.24, 0.72), 0.55, localY(1.57), L(-0.04));
-    for (const [px, top] of [[0.30, 2.11], [0.51, 2.10], [0.77, 2.09]]) {
-      P.addEquipment('turret', box(0.10, top - 1.49, 0.14), px, localY((top + 1.49) / 2), L(0.10));
-    }
-    P.addEquipment('turretDark', box(0.50, 0.02, 0.50), -0.565, localY(2.205), L(0.02));
     // CENTER driver valley (gate front: 1.51-1.79 between the groups): plate,
     // flush hatch, episcope row, small center pod
     P.add('hull', box(0.76, 0.045, 1.61), -0.11, 1.485, 0.495);                   // driver plate 1.51 (x -0.49..+0.27)
@@ -626,390 +580,54 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
   yield 'buildArieteMkRunningGearStage1';
 
   // ---- turret ---------------------------------------------------------------
-  // main shell loft: front plate behind the mantlet at +1.30, cheek corner
-  // (±1.17,+1.28), walls ±1.24..1.28, to the bustle break at -1.12
-  const ARIETE_SHELL = [
-    [-0.42, L(1.30)], [0.42, L(1.30)], [1.17, L(1.28)],
-    [1.24, L(0.04)], [1.28, L(-0.42)], [1.28, L(-0.92)], [1.14, L(-1.12)],
-    [-1.14, L(-1.12)], [-1.28, L(-0.92)], [-1.28, L(-0.42)], [-1.24, L(0.04)],
-    [-1.17, L(1.28)],
-  ];
+  // 269 (the owner, 2026-11-03: "make the c1 arietee proto annd c2 ariete hhave completeely new turrets"): both marks'
+  // turrets are new geometry from the photographs, in arieteProtoTurret.ts: the shell (welded box, raked and swept cheek
+  // faces, gun slot and brow, bustle underside, rear stowage box, ring collar), the gun's shield collar and mantlet, and
+  // every fitting; the C2 lays its AMV package over the same shell. The gun's trunnion, barrel and ring datums, the coax
+  // port and the gun's travel are unchanged.
+  const seatTurretCassette: SeatTurretCassette = (face, courseAxis, w, h, d, embed) => {
+    faceSeatedArmorCassette(P, 'turret', face, courseAxis, w, h, d, embed);
+    c1EraReceipt.turretCheekCassettes++;
+  };
+  let protoTurretReceipt: ArieteProtoTurretReceipt | null = null;
   const buildArieteMkTurretStage1 = (): void => {
-    // Release 231 (the gun-hull fleet lane; the owner: "the older c1 arietes clip through hull"): the hull's top is one
-    // full-width slab at 1.51 (0.21 in this frame), and every lower edge of the turret below it was buried there at
-    // rest and swung out through the hull's sides, its lift eyes and its rear stowage as the turret traversed. The
-    // shell, bustle, cheeks, chin, cavity wall, rear basket, side rails and panels now stop 1 cm into the slab (0.20):
-    // nothing shows at rest that did not before, and nothing below 0.20 swings out at any bearing.
-    P.add('turret', KIT.polyMultiLoft(ARIETE_SHELL, [
-      { height: 0.20, inset: 1.0 },
-      { height: [0.62, 0.62, 0.63, 0.70, 0.72, 0.72, 0.70, 0.70, 0.72, 0.72, 0.70, 0.63], inset: 0.99 },
-      { height: [0.73, 0.73, 0.74, 0.85, 0.86, 0.86, 0.84, 0.84, 0.86, 0.86, 0.85, 0.74],
-        inset: [0.87, 0.87, 0.88, 0.90, 0.91, 0.91, 0.90, 0.90, 0.91, 0.91, 0.90, 0.88] },
-    ]));
-    // arrow nose: cheek slabs with RAKED undersides (gate ref bottoms rise
-    // 1.35@+0.8 -> 1.53@+1.8) meeting at the mantlet cavity; §K real closure.
-    // §5.299 SLOPED FRONT: the cheek FACES now rake back from the mantlet line
-    // to the roof — ridge top pulled +1.98 -> +1.62 and dropped to 1.965 (40°
-    // from vertical), mid +1.62 -> +1.42 (34°) — matching the print's own
-    // rising wedge silhouette (K-frame side_turret ref tops 1.82@+1.74 ->
-    // 1.96@+1.61 -> 2.02@+1.12: the roof-front is itself a rising plane, so
-    // the cheek top face now climbs 1.965@+1.62 -> 2.02@+1.16; bottom edge +
-    // plan front extreme byte-held so plan rows and the mantlet band cannot
-    // move).
-    for (const s of [-1, 1]) {
-      const upperCheekBottom: Quad = [[s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)]];
-      const upperCheekTop: Quad = [[s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]];
-      P.add('turret', slab(...upperCheekBottom, ...upperCheekTop));              // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-      if (!c2) {
-        // Release 240 (C1 ERA, see c1EraReceipt): four columns by two rows of the C2's cheek cassettes seated on the raked
-        // face, clear of the gun slot's side cheeks (x 0.375-0.42) and under the lifting lugs; the C2 lays its field on
-        // its own add-on carrier over this face. (268b round 2 dropped these for the photographs' plain plate; the
-        // owner's release-240 order for the C1's ERA reapplication stands, so they stay beside the flank smoke tubes.)
-        const face0: Quad = [upperCheekBottom[0], upperCheekBottom[1], upperCheekTop[1], upperCheekTop[0]];
-        for (const u of [0.28, 0.48, 0.68, 0.88]) for (const v of [0.25, 0.66]) {
-          const face = sampleArmorFace(...face0, u, v, [s, 1, 1]);
-          faceSeatedArmorCassette(P, 'turret', face, face.dv, 0.13, 0.055, 0.20, C2_ERA_EMBED_M);
-          c1EraReceipt.turretCheekCassettes++;
-        }
-      }
-      P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
-        [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
-        [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
-      // s5322-B3 cheek LIFTING LUGS on the §5.299 raked faces (owner MBT
-      // order; leaned D-rings + seat plates, tops flush with the certified
-      // climbing face line 1.99-2.005 — zero silhouette).
-      P.add('turret', box(0.06, 0.016, 0.05), s * 0.55, 0.648, L(1.50), -0.22, 0, 0);
-      P.add('turretDetail', torus(0.034, 0.010, 10), s * 0.55, 0.652, L(1.50), 1.05, 0, s * 0.35);
-      P.add('turret', box(0.06, 0.016, 0.05), s * 0.85, 0.652, L(1.38), -0.22, 0, 0);
-      P.add('turretDetail', torus(0.034, 0.010, 10), s * 0.85, 0.657, L(1.38), 1.05, 0, s * 0.35);
-    }
-    P.add('turret', box(0.84, 0.44, 0.30), 0, 0.42, L(1.42));                    // mantlet cavity back wall (closes the nose between cheeks)
-    for (const s2 of [-1, 1]) P.add('turret', slab(                              // cavity side cheeks to the mantlet flanks (no see-through at yaw)
-      [s2 * 0.375, 0.20, L(1.56)], [s2 * 0.42, 0.20, L(1.56)], [s2 * 0.42, 0.20, L(1.30)], [s2 * 0.375, 0.20, L(1.30)],
-      [s2 * 0.375, 0.62, L(1.52)], [s2 * 0.42, 0.62, L(1.52)], [s2 * 0.42, 0.64, L(1.28)], [s2 * 0.375, 0.64, L(1.28)]));
-    // ring skirt chin: gate ref bottoms dip 1.21-1.26 @ +0.30..+0.72
-    P.add('turret', box(1.60, 0.14, 0.46), 0, -0.025, L(0.51));
+    arieteProtoTurretShell(P);
   };
   buildArieteMkTurretStage1();
   yield 'buildArieteMkTurretStage1';
-  // bustle: roof continues the 2.16 line to -1.69, underside 1.40
-  const ARIETE_BUSTLE = [
-    [-1.13, L(-1.02)], [1.13, L(-1.02)], [1.13, L(-1.69)], [-1.13, L(-1.69)],
-  ];
   const buildArieteMkTurretStage2 = (): void => {
-    P.add('turret', KIT.polyMultiLoft(ARIETE_BUSTLE, [
-      { height: 0.10, inset: 1.0 },
-      { height: 0.70, inset: 0.995 },
-      { height: 0.76, inset: 0.93 },
-    ]), 0, 0.10, 0);
-    // rear baskets: tops 2.03 -> 1.98, bottoms 1.43, center bay to -2.44
-    // (§K.4 real rack: frames + mesh floor + fill, no marker-only census)
-    P.add('turret', box(2.10, 0.055, 0.68), 0, 0.70, L(-2.03));                  // basket top frame 2.00 (z -1.69..-2.37: the ref's -2.44 end pairs here
-    P.add('turret', box(2.10, 0.05, 0.66), 0, 0.23, L(-2.03));                  // under the measured compression registration — packet-documented)
-    for (const bx of [-1.02, -0.35, 0.35, 1.02]) {
-      P.add('turret', box(0.05, 0.525, 0.52), bx, 0.4675, L(-1.99));             // basket dividers
-    }
-    // 2026-10-19 (owner float sweep): the mesh face stood 22 mm over the floor frame, the bottles 35 mm over it, the left
-    // bundle 25 mm off its divider and the right strap 13 mm behind its bundle; the face now spans floor to top frame,
-    // the bottles rest on the floor, the bundle meets the divider and the strap sits on the bundle face.
-    P.add('turretDark', openRackGrid(2.04, 0.42, 0.020, 5, 10),
-      0, 0.4625, L(-2.36), Math.PI / 2, 0, 0);                                    // open rear mesh face in the registered frame
-    for (const [bx2, blen] of [[-0.70, 0.52], [0.02, 0.44], [0.72, 0.48]]) {
-      P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.34, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.34, L(-1.99));
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.34, L(-1.99));
-    }
-    stowage(P, 'turretDetail', rng, [[-0.63, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40],
-      [-0.05, 0.52, L(-2.02), 0.55, 0.18, 0.40], [0.80, 0.46, L(-1.98), 0.32, 0.14, 0.34]]);  // s5322-B2 bustle bays read as CARGO (owner MBT order; tops <= 1.91 world; right item CLAMPED inside the ±1.13 bustle plan — the 1.17 overflow cost plan_turret, measured + pulled in)
-    for (const sx of [-0.63, -0.05, 0.42, 0.80]) {
-      P.add('turretDark', box(0.022, 0.30, 0.014), sx, 0.45, L(sx === 0.80 ? -2.155 : -2.17));          // s5322-B2 cargo lash straps ON the bundle faces (inside the -2.37 plan boundary; the mesh-face seats poked it, measured + re-seated)
-    }
-    // full-run side racks (gate plan_turret: rails ±1.52 from +1.0 to -2.95;
-    // gate front_whole wing tops 1.91-1.96)
-    for (const s of [-1, 1]) {
-      // s5322-B1 rack-end caps — MEASURED EXCHANGE RECEIPT (§5.290): the
-      // §5.283 debt's "-3.0" is the REF frame's rail end; in this build's
-      // certified frame extending the run to world -3.0 walked past the
-      // z-compressed print's own rail-end column (plan_turret 63.4->48.7,
-      // st1 topPct 11.2 — both reverted). Caps are authored as end PLATES
-      // flush INSIDE the certified -2.58 rail envelope: capped-rail read,
-      // zero new extreme, st1 slab untouched.
-      P.add('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.24, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
-      for (const rz of [0.90, 0.30, -0.44, -1.10, -1.76, -2.42]) {               // end caps stay out of the st1 slab — prism law)
-        P.add('turret', box(0.045, 0.115, 0.06), s * 1.50, 0.2625, L(rz));      // stanchions tying the rail to the bay lip
-      }
-      P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.26, L(-2.556));         // s5322-B1 rack-end cap plates (inside the certified envelope)
-      P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.26, L(-2.572));   // cap end faces (dark hardware read)
-      for (const az of [-0.50, -1.44, -2.10]) {
-        P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.27, L(az));          // rack arms overlap the shell/panel and the outer rail
-      }
-      // Owner-marked panel re-seat. Its old inner face sat at |x|=1.40 while
-      // the turret/bustle carrier is |x|≈1.13, leaving 27 cm of daylight. The
-      // new 115 mm cassette overlaps that carrier by 15 mm and remains wholly
-      // turret-local. An aft bridge returns the cantilever into the rear basket
-      // frame, while the three rack arms tie its outer face to the rail.
-      P.add('turret', slab(
-        [s * 1.115, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-2.55)], [s * 1.115, 0.205, L(-2.55)],
-        [s * 1.115, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-2.55)], [s * 1.115, 0.58, L(-2.55)]));
-      P.add('turret', box(0.22, 0.16, 0.06), s * 1.14, 0.62, L(-2.03));         // rear basket-to-panel bridge; overlaps both structures
-      // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
-      P.add('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
-      if (c2) {
-        P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
-        addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05,
-          pitch: -0.40, slot: 'detail', seed: 30 + (s > 0 ? 1 : 0) }), s * 1.31, 0.56, L(-0.62));
-      } else {
-        // 268b round 2 (series C1 photographs 2 and 6; the blind critics: "the smoke launchers are tubes on the turret
-        // flanks"): four 80 mm tubes in a row along the platform, each angled up 30 degrees and out 35 degrees toward the
-        // bow, standing clear of the wall where the side view sees them (their old bank lay low behind a dark plate)
-        for (const [k, dz] of [-0.24, -0.08, 0.08, 0.24].entries()) {
-          addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 1, r: 0.04, len: 0.26, splay: s * 0.62,
-            pitch: -0.52, slot: 'detail', base: false, seed: 30 + k + (s > 0 ? 4 : 0) }), s * 1.335, 0.58, L(-0.62) + dz);
-        }
-      }
-      // s5322-B4 cable conduit run bustle -> cheek riding the wall-top
-      // shoulder (turret-owned; INBOARD of the lower wall band's own plan
-      // outline — the first wall-face seats poked the tapering walls by up to
-      // 0.045 and cost plan_turret, measured + re-seated per §5.290).
-      P.add('turretDetail', cylZ(0.013, 0.95, 6), s * 1.225, 0.66, L(-0.47));    // aft segment along the wall shoulder
-      P.add('turretDetail', cylZ(0.012, 0.85, 6), s * 1.16, 0.60, L(0.45));      // forward segment onto the cheek shoulder
-      P.add('turretDark', box(0.05, 0.06, 0.08), s * 1.21, 0.64, L(0.02));       // junction box at the segment lap
-      P.add('turretDark', box(0.045, 0.055, 0.07), s * 1.19, 0.55, L(-0.96));    // feed box at the bustle corner
-    }
-    // 268b (the owner: "fix all sides of the c1 arietes turrets, fix em all"; series C1 front and top photographs): the
-    // gunner's TURMS stands at the roof's right front (-x), ahead of the commander's stack and panoramic sight, its two
-    // windows forward under its open armoured doors; it stood on the left, where the real tank's loader works.
-    arieteTurmsSight(P, -0.80, 0.72, L(0.68));                                   // plinth sunk into the roof's fall (0.69-0.77 under it)
-    P.addEquipment('turret', cylY(0.13, 0.15, 0.16, 12), -0.76, 0.94, L(-0.16));          // pano pedestal
-    P.addEquipment('turret', cylY(0.16, 0.16, 0.15, 12), -0.76, 1.095, L(-0.16));         // pano head to 2.47 (p95 datum)
-    P.add('turretGlass', box(0.17, 0.08, 0.02), -0.76, 1.095, L(-0.005));
-    // s5322-B6 pano head REALIZED: brow hood over the lens + face frame +
-    // wiper — all under the head's own 1.17 crown (2.47 datum untouched).
-    P.add('turret', box(0.19, 0.022, 0.055), -0.76, 1.152, L(-0.035));           // brow hood lip (inside the head's own -0.32..0.00 side coverage)
-    P.add('turret', box(0.02, 0.09, 0.03), -0.855, 1.095, L(-0.032));            // face frame L
-    P.add('turret', box(0.02, 0.09, 0.03), -0.665, 1.095, L(-0.032));            // face frame R
-    P.add('turretDark', box(0.011, 0.07, 0.011), -0.80, 1.09, L(-0.024), 0, 0, -0.30); // wiper blade
-    // 2026-10-19 (owner float sweep): ring, lid and the three periscopes ahead stood 19 mm over the roof; lowered 22 mm.
-    cupolaRing(P, 0.45, 0.838, L(-0.42), 0.24);                                  // 268b: the loader's hatch ring, left (it was labelled the commander's)
-    P.add('turret', box(0.36, 0.022, 0.32), 0.45, 0.903, L(-0.42), 0, -0.08, 0); // split lid (owner c425f495 crew-station cadence)
-    // VH.14 (coordinator ruling 2026-10-14): the Ariete's AA gun is the loader's, worked from his hatch (C1: the MG 42/59
-    // on his ring; C2: the shielded 12.7 mm beside it). 268b: the commander's hatch is the right one, behind his panoramic
-    // sight, its periscopes round the ring's outboard-rear arc clear of the stack (it was the loader's, carrying the C1's
-    // MG on the right).
-    arieteHatch(P, -0.42, 0.835, L(-0.62), { r: 0.22, periscopes: 5, hingeSide: 1, arcCentre: -2.0 }); // coaming foot 1 cm into the 0.83 roof
-    periscope(P, 'turretDetail', 0.30, 0.878, L(-0.10), 0.1);                   // loader's forward periscope
-    arieteVentDome(P, 0.05, 0.84, L(-0.88));                                      // fume extractor vent behind the hatches
+    arieteProtoMantlet(P);
   };
   buildArieteMkTurretStage2();
   yield 'buildArieteMkTurretStage2';
-  // welded roof panel cadence (owner c425f495: flat dark fields + fastener
-  // strips — zero silhouette)
   const buildArieteMkTurretStage3 = (): void => {
-    for (const [px, pz, w, dd] of [[-0.68, -1.30, 0.46, 0.40], [0.02, -1.34, 0.58, 0.42],
-      [0.70, -1.28, 0.44, 0.40], [-0.55, -1.90, 0.54, 0.34], [0.14, -1.94, 0.60, 0.32]]) {
-      // 2026-10-19 (owner float sweep): the two aft fields lay 14 cm over the basket lid, past the bustle roof; each
-      // field drops onto what is under it.
-      P.snapGroup(`ariete-roof-field-${px}`, () => {
-        P.add('turretDark', box(w, 0.02, dd), px, 0.875, L(pz));
-        P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
-      }, { reachM: 0.16, mode: 'down' });
-    }
-    // (268b: the box on the roof's front centre, the old print's "gunner's aux sight hood", is gone with the left TURMS)
-    // crosswind mast folded low on the rear roof (xk2_black_panther height-law: no p95 spike)
-    P.addEquipment('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
-    P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
-    // s5322-B5 wind-sensor head at the folded mast tip — T-crossbar + vane
-    // stub FLUSH with the rod's own certified line (whip-rough law: no height).
-    P.add('turretDark', box(0.085, 0.017, 0.017), -0.30, 0.938, L(-1.60));       // crossbar T
-    P.add('turretDark', box(0.017, 0.017, 0.055), -0.30, 0.938, L(-1.635));      // vane stub aft
-    P.add('turretDark', cylY(0.016, 0.016, 0.03, 6), -0.30, 0.925, L(-1.60));    // sensor drum under the bar
-    // antennas: print carries ONE right whip (x +0.87, z -0.95, base 2.29,
-    // tip 3.55); left base authored folded (print-true absence of the rod)
-    addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.27, r: 0.02, rake: 0, seed: 48 }),
-      0.87, 0.86, L(-0.885));                                                    // vertical rod (leaning tips read partial columns in the front trace)
-    P.add('turretDark', cylY(0.035, 0.04, 0.09, 8), -0.87, 0.883, L(-0.885));    // left whip base drum, rod stowed; 2026-10-19 (owner float sweep): was 22 mm up
-    // s5322-B8 antenna BASES realized: AB-armored feed boxes + cable loops at
-    // both whip stations (tops nest under the certified 2.25 base-drum column).
-    for (const s of [-1, 1]) {
-      P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.864, L(-0.90));    // tuner feed box inboard of the pot; 2026-10-19 (owner float sweep): was 32 mm up
-      P.add('turretDark', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));    // coiled cable service loop (dark, FSP-06) nested under the base-drum column
-    }
-    // mantlet (release 231; owner: "make the way the gun fits into turret more like the actual c2 and c1 ariete, instead
-    // of a huge block mantlet"): the gun enters a narrow slot between the converging cheeks. Its own mantlet is a
-    // 0.44 m plate set 9 cm inside the cheek ridge, its face raked back 37 degrees with them, its sides inside the cheeks'
-    // inner faces and its foot on the turret's underside line; a collar where the tube leaves it. The old 0.75 m block
-    // stood 6 cm proud of the ridge with a deeper shroud behind it.
-    P.addGunExtra(slab(
-      [-0.22, -0.15, 0.50], [0.22, -0.15, 0.50], [0.22, -0.15, 1.02], [-0.22, -0.15, 1.02],
-      [-0.22, 0.22, 0.50], [0.22, 0.22, 0.50], [0.22, 0.22, 0.74], [-0.22, 0.22, 0.74]), 0, 0, 0);
-    P.addGunExtra(cylZ(0.13, 0.26, 16), 0, 0, 0.93);                             // tube collar emerging from the raked face
-    // s5322-A1 coax MG 42/59 — REAL aperture (owner MBT order): armored collar
-    // ring at the block face + recessed dark throat + 5cm stub barrel w/
-    // booster cap. Protrusion budget measured twice (0.30-proud rod −0.67
-    // plan_turret, 0.16-proud −0.38 — both pulled back per §5.290): the port
-    // now reads via the collar/tone with ≤0.06 proud of the face, sub-column
-    // beside the bare ref tube. Gun-bucketed so the coax ELEVATES with the
-    // 120mm (§B5/§B3.1).
-    P.addGunExtra(cylZ(0.050, 0.055, 10), 0.165, 0.10, 0.85);                    // aperture collar on the mantlet face, right of the tube
-    P.addGunExtraDark(cylZ(0.034, 0.09, 8), 0.165, 0.10, 0.835);                 // port throat (recessed dark)
-    P.addGunExtraDark(cylZ(0.014, 0.04, 8), 0.165, 0.10, 0.89);                  // MG 42/59 stub muzzle
-    P.addGunExtraDark(cylZ(0.019, 0.025, 8), 0.165, 0.10, 0.92);                 // booster cap
-    for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                      // raked wedge lips lining the mantlet slot (turret-fixed; release 231: moved in
-        [s * 0.20, 0.26, L(2.00)], [s * 0.375, 0.26, L(1.76)], [s * 0.375, 0.26, L(1.58)], [s * 0.20, 0.26, L(1.70)],  // from x 0.375-0.55 with the narrow
-        [s * 0.20, 0.57, L(1.80)], [s * 0.375, 0.54, L(1.58)], [s * 0.375, 0.54, L(1.54)], [s * 0.20, 0.58, L(1.64)]));  // mantlet; §5.299 33° cheek rake)
-    }
-    liftEye(P, 'turretDetail', -1.05, 0.82, L(0.60), 0.3);                      // 2026-10-19 (owner float sweep): eyes were 78 mm up
-    liftEye(P, 'turretDetail', 1.05, 0.82, L(0.60), -0.3);
+    protoTurretReceipt = arieteProtoTurretFittings(P, { mark, seat: seatTurretCassette, c2Era: c2EraReceipt });
   };
   buildArieteMkTurretStage3();
   yield 'buildArieteMkTurretStage3';
 
   const buildArieteMkMarkingsStage1 = (): void => {
     if (c2) {
-      // ---- C2/AMV upgrade package (photo-class; print is C1-only here) -------
-      const buildArieteMkMarkingsCourse1 = (): void => {
-        for (const s of [-1, 1]) {
-          const buildArieteMkTurretCourse1 = (): void => {
-            const cheekBottom: Quad = [                                              // release 231: no lower than the C1 arrow's 0.20 floor
-              [s * 0.40, 0.20, L(2.04)], [s * 1.10, 0.24, L(1.72)],
-              [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.20, L(1.58)],
-            ];
-            const cheekTop: Quad = [
-              [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)],
-              [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)],
-            ];
-            P.add('turret', slab(...cheekBottom, ...cheekTop));                     // add-on cheek carrier intersects the C1 arrow
-            P.add('turretDark', box(0.02, 0.34, 0.34), s * 1.135, 0.38, L(1.44), 0, 0, s * 0.10); // module edge seams
-            // The marked carrier is the compound-raked FORWARD cheek, not the roof
-            // or the narrow outer wall. Sample its exact slab vertices as one
-            // continuous five-by-two field per side so every cassette inherits the
-            // cheek sweep, pitch and taper. Each back penetrates the carrier by
-            // 12 mm; there is no cosmetic mounting plate or daylight behind it.
-            const cheekFrontFace: Quad = [
-              cheekBottom[0], cheekBottom[1], cheekTop[1], cheekTop[0],
-            ];
-            // 267 (C2 photographs 2-5): the field is the C2's bolted add-on plating, flush chamfered plates with corner
-            // bolts that close into one panelled front, not ERA bricks with dark lids
-            // 268b (C2 photographs 1 and 5: each cheek's front is one broad plate with a few big bolt heads): the ten
-            // plates close into one field with hairline joints, five heads scattered on it, not four on every tile
-            for (const u of [0.10, 0.30, 0.50, 0.70, 0.90]) for (const v of [0.27, 0.73]) {
-              const face = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
-              faceSeatedArmorCassette(P, 'turret', face, face.dv,
-                0.150, 0.045, 0.255, C2_ERA_EMBED_M, { kind: 'plate', bevel: 0.003, bolts: false });
-              if (c2EraReceipt) {
-                c2EraReceipt.turretCheekCassettes += 1;
-                c2EraReceipt.turretCheekForwardNormalDotMin = Math.min(
-                  c2EraReceipt.turretCheekForwardNormalDotMin, face.normal.z);
-              }
-            }
-
-            if (P.q) {
-              for (const [u, v] of [[0.20, 0.88], [0.78, 0.88], [0.50, 0.50], [0.28, 0.12], [0.74, 0.12]] as const) {
-                const f = sampleArmorFace(...cheekFrontFace, u, v, [s, 1, 1]);
-                boltHeads(P, 'turretDetail', [f.point.clone().addScaledVector(f.normal, 0.045 + 0.001)], f.normal);
-              }
-            }
-
-            // The C2 shoulder boxes are already turret-owned armor carriers. Seat
-            // the side field on their real outer planes, not on a hidden second
-            // plate behind them: four modules per box, two boxes per side.
-            for (const carrier of [
-              { y: localY(1.70), z: L(0.62), h: 0.40, d: 0.62 },
-              { y: localY(1.745), z: L(-0.06), h: 0.49, d: 0.66 },
-            ]) {
-              const buildArieteMkTurretCourse2 = (): void => {
-                for (const yOffset of [-0.22, 0.22]) for (const zOffset of [-0.24, 0.24]) {
-                  const face = {
-                    point: new THREE.Vector3(s * 1.46,
-                      carrier.y + carrier.h * yOffset,
-                      carrier.z + carrier.d * zOffset),
-                    normal: new THREE.Vector3(s, 0, 0),
-                    dv: new THREE.Vector3(0, 0, 1),
-                  };
-                  faceSeatedArmorCassette(P, 'turret', face, face.dv,
-                    carrier.h * 0.43, 0.045, carrier.d * 0.47, C2_ERA_EMBED_M, { kind: 'plate', bevel: 0.012, bolts: true });
-                  if (c2EraReceipt) c2EraReceipt.turretSideCassettes += 1;
-                }
-              };
-              buildArieteMkTurretCourse2();
-            }
-
-            // Aft courses sit directly on the newly re-seated bustle panel. They
-            // begin behind the left APU envelope, avoiding a cosmetic overlap while
-            // still protecting both rear quarters symmetrically.
-            for (const y of [0.28, 0.48]) for (const zWorld of [-1.74, -2.08, -2.42]) {
-              const face = {
-                point: new THREE.Vector3(s * 1.235, y, L(zWorld)),
-                normal: new THREE.Vector3(s, 0, 0),
-                dv: new THREE.Vector3(0, 0, 1),
-              };
-              faceSeatedArmorCassette(P, 'turret', face, face.dv,
-                0.16, 0.050, 0.26, C2_ERA_EMBED_M);
-              if (c2EraReceipt) c2EraReceipt.turretBustleCassettes += 1;
-            }
-            // (267: the glacis add-on rows are gone: no C2 photograph shows plates on the upper glacis, which carries the
-            // intake grille between the lamp clusters)
-          };
-          buildArieteMkTurretCourse1();
-        }
-        // 267 (C2 photographs 1-5): the commander's new panoramic sight is an armoured drum with a domed cap and a meshed
-        // forward window, standing on the C1 pano's pedestal (it replaces the plain box housing; arieteMkParts.ts)
-        attilaSightHead(P, 'turret', -0.76, 1.165, L(-0.16));
-        // (release 240, the owner: "make sure all tank turrets are clear of hulls": the pod stood 0.22-0.32 m over the fore
-        // deck inside the turret's front volume, since release 231 removed its fairing; it seats on the upper glacis ahead of
-        // the driver, its top under the bustle's 1.80 m (world) sweep line)
-        // (release 240: 8 cm tall, not 10, its base still on the glacis: at its 10 cm the main gun's -4.6 deg stop ahead
-        // passed 13 mm over it, inside the gun's 25 mm hull keep)
-        P.add('hull', box(0.26, 0.08, 0.16), 0.0, 1.399, 1.75);                    // driver thermal camera pod on the glacis
-        P.add('hullGlass', box(0.16, 0.04, 0.02), 0.0, 1.404, 1.835);
-        P.add('turret', box(0.44, 0.34, 0.60), -1.14, localY(1.70), L(-1.35));     // yawing APU/shoulder box, zero-yaw world seat retained
-        P.add('turretDark', box(0.38, 0.26, 0.02), -1.14, localY(1.68), L(-1.04));
-        stowage(P, 'turretDetail', rng, [[0.62, 0.76, L(-2.06), 0.48, 0.18, 0.24]]);
-        addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, r: 0.02, rake: 0, seed: 52 }),
-          -0.87, 0.86, L(-0.885));                                                 // second whip rigged on the C2 fit
-        // 267 (C2 photographs 2-5): the C2's roof gun is the loader's 12.7 mm heavy MG on a pintle at his hatch, behind a
-        // two-leaf gun shield, not an automated tower: the race, yoke box, canted cheeks and sensor head are gone. It keeps
-        // the station's name, side and working rig (userData.remoteControlled marks a working station, as on the C1).
-        // (Round 2: at the old station's seat, aft-outboard of the hatch ring; on the ring's centre the field net's right
-        // flank re-cut and the turret's ring-overhang pockets grew 2020 -> 2216 cm2, roof-pocket census.)
-        const rwsX = 0.54, rwsZ = L(-0.57);
-        const remoteRws = FITTINGS.pintleMG({ working: true, ridingCradle: true, mats: P.mats, cls: 'm2', tone: 'two-tone',
-          elev: -0.02, ammo: true, shield: 'armored', scale: 0.86, seed: 46 });
-        remoteRws.name = 'arieteC2RemoteRws';
-        remoteRws.userData.remoteControlled = true;
-        addFitting(P, 'turret', remoteRws, rwsX, 0.895, rwsZ, [0, 0, 0]);
-        P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
-      };
-      buildArieteMkMarkingsCourse1();
+      // (release 240, the owner: "make sure all tank turrets are clear of hulls": the pod stood 0.22-0.32 m over the fore
+      // deck inside the turret's front volume, since release 231 removed its fairing; it seats on the upper glacis ahead of
+      // the driver, its top under the bustle's 1.80 m (world) sweep line)
+      // (release 240: 8 cm tall, not 10, its base still on the glacis: at its 10 cm the main gun's -4.6 deg stop ahead
+      // passed 13 mm over it, inside the gun's 25 mm hull keep)
+      P.add('hull', box(0.26, 0.08, 0.16), 0.0, 1.399, 1.75);                    // driver thermal camera pod on the glacis
+      P.add('hullGlass', box(0.16, 0.04, 0.02), 0.0, 1.404, 1.835);
+      // 269: the number on the stowage box's rear face between the left bin and the APU (the walls carry the add-on boxes,
+      // the smoke rows and the insignia and designation seats)
+      P.decal('turret', 'number', 'C2 01', 0.20, [0.05, 0.67, -2.451], Math.PI, 0, 0);
     } else {
-      const buildArieteMkMarkingsCourse2 = (): void => {
-        // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
-        const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-          elev: 0, shield: false, scale: 0.62, seed: 45, working: true, ridingCradle: true });
-        loaderMg.name = 'arieteC1LoaderMg';
-        addFitting(P, 'turret', loaderMg, 0.45, 0.85, L(-0.40), [0, 0.3, 0]);     // 268b: on the loader's ring, left, laid forward
-        P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
-      };
-      buildArieteMkMarkingsCourse2();
+      // 269: the number on the right wall under the smoke tubes' shelf, ahead of the bustle's louvre
+      P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.38, -0.45], -Math.PI / 2, 0, -0.02);
     }
   };
   buildArieteMkMarkingsStage1();
   yield 'buildArieteMkMarkingsStage1';
   const buildArieteMkHullStage4 = (): void => {
-    P.turretG.userData.arieteSidePanelReceipt = Object.freeze({
-      owner: 'turret',
-      panels: 2,
-      formerInnerFaceXM: 1.40,
-      carrierFaceXM: 1.13,
-      innerFaceXM: 1.115,
-      outerFaceXM: 1.235,
-      carrierOverlapM: 0.015,
-      rackSupportArmsPerSide: 3,
-      rearBasketBridgesPerSide: 1,
-      maxSupportGapM: 0,
-      followsTurretYaw: true,
-    });
+    // 269: the new turret's measured plan and package (arieteProtoTurret.ts); it replaces the old bustle side-panel receipt
+    if (protoTurretReceipt) P.turretG.userData.arieteProtoTurretReceipt = Object.freeze({ ...protoTurretReceipt, followsTurretYaw: true });
     if (!c2) P.hullG.userData.arieteC1EraReceipt = Object.freeze({ ...c1EraReceipt });
     if (c2 && c2EraReceipt) {
       c2EraReceipt.totalTurretCassettes = c2EraReceipt.turretCheekCassettes
@@ -1023,17 +641,18 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       roofWeaponStations: 1,
       remoteWeapon: 'm2',
       remoteControlled: true,
-      remoteWeaponSide: 'right',
+      // 269 (C2 photographs 3 and 5): the loader's gun and its two-leaf shield stand on the turret's left, ahead of his hatch
+      remoteWeaponSide: 'left',
       armoredTower: false,
       gunShield: true,
-      rotatingShoulderModules: 4,
+      rotatingShoulderModules: protoTurretReceipt?.shoulderModules ?? 0,
       rotatingApuAssembly: true,
     } : {
       // VH.14: the C1's one roof gun is the loader's AA MG 42/59 (the commander's cupola gun is gone)
       roofWeaponStations: 1,
       manualPintles: 1,
       remoteControlled: false,
-      rotatingShoulderModules: 4,
+      rotatingShoulderModules: protoTurretReceipt?.shoulderModules ?? 0,
       rotatingApuAssembly: false,
     });
 
