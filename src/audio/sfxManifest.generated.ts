@@ -204,7 +204,7 @@ export const SFX_ASSETS: Readonly<Record<string, SfxAssetRecord>> = {
   "graze_earth": {"g":"impacts","n":3,"d":[1.414,1.6,1.6],"c":1,"r":48000,"kb":52},
   "graze_mud": {"g":"impacts","n":3,"d":[1.6,1.6,1.3],"c":1,"r":48000,"kb":48},
   "graze_paved": {"g":"impacts","n":3,"d":[1.6,1.02,1.04],"c":1,"r":48000,"kb":48},
-  "graze_sand": {"g":"impacts","n":2,"d":[1.6,1.6],"c":1,"r":48000,"kb":29},
+  "graze_sand": {"g":"impacts","n":3,"d":[1.6,1.6,1.6],"c":1,"r":48000,"kb":44},
   "graze_snow": {"g":"impacts","n":3,"d":[1.3,1.52,1.6],"c":1,"r":48000,"kb":50},
   "graze_water": {"g":"impacts","n":3,"d":[1.76,1.56,1.76],"c":1,"r":48000,"kb":51},
   "ground_concrete": {"g":"impacts","n":3,"d":[1.76,0.458,0.66],"c":1,"r":48000,"kb":39},

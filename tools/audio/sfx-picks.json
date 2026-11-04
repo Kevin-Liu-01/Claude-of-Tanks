@@ -40,7 +40,7 @@
   "hit_rock": [0, 2, 3],
   "hit_wall": [1, 0, 3],
   "graze_earth": [4, 5, 6],
-  "graze_sand": [0, 1],
+  "graze_sand": [0, 1, 10],
   "graze_mud": [5, 0, 6],
   "graze_snow": [3, 2, 5],
   "graze_paved": [2, 6, 4],

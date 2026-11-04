@@ -978,9 +978,10 @@ crew-lines.json ─┐                    crew-voices.json
   YAMNet ear proxy, judged on the file that ships: 23 of 40 passed. 11 banks
   were re-pinned to takes that pass. Four were re-prompted: the wreck heard as
   a drum, the snow and sand grazes heard as a zipper, a fart and spray, and
-  the driver's spall heard as a drum. That cost 516 more credits, 4,568 for
-  the round. All 39 shipped files now pass, with graze_sand shipping two
-  variants (docs/audio-generation/quality.md).
+  the driver's spall heard as a drum. That cost 580 more credits, 4,632 for
+  the round; 64 of them were four more sand takes, after only two of the
+  first eight passed once mastered. All 40 shipped files now pass
+  (docs/audio-generation/quality.md).
 
 ### Cost
 

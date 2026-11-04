@@ -61,7 +61,7 @@ Keys jangling). The verdict:
 - A wreck strike was heard as a drum in 8 takes of 8, and a snow graze as a fart.
 - Mastering moves a short take's verdict near the floor, so a pick is confirmed on the shipped file.
 
-All 39 shipped files pass.
+All 40 shipped files pass.
 
 ## Failure modes
 
