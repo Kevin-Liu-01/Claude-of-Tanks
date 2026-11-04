@@ -16,7 +16,7 @@
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { clothRoll, liftingEye, loftRings, rollStraps } from './chieftainMarksX.ts';
+import { chamferedCase, clothRoll, grabRail, liftingEye, loftRings, periscopeHead, rollStraps, sightBox, tubeThrough } from './chieftainMarksX.ts';
 import { reserveDecorVolume } from './fieldChest.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -111,6 +111,14 @@ function closures(P: TankBuilderPort, pivot: Point): void {
       P.add('turret', fill);
     }
   }
+  // Release 269: the crack under the casting's aft step (z -0.76..-0.70, x 0.23-0.62 a side, a centimetre or two under
+  // its 1.784 underside, between the step's two walls), shared with the Mk 10 X: the census reads it (184 + 176 cm2)
+  // once the bustle basket and the stowed rods move its grid, and reads it on the round-268b Mk 9 too on that grid.
+  for (const side of [-1, 1]) {
+    const crack = box(.40, .028, .078).translate(side * .425 - pivot[0], 1.776 - pivot[1], -.727 - pivot[2]);
+    crack.userData.chieftainMk9 = 'undercut';
+    P.add('turret', crack);
+  }
   // Under the starboard bow light's stock (x -1.17..-1.41, z 2.79..2.86).
   const bow = box(.25, .045, .10).translate(-1.292, 1.352, 2.825);
   bow.userData.chieftainMk9 = 'bowUndercut';
@@ -149,11 +157,12 @@ function laterStowage(P: TankBuilderPort, pivot: Point): void {
   const add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number): void =>
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2]);
   const r = .125, rollY = 2.3056 + r * .55 - .012;
-  add('turretCloth', clothRoll(1.30, r, .004), -.02, rollY, -1.86);
-  for (const strap of rollStraps(1.30, r, .004, [-.30, .30])) add('turretDark', strap, -.02, rollY, -1.86);
+  const tag = (g: THREE.BufferGeometry): THREE.BufferGeometry => { g.userData.chieftainMk9 = 'laterStowage'; return g; };
+  add('turretCloth', tag(clothRoll(1.30, r, .004)), -.02, rollY, -1.86);
+  for (const strap of rollStraps(1.30, r, .004, [-.30, .30])) add('turretDark', tag(strap), -.02, rollY, -1.86);
   const t = .105, tarpY = 1.942 + t * .55 - .010;
-  add('turretCloth', clothRoll(.46, t, .008).rotateY(Math.PI / 2), -1.265, tarpY, -1.13);
-  for (const strap of rollStraps(.46, t, .008, [-.22, .22])) add('turretDark', strap.rotateY(Math.PI / 2), -1.265, tarpY, -1.13);
+  add('turretCloth', tag(clothRoll(.46, t, .008).rotateY(Math.PI / 2)), -1.265, tarpY, -1.13);
+  for (const strap of rollStraps(.46, t, .008, [-.22, .22])) add('turretDark', tag(strap.rotateY(Math.PI / 2)), -1.265, tarpY, -1.13);
 }
 
 /** The turret-ring splash lip on the hull roof ahead of the turret: a 30 mm bar on an arc about the ring's axis that
@@ -190,6 +199,96 @@ function keepDecorOffSideBox(P: TankBuilderPort, pivot: Point): void {
     [-1.53 - pivot[0], 2.28 - pivot[1], .20 - pivot[2]]);
 }
 
+/**
+ * Release 269 (the owner, 2026-11-03: "for the cheiftain mk 3 and mk 9, add on all the equipment we had on teh turrets
+ * from before onto the currennt mk 3 and mk 9"): the retired upper assembly's turret kit (chieftainMarksX.ts) seated on
+ * the Mk 10 X casting where that build carried it: its armoured sight head with the window on the roof ahead of the
+ * loader's hatches, the loader's periscopes, the sight box beside the cupola, the roof grab rails, stowed rods on the
+ * left housing and the bustle rail basket with two tarpaulin rolls and the ammunition can. What this Mk 9 already carries
+ * keeps its current part: the side housings and cases (the old side bins), the left carrier (the flank baskets), the
+ * smoke banks, the whips, the cupola's L37. Heights are the casting's roof as measured on the build (within 3 mm).
+ */
+function oldTurretKit(P: TankBuilderPort, pivot: Point): void {
+  // each part tagged with its item (chieftainFidelity.selftest.mjs reads the tags)
+  const item = (name: string): Add => (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    g.userData.chieftainOldKit = name;
+    P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
+  };
+  sightHead(item('sightHead'));
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .14, 2.425, .30, -.08);
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .33, 2.425, .30, .10);
+  sightBox(item('sightBox'), 'turretDetail', 'turretDark', 'turretGlass', .12, 2.407, -.98, 0, .20, .14, .20);
+  grabRail(item('grabRail'), 'turretDetail', [.28, 2.389, .82], [.66, 2.378, .82]);
+  grabRail(item('grabRail'), 'turretDetail', [-.15, 2.411, .62], [-.55, 2.392, .62]);
+  grabRail(item('grabRail'), 'turretDetail', [.40, 2.407, -1.02], [.80, 2.407, -1.02]);
+  grabRail(item('grabRail'), 'turretDetail', [-.30, 2.407, -1.02], [-.68, 2.407, -1.02]);
+  wallRods(item('stowedRods'));
+  bustleBasket(P, item('bustleBasket'), pivot);
+}
+
+/** The armoured sight head of the old Mk 9 (its window forward) on the roof ahead of the loader's hatches (their front
+ * leaf, hinged at z 0.205, stands open over it 85 mm short of the head) and inboard of the antenna support (x 0.854): a
+ * cast plinth bedded into the falling roof (2.425 at its inner rear corner, 2.37 at its outer front), the head on it, the
+ * dark window with its glass and hood, and the lid plate. */
+function sightHead(add: Add): void {
+  const x = .65, z = .50, foot = 2.355;
+  add('turretDetail', chamferedCase(.36, .10, .38), x, foot + .05, z);
+  add('turretDetail', chamferedCase(.40, .24, .40), x, foot + .10 + .11, z);
+  const top = foot + .10 + .23, front = z + .20;
+  add('turretDetail', box(.42, .020, .38), x, top + .006, z - .01);
+  add('turretDark', box(.28, .115, .016), x, foot + .225, front + .004);
+  add('turretGlass', box(.21, .082, .004), x, foot + .225, front + .014);
+  add('turretDetail', box(.32, .012, .070), x, foot + .300, front + .030, -.22);
+  for (const dx of [-.15, .15]) add('turretDetail', box(.014, .115, .040), x + dx, foot + .225, front + .016);
+}
+
+type Add = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx?: number, ry?: number, rz?: number) => void;
+
+/** Stowed rods (cleaning staves and pickets, the old build's rods on its side bins) on two hook brackets on the left
+ * housing's outer wall (x -1.5535, z -0.478..0.300, y 1.903-2.30): each bracket a plate 6 mm into the wall, an arm out to
+ * x -1.630 and a lip; three rods on the arms under a strap. */
+function wallRods(add: Add): void {
+  const wall = -1.5535, armY = 2.060;
+  for (const z of [-.33, .15]) {
+    add('turretDetail', box(.014, .10, .050), wall - .001, armY + .030, z);
+    add('turretDetail', box(.080, .014, .040), wall - .040, armY, z);
+    add('turretDetail', box(.012, .048, .040), wall - .076, armY + .024, z);
+    add('turretDark', box(.006, .062, .030), wall - .055, armY + .056, z);
+  }
+  const r = .016, y = armY + .007 + r;
+  add('turretDark', KIT.cylZ(r, .80, 10), wall - .022, y, -.09);
+  add('turretDark', KIT.cylZ(r, .72, 10), wall - .054, y, -.11);
+  add('turretDark', KIT.cylZ(.019, .76, 10), wall - .038, y + .030, -.07);
+}
+
+/** The bustle rail basket of the old build (it had a tray, rails and two tarpaulin rolls behind the NBC pack) behind the
+ * rear body (its rear face z -2.090, x -0.806..0.753 with 50 mm chamfers, y 1.872-2.306), past its rear plate (to z
+ * -2.222) and ledges: floor bars from 5 mm into the body's face back to the rear rail, a lower and an upper rail bent
+ * round the back (their ends into the face), uprights, a gusset under each outer floor bar, the two rolls and the can. */
+function bustleBasket(P: TankBuilderPort, add: Add, pivot: Point): void {
+  const x0 = -.75, x1 = .70, front = -2.085, rear = -2.56, low = 1.905, high = 2.27, side = -2.30;
+  const bend = .06;
+  for (const y of [low, high]) {
+    add('turretOpenLattice', tubeThrough([[x0, y, front], [x0, y, rear + bend], [x0 + bend * .3, y, rear + bend * .3],
+      [x0 + bend, y, rear], [x1 - bend, y, rear], [x1 - bend * .3, y, rear + bend * .3], [x1, y, rear + bend], [x1, y, front]],
+    .011, 8), 0, 0, 0);
+  }
+  for (let i = 0; i <= 8; i++) {
+    const x = x0 + bend + (x1 - x0 - 2 * bend) * i / 8;
+    add('turretOpenLattice', KIT.cylY(.007, .007, high - low, 8), x, (high + low) / 2, rear);
+  }
+  for (const x of [x0, x1]) for (const z of [side, (side + rear) / 2 - .03]) {
+    add('turretOpenLattice', KIT.cylY(.007, .007, high - low, 8), x, (high + low) / 2, z);
+  }
+  const bars = [-.70, -.42, -.14, .14, .42, .66];
+  for (const x of bars) add('turretOpenLattice', box(.026, .012, front - rear + .005), x, low - .006, (front + rear) / 2 + .0025);
+  for (const x of [bars[0], bars[bars.length - 1]]) add('turretDetail', box(.050, .060, .050), x, low - .040, front - .012);
+  if (!P.mats) return;
+  KIT.tarpRoll(P, 'turretCloth', -.32 - pivot[0], low + .095 - .004 - pivot[1], -2.40 - pivot[2], .48, .095, true);
+  KIT.tarpRoll(P, 'turretCloth', .45 - pivot[0], low + .085 - .004 - pivot[1], -2.40 - pivot[2], .40, .085, true);
+  KIT.ammoCan(P, 'turretDark', .14 - pivot[0], low + .10 - .004 - pivot[1], -2.40 - pivot[2], 0);
+}
+
 export function addChieftainMk9Kit(P: TankBuilderPort, pivot: Point, trunnion: Point): void {
   bareNose(P, pivot);
   mantletCover(P, trunnion);
@@ -198,4 +297,5 @@ export function addChieftainMk9Kit(P: TankBuilderPort, pivot: Point, trunnion: P
   splashLip(P, pivot[2]);
   turretLiftingEyes(P, pivot);
   keepDecorOffSideBox(P, pivot);
+  oldTurretKit(P, pivot);
 }

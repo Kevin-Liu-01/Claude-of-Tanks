@@ -1028,4 +1028,72 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
+  // Chieftain Mk 3 (release 269; the owner, 2026-11-03: "for the mk3 add. abunch of nts and ghillie on the guns and turret
+  // and hull coverinng all suerfaces"): a BAOR tank dressed for a hide (1970s-80s, woodland nets and hessian scrim, the
+  // barrel bound in scrim). Turret: the roof and bustle netted over the NBC pack and the bar basket, round the cupola, the
+  // loader's hatch and both whips (the lenses, the periscopes and the cupola's L37 open themselves), the gun's slot ahead
+  // of the casting's face bare; drapes down both flanks over the side bin, the jerry cans and the baskets (the left
+  // flank's stop behind the searchlight's lens), and over the basket's rear. Hull: the engine deck round its two louvred
+  // covers (their hot air), the front decks and glacis round the driver's hatch, his periscope and the lamps, the nose and
+  // the stern round its exhaust pipes, four drapes a side down the bazooka plates over the running gear. Guns: the L11 in a
+  // scrim sleeve from its root cover to the fume extractor, laid over its upper flanks (never under its axis) where it passes
+  // over the hull, and bound right round from the extractor to short of the muzzle; the ranging gun's barrel in a strip of it. The
+  // cupola's L37 stays bare (a working station: the builder opens its traverse). Owner-local metres of the Mk 5 X build
+  // (chieftain5X.ts: the turret's pivot [0.0031, 1.476, 0.3693], the trunnion 1.2007 ahead of it at y 0.3834).
+  chieftain3: {
+    id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
+    // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
+    // publishes none), 0.3 degrees deeper (0.8 over the stern from 140, where the recoiled extractor runs back over the
+    // deck): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach. Under
+    // them the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat exemption there (it lay 24 mm
+    // under the barrel at yaw 150) and the cards keep the clearance across their faces.
+    gunPitchByYawDeg: [[0, -10], [126, -10], [127, -8.86], [128, -5.52], [129, -4.02], [130, -3.21], [131, -2.89],
+      [132, -2.86], [133, -2.46], [134, -1.27], [135, -0.64], [136, -0.49], [138, -0.49], [139, -0.71], [140, -1.89],
+      [141, -2.08], [142, -1.99], [143, -1.93], [144, -1.93], [145, -1.39], [146, -1.11], [147, -1.08], [148, -1.27],
+      [149, -1.93], [150, -1.86], [151, -1.86], [152, -1.71], [153, -1.64], [154, -1.14], [155, -1.02], [156, -0.99],
+      [158, -0.99], [159, -0.55], [160, -0.46], [161, -0.46], [162, -0.08], [163, 0.07], [164, 0.07], [165, 0.11],
+      [169, 0.11], [170, 0.14], [173, 0.14], [174, 0.2], [175, 0.26], [176, 0.29], [177, 0.29], [178, 0.32],
+      [180, 0.32]],
+    clothClearsGunStops: true, cardsClearGunStops: true,
+    turret: {
+      top: [laid({
+        x0: -1.76, x1: 1.76, z0: -2.68, z1: 1.58, nx: 44, nz: 54, y: 0.83,
+        outline: [[-1.76, -2.68], [1.76, -2.68], [1.76, 1.58], [0.24, 1.58], [0.24, 1.06], [-0.24, 1.06], [-0.24, 1.58],
+          [-1.76, 1.58]],
+        holes: [rect(-0.95, -0.01, -1.29, -0.36), rect(0.17, 0.84, -1.09, -0.38), rect(0.707, 0.887, -1.859, -1.679),
+          rect(-0.933, -0.753, -1.839, -1.659)],
+        garnishRiseM: 0.16, garnishDensity: 1.5, seed: 11,
+      })],
+      // both flanks to the cheeks: the clearance keeps the cloth out of the searchlight's and the smoke banks' lines
+      side: [...flanks(-2.57, 0.60, 0.80, 0.50, 1.55, 17).filter((p) => p.side < 0),
+        ...flanks(-2.57, 0.60, 0.80, 0.50, 1.76, 19).filter((p) => p.side > 0)],
+      face: [face({ z: -2.62, x0: -1.40, x1: 1.68, y0: 0.33, y1: 0.80, nx: 31, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.66, x1: 1.66, z0: -3.58, z1: -0.70, nx: 34, nz: 30, y: 1.70, holes: [rect(-0.92, 0.92, -3.23, -2.47)],
+          garnishRiseM: 0.12, seed: 31 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 34, nz: 42,
+          yAt: profile([[-0.70, 1.54], [1.65, 1.523], [2.15, 1.393], [2.57, 1.324], [2.73, 1.265], [3.02, 1.141], [3.40, 1.10]]),
+          garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+      ],
+      // three drapes a side tied along the bazooka plates' top edge under the fender bins (a roll over the bins would
+      // stand in the turret kit's sweep), down to the plates' foot
+      side: [0, 1, 2].flatMap((k) => flanks(-3.20 + k * 2.15, -3.20 + k * 2.15 + 2.05, 1.30, k === 1 ? 0.62 : 0.66, 1.665,
+        41 + 6 * k, { tiedTop: true })),
+      face: [face({ z: 3.42, x0: -1.10, x1: 1.10, y0: 0.88, y1: 1.15, nx: 22, ny: 5, seed: 43 }),
+        face({ z: -3.60, x0: -1.30, x1: 1.30, y0: 1.08, y1: 1.70, nx: 26, ny: 7, seed: 47,
+          holes: [rect(-1.00, -0.69, 1.18, 1.60), rect(0.69, 1.00, 1.18, 1.60)] })],
+    },
+    gun: {
+      sleeve: [
+        // over the hull (the rear deck binds the gun's floors from below and the fender bins from beside, under its axis)
+        // the scrim is laid over the barrel's upper flanks only, its hems 20 degrees over the axis, its garnish close in
+        { z0: 0.50, z1: 2.80, reachM: 0.20, wrapDeg: 70, garnishOffM: 0.03, garnishDensity: 2, seed: 51 },
+        { z0: 3.76, z1: 4.66, reachM: 0.20, garnishDensity: 6, seed: 53 },
+        { z0: 0.68, z1: 1.50, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 140, gapM: 0.005, garnishOffM: 0, seed: 57 },
+      ],
+    },
+  },
 });

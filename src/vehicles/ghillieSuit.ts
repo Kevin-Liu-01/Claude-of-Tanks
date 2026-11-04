@@ -177,10 +177,42 @@ interface FacePanel {
   seed?: number;
 }
 
+/**
+ * Release 269 (the owner, 2026-11-03, on the Chieftain Mk 3: "a bunch of nets and ghillie on the guns and turret and hull
+ * coverinng all suerfaces"): a net bound round a barrel, laid by the gun owner, so it rides the gun through its elevation.
+ * Between z0 and z1 (the owner's z, along the bore) the cloth is a sleeve at the cords' loft over the barrel's radius
+ * there: its outermost armour beside the axis, within reachM, and the most of it within the recoil stroke ahead (the tube
+ * slides back under the sleeve as it fires). It runs from the crown down each flank `wrapDeg` round: 180 binds it right
+ * round, the two halves meeting under the barrel; less lays it over the barrel, hemmed on its flanks. Where a part stands
+ * on or over the barrel (a ranging gun's housing) the cloth starts beside it; the hem tears as a drape's does, and the
+ * garnish is tied in along the flanks as on a drape.
+ */
+interface SleevePanel {
+  z0: number;
+  z1: number;
+  /** The axis the sleeve is bound round, owner-local [x, y] (default the bore, [0, 0]). */
+  axis?: Point2;
+  /** Only armour within this distance of the axis is the barrel (default 0.25 m). */
+  reachM?: number;
+  /** How far round from the crown the cloth reaches, in degrees (default 180). */
+  wrapDeg?: number;
+  /** The cords' loft over the barrel (default 8 mm). */
+  gapM?: number;
+  /** The farthest a garnish card stands off the barrel's surface (default a drape's reach); 0: no garnish tied in. */
+  garnishOffM?: number;
+  /** Scales the garnish count (default 1). */
+  garnishDensity?: number;
+  seed?: number;
+}
+/** A sleeve's flank as its cloth surface reads it (the drapes' `side`). */
+interface SleeveSide extends SleevePanel { readonly side: number }
+
 interface GhilliePanels {
   top?: readonly TopPanel[];
   side?: readonly SidePanel[];
   face?: readonly FacePanel[];
+  /** Release 269: nets bound round a barrel (the gun owner's; SleevePanel). */
+  sleeve?: readonly SleevePanel[];
 }
 
 export interface GhillieConfig {
@@ -282,6 +314,13 @@ export interface GhillieConfig {
    * and the card, every draw of a dropped card still made (HIGH and LOW lay the same clumps). Unset: every card.
    */
   garnishBudget?: { clumpCards?: number; lowShare?: number };
+  /**
+   * Release 269: the main gun's depression by yaw the suit keeps clear of (fieldClearanceM), in place of the spec's, for a
+   * vehicle whose measured floors (tools/gun-depression-sweep.mjs) the spec does not publish: the cloth and garnish keep
+   * their clearance from the gun where it can really go, and its full depression over a deck it cannot reach does not
+   * strip that deck.
+   */
+  gunPitchByYawDeg?: GunPitchByYawCurve;
   hull?: GhilliePanels;
   turret?: GhilliePanels;
   gun?: GhilliePanels;
@@ -915,7 +954,7 @@ interface ClothSurface {
   holeAt?(x: number, z: number): boolean;
   /** Whether a garnish card's vertex may sit here (clear of openings, never under its own carrier). */
   cardOk(p: readonly number[]): boolean;
-  readonly panel: TopPanel | SidePanel | FacePanel;
+  readonly panel: TopPanel | SidePanel | FacePanel | SleeveSide;
   readonly owner: 'side' | 'face' | 'top';
 }
 
@@ -2011,6 +2050,82 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   };
 }
 
+/** A sleeve's cords' loft over its barrel (SleevePanel.gapM) and its folds' share of a drape's. */
+const SLEEVE_GAP_M = 0.008;
+const SLEEVE_FOLD_K = 0.18;
+/** The recoil stroke a sleeve's radius reads ahead of each station (the tube slides back under it). */
+const SLEEVE_RECOIL_M = 0.14;
+
+/**
+ * Release 269: one flank of a net bound round a barrel (SleevePanel), crown to hem, as a hanging drape's curtain: its
+ * stations along the bore, its section the barrel's circle at the cords' loft (started beside anything standing on or
+ * over the barrel), its folds a fifth of a drape's, its hem torn.
+ */
+function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, support: OwnerSupport, uvk: number): ClothSurface {
+  const { z0, z1, axis = [0, 0], reachM = 0.25, wrapDeg = 180, gapM = SLEEVE_GAP_M } = panel;
+  const [ax, ay] = axis, probe = support.probe, wrap = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(wrapDeg, 30, 180));
+  const s = panelSeed(panel, cfg.seed) ^ (side > 0 ? 0x2b : 0x71);
+  // the barrel's radius at a station: its outermost armour either side at the axis' height, within reach
+  const bare = (z: number): number | null => {
+    let r: number | null = null;
+    for (const f of [-1, 1]) {
+      const o = probe?.side(ay, z, f);
+      if (o === null || o === undefined) continue;
+      const d = o - f * ax;
+      if (d > 0 && d <= reachM && (r === null || d > r)) r = d;
+    }
+    return r;
+  };
+  const radiusAt = (z: number): number | null => {
+    let r: number | null = null;
+    for (let k = 0; k <= 7; k++) {
+      const d = bare(z + SLEEVE_RECOIL_M * k / 7);
+      if (d !== null && (r === null || d > r)) r = d;
+    }
+    return r;
+  };
+  // a cloth point inside armour (the nearest surface over it faces up) or within 6 mm of any along its vertical
+  const blocked = (x: number, y: number, z: number): boolean => {
+    let above: { y: number; up: boolean } | null = null;
+    for (const h of probe?.surfacesAt?.(x, z) ?? []) {
+      if (Math.abs(h.y - y) < 0.006) return true;
+      if (h.y > y) above = h; else break;
+    }
+    return above !== null && above.up;
+  };
+  const spec: CurtainSpec = {
+    a0: z0, a1: z1, seed: s, foldK: SLEEVE_FOLD_K, maxOut: Infinity,
+    hem: () => -Infinity,
+    section(z) {
+      const r = radiusAt(z);
+      if (r === null) return null;
+      const R = r + gapM, n = Math.max(6, Math.ceil(wrap / 0.13)), pts: Array<[number, number]> = [];
+      for (let i = 0; i <= n; i++) {
+        const phi = wrap * i / n, out = R * Math.sin(phi), up = R * Math.cos(phi);
+        if (blocked(ax + side * out, ay + up, z)) { if (pts.length) break; continue; }
+        pts.push([out, up]);
+      }
+      return pts.length >= 3 ? { pts, corner: 0 } : null;
+    },
+    fallback: (_z, t) => [0, ay + t * 0.01],
+    place: (z, out, up) => [ax + side * out, ay + up, z],
+    keepPoint: support.clothOk, field: !!support.clothOk,
+    orphan: () => true,
+  };
+  const { geometry, columns } = buildCurtain(spec, uvk, panelUvOffset(panel, cfg.seed), side < 0);
+  const off = Math.max(0, panel.garnishOffM ?? FIELD_DRAPE_OFF_M);
+  return {
+    kind: 'drape', owner: 'side', panel: { ...panel, side }, geometry, domain: [z0, z1, 0.06, 0.97],
+    sample: curtainSampler(columns, (n) => { const l = Math.hypot(n[0], n[1]) || 1; return [side * n[0] / l, n[1] / l, 0]; }),
+    allowed: () => off > 0,
+    cardOk: (p) => {
+      if (!(off > 0) || p[2] < z0 - 0.02 || p[2] > z1 + 0.02) return false;
+      const r = radiusAt(THREE.MathUtils.clamp(p[2], z0, z1));
+      return r !== null && Math.hypot(p[0] - ax, p[1] - ay) <= r + gapM + off && !blocked(p[0], p[1], p[2]);
+    },
+  };
+}
+
 function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number): ClothSurface {
   const { x0, x1, y0, y1, outline = null, holes = [] } = panel;
   const facing = panel.z >= 0 || (panel.zAt ? panel.zAt((x0 + x1) / 2, (y0 + y1) / 2) >= 0 : false) ? 1 : -1;
@@ -2873,7 +2988,8 @@ function* addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Fiel
     const lo = surface.sample((u0 + u1) / 2, 0.06), hi = surface.sample((u0 + u1) / 2, 0.97);
     area = Math.abs(u1 - u0) * (lo && hi ? Math.max(0.2, Math.hypot(hi.p[0] - lo.p[0], hi.p[1] - lo.p[1], hi.p[2] - lo.p[2])) : 0.6);
   }
-  const want = area * (top ? FIELD_CLUMPS_TOP : FIELD_CLUMPS_DRAPE) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1);
+  const want = area * (top ? FIELD_CLUMPS_TOP : FIELD_CLUMPS_DRAPE) * cfg.density
+    * (top ? (panel.garnishDensity ?? 1) : (surface.panel as Partial<SleeveSide>).garnishDensity ?? 1);
   const clothAt = clothDistance(surface.geometry);
   // netting-225: a drape's card hugs its cloth (FIELD_DRAPE_OFF_M), its face's nine points measured to the cloth round them
   const clothNear = top ? null : clothWithin(surface.geometry, FIELD_DRAPE_OFF_M);
@@ -4677,7 +4793,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
 
 /** fieldClearance a triangle pass a slice (the suit's build steps it; the tables are the call's own). */
 function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conservativeGun = false,
-  clothClearsStops = false): Generator<void, FieldClearance, void> {
+  clothClearsStops = false, { gunWrap = [], curve }: { gunWrap?: readonly SleevePanel[]; curve?: GunPitchByYawCurve } = {},
+): Generator<void, FieldClearance, void> {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
@@ -4841,6 +4958,20 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
     e[0] = Math.min(e[0], x); e[1] = Math.max(e[1], x); e[2] = Math.max(e[2], y); e[3] = Math.max(e[3], -y);
     extent.set(k, e);
   });
+  // release 269: a net bound round the barrel (SleevePanel) widens the gun by its cloth and garnish over its span (below
+  // the barrel only where the sleeve is bound round under it), so the hull's suit keeps its clearance from the gun as
+  // dressed
+  for (const sleeve of gunWrap) {
+    const grow = (sleeve.gapM ?? SLEEVE_GAP_M) + FOLD_DEPTH_M * SLEEVE_FOLD_K + Math.max(0, sleeve.garnishOffM ?? FIELD_DRAPE_OFF_M);
+    const under = (sleeve.wrapDeg ?? 180) >= 170;
+    for (let k = Math.floor(sleeve.z0 / SWEEP_BIN_M); k <= Math.floor(sleeve.z1 / SWEEP_BIN_M); k++) {
+      const e = extent.get(k);
+      if (!e) continue;
+      e[0] -= grow; e[1] += grow; e[2] += grow;
+      if (under) e[3] += grow;
+      radius.set(k, (radius.get(k) ?? 0) + grow);
+    }
+  }
   // how far round the trunnion the gun's wide parts reach (a point that near is tested at several yaws)
   let gunReach = 0;
   for (const r of radius.values()) gunReach = Math.max(gunReach, r);
@@ -4849,7 +4980,8 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
   let leftmost = 0, rightmost = 0, maxAlong = 0, minAlong = 0;
   for (const e of extent.values()) { leftmost = Math.min(leftmost, e[0]); rightmost = Math.max(rightmost, e[1]); }
   for (const k of extent.keys()) { maxAlong = Math.max(maxAlong, (k + 1) * SWEEP_BIN_M); minAlong = Math.min(minAlong, k * SWEEP_BIN_M); }
-  const spec = P.spec;
+  // release 269: a suit's own measured curve (GhillieConfig.gunPitchByYawDeg) stands in for the spec's
+  const spec = curve ? { ...P.spec, gunPitchByYawDeg: curve } : P.spec;
   const deg = Math.PI / 180;
   const tMax = (spec.gunElevationDeg ?? 18) * deg;
   const tMinFront = -(spec.gunDepressionDeg ?? 8) * deg;
@@ -5525,6 +5657,10 @@ function* addGhillieOwner(
     yield;
   }
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
+  for (const panel of panels.sleeve ?? []) {
+    for (const side of [-1, 1]) surfaces.push(sleeveCloth(panel, side, cfg, support, uvk));
+    yield;
+  }
   yield;
   if (leafy && cage.length && gunFloor) {
     for (const [i, wing] of cage.entries()) {
@@ -5781,7 +5917,8 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
   let clearance: FieldClearance | null = null;
   if (cfg.fieldClearanceM !== undefined) {
     yield;
-    clearance = yield* fieldClearanceSteps(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true, cfg.clothClearsGunStops === true);
+    clearance = yield* fieldClearanceSteps(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true, cfg.clothClearsGunStops === true,
+      { gunWrap: cfg.gun?.sleeve, curve: cfg.gunPitchByYawDeg });
   }
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
   yield;

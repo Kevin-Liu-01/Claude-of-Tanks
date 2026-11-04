@@ -79,3 +79,73 @@ export function tubeThrough(points: readonly (readonly [number, number, number])
   const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)), false, 'centripetal', .2);
   return new THREE.TubeGeometry(curve, Math.max(2, (points.length - 1) * 6), radius, sides, false);
 }
+
+// ---- release 269: the retired upper assembly's turret kit, re-made for the current castings ----------------------------
+// The owner (2026-11-03): "for the cheiftain mk 3 and mk 9, add on all the equipment we had on teh turrets from before
+// onto the currennt mk 3 and mk 9". Before release 268b both marks wore the uk.ts upper assembly
+// (buildChieftainUpper2026Steps on chieftain5Build / chieftainMk10Build): a compressed faceted shell carrying an IR
+// searchlight with its lens (Mk 3) or an armoured sight head with its window (Mk 9), smoke banks on the front quarters,
+// long side bins with stowed rods on them, the loader's periscopes and a sight box beside the cupola, dark bars across
+// the roof shoulders, three whips on box shoes, a bustle rail basket with two tarpaulin rolls and an ammunition can, the
+// L37 on the cupola. These are that kit's parts as shaped, seated equipment; each mark seats them on its own casting
+// (chieftainMk3X.ts, chieftainMk9X.ts), and the items its build already carries keep the current part.
+
+type Point3 = readonly [number, number, number];
+
+/** A welded case with its top edges chamfered (the Mk 5 X's case section), centred on the origin. */
+export function chamferedCase(width: number, height: number, depth: number): THREE.BufferGeometry {
+  return sectionSolid([-.5, .5].map((z) => ({ z: z * depth,
+    ring: [[-width / 2, -height / 2], [width / 2, -height / 2], [width / 2, height * .36], [width * .43, height / 2],
+      [-width * .43, height / 2], [-width / 2, height * .36]],
+  })));
+}
+
+/** A grab rail across a roof: a 22 mm bar bent up off two weld pads at a and b (their feet 8 mm into the plate),
+ *  `height` over the roof, its bends rounded. */
+export function grabRail(place: Placer, bucket: string, a: Point3, b: Point3, height = .075, radius = .011): void {
+  const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, k = Math.min(.045, l * .2);
+  const pts: [number, number, number][] = [[a[0], a[1] - .008, a[2]], [a[0], a[1] + height - k, a[2]],
+    [a[0] + ux * k * .4, a[1] + height - k * .12, a[2] + uz * k * .4], [a[0] + ux * k, a[1] + height, a[2] + uz * k],
+    [b[0] - ux * k, b[1] + height, b[2] - uz * k], [b[0] - ux * k * .4, b[1] + height - k * .12, b[2] - uz * k * .4],
+    [b[0], b[1] + height - k, b[2]], [b[0], b[1] - .008, b[2]]];
+  place(bucket, tubeThrough(pts, radius, 8), 0, 0, 0);
+  for (const p of [a, b]) place(bucket, KIT.cylY(radius * 2.2, radius * 2.5, .014, 10), p[0], p[1] - .001, p[2]);
+}
+
+/** A cast periscope head on the roof (the loader's), its glass on the face turned to `yaw` (0: forward), its foot
+ *  10 mm into the roof at y. */
+export function periscopeHead(place: Placer, bucket: string, glass: string, x: number, y: number, z: number, yaw = 0): void {
+  const s = Math.sin(yaw), c = Math.cos(yaw);
+  place(bucket, chamferedCase(.15, .085, .12), x, y + .0325, z, 0, yaw);
+  place(bucket, box(.17, .014, .14), x, y - .003, z, 0, yaw);
+  place(glass, box(.112, .032, .006), x + s * .059, y + .036, z + c * .059, 0, yaw);
+  // the hood over the pane
+  place(bucket, box(.13, .010, .030), x + s * .062, y + .060, z + c * .062, 0, yaw);
+}
+
+/** The old roof sight box: a chamfered case with a recessed dark window on its face turned to `yaw`. */
+export function sightBox(place: Placer, bucket: string, dark: string, glass: string, x: number, y: number, z: number,
+  yaw = 0, w = .22, h = .15, d = .22): void {
+  const s = Math.sin(yaw), c = Math.cos(yaw);
+  place(bucket, chamferedCase(w, h, d), x, y + h / 2 - .008, z, 0, yaw);
+  place(dark, box(w * .68, h * .48, .012), x + s * (d / 2 - .002), y + h * .52, z + c * (d / 2 - .002), 0, yaw);
+  place(glass, box(w * .56, h * .36, .004), x + s * (d / 2 + .003), y + h * .52, z + c * (d / 2 + .003), 0, yaw);
+  // the window's brow
+  place(bucket, box(w * .78, .012, .035), x + s * (d / 2 + .012), y + h * .82, z + c * (d / 2 + .012), 0, yaw);
+}
+
+/** Stowed rods (the cleaning staves and pickets the old build carried along its side bins): `count` rods of `length` along
+ *  +Z lying side by side across X on the surface at yBase (a bin lid), each end in a welded cradle (a bar across under
+ *  them, 6 mm into the lid, its ends turned up) with a webbing strap over them. */
+export function stowedRods(place: Placer, bucket: string, dark: string, x: number, yBase: number, zc: number, length: number,
+  count = 3): void {
+  const r = .017, pitch = .042, span = (count - 1) * pitch, y = yBase + .006 + r;
+  for (let i = 0; i < count; i++) {
+    place(dark, KIT.cylZ(i === 1 ? .02 : r, length - (i % 2) * .08, 10), x + (i - (count - 1) / 2) * pitch, y + (i === 1 ? .003 : 0), zc + (i % 2) * .03);
+  }
+  for (const dz of [-length * .34, length * .34]) {
+    place(bucket, box(span + .07, .012, .034), x, yBase, zc + dz);
+    for (const sx of [-1, 1]) place(bucket, box(.012, .046, .034), x + sx * (span / 2 + .03), yBase + .017, zc + dz);
+    place(dark, box(span + .06, .006, .028), x, y + r + .006, zc + dz);
+  }
+}

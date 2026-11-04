@@ -16,9 +16,10 @@
 // Sources and photographs: ~/cot-lanes/italy-korea-bmp-267-evidence/research/chieftain3/. First-party: Kevin B. Liu.
 import * as THREE from 'three';
 import { antennaPart } from './antennaPart.ts';
+import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { liftingEye, tubeThrough } from './chieftainMarksX.ts';
+import { chamferedCase, grabRail, liftingEye, periscopeHead, sightBox, stowedRods, tubeThrough } from './chieftainMarksX.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
@@ -31,12 +32,7 @@ function latheZ(profile: readonly (readonly [number, number])[], segments: numbe
 }
 
 /** A welded case: a box whose top edges are chamfered (the Mk 5 X's caseSolid section). */
-function caseSolid(width: number, height: number, depth: number): THREE.BufferGeometry {
-  return sectionSolid([-.5, .5].map((z) => ({ z: z * depth,
-    ring: [[-width / 2, -height / 2], [width / 2, -height / 2], [width / 2, height * .36], [width * .43, height / 2],
-      [-width * .43, height / 2], [-width / 2, height * .36]],
-  })));
-}
+const caseSolid = chamferedCase;
 
 /**
  * The L21 ranging gun on the main gun's cradle (it elevates with the gun and does not recoil with it): an armoured
@@ -167,6 +163,77 @@ function glacis(P: TankBuilderPort): void {
   for (const side of [-1, 1]) liftingEye(add, 'hullDetail', side * .86, roof(2.30, .86) - .002, 2.30, Math.PI / 2);
 }
 
+/**
+ * Release 269 (the owner, 2026-11-03: "for the cheiftain mk 3 and mk 9, add on all the equipment we had on teh turrets
+ * from before onto the currennt mk 3 and mk 9"): the retired upper assembly's turret kit (chieftainMarksX.ts) seated on
+ * the Mk 5 X casting, where that build carried it. What this Mk 3 already carries keeps its current part: the searchlight
+ * box on the left (it takes the old light's lens), the smoke banks, the side baskets, the bar basket with its tarpaulin
+ * and kit bag, the two Larkspur whips, the cupola's L37. The casting's surfaces are read from its rows
+ * (chieftain5XSourceTurret.ts, chieftain5XSourceApplique.ts) and measured on the build (heights within 3 mm).
+ */
+function oldTurretKit(P: TankBuilderPort, place: Add, pivot: Point): void {
+  // each part tagged with its item (chieftainFidelity.selftest.mjs reads the tags)
+  const item = (name: string): Add => (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    g.userData.chieftainOldKit = name;
+    place(bucket, g, x, y, z, rx, ry, rz);
+  };
+  const add = item('grabRail');
+  searchlightLens(item('searchlightLens'));
+  sideBin(item('sideBin'));
+  // the loader's two periscopes ahead of his hatch (the old build's roof boxes ahead of the cupola), turned out a little
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .34, 2.311, .08, -.10);
+  periscopeHead(item('periscope'), 'turretDetail', 'turretGlass', .57, 2.311, .06, .12);
+  // the sight box beside the cupola, behind the loader's hatch, its window forward
+  sightBox(item('sightBox'), 'turretDetail', 'turretDark', 'turretGlass', .10, 2.314, -.86, 0, .20, .14, .20);
+  // the roof grab rails where the old build's bars crossed the roof shoulders: forward of the loader's periscopes and
+  // beside the gunner's sight, and behind the cupola and the loader's hatch
+  grabRail(add, 'turretDetail', [.30, 2.309, .40], [.64, 2.307, .40]);
+  grabRail(add, 'turretDetail', [-.12, 2.307, .62], [-.44, 2.307, .62]);
+  grabRail(add, 'turretDetail', [.42, 2.311, -1.15], [.80, 2.311, -1.15]);
+  grabRail(add, 'turretDetail', [-.42, 2.311, -1.12], [-.80, 2.311, -1.12]);
+  // the ammunition can from the old bustle shelf, on the bar basket's floor bar beside the NBC pack
+  if (P.mats) KIT.ammoCan(P, 'turretDark', .429 - pivot[0], 1.9245 - pivot[1], -2.08 - pivot[2], 0);
+}
+
+/** The searchlight's lens on the front of the Mk 5 X's searchlight box (its front face at z 0.2376, x 0.953-1.744, y
+ * 1.724-2.299): a 0.37 m bezel standing 6 cm proud, its glass 3.5 cm back in it over a dark reflector, the retaining
+ * ring at its mouth and a brow over it (the old build's lens, ring and lid). Outboard of the starboard cheek cover. */
+function searchlightLens(add: Add): void {
+  const x = 1.37, y = 2.00, face = .2376;
+  const bezel = new THREE.LatheGeometry([[.150, 0], [.186, 0], [.186, .058], [.172, .068], [.150, .068], [.150, 0]]
+    .map(([r, h]) => new THREE.Vector2(r, h)), 28).rotateX(Math.PI / 2);
+  add('turretDetail', bezel, x, y, face - .010);
+  add('turretDark', cylZ(.151, .012, 28), x, y, face + .012);
+  add('turretGlass', cylZ(.149, .004, 28), x, y, face + .024);
+  add('turretDetail', KIT.torus(.166, .012, 28, 6), x, y, face + .055, Math.PI / 2);
+  add('turretDetail', box(.42, .016, .09), x, y + .205, face + .040, -.25);
+}
+
+/** The side bin on the right of the turret ahead of the jerry cans (z 0.24-0.84; the old build's long side bins): a
+ * welded box hung on the casting and the cheek cover, its inboard face 12 mm into them as they curve in (x 1.223 at
+ * the foot to 1.113 at the lid at z 0.24, 1.278 to 1.198 at z 0.84), its outer face leaning in with the flank, a door with
+ * its hinges and hasps, two shoes under it into the casting, and stowed rods in cradles on its lid. */
+function sideBin(add: Add): void {
+  const yb = 1.80, yt = 2.07, out0 = 1.52, out1 = 1.49;
+  const rows: readonly (readonly [z: number, inLow: number, inTop: number])[] = [[.24, 1.223, 1.113], [.54, 1.250, 1.150],
+    [.84, 1.278, 1.198]];
+  const g = sectionSolid(rows.map(([z, inLow, inTop]) => {
+    const ring: [number, number][] = [[inLow, yb], [out0, yb], [out1, yt - .028], [out1 - .028, yt], [inTop, yt]];
+    return { z, ring: ring.reverse().map(([x, yy]): [number, number] => [-x, yy]) };
+  }));
+  add('turretDetail', g, 0, 0, 0);
+  const lean = Math.atan2(out0 - out1, yt - .028 - yb), mid = (yb + yt - .028) / 2;
+  const faceX = -(out0 + (out1 - out0) * (mid - yb) / (yt - .028 - yb));
+  add('turretDetail', box(.010, .175, .48), faceX - .004, mid, .54, 0, 0, -lean);
+  add('turretDark', box(.006, .19, .50), faceX - .001, mid, .54, 0, 0, -lean);
+  for (const z of [.38, .70]) {
+    add('turretDark', cylZ(.011, .07, 8), faceX - .014, mid + .094, z);
+    add('turretDark', box(.016, .034, .022), faceX - .016, mid - .070, z);
+  }
+  for (const z of [.30, .78]) add('turretDetail', box(.26, .030, .060), -1.355, yb - .012, z);
+  stowedRods(add, 'turretDetail', 'turretDark', -1.35, yt, .58, .66);
+}
+
 export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: Point): void {
   const add: Add = (bucket, g, x, y, z, rx = 0, ry = 0, rz = 0) =>
     P.addEquipment(bucket, g, x - pivot[0], y - pivot[1], z - pivot[2], rx, ry, rz);
@@ -177,4 +244,9 @@ export function addChieftainMk3Kit(P: TankBuilderPort, pivot: Point, trunnion: P
   larkspurWhips(add);
   for (const side of [-1, 1]) liftingEye(add, 'turretDetail', side * .78, 2.282, .55, 0);
   glacis(P);
+  oldTurretKit(P, add, pivot);
+  // release 269 (the owner, 2026-11-03: "for the mk3 add. abunch of nts and ghillie on the guns and turret and hull
+  // coverinng all suerfaces"): the field net, garnish and barrel scrim (ghillieFleetSuits.ts chieftain3), laid on the
+  // assembled build
+  addVehicleGhillieSuit(P);
 }
