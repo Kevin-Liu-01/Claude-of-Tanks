@@ -70,12 +70,12 @@ Object.assign(spec, {
   turretTraverseDegS: 60, gunPitchDegS: 48, gunElevationDeg: 60, gunDepressionDeg: 8,
 });
 spec.dims = { hullLengthM: 6.622, overallLengthM: 6.87, widthM: 3.33, heightM: 3.40 };
-// The gun's measured stops on the Mk IV hull (builder S, fix round 1: gunHullClearance's probe at 2.6 cm, every degree of
+// The gun's measured stops on the Mk IV hull (builder S, fix round 2: gunHullClearance's probe at 2.6 cm, every degree of
 // yaw, bisected to 0.05 degrees and fitted by tools/gun-depression-sweep.mjs --envelope): the full 8 degrees over the bow
-// and the sides, held over the Mk IV's raised troop roof and rear ramp astern (to -4.9 at 146-170 degrees, -6 straight
+// and the sides, held over the Mk IV's raised troop roof and rear ramp astern (to -4.9 at 153-170 degrees, -6.2 straight
 // back).
-spec.gunPitchByYawDeg = Object.freeze([[0, -8], [139, -8], [141, -6.9], [144, -6], [145, -5.2], [146, -4.9], [170, -4.9],
-  [171, -5], [172, -5.3], [173, -6], [180, -6]] as const);
+spec.gunPitchByYawDeg = Object.freeze([[0, -8], [139, -8], [141, -6.9], [147, -5.7], [151, -5.1], [153, -4.9], [170, -4.9],
+  [171, -5.1], [173, -6.2], [180, -6.2]] as const);
 spec.armor.gunPivot = [...LVKV_TRUNNION];
 spec.armor.gunBarrel = { lengthM: LVKV_MUZZLE_Z, radiusM: LVKV_GUN.barrelR };
 // the welded turret (profiles/lvkv9040Frame.ts): the rear section to the seam, the front section to its front roof edge

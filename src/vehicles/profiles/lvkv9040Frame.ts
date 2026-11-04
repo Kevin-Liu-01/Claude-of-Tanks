@@ -35,14 +35,15 @@ export const LVKV_TRUNNION = Object.freeze([0, 0.48, 0.78] as const);
  * The 40 mm Bofors L/70 (gun-local, +z along the bore from the elevation axis). The mantlet drum about the elevation
  * axis fills the slot (3 cm from its walls, its rear wall and the chin at every pitch); the cradle's cover one long cone
  * (photos 01-02; fix round 1, the blind critic: thickest at the turret face, about 0.4 of the drum's width, tapering
- * steadily into the ribs), the band of eight ribs (0.46 m), the barrel and the flash eliminator; the muzzle 3.40 m out,
- * 3.14 m ahead of the front plate.
+ * steadily into the ribs); the band of eight ribs as thick as the cone's front (fix round 2, the A/B judge: 0.40 m from
+ * 0.15 m further back), the barrel and the short flared tip (round 2: no slotted brake); the muzzle 3.40 m out, 3.14 m
+ * ahead of the front plate.
  */
 export const LVKV_GUN = Object.freeze({
   mantletR: 0.30, mantletHalfW: 0.23,
-  coneRearZ: 0.20, coneRearR: 0.21, coneFrontZ: 1.30, coneFrontR: 0.11,
-  ribsRearZ: 1.26, ribsFrontZ: 1.72, ribsCoreR: 0.08, ribR: 0.095, ribCount: 8,
-  barrelRearZ: 1.10, barrelR: 0.057, barrelFrontR: 0.052, deviceRearZ: 3.16, deviceR: 0.074, deviceRearR: 0.066,
+  coneRearZ: 0.20, coneRearR: 0.21, coneFrontZ: 1.15, coneFrontR: 0.11,
+  ribsRearZ: 1.11, ribsFrontZ: 1.55, ribsCoreR: 0.095, ribR: 0.11, ribCount: 8,
+  barrelRearZ: 1.00, barrelR: 0.057, barrelFrontR: 0.052, tipRearZ: 3.25, tipR: 0.08, tipRearR: 0.06,
 });
 
 /** The bore mouth, gun-local z: the flash eliminator's face. */
@@ -51,7 +52,7 @@ export const LVKV_MUZZLE_Z = 3.40;
 /**
  * The PS-95 search radar's drum on the bustle roof, rear left (photo 02: on the far side of the turret, behind the
  * sight heads; ~1.06 m across, ~1.0 m tall, its top's edge rounded; fix round 1, the blind critic: low on a dark base
- * nearly its own width, open between its posts, a mast at its rear).
+ * nearly its own width, open between its posts).
  */
 export const LVKV_RADAR = Object.freeze({
   x: 0.45, z: -0.70, r: 0.53, bottomY: 0.89, topY: 1.85, rimR: 0.05, baseR: 0.46, postR: 0.39,
@@ -62,5 +63,6 @@ export const LVKV_RADAR = Object.freeze({
  * the commander's on the right (-x), the gunner's on the left (+x); [x, z] of each head's centre. */
 export const LVKV_SIGHTS = Object.freeze({
   commander: Object.freeze({ x: -0.55, z: 0.22, w: 0.34, d: 0.42, h: 0.46 }),
-  gunner: Object.freeze({ x: 0.56, z: 0.26, w: 0.30, d: 0.40, h: 0.38 }),
+  // (fix round 2, the A/B judge: its hood 0.11 m lower and 0.16 m further forward, just behind the gun's sight pod)
+  gunner: Object.freeze({ x: 0.56, z: 0.42, w: 0.30, d: 0.40, h: 0.27 }),
 });
