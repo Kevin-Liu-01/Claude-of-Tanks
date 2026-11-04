@@ -3366,12 +3366,15 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
     clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
-      currentDamagePanel()?.clear(); // (2026-11-02 audit, 04-ui-1 item 7) no mask retry or tank visual outlives the battle
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       watchOwner.current?.stop();
       if (keepScreens) return;
+      // (2026-11-02 audit, 04-ui-1 item 7) no mask retry or tank visual outlives the battle. The one clear() lets go of the
+      // tank and its masks too (integration IR4), so it runs here, under the veil, not while a kept HUD still draws the
+      // plan (leave() and a preparation keep the screens; their handoff, and phase:change 'garage', clear it)
+      currentDamagePanel()?.clear();
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       currentHud()?.setMode?.('hidden');
