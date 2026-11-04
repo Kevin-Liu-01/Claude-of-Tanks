@@ -55,6 +55,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
     'src/fx/hullBurstEarth.selftest.mjs',
+    'src/fx/strikeLooks.selftest.mjs',
     // 2026-10-27 (261, premiere-battle on live 259): the APS interception's flash, fragments and grey-white puff
     'src/fx/apsIntercept.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
@@ -1503,15 +1504,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/vehicleAudioProfiles.selftest.mjs',
     'src/audio/weaponAudio.selftest.mjs',
     'src/audio/weaponCoverage.selftest.mjs',
+    // gun-reports-269: the weapon census (every key the fleet fires has a row; loader makes from the layouts) is the fleet's
+    'src/audio/weaponCensus.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',
+    'src/audio/sfxVerdicts.selftest.mjs',
     'src/audio/propSounds.selftest.mjs',
     'src/audio/destructionSounds.selftest.mjs',
+    // 2026-11-03 (world-sfx-269): the vehicles, the world and the modes sound of what they are (exhaustive tables, the
+    // mode controller's events scanned, the engine heard)
+    'src/audio/worldSounds.selftest.mjs',
+    // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
+    'src/audio/reverbSends.selftest.mjs',
+    // 2026-11-04 (world-sfx-269): nothing of the hangar after the battle phase edge, on every entry path
+    'src/audio/battleEntryAmbience.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    // 2026-11-03 (impact-materials-269): every impact sounds of what it struck; only steel rings
+    'src/audio/impactMaterials.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
@@ -1733,6 +1746,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
+    // 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage law
+    'src/sim/plateMaterial.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
     'src/sim/structureDamage.selftest.mjs',

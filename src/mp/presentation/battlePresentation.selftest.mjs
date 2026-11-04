@@ -255,6 +255,11 @@ const expired = busEvents.at(-1);
 assert.equal(expired.type, 'shell:expired');
 assert.equal(expired.payload.hitKind, 'prop');
 assert.deepEqual(expired.payload.normal, [0, 0.2, -0.98]);
+assert.equal(expired.payload.impactAngleDeg, undefined, 'an older host names no incidence');
+// (impact-materials-269) the authority's incidence reaches the audio: a solid round skipping off the ground
+presentation.applyEvent({ kind: 'shell_impact', payload: { shellId: 79, shooterId: 'foe', kind: 'terrain', surfaceKind: 'terrain', x: 3, y: 0, z: 9, nx: 0, ny: 1, nz: 0, impactAngleDeg: 86, shellType: 'APFSDS', caliberMm: 120 } }, { own: false, feedbackPredicted: false });
+assert.equal(busEvents.at(-1).type, 'shell:expired');
+assert.equal(busEvents.at(-1).payload.impactAngleDeg, 86, 'the round\'s incidence reaches shell:expired');
 presentation.applyEvent({ kind: 'module_state', payload: { id: 'foe', module: 'gun', state: 'red', source: 'hit' } }, { own: false, feedbackPredicted: false });
 assert.equal(busEvents.at(-1).type, 'module:state');
 // (crew-lines-269) a roof gun's counter-drone strike reaches the bus as solo raises it: the crew calls the drone it cost

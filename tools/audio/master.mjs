@@ -26,6 +26,11 @@ export const PRESETS = {
   // Gun reports keep their crest: normalised on the true peak with the limiter left above it. Normalising a
   // crack to a loudness target drives its peak far past full scale, and limiting it back squares it into a blast.
   gunshot: { mono: true, peakNorm: -1.5, peak: -1, maxS: 3.5, tailDb: -50, fadeOutS: 0.12, highpass: 28, opusKbps: 96 },
+  // A tank cannon's report is a boom, not a crack (gun-reports-269, owner 2026-11-04: "it still sounds like guns
+  // instead of tank cannons"): normalised on its loudness with its body kept (no transient designer, a 20 Hz high-pass,
+  // room for the rolling echo). An autocannon's round is the same, shorter.
+  cannon: { mono: true, mMax: -11, peak: -1, maxS: 5.5, tailDb: -54, fadeOutS: 0.3, highpass: 20, opusKbps: 96 },
+  autocannon: { mono: true, mMax: -12, peak: -1, maxS: 2.6, tailDb: -52, fadeOutS: 0.15, highpass: 24, opusKbps: 96 },
   // The punch layer under a close report: peak-normalised like the crack it sits under, and short.
   punch: { mono: true, peakNorm: -1.5, peak: -1, maxS: 1.2, tailDb: -48, fadeOutS: 0.05, highpass: 28, opusKbps: 80 },
   // Low-end layers under blasts and hull hits: only the bass survives a steep low-pass (two stages), and they
