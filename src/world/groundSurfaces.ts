@@ -246,7 +246,8 @@ export function groundSurfaceUniformValues(mapId: string | null | undefined): {
     town: town && townMacro > 0 ? [townMacro, GROUND_CLOSE_CODE[town.close.kind], town.close.strength, 1] : [0, 0, 0, 0],
     // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them); and the
     // setts' joints' floor (a share of their stone's tone: sand and grit, not a black grid, on every map's paving)
-    // (w: 1 — the land use's hardstanding repairs staggered and softened, no checkerboard)
+    // (w: 1 — the land use's sown fields keep their sward's grain both ways round its level, no clamped ceiling with dark
+    // holes; its hardstanding's repairs staggered and softened, no checkerboard)
     near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, SETTS_JOINT_FLOOR, 1],
   };
 }

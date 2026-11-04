@@ -113,7 +113,7 @@ for (const mapId of MAP_IDS) {
   for (const v of [...u.open, ...u.worn, ...u.town, ...u.near]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
   assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.6 && u.near[1] > 0.2 && u.near[1] <= 0.6, `${mapId}: relief caps ${u.near}`);
   assert.equal(u.near[2], 0.55, `${mapId}: the setts' joints' floor`);
-  assert.equal(u.near[3], 1, `${mapId}: the hardstanding's staggered repairs`);
+  assert.equal(u.near[3], 1, `${mapId}: the fields' grain and the hardstanding's staggered repairs`);
   assert.ok(MACRO_DRAWN.has(u.open[0]) && CLOSE_DRAWN.has(u.open[2]) && CLOSE_DRAWN.has(u.worn[2]), `${mapId}: drawn codes`);
   assert.ok(u.town[0] === 0 || u.town[0] === 4 || u.town[0] === 5, `${mapId}: town floor code ${u.town[0]}`);
 }
@@ -143,6 +143,9 @@ assert.equal(raw.split('uniform vec4 uGsOpen, uGsWorn, uGsTown;').length, 2, 'th
 for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
 // the relief cap: set in splatCompute by the chunk, applied in the normal pass before the world normal is composed
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk sets the cap');
+// the sown fields' level and grain read the switch (the old clamp at 0), as the hardstanding's repairs do
+assert.ok(raw.includes('if (uGsNear.w > 0.0) {\n        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);'), 'the crops keep their grain');
+assert.ok(raw.includes('if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0)'), 'the repairs staggered');
 // the setts' joints and lost setts (roadSurfaceShader.ts) read the floor, the old law at 0
 const pave = readFileSync(new URL('./roadSurfaceShader.ts', import.meta.url), 'utf8');
 for (const t of ['if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);', 'uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6',

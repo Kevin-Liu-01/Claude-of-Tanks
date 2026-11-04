@@ -6240,6 +6240,14 @@ void splatCompute() {
       // share while the ground under it was the yard's paler worn soil: the growing rice there lit up as a lime glow. The
       // sward's luminance is held to 1.2 times the calibrated one (0.075), as a crop's own albedo never runs above it
       float baseL = min(reduxLuma(aF), 0.09);
+      // (ground-269, the owner's "flat … black spaces" on Steinburg's and Verdant's fields: the clamp cut the sward's grain
+      // to a flat ceiling at 0.09 and left only its dark pockets, a lawn with near-black blotches) where the table runs
+      // (uGsNear.w) a crop takes its level from the sward's tile mean, capped as before, and carries the local grain both
+      // ways round it (±28 %), so the field keeps its texture and loses the holes
+      if (uGsNear.w > 0.0) {
+        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);
+        baseL = min(gsML, 0.09) * clamp(reduxLuma(aF) / gsML, 0.72, 1.28);
+      }
       float sw = baseL / 0.075; // the local sward against the calibrated one: a crop's albedo keeps the photo's grain
       float bright = 0.90 + 0.20 * jit;
       // pasture: a grazed field paler and yellower, a shut-up one lusher, by the field
