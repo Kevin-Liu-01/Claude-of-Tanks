@@ -91,10 +91,10 @@ const CEASE = Object.freeze({ rangeM: 1500, afterS: 2.4 });
 const DRONE = AERIAL_RULES.drone;
 /** Gun Game's last weapon on the ladder. */
 const LADDER_FINAL = GUN_GAME_WEAPONS.length - 1;
-/** Our drone: the battery low call (s left), the link's warning (share of its range). */
-const DRONE_WARN = Object.freeze({ batteryS: 10, linkShare: 0.85 });
-/** Enemy smoke: a screen that rose this close to a hull (m), within this range of us (m). */
-const SMOKE = Object.freeze({ hullM: 30, rangeM: 900 });
+/** Our drone: the battery low call (s left, and not in its last seconds), the link's warning (share of its range). */
+const DRONE_WARN = Object.freeze({ batteryS: 10, lastS: 2, linkShare: 0.85 });
+/** Enemy smoke: a screen whose launcher stood this close to a hull (m), within this range of us (m). */
+const SMOKE = Object.freeze({ hullM: 8, rangeM: 900 });
 /** Backing out: reversing this fast (m/s) within this long of a hit or of being seen (s). */
 const REVERSE = Object.freeze({ mps: 3, afterS: 6 });
 /** Airborne this long (s) is a jump, not a bump. */
@@ -291,7 +291,9 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
     if (flying && !droneFlying) { batteryCalled = linkCalled = recalling = false; }
     if (flying && view) {
       if ((view.recallS ?? 0) > 0 || (view.returnS ?? 0) > 0) recalling = true;
-      if (!recalling && !batteryCalled && (view.batteryS ?? DRONE.batteryS) < DRONE_WARN.batteryS) {
+      const battery = view.batteryS ?? DRONE.batteryS;
+      // (a drone with a second or two left is about to be lost: that is the call then)
+      if (!recalling && !batteryCalled && battery < DRONE_WARN.batteryS && battery >= DRONE_WARN.lastS) {
         batteryCalled = true;
         host.say('drone_battery_low', { delayS: 0.1 });
       }
@@ -496,15 +498,16 @@ export function createCrewProcedure(host: CrewProcedureHost): CrewProcedure {
       else if (!e.source && seat() === 'tank') ceaseAt = host.now() + CEASE.afterS;
       reengage = null;
     });
-    on<{ screens?: readonly { born?: number; x?: number; z?: number }[] }>('auxiliary:smokeScreens', (e) => {
+    // a screen's source is its launcher: [vehicle, x, y, z]
+    on<{ screens?: readonly { born?: number; source?: readonly unknown[] }[] }>('auxiliary:smokeScreens', (e) => {
       const me = host.player();
       if (!e?.screens || !me || !host.live()) return;
       let newest = smokeBorn;
       for (const screen of e.screens) {
         const born = Number(screen.born);
-        if (!(born > smokeBorn) || !Number.isFinite(screen.x) || !Number.isFinite(screen.z)) continue;
+        const x = Number(screen.source?.[1]), z = Number(screen.source?.[3]);
+        if (!(born > smokeBorn) || !Number.isFinite(x) || !Number.isFinite(z)) continue;
         newest = Math.max(newest, born);
-        const x = screen.x as number, z = screen.z as number;
         if (Math.hypot(x - me.state.pos.x, z - me.state.pos.z) > SMOKE.rangeM) continue;
         for (const [id, tank] of host.tanks()) {
           if (!identifiable(id, tank) || Math.hypot(tank.pos.x - x, tank.pos.z - z) > SMOKE.hullM) continue;

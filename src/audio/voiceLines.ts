@@ -182,7 +182,7 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   fire_command_he: V(1, 8, 'fire_command', 0.6, 8),
   fire_command_missile: V(1, 8, 'fire_command', 0.6, 8),
   identified: V(1, 6, 'fire_reply', 1.5),
-  re_engage: V(2, 6, 'gun_orders', 1.0),
+  re_engage: V(2, 6, 'gun_orders', 1.5),
   cease_fire: V(1, 20, 'gun_orders', 1.5),
   // protection: our APS or ERA stopped a round, or theirs stopped ours
   aps_intercept_us: V(3, 6, 'incoming', 0.9),
