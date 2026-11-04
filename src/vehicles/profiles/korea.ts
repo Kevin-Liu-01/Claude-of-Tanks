@@ -12,17 +12,17 @@
 // prototype of a k2 would look like"): the K2B now reads as a K2 development vehicle (research/k2b): the PL-01 diamond
 // overlay is gone, so the K2's own arrowhead turret shows, and it carries the development package of the K2s on the
 // Hyundai Rotem stand: bolted add-on cassettes with vertical faces over the cheeks either side of the K2's measured
-// mantlet, corner smoke launchers and APS sensor heads (addK2BTurretFront), with the remote K6 and the skirt cassettes.
+// mantlet, corner smoke launchers and APS sensor heads (addK2BTurretFront), with the remote K6 and (r269) the export K2's
+// bolted skirt-module run along the hull's flank line and two raised fuel cans on the bustle (k2bHullKit.ts).
 //
-// Fidelity map vs the resurrected source: addK2BPackage is the verbatim old
-// addPL01Package; mount/cassette are the verbatim old module helpers;
+// Fidelity map vs the resurrected source: addK2BPackage began as the verbatim old
+// addPL01Package (r269: its skirt cassettes are gone); mount is the verbatim old module helper;
 // addRoofWhips/addRoofRWS are the verbatim old addPolishWhips/addPolishRWS
 // (renamed — the hardware is generic roof furniture, and this module is
 // Korean). The ONLY functional delta is the baked hull number decal text:
 // 'PL-01' -> 'K2B'.
 
 import * as THREE from 'three';
-import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT, FITTINGS, convexSlab } from './kit.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -34,29 +34,9 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type {
   ProceduralBuilderPort,
   Vec3Tuple,
-  VehicleAssemblyOwner,
 } from '../proceduralBuilderContracts.ts';
 import { mount } from './fittingMount.ts';
-
-function cassette(
-  P: ProceduralBuilderPort,
-  owner: VehicleAssemblyOwner,
-  x: number,
-  y: number,
-  z: number,
-  w: number,
-  h: number,
-  d: number,
-  rotation: Vec3Tuple | null = null,
-  cap = true,
-): void {
-  const r = rotation || [0, 0, 0];
-  const armor = owner === 'hull' ? 'hull' : 'turret';
-  const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
-  P.add(armor, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
-  if (cap) P.add(detail, KIT.box(w * 0.70, 0.016, Math.max(0.024, d * 0.07)),
-    x, y + h * 0.5 + 0.010, z + d * 0.27, r[0], r[1], r[2]);
-}
+import { addK2BFuelCans, addK2BSkirtRun, convexStock } from './k2bHullKit.ts';
 
 function addRoofWhips(
   P: ProceduralBuilderPort,
@@ -158,16 +138,6 @@ const K2B_CHEEK = Object.freeze({
   /** The common back line, buried in the turret loft and the roof skins; the module tops are the forward roof. */
   backZ0: 1.10, backZ1: 0.40, backX0: 0.47, backX1: 1.54,
 });
-
-/** A closed convex armour stock round any set of corners (kit.ts convexSlab takes exactly eight). */
-function convexStock(points: readonly Vec3Tuple[]): THREE.BufferGeometry {
-  const geometry = new ConvexGeometry(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
-  const position = geometry.getAttribute('position');
-  const uv: number[] = [];
-  for (let i = 0; i < position.count; i++) uv.push(position.getX(i), position.getZ(i));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  return geometry;
-}
 
 function cheekFaceZ(x: number, y: number, step: number): number {
   const C = K2B_CHEEK;
@@ -385,28 +355,10 @@ function addK2BCornerHousings(P: ProceduralBuilderPort & Modern3BuilderPort): vo
 function addK2BPackage(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   const { box, cylY } = KIT;
 
-  // Full-height modular stealth sides: the panels overlap the intact K2
-  // skirt/fender structure but remain outside the animated shoe envelope.
-  // Their upper bevel follows the source's single long shoulder fold.
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 8; i++) {
-      const z = 2.58 - i * 0.78;
-      // 267 round 3: the panels close up to 15 mm seams (they stood 8 cm apart) and, between the end panels, come down
-      // with the skirt hem over the road wheels' top quarter (0.56; they stopped at 0.65)
-      const end = i === 0 || i === 7;
-      const h = end ? 0.82 : 1.03, y = end ? 1.12 : 1.075 + (i % 2) * 0.008;
-      cassette(P, 'hull', side * 1.86, y, z,
-        0.075, h, 0.765, [0, 0, side * (i < 2 ? 0.035 : -0.012)], false);
-      // the two bow cassettes lean in 0.035 rad: their top strip follows the leaning face (it stood 10 mm off it)
-      P.add('hullDark', box(0.020, 0.040, 0.56), side * (i < 2 ? 1.8925 : 1.905),
-        1.48, z);
-      P.add('hullDetail', box(0.020, 0.54, 0.025), side * 1.907,
-        1.13, z + 0.33);
-    }
-    // The cassettes stand 10 cm outboard of the K2 skirt (outer face 1.72): a mounting rail along the skirt top carries
-    // them (owner 2026-10-19 sweep: they floated beside it with nothing joining them to the hull).
-    P.add('hull', box(0.12, 0.05, 6.10), side * 1.77, 1.46, -0.15);
-  }
+  // r269 (owner 2026-11-04: "updae the sideskits for the k2b a lot to make them properly match with side profile of hull
+  // and align with it and also just be more modernized"): the eight tall identical cassettes on their rail give way to the
+  // export K2's bolted module run along the hull's own flank line (k2bHullKit.ts addK2BSkirtRun)
+  addK2BSkirtRun(P);
   P.add('hullDark', box(2.72, 0.055, 0.12), 0, 1.22, 3.48, -0.26, 0, 0);
   addK2BCornerHousings(P);                                             // 267 round 3: replaces the K2B's glacis lamp clusters
 
@@ -432,7 +384,11 @@ function addK2BPackage(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   if (!gunFrontPort.addEquipment) throw new Error('K2B gun front requires the builder equipment slots');
   addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>, 0.24);
   P.add('turretDetail', cylY(0.11, 0.12, 0.08, 14), 0.56, 0.73, -0.22);
-  P.decal('hull', 'number', 'K2B', 0.24, [-1.90, 1.18, -0.42], -Math.PI / 2);
+  // the hull number on the right side's armour group (k2bHullKit.ts; face x -1.865), in the upper-row tile -0.23..-0.61
+  P.decal('hull', 'number', 'K2B', 0.24, [-1.868, 1.18, -0.42], -Math.PI / 2);
+  // r269 (owner 2026-11-04: "add 2 fuel cans to back that are elevated to be visible from front"): two NATO cans in a
+  // frame on the bustle's core roof, standing over the turret roof line (k2bHullKit.ts addK2BFuelCans)
+  addK2BFuelCans(P);
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 

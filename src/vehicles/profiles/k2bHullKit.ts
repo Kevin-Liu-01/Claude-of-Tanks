@@ -50,8 +50,9 @@ const K2B_SKIRT = Object.freeze({
   hemY: 0.565, fringeY: 0.495, fringeIn: 1.822, fringeOut: 1.838,
   /** The tail: from the plate's tail start the hem rises 0.63 per metre to the rear plate line (z -3.74). */
   tailZ: -2.62, tailRise: 0.63, rearZ: -3.74,
-  /** Behind the track's reach (z -3.49) the tail group closes in to the stern's side (x 1.66). */
-  closeZ: -3.52, closeIn: 1.655,
+  /** The tail group's inner face stays on the plate's line, outside the belt's lane (the strict clip run); behind the
+   *  belt's reach (it rounds the sprocket by z -3.49) a closure block joins it to the stern's side (x 1.66). */
+  closeZ: -3.53, closeIn: 1.655,
   /** The front edge: raked 45 degrees down and back from the corner box's lower rear corner. */
   rakeZ: 2.97, rakeY: 1.15,
   /** Group joints (front to rear; the first group runs forward to the rake). */
@@ -59,7 +60,7 @@ const K2B_SKIRT = Object.freeze({
   /** Tile width (from each group's rear joint forward) and the level row seam. */
   tile: 0.38, rowY: 0.985,
   /** The upper course's joints (front to rear), split at the top line's break. */
-  course: Object.freeze([2.97, TOP_BREAK_Z, 0.72, -0.40, -1.52, -2.64, -3.74]),
+  course: Object.freeze([2.975, TOP_BREAK_Z, 0.72, -0.40, -1.52, -2.64, -3.74]),
   /** Lifting eyes on the groups' top ledge (z). */
   eyes: Object.freeze([1.55, 0.53, -0.99, -2.32]),
 });
@@ -90,15 +91,20 @@ function sectionRing(xi: number, xo: number, h: number, t: number, edge: number,
 function armourGroup(P: K2BPort, side: number, front: number, rear: number, raked: boolean): void {
   const S = K2B_SKIRT, e = S.edge;
   const pts: Vec3Tuple[] = [];
-  const ring = (z: number, pull: number, xi = S.moduleIn): void => {
-    for (const [x, y] of sectionRing(xi, S.moduleOut, skirtHem(z), groupTop(z), e, S.topEdge, pull)) pts.push([side * x, y, z]);
+  const ring = (z: number, pull: number): void => {
+    for (const [x, y] of sectionRing(S.moduleIn, S.moduleOut, skirtHem(z), groupTop(z), e, S.topEdge, pull)) {
+      pts.push([side * x, y, z]);
+    }
   };
-  // the rear end and its chamfer; the stern closure behind the track's reach
-  ring(rear, e, rear < S.closeZ ? S.closeIn : S.moduleIn);
-  ring(rear + e, 0, rear < S.closeZ ? S.closeIn : S.moduleIn);
+  ring(rear, e);
+  ring(rear + e, 0);
   if (rear < S.closeZ) {
-    ring(S.closeZ, 0, S.closeIn);
-    ring(-3.30, 0);                                                           // the plate's own end: the slant starts here
+    // the stern closure: from the group's inner face in to the stern's side, under the course, behind the belt
+    const close: Vec3Tuple[] = [];
+    for (const z of [S.closeZ, rear]) {
+      for (const x of [S.closeIn, S.moduleIn]) close.push([side * x, skirtHem(z) + 0.01, z], [side * x, groupTop(z), z]);
+    }
+    P.add('hull', convexStock(close));
   }
   for (const z of [TOP_BREAK_Z, S.tailZ]) if (z < front - e && z > rear + e) ring(z, 0);
   if (!raked) {
@@ -107,7 +113,7 @@ function armourGroup(P: K2BPort, side: number, front: number, rear: number, rake
   } else {
     // raked front: each ring vertex on the 45-degree plane (pulled in) and a chamfer's depth behind it; the top meets
     // the plane where the groups' top line crosses it
-    let t = S.rakeY;
+    let t: number = S.rakeY;
     for (let k = 0; k < 6; k++) t = groupTop(rakeZAt(t));
     for (const [back, pull] of [[0, e], [e, 0]] as const) {
       for (const [x, y] of sectionRing(S.moduleIn, S.moduleOut, S.hemY, t, e, S.topEdge, pull)) {
