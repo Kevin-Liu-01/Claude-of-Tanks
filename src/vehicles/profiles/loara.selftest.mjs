@@ -12,7 +12,8 @@ import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import {
-  LOARA_BORE, LOARA_DECK, LOARA_GUN_HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_TRUNNION, LOARA_TURRET,
+  LOARA_BORE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_TRACKING_RADAR,
+  LOARA_TRUNNION, LOARA_TURRET,
 } from './loaraFrame.ts';
 
 const ID = 'pza_loara';
@@ -59,9 +60,23 @@ for (const box of spec.armor.crew.filter((c) => c.turretLocal)) {
 assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, 'the gunner on the left (+x)');
 // the turret's plates on the drawn shell: the body and the nose under the tracking radar
 for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
-  assert.ok(Math.abs(x) <= T.halfW + 1e-9 && y >= T.floorY - 1e-9 && y <= T.roofY + 1e-9 && z >= T.rearZ - 1e-9
+  assert.ok(Math.abs(x) <= T.halfW + T.skirtFlare + 1e-9 && y >= T.floorY - 1e-9 && y <= T.roofY + 1e-9 && z >= T.rearZ - 1e-9
     && z <= T.chinFrontZ + 1e-9, `${p.name} within the drawn turret`);
 }
+
+// the photo critique's proportions (round 2), held on the frame: the pods' rear at the turret's rear corner, the bore a
+// third of the way down the pod's front, the pod 0.6 of the turret's wall; the tracker head and its sensors 40 % of the
+// turret's height over the roof, the radome's centre near the roof line and 0.7 of the turret's height across; the
+// driver left of the middle
+const H = LOARA_GUN_HOUSING, TR = LOARA_TRACKING_RADAR, turretH = T.roofY - T.floorY;
+near(LOARA_TRUNNION[2] + H.rearZ, T.rearZ, 'the pods\' rear at the turret\'s rear corner', 0.06);
+const boreDown = (H.topY - LOARA_BORE.y) / (H.topY - H.bottomY);
+assert.ok(boreDown >= 0.20 && boreDown <= 0.35, `the bore ${(boreDown * 100).toFixed(0)} % down the pod`);
+near((H.topY - H.bottomY) / turretH, 0.6, 'the pod 0.6 of the turret wall', 0.03);
+near((TR.sensorTopY - T.roofY) / turretH, 0.40, 'the tracker head 40 % over the roof', 0.03);
+assert.ok(T.roofY - TR.y <= 0.22 && 2 * TR.r / turretH >= 0.68, 'the radome near the roof line, 0.7 of the turret height across');
+const driver = spec.armor.crew.find((c) => c.crew === 'driver');
+assert.ok((driver.min[0] + driver.max[0]) / 2 > LOARA_DRIVER_X / 2, 'the driver left of the middle');
 
 /** The highest point of the visible body (whips left out, as the geometry gate's body: tools/body-height-parts.mjs). */
 function bodyTop(root) {

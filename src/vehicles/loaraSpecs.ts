@@ -10,11 +10,11 @@
 import './poland.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { crewBox, moduleBox, plate, shell, type ArmorPlate, type ModuleBox } from './specHelpers.ts';
+import { crewBox, moduleBox, plate, shell, type ArmorPlate, type CrewBox, type ModuleBox } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import {
-  LOARA_BORE, LOARA_DECK as DECK, LOARA_GUN_HOUSING as HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_SEARCH_RADAR,
-  LOARA_TRUNNION, LOARA_TURRET as T,
+  LOARA_BORE, LOARA_DECK as DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING as HOUSING, LOARA_MUZZLE_Z, LOARA_RING,
+  LOARA_SEARCH_RADAR, LOARA_TRUNNION, LOARA_TURRET as T,
 } from './profiles/loaraFrame.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -102,20 +102,32 @@ spec.dims = { hullLengthM: 6.67, overallLengthM: 6.88, widthM: 3.65, heightM: 5.
 spec.armor.turretPivot = [...LOARA_RING];
 spec.armor.gunPivot = [...LOARA_TRUNNION];
 spec.armor.gunBarrel = { lengthM: LOARA_MUZZLE_Z, radiusM: .05, collision: false };
-// the turret's welded shell: the long body and the chin under the tracking radar (its back inside the body)
+// the turret's welded shell: the long body, the lower skirt flaring out under the break ahead of the bearing discs, and
+// the chin under the tracking radar (its back inside the body)
+const skirtX = T.halfW + T.skirtFlare;
 spec.armor.turretPlates = [
   ...boxPlates('loara_turret', [-T.halfW, T.floorY, T.rearZ], [T.halfW, T.roofY, T.frontZ], 25, 30),
+  plate('loara_turret_skirt_l', 25, [skirtX, T.floorY, T.frontZ], [skirtX, T.floorY, T.skirtFullZ], [T.halfW, T.breakY, T.frontZ],
+    { keMm: 25, ceMm: 30, kind: 'main' }),
+  plate('loara_turret_skirt_r', 25, [-skirtX, T.floorY, T.skirtFullZ], [-skirtX, T.floorY, T.frontZ], [-T.halfW, T.breakY, T.skirtFullZ],
+    { keMm: 25, ceMm: 30, kind: 'main' }),
   ...boxPlates('loara_chin', [-T.chinHalfW, T.floorY, T.frontZ], [T.chinHalfW, T.chinTopY, T.chinFrontZ], 20, 25, ['rear']),
 ];
 // the optics under the commander's panoramic sight, both guns' housings (outside the shell) and the radio in the rear
 // under the search radar's mast
 const [, ty, tz] = LOARA_TRUNNION;
+// (the pods' box: from the rear corner to the pointed nose, the deep lower body to the top)
 spec.armor.modules = [
   ...spec.armor.modules.filter((box) => !box.turretLocal),
   moduleBox('optics', [-.72, .92, .95], [-.24, 1.24, 1.40], true),
   { ...moduleBox('gun', [-HOUSING.outerX, ty + HOUSING.bottomY, tz + HOUSING.rearZ],
     [HOUSING.outerX, ty + HOUSING.topY, tz + HOUSING.noseZ], true), external: true },
-  moduleBox('radio', [-.30, .40, -1.00], [.30, .80, -.62], true),
+  moduleBox('radio', [-.30, .40, -.84], [.30, .80, -.50], true),
+  // the ammunition in the turret (pl.wikipedia: the fragmentation rounds in a magazine in the turret's basket, the
+  // armour-piercing belts beside the guns): the magazine low across the turret's rear, the belt feeds over it along the
+  // guns' axis out through the bearings, clear of the radio between them and the crew ahead
+  moduleBox('ammoRack', [-.95, .06, -.84], [.95, .36, -.18], true),
+  moduleBox('feedSystem', [-1.05, .46, -.44], [1.05, .70, -.10], true),
 ];
 // crew 3: the driver in the PT-91 hull, the gunner on the left (+x) and the commander on the right (pl.wikipedia) side by
 // side in the turret body ahead of the guns' bearings, under their sights
@@ -174,12 +186,22 @@ export function synchronizeLoaraFrame(): void {
   ];
   own.armor.turretPivot = [...LOARA_RING];
   const lift = LOARA_RING[1] - base.armor.turretPivot[1];
+  // the hull's modules: the ring's rises with the ring; the power pack authored as the PT-91's anatomy row fits it, the
+  // engine ahead of the transmission across the stern (the frame's engine box alone reaches the stern plate, where the
+  // anatomy pass would otherwise put a transmission inside it); the T-72's carousel gives way to the turret's magazine
   own.armor.modules = [
-    ...structuredClone(base.armor.modules.filter((box) => !box.turretLocal)).map((box): ModuleBox => (box.module === 'turretRing'
-      ? { ...box, min: [box.min[0], box.min[1] + lift, box.min[2]], max: [box.max[0], box.max[1] + lift, box.max[2]] } : box)),
+    ...structuredClone(base.armor.modules.filter((box) => !box.turretLocal && box.module !== 'transmission'
+      && box.module !== 'ammoRack')).map((box): ModuleBox =>
+      (box.module === 'turretRing'
+        ? { ...box, min: [box.min[0], box.min[1] + lift, box.min[2]], max: [box.max[0], box.max[1] + lift, box.max[2]] }
+        : box.module === 'engine' ? { ...box, min: [-.98, .46, -2.52], max: [.96, 1.40, -1.66] } : box)),
+    moduleBox('transmission', [-.84, .77, -3.06], [.82, 1.28, -2.58]),
     ...own.armor.modules.filter((box) => box.turretLocal),
   ];
-  own.armor.crew = [...structuredClone(base.armor.crew.filter((box) => !box.turretLocal)),
+  // the driver moved to the left of the T-72's middle (pl.wikipedia; armedconflicts.com: as on the T-55)
+  own.armor.crew = [...structuredClone(base.armor.crew.filter((box) => !box.turretLocal)).map((box): CrewBox => (box.crew === 'driver'
+    ? { ...box, min: [box.min[0] + LOARA_DRIVER_X, box.min[1], box.min[2]], max: [box.max[0] + LOARA_DRIVER_X, box.max[1], box.max[2]] }
+    : box)),
     ...own.armor.crew.filter((box) => box.turretLocal)];
   own.visual.trackWidthM = base.visual.trackWidthM;
   own.armor.boundingRadiusM = Math.max(base.armor.boundingRadiusM, reach(own));
