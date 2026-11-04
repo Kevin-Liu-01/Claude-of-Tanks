@@ -22,6 +22,7 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // position grid); what remains is trimmed. Over 10 %: the gunners of five T-72/T-80-derived concept turrets
 // (type96_72_long, t72b3_qilin, type96_80_feng, t80u_yun, t72b3m_kunlun), whose race (0.84 m) is shared with the
 // carousel and breech: listed as data fixes (race or carousel sketch), not loosened here.
+// 2026-11-03 (268): the r15 KF51-U hull seats its driver untrimmed (was 1 mm).
 const TRIMMED = Object.freeze({
   'm46_patton/driver': 0.016,
   'leclerc_xlr/driver': 0.013,
@@ -36,10 +37,9 @@ const TRIMMED = Object.freeze({
   'k2_black_panther/commander': 0.004,
   't80u_yun/gunner': 0.118,
   'type96_72m_lei/gunner': 0.06,
-  'kf51_evo/commander': 0.007,
+  'kf51_evo/commander': 0.017,
   'kf51_panther/commander': 0.035,
   't72b3m_kunlun/gunner': 0.109,
-  'kf51_u/commander': 0.062,
   'merkava3c/commander': 0.05,
   'kf41_lynx/gunner': 0.047,
   't72b3_qilin/gunner': 0.206,
