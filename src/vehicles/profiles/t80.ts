@@ -266,7 +266,8 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant, own?: T80OwnTurret
     // where the ref floor is ~0.81-0.85.
     P.add('hullDark', box(1.20, 0.32, 0.05), 0, 1.19, -3.095);
     for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.16, 0.04, 0.05), 0, 1.05 + k * 0.09, -3.085);
-    for (const s of [-1, 1]) {
+    // (the Object 292 as Kubinka keeps it carries no drums on its stern)
+    if (!own) for (const s of [-1, 1]) {
       // (r27c: drums z -3.15 -> -3.12 — their rear sliver crossed the -3.276
       // column boundary and printed 1.83/1.26 into the lip-only -3.34 column)
       P.add('hullDetail', cylY(0.135, 0.135, 0.58, 12), s * 1.02, 1.55, -3.12, 0, 0, s * 0.08);

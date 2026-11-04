@@ -42,14 +42,8 @@ function addHull(P: TankBuilderPort): void {
   // the nose's lower plate and its tow eyes
   P.add('hull', box(2.04, .28, .10), 0, .84, 3.90, -.45, 0, 0);
   for (const s of [-1, 1]) P.addEquipment('hullDetail', torus(.07, .02, 12, 6), s * .78, .80, 3.97, Math.PI / 2, 0, 0);
-  // the glacis' armour modules: three courses of bolted plates over the capsule's nose, on the plate's slope
-  for (let row = 0; row < 3; row++) for (let col = -3; col <= 3; col++) {
-    const z0 = 2.62 + row * .44, z1 = z0 + .40, x = col * .30;
-    P.add('hull', sectionSolid([
-      { z: z0, ring: [[x - .14, glacisY(z0) - .02], [x + .14, glacisY(z0) - .02], [x + .14, glacisY(z0) + .045], [x - .14, glacisY(z0) + .045]] },
-      { z: z1, ring: [[x - .14, glacisY(z1) - .02], [x + .14, glacisY(z1) - .02], [x + .14, glacisY(z1) + .045], [x - .14, glacisY(z1) + .045]] },
-    ]));
-  }
+  // the glacis' plate seams (Gur Khan's photograph: a plain sloped plate)
+  for (const z of [2.70, 3.30]) P.addEquipment('hullDark', box(2.10, .012, .03), 0, glacisY(z) + .004, z, GLACIS_RAKE, 0, 0);
   // the crew capsule's three hatches side by side on the glacis, with their periscopes
   for (const x of [-.72, 0, .72]) {
     const z = 2.05, y = glacisY(z);
@@ -136,6 +130,10 @@ function addModule(P: TankBuilderPort): void {
   P.addEquipment('turretDark', box(.32, .22, .02), -.36, 1.43, .525);
   P.addEquipment('turretGlass', box(.26, .16, .012), -.36, 1.43, .533);
   P.addEquipment('turretDetail', box(.46, .04, .48), -.36, 1.62, .30);
+  // the tall sight and sensor box stepped up at the module's rear right
+  P.add('turret', box(.40, .46, .56), .62, 1.40, -1.00);
+  P.addEquipment('turretDark', box(.30, .24, .02), .62, 1.44, -.715);
+  P.addEquipment('turretGlass', box(.22, .16, .012), .62, 1.44, -.707);
   // the commander's panoramic sight in its armoured box at the back left
   P.add('turret', box(.36, .30, .36), -.50, 1.35, -.85);
   P.addEquipment('turretDetail', cylY(.15, .15, .14, 20), -.50, 1.57, -.85);
@@ -175,7 +173,8 @@ function addGun(P: TankBuilderPort): void {
     { z: .30, ring: [[-.26, -.22], [.26, -.22], [.29, -.08], [.29, .16], [.23, .22], [-.23, .22], [-.29, .16], [-.29, -.08]] },
   ]));
   for (const s of [-1, 1]) P.addGunExtraDark(cylZ(.055, .70, 14), s * .18, .24, -.10);
-  // the round mantlet ahead of the shield, and the tube's root collar
+  // the cradle's big trunnion block across the gun, the round mantlet ahead of the shield, and the tube's root collar
+  P.addGunExtra(KIT.cylX(.24, .96, 24), 0, 0, -.12);
   P.addGunExtra(cylZ(.30, .26, 28, .27), 0, 0, .40);
   P.addGunExtra(cylZ(.215, .35, 24, .23), 0, 0, .66);
   build152Gun(P, { ...GUN_2A83, len: F.muzzleZ - F.trunnionZ });

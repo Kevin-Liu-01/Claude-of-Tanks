@@ -35,14 +35,10 @@ function addHull(P: TankBuilderPort): void {
     [3.42, noseY(3.42), .62, 1.64, 1.08, 1.00],
     [3.75, noseY(3.75), .84, 1.12, 1.04, .88],
   ]);
-  // the nose's armour package under its bolted titanium lids (built-in ERA): four courses down the glacis
-  for (let row = 0; row < 4; row++) for (let col = -2; col <= 2; col++) {
-    const z0 = 1.74 + row * .46, z1 = z0 + .42, x = col * .40;
-    P.add('hull', sectionSolid([
-      { z: z0, ring: [[x - .18, noseY(z0) - .02], [x + .18, noseY(z0) - .02], [x + .18, noseY(z0) + .05], [x - .18, noseY(z0) + .05]] },
-      { z: z1, ring: [[x - .18, noseY(z1) - .02], [x + .18, noseY(z1) - .02], [x + .18, noseY(z1) + .05], [x - .18, noseY(z1) + .05]] },
-    ]));
-    for (const dx of [-.12, .12]) P.addEquipment('hullDark', cylY(.012, .012, .01, 6), x + dx, noseY(z0 + .21) + .056, z0 + .21);
+  // the nose's built-in armour package under its plain plate (btvt's drawing and the owner's images: no external tiles), its
+  // lid seams across the glacis
+  for (const z of [2.10, 2.60, 3.10]) {
+    P.addEquipment('hullDark', box(2.10, .012, .03), 0, noseY(z) + .004, z, Math.atan2(F.roofY - .92, F.hullFrontZ - NOSE_Z0), 0, 0);
   }
   // the driver's hatch and periscopes on the centreline at the glacis' head (the late layout's central driver)
   P.addHatch('hullDetail', cylY(.26, .26, .04, 18), 0, 1.615, 1.36);
@@ -107,7 +103,8 @@ function addTurret(P: TankBuilderPort): void {
   P.add('turret', sectionSolid([
     { z: -1.72, ring: [[-.36, .34], [.36, .34], [.36, .74], [.30, .80], [-.30, .80], [-.36, .74]] },
     { z: .90, ring: [[-.42, .30], [.42, .30], [.42, .78], [.36, .834], [-.36, .834], [-.42, .78]] },
-    { z: 1.30, ring: [[-.42, .30], [.42, .30], [.42, .74], [.36, .79], [-.36, .79], [-.42, .74]] },
+    { z: 1.40, ring: [[-.42, .28], [.42, .28], [.42, .76], [.36, .81], [-.36, .81], [-.42, .76]] },
+    { z: 1.66, ring: [[-.40, .26], [.40, .26], [.40, .70], [.34, .75], [-.34, .75], [-.40, .70]] },
   ]));
   for (const s of [-1, 1]) for (const z of [-1.10, -.20]) P.addEquipment('turretDark', box(.012, .38, .02), s * .395, .58, z);
   P.addEquipment('turretDetail', box(.60, .02, .80), 0, .835, -.80);
@@ -138,7 +135,7 @@ function addTurret(P: TankBuilderPort): void {
   }
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [1.205, .24, -.70], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [-1.205, .24, -.70], -Math.PI / 2);
-  add30mmCannon(P, { name: 'molot_gsh30', x: .80, deck: .44, z: .45, axisY: .68, pivotZ: .45, muzzleZ: 2.75 });
+  add30mmCannon(P, { name: 'molot_gsh30', x: .80, deck: .44, z: .45, axisY: .68, pivotZ: .45, muzzleZ: 2.35 });
 }
 
 /** The gun's armoured mantlet at the casing's brow and the 152 mm tube. Gun frame. */
@@ -148,7 +145,7 @@ function addGun(P: TankBuilderPort): void {
     { z: .48, ring: [[-.30, -.24], [.30, -.24], [.34, -.10], [.34, .20], [.26, .28], [-.26, .28], [-.34, .20], [-.34, -.10]] },
     { z: .62, ring: [[-.24, -.18], [.24, -.18], [.27, -.07], [.27, .14], [.20, .20], [-.20, .20], [-.27, .14], [-.27, -.07]] },
   ]));
-  P.addGunExtra(cylZ(.21, .40, 24, .23), 0, 0, .80);
+  P.addGunExtra(cylZ(.20, .20, 24, .22), 0, 0, .96);
   build152Gun(P, { ...GUN_2A73, len: F.muzzleZ - F.trunnionZ });
 }
 

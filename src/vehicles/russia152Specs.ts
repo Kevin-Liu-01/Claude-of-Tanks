@@ -64,7 +64,7 @@ object292.armor.turretPlates = modernArmor({
   gunPivot: [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ],
   barrelLenM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, barrelRadM: 0.135,
   glacis: [0, 0, 0], lower: [0, 0, 0], side: [0, 0, 0], rear: 0, roof: 0,
-  tw: 1.12, tFrontZ: 1.18, tRearZ: -2.30, tH: 0.80,
+  tw: 1.12, tFrontZ: 1.40, tRearZ: -2.30, tH: 0.86,
   cheek: [620, 810, 890], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 513, 567],
 }).turretPlates;
 // the T-80BV hull's ring datum (profiles/t80.ts: the turret at y 1.45 over z 0; the BV row registered here still holds its

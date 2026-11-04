@@ -50,7 +50,9 @@ function addMantlet(P: TankBuilderPort): void {
     [.36, -.17], [.36, .17], [.24, .26], [-.24, .26],
     [-.36, .17], [-.36, -.17]];
   P.addGunExtra(sectionSolid([{ z: -.55, ring }, { z: .045, ring }]));
-  P.addGunExtra(cylZ(.235, .15, 28, .19), 0, 0, .12);
+  // the larger gun's cradle collar, short under the turret nose (round 2's critics: larger than the 2A82's, not a
+  // bolted-on drum)
+  P.addGunExtra(cylZ(.26, .16, 28, .21), 0, 0, .13);
   P.addEquipment('gunMount', box(.24, .05, .34), .062, .232, .24);
 }
 

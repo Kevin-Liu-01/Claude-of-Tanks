@@ -29,11 +29,11 @@ function prism(P: T80BuilderPort, bucket: string, stations: readonly (readonly [
 function addBox(P: T80BuilderPort): void {
   // the bustle's floor rakes up to its tail; the body's floor is the casting's shoulder line
   prism(P, 'turret', [
-    [-2.30, -1.06, 1.06, .44, .80], [-1.95, -1.08, 1.08, .32, .81], [-1.05, -1.06, 1.06, .36, .82],
-    [.45, -1.00, 1.00, .40, .82], [.62, -.92, .92, .46, .80],
+    [-2.30, -1.08, 1.08, .40, .84], [-1.95, -1.10, 1.10, .28, .85], [-1.05, -1.10, 1.10, .26, .86],
+    [.30, -1.06, 1.06, .30, .86], [.62, -.94, .94, .42, .84],
   ]);
   // the hood over the gun's root, its brow raked down to the mantlet
-  prism(P, 'turret', [[.40, -.56, .56, .58, .80], [.88, -.52, .52, .58, .74], [1.02, -.46, .46, .60, .66]]);
+  prism(P, 'turret', [[.40, -.56, .56, .58, .84], [.88, -.52, .52, .58, .76], [1.02, -.46, .46, .60, .68]]);
   // the weight-imitator blocks on the casting's cheeks: flat applique faces, the outer corner swept back
   for (const s of [-1, 1]) {
     const st: [number, number, number, number, number][] = [[.50, .34, 1.02, .04, .50], [1.12, .34, 1.02, .04, .50],
@@ -43,14 +43,14 @@ function addBox(P: T80BuilderPort): void {
     P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), s * .80, .83, .10, Math.PI / 2, 0, 0);
   }
   // the weld seam where the box meets the casting, the bustle's tail lip and the plate seams down its flanks
-  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.022, .022, 1.50), s * 1.01, .39, -.30);
-  P.addEquipment('turretDetail', box(2.06, .05, .05), 0, .79, -2.31);
-  for (const s of [-1, 1]) for (const z of [-1.05, -.20]) P.addEquipment('turretDark', box(.012, .40, .02), s * 1.065, .60, z);
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.022, .022, 1.40), s * 1.08, .27, -.35);
+  P.addEquipment('turretDetail', box(2.10, .05, .05), 0, .83, -2.31);
+  for (const s of [-1, 1]) for (const z of [-1.05, -.20]) P.addEquipment('turretDark', box(.012, .50, .02), s * 1.105, .56, z);
 }
 
 /** The roof: commander's cupola (right), gunner's sight (left, forward), ventilator, loader's-side hatch, antenna. */
 function addRoof(P: T80BuilderPort): void {
-  const top = .82;
+  const top = .86;
   // the commander's cupola raised on its collar (Kubinka: it stands well above the box's roof)
   P.add('turret', cylY(.30, .32, .24, 18), .52, top + .11, -.30);
   P.add('turretDark', KIT.torus(.30, .022, 18), .52, top + .23, -.30);
@@ -118,7 +118,7 @@ function* buildObject292Turret(P: T80BuilderPort): TankProfileBuild {
   yield 'object292Casting';
   addBox(P);
   addRoof(P);
-  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .30, [s * 1.085, .60, -1.55], s * Math.PI / 2);
+  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .30, [s * 1.105, .58, -1.55], s * Math.PI / 2);
   yield 'object292Box';
   P.gunG.position.set(0, OBJECT292_GUN_FRAME.trunnionY - RING_Y, OBJECT292_GUN_FRAME.trunnionZ);
   addGun(P);
