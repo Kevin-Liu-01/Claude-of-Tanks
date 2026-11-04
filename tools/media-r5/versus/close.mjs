@@ -40,9 +40,9 @@ const FAMILIES = {
   // range (down, degrees), the pair's span, the least width each tank fills, and a shell burst in frame (burst)
   // (the least widths are a share of the span: the hero about half of the pair's, the foe about a quarter, so the guns'
   // 2 m clearance, which sets the foe 10-18 m off, still leaves a pair that fills the frame)
-  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 40], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
+  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 36], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
   crane: { h: [16, 20, 26], d: [18, 24, 32], roll: [0, 4, -4], fov: 40, down: [30, 45], span: 1.4, hero: 0.62, foe: 0.3, burst: true, burstTop: 0.75 },
-  ridge: { h: [10, 15, 22], d: [45, 60, 80], roll: [0, 4, -4], fov: 16, down: [10, 25], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
+  ridge: { h: [10, 15, 22], d: [45, 60, 80], roll: [0, 4, -4], fov: 16, down: [15, 25], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
 };
 const SPAN = 1.55, EDGE = 0.92;
 // the families a solve searches (--families=a,b; default the four close families of rounds 11-12)
@@ -185,21 +185,20 @@ function judge(model, s, c, ownBearing, fam = {}) {
   return { score: Math.min(hw, 1.25) + 0.6 * Math.min(fw, 0.8) - 0.004 * near + fresh + lit + 0.08 * Math.min(fire, 4), hw, fw, offH, offF, near, down, H, Fo, extra };
 }
 
-/** A large HE burst 4-22 m beyond the pair (away from the lens), up to 13 m to a side, peaking at the still: the first
- *  spot on open, dry ground that lands inside the frame (no higher than `top`) beside the hulls or above their tops,
- *  clear of both boxes; null if none. */
+/** A large HE burst 4-22 m beyond the pair (away from the lens), up to 13 m to a side and 14 m or more from both hulls,
+ *  peaking at the still: the first spot on open, dry ground that lands inside the frame (no higher than `top`) beside
+ *  the hulls or above their tops, clear of both boxes; null if none. */
 function burstFor(model, s, A, F, boxes, top = 0.55) {
   const hero = byName(s, 'hero'), foe = byName(s, 'foe0'), mid = [(hero.pos[0] + foe.pos[0]) / 2, (hero.pos[1] + foe.pos[1]) / 2];
   const away = bearingOf([A.eye[0], A.eye[2]], mid), T = s.fxTime;
   for (const beyond of [4, 8, 12, 16, 22]) for (const side of [0, -5, 5, -9, 9, -13, 13]) {
     const p = polar(polar(mid, away, beyond), away + 90, side).map(r2), gy = model.heightAt(p[0], p[1]);
-    if (dist2(p, hero.pos) < 9 || dist2(p, foe.pos) < 9) continue;
+    if (dist2(p, hero.pos) < 14 || dist2(p, foe.pos) < 14) continue;
     if (model.wetAt(p[0], p[1]) > 0.3 || model.slopeAt(p[0], p[1]) > 0.35 || insideRecord(model, [p[0], gy + 1, p[1]], 2)) continue;
     const q = F.project([p[0], gy + 1, p[1]]);
     if (!q || Math.abs(q[0]) > 0.8 || q[1] > top || q[1] < -0.85) continue;
     if (boxes.some((b) => q[0] > b.x0 - 0.08 && q[0] < b.x1 + 0.08 && q[1] < b.y1 + 0.3)) continue;
-    return [fx('explosion', p, T - 280, { size: 'large', munition: 'he', cause: 'shot' }),
-      fx('debris', [p[0], r2(gy + 1.4), p[1]], T - 255, { count: 40, speedMps: 16, hot: 0.5, scale: 1.3 })];
+    return [fx('explosion', p, T - 280, { size: 'large', munition: 'he', cause: 'shot' })];
   }
   return null;
 }
@@ -247,11 +246,12 @@ function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs) {
   return { map: take.map, timeOfDay: take.timeOfDay, light: take.light, actors, effects: take.effects ?? [], fxTime: T, lenses: [own], mate: mateName };
 }
 
-/** The take's scene through a round-13 lens: the lens held still (no camera shots or cues), the burst added, the
- *  placements as filmed (autoPlace off) and the still's time in meta.stillMs. */
+/** The take's scene through a round-13 lens: the lens held still (no camera shots or cues), the burst added, the hit
+ *  sparks dropped (from above they streak across the hulls), the placements as filmed (autoPlace off) and the still's
+ *  time in meta.stillMs. */
 function takeFinal(take, snap, fam, view, b) {
   const id = `${take.meta.id}-${fam}${view > 1 ? view : ''}-r${ROUND}`, lens = { ...b.lens, name: 'a' };
-  return { ...take, autoPlace: false, camera: lens, cameraVariants: [lens], effects: [...(take.effects ?? []), ...b.extra],
+  return { ...take, autoPlace: false, camera: lens, cameraVariants: [lens], effects: [...(take.effects ?? []).filter((e) => e.type !== 'sparks'), ...b.extra],
     storyboard: { ...take.storyboard, shots: [], cameraCues: [] },
     meta: { ...take.meta, id, round: ROUND, source: take.meta.id, stillMs: snap.fxTime, pair: `hero and ${snap.mate}`,
       idea: `the elevated group, ${fam} lens over a fleet take` } };
@@ -322,7 +322,7 @@ ${body}
 for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = [], TURN = 0] of ROWS) {
   SCENES[ID] = () => {
     const s = regroup(SCENES[SRC](), GAP, TURN);
-    return { ...s, effects: [...s.effects, ...EXTRA], lenses: [{ ...LENS }],
+    return { ...s, effects: [...s.effects.filter((e) => !EXTRA.length || e.type !== 'sparks'), ...EXTRA], lenses: [{ ...LENS }],
       meta: { ...s.meta, id: ID, round: ${ROUND}, source: SRC, idea: 'the ' + (EXTRA.length ? 'elevated' : 'close') + ' group, ' + FAMILY + ' lens' } };
   };
 }
@@ -338,6 +338,8 @@ for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = [], TURN = 0] of ROWS) {
     for (const p of rest) {
       const [path, fam, view = '1', tArg] = mode === 'take-write' ? p.split(':') : [p];
       const take = JSON.parse(readFileSync(path, 'utf8')), own = take.still?.tMs ?? take.meta?.still?.tMs;
+      // (batch B1) a night or sunset take's grade leaves the tanks under-lit from above
+      if (['night', 'sunset'].includes(take.timeOfDay)) { console.log(`${take.meta.id}: a ${take.timeOfDay} take, too dark from above`); continue; }
       const shots = (take.effects ?? []).filter((e) => e.type === 'fire' && Number.isFinite(e.tMs)).map((e) => e.tMs + 100);
       const times = tArg ? [Number(tArg)] : args.includes('--times=fire') ? [...new Set([own, ...shots])].sort((a, b) => a - b) : [own];
       const best = {}, at = {};
