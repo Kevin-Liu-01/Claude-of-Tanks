@@ -227,5 +227,19 @@ seq = mark();
 bus.emit('battle:rollout', {});
 assert.ok(since(seq).includes('mode_ctf_opener'), `capture the flag opens on its own sound (${since(seq)})`);
 
+// every mode's opener and the count's one-shots decode before any loop but the idles (an AC-130 battle decoded its opener 56th and its
+// tick 79th of 85 files, behind every loop and the aircraft set: silent when due on a loaded machine)
+for (const mode of GAME_MODE_IDS) {
+  gameMode = mode;
+  const presence = probe.presence(['leo2a4', 'leo1a5', 't80u', 'bmp2']);
+  // the roster's idles come first (heard from the first frame); then the cues, before the bed and any other loop
+  const firstLoop = presence.findIndex((id) => SFX_ASSETS[id]?.l && !/^engine_.+_idle$/.test(id));
+  const due = ['ui_countdown_tick', 'hatch', 'ui_countdown_go', ...(MODE_OPENER[mode] ? [MODE_OPENER[mode]] : [])];
+  for (const id of due) {
+    const at = presence.indexOf(id);
+    assert.ok(at >= 0 && at < firstLoop, `${mode}: ${id} decodes before any loop (${at} vs the first loop ${firstLoop}, ${presence[firstLoop]})`);
+  }
+}
+
 bus.emit('phase:change', { phase: 'garage' });
 console.log(`worldSounds.selftest: ${GAME_MODE_IDS.length} mode openers, ${MODE_EVENT_TYPES.length} mode events, running gear by ground/gearbox/drive/class, water edges, ${ids.length} hulls' powertrains (${Object.keys(counts).length} families), night life on ${nightLife} maps, roofs and props by material, dirt roads, crashes, kills, APS and the modes in the engine passed`);

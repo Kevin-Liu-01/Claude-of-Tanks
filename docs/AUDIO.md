@@ -58,9 +58,11 @@ map's scene, running gear, and the roster's powertrains (the solo loader also
 awaits this, bounded to 3.5 s, before the reveal; a network round passes its
 lobby roster as it starts loading, and every later warm of the battle keeps the
 roster it was given). Its **presence set** decodes first, in the front lane:
-each powertrain's start-up and idle, the map's beds, the running gear, the
-other engine bands, every loop a rig can start, then the count's tick, the
-mode's opener, the hatch and the horn, so the countdown is heard from its first
+each powertrain's start-up and idle, then the one-shots due at a moment of the
+count (its tick, the mode's opener, the hatch and the horn; 2026-11-03: behind
+every loop an AC-130 battle decoded its opener 56th and its tick 79th of 85
+files), then the map's beds, the running gear, the other engine bands, every
+loop a rig can start and the aircraft modes' set, so the countdown is heard from its first
 frame (on Verdant with six tanks: 44 assets, 45 files, 2.1 MB of the about 670
 files a cold entry queues; our idle used to decode 638th, now 7th). Each roster
 hull's powertrain is resolved from its whole spec (`getVehicleSpec`, the

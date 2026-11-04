@@ -2887,6 +2887,15 @@ export function createAudio({
     // one band of every family when the roster is unknown (our own hull's whole bank follows once indexed: preloadVehicle)
     if (!families.size) for (const family of ENGINE_FAMILY_IDS) ids.add(`engine_${family}_mid`);
     for (const family of families) for (const band of ['start', 'idle']) ids.add(`engine_${family}_${band}`);
+    // (world-sfx-269, 2026-11-03) the one-shots bound to a moment of the count decode next, before any loop: its ticks,
+    // the mode's opener, the hatch and the horn. Behind every loop (and in the aircraft modes all 18 aircraft sounds)
+    // an AC-130 battle decoded its opener 56th and its tick 79th of 85 files, so on a loaded machine they were still
+    // decoding when they were due, and silent; a loop that decodes late only fades in late.
+    ids.add('ui_countdown_tick');
+    const opener = modeOpener(mode);
+    if (opener) ids.add(opener);
+    ids.add('hatch');
+    ids.add('ui_countdown_go');
     const scene = sceneForMap(mapId);
     ids.add(scene.bed);
     if (scene.layer) ids.add(scene.layer.asset);
@@ -2897,11 +2906,6 @@ export function createAudio({
     for (const id of RIG_LOOPS) ids.add(id);
     // the aircraft modes fly from their first second
     if (mode === 'drone' || mode === 'ac130') for (const id of AERIAL_SET) ids.add(id);
-    ids.add('ui_countdown_tick');
-    const opener = modeOpener(mode);
-    if (opener) ids.add(opener);
-    ids.add('hatch');
-    ids.add('ui_countdown_go');
     return [...ids];
   }
 
