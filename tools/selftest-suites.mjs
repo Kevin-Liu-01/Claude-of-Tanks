@@ -1517,6 +1517,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/worldSounds.selftest.mjs',
     // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
     'src/audio/reverbSends.selftest.mjs',
+    // 2026-11-04 (world-sfx-269): nothing of the hangar after the battle phase edge, on every entry path
+    'src/audio/battleEntryAmbience.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',

@@ -36,6 +36,16 @@ assert.equal(desktop.pick('pen_heavy', Math.random), null);
 await desktop.load(['pen_heavy']);
 assert.ok(desktop.pick('pen_heavy', Math.random), 'and plays once decoded');
 
+// A receipt holds an asset on one variant whatever the stream draws (audio-mix-balance: each moment at its loudest
+// take), and releasing the hold lets the stream choose again.
+await desktop.load(['gun_120_close']);
+const takes = Array.from({ length: SFX_ASSETS.gun_120_close.n }, (_, i) => desktop.variant('gun_120_close', i));
+const last = takes.length - 1;
+desktop.holdVariants({ gun_120_close: last });
+for (const draw of [0, 0.3, 0.6, 0.99]) assert.equal(desktop.pick('gun_120_close', () => draw), takes[last], 'a held asset plays its held take');
+desktop.holdVariants(null);
+assert.equal(desktop.pick('gun_120_close', () => 0), takes[0], 'released, the stream chooses again');
+
 // Crew packs never count against the sound-effect cap.
 await desktop.loadVoice('ru');
 const stats = desktop.stats();

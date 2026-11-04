@@ -1239,6 +1239,15 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   reverb. The mixer now hands out one send per channel (`reverbSend(bus)`,
   scaled as the channel scales its buses) and keeps the reverb's input to
   itself; `reverbSends.selftest.mjs` walks the graph from every started source.
+  Leaving the garage ends its scene on the battle phase edge: the battle's
+  scene waits for the reveal or the rollout, and until then the hangar's bed
+  and workshop spots ran on under the loading screen
+  (`battleEntryAmbience.selftest.mjs` drives a solo start, an online
+  activation and a rematch, and holds every battle-phase assignment to its
+  edge). The explosions carry the ear proxy's `explosion` class and sit on the
+  verdict of record; `tools/audio-mix-balance.mjs` holds every asset on its
+  loudest take (the loudness receipt's momentary maximum), so a gate no longer
+  rides on the take the seeded stream drew.
 
 - **2026-11-03, every calibre and its reload (gun-reports-269).** The owner:
   "better cannonn sounds for all calibers, interior sounds for shell reloads

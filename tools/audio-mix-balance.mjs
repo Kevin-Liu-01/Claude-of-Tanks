@@ -35,16 +35,33 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     the cabin, and its howitzer fires inside the fuselage and throws its
 //     case onto the deck.
 //
+// Every moment is heard at its loudest take (2026-11-04): each asset the
+// loudness receipt measured is held on its variant with the highest momentary
+// loudness (any other on its first), so no gate rides on the take the engine's
+// seeded stream drew (a 40 m collapse stood 1.7 dB over a near cannon in one
+// run and 2.3 in another).
+//
 // Exit 0 = green. Shares the FIFO capture lock with every browser harness.
 // Usage: node tools/audio-mix-balance.mjs
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
+
+/**
+ * The take every asset is held on: a measured asset's loudest by momentary loudness (tools/audio/sfx-loudness.json, the
+ * files as they ship), any other its first, so no pick is left to the stream.
+ */
+function loudestTakes() {
+  const record = JSON.parse(readFileSync(resolve('tools/audio/sfx-loudness.json'), 'utf8'));
+  const shipped = JSON.parse(readFileSync(resolve('tools/audio/.sfx-manifest.json'), 'utf8'));
+  return Object.fromEntries(Object.keys(shipped).map((id) => [id, (record[id]?.variants ?? [])
+    .reduce((best, v, i, all) => ((v.mMax ?? -Infinity) > (all[best].mMax ?? -Infinity) ? i : best), 0)]));
+}
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
@@ -172,6 +189,10 @@ try {
   await page.waitForFunction('window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.3', { timeout: 30000 });
   // Default mix, as a fresh player has it.
   await page.evaluate(() => window.__DEBUG.bus.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
+  // Every moment at its loudest take (see the header): the same verdict on every run.
+  const held = loudestTakes();
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), held);
+  console.log(`[mix] ${Object.keys(held).length} assets held on one take (the measured ones on their loudest)`);
   const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
   let lastI16 = null;
   let lastGrDb = 0;

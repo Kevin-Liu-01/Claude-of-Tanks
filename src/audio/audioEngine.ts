@@ -2490,7 +2490,11 @@ export function createAudio({
       scene = sceneForMap(mapId);
       atmosphere = atmosphereForMap(mapId);
       pool.setAtmosphere(atmosphere);
+      // The battle's scene waits for the reveal or the rollout (ambientOn); until then nothing of the hangar's plays. Every
+      // entry reaches this on its battle phase edge (a solo start, an online activation, a rematch), and the garage scene's
+      // bed and workshop spots ran on under the loading screen while the director kept it.
       if (ambientWanted) ambience.play(scene, true);
+      else ambience.stop(0.3);
     } else {
       scene = GARAGE_SCENE;
       atmosphere = atmosphereForMap(null);
@@ -3198,6 +3202,8 @@ export function createAudio({
       get snapshot() { return mixer?.snapshot ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
+      /** Hold each named asset on one variant (tools/audio-mix-balance.mjs: every moment at its loudest take); null releases. */
+      holdVariants: (held: Readonly<Record<string, number>> | null) => { library?.holdVariants(held); },
       /** Resolves when every sound and voice load in flight has settled (receipts await the real load, never ticks). */
       libraryIdle: () => library?.idle() ?? Promise.resolve(),
       /** The countdown's presence set, decoded first by the battle warm: this battle's roster, or the one given. */
