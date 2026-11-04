@@ -604,7 +604,7 @@ export type ReloadCueType =
   | 'ammoDoorOpen' | 'shellGrab' | 'ammoDoorClose' | 'ram' | 'bagCharge' | 'caseCharge' | 'breechClose'
   | 'carouselTurn' | 'basketTurn' | 'cassetteLift' | 'chainRam' | 'chargeChainRam'
   | 'bustleIndex' | 'bustleRam' | 'magazineDrop' | 'caseOutside' | 'ifvLoad'
-  | 'missileRound' | 'hatchOpen' | 'canisterLift' | 'tubeLoad' | 'launcherRaise' | 'latch'
+  | 'missileRound' | 'hatchOpen' | 'canisterLift' | 'tubeLoad' | 'launcherRaise'
   | 'rocketLoad' | 'gunshipLoad';
 
 export interface ReloadCue {
@@ -666,7 +666,6 @@ function cueAsset(type: ReloadCueType, row: WeaponRow): string {
     case 'canisterLift': return 'missile_canister_lift';
     case 'tubeLoad': return 'missile_tube_load';
     case 'launcherRaise': return 'launcher_raise';
-    case 'latch': return 'latch_ready';
     case 'rocketLoad': return 'rocket_crane_load';
     case 'gunshipLoad': return 'gunship_round_load';
   }
@@ -732,14 +731,15 @@ function loadSteps(row: WeaponRow, loader: LoaderMake, missileRound: boolean, ra
     // The 2A70's autoloader feeds its rounds; a 9M117 missile is loaded by hand.
     case 'ifv_autoloader': return missileRound ? [['breechOpen', 0.02], ['missileRound', 0.4], ['breechClose', { by: 0.22 }]]
       : [['ifvLoad', { from: 0.4 }], ['breechClose', { by: 0.22 }]];
-    // The roof launcher is reloaded through the hatch: the hatch, the canister out of stowage, into the tube, latched.
-    case 'launcher': return [['hatchOpen', { from: 0.1 }], ['canisterLift', 0.3], ['tubeLoad', 0.55], ['launcherRaise', { by: 0.6 }], ['latch', { by: 0.15 }]];
+    // The roof launcher is reloaded through the hatch: the hatch, the canister out of stowage, into the tube, the launcher
+    // up (the ready latch that ends every cycle locks it).
+    case 'launcher': return [['hatchOpen', { from: 0.1 }], ['canisterLift', 0.3], ['tubeLoad', 0.55], ['launcherRaise', { by: 0.6 }]];
     // The AC-130's howitzer, loaded by hand in the cabin: the breech drops open (its spent case already thrown onto the
     // deck after the shot), a round is hefted and rammed home, and the breech closes on it.
     case 'gunship': return [['breechOpen', 0.03], ['gunshipLoad', { from: 1 }], ['breechClose', { by: 0.25 }]];
-    case 'rocket_rack': return [['rocketLoad', 0.15], ['rocketLoad', 0.4], ['rocketLoad', 0.65], ['latch', { by: 0.4 }]];
-    // an AC-130 missile arms on its pylon: the fire-control relay, nothing more inside the cabin
-    case 'pylon': return [['latch', { by: 0.2 }, -4]];
+    case 'rocket_rack': return [['rocketLoad', 0.15], ['rocketLoad', 0.4], ['rocketLoad', 0.65]];
+    // an AC-130 missile arms on its pylon: nothing inside the cabin but the ready latch that ends the cycle
+    case 'pylon': return [];
     case 'autocannon': return [];
   }
 }

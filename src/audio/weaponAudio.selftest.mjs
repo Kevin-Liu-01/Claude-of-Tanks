@@ -139,7 +139,8 @@ const magazine = resolveReloadCuePlan(9, 'magazine', main(LEO2), 'bustle', { mag
 assert.equal(types(magazine).filter((t) => t === 'shellGrab').length, 3, 'a bustle magazine is refilled round by round');
 assert.equal(resolveReloadCuePlan(2.2, 'intraClip', main(LEO2), 'bustle').profile, 'intraClip');
 const towPlan = resolveReloadCuePlan(10, 'shell', tow, 'launcher');
-assert.deepEqual(types(towPlan), ['hatchOpen', 'canisterLift', 'tubeLoad', 'launcherRaise', 'latch'], 'a roof launcher is reloaded through the hatch');
+assert.deepEqual(types(towPlan), ['hatchOpen', 'canisterLift', 'tubeLoad', 'launcherRaise'], 'a roof launcher is reloaded through the hatch (the ready latch ends it)');
+assert.ok(resolveReloadCuePlan(7, 'shell', eventMount(180, 'gunship-missile'), 'pylon').ready, 'a pylon missile is ready with the latch alone');
 assert.deepEqual(types(resolveReloadCuePlan(8, 'shell', arkan, 'ifv_autoloader')), ['breechOpen', 'missileRound', 'breechClose'], 'a 9M117 is loaded by hand');
 assert.deepEqual(types(resolveReloadCuePlan(48, 'magazine', mountForRound(weaponMounts(TOS), '220 mm Salvo HE'), 'rocket_rack')).filter((t) => t === 'rocketLoad').length, 3);
 const gunshipPlan = resolveReloadCuePlan(3.5, 'shell', eventMount(152, 'gunship-howitzer'), loaderFor(null, eventMount(152, 'gunship-howitzer')));
