@@ -492,6 +492,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
     'src/ui/studioQueue.selftest.mjs',
+    // 2026-11-02 audit F9: Clear during a queue run skips no job, Export film waits for the queue, a hidden sound lane stops
+    'src/ui/studioPanelBusy.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',
@@ -1365,6 +1367,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
     'src/game/studioEntrySuperseded.selftest.mjs', // 2026-11-02 audit R1: an entry its exit abandons mid-build settles silently
+    // 2026-11-02 audit F9: one Studio session (phase, tokens, cancels, held work); an exit during a map switch, a load, a
+    // light change or a film export lands nothing after the teardown
+    'src/game/studioSession.selftest.mjs',
+    'src/game/studioSessionExit.selftest.mjs',
+    // 2026-11-02 audit F9: the take owns the playhead (one busy reading); pointercancel releases the history hold
+    'src/game/studioTransport.selftest.mjs',
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film

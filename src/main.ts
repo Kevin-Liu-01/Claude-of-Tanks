@@ -4209,6 +4209,12 @@ const studioAccess = createStudioAccess({
       }
     },
     setWorldDormant,
+    // (audit F9) a Studio battlefield build an exit outlived activates its world when it lands (awake, under its own sky
+    // and sun): while the Garage still owns the screen, its own presentation comes back (the world asleep, its sky and trim)
+    restoreGarageWorld: () => {
+      if (game.phase !== 'garage' || battleEntryLifecycle.pending || battleLoad.covering || garageReturn.transitioning) return;
+      void garageEnvironmentPresentation.activate(selectedGarageVariantId);
+    },
     // (audit F3 review) the Studio's exit: a failed return says so and offers its retry, instead of a frozen Garage
     setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,
     // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return
@@ -4217,6 +4223,7 @@ const studioAccess = createStudioAccess({
     prepareStudioAtmosphere: async (
       time: import('./game/studioLight.ts').StudioTimeOfDay,
       light: import('./game/studioLight.ts').StudioLight | null = null,
+      owner?: { current(): boolean },
     ) => {
       await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, ['day']);
       studioLightRuntime ??= createLazyChunk(() => import('./game/studioLightRuntime.ts').then(({ createStudioLightRuntime }) => {
@@ -4240,11 +4247,14 @@ const studioAccess = createStudioAccess({
         studioLightLive = runtime;
         return runtime;
       }), { opener: true }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
-      const applied = await (await studioLightRuntime.load()).apply(time, light);
+      const runtime = await studioLightRuntime.load();
+      // (audit F9) a Studio session that ended while this prepared lights nothing: its exit restored the battlefield
+      if (owner && !owner.current()) return null;
+      const applied = runtime.apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
       await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);
-      return applied;
+      return owner && !owner.current() ? null : applied; // (its light came before that session's restore)
     },
     setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),
     restoreStudioAtmosphere: () => {

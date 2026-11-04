@@ -26,7 +26,8 @@ function fixture() {
   const track=()=>{const t={stopped:false,stop(){this.stopped=true;},requestFrame(){if(throwAt==='requestFrame')throw Error('requestFrame');if(++submitted===chunkAfter)encoders.at(-1).chunk();}};tracks.push(t);return t;};
   const make=new Function('ports',`
     const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post,t}=ports;
-    let recording=null,timeScale=0,clockMs=0,filming=false;
+    let recording=null,timeScale=0,clockMs=0,filming=false,holder=null;
+    const busy=()=>recording?'recording':holder; // the Studio's one busy reading (studioSession.ts), idle unless a case sets it
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){},drawSelection(){}},grabShotThumbnail=()=>{},reverseRate=0,stepReverseShuttle=()=>{};
     let poolSweepAcc=0,frameDirty=false,lastFov=60,buildPlateUp=false;
@@ -35,7 +36,7 @@ function fixture() {
     const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}}),flareToWallClock=()=>{};
     ${functions}
     ${tickFunction}
-    return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
+    return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;},hold:h=>{holder=h;filming=h==='film';}};
   `);
   // the Studio's messages come from the catalog (studio.error.*): the sandbox reads them through the real translator
   const api=make({t,MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
@@ -93,6 +94,20 @@ for(const stage of ['constructor','start','render','requestFrame']) {
   f.frame(.1,20);assert.equal(f.clockValue(),15000,'catch-up remains bounded by the authored end');
   recorder.emit('stop');const result=await promise;
   assert.equal(result.durationMs,15000);assert.equal(result.leadInMs,800);
+}
+// (2026-11-02 audit F9) A recording asks the Studio's one busy reading: an open film or an export from its request (its
+// module's import was a gap a recording started in, the film then opening under it) refuses it, as does a session that
+// is not open or a scene, battlefield or history change in flight. No encoder starts; a live recording is its own answer.
+for(const [holder,message] of [['film','studio.error.finishFilm'],['export','studio.error.finishFilm'],['session','studio.error.busy'],
+  ['scene','studio.error.busy'],['map','studio.error.busy'],['history','studio.error.busy']]) {
+  const f=fixture();f.hold(holder);const refused=f.recordVideo({download:false});
+  assert.equal(f.encoders.length,0,`${holder}: no encoder starts`);assert.equal(f.state().active,false);
+  await assert.rejects(refused,{message:t(message)},`${holder} refuses a recording`);
+}
+{
+  const f=fixture(),promise=f.recordVideo({download:false}),recorder=f.encoders[0];
+  assert.strictEqual(f.recordVideo({download:false}),promise,'a second request joins the recording in progress');
+  f.stopRecording();recorder.emit('stop');await promise;
 }
 // Resize invalidates a temporal renderer even when the authored scene is paused.
 // Exercise the actual still-capture transaction, including failure cleanup.
