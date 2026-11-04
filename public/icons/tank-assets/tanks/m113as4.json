@@ -21,8 +21,8 @@
   "nation": "Australia",
   "countryCode": "au",
   "era": "modern",
-  "tier": 2,
-  "tierNumeral": "II",
+  "tier": 3,
+  "tierNumeral": "III",
   "dimensionsM": {
     "hullLength": 5.53,
     "overallLength": 6.05,
@@ -40,18 +40,18 @@
         "pen2000Mm": 55
       },
       {
-        "name": "L111A1 API-T",
-        "type": "AP",
-        "pen100Mm": 68,
-        "pen1000Mm": 56,
-        "pen2000Mm": 42
-      },
-      {
         "name": "L111A1 Ball",
         "type": "HE",
         "pen100Mm": 8,
         "pen1000Mm": 8,
         "pen2000Mm": 8
+      },
+      {
+        "name": "BGM-71E TOW-2A",
+        "type": "HEAT",
+        "pen100Mm": 900,
+        "pen1000Mm": 900,
+        "pen2000Mm": 900
       }
     ]
   },
@@ -489,41 +489,48 @@
       },
       {
         "volumeId": "M04",
+        "name": "missileRack",
+        "min": [-0.4871,0.2044,-0.5373],
+        "max": [-0.0325,0.423,0.3325],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M05",
         "name": "engine",
         "min": [-0.3219,0.4673,0.3947],
         "max": [0.3818,1.6367,1.2666],
         "turretLocal": false
       },
       {
-        "volumeId": "M05",
+        "volumeId": "M06",
         "name": "transmission",
         "min": [-0.7598,0.5642,1.0957],
         "max": [0.1341,1.4598,1.523],
         "turretLocal": false
       },
       {
-        "volumeId": "M06",
+        "volumeId": "M07",
         "name": "fuelTank",
         "min": [-0.8835,0.43,-1.3124],
         "max": [0.8835,1.209,-0.6702],
         "turretLocal": false
       },
       {
-        "volumeId": "M07",
-        "name": "ammoRack",
-        "min": [-0.5139,0.1348,-0.6326],
-        "max": [-0.0037,0.4276,-0.1208],
-        "turretLocal": true
-      },
-      {
         "volumeId": "M08",
-        "name": "radio",
-        "min": [-0.396,0.073,-0.5652],
-        "max": [-0.066,0.1894,-0.3123],
+        "name": "ammoRack",
+        "min": [-0.0817,0.1576,-0.4319],
+        "max": [0.3825,0.3804,-0.3103],
         "turretLocal": true
       },
       {
         "volumeId": "M09",
+        "name": "radio",
+        "min": [-0.396,0.073,-0.5652],
+        "max": [-0.066,0.2476,-0.3123],
+        "turretLocal": true
+      },
+      {
+        "volumeId": "M10",
         "name": "optics",
         "min": [-0.26,0.53,0.406],
         "max": [0.02,0.63,0.418],
@@ -536,14 +543,14 @@
         "turretLocal": true
       },
       {
-        "volumeId": "M10",
+        "volumeId": "M11",
         "name": "trackL",
         "min": [-1.34,0.043,-2.7144],
         "max": [-0.96,0.8997,2.6943],
         "turretLocal": false
       },
       {
-        "volumeId": "M11",
+        "volumeId": "M12",
         "name": "trackR",
         "min": [0.96,0.043,-2.7144],
         "max": [1.34,0.8997,2.6943],
@@ -567,8 +574,8 @@
       }
     ]
   },
-  "geometryHash": "b16a0904",
-  "metadataHash": "48257cd6",
+  "geometryHash": "720a365b",
+  "metadataHash": "92391f4b",
   "presentationAnchor": {
     "xM": -0.0001,
     "zM": -0.0197
@@ -591,10 +598,10 @@
       "trackBand": 2,
       "trackPad": 1,
       "trackPadSimplified": 1,
-      "armorPaint": 11,
-      "gunmetal": 5,
+      "armorPaint": 12,
+      "gunmetal": 7,
       "opticGlass": 2,
-      "unclassified": 4,
+      "unclassified": 6,
       "gearShadow": 2,
       "fittingPaint": 1
     }
@@ -609,12 +616,12 @@
     "fallback": 1
   },
   "vehicleMarkings": {
-    "total": 1,
-    "insignia": 0,
-    "designation": 0,
-    "verifiedInsignia": 0,
-    "verifiedDesignation": 0,
-    "minimumVisibilityRatio": 1,
+    "total": 3,
+    "insignia": 1,
+    "designation": 1,
+    "verifiedInsignia": 1,
+    "verifiedDesignation": 1,
+    "minimumVisibilityRatio": 0.6666667,
     "codes": ["AU:au-army-kangaroo:22A"]
   },
   "assets": {
@@ -623,15 +630,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27424,
-      "sha256": "236a0f0b4cb2dea1417419ccaff9d9b1a768a5cd7c4eeb876b7f6f5ad3d420eb",
+      "bytes": 28204,
+      "sha256": "263c2af3bb7840e79bea66957280d851d02b4821142c07f169a52bff884ead22",
       "thumbnail": {
         "file": "thumbs/m113as4_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 11638,
-        "sha256": "027c85b9d4d087314a283aab2af0929e1429afc105ccc3f3b4398f81949f3da9"
+        "bytes": 11910,
+        "sha256": "4e208bf382c0eb147961c6c936d4485da10f3008d10a796029276f5332747991"
       }
     },
     "top": {
@@ -639,16 +646,16 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 14662,
-      "sha256": "2036a6506a3904ce3c79b452b8c355cd9461a6a88330ea071ac8c8b0946df056"
+      "bytes": 14988,
+      "sha256": "29145fb062b55c4e550f5f397b3bfcc9add325f67341d1de46debb094c18bb61"
     },
     "side": {
       "file": "m113as4_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 13004,
-      "sha256": "46f4b70dee9383f5be677cc311c04ed9361506d9079ca2dab30f9c6bcee65f3b"
+      "bytes": 13612,
+      "sha256": "cb3077ed14f4c97bac9930b9e2b29d983572e95b2a3adb70bc9bd4df48bf0f71"
     },
     "topSilhouette": {
       "file": "m113as4_top_silhouette.png",
@@ -663,32 +670,32 @@
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4394,
-      "sha256": "df7337c248e9c5527fc57d63ab7177b8de58d30619e24eb245d33d4bd8655053"
+      "bytes": 4461,
+      "sha256": "d74b4f76d3e5aba882ccd5ea703342e3bd3bba6431f4b3bbb11e7c8942f6c1a6"
     },
     "armorSide": {
       "file": "m113as4_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 28386,
-      "sha256": "a26e2f231f06e54287a031ad113488613577c79ee293ec279ec29e45d95b7ce6"
+      "bytes": 30100,
+      "sha256": "3d538e30f9e7c1eebde088d869f1d6c5d80a56eeab43c5429c7a39a0d6672006"
     },
     "modulesSide": {
       "file": "m113as4_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 30206,
-      "sha256": "5e92db9dec1bf240d6e29df46639f8e375ee80cb0207e06af2d24cc8b14259cd"
+      "bytes": 31372,
+      "sha256": "51d6c89e02fb5e0fba338132a08c3ac8c70ec607499dde9ce3f575874736a078"
     },
     "crewSide": {
       "file": "m113as4_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 27312,
-      "sha256": "7fb40635cf28b1922ddc3f0a2d11fcc015ff117fb10e32a6ce3104d7e3258122"
+      "bytes": 28744,
+      "sha256": "af36b96046817d984921079a577851708e3d80b6743492063d5f3fb50823566d"
     },
     "markings": {
       "file": "m113as4_markings.png",
@@ -701,8 +708,8 @@
     "technicalLabels": {
       "file": "m113as4_technical.json",
       "mime": "application/json",
-      "bytes": 4196,
-      "sha256": "48fdc24f9c61524139a751202436e985c891c6f5b14da8787b4043a05ebc2e54"
+      "bytes": 4315,
+      "sha256": "759f99a3cd9b1b9c725851b6d3cfa27be3cb8ac29719fa58f85df7c115e6e28f"
     }
   }
 }

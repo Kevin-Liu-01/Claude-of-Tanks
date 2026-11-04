@@ -5352,7 +5352,7 @@
       "smoke": 6,
       "lights": true,
       "roofGun": true,
-      "missile": false,
+      "missile": true,
       "suspension": false
     },
     {
@@ -5373,7 +5373,7 @@
       "smoke": 8,
       "lights": true,
       "roofGun": true,
-      "missile": false,
+      "missile": true,
       "suspension": false
     },
     {
@@ -5402,7 +5402,7 @@
       "name": "M113AS4",
       "nation": "Australia",
       "role": "ifv",
-      "tier": 2,
+      "tier": 3,
       "hp": 1300,
       "speed": 65,
       "reverse": 14,
@@ -5415,7 +5415,7 @@
       "smoke": 6,
       "lights": true,
       "roofGun": false,
-      "missile": false,
+      "missile": true,
       "suspension": false
     },
     {
