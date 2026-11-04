@@ -210,6 +210,9 @@ function burstFor(model, s, A, F, boxes, top = 0.55) {
 }
 
 function solve(id, turn = 0) {
+  // (batch C3) a source that kills its foe before the still stages a wreck, not a duel
+  const s = SCENES[id]();
+  if (s.effects.some((e) => e.type === 'tank_kill' && e.actor === 'foe0' && e.tMs <= s.fxTime)) return { id, gap: null, best: {} };
   const gap = clearGap(id, turn);
   if (gap === null) return { id, gap: null, best: {} };
   return { id, gap, best: lensesFor(regroup(SCENES[id](), gap, turn)) };
