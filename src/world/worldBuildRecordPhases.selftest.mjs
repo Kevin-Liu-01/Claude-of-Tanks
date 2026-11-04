@@ -111,8 +111,11 @@ function coordinatorWith({ createMapAsync, sleep, now, getGarageActivity, scene 
   gate.resolve();
   await microtasks();
   assert.ok(coordinator.cache.has('new'), 'the next world is cached while the release still runs');
-  for (let i = 0; i < 10; i++) await turn();
-  assert.ok(coordinator.lastRelease?.id === 'old', 'the release finished');
+  // the paced release chains its slices on setTimeout(slice, 0) (clamped to >= 1 ms): wait on that timer queue for the
+  // release itself, with a cap, rather than a fixed count of check-phase turns (flaky under load: integration review r1)
+  let waits = 0;
+  while (coordinator.lastRelease?.id !== 'old' && waits < 200) { await new Promise((resolve) => setTimeout(resolve, 0)); waits++; }
+  assert.ok(coordinator.lastRelease?.id === 'old', `the release finished (after ${waits} timer turns)`);
   assert.deepEqual(disposedShared, [], 'the material the newly cached world shares is kept');
   assert.equal(coordinator.lastRelease.geometries, 100);
   await next.promise;
