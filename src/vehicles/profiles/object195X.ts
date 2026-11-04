@@ -117,7 +117,8 @@ function addModule(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('turret', sectionSolid(faces.map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
   }
-  P.add('turret', box(.80, .16, .36), 0, 1.10, 1.10);
+  // the lintel over the mantlet closes the gun slot down to the shield's top at full elevation (0.81)
+  P.add('turret', box(.80, .32, .36), 0, 1.02, 1.10);
   // the gunner's sight boxes stacked right of the gun, their windows and hoods
   for (const [y, h] of [[.50, .30], [.86, .30]]) {
     P.add('turret', box(.34, h, .30), .66, y, 1.32);

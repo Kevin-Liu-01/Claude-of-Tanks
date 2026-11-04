@@ -16,10 +16,12 @@ export const OBJECT292_FRAME = Object.freeze({
 });
 
 /** The Object 195: a 7.9 m hull on seven road wheels (militaryrussia; btvt), its unmanned module's ring amidships over the
- * autoloader's carousel, the 2A83's trunnion high in the tall module (the photographs), 10.6 m over the gun. */
+ * autoloader's carousel, the 2A83's trunnion in the module's lower half, about half a metre over the hull's roof (Gur Khan's
+ * hangar photograph, owner image 2: the tube leaves the module's face 40 % of the way up; 2.30 m stood it a metre over
+ * the roof), 10.6 m over the gun. */
 export const OBJECT195_FRAME = Object.freeze({
   hullFrontZ: 3.95, hullRearZ: -3.95, roofY: 1.60, ringY: 1.60, ringZ: -0.30,
-  trunnionY: 2.30, trunnionZ: 0.95, muzzleZ: 6.70,
+  trunnionY: 2.12, trunnionZ: 0.95, muzzleZ: 6.70,
 });
 
 /** The Object 477 Molot: btvt's 10,650 mm over the gun, 2,434 mm to the turret's roof and a 2,088 mm line of fire; the

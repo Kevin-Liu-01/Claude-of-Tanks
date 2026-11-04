@@ -9,7 +9,7 @@
 // of fire (btvt). First-party procedural geometry: Kevin B. Liu (NOTICE.md); sources in
 // docs/references/photos/russia-152-20261104.json.
 import { KIT, FITTINGS } from './kit.ts';
-import { sectionSolid } from './sectionSolid.ts';
+import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { addHullTub, addSkirtPanels, add30mmCannon, sideSolid } from './russia152Kit.ts';
 import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
@@ -63,6 +63,19 @@ function addHull(P: TankBuilderPort): void {
   KIT.towCable(P, [[.95, 1.61, -2.90], [1.30, 1.615, -1.20], [1.25, 1.615, .60]], .02);
 }
 
+/** The flank's front run: six pillowed panels (z 0.45 to 3.00), each bulging 4 cm at its middle, the tops at the roof and
+ * down along the glacis ahead of z 1.60. Hull frame. */
+function addBulgedPanels(P: TankBuilderPort): void {
+  const [z0, z1, n, y0] = [.45, 3.00, 6, .62], len = (z1 - z0) / n;
+  const top = (z: number) => Math.min(1.58, noseY(z) + .06);
+  const ring = (z: number, out: number, inset: number): SolidSection => ({ z, ring: [[1.675, y0 + inset], [out, y0 + inset],
+    [out, top(z) - inset], [1.675, top(z) - inset]] });
+  for (const s of [-1, 1]) for (let i = 0; i < n; i++) {
+    const a = z0 + i * len + .01, b = a + len - .02;
+    P.add('hull', sideSolid([ring(a, 1.745, .03), ring((a + b) / 2, 1.785, 0), ring(b, 1.745, .03)], s));
+  }
+}
+
 function addRunningGear(P: TankBuilderPort): void {
   // seven large rubber-tyred road wheels a side from just behind the nose (btvt's profile drawing; the owner's images) on the
   // T-80UD's "Leningrad" running gear (Apukhtin), at the T-80U's wheel, shoe and roller measures (profiles/t80uX.ts)
@@ -76,13 +89,14 @@ function addRunningGear(P: TankBuilderPort): void {
     sprocketDepthScale: .83, idlerDepthScale: .83,
     trackShoeDimensions: { padHeight: .036, grouserHeight: .012, webHeight: .018, hornHeight: .070, pinRadius: .011, pinCentreY: 0 },
   });
-  // the multi-barrier flanks: full-length skirt panels, the front three thicker over their ERA
-  addSkirtPanels(P, { x: 1.73, z0: .55, z1: 3.00, y0: .62, y1: 1.58, n: 3, th: .09 });
-  addSkirtPanels(P, { x: 1.71, z0: -3.30, z1: .55, y0: .70, y1: 1.58, n: 5, th: .04 });
+  // the multi-barrier flanks (btvt's drawing): six bulged armour panels from the turret's front to the nose, their tops
+  // following the glacis down, and plain plates behind them
+  addBulgedPanels(P);
+  addSkirtPanels(P, { x: 1.71, z0: -3.30, z1: .45, y0: .70, y1: 1.58, n: 2, th: .04 });
   // the skirts' raked front panel down toward the prow
   for (const s of [-1, 1]) {
     P.add('hull', sideSolid([
-      { z: 3.00, ring: [[1.685, .62], [1.775, .62], [1.775, 1.58], [1.685, 1.58]] },
+      { z: 3.00, ring: [[1.685, .62], [1.775, .62], [1.775, noseY(3.00) + .06], [1.685, noseY(3.00) + .06]] },
       { z: 3.50, ring: [[1.685, .95], [1.775, .95], [1.775, noseY(3.50) + .06], [1.685, noseY(3.50) + .06]] },
     ], s));
   }
@@ -95,31 +109,30 @@ function addTurret(P: TankBuilderPort): void {
     { z: -1.70, ring: [[-.95, .04], [.95, .04], [.95, .36], [-.95, .36]] },
     { z: -1.45, ring: [[-1.18, .02], [1.18, .02], [1.18, .42], [-1.18, .42]] },
     { z: .55, ring: [[-1.22, .02], [1.22, .02], [1.22, .44], [-1.22, .44]] },
-    { z: 1.25, ring: [[-.62, .04], [.62, .04], [.62, .38], [-.62, .38]] },
+    { z: 1.25, ring: [[-.62, .04], [.62, .04], [.62, .26], [-.62, .26]] },
   ]));
   P.add('turret', cylY(1.00, 1.02, .10, 36), 0, .03, 0);
-  // the casing ("пенал"): a long armoured box on the roof's centreline round the gun's cradle and breech, the gun leaving
-  // its front face through the mantlet (round 1's critic: the casing encloses the gun, not a slab over it)
-  P.add('turret', sectionSolid([
-    { z: -1.72, ring: [[-.36, .34], [.36, .34], [.36, .74], [.30, .80], [-.30, .80], [-.36, .74]] },
-    { z: .90, ring: [[-.42, .30], [.42, .30], [.42, .78], [.36, .834], [-.36, .834], [-.42, .78]] },
-    { z: 1.40, ring: [[-.42, .28], [.42, .28], [.42, .76], [.36, .81], [-.36, .81], [-.42, .76]] },
-    { z: 1.66, ring: [[-.40, .26], [.40, .26], [.40, .70], [.34, .75], [-.34, .75], [-.40, .70]] },
-  ]));
-  for (const s of [-1, 1]) for (const z of [-1.10, -.20]) P.addEquipment('turretDark', box(.012, .38, .02), s * .395, .58, z);
-  P.addEquipment('turretDetail', box(.60, .02, .80), 0, .835, -.80);
+  // the casing ("пенал") round the gun's cradle and breech (btvt's drawing): a tall, blocky front over the mantlet standing
+  // ahead of the sloped turret face, to btvt's 2,434 mm, and a lower run back along the roof over the breech
+  const oct = (z: number, hw: number, y0: number, y1: number): SolidSection => ({ z, ring: [[-hw, y0], [hw, y0], [hw, y1 - .06],
+    [hw - .06, y1], [-(hw - .06), y1], [-hw, y1 - .06]] });
+  P.add('turret', sectionSolid([oct(-1.40, .34, .34, .66), oct(.40, .38, .30, .70), oct(.48, .50, .26, .834),
+    oct(1.40, .50, .24, .834), oct(1.70, .46, .24, .74)]));
+  const rearHw = (z: number) => .34 + .04 * (z + 1.40) / 1.80, rearTop = (z: number) => .66 + .04 * (z + 1.40) / 1.80;
+  for (const s of [-1, 1]) for (const z of [-1.10, -.20]) P.addEquipment('turretDark', box(.012, .30, .02), s * (rearHw(z) + .004), .50, z);
+  P.addEquipment('turretDetail', box(.56, .02, .80), 0, rearTop(-.80) + .005, -.80);
   // the sabot petals' ejection hatch at the casing's tail
-  P.addEquipment('turretDetail', box(.50, .03, .30), 0, .82, -1.50);
+  P.addEquipment('turretDetail', box(.50, .03, .30), 0, rearTop(-1.25) + .01, -1.25);
   // the gunner's multichannel sight on the casing's left flank, its window forward
   P.add('turret', box(.30, .34, .46), -.56, .62, .70);
   P.addEquipment('turretDark', box(.24, .22, .02), -.56, .62, .935);
   P.addEquipment('turretGlass', box(.18, .14, .012), -.56, .63, .945);
-  // the commander's panoramic sight on its raised pedestal at the back right (raised clear of the casing)
-  P.add('turret', cylY(.16, .18, .40, 20), .62, .62, -.78);
-  P.addEquipment('turretDetail', cylY(.21, .21, .08, 22), .62, .86, -.78);
-  P.addEquipment('turretDetail', KIT.sph(.20, 18, Math.PI / 2), .62, .90, -.78);
-  P.addEquipment('turretDark', box(.22, .10, .10), .62, .98, -.62);
-  P.addEquipment('turretGlass', box(.17, .07, .01), .62, .98, -.567);
+  // the commander's panoramic sight, low on a short pedestal beside the casing ahead of the ring's middle (btvt's drawing)
+  P.add('turret', cylY(.16, .18, .22, 20), .58, .54, -.15);
+  P.addEquipment('turretDetail', cylY(.21, .21, .08, 22), .58, .69, -.15);
+  P.addEquipment('turretDetail', KIT.sph(.20, 18, Math.PI / 2), .58, .73, -.15);
+  P.addEquipment('turretDark', box(.22, .10, .10), .58, .81, .01);
+  P.addEquipment('turretGlass', box(.17, .07, .01), .58, .81, .063);
   // the commander's and gunner's hatches on the low roof either side of the casing
   P.addHatch('turretDetail', cylY(.26, .27, .04, 18), -.72, .46, -.55);
   for (const s of [-1, 1]) {
