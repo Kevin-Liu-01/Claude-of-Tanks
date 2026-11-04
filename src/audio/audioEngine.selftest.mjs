@@ -702,4 +702,19 @@ assert.equal(window.__COT_AUDIO.crewLanguage, 'fr', 'pre-resume events retain th
 if (priorStorage === undefined) delete globalThis.localStorage;
 else globalThis.localStorage = priorStorage;
 
+{
+  // Our own roof machine gun (gun-reports-269): its own bank from the hatch, only its closed turret's in the sight.
+  since = mark();
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 12.7 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('mg_heavy_own') && !names.includes('mg_heavy_close'), `our roof gun plays its own report (${names})`);
+  ctx.advance(0.3);
+  since = mark();
+  audio.update(1 / 60, { ...listener, scoped: true }, tanks);
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 12.7 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('mg_heavy_interior') && !names.includes('mg_heavy_own') && !names.includes('mg_heavy_far'), `in the sight it is heard through the roof (${names})`);
+  audio.update(1 / 60, listener, tanks);
+  ctx.advance(0.3);
+}
 console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);

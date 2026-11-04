@@ -11,13 +11,13 @@
 // tools/audio/sfx-picks.json overrides the ranking for an asset.
 
 import { readFileSync, existsSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SFX_CATALOG } from './sfx-catalog.mjs';
 import { CACHE_ROOT } from './elevenlabs.mjs';
 import { deinterleave } from './pcm.mjs';
-import { measure, onsets } from './sfx-qa.mjs';
-import { masterTake } from './master.mjs';
+import { measure, SINGLE_SHOT, SINGLE_FAR, firstShotOnly } from './sfx-qa.mjs';
+import { masterTake, PRESETS } from './master.mjs';
 
 /** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
 const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
@@ -28,6 +28,8 @@ const OUT = join(ROOT, 'public', 'audio', 'sfx');
 const MANIFEST = join(ROOT, 'src', 'audio', 'sfxManifest.generated.ts');
 const PICKS = join(HERE, 'sfx-picks.json');
 const SR = 48000;
+/** How far under its preset's momentary target a mastered take may sit (sfxLoudness.selftest.mjs holds the same floor). */
+const UNDER_LU = 7;
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : null);
@@ -48,47 +50,14 @@ function clippedRun(file) {
   return worst;
 }
 
-const PUNCHY = new Set(['weapon-close', 'gunshot', 'punch', 'sub', 'impact', 'foley', 'ui', 'radio']);
+const PUNCHY = new Set(['weapon-close', 'gunshot', 'cannon', 'autocannon', 'punch', 'sub', 'impact', 'foley', 'ui', 'radio']);
 // Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
 // Loading machinery is judged on weight plus a clean steel transient: dark, but not dull.
-const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact', 'sub', 'debris']);
+const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'cannon', 'autocannon', 'impact', 'sub', 'debris']);
 const DARK_GROUPS = new Set(['ui', 'stingers', 'equipment', 'edge']);
 const MECHANICAL = new Set(['mechanism']);
 /** Groups whose takes may pause between events: animal calls and distant spot sounds, beds, stings. */
 const SPARSE_GROUPS = new Set(['spots', 'ambience', 'stingers']);
-
-/** Assets played once per round fired/struck: one report each, never a burst. */
-const SINGLE_SHOT = /^(mg_|ac_\d+_(close|own|interior|far)|ac_far_|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
-/**
- * A distant single shot (gun-reports-269): its rolling echo is the sound, so only a report about as loud as the first
- * (within 3 dB) is a second shot; cutting at the echo had left 80–190 ms of a 2 s thump.
- */
-const SINGLE_FAR = /^(ac_\d+_far|ac_far_\w+|mg_far|mg_(rifle|heavy)_far)$/;
-
-/**
- * Cut a single-shot take before its second report (some generations answer a
- * "single shot" prompt with a short burst). Leaves the first report and its
- * own tail; the master's fade-out closes the cut. Only a report within 8 dB of
- * the first counts: a much quieter onset is the shot's own echo and stays.
- */
-function firstShotOnly(channels, sr, entry) {
-  if (!SINGLE_SHOT.test(entry.id)) return channels;
-  const mono = channels.length > 1 ? channels[0].map((v, i) => 0.5 * (v + channels[1][i])) : channels[0];
-  const on = onsets(mono);
-  if (on.length < 2) return channels;
-  const level = (t) => {
-    let peak = 0;
-    const from = Math.round(t * sr);
-    for (let i = from; i < Math.min(mono.length, from + Math.round(0.02 * sr)); i++) peak = Math.max(peak, Math.abs(mono[i]));
-    return peak;
-  };
-  const first = level(on[0]);
-  const ratio = SINGLE_FAR.test(entry.id) ? 0.7 : 0.4;
-  const second = on.slice(1).find((t) => t - on[0] <= 1.2 && level(t) >= first * ratio);
-  if (second == null) return channels;
-  const cut = Math.max(Math.round((on[0] + 0.06) * sr), Math.round((second - 0.008) * sr));
-  return channels.map((ch) => ch.slice(0, cut));
-}
 
 /** Higher is better. */
 function score(m, entry, clip) {
@@ -102,6 +71,9 @@ function score(m, entry, clip) {
     if (SINGLE_SHOT.test(entry.id)) s -= 1.5 * Math.max(0, m.onsets - 1);
     else if (entry.proc === 'weapon-close' || /single|one single|isolated/i.test(entry.prompt)) s -= 0.3 * Math.max(0, m.onsets - 3);
   }
+  // A cannon or autocannon booms (gun-reports-269, owner 2026-11-04): its weight and its rolling decay are the report,
+  // and the ear proxy (VERDICTS) has already refused every crack; here the heavier, longer boom ranks first.
+  if ((entry.proc === 'cannon' || entry.proc === 'autocannon') && !entry.loop) s += Math.min(2, m.decayS / 1.5);
   // A distant single shot keeps its echo, but a take full of onsets is a burst heard far away.
   if (SINGLE_FAR.test(entry.id)) s -= 0.5 * Math.max(0, m.onsets - 2);
   // A real gun report (2026-10-02): an instant crack (energy in its first 10 ms, its loudest millisecond within
@@ -152,6 +124,9 @@ function score(m, entry, clip) {
 }
 
 const index = existsSync(join(CACHE_ROOT, 'sfx-index.json')) ? JSON.parse(readFileSync(join(CACHE_ROOT, 'sfx-index.json'), 'utf8')) : {};
+// The ear proxy's verdicts (tools/audio/run-critic.mjs): an entry that names a `critic` class ships only takes it passed.
+const verdicts = existsSync(join(CACHE_ROOT, 'critic.json')) ? JSON.parse(readFileSync(join(CACHE_ROOT, 'critic.json'), 'utf8')) : {};
+const failed = [];
 const picks = existsSync(PICKS) ? JSON.parse(readFileSync(PICKS, 'utf8')) : {};
 const manifestPrev = existsSync(join(HERE, '.sfx-manifest.json')) ? JSON.parse(readFileSync(join(HERE, '.sfx-manifest.json'), 'utf8')) : {};
 const manifest = { ...manifestPrev };
@@ -174,23 +149,48 @@ for (const entry of SFX_CATALOG) {
   // A gun report peaking over 60 ms late or swelling into its body (half its energy 200–600 ms after the onset) is a blast
   // whatever else it scores: shipped only when no take is a report. A single-shot take is judged by its first-report cut
   // instead (its raw anatomy still holds the burst the cut removes).
-  const report = (r) => entry.proc !== 'gunshot' || SINGLE_SHOT.test(entry.id) || !r.m.anatomy
+  const isReport = (r) => entry.proc !== 'gunshot' || SINGLE_SHOT.test(entry.id) || !r.m.anatomy
     || (r.m.anatomy.riseMs <= 60 && r.m.anatomy.e600 <= 0.5);
   const usable = SINGLE_SHOT.test(entry.id)
-    ? ranked.filter((r) => report(r) && firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
-    : ranked.filter(report);
+    ? ranked.filter((r) => isReport(r) && firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
+    : ranked.filter(isReport);
   if (!usable.length) console.warn(`${entry.id}: every take is cut to a click by its second report (change the prompt)`);
-  const pool = usable.length ? usable : ranked;
-  const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : pool.slice(0, entry.variants);
+  // A take the critic did not pass never ships (a cannon heard as a gunshot, a machine gun's burst heard as single shots,
+  // a rocket without its motor): with none passed, the asset keeps its files and the build fails.
+  const heard = (r) => !entry.critic || verdicts[basename(r.file)]?.pass === true;
+  const pool = entry.critic ? usable.filter(heard) : usable.length ? usable : ranked;
+  if (!pinned && !pool.length) {
+    console.error(`${entry.id}: no take passes the critic (${entry.critic}); run tools/audio/run-critic.mjs, then change the prompt`);
+    failed.push(entry.id);
+    continue;
+  }
+  const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : pool;
+  const want = pinned ? chosen.length : entry.variants;
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });
   for (const name of readdirSync(dir)) if (takeFileOf(entry.id).test(name)) rmSync(join(dir, name));
   const files = [];
-  chosen.forEach((pick, i) => {
+  // A take the master cannot bring within UNDER_LU of its preset's momentary target is a spike over near-silence (a
+  // 30 mm "boom" mastered to -21.7 LUFS against -12, gun-reports-269): the next ranked take ships in its place.
+  const target = PRESETS[entry.proc]?.mMax;
+  for (const pick of chosen) {
+    if (files.length >= want) break;
+    const outBase = join(dir, `${entry.id}_${files.length}`);
     const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);
-    const facts = masterTake({ channels, sr: SR, preset: entry.proc, outBase: join(dir, `${entry.id}_${i}`), aac, shape: entry.shape });
+    const facts = masterTake({ channels, sr: SR, preset: entry.proc, outBase, aac, shape: entry.shape });
+    if (!pinned && target != null && facts.mMax != null && facts.mMax < target - UNDER_LU) {
+      console.warn(`${entry.id}: take ${pick.take} masters to ${facts.mMax} LUFS against ${target}; skipped`);
+      for (const ext of ['webm', 'm4a']) rmSync(`${outBase}.${ext}`, { force: true });
+      continue;
+    }
     files.push({ ...facts, take: pick.take });
-  });
+  }
+  if (!files.length) {
+    console.error(`${entry.id}: no take masters within ${UNDER_LU} LU of its target`);
+    failed.push(entry.id);
+    delete manifest[entry.id];
+    continue;
+  }
   manifest[entry.id] = {
     g: entry.group,
     n: files.length,
@@ -239,4 +239,5 @@ ${lines.join('\n')}
 `);
 if (reportFile) writeFileSync(reportFile, JSON.stringify(report, null, 1));
 const totalKb = Object.values(manifest).reduce((a, m) => a + m.kb, 0);
+if (failed.length) { console.error(`no shippable take for: ${failed.join(', ')}`); process.exitCode = 1; }
 console.log(`manifest: ${Object.keys(manifest).length} assets, ${(totalKb / 1024).toFixed(1)} MB → ${MANIFEST}`);

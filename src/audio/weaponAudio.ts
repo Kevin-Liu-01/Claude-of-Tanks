@@ -13,7 +13,7 @@
  * typecheck (FLEET_ROWS), and weaponCensus.selftest.mjs fails when the census no longer matches the fleet.
  */
 
-import { MAIN_GUN_LOADER, READY_RACK_DOOR, type FleetWeaponKey } from './weaponCensus.generated.ts';
+import { MAIN_GUN_LOADER, READY_RACK_DOOR, STATION_KEYS, type FleetWeaponKey } from './weaponCensus.generated.ts';
 
 /** How a round is built: what the breech gives up after the shot, and how the next one goes in. */
 export type AmmoBuild =
@@ -227,7 +227,7 @@ export const WEAPON_ROWS: { readonly [K in WeaponKey]: WeaponRow } = Object.free
   }),
   '220/rocket': R({
     key: '220/rocket', family: 'launcher', ordnance: '220 mm rockets (TOS-1A)', boreMm: 220, build: 'rocket', rifling: 'none', barrel: 'launcher tubes',
-    brake: 'none', weight: 'superheavy', close: 'rocket_salvo', own: null, interior: null, far: 'gun_far_heavy',
+    brake: 'none', weight: 'superheavy', close: 'rocket_salvo', own: null, interior: null, far: 'rocket_salvo_far',
     loudDb: 145, closeFadeM: [80, 360], farFadeM: [100, 460], tailRate: 0.9, tailGain: 0.85, actionDelayS: 0.05, loader: 'rocket_rack', spent: null,
   }),
   // A guided round's close report is its launch family's (LAUNCH_ASSET: tube, soft eject, rail or the gun itself).
@@ -431,6 +431,11 @@ export function mountForRound(mounts: readonly WeaponMount[], roundName: string 
 /** A roof or auxiliary station: its own belt-fed gun of its calibre. */
 export function stationMount(caliberMm: number): WeaponMount {
   return mount(null, [{ caliberMm, name: '' }], num(caliberMm, 7.62));
+}
+
+/** The rows of a vehicle's roof and auxiliary stations, from the census (none for a vehicle the fleet does not know). */
+export function stationRows(specId: string): readonly WeaponRow[] {
+  return (STATION_KEYS[specId] ?? []).map((key) => FLEET_ROWS[key]);
 }
 
 /**

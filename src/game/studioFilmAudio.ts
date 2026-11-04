@@ -43,7 +43,7 @@ const SPEED_OF_SOUND_MPS = 340;
 export const FILM_SFX: Readonly<Record<string, readonly [string, number]>> = Object.freeze({
   blast_punch_light: ['weapons', 3], blast_punch_medium: ['weapons', 3], blast_punch_heavy: ['weapons', 3],
   // every row of the calibre ladder: its close and distant banks (gun-reports-269)
-  mg_rifle_close: ['weapons', 3], mg_heavy_close: ['weapons', 4], ac_20_close: ['weapons', 4], ac_25_close: ['weapons', 4], ac_30_close: ['weapons', 4],
+  mg_rifle_close: ['weapons', 4], mg_heavy_close: ['weapons', 1], ac_20_close: ['weapons', 4], ac_25_close: ['weapons', 4], ac_30_close: ['weapons', 4],
   ac_35_close: ['weapons', 4], ac_40_close: ['weapons', 4], ac_50_close: ['weapons', 4], gun_76_close: ['weapons', 3], gun_84_close: ['weapons', 3],
   gun_90_close: ['weapons', 3], gun_100_close: ['weapons', 3], gun_105_close: ['weapons', 3], gun_120_close: ['weapons', 3], gun_125_close: ['weapons', 3],
   gun_130_close: ['weapons', 3], gun_152h_close: ['weapons', 3], gun_165_close: ['weapons', 3], gun_170_close: ['weapons', 3], rocket_salvo: ['weapons', 2],
@@ -51,7 +51,7 @@ export const FILM_SFX: Readonly<Record<string, readonly [string, number]>> = Obj
   mg_rifle_far: ['weapons', 3], mg_heavy_far: ['weapons', 3], ac_20_far: ['weapons', 3], ac_25_far: ['weapons', 3], ac_30_far: ['weapons', 3],
   ac_35_far: ['weapons', 3], ac_40_far: ['weapons', 3], ac_50_far: ['weapons', 3], gun_76_far: ['weapons', 2], gun_84_far: ['weapons', 2],
   gun_90_far: ['weapons', 2], gun_100_far: ['weapons', 2], gun_105_far: ['weapons', 2], gun_120_far: ['weapons', 2], gun_125_far: ['weapons', 2],
-  gun_130_far: ['weapons', 2], gun_152h_far: ['weapons', 2], gun_165_far: ['weapons', 2], gun_170_far: ['weapons', 2], gun_far_heavy: ['weapons', 2],
+  gun_130_far: ['weapons', 2], gun_152h_far: ['weapons', 2], gun_165_far: ['weapons', 2], gun_170_far: ['weapons', 2], rocket_salvo_far: ['weapons', 2],
   tail_open: ['weapons', 2], tail_forest: ['weapons', 2], tail_urban: ['weapons', 2], tail_mountain: ['weapons', 2],
   pen_heavy: ['impacts', 3], pen_light: ['impacts', 3], hull_thud_sub: ['impacts', 3], nonpen_heavy: ['impacts', 3],
   ricochet_heavy: ['impacts', 4], ricochet_light: ['impacts', 4], era_det: ['impacts', 2], ground_dirt: ['impacts', 3],
@@ -96,7 +96,7 @@ export const FILM_WEAPONS: Readonly<Record<string, FilmWeapon>> = Object.freeze(
   '152/separate_case': W('cannon', [150, 420], [100, 480], 0.82, 0.95, 'gun_152h_close', 'gun_152h_far'),
   '165/separate_bag': W('cannon', [150, 410], [100, 470], 0.8, 0.95, 'gun_165_close', 'gun_165_far'),
   '170/separate_case': W('cannon', [160, 450], [120, 520], 0.8, 1, 'gun_170_close', 'gun_170_far'),
-  '220/rocket': W('launcher', [80, 360], [100, 460], 0.9, 0.85, 'rocket_salvo', 'gun_far_heavy'),
+  '220/rocket': W('launcher', [80, 360], [100, 460], 0.9, 0.85, 'rocket_salvo', 'rocket_salvo_far'),
 });
 /** weaponAudio.ts CALIBRE_LADDER: the row a shot known only by its calibre is heard as (below this many mm). */
 const FILM_LADDER: readonly (readonly [number, string])[] = Object.freeze([
@@ -212,7 +212,7 @@ export function filmSoundVoice(cue: FilmSoundCue, distanceM: number, random: () 
       const punch = closeK > 0.05 ? punchFor(weapon.family, caliber) : null;
       if (punch) layers.push(layer(punch.id, fromDb(punch.db), punch.rate, 0, punch.maxDurS));
       if (closeK > 0.03) layers.push(layer(weapon.close, closeK));
-      // the distant banks are loudness-mastered booms, the close reports peak-mastered cracks: the boom sits under
+      // the distant boom sits 3 dB under the close report
       if (farK > 0.03) layers.push(layer(weapon.far, farK * fromDb(-3)));
       if (tail !== 'none') layers.push(layer(`tail_${tail}`, weapon.tailGain * fromDb(-12), weapon.tailRate * jitter(), 0.035 + random() * 0.02));
       return { gain, lowpassBiasM: 0, layers };

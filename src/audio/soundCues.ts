@@ -80,8 +80,8 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // A6 (2026-10-13): the 125 mm crack carries a little further (refM 35 → 56: +2.2 dB at 150 m, the same inside 56 m,
   // faded out by 400 m by the class's close fade), with its distant thunder joining earlier (weaponAudio gun_125).
   gun_125_close: o({ refM: 56 }),
-  // The rocket salvo's distant thunder (every gun's distant bank is placed by its row: WEAPON_BANK_CUES).
-  gun_far_heavy: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
+  // The rocket salvo's distant ripple (every gun's distant bank is placed by its row: WEAPON_BANK_CUES).
+  rocket_salvo_far: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
   mg_rifle_close: o({ maxInstances: 8, refM: 14, rolloff: 0.7, maxM: 500, loudDb: 120, gainDb: -2, pitch: [0.95, 1.05] }),
   mg_heavy_close: o({ maxInstances: 8, refM: 16, rolloff: 0.68, maxM: 700, loudDb: 126, gainDb: -1, pitch: [0.95, 1.05] }),
   tail_open: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -4 }),
@@ -203,7 +203,7 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
  * The per-bore report banks (gun-reports-269), placed from their row's loudness (weaponAudio.ts WEAPON_ROWS): the
  * closed turret's report on our own hull, a roof machine gun's own report as local as its close one, and each distant
  * bank carrying across the battlefield as the grouped banks it replaced did (a 120 mm's as gun_far_medium's, a 130 mm's
- * as gun_far_heavy's). An explicit override above still wins.
+ * as the grouped heavy bank had). An explicit override above still wins.
  */
 const WEAPON_BANK_CUES: Readonly<Record<string, Partial<CueProfile>>> = (() => {
   const out: Record<string, Partial<CueProfile>> = {};

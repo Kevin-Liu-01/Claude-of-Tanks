@@ -57,7 +57,7 @@ import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type Cr
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import {
   LAUNCH_ASSET, WEAPON_ROWS, brakeGainDb, eventMount, loaderFor, missileLaunchFor, mountForRound, readyRackDoor, reloadAssets,
-  resolveReloadCuePlan, resolveWeaponReport, stationMount, weaponMounts, type ReloadCue, type ReloadCuePlan, type WeaponMount, type WeaponRow,
+  resolveReloadCuePlan, resolveWeaponReport, stationMount, stationRows, weaponMounts, type ReloadCue, type ReloadCuePlan, type WeaponMount, type WeaponRow,
 } from './weaponAudio.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
 
@@ -315,6 +315,9 @@ interface SmokeScreen { born?: number; x?: number; y?: number; z?: number; sourc
 interface Rig {
   stop(fadeS?: number): void;
 }
+
+/** The rows a roof or auxiliary station fires (machine guns and the remote 30 mm cannons): every battle's reports. */
+const ROOF_STATION_ROWS: readonly WeaponRow[] = [WEAPON_ROWS['7.62/belt'], WEAPON_ROWS['12.7/belt'], WEAPON_ROWS['30/belt']];
 
 /** Assets every battle needs before the first shot. */
 const CORE_BATTLE = [
@@ -883,8 +886,8 @@ export function createAudio({
       play(row.interior!, hullOptions({ bus: 'ownCombat', gainDb: (base.gainDb ?? 0) + 1, rate: report.rate }));
     } else if (ownReport) play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 + brakeDb });
     else if (closeK > 0.03) play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) + brakeDb });
-    // The distant banks are loudness-mastered booms, the close reports peak-mastered cracks: the boom sits under.
-    if (farK > 0.03) play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
+    // The distant boom sits 3 dB under the close report.
+    if (farK > 0.03 && !(scopedInside && row.family !== 'cannon')) play(row.far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
     if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
     if (scene.tail !== 'none' && mixer && !(scopedInside && row.family !== 'cannon')) {
       const now = mixer.ctx.currentTime;
@@ -1978,13 +1981,16 @@ export function createAudio({
    */
   function ownWeaponAssets(info: TankInfo | null | undefined): string[] {
     const ids = new Set<string>();
-    for (const m of info?.mounts ?? []) {
+    if (!info) return [];
+    for (const m of info.mounts) {
       const row = m.row;
       if (!row) continue;
       if (row.own) ids.add(row.own);
       if (row.interior) ids.add(row.interior);
-      for (const id of reloadAssets(m, loaderFor(info?.specId, m))) ids.add(id);
+      for (const id of reloadAssets(m, loaderFor(info.specId, m))) ids.add(id);
     }
+    // our roof stations' own and closed-turret reports, by the census of our hull's stations
+    for (const row of stationRows(info.specId)) for (const id of [row.own, row.interior]) if (id) ids.add(id);
     return [...ids];
   }
   function preloadOwnWeapons(info: TankInfo): void {
@@ -2901,7 +2907,7 @@ export function createAudio({
    * (a network join) or the mode hands out other weapons (the Gun Game's ladder). Our own reports follow our hull.
    */
   function battleReportAssets(mode: string): string[] {
-    const rows = new Set<WeaponRow>([WEAPON_ROWS['7.62/belt'], WEAPON_ROWS['12.7/belt'], WEAPON_ROWS['30/belt']]);
+    const rows = new Set<WeaponRow>(ROOF_STATION_ROWS);
     let known = mode !== 'gun_game' && battleRoster.length > 0;
     for (const specId of known ? battleRoster : []) {
       let spec: RuntimeValue = null;

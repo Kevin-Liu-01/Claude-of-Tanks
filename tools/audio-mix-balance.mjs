@@ -228,7 +228,8 @@ try {
   }
   const near = report.shots.cannon_15m.anatomy;
   if (near.decayDb < 8) fail(`a near cannon holds within ${near.decayDb} dB of its crack half a second later (want ≥ 8: a crack that decays, not a blast)`);
-  if (near.lowBody > 0.5) fail(`a near cannon's body is ${(100 * near.lowBody).toFixed(0)} % below 100 Hz (want ≤ 50: a report, not a boom)`);
+  // (No cap on a near cannon's low body since 2026-11-04: a tank cannon booms, its energy low; the owner heard the reports
+  // that gate chose as guns. Headroom is the mixer's: HDR, the punch layer, the limiter.)
   if (near.atKnee > 40) fail(`a near cannon rides the soft clip (${near.atKnee} samples at its knee; the limiter should take the peak)`);
   if (report.shots.cannon_15m.peakOverBedDb < 22) fail(`a near cannon's crack peaks only ${report.shots.cannon_15m.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   // Our own gun, from the hatch beside it.
