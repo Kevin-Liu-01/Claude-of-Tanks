@@ -1505,6 +1505,53 @@
    }
   ]
  },
+ "aps_intercept": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "9123b3120c11023adf0a02a4.pcm",
+    "cutS": 2,
+    "sha256": "526784e330d77fe353ff3772888b5a5d9754798b3aecef2195b6ea03abddd9f6",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1484,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0176,
+     "top": "Burst, pop"
+    }
+   },
+   {
+    "source": "bca95f259529d6f8963d9e7d.pcm",
+    "cutS": 2,
+    "sha256": "8ef106b6b76ef759ba4ffedb5d82f9538b62d7fb1903f84c49f83d22cadd2136",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1289,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0352,
+     "top": "Whoosh, swoosh, swish"
+    }
+   },
+   {
+    "source": "0a178ab12718ef6f1d2b714e.pcm",
+    "cutS": 2,
+    "sha256": "609fddb8e6eee0bf52bdfcb309e6234224c60f63a989ea93f1be525d8aca9604",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.1855,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0508,
+     "top": "Arrow"
+    }
+   }
+  ]
+ },
  "atgm_launch": {
   "class": "rocket",
   "variants": [
@@ -1547,6 +1594,39 @@
      "bestScore": 0.2227,
      "against": "Gunshot, gunfire",
      "againstScore": 0.0805,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "burnout_blast": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "cf59610b777c92ebef529ebc.pcm",
+    "cutS": 3.48,
+    "sha256": "29c481ef39b2ca9fc3825a4b03c64fc3d4817483fd1e9156551967f227dacfa5",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6966,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0664,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "c70bca340cc1ee1f4a843d30.pcm",
+    "cutS": 3.48,
+    "sha256": "6bd98cd1f4c38442f31b2055921004a3264c1d4bc241746e88df342534874e33",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4206,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1068,
      "top": "Explosion"
     }
    }
@@ -4839,6 +4919,25 @@
    }
   ]
  },
+ "mode_frontline_barrage": {
+  "class": "cannon-far",
+  "variants": [
+   {
+    "source": "0ca4a42417c10d6258ab1148.pcm",
+    "cutS": 6,
+    "sha256": "8d10c2cc6269acad8484a27f96c066f3de4eaf7fdddc6e0ebce7aa3c97214e2c",
+    "class": "cannon-far",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.6003,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0911,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
  "rocket_salvo": {
   "class": "rocket-salvo",
   "variants": [
@@ -4900,6 +4999,147 @@
      "bestScore": 0.4029,
      "against": "Gunshot, gunfire",
      "againstScore": 0.3834,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "tank_explode": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "b66be280f74c0f0b9a53d83a.pcm",
+    "cutS": 5,
+    "sha256": "aea1721e044dfe341ca9d9963b2bd92721cf16e295004470aac18e6d29783feb",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Boom",
+     "bestScore": 0.6094,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2354,
+     "top": "Boom"
+    }
+   },
+   {
+    "source": "805fc64ddb66e32a2e31c44a.pcm",
+    "cutS": 5,
+    "sha256": "e69280b8a9ff9f1a95038c8926f4a087e22c278a66a42b3b512afd09f0dc3a7f",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4016,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0656,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "8f0c5e2b308ed133faef8d17.pcm",
+    "cutS": 5,
+    "sha256": "79da6467d758887b5e648d357651e6d93a9a3a11ed34cd348e5dff46453719b3",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.3578,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1242,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "tank_explode_ammo": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "f5ef43d4b506c152255f3eae.pcm",
+    "cutS": 6,
+    "sha256": "47142df818d2eaf638a7af451bae1a8a344ec716185b50eefaacddfea749e30b",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Boom",
+     "bestScore": 0.5078,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.0306,
+     "top": "Boom"
+    }
+   },
+   {
+    "source": "a70433abb5f1b14a83369ec3.pcm",
+    "cutS": 6,
+    "sha256": "c40a4fbf1fd4972241301958819cfea801d3a65377f835161c219b7293f98f8d",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7969,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2155,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "4ed46bb2b4848edfc8986196.pcm",
+    "cutS": 6,
+    "sha256": "5f07e60ec9dfee9fc8d89373b42dc5f7afcaee3ea2c416166510fefc81568fba",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.4967,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1557,
+     "top": "Explosion"
+    }
+   }
+  ]
+ },
+ "vehicle_explode_light": {
+  "class": "explosion",
+  "variants": [
+   {
+    "source": "58ef319c83982f00a269b382.pcm",
+    "cutS": 4,
+    "sha256": "340920bdc16aff3be503079f2b6c9780736e6f977da5c107976b717bed22e1a5",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.9076,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.1393,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "e122450eeaf049acdf6739a5.pcm",
+    "cutS": 4,
+    "sha256": "433928fab3f3a10aa487bb21e8f3d22d60e49144a3dad47cacb16a773e406179",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7357,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2617,
+     "top": "Explosion"
+    }
+   },
+   {
+    "source": "10f5ff6ddba5722f78d6a502.pcm",
+    "cutS": 4,
+    "sha256": "e7ab20bb919ae28c7c49adff0934d6dfc7d0553fe4126904f311b4fa9eae257a",
+    "class": "explosion",
+    "pass": true,
+    "single": {
+     "best": "Explosion",
+     "bestScore": 0.7083,
+     "against": "Gunshot, gunfire",
+     "againstScore": 0.2409,
      "top": "Explosion"
     }
    }

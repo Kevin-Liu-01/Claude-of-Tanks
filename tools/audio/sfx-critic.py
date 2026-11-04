@@ -25,6 +25,8 @@ The rule's history, kept because each step was forced by evidence rather than by
                    howitzer: E = best of Explosion / Artillery fire / Boom is at least 0.1 and at least 2x the best of
                    Gunshot, gunfire / Cap gun.
   cannon-far       E (with Thunder / Rumble) at least 0.02 and 2x Gunshot / Cap gun.
+  explosion        a blast that is no gun's report (world-sfx-269: a vehicle going up, a burnout, an APS intercept): the
+                   cannon rule. The first light-vehicle prompt was heard as tools, steam and an engine.
   interior         a closed turret's report (any weapon's): E (with Thump, thud / Bang / Rumble) at least 0.02 and
                    2x Gunshot / Cap gun.
   autocannon       one round: E (with Machine gun) at least 0.1 and 1.2x Gunshot / Cap gun (heavier than a gunshot).
@@ -54,6 +56,7 @@ HOP = 7680  # 0.48 s
 
 POSITIVE = {
     'cannon': ['Explosion', 'Artillery fire', 'Boom'],
+    'explosion': ['Explosion', 'Artillery fire', 'Boom'],
     'cannon-far': ['Explosion', 'Artillery fire', 'Boom', 'Thunder', 'Rumble'],
     'interior': ['Explosion', 'Artillery fire', 'Boom', 'Thump, thud', 'Bang', 'Rumble'],
     'rocket-gun': ['Explosion', 'Artillery fire', 'Boom'],
@@ -66,6 +69,7 @@ POSITIVE = {
 }
 NEGATIVE = {
     'cannon': ['Gunshot, gunfire', 'Cap gun'],
+    'explosion': ['Gunshot, gunfire', 'Cap gun'],
     'cannon-far': ['Gunshot, gunfire', 'Cap gun'],
     'interior': ['Gunshot, gunfire', 'Cap gun'],
     'rocket-gun': ['Gunshot, gunfire', 'Cap gun'],
@@ -77,9 +81,9 @@ NEGATIVE = {
     'rocket-salvo': ['Gunshot, gunfire', 'Cap gun', 'Machine gun'],
 }
 # The least score at which a class is heard at all, and how many times the gun-like class it must outrank.
-FLOOR = {'cannon': 0.1, 'cannon-far': 0.02, 'interior': 0.02, 'autocannon': 0.1, 'mg-burst': 0.25, 'rocket': 0.05, 'rocket-salvo': 0.05,
+FLOOR = {'cannon': 0.1, 'explosion': 0.1, 'cannon-far': 0.02, 'interior': 0.02, 'autocannon': 0.1, 'mg-burst': 0.25, 'rocket': 0.05, 'rocket-salvo': 0.05,
          'rocket-gun': 0.1}
-MARGIN = {'cannon': 2, 'cannon-far': 2, 'interior': 2, 'autocannon': 1.2, 'mg-burst': 0.95, 'rocket-gun': 2}
+MARGIN = {'cannon': 2, 'explosion': 2, 'cannon-far': 2, 'interior': 2, 'autocannon': 1.2, 'mg-burst': 0.95, 'rocket-gun': 2}
 # The event frames: within 10 dB of the loudest (a long echo must not dilute the blast), 20 dB for a rocket's motor.
 WINDOW = {'rocket': 0.1, 'rocket-salvo': 0.1, 'rocket-gun': 0.1}
 MOTOR = ['Whoosh, swoosh, swish', 'Hiss', 'Jet engine']

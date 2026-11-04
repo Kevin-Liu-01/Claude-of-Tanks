@@ -294,8 +294,8 @@ const impacts = [
 
 // ----------------------------------------------------------- destruction ---
 const destruction = [
-  sfx('tank_explode', 'destruction', `One-shot of an armoured vehicle destroyed by an internal explosion: violent blast, metal tearing, a secondary explosion, debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 3, takes: 6, proc: 'impact' }),
-  sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('tank_explode', 'destruction', `One-shot of an armoured vehicle destroyed by an internal explosion: violent blast, metal tearing, a secondary explosion, debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 3, takes: 6, proc: 'impact', critic: 'explosion' }),
+  sfx('tank_explode_ammo', 'destruction', `One-shot of a tank's ammunition detonating: massive catastrophic explosion, roaring fireball, heavy steel debris crashing down. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 3, takes: 6, proc: 'impact', critic: 'explosion' }),
   sfx('turret_land', 'destruction', `One-shot of a heavy steel tank turret crashing onto the ground: enormous metallic crunch and thud. ${NO_MUSIC}.`, 2, { variants: 4, takes: 8, proc: 'impact' }),
   sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   // world-sfx-269 (2026-11-03): the two takes' seams stepped 4 and 8 dB, every 8 s through a 20-40 s cook-off: six takes
@@ -305,7 +305,7 @@ const destruction = [
   sfx('fire_small_loop', 'destruction', `Seamless loop of an engine compartment fire: hissing flames and crackling. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('fire_ignite', 'destruction', `One-shot of fuel suddenly igniting: a whoosh into roaring flames. ${NO_MUSIC}.`, 2, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   sfx('metal_creak', 'destruction', `One-shot of hot steel of a burnt-out tank creaking and ticking as it cools. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'foley' }),
-  sfx('burnout_blast', 'destruction', `One-shot of a burning tank's fuel and ammunition exploding inside its hull: a deep, heavy explosion muffled by the steel, a boom, a roaring fireball bursting out of the hatches. ${FIELD}, ${NO_MUSIC}.`, 3.5, { variants: 2, takes: 8, proc: 'impact' }),
+  sfx('burnout_blast', 'destruction', `One-shot of a burning tank's fuel and ammunition exploding inside its hull: a deep, heavy explosion muffled by the steel, a boom, a roaring fireball bursting out of the hatches. ${FIELD}, ${NO_MUSIC}.`, 3.5, { variants: 2, takes: 8, proc: 'impact', critic: 'explosion' }),
 ];
 
 // ---------------------------------------------------------------- props ---
@@ -836,7 +836,7 @@ const stingers = [
   // Mode openers and events (2026-10-02): field sounds, not music, so each mode is recognisable by ear.
   sfx('mode_horde_siren', 'stingers', `Sound effect: an air-raid siren winding up and wailing over a ruined town, heard from far away. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
   sfx('mode_horde_all_clear', 'stingers', `Sound effect: a distant air-raid siren holding one long steady all-clear tone, then winding down to silence. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
-  sfx('mode_frontline_barrage', 'stingers', `Sound effect: a distant preparatory artillery barrage, many heavy guns firing far away in rolling succession like continuous thunder. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_frontline_barrage', 'stingers', `Sound effect: a distant preparatory artillery barrage, many heavy guns firing far away in rolling succession like continuous thunder. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo', critic: 'cannon-far' }),
   sfx('mode_juggernaut', 'stingers', `Sound effect: a massive steel vault door slamming shut with a deep metallic boom, then a long low ominous rumble. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
   sfx('mode_infected_outbreak', 'stingers', `Sound effect: a burst of harsh radio interference and garbled static breaking up over a low unsettling electrical drone. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
   sfx('mode_turbo_horn', 'stingers', `Sound effect: one long blast of a deep ship's foghorn echoing across open ground. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
@@ -957,13 +957,13 @@ const hullStrikes = [
 ];
 const worldBreaks = [
   // a light vehicle going up (EXPLOSION_BY_MASS): not a 60 t tank's blast
-  sfx('vehicle_explode_light', 'destruction', `One-shot of a light armoured vehicle destroyed by an internal explosion: a sharp, violent explosion, thin metal tearing, a smaller secondary explosion, light debris falling. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 10, proc: 'impact' }),
+  sfx('vehicle_explode_light', 'destruction', `One-shot of a light armoured vehicle destroyed by an internal explosion: a sharp, violent explosion, thin metal tearing, a smaller secondary explosion, light debris falling. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 10, proc: 'impact', critic: 'explosion' }),
   // a roof by what it is made of (ROOF_FALL in destructionSounds.ts): roof_fall stays the tiled roof
   sfx('roof_fall_concrete', 'buildings', `One-shot of the flat reinforced concrete roof slab of a building caving in: a deep crack of breaking concrete, the heavy slab crashing down with a thunderous thud, concrete chunks and rebar clattering. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
   sfx('roof_fall_earth', 'buildings', `One-shot of the flat earth roof of a mud-brick desert house caving in: wooden roof beams cracking, a heavy soft thump of packed earth and clay falling in, a long pouring hiss of dust, sand and clods. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
   sfx('roof_fall_timber', 'buildings', `One-shot of the shingled roof of a wooden barn caving in: rafters cracking and snapping, wooden shingles and planks sliding off and clattering down in a long cascade. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
   // the moments that played nothing: an active protection system's intercept (aps:intercept), a drone shot down
-  sfx('aps_intercept', 'destruction', `One-shot of a tank's active protection system defeating an incoming anti-tank missile a few metres from the vehicle: one sharp, violent bang of the interceptor charge, the missile's warhead blown apart in mid-air, fragments rattling off steel armour. ${FIELD}, ${NO_MUSIC}.`, 2, { variants: 3, takes: 8, proc: 'impact' }),
+  sfx('aps_intercept', 'destruction', `One-shot of a tank's active protection system defeating an incoming anti-tank missile a few metres from the vehicle: one sharp, violent bang of the interceptor charge, the missile's warhead blown apart in mid-air, fragments rattling off steel armour. ${FIELD}, ${NO_MUSIC}.`, 2, { variants: 3, takes: 8, proc: 'impact', critic: 'explosion' }),
   sfx('drone_shot_down', 'aerial', `One-shot of a small quadcopter drone hit by gunfire in mid-air: a sharp crack of carbon fibre and plastic shattering, its electric motors sputtering and whining down, pieces clattering onto the ground. ${NO_MUSIC}.`, 2, { variants: 3, takes: 6, proc: 'impact', punch: false }),
 ];
 const modeSounds = [

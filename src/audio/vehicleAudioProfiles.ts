@@ -1,9 +1,9 @@
 /**
- * Vehicle audio identity: which powertrain, running gear, turret drive,
- * loader and crew language a fleet row sounds like.
+ * Vehicle audio identity: which powertrain, running gear, turret drive and
+ * crew language a fleet row sounds like (a mount's loader is weaponAudio.ts's).
  *
  * Pure and boot-light: it reads only the plain spec fields every fleet row
- * already carries (id, nation, era, role, mass, power, gun) and never imports
+ * already carries (id, nation, era, role, mass, power) and never imports
  * the fleet builders. The families follow the real installations — an Abrams
  * whines because the AGT1500 is a gas turbine, a T-64 howls because the 5TDF
  * is a two-stroke opposed-piston diesel, an M60 hisses through the cooling
@@ -41,7 +41,6 @@ export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
 
 export type TrackClass = 'light' | 'heavy';
 export type TurretDrive = 'electric' | 'hydraulic';
-export type LoaderKind = 'manual' | 'carousel' | 'bustle' | 'autocannon' | 'missile' | 'gunship';
 export type ShiftStyle = 'manual' | 'automatic' | 'none';
 
 /** Powertrain behaviour the RPM model and the layer mixer read. */
@@ -86,7 +85,6 @@ export interface VehicleAudioIdentity {
   readonly tracks: TrackClass;
   readonly turretDrive: TurretDrive;
   readonly hydropneumatic: boolean;
-  readonly loader: LoaderKind;
   readonly crew: CrewLanguage;
   /** 0 (light IFV) .. 1 (130 t superheavy): scales impacts, landings, rams. */
   readonly mass: number;
@@ -101,12 +99,6 @@ interface VehicleAudioSpecInput {
   readonly weightTons?: unknown;
   readonly enginePowerHp?: unknown;
   readonly hydropneumaticAim?: unknown;
-  readonly gun?: {
-    readonly caliberMm?: unknown;
-    readonly autoloader?: unknown;
-    readonly soundProfile?: unknown;
-    readonly reloadS?: unknown;
-  } | null;
 }
 
 /**
@@ -168,21 +160,6 @@ export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId
   return 'diesel_v12_modern';
 }
 
-function resolveLoader(spec: VehicleAudioSpecInput, engine: EngineFamilyId): LoaderKind {
-  const gun = spec.gun || {};
-  const caliber = numberOr(gun.caliberMm, 100);
-  const profile = String(gun.soundProfile ?? '');
-  if (/launch/.test(profile) && numberOr(gun.reloadS, 5) > 4) return 'missile';
-  if (caliber < 61) return 'autocannon';
-  if (gun.autoloader) return 'bustle';
-  const id = idOf(spec);
-  // Soviet-lineage 125 mm hulls feed from the carousel under the turret floor.
-  if (caliber >= 123 && caliber <= 127 && (engine === 'diesel_v12_soviet' || engine === 'turbine_gtd'
-      || engine === 'diesel_two_stroke' || /t14|type99|ztz99|vt4|type96|type100/.test(id))) return 'carousel';
-  if (/leclerc|amx56|type90|type10|k2|pl01|carro45t/.test(id)) return 'bustle';
-  return 'manual';
-}
-
 /** Mass in [0, 1] from 12 t (light IFV) to 130 t (superheavy). */
 export function massClass(weightTons: unknown): number {
   const t = numberOr(weightTons, 45);
@@ -209,7 +186,6 @@ export function resolveVehicleAudioIdentity(spec: VehicleAudioSpecInput | null |
     tracks: tons < 33 ? 'light' : 'heavy',
     turretDrive: soviet || (legacy && !/m1a|leo2/.test(id)) ? 'hydraulic' : 'electric',
     hydropneumatic: !!safe.hydropneumaticAim || /k2|type10|type90|type74|strv103/.test(id),
-    loader: resolveLoader(safe, engine),
     crew: crewLanguageForVehicle(safe.id, safe.nation),
     mass: massClass(tons),
   });

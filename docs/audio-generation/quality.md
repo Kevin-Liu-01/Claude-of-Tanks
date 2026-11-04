@@ -70,6 +70,7 @@ before the trial and is in the script with its history:
 |---|---|
 | `cannon` | Explosion / Artillery fire / Boom at least 0.1 and twice Gunshot / Cap gun |
 | `cannon-far` | the same with Thunder and Rumble, from 0.02 |
+| `explosion` | a blast that is no gun's report (a vehicle going up, a burnout, an APS intercept): the cannon rule |
 | `interior` | any closed turret's report: the same with Thump and Bang, from 0.02 |
 | `autocannon` | one round 1.2 times Gunshot (its burst render is reported) |
 | `mg` | one round not a toy, and the burst at the gun's rate ranks Machine gun level with Gunshot (within 5 %, at least 0.25) |
