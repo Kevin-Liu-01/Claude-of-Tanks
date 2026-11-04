@@ -2,7 +2,7 @@
  "generator": "tools/port-golden-vectors.mjs",
  "math": "pinned (crates/cot-sim-wasm jsmath)",
  "source": "src/world/collision.ts",
- "sourceSha256": "573ef6fa979611c35996327d81a79ccba49643a31c6e231fe75b2bf7dad8d52b",
+ "sourceSha256": "3fdb04ef71be03fd5721f1698f9cef69bfcdc270acf9f2a6a1c13ff55cdf7237",
  "records": {
   "verdant:9": {
    "min": [
