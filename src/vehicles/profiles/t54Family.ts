@@ -237,7 +237,7 @@ function addHullBody(P: TankBuilderPort): void {
  * with a down-turned outer lip and three pressed ribs) and short rear flaps behind the sprockets. Release 264 (envelope
  * honesty): sheet metal, not the hull's armour (in `hull` the shelves set the anatomy's armour envelope 0.585 m out from
  * the hull sides a side); painted bodywork, its silhouette and paint kept. */
-function addFenders(P: TankBuilderPort): void {
+function addFenders(P: TankBuilderPort, o: T54FamilyHullOptions = {}): void {
   const { box } = KIT;
   const shelfZ0 = -2.94, shelfZ1 = 2.58;
   for (const side of [-1, 1]) {
@@ -258,8 +258,8 @@ function addFenders(P: TankBuilderPort): void {
     // the scoop's outer lip turns down along its curve, shallow over the idler's wrap and 0.10 m at the nose (262
     // track-clip gate: a uniform 0.12 m lip dropped into the track's outer edge over the idler)
     P.add('hullFixedPaintedBodywork', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
-    // pressed stiffening ribs along the scoop
-    for (const f of [0.25, 0.5, 0.75]) {
+    // pressed stiffening ribs along the scoop (a hull with smooth mudguards leaves them off)
+    for (const f of o.smoothMudguards ? [] : [0.25, 0.5, 0.75]) {
       const x = side * (HULL_HALF_W + (FENDER_OUT - HULL_HALF_W) * f);
       P.add('hullDetail', bentPlateX(scoop.slice(0, 5).map(([z, y]) => [z, y + 0.012] as [number, number]), x - 0.012, x + 0.012, 0.012));
     }
@@ -610,14 +610,60 @@ function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.topY = 1.00;
 }
 
+/** What a vehicle on the family's hull draws its own way (every option off by default: the T-55A and the Type 59). */
+interface T54FamilyHullOptions {
+  /** The front mudguards without their three pressed ribs (Finland's ItPsv 90, photo 01: smooth curved scoops). */
+  readonly smoothMudguards?: boolean;
+  /** Light flexible skirts hung from the fenders' outer edge over the top track run and the top third of the wheels,
+   * draping the front mudguards (Finland's ItPsv 90, photo 01). */
+  readonly flexibleSkirts?: boolean;
+}
+
+/**
+ * The flexible skirts (Finland's ItPsv 90, photo 01): six pale canvas-rubber panels a side hung from the fender shelf's
+ * turned-down lip to 0.60 m over the ground (the wheels' top third: their tops 0.855 m), each flaring a little outboard
+ * and overlapping the next; and a drape over each front mudguard's outer edge, hanging to the same line where the scoop
+ * falls to the nose. Outboard of the track's outer edge (1.623 m) everywhere.
+ */
+function addFlexibleSkirts(P: TankBuilderPort): void {
+  const shelfZ0 = -2.94, shelfZ1 = 2.58, panels = 6, footY = 0.60, topY = FENDER_Y + 0.005;
+  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.74, FENDER_Y + 0.005], [2.87, FENDER_Y - 0.035],
+    [2.97, FENDER_Y - 0.10], [3.035, FENDER_Y - 0.19], [3.05, FENDER_Y - 0.27]];
+  /** A hanging slab between two stations: its top edge at (z, yTop) inboard of its foot, `inX`/`outX` its faces. */
+  const hang = (side: number, za: number, zb: number, topA: number, topB: number, footA: number, footB: number,
+    inX: number, outX: number, flare: number): THREE.BufferGeometry => {
+    const xs = (x: number): number => side * x;
+    const lo = (x0: number, x1: number): [number, number] => (side > 0 ? [xs(x0), xs(x1)] : [xs(x1), xs(x0)]);
+    const [tl, tr] = lo(inX, outX), [bl, br] = lo(inX + flare, outX + flare);
+    return KIT.slab([bl, footB, zb], [br, footB, zb], [br, footA, za], [bl, footA, za],
+      [tl, topB, zb], [tr, topB, zb], [tr, topA, za], [tl, topA, za]);
+  };
+  for (const side of [-1, 1]) {
+    const step = (shelfZ1 - shelfZ0) / panels;
+    for (let k = 0; k < panels; k++) {
+      const z0 = shelfZ0 + k * step - (k ? 0.012 : 0), z1 = shelfZ0 + (k + 1) * step + (k < panels - 1 ? 0.012 : 0);
+      const inX = FENDER_OUT - 0.002 + (k % 2) * 0.004, flare = 0.010 + (k % 3) * 0.005, foot = footY + (k % 2) * 0.015;
+      P.addEquipment('hullCanvasPale', hang(side, z0, z1, topY, topY, foot, foot, inX, inX + 0.012, flare));
+    }
+    // the drape over the front mudguard's outer edge
+    for (let i = 0; i < scoop.length - 1; i++) {
+      const [za, ya] = scoop[i], [zb, yb] = scoop[i + 1];
+      const footA = Math.min(ya - 0.12, footY + 0.02 + i * 0.03), footB = Math.min(yb - 0.12, footY + 0.02 + (i + 1) * 0.03);
+      P.addEquipment('hullCanvasPale', hang(side, za, zb, ya + 0.01, yb + 0.01, footA, footB, FENDER_OUT + 0.010,
+        FENDER_OUT + 0.022, 0.006));
+    }
+  }
+}
+
 /** The family's hull and running gear, in their build order (the turret follows). */
-function addT54FamilyHull(P: TankBuilderPort): void {
+function addT54FamilyHull(P: TankBuilderPort, o: T54FamilyHullOptions = {}): void {
   addHullBody(P);
-  addFenders(P);
+  addFenders(P, o);
   addRunningGear(P);
   addHullFront(P);
   addFenderStowage(P);
   addHullRear(P);
+  if (o.flexibleSkirts) addFlexibleSkirts(P);
 }
 
 function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
@@ -667,12 +713,13 @@ interface T55AHullStation {
 }
 
 /**
- * The T-55A's hull and running gear alone, exactly as the T-55A builds them, for a vehicle that seats a turret of its own
- * on the T-55's ring (release 269: Finland's ItPsv 90, the Marconi Marksman turret on the T-55, profiles/marksman.ts).
- * The T-55A and the Type 59 build as before (buildT54Family).
+ * The T-55A's hull and running gear alone, exactly as the T-55A builds them (its own options off by default), for a
+ * vehicle that seats a turret of its own on the T-55's ring (release 269: Finland's ItPsv 90, the Marconi Marksman turret
+ * on the T-55, profiles/marksman.ts, with the flexible skirts and smooth mudguards of its photograph). The T-55A and the
+ * Type 59 build as before (buildT54Family).
  */
-export function buildT55AHull(P: TankBuilderPort): T55AHullStation {
-  addT54FamilyHull(P);
+export function buildT55AHull(P: TankBuilderPort, o: T54FamilyHullOptions = {}): T55AHullStation {
+  addT54FamilyHull(P, o);
   P.hullG.userData.t54FamilyReceipt = t54FamilyHullReceipt(VARIANTS.t55a);
   return Object.freeze({ roofY: ROOF_Y, ringPivot: Object.freeze([...TURRET_PIVOT] as [number, number, number]) });
 }

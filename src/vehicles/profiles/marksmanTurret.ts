@@ -165,19 +165,20 @@ function addRoofKit(P: TankBuilderPort): void {
   const { box, cylY, liftEye } = KIT;
   const roof = BODY.roofY, n = P.q ? 20 : 12;
   for (const s of SIDES) {
-    // the sight head: a round base, a tall box with its window forward and a hood over it
+    // the sight head: a round base, a tall box with its window forward and a hood over it (fix round 1: two thirds the
+    // size, against the turret's height in photo 02)
     const x = s * SIGHTS.x, z = SIGHTS.z;
-    P.addEquipment('turretDetail', cylY(0.15, 0.16, 0.07, n), x, roof + 0.025, z);
-    P.addEquipment('turretDetail', box(0.22, 0.26, 0.30), x, roof + 0.185, z);
-    P.add('turretDark', box(0.17, 0.11, 0.012), x, roof + 0.22, z + 0.152);
-    P.add('turretGlass', box(0.14, 0.08, 0.012), x, roof + 0.22, z + 0.160);
-    P.addEquipment('turretDetail', box(0.24, 0.025, 0.10), x, roof + 0.31, z + 0.16);
+    P.addEquipment('turretDetail', cylY(0.10, 0.11, 0.06, n), x, roof + 0.02, z);
+    P.addEquipment('turretDetail', box(0.15, 0.18, 0.21), x, roof + 0.135, z);
+    P.add('turretDark', box(0.12, 0.075, 0.012), x, roof + 0.155, z + 0.106);
+    P.add('turretGlass', box(0.095, 0.055, 0.012), x, roof + 0.155, z + 0.112);
+    P.addEquipment('turretDetail', box(0.17, 0.02, 0.07), x, roof + 0.22, z + 0.11);
     // the crew hatch ahead of it, hinged on its outer side
     P.add('turretDetail', cylY(SIGHTS.hatchR + 0.04, SIGHTS.hatchR + 0.04, 0.035, n), s * SIGHTS.hatchX, roof + 0.012, SIGHTS.hatchZ);
     P.addHatch('turretHatch', cylY(SIGHTS.hatchR, SIGHTS.hatchR, 0.04, n), s * SIGHTS.hatchX, roof + 0.045, SIGHTS.hatchZ);
     P.add('turretDark', box(0.06, 0.04, 0.16), s * (SIGHTS.hatchX + SIGHTS.hatchR - 0.01), roof + 0.06, SIGHTS.hatchZ);
     // lift eyes at the roof's corners and the whips on their bases at its rear
-    liftEye(P, 'turretDetail', s * 0.55, roof, 0.90, 0);
+    liftEye(P, 'turretDetail', s * 0.55, roof, 1.62, 0);
     liftEye(P, 'turretDetail', s * 0.55, roof, -1.47, 0);
     P.addEquipment('turretDetail', cylY(0.045, 0.05, 0.09, 10), s * 0.50, roof + 0.035, -1.28);
     P.addEquipment('turretDetail', antennaPart(cylY(0.012, 0.016, 2.10, 8)), s * 0.50, roof + 1.10, -1.28);
@@ -194,39 +195,46 @@ function addRoofKit(P: TankBuilderPort): void {
 function addRadar(P: TankBuilderPort): void {
   const { box, cylX, cylY, cylZ, xform } = KIT;
   const R = RADAR, n = P.q ? 28 : 18, roof = BODY.roofY, x = R.x, z = R.z;
+  // the base drum, and over it the wide pleated black rubber skirt down to the roof (photos 02, 03, 04)
   P.addEquipment('turret', cylY(R.baseR, R.baseR + 0.01, R.baseTopY - roof + 0.01, n), x, (R.baseTopY + roof - 0.01) / 2, z);
-  P.addEquipment('turretDark', cylY(R.columnR + 0.04, R.baseR - 0.01, R.bootTopY - R.baseTopY + 0.01, n),
-    x, (R.bootTopY + R.baseTopY - 0.01) / 2, z);
-  P.addEquipment('turretDetail', cylY(R.columnR, R.columnR, R.columnTopY - R.bootTopY + 0.02, n), x, (R.columnTopY + R.bootTopY) / 2, z);
-  P.addEquipment('turretDark', cylY(R.columnR + 0.04, R.columnR + 0.04, 0.03, n), x, R.bootTopY + 0.07, z);
-  // the head on the column, the electronics box on its right, the elevation axle through it with the dish's yoke
-  P.addEquipment('turretDetail', box(0.32, 0.30, 0.30), x, R.headY, z);
-  P.addEquipment('turretDetail', box(0.15, 0.30, 0.26), x - 0.225, R.headY - 0.02, z - 0.01);
-  P.add('turretDark', box(0.012, 0.18, 0.16), x - 0.304, R.headY - 0.02, z - 0.01);
-  P.addEquipment('turretDetail', cylX(0.07, R.boomX + 0.03 - 0.13, P.q ? 16 : 10), x + (R.boomX + 0.03 + 0.13) / 2, R.axleY, z);
+  const skirtFoot = roof - 0.005, skirtH = R.skirtTopY - skirtFoot, skirtTopR = R.columnR + 0.05;
+  P.addEquipment('turretDark', cylY(skirtTopR, R.skirtR, skirtH, n), x, (R.skirtTopY + skirtFoot) / 2, z);
+  const slope = Math.atan2(R.skirtR - skirtTopR, skirtH), slant = Math.hypot(R.skirtR - skirtTopR, skirtH);
+  const pleats = P.q ? 18 : 10, ribR = (R.skirtR + skirtTopR) / 2;
+  for (let k = 0; k < pleats; k++) {
+    const a = (k / pleats) * Math.PI * 2;
+    const rib = xform(xform(box(0.026, slant - 0.02, 0.026), 0, 0, 0, -slope, 0, 0), 0, 0, 0, 0, a, 0);
+    P.addEquipment('turretDark', rib, x + ribR * Math.sin(a), (R.skirtTopY + skirtFoot) / 2, z + ribR * Math.cos(a));
+  }
+  P.addEquipment('turretDetail', cylY(R.columnR, R.columnR, R.columnTopY - R.skirtTopY + 0.03, n), x,
+    (R.columnTopY + R.skirtTopY - 0.03) / 2, z);
+  // the head on the column, the electronics box on its right, the elevation axle out of its left side
+  P.addEquipment('turretDetail', box(0.26, R.headH, 0.24), x, R.headY, z);
+  P.addEquipment('turretDetail', box(0.12, 0.22, 0.20), x - 0.185, R.headY - 0.02, z - 0.01);
+  P.add('turretDark', box(0.012, 0.14, 0.12), x - 0.25, R.headY - 0.02, z - 0.01);
+  P.addEquipment('turretDetail', cylX(0.055, 0.15, P.q ? 16 : 10), x + 0.165, R.axleY, z);
   // the dish: a shallow paraboloid shell, concave forward and canted up, on a short neck from the head's front
   const tilt = (R.dishTiltDeg * Math.PI) / 180, d = R.dishDepth, r = R.dishR;
-  const dish = outwardLathe([[0.0005, -0.025], [r * 0.5, d * 0.25 - 0.02], [r, d - 0.02], [r, d], [r * 0.5, d * 0.25],
+  const dish = outwardLathe([[0.0005, -0.02], [r * 0.5, d * 0.25 - 0.016], [r, d - 0.016], [r, d], [r * 0.5, d * 0.25],
     [0.0005, 0]], n);
-  const vertexY = R.axleY + 0.10, vertexZ = z + R.dishZ;
+  const vertexY = R.axleY + 0.06, vertexZ = z + R.dishZ;
   // the dish's frame: u across, v up its face, w along its boresight (forward, canted up), from its vertex
   const at = (u: number, v: number, w: number): P3 => [x + u, vertexY + v * Math.cos(tilt) + w * Math.sin(tilt),
     vertexZ - v * Math.sin(tilt) + w * Math.cos(tilt)];
   P.addEquipment('turretDark', xform(dish, 0, 0, 0, Math.PI / 2 - tilt, 0, 0), x, vertexY, vertexZ);
-  // the neck from the head's front into the shell's back
   P.addEquipment('turretDetail', convex([
-    ...[-1, 1].flatMap((sx) => [[x + sx * 0.10, R.axleY - 0.08, z + 0.10], [x + sx * 0.10, R.axleY + 0.08, z + 0.10]] as P3[]),
-    ...[-1, 1].flatMap((su) => [-1, 1].map((sv) => at(su * 0.07, sv * 0.06, 0.002))),
+    ...[-1, 1].flatMap((sx) => [[x + sx * 0.08, R.axleY - 0.06, z + 0.10], [x + sx * 0.08, R.axleY + 0.08, z + 0.10]] as P3[]),
+    ...[-1, 1].flatMap((su) => [-1, 1].map((sv) => at(su * 0.055, sv * 0.05, 0.002))),
   ]));
-  // the feed's boss in the dish's centre
   const boss = at(0, 0, 0.012);
-  P.add('turretDark', xform(cylZ(0.035, 0.03, 10), 0, 0, 0, -tilt, 0, 0), ...boss);
-  // the electro-optical tracker on its boom from the axle's left end (photos 03, 04, 10)
-  const foot: P3 = [x + R.boomX, R.axleY, z], head: P3 = [x + R.boomX, R.topY - 0.10, z + 0.12];
-  const len = Math.hypot(head[1] - foot[1], head[2] - foot[2]), lean = Math.atan2(head[2] - foot[2], head[1] - foot[1]);
-  P.addEquipment('turretDetail', cylY(0.035, 0.04, len, 10), x + R.boomX, (foot[1] + head[1]) / 2, (foot[2] + head[2]) / 2, lean, 0, 0);
-  P.addEquipment('turretDetail', box(0.13, 0.11, 0.20), x + R.boomX, R.topY - 0.055, head[2] + 0.02);
-  P.add('turretGlass', cylZ(0.035, 0.012, 12), x + R.boomX, R.topY - 0.055, head[2] + 0.125);
+  P.add('turretDark', xform(cylZ(0.028, 0.03, 10), 0, 0, 0, -tilt, 0, 0), ...boss);
+  // the straight boom from the axle's left end, one dish across, up and outward to the tracker's box (photos 03, 04)
+  const dir = new THREE.Vector3(...R.boomDir).normalize(), foot = new THREE.Vector3(x + R.boomFootX, R.axleY, z);
+  const up = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
+  const mid = foot.clone().addScaledVector(dir, (R.boomL - 0.03) / 2), end = foot.clone().addScaledVector(dir, R.boomL);
+  P.addEquipment('turretDetail', xform(cylY(0.028, 0.034, R.boomL + 0.03, 10), 0, 0, 0, up.x, up.y, up.z), mid.x, mid.y, mid.z);
+  P.addEquipment('turretDetail', box(0.12, 0.10, 0.16), end.x, R.topY - 0.05, end.z + 0.02);
+  P.add('turretGlass', cylZ(0.03, 0.012, 12), end.x, R.topY - 0.05, end.z + 0.105);
 }
 
 // --------------------------------------------------------------------------------------------------------- guns --
@@ -240,47 +248,53 @@ function addGuns(P: TankBuilderPort, seat: MarksmanSeat): void {
     const mirror = (points: readonly P3[]): P3[] => points.map(([x, y, z]) => [s * x, y, z] as P3);
     // the hub from the drum's cover into the pod's inner face (a body of revolution about the axis)
     P.addGunExtraDark(cylX(DRUM.hubR, DRUM.hubOuterX - (DRUM.outerX - 0.02), n), s * (DRUM.hubOuterX + DRUM.outerX - 0.02) / 2, 0, 0);
-    // the pod: a chamfered section along its body, the tail cut back top and bottom, the nose a pyramid to the face
+    // the pod: a chamfered section along its body, the tail cut back top and bottom, the nose a pyramid rising from the
+    // deep housing to the face round the bore in its top third
     const section = (z: number, x0: number, x1: number, y0: number, y1: number, top: number, bottom: number): P3[] => [
       [x0, y0 + 0.03, z], [x0 + 0.03, y0, z], [x1 - bottom, y0, z], [x1, y0 + bottom, z],
       [x1, y1 - top, z], [x1 - top, y1, z], [x0 + 0.03, y1, z], [x0, y1 - 0.03, z],
     ];
     const { innerX: x0, outerX: x1, bottomY: y0, topY: y1, topChamfer: tc, bottomChamfer: bc } = POD;
     P.add(podBucket, convex(mirror([
-      ...section(POD.tailZ, x0, x1 - 0.02, POD.tailBottomY, POD.tailTopY, tc * 0.6, bc),
+      ...section(POD.tailZ, x0, x1 - 0.02, POD.tailBottomY, POD.tailTopY, tc * 0.6, bc * 0.6),
       ...section(POD.tailCutZ, x0, x1, y0, y1, tc, bc),
       ...section(POD.shoulderZ, x0, x1, y0, y1, tc, bc),
-      ...section(POD.shoulderZ + 0.12, x0 + 0.04, x1 - 0.07, y0 + 0.08, y1 - 0.06, tc * 0.8, bc),
-      ...section(POD.noseZ, BORE.x - POD.faceHalfW, BORE.x + POD.faceHalfW, BORE.y - POD.faceHalfH, BORE.y + POD.faceHalfH, 0.04, 0.02),
+      ...section(POD.shoulderZ + 0.16, x0 + 0.04, x1 - 0.07, y0 + 0.16, y1 - 0.05, tc * 0.8, bc),
+      ...section(POD.noseZ, BORE.x - POD.faceHalfW, BORE.x + POD.faceHalfW, BORE.y - POD.faceHalfH, BORE.y + POD.faceHalfH, 0.04, 0.03),
     ])));
     // the access door on the pod's outer face, its hinges at the front edge and its latch
-    const doorY = (y0 + y1) / 2 - 0.04, doorZ = 0.28;
-    P.add(podBucket, box(0.016, 0.22, 0.36), s * (x1 + 0.004), doorY, doorZ);
-    P.addGunExtraDark(box(0.02, 0.035, 0.08), s * (x1 + 0.013), doorY, doorZ - 0.12);
-    for (const dy of [-0.07, 0.07]) P.addGunExtraDark(KIT.cylY(0.012, 0.012, 0.05, 8), s * (x1 + 0.014), doorY + dy, doorZ + 0.18);
-    // the barrel: the mantlet sleeve on the nose's face, the jacket, its clamp, the tapered tube with a mid clamp and the
-    // cable along its top, the v0 sleeve, the brake's two side plates, its baffles and the front ring with four lugs
+    const doorY = (y0 + y1) / 2 - 0.02, doorZ = 0.55;
+    P.add(podBucket, box(0.016, 0.30, 0.46), s * (x1 + 0.004), doorY, doorZ);
+    P.addGunExtraDark(box(0.02, 0.035, 0.08), s * (x1 + 0.013), doorY, doorZ - 0.15);
+    for (const dy of [-0.10, 0.10]) P.addGunExtraDark(KIT.cylY(0.012, 0.012, 0.06, 8), s * (x1 + 0.014), doorY + dy, doorZ + 0.23);
+    // the barrel (photos 02, 05, 06): the squared pyramid collar on the face, the jacket and its clamp, the tapered tube
+    // with the thin line along its outer flank clamped to it, the open cage of the muzzle device round two ring coils
     const bx = s * BORE.x, by = BORE.y, barrel = `gunBarrel${index}`, dark = `gunBarrel${index}Dark`, B = BARREL;
     const mid = (span: readonly number[]): number => (span[0] + span[1]) / 2;
     const len = (span: readonly number[]): number => span[1] - span[0];
-    P.addGunExtraDark(cylZ(B.sleeveR, len(B.sleeveZ), n), bx, by, mid(B.sleeveZ));
+    const square = (zz: number, h: number): P3[] => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [bx + u * h, by + v * h, zz] as P3);
+    P.add(podBucket, convex([...square(B.collarZ[0], B.collarHalf[0]), ...square(B.collarZ[1], B.collarHalf[1])]));
     P.add(barrel, cylZ(B.jacketR, len(B.jacketZ), n), bx, by, mid(B.jacketZ));
     P.add(dark, cylZ(B.jacketR + 0.010, 0.05, n), bx, by, B.jacketZ[1]);
-    // (the tube and the cable run 2-5 cm into the v0 sleeve, the brake's plates 1 cm, so no end face lies on another)
-    const tubeEnd = B.tubeZ[1] + 0.05;
+    const tubeEnd = B.cageZ[0] + B.plateT - 0.005;
     P.add(dark, cylZ(B.muzzleR, tubeEnd - B.tubeZ[0], n, B.tubeR), bx, by, (B.tubeZ[0] + tubeEnd) / 2);
-    const clampZ = 2.75;
-    P.add(dark, cylZ(B.tubeR + 0.012, 0.06, n), bx, by, clampZ);
-    P.add(dark, cylZ(0.011, B.tubeZ[1] + 0.02 - clampZ, 6), bx, by + B.tubeR + 0.006, (clampZ + B.tubeZ[1] + 0.02) / 2);
-    P.add(dark, cylZ(B.tubeR + 0.016, len(B.v0Z), n), bx, by, mid(B.v0Z));
-    const plates = [B.brakeZ[0] - 0.01, B.brakeZ[1] - 0.005] as const;
-    for (const sx of [-1, 1]) P.add(dark, box(0.024, 0.15, len(plates)), bx + sx * (B.brakeR + 0.002), by, mid(plates));
-    P.add(dark, cylZ(B.brakeR, 0.07, n), bx, by, B.brakeZ[0] + 0.045);
-    P.add(dark, cylZ(B.brakeR, 0.06, n), bx, by, B.brakeZ[0] + 0.23);
-    P.add(dark, cylZ(B.brakeR + 0.004, 0.06, n), bx, by, B.brakeZ[1] - 0.03);
-    for (const [lx, ly] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      P.add(dark, box(lx ? 0.04 : 0.05, ly ? 0.04 : 0.05, 0.035), bx + lx * 0.088, by + ly * 0.088, B.brakeZ[1] - 0.002 - 0.0175);
+    // the line along the outer upper flank, from the collar into the cage's rear plate, and its clamps
+    const lx = s * B.lineOffset * Math.SQRT1_2, ly = B.lineOffset * Math.SQRT1_2;
+    const lineFrom = B.collarZ[1] - 0.02, lineTo = B.cageZ[0] + B.plateT - 0.01;
+    P.add(dark, cylZ(B.lineR, lineTo - lineFrom, 6), bx + lx, by + ly, (lineFrom + lineTo) / 2);
+    for (const cz of B.lineClampZ) {
+      P.add(dark, cylZ(B.tubeR + 0.010, 0.05, n), bx, by, cz);
+      P.add(dark, KIT.xform(box(0.03, 0.045, 0.04), 0, 0, 0, 0, 0, -s * Math.PI / 4), bx + lx * 0.84, by + ly * 0.84, cz);
     }
+    // the cage: two square end plates, four corner bars, two ring coils on the bars
+    for (const pz of [B.cageZ[0] + B.plateT / 2, B.cageZ[1] - B.plateT / 2]) {
+      P.add(dark, box(B.cageHalf * 2, B.cageHalf * 2, B.plateT), bx, by, pz);
+    }
+    const barZ = [B.cageZ[0] + 0.01, B.cageZ[1] - 0.01];
+    for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      P.add(dark, box(B.barHalf * 2, B.barHalf * 2, len(barZ)), bx + u * B.barPos, by + v * B.barPos, mid(barZ));
+    }
+    for (const cz of B.coilZ) P.add(dark, cylZ(B.coilR, B.coilL, n), bx, by, cz);
   }
   P.muzzleZ = MARKSMAN_MUZZLE_Z;
 }

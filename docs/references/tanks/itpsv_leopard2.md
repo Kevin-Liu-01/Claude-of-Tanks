@@ -13,8 +13,8 @@
   one frame (`profiles/marksmanFrame.ts`); the seven leopard2a4Family ids byte-identical.
 - Qualification status: native fixture `src/vehicles/profiles/marksman.selftest.mjs` (both Marksmen, both qualities);
   photographic qualification (a dated packet under `docs/references/photos/`, registered in
-  `tools/photo-reference-policy.mjs`) is owed and is the coordinator's: the as-built envelope is 9.29 m with the guns
-  forward x 3.67 m (the skirts) x 4.32 m (the radar's top; whips out).
+  `tools/photo-reference-policy.mjs`) is owed and is the coordinator's: the as-built envelope is 9.31 m with the guns
+  forward x 3.67 m (the skirts) x 3.93 m (the radar's top; whips out).
 - Publication status: not published; worktree `~/cot-lanes/twin-aa-269`, branch `item/twin-aa-269` (from 2e24acea0c,
   the 268 round), uncommitted.
 - Current next action (coordinator): register `marksman.selftest.mjs`, then the generated tables for this id: combat
@@ -62,10 +62,10 @@ the UK, the turret's maker.
 | Class / role / status / era | spaa / scout (recon) / service / modern | in service 2016 |
 | HP, engine, weight | 2,600 / 1,500 hp (the fleet's 2A4 MB 873; the page's 1,479 hp is the same engine) / 49 t | |
 | Speed, reverse, traverse | 72 / 25 km/h (the 2A4's reverse) / 40 and 70 deg/s authored | en.wikipedia |
-| Gun arc | -10 / +85 degrees, 50 deg/s; the 2A4's curve dropped for the guns' own stops over the engine deck (at most 1.2 degrees up, yaw 141-180): [[0, -10], [140, -10], [141, -9.3], [142, -9.1], [144, -9.1], [150, -9.6], [154, -10], [155, -9.3], [156, -8.9], [162, -8.8], [174, -8.8], [180, -9.6]] | the curve measured (builder M) |
+| Gun arc | -10 / +85 degrees, 50 deg/s; the 2A4's curve dropped for the guns' own stops over the engine deck (at most 0.7 degrees up, yaw 124-179): [[0, -10], [123, -10], [125, -9.6], [139, -9.3], [161, -9.3], [177, -9.8], [180, -10]] | the curve measured (builder M, fix round 1) |
 | 35 mm | the ItPsv 90's rows: APDS-T 146/131/117 mm, 61 dmg, 1,385 m/s, 40 rounds; HEI-T 56 dmg, 1,175 m/s, 460 rounds; 0.35 s | the same turret and guns |
-| Dimensions | hull 7.72 m (the 2A4's), overall 9.29 m with the guns forward (the published 9.30 m: the frame's muzzles 5.13 m ahead of the hull's origin, the stern rack 4.165 m behind it), width 3.70 m (built 3.67 m over the skirts), height 4.32 m (the radar's top 2.68 m over the 1.64 m ring; the published 4.82 m is photo 08's antenna mast, not built) | en.wikipedia; as built |
-| Fire axes | the ItPsv 90's: twin, x = +/-1.16 m, 0.38 m over the drums' axis (0.58 m over the ring and 0.16 m ahead of it), the bore mouths 4.60 m ahead of the axis; index 0 the right; the ring the Leopard 2's (0, 1.64, 0.37) | `profiles/marksmanFrame.ts` |
+| Dimensions | hull 7.72 m (the 2A4's), overall 9.30 m with the guns forward (the published 9.30 m, built 9.31 m: the frame's muzzles 5.145 m ahead of the hull's origin, the stern rack 4.165 m behind it), width 3.70 m (built 3.67 m over the skirts), height 3.93 m (the radar's top 2.29 m over the 1.64 m ring; the published 4.82 m is photo 08's antenna mast, not built) | en.wikipedia; as built |
+| Fire axes | the ItPsv 90's: twin, x = +/-1.16 m, 0.38 m over the drums' axis (0.58 m over the ring and 0.72 m ahead of it), the bore mouths 4.055 m ahead of the axis; index 0 the right; the ring the Leopard 2's (0, 1.64, 0.37) | `profiles/marksmanFrame.ts` |
 | Turret | the ItPsv 90's: the body's fifteen planar faces as plates, 35 mm walls and a 30 mm roof | `marksman_t55.md` |
 | Paint | spec coat and stock: `paint_cv90_mkiv` (Swedish splinter woodland), the closest existing coat to Finland's three-tone (no Finnish Leopard 2A4 exists in the fleet) | no new paint |
 | Marking | hull left anchor, "ItPsv" (no number shows in photos 07-08) | |
@@ -80,19 +80,25 @@ The turret is the one Marksman module; its numbers and photographs are in `marks
 fillers, the forward lift eyes on the glacis at z 2.40; photos 07-08: seven road wheels, the side skirts, the glacis's
 spare links) and the 2A4's hull kit (`addLeo2A4HullKit`, `rearNumber: false`: the German "Y-241" left off; no number
 shows in photos 07-08). Its turret: the adapter `leopard2` (1.06 m over the race's 1.02 m), the pods in the dark weapon
-finish (photos 02-08). Triangles (geometry receipt, HIGH): 29,012 (the leo2a4 37,791).
+finish (photos 02-08). Triangles (geometry receipt, HIGH): 28,806 (the leo2a4 37,791).
 
-Receipts run by builder M (2026-11-03, worktree `~/cot-lanes/twin-aa-269`, uncommitted over 915f4241bc): the fixture
+Fix round 1 (2026-11-03; the coordinator's blind photo critic: shared turret 6/10, marksman_t55 5/10, itpsv_leopard2
+6/10; the build committed as c42fa5565d): the turret 0.80 m longer at the front and the pods to 2.58 m ahead of the ring
+(their fronts over the T-55's glacis edge and over the Leopard's front idler, the turret covering the deck ahead of the
+engine on both hulls; the rear face where it was), the drums' axis 0.56 m further forward; the pods 0.86 m deep with the
+bore in their top third and a squared pyramid collar; the barrels thicker, with the thin line clamped along each and the
+muzzle device an open cage of two end plates and four bars round two ring coils (21 % of the barrel showing), the
+barrels shorter ahead of the pods so the ItPsv Leopard 2 keeps its published 9.30 m; the radar's dish 0.50 m across (0.74 m before),
+its top 0.39 m lower, a wide pleated black rubber skirt at its base and a straight boom up and outward to the tracker's
+box; the sight heads two thirds the size. Kept, as the critic found them right: the drums, the slab-sided body with its
+faceted lower front and ring neck, the grilles, the radar's place, both hulls and the turret's height on each.
+
+Receipts after fix round 1 (2026-11-03, worktree `~/cot-lanes/twin-aa-269`, uncommitted over c42fa5565d): the fixture
 `src/vehicles/profiles/marksman.selftest.mjs` PASS (both ids, both qualities: the frame's fifteen faces planar, convex and
 closed; the rings, axis, bores and muzzle plane; the envelope; the guns 24 mm from the turret's stock through -10 to +85
-degrees, the hubs excepted; 30 mm from the hull at every 5 degrees of yaw and pitch from the published stops); the
-accessory contact probe 0 floating / 0 clipping; `tools/roof-pocket-census.mjs` none; `tools/gun-junction-census.mjs`
-CLOSED at rest, +85 and -10 (the slotted brakes' openings are muzzle-device runs); the gun-hull floors per degree at the
-sweep's 26 mm (`~/cot-lanes/twin-aa-269-evidence/M/scripts/hullfloors.mjs`, gunHullClearance's probe) fitted by `tools/gun-depression-sweep.mjs
---envelope`; the geometry digest (`.qa-dev/geodigest2.mjs`) of t55a, type59 and the seven leopard2a4Family ids
-byte-identical before and after (`~/cot-lanes/twin-aa-269-evidence/M/digest-{before,after}.json`); the selftests naming the ids or beside the changed files (recoilRig, afvBalance, vehicleAudioProfiles, ammunitionFlow, camoCatalogProductionIndices, nationWheelSets, vehicleFacets, cnGunMantlet, type59Overhaul, equipmentDamage, leopard2A4Family, selftest-tiers) PASS; typecheck
-clean in these files (the tree's two remaining errors are in `profiles/lvkv9040.ts`, builder S's). Renders:
-`~/cot-lanes/twin-aa-269-evidence/M/r1/` (first build) and `r2/` (final).
+degrees, the hubs excepted; 30 mm (ItPsv 90) and 27 mm (ItPsv Leopard 2) from the hull at every 5 degrees of yaw and pitch
+from the published stops); the accessory contact probe 0 floating / 0 clipping; `tools/roof-pocket-census.mjs` none; `tools/gun-junction-census.mjs` CLOSED at rest, +85 and -10 (the cages' openings are muzzle-device runs); the stern depression curves re-measured per degree at the sweep's 26 mm (`~/cot-lanes/twin-aa-269-evidence/M/scripts/hullfloors.mjs`, gunHullClearance's probe) and fitted by `tools/gun-depression-sweep.mjs --envelope`; `internalPlacement.selftest.mjs` clean on both ids (fix round 1: the turret's magazines and belt feeds as turret modules inside the body, the base hull's main-gun rack left out, the crew boxes from the floor up, the copied power pack split into engine and transmission; the fleet run still fails on lvkv9040's and pza_loara's own module overlaps); the geometry digest (`.qa-dev/geodigest2.mjs`) of t55a, type59 and the seven leopard2a4Family ids byte-identical to the first round's baseline (`~/cot-lanes/twin-aa-269-evidence/M/digest-{before,fix1}.json`; the T-55 hull's two new options off); `npm run -s typecheck` clean (TypeScript 7, no unused symbols, oxlint); recoilRig, type59Overhaul, cnGunMantlet and afvBalance PASS. The first round's receipts (c42fa5565d) held the same checks on the shorter turret.
+Renders: `~/cot-lanes/twin-aa-269-evidence/M/r1/` (first build), `r2/` (c42fa5565d) and `r3/` (fix round 1).
 
 ## Photographic references
 

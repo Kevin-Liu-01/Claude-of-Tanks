@@ -1,9 +1,10 @@
 // The two Marksmen (release 269, builder M; the owner 2026-11-03: "UK Marksman", the Finnish ItPsv 90, then the Leopard 2
 // Marksman, "produced in 2014 and 15 and started its service in 2016 under the designation ItPsv Leopard 2"): one Marconi
 // Marksman turret (profiles/marksmanTurret.ts, its datums profiles/marksmanFrame.ts) on each hull's own ring.
-//   - marksman_t55, Finland's ItPsv 90 (photo 01, Helsinki, "Ps465-22"): the fleet's T-55A hull and running gear exactly
-//     as the T-55A builds them (profiles/t54Family.ts buildT55AHull: five road wheels, the T-55's deck, the fender tanks
-//     and the two drums across the stern), the turret on the T-55 ring's adapter, its pods in the turret's paint;
+//   - marksman_t55, Finland's ItPsv 90 (photo 01, Helsinki, "Ps465-22"): the fleet's T-55A hull and running gear as the
+//     T-55A builds them (profiles/t54Family.ts buildT55AHull: five road wheels, the T-55's deck, the fender tanks and the
+//     two drums across the stern) with the photograph's two hull options, the light flexible skirts over the top run and
+//     the smooth front mudguards (fix round 1), the turret on the T-55 ring's adapter, its pods in the turret's paint;
 //   - itpsv_leopard2, the ItPsv Leopard 2 (photos 02-08): the Leopard 2A4's hull and running gear with the 2A4's own
 //     options (profiles/leopard2Hull.ts, as profiles/leopard2A4Family.ts builds the leo2a4: seven road wheels, the skirts,
 //     the round-rod exhaust grilles, the fuel fillers, the forward lift eyes on the glacis) and the 2A4's hull kit without
@@ -21,7 +22,7 @@ import { addLeo2A4HullKit } from './leopard2A4Kit.ts';
 import { buildMarksmanTurret } from './marksmanTurret.ts';
 
 function* buildMarksmanT55Steps(P: TankBuilderPort): TankProfileBuild {
-  const hull = buildT55AHull(P);
+  const hull = buildT55AHull(P, { flexibleSkirts: true, smoothMudguards: true });
   yield 'buildMarksmanT55Hull';
   buildMarksmanTurret(P, { adapter: 't55', ring: hull.ringPivot, darkPods: false });
 }

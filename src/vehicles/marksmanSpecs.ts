@@ -45,6 +45,31 @@ function bodyPlates(): ArmorPlate[] {
   });
 }
 
+/** A base's hull modules under the Marksman turret: its own main-gun ammunition rack left out. */
+function hullModules<T extends { turretLocal?: boolean; module: string }>(modules: readonly T[]): T[] {
+  return modules.filter((box) => !box.turretLocal && box.module !== 'ammoRack');
+}
+
+/**
+ * The base's power pack as two separate volumes (fix round 1, internalPlacement): the T-55A's spec carries one engine box
+ * the anatomy carves its transmission from, the Leopard 2A4's a transmission box inside its engine's; their calibration
+ * rows re-seat them, which these ids do not have yet. The transmission takes the rear 30 % of the pair's length behind
+ * the engine (both rear-engined), a 2 cm gap between them.
+ */
+function separatePowerPack<T extends { module: string; min: readonly [number, number, number]; max: readonly [number, number, number] }>(
+  modules: T[]): T[] {
+  const engine = modules.find((box) => box.module === 'engine');
+  if (!engine) return modules;
+  const transmission: T = modules.find((box) => box.module === 'transmission') ?? { ...engine, module: 'transmission' };
+  const z0 = Math.min(engine.min[2], transmission.min[2]), z1 = Math.max(engine.max[2], transmission.max[2]);
+  const split = z0 + (z1 - z0) * 0.30;
+  transmission.min = [transmission.min[0], transmission.min[1], z0];
+  transmission.max = [transmission.max[0], transmission.max[1], split - 0.01];
+  engine.min = [engine.min[0], engine.min[1], split + 0.01];
+  engine.max = [engine.max[0], engine.max[1], z1];
+  return modules.includes(transmission) ? modules : [...modules, transmission];
+}
+
 /** The Marksman turret's records on a hull: its ring, drum, bores, plates, modules, crew and the twin 35 mm. */
 function marksmanVariant(id: string, baseId: string, name: string, ring: keyof typeof MARKSMAN_RINGS): FleetTankSpec {
   const spec = cloneFleetVariant(registries.tankSpecs, id, baseId, { name, nation: 'UK', era: 'modern', role: 'ifv' });
@@ -58,10 +83,15 @@ function marksmanVariant(id: string, baseId: string, name: string, ring: keyof t
   spec.armor.gunPivot = [...TRUNNION];
   spec.armor.gunBarrel = { lengthM: MARKSMAN_MUZZLE_Z, radiusM: .05, collision: false };
   spec.armor.turretPlates = bodyPlates();
-  // the sights' optics under the roof, both guns' pods (outside the body) as the gun
+  // the sights' optics under the roof, both guns' pods (outside the body) as the gun; the guns' 500 rounds in the turret
+  // (internalLayoutRegistry.ts spaaMarksman*: ammoRack and dualBeltFeed in the turret): the magazines low in the rear of
+  // the body under the radar, the belt feeds across the body ahead of the crew to the drums (fix round 1: the hull's own
+  // main-gun rack left out, as the Type 87's)
   const [, ty, tz] = TRUNNION;
   spec.armor.modules = [
-    ...spec.armor.modules.filter((box) => !box.turretLocal),
+    ...hullModules(spec.armor.modules),
+    moduleBox('ammoRack', [-.70, .20, -1.50], [.70, .62, -.70], true),
+    moduleBox('feedSystem', [-.74, .30, .80], [.74, .86, 1.45], true),
     moduleBox('optics', [-(SIGHTS.x + .14), BODY.roofY - .26, SIGHTS.z - .18], [SIGHTS.x + .14, BODY.roofY - .02, SIGHTS.z + .18], true),
     { ...moduleBox('gun', [-POD.outerX, ty + POD.bottomY, tz + POD.tailZ], [POD.outerX, ty + POD.topY, tz + POD.noseZ], true),
       external: true },
@@ -70,8 +100,8 @@ function marksmanVariant(id: string, baseId: string, name: string, ring: keyof t
   // (internalLayoutRegistry.ts spaaMarksman*)
   spec.armor.crew = [
     ...spec.armor.crew.filter((box) => !box.turretLocal),
-    crewBox('gunner', [.08, -.20, -.62], [.60, 1.04, .40], true),
-    crewBox('commander', [-.60, -.20, -.62], [-.08, 1.04, .40], true),
+    crewBox('gunner', [.08, .02, -.30], [.60, 1.04, .72], true),
+    crewBox('commander', [-.60, .02, -.30], [-.08, 1.04, .72], true),
   ];
   // The Gepard 1A2's twin-KDA package (gepardSpecs.ts), the same Oerlikon gun: the APDS-T unchanged, the HE channel the
   // fragmentation round at the page's 1,175 m/s. en.wikipedia: "460 fragmentation rounds and 40 anti-tank rounds" (the
@@ -105,21 +135,22 @@ function reach(record: FleetTankSpec): number {
 // en.wikipedia (Marksman anti-aircraft system): the T-55AM conversion, 41 t (36 t for the T-55AM), crew 3, the V-55 V12 at
 // 620 hp; seven ordered by Finland in 1990, in service 1990, to war-time storage in 2010; the guns -10 to +85 degrees.
 // valka.cz's ItPsv 90 post: the turret 11 t, 1,910 mm high marching and 2,705 mm with the radar in its firing position.
-// The hull is the fleet's T-55A (6.04 m, 3.27 m across the fenders). As built: 8.20 m with the guns forward (the muzzles
-// 4.68 m ahead of the hull's centre over the 3.51 m of the drums behind it) and 4.10 m tall (the radar's 2.68 m over the
-// T-55's 1.42 m ring plane).
+// The hull is the fleet's T-55A (6.04 m, 3.27 m across the fenders; 3.34 m over photo 01's flexible skirts). As built:
+// 8.24 m with the guns forward (the muzzles 4.70 m ahead of the hull's centre over the 3.54 m of the drums behind it) and
+// 3.71 m tall (the radar's 2.29 m over the T-55's 1.42 m ring plane; fix round 1 lowered it 0.39 m to photo 02's
+// proportions; valka.cz's 2,705 mm is not the drawn radar's).
 const marksmanT55 = marksmanVariant('marksman_t55', 't55a', 'Marksman (T-55)', 't55');
 Object.assign(marksmanT55, {
   hp: 2400, enginePowerHp: 620, weightTons: 41, topSpeedKmh: 50, reverseSpeedKmh: 12, hullTraverseDegS: 36,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
-marksmanT55.dims = { hullLengthM: 6.04, overallLengthM: 8.20, widthM: 3.27, heightM: 4.10 };
-// The guns' own stops over the stern (builder M): the full -10 degrees all round but where the barrels pass over the
-// stern's drums and the fenders' rear fittings (yaw 141-178, at most 1.3 degrees up); per-degree floors at the sweep's
+marksmanT55.dims = { hullLengthM: 6.04, overallLengthM: 8.24, widthM: 3.34, heightM: 3.71 };
+// The guns' own stops over the stern (builder M, fix round 1): the full -10 degrees all round but where the barrels pass
+// over the deck's rear fittings and the drums (yaw 127-172, at most 0.7 degrees up); per-degree floors at the sweep's
 // 26 mm with gunHullClearance's probe, fitted by tools/gun-depression-sweep.mjs --envelope (the T-55A's own curve, for its
 // 100 mm, does not apply).
-marksmanT55.gunPitchByYawDeg = [[0, -10], [140, -10], [141, -9.7], [144, -9.7], [148, -9.3], [150, -8.7], [153, -8.7], [154, -10],
-  [166, -10], [168, -9], [169, -8.7], [171, -8.7], [172, -8.9], [173, -10], [176, -9.7], [178, -9.7], [180, -10]];
+marksmanT55.gunPitchByYawDeg = [[0, -10], [126, -10], [127, -9.6], [130, -9.6], [131, -10], [148, -10], [150, -9.3], [153, -9.4],
+  [154, -10], [166, -10], [167, -9.5], [170, -9.3], [171, -9.3], [172, -9.5], [173, -10], [180, -10]];
 // photo 01 (Helsinki): "Ps465-22" on the hull side
 marksmanT55.visual.number = '465-22';
 marksmanT55.armor.boundingRadiusM = Math.max(marksmanT55.armor.boundingRadiusM, reach(marksmanT55));
@@ -127,8 +158,8 @@ marksmanT55.armor.boundingRadiusM = Math.max(marksmanT55.armor.boundingRadiusM, 
 // -------------------------------------------------------------------------------------------- ItPsv Leopard 2 --------
 // en.wikipedia (Marksman anti-aircraft system): the Leopard 2A4 conversion, 49 t, 9.30 m with the guns forward, 3.70 m,
 // 4.82 m, the Leopard 2's twin-turbo V12 at 1,479 hp (1,103 kW; the fleet's Leopard 2A4 carries 1,500 PS), 72 km/h, 550 km;
-// seven produced in 2014-15, in service from 2016; the same turret, guns and crew of three. As built: 9.29 m with the
-// guns forward (the frame's muzzles over the 2A4 hull's stern rack) and 4.32 m tall (the radar's 2.68 m over the 1.64 m
+// seven produced in 2014-15, in service from 2016; the same turret, guns and crew of three. As built: 9.30 m with the
+// guns forward (the frame's muzzles over the 2A4 hull's stern rack) and 3.93 m tall (the radar's 2.29 m over the 1.64 m
 // ring plane: the published 4.82 m is photo 08's, an antenna raised on a tripod mast over the roof that photos 02, 03 and
 // 07 of the same vehicle do not carry, not built).
 const itpsvLeopard2 = marksmanVariant('itpsv_leopard2', 'leo2a4', 'ItPsv Leopard 2', 'leopard2');
@@ -136,12 +167,11 @@ Object.assign(itpsvLeopard2, {
   hp: 2600, enginePowerHp: 1500, weightTons: 49, topSpeedKmh: 72, reverseSpeedKmh: 25, hullTraverseDegS: 40,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
-itpsvLeopard2.dims = { hullLengthM: 7.72, overallLengthM: 9.29, widthM: 3.70, heightM: 4.32 };
-// The guns' own stops over the engine deck (builder M): the full -10 degrees but where the barrels pass over the deck's
-// rear fittings (yaw 141-180, at most 1.2 degrees up); measured and fitted as the ItPsv 90's (the
-// Leopard 2A4's own curve, for its 120 mm, does not apply).
-itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [140, -10], [141, -9.3], [142, -9.1], [144, -9.1], [150, -9.6], [154, -10], [155, -9.3],
-  [156, -8.9], [162, -8.8], [174, -8.8], [180, -9.6]];
+itpsvLeopard2.dims = { hullLengthM: 7.72, overallLengthM: 9.30, widthM: 3.70, heightM: 3.93 };
+// The guns' own stops over the engine deck (builder M, fix round 1): the full -10 degrees but where the barrels pass over
+// the deck's rear fittings (yaw 124-179, at most 0.7 degrees up); measured and fitted as the ItPsv 90's (the Leopard 2A4's
+// own curve, for its 120 mm, does not apply).
+itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [123, -10], [125, -9.6], [139, -9.3], [161, -9.3], [177, -9.8], [180, -10]];
 // no number shows in the 2015 photographs (07-08): the designation's short form
 itpsvLeopard2.visual.number = 'ItPsv';
 itpsvLeopard2.armor.boundingRadiusM = Math.max(itpsvLeopard2.armor.boundingRadiusM, reach(itpsvLeopard2));
@@ -162,7 +192,7 @@ export function synchronizeMarksmanFrames(): void {
   for (const [id, baseId] of Object.entries(BASES)) {
     const base = TANK_SPECS[baseId], own = TANK_SPECS[id];
     own.armor.hullPlates = structuredClone(base.armor.hullPlates);
-    own.armor.modules = [...structuredClone(base.armor.modules.filter((box) => !box.turretLocal)),
+    own.armor.modules = [...separatePowerPack(structuredClone(hullModules(base.armor.modules))),
       ...own.armor.modules.filter((box) => box.turretLocal)];
     own.armor.crew = [...structuredClone(base.armor.crew.filter((box) => !box.turretLocal)),
       ...own.armor.crew.filter((box) => box.turretLocal)];
