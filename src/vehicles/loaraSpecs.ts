@@ -103,7 +103,7 @@ spec.armor.turretPivot = [...LOARA_RING];
 spec.armor.gunPivot = [...LOARA_TRUNNION];
 spec.armor.gunBarrel = { lengthM: LOARA_MUZZLE_Z, radiusM: .05, collision: false };
 // the turret's welded shell: the long body, the lower skirt flaring out under the break ahead of the bearing discs, and
-// the chin under the tracking radar (its back inside the body)
+// the low front block under the tracking radar's mount (its back inside the body)
 const skirtX = T.halfW + T.skirtFlare;
 spec.armor.turretPlates = [
   ...boxPlates('loara_turret', [-T.halfW, T.floorY, T.rearZ], [T.halfW, T.roofY, T.frontZ], 25, 30),
@@ -116,7 +116,8 @@ spec.armor.turretPlates = [
 // the optics under the commander's panoramic sight, both guns' housings (outside the shell) and the radio in the rear
 // under the search radar's mast
 const [, ty, tz] = LOARA_TRUNNION;
-// (the pods' box: from the rear corner to the pointed nose, the deep lower body to the top)
+// (the pods' box: from their square-cut rear, 0.3 m ahead of the turret's, to the tapering nose, their underside to the
+// inboard ridge)
 spec.armor.modules = [
   ...spec.armor.modules.filter((box) => !box.turretLocal),
   moduleBox('optics', [-.72, .92, .95], [-.24, 1.24, 1.40], true),

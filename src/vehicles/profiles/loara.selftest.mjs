@@ -12,8 +12,8 @@ import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import {
-  LOARA_BORE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_TRACKING_RADAR,
-  LOARA_TRUNNION, LOARA_TURRET,
+  LOARA_BORE, LOARA_BRAKE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_SEARCH_RADAR,
+  LOARA_SMOKE, LOARA_TRACKING_RADAR, LOARA_TRUNNION, LOARA_TURRET,
 } from './loaraFrame.ts';
 
 const ID = 'pza_loara';
@@ -64,17 +64,32 @@ for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
     && z <= T.chinFrontZ + 1e-9, `${p.name} within the drawn turret`);
 }
 
-// the photo critique's proportions (round 2), held on the frame: the pods' rear at the turret's rear corner, the bore a
-// third of the way down the pod's front, the pod 0.6 of the turret's wall; the tracker head and its sensors 40 % of the
-// turret's height over the roof, the radome's centre near the roof line and 0.7 of the turret's height across; the
-// driver left of the middle
-const H = LOARA_GUN_HOUSING, TR = LOARA_TRACKING_RADAR, turretH = T.roofY - T.floorY;
-near(LOARA_TRUNNION[2] + H.rearZ, T.rearZ, 'the pods\' rear at the turret\'s rear corner', 0.06);
-const boreDown = (H.topY - LOARA_BORE.y) / (H.topY - H.bottomY);
-assert.ok(boreDown >= 0.20 && boreDown <= 0.35, `the bore ${(boreDown * 100).toFixed(0)} % down the pod`);
-near((H.topY - H.bottomY) / turretH, 0.6, 'the pod 0.6 of the turret wall', 0.03);
-near((TR.sensorTopY - T.roofY) / turretH, 0.40, 'the tracker head 40 % over the roof', 0.03);
+// the photo critiques' proportions, held on the frame (round 3, read on the photo-02 camera where it and the judge's ratios
+// disagree): the pods' square-cut rear 0.3 m ahead of the turret's rear with the dark bearing ring showing behind and
+// under it, the bore half way down the pod's outer face, the face 0.43 of the turret's wall, a long tapering front half;
+// the tracking head (the block's top to the sensors' top) nearly the turret's height, its camera drum 0.6 of the radome
+// across, the sensors 0.38 m over the roof, the radome's centre near the roof line and 0.7 of the turret's height across;
+// the radar's stack half the turret's height across; the smoke tubes 2.7 diameters long, the group 29 % of the turret's
+// length; the brakes 1.7 times the barrel's tube across and 0.40 m long; the driver left of the middle
+const H = LOARA_GUN_HOUSING, TR = LOARA_TRACKING_RADAR, turretH = T.roofY - T.floorY, turretL = T.frontZ - T.rearZ;
+const podRear = LOARA_TRUNNION[2] + H.rearZ;
+assert.ok(podRear - T.rearZ >= 0.25 && podRear - T.rearZ <= 0.40,
+  `the pods' rear ${(podRear - T.rearZ).toFixed(2)} m ahead of the turret's`);
+assert.ok(-H.discR <= H.rearZ - 0.06, 'the ring shows 6 cm or more behind the pod');
+assert.ok(H.bottomY >= -H.discR + 0.2, 'the ring shows under the pod');
+const boreDown = (H.outerTopY - LOARA_BORE.y) / (H.outerTopY - H.bottomY);
+assert.ok(boreDown >= 0.35 && boreDown <= 0.60, `the bore ${(boreDown * 100).toFixed(0)} % down the pod's face`);
+near((H.outerTopY - H.bottomY) / turretH, 0.43, 'the pod\'s face 0.43 of the turret wall', 0.03);
+assert.ok((H.noseZ - H.shoulderZ) / (H.noseZ - H.rearZ) >= 0.4, 'the pod\'s tapering front half');
+assert.ok((TR.sensorTopY - T.chinTopY) / turretH >= 0.85, 'the tracking head nearly the turret\'s height');
+near(TR.camR / TR.r, 0.6, 'the camera drum 0.6 of the radome across', 0.03);
+near(TR.sensorTopY - T.roofY, 0.38, 'the sensors 0.38 m over the roof', 0.03);
 assert.ok(T.roofY - TR.y <= 0.22 && 2 * TR.r / turretH >= 0.68, 'the radome near the roof line, 0.7 of the turret height across');
+assert.ok(LOARA_SEARCH_RADAR.stackW / turretH >= 0.45 && LOARA_SEARCH_RADAR.columnW / turretH >= 0.35,
+  'the radar\'s stack half the turret\'s height across');
+assert.ok(LOARA_SMOKE.tubeLength / (2 * LOARA_SMOKE.tubeR) >= 2.7, 'the smoke tubes about three diameters long');
+assert.ok((LOARA_SMOKE.z1 - LOARA_SMOKE.z0) / turretL >= 0.26, 'the smoke group about 30 % of the turret\'s length');
+assert.ok(LOARA_BRAKE.r / 0.052 >= 1.6 && LOARA_BRAKE.length >= 0.38, 'the large brakes');
 const driver = spec.armor.crew.find((c) => c.crew === 'driver');
 assert.ok((driver.min[0] + driver.max[0]) / 2 > LOARA_DRIVER_X / 2, 'the driver left of the middle');
 

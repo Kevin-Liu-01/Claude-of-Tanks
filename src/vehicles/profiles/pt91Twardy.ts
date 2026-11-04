@@ -246,14 +246,18 @@ export interface PT91TwardyHullOptions {
   deckFittings?:boolean;
   /** false: the B3 study's stern fuel drums left out (t72b3X.ts rearDrums) */
   rearDrums?:boolean;
+  /** false: the B3 study's fenders end over the idlers, their flat front mudguards left to the vehicle's own (t72b3X.ts
+   * frontMudguards; the PZA Loara's curved shells) */
+  frontMudguards?:boolean;
 }
 
 /** The PT-91's hull and running gear alone (the B3 study's hull without its Kontakt-5, the ERAWA glacis courses, the steel
  * side screens and their tiles, the dozer blade), for a vehicle that carries its own turret on them (the PZA Loara,
- * profiles/loara.ts); its options leave out the tiles, the B3's deck fittings or its stern drums. The defaults draw the
- * Twardy's hull parts; buildPT91Twardy itself is unchanged. */
+ * profiles/loara.ts); its options leave out the tiles, the B3's deck fittings, its stern drums or its front mudguards.
+ * The defaults draw the Twardy's hull parts; buildPT91Twardy itself is unchanged. */
 export function buildPT91TwardyHull(P:TankBuilderPort,options:PT91TwardyHullOptions={}):void {
-  buildT72B3XHull(P,{kontakt5:false,deckFittings:options.deckFittings!==false,rearDrums:options.rearDrums!==false});
+  buildT72B3XHull(P,{kontakt5:false,deckFittings:options.deckFittings!==false,rearDrums:options.rearDrums!==false,
+    frontMudguards:options.frontMudguards!==false});
   if(options.erawa!==false)glacisTiles(P);
   for(const side of [-1,1])sideScreen(P,side,options.erawa!==false);
   blade(P);

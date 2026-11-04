@@ -42,13 +42,13 @@ export function buildT72B3XHullCore(P:TankBuilderPort):void {
   ],.021));
 }
 
-function hull(P:TankBuilderPort):void {
+function hull(P:TankBuilderPort,frontMudguards:boolean):void {
   buildT72B3XHullCore(P);
-  for(const side of [-1,1])fender(P,side);
+  for(const side of [-1,1])fender(P,side,frontMudguards);
 }
 
-function fender(P:TankBuilderPort,side:number):void {
-  fenderShell(P,side);
+function fender(P:TankBuilderPort,side:number,frontMudguards:boolean):void {
+  fenderShell(P,side,frontMudguards);
   const x=side<0?-1.769:1.781;
   // Forward sections behind the soft-ERA bank are rigid painted panels; the
   // rear rubber-fabric run is painted in the vehicle scheme like the rest of
@@ -65,15 +65,18 @@ function fender(P:TankBuilderPort,side:number):void {
   rearFenderGuard(P,side);
 }
 
-function fenderShell(P:TankBuilderPort,side:number):void {
+/** frontMudguard false: the shell ends over the idler (z 3.08), its flat front mudguard's bend left to a vehicle that
+ * draws its own (the PZA Loara's curved shells, loara.ts); the default draws every station as before. */
+function fenderShell(P:TankBuilderPort,side:number,frontMudguard=true):void {
   const left=side<0?-1.7905:1.105,right=side<0?-1.105:1.8113;
-  P.addMudguard('t72b3-x-fender','hull',roofSheet([
+  const stations:[number,number,number,number,number][]=[
     [-3.36035,left,right,1.118,1.118],[-3.18,left,right,1.2395,1.2395],[-2.96,left,right,1.400,1.400],
     [-2.76,left,right,1.422,1.422],[-1.89,left,right,1.444,1.444],[.395,left,right,1.4438,1.4438],
     [1.70,left,right,1.392,1.392],[2.50,left,right,1.30735,1.30735],[3.08,left,right,1.242,1.242],
     [3.22,left,right,1.209,1.209],[3.34,left,right,1.120,1.120],[3.43,left,right,1.026,1.026],
     [3.51805,left,right,.838, .838],
-  ],.020));
+  ];
+  P.addMudguard('t72b3-x-fender','hull',roofSheet(frontMudguard?stations:stations.filter(([z])=>z<=3.08),.020));
 }
 
 function rearFenderGuard(P:TankBuilderPort,side:number):void {
@@ -419,11 +422,13 @@ export interface T72B3XOptions { kontakt5?:boolean;
   /** false: no engine-deck plate, grilles, fender plates or driver's hatch (a raised deck built over this one) */
   deckFittings?:boolean;
   /** false: no fuel drums over the stern (a raised deck that carries its own rear equipment there) */
-  rearDrums?:boolean }
+  rearDrums?:boolean;
+  /** false: the fenders end over the idlers, without the flat front mudguards (a vehicle that draws its own there) */
+  frontMudguards?:boolean }
 
 export function buildT72B3XHull(P:TankBuilderPort,options:T72B3XOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);engineDeck(P,options.deckFittings!==false);rearFittings(P,options.rearDrums!==false);if(options.kontakt5!==false)hullEra(P);
+  hull(P,options.frontMudguards!==false);runningGear(P);engineDeck(P,options.deckFittings!==false);rearFittings(P,options.rearDrums!==false);if(options.kontakt5!==false)hullEra(P);
 }
 
 export function buildT72B3X(P:TankBuilderPort,options:T72B3XTurretOptions={}):void {
