@@ -1060,6 +1060,14 @@ const TACTICAL_NUMBER_FILL = 0.94;
 export const GLACIS_MARKING_TRACKING = 80;
 /** A Glacis marking's outline at most, as a share of its size (the shell face's 8 % fills Glacis's small counters). */
 export const GLACIS_MARKING_OUTLINE = 0.06;
+/**
+ * How far above its anchor the shell face's capitals stood, as a share of the size. Chrome sets canvas textBaseline
+ * 'middle' halfway between the face's typo ascender and descender normalised to one em (Chakra Petch Bold: 992 and 308
+ * of 1000, so 0.263 em above the baseline), and its capitals (700) centre 0.35 em up. Hull lettering was seated against
+ * those capitals (the BMPT-90's side face ends just under them), so Glacis's stand where theirs did; a plate or a disc
+ * centres its lettering instead.
+ */
+export const SHELL_MIDDLE_CAP_LIFT = 0.35 - (992 - 308) / (992 + 308) / 2;
 
 export function drawTacticalNumber(
   ctx: CanvasRenderingContext2D,
@@ -1072,11 +1080,12 @@ export function drawTacticalNumber(
   if (glacisSetsMarking(text)) {
     // Glacis outlines (DECISIONS 2026-11-03), sized by the measured run: the per-character rule, brought down where the
     // spaced number and its outline would pass TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran 5-8 px past
-    // a 252 px decal for OTCO, KURSK and 99A2). One path, stroked under its fill, corners mitred short.
+    // a 252 px decal for OTCO, KURSK and 99A2), its caps where the shell face's stood. One path, stroked under its fill,
+    // corners mitred short.
     const fontSize = Math.max(16, Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75,
       width * TACTICAL_NUMBER_FILL / (glacisWidth(text, { size: 1, tracking: GLACIS_MARKING_TRACKING }) + GLACIS_MARKING_OUTLINE)));
     ctx.beginPath();
-    traceGlacis(ctx, text, x + width / 2, y + height / 2,
+    traceGlacis(ctx, text, x + width / 2, y + height / 2 - fontSize * SHELL_MIDDLE_CAP_LIFT,
       { size: fontSize, tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' });
     ctx.lineWidth = Math.max(2, fontSize * GLACIS_MARKING_OUTLINE);
     ctx.lineJoin = 'miter';

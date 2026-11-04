@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING,
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
 } from './vehicleMarkings.ts';
 import { CMAP, GLYPHS } from '../ui/glacis.js';
 
@@ -53,7 +53,8 @@ assert.equal(
 // 264 / glacis-269: a tactical number fits its bounds once measured. Numbers Glacis sets are its outlines (one path,
 // stroked under its fill): a digit number keeps the 1.75-per-character size it always had (its caps 0.7 of the size),
 // and a letter code that would pass its bounds (OTCO, KURSK, 99A2 ran 5-8 px past a 252 px decal) comes down until it
-// and its outline fit, centred on the bounds.
+// and its outline fit, centred across the bounds, its caps standing where Chrome set the shell face's: 0.087 of the
+// size above the middle (centred caps cut the BMPT-90's bottoms off at the end of its side face).
 function tracingContext() {
   const drawn = { xs: [], ys: [], lineWidth: 0, strokes: 0, fills: 0, texts: [] };
   return { drawn, canvas: { width: 256, height: 256 }, save() {}, restore() {}, beginPath() {},
@@ -77,7 +78,9 @@ for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KU
   else assert.ok(capHeight < 0.7 * rule - 0.5, `${number}: a number wider than its bounds comes down (caps ${capHeight.toFixed(1)} < ${(0.7 * rule).toFixed(1)})`);
   assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
   const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
-  assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2)) < 0.01, `${number}: its caps centred on the bounds`);
+  assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2 - capHeight / 0.7 * SHELL_MIDDLE_CAP_LIFT)) < 0.01,
+    `${number}: its caps stand where the shell face's did (centre ${mid.toFixed(2)})`);
+  assert.ok(Math.abs(SHELL_MIDDLE_CAP_LIFT - 0.0869) < 1e-4, 'Chakra Petch Bold\'s caps stood 0.087 em above Chrome\'s middle');
   assert.ok(Math.abs(lineWidth - Math.max(2, capHeight / 0.7 * GLACIS_MARKING_OUTLINE)) < 0.01,
     `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size`);
 }

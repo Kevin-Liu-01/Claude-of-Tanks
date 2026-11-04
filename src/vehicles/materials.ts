@@ -44,7 +44,8 @@ export {
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
 import {
-  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, vehicleMarkingRecord,
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
+  vehicleMarkingRecord,
 } from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
 import { glacisPath, glacisSetsMarking, glacisWidth } from '../ui/glacisText.ts';
@@ -240,21 +241,22 @@ function redrawWhenMarkingFontReady(text: string, draw: () => void): void {
 const MARKING_TEXT_SPAN = 240;
 
 /**
- * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, caps centred on
- * (x, y), at the decal's size rule brought down where the measured run would pass MARKING_TEXT_SPAN, its outline (at
- * most GLACIS_MARKING_OUTLINE of the size) stroked under the fill with mitred corners clipped short so the chamfers
- * stay crisp. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
+ * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, at the decal's
+ * size rule brought down where the measured run would pass MARKING_TEXT_SPAN, its outline (at most
+ * GLACIS_MARKING_OUTLINE of the size) stroked under the fill with mitred corners clipped short so the chamfers stay
+ * crisp. Hull lettering's caps stand where the shell face's did over (x, y) (SHELL_MIDDLE_CAP_LIFT); a plate's or a
+ * disc's centre on it. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
  */
 function letterMarking(
   ctx: CanvasRenderingContext2D, text: string, x: number, y: number, ruleSize: number,
-  fill: string, outlineWidth = 0, outline = '',
+  fill: string, outlineWidth = 0, outline = '', seat: 'hull' | 'plate' = 'hull',
 ): void {
   ctx.save();
   if (glacisSetsMarking(text)) {
     const options = { tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' } as const;
     const size = Math.min(ruleSize,
       (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { ...options, size: 1 })));
-    const path = glacisPath(text, x, y, { ...options, size });
+    const path = glacisPath(text, x, seat === 'hull' ? y - size * SHELL_MIDDLE_CAP_LIFT : y, { ...options, size });
     if (outlineWidth) {
       ctx.lineWidth = Math.min(outlineWidth, size * GLACIS_MARKING_OUTLINE);
       ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
@@ -266,9 +268,10 @@ function letterMarking(
     ctx.font = `bold ${ruleSize}px 'Cot UI', sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    if (outlineWidth) { ctx.lineWidth = outlineWidth; ctx.strokeStyle = outline; ctx.strokeText(text, x, y); }
+    const anchorY = seat === 'hull' ? y : y + ruleSize * SHELL_MIDDLE_CAP_LIFT;
+    if (outlineWidth) { ctx.lineWidth = outlineWidth; ctx.strokeStyle = outline; ctx.strokeText(text, x, anchorY); }
     ctx.fillStyle = fill;
-    ctx.fillText(text, x, y);
+    ctx.fillText(text, x, anchorY);
   }
   ctx.restore();
 }
@@ -383,7 +386,7 @@ function paintMlcDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.lineWidth = 6;
     ctx.strokeStyle = 'rgba(20,20,18,0.9)';
     ctx.stroke();
-    letterMarking(ctx, text, 128, 128, text.length > 2 ? 100 : 130, 'rgba(18,18,18,0.95)');
+    letterMarking(ctx, text, 128, 128, text.length > 2 ? 100 : 130, 'rgba(18,18,18,0.95)', 0, '', 'plate');
   };
   draw();
   redrawWhenMarkingFontReady(text, draw);
@@ -410,7 +413,7 @@ function paintPlateDecal(ctx: CanvasRenderingContext2D, text: string): void {
     ctx.fillRect(2, 98, 252, 60);
     ctx.fillStyle = 'rgba(238,236,228,0.98)';
     ctx.fillRect(6, 102, 244, 52);
-    letterMarking(ctx, text, 128, 128, Math.min(46, Math.floor(330 / length)), 'rgba(18,18,18,0.96)');
+    letterMarking(ctx, text, 128, 128, Math.min(46, Math.floor(330 / length)), 'rgba(18,18,18,0.96)', 0, '', 'plate');
   };
   draw();
   redrawWhenMarkingFontReady(text, draw);
