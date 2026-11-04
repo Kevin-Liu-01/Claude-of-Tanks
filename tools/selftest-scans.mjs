@@ -182,6 +182,16 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
   'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
 
+  // 2026-11-02 audit S3 (tools-lifecycle): the automation-path, readiness and MP-vocabulary censuses
+  // no module under src reads navigator.webdriver but the two bot exclusions
+  'src/app/automationPath.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
+  // no product module under src reads the harness flag
+  'src/app/bootReadiness.selftest.mjs': lists('src/**/*.{ts,tsx,mjs,js}'),
+  // toolCensusFiles: every source under tools, and of the selftests those that launch a browser
+  'tools/code-text.mjs': lists('tools/**/*.{mjs,js,cjs,ts}'),
+  // the MP harnesses spell no protocol state word
+  'tools/mp-states.selftest.mjs': lists('tools/mp-*.mjs'),
+
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
   'src/game/studioSceneShare.selftest.mjs': tracked('**/*.scene.json', 'src/game/studio*.ts', 'src/ui/studio*.ts'),
