@@ -2,8 +2,9 @@
 // with the actual wheels themselves. check all tanks for anything like this"). tankFactoryCore's seatWheelDressing takes
 // what a profile laid on a wheel off the hull: hub rings, bolt rings, spokes and face discs that 43 hulls drew as static
 // hull parts now turn with their sprocket or idler, and turn and ride the suspension with their road wheel; what is the
-// hull's (the Challenger 2's hydrogas pivots seen through its dished wheels) stays put. A copied visual's dressing turns
-// as its source's does. The fleet-wide check is tools/wheel-dressing-audit.mjs.
+// hull's (the Challenger 2's hydrogas pivots seen through its dished wheels) stays put, and the suspension arms profiles
+// drew from a road wheel's hub to a hull pivot turn on that pivot to follow the wheel's travel. A copied visual's dressing
+// and arms move as its source's do. The fleet-wide check is tools/wheel-dressing-audit.mjs (--motion, --arms).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import '../../tools/tank-surface-collect.mjs'; // node canvas shim
@@ -61,6 +62,27 @@ function check(id, expect) {
           `${id}: ${layer.name} rides a road wheel's hub (${x.toFixed(2)}, ${y.toFixed(3)}, ${z.toFixed(2)})`);
       }
     }
+    // a suspension arm's axle end stays on a road wheel's hub through the travel; its pivot stays where it was
+    const arms = [];
+    tank.root.traverse((object) => { if (object.userData.wheelArm) arms.push(object); });
+    assert.equal(arms.length, expect.arms ?? 0, `${id}: ${expect.arms ?? 0} suspension arm piece(s) follow their wheels`);
+    if (arms.length) {
+      drive(tank, 0, () => 0);
+      const pivots = arms.map((arm) => arm.position.clone());
+      drive(tank, 0.37, steps);
+      const hubsNow = translations(tires), toHull = new THREE.Matrix4().copy(tank.root.getObjectByName('rig_hull').matrixWorld).invert();
+      let travelled = 0;
+      arms.forEach((arm, i) => {
+        assert.ok(arm.position.distanceTo(pivots[i]) < 1e-6, `${id}: ${arm.name} keeps its pivot`);
+        if (!arm.geometry.boundingBox) arm.geometry.computeBoundingBox();
+        const x = (arm.geometry.boundingBox.min.x + arm.geometry.boundingBox.max.x) / 2;
+        const end = new THREE.Vector3(x, 0, arm.userData.wheelArmLengthM).applyMatrix4(new THREE.Matrix4().multiplyMatrices(toHull, arm.matrixWorld));
+        assert.ok(hubsNow.some(([hx, hy, hz]) => Math.sign(hx) === Math.sign(x) && Math.hypot(hy - end.y, hz - end.z) < 1e-3),
+          `${id}: ${arm.name}'s axle end rides its wheel's hub`);
+        if (Math.abs(arm.rotation.x - Math.atan2(-arm.userData.wheelArmRestDy, arm.userData.wheelArmRestDz)) > 1e-3) travelled++;
+      });
+      assert.ok(travelled > 0, `${id}: arms turned with their wheels' travel on the steps`);
+    }
     if (expect.clone) {
       drive(tank, 0, () => 0);
       const copy = cloneTankVisual(tank, null, OPTIONS);
@@ -71,13 +93,18 @@ function check(id, expect) {
         const copyRest = matrices(copied);
         drive(copy, 0.37, steps);
         copied.forEach((object, i) => assert.ok(moved(copyRest[i], matrices([object])[0]), `${id}: the copy's ${object.name} turns`));
+        const copiedArms = [];
+        copy.root.traverse((object) => { if (object.userData.wheelArm) copiedArms.push(object); });
+        assert.equal(copiedArms.length, expect.arms ?? 0, `${id}: the copy carries its arms`);
+        assert.ok(copiedArms.every((arm) => arm.rotation.x !== 0 || arm.scale.z !== 1), `${id}: the copy's arms follow their wheels`);
       } finally { copy.dispose?.(); }
     }
   } finally { tank.dispose?.(); }
 }
 
-// sprocket and idler faces, spokes and bolts from its running-gear buckets; the hydrogas pivots behind the dish stay
-check('challenger2', { ends: ['sprocket', 'idler'], road: false, clone: true });
+// sprocket and idler faces, spokes and bolts from its running-gear buckets; its twelve hydrogas arms turn on their
+// pivots, which stay
+check('challenger2', { ends: ['sprocket', 'idler'], road: false, arms: 12, clone: true });
 // hub rings on the road wheels, the left ones re-centred on its staggered left wheels
 check('m48a5_patton', { ends: [], road: true });
 // the profile's own static end-wheel dress meshes, split onto the wheels they lie on

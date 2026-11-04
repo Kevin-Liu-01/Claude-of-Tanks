@@ -172,7 +172,11 @@ function motionCheck(tank, root, hull, items) {
       const inverse = new THREE.Matrix4().copy(frame).invert();
       const pts = item.points().map((p) => p.applyMatrix4(inverse));
       if (!local[i]) { local[i] = pts; return; }
-      pts.forEach((p, k) => { results[i].devM = Math.max(results[i].devM, p.distanceTo(local[i][k])); });
+      // an arm does not turn with its wheel: its axle end keeps its distance from the axle
+      const off = (p) => Math.hypot(p.y, p.z);
+      pts.forEach((p, k) => {
+        results[i].devM = Math.max(results[i].devM, item.arm ? Math.abs(off(p) - off(local[i][k])) : p.distanceTo(local[i][k]));
+      });
     });
   }
   drive(0, 'flat', []);
@@ -238,7 +242,7 @@ for (const id of ids) {
       }
     }
     root.traverse((o) => {
-      if (!o.isMesh || moved.has(o) || buckets.has(o.name) || !shown(o, root)) return;
+      if (!o.isMesh || moved.has(o) || buckets.has(o.name) || o.userData.wheelArm || !shown(o, root)) return;
       let inHull = false;
       for (let p = o; p; p = p.parent) if (p === hull) { inHull = true; break; }
       if (!inHull || /^vehicleMarking|decal|procShadow|^gearSuspension|^gearTrack|TrackLinks/i.test(o.name)) return;
@@ -324,6 +328,28 @@ for (const id of ids) {
     const seated = [];
     root.traverse((o) => { if (o.userData.wheelDressing || o.userData.wheelDressingOf) seated.push({ name: o.name, of: o.userData.wheelDressingOf, moved: moved.has(o) }); });
     const stuck = seated.filter((s) => !s.moved).length;
+    // --arms: static hull parts that reach from a road wheel's hub out to a pivot (a suspension arm drawn by a profile)
+    let arms = null;
+    if (args.includes('--arms')) {
+      arms = [];
+      for (const part of parts) {
+        if (!part.box || part.kept || candidates.has(part)) continue;          // dressing is the wheel's, not an arm
+        for (const wheel of wheels) {
+          if (wheel.kind !== 'road') continue;
+          const lo = wheel.side > 0 ? part.box.min.x : -part.box.max.x, hi = wheel.side > 0 ? part.box.max.x : -part.box.min.x;
+          if (hi > wheel.axOut + 0.02 || hi < wheel.axIn - 0.10 || hi - lo > 0.15) continue;   // a bar reaching the wheel
+          let near = Infinity, far = 0, nearPoint = null;
+          for (let j = 0; j < part.T.length; j += 3) {
+            const r = Math.hypot(part.T[j + 1] - wheel.cy, part.T[j + 2] - wheel.cz);
+            if (r < near) { near = r; nearPoint = new THREE.Vector3(part.T[j], part.T[j + 1], part.T[j + 2]); }
+            far = Math.max(far, r);
+          }
+          if (near > Math.max(0.06, 0.25 * wheel.r) || far < 0.6 * wheel.r || far > 1.2) continue;
+          arms.push({ where: part.where, label: part.label, nearPoint, wheel: `${wheel.side < 0 ? 'L' : 'R'} z${wheel.cz.toFixed(2)}`,
+            nearM: +near.toFixed(3), farM: +far.toFixed(3), lo: +(lo - wheel.axOut).toFixed(3), hi: +(hi - wheel.axOut).toFixed(3) });
+        }
+      }
+    }
     let motion = null;
     if (args.includes('--motion')) {
       // the seated pieces (each instance of a layer) and the static parts the rule calls a wheel's
@@ -343,11 +369,23 @@ for (const id of ids) {
         const box = part.box;
         items.push({ label: `static:${part.where} ${part.label} (${wheel.kind})`, points: () => corners(box, new THREE.Matrix4()) });
       }
+      root.traverse((o) => {
+        if (!o.userData.wheelArm) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const x = (o.geometry.boundingBox.min.x + o.geometry.boundingBox.max.x) / 2;
+        items.push({ arm: true, label: `arm:${o.name}`, points: () => [new THREE.Vector3(x, 0, o.userData.wheelArmLengthM)
+          .applyMatrix4(new THREE.Matrix4().copy(hull.matrixWorld).invert().multiply(o.matrixWorld))] });
+      });
+      for (const arm of arms ?? []) {
+        // a static arm-like part (the negative control): its point nearest the axle
+        items.push({ arm: true, label: `static arm:${arm.where} ${arm.label}`, points: () => [arm.nearPoint.clone()] });
+      }
       motion = motionCheck(tank, root, hull, items);
     }
-    const found = list.filter((h) => h.defect).length + stuck + (motion?.failed ?? 0);
+    const found = list.filter((h) => h.defect).length + stuck + (motion?.failed ?? 0) + (arms?.length ?? 0);
     defects += found;
-    rows.push({ id, wheels: wheels.length, defects: found, seated, hits: list, ...(motion ? { motion } : {}) });
+    rows.push({ id, wheels: wheels.length, defects: found, seated, hits: list, ...(motion ? { motion } : {}), ...(arms ? { arms } : {}) });
+    if (arms) console.log(`${id}: ${arms.length} arm-like static part(s) at road-wheel hubs${arms.length ? ` — ${[...new Set(arms.map((a) => `${a.where} ${a.label}`))].slice(0, 4).join('; ')}` : ''}`);
     if (lines) appendFileSync(lines, `${JSON.stringify(rows.at(-1))}\n`);
     console.log(`${id}: ${wheels.length} wheels, ${seated.length} seated dressing object(s)${stuck ? ` (${stuck} NOT MOVING)` : ''}, `
       + `${found} static dressing defect(s)${found ? ` — ${list.filter((h) => h.defect).slice(0, 3).map((h) => `${h.kind}: ${h.where} ${h.label}`).join('; ')}` : ''}`

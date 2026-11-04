@@ -394,6 +394,25 @@ export interface WheelDressingPart {
   name: string;
 }
 
+/** A profile's suspension arm on a road wheel: it turns on its hull pivot so its hub end stays on the travelling axle. */
+interface WheelArmFollower {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  wheel: WheelEntry;
+  pivotY: number;
+  pivotZ: number;
+  /** pivot to axle at rest (hull frame) */
+  dy0: number;
+  dz0: number;
+}
+
+/** An arm's pose for its wheel's travel, as the gear's own links (updateSuspensionLinks): its geometry lies along local
+ * +Z from its pivot; it is aimed at the axle and stretched to it. */
+function poseWheelArm(arm: WheelArmFollower): void {
+  const dy = arm.dy0 + (arm.wheel.thrown ? 0 : (arm.wheel.off || 0));
+  arm.mesh.rotation.x = Math.atan2(-dy, arm.dz0);
+  arm.mesh.scale.z = Math.hypot(dy, arm.dz0) / Math.hypot(arm.dy0, arm.dz0);
+}
+
 interface SpinnerBatchItem {
   geo: THREE.BufferGeometry;
   end: GearEndpoint;
@@ -1966,6 +1985,15 @@ const WHEEL_DRESSING_HUB_M = 0.025;
 const WHEEL_DRESSING_FACE_DEPTH_M = 0.005;
 /** A part within this of a static part's surface is fixed to the hull, not the wheel's. */
 const WHEEL_DRESSING_CONTACT_M = 0.005;
+/** A profile's suspension arm (seatWheelDressing): a bar at most this long along the axle, its outer side within this of
+ * the wheel's outer face and reaching to within this of its inner face (the Tamoyo 3's arms end 5 cm inboard of the
+ * wheel; tub strakes and belly shoulders stop 18 cm or more short of it), one end within this of the axle (or a
+ * quarter of the wheel's radius) and the other no further out than this. */
+const WHEEL_ARM_SPAN_M = 0.15;
+const WHEEL_ARM_FACE_M = 0.02;
+const WHEEL_ARM_INBOARD_M = 0.10;
+const WHEEL_ARM_HUB_M = 0.06;
+const WHEEL_ARM_REACH_M = 1.2;
 
 /** Whether some vertex of `a` lies within `d` of a triangle of `b` (one frame; `near` is a's box grown by d). */
 function geometryTouches(a: THREE.BufferGeometry, b: THREE.BufferGeometry, d: number, near: THREE.Box3): boolean {
@@ -5055,6 +5083,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // separate cleanly from the scheme-painted road wheels.
   const spinners: WheelSpinner[] = [];
   const spinnerInstances: SpinnerBatchRecord[] = [];
+  const armFollowers: WheelArmFollower[] = [];
   const sprocketWrap = endpointWrap(sprocket, trackWrapClearanceM(trackTh));
   const idlerWrap = endpointWrap(idler, trackWrapClearanceM(trackTh));
   const bandOuterR = sprocketWrap + trackTh / 2;
@@ -5952,7 +5981,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // outer face, it reaches that face (its innermost point at most WHEEL_DRESSING_FACE_GAP_M proud of it), on a road wheel
   // or a roller it is also the hub's or on the outer face, and it touches nothing fixed to the hull. A sprocket's or an
   // idler's dressing turns as a spinner of its own; a road wheel's or a return roller's is an instanced layer on its wheel
-  // (the same dressing on several wheels shares one), turning and riding the suspension with it. Returns the rest.
+  // (the same dressing on several wheels shares one), turning and riding the suspension with it. A suspension arm drawn
+  // from a road wheel's hub to a hull pivot turns on that pivot to follow the wheel's travel. Returns the rest.
   const seatWheelDressing = (parts: readonly WheelDressingPart[]): WheelDressingPart[] => {
     if (!parts.length) return [];
     interface Seat {
@@ -6038,6 +6068,33 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       }
       if (best) chosen.set(part, { seat: best, snap }); else rest.push(part);
     }
+    // a suspension arm a profile drew from a road wheel's hub out to a hull pivot (the Challenger 2's hydrogas arms, the
+    // Bernardini X1's and Tamoyo 3's trailing bars): a bar at most WHEEL_ARM_SPAN_M along the axle that reaches the
+    // wheel, one end within WHEEL_ARM_HUB_M (or a quarter of the radius) of the axle and the other from 0.6 radius to
+    // WHEEL_ARM_REACH_M out. It is not fixed to the hull for the contact rule below: it travels with its wheel.
+    const armsOf = new Map<Seat, WheelDressingPart[]>();
+    for (let i = rest.length - 1; i >= 0; i--) {
+      const part = rest[i]!, position = part.geometry.getAttribute('position');
+      if (!position?.count) continue;
+      const pb = part.geometry.boundingBox!;
+      let best: Seat | null = null, bestNear = Infinity;
+      for (const seat of seats) {
+        if (!seat.entry?.road) continue;
+        const lo = seat.side > 0 ? pb.min.x : -pb.max.x, hi = seat.side > 0 ? pb.max.x : -pb.min.x;
+        if (hi > seat.axOut + WHEEL_ARM_FACE_M || hi < seat.axIn - WHEEL_ARM_INBOARD_M || hi - lo > WHEEL_ARM_SPAN_M) continue;
+        let near = Infinity, far = 0;
+        for (let v = 0; v < position.count; v++) {
+          const radial = Math.hypot(position.getY(v) - seat.y, position.getZ(v) - seat.z);
+          near = Math.min(near, radial); far = Math.max(far, radial);
+        }
+        if (near > Math.max(WHEEL_ARM_HUB_M, 0.25 * seat.r) || far < 0.6 * seat.r || far > WHEEL_ARM_REACH_M) continue;
+        if (near < bestNear) { best = seat; bestNear = near; }
+      }
+      if (!best) continue;
+      rest.splice(i, 1);
+      const list = armsOf.get(best);
+      if (list) list.push(part); else armsOf.set(best, [part]);
+    }
     // what is fixed to the hull stays the hull's: a part touching a static part (a skirt's trim strip in front of the M1's
     // sprocket, the swing arm a Challenger 2 pivot carries) is not a wheel's
     const grown = new THREE.Box3();
@@ -6112,6 +6169,50 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       im.userData.wheelDressingOf = on[0]!.entry!.road ? 'road' : 'roller';
       disposables.push(geometry);
     }
+    // each wheel's arms turn on one pivot: the far end of its longest arm part (where its hull mount sits)
+    for (const [seat, list] of armsOf) {
+      let pivotY = seat.y, pivotZ = seat.z, longest = 0;
+      for (const part of list) {
+        const position = part.geometry.getAttribute('position');
+        const radial = (v: number): number => Math.hypot(position.getY(v) - seat.y, position.getZ(v) - seat.z);
+        let far = 0;
+        for (let v = 0; v < position.count; v++) far = Math.max(far, radial(v));
+        if (far <= longest) continue;
+        longest = far;
+        let y = 0, z = 0, n = 0;
+        for (let v = 0; v < position.count; v++) if (radial(v) >= 0.85 * far) { y += position.getY(v); z += position.getZ(v); n++; }
+        pivotY = y / n; pivotZ = z / n;
+      }
+      const finishes = new Map<string, WheelDressingPart[]>();
+      for (const part of list) {
+        const key = `${part.material.uuid}|${part.appearanceRole ?? ''}|${part.name}`;
+        const same = finishes.get(key);
+        if (same) same.push(part); else finishes.set(key, [part]);
+      }
+      for (const same of finishes.values()) {
+        // laid along local +Z from the pivot (the rest arm turned onto it), so a turn and a z stretch pose it
+        const geometry = mergeAll(same.map((part) => part.geometry));
+        geometry.translate(0, -pivotY, -pivotZ).rotateX(-Math.atan2(-(seat.y - pivotY), seat.z - pivotZ));
+        const { material, appearanceRole, name } = same[0]!;
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = name.replace('gearWheelDressing_', 'gearWheelArm_');
+        mesh.position.set(0, pivotY, pivotZ);
+        mesh.userData.runningGear = true;
+        mesh.userData.runningGearUnitId = runningGearUnitId;
+        mesh.userData.wheelArm = true;
+        mesh.userData.wheelArmLengthM = Math.hypot(seat.y - pivotY, seat.z - pivotZ);   // its axle end: local (x, 0, length)
+        mesh.userData.wheelArmRestDy = seat.y - pivotY;
+        mesh.userData.wheelArmRestDz = seat.z - pivotZ;
+        if (appearanceRole) mesh.userData.appearanceRole = appearanceRole;
+        mesh.castShadow = false;
+        mesh.receiveShadow = true;
+        const arm: WheelArmFollower = { mesh, wheel: seat.entry!, pivotY, pivotZ, dy0: seat.y - pivotY, dz0: seat.z - pivotZ };
+        poseWheelArm(arm);
+        hullG.add(mesh);
+        disposables.push(geometry);
+        armFollowers.push(arm);
+      }
+    }
     return rest;
   };
   const gearUnit = createRunningGearRuntime({
@@ -6120,7 +6221,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   });
   // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
@@ -6205,6 +6306,7 @@ interface RunningGearRuntimeEnv {
   linkMeshes: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[];
   spinners: WheelSpinner[];
   spinnerInstances: SpinnerBatchRecord[];
+  armFollowers: WheelArmFollower[];
   bandBasePos: THREE.TypedArray;
   bandRestPos: Partial<Record<Side, Float32Array>>;
   bandBase: Record<Side, ArrayLike<number>>;
@@ -6229,7 +6331,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
-    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    linkMeshes, spinners, spinnerInstances, armFollowers, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
     endRelays, relayPinned, gearContactGeom, conformPlaneY,
   } = env;
   // A covered return run is still a complete physical chain. Older builds
@@ -6634,6 +6736,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       }
       updateGearSurface(l, r);
       updateSuspensionLinks(suspensionLinks);
+      for (const arm of armFollowers) poseWheelArm(arm);
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);

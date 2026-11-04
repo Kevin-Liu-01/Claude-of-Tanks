@@ -251,6 +251,7 @@ function cloneRunningGear(
       tgR: copy.geometry(env.tgR),
       linkMeshes: copy.value(env.linkMeshes),
       spinners: copy.value(env.spinners),
+      armFollowers: copy.value(env.armFollowers),
       // a battle build's end-wheel batches: the copy's own (vehicleGraphClone: its own instance matrices)
       spinnerInstances: env.spinnerInstances.map((entry) => ({ batch: copy.object(entry.batch), entries: copy.value(entry.entries) })),
       bandRestPos: copy.value(env.bandRestPos),
