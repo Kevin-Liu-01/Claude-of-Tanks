@@ -5332,7 +5332,9 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // Release 268: with the Trophy launchers gone, the left flank's 20 cm roof-edge shelf (x 1.29-1.49, under-face
         // 0.675) roofed a 14 cm well over the cassette tops (0.54) from the bustle to -0.80; a stowage plate laid on
         // the wall at the cassette face fills it (plain plate, not part of the reactive cluster).
-        flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
+        // (release 268 builder E, the A/B polish: the owner's model's shell has no roof-edge shelf over the left flank, so
+        // there is no well to fill; the plate stood 8 cm off its 26-degree wall at an angle)
+        if (!t.m1a1Source) flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
         for (const [x, z, h] of [[-1.15, -0.96, 0.42], [1.12, -1.08, 0.34], [0.84, -1.48, 0.28]]) {
           const buildTejasFamilyTurretCourse9 = (): void => {
             P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);

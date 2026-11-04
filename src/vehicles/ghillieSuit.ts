@@ -184,6 +184,10 @@ interface SidePanel {
    * of it along the flank (an applique cassette, a bracket), above any cut's top over that column; no roll, no folds.
    */
   taut?: boolean;
+  /** Release 268 builder E: scales this drape's garnish count (default 1), as TopPanel.garnishDensity. */
+  garnishDensity?: number;
+  /** Release 268 builder E: garnish only over this span [z0, z1] of the drape (clear of an end that meets a corner). */
+  garnishZ?: readonly [number, number];
 }
 
 interface FacePanel {
@@ -208,6 +212,8 @@ interface FacePanel {
    * plane, so it spans the modules' seams instead of stepping into them; no folds, no scalloped or torn hem.
    */
   taut?: boolean;
+  /** Release 268 builder E: scales this face's garnish count (default 1), as TopPanel.garnishDensity. */
+  garnishDensity?: number;
 }
 
 interface GhilliePanels {
@@ -2109,6 +2115,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     cardOk: (p) => p[2] >= z0 - 0.05 && p[2] <= z1 + 0.05 && (!underTurret || p[1] <= topRow(p[2]) + 0.005)
       // (release 268, SidePanel.flat / taut: the hem is clean, no spray hangs below it)
       && (!(panel.flat || panel.taut) || p[1] >= bottomAt(p[2]) + 0.01)
+      && (!panel.garnishZ || (p[2] >= panel.garnishZ[0] && p[2] <= panel.garnishZ[1]))
       && !cuts.some(([c0, c1, , hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] < hi + 0.04),
   };
 }
@@ -2480,7 +2487,7 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
     area = Math.abs(u1 - u0) * (lo && hi ? Math.max(0.2, Math.hypot(hi.p[0] - lo.p[0], hi.p[1] - lo.p[1], hi.p[2] - lo.p[2])) : 0.6);
   }
   // a fitted cover carries a few tufts of its own cut flaps; a draped net its bunches and boughs
-  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1) * (cfg.style === 'leafy' ? 1 : 0.55);
+  const perM2 = (top ? 4.4 : 4.9) * cfg.density * (panel.garnishDensity ?? 1) * (cfg.style === 'leafy' ? 1 : 0.55);
   // drapes take more of their bunches high, under the top cord, and along the hem; a fleet field net (fieldClearanceM)
   // spreads them down the drape, clear of the turret's swing over its top
   const bias = top ? undefined : cfg.fieldClearanceM !== undefined ? (r: () => number): [number, number] => {
@@ -3857,8 +3864,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         yAt: m1a1HullNetY(sepv3HullY),
         outline: [[-1.22, -3.62], [1.22, -3.62], [1.66, -3.12], [1.66, 2.65], [1.04, 3.62], [-1.04, 3.62], [-1.66, 2.65], [-1.66, -3.12]],
         holes: [rect(-1.57, 1.57, -2.85, 1.72), rect(-0.30, 0.30, 0.92, 2.25), rect(-1.52, -0.65, -3.58, -2.15)],
-        foliageExclude: [[[-0.8, 1.6], [0.8, 1.6], [0.95, 3.7], [-0.95, 3.7]]],
-        garnishEdgeBandM: 0.4, garnishRiseM: 0.08, reliefScale: 0.6, seed: 9 }],
+        foliageExclude: [[[-0.8, 1.6], [0.8, 1.6], [0.95, 3.7], [-0.95, 3.7]],
+          // (the A/B polish: no spray on the front fenders, where it billowed into a dark lump over the idler's arch)
+          [[1.04, 2.45], [1.70, 2.45], [1.70, 3.70], [1.04, 3.70]], [[-1.04, 2.45], [-1.70, 2.45], [-1.70, 3.70], [-1.04, 3.70]]],
+        garnishEdgeBandM: 0.4, garnishRiseM: 0.06, reliefScale: 0.3, seed: 9 }],
       // (the A/B fix round: each drape ends at z 2.40, behind the bow's ARAT tiles, where its front end crumpled over
       // them into the bulge at the nose. Release 268 builder E, the FEP round: "crumpled net facets on skirts and
       // fenders": the cover hangs flat (SidePanel.flat) over the ARAT tiles from a level line 2 cm over the skirt's
@@ -3896,7 +3905,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         clipEdges: [[[1.259, 0.942], [0.319, 1.701]], [[-1.259, 0.942], [-0.319, 1.701]]],
         holes: [rect(-0.92, 0.07, -1.38, 0.10), rect(0.10, 0.98, -1.08, -0.16), rect(-1.10, -0.50, 0.46, 1.10),
           rect(-1.22, -0.98, -2.48, -2.22), rect(0.98, 1.22, -2.48, -2.22)],
-        reliefScale: 0.4, rimScale: 0.5, garnishRiseM: 0.10, seed: 37 }],
+        // (the A/B polish: a little relief so the cloth reads as net, not paint; no spray standing at the cheeks' front
+        // corners or over the mantlet slot)
+        foliageExclude: [rect(0.95, 1.30, -0.10, 1.20), rect(-1.30, -0.95, -0.10, 1.20), rect(-0.55, 0.55, 1.15, 1.85)],
+        reliefScale: 0.6, rimScale: 0.5, garnishRiseM: 0.05, seed: 37 }],
       // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): both flank covers were fitted round
       // the bustle, each column stepping out and back as the wall did, and creased into a crumpled lump at the rear
       // corner: on the -X flank over the bustle-side stowage drum and its boxes (x -1.70..-1.47, z -3.17..-2.08), on the
@@ -3909,10 +3921,18 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // open; the star and the "34" stay painted on it (vehicleMarkings.ts vehicleMarkingPaintsOnSuit).
       // (ahead of the corner's top, z 0.94, the cloth's top follows the corner edge down to its foot at z 1.18, so the
       // cassettes in the wedge under the cheek's front edge are covered too)
-      side: [-1, 1].map((side) => ({ side, z0: side < 0 ? -2.02 : -2.32, z1: 1.16, nz: side < 0 ? 32 : 34, ny: 8, taut: true,
+      // (the A/B polish: "a sheet sticks out at an angle on the rear turret flank": each cover stopped short of the
+      // flank cassettes' last column, its end standing off the wall at their face. On the owner's model's shell the
+      // bustle wall runs on the same 26-degree plane to the rear face, so both covers run back to the cassettes' rear
+      // ends, z -2.43; their tufts stay clear of both ends, behind the smoke launchers and ahead of that last column.
+      // "Sheets stand up at the turret's front corners": the strip left over the M250 bank above its cut wrapped the
+      // launchers' tops and stood above the corner seen from across the roof, so the cut now runs the drape's full
+      // height there, and the cheek's side face ahead of the bank carries its own short length of the cover)
+      // (each keeps its columns' spacing, so they fall at the smoke launchers' cut as before)
+      side: [-1, 1].map((side) => ({ side, z0: -2.43, z1: 1.16, nz: side < 0 ? 36 : 35, ny: 8, taut: true,
         topAt: (z: number) => Math.min(sepv3TurretRoofY(z) - 0.01, 0.632 - (z - 0.94) * 2.758), bottomAt: () => 0.04,
         outAt: (z: number, t: number) => (z < -1.65 ? 1.60 : 1.72) + (1 - t) * 0.028, seed: 51 + side,
-        cuts: [[0.36, 0.76, 0.10, 0.50]] })),
+        cuts: [[0.36, 0.76, 0.10, 0.70]], garnishDensity: 0.7, garnishZ: [-1.95, 0.0] as const })),
       // The cheeks' front faces under the same net (SidePanel's taut rule for a face, FacePanel.taut), laid over the
       // spec's eight ERA modules on each (they stay as built), from the cheek's top edge to its toe, outboard of the
       // mantlet slot by 6 cm (|x| >= 0.38).
@@ -3920,7 +3940,9 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // its top edge is the cheek's, y = 0.4879 + 0.1145|x|, where the roof net's clipped edge meets it)
       face: [1, -1].map((s) => ({ z: 1.4, x0: s > 0 ? 0.38 : -1.58, x1: s > 0 ? 1.58 : -0.38, y0: -0.02, y1: 0.64, nx: 14, ny: 6,
         zAt: (x: number, y: number) => 2.3131 - 0.7269 * Math.abs(x) - 0.7053 * y + 0.12, taut: true,
-        outline: [[s * 0.38, -0.02], [s * 1.57, -0.02], [s * 1.259, 0.632], [s * 0.38, 0.531]], seed: 61 + s })),
+        // (the A/B polish: the net lies on the cheeks with its relief alone, no sheets standing at their front corners
+        // or a flap over the mantlet slot)
+        outline: [[s * 0.38, -0.02], [s * 1.57, -0.02], [s * 1.259, 0.632], [s * 0.38, 0.531]], garnishDensity: 0, seed: 61 + s })),
     },
     // The M256 under the same net (the owner's cover request, 2026-11-03: "cover ... cannonn with gfhillie and nett"): a
     // sleeve from the shield's collar to 0.35 m short of the muzzle (gun frame, z along the bore), pitching with the gun:
@@ -3929,13 +3951,16 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     // envelopeM holds the top over the steps for the 0.13 m recoil stroke; the cord ties round it are the gun mount's
     // (profiles/abrams.ts); sparse low tufts stay within 0.24 m of the bore line (garnishHalfWidthM).
     gun: {
-      top: [{ x0: -0.13, x1: 0.13, z0: 0.55, z1: 3.77, nx: 6, nz: 56,
+      // (the A/B polish: thinner and on the tube, so the thermal sleeve's and the evacuator's steps show; started 0.20 m
+      // clear of the shield's face; the tufts low along it, none within 0.25 m of the shield or on the last 1.1 m)
+      top: [{ x0: -0.10, x1: 0.10, z0: 0.62, z1: 3.77, nx: 4, nz: 64,
         yAt: (_x: number, z: number) => m1a1GunSleeveR(z) + 0.01,
-        yFromArmour: true, clipToArmour: true, seatGapM: 0.02, riseLimitM: 0.12, envelopeM: 0.14,
-        garnishDensity: 20, garnishRiseM: 0.04, garnishHalfWidthM: 0.24, reliefScale: 0.2, rimScale: 0.3, seed: 41 }],
-      side: [-1, 1].map((side) => ({ side, z0: 0.55, z1: 3.77, nz: 40, ny: 4, taut: true,
+        yFromArmour: true, clipToArmour: true, seatGapM: 0.008, riseLimitM: 0.12, envelopeM: 0.03,
+        foliageExclude: [rect(-0.3, 0.3, 0.55, 0.85), rect(-0.3, 0.3, 3.05, 3.85)],
+        garnishDensity: 20, garnishRiseM: 0.03, garnishHalfWidthM: 0.22, reliefScale: 0.15, rimScale: 0.3, seed: 41 }],
+      side: [-1, 1].map((side) => ({ side, z0: 0.62, z1: 3.77, nz: 48, ny: 4, taut: true,
         topAt: (z: number) => m1a1GunSleeveR(z) * 0.55, bottomAt: () => -0.09,
-        outAt: (z: number) => m1a1GunSleeveR(z) + 0.02, seed: 43 + side })),
+        outAt: (z: number) => m1a1GunSleeveR(z) + 0.008, garnishZ: [0.85, 3.05] as const, seed: 43 + side })),
     },
   },
   ua_m1a1: {
