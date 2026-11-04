@@ -1044,15 +1044,17 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
     // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
-    // publishes none), each 0.3 degrees deeper: the suit keeps its clearance from where the gun can go and does not strip
-    // the deck it cannot reach. Under them the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat
-    // exemption there (it lay 24 mm under the barrel at yaw 150) and the cards keep the clearance across their faces.
-    gunPitchByYawDeg: [[0, -10], [125, -10], [126, -10], [127, -8.86], [128, -5.52], [129, -4.02], [130, -3.21], [131, -2.89],
-      [132, -2.86], [133, -2.46], [134, -1.27], [135, -0.64], [136, -0.49], [138, -0.49], [139, -0.71], [140, -1.39],
-      [141, -1.58], [142, -1.49], [143, -1.43], [144, -1.43], [145, -0.89], [146, -0.61], [147, -0.58], [148, -0.77],
-      [149, -1.43], [150, -1.36], [151, -1.36], [152, -1.21], [153, -1.14], [154, -0.64], [155, -0.52], [156, -0.49],
-      [158, -0.49], [159, -0.05], [160, 0.04], [161, 0.04], [162, 0.42], [163, 0.57], [164, 0.57], [165, 0.61], [169, 0.61],
-      [170, 0.64], [173, 0.64], [174, 0.7], [175, 0.76], [176, 0.79], [177, 0.79], [178, 0.82], [180, 0.82]],
+    // publishes none), 0.3 degrees deeper (0.8 over the stern from 140, where the recoiled extractor runs back over the
+    // deck): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach. Under
+    // them the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat exemption there (it lay 24 mm
+    // under the barrel at yaw 150) and the cards keep the clearance across their faces.
+    gunPitchByYawDeg: [[0, -10], [126, -10], [127, -8.86], [128, -5.52], [129, -4.02], [130, -3.21], [131, -2.89],
+      [132, -2.86], [133, -2.46], [134, -1.27], [135, -0.64], [136, -0.49], [138, -0.49], [139, -0.71], [140, -1.89],
+      [141, -2.08], [142, -1.99], [143, -1.93], [144, -1.93], [145, -1.39], [146, -1.11], [147, -1.08], [148, -1.27],
+      [149, -1.93], [150, -1.86], [151, -1.86], [152, -1.71], [153, -1.64], [154, -1.14], [155, -1.02], [156, -0.99],
+      [158, -0.99], [159, -0.55], [160, -0.46], [161, -0.46], [162, -0.08], [163, 0.07], [164, 0.07], [165, 0.11],
+      [169, 0.11], [170, 0.14], [173, 0.14], [174, 0.2], [175, 0.26], [176, 0.29], [177, 0.29], [178, 0.32],
+      [180, 0.32]],
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
       top: [laid({
