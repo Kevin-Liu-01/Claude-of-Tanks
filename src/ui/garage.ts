@@ -2861,7 +2861,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // chunk, IR3)
   const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
     const loading = facetPanel.load();
-    loading.catch(() => reportLoadFailure('cot-facets-load', t('loadFailed.generic'), [facetToggle]));
+    // (audit R6) a failed load marks the button (the toggle goes back to idle; the next press reloads)
+    void loading.then(() => {}, () => reportLoadFailure('cot-facets-load', t('loadFailed.generic'), [facetToggle]));
     return loading;
   });
   facetToggle.addEventListener('click', () => {
