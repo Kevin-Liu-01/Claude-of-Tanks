@@ -340,8 +340,10 @@ const CORE_BATTLE = [
 ];
 
 const PLAYER_HULL = [
-  // our own weapons' reports and their loaders' machinery follow our hull (preloadOwnWeapons)
-  'gun_recoil_mech', 'turret_start', 'ac_feed', 'latch_ready', 'repair_kit', 'first_aid', 'extinguisher',
+  // our own weapons' reports and their loaders' machinery follow our hull (preloadOwnWeapons); the Gun Game's changeover
+  // (weaponChangeover) loads by hand whatever hull it changes
+  'gun_recoil_mech', 'turret_start', 'ac_feed', 'latch_ready', 'breech_open', 'shell_ram', 'breech_close', 'missile_tube_load',
+  'magazine_swap', 'repair_kit', 'first_aid', 'extinguisher',
   'ammo_select', 'missile_mode', 'dry_fire', 'gun_limit', 'traverse_grind_loop', 'rollover', 'overturned_groan',
   'engine_flood', 'bubbles_loop', 'hull_debris_patter', 'scope_in', 'scope_out', 'lock_on', 'lock_off',
   'missile_warning', 'roof_gun_servo', 'tinnitus', 'hydro_susp', 'jump_launch', 'self_right', 'hatch', 'switch_toggle',
@@ -1970,19 +1972,23 @@ export function createAudio({
    * Our own weapons (gun-reports-269): every mount's own and closed-turret reports and its loader's machinery, decoded
    * and pinned once our hull is known (long before the rollout lets the guns speak), and again when the gun changes.
    */
-  function preloadOwnWeapons(info: TankInfo): void {
-    if (!library) return;
+  function ownWeaponAssets(info: TankInfo | null | undefined): string[] {
     const ids = new Set<string>();
-    for (const m of info.mounts) {
+    for (const m of info?.mounts ?? []) {
       const row = m.row;
       if (!row) continue;
       if (row.own) ids.add(row.own);
       if (row.interior) ids.add(row.interior);
-      for (const id of reloadAssets(m, loaderFor(info.specId, m))) ids.add(id);
+      for (const id of reloadAssets(m, loaderFor(info?.specId, m))) ids.add(id);
     }
-    if (!ids.size) return;
-    library.pin(ids, true);
-    void library.load([...ids]);
+    return [...ids];
+  }
+  function preloadOwnWeapons(info: TankInfo): void {
+    if (!library) return;
+    const ids = ownWeaponAssets(info);
+    if (!ids.length) return;
+    library.pin(ids);
+    void library.load(ids);
   }
 
   /** QA override (debug surface only): audition one crew pack in any battle. */
@@ -2921,8 +2927,10 @@ export function createAudio({
     for (const id of UI_SET) ids.add(id);
     for (const id of PLAYER_HULL) ids.add(id);
     for (const id of MODE_SET) ids.add(id);
-    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown).
+    // The report banks the battle can hear: the roster's mounts and the roof stations' (every row when unknown), and
+    // our own hull's reports and loader machinery once it is known (preloadOwnWeapons pins them when it is found).
     for (const id of battleReportAssets(mode)) ids.add(id);
+    for (const id of ownWeaponAssets(playerEntityInfo())) ids.add(id);
     // Every prop's sound (propSounds.ts): the first pole, cart or drum a hull meets is never silent while it decodes.
     for (const id of propSoundAssets()) ids.add(id);
     for (const id of sceneAssets(sceneForMap(mapId), true)) ids.add(id);

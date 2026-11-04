@@ -59,6 +59,11 @@ const SPARSE_GROUPS = new Set(['spots', 'ambience', 'stingers']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
 const SINGLE_SHOT = /^(mg_|ac_\d+_(close|own|interior|far)|ac_far_|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
+/**
+ * A distant single shot (gun-reports-269): its rolling echo is the sound, so only a report about as loud as the first
+ * (within 3 dB) is a second shot; cutting at the echo had left 80–190 ms of a 2 s thump.
+ */
+const SINGLE_FAR = /^(ac_\d+_far|ac_far_\w+|mg_far|mg_(rifle|heavy)_far)$/;
 
 /**
  * Cut a single-shot take before its second report (some generations answer a
@@ -78,7 +83,8 @@ function firstShotOnly(channels, sr, entry) {
     return peak;
   };
   const first = level(on[0]);
-  const second = on.slice(1).find((t) => t - on[0] <= 1.2 && level(t) >= first * 0.4);
+  const ratio = SINGLE_FAR.test(entry.id) ? 0.7 : 0.4;
+  const second = on.slice(1).find((t) => t - on[0] <= 1.2 && level(t) >= first * ratio);
   if (second == null) return channels;
   const cut = Math.max(Math.round((on[0] + 0.06) * sr), Math.round((second - 0.008) * sr));
   return channels.map((ch) => ch.slice(0, cut));
@@ -96,6 +102,8 @@ function score(m, entry, clip) {
     if (SINGLE_SHOT.test(entry.id)) s -= 1.5 * Math.max(0, m.onsets - 1);
     else if (entry.proc === 'weapon-close' || /single|one single|isolated/i.test(entry.prompt)) s -= 0.3 * Math.max(0, m.onsets - 3);
   }
+  // A distant single shot keeps its echo, but a take full of onsets is a burst heard far away.
+  if (SINGLE_FAR.test(entry.id)) s -= 0.5 * Math.max(0, m.onsets - 2);
   // A real gun report (2026-10-02): an instant crack (energy in its first 10 ms, its loudest millisecond within
   // a few of the onset), crest, and a body that decays instead of swelling into low boom. Scoring guns on
   // low-end weight had picked exactly the cinematic blasts; a clipped crack sounds like old film.
@@ -106,6 +114,10 @@ function score(m, entry, clip) {
     s += 1.5 * Math.max(0, Math.min(1, (a.crestDb - 10) / 10));
     s -= 3 * Math.max(0, a.e600 - 0.35);
     s -= 2.5 * Math.max(0, a.lowBody - 0.55);
+    // A late peak or a swell is a blast, not a report (gun-reports-269: the rise term above stops counting at 22 ms, so
+    // a take peaking 300 ms late with most of its energy after 200 ms had outranked real cracks).
+    if (a.riseMs > 45) s -= 4;
+    if (a.e600 > 0.45) s -= 4;
     if (clip > 3) s -= 3;
   }
   // The punch under a report (2026-10-03): one instant air slam, over within 200 ms, all weight and no crack.
@@ -156,12 +168,19 @@ for (const entry of SFX_CATALOG) {
     return { file, take, m, clip, s: score(m, entry, clip) };
   }).sort((a, b) => b.s - a.s);
   const pinned = picks[entry.id];
-  // A single-shot gun take that was really a burst is cut to its first report; one cut to a bare click
-  // (under 0.25 s) is a lost take. Ship fewer variants rather than a click, while two usable takes remain.
-  const usable = (entry.proc === 'gunshot' || entry.proc === 'punch') && SINGLE_SHOT.test(entry.id)
-    ? ranked.filter((r) => firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
-    : ranked;
-  const pool = usable.length >= 2 ? usable : ranked;
+  // A single-shot take that was really a burst is cut to its first report; one cut to a bare click (under 0.25 s) is a
+  // lost take. Ship fewer variants rather than a click (gun-reports-269: once one usable take remains, not two; distant
+  // and roof-gun banks too, not only the gunshot and punch presets).
+  // A gun report peaking over 60 ms late or swelling into its body (half its energy 200–600 ms after the onset) is a blast
+  // whatever else it scores: shipped only when no take is a report. A single-shot take is judged by its first-report cut
+  // instead (its raw anatomy still holds the burst the cut removes).
+  const report = (r) => entry.proc !== 'gunshot' || SINGLE_SHOT.test(entry.id) || !r.m.anatomy
+    || (r.m.anatomy.riseMs <= 60 && r.m.anatomy.e600 <= 0.5);
+  const usable = SINGLE_SHOT.test(entry.id)
+    ? ranked.filter((r) => report(r) && firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
+    : ranked.filter(report);
+  if (!usable.length) console.warn(`${entry.id}: every take is cut to a click by its second report (change the prompt)`);
+  const pool = usable.length ? usable : ranked;
   const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : pool.slice(0, entry.variants);
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });

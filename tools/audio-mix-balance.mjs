@@ -207,7 +207,7 @@ try {
   // 2) Battle: the idle bed, then gunfire against it (the battle held so bots stay quiet).
   await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
   await page.waitForFunction('window.__COT_AUDIO.snapshot === "battle"', { timeout: 60000 });
-  await page.evaluate(() => window.__COT_AUDIO.preload(['gun_125_close', 'gun_120_close', 'gun_far_medium', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain']));
+  await page.evaluate(() => window.__COT_AUDIO.preload(['gun_125_close', 'gun_125_own', 'gun_125_interior', 'gun_125_far', 'gun_120_close', 'gun_120_far', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain']));
   await page.evaluate(() => { window.__DEBUG.game.preBattleS = 999; window.__COT_AUDIO.clearVoiceQueue(); });
   await sleep(4000);
   report.bed = await capture('battle_bed', 3000);

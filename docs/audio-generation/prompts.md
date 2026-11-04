@@ -45,6 +45,19 @@ The bore scales the adjectives: 90 mm "an extremely sharp, cracking muzzle blast
 with a lighter body", 152 mm "a colossal, sharp muzzle blast with a deep, heavy
 report".
 
+Every bore and construction has its own four reports (gun-reports-269, the
+`GUN_REPORTS` table in the catalog): the gun named with what makes it its own
+(rifling, barrel, "with a muzzle brake", "short-barrelled tank howitzer",
+"short wide-bore gun-launcher", "short low-pressure 100 mm gun"), its crack in
+those terms ("a harsh side blast from the brake", "a blunt attack, no whip
+crack"), the same words heard "from the open hatch beside it" for our own, a
+closed-turret take ("heard inside the closed steel turret of a tank as its own …
+fires, close-miked at the loader's station: a massive muffled concussion …, the
+breech recoiling past with a violent heavy steel slam, the steel walls ringing
+short and hard. No outside echo, no crack") and the distant boom. Name one
+event only: "a spent case tinkling on the roof" returned two events in every
+take of a roof gun's own report, and the single-shot cut kept 90 ms of each.
+
 What failed: "deep concussive low-frequency punch … rolling outdoor echo". The
 model returned cinematic explosions that peaked 60–320 ms after the shot with
 25–96 % of their body under 100 Hz, which players heard as "old film" or "gamey
@@ -93,7 +106,16 @@ weighty steel with crisp mechanical detail".
 > steel with crisp mechanical detail. No music, no voices.
 
 One action per asset (breech open, shell grab, ram, latch, carousel turn): the
-engine sequences them along the reload.
+engine sequences them along the reload. Weight is in the words, not the pitch:
+"a spent 90 mm brass tank gun case … a bright ringing brass clang", "a spent
+100 mm lacquered steel tank gun case … a hard, dull steel clank", "an enormous
+spent brass cartridge case of a 152 mm gun … a deep heavy brass clang, a hollow
+boom of the long case", "two hands heaving a 50 kg 152 mm projectile"; and the
+construction's own parts: a two-piece round's stub "thrown out through the small
+ejection hatch in the turret rear" or "dropped back into its empty cassette
+tray", a BL gun's vent tube and "cloth-bagged propellant charge", a
+gun-launcher's "closed-breech scavenger … blowing compressed air through the
+barrel".
 
 ### Impacts
 

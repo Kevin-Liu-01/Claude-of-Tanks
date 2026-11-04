@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 13 crew radio packs × 119 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -973,6 +973,32 @@ crew-lines.json ─┐                    crew-voices.json
   alive and hidden), so they now count the roster where a death is final and
   nothing otherwise; and the warm resolved engine families by id alone, so 40
   of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
+
+- **2026-11-03, every calibre and its reload (gun-reports-269).** The owner:
+  "better cannonn sounds for all calibers, interior sounds for shell reloads
+  for different claibers". A census of every weapon the fleet fires
+  ([audio-generation/weapon-census.md](audio-generation/weapon-census.md)) found
+  the report chosen by the round's damage calibre rather than the gun (a
+  Centurion 3's 20-pounder sounded as a 120 mm, an M46's 90 mm as a 105), a
+  reload choreography chosen per vehicle rather than per weapon (a Bradley's TOW
+  reload played an autocannon's box swap), loaders guessed from id patterns, and
+  no bank of their own for the 35, 76, 84 and 100 mm, the 2A70, the rifled
+  120 mm, the 152 mm howitzer and gun-launchers, the 165 and the 170 mm. The
+  mechanism became one table keyed by bore and ammunition construction
+  (Weapons, above), its keys from each vehicle's own spec and a generated census
+  that fails typecheck for a weapon without a row, its loaders from the
+  internal-layout registry. 107 assets were generated (676 takes, then 8 more
+  for a roof gun's own report and 12 for two banks short of reports): every
+  cannon bore's close, own-hatch, closed-turret and distant reports (the 90–130 mm
+  closes regenerated with words for their own gun), each autocannon's and roof
+  machine gun's own, closed-turret and distant report, the 35 mm close, and 26
+  pieces of reload machinery weighed by calibre and construction. The scorer
+  learnt three failure modes (quality.md): the distant echo cut as a second
+  shot, a late-peaking blast outranking cracks, and a click shipped when fewer
+  than two takes survived the cut. The Studio's films play the new banks by a
+  calibre ladder (`CALIBRE_LADDER`); the grouped distant banks, the 152 mm
+  close, the three own and three interior banks, the drum refill and the old
+  charge ram retired. 18,874 credits.
 
 ### Cost
 

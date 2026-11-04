@@ -31,8 +31,11 @@ for (const [id, rec] of Object.entries(SFX_ASSETS)) {
 }
 // 20 MB until 2026-10-13; the owner asked for many more sounds (AUD-25, "the more the better"), so the cap rose to
 // 28 MB for the destruction, ambience and impact rounds. Files load per battle (the battle set) or on first use, never
-// at boot; the long debris and spot sounds ship at 48-56 kbps mono to keep the rise small.
-assert.ok(bytes < 28 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 28 MB`);
+// at boot; the long debris and spot sounds ship at 48-56 kbps mono to keep the rise small. 32 MB from 2026-11-03
+// (gun-reports-269, the owner: "better cannonn sounds for all calibers"): every bore's close, own, closed-turret and
+// distant reports and the weighted reload machinery (+4.4 MB), of which a battle decodes only its roster's bores and
+// our own hull's banks.
+assert.ok(bytes < 32 * 1024 * 1024, `sound-effect payload ${(bytes / 1048576).toFixed(1)} MB within 32 MB`);
 
 // ---- every asset the engine and its rigs ask for exists.
 const engine = readFileSync(new URL('./audioEngine.ts', import.meta.url), 'utf8');

@@ -80,13 +80,8 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // A6 (2026-10-13): the 125 mm crack carries a little further (refM 35 → 56: +2.2 dB at 150 m, the same inside 56 m,
   // faded out by 400 m by the class's close fade), with its distant thunder joining earlier (weaponAudio gun_125).
   gun_125_close: o({ refM: 56 }),
-  // Main guns carry across the whole battlefield as distant thunder.
-  gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
-  gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
+  // The rocket salvo's distant thunder (every gun's distant bank is placed by its row: WEAPON_BANK_CUES).
   gun_far_heavy: o({ refM: 100, rolloff: 0.62, maxM: 3000, absorb: 0.4, send: 0.3, loudDb: 148 }),
-  ac_far_light: o({ refM: 50, rolloff: 0.68, maxM: 1600, absorb: 0.55, send: 0.26, loudDb: 128 }),
-  ac_far_heavy: o({ refM: 60, rolloff: 0.68, maxM: 1900, absorb: 0.55, send: 0.26, loudDb: 133 }),
-  mg_far: o({ refM: 40, rolloff: 0.72, maxM: 900, absorb: 0.6, send: 0.24, loudDb: 116, gainDb: -2 }),
   mg_rifle_close: o({ maxInstances: 8, refM: 14, rolloff: 0.7, maxM: 500, loudDb: 120, gainDb: -2, pitch: [0.95, 1.05] }),
   mg_heavy_close: o({ maxInstances: 8, refM: 16, rolloff: 0.68, maxM: 700, loudDb: 126, gainDb: -1, pitch: [0.95, 1.05] }),
   tail_open: o({ refM: 60, rolloff: 0.7, maxM: 2500, absorb: 0.4, send: 0.1, gainDb: -4 }),

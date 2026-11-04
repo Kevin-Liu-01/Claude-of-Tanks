@@ -70,13 +70,15 @@ const GUN_REPORTS = [
 // The recoil past the loader: lighter guns clack, the big ones slam.
 const RECOIL = { light: 'a sharp steel clack', medium: 'a heavy steel slam', heavy: 'a violent heavy steel slam', superheavy: 'a violent, massive steel slam' };
 
+// Banks where too few of the first eight takes were reports rather than blasts (build-sfx's late-peak floor) get more.
+const MORE_TAKES = { gun_120_own: 14, gun_152h_close: 14 };
 const gunReports = GUN_REPORTS.flatMap(([id, gun, crack, inside, boom, shape, size]) => [
   short(sfx(`${id}_close`, 'weapons',
     `Gunshot sound effect: one single shot of a ${gun} at a military range, recorded 30 metres beside it: instantaneous, ${crack}, a hard concussive punch off the ground, then a dry echo off distant hills. ${REAL}`,
-    3.5, { inf: 0.6, variants: 3, takes: 8, proc: 'gunshot', shape })),
+    3.5, { inf: 0.6, variants: 3, takes: MORE_TAKES[`${id}_close`] ?? 8, proc: 'gunshot', shape })),
   short(sfx(`${id}_own`, 'weapons',
     `Gunshot sound effect: one single shot of a ${gun} heard from the open hatch beside it: instantaneous, ${crack}, a pressure slap, the turret ringing and the breech clanking back, then a short echo. ${REAL}`,
-    4, { inf: 0.6, variants: 3, takes: 8, proc: 'gunshot', shape: [shape[0] + 2, shape[1] + 10, shape[2] + 3] })),
+    4, { inf: 0.6, variants: 3, takes: MORE_TAKES[`${id}_own`] ?? 8, proc: 'gunshot', shape: [shape[0] + 2, shape[1] + 10, shape[2] + 3] })),
   short(sfx(`${id}_interior`, 'weapons',
     `One-shot heard inside the closed steel turret of a tank as its own ${gun.replace(/ on an? [a-z -]+$/, '')} fires, close-miked at the loader's station: ${inside}, the breech recoiling past with ${RECOIL[size]}, the steel walls ringing short and hard. No outside echo, no crack, ${NO_MUSIC}.`,
     2.6, { inf: 0.55, variants: 2, takes: 6, proc: 'weapon-close' })),
@@ -87,13 +89,7 @@ const gunReports = GUN_REPORTS.flatMap(([id, gun, crack, inside, boom, shape, si
 
 const weapons = [
   ...gunReports,
-  // gun_152_close and the grouped distant banks stay for the Studio's films (src/game/studioFilmAudio.ts); battles
-  // play the per-bore banks above.
-  sfx('gun_152_close', 'weapons',
-    `Gunshot sound effect: one single shot of a 152 mm heavy tank cannon at a military range, recorded 30 metres beside it: instantaneous, a colossal, sharp muzzle blast with a deep, heavy report, a hard concussive punch as the pressure wave slaps off the ground, then a dry echo rolling off distant hills. ${REAL}`,
-    3.5, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape: [15, 105, -18] }),
-  sfx('gun_far_light', 'weapons', `One-shot of a tank cannon fired about one kilometre away: muffled boom with a soft attack and a rolling thunder-like echo across open terrain, no crack. ${FIELD}, ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
-  sfx('gun_far_medium', 'weapons', `One-shot of a large-calibre tank gun fired far away, over a kilometre: deep heavy boom, low rumbling echo rolling across hills, no crack. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'weapon-far' }),
+  // the rocket salvo's distant bank (weaponAudio.ts 220/rocket); every gun's is its own bore's above
   sfx('gun_far_heavy', 'weapons', `One-shot of a very heavy gun fired far in the distance: enormous low thud and long rolling thunder echo, no crack. ${FIELD}, ${NO_MUSIC}.`, 5.5, { variants: 2, takes: 3, proc: 'weapon-far' }),
   // The punch under a close report (2026-10-03, replacing the rendered pressure pulse): the air slam a crack
   // alone lacks, felt as much as heard, and the suck of air behind it. Layered under the report by bore.
@@ -141,8 +137,6 @@ const autocannons = [
   ...AUTOCANNONS.map(([id, bore, report, shape]) => sfx(`${id}_close`, 'weapons',
     `Gunshot sound effect: one single shot of a ${bore} autocannon on an armoured vehicle at a firing range, recorded close beside it: an instant, extremely sharp ${report} with a hard punch and a metallic clank of the mechanism, then a short outdoor echo. ${REAL}`,
     2, { inf: 0.75, variants: 4, takes: 6, proc: 'gunshot', shape })),
-  sfx('ac_far_light', 'weapons', `Gunshot sound effect: a single autocannon shot heard about 600 metres away, short dull thump with a quick outdoor echo. One isolated shot.`, 2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
-  sfx('ac_far_heavy', 'weapons', `Gunshot sound effect: a single heavy autocannon shot heard far away, muffled thud with a rolling echo. One isolated shot.`, 2.2, { inf: 0.7, variants: 3, takes: 3, proc: 'weapon-far' }),
   ...acReports,
 ];
 
@@ -150,11 +144,10 @@ const autocannons = [
 const machineGuns = [
   sfx('mg_rifle_close', 'weapons', `Gunshot sound effect: one single shot of a 7.62 mm machine gun at a firing range, recorded close beside it: an instant, extremely sharp, dry crack, a tight punchy report and a faint metallic click of the action, then a short outdoor echo. ${REAL}`, 1.2, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [4, 25, -26] }),
   sfx('mg_heavy_close', 'weapons', `Gunshot sound effect: one single shot of a .50 calibre heavy machine gun at a firing range, recorded close beside it: an instant, very loud, sharp and deep crack with a hard punch and a heavy metallic clack of the action, then a short outdoor echo. ${REAL}`, 1.4, { inf: 0.75, variants: 4, takes: 8, proc: 'gunshot', shape: [6, 35, -24] }),
-  sfx('mg_far', 'weapons', `Gunshot sound effect: a single gunshot heard a few hundred metres away, small hollow pop with a short echo. One isolated shot.`, 1.2, { inf: 0.7, variants: 3, takes: 4, proc: 'weapon-far' }),
   // gun-reports-269: the roof gun of our own vehicle beside its open hatch and through its closed roof, and each
   // machine gun's own distant pop.
   ...[
-    ['mg_rifle', '7.62 mm machine gun', 'an instant, extremely sharp, dry crack, a tight punch and the clack of the action, a spent case tinkling on the roof', 'a dull, muffled knock through the roof armour and a faint click of its action', 'a small sharp hollow pop with a short echo', 400, [5, 28, -24]],
+    ['mg_rifle', '7.62 mm machine gun', 'an instant, extremely sharp, dry crack, a tight punch and the clack of the action, then a short outdoor echo', 'a dull, muffled knock through the roof armour and a faint click of its action', 'a small sharp hollow pop with a short echo', 400, [5, 28, -24]],
     ['mg_heavy', '.50 calibre heavy machine gun', 'an instant, very loud, deep crack, a hard punch and the heavy clack of the action, a spent case clinking on the roof', 'a heavy muffled knock through the roof armour and the dull clack of its action', 'a deeper hollow thump with a short echo', 600, [7, 38, -22]],
   ].flatMap(([id, gun, own, inside, far, metres, shape]) => [
     short(sfx(`${id}_own`, 'weapons', `Gunshot sound effect: one single shot of a ${gun} on a tank's roof mount, heard from the open hatch right beside it: ${own}. ${REAL}`, 1.3, { inf: 0.75, variants: 3, takes: 8, proc: 'gunshot', shape })),

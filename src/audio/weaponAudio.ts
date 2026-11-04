@@ -433,6 +433,24 @@ export function stationMount(caliberMm: number): WeaponMount {
   return mount(null, [{ caliberMm, name: '' }], num(caliberMm, 7.62));
 }
 
+/**
+ * The bore ladder a shot known only by its calibre falls on (a Studio film's cue carries no gun, and
+ * game/studioFilmAudio.ts copies this ladder): the nearest of the fleet's high-velocity bores, a 152 mm as the howitzer.
+ */
+export const CALIBRE_LADDER: readonly (readonly [below: number, key: WeaponKey])[] = Object.freeze([
+  [9, '7.62/belt'], [16, '12.7/belt'], [22.5, '20/belt'], [27.5, '25/belt'], [32.5, '30/belt'], [37.5, '35/belt'], [45, '40/belt'],
+  [61, '50/belt'], [80, '76/unitary_brass'], [87, '84/unitary_brass'], [95, '90/unitary_brass'], [102.5, '100/unitary_brass'],
+  [112.5, '105/unitary_brass'], [122.5, '120/combustible'], [127.5, '125/two_piece'], [141, '130/combustible'], [158, '152/separate_case'],
+  [167.5, '165/separate_bag'], [200, '170/separate_case'], [Infinity, '220/rocket'],
+]);
+
+/** The row a shot known only by its calibre is heard as (CALIBRE_LADDER). */
+export function calibreRow(caliberMm: number): WeaponRow {
+  const mm = Number.isFinite(caliberMm) ? caliberMm : 100;
+  for (const [below, key] of CALIBRE_LADDER) if (mm < below) return WEAPON_ROWS[key];
+  return WEAPON_ROWS['220/rocket'];
+}
+
 /** A shot whose shooter's gun is unknown (a studio or probe event): the shot's own fields decide. */
 export function eventMount(caliberMm: number, soundProfile: string | null | undefined, roundName?: string | null, guided?: boolean): WeaponMount {
   const round: MountRound = { caliberMm, soundProfile: soundProfile ?? '', name: roundName ?? '', guided: guided === true };

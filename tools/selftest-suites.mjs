@@ -1503,6 +1503,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/vehicleAudioProfiles.selftest.mjs',
     'src/audio/weaponAudio.selftest.mjs',
     'src/audio/weaponCoverage.selftest.mjs',
+    // gun-reports-269: the weapon census (every key the fleet fires has a row; loader makes from the layouts) is the fleet's
+    'src/audio/weaponCensus.selftest.mjs',
     'src/audio/vehicleAudioModel.selftest.mjs',
     'src/audio/soundAssets.selftest.mjs',
     'src/audio/sfxLoudness.selftest.mjs',

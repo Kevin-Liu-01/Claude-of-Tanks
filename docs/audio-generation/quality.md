@@ -68,6 +68,10 @@ that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 | An alarm pierces | A bright take (2.4 kHz) | Pinned a lower take; "muffled by the hull" |
 | A thud or a twang loses to rumble | The weight score (`4·low`) on the `impact` preset rewards a take whose body is low-band noise over one with the event (a telegraph wire's twang; a pole's thud 31 dB down that mastering would lift 30 dB) | Pinned (`pole_wires`, `pole_fall`, 2026-10-06); look at the sheet before trusting a weight-scored pick |
 
+| A distant autocannon shot is a 0.1 s blip | The single-shot cut treated the shot's own rolling echo (within 8 dB of the first report) as a second shot | Distant single-shot banks (`SINGLE_FAR`) cut only before a report within 3 dB of the first and lose 0.5 a point per onset past two; a take the cut leaves under 0.25 s is never shipped, even if only one usable take remains (gun-reports-269) |
+| A gun report sounds like an old-film blast although its take scored well | The rise term stops counting at 22 ms, so a take peaking 300 ms late with most of its energy 200–600 ms after the onset outranked real cracks (the 100 mm's own report) | −4 each for a rise over 45 ms and for more than 45 % of the energy in 200–600 ms; a take rising over 60 ms or holding over half its energy there is not shipped while any take is a report; banks left short get more takes (gun-reports-269) |
+| A roof gun's own report is a click | The prompt asked for "a spent case tinkling on the roof": every take answered with a second event, and the first-report cut kept 90 ms | The prompt names one event; the build warns when every take is cut to a click |
+
 When a player reports something "occasional", suspect one bad variant first:
 with two variants that never repeat, a defect plays on every other use.
 

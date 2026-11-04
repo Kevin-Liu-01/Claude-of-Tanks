@@ -155,7 +155,7 @@ assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank 
 assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
-for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
+for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
 bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
 names = logSince(since).map((e) => e.n);
 for (const id of ['stub_port_eject', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
