@@ -193,6 +193,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["tos1a_tagil","russia","modern",5],
   ["upior","poland","next-generation",10],
   ["bmpt_t90","russia","modern",6],
+  ["bmpt_terminator","russia","modern",6],
   ["m551_sheridan","usa","cold-war",2],
   ["m551a1_tts","usa","modern",4],
   ["leo2a7v","germany","modern",10],
@@ -283,4 +284,9 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["t80u_bars_m","russia","modern",8],
   ["t72b3m_bulat_m","russia","modern",8],
   ["t72b3_bastion_m","russia","modern",8],
+  ["tunguska_m","russia","modern",5],
+  ["pantsir_s1","russia","modern",6],
+  ["gepard_1a2","germany","modern",5],
+  ["pgz95","china","modern",5],
+  ["pgz09","china","modern",6],
 ];

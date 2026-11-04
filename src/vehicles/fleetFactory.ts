@@ -233,6 +233,11 @@ const GROUP_LOADERS = Object.freeze({
   korea: () => import('./profiles/korea.ts').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.ts').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   sheridan: () => import('./profiles/sheridan.ts').then((mod) => registerProfiles(mod.SHERIDAN_PROFILES)),
+  // 268: the twin-cannon air-defence round
+  gm352AirDefense: () => import('./profiles/gm352AirDefense.ts').then((mod) => registerProfiles(mod.GM352_AIR_DEFENSE_PROFILES)),
+  gepard: () => import('./profiles/gepard.ts').then((mod) => registerProfiles(mod.GEPARD_PROFILES)),
+  chineseAirDefense: () => import('./profiles/chineseAirDefense.ts')
+    .then((mod) => registerProfiles(mod.CHINESE_AIR_DEFENSE_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();
 const readyGroups = new Set<FleetGroup>();

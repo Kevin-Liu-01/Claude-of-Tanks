@@ -284,6 +284,17 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://armoredwarfare.com/en/news/general/development-bmp-3m-dragun',
     kind: 'source-model-publisher',
   }),
+  // 268: the twin-cannon air defence (published crew and weapon configurations; no interior drawings)
+  wikiTunguska: Object.freeze({ title: 'Wikipedia, "2K22 Tunguska" (the 2K22M and M1 data)',
+    url: 'https://en.wikipedia.org/wiki/2K22_Tunguska', kind: 'encyclopedia' }),
+  wikiPantsir: Object.freeze({ title: 'Wikipedia, "Pantsir missile system" (the tracked GM-352M1E option)',
+    url: 'https://en.wikipedia.org/wiki/Pantsir_missile_system', kind: 'encyclopedia' }),
+  dewikiGepard: Object.freeze({ title: 'Wikipedia (de), "Flugabwehrkanonenpanzer Gepard" (the 1A2 data)',
+    url: 'https://de.wikipedia.org/wiki/Flugabwehrkanonenpanzer_Gepard', kind: 'encyclopedia' }),
+  wikiPgz95: Object.freeze({ title: 'Wikipedia, "Type 95 SPAAA"',
+    url: 'https://en.wikipedia.org/wiki/Type_95_SPAAA', kind: 'encyclopedia' }),
+  wikiPgz09: Object.freeze({ title: 'Wikipedia, "PGZ-09"',
+    url: 'https://en.wikipedia.org/wiki/PGZ-09', kind: 'encyclopedia' }),
 } satisfies Record<string, InternalLayoutSource>);
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
@@ -499,6 +510,28 @@ const LAYOUTS = Object.freeze({
     ['driver', 'hull', 'frontCenter'], ['weaponOperatorLeft', 'hull', 'frontLeft'], ['weaponOperatorRight', 'hull', 'frontRight'],
     ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
+  // 268: the twin-cannon air defence. Belt-fed guns and ready rounds in the turret, the SAMs in sealed canisters on the
+  // gun cradle; crew per the published configurations (the Tunguska's radar operator is its fourth seat, the Gepard's
+  // driver sits front right in the Leopard 1 hull)
+  spaaTunguska: { confidence: 'platform-inferred', sources: ['wikiTunguska'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['commander', 'turret', 'frontLeft'], ['gunner', 'turret', 'frontRight'],
+    ['radioOperator', 'turret', 'rearLeft'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
+    missileRack: { placement: 'turret', form: 'sealedMissileCanisters' } }) },
+  spaaPantsir: { confidence: 'platform-inferred', sources: ['wikiPantsir'], crew: IFV_TWO_MAN_TURRET,
+    systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
+      missileRack: { placement: 'turret', form: 'sealedMissileCanisters' } }) },
+  spaaGepard: { confidence: 'platform-inferred', sources: ['dewikiGepard'], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  // the PLA pair's hulls carry the power pack at the front (the grilles beside the driver, profiles/plaAirDefenseChassis.ts)
+  spaaPgz95: { confidence: 'platform-inferred', sources: ['wikiPgz95'], crew: IFV_TWO_MAN_TURRET,
+    systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+      ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
+      missileRack: { placement: 'turret', form: 'sealedMissileCanisters' } }) },
+  spaaPgz09: { confidence: 'platform-inferred', sources: ['wikiPgz09'], crew: IFV_TWO_MAN_TURRET,
+    systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+      ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
@@ -601,8 +634,13 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmp1: ['bwp1'],
   puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],
   bmp3: ['bmp3', 'bmp3_rok'],
-  bmptFive: ['bmpt_t90'],
+  bmptFive: ['bmpt_t90', 'bmpt_terminator'],
   bmptThree: ['bmpt_terminator2'],
+  spaaTunguska: ['tunguska_m'],
+  spaaPantsir: ['pantsir_s1'],
+  spaaGepard: ['gepard_1a2'],
+  spaaPgz95: ['pgz95'],
+  spaaPgz09: ['pgz09'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
   suppliedWarriorMilan: ['warrior_tes_h'],

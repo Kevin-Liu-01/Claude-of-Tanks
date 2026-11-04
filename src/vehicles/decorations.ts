@@ -3156,6 +3156,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The pitching battery and retained Tagil chassis already own their fittings.
   // Turret-roof hatches/whips would be mounted on the moving launcher instead.
   if (spec.id === 'tos1a_tagil') return [];
+  // 267: the original BMPT Terminator (bmptTerminator.ts) is authored complete from its photographs, whose vehicles (the
+  // 2009 and 2012 show vehicles, Kazakhstan's parade vehicles) carry no field cargo: its side boxes are its stowage, and
+  // the generic aft cargo found no seat on the frame's narrow turntable deck.
+  if (spec.id === 'bmpt_terminator') return [];
+  // 268: the twin-cannon air defence: the turret-side guns, radars and launchers sweep the deck and roof at every
+  // bearing and elevation, so no random stowage; the builders author each vehicle's own fittings
+  if (['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'].includes(spec.id)) return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

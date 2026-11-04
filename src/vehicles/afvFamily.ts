@@ -49,6 +49,8 @@ const AFV_FAMILY_IDS = Object.freeze([
   'upior',
   // §5.363 owner order — the Terminator on a T-90 hull (new id, tier 10)
   'bmpt_t90',
+  // 267 — the original Ob'yekt 199 "Ramka" Terminator (2009-2013 standard) on the T-72 X hull (new id)
+  'bmpt_terminator',
 ] as const);
 
 type AFVStatOverrides = Partial<Pick<FleetTankSpec,
@@ -517,9 +519,10 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a_2004', {
 
 // The Terminator 2 station replaces the donor tank turret and has no turret
 // ERA of its own; retaining the T-72B3M cheek plates created invisible armor.
-// Match the native station after its existing 320 mm aft reseating.
-AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPivot = [0, 1.46, -0.97];
-AFV_FAMILY_SPECS.bmpt_terminator2.armor.gunPivot = [0, 0.50, 0.36];
+// The ring and trunnion of the BMPT-72 station (profiles/bmpt72Station.ts on the T-72B3M ring, 267); the physical frame
+// is synchronized with its hull donor in fleetRenewalSpecs.ts.
+AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPivot = [0, 1.52948397398, 0.1143146502203];
+AFV_FAMILY_SPECS.bmpt_terminator2.armor.gunPivot = [0, 0.92, 0.10];
 AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates =
   AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates.filter(
     (plate) => plate.kind !== 'era',
@@ -533,6 +536,54 @@ const bmptT90FlankEra = registries.tankSpecs.t90am?.armor.turretPlates
   .filter((plate) => plate.kind === 'era' && /side/i.test(plate.name))
   .map((plate) => structuredClone(plate)) || [];
 AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);
+
+// 267 (lane bmpt-family-267; the owner: "lets actually make a BMPT Terminator and a BMPT T-90"): the original Ob'yekt 199
+// "Ramka" of 2009-2013, also Kazakhstan's (docs/references/tanks/bmpt_terminator.md), on the T-72 X hull
+// (profiles/bmptTerminator.ts; spec clone of the T-72B3M obr. 2016, whose hull it draws). Its combat frame sits between
+// the BMPT-72 (bmpt_terminator2) and the 2018 BMPT T-90 (bmpt_t90), an earlier, lighter standard than the T-90's:
+// - hp 2820: between 2700 and 2950, over the BMPT-72 for its Kontakt-5 glacis and the full skirt and side-box wall;
+// - its own V-92S2 at 1000 hp (published) on 47 t (published 47-48 t), 60/18 km/h, hull 33 and turret 59 deg/s between
+//   the two, the cannons' +45/-5;
+// - the twin 2A42 at 0.29 s (between 0.30 and 0.28), accuracy 0.265 and aim 1.22 s between the two; the same 3UBR8 APDS
+//   and 3UOF8 HE-I natures as bmpt_t90 at in-between penetration (123/111/99 between the installed 125/112/100 and
+//   122/110/98) and damage, 850 rounds in all (425 + 425, published);
+// - four 9M120-1 Ataka-T, one per open tube (guided-load rule), damage 520 (the installed 540 and 500) and 2.55 s.
+// The real vehicle's two bow AG-17D were hull equipment only, as on bmpt_t90 (no secondary-weapon row); the build leaves
+// them off at the owner's ruling (round 5), so nothing in the combat data changes.
+AFV_FAMILY_SPECS.bmpt_terminator = variant('bmpt_terminator', 't72b3m_2022', {
+  name: 'BMPT Terminator', nation: 'Russia', number: '01',
+  // the Engineering Technologies 2012 vehicle's three-tone (photos 03-12): large olive and brown blots on sand
+  base: '#a6936a', weather: '#b3a27a', patches: ['#5f6748', '#7b6142'],
+  scheme: 'nato', camoScale: 0.60,
+  // the T-72's 6.95 m hull; overall, width and height the build's measured envelope without whips (the guns never pass
+  // the bow: the stern slat cage to the front fenders' noses 7.55, over the side boxes' handles 4.10, the panoramic
+  // sight's lid at the published 3.44)
+  dims: { hullLengthM: 6.95, overallLengthM: 7.55, widthM: 4.10, heightM: 3.44,
+    silhouetteHullLengthM: 7.55, silhouetteOverallLengthM: 7.55,
+    silhouetteWidthM: 4.10, silhouetteHeightM: 3.44 },
+  trackWidthM: 0.58,
+  stats: { hp: 2820, enginePowerHp: 1000, weightTons: 47.0, topSpeedKmh: 60,
+    reverseSpeedKmh: 18, hullTraverseDegS: 33, turretTraverseDegS: 59, gunPitchDegS: 46,
+    gunElevationDeg: 45, gunDepressionDeg: 5 },
+  // the twin 2A42 bores at x +-0.15 in the cradle (profiles/bmptTerminatorStation.ts RAMKA_BARREL_X)
+  gun: { caliberMm: 30, reloadS: 0.29, baseAccuracy: 0.265, aimTimeS: 1.22,
+    soundProfile: 'twin-2a42',
+    muzzles: [{ x: -0.15, y: 0 }, { x: 0.15, y: 0 }] },
+  shells: [
+    ap('3UBR8 APDS', 30, [123, 111, 99], 51, 1120, 425, 0.29),
+    heat('9M120-1 Ataka-T', 130, 850, 520, 357.5, 4, 2.55, 'ataka-launch', 4),
+    he('3UOF8 HE-I', 30, 47, 960, 425, 0.29),
+  ],
+});
+// The Ramka station has no turret ERA: drop the donor turret's reactive plates (as on bmpt_terminator2). Its yaw axis
+// and trunnion are the station's (bmptTerminatorStation.ts RAMKA_RING, RAMKA_TRUNNION) and its barrel the twin 2A42's
+// (RAMKA_MUZZLE_Z from the trunnion; the envelope round both box brakes).
+AFV_FAMILY_SPECS.bmpt_terminator.armor.turretPivot = [0, 1.5295, -0.40];
+AFV_FAMILY_SPECS.bmpt_terminator.armor.gunPivot = [0, 0.95, -0.90];
+AFV_FAMILY_SPECS.bmpt_terminator.armor.gunBarrel.lengthM = 2.711;
+AFV_FAMILY_SPECS.bmpt_terminator.armor.gunBarrel.radiusM = 0.10;
+AFV_FAMILY_SPECS.bmpt_terminator.armor.turretPlates =
+  AFV_FAMILY_SPECS.bmpt_terminator.armor.turretPlates.filter((plate) => plate.kind !== 'era');
 
 applyEscortFieldKitArmor(AFV_FAMILY_SPECS.upior,ESCORT_FIELD_KITS.upior);
 

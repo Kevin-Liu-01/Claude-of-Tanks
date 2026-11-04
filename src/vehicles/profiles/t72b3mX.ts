@@ -36,13 +36,13 @@ export function buildT72B3MXHullCore(P:TankBuilderPort):void {
   P.add('hull',cylY(1.318788,.026,48),YAW[0],1.512,YAW[2]);
 }
 
-function hull(P:TankBuilderPort,skirtEra=true):void {
+function hull(P:TankBuilderPort,skirtEra=true,roundedFront=true):void {
   buildT72B3MXHullCore(P);
-  for(const side of [-1,1])fenders(P,side);
+  for(const side of [-1,1])fenders(P,side,roundedFront);
   addT72B3MSideMounts(P,{skirtEra});
 }
 
-function fenders(P:TankBuilderPort,side:number):void {
+function fenders(P:TankBuilderPort,side:number,roundedFront=true):void {
   const a=Math.min(side*1.128,side*1.764),b=Math.max(side*1.128,side*1.764);
   P.addMudguard('t72b3m-x-deck','hull',roofSheet([
     [-3.47,a,b,1.20,1.20],[-3.15,a,b,1.3324,1.3324],[-2.80,a,b,1.526,1.526],
@@ -55,13 +55,13 @@ function fenders(P:TankBuilderPort,side:number):void {
   const sheet=(rows:readonly(readonly[number,number,number,number])[])=>roofSheet(rows.map(([z,inner,outer,y])=>{
     const l=Math.min(side*inner,side*outer),r=Math.max(side*inner,side*outer);return[z,l,r,y,y] as const;
   }),.015);
-  P.addMudguard('t72b3m-x-rounded-front','hull',sheet([...ringRows,[3.835,1.19,1.78,.915]]));
+  if(roundedFront)P.addMudguard('t72b3m-x-rounded-front','hull',sheet([...ringRows,[3.835,1.19,1.78,.915]]));
   // (266; blind critics: "the front mudguards are flat plates that flare out like wings") the guard's outer edge is
   // turned down 10 cm, a 12 mm flange from the skirt's front to the guard's last station, so it reads as a pressed
   // mudguard; outboard of the track (x > 1.88 against its 1.75)
   const lip=ringRows.slice(1).map(([z,,outer,y])=>({z,ring:(side>0?[[outer-.012,y-.115],[outer,y-.115],[outer,y-.010],[outer-.012,y-.010]]:
     [[-outer,y-.115],[-outer+.012,y-.115],[-outer+.012,y-.010],[-outer,y-.010]]) as SectionPoint[]}));
-  P.addMudguard('t72b3m-x-rounded-front-lip','hullDetail',sectionSolid([{z:3.19,ring:lip[0].ring},...lip]));
+  if(roundedFront)P.addMudguard('t72b3m-x-rounded-front-lip','hullDetail',sectionSolid([{z:3.19,ring:lip[0].ring},...lip]));
   P.addMudguard('t72b3m-x-rear-leaf','hullRubber',roofSheet([
     [-3.475,Math.min(side*1.145,side*1.935),Math.max(side*1.145,side*1.935),1.043,1.043],
     [-3.155,a,b,1.3207,1.3207],
@@ -86,7 +86,14 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true):void {
+/** A run of the skirt left without its Relikt cassettes on one side (OPEN_NONE: none), for a hull whose own screen stands
+ * there (the BMPT Terminator's left slat section, bmptTerminator.ts): a cassette whose span lies inside it draws no
+ * containers, backing strip, flap or hanger. */
+type OpenSkirtSpan=readonly[side:number,rearZ:number,frontZ:number];
+const OPEN_NONE:readonly OpenSkirtSpan[]=Object.freeze([]);
+const skirtSpanOpen=(open:readonly OpenSkirtSpan[],side:number,a:number,b:number)=>
+  open.some(([s,r,f])=>s===side&&a>=r-1e-6&&b<=f+1e-6);
+function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true,open:readonly OpenSkirtSpan[]=OPEN_NONE):void {
   for(const side of [-1,1]){
     const left=side<0?-1.103:.014,right=side<0?-.014:1.103;
     if(nativeEra)P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
@@ -97,6 +104,7 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true):void {
     const lane=side<0?-1.962:1.958;
     for(const [a,b,top,low]of SKIRT_SPANS){
       if(nativeEra){
+      if(skirtSpanOpen(open,side,a,b))continue;
       P.addEquipment('hullDetail',box(.009,top-low,b-a),lane-side*.014,(low+top)/2,(a+b)/2);
       P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
         for(const [y0,y1]of [[1.24,top],[low,1.203]]){
@@ -108,7 +116,7 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true,containers=true):void {
       }
       else if(a> -1.4&&b<2.24)P.addMudguard('t72b3m-x-lower-curtain','hullRubber',box(.003,.277,b-a-.006),lane-side*.009,.6591,(a+b)/2);
     }
-    if(nativeEra)skirtFlapsAndHangers(P,side,lane);
+    if(nativeEra)skirtFlapsAndHangers(P,side,lane,open);
     else {
       P.addMudguard('t72b3m-x-front-curtain','hullRubber',box(.004,.17,.935),lane-side*.009,.7146,2.712);
       P.addMudguard('t72b3m-x-rear-curtain','hullRubber',box(.004,.14,.825),lane-side*.009,.730,-2.143);
@@ -213,12 +221,13 @@ function reliktContainer(side:number,inner:number,y0:number,y1:number,a:number,b
  * Bottoms .50 under the fighting compartment, .62 front, .65 rear: above the belly pan (.4526); every flap lies outboard
  * of the track (x > 1.95 against the track's 1.75). Steel hangers clip each cassette seam at the row gap and at the
  * skirt top. */
-function skirtFlapsAndHangers(P:TankBuilderPort,side:number,lane:number):void {
+function skirtFlapsAndHangers(P:TankBuilderPort,side:number,lane:number,open:readonly OpenSkirtSpan[]=OPEN_NONE):void {
   const hingeY=.812,lean=.105,t=.014;
   const flaps:(readonly[a:number,b:number,bottom:number])[]=[];
   for(const [a,b]of SKIRT_SPANS)if(a> -1.4&&b<2.24)flaps.push([a,b,.50]);
   flaps.push([2.245,2.712,.62],[2.712,3.180,.62],[-2.556,-2.143,.65],[-2.143,-1.731,.65]);
   flaps.forEach(([a,b,bottom],i)=>{
+    if(skirtSpanOpen(open,side,a,b))return;
     const h=hingeY-bottom,w=b-a-.012,cx=w*.30,cy=h*.55;
     const outline:SectionPoint[]=[[-w/2,0],[-w/2,-(h-cy)],[-w/2+cx,-h],[w/2-cx,-h],[w/2,-(h-cy)],[w/2,0]];
     // outline in (along-hull, height); extruded through the flap's thickness and turned so the outline lies in the y-z plane
@@ -233,6 +242,7 @@ function skirtFlapsAndHangers(P:TankBuilderPort,side:number,lane:number):void {
   // the hangers: a clip over each seam between cassettes at the gap between the two container rows, and a hook over the
   // skirt's top edge at each seam (4 mm over it), both standing 4 mm proud of the containers' faces
   for(let i=0;i+1<SKIRT_SPANS.length;i++){
+    if([i,i+1].some((k)=>skirtSpanOpen(open,side,SKIRT_SPANS[k][0],SKIRT_SPANS[k][1])))continue;
     const z=(SKIRT_SPANS[i][1]+SKIRT_SPANS[i+1][0])/2,top=Math.min(SKIRT_SPANS[i][2],SKIRT_SPANS[i+1][2]);
     const face=Math.max(skirtFaceX(SKIRT_SPANS[i][0]),skirtFaceX(SKIRT_SPANS[i+1][0])),xi=1.949;
     P.addEquipment('hullDetail',box(face+.004-xi,.054,.046),side*(face+.004+xi)/2,1.2215,z);
@@ -591,11 +601,16 @@ interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptSt
    * frontal package that lays its own glacis blocks on the bare cover (buildT72B3MX: wherever the cheek cells give way to
    * the build's own, the obr. 2022's t72b3m2022Kit.ts). */
   glacisContainers?:boolean;
+  /** false (267): no rounded front mudguards or their turned-down lips, for a hull whose own front fenders stand there
+   * (the BMPT Terminator's sloped hoods and noses, bmptTerminator.ts); the deck under them stays. */
+  roundedFrontGuards?:boolean;
+  /** 267: skirt runs [side, rear z, front z] left without their Relikt cassettes (skirtSpanOpen). */
+  openSkirtSpans?:readonly OpenSkirtSpan[];
 }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false,options.glacisContainers!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
+  hull(P,options.nativeEra!==false,options.roundedFrontGuards!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false,options.glacisContainers!==false,options.openSkirtSpans??OPEN_NONE);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort,turretOptions:T72B3MXTurretOptions={},hullOptions:T72B3MXHullOptions={}):void {

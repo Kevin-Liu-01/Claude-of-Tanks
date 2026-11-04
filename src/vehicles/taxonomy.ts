@@ -83,7 +83,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t',
     'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'ua_cv9040c', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
+    'm3a3_bradley', 'bmpt_t90', 'bmpt_terminator', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),
@@ -95,6 +95,9 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'lrmv_lynx', 'borsuk', 'type89', 'm551a1_tts',
     // release 264: the Longwei family, fleet hulls under a modernized Longwei turret
     'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu',
+    // release 268: the twin-cannon air defence: the 2K22M (1990) and the Pantsir-S1 (2012 tracked option), the Gepard 1A2
+    // (the 1996-2000 service-life extension), the PGZ-95 (1999) and the PGZ-09 (2009)
+    'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
   ]),
   // A new generation: clean-sheet architectures past the third-generation tank (uncrewed turrets and crew capsules,
   // 130 mm-class guns, hybrid drives), whether fielded, prototypes or concepts. The T-14 Armata is the yardstick.

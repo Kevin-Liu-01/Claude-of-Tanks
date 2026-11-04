@@ -169,6 +169,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/dragunAssaultBalance.selftest.mjs',
     'src/vehicles/missileConceptCombat.selftest.mjs',
     'src/vehicles/profiles/tos1aTagil.selftest.mjs',
+    // 268: the GM-352 air-defence pair (Tunguska-M, Pantsir-S1): datums, fire axes, launch exits, the shared chassis, sweeps
+    'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
+    // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
+    'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
@@ -524,6 +528,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
     'src/sim/specialActions.selftest.mjs',
     'src/vehicles/profiles/leopard1A5Source.selftest.mjs',
+    // 268: the Flakpanzer Gepard 1A2 on the shared Leopard 1 hull: frame, bores, crew, height, gun and hull clearance
+    'src/vehicles/profiles/gepard.selftest.mjs',
     'src/vehicles/profiles/leopard1A2A1Source.selftest.mjs',
     'src/vehicles/profiles/leclercTrackCourse.selftest.mjs',
     'src/vehicles/profiles/japaneseCastTurrets.selftest.mjs',
@@ -750,6 +756,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
+    // 267 (lane bmpt-family-267): the Ob'yekt 199 "Ramka" BMPT Terminator's native fixture (frame, tubes, crew, height)
+    'src/vehicles/profiles/bmptTerminator.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
     // release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',

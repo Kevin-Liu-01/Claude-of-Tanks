@@ -5310,6 +5310,96 @@
     1,
     5.5
    ]
+  },
+  "tunguska_m": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 90240,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "pantsir_s1": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 174,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 94124,
+   "frame": [
+    0,
+    2.15,
+    -0.05,
+    5
+   ]
+  },
+  "gepard_1a2": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 376,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 103219,
+   "frame": [
+    0,
+    2.5,
+    0.3,
+    5.1
+   ]
+  },
+  "pgz95": {
+   "sealed": true,
+   "openPx": 5,
+   "openViews": 0,
+   "insideOutPx": 422,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 86997,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.4
+   ]
+  },
+  "pgz09": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 314,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 87068,
+   "frame": [
+    0,
+    1.7,
+    -0.05,
+    4.5
+   ]
+  },
+  "bmpt_terminator": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 107,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 134854,
+   "frame": [
+    0,
+    1.95,
+    -0.05,
+    4.9
+   ]
   }
  }
 }

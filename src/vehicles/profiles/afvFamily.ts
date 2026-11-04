@@ -2,7 +2,9 @@ import { buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradl
 import { buildM3BradleyGunMount } from './m3BradleyGunMount.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { buildT80UXHull } from './t80uX.ts';
+import { buildT72B3MXHull } from './t72b3mX.ts';
+import { T72B3M_X_SOURCE_DATUMS } from '../t72b3mXArmor.ts';
+import { buildBmpt72Station, addBmpt72HullKit } from './bmpt72Station.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
 //
@@ -333,133 +335,34 @@ function buildUAM2A3(P: AfvBuilderPort): void {
   });
 }
 
+// =========================== BMPT-72 "Terminator 2" ==========================
+// 267 (lane bmpt-family-267; the owner: "upgrade our BMPT T-72"): the BMPT-72 is a T-72 conversion, so it rides the
+// fleet's T-72 X hull, built in place by its own builder (t72b3mX.ts buildT72B3MXHull: the T-72B3M's measured tub,
+// running gear, fenders, Relikt glacis cover and boxed Relikt skirts, deck and stern fittings; it was the T-80U X hull),
+// carries the Ramka-72 module on the T-72's ring and adds the slat screens over the engine compartment's flanks and
+// across the stern (profiles/bmpt72Station.ts, from the Army-2016/2018/2020 photographs).
 function addTerminatorStation(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
-  // Clear any inherited crown/track layer from the upper assembly. The BMPT
-  // needs only its own compact turntable; keep this exception local so other
-  // AFV donor rebuilds retain their authored roof hardware.
+  // The station's own turntable is the only turretTrack stock (no donor crown course under it).
   P.clear('turretTrack');
-  delete P.turretG.userData.t72B3MTurretCleanupReceipt;
-  delete P.turretG.userData.t72b3mForwardAttachmentReceipt;
-  P.gunG.position.set(0, 0.50, 0.36);
-  // Low armored turntable and narrow unmanned weapons tower.
-  // This is the BMPT's own ring: do not retain a donor crown skin as an
-  // invisible second turret below the station.
-  P.add('turretTrack', cylY(1.04, 1.10, 0.08, 24), 0, -0.025, 0);
-  P.add('turret', cylY(0.98, 1.16, 0.22, 24), 0, 0.09, 0);
-  // Release 240: the turntable and the base drum are coaxial and reach 1.10-1.16, past the seat's keep radius (rim 0.90
-  // + 2 cm, turretSeatRace.ts), which pressed the turntable into a 3 mm sheet on its plane (its caps coincident: the
-  // gun-junction census's openings beside both 2A42s). Bodies of revolution turn unseen, so the seat keeps them as built.
-  P.turretG.userData.turretSeatKeepR = 1.18;
-  P.add('turret', orientedSlab(
-    [-0.72, 0.10, 0.98], [0.72, 0.10, 0.98], [0.92, 0.10, -1.05], [-0.92, 0.10, -1.05],
-    [-0.50, 0.58, 0.76], [0.50, 0.58, 0.76], [0.64, 0.62, -0.88], [-0.64, 0.62, -0.88]));
-  // Chamfered upper receiver with a narrowed brow and a long equipment bustle.
-  P.add('turret', orientedSlab(
-    [-.36,.34,.65],[.36,.34,.65],[.44,.34,-.78],[-.44,.34,-.78],
-    [-.28,.78,.48],[.28,.78,.48],[.34,.78,-.66],[-.34,.78,-.66]));
-  P.add('turret', orientedSlab(
-    [-.62,.23,-.66],[.62,.23,-.66],[.51,.23,-1.40],[-.51,.23,-1.40],
-    [-.48,.65,-.66],[.48,.65,-.66],[.40,.55,-1.40],[-.40,.55,-1.40]));
-  for(const side of [-1,1]) {
-    P.addEquipment('turretDetail',box(.20,.055,.56),side*.50,.59,-.95);
-    for(let i=0;i<4;i++)P.addEquipment('turretDark',box(.015,.015,.40),side*(.43+i*.045),.625,-.95);
-  }
-  P.add('turretDark', box(0.56, 0.20, 0.28), 0, 0.60, 0.76);
-  // Twin 2A42 cannon plant. Closed collars overlap the tower face; the
-  // individual bore mouths are explicit so the pair never reads as rods.
-  for (const side of [-1, 1]) {
-    const barrel = side < 0 ? 0 : 1;
-    P.addGunExtra(box(0.18, 0.25, 0.30), side * 0.16, 0, 0.28);
-    P.addGunExtra(cylZ(0.060, 0.32, 14, 0.048), side * 0.16, 0, 0.55);
-    P.add(`gunBarrel${barrel}`, cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
-    P.add(`gunBarrel${barrel}Dark`, cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
-    // 2026-10-19 (owner float sweep): the bore-mouth ring stood 2.5 mm proud of the muzzle sleeve (census: 243 mm
-    // off the gun); it now starts inside the sleeve, front face unchanged.
-    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.030, 12), side * 0.16, 0, 3.2025);
-  }
-  P.muzzleZ = 3.22;
-  // OWNER "much better" ROUND (2026-08-17, the removed ground-up bmpt's
-  // §5.269 fix bar): Ataka launchers as RACK ARMS carrying two SEPARATED
-  // tubes per flank — cantilever arm rooted into the turntable slope, a
-  // hanger web, tubes with visible air between them, clamp collars, PROUD
-  // light-tone end caps reading side-on with recessed dark mouth rings.
-  weaponAssembly(P, () => {
-    for (const side of [-1, 1]) {
-      P.add('turretDark', box(0.46, 0.12, 0.42), side * 0.78, 0.46, 0.15,
-        0, 0, side * 0.08);                                                      // underslung mount block (kept)
-      P.add('turret', box(0.30, 0.07, 0.55), side * 0.66, 0.545, 0.18,
-        0, side * 0.035, 0);                                                     // rack arm off the slope flank
-      P.add('turret', box(0.06, 0.34, 0.44), side * 0.84, 0.46, 0.16,
-        0, side * 0.035, 0);                                                     // hanger web between the tubes
-      for (let row = 0; row < 2; row++) {
-        const ty = 0.335 + row * 0.24;                                           // separated pair: 7 cm air gap
-        P.add('turretDark', cylZ(0.085, 0.80, 14), side * 0.93, ty, 0.24,
-          0, side * 0.035, 0);
-        for (const cz of [0.10, 0.42]) {
-          P.add('turretDetail', cylZ(0.094, 0.03, 14), side * 0.93, ty, cz,
-            0, side * 0.035, 0);                                                 // clamp collars onto the web
-        }
-        P.add('turretDetail', cylZ(0.092, 0.035, 14), side * 0.93, ty, 0.645,
-          0, side * 0.035, 0);                                                   // PROUD light end cap
-        P.add('turretDark', cylZ(0.062, 0.022, 14), side * 0.93, ty, 0.668,
-          0, side * 0.035, 0);                                                   // recessed dark mouth ring
-        P.add('turretDark', cylZ(0.088, 0.02, 14), side * 0.93, ty, -0.155,
-          0, side * 0.035, 0);                                                   // rear end plate
-      }
-    }
-  });
-  // Pano sight: the funnel read killed (square post + box head, §5.269 bar).
-  P.add('turret', box(0.26, 0.08, 0.28), 0.34, 0.80, -0.18);
-  P.add('turret', box(0.11, 0.26, 0.11), 0.34, 0.97, -0.18);
-  P.add('turret', box(0.26, 0.17, 0.24), 0.34, 1.135, -0.17);
-  P.add('turretGlass', box(0.17, 0.10, 0.024), 0.34, 1.145, -0.045);
-  P.add('turretDark', box(0.27, 0.025, 0.25), 0.34, 1.225, -0.17);            // head cap lid
-  // Casemate roof clutter (the fix bar's feed humps / cable trunk / lids —
-  // the bare-slab roof was the critic's station-clutter defect class).
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.16, 0.10, 0.34), side * 0.20, 0.82, 0.38);          // ammo feed humps over the trunnion
-    P.add('turretDark', box(0.12, 0.02, 0.28), side * 0.20, 0.875, 0.38);
-  }
-  P.add('turretDark', box(0.08, 0.045, 0.80), 0, 0.795, -0.10);               // cable trunk running aft
-  P.add('turret', box(0.22, 0.03, 0.26), -0.18, 0.795, 0.12);                 // service lids
-  P.add('turret', box(0.22, 0.03, 0.26), 0.14, 0.795, 0.12);
-  P.add('turretDark', box(0.05, 0.012, 0.10), -0.18, 0.815, 0.10);            // lid latches
-  P.add('turretDark', box(0.05, 0.012, 0.10), 0.14, 0.815, 0.10);
-  // VH.14 (2026-10-14): no roof machine gun on the real vehicle (roofWeaponPolicy.ts); the decorative pintle is gone.
-  smokePair(P, 0.82, 0.58, -0.48, 4, 3310);
-  // Whips re-seated on REAL structure (the r2-class "standing on air behind
-  // the casemate" island): wing shelves off the casemate rear corners carry
-  // the pots (§B5 physical-seat law).
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.16, 0.05, 0.16), side * 0.40, 0.755, -0.58);
-  }
-  radioPair(P, 0.78, -0.60, 3320, 0.43);
-  P.decal('turret', 'number', 'BMPT-2', 0.20, [1.16, 0.44, -0.32], Math.PI / 2);
-  // The donor pivot sits ahead of the hull's geometric center. Move the
-  // complete BMPT station aft as one articulated assembly, including its gun
-  // and object-based fittings, while leaving the hull and running gear fixed.
-  const stationShiftZM = -0.32;
-  P.turretG.position.z += stationShiftZM;
+  buildBmpt72Station(P);
   P.turretG.userData.bmptTerminator2TurretSeatingReceipt = Object.freeze({
-    revision: 'centered-dedicated-turntable-r1',
-    stationShiftZM,
+    revision: 'bmpt72-t72-ring-r2',
+    ring: 't72b3m_2016',
     inheritedDonorTurretTrack: false,
     dedicatedTurntable: true,
   });
-  P.topY = Math.max(P.topY || 0, 1.35);
-  // guided-load rule (owner 2026-09-18): the spec's Ataka load is at least one round per tube — the profile publishes its
-  // tube census for guidedLauncherTubes.selftest
-  P.turretG.userData.launcherTubes = 4;
 }
 
 function buildBMPT2(P: AfvBuilderPort): void {
-  buildT80UXHull(P);
-  P.turretG.position.set(0,1.565,.39187);
+  buildT72B3MXHull(P);
+  // the T-72B3M's ring, on the centreline (its datum's 7 um lateral offset is measurement noise; the twin plant's centre
+  // anchor is held to the axis, recoilRig.selftest.mjs)
+  const [, ringY, ringZ] = T72B3M_X_SOURCE_DATUMS.turretPivot;
+  P.turretG.position.set(0, ringY, ringZ);
   addTerminatorStation(P);
-  P.hullG.userData.familyRebuild={donor:'t80u',revision:2};
-
+  addBmpt72HullKit(P);
+  P.hullG.userData.familyRebuild = { donor: 't72b3m_2016', revision: 3 };
 }
 
 function addBWP1Station(P: AfvBuilderPort): void {
@@ -1516,6 +1419,7 @@ function buildBMPTT90(P: AfvBuilderPort): void {
   }
 }
 
+import { buildBMPTTerminator } from './bmptTerminator.ts';
 export const AFV_FAMILY_PROFILES = {
   bmp3_rok: { build: buildBMP3ROK },
   ua_m2a3_bradley: { build: buildUAM2A3 },
@@ -1529,4 +1433,6 @@ export const AFV_FAMILY_PROFILES = {
   upior: { build: buildUpior },
   // §5.363 owner order — Terminator on the T-90 hull (photo-class new id)
   bmpt_t90: { build: buildBMPTT90 },
+  // 267: the original Ob'yekt 199 "Ramka" Terminator on the T-72 X hull (profiles/bmptTerminator.ts)
+  bmpt_terminator: { build: buildBMPTTerminator },
 } satisfies VehicleProfileRecord;

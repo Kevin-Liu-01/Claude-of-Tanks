@@ -2,13 +2,14 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 52 entries over 128 vehicles.
+// 53 entries over 130 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
   'paint_ares_apc_x',
   'paint_bm_oplot_m',
   'paint_bm_oplot_t',
+  'paint_bmpt_terminator',
   'paint_bmpt_terminator2',
   'paint_centurion5_1_aus',
   'paint_centurion5_2dk',
@@ -79,6 +80,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_ares_apc_x',lead: 'ares_apc',sourceTankIds: ['ares_apc'],nation: 'UK',label: 'British Three-Tone Woodland',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4e5940',weather: '#60694f',patches: ['#252a22','#544233','#72745d'],camoScale: 0.44}},
   {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Digital Woodland',tags: ['ua','woodland','digital','signature'],visual: {scheme: 'digital',base: '#68693f',weather: '#7a7b52',patches: ['#39442c','#6f563a','#9a9268'],camoScale: 0.5}},
   {id: 'paint_bm_oplot_t',lead: 'bm_oplot_t',sourceTankIds: ['bm_oplot_t'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Desert',tags: ['ua','desert','organic','signature'],visual: {scheme: 'nato',base: '#b39466',weather: '#c3a578',patches: ['#7e4c37','#5c4232','#a17f58'],camoScale: 0.58}},
+  {id: 'paint_bmpt_terminator',lead: 'bmpt_terminator',sourceTankIds: ['bmpt_terminator'],nation: 'Russia',label: 'Russian Three-Tone Desert',tags: ['ru','desert','organic','signature'],visual: {scheme: 'nato',base: '#a6936a',weather: '#b3a27a',patches: ['#5f6748','#7b6142'],camoScale: 0.6,solidWeatheringIntensity: 0.03}},
   {id: 'paint_bmpt_terminator2',lead: 'bmpt_terminator2',sourceTankIds: ['bmpt_terminator2'],nation: 'Russia',label: 'Russian Digital Woodland',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#35452f',weather: '#3f4d36',patches: ['#243128','#4d4a37','#5a523e'],camoScale: 0.5,solidWeatheringIntensity: 0.03}},
   {id: 'paint_centurion5_1_aus',lead: 'centurion5_1_aus',sourceTankIds: ['centurion5_1_aus'],nation: 'Australia',label: 'RAAC Plain Olive Drab',tags: ['woodland','geometric','signature'],visual: {scheme: 'solid',base: '#5a5c30',weather: '#696b3d',patches: []}},
   {id: 'paint_centurion5_2dk',lead: 'centurion5_2dk',sourceTankIds: ['centurion5_2dk'],nation: 'Denmark',label: 'Danish Three-Tone Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#454b34',weather: '#4d533b',patches: ['#3d3226','#2a2d22'],camoScale: 0.48}},
@@ -99,7 +101,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_leo1a5dk1',lead: 'leo1a5dk1',sourceTankIds: ['leo1a5dk1'],nation: 'Denmark',label: 'Danish Plain White',tags: ['winter','geometric','signature'],visual: {scheme: 'solid',base: '#d9d8cf',weather: '#c9c8bd',patches: []}},
   {id: 'paint_leo2a5dk',lead: 'leo2a5dk',sourceTankIds: ['leo2a5dk'],nation: 'Denmark',label: 'Danish Three-Tone Woodland IV',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#434b34',weather: '#4f5640',patches: ['#1c1e19','#6f6440'],camoScale: 0.5,patchK: 1.5,blackK: 1.5}},
   {id: 'paint_leo2a7dk',lead: 'leo2a7dk',sourceTankIds: ['leo2a7dk'],nation: 'Denmark',label: 'Danish Barracuda Woodland',tags: ['woodland','organic','signature'],visual: {scheme: 'barracuda',base: '#545d44',weather: '#4f5841',patches: ['#4e573f','#655440','#363d2c'],camoScale: 0.5}},
-  {id: 'paint_m1a1',lead: 'm1a1',sourceTankIds: ['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','t55a','t62_1975','cv90105_tml','m2a2_bradley','leo1a5','leopard2_proto','leo2a2','leo2a4_v','leo2a4','leo2_revolution_proto','leo2_revolution','leo2_improved','kf51_evo','fv510','fv510_milan','warrior_tes_h','m60a1','magach3','magach6b','magach7c','sabra_mk2','amx30','amx30b2','m48a5_patton','m60a2','m46_patton','m47_patton','m60a3','leo1a2a1','leo2a7v','leo2a5','kf51_panther','leo2a6','amx30b','t62mv1','m1a2_abrams','m1a2_abrams_tusk','m1a2_abrams_sepv2','m1a2_abrams_sepv3','m48a3_patton','m48a2ga2','m48_super'],nation: 'USA',label: 'US Army Three-Tone Woodland',tags: ['usa','woodland','organic','signature'],visual: {scheme: 'nato',base: '#49543c',weather: '#525f45',patches: ['#23261f','#4a3a2c'],camoScale: 0.5}},
+  {id: 'paint_m1a1',lead: 'm1a1',sourceTankIds: ['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep','t55a','t62_1975','cv90105_tml','m2a2_bradley','leo1a5','leopard2_proto','leo2a2','leo2a4_v','leo2a4','leo2_revolution_proto','leo2_revolution','leo2_improved','kf51_evo','fv510','fv510_milan','warrior_tes_h','m60a1','magach3','magach6b','magach7c','sabra_mk2','amx30','amx30b2','m48a5_patton','m60a2','m46_patton','m47_patton','m60a3','leo1a2a1','leo2a7v','leo2a5','kf51_panther','leo2a6','amx30b','t62mv1','m1a2_abrams','m1a2_abrams_tusk','m1a2_abrams_sepv2','m1a2_abrams_sepv3','m48a3_patton','m48a2ga2','m48_super','gepard_1a2'],nation: 'USA',label: 'US Army Three-Tone Woodland',tags: ['usa','woodland','organic','signature'],visual: {scheme: 'nato',base: '#49543c',weather: '#525f45',patches: ['#23261f','#4a3a2c'],camoScale: 0.5}},
   {id: 'paint_m41_bw',lead: 'm41_bw',sourceTankIds: ['m41_bw'],nation: 'Germany',label: 'Bundeswehr Plain Brown',tags: ['de','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#474028',weather: '#544b34',patches: [],solidWeatheringIntensity: 0.35}},
   {id: 'paint_m41_jgsdf',lead: 'm41_jgsdf',sourceTankIds: ['m41_jgsdf'],nation: 'Japan',label: 'JGSDF Plain Deep Green',tags: ['jp','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#383b28',weather: '#504b36',patches: [],solidWeatheringIntensity: 0.35}},
   {id: 'paint_m41dk1',lead: 'm41dk1',sourceTankIds: ['m41dk1'],nation: 'Denmark',label: 'Danish Three-Tone Woodland V',tags: ['woodland','organic','signature'],visual: {scheme: 'nato',base: '#5c614d',weather: '#64695a',patches: ['#262c24','#4a4f51'],camoScale: 0.42,patchK: 2.4,blackK: 0.5}},
