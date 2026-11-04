@@ -47,9 +47,37 @@ assert.equal(
   'nested shield clipping and outer painter state remain balanced',
 );
 
-// 264: a tactical number fits its bounds once measured. A measuring context (bold capitals ~0.72 em, digits ~0.56 em, a space ~0.28,
-// as the Cot UI face sets them): a digit number keeps the 1.75-per-character size it always had; the Leopard 2A3's
-// letter code OTCO, which ran past both ends of its 252 px designation decal, comes down until it and its outline fit.
+// 264 / glacis-269: a tactical number fits its bounds once measured. Numbers Glacis sets are its outlines (one path,
+// stroked under its fill): a digit number keeps the 1.75-per-character size it always had (its caps 0.7 of the size),
+// and a letter code that would pass its bounds (OTCO, KURSK, 99A2 ran 5-8 px past a 252 px decal) comes down until it
+// and its outline fit, centred on the bounds.
+function tracingContext() {
+  const drawn = { xs: [], ys: [], lineWidth: 0, strokes: 0, fills: 0, texts: [] };
+  return { drawn, canvas: { width: 256, height: 256 }, save() {}, restore() {}, beginPath() {},
+    moveTo(x, y) { drawn.xs.push(x); drawn.ys.push(y); }, lineTo(x, y) { drawn.xs.push(x); drawn.ys.push(y); }, closePath() {},
+    stroke() { drawn.strokes++; }, fill() { drawn.fills++; },
+    set lineWidth(value) { drawn.lineWidth = value; }, set lineJoin(_) {}, set miterLimit(_) {}, set strokeStyle(_) {}, set fillStyle(_) {},
+    set font(_) {}, set textAlign(_) {}, set textBaseline(_) {},
+    strokeText(text) { drawn.texts.push(text); }, fillText(text) { drawn.texts.push(text); } };
+}
+const bounds = { x: 2, y: 34, width: 252, height: 188 };
+for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KURSK', false], ['99A2', false]]) {
+  const ctx = tracingContext();
+  drawTacticalNumber(ctx, { tacticalNumber: number }, bounds);
+  const { xs, ys, lineWidth } = ctx.drawn;
+  assert.equal(ctx.drawn.texts.length, 0, `${number}: drawn as Glacis outlines, never canvas text`);
+  assert.deepEqual([ctx.drawn.strokes, ctx.drawn.fills], [1, 1], `${number}: one path, its outline stroked under its fill`);
+  const rule = Math.min(bounds.height * 0.68, bounds.width / number.length * 1.75);
+  const capHeight = Math.max(...ys) - Math.min(...ys);
+  const width = Math.max(...xs) - Math.min(...xs) + lineWidth;
+  if (fits) assert.ok(Math.abs(capHeight - 0.7 * rule) < 0.01, `${number}: a number that fits keeps the per-character size (caps ${capHeight.toFixed(2)})`);
+  else assert.ok(capHeight < 0.7 * rule - 0.5, `${number}: a number wider than its bounds comes down (caps ${capHeight.toFixed(1)} < ${(0.7 * rule).toFixed(1)})`);
+  assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
+  const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
+  assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2)) < 0.01, `${number}: its caps centred on the bounds`);
+}
+// Text Glacis cannot set as written keeps the shell face, measured into its bounds (a measuring context: bold capitals
+// ~0.72 em, lowercase ~0.56, a space ~0.28, as the Cot UI face sets them).
 function measuringContext() {
   const drawn = { font: '', lineWidth: 0, texts: [] };
   const size = () => Number(/(\d+(?:\.\d+)?)px/.exec(drawn.font)[1]);
@@ -57,19 +85,14 @@ function measuringContext() {
     set font(value) { drawn.font = value; }, get font() { return drawn.font; },
     set lineWidth(value) { drawn.lineWidth = value; }, set strokeStyle(_) {}, set fillStyle(_) {},
     set textAlign(_) {}, set textBaseline(_) {},
-    measureText: (text) => ({ width: [...text].reduce((sum, c) => sum + (c === ' ' ? 0.28 : /[0-9-]/.test(c) ? 0.56 : 0.72), 0) * size() }),
+    measureText: (text) => ({ width: [...text].reduce((sum, c) => sum + (c === ' ' ? 0.28 : /[a-z0-9-]/.test(c) ? 0.56 : 0.72), 0) * size() }),
     strokeText(text) { drawn.texts.push(text); }, fillText() {} };
 }
-const bounds = { x: 2, y: 34, width: 252, height: 188 };
-for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false]]) {
+for (const number of ['Kp 12', 'ПТ-76']) {
   const ctx = measuringContext();
   drawTacticalNumber(ctx, { tacticalNumber: number }, bounds);
-  const rule = Math.min(bounds.height * 0.68, bounds.width / number.length * 1.75);
-  const drawnSize = Number(/(\d+(?:\.\d+)?)px/.exec(ctx.drawn.font)[1]);
-  const width = ctx.measureText(number).width + ctx.drawn.lineWidth;
-  if (fits) assert.equal(drawnSize, Math.max(16, rule), `${number}: a number that fits keeps the per-character size`);
-  else assert.ok(drawnSize < rule, `${number}: a number wider than its bounds comes down (${drawnSize} < ${rule})`);
-  assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
+  assert.deepEqual(ctx.drawn.texts, [number], `${number}: Glacis cannot set it as written, so the shell face does`);
+  assert.ok(ctx.measureText(number).width + ctx.drawn.lineWidth <= bounds.width * 0.94 + 1e-9, `${number}: fits its bounds`);
 }
 
-console.log('vehicleMarkingsCanvas.selftest: all insignia painters and fallback pass; tactical numbers fit their bounds');
+console.log('vehicleMarkingsCanvas.selftest: all insignia painters and fallback pass; tactical numbers are Glacis outlines that fit their bounds');

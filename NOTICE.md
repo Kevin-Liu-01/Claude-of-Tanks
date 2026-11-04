@@ -37,7 +37,9 @@ typefaces are Chakra Petch (Cadson Demak) and IBM Plex Sans and IBM Plex Mono
 Cot Symbols, the marks face Kevin B. Liu drew from Chakra Petch's outlines,
 ships under the same license in `public/fonts/cot-symbols/`, and Cot Accents,
 the accented letters Kevin B. Liu assembled from IBM Plex Sans's own glyphs
-under its own name, in `public/fonts/cot-accents/`; the
+under its own name, in `public/fonts/cot-accents/`; Glacis, Kevin Liu's
+block face for markings and HUD numerals, ships under the same license in
+`public/fonts/glacis/` with its outline module `src/ui/glacis.js`; the
 retired ABC Monument Grotesk (Dinamo Typefaces) is no longer in the tree. Their
 required notices and exact paths are preserved in
 [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) and `docs/licenses/`. The project
