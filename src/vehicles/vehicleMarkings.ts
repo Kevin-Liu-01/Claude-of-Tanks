@@ -1052,6 +1052,15 @@ export function drawNationalInsignia(
 /** The share of its bounds' width a tactical number may fill, outline included (drawTacticalNumber). */
 const TACTICAL_NUMBER_FILL = 0.94;
 
+/**
+ * Glacis marking spacing, in thousandths of the em between glyphs. Its side bearings leave 5.6 % of the em between
+ * glyphs, less than an 8 % outline: neighbours' outlines merged and counters clogged (blind critics, glacis-269).
+ * Painted markings space wide, and a code that runs to its bounds comes down to them instead of standing taller.
+ */
+export const GLACIS_MARKING_TRACKING = 80;
+/** A Glacis marking's outline at most, as a share of its size (the shell face's 8 % fills Glacis's small counters). */
+export const GLACIS_MARKING_OUTLINE = 0.06;
+
 export function drawTacticalNumber(
   ctx: CanvasRenderingContext2D,
   record: VehicleMarkingRecord,
@@ -1062,13 +1071,14 @@ export function drawTacticalNumber(
   ctx.save();
   if (glacisSetsMarking(text)) {
     // Glacis outlines (DECISIONS 2026-11-03), sized by the measured run: the per-character rule, brought down where the
-    // number and its outline (8 % of the size) would pass TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran
-    // 5-8 px past a 252 px decal for OTCO, KURSK and 99A2). One path, stroked under its fill, corners mitred short.
+    // spaced number and its outline would pass TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran 5-8 px past
+    // a 252 px decal for OTCO, KURSK and 99A2). One path, stroked under its fill, corners mitred short.
     const fontSize = Math.max(16, Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75,
-      width * TACTICAL_NUMBER_FILL / (glacisWidth(text, { size: 1 }) + 0.08)));
+      width * TACTICAL_NUMBER_FILL / (glacisWidth(text, { size: 1, tracking: GLACIS_MARKING_TRACKING }) + GLACIS_MARKING_OUTLINE)));
     ctx.beginPath();
-    traceGlacis(ctx, text, x + width / 2, y + height / 2, { size: fontSize, align: 'center', baseline: 'middle' });
-    ctx.lineWidth = Math.max(2, fontSize * 0.08);
+    traceGlacis(ctx, text, x + width / 2, y + height / 2,
+      { size: fontSize, tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' });
+    ctx.lineWidth = Math.max(2, fontSize * GLACIS_MARKING_OUTLINE);
     ctx.lineJoin = 'miter';
     ctx.miterLimit = 2;
     ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;

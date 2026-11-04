@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { drawNationalInsignia, drawTacticalNumber } from './vehicleMarkings.ts';
+import {
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING,
+} from './vehicleMarkings.ts';
+import { CMAP, GLYPHS } from '../ui/glacis.js';
 
 function createRecordingContext() {
   const operations = [];
@@ -75,7 +78,20 @@ for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KU
   assert.ok(width <= bounds.width * 0.94 + 1e-9, `${number}: ${width.toFixed(1)} px with its outline fits ${bounds.width} px`);
   const mid = (Math.max(...ys) + Math.min(...ys)) / 2;
   assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2)) < 0.01, `${number}: its caps centred on the bounds`);
+  assert.ok(Math.abs(lineWidth - Math.max(2, capHeight / 0.7 * GLACIS_MARKING_OUTLINE)) < 0.01,
+    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size`);
 }
+// glacis-269 blind critics: at Glacis's own spacing (side bearings 28 + 28 of 1000) an 8 % outline merged neighbours
+// and clogged counters. Markings space wide: any two glyphs keep 6 % of the em of paint clear between their outlines
+// (Q's tail runs to its advance by design and is left out).
+const bearings = [...'0123456789ABCDEFGHIJKLMNOPRSTUVWXYZ-./'].map((ch) => {
+  const glyph = GLYPHS[CMAP[ch.codePointAt(0)]];
+  const xs = glyph.d.match(/-?\d+(?:\.\d+)?/g).map(Number).filter((_, index) => index % 2 === 0);
+  return [Math.min(...xs), glyph.advance - Math.max(...xs)];
+});
+const tightest = Math.min(...bearings.map(([left]) => left)) + Math.min(...bearings.map(([, right]) => right));
+assert.ok(tightest + GLACIS_MARKING_TRACKING - GLACIS_MARKING_OUTLINE * 1000 >= 60,
+  `the tightest pair keeps ${tightest + GLACIS_MARKING_TRACKING - GLACIS_MARKING_OUTLINE * 1000}/1000 of paint clear between outlines`);
 // Text Glacis cannot set as written keeps the shell face, measured into its bounds (a measuring context: bold capitals
 // ~0.72 em, lowercase ~0.56, a space ~0.28, as the Cot UI face sets them).
 function measuringContext() {

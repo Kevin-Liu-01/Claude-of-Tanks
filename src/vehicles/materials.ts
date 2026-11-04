@@ -43,7 +43,9 @@ export {
 } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
 import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
-import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
+import {
+  drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, vehicleMarkingRecord,
+} from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
 import { glacisPath, glacisSetsMarking, glacisWidth } from '../ui/glacisText.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
@@ -238,9 +240,10 @@ function redrawWhenMarkingFontReady(text: string, draw: () => void): void {
 const MARKING_TEXT_SPAN = 240;
 
 /**
- * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, caps centred on (x, y), at the decal's size rule
- * brought down where the measured run would pass MARKING_TEXT_SPAN, its outline stroked under the fill with mitred
- * corners clipped short so the chamfers stay crisp. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
+ * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, caps centred on
+ * (x, y), at the decal's size rule brought down where the measured run would pass MARKING_TEXT_SPAN, its outline (at
+ * most GLACIS_MARKING_OUTLINE of the size) stroked under the fill with mitred corners clipped short so the chamfers
+ * stay crisp. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
  */
 function letterMarking(
   ctx: CanvasRenderingContext2D, text: string, x: number, y: number, ruleSize: number,
@@ -248,10 +251,13 @@ function letterMarking(
 ): void {
   ctx.save();
   if (glacisSetsMarking(text)) {
-    const size = Math.min(ruleSize, (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { size: 1 })));
-    const path = glacisPath(text, x, y, { size, align: 'center', baseline: 'middle' });
+    const options = { tracking: GLACIS_MARKING_TRACKING, align: 'center', baseline: 'middle' } as const;
+    const size = Math.min(ruleSize,
+      (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { ...options, size: 1 })));
+    const path = glacisPath(text, x, y, { ...options, size });
     if (outlineWidth) {
-      ctx.lineWidth = outlineWidth; ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
+      ctx.lineWidth = Math.min(outlineWidth, size * GLACIS_MARKING_OUTLINE);
+      ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
       ctx.stroke(path);
     }
     ctx.fillStyle = fill;
