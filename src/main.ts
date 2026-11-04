@@ -3380,14 +3380,18 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
+    // The damage panel (audit 04-ui-1 item 7, IR4, review r1): every teardown releases it at once (no mask retry or late
+    // build for the last battle's tank, no hold on the visual the Garage pedestal adopts) and keeps its plan painted
+    // while the screens stay up; under the veil clear() drops the tank and its masks.
     clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
       watchOwner.current?.stop();
+      currentDamagePanel()?.release();
       if (keepScreens) return;
-      currentDamagePanel()?.clear(); // (audit 04-ui-1 item 7) under the veil: it drops the tank and its masks (IR4)
+      currentDamagePanel()?.clear();
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       currentHud()?.setMode?.('hidden');

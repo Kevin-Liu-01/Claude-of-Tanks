@@ -192,6 +192,11 @@ export interface DamagePanelController {
    *  'garage'): a pending mask retry is cancelled, a build still in flight is ignored when it lands, and the panel lets
    *  go of the battle's tank, its masks and its visual until the next setTank, which starts afresh. Idempotent. */
   clear(): void;
+  /** The battle is leaving while its screens stay up (the Garage return's clearBattle with keepScreens: a mid-battle
+   *  Leave, a report that prepares the Garage behind it; integration review r1): a pending mask retry is cancelled, a
+   *  build still in flight is ignored when it lands, and the battle's visual is let go (it moves to the Garage pedestal),
+   *  but the tank and its masks stay, so the panel still paints until clear(). Idempotent. */
+  release(): void;
   update(combat: DamagePanelCombatState): void;
   setPose(hullYaw?: number | null, turretYaw?: number | null, camYaw?: number | null): void;
   setTurretYaw(yaw?: number | null): void;
@@ -1171,6 +1176,14 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       refreshDom();
       requestMasks();
       draw();
+    },
+
+    // (integration review r1) the half of clear() a teardown that keeps the screens needs at once: no retry or late build
+    // for the last battle's tank, and no hold on its visual while the Garage adopts it; the plan stays painted
+    release() {
+      cancelMaskRetry();
+      maskRequestSerial += 1;
+      maskSourceVisual = null;
     },
 
     // (2026-11-02 audit, 04-ui-1 item 7) the controller had no teardown: after a battle a pending retry still fired for
