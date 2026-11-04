@@ -83,7 +83,9 @@ function harness() {
     session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
     // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
     transitionAppPhase, assertAppPhaseTransition,
-    window: { __GAME_READY: true, requestIdleCallback: (callback) => callback() }, game, camera,
+    window: { requestIdleCallback: (callback) => callback() }, game, camera,
+    // (2026-11-02 audit S3) the boot latch the entry waits on (src/app/bootReadiness.ts, as studio.ts imports it)
+    isBootReady: () => true, whenBootReady: (callback) => { callback(); return noop; },
     warmFleet: () => Promise.resolve(),
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
     post: { resetAdaptiveResolution: noop, render: noop },

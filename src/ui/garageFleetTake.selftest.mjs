@@ -70,8 +70,6 @@ function mountPanel(module) {
     },
     preloadImage(url) { harness.preloads.push(url); return Promise.resolve(url); },
     window: harness.window,
-    // (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts), not the harnesses' flag
-    isBootReady: () => harness.bootReady,
     requestIdleCallback(callback) { harness.idle.push(callback); },
     setTimeout: dom.setTimeout, clearTimeout: dom.clearTimeout,
     setInterval(callback) { const id = harness.nextInterval++; harness.intervals.set(id, callback); return id; },

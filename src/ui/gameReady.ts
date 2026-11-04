@@ -4,7 +4,10 @@
 // `window.__GAME_READY` on their own timer and never stopped when the boot did not finish. They now share one waiter with
 // a declared state: waiting (one shared poll, slowing down after a while), ready (every waiter ran once), or failed (the
 // boot halted on purpose: the capability gate's __COT_BOOT_HALTED, after which no poll runs). The probe is the one place
-// that reads the boot's flag, so moving it onto a published lifecycle later is a change here alone.
+// that reads the boot's state: the product's boot latch (src/app/bootReadiness.ts, 2026-11-02 audit S3), not its harness
+// mirror window.__GAME_READY, which only tools read.
+
+import { isBootReady } from '../app/bootReadiness.ts';
 
 export type GameReadyState = 'waiting' | 'ready' | 'failed';
 
@@ -79,11 +82,11 @@ export function createGameReadyWaiter({
   };
 }
 
-interface BootFlags { __GAME_READY?: boolean; __COT_BOOT_HALTED?: string }
+interface BootFlags { __COT_BOOT_HALTED?: string }
 
-/** The page's one waiter: the boot's ready flag, and its deliberate halt as the failed state. */
+/** The page's one waiter: the boot's ready latch, and its deliberate halt as the failed state. */
 export const gameReady: GameReadyWaiter = createGameReadyWaiter({
-  isReady: () => typeof window !== 'undefined' && (window as unknown as BootFlags).__GAME_READY === true,
+  isReady: isBootReady,
   hasFailed: () => typeof window !== 'undefined' && !!(window as unknown as BootFlags).__COT_BOOT_HALTED,
   schedule: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
   cancel: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
