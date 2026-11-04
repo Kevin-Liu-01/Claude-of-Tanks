@@ -67,10 +67,12 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     }
     // 269: the roof's crown between the hatches is the first thing a ray down meets there, on the turret (it was the old
     // turret's roof cover, buried under its box and the crown before release 231)
+    // (269 round 2: the C2's ghillie net, refitted to the new roof, lies 7.7 mm over the crown here; the ray reads the
+    // first surface under the suit, the suit's own fit being ghillieSuit.selftest.mjs's)
     const rayOrigin = hull.localToWorld(new THREE.Vector3(0, 3.2, -.44));
     const ray = new THREE.Raycaster(rayOrigin, new THREE.Vector3(0, -1, 0));
     const lid = ray.intersectObject(tank.root, true).find(hit =>
-      hit.object.isMesh && !hit.object.userData.shadowOnly && hit.object.visible);
+      hit.object.isMesh && !hit.object.userData.shadowOnly && hit.object.visible && !/_ghillie_/.test(hit.object.name));
     assert.ok(lid && descendantOf(lid.object, turret), `${id}/${quality}: visible roof rotates`);
     const lidHeight = hull.worldToLocal(lid.point.clone()).y;
     // (269: the new roof's crown, 0.86 m over the ring seat in the builder's frame: (1.44 + 0.86) x 1.10)
