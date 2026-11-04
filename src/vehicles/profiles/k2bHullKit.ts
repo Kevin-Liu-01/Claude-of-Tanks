@@ -40,28 +40,42 @@ export function convexStock(points: readonly Vec3Tuple[]): THREE.BufferGeometry 
 
 /** Skirt-run datums (m, hull frame, the left side; the right mirrors). */
 const K2B_SKIRT = Object.freeze({
-  /** Armour groups: inner face 8 mm into the K2 plate (outer face 1.74), outer face, edge chamfers (ends and hem; top). */
-  moduleIn: 1.732, moduleOut: 1.865, edge: 0.015, topEdge: 0.012,
+  /** Armour groups: inner face 8 mm into the K2 plate (outer face 1.74). r269s2 (both blind critics: "reads flush, like a
+   *  panelled hull skin"): the faces stand out to 1.90, 17 cm proud of the plate, within the K2B's 3.834 m width. The
+   *  lower tier is the outer face; the upper tier steps back 15 mm (a lit ledge and a shadow line at the tier joint). */
+  moduleIn: 1.732, lowerOut: 1.900, upperOut: 1.885,
+  /** Edge chamfers: the hem's outer edge, the tier ledge's, and the joints' (wide on each group's front end, so the
+   *  armour's depth shows as a lit end face in the three-quarter views; narrow on its rear). */
+  hemEdge: 0.015, ledgeEdge: 0.004, frontBevel: 0.045, rearBevel: 0.015,
+  /** The top cap on each group: 5 mm into the course, 15 mm over the upper tier, 25 mm thick (5 mm into the tier). */
+  capIn: 1.805, capOut: 1.900, capH: 0.025, capEdge: 0.010, capInset: 0.015,
   /** The upper course: inner face 5 mm into the deck sides (x 1.66), outer face, height, top and bottom outer chamfers. */
   courseIn: 1.655, courseOut: 1.81, courseH: 0.20, courseEdge: 0.02, courseFoot: 0.008,
   /** The top mounting rail on the course: x span, height (4 mm into the course top). */
   railIn: 1.655, railOut: 1.78, railH: 0.022,
-  /** Hem: level, 5 mm under the plate's 0.56 hem; the rubber fringe below it. */
-  hemY: 0.565, fringeY: 0.495, fringeIn: 1.822, fringeOut: 1.838,
-  /** The tail: from the plate's tail start the hem rises 0.63 per metre to the rear plate line (z -3.74). */
-  tailZ: -2.62, tailRise: 0.63, rearZ: -3.74,
+  /** Hem: level. r269s2 (Opus critic): 11.5 cm lower than round 1's 0.565, over the road wheels' top third (wheels r
+   *  0.3225 on 0.35 axles; research/k2b photos 2, 9, 13); the rubber fringe below it. */
+  hemY: 0.45, fringeY: 0.395, fringeIn: 1.842, fringeOut: 1.858,
+  /** The tail: from the plate's tail start the hem rises 0.74 per metre to the rear plate line (z -3.74, hem 1.27). */
+  tailZ: -2.62, tailRise: 0.74, rearZ: -3.74,
   /** The tail group's inner face stays on the plate's line, outside the belt's lane (the strict clip run); behind the
    *  belt's reach (it rounds the sprocket by z -3.49) a closure block joins it to the stern's side (x 1.66). */
   closeZ: -3.53, closeIn: 1.655,
-  /** The front edge: raked 45 degrees down and back from the corner box's lower rear corner. */
-  rakeZ: 2.97, rakeY: 1.15,
-  /** Group joints (front to rear; the first group runs forward to the rake). */
+  /** The bow module's front: raked 45 degrees down and back from the corner box's lower rear corner (z 2.97, y 1.15) to
+   *  a knee, below which its lower front edge rakes back at 30 degrees to the hem (r269s2, Opus critic). */
+  rakeZ: 2.97, rakeY: 1.15, kneeY: 0.77, chinSlope: Math.tan(30 * Math.PI / 180),
+  /** Group joints (front to rear; the bow module runs forward to the rake). */
   joints: Object.freeze([1.29, -0.23, -1.75, -2.89]),
-  /** Tile width (from each group's rear joint forward) and the level row seam. */
-  tile: 0.38, rowY: 0.985,
+  /** Tile width (from each group's rear joint forward) and the tier joint (mid-height of the groups aft). */
+  tile: 0.38, rowY: 0.905,
+  /** Bolt heads: 45 mm across corners, 15 mm proud of the face (5 mm into it); a 2x2 cluster's half-spacing; their inset
+   *  from a group's hem, top and ends. */
+  boltR: 0.0225, boltLen: 0.020, boltSet: 0.005, cluster: 0.035, edgeInset: 0.05,
+  /** The end bolts' inset from a group's front joint (past its wide bevel) and its rear joint (past the narrow one). */
+  frontInset: 0.075, rearInset: 0.04,
   /** The upper course's joints (front to rear), split at the top line's break. */
   course: Object.freeze([2.975, TOP_BREAK_Z, 0.72, -0.40, -1.52, -2.64, -3.74]),
-  /** Lifting eyes on the groups' top ledge (z). */
+  /** Lifting eyes on the groups' top caps (z). */
   eyes: Object.freeze([1.55, 0.53, -0.99, -2.32]),
 });
 
@@ -72,56 +86,165 @@ const skirtHem = (z: number): number => {
   const S = K2B_SKIRT;
   return z < S.tailZ ? S.hemY + (S.tailZ - z) * S.tailRise : S.hemY;
 };
-/** The raked front edge: its z at height y, and its height at station z. */
-const rakeZAt = (y: number): number => K2B_SKIRT.rakeZ - (K2B_SKIRT.rakeY - y);
-const rakeYAt = (z: number): number => K2B_SKIRT.rakeY - (K2B_SKIRT.rakeZ - z);
+/** The bow module's front: its z at height y (the 45-degree rake above the knee, the 30-degree chin below it). */
+const kneeZ = K2B_SKIRT.rakeZ - (K2B_SKIRT.rakeY - K2B_SKIRT.kneeY);
+const bowFrontZ = (y: number): number => {
+  const S = K2B_SKIRT;
+  return y >= S.kneeY ? S.rakeZ - (S.rakeY - y) : kneeZ - (S.kneeY - y) / S.chinSlope;
+};
+/** The bow module's front edge's height at station z (the rake above the knee, the chin below it). */
+const bowFrontYAt = (z: number): number => {
+  const S = K2B_SKIRT;
+  return z >= kneeZ ? S.rakeY - (S.rakeZ - z) : S.kneeY - (kneeZ - z) * S.chinSlope;
+};
+/** Where the tail's rising hem meets a height. */
+const tailZAt = (y: number): number => K2B_SKIRT.tailZ - (y - K2B_SKIRT.hemY) / K2B_SKIRT.tailRise;
 
-/** A section ring (x, y) with chamfered outer bottom (`edge`) and top (`topEdge`) edges; `pull` sets the outer face in. */
-function sectionRing(xi: number, xo: number, h: number, t: number, edge: number, topEdge: number, pull: number):
+/** A section ring (x, y) with chamfered outer bottom and top edges; `pull` sets the outer face in (an end bevel). */
+function sectionRing(xi: number, xo: number, h: number, t: number, bottomEdge: number, topEdge: number, pull: number):
   [number, number][] {
   const o = xo - pull;
-  return [[xi, h], [o - edge, h], [o, h + edge], [o, t - topEdge], [o - topEdge, t], [xi, t]];
+  return [[xi, h], [o - bottomEdge, h], [o, h + bottomEdge], [o, t - topEdge], [o - topEdge, t], [xi, t]];
+}
+
+interface SkirtTier {
+  /** outer face x */
+  readonly xo: number;
+  readonly bottom: (z: number) => number;
+  readonly top: (z: number) => number;
+  readonly bottomEdge: number;
+  readonly topEdge: number;
 }
 
 /**
- * One armour group from `front` to `rear` (z, front > rear): a closed convex stock whose rings follow the hem and the
- * groups' top line, its outer vertical edges chamfered at both ends (the joints between groups read as V grooves). A
- * `raked` front follows the 45-degree front edge instead of a station.
+ * One tier of an armour group from `front` to `rear` (z, front > rear): a closed convex stock whose rings follow its
+ * bottom and top lines, its outer vertical edges bevelled at both ends (wide at the front). `bow` follows the bow
+ * module's raked front (bowFrontZ) instead of a station.
  */
-function armourGroup(P: K2BPort, side: number, front: number, rear: number, raked: boolean): void {
-  const S = K2B_SKIRT, e = S.edge;
+function tierStock(side: number, tier: SkirtTier, front: number, rear: number, bow: boolean): THREE.BufferGeometry {
+  const S = K2B_SKIRT, xi = S.moduleIn;
   const pts: Vec3Tuple[] = [];
   const ring = (z: number, pull: number): void => {
-    for (const [x, y] of sectionRing(S.moduleIn, S.moduleOut, skirtHem(z), groupTop(z), e, S.topEdge, pull)) {
-      pts.push([side * x, y, z]);
-    }
+    const h = tier.bottom(z), t = tier.top(z), span = t - h;
+    const be = Math.min(tier.bottomEdge, span / 3), te = Math.min(tier.topEdge, span / 3);
+    for (const [x, y] of sectionRing(xi, tier.xo, h, t, be, te, pull)) pts.push([side * x, y, z]);
   };
-  ring(rear, e);
-  ring(rear + e, 0);
-  if (rear < S.closeZ) {
-    // the stern closure: from the group's inner face in to the stern's side, under the course, behind the belt
-    const close: Vec3Tuple[] = [];
-    for (const z of [S.closeZ, rear]) {
-      for (const x of [S.closeIn, S.moduleIn]) close.push([side * x, skirtHem(z) + 0.01, z], [side * x, groupTop(z), z]);
-    }
-    P.add('hull', convexStock(close));
+  ring(rear, S.rearBevel);
+  ring(rear + S.rearBevel, 0);
+  for (const z of [TOP_BREAK_Z, S.tailZ, tailZAt(S.rowY)]) {
+    if (z < front - S.frontBevel - 0.01 && z > rear + S.rearBevel + 0.01) ring(z, 0);
   }
-  for (const z of [TOP_BREAK_Z, S.tailZ]) if (z < front - e && z > rear + e) ring(z, 0);
-  if (!raked) {
-    ring(front, e);
-    ring(front - e, 0);
+  if (!bow) {
+    ring(front, S.frontBevel);
+    ring(front - S.frontBevel, 0);
   } else {
-    // raked front: each ring vertex on the 45-degree plane (pulled in) and a chamfer's depth behind it; the top meets
-    // the plane where the groups' top line crosses it
+    // the raked front: every vertex on the front planes (its outer ones bevelled in) and a bevel's depth behind; the top
+    // meets the rake where the tier's top line crosses it; the knee is a vertex of its own
     let t: number = S.rakeY;
-    for (let k = 0; k < 6; k++) t = groupTop(rakeZAt(t));
-    for (const [back, pull] of [[0, e], [e, 0]] as const) {
-      for (const [x, y] of sectionRing(S.moduleIn, S.moduleOut, S.hemY, t, e, S.topEdge, pull)) {
-        pts.push([side * x, y, rakeZAt(y) - back]);
+    for (let k = 0; k < 6; k++) t = tier.top(bowFrontZ(t));
+    const h = tier.bottom(bowFrontZ(tier.bottom(front)));
+    for (const [back, pull] of [[0, S.frontBevel], [S.frontBevel, 0]] as const) {
+      const ringPts = sectionRing(xi, tier.xo, h, t, tier.bottomEdge, tier.topEdge, pull);
+      if (S.kneeY > h && S.kneeY < t) ringPts.push([xi, S.kneeY], [tier.xo - pull, S.kneeY]);
+      for (const [x, y] of ringPts) pts.push([side * x, y, bowFrontZ(y) - back]);
+    }
+  }
+  return convexStock(pts);
+}
+
+/** A hex bolt head on a side face at (y, z): 45 mm across, 15 mm proud, 5 mm into the face. */
+function sideBolt(P: K2BPort, side: number, faceX: number, y: number, z: number): void {
+  const S = K2B_SKIRT;
+  P.add('hullDark', KIT.cylX(S.boltR, S.boltLen, P.q ? 6 : 4), side * (faceX - S.boltSet + S.boltLen / 2), y, z);
+}
+
+/** A dark joint line 1 mm off the outer face: vertical (dy > dz) or level. */
+function seamLine(P: K2BPort, side: number, faceX: number, y0: number, y1: number, z0: number, z1: number): void {
+  const vertical = Math.abs(y1 - y0) > Math.abs(z1 - z0);
+  const plane = vertical ? new THREE.PlaneGeometry(0.008, Math.abs(y1 - y0)) : new THREE.PlaneGeometry(Math.abs(z1 - z0), 0.008);
+  plane.rotateY(side * Math.PI / 2);
+  P.add('hullDark', plane, side * (faceX + 0.001), (y0 + y1) / 2, (z0 + z1) / 2);
+}
+
+/**
+ * One armour group: the bow module (raked front, one tier, tall panels) or a two-tier group (the lower tier the outer
+ * face, the upper set back 15 mm on a lit ledge with a shadow line over it), a top cap on it, its tile joints, and a
+ * 2x2 bolt cluster at every tile corner (photos 5, 9, 10): four bolts round each crossing of joints, two along the hem,
+ * the top and the group's ends, one in each outer corner.
+ */
+function armourGroup(P: K2BPort, side: number, front: number, rear: number, bow: boolean): void {
+  const S = K2B_SKIRT;
+  const lowerTop = (): number => S.rowY + 0.004;
+  if (bow) {
+    P.add('hull', tierStock(side, { xo: S.lowerOut, bottom: skirtHem, top: groupTop, bottomEdge: S.hemEdge, topEdge: 0.004 },
+      front, rear, true));
+  } else {
+    P.add('hull', tierStock(side, { xo: S.lowerOut, bottom: skirtHem, top: lowerTop, bottomEdge: S.hemEdge,
+      topEdge: S.ledgeEdge }, front, Math.max(rear, tailZAt(S.rowY - 0.03)), false));
+    P.add('hull', tierStock(side, { xo: S.upperOut, bottom: (z) => Math.max(S.rowY, skirtHem(z)), top: groupTop,
+      bottomEdge: 0.003, topEdge: 0.004 }, front, rear, false));
+  }
+  // the top cap, 5 mm into the tier and the course, overhanging the upper tier; split where the top line breaks
+  const capFront = (bow ? bowFrontZ(groupTop(front)) : front) - S.capInset, capRear = rear + S.capInset;
+  const capStops = [capFront, ...(TOP_BREAK_Z < capFront && TOP_BREAK_Z > capRear ? [TOP_BREAK_Z] : []), capRear];
+  for (let k = 0; k < capStops.length - 1; k++) {
+    const pts: Vec3Tuple[] = [];
+    for (const [z, pull] of [[capStops[k], k === 0 ? S.capEdge : 0], [capStops[k + 1], k === capStops.length - 2 ? S.capEdge : 0]] as const) {
+      const y0 = groupTop(z) - 0.005, y1 = y0 + S.capH, o = S.capOut - pull;
+      for (const [x, y] of [[S.capIn, y0], [o, y0], [o, y1 - S.capEdge], [o - S.capEdge, y1], [S.capIn, y1]]) pts.push([side * x, y, z]);
+    }
+    P.add('hull', convexStock(pts));
+  }
+  // the tier joint: a shadow line on the upper tier just over the lower tier's ledge
+  const frontAtY = (y: number): number => (bow ? bowFrontZ(y) : front);
+  if (!bow) {
+    const rowRear = Math.max(rear, tailZAt(S.rowY - 0.02)) + S.rearBevel, rowFront = front - S.frontBevel;
+    const shadow = new THREE.PlaneGeometry(rowFront - rowRear, 0.014);
+    shadow.rotateY(side * Math.PI / 2);
+    P.add('hullDark', shadow, side * (S.upperOut + 0.001), S.rowY + 0.009, (rowFront + rowRear) / 2);
+  }
+  // tile joints and bolts
+  const faceAt = (y: number): number => (bow || y < S.rowY ? S.lowerOut : S.upperOut);
+  const onFace = (y: number, z: number): boolean => y > skirtHem(z) + 0.035 && y < groupTop(z) - 0.035
+    && z > rear + 0.03 && z < frontAtY(y) - 0.04;
+  const columns: number[] = [];
+  for (let z = rear + S.tile; z < frontAtY(groupTop(front)) - 0.10; z += S.tile) {
+    // the joint line on each tier's face, clipped to the group's outline (the bow module's raked front and chin)
+    const lo = bow ? Math.max(skirtHem(z), bowFrontYAt(z)) : skirtHem(z), hi = groupTop(z);
+    if (hi - lo < 0.12) continue;
+    columns.push(z);
+    if (bow) {
+      seamLine(P, side, S.lowerOut, lo + 0.01, hi - 0.01, z, z);
+    } else {
+      if (S.rowY - lo > 0.06) seamLine(P, side, S.lowerOut, lo + 0.01, S.rowY - 0.004, z, z);
+      seamLine(P, side, S.upperOut, Math.max(S.rowY, lo) + 0.012, hi - 0.01, z, z);
+    }
+  }
+  const rows = (z: number): [number, number, number][] => [        // [y, the up quadrant's y, the down quadrant's y]
+    [skirtHem(z), skirtHem(z) + S.edgeInset, NaN],
+    [S.rowY, S.rowY + S.cluster, S.rowY - S.cluster],
+    [groupTop(z), NaN, groupTop(z) - S.edgeInset],
+  ];
+  const nodes: [number, number, number][] = [                       // [z, the rear quadrant's z, the front quadrant's z]
+    [rear, NaN, rear + S.rearInset],
+    ...columns.map((z): [number, number, number] => [z, z - S.cluster, z + S.cluster]),
+  ];
+  for (const [, zr, zf] of nodes) {
+    for (const bz of [zr, zf]) {
+      if (Number.isNaN(bz)) continue;
+      for (const [, yu, yd] of rows(bz)) {
+        for (const by of [yu, yd]) if (!Number.isNaN(by) && onFace(by, bz)) sideBolt(P, side, faceAt(by), by, bz);
       }
     }
   }
-  P.add('hull', convexStock(pts));
+  // the front end's bolts, a cluster's width behind the joint (the bow module's along its raked front)
+  for (const [, yu, yd] of rows(front)) {
+    for (const by of [yu, yd]) {
+      if (Number.isNaN(by)) continue;
+      const bz = frontAtY(by) - S.frontInset;
+      if (onFace(by, bz)) sideBolt(P, side, faceAt(by), by, bz);
+    }
+  }
 }
 
 /** One upper-course segment (front > rear): chamfered outer top and foot, chamfered vertical ends. */
@@ -138,47 +261,19 @@ function courseSegment(P: K2BPort, side: number, front: number, rear: number): v
   P.add('hull', convexStock(pts));
 }
 
-/** A hex bolt head on the side face at (y, z), 5 mm into it. */
-function sideBolt(P: K2BPort, side: number, faceX: number, y: number, z: number): void {
-  P.add('hullDark', KIT.cylX(0.0145, 0.016, P.q ? 6 : 4), side * (faceX + 0.003), y, z);
-}
-
-/** A dark joint line 1 mm off the outer face: vertical (dy > dz) or level. */
-function seamLine(P: K2BPort, side: number, faceX: number, y0: number, y1: number, z0: number, z1: number): void {
-  const vertical = Math.abs(y1 - y0) > Math.abs(z1 - z0);
-  const plane = vertical ? new THREE.PlaneGeometry(0.008, Math.abs(y1 - y0)) : new THREE.PlaneGeometry(Math.abs(z1 - z0), 0.008);
-  plane.rotateY(side * Math.PI / 2);
-  P.add('hullDark', plane, side * (faceX + 0.001), (y0 + y1) / 2, (z0 + z1) / 2);
-}
-
 export function addK2BSkirtRun(P: K2BPort): void {
   const S = K2B_SKIRT;
   const groups: [number, number, boolean][] = [];
   const ends = [S.rakeZ, ...S.joints, S.rearZ];
   for (let k = 0; k < ends.length - 1; k++) groups.push([ends[k], ends[k + 1], k === 0]);
   for (const side of [-1, 1]) {
-    for (const [front, rear, raked] of groups) {
-      armourGroup(P, side, front, rear, raked);
-      // the tile grid: joints every S.tile from the group's rear joint forward, clipped to the group's outline; a level row
-      // joint; four-bolt clusters where they cross, bolt pairs at the joints' top and foot
-      const frontAt = (y: number): number => (raked ? rakeZAt(y) : front);
-      for (let z = rear + S.tile; z < frontAt(groupTop(front)) - 0.10; z += S.tile) {
-        const lo = Math.max(skirtHem(z), raked ? rakeYAt(z) : -Infinity), hi = groupTop(z);
-        if (hi - lo < 0.12) continue;
-        seamLine(P, side, S.moduleOut, lo + 0.01, hi - 0.01, z, z);
-        if (lo < S.rowY - 0.07) {
-          for (const [dy, dz] of [[0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04]]) sideBolt(P, side, S.moduleOut, S.rowY + dy, z + dz);
-        }
-        for (const dz of [-0.035, 0.035]) {
-          sideBolt(P, side, S.moduleOut, hi - 0.05, z + dz);
-          if (lo === skirtHem(z)) sideBolt(P, side, S.moduleOut, lo + 0.05, z + dz);
-        }
-      }
-      // the row joint, from where it clears the hem (the tail) to where it meets the front
-      const rowRear = Math.max(rear, S.tailZ - (S.rowY - 0.03 - S.hemY) / S.tailRise) + 0.02;
-      const rowFront = (raked ? rakeZAt(S.rowY) : front) - 0.02;
-      if (rowFront - rowRear > 0.2) seamLine(P, side, S.moduleOut, S.rowY, S.rowY, rowFront, rowRear);
+    for (const [front, rear, bow] of groups) armourGroup(P, side, front, rear, bow);
+    // the stern closure: from the tail group's inner face in to the stern's side, under the course, behind the belt
+    const close: Vec3Tuple[] = [];
+    for (const z of [S.closeZ, S.rearZ]) {
+      for (const x of [S.closeIn, S.moduleIn]) close.push([side * x, skirtHem(z) + 0.01, z], [side * x, groupTop(z), z]);
     }
+    P.add('hull', convexStock(close));
     // the upper course, its bolt pairs at the segments' ends, and the top mounting rail along it
     for (let k = 0; k < S.course.length - 1; k++) {
       const front = S.course[k], rear = S.course[k + 1];
@@ -195,11 +290,11 @@ export function addK2BSkirtRun(P: K2BPort): void {
     };
     rail(S.rakeZ + 0.005, TOP_BREAK_Z);                                        // 5 mm into the corner box's back
     rail(TOP_BREAK_Z, S.rearZ);
-    // lifting eyes on the groups' top ledge, their rings turned to the side
-    for (const z of S.eyes) KIT.liftEye(P, 'hullDetail', side * 1.832, groupTop(z) + 0.02, z, Math.PI / 2);
-    // the rubber hem: level under the groups, then up the tail to the plate's end
+    // lifting eyes on the groups' top caps, their rings turned to the side
+    for (const z of S.eyes) KIT.liftEye(P, 'hullDetail', side * 1.855, groupTop(z) - 0.005 + S.capH + 0.015, z, Math.PI / 2);
+    // the rubber hem: level under the groups from the bow module's chin, then up the tail to the plate's end
     const fx = side * (S.fringeIn + S.fringeOut) / 2, fw = S.fringeOut - S.fringeIn, fh = S.hemY + 0.005 - S.fringeY;
-    const levelFront = rakeZAt(S.hemY) - 0.03;
+    const levelFront = bowFrontZ(S.hemY) - 0.03;
     P.add('hullRubber', KIT.box(fw, fh, levelFront - S.tailZ), fx, S.fringeY + fh / 2, (levelFront + S.tailZ) / 2);
     const tailEnd = -3.30, tailLen = Math.hypot(S.tailZ - tailEnd, skirtHem(tailEnd) - S.hemY);
     P.add('hullRubber', KIT.box(fw, fh, tailLen), fx, (S.hemY + skirtHem(tailEnd)) / 2 + 0.005 - fh / 2,
