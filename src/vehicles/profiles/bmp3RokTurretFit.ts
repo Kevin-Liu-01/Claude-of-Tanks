@@ -251,9 +251,7 @@ function tube(a: readonly [number, number, number], b: readonly [number, number,
 function addCommanderSearchlight(P: TankBuilderPort, roofY: number): void {
   const { box, cylX, cylZ, torus, xform, lathe } = KIT;
   const lx = -0.86, lz = -0.33, ly = roofY + 0.31, r = 0.118, fy = ly - 0.155;
-  for (const [z, top] of [[lz, fy], [lz - 0.22, fy - 0.01]] as Array<[number, number]>) {
-    P.add('turretDetail', box(0.07, 0.016, 0.07), lx, roofY + 0.004, z);
-  }
+  for (const z of [lz, lz - 0.22]) P.add('turretDetail', box(0.07, 0.016, 0.07), lx, roofY + 0.004, z);   // foot plates
   P.add('turretDetail', tube([lx, roofY - 0.005, lz], [lx, fy + 0.012, lz], 0.022));
   P.add('turretDetail', tube([lx, roofY - 0.005, lz - 0.22], [lx, fy, lz - 0.01], 0.016));
   // fork: a cross bar and two arms up to the trunnions
