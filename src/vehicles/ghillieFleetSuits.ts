@@ -1067,8 +1067,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
     // r269 polish (the coordinator on the blind critics: "shards past the outline", "right-angled patches", "no thickness",
     // "the bustle wrap"): no garnish past 14 cm outside the bazooka plates (1.662)
-    // round 3 ("cloth hangs outside the track line at the lower corners of the front and rear views"): within 5 cm
-    fieldClearanceM: 0.03, maxHalfWidth: 1.71, hemFloorM: 0.62,
+    // round 3 ("cloth hangs outside the track line at the lower corners of the front and rear views"); round 4 ("jagged
+    // stepped edges stick out past the hull outline"): within 5 cm of the bazooka plates (1.649-1.662)
+    fieldClearanceM: 0.03, maxHalfWidth: 1.70, hemFloorM: 0.62,
+    // round 4: the far tier keeps the dense suits' share of the garnish (christian2, strv121)
+    garnishBudget: { lowShare: 0.45 },
     // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
     // publishes none), 0.3 degrees deeper (0.8 over the stern from 140, where the recoiled extractor runs back over the
     // deck): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach. Under
@@ -1118,15 +1121,19 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         // in swags down the basket's back (the face below)
         laid({
           x0: -1.43, x1: 1.71, z0: -2.63, z1: -2.03, nx: 48, nz: 10, clipToArmour: false, riseLimitM: 0.05,
-          yAt: (x) => 0.719 + 0.060 * (x + 1.405) / 3.088, sagK: 3, tents: [[-0.86, -2.36, 0.04], [0.80, -2.36, 0.05]],
+          yAt: (x) => 0.719 + 0.060 * (x + 1.405) / 3.088, sagK: 6, tents: [[-0.86, -2.36, 0.04], [0.80, -2.36, 0.05]],
           reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 13,
         }),
         // round 3: and over the two side baskets (their tops open, the bars showing), sagging onto their load
         ...[[-1.45, -0.93, -2.10, -0.99, 0.719, 8], [0.93, 1.72, -2.10, -0.63, 0.779, 12]].map(([x0, x1, z0, z1, y, nx], k) => laid({
-          x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.065), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 3,
+          x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.065), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 6,
           reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 71 + k * 6 })),
       ],
-      face: [face({ z: -2.61, x0: -1.43, x1: 1.71, y0: 0.30, y1: 0.80, nx: 32, ny: 6, swagM: 0.06, seed: 59 }),
+      // round 4 ("one flat, boxy sheet"; wanted "the net over a visible basket frame ... so it sags between the rails"):
+      // the back pressed over the basket's eleven uprights and its two rails, dipping 10 cm between them toward the load
+      // (never into it), the bars standing through it as ridges, its garnish close on it (no fringe past the bustle)
+      face: [face({ z: -2.61, x0: -1.43, x1: 1.71, y0: 0.30, y1: 0.80, nx: 32, ny: 6, garnishHugM: 0.04, seed: 59,
+        frame: { ties: Array.from({ length: 11 }, (_, i) => -1.405 + 0.3088 * i), rails: [0.35, 0.75], dipM: 0.10 } }),
         // and down the cheeks' steep fronts below the roof net's edge, either side of the mantlet (the gun's sweep and the
         // smoke dischargers' lines are cut by the builder)
         face({ z: 1.20, zAt: (x) => 1.37 - 0.7 * Math.max(0, -x - 0.4), x0: -1.00, x1: -0.26, y0: 0.32, y1: 0.78, nx: 14, ny: 5,
@@ -1144,23 +1151,33 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [
         laid({ x0: -1.66, x1: 1.66, z0: -3.58, z1: -0.70, nx: 56, nz: 48, y: 1.70, holes: [rect(-0.92, 0.92, -3.23, -2.47)],
-          garnishRiseM: 0.12, seed: 31 }),
-        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 44, nz: 55,
+          garnishRiseM: 0.12, edgeTearP: 0.3, seed: 31 }),
+        // (round 4: on a 6.8 cm grid, its cut edges' steps smaller: "stair-stepped (pixelated) patch edges")
+        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 49, nz: 60,
           yAt: profile([[-0.70, 1.54], [1.65, 1.523], [2.15, 1.393], [2.57, 1.324], [2.73, 1.265], [3.02, 1.141], [3.40, 1.10]]),
-          garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+          garnishRiseM: 0.08, garnishDensity: 0.8, edgeTearP: 0.3, seed: 37 }),
       ],
       // three drapes a side tied along the bazooka plates' top edge under the fender bins (a roll over the bins would
-      // stand in the turret kit's sweep), down to the plates' foot
-      side: [0, 1, 2].flatMap((k) => flanks(-3.20 + k * 2.15, -3.20 + k * 2.15 + 2.05, 1.30, k === 1 ? 0.62 : 0.66, 1.665,
-        41 + 6 * k, { tiedTop: true })),
-      face: [face({ z: 3.42, x0: -1.10, x1: 1.10, y0: 0.88, y1: 1.15, nx: 22, ny: 5, seed: 43 }),
-        face({ z: -3.60, x0: -1.30, x1: 1.30, y0: 1.08, y1: 1.70, nx: 26, ny: 7, seed: 47,
+      // stand in the turret kit's sweep); round 4 ("flat vertical strips with no sag, thickness or hem"): hung in swags
+      // between their ties, each swelling up to 4 cm off the plates (within the suit's half-width), the tied top sagging
+      // between the ties and the hem dropping between them to the running gear's floor (the authored foot raised 15 cm so
+      // the scallops show above it); garnish close on the cloth
+      side: [0, 1, 2].flatMap((k) => flanks(-3.20 + k * 2.15, -3.20 + k * 2.15 + 2.05, 1.30, k === 1 ? 0.53 : 0.57, 1.665,
+        41 + 6 * k, { tiedTop: true, swagM: 0.045, garnishHugM: 0.05 })),
+      // (round 4: the faces' garnish close on them, the stern's hem above the rear plate's foot: no fringe past the hull)
+      face: [face({ z: 3.42, x0: -1.10, x1: 1.10, y0: 0.88, y1: 1.15, nx: 22, ny: 5, garnishHugM: 0.04, seed: 43 }),
+        face({ z: -3.60, x0: -1.30, x1: 1.30, y0: 1.16, y1: 1.70, nx: 26, ny: 7, garnishHugM: 0.04, seed: 47,
           holes: [rect(-1.00, -0.69, 1.18, 1.60), rect(0.69, 1.00, 1.18, 1.60)] })],
     },
     gun: {
       // round 3 (the critics: "flat planar sheets", "a flap near the muzzle that reads as paper", "a thin ragged ribbon
       // past the barrel outline"): the scrim bunched between its bindings to 1.3-1.5 times the barrel's width, its garnish
-      // within that; no loose flap hung under it
+      // within that. Round 4 ("nothing hangs down like the garnish in photo 3"): three bunches of scrim strips and garnish
+      // hung from under the forward length, each three strips of their own lengths, 0.2-0.3 m below the barrel; the last
+      // half metre to the muzzle clear (past the stern's reach: the barrel there never comes over the hull at any yaw)
+      side: [3.97, 4.31, 4.61].flatMap((c, b) => ([[-0.11, 0.06, 0.28], [-0.05, 0.05, 0.35], [0.0, 0.06, 0.31], [0.06, 0.05, 0.24]] as const)
+        .flatMap(([o, w, d], k) => flanks(c + o, c + o + w, -0.06, d - 0.03 * ((b + 2 * k) % 3), 0.13, 61 + 9 * b + 3 * k,
+          { swagM: 0.02, garnishHugM: 0.05, garnishDensity: 8, minPieceTris: 6 }))),
       sleeve: [
         // the canvas mantlet cover ahead of the turret's cheeks (they stand 2-3 cm beside it to 0.38 m), over its crown and
         // flanks round the ranging gun's housing
@@ -1170,10 +1187,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         // past the bins' reach, then to 10 degrees under the flanks, tied tight at its hems; the bore evacuator bare
         { z0: 0.80, z1: 1.12, reachM: 0.20, wrapDeg: 70, gapM: 0.012, bunchM: 0.02, garnishOffM: 0.03, garnishDensity: 3, seed: 51 },
         { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.06, garnishOffM: 0.065, garnishDensity: 3, seed: 52 },
-        // past the evacuator bound right round to 0.4 m short of the muzzle (in four lengths: a sleeve's garnish clumps
-        // stand a clump apart along it, so each length takes its own)
-        ...[3.76, 4.03, 4.30, 4.57].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, bunchM: 0.065,
-          garnishOffM: 0.075, garnishDensity: 5, seed: 53 + k * 4 })),
+        // past the evacuator bound right round to 0.4 m short of the muzzle, in one length (round 4: its four lengths' joins
+        // read as rigid steps)
+        { z0: 3.76, z1: 4.84, reachM: 0.20, gapM: 0.012, bunchM: 0.07, garnishOffM: 0.08, garnishDensity: 5, seed: 53 },
         // the ranging gun's barrel bunched in a strip of it, its flash hider bare
         { z0: 0.68, z1: 1.48, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 150, gapM: 0.006, bunchM: 0.012, garnishOffM: 0, seed: 57 },
       ],
