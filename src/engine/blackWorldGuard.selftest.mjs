@@ -766,6 +766,61 @@ for (const [expected, healedBy, inject] of proofs) {
   h.guard.dispose();
 }
 
+// ---- (2026-11-02 audit R3) H4 through the recovery machine: the guard waits on a typed outcome, not on a 15 s timer ----
+{
+  const focus = { value: true };
+  const h = createWorld({ samples: 4, focused: () => focus.value });
+  const requests = [];
+  h.renderer.userData = { requestContextRestore: () => new Promise((resolve) => requests.push(resolve)) };
+  h.frames(30);
+  for (let i = 0; i < 600 && !requests.length; i++) h.frames(1, () => { h.gpu.glMasked = true; });
+  assert.equal(requests.length, 1, 'H4 asks the recovery machine for the restore');
+  assert.equal(h.gpu.loseCalls ?? 0, 0, 'and no longer loses the context behind its back');
+  const [receipt] = h.guard.receipts;
+  assert.equal(receipt.steps.at(-1).step, 'H4');
+  // the page loses focus (no verdicts either way), and the recovery answers failed
+  focus.value = false;
+  requests[0]('failed');
+  await Promise.resolve(); await Promise.resolve();
+  h.frames(180);
+  assert.equal(receipt.endedBy, 'ladder', 'a failed restoration ends the wait at once: the unhealed ladder reports');
+  assert.equal(h.reports.length, 1, 'inside 3 s, not after the 15 s timer');
+  h.guard.dispose();
+}
+{
+  const h = createWorld({ samples: 4 });
+  const requests = [];
+  h.renderer.userData = { requestContextRestore: () => new Promise((resolve) => requests.push(resolve)) };
+  h.frames(30);
+  for (let i = 0; i < 600 && !requests.length; i++) h.frames(1, () => { h.gpu.glMasked = true; });
+  requests[0]('ready');
+  await Promise.resolve(); await Promise.resolve();
+  h.gpu.glMasked = false; // the restored context dropped the fault
+  h.frames(60);
+  const [receipt] = h.guard.receipts;
+  assert.equal(receipt.closed, true);
+  assert.equal(receipt.healedBy, 'H4', 'the first verdict after a ready restore credits H4');
+  h.guard.dispose();
+}
+
+// ---- (2026-11-02 audit R3) H1's state is the reveal's: an owner that changes it on purpose holds an exemption ----
+{
+  const h = createWorld();
+  h.frames(30);
+  const hold = h.guard.exempt('watch-presentation');
+  h.frames(120, () => h.camera.layers.set(5));
+  assert.equal(h.guard.receipts.length, 0, 'an exempted presentation is never judged');
+  assert.equal(h.camera.layers.mask, 1 << 5, 'H1 leaves the exempt owner\'s camera mask alone');
+  hold.release();
+  hold.release();
+  h.frames(60);
+  const [receipt] = h.guard.receipts;
+  assert.equal(receipt?.class, 'camera-layer-mask', 'once released, the reveal owns the state again');
+  assert.equal(receipt.healedBy, 'H1');
+  assert.equal(h.camera.layers.mask & 1, 1);
+  h.guard.dispose();
+}
+
 console.log('blackWorldGuard.selftest: detection within two probes, the right rung heals each injected class inside 30 frames, '
   + 'enumerated receipts and one record per incident, gating, the ladder, resume policy, no guard allocation in steady 600-frame windows; '
   + 'round 2: downstream-black, self-cleared blacks uncredited, no preset ratchet, open incidents reported on leave/pagehide, '

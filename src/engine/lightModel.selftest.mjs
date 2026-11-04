@@ -340,8 +340,9 @@ const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8')
 assert.match(lighting, /fill\.intensity = model\.mode === 'physical' \? 0 : \(opts\.fillIntensity \?\? FILL_INTENSITY\);/, 'the grounded rig drives the fill to zero');
 assert.doesNotMatch(lighting, /fill\.visible = false/, 'without leaving the light signature (no program recompiles between rigs)');
 assert.match(lighting, /scene\.userData\.lightModel = model;/, 'the rig publishes the model the output pass reads');
-assert.match(lighting, /scene\.userData\.lightEnclosed = farCascadeDormant;/, 'the rig publishes the enclosed presentation');
-assert.match(lighting, /const physical = physicalRig && !farCascadeDormant/, 'the Garage keeps the authored rig');
+// (2026-11-02 audit R3/R4) the enclosure is its own state, apart from the far-cascade sleep (a perf latch)
+assert.match(lighting, /scene\.userData\.lightEnclosed = enclosedPresentation;/, 'the rig publishes the enclosed presentation');
+assert.match(lighting, /const physical = physicalRig && !enclosedPresentation/, 'the Garage keeps the authored rig');
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,2000}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*\}[\s\S]{0,800}?#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');

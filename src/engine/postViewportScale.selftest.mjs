@@ -12,6 +12,7 @@ import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
 import { baseDynamicScale, carriedDynamicScale, dynamicScaleFloor, internalPixelRatio, RCAS_MIN_SCALE } from './renderScalePolicy.ts';
 import { MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs } from './frameLoopScheduler.ts';
 import { PRESETS } from './quality.ts';
+import { createNamedHolds } from './namedHolds.ts';
 
 // Source-execute the production owner, preset-scaled pass wrappers, temporal
 // invalidator and reset entrypoints. Three's actual composer and render targets
@@ -33,6 +34,8 @@ const aoHistory = sourceBetween('    let emaLastMs = ', '\n    const prevViewPro
 const aoSize = sourceBetween('    const origSetSize = gtao.setSize.bind(gtao);', '\n    gtao.render = function');
 const bloomSize = sourceBetween('    const origSetSize = bloom.setSize.bind(bloom);', '\n  }\n  composer.addPass(bloom)');
 const presetChange = sourceBetween('  onPresetChange((p) => {', '\n\n  return {');
+// (2026-11-02 audit R3) the governor's suspension is the production named-hold owner
+const adaptiveHoldsDecl = sourceBetween('  const adaptiveHolds = createNamedHolds', '\n  });') + '\n  });';
 const samplesForPreset = sourceBetween('  const samplesForPreset = ', '\n  let msaaSamples');
 const targetMs = source.match(/const DYN_TARGET_MS = ([^;]+);/)?.[0];
 assert.ok(targetMs, 'production cadence target exists');
@@ -41,7 +44,8 @@ const createSizing = new Function(stripTypeScriptTypes(`
 function createSizing(ports) {
   const { renderer, composer, gtao, bloom, sceneAA, aerial, upscaler, size, THREE,
     AdaptiveQualityPolicy, baseDynamicScale, carriedDynamicScale, internalPixelRatio, dynamicScaleFloor, RCAS_MIN_SCALE,
-    MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat } = ports;
+    MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat,
+    createNamedHolds } = ports;
   let preset = initialPreset;
   const maxSamples = 4;
   ${samplesForPreset}
@@ -57,6 +61,7 @@ function createSizing(ports) {
   // 2026-10-02: the governor's sampled GPU time (gpuFrameTimer.ts) — a reset clears its window; no GPU in this receipt
   const gpuFrameTimer = { reset() {} };
   let quality = 'high', adaptiveSuspended = false, carriedRasterRatio = null;
+  ${adaptiveHoldsDecl}
   let dynPin = null, dynClock = 17, dynEma = 19, dynRingN = 4, dynRingI = 3;
   let dynWinFrames = 6, dynWinMisses = 2, dynBudgetMs = 3, dynBestCadenceMs = 4, dynLastDecision = 1;
   ${targetMs}
@@ -73,6 +78,7 @@ function createSizing(ports) {
   const onPresetChange = fn => { onPreset = fn; };
   const applyAoSampling = () => {};
   const publishAAState = () => {};
+  const applyTemporalAA = () => {}; // (2026-11-02 audit R4) the preset gates temporal AA through its owner (stubbed here)
   const resolveLightFx = () => {}; // round 69: the light-effect levers re-resolve on a preset change (stubbed like the AA state)
   ${presetChange}
   // (local-fps-265) the governor's own tier change: the raster it stood at rides the switch (post.ts applyAdaptiveQualityAction)
@@ -126,7 +132,8 @@ function fixture(initialPreset = PRESETS.high, scale = 1, ratio = 1, { productio
   const emaMat = { uniforms: { uTexel: { value: new THREE.Vector2() } } };
   const owner = createSizing({ renderer, composer, gtao, bloom, sceneAA, aerial, upscaler,
     size, THREE, AdaptiveQualityPolicy, baseDynamicScale, carriedDynamicScale, internalPixelRatio, dynamicScaleFloor,
-    RCAS_MIN_SCALE, MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat });
+    RCAS_MIN_SCALE, MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs, initialPreset, scale, emaPrev, emaCur, emaMat,
+    createNamedHolds });
   const passes = [sceneAA, aerial, gtao, lateFx, bloom];
   for (const [index, pass] of passes.entries()) {
     const original = pass.setSize;

@@ -1,4 +1,11 @@
 import type * as THREE from 'three';
+import { noteFieldWrite, noteTextureRetired } from './fieldWrites.ts';
+
+/** (2026-11-02 audit R4) every write of scene.environment is counted, so a holder across awaits (the watchdog) can tell. */
+function setEnvironment(scene: THREE.Scene, texture: THREE.Texture | null): void {
+  scene.environment = texture;
+  noteFieldWrite(scene, 'environment');
+}
 
 /** The two validated procedural skies cover authored day/night returns. */
 const RETAINED_ENVIRONMENTS = 2;
@@ -20,7 +27,8 @@ export class SkyEnvironmentCache {
 
   private readonly disposed = (event: { target: THREE.WebGLRenderTarget }): void => {
     this.forget(event.target);
-    if (this.scene.environment === event.target.texture) this.scene.environment = null;
+    noteTextureRetired(event.target.texture);
+    if (this.scene.environment === event.target.texture) setEnvironment(this.scene, null);
   };
 
   private readonly textureDisposed = (event: { target: THREE.Texture }): void => {
@@ -38,7 +46,8 @@ export class SkyEnvironmentCache {
   private release(target: THREE.WebGLRenderTarget): void {
     if (!this.owned.has(target)) return;
     this.forget(target);
-    if (this.scene.environment === target.texture) this.scene.environment = null;
+    noteTextureRetired(target.texture);
+    if (this.scene.environment === target.texture) setEnvironment(this.scene, null);
     target.dispose();
   }
 
@@ -101,7 +110,7 @@ export class SkyEnvironmentCache {
     if (this.isCurrent()) {
       const previousDisposed = previousActive?.texture === previousEnvironment
         && !this.owned.has(previousActive);
-      this.scene.environment = previousDisposed ? null : previousEnvironment;
+      setEnvironment(this.scene, previousDisposed ? null : previousEnvironment);
       this.scene.environmentIntensity = previousIntensity;
       this.active = previousActive && this.owned.has(previousActive) ? previousActive : null;
     } else {
@@ -130,7 +139,7 @@ export class SkyEnvironmentCache {
         target.texture.addEventListener('dispose', this.textureDisposed);
       }
       if (!this.isCurrent()) throw new Error('Sky environment bake outlived its graphics context');
-      this.scene.environment = target.texture;
+      setEnvironment(this.scene, target.texture);
       this.scene.environmentIntensity = intensity;
       if (!validate()) {
         this.release(target);

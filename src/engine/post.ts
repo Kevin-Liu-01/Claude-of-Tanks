@@ -117,6 +117,19 @@ import {
 } from './structureGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
+import { createNamedHolds, type NamedHold } from './namedHolds.ts';
+
+/**
+ * (2026-11-02 audit R3) who holds the adaptive governor off. The governor measures only while none does:
+ * - 'loading': the covered loading phase (the Garage's battle start, the solo and network loads, the Garage return
+ *   releases it); `setAdaptiveSuspended` is this latch, and QA probes that freeze the governor share it as before;
+ * - 'context-lost': a lost WebGL context, until its restore completes;
+ * - 'studio-film': a Studio film or still owns every frame.
+ * A restore during a covered load releases only its own hold, so loading frames still never govern.
+ */
+export type AdaptiveHoldReason = 'loading' | 'context-lost' | 'studio-film';
+/** (2026-11-02 audit R4) who holds temporal AA off: a Studio film's jittered accumulation replaces it. */
+export type TemporalAaHoldReason = 'studio-film';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
 const hazeTermsScratch = { x: 0, y: 0 };
 
@@ -178,6 +191,11 @@ export interface PostRuntime {
   /** Temporal anti-aliasing (2026-09-12); enabled per quality preset. */
   taa: TemporalAAPass;
   readonly taaEnabled: boolean;
+  /**
+   * (2026-11-02 audit R4) hold temporal AA (and the upscaler's temporal floor) off; the pass follows the preset again when
+   * the last hold releases. The preset listener is the pass's one owner: nobody snapshots and restores `taa.enabled`.
+   */
+  holdTemporalAA(reason: TemporalAaHoldReason): NamedHold<TemporalAaHoldReason>;
   upscaler: FsrUpscalePass;
   sceneAA: SceneAAPass;
   lateFx: LateFxPass;
@@ -197,7 +215,16 @@ export interface PostRuntime {
   pinDynScale(value: number | null): void;
   setQuality(level: 'high' | 'low'): void;
   resetPerfTrims(): void;
+  /** The covered loading phase's governor hold (the 'loading' latch of {@link AdaptiveHoldReason}). */
   setAdaptiveSuspended(suspended: boolean): void;
+  /** Latch one named governor hold (one slot per reason). */
+  setAdaptiveHold(reason: AdaptiveHoldReason, held: boolean): void;
+  /** A counted governor hold; the handle releases once. */
+  holdAdaptive(reason: AdaptiveHoldReason): NamedHold<AdaptiveHoldReason>;
+  /** True while any governor hold stands. */
+  readonly adaptiveSuspended: boolean;
+  /** The reasons holding the governor now (telemetry). */
+  readonly adaptiveHoldReasons: readonly AdaptiveHoldReason[];
   /** 2026-10-01: the battlefield's ground height (world x, z → y) — the base of the aerial haze layer. */
   setGroundHeightSource(source: ((x: number, z: number) => number) | null): void;
   resetAdaptiveResolution(): void;
@@ -2212,9 +2239,11 @@ export function createPost(
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
   let taaEnabled = !!preset.taa;
+  // (2026-11-02 audit R4) a named hold keeps the pass off (holdTemporalAA); the published state is the effective one
+  let taaHeld = false;
   const publishAAState = (): void => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = `${taaEnabled ? 'taa+' : ''}smaa-high+fsr1`;
+    renderer.domElement.dataset.postAa = `${taaEnabled && !taaHeld ? 'taa+' : ''}smaa-high+fsr1`;
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve
@@ -2647,6 +2676,18 @@ export function createPost(
   upscaler.temporalAccumulation = taaEnabled;
   upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
   composer.addPass(upscaler);
+  /** The temporal AA's effective state: the preset's, unless a named hold stands. */
+  function applyTemporalAA(): void {
+    const on = taaEnabled && !taaHeld;
+    taa.enabled = on;
+    taa.resetHistory();
+    upscaler.temporalAccumulation = on;
+    publishAAState();
+  }
+  const taaHolds = createNamedHolds<TemporalAaHoldReason>((held) => {
+    taaHeld = held;
+    applyTemporalAA();
+  });
   {
     // the governor's GPU sample closes with the frame's last pass (dynGovern opens it)
     const renderUpscaler = upscaler.render.bind(upscaler);
@@ -2775,6 +2816,13 @@ export function createPost(
   // an opaque loading screen. Those deltas are not playable GPU performance
   // and must never demote the quality used after the reveal.
   let adaptiveSuspended = false;
+  // (2026-11-02 audit R3) the suspension is derived from named holds (AdaptiveHoldReason): each owner releases only
+  // its own, and the governor resets only when the derived switch flips
+  const adaptiveHolds = createNamedHolds<AdaptiveHoldReason>((held) => {
+    adaptiveSuspended = held;
+    renderer.domElement.dataset.adaptiveSuspended = String(held);
+    resetGovernorState();
+  });
   // (local-fps-265) the raster the governor's own tier change carries into the next preset, set only while it reports
   // the change (the preset listeners, this module's included, run inside that call)
   let carriedRasterRatio: number | null = null;
@@ -3243,9 +3291,7 @@ export function createPost(
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
     taaEnabled = !!preset.taa;
-    taa.enabled = taaEnabled;
-    taa.resetHistory();
-    upscaler.temporalAccumulation = taaEnabled;
+    applyTemporalAA();
     upscaler.rcasMinScale = preset.rcasMinScale ?? RCAS_MIN_SCALE;
     publishAAState();
     resolveLightFx();
@@ -3332,6 +3378,7 @@ export function createPost(
     get msaaSamples() { return sceneTarget.samples; },
     taa,
     get taaEnabled() { return taaEnabled; },
+    holdTemporalAA(reason) { return taaHolds.acquire(reason); },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */
@@ -3390,12 +3437,20 @@ export function createPost(
     },
 
     setAdaptiveSuspended(suspended) {
-      const next = !!suspended;
-      if (next === adaptiveSuspended) return;
-      adaptiveSuspended = next;
-      renderer.domElement.dataset.adaptiveSuspended = String(next);
-      resetGovernorState();
+      adaptiveHolds.set('loading', !!suspended);
     },
+
+    setAdaptiveHold(reason, held) {
+      adaptiveHolds.set(reason, !!held);
+    },
+
+    holdAdaptive(reason) {
+      return adaptiveHolds.acquire(reason);
+    },
+
+    get adaptiveSuspended() { return adaptiveSuspended; },
+
+    get adaptiveHoldReasons() { return adaptiveHolds.reasons(); },
 
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */

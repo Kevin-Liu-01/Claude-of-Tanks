@@ -87,11 +87,19 @@ export function createViewportRuntime({
   const tiny = (size: { width: number; height: number }): boolean =>
     !(size.width >= MIN_VIEWPORT_CSS_PX && size.height >= MIN_VIEWPORT_CSS_PX);
 
+  // (2026-11-02 audit R4) one test for "the layout is not ready" (the container or the canvas's parent too small),
+  // shared by apply() and the recovery's own check: the recovery checked the container only, so a tiny parent under a
+  // normal container rebuilt the ResizeObserver and the interval on every 250 ms tick (stop, apply, start again)
+  const layoutTiny = (): boolean => {
+    if (tiny(dimensions())) return true;
+    const parent = renderer.domElement.parentElement;
+    return !!parent && tiny({ width: parent.clientWidth || win.innerWidth, height: parent.clientHeight || win.innerHeight });
+  };
+
   const apply = () => {
     if (disposed) return;
     const { width, height } = dimensions();
-    const parent = renderer.domElement.parentElement;
-    if (tiny({ width, height }) || (parent && tiny({ width: parent.clientWidth || win.innerWidth, height: parent.clientHeight || win.innerHeight }))) {
+    if (layoutTiny()) {
       startRecovery();
       return;
     }
@@ -158,7 +166,7 @@ export function createViewportRuntime({
   };
 
   const tryRecover = () => {
-    if (disposed || tiny(dimensions())) return false;
+    if (disposed || layoutTiny()) return false;
     stopRecovery();
     apply();
     return !observer && interval === null;

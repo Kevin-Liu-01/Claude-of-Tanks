@@ -1239,6 +1239,11 @@ export function createLighting(
   // once before dormancy; otherwise strict WebGL2 drivers bind a color
   // fallback to sampler2DShadow and reject every affected scene draw.
   let farCascadeDormant = false;
+  // (2026-11-02 audit R3/R4) the presentation is enclosed (the Garage's sealed bay): the authored rig instead of the
+  // grounded light model, scene.userData.lightEnclosed and the enclosure listeners read this, never the far-cascade sleep.
+  // The far cascades sleep because the bay is enclosed (setEnclosedPresentation sets both), so a change to the sleep's
+  // perf policy can no longer change the lighting.
+  let enclosedPresentation = false;
   // A settled enclosed presentation can reuse its completed shadow maps
   // byte-for-byte. This is stronger than far-cascade dormancy: no caster,
   // camera, or light moved, so even the near pair would only redraw the same
@@ -1517,10 +1522,23 @@ export function createLighting(
   // when a battle leaves the Garage with a full-dome bake installed
   const enclosureListeners = new Set<(enclosed: boolean) => void>();
   let publishedEnclosed: boolean | null = null;
+  function setEnclosedPresentation(on: boolean): void {
+    const next = !!on;
+    const enclosureChanged = enclosedPresentation !== next;
+    enclosedPresentation = next;
+    // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
+    if (enclosureChanged && lastSunPreset) applyRig(lastSunPreset);
+    // the perf policy: the enclosure hides the 100-700 m bands, so their redraws sleep inside it
+    const sleep = next;
+    if (farCascadeDormant === sleep) return;
+    farCascadeDormant = sleep;
+    if (sleep) applyFarCascadeDormancy();
+    else forceAllCascades();
+  }
   function applyRig(opts: SunPreset): void {
     const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
     const irr = atmo?.irradianceRaw;
-    const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
+    const physical = physicalRig && !enclosedPresentation && !!atmo?.active && !!atmo.params && !!irr;
     const authoredSun = authoredSunOf(opts);
     // (2026-10-05: a deck with gaps casts its cells through the cloud shade map wherever the volumetric layer draws)
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
@@ -1528,11 +1546,11 @@ export function createLighting(
     rigModel = model;
     applyDeckPenumbra(model); // (the Whiteout round: a closed deck's diffuse shadows)
     scene.userData.lightModel = model;
-    scene.userData.lightEnclosed = farCascadeDormant;
+    scene.userData.lightEnclosed = enclosedPresentation;
     scene.environmentIntensity = model.envIntensity;
-    if (publishedEnclosed !== farCascadeDormant) {
-      publishedEnclosed = farCascadeDormant;
-      for (const listener of enclosureListeners) listener(farCascadeDormant);
+    if (publishedEnclosed !== enclosedPresentation) {
+      publishedEnclosed = enclosedPresentation;
+      for (const listener of enclosureListeners) listener(enclosedPresentation);
     }
     const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
     const colorHex = opts.sunColorHex ?? SUN_COLOR;
@@ -1663,13 +1681,15 @@ export function createLighting(
      * exactly the active graphics preset.
      */
     setFarCascadeDormant(on: boolean): void {
-      const next = !!on;
-      if (farCascadeDormant === next) return;
-      farCascadeDormant = next;
-      // 2026-10-01: an enclosed presentation keeps the authored rig; leaving it restores the grounded model
-      if (lastSunPreset) applyRig(lastSunPreset);
-      if (next) applyFarCascadeDormancy();
-      else forceAllCascades();
+      setEnclosedPresentation(on);
+    },
+
+    /**
+     * (2026-11-02 audit R3/R4) enter or leave the enclosed presentation (the Garage): the light model keeps the authored
+     * rig inside, and the far cascades sleep there (setFarCascadeDormant is this call's older name).
+     */
+    setEnclosedPresentation(on: boolean): void {
+      setEnclosedPresentation(on);
     },
 
     /**
@@ -1969,6 +1989,7 @@ export function createLighting(
         scheduledMask: lastScheduledMask,
         fitChangedMask: lastFitChangedMask,
         farCascadeDormancyRequested: farCascadeDormant,
+        enclosedPresentation,
         staticPresentationDormant,
         farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         staticCache: staticShadowCache?.telemetry() ?? null,

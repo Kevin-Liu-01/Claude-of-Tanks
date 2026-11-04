@@ -958,7 +958,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
+    // 2026-11-02 audit R3: the preset broadcast's one owner (isolated, never nested) and governor steps under a recovery cap
+    'src/engine/qualityBroadcast.selftest.mjs',
     'src/engine/temporalAA.selftest.mjs',
+    // 2026-11-02 audit R4: one temporal-AA owner; a Studio film holds it off and restores nothing stale
+    'src/engine/temporalAaHolds.selftest.mjs',
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',
@@ -970,6 +974,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/lensFlare.selftest.mjs',
     'src/engine/cinemaPost.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
+    // 2026-11-02 audit R3: the governor's suspension as named holds (a restore mid-load, a film across a load release)
+    'src/engine/adaptiveHolds.selftest.mjs',
+    // 2026-11-02 audit R4: the governor's tier-down warmup is each workload's, measured from its reset
+    'src/engine/governorWarmup.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
     'src/engine/sceneSourcePass.selftest.mjs',
@@ -979,6 +987,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: a tiny parent waits in one first-layout recovery instead of rebuilding it every 250 ms
+    'src/engine/viewportRecovery.selftest.mjs',
     // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
     // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
     // before every yield, and the repro harness's summary arithmetic
@@ -1265,11 +1275,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/deploymentShadowWarm.selftest.mjs',
+    // 2026-11-02 audit R4: named castShadow holds (the covered warm and an articulated batch give back only their own)
+    'src/engine/castShadowHolds.selftest.mjs',
     'src/engine/deploymentUploadPrograms.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
     'src/engine/capabilityGate.selftest.mjs',
     'src/engine/capabilityGateCache.selftest.mjs',
+    // 2026-11-02 audit R3: a worker refusal seen before confirm() is this boot's answer only (no 14-day record)
+    'src/engine/capabilityGateRefusal.selftest.mjs',
     'src/engine/garageGpuWarmRuntime.selftest.mjs',
+    // 2026-11-02 audit R4: an abandoned Garage restore never re-freezes the cascades; the enclosure apart from the far sleep
+    'src/engine/shadowLatchOwners.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
@@ -1436,6 +1452,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
+    // 2026-11-02 audit R3: one cloud install in flight, each caller its own fate; the noise worker retired after the fallback
+    'src/engine/sharedInstall.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
     // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
@@ -1449,6 +1467,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
     'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-11-02 audit R3: a restored context re-bakes the GPU-only noise volumes; a layer disposed mid-link bakes nothing
+    'src/engine/volumetricCloudsLifetime.selftest.mjs',
     // 2026-10-13 (the owner: "no more of the cloud type depicted in fjord"): broken-stratocumulus banned from every map, time
     // of day, weather variant, Studio plan, Garage sky and phone deck; fjord, polders and copper_mesa on fair-weather cumulus
     'src/engine/cloudsBan.selftest.mjs',
@@ -1471,6 +1491,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
     'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-11-02 audit R3: after the worker fails, its unanswered bakes and every later one run on the main thread
+    'src/engine/structureGroundOcclusionFallback.selftest.mjs',
     // 2026-10-17 (the SKY lane, 227 SKY-03): a thin deck's aureole — the solids' soft shadow under Whiteout's stratus
     'src/engine/structureAureole.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
@@ -1486,8 +1508,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
     'src/engine/contextResourceLifetime.selftest.mjs',
+    // 2026-11-02 audit R3: one restoration at a time (aborted by a newer loss), the loss counted first, a typed outcome
+    'src/engine/contextRestoreOwner.selftest.mjs',
     'src/engine/aerialDetail.selftest.mjs',
     'src/engine/deviceDiag.selftest.mjs',
+    // 2026-11-02 audit R4: the rescue ladder reverts only its own writes (a newer owner's null stands, no retired texture)
+    'src/engine/watchdogStageOwners.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
     'src/engine/sceneProbeTarget.selftest.mjs',

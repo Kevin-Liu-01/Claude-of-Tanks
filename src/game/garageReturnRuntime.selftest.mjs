@@ -415,7 +415,7 @@ assert.match(mainSource, /const garageReturn = createGarageReturnAccess(?:<[^>]+
 assert.doesNotMatch(mainSource, /import \{ createGarageReturnRuntime \}/,
   'Garage return implementation must remain outside the boot-critical graph');
 
-const contextRestoreBody = mainSource.match(/async onRestored\(\) \{([\s\S]*?)\n  \},\n\};/)?.[1];
+const contextRestoreBody = mainSource.match(/async onRestored\((?:signal: AbortSignal)?\) \{([\s\S]*?)\n  \},\n\};/)?.[1];
 assert.ok(contextRestoreBody, 'exercise the actual production context-restored adapter');
 function contextRecoveryFixture(fixture, body = contextRestoreBody) {
   let lost = false;
@@ -433,7 +433,7 @@ function contextRecoveryFixture(fixture, body = contextRestoreBody) {
     const getDeviceTier = () => 'desktop';
     const nextFrame = async () => {};
     const viewport = { apply() {} };
-    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, render() { ports.assertShadows('confirming the restored frame'); ports.assertEnvironment(); } };
+    const post = { resetAdaptiveResolution() {}, setAdaptiveSuspended() {}, setAdaptiveHold() {}, render() { ports.assertShadows('confirming the restored frame'); ports.assertEnvironment(); } };
     const sky = { bakeEnvironment() { ports.rebuildEnvironment(); } };
     const applyGraphicsRecovery = () => ports.assertShadows('graphics quality recovery');
     const pedestal = { trim() {} };
@@ -442,7 +442,7 @@ function contextRecoveryFixture(fixture, body = contextRestoreBody) {
     const rearmRafAfterContext = ports.rearm;
     let graphicsContextLost = true;
     let garagePresentationDirty = true;
-    return { async restore() { ${body} },
+    return { async restore(signal = new AbortController().signal) { ${body} },
       get blocked() { return graphicsContextLost; },
       get dirty() { return garagePresentationDirty; } };
   `)({ renderer, game: fixture.game,

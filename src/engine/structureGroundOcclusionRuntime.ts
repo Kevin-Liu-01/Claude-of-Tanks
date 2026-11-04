@@ -101,7 +101,9 @@ export function createStructureGroundOcclusion(
   // tree or a kerb that breaks re-bakes nothing
   const parts = scale > 0 ? records.map(packRecordOccluders) : [];
   let ready = false, disposed = false, instant = false, fade = 0, pollT = 0, nextId = 1;
-  const inflight = new Map<number, true>();
+  // (2026-11-02 audit R3) each posted bake by id: its kind and rect (null = the full bake), so a reply names its own
+  // bake (no positional "id 1 is the full one") and a failed worker's unanswered bakes run again on the main thread
+  const inflight = new Map<number, { aureole: boolean; rect: SgoRect | null; sun: number[] | null }>();
   // (227) the aureole: its raster (made on the first request), the sun its landed bake is for, the sun of the full bake in
   // flight, its fade-in, and the promise a capture waits on while a full bake is in flight
   let aur: SgoRaster | null = null;
@@ -112,6 +114,9 @@ export function createStructureGroundOcclusion(
   const readyPromise = new Promise<boolean>((resolve) => { resolveReady = resolve; });
   const worker = scale > 0 ? (options.makeWorker === null ? null : (options.makeWorker ?? defaultWorker)()) : null;
   stats.worker = !!worker;
+  // (2026-11-02 audit R3) false once the worker failed: every later bake takes the main-thread path (a terminated worker
+  // drops what it is sent, so region re-bakes under rubble and later aureole bakes were lost, and a capture's wait hung)
+  let workerAlive = !!worker;
   // (229) the ground under the aureole's raster, sampled in idle slices from the start; the aureole's bakes wait for it
   let ground: AureoleGround | null = null;
   const groundWaits: (() => void)[] = [];
@@ -156,9 +161,9 @@ export function createStructureGroundOcclusion(
     if (awaitGround(() => requestAur(rect, sun))) return;
     const packed = packOccluders(records);
     const radius = aureoleRadius();
-    if (worker) {
+    if (worker && workerAlive) {
       const id = nextId++;
-      inflight.set(id, true);
+      inflight.set(id, { aureole: true, rect, sun });
       worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius, ground }, [packed.buffer as ArrayBuffer]);
       return;
     }
@@ -187,9 +192,9 @@ export function createStructureGroundOcclusion(
   function request(rect: SgoRect | null): void {
     if (disposed || scale <= 0) return;
     const packed = packOccluders(records, parts);
-    if (worker) {
+    if (worker && workerAlive) {
       const id = nextId++;
-      inflight.set(id, true);
+      inflight.set(id, { aureole: false, rect, sun: null });
       worker.postMessage({ id, packed, rect }, [packed.buffer as ArrayBuffer]);
       return;
     }
@@ -208,9 +213,10 @@ export function createStructureGroundOcclusion(
   if (worker) {
     worker.onmessage = (event: MessageEvent) => {
       const msg = event.data as { id: number; kind?: string; rg: Uint8Array; rect: SgoRect; parts: number; ms: number; full?: boolean; sun?: number[] };
+      const posted = inflight.get(msg.id);
       inflight.delete(msg.id);
       if (msg.kind === 'aureole') { landAureole(msg.rect, msg.rg, !!msg.full, msg.sun ?? [0, 1, 0], msg.ms); return; }
-      const first = msg.id === 1;
+      const first = posted ? posted.rect === null : msg.id === 1;
       stats.bakeMs += msg.ms;
       if (first) stats.parts = msg.parts; else stats.rebakes++;
       land(msg.rect, msg.rg, first);
@@ -218,8 +224,17 @@ export function createStructureGroundOcclusion(
     };
     worker.onerror = () => {
       // a failed worker: bake the rest on the main thread
+      if (!workerAlive) return;
+      workerAlive = false;
       try { worker.terminate(); } catch { /* gone */ }
       stats.worker = false;
+      // the region bakes it never answered, again on the main thread (the full bakes follow below)
+      const lost = [...inflight.values()];
+      inflight.clear();
+      for (const bake of lost) {
+        if (!bake.rect) continue;
+        if (bake.aureole) { if (bake.sun) requestAur(bake.rect, bake.sun); } else request(bake.rect);
+      }
       if (!ready) {
         const result = bakeStructureGroundOcclusion(packOccluders(records, parts), null);
         stats.bakeMs += result.ms; stats.parts = result.parts;
