@@ -8,7 +8,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, panel, openGunTube, hullStation, optic } from './easternSourceKit.ts';
-import { addK21Mantlet, addK21Turret } from './k21Turret.ts';
+import { addK21Mantlet, addK21Turret, K21_HATCHES } from './k21Turret.ts';
 import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
@@ -440,10 +440,12 @@ function addK21Launcher(P: TankBuilderPort): void {
 function buildK21Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(.93, 1.00, .15, P.q ? 36 : 20), 0, .045, 0);
     addK21Turret(P);
-    for (const [x, z] of [[-.49, -.82], [.43, -1.00]]) {
-        panel(P, 'turret', x, 2.631, z, .64, .62, .050, .10);
-        for (const d of [-.19, .19])
-            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, 2.669, z - .295);
+    // The two crew hatches as the source and photo 4 show them: round covers on a low ring, hinged at the rear.
+    for (const [x, z] of K21_HATCHES) {
+        equipment(P, 'turret', 'Detail', cylY(.335, .345, .020, P.q ? 32 : 18), x, 2.615, z);
+        equipment(P, 'turret', 'Detail', cylY(.300, .310, .035, P.q ? 32 : 18), x, 2.6385, z);
+        for (const d of [-.12, .12])
+            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, 2.645, z - .27);
     }
     // Source sight envelopes are asymmetric, with a sloped left hood and a
     // rounded right optical head. Both sit on their own finite roof mounts.

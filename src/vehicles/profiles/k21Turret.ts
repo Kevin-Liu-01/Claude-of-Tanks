@@ -31,6 +31,8 @@ export const K21_TURRET = Object.freeze({
 });
 
 const T = K21_TURRET;
+/** The crew hatches (source Object_22's two round covers, photo 4): centre x, z and the outboard side. */
+export const K21_HATCHES: readonly (readonly [number, number, -1 | 1])[] = [[-.555, -.905, -1], [.555, -.905, 1]];
 const BEVEL = (T.roofY - T.rearTopY) / (T.bevelZ - T.rearZ);
 /** Roof height at z (the flat roof, then the rear bevel). */
 export function k21TurretRoofAt(z: number): number {
@@ -134,27 +136,28 @@ function addCheekBoxes(P: TankBuilderPort): void {
   }
 }
 
-/** Four smoke dischargers on each cheek, on their own bracket: a 2 x 2 bank looking forward, outward and up, its
- * cradle welded to a wedge that seats it on the raked cheek. */
+/** Four smoke dischargers on each cheek, on their own bracket (source Object_22/23, photos 4 and 6): a 2 x 2 bank
+ * standing forward of the cheek's lower outer corner, looking forward, a little out and up, its cradle carried on a
+ * block whose rear is welded 6 mm into the raked cheek. The heads land where the source's do (x .75-1.0, y 2.2-2.35,
+ * z .6-.75). */
 function addSmokeClusters(P: TankBuilderPort): void {
   const up = new THREE.Vector3(0, 1, 0);
   for (const side of [-1, 1]) {
-    const ax = .78, ay = 2.21, base = new THREE.Vector3(side * ax, ay, cheekZ(ax, ay));
+    const centre = new THREE.Vector3(side * .85, 2.22, .40);
     const normal = new THREE.Vector3(side * 1.08, .266, 1).normalize();
-    const aim = new THREE.Vector3(side * .50, .42, .76).normalize();
+    const aim = new THREE.Vector3(side * Math.sin(.35) * Math.cos(.26), Math.sin(.26), Math.cos(.35) * Math.cos(.26));
     const u = new THREE.Vector3().crossVectors(up, aim).normalize(), v = new THREE.Vector3().crossVectors(aim, u);
-    const centre = base.clone().addScaledVector(normal, .09);
     const frame = new THREE.Matrix4().makeBasis(u, v, aim).setPosition(centre);
     const parts: THREE.BufferGeometry[] = [], dark: THREE.BufferGeometry[] = [];
     parts.push(box(.27, .25, .06).translate(0, 0, -.03).applyMatrix4(frame));
     for (const [i, j] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      parts.push(markSmokeTube(cylZ(.052, .24, P.q ? 14 : 9)).translate(i * .062, j * .062, .12).applyMatrix4(frame));
-      dark.push(cylZ(.040, .012, P.q ? 14 : 9).translate(i * .062, j * .062, .236).applyMatrix4(frame));
+      parts.push(markSmokeTube(cylZ(.052, .26, P.q ? 14 : 9)).translate(i * .062, j * .062, .13).applyMatrix4(frame));
+      dark.push(cylZ(.040, .012, P.q ? 14 : 9).translate(i * .062, j * .062, .256).applyMatrix4(frame));
     }
-    // Wedge bracket: the cradle's rear face and its projection 6 mm into the cheek.
-    const corners: THREE.Vector3[] = [];
+    // The carrying block: the cradle's rear face and its projection 6 mm into the cheek.
+    const base = new THREE.Vector3(side * .85, 2.22, cheekZ(.85, 2.22)), corners: THREE.Vector3[] = [];
     for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      const p = new THREE.Vector3(a * .12, b * .11, -.055).applyMatrix4(frame);
+      const p = new THREE.Vector3(a * .11, b * .10, -.055).applyMatrix4(frame);
       corners.push(p, p.clone().addScaledVector(normal, -(normal.dot(p.clone().sub(base)) + .006)));
     }
     parts.push(convexStock(corners));
@@ -191,9 +194,9 @@ export function addK21Turret(P: TankBuilderPort): void {
 
 /** The 40 mm gun's mantlet (owner 2026-11-04: "also the matnelt of k21 needs to be more prominent"), as Object_16 and
  * photos 4-7 show it, gun-local (trunnion origin, +z along the bore; the central panel crosses the bore 0.234 m ahead):
- * - the long flat-topped cradle housing, lying in the roof channel from 0.38 m behind the trunnion, its top rising to
- *   the rear and 0.05-0.07 m proud of the roof, then the square coaxial plate box on its front (0.37 x 0.22, 1.47 jacket
- *   diameters wide as photo 7 reads) with a hooded front whose recessed plate carries the coax port facing ahead;
+ * - the long flat-topped cradle housing, lying in the roof channel from 0.38 m behind the trunnion, its top cresting
+ *   0.08 m over the roof above the trunnion and falling to the front as the source's does, then the square coaxial
+ *   plate box standing above it on its front (0.37 x 0.21, 1.47 jacket diameters wide as photo 7 reads) with a hooded front whose recessed plate carries the coax port facing ahead;
  * - under it the round armoured jacket (r 0.118) from inside the slot to a rounded front flange (r 0.126) 0.37 m ahead of
  *   the panel, then a collar stepping down 0.095, 0.072 and a cone to the 0.036 tube.
  * Every part stays inside the slot's walls (0.15) or ahead of the panel and clear of the slot's floor and back wall from
@@ -217,18 +220,19 @@ export function addK21Mantlet(P: TankBuilderPort): void {
     { z: -.380, ring: plate(.124, .135, .250, .016) },
     { z: -.300, ring: plate(.130, .105, .335, .024) },
     { z: -.150, ring: plate(.130, .100, .345, .024) },
-    { z: .500, ring: plate(.130, .100, .300, .024) },
+    { z: .500, ring: plate(.130, .100, .240, .024) },
   ]));
-  // The coaxial plate box and its hood: a frame 5 mm proud of the box all round, 40 mm deep.
+  // The coaxial plate box, standing above the housing's falling front, and its hood: a frame 5 mm proud of the box
+  // all round, 40 mm deep.
   P.addGunExtra(sectionSolid([
-    { z: .470, ring: plate(.180, .118, .318, .020) },
-    { z: .700, ring: plate(.185, .110, .330, .022) },
+    { z: .470, ring: plate(.180, .118, .300, .020) },
+    { z: .700, ring: plate(.185, .110, .312, .022) },
   ]));
-  const hood = new THREE.Shape(plate(.190, .105, .339, .024).map(([x, y]) => new THREE.Vector2(x, y)));
-  hood.holes.push(new THREE.Path(plate(.152, .136, .300, .010).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
+  const hood = new THREE.Shape(plate(.190, .105, .321, .024).map(([x, y]) => new THREE.Vector2(x, y)));
+  hood.holes.push(new THREE.Path(plate(.152, .136, .284, .010).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
   P.addGunExtra(new THREE.ExtrudeGeometry(hood, { depth: .040, bevelEnabled: false, steps: 1 }), 0, 0, .694);
   // Coaxial port in the recessed plate, facing straight ahead: a flush dark mouth inside a low raised collar.
   const lip = [[.040, -.004], [.052, -.004], [.052, .006], [.048, .011], [.040, .011], [.040, -.004]] as const;
-  P.addGunExtra(lathe(lip, [], P.q ? 20 : 12), 0, .222, .700);
-  P.addGunExtraDark(cylZ(.040, .006, P.q ? 20 : 12), 0, .222, .700);
+  P.addGunExtra(lathe(lip, [], P.q ? 20 : 12), 0, .212, .700);
+  P.addGunExtraDark(cylZ(.040, .006, P.q ? 20 : 12), 0, .212, .700);
 }

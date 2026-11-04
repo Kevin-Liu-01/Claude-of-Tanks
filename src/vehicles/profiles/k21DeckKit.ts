@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { equipment } from './easternSourceKit.ts';
-import { k21TurretRoofAt } from './k21Turret.ts';
+import { K21_HATCHES, k21TurretRoofAt } from './k21Turret.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
@@ -192,9 +192,9 @@ function addK21RearStowage(P: TankBuilderPort): void {
 function addK21TurretRoofKit(P: TankBuilderPort): void {
   // 2026-11-04: the new turret's roof (k21Turret.ts): flat at 2.606, its rear bevel falling to the rear wall's 2.49
   const roofAt = k21TurretRoofAt;
-  for (const [x, z, s] of [[-0.49, -0.82, -1], [0.43, -1.00, 1]] as const) {
+  for (const [x, z, s] of K21_HATCHES) {
     const top = 2.656, rear = z - 0.31;
-    // spring housing between the two hinge barrels (x ±0.19 at y 2.669), on the roof behind the lid
+    // spring housing behind the two hinge barrels (x ±0.12 at y 2.645), on the roof behind the cover
     equipment(P, 'turret', 'Dark', cylX(0.024, 0.24, 10), x, roofAt(rear - 0.05) + 0.022, rear - 0.05);
     for (const d of [-0.12, 0.12]) equipment(P, 'turret', 'Detail', box(0.03, 0.05, 0.06), x + d, roofAt(rear - 0.05) + 0.018, rear - 0.045);
     grabHandle(P, 'turret', x - s * 0.08, top - 0.003, z + 0.06, 0.15, 0.03);
@@ -202,7 +202,7 @@ function addK21TurretRoofKit(P: TankBuilderPort): void {
     periscope(P, 'turret', x + s * 0.27, top - 0.004, z - 0.02, 0, s * Math.PI / 2, 0.05);
   }
   // the left hatch's two forward periscopes on the roof ahead of it, inboard of the panoramic sight
-  for (const [px, yaw] of [[0.20, -0.20], [0.38, 0]]) periscope(P, 'turret', px, roofAt(-0.62), -0.62, 0, yaw, 0.055);
+  for (const [px, yaw] of [[0.16, -0.20], [0.30, 0]]) periscope(P, 'turret', px, roofAt(-0.61), -0.61, 0, yaw, 0.055);
   // The rear fittings stand on the roof's bevel: the flat ones lie on its slope, the sensor head's base is level and
   // deeper at its rear edge so it neither stands off the slope nor drops below it.
   const lie = (z: number): number => -Math.atan((roofAt(z + 0.005) - roofAt(z - 0.005)) / 0.01);
