@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | PACK_SIZE per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.45 MB per language (52.45 MB in all) | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -46,7 +46,10 @@ embedded file, and decodes each asset on an `OfflineAudioContext` at the rate
 the build chose (24 kHz for assets with almost no energy above 12 kHz, else
 48 kHz; mobile caps everything at 24 kHz and keeps one variant per asset).
 Crew packs decode on their own lane so the first radio call never waits behind
-a battle's worth of sound effects. Sound effects share six decode slots in two
+a battle's worth of sound effects, at 16 kHz on every tier: every take plays
+through the radio's 3.4 kHz band and a speaker rolling off from 4.6 kHz, so
+nothing above 8 kHz is ever heard (a 371-take pack is about 40 MB decoded, 60 at
+24 kHz). Sound effects share six decode slots in two
 lanes: the front lane is served first, and an asset joins it when it is loaded
 `{ front: true }` or the first time something asks to play it before it has
 decoded (a rig's loop, an ambience bed, a report), so a sound wanted now never
@@ -1059,9 +1062,23 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   round an APS stopped is no longer called a miss, nor an enemy's ERA "No
   penetration". `build-voices.mjs --append` built only the added takes (a full
   rebuild of a line re-picks among its cached attempts: the Afrikaans "Laai
-  nou." came back a different take). BUILD_FLAGS SWEEP_RESULT Packs grew from
-  BYTES_BEFORE to BYTES_AFTER (PACK_SIZE each), still loaded only for the
-  crew's language. CREDITS_LINE
+  nou." came back a different take). A second, independent transcript of all
+  2,652 new takes found 19 where the model said a phrase twice inside the call
+  ("开球，开球，去抢球", "Rifle, rifle", "밀고 밀고 나간다") and edit distance
+  had passed them, so the build now holds that repeat under the bar and reads a
+  second transcript for it; the 69 new lines were rebuilt from the cache with
+  it (4,211 credits: 22 takes re-rolled, those 19 and three more the second
+  transcript caught, and three rewrites voiced; the Japanese "over" 遠弾 was
+  read とおだん, now 目標を越えた、修正。). After it no take repeats
+  and 6 sit under the bar, each heard as the script's sounds by three fresh
+  transcripts: the transcriber spelling a homophone (後退 / 交代, 奪取 /
+  ダッシュ, 帰投 / 祈祷) or hearing it right on the next pass ("Coups au but",
+  표적 식별, 저거너트).
+  Packs grew from 26.96 MB (1.41–1.77 MB each) to 52.45 MB (2.69–3.45 MB
+  each), still loaded only for the crew's language, and the crew's pack now
+  decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
+  where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
+  speech, 9,166 transcription) against its 3M cap.
 
 ### Cost
 
@@ -1095,6 +1112,11 @@ Speech has billed one credit per character since 2026-10-14 (about eight times
 the first rounds' rate), so the four packs of 2026-11-03 cost 38,521 credits:
 a whole new pack (121 lines, 215 takes, its audition share,
 re-rolls and a second transcript) is about 9,600.
+
+crew-lines-269 (69 lines and 20 takes in all 17 packs, 2,652 takes) cost
+128,897 credits: 119,731 of speech, 9,166 of transcription (the build's check,
+its second transcript for repeats and the independent sweep); about 7,600 a
+pack.
 
 ## Changing or extending it
 

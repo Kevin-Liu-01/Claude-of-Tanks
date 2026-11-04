@@ -338,7 +338,7 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   },
   gunship_danger_close: {
     "en-US": ["Danger close.", "Danger close. Friendlies at the impact."],
-    "zh-CN": ["距友军过近。", "注意，友军就在着弹点。"],
+    "zh-CN": ["离友军太近。", "注意，友军就在着弹点。"],
   },
   gunship_defeat: {
     "en-US": ["We lost the convoy. Breaking off.", "Mission failed. R-T-B."],
@@ -386,7 +386,7 @@ export const CAPTION_SCRIPT: Readonly<Record<string, Readonly<Record<"en-US" | "
   },
   gunship_splash: {
     "en-US": ["Splash.", "Splash. No effect."],
-    "zh-CN": ["炮弹着地。", "着地，无效果。"],
+    "zh-CN": ["炮弹着地。", "着弹，未见效果。"],
   },
   gunship_tally: {
     "en-US": ["Tally. Armor moving.", "Sensor's captured. Vehicle."],
