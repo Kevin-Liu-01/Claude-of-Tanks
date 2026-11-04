@@ -28,7 +28,9 @@ export const LOARA_RING = Object.freeze([0, 1.805, 0.0656] as const);
  * The welded box turret, turret-local (ring plane y 0, +z forward). A long body (the photo-02 camera, laying the drawn
  * turret over the photograph: its rear 0.83 m behind the hull origin, its front corner at the smoke dischargers' front,
  * its roof 3.09 m up, the drawn roof on the photo's roof line along its length): a vertical upper wall over a lower
- * skirt sloping out, the break a horizontal line 57 % of the way up (photos 01-03), the skirt flaring 0.14 m from just
+ * skirt sloping out, the break a horizontal line 46 % of the way up (round 4: photo 01, the close side view, 45 %, the
+ * louvred door filling the upper wall from just under the roof down to it; the photo-02 camera 51 %; from 57 %), the
+ * skirt flaring 0.14 m from just
  * ahead of the guns' bearing discs to the front (behind it the wall runs straight down beside the discs, photo 01); the
  * guns' bearings on its flanks at the rear, the smoke dischargers on the skirt at the front, a low front block (the chin)
  * under the tracking radar's dark mount, its top 0.46 m up (photos 02, 04: the light block under the dark mount, its top
@@ -38,7 +40,7 @@ export const LOARA_RING = Object.freeze([0, 1.805, 0.0656] as const);
 export const LOARA_TURRET = Object.freeze({
   floorY: 0.03, roofY: 1.28, roofChamfer: 0.06,
   halfW: 1.12, rearZ: -0.90, frontZ: 2.25, rearChamfer: 0.12, frontChamfer: 0.10,
-  breakY: 0.74, skirtFlare: 0.14, skirtRearZ: 0.15, skirtFullZ: 0.35,
+  breakY: 0.60, skirtFlare: 0.14, skirtRearZ: 0.15, skirtFullZ: 0.35,
   chinHalfW: 0.62, chinTopY: 0.46, chinFrontZ: 2.80, chinChamfer: 0.10,
 });
 
@@ -67,11 +69,15 @@ export const LOARA_MUZZLE_Z = 3.30;
  * bearing ring shows behind the pod and under it (photo 02: the ring's lower edge 2.10-2.12 m up, 0.28 m under the
  * pod; photo 01, the gun raised: the ring's rear edge at the turret's rear corner). The judge's ratio read the pod's end
  * at 45 % of the turret's length; the camera puts the barrel's exit at 58 % and the square-cut half's end at 37 %, and
- * the camera is kept. Its tail stays inside 0.68 m of the axis, so it swings down beside the straight wall.
+ * the camera is kept. Its tail stays inside 0.68 m of the axis, so it swings down beside the straight wall. Round 4: the
+ * front half ends in a broad faceted face 0.35 x 0.30 m round the barrel's exit (photos 04, 05: the front narrows to
+ * about half the pod's height and stays broad, not pointed); the rear kept where the camera puts it: photos 04 and 05,
+ * through cameras fitted to the running gear and two roof points, put the pod's rear corner at hull z -0.52 to -0.58
+ * and -0.64 to -0.72 (photo 02: -0.49 to -0.51), never at the turret's rear (-0.83).
  */
 export const LOARA_GUN_HOUSING = Object.freeze({
   innerX: 1.175, outerX: 1.66, bottomY: -0.12, outerTopY: 0.42, topY: 0.56, rearZ: -0.32, shoulderZ: 0.48, noseZ: 1.20,
-  discR: 0.40, discX: 1.16, discW: 0.04,
+  noseX0: 1.25, noseX1: 1.60, noseY0: 0.00, noseY1: 0.30, discR: 0.40, discX: 1.16, discW: 0.04,
 });
 
 /** Each KDA's muzzle brake (photos 02, 04): a large perforated cylinder 0.40 m long and 0.176 m across (1.7 times the
@@ -92,30 +98,35 @@ export const LOARA_BRAKE = Object.freeze({ r: 0.088, length: 0.40 });
  * the photo-02 camera against the radome (the fit's lengths ahead of z 2.03 m stretched 1.43 times, from the radome's and
  * the brakes' readings): the drum's centre 0.08-0.13 m over the radome's and 0.24-0.37 m behind its face, the boxes'
  * tops 0.54-0.56 m over the radome's centre, the mount's foot 0.56 m under it. The photo-02 camera puts the sensors 0.38 m
- * over the roof where the round-2 ratio from photos 04, 05 put them 0.50 m; the camera is kept.
+ * over the roof where the round-2 ratio from photos 04, 05 put them 0.50 m; the camera is kept. Round 4 (the judge on
+ * photos 02, 03, 05: the drum 40-50 % over the roof line, about 10 % larger, standing on a neck): the drum 0.56 m across
+ * (0.64 of the radome), its centre 0.15 m over the radome's (the camera's 0.08-0.13 range's top, plus 2 cm), 41 % of it
+ * over the roof, on a narrow neck from the mount (photo 03); the sight a cylindrical head 0.20 m across at the drum's
+ * upper front beside the radome's rim, the two boxes over it from the drum's crest to 0.42 m over the roof (photos 02,
+ * 03).
  */
 export const LOARA_TRACKING_RADAR = Object.freeze({
   y: 1.08, z: 2.60, r: 0.44, drumDepth: 0.20, domeDepth: 0.17,
-  camX: -0.56, camY: 1.16, camZ: 2.32, camR: 0.26, camLength: 0.44,
-  mountTopY: 0.655, sensorTopY: 1.66,
+  camX: -0.58, camY: 1.23, camZ: 2.30, camR: 0.28, camLength: 0.44, sightR: 0.10,
+  mountTopY: 0.655, sensorTopY: 1.70,
 });
 
 /**
  * The 3D search radar on its mast over the roof (photos 02-05, deployed; pl.wikipedia: on a pylon at the rear),
  * turret-local: a stack of boxes (photo 02 through the fitted camera: a base, a lower column 0.46 m square, a ledge, the
  * middle box 0.58 m with a box on its right flank and ribs on its face, the upper housing; the stack 0.62-0.72 m across
- * at its widest, half the turret's height), the azimuth drive, and the flat array (the slotted face forward) 2.0 x
+ * at its widest, half the turret's height), wide to the top: the upper housing straight under the array and a broad
+ * turntable box under its RADWAR housing (photo 02; no slim drive), and the flat array (the slotted face forward) 2.0 x
  * 0.95 m (photo 02: its ends 2.01 m apart) canted back 15 degrees, a deep housing half its width on its back carrying
- * the RADWAR plate (photos 04, 05). Its top 2.38 m over the roof (5.47 m over the ground), kept on the photo-02 camera:
- * laid over the photograph, the drawn turret roof lies on the photo's roof line along its whole length and the mast
- * stands in the fit's sound range (0.27 m behind the hull origin), and there the array's top reads 5.45-5.57 m; 0.30 m
- * lower, the drawn array sat 0.28 m under the photograph's (P/r2/blend02_r2_turret_lowered_radar.png). The distant
- * photos 04 and 05 read 1.40-1.53 turret heights by ratio, which leans on the turret height and on the mast standing
- * 1.2 m deeper than the roof edge they are scaled on.
+ * the RADWAR plate (photos 04, 05). Round 4: its top 5.31 m over the ground (2.21 m over the roof), 0.17 m lower. The
+ * near end of the array's top edge read three ways: the photo-02 camera 5.45-5.48 m (fitted to the running gear alone,
+ * read 4.4 m over its highest point); photos 04 and 05 through cameras fitted to the running gear and two roof points
+ * of the photo-02 build (the stowage tube's end, the panoramic sight's top; 2.3 and 2.1 px rms) 5.29-5.31 and 5.29-5.32
+ * m. The two distant photos agree, and their readings sit 1.6-2.1 m over a fitted point, so the array follows them.
  */
 export const LOARA_SEARCH_RADAR = Object.freeze({
-  mastZ: -0.34, mastH: 1.23, columnW: 0.46, stackW: 0.58, ledgeW: 0.64, stackY0: 0.45, stackY1: 0.89,
-  arrayW: 2.00, arrayH: 0.95, arrayD: 0.10, tiltDeg: 15, arrayCentreY: 3.20, arrayZ: -0.24,
+  mastZ: -0.34, columnW: 0.46, stackW: 0.58, ledgeW: 0.64, housingTop: 1.13, stackY0: 0.43, stackY1: 0.86,
+  arrayW: 2.00, arrayH: 0.95, arrayD: 0.10, tiltDeg: 15, arrayCentreY: 3.03, arrayZ: -0.24,
   housingW: 1.00, housingH: 0.50, housingD: 0.32,
 });
 
@@ -124,6 +135,14 @@ export const LOARA_SEARCH_RADAR = Object.freeze({
  * rear 1.45-1.49 m ahead of the ring, its front at the corner; the group with its tubes 29 % of the turret's length), two
  * rows of three tubes 0.30 m long and 0.11 m across (2.7 diameters) pointing out, up and ahead. */
 export const LOARA_SMOKE = Object.freeze({ z0: 1.32, z1: 2.16, tubeR: 0.055, tubeLength: 0.30 });
+
+/** The large louvred door on the left flank (photo 01, the close side view: its top 4 % under the roof, its height half
+ * the turret's side, 0.58 of it across, over the smoke dischargers' rear end), turret-local. */
+export const LOARA_LEFT_DOOR = Object.freeze({ z0: 1.17, z1: 1.55, y0: 0.615, y1: 1.235 });
+
+/** The hull's side plate (the PT-91's steel screen) hung lower on the Loara (photos 04, 05: over the top 15-20 % of the
+ * road wheels; buildPT91TwardyHull screenFootY): its foot 0.63 m up, 0.12 m over the wheels' tops (0.752 m). */
+export const LOARA_SCREEN_FOOT_Y = 0.63;
 
 /** The driver's seat, moved to the left (+x) of the T-72's middle (pl.wikipedia; armedconflicts.com: to the left as on the
  * T-55): his crew box, hatch and periscopes 0.45 m left of the hull's axis. */

@@ -14,7 +14,7 @@ import { crewBox, moduleBox, plate, shell, type ArmorPlate, type CrewBox, type M
 import type { FleetTankSpec } from './specContracts.ts';
 import {
   LOARA_BORE, LOARA_DECK as DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING as HOUSING, LOARA_MUZZLE_Z, LOARA_RING,
-  LOARA_SEARCH_RADAR, LOARA_TRUNNION, LOARA_TURRET as T,
+  LOARA_SCREEN_FOOT_Y, LOARA_SEARCH_RADAR, LOARA_TRUNNION, LOARA_TURRET as T,
 } from './profiles/loaraFrame.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -95,8 +95,8 @@ Object.assign(spec, {
 });
 // the build's envelope (loara.selftest.mjs holds it, 3 %): the PT-91 hull's fenders end to end with the guns forward
 // inside them (the published 6.67 m is the hull), the side screens and the exhaust's width, the search radar's array
-// raised to 5.47 m (the radio whips left out)
-spec.dims = { hullLengthM: 6.67, overallLengthM: 6.88, widthM: 3.65, heightM: 5.47 };
+// raised to 5.31 m (round 4: photos 04, 05; the radio whips left out)
+spec.dims = { hullLengthM: 6.67, overallLengthM: 6.88, widthM: 3.65, heightM: 5.31 };
 // the raised deck's turret station and the drawn turret (profiles/loaraFrame.ts): the elevation bearing on each flank, the
 // bores 0.16 m over its axis, the bore mouths (the brakes' faces) 3.05 m ahead of it
 spec.armor.turretPivot = [...LOARA_RING];
@@ -182,7 +182,12 @@ export function synchronizeLoaraFrame(): void {
   const baseRoof = base.armor.hullPlates.find((p) => p.name === 'hull_roof');
   const baseDeckY = baseRoof ? Math.max(...baseRoof.verts.map((v) => v[1])) : 1.407;
   own.armor.hullPlates = [
-    ...structuredClone(base.armor.hullPlates.filter((p) => p.kind !== 'era' && p.name !== 'hull_roof')),
+    // the side plates hung lower over the road wheels (profiles/loaraFrame.ts LOARA_SCREEN_FOOT_Y): the spaced skirts'
+    // lower edges drop to the plates' foot
+    ...structuredClone(base.armor.hullPlates.filter((p) => p.kind !== 'era' && p.name !== 'hull_roof')).map((p) =>
+      (p.name.startsWith('skirt_rubber')
+        ? { ...p, verts: p.verts.map(([x, y, z]): Point => [x, y < 0.86 ? LOARA_SCREEN_FOOT_Y : y, z]) }
+        : p)),
     ...raisedHullPlates(baseDeckY),
   ];
   own.armor.turretPivot = [...LOARA_RING];

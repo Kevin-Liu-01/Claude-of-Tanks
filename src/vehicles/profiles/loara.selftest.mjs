@@ -12,8 +12,8 @@ import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import {
-  LOARA_BORE, LOARA_BRAKE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_MUZZLE_Z, LOARA_RING, LOARA_SEARCH_RADAR,
-  LOARA_SMOKE, LOARA_TRACKING_RADAR, LOARA_TRUNNION, LOARA_TURRET,
+  LOARA_BORE, LOARA_BRAKE, LOARA_DECK, LOARA_DRIVER_X, LOARA_GUN_HOUSING, LOARA_LEFT_DOOR, LOARA_MUZZLE_Z, LOARA_RING,
+  LOARA_SCREEN_FOOT_Y, LOARA_SEARCH_RADAR, LOARA_SMOKE, LOARA_TRACKING_RADAR, LOARA_TRUNNION, LOARA_TURRET,
 } from './loaraFrame.ts';
 
 const ID = 'pza_loara';
@@ -64,13 +64,16 @@ for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
     && z <= T.chinFrontZ + 1e-9, `${p.name} within the drawn turret`);
 }
 
-// the photo critiques' proportions, held on the frame (round 3, read on the photo-02 camera where it and the judge's ratios
-// disagree): the pods' square-cut rear 0.3 m ahead of the turret's rear with the dark bearing ring showing behind and
+// the photo critiques' proportions, held on the frame (rounds 3 and 4; read on the fitted cameras where they and the
+// judge's ratios disagree): the pods' square-cut rear 0.3 m ahead of the turret's rear with the dark bearing ring showing behind and
 // under it, the bore half way down the pod's outer face, the face 0.43 of the turret's wall, a long tapering front half;
-// the tracking head (the block's top to the sensors' top) nearly the turret's height, its camera drum 0.6 of the radome
-// across, the sensors 0.38 m over the roof, the radome's centre near the roof line and 0.7 of the turret's height across;
-// the radar's stack half the turret's height across; the smoke tubes 2.7 diameters long, the group 29 % of the turret's
-// length; the brakes 1.7 times the barrel's tube across and 0.40 m long; the driver left of the middle
+// the pod's front a broad face round the barrel's exit; the tracking head (the block's top to the sensors' top) nearly
+// the turret's height, its camera drum 0.64 of the radome across with 40 % of it over the roof, the sensors 0.42 m over
+// the roof, the radome's centre near the roof line and 0.7 of the turret's height across; the radar's stack half the
+// turret's height across, the array's top 5.31 m up (photos 04, 05); the left door half the turret's side tall from
+// just under the roof to the break; the side plates over the road wheels' tops; the smoke tubes 2.7 diameters long, the
+// group 29 % of the turret's length; the brakes 1.7 times the barrel's tube across and 0.40 m long; the driver left of
+// the middle
 const H = LOARA_GUN_HOUSING, TR = LOARA_TRACKING_RADAR, turretH = T.roofY - T.floorY, turretL = T.frontZ - T.rearZ;
 const podRear = LOARA_TRUNNION[2] + H.rearZ;
 assert.ok(podRear - T.rearZ >= 0.25 && podRear - T.rearZ <= 0.40,
@@ -81,12 +84,23 @@ const boreDown = (H.outerTopY - LOARA_BORE.y) / (H.outerTopY - H.bottomY);
 assert.ok(boreDown >= 0.35 && boreDown <= 0.60, `the bore ${(boreDown * 100).toFixed(0)} % down the pod's face`);
 near((H.outerTopY - H.bottomY) / turretH, 0.43, 'the pod\'s face 0.43 of the turret wall', 0.03);
 assert.ok((H.noseZ - H.shoulderZ) / (H.noseZ - H.rearZ) >= 0.4, 'the pod\'s tapering front half');
+assert.ok(H.noseX1 - H.noseX0 >= 0.30 && H.noseY1 - H.noseY0 >= 0.25, 'the pod\'s broad front face');
 assert.ok((TR.sensorTopY - T.chinTopY) / turretH >= 0.85, 'the tracking head nearly the turret\'s height');
-near(TR.camR / TR.r, 0.6, 'the camera drum 0.6 of the radome across', 0.03);
-near(TR.sensorTopY - T.roofY, 0.38, 'the sensors 0.38 m over the roof', 0.03);
+near(TR.camR / TR.r, 0.64, 'the camera drum 0.64 of the radome across', 0.03);
+assert.ok((TR.camY + TR.camR - T.roofY) / (2 * TR.camR) >= 0.38, 'the camera drum 40 % over the roof');
+near(TR.sensorTopY - T.roofY, 0.42, 'the sensors 0.42 m over the roof', 0.03);
 assert.ok(T.roofY - TR.y <= 0.22 && 2 * TR.r / turretH >= 0.68, 'the radome near the roof line, 0.7 of the turret height across');
 assert.ok(LOARA_SEARCH_RADAR.stackW / turretH >= 0.45 && LOARA_SEARCH_RADAR.columnW / turretH >= 0.35,
   'the radar\'s stack half the turret\'s height across');
+{
+  const R = LOARA_SEARCH_RADAR, tilt = R.tiltDeg * DEG;
+  near(LOARA_RING[1] + R.arrayCentreY + (R.arrayH / 2) * Math.cos(tilt) + (R.arrayD / 2) * Math.sin(tilt), 5.31,
+    'the search radar\'s top 5.31 m up (photos 04, 05)', 0.02);
+}
+const D = LOARA_LEFT_DOOR;
+near((D.y1 - D.y0) / turretH, 0.5, 'the left door half the turret\'s side tall', 0.03);
+assert.ok(T.roofY - D.y1 <= 0.06 && D.y0 >= T.breakY, 'the left door from just under the roof to the break');
+assert.ok(LOARA_SCREEN_FOOT_Y < 0.752 - 0.10 && LOARA_SCREEN_FOOT_Y > 0.752 - 0.16, 'the side plates over the wheels\' tops');
 assert.ok(LOARA_SMOKE.tubeLength / (2 * LOARA_SMOKE.tubeR) >= 2.7, 'the smoke tubes about three diameters long');
 assert.ok((LOARA_SMOKE.z1 - LOARA_SMOKE.z0) / turretL >= 0.26, 'the smoke group about 30 % of the turret\'s length');
 assert.ok(LOARA_BRAKE.r / 0.052 >= 1.6 && LOARA_BRAKE.length >= 0.38, 'the large brakes');

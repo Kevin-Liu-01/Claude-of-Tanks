@@ -68,13 +68,16 @@ function glacisTiles(P:TankBuilderPort):void {
   }
 }
 
-function sideScreen(P:TankBuilderPort,side:number,tiles=true):void {
+/** footY: the screen hung lower, its foot at that height over the road wheels and 8 mm further out, clear of the B3
+ * study's lower skirt behind it (the PZA Loara's side plate, loara.ts); left out, the Twardy's screen as before. */
+function sideScreen(P:TankBuilderPort,side:number,tiles=true,footY?:number):void {
   // The steel anti-HEAT screen closes the B3 study's open course between its fender edge (y 1.444) and its lower skirt
   // (top 1.128, outer face x -1.779 / 1.791), hung on four hinges; three courses of tiles cover its forward half from
   // the bow panel back over the third road wheel, the rear half left bare steel. The screen is external armour, not
   // hull: the hull mesh stays the T-72B3 donor's (fleetRenewal.selftest).
   const face=side<0?1.779:1.791;
-  P.addExternalArmor('hull',box(.020,.316,6.10),side*(face-.010),1.286,.20);
+  if(footY===undefined)P.addExternalArmor('hull',box(.020,.316,6.10),side*(face-.010),1.286,.20);
+  else P.addExternalArmor('hull',box(.020,1.444-footY,6.10),side*(face-.002),(1.444+footY)/2,.20);
   for(const z of [-2.30,-.70,.90,2.50])P.addEquipment('hullDetail',box(.030,.05,.12),side*(face+.005),1.42,z);
   if(!tiles)return;
   const x=side*(face+TH/2-.003),h=(1.425-.725-2*JOINT)/3;
@@ -249,6 +252,9 @@ export interface PT91TwardyHullOptions {
   /** false: the B3 study's fenders end over the idlers, their flat front mudguards left to the vehicle's own (t72b3X.ts
    * frontMudguards; the PZA Loara's curved shells) */
   frontMudguards?:boolean;
+  /** given: the steel screens hung down to that height over the road wheels (`sideScreen` footY; the PZA Loara's side
+   * plate); left out, the Twardy's screens */
+  screenFootY?:number;
 }
 
 /** The PT-91's hull and running gear alone (the B3 study's hull without its Kontakt-5, the ERAWA glacis courses, the steel
@@ -259,7 +265,7 @@ export function buildPT91TwardyHull(P:TankBuilderPort,options:PT91TwardyHullOpti
   buildT72B3XHull(P,{kontakt5:false,deckFittings:options.deckFittings!==false,rearDrums:options.rearDrums!==false,
     frontMudguards:options.frontMudguards!==false});
   if(options.erawa!==false)glacisTiles(P);
-  for(const side of [-1,1])sideScreen(P,side,options.erawa!==false);
+  for(const side of [-1,1])sideScreen(P,side,options.erawa!==false,options.screenFootY);
   blade(P);
 }
 
