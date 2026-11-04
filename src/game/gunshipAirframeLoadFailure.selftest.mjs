@@ -69,8 +69,8 @@ const airframe = () => scene.children.find((o) => o !== anchor.root && o !== fx.
   for (let i = 0; i < 60; i++) await frame();
   assert.equal(asks, 2, `the carrier and 60 frames of the sync and the lens guns ask a failed chunk twice, not every frame (asked ${asks} times)`);
   assert.equal(warnings.filter((line) => /airframe did not load/.test(line)).length, 2, 'and warn once per ask');
-  assert.equal(lensGuns(), null, 'no lens guns while the chunk is out');
-  assert.equal(airframe(), null, 'and no airframe');
+  assert.ok(lensGuns() === null, 'no lens guns while the chunk is out');
+  assert.ok(airframe() === null, 'and no airframe');
   assert.equal(loadGunshipAirframe(), loadGunshipAirframe(), 'a caller asking every frame shares one settled promise');
 }
 

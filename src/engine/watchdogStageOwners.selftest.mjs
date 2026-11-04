@@ -28,9 +28,9 @@ function fixture() {
   // the stage's own write, untouched: the revert gives the pre-ladder state back
   const f = fixture();
   for (const stage of Object.values(f.stages)) stage.apply();
-  assert.equal(f.scene.environment, null);
+  assert.ok(f.scene.environment === null);
   for (const stage of Object.values(f.stages)) stage.revert();
-  assert.equal(f.scene.environment, f.environment);
+  assert.ok(f.scene.environment === f.environment);
   assert.equal(f.scene.fog, f.fog);
   assert.equal(f.renderer.shadowMap.enabled, true);
 }
@@ -45,7 +45,7 @@ function fixture() {
   f.scene.fog = null; noteFieldWrite(f.scene, 'fog');
   applyDiagRescue(f.renderer, { lit: true, litShadow: false, errors: [] }); // a counted writer (reclaim's writes alike)
   for (const stage of Object.values(f.stages)) stage.revert();
-  assert.equal(f.scene.environment, null, 'the newer owner\'s null stands (no stale texture written back)');
+  assert.ok(f.scene.environment === null, 'the newer owner\'s null stands (no stale texture written back)');
   assert.equal(f.scene.fog, null);
   assert.equal(f.renderer.shadowMap.enabled, false, 'the newer shadow verdict stands');
 }
@@ -82,7 +82,7 @@ function fixture() {
   f.stages['environment-off'].apply();
   noteTextureRetired(f.environment);
   f.stages['environment-off'].revert();
-  assert.equal(f.scene.environment, null);
+  assert.ok(f.scene.environment === null);
 }
 
 {
