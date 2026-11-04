@@ -10,7 +10,8 @@
  * `aiCtl` is set (state.ts stepBotControllers), and the frame input writes `game.player.input` before each step
  * (playerFrameInput.ts). takeWatchSeat parks the hull's controller here and makes the hull the session's player, so
  * the watcher's input enters the step as any player's does and the controller never also writes it; leaveWatchSeat
- * gives the controller back, which resumes from the hull's live state (pose, hull, rounds, reload, modules). A seat's
+ * gives the controller back, which resumes from the hull's live state (pose, hull, rounds, reload, modules; its resume()
+ * restarts what it measures between ticks, so the stretch it was parked is no tick of its own). A seat's
  * `bot` flag never changes: the mode controller keeps reading the human seat as the human's (its one life in
  * Frontline, the Horde's survivors) and every other seat as a bot's, so taking control bends no mode rule.
  *
@@ -61,6 +62,18 @@ interface WatchSeatGame<TEntity extends WatchSeatEntity<TController>, TControlle
   tanks: TEntity[];
   ruleset: { readonly watch?: { readonly takeControl: boolean } | null };
   watch?: WatchSession<TController> | null;
+  /** The battle's clock (the solo session's game.timeS): a brain handed back restarts its own record from it. */
+  timeS?: number;
+}
+
+/**
+ * A controller handed a hull back restarts what it measures between its own ticks from the hull as it stands (ai.ts
+ * resume, 2026-11-02 audit M7): parked, it was not stepped, and the gap would read as one tick of its own (the hull
+ * the watcher lost as one burst of damage, the ground covered as one tick's progress, the watcher's shot as its own,
+ * the park as a silence of its gun). `timeS` is the battle's clock at the hand-back.
+ */
+function resumeBrain(brain: unknown, timeS: number | undefined): void {
+  (brain as { resume?: (timeS?: number) => void } | null)?.resume?.(timeS);
 }
 
 function zeroInput(input: WatchSeatInput): void {
@@ -104,7 +117,10 @@ export function openWatchSeats<TEntity extends WatchSeatEntity<TController>, TCo
   watch.parked.delete(watch.seatId);
   watch.opened = true;
   if (seat) {
-    if (brain) seat.aiCtl = brain;
+    if (brain) {
+      seat.aiCtl = brain;
+      resumeBrain(brain, game.timeS);
+    }
     seat.isPlayer = false;
     zeroInput(seat.input);
   }
@@ -160,7 +176,10 @@ export function leaveWatchSeat<TEntity extends WatchSeatEntity<TController>, TCo
   watch.parked.delete(watch.takenId);
   watch.takenId = null;
   if (entity) {
-    if (brain) entity.aiCtl = brain;
+    if (brain) {
+      entity.aiCtl = brain;
+      resumeBrain(brain, game.timeS);
+    }
     entity.isPlayer = false;
     zeroInput(entity.input);
   }

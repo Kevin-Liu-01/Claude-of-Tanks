@@ -1880,6 +1880,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.pivotRoll.selftest.mjs',
     // 2026-10-09 (gameplay lane): an escalated stuck recovery releases the careful rules for 10 s (Blackglass 38001).
     'src/game/ai.wedgeRelease.selftest.mjs',
+    // 2026-11-02 audit M7: the drive owners, doctrine starts and drive layers run from declared tables in the old order
+    'src/game/ai.driveOwner.selftest.mjs',
+    // 2026-11-02 audit M7: every mode change runs the exit actions of the mode it leaves (a flank's count, a cover roll)
+    'src/game/ai.modeExit.selftest.mjs',
+    // 2026-11-02 audit M7: the waypoints carry their writer; a route ending where the mission's does is not the mission's
+    'src/game/ai.routeOwner.selftest.mjs',
+    // 2026-11-02 audit M7: news between ticks lands at the next update in one declared order (any telling, one bot)
+    'src/game/ai.eventOrder.selftest.mjs',
+    // 2026-11-02 audit M7: a brain Watch mode hands back resumes from the hull as it stands (no burst, shot or spike)
+    'src/game/ai.watchResume.selftest.mjs',
+    // 2026-11-02 audit M7: both drivers apply the bots' news at the end of the fire-and-shells phase; teammates read it
+    'src/game/ai.newsFlush.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     // (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the commander's

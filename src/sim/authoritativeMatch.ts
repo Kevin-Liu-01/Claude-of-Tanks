@@ -102,6 +102,7 @@ import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
 import { createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
+import { applyPendingBotNews } from '../game/ai.ts'; // the drivers' flush of the bots' news (audit M7)
 import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
@@ -228,6 +229,8 @@ interface AuthoritativeAIController {
   notifyUnderFire(entity: AuthoritativeEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
   notifyEnemyFired(entity: AuthoritativeEntity): void;
   notifyFriendlyBlocked(risk: AIFriendlyRisk): void;
+  /** Apply what reached the brain since its last update (game/ai.ts applyPendingBotNews; audit M7). */
+  applyPendingNews?(): void;
 }
 
 export interface AuthoritativeEntity {
@@ -2439,6 +2442,8 @@ export function createAuthoritativeMatch({
     if (botNavigation && navigationWreckTicks++ % 15 === 0) {
       syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
     }
+    // anything that reached the bots since the last flush lands before the first of them thinks (audit M7)
+    applyPendingBotNews(entities);
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
@@ -2651,6 +2656,9 @@ export function createAuthoritativeMatch({
         if (stepRoofStation(entity,station,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
     }
     stepShells(dt);
+    // the phase's news (shots heard, shell results, hits) reaches the bots here, in one declared order, where the
+    // callbacks always ran: before the visibility update and the mode step (audit M7; the solo step's stepShells too)
+    applyPendingBotNews(entities);
   }
 
   function advanceFires(dt: number): void {
