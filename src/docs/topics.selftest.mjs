@@ -115,6 +115,7 @@ assert.match(audioText, new RegExp(`\\b${Object.keys(WEAPON_CLASSES).length} rep
 const CREW_LANGUAGE_NAMES = {
   'en-US': 'American', 'en-GB': 'British', de: 'German', ru: 'Russian', uk: 'Ukrainian', zh: 'Chinese',
   fr: 'French', sv: 'Swedish', ja: 'Japanese', ko: 'Korean', it: 'Italian', pl: 'Polish', he: 'Hebrew',
+  da: 'Danish', 'pt-BR': 'Brazilian', 'en-AU': 'Australian', af: 'Afrikaans',
 };
 const crewRadioText = audioSections.find((section) => section.id === 'radio')?.text ?? '';
 for (const language of CREW_LANGUAGES) {

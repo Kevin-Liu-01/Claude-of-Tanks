@@ -44,7 +44,7 @@ const attempts = Number(opt('attempts') || 3);
 
 const script = JSON.parse(readFileSync(join(HERE, 'crew-lines.json'), 'utf8'));
 const { cast } = JSON.parse(readFileSync(join(HERE, 'crew-voices.json'), 'utf8'));
-const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en' };
+const LANG_CODE = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'pt-BR': 'pt' };
 
 function normalize(text) {
   return String(text).toLowerCase().normalize('NFKC').replace(/[\s\p{P}\p{S}]+/gu, '');
