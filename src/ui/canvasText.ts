@@ -57,6 +57,9 @@ export interface CanvasText {
   clear(): void;
   /** Run `slot`'s element (made on first use), to mark it as a datum's readout. */
   run(slot: number): HTMLElement;
+  /** Set run `slot` in tabular figures from now on (a readout that ticks in place: the reload countdown). The canvas
+   *  measures proportional figures, so its caller measures the run and anchors it at its left. */
+  tabular(slot: number): void;
   /** The runs the last repaint placed. */
   placed(): readonly CanvasTextRecord[];
 }
@@ -74,6 +77,7 @@ interface Run {
   baseline: string;
   align: string;
   epoch: number;
+  tabular: boolean;
   width: number;
   ascent: number;
   descent: number;
@@ -115,7 +119,7 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     const span = el('span', '', root);
     span.style.display = 'none';
     run = {
-      el: span, used: false, shown: false, text: '', font: '', baseline: '', align: '', epoch: -1,
+      el: span, used: false, shown: false, text: '', font: '', baseline: '', align: '', epoch: -1, tabular: false,
       width: 0, ascent: 0, descent: 0, left: NaN, top: NaN, color: '', alpha: 1, halo: '', haloWidth: 0,
       record: { text: '', x: 0, y: 0, font: '', align: 'left', baseline: 'alphabetic', color: '', alpha: 1 },
     };
@@ -130,7 +134,8 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     if (text !== run.text) { run.text = text; span.textContent = text; run.epoch = -1; }
     if (style.font !== run.font) {
       run.font = style.font;
-      span.style.font = style.font; // (resets line-height: written again below)
+      span.style.font = style.font; // (resets line-height: written again below, and the figures)
+      if (run.tabular) span.style.fontVariantNumeric = 'tabular-nums';
       run.epoch = -1;
       run.ascent = -1;
     }
@@ -213,6 +218,11 @@ export function createCanvasText(parent: Element, className: string): CanvasText
       for (const run of runs) if (run) { run.used = false; hide(run); }
     },
     run: (slot) => runAt(slot).el,
+    tabular(slot) {
+      const run = runAt(slot);
+      run.tabular = true;
+      run.el.style.fontVariantNumeric = 'tabular-nums';
+    },
     placed: () => last,
   };
 }

@@ -36,6 +36,7 @@ import { DESKTOP_OUTPUT_PIXEL_BUDGET } from '../engine/resolutionPolicy.ts';
 import { createUiCanvas, scratchCanvas, type UiCanvas } from './uiCanvas.ts';
 import { consumableIconSVG } from './equipIcons.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
+import { glacisSetsNumerals, glacisWidth } from './glacisText.ts';
 import { formatNumber, getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
 import { battleSightShift } from './battleSight.ts';
@@ -883,16 +884,18 @@ const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, bo
   ['rowAbove', false, true, false], ['rowAbove', true, true, true], ['stack', false, true, false], ['stack', true, true, true],
 ];
 /** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
-const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
+// (DECISIONS 2026-11-03) the figures in Glacis (FONT_NUM: its words and units fall through to the shell face); the
+// countdown's unit, the round's type code and the warning chip's words stay in the shell face
+const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_NUM}`;
 const FONT_COUNTDOWN_UNIT = `500 11px ${FONT_COND}`;
-const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
-const FONT_SCOPE_COUNT = `700 13.5px ${FONT_COND}`;
+const FONT_SCOPE_ZOOM = `700 16px ${FONT_NUM}`;
+const FONT_SCOPE_COUNT = `700 13.5px ${FONT_NUM}`;
 const FONT_SCOPE_TYPE = `700 11px ${FONT_COND}`;
-const FONT_RANGE_TAG = `600 11.5px ${FONT_COND}`;
+const FONT_RANGE_TAG = `600 11.5px ${FONT_NUM}`;
 // (the mouse layout's chip at 13 px, a step under the centre notices' 15 and over their 11 px touch type, battleHudLayout.css)
 const FONT_AIM_WARNING = `700 13px ${FONT_COND}`;
 const AIM_WARNING_TRACK_PX = 13 * 0.08;
-const FONT_RACK_OVERFLOW = `700 11px ${FONT_COND}`;
+const FONT_RACK_OVERFLOW = `700 11px ${FONT_NUM}`;
 /** (UI-LOCKDOWN A) the sight's text runs, DOM over its canvas (canvasText.ts): five hit labels and their crit words
  *  (2i, 2i + 1), then the readouts. */
 const SIGHT_TEXT_HIT = 0;
@@ -1261,7 +1264,7 @@ const RET_FLOOR_PX = 11;
 const RET_CEIL_FRAC = 0.15;
 // Shared type system (see src/ui/fonts.ts): FONT_COND drives the numeral/label
 // hierarchy (weight floor 500); readouts that tick in place take the .num class.
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { FONT_STACK, FONT_COND, FONT_NUM, ensureFonts, ensureNumeralFace } from './fonts.ts';
 import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import type { IconId } from './icons/icon.ts';
@@ -1564,7 +1567,7 @@ const HUD_CSS = `
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
 /* (two figures' width held, so a score reaching 10 does not widen the plate) */
-.cot-top .fg,.cot-top .fe,.cot-top .fh b{font-family:${FONT_COND};font-size:24px;font-weight:700;line-height:1;
+.cot-top .fg,.cot-top .fe,.cot-top .fh b{font-family:${FONT_NUM};font-size:24px;font-weight:700;line-height:1;
   letter-spacing:0;min-width:2ch;}
 .cot-top .fg{color:var(--hud-own);text-align:right;}
 /* (the Horde's wave is no side's score: in the ink, the hostiles left beside it in the enemy's, gauntlet r4) */
@@ -1590,7 +1593,10 @@ const HUD_CSS = `
 .cot-top .tm-block .tm{order:1;}.cot-top .tm-block .tm-label{order:2;}
 .cot-top .tm-label{font-family:var(--font-body);font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3);}
 .cot-top .tm-label:empty{display:none;}
-.cot-top .tm{font:500 18px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
+.cot-top .tm{font:500 18px/1 ${FONT_NUM};color:var(--ink-1);letter-spacing:.02em;}
+/* (DECISIONS 2026-11-03) the HUD's counting readouts set in Glacis: those that tick in place keep .num's tabular figures,
+   Glacis's tnum (one 560-unit advance: 11:11 sets as wide as 88:88), in place of .num's Plex Mono */
+.cot-top .tm.num,.cot-net .num,.cot-shell .cnt.num,.cot-con .cnt.num{font-family:${FONT_NUM}!important;}
 /* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
 .cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp var(--dur-screen) steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:var(--warn);}
@@ -1609,7 +1615,7 @@ const HUD_CSS = `
    engineering dashboard folds this strip into its richer top-right panel
    instead of allowing two readouts to overlap. */
 .cot-net{position:absolute;z-index:var(--hud-layer-controls);top:8px;right:10px;display:flex;align-items:center;
-  min-height:28px;padding:var(--s1) 0;font-family:${FONT_COND};
+  min-height:28px;padding:var(--s1) 0;font-family:${FONT_NUM};
   text-transform:uppercase;text-shadow:0 1px 3px var(--surface-scene),0 0 5px var(--surface-scene);}
 .cot-net-unit{min-width:42px;display:grid;grid-template-columns:auto auto;align-items:baseline;
   justify-content:center;column-gap:var(--s1);color:var(--ink-1);}
@@ -1935,7 +1941,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-prebattle .tks{stroke:oklch(from var(--accent-hi) .95 .051 h / .5);stroke-width:2.5;stroke-dasharray:.5 9.5;}
 .cot-prebattle .arc{stroke:var(--pb-ink);stroke-width:3;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;
   filter:drop-shadow(0 0 3px oklch(from var(--accent) l c h / .6));}
-.cot-prebattle .n{grid-area:1/1;position:relative;top:.03em;font:700 100px/1 var(--font-ui);letter-spacing:0;
+.cot-prebattle .n{grid-area:1/1;position:relative;top:.03em;font:700 100px/1 ${FONT_NUM};letter-spacing:0;
   white-space:nowrap;color:var(--ink-1);text-shadow:0 2px 14px oklch(from var(--surface-scene) l c h / .6),0 0 2px oklch(from var(--surface-scene) l c h / .75);}
 .cot-prebattle .k{grid-area:2/1;margin-top:var(--s2);font:600 var(--battle-fs-14)/1.2 var(--font-ui);letter-spacing:.14em;text-indent:.14em;
   text-transform:uppercase;white-space:nowrap;color:var(--accent-hi);text-shadow:0 1px 3px oklch(from var(--surface-scene) l c h / .9),0 0 10px oklch(from var(--surface-scene) l c h / .6);}
@@ -2054,7 +2060,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
-  font-family:var(--hud-font);
+  font-family:${FONT_NUM};
   color:var(--ink-1);letter-spacing:.02em;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
@@ -2103,7 +2109,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 /* (its count in the corner every count of the rack and the controls takes, the top right: under the glyph at the bottom
    right it was the one count off that corner, gauntlet r18) */
 .cot-con .cnt{position:absolute;top:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
-  font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
+  font-family:${FONT_NUM};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(var(--battle-veil) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
 /* the consumable the moment calls for (the direction's .tile.sugg): a repair kit while a module is down, a medkit while
@@ -2385,6 +2391,7 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
 export function initHud(bus: EventBus): HudRuntime {
   ensureFonts();
   ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
+  ensureNumeralFace();
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
@@ -2412,6 +2419,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const ctx = retSurface.context;
   // its words and figures: DOM runs over it, placed where the canvas drew them (the reload countdown is the 'reload' datum)
   const sightText = createCanvasText(root, 'cot-ret-text');
+  // the countdown ticks in place: Glacis's tnum figures, measured from its outlines (reloadCountdownWidth)
+  sightText.tabular(SIGHT_TEXT_COUNTDOWN);
   markDatum(sightText.run(SIGHT_TEXT_COUNTDOWN), 'reload').classList.add('cot-ret-reload');
   const markSurface = createUiCanvas(root, 'cot-hitmark', { initialBox: () => [HIT_MARK_BOX_PX, HIT_MARK_BOX_PX] });
   const markCanvas = markSurface.canvas;
@@ -4544,7 +4553,7 @@ export function initHud(bus: EventBus): HudRuntime {
       ), 14));
     const valueRadius = frame.radius + paint.thickness + (indicator.numeric ? 14 : 16);
     ctx.save();
-    ctx.font = `700 ${fontPx}px ${FONT_COND}`;
+    ctx.font = `700 ${fontPx}px ${indicator.numeric ? FONT_NUM : FONT_COND}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'miter';
@@ -5204,13 +5213,26 @@ export function initHud(bus: EventBus): HudRuntime {
     paintReticleMarker(view.gunX, view.gunY, scale, 1.1);
   }
 
+  let countdownMeasured = '';
+  let countdownMeasuredW = 0;
+  /** The countdown's width: its figures Glacis's tnum advances, from the outlines and once per text (the canvas measures
+   *  proportional figures); a word (SWITCHING) sets in the shell face, which the canvas measures. */
+  function reloadCountdownWidth(text: string): number {
+    if (!glacisSetsNumerals(text)) return ctx.measureText(text).width;
+    if (text !== countdownMeasured) {
+      countdownMeasured = text;
+      countdownMeasuredW = glacisWidth(text, { size: COUNTDOWN_SIZE, tabular: true });
+    }
+    return countdownMeasuredW;
+  }
+
   function paintReloadCountdown(view: HudAimView, draw: ReticleDrawState): void {
     // A clip's cycle shows on the rack itself (its next shell fills); only a gun or a whole rack reloading counts.
     if (!draw.reloading || draw.magazine?.intraClip) return;
     const text = reloadHudCountdown(view.reload, view.ammoSelectionPending);
     ctx.fillStyle = RELOAD_ACCENT;
     ctx.font = FONT_COUNTDOWN;
-    const textW = ctx.measureText(text).width;
+    const textW = reloadCountdownWidth(text);
     ctx.font = FONT_COUNTDOWN_UNIT;
     const unit = view.ammoSelectionPending ? '' : ' s';
     const unitW = ctx.measureText(unit).width;

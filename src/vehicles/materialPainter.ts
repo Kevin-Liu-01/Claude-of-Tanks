@@ -4,6 +4,7 @@ import { paintBrandCamo } from './brandCamoPainter.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
 import { createCatalogCamoPainter, type CatalogCamoArtId } from './catalogCamoPainter.ts';
 import { camoPatchWorldScale } from './camoWorldScale.ts';
+import { glacisPath } from '../ui/glacisText.ts';
 import type { CustomCamoStroke } from './camoPolicy.ts';
 
 export type MaterialCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -2442,17 +2443,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         const ring = new Path2D();
         ring.arc(x, y, r * 0.94, 0, Math.PI * 2);
         strokeWrapped(ctx, S, ring, rgb(blk, 0.92), r * 0.09);
-        ctx.save();
-        ctx.font = `700 ${Math.round(r * 1.15)}px 'Cot UI', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = rgb(blk, 0.94);
-        for (const dx of [-S, 0, S]) {
-          for (const dy of [-S, 0, S]) {
-            ctx.save(); ctx.translate(dx, dy); ctx.fillText(num, x, y * 1.02); ctx.restore();
-          }
-        }
-        ctx.restore();
+        // Glacis outlines (no font to load in the worker): the caps centred on the disc, so no baseline nudge
+        fillWrapped(ctx, S, glacisPath(num, x, y, { size: Math.round(r * 1.15), align: 'center', baseline: 'middle' }), rgb(blk, 0.94));
       };
       roundel(cx + nx * S * (0.26 + rng() * 0.06), cy + ny * S * 0.26, S * (0.13 + rng() * 0.03));
       roundel(cx - nx * S * (0.3 + rng() * 0.06), cy - ny * S * 0.3, S * (0.09 + rng() * 0.03));
@@ -2552,19 +2544,9 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         q.rect(rng() * S, rng() * S, w2, h2);
         fillWrapped(ctx, S, q, rgb(mix(base, [20, 26, 14], 0.35), 0.55));
       }
-      ctx.save();                                      // registration serial
-      ctx.font = `700 ${Math.round(S * 0.028)}px 'Cot UI', sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = rgb(white, 0.8);
-      const serial = `U.S.A. 30${100000 + ((rng() * 899999) | 0)}`;
+      const serial = `U.S.A. 30${100000 + ((rng() * 899999) | 0)}`;   // registration serial
       const sx = rng() * S, sy = rng() * S;
-      for (const dx of [-S, 0, S]) {
-        for (const dy of [-S, 0, S]) {
-          ctx.save(); ctx.translate(dx, dy); ctx.fillText(serial, sx, sy); ctx.restore();
-        }
-      }
-      ctx.restore();
+      fillWrapped(ctx, S, glacisPath(serial, sx, sy, { size: Math.round(S * 0.028), baseline: 'middle' }), rgb(white, 0.8));
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
@@ -2586,18 +2568,8 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       band2.lineTo(x1, S * 1.1);
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
       const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
-      ctx.save();
-      ctx.font = `700 ${Math.round(S * 0.17)}px 'Cot UI', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = rgb(white, 0.9);
       const nx = S * (0.25 + rng() * 0.5), ny = (y0 + S * 0.55) % S;
-      for (const dx of [-S, 0, S]) {
-        for (const dy of [-S, 0, S]) {
-          ctx.save(); ctx.translate(dx, dy); ctx.fillText(num, nx, ny); ctx.restore();
-        }
-      }
-      ctx.restore();
+      fillWrapped(ctx, S, glacisPath(num, nx, ny, { size: Math.round(S * 0.17), align: 'center', baseline: 'middle' }), rgb(white, 0.9));
       // camo r8 detailing: the band is field paint, not a sticker — eat its
       // edges with base-tone dabs, add the diagonal assault slash and a
       // Guards star outline.
@@ -2707,19 +2679,9 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       };
       paintUsmcDust();
       const paintUsmcNumber = (): void => {
-        ctx.save();
         const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
-        ctx.font = `700 ${Math.round(S * 0.13)}px 'Cot UI', sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = rgb(white, 0.88);
         const hx = rng() * S, hy = rng() * S;
-        for (const dx of [-S, 0, S]) {
-          for (const dy of [-S, 0, S]) {
-            ctx.save(); ctx.translate(dx, dy); ctx.fillText(num2, hx, hy); ctx.restore();
-          }
-        }
-        ctx.restore();
+        fillWrapped(ctx, S, glacisPath(num2, hx, hy, { size: Math.round(S * 0.13), align: 'center', baseline: 'middle' }), rgb(white, 0.88));
       };
       paintUsmcNumber();
       // ===================== END CAMO PATTERN SECTION =================

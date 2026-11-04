@@ -1,5 +1,6 @@
 import { flagIconCode } from '../ui/flagCodes.ts';
 import { tankSeedId } from './tankIdAliases.ts';
+import { glacisSetsMarking, glacisWidth, traceGlacis } from '../ui/glacisText.ts';
 import * as detMath from '../sim/detMath.ts';
 export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 
@@ -1057,9 +1058,28 @@ export function drawTacticalNumber(
   bounds: CanvasBounds = {},
 ): void {
   const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
-  ctx.save();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const text = record.tacticalNumber;
+  ctx.save();
+  if (glacisSetsMarking(text)) {
+    // Glacis outlines (DECISIONS 2026-11-03), sized by the measured run: the per-character rule, brought down where the
+    // number and its outline (8 % of the size) would pass TACTICAL_NUMBER_FILL of the bounds (the length rule alone ran
+    // 5-8 px past a 252 px decal for OTCO, KURSK and 99A2). One path, stroked under its fill, corners mitred short.
+    const fontSize = Math.max(16, Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75,
+      width * TACTICAL_NUMBER_FILL / (glacisWidth(text, { size: 1 }) + 0.08)));
+    ctx.beginPath();
+    traceGlacis(ctx, text, x + width / 2, y + height / 2, { size: fontSize, align: 'center', baseline: 'middle' });
+    ctx.lineWidth = Math.max(2, fontSize * 0.08);
+    ctx.lineJoin = 'miter';
+    ctx.miterLimit = 2;
+    ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
+    ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;
+    ctx.stroke();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  // Text Glacis cannot set as written keeps the shell face, measured into its bounds the same way.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   let fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
   ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
   // 264: the 1.75-per-character rule sizes digits; a letter code's bold capitals run wider (the Leopard 2A3's OTCO
