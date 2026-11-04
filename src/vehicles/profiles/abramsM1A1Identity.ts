@@ -239,8 +239,11 @@ function addLoaderThermalSight(P: AbramsIdentityPort): void {
   const body = station?.getObjectByName('americanM240Body');
   const carrier = body?.parent;
   if (!station || !body || !carrier) return;
+  // (release 268 builder E: the frames are brought up to date before the receiver is measured; measured first, in its
+  // stale frame, the sight sat 1.33 m under the turret floor, inside the hull, where the roof net read it as the loader's
+  // weapon sweeping below the roof everywhere round its station)
+  carrier.updateWorldMatrix(true, true);
   const bodyBox = new THREE.Box3().setFromObject(body);
-  carrier.updateWorldMatrix(true, false);
   const toCarrier = new THREE.Matrix4().copy(carrier.matrixWorld).invert();
   // the receiver's top centre and its length, in the carrier's frame
   const top = new THREE.Vector3((bodyBox.min.x + bodyBox.max.x) / 2, bodyBox.max.y, (bodyBox.min.z + bodyBox.max.z) / 2)

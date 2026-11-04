@@ -4543,6 +4543,15 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
     // the shield's top lies on the turret roof's forward course at rest (gun-local y = y0 - k z)
     buildM1A1GunMount(P, haSearchlight, {
       y0: M1A1_TURRET.SLOPE_C - M1A1_TURRET.SLOPE_K * t.gun[2] - t.gun[1], k: M1A1_TURRET.SLOPE_K });
+    if (P.spec.id === 'm1a1_abrams_fep') {
+      // Release 268 builder E (the owner, 2026-11-03: "cover ... cannonn with gfhillie and nett"): the cord ties that bind
+      // the ULCANS sleeve to the M256 (ghillieSuit.ts, the FEP's gun panels), over its top and sides 2.8 cm out from the
+      // tube, open underneath; on the fixed sleeve, the thermal sleeve and the barrel, clear of the evacuator.
+      for (const [z, r] of [[0.70, 0.150], [1.05, 0.146], [2.15, 0.110], [2.85, 0.110], [3.55, 0.110]] as const) {
+        const tie = new THREE.TorusGeometry(r + 0.028, 0.007, 5, P.q ? 20 : 12, Math.PI * 1.32).rotateZ(-Math.PI * 0.16);
+        P.addGunExtraDark(tie, 0, 0, z);
+      }
+    }
     if (haSearchlight) {
       // HA gun-rig searchlight: a two-stage bracket carries the entire
       // lamp ahead of the left cheek, and pitches with the gun without
