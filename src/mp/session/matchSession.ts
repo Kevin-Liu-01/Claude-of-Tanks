@@ -1212,11 +1212,21 @@ export class MatchSession {
     if (!resume) {
       const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000 });
       if (fallback.kind === 'decline') {
+        // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
+        // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and
+        // told the room a capable seat is unable to host (integration review r1).
+        if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') {
+          if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot superseded'); }
+          host.stop();
+          this.log('info', 'elected host boot superseded by a newer election', { generation: change.generation, running: this.runningGeneration });
+          return;
+        }
         this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation });
         // through the session's role machine and its one decline writer, as the boot-failed path below (integration
         // IR11: this branch was written before either existed; it left the role at 'booting_host' with no host, and its
         // decline went past the session's own record)
-        if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'no state'); }
+        this.host = null;
+        this.moveRole(this.peerTransport ? 'peer' : 'none', 'no state');
         host.stop();
         this.p2pListeners.emit({ kind: 'migration', phase: 'failed', hostId: me, generation: change.generation, role: this.role, detail: 'no state' });
         this.migrationActive = false;
