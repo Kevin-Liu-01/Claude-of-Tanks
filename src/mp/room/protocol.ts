@@ -147,7 +147,10 @@ export interface RoomSettings {
   /** Empty team slots up to teamSize are filled with authority bots at start. */
   botsFill: boolean;
   allowTeamSwitch: boolean;
+  /** No fresh join now: the admin's lock, or a round starting or playing (derived by roomPolicy `joinLocked`). */
   locked: boolean;
+  /** The admin's `set_locked` switch (audit M2, 2026-11-02); absent in a room written before it: unlocked. */
+  adminLocked?: boolean;
   arrangement: TeamArrangement | null;
   campaignOperationId: string | null;
 }

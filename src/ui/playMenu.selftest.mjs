@@ -65,14 +65,15 @@ assert.match(source, /<button class="action cot-c-btn cot-c-btn--primary" data-a
 assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
   'rejoin needs a room in a match and a match_start for this seat');
 assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\) \|\| !!versionRefusal;/, 'the control follows every lobby render (hidden under a version refusal)');
-assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role\);/,
+assert.match(source, /rejoinBtn\.addEventListener\('click', \(\) => \{\s*if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role, \{ pressed: true \}\);/,
   'rejoin hands the room back through the same network start');
 assert.match(source, /const activeSession = session \?\? \(activeRoom\?\.session as RoomSession \| undefined\) \?\? null;/,
   'a composition-held room hands its own session back for the rejoin');
-assert.match(source, /if \(activeSession === session\) handedOff = true;/, 'the handoff flag guards the menu\'s own session only');
-assert.match(source, /!handedOff && !activeRoom && hasMatchStart\(session\);/,
+// (audit F6, 2026-11-02) the handoff moves the menu's own seat only, through its one writer (src/ui/playMenuSeat.ts)
+assert.match(source, /const own = activeSession === session;\s*if \(own\) \{\s*moveSeat\('handed_off', 'battle handoff'\);/, 'the handoff flag guards the menu\'s own session only');
+assert.match(source, /shouldAutoHandoff\(\{ seat, role, phase: next\.phase, matchId: matchIdOf\(session\), handedOffMatchId \}\)\s*&& !activeRoom && hasMatchStart\(session\);/,
   'a client auto-hands off into a running match only with its own match_start');
-assert.match(source, /room\.setAttribute\('aria-busy', String\(next\)\)/);
+assert.match(source, /room\.setAttribute\('aria-busy', String\(connecting\)\)/);
 assert.match(source, /invalidInput\?\.setAttribute\('aria-describedby', 'cot-room-failure-detail'\)/);
 assert.match(source, /\.room-failure button\.action\{min-height:44px/);
 // (2026-10-25 gauntlet r3) a focused failure wears the kit's one focus ring
@@ -204,7 +205,7 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
   assert.match(notice, /if \(code && VERSION_REFUSAL_CODES\.has\(code\) && text\) \{ setStatus\(''\); setVersionRefusal\(text\); return true; \}/,
     'a version refusal takes the banner, not the status line');
   assert.match(source, /rejoinBtn\.hidden = !canRejoinBattle\(next\) \|\| !!versionRefusal;/, 'Rejoin battle hides while a version refusal stands');
-  assert.match(source, /if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role\);/, 'and cannot fire');
+  assert.match(source, /if \(state && canRejoinBattle\(state\) && !versionRefusal\) beginNetworkHandoff\(state, role, \{ pressed: true \}\);/, 'and cannot fire');
   assert.match(source, /refreshBtn\.addEventListener\('click', \(\) => reloadPage\(\)\);/);
   assert.match(source, /reloadPage = \(\) => \{ location\.reload\(\); \},/, 'Refresh reloads the page');
   assert.match(source, /if \(!keepRequest\) requestGeneration\+\+;\s*setVersionRefusal\(null\);/, 'leaving the room ends the refusal');

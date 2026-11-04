@@ -1544,6 +1544,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/wire/wreckBody.selftest.mjs',
     'src/mp/transport/transport.selftest.mjs',
     'src/mp/transport/webRtcTransport.selftest.mjs',
+    'src/mp/transport/transportLifecycle.selftest.mjs', // 2026-11-02 audit M2: one retry timer per reconnect; a reopened WebRTC link hears signals; the swap names its state
     'src/mp/match/clock.selftest.mjs',
     'src/mp/match/inputStream.selftest.mjs',
     'src/mp/match/snapshotStream.selftest.mjs',
@@ -1597,10 +1598,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/roomLock.selftest.mjs', // 2026-11-02 audit M2: the admin's lock outlives rounds; a start re-reads the room after its host answers
     'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
+    'src/mp/room/roomClientLeave.selftest.mjs', // 2026-11-02 audit M2: a leave while reconnecting leaves on the resume; a disconnect keeps no stale host
     // 2026-10-30 (phone-controller-266, docs/PHONE-CONTROLLER.md): the phone controller's pairing, link, input model and QR
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
@@ -1627,6 +1630,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
     'src/mp/session/playMenuAdapter.selftest.mjs',
+    'src/mp/session/playMenuAdapterSeat.selftest.mjs', // 2026-11-02 audit F6: a close during the limit check cancels the attempt; a released seat's round names its owner
     'src/mp/session/networkStatus.selftest.mjs',
     'src/mp/session/exitFlow.selftest.mjs',
     'src/mp/session/matchSessionP2p.selftest.mjs',
@@ -1634,6 +1638,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/hostHeadroom.selftest.mjs', // 2026-10-13 MP plan step 10: a slow tab declines to host while it waits in the room
     'src/mp/session/matchSessionHandOff.selftest.mjs', // 2026-10-13 MP plan step 11: a hosting tab going away hands its match on at once
     'src/mp/session/matchSessionRematchHost.selftest.mjs', // 2026-11-02 audit M2: a host's in-place rematch never declines its own next round
+    'src/mp/session/matchSessionDecline.selftest.mjs', // 2026-11-02 audit M2: a host decline lasts its match; a seat that cannot host says so again
+    'src/mp/session/matchSessionRole.selftest.mjs', // 2026-11-02 audit M2: the session's p2p role is one declared state; a finished host hands nothing on
+    'src/mp/session/matchSessionBootRace.selftest.mjs', // 2026-11-02 audit M2: an election boot a newer election supersedes is no failure
+    'src/mp/session/matchSessionLoadingElection.selftest.mjs', // 2026-11-02 audit M2: a seat elected while it loads keeps the election and hosts
+    'src/mp/session/matchSessionEntry.selftest.mjs', // 2026-11-02 audit M2: a leave cancels a loading entry; a re-sent match_start joins it
+    'src/mp/session/matchSessionTimers.selftest.mjs', // 2026-11-02 audit M2: the re-entry fallback at the room's generation; the standby on injected timers
     'src/mp/session/endpoint.selftest.mjs',
     'src/mp/session/playMode.selftest.mjs',
     'src/mp/session/playerNames.selftest.mjs',
@@ -1646,6 +1656,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/roomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
+    'src/ui/playMenuSeat.selftest.mjs', // 2026-11-02 audit F6: the Play menu's seat is one declared state; the handoff stops the hidden lobby
     'src/mp/session/compositionAccess.selftest.mjs',
     'src/mp/session/intentCover.selftest.mjs',
     'src/mp/session/lobbyPreloader.selftest.mjs',

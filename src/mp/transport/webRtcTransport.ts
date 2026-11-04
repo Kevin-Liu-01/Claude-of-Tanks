@@ -306,7 +306,8 @@ export class WebRtcTransport implements Transport {
   private readonly gate: BackpressureGate;
   private readonly frameListeners = new Listeners<Uint8Array>();
   private readonly stateListeners = new Listeners<TransportStateChange>();
-  private readonly unsubscribeSignals: Unsubscribe;
+  /** The signaler subscription while the transport may hear signals (null once closed; open() subscribes again). */
+  private unsubscribeSignals: Unsubscribe | null;
   private currentState: TransportState = 'idle';
   private connection: ActiveConnection | null = null;
   private link = 0;
@@ -385,6 +386,8 @@ export class WebRtcTransport implements Transport {
 
   open(): void {
     if (this.currentState !== 'idle' && this.currentState !== 'closed') return;
+    // a reopened transport hears its signaler again (audit M2, 2026-11-02: close() unsubscribed it for good)
+    this.unsubscribeSignals ??= this.signaler.onSignal((signal) => this.receiveSignal(signal));
     this.attempt = 0;
     this.lostAtMs = null;
     this.connect();
@@ -446,7 +449,8 @@ export class WebRtcTransport implements Transport {
     this.dropConnection();
     this.transition('closed', { reason, detail });
     this.frameListeners.clear();
-    this.unsubscribeSignals();
+    this.unsubscribeSignals?.();
+    this.unsubscribeSignals = null;
   }
 
   // ------------------------------------------------------------ internals
@@ -668,6 +672,9 @@ export class WebRtcTransport implements Transport {
     if (immediate) this.immediateRetries++;
     const delayMs = immediate ? 0 : reconnectDelayMs(this.reconnectPolicy, this.attempt, this.random());
     this.transition('reconnecting', { reason, detail, attempt: this.attempt, retryDelayMs: delayMs });
+    // one retry at a time (audit M2, 2026-11-02): a reconnect() while reconnecting used to leave the earlier timer live,
+    // whose callback then nulled the handle so connect() could not cancel the later one (an early extra attempt)
+    if (this.retryTimer !== null) this.clearTimer(this.retryTimer);
     this.retryTimer = this.setTimer(() => {
       this.retryTimer = null;
       if (this.currentState !== 'reconnecting') return;

@@ -904,13 +904,28 @@ export class RoomActor {
     }
     const startedAt = this.ports.now();
     this.startInFlight = false;
+    // The room as it is now, not as it was before the await (audit M2, 2026-11-02): the p2p host answers within a
+    // microtask, but a match service answers later and the LAN service does not serialize messages
+    // (server/rooms/localRoomService.ts), so a leave, a kick or the room's expiry can land inside the await. A seat
+    // that left gets no token; a room that went, or that nobody of the plan is left in, records nothing.
+    const seats = this.room === room && room.phase === 'starting'
+      ? plan.seats.filter((seat) => room.players.some((player) => player.id === seat.playerId))
+      : [];
+    if (!seats.length) {
+      if (this.room === room) abortStart(room, startedAt);
+      void Promise.resolve(this.ports.matchHost.stop(this.roomCode)).catch(() => { /* the host may already have let it go */ });
+      this.log('warn', 'start abandoned: the room changed while the match host started', { match: matchId, room: this.room === room });
+      if (this.room === room) { this.persist(); this.broadcastState(); }
+      if (this.sockets.has(socket.id)) this.send(socket.id, publicRoomError(new RoomError('match_host_unavailable'), requestId));
+      return;
+    }
     this.matchUrl = matchUrl;
     recordMatch(room, { id: matchId, round: plan.round, mapId: plan.mapId, seed: plan.seed, startedAt }, startedAt);
     this.matchTokens.clear();
     const expiresAt = startedAt + ROOM_SEAT_TOKEN_TTL_MS;
     // A p2p match's tokens are signed with the per-match secret only its host receives; a service verifies with the room's.
     const signingSecret = this.p2p ? this.hostSecretFor(matchId) : this.ports.seatSecret;
-    for (const seat of plan.seats) {
+    for (const seat of seats) {
       const claims: SeatClaims = {
         v: 1, roomId: this.roomCode, seat: seat.seat, playerId: seat.playerId, name: seat.name.slice(0, 32) || seat.playerId,
         team: seat.team, specId: seat.specId, iat: startedAt, exp: expiresAt,
