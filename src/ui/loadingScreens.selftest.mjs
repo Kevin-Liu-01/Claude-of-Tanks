@@ -683,8 +683,10 @@ assert.match(hudSource,
 assert.match(deploymentShadowWarmSource,
   /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
+// (integration, engine-gpu's audit R4 castShadow holds: their note and hold loop sit between the signature and the batch's
+// render, 1,321 characters where the base had 1,004)
 assert.match(deploymentShadowWarmSource,
-  /async function warmCasterBatches\([\s\S]{0,1200}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
+  /async function warmCasterBatches\([\s\S]{0,1600}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
   'deployment shadows must upload caster resources in bounded depth-only batches');
 assert.match(deploymentShadowWarmSource,
   /const observeRender: ObserveShadowWarm = \(phase, index, light, render = shadowOnlyWarm\)/,
@@ -695,8 +697,10 @@ assert.match(deploymentShadowWarmSource,
 assert.match(deploymentShadowWarmSource,
   /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}observeRender\('geometry-upload', index\+\+, light, warmRender\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
   'deployment geometry must upload through one shared shader and always restore production materials');
+// (integration: since engine-gpu's audit R4 the casters come back through their named holds, castShadowHolds.ts
+// releaseCastShadowHold, which restores what the warm's holds wrote)
 assert.match(deploymentShadowWarmSource,
-  /function restoreCasterState\([\s\S]{0,240}object\.castShadow = true;[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
+  /function restoreCasterState\([\s\S]{0,400}(?:object\.castShadow = true;|releaseCastShadowHold\(object, state\);)[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
   'deployment shadow warming must restore every caster and pinned LOD state');
 assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,100}restoreCasterState\(casterState\);[\s\S]{0,60}primed = true/,
