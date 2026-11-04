@@ -1173,7 +1173,7 @@
         "Kereta kebal, depan."
       ],
       "vi": [
-        "Địch phía trước.",
+        "Phát hiện địch phía trước.",
         "Xe tăng, chính diện."
       ],
       "th": [
@@ -1929,7 +1929,7 @@
       ],
       "no": [
         "Skudd på vei.",
-        "Avfyrer.",
+        "Skyter nå.",
         "Skudd avfyrt."
       ],
       "fi": [
@@ -3443,7 +3443,7 @@
       "cs": [
         "Rána vedle.",
         "Před cílem. Opravuji.",
-        "Za cílem."
+        "Dopad za cílem."
       ],
       "hu": [
         "Mellé ment.",
@@ -3617,7 +3617,7 @@
         "Přebíjím."
       ],
       "hu": [
-        "Töltök.",
+        "Töltés folyamatban.",
         "Újratöltés."
       ],
       "ro": [
@@ -3657,12 +3657,12 @@
         "Isi semula."
       ],
       "vi": [
-        "Đang nạp.",
+        "Pháo đang nạp.",
         "Nạp đạn lại."
       ],
       "th": [
         "กำลังบรรจุ",
-        "บรรจุใหม่"
+        "บรรจุกระสุนใหม่"
       ],
       "fil": [
         "Nagkakarga na.",
@@ -5907,7 +5907,7 @@
         "Peluru itu melantun."
       ],
       "vi": [
-        "Giáp đã đỡ được.",
+        "Giáp đã chặn được.",
         "Đạn địch bật ra."
       ],
       "th": [
@@ -6783,7 +6783,7 @@
         "Enjin getref. Ons verloor krag."
       ],
       "es-ES": [
-        "Motor dañado.",
+        "Daños en el motor.",
         "Impacto en el motor. Perdemos potencia."
       ],
       "es-419": [
@@ -9130,7 +9130,7 @@
       ],
       "pt-PT": [
         "Municiador fora de combate.",
-        "Municiador ferido."
+        "O municiador foi atingido."
       ],
       "nl": [
         "De lader is uitgevallen.",
@@ -10055,7 +10055,7 @@
         "Sammutan paloa."
       ],
       "el": [
-        "Πυροσβεστήρας.",
+        "Ενεργοποίηση πυρόσβεσης.",
         "Σβήνουμε τη φωτιά."
       ],
       "cs": [
@@ -13661,7 +13661,7 @@
         "Dia rempuh kita!"
       ],
       "vi": [
-        "Xe ta bị húc!",
+        "Chúng ta bị đâm!",
         "Nó đang lao vào húc ta!"
       ],
       "th": [
@@ -15141,7 +15141,7 @@
         "أخطأتنا بقليل."
       ],
       "fa": [
-        "نزدیک بود.",
+        "خیلی نزدیک بود.",
         "از کنارمان رد شد."
       ],
       "hi": [
@@ -15324,7 +15324,7 @@
       ],
       "vi": [
         "Xe nằm nghiêng!",
-        "Xe bị lật!"
+        "Xe đã bị lật ngửa!"
       ],
       "th": [
         "รถตะแคงแล้ว",
@@ -15989,7 +15989,7 @@
         "Maali menetetty."
       ],
       "el": [
-        "Τον έχασα.",
+        "Χάσαμε τον στόχο.",
         "Ο στόχος χάθηκε."
       ],
       "cs": [
@@ -18249,7 +18249,7 @@
         "Rumah itu baru runtuh."
       ],
       "vi": [
-        "Tòa nhà sập.",
+        "Nhà đổ sập rồi.",
         "Ngôi nhà kia vừa sập."
       ],
       "th": [
@@ -19940,7 +19940,7 @@
       ],
       "el": [
         "Εύστοχη βολή. Παύσατε πυρ.",
-        "Παύσατε πυρ. Επιτηρήστε τον τομέα σας."
+        "Παύσατε πυρ. Παρακολουθήστε τον τομέα σας."
       ],
       "cs": [
         "Cíl zničen. Zastavit palbu.",
@@ -20461,7 +20461,7 @@
         "Blok meletup. Perisai bertahan."
       ],
       "vi": [
-        "Giáp phản ứng nổ đã đỡ.",
+        "Giáp phản ứng nổ đã chặn.",
         "Khối phản ứng đã nổ. Giáp vẫn trụ."
       ],
       "th": [
@@ -21969,7 +21969,7 @@
         "Hindernis. Ons druk deur."
       ],
       "es-ES": [
-        "Paso a través.",
+        "Lo atravesamos.",
         "Obstáculo. Fuerzo el paso."
       ],
       "es-419": [
@@ -22135,7 +22135,7 @@
         "Prepárense para el aterrizaje."
       ],
       "pt-PT": [
-        "Agarrem-se.",
+        "Segurem-se bem.",
         "Preparar para a aterragem."
       ],
       "nl": [
@@ -22203,7 +22203,7 @@
         "Chuẩn bị tiếp đất."
       ],
       "th": [
-        "จับไว้ให้แน่น",
+        "ทุกคนจับให้แน่น",
         "เตรียมรับแรงกระแทกตอนลงพื้น"
       ],
       "fil": [
@@ -27169,7 +27169,7 @@
         "Päästimme maalin. Uusi yritys."
       ],
       "el": [
-        "Έβαλαν γκολ.",
+        "Σκόραρε ο αντίπαλος.",
         "Δεχτήκαμε γκολ. Ανασύνταξη."
       ],
       "cs": [
