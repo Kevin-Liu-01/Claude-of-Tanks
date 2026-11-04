@@ -205,8 +205,11 @@ assert.match(bootHtml,
   /@media \(width < 768px\) \{\s*\.cot-boot-inner \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)),
-  'only the site fifty\'s stills may enter the loading-screen rotation');
+// (2026-11-03, the owner's boot pick, and 11-04: loading screens from the elevated versus rounds) or a published
+// versus still
+const versusPaths = new Set([...versusItems.values()].map((item) => item.path));
+assert.ok(FEATURED_IMAGES.every((img) => (img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)) || versusPaths.has(img)),
+  'only the site fifty\'s stills and the published versus stills may enter the loading-screen rotation');
 assert.deepEqual(FEATURED_SHOTS.map((shot) => shot.img), sitePicks.featured.map(pickImg),
   'the Garage gallery shows the picks, in their order');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 0,
