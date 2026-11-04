@@ -9,9 +9,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { SFX_ASSETS } from './sfxManifest.generated.ts';
 import {
-  GRAZE_INCIDENCE_DEG, GROUND_DEBRIS, MATERIAL_SOUNDS, SPALL, STRUCK_MATERIALS, calibreBand, compartmentOf, distantBank, hitMaterial,
+  GROUND_DEBRIS, MATERIAL_SOUNDS, SPALL, STRUCK_MATERIALS, calibreBand, compartmentOf, distantBank, hitMaterial,
   impactAssetIds, impactLayers, landingResult, nearMissAsset, propMaterial,
 } from './impactMaterials.ts';
+import { GRAZE_INCIDENCE_DEG } from '../sim/shellSurface.ts';
 import { PLATE_MATERIALS } from '../sim/plateMaterial.ts';
 import { cueProfile } from './soundCues.ts';
 

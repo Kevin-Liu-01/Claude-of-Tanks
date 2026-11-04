@@ -16,6 +16,7 @@
  */
 
 import { PLATE_MATERIALS, type PlateMaterial } from '../sim/plateMaterial.ts';
+import { grazes } from '../sim/shellSurface.ts';
 
 /** The ground a round lands on (the engine's surfaceAt: 'hard' is a road, a bridge deck or ice). */
 export const GROUND_MATERIALS = ['earth', 'sand', 'mud', 'snow', 'paved', 'water'] as const;
@@ -289,14 +290,11 @@ export function propMaterial(kind: string): 'thinSteel' | PropMaterial {
 }
 
 /**
- * A round that lands this far off the surface's normal (or more) skips along it: 72° from the normal is 18° to a
- * level ground, about what a tank gun's flat trajectory meets a field at past a few hundred metres.
+ * A landing's result: a graze when a solid round meets the ground at a glancing angle (sim/shellSurface.ts
+ * GRAZE_INCIDENCE_DEG, the one the FX skip by too), else it digs in.
  */
-export const GRAZE_INCIDENCE_DEG = 72;
-
-/** A landing's result: a graze when a solid round meets the ground at a glancing angle, else it digs in. */
 export function landingResult(impactAngleDeg: unknown, explodes: boolean): ImpactResult {
-  return !explodes && typeof impactAngleDeg === 'number' && impactAngleDeg >= GRAZE_INCIDENCE_DEG ? 'glance' : 'stop';
+  return !explodes && grazes(impactAngleDeg) ? 'glance' : 'stop';
 }
 
 /**

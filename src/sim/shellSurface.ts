@@ -38,6 +38,18 @@ export function classifyShellSurface(world: ShellSurfaceWorld | null | undefined
 interface Vec3Like { x: number; y: number; z: number }
 
 /**
+ * A round that lands this far off the surface's normal (or more) skips along it: 72° from the normal is 18° to a
+ * level ground, about what a tank gun's flat trajectory meets a field at past a few hundred metres. The audio plays it
+ * as a graze and the FX throw its ground forward and low (impact-materials-269); nothing the sim decides reads it.
+ */
+export const GRAZE_INCIDENCE_DEG = 72;
+
+/** True when an incidence (shellIncidenceDeg's, off the event) is a graze; false when it is absent. */
+export function grazes(impactAngleDeg: unknown): boolean {
+  return typeof impactAngleDeg === 'number' && impactAngleDeg >= GRAZE_INCIDENCE_DEG;
+}
+
+/**
  * The round's incidence off the struck surface's normal, whole degrees (0 straight in, 90 grazing); undefined when the
  * velocity or the normal is degenerate, so the field is absent from the event and its wire payload.
  */

@@ -55,6 +55,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
     'src/fx/hullBurstEarth.selftest.mjs',
+    'src/fx/strikeLooks.selftest.mjs',
     // 2026-10-27 (261, premiere-battle on live 259): the APS interception's flash, fragments and grey-white puff
     'src/fx/apsIntercept.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
