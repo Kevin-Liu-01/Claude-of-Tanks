@@ -244,6 +244,7 @@ function cloneRunningGear(
       suspWheels: copy.value(env.suspWheels),
       suspensionLinks: copy.value(env.suspensionLinks),
       addRoadWheelLayer: () => { throw new Error('a cloned running gear takes no new road-wheel layers'); },
+      seatWheelDressing: () => { throw new Error('a cloned running gear seats no new wheel dressing'); },
       tl: copy.object(env.tl),
       tr: copy.object(env.tr),
       tgL: copy.geometry(env.tgL),

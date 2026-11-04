@@ -1946,6 +1946,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
+    // 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on a
+    // wheel turns, and rides the suspension, with it (tankFactoryCore seatWheelDressing)
+    'src/vehicles/wheelDressing.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     // 2026-10-11 (the coordinator's determinism ruling): a suit lays identical cloth alone and after other hulls under load
     'src/vehicles/ghilliePlacementDeterminism.selftest.mjs',

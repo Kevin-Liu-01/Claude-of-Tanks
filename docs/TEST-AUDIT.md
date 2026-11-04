@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1507 | 163.3 |
+| KEEP | 1508 | 163.8 |
 | MERGE | 0 | 0.0 |
-| MANUAL | 655 | 1144.5 |
+| MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2163 | 1308.2 | 231.5 |
-| After: the default tier | 1507 | 163.3 | 36.9 |
+| Before: every receipt (npm test without the tiers) | 2164 | 1321.3 | 233.2 |
+| After: the default tier | 1508 | 163.8 | 37.0 |
 
-Default tier: 12.5 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
+Default tier: 12.4 % of the whole registry's CPU; 17.9 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -36,7 +36,7 @@ Default tier: 12.5 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the 
 | `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
-| `fleet` | 62 | 269.6 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
+| `fleet` | 62 | 282.2 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
 | `tanks` | 408 | 291.9 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 7 | 8.6 | heavy interface paint and layout sweeps |
@@ -169,6 +169,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/strv103GunPort.selftest.mjs` | 932 | MANUAL (tanks) | per-tank pin (strv103a, strv103b), 932 s: 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/arieteC2X.selftest.mjs` | 782 | MANUAL (tanks) | per-tank pin (c2_ariete, k2_black_panther, c1_ariete), 782 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/merkavaXReturnRollers.selftest.mjs` | 765 | MANUAL (tanks) | per-tank pin (merkava3d, merkava4, t62mv1, t62_1975), 765 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `tools/module-outside-share.selftest.mjs` | 756 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 756 s: 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite) | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `src/world/horizonRingWorker.selftest.mjs` | 747 | MANUAL (world) | world: world-wide map builds, 747 s: the time-to-battle lane (2026-10-08): the ring's pipeline in a worker, worker against inline on every map | test:heavy -- world; test:recommend flags it when its inputs change |
 | `server/battlePacingShard1.selftest.mjs` | 738 | MANUAL (pacing) | pacing: whole-match pacing (the 132 default lobbies in eight shards and their judge), placement and deployment on every map, 738 s: 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their | test:heavy -- pacing; test:recommend flags it when its inputs change |
 | `src/vehicles/profiles/m1a1Mantlet.selftest.mjs` | 731 | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, 731 s | test:heavy -- fleet; test:recommend flags it when its inputs change |
@@ -799,10 +800,9 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/garage-roster-settle.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (garage-roster-thrash-265): every nation's roster strip settles at the desktop windows and stepped | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/hud-self-measure.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 2026-10-30 (hud-self-measure-266): the battle HUD's touch status strip, hull bars and an idle page measure not | test:heavy -- ui; test:recommend flags it when its inputs change |
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
-| `tools/module-outside-share.selftest.mjs` | n/a | MANUAL (fleet) | fleet: fleet-wide vehicle sweeps, n/a s: 267 (Main): every internal module sketch mostly inside its armour, with a KNOWN ratchet (fleet suite) | test:heavy -- fleet; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1507)
+## KEEP (1508)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -856,6 +856,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `server/match/frameView.selftest.mjs` | 32 | KEEP | a viewer frame from the authority's view: spotting filters before serialization (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/sixModesAuthority.selftest.mjs` | 30 | KEEP | every mode on the authority (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/profiles/centurionFamily.selftest.mjs` | 30 | KEEP | vehicle rule, 30 s: Release 262 (the owner: the Centurions and the Strv 81 "based on proper historical references so they will no | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/wheelDressing.selftest.mjs` | 30 | KEEP | vehicle rule, 30 s: 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/horizon-panorama-bake.browser.selftest.mjs` | 30 | KEEP | GPU drift receipt on the far panorama bake (cheap browser regression) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/mp-rooms-p2p-e2e.selftest.mjs` | 30 | KEEP | peer-to-peer rooms end to end (must-keep) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/fx/droneModel.selftest.mjs` | 29 | KEEP | effects contract, 29 s | default tier (npm test, the release gate; lane mode by its closure) |

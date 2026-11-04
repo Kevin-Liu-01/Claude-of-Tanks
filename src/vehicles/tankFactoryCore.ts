@@ -386,6 +386,14 @@ interface WheelSpinner {
   side: Side;
 }
 
+/** A part a profile authored in the hull frame that may sit on a wheel (RunningGearUnit.seatWheelDressing). */
+export interface WheelDressingPart {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+  appearanceRole?: string;
+  name: string;
+}
+
 interface SpinnerBatchItem {
   geo: THREE.BufferGeometry;
   end: GearEndpoint;
@@ -873,6 +881,9 @@ export interface RunningGearUnit {
     material: THREE.Material,
     layer?: Omit<WheelFaceLayer, 'geometry' | 'material'>,
   ): THREE.InstancedMesh | null;
+  /** Seats each part that lies on one of this unit's wheels on that wheel, so it turns (and rides the suspension) with
+   * it; returns the parts that lie on none. */
+  seatWheelDressing(parts: readonly WheelDressingPart[]): WheelDressingPart[];
 }
 
 interface TankRig {
@@ -1942,6 +1953,39 @@ export const FAR_MERGE_RETURN_M = 27;
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
+/** Wheel dressing (seatWheelDressing): a part may reach this far past a wheel's outer face, start this far inboard of
+ * its inner face, and stand at most this far proud of the outer face with its innermost point, and still be the
+ * wheel's (the Challenger 2's idler hub rings stand 3 cm proud of the idler; a skirt's bolts stand clear of it). */
+const WHEEL_DRESSING_OUTBOARD_M = 0.10;
+const WHEEL_DRESSING_INBOARD_M = 0.005;
+const WHEEL_DRESSING_FACE_GAP_M = 0.035;
+/** ...and may stand this far past the wheel's drawn rim (the M41's profile tyre band rounds a wheel drawn smaller). */
+const WHEEL_DRESSING_RIM_M = 0.03;
+/** ...and, on a road wheel, be centred on its axle to within this or reach its outer face plane to within that. */
+const WHEEL_DRESSING_HUB_M = 0.025;
+const WHEEL_DRESSING_FACE_DEPTH_M = 0.005;
+/** A part within this of a static part's surface is fixed to the hull, not the wheel's. */
+const WHEEL_DRESSING_CONTACT_M = 0.005;
+
+/** Whether some vertex of `a` lies within `d` of a triangle of `b` (one frame; `near` is a's box grown by d). */
+function geometryTouches(a: THREE.BufferGeometry, b: THREE.BufferGeometry, d: number, near: THREE.Box3): boolean {
+  const pa = a.getAttribute('position'), pb = b.getAttribute('position'), index = b.index;
+  if (!pa || !pb) return false;
+  const triangle = new THREE.Triangle(), box = new THREE.Box3(), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const count = index ? index.count : pb.count;
+  for (let t = 0; t + 2 < count; t += 3) {
+    triangle.a.fromBufferAttribute(pb, index ? index.getX(t) : t);
+    triangle.b.fromBufferAttribute(pb, index ? index.getX(t + 1) : t + 1);
+    triangle.c.fromBufferAttribute(pb, index ? index.getX(t + 2) : t + 2);
+    box.setFromPoints([triangle.a, triangle.b, triangle.c]).expandByScalar(d);
+    if (!box.intersectsBox(near)) continue;
+    for (let i = 0; i < pa.count; i++) {
+      p.fromBufferAttribute(pa, i);
+      if (box.containsPoint(p) && triangle.closestPointToPoint(p, q).distanceToSquared(p) <= d * d) return true;
+    }
+  }
+  return false;
+}
 function lodWrap(
   parent: THREE.Object3D,
   obj: THREE.Object3D,
@@ -5899,8 +5943,180 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     recomputeTrackNormals(geo);
   }
 
+  // 2026-11-04 (owner: "be careful of decorating wheels, they have to be part of and move with the actual wheels
+  // themselves. check all tanks for anything like this"): dressing a profile authored in the hull frame on one of this
+  // unit's wheels (a hub cap, a bolt ring, a face disc, a tyre band) rides that wheel. 43 hulls had it standing still in
+  // the hull buckets: the Pattons', M41s' and Osorios' road-wheel hub rings, the Challenger 2's, KV-2's, M1s' and
+  // AbramsX's sprocket and idler faces, rings and bolts (tools/wheel-dressing-audit.mjs). A part is a wheel's when every
+  // vertex lies within WHEEL_DRESSING_RIM_M of the wheel's rim, from its inner face to WHEEL_DRESSING_OUTBOARD_M past its
+  // outer face, it reaches that face (its innermost point at most WHEEL_DRESSING_FACE_GAP_M proud of it), on a road wheel
+  // or a roller it is also the hub's or on the outer face, and it touches nothing fixed to the hull. A sprocket's or an
+  // idler's dressing turns as a spinner of its own; a road wheel's or a return roller's is an instanced layer on its wheel
+  // (the same dressing on several wheels shares one), turning and riding the suspension with it. Returns the rest.
+  const seatWheelDressing = (parts: readonly WheelDressingPart[]): WheelDressingPart[] => {
+    if (!parts.length) return [];
+    interface Seat {
+      side: Side; x: number; y: number; z: number; r: number; axIn: number; axOut: number;
+      entry?: WheelEntry; end?: { kind: 'sprocket' | 'idler'; spinR: number };
+    }
+    const seats: Seat[] = [];
+    const radialOf = (b: THREE.Box3): number => Math.max(b.max.y, -b.min.y, b.max.z, -b.min.z);
+    const span = (seat: Seat, minX: number, maxX: number, radial: number): void => {
+      seat.r = Math.max(seat.r, radial);
+      seat.axIn = Math.min(seat.axIn, seat.side > 0 ? minX : -maxX);
+      seat.axOut = Math.max(seat.axOut, seat.side > 0 ? maxX : -minX);
+    };
+    // road wheels and return rollers: every layer drawn on a wheel (its hub is the layer's frame; a layer's outset and
+    // offsets move it off the hub: addRoadWheelLayerUnchecked)
+    const bySource = new Map<WheelEntry, Seat>();
+    for (const { im, list } of made) {
+      if (/Spindles?$/.test(im.name)) continue;                     // a roller's fixed axle stock, not a wheel
+      if (!im.geometry.boundingBox) im.geometry.computeBoundingBox();
+      const b = im.geometry.boundingBox!;
+      for (const e of list) {
+        const source = e.suspensionSource || e;
+        let seat = bySource.get(source);
+        if (!seat) {
+          seat = { side: source.x < 0 ? -1 : 1, x: source.x, y: source.y, z: source.z, r: 0,
+            axIn: Infinity, axOut: -Infinity, entry: source };
+          bySource.set(source, seat);
+          seats.push(seat);
+        }
+        span(seat, e.x + b.min.x, e.x + b.max.x, radialOf(b) + Math.hypot(e.y - source.y, e.z - source.z));
+      }
+    }
+    // sprockets and idlers, where their spinners are seated
+    const ends = [[sg, sprocket, 'sprocket', sprocketSpinR], [ig, idler, 'idler', idlerSpinR]] as const;
+    for (const [gp, end, kind, spinR] of ends) {
+      for (const side of [-1, 1] as const) {
+        const x = side * (xcForSide(side) + endpointAxleOutset(end, side)), scaleX = endpointAxialScale(end, side);
+        const seat: Seat = { side, x, y: end.y, z: end.z, r: 0, axIn: Infinity, axOut: -Infinity, end: { kind, spinR } };
+        for (const stock of [gp.body, gp.dark]) {
+          const geometry = side < 0 ? stockMirrors?.get(stock) ?? stock : stock;
+          if (!geometry.boundingBox) geometry.computeBoundingBox();
+          const b = geometry.boundingBox!;
+          const x0 = x + b.min.x * scaleX, x1 = x + b.max.x * scaleX;
+          span(seat, Math.min(x0, x1), Math.max(x0, x1), radialOf(b));
+        }
+        seats.push(seat);
+      }
+    }
+    const rest: WheelDressingPart[] = [];
+    const onSeat = new Map<Seat, WheelDressingPart[]>();
+    const chosen = new Map<WheelDressingPart, { seat: Seat; snap: boolean }>();
+    for (const part of parts) {
+      const position = part.geometry.getAttribute('position');
+      if (!position?.count) { rest.push(part); continue; }
+      if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+      const pb = part.geometry.boundingBox!;
+      let best: Seat | null = null, bestD = Infinity, snap = false;
+      for (const seat of seats) {
+        const lo = seat.side > 0 ? pb.min.x : -pb.max.x, hi = seat.side > 0 ? pb.max.x : -pb.min.x;
+        const reach = seat.r + WHEEL_DRESSING_RIM_M;
+        if (lo < seat.axIn - WHEEL_DRESSING_INBOARD_M || hi > seat.axOut + WHEEL_DRESSING_OUTBOARD_M
+          || lo > seat.axOut + WHEEL_DRESSING_FACE_GAP_M || pb.min.y < seat.y - reach || pb.max.y > seat.y + reach
+          || pb.min.z < seat.z - reach || pb.max.z > seat.z + reach) continue;
+        // inside the rim. On a road wheel or a roller it is also the hub's (centred on the axle: a cap, a ring, an axle, a
+        // knuckle, a tyre band) or stands on the outer face (a bolt); a hull pivot seen through a deep dish is neither and
+        // stays the hull's (the Challenger 2's hydrogas pivots). A sprocket or an idler is open between its toothed rings:
+        // whatever lies in it turns with it (the Tamoyo's tooth crown).
+        let inside = true;
+        for (let i = 0; i < position.count && inside; i++) {
+          const dy = position.getY(i) - seat.y, dz = position.getZ(i) - seat.z;
+          inside = dy * dy + dz * dz <= reach * reach;
+        }
+        // its middle's distance off the axle (the box's: a lathe's or a torus's seam vertices bias a vertex mean)
+        const d = Math.hypot((pb.min.y + pb.max.y) / 2 - seat.y, (pb.min.z + pb.max.z) / 2 - seat.z);
+        // a ring or a cap about the axle authored off it — round (its box square across the axle), with the axle inside
+        // it — is the hub's: the Pattons' and M41s' hub rings sit 1.7 cm above the axle the gear seats, and the M48A5's
+        // left-side rings 10 cm behind its staggered left wheels; it is put on the axle so it turns true
+        const sy = pb.max.y - pb.min.y, sz = pb.max.z - pb.min.z;
+        const ring = d > 0 && Math.abs(sy - sz) <= 0.1 * Math.max(sy, sz)
+          && seat.y > pb.min.y && seat.y < pb.max.y && seat.z > pb.min.z && seat.z < pb.max.z;
+        const onFace = hi >= seat.axOut - WHEEL_DRESSING_FACE_DEPTH_M, onHub = d <= WHEEL_DRESSING_HUB_M || ring;
+        if (inside && (seat.end || onFace || onHub) && d < bestD) { best = seat; bestD = d; snap = ring; }
+      }
+      if (best) chosen.set(part, { seat: best, snap }); else rest.push(part);
+    }
+    // what is fixed to the hull stays the hull's: a part touching a static part (a skirt's trim strip in front of the M1's
+    // sprocket, the swing arm a Challenger 2 pivot carries) is not a wheel's
+    const grown = new THREE.Box3();
+    const fixedToHull = (part: WheelDressingPart): boolean => {
+      grown.copy(part.geometry.boundingBox!).expandByScalar(WHEEL_DRESSING_CONTACT_M);
+      return rest.some((other) => {
+        const ob = other.geometry.boundingBox ?? (other.geometry.computeBoundingBox(), other.geometry.boundingBox!);
+        return ob.intersectsBox(grown) && geometryTouches(part.geometry, other.geometry, WHEEL_DRESSING_CONTACT_M, grown);
+      });
+    };
+    for (let changed = true; changed;) {                        // a bolt on a fixed strip is fixed too
+      changed = false;
+      for (const [part] of chosen) {
+        if (!fixedToHull(part)) continue;
+        chosen.delete(part);
+        rest.push(part);
+        changed = true;
+      }
+    }
+    for (const [part, { seat, snap }] of chosen) {
+      const pb = part.geometry.boundingBox!;
+      if (snap) part.geometry.translate(0, seat.y - (pb.min.y + pb.max.y) / 2, seat.z - (pb.min.z + pb.max.z) / 2);
+      const list = onSeat.get(seat);
+      if (list) list.push(part); else onSeat.set(seat, [part]);
+    }
+    // one geometry per wheel and finish, in the wheel's frame
+    const roadLayers = new Map<string, { geometry: THREE.BufferGeometry; part: WheelDressingPart; seats: Seat[] }>();
+    for (const [seat, list] of onSeat) {
+      const finishes = new Map<string, WheelDressingPart[]>();
+      for (const part of list) {
+        const key = `${part.material.uuid}|${part.appearanceRole ?? ''}|${part.name}`;
+        const same = finishes.get(key);
+        if (same) same.push(part); else finishes.set(key, [part]);
+      }
+      for (const [key, same] of finishes) {
+        const geometry = mergeAll(same.map((part) => part.geometry));
+        geometry.translate(-seat.x, -seat.y, -seat.z);
+        const { material, appearanceRole, name } = same[0]!;
+        if (seat.end) {
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.name = name;
+          mesh.userData.runningGear = true;
+          mesh.userData.runningGearUnitId = runningGearUnitId;
+          mesh.userData.wheelDressingOf = seat.end.kind;
+          if (appearanceRole) mesh.userData.appearanceRole = appearanceRole;
+          mesh.position.set(seat.x, seat.y, seat.z);
+          mesh.castShadow = false;
+          mesh.receiveShadow = true;
+          hullG.add(mesh);
+          disposables.push(geometry);
+          spinners.push({ mesh, r: seat.end.spinR, side: seat.side });
+          continue;
+        }
+        // the same dressing on several wheels (to the millimetre, in each wheel's frame) is one layer over them all
+        const position = geometry.getAttribute('position').array;
+        let hash = 2166136261;
+        for (let i = 0; i < position.length; i++) hash = Math.imul(hash ^ Math.round(position[i]! * 1000), 16777619);
+        const layerKey = `${key}|${seat.entry!.road}|${position.length}|${hash >>> 0}`;
+        const layer = roadLayers.get(layerKey);
+        if (layer) { layer.seats.push(seat); geometry.dispose(); } else roadLayers.set(layerKey, { geometry, part: same[0]!, seats: [seat] });
+      }
+    }
+    for (const { geometry, part, seats: on } of roadLayers.values()) {
+      const list = on.map((seat) => ({ ...seat.entry!, suspensionSource: seat.entry! }));
+      const im = mkInst(geometry, part.material, list, part.appearanceRole, part.name);
+      for (let i = 0; i < list.length; i++) {
+        _m.makeTranslation(list[i]!.x, list[i]!.y + (list[i]!.suspensionSource.off || 0), list[i]!.z);
+        im.setMatrixAt(i, _m);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      im.userData.wheelDressing = true;
+      im.userData.wheelDressingOf = on[0]!.entry!.road ? 'road' : 'roller';
+      disposables.push(geometry);
+    }
+    return rest;
+  };
   const gearUnit = createRunningGearRuntime({
-    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer,
+    seatWheelDressing, xcForSide,
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
@@ -5951,6 +6167,7 @@ interface RunningGearRuntimeEnv {
   suspWheels: Record<Side, WheelEntry[]>;
   suspensionLinks: SuspensionLinkRig;
   addRoadWheelLayer: RunningGearUnit['addRoadWheelLayer'];
+  seatWheelDressing: RunningGearUnit['seatWheelDressing'];
   xcForSide: (side: Side) => number;
   relayWheel: (relay: EndRelay, ws: WheelEntry[]) => WheelEntry | null;
   layRelay: (relay: EndRelay, arr: BandPositions, restPos: ArrayLike<number>, liveZ: number, liveY: number) => boolean;
@@ -6007,7 +6224,8 @@ interface BandInfluence {
 
 export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
   const {
-    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer,
+    seatWheelDressing, xcForSide,
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
     sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
     shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
@@ -6355,6 +6573,7 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
       poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
     }],
     addRoadWheelLayer,
+    seatWheelDressing,
     roadWheelLayout: {
       xc, wheelY, wheelR, wheelZs: [...wheelZs],
       ...sideStationReceipt,
@@ -6638,6 +6857,12 @@ export function combineGearUnits(units: RunningGearUnit[]): RunningGearUnit {
         result = entry.addRoadWheelLayer(geometry, material, layer) ?? result;
       }
       return result;
+    },
+    // each unit seats what lies on its own wheels; what none takes stays the hull's
+    seatWheelDressing(parts) {
+      let rest: WheelDressingPart[] = [...parts];
+      for (const unit of units) rest = unit.seatWheelDressing(rest);
+      return rest;
     },
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
     updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
@@ -9129,6 +9354,92 @@ function* buildTankCoreSteps(
     }));
   }
 
+  // 2026-11-04 (owner: wheel dressing has to "be part of and move with the actual wheels"): what a profile laid on a
+  // wheel rides it (RunningGearUnit.seatWheelDressing). A hull bucket's part goes whole and before the census and the
+  // merge; a profile's own static running-gear mesh (one face-dressing mesh spans every end wheel) gives up the faces
+  // that lie on a wheel. A camouflaged bucket's part takes the scheme's wheel paint (the merge's camo projection is the
+  // hull's; a turning part cannot carry it); a running-gear bucket's keeps its finish role. Parts with a job of their own
+  // (ERA, module visuals, mudguards, lenses, stowage, launchers, damage spans) stay where they are.
+  if (P.gear) {
+    const gear = P.gear;
+    const kept = new Set<THREE.BufferGeometry>([...moduleVisualParts.keys(), ...mudguardParts.map((m) => m.part)]);
+    const parts: WheelDressingPart[] = [];
+    const home = new Map<WheelDressingPart, string>();
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const definition = BUCKET_DEF[bucket];
+      if (!definition || definition[0] !== 'hullG' || !list.length) continue;
+      const matKey = definition[1], camo = CAMO_BUCKETS.has(bucket);
+      const material = camo ? mats.wheels ?? mats.hull
+        : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : matKey === 'weaponSteel' ? mats.dark : mats[matKey];
+      if (!material) continue;
+      const appearanceRole = bucket === 'hullRunningGearDark' ? 'gunmetal' : bucket === 'hullRunningGearTrack' ? 'trackSteel'
+        : bucket === 'hullRunningGearDetail' || camo ? 'wheelDish' : undefined;
+      for (const geometry of list) {
+        if (kept.has(geometry) || destructiblePartCluster.has(geometry) || Object.keys(geometry.userData).length) continue;
+        const part: WheelDressingPart = { geometry, material, appearanceRole, name: `gearWheelDressing_${bucket}` };
+        parts.push(part);
+        home.set(part, bucket);
+      }
+    }
+    const statics: THREE.Mesh[] = [];
+    hullG.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.userData.runningGear === true
+        && mesh.userData.runningGearUnitId === undefined && !Array.isArray(mesh.material)) statics.push(mesh);
+    });
+    const faces = new Map<WheelDressingPart, THREE.Mesh>();
+    for (const mesh of statics) {
+      // each connected piece (a disc, a ring, a bolt), in the hull frame; seated pieces leave the mesh, the rest stays
+      mesh.updateWorldMatrix(true, false);
+      const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert().multiply(mesh.matrixWorld);
+      const flat = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
+      flat.applyMatrix4(toHull);
+      const position = flat.getAttribute('position'), triangles = Math.floor(position.count / 3);
+      const parent = Array.from({ length: triangles }, (_, t) => t);
+      const find = (t: number): number => { while (parent[t] !== t) t = parent[t] = parent[parent[t]!]!; return t; };
+      const firstAt = new Map<string, number>();
+      for (let v = 0; v < triangles * 3; v++) {
+        const key = `${Math.round(position.getX(v) * 1e4)},${Math.round(position.getY(v) * 1e4)},${Math.round(position.getZ(v) * 1e4)}`;
+        const t = (v / 3) | 0, seen = firstAt.get(key);
+        if (seen === undefined) firstAt.set(key, t); else parent[find(t)] = find(seen);
+      }
+      const pieces = new Map<number, number[]>();
+      for (let t = 0; t < triangles; t++) {
+        const root = find(t), list = pieces.get(root);
+        if (list) list.push(t); else pieces.set(root, [t]);
+      }
+      for (const list of pieces.values()) {
+        const piece = new THREE.BufferGeometry();
+        for (const [name, attribute] of Object.entries(flat.attributes)) {
+          const size = attribute.itemSize, source = attribute.array as Float32Array;
+          const array = new Float32Array(list.length * 3 * size);
+          list.forEach((t, k) => array.set(source.subarray(t * 3 * size, (t + 1) * 3 * size), k * 3 * size));
+          piece.setAttribute(name, new THREE.BufferAttribute(array, size, attribute.normalized));
+        }
+        const part: WheelDressingPart = { geometry: piece, material: mesh.material as THREE.Material,
+          appearanceRole: mesh.userData.appearanceRole as string | undefined, name: `gearWheelDressing_${mesh.name || 'mesh'}` };
+        parts.push(part);
+        faces.set(part, mesh);
+      }
+      flat.dispose();
+    }
+    const rest = new Set(gear.seatWheelDressing(parts));
+    for (const part of parts) {
+      const bucket = home.get(part);
+      if (bucket && !rest.has(part)) buckets[bucket] = buckets[bucket]!.filter((geometry) => geometry !== part.geometry);
+    }
+    for (const mesh of statics) {
+      const left = parts.filter((part) => faces.get(part) === mesh && rest.has(part));
+      const total = parts.filter((part) => faces.get(part) === mesh).length;
+      if (left.length === total) { for (const part of left) part.geometry.dispose(); continue; }
+      mesh.geometry.dispose();
+      if (!left.length) { mesh.removeFromParent(); continue; }
+      const remaining = mergeAll(left.map((part) => part.geometry));
+      remaining.applyMatrix4(new THREE.Matrix4().copy(hullG.matrixWorld).invert().multiply(mesh.matrixWorld).invert());
+      mesh.geometry = remaining;
+      disposables.push(remaining);
+    }
+  }
   if (finalPartCensus) for (const [bucket, list] of Object.entries(buckets)) for (const part of list) finalPartCensus(bucket, part);
 
   yield* coreCheckpoint(coreYield);
