@@ -212,20 +212,20 @@ const destruction = [
 
 // ---------------------------------------------------------------- props ---
 const props = [
-  sfx('tree_snap', 'props', `One-shot of a tree trunk snapping as a tank pushes it over: loud wood crack and splintering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('tree_fall', 'props', `One-shot of a tree falling and crashing through branches onto the ground. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
+  sfx('tree_snap', 'props', `One-shot of a tree trunk snapping as a tank pushes it over: loud wood crack and splintering. ${NO_MUSIC}.`, 1.5, { variants: 5, takes: 10, proc: 'impact' }),
+  sfx('tree_fall', 'props', `One-shot of a tree falling and crashing through branches onto the ground. ${NO_MUSIC}.`, 3, { variants: 4, takes: 8, proc: 'impact', punch: false }),
   sfx('fence_wood', 'props', `One-shot of a wooden fence smashed by a heavy vehicle: planks breaking and splintering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('fence_metal', 'props', `One-shot of a metal fence crushed by a heavy vehicle: rattling, scraping and bending steel. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
-  sfx('wall_brick', 'props', `One-shot of a brick wall collapsing: crumbling bricks and dust. ${NO_MUSIC}.`, 3, { variants: 2, takes: 3, proc: 'impact', punch: false }),
+  sfx('wall_brick', 'props', `One-shot of a brick wall collapsing: crumbling bricks and dust. ${NO_MUSIC}.`, 3, { variants: 3, takes: 6, proc: 'impact', punch: false }),
   sfx('building_collapse', 'props', `One-shot of a small building collapsing: heavy crumbling masonry, cracking timber, rubble pouring down. ${NO_MUSIC}.`, 5, { variants: 2, takes: 2, proc: 'impact', punch: false }),
   sfx('car_crush', 'props', `One-shot of a tank crushing a car: metal crunching and glass shattering. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('glass_shatter', 'props', `One-shot of window glass shattering. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('container_crush', 'props', `One-shot of a steel shipping container being rammed and dented: hollow booming metal. ${NO_MUSIC}.`, 2, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('crate_break', 'props', `One-shot of a wooden crate smashed to pieces. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 6, proc: 'impact' }),
-  sfx('rubble_crunch', 'props', `One-shot of rubble and stones crunching under heavy steel tracks. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 3, proc: 'impact', punch: false }),
-  sfx('hedgehog_clang', 'props', `One-shot of a steel anti-tank obstacle knocked over: heavy clanging steel beams. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('rubble_crunch', 'props', `One-shot of rubble and stones crunching under heavy steel tracks. ${NO_MUSIC}.`, 1.5, { variants: 4, takes: 8, proc: 'impact', punch: false }),
+  sfx('hedgehog_clang', 'props', `One-shot of a steel anti-tank obstacle knocked over: heavy clanging steel beams. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('sandbag_thump', 'props', `One-shot of a stack of sandbags pushed over: heavy soft thumps. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
-  sfx('wire_snag', 'props', `One-shot of barbed wire dragged and snapping under a vehicle: metallic twangs and scrapes. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('wire_snag', 'props', `One-shot of barbed wire dragged and snapping under a vehicle: metallic twangs and scrapes. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'impact' }),
   // The 2.0 revival (2026-10-06): the crushables that were silent or wrong. A telegraph pole snaps, its wires
   // whip, and it lands (the hinge topple lands 0.8 s after the crush); carts, straw, tents, steel posts, clay
   // pots and loose drums each sound of what they are (src/audio/propSounds.ts maps every world kind).
@@ -237,7 +237,7 @@ const props = [
   sfx('tent_collapse', 'props', `One-shot of a canvas army tent crushed by a heavy vehicle: tent poles snapping, heavy canvas tearing and flapping down, guy ropes twanging. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'impact', punch: false }),
   sfx('metal_topple', 'props', `One-shot of a steel street lamp post crashing flat onto a paved road: a loud hollow metallic clang, a rattle as it bounces, the lamp's glass shattering. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'impact' }),
   sfx('pottery_smash', 'props', `One-shot of a large clay pot crushed under a heavy vehicle: thick terracotta cracking and shards scattering on the ground. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 4, proc: 'impact' }),
-  sfx('can_knock', 'props', `One-shot of an empty steel drum knocked over by a heavy vehicle: one hollow metallic clang, then a short rattling roll across the ground. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 6, proc: 'impact' }),
+  sfx('can_knock', 'props', `One-shot of an empty steel drum knocked over by a heavy vehicle: one hollow metallic clang, then a short rattling roll across the ground. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'impact' }),
   // The red fuel drum's own explosion (it broke with a dent and no blast); an explosion, so on the impacts' range law.
   sfx('fuel_drum_blast', 'impacts', `One-shot of a steel fuel drum exploding: a deep whoomp of igniting fuel, the metallic bang of the drum bursting open and the rush of a fireball. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact' }),
 ];
@@ -248,39 +248,38 @@ const collisions = [
   sfx('ram_light', 'collisions', `One-shot of an armoured vehicle bumping into another: heavy metal thud. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 5, proc: 'impact' }),
   sfx('hit_rock', 'collisions', `One-shot of a tank hull hitting a large boulder: heavy dull thud and a scrape. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 5, proc: 'impact' }),
   sfx('hit_wall', 'collisions', `One-shot of a tank hitting a concrete wall: heavy impact and crumbling. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 5, proc: 'impact' }),
-  sfx('scrape_loop', 'collisions', `Seamless loop of heavy steel scraping and grinding along stone. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
 ];
 
 // ------------------------------------------------------ vehicle foley ---
 const foley = [
   sfx('susp_bump', 'vehicle', `One-shot of a heavy tank's suspension hitting a bump: thud with torsion bar and road wheel rattle. ${NO_MUSIC}.`, 0.8, { variants: 3, takes: 4, proc: 'foley' }),
   sfx('susp_land', 'vehicle', `One-shot of a heavy tank landing hard after leaving the ground: massive thud, suspension slam, track rattle. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 4, proc: 'impact' }),
-  sfx('susp_creak', 'vehicle', `One-shot of a heavy tracked vehicle's suspension creaking under load. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('water_enter', 'vehicle', `One-shot of a heavy armoured vehicle driving into deep water: big splash and wash. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'impact', punch: false }),
+  sfx('susp_creak', 'vehicle', `One-shot of a heavy tracked vehicle's suspension creaking under load. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 6, proc: 'foley' }),
+  sfx('water_enter', 'vehicle', `One-shot of a heavy armoured vehicle driving into deep water: big splash and wash. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 6, proc: 'impact', punch: false }),
   sfx('water_wade_loop', 'vehicle', `Seamless loop of a tank fording through a river: sloshing, churning water around the hull. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('mud_suck', 'vehicle', `One-shot of steel tracks pulling out of deep mud: wet sucking squelch. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 2, proc: 'foley' }),
+  sfx('mud_suck', 'vehicle', `One-shot of steel tracks pulling out of deep mud: wet sucking squelch. ${NO_MUSIC}.`, 1.5, { variants: 3, takes: 6, proc: 'foley' }),
   sfx('gear_shift', 'vehicle', `One-shot of a heavy military vehicle transmission changing gear: solid mechanical clunk. ${NO_MUSIC}.`, 1, { variants: 3, takes: 4, proc: 'foley' }),
   sfx('brake_squeal', 'vehicle', `One-shot of a heavy tracked vehicle braking hard: metallic brake squeal and tracks skidding. ${NO_MUSIC}.`, 1.8, { variants: 3, takes: 4, proc: 'foley' }),
-  sfx('brake_hiss', 'vehicle', `One-shot of a short hydraulic brake release hiss. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 2, proc: 'foley' }),
+  sfx('brake_hiss', 'vehicle', `One-shot of a short hydraulic brake release hiss. ${NO_MUSIC}.`, 0.8, { variants: 3, takes: 6, proc: 'foley' }),
   sfx('track_skid_loop', 'vehicle', `Seamless loop of locked steel tracks skidding and sliding across concrete: harsh scraping grind. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('track_squeal_loop', 'vehicle', `Seamless loop of tank tracks squealing and grinding during a sharp pivot turn: screeching steel links and scrubbing. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('track_break', 'vehicle', `One-shot of a tank track snapping: loud metallic snap and heavy track links clattering off the wheels. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
+  sfx('track_break', 'vehicle', `One-shot of a tank track snapping: loud metallic snap and heavy track links clattering off the wheels. ${NO_MUSIC}.`, 2, { variants: 3, takes: 6, proc: 'impact' }),
   sfx('hydro_susp', 'vehicle', `One-shot of a hydropneumatic tank suspension adjusting: hydraulic pump whine and a pressurised hiss. ${NO_MUSIC}.`, 2, { variants: 2, takes: 2, proc: 'foley' }),
   sfx('engine_knock_loop', 'vehicle', `Seamless loop of a damaged diesel engine knocking and misfiring: irregular clanks and sputtering. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('engine_stall', 'vehicle', `One-shot of a big diesel engine sputtering, coughing and dying. ${NO_MUSIC}.`, 2.5, { variants: 1, takes: 2, proc: 'foley' }),
-  sfx('jump_launch', 'vehicle', `One-shot of a powerful hydraulic boost: pressurised hiss and a heavy mechanical clunk. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'foley' }),
-  sfx('self_right', 'vehicle', `One-shot of a heavy tank rolling back onto its tracks: metal crash, suspension bounce and rattling. ${NO_MUSIC}.`, 2.5, { variants: 1, takes: 2, proc: 'impact', punch: false }),
-  sfx('turret_start', 'vehicle', `One-shot of a heavy tank turret starting to traverse: the drive motor spinning up and the gears taking up the load with a deep clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('jump_launch', 'vehicle', `One-shot of a powerful hydraulic boost: pressurised hiss and a heavy mechanical clunk. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('self_right', 'vehicle', `One-shot of a heavy tank rolling back onto its tracks: metal crash, suspension bounce and rattling. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 6, proc: 'impact', punch: false }),
+  sfx('turret_start', 'vehicle', `One-shot of a heavy tank turret starting to traverse: the drive motor spinning up and the gears taking up the load with a deep clunk. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'foley' }),
   sfx('turret_electric_loop', 'vehicle', `Seamless loop of a heavy tank turret traversing on its electric drive: a smooth motor whine over a deep gear rumble and the turret ring rolling under load. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('turret_hydraulic_loop', 'vehicle', `Seamless loop of a heavy tank turret traversing on a hydraulic drive: a strained hydraulic pump whine over a deep grinding gear rumble. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
-  sfx('turret_stop', 'vehicle', `One-shot of a heavy tank turret braking to a stop: the drive winding down and a solid, weighty gear clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('turret_stop', 'vehicle', `One-shot of a heavy tank turret braking to a stop: the drive winding down and a solid, weighty gear clunk. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'foley' }),
   sfx('elevation_servo_loop', 'vehicle', `Seamless loop of a tank's gun elevation drive moving the heavy gun: a low electric servo hum with a faint gear whine. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   // Drivetrain whines, pitched by the rig with speed or rpm (2026-10-03, replacing oscillator whines).
   // "A whine over a hum" came back as all hum (2026-10-03): the whine alone, and the rumble left to the tracks.
   sfx('gear_whine_loop', 'vehicle', `Seamless loop of the high mechanical whine of a heavy military vehicle's transmission gears at a steady speed, recorded beside the gearbox: a clear, steady, high-pitched gear whine like a straight-cut gearbox, constant pitch. No engine, no rumble, no road noise. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
   sfx('electric_drive_loop', 'vehicle', `Seamless loop of a large electric traction motor driving a heavy vehicle at a steady speed: a smooth, constant electric motor whine with a faint inverter hum, constant pitch. No engine, no tracks. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('turbo_whistle_loop', 'vehicle', `Seamless loop of a big diesel engine's turbocharger spinning at high speed, recorded close to the intake: a steady high-pitched turbo whistle over an airy rush, constant pitch. No engine knock. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
-  sfx('hatch', 'vehicle', `One-shot of a heavy steel tank hatch closing: hinge creak and a solid clank. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 2, proc: 'foley' }),
+  sfx('hatch', 'vehicle', `One-shot of a heavy steel tank hatch closing: hinge creak and a solid clank. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'foley' }),
   sfx('switch_toggle', 'vehicle', `One-shot of a heavy military toggle switch flipped, with a relay click. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 3, proc: 'foley' }),
 ];
 
@@ -351,6 +350,17 @@ const ENGINE_FAMILIES = {
     start: 'starting up: starter and a diesel firing into a busy idle',
     stop: 'shutting down: the diesel stopping',
   },
+  // world-sfx-269: the cold-war Western liquid-cooled diesels (Leopard 1's MB 838 V10, AMX-30's HS-110, Challenger 1's
+  // CV12): rougher and more mechanical than the MTU 873/883 bank they shared with 101 hulls, no turbo whistle.
+  diesel_v12_coldwar: {
+    name: 'a 1970s Western main battle tank\'s big multi-fuel V10 diesel engine, like a Leopard 1',
+    idle: 'idling: a lumpy, loping deep diesel rumble with a busy mechanical clatter, no turbo whistle',
+    low: 'at low revs under load: a heavy labouring diesel growl with a hard mechanical clatter',
+    mid: 'at medium revs: a loud, rough roaring diesel with a rattling exhaust, no turbo whistle',
+    high: 'at full power: a raw roaring flat-out diesel with a harsh mechanical rattle',
+    start: 'starting up: the starter grinding, the diesel coughing into life and settling into a rough clattering idle',
+    stop: 'shutting down: the diesel shuddering, coughing once and stopping',
+  },
   gasoline_v12: {
     name: 'a World War Two era V12 petrol tank engine',
     idle: 'idling: deep loping burbling V12 petrol rumble',
@@ -362,28 +372,45 @@ const ENGINE_FAMILIES = {
   },
 };
 
+// world-sfx-269 (2026-11-03): every band shipped from its one take, so nothing chose it. The bands whose loop seam
+// stepped 1.5 dB or more (sfx-qa) get five more takes of the same prompt, the shipped take still among them; a new
+// family is generated with six from the start.
+const ENGINE_RETAKES = new Set(['diesel_v12_soviet_idle', 'gasoline_v12_idle', 'gasoline_v12_low', 'diesel_v12_modern_low', 'diesel_ifv_mid']);
+const ENGINE_NEW = new Set(['diesel_v12_coldwar']);
+const engineTakes = (family, band) => (ENGINE_NEW.has(family) || ENGINE_RETAKES.has(`${family}_${band}`) ? 6 : 1);
+
 const engines = Object.entries(ENGINE_FAMILIES).flatMap(([family, d]) => [
   ...['idle', 'low', 'mid', 'high'].map((band) => sfx(`engine_${family}_${band}`, 'engines',
     `Seamless loop of ${d.name} ${d[band]}. Constant engine speed, recorded close to the engine deck outside, no track noise, ${NO_MUSIC}.`,
-    6, { inf: 0.5, loop: true, variants: 1, takes: 1, proc: 'loop' })),
-  sfx(`engine_${family}_start`, 'engines', `One-shot of ${d.name} ${d.start}, recorded outside, no track noise, ${NO_MUSIC}.`, 5, { variants: 1, takes: 2, proc: 'foley' }),
-  sfx(`engine_${family}_stop`, 'engines', `One-shot of ${d.name} ${d.stop}, recorded outside, no track noise, ${NO_MUSIC}.`, 4, { variants: 1, takes: 1, proc: 'foley' }),
+    6, { inf: 0.5, loop: true, variants: 1, takes: engineTakes(family, band), proc: 'loop' })),
+  sfx(`engine_${family}_start`, 'engines', `One-shot of ${d.name} ${d.start}, recorded outside, no track noise, ${NO_MUSIC}.`, 5, { variants: 1, takes: ENGINE_NEW.has(family) ? 4 : 2, proc: 'foley' }),
+  sfx(`engine_${family}_stop`, 'engines', `One-shot of ${d.name} ${d.stop}, recorded outside, no track noise, ${NO_MUSIC}.`, 4, { variants: 1, takes: ENGINE_NEW.has(family) ? 4 : 1, proc: 'foley' }),
 ]);
 
 // ---------------------------------------------------------------- tracks ---
+// world-sfx-269 (2026-11-03): each loop shipped from its one take. Their seams stepped up to 11 dB (light hard slow;
+// light sand slow 8.3, heavy earth slow 7.1), so every few seconds of driving jumped in level, and the light set's sand
+// and mud were 98–99 % hiss over 800 Hz. Six takes each, the beds' "even level" wording, and the soft surfaces asked
+// for the rumble of the road wheels under them.
 const TRACK_SURFACES = {
-  earth: 'over packed dirt and grass',
-  hard: 'over asphalt and concrete: bright metallic clatter and squeaks',
-  sand: 'through soft sand: muffled crunching and hiss',
-  snow: 'through crunchy snow: squeaky compacting crunch',
-  mud: 'through wet mud: squelching, sucking and dripping',
+  earth: 'over packed dirt and grass: dull earthy thuds of the links meeting the ground',
+  hard: 'over asphalt and concrete: a hard metallic clatter of the links on the pavement and squeaking road wheels',
+  sand: 'through soft deep sand: a muffled churning crunch as the links sink in, sand pouring off the track, a deep low rumble of the road wheels',
+  snow: 'through deep crunchy snow: a squeaky compacting crunch under the links and a muffled low rumble of the road wheels',
+  mud: 'through thick wet mud: heavy squelching and sucking of the links, mud slapping off the track, a deep low rumble of the road wheels',
 };
+
+// The two slow loops whose six takes all clanked too hard (crest over 21 dB) for the loop preset's -18 LUFS under its
+// -1.5 dBTP ceiling: six more takes to choose from.
+const TRACK_MORE_TAKES = new Set(['tracks_light_mud_slow', 'tracks_light_snow_slow']);
 
 const tracks = ['light', 'heavy'].flatMap((cls) => Object.entries(TRACK_SURFACES).flatMap(([surface, desc]) => {
   const vehicle = cls === 'light' ? 'a light armoured vehicle\'s steel tracks' : 'a heavy main battle tank\'s steel tracks';
+  const even = 'Continuous at an even level from start to end';
+  const slow = `tracks_${cls}_${surface}_slow`;
   return [
-    sfx(`tracks_${cls}_${surface}_slow`, 'tracks', `Seamless loop of ${vehicle} rolling slowly ${desc}: rhythmic clanking of individual track links, squeaking road wheels, no engine sound, ${NO_MUSIC}.`, 5, { inf: 0.5, loop: true, variants: 1, takes: 1, proc: 'loop' }),
-    sfx(`tracks_${cls}_${surface}_fast`, 'tracks', `Seamless loop of ${vehicle} running fast ${desc}: rapid rattling track links and a rumbling roll, no engine sound, ${NO_MUSIC}.`, 5, { inf: 0.5, loop: true, variants: 1, takes: 1, proc: 'loop' }),
+    sfx(slow, 'tracks', `Seamless loop of ${vehicle} rolling slowly ${desc}, a rhythmic clank of the individual track links. ${even}, no engine sound, ${NO_MUSIC}.`, 5, { inf: 0.5, loop: true, variants: 1, takes: TRACK_MORE_TAKES.has(slow) ? 12 : 6, proc: 'loop' }),
+    sfx(`tracks_${cls}_${surface}_fast`, 'tracks', `Seamless loop of ${vehicle} running fast ${desc}, rapid rattling track links and a rumbling roll. ${even}, no engine sound, ${NO_MUSIC}.`, 5, { inf: 0.5, loop: true, variants: 1, takes: 6, proc: 'loop' }),
   ];
 }));
 
@@ -600,7 +627,7 @@ const edgeCases = [
   sfx('gun_limit', 'edge', `One-shot of a tank gun reaching the end of its elevation travel: the elevation drive straining briefly against the stop, a low motor groan and a soft heavy bump through the mount. ${NO_MUSIC}.`, 0.9, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('traverse_grind_loop', 'edge', `Seamless loop of a damaged tank turret ring grinding while turning: straining motor and scraping steel bearings. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('rollover', 'edge', `One-shot of a heavy tank rolling over onto its side: tumbling crashing steel, loose equipment clattering. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
-  sfx('overturned_groan', 'edge', `One-shot of an overturned tank lying on its side: steel groaning under its own weight, road wheels spinning freely. ${NO_MUSIC}.`, 3, { variants: 1, takes: 2, proc: 'foley' }),
+  sfx('overturned_groan', 'edge', `One-shot of an overturned tank lying on its side: steel groaning under its own weight, road wheels spinning freely. ${NO_MUSIC}.`, 3, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('engine_flood', 'edge', `One-shot of a diesel engine choking as water floods the intake: gurgling bubbles, sputtering, dying. ${NO_MUSIC}.`, 3, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('bubbles_loop', 'edge', `Seamless loop of heavy bubbling as a vehicle sits submerged in deep water. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 1, proc: 'loop' }),
   sfx('hull_debris_patter', 'edge', `One-shot of dirt clods and small stones raining down onto a steel tank hull after a near miss. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'foley' }),
@@ -659,7 +686,6 @@ const ui = [
   sfx('ui_alert', 'ui', `One-shot ${UI}: two short heavy klaxon blasts inside a tank, low and muffled.`, 0.9, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_pickup', 'ui', `One-shot ${UI}: a heavy steel ammunition crate set down and latched, a dull clunk and a latch.`, 1, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_goal', 'ui', `One-shot ${UI_BRASS}: goal scored, a deep low horn blast with a heavy impact.`, 2, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
-  sfx('ui_ball_hit', 'ui', `One-shot of a huge heavy ball struck by a tank: deep hollow boom.`, 0.8, { variants: 2, takes: 2, proc: 'impact' }),
   sfx('ui_respawn', 'ui', `One-shot ${UI}: a heavy steel bolt locking and a diesel engine catching, low and solid.`, 1.5, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_flag_taken', 'ui', `One-shot ${UI_BRASS}: flag taken, a tense low two-note brass stab.`, 1.2, { variants: 1, takes: 3, proc: 'ui' }),
   sfx('ui_flag_captured', 'ui', `One-shot ${UI_BRASS}: flag captured, a bold low brass hit with a deep drum.`, 1.8, { variants: 1, takes: 3, proc: 'ui', ch: 'stereo' }),
@@ -776,7 +802,7 @@ const breakables = [
 const hullEvents = [
   // a hull landing after a drop, and one striking a steel obstacle (tank:impact by cause and by what it struck)
   sfx('hull_land', 'collisions', `One-shot of a 60-ton tank landing hard after driving off a drop: the suspension bottoming out with a massive steel slam, road wheels and tracks clattering, a deep ground thud. ${NO_MUSIC}.`, 1.6, { variants: 3, takes: 6, proc: 'impact' }),
-  sfx('hit_metal', 'collisions', `One-shot of a tank ramming into a burnt-out steel vehicle hulk: a heavy dull steel clang and crunch of bending armour plate, grinding metal. ${NO_MUSIC}.`, 1.5, { variants: 2, takes: 5, proc: 'impact' }),
+  sfx('hit_metal', 'collisions', `One-shot of a tank ramming into a burnt-out steel vehicle hulk: a heavy dull steel clang and crunch of bending armour plate, grinding metal. ${NO_MUSIC}.`, 1.5, { variants: 4, takes: 8, proc: 'impact' }),
   sfx('ammo_explode_far', 'destruction', `One-shot of a tank's ammunition exploding far away, about a kilometre: a deep heavy boom followed by a rolling series of muffled secondary blasts and a long low echo. ${FAR}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far' }),
 ];
 // V7 (2026-10-13): the field nets and garnish on 75 hulls (ghillieSuit.ts) rustle as the hull moves: a layer of the
@@ -802,11 +828,79 @@ const missileLaunches = [
   sfx('launch_far', 'weapons', `One-shot of a guided missile launched far away, about 800 metres: a soft distant thump and a fading rushing hiss of the rocket motor, outdoor echo. ${FAR}.`, 3, { variants: 2, takes: 4, proc: 'weapon-far' }),
 ];
 
+// ------------------------------------------------- world-sfx-269 (2026-11-03) ---
+// The owner, 11-03: "make a lot better sounds for everything ... all the special moodes". Each entry closes a class the
+// audit found (~/cot-launch-state/streams/world-sfx-269/AUDIT.md): one sound covering moments that should differ (a
+// pivot on mud screeching like steel, a crash gearbox and an automatic, a BMP and a 60 t tank landing, a barn and a
+// concrete wall, every roof as clay tiles, every vehicle exploding as an MBT, a night full of songbirds), a moment that
+// played nothing (another hull's ford, the water leaving a hull, an APS intercept, a drone shot down, a counter-attack,
+// a ball struck by anyone else) and the modes that opened on the generic battle sting.
+const VEH = `No engine sound, ${NO_MUSIC}`;
+const BLD40 = `Recorded about 40 metres away outdoors. Realistic documentary field recording, not cinematic, no explosion, no gunfire, ${NO_MUSIC}`;
+const runningGear = [
+  // the pivot on soft ground (RUNNING_SURFACE in vehicleRig.ts): steel only squeals on hard ground
+  sfx('track_scrub_soft_loop', 'vehicle', `Seamless loop of a heavy tank pivoting on the spot in soft earth: its steel tracks scrubbing sideways and ploughing the ground, dirt and turf churning and tearing, a deep grinding rumble. Continuous at an even level from start to end, no metallic screech, ${VEH}.`, 5, { loop: true, variants: 1, takes: 6, proc: 'loop' }),
+  // a hydraulic turret drive's own start and stop (TURRET_DRIVE_SOUND), beside the electric drive's
+  sfx('turret_start_hydraulic', 'vehicle', `One-shot of a heavy tank turret starting to traverse on a hydraulic drive: the hydraulic pump note rising under load, a short pressurised hiss and the turret ring taking up the weight with a deep clunk. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'foley' }),
+  sfx('turret_stop_hydraulic', 'vehicle', `One-shot of a heavy tank turret braking to a stop on a hydraulic drive: the pump note falling away, a short hiss of the relief valve and a solid, weighty clunk of the turret ring. ${NO_MUSIC}.`, 1.2, { variants: 4, takes: 8, proc: 'foley' }),
+  // an automatic gearbox's shift (SHIFT_SOUND); gear_shift stays the manual box's clunk
+  sfx('gear_shift_auto', 'vehicle', `One-shot of a modern tank's automatic transmission changing gear under load, heard close beside the hull: a short soft hydraulic thump and the click of the next gear engaging, smooth, no grinding. ${VEH}.`, 0.8, { variants: 3, takes: 6, proc: 'foley' }),
+  // a light hull's suspension (SUSPENSION_SOUND by track class)
+  sfx('susp_bump_light', 'vehicle', `One-shot of a light tracked infantry fighting vehicle's suspension hitting a bump at speed: a quick hollow thud, the road wheels bouncing and the track slapping, lighter and tinnier than a tank. ${VEH}.`, 0.8, { variants: 3, takes: 6, proc: 'foley' }),
+  sfx('susp_land_light', 'vehicle', `One-shot of a light tracked armoured vehicle landing hard after leaving the ground: a hollow thud of the thin hull, the suspension slamming and the tracks rattling, lighter than a heavy tank. ${VEH}.`, 1.3, { variants: 3, takes: 6, proc: 'impact' }),
+  // water under any hull (the rig's water entry and exit): a ford's splash and the water leaving the hull
+  sfx('water_splash_in', 'vehicle', `One-shot of a tank driving fast into a shallow river ford: a big heavy splash as the bow ploughs into the water, a bow wave surging and water slapping against the steel hull. ${VEH}.`, 2.2, { variants: 3, takes: 6, proc: 'impact', punch: false }),
+  sfx('water_exit', 'vehicle', `One-shot of a tank climbing out of a river onto the bank: water pouring and cascading off the steel hull and the tracks, draining and dripping. ${VEH}.`, 3, { variants: 3, takes: 6, proc: 'foley' }),
+];
+const hullStrikes = [
+  // a crash by what it struck (STRUCK_SOUND in audioEngine.ts): beside rock, steel and masonry
+  sfx('hit_timber', 'collisions', `One-shot of a tank hull ramming into the timber wall of a barn: a deep hollow wooden boom, heavy planks cracking and splintering. ${VEH}.`, 1.3, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('hit_earth', 'collisions', `One-shot of a tank hull ramming into an earth bank faced with sandbags: a deep, dull, heavy thump, soil and sand spilling and pattering down. ${VEH}.`, 1.3, { variants: 3, takes: 6, proc: 'impact' }),
+];
+const worldBreaks = [
+  // a light vehicle going up (EXPLOSION_BY_MASS): not a 60 t tank's blast
+  sfx('vehicle_explode_light', 'destruction', `One-shot of a light armoured personnel carrier destroyed by an internal explosion, recorded 40 metres away: a sharp violent blast, thin armour plate tearing open, the fuel tank going up in a whoosh, light debris falling. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 6, proc: 'impact' }),
+  // a roof by what it is made of (ROOF_FALL in destructionSounds.ts): roof_fall stays the tiled roof
+  sfx('roof_fall_concrete', 'buildings', `One-shot of the flat reinforced concrete roof slab of a building caving in: a deep crack of breaking concrete, the heavy slab crashing down with a thunderous thud, concrete chunks and rebar clattering. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('roof_fall_earth', 'buildings', `One-shot of the flat earth roof of a mud-brick desert house caving in: wooden roof beams cracking, a heavy soft thump of packed earth and clay falling in, a long pouring hiss of dust, sand and clods. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  sfx('roof_fall_timber', 'buildings', `One-shot of the shingled roof of a wooden barn caving in: rafters cracking and snapping, wooden shingles and planks sliding off and clattering down in a long cascade. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
+  // the moments that played nothing: an active protection system's intercept (aps:intercept), a drone shot down
+  sfx('aps_intercept', 'destruction', `One-shot of a tank's active protection system defeating an incoming anti-tank missile a few metres from the vehicle: one sharp, violent bang of the interceptor charge, the missile's warhead blown apart in mid-air, fragments rattling off steel armour. ${FIELD}, ${NO_MUSIC}.`, 2, { variants: 3, takes: 8, proc: 'impact' }),
+  sfx('drone_shot_down', 'aerial', `One-shot of a small quadcopter drone hit by gunfire in mid-air: a sharp crack of carbon fibre and plastic shattering, its electric motors sputtering and whining down, pieces clattering onto the ground. ${NO_MUSIC}.`, 2, { variants: 3, takes: 6, proc: 'impact', punch: false }),
+];
+const modeSounds = [
+  // openers for the modes that opened on the generic battle sting (MODE_OPENER, exhaustive over the mode ids): field
+  // sounds, not music, so each mode is recognisable by ear
+  sfx('mode_ctf_opener', 'stingers', `Sound effect: a large flag snapping open in a strong wind on a tall steel flagpole, the halyard and its clips clanging against the pole, heard close by. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_zone_opener', 'stingers', `Sound effect: a position being dug in on open ground: shovels biting into earth, heavy sandbags thrown down with dull thumps, a steel picket hammered into the ground. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_mars_opener', 'stingers', `Sound effect: the airlock of a sealed armoured vehicle cycling on another planet: a heavy hatch seal locking with a deep thud, air hissing out through a pressure valve, a low hollow rumble. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_drone_opener', 'stingers', `Sound effect: several small quadcopter combat drones spinning up together on the ground close by and lifting off, a rising swarm of buzzing propeller whines climbing away into the sky. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_range_opener', 'stingers', `Sound effect: a military firing range's warning siren sounding two long low blasts across open ground, heard from a few hundred metres. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  // mode events that played nothing (MODE_EVENT_SOUND): the Horde's special waves, the Frontline's counter-attack
+  sfx('mode_horde_swarm', 'stingers', `Sound effect: an attack warning siren over a ruined town rising and falling rapidly in a fast, urgent warble, heard from far away. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  sfx('mode_counter_attack', 'stingers', `Sound effect: a signal flare fired from a flare pistol far across a battlefield, about 400 metres away: a hollow pop and a long fizzing hiss as the flare climbs and burns. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 2, takes: 6, proc: 'oneshot' }),
+  // Turbo Ball's steel mooring buoy struck by anyone, heard where it is (it was a flat interface sound for the striker only)
+  sfx('ball_strike', 'props', `One-shot of a huge hollow welded steel mooring buoy struck hard by a tank: a deep, hollow, resonant boom of thick steel plate and a short ringing clang that dies quickly. ${NO_MUSIC}.`, 1.5, { variants: 4, takes: 8, proc: 'impact' }),
+  // capture the flag by perspective (FLAG_CUE): their flag in our hands is not our flag lost
+  sfx('ui_flag_seized', 'ui', `One-shot ${UI_BRASS}: the enemy flag seized, a firm rising low two-note brass call over one deep drum hit.`, 1.4, { variants: 1, takes: 4, proc: 'ui' }),
+];
+// The night's own life (SPOT_HOURS in environmentScenes.ts): a night battle no longer hears songbirds, larks and roosters.
+const SPOTS_NIGHT = [
+  ['owl', 'a tawny owl hooting twice in the dark', 2.5, 2],
+  ['crickets', 'a short burst of field crickets chirping in the grass at night, then falling quiet', 4, 2],
+  ['nightjar', 'a nightjar churring in the dark, a long low purring trill', 4, 2],
+  ['night_insects', 'tropical frogs and insects calling in a humid jungle at night, a short swell and then quiet', 4, 2],
+  ['fox', 'a red fox barking twice in the distance at night', 2, 2],
+];
+const nightSpots = SPOTS_NIGHT.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
+  `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants + 2, proc: 'spot' }));
+
 export const SFX_CATALOG = Object.freeze([
   ...weapons, ...autocannons, ...machineGuns, ...launchers, ...mechanisms, ...flybys,
   ...impacts, ...destruction, ...props, ...collisions, ...foley, ...engines, ...tracks,
   ...equipment, ...ambience, ...spots, ...edgeCases, ...radio, ...ui, ...aerial, ...stingers,
   ...structures, ...breakables, ...hullEvents, ...missileLaunches, ...bulletStrikes, ...netting,
+  ...runningGear, ...hullStrikes, ...worldBreaks, ...modeSounds, ...nightSpots,
 ]);
 
 /** Generated seconds (credits ≈ 10 per second on the sound-effects model). */

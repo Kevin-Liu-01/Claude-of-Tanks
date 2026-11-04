@@ -18,13 +18,14 @@ type EngineFamilyId =
   | 'diesel_v12_soviet'
   | 'diesel_two_stroke'
   | 'diesel_v12_modern'
+  | 'diesel_v12_coldwar'
   | 'diesel_aircooled'
   | 'diesel_ifv'
   | 'gasoline_v12';
 
 export const ENGINE_FAMILY_IDS: readonly EngineFamilyId[] = Object.freeze([
   'turbine_agt', 'turbine_gtd', 'diesel_v12_soviet', 'diesel_two_stroke',
-  'diesel_v12_modern', 'diesel_aircooled', 'diesel_ifv', 'gasoline_v12',
+  'diesel_v12_modern', 'diesel_v12_coldwar', 'diesel_aircooled', 'diesel_ifv', 'gasoline_v12',
 ]);
 
 export type CrewLanguage =
@@ -35,10 +36,10 @@ export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
   'en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he',
 ]);
 
-type TrackClass = 'light' | 'heavy';
-type TurretDrive = 'electric' | 'hydraulic';
+export type TrackClass = 'light' | 'heavy';
+export type TurretDrive = 'electric' | 'hydraulic';
 export type LoaderKind = 'manual' | 'carousel' | 'bustle' | 'autocannon' | 'missile' | 'gunship';
-type ShiftStyle = 'manual' | 'automatic' | 'none';
+export type ShiftStyle = 'manual' | 'automatic' | 'none';
 
 /** Powertrain behaviour the RPM model and the layer mixer read. */
 export interface EngineFamilyProfile {
@@ -64,6 +65,8 @@ export const ENGINE_FAMILIES: Readonly<Record<EngineFamilyId, EngineFamilyProfil
   diesel_v12_soviet: Object.freeze({ id: 'diesel_v12_soviet', turbine: false, idleRpm: 0.3, maxRpm: 1, gears: 6, shift: 'manual', spoolUpS: 0.32, spoolDownS: 0.55, whine: 0.1, fan: 0.12 }),
   diesel_two_stroke: Object.freeze({ id: 'diesel_two_stroke', turbine: false, idleRpm: 0.34, maxRpm: 1, gears: 6, shift: 'manual', spoolUpS: 0.26, spoolDownS: 0.42, whine: 0.18, fan: 0.1 }),
   diesel_v12_modern: Object.freeze({ id: 'diesel_v12_modern', turbine: false, idleRpm: 0.28, maxRpm: 1, gears: 4, shift: 'automatic', spoolUpS: 0.36, spoolDownS: 0.6, whine: 0.22, fan: 0.16 }),
+  // Leopard 1, AMX-30, Challenger 1: no turbo lag to speak of, a planetary or semi-automatic box shifting less smoothly
+  diesel_v12_coldwar: Object.freeze({ id: 'diesel_v12_coldwar', turbine: false, idleRpm: 0.3, maxRpm: 1, gears: 4, shift: 'automatic', spoolUpS: 0.3, spoolDownS: 0.5, whine: 0.16, fan: 0.14 }),
   diesel_aircooled: Object.freeze({ id: 'diesel_aircooled', turbine: false, idleRpm: 0.3, maxRpm: 1, gears: 2, shift: 'automatic', spoolUpS: 0.4, spoolDownS: 0.7, whine: 0.12, fan: 0.55 }),
   diesel_ifv: Object.freeze({ id: 'diesel_ifv', turbine: false, idleRpm: 0.3, maxRpm: 1, gears: 5, shift: 'automatic', spoolUpS: 0.22, spoolDownS: 0.4, whine: 0.28, fan: 0.08 }),
   gasoline_v12: Object.freeze({ id: 'gasoline_v12', turbine: false, idleRpm: 0.26, maxRpm: 1, gears: 5, shift: 'manual', spoolUpS: 0.28, spoolDownS: 0.5, whine: 0.08, fan: 0.1 }),
@@ -140,6 +143,11 @@ function numberOr(value: unknown, fallback: number): number {
 /**
  * Powertrain family by installation. Patterns are anchored on the fleet's own
  * id vocabulary; anything unrecognised falls back on role, era and mass.
+ *
+ * (world-sfx-269, 2026-11-03) The petrol pattern is anchored: /e100/ matched "type100", so the Type 100 ran a Second
+ * World War petrol V12. The Strv 81 is a Swedish Centurion (Meteor petrol). A cold-war Western hull with no other
+ * match runs the cold-war diesel bank (Leopard 1's MB 838, AMX-30's HS-110, Challenger 1's CV12) instead of sharing
+ * the MTU 873/883 bank with 101 hulls; the Leopard 2 lineage keeps the MTU from its first prototype.
  */
 export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId {
   const id = idOf(spec);
@@ -150,13 +158,15 @@ export function resolveEngineFamily(spec: VehicleAudioSpecInput): EngineFamilyId
   if (id === 'abramsx') return 'diesel_v12_modern';
   if (/t80|type96_80/.test(id)) return 'turbine_gtd';
   if (/strv103|t64|t84|oplot|chieftain|vickers|type74|type90|stb1|m551|aft10|sheridan/.test(id)) return 'diesel_two_stroke';
-  if (/^m48|^m60|^m46|^m47|merkava[123]|sabra|mbt70/.test(id)) return 'diesel_aircooled';
-  if (/centurion|e100/.test(id)) return 'gasoline_v12';
+  // the Magachs (M48/M60) and the Sho't Kal (a Centurion re-engined with it) run the AVDS-1790 too
+  if (/^m48|^m60|^m46|^m47|^magach|^shot_kal|merkava[123]|sabra|mbt70/.test(id)) return 'diesel_aircooled';
+  if (/^centurion|^strv81|^jpz_e100/.test(id)) return 'gasoline_v12';
   if (/kv2/.test(id)) return 'diesel_v12_soviet';
   if (/namer|bmpt|tos1a/.test(id)) return /namer/.test(id) ? 'diesel_v12_modern' : 'diesel_v12_soviet';
   if (role === 'ifv' || role === 'light' || mass < 30) return 'diesel_ifv';
   if (/t72|t90|t62|t55|t14|type59|ztz85|type96_72|pt91|jaguar|t72_rys|zubr/.test(id)) return 'diesel_v12_soviet';
   if (era === 'ww2') return 'gasoline_v12';
+  if (era === 'cold-war' && !/^leo2|^leopard2/.test(id)) return 'diesel_v12_coldwar';
   return 'diesel_v12_modern';
 }
 

@@ -7,6 +7,7 @@ import { CREW_VOICE_NATIONS } from './crewVoice.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { TURRET_DRIVE_SOUND } from './vehicleRig.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -257,15 +258,18 @@ for (let i = 0; i < 180; i++) {
 }
 names = logSince(since).map((e) => e.n);
 assert.ok(names.filter((n) => n === 'gun_limit').length <= 2, `a flickering gun stop clunks at most twice in 3 s (${names.filter((n) => n === 'gun_limit').length})`);
-assert.equal(names.filter((n) => n === 'turret_stop').length, 0, 'a hunting servo never clunks');
-assert.equal(names.filter((n) => n === 'turret_start').length, 0, 'nor starts the drive');
+// our T-72's turret runs on a hydraulic drive, which starts and stops as itself (world-sfx-269)
+const drive = TURRET_DRIVE_SOUND.hydraulic;
+assert.equal(names.filter((n) => n === drive.stop).length, 0, 'a hunting servo never clunks');
+assert.equal(names.filter((n) => n === drive.start).length, 0, 'nor starts the drive');
 since = mark();
 for (let i = 0; i < 30; i++) { me.state.turretYawRate = 0.4; ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 me.state.turretYawRate = 0;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks);
-assert.equal(logSince(since).filter((e) => e.n === 'turret_stop').length, 1, 'a half-second slew ends in one stop clunk');
-assert.equal(logSince(since).filter((e) => e.n === 'turret_start').length, 1, 'and began with one drive start');
+assert.equal(logSince(since).filter((e) => e.n === drive.stop).length, 1, 'a half-second slew ends in one stop clunk');
+assert.equal(logSince(since).filter((e) => e.n === 'turret_stop').length, 0, 'not the electric drive\'s');
+assert.equal(logSince(since).filter((e) => e.n === drive.start).length, 1, 'and began with one drive start');
 me.state.atGunLimit = false;
 
 // Destruction: an ammo-rack kill by us → blast, turret, cook-off, kill confirm.

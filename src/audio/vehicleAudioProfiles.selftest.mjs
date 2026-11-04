@@ -17,7 +17,16 @@ const cases = [
   ['xk2_black_panther', 'mbt', 55, 'diesel_v12_modern'], ['namer_ifv', 'ifv', 63.5, 'diesel_v12_modern'], ['abramsx', 'mbt', 49, 'diesel_v12_modern'],
   ['m2a2_bradley', 'ifv', 30.4, 'diesel_ifv'], ['cv90', 'ifv', 37, 'diesel_ifv'], ['bmp2', 'ifv', 14.3, 'diesel_ifv'],
   ['centurion5_2', 'mbt', 52, 'gasoline_v12'], ['jpz_e100', 'td', 130, 'gasoline_v12'],
+  // world-sfx-269 (2026-11-03): /e100/ no longer catches the Type 100; the Strv 81 is a Centurion; the Magachs and the
+  // Sho't Kal run the AVDS-1790
+  ['type100', 'ifv', 38, 'diesel_ifv'], ['strv81', 'mbt', 51.8, 'gasoline_v12'], ['magach6b', 'mbt', 51, 'diesel_aircooled'],
+  ['shot_kal', 'mbt', 51.8, 'diesel_aircooled'],
 ];
+// …and a cold-war Western hull runs the cold-war diesel, the Leopard 2 lineage the MTU from its first prototype
+for (const [id, family] of [['leo1a5', 'diesel_v12_coldwar'], ['amx30b2', 'diesel_v12_coldwar'], ['challenger1_mk2', 'diesel_v12_coldwar'],
+  ['leopard2_proto', 'diesel_v12_modern'], ['leo2a2', 'diesel_v12_modern']]) {
+  assert.equal(resolveEngineFamily({ id, role: 'mbt', weightTons: 50, era: 'cold-war' }), family, `${id} (cold war) → ${family}`);
+}
 for (const [id, role, weightTons, family] of cases) {
   assert.equal(resolveEngineFamily({ id, role, weightTons, era: 'modern' }), family, `${id} → ${family}`);
 }

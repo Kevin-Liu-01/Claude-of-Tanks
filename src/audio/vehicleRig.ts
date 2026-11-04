@@ -32,7 +32,9 @@ import {
   createVehicleAudioEvents, createVehicleAudioState, stepVehicleAudio,
   type ModuleHealth, type SurfaceId, type VehicleAudioInput, type VehicleAudioState,
 } from './vehicleAudioModel.ts';
-import { ENGINE_FAMILIES, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
+import {
+  ENGINE_FAMILIES, type ShiftStyle, type TrackClass, type TurretDrive, type VehicleAudioIdentity,
+} from './vehicleAudioProfiles.ts';
 
 export type RigLod = 'own' | 'near' | 'far';
 
@@ -88,6 +90,63 @@ const NET_ASSET = 'net_rustle_loop';
 /** Slow/fast track loop centres, m/s of track speed. */
 const TRACK_CENTRES: readonly number[] = [2.5, 10];
 
+/** The track recordings by the ground they were recorded on (`tracks_<class>_<set>_<speed>`). */
+type TrackSet = 'earth' | 'hard' | 'sand' | 'snow' | 'mud';
+
+/**
+ * How each ground takes the running gear (world-sfx-269, 2026-11-03): the track set it plays and its level, and how a
+ * pivot and a skid sound on it. Steel only screeches on hard ground: a pivot on mud, sand or snow ploughs and churns
+ * the ground (the soft scrub), on packed earth it does both; until this table every pivot screeched like steel on
+ * concrete. Exhaustive over SurfaceId, so a new ground fails typecheck until it is named here.
+ */
+interface RunningSurface {
+  readonly tracks: TrackSet;
+  /** Track loop level (a hull in water is heard mostly as the water). */
+  readonly gear: number;
+  /** Pivot: the steel squeal and the soft-ground scrub, each × the model's scrub. */
+  readonly squeal: number;
+  readonly scrub: number;
+  /** Locked tracks sliding (the skid loop is steel on concrete). */
+  readonly skid: number;
+}
+export const RUNNING_SURFACE: Readonly<Record<SurfaceId, RunningSurface>> = Object.freeze({
+  hard: Object.freeze({ tracks: 'hard', gear: 1, squeal: 0.85, scrub: 0, skid: 0.9 }),
+  earth: Object.freeze({ tracks: 'earth', gear: 1, squeal: 0.4, scrub: 0.65, skid: 0.55 }),
+  sand: Object.freeze({ tracks: 'sand', gear: 1, squeal: 0.12, scrub: 0.8, skid: 0.25 }),
+  snow: Object.freeze({ tracks: 'snow', gear: 1, squeal: 0.18, scrub: 0.6, skid: 0.25 }),
+  mud: Object.freeze({ tracks: 'mud', gear: 1, squeal: 0.1, scrub: 0.8, skid: 0.25 }),
+  water: Object.freeze({ tracks: 'mud', gear: 0.35, squeal: 0.08, scrub: 0.35, skid: 0.15 }),
+});
+/** The soft-ground pivot loop (RUNNING_SURFACE.scrub). */
+const SCRUB_ASSET = 'track_scrub_soft_loop';
+
+/** The turret drive's loop, its start as it takes up the turret's weight and its stop (an electric and a hydraulic drive differ). */
+export const TURRET_DRIVE_SOUND: Readonly<Record<TurretDrive, { readonly loop: string; readonly start: string; readonly stop: string }>> = Object.freeze({
+  electric: Object.freeze({ loop: 'turret_electric_loop', start: 'turret_start', stop: 'turret_stop' }),
+  hydraulic: Object.freeze({ loop: 'turret_hydraulic_loop', start: 'turret_start_hydraulic', stop: 'turret_stop_hydraulic' }),
+});
+
+/** A gear change by gearbox: a manual box's clunk, an automatic's hydraulic shift; a turbine does not shift. */
+export const SHIFT_SOUND: Readonly<Record<ShiftStyle, string | null>> = Object.freeze({
+  manual: 'gear_shift', automatic: 'gear_shift_auto', none: null,
+});
+
+/** A bump and a landing by the hull's class: a 14 t IFV's suspension is not a 60 t tank's. */
+export const SUSPENSION_SOUND: Readonly<Record<TrackClass, { readonly bump: string; readonly land: string }>> = Object.freeze({
+  light: Object.freeze({ bump: 'susp_bump_light', land: 'susp_land_light' }),
+  heavy: Object.freeze({ bump: 'susp_bump', land: 'susp_land' }),
+});
+
+/**
+ * Water under any hull (world-sfx-269): a ford's splash as it drives in (a plunge when it goes in fast or deep), and the
+ * water pouring off it as it climbs out. Until this only the occupied hull splashed, only past 1.25 m, and nothing
+ * left the water audibly. The depth's hysteresis keeps a hull riding the waterline from splashing every frame.
+ */
+export const WATER_SOUND = Object.freeze({
+  splash: 'water_splash_in', plunge: 'water_enter', exit: 'water_exit',
+  inM: 0.45, outM: 0.15, minSpeedMps: 1.2, plungeMps: 6, plungeM: 1.1, gapS: 2, minStayS: 1.5,
+});
+
 function bandsFor(lod: RigLod): readonly (typeof BAND_NAMES[number])[] {
   if (lod === 'own') return BAND_NAMES;
   if (lod === 'near') return ['idle', 'mid', 'high'];
@@ -112,6 +171,8 @@ export interface VehicleRig {
   readonly lastAirHz: number;
   /** The field net's rustle level last set (0: no net, or standing still). */
   readonly netGain: number;
+  /** The ground under the hull the running gear last played (null before the first frame). */
+  readonly surface: SurfaceId | null;
   setLod(lod: RigLod): void;
   setBurning(burning: boolean): void;
   /**
@@ -139,6 +200,12 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   let engineStartAt = 0;
   let burning = false;
   let netGain = 0;
+  // Water under the hull (WATER_SOUND): known after the first frame (a rig born in a river does not splash), the
+  // waterline crossed with hysteresis, the last splash or drain for the gap between them.
+  let waterKnown = false;
+  let inWater = false;
+  let waterInAt = 0;
+  let lastWaterSoundAt = -Infinity;
 
   // ---- output chain.
   const output = ctx.createGain();
@@ -261,7 +328,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   }
 
   function trackSurfaceAsset(s: SurfaceId): string {
-    return s === 'water' ? 'mud' : s;
+    return RUNNING_SURFACE[s].tracks;
   }
 
   function retrack(next: SurfaceId): void {
@@ -277,11 +344,11 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     }
     for (const asset of wanted) if (!gearLayers.has(asset)) gearLayers.set(asset, makeLayer(asset, gearSum));
     if (lod !== 'far') {
-      for (const asset of ['track_squeal_loop', 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop']) {
+      for (const asset of ['track_squeal_loop', SCRUB_ASSET, 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop']) {
         if (!gearLayers.has(asset)) gearLayers.set(asset, makeLayer(asset, asset === 'engine_knock_loop' ? engineSum : gearSum));
       }
     } else {
-      for (const asset of ['track_squeal_loop', 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop']) {
+      for (const asset of ['track_squeal_loop', SCRUB_ASSET, 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop']) {
         const layer = gearLayers.get(asset);
         if (layer) { dropLayer(layer); gearLayers.delete(asset); }
       }
@@ -290,8 +357,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   }
 
   function ownExtras(on: boolean): void {
-    const extras = [identity.turretDrive === 'hydraulic' ? 'turret_hydraulic_loop' : 'turret_electric_loop',
-      'elevation_servo_loop', 'interior_hum_loop', 'interior_rattle_loop'];
+    const extras = [TURRET_DRIVE_SOUND[identity.turretDrive].loop, 'elevation_servo_loop', 'interior_hum_loop', 'interior_rattle_loop'];
     for (const asset of extras) {
       const layer = gearLayers.get(asset);
       if (on && !layer) gearLayers.set(asset, makeLayer(asset, asset.startsWith('interior') ? mixer.input('interior') : gearSum));
@@ -341,9 +407,11 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
       const at = hull ? { space: 'hull' as const, bus: 'own' as const } : { x: frame.x, y: frame.y, z: frame.z };
       switch (event.type) {
         case 'shiftUp':
-        case 'shiftDown':
-          if (lod !== 'far' && family.shift !== 'none') pool.play('gear_shift', { ...at, gainDb: -4 + 6 * event.strength });
+        case 'shiftDown': {
+          const shift = SHIFT_SOUND[family.shift];
+          if (lod !== 'far' && shift) pool.play(shift, { ...at, gainDb: -4 + 6 * event.strength });
           break;
+        }
         case 'brakeSqueal':
           if (lod !== 'far') pool.play('brake_squeal', { ...at, gainDb: -8 + 8 * event.strength });
           break;
@@ -351,11 +419,11 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
           if (lod !== 'far' && (frame.surface === 'hard' || frame.surface === 'earth')) pool.play('brake_hiss', { ...at, gainDb: -6 });
           break;
         case 'land':
-          pool.play('susp_land', { ...at, gainDb: -10 + 12 * event.strength + 4 * identity.mass });
+          pool.play(SUSPENSION_SOUND[identity.tracks].land, { ...at, gainDb: -10 + 12 * event.strength + 4 * identity.mass });
           if (hull && event.strength > 0.35) pool.play('susp_creak', { space: 'hull', bus: 'own', delayS: 0.25, gainDb: -6 });
           break;
         case 'bump':
-          if (lod !== 'far') pool.play('susp_bump', { ...at, gainDb: -12 + 10 * event.strength });
+          if (lod !== 'far') pool.play(SUSPENSION_SOUND[identity.tracks].bump, { ...at, gainDb: -12 + 10 * event.strength });
           break;
         case 'stall':
           // The powertrain's own wind-down (a turbine spools down, a diesel
@@ -373,10 +441,35 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     }
   }
 
+  /** The hull crossing the waterline: a splash driving in (a plunge fast or deep), the water pouring off driving out. */
+  function waterEdges(frame: RigFrame): void {
+    const depth = frame.waterDepthM;
+    if (!waterKnown) { waterKnown = true; inWater = depth > WATER_SOUND.inM; return; }
+    const t = ctx.currentTime;
+    const speed = Math.abs(frame.input.speedMps);
+    const at = frame.own ? { space: 'hull' as const, bus: 'own' as const } : { x: frame.x, y: frame.y, z: frame.z };
+    if (!inWater && depth > WATER_SOUND.inM) {
+      inWater = true;
+      waterInAt = t;
+      if (speed > WATER_SOUND.minSpeedMps && t - lastWaterSoundAt > WATER_SOUND.gapS) {
+        lastWaterSoundAt = t;
+        const plunge = speed > WATER_SOUND.plungeMps || depth > WATER_SOUND.plungeM;
+        pool.play(plunge ? WATER_SOUND.plunge : WATER_SOUND.splash, { ...at, gainDb: -9 + 9 * clamp(speed / 8, 0, 1) + 3 * identity.mass });
+      }
+    } else if (inWater && depth < WATER_SOUND.outM) {
+      inWater = false;
+      if (t - waterInAt > WATER_SOUND.minStayS && speed > 0.8 && t - lastWaterSoundAt > WATER_SOUND.gapS) {
+        lastWaterSoundAt = t;
+        pool.play(WATER_SOUND.exit, { ...at, gainDb: -8 + 4 * identity.mass });
+      }
+    }
+  }
+
   function update(frame: RigFrame): void {
     if (dead) return;
     stepVehicleAudio(state, family, frame.input, events);
     emitEvents(frame);
+    waterEdges(frame);
     if (frame.surface !== surface) retrack(frame.surface);
     const t = ctx.currentTime;
 
@@ -421,13 +514,19 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     const kind = trackSurfaceAsset(frame.surface);
     const slow = gearLayers.get(gearAsset(kind, 'slow'));
     const fast = gearLayers.get(gearAsset(kind, 'fast'));
-    const gearLevel = clamp(speed / 1.6, 0, 1) * (frame.surface === 'water' ? 0.35 : 1) * (0.7 + 0.5 * identity.mass);
+    const ground = RUNNING_SURFACE[frame.surface];
+    const gearLevel = clamp(speed / 1.6, 0, 1) * ground.gear * (0.7 + 0.5 * identity.mass);
     if (slow) setLayer(slow, gearLevel * bandWeight(speed, TRACK_CENTRES, 0), clamp(speed / 3, 0.6, 1.5) * frame.doppler);
     if (fast) setLayer(fast, gearLevel * (slow ? bandWeight(speed, TRACK_CENTRES, 1) : clamp((speed - 2) / 6, 0, 1)), clamp(speed / 10, 0.65, 1.45) * frame.doppler);
     const squeal = gearLayers.get('track_squeal_loop');
-    if (squeal) setLayer(squeal, state.scrub * 0.85, 0.9 + 0.2 * state.scrub);
+    if (squeal) setLayer(squeal, state.scrub * ground.squeal, 0.9 + 0.2 * state.scrub);
+    // the soft-ground scrub starts the first time it is heard: a hull that never pivots on soft ground runs no silent loop
+    // (and draws nothing from the shared stream the crew radio's takes come from)
+    const scrub = gearLayers.get(SCRUB_ASSET);
+    const scrubGain = state.scrub * ground.scrub;
+    if (scrub && (scrub.source || scrubGain > 0.002)) setLayer(scrub, scrubGain, 0.85 + 0.25 * state.scrub);
     const skid = gearLayers.get('track_skid_loop');
-    if (skid) setLayer(skid, state.skid * (frame.surface === 'hard' ? 0.9 : frame.surface === 'earth' ? 0.55 : 0.25), 0.95 + 0.1 * state.skid);
+    if (skid) setLayer(skid, state.skid * ground.skid, 0.95 + 0.1 * state.skid);
     const wade = gearLayers.get('water_wade_loop');
     if (wade) setLayer(wade, clamp(frame.waterDepthM / 1.1, 0, 1) * clamp(0.25 + speed / 7, 0, 1), 0.9 + speed * 0.02);
     const knock = gearLayers.get('engine_knock_loop');
@@ -443,7 +542,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
 
     // ---- occupied-hull machinery.
     if (lod === 'own') {
-      const turret = gearLayers.get(identity.turretDrive === 'hydraulic' ? 'turret_hydraulic_loop' : 'turret_electric_loop');
+      const turret = gearLayers.get(TURRET_DRIVE_SOUND[identity.turretDrive].loop);
       const slew = clamp(Math.abs(frame.turretRate) / 0.45, 0, 1);
       if (turret) setLayer(turret, slew * 0.75, 0.82 + 0.3 * slew);
       const servo = gearLayers.get('elevation_servo_loop');
@@ -482,6 +581,7 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     get lastCutoff() { return lastCutoff; },
     get lastAirHz() { return lastAirHz; },
     get netGain() { return netGain; },
+    get surface() { return surface; },
     setLod(next) {
       if (next !== lod && !dead) applyLod(next);
     },

@@ -178,10 +178,13 @@ ui, music, voice, alarm ──────────────────�
 
 `vehicleAudioProfiles.ts` resolves each spec to a powertrain family —
 `turbine_agt` (Abrams), `turbine_gtd` (T-80), `diesel_v12_soviet`,
-`diesel_two_stroke` (Leopard 1/Chieftain/T-64 lineage), `diesel_v12_modern`,
-`diesel_aircooled` (M48/M60/Merkava 1–3), `diesel_ifv`, `gasoline_v12` — plus
-modifiers (turbo whistle, turbine auxiliaries, hybrid-electric drive, turret
-drive type, loader kind, mass class).
+`diesel_two_stroke` (Chieftain/T-64/Type 74/Type 90 lineage), `diesel_v12_modern`
+(the MTU 873/883 class: Leopard 2, Merkava 4, Challenger 2/3, K2),
+`diesel_v12_coldwar` (Leopard 1, AMX-30, Challenger 1: the cold-war Western
+diesels, 2026-11-03), `diesel_aircooled` (M48/M60/Magach/Merkava 1–3),
+`diesel_ifv`, `gasoline_v12` (Centurion, Strv 81, E-100) — plus modifiers
+(turbo whistle, turbine auxiliaries, hybrid-electric drive, turret drive type,
+loader kind, mass class).
 
 `vehicleAudioModel.ts` turns speed, throttle, slope and module health into RPM,
 load and gear. Manual and automatic gearboxes shift near the governor and hold
@@ -195,7 +198,17 @@ pitched by RPM (an idling engine at about a third of its full-load level),
 start and wind-down, light/heavy track sets per surface (earth,
 hard, mud, sand, snow; water runs the mud set under a wading loop) at slow/fast
 speed, squeal, skid and damaged-engine knock loops, and shift, brake,
-suspension and stall one-shots. The occupied hull adds turret drive, elevation
+suspension and stall one-shots. Its tables choose by what the hull is and what
+it is on (2026-11-03): `RUNNING_SURFACE` (a pivot screeches as steel only on
+hard ground and ploughs `track_scrub_soft_loop` on soft ground), `SHIFT_SOUND`
+(a manual box's clunk, an automatic's hydraulic shift, no shift for a
+turbine), `SUSPENSION_SOUND` (a light hull's bump and landing), and
+`TURRET_DRIVE_SOUND` (an electric and a hydraulic drive start and stop as
+themselves). Every hull splashes into water (a ford's splash, a plunge when fast
+or deep) and drains as it climbs out (`WATER_SOUND`, with waterline hysteresis).
+A carriageway is hard ground only where it is paved (`surfaceAt` reads the
+terrain's `getRoadPaveAt`, as the street grit does): the dirt roads of most
+maps are earth. The occupied hull adds turret drive, elevation
 servo, cabin hum and rattle. Remote rigs use levels of detail: own, near
 (within 140–165 m, five on desktop) and far (to 900–1000 m, eight). A rig's
 range hysteresis never makes a nearby tank read as our own: until 2026-10-02 an
@@ -320,11 +333,23 @@ or an own perspective for the pilot or crew.
   heard tank reports from a commander's hatch, the 180 mm guided missile played
   as a 152 mm cannon and howitzer reloads ran the hull's autoloader.
 - **Mode openers.** Each mode opens on its own field sound at roll-out
-  (`MODE_OPENER`, read through the `getGameMode` getter): an air-raid siren for
-  the Endless Horde, a distant preparatory barrage for the Frontline Assault, a
-  vault door slamming for the Juggernaut, broken radio for Infected, a foghorn
-  for Turbo Ball, an armory for Gun Game and the gunship passing overhead for
-  the AC-130; Realistic opens on silence and the rest on the battle horn. The
+  (`modeSounds.ts` `MODE_OPENER`, exhaustive over the mode ids, read through the
+  `getGameMode` getter): an air-raid siren for the Endless Horde, a distant
+  preparatory barrage for the Frontline Assault, a vault door slamming for the
+  Juggernaut, broken radio for Infected, a foghorn for Turbo Ball, an armory
+  for Gun Game, the gunship passing overhead for the AC-130, a flag snapping
+  out on its steel pole for capture the flag, crews digging in for zone
+  control, an airlock cycling for the gravity mode, drones spinning up and
+  lifting off for the Drone mode and a range siren for the proving ground;
+  Realistic opens on silence and the standard battle on the horn. Every event
+  the mode controller emits is named in `MODE_EVENT_SOUND` with its recordings
+  or why it is heard as nothing (`worldSounds.selftest.mjs` scans
+  `matchModes.ts`): the Horde's special waves come on an attack warning's
+  warble, a Frontline counter-attack on a flare over the sector it drives at,
+  Turbo Ball's steel buoy is heard where anyone strikes it (`ball_strike`; it
+  was a flat sound for the striker alone) and an idle reset on the kick-off
+  horn, a flag by whose flag it is (`FLAG_CUE`), an ally turned in Infected on
+  the net breaking up. The
   Horde's waves come on the siren with the all-clear after them, the
   Frontline's counter-attacks and advances under the barrage, and a cache lands
   with a thud where it arrives (`cache_drop`). The Juggernaut itself (found by
@@ -351,7 +376,12 @@ towers, below), a distant-war bed in
 battle, the gun tail and a procedural reverb. The beds were regenerated on
 2026-10-02 without songbirds, bees, sirens or radio tones (those come as
 spots), selected for an
-even level across the loop seam and for body under the hiss. The garage is a
+even level across the loop seam and for body under the hiss. Each spot names
+the hours it is heard (`SPOT_HOURS`, 2026-11-03): after dark (one battle in ten
+falls at night) a scene's day birds, insects and farmyard give way to its own
+night life (`scene.night`: crickets, owls, nightjars, foxes, tropical night
+insects by habitat), read from the battle's time of day (`getTimeOfDay`).
+`MAP_SCENES` is keyed by the map ids, so a new map needs its scene. The garage is a
 working hangar: an audible room tone (+7 dB) with tools, impact wrenches, a
 hammer on a track pin, the crane chain, an air compressor, a diesel being run
 up and the big door 3–14 m away.
@@ -921,6 +951,38 @@ crew-lines.json ─┐                    crew-voices.json
   alive and hidden), so they now count the roster where a death is final and
   nothing otherwise; and the warm resolved engine families by id alone, so 40
   of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
+- **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
+  owner: "make a lot better sounds for everything ... all the special
+  moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
+  ranked 30 findings by how often a player hears them; the fixes go through
+  exhaustive tables, so a new ground, gearbox, drive, hull class, mode, mode
+  event, map or spot fails typecheck or `worldSounds.selftest.mjs` until it is
+  named. Every track loop and engine band had shipped from its one take: the
+  track loops' seams stepped up to 11 dB (now 0.01–1.8 dB, six to twelve takes
+  each, the light set's sand and mud asked for body under the hiss), and the
+  five engine bands that stepped 1.5–3.2 dB now step 0.03–1.1. Dirt roads (28
+  of 33 maps) were asphalt under the tracks and under a round; they are earth.
+  101 of 220-odd hulls shared one engine bank and two ran the wrong engine
+  (/e100/ matched "type100"; the Strv 81 is a Centurion): a cold-war diesel bank
+  for Leopard 1, AMX-30 and Challenger 1, the Magachs on the AVDS-1790. A pivot
+  screeches as steel only on hard ground; a gearbox, a turret drive and a hull
+  class are heard as themselves; every hull splashes into water and drains out
+  of it; a crash sounds of what it struck (a barn's timber, a berm's earth, a
+  building by its walls); a light vehicle explodes as one; roofs fall as their
+  buildings (a slab, an earth roof, shingles); a pillbox, a concrete barrier and
+  adobe walls break as their material. An APS intercept and a drone shot down
+  played nothing; they are heard. The night has its own life. Five modes got
+  their openers; the Horde's special waves, the Frontline's counter-attack,
+  Turbo Ball's buoy for everyone and its reset, the flag by whose it is and an
+  Infected ally turned got their sounds. 36 new assets, 19 families topped up
+  to 3–5 variants, `scrape_loop` (no moment) and the flat `ui_ball_hit`
+  removed: 513 assets and 949 files, 25.3 MB (from 23.5). 15,224 credits.
+  Pins (`sfx-picks.json`) keep `rubble_crunch`, `tree_fall`, `wire_snag` and
+  the light snow track in the loudness receipt's range (`wire_snag`'s old takes
+  1 and 2 crossed the true-peak ceiling once measured). The soft-ground scrub
+  starts the first time it is heard: the rigs share the engine's seeded stream
+  with the crew radio's take picks, and a loop starting on every hull moved
+  which take the radio spoke.
 
 ### Cost
 

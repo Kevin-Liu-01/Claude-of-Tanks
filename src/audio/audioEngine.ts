@@ -40,20 +40,24 @@ import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './capti
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
+import { FLAG_CUE, MODE_EVENT_TYPES, hordeWaveSiren, modeOpener, type ModeEventType } from './modeSounds.ts';
 import {
   DESTRUCTION_SOUND_IDS, STRUCTURE_FAR, blastSoundCaliberMm, munitionExplodes, munitionFromType, sectionFallSounds, structureHitAsset,
-  structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound,
+  structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound, type StructureSoundMaterial,
 } from './destructionSounds.ts';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
-import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
+import { createVehicleRig, fillVehicleInput, TURRET_DRIVE_SOUND, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
+import { streetGritShare } from '../world/roadPave.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
-import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
+import {
+  resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type TrackClass, type VehicleAudioIdentity,
+} from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import {
   LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR, missileLaunchFor, resolveReloadCuePlan, resolveWeaponReport,
@@ -70,6 +74,8 @@ export interface AudioTerrainProbe {
   getGroundType(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
+  /** The paved share of a carriageway (world/roadPave.ts): a dirt road is earth. */
+  getRoadPaveAt?(x: number, z: number): number;
 }
 
 interface AudioMixerOptions {
@@ -108,6 +114,8 @@ interface AudioMixerOptions {
    * same spec its rig will (2026-10-14: by id alone, 40 of the 220 vehicles warmed another family's bank).
    */
   getVehicleSpec?(specId: string): RuntimeValue;
+  /** The battle's time of day ('day' | 'sunset' | 'night', engine/battleWeatherPolicy.ts): the night has its own life. */
+  getTimeOfDay?(): string | null;
   initialPhase?: string;
   tier?: DeviceTier;
 }
@@ -293,7 +301,9 @@ interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; 
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 /** `cause`: 'impact' (a hard obstacle), 'fall' (a landing) or 'contact' (another hull); `struck`: the obstacle's record kind
  *  ('cliff' for the terrain's own face) when the solo step knows it. */
-interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number; cause?: string; struck?: string | null }
+interface TankImpactEvent { id?: string; pos: Vec3; speedMps: number; cause?: string; struck?: string | null;
+  /** the building struck, when the solo step knows it (`struck` 'structure'): it sounds of its walls */
+  struckStructureId?: number | null }
 interface TankRamEvent { aId?: string; bId?: string; aIsPlayer?: boolean; bIsPlayer?: boolean; pos: Vec3; closingMps?: number; dmgA?: number; dmgB?: number }
 /** `loose`: a loose prop (a drum, a bucket) knocked about rather than destroyed (props.ts kickLooseRecord). */
 interface PropEvent { id?: string; kind?: string; pos: Vec3; h?: number; cause?: string; speedMps?: number; loose?: boolean; nearMiss?: number }
@@ -333,6 +343,10 @@ const CORE_BATTLE = [
   ...DESTRUCTION_SOUND_IDS,
   'gear_whine_loop', 'electric_drive_loop', 'turbo_whistle_loop',
   'sting_battle', 'distant_artillery', 'distant_flak', 'distant_mg', 'jet_flyover',
+  // world-sfx-269 (2026-11-03): the running gear by gearbox and hull class, water under any hull, crashes by what they
+  // struck, a light vehicle's end, an active protection system's intercept
+  'gear_shift_auto', 'susp_bump_light', 'susp_land_light', 'track_scrub_soft_loop', 'water_splash_in', 'water_exit',
+  'hit_timber', 'hit_earth', 'vehicle_explode_light', 'aps_intercept',
 ];
 
 const PLAYER_HULL = [
@@ -345,6 +359,7 @@ const PLAYER_HULL = [
   'engine_flood', 'bubbles_loop', 'hull_debris_patter', 'scope_in', 'scope_out', 'lock_on', 'lock_off',
   'missile_warning', 'roof_gun_servo', 'tinnitus', 'hydro_susp', 'jump_launch', 'self_right', 'hatch', 'switch_toggle',
   'hull_thud_sub', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'lights_on', 'zoom_step',
+  'turret_start_hydraulic', 'turret_stop_hydraulic',
 ];
 
 const UI_SET = [
@@ -370,17 +385,18 @@ const AERIAL_SET = [
   'drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost',
   'gunship_orbit_loop', 'gunship_cabin_loop', 'gunship_cabin_rattle_loop', 'gunship_flyover',
   'gunship_30mm_own', 'gunship_howitzer_own', 'gunship_missile_own', 'gunship_30mm_far', 'gunship_howitzer_far',
-  'gunship_casing_drop', 'gunship_round_load', 'gunship_weapon_select',
+  'gunship_casing_drop', 'gunship_round_load', 'gunship_weapon_select', 'drone_shot_down',
 ];
 
 const MODE_SET = [
   'sting_infected',
-  'ui_capture_tick', 'ui_objective_gain', 'ui_objective_loss', 'ui_pickup', 'ui_goal', 'ui_ball_hit', 'ui_respawn',
-  'ui_flag_taken', 'ui_flag_captured', 'ui_flag_returned', 'ui_flag_dropped', 'ui_wave_clear', 'ui_line_advance',
+  'ui_capture_tick', 'ui_objective_gain', 'ui_objective_loss', 'ui_pickup', 'ui_goal', 'ball_strike', 'ui_respawn',
+  'ui_flag_taken', 'ui_flag_seized', 'ui_flag_captured', 'ui_flag_returned', 'ui_flag_dropped', 'ui_wave_clear', 'ui_line_advance',
   'ui_score', 'sting_wave', 'sting_victory', 'sting_defeat', 'sting_draw', 'killcam_in', 'killcam_out', 'spectate_switch',
   'ui_countdown_tick', 'ui_countdown_go',
   'mode_horde_siren', 'mode_horde_all_clear', 'mode_frontline_barrage', 'mode_juggernaut', 'mode_infected_outbreak',
   'mode_turbo_horn', 'mode_gungame_armory', 'cache_drop',
+  'mode_horde_swarm', 'mode_counter_attack',
 ];
 
 /**
@@ -389,7 +405,7 @@ const MODE_SET = [
  * presence set (presenceAssets): heard from the countdown's first frame.
  */
 const RIG_LOOPS = [
-  'track_squeal_loop', 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop',
+  'track_squeal_loop', 'track_scrub_soft_loop', 'track_skid_loop', 'water_wade_loop', 'engine_knock_loop',
   'gear_whine_loop', 'turbo_whistle_loop', 'electric_drive_loop',
   'turret_hydraulic_loop', 'turret_electric_loop', 'elevation_servo_loop', 'interior_hum_loop', 'interior_rattle_loop',
 ];
@@ -400,15 +416,25 @@ const START_WAIT_S = 1;
 /** The countdown ticks its last whole seconds (3, 2, 1); the horn is the rollout's. */
 const COUNTDOWN_TICK_S = 3;
 
-/**
- * Each mode opens on its own sound (2026-10-02), field sounds rather than music: the Horde's air-raid siren, the
- * Frontline's preparatory barrage, the Juggernaut's vault door, the Infected's broken radio, Turbo Ball's foghorn,
- * Gun Game's armory, the AC-130 passing overhead. Realistic opens on none; the rest on the battle horn.
- */
-const MODE_OPENER: Readonly<Record<string, string>> = Object.freeze({
-  endless_horde: 'mode_horde_siren', frontline_assault: 'mode_frontline_barrage', juggernaut: 'mode_juggernaut',
-  infected: 'mode_infected_outbreak', turbo_ball: 'mode_turbo_horn', gun_game: 'mode_gungame_armory', ac130: 'gunship_flyover',
+/** A crash by the material of what the hull struck (world-sfx-269): exhaustive, so a new material needs its recording. */
+type StruckMaterial = 'rock' | 'steel' | 'masonry' | 'timber' | 'earth';
+const STRUCK_SOUND: Readonly<Record<StruckMaterial, string>> = Object.freeze({
+  rock: 'hit_rock', steel: 'hit_metal', masonry: 'hit_wall', timber: 'hit_timber', earth: 'hit_earth',
 });
+/** A building's walls (destructionSounds.ts) as a hull strikes them. */
+const STRUCTURE_STRUCK: Readonly<Record<StructureSoundMaterial, StruckMaterial>> = Object.freeze({
+  brick: 'masonry', stone: 'masonry', concrete: 'masonry', plaster: 'earth', timber: 'timber', steel: 'steel',
+});
+
+/**
+ * A vehicle going up, by its class (world-sfx-269): a light vehicle's thin hull and small charge are not a main battle
+ * tank's; until this a 14 t BMP and a 130 t E-100 exploded alike.
+ */
+const EXPLOSION_SOUND: Readonly<Record<TrackClass, { readonly shot: string; readonly ammorack: string }>> = Object.freeze({
+  light: Object.freeze({ shot: 'vehicle_explode_light', ammorack: 'vehicle_explode_light' }),
+  heavy: Object.freeze({ shot: 'tank_explode', ammorack: 'tank_explode_ammo' }),
+});
+
 
 function detectTier(): DeviceTier {
   const nav = typeof navigator !== 'undefined' ? navigator as Navigator & { deviceMemory?: number } : null;
@@ -443,6 +469,7 @@ export function createAudio({
   getWorld,
   getTeamRoster,
   getVehicleSpec,
+  getTimeOfDay,
   initialPhase = 'garage',
   tier: forcedTier,
 }: AudioMixerOptions = {}): AudioMixer {
@@ -555,6 +582,8 @@ export function createAudio({
   let lastSixthAlertAt = -99;
   // Enemy drones already called out (each drone once).
   const droneWarned = new Set<number>();
+  /** Where each carrier's drone was last heard in flight (by the carrier's id; drone:down names it). */
+  const droneLastAt = new Map<string, { x: number; y: number; z: number }>();
   let fireAlarm: Rig | null = null;
   let heartbeatRig: Rig | null = null;
   let heartbeatBelow = 0;
@@ -767,13 +796,22 @@ export function createAudio({
     if (depth > 0.35) return { surface: 'water', depth };
     let ground = 'medium';
     try { ground = terrain.getGroundType(x, z); } catch { /* keep medium */ }
-    if (ground === 'hard') return { surface: 'hard', depth };
     let track = 0;
     try { track = terrain.getTrackSurfaceAt?.(x, z) ?? 0; } catch { track = 0; }
+    // (world-sfx-269, 2026-11-03) A carriageway is hard only where it is paved: the paved share the FX's street grit
+    // reads (world/roadPave.ts). The dirt roads of most maps are earth under the tracks and under a round; they played
+    // the asphalt clatter. Frozen water reads hard off any road, under a snow map's snow (track 3): it stays hard.
+    if (ground === 'hard') return { surface: track !== 3 && dirtRoad(terrain, x, z) ? 'earth' : 'hard', depth };
     if (track === 2) return { surface: 'sand', depth };
     if (track === 3) return { surface: 'snow', depth };
     if (ground === 'soft') return { surface: 'mud', depth };
     return { surface: 'earth', depth };
+  }
+
+  /** An unpaved carriageway (the terrain's paved share under the street grit's half; a bridge deck and a paved town are 1). */
+  function dirtRoad(terrain: AudioTerrainProbe, x: number, z: number): boolean {
+    if (!terrain.getRoadPaveAt) return false;
+    try { return streetGritShare(terrain.getRoadPaveAt(x, z)) < 0.5; } catch { return false; }
   }
 
   /** 0..1 how far terrain stands between listener and a point (seven samples along the line). */
@@ -1254,7 +1292,8 @@ export function createAudio({
     if (cause === 'fire') {
       play('burnout_blast', { x, y, z, focus, ...bus });
     } else {
-      play(cause === 'ammorack' ? 'tank_explode_ammo' : 'tank_explode', { x, y, z, focus, ...bus });
+      const blast = EXPLOSION_SOUND[tanks.get(event.id)?.identity.tracks ?? 'heavy'];
+      play(cause === 'ammorack' ? blast.ammorack : blast.shot, { x, y, z, focus, ...bus });
       const blastM = distanceTo(x, y, z);
       if (blastM < (focus ? 1800 : 900)) {
         play('blast_sub', { x, y, z, rate: cause === 'ammorack' ? 0.8 : 0.88, gainDb: cause === 'ammorack' ? 2 : 1, focus, ...bus });
@@ -1356,14 +1395,21 @@ export function createAudio({
     return surfaceAt(x, z).surface === 'hard' ? 'bullet_masonry' : 'bullet_dirt';
   }
 
-  /** What a hull struck sounds like (tank:impact): rock, masonry or steel, by the record it hit. */
-  function hullStrikeAsset(struck: string | null | undefined, pos: Vec3): string {
+  /**
+   * What a hull struck sounds like (tank:impact), by the material of the record it hit (world-sfx-269, 2026-11-03): rock,
+   * steel, masonry, timber or earth. A building sounds of its walls (the structure's anatomy, as its breaking does); until
+   * this a timber barn, a sandbag berm and anything not rock or steel crashed as a concrete wall crumbling.
+   */
+  function hullStrikeAsset(struck: string | null | undefined, structureId: number | null | undefined, pos: Vec3): string {
     const k = (struck || '').toLowerCase();
-    if (k === 'cliff' || /rock|boulder|stone|cliff|outcrop|crag/.test(k)) return 'hit_rock';
-    if (/wreck|hulk|car|truck|van|jeep|tank|container|drum|hedgehog|tetra|metal|steel|iron|setpiece|wagon|locomotive|tram/.test(k)) return 'hit_metal';
-    if (k) return 'hit_wall';
+    if (k === 'structure') return STRUCK_SOUND[STRUCTURE_STRUCK[structureSound(structureId).material]];
+    if (k === 'cliff' || /rock|boulder|cliff|outcrop|crag/.test(k)) return STRUCK_SOUND.rock;
+    if (/wreck|hulk|car|truck|van|jeep|tank|container|drum|hedgehog|tetra|metal|steel|iron|setpiece|wagon|locomotive|tram|lamp|sign|pump|windmotor/.test(k)) return STRUCK_SOUND.steel;
+    if (/sandbag|bag|berm|earth|trench|mound|dune|bale|hay|straw|stook|weedstack|coal/.test(k)) return STRUCK_SOUND.earth;
+    if (/tree|log|lumber|timber|wood|plank|picket|wattle|crate|pallet|cart|hut|shed|barn|shack|blind|leanto|longhouse|cross|pole|bench|trough/.test(k)) return STRUCK_SOUND.timber;
+    if (k) return STRUCK_SOUND.masonry;
     // the record is unknown (a network battle's event names none): the ground it happened on
-    return getTerrain?.()?.getGroundType(pos[0], pos[2]) === 'medium' ? 'hit_rock' : 'hit_wall';
+    return STRUCK_SOUND[getTerrain?.()?.getGroundType(pos[0], pos[2]) === 'medium' ? 'rock' : 'masonry'];
   }
 
   // ------------------------------------------------------ props/collisions ---
@@ -1451,7 +1497,7 @@ export function createAudio({
     if (k < 0.05) return;
     // (2026-10-13) a landing slams the suspension, a hull on a hull is a ram, a crash sounds of what it struck (it was a
     // coin toss between rock and wall for all three)
-    const id = event.cause === 'fall' ? 'hull_land' : event.cause === 'contact' ? 'ram_light' : hullStrikeAsset(event.struck, event.pos);
+    const id = event.cause === 'fall' ? 'hull_land' : event.cause === 'contact' ? 'ram_light' : hullStrikeAsset(event.struck, event.struckStructureId, event.pos);
     play(id, { ...at(event.pos), gainDb: -10 + 10 * k });
     if (isOwn(event.id) && k > 0.4) play('nonpen_interior', hullOptions({ bus: 'ownCombat', gainDb: -16 + 8 * k }));
     logSound('tank:impact', { id: event.id, speedMps: event.speedMps, sound: id });
@@ -1575,11 +1621,28 @@ export function createAudio({
 
   // --------------------------------------------------------- mode objectives ---
 
-  function onMode(type: string, payload: Record<string, unknown>): void {
+  /** A mode event's world position (x, z, an optional y; the terrain under it otherwise), or null when it names none. */
+  function modeEventAt(payload: Record<string, unknown>, liftM = 0): { x: number; y: number; z: number } | null {
+    const x = Number(payload.x), z = Number(payload.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+    let y = Number(payload.y);
+    if (!Number.isFinite(y)) {
+      try { y = getTerrain?.()?.getHeightAt(x, z) ?? frame.y; } catch { y = frame.y; }
+    }
+    return { x, y: y + liftM, z };
+  }
+
+  /**
+   * Every mode event the controller emits (modeSounds.ts MODE_EVENT_SOUND names each, and its recordings or why it is
+   * heard as nothing). Objective cues by our side: a flag by whose flag it is (FLAG_CUE), a zone, a goal and a score by
+   * who took it.
+   */
+  function onMode(type: ModeEventType, payload: Record<string, unknown>): void {
     const mode = getGameMode?.() || 'standard';
     const perspective = getObjectiveTeam?.();
     const ours = perspective === 'alpha' || perspective === 'bravo' ? perspective : objectiveTeam(playerTeam);
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
+    const side = team === ours ? 'ours' : 'theirs';
     const byMe = payload.by != null && payload.by === playerId;
     switch (type) {
       case 'zone_captured':
@@ -1591,28 +1654,36 @@ export function createAudio({
         if (team === ours) say('objective_contested', { delayS: 0.3 });
         break;
       case 'flag_taken':
-        play('ui_flag_taken');
+        play(FLAG_CUE.flag_taken[side]);
         say(team === ours ? 'flag_taken_theirs' : 'flag_taken_ours', { delayS: 0.25 });
         break;
       case 'flag_captured':
-        if (team === ours) { play('ui_flag_captured'); say('flag_captured', { delayS: 0.3 }); } else play('ui_objective_loss');
+        play(FLAG_CUE.flag_captured[side]);
+        if (team === ours) say('flag_captured', { delayS: 0.3 });
         break;
       case 'flag_returned':
-        play('ui_flag_returned');
+        play(FLAG_CUE.flag_returned[side]);
         if (team === ours) say('flag_returned', { delayS: 0.3 });
         break;
       case 'flag_dropped':
-        play('ui_flag_dropped');
+        play(FLAG_CUE.flag_dropped[side]);
         break;
       case 'wave_started':
-        // The Horde's waves come on the air-raid siren; the Frontline's counter-attacks under a barrage.
-        play(mode === 'endless_horde' ? 'mode_horde_siren' : mode === 'frontline_assault' ? 'mode_frontline_barrage' : 'sting_wave');
+        // The Horde's waves come on the air-raid siren (its special waves on the attack warning's warble); the
+        // Frontline's counter-attacks under a barrage.
+        play(mode === 'endless_horde' ? hordeWaveSiren(payload.special) : mode === 'frontline_assault' ? 'mode_frontline_barrage' : 'sting_wave');
         say('wave_incoming', { delayS: 0.6 });
         break;
       case 'wave_cleared':
         play(mode === 'endless_horde' ? 'mode_horde_all_clear' : 'ui_wave_clear');
         say('wave_cleared', { delayS: 0.4 });
         break;
+      case 'counter_attack': {
+        // The defenders' signal flare goes up over the sector they drive at, heard from there.
+        const at = modeEventAt(payload, 40);
+        if (at) play('mode_counter_attack', at);
+        break;
+      }
       case 'line_advanced':
         // The line moves forward behind its own guns.
         play(mode === 'frontline_assault' ? 'mode_frontline_barrage' : 'ui_line_advance');
@@ -1620,8 +1691,8 @@ export function createAudio({
         break;
       case 'pickup_spawned': {
         // A cache arrives (Horde repair and ammunition, Gravity boosts): heard where it lands.
-        const x = Number(payload.x), z = Number(payload.z);
-        if (Number.isFinite(x) && Number.isFinite(z)) play('cache_drop', { x, y: Number(payload.y) || frame.y, z, delayS: 0.15 });
+        const at = modeEventAt(payload);
+        if (at) play('cache_drop', { ...at, delayS: 0.15 });
         // Our AC-130's own drop: the crew calls it away.
         if (payload.airDrop === true && byMe) say(payload.kind === 'heal' ? 'supply_repair' : 'supply_ammo', { delayS: 0.2 });
         break;
@@ -1629,8 +1700,17 @@ export function createAudio({
       case 'goal_scored':
         if (team === ours) { play('ui_goal'); say('goal_scored', { delayS: 0.2 }); } else play('ui_objective_loss');
         break;
-      case 'ball_hit':
-        if (byMe) play('ui_ball_hit', { space: 'flat', gainDb: -6 });
+      case 'ball_hit': {
+        // The steel buoy struck, by anyone, heard where it is (the ball's position; a ram's striker otherwise). A shot
+        // rings it harder than a shove.
+        const striker = typeof payload.by === 'string' ? tanks.get(payload.by)?.pos : null;
+        const at = modeEventAt(payload) ?? (striker ? { x: striker.x, y: striker.y + 1.5, z: striker.z } : null);
+        if (at) play('ball_strike', { ...at, gainDb: payload.kind === 'shot' ? 0 : -3 });
+        break;
+      }
+      case 'ball_reset':
+        // An untouched ball back on the kick-off spot: the kick-off's horn again, lower.
+        play('mode_turbo_horn', { gainDb: -8 });
         break;
       case 'pickup_collected':
         if (byMe) { play('ui_pickup'); say('pickup_collected', { delayS: 0.2 }); }
@@ -1652,16 +1732,30 @@ export function createAudio({
           say('respawn', { delayS: 0.5 });
         }
         break;
-      case 'infected':
-        // Infected: our crew has been turned to the other side.
+      case 'infected': {
+        // Infected: our crew turned to the other side (the sting, the radio breaking up); an ally turned (the net
+        // breaking up as its crew is lost); one more of ours when we are the infected (the outbreak, low). The hull's
+        // side is read before this frame re-indexes it: the side it fought for.
+        const turned = typeof payload.id === 'string' ? tanks.get(payload.id) : null;
         if (payload.id === playerId) { play('sting_infected'); play('radio_interference', { space: 'flat', bus: 'voice', gainDb: -4 }); }
+        else if (turned && playerTeam != null && turned.team === playerTeam) play('radio_interference', { space: 'flat', bus: 'voice', gainDb: -10 });
+        else if (turned) play('mode_infected_outbreak', { gainDb: -12 });
         break;
+      }
       case 'weapon_advanced':
         // Gun Game: the crew changes over to the next weapon on the ladder and loads it.
         if (payload.id === playerId) weaponChangeover(Number(payload.stage));
         break;
-      default:
-        break;
+      case 'line_reinforced':
+      case 'horde_retired':
+      case 'horde_recycled':
+      case 'completed':
+        // heard as nothing (modeSounds.ts MODE_EVENT_SOUND says why)
+        return;
+      default: {
+        const unnamed: never = type;
+        return unnamed;
+      }
     }
     logSound(`mode:${type}`, { team, byMe });
   }
@@ -1710,11 +1804,10 @@ export function createAudio({
       say('flipped', { delayS: 0.6 });
     }
     wasOverturned = over;
-    // Deep water.
+    // Deep water: the crew's call and a flooding engine (the splash itself is the rig's, for every hull: vehicleRig WATER_SOUND).
     const info = surfaceCache.get(entity.id);
     const deep = !!info && info.depth > 1.25;
     if (deep && !wasDeep) {
-      play('water_enter', hullOptions({ bus: 'own' }));
       say('taking_water', { delayS: 0.5 });
       if (info && info.depth > 1.8) play('engine_flood', hullOptions({ delayS: 0.6 }));
     }
@@ -1744,7 +1837,9 @@ export function createAudio({
     }
     wasAtLimit = limit;
     // The turret drive's stop clunk ends a real slew (a quarter second or
-    // more), not the servo settling; and a damaged ring's grind.
+    // more), not the servo settling; and a damaged ring's grind. An electric and a hydraulic drive start and stop as
+    // themselves (TURRET_DRIVE_SOUND, world-sfx-269).
+    const drive = TURRET_DRIVE_SOUND[tanks.get(entity.id)?.identity.turretDrive ?? 'electric'];
     const traverse = Math.abs(state.turretYawRate ?? 0);
     if (traverse > 0.12) {
       const before = slewS;
@@ -1752,12 +1847,12 @@ export function createAudio({
       // The drive takes up the turret's weight: one start per real slew, never per servo flicker.
       if (before < 0.1 && slewS >= 0.1 && now - lastTurretStartAt > 0.8) {
         lastTurretStartAt = now;
-        play('turret_start', hullOptions({ gainDb: -6 }));
+        play(drive.start, hullOptions({ gainDb: -6 }));
       }
     } else if (traverse < 0.02) {
       if (slewS > 0.25 && now - lastTurretStopAt > 0.6) {
         lastTurretStopAt = now;
-        play('turret_stop', hullOptions({ gainDb: -4 }));
+        play(drive.stop, hullOptions({ gainDb: -4 }));
       }
       slewS = 0;
     }
@@ -2086,6 +2181,11 @@ export function createAudio({
       if (shell?.spec?.tracer !== 'DRONE' || shell.dead || shell.id == null || !shell.pos) continue;
       if (listenerShot(shell.shooterId)) continue;
       const p = shell.pos;
+      // where each carrier's drone was last heard: a drone shot down falls there (drone:down names its carrier)
+      if (shell.shooterId) {
+        const last = droneLastAt.get(shell.shooterId);
+        if (last) { last.x = p.x; last.y = p.y; last.z = p.z; } else droneLastAt.set(shell.shooterId, { x: p.x, y: p.y, z: p.z });
+      }
       toListenerFrame(frame, p.x, p.y, p.z, aerialFrame.rel);
       let rig = droneRigs.get(shell.id);
       if (!rig) {
@@ -2248,7 +2348,8 @@ export function createAudio({
     radio = createCrewRadio({ mixer, library, random,
       onTransmit: (id, take, lang, durationS, priority) => { captions.radio(id, take, lang, durationS, priority); } });
     // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
-    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut });
+    ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut,
+      isNight: () => phase === 'battle' && getTimeOfDay?.() === 'night' });
     library.pin([...UI_SET, ...RADIO_SET]);
     void library.load([...UI_SET, ...RADIO_SET]);
     // A battle hull may already be indexed (late adoption mid-battle).
@@ -2339,6 +2440,20 @@ export function createAudio({
       if (phase === 'battle' && !battleOver) fireWeapon([e.x, e.y, e.z], e.caliberMm, null, isOwn(e.id));
     });
     on<ShellFiredEvent>('shell:fired', onShellFired);
+    // (world-sfx-269) an active protection system defeating a missile or rocket played nothing: the interceptor's charge
+    // and the warhead blown apart where it was caught, and on our own hull the fragments rattling off it
+    on<{ id?: string; x?: number; y?: number; z?: number }>('aps:intercept', (e) => {
+      if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) return;
+      play('aps_intercept', { x: Number(e.x), y: Number.isFinite(e.y) ? Number(e.y) : frame.y, z: Number(e.z) });
+      if (isOwn(e.id)) play('hull_debris_patter', hullOptions({ delayS: 0.06, gainDb: -6 }));
+      logSound('aps:intercept', { id: e.id ?? null });
+    });
+    // (world-sfx-269) a drone shot down played nothing (its buzz just stopped): it breaks up where it was last heard
+    on<{ id?: string; killerId?: string }>('drone:down', (e) => {
+      const at = e?.id ? droneLastAt.get(e.id) : null;
+      if (at) play('drone_shot_down', { x: at.x, y: at.y, z: at.z });
+      logSound('drone:down', { id: e?.id ?? null, heard: !!at });
+    });
     on<ShellFiredEvent>('weapon:predicted', onPredictedWeapon);
     on<ShellHitEvent>('shell:hit', onShellHit);
     on<ShellExpiredEvent>('shell:expired', onShellExpired);
@@ -2549,6 +2664,7 @@ export function createAudio({
         stopWorld('battle-reset');
         tanks.clear();
         moduleStates.clear();
+        droneLastAt.clear();
         playerId = null;
         playerTeam = null;
         rolledOut = false;
@@ -2597,11 +2713,8 @@ export function createAudio({
       rolledOut = true;
       resetQuietRadio();
       if (e?.late) { logSound('battle:rollout', { late: true }); return; }
-      const mode = getGameMode?.() || 'standard';
-      if (mode !== 'realistic') {
-        const opener = MODE_OPENER[mode] ?? 'sting_battle';
-        play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
-      }
+      const opener = modeOpener(getGameMode?.() || 'standard');
+      if (opener) play(opener, opener === 'gunship_flyover' ? { space: 'flat', bus: 'environment' } : undefined);
       // The commander buttons up as the column moves off (a gunship crew has no hatch).
       if (latestPlayer?.aerial?.kind !== 'gunship') play('hatch', hullOptions({ gainDb: -4, delayS: 0.15 }));
       play('ui_countdown_go', { gainDb: -6 });
@@ -2655,10 +2768,7 @@ export function createAudio({
       if (isCrewVoiceSetting(v.crewVoice) && v.crewVoice !== crewVoice) { crewVoice = v.crewVoice; applyCrewLanguage(); }
       volumeEvents++;
     });
-    for (const type of ['zone_captured', 'zone_contested', 'flag_taken', 'flag_captured', 'flag_returned', 'flag_dropped', 'wave_started', 'wave_cleared',
-      'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'pickup_spawned', 'destruction_scored', 'respawn', 'infected', 'weapon_advanced']) {
-      on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
-    }
+    for (const type of MODE_EVENT_TYPES) on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
   }
 
   let volumeEvents = 0;
@@ -2788,7 +2898,8 @@ export function createAudio({
     // the aircraft modes fly from their first second
     if (mode === 'drone' || mode === 'ac130') for (const id of AERIAL_SET) ids.add(id);
     ids.add('ui_countdown_tick');
-    if (mode !== 'realistic') ids.add(MODE_OPENER[mode] ?? 'sting_battle');
+    const opener = modeOpener(mode);
+    if (opener) ids.add(opener);
     ids.add('hatch');
     ids.add('ui_countdown_go');
     return [...ids];
@@ -2882,7 +2993,7 @@ export function createAudio({
         // Effective lowpass: the rig's air absorption under the snapshot's world/hull filter.
         cutoffHz: Math.min(rig.lastCutoff, mixer ? SNAPSHOTS[mixer.snapshot][rig.lod === 'own' ? 'ownHz' : 'worldHz'] : 20000),
         rpm: +rig.state.rpm.toFixed(3), gear: rig.state.gear, load: +rig.state.load.toFixed(2), scrub: +rig.state.scrub.toFixed(2),
-        net: +rig.netGain.toFixed(3),
+        net: +rig.netGain.toFixed(3), surface: rig.surface,
       })).sort((a, b) => a.dist - b.dist),
       aerialState: () => ({
         drones: [...droneRigs.entries()].map(([id, rig]) => ({ id, gain: +rig.lastGain.toFixed(4), rate: +rig.lastRate.toFixed(3) })),

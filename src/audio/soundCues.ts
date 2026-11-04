@@ -203,6 +203,21 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   heli_loop: o({ bus: 'environment', space: 'world', priority: 25, refM: 120, rolloff: 0.7, maxM: 5000, absorb: 0.35, send: 0.2, loudDb: 150, gainDb: -6 }),
   // Workshop sounds inside the hangar: placed a few metres away (indoor scene).
   garage_clank: o({ bus: 'ambience', space: 'world', refM: 6, rolloff: 0.9, maxM: 80, absorb: 0.3, send: 0.45, loudDb: 100, gainDb: -2 }),
+  // world-sfx-269 (2026-11-03): the hydraulic drive's stop sits where the electric's does; an automatic's shift under the
+  // manual box's clunk; water under any hull heard across a river; crashes by material on the steel strike's law; a
+  // light vehicle's end under a tank's; an intercept like a small shell; a drone breaking up short-ranged; the
+  // counter-attack's flare carrying across the field; the Turbo Ball buoy across its pitch.
+  turret_stop_hydraulic: o({ bus: 'own', space: 'hull', gainDb: -8 }),
+  gear_shift_auto: o({ maxM: 120, loudDb: 106, gainDb: -6 }),
+  water_splash_in: o({ priority: 58, maxM: 400, loudDb: 124 }),
+  water_exit: o({ priority: 40, maxM: 220, loudDb: 112, gainDb: -4 }),
+  hit_timber: o({ priority: 70, refM: 9, maxM: 400, loudDb: 130 }),
+  hit_earth: o({ priority: 68, refM: 9, maxM: 350, loudDb: 128 }),
+  vehicle_explode_light: o({ loudDb: 146 }),
+  aps_intercept: o({ priority: 84, refM: 20, rolloff: 0.7, maxM: 1600, loudDb: 140 }),
+  drone_shot_down: o({ priority: 60, refM: 8, maxM: 500, loudDb: 120 }),
+  mode_counter_attack: o({ bus: 'environment', space: 'world', priority: 70, maxInstances: 2, refM: 60, rolloff: 0.7, maxM: 3000, absorb: 0.5, send: 0.3, loudDb: 132, gainDb: -2 }),
+  ball_strike: o({ priority: 72, maxInstances: 3, refM: 15, rolloff: 0.8, maxM: 900, loudDb: 134, gainDb: 0 }),
 });
 
 const profileCache = new Map<string, CueProfile>();

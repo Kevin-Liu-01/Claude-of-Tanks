@@ -297,6 +297,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     _ramRecord?: CollisionRecord | null;
     /** What the hull last struck hard this step (a record kind, 'structure', 'cliff'): the crash's sound (audio). */
     _struckKind?: string | null;
+    /** The building it struck (its structureIdx), when it struck one: the crash sounds of its walls (audio, presentation only). */
+    _struckStructure?: number | null;
     /** Destruction: the share of its speed the hull keeps after rammed structures yielded this tick. */
     _ramKeep?: number;
     _modeTargetX?: number;
@@ -1845,6 +1847,7 @@ function resolveObstacleCollisions(
     pushed = true;
     _hardObstacles[hardCount++] = obstacle;
     if (self) self._struckKind = obstacle.structureIdx !== undefined ? 'structure' : obstacle.kind ?? null;
+    if (self) self._struckStructure = obstacle.structureIdx ?? null;
     if (self && obstacle.structureIdx !== undefined && !self._ramRecord) self._ramRecord = obstacle;
   }
   // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
@@ -2678,6 +2681,7 @@ function publishHullImpact(
     cause: kind,
     // what it struck, for the crash's sound (2026-10-13; a landing struck the ground)
     struck: kind === 'impact' ? entity._struckKind ?? null : null,
+    struckStructureId: kind === 'impact' ? entity._struckStructure ?? null : null,
     hard: true,
     damage,
     destroyed: !!result?.destroyed,
@@ -2730,7 +2734,7 @@ function resolveTankImpacts(
     });
     if (result || (impact > 1.5 && game.timeS - (entity._lastImpactT || -1) > IMPACT_CRASH_WINDOW_S)) {
       entity._lastImpactT = game.timeS;
-      if (state.impactSource === IMPACT_SOURCE_CLIFF) entity._struckKind = 'cliff';
+      if (state.impactSource === IMPACT_SOURCE_CLIFF) { entity._struckKind = 'cliff'; entity._struckStructure = null; }
       publishHullImpact(game, entity, bus, rig, 'impact', closing, result);
     }
     // destruction: the structure the hull struck takes the crash's energy (docs/DESTRUCTION.md §4.4)
@@ -2866,6 +2870,7 @@ function stepTankMovement(
     const { throttle, steer, brake, aimLocked } = entity.input;
     if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
     entity._struckKind = null;
+    entity._struckStructure = null;
     entity._ramRecord = null;
     entity._ramKeep = undefined;
     try { updateTank(entity, support, SIM_DT, collider.collide); }

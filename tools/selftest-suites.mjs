@@ -1508,6 +1508,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/sfxLoudness.selftest.mjs',
     'src/audio/propSounds.selftest.mjs',
     'src/audio/destructionSounds.selftest.mjs',
+    // 2026-11-03 (world-sfx-269): the vehicles, the world and the modes sound of what they are (exhaustive tables, the
+    // mode controller's events scanned, the engine heard)
+    'src/audio/worldSounds.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',

@@ -120,6 +120,76 @@
    }
   ]
  },
+ "aps_intercept": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ce716644babfbfd1fd32ead78a6020179825270de3cb0afc48ae8c632167f2f3",
+    "bytes": 18154,
+    "durS": 2,
+    "mMax": -10.6,
+    "integrated": -14.6,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "b7a449d3afa000f71dffd830024a39d7f7ac2c48624c99f0b10ce2d93be76c3f",
+    "bytes": 18232,
+    "durS": 2,
+    "mMax": -10.4,
+    "integrated": -13.6,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "d1f301ad6a3ba0f9d89df26557715e76e186f96e4d1804ecde58c55d66450dc6",
+    "bytes": 18435,
+    "durS": 2,
+    "mMax": -10.5,
+    "integrated": -13.6,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "ball_strike": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ce9c68ea2cde011ddeae7dc32cdf6f6363f10fe23c4982fa64b7254fa8b79f32",
+    "bytes": 15170,
+    "durS": 1.48,
+    "mMax": -10.8,
+    "integrated": -14.9,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "abbda6c33220e7f4defac4862589ff1d0f8450bd6d219d4f9843e5196079e96b",
+    "bytes": 15209,
+    "durS": 1.48,
+    "mMax": -10.5,
+    "integrated": -15,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "c4cf82b82032068d564669f528bd056253e56b0ab81047788463e7802bfe4727",
+    "bytes": 15141,
+    "durS": 1.48,
+    "mMax": -10.7,
+    "integrated": -15.2,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "6ad7172526b38ffbe117ededfc1d8dbc8ec64dc379effdae3eca294a043e851f",
+    "bytes": 16475,
+    "durS": 1.48,
+    "mMax": -12.3,
+    "integrated": -17,
+    "truePeak": -0.9
+   }
+  ]
+ },
  "bell_orthodox": {
   "group": "spots",
   "preset": "spot",
@@ -186,6 +256,37 @@
     "mMax": -10.4,
     "integrated": -18.5,
     "truePeak": -0.4
+   }
+  ]
+ },
+ "brake_hiss": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1affffd1baf0fa313f4efe0674e4c813a707db6add1abc78c2fd1751ca2448b9",
+    "bytes": 6967,
+    "durS": 0.75,
+    "mMax": -13.9,
+    "integrated": -15.8,
+    "truePeak": -4.5
+   },
+   {
+    "sha256": "d18604ec0290105e40544de027f7e6a072c31a6979198c783cfff96c6c41407c",
+    "bytes": 7430,
+    "durS": 0.8,
+    "mMax": -13.9,
+    "integrated": -15.5,
+    "truePeak": -4.2
+   },
+   {
+    "sha256": "2a25f6ac52cd7dd27d9d40011fe15f365132a521a7af5f584a7b12ec13c17fdc",
+    "bytes": 7044,
+    "durS": 0.8,
+    "mMax": -14,
+    "integrated": -16,
+    "truePeak": -4.3
    }
   ]
  },
@@ -335,7 +436,7 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "91d62c4a347533d69cbd5a09134b159ee397186314ba773f64b89a9686fbba98",
+    "sha256": "85031fe405bc606c031264c9112aa571b41beaf4b76e853798c02baac6ea0a64",
     "bytes": 13749,
     "durS": 1.2,
     "mMax": -13.5,
@@ -343,11 +444,27 @@
     "truePeak": -0.8
    },
    {
-    "sha256": "b799f3292ae362696ec591dd6a1bd64a8ad5f7ec5c437f5ab636f64f0810ab2f",
+    "sha256": "d4a478416c50ff92e60aef7bf00bfcd4159bd97455e75346137a28b0857ead8e",
     "bytes": 12299,
     "durS": 1.2,
     "mMax": -12.9,
     "integrated": -17,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "d625a6abc0cd87edea27277b6fb709c852bc32920dcafaafd580168115cc9670",
+    "bytes": 13766,
+    "durS": 1.2,
+    "mMax": -12.5,
+    "integrated": -15.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "ee7fbcaa15c8477ee916496c5f416145164169c7ed92512f8022cbd36c317745",
+    "bytes": 12803,
+    "durS": 1.2,
+    "mMax": -11.6,
+    "integrated": -16.7,
     "truePeak": -0.9
    }
   ]
@@ -683,6 +800,202 @@
    }
   ]
  },
+ "drone_shot_down": {
+  "group": "aerial",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5e416c7c656cdaa9d94482eb82d45619b31b520abd7c1ce2990084cb5dc15e95",
+    "bytes": 22043,
+    "durS": 2,
+    "mMax": -10,
+    "integrated": -11.3,
+    "truePeak": -4.6
+   },
+   {
+    "sha256": "3f877ab6e4ef6110ef506d2677b96ce29ab92c46137444aae67fe58061a471f3",
+    "bytes": 9279,
+    "durS": 0.828,
+    "mMax": -12.3,
+    "integrated": -16.4,
+    "truePeak": 0.9
+   },
+   {
+    "sha256": "24e87402364f6cb6b96bc1f721ba2a9264f8b10c9bf389039fb795d5fe9d18c8",
+    "bytes": 18207,
+    "durS": 1.846,
+    "mMax": -10.3,
+    "integrated": -13.6,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "engine_diesel_ifv_mid": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0b99055114752c217b11f23390af36a0ffb821b0f637925019df12e22c4b3f1a",
+    "bytes": 49691,
+    "durS": 6.091,
+    "mMax": -17.2,
+    "integrated": -18,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_high": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fbc8df3dcfe14133b65b8cc88a29cad48abee4aa870d52ad5b4074834d5e8583",
+    "bytes": 51065,
+    "durS": 6.091,
+    "mMax": -17.2,
+    "integrated": -18,
+    "truePeak": -5.1
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d03223408343a8363f72fd58a4adcccb2f91ea28628d833bf3d1469b10544361",
+    "bytes": 47358,
+    "durS": 6.091,
+    "mMax": -17.3,
+    "integrated": -18,
+    "truePeak": -5.4
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "684d87ddc53e8a8541e5f6c713808b2a7420f7e538e4cc0ba699fb2f74991197",
+    "bytes": 47097,
+    "durS": 6.091,
+    "mMax": -17.4,
+    "integrated": -18,
+    "truePeak": -4.4
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_mid": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c47d682d44e5e99860508f6fc13008009500701e893b5e0eda226a1de2c5da8e",
+    "bytes": 47276,
+    "durS": 6.091,
+    "mMax": -17.3,
+    "integrated": -18,
+    "truePeak": -4.8
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_start": {
+  "group": "engines",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c92812192dd9930e5de9dd21bc8f560435ce624705c26237ad861b9dae71f48a",
+    "bytes": 37716,
+    "durS": 4.84,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "engine_diesel_v12_coldwar_stop": {
+  "group": "engines",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "47c633f3e757c40529cb666a0144c98f5aa90842d687a6eeb08be079b7182306",
+    "bytes": 29259,
+    "durS": 3.98,
+    "mMax": -14.1,
+    "integrated": -17.4,
+    "truePeak": -3.4
+   }
+  ]
+ },
+ "engine_diesel_v12_modern_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "29ab2ad94e5a56df42c3218e20417eef2698e2f45aa8a0977fd9224d0ed9b256",
+    "bytes": 53643,
+    "durS": 6.091,
+    "mMax": -17.4,
+    "integrated": -18,
+    "truePeak": -5.3
+   }
+  ]
+ },
+ "engine_diesel_v12_soviet_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7fef054a0c638196797a29726c276b209b4a1b658a71432d6b32e3c213fcae6f",
+    "bytes": 49775,
+    "durS": 6.091,
+    "mMax": -17.5,
+    "integrated": -18,
+    "truePeak": -5.2
+   }
+  ]
+ },
+ "engine_gasoline_v12_idle": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "19bdad069258044bd84956e1f69d01a2210d7382c9c58807de3875bbad45c1e0",
+    "bytes": 47711,
+    "durS": 6.091,
+    "mMax": -17.5,
+    "integrated": -18,
+    "truePeak": -3.2
+   }
+  ]
+ },
+ "engine_gasoline_v12_low": {
+  "group": "engines",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4f5358abef134f7888c0e276c6386b362d4eec25dc77b8b06ca97c4f98e9654a",
+    "bytes": 52182,
+    "durS": 6.091,
+    "mMax": -17.1,
+    "integrated": -17.9,
+    "truePeak": -2.7
+   }
+  ]
+ },
  "expl_far": {
   "group": "impacts",
   "preset": "weapon-far",
@@ -922,6 +1235,37 @@
    }
   ]
  },
+ "gear_shift_auto": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8a032ce090228a4ea14a134297d5ef9b5d565997949bce5f51c0f29e0ca9b679",
+    "bytes": 7362,
+    "durS": 0.8,
+    "mMax": -15.1,
+    "integrated": -19.2,
+    "truePeak": -1
+   },
+   {
+    "sha256": "637fdf578de1586e4fa9e350e5d619ef50a0f1bb349291cd250b8dfc3ffa9a68",
+    "bytes": 6561,
+    "durS": 0.8,
+    "mMax": -14.7,
+    "integrated": -18.3,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "97786679b07c876525676d953ec61c9527c1f40ec0461e465e7e7c8d689a86f5",
+    "bytes": 7123,
+    "durS": 0.8,
+    "mMax": -14.1,
+    "integrated": -17.1,
+    "truePeak": -0.9
+   }
+  ]
+ },
  "glass_cascade": {
   "group": "buildings",
   "preset": "impact",
@@ -1100,13 +1444,52 @@
    }
   ]
  },
+ "hatch": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8a9752ec503c2fe3898f7030061ce9a336a7d550cdcad757389d570d052091b1",
+    "bytes": 9887,
+    "durS": 1.2,
+    "mMax": -15,
+    "integrated": -19,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "aca47a49bf95c4afafdd195675c2e2c0e15d1e91ef397c99829f4dfd9da40287",
+    "bytes": 9871,
+    "durS": 1.2,
+    "mMax": -16.1,
+    "integrated": -21.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "6351f1dc862a867009a17ceed53ca5dd8d26280f74c463599c541118d070c284",
+    "bytes": 10439,
+    "durS": 1.2,
+    "mMax": -16,
+    "integrated": -20.1,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "acef3b42f8e65854eb7e99f62dcbfc8dfad54e8edbf2fcc781c9c027cdc1802c",
+    "bytes": 9821,
+    "durS": 1.2,
+    "mMax": -15.7,
+    "integrated": -19.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
  "hedgehog_clang": {
   "group": "props",
   "preset": "impact",
   "channels": 1,
   "variants": [
    {
-    "sha256": "7a103f8c7e733f3d80312359cc593a371814abc50fa9db3de1cc8c1c08184297",
+    "sha256": "5bdd6dea4064b098792aa7dd003a781a350d1ebb50f21bb4fa15e15895b2f882",
     "bytes": 14630,
     "durS": 1.48,
     "mMax": -14.8,
@@ -1114,12 +1497,51 @@
     "truePeak": -0.9
    },
    {
-    "sha256": "809351f6b60f8bdbcae3bd9343e458d43f01453b9a2caaa75b5aba27986b839a",
+    "sha256": "269155266306dd955cbc90ef199a996209b2dc42013d3960da8703fc4a582194",
     "bytes": 16098,
     "durS": 1.48,
     "mMax": -13.9,
     "integrated": -19.1,
     "truePeak": -0.8
+   },
+   {
+    "sha256": "ec0ccf1c8032336f5cafc191a3f969d8969866d6d7b70a9252ace09f73c8d530",
+    "bytes": 15151,
+    "durS": 1.48,
+    "mMax": -13.6,
+    "integrated": -17.6,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "hit_earth": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b4287a5a1a2d3a0e6111aff7bf7e63693c825c9127fce9eb2c605592dea050c5",
+    "bytes": 11887,
+    "durS": 1.18,
+    "mMax": -11.8,
+    "integrated": -15,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "21329ffc497e95c715479857920208cf871692ada3344649db05f15e4b064660",
+    "bytes": 14305,
+    "durS": 1.28,
+    "mMax": -14.3,
+    "integrated": -19.5,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "79c82d1855b0afedbf963d4a16b6071e8a16018bfd0d6a98f1a4d021e010fe57",
+    "bytes": 12575,
+    "durS": 1.28,
+    "mMax": -13.1,
+    "integrated": -17.5,
+    "truePeak": -0.5
    }
   ]
  },
@@ -1129,7 +1551,15 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "0d5761753b25ee2ed0083b20d590020e5213528f39e1fa3b037311fd43fe1f52",
+    "sha256": "694cd9eda7946eb9d7b4827b30c04b8e382bae618080dc40da66671bdec2c883",
+    "bytes": 14376,
+    "durS": 1.48,
+    "mMax": -11.3,
+    "integrated": -15.7,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "8d4f22c73597192aba3b99a84573ce41992fde168f292170ba8f482d218e58e5",
     "bytes": 14299,
     "durS": 1.48,
     "mMax": -12.3,
@@ -1137,7 +1567,15 @@
     "truePeak": -0.2
    },
    {
-    "sha256": "8efde229c2d69a7df55ecba63dc4f0b04290b71c30efb4e8a5b74d6892b3786d",
+    "sha256": "5515e7ba91d74ed555c6f0ecf2681bb34c4e3cee516ba124023dfb8162ec5570",
+    "bytes": 15044,
+    "durS": 1.48,
+    "mMax": -10.6,
+    "integrated": -13.8,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "d0581aa153ca15369e4ad46b985ac84871e8aa419687986355c3e7c28d866e5a",
     "bytes": 14528,
     "durS": 1.48,
     "mMax": -10.6,
@@ -1174,6 +1612,37 @@
     "mMax": -10.9,
     "integrated": -14.8,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "hit_timber": {
+  "group": "collisions",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "72d84a07f513776186c3efa737eaa36c202597fba5e9d1a6e146562d8f5570a7",
+    "bytes": 11674,
+    "durS": 1.28,
+    "mMax": -12,
+    "integrated": -15.8,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b2cf86e935e84227a8a0149d4c7aa340313e8f597498aacbc17765c5f79b0be9",
+    "bytes": 13575,
+    "durS": 1.28,
+    "mMax": -12.5,
+    "integrated": -16.3,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "6536250658f1f9be35be219fd4ac5f56d9a6d9108be488bf64ccf6e71ae8cd25",
+    "bytes": 11663,
+    "durS": 1.28,
+    "mMax": -12.1,
+    "integrated": -15.8,
+    "truePeak": -0.4
    }
   ]
  },
@@ -1282,6 +1751,29 @@
     "mMax": -14.2,
     "integrated": -18.5,
     "truePeak": -0.9
+   }
+  ]
+ },
+ "jump_launch": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "eb398ac01a763c9c2b39b03715094866c91ca17f6938119d1f88af4009330d99",
+    "bytes": 11793,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -1
+   },
+   {
+    "sha256": "1131058c143c74dbdcf065a4657cc8e71f087d8b748042efb524da1329923449",
+    "bytes": 12237,
+    "durS": 1.48,
+    "mMax": -14,
+    "integrated": -15.6,
+    "truePeak": -3.9
    }
   ]
  },
@@ -1547,6 +2039,150 @@
    }
   ]
  },
+ "mode_counter_attack": {
+  "group": "stingers",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7612ccd3efd5b29e526b7ca846f152c93c42c0f922b63beacaf2dbadc19dd5a5",
+    "bytes": 26086,
+    "durS": 4,
+    "mMax": -12,
+    "integrated": -17.1,
+    "truePeak": -2.1
+   },
+   {
+    "sha256": "b938250a59180f1e9b8c98e78e792fca1285e5181f0c1dc5fb7c3ee49eba457a",
+    "bytes": 25268,
+    "durS": 4,
+    "mMax": -12,
+    "integrated": -15.5,
+    "truePeak": -3.5
+   }
+  ]
+ },
+ "mode_ctf_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "59a5054e44dfdd80968acee70c858802873e061de9ee614c830d3247d784ce90",
+    "bytes": 30165,
+    "durS": 3.48,
+    "mMax": -17,
+    "integrated": -22.4,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "mode_drone_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "6abd324fb16165a93fab66f5286efeb366d57e29ebaacf9db3fbc03e464e710d",
+    "bytes": 46091,
+    "durS": 3.78,
+    "mMax": -14,
+    "integrated": -18.3,
+    "truePeak": -9.9
+   }
+  ]
+ },
+ "mode_horde_swarm": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "0a9375b12d0154dc76fe1a94f2cc4637fb23ed76cee7b6f38e8ac70c94a8dc2b",
+    "bytes": 58032,
+    "durS": 5,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -7.5
+   }
+  ]
+ },
+ "mode_mars_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "afdcdb9e0bbf45fcfe6b8e2bc052e36ecfc29c9202ba47d1990a0f706684ebf5",
+    "bytes": 46889,
+    "durS": 4,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -6
+   }
+  ]
+ },
+ "mode_range_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "d6b21a664586bd948152319d375bdbe67d648865e04c74cc665fe6b976aff15d",
+    "bytes": 47507,
+    "durS": 4,
+    "mMax": -14,
+    "integrated": -14.9,
+    "truePeak": -9.1
+   }
+  ]
+ },
+ "mode_zone_opener": {
+  "group": "stingers",
+  "preset": "sting",
+  "channels": 2,
+  "variants": [
+   {
+    "sha256": "b6676e11fc3ee97f39921894f1b1d782b916a3ea79e10f8811ef2935d84b6bd2",
+    "bytes": 30528,
+    "durS": 2.534,
+    "mMax": -16.1,
+    "integrated": -17.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "mud_suck": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "385fad0d182373ab30b4fc836861f3236197fa6ddd3d517a44bf6a9283f2697f",
+    "bytes": 12570,
+    "durS": 1.48,
+    "mMax": -13.9,
+    "integrated": -17,
+    "truePeak": -2.2
+   },
+   {
+    "sha256": "6b234b34a3374c055cea96080b5acb6653691aab2e0f07b1bf36504087132525",
+    "bytes": 14016,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -15.9,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "5f532293158dbd231790af7bfd4774e70fc880ef4bff090e3b9a4b67fd9888d3",
+    "bytes": 13394,
+    "durS": 1.48,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -0.5
+   }
+  ]
+ },
  "net_rustle_loop": {
   "group": "vehicle",
   "preset": "loop",
@@ -1559,6 +2195,29 @@
     "mMax": -15.5,
     "integrated": -18.5,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "overturned_groan": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "78700b22d220dac9a0f447005c6bd9d5ae3899078b2f3fa92a7dc144977ec471",
+    "bytes": 23171,
+    "durS": 3,
+    "mMax": -13.9,
+    "integrated": -18.3,
+    "truePeak": -2.4
+   },
+   {
+    "sha256": "e04d61327347a3670a00f5c7e411f8919e2791313544c6377a44959941b68356",
+    "bytes": 22967,
+    "durS": 3,
+    "mMax": -14.1,
+    "integrated": -16.8,
+    "truePeak": -7.1
    }
   ]
  },
@@ -1708,6 +2367,75 @@
    }
   ]
  },
+ "roof_fall_concrete": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "704cdd749a065cc8b0739790869fa6c970bea309c055281ecec4a1a41157b5eb",
+    "bytes": 20122,
+    "durS": 2.98,
+    "mMax": -13.7,
+    "integrated": -18.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "2e9556590465144093803ebfe27c46c41291d96312ef1f944810d031a2a44450",
+    "bytes": 22734,
+    "durS": 3.48,
+    "mMax": -12.3,
+    "integrated": -16,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "roof_fall_earth": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "78ebb2fa3c16b940fe76ecaed43aab2954ed53e535d7591391a020fcdc0fe945",
+    "bytes": 24322,
+    "durS": 3.412,
+    "mMax": -15.5,
+    "integrated": -20.8,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "e2f23c2b7e738f8bcf11206b7eae2c48323f608a773d0623a1dd8a03d9ac3845",
+    "bytes": 27906,
+    "durS": 3.344,
+    "mMax": -13.9,
+    "integrated": -19.6,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "roof_fall_timber": {
+  "group": "buildings",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5f76496c1c6737eb75e19b8cb36ab6e28bae1572c3737cacb43fa6b1edd6eaf1",
+    "bytes": 23184,
+    "durS": 3.28,
+    "mMax": -14.8,
+    "integrated": -19.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "a02106ff528fae97e8bb7f337d3cfe0d6afb0f000f5e1fcff8e03c4c59f4d751",
+    "bytes": 22367,
+    "durS": 3.208,
+    "mMax": -15.6,
+    "integrated": -20.3,
+    "truePeak": -0.7
+   }
+  ]
+ },
  "rubble_chunk_land": {
   "group": "buildings",
   "preset": "impact",
@@ -1728,6 +2456,45 @@
     "mMax": -16.4,
     "integrated": -21.7,
     "truePeak": 0.4
+   }
+  ]
+ },
+ "rubble_crunch": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "20017026641cb3d4ccec0d57f1e492b22a13540198d3c20a25371d5bbb4d8234",
+    "bytes": 20462,
+    "durS": 1.44,
+    "mMax": -16.7,
+    "integrated": -19.4,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "f00a9ebcb702aab8d172586d665ea4d085b992f1029d94811e1080972aefcdb9",
+    "bytes": 18394,
+    "durS": 1.46,
+    "mMax": -15.6,
+    "integrated": -20.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "5a20a551dea1fa13132fa859fd810b50f3c3126bee744b91fda6921f63b595e4",
+    "bytes": 18748,
+    "durS": 1.48,
+    "mMax": -16.4,
+    "integrated": -20.1,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "76a78895809420f2b0aadde09929a08f9f95fbacca3fc5911d86ed7702df7678",
+    "bytes": 17474,
+    "durS": 1.48,
+    "mMax": -14.2,
+    "integrated": -16.7,
+    "truePeak": -0.2
    }
   ]
  },
@@ -1759,6 +2526,37 @@
     "mMax": -15.6,
     "integrated": -19.4,
     "truePeak": -0.2
+   }
+  ]
+ },
+ "self_right": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "341e171c4502e91c6cf60146372244507a9d4251d03d3ee281e9d909232003ed",
+    "bytes": 22241,
+    "durS": 2.24,
+    "mMax": -10.9,
+    "integrated": -15.1,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "e2e4cb8883a0696dc0de4bdbee0c0067f7df39f0ecda341fb3470f887f6227a9",
+    "bytes": 25301,
+    "durS": 2.48,
+    "mMax": -12.3,
+    "integrated": -17.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "d73e8fe4b0bdb09bd0bc94720496cc6e0b4a1ea011ab0d57c78349c9067bf163",
+    "bytes": 21170,
+    "durS": 2.036,
+    "mMax": -11.9,
+    "integrated": -16,
+    "truePeak": 0
    }
   ]
  },
@@ -1900,6 +2698,29 @@
    }
   ]
  },
+ "spot_crickets": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "42ae88a28e14299114d13fa689db15a1869a762638a4e52682e9f6a941323ba0",
+    "bytes": 35232,
+    "durS": 3.982,
+    "mMax": -18,
+    "integrated": -21.6,
+    "truePeak": -6
+   },
+   {
+    "sha256": "5bba00f4b2f1f5e965fc0fbf66daa173bbc9caa0867fc775aaffd33a91b8cf42",
+    "bytes": 37592,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -21.4,
+    "truePeak": -4.8
+   }
+  ]
+ },
  "spot_far_brewup": {
   "group": "spots",
   "preset": "spot",
@@ -2030,6 +2851,29 @@
    }
   ]
  },
+ "spot_fox": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "64ed43bd64fa25b4f68edb8551f778366ca3aab3217028178c707843857a5a7d",
+    "bytes": 9371,
+    "durS": 1.716,
+    "mMax": -18.5,
+    "integrated": -21.6,
+    "truePeak": -7.1
+   },
+   {
+    "sha256": "c275bb1a20cc0a1364e65a4f335a2a0de07310e5ae722132663b33b6524123ee",
+    "bytes": 15707,
+    "durS": 1.954,
+    "mMax": -18.2,
+    "integrated": -26.9,
+    "truePeak": -5.4
+   }
+  ]
+ },
  "spot_goats": {
   "group": "spots",
   "preset": "spot",
@@ -2087,6 +2931,75 @@
     "mMax": -18,
     "integrated": -22.6,
     "truePeak": -8.7
+   }
+  ]
+ },
+ "spot_night_insects": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "836c4dbc427e85b4111edcfd8beea7e7b632299a091ae7939560540cbd9aa38e",
+    "bytes": 31140,
+    "durS": 4,
+    "mMax": -18.1,
+    "integrated": -20.7,
+    "truePeak": -6.2
+   },
+   {
+    "sha256": "3ab44e70944e27932bd2dfe75164915225348d335453d5135421423ecb888ee1",
+    "bytes": 30716,
+    "durS": 4,
+    "mMax": -18,
+    "integrated": -19.2,
+    "truePeak": -9.8
+   }
+  ]
+ },
+ "spot_nightjar": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3da2356207bbd880d017dc7c423f11e25687d3a75be0d44c8786476899140190",
+    "bytes": 25632,
+    "durS": 4,
+    "mMax": -18.4,
+    "integrated": -19.5,
+    "truePeak": -3.6
+   },
+   {
+    "sha256": "9070385ce855b6ea7ef5b9bcbe38c991d037be1fc1e4843fc085010a88f5b9c0",
+    "bytes": 33849,
+    "durS": 4,
+    "mMax": -18.1,
+    "integrated": -19.4,
+    "truePeak": -5.1
+   }
+  ]
+ },
+ "spot_owl": {
+  "group": "spots",
+  "preset": "spot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "95b641b626db2e303b876d7de986e1cd1d89fd03cb5df7aaa07ec6e6fd5731bf",
+    "bytes": 16426,
+    "durS": 2.3,
+    "mMax": -18,
+    "integrated": -20.4,
+    "truePeak": -6.8
+   },
+   {
+    "sha256": "d8b8f64317f39b40f9e4425501b737dc8cc0dc1585594e5fce248382f4a5ed30",
+    "bytes": 8013,
+    "durS": 1.18,
+    "mMax": -18,
+    "integrated": -20.7,
+    "truePeak": -9.6
    }
   ]
  },
@@ -2304,6 +3217,99 @@
    }
   ]
  },
+ "susp_bump_light": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ad174e7e8392bfd449314ecc3c67803092f73992aa348fd014862e0ee80cba1a",
+    "bytes": 6747,
+    "durS": 0.684,
+    "mMax": -17.7,
+    "integrated": -20.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "adc8cb74aaa04dcc057d7c989875b9603716ff9dde897a2268a558f7d77fb87b",
+    "bytes": 6471,
+    "durS": 0.72,
+    "mMax": -18.1,
+    "integrated": -20.6,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "9931dfbe5ec9437b64a50d74fc9505a25c8c6fdb53a55b941b147a7a177d53d3",
+    "bytes": 5913,
+    "durS": 0.66,
+    "mMax": -17.3,
+    "integrated": -20.9,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "susp_creak": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6a3a8117405b3f946bc791e2794e9572e53d73e7d8a7d0ae1feae83bdce86c75",
+    "bytes": 10083,
+    "durS": 1.18,
+    "mMax": -13.9,
+    "integrated": -16.3,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "1d0e55dcc6c45d9ec938b83a88b83bbed629ec3b3cb1b201f10963720717f2c0",
+    "bytes": 10181,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.6,
+    "truePeak": -1.9
+   },
+   {
+    "sha256": "53fed485beebcffcb54b18b573408b3f1de3c1039fbe64a07dc502979ac1d68e",
+    "bytes": 10407,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.8,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "susp_land_light": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "77a46d1677a07892315ec3ca6a96f763384d30214198d529ac6de221ba9bf290",
+    "bytes": 11894,
+    "durS": 1.28,
+    "mMax": -15.3,
+    "integrated": -18,
+    "truePeak": -0.9
+   },
+   {
+    "sha256": "0dae630ae4ee81ec5d27b91d27a12333846ba6810131c9a0b68132c81a85c20d",
+    "bytes": 7196,
+    "durS": 0.618,
+    "mMax": -14.9,
+    "integrated": -17.8,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "b2f3e99f9ce4ed5b45e176f3d9bbe75d4c116dfc6d9492f7c7dc9730e1baa2c8",
+    "bytes": 13236,
+    "durS": 1.28,
+    "mMax": -11.5,
+    "integrated": -16.1,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "tank_explode": {
   "group": "destruction",
   "preset": "impact",
@@ -2389,13 +3395,359 @@
    }
   ]
  },
+ "track_break": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "a8b23c79b59f8fd94b69e56d48e8415578b53f237204e5b8a2b150e3867d22b8",
+    "bytes": 18531,
+    "durS": 1.8,
+    "mMax": -10.9,
+    "integrated": -13.4,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "477fe9831f95fb660acf0760caa5edba364a2d8393b567c22a4106236f3f11ed",
+    "bytes": 21959,
+    "durS": 2,
+    "mMax": -11.6,
+    "integrated": -16.2,
+    "truePeak": 0
+   },
+   {
+    "sha256": "7402181f82234527b4b6b697b6c2d4ec6f0152e4117c91ae9aeba261ec36590b",
+    "bytes": 17641,
+    "durS": 1.46,
+    "mMax": -11.3,
+    "integrated": -16.2,
+    "truePeak": 0.4
+   }
+  ]
+ },
+ "track_scrub_soft_loop": {
+  "group": "vehicle",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c5f807f0847223d687efcf430427aef8c6ef17841995841d2d9b96cc86679f3b",
+    "bytes": 41526,
+    "durS": 5.091,
+    "mMax": -15.7,
+    "integrated": -18,
+    "truePeak": -2.4
+   }
+  ]
+ },
+ "tracks_heavy_earth_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "37d1e4fb413704fadded79ea23a6aad1a7d8532181a633072342d7a7eb156f65",
+    "bytes": 42048,
+    "durS": 5.091,
+    "mMax": -15.4,
+    "integrated": -18,
+    "truePeak": -1.9
+   }
+  ]
+ },
+ "tracks_heavy_earth_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bf42635658f2bf61a062b0a310c18c107125775a4d4888e72c2f118fc1350b59",
+    "bytes": 41978,
+    "durS": 5.091,
+    "mMax": -11.8,
+    "integrated": -18,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_heavy_hard_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "641ac48b4d497a89b0102b5a3237a6d6f8ff0e2257af1cf922cd77f914746a65",
+    "bytes": 44275,
+    "durS": 5.091,
+    "mMax": -13.6,
+    "integrated": -18.2,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "tracks_heavy_hard_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0b2698952c0a6b43f44a5846483c81c2036df43481c050577877695561f25e54",
+    "bytes": 40285,
+    "durS": 5.091,
+    "mMax": -14.6,
+    "integrated": -18,
+    "truePeak": -2
+   }
+  ]
+ },
+ "tracks_heavy_mud_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f7c46f7b746dd239ac7ab12d6830a3f80ac0200405e7ad44574bffe05806beba",
+    "bytes": 41623,
+    "durS": 5.091,
+    "mMax": -14.9,
+    "integrated": -18,
+    "truePeak": -2.5
+   }
+  ]
+ },
+ "tracks_heavy_mud_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "08ede6acce6148f76da03ce73235b056f0632abbf4f6d866161a59364a2781c3",
+    "bytes": 41186,
+    "durS": 5.091,
+    "mMax": -12.1,
+    "integrated": -18.1,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "tracks_heavy_sand_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4ed06dcbe00328045e6265ab8c476d2173261f35f4229d101a74fafeafa4e55d",
+    "bytes": 40656,
+    "durS": 5.091,
+    "mMax": -11.6,
+    "integrated": -18,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "tracks_heavy_sand_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ada8573fb4edc0552ddc1ef9c93c19f7958726400ac318b6ca12a6d539055622",
+    "bytes": 40805,
+    "durS": 5.091,
+    "mMax": -12.7,
+    "integrated": -18,
+    "truePeak": -1.6
+   }
+  ]
+ },
+ "tracks_heavy_snow_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "b79abcea0176c570ec0496ba96063fc5070877a0b40fe9553245964fa4c1e0c1",
+    "bytes": 45288,
+    "durS": 5.091,
+    "mMax": -16,
+    "integrated": -18,
+    "truePeak": -1.3
+   }
+  ]
+ },
+ "tracks_heavy_snow_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "5ca39a4dd40eec568fc8e88dcf35845ce9f688d635b3fd1159bdf415bdc30693",
+    "bytes": 41383,
+    "durS": 5.091,
+    "mMax": -14.2,
+    "integrated": -18.1,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "tracks_light_earth_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4570de6f544961e59f806864c99299ed8ebeb4f2343b35a88ef690513b00d70e",
+    "bytes": 44161,
+    "durS": 5.091,
+    "mMax": -16,
+    "integrated": -18.1,
+    "truePeak": -1.2
+   }
+  ]
+ },
+ "tracks_light_earth_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2b9c25f48b9d7e2e4b4f0d467a82b7c3cbd2ac249d7b556a7c8c85892f628170",
+    "bytes": 48374,
+    "durS": 5.091,
+    "mMax": -15.5,
+    "integrated": -18.6,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "tracks_light_hard_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "dc9591794d6f6e01f145ac4a1794b59a4ea70f3701c2e85b54c0edfaeb31aec9",
+    "bytes": 46654,
+    "durS": 5.091,
+    "mMax": -12.5,
+    "integrated": -17.9,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "tracks_light_hard_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9e9dbbdaa285be6ab11d371aa18e303a3a39c5ea3519f7c52eb5ac0c1cf76503",
+    "bytes": 46013,
+    "durS": 5.091,
+    "mMax": -14,
+    "integrated": -18.5,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_light_mud_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f2947f38d4389414946dae3ba9dfef06b1f5a1b5b1c94bd69ca9141513241e17",
+    "bytes": 42416,
+    "durS": 5.091,
+    "mMax": -14,
+    "integrated": -18.2,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "tracks_light_mud_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c29ab477f8b4fc509de079da008edaa07a4b8fd9166e0b5a8bf798163878a2c8",
+    "bytes": 41953,
+    "durS": 5.091,
+    "mMax": -14.1,
+    "integrated": -18.2,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "tracks_light_sand_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "26bc929fbb75371ffd4a671de18ac27bb2eafdbebff63a9c839f6b077538bbec",
+    "bytes": 40843,
+    "durS": 5.091,
+    "mMax": -10.4,
+    "integrated": -18.1,
+    "truePeak": -1
+   }
+  ]
+ },
+ "tracks_light_sand_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "387c0183f5f3c2fced95f76b3f124f2c7f257b5cacf1cdbec1f48607f31cbd39",
+    "bytes": 40317,
+    "durS": 5.091,
+    "mMax": -15.1,
+    "integrated": -18,
+    "truePeak": -3.8
+   }
+  ]
+ },
+ "tracks_light_snow_fast": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e66f5d1f2091e99ef66a9e7d249aab39d4a9550b052e16c65127142098d67205",
+    "bytes": 40175,
+    "durS": 5.091,
+    "mMax": -14.9,
+    "integrated": -18.2,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "tracks_light_snow_slow": {
+  "group": "tracks",
+  "preset": "loop",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f58775f3ab64dfea9260112b336e322bb778befc4eedb8695abe34307226f064",
+    "bytes": 42814,
+    "durS": 5.091,
+    "mMax": -15.4,
+    "integrated": -18.8,
+    "truePeak": -0.8
+   }
+  ]
+ },
  "tree_fall": {
   "group": "props",
   "preset": "impact",
   "channels": 1,
   "variants": [
    {
-    "sha256": "049279f58a8427ffe5f5fa83c43061f119d5906c8f80abd3e9bb8d1fe890fd56",
+    "sha256": "bdea2c4b2d62117c9e07e7667381c2cd01e81e9f4188558ed8b02a4cff5c3a98",
     "bytes": 29291,
     "durS": 2.944,
     "mMax": -13.5,
@@ -2403,7 +3755,7 @@
     "truePeak": -0.1
    },
    {
-    "sha256": "f86b6b50346757c81ed27ebd3a657d4cd75d92dd88fb261effd607ab75ca4a29",
+    "sha256": "5ec146518936e8c475d6da1df6c1e3f26e05199888d9fc3255cc068e42fc4274",
     "bytes": 29208,
     "durS": 2.92,
     "mMax": -13.9,
@@ -2411,12 +3763,67 @@
     "truePeak": -0.1
    },
    {
-    "sha256": "a3fdc8195df33c5b2f3c9add127e8b48c792382b91572cff13474e0b562d10c7",
+    "sha256": "b98788cdc38350d39142b05adc17d259ee6ee4697b9e13f0b6127ea59d435116",
     "bytes": 25271,
     "durS": 2.63,
     "mMax": -15.7,
     "integrated": -19.9,
     "truePeak": -0.5
+   },
+   {
+    "sha256": "dd4511626028b560c82bb736fc5ec43878eea1ad94ffcd671b4ef2c5a3818f0c",
+    "bytes": 30357,
+    "durS": 2.92,
+    "mMax": -14.5,
+    "integrated": -18.4,
+    "truePeak": 0.3
+   }
+  ]
+ },
+ "tree_snap": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "541062039d978a1c2cc047843e746379904b7b30d796129bfd3d86676cfa44a3",
+    "bytes": 13401,
+    "durS": 1.168,
+    "mMax": -14,
+    "integrated": -15,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "f154075296280523517ed22f50b75d9ad7905549f6fefc2bdfa1139dc76e64db",
+    "bytes": 14228,
+    "durS": 1.32,
+    "mMax": -12.7,
+    "integrated": -13.1,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "0086a7460b2e81e52ae77d00241c5fa4920f0c8952a5a0b56a63b25c1db4ed7e",
+    "bytes": 12494,
+    "durS": 1.1,
+    "mMax": -14.4,
+    "integrated": -19,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "ddb38b12db6d158cff37ea448ee4b4924ba5bef5625806ebe602d393fca13f69",
+    "bytes": 15649,
+    "durS": 1.32,
+    "mMax": -15.2,
+    "integrated": -16.6,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "593ee87b2fa84400142fee269dcb101ac037bafb56cc644a1b7915e429355717",
+    "bytes": 15732,
+    "durS": 1.48,
+    "mMax": -12.1,
+    "integrated": -12.9,
+    "truePeak": 0.5
    }
   ]
  },
@@ -2487,6 +3894,208 @@
     "mMax": -10.6,
     "integrated": -14.1,
     "truePeak": -0.5
+   }
+  ]
+ },
+ "turret_start": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1edcb97ec7f2535e05ef07908867de30a49bb7935b0cb0afbbc9ccf795d96c24",
+    "bytes": 11252,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.4,
+    "truePeak": -3.7
+   },
+   {
+    "sha256": "d916d43d500ea3955dce4f9773b46623da59cacad20dc84e1daf8fe3ae24f31d",
+    "bytes": 11392,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.2,
+    "truePeak": -3.4
+   },
+   {
+    "sha256": "377c96a9155cb935a8ebedc2e46d473feb08b187d528816ceb1466e34207f5ce",
+    "bytes": 7998,
+    "durS": 0.92,
+    "mMax": -14,
+    "integrated": -15.9,
+    "truePeak": -6.5
+   },
+   {
+    "sha256": "0a362294ddbe245b1b68c4e8c26c9e5b19645782516ca45c33e9a1e223637c48",
+    "bytes": 9837,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -16.4,
+    "truePeak": -2.8
+   }
+  ]
+ },
+ "turret_start_hydraulic": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f41529c421c576d8279d2f0b891d240ef7194c5e0c4aba989b84a6c3683ecac",
+    "bytes": 10466,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.7,
+    "truePeak": -4
+   },
+   {
+    "sha256": "82a99589698c39eb85765d269ee003c0507a33220c3cad4bc4aa6e00d7ccccc6",
+    "bytes": 10557,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -3.6
+   },
+   {
+    "sha256": "071955be36f6c340614fc77a15095fddd61798ccf6176d8be8e4f73974300941",
+    "bytes": 10076,
+    "durS": 1.2,
+    "mMax": -13.9,
+    "integrated": -15.8,
+    "truePeak": -4.6
+   },
+   {
+    "sha256": "ccd9d8a319abc74754731414fb49882c92ea605977e9bf1fd2abbd298c9269f4",
+    "bytes": 11554,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.7,
+    "truePeak": -4.7
+   }
+  ]
+ },
+ "turret_stop": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "2b715718b7903d26b40e57bd325f11374a0f424344b8bdc0831c75cfc01bae22",
+    "bytes": 7029,
+    "durS": 0.74,
+    "mMax": -14.2,
+    "integrated": -16.4,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "bcca861f28fa99ee07ca278c544a56080c1ec00415e36d182abe62c2f5b264d1",
+    "bytes": 8873,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -17.2,
+    "truePeak": -1.8
+   },
+   {
+    "sha256": "2271d6d2e4ec1baf0b4361a972b397b17c4a316ca7431be3621d519dbcc5884c",
+    "bytes": 10048,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -15.5,
+    "truePeak": -1
+   },
+   {
+    "sha256": "b98fce8f0be193091a5d8532aeb86dd44680af1f3c5eccd773316c5990d2880e",
+    "bytes": 7347,
+    "durS": 0.84,
+    "mMax": -14.1,
+    "integrated": -15.4,
+    "truePeak": -0.9
+   }
+  ]
+ },
+ "turret_stop_hydraulic": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "bf3505dc76507062d2abc8c0df1da52e215e4d3bc68245f4a59b1755fca7d43e",
+    "bytes": 10536,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.2,
+    "truePeak": -3
+   },
+   {
+    "sha256": "41e6c454528467b964c20266f76b3ea54190ee6cb7b2eee9f00eb115c936a84e",
+    "bytes": 9291,
+    "durS": 1.2,
+    "mMax": -14.1,
+    "integrated": -18.6,
+    "truePeak": -2.7
+   },
+   {
+    "sha256": "243c4751eb1d88fd82f7d737a203588955008a980fe33e0d0b9689bbeeae1ae6",
+    "bytes": 10654,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15,
+    "truePeak": -3.7
+   },
+   {
+    "sha256": "1374a83ab94aceff8950cb5fa74c8f533db5bcfdf6ce8b2f7dc18df11305a568",
+    "bytes": 10126,
+    "durS": 1.2,
+    "mMax": -14,
+    "integrated": -15.8,
+    "truePeak": -3.6
+   }
+  ]
+ },
+ "ui_flag_seized": {
+  "group": "ui",
+  "preset": "ui",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "56cbd9fd2a0c6467b121ed5bb5971075e0b859d55de849a243b14137b480fd55",
+    "bytes": 11662,
+    "durS": 1.36,
+    "mMax": -16,
+    "integrated": -21.3,
+    "truePeak": -4.2
+   }
+  ]
+ },
+ "vehicle_explode_light": {
+  "group": "destruction",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "514403b9e94ef4e7e4d856da500a12b4e23866b28843cfecea4674dc631491d7",
+    "bytes": 32076,
+    "durS": 2.934,
+    "mMax": -10,
+    "integrated": -13.8,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "9012ac3cadb44811a6b23e7c81a437f6fc351afc26d90a72e3bd932adc8af832",
+    "bytes": 21722,
+    "durS": 2.004,
+    "mMax": -10.5,
+    "integrated": -13,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "6752199b960ce45fdd65821dbf47c05ad56c4eda21bd31e290a654e12fb72b87",
+    "bytes": 31712,
+    "durS": 3.148,
+    "mMax": -11.1,
+    "integrated": -15.7,
+    "truePeak": -0.4
    }
   ]
  },
@@ -2699,6 +4308,37 @@
    }
   ]
  },
+ "wall_brick": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fb77f69dcd5feb1236e8a957e08500525b4c85f736415867ad6c80b625d7d9fb",
+    "bytes": 41000,
+    "durS": 3,
+    "mMax": -12.7,
+    "integrated": -18.7,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "51ca38f9a93feb9492cda1133ae1b2e2cc9d30957505654c706000bd7669ce4c",
+    "bytes": 39352,
+    "durS": 2.84,
+    "mMax": -15.1,
+    "integrated": -19.3,
+    "truePeak": 0.4
+   },
+   {
+    "sha256": "df3a37ef03131cf47105a6b7ef10e01b52faa662515c00b8f8f52b212843014a",
+    "bytes": 35123,
+    "durS": 3,
+    "mMax": -12.8,
+    "integrated": -19.3,
+    "truePeak": 0
+   }
+  ]
+ },
  "water_big": {
   "group": "impacts",
   "preset": "impact",
@@ -2727,6 +4367,68 @@
     "mMax": -12.4,
     "integrated": -14,
     "truePeak": -0.6
+   }
+  ]
+ },
+ "water_enter": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "406d50ff8bed5ac77b21da4531722ec99b998a45495a4657024d3bc3788ee52b",
+    "bytes": 23074,
+    "durS": 2.38,
+    "mMax": -12.2,
+    "integrated": -15.9,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "33e17a4d41cf104a067ddd8049f01039f6ece9226e8fd61998b9f72f8c0ceb2b",
+    "bytes": 21758,
+    "durS": 2.26,
+    "mMax": -10.5,
+    "integrated": -14.3,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "4bd00098c4fd8e807e8ed3431018d5aa69b2b354613ef70bd80029e39cc75de7",
+    "bytes": 22540,
+    "durS": 2.4,
+    "mMax": -10.7,
+    "integrated": -14,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "water_exit": {
+  "group": "vehicle",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f49a169886663d8e8eebeb067dea731dff3cfc9a8b469ea09cc2e7c74342e1b8",
+    "bytes": 24262,
+    "durS": 3,
+    "mMax": -14,
+    "integrated": -16.9,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "5dd5bacbcfab7827c56e7cb4dd86a90655d9a2da10fc0733c7dcc6c4128fe16e",
+    "bytes": 22689,
+    "durS": 2.86,
+    "mMax": -14.4,
+    "integrated": -16.9,
+    "truePeak": -0.8
+   },
+   {
+    "sha256": "81bd53fbe08ae62eefee8c567c9421013aa24e621c0512ad8bfdb4a6d369f153",
+    "bytes": 24124,
+    "durS": 2.904,
+    "mMax": -14.4,
+    "integrated": -18.8,
+    "truePeak": -0.4
    }
   ]
  },
@@ -2761,6 +4463,37 @@
    }
   ]
  },
+ "water_splash_in": {
+  "group": "vehicle",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "13ec329dddc3bdff9af5dd151e9629d5a3b2ac235b6432480e1c1417f7706e09",
+    "bytes": 21306,
+    "durS": 2.2,
+    "mMax": -11.3,
+    "integrated": -13.4,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "8505bdb8b3fd85ba67ad6fc09454d0b9e39b3ee3dc28ae890bfc153e94f89097",
+    "bytes": 21330,
+    "durS": 2.2,
+    "mMax": -10.7,
+    "integrated": -13.2,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "725fe1098443a7d8c2a8a2aeb0681c69c2d5206f986795d5602e4f8a4466fcfb",
+    "bytes": 21183,
+    "durS": 2.2,
+    "mMax": -10.9,
+    "integrated": -12.3,
+    "truePeak": -0.6
+   }
+  ]
+ },
  "well_break": {
   "group": "props",
   "preset": "impact",
@@ -2781,6 +4514,37 @@
     "mMax": -10.4,
     "integrated": -13.8,
     "truePeak": 0
+   }
+  ]
+ },
+ "wire_snag": {
+  "group": "props",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c1e54f50681ab3027da7fc3eaed6df8855e70e0b35862f315b13a4f6175fce86",
+    "bytes": 14815,
+    "durS": 1.48,
+    "mMax": -11.7,
+    "integrated": -14.2,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "f0bc47a83c43154bd38f7d6b874bbd014949e5d7fbb6b8256d33c79ecf182eb4",
+    "bytes": 14392,
+    "durS": 1.48,
+    "mMax": -10.8,
+    "integrated": -14.5,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "4b46d9af54a3844eaa54b0480004b0a74fde1648cfc8eedae42055c31e79c352",
+    "bytes": 14690,
+    "durS": 1.48,
+    "mMax": -11.5,
+    "integrated": -15.7,
+    "truePeak": 0.1
    }
   ]
  }
