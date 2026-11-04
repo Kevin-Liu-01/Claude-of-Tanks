@@ -410,8 +410,10 @@ function addCv9035DkPlates(P: TankBuilderPort): void {
 
 /** The CV90 Mk IV (release 265: `danish` builds the CV9035 DK on it, profiles/denmark.ts; the owner 2026-10-30: "the
  *  cv9035 should be based on the cv90 mk 4"): the 35 mm in place of the 50 mm, no missile launcher (the Danish CV90s
- *  carry none) and the Danish plate. */
-export function buildCv90MkivX(P: TankBuilderPort, kit: { readonly danish?: boolean } = {}): void {
+ *  carry none) and the Danish plate. `hullOnly` (release 269, off by default: the Lvkv 9040, profiles/lvkv9040.ts; the
+ *  owner 2026-11-03: "also based the lvkv 9040 on the correct cv9040 mk 4 hull") draws the hull and running gear alone,
+ *  the rigs at the Mk IV's stations, for another turret on its ring. */
+export function buildCv90MkivX(P: TankBuilderPort, kit: { readonly danish?: boolean, readonly hullOnly?: boolean } = {}): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
     hull: ['hullExternalArmor', 'hullHatch'],
@@ -421,6 +423,7 @@ export function buildCv90MkivX(P: TankBuilderPort, kit: { readonly danish?: bool
   P.gunG.position.set(.207, .294, 1.30);
   buildCv90Hull(P,kit.danish);
   buildCv90RunningGear(P);
+  if(kit.hullOnly)return;
   const px=P.turretG.position.x,py=P.turretG.position.y,pz=P.turretG.position.z;
   buildCv90TurretArmor(P,py,pz);
   buildCv90CrewHatch(P,px,py,pz);
