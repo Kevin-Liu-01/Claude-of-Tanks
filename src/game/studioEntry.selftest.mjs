@@ -27,7 +27,7 @@ assert.equal(functions.length, names.size);
 
 const noop = () => {};
 async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false, refusedOver = null,
-  abandon = false }) {
+  abandon = false, handedBack = false }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -125,6 +125,16 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     assert.deepEqual(announcements, [], 'nothing is announced');
     assert.deepEqual(calls, [], 'nothing moved');
     assert.equal(studio.active(), false);
+    // (integration IR1) and the refusal began no Studio session: one left 'entering' made every later press 'busy'
+    assert.equal(ports.session.phase, 'closed', 'the refused entry holds no session');
+    transitionAppPhase(game, 'garage', { reason: 'battle-return' });
+    const later = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    releaseWorld();
+    await later;
+    assert.equal(studio.active(), true, 'a press once the Garage has the scene again opens the Studio');
+    assert.equal(game.phase, 'studio');
+    await studio.doExit();
     return;
   }
   await Promise.resolve();
@@ -169,6 +179,33 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     assert.equal(calls.filter((entry) => Array.isArray(entry) && entry[0] === 'atmosphere').length, 1, 'one atmosphere, the live entry\'s');
     assert.equal(calls.filter((entry) => entry === 'fleet-warm').length, 1, 'the fleet warms once');
     assert.equal(studio.active(), true);
+    await studio.doExit();
+    return;
+  }
+  if (handedBack) {
+    // (integration IR1) the Garage took the scene back while the Studio's battlefield built (a return: studio -> garage
+    // is an edge), then the build failed: the Studio holds no scene to hand back, so no second Garage return runs over
+    // the one that has it and nothing is written; the Studio's frame flag, panel and session end, and a later press enters
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    assert.equal(game.phase, 'studio');
+    transitionAppPhase(game, 'garage', { reason: 'garage-return' });
+    const mark = calls.push('--handed-back') - 1;
+    fail = true;
+    releaseWorld();
+    await assert.rejects(pending, /world acquisition failed/);
+    const after = calls.slice(mark);
+    assert.ok(!after.includes('enter-garage'), 'no Garage return over the one that has the scene');
+    assert.ok(after.includes('panel-hidden'), 'the Studio\'s panel goes');
+    assert.equal(game.phase, 'garage');
+    assert.equal(studio.active(), false);
+    assert.equal(ports.session.phase, 'closed', 'the failed entry\'s session ends');
+    fail = false;
+    acquisition = acquire();
+    const retry = studio.enter({ map: 'whiteout' });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    releaseWorld();
+    await retry;
+    assert.equal(studio.active(), true, 'a later press opens the Studio');
     await studio.doExit();
     return;
   }
@@ -253,10 +290,12 @@ await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
 await scenario({ directBoot: false, refusedOver: 'battle' });
 await scenario({ directBoot: false, abandon: true });
+await scenario({ directBoot: false, handedBack: true });
 // the build's wait leaves the way out live: Exit stays outside the inert parts, and its press abandons the entry (doExit's
 // entryGeneration step; the loading census 262: the whole app went inert, Exit included)
 const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url), 'utf8');
 assert.match(panelSource, /setStage\(stage\) \{[^]{0,900}?if \(part !== exitBtn\) \(part as HTMLElement\)\.inert = waiting;/,
   'every part of the Studio waits through a build but Exit');
 assert.doesNotMatch(panelSource, /app\.inert = /, 'the app itself is never inert (Exit is inside it)');
-console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit and Garage return ordering pass');
+console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit, a refusal over a battle that holds no session, a '
+  + 'failed entry whose scene the Garage already took back, and Garage return ordering pass');

@@ -15,17 +15,22 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createWorldActivationRuntime } from '../world/worldActivationRuntime.ts';
+import { assertAppPhaseTransition, transitionAppPhase } from './appLifecycle.ts';
+import { createStudioSession } from './studioSession.ts';
 
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage']);
+// (integration IR1) the Studio session's entry and teardown (studioSession.ts, 2026-11-02 audit F9): an exit's
+// abandonment is the session token going stale, and a failed or abandoned entry leaves through the shared teardown
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere',
+  'ensureSessionWorld']);
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
   ts.forEachChild(node, visit);
 }
 visit(source);
-assert.equal(functions.length, 4);
+assert.equal(functions.length, names.size);
 
 const noop = () => {};
 const flush = async () => { for (let i = 0; i < 24; i++) await new Promise((resolve) => setImmediate(resolve)); };
@@ -71,7 +76,13 @@ function harness() {
   const camera = new THREE.PerspectiveCamera();
   const ports = {
     timeOfDay: 'day', studioLight: null,
-    ctx: { prepareStudioAtmosphere: async () => calls.push('atmosphere') },
+    ctx: { prepareStudioAtmosphere: async () => calls.push('atmosphere'), restoreStudioAtmosphere: noop,
+      // main.ts: the Garage's own presentation after a build its session outlived (asleep, its sky and trim)
+      restoreGarageWorld: () => { calls.push('garage-world'); runtime.setDormant(true); } },
+    // the Studio session (studioSession.ts) and the film a teardown ends
+    session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
+    // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
+    transitionAppPhase, assertAppPhaseTransition,
     window: { __GAME_READY: true, requestIdleCallback: (callback) => callback() }, game, camera,
     warmFleet: () => Promise.resolve(),
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
@@ -103,8 +114,7 @@ function harness() {
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
-    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false, exitRun = null;
-    class EntryAbandoned extends Error {}
+    let active = false, entering = null, timeScale = 1, recording = false, buildPlateUp = false, exitRun = null, closing = null;
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     ${functions.join('\n')}
@@ -115,7 +125,7 @@ function harness() {
   // studioAccess.ts open(): a rejected entry goes to onEntryError, which marks the Studio press failed (main.ts)
   const entryErrors = [];
   const press = () => studio.enter({ map: 'whiteout' }).then(() => 'resolved', (error) => { entryErrors.push(error); return 'rejected'; });
-  return { calls, game, runtime, studio, entryErrors, press, releaseBuild: () => gate.resolve() };
+  return { calls, game, runtime, studio, entryErrors, press, releaseBuild: () => gate.resolve(), session: ports.session };
 }
 
 // ---- 1. exit while the battlefield builds
@@ -137,6 +147,10 @@ function harness() {
   assert.equal(h.game.phase, 'garage');
   assert.equal(h.studio.active(), false);
   assert.equal(h.runtime.current, null, 'the battlefield never presented over the Garage');
+  // (integration IR1) on the session owner: the exit closed the session, and the superseded build rejected, so the
+  // session's trail has no late world to undo (studio's restoreGarageWorld stays for a build that does land)
+  assert.equal(h.session.phase, 'closed');
+  assert.ok(!after.includes('garage-world'), 'a superseded build leaves the trail nothing to undo');
 }
 
 // ---- 2. exit, then a re-entry before the first build finishes
@@ -159,11 +173,13 @@ function harness() {
   assert.equal(h.runtime.current?.mapId, 'whiteout');
   assert.equal(h.runtime.dormant, false, 'with its battlefield awake under the Studio');
   assert.equal(secondSettled, 'resolved', 'the re-entry completes');
+  assert.equal(h.session.phase, 'open', 'the re-entry\'s session is the open one');
   assert.equal(firstSettled, 'resolved', 'the abandoned entry settles silently');
   assert.deepEqual(h.entryErrors, []);
   await h.studio.doExit();
   assert.equal(h.game.phase, 'garage');
   assert.equal(h.runtime.dormant, true);
+  assert.equal(h.session.phase, 'closed');
 }
 
 console.log('studioEntrySuperseded.selftest: a Studio entry abandoned by its exit while its battlefield builds settles silently and writes nothing, and a re-entry before that build finishes stays active with its panel shown and its battlefield awake PASS');

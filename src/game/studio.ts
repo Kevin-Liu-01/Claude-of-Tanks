@@ -5831,25 +5831,26 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   async function doEnter(opts: EnterOptions): Promise<void> {
-    // (audit F9) the session's entry: its token goes stale at an exit, and every step below checks it after its await
-    const owner = session.beginEntry();
-    if (!owner) throw new Error(t('studio.error.busy'));
-    const owns = owner.current;
-    const stillOwned = owner.check;
     // never race the boot tail: everything the studio touches exists once
     // the game declares readiness. Direct /studio boot is explicitly invoked
     // by main.ts from its final covered stage, where all Studio dependencies
     // already exist but __GAME_READY deliberately has not flipped yet.
+    // (No session yet: Exit needs an active Studio, so nothing but the boot ends this wait; a second press joins it.)
     if (!opts.coveredByBoot && !window.__GAME_READY) {
       await new Promise<void>((resolve) => {
         const t = setInterval(() => {
           if (window.__GAME_READY) { clearInterval(t); resolve(); }
         }, 60);
       });
-      stillOwned();
     }
-    // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the veil or any write
+    // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the session, the veil or any
+    // write (integration IR1: a refusal after the session's entry left it 'entering', so every later press was 'busy')
     assertAppPhaseTransition(game as { phase: AppPhase }, 'studio', 'studio:enter');
+    // (audit F9) the session's entry: its token goes stale at an exit, and every step below checks it after its await
+    const owner = session.beginEntry();
+    if (!owner) throw new Error(t('studio.error.busy'));
+    const owns = owner.current;
+    const stillOwned = owner.check;
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
     const trace: {
       mapId: string;
