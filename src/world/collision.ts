@@ -540,6 +540,20 @@ export function isFortifiedCoverKind(kind: string | undefined): boolean {
   return kind === 'bunker' || kind === 'memorialcolumn';
 }
 
+/**
+ * The one crush transition of a destructible's collision records (2026-11-02 audit M9), run by both worlds: the page
+ * world (props.ts breakRecord and its rematch restore, crushableClutter.ts, vegetation.ts's felled trees) and the
+ * headless authority's (headlessCollisionWorld.ts crushObstacle). Crushed, its movement records turn ghost (`crushed`:
+ * hulls, bots and routes pass) and its shell records turn ghost and leave the casts (`crushed` and `dead`); restored,
+ * all of them stand. Before it the page world set the shell record's `dead` only and the headless world both flags.
+ */
+export function setCrushedRecords(
+  obstacles: readonly CollisionRecord[], colliders: readonly CollisionRecord[], crushed: boolean,
+): void {
+  for (let i = 0; i < obstacles.length; i++) obstacles[i]!.crushed = crushed;
+  for (let i = 0; i < colliders.length; i++) { const record = colliders[i]!; record.crushed = crushed; record.dead = crushed; }
+}
+
 /** A crushable a hull drives through (the bots' lanes and routes read it so): not fortified cover. */
 export function hullYieldingRecord(record: { crushable?: boolean; kind?: string }): boolean {
   return record.crushable === true && !isFortifiedCoverKind(record.kind);

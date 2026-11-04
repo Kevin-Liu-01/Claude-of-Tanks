@@ -20,6 +20,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabitKit.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
+import { builtValue } from './buildLatch.ts';
 
 const WALL_SEG = 3.0, UV = 0.7, Z0 = -WALL_SEG / 2, Z1 = WALL_SEG / 2;
 type CoursedCoping = 'rollschicht' | 'saddleback' | 'tiled' | 'block' | 'slab';
@@ -177,8 +178,9 @@ export function coursedWallType(architectureId: string | null | undefined, legac
     broken: (rng) => { legacy.broken!(rng).dispose(); return buildCoursedWall(coping, true); },
     footprintBuild: () => legacy.build(footprintRng()),
   };
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
+  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'wallstone', 'contactBand') });
+  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'wallstone', 'fitGeometry') });
   return entry;
 }
 
@@ -203,7 +205,8 @@ export function dryStoneWallType(legacy: Omit<DestructiblePropType, 'mat'> & { m
     },
     footprintBuild: () => full(wallStoneBox(footprintRng()), false),
   };
-  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
-  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  // (2026-11-02 audit R2: buildLatch.ts) read before the pool's build, they throw rather than leave the reader its fallback
+  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => builtValue(band, 'wallstone', 'contactBand') });
+  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => builtValue(fit, 'wallstone', 'fitGeometry') });
   return entry;
 }

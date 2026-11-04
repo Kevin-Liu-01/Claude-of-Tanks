@@ -1195,6 +1195,10 @@ function* assembleWorldSteps(
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
       trackMarks.reset(); // item 45: every battle starts on unmarked ground
+      // (2026-11-02 audit R2) and on still water and an unpressed sward: the last battle's ripples and the hulls' flattened
+      // grass (the press fields) went on into the next battle on a cached world
+      terrain.userData.resetWater?.(); setWater([]);
+      tallGrass.pressure?.clear(); tallGrass.pressureFine?.clear();
     },
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => {
       props.pressHull?.(x, z, yaw, halfLength, halfWidth);

@@ -2505,6 +2505,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // 2026-11-02 audit M9: the height field's build modes are scoped (a throwing read keeps the live field's cuttings)
+    'src/world/terrainBuildModes.selftest.mjs',
     // the map-revival lane (Skybridge round 4): Lake Powell's arm and Glen Canyon Dam in the battlefield
     'src/world/maps/reservoirDam.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
@@ -2576,8 +2578,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/destructibleRenderPolicy.selftest.mjs',
     'src/world/destructibles.selftest.mjs',
+    // 2026-11-02 audit R2: a map's trench variant registers and queues its measures as its own world (build key)
+    'src/world/destructibleWorldKey.selftest.mjs',
+    // 2026-11-02 audit R2: what a cached world carried into the next battle (Studio sweeps, the toss stream, water, sward)
+    'src/world/battleResetLeftovers.selftest.mjs',
     'src/world/maps/setPieceDestructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
+    // 2026-11-02 audit M9: one crush transition for a destructible's records in the page and headless worlds, the guards
+    'src/world/crushRecords.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
     'src/world/maps/utilityPoles.selftest.mjs', // 2026-10-14 props lane A (#21): each region's line (its pole, its timber, its conductors on its insulators)
     'src/world/wrecks.selftest.mjs',
@@ -2587,6 +2595,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
     'src/world/maps/coursedWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the brick-print field walls by region, legacy collision and fit
     'src/world/maps/adobeWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the mud field walls by region on the legacy section, legacy collision and fit
+    'src/world/maps/kitBuildLatch.selftest.mjs', // 2026-11-02 audit R2: the wall and fence kits' bands and fit throw when read before their build
     'src/world/maps/terraceRisers.selftest.mjs', // 2026-10-16 props lane A #6: the village terraces' risers built along their contours
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
@@ -2622,6 +2631,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/wreckWorkerFallback.selftest.mjs', // 2026-10-09: a failed or silent wreck worker never fails the props build
     'src/world/exactWreckGeometry.selftest.mjs',
     'src/world/topple.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
+    'src/world/felledTrees.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
+    'src/world/concealerIndex.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
