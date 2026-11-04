@@ -278,6 +278,20 @@ interface SleevePanel {
    * in lumps round the barrel (default 0: a smooth sleeve).
    */
   bunchM?: number;
+  /** Round 4: bays 8 to 32 cm long, some bound nearly flat, each swelling most off its middle (default: round 3's even bays). */
+  irregularBays?: boolean;
+  /**
+   * Round 6 (Opus on round 5: "hard, stepped edges between bands"): over this length at each end (m) the cloth's loft and
+   * swell taper down to 2 mm off the barrel, so one band runs into the next instead of stepping (default 0).
+   */
+  taperM?: number;
+  /**
+   * Round 6 (the critics across rounds 3 to 5: "a clumped garnish mass about 0.3-0.5 m long hanging under the forward
+   * barrel wrap. It should be continuous with the wrap, not separate strands"): the wrap's underside let down into a
+   * crumpled sack of scrim, hanging `dropM` under the barrel at the length's middle and bulging `widthM` out either side,
+   * its folds crumpled by up to `crumpleM` (default 4 cm); its garnish tied on its flanks.
+   */
+  sack?: { readonly dropM: number; readonly widthM: number; readonly crumpleM?: number };
   seed?: number;
 }
 /** A sleeve's flank as its cloth surface reads it (the drapes' `side`). */
@@ -1806,6 +1820,8 @@ interface CurtainSpec {
   readonly rowM?: number;
   /** Release 269 round 4: the smallest piece a field curtain keeps (default 24 triangles). */
   readonly minPieceTris?: number;
+  /** Release 269 round 6: the closest two of its stations stand (default 5.5 cm; a sleeve's hanging sack). */
+  readonly minStationM?: number;
 }
 
 function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number], flip: boolean): {
@@ -1820,7 +1836,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
   for (let k = 0; k <= even; k++) marks.add(lo + ((hi - lo) * k) / even);
   folds.at.forEach((c, i) => { for (const d of [-1.25, 0, 1.25]) { const a = c + d * folds.w[i]; if (a > lo + 0.03 && a < hi - 0.03) marks.add(a); } });
   for (const a of spec.marks ?? []) if (a > lo + 0.03 && a < hi - 0.03) marks.add(a);
-  const stations = [...marks].sort((p, q) => p - q).filter((a, i, list) => i === 0 || i === list.length - 1 || a - list[i - 1] > 0.055);
+  const stations = [...marks].sort((p, q) => p - q).filter((a, i, list) => i === 0 || i === list.length - 1 || a - list[i - 1] > (spec.minStationM ?? 0.055));
   if (a1 < a0) stations.reverse();
   const cols = stations.length - 1;
   const station = (c: number): number => stations[c];
@@ -2223,12 +2239,19 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
   // round 3 (SleevePanel.bunchM): the bindings along the bore (both flanks share them) and each bay's own swell and lumps;
   // the lumps' phase round the barrel is shared at the crown and under it, where the two flanks meet
   const bunchM = panel.bunchM ?? 0, bs = panelSeed(panel, cfg.seed);
-  // (round 4, the critics: "rigid, stepped sleeves with lumpy bulges": bays 8 to 32 cm long, some bound nearly flat,
-  // each swelling most off its middle, its lumps round the barrel its own)
+  // (round 4, SleevePanel.irregularBays; the critics: "rigid, stepped sleeves with lumpy bulges": bays 8 to 32 cm long,
+  // some bound nearly flat, each swelling most off its middle, its lumps round the barrel its own)
+  const irregular = panel.irregularBays === true;
   const binds: Array<{ at: number; k: number; ph: number; tw: number; pk: number }> = [];
-  for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.06; z += 0.08 + hash01(bs, ++k, 0x73) * 0.24) {
-    binds.push({ at: z, k: 0.15 + hash01(bs, k, 0x75) * 0.85, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283,
-      pk: 0.3 + hash01(bs, k, 0x7b) * 0.4 });
+  if (irregular) {
+    for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.06; z += 0.08 + hash01(bs, ++k, 0x73) * 0.24) {
+      binds.push({ at: z, k: 0.15 + hash01(bs, k, 0x75) * 0.85, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283,
+        pk: 0.3 + hash01(bs, k, 0x7b) * 0.4 });
+    }
+  } else {
+    for (let k = 0, z = z0 + 0.02 + hash01(bs, 0, 0x71) * 0.06; bunchM > 0 && z < z1 - 0.08; z += 0.12 + hash01(bs, ++k, 0x73) * 0.10) {
+      binds.push({ at: z, k: 0.55 + hash01(bs, k, 0x75) * 0.45, ph: hash01(bs, k, 0x77) * 6.283, tw: hash01(bs, k, 0x79) * 6.283, pk: 0.5 });
+    }
   }
   // (and one at its end: a length bound off where the next begins)
   if (binds.length) binds.push({ at: z1 - 0.02, k: 0, ph: 0, tw: 0, pk: 0.5 });
@@ -2238,17 +2261,37 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
     let i = 0;
     while (i < binds.length - 2 && binds[i + 1].at < z) i++;
     const b = binds[i], g = THREE.MathUtils.clamp((z - b.at) / Math.max(1e-3, binds[i + 1].at - b.at), 0, 1);
-    const f = g < b.pk ? 0.5 * g / b.pk : 0.5 + 0.5 * (g - b.pk) / (1 - b.pk);
-    const round = 0.6 + 0.22 * Math.sin(2 * phi + b.ph) + 0.12 * Math.sin(5 * phi + b.tw)
-      + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw);
+    const f = !irregular ? g : g < b.pk ? 0.5 * g / b.pk : 0.5 + 0.5 * (g - b.pk) / (1 - b.pk);
+    const round = !irregular ? 0.62 + 0.24 * Math.sin(2 * phi + b.ph) + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw)
+      : 0.6 + 0.22 * Math.sin(2 * phi + b.ph) + 0.12 * Math.sin(5 * phi + b.tw) + 0.14 * side * Math.sin(phi) * Math.sin(3 * phi + b.tw);
     // bound tight at its hem (or under the barrel, bound right round)
     const hemTie = 1 - 0.7 * smooth01(0.5 * wrap, wrap, phi);
     return bunchM * b.k * Math.pow(Math.sin(Math.PI * f), 0.7) * round * hemTie;
   };
+  // round 6 (SleevePanel.taperM): the ends' taper; (SleevePanel.sack) the sack let down under the length's middle,
+  // the same on both flanks under the barrel, where they meet
+  const taperM = panel.taperM ?? 0, sack = panel.sack;
+  const ends = (z: number): number => (taperM > 0 ? smooth01(z0, z0 + taperM, z) * smooth01(z1, z1 - taperM, z) : 1);
+  const ph1 = hash01(bs, 1, 0x91) * 6.283, ph2 = hash01(bs, 2, 0x93) * 6.283;
+  // (the sack's section: the barrel's circle let out into an ellipse under it, widthM across and dropM down at the
+  // length's middle, blended in from the flanks, its bottom round; a plateau along the length with rounded ends)
+  const sackAt = (z: number, phi: number): [number, number] => {
+    if (!sack) return [0, 0];
+    const u = THREE.MathUtils.clamp((z - z0) / Math.max(1e-3, z1 - z0), 0, 1);
+    const a = smooth01(0, 0.35, u) * smooth01(1, 0.65, u);
+    const g = smooth01(0.38 * Math.PI, 0.8 * Math.PI, phi);
+    if (!(a > 0) || !(g > 0)) return [0, 0];
+    const c = 1 + (sack.crumpleM ?? 0.04) / Math.max(0.05, sack.dropM) * (0.6 * Math.sin(z * 37 + phi * 5 + ph1) + 0.4 * Math.sin(z * 71 - phi * 9 + ph2));
+    return [sack.widthM * a * g * c, sack.dropM * a * g * c];
+  };
   const spec: CurtainSpec = {
     a0: z0, a1: z1, seed: s, foldK: SLEEVE_FOLD_K, maxOut: Infinity,
     hem: () => -Infinity,
-    ...(bunchM > 0 ? { rowM: 0.045, marks: binds.flatMap((b, i) => {
+    ...(bunchM > 0 && !irregular ? { rowM: 0.055, marks: binds.flatMap((b, i) => (i + 1 < binds.length ? [b.at, (b.at + binds[i + 1].at) / 2] : [b.at]))
+      // (round 6: a sack's length drawn every 3 cm, its rounded ends and plateau not cut to a point)
+      .concat(panel.sack ? Array.from({ length: Math.floor((z1 - z0) / 0.03) }, (_, k) => z0 + 0.015 + k * 0.03) : []),
+      ...(panel.sack ? { minStationM: 0.025 } : {}) } : {}),
+    ...(bunchM > 0 && irregular ? { rowM: 0.045, marks: binds.flatMap((b, i) => {
       if (i + 1 >= binds.length) return [b.at];
       const L = binds[i + 1].at - b.at;
       return [b.at, b.at + L * b.pk * 0.5, b.at + L * b.pk, b.at + L * (b.pk + (1 - b.pk) * 0.5)];
@@ -2257,8 +2300,12 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
       const r = radiusAt(z);
       if (r === null) return null;
       const n = Math.max(6, Math.ceil(wrap / 0.13)), pts: Array<[number, number]> = [];
+      const e = ends(z);
       for (let i = 0; i <= n; i++) {
-        const phi = wrap * i / n, R = r + gapM + bunch(z, phi), out = R * Math.sin(phi), up = R * Math.cos(phi);
+        const phi = wrap * i / n;
+        const R = taperM > 0 ? r + Math.max(0.002, gapM * e) + bunch(z, phi) : r + gapM + bunch(z, phi);
+        let out = R * Math.sin(phi), up = R * Math.cos(phi);
+        if (sack) { const [dx, dy] = sackAt(z, phi); out += dx * Math.sin(phi); up += dy * Math.cos(phi); }
         if (blocked(ax + side * out, ay + up, z)) { if (pts.length) break; continue; }
         pts.push([out, up]);
       }
@@ -2279,7 +2326,8 @@ function sleeveCloth(panel: SleevePanel, side: number, cfg: GhillieConfig, suppo
       if (!(off > 0) || p[2] < z0 - 0.02 || p[2] > z1 + 0.02) return false;
       const r = radiusAt(THREE.MathUtils.clamp(p[2], z0, z1));
       // (round 3: and no card hangs round past the sleeve's hem, under a barrel laid over only on its upper flanks)
-      return r !== null && Math.hypot(p[0] - ax, p[1] - ay) <= r + gapM + off && !blocked(p[0], p[1], p[2])
+      return r !== null && Math.hypot(p[0] - ax, p[1] - ay) <= r + gapM + off + (sack ? sack.dropM + sack.widthM : 0)
+        && !blocked(p[0], p[1], p[2])
         && (!(bunchM > 0) || wrap >= Math.PI - 1e-6 || Math.atan2(Math.abs(p[0] - ax), p[1] - ay) <= wrap);
     },
   };
