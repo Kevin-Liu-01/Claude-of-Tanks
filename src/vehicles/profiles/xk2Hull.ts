@@ -31,10 +31,11 @@ const K2_SKIRT = Object.freeze({
 /** buildK2's glacis plane at its x 1.66 edge: 1.66 at the crest (z 1.30), 1.24 at the lip (z 3.53). */
 const glacisEdgeAt = (z: number): number => Math.max(1.24, 1.66 - (z - K2_SKIRT.crestZ) * (0.42 / 2.23));
 /** Where the glacis edge falls through the run's top line. */
-const TOP_BREAK_Z = K2_SKIRT.crestZ + (1.66 - K2_SKIRT.topY + 0.005) / (0.42 / 2.23);
+export const TOP_BREAK_Z =K2_SKIRT.crestZ + (1.66 - K2_SKIRT.topY + 0.005) / (0.42 / 2.23);
 
-/** The skirt's top at a station: the run's line (the 1.56 deck +5 mm), and the glacis edge (+5 mm) once it falls below. */
-function k2SkirtTopAt(z: number): number {
+/** The skirt's top at a station: the run's line (the 1.56 deck +5 mm), and the glacis edge (+5 mm) once it falls below.
+ *  (r269: the K2B's add-on skirt run, k2bHullKit.ts, follows this same line.) */
+export function k2SkirtTopAt(z: number): number {
   return Math.min(K2_SKIRT.topY, glacisEdgeAt(z) + 0.005);
 }
 
@@ -62,7 +63,9 @@ function skirtSection(side: number, z: number): SolidSection {
   ]) };
 }
 
-export function addK2Skirts(P: Modern3BuilderPort): void {
+/** `heavyModules` false (r269, the K2B): its own bolted add-on run (k2bHullKit.ts) hangs on the plate instead of the six
+ *  heavy modules, so they are not built under it (the XK2 keeps them). */
+export function addK2Skirts(P: Modern3BuilderPort, options: { heavyModules?: boolean } = {}): void {
   const { box } = KIT;
   const S = K2_SKIRT;
   // Bow closure under the glacis plate, between the track lanes: the plate's underside (1.20 at z 3.41, rising aft)
@@ -76,7 +79,7 @@ export function addK2Skirts(P: Modern3BuilderPort): void {
     P.add('hull', sectionSolid(stations.map((z) => skirtSection(side, z))));
     // Heavy armour modules over the front half: thick bolted blocks standing on the plate with a dark joint between
     // each, their tops carrying on the plate's chamfer line, their outer top edge chamfered, a lifting lug on each.
-    const joints = S.moduleJoints;
+    const joints = options.heavyModules === false ? [] : S.moduleJoints;
     for (let k = 0; k < joints.length - 1; k++) {
       const z0 = joints[k] + 0.002, z1 = joints[k + 1] - 0.002;                   // 4 mm seams (267 round 3: 16 mm gaps)
       const t0 = k2SkirtTopAt(z0) - S.chamfer, t1 = k2SkirtTopAt(z1) - S.chamfer;
