@@ -87,7 +87,7 @@ const COMMANDED_SHOT_S = 10;
 /** "Re-engage": a round that left its target alive, the gun loaded again within this long. */
 const REENGAGE_S = 14;
 /** "Cease fire" after a kill when no spotted enemy stands within this range, this long after the kill call. */
-const CEASE = Object.freeze({ rangeM: 1500, afterS: 2.4 });
+export const CEASE = Object.freeze({ rangeM: 1500, afterS: 2.4 });
 const DRONE = AERIAL_RULES.drone;
 /** Gun Game's last weapon on the ladder. */
 const LADDER_FINAL = GUN_GAME_WEAPONS.length - 1;
@@ -102,7 +102,7 @@ const JUMP_S = 0.45;
 /** The AC-130: "danger close" when our heavy round lands this near a friendly tank (m); a fire mission of at least this
  *  many heavy rounds is complete after this long without one (s); a new target this far from the last kill, this soon
  *  after it, is a shift of fire. */
-const GUNSHIP = Object.freeze({ dangerM: 35, heavyMm: 100, missionRounds: 3, missionQuietS: 7, shiftM: 150, shiftS: 25 });
+export const GUNSHIP = Object.freeze({ dangerM: 35, heavyMm: 100, missionRounds: 3, missionQuietS: 7, shiftM: 150, shiftS: 25 });
 
 export interface CrewProcedure {
   bind(on: On): void;

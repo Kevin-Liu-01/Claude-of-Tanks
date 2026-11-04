@@ -49,7 +49,10 @@ Crew packs decode on their own lane so the first radio call never waits behind
 a battle's worth of sound effects, at 16 kHz on every tier: every take plays
 through the radio's 3.4 kHz band and a speaker rolling off from 4.6 kHz, so
 nothing above 8 kHz is ever heard (a 371-take pack is about 40 MB decoded, 60 at
-24 kHz). Sound effects share six decode slots in two
+24 kHz). iOS Safari keeps the rate (QA iPhone 16 simulator, iOS 26.5, 2026-11-04):
+the Russian pack decodes to 41.9 MB and the largest, Ukrainian, to 45.8 MB, apart
+from the 96 MB mobile cap on sound effects; at the context's 48 kHz it would be
+137. Sound effects share six decode slots in two
 lanes: the front lane is served first, and an asset joins it when it is loaded
 `{ front: true }` or the first time something asks to play it before it has
 decoded (a rig's loop, an ambience bed, a report), so a sound wanted now never
