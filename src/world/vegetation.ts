@@ -9302,7 +9302,9 @@ function* vegetationBuildSteps(
   }
   function resetToppled(): void {
     felledTrees.restoreAll();
-    // the hulls' press on the trunks starts over (the press timers, read by both drivers' crush step)
+    // (2026-11-02 audit M6) nothing reads these two fields any more: a hull's press on a trunk is its battle's own ledger
+    // (sim/crushPress.ts), which the solo step clears at each battle start (game/state.ts resetBattleSession) and the
+    // authority makes per match. These writes are dead and go with the fields in the press cleanup (round two).
     for (const ob of treeObstacles) {
       ob._pressS = 0;
       ob._pressT = -1e9;
