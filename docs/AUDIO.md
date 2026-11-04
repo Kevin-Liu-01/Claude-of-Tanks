@@ -150,7 +150,8 @@ ui, music, voice, alarm ──────────────────�
   trims the top of a near crack (the probe reads its gain reduction), with
   the bed about 4 dB lower to keep them dominant. Gates: a near
   cannon 12 dB over the bed on its loudest 100 ms with its crack peaking at
-  least 22 dB over it and decaying at least 8 dB; 10 and 4 dB at 150 and
+  least 22 dB over it and decaying at least 8 dB (until the booms of
+  2026-11-04); 10 and 4 dB at 150 and
   400 m; our own gun 14 dB with a 22 dB crack; at most 40 samples at the soft
   clip's knee; the radio 6 dB under a near cannon. The final measurement (d52e45620): the bed −32.0 dBFS; a near cannon 13.6 dB over it on its loudest 100 ms, its crack peaking 24.1 dB over it and decaying 10.6 dB, held down 2.3 dB by the limiter with nothing at the clip's knee; 10.7 and 6.2 dB at 150 and 400 m; our own gun 17.2 dB with a 28.0 dB crack (3.3 dB of limiting); the radio 7.4 dB under a near cannon; the garage −31.3 dBFS.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
@@ -1060,7 +1061,8 @@ crew-lines.json ─┐                    crew-voices.json
   slots (`mg_heavy_close` 1 of 4, `mg_heavy_own`, `mg_rifle_own` and `ac_30_own`
   2 of 3, `gunship_30mm_own` 2 of 4). The cannon and autocannon presets are
   loudness-mastered with no transient shaping; `audio-mix-balance.mjs` no longer
-  caps a near cannon's energy below 100 Hz at half; the TOS-1A's distant salvo has
+  caps a near cannon's energy below 100 Hz at half or wants it 8 dB down after
+  a quarter second (a rolling boom measures within 3 dB); the TOS-1A's distant salvo has
   its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
   `tools/audio/layered-render.mjs` renders each row as the engine layers it.
   41,054 credits (39,290 on judged takes, 1,764 on three prompt pilots).
