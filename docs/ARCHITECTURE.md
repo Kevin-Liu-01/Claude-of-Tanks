@@ -1824,14 +1824,16 @@ gunship is a roster tank pinned to its orbit: it never gets a tank rig; the
 ground hears its turboprops and guns from the sky, and its crew the cabin and
 the guns firing inside it.
 
-**Crew radio.** National crews: a hull speaks its nation's language
-(en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew
+**Crew radio.** National crews: a hull speaks its operator's language, the
+country `sim/countries.ts` `countryOfVehicle` seats it under (en-US, en-GB, de,
+ru, uk, zh, fr, sv, ja, ko, it, pl, he, da, pt-BR, en-AU, af; Canada en-US;
+one exhaustive `Record<CountryId, CrewLanguage>`; commander and crew
 voices per nation: serious, mature voices reading a terse procedure script
 in a controlled delivery, never cheering or panicked). Settings → Sound →
 Crew voices uses the shared flag dropdown to choose National crews (default)
 or any one nation's pack for every tank. The persisted choice and legacy
 migration live in `audio/crewVoice.ts`, shared by input and the lazy engine;
-live changes, new battles and same-entity nation changes all use that resolver.
+live changes, new battles and same-entity vehicle changes all use that resolver.
 Changing language stops old speech and clears pending calls; cold packs wait
 for decoding, and a crew never speaks another nation's take (every pack
 carries every line).

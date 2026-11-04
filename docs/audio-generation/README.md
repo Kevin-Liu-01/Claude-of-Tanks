@@ -143,8 +143,12 @@ Rules of thumb: sound generation costs about 11 credits per second of
 requested audio per take, so a 3 s asset with 4 takes is about 130 credits. A
 crew line in all 13 languages with two takes and verification costs about 130
 credits (nine lines cost 1,202). A full recast and rebuild of all 13 packs was
-about 10,900. Use `--dry` and `--budget` before any large run. Rebuilding from
-the cache is free; regenerating is not.
+about 10,900. Those were the first rounds' rates; speech has billed one credit
+per character since 2026-10-14, so a whole new pack (121 lines, 215 takes,
+verified, with its audition) cost about 9,400 in 2026-11 (four packs: 37,492).
+Read the plan's remaining quota (`GET /v1/user/subscription`) and cap the run
+with `--budget` before any large run. Rebuilding from the cache is free;
+regenerating is not.
 
 ## Guardrails
 

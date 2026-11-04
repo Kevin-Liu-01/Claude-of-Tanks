@@ -927,6 +927,31 @@ crew-lines.json ─┐                    crew-voices.json
   alive and hidden), so they now count the roster where a death is final and
   nothing otherwise; and the warm resolved engine families by id alone, so 40
   of 220 vehicles (every IFV) warmed a heavy's diesel instead of their own.
+- **2026-11-03, crews for the new countries (lane crew-voices-269).** The
+  owner: "we need to have new voicelines for our new countries". Denmark and
+  Brazil had no row in the nation table and spoke American English, South
+  Africa and Australia spoke British English, and the Leopard 2A4M CAN spoke
+  German because the crew followed the spec's design nation. The class fix: a
+  crew speaks its operator's language, one exhaustive
+  `Record<CountryId, CrewLanguage>` read through `countries.ts`
+  `countryOfVehicle`, so a new country fails typecheck until it names a crew
+  (Canada en-US for now; a hull with no country keeps en-US). Four new packs
+  carry all 121 lines: Danish (`da`, Danish Army register: "Ild" is the order
+  to fire, so a vehicle fire is "Brand"), Brazilian Portuguese (`pt-BR`,
+  Exército Brasileiro: "guarnição", "flecha" for the dart, "Incêndio" for a
+  vehicle fire because "Fogo" is the order), Australian English (`en-AU`,
+  Commonwealth voice procedure with the ADF's Abrams-era "Up" and "On the
+  way", "bogged" for stuck) and Afrikaans (`af`, the SADF armour register:
+  "Vuur" fires, "Brand" burns, "rusperband" for the track). Afrikaans stayed
+  Afrikaans: the Voice Library has native speakers (Frederik, verified in
+  Afrikaans, and Charles Onselen), and `scribe_v2` with the code forced
+  transcribes their takes exactly. Cast by audition (33 candidates, all clean):
+  Claus Christensen / Peter, Eliel / Cassio Cruz, Steve Hogan / CS New,
+  Charles Onselen / Frederik. Two takes flagged: the Australian "Thirty mil."
+  heard as "30 mil" (a digit, kept), and the Afrikaans "Laai." heard as "Lie"
+  on all ten attempts, rewritten "Laai nou." (clean). Each pack is 215 takes,
+  about 1.5 MB, the size of the existing ones. 37,492 credits (speech 36,468,
+  transcription 1,024), auditions included.
 
 ### Cost
 
@@ -955,6 +980,11 @@ replaced every synthesized sound (1,806); nearly all of their speech is the
 serious recast and rebuild of all 13 packs (10,873), the re-rolls of doubled
 calls (634), the incoming-drone call (172) and the nine lines for the tank's own
 systems, the gunship and its drops (1,202).
+
+Speech has billed one credit per character since 2026-10-14 (about eight times
+the first rounds' rate), so the four packs of 2026-11-03 cost 37,492 credits:
+a whole new pack (121 lines, 215 takes, its audition share and
+re-rolls) is about 9,400.
 
 ## Changing or extending it
 
