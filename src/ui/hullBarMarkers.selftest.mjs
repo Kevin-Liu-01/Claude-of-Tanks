@@ -3,8 +3,9 @@
 // and stuff get pushed away from where thae tanks actualy are, which is a regression that should be fixed").
 // damagePanelMarkers' law applied to the plates over tanks: every hull bar sits exactly on its own tank's projected seat,
 // co-located tanks' bars coincide, bars of tanks close in view overlap instead of being pushed apart, and where they
-// overlap the enemy's draws over the ally's and the nearer over the farther, the one under faint so the top name reads
-// (glyph plates at full ink struck through each other, the 269 stills). The kept 10-26 r20 rule is held too: a bar
+// overlap the enemy's draws over the ally's and the nearer over the farther, and where one's ink crosses the other's words
+// the one under draws its words faint so the top name reads (glyph plates at full ink struck through each other, the 269
+// stills; boxes that meet only at their edges stay at full ink, the 269 critic). The kept 10-26 r20 rule is held too: a bar
 // whose seat leaves the window slides back whole onto it, its pointer still over its tank. Headless: the REAL battle HUD
 // (initHud) runs over the recording DOM (hudDomHarness) through a camera, and the negative control loads hud.ts with the
 // old bar-versus-bar push (35782a9496, gauntlet r15) restored, which the same law must reject.
@@ -39,10 +40,7 @@ for (const [from, to] of OLD_PUSH) {
   mutant = mutant.replace(from, to);
 }
 assert.doesNotMatch(source, /hpBarPlaced|oldPushPlaced/, 'hud.ts keeps no list of placed bars to push a bar off its tank');
-// a bar's box until measured (the recording DOM measures nothing) and the crossing past which the lower draws faint
-const BAR_H = Number(/const HP_BAR_H = (\d+)/.exec(source)?.[1]);
-const UNDER_PX = Number(/const HP_BAR_UNDER_PX = (\d+);/.exec(source)?.[1]);
-assert.ok(BAR_H > 0 && UNDER_PX > 0, 'hud.ts keeps HP_BAR_H and HP_BAR_UNDER_PX');
+
 registerHooks({
   load(url, context, nextLoad) {
     if (url !== `${HUD_URL}?old-push`) return nextLoad(url, context);
@@ -163,17 +161,9 @@ function proveFrame(scene, staged, label) {
     if (ranked[i - 1].dist === ranked[i].dist && ranked[i - 1].ally === ranked[i].ally) continue;
     assert.ok(above.z > below.z, `${label}: ${ranked[i - 1].id} draws over ${ranked[i].id} (z ${above.z} over ${below.z})`);
   }
-  // the one under draws faint, the one on top at full ink: a bar is faint where one above it in the stack crosses it by
-  // more than HP_BAR_UNDER_PX on both axes
-  const box = (bar) => { const x0 = bar.x + (bar.width * (1 - bar.k)) / 2, y1 = bar.y + BAR_H;
-    return { x0, x1: x0 + bar.width * bar.k, y0: y1 - BAR_H * bar.k, y1 }; };
-  const stack = staged.map((t) => ({ id: t.id, bar: bars.get(t.id) })).sort((a, b) => b.bar.z - a.bar.z);
-  for (let i = 0; i < stack.length; i++) {
-    const own = box(stack[i].bar);
-    const covered = stack.slice(0, i).some(({ bar }) => { const o = box(bar);
-      return Math.min(own.x1, o.x1) - Math.max(own.x0, o.x0) > UNDER_PX && Math.min(own.y1, o.y1) - Math.max(own.y0, o.y0) > UNDER_PX; });
-    assert.equal(stack[i].bar.under, covered, `${label}: ${stack[i].id}'s bar ${covered ? 'draws faint under one above it' : 'draws at full ink'}`);
-  }
+  // the top of the stack always draws at full ink: the nearest name reads
+  const top = staged.map((t) => ({ id: t.id, bar: bars.get(t.id) })).sort((a, b) => b.bar.z - a.bar.z)[0];
+  assert.equal(top.bar.under, false, `${label}: ${top.id}, on top of the stack, draws at full ink`);
   return bars;
 }
 
@@ -192,14 +182,17 @@ function proveLaw(init, label) {
     const spot = [-12, 0, 380];
     const coLocated = [tank('enemy-a', 'bravo', spot), tank('enemy-b', 'bravo', spot), tank('ally-a', 'alpha', spot)];
     settle(coLocated);
-    proveFrame(scene, coLocated, `${label}/co-located`);
+    const bars = proveFrame(scene, coLocated, `${label}/co-located`);
+    assert.deepEqual(['enemy-b', 'ally-a'].map((id) => bars.get(id).under), [true, true],
+      `${label}/co-located: the bars under the top one draw their words faint`);
   });
 
   // 2. a crowd close together at range: six hulls 3 m apart across and 6 m deep, both sides mixed
   judge('crowd', () => {
     const crowd = Array.from({ length: 6 }, (_, i) => tank(`crowd-${i}`, i % 2 ? 'alpha' : 'bravo', [-30 + 3 * i, 0, 360 + 6 * (i % 3)]));
     settle(crowd);
-    proveFrame(scene, crowd, `${label}/crowd`);
+    const bars = proveFrame(scene, crowd, `${label}/crowd`);
+    assert.ok(crowd.filter((t) => bars.get(t.id).under).length >= 3, `${label}/crowd: the bars under the top ones draw faint`);
   });
 
   // 3. two hulls far apart in view: neither bar crosses the other, so both draw at full ink
@@ -210,7 +203,24 @@ function proveLaw(init, label) {
     assert.ok(apart.every((t) => !bars.get(t.id).under), `${label}/apart: bars that cross nothing draw at full ink`);
   });
 
-  // 4. an enemy driving across an ally at one range: every pose, both bars on their own tanks, the enemy's on top
+  // 4. edges: an ally's bar 100 px beside an enemy's, their boxes crossing 28 px at the ends where neither holds words:
+  //    both at full ink; 40 px beside it the enemy's ink crosses the ally's words, so the ally's draw faint
+  judge('edges', () => {
+    const enemy = tank('enemy-edge', 'bravo', [-40, 0, 380]);
+    const at = (px) => { let lo = -40, hi = 60; // the world x whose seat stands px to the right of the enemy's
+      for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (seat([-40, 0, 380]).x - seat([mid, 0, 380]).x < -px) lo = mid; else hi = mid; }
+      return (lo + hi) / 2; };
+    for (const [px, faint] of [[100, false], [40, true]]) {
+      const ally = tank('ally-edge-x', 'alpha', [at(-px), 0, 380]);
+      settle([enemy, ally]);
+      const bars = proveFrame(scene, [enemy, ally], `${label}/edges ${px} px`);
+      const gap = Math.abs(bars.get('ally-edge-x').x - bars.get('enemy-edge').x);
+      assert.ok(Math.abs(gap - px) < 1, `${label}/edges: the bars stand ${px} px apart (${gap.toFixed(1)})`);
+      assert.equal(bars.get('ally-edge-x').under, faint, `${label}/edges ${px} px: the ally's words ${faint ? 'draw faint' : 'stay at full ink'}`);
+    }
+  });
+
+  // 5. an enemy driving across an ally at one range: every pose, both bars on their own tanks, the enemy's on top
   judge('crossing', () => {
     const ally = tank('ally-x', 'alpha', [-6, 0, 400]);
     const enemy = tank('enemy-x', 'bravo', [-26, 0, 400]);
