@@ -103,7 +103,13 @@ notice, decorative paint) asks a failed module again on its next need, at once
 after one failure and then past the INFRA-P11 backoff capped at a minute, with
 no budget that would spend it for the document, never by itself and never
 offline (`node src/app/lazyChunk.selftest.mjs`,
-`node src/app/lazyChunkSites.selftest.mjs`).
+`node src/app/lazyChunkSites.selftest.mjs`). The stylesheet guarantee holds per
+owner: Vite's preload keeps one `seen` map for the whole document, so a sheet
+that failed at one owner loads "successfully" without it at any other. Give
+each lazy stylesheet one owner per document (the hero cards' is
+`heroCardChunk.ts`; every surface asks it), held in a `createLazyChunk`, an
+`importWhenOnline`, or a kit opener; `lazyChunkSites.selftest.mjs` walks every
+page's imports and fails a second owner or a sheet asked again after a failure.
 Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
 space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
 writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`

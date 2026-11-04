@@ -447,8 +447,10 @@ export default defineConfig({
             // 2026-11-02 (audit R6): the one lazy-chunk failure policy (app/lazyChunk.ts and the backoff it reads,
             // app/lazyImportRetry.ts) and the one worker-client failure count (app/workerClientHealth.ts), 2.5 KB together,
             // are leaves the ring loader, the fleet facade, the material painter's client and the Garage and Gallery
-            // openers load at boot on the same three pages; they ride here rather than in a chunk of their own.
-            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/]uiCanvas|app[\\/](?:lazyChunk|lazyImportRetry|workerClientHealth))\.ts$/, includeDependenciesRecursively: false },
+            // openers load at boot on the same three pages; they ride here rather than in a chunk of their own. (review round
+            // 2) The hero cards' one load (ui/heroCardChunk.ts, a leaf of a few hundred bytes the Garage and the Gallery
+            // import at boot: the card module and its sheet stay lazy) rides here for the same reason.
+            { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras|gunFaceSplit|convexCellFacets)|game[\\/]hullPointsRemoved|ui[\\/](?:uiCanvas|heroCardChunk)|app[\\/](?:lazyChunk|lazyImportRetry|workerClientHealth))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
             // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one

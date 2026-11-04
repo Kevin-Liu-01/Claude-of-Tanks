@@ -50,6 +50,7 @@ import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
+import { heroCardChunk } from '../ui/heroCardChunk.ts';
 import { applyGalleryCameraRange, fitGalleryDepth, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = 'appearance' | AnatomyMode | 'markup';
@@ -851,8 +852,9 @@ function groupRecords(list: GalleryRecord[]): RosterGroup[] {
 
 let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest; classes: typeof import('../vehicles/vehicleFacets.ts');
   glyphs: typeof import('../ui/vehicleFacetIcons.ts'); chips: typeof import('../ui/heroCardChips.ts') } | null = null;
-Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
-  .then(async ([module]) => {
+// (2026-11-02 audit R6) the document's one hero card load (ui/heroCardChunk.ts): a sheet that failed keeps the angle icons
+heroCardChunk.load()
+  .then(async (module) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
     // the class glyph and the tier chip ride with the cards (the chunk the card module already pulls)

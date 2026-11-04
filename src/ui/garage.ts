@@ -40,6 +40,7 @@ import { createGarageConsumables, type GarageConsumables } from './garageConsuma
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { tierChipHTML } from './heroCardChips.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
@@ -3018,9 +3019,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
   };
-  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([module]) => {
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph): the
+  // document's one hero card load (heroCardChunk.ts, 2026-11-02 audit R6), so a sheet that failed anywhere keeps the
+  // portraits here, never an unstyled card.
+  heroCardChunk.load()
+    .then((module) => {
       heroCards = module;
       return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
     })
@@ -4696,7 +4699,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setGaragePanel('');
     try {
       const [{ createTechTreeScreen }] = await Promise.all([
-        import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
+        import('./techTree.ts'), import('./techTree.css'), heroCardChunk.load(),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
       const screen = createTechTreeScreen({

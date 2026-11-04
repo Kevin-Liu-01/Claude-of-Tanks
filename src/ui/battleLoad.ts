@@ -31,7 +31,8 @@ import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
-import { createLazyChunk, importAll } from '../app/lazyChunk.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
+import { heroCardChunk } from './heroCardChunk.ts';
 
 // Translate legacy English progress labels written by the various loading
 // runtimes. Each entry pairs a known English string with its i18n key; any
@@ -744,15 +745,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const countEl = requiredElement<HTMLDivElement>(root, '.count');
 
   /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): where they cannot load (a Node
-   *  receipt, a blocked chunk) the cards keep their silhouettes. (2026-11-02 audit R6) Under the one lazy-chunk policy
-   *  (app/lazyChunk.ts): a failure was null for the session; a failed module is asked again by a later fill, a failed
-   *  sheet never (importAll: neither hides the other). */
-  const heroCards = createLazyChunk(() => importAll([import('./heroCard.ts'), import('./heroCard.css')]).then(([module]) => module));
-  /** Each new card once: a card kept in place keeps its layers, and one a later fill dropped is skipped (a roster's seats
+   *  receipt, a blocked chunk) the cards keep their silhouettes. (2026-11-02 audit R6) The document's one hero card load
+   *  (heroCardChunk.ts): a failure was null for the session; a failed module is asked again by a later fill, a failed
+   *  sheet never, at any surface.
+   *  Each new card once: a card kept in place keeps its layers, and one a later fill dropped is skipped (a roster's seats
    *  arriving one by one decorate only the cards they add, never cancelling the ones before them). */
   function decorateCards(host: HTMLElement, cards: readonly (readonly [HTMLElement, string])[]): void {
     if (!cards.length) return;
-    void heroCards.load().then(async (hero) => {
+    void heroCardChunk.load().then(async (hero) => {
       const manifest = await hero.loadHeroManifest();
       if (!manifest) return;
       host.style.setProperty('--hc-flag-mask', hero.heroCardFlagMask(manifest));

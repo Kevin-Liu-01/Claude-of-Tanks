@@ -920,8 +920,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // a module asked again past a backoff capped at a minute, with no budget)
     'src/app/lazyChunk.selftest.mjs',
     // 2026-11-02 audit R6: the named lazy chunks and the session-long memos hold their load in app/lazyChunk.ts; no new
-    // hand-made memo; a default-policy load of several parts settles them with importAll
+    // hand-made memo or failure-cleared latch; a default-policy load of several parts settles them with importAll; every
+    // lazy stylesheet is held and has one owner per document
     'src/app/lazyChunkSites.selftest.mjs',
+    // 2026-11-02 audit R6 (review round 2): the hero cards' one load keeps a failed heroCard.css for every surface
+    'src/ui/heroCardChunk.selftest.mjs',
     // 2026-11-02 audit R6: a failed notice kit or battle notice region chunk is asked again by the next battle notice
     'src/ui/battleNoticesLoadFailure.selftest.mjs',
     // 2026-11-02 audit R6: a failed paint is painted again (three in a row at most); no DOM still caches its null

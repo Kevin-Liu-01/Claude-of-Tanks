@@ -4095,11 +4095,15 @@ const studioLinks = (): NodeListOf<Element> => document.querySelectorAll('[data-
 // links and their next press reloads; the rule the hand-made `??=` memo kept, now declared
 let studioLightRuntime: LazyChunk<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
+// the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk.
+// (2026-11-02 audit R6, review round 2) An opener's chunk (app/lazyChunk.ts): studioAccess forgets a failed load, so a
+// Garage intent's background preload that lost studioPanel.css was asked again by the press, and Vite's preload, which
+// never adds a failed sheet again, let the Studio open unstyled. Kept, the press fails, marks the links and reloads next.
+const studioModule = createLazyChunk(() => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),
+  import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+  .then(([module]) => module), { opener: true });
 const studioAccess = createStudioAccess({
-  // the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk
-  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),
-    import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
-    .then(([module]) => module),
+  loadModule: () => studioModule.load(),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),

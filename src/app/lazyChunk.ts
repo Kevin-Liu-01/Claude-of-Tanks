@@ -16,8 +16,14 @@
  *   needs the chunk asks again, at once after a first failure and then once the INFRA-P11 backoff since the last one
  *   has passed (2, 4, 8 ... s, capped at the policy's maximum, one minute), never while the browser is offline, and at
  *   once when it is back online after a failure it saw offline. It never becomes terminal: a builder, a warm or a notice
- *   mends when the network does, as the fleet's loaders always did. Nothing in it can render unstyled: Chrome 151 fails
- *   it again at once, Chrome 156 and Node load it, and a caller that asks every frame asks once a minute at most.
+ *   mends when the network does, as the fleet's loaders always did. Chrome 151 fails it again at once, Chrome 156 and
+ *   Node load it, and a caller that asks every frame asks once a minute at most.
+ *
+ * The stylesheet rule holds per owner, not per page: Vite's preload keeps one `seen` map for the document, so a sheet that
+ * failed under one owner is skipped, without a failure, by any other load that names it, and that load's chunk runs
+ * unstyled. So each lazy stylesheet has one owner in a document (the hero cards' is ui/heroCardChunk.ts), held here, in
+ * a docs page's importWhenOnline or by a kit opener, never asked again by hand (app/lazyChunkSites.selftest.mjs walks
+ * every page's imports for a second owner). Within that, nothing this policy asks again can render unstyled.
  *
  * An opener (a surface the player opens from a trigger) declares itself (`opener: true`): any failure of its chunk is
  * terminal, and the kit takes it from there: the failure marks the trigger (components/loadFailure.ts markLoadFailed)
