@@ -6,7 +6,7 @@ import { createDeformedHeightField, type TerrainDeformation } from '../sim/terra
 import { unpackMapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { instantiateWorldKernels, type WorldKernelModule } from './wasmWorldKernels.ts';
 import type { StructureSupportField, SupportHeightField } from '../sim/structureSupport.ts';
-import { fellConcealersAt } from '../sim/spotting.ts';
+import { createConcealerIndex } from './concealerIndex.ts';
 
 /**
  * 'o' oriented box (cx, cz, hw, hl, yaw), 'c' circle (cx, cz, r), 'v' convex polygon (x, z pairs). Since 2026-09-19 a
@@ -184,6 +184,9 @@ export function createHeadlessCollisionWorld(
     }
   }
   const concealers = (manifest.concealers || []).map(([x, z, r, add]) => ({ x, z, r, add }));
+  // (2026-11-02 audit M9) a felled tree's canopy by its trunk's centre in constant time: a whole destroyed set restored
+  // at once (restoreDestroyedObstacles) stays linear in trees, not trees x discs (concealerIndex.ts)
+  const canopy = createConcealerIndex(concealers);
   const mapCraters = unpackMapCraterStamps(manifest.craters);
   // (the obstacles are what hulls stand on: the kernel keeps their table beside their grid)
   const queryObstacles = kernels ? kernels.obstacleGrid(obstacles, 24, true) : createObstacleGrid(obstacles);
@@ -308,7 +311,7 @@ export function createHeadlessCollisionWorld(
       // (2026-11-02 audit M9) the page world's transition, on every record of the prop or tree (collision.ts)
       if (same) setCrushedRecords(same.obstacles, same.colliders, true);
       // and a felled tree's canopy stops concealing with it, as the page world's felled trees own it (felledTrees.ts)
-      if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(concealers, obstacle.shape2.cx, obstacle.shape2.cz);
+      if (obstacle.treeIdx != null && obstacle.shape2) canopy.fellAt(obstacle.shape2.cx, obstacle.shape2.cz);
     }
     return true;
   }

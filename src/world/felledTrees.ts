@@ -8,13 +8,15 @@
 // two drivers (the frame's update and the Studio's timeline) could both advance one fall in a frame.
 //
 // Here: fell(record) fells the tree, its trunk's records (collision.ts setCrushedRecords, the props' transition) and its
-// canopy's discs (spotting.ts fellConcealersAt, the law both authorities use) together; restoreAll() stands every one
+// canopy's discs (spotting.ts fellConcealersAt's 1 cm law, through concealerIndex.ts: a whole destroyed set restored
+// at once stays linear) together; restoreAll() stands every one
 // of them again; the upright pose is the tree's placement before any crater lift (craterBase), taken at each fall; a fall
 // is advanced by one driver a frame (the Studio's timeline, when it drives one, else the frame's update).
 import * as THREE from 'three';
 import { setCrushedRecords, type CollisionRecord } from './collision.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
-import { fellConcealersAt, restoreConcealers, type ConcealerDisc } from '../sim/spotting.ts';
+import { restoreConcealers, type ConcealerDisc } from '../sim/spotting.ts';
+import { createConcealerIndex } from './concealerIndex.ts';
 
 /** A placed tree as the fall moves it (vegetation.ts TreeRecord). */
 export interface FellableTree {
@@ -85,6 +87,7 @@ export function createFelledTrees<T extends FellableTree>(host: FelledTreesHost<
   const _m1 = new THREE.Matrix4();
   const _m2 = new THREE.Matrix4();
   let timelineDrove = false;
+  const canopy = createConcealerIndex(host.concealers);
 
   function fell(record: FellableTreeRecord, dx: number, dz: number, settled = false): boolean {
     const t = host.trees[record.treeIdx];
@@ -93,7 +96,7 @@ export function createFelledTrees<T extends FellableTree>(host: FelledTreesHost<
     t.crushed = true;
     host.standingChanged(); // trees perf: a falling tree draws from the next update wherever it stood (nearTreeInVolume)
     setCrushedRecords([record], [record], true);
-    if (record.shape2) fellConcealersAt(host.concealers, record.shape2.cx, record.shape2.cz);
+    if (record.shape2) canopy.fellAt(record.shape2.cx, record.shape2.cz);
     setToppleAxis(_axis, dx, dz);
     anims.push({
       t, base: t.mat.clone(), x: t.x, y: record.min[1], z: t.z,

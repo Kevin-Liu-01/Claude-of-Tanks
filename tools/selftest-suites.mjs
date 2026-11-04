@@ -2496,6 +2496,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/topple.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
     'src/world/felledTrees.selftest.mjs',
+    // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
+    'src/world/concealerIndex.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',
     'src/world/loosePropBodies.selftest.mjs', // 2026-10-12: the kicked clutter on the one physics engine
     'src/world/collision.selftest.mjs',
