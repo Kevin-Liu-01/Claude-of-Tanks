@@ -45,16 +45,20 @@ const rounds = (gun: string, apfsds: [readonly number[], number, number], heat: 
 // loading mechanism was designed for the box bustle (30 rounds, 16 ready, six a minute) and never fitted to the
 // prototype. Its Kontakt-1 studs carry no bricks, so its hull is the BV's without the ERA plates.
 const object292 = variant('object292', 't80bv', 'Object 292', 'USSR', 'modern');
-// (balance, proposed for Main's ruling at VII: the lane's fairness numbers; 2,350 HP and 700 damage at 10 s scored 0/17)
+// Tier VII (Main 2026-11-04, on the lane's fairness numbers: 2,350 HP and 700 damage at 10 s scored 0 of 17 pairs fair at VII,
+// these levers 16 of 17, mean 0.397)
 Object.assign(object292, { hp: 2500, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
 Object.assign(object292.dims, { overallLengthM: 3.39 + OBJECT292_GUN_FRAME.muzzleZ, widthM: 3.525, heightM: 2.25 });
 object292.gun = {
-  // 9 s: the design's six a minute (10 s) was never fitted; the lane's VII row is in band at 9 s (16 of 17 pairs)
+  // 9 s: the six a minute (10 s) was the design rate of a loading mechanism the prototype never got (GlobalSecurity,
+  // militaryrussia: "not installed"), so the 9 s breaks no real figure
   ...object292.gun, caliberMm: 152, reloadS: 9.0, baseAccuracy: 0.34, aimTimeS: 2.1, soundProfile: 'lp-83',
   shells: rounds('LP-83', [[840, 770, 700], 900, 14], [780, 820, 8], [1100, 8]),
 };
 object292.armor.hullPlates = object292.armor.hullPlates.filter((plate) => plate.kind !== 'era');
-// the box turret's plates (the welded box over the T-80BV casting, its front blocks the weight imitators, steel only)
+// the box turret's plates (the welded box over the T-80BV casting, steel only, no ERA): the cheek and mantlet ratings x1.35
+// over the cast turret's for the steel weight-imitator blocks welded on its front (War Thunder devblog 2024: "steel blocks
+// ... acting as weight imitators"; Main 2026-11-04, tier VII)
 object292.armor.turretPlates = modernArmor({
   hl: 3.39, hw: 1.76, inW: 1.05, floor: 0.44, trkTop: 1.05, roofY: 1.45, turretPivot: [0, 1.45, 0],
   gunPivot: [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ],
