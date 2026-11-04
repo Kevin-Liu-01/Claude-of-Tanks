@@ -4115,7 +4115,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       top: [{ x0: -1.80, x1: 1.80, z0: -3.30, z1: 2.58, nx: 30, nz: 46,
         yAt: (_x, z) => profileY([[-3.34, 1.28], [-1.28, 1.34], [0.28, 1.30], [2.62, 1.16]], z) + 0.035,
         outline: [[-1.66, -3.30], [1.66, -3.30], [1.80, -2.82], [1.80, 1.80], [1.50, 2.58], [0.54, 2.58], [0.54, 1.82], [-0.54, 1.82], [-0.54, 2.58], [-1.50, 2.58], [-1.80, 1.80], [-1.80, -2.82]],
-        holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)], seed: 245 }],
+        holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)],
+        // (the A/B critics: "flat net petals stand up above the cage roof": no humps pushed up under it, and its sprays lie
+        // back on it, 3 cm high at most)
+        tents: [], garnishRiseM: 0.03, seed: 245 }],
       // owner 2026-09-15 (evening): the net walls that hung on the cage's sides and front read as
       // grey panels covering the cage; only the roof drape remains (the cage bars stay visible).
     },

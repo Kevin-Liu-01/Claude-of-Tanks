@@ -1107,9 +1107,12 @@ function addAbramsCageSideFrames(P: UkraineBuilderPort, thickness: number): void
   const stations = ABRAMS_DRONE_CAGE_STATIONS;
   for (const side of [-1, 1]) {
     for (const station of stations) {
-      const footDepth = station === stations[0] ? 0.56 : 0.30;
-      P.addEquipment('turret', box(0.48, 0.11, footDepth),
-        side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      // (release 268 builder E, the A/B critics: "dark mounting slabs at the cage's front feet, beside the gun root, look
+      // unattached": the front frame stands 0.4 m ahead of the cheeks, over nothing of the turret it rides with, so its
+      // posts carry no mounting slabs; the frames behind it bolt to the turret's flanks)
+      if (station !== stations[0]) {
+        P.addEquipment('turret', box(0.48, 0.11, 0.30), side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      }
       addCageBar(P, thickness, station.roof - station.base, thickness,
         side * station.x, (station.roof + station.base) * 0.5, station.z);
       for (const fraction of [0.32, 0.62]) {
