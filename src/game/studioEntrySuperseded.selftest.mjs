@@ -22,8 +22,8 @@ const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 // (integration IR1) the Studio session's entry and teardown (studioSession.ts, 2026-11-02 audit F9): an exit's
 // abandonment is the session token going stale, and a failed or abandoned entry leaves through the shared teardown
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere',
-  'ensureSessionWorld']);
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'tearDownStudio',
+  'prepareAtmosphere', 'ensureSessionWorld']);
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));

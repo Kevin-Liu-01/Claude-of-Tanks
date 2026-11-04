@@ -13,7 +13,7 @@ const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, tr
 const CORE = ['setMap', 'withStage', 'doExit', 'exit', 'load', 'ensureLoadMap', 'replaceLoadActors', 'applyStudioLight',
   'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm', 'directProduction'];
 // the session's helpers where the file has them
-const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
+const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'tearDownStudio', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
   'ensureSessionWorld', 'productionBusy'];
 const found = new Map();
 (function visit(node) {

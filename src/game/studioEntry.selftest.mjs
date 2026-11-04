@@ -14,8 +14,8 @@ const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 // (2026-11-02 audit F9) the session's teardown, shared by an exit and a failed entry, and its atmosphere preparation
 // (2026-11-03) and the session's trailed battlefield build
-const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'prepareAtmosphere',
-  'ensureSessionWorld']);
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage', 'leaveForGarage', 'tearDownToGarage', 'tearDownStudio',
+  'prepareAtmosphere', 'ensureSessionWorld']);
 // (UI-LOCKDOWN E) the first view's program preparation is a port here; its place in the entry is pinned below
 const functions = [];
 function visit(node) {
@@ -191,6 +191,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     for (let i = 0; i < 4; i++) await Promise.resolve();
     assert.equal(game.phase, 'studio');
     transitionAppPhase(game, 'garage', { reason: 'garage-return' });
+    // (integration review r2) or a battle has it since, started from that Garage
+    if (handedBack === 'battle') transitionAppPhase(game, 'battle', { reason: 'battle-start' });
     const mark = calls.push('--handed-back') - 1;
     fail = true;
     releaseWorld();
@@ -198,9 +200,28 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     const after = calls.slice(mark);
     assert.ok(!after.includes('enter-garage'), 'no Garage return over the one that has the scene');
     assert.ok(after.includes('panel-hidden'), 'the Studio\'s panel goes');
-    assert.equal(game.phase, 'garage');
     assert.equal(studio.active(), false);
     assert.equal(ports.session.phase, 'closed', 'the failed entry\'s session ends');
+    const studioHalf = ['actors-cleared', 'crushes-released', 'studio-fx-released', 'picture-disposed', 'atmosphere-restored'];
+    if (handedBack === 'battle') {
+      // the battlefield, its FX and its ground are the battle's: the Studio's teardown (which resets all three) stays out,
+      // and the Garage's presentation is not put back under the battle
+      assert.equal(game.phase, 'battle');
+      for (const step of studioHalf) assert.ok(!after.includes(step), `no ${step} under the battle`);
+      assert.ok(!after.includes('garage-world'), 'no Garage presentation under the battle');
+      transitionAppPhase(game, 'garage', { reason: 'battle-return' });
+    } else {
+      assert.equal(game.phase, 'garage');
+      // (integration review r2) the failed entry still leaves as an exit does up to the hand-back (audit F9): the Studio's
+      // own teardown runs, the battlefield's own light last, and then the Garage's presentation of the battlefield again
+      for (const step of studioHalf) assert.ok(after.includes(step), `the Studio's own teardown: ${step}`);
+      assert.ok(after.includes('garage-world') && after.indexOf('garage-world') > after.indexOf('atmosphere-restored'),
+        'the Garage\'s presentation comes back after the battlefield\'s own light');
+      assert.deepEqual(after.findLast((entry) => Array.isArray(entry) && entry[0] === 'dormant'), ['dormant', true],
+        'the battlefield ends asleep under the Garage');
+      assert.equal(after.findLast((entry) => Array.isArray(entry) && entry[0] === 'sun')[1].sunIntensity,
+        garageSky.sunIntensity * 0.55, 'under the Garage\'s trim');
+    }
     fail = false;
     acquisition = acquire();
     const retry = studio.enter({ map: 'whiteout' });
@@ -293,6 +314,7 @@ await scenario({ directBoot: false, reenter: true });
 await scenario({ directBoot: false, refusedOver: 'battle' });
 await scenario({ directBoot: false, abandon: true });
 await scenario({ directBoot: false, handedBack: true });
+await scenario({ directBoot: false, handedBack: 'battle' });
 // the build's wait leaves the way out live: Exit stays outside the inert parts, and its press abandons the entry (doExit's
 // entryGeneration step; the loading census 262: the whole app went inert, Exit included)
 const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url), 'utf8');
@@ -300,4 +322,5 @@ assert.match(panelSource, /setStage\(stage\) \{[^]{0,900}?if \(part !== exitBtn\
   'every part of the Studio waits through a build but Exit');
 assert.doesNotMatch(panelSource, /app\.inert = /, 'the app itself is never inert (Exit is inside it)');
 console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit, a refusal over a battle that holds no session, a '
-  + 'failed entry whose scene the Garage already took back, and Garage return ordering pass');
+  + 'failed entry whose scene the Garage already took back (the Studio\'s own teardown, no second return) or a battle has since, '
+  + 'and Garage return ordering pass');

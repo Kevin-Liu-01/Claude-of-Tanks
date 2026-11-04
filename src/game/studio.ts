@@ -6010,9 +6010,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         try { await leaveForGarage(); } catch (rollback) { console.error('[studio] the failed entry\'s Garage return failed', rollback); }
         // (audit F1) the return hands the scene back with its announcement; one that never wrote it still does here
         if (game.phase === 'studio') transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
+      } else if (game.phase === 'garage') {
+        // (audit F1 review) the Garage took the scene back while the entry ran (studio -> garage is the Studio's one
+        // hand-over): no second Garage return over it and no phase write. (integration review r2) It still leaves as an
+        // exit does up to that hand-back (audit F9): the Studio's own teardown (its actors, crushes, FX, ground and
+        // picture, and the battlefield's own light), then the Garage's presentation of the battlefield again (asleep,
+        // its sky and trim) over whatever the entry wrote after the hand-over
+        try { await leaveForGarage(false); } catch (rollback) { console.error('[studio] the failed entry\'s teardown failed', rollback); }
       } else {
-        // (audit F1 review) the Studio does not hold the scene (another presentation took it): no Garage return over
-        // that presentation and no phase write; only the Studio's own frame flag, panel and session end here
+        // (audit F1 review) a battle or a still has the scene since (from that Garage): the battlefield, its FX and its
+        // ground are that presentation's, and the Studio's teardown resets all three, so only the Studio's own frame
+        // flag, panel and session end here
         active = false;
         panel.hide();
         session.close();
@@ -6066,14 +6074,20 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * The teardown an exit and a failed entry share (audit F9): the session's in-flight work lands or is cancelled first
    * (an atmosphere preparation that resolved after the restore re-lit the battlefield the Garage hands to the next
-   * battle; an export kept rendering at film size over the Garage), then the Studio hands everything back.
+   * battle; an export kept rendering at film size over the Garage), then the Studio hands everything back. A failed entry
+   * whose scene the Garage already took back (`returnToGarage` false) runs the Studio's own half only, then gives that
+   * Garage its presentation of the battlefield again: never a second Garage return over the one that has the scene.
    */
-  function leaveForGarage(): Promise<void> {
+  function leaveForGarage(returnToGarage = true): Promise<void> {
     closing ??= (async () => {
       try {
         await session.settled();
         if (filmRenderer.active) endFilm(); // a scripted film (beginFilm) left open: the live viewport comes back
-        await tearDownToGarage();
+        if (returnToGarage) await tearDownToGarage();
+        else {
+          tearDownStudio();
+          ctx.restoreGarageWorld?.(); // main.ts: the battlefield asleep under the Garage's sky and trim (unless a battle holds the screen)
+        }
       } finally {
         session.close();
         closing = null;
@@ -6082,7 +6096,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return closing;
   }
 
-  async function tearDownToGarage(): Promise<void> {
+  /** The teardown's Studio half: everything the Studio laid over the frame and the battlefield, whose own light is last. */
+  function tearDownStudio(): void {
     entering = null;
     buildPlateUp = false;
     panel.setStage(null);
@@ -6117,6 +6132,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     disposePicture();
     unsweepPool();
     ctx.restoreStudioAtmosphere?.(); // the cached battlefield gets its baked horizon light back before it can host a battle
+  }
+
+  /** The whole teardown of an exit: the Studio's half, then the Garage hand-back. */
+  async function tearDownToGarage(): Promise<void> {
+    tearDownStudio();
     await enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
     docBrand('garage');
