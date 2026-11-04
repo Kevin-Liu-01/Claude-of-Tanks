@@ -1,6 +1,6 @@
 // Every impact sounds of what it struck (impact-materials-269; owner 2026-11-03: "ricochets off ground shouldnt sound
 // like metal"). The resolver (impactMaterials.ts): every material has a sound for every result and calibre, every one
-// ships, and only steel rings or whines. The engine on the shipped manifests: a graze skips off the ground's own
+// ships, only steel rings or whines, and every strike carries as its role's did (soundCues.ts). The engine on the shipped manifests: a graze skips off the ground's own
 // surface, a ricochet off a rubber skirt slaps, the running gear clanks, a wreck knocks, a round through a track is
 // heard, the plate behind a screen is heard through it, bullets strike the ground they hit, near misses go by their
 // calibre and speed, a penetration's spall bursts into the compartment it struck, and a close burst rains back the
@@ -9,10 +9,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { SFX_ASSETS } from './sfxManifest.generated.ts';
 import {
-  GRAZE_INCIDENCE_DEG, GROUND_DEBRIS, MATERIAL_SOUNDS, STRUCK_MATERIALS, calibreBand, compartmentOf, distantBank, hitMaterial,
+  GRAZE_INCIDENCE_DEG, GROUND_DEBRIS, MATERIAL_SOUNDS, SPALL, STRUCK_MATERIALS, calibreBand, compartmentOf, distantBank, hitMaterial,
   impactAssetIds, impactLayers, landingResult, nearMissAsset, propMaterial,
 } from './impactMaterials.ts';
 import { PLATE_MATERIALS } from '../sim/plateMaterial.ts';
+import { cueProfile } from './soundCues.ts';
 
 // ---- the resolver: complete, shipped, and only steel rings
 /** What rings or whines: a steel strike, a ricochet, an armour hit's banks. Only a steel material's layers may name one. */
@@ -71,6 +72,24 @@ assert.equal(compartmentOf('hull', -2.5), 'engine');
 assert.equal(compartmentOf('hull', 0), 'fighting');
 assert.equal(compartmentOf('hull', null), 'fighting');
 assert.equal(GROUND_DEBRIS.water.ground, null, 'no dirt rains on water');
+
+// ---- every strike carries as its role's did: a new surface's asset never falls to its group's default (a bullet into
+// sand had shipped carried like a shell's strike: 10 dB hot, uncapped, and loud enough in the HDR window to duck the battle)
+const policy = (id) => cueProfile(id, SFX_ASSETS[id].g);
+for (const material of STRUCK_MATERIALS) for (const result of RESULTS) for (const { id } of impactLayers(material, result, 'bullet')) {
+  const p = policy(id);
+  assert.ok(p.refM <= 6 && p.maxM <= 220 && p.loudDb <= 116, `a bullet's strike on ${material} is local (${id}: refM ${p.refM}, maxM ${p.maxM}, loudDb ${p.loudDb})`);
+}
+const carriesAs = (id, parent) => {
+  for (const key of ['bus', 'space', 'priority', 'maxInstances', 'cooldownS', 'refM', 'rolloff', 'maxM', 'loudDb', 'gainDb']) {
+    assert.equal(policy(id)[key], policy(parent)[key], `${id} carries as ${parent} does (${key})`);
+  }
+};
+for (const { ground, hull } of Object.values(GROUND_DEBRIS)) {
+  if (ground) carriesAs(ground, 'debris_dirt');
+  carriesAs(hull, 'hull_debris_patter');
+}
+for (const id of Object.values(SPALL)) carriesAs(id, 'pen_interior');
 
 // ---- the engine on the shipped manifests (as audioEngine.selftest.mjs runs it)
 const publicRoot = new URL('../../public/', import.meta.url);

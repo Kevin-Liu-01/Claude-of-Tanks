@@ -966,9 +966,14 @@ crew-lines.json ─┐                    crew-voices.json
   patter per ground. 4,052 credits of sound generation (the first pass 3,668;
   a whine and a flyby crack re-prompted after every take came back as noise or
   a rush, 224; two bullet prompts re-written after their grit read as a second
-  report, 160). The payload grew 1.15 MB (23.5 to 24.6 MB). Two scoring rules
-  came with it (docs/audio-generation/quality.md): a near-silent take loses,
-  and every single-shot family drops a take cut to a click.
+  report, 160). The payload grew 1.15 MB (23.5 to 24.6 MB). Every one of its
+  32 families ships pinned takes (`sfx-picks.json`), so the ranking that
+  gun-reports-269 owns can change without changing what a strike sounds like
+  (docs/audio-generation/quality.md). Each new strike, debris, hull-patter and
+  spall asset keeps the playback policy of the one it replaced
+  (`soundCues.ts`): without it a bullet into sand had carried like a shell's
+  strike, 10 dB hot, uncapped and loud enough in the HDR window to duck the
+  battle, which the in-game render of the listening page showed.
 
 ### Cost
 

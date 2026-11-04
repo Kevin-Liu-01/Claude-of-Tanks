@@ -69,6 +69,19 @@ export const GROUP_PROFILES: Readonly<Record<string, CueProfile>> = Object.freez
 
 const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(value);
 
+/**
+ * The policies a family shares (impact-materials-269): a strike on a new surface keeps the policy of the one it
+ * replaced, so the moment changes its sound, not its level, reach or weight in the HDR window. A member left out falls
+ * to its group's default: a bullet into sand then carried like a shell's strike, 10 dB hot, uncapped, and loud enough
+ * in the HDR window to duck the battle. impactMaterials.selftest.mjs holds every strike the resolver names to its role.
+ */
+const BULLET_ON_ARMOUR = o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 });
+const BULLET_IN_DIRT = o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 });
+const BULLET_ON_MASONRY = o({ maxInstances: 4, refM: 4, maxM: 140, loudDb: 108, cooldownS: 0.05, priority: 30, gainDb: -3 });
+const DEBRIS_RAIN = o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 });
+const HULL_PATTER = o({ bus: 'ownCombat', gainDb: -4 });
+const SPALL = o({ bus: 'ownCombat', space: 'hull', priority: 92, loudDb: 140 });
+
 /** Assets that differ from their group default. */
 const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
   // The punch under a close report keeps the report's own distance law, and the air takes the slam's top first.
@@ -99,13 +112,17 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   smoke_launcher: o({ priority: 60, refM: 8, maxM: 400, loudDb: 120, gainDb: -2 }),
   smoke_burst: o({ priority: 40, refM: 8, maxM: 300, loudDb: 112, gainDb: -4 }),
   // Interior and hull-attached impacts: the receiving end of a hit.
-  pen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 92, loudDb: 140 }),
+  pen_interior: SPALL,
+  spall_driver: SPALL, spall_engine: SPALL,
   nonpen_interior: o({ bus: 'ownCombat', space: 'hull', priority: 90, loudDb: 134 }),
-  bullet_armor: o({ maxInstances: 4, refM: 4, maxM: 180, loudDb: 112, cooldownS: 0.05, gainDb: -3 }),
-  bullet_dirt: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_armor: BULLET_ON_ARMOUR,
+  bullet_rubber: BULLET_ON_ARMOUR, bullet_stowage: BULLET_ON_ARMOUR,
+  bullet_dirt: BULLET_IN_DIRT,
+  bullet_sand: BULLET_IN_DIRT, bullet_snow: BULLET_IN_DIRT, bullet_mud: BULLET_IN_DIRT,
   bullet_water: o({ maxInstances: 3, refM: 4, maxM: 120, loudDb: 104, priority: 28 }),
   // a bullet's strike on a wall, a steel body or timber: as local as one in the dirt (2026-10-13)
-  bullet_masonry: o({ maxInstances: 4, refM: 4, maxM: 140, loudDb: 108, cooldownS: 0.05, priority: 30, gainDb: -3 }),
+  bullet_masonry: BULLET_ON_MASONRY,
+  bullet_paved: BULLET_ON_MASONRY,
   bullet_metal: o({ maxInstances: 4, refM: 4, maxM: 150, loudDb: 110, cooldownS: 0.05, priority: 32, gainDb: -3 }),
   bullet_wood: o({ maxInstances: 4, refM: 4, maxM: 120, loudDb: 106, cooldownS: 0.05, priority: 30, gainDb: -3 }),
   ricochet_light: o({ refM: 6, maxM: 220, loudDb: 116, gainDb: -3 }),
@@ -142,7 +159,8 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   // sweep it replaced (level matched to it); the shock of a hit on our own hull is felt inside it.
   blast_sub: o({ priority: 72, maxInstances: 6, refM: 22, rolloff: 0.7, maxM: 1800, absorb: 0.2, send: 0.12, loudDb: 146, gainDb: -8, pitch: [0.96, 1.04] }),
   hull_thud_sub: o({ bus: 'ownCombat', space: 'hull', priority: 91, loudDb: 136 }),
-  debris_dirt: o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 }),
+  debris_dirt: DEBRIS_RAIN,
+  debris_sand: DEBRIS_RAIN, debris_mud: DEBRIS_RAIN, debris_snow: DEBRIS_RAIN, debris_grit: DEBRIS_RAIN,
   ground_dirt: o({ loudDb: 130 }),
   water_small: o({ priority: 35, maxM: 300, loudDb: 112 }),
   // Fires and cook-off loops ride the vehicle bus.
@@ -164,7 +182,9 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   extinguisher: o({ gainDb: -3 }),
   // Edge-case cues: world-placed ones.
   rollover: o({ bus: 'impacts', space: 'world', priority: 70, refM: 10, rolloff: 1.05, maxM: 500, absorb: 1, send: 0.15, loudDb: 128, gainDb: -1 }),
-  hull_debris_patter: o({ bus: 'ownCombat', gainDb: -4 }),
+  hull_debris_patter: HULL_PATTER,
+  hull_patter_sand: HULL_PATTER, hull_patter_mud: HULL_PATTER, hull_patter_snow: HULL_PATTER, hull_patter_grit: HULL_PATTER,
+  hull_patter_water: HULL_PATTER,
   missile_warning: o({ bus: 'alarm', space: 'flat', priority: 94, gainDb: -8 }),
   lock_on: o({ bus: 'alarm', space: 'flat', gainDb: -10 }),
   lock_off: o({ bus: 'alarm', space: 'flat', gainDb: -12 }),
