@@ -2607,6 +2607,13 @@ function appendEraHullKit(
   }
 }
 
+/** Release 268 builder E: a fleet-cargo row with the named routes left out (the M1A1 and HA, decorManifestFor below). */
+function m1a1CargoRoutes(row: DecorManifestRow, skip: readonly string[]): DecorManifestRow {
+  if (row.slot[0] !== 'fleetCargo') return row;
+  const args = row.slot[1];
+  return { ...row, slot: ['fleetCargo', { ...args, routes: (args.routes ?? []).filter((r) => !skip.includes(r[0])) }] };
+}
+
 function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const context: DefaultManifestContext = {
     era: decorEra(spec),
@@ -2877,10 +2884,15 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // Release 268 (abrams-bradley-268): its tarp roll hangs on the left turret side. With the invented add-on
   // cassettes gone from the Desert Storm walls, a roll drawn for the right side put one arm through the right stowage
   // bay; the side draw stays consumed and every other row is unchanged (the namer_ifv precedent below).
+  // Release 268 builder E: on the owner's model's turret the bustle rack's side rails run along both walls of the bare
+  // M1A1 and HA (profiles/abrams.ts), so the turret-side and side-plate draws stay consumed and hang nothing there.
+  // The fleet cargo keeps its draws and routes but skips the turret sides (and on the HA the roof, where its loads
+  // straddled the model's raised blow-off panels).
+  m1a1: (spec, rng) => defaultManifest(spec, rng)
+    .map((row) => (row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1ha: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 }
-      : row.kit === 'tarp' && row.slot[0] === 'turretSide' ? { ...row, slot: ['turretSide', { ...row.slot[1], side: 1 }] }
-        : row)),
+    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain'
+      || row.slot[0] === 'turretSide' || row.slot[0] === 'turretSidePlate' ? { ...row, p: 0 } : row)),
   m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
@@ -3502,6 +3514,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
   // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
   // bustle too).
+  // Release 268 builder E: the M1A1's turret walls are the owner's model's 26-degree planes, and the HA's roof and bustle
+  // top carry the model's blow-off panels and stations: a load hung on a turret flank stood its wall feet inside the wall,
+  // and on the HA a can cradle laid on the bustle top stood across a panel's edge. Those routes are off; the hull's rear
+  // rack, the deck and the fenders keep theirs. (The A/B fix round: the SA's and the AIM's flanks carry the side-rail
+  // frames now, which a hung load crossed.)
+  if (spec.id === 'm1a1' || spec.id === 'm1a1ha' || spec.id === 'm1a1_abrams_sa' || spec.id === 'm1a1_abrams_aim') {
+    return manifest.map((row) => m1a1CargoRoutes(row, spec.id === 'm1a1ha' ? ['turretSide', 'turretRoof', 'turretRear'] : ['turretSide']));
+  }
   if (spec.id === 'leo2a4') {
     const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
     return manifest.flatMap((row) => {

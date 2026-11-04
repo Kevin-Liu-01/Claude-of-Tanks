@@ -78,8 +78,11 @@ for (const side of [-1, 1]) {
     const x = darkPosition.getX(i);
     const y = darkPosition.getY(i);
     const z = darkPosition.getZ(i);
+    // 2026-11-03 (release 268 builder E): on the owner's model's turret the banks stand where the model carries them,
+    // low on the side wall 0.3-0.7 m behind the cheek corner (tejasSmokeCluster: bracket y 0.14-0.44, z 0.40-0.70), so
+    // the bores read at y 0.40-0.66, z 0.66-0.90 (were y 0.45-0.68, z 0.78-1.02).
     if (side * x > 1.55 && side * x < 1.85
-      && y > 0.45 && y < 0.68 && z > 0.78 && z < 1.02) {
+      && y > 0.40 && y < 0.66 && z > 0.66 && z < 0.90) {
       exposedLauncherVertices.push([x, y, z]);
     }
   }

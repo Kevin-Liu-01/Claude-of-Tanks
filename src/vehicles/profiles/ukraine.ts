@@ -1210,20 +1210,30 @@ function addAbramsCageRearPayload(P: UkraineBuilderPort, thickness: number): voi
       0, THREE.MathUtils.lerp(rear.base, rear.roof, fraction), rear.z);
   }
 
-  const rack = FITTINGS.stowageRack({
-    mats: P.mats, w: 2.62, d: 0.62, h: 0.38, rails: 4, fill: 0.82, seed: 1101,
-  });
-  rack.position.set(0, 0.52, -2.86);
-  P.turretG.add(rack);
+  // Release 268 builder E: the turret under the cage is the owner's model's (profiles/m1a1Turret.ts): its bustle ends at
+  // z -2.56 with the M1A1's own rack hung behind it (to -2.97) and the roof 8 cm lower (0.709). The cage keeps its
+  // stations (the spec's drone screens); its payload rides that turret: the EW boxes on the roof's rear corners, the
+  // rolled covers on the blow-off panels, the whips on the roof's antenna bases, and two braces carry the rear wall's
+  // feet into the rack's rear frame.
+  const roofY = 0.709;
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.48, 0.30, 0.42), side * 0.94, 0.72, -2.86);
-    P.add('turretDark', box(0.42, 0.025, 0.36), side * 0.94, 0.89, -2.86);
-    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), side * 0.58, 0.96, -2.74,
+    P.addEquipment('turret', box(0.48, 0.30, 0.40), side * 0.80, roofY + 0.15 - 0.004, -2.355);
+    P.add('turretDark', box(0.42, 0.025, 0.34), side * 0.80, roofY + 0.30 + 0.008, -2.355);
+    P.addEquipment('turret', cylY(0.15, 0.15, 0.48, 14), side * 0.42, roofY + 0.046 + 0.148, -1.70,
       0, 0, Math.PI / 2);
     seat(P, 'turret', FITTINGS.antennaWhip({
       mats: P.mats, h: 0.72, r: 0.011,
       rake: -side * 0.10, seed: 1110 + (side > 0 ? 1 : 0),
-    }), side * 1.32, 0.92, -2.78);
+    }), side * 1.10, roofY - 0.79 + 0.833 + 0.05, -2.35);
+    const foot: [number, number, number] = [side * (rear.x - 0.25), rear.base, rear.z];
+    const rackCorner: [number, number, number] = [side * 1.04, 0.25, -2.975];
+    const dx = rackCorner[0] - foot[0], dy = rackCorner[1] - foot[1], dz = rackCorner[2] - foot[2];
+    const len = Math.hypot(dx, dy, dz);
+    const brace = KIT.box(thickness * 0.76, thickness * 0.76, len);
+    brace.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(dx, dy, dz).normalize()));
+    P.add('turretOpenLatticeDark', brace, (foot[0] + rackCorner[0]) / 2, (foot[1] + rackCorner[1]) / 2,
+      (foot[2] + rackCorner[2]) / 2);
   }
 }
 
@@ -1319,10 +1329,11 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   // 2026-10-19 (owner float sweep): the sensor box stood 165 mm over the roof (its window 3 mm off its face); the
   // window now lies on the face and the pair stands on the roof.
   P.snapGroup('ua-m1a1-cage-sensor', () => {
-    P.addEquipment('turret', box(0.24, 0.20, 0.20), -0.96, 1.04, -1.62);
-    P.add('turretGlass', box(0.13, 0.07, 0.024), -0.96, 1.07, -1.509);
+    // (builder E: on the 0.709 roof of the owner's model's turret)
+    P.addEquipment('turret', box(0.24, 0.20, 0.20), -0.96, 0.818, -1.62);
+    P.add('turretGlass', box(0.13, 0.07, 0.024), -0.96, 0.848, -1.509);
   }, { reachM: 0.18, mode: 'down' });
-  P.decal('turret', 'number', 'UA M1', 0.24, [-1.48, 0.32, -0.80], -Math.PI / 2);
+  P.decal('turret', 'number', 'UA M1', 0.24, [-1.422, 0.32, -0.80], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 

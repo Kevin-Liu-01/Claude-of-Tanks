@@ -92,9 +92,13 @@ function movingTrackClearance(tank,id,parts){
 
 let checked=0,nonplanarOutward=0,trackChecks=0;
 for(const id of ids)for(const quality of ['high','low']){
- const captures=[];
+ const captures=[],bodies=[];
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,
   partCensus(bucket,g,source){
+   // 2026-11-03 (release 268 builder E): the M1A1 body and bustle are the owner's model's, one loft (profiles/m1a1Turret.ts)
+   // instead of the five print-era bottom stations; it is captured whole and checked below as one closed mirrored solid.
+   if(source==='add'&&bucket==='turret'&&g.attributes.position.count>300
+    &&new Error().stack.includes('addAbramsShellBody'))bodies.push(g);
    if(source!=='add'||!['hull','turret'].includes(bucket)||g.attributes.position.count!==36)return;
    const site=new Error().stack;
    if(bucket==='hull'&&/loftBand|loftTrackClearBand/.test(site)
@@ -106,7 +110,8 @@ for(const id of ids)for(const quality of ['high','low']){
   // (a sloped glacis plate and a hull roof climbing under the turret: 20 stations, was 19 with the splash step), so the
   // hull lofts capture 56 courses (58 before).
   assert.equal(parts.filter(p=>p.bucket==='hull').length,56,`${id}/${quality}: every native hull loft course captured`);
-  const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,5,'five original bustle bottom stations remain separate');
+  const bustle=parts.filter(p=>p.bucket==='turret');assert.equal(bustle.length,0,'no print-era bustle station remains');
+  assert.equal(bodies.length,1,`${id}/${quality}: the measured body and bustle loft captured`);
   const native=nativeStructuralStock(tank.root,['hull','turret']);assert.deepEqual(native.unsupported,[]);
   for(const p of parts){
    const drawn=p.bucket==='turret'?seatedPart(p,tank.root,id):p;
@@ -127,12 +132,25 @@ for(const id of ids)for(const quality of ['high','low']){
   assert(nonplanarOutward>0,'do not pretend preserved noncoplanar datums became planar');
   const bow=parts.find(p=>p.bucket==='hull'&&near(p.bounds.min.z,3.84)&&near(p.bounds.max.z,3.879));
   assert(bow);assert.equal(bow.signature,liveBowPart.signature,'all eight original bow boundary/attachment corners survive');
-  const tail=bustle.find(p=>near(p.bounds.min.z,-3.13));assert(tail);
-  assert.equal(tail.signature,oldBustlePart.signature,'all eight original bustle boundary/attachment corners survive');
-  const kneeDatums=[[-.73,-.102],[-1.36,-.102],[-1.43,-.03],[-1.66,.10],[-2.42,.16],[-3.13,.28]];
-  const corners=new Set(bustle.flatMap(p=>p.vertices.map(key)));
-  for(const [z,y]of kneeDatums)for(const side of[-1,1])
-   assert(corners.has(key([side*(z===-3.13?1.54645:1.57),y,z])),'authored undercut bottom knee is retained');
+  {
+   const body={...shellPart(bodies[0]),bucket:'turret'};
+   const drawn=seatedPart(body,tank.root,id);
+   // The seat (turretSeatRace.ts) lifts the body's floor course over a mark's own deck by a millimetre or so (the HA's,
+   // 1 mm, inside the bearing it is drawn in): every other triangle is the native mesh's exactly, the floor course within
+   // the seat's 2 mm.
+   const floorY=Math.min(...body.vertices.map(v=>v[1]))+.0005,onFloor=i=>body.triangles[i].points.every(p=>p[1]<=floorY);
+   assert.equal(mapCapturedStock({...drawn,triangles:drawn.triangles.filter((_,i)=>!onFloor(i))},native.buckets.get('turret')).status,
+    'all-native-triangles','measured body exists in the actual drawable mesh');
+   const nativeTris=[...native.buckets.get('turret').keys()].map(k=>k.split('|').map(s=>s.split(',').map(n=>+n/1e5)));
+   const floor=drawn.triangles.filter((_,i)=>onFloor(i));assert(floor.length>0,'the body has its floor course');
+   for(const t of floor)assert(nativeTris.some(n=>t.points.every(p=>n.some(q=>Math.hypot(q[0]-p[0],q[1]-p[1],q[2]-p[2])<.002))),
+    'the floor course lies in the drawable mesh within the seat\'s 2 mm');
+   assert.deepEqual(shellEdgeTopology(body),{boundary:0,nonmanifold:0,inconsistent:0});
+   assert(body.volume>0,'finite outward body');assert.equal(properSurfaceCrossings(body).length,0);
+   assert(mirroredSurfaceError(body,body).maxM<2e-6,'measured body reflects without dents');
+   assert(near(body.bounds.min.z,-2.56)&&near(body.bounds.max.y,.709),'the model\'s rear face and roof');
+   checked++;
+  }
   // Move the observation independently of the final render buffer: native
   // correspondence must reject even a small shifted counterfeit course.
   const offset=bow.g.clone().translate(.003,0,0),offsetPart=shellPart(offset);

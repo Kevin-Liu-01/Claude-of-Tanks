@@ -278,8 +278,10 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     `${id}: retains the established commander optics assembly`);
   assert.equal(optic?.clearsWeaponTower, true,
     `${id}: relocates the optic clear of the new gun tower`);
-  assert.equal(optic?.x, -0.84);
-  assert.equal(optic?.z, 0.70);
+  // Re-pinned 2026-11-03 (release 268 builder E): the commander's station stands at the owner's model's position (its
+  // centre 0.275 m further inboard and 0.8815 m further aft, profiles/abrams.ts tejasRoofKit cdx/cdz), the optic with it.
+  assert.ok(Math.abs(optic?.x - (-0.84 + 0.275)) < 1e-9, `${id}: optic x ${optic?.x}`);
+  assert.ok(Math.abs(optic?.z - (0.70 - 0.8815)) < 1e-9, `${id}: optic z ${optic?.z}`);
   assert.ok(Math.abs(optic.seatDepthM - 0.008) < 1e-9,
     `${id}: relocated optic is flush-seated on the roof carrier`);
   const [opticScale, headWidthM, headHeightM, headDepthM] = expectedOptic;
