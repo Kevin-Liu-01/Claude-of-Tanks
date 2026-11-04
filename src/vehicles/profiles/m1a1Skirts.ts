@@ -14,8 +14,12 @@ interface SkirtPort {
 export const M1A1_SKIRT = Object.freeze({
   outerX: 1.853, innerX: 1.793, ledgeX: 1.736, ledgeT: 0.035,
   top: 1.339, bottom: 0.700,
-  /** main-face rear edge (bottom corner) and the strip that runs aft over the sprocket */
-  rearZ: -2.63, stripBottom: 1.22, stripEndZ: -3.67,
+  /**
+   * main-face rear edge (bottom corner) and the strip that runs aft over the sprocket. (Release 268 builder E, the A/B
+   * critics: "the sprocket notch rises higher than the model's": its strip's underside is the model's 1.088, not 1.22,
+   * and the notch starts at the model's z -2.585, section x 1.83)
+   */
+  rearZ: -2.585, stripBottom: 1.088, stripEndZ: -3.67,
   /** leading edge: the bottom rises from frontZ at ~47 degrees to the tip */
   frontZ: 3.58, tipZ: 3.93, tipBottom: 1.071,
   /**
@@ -53,9 +57,11 @@ const NOSE_BOTTOM: readonly (readonly [number, number])[] = [[3.50, 1.300], [3.5
   [3.798, 1.172], [3.833, 1.127], [3.863, 1.088], [3.903, 1.075], [3.920, 1.030], [3.935, 0.960], [3.950, 0.930]];
 /** The fender's underside over the track band: the model's plate, 39 mm under its 1.339 top, flat to the nose. */
 const FENDER_BOTTOM_Y = 1.300;
-// The rear notch: the main face's bottom arcs up behind the last wheel to the strip (source -2.63 .. -2.90).
-const REAR_BOTTOM: readonly (readonly [number, number])[] = [[-2.98, S.stripBottom], [-2.93, 1.205], [-2.88, 1.16],
-  [-2.83, 1.08], [-2.78, 0.96], [-2.73, 0.83], [-2.68, 0.74], [S.rearZ, S.bottom]];
+// The rear notch: the main face's bottom arcs up behind the last wheel to the strip, and the strip's underside rises to
+// its rear end (the model's section at x 1.83: -2.585 .. -2.92, and -3.649 .. -3.686).
+const REAR_BOTTOM: readonly (readonly [number, number])[] = [[S.stripEndZ, 1.174], [-3.649, S.stripBottom],
+  [-2.92, S.stripBottom], [-2.862, 1.075], [-2.800, 1.027], [-2.773, 0.975], [-2.748, 0.877], [-2.732, 0.813],
+  [-2.705, 0.760], [-2.643, 0.713], [S.rearZ, S.bottom]];
 
 const skirtTop = (z: number): number => (z <= 3.50 ? S.top : lerpTable(SKIRT_TOP, z));
 const skirtBottom = (z: number): number => {
@@ -84,7 +90,7 @@ export interface M1A1SkirtOptions {
 export function addM1A1SkirtsAndFenders(P: SkirtPort, { deckAt }: M1A1SkirtOptions): void {
   const xi = S.innerX, xo = S.outerX, xl = S.ledgeX, lt = S.ledgeT;
   // ---- main skirt + its top ledge to the hull wall, stern strip to the bow fender (7-point L section)
-  const mainZs = [S.stripEndZ, ...REAR_BOTTOM.map(([z]) => z), -1.0, 1.0, S.fenderZ];
+  const mainZs = [...REAR_BOTTOM.map(([z]) => z), -1.0, 1.0, S.fenderZ];
   const main: SolidSection[] = mainZs.map((z) => {
     const yb = skirtBottom(z), yt = skirtTop(z), yv = skirtBevel(z);
     return { z, ring: [[xi, yb], [xo, yb], [xo, yv], [xi, yt], [xl, yt], [xl, yt - lt], [xi, yt - lt]] };
