@@ -2,7 +2,7 @@
 // Wheel dressing audit (owner 2026-11-04: "be careful of decorating wheels, they have to be part of and move with the
 // actual wheels themselves. check all tanks for anything like this").
 //
-//   node tools/wheel-dressing-audit.mjs [--ids=a,b | --all] [--shard=i/n] [--json=path] [--lines=path] [--gate]
+//   node tools/wheel-dressing-audit.mjs [--ids=a,b | --all] [--shard=i/n] [--json=path] [--lines=path] [--motion] [--gate]
 //
 // Builds each tank (procedural, high tier), turns its tracks through the tank's own per-frame sync and splits what it
 // draws into what moved (the running gear) and what did not. The wheels are the moved wheel layers: road wheels and
@@ -95,6 +95,95 @@ const pose = (l, r) => ({ pos: { x: 0, y: 0, z: 0 }, yaw: 0, visualPitch: 0, vis
   turretYaw: 0, gunPitch: 0, trackScroll: { l, r } });
 const kindOf = (o) => o.userData.runningGearEndKind ?? (/ReturnRoller/i.test(o.name) ? 'roller'
   : /RoadWheel/.test(o.name) || o.userData.dynamicWheelFace ? 'road' : null);
+
+// --motion (Main 2026-11-04: "prove the class in motion, not only at rest"): every dressing must hold its place in its
+// own wheel's frame while the gear turns through several track angles and every road wheel goes to full bump and full
+// droop: alternate wheels on +/-0.5 m ground (the taut track holds a dropped wheel between raised ones), then one whole
+// side up and the other down, and swapped (a side lowered as one droops to the gear's limit). On a built fix the
+// dressing is the seated pieces; on a tree without it, the static parts the rule calls a wheel's (the negative control:
+// they stay put while the wheel turns).
+const MOTION_POSES = [[0, 'flat'], [0.13, 'flat'], [0.47, 'alternate'], [0.9, 'alternateSwapped'], [1.1, 'leftUp'],
+  [2.9, 'rightUp'], [4.3, 'flat']];
+const MOTION_HOLD_M = 0.002;
+const corners = (box, matrix) => {
+  const out = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    out.push(new THREE.Vector3(x, y, z).applyMatrix4(matrix));
+  }
+  return out;
+};
+function motionCheck(tank, root, hull, items) {
+  // each road wheel's and roller's tyre instance and each sprocket and idler body, in the hull frame, as posed now
+  const frames = () => {
+    const toHull = new THREE.Matrix4().copy(hull.matrixWorld).invert(), out = [], m = new THREE.Matrix4();
+    root.traverse((o) => {
+      if (o.isInstancedMesh && /^gear(RoadWheel|ReturnRoller)Tires$/.test(o.name)) {
+        const base = new THREE.Matrix4().multiplyMatrices(toHull, o.matrixWorld);
+        for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m); out.push({ key: `${o.name}#${i}`, matrix: new THREE.Matrix4().multiplyMatrices(base, m) }); }
+      } else if (o.isMesh && !o.isInstancedMesh && o.name === 'gearEndWheelBody' && o.userData.runningGearEndKind) {
+        out.push({ key: `${o.userData.runningGearEndKind}#${o.position.x < 0 ? 'L' : 'R'}`, matrix: new THREE.Matrix4().multiplyMatrices(toHull, o.matrixWorld) });
+      }
+    });
+    return out;
+  };
+  const drive = (scroll, ground, hubZs) => {
+    tank.setGroundSampler(ground === 'flat' ? () => 0 : (x, z) => {
+      if (ground === 'leftUp' || ground === 'rightUp') return (x < 0) === (ground === 'leftUp') ? 0.5 : -0.5;
+      let best = 0, d = Infinity;
+      hubZs.forEach((hz, i) => { if (Math.abs(hz - z) < d) { d = Math.abs(hz - z); best = i; } });
+      return (best % 2 === 0) === (ground === 'alternate') ? 0.5 : -0.5;
+    });
+    for (let frame = 0; frame < 90; frame++) tank.syncFromState(pose(scroll, scroll), 1 / 60, 10);
+    root.updateMatrixWorld(true);
+  };
+  drive(0, 'flat', []);
+  const rest = frames(), hubZs = [...new Set(rest.filter((f) => /Road/.test(f.key))
+    .map((f) => Math.round(new THREE.Vector3().setFromMatrixPosition(f.matrix).z * 1e3) / 1e3))].sort((a, b) => a - b);
+  // each item's own wheel: the nearest hub on its side at rest
+  const own = items.map((item) => {
+    const points = item.points(), c = points.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(points.length);
+    let best = null, d = Infinity;
+    for (const f of rest) {
+      const hub = new THREE.Vector3().setFromMatrixPosition(f.matrix);
+      if (Math.sign(hub.x) !== Math.sign(c.x)) continue;
+      const dd = hub.distanceTo(c);
+      if (dd < d) { d = dd; best = f.key; }
+    }
+    return best;
+  });
+  const local = [];
+  let failed = 0, maxDevM = 0;
+  const results = items.map(() => ({ devM: 0 }));
+  // the travel the poses reach: each road wheel's hub height against its rest height
+  const restY = new Map(rest.filter((f) => /Road/.test(f.key)).map((f) => [f.key, f.matrix.elements[13]]));
+  let bumpM = 0, droopM = 0;
+  for (const [scroll, ground] of MOTION_POSES) {
+    drive(scroll, ground, hubZs);
+    const posed = frames();
+    for (const f of posed) {
+      if (!restY.has(f.key)) continue;
+      const dy = f.matrix.elements[13] - restY.get(f.key);
+      bumpM = Math.max(bumpM, dy); droopM = Math.max(droopM, -dy);
+    }
+    const byKey = new Map(posed.map((f) => [f.key, f.matrix]));
+    items.forEach((item, i) => {
+      const frame = byKey.get(own[i]);
+      if (!frame) { results[i].devM = Infinity; return; }
+      const inverse = new THREE.Matrix4().copy(frame).invert();
+      const pts = item.points().map((p) => p.applyMatrix4(inverse));
+      if (!local[i]) { local[i] = pts; return; }
+      pts.forEach((p, k) => { results[i].devM = Math.max(results[i].devM, p.distanceTo(local[i][k])); });
+    });
+  }
+  drive(0, 'flat', []);
+  items.forEach((item, i) => {
+    maxDevM = Math.max(maxDevM, results[i].devM);
+    if (results[i].devM > MOTION_HOLD_M) { failed++; item.devM = +results[i].devM.toFixed(4); item.wheel = own[i]; }
+  });
+  return { items: items.length, failed, maxDevM: +maxDevM.toFixed(5), bumpM: +bumpM.toFixed(3), droopM: +droopM.toFixed(3),
+    worst: items.filter((item) => item.devM !== undefined).sort((a, b) => b.devM - a.devM).slice(0, 5)
+      .map(({ label, devM, wheel }) => ({ label, devM, wheel })) };
+}
 
 const rows = [];
 let defects = 0;
@@ -235,12 +324,35 @@ for (const id of ids) {
     const seated = [];
     root.traverse((o) => { if (o.userData.wheelDressing || o.userData.wheelDressingOf) seated.push({ name: o.name, of: o.userData.wheelDressingOf, moved: moved.has(o) }); });
     const stuck = seated.filter((s) => !s.moved).length;
-    const found = list.filter((h) => h.defect).length + stuck;
+    let motion = null;
+    if (args.includes('--motion')) {
+      // the seated pieces (each instance of a layer) and the static parts the rule calls a wheel's
+      const items = [], m = new THREE.Matrix4();
+      root.traverse((o) => {
+        if (!(o.userData.wheelDressing || o.userData.wheelDressingOf)) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        for (let i = 0; i < (o.isInstancedMesh ? o.count : 1); i++) {
+          items.push({ label: `seated:${o.name}${o.isInstancedMesh ? `#${i}` : ''}`, points: () => {
+            const base = new THREE.Matrix4().copy(hull.matrixWorld).invert().multiply(o.matrixWorld);
+            if (o.isInstancedMesh) { o.getMatrixAt(i, m); base.multiply(m); }
+            return corners(o.geometry.boundingBox, base);
+          } });
+        }
+      });
+      for (const [part, { wheel }] of candidates) {
+        const box = part.box;
+        items.push({ label: `static:${part.where} ${part.label} (${wheel.kind})`, points: () => corners(box, new THREE.Matrix4()) });
+      }
+      motion = motionCheck(tank, root, hull, items);
+    }
+    const found = list.filter((h) => h.defect).length + stuck + (motion?.failed ?? 0);
     defects += found;
-    rows.push({ id, wheels: wheels.length, defects: found, seated, hits: list });
+    rows.push({ id, wheels: wheels.length, defects: found, seated, hits: list, ...(motion ? { motion } : {}) });
     if (lines) appendFileSync(lines, `${JSON.stringify(rows.at(-1))}\n`);
     console.log(`${id}: ${wheels.length} wheels, ${seated.length} seated dressing object(s)${stuck ? ` (${stuck} NOT MOVING)` : ''}, `
-      + `${found} static dressing defect(s)${found ? ` — ${list.filter((h) => h.defect).slice(0, 3).map((h) => `${h.kind}: ${h.where} ${h.label}`).join('; ')}` : ''}`);
+      + `${found} static dressing defect(s)${found ? ` — ${list.filter((h) => h.defect).slice(0, 3).map((h) => `${h.kind}: ${h.where} ${h.label}`).join('; ')}` : ''}`
+      + (motion ? `; in motion ${motion.items - motion.failed}/${motion.items} held on their wheel (worst drift `
+        + `${(motion.maxDevM * 1000).toFixed(1)} mm; wheels to ${(motion.bumpM * 100).toFixed(1)} cm bump, ${(motion.droopM * 100).toFixed(1)} cm droop)` : ''));
   } catch (error) {
     rows.push({ id, error: String(error?.stack ?? error) });
     defects++;
