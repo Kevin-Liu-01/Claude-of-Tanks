@@ -34,6 +34,8 @@ const outDir = resolve('shots/sfx-smoke');
 mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
+const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -116,8 +118,8 @@ async function openPage() {
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: PAGE_MS });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
