@@ -1084,39 +1084,46 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
       top: [
-        // the roof, the cheeks' crowns and the NBC pack's lid on a 5 cm grid (no stepped right-angled patches), its front
-        // edge wandering over the cheeks short of the nose (no cells stretched down the casting's front), its depth from
-        // the sticks pushed under it, its folds and the rolls bunched round every opening; open round the cupola (a ring),
-        // the loader's hatch and both whips
-        // round 3: and on over the casting's front and cheeks either side of the mantlet to the nose ("left mostly bare"),
-        // its cut edge ragged; the gun's sweep, the smoke dischargers' lines and the sights' views are the builder's
+        // the roof on a 6 cm grid (no stepped right-angled patches), its depth from the sticks pushed under it, its folds
+        // and the rolls bunched round every opening; open round the cupola (a ring), the loader's hatch and both whips; its
+        // lens slots short (round 3, lensSlotM: the cupola's eight periscopes' 0.4 m slots each way bared a disc of roof
+        // round it; past 10 cm the cloth lies on the plate under each view and the garnish keeps out of it). Round 3: its
+        // creases eased (1.2 of the field net's relief: at 3 a crease's ridge, one cell wide, stood 6 cm up in a row of
+        // loops), its thickness from more sticks pushed under it, its cut edges torn at random (edgeTearP)
         laid({
-          x0: -1.76, x1: 1.76, z0: -2.03, z1: 1.42, nx: 64, nz: 63, laidStepM: 0.07, edgeTearP: 0.3,
-          yAt: (x, z) => 0.83 - Math.max(0, z - 0.85) * 0.4 - Math.max(0, Math.abs(x) - 0.55) * Math.max(0, z - 0.6) * 0.6,
-          outline: [[-1.76, -2.03], [1.76, -2.03], ...ragged([[1.76, 0.52], [1.40, 0.62], [1.12, 0.80], [0.95, 0.95], [0.92, 1.05],
-            [0.80, 1.15], [0.78, 1.30], [0.55, 1.38], [0.25, 1.40], [-0.25, 1.40], [-0.45, 1.32], [-0.62, 1.22], [-0.78, 1.12],
-            [-0.92, 1.02], [-0.98, 0.92], [-1.12, 0.82], [-1.40, 0.68], [-1.76, 0.54]], 0.035, 11)],
+          x0: -1.76, x1: 1.76, z0: -2.03, z1: 0.40, nx: 60, nz: 41, edgeTearP: 0.3,
           holes: [Array.from({ length: 12 }, (_, k): Point2 => [-0.48 + 0.49 * Math.cos(k * Math.PI / 6), -0.824 + 0.49 * Math.sin(k * Math.PI / 6)]),
             rect(0.18, 0.83, -1.08, -0.39), rect(0.707, 0.887, -1.859, -1.679), rect(-0.933, -0.753, -1.839, -1.659),
             // (round 3: the side baskets carry their own nets, below)
             rect(-1.45, -0.95, -2.10, -0.99), rect(0.95, 1.72, -2.10, -0.63)],
-          // (round 3: its creases eased, 1.2 of the field net's relief: at 3 a crease's ridge, one cell wide, stood 6 cm up
-          // in a row of loops; its thickness comes from more sticks pushed under it)
           tents: [[1.25, -1.45, 0.09], [-1.30, -1.80, 0.08], [0.95, -1.95, 0.07], [-0.10, -1.95, 0.07], [1.45, -0.75, 0.07],
-            [-0.55, 0.45, 0.07], [0.55, 0.30, 0.08], [-0.20, -0.20, 0.06], [0.45, 0.95, 0.06], [-0.60, 1.05, 0.06], [-1.20, -0.40, 0.07]],
-          reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 11,
+            [0.55, 0.30, 0.08], [-0.20, -0.20, 0.06], [-1.20, -0.40, 0.07]],
+          y: 0.83, reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 11,
+        }),
+        // round 3: and on from the roof over the casting's front and cheeks either side of the mantlet to the nose ("left
+        // mostly bare"), its edge ragged; on the cheeks' curved shoulders and steep fronts no cell spans more than a 7 cm
+        // step (a 5 cm cell laid down them stretched into a tooth: "a row of regular V-notch ... cutouts"), the drapes
+        // below take over; the gun's sweep, the smoke dischargers' lines and the sights' views are the builder's
+        laid({
+          x0: -1.76, x1: 1.76, z0: 0.40, z1: 1.42, nx: 60, nz: 17, laidStepM: 0.07, edgeTearP: 0.3,
+          yAt: (x, z) => 0.83 - Math.max(0, z - 0.85) * 0.4 - Math.max(0, Math.abs(x) - 0.55) * Math.max(0, z - 0.6) * 0.6,
+          outline: [[-1.76, 0.40], [1.76, 0.40], ...ragged([[1.76, 0.52], [1.40, 0.62], [1.12, 0.80], [0.95, 0.95], [0.92, 1.05],
+            [0.80, 1.15], [0.78, 1.30], [0.55, 1.38], [0.25, 1.40], [-0.25, 1.40], [-0.45, 1.32], [-0.62, 1.22], [-0.78, 1.12],
+            [-0.92, 1.02], [-0.98, 0.92], [-1.12, 0.82], [-1.40, 0.68], [-1.76, 0.54]], 0.035, 11)],
+          tents: [[-0.55, 0.50, 0.07], [0.45, 0.95, 0.06], [-0.60, 1.05, 0.06]],
+          reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 15,
         }),
         // the bar basket (round 3: "a bare, open wire frame standing out behind the turret"): the net thrown over it,
         // resting on its top rails, the NBC pack and the load and sagging deep between them (sagK), its rear hanging
         // in swags down the basket's back (the face below)
         laid({
-          x0: -1.43, x1: 1.71, z0: -2.63, z1: -2.03, nx: 56, nz: 11, clipToArmour: false, riseLimitM: 0.05,
+          x0: -1.43, x1: 1.71, z0: -2.63, z1: -2.03, nx: 48, nz: 10, clipToArmour: false, riseLimitM: 0.05,
           yAt: (x) => 0.719 + 0.060 * (x + 1.405) / 3.088, sagK: 3, tents: [[-0.86, -2.36, 0.04], [0.80, -2.36, 0.05]],
           reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 13,
         }),
         // round 3: and over the two side baskets (their tops open, the bars showing), sagging onto their load
-        ...[[-1.45, -0.93, -2.10, -0.99, 0.719, 14], [0.93, 1.72, -2.10, -0.63, 0.779, 19]].map(([x0, x1, z0, z1, y, nx], k) => laid({
-          x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.055), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 3,
+        ...[[-1.45, -0.93, -2.10, -0.99, 0.719, 8], [0.93, 1.72, -2.10, -0.63, 0.779, 12]].map(([x0, x1, z0, z1, y, nx], k) => laid({
+          x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.065), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 3,
           reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 71 + k * 6 })),
       ],
       face: [face({ z: -2.61, x0: -1.43, x1: 1.71, y0: 0.30, y1: 0.80, nx: 32, ny: 6, swagM: 0.06, seed: 59 }),
@@ -1157,16 +1164,16 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       sleeve: [
         // the canvas mantlet cover ahead of the turret's cheeks (they stand 2-3 cm beside it to 0.38 m), over its crown and
         // flanks round the ranging gun's housing
-        { z0: 0.40, z1: 0.80, reachM: 0.20, wrapDeg: 110, gapM: 0.015, bunchM: 0.035, garnishOffM: 0.05, garnishDensity: 3, seed: 49 },
+        { z0: 0.40, z1: 0.80, reachM: 0.20, wrapDeg: 110, gapM: 0.015, bunchM: 0.05, garnishOffM: 0.06, garnishDensity: 3, seed: 49 },
         // over the hull the rear deck binds the gun from below and the fender bins from beside under its axis
         // (gun-depression-sweep's floors): the scrim laid over the upper flanks only, to 70 degrees round from the crown
         // past the bins' reach, then to 10 degrees under the flanks, tied tight at its hems; the bore evacuator bare
         { z0: 0.80, z1: 1.12, reachM: 0.20, wrapDeg: 70, gapM: 0.012, bunchM: 0.02, garnishOffM: 0.03, garnishDensity: 3, seed: 51 },
-        { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.04, garnishOffM: 0.055, garnishDensity: 3, seed: 52 },
+        { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.06, garnishOffM: 0.065, garnishDensity: 3, seed: 52 },
         // past the evacuator bound right round to 0.4 m short of the muzzle (in four lengths: a sleeve's garnish clumps
         // stand a clump apart along it, so each length takes its own)
-        ...[3.76, 4.03, 4.30, 4.57].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, bunchM: 0.045,
-          garnishOffM: 0.06, garnishDensity: 5, seed: 53 + k * 4 })),
+        ...[3.76, 4.03, 4.30, 4.57].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, bunchM: 0.065,
+          garnishOffM: 0.075, garnishDensity: 5, seed: 53 + k * 4 })),
         // the ranging gun's barrel bunched in a strip of it, its flash hider bare
         { z0: 0.68, z1: 1.48, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 150, gapM: 0.006, bunchM: 0.012, garnishOffM: 0, seed: 57 },
       ],
