@@ -36,6 +36,8 @@ import { createAssetLibrary, predecodeAssets, type AssetLibrary } from './assetL
 import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
+import { createCrewProcedure, type CrewFrameEntity } from './crewProcedure.ts';
+import { resolveCrewLine } from './voiceLines.ts';
 import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './captions.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
@@ -188,7 +190,7 @@ interface AudioEntity {
   };
   input?: { throttle?: number; brake?: boolean };
   /** Drone and AC-130 modes: the tank's drone in flight, or the gunship this entity is. */
-  aerial?: { kind?: string; active?: boolean; launching?: boolean; x?: number; y?: number; z?: number; batteryS?: number; cooldownS?: number; recallS?: number };
+  aerial?: { kind?: string; active?: boolean; launching?: boolean; x?: number; y?: number; z?: number; batteryS?: number; cooldownS?: number; recallS?: number; returnS?: number };
   combat?: {
     destroyed?: boolean;
     hp: number;
@@ -652,7 +654,16 @@ export function createAudio({
   /** Crew radio requests and what the net did with each (bounded; the debug surface's sayLog). */
   const sayLog: { id: string; t: number; ok: boolean; why?: string }[] = [];
 
-  function say(id: string, options?: Parameters<CrewRadio['say']>[1]): boolean {
+  function say(asked: string, options?: Parameters<CrewRadio['say']>[1]): boolean {
+    // the moment's line in this mode's and this seat's own words (voiceLines.ts resolveCrewLine), or nothing
+    const id = resolveCrewLine(asked, crew.context());
+    if (id == null) {
+      sayLog.push({ id: asked, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok: false, why: 'mode' });
+      if (sayLog.length > 160) sayLog.shift();
+      return false;
+    }
+    // a take index names the asked line's take, not its stand-in's
+    if (id !== asked && options?.take != null) options = { ...options, take: undefined };
     let why: string | undefined;
     if (!radio || phase !== 'battle') why = 'phase';
     else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
@@ -661,6 +672,27 @@ export function createAudio({
     if (sayLog.length > 160) sayLog.shift();
     return ok;
   }
+
+  /** The crew's procedure calls the sound handlers leave unvoiced (crewProcedure.ts). */
+  const crew = createCrewProcedure({
+    say,
+    now: () => ctx?.currentTime ?? 0,
+    live: () => phase === 'battle' && rolledOut && !battleOver && playerId != null && tanks.get(playerId)?.alive !== false,
+    inBattle: () => phase === 'battle' && !battleOver,
+    playerId: () => playerId,
+    player: () => (latestPlayer && latestPlayer.id === playerId ? latestPlayer : null),
+    tanks: () => tanks,
+    sameTeam,
+    objectiveTeam: () => {
+      const perspective = getObjectiveTeam?.();
+      return perspective === 'alpha' || perspective === 'bravo' ? perspective : objectiveTeam(playerTeam);
+    },
+    mode: () => (getGameMode?.() || 'standard') as GameModeId,
+    bossId: () => bossId,
+    radioQuiet: () => !!radio?.quiet,
+    lastTransmission: () => radio?.log.at(-1),
+    forgetOwnRound: (shellId) => { ownRounds.delete(shellId); },
+  });
 
   /**
    * "Let me think step by step." A reasoning medal (Chain of Thought, or five hits in a row) and, rarely, our first
@@ -1092,6 +1124,8 @@ export function createAudio({
       return MODULE_CALL[name];
     }
     if ((event.damage || 0) > 0) return 'were_hit';
+    // our reactive blocks went off and stopped it
+    if (event.kind === 'era' || isEraActivation(event)) return 'era_us';
     if (event.kind === 'ricochet' || event.kind === 'nonpen' || event.kind === 'spaced_absorb') return 'bounced_us';
     return null;
   }
@@ -1135,16 +1169,18 @@ export function createAudio({
     else if ((event.crewHit?.length || 0) > 0 && damaged) call('enemy_crew_hit');
     else if (modules.size > 0 && damaged) call('enemy_crit');
     else if ((event.kind === 'pen' || event.kind === 'he_pen') && damaged) call('penetration');
+    else if ((event.kind === 'era' || isEraActivation(event)) && !damaged) call('enemy_era');
     else if (event.kind === 'ricochet') call('ricochet');
     else if (event.kind === 'nonpen' || event.kind === 'spaced_absorb') call('nonpen');
-    // A splash or a cassette that stopped the round without hurting the tank is no penetration too.
-    else if ((event.kind === 'he_splash' || event.kind === 'era') && !damaged) call('nonpen');
+    // A splash that stopped the round without hurting the tank is no penetration too.
+    else if (event.kind === 'he_splash' && !damaged) call('nonpen');
   }
 
   /**
    * The gunner calls our main-gun miss: "short" (the line's second take) when
    * the round came down before the enemy it was laid on, the live enemy
-   * nearest the line of fire, and a plain "miss" otherwise.
+   * nearest the line of fire, "over" (the third) when it came down beyond
+   * it, and a plain "miss" otherwise.
    */
   function callMiss(round: { x: number; y: number; z: number; dx: number; dy: number; dz: number }, pos: Vec3 | null): void {
     if (playerId == null) return;
@@ -1163,7 +1199,7 @@ export function createAudio({
       laidOn = along;
     }
     const landed = pos ? (pos[0] - round.x) * round.dx + (pos[1] - round.y) * round.dy + (pos[2] - round.z) * round.dz : Infinity;
-    say('miss', { take: landed < laidOn - 8 ? 1 : 0, delayS: 0.45 + random() * 0.15 });
+    say('miss', { take: landed < laidOn - 8 ? 1 : Number.isFinite(laidOn) && landed > laidOn + 8 ? 2 : 0, delayS: 0.45 + random() * 0.15 });
   }
 
   function onShellHit(event: ShellHitEvent): void {
@@ -1287,12 +1323,12 @@ export function createAudio({
       const now = ctx?.currentTime ?? 0;
       // (ac130-fx-228) the AC-130's kill is the gunship crew's call ("Splash. Target down."), never a tank crew's
       const gunship = event.source === 'ac130';
-      say(now - lastKillAt < 12 ? (gunship ? 'gunship_double' : 'double_kill') : gunship ? 'gunship_kill' : 'target_destroyed',
+      say(event.source === 'drone' ? 'drone_kill' : now - lastKillAt < 12 ? (gunship ? 'gunship_double' : 'double_kill') : gunship ? 'gunship_kill' : 'target_destroyed',
         { delayS: 0.45 + random() * 0.15 });
       lastKillAt = now;
     } else if (playerId != null && info) {
       const near = listenerValid && distanceTo(x, y, z) < 300;
-      if (sameTeam(event.id, playerId)) { if (near) say('ally_destroyed', { delayS: 0.3 }); }
+      if (sameTeam(event.id, playerId)) { if (near || latestPlayer?.aerial?.kind === 'gunship') say('ally_destroyed', { delayS: 0.3 }); }
       else if (event.killerId && sameTeam(event.killerId, playerId)) say('ally_kill', { prob: 0.3, delayS: 0.35 });
     }
     logSound('tank:destroyed', { id: event.id, killerId: event.killerId, cause, occupied: event.id === listenerOwnerId });
@@ -2403,7 +2439,7 @@ export function createAudio({
     on<{ id: string; team?: string; spotterId?: string | null }>('tank:spotted', (e) => {
       if (!e || phase !== 'battle' || playerTeam == null || e.team !== playerTeam) return;
       const info = tanks.get(e.id);
-      if (!info || info.team === playerTeam || e.spotterId !== playerId) return;
+      if (!info || info.team === playerTeam || e.spotterId !== playerId || e.id === bossId) return;
       const now = ctx?.currentTime ?? 0;
       lastSpots = lastSpots.filter((t) => now - t < 2.5);
       lastSpots.push(now);
@@ -2627,7 +2663,8 @@ export function createAudio({
     on<{ result?: ResultKind }>('battle:presented', (e) => {
       const result = e?.result || pendingResult || 'draw';
       play(result === 'victory' ? 'sting_victory' : result === 'defeat' ? 'sting_defeat' : 'sting_draw');
-      if (radio) radio.say(result, { delayS: 0.4 });
+      const line = resolveCrewLine(result, crew.context());
+      if (radio && line) radio.say(line, { delayS: 0.4 });
       pendingResult = null;
     });
     on<undefined>('killcam:begin', () => { killcam = true; chooseSnapshot(); play('killcam_in'); });
@@ -2663,6 +2700,7 @@ export function createAudio({
       'line_advanced', 'goal_scored', 'ball_hit', 'pickup_collected', 'pickup_spawned', 'destruction_scored', 'respawn', 'infected', 'weapon_advanced']) {
       on<Record<string, unknown>>(`mode:${type}`, (payload) => onMode(type, payload || {}));
     }
+    crew.bind(on);
   }
 
   let volumeEvents = 0;
@@ -2738,6 +2776,7 @@ export function createAudio({
           }
         }
         updateTeamCounts();
+        crew.frame(dt, listener, list as readonly CrewFrameEntity[]);
       }
     }
     updateWrecks(now);

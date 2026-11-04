@@ -2,7 +2,7 @@
 // tools/audio/build-voices.mjs — generate, verify and master the national
 // crew radio packs.
 //
-//   ELEVENLABS_API_KEY_FILE=… node tools/audio/build-voices.mjs [--langs de,ru] [--lines fire,were_hit] [--no-verify] [--budget 25000] [--attempts 3]
+//   ELEVENLABS_API_KEY_FILE=… node tools/audio/build-voices.mjs [--langs de,ru] [--lines fire,were_hit] [--no-verify] [--budget 25000] [--attempts 3] [--dry] [--append]
 //
 // Per take: eleven_v4 speech in the crew language with the line's delivery as
 // an audio tag, spoken by the role's cast voice (tools/audio/crew-voices.json:
@@ -15,13 +15,18 @@
 // is real-time DSP in the engine so it can degrade with the radio module.
 //
 // Writes public/audio/voice/<lang>/<line>_<n>.webm and
-// src/audio/voiceManifest.generated.ts.
+// src/audio/voiceManifest.generated.ts. `--dry` writes nothing and calls no
+// API: it counts the takes whose first attempt is not cached yet and their
+// characters (speech bills one credit per character). `--append` keeps each
+// line's shipped takes as they are and builds only the takes the script added
+// after them (a line that gains a take keeps the ones already approved; a
+// rebuild of a take re-picks among its cached attempts and re-encodes it).
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { speech, transcribe, ElevenLabsError } from './elevenlabs.mjs';
+import { speech, speechCached, transcribe, ElevenLabsError } from './elevenlabs.mjs';
 import { s16ToFloat, wavFromS16 } from './pcm.mjs';
 import { masterTake } from './master.mjs';
 
@@ -41,6 +46,8 @@ const linesArg = opt('lines')?.split(',') ?? null;
 const verify = !args.includes('--no-verify');
 const budget = Number(opt('budget') || Infinity);
 const attempts = Number(opt('attempts') || 3);
+const dry = args.includes('--dry');
+const append = args.includes('--append');
 
 const script = JSON.parse(readFileSync(join(HERE, 'crew-lines.json'), 'utf8'));
 const { cast } = JSON.parse(readFileSync(join(HERE, 'crew-voices.json'), 'utf8'));
@@ -164,23 +171,28 @@ async function trimmedTake(lang, line, text, best) {
   return found;
 }
 
-async function bestTake(lang, line, text) {
+/** The speech request of one attempt at a take: the role's cast voice, the delivery as an audio tag. */
+function speechParams(lang, line, text, attempt) {
   const voice = cast[lang][line.role === 'commander' ? 'commander' : 'crew'];
+  return {
+    voiceId: voice.voice_id,
+    text: `[${line.delivery}] ${text}`,
+    modelId: 'eleven_v4',
+    languageCode: LANG_CODE[lang] || lang,
+    stability: 0.6,
+    similarity: 0.8,
+    take: attempt,
+    outputFormat: 'pcm_24000',
+  };
+}
+
+async function bestTake(lang, line, text) {
   // Very short calls ("Up!", "HE!") transcribe loosely; accept a lower bar.
   const bar = normalize(text).length <= 4 ? 0.34 : 0.62;
   let best = null;
   const tried = [];
   for (let attempt = 0; attempt < attempts && !stop; attempt++) {
-    const { file, cost } = await speech({
-      voiceId: voice.voice_id,
-      text: `[${line.delivery}] ${text}`,
-      modelId: 'eleven_v4',
-      languageCode: LANG_CODE[lang] || lang,
-      stability: 0.6,
-      similarity: 0.8,
-      take: attempt,
-      outputFormat: 'pcm_24000',
-    });
+    const { file, cost } = await speech(speechParams(lang, line, text, attempt));
     spent += cost;
     if (spent >= budget) stop = true;
     const raw = readFileSync(file);
@@ -205,6 +217,27 @@ async function bestTake(lang, line, text) {
 }
 
 const languages = (langsArg || script.languages);
+if (dry) {
+  let takes = 0;
+  let uncached = 0;
+  let chars = 0;
+  for (const lang of languages) {
+    if (!cast[lang]) continue;
+    for (const line of script.lines.filter((l) => !linesArg || linesArg.includes(l.id))) {
+      const kept = append ? (state[lang]?.[line.id]?.length ?? 0) : 0;
+      for (const text of (line[lang] || []).slice(kept)) {
+        takes++;
+        const params = speechParams(lang, line, text, 0);
+        if (speechCached(params)) continue;
+        uncached++;
+        chars += params.text.length;
+      }
+    }
+  }
+  console.log(`dry: ${takes} takes, ${uncached} not cached, ${chars} characters on their first attempt `
+    + `(~${Math.round(chars * 1.5)} credits with re-rolls; speech-to-text adds about one credit a take)`);
+  process.exit(0);
+}
 for (const lang of languages) {
   if (!cast[lang]) { console.warn(`no cast for ${lang}`); continue; }
   const dir = join(OUT, lang);
@@ -213,9 +246,16 @@ for (const lang of languages) {
   const jobs = script.lines.filter((line) => !linesArg || linesArg.includes(line.id)).map(async (line) => {
     const takes = line[lang];
     if (!Array.isArray(takes) || !takes.length) { failures.push(`${lang}/${line.id}: no script`); return; }
-    for (const name of readdirSync(dir)) if (takeFileOf(line.id).test(name)) rmSync(join(dir, name));
-    const shipped = [];
-    for (let i = 0; i < takes.length && !stop; i++) {
+    // --append: the shipped takes stay (their files and lengths) when the script still has at least as many
+    const previous = state[lang][line.id] ?? [];
+    const kept = append && previous.length <= takes.length && previous.every((_, i) => existsSync(join(dir, `${line.id}_${i}.webm`)))
+      ? previous.length : 0;
+    for (const name of readdirSync(dir)) {
+      const match = takeFileOf(line.id).test(name) ? Number(name.slice(line.id.length + 1).split('.')[0]) : -1;
+      if (match >= kept) rmSync(join(dir, name));
+    }
+    const shipped = previous.slice(0, kept);
+    for (let i = kept; i < takes.length && !stop; i++) {
       try {
         const best = await bestTake(lang, line, takes[i]);
         if (!best) continue;
