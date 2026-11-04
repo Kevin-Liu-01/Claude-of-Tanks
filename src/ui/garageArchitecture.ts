@@ -124,6 +124,39 @@ interface GarageKitStats {
 }
 
 const CACHE_LIMIT = 2;
+
+type GarageArchitectureKey = GarageVariant['architecture'];
+
+/**
+ * 2026-11-02 audit R5: a scene pack's one phase. building: its kit, prepare and bake run. attached: built, hidden under
+ * the group, its textures not warmed. warming: its textures upload a frame at a time. warmed: ready to show (the shown
+ * pack is always a warmed one). retired: disposed, and gone from the controller.
+ */
+export type GaragePackPhase = 'building' | 'attached' | 'warming' | 'warmed' | 'retired';
+
+/** Each phase's allowed next phases (the transition function refuses any other move). */
+export const GARAGE_PACK_MOVES: Readonly<Record<GaragePackPhase, readonly GaragePackPhase[]>> = Object.freeze({
+  building: ['attached', 'warmed', 'retired'],
+  attached: ['warming', 'warmed', 'retired'],
+  // back to attached: a cancelled prewarm, or a context lost mid-warm
+  warming: ['warmed', 'attached', 'retired'],
+  // back to attached: the renderer's warm state was reset (a lost WebGL context)
+  warmed: ['attached', 'retired'],
+  retired: [],
+});
+
+interface GaragePackRecord {
+  readonly key: GarageArchitectureKey;
+  phase: GaragePackPhase;
+  build: GarageEnvironmentBuild | null;
+  /** The step in flight (the build or the warm), shared by every caller asking for this pack. */
+  promise: Promise<GarageEnvironmentBuild | null> | null;
+  /** Only a prewarm has asked for it: a newer prewarm or a selection elsewhere may cancel it. */
+  speculative: boolean;
+  cancelled: boolean;
+  /** Callers between its build and its reveal (trim never evicts it under them). */
+  holds: number;
+}
 const TEXTURE_READY_TIMEOUT_MS = 600;
 const loadEnvironmentKit = () => import('./garageEnvironmentKit.ts');
 type GarageEnvironmentKitLoader = typeof loadEnvironmentKit;
@@ -168,23 +201,6 @@ function horizonStyleStat(value: string | null | undefined): GarageArchitectureS
     default:
       return 'none';
   }
-}
-
-function selectedBuildIsReady(
-  selected: GarageVariant | null,
-  selectedBuild: GarageEnvironmentBuild | null | undefined,
-  active: GarageEnvironmentBuild | null,
-  group: THREE.Group,
-  retiredBuilds: WeakSet<GarageEnvironmentBuild>,
-): selectedBuild is GarageEnvironmentBuild {
-  return !!selected
-    && !!selectedBuild
-    && active === selectedBuild
-    && active.root === selectedBuild.root
-    && selectedBuild.root.parent === group
-    && !retiredBuilds.has(selectedBuild)
-    && selectedBuild.root.userData.architectureKey === selected.architecture
-    && selectedBuild.root.userData.ready === true;
 }
 
 function selectedBuildIsPresented(
@@ -315,20 +331,51 @@ export function createGarageArchitectureController(
   group.userData.perfOwner = 'garage/architecture';
   parent.add(group);
 
-  const cache = new Map<GarageVariant['architecture'], GarageEnvironmentBuild>();
-  const pending = new Map<GarageVariant['architecture'], Promise<GarageEnvironmentBuild | null>>();
-  const warmPending = new Map<GarageVariant['architecture'], Promise<GarageEnvironmentBuild | null>>();
-  const preparationPending = new Map<GarageVariant['architecture'], Promise<GarageEnvironmentBuild | null>>();
+  // 2026-11-02 audit R5: one record per scene pack (its phase, its build, its step in flight) and one transition
+  // function, instead of four promise maps, two sets, a WeakSet and a seven-way readiness inference. The map's order is
+  // the LRU (touch moves a record to its end).
+  const packs = new Map<GarageArchitectureKey, GaragePackRecord>();
   let assets: GarageEnvironmentAssetLibrary | null = null;
-  let active: GarageEnvironmentBuild | null = null;
+  // the shown pack: always a warmed record
+  let active: GaragePackRecord | null = null;
   let selected: GarageVariant | null = null;
   let lastBuildMs = 0;
   let environmentKitPromise: ReturnType<typeof loadEnvironmentKit> | null = null;
   let selectionGeneration = 0;
-  const warmedArchitectures = new Set<GarageVariant['architecture']>();
-  const initializedTextures = new WeakSet<THREE.Texture>();
-  const retiredBuilds = new WeakSet<GarageEnvironmentBuild>();
+  // Renderer-lifetime upload latch, replaced (not cleared) when the WebGL context is lost: a restored context holds
+  // none of these uploads. `rendererEpoch` lets a warm in flight across a loss land renewable instead of warmed.
+  let initializedTextures = new WeakSet<THREE.Texture>();
+  let rendererEpoch = 0;
   let disposed = false;
+
+  // The one writer of a record's phase. A move the table does not allow is refused; retiring disposes the build and
+  // drops the record, so "cached but retired" cannot exist.
+  const advance = (record: GaragePackRecord, next: GaragePackPhase): boolean => {
+    if (!GARAGE_PACK_MOVES[record.phase].includes(next)) return false;
+    record.phase = next;
+    if (next === 'retired') {
+      if (packs.get(record.key) === record) packs.delete(record.key);
+      if (active === record) active = null;
+      record.promise = null;
+      record.build?.dispose();
+    }
+    return true;
+  };
+  const current = (record: GaragePackRecord): boolean => !disposed && packs.get(record.key) === record;
+  const isCurrentSelection = (generation: number, variant: GarageVariant): boolean => !disposed
+    && generation === selectionGeneration && selected?.architecture === variant.architecture;
+  const settleStep = (record: GaragePackRecord, task: Promise<GarageEnvironmentBuild | null>): void => {
+    const clear = (): void => { if (record.promise === task) record.promise = null; };
+    task.then(clear, clear);
+  };
+  // A hover prewarm is the only caller that may be cancelled: a newer prewarm or a selection elsewhere stops it at its
+  // next checkpoint (before the bake, between texture uploads), so N hovered cards no longer cost N bakes.
+  const cancelPrewarms = (keep: GarageArchitectureKey): void => {
+    for (const record of packs.values()) {
+      if (record.speculative && record.key !== keep && record.key !== selected?.architecture
+        && (record.phase === 'building' || record.phase === 'warming')) record.cancelled = true;
+    }
+  };
 
   const getEnvironmentKit = (): ReturnType<GarageEnvironmentKitLoader> => {
     if (!environmentKitPromise) {
@@ -359,50 +406,46 @@ export function createGarageArchitectureController(
     return assets;
   };
 
-  const touch = (key: GarageVariant['architecture'], build: GarageEnvironmentBuild): void => {
-    cache.delete(key);
-    cache.set(key, build);
-  };
-
-  const retire = (
-    key: GarageVariant['architecture'],
-    build: GarageEnvironmentBuild,
-  ): void => {
-    if (cache.get(key) === build) cache.delete(key);
-    warmedArchitectures.delete(key);
-    if (active === build) active = null;
-    retiredBuilds.add(build);
-    build.dispose();
+  const touch = (record: GaragePackRecord): void => {
+    packs.delete(record.key);
+    packs.set(record.key, record);
   };
 
   const trim = (): void => {
-    while (cache.size > CACHE_LIMIT) {
-      const oldest = [...cache.entries()].find(([key, build]) => (
-        build !== active
+    while (packs.size > CACHE_LIMIT) {
+      const oldest = [...packs.values()].find((record) => (
+        record !== active
         // A selected build can finish its preparation promise one microtask
         // before the caller presents it. Never let a concurrent selector
         // prewarm evict that handoff target in the gap.
-        && key !== selected?.architecture
-        && !pending.has(key)
-        && !warmPending.has(key)
-        && !preparationPending.has(key)
+        && record.key !== selected?.architecture
+        && record.phase !== 'building'
+        && record.phase !== 'warming'
+        && record.holds === 0
       ));
       if (!oldest) return;
-      const [key, build] = oldest;
-      retire(key, build);
+      advance(oldest, 'retired');
     }
   };
 
+  const builtPacks = (): number => {
+    let count = 0;
+    for (const record of packs.values()) if (record.build) count += 1;
+    return count;
+  };
+
+
   const collectStats = (): GarageArchitectureStats => {
     const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
-    const selectedBuild = selected ? cache.get(selected.architecture) : null;
-    const selectedReady = selectedBuildIsReady(
-      selected, selectedBuild, active, group, retiredBuilds,
-    );
+    const record = selected ? packs.get(selected.architecture) ?? null : null;
+    const selectedBuild = record?.build ?? null;
+    // ready is the selected record's own phase: warmed, shown, and the build's own completion flag
+    const selectedReady = !!record && !!selectedBuild && active === record && record.phase === 'warmed'
+      && selectedBuild.root.userData.ready === true;
     const selectedPresented = selectedBuildIsPresented(
       selected, selectedBuild, group, selectedReady,
     );
-    const data = selectedReady ? selectedBuild.root.userData : {};
+    const data = selectedReady && selectedBuild ? selectedBuild.root.userData : {};
     return {
       key: selected?.architecture || 'field_shed',
       mapId: selected?.mapId || 'verdant',
@@ -412,7 +455,7 @@ export function createGarageArchitectureController(
       objects: numericStat(data.objects),
       drawCalls: drawCallStat(data.drawCalls, data.objects),
       triangles: numericStat(data.triangles),
-      cached: cache.size,
+      cached: builtPacks(),
       cacheLimit: CACHE_LIMIT,
       residentTextureSets: textureStats.residentSets,
       referencedTextureSets: textureStats.referencedSets,
@@ -486,8 +529,7 @@ export function createGarageArchitectureController(
       placementOverlaps: numericStat(data.placementOverlaps),
       maxGroundContactErrorM: numericStat(data.maxGroundContactErrorM),
       platformGroundClearanceM: numericStat(data.platformGroundClearanceM),
-      outdoorWarmReady: selected?.architecture === 'field_shed'
-        || warmedArchitectures.has(selected?.architecture || 'field_shed'),
+      outdoorWarmReady: selected?.architecture === 'field_shed' || record?.phase === 'warmed',
       lastBuildMs,
       kit: (data.kit as GarageKitStats | null | undefined) ?? null,
     };
@@ -499,18 +541,15 @@ export function createGarageArchitectureController(
     return stats;
   };
 
-  const show = (variant: GarageVariant, build: GarageEnvironmentBuild): boolean => {
-    if (retiredBuilds.has(build)
-      || cache.get(variant.architecture) !== build
-      || build.root.parent !== group) {
-      return false;
-    }
-    if (active && active !== build) active.root.visible = false;
-    active = build;
-    active.root.visible = true;
-    active.root.userData.architectureKey = variant.architecture;
-    active.root.userData.mapId = variant.mapId;
-    touch(variant.architecture, build);
+  const show = (variant: GarageVariant, record: GaragePackRecord): boolean => {
+    const build = record.build;
+    if (!build || !current(record) || record.phase !== 'warmed') return false;
+    if (active && active !== record && active.build) active.build.root.visible = false;
+    active = record;
+    build.root.visible = true;
+    build.root.userData.architectureKey = variant.architecture;
+    build.root.userData.mapId = variant.mapId;
+    touch(record);
     trim();
     publish();
     requestRender();
@@ -519,9 +558,10 @@ export function createGarageArchitectureController(
 
   const attach = (
     variant: GarageVariant,
+    record: GaragePackRecord,
     build: GarageEnvironmentBuild,
   ): GarageEnvironmentBuild | null => {
-    if (disposed) {
+    if (!current(record) || record.phase !== 'building') {
       build.dispose();
       return null;
     }
@@ -529,31 +569,41 @@ export function createGarageArchitectureController(
     build.root.userData.mapId = variant.mapId;
     build.root.visible = false;
     group.add(build.root);
-    if (variant.architecture === 'field_shed') warmedArchitectures.add(variant.architecture);
-    touch(variant.architecture, build);
+    record.build = build;
+    // field_shed has nothing to warm: it attaches ready to show
+    const attached: GaragePackPhase = variant.architecture === 'field_shed' ? 'warmed' : 'attached';
+    advance(record, attached);
+    touch(record);
     trim();
-    if (selected?.architecture === variant.architecture
-        && warmedArchitectures.has(variant.architecture)) {
-      show(variant, build);
-    }
-    return build;
+    if (selected?.architecture === variant.architecture && attached === 'warmed') show(variant, record);
+    return current(record) ? build : null;
   };
 
-  const ensure = (variant: GarageVariant): Promise<GarageEnvironmentBuild | null> => {
-    const cached = cache.get(variant.architecture);
-    if (cached) return Promise.resolve(cached);
-    const inFlight = pending.get(variant.architecture);
-    if (inFlight) return inFlight;
+  const ensure = (variant: GarageVariant, speculative: boolean): Promise<GarageEnvironmentBuild | null> => {
+    const existing = packs.get(variant.architecture);
+    if (existing) {
+      // a fresh request revives a cancelled pack; a selection takes over a prewarm of it (no longer cancellable)
+      existing.cancelled = false;
+      if (!speculative) existing.speculative = false;
+      if (existing.phase === 'building' && existing.promise) return existing.promise;
+      return Promise.resolve(existing.build);
+    }
+    const record: GaragePackRecord = {
+      key: variant.architecture, phase: 'building', build: null, promise: null, speculative, cancelled: false, holds: 0,
+    };
+    packs.set(record.key, record);
+    const stillWanted = (): boolean => current(record) && !record.cancelled;
     const task = (variant.architecture === 'field_shed'
       ? Promise.resolve(buildVerdantWorkshopOwner())
       : getEnvironmentKit().then(async (kit) => {
-      if (disposed) return null;
+      if (!stillWanted()) return null;
       const library = ensureAssets(kit);
       // its prepared pieces and skyline stay cached until its bake, however many Garages prepare at once
       const release = kit.pinGarageEnvironmentCaches(variant);
       try {
         await kit.prepareGarageEnvironmentAssets(library, variant);
-        if (disposed) return null;
+        // a cancelled prewarm (or a disposed controller) skips the synchronous bake, the switch's long task
+        if (!stillWanted()) return null;
         const startedAt = performance.now();
         const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
         lastBuildMs = performance.now() - startedAt;
@@ -561,25 +611,32 @@ export function createGarageArchitectureController(
       } finally {
         release();
       }
-    })).then((build) => build ? attach(variant, build) : null)
-      .finally(() => pending.delete(variant.architecture));
-    pending.set(variant.architecture, task);
+    })).then((build) => {
+      if (build) return attach(variant, record, build);
+      if (current(record)) advance(record, 'retired');
+      return null;
+    }, (error) => {
+      // a failed load or build leaves no record behind: the next request starts over
+      if (current(record)) advance(record, 'retired');
+      throw error;
+    });
+    record.promise = task;
+    settleStep(record, task);
     return task;
   };
 
-  const warmForReveal = (
-    variant: GarageVariant,
-    build: GarageEnvironmentBuild | null,
-  ): Promise<GarageEnvironmentBuild | null> => {
-    if (!build || disposed || warmedArchitectures.has(variant.architecture)) {
-      return Promise.resolve(build);
-    }
-    const current = warmPending.get(variant.architecture);
-    if (current) return current;
+  const warmForReveal = (record: GaragePackRecord): Promise<GarageEnvironmentBuild | null> => {
+    if (!current(record) || !record.build) return Promise.resolve(null);
+    if (record.phase === 'warmed') return Promise.resolve(record.build);
+    if (record.phase === 'warming' && record.promise) return record.promise;
+    if (!advance(record, 'warming')) return Promise.resolve(null);
+    const build = record.build;
+    const epoch = rendererEpoch;
+    const live = (): boolean => current(record) && record.phase === 'warming';
     const task = (async () => {
       const { renderer } = engineCtx;
       if (!renderer || typeof document === 'undefined') {
-        warmedArchitectures.add(variant.architecture);
+        advance(record, 'warmed');
         return build;
       }
       const textures = new Set<THREE.Texture>();
@@ -596,76 +653,100 @@ export function createGarageArchitectureController(
         build.texturesReady || Promise.resolve(),
         new Promise((resolve) => setTimeout(resolve, TEXTURE_READY_TIMEOUT_MS)),
       ]);
-      if (disposed || cache.get(variant.architecture) !== build) return null;
+      if (!live()) return null;
       // Upload each shared texture exactly once. Rebuilt LRU packs reference
       // the same library objects, so reinitializing all twelve images on every
       // switch only stretched a cheap 8-15 ms geometry build across hundreds
       // of milliseconds of redundant presentation frames.
       for (const texture of textures) {
+        // a cancelled prewarm stops between uploads; it stays built, and a later request warms it
+        if (record.cancelled) { advance(record, 'attached'); return null; }
         if (initializedTextures.has(texture)) continue;
+        // (2026-11-02 audit R5) only an upload is latched: a loader image that missed the 600 ms race has nothing to
+        // upload yet (three uploads only a texture whose version moved), and latching it skipped its warm for good
+        if (texture.version === 0) continue;
         renderer.initTexture(texture);
         initializedTextures.add(texture);
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-        if (disposed || cache.get(variant.architecture) !== build) return null;
+        if (!live()) return null;
       }
       // garageStage submits exact opaque, transparent, instanced, alpha-test,
       // vertex-color, and CSM program seeds during the covered Verdant boot.
       // compileAsync on every destination never resolved promptly on ANGLE,
       // so the old race timeout added a guaranteed ~900 ms to every switch
       // without compiling a program shape that had not already been seeded.
-      if (disposed || cache.get(variant.architecture) !== build) return null;
-      warmedArchitectures.add(variant.architecture);
+      if (!live()) return null;
+      // a context lost during the warm took its uploads with it: the pack stays renewable
+      if (epoch !== rendererEpoch) { advance(record, 'attached'); return null; }
+      advance(record, 'warmed');
       publish();
       return build;
-    })().finally(() => warmPending.delete(variant.architecture));
-    warmPending.set(variant.architecture, task);
+    })();
+    record.promise = task;
+    settleStep(record, task);
     return task;
   };
 
-  const prepare = async (variant: GarageVariant): Promise<GarageEnvironmentBuild | null> => {
-    const existing = preparationPending.get(variant.architecture);
-    if (existing) return existing;
-    const task = Promise.resolve()
-      .then(() => ensure(variant))
-      .then((build) => warmForReveal(variant, build))
-      .finally(() => {
-        preparationPending.delete(variant.architecture);
-        trim();
-      });
-    preparationPending.set(variant.architecture, task);
-    return task;
+  const prepare = async (variant: GarageVariant, speculative = false): Promise<GarageEnvironmentBuild | null> => {
+    if (speculative) cancelPrewarms(variant.architecture);
+    const building = ensure(variant, speculative);
+    // held from the request to the reveal: the cache trim never evicts a pack its caller is about to warm or show
+    const held = packs.get(variant.architecture);
+    if (held) held.holds += 1;
+    try {
+      const build = await building;
+      const record = packs.get(variant.architecture);
+      if (!build || !record || record.build !== build) return null;
+      return await warmForReveal(record);
+    } finally {
+      if (held) held.holds -= 1;
+      trim();
+    }
   };
+
+  /**
+   * The WebGL context was lost: every upload the latches record is gone. Every cached pack but the shown one (the
+   * covered GPU restore re-uploads the visible Garage) warms again before its next reveal.
+   */
+  const resetRendererWarmState = (): void => {
+    rendererEpoch += 1;
+    initializedTextures = new WeakSet<THREE.Texture>();
+    for (const record of packs.values()) {
+      if (record !== active && record.phase === 'warmed' && record.key !== 'field_shed') advance(record, 'attached');
+    }
+    publish();
+  };
+  const canvas = engineCtx.renderer?.domElement;
+  const onContextLost = (): void => { if (!disposed) resetRendererWarmState(); };
+  if (typeof canvas?.addEventListener === 'function') canvas.addEventListener('webglcontextlost', onContextLost);
 
   function setVariant(variant: GarageVariant): GarageArchitectureStats {
     selected = variant;
     const generation = ++selectionGeneration;
-    const cached = cache.get(variant.architecture);
-    const shown = !!cached
-      && warmedArchitectures.has(variant.architecture)
-      && show(variant, cached);
+    // (2026-11-02 audit 05-ui-2 #4) a surface set that failed while a cached pack held it is asked for again on every
+    // selection, so switching between two cached packs (no bake, no acquire) still heals it
+    assets?.retryFailed();
+    cancelPrewarms(variant.architecture);
+    const record = packs.get(variant.architecture);
+    const shown = !!record && record.phase === 'warmed' && show(variant, record);
     if (shown) {
       lastBuildMs = 0;
     } else {
-      if (cached && (retiredBuilds.has(cached) || cached.root.parent !== group)) {
-        retire(variant.architecture, cached);
-      }
       publish();
       // UI selection can change several times in one task (keyboard repeat,
       // rapid cards, automated convergence). Start only the final requested
       // pack instead of synchronously constructing every stale intermediate.
       queueMicrotask(() => {
-        if (!disposed && generation === selectionGeneration
-            && selected?.architecture === variant.architecture) {
-          void prepare(variant).then((build) => {
-            if (build && !disposed && generation === selectionGeneration
-                && selected?.architecture === variant.architecture) show(variant, build);
-          }).catch(() => {
-            // The stage owns bounded retry/fallback presentation. Keep this
-            // background convenience path from turning the same recoverable
-            // load failure into an unhandled rejection.
-            if (!disposed && generation === selectionGeneration) publish();
-          });
-        }
+        if (!isCurrentSelection(generation, variant)) return;
+        void prepare(variant).then((build) => {
+          const ready = packs.get(variant.architecture);
+          if (build && ready && isCurrentSelection(generation, variant)) show(variant, ready);
+        }).catch(() => {
+          // The stage owns bounded retry/fallback presentation. Keep this
+          // background convenience path from turning the same recoverable
+          // load failure into an unhandled rejection.
+          if (!disposed && generation === selectionGeneration) publish();
+        });
       });
     }
     return collectStats();
@@ -674,37 +755,34 @@ export function createGarageArchitectureController(
   return {
     group,
     setVariant,
+    resetRendererWarmState,
     async prepareSelector(): Promise<void> {
       await getEnvironmentKit();
     },
     prepareVariant(variant: GarageVariant): Promise<GarageArchitectureStats> {
-      return prepare(variant).then(() => collectStats());
+      return prepare(variant, true).then(() => collectStats());
     },
     stats: collectStats,
+    /** The pack records' phases, oldest first (diagnostics and receipts). */
+    packPhases: (): Array<{ key: GarageArchitectureKey; phase: GaragePackPhase }> => (
+      [...packs.values()].map((record) => ({ key: record.key, phase: record.phase }))),
     async whenReady(): Promise<GarageArchitectureStats> {
+      // the same staleness rule as setVariant's reveal: the selection this call started under must still stand
       const target = selected;
+      const generation = selectionGeneration;
       if (target) {
         const build = await prepare(target);
-        if (build && selected === target && !show(target, build)) {
-          // Defensive recovery for any future lifecycle path that retires a
-          // build while an async caller still owns its completion value.
-          const replacement = await ensure(target);
-          if (replacement && selected === target) show(target, replacement);
-        }
+        const record = packs.get(target.architecture);
+        if (build && record && isCurrentSelection(generation, target)) show(target, record);
       }
       return collectStats();
     },
     dispose() {
       disposed = true;
+      if (typeof canvas?.removeEventListener === 'function') canvas.removeEventListener('webglcontextlost', onContextLost);
       group.removeFromParent();
-      for (const build of cache.values()) {
-        retiredBuilds.add(build);
-        build.dispose();
-      }
-      cache.clear();
-      pending.clear();
-      warmPending.clear();
-      preparationPending.clear();
+      for (const record of [...packs.values()]) advance(record, 'retired');
+      packs.clear();
       active = null;
       assets?.dispose();
       assets = null;

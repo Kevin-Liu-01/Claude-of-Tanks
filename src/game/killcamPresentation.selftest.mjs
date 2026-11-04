@@ -72,8 +72,10 @@ assert.match(source, /const finalBlow = pb\.kind === 'final' && !playerKill && !
   'a final blow between two other tanks reads as a neutral line');
 assert.match(source, /'killcam\.finalRamLine' : 'killcam\.finalBlowLine'/, 'the neutral line has ram and shell variants');
 assert.match(source, /\|\| pb\.kind === 'final';/, 'the final-kill x-ray draws the victim as a corpse');
-assert.equal((source.match(/lastLethal = lastDestroyed = null;\n\s*lastHitByTarget\.clear\(\);/g) || []).length, 2,
-  'both battle-entry paths clear the final-kill capture');
+// (2026-11-02 audit 02-game-2 #5) one reset holds the list; both battle-entry paths run it
+assert.equal((source.match(/lastLethal = lastDestroyed = null;\n\s*lastHitByTarget\.clear\(\);/g) || []).length, 1,
+  'one capture reset clears the final-kill capture');
+assert.equal((source.match(/resetCaptureMemory\(\);/g) || []).length, 2, 'both battle-entry paths run it');
 
 assert.match(source, /const poseHistory = new Map(?:<[^;]+>)?\(\)/,
   'killcam retains the preceding simulation frame instead of reconstructing it after death');

@@ -188,6 +188,9 @@ export interface DamagePanelController {
   root: HTMLElement;
   prepareTankMasks(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): Promise<boolean>;
   setTank(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): void;
+  /** The battle is over (2026-11-02 audit, 04-ui-1 #7): a pending mask retry is cancelled, late builds are ignored, and
+   *  the panel lets go of the battle's tank and its visual until the next setTank. */
+  clear(): void;
   update(combat: DamagePanelCombatState): void;
   setPose(hullYaw?: number | null, turretYaw?: number | null, camYaw?: number | null): void;
   setTurretYaw(yaw?: number | null): void;
@@ -1165,6 +1168,19 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       refreshDom();
       requestMasks();
       draw();
+    },
+
+    clear() {
+      cancelMaskRetry();
+      maskRequestSerial += 1;
+      maskAttempt = 0;
+      maskFailureCode = null;
+      maskSourceVisual = null;
+      spec = null;
+      masks = null;
+      tints = null;
+      anchors = null;
+      lastDrawSig = null;
     },
 
     /**

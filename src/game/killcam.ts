@@ -638,6 +638,9 @@ interface KillcamDeps {
   prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
   /** False while the Garage's own light set is up (main.ts setGarageSpots): the replay lights then leave the count. */
   battleLightsActive?(): boolean;
+  /** Whether the settings panel is open: the ally chase never orbits behind it (2026-11-02 audit, 02-game-2 #5: this
+   *  read window.__DEBUG.settings, which only diagnostics builds install, so production orbited behind the panel). */
+  isSettingsOpen?(): boolean;
 }
 
 interface KillcamDebugSurface {
@@ -1371,6 +1374,8 @@ export function createKillCam(deps: KillcamDeps) {
   // particle side of the beat (the turret pop still plays off the visual).
   const getFx = deps.getFx
     || (() => debugSurface()?.fx || null);
+  const isSettingsOpen = deps.isSettingsOpen
+    || (() => !!debugSurface()?.settings?.isOpen?.());
 
   // ---- LIGHT-COUNT / PROGRAM STABILITY --------------------------------------
   // three.js recompiles EVERY lit material program when the renderer's light
@@ -1467,6 +1472,22 @@ export function createKillCam(deps: KillcamDeps) {
   let lastLethal: ReplaySnapshot | null = null;
   const lastHitByTarget = new Map<string, ReplaySnapshot>();
   let lastDestroyed: DestroyedRecord | null = null;
+  // (2026-11-02 audit, 02-game-2 #5) the one reset of the capture memory every battle entry runs: the two entry paths
+  // (ui:battleStart and phase:change battle) kept two hand-written copies that could drift
+  const resetCaptureMemory = (): void => {
+    clearTraj();
+    poseHistory.clear();
+    turretTracks.clear();
+    pendingDeath = pendingVictory = lastHitOnPlayer = null;
+    lastLethal = lastDestroyed = null;
+    lastHitByTarget.clear();
+  };
+  // the no-replay death's deferred spectate handover: cancel() revokes it with the rest of the replay
+  let spectateHandoffTimer: ReturnType<typeof setTimeout> | null = null;
+  const cancelSpectateHandoff = (): void => {
+    if (spectateHandoffTimer !== null) clearTimeout(spectateHandoffTimer);
+    spectateHandoffTimer = null;
+  };
 
   // ---- playback state ----
   let active = false;
@@ -1799,12 +1820,7 @@ export function createKillCam(deps: KillcamDeps) {
         dropTraj(p.shellId);
       });
       bus.on('ui:battleStart', () => {
-        clearTraj();
-        poseHistory.clear();
-        turretTracks.clear();
-        pendingDeath = pendingVictory = lastHitOnPlayer = null;
-        lastLethal = lastDestroyed = null;
-        lastHitByTarget.clear();
+        resetCaptureMemory();
         api.cancel();
         spectate.stop(false); // fresh battle never inherits an ally chase
       });
@@ -1862,12 +1878,7 @@ export function createKillCam(deps: KillcamDeps) {
         // skip it — a previous battle's pendingDeath then seeded a replay
         // whose targetEnt belonged to a retired roster (stale visual, wrong
         // map pose).
-        clearTraj();
-        poseHistory.clear();
-        turretTracks.clear();
-        pendingDeath = pendingVictory = lastHitOnPlayer = null;
-        lastLethal = lastDestroyed = null;
-        lastHitByTarget.clear();
+        resetCaptureMemory();
       });
     },
 
@@ -2004,7 +2015,10 @@ export function createKillCam(deps: KillcamDeps) {
         // so the caller's fallback (rig.startDeathCam) runs first — the
         // controller's rig.startSpectate then supersedes it exactly like the
         // replay exit path. maybeStart() self-gates on result/phase/allies.
-        if (result === 'defeat') setTimeout(() => spectate.maybeStart(), 80);
+        if (result === 'defeat') {
+          cancelSpectateHandoff();
+          spectateHandoffTimer = setTimeout(() => { spectateHandoffTimer = null; spectate.maybeStart(); }, 80);
+        }
         return false;
       }
       begin(snap, kind, onDone, xrayOnly, !!(opts && opts.freshKill));
@@ -2075,6 +2089,7 @@ export function createKillCam(deps: KillcamDeps) {
      */
     cancel() {
       clearExit();
+      cancelSpectateHandoff();
       if (active) finish(false);
       else resetDomPresentation();
     },
@@ -6199,11 +6214,9 @@ export function createKillCam(deps: KillcamDeps) {
         lastX = lastY = null;
         return;
       }
-      // never orbit behind an open settings panel (read-only introspection —
-      // the same seam this controller already reads battle state through)
+      // never orbit behind an open settings panel (the injected port; main.ts wires the live settings)
       try {
-        const dbg = debugSurface();
-        if (dbg && dbg.settings && dbg.settings.isOpen && dbg.settings.isOpen()) return;
+        if (isSettingsOpen()) return;
       } catch (_) { /* no settings surface — orbit freely */ }
       let dx;
       let dy;

@@ -18,7 +18,7 @@ const loaders = {
   },
   damagePanel: async () => ({
     createDamagePanel() {
-      const panel = { id: 'damage-panel' };
+      const panel = { id: 'damage-panel', clear() { events.push(['clear', panel]); } };
       events.push(['panel', panel]);
       return panel;
     },
@@ -28,7 +28,9 @@ const loaders = {
   }),
 };
 
-const bus = { id: 'bus' };
+const listeners = new Map();
+const bus = { id: 'bus', on(event, listener) { listeners.set(event, [...(listeners.get(event) || []), listener]); return () => {}; } };
+const emitBus = (event, payload) => { for (const listener of listeners.get(event) || []) listener(payload); };
 const engineCtx = { id: 'engine' };
 const access = createBattleHudAccess(bus, engineCtx, loaders);
 
@@ -49,4 +51,10 @@ assert.equal(events[2][1], bundle.damagePanel);
 assert.equal(events[3][1], bundle.damagePanel);
 
 assert.equal(await access.preload(), bundle, 'a ready runtime must be reused');
+
+// 2026-11-02 audit (04-ui-1 #7): the return to the Garage clears the panel (a pending mask retry never runs there)
+emitBus('phase:change', { phase: 'battle' });
+assert.equal(events.filter(([kind]) => kind === 'clear').length, 0, 'a battle phase keeps the panel');
+emitBus('phase:change', { phase: 'garage' });
+assert.deepEqual(events.filter(([kind]) => kind === 'clear'), [['clear', bundle.damagePanel]], 'the Garage phase clears it');
 console.log('battleHudAccess.selftest: retryable battle-only HUD owner passed');

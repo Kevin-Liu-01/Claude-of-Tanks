@@ -28,7 +28,14 @@ function failureReason(error: RuntimeValue, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-/** One reusable, failure-only notice; return/entry owners keep their safe UI. */
+const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.onLine === false;
+
+/**
+ * One reusable, failure-only notice; return/entry owners keep their safe UI. Its one action is declared (2026-11-02
+ * audit, 05-ui-2 #8): none, retry, or reload, and a reload while offline waits for the network: the button shows
+ * disabled (a press there used to be ignored silently) and the browser's `online` event enables it again. Two notices
+ * never stand at once: opening one closes the other (modal.ts open() closes the active modal).
+ */
 export function createGarageReturnFailurePresenter(
   makeModal: () => FailureModal,
   getTitle: () => string,
@@ -38,6 +45,20 @@ export function createGarageReturnFailurePresenter(
   let retryButton: HTMLButtonElement | null = null;
   let retryAction: (() => void) | null = null;
   let reloads = false;
+  let stopWaitingOnline: (() => void) | null = null;
+  const stopWaiting = (): void => { stopWaitingOnline?.(); stopWaitingOnline = null; };
+  // the action's button follows the network while a reload waits for it
+  const syncAction = (): void => {
+    if (!retryButton) return;
+    retryButton.hidden = !retryAction;
+    const waiting = !!retryAction && reloads && isOffline();
+    retryButton.disabled = waiting;
+    if (waiting && !stopWaitingOnline && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      const onOnline = (): void => { stopWaiting(); syncAction(); };
+      window.addEventListener('online', onOnline);
+      stopWaitingOnline = () => window.removeEventListener('online', onOnline);
+    } else if (!waiting) stopWaiting();
+  };
   const show = (error: RuntimeValue, retry: (() => void) | null = null): void => {
     const title = getTitle();
     modal ??= makeModal();
@@ -57,8 +78,9 @@ export function createGarageReturnFailurePresenter(
       button.innerHTML = `${uiIconSVG('rematch', 17)}<span>${t('battle.entryFailed.retry')}</span>`;
       button.addEventListener('click', () => {
         const action = retryAction;
-        // (offline, a reload is the browser's error page: the notice stays and the press waits)
-        if (reloads && navigator.onLine === false) return;
+        // (offline, a reload is the browser's error page: the notice stays and the action waits, shown disabled)
+        if (reloads && isOffline()) { syncAction(); return; }
+        stopWaiting();
         modal?.close({ restoreFocus: false, immediate: true });
         action?.();
       });
@@ -66,14 +88,14 @@ export function createGarageReturnFailurePresenter(
       retryButton = button;
     }
     if (retryButton) {
-      retryButton.hidden = !retryAction;
       const label = retryButton.querySelector('span');
       if (label) label.textContent = t(reloads ? 'loadFailed.reload' : 'battle.entryFailed.retry');
     }
+    syncAction();
     modal.open();
   };
   return Object.assign(show, {
-    hide: () => modal?.close({ restoreFocus: false, immediate: true }),
+    hide: () => { stopWaiting(); modal?.close({ restoreFocus: false, immediate: true }); },
   });
 }
 

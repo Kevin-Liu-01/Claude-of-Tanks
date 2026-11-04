@@ -541,10 +541,23 @@ const TEX_CACHE = new Map<string, SharedTextureEntry>();
 const TEXTURE_LEASE_PENDING = new Map<string, number>();
 
 interface EntryPaintState {
+  /** Moves each time a writer takes the entry: the newest writer owns it. */
   revision: number;
   active: number;
   idle: Promise<void> | null;
   resolveIdle: (() => void) | null;
+  /**
+   * 2026-11-02 audit R5: true from the moment a writer starts on the live canvases until the newest writer completes.
+   * While it holds, `patternId` (the last completed pattern) does not name what the canvases show: a chunked repaint of
+   * B aborted after its albedo pass left B on the hull with `patternId` still A, so a sweep back to A skipped it.
+   */
+  dirty: boolean;
+}
+
+/** One writer's claim on an entry's live canvases (takeEntryPaint). */
+interface EntryPaintToken {
+  readonly state: EntryPaintState;
+  readonly revision: number;
 }
 
 // A pattern can change A -> B -> A while a worker is in flight. Pattern IDs
@@ -555,26 +568,49 @@ const ENTRY_PAINT_STATE = new WeakMap<SharedTextureEntry, EntryPaintState>();
 function entryPaintState(entry: SharedTextureEntry): EntryPaintState {
   let state = ENTRY_PAINT_STATE.get(entry);
   if (!state) {
-    state = { revision: 0, active: 0, idle: null, resolveIdle: null };
+    state = { revision: 0, active: 0, idle: null, resolveIdle: null, dirty: false };
     ENTRY_PAINT_STATE.set(entry, state);
   }
   return state;
 }
 
-function beginEntryRepaint(entry: SharedTextureEntry): EntryPaintState {
+/**
+ * The one paint-owner gate (2026-11-02 audit R5). Every writer of a published entry's canvases takes the entry here
+ * first: the sync repaint, the memoized restore, the chunked repaint, the sync and chunked quality promotions and the
+ * worker's promotion. The newest writer owns it; an older chunked writer checks ownsEntryPaint after each yield and
+ * stops without writing again (its partial work leaves the entry dirty for the next sweep). Only the owner's completion
+ * records its pattern and clears dirty.
+ */
+function takeEntryPaint(entry: SharedTextureEntry): EntryPaintToken {
   const state = entryPaintState(entry);
   state.revision++;
+  state.dirty = true;
   if (state.active++ === 0) {
     state.idle = new Promise<void>((resolve) => { state.resolveIdle = resolve; });
   }
-  return state;
+  return { state, revision: state.revision };
 }
 
-function endEntryRepaint(state: EntryPaintState): void {
+function ownsEntryPaint(token: EntryPaintToken): boolean {
+  return token.state.revision === token.revision;
+}
+
+/** End a writer's claim; `completed` is the pattern it finished painting in full, or null for an aborted write. */
+function releaseEntryPaint(entry: SharedTextureEntry, token: EntryPaintToken, completed: MaterialPatternId | null): void {
+  const { state } = token;
+  if (completed !== null && ownsEntryPaint(token)) {
+    entry.patternId = completed;
+    state.dirty = false;
+  }
   if (--state.active !== 0) return;
   state.resolveIdle?.();
   state.idle = null;
   state.resolveIdle = null;
+}
+
+/** Whether the entry's canvases may hold part of a pattern its `patternId` does not name. */
+function entryPaintDirty(entry: SharedTextureEntry): boolean {
+  return ENTRY_PAINT_STATE.get(entry)?.dirty === true;
 }
 
 function pendingEntryRepaint(key: string): Promise<void> | null {
@@ -639,7 +675,11 @@ export function materialTextureDimensions<Value>(quality: Value): { albedo: numb
   return { albedo: sizes.albedo, map: sizes.map };
 }
 
-function bakeSharedCanvases(entry: SharedTextureEntry, quality: MaterialTextureQuality): void {
+/** What a base bake paints into: a published entry, or a private draft of one (upgradeEntryChunked). */
+type SharedPaintTarget = Pick<SharedTextureEntry,
+  'spec' | 'seed' | 'patternId' | 'feats' | 'camoCanvas' | 'normalCanvas' | 'roughCanvas' | 'quality'>;
+
+function bakeSharedCanvases(entry: SharedPaintTarget, quality: MaterialTextureQuality): void {
   const g = bakeSharedCanvasesSteps(entry, quality);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -679,7 +719,7 @@ function sharedMaterialPaintRequest(
 }
 
 function* bakeSharedCanvasesSteps(
-  entry: SharedTextureEntry,
+  entry: SharedPaintTarget,
   quality: MaterialTextureQuality,
 ): Generator<void, void, void> {
   const request = sharedMaterialPaintRequest(entry, quality);
@@ -755,8 +795,65 @@ export function isMaterialTextureQualityUpgrade<Current, Requested>(current: Cur
 // in-place promotion.
 const PREBAKE_PENDING = new Map<string, Promise<void>>();
 function upgradeEntry(entry: SharedTextureEntry, quality: MaterialTextureQuality = 'high'): void {
-  bakeSharedCanvases(entry, quality);
-  finalizeEntryResize(entry);
+  // a synchronous writer: it owns the entry for its whole bake, so a chunked repaint in flight stops at its next check
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    bakeSharedCanvases(entry, quality);
+    finalizeEntryResize(entry);
+    completed = entry.patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
+  }
+}
+
+/**
+ * A chunked quality promotion of a published entry (2026-11-02 audit R5). It paints on private canvases between its
+ * yields and installs them in one synchronous step under the paint owner, so the live canvases (and the GPU's
+ * immutable storage) never hold a half-promoted bake and no repaint interleaves with its stages. A repaint that
+ * landed another pattern while it painted sends it round again; a selection that keeps moving ends in one synchronous
+ * promotion.
+ */
+async function upgradeEntryChunked(
+  entry: SharedTextureEntry,
+  quality: MaterialTextureQuality,
+  run: (steps: Generator<void, void, void>) => Promise<void>,
+): Promise<void> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!isMaterialTextureQualityUpgrade(entry.quality, quality)) return;
+    const draft: SharedPaintTarget = {
+      spec: entry.spec, seed: entry.seed, patternId: entry.patternId, feats: null, quality: entry.quality,
+      camoCanvas: makeCanvas(4, 4), normalCanvas: makeCanvas(4, 4), roughCanvas: makeCanvas(4, 4),
+    };
+    const drafts = [draft.camoCanvas, draft.normalCanvas, draft.roughCanvas];
+    try {
+      await run(bakeSharedCanvasesSteps(draft, quality));
+      // promoted meanwhile (a synchronous acquire): nothing left to do
+      if (!isMaterialTextureQualityUpgrade(entry.quality, quality)) return;
+      // a repaint completed another pattern while this one painted: paint the promotion again for it
+      if (entry.patternId !== draft.patternId) continue;
+      const token = takeEntryPaint(entry);
+      let completed: MaterialPatternId | null = null;
+      try {
+        for (const [live, painted] of [[entry.camoCanvas, draft.camoCanvas], [entry.normalCanvas, draft.normalCanvas],
+          [entry.roughCanvas, draft.roughCanvas]] as const) {
+          live.width = painted.width;
+          live.height = painted.height;
+          canvas2d(live).drawImage(painted, 0, 0);
+        }
+        entry.feats = draft.feats;
+        entry.quality = quality;
+        finalizeEntryResize(entry);
+        completed = draft.patternId;
+      } finally {
+        releaseEntryPaint(entry, token, completed);
+      }
+      return;
+    } finally {
+      releaseWorkerPaintCanvases(drafts);
+    }
+  }
+  if (isMaterialTextureQualityUpgrade(entry.quality, quality)) upgradeEntry(entry, quality);
 }
 
 /** Post-resize texture ritual shared by synchronous acquisition and chunked
@@ -840,14 +937,21 @@ function commitWorkerPaintPromotion(
   ] as const;
   // No yield during installation. Materials keep the same THREE.Texture and
   // canvas identities; the immutable GPU storage is renewed only after all maps.
-  for (const [canvas, pixels] of pairs) {
-    canvas.width = pixels.width;
-    canvas.height = pixels.height;
-    canvas2d(canvas).putImageData(pixels, 0, 0);
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    for (const [canvas, pixels] of pairs) {
+      canvas.width = pixels.width;
+      canvas.height = pixels.height;
+      canvas2d(canvas).putImageData(pixels, 0, 0);
+    }
+    entry.feats = result.features;
+    entry.quality = quality;
+    finalizeEntryResize(entry);
+    completed = entry.patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
   }
-  entry.feats = result.features;
-  entry.quality = quality;
-  finalizeEntryResize(entry);
 }
 
 interface WorkerPaintSnapshot {
@@ -1004,10 +1108,7 @@ export function prebakeSharedTextures(
     let entry = TEX_CACHE.get(key);
     if (entry) {
       // mirror acquire's only upgrade case; anything else is already adequate
-      if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
-        await run(bakeSharedCanvasesSteps(entry, quality));
-        finalizeEntryResize(entry);
-      }
+      if (isMaterialTextureQualityUpgrade(entry.quality, quality)) await upgradeEntryChunked(entry, quality, run);
       return;
     }
     const { patternId } = identity.fixed ? identity : sharedTextureIdentity(spec.id);
@@ -1031,8 +1132,7 @@ export function prebakeSharedTextures(
     const acquiredDuringBake = TEX_CACHE.get(key);
     if (acquiredDuringBake) {
       if (isMaterialTextureQualityUpgrade(acquiredDuringBake.quality, quality)) {
-        await run(bakeSharedCanvasesSteps(acquiredDuringBake, quality));
-        finalizeEntryResize(acquiredDuringBake);
+        await upgradeEntryChunked(acquiredDuringBake, quality, run);
       }
       return;
     }
@@ -1124,7 +1224,9 @@ function disposeSharedTextureEntry(entry: SharedTextureEntry): void {
 
 function releaseSharedTextures(shared: SharedTextureEntry | null | undefined): void {
   const entry = shared && TEX_CACHE.get(shared.cacheKey);
-  if (!entry) return;
+  // (2026-11-02 audit R5) by identity: a late release of a disposed entry never decrements the new entry that re-created
+  // its key (which disposed the live tank's textures and orphaned it from every later camo sweep)
+  if (!entry || entry !== shared) return;
   if (--entry.refs <= 0 && !TEXTURE_LEASE_PENDING.has(entry.cacheKey)) disposeSharedTextureEntry(entry);
 }
 
@@ -2102,21 +2204,28 @@ function repaintEntry(entry: SharedTextureEntry, patternId: MaterialPatternId): 
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   const ph = camoPatternIdHash(patternId);
-  entryPaintState(entry).revision++;
-  // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
-  // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
-  paintCamo(entry.camoCanvas, vis, mulberry32(camoPatternStreamSeed(vis, ph)), feats, entry.seed);
-  exposureTrim(entry.camoCanvas);
-  camoTex.needsUpdate = true;
-  // camo_spotting r4: the roughness map follows the repaint so each pattern's
-  // per-patch paint response lands with it (albedo-only repaints read as
-  // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
-  // with the normal map; the stochastic dust layer redraws from a
-  // pattern-keyed stream, which is invisible at paint scale.
-  paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
-  paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
-  roughTex.needsUpdate = true;
-  entry.patternId = patternId;
+  // the paint owner (takeEntryPaint): a chunked repaint in flight stops at its next check instead of running its
+  // remaining passes (the exposure trim is a multiply) over this complete repaint
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    // Round 32 (owner 2026-09-21: "when i switch tanks the camo seeding literally changes, which is wasteful"): the
+    // pattern stream is keyed by the pattern alone, so one camo lays out identically on every hull.
+    paintCamo(entry.camoCanvas, vis, mulberry32(camoPatternStreamSeed(vis, ph)), feats, entry.seed);
+    exposureTrim(entry.camoCanvas);
+    camoTex.needsUpdate = true;
+    // camo_spotting r4: the roughness map follows the repaint so each pattern's
+    // per-patch paint response lands with it (albedo-only repaints read as
+    // printed vinyl — critic r4). Same `feats` plan keeps chips/lines aligned
+    // with the normal map; the stochastic dust layer redraws from a
+    // pattern-keyed stream, which is invisible at paint scale.
+    paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ ph ^ 0x9e37), feats);
+    paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
+    roughTex.needsUpdate = true;
+    completed = patternId;
+  } finally {
+    releaseEntryPaint(entry, token, completed);
+  }
   retintEntryFittings(entry, vis);
   // camo r4: memoize the finished bake — the next visit to this
   // (spec, pattern) pair restores in a couple of blits instead of repainting.
@@ -2246,7 +2355,7 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
     return false;
   }
   if (resolveCamoPattern(entry.spec.id) !== patternId
-    || entry.patternId === patternId) {
+    || (entry.patternId === patternId && !entryPaintDirty(entry))) {
     // superseded (or already landed) while the bitmaps decoded — the newer
     // selection's own restore/repaint owns the entry, don't fight it.
     cb.close(); rb.close();
@@ -2262,12 +2371,19 @@ async function restoreBake(entry: SharedTextureEntry, patternId: MaterialPattern
     c2.drawImage(bmp, 0, 0, canvas.width, canvas.height);
     c2.restore();
   };
-  entryPaintState(entry).revision++;
-  blit(entry.camoCanvas, cb); cb.close();
-  blit(entry.roughCanvas, rb); rb.close();
-  if (entry.camoTex) entry.camoTex.needsUpdate = true;
-  if (entry.roughTex) entry.roughTex.needsUpdate = true;
-  entry.patternId = patternId;
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  try {
+    blit(entry.camoCanvas, cb);
+    blit(entry.roughCanvas, rb);
+    if (entry.camoTex) entry.camoTex.needsUpdate = true;
+    if (entry.roughTex) entry.roughTex.needsUpdate = true;
+    completed = patternId;
+  } finally {
+    cb.close();
+    rb.close();
+    releaseEntryPaint(entry, token, completed);
+  }
   retintEntryFittings(entry, patternVisual(entry.spec, patternId));
   return true;
 }
@@ -2281,7 +2397,7 @@ export function applyCamoPatterns(onlySpecId: string | null = null): void {
   for (const entry of TEX_CACHE.values()) {
     if (entry.fixedPattern || (onlySpecId && entry.spec.id !== onlySpecId)) continue;
     const pid = resolveCamoPattern(entry.spec.id);
-    if (entry.patternId !== pid) repaintEntry(entry, pid);
+    if (entry.patternId !== pid || entryPaintDirty(entry)) repaintEntry(entry, pid);
   }
 }
 
@@ -2322,7 +2438,8 @@ function staleCamoEntry(key: string): StaleCamoEntry | null {
   const entry = TEX_CACHE.get(key);
   if (!entry || entry.fixedPattern) return null;
   const patternId = resolveCamoPattern(entry.spec.id);
-  return entry.patternId === patternId ? null : { entry, patternId };
+  // a dirty entry is stale whatever its recorded pattern: its canvases may hold an aborted repaint's partial work
+  return entry.patternId === patternId && !entryPaintDirty(entry) ? null : { entry, patternId };
 }
 
 async function yieldCamoSweep(delayMs: number, generation: number): Promise<boolean> {
@@ -2330,11 +2447,14 @@ async function yieldCamoSweep(delayMs: number, generation: number): Promise<bool
   return generation === _camoSweepGen;
 }
 
+/** How a chunked repaint ended: painted, superseded by a newer sweep, or the entry taken by another writer. */
+type ChunkedRepaintOutcome = 'painted' | 'swept' | 'taken';
+
 async function repaintCamoEntryChunked(
   entry: SharedTextureEntry,
   patternId: MaterialPatternId,
   generation: number,
-): Promise<boolean> {
+): Promise<ChunkedRepaintOutcome> {
   const visual = {
     ...patternVisual(entry.spec, patternId),
     modernWelds: isPostwarVehicleEra(entry.spec.era),
@@ -2345,24 +2465,33 @@ async function repaintCamoEntryChunked(
     throw new Error(`vehicle material cache entry ${entry.cacheKey} is incomplete`);
   }
 
-  const paintState = beginEntryRepaint(entry);
+  const token = takeEntryPaint(entry);
+  let completed: MaterialPatternId | null = null;
+  // after each yield: a newer sweep owns the remainder, and a newer writer owns this entry (either way, no more writes)
+  const resume = async (): Promise<ChunkedRepaintOutcome | null> => {
+    if (!await yieldCamoSweep(16, generation)) return 'swept';
+    return ownsEntryPaint(token) ? null : 'taken';
+  };
   try {
     paintCamo(entry.camoCanvas, visual, mulberry32(camoPatternStreamSeed(visual, patternHash)), feats, entry.seed);
-    if (!await yieldCamoSweep(16, generation)) return false;
+    let stopped = await resume();
+    if (stopped) return stopped;
     exposureTrim(entry.camoCanvas);
     camoTex.needsUpdate = true;
-    if (!await yieldCamoSweep(16, generation)) return false;
+    stopped = await resume();
+    if (stopped) return stopped;
     paintRoughness(entry.roughCanvas, mulberry32(entry.seed ^ patternHash ^ 0x9e37), feats);
-    if (!await yieldCamoSweep(16, generation)) return false;
+    stopped = await resume();
+    if (stopped) return stopped;
     paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, visual);
     roughTex.needsUpdate = true;
-    entry.patternId = patternId;
-    retintEntryFittings(entry, visual);
-    snapshotBake(entry, patternId);
-    return true;
+    completed = patternId;
   } finally {
-    endEntryRepaint(paintState);
+    releaseEntryPaint(entry, token, completed);
   }
+  retintEntryFittings(entry, visual);
+  snapshotBake(entry, patternId);
+  return 'painted';
 }
 
 /**
@@ -2399,7 +2528,14 @@ export async function applyCamoPatternsChunked(opts: CamoApplyOptions | null = n
     // split the independent passes into paintable tasks. A superseding
     // sweep aborts between passes; its fresh albedo pass then owns the
     // same canvases from that point onward.
-    if (!await repaintCamoEntryChunked(pending.entry, pending.patternId, gen)) return;
+    let outcome = await repaintCamoEntryChunked(pending.entry, pending.patternId, gen);
+    // another writer took the entry mid-repaint (a synchronous repaint or promotion): look again, once, and repaint
+    // only if what it left is still not the selection
+    if (outcome === 'taken') {
+      const again = staleCamoEntry(key);
+      if (again && gen === _camoSweepGen) outcome = await repaintCamoEntryChunked(again.entry, again.patternId, gen);
+    }
+    if (outcome === 'swept') return;
   }
 }
 
@@ -3309,6 +3445,7 @@ export function createTankMaterials(
     normalizeMaterialTextureQuality(quality),
     camoPattern,
   );
+  let materialSetDisposed = false;
   const { camoTex, normalTex, roughTex } = shared;
   if (!camoTex || !normalTex || !roughTex) {
     throw new Error(`vehicle material cache entry ${shared.cacheKey} is incomplete`);
@@ -3764,6 +3901,9 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     prepareBurnt,
     decal,
     dispose() {
+      // once (2026-11-02 audit R5): a second dispose released the shared entry's ref again
+      if (materialSetDisposed) return;
+      materialSetDisposed = true;
       for (const rec of paintableRecs) shared.paintable.delete(rec);
       for (const resource of disposables) {
         if ('isMaterial' in resource && resource.isMaterial) {

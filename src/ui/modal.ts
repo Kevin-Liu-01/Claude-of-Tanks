@@ -8,7 +8,7 @@ import { ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, modalSurfaceOpen, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 
 /** Reduce motion: the player's choice on :root (data-motion reduce or full, src/ui/accessibilityPreferences.ts), or the
  *  OS while they follow it. Inline: the public pages load this modal and never carry the accessibility core. */
@@ -99,9 +99,15 @@ let activeModal: ModalController | null = null;
 let savedBodyOverflow: string | null = null;
 let modalDismissGuardUntil = 0;
 
+/**
+ * Whether a modal is open (2026-11-02 audit F5): the surface stack is the one truth. Every modal made here stands on it,
+ * and so do the surfaces with their own scrim that never come through here (the Play menu, Deploy, the tech tree), which
+ * this missed. Settings is not counted: it owns its own open state, and its readers ask about a modal beside or above
+ * its panel. The 180 ms guard after a close still holds the key that closed it.
+ */
 export function isAnyModalOpen() {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  return !!activeModal || now < modalDismissGuardUntil;
+  return modalSurfaceOpen('settings') || now < modalDismissGuardUntil;
 }
 
 export function normalizeModalSize(value: RuntimeValue): ModalSize {

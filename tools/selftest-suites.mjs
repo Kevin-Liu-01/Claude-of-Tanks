@@ -1033,6 +1033,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/garageFramePacer.selftest.mjs',
     'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/phaseGpuResidency.selftest.mjs',
+    // 2026-11-02 audit R5: the Garage GPU restore is a state; a suspend or context loss during it is kept, overlapping
+    // restores share one upload
+    'src/engine/phaseGpuResidencyRestoreRace.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/fx/flipbookOrientation.selftest.mjs',
@@ -1070,6 +1073,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
+    // 2026-11-02 audit R5: each pedestal visual's residency is declared (lent stays lent until the return adopts it)
+    'src/game/garagePedestalResidency.selftest.mjs',
     'src/game/garageCamoTryOn.selftest.mjs',
     'src/ui/camoPicker.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
@@ -1077,6 +1082,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
     // every surface the source opens registered with its owner and its place
     'src/ui/components/surfaceStack.selftest.mjs',
+    // 2026-11-02 audit F5: a hidden page takes its surfaces with it; the stack is the one "a modal is open" truth
+    'src/ui/components/surfaceStackOwnership.selftest.mjs',
+    // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
+    'src/ui/garageOpenState.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
@@ -1103,6 +1112,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageVariants.selftest.mjs',
     'src/game/garageWallLayout.selftest.mjs',
     'src/ui/garageArchitecture.selftest.mjs',
+    // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
+    'src/ui/garageArchitectureRecords.selftest.mjs',
+    // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose
+    'src/ui/garageVariantReveal.selftest.mjs',
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
@@ -1111,7 +1124,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
     // (generator check, rect names, the swap test) and the atmosphere
     'src/ui/garageKit.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #4: a failed surface set leaves once unheld and reloads; per-handle render listeners
+    'src/ui/garageTextureResidency.selftest.mjs',
     'src/ui/garageDisplayAtlas.selftest.mjs',
+    // 2026-11-02 audit 05-ui-2 #5: a failed display atlas load is asked for again by the next display
+    'src/ui/garageDisplayAtlasRetry.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
     // garage 231 (2026-10-21): the slideshow's CRT clear of every deck, rail, column, structure and kit piece
@@ -2091,6 +2108,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
     'src/vehicles/materialQuality.selftest.mjs',
+    // 2026-11-02 audit R5: one paint owner for a shared camo entry (A-B-A, sync over chunked, private promotion), release
+    // by identity
+    'src/vehicles/camoPaintOwner.selftest.mjs',
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',

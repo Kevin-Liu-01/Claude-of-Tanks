@@ -38,7 +38,9 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, closeSurfacesWithin, openSurface, sweepHiddenSurfaces, type TransientSurface } from './components/surfaceStack.ts';
+import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
+import { gameReady } from './gameReady.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
@@ -229,9 +231,11 @@ interface GarageOptions {
 
 export interface GarageRuntime {
   readonly root: HTMLElement;
-  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves). */
-  frameHotspots(camera: PerspectiveCamera, model: Object3D | null): void;
-  isOpen: boolean;
+  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves).
+   *  `modelSpecId` names the vehicle `model` shows: the plates stand only on the vehicle their figures describe. */
+  frameHotspots(camera: PerspectiveCamera, model: Object3D | null, modelSpecId?: string | null): void;
+  /** Read-only: the screen's one open state (garageScreen.ts); show() and hide() are its only writers. */
+  readonly isOpen: boolean;
   show(selected?: string): void;
   hide(): void;
   drainThumbs(): void;
@@ -497,7 +501,20 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
   load: () => import('./camoSwatchPainter.ts'),
-  isPlayable: () => window.__GAME_READY === true,
+  isPlayable: () => gameReady.state === 'ready',
+  // (2026-11-02 audit F5) while the game is not playable its wait is the shared one (gameReady.ts), which ends when
+  // the boot halts; once it is, the access's own post-ready delay is an ordinary timer
+  schedule: (callback, delayMs) => {
+    const state = gameReady.state;
+    if (state === 'waiting') return { cancelReady: gameReady.whenReady(callback) };
+    // a halted boot paints no swatch until a press promotes the request
+    return state === 'ready' ? { timer: setTimeout(callback, delayMs) } : {};
+  },
+  cancel: (handle) => {
+    const scheduled = handle as { cancelReady?: () => void; timer?: ReturnType<typeof setTimeout> } | null;
+    scheduled?.cancelReady?.();
+    if (scheduled?.timer !== undefined) clearTimeout(scheduled.timer);
+  },
 });
 
 function scheduleCamoSwatchLoad(immediate = false) {
@@ -526,10 +543,11 @@ function camoSwatchSurface(canvas: HTMLCanvasElement): UiCanvas {
 
 // 2026-10-13 (the perf stream): the picker's cold swatches drain only while the Garage is open and uncovered
 // (camoSwatchPainter.ts setCamoSwatchDrainGate); main.ts adds the battle loader's cover through setDecorativeWorkGate.
-let garageSwatchOpen = false;
+// (2026-11-02 audit F5) the open half is the Garage screen's own state (garageScreen.ts), not a second flag
+let garageSwatchOpen: () => boolean = () => false;
 let garageSwatchCover: () => boolean = () => false;
 let swatchGateInstalled = false;
-const swatchDrainOpen = (): boolean => garageSwatchOpen && !garageSwatchCover();
+const swatchDrainOpen = (): boolean => garageSwatchOpen() && !garageSwatchCover();
 
 function queueExactCamoSwatch(
   canvas: HTMLCanvasElement,
@@ -614,6 +632,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     ? 'publicNav.language.switchToChinese'
     : 'publicNav.language.switchToEnglish');
   ensureFonts();
+  // the screen's one open-state owner (2026-11-02 audit F5): its epoch is what every lazy opener checks after its load
+  const garageScreen = createGarageScreen();
+  garageSwatchOpen = () => garageScreen.isOpen;
   const root = document.createElement('div');
   root.className = 'cot-garage';
   root.innerHTML =
@@ -1001,15 +1022,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
     };
     const activateWhenPlayable = () => {
-      if (window.__GAME_READY === true) {
-        if (typeof requestIdleCallback === 'function') {
-          requestIdleCallback(() => activate('low'), { timeout: 1400 });
-        } else setTimeout(() => activate('low'), 500);
-        return;
-      }
-      setTimeout(activateWhenPlayable, 120);
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => activate('low'), { timeout: 1400 });
+      } else setTimeout(() => activate('low'), 500);
     };
-    activateWhenPlayable();
+    gameReady.whenReady(activateWhenPlayable);
+    // a hidden Garage rotates nothing (its 8 s interval ran through every battle after one hover); a hover re-arms it
+    garageScreen.onHide(() => { if (timer) { clearInterval(timer); timer = 0; } });
     const engageGallery = () => { engaged = true; activate('high'); arm(); };
     shotEl.addEventListener('pointerenter', engageGallery, { once: true });
     shotEl.addEventListener('focusin', engageGallery, { once: true });
@@ -1349,6 +1368,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let battleGameMode: GameModeId = 'standard';
   let vehicleLocked = false;
   let roomStatus: GarageRoomStatus | null = null;
+  // the battle button's word, from the room status alone (2026-11-02 audit F5: a tank switch in a room relabelled it
+  // "Battle" under the room's reminder until the next status push)
+  const battleWord = (): string => t(roomStatus ? 'garage.multiplayer.room' : 'garage.battle');
   const garageVariants = Array.isArray(opts.garageVariants) ? opts.garageVariants : [];
   let selectedGarageVariantId = garageVariants.some((variant) =>
     variant.id === opts.selectedGarageVariantId)
@@ -2043,7 +2065,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (reloadsForFailure(option, 'cot-custom-camo', t('garage.camo.customStudioRetryTitle'))) return;
     option?.setAttribute('aria-busy', 'true');
     try {
-      await customCamoStudioAccess?.open();
+      await customCamoStudioAccess?.open(garageScreen.ticket().current);
     } catch (error) {
       customCamoStudioFailed = true;
       reportLoadFailure('cot-custom-camo', t('garage.camo.customStudioRetryTitle'), [option]);
@@ -2809,6 +2831,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
     facetSelectTimer = setTimeout(() => {
       facetSelectTimer = null;
+      // (2026-11-02 audit F5) a filter change just before a battle press never changes the selection after the entry
+      if (!garageScreen.isOpen) return;
       if (facetVisible(selectedId) || vehicleLocked) return;
       const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
       if (first) api.setSelected(first.id);
@@ -2816,8 +2840,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
   let facetPanel: Promise<GarageFacetPanel> | null = null;
-  facetToggle.addEventListener('click', () => {
-    emit('ui:click', {});
+  // (2026-11-02 audit F5) a press while the panel loads means open (a second impatient press used to close it again), a
+  // press after the mount toggles, and the mount opens it only while the Garage still shows the latest press's span
+  const facetPanelToggle = createLazyPanelToggle(garageScreen, () => {
     // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
     facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
       import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
@@ -2829,7 +2854,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         click: () => emit('ui:click', {}),
         onOpenChange: (open) => root.classList.toggle('facets-open', open),
       }));
-    facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
+    const loading = facetPanel;
+    loading.catch(() => { if (facetPanel === loading) facetPanel = null; });
+    return loading;
+  });
+  facetToggle.addEventListener('click', () => {
+    emit('ui:click', {});
+    facetPanelToggle.press();
   });
   // --- END roster filter ------------------------------------------------------
 
@@ -3318,13 +3349,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const hotspotRoom: HotspotRoom = { stage: () => stageCallouts ?? api.getStageRect(false),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
+  // the vehicle the figures describe
+  let hotspotFactsSpecId: string | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => {
     hotspotFacts = facts;
     if (calloutsShown && hotspots) { hotspots.setFacts(facts); opts.onOverlayChange?.(); }
   };
+  // one shared ready wait, however many presses come before it (each press started its own poll chain)
+  let hotspotsAwaitingReady = false;
   const loadHotspots = (): void => {
     if (hotspots || hotspotsLoading) return;
-    if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
+    if (gameReady.state !== 'ready') { if (!hotspotsAwaitingReady) { hotspotsAwaitingReady = true; gameReady.whenReady(() => { hotspotsAwaitingReady = false; loadHotspots(); }); } return; }
     hotspotsLoading = true;
     // the hotspots' sheet rides with their module, off the Garage's first paint
     void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
@@ -3422,6 +3457,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadS = stockReloadS * eqM.reload;
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    hotspotFactsSpecId = spec.id;
     setHotspotFacts({
       // every plate reads as figures alone (a word in one of the four stood in the figures' face below the floor), and
       // only figures the overview beside it does not show: its reload, traverse, power to weight and speed stay there
@@ -3648,7 +3684,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderStats(spec);
     featuredPanel?.setVehicle(specId); // the battle gallery shows this tank's own take where there is one
     battleBtn.disabled = false;
-    requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t('garage.battle');
+    requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = battleWord();
     camosEl.style.display = '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
@@ -3955,14 +3991,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployStyled = true;
     }));
   const preloadDeployStyles = (): void => {
-    if (window.__GAME_READY !== true) { setTimeout(preloadDeployStyles, 250); return; }
     if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
     else setTimeout(() => { void ensureDeployStyles(); }, 800);
   };
-  preloadDeployStyles();
+  gameReady.whenReady(preloadDeployStyles);
   function openBattleMenu(): void {
     if (!deployStyled) {
-      void ensureDeployStyles().then(openBattleMenu, () => { deployStyled = true; openBattleMenu(); });
+      // (2026-11-02 audit F5) the sheet's load can outlast the Garage: a battle entered meanwhile must not find a modal
+      // Deploy on the surface stack (it took the battle's first Escape)
+      const ticket = garageScreen.ticket();
+      const reopen = (): void => { if (ticket.current()) openBattleMenu(); };
+      void ensureDeployStyles().then(reopen, () => { deployStyled = true; reopen(); });
       return;
     }
     openSurface(deploySurface, battleModeBtn);
@@ -4152,8 +4191,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       quickMenus = { mode, field };
     }, () => { quickLoad = null; });
+    const ticket = garageScreen.ticket();
     void quickLoad.then(() => {
-      if (!quickMenus) return;
+      if (!quickMenus || !ticket.current()) return;
       quickMenus.mode.setValue(battleGameMode);
       quickMenus.mode.open(quickBtn);
     });
@@ -4634,17 +4674,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
   let photo: GaragePhotoControl | null = null;
   let photoMode: Promise<typeof import('./photoMode.ts')> | null = null;
+  // the open photo mode's close (the Garage's hide puts it away: it outlived the screen)
+  let closePhoto: (() => void) | null = null;
   function openPhoto(): void {
     if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
     const control = photo;
+    const ticket = garageScreen.ticket();
     emit('ui:click', {});
     // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
     photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
-    void photoMode.then(({ openPhotoMode }) => openPhotoMode({
-      stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
-      fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
-      click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
-    })).catch(() => { photoMode = null; });
+    void photoMode.then(({ openPhotoMode }) => {
+      // (2026-11-02 audit F5) the Garage that asked must still show, and Deploy not have opened over it meanwhile
+      if (!ticket.current() || battleMenu.classList.contains('open')) return;
+      closePhoto = openPhotoMode({
+        stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
+        fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
+        click: () => emit('ui:click', {}), onClose: () => { closePhoto = null; if (garageScreen.isOpen) photoButton.focus(); },
+      });
+    }).catch(() => { photoMode = null; });
   }
   photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
@@ -4664,26 +4711,33 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // data load on the first open (no boot cost); Select takes the node's build into the Garage.
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
   let techTreeOpening = false;
+  // the open tech tree (the Garage's hide closes it: it is a body-level modal the Garage root's display never reached)
+  let techTreeScreen: { close(options?: { restoreFocus?: boolean }): void } | null = null;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
     if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
     techTreeOpening = true;
     closeMobileNavigation();
     setGaragePanel('');
+    const ticket = garageScreen.ticket();
     try {
       const [{ createTechTreeScreen }] = await Promise.all([
         import('./techTree.ts'), import('./techTree.css'), import('./heroCard.css'),
         import('./techTreeStrings.ts').then((strings) => strings.ensureTechTreeStrings()),
       ]);
+      // (2026-11-02 audit F5) a Garage that hid during the load opens nothing over what replaced it
+      if (!ticket.current()) return;
       const screen = createTechTreeScreen({
         vehicles: specById,
         selectedId,
         onPick: (specId) => { if (specId !== selectedId && applySelection(specId)) onSelect?.(specId); },
         onClose: () => {
           techTreeTrigger.setAttribute('aria-expanded', 'false');
+          if (techTreeScreen === screen) techTreeScreen = null;
           screen.dispose();
         },
       });
+      techTreeScreen = screen;
       screen.open(opener);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
@@ -4790,15 +4844,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
 
-  let hasPresented = false;
   const api: GarageRuntime = {
     root,
-    isOpen: false,
+    get isOpen() { return garageScreen.isOpen; },
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
-    frameHotspots(camera, model) {
+    frameHotspots(camera, model, modelSpecId = null) {
       noteHeroModel(model);
       if (!calloutsShown || !hotspots) return;
-      hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+      // (2026-11-02 audit, 05-ui-2 #9) the figures follow the selection at once and the model when it lands: on the
+      // previous tank's model (a switch still landing past the pedestal's grace) the plates wait
+      const described = !modelSpecId || !hotspotFactsSpecId || modelSpecId === hotspotFactsSpecId;
+      hotspots.frame(camera, described ? model : null, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
     },
 
@@ -4810,15 +4866,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       queueBarFit();
       queueStageMeasure();
       // The full play menu also owns mode selection; reconcile it on return.
+      // (2026-11-02 audit F5) only a solo choice follows it: setBattleGameMode is a solo choice, and a Private or LAN
+      // pick made in this Garage is not undone by coming back to it
       try {
         const remembered = localStorage.getItem('cot.game.mode.v1');
-        if (remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
+        if (battleMode === 'solo' && remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
       } catch (_) { /* session-only mode choice */ }
       refreshServiceRecord();
       closeGarageVariantMenu();
       setGaragePanel('');
       root.style.display = 'block';
-      const firstPresentation = !hasPresented;
+      const firstPresentation = garageScreen.phase === 'unpresented';
       if (firstPresentation && document.getElementById('cot-boot')) {
         root.classList.add('awaiting-boot');
         document.addEventListener('cot:boot-dismiss', () => {
@@ -4834,16 +4892,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // The transition veil already gives us a frame boundary, so re-attach
       // the animation class on that boundary instead.
       const reopening = !firstPresentation && !api.isOpen;
-      hasPresented = true;
       root.classList.remove('enter');
       if (reopening) {
         requestAnimationFrame(() => {
           if (api.isOpen) root.classList.add('enter');
         });
       }
-      if (!api.isOpen) window.addEventListener('keydown', onKey);
-      api.isOpen = true;
-      garageSwatchOpen = true;
+      if (garageScreen.show() !== 'already') window.addEventListener('keydown', onKey);
       api.setSelected(specById.has(selected) ? selected : selectedId);
       statsEl.scrollTop = 0;
       // The hidden garage reports a zero-width rail during initial creation.
@@ -4854,6 +4909,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** Close the garage screen. */
     hide() {
+      if (api.isOpen) window.removeEventListener('keydown', onKey);
+      // the state first (2026-11-02 audit F5): every lazy opener's ticket lapses here, so a load that lands after this
+      // opens nothing, and the Garage's own closers (the featured rotation) run
+      garageScreen.hide();
       customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       technicalModal.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
@@ -4861,11 +4920,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
-      void facetPanel?.then((panel) => panel.close(), () => {});
+      // the surfaces the old hide missed: the equipment and consumables pickers (the equipment's Tab trap stayed on the
+      // document), the rival and quick picker menus (body top layer), the tech tree and photo mode, and the filter's
+      // auto-select timer, which could change the selection after the battle entry began
+      closeEqPicker({ restoreFocus: false });
+      garageConsumables?.close({ restoreFocus: false });
+      rivalMenu?.close();
+      quickMenus?.mode.close();
+      quickMenus?.field.close();
+      techTreeScreen?.close({ restoreFocus: false });
+      closePhoto?.();
+      facetPanelToggle.panel?.close();
+      if (facetSelectTimer !== null) { clearTimeout(facetSelectTimer); facetSelectTimer = null; }
       root.style.display = 'none';
-      if (api.isOpen) window.removeEventListener('keydown', onKey);
-      api.isOpen = false;
-      garageSwatchOpen = false;
+      // and whatever else stands open from the Garage, or no longer shows: none keeps a place on the stack (and the
+      // battle's first Escape) under a hidden page
+      closeSurfacesWithin(root);
+      sweepHiddenSurfaces();
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
@@ -4929,7 +5000,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Reflect persistent multiplayer membership beneath the main battle action. */
     setRoomStatus(status: GarageRoomStatus | null = null) {
       roomStatus = status;
-      requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = t(status ? 'garage.multiplayer.room' : 'garage.battle');
+      requiredElement<HTMLElement>(battleBtn, '.battle-word').textContent = battleWord();
       battleBtn.setAttribute('aria-label', status ? t('garage.battle.roomReminder')
         : t('garage.battle.startRulesAria', { label: (battleRuleMeta[battleGameMode] || battleModeMeta.solo).label }));
       root.classList.toggle('has-room', !!status);

@@ -83,6 +83,58 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
   delete globalThis.document;
 }
+// 2026-11-02 audit (05-ui-2 #8): a reload offline waits for the network as a declared state: the action shows disabled
+// (a press used to be ignored silently) and the browser's online event enables it again; a hide stops the wait.
+{
+  const made = [];
+  globalThis.document = { createElement: () => {
+    const listeners = {};
+    const button = { hidden: false, disabled: false, type: '', className: '', innerHTML: '', querySelector: () => ({ textContent: '' }),
+      addEventListener: (kind, fn) => { listeners[kind] = fn; }, click: () => listeners.click?.() };
+    made.push(button);
+    return button;
+  } };
+  const page = new EventTarget();
+  let online = 0;
+  const realAdd = page.addEventListener.bind(page);
+  const realRemove = page.removeEventListener.bind(page);
+  page.addEventListener = (kind, fn) => { if (kind === 'online') online += 1; realAdd(kind, fn); };
+  page.removeEventListener = (kind, fn) => { if (kind === 'online') online -= 1; realRemove(kind, fn); };
+  globalThis.window = page;
+  const realNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const network = { onLine: false };
+  Object.defineProperty(globalThis, 'navigator', { value: network, configurable: true, writable: true });
+  const reloaded = [];
+  globalThis.location = { reload: () => reloaded.push(true) };
+  const footer = { children: [], append(child) { this.children.push(child); } };
+  const presenter = createGarageReturnFailurePresenter(() => ({ body: { textContent: '' }, footer, setTitle() {}, open() {},
+    close() {} }), () => 'The battle could not start');
+  const chunk = new TypeError('Failed to fetch dynamically imported module: https://x/assets/battleLoad-1a2b3c4d.js');
+  presenter(chunk);
+  const action = footer.children[0];
+  assert.equal(action.disabled, true, 'offline, the reload shows it waits');
+  assert.equal(online, 1, 'and listens for the network');
+  action.click();
+  assert.deepEqual(reloaded, [], 'a press while offline reloads nothing');
+  network.onLine = true;
+  page.dispatchEvent(new Event('online'));
+  assert.equal(action.disabled, false, 'the network back enables it');
+  assert.equal(online, 0, 'and the wait ends');
+  action.click();
+  assert.deepEqual(reloaded, [true]);
+  network.onLine = false;
+  presenter(chunk);
+  assert.equal(online, 1);
+  presenter.hide();
+  assert.equal(online, 0, 'a hide stops the wait');
+  presenter(new Error('a build failure'), () => {});
+  assert.equal(action.disabled, false, 'a retry (no reload) never waits for the network');
+  assert.equal(online, 0);
+  delete globalThis.window;
+  delete globalThis.location;
+  if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
+  delete globalThis.document;
+}
 {
   const { isNetworkFailure } = await import('./garageReturnFailure.ts');
   assert.equal(isNetworkFailure(new TypeError('Failed to fetch dynamically imported module: https://x/assets/a-1.js'), true), true);

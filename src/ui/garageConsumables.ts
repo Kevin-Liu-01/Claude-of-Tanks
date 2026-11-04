@@ -41,8 +41,49 @@ interface GarageConsumablesOptions {
 export interface GarageConsumables {
   /** Draw the shown tank's slots (and tell the settings and tray its items). */
   render(): void;
-  close(): void;
+  /** Close (the focus goes back to its slot unless `restoreFocus` is false: the Garage hiding). */
+  close(options?: { restoreFocus?: boolean }): void;
   dispose(): void;
+}
+
+/**
+ * The picker's one state (2026-11-02 audit F5): closed, waiting for the smoke table to open a slot (the first open
+ * loads it), or open on a slot. A press, the table settling and a dismissal (its close, Escape, a press outside, another
+ * surface replacing it, the Garage hiding) are its only moves. The wait used to be a bare slot number that only a later
+ * press cleared: an outside press while the table loaded left it set, and the late open then took the surface from
+ * whatever the player had opened meanwhile; a failed table load kept it forever.
+ */
+export type ConsumablesPickerState =
+  | { readonly phase: 'closed' }
+  | { readonly phase: 'pending'; readonly slot: number }
+  | { readonly phase: 'open'; readonly slot: number };
+
+export type ConsumablesPickerEvent =
+  | { readonly type: 'press'; readonly slot: number; readonly tableReady: boolean }
+  | { readonly type: 'tableSettled'; readonly loaded: boolean }
+  | { readonly type: 'dismiss' };
+
+export const CONSUMABLES_PICKER_CLOSED: ConsumablesPickerState = Object.freeze({ phase: 'closed' });
+
+/** The picker's transition: the next state, and the slot to show now (null: show nothing). Pure. */
+export function nextConsumablesPicker(
+  state: ConsumablesPickerState,
+  event: ConsumablesPickerEvent,
+): { state: ConsumablesPickerState; show: number | null } {
+  switch (event.type) {
+    case 'press':
+      // a press on the open slot shuts it; any other slot opens now, or once the table is in (the newest press wins)
+      if (state.phase === 'open' && state.slot === event.slot) return { state: CONSUMABLES_PICKER_CLOSED, show: null };
+      if (event.tableReady) return { state: { phase: 'open', slot: event.slot }, show: event.slot };
+      return { state: { phase: 'pending', slot: event.slot }, show: null };
+    case 'tableSettled':
+      if (state.phase !== 'pending') return { state, show: null };
+      // a table that did not arrive opens nothing and waits for no one: the next press asks again
+      return event.loaded ? { state: { phase: 'open', slot: state.slot }, show: state.slot }
+        : { state: CONSUMABLES_PICKER_CLOSED, show: null };
+    case 'dismiss':
+      return { state: CONSUMABLES_PICKER_CLOSED, show: null };
+  }
 }
 
 const escapeAttr = (value: string): string => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -80,7 +121,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   const cards = badgeCards(pickerHost, (id) => consumableIconSVG(id, 38));
   let picker: ReturnType<typeof createPicker> | null = null;
   let openSlot = -1;
-  let pendingSlot = -1;
+  let pickerState: ConsumablesPickerState = CONSUMABLES_PICKER_CLOSED;
 
   const items = (): ConsumableId[] => {
     const vehicle = options.vehicle();
@@ -170,17 +211,35 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     host.querySelector<HTMLElement>(`.csslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
 
+  const move = (event: ConsumablesPickerEvent): number | null => {
+    const step = nextConsumablesPicker(pickerState, event);
+    pickerState = step.state;
+    if (pickerState.phase !== 'pending') closeSurface(pendingSurface);
+    return step.show;
+  };
   function open(slot: number): void {
     if (options.locked()) return;
-    if (!smokeOf) {
-      // the first open waits for the smoke table (a later click on another slot wins)
-      pendingSlot = slot;
-      void loadSmokeTable().then(() => { refreshTips(); if (pendingSlot === slot && smokeOf) { pendingSlot = -1; open(slot); } });
+    const show = move({ type: 'press', slot, tableReady: !!smokeOf });
+    if (pickerState.phase === 'pending') {
+      // the first open waits for the smoke table: the wait stands on the surface stack as the picker would, so Escape, a
+      // press outside, another surface or the Garage's hide dismiss it (a later press on another slot wins)
+      openSurface(pendingSurface, host.querySelector(`.csslot[data-slot="${slot}"]`));
+      void loadSmokeTable().then(() => {
+        refreshTips();
+        const ready = move({ type: 'tableSettled', loaded: !!smokeOf });
+        if (ready !== null && !options.locked()) showPicker(ready);
+        else if (ready !== null) move({ type: 'dismiss' });
+      });
       return;
     }
-    pendingSlot = -1;
+    if (show === null) { close(); return; }
+    showPicker(show);
+  }
+
+  /** The DOM side of an open: the panel, its picker and the surface, on `slot`. */
+  function showPicker(slot: number): void {
     const current = items();
-    if (!current.length) return;
+    if (!current.length) { move({ type: 'dismiss' }); return; }
     openSurface(surface, host.querySelector(`.csslot[data-slot="${slot}"]`));
     openSlot = slot;
     titleEl.textContent = t('garage.equipment.tag.slot', { slot: slot + 1 });
@@ -215,6 +274,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
   function close({ restoreFocus = true } = {}): void {
+    if (pickerState.phase !== 'closed') move({ type: 'dismiss' });
     if (openSlot < 0) return;
     closeSurface(surface);
     const slot = openSlot;
@@ -231,6 +291,13 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     element: () => panel,
     owns: (node) => host.contains(node),
     close: (reason) => close({ restoreFocus: reason === 'escape' }),
+  };
+  // the picker while it waits for the smoke table (the same surface to the census; its panel shows once it opens)
+  const pendingSurface: TransientSurface = {
+    id: 'garage-consumables',
+    element: () => panel,
+    owns: (node) => host.contains(node),
+    close: () => { move({ type: 'dismiss' }); },
   };
 
   function render(): void {
@@ -269,9 +336,8 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   return {
     render,
-    close: () => close(),
+    close: (options) => close(options),
     dispose() {
-      pendingSlot = -1;
       close();
       host.removeEventListener('click', onHostClick);
       band.removeEventListener('pointerover', warm);
