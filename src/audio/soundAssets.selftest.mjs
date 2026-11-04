@@ -8,6 +8,7 @@ import { ENGINE_FAMILY_IDS, CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { GROUP_PROFILES } from './soundCues.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { LAUNCH_ASSET, OWN_REPORT, WEAPON_CLOSE, WEAPON_FAR } from './weaponAudio.ts';
+import { impactAssetIds } from './impactMaterials.ts';
 
 const root = new URL('../../public/audio/', import.meta.url);
 
@@ -46,10 +47,13 @@ for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MOD
 }
 // the report banks (weaponAudio.ts since 2026-10-13) and every missile family's launch
 for (const bank of [WEAPON_CLOSE, WEAPON_FAR, OWN_REPORT, LAUNCH_ASSET]) for (const id of Object.values(bank)) referenced.add(id);
+// every impact by material, near miss, spall and debris the engine resolves (impactMaterials.ts, impact-materials-269)
+for (const id of impactAssetIds()) referenced.add(id);
 for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo|net)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
 for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
   'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
-  'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);
+  'radio_key_in', 'radio_key_out', 'radio_static_loop', 'strike_track', 'graze_earth', 'ricochet_whine', 'spall_engine',
+  'hull_patter_water', 'flyby_shell_crack']) assert.ok(referenced.has(id), `the scan sees ${id}`);
 for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a shipped asset: ${id}`);
 // Every sound is a recording (2026-10-03): no oscillator, synthesized fallback or rendered buffer anywhere in the
 // sound engine or the interface, so a missing asset is silent rather than replaced by a tone.

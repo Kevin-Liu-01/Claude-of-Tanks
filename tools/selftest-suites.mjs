@@ -1512,6 +1512,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    // 2026-11-03 (impact-materials-269): every impact sounds of what it struck; only steel rings
+    'src/audio/impactMaterials.selftest.mjs',
     'src/audio/reverbImpulse.selftest.mjs',
     'src/audio/audioRevival.selftest.mjs',
     'src/audio/voiceTriggers.selftest.mjs',
@@ -1731,6 +1733,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
+    // 2026-11-03 (impact-materials-269): what a round struck, every fleet plate's material, stamped by the damage law
+    'src/sim/plateMaterial.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
     'src/sim/munitionBlast.selftest.mjs',
     'src/sim/structureDamage.selftest.mjs',

@@ -267,6 +267,216 @@
    }
   ]
  },
+ "bullet_mud": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0738663d1b3b4fa75ed354ae76520f208fc74d3446d5a2b63008f94771496e3d",
+    "bytes": 10188,
+    "durS": 1,
+    "mMax": -12.2,
+    "integrated": -15.6,
+    "truePeak": 0
+   },
+   {
+    "sha256": "8aa70ae501108eb722a8a3b301e0fe4073e64be70417f5a68aebfaf3e2a2bd5b",
+    "bytes": 9834,
+    "durS": 1,
+    "mMax": -14,
+    "integrated": -16.3,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "57cf044673802349b6f16e302416251cc6334d18d1ea067bdf0ec6f133818e54",
+    "bytes": 12063,
+    "durS": 1,
+    "mMax": -15.2,
+    "integrated": -17.8,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "aa7604a19b39fe146fc96da799baf872d33b32d332ab947a9d1a804db988b36f",
+    "bytes": 11478,
+    "durS": 1,
+    "mMax": -12.1,
+    "integrated": -14.2,
+    "truePeak": 0.6
+   }
+  ]
+ },
+ "bullet_paved": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "fae1cee56b3629e7cf7e89eb2a74a611518fc190d503b2d11f9cc86f4afe4508",
+    "bytes": 8330,
+    "durS": 0.78,
+    "mMax": -12.5,
+    "integrated": -15.3,
+    "truePeak": 0
+   },
+   {
+    "sha256": "5a281323bd929d0ae7f305df44591fa576b2d11fc83f800754bd630cd36a8663",
+    "bytes": 10523,
+    "durS": 1,
+    "mMax": -12.4,
+    "integrated": -14.1,
+    "truePeak": 0.2
+   },
+   {
+    "sha256": "0c7545af9409582ca2d8f10b7cedf69a83bdb35856240fc346f128e74554888a",
+    "bytes": 10648,
+    "durS": 1,
+    "mMax": -15,
+    "integrated": -15,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "bullet_rubber": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "07844ab9115106fc848d5e6b3c10f7e5237b4d90f35d4b31028abd4f5843a54c",
+    "bytes": 10111,
+    "durS": 1,
+    "mMax": -14.9,
+    "integrated": -17.4,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "ce136dd83469d2f8cd78a19764879cce0f5aaa567e371f22c97af68e2048c061",
+    "bytes": 10649,
+    "durS": 1,
+    "mMax": -13.8,
+    "integrated": -16.3,
+    "truePeak": 0
+   },
+   {
+    "sha256": "a712b85ad625779aa345ae8f39a70156807a8c85ce38eca697e0304d25bd5287",
+    "bytes": 10267,
+    "durS": 1,
+    "mMax": -13.2,
+    "integrated": -15.6,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "1b764b68c285b9535d7e84cdf49c480ba6ac83df85346cf6177a98d278e1fc70",
+    "bytes": 9782,
+    "durS": 1,
+    "mMax": -12.7,
+    "integrated": -15.2,
+    "truePeak": 0
+   }
+  ]
+ },
+ "bullet_sand": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c79cc0a611502157e6b073d6d7b8cad16406d3cfbabf26b555556e45dd290ff2",
+    "bytes": 10053,
+    "durS": 1,
+    "mMax": -16,
+    "integrated": -18.4,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "46967a5e3ec639d3d4b4c3a0cf63cd8de6030d9af2ed83045b55886ca72b5ce1",
+    "bytes": 10052,
+    "durS": 1,
+    "mMax": -12.1,
+    "integrated": -15.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "25f6af1f4f3001749648f1e44ff5cb25d4959b4179dc1e7740eb77706a48f957",
+    "bytes": 9906,
+    "durS": 1,
+    "mMax": -11.4,
+    "integrated": -12.6,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "3780417615143f9d924a596bf9c4a64ee64c118d96222ac0b8f24342a5d41d7a",
+    "bytes": 10459,
+    "durS": 1,
+    "mMax": -11.3,
+    "integrated": -14.3,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "bullet_snow": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7d44992bb4021d851f0ec251b1e79bd97c650a122f1162bcc6d272662fa888b0",
+    "bytes": 5685,
+    "durS": 0.447,
+    "mMax": -12,
+    "integrated": -14,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "33da66c16a0336073c775278460abffca3abf0c9e35cf59759527fa5a88b8ba5",
+    "bytes": 10148,
+    "durS": 1,
+    "mMax": -14.5,
+    "integrated": -19,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "22477c8a1baeddfd8210a71dff9bd73161f9dafb967e71ce86f3cac9f8291366",
+    "bytes": 3905,
+    "durS": 0.287,
+    "mMax": -12.5,
+    "integrated": -15.2,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "bullet_stowage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d107d409998bb1ce17a1f74f63c4fbbcd3ac412df6dca4f3277b20f160b29121",
+    "bytes": 9670,
+    "durS": 1,
+    "mMax": -14.4,
+    "integrated": -18.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "688ca380e642f3ecd2aafbca7f2006d4eb1ad2bf4ebe130e670b9566951d82e8",
+    "bytes": 10654,
+    "durS": 1,
+    "mMax": -11.8,
+    "integrated": -14.8,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "db0a71561c802990c288c4c620cf88005836ad840a8becc2c09bcf24d8f6fa52",
+    "bytes": 9952,
+    "durS": 1,
+    "mMax": -13.5,
+    "integrated": -16.7,
+    "truePeak": -0.3
+   }
+  ]
+ },
  "bullet_wood": {
   "group": "impacts",
   "preset": "impact",
@@ -683,6 +893,98 @@
    }
   ]
  },
+ "debris_grit": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "1347626938f9b239a4e2a4686964aab7eb67af0eb38a88c1994ca67f031ec7ff",
+    "bytes": 29428,
+    "durS": 2.97,
+    "mMax": -14.6,
+    "integrated": -19.3,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "cc3b0022ca17f6cd38db63361a78dc9f132a2a32babaac038f35feb6fd9bc500",
+    "bytes": 28564,
+    "durS": 2.896,
+    "mMax": -15.4,
+    "integrated": -19.5,
+    "truePeak": 0.2
+   }
+  ]
+ },
+ "debris_mud": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d8bfc8e7fb0f3a26120d4505a7d20c29167d0ba4ae8778775050cd3cb6257fcc",
+    "bytes": 18893,
+    "durS": 3,
+    "mMax": -16,
+    "integrated": -22,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "41b7afe3a34f1a1b7cbca2c777c7559f718d42e1f633ae8895c5a6673111e94e",
+    "bytes": 23844,
+    "durS": 3,
+    "mMax": -13.2,
+    "integrated": -17.4,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "debris_sand": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "d639c6c98bb8aae3088bdc1e06b8dc6e852e6ffc6e95db6840cb851da0fcd712",
+    "bytes": 19998,
+    "durS": 2.96,
+    "mMax": -11,
+    "integrated": -14.1,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "e424103788cb6d8b358f24281136a2be6ed6f0f585c84a4f80a34377d6de5cf9",
+    "bytes": 19948,
+    "durS": 3,
+    "mMax": -11.1,
+    "integrated": -13.6,
+    "truePeak": -1.4
+   }
+  ]
+ },
+ "debris_snow": {
+  "group": "impacts",
+  "preset": "debris",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "121ef6097c42db1e8609ca6cdbd0b6943355b7c933efaa094a41ee6d2458f7de",
+    "bytes": 18975,
+    "durS": 2.806,
+    "mMax": -12.6,
+    "integrated": -15.8,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "083fc7bf699755bcc1312a5a80a96d2948fbd0301e4fa14fc9983be93d6f97e4",
+    "bytes": 20578,
+    "durS": 3,
+    "mMax": -12.3,
+    "integrated": -14.5,
+    "truePeak": 1
+   }
+  ]
+ },
  "expl_far": {
   "group": "impacts",
   "preset": "weapon-far",
@@ -861,6 +1163,68 @@
    }
   ]
  },
+ "flyby_autocannon": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c8889519e4917b3035053855fe9a7eee2b8a2ee3911c6bdc86f888fb3d4ce80d",
+    "bytes": 7453,
+    "durS": 1,
+    "mMax": -15.3,
+    "integrated": -18.1,
+    "truePeak": 0.9
+   },
+   {
+    "sha256": "f012dd78a13611035231620a1514766756eb809ac72427566e9ee84729dc2d16",
+    "bytes": 4925,
+    "durS": 0.58,
+    "mMax": -13.6,
+    "integrated": -13.6,
+    "truePeak": 0.4
+   },
+   {
+    "sha256": "83040ceacc354552ceb8b030a0f3fd6013e0ce859ec585995a5339b6fdbf0b71",
+    "bytes": 8482,
+    "durS": 1,
+    "mMax": -16.1,
+    "integrated": -18.8,
+    "truePeak": 0.1
+   }
+  ]
+ },
+ "flyby_shell_crack": {
+  "group": "flyby",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ecfaaaddbb9064fc936fe426d13636fdd95b2e1f4bee3068ee901ddb4890a9c8",
+    "bytes": 10667,
+    "durS": 1.36,
+    "mMax": -15.3,
+    "integrated": -18,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "ec421b87a223ce95db00dca2729614dba24a8f5b4f906704c654840946dc9546",
+    "bytes": 10892,
+    "durS": 1.36,
+    "mMax": -14.1,
+    "integrated": -16.8,
+    "truePeak": 0.7
+   },
+   {
+    "sha256": "8a8d9367143791b76e65fd408efd223695da9369049467892ab161dc0673eff8",
+    "bytes": 5804,
+    "durS": 0.66,
+    "mMax": -14.8,
+    "integrated": -17.6,
+    "truePeak": -0.2
+   }
+  ]
+ },
  "flyover_bomber": {
   "group": "ambience",
   "preset": "oneshot",
@@ -973,6 +1337,192 @@
     "mMax": -10,
     "integrated": -12.2,
     "truePeak": -2.3
+   }
+  ]
+ },
+ "graze_earth": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "617c01fd1e17c9d459807754993e08d12bf1f887490604e16dedd33793e0c316",
+    "bytes": 14416,
+    "durS": 1.38,
+    "mMax": -12.5,
+    "integrated": -15.8,
+    "truePeak": 0
+   },
+   {
+    "sha256": "e8d4a095f0999d84312d5ae5be81bc6b6e8465fb5ebd9122528a68f763a1de07",
+    "bytes": 18468,
+    "durS": 1.6,
+    "mMax": -12.6,
+    "integrated": -16.5,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "478c239a16e6699b54bb4c58ec6ed7510d8a8b66f86f748ac017a55750bf555a",
+    "bytes": 15786,
+    "durS": 1.38,
+    "mMax": -12.4,
+    "integrated": -15.1,
+    "truePeak": -0.2
+   }
+  ]
+ },
+ "graze_mud": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7f3dd3445a499c88968edd780665d62a01b5890c343f3318c24e0914de8f3d1a",
+    "bytes": 19479,
+    "durS": 1.6,
+    "mMax": -12.4,
+    "integrated": -17.9,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "4dae161c8b92728ed0ef8d1241bb5301a605565beff3353776f21db420271776",
+    "bytes": 14088,
+    "durS": 1.38,
+    "mMax": -13.4,
+    "integrated": -17.1,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "6069bf01fc943bae950edeaa14bc048ab91b85c19889bafd6c9b2d66d9777088",
+    "bytes": 12947,
+    "durS": 1.3,
+    "mMax": -13.3,
+    "integrated": -16.1,
+    "truePeak": -0.8
+   }
+  ]
+ },
+ "graze_paved": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e40359d9065dd39fea56f5d97667a9ea2b84e4f5f48f658797d78cd2e1e1e84f",
+    "bytes": 18578,
+    "durS": 1.6,
+    "mMax": -12.5,
+    "integrated": -15.6,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "99593fa62b95a098475c588726c222799063542734fb05ddf6e66a6b6477c91a",
+    "bytes": 15203,
+    "durS": 1.02,
+    "mMax": -13.7,
+    "integrated": -16,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "4637932610f6d4904c4925a42bb6989d0d6dabb7525c0550f9a2f05076056079",
+    "bytes": 13780,
+    "durS": 1.04,
+    "mMax": -12.3,
+    "integrated": -16,
+    "truePeak": 0
+   }
+  ]
+ },
+ "graze_sand": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "421d7d2db6b86626a232af387ddc0cb47836f017774dd966dd226bb9a286c19e",
+    "bytes": 14983,
+    "durS": 1.56,
+    "mMax": -10.3,
+    "integrated": -12.6,
+    "truePeak": 0.4
+   },
+   {
+    "sha256": "f92cf5940348d9fd85490c25dda54069a54e491d9eea70d6e59d0deeea1a410c",
+    "bytes": 14058,
+    "durS": 1.44,
+    "mMax": -10.1,
+    "integrated": -12.1,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "7b325f987fb8e0cb0037bb0f0bace8b00b6b1a36e40e022eca7e6cc035471959",
+    "bytes": 13168,
+    "durS": 1.36,
+    "mMax": -10.3,
+    "integrated": -13,
+    "truePeak": -0.6
+   }
+  ]
+ },
+ "graze_snow": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "aa6652e9cecc8d113605e46094c1d54c470a4804f2a6cf1ba62facbcf9542b4c",
+    "bytes": 16483,
+    "durS": 1.6,
+    "mMax": -13.5,
+    "integrated": -15.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "301cd4611c5bcda15f3098090ab6a8f4a36eec716edfa7dce03087e6779bdba9",
+    "bytes": 18096,
+    "durS": 1.6,
+    "mMax": -12.9,
+    "integrated": -16,
+    "truePeak": -0.2
+   },
+   {
+    "sha256": "42708254497aa8cf406bd89bb08064f2f4a67da74a5c15f58a5e819aca3c15b1",
+    "bytes": 13189,
+    "durS": 1.24,
+    "mMax": -13,
+    "integrated": -17.8,
+    "truePeak": 0
+   }
+  ]
+ },
+ "graze_water": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "8771cdb17284570cf1164083e8e3ba09ccd56a7e57fbafcce11630c58a842c84",
+    "bytes": 19614,
+    "durS": 1.76,
+    "mMax": -12.4,
+    "integrated": -17.9,
+    "truePeak": 0
+   },
+   {
+    "sha256": "ef5494eb4c75c94f7c0b2257f4aed1b83314088efc479e48ff6b1d35133f7bac",
+    "bytes": 14594,
+    "durS": 1.298,
+    "mMax": -15.4,
+    "integrated": -17.3,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "6a2d464eb34afc45f485df1da0d2edbfab669d83cde36e969af3c84cc62928d3",
+    "bytes": 17275,
+    "durS": 1.76,
+    "mMax": -12.4,
+    "integrated": -16.5,
+    "truePeak": -0.2
    }
   ]
  },
@@ -1236,6 +1786,121 @@
     "mMax": -13.2,
     "integrated": -18.1,
     "truePeak": -0.4
+   }
+  ]
+ },
+ "hull_patter_grit": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e42bd7249b23efac68877dca0ad1f650b632a0a8c1605805554af849eaf1c800",
+    "bytes": 17289,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -17,
+    "truePeak": -1.6
+   },
+   {
+    "sha256": "a6df6d4b5304986cf387b0798da39b04dd6deae1cdeea3b244ddce88150af4fe",
+    "bytes": 19577,
+    "durS": 2,
+    "mMax": -14.1,
+    "integrated": -17.4,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "hull_patter_mud": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "91b551560f9a1774352db52c5bdf4bd11acab6f3f88d871aa00251865ab94d99",
+    "bytes": 17378,
+    "durS": 2,
+    "mMax": -14.8,
+    "integrated": -19.2,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "db9a0d726bb161a70708a2b3addc4918faa5afb8c9647611aaa709ca0be3bddd",
+    "bytes": 15800,
+    "durS": 2,
+    "mMax": -15.1,
+    "integrated": -19,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "hull_patter_sand": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "7d866e934332bb995bd2d313f1ed7647d8f9b19ac18b5da88b7931273ea2ee6f",
+    "bytes": 14437,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -19.1,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "7245c3b4802c014f692de2927807db4cf1879274f17ed1c6ce53523edec4ec60",
+    "bytes": 14156,
+    "durS": 2,
+    "mMax": -14,
+    "integrated": -18.9,
+    "truePeak": -3.9
+   }
+  ]
+ },
+ "hull_patter_snow": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "4c0b5558bdbe2dc6a218918824bece9a2b6394f10f2d54a7593ea80654fc7bf0",
+    "bytes": 14451,
+    "durS": 1.856,
+    "mMax": -15.2,
+    "integrated": -21.4,
+    "truePeak": -0.5
+   },
+   {
+    "sha256": "4fef40675d808871d1d7ea3724b620dfc3a3e0c705686aef4913929857f9884f",
+    "bytes": 16646,
+    "durS": 2,
+    "mMax": -15.1,
+    "integrated": -20.7,
+    "truePeak": -1.1
+   }
+  ]
+ },
+ "hull_patter_water": {
+  "group": "edge",
+  "preset": "foley",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "f8222ce6f53bd9016b77ba2119955bb9fe45f8bd1b2b41042ff6a1aefc63497f",
+    "bytes": 11455,
+    "durS": 1.56,
+    "mMax": -15.2,
+    "integrated": -19,
+    "truePeak": -1
+   },
+   {
+    "sha256": "61814a4547a5ac57bd557a84f36ee756081ee7efdeb5e03905c5838320ce77b6",
+    "bytes": 14359,
+    "durS": 2,
+    "mMax": -14.3,
+    "integrated": -19,
+    "truePeak": -0.5
    }
   ]
  },
@@ -1685,6 +2350,37 @@
    }
   ]
  },
+ "ricochet_whine": {
+  "group": "impacts",
+  "preset": "oneshot",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "024d199b173bcde77e0d6d5f2be2f07715c033049cda3fd27117d80bf15e3c5b",
+    "bytes": 10545,
+    "durS": 1.36,
+    "mMax": -12,
+    "integrated": -14.9,
+    "truePeak": -1.5
+   },
+   {
+    "sha256": "6be3129dc89172dbfa76530850e7fc9d3e52838d33f4b275bcdcf0c4f27b6a7d",
+    "bytes": 11115,
+    "durS": 1.36,
+    "mMax": -12.2,
+    "integrated": -15.5,
+    "truePeak": -1.1
+   },
+   {
+    "sha256": "19511f9309c60eee7b11b18cfed4e32db3706f724167c12b86dd0df9e7a4a59f",
+    "bytes": 10454,
+    "durS": 1.36,
+    "mMax": -13.6,
+    "integrated": -17.9,
+    "truePeak": -0.2
+   }
+  ]
+ },
  "roof_fall": {
   "group": "buildings",
   "preset": "debris",
@@ -1813,6 +2509,52 @@
     "mMax": -14.3,
     "integrated": -18.5,
     "truePeak": -0.1
+   }
+  ]
+ },
+ "spall_driver": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "9d5932fe889543bd4ba8c45b2f4e1151031ef14901a85532508d1ffd7be88cd4",
+    "bytes": 21444,
+    "durS": 2.2,
+    "mMax": -13,
+    "integrated": -15.9,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "e335b65a9f7c8126b41b9976cf750fd67a2bd5ec455aec1bacafaebe0682c2b1",
+    "bytes": 12842,
+    "durS": 1.232,
+    "mMax": -13.4,
+    "integrated": -14.9,
+    "truePeak": -0.3
+   }
+  ]
+ },
+ "spall_engine": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "0ce2e3af8b32bb84fef6588207bae4842a531e81ab684f3984ff634c0dff3722",
+    "bytes": 15751,
+    "durS": 1.48,
+    "mMax": -14.1,
+    "integrated": -20.6,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "3caef9a443c7de65da214e9685c8d6d259fe9fb927e9484ad4ea2c383c2dd6cf",
+    "bytes": 19700,
+    "durS": 1.88,
+    "mMax": -14.3,
+    "integrated": -15.8,
+    "truePeak": -0.6
    }
   ]
  },
@@ -2300,6 +3042,192 @@
     "durS": 1.48,
     "mMax": -12,
     "integrated": -14,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "strike_cage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "6af56a01b37834dcdec795bd8c21c7717f78f6f6d92b62e6fbe54fb9abde48da",
+    "bytes": 16135,
+    "durS": 1.6,
+    "mMax": -11.1,
+    "integrated": -14.6,
+    "truePeak": 0.5
+   },
+   {
+    "sha256": "58fbb6702159a8e50a85c9a433917938786f4b916b87e99947da4e2791fe6bb7",
+    "bytes": 15255,
+    "durS": 1.6,
+    "mMax": -11.1,
+    "integrated": -16.2,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "3a2cd440bb11a93018459157248a9949313aeaf5fc56604481c846b1f7dfab8a",
+    "bytes": 12399,
+    "durS": 1.18,
+    "mMax": -10,
+    "integrated": -13.1,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "strike_rubber": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "172b22d89c21b18a8976718870e88fe37034a8fb9bede42f7a8307520c221b91",
+    "bytes": 14660,
+    "durS": 1.36,
+    "mMax": -10.3,
+    "integrated": -13.1,
+    "truePeak": 0
+   },
+   {
+    "sha256": "8c5df2ff89f91a4bf6df574000449e68967ea1e2d6bf4a0373b94830757c26ed",
+    "bytes": 16893,
+    "durS": 1.36,
+    "mMax": -11.3,
+    "integrated": -13.1,
+    "truePeak": 0.6
+   },
+   {
+    "sha256": "871e9f05f8caf2803ffa59d08f38eb989bb678d96c13e8ddab4e280e664c27c6",
+    "bytes": 16849,
+    "durS": 1.36,
+    "mMax": -13.3,
+    "integrated": -14.7,
+    "truePeak": -0.1
+   }
+  ]
+ },
+ "strike_stowage": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "c45bce7a300379c9beb0bec7a7ddf429b1feb8901a8f76a84f743a48ca2a3546",
+    "bytes": 15559,
+    "durS": 1.6,
+    "mMax": -10.6,
+    "integrated": -13,
+    "truePeak": 0.1
+   },
+   {
+    "sha256": "07b328dea17db7defd39e6792fd5c99d335f49543496d8f51c406a60bd78a7bb",
+    "bytes": 14131,
+    "durS": 1.32,
+    "mMax": -11,
+    "integrated": -13.1,
+    "truePeak": -0.1
+   },
+   {
+    "sha256": "266bf5ea4306b2926743d7e2a9b415e790836a7dfbfedb2dbbe18484b303d76d",
+    "bytes": 14348,
+    "durS": 1.36,
+    "mMax": -10.7,
+    "integrated": -12.5,
+    "truePeak": -0.5
+   }
+  ]
+ },
+ "strike_track": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "ee48af22de17e45d8f2c046a9026a9ced202207b9ffff4f45b557920d2a2d594",
+    "bytes": 16848,
+    "durS": 1.6,
+    "mMax": -11.9,
+    "integrated": -16.4,
+    "truePeak": -0.3
+   },
+   {
+    "sha256": "918f1339959ff4180c5242833d9ec5e39553926594bd3776fcb28807a595f839",
+    "bytes": 16490,
+    "durS": 1.6,
+    "mMax": -11.9,
+    "integrated": -16.5,
+    "truePeak": 0
+   },
+   {
+    "sha256": "49d30ebdff8f582112451fd8e203446e4d3b75c62296f330cd9546e2f48bb660",
+    "bytes": 17166,
+    "durS": 1.6,
+    "mMax": -11.2,
+    "integrated": -14.6,
+    "truePeak": -0.4
+   }
+  ]
+ },
+ "strike_wheel": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "e811c686de6da355b9728784f1e516aa3978869cbb55589fb382974758242c15",
+    "bytes": 16447,
+    "durS": 1.6,
+    "mMax": -12,
+    "integrated": -16.8,
+    "truePeak": -0.4
+   },
+   {
+    "sha256": "b00f946d01c883a2cbd895f57cb8d93fbac642008122dc08dd0b06edd9fb90f1",
+    "bytes": 16602,
+    "durS": 1.5,
+    "mMax": -10.5,
+    "integrated": -13,
+    "truePeak": 0
+   },
+   {
+    "sha256": "e5c649eb0b3ba8d726e1738cf9e9b5f6644eb3540bdcf21bc083d50638ba7593",
+    "bytes": 15803,
+    "durS": 1.44,
+    "mMax": -11.7,
+    "integrated": -16,
+    "truePeak": -0.7
+   }
+  ]
+ },
+ "strike_wreck": {
+  "group": "impacts",
+  "preset": "impact",
+  "channels": 1,
+  "variants": [
+   {
+    "sha256": "3a15b4555371d21c0efbcd2b33b14420b5571a061b0f8b98029ba5877064c637",
+    "bytes": 15621,
+    "durS": 1.6,
+    "mMax": -14.9,
+    "integrated": -20.6,
+    "truePeak": -0.6
+   },
+   {
+    "sha256": "3671a178642daf33edd380c078a075e2344b10a2ac6ebfda46d3df0e58b33aa7",
+    "bytes": 13874,
+    "durS": 1.32,
+    "mMax": -13.1,
+    "integrated": -18,
+    "truePeak": -0.7
+   },
+   {
+    "sha256": "950a22e1daf3d199308c8c05d20dea2e33c1b1c573ec7f9ee8a753b44a1cc0f6",
+    "bytes": 15869,
+    "durS": 1.6,
+    "mMax": -13.8,
+    "integrated": -19.9,
     "truePeak": -0.7
    }
   ]

@@ -38,5 +38,10 @@
   "tank_explode_ammo": [2, 0, 3],
   "ram_light": [0, 2, 4],
   "hit_rock": [0, 2, 3],
-  "hit_wall": [1, 0, 3]
+  "hit_wall": [1, 0, 3],
+  "strike_wreck": [7, 3, 6],
+  "ricochet_whine": [1, 5, 0],
+  "flyby_shell_crack": [2, 3, 0],
+  "flyby_autocannon": [5, 2, 4],
+  "debris_mud": [2, 0]
 }

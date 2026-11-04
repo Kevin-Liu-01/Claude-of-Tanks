@@ -226,6 +226,10 @@ assert.equal(structureImpact.shellType, 'APFSDS',
   'authoritative structure impacts preserve their shell presentation class');
 assert.ok(structureImpact.caliberMm > 0 && Number.isFinite(structureImpact.ny),
   'authoritative structure impacts carry caliber and a usable surface normal');
+// (impact-materials-269) and the round's incidence off that face, whole degrees, as the solo step raises it: the audio
+// plays a ground graze as a skip; presentation only, so nothing the authority decides reads it
+assert.ok(Number.isInteger(structureImpact.impactAngleDeg) && structureImpact.impactAngleDeg >= 0 && structureImpact.impactAngleDeg <= 90,
+  `authoritative world impacts carry the round's incidence (${structureImpact.impactAngleDeg})`);
 
 const shellTree = {
   min: [-1, -100, -35.5],
