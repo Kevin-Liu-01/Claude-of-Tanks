@@ -8,6 +8,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -54,7 +55,7 @@ try {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
-  await page.waitForFunction('window.__GAME_READY === true && window.__DEBUG', { timeout: 120000 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`, { timeout: 120000 });
   const receipt = await page.evaluate(async ({ selectedMap, preferredKind }) => {
     const viewMapId = selectedMap === 'titan_gorge' ? 'titan_gorge' : selectedMap;
     const view = selectedMap === 'verdant' ? 'battlefield' : `battlefield_${viewMapId}`;

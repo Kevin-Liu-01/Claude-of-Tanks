@@ -217,6 +217,7 @@ import {
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
+import { automationMode, harnessPath } from './app/automationPath.ts';
 import type {
   BotPressureTelemetry,
   CombatTelemetryOptions,
@@ -254,6 +255,7 @@ import {
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { createAppLifecycle } from './game/appLifecycle.ts';
+import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
@@ -700,7 +702,13 @@ function worldRaycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistan
 // recorder used in development. The recorder remains a lazy chunk and has
 // zero listeners/frame work for ordinary players; the explicit QA URL gives
 // remote/mobile testers an optimized-build trace they can export themselves.
-const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navigator.webdriver;
+// (2026-11-02 audit S3) the page's automation path, read in one place (src/app/automationPath.ts): `driven` installs the
+// QA surfaces (a boot decision), harnessPath() says whether to take the shortcuts (no entry gate, no veils, no scene
+// watchdogs; read where each one is decided). Only an explicit request picks the path, never navigator.webdriver: a
+// tool's browser asks for the harness path, a player-path receipt for the player's. Published read-only for receipts
+// (window.__AUTOMATION_PATH), beside the lifecycle.
+const automationAtBoot = automationMode();
+const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || automationAtBoot.driven;
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
   ? (await import('./dev/perfTrace.ts')).createDevTrace({
@@ -725,6 +733,8 @@ game.battleCount = battleOrdinalBase();
 const appLifecycle = createAppLifecycle({ game, announce: (announcement) => bus.emit('phase:change', announcement) });
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__APP_LIFECYCLE', { configurable: true, get: () => appLifecycle.snapshot() });
+  // (audit S3) the automation path this page runs (tools/game-readiness.mjs records it with every receipt)
+  Object.defineProperty(window, '__AUTOMATION_PATH', { configurable: true, get: () => automationMode() });
 }
 // Medals and achievements read the battle from the same state in solo and network play.
 installServiceRecord(bus, {
@@ -1757,7 +1767,7 @@ garage.setDecorativeWorkGate(() => battleLoad.covering);
 // STATE TRANSITIONS (src/ui/transition.ts): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
 // through the studio ctx below) and battle→garage. Headless probes never see
-// it (navigator.webdriver ⇒ synchronous no-op, per the screenshot contract).
+// it (the harness path ⇒ synchronous no-op, per the screenshot contract; src/app/automationPath.ts).
 const transition = createTransition();
 
 // --- audio --------------------------------------------------------------------
@@ -2468,9 +2478,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       assertCurrent();
       const run = coveredBattleWatchdog;
       coveredBattleWatchdog = null;
-      // Keep the established webdriver opt-out; real covered controls own
+      // Keep the established harness opt-out (src/app/automationPath.ts); real covered controls own
       // exactly one request armed by startBattle, never a second delayed probe.
-      if (navigator.webdriver) return;
+      if (harnessPath()) return;
       if (!run) throw new Error('Covered battle scene watchdog was not armed');
       const result = await run();
       assertCurrent();
@@ -2620,7 +2630,7 @@ const soloBattleStart = createSoloBattleStartAccess({
         const entryGeneration = ++sceneWatchdogEntryGeneration;
         const requestedWorld = currentWorld();
         coveredBattleWatchdog = null;
-        if (!navigator.webdriver) {
+        if (!harnessPath()) {
           const isCurrentBattleWatchdog = () => game.phase === 'battle' && !studio.active && currentWorld() === requestedWorld
             && sceneWatchdogEntryGeneration === entryGeneration;
           const watchdog: Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs'> = {
@@ -3506,6 +3516,8 @@ const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: Run
 const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
+  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
+  isBooting: () => !bootReadiness.ready || boot.gated,
   isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
   isReturnOwed: () => garageReturn.state !== 'idle',
 });
@@ -4350,7 +4362,7 @@ if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
 
 const driveTestRequested = import.meta.env.DEV
   || debugModeRequested()
-  || navigator.webdriver;
+  || automationAtBoot.driven;
 const driveTestController = createDriveTestAccess({
   enabled: driveTestRequested,
   options: () => ({
@@ -4465,7 +4477,7 @@ await bootStage('ready', null);
 // full checks for diagnosis runs).
 relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
-// ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
+// ?nosplash / the harness path). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
 const entryReady = boot.ready(() => audio.prepare());
 if (pendingRoomInvitePromise) {
@@ -4499,7 +4511,9 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
   }));
 }
 garageBootDone = true;
-window.__GAME_READY = true;
+// (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts); it writes window.__GAME_READY, the harness
+// mirror the tools wait on, which product code never reads
+bootReadiness.markReady();
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
@@ -4548,9 +4562,9 @@ if (STUDIO_BOOT_INTENT) {
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
 // probe yet renders the REAL scene's lit meshes black. Sample the actual
 // garage frame shortly after ready; if the lit band reads black, shadows-off
-// rescue + recompile (deviceDiag.ts). Skipped under webdriver so harness
+// rescue + recompile (deviceDiag.ts). Skipped on the harness path so harness
 // captures stay deterministic; a second check runs at battle start.
-if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce')) {
+if (!harnessPath() || new URLSearchParams(location.search).has('diagforce')) {
   const garageWatchdogGeneration = sceneWatchdogEntryGeneration;
   const garageWatchdogWorld = currentWorld();
   const isCurrentGarage = () => game.phase === 'garage' && !studio.active && !battleEntryLifecycle.pending

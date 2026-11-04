@@ -34,7 +34,17 @@ interface WarmableWorld {
   warmTerrainLookahead?(cameraPosition: RuntimeValue, bandCount: number): number;
 }
 
+/**
+ * (2026-11-02 audit S3) The deferred warm receipt's declared state. `done` used to be the only settle flag and it was
+ * set on failure and cancellation too (tools/garage-battle-actions-contract.mjs had to cross-read `error` and
+ * `cancelled` to know), and a battle left before the first frame never settled at all (`done` false for good, its
+ * waiters timing out). The receipt now says which: running until it settles once as finished, failed or cancelled.
+ */
+export type DeferredWarmState = 'running' | 'finished' | 'failed' | 'cancelled';
+
 interface WarmTrace {
+  state: DeferredWarmState;
+  /** Settled (finished, failed or cancelled): the flag the waiters poll. `state` says which. */
   done: boolean;
   generation: number;
   stages: Record<string, number>;
@@ -228,8 +238,15 @@ export function createDeferredCombatWarmRuntime<
       cancel();
     }
 
-    const trace: WarmTrace = { done: false, generation, stages: {} };
+    const trace: WarmTrace = { state: 'running', done: false, generation, stages: {} };
     host.__BATTLE_DEFERRED_WARM = trace;
+    // (audit S3) the receipt settles once, from running
+    const settle = (state: Exclude<DeferredWarmState, 'running'>): void => {
+      if (trace.state !== 'running') return;
+      trace.state = state;
+      trace.done = true;
+      if (state === 'cancelled') trace.cancelled = true;
+    };
     const startedAt = now();
     // the countdown's hold, released once: before the vision programs, or at the end (a failure, a cancellation)
     let released = false;
@@ -245,7 +262,8 @@ export function createDeferredCombatWarmRuntime<
       // post-frame task boundary; an rAF alone would append their work to
       // the visible render and hold up the countdown's paint.
       await yieldFrame();
-      if (generation !== getGeneration() || game.phase !== 'battle') return;
+      // (audit S3) the battle was left (or replaced) before the first frame: a cancelled warm, never a receipt that waits
+      if (generation !== getGeneration() || game.phase !== 'battle') { settle('cancelled'); trace.doneBeforeRollout = false; return; }
 
       const visibleYield = createYielder(6);
       const guardedYield: WorkYielder = async (force = false) => {
@@ -350,7 +368,7 @@ export function createDeferredCombatWarmRuntime<
         if (warmVisionSteps) for (const _ of warmVisionSteps()) { trace.visionSteps = (trace.visionSteps ?? 0) + 1; await guardedYield(true); }
       });
       trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
-      trace.done = true;
+      settle('finished');
       trace.totalMs = Math.round(now() - startedAt);
       trace.finishedAtPreBattleS = Number.isFinite(game.preBattleS)
         ? game.preBattleS ?? null : null;
@@ -363,10 +381,10 @@ export function createDeferredCombatWarmRuntime<
       if (code !== 'combat_warm_cancelled') {
         trace.error = String(error);
         console.warn('[warm] deferred deployment warm failed (continuing):', error);
+        settle('failed');
       } else {
-        trace.cancelled = true;
+        settle('cancelled');
       }
-      trace.done = true;
       trace.doneBeforeRollout = false;
       if (generation !== getGeneration() && pendingPromise === pending) cancel();
     }).finally(() => {

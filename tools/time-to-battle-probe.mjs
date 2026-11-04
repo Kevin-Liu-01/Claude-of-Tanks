@@ -26,6 +26,7 @@ import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, installObservers, pinnedOpponents, profileSelfByChunk } from './frame-budget-probe.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'time-to-battle';
 const log = (m) => console.log(`[${TOOL} ${new Date().toTimeString().slice(0, 8)}] ${m}`);
@@ -246,7 +247,7 @@ async function catalogOf(port) {
   try {
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+    await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
     return await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
   } finally {
     await browser.close().catch(() => {});
@@ -276,7 +277,7 @@ async function pageRun(browser, { port, mapId, specId, opponents, allies, enemie
   });
   const navAt = Date.now();
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+  await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
   const bootMs = Date.now() - navAt;
   await sleep(1500); // the garage settles as a player's would before pressing BATTLE
   net.on = true;

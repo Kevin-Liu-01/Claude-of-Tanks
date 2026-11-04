@@ -639,8 +639,9 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   const invalidateBody = main.match(/onEntry: \(\) => \{ ([^}]+)\},/)[1];
   const battleStartBody = main.match(/bus\.on\('ui:battleStart', \(\) => \{([\s\S]*?)\n\}\);/)[1];
   const timers = [], draws = [];
-  const nav = { webdriver: false }, game = { phase: 'battle' }, world = { mapId: 'urban' };
-  const create = new Function('navigator', 'game', 'currentWorld', 'runSceneWatchdogNow',
+  // (2026-11-02 audit S3) main reads the page's automation path (src/app/automationPath.ts), not navigator.webdriver
+  const automation = { harness: false }, game = { phase: 'battle' }, world = { mapId: 'urban' };
+  const create = new Function('harnessPath', 'game', 'currentWorld', 'runSceneWatchdogNow',
     'scheduleSceneWatchdog', 'runSceneBlackWatchdogAsync', `
       let sceneWatchdogEntryGeneration = 0, coveredBattleWatchdog = null;
       const studio = { active: false }, renderer = {}, scene = {}, camera = {}, playSurface = { hideForBattle() {} };
@@ -651,7 +652,7 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
       return { arm: covered => { ${armBody} }, consume: async assertCurrent => { ${consumeBody} },
         pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} }, battleStart: () => { ${battleStartBody} } };
     `);
-  const h = create(nav, game, () => world, runSceneWatchdogNow,
+  const h = create(() => automation.harness, game, () => world, runSceneWatchdogNow,
     options => timers.push(options), async (_renderer, _scene, _camera, options) => {
       assert.equal(options.isCurrent(), true); draws.push(options);
       return { before: 18, after: null, rescued: false, stage: null };
@@ -672,11 +673,11 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
   assert.equal(timers.length, 1);
   assert.equal(timers[0].delayMs, 1800, 'legacy direct/no-cover path retains its original delay');
   assert.equal(h.pending(), null);
-  nav.webdriver = true;
+  automation.harness = true;
   h.arm(true);
   await h.consume(() => {});
-  assert.equal(draws.length, 1, 'webdriver keeps its explicit existing opt-out');
-  nav.webdriver = false;
+  assert.equal(draws.length, 1, 'the harness path keeps its explicit existing opt-out');
+  automation.harness = false;
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   const garageTree = ts.createSourceFile('garage.ts', garage, ts.ScriptTarget.Latest, true);
   const launches = [];

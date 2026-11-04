@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 import { openRooms } from './mp-rooms-entry.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 import { machineLoad, SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -61,7 +62,7 @@ try {
     try {
       await page.setViewport(size);
       await page.goto(`${base}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 600_000 });
-      await wait(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${size.name}: the Garage`, 600_000);
+      await wait(page, readinessExpression('garage'), `${size.name}: the Garage`, 600_000);
       const oldEntryShown = await page.evaluate(() => {
         const node = document.querySelector('.cot-multiplayer-entry');
         return !!node && node.getClientRects().length > 0 && node.checkVisibility({ visibilityProperty: true });

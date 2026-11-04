@@ -43,6 +43,7 @@ import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
 import { installSourcedTextureReadiness, checkSourcedTextureReadiness } from './sourced-texture-readiness.mjs';
+import { BOOT_LOADED_EXPRESSION, assertAutomationPath, requestAutomationPath } from './game-readiness.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -223,8 +224,10 @@ try {
   assertProbeActive();
   refresher = setInterval(() => lock.refresh(), 30_000);
   refresher.unref();
+  // (2026-11-02 audit S3) the --url build may predate src/app/automationPath.ts, which ignores the player's request and
+  // takes the harness path under navigator.webdriver: the driver is hidden so either build takes the player's path
   browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'] });
   assertProbeActive();
   report.browserVersion = await browser.version();
   page = await browser.newPage();
@@ -234,10 +237,9 @@ try {
   if (cpuRate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   page.on('pageerror', error => report.errors.push(String(error)));
   page.on('console', entry => { if (entry.type() === 'error') report.errors.push(entry.text()); });
-  await page.evaluateOnNewDocument(() => {
-    // Match player fades. No quality, simulation, renderer or readiness overrides.
-    Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
-  });
+  // Match player fades: the player's path (src/app/automationPath.ts). No quality, simulation, renderer or readiness
+  // overrides.
+  await requestAutomationPath(page, 'player');
   await page.evaluateOnNewDocument(installGarageActionTiming, { canvasActions });
   if (sourceReadinessGate) await page.evaluateOnNewDocument(installSourcedTextureReadiness);
   if (garageGestureAudioGate || bootAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);
@@ -245,7 +247,8 @@ try {
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   if (!navigation?.ok()) throw new Error(`Navigation failed: ${navigation?.status()}`);
   report.buildIndexHash = hash(await navigation.text());
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.garage);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.garage`);
+  report.automation = await assertAutomationPath(page, 'player', { label: 'garage-battle-actions-probe' });
   if (bootAudioGate) {
     await page.waitForSelector('#cot-boot-gate.on', { visible: true });
     report.bootAudioIntent = { before: await page.evaluate(readGarageAudioIntent) };

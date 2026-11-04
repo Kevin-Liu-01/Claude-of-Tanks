@@ -9,6 +9,7 @@ import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-bro
 import {AUTHORED_EXIT_FIXTURE} from './road-authored-exit-fixture.mjs';
 import {settleMapTextures} from './map-environment-acquisition.mjs';
 import {settleResidencyTerrain} from './world-residency-acquisition.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const option=name=>process.argv.find(a=>a.startsWith(`--${name}=`))?.slice(name.length+3);
 const base=option('url'),out=option('out');
@@ -23,7 +24,7 @@ try{
  const page=await browser.newPage();await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
  page.on('pageerror',e=>report.errors.push(String(e)));
  await page.goto(new URL('/?debug=1&nosplash=1&tier=desktop&gfxreset=1',base).href,{waitUntil:'domcontentloaded',timeout:180000});
- await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG&&window.__SHOTS,{timeout:180000});
+ await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG && !!window.__SHOTS`,{timeout:180000});
  for(const [map,roads] of Object.entries(AUTHORED_EXIT_FIXTURE)){
   await page.evaluate(name=>window.__SHOTS.set(`battlefield_${name}`),map);
   const readiness=await page.evaluate(settleMapTextures,{mapId:map});

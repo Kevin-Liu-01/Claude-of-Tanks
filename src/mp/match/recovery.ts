@@ -144,3 +144,10 @@ export class ConnectionRecovery {
     return this.lostAtMs === null ? 0 : Math.max(0, nowMs - this.lostAtMs);
   }
 }
+
+/**
+ * (2026-11-02 audit S3) The match connection's phases as a runtime list: the multiplayer harnesses import it
+ * (tools/mp-states.mjs) instead of spelling the words; tools/mp-states.selftest.mjs pins it to ConnectionPhase.
+ */
+export const CONNECTION_PHASES = Object.freeze(['idle', 'connecting', 'handshaking', 'live', 'stalled', 'reconnecting', 'failed',
+  'left', 'closed'] as const satisfies readonly ConnectionPhase[]);

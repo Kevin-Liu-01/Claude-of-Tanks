@@ -15,6 +15,7 @@ import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/m
 import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { ROOM_HOST_DISCONNECT_GRACE_MS, parseP2pMatchUrl } from '../src/mp/room/protocol.ts';
+import { HOST_STATE, MATCH_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const SECRET = 'mp-p2p-stepdown-seat-secret-0123456789abcdef';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -89,8 +90,8 @@ try {
   const election = p2.elections.find((entry) => entry.generation === 2);
   assert.ok(electedAfterMs >= ROOM_HOST_DISCONNECT_GRACE_MS, `the election waited out the grace (${electedAfterMs} ms)`);
   assert.deepEqual({ hostId: election.hostId, reason: election.reason }, { hostId: 'p2', reason: 'timeout' });
-  await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live' && p2.headless.session.match?.phase === 'live', 'p2 hosts live', 20_000);
-  await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', 20_000);
+  await until(() => p2.headless.session.role === SESSION_ROLE.host && p2.headless.session.matchHost?.state === HOST_STATE.live && p2.headless.session.match?.phase === MATCH_PHASE.live, 'p2 hosts live', 20_000);
+  await until(() => p3.headless.session.match?.phase === MATCH_PHASE.live && p3.headless.session.stats().p2p?.hostId === 'p2', 'p3 live on p2', 20_000);
   assert.equal(p1.headless.session.role, 'host', 'the old host still runs its actor (nobody told it)');
   assert.ok(!cores[0].core.stopped, "the old host's actor runs on");
 
@@ -111,7 +112,7 @@ try {
   assert.ok(stepped.detail === 'match_start re-sent' || stepped.detail === 'host_only', `the step-down's cause (${stepped.detail})`);
   assert.equal(stepped.generation, 2);
   await until(() => cores[0].core.stopped, "the old host's actor stopped", 5_000);
-  await until(() => p1.headless.session.role === 'peer' && p1.headless.session.match?.phase === 'live' && p1.headless.session.stats().p2p?.hostId === 'p2', 'the old host live as a peer of p2', 20_000,
+  await until(() => p1.headless.session.role === SESSION_ROLE.peer && p1.headless.session.match?.phase === MATCH_PHASE.live && p1.headless.session.stats().p2p?.hostId === 'p2', 'the old host live as a peer of p2', 20_000,
     () => JSON.stringify({ role: p1.headless.session.role, phase: p1.headless.session.match?.phase, p2p: p1.headless.session.stats().p2p, transport: p1.headless.session.match?.stats().transportState }));
   const steppedDownAfterMs = Date.now() - rejoinedAt;
   await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', 10_000);

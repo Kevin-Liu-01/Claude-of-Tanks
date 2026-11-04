@@ -17,6 +17,8 @@ import { flagIconCode } from './flagCodes.ts';
 import { iconUrl, tankThumbUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
+// (2026-11-02 audit S3) the product's boot latch, never its harness mirror (the flag the tools wait on)
+import { isBootReady } from '../app/bootReadiness.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
 import { createPicker, readMemory } from './components/picker.ts';

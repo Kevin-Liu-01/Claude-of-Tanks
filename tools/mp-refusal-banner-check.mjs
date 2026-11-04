@@ -16,6 +16,7 @@ import { mkdir } from 'node:fs/promises';
 import net from 'node:net';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { readinessExpression } from './game-readiness.mjs';
 
 const arg = (name, fallback) => (process.argv.find((value) => value.startsWith(`--${name}=`)) ?? `--${name}=${fallback}`).slice(name.length + 3);
 const tree = resolve('.');
@@ -39,7 +40,7 @@ try {
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   // the real menu module, a held room whose match runs, and a session with this seat's match_start
   await page.evaluate(async () => {
     const { createPlayMenu } = await import('/src/ui/playMenu.ts');

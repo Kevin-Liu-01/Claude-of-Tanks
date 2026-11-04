@@ -48,6 +48,7 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import puppeteer from 'puppeteer';
 import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime.mjs';
 import { acquireProbeLocks, chunkOfUrl, foreignGpuCpu, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 import { StringDecoder } from 'node:string_decoder';
 import { analyzeBattle, rendererMainThread, traceEventOfInterest } from './battle-spike-analysis.mjs';
 
@@ -650,7 +651,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
     if (options.shadowDebug) await page.evaluateOnNewDocument((flags) => { window.__SHADOW_DEBUG = { ...(window.__SHADOW_DEBUG ?? {}), ...flags }; }, options.shadowDebug);
     const bootAt = Date.now();
     await page.goto(`http://127.0.0.1:${side.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+    await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
     // the adaptive resolution held at its full scale from boot (--governor=pinned): no mid-battle reallocation
     if (options.governor === 'pinned') {
       await page.evaluate(() => { const P = window.__DEBUG.post; P.setAdaptiveSuspended?.(true); P.pinDynScale?.(1); });
@@ -671,7 +672,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
       }
       if (pass === 'warm') {
         await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-        await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
+        await page.waitForFunction(readinessExpression('garage'), { timeout: 180000, polling: 250 });
         await sleep(5000);
       }
       rss.peakKb = 0;
@@ -718,7 +719,7 @@ async function primeBattle(page, options, { mapId, gameMode }) {
   } else {
     await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
   }
-  await waitForGame(page, 'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+  await waitForGame(page, readinessExpression('controlsReleased'), { timeout: 420000, polling: 250 });
   if (watched) await sleep(options.seconds * 1000);
   else await driveBattle(page, { seconds: options.seconds, mode: gameMode });
 }
@@ -771,7 +772,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     // the CPU profile covers the battle from its phase on, as the trace does: the countdown's warm work and the fight
     const battlePhaseMs = await page.evaluate(() => performance.now());
     const cpuProfiler = options.cpuProfile ? await startCpuProfile(page) : null;
-    await waitForGame(page, 'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+    await waitForGame(page, readinessExpression('controlsReleased'), { timeout: 420000, polling: 250 });
     const entryMs = Date.now() - entryAt;
     // a watched battle: ride the human seat's hull (its bot drives it) as a player's chase view would follow it
     const rodeSeat = watched ? await page.evaluate(() => {

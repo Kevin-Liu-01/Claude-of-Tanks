@@ -5,7 +5,7 @@
  *
  * Usage:
  *   npx vite --host 127.0.0.1 --port 5197
- *   agent-browser --session cot-manifest open http://127.0.0.1:5197/
+ *   agent-browser --session cot-manifest open 'http://127.0.0.1:5197/?automation=harness'
  *   node tools/capture-world-collision-manifests.mjs cot-manifest
  *   node tools/capture-world-collision-manifests.mjs cot-manifest --maps whiteout
  *
@@ -42,6 +42,7 @@ import {
   collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
 } from './worldCollisionManifestFiles.mjs';
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
+import { AUTOMATION_PATH_EXPRESSION, sessionPathProblem } from './game-readiness.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
 /** (229) COT_FIELD_WORKS_RECEIPTS: an inspect hook per variant that writes each map's field-work seats, or null. */
@@ -257,6 +258,8 @@ if (options.node && options.variant) {
 } else {
   const ready = evaluate('typeof window.__DEBUG === "object"');
   if (!ready) throw new Error('game debug facade is not ready in the capture browser');
+  const problem = sessionPathProblem(evaluate(AUTOMATION_PATH_EXPRESSION), 'harness'); // (audit S3) as the headless mode
+  if (problem) throw new Error(`capture-world-collision-manifests: ${problem}`);
   for (const mapId of options.mapIds) {
     console.log(`capturing ${mapId} (timeout ${CAPTURE_TIMEOUT_MS / 1000}s)`);
     publish(mapId, evaluate(collisionCaptureScript(mapId)));

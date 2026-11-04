@@ -30,6 +30,7 @@ import { MAP_PROBE_BROWSER_ARGS, isMainModule, sleep } from './map-probe-runtime
 import { acquireProbeLocks, openPreview, pinnedOpponents } from './frame-budget-probe.mjs';
 import { driveBattle, installCensusObservers, sourceResolver, summarizeHeapProfile } from './battle-spike-census.mjs';
 import { snapshotRetainerPaths } from './heap-retainers.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const TOOL = 'battle-memory-probe';
 const BUDGET_FILE = fileURLToPath(new URL('./battle-memory-budget.json', import.meta.url));
@@ -292,7 +293,7 @@ async function probeScenario(options, scenario) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument(installCensusObservers, { preset: options.preset, allies, enemies });
     await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+    await waitForBootLoaded(page, { timeout: 300000 });
     await page.evaluate(() => { const P = window.__DEBUG.post; P.setAdaptiveSuspended?.(true); P.pinDynScale?.(1); });
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
     await page.evaluate((ids) => { const f = window.__DEBUG.flags; f.forceRoster = ids; f.rosterExact = true; }, pinnedOpponents(catalog, options.spec, allies + enemies));
@@ -315,7 +316,7 @@ async function probeScenario(options, scenario) {
       // the entry's covered first-battle warm (once a session; window.__BATTLE_FIRST_WARM) and its load stages
       const entry = await page.evaluate(() => ({ firstWarm: window.__BATTLE_FIRST_WARM ?? null,
         loadStages: window.__BATTLE_LOAD?.stages ?? null }));
-      await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+      await page.waitForFunction(readinessExpression('controlsReleased'), { timeout: 420000, polling: 250 });
       const inBattle = rssByKind(pid);
       await driveBattle(page, { seconds: options.seconds, mode: battleMode });
       const atEnd = rssByKind(pid);
@@ -334,7 +335,7 @@ async function probeScenario(options, scenario) {
       }, `${battle}_${battleMap}`, battle);
       const inBattleCensus = options.census ? await page.evaluate(pageMemoryCensus) : null;
       await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
-      await page.waitForFunction('window.__DEBUG.game.phase === "garage"', { timeout: 180000, polling: 250 });
+      await page.waitForFunction(readinessExpression('garage'), { timeout: 180000, polling: 250 });
       await sleep(5000);
       const row = { label: `garage after battle ${battle} (${battleMap})`, map: battleMap, entryMs, ...entry, battleRss: { atRollout: inBattle, atEnd }, ...(await measure(page, cdp, pid)) };
       if (options.leakCheck) {

@@ -61,6 +61,7 @@ import os from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const TOOL = fileURLToPath(import.meta.url);
 const REPO_ROOT = resolve(dirname(TOOL), '..');
@@ -343,7 +344,7 @@ async function runConvergence({ root, rounds, clicks, seed, skipA, skipC }) {
     });
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+    await waitForBootLoaded(page, { timeout: 120000 });
 
     // boot hero settled on stage before the clock starts
     await page.waitForFunction(() => {
@@ -555,7 +556,7 @@ async function runConvergence({ root, rounds, clicks, seed, skipA, skipC }) {
       });
     });
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 150000 });
+    await waitForBootLoaded(page, { timeout: 150000 });
     const before = await page.evaluate(() => {
       const c = document.querySelector('#app canvas');
       return c ? { w: c.width, h: c.height } : null;
@@ -710,7 +711,7 @@ export async function runProfile(options = {}) {
     });
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
-    await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+    await waitForBootLoaded(page, { timeout: 180000 });
     await page.waitForFunction(() => {
       const D = window.__DEBUG;
       const v = D && D.pedestalVisual;

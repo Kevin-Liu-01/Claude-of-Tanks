@@ -10,6 +10,7 @@ import { acquireCaptureLock as acquireLock, releaseCaptureLock as releaseLock } 
 // Usage: node tools/gunnery_gate.mjs [--battles 8] [--shots 6] [--min 80]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 await acquireLock();
 process.on('exit', releaseLock);
@@ -61,7 +62,7 @@ page.on('pageerror', (e) => consoleErrors.push(String(e)));
 let failed = false;
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
 
   const report = await page.evaluate(async (BATTLES, SHOTS_PER) => {
     const D = window.__DEBUG;

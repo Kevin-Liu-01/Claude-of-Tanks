@@ -41,6 +41,7 @@
 //   `launchHangMs` of wall (10 min) is called a hang.
 import { execFile, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { prepareToolBrowser } from './game-readiness.mjs';
 import { appendFileSync, writeSync } from 'node:fs';
 import { basename } from 'node:path';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
@@ -494,6 +495,9 @@ export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
   } finally {
     watch.stop();
   }
+  // (2026-11-02 audit S3) every page this browser hands out asks for the harness path before its first navigation,
+  // unless its tool asks for another (tools/game-readiness.mjs prepareToolBrowser, src/app/automationPath.ts)
+  await prepareToolBrowser(target);
   let rootPid = null;
   try { rootPid = target?.process?.()?.pid ?? null; } catch { rootPid = null; }
   if (rootPid) {

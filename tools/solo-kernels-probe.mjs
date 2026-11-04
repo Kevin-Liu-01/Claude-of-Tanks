@@ -15,6 +15,7 @@ import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { createCaptureLock } from './capture-lock.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -46,7 +47,7 @@ async function battlePage(mode) {
     localStorage.setItem('cot.game.teams.v1', JSON.stringify({ standard: { allies: 15, enemies: 16 } }));
   });
   await page.goto(`${origin}/?nosplash=1&tier=desktop&simKernels=${mode ?? 'ts'}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   await page.evaluate((map) => window.__DEBUG.startBattle('m1a1_abrams_hc', map), mapId);
   await page.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle', { timeout: 300_000, polling: 250 });
   const tanks = await page.evaluate(() => window.__DEBUG.game.tanks.length);

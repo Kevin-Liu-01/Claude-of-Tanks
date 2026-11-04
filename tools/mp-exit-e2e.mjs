@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { createRoomsServer } from '../server/rooms/serve.ts';
 import { createHeadlessSession, memoryStorage, scriptedControls } from '../src/mp/session/headlessSession.ts';
+import { ROOM_CLIENT_PHASE, ROOM_PHASE, SESSION_PHASE } from './mp-states.mjs';
 
 function argValue(name, fallback) {
   const prefix = `--${name}=`;
@@ -147,7 +148,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     const tab2 = spawn('p3', 'Three (tab 2)', p3.storage, 2);
     await tab2.headless.room.join({ roomCode: code });
     await until(() => !!tab2.headless.session.match?.welcome, 'the second tab welcomed', 15_000);
-    await until(() => p3.headless.room.phase === 'closed' && p3.headless.session.phase === 'lobby', 'the first tab reads the room\'s refusal and leaves the match', 10_000);
+    await until(() => p3.headless.room.phase === ROOM_CLIENT_PHASE.closed && p3.headless.session.phase === SESSION_PHASE.lobby, 'the first tab reads the room\'s refusal and leaves the match', 10_000);
     await sleep(600);
     const roomReason = p3.headless.room.lastClosedReason;
     report.steps.replaced = {
@@ -180,7 +181,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
 
     // ---- 5. the admin kicks a seat: room and match links end together
     await p1.headless.room.command({ type: 'kick', playerId: 'p2' });
-    await until(() => p2.headless.room.phase === 'closed', 'p2 room closed', 5_000);
+    await until(() => p2.headless.room.phase === ROOM_CLIENT_PHASE.closed, 'p2 room closed', 5_000);
     await until(() => (actor()?.stats().clients ?? 0) === 2, 'the kicked client left the actor', 5_000);
     report.steps.kick = { reason: p2.headless.room.lastClosedReason, sessionPhase: p2.headless.session.phase, actorClients: actor()?.stats().clients ?? 0 };
     log(`p2 kicked: room ${report.steps.kick.reason}, session ${report.steps.kick.sessionPhase}, actor clients ${report.steps.kick.actorClients}`);
@@ -190,7 +191,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     // ---- 6. the verdict reaches the survivors; the room unlocks; the fresh join seats p4 again; the rematch welcomes it
     const survivors = () => sessions.filter((entry) => !entry.disposed);
     await until(() => [p1, tab2].every((entry) => entry.headless.session.verdict), 'a verdict at the survivors', (battleS + countdownS + 30) * 1000);
-    await until(() => roomSnapshot()?.phase === 'waiting', 'room back to waiting', 20_000);
+    await until(() => roomSnapshot()?.phase === ROOM_PHASE.waiting, 'room back to waiting', 20_000);
     for (const entry of survivors()) await entry.headless.session.leaveMatch('result screen');
     p4b = spawn('p4', 'Four again', memoryStorage(), 3);
     await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } });
@@ -204,7 +205,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     report.steps.rematch = { welcomed: survivors().filter((entry) => entry.headless.session.match?.welcome).length, expected: survivors().length, freshSeatWelcomed: !!p4b.headless.session.match?.welcome };
     log(`rematch: ${report.steps.rematch.welcomed}/${report.steps.rematch.expected} welcomed, the fresh seat ${report.steps.rematch.freshSeatWelcomed}`);
     if (!report.steps.rematch.freshSeatWelcomed) failures.push('rematch: the fresh seat was not welcomed');
-    for (const entry of survivors()) if (entry.headless.session.stats().phase === 'lost') failures.push(`${entry.id} ended in lost`);
+    for (const entry of survivors()) if (entry.headless.session.stats().phase === SESSION_PHASE.lost) failures.push(`${entry.id} ended in lost`);
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   } finally {

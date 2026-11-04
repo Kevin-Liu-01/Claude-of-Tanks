@@ -45,7 +45,7 @@ function firstBeaconEndpoint({ hostname, dataUrl }) {
   const timers = [];
   const beacons = [];
   let now = 1_000_000;
-  const window = { __GAME_READY: false };
+  const window = { __COT_BOOT_READY: false };
   const href = `https://${hostname || 'game.test'}/?tank=leo1a5`;
   const context = {
     window,

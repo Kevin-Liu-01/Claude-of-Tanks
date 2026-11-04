@@ -14,6 +14,7 @@ import { stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environ
 import { outputResolution } from '../src/engine/resolutionPolicy.ts';
 import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScalePolicy.ts';
 import { PRESETS } from '../src/engine/quality.ts';
+import { BOOT_LOADED_EXPRESSION, prepareToolBrowser, readinessExpression } from './game-readiness.mjs';
 
 export const MOTION_PROTOCOL = 'playwright-live-environment-v2';
 
@@ -537,12 +538,11 @@ async function acquireCase(page, context, testCase, base, row, saveCapture, writ
   const evaluate = (fn, arg, timeout = 30000) => bounded(page.evaluate(expression(fn, arg)), timeout, fn.name);
   await page.addInitScript(value => { window.__ENV_REQUEST = value; }, testCase);
   await page.goto(`${base}/?debug=1&nosplash=1&tier=${testCase.tier}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__GAME_READY === true && !!window.__DEBUG?.beginSoloBattle);
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG?.beginSoloBattle`);
   row.boot = await evaluate(browserLayoutReceipt); write(`${row.id}-boot.json`, row.boot);
   await evaluate(() => window.__DEBUG.bus.emit('ui:debugHud', { on: false }));
   await evaluate(({ mapId }) => window.__DEBUG.beginSoloBattle({ specId: 'm1a1_abrams_hc', mapId, randomRoster: false }), testCase, 180000);
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle'
-    && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.timeS > 0);
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.timeS > 0`);
   await evaluate(async () => {
     const state = window.__DEBUG.world.minimapTextureState;
     if (!state?.promise) throw new Error('Missing authored photo readiness');
@@ -709,7 +709,8 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
     server = await preview({ root, logLevel: 'error', preview: { host: '127.0.0.1', port: 5876, strictPort: true } });
     browserOwner = await launchGuardedBrowser(chromium, { headless: true, channel: 'chromium',
       args: ['--use-gl=angle', '--enable-webgl'], host: '127.0.0.1', timeout: 30000 }, { method: 'launchServer' });
-    browser = await chromium.connect(browserOwner.wsEndpoint(), { timeout: 30000 });
+    // (audit S3) a connected browser is not the launched one: its pages ask for the harness path like any other
+    browser = await prepareToolBrowser(await chromium.connect(browserOwner.wsEndpoint(), { timeout: 30000 }));
     report.browser = { version: browser.version(), executable: chromium.executablePath(),
       channel: 'chromium', headless: 'new', args: ['--use-gl=angle', '--enable-webgl'],
       pid: browserOwner.process().pid };

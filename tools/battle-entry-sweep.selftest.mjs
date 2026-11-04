@@ -107,9 +107,10 @@ for (const sample of [{ at: 2, mean: 3.1, sd: 9 }, { at: 5, mean: 48, sd: 0.4 },
 }
 
 {
-  // the sweep is the player's covered path: navigator.webdriver false, the solo time pinned, the covered entry
+  // the sweep is the player's covered path: the player's automation path (src/app/automationPath.ts), the solo time
+  // pinned, the covered entry
   const source = readFileSync(new URL('./battle-entry-sweep.mjs', import.meta.url), 'utf8');
-  assert.match(source, /Object\.defineProperty\(Navigator\.prototype, 'webdriver', \{ get: \(\) => false/);
+  assert.match(source, /window\.__COT_AUTOMATION = 'player';/);
   assert.match(source, /localStorage\.setItem\('cot\.battle\.times\.v2'/);
   assert.match(source, /D\.beginSoloBattle\(\{ specId, mapId, randomRoster: false \}\)/);
   assert.match(source, /if \(control\) url\.searchParams\.set\('diagforce', 'blackout'\)/, 'the control forces a black lit pipeline');

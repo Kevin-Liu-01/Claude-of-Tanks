@@ -12,6 +12,7 @@ import {createHash} from 'node:crypto';
 import {FIELD_GUIDE_SCENES} from './field-guide-scenes.mjs';
 import {acquireCaptureLock,refreshCaptureLock,releaseCaptureLock} from './capture-lock.mjs';
 import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)??fallback;
 const only=arg('only','').split(',').filter(Boolean);
 if(only.some(id=>!FIELD_GUIDE_SCENES.some(job=>job.id===id)))throw new Error('Unknown field guide');
@@ -34,7 +35,7 @@ try{
   await page.setViewport({width:1600,height:900,deviceScaleFactor:1});
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(`http://localhost:${server.config.server.port}/?studio=1&map=verdant&nogate=1&debug=1`,{waitUntil:'domcontentloaded',timeout:180000});
-  await page.waitForFunction('window.__GAME_READY && window.__STUDIO?.active',{timeout:240000});
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active`,{timeout:240000});
   const renderer=await page.evaluate(()=>{const gl=__DEBUG.renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');return ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);});
   if(/swiftshader|llvmpipe|software/i.test(renderer))throw new Error(`Hardware capture required: ${renderer}`);
   const manifest={version:1,width:1600,height:900,shots:previous.shots.filter(shot=>!jobs.some(job=>job.id===shot.id))};

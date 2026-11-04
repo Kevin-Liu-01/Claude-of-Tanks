@@ -53,6 +53,7 @@ import {
 import { evaluateQuality } from './map-environment-quality.mjs';
 import { selectWaterShoreViews } from './water-shore-camera.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 const valueArg = (name, fallback) => {
@@ -869,7 +870,7 @@ try {
   await page.goto(`http://127.0.0.1:${port}/${tier === 'auto' ? '' : `?tier=${tier}`}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate(waitForTimingGarage);
   await page.evaluate(() => window.__SHOTS.set('garage'));

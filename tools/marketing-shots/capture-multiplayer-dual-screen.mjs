@@ -52,6 +52,7 @@ import net from 'node:net';
 import os from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readinessExpression } from '../game-readiness.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 process.chdir(ROOT);
@@ -521,7 +522,7 @@ async function openPlayer(context, label, specId, errors) {
 
 async function bootGarage(page, origin, label) {
   await page.goto(`${origin}/?${BOOT_QUERY}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  await waitFor(page, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', `${label} garage ready`, 480_000);
+  await waitFor(page, readinessExpression('garage'), `${label} garage ready`, 480_000);
 }
 
 async function openLanMenu(page, label) {
@@ -797,17 +798,16 @@ async function capture({ options, plan, seedInfo }) {
     log(`match ${roomOf()?.match?.id ?? '?'} seed ${staged.start.seed} on ${staged.start.mapId}: ${staged.start.seats.map((seat) => `${seat.team} ${seat.specId} @ ${seat.spawn ? `${seat.spawn.x},${seat.spawn.z}` : 'deployment'}`).join(' vs ')}, ${staged.start.bots} bots`);
     if (staged.start.seed !== seedInfo.seed) throw new Error(`the room drew seed ${staged.start.seed}, not ${seedInfo.seed}`);
 
-    const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
-      && getComputedStyle(document.querySelector('.cot-bl')).display === 'none'
-      && !document.querySelector('.cot-play')?.classList.contains('show');
+    const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true
+      && !document.querySelector('.cot-play')?.classList.contains('show')`;
     await Promise.all([waitFor(pageA, inBattle, 'A battle revealed', 480_000), waitFor(pageB, inBattle, 'B battle revealed', 480_000)]);
     log('both battles revealed');
 
     // ---- the moment: each camera on its own hull's shoulder, both turrets on the other, the countdown over
     const firstFraming = FRAMINGS[options.framings[0]];
     await Promise.all([installCamera(pageA, bravoId, firstFraming), installCamera(pageB, alphaId, firstFraming)]);
-    const facing = () => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.preBattleS <= 0 && !window.__DEBUG.game.result
-      && !!window.__DEBUG.game.tankById?.get(window.__COT_DUAL?.opponentId)?.networkVisible;
+    const facing = `${readinessExpression('battleLive')}
+      && !!window.__DEBUG.game.tankById?.get(window.__COT_DUAL?.opponentId)?.networkVisible`;
     await Promise.all([waitFor(pageA, facing, 'A sees player two', 60_000), waitFor(pageB, facing, 'B sees player one', 60_000)]);
     await until(() => { const turrets = turretErrors(staged.actor, alphaId, bravoId); return turrets && turrets.alpha < 0.035 && turrets.bravo < 0.035; },
       'both turrets on target (authority)', 45_000);

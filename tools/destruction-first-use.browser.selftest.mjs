@@ -17,6 +17,7 @@ import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const MAP = arg('map', 'urban');
@@ -50,12 +51,11 @@ try {
   });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&debug=1&telemetry=off&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`, { timeout: 300_000, polling: 250 });
   await page.evaluate((specId, mapId) => {
     setTimeout(() => { window.__dfuEntryAt = performance.now(); window.__DEBUG.beginSoloBattle({ specId, mapId }); }, 0);
   }, SPEC, MAP);
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on'),
-    { timeout: 420_000, polling: 100 });
+  await page.waitForFunction(readinessExpression('battleRevealed'), { timeout: 420_000, polling: 100 });
   // the entry's length to the reveal (what the covered warm costs; loaded-machine wall time, a guide only)
   report.entryMs = await page.evaluate(() => Math.round(performance.now() - window.__dfuEntryAt));
   // every program made from here, with the draw (or compile) that made it

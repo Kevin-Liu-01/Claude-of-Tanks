@@ -20,6 +20,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
@@ -85,7 +86,7 @@ page.on('console', (m) => {
 await page.goto(`${url}?nosplash=1&tier=${deviceTier}&gfxreset=1${verifyDecorationProbe ? '&decorprobe=1' : ''}`, {
   waitUntil: 'domcontentloaded', timeout: 120000,
 });
-await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+await waitForBootLoaded(page, { timeout: 120000 });
 
 // Boot hero settle: follow the catalog's actual default instead of pinning a
 // stale historical model id. This fleet is first-party/procedural now, so GLB

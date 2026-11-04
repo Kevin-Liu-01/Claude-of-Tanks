@@ -21,6 +21,7 @@ import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
+import { readinessExpression } from './game-readiness.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -100,7 +101,7 @@ try {
     if (String(sockets.get(requestId)).startsWith(padService)) socketFrames.desktopReceived.push({ timestamp, data: String(response.payloadData).slice(0, 80) });
   });
   await desktop.goto(`${origin}/?nosplash=1&tier=desktop&padService=${encodeURIComponent(padService)}`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await desktop.waitForFunction(() => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', { timeout: 300_000, polling: 250 });
+  await desktop.waitForFunction(readinessExpression('garage'), { timeout: 300_000, polling: 250 });
   deadline();
 
   // Unpaired. The dev server preloads every module its static scan reaches (a dev-only plugin that also follows type
@@ -190,7 +191,7 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => !document.querySelector('.cot-settings.open'), { timeout: 10_000 });
   await desktop.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc', 'verdant'));
-  await desktop.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG.game.player && window.__DEBUG.game.preBattleS <= 0,
+  await desktop.waitForFunction(`${readinessExpression('controlsReleased')} && !!window.__DEBUG.game.player`,
     { timeout: 300_000, polling: 250 });
   check('a solo battle never becomes a multiplayer session', await desktop.evaluate(() => !document.querySelector('.cot-mp-strip, .cot-net-strip')
     && !performance.getEntriesByType('resource').some((entry) => /\/rooms\//.test(entry.name))));

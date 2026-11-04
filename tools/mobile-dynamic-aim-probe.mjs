@@ -5,6 +5,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 const shotArg = process.argv.indexOf('--screenshot');
 const SCREENSHOT = shotArg >= 0 ? process.argv[shotArg + 1] : '';
@@ -140,7 +141,7 @@ try {
   await page.goto(`http://localhost:${server.config.server.port}/?nosplash`, {
     waitUntil: 'domcontentloaded', timeout: 360000,
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 360000 });
+  await waitForBootLoaded(page, { timeout: 360000 });
   await page.evaluate(() => {
     const input = window.__DEBUG.input;
     const original = input.addVirtualAim.bind(input);

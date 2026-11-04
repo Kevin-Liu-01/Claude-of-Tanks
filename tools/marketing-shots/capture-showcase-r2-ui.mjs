@@ -14,6 +14,7 @@ import {
   refreshCaptureLock,
   releaseCaptureLock,
 } from '../capture-lock.mjs';
+import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -89,7 +90,7 @@ try {
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, {
     waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__GARAGE_WORKSHOP`,
     { timeout: LOAD_MS });
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
@@ -165,7 +166,7 @@ try {
     await page.goto(`${baseUrl}/?studio=1&map=${scene.map ?? 'urban'}&nogate=1`, {
       waitUntil: 'domcontentloaded', timeout: LOAD_MS,
     });
-    await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true,
+    await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`,
       { timeout: LOAD_MS });
     await page.evaluate(async (nextScene) => {
       await window.__STUDIO.load(nextScene);

@@ -43,6 +43,7 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { bandEnergy, transientAnatomy } from './audio/pcm.mjs';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const outDir = resolve('shots/audio-mix-balance');
 mkdirSync(outDir, { recursive: true });
@@ -165,7 +166,7 @@ try {
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push(String(e)));
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await waitForBootLoaded(page, { timeout: 120000 });
   await page.mouse.click(640, 360);
   await page.waitForFunction('window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.3', { timeout: 30000 });
   // Default mix, as a fresh player has it.
@@ -299,7 +300,7 @@ try {
   // 5) The drone: flying it, the listener rides it and its motors lead. A fresh Drone battle, captured before
   //    the bots engage: docked in the tank, then in flight.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'drone' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "drone"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "drone"`, { timeout: 180000, polling: 250 });
   await page.evaluate(() => window.__COT_AUDIO.preload(['drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost']));
   await sleep(1500);
   const docked = await capture('drone_docked', 2000);
@@ -328,7 +329,7 @@ try {
 
   // 6) The AC-130: the opener, the cabin and the howitzer inside it.
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't90am', mapId: 'verdant', gameMode: 'ac130' }), 0); });
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.gameMode === "ac130"', { timeout: 180000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('controlsReleased')} && window.__DEBUG.game.gameMode === "ac130"`, { timeout: 180000, polling: 250 });
   await sleep(1500);
   const gunshipFrom = await page.evaluate(() => (window.__COT_AUDIO.sfxLog.at(-1)?.seq ?? 0));
   await page.evaluate(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;

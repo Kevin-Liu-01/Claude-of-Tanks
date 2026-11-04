@@ -54,10 +54,11 @@ function mountPanel(module) {
   const column = dom.document.createElement('div');
   column.className = 'cot-leftcol';
   root.append(column);
-  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: { __GAME_READY: false },
+  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: {}, bootReady: false,
     closers: [] };
-  // (2026-11-02 audit F5) the panel waits on the shared ready wait (gameReady.ts) and gives the Garage screen its closer
-  const gameReady = createGameReadyWaiter({ isReady: () => harness.window.__GAME_READY === true, hasFailed: () => false,
+  // (2026-11-02 audit F5) the panel waits on the shared ready wait (gameReady.ts) and gives the Garage screen its closer;
+  // (audit S3) that wait reads the product's boot latch (src/app/bootReadiness.ts), as the page's own gameReady does
+  const gameReady = createGameReadyWaiter({ isReady: () => harness.bootReady === true, hasFailed: () => false,
     schedule: dom.setTimeout, cancel: dom.clearTimeout });
   const garageScreen = { onHide(closer) { harness.closers.push(closer); return () => {}; } };
   const context = {
@@ -69,6 +70,8 @@ function mountPanel(module) {
     },
     preloadImage(url) { harness.preloads.push(url); return Promise.resolve(url); },
     window: harness.window,
+    // (2026-11-02 audit S3) the product's boot latch (src/app/bootReadiness.ts), not the harnesses' flag
+    isBootReady: () => harness.bootReady,
     requestIdleCallback(callback) { harness.idle.push(callback); },
     setTimeout: dom.setTimeout, clearTimeout: dom.clearTimeout,
     setInterval(callback) { const id = harness.nextInterval++; harness.intervals.set(id, callback); return id; },
@@ -89,7 +92,7 @@ function mountPanel(module) {
   harness.caption = root.querySelector('.fcap');
   harness.video = () => harness.shot.querySelector('video');
   harness.play = async () => {
-    harness.window.__GAME_READY = true;
+    harness.bootReady = true;
     dom.runTimers(); // the readiness poll hands activation to the idle queue
     for (const callback of harness.idle.splice(0)) callback();
     await settle();

@@ -11,6 +11,9 @@
 // (H.killExcept, the way __DEBUG.slayEnemies does), an engine fire (H.igniteEngine), a Gun Game ladder stage
 // (H.setWeaponStage through the controller's checkpoint round trip). Everything shown still runs on the real sim.
 
+// (2026-11-02 audit S3) the boot latch and the lifecycle readiness the harnesses share
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from '../game-readiness.mjs';
+
 // ------------------------------------------------------------------------------------------------ trigger sets
 const T = {
   playerFire: (delays = [35, 70, 120]) => ({ type: 'shell:fired', who: 'player', onscreen: false, delays }),
@@ -1437,7 +1440,7 @@ async function openCrewRadio(ctx) {
 async function openGarage(ctx, { variantId, vehicleId }) {
   const page = ctx.page;
   await page.goto(`${ctx.baseUrl}/?nosplash=1`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP && window.__DEBUG, { timeout: 240000, polling: 250 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__GARAGE_WORKSHOP && !!window.__DEBUG`, { timeout: 240000, polling: 250 });
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return stats.architecture?.ready === true && stats.architecture.presented === true;
@@ -1480,7 +1483,7 @@ async function openGallery(ctx, { vehicleId, layer, view = 'hero' }) {
 async function openStudio(ctx, { map = null } = {}) {
   const page = ctx.page;
   await page.goto(`${ctx.baseUrl}/?studio=1&nogate=1${map ? `&map=${map}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-  await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true, { timeout: 240000, polling: 250 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && window.__STUDIO?.active === true`, { timeout: 240000, polling: 250 });
   await page.evaluate(() => {
     window.__STUDIO.setRailVisible?.(true);
     document.querySelector('[data-workspace="director"]')?.click();
@@ -1974,7 +1977,7 @@ Object.assign(RECIPES, {
       const A = await openClient(ctx, { tank: 'challenger_3x', name: 'Alpha Lead' });
       const B = await openClient(ctx, { tank: 't90m_x', name: 'Bravo Lead' });
       try {
-        const ready = () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage';
+        const ready = readinessExpression('garage');
         await A.page.goto(`${ctx.baseUrl}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240000 });
         await A.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await A.page.click('.cot-multiplayer-entry');
@@ -2014,8 +2017,7 @@ Object.assign(RECIPES, {
         await A.page.click('.cot-play [data-action="ready"]');
         await A.page.waitForFunction(() => !document.querySelector('.cot-play [data-action="start"]')?.disabled, { timeout: 30000 });
         await A.page.click('.cot-play [data-action="start"]');
-        const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
-          && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
+        const inBattle = `${readinessExpression('battleRevealed')} && window.__MULTIPLAYER_V2?.stats?.().inMatch === true`;
         await Promise.all([A.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 }), B.page.waitForFunction(inBattle, { timeout: 240000, polling: 250 })]);
         for (const client of [A, B]) {
           await client.page.evaluate(async () => {

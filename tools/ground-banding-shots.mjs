@@ -34,6 +34,7 @@ import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
 import { CAPTURE_QUEUE_DIR, createCaptureLock, ticketAt } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { censusShotView } from './visual-census.mjs';
 import { grassSettled } from './frame-budget-probe.mjs';
@@ -219,7 +220,7 @@ async function bootPage(browser, baseUrl, device) {
 async function stageMap(entry, mapId) {
   const { page } = entry;
   await page.bringToFront();
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__SHOTS && !!window.__DEBUG', { timeout: 900000, polling: 1000 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__SHOTS && !!window.__DEBUG`, { timeout: 900000, polling: 1000 });
   await page.evaluate(configurePinnedScene, PINNED_SCENE);
   await page.evaluate((name) => window.__SHOTS.set(name), censusShotView(mapId));
   await page.evaluate(settleMapTextures, { mapId, timeoutMs: 600000 });

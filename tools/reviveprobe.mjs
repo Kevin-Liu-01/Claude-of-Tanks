@@ -4,6 +4,7 @@
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
 
 const port = 5900 + Math.floor(Math.random() * 90);
 const server = await createServer({
@@ -33,7 +34,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 720 });
 page.on('pageerror', (e) => console.error('[page error]', e.message));
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+await waitForBootLoaded(page, { timeout: 120000 });
 
 // ---- in-page helpers -------------------------------------------------------
 await page.evaluate(() => {
@@ -84,7 +85,7 @@ const fail = (msg) => { console.error(`FAIL: ${msg}`); process.exitCode = 1; };
 async function freshBattle() {
   await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await page.waitForFunction(
-    () => window.__DEBUG.game.phase === 'battle' && window.__DEBUG.game.player,
+    `${readinessExpression('controlsReleased')} && !!window.__DEBUG.game.player`,
     { timeout: 30000 });
   // settle a beat of sim so syncFromState has run
   await page.evaluate(() => window.__DEBUG.fastForward(0.5));
@@ -204,7 +205,7 @@ if (!replaySeen) {
       immediateExit.fadeCount || immediateExit.report) {
     fail('C: killcam presentation survived the real Leave Battle click');
   }
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 10000 });
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 10000 });
   const exitState = await page.evaluate(() => {
     const kc = document.querySelector('.cot-kc');
     const hud = document.querySelector('.cot-hud');

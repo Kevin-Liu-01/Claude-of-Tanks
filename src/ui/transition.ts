@@ -12,7 +12,7 @@
  * The overlay sits at z-index 170 — above the pre-battle screen (150) and
  * every HUD/panel layer, below only the boot splash (200).
  *
- * HARNESS CONTRACT: headless probes (navigator.webdriver, or an explicit
+ * HARNESS CONTRACT: headless probes (the harness path, src/app/automationPath.ts, or an explicit
  * ?notrans) must never see this overlay — they drive states via
  * window.__SHOTS / __STUDIO and capture immediately after. Under automation
  * run() executes its work synchronously with no overlay, no fades and no
@@ -32,6 +32,7 @@ import { currentViewport } from './mapBackdrop.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { waitForOpaqueTransition } from './transitionCover.ts';
+import { harnessPath } from '../app/automationPath.ts';
 
 // The fades run on the motion tokens (tokens.css; 1 ms under reduced motion): in on --dur-base, out on --dur-fast, the
 // quick pace on --dur-instant both ways. hide() waits out the fade-out on these mirrors of the out tokens.
@@ -134,7 +135,8 @@ function skipTransitions() {
   let q = '';
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&]notrans\b/.test(q)) return true;
-  return typeof navigator !== 'undefined' && !!navigator.webdriver;
+  // (2026-11-02 audit S3) the one automation reader: a player-path receipt (?automation=player) sees every veil
+  return harnessPath();
 }
 
 // Dwell/fade-out timers still progress in hidden documents. Visible fade-in

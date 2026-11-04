@@ -32,6 +32,7 @@ import { createInProcessHostPort } from '../src/mp/host/inProcessHost.ts';
 import { RtcWorld } from '../src/mp/transport/rtcDouble.test-support.ts';
 import { PHASE } from '../src/mp/wire/constants.ts';
 import { dequantizePosition } from '../src/mp/wire/quantize.ts';
+import { HOST_STATE, MATCH_PHASE, SESSION_PHASE, SESSION_ROLE } from './mp-states.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = async (predicate, label, timeoutMs) => {
@@ -123,7 +124,7 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     log(`match_start ${start1.matchUrl} host ${start1.hostId}; roles ${JSON.stringify(report.steps.start.roles)}`);
     if (!/^rtc:\/\//.test(start1.matchUrl) || start1.hostId !== 'p1') failures.push(`start: ${start1.matchUrl} host ${start1.hostId}`);
     if (!report.steps.start.secretToHost || report.steps.start.secretToPeer) failures.push('start: the host secret must reach the host alone');
-    if (p1.headless.session.role !== 'host' || p2.headless.session.role !== 'peer' || p3.headless.session.role !== 'peer') failures.push(`roles ${JSON.stringify(report.steps.start.roles)}`);
+    if (p1.headless.session.role !== SESSION_ROLE.host || p2.headless.session.role !== SESSION_ROLE.peer || p3.headless.session.role !== SESSION_ROLE.peer) failures.push(`roles ${JSON.stringify(report.steps.start.roles)}`);
     await until(() => sessions.every((entry) => entry.headless.session.match?.welcome), 'every seat welcomed', 20_000);
     await until(() => sessions.every((entry) => (entry.headless.presentation?.frames.length ?? 0) > 10), 'frames flowing on every seat', 15_000);
     const hostStats = p1.headless.session.matchHost.stats();
@@ -197,11 +198,11 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     // the lease is bound by the grace
     const hostLost = events.some((event) => event.kind === 'host_lost');
     if (electedAfterMs < hostGraceMs && !hostLost) failures.push(`the election came before the grace (${electedAfterMs} ms)`);
-    await until(() => p2.headless.session.role === 'host' && p2.headless.session.matchHost?.state === 'live', 'p2 hosts', 20_000);
+    await until(() => p2.headless.session.role === SESSION_ROLE.host && p2.headless.session.matchHost?.state === HOST_STATE.live, 'p2 hosts', 20_000);
     const hostLiveAfterElectionMs = Math.round(performance.now() - closedAt) - electedAfterMs;
     const core2 = cores.find((entry) => entry.id === 'p2')?.core;
-    await until(() => p2.headless.session.stats().p2p?.migrating === false && p2.headless.session.match?.phase === 'live', 'p2 live on its own actor', 15_000);
-    await until(() => p3.headless.session.match?.phase === 'live' && p3.headless.session.stats().p2p?.migrating === false, 'p3 live on p2', 20_000);
+    await until(() => p2.headless.session.stats().p2p?.migrating === false && p2.headless.session.match?.phase === MATCH_PHASE.live, 'p2 live on its own actor', 15_000);
+    await until(() => p3.headless.session.match?.phase === MATCH_PHASE.live && p3.headless.session.stats().p2p?.migrating === false, 'p3 live on p2', 20_000);
     await until(() => p3.headless.presentation.frames.length > framesBefore3 + 2, 'frames flow to p3 again', 15_000);
     const resumedTick = core2.actor.tick;
     // the first frame p3 presented after the migration against the last it saw before: one tick of motion at most
@@ -247,9 +248,9 @@ export async function runP2pHeadless({ hostGraceMs = 1500, frameHz = 30, playMs 
     await until(() => p1b.headless.session.round && p1b.headless.session.match?.welcome, 'p1 welcomed again as a peer', 20_000);
     report.steps.rejoin = { matchUrl: p1b.headless.session.round.matchStart.matchUrl, hostId: p1b.headless.session.round.matchStart.hostId, role: p1b.headless.session.role, entity: p1b.headless.session.match.welcome.entityId, peersOnP2: p2.headless.session.matchHost.peersConnected };
     log(`rejoin: p1 ${report.steps.rejoin.role} via ${report.steps.rejoin.matchUrl} (host ${report.steps.rejoin.hostId}), entity ${report.steps.rejoin.entity}, p2 now serves ${report.steps.rejoin.peersOnP2}`);
-    if (report.steps.rejoin.role !== 'peer' || report.steps.rejoin.hostId !== 'p2' || !/\/2$/.test(report.steps.rejoin.matchUrl)) failures.push(`rejoin ${JSON.stringify(report.steps.rejoin)}`);
+    if (report.steps.rejoin.role !== SESSION_ROLE.peer || report.steps.rejoin.hostId !== 'p2' || !/\/2$/.test(report.steps.rejoin.matchUrl)) failures.push(`rejoin ${JSON.stringify(report.steps.rejoin)}`);
     await until(() => p2.headless.session.matchHost.peersConnected === 2, 'p2 serves both peers', 10_000);
-    for (const entry of sessions) if (!entry.disposed && entry.headless.session.stats().phase === 'lost') failures.push(`${entry.id} ended in lost`);
+    for (const entry of sessions) if (!entry.disposed && entry.headless.session.stats().phase === SESSION_PHASE.lost) failures.push(`${entry.id} ended in lost`);
     const refused = events.filter((event) => event.kind === 'signal_refused');
     report.steps.relay = { relayed: events.filter((event) => event.kind === 'signal').length, refused: refused.length, refusedCodes: [...new Set(refused.map((event) => event.code))] };
     // (mp-scale-251) what the room billed, by phase: the lobby (three seats in), connected (signaling), the play, the

@@ -106,7 +106,7 @@ export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
   'tools/chain-lifecycle.mjs',
   'tools/selftest-inputs.mjs', 'tools/id-list.mjs', 'tools/browser-id-chunks.mjs', 'tools/browser-id-caps.mjs',
   'tools/browser-launch.mjs', 'tools/icons-page-public.mjs', 'tools/served-public.mjs', 'tools/gate-page-public.mjs',
-  'tools/page-catalog-keys.mjs'])])));
+  'tools/page-catalog-keys.mjs', 'tools/game-readiness.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the

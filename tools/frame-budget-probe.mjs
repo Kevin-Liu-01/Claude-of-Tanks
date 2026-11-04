@@ -68,6 +68,7 @@ import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
   summarizePassFrames,
 } from './frame-pass-timer.mjs';
+import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 
 const TOOL = 'frame-budget-probe';
 const DEFAULTS = Object.freeze({
@@ -1007,7 +1008,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
   const gotoAt = Date.now();
   const query = [`nosplash=1`, `tier=${options.tier}`, slot.query].filter(Boolean).join('&');
   await page.goto(`http://127.0.0.1:${options.port}/?${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
+  await page.waitForFunction(BOOT_LOADED_EXPRESSION, { timeout: 300000 });
   const readyMs = Date.now() - gotoAt;
   const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
   const opponents = pinnedOpponents(catalog, options.spec, allies + enemies);

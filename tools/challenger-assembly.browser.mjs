@@ -7,6 +7,7 @@ import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
 import {createCaptureLock} from './capture-lock.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
+import { readinessExpression } from './game-readiness.mjs';
 
 const out=resolve('.qa-dev/challenger-assembly'); mkdirSync(out,{recursive:true});
 const lock=createCaptureLock(); let server,browser,refresh;
@@ -19,7 +20,7 @@ try {
   const page=await browser.newPage(); page.on('pageerror',e=>report.errors.push(e.message));
   await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
   await page.goto(`http://127.0.0.1:${port}/?qa=1&nosplash=1`,{waitUntil:'domcontentloaded',timeout:180000});
-  await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG?.pedestalOnStage,{timeout:240000});
+  await page.waitForFunction(`${readinessExpression('garage')} && window.__DEBUG?.pedestalOnStage`,{timeout:240000});
   await page.waitForSelector('#cot-boot',{hidden:true,timeout:60000});
   for (const [index,id] of ['challenger3_proto','challenger3','challenger3_proto'].entries()) {
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);

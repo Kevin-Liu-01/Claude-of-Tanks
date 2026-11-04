@@ -25,6 +25,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { nanSceneFault, sunScan } from './black-world-page-probes.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
 const VIEW = { width: 1280, height: 720 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -101,11 +102,11 @@ try {
   });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&debug=1&telemetry=off&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await page.waitForFunction('window.__GAME_READY === true && !!window.__DEBUG', { timeout: 300_000, polling: 250 });
+  await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`, { timeout: 300_000, polling: 250 });
   await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't72b3m_bulat_m', mapId: 'badlands' }), 0); });
   // the cover lifted and the guard armed by the covered entry
-  await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')
-    && window.__COT_BLACK_GUARD?.stats().active === true, { timeout: 420_000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('battleRevealed')} && window.__COT_BLACK_GUARD?.stats().active === true`,
+    { timeout: 420_000, polling: 250 });
   // (round 2) the probe's programs linked under the cover: the first probe never compiles on a presented frame
   report.checks.probeReadyAtReveal = await page.evaluate(() => window.__COT_BLACK_GUARD.stats().probeReady);
   assert.equal(report.checks.probeReadyAtReveal, true, 'the probe programs linked before the reveal');
@@ -180,15 +181,13 @@ try {
     });
     // the Garage settled as a player sees it (its BATTLE control shown, no transition cover) before BATTLE again: an entry
     // begun while the return still presents supersedes it ("Garage return was superseded by another presentation")
-    await page.waitForFunction(() => {
-      const battle = document.querySelector('.cot-battle');
-      return window.__DEBUG.game.phase === 'garage' && !!battle && battle.offsetParent !== null
-        && !document.querySelector('.cot-trans.on, .cot-bl.on');
-    }, { timeout: 120_000, polling: 250 });
+    await page.waitForFunction(`${readinessExpression('garage')}
+      && !!document.querySelector('.cot-battle') && document.querySelector('.cot-battle').offsetParent !== null`,
+    { timeout: 120_000, polling: 250 });
     await sleep(3000);
     await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't72b3m_bulat_m', mapId: 'badlands' }), 0); });
-    await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')
-      && window.__COT_BLACK_GUARD?.stats().active === true, { timeout: 420_000, polling: 250 });
+    await page.waitForFunction(`${readinessExpression('battleRevealed')} && window.__COT_BLACK_GUARD?.stats().active === true`,
+      { timeout: 420_000, polling: 250 });
     await sleep(600);
     const status = await page.evaluate(sceneTargetStatus);
     report.checks.reentry = { status, before: before.incidents };

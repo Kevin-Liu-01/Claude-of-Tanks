@@ -30,6 +30,7 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { waitForBootLoaded } from '../game-readiness.mjs';
 
 // --- exclusive harness lock (FIFO ticket protocol, see screenshot.mjs) ------
 
@@ -117,7 +118,7 @@ const shot = [];
 try {
   const firstMap = scenes[0].json.map || 'verdant';
   await page.goto(`${url}?studio=1&map=${firstMap}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
+  await waitForBootLoaded(page, { timeout: 180000 });
   await page.waitForFunction(
     `window.__STUDIO && window.__STUDIO.active === true && window.__STUDIO.mapId === '${firstMap}'`,
     { timeout: 180000 },

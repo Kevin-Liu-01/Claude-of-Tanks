@@ -14,6 +14,7 @@ import puppeteer from 'puppeteer';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { requireRequestedViews, requireNativeCapture } from './map-art-guards.mjs';
+import { waitForBootLoaded } from './game-readiness.mjs';
 
 // Exclusive run lock (controls_gunnery r3): parallel harness instances on one
 // machine starve each other's vite/Chromium cold starts into spurious
@@ -112,7 +113,7 @@ try {
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navMs });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: navMs });
+      await waitForBootLoaded(page, { timeout: navMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;

@@ -14,9 +14,9 @@
  * (NaN / Inf / zero / luma per pass), the cloud layer's state and render targets, non-finite uniforms, context-loss
  * events and offscreen probe renders of the scene with the cloud dome / environment / fog removed.
  *
- * Every run reports navigator.webdriver false (the covered entry's scene watchdog runs as on a player's machine), enters
- * through the real Garage controls (the map card, the BATTLE button) with the mode stored as a player's choice, and
- * holds the shared capture lock (tools/capture-lock.mjs) per part (a fresh ticket, holds under --hold-min minutes).
+ * Every run takes the player's automation path (src/app/automationPath.ts: the covered entry's scene watchdog runs as on a
+ * player's machine), enters through the real Garage controls (the map card, the BATTLE button) with the mode stored as a
+ * player's choice, and holds the shared capture lock (tools/capture-lock.mjs) per part (a fresh ticket, holds under --hold-min minutes).
  *
  * Options:
  *   --target=prod|dev|<url>  prod: https://cot.kevinliu.studio; dev: a Vite dev server of this tree (started here)
@@ -86,6 +86,7 @@ import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sampleCoverage } from './black-world-repro-summary.mjs';
+import { assertAutomationPath, readinessExpression } from './game-readiness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -280,7 +281,7 @@ async function baseUrl() {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// browser: the real GPU (ANGLE Metal), webdriver false, no automation background overrides
+// browser: the real GPU (ANGLE Metal), the player's automation path, no automation background overrides
 // ---------------------------------------------------------------------------------------------------------------------
 let browser = null;
 let profileDir = null;
@@ -341,7 +342,7 @@ async function startStressGame(base) {
   await p.evaluateOnNewDocument(() => { try { localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.game.mode.v1', 'drone'); } catch { /* none */ } });
   const url = new URL(base); url.searchParams.set('nosplash', '1'); url.searchParams.set('telemetry', 'off');
   await p.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
-  await p.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
+  await p.waitForFunction(`${readinessExpression('garage')} && !!document.querySelector('.cot-battle')`, { timeout: 240_000, polling: 250 });
   await chooseMap(p, stressGame);
   await p.evaluate(() => document.querySelector('.cot-battle')?.click());
   await p.waitForFunction(() => { const h = document.querySelector('.cot-hud'); return !!h && getComputedStyle(h).display !== 'none' && !document.querySelector('.cot-bl.on'); }, { timeout: 240_000, polling: 500 }).catch(() => {});
@@ -383,7 +384,8 @@ async function newPage(time) {
     if (hiddenDesc?.get) Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get() { return window.__bwrForceHidden ? true : hiddenDesc.get.call(this); } });
     if (visDesc?.get) Object.defineProperty(Document.prototype, 'visibilityState', { configurable: true, get() { return window.__bwrForceHidden ? 'hidden' : visDesc.get.call(this); } });
     try { if (presetName) localStorage.setItem('cot.gfxPreset', presetName); } catch { /* storage blocked */ }
-    Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
+    // the player's path (src/app/automationPath.ts): the covered entry's scene watchdog runs as on a player's machine
+    window.__COT_AUTOMATION = 'player';
     try {
       localStorage.setItem('cot.telemetry', 'off');
       if (modeId) localStorage.setItem('cot.game.mode.v1', modeId);
@@ -488,8 +490,8 @@ async function boot(page, base) {
   const t0 = Date.now();
   const res = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   if (!res || res.status() >= 400) throw new Error(`document status ${res?.status()}`);
-  await page.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
-  if (!plain) await page.waitForFunction(() => !!window.__DEBUG && window.__DEBUG.game?.phase === 'garage', { timeout: 120_000, polling: 250 });
+  await page.waitForFunction(`${readinessExpression('garage')} && !!document.querySelector('.cot-battle')`, { timeout: 240_000, polling: 250 });
+  if (!plain) await page.waitForFunction(`${readinessExpression('garage')} && !!window.__DEBUG`, { timeout: 120_000, polling: 250 });
   const info = await page.evaluate(() => {
     let gpu = null;
     try {
@@ -502,8 +504,12 @@ async function boot(page, base) {
     return { version: document.querySelector('meta[name="application-version"]')?.content ?? null, gpu,
       // (round 2, D3) a Vite dev server injects its client: the build kind, whatever host serves it
       devServer: !!document.querySelector('script[src*="/@vite/client"]'),
-      webdriver: navigator.webdriver, preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
+      preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
   });
+  // (2026-11-02 audit S3) the player's path, or a named failure: the default target (prod) may predate
+  // src/app/automationPath.ts, and takes the player's path there because the driver is hidden at launch
+  const took = await assertAutomationPath(page, 'player', { label: 'black-world-repro' });
+  info.automation = took.legacy ? 'player (a build before the automation owner: navigator.webdriver false)' : took.path;
   return { bootMs: Date.now() - t0, browser: await browser.version(), ...info };
 }
 
@@ -528,6 +534,9 @@ function chooseMap(page, map) {
 }
 
 async function selectMapAndBattle(page, map, dwell = true) {
+  // (2026-11-02 audit S3) press on a settled Garage (tools/game-readiness.mjs), never under a return's veil: a press
+  // there used to start nothing (the game now queues it under the return, app-flow F3); the re-press below stays a guard
+  await page.waitForFunction(readinessExpression('garage'), { timeout: 120_000, polling: 250 });
   if (dwell && garageDwellS > 0) await sleep(garageDwellS * 1000);
   const picked = await chooseMap(page, map);
   if (!picked) throw new Error(`map card ${map} not found or not selected`);
@@ -1636,7 +1645,7 @@ try {
           // the target as the summary names it: the public production site, a dev server, or a production build served here
           summary.targetKind ??= target === 'prod' ? 'prod' : b.devServer ? 'dev'
             : /127\.0\.0\.1|localhost/.test(String(base)) ? 'local-prod' : 'url';
-          log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, webdriver ${b.webdriver}, preset ${b.preset}`);
+          log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, path ${b.automation}, preset ${b.preset}`);
           if (!plain) await page.evaluate(installDiagnostics);
           entryCdp = null;
           await applyEntryThrottle(page);

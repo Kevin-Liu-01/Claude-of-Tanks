@@ -8,6 +8,7 @@ import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
 import {acquireCaptureLock,refreshCaptureLock,releaseCaptureLock} from './capture-lock.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
+import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/isometric');mkdirSync(out,{recursive:true});
 let server,browser,lease;const errors=[],views=[];
 await acquireCaptureLock(60000);lease=setInterval(refreshCaptureLock,60000);
@@ -17,7 +18,7 @@ try {
  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.setViewport({width:1280,height:800,hasTouch:false,isMobile:false});
  await page.goto('http://127.0.0.1:5207/?nosplash=1&tier=desktop',{waitUntil:'domcontentloaded',timeout:180000});
- await page.waitForFunction('window.__GAME_READY && window.__DEBUG',{timeout:240000});
+ await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`,{timeout:240000});
  console.log('Garage ready');
  await page.evaluate(()=>__DEBUG.settings.open());
  await page.click('[data-tab="gameplay"]');
@@ -28,7 +29,7 @@ try {
  await page.screenshot({path:resolve(out,'settings.png')});
  await page.evaluate(()=>__DEBUG.settings.close({noRelock:true}));
  await page.evaluate(()=>__DEBUG.startBattle('m1a1_abrams_hc','verdant'));
- await page.waitForFunction('window.__DEBUG.game.phase === "battle" && !window.__DEBUG.rig.cinematicActive && window.__DEBUG.camera.fov === 38',{timeout:180000});
+ await page.waitForFunction(`${readinessExpression('battleRevealed')} && !window.__DEBUG.rig.cinematicActive && window.__DEBUG.camera.fov === 38`,{timeout:180000});
  console.log('Isometric battle ready');
  await page.mouse.click(640,400);
  await page.waitForFunction('__DEBUG.input.isLocked()');
@@ -43,9 +44,9 @@ try {
   const nextTouch=width<1000;
   await page.setViewport({width,height,hasTouch:nextTouch,isMobile:false});
   if(nextTouch!==touch){
-   await page.waitForFunction('window.__GAME_READY && window.__DEBUG',{timeout:240000});
+   await page.waitForFunction(`${BOOT_LOADED_EXPRESSION} && !!window.__DEBUG`,{timeout:240000});
    await page.evaluate(()=>__DEBUG.startBattle('m1a1_abrams_hc','verdant'));
-   await page.waitForFunction('__DEBUG.game.phase === "battle" && __DEBUG.camera.fov === 38',{timeout:180000});
+   await page.waitForFunction(`${readinessExpression('battleRevealed')} && window.__DEBUG.camera.fov === 38`,{timeout:180000});
    touch=nextTouch;
   }
   await new Promise(r=>setTimeout(r,1200));

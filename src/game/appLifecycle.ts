@@ -16,6 +16,9 @@ export type AppPhase = 'garage' | 'battle' | 'shot' | 'studio';
 
 /** The lifecycle as players, tools and tests see it. */
 export type AppLifecycleState =
+  /** (2026-11-02 audit S3) The boot is still loading, or its entry gate still waits on the player: the splash is the
+   * screen, whatever scene (the Garage, a /studio boot) it covers. */
+  | 'boot'
   /** The Garage is the screen and its presentation is restored. */
   | 'garage'
   /** The Garage owns the scene but not yet the screen: a return under its veil, a preparation behind the battle
@@ -99,6 +102,8 @@ export interface AppPhaseAnnouncement {
 }
 
 export interface AppLifecycleReaders {
+  /** (audit S3) The boot splash is the screen: still loading (src/app/bootReadiness.ts), or its entry gate waits. */
+  isBooting?(): boolean;
   /** A battle entry's cover is the screen (solo loading, a network join), before its reveal. */
   isEntryCovering?(): boolean;
   /** The Garage return still owes something: a return in flight, a handoff, a skipped or failed restore. */
@@ -151,13 +156,16 @@ export function battleSubPhase(game: Pick<AppLifecycleGame, 'preBattleS' | 'resu
   return endingHoldExpired(game.ruleset, game.resultTimeS, game.timeS) ? 'report' : 'verdict';
 }
 
-/** The lifecycle state from the scene phase, the screen phase and the entry/return owners' facts. */
+/** The lifecycle state from the scene phase, the screen phase and the boot, entry and return owners' facts. */
 export function deriveAppLifecycleState(
   game: AppLifecycleGame,
   screenPhase: AppPhase,
-  { entryCovering = false, returnOwed = false }: { entryCovering?: boolean; returnOwed?: boolean } = {},
+  { booting = false, entryCovering = false, returnOwed = false }:
+    { booting?: boolean; entryCovering?: boolean; returnOwed?: boolean } = {},
 ): AppLifecycleState {
   const phase = game.phase;
+  // (audit S3) the splash covers every scene until the player is let in
+  if (booting) return 'boot';
   if (phase === 'studio' || phase === 'shot') return phase;
   if (entryCovering) return 'loading';
   if (phase === 'garage') return screenPhase === 'garage' && !returnOwed ? 'garage' : 'returning';
@@ -191,6 +199,7 @@ export function createAppLifecycle({ game, announce, readers: initialReaders = {
     try { return reader?.() === true; } catch { return false; }
   };
   const state = (): AppLifecycleState => deriveAppLifecycleState(game, screenPhase, {
+    booting: read(readers.isBooting),
     entryCovering: read(readers.isEntryCovering),
     returnOwed: read(readers.isReturnOwed),
   });

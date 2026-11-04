@@ -1,5 +1,6 @@
 import { t } from '../ui/i18n.ts';
 import { assertAppPhaseTransition, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { isBootReady, whenBootReady } from '../app/bootReadiness.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
@@ -5834,14 +5835,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // never race the boot tail: everything the studio touches exists once
     // the game declares readiness. Direct /studio boot is explicitly invoked
     // by main.ts from its final covered stage, where all Studio dependencies
-    // already exist but __GAME_READY deliberately has not flipped yet.
+    // already exist but the boot latch deliberately has not settled yet. (2026-11-02 audit S3) the product's latch
+    // (src/app/bootReadiness.ts), not its harness mirror.
     // (No session yet: Exit needs an active Studio, so nothing but the boot ends this wait; a second press joins it.)
-    if (!opts.coveredByBoot && !window.__GAME_READY) {
-      await new Promise<void>((resolve) => {
-        const t = setInterval(() => {
-          if (window.__GAME_READY) { clearInterval(t); resolve(); }
-        }, 60);
-      });
+    if (!opts.coveredByBoot && !isBootReady()) {
+      await new Promise<void>((resolve) => { whenBootReady(resolve); });
     }
     // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the session, the veil or any
     // write (integration IR1: a refusal after the session's entry left it 'entering', so every later press was 'busy')
@@ -6571,14 +6569,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
   }
 
-  const whenGameReady = (): Promise<void> => new Promise((resolve) => {
-    if (window.__GAME_READY) { resolve(); return; }
-    const poll = setInterval(() => {
-      if (!window.__GAME_READY) return;
-      clearInterval(poll);
-      resolve();
-    }, 60);
-  });
+  // (2026-11-02 audit S3) the product's boot latch, not the harness mirror
+  const whenGameReady = (): Promise<void> => new Promise((resolve) => { whenBootReady(resolve); });
 
   /**
    * The scene a boot URL carries, started at once: a shared link, /studio#scene=1.z.… (studioSceneShare.ts: the scene

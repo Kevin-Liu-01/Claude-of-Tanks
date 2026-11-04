@@ -6,6 +6,7 @@
 
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
+import { assertAutomationPath, waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
 function option(name, fallback) {
@@ -29,7 +30,10 @@ const maxFirstVisitAppMs = Math.max(500,
 const compactOutput = option('summary', '0') === '1';
 const launchBrowser = () => launchGuardedBrowser(puppeteer, {
   headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+  // (2026-11-02 audit S3) a --url deployment may predate src/app/automationPath.ts, which ignores the player's request
+  // and installs the QA runtime under navigator.webdriver: the driver is hidden so either build takes the player's path
+  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
+    '--disable-blink-features=AutomationControlled'],
 });
 let browser = await launchBrowser();
 
@@ -114,13 +118,12 @@ async function constrainedColdLoad({ name, noHero }) {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.evaluateOnNewDocument(() => {
     // This probe models an ordinary new player, not an engineering browser.
-    // Production keeps rendered QA controls behind webdriver/debug intent;
-    // hiding automation here ensures bundle and boot timings cannot silently
-    // include that demand-loaded test runtime. `nosplash` still bypasses the
-    // user-gesture gate deterministically.
-    Object.defineProperty(Navigator.prototype, 'webdriver', {
-      configurable: true, get: () => false,
-    });
+    // Production keeps rendered QA controls behind a driven page or debug
+    // intent; the player's path (src/app/automationPath.ts: no QA surfaces)
+    // ensures bundle and boot timings cannot silently include that
+    // demand-loaded test runtime. `nosplash` still bypasses the user-gesture
+    // gate deterministically.
+    window.__COT_AUTOMATION = 'player';
     Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { configurable: true, get: () => 4 });
     Object.defineProperty(Navigator.prototype, 'deviceMemory', { configurable: true, get: () => 4 });
   });
@@ -141,8 +144,10 @@ async function constrainedColdLoad({ name, noHero }) {
   url.searchParams.set('coldProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = { name, ...(await metrics(page, startedAt)), errors };
+  // a cold load timed on the harness path would include the QA runtime: the player's path, or a named failure
+  result.automation = await assertAutomationPath(page, 'player', { label: name });
   if (result.duplicateScriptTransfers.length) {
     throw new Error(`${name} transferred boot scripts more than once: ` +
       JSON.stringify(result.duplicateScriptTransfers));
@@ -175,7 +180,7 @@ async function failedMainChunkRecovery() {
   url.searchParams.set('recoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-main-auto-recovery',
     ...(await metrics(page, startedAt)),
@@ -215,7 +220,7 @@ async function failedMainEvaluationRecovery() {
   url.searchParams.set('evaluationRecoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-main-evaluation-auto-recovery',
     ...(await metrics(page, startedAt)),
@@ -263,7 +268,7 @@ async function failedSelectedBuilderRecovery() {
   url.searchParams.set('builderRecoveryProbe', '1');
   const startedAt = Date.now();
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  await waitForBootLoaded(page, { timeout: timeoutMs });
   const result = {
     name: 'failed-selected-builder-auto-recovery',
     ...(await metrics(page, startedAt)),
