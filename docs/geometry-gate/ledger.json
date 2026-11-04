@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T21:09:14.704Z",
+ "generatedAt": "2026-11-03T04:11:13.539Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -1021,14 +1021,14 @@
   },
   {
    "id": "amx40_proto",
-   "geoMin": 57,
+   "geoMin": 56.9,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
     "hullCurves": 86.2,
     "stations": 58.3,
-    "turretCurves": 57,
+    "turretCurves": 56.9,
     "wholeCurves": 62.6,
     "dims": 100,
     "floaters": 100

@@ -254,7 +254,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/m6Linebacker.generated.ts	02bf92dc
 file	anatomy	src/vehicles/combatAnatomyGroups/marder2.generated.ts	835365ed092068ae
 file	anatomy	src/vehicles/combatAnatomyGroups/merkava.generated.ts	35ba38f813588025
 file	anatomy	src/vehicles/combatAnatomyGroups/merkavaX.generated.ts	f4c80842a43d5c51
-file	anatomy	src/vehicles/combatAnatomyGroups/misc.generated.ts	fbc19aa496dae09b
+file	anatomy	src/vehicles/combatAnatomyGroups/misc.generated.ts	e721e47ce8579e3f
 file	anatomy	src/vehicles/combatAnatomyGroups/modern2.generated.ts	d5740e0075ec1355
 file	anatomy	src/vehicles/combatAnatomyGroups/modern3Core.generated.ts	323de588fb256e02
 file	anatomy	src/vehicles/combatAnatomyGroups/nationalModernization.generated.ts	9fe168187167dd84
@@ -322,7 +322,7 @@ file	fills	src/vehicles/interiorFillGroups/cv9040CSourceX.generated.ts	a5d781db0
 file	fills	src/vehicles/interiorFillGroups/cv90MkivSourceX.generated.ts	4a4ec28b2d798c53
 file	fills	src/vehicles/interiorFillGroups/dardo.generated.ts	e2466e2668ddbf81
 file	fills	src/vehicles/interiorFillGroups/denmark.generated.ts	aa9347ab412157c4
-file	fills	src/vehicles/interiorFillGroups/franceCore.generated.ts	21b211e0126a7102
+file	fills	src/vehicles/interiorFillGroups/franceCore.generated.ts	f2c59301ac73f4a9
 file	fills	src/vehicles/interiorFillGroups/fv510MilanX.generated.ts	69c67b25896615f7
 file	fills	src/vehicles/interiorFillGroups/griffin50X.generated.ts	721355398c8d823a
 file	fills	src/vehicles/interiorFillGroups/griffinViper.generated.ts	5dfa4afabc46b6a6
@@ -349,7 +349,7 @@ file	fills	src/vehicles/interiorFillGroups/m6Linebacker.generated.ts	56ea530c508
 file	fills	src/vehicles/interiorFillGroups/marder2.generated.ts	536de7fc6f836510
 file	fills	src/vehicles/interiorFillGroups/merkava.generated.ts	4add6795baf6975e
 file	fills	src/vehicles/interiorFillGroups/merkavaX.generated.ts	f029c84f8991e47c
-file	fills	src/vehicles/interiorFillGroups/misc.generated.ts	8c92644987c0af82
+file	fills	src/vehicles/interiorFillGroups/misc.generated.ts	e7c8dd9ba6ca12b2
 file	fills	src/vehicles/interiorFillGroups/modern2.generated.ts	b68d6b1b83b2df2e
 file	fills	src/vehicles/interiorFillGroups/modern3Core.generated.ts	0bdaa8eb6a01a06e
 file	fills	src/vehicles/interiorFillGroups/nationalModernization.generated.ts	1d007c2a6f82a75b
@@ -394,7 +394,7 @@ file	gate	docs/geometry-gate/amx30.json	18e8fedbf37572d0
 file	gate	docs/geometry-gate/amx30b.json	3f28722b6abe099a
 file	gate	docs/geometry-gate/amx30b2.json	4b2d5b620db496cc
 file	gate	docs/geometry-gate/amx40.json	1db7177e8b207d50
-file	gate	docs/geometry-gate/amx40_proto.json	0ade26bde2b528c6
+file	gate	docs/geometry-gate/amx40_proto.json	35924a98d81f96d9
 file	gate	docs/geometry-gate/amx56.json	e4641e01f10743c0
 file	gate	docs/geometry-gate/ares_apc.json	09181e659bdd5777
 file	gate	docs/geometry-gate/bm_oplot_m.json	7b00752726b9b0f5
@@ -560,7 +560,7 @@ file	icons	public/icons/tank-assets/tanks/amx30.json	f7866ffea454b280
 file	icons	public/icons/tank-assets/tanks/amx30b.json	1e73940ddc342c2e
 file	icons	public/icons/tank-assets/tanks/amx30b2.json	1ff7061e67a08fde
 file	icons	public/icons/tank-assets/tanks/amx40.json	0c091ef1b5d0e881
-file	icons	public/icons/tank-assets/tanks/amx40_proto.json	7759c434856b0e4d
+file	icons	public/icons/tank-assets/tanks/amx40_proto.json	f0fa84dac58e8816
 file	icons	public/icons/tank-assets/tanks/amx56.json	c8b492fc7c6be0b6
 file	icons	public/icons/tank-assets/tanks/ares_apc.json	05cec45ca71a7f5e
 file	icons	public/icons/tank-assets/tanks/bm_oplot_m.json	4ba7ce1d1317ed35
@@ -630,7 +630,7 @@ file	icons	public/icons/tank-assets/tanks/kurganets25.json	15a691fcba2a9a6a
 file	icons	public/icons/tank-assets/tanks/kv2.json	2ef0c59f1fedb452
 file	icons	public/icons/tank-assets/tanks/leclerc_s1.json	9d59c1e9ef955e30
 file	icons	public/icons/tank-assets/tanks/leclerc_s2.json	3ada2c0c5d2219c7
-file	icons	public/icons/tank-assets/tanks/leclerc_sxxi.json	5b3695622d6a1083
+file	icons	public/icons/tank-assets/tanks/leclerc_sxxi.json	8660f6ba817d3e68
 file	icons	public/icons/tank-assets/tanks/leclerc_xlr.json	a29e779221f8bf31
 file	icons	public/icons/tank-assets/tanks/leo1a2a1.json	41137f2fa9925c35
 file	icons	public/icons/tank-assets/tanks/leo1a3dk.json	a5e546bf35f2db05
@@ -1022,7 +1022,7 @@ key	anatomy	amx30	24d7e44f34ac5339	c88c45f7c343687e
 key	anatomy	amx30b	f9117792ce7fbf90	5a73bad919b7d129
 key	anatomy	amx30b2	455a9e9db396c442	cfedfedbe04fe97e
 key	anatomy	amx40	61d3a5a7dce7646a	f5b9651dc0e1fbd2
-key	anatomy	amx40_proto	024b8e0a4a8a2766	3336d8c13723f76f
+key	anatomy	amx40_proto	58c6d65315d2d962	3336d8c13723f76f
 key	anatomy	amx56	9471e82fc093b847	a206c7af5f9ef5e5
 key	anatomy	ares_apc	7ad1a15fbbecc11c	61f04e16920e743d
 key	anatomy	bm_oplot_m	72de2d0c236dd510	034e433981636ae5
@@ -1092,7 +1092,7 @@ key	anatomy	kurganets25	0dafb9d4aca06c54	eac7d4709886f0c6
 key	anatomy	kv2	de84ede0638b8313	91211a4b2b90feb6
 key	anatomy	leclerc_s1	30fadeaf2bb54e69	ca1351aedf3f0e8d
 key	anatomy	leclerc_s2	30f04ff5a01d4fe8	242188ec068c8085
-key	anatomy	leclerc_sxxi	9679bc9e29acca6a	b9f77727d9371871
+key	anatomy	leclerc_sxxi	18ff53ecb058f637	3bd99c9801e8cba5
 key	anatomy	leclerc_xlr	4ad1cab09f3632c6	6c7a71fc64c20183
 key	anatomy	leo1a2a1	b7a22354133d0d39	9b380cbc6b4aa708
 key	anatomy	leo1a3dk	41343cb41f0361a4	cdc8f7b98e53c387
@@ -1301,7 +1301,7 @@ key	centering	amx30	7e2ad17a6d17b474	aee05fdf147ab174
 key	centering	amx30b	2159ecda7d9168f3	1e75c97b6915e137
 key	centering	amx30b2	a666d29346cd37ce	41977e3dafa65bd8
 key	centering	amx40	9b7bd2fff8bee1d0	f0a136f61c9d6fbc
-key	centering	amx40_proto	9d3ccd1b78379567	aeed401094027fe5
+key	centering	amx40_proto	45255d1ad7164adc	aeed401094027fe5
 key	centering	amx56	28a7f31aad375eec	b0da88bccc10a3ab
 key	centering	ares_apc	aa0b97e16142374c	6c79564a4e08216b
 key	centering	bm_oplot_m	5489cb4003f1ecf2	8b2b3ed1e572d380
@@ -1371,7 +1371,7 @@ key	centering	kurganets25	5fcd7dcc42b7b360	7ba9ba17dc232d3c
 key	centering	kv2	442cd80697f33abf	b9807c42f00f376f
 key	centering	leclerc_s1	8de161ab9ac04121	bb2275f26b1b21a7
 key	centering	leclerc_s2	0decfa682e9572d1	e8635364574909e1
-key	centering	leclerc_sxxi	f0fa5247dc9aa0b3	7ad1fbb9c684e565
+key	centering	leclerc_sxxi	96128a84c39535e3	7ad1fbb9c684e565
 key	centering	leclerc_xlr	bbe319a2fd17b716	117efeb522d8cdfc
 key	centering	leo1a2a1	0f89fe78fadeb3ea	16d1705ad6bd900f
 key	centering	leo1a3dk	e2e55661f0ae73d6	ef0db63de4ed58ec
@@ -1613,7 +1613,7 @@ key	controls	amx30	f034ec7cf33910e9	720fdb8c33a6a72f
 key	controls	amx30b	e92ca83a085d93c3	24e28227cda5c013
 key	controls	amx30b2	fddd29aa4ce346d5	dbb84dd7ff636001
 key	controls	amx40	947960b6ade542ed	1d7e62b42d8a1ae1
-key	controls	amx40_proto	30011750670dad1f	6d9dfb0fc70b86c2
+key	controls	amx40_proto	e027092bf5ae8d00	6d9dfb0fc70b86c2
 key	controls	amx56	22305114b6440d45	805426f6b857a8f7
 key	controls	ares_apc	68282759561b40a4	93ef0e6a5ba5dc8b
 key	controls	bm_oplot_m	55096edd6fa7ec21	5e40dc95a2cd7fcf
@@ -1683,7 +1683,7 @@ key	controls	kurganets25	e78a57e4dc00ea8b	61bc490afdd779b6
 key	controls	kv2	68b55e3446199e02	584e09ae3aa1368d
 key	controls	leclerc_s1	fff7d1791ee5d62c	225a64db679a571e
 key	controls	leclerc_s2	907d4398845d13f7	94e8516336a2e744
-key	controls	leclerc_sxxi	a055a9ebc30e11e6	c9b708c739fda68f
+key	controls	leclerc_sxxi	95e8f3109dc8cec0	c9b708c739fda68f
 key	controls	leclerc_xlr	08debaffc593705d	e7f49940380de680
 key	controls	leo1a2a1	11934aff29db9ce7	abee8f40df84782d
 key	controls	leo1a3dk	68f60169283da8a0	bd1811b515e8f0b3
@@ -1892,7 +1892,7 @@ key	fills	amx30	70d16d89ca2c06dd	c7bc422b629c9efe
 key	fills	amx30b	e9f9e8305d0a35da	4b8a87833ed11a53
 key	fills	amx30b2	2b54bff855d1e83c	fc68d2c908757a6a
 key	fills	amx40	92eee1c34838ecea	95d77b4b1c475069
-key	fills	amx40_proto	fc4303bf8d675bc7	431ab4487371cc11
+key	fills	amx40_proto	800da8dd7f795161	e8d628484e75e476
 key	fills	amx56	2a907228f932cf5c	a2d4984e78164861
 key	fills	ares_apc	655a346a4d4dc681	36743a064b360ed8
 key	fills	bm_oplot_m	a0cc96e34f784b08	9d82467d47b0a4d5
@@ -1962,7 +1962,7 @@ key	fills	kurganets25	9230ba59b426b7ef	686a1d32149bbc55
 key	fills	kv2	f5020280408d7fde	b6ea0bdefe21088f
 key	fills	leclerc_s1	2d422488ed0fd5a3	a4d9555746dd4243
 key	fills	leclerc_s2	27013bfb08517990	2dea92428992cc68
-key	fills	leclerc_sxxi	2bb6732e9e9ad1e2	2a67001ba8f54f96
+key	fills	leclerc_sxxi	f3b0d93cf11f2615	3401aaffbc1a9d5e
 key	fills	leclerc_xlr	89ead0c225c16454	671ffd6962cd50d4
 key	fills	leo1a2a1	07ef25b2597679d6	a4dab64c369bcbd7
 key	fills	leo1a3dk	7d9f6977271f1ad2	100eecc2abb142de
@@ -2171,7 +2171,7 @@ key	gate	amx30	d937c767045cc530	9b56e7336651945e
 key	gate	amx30b	1158e95c1bc54a14	f0231183f4fb54cd
 key	gate	amx30b2	a69b10a2fb1e2728	ec495a86764312e3
 key	gate	amx40	f550f5cc561c4f5a	b4e2f9140e87b76b
-key	gate	amx40_proto	ce5850517494baea	4ec82c692757db5e
+key	gate	amx40_proto	e055035d0de5cacb	da72ee83a049a1e0
 key	gate	amx56	a1e4258114632643	6d091cda9fff2eaa
 key	gate	ares_apc	680b0d3b90ecb482	8d7f990be0b77071
 key	gate	bm_oplot_m	05c1b55ebd546568	0bb38caa0e08c63d
@@ -2234,7 +2234,7 @@ key	gate	kf51_u	c17cf7c25c8e44fc	eda7b742c3652c4e
 key	gate	kv2	1a988001ea56eace	4b844f0101292640
 key	gate	leclerc_s1	ab927fcd8a9116d6	2a91139109c96403
 key	gate	leclerc_s2	e7943c3125912c01	a39b9c9bfb98057c
-key	gate	leclerc_sxxi	a824e1581719ecf9	2a91139109c96403
+key	gate	leclerc_sxxi	905f2ce49bbc6678	2a91139109c96403
 key	gate	leclerc_xlr	48e3c8cd29911e13	96784c914c25fd46
 key	gate	leo1a2a1	a15e2dbaf91a9ad9	2a91139109c96403
 key	gate	leo1a3dk	c968f1e820594fe4	2a91139109c96403
@@ -2439,7 +2439,7 @@ key	gunLines	amx30	0678c8f4f55be1a4	e644b7e16caee397
 key	gunLines	amx30b	b3cb7dc43c20e840	36d735aae6ad49f3
 key	gunLines	amx30b2	06e37c4746591306	76f64c5c589041fe
 key	gunLines	amx40	b7fb93c17c038088	4a7a1f1b03c4ae19
-key	gunLines	amx40_proto	6abc25b69fab475e	becaeea0ef0e3198
+key	gunLines	amx40_proto	18287de62c2d6c2f	cc38f894b2a63441
 key	gunLines	amx56	803f5debc07cecb4	8b83e5b238d3d9d6
 key	gunLines	ares_apc	f06430ee8f957051	c17d032d678b858d
 key	gunLines	bm_oplot_m	5e6519fdfc9efcd0	16565ead2bcb28ea
@@ -2509,7 +2509,7 @@ key	gunLines	kurganets25	860ab5389d01d5b7	e5903298bcca955c
 key	gunLines	kv2	a44333a1c13c649d	e7931cbea4bcbb36
 key	gunLines	leclerc_s1	47330e62ce795646	36bd75610cc0791f
 key	gunLines	leclerc_s2	d354c53effeb6fdb	f73d8f19828fe046
-key	gunLines	leclerc_sxxi	899a40bf27084b9a	94c4b015a1a3f0a1
+key	gunLines	leclerc_sxxi	80b8b75b840d9b2d	53ea52e79af051d0
 key	gunLines	leclerc_xlr	9fcdb9efa5ea978e	00f040cd44a35865
 key	gunLines	leo1a2a1	fba2d39f77e7b358	3fb6d01f64c7d0a7
 key	gunLines	leo1a3dk	8f2259d7a2ccadfd	d13f2254c21357ad
@@ -2718,7 +2718,7 @@ key	icons	amx30	f9722b7ee0c08ab5	520a4b62282c8a9c
 key	icons	amx30b	d3c0ce119b4e3688	647619e8bd705627
 key	icons	amx30b2	a49a2ef8f4b4cc88	87b240782614024b
 key	icons	amx40	d9812eb2c88b51ee	6fd7cf0b127d799b
-key	icons	amx40_proto	b74d3ce6fc14880e	cf74dea410210c69
+key	icons	amx40_proto	583ab6c7a4a744a1	fefd8466abba5b0d
 key	icons	amx56	02ea2681c263a204	8e8a7c2030f21cad
 key	icons	ares_apc	bbb4bb89857118a0	46fa283b4eddb2a7
 key	icons	bm_oplot_m	94c10db1ee573873	2dec32cda38adeb5
@@ -2788,7 +2788,7 @@ key	icons	kurganets25	7b4ca4387189f064	b92885a910ffe8c8
 key	icons	kv2	612ab4879307a42a	5881e3b73bd55b48
 key	icons	leclerc_s1	5ef80ed07d076eaf	809160293a49c517
 key	icons	leclerc_s2	b7f3bd2cfd0aeedb	c72ea305b79804b9
-key	icons	leclerc_sxxi	a5c47782d075a9c2	9d988dbd23c43aa0
+key	icons	leclerc_sxxi	4c392f021c648ed3	0a9226f3b92ad0fe
 key	icons	leclerc_xlr	6fac58339a0742b8	f58ee176f004a3eb
 key	icons	leo1a2a1	d34075da06b0cf33	381f3cc230e5bdaf
 key	icons	leo1a3dk	0d3f394559b70b0b	8c913fb969d9fb78
@@ -2997,7 +2997,7 @@ key	ledger	amx30	3e76202d5ffcfacc	aa8f984b38ad8c6e
 key	ledger	amx30b	612905829f2f6e1c	e9b7594a4346384d
 key	ledger	amx30b2	f9be36b48609b8b3	baff989067f49fb6
 key	ledger	amx40	dc9b32acc2e10ebf	048f51f34756b53e
-key	ledger	amx40_proto	a2883133a631cd4e	523b7901df593f0f
+key	ledger	amx40_proto	024ea01797aa65e7	d425c1e08c0024fe
 key	ledger	amx56	383993678f875b3c	bcd9a885d82b0afd
 key	ledger	ares_apc	79162e58c8f57778	6d8ecaf98475f717
 key	ledger	bm_oplot_m	65a39d21e4c7a653	6047b7f2303e36c3
@@ -3067,7 +3067,7 @@ key	ledger	kurganets25	1b23cfc3caf437c3	e292fddab41d210a
 key	ledger	kv2	30dd9c411988cfb5	648f447533b4df6f
 key	ledger	leclerc_s1	49b3e381833e4e91	ef7ae0b77f4db3f4
 key	ledger	leclerc_s2	52f6311989df0096	0ad5e7743e417b2a
-key	ledger	leclerc_sxxi	bf2ebacf32079d10	7dc22a2b55578911
+key	ledger	leclerc_sxxi	6ae5159a0ec04850	b9b272c2a3cdf263
 key	ledger	leclerc_xlr	7aba2cb562647e4c	2a62b0b97b3ffbef
 key	ledger	leo1a2a1	25a7e99315e08e8f	1ff16ac2918b40c7
 key	ledger	leo1a3dk	e398bd77a07850f9	16857ae83b37efb4
@@ -3276,7 +3276,7 @@ key	marking	amx30	0dd02a694f5cde1d	ccaffcffe13abc13
 key	marking	amx30b	7167d1f81f652842	fde2c513864f32ec
 key	marking	amx30b2	0ac64f0d303ac8fd	b0110508acfde5b6
 key	marking	amx40	622fbb95bacc6327	219e17463e039343
-key	marking	amx40_proto	61feba03e5e4f4ed	66c7c1b5fd2a4a70
+key	marking	amx40_proto	f9eab4d77adce0b4	66c7c1b5fd2a4a70
 key	marking	amx56	9b54faafb0f2fb61	e73e990da768ccbf
 key	marking	ares_apc	3e33c8177c159259	f3c209f99d29c749
 key	marking	bm_oplot_m	25b1a8df3b24fc8c	96d303c9ea2da0ff
@@ -3346,7 +3346,7 @@ key	marking	kurganets25	45159c786f80d030	236aa8180aeff8e9
 key	marking	kv2	3db66eb4a7c59302	20c27e6014b7f5cc
 key	marking	leclerc_s1	900fb32024f58d69	cb002ed6089034e5
 key	marking	leclerc_s2	9aa944b4a03b3958	92b22a119612caa0
-key	marking	leclerc_sxxi	1ab1abdecedfe2e3	18edd8de29114995
+key	marking	leclerc_sxxi	4bfa55568602e121	18edd8de29114995
 key	marking	leclerc_xlr	75556c3da3f92cb9	b65ec2c1f2fa9c91
 key	marking	leo1a2a1	244bc70424d93d28	a1b6df65ac7ffdb4
 key	marking	leo1a3dk	cf2891b6aaad237a	e4526a18f6858a2e
@@ -3555,7 +3555,7 @@ key	seats	amx30	2353893f61d75452	80af5293558c0224
 key	seats	amx30b	3e359adf93100f33	31bca073a33c6130
 key	seats	amx30b2	ce7b99b65da75236	74fa622d79477543
 key	seats	amx40	15d9ec91446a73fd	24f978604cd31223
-key	seats	amx40_proto	71a2a49f32a7fffe	85fd3b4ea4a7e942
+key	seats	amx40_proto	01068f9fef8be097	4ae40f0a62a5b470
 key	seats	amx56	d0206249e4c6f2de	384ce9c705befad9
 key	seats	ares_apc	9d11452c2d56c413	3fa6fba7ab6ecd8c
 key	seats	bm_oplot_m	87a7c0ead67d94be	8d5fa078f4ce5809
@@ -3625,7 +3625,7 @@ key	seats	kurganets25	783fb2fbd49b4135	0b756740994e7829
 key	seats	kv2	da8c7f13224326f6	3a5d5e09d99b28a2
 key	seats	leclerc_s1	5df4ac784d08f4cf	6a0573bcce4a9c08
 key	seats	leclerc_s2	411ce025236b79e8	871a3d2de0b1fb37
-key	seats	leclerc_sxxi	b0af0d15f3866c3b	1118649afd63f081
+key	seats	leclerc_sxxi	2a4d3ff86daaf007	0fb8933416bcf5f6
 key	seats	leclerc_xlr	5fe7a4b9fb4d029e	556bd5f2eeb66c74
 key	seats	leo1a2a1	5c33fc5e88712a76	3b0bcdbbe60cbb2f
 key	seats	leo1a3dk	bc9d793650e6ea28	554cfeadb26ee21a
@@ -3834,7 +3834,7 @@ key	spareTrack	amx30	4db97366a75f520a	2a80e162ecd0cc78
 key	spareTrack	amx30b	1a07b7f0a8eb3635	84661afc16edac9e
 key	spareTrack	amx30b2	8da4a2e82abcf9c6	14ce372a556a80ae
 key	spareTrack	amx40	5b134166b36b944f	b73e6a5fff5669fd
-key	spareTrack	amx40_proto	dd026d896b9ba92d	73d7a4c03f7dec0f
+key	spareTrack	amx40_proto	f2d0d56eb19e22fc	81866f84df11fced
 key	spareTrack	amx56	e94d3f3ee7186ef0	f7134644bc64efef
 key	spareTrack	ares_apc	ae95bd28fac00f7f	3bd096b0373cdf37
 key	spareTrack	bm_oplot_m	4e89b3c57fcb90ff	c4a09203780acf64
@@ -3904,7 +3904,7 @@ key	spareTrack	kurganets25	d52211c29c8f59fc	b7fd43970aa6afcb
 key	spareTrack	kv2	99f88f8406bd2276	7a6e5a967282f9da
 key	spareTrack	leclerc_s1	6370752acdff3960	4804aa07ce137d94
 key	spareTrack	leclerc_s2	dc4fea92ac49d770	a20ff8c433067070
-key	spareTrack	leclerc_sxxi	d736ddb052d923f7	8acb2e1a060d7bcf
+key	spareTrack	leclerc_sxxi	6a27557c432d4139	211d90ae086e322a
 key	spareTrack	leclerc_xlr	59d332e7cbacbcd1	a3a719da93ad0e73
 key	spareTrack	leo1a2a1	fce462def2513ec5	099d38ec20103e90
 key	spareTrack	leo1a3dk	2769b670a1274250	105448ddea44f724

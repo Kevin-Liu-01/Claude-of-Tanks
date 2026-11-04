@@ -130,9 +130,9 @@ const CURVES = {
   osorio_p2: [],
   ee_t3_osorio: [],
   ee_t4_osorio: [],
-  // 267: the mantlet with its camera saddle sits on the deck (the sweep's mountConflicts: +7.1 deg ahead, +18 to +20 aft
-  // and touching at full elevation from 154), geometry older than 267 and its fix owed; the barrel is held there
-  amx40_proto: [[0, 71], [108, 180]],
+  // 268: the mantlet's underside lifted off the deck (france.ts); its measured whole-gun stops (franceSpecs.ts) ride over
+  // the engine deck aft (267 held the barrel alone in [0, 71] and [108, 180])
+  amx40_proto: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
