@@ -159,6 +159,8 @@ function judge(model, s, c, ownBearing, fam = {}) {
     if (o === hero || o === foe || !dimsOf(o.id)) continue;
     const b = tankBox(model, Fr, o);
     if (b && b.z < Math.max(H.z, Fo.z) && b.x1 > u.x0 && b.x0 < u.x1 && b.y1 > u.y0 && b.y0 < u.y1) return null;
+    // (batch C2) a third tank in frame stands whole in it, never cut by an edge
+    if (b && b.x1 > -1 && b.x0 < 1 && b.y1 > -1 && b.y0 < 1 && !(b.x0 > -1 && b.x1 < 1 && b.y0 > -1 && b.y1 < 1)) return null;
   }
   if (insideRecord(model, A.eye, 0.3)) return null;
   for (const a of [hero, foe]) {
@@ -246,12 +248,15 @@ function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs, duel =
   const hero = actors.find((a) => a.name === 'hero');
   if (!hero || !dimsOf(hero.id) || inDust(hero)) return null;
   const near = (a, b) => dist2(a.pos, hero.pos) - dist2(b.pos, hero.pos);
+  // (batch C2) a tank the take has killed by T is a burning, turretless wreck, never the pair's second tank
+  const killed = new Set((take.effects ?? []).filter((e) => e.type === 'tank_kill' && e.tMs <= T).map((e) => e.actor));
+  const live = (a) => a !== hero && dimsOf(a.id) && !a.state && !killed.has(a.name);
   let mate, move = null;
   if (duel === null) {
-    mate = actors.filter((a) => a !== hero && dimsOf(a.id) && !a.state && !inDust(a)).sort(near)[0];
+    mate = actors.filter((a) => live(a) && !inDust(a)).sort(near)[0];
     if (!mate || dist2(mate.pos, hero.pos) > 30) return null;
   } else {
-    mate = actors.filter((a) => a.name.startsWith('foe') && dimsOf(a.id) && !a.state).sort(near)[0];
+    mate = actors.filter((a) => live(a) && a.name.startsWith('foe')).sort(near)[0];
     if (!mate) return null;
     const model = modelOf(take.map), d = dimsOf(mate.id), h = dimsOf(hero.id), from = mate.pos;
     for (let gap = 9; gap <= 18 && !move; gap++) {
