@@ -1230,7 +1230,7 @@ function olifantSection(z: number, bottom: number, roof: number, hw: number): So
   return { z, ring: [[-hw, bottom], [hw, bottom], [hw, roof - c], [hw - c, roof], [-(hw - c), roof], [-hw, roof - c]] };
 }
 
-function buildOlifantTurret(P: TankBuilderPort): void {
+function buildOlifantTurret(P: TankBuilderPort, m: MarkDesign): void {
   const T = OLIFANT_TURRET;
   P.add('turret', sectionSolid([
     olifantSection(T.rearZ, 0.32, 0.86, 1.30),
@@ -1275,6 +1275,22 @@ function buildOlifantTurret(P: TankBuilderPort): void {
   }
   // two banks of four dischargers at the bustle's rear corners, raised forward (the Commons profile)
   for (const s of [-1, 1]) {
+    if (m.sa === 'mk1b') {
+      // the Mk 1B's stand at the roof edge on an open bracket, steeper and splayed further out, their muzzles over the
+      // roof line (the Tempe rear photograph, DSCF4691; Main, 2026-11-04): a shelf off the side's top edge on two
+      // diagonal stays, a guard rail along its outer edge
+      const bx = s * (T.hw + 0.10);
+      P.add('turretDetail', box(0.24, 0.03, 0.64), bx, 0.815, -2.38);
+      for (const sz of [-2.66, -2.10]) {
+        P.add('turretDark', xform(box(0.03, 0.283, 0.03), 0, 0, 0, 0, 0, -s * Math.PI / 4), bx, 0.70, sz);
+        P.add('turretDark', box(0.03, 0.14, 0.03), s * (T.hw + 0.205), 0.90, sz);
+      }
+      P.add('turretDark', box(0.03, 0.03, 0.59), s * (T.hw + 0.205), 0.97, -2.38);
+      for (let k = 0; k < 4; k++) {
+        P.add('turretDetail', markSmokeTube(cylZ(0.046, 0.30, 12)), bx, 0.95, -2.60 + k * 0.16, -0.80, s * 0.35, 0);
+      }
+      continue;
+    }
     P.add('turretDetail', box(0.10, 0.12, 0.66), s * (T.hw + 0.05), 0.70, -2.40);
     for (let k = 0; k < 4; k++) {
       P.add('turretDetail', markSmokeTube(cylZ(0.042, 0.24, 12)), s * (T.hw + 0.07), 0.80, -2.64 + k * 0.155, -0.45, s * 0.25, 0);
@@ -1364,6 +1380,17 @@ function buildOlifantMantlet(P: TankBuilderPort, m: MarkDesign): void {
     P.add('gunMountGlass', markVehicleNightLens(box(0.44, 0.36, 0.012), 'headlight', { searchlight: true }), lx, ly + 0.12, lz + 0.216);
     for (let k = 0; k < 6; k++) P.add('gunMountDark', box(0.46, 0.012, 0.014), lx, ly - 0.03 + k * 0.06, lz + 0.226);
     P.add('gunMountDark', box(0.56, 0.03, 0.06), lx, ly + 0.365, lz + 0.20);
+    // (Main, 2026-11-04: the box read as perched on a thin post from the rear) its yoke: an arm up each side of the box
+    // from the roof line to its trunnion boss, and a bolted access panel with its handle on its back face; every part
+    // above the turret's roof at level, the arms inside the box's own depth, so its sweep stays the measured one
+    for (const s of [-1, 1]) {
+      P.add('gunMount', box(0.04, 0.32, 0.30), lx + s * 0.29, 0.545, lz - 0.02);
+      P.add('gunMount', cylX(0.07, 0.04, 14), lx + s * 0.33, ly + 0.12, lz - 0.02);
+      P.add('gunMountDark', cylX(0.025, 0.012, 8), lx + s * 0.356, ly + 0.12, lz - 0.02);
+    }
+    P.add('gunMount', box(0.40, 0.30, 0.012), lx, ly + 0.12, lz - 0.216);
+    for (const bx of [-0.17, 0.17]) for (const by of [-0.12, 0.12]) P.add('gunMountDark', cylZ(0.016, 0.016, 8), lx + bx, ly + 0.12 + by, lz - 0.226);
+    P.add('gunMountDark', box(0.22, 0.025, 0.04), lx, ly + 0.30, lz - 0.235);
   }
 }
 
@@ -1502,15 +1529,16 @@ function buildOlifantBushBar(P: TankBuilderPort): void {
   }
 }
 
-/** The Mk 1B's rack across the bustle's back: a welded frame of jerrycans and boxes from corner to corner (the Tempe rear
- * photograph), on arms from the bustle's lower edge. Ring frame. */
+/** The Mk 1B's rack across the bustle's back: a welded frame of jerrycans from corner to corner, a holder for every can
+ * (the Tempe rear photograph, DSCF4691; Main, 2026-11-04: deeper and full, ten cans where six stood among packs), on
+ * arms under its floor from the bustle's lower edge, braced at its ends. Ring frame. */
 function buildOlifantMk1bBustleRack(P: TankBuilderPort): void {
-  const T = OLIFANT_TURRET, z = T.rearZ - 0.19, y0 = 0.40;
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.30, d: 0.38, h: 0.50, fill: 0.3, rails: 2, seed: 7121 }), 0, y0, z);
-  mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 6, seed: 7122 }), 0, y0 + 0.02, z);
+  const T = OLIFANT_TURRET, d = 0.50, z = T.rearZ - d / 2 - 0.01, y0 = 0.40;
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.40, d, h: 0.54, fill: 0, rails: 2, seed: 7121 }), 0, y0, z);
+  mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 10, seed: 7122 }), 0, y0 + 0.02, z);
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.05, 0.22), s * 0.95, y0 + 0.02, T.rearZ - 0.06);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.30), 0, 0, 0, 0.75, 0, 0), s * 0.95, y0 + 0.22, T.rearZ - 0.08);
+    P.add('turretDark', box(0.05, 0.05, 0.34), s * 1.15, y0 - 0.03, T.rearZ - 0.12);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.42), 0, 0, 0, -0.836, 0, 0), s * 1.15, 0.545, T.rearZ - 0.14);
   }
 }
 
@@ -1746,7 +1774,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   P.turretG.position.set(0, RING.y, RING.z);
   P.gunG.position.set(0, trunnionY(m), TRUNNION.z);
   if (m.kit === 'olifant') {
-    buildOlifantTurret(P);
+    buildOlifantTurret(P, m);
   } else {
     buildCasting(P, m);
     buildTurretBins(P);
@@ -1812,7 +1840,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
       skirts: m.kit === 'olifant' ? 'armoured' : saSkirtless(m) ? 'off' : 'plates', deck: saAvds(m) ? 'avds' : 'olifant',
       dischargers: m.sa === 'semel' ? 12 : 8,
       bustle: m.sa === 'mk1' ? 'net-rack' : m.sa === 'mk1a' ? 'box' : m.sa === 'mk1b' ? 'can-rack' : 'bin',
-      searchlight: m.sa === 'mk1b', sightPost: false, bushBar: m.sa === 'mk1a',
+      searchlight: m.sa === 'mk1b', sightPost: false, bushBar: m.sa === 'mk1a', raisedRearBanks: m.sa === 'mk1b',
     });
     // the Olifant Mk 1's and Mk 1A's field nets (ghillieFleetSuits.ts; the owner, 2026-11-03)
     if (m.sa === 'mk1' || m.sa === 'mk1a') addVehicleGhillieSuit(P);

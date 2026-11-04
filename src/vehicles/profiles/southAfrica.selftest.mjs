@@ -73,6 +73,8 @@ assert.deepEqual([semel.dischargers, mk1.dischargers, mk1a.dischargers, mk1b.dis
 assert.deepEqual([semel.bustle, mk1.bustle, mk1a.bustle, mk1b.bustle], ['bin', 'net-rack', 'box', 'can-rack'], 'each mark\'s bustle');
 assert.deepEqual([mk1a.bushBar, mk1b.searchlight, mk1b.sightPost, mk1b.suspension, mk1.suspension],
   [true, true, false, 'torsion', 'horstmann'], 'the Mk 1A\'s bush bar; the Mk 1B\'s searchlight over the gun, no sight post, its torsion bars');
+assert.deepEqual([semel, mk1, mk1a, mk1b].map((r) => r.raisedRearBanks), [false, false, false, true],
+  'the Mk 1B\'s rear banks raised on brackets at the roof edge (DSCF4691; the Mk 2 keeps its 262 banks)');
 assert.equal(receipt('olifant_mk2', 'olifantMarkReceipt').mark, undefined, 'the Mk 2 keeps its own 262 build (its sight post)');
 const ttd = receipt('ttd', 'ttdTurretReceipt');
 assert.deepEqual([ttd.base, ttd.dischargers, ttd.sheetedDischargers], ['leopard2a4-block', 8, true],
