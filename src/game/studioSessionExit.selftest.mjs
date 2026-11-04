@@ -470,7 +470,8 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   assert.match(body, /return owner && !owner\.current\(\) \? null : applied;/, 'a session that ended before it finished reports no light to undo');
   // and its Garage presentation after a late Studio build: only while the Garage owns the screen (a battle being
   // assembled from the Garage keeps the phase there and owns the world it builds)
-  const port = main.slice(main.indexOf('restoreGarageWorld: () => {'), main.indexOf('setGarageSpots, setGarageSunTrim, enterGarage,'));
+  // (integration IR6) the slice ends at the Garage ports that follow it, whatever binds enterGarage (app-flow's exit)
+  const port = main.slice(main.indexOf('restoreGarageWorld: () => {'), main.indexOf('setGarageSpots, setGarageSunTrim, enterGarage'));
   assert.ok(port.length > 0 && port.length < 600, 'main.ts hands the Studio the Garage\'s presentation');
   assert.match(port, /if \(game\.phase !== 'garage' \|\| battleEntryLifecycle\.pending \|\| battleLoad\.covering \|\| garageReturn\.transitioning\) return;/);
   assert.match(port, /garageEnvironmentPresentation\.activate\(selectedGarageVariantId\)/, 'the Garage\'s own presentation: asleep, its sky and trim');
