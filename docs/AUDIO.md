@@ -1153,7 +1153,12 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   which take the radio spoke. Every battle phase is a new battle to the engine:
   a room's rematch starts from the result screen with no Garage between, and
   kept the last battle's engines, alarms and rollout (no count, no opener, no
-  horn).
+  horn). The reverb sends follow the settings channels (crew-lines' finding
+  11): the voice pool, the vehicle rigs and the aircraft rigs each sent into
+  the reverb past their bus gain, so Engine 0 or Combat 0 still played their
+  reverb. The mixer now hands out one send per channel (`reverbSend(bus)`,
+  scaled as the channel scales its buses) and keeps the reverb's input to
+  itself; `reverbSends.selftest.mjs` walks the graph from every started source.
 
 ### Cost
 

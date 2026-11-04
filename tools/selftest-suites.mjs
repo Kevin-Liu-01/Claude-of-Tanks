@@ -1511,6 +1511,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-11-03 (world-sfx-269): the vehicles, the world and the modes sound of what they are (exhaustive tables, the
     // mode controller's events scanned, the engine heard)
     'src/audio/worldSounds.selftest.mjs',
+    // 2026-11-04 (world-sfx-269, crew-lines' finding 11): a settings channel at 0 sends nothing to the reverb
+    'src/audio/reverbSends.selftest.mjs',
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',

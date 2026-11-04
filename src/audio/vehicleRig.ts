@@ -227,14 +227,17 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   output.connect(lowpass);
   if (panner) lowpass.connect(panner);
   let sendGain: GainNode | null = null;
-  let busNode: AudioNode = mixer.input(initialLod === 'own' ? 'own' : 'vehicles');
+  const initialBus = initialLod === 'own' ? 'own' : 'vehicles';
+  let busNode: AudioNode = mixer.input(initialBus);
+  // the reverb send follows the bus, so its channel scales it (mixer.reverbSend)
+  let sendNode: AudioNode = mixer.reverbSend(initialBus);
   const tail: AudioNode = panner ?? lowpass;
   tail.connect(busNode);
   if (deps.reverb) {
     sendGain = ctx.createGain();
     sendGain.gain.value = 0.06;
     tail.connect(sendGain);
-    sendGain.connect(mixer.reverbInput);
+    sendGain.connect(sendNode);
   }
 
   const engineLayers = new Map<string, Layer>();
@@ -389,6 +392,12 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
       try { tail.disconnect(busNode); } catch { /* detached */ }
       tail.connect(nextBus);
       busNode = nextBus;
+    }
+    const nextSend = mixer.reverbSend(busId);
+    if (sendGain && nextSend !== sendNode) {
+      try { sendGain.disconnect(sendNode); } catch { /* detached */ }
+      sendGain.connect(nextSend);
+      sendNode = nextSend;
     }
     lod = next;
     rebuildEngine();
