@@ -481,11 +481,16 @@ function c2Package(P: ArieteTurretPort, receipt: ArieteProtoTurretReceipt, c2Era
         new THREE.Vector3(FSW, C2_RAKE, 1).normalize().z);
     }
     // the cheek's side module: one bolted module 20 cm proud (C2 photograph 3: the side modules' fronts stand proud at the
-    // turret's corners), its front on the add-on front, its top a long wedge from the eave over the flank modules down to
-    // the face's top (photographs 1 and 4: the bolted side plate under the sloping edge), the oval access panel on it
+    // turret's corners), its front on the add-on front, its top along the eave to the roof's front edge and from there the
+    // wedge down to the face's top with the front modules (photographs 1, 2 and 4: the bolted side plate under the sloping
+    // edge), the oval access panel on it
+    // (its top keeps within a centimetre of the eave: a wall strip left bare over it took the old turret's designation
+    // seat, re-found within reach of the prior record)
     const zt = 0.38, zbk = 0.42, yBot = FLOOR + CHAMF, zf = c2FrontZ(W, yf) - 0.004;
-    const topAt = (z: number): number => EAVE - 0.01 - (EAVE - 0.01 - yf) * (z - SZ0) / (zf - SZ0);
-    const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, yf, zf],
+    const [tzW, tyW] = topFront(W), ze = tzW - 0.02, ye = tyW + 0.005;
+    const topAt = (z: number): number => (z <= ze ? EAVE - 0.01 + (ye - EAVE + 0.01) * (z - SZ0) / (ze - SZ0)
+      : ye + (yf - ye) * (z - ze) / (zf - ze));
+    const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, ye, ze], [x, yf, zf],
       [x, yBot, c2FrontZ(W, yBot) - 0.004], [x, yBot, zbk]];
     cluster(() => {
       P.add('turret', convexBlock(mirror([...side(W - 0.045), ...side(W + 0.20)], s)));
