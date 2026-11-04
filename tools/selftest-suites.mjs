@@ -210,6 +210,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 266 (owner: "lets build brazil ... flesh it out with all its own tanks"; "EE-T1 Osório"): the Brazilian line's
     // X1, X1A2, Tamoyos and Osórios in their trees, tiers and photo packets at both qualities, each mark's kit
     'src/vehicles/profiles/brazil.selftest.mjs',
+    // release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard AS1,
+    // Abrams pair and Redback in their tree, tiers and photo packets at both qualities, each one's own kit
+    'src/vehicles/profiles/australia.selftest.mjs',
     // 265: the M41 family on its supplied print's datums, each mark's kit and tree
     'src/vehicles/profiles/m41.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',

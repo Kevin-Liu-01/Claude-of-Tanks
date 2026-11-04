@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 15, 'fifteen national trees'); // 266: Denmark, Brazil
+assert.equal(TECH_TREES.length, 16, 'sixteen national trees'); // 266: Denmark, Brazil; 269: Australia
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -231,6 +231,13 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Japan's STB-1 to Type 10 line off the Type 74 (lane 1); the UK's new Marksman line off the Chieftain Mk 10 on lane 5,
 // the Marksman (T-55) at V and the ItPsv Leopard 2 at VI after it; the Lvkv 9040 at V straight on from Sweden's CV90
 // (lane 2); the K30 Biho at V off South Korea's BMP-3 (ROK), lane 2 under the K21; the PZA Loara at VI off Poland's
-// PT-91A Twardy (lane 1).
-assert.equal(digest, 'be0f063a807fb64f', `tree content changed: re-pin to ${digest} if deliberate`);
+// PT-91A Twardy (lane 1). (Pinned be0f063a807fb64f on the air-defence side.)
+// 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
+// the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
+// lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
+// drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
+// 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
+// tree's special lane at II. (Pinned 80f1ffa376ebe14a on the M113 side.)
+// 269 re-pin (item/aa269-m163, the merge of m113-hull-269 e1a98b884c into the air-defence lane): both sides' trees together.
+assert.equal(digest, 'dbd5beb9c49a31f9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

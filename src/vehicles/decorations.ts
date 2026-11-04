@@ -3165,10 +3165,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'].includes(spec.id)) return [];
   // 269: the second air-defence round likewise (the Lvkv 9040's single gun and radar drum sweep its roof)
   if (['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara'].includes(spec.id)) return [];
+  // Release 269 (the Australian line): every Australian build authors its own dischargers and roof guns (the M113s'
+  // Saladin, Scorpion and Tenix turrets, the Leopard AS1 on the Danish build, the Abrams pair on the M1A1 and the SEPv3
+  // study with the TMAPU, racks and kit, the Redback's T2000 and Iron Fist). The era field load doubled them (a second
+  // discharger pair, a roof gun) and heaped cargo where the Abrams' field nets lie (the decor raises field nets), as on
+  // the Danish Leopards it was cloned beside and the South African Centurions' blind critics (269).
+  if (['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
+  // 269: the US M113A3 carries its own tarp roll and fuel tanks (profiles/m113.ts)
+  if (spec.id === 'm113a3') return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
-  if (['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'].includes(spec.id)) return [];
+  if (['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams', 'm1a2_sepv3_aus'].includes(spec.id)) return [];
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.

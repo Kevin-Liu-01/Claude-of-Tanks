@@ -16,6 +16,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "amx40X": () => import('./combatAnatomyGroups/amx40X.generated.ts'),
   "aresApcX": () => import('./combatAnatomyGroups/aresApcX.generated.ts'),
   "arieteX": () => import('./combatAnatomyGroups/arieteX.generated.ts'),
+  "australia": () => import('./combatAnatomyGroups/australia.generated.ts'),
   "bmp3mDragun125X": () => import('./combatAnatomyGroups/bmp3mDragun125X.generated.ts'),
   "borsuk": () => import('./combatAnatomyGroups/borsuk.generated.ts'),
   "brazil": () => import('./combatAnatomyGroups/brazil.generated.ts'),

@@ -122,7 +122,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'The source-measured Leopard 2A6 X paired pressed dishes and tire bands define the Leopard 2 wheel (leopardA6XWheels.ts); every other Leopard hull draws it.' }),
   kf41_lynx: Object.freeze({ donor: 'kf41_lynx', self: ['kf41_lynx'], pattern: 'plain-dish-twelve', construction: 'lynx-stamped-web',
     note: 'Source-measured KF41 stamped webs, web and hub fasteners over paired tire bands (kf41LynxWheelStock.ts).' }),
-  m1a1_abrams_hc: Object.freeze({ donor: 'm1a1_abrams_hc', self: ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a1', 'ua_m1a2_abrams'],
+  m1a1_abrams_hc: Object.freeze({ donor: 'm1a1_abrams_hc', self: ['m1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a1', 'ua_m1a2_abrams', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus'],
     pattern: 'split-rim-ten', construction: 'abrams-hollow-paired',
     note: 'Hollow paired road wheel from the SEP v2 source measurements (hollowRoadWheelStock.ts / abramsSourceXWheels.ts).' }),
   m551a1_tts: Object.freeze({ donor: 'm551a1_tts', self: ['m551a1_tts'], pattern: 'cast-five-spoke', construction: 'sheridan-pressed-rim',

@@ -15,17 +15,17 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1507 | 163.3 |
+| KEEP | 1508 | 164.0 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 664 | 1158.4 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2172 | 1322.1 | 233.3 |
-| After: the default tier | 1507 | 163.3 | 36.9 |
+| Before: every receipt (npm test without the tiers) | 2173 | 1322.7 | 233.3 |
+| After: the default tier | 1508 | 164.0 | 37.0 |
 
-Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
+Default tier: 12.4 % of the whole registry's CPU; 17.9 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
 
 ## Manual suites
 
@@ -36,7 +36,7 @@ Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the 
 | `bots` | 8 | 40.4 | bot behaviour played out on the authority (every mode, objectives, levels, approaches) |
 | `sims` | 7 | 5.0 | drone, missile, escort and counter-drone scenario runs |
 | `perf` | 4 | 2.5 | host-time budgets (tick cost, soaks, heap plateaus, restore timing): they measure the machine as much as the code |
-| `fleet` | 62 | 282.2 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
+| `fleet` | 62 | 282.3 | fleet-wide vehicle sweeps: every playable tank built (the HIGH, LOW and default fleet passes, the lazy facade, floor clearance, vertex colours, national and fleet-wide fitting sweeps) and the whole-fleet anatomy check (tank:anatomy:check); then `node tools/gen-combat-anatomy.mjs --check --jobs=4`, `node tools/gen-vehicle-marking-seats.mjs --check`, `node tools/module-hit-probe.mjs`, `node tools/tank-assets-check.mjs --views armorSide,modulesSide,crewSide --skip-bore`, `node tools/spare-track-placement-check.mjs --ids=all --ledger=docs/geometry-gate/spare-track.json --check --quiet`, `node tools/interior-fill-exposure.mjs --all --check --jobs=4` |
 | `tanks` | 417 | 293.2 | per-tank and per-family pins (id-scoped: lane mode and tank:release:check run the ones naming or reading the lane's ids) |
 | `world` | 138 | 406.8 | world-wide map builds: scenery, structure collision, buildings, the wreck bake, the collision shards, civic areas, horizons and map content |
 | `ui` | 7 | 8.6 | heavy interface paint and layout sweeps |
@@ -811,7 +811,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-coverage.selftest.mjs` | n/a | MANUAL (media) | media: the media lane's fleet backlog, n/a s: 267: the fleet's media backlog (every vehicle leads a take, the survey bars): the manual media suite | test:heavy -- media; test:recommend flags it when its inputs change |
 | `tools/mp-rooms-entry.browser.selftest.mjs` | n/a | MANUAL (ui) | ui: heavy interface paint and layout sweeps, n/a s: 268 (the 267 production smoke): the multiplayer end-to-end opens the rooms panel the way the Garage's layout o | test:heavy -- ui; test:recommend flags it when its inputs change |
 
-## KEEP (1507)
+## KEEP (1508)
 
 | Receipt | Run (s) | Decision | Reason | Coverage now |
 |---|---:|---|---|---|
@@ -851,6 +851,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/mp-p2p-peer.selftest.mjs` | 41 | KEEP | the peer harness is a dev surface only (must-keep: security) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/driver-boundaries.selftest.mjs` | 40 | KEEP | the simulation drivers keep to their boundaries (sim determinism) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/vehicleSize.selftest.mjs` | 37 | KEEP | the owner-directed size factors and dims over the fleet (size policy) | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/australia.selftest.mjs` | 37 | KEEP | vehicle rule, 37 s: release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/convexOutlines.selftest.mjs` | 36 | KEEP | convex armour parts hold their outline in the shell clip (must-keep: armour sample) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/alphaCutShadow.selftest.mjs` | 36 | KEEP | alpha-cut shadows of netted tanks (vehicle core) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/vehicles/jagdpanzerE100XArmor.selftest.mjs` | 36 | KEEP | Jagdpanzer E100 armour (must-keep: armour sample) | default tier (npm test, the release gate; lane mode by its closure) |
