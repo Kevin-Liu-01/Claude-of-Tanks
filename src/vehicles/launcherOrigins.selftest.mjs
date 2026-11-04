@@ -138,9 +138,11 @@ for (const id of ids) {
     } finally { for (const mesh of stock) mesh.geometry.dispose(); tank.dispose(); }
   }
 }
-// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35
-assert.equal(ids.length, 36, 'review every missile/rocket vehicle when the roster changes');
-assert.equal(throughGun, 7, 'gun-launched exceptions remain explicit');
+// 36 since main's compact-pod M6 Linebacker (FIM-92 Stinger tubes) joined the PR's 35; 37 with the M1E3's XM1210 MRM
+// (gun-launched, the eighth such round); 41 with 269's Australians (the Redback's Spike LR2 pair, the twin TOW on the
+// M113A1 FSV, MRV and AS4)
+assert.equal(ids.length, 41, 'review every missile/rocket vehicle when the roster changes');
+assert.equal(throughGun, 8, 'gun-launched exceptions remain explicit');
 assert(external >= 25 && stockProbes >= 100 && launches >= 200);
 probeMaterial.dispose();
 console.log(JSON.stringify({ vehicles: ids.length, externalRounds: external, gunLaunchedRounds: throughGun, launches, stockProbes }));
