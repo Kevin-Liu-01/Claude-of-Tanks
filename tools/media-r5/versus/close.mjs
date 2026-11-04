@@ -50,6 +50,10 @@ const FAMS = process.argv.find((a) => a.startsWith('--families='))?.slice(11).sp
 const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const byName = (s, n) => s.actors.find((a) => a.name === n);
 
+/** The effects an elevated still keeps: hit sparks, impacts and debris chips dropped (from above they streak across
+ *  the hulls, sit on a deck or read as confetti; critics of batches B1 and C1). */
+export const overhead = (effects) => effects.filter((e) => !['sparks', 'impact', 'debris'].includes(e.type));
+
 /** The scene with its foe brought in to `gapM` from the hero along the same bearing, turrets laid on each other. */
 // (round 13) turnDeg turns the foe's bearing from the hero by that much first: the same duel on another line across the
 // map's backdrop and sun, so the elevated lenses find other arcs
@@ -212,8 +216,12 @@ function solve(id, turn = 0) {
 /** (round 13) A fleet take (a filmed scene, site50/fleet-268/scenes/<id>.json) frozen at its still for the judge: every
  *  tracked actor where it stands then, named in schema-1 spellings (the dims' key), the hero and its nearest tank
  *  within 30 m and out of any moving tank's dust as the pair (named hero and foe0, the judge's names), the take's own
- *  camera at the still as the round's lens; null when the hero has no dims or drives in dust, or no such tank stands. */
-function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs) {
+ *  camera at the still as the round's lens; null when the hero has no dims or drives in dust, or no such tank stands.
+ *  (batch E) With `duel` (degrees off the hero's nose) the mate is instead the take's nearest enemy at any range, set
+ *  down that far round from the hero's nose as the versus duels stand (their foes 60-115° off it, nose on the hero
+ *  within ~20°): clearGap's tests at 9-18 m, halted there, nose 12° past the hero, turrets laid on each other; `move`
+ *  records it for takeFinal. */
+function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs, duel = null) {
   const tracks = take.storyboard?.actorTracks ?? [];
   const at = (keys) => {
     const k = Math.max(0, keys.findLastIndex((x) => x.tMs <= T)), a = keys[k], b = keys[k + 1] ?? a, u = b.tMs > a.tMs ? (T - a.tMs) / (b.tMs - a.tMs) : 0;
@@ -237,21 +245,55 @@ function takeSnapshot(take, T = take.still?.tMs ?? take.meta?.still?.tMs) {
   });
   const hero = actors.find((a) => a.name === 'hero');
   if (!hero || !dimsOf(hero.id) || inDust(hero)) return null;
-  const mate = actors.filter((a) => a !== hero && dimsOf(a.id) && !a.state && !inDust(a)).sort((a, b) => dist2(a.pos, hero.pos) - dist2(b.pos, hero.pos))[0];
-  if (!mate || dist2(mate.pos, hero.pos) > 30) return null;
+  const near = (a, b) => dist2(a.pos, hero.pos) - dist2(b.pos, hero.pos);
+  let mate, move = null;
+  if (duel === null) {
+    mate = actors.filter((a) => a !== hero && dimsOf(a.id) && !a.state && !inDust(a)).sort(near)[0];
+    if (!mate || dist2(mate.pos, hero.pos) > 30) return null;
+  } else {
+    mate = actors.filter((a) => a.name.startsWith('foe') && dimsOf(a.id) && !a.state).sort(near)[0];
+    if (!mate) return null;
+    const model = modelOf(take.map), d = dimsOf(mate.id), h = dimsOf(hero.id), from = mate.pos;
+    for (let gap = 9; gap <= 18 && !move; gap++) {
+      const to = polar(hero.pos, hero.facingDeg + duel, gap).map(r2), facing = r2(wrap(bearingOf(to, hero.pos) + 12 * (Math.sign(duel) || 1)));
+      if (gap < Math.max((d[0] + h[0]) * 0.9, d[2] + h[2] + 2) || model.hullContacts(to[0], to[1], facing * DEG, d[0], d[1]).length
+        || model.slopeAt(to[0], to[1]) > 0.2 || model.wetAt(to[0], to[1]) > 0.3) continue;
+      move = { name: mate.name, from, to, facing, gap, turn: duel };
+      Object.assign(mate, { pos: to, facingDeg: facing, vel: [0, 0] });
+    }
+    if (!move || inDust(mate) || inDust(hero)) return null;
+    hero.turretDeg = move.heroTurret = r2(wrap(bearingOf(hero.pos, mate.pos) - hero.facingDeg));
+    mate.turretDeg = move.mateTurret = r2(wrap(bearingOf(mate.pos, hero.pos) - mate.facingDeg));
+  }
   const mateName = mate.name;
   for (const a of actors) if (a.name === 'foe0') a.name = 'foe0-take';
   mate.name = 'foe0';
   const shots = take.storyboard?.shots ?? [], own = shots.findLast((c) => c.tMs <= T) ?? take.camera;
-  return { map: take.map, timeOfDay: take.timeOfDay, light: take.light, actors, effects: take.effects ?? [], fxTime: T, lenses: [own], mate: mateName };
+  return { map: take.map, timeOfDay: take.timeOfDay, light: take.light, actors, effects: take.effects ?? [], fxTime: T, lenses: [own], mate: mateName, move };
 }
 
-/** The take's scene through a round-13 lens: the lens held still (no camera shots or cues), the burst added, the hit
- *  sparks dropped (from above they streak across the hulls), the placements as filmed (autoPlace off) and the still's
- *  time in meta.stillMs. */
-function takeFinal(take, snap, fam, view, b) {
-  const id = `${take.meta.id}-${fam}${view > 1 ? view : ''}-r${ROUND}`, lens = { ...b.lens, name: 'a' };
-  return { ...take, autoPlace: false, camera: lens, cameraVariants: [lens], effects: [...(take.effects ?? []).filter((e) => e.type !== 'sparks'), ...b.extra],
+/** A take with a duel snapshot's move applied: the enemy halted at its new spot on every key (its own hit, debris and
+ *  embers, within 7 m of where it stood, moved with it), the two turrets laid on each other on every key. */
+function moved(take, m) {
+  const t = structuredClone(take), dx = m.to[0] - m.from[0], dz = m.to[1] - m.from[1], dy = ground(t.map, ...m.to) - ground(t.map, ...m.from);
+  for (const e of t.effects ?? []) {
+    if (!Array.isArray(e.at) || dist2([e.at[0], e.at.at(-1)], m.from) > 7) continue;
+    e.at = e.at.length === 3 ? [r2(e.at[0] + dx), r2(e.at[1] + dy), r2(e.at[2] + dz)] : [r2(e.at[0] + dx), r2(e.at[1] + dz)];
+  }
+  for (const a of t.actors) if (a.name === m.name) Object.assign(a, { pos: m.to, facingDeg: m.facing, turretDeg: m.mateTurret });
+  for (const tr of t.storyboard?.actorTracks ?? []) for (const k of tr.keys) {
+    if (tr.actor === m.name) Object.assign(k, { pos: m.to, facingDeg: m.facing, turretDeg: m.mateTurret });
+    if (tr.actor === 'hero') k.turretDeg = m.heroTurret;
+  }
+  return t;
+}
+
+/** The take's scene through a round-13 lens: the lens held still (no camera shots or cues), the burst added, the
+ *  overhead effects only, the placements as filmed (autoPlace off) and the still's time in meta.stillMs. */
+function takeFinal(source, snap, fam, view, b) {
+  const take = snap.move ? moved(source, snap.move) : source, lens = { ...b.lens, name: 'a' };
+  const id = snap.move ? newId(`${take.meta.id}-duel`, fam, view, snap.move.turn) : `${take.meta.id}-${fam}${view > 1 ? view : ''}-r${ROUND}`;
+  return { ...take, autoPlace: false, camera: lens, cameraVariants: [lens], effects: [...overhead(take.effects ?? []), ...b.extra],
     storyboard: { ...take.storyboard, shots: [], cameraCues: [] },
     meta: { ...take.meta, id, round: ROUND, source: take.meta.id, stillMs: snap.fxTime, pair: `hero and ${snap.mate}`,
       idea: `the elevated group, ${fam} lens over a fleet take` } };
@@ -314,7 +356,7 @@ function cli([mode, ...args]) {
 // from close.mjs solve. The source's staging, effects, light and picture stand; regroup() brings the foe in, the lens is
 // the pick's, and an elevated family's burst beyond the pair joins the effects.
 import { SCENES } from '../versus.mjs';
-import { regroup } from '../close.mjs';
+import { overhead, regroup } from '../close.mjs';
 
 const ROWS = [
 ${body}
@@ -322,7 +364,7 @@ ${body}
 for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = [], TURN = 0] of ROWS) {
   SCENES[ID] = () => {
     const s = regroup(SCENES[SRC](), GAP, TURN);
-    return { ...s, effects: [...s.effects.filter((e) => !EXTRA.length || e.type !== 'sparks'), ...EXTRA], lenses: [{ ...LENS }],
+    return { ...s, effects: [...(EXTRA.length ? overhead(s.effects) : s.effects), ...EXTRA], lenses: [{ ...LENS }],
       meta: { ...s.meta, id: ID, round: ${ROUND}, source: SRC, idea: 'the ' + (EXTRA.length ? 'elevated' : 'close') + ' group, ' + FAMILY + ' lens' } };
   };
 }
@@ -332,35 +374,39 @@ for (const [ID, SRC, GAP, FAMILY, LENS, EXTRA = [], TURN = 0] of ROWS) {
     // (round 13) fleet takes: take-solve <scene.json> ... [--times=fire]; take-write <scene.json>:<family>[:view[:tMs]] ...
     // --out=<dir>. --times=fire searches the take's still and 100 ms after each shot in it (its fire effects: the flash
     // alive, the tracer out) for each family's best moment (batch A: the take's own still often caught the pair in a
-    // column's dust); a write names the moment it takes
-    const out = args.find((a) => a.startsWith('--out='))?.slice(6);
+    // column's dust); a write names the moment it takes. --duel (batch E) brings the take's nearest enemy to the hero at
+    // each of --turns (takeSnapshot's duel); a duel write's pick adds the turn, <scene.json>:<family>:<view>:<tMs>:<turn>
+    const out = args.find((a) => a.startsWith('--out='))?.slice(6), duel = args.includes('--duel');
     if (mode === 'take-write' && !out) throw Error('take-write needs --out=<dir>');
     for (const p of rest) {
-      const [path, fam, view = '1', tArg] = mode === 'take-write' ? p.split(':') : [p];
+      const [path, fam, view = '1', tArg, turnArg] = mode === 'take-write' ? p.split(':') : [p];
+      const turns = !duel ? [null] : turnArg !== undefined ? [Number(turnArg)] : TURNS;
       const take = JSON.parse(readFileSync(path, 'utf8')), own = take.still?.tMs ?? take.meta?.still?.tMs;
       // (batch B1) a night or sunset take's grade leaves the tanks under-lit from above
       if (['night', 'sunset'].includes(take.timeOfDay)) { console.log(`${take.meta.id}: a ${take.timeOfDay} take, too dark from above`); continue; }
       const shots = (take.effects ?? []).filter((e) => e.type === 'fire' && Number.isFinite(e.tMs)).map((e) => e.tMs + 100);
       const times = tArg ? [Number(tArg)] : args.includes('--times=fire') ? [...new Set([own, ...shots])].sort((a, b) => a - b) : [own];
-      const best = {}, at = {};
-      for (const T of times) {
-        const snap = takeSnapshot(take, T);
-        if (!snap) continue;
-        for (const [f, views] of Object.entries(lensesFor(snap))) if (!best[f] || views[0].score > best[f][0].score) { best[f] = views; at[f] = snap; }
-      }
-      if (!Object.keys(best).length) { console.log(`${take.meta.id}: no moment with a tank within 30 m of the hero, out of dust, that a lens passes`); continue; }
-      if (mode === 'take-solve') {
-        console.log(`${take.meta.id}: ${take.map}`);
-        for (const [f, views] of Object.entries(best)) for (const [k, b] of views.entries()) {
-          console.log(`  ${`${f}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${b.score.toFixed(2)}  hero ${(50 * b.hw).toFixed(0)} %  mate ${(50 * b.fw).toFixed(0)} %  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}, at ${at[f].fxTime} ms with ${at[f].mate}`);
+      for (const turn of turns) {
+        const best = {}, at = {}, tag = turn === null ? '' : ` (duel, turned ${turn}°)`;
+        for (const T of times) {
+          const snap = takeSnapshot(take, T, turn);
+          if (!snap) continue;
+          for (const [f, views] of Object.entries(lensesFor(snap))) if (!best[f] || views[0].score > best[f][0].score) { best[f] = views; at[f] = snap; }
         }
-        continue;
+        if (!Object.keys(best).length) { console.log(`${take.meta.id}${tag}: no moment with a tank ${turn === null ? 'within 30 m of the hero' : 'brought to the hero'}, out of dust, that a lens passes`); continue; }
+        if (mode === 'take-solve') {
+          console.log(`${take.meta.id}${tag}: ${take.map}`);
+          for (const [f, views] of Object.entries(best)) for (const [k, b] of views.entries()) {
+            console.log(`  ${`${f}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${b.score.toFixed(2)}  hero ${(50 * b.hw).toFixed(0)} %  mate ${(50 * b.fw).toFixed(0)} %  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}, at ${at[f].fxTime} ms with ${at[f].mate}${at[f].move ? ` at ${at[f].move.gap} m` : ''}`);
+          }
+          continue;
+        }
+        const b = best[fam]?.[Number(view) - 1];
+        if (!b) throw Error(`${take.meta.id}${tag}: no ${fam} lens ${view} passes`);
+        const scene = takeFinal(take, at[fam], fam, Number(view), b);
+        writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));
+        console.log(`[close] ${scene.meta.id}: ${take.meta.id}, ${fam} ${view}${tag}`);
       }
-      const b = best[fam]?.[Number(view) - 1];
-      if (!b) throw Error(`${take.meta.id}: no ${fam} lens ${view} passes`);
-      const scene = takeFinal(take, at[fam], fam, Number(view), b);
-      writeFileSync(join(out, `${scene.meta.id}.json`), JSON.stringify(scene, null, 1));
-      console.log(`[close] ${scene.meta.id}: ${take.meta.id}, ${fam} ${view}`);
     }
   } else throw Error('mode: solve <id...> | write <id>:<family>... | take-solve <scene.json>... | take-write <scene.json>:<family>... --out=<dir>');
 }
