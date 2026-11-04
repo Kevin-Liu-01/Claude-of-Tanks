@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-02T11:51:07.258Z",
+ "generatedAt": "2026-11-02T21:09:14.704Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 44,
  "total": 154,
@@ -568,14 +568,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "bm_oplot_m",
-   "geoMin": 0,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": false,
-   "repinError": "owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): oplotMKt762 03735f1a2db4559079dd484cdf53a482d63d9c08c56ab0006f56e2b9237f3cf0; oplotMKitSternDrums 2d2fa5a53829362e9b22602075fe19c679aae30ce0a9922a991e2ff2b59d8bef; oplotMKitLights 3fa492ce14fdeb766b03360e90669a17feb0c723524bbd14843aee2e9cbe502c"
-  },
-  {
    "id": "m551_sheridan",
    "geoMin": 0,
    "requiredMinimum": 90,
@@ -768,10 +760,10 @@
      {
       "reference": "owner-kit:stb1:stb1KitSternDrums",
       "group": "stb1KitSternDrums",
-      "geometryPoseSha256": "4f1e729305b02d9d9432d4ee0fe55bf7fd4d23d9cfd2371011463301aad56a6a",
+      "geometryPoseSha256": "5b57888233af752a7aa246414e487b26d50fa487e08f89d099450f12df74ebe5",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the two 200 L stern drums on their welded shelf: the shelf, its gussets, the saddles, the drums and straps",
       "ownerWords": "raise the drums on the stb1"
      }
@@ -847,6 +839,65 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bm_oplot_m",
+   "geoMin": 40,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 92.8,
+    "dims": 40,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-without-owner-kit",
+   "comparisonScope": {
+    "numericScope": "Registered print against the build without the owner-directed kit parts named in ownerKit",
+    "ownerDecision": "Owner: \"make thesee tannks a lot more visually distinct and specialized with extra side armor, fuel barrles inn back, lights, 2 gun towers instead of 1 (i know we have that caapabilty), etc\". Main (262): exempt the kit from the source comparison; do not trim it.",
+    "decisionDate": "2026-10-27",
+    "ownerKit": [
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKt762",
+      "group": "oplotMKt762",
+      "geometryPoseSha256": "6d3a93daebefb5209d6b49bfdf6777581b8a89a108bdc161354a248557a36077",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the second roof station: the KT-7.62 mini-turret on its ring (the print carries the KT-12.7 only)",
+      "ownerWords": "2 gun towers instead of 1"
+     },
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKitSternDrums",
+      "group": "oplotMKitSternDrums",
+      "geometryPoseSha256": "83958040940701f9fc1a8f9b6763aebd2546b518d75f9cc5c9708cb2888882b2",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the twin 200 L stern drums, their cradle and straps",
+      "ownerWords": "fuel barrles inn back"
+     },
+     {
+      "reference": "owner-kit:bm_oplot_m:oplotMKitLights",
+      "group": "oplotMKitLights",
+      "geometryPoseSha256": "ad65cb09b24df372d75bc4562f2dce60114031e2e2ac3c1ebf910667a744ca4a",
+      "arrangementAccepted": true,
+      "numericPhotoFidelity": null,
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
+      "part": "the LED light bars on the cheek stacks and the bustle work lamp",
+      "ownerWords": "lights"
+     }
+    ],
+    "retained": "the lower Duplet skirt course (\"extra side armor\"): skirt-sector ERA, compared as built",
+    "rawSourceComparison": "?comparison=raw-source",
+    "fullVehicleQualification": false
+   },
+   "rawSourceComparison": {
+    "file": "bm_oplot_m.raw-source.json",
+    "gatePassed": false,
+    "rawGeoMin": 0,
+    "scope": "Full vehicle with its owner-directed kit against the print; retained diagnostic, not the owner-selected target"
+   }
   },
   {
    "id": "k1e1",
@@ -1083,10 +1134,10 @@
      {
       "reference": "owner-kit:m60a3:m60a3KitRackLoad",
       "group": "m60a3KitRackLoad",
-      "geometryPoseSha256": "23fed4598f3223be7747ac0440859e1d948cc607bd6f1e829df190e7f16e9689",
+      "geometryPoseSha256": "3c88b527ccd887aa276fbedaeaa6e48a8eb6d4e1da621990b4ea862e163dd428",
       "arrangementAccepted": true,
       "numericPhotoFidelity": null,
-      "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions",
+      "scope": "Previously reviewed assembly shape and pose invariance (positions, index, poses, visibility); its paint is the coat's",
       "part": "the bustle rack's field load: two spare road wheels tipped up on its rear corners, three packs under a bedroll",
       "ownerWords": "wheels and bags"
      }

@@ -690,15 +690,17 @@ const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt,stb1:stb1OwnerKitRecei
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){
-  const receipts=OWNER_KIT_RECEIPTS[id]?.parts??{},missing=[];
+  // 268: an owner kit is held to its shape and pose (reference-supplement.mjs 'shape'); its paint is the coat's, reviewed
+  // with the coat. Only a schemaVersion 2 receipt was taken in that scope.
+  const receipts=OWNER_KIT_RECEIPTS[id]?.schemaVersion===2?OWNER_KIT_RECEIPTS[id].parts??{}:{},missing=[];
   for(const part of ownerKitTarget.parts){
-    const digest=await supplementDigest(supplementSnapshot(procedural.root,part));
+    const digest=await supplementDigest(supplementSnapshot(procedural.root,part,'shape'));
     if(receipts[part.group]?.geometryPoseSha256!==digest)missing.push(`${part.group} ${digest}`);
   }
   if(missing.length)failFidelity(`owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): ${missing.join('; ')}`);
   ownerKit=[];
   try{for(const part of ownerKitTarget.parts){
-    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group]),part:part.part,ownerWords:part.ownerWords});
+    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group],'shape'),part:part.part,ownerWords:part.ownerWords});
   }}catch(error){failFidelity(String(error.message));}
   for(const part of ownerKitTarget.parts){const group=procedural.root.getObjectByName(part.group);group.visible=false;ownerKitGroups.push(group);}
   document.querySelector('#summary').textContent += ' · owner kit set aside (authenticated)';
