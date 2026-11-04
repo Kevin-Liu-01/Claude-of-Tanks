@@ -14,6 +14,7 @@ import { createFakeDom, settle } from './fleetTakes.test-support.mjs';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
 import { t } from './i18n.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (file) => readFileSync(join(ROOT, file), 'utf8');
@@ -74,6 +75,8 @@ function mountPanel(module) {
     clearInterval(id) { harness.intervals.delete(id); },
     IntersectionObserver: dom.IntersectionObserver,
     gameReady, garageScreen,
+    // (2026-11-02 audit R6, loaders-workers) the panel holds fleetTakes.ts in the one lazy-chunk policy
+    createLazyChunk,
     __importFleetTakes() { harness.imports++; return module(); },
     Promise, console,
   };
