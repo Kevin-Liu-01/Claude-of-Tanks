@@ -1,8 +1,8 @@
 // Frontline Assault (gameplay-modes-228; owner 2026-10-18: "up its aggression of tanks more"). Sector 1 fell in 24 s
 // with no shot fired: its three defenders were still driving from the bravo base 800 m back. Pins: the opening line
 // stands ON its line (lineBandM behind the sector's centre, facing the attack), out of the attack's reach and terrain
-// sight (round 2, the critic's E2: on compact maps the line saw and shot the attack's spawn at once — `lineGuard` steps a
-// slot back along the axis); the defenders hold the sector one slot each on the hold ring (holdSpreadM, round 2); a
+// sight (round 2, the critic's E2: on compact maps the line saw and shot the attack's spawn at once — `lineGuard` searches
+// the line's own ground for a slot; 268 item 9); the defenders hold the sector one slot each on the hold ring (holdSpreadM, round 2); a
 // sector's reinforcements form on its own line; a counter-attack squad drives AT the sector just taken afterCaptureS
 // after it falls, for forS, then falls back; while a sector is contested and short, one defender arrives from the rear
 // every reinforceTrickleS; the attackers push in groups (pushMinGroup within pushGroupM, or pushAfterS at the edge).
@@ -40,20 +40,24 @@ for (const d of live()) {
 }
 assert.equal(new Set(live().map((d) => { const o = mode.botTarget(d); return `${Math.round(o.x)},${Math.round(o.z)}`; })).size, live().length,
   'one slot each: no two defenders make for the same point');
-// the line's guard: on an open field every slot is in the attack's sight, so each slot steps back its tries along the
-// axis (and no slot ever stands within minAttackM of a living attacker)
+// the line's guard (268, item 9): on an open field every slot is in the attack's sight, so the search finds none clear and
+// takes the clearest: outside minAttackM, as far from the attack as the line's own ground lets it (never within the next
+// sector's contest reach, where it would hold that sector too)
 {
   const pool = Array.from({ length: 6 }, (_, i) => tank(`o${i}`, 'bravo', i * 8, 400));
   const attacker = tank('h', 'alpha', 0, -400, false);
   const open = createMatchModeController({ mode: 'frontline_assault', seed: 11, terrainHeight: () => 0, entities: [attacker, ...pool],
     setActive(x, a) { x.modeActive = a; }, revive(x, sp) { Object.assign(x.state.pos, { x: sp.x, z: sp.z }); x.combat.destroyed = false; } });
-  const g = rules.assault.lineGuard, [near, far] = rules.assault.lineBandM;
+  const g = rules.assault.lineGuard, [, far] = rules.assault.lineBandM;
+  const ground = open.state.zones[1].z - open.state.zones[0].z - rules.assault.contestReachM;
   const fielded = pool.filter((d) => d.modeActive !== false && !d.combat.destroyed);
   assert.equal(fielded.length, rules.assault.initialActive);
   for (const d of fielded) {
     const back = d.state.pos.z - open.state.zones[0].z;
-    assert.ok(back >= near + g.tries * g.stepBackM - 1 && back <= far + g.tries * g.stepBackM + 1,
-      `${d.id}: in sight, stepped back ${g.tries} x ${g.stepBackM} m (${back.toFixed(0)} m behind sector 1)`);
+    assert.ok(back > far && back <= ground + 1,
+      `${d.id}: in sight everywhere, the clearest slot stands past the band, short of sector 2's reach (${back.toFixed(0)} m behind sector 1, at most ${ground} m)`);
+    assert.ok(Math.abs(d.state.pos.x - open.state.zones[0].x) <= g.acrossSteps * rules.assault.lineSpacingM + rules.assault.lineSpacingM * 2,
+      `${d.id}: within the search's reach across the line`);
     assert.ok(Math.hypot(d.state.pos.x - attacker.state.pos.x, d.state.pos.z - attacker.state.pos.z) >= g.minAttackM, `${d.id}: beyond the guard's reach`);
   }
 }

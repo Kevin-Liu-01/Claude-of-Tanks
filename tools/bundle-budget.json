@@ -1,5 +1,5 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts.",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 266 (integrator, the single end re-pin over integ/266 0df7b32811's build; Node 24.22.1): bytes at +3 % over the build; request pins held at the exact counts (game 128, Gallery 75, cn 129, home 8, docs 12, 404 7, pad 14) after the Leopard 2 wedge leaf joined fleetLayouts. 269 (phone-feel-269, the owner 2026-11-03 \"it should buzz and vibrate and do everything\", the aim made more intuitive, the first-pairing controls guide): pad.html bytes only, at +3 % over its build after the desktop-only code left the phone (padDesk.ts, padCues.ts; src/pad/padPhoneHalf.selftest.mjs): the buzz engine, the aim curve and the guide are 2,546 B brotli over main and couch-mode-268; its 14 requests and every other page held.",
   "headroom": 0.03,
   "pages": {
     "game": {
@@ -50,9 +50,9 @@
     },
     "pad": {
       "requests": 14,
-      "raw": 99010,
-      "gzip": 36293,
-      "brotli": 32194,
+      "raw": 109947,
+      "gzip": 39885,
+      "brotli": 35451,
       "inlineCss": 877
     }
   }
