@@ -204,12 +204,12 @@ const destruction = [
   sfx('debris_metal', 'destruction', `One-shot of metal debris and shrapnel raining down onto hard ground after an explosion: clanks and rattles. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   // world-sfx-269 (2026-11-03): the two takes' seams stepped 4 and 8 dB, every 8 s through a 20-40 s cook-off: six takes
   // and the beds' even-level wording
-  sfx('cookoff_loop', 'destruction', `Seamless loop of ammunition cooking off inside a burning tank: irregular sharp popping bangs and small detonations over a steady roaring fire. Continuous at an even level from start to end. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 6, proc: 'loop' }),
+  sfx('cookoff_loop', 'destruction', `Seamless loop of a tank burning fiercely with its ammunition cooking off: roaring flames and loud crackling, irregular sharp popping bangs and small detonations. Continuous at an even level from start to end. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 8, proc: 'loop' }),
   sfx('wreck_fire_loop', 'destruction', `Seamless loop of a large vehicle fire: roaring flames, steady crackling and popping. Continuous at an even level from start to end. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 6, proc: 'loop' }),
   sfx('fire_small_loop', 'destruction', `Seamless loop of an engine compartment fire: hissing flames and crackling. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('fire_ignite', 'destruction', `One-shot of fuel suddenly igniting: a whoosh into roaring flames. ${NO_MUSIC}.`, 2, { variants: 3, takes: 5, proc: 'impact', punch: false }),
   sfx('metal_creak', 'destruction', `One-shot of hot steel of a burnt-out tank creaking and ticking as it cools. ${NO_MUSIC}.`, 3, { variants: 3, takes: 5, proc: 'foley' }),
-  sfx('burnout_blast', 'destruction', `One-shot of a muffled internal explosion in a burning tank: deep heavy whump. ${NO_MUSIC}.`, 3.5, { variants: 2, takes: 4, proc: 'impact' }),
+  sfx('burnout_blast', 'destruction', `One-shot of a burning tank's fuel and ammunition exploding inside its hull: a deep, heavy explosion muffled by the steel, a boom, a roaring fireball bursting out of the hatches. ${FIELD}, ${NO_MUSIC}.`, 3.5, { variants: 2, takes: 8, proc: 'impact' }),
 ];
 
 // ---------------------------------------------------------------- props ---
@@ -861,7 +861,7 @@ const hullStrikes = [
 ];
 const worldBreaks = [
   // a light vehicle going up (EXPLOSION_BY_MASS): not a 60 t tank's blast
-  sfx('vehicle_explode_light', 'destruction', `One-shot of a light armoured personnel carrier destroyed by an internal explosion, recorded 40 metres away: a sharp violent blast, thin armour plate tearing open, the fuel tank going up in a whoosh, light debris falling. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 6, proc: 'impact' }),
+  sfx('vehicle_explode_light', 'destruction', `One-shot of a light armoured vehicle destroyed by an internal explosion: a sharp, violent explosion, thin metal tearing, a smaller secondary explosion, light debris falling. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 3, takes: 10, proc: 'impact' }),
   // a roof by what it is made of (ROOF_FALL in destructionSounds.ts): roof_fall stays the tiled roof
   sfx('roof_fall_concrete', 'buildings', `One-shot of the flat reinforced concrete roof slab of a building caving in: a deep crack of breaking concrete, the heavy slab crashing down with a thunderous thud, concrete chunks and rebar clattering. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),
   sfx('roof_fall_earth', 'buildings', `One-shot of the flat earth roof of a mud-brick desert house caving in: wooden roof beams cracking, a heavy soft thump of packed earth and clay falling in, a long pouring hiss of dust, sand and clods. ${BLD40}.`, 3.5, { variants: 2, takes: 5, proc: 'debris', punch: false }),

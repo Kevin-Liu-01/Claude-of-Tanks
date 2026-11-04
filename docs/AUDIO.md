@@ -979,7 +979,14 @@ crew-lines.json ─┐                    crew-voices.json
   Infected ally turned got their sounds. 36 new assets, 19 families topped up
   to 3–5 variants, `scrape_loop` (no moment) and the flat `ui_ball_hit`
   removed; the cook-off loop (seams 4–8 dB) and the wreck fire (1.6–2.1 dB) re-picked from six takes (0.03 and
-  1.0 dB): 513 assets and 949 files, 25.3 MB (from 23.5). 16,184 credits.
+  1.0 dB): 513 assets and 949 files, 25.3 MB (from 23.5). 18,384 credits.
+  Every explosion is judged by gun-reports-269's local ear proxy (YAMNet, the
+  cannon rule: Explosion or Boom at least 0.1 and twice Gunshot): the light
+  vehicle's explosion (heard as tools, steam, an engine; its prompt named the
+  fuel going up), the burnout (rumble) and two of the APS intercept's takes
+  failed it. Re-prompted and pinned, every shipped explosion passes (2.6–16.6×)
+  and the Frontline barrage 6.6×. The cook-off loop read as rain before fire;
+  it now reads fire, crackle, then explosion (its seam steps 1.15 dB).
   Pins (`sfx-picks.json`) keep `rubble_crunch`, `tree_fall`, `wire_snag` and
   the light snow track in the loudness receipt's range (`wire_snag`'s old takes
   1 and 2 crossed the true-peak ceiling once measured). The soft-ground scrub
