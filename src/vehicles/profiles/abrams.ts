@@ -4301,6 +4301,20 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   };
 }
 
+/**
+ * Release 268 builder E (the floating-kit class): a roof post of the M1A1 marks, a warning sensor's or an antenna's base
+ * with its mast. Authored for the print-era shells' roof (0.75-0.79 over the ring), on the owner's model's 0.709 roof
+ * the bases stood 4 cm over it and some masts short of their base, touching nothing. The mast stands on its base's top
+ * and the pair drops onto the roof, or the plate, under it (P.snapGroup down), as every rested kit does.
+ */
+function tejasRoofPost(P: AbramsBuilderPort, x: number, z: number, mastH: number, mastW: number,
+  base: { readonly rTop: number; readonly rBot: number; readonly h: number; readonly y: number }): void {
+  P.snapGroup(`tejas-antenna-${x}`, () => {
+    P.add('turretDetail', cylY(base.rTop, base.rBot, base.h, 10), x, base.y, z);
+    P.add('turretDark', box(mastW, mastH, mastW), x, base.y + base.h / 2 + mastH / 2, z);
+  }, { reachM: 0.06, mode: 'down' });
+}
+
 function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankProfileBuild {
   let g = TEJAS_HULL;
   // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's rise stays under the
@@ -4399,14 +4413,14 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
     g = { ...g, noRearFlap: true, frontFlapZ: 3.620, noSkirt: true,
       skirt: { x: M1A1_SKIRT.outerX, top: M1A1_SKIRT.top, bot: M1A1_SKIRT.bottom, z0: M1A1_SKIRT.rearZ, z1: M1A1_SKIRT.frontZ } };
     yield* abramsHullSteps(P, g);
-    addM1A1SkirtsAndFenders(P, g, { deckAt: (z) => deckAt(g, z) });
+    addM1A1SkirtsAndFenders(P, { deckAt: (z) => deckAt(g, z) });
     for (const side of [-1, 1]) {
       // Release 268: the owner's source glacis runs 6-12 cm under these fenders (which must stay over the idler's shoe
       // envelope), so each fender gets its inner wall: a 25 mm plate from just under the glacis edge up into the
       // fender's underside, inboard of the 1.11 m pin caps. It closes the slot into the idler bay.
       for (const [z0, z1] of [[2.59, 3.02], [3.01, 3.51]] as const) {
         const b0 = deckAt(g, z0) - 0.02, b1 = deckAt(g, z1) - 0.02;
-        const top0 = m1a1FenderBottomAt(g, z0) + 0.012, top1 = m1a1FenderBottomAt(g, z1) + 0.012;
+        const top0 = m1a1FenderBottomAt(z0) + 0.012, top1 = m1a1FenderBottomAt(z1) + 0.012;
         familySideSlab('hull', side,
           [1.065, b0, z0], [1.090, b0, z0], [1.090, b1, z1], [1.065, b1, z1],
           [1.065, top0, z0], [1.090, top0, z0], [1.090, top1, z1], [1.065, top1, z1]);
@@ -4543,6 +4557,9 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
     // the shield's top lies on the turret roof's forward course at rest (gun-local y = y0 - k z)
     buildM1A1GunMount(P, haSearchlight, {
       y0: M1A1_TURRET.SLOPE_C - M1A1_TURRET.SLOPE_K * t.gun[2] - t.gun[1], k: M1A1_TURRET.SLOPE_K });
+    // (release 268 builder E, the A/B net-volume round: the FEP's cord ties round its gun sleeve are gone; the critics
+    // read them as "banded sleeves" blurring the evacuator, tube and sleeve into one thick section, and the sleeve, which
+    // lay over them in peaks, lies on the tube's own steps; ghillieSuit.ts, the FEP's gun panels)
     if (haSearchlight) {
       // HA gun-rig searchlight: a two-stage bracket carries the entire
       // lamp ahead of the left cheek, and pitches with the gun without
@@ -4670,7 +4687,10 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
               // Follow the outward sweep of the bow fender without entering the
               // animated front return.  The former innermost carrier reached the
               // track band at x=1.72 on the last two cassettes.
-              const bowCarrier = g.skirt.x + 0.07 - k * 0.045;
+              // (release 268 builder E, the floating-kit class: the owner's model's skirt runs straight to the bow at
+              // g.skirt.x, with no outward sweep; stepped off it, the middle cassette stood 2 cm clear of it touching
+              // nothing and the last sank 3 cm into it. Each now sits on the skirt, as the upper course does.)
+              const bowCarrier = src ? g.skirt.x : g.skirt.x + 0.07 - k * 0.045;
               const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
                 0.11, h, 0.27, 1.08, z);
               skirtArmorBox(P, 'hull', side, bowOuter - 0.003,
@@ -4936,11 +4956,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // the shared left-side CROWS it gives TUSK two deliberate, separated,
         // forward-firing machine guns; retain only the warning sensors here.
         for (const [x, z, h] of [[-1.08, -0.86, 0.34], [1.06, -0.95, 0.28]]) {
-          const buildTejasFamilyTurretCourse4 = (): void => {
-            P.add('turretDetail', cylY(0.065, 0.075, 0.09, 10), x, 0.79, z);
-            P.add('turretDark', box(0.035, h, 0.035), x, 0.98, z);
-          };
-          buildTejasFamilyTurretCourse4();
+          tejasRoofPost(P, x, z, h, 0.035, { rTop: 0.065, rBot: 0.075, h: 0.09, y: 0.79 });
         }
         // TUSK UNIFIED CHEEK CASSETTES (owner correction 2026-08-15).  The old
         // 2x2 XM32 layout made each cheek read as four separate tiles.  Use one
@@ -5133,11 +5149,7 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // duplicate the owner saw crossing the turret; keep only its two small
         // warning-sensor posts below.
         for (const [x, z, h] of [[-1.12, -0.92, 0.38], [1.10, -1.02, 0.31]]) {
-          const buildTejasFamilyTurretCourse6 = (): void => {
-            P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);
-            P.add('turretDark', box(0.038, h, 0.038), x, 1.01, z);
-          };
-          buildTejasFamilyTurretCourse6();
+          tejasRoofPost(P, x, z, h, 0.038, { rTop: 0.07, rBot: 0.08, h: 0.10, y: 0.80 });
         }
         // SEPv2 uses fewer, broader composite/ERA cassettes than TUSK. The
         // layered faces and flush cross details come from the successful early
@@ -5323,13 +5335,11 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
         // Release 268: with the Trophy launchers gone, the left flank's 20 cm roof-edge shelf (x 1.29-1.49, under-face
         // 0.675) roofed a 14 cm well over the cassette tops (0.54) from the bustle to -0.80; a stowage plate laid on
         // the wall at the cassette face fills it (plain plate, not part of the reactive cluster).
-        flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
+        // (release 268 builder E, the A/B polish: the owner's model's shell has no roof-edge shelf over the left flank, so
+        // there is no well to fill; the plate stood 8 cm off its 26-degree wall at an angle)
+        if (!t.m1a1Source) flankSlab(P, 'turret', t, 1, flankFaceX(t, 0.53) + 0.079, 0.53, 0.53, 0.69, -2.85, -0.80, 'wall');
         for (const [x, z, h] of [[-1.15, -0.96, 0.42], [1.12, -1.08, 0.34], [0.84, -1.48, 0.28]]) {
-          const buildTejasFamilyTurretCourse9 = (): void => {
-            P.add('turretDetail', cylY(0.07, 0.08, 0.10, 10), x, 0.80, z);
-            P.add('turretDark', box(0.038, h, 0.038), x, 1.01, z);
-          };
-          buildTejasFamilyTurretCourse9();
+          tejasRoofPost(P, x, z, h, 0.038, { rTop: 0.07, rBot: 0.08, h: 0.10, y: 0.80 });
         }
         // SEPv3's newest array is a dense, irregular 16-block turret field.
         // It keeps the fine modern pitch, but each cassette now has a deep body,
@@ -5369,9 +5379,14 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
           };
           buildTejasFamilyTurretCourse11();
         }
-        P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, 0.72, -3.492); // rear IFF panel
-        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.755, -3.497);
-        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.675, -3.497);
+        // (release 268 builder E, the A/B craft fix: on the owner's model's shell the rack ends 0.5 m further forward, so
+        // the panel hung in mid-air behind it; it hangs from the rack's top rear rail, its top at the rail's top, its face
+        // on the rail's rear face)
+        const iffY = t.m1a1Source ? t.rackTop - (t.rackRearDrop ?? 0) - 0.12 : 0.72;
+        const iffZ = t.m1a1Source ? t.zRear - (t.rackDepth ?? 0.42) - 0.0225 - 0.005 : -3.492;
+        P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, iffY, iffZ); // rear IFF panel
+        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY + 0.035, iffZ - 0.005);
+        P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, iffY - 0.045, iffZ - 0.005);
         // (release 268: the IFLIR cheek plates stood on the print-era GPS seat on the loader's side; the FEP's
         // second-generation FLIR head now rides the gunner's sight itself, abramsM1A1Identity.ts addFepFit)
         // (release 268 round 3: the pioneer tools that lay on the glacis are gone; the glacis is bare but for the driver's
@@ -7660,12 +7675,17 @@ function* buildAbramsX(P: AbramsBuilderPort): TankProfileBuild {
       // pale mounting frame behind the tubes (the new print's banks read as
       // dark tubes on a light bracket — camo alone ate the 0.034 cluster);
       // rx follows the band's back-lean, ry the plan chamfer (weld-seam 0.434)
-      P.add('turretDetail', box(0.30, 0.17, 0.016), side * 1.10, 0.13, 2.398, -0.28, side * 0.434, 0);
-      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040,
-        len: 0.22, splay: side * 0.72, pitch: -0.50, arc: 0.50,
-        spacing: 0.094, slot: 'dark', seed: 61 + side });
-      bank.position.set(side * 1.10, 0.14, 2.41);
-      P.turretG.add(bank);
+      // (release 268 builder E, the floating-kit class: the cheek under the left bank lies 3-5 cm behind its frame, so
+      // frame and tubes touched nothing; each frame and its bank are seated on the cheek (P.snapGroup, along the
+      // shortest gap), the right one already touching and staying as authored)
+      P.snapGroup(`abramsx-cheek-smoke-${side}`, () => {
+        P.add('turretDetail', box(0.30, 0.17, 0.016), side * 1.10, 0.13, 2.398, -0.28, side * 0.434, 0);
+        const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040,
+          len: 0.22, splay: side * 0.72, pitch: -0.50, arc: 0.50,
+          spacing: 0.094, slot: 'dark', seed: 61 + side });
+        bank.position.set(side * 1.10, 0.14, 2.41);
+        P.turretG.add(bank);
+      }, { reachM: 0.07 });
     }
     // XM360: axis 1.93 (oracle tube band 1.80..2.04), muzzle at the published
     // 9.77 overall (5.71 world against the -4.06 pintle tail; the oracle tube

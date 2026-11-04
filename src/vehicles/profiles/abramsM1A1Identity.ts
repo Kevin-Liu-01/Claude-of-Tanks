@@ -239,8 +239,11 @@ function addLoaderThermalSight(P: AbramsIdentityPort): void {
   const body = station?.getObjectByName('americanM240Body');
   const carrier = body?.parent;
   if (!station || !body || !carrier) return;
+  // (release 268 builder E: the frames are brought up to date before the receiver is measured; measured first, in its
+  // stale frame, the sight sat 1.33 m under the turret floor, inside the hull, where the roof net read it as the loader's
+  // weapon sweeping below the roof everywhere round its station)
+  carrier.updateWorldMatrix(true, true);
   const bodyBox = new THREE.Box3().setFromObject(body);
-  carrier.updateWorldMatrix(true, false);
   const toCarrier = new THREE.Matrix4().copy(carrier.matrixWorld).invert();
   // the receiver's top centre and its length, in the carrier's frame
   const top = new THREE.Vector3((bodyBox.min.x + bodyBox.max.x) / 2, bodyBox.max.y, (bodyBox.min.z + bodyBox.max.z) / 2)
@@ -273,8 +276,10 @@ function addFepFit(P: AbramsIdentityPort): void {
   addGpsFlirHead(P, 'm1a1fep-gps-flir', 0.46, 0.17, 0.30, false);
   addLoaderThermalSight(P);
   // Commander's remote thermal sight (CRTS) on a short armoured mast beside the commander's hatch.
+  // (release 268 builder E, the A/B craft fix: its foot stood at the old shell's 0.79 roof, 8 cm over the owner's model's
+  // 0.709 roof and just past the snap's reach, touching nothing; it stands on that roof)
   P.snapGroup('m1a1fep-crts', () => {
-    const x = -1.12, z = -0.30, base = 0.79;
+    const x = -1.12, z = -0.30, base = 0.709;
     P.addEquipment('turretDetail', cylY(0.07, 0.08, 0.04, P.q ? 16 : 10), x, base + 0.02, z);
     P.addEquipment('turret', cylY(0.042, 0.048, 0.18, 12), x, base + 0.13, z);
     P.addEquipment('turret', box(0.20, 0.14, 0.22), x, base + 0.29, z + 0.01);
@@ -317,7 +322,7 @@ export function addM1A1VariantIdentity(P: AbramsIdentityPort): void {
   const host = P.hullG.userData.m1a1BaseHost;
   if (typeof host === 'string' && host !== P.spec.id) return;
   switch (P.spec.id) {
-    case 'm1a1ha': addTrackWidthMinePlow(P); addDesertStormStowage(P); break;
+    case 'm1a1ha': addTrackWidthMinePlow(P, { chainOnSkids: true }); addDesertStormStowage(P); break;
     case 'm1a1_abrams_hc': addHeavyCommonStowage(P); break;
     case 'm1a1_abrams_aim': addAimFit(P); break;
     case 'm1a1_abrams_fep': addFepFit(P); break;

@@ -1107,9 +1107,12 @@ function addAbramsCageSideFrames(P: UkraineBuilderPort, thickness: number): void
   const stations = ABRAMS_DRONE_CAGE_STATIONS;
   for (const side of [-1, 1]) {
     for (const station of stations) {
-      const footDepth = station === stations[0] ? 0.56 : 0.30;
-      P.addEquipment('turret', box(0.48, 0.11, footDepth),
-        side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      // (release 268 builder E, the A/B critics: "dark mounting slabs at the cage's front feet, beside the gun root, look
+      // unattached": the front frame stands 0.4 m ahead of the cheeks, over nothing of the turret it rides with, so its
+      // posts carry no mounting slabs; the frames behind it bolt to the turret's flanks)
+      if (station !== stations[0]) {
+        P.addEquipment('turret', box(0.48, 0.11, 0.30), side * (station.x - 0.25), station.base, station.z, 0, 0, side * 0.08);
+      }
       addCageBar(P, thickness, station.roof - station.base, thickness,
         side * station.x, (station.roof + station.base) * 0.5, station.z);
       for (const fraction of [0.32, 0.62]) {
@@ -1324,8 +1327,14 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   addAbramsCageFineLattice(P);
   // Forward EO/EW cluster is planted on a real crossmember and remains
   // below the canopy crown.
-  addCageBar(P, 0.72, 0.10, 0.20, 0, 1.15, 0.74);
-  P.add('turretGlass', box(0.28, 0.095, 0.026), 0, 1.17, 0.855);
+  // (release 268 builder E, the floating-kit class: it hung 6 cm under the cage's centre rail, touching nothing; it
+  // hangs from that rail, its top on the rail's underside at its front edge)
+  const [crown0, crown1] = ABRAMS_DRONE_CAGE_STATIONS;
+  const railUnderAt = (z: number): number =>
+    crown0.roof + (crown1.roof - crown0.roof) * (crown0.z - z) / (crown0.z - crown1.z) - t * 0.76 / 2;
+  const eoY = railUnderAt(0.84) - 0.05;
+  addCageBar(P, 0.72, 0.10, 0.20, 0, eoY, 0.74);
+  P.add('turretGlass', box(0.28, 0.095, 0.026), 0, eoY + 0.02, 0.855);
   // 2026-10-19 (owner float sweep): the sensor box stood 165 mm over the roof (its window 3 mm off its face); the
   // window now lies on the face and the pair stands on the roof.
   P.snapGroup('ua-m1a1-cage-sensor', () => {
