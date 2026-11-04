@@ -15,7 +15,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //      by bearing), track loss, reload done, sixth sense and a penetration;
 //   4. the crew-voice setting switches live: 'english' → en-US, back to
 //      'national' → ru;
-//   5. all 17 crew packs decode and are audible through the radio chain,
+//   5. every crew pack (the 17 national and the 21 with no country) decodes and is audible through the radio chain,
 //      band-limited like an intercom (one PCM capture per language);
 //   6. zero page console errors (known-unrelated tankFactory wheel-sync
 //      errors quarantined, same as tools/audio-probe.mjs).

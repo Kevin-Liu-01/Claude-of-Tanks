@@ -19,7 +19,8 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const trackedFiles = execFileSync(
   'git',
   ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-  { cwd: root },
+  // The repository's path list passed execFileSync's 1 MB default with the 21 world crew packs (crew-languages-270).
+  { cwd: root, maxBuffer: 64 * 1024 * 1024 },
 )
   .toString('utf8')
   .split('\0')
