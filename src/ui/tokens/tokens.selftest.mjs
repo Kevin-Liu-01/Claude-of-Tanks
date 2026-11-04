@@ -725,8 +725,15 @@ assert.ok(!gameHtml.includes('mediaArchive.css'), 'the game boot does not link t
 const viteGroup = /\{ name: '([A-Za-z]+)', test: \/\[\\\\\/\]src\[\\\\\/\]ui\[\\\\\/\]tokens\[\\\\\/\]tokens\\\.css\$\//.exec(read('vite.config.ts'));
 assert.ok(viteGroup, 'vite.config.ts keeps tokens.css in a chunk group of its own');
 assert.equal(viteGroup[1].length, 'mediaArchive'.length, `the tokens chunk name (${viteGroup[1]}) keeps the entry's bytes`);
-assert.match(read('src/ui/studioPanel.ts'), /import\('\.\.\/presentation\/mediaArchive\.css'\)\s*\.then\(\(\) => mountMediaArchive\(/,
-  'the Studio, the game\'s one archive host, loads the archive stylesheet before it mounts the archive');
+// (integration: loaders-workers' audit R6 holds the sheet in one module-level lazy chunk, archiveSheet, asked on each
+// mount; the mount still waits for it)
+{
+  const studioPanelSource = read('src/ui/studioPanel.ts');
+  assert.match(studioPanelSource, /const archiveSheet = createLazyChunk\(\(\) => import\('\.\.\/presentation\/mediaArchive\.css'\)\);/,
+    'the Studio, the game\'s one archive host, holds the archive stylesheet in one lazy chunk');
+  assert.match(studioPanelSource, /archiveSheet\.load\(\)\s*\.then\(\(\) => mountMediaArchive\(/,
+    'the Studio loads the archive stylesheet before it mounts the archive');
+}
 
 /* 6. one source with the type package ------------------------------------------------------------------------ */
 // The type package (BUI-F2) declares the font families in each document's head (src/ui/typeFaces.ts typeTokenCss) and
