@@ -198,8 +198,10 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   // the Australian Mk 5/1: the Mk 3's flexible 20-pdr tank, its night sights and baskets
   centurion5_1_aus: { doctrine: 'flexible', viewM: 405, still: 0.200, moving: 0.138 },
   // release 269: the Australian M113s (scouts and fire support; the AS4 a carrier)
-  redback: { doctrine: 'flanker', viewM: 470, still: 0.240, moving: 0.190 },
-  leopard_as1: { doctrine: 'flexible', viewM: 425, still: 0.200, moving: 0.140 },
+  // (the IFV's armoured support as vehicleFacets.ts files it)
+  redback: { doctrine: 'armored-support', viewM: 470, still: 0.240, moving: 0.190 },
+  // (a flanker as the Danish 1A3 DK it builds on: vehicleFacets.ts names it one)
+  leopard_as1: { doctrine: 'flanker', viewM: 425, still: 0.200, moving: 0.140 },
   m1a1_aim_sa_aus: { doctrine: 'flexible', viewM: 405, still: 0.175, moving: 0.115 },
   m1a2_sepv3_aus: { doctrine: 'flexible', viewM: 430, still: 0.173, moving: 0.113 },
   m113a1_fsv: { doctrine: 'support', viewM: 420, still: 0.250, moving: 0.200 },
