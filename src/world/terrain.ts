@@ -78,6 +78,9 @@ import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms,
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
+// ground-269 (2026-11-04): the ground-surface table (groundSurfaces.ts) and its laws in the splat (groundSurfaceShader.ts)
+import { GROUND_SURFACE_GLSL } from './groundSurfaceShader.ts';
+import { groundSurfaceUniformValues } from './groundSurfaces.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
 import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
@@ -4580,6 +4583,9 @@ uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rec
 uniform float uYardCinder;
 // ground lane (2026-10-08, wave 274): the thatch and soil under a thick sward near the camera (groundRedux.ts thatch); 0 = off
 uniform float uThatch;
+// ground-269: the ground-surface table's classes as codes (groundSurfaces.ts groundSurfaceUniformValues): the open ground's
+// (macro, strength, close, strength), the worn ground's, and the town floor's (macro, close, strength, on)
+uniform vec4 uGsOpen, uGsWorn, uGsTown;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -6869,6 +6875,7 @@ void splatCompute() {
       a.rgb *= 1.0 + hp.y * 0.12 * patchW;
     }
   }
+${GROUND_SURFACE_GLSL}
   // Round 73b (2026-09-26): the borders themselves. Round 73 broke the transition's LINE (a height-and-noise mix) but
   // left both sides their own tone, so at 40–120 m — where the normals have mipped flat — a dirt patch met its turf
   // with nothing to see. A worn patch's edge is where the sod is torn and the soil lies open, darker and damper than
@@ -8422,6 +8429,8 @@ function* createSplatMaterialSteps(
   let yardCinder = Math.min(1, Math.max(0, groundProfile.cinderYard ?? 0));
   // ground lane (2026-10-08, wave 274): the thatch under a thick sward (groundRedux.ts thatch)
   let thatchV = Math.min(1, Math.max(0, groundProfile.thatch ?? 0));
+  // ground-269: the map's grounds as the table's codes (groundSurfaces.ts)
+  const groundSurface = groundSurfaceUniformValues(mapId);
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     thatchV = 0;
@@ -8430,6 +8439,7 @@ function* createSplatMaterialSteps(
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
     yardCinder = 0;
+    groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); // ground-269
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
@@ -8541,6 +8551,9 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };
+    shader.uniforms.uGsOpen = { value: new THREE.Vector4(...groundSurface.open) };
+    shader.uniforms.uGsWorn = { value: new THREE.Vector4(...groundSurface.worn) };
+    shader.uniforms.uGsTown = { value: new THREE.Vector4(...groundSurface.town) };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12

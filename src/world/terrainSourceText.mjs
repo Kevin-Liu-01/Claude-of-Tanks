@@ -4,6 +4,7 @@
 // evaluates (roadSurfaceShader.selftest.mjs proves the evaluated program is the same string).
 import { readFileSync } from 'node:fs';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
+import { GROUND_SURFACE_GLSL } from './groundSurfaceShader.ts';
 // The extracted terrain source calls the authority's deterministic math through terrain.ts's module-level import
 // (src/sim/detMath.ts, the 2026-10-25 pinned-math ruling); a receipt that evaluates that text outside the module lends
 // the same import to its scope.
@@ -15,10 +16,16 @@ export const ROAD_SHADER_CHUNKS = Object.freeze([
   ['${ROAD_PAVING_GLSL}', ROAD_PAVING_GLSL],
 ]);
 
-/** terrain.ts as text, with each road chunk's interpolation line replaced by the chunk (each must appear exactly once). */
+// (ground-269, 2026-11-04) the ground-surface table's laws (groundSurfaceShader.ts), interpolated the same way
+export const GROUND_SHADER_CHUNKS = Object.freeze([
+  ['${GROUND_SURFACE_GLSL}', GROUND_SURFACE_GLSL],
+]);
+
+/** terrain.ts as text, with each road and ground chunk's interpolation line replaced by the chunk (each must appear
+ * exactly once). */
 export function terrainSourceText() {
   let source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-  for (const [token, chunk] of ROAD_SHADER_CHUNKS) {
+  for (const [token, chunk] of [...ROAD_SHADER_CHUNKS, ...GROUND_SHADER_CHUNKS]) {
     const parts = source.split(token);
     if (parts.length !== 2) throw new Error(`terrain.ts must interpolate ${token} exactly once (found ${parts.length - 1})`);
     source = parts[0] + chunk + parts[1];
