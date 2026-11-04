@@ -9,7 +9,10 @@
 //     destroyed, the newer row alive (HostResumeState.revivedEntityIds);
 //   - Zone Control at respawnS 2 (the shortest a room may set), killed after the keyframe and revived before the newest
 //     frame: both rows alive, so only the `mode_respawn` this seat was told of names the revive (respawnTicks);
-//   - in both, the fresh hull keeps its tallies (kills, damage), its newer row's pose, and is not revived again.
+//   - in both, the fresh hull keeps its tallies (kills, damage), its newer row's pose, and is not revived again;
+//   - integration IR2 (2026-11-03, sim-modes-life's lives on the checkpoint): the restored mode life is the revive's
+//     (alive, on the field), not the keyframe's: a hull down at the keyframe came back 'down' and was set alive only by
+//     the death watch's restore side door; one benched at the keyframe came back benched and stayed off the field.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
@@ -46,7 +49,7 @@ const batter = (sim, entity) => {
 const kill = (entity) => { entity.combat.hp = 0; entity.combat.destroyed = true; };
 
 /** A match of `ruleset` played to a revive of the IFV inside the gap; returns the fresh host after the resume. */
-function handoff({ ruleset, killBeforeKeyframe, respawnsTold }) {
+function handoff({ ruleset, killBeforeKeyframe, respawnsTold, keyframeLife = null }) {
   const make = (resume) => createMatchActor({ roomId: 'revive-migration', mapId: 'verdant', mode: ruleset.mode, ruleset, seed: 5, seats, bots: [], world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume });
   const old = make(null), sim = old.authority;
   sim.onMatchReady();
@@ -66,6 +69,8 @@ function handoff({ ruleset, killBeforeKeyframe, respawnsTold }) {
     kill(ifv);
     step(Math.round((ruleset.respawnS - 0.5) * 60), listen);
     keyframe = keyframeOf(old, tick);
+    // the keyframe's word on the hull's life, where a case names one (a hull the mode had benched at the keyframe)
+    if (keyframeLife) keyframe.modeCheckpoint.mode.lives = keyframe.modeCheckpoint.mode.lives.map(([id, life]) => [id, id === 'ifv' ? keyframeLife : life]);
     step(60, listen); // the respawn falls due 0.5 s after the keyframe
   } else {
     keyframe = keyframeOf(old, tick);
@@ -90,6 +95,9 @@ function judge(label, { old, fresh, oldIfv }) {
   const next = fresh.authority, ifv = next.entityById.get('ifv');
   const wrong = [];
   if (ifv.combat.destroyed) wrong.push('destroyed');
+  // its mode life is the revive's: alive and on the field (integration IR2)
+  const lifeOf = (entity) => `${entity.modeLife}${entity.modeActive === false ? ' (off the field)' : ''}`;
+  if (ifv.modeLife !== 'alive' || ifv.modeActive === false) wrong.push(`mode life ${lifeOf(ifv)} at the resume`);
   for (const [id, able] of Object.entries(ifv.combat.crew)) if (!able) wrong.push(`crew ${id} down`);
   for (const id of ['gun', 'engine']) {
     const module = ifv.combat.modules[id];
@@ -112,6 +120,8 @@ function judge(label, { old, fresh, oldIfv }) {
   }
   const after = next.entityById.get('ifv').state.pos;
   if (again) wrong.push(`revived again on the new host (${again} mode_respawn)`);
+  const later = next.entityById.get('ifv');
+  if (later.modeLife !== 'alive' || later.modeActive === false) wrong.push(`mode life ${lifeOf(later)} 4 s after the resume`);
   if (Math.hypot(after.x - at.x, after.z - at.z) > 5) wrong.push(`moved ${Math.hypot(after.x - at.x, after.z - at.z).toFixed(1)} m in 4 s standing still`);
   old.stop(); fresh.stop();
   if (wrong.length) {
@@ -126,6 +136,11 @@ const fromRows = handoff({ ruleset: zone, killBeforeKeyframe: true, respawnsTold
 const ifvWireId = fromRows.fresh.wireIdOf('ifv');
 judge('zone control, dead at the keyframe', fromRows);
 assert.deepEqual(fromRows.state.revivedEntityIds, [ifvWireId], 'the overlay names the hull its rows show revived');
+
+// ---- benched at the keyframe, then revived in the gap (a wave's draw, a stranded hull's return): the keyframe's bench
+// does not outlive the revive the rows show (integration IR2)
+const fromBench = handoff({ ruleset: zone, killBeforeKeyframe: true, respawnsTold: false, keyframeLife: 'benched' });
+judge('zone control, benched at the keyframe', fromBench);
 
 // ---- died and revived inside the gap: both rows alive, the mode_respawn this seat was told of names it
 const quick = { ...zone, respawnS: 2 };

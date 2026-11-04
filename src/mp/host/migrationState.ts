@@ -246,6 +246,9 @@ function revivedSinceKeyframe(actor: MatchActor, state: HostResumeState, extrasT
  * The keyframe's mode checkpoint with the bookkeeping each of those revives did (matchModes.ts reviveAtSpawn: the pending
  * respawn dropped, alive, its death unscored, back on the field and no longer resting). Without it the new host's mode
  * revived the hull a second time when the keyframe's respawn fell due: back on its spawn, its fight reset again.
+ * The life itself too (integration IR2, 2026-11-03): restoreCheckpoint reads `lives` before `destroyed`, so a hull the
+ * keyframe had down came back 'down' (set alive later only by the death watch's restore side door) and one it had benched
+ * came back benched and stayed off the field. A rescued hull has left for good and is never revived (reviveAtSpawn).
  */
 function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: ReadonlySet<string>): NewModeCheckpoint {
   if (!revived.size || !checkpoint.mode) return checkpoint;
@@ -256,6 +259,7 @@ function checkpointAfterRevives(checkpoint: NewModeCheckpoint, revived: Readonly
       ...mode,
       respawns: mode.respawns.filter(([id]) => !revived.has(id)),
       destroyed: mode.destroyed.map(([id, dead]): [string, boolean] => [id, dead && !revived.has(id)]),
+      ...(mode.lives ? { lives: mode.lives.map(([id, life]): [string, typeof life] => [id, revived.has(id) && life !== 'rescued' ? 'alive' : life]) } : {}),
       scored: mode.scored.filter((id) => !revived.has(id)),
       ...(waves ? { waves: { ...waves, inactive: waves.inactive.filter((id) => !revived.has(id)), restedAt: waves.restedAt.filter(([id]) => !revived.has(id)) } } : {}),
     },
