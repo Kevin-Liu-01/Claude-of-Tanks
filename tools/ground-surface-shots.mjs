@@ -3,6 +3,7 @@
 // spaces is kind of goofy … update the ground detail and then specifically ground textures in all mapps").
 //
 //   node tools/ground-surface-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v1] [--wait-hours=16]
+//        [--pair-minutes=10] (a pair past it is abandoned; under heavy load a seven-pose pair with two variants needs ~25)
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
 //               "variants": ["base", "u:uName.x=0"], "maps": ["urban", ...], "poses": ["chase", ...] }, ...]
@@ -44,7 +45,7 @@ const DEVICES = Object.freeze({
 const POSES = Object.freeze(['chase', 'near', 'long', 'town', 'townnear', 'spot200', 'spot600']);
 
 function parse(argv) {
-  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v1' };
+  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v1', pairMinutes: 10 };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -54,6 +55,7 @@ function parse(argv) {
     else if (key === 'root') out.root = path.resolve(value);
     else if (key === 'wait-hours') out.waitHours = Number(value);
     else if (key === 'tag') out.tag = value;
+    else if (key === 'pair-minutes') out.pairMinutes = Number(value);
     else throw new Error(`unknown flag --${key}`);
   }
   if (!out.out || !out.jobs) throw new Error('--out=<dir> and --jobs=<jobs.json> are required');
@@ -449,7 +451,7 @@ async function main(argv) {
           return 'shot';
         })();
         shooting.catch(() => {});
-        outcome = await Promise.race([shooting, sleep(600_000).then(() => 'timeout')]);
+        outcome = await Promise.race([shooting, sleep(options.pairMinutes * 60_000).then(() => 'timeout')]);
       } catch (error) {
         console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
       } finally {
