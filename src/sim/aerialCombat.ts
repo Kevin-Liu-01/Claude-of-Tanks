@@ -164,6 +164,11 @@ export function strikeDrone(carrier: AerialEntity, chance: number): boolean {
 export function isGunship(entity: { aerial?: AerialView }): boolean { return entity.aerial?.kind === 'gunship'; }
 export function aerialControlsActive(entity: { aerial?: AerialView }): boolean { return !!entity.aerial?.active; }
 export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): void {
+  // a new life (both authorities' revive hooks call this) retires the airframe its old flight had in the air, as a
+  // destroyed carrier's is (audit M4, 2026-11-02: a living hull's revive, a Turbo Ball goal's, left it in the shells
+  // list with no flight to steer, strike or end it)
+  const previous = flights.get(entity);
+  if (previous?.shell && previous.shell.id === previous.shellId) previous.shell.dead = true;
   // a vehicle without a dock (droneDockExempt.ts DRONE_DOCK_EXEMPT) carries no drone: no flight, no dock drawn
   if (!ruleset.aerial || (ruleset.aerial === 'gunship' && (entity.bot || entity.team === 'enemy' || entity.team === 'bravo'))
     || (ruleset.aerial === 'drone' && !!entity.spec?.id && Object.hasOwn(DRONE_DOCK_EXEMPT, entity.spec.id))) {
@@ -338,7 +343,8 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
     const saved = checkpoint.shell;
     direction.fromArray(saved.velocity).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, new Vector3().fromArray(saved.pos), direction, nextId());
-    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0; shell.vel.set(0,0,0);
+    // the saved velocity stands (audit M4: the launch line's vel.set(0,0,0) followed it, and the airframe stalled)
+    shell.vel.fromArray(saved.velocity); shell.ageS = saved.ageS; shell.distM = saved.distM; shell.gravityMps2 = 0;
     flight.shell = shell; flight.shellId = shell.id; launchShell(shell);
   }
 }

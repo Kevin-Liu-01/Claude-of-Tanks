@@ -1,4 +1,4 @@
-import type { ModeCheckpoint } from './matchModes.ts';
+import type { ModeCheckpoint, ModeLife } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
@@ -248,6 +248,9 @@ export interface AuthoritativeEntity {
   aiCtl?: AuthoritativeAIController;
   aerial?: AerialView;
   modeActive?: boolean;
+  /** The mode controller's life state and lives begun (sim/matchModes.ts ModeLife; lag compensation reads the count). */
+  modeLife?: ModeLife;
+  modeLives?: number;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
   modeJumpMps?: number | null;

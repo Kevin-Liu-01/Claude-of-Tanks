@@ -12,6 +12,11 @@
  * the target will be in its own time: rewinding it would undo that lead; 2026-10-19). HE bursts and damage localization
  * inside the sweep read the same rewound poses; the live poses are restored
  * before the next shell (authoritativeMatch's `shellRewind` seam).
+ *
+ * A revive is a life boundary (audit M4, 2026-11-02): the mode controller counts the lives a hull begins
+ * (`modeLives`, its life transition's one revive); a slot whose life moved on is forgotten at the next record, and
+ * a sweep before that tests the new life where it stands. Before, a respawned hull could be rewound into its
+ * wreck's poses for up to MAX_REWIND_TICKS, the hit landing on the new life.
  */
 import type { AuthoritativeEntity, ShellRewindHook } from '../../src/sim/authoritativeMatch.ts';
 import type { DamageShell } from '../../src/sim/damage.ts';
@@ -88,6 +93,8 @@ export interface LagCompensation extends ShellRewindHook {
 export function createLagCompensation({ entities }: { entities: readonly AuthoritativeEntity[] }): LagCompensation {
   const history = createPoseHistory({ capacityTicks: POSE_HISTORY_TICKS, maxSlots: 64 });
   const slots = new Map<AuthoritativeEntity, number>();
+  // the life each slot's history holds (modeLives; -1: none recorded yet)
+  const slotLives = new Int32Array(64).fill(-1);
   const rewindByShooter = new Map<string, number>();
   const saved = new Float64Array(64 * STRIDE);
   const swapped: AuthoritativeEntity[] = [];
@@ -100,10 +107,10 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
     history,
     stats,
     get currentTick() { return currentTick; },
-    bind(entity, slot) { slots.set(entity, slot); },
+    bind(entity, slot) { slots.set(entity, slot); slotLives[slot] = -1; },
     unbind(entity) {
       const slot = slots.get(entity);
-      if (slot != null) history.clear(slot);
+      if (slot != null) { history.clear(slot); slotLives[slot] = -1; }
       slots.delete(entity);
     },
     setRewindTicks(shooterId, ticks) { rewindByShooter.set(shooterId, Math.max(0, Math.min(MAX_REWIND_TICKS, ticks | 0))); },
@@ -111,6 +118,8 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
       currentTick = tick;
       for (const [entity, slot] of slots) {
         if (entity.modeActive === false) continue;
+        const life = entity.modeLives ?? 0;
+        if (slotLives[slot] !== life) { history.clear(slot); slotLives[slot] = life; }
         history.record(slot, tick, entity.state);
       }
     },
@@ -128,7 +137,8 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
         if (entity.id === shell.shooterId || entity.modeActive === false) continue;
         const slot = slots.get(entity);
         if (slot == null) continue;
-        if (!history.rewind(slot, targetTick, pose)) { stats.historyMisses++; continue; }
+        // a life the history has not recorded (revived inside this step) stands where it is
+        if (slotLives[slot] !== (entity.modeLives ?? 0) || !history.rewind(slot, targetTick, pose)) { stats.historyMisses++; continue; }
         const state = entity.state;
         const base = slot * STRIDE;
         saved[base] = state.pos.x; saved[base + 1] = state.pos.y; saved[base + 2] = state.pos.z;

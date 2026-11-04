@@ -655,7 +655,9 @@ export function stepRoofGun(entity: AuxiliaryEntity, now: number, dt: number, co
   entity.state.roofGunPitch = state?.gunPitch ?? 0;
   if (!state?.gunOn || !gun || entity.combat.destroyed || entity.modeActive === false) return false;
   const damage = entity.combat.modules?.roofGun?.state;
-  if (damage === 'red') { state.gunOn = false; return false; }
+  // a red module silences the station, as it does stations 1+; the switch stays the crew's (audit M4, 2026-11-02: this
+  // switched it off, and the gun stayed off after the auto-repair until the crew pressed the toggle again)
+  if (damage === 'red') return false;
   const fired = stepStation(entity, gun, state, damage, now, dt, context);
   entity.state.roofGunYaw = state.gunYaw; entity.state.roofGunPitch = state.gunPitch;
   return fired;

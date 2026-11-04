@@ -11,6 +11,7 @@ import {
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
+import { setModeMultiplier } from './consumableRules.ts';
 import { botDriven } from './botDriven.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { placementTankRadius } from './hullRadius.ts';
@@ -81,6 +82,29 @@ type MatchModeEventValue = string | number | boolean | null |
   MatchModeEventValue[] | { [key: string]: MatchModeEventValue };
 type MatchModeEventPayload = Record<string, MatchModeEventValue>;
 
+/**
+ * A tank's place in the mode's life cycle (audit M4, 2026-11-02). The controller's setLife is its one writer, and keeps
+ * the fields every other system reads consistent with it:
+ *   alive    a live hull on the field                                 modeActive true,  combat.destroyed false
+ *   down     destroyed, its wreck on the field (a revive may be due)  modeActive true,  combat.destroyed true
+ *   benched  off the field in the pool: a wave not drawn, an arrival  modeActive false, combat.destroyed true
+ *            still queued, a stranded hull, a placement retry
+ *   rescued  an AC-130 convoy hull extracted: off the field for good  modeActive false, combat.destroyed false
+ * A benched hull's combat.destroyed says "no live hull" to every in-play filter; a death is the move alive -> down and
+ * only that move, so a bench is never scored, infected or respawned as a kill. Before, the life lived across modeActive,
+ * combat.destroyed, an edge-detector map and the respawn timers, written in eight places.
+ */
+export type ModeLife = 'alive' | 'down' | 'benched' | 'rescued';
+/** The moves setLife makes. A life may always stay what it is (alive -> alive is a living hull's revive: a kick-off, the
+ *  range reset); a rescued hull has left for good. */
+const LIFE_MOVES: Readonly<Record<ModeLife, readonly ModeLife[]>> = Object.freeze({
+  alive: Object.freeze(['down', 'benched', 'rescued'] as const),
+  down: Object.freeze(['alive', 'benched'] as const),
+  benched: Object.freeze(['alive'] as const),
+  rescued: Object.freeze([] as const),
+});
+const lifeMoves = (from: ModeLife, next: ModeLife): boolean => from === next || LIFE_MOVES[from].includes(next);
+
 export interface MatchModeEntity {
   id: string;
   team: string;
@@ -99,7 +123,12 @@ export interface MatchModeEntity {
   };
   input?: {aimPoint?:Vec3Like};
   aerial?: AerialView;
+  /** On the field: derived from modeLife by the controller (alive or down); the drivers' setActive hook mirrors it. */
   modeActive?: boolean;
+  /** Where the tank stands in the mode's life cycle (ModeLife); written only by the controller's setLife. */
+  modeLife?: ModeLife;
+  /** The lives this tank has begun: every revive starts one (lag compensation never rewinds a hull into an earlier one). */
+  modeLives?: number;
   modeSpeedMultiplier?: number;
   /** The destination both builders' mode route push last sent this bot; a revive clears it (the next push lands). */
   _modeTargetX?: number;
@@ -362,6 +391,8 @@ export interface ModeCheckpoint {
   elapsedS: number; score: TeamScore; weaponKills: [string, number][];
   teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
   destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[]; support?:{ammoAt:number;healAt:number;sequence:number;pickups:PickupState[]};
+  /** Every tank's life (audit M4); a checkpoint written before it derives them from `destroyed` and the waves' inactive. */
+  lives?: [string, ModeLife][];
   /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
    *  at its first sector, every hostile revived). Mode time throughout (the elapsedS base). */
   waves?: WaveCheckpoint;
@@ -484,14 +515,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const baseSpeed = ruleset.speedMultiplier;
   // the wave law: the Horde's own, and Frontline's wave pressure reads the Horde's speed ramp
   const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
+  // the infection's hull scale lands once per combat state (a fresh one each life)
   const infectionStamped=new WeakSet<object>();
-  // a wave mode's hostiles reload slower (the Horde's or Frontline's hostileReloadScale), stamped once per combat state
-  // like the infection's
+  // a wave mode's hostiles reload slower (the Horde's or Frontline's hostileReloadScale). The reload stamps are mode
+  // layers of the combat state's multipliers (consumableRules.ts setModeMultiplier, audit M5): a timed item's use or end
+  // keeps them, and setting one again replaces it, so the hostile stamp needs no latch (it shared the infection's, which
+  // then skipped the infected bots' hull and reload)
   const hostileReloadScale = ruleset.horde?.hostileReloadScale ?? ruleset.assault?.hostileReloadScale ?? 1;
   const stampHostile=(entity:Entity):void=>{
-    if(hostileReloadScale===1||teamOf(entity)!=='bravo'||!entity.bot||infectionStamped.has(entity.combat))return;
-    infectionStamped.add(entity.combat);
-    const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*hostileReloadScale;
+    if(hostileReloadScale===1||teamOf(entity)!=='bravo'||!entity.bot)return;
+    setModeMultiplier(entity.combat,'hostile','reload',hostileReloadScale);
   };
   const stampInfection=(entity:Entity):void=>{
     stampHostile(entity);
@@ -500,7 +533,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const infected=teamOf(entity)==='bravo';
     const scale=infected?infection.infectedHpScale:infection.survivorHpScale;
     entity.combat.maxHp=Math.max(1,Math.round(entity.combat.maxHp*scale));entity.combat.hp=entity.combat.maxHp;
-    if(infected){const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*infection.infectedReloadScale;}
+    if(infected)setModeMultiplier(entity.combat,'infected','reload',infection.infectedReloadScale);
   };
 
   const scoreTarget = ruleset.scoreTarget ?? scoreTargetForMode(id) ?? Infinity;
@@ -520,7 +553,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const rng = seededRandom(seed ^ 0x4d4f4445);
   const spawns = new Map<string, MatchModeSpawn>();
   const entityById = new Map<string, Entity>();
-  const destroyed = new Map<string, boolean>();
   const scoredDeaths = new Set<string>();
   const respawnAt = new Map<string, { atS: number; healthScale: number }>();
   const teams: Record<ObjectiveTeam, Entity[]> = { alpha: [], bravo: [] };
@@ -534,7 +566,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     spawns.set(entity.id, {
       x: entity.state.pos.x, z: entity.state.pos.z, yaw: entity.state.yaw,
     });
-    destroyed.set(entity.id, !!entity.combat.destroyed);
+    entity.modeLife = entity.combat.destroyed ? 'down' : 'alive';
+    entity.modeLives ??= 0;
     entity.modeActive = true;
     stampPhysics(entity);stampInfection(entity);
   }
@@ -577,8 +610,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     applyJuggernautScale(boss);
     boss.combat.maxHp = Math.round(boss.combat.maxHp * ruleset.juggernaut.hpScale);
     boss.combat.hp = boss.combat.maxHp;
-    const mults = boss.combat.equipMults || (boss.combat.equipMults = {});
-    mults.reload = (mults.reload ?? 1) * ruleset.juggernaut.reloadScale;
+    setModeMultiplier(boss.combat, 'juggernaut', 'reload', ruleset.juggernaut.reloadScale);
   }
   if (ruleset.gunGame) for (const entity of entities) setWeaponStage(entity, 0);
   // a point on the axis through the middle, half of `axisM` toward the team's side (the Turbo Ball goals, the CTF flag
@@ -631,7 +663,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         };
       }) : [];
   const escortPoint=placement?.zones[1] ?? {x:midX,z:midZ};
-  const escort=id==='ac130'?createGunshipEscort(entities,{...escortPoint,y:terrainHeight(escortPoint.x,escortPoint.z)+.12},setActive):null;
+  const escort=id==='ac130'?createGunshipEscort(entities,{...escortPoint,y:terrainHeight(escortPoint.x,escortPoint.z)+.12},(friend)=>{setLife(friend,'rescued');}):null;
   if(escort)zones.push({id:'extraction',x:escortPoint.x,y:escort.state.y,z:escortPoint.z,control:1,owner:'alpha',contested:false});
   const ball: BallState | null = id === 'turbo_ball' ? {
     x: midX, y: ballFloorHeight(midX, midZ, Infinity) + BALL_RADIUS_M, z: midZ,
@@ -755,8 +787,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           ? { x: other.state.pos.x, z: other.state.pos.z, radius, clearM: enemyClearM }
           : { x: other.state.pos.x, z: other.state.pos.z, radius };
       });
-  /** Revive at the entity's own spawn, or at `at` (a Horde arrival point, a Frontline line slot) when given. */
-  const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): void => {
+  /**
+   * Revive at the entity's own spawn, or at `at` (a Horde arrival point, a Frontline line slot) when given: the life's
+   * one revive (a new life, one mode_respawn). False when the hull did not rise: a rescued hull never does, and a
+   * placement that found no clear ground retries on a one-second deadline.
+   */
+  const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): boolean => {
+    if (!lifeMoves(entity.modeLife ?? 'alive', 'alive')) return false;
     // the infected rise round the survivors (infectionBots.arrival), a convert's first life included
     // (out of reach and sight first; else out of reach in sight — never the far base while survivors stand)
     // A converted HUMAN's ring is centred on what its side has spotted (its freshest sighting), never on the survivors'
@@ -778,14 +815,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!at && flagRespawnBackM != null) at = flagRespawnSpot(entity, flagRespawnBackM);
     if (!at && ballRespawnBackM != null) at = ballRespawnSpot(entity, ballRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
-    if (!spawn) return;
+    if (!spawn) return false;
     const safeSpawn = !placement ? spawn
       : (safeM ? placement.respawnNear(spawn, entity.id, occupiedBy(entity, safeM), safeM * 2.5) : null)
         ?? placement.respawn(spawn, entity.id, occupiedBy(entity));
     if (!safeSpawn) {
       if (id === 'endless_horde' || id === 'frontline_assault') deactivate(entity);
       respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale });
-      return; // keep pending, but never retry a bounded search at 60 Hz
+      return false; // keep pending, but never retry a bounded search at 60 Hz
     }
     // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228; one place for
     // both builders since round 2)
@@ -816,25 +853,39 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
-    entity.modeActive = true;
     // wave pressure: Horde / Frontline defenders drive faster every wave (the ruleset's capped ramp)
     stampPhysics(entity, (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
       ? baseSpeed * hordeWaveSpeedScale(hordeRules, wave) : baseSpeed);
-    destroyed.set(entity.id, false);
     scoredDeaths.delete(entity.id);
     respawnAt.delete(entity.id);
-    setActive(entity, true);
+    entity.modeLives = (entity.modeLives ?? 0) + 1;
+    setLife(entity, 'alive');
     emit('mode_respawn', { id: entity.id, team: teamOf(entity) });
+    return true;
   };
 
-  const deactivate = (entity: Entity): void => {
-    entity.modeActive = false;
-    entity.combat.destroyed = true;
-    entity.state.speed = 0;
-    destroyed.set(entity.id, true);
-    if (!restedAt.has(entity.id)) restedAt.set(entity.id, placementTimeS);
-    setActive(entity, false);
-  };
+  /**
+   * The one writer of a tank's life (ModeLife; audit M4). A move LIFE_MOVES does not list is refused (false); `restore`
+   * (a migrated host taking the old one's word) sets any life. The fields follow the life: modeActive (on the field:
+   * alive or down) through the drivers' setActive hook, which every move but a death calls as before; a benched hull's
+   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life.
+   */
+  function setLife(entity: Entity, next: ModeLife, restore = false): boolean {
+    const from = entity.modeLife ?? 'alive';
+    if (!restore && !lifeMoves(from, next)) return false;
+    entity.modeLife = next;
+    const onField = next === 'alive' || next === 'down';
+    if (next === 'benched' || next === 'rescued') entity.state.speed = 0;
+    if (next === 'benched') {
+      entity.combat.destroyed = true;
+      if (!restedAt.has(entity.id)) restedAt.set(entity.id, placementTimeS);
+    } else if (restore) entity.combat.destroyed = next === 'down';
+    const wasOnField = entity.modeActive !== false;
+    entity.modeActive = onField;
+    if (next !== 'down' || wasOnField !== onField) setActive(entity, onField);
+    return true;
+  }
+  const deactivate = (entity: Entity): void => { setLife(entity, 'benched'); };
   // when a pool identity last left the field (benched or destroyed): the Horde's trickle brings the longest-rested back
   const restedAt = new Map<string, number>();
 
@@ -993,16 +1044,22 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // every wave start
   const strandRecycles = new Map<string, number>();
   const strandStrikeQueue: number[] = [];
-  const arriveHostile = (entity: Entity): boolean => {
+  /** Where a hostile arrives: the ring (a straggler's nearer ring first), else its base if that is clear; or null. The
+   *  stall rule reads the field: a refused arrival due again stands on none of it (audit M4). */
+  const hostileArrival = (entity: Entity, straggler: boolean): MatchModeSpawn | null => {
     const stalled = arrivalStalledAtS != null && placementTimeS - arrivalStalledAtS >= hordeRules.trickleS * hordeRules.stallTrickles
       && livingHordeEnemyCount() === 0;
-    const straggler = strandedPending > 0;
     let at = arrivalPoint(entity, straggler ? strandedArrival : hordeRules, stalled, null, hordeWaveSpeedScale(hordeRules, wave));
     if (!at && straggler) at = arrivalPoint(entity, hordeRules, stalled, null, hordeWaveSpeedScale(hordeRules, wave));
     if (!at) {
       const base = spawns.get(entity.id);
       if (base && arrivalClear(base.x, base.z, hordeRules, stalled)) at = base;
     }
+    return at;
+  };
+  const arriveHostile = (entity: Entity): boolean => {
+    const straggler = strandedPending > 0;
+    const at = hostileArrival(entity, straggler);
     if (!at) { arrivalStalledAtS ??= placementTimeS; return false; }
     arrivalStalledAtS = null;
     if (straggler) { strandedPending--; strandRecycles.set(entity.id, strandStrikeQueue.shift() ?? 1); }
@@ -1010,12 +1067,25 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     reviveAtSpawn(entity, hordeHealthScale, at);
     return true;
   };
+  /**
+   * A Horde arrival the final placement refused, due again on its one-second deadline: it arrives as any arrival does
+   * (the ring, its base if clear, and the stall rule's ring in sight once the field has stood empty that long) with the
+   * health scale it was due with. Audit M4: it retried a revive at its own base alone and, counted as alive, kept the
+   * stall rule off and the intermission waiting for as long as that base refused it.
+   */
+  const retryArrival = (entity: Entity, healthScale: number): void => {
+    const at = hostileArrival(entity, false);
+    if (at && reviveAtSpawn(entity, healthScale, at)) { arrivalStalledAtS = null; return; }
+    arrivalStalledAtS ??= placementTimeS;
+    if (!at) respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale }); // a refused point re-arms it itself
+  };
   const publishHorde = (): void => {
     if (!state.horde) return;
-    const alive = livingHordeEnemyCount();
+    // the field's live hostiles; a refused arrival due again is owed by the wave, so it reads as queued (audit M4)
+    const alive = livingHordeEnemyCount(), queued = hordeQueued + retryingHordeEnemyCount();
     state.horde.alive = alive;
-    state.horde.queued = hordeQueued;
-    state.horde.remaining = alive + hordeQueued;
+    state.horde.queued = queued;
+    state.horde.remaining = alive + queued;
     state.horde.special = hordeSpecial;
   };
   const startHordeWave = (): void => {
@@ -1418,11 +1488,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const observeEntityDeath = (entity: Entity, timeS: number): void => {
-    const isDead = !!entity.combat.destroyed;
-    const wasDead = destroyed.get(entity.id) || false;
-    if (isDead === wasDead) return;
-    destroyed.set(entity.id, isDead);
-    if (!isDead) return;
+    // a death is the move alive -> down, and only that move (ModeLife): a benched or rescued hull is never one. A wreck
+    // whose combat state stands live again by any other hand than a revive (a migrated row) is alive again, as before.
+    const life = entity.modeLife ?? 'alive';
+    if (life === 'down' && !entity.combat.destroyed) { setLife(entity, 'alive'); return; }
+    if (life !== 'alive' || !entity.combat.destroyed) return;
+    setLife(entity, 'down');
     if (!restedAt.has(entity.id)) restedAt.set(entity.id, timeS);
     dropCarriedFlags(entity, timeS);
     if (entity === boss) return;
@@ -1442,7 +1513,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (entity.modeActive === false && !respawnAt.has(entity.id)) continue;
       observeEntityDeath(entity, timeS);
       const due = respawnAt.get(entity.id);
-      if (due != null && timeS >= due.atS) reviveAtSpawn(entity, due.healthScale);
+      if (due == null || timeS < due.atS) continue;
+      if (id === 'endless_horde' && hordeEnemies.includes(entity)) retryArrival(entity, due.healthScale);
+      else reviveAtSpawn(entity, due.healthScale);
     }
   };
 
@@ -1688,12 +1761,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return scoringTeam ? completeBallGoal(scoringTeam) : null;
   };
 
+  /** The hostiles on the field and alive (audit M4: a refused arrival due again counted here too). */
   function livingHordeEnemyCount(): number {
     let alive = 0;
-    for (const enemy of hordeEnemies) {
-      if (respawnAt.has(enemy.id) || (enemy.modeActive !== false && !enemy.combat.destroyed)) alive++;
-    }
+    for (const enemy of hordeEnemies) if (enemy.modeLife === 'alive') alive++;
     return alive;
+  }
+  /** The hostiles whose placement was refused, due again on their deadline: owed by the wave, not yet on the field. */
+  function retryingHordeEnemyCount(): number {
+    let retrying = 0;
+    for (const enemy of hordeEnemies) if (respawnAt.has(enemy.id)) retrying++;
+    return retrying;
   }
 
   const updateHordeIntermission = (alive: number, timeS: number): void => {
@@ -1854,9 +1932,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       !entity.combat.destroyed && !entity.bot);
     if (!humansAlive) return finish('bravo', 'horde_overrun');
     recycleStranded(timeS);
-    trickleHorde(timeS, livingHordeEnemyCount());
+    // the field's cap and the wave's end count the refused arrivals due again with the live hulls (they are owed)
+    trickleHorde(timeS, livingHordeEnemyCount() + retryingHordeEnemyCount());
     publishHorde();
-    updateHordeIntermission(livingHordeEnemyCount(), timeS);
+    updateHordeIntermission(livingHordeEnemyCount() + retryingHordeEnemyCount(), timeS);
     collectHordePickups();
     return null;
   };
@@ -2413,11 +2492,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;
     const inactive = new Set(saved.inactive);
+    // through the life's one writer (audit M4): a resting hull is benched, combat.destroyed with it as on the old host
+    // (this wrote modeActive alone, and spotting, which reads combat.destroyed, saw the parked hull as a live one)
     for (const entity of entities) {
       const rest = inactive.has(entity.id);
-      if (rest === (entity.modeActive === false)) continue;
-      entity.modeActive = !rest;
-      setActive(entity, !rest);
+      if (entity.modeLife === 'rescued' || rest === (entity.modeActive === false)) continue;
+      setLife(entity, rest ? 'benched' : entity.combat.destroyed ? 'down' : 'alive', true);
     }
     restedAt.clear(); for (const [key, at] of saved.restedAt) restedAt.set(key, at);
     lastWaveIds = new Set(saved.lastWaveIds);
@@ -2554,7 +2634,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })) } } : {}),
       } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
-        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
+        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]),
+        destroyed: entities.map((entity) => [entity.id, entity.modeLife === 'down' || entity.modeLife === 'benched']),
+        lives: entities.map((entity) => [entity.id, entity.modeLife ?? 'alive']), scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
         ...(waves ? { waves } : {}),
         ...(flags.length || ball || (zones.length && !ruleset.assault) ? { objectives: {
           flags: flags.map((flag) => ({ team: flag.team, x: flag.x, y: flag.y, z: flag.z, status: flag.status, carrierId: flag.carrierId, returnAtS: flag.returnAtS })),
@@ -2574,7 +2656,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
       }
       respawnAt.clear(); for (const [key, value] of checkpoint.respawns) respawnAt.set(key, { ...value });
-      destroyed.clear(); for (const [key, value] of checkpoint.destroyed) destroyed.set(key, value);
+      // every tank's life, as the old host had it (a checkpoint from before the lives: down where it was dead; the waves'
+      // inactive list and the escort's rescued list bench and extract the rest below)
+      const lives = new Map(checkpoint.lives ?? []), wasDead = new Map(checkpoint.destroyed);
+      for (const entity of entities) setLife(entity, lives.get(entity.id) ?? (wasDead.get(entity.id) ? 'down' : 'alive'), true);
       scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
       escort?.restore(checkpoint.escortRescued??[]);
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}

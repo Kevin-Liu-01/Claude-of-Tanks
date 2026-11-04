@@ -89,6 +89,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/droneMotion.selftest.mjs',
     // 2026-10-14 (owner): the drone recall, only from the drone's feed; it flies home and lands; a shorter recall cooldown
     'src/sim/droneRecall.selftest.mjs',
+    // 2026-11-02 audit M4: a carrier's revive retires its airframe in flight; a restored airframe keeps its velocity
+    'src/sim/droneLife.selftest.mjs',
     'src/mp/host/droneRecallWire.selftest.mjs',
     'src/fx/droneRecallReturn.selftest.mjs',
     'src/ui/droneControlState.selftest.mjs',
@@ -218,6 +220,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
+    // 2026-11-02 audit M4: a red roof-gun module silences the station without throwing its switch; the repair restores it
+    'src/sim/roofGunRepair.selftest.mjs',
     'src/vehicles/detachedGear.selftest.mjs',
     'src/vehicles/weaponDamageVisuals.selftest.mjs',
     'src/game/objectiveSurface.selftest.mjs',
@@ -460,8 +464,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
     'src/sim/consumableRules.selftest.mjs',
+    // 2026-11-02 audit M5: equipMults as named layers (equipment, mode stamps, consumables); the boss keeps x0.5 through items
+    'src/sim/modeMultiplierLayers.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
+    // 2026-11-02 audit M5: a mode weapon swap (Gun Game, the AC-130) repoints the cannon channel with the rest
+    'src/sim/modeWeaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
@@ -1687,6 +1695,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
+    // 2026-11-02 audit M4: a revive is a life boundary for lag compensation's pose history (no rewind into a wreck's pose)
+    'server/match/lagCompensationLife.selftest.mjs',
     'src/sim/movement.selftest.mjs',
     // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
     'src/sim/trackContact.selftest.mjs',
@@ -1733,6 +1743,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    // 2026-11-02 audit M4: a hull the mode keeps off the field is neither spotted nor spotting; the linger ends on time
+    'src/sim/spottingLife.selftest.mjs',
     'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
@@ -1802,6 +1814,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
     'src/sim/botDoctrine.selftest.mjs',
     'src/sim/hordeWaveLaw.selftest.mjs',
+    // 2026-11-02 audit M4: one life state per tank (alive/down/benched/rescued) through one transition; a refused Horde
+    // arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls
+    'src/sim/modeLife.selftest.mjs',
     'src/sim/honestHunt.selftest.mjs',
     'src/sim/frontlineDefenders.selftest.mjs',
     'src/sim/flagBots.selftest.mjs',
