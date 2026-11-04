@@ -7,7 +7,8 @@ import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { barrel, equipment, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
+import { barrel, equipment, panel, openGunTube, hullStation, optic } from './easternSourceKit.ts';
+import { addK21Mantlet, addK21Turret } from './k21Turret.ts';
 import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
@@ -432,82 +433,13 @@ function addK21Launcher(P: TankBuilderPort): void {
     // Existing finite receiver joins the measured housing to the turret shoulder.
     equipment(P, 'turret', 'Detail', box(.20, .30, .35), 1.10, 2.30, -1.21);
 }
-/** 2026-11-01 (owner: "give the k21 a mantlet"), regrown 2026-11-04 (owner: "also the matnelt of k21 needs to be more
- * prominent"): the 40 mm gun's mantlet as ROK Army photographs show it (research/k21 photos 4-7), no longer held inside
- * the source oracle's gun-front envelope. Scale: the open hatch covers (.62 m) and the round sight head (.40 m) in photo 4
- * give 230 px a metre at the turret; the jacket is 2.4-2.7 tube diameters in photos 4 and 6, the housing 1.46 by .87
- * flange diameters with its front over the flange, and the jacket stands 1.1-1.2 of its diameters proud of the face in
- * the side photograph. Gun-local metres (trunnion origin, +z along the bore; the turret face is .49 m ahead).
- * - A round armoured jacket (r .125) from a chamfered rear end in the well to a rounded front flange (r .135) .33 m
- *   ahead of the face, then a collar stepping down .100, .075 and a cone to the tube.
- * - The coaxial-gun and sight housing seated on the jacket, .40 wide and .19 tall, from the face to the flange, with a
- *   hooded front whose recessed plate carries the coaxial port facing straight ahead.
- * The rear end of every part stays .525 m or more from the trunnion and the housing's floor clears the well's arms, so
- * the mantlet pitches clear of the turret face, the well and the roof from full depression to full elevation. */
-function addK21Mantlet(P: TankBuilderPort): void {
-    const n = P.q ? 32 : 18;
-    // One lathe per face between hard corners keeps the steps crisp; the flange's rounded front stays one run.
-    const lathe = (profile: readonly (readonly [number, number])[], smooth: readonly number[], segments = n) =>
-        KIT.mergeAll(profile.slice(0, -1).flatMap((_, i) => smooth.includes(i) ? [] : [i]).map((from, i, starts) => {
-            const to = i + 1 < starts.length ? starts[i + 1] : profile.length - 1;
-            return new THREE.LatheGeometry(profile.slice(from, Math.max(to, from + 1) + 1)
-                .map(([r, z]) => new THREE.Vector2(r, z)), segments).rotateX(Math.PI / 2);
-        }));
-    // Jacket: chamfered rear end, body, rounded front flange, then the collar's two steps and the cone to the .036 tube.
-    P.addGunExtra(lathe([[0, .532], [.100, .532], [.125, .560], [.125, .810], [.135, .816], [.135, .844], [.131, .856],
-        [.120, .865], [.100, .865], [.100, .902], [.094, .908], [.075, .908], [.075, .938], [.069, .944], [.052, .944],
-        [.044, .976], [0, .976]], [5, 6]));
-    const plate = (w: number, bottom: number, top: number, c: number) => [[-w, bottom], [w, bottom], [w, top - c],
-        [w - c, top], [-w + c, top], [-w, top - c]] as const;
-    // Housing body with a chamfered rear edge, and its hood: a frame 5 mm proud of the body all round, 40 mm deep.
-    P.addGunExtra(sectionSolid([
-        { z: .525, ring: plate(.206, .090, .246, .016) },
-        { z: .562, ring: plate(.210, .086, .282, .022) },
-        { z: .808, ring: plate(.210, .086, .282, .022) },
-    ]));
-    const hood = new THREE.Shape(plate(.215, .081, .291, .024).map(([x, y]) => new THREE.Vector2(x, y)));
-    hood.holes.push(new THREE.Path(plate(.176, .112, .250, .010).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
-    P.addGunExtra(new THREE.ExtrudeGeometry(hood, { depth: .040, bevelEnabled: false, steps: 1 }), 0, 0, .802);
-    // Coaxial port in the recessed plate, facing straight ahead: a flush dark mouth inside a low raised collar.
-    const lip = [[.044, -.004], [.056, -.004], [.056, .006], [.052, .011], [.044, .011], [.044, -.004]] as const;
-    P.addGunExtra(lathe(lip, [], P.q ? 20 : 12), 0, .181, .808);
-    P.addGunExtraDark(cylZ(.044, .006, P.q ? 20 : 12), 0, .181, .808);
-}
-/** The real gun sits in a vertical well cut in the turret front plate, with chamfered lower corners. This turret face
- * is a closed plate, so a bevelled armour surround, a dark lining on its inner walls and a dark back plate form the well
- * (world metres). 2026-11-04: grown with the jacket. The .32 m opening leaves a .035 m dark gap round it and its sill
- * clears the jacket's lowest sweep at full depression. Below the bore the surround's inner arms stop under the
- * housing's floor at full depression; outboard of the housing (|x| .235 and out, .02 m clear of it at every pitch) its
- * cheeks rise to 2.46, so the slot reads deep and the jacket's root never shows daylight from the side. */
-function addK21GunWell(P: TankBuilderPort): void {
-    const top = 2.322, step = .235, inner = [[.160, top], [.160, 2.142], [.118, 2.100], [-.118, 2.100], [-.160, 2.142],
-        [-.160, top]] as const;
-    const surround = (outer: number, bottom: number, cheek: number) => [[-outer, bottom], [outer, bottom], [outer, cheek],
-        [step, cheek], [step, top], ...inner, [-step, top], [-step, cheek], [-outer, cheek]] as const;
-    equipment(P, 'turret', 'PaintedDetail', sectionSolid([{ z: .785, ring: surround(.320, 2.072, 2.460) },
-        { z: .860, ring: surround(.300, 2.090, 2.448) }]), 0, 0, 0);
-    // Dark lining 2.5 mm either side of the opening's walls and sill, recessed 2 mm behind the lip.
-    const d = .0025, k = d * (Math.SQRT2 - 1), y = top - .002;
-    const lining = [[-.160 - d, y], [-.160 - d, 2.142 - k], [-.118 - k, 2.100 - d], [.118 + k, 2.100 - d],
-        [.160 + d, 2.142 - k], [.160 + d, y], [.160 - d, y], [.160 - d, 2.142 + k], [.118 - k, 2.100 + d],
-        [-.118 + k, 2.100 + d], [-.160 + d, 2.142 + k], [-.160 + d, y]] as const;
-    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .789, ring: lining }, { z: .858, ring: lining }]), 0, 0, 0);
-    // Back plate: the opening, then the full slot between the cheeks above the arms.
-    const back = [[-.118, 2.096], [.118, 2.096], [.161, 2.139], [.161, 2.318], [.236, 2.318], [.236, 2.458],
-        [-.236, 2.458], [-.236, 2.318], [-.161, 2.318], [-.161, 2.139]] as const;
-    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .786, ring: back }, { z: .800, ring: back }]), 0, 0, 0);
-}
+/** 2026-11-04 (owner: "tbf the k21 turret just neds to be completely redesigined. it just wrong"): the new shell, its
+ * gun slot, side kit, cheek fittings, smoke dischargers, twin sight and the prominent mantlet are k21Turret.ts. The
+ * roof's crew fittings below keep their measured places on the flat 2.606 roof; the whips' collars sit on its rear
+ * bevel, the basket on its rear wall (z -1.717, source Object_32's front) and the launcher on the left wall. */
 function buildK21Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(.93, 1.00, .15, P.q ? 36 : 20), 0, .045, 0);
-    P.add('turret', sectionSolid([
-        turretStation(P, -1.91, .91, 1.16, .91, 2.00, 2.37, 2.59),
-        turretStation(P, -1.26, 1.12, 1.28, .94, 1.96, 2.41, 2.606),
-        turretStation(P, -.41, .94, 1.18, .82, 1.98, 2.40, 2.606),
-        turretStation(P, .46, .68, .87, .42, 2.02, 2.35, 2.54),
-        turretStation(P, .79, .42, .53, .31, 2.07, 2.32, 2.48),
-    ], { sideQuadDiagonal: 'convex' }));
-    for (const side of [-1, 1])
-        smokeBank(P, side, .76, 2.24, .47, 4, .145);
+    addK21Turret(P);
     for (const [x, z] of [[-.49, -.82], [.43, -1.00]]) {
         panel(P, 'turret', x, 2.631, z, .64, .62, .050, .10);
         for (const d of [-.19, .19])
@@ -532,19 +464,6 @@ function buildK21Turret(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Detail', box(.120, .066, .060), x, 2.666, -.126);
         equipment(P, 'turret', 'Glass', box(.095, .034, .010), x, 2.671, -.092);
     }
-    for (const side of [-1, 1]) {
-        equipment(P, 'turret', 'Detail', sectionSolid([
-            { z: -.138, ring: [[-.158, 0], [.158, 0], [.158, .085], [-.158, .085]] },
-            { z: .138, ring: [[-.158, 0], [.158, 0], [.158, .140], [-.158, .140]] },
-        ]), side * .812, 2.383, .308);
-        equipment(P, 'turret', 'Detail', box(.335, .020, .292), side * .812, 2.390, .308);
-        for (const z of [.206, .410])
-            equipment(P, 'turret', 'Detail', cylX(.018, .040, 10), side * .975, 2.470, z);
-        equipment(P, 'turret', 'Detail', box(.080, .135, .065), side * .94, 2.445, .195);
-    }
-    // 2026-11-01: this roof box stood in the gun's path (the barrel ran through it above 20 degrees, and the mantlet
-    // housing sweeps that space); it moves .31 m aft, behind both at full elevation, unchanged in size and height.
-    optic(P, 'turret', -.10, 2.60, .30, .25, .15, .30);
     // Object_14 collars start in the rear roof shoulder at 2.50638 m;
     // Object_21 whips begin at their narrow 2.673 m terminal, not above a gap.
     for (const [x, tip] of [[-.883495, 4.17597], [.884605, 4.17628]]) {
@@ -559,10 +478,7 @@ function buildK21Turret(P: TankBuilderPort): void {
     // r268b: the hatches' spring housings, handles and periscopes, and the rear roof's mount ring, sensor and vents
     addK21TurretDeckKit(P);
     weaponAssembly(P, () => addK21Launcher(P));
-    // 2026-11-01: the former 340 x 370 x 530 mm cradle box sat inside the turret and rose through the roof at
-    // elevation; the measured mantlet and its well replace it.
     addK21Mantlet(P);
-    addK21GunWell(P);
     barrel(P, 2.391, .036, .63, undefined, .020);
     openGunTube(P, 2.391, 2.601, .045, .096, .020, .11);
 }

@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { equipment } from './easternSourceKit.ts';
+import { k21TurretRoofAt } from './k21Turret.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
@@ -189,7 +190,8 @@ function addK21RearStowage(P: TankBuilderPort): void {
  *  edge, two periscopes ahead of the left hatch, and the source's rear-roof fittings: a mount ring on the right, a twin
  *  sensor head at the centre and two vent caps on the left. Turret builder frame (world metres before the 0.90 size). */
 function addK21TurretRoofKit(P: TankBuilderPort): void {
-  const roofAt = (z: number): number => z < -1.26 ? 2.59 + (z + 1.91) * (0.016 / 0.65) : 2.606;
+  // 2026-11-04: the new turret's roof (k21Turret.ts): flat at 2.606, its rear bevel falling to the rear wall's 2.49
+  const roofAt = k21TurretRoofAt;
   for (const [x, z, s] of [[-0.49, -0.82, -1], [0.43, -1.00, 1]] as const) {
     const top = 2.656, rear = z - 0.31;
     // spring housing between the two hinge barrels (x ±0.19 at y 2.669), on the roof behind the lid
@@ -201,21 +203,24 @@ function addK21TurretRoofKit(P: TankBuilderPort): void {
   }
   // the left hatch's two forward periscopes on the roof ahead of it, inboard of the panoramic sight
   for (const [px, yaw] of [[0.20, -0.20], [0.38, 0]]) periscope(P, 'turret', px, roofAt(-0.62), -0.62, 0, yaw, 0.055);
+  // The rear fittings stand on the roof's bevel: the flat ones lie on its slope, the sensor head's base is level and
+  // deeper at its rear edge so it neither stands off the slope nor drops below it.
+  const lie = (z: number): number => -Math.atan((roofAt(z + 0.005) - roofAt(z - 0.005)) / 0.01);
   // mount ring (right rear): a low ring plate and its plug
   const mx = -0.74, mz = -1.40, my = roofAt(mz), seg = P.q ? 24 : 14;
-  equipment(P, 'turret', 'Detail', cylY(0.15, 0.15, 0.016, seg), mx, my + 0.002, mz);
-  equipment(P, 'turret', 'Detail', cylY(0.05, 0.055, 0.03, 12), mx, my + 0.012, mz);
+  equipment(P, 'turret', 'Detail', cylY(0.15, 0.15, 0.016, seg), mx, my + 0.002, mz, lie(mz));
+  equipment(P, 'turret', 'Detail', cylY(0.05, 0.055, 0.03, 12), mx, my + 0.012, mz, lie(mz));
   // twin sensor head (rear centre): a base block and two upright cylinders side by side
-  const tz = -1.55, ty = roofAt(tz);
-  equipment(P, 'turret', 'Detail', box(0.30, 0.04, 0.14), 0, ty + 0.015, tz);
+  const tz = -1.55, baseBottom = roofAt(tz - 0.07) - 0.005, ty = roofAt(tz + 0.07) + 0.02;
+  equipment(P, 'turret', 'Detail', box(0.30, ty - baseBottom, 0.14), 0, (ty + baseBottom) / 2, tz);
   for (const s of [-1, 1]) {
-    equipment(P, 'turret', 'Detail', cylY(0.05, 0.055, 0.11, 14), s * 0.075, ty + 0.085, tz);
-    equipment(P, 'turret', 'Dark', cylY(0.042, 0.042, 0.008, 14), s * 0.075, ty + 0.141, tz);
+    equipment(P, 'turret', 'Detail', cylY(0.05, 0.055, 0.11, 14), s * 0.075, ty + 0.05, tz);
+    equipment(P, 'turret', 'Dark', cylY(0.042, 0.042, 0.008, 14), s * 0.075, ty + 0.106, tz);
   }
   // two low vent caps (left rear)
   for (const [vx, vz] of [[0.86, -1.42], [0.52, -1.50]]) {
-    equipment(P, 'turret', 'Detail', cylY(0.065, 0.075, 0.03, 16), vx, roofAt(vz) + 0.01, vz);
-    equipment(P, 'turret', 'Dark', cylY(0.04, 0.04, 0.006, 12), vx, roofAt(vz) + 0.026, vz);
+    equipment(P, 'turret', 'Detail', cylY(0.065, 0.075, 0.03, 16), vx, roofAt(vz) + 0.01, vz, lie(vz));
+    equipment(P, 'turret', 'Dark', cylY(0.04, 0.04, 0.006, 12), vx, roofAt(vz) + 0.026, vz, lie(vz));
   }
 }
 
