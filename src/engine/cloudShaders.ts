@@ -49,8 +49,11 @@ const f = (x: number): string => { const s = String(x); return s.includes('.') |
 export const CLOUD2_PERIODS = Object.freeze({
   /** the local weather (cloudNoise.ts bakeCloudLocalWeather) */
   local: 48000,
-  /** the street field (cloudNoise.ts bakeCloudWeatherStreets) in the wind frame */
-  streets: 12000,
+  /**
+   * the wind frame's cumulus field (cloudNoise.ts bakeCloudWeatherStreets R) — clouds-269: 18 km, its lobes about 1.2 km
+   * apart, so its tile's period stands past the views it fills and beats against the local weather's 48 km
+   */
+  streets: 18000,
   /** the Perlin–Worley shape volume (cloudVolumeNoise.ts) */
   shape: 3200,
   /** the detail volume */
@@ -99,6 +102,9 @@ uniform vec4 uLayerAnvil;
 uniform vec4 uLayerCore;
 // the deck lumps: the cell channel at a third of the cells' period thickens and thins the column (0 = none)
 uniform vec4 uLayerLumps;
+// clouds-269: a convective lane's dome — the exponent of a column's crown over its excess (cl2Shell; 0 = round 6's shell
+// law, the decks')
+uniform vec4 uLayerDome;
 uniform vec4 uProfA;
 uniform vec4 uProfB;
 uniform vec4 uProfC;
@@ -154,8 +160,10 @@ vec4 cl2Weather( vec2 xz, float h, float lod ) {
 	vec4 lw = textureLod( tLocal, ( xz + uLocalShift ) / CL2_LOCAL, lod );
 	vec4 w = uLayerChannels * lw;
 	if ( dot( uLayerStreets, uLayerStreets ) > 0.0 ) {
-		vec2 q = vec2( dot( xz, uWindDir2 ), dot( xz, vec2( -uWindDir2.y, uWindDir2.x ) ) );
-		float st = textureLod( tStreetField, ( q + uStreetShift2 ) / CL2_STREETS, lod ).r;
+		vec2 q = vec2( dot( xz, uWindDir2 ), dot( xz, vec2( -uWindDir2.y, uWindDir2.x ) ) ) + uStreetShift2;
+		// (clouds-269) a street sky's cumulus drawn out a little further along the wind: aligned, never ruled rows
+		q.x /= 1.0 + 0.6 * max( uLayerStreets.x - 0.4, 0.0 );
+		float st = textureLod( tStreetField, q / CL2_STREETS, lod ).r;
 		w = mix( w, vec4( st ), uLayerStreets );
 	}
 	// a front's cells gathered where the large-scale field runs high, the air between them clear
@@ -199,6 +207,24 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 admitted = uLayerCover * heightScale;
 	vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );
 	vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );
+	// clouds-269 (the owner: "make clouds more natural and also less prism-y"): a convective lane's dome. Under the law
+	// above the core of a footprint kept one density up the whole slab (its ramp shrank with the footprint), so every
+	// cumulus stood as the extrusion of its outline under a flat lid. Here a column's excess over the base footprint (0 at
+	// its edge, 1 at the weather's peak) sets the crown it reaches, e^dome of the slab, and its density falls from 55 % of
+	// that height to nothing at the crown, so the shape volume carves its billows into a rounded top and sloping shoulders;
+	// the base lifts toward the edge (the underside's rim curls up instead of a knife-edged plate). The base footprint,
+	// and so a map's coverage at the clouds' widest, is the law's above.
+	if ( dot( uLayerDome, uLayerDome ) > 0.0 ) {
+		vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );
+		vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );
+		vec4 rim = 0.14 * ( 1.0 - e ) * ( 1.0 - e );
+		vec4 dome = smoothstep( rim, rim + 0.1, hf ) * ( 1.0 - smoothstep( crown * 0.55, crown, hf ) );
+		vec4 dd = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover * uLayerFilter, vec4( 0.02 ) ), 0.0, 1.0 ) * dome;
+		// a cumulonimbus' anvil spreads over the dome's top as before
+		vec4 aAdm = uLayerCover * uLayerAnvil * smoothstep( 0.74, 0.9, hf ) * ( 1.0 - smoothstep( 0.97, 1.0, hf ) );
+		dd = max( dd, clamp( ( weather - ( 1.0 - aAdm ) ) / max( aAdm * uLayerFilter, vec4( 0.02 ) ), 0.0, 1.0 ) * step( vec4( 1e-4 ), aAdm ) );
+		d = mix( d, dd, step( vec4( 1e-4 ), uLayerDome ) );
+	}
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
@@ -212,6 +238,12 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 // density profile. [ported] the shape and detail remaps and the profile; the turbulence at the base is first-party.
 vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 	vec3 sp = p + uShapeShift;
+	// clouds-269: the shape volume tiles every uShapePeriod (1.6–3.2 km) on the world's axes, so wherever the weather
+	// admitted a wide area the same billows stood in rows and columns. The lookup turns off the axes (a 3-4-5 rotation)
+	// and rides a smooth warp of up to half a period — the turbulence field's curl read at four times its own scale (one
+	// small 2D fetch), drifting with the shape — so no two neighbouring tiles line up
+	vec2 warp = textureLod( tTurb, sp.xz / ( CL2_TURB * 4.0 ) + vec2( 0.31, 0.67 ), 0.0 ).rg * 2.0 - 1.0;
+	sp.xz = mat2( 0.8, 0.6, -0.6, 0.8 ) * sp.xz + warp * ( 0.5 * uShapePeriod );
 	if ( uTurbulence > 0.0 ) {
 		// the base drags with the wind's swirl: the lowest third of each lane, by its shell
 		float k = dot( shell, clamp( ( 0.3 - hf ) / 0.3, 0.0, 1.0 ) );

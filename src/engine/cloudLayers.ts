@@ -54,6 +54,11 @@ export interface CloudLane {
   core: number;
   /** a deck's lumps: the cells' channel at a third of their period thickening and thinning the column (0..1) */
   lumps: number;
+  /**
+   * clouds-269: a convective lane's dome — the exponent of the crown a column rises to over its excess above the base
+   * footprint (cloudShaders.ts cl2Shell; low, more of the footprint stands tall). 0 = the shell law alone (a deck).
+   */
+  dome: number;
   /** the density profile over the height fraction: a·e^(b·η) + c·η + d */
   profile: readonly [number, number, number, number];
   /** the share of the deep diffusion term (a deck's base lit through its column) */
@@ -94,6 +99,13 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
   // a deck is closed or it is cumulus — so the tune keeps the relief and leaves the cover)
   CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
 });
+/**
+ * clouds-269 (the owner, 2026-11-04: "less prism-y"): a cumulus column's crown is its excess over the base footprint to
+ * this power (cloudShaders.ts cl2Shell; CPU model, Verdant: the footprint halves at 0.63 of the slab and is a fifth at
+ * 0.73, where round 6's shell law held 0.84 of it to 0.55 and halved it only at 0.73 — the extrusion of its outline
+ * under a flat lid).
+ */
+export const CLOUD_DOME_CROWN = 0.45;
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;
@@ -223,6 +235,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     anvil: clamp(preset.anvil, 0, 1),
     core,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
+    // a cumulus' crown rounds over its footprint (a hemisphere's shoulder at a half); a tower's stands taller over more of it
+    dome: isDeck ? 0 : CLOUD_DOME_CROWN - 0.2 * clamp(preset.towers, 0, 1),
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
     // a deck's base is lit through its column; a cumulus' shaded flank and base only a little (the octaves and the sky
@@ -258,6 +272,7 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
       anvil: 0,
       core: 0.55,
       lumps: 0,
+      dome: 0,
       profile: [0, 0, 0.5, 0.5],
       diffuse: 0,
       shadow: true,
@@ -352,6 +367,7 @@ export function packCloudStack(stack: CloudStack, u: Record<string, { value: unk
   v4('uLayerAnvil', (l) => l.anvil);
   v4('uLayerCore', (l) => l.core);
   v4('uLayerLumps', (l) => l.lumps);
+  if (u.uLayerDome) v4('uLayerDome', (l) => l.dome);
   v4('uProfA', (l) => l.profile[0]);
   v4('uProfB', (l) => l.profile[1]);
   v4('uProfC', (l) => l.profile[2]);
