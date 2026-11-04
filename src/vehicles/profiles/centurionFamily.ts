@@ -1276,18 +1276,19 @@ function buildOlifantTurret(P: TankBuilderPort, m: MarkDesign): void {
   // two banks of four dischargers at the bustle's rear corners, raised forward (the Commons profile)
   for (const s of [-1, 1]) {
     if (m.sa === 'mk1b') {
-      // the Mk 1B's stand at the roof edge on an open bracket, steeper and splayed further out, their muzzles over the
-      // roof line (the Tempe rear photograph, DSCF4691; Main, 2026-11-04): a shelf off the side's top edge on two
-      // diagonal stays, a guard rail along its outer edge
+      // the Mk 1B's stand at the roof edge on an open bracket, steeper and splayed further out, the whole bank over the
+      // roof line (the Tempe rear photograph, DSCF4691; Main, 2026-11-04): a shelf level with the roof off the side's
+      // top edge on two diagonal stays, a guard rail along its outer edge
+      // (the 269 blind critic: on a shelf below the roof edge the near bank's tubes sank behind the turret's top edge)
       const bx = s * (T.hw + 0.10);
-      P.add('turretDetail', box(0.24, 0.03, 0.64), bx, 0.815, -2.38);
+      P.add('turretDetail', box(0.24, 0.03, 0.64), bx, 0.92, -2.38);
       for (const sz of [-2.66, -2.10]) {
-        P.add('turretDark', xform(box(0.03, 0.283, 0.03), 0, 0, 0, 0, 0, -s * Math.PI / 4), bx, 0.70, sz);
-        P.add('turretDark', box(0.03, 0.14, 0.03), s * (T.hw + 0.205), 0.90, sz);
+        P.add('turretDark', xform(box(0.03, 0.272, 0.03), 0, 0, 0, 0, 0, -s * 0.824), bx, 0.8125, sz);
+        P.add('turretDark', box(0.035, 0.14, 0.035), s * (T.hw + 0.205), 1.005, sz);
       }
-      P.add('turretDark', box(0.03, 0.03, 0.59), s * (T.hw + 0.205), 0.97, -2.38);
+      P.add('turretDark', box(0.035, 0.035, 0.595), s * (T.hw + 0.205), 1.075, -2.38);
       for (let k = 0; k < 4; k++) {
-        P.add('turretDetail', markSmokeTube(cylZ(0.046, 0.30, 12)), bx, 0.95, -2.60 + k * 0.16, -0.80, s * 0.35, 0);
+        P.add('turretDetail', markSmokeTube(cylZ(0.046, 0.30, 12)), bx, 1.05, -2.60 + k * 0.16, -0.80, s * 0.35, 0);
       }
       continue;
     }
@@ -1375,7 +1376,10 @@ function buildOlifantMantlet(P: TankBuilderPort, m: MarkDesign): void {
     // (269 blind critics: at 0.44 x 0.40 m it was lost against the Mk 2's slab turret) 0.54 x 0.46 m, its depth and
     // rear face kept so its sweep over the elevation arc stays the measured one
     const lx = 0.32, ly = 0.50, lz = 1.02;
-    P.add('gunMountDark', box(0.16, 0.20, 0.24), lx, 0.37, lz - 0.02);
+    // its pedestal on the housing's top, nearly the box's width and depth (the 269 blind critic: a 0.16 m dark post
+    // under the box's front read as a thin stem in profile, the light top-heavy)
+    P.add('gunMount', box(0.44, 0.12, 0.34), lx, 0.335, lz - 0.02);
+    P.add('gunMountDark', box(0.44, 0.012, 0.012), lx, 0.389, lz + 0.155);
     P.add('gunMount', box(0.54, 0.46, 0.42), lx, ly + 0.12, lz);
     P.add('gunMountGlass', markVehicleNightLens(box(0.44, 0.36, 0.012), 'headlight', { searchlight: true }), lx, ly + 0.12, lz + 0.216);
     for (let k = 0; k < 6; k++) P.add('gunMountDark', box(0.46, 0.012, 0.014), lx, ly - 0.03 + k * 0.06, lz + 0.226);
