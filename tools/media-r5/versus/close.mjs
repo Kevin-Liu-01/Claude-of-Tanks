@@ -38,9 +38,11 @@ const FAMILIES = {
   // round 13 (the owner, 2026-11-04: "for loading screens we need to use these elevated scenes with excellent framing
   // perspective effects explosions and visual effects/motion"): three elevated families, each with its own look-down
   // range (down, degrees), the pair's span, the least width each tank fills, and a shell burst in frame (burst)
-  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 45], span: 1.45, hero: 0.85, foe: 0.4, burst: true },
-  crane: { h: [16, 20, 26], d: [18, 24, 32], roll: [0, 4, -4], fov: 40, down: [30, 55], span: 1.3, hero: 0.7, foe: 0.34, burst: true, burstTop: 0.75 },
-  ridge: { h: [10, 15, 22], d: [45, 60, 80], roll: [0, 4, -4], fov: 16, down: [10, 25], span: 1.45, hero: 0.85, foe: 0.4, burst: true },
+  // (the least widths are a share of the span: the hero about half of the pair's, the foe about a quarter, so the guns'
+  // 2 m clearance, which sets the foe 10-18 m off, still leaves a pair that fills the frame)
+  drone: { h: [8, 11, 14], d: [12, 16, 20, 26], roll: [0, 6, -6], fov: 45, down: [22, 45], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
+  crane: { h: [16, 20, 26], d: [18, 24, 32], roll: [0, 4, -4], fov: 40, down: [30, 55], span: 1.4, hero: 0.62, foe: 0.3, burst: true, burstTop: 0.75 },
+  ridge: { h: [10, 15, 22], d: [45, 60, 80], roll: [0, 4, -4], fov: 16, down: [10, 25], span: 1.55, hero: 0.75, foe: 0.36, burst: true },
 };
 const SPAN = 1.55, EDGE = 0.92;
 // the families a solve searches (--families=a,b; default the four close families of rounds 11-12)
@@ -70,11 +72,13 @@ export function regroup(s, gapM) {
   return s;
 }
 
-/** The first gap from 9 to 15 m whose foe footprint is clear (no record contact, slope ≤ 0.2, wet ≤ 0.3), or null. */
+/** The first gap from 9 to 18 m whose foe footprint is clear (no record contact, slope ≤ 0.2, wet ≤ 0.3) and that keeps
+ *  the two guns, laid on each other, 2 m apart muzzle to muzzle (round 13's elevated look showed 9 m crossing them:
+ *  each gun reaches ~6 m from its hull's centre), or null. */
 function clearGap(id) {
-  for (let gap = 9; gap <= 15; gap++) {
-    const s = regroup(SCENES[id](), gap), model = modelOf(s.map), foe = byName(s, 'foe0'), d = dimsOf(foe.id);
-    const tooClose = dist2(foe.pos, byName(s, 'hero').pos) < (d[0] + dimsOf(byName(s, 'hero').id)[0]) * 0.9;
+  for (let gap = 9; gap <= 18; gap++) {
+    const s = regroup(SCENES[id](), gap), model = modelOf(s.map), foe = byName(s, 'foe0'), d = dimsOf(foe.id), h = dimsOf(byName(s, 'hero').id);
+    const tooClose = dist2(foe.pos, byName(s, 'hero').pos) < Math.max((d[0] + h[0]) * 0.9, d[2] + h[2] + 2);
     if (!tooClose && !model.hullContacts(foe.pos[0], foe.pos[1], foe.facingDeg * DEG, d[0], d[1]).length
       && model.slopeAt(foe.pos[0], foe.pos[1]) <= 0.2 && model.wetAt(foe.pos[0], foe.pos[1]) <= 0.3) return gap;
   }
@@ -270,7 +274,7 @@ function cli([mode, ...args]) {
   if (mode === 'solve') {
     for (const id of rest) {
       const { gap, best } = solve(id);
-      console.log(`${id}: ${gap === null ? 'no clear spot for the foe within 15 m' : `foe at ${gap} m`}`);
+      console.log(`${id}: ${gap === null ? 'no clear spot for the foe within 18 m' : `foe at ${gap} m`}`);
       for (const [fam, views] of Object.entries(best)) for (const [k, b] of views.entries()) {
         const f = (x) => x.toFixed(2);
         console.log(`  ${`${fam}${k ? `:${k + 1}` : ''}`.padEnd(7)} score ${f(b.score)}  hero ${(50 * b.hw).toFixed(0)} %  foe ${(50 * b.fw).toFixed(0)} %  hero ${b.offH.toFixed(0)}° foe ${b.offF.toFixed(0)}° off nose  lens ${b.near.toFixed(1)} m from the hero, ${b.lens.pos[1]} m up, ${b.down.toFixed(0)}° down, fov ${b.lens.fov}, roll ${b.lens.rollDeg}${b.extra.length ? ', a burst beyond' : ''}`);
