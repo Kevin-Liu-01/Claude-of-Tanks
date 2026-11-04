@@ -21,7 +21,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylY, cylZ } = KIT;
 /** The welded box's roof (turret frame: metres over the T-80U X casting's ring datum). */
-const BOX_ROOF = .86;
+const BOX_ROOF = F.boxRoof;
 
 /** A prism along Z: each station [z, x0, x1, y0, y1] in the turret frame, x0 < x1. */
 function prism(P: TankBuilderPort, bucket: string, stations: readonly (readonly [number, number, number, number, number])[]): void {
@@ -38,13 +38,16 @@ function glacisAt(z: number): { y: number; tilt: number } {
   return { y: GLACIS[0][1], tilt: 0 };
 }
 
-/** The glacis' fit, the T-80BV pattern Kubinka keeps: the Kontakt-1 mounting studs with no bricks on them (four rows of
- * seven pairs, standing along the plate's normal), the headlights in their guards and the splash strip. Hull frame. */
+/** The glacis' fit, the T-80BV pattern Kubinka keeps: the Kontakt-1 mounting studs with no bricks on them across the
+ * plate's width (five rows of eight pairs, standing along its normal, clear of the headlights), the headlights in their
+ * guards and the splash strip. Hull frame. */
 function addGlacis(P: TankBuilderPort): void {
-  for (const z of [2.02, 2.27, 2.52, 2.77]) {
+  for (const z of [1.95, 2.17, 2.39, 2.61, 2.83]) {
     const { y, tilt } = glacisAt(z);
-    for (let c = 0; c < 7; c++) for (const dx of [-.075, .075]) {
-      P.add('hullDetail', cylY(.028, .032, .065, 8), -.75 + c * .25 + dx, y + .025, z, tilt, 0, 0);
+    for (let c = 0; c < 8; c++) for (const dx of [-.075, .075]) {
+      const x = -.875 + c * .25 + dx;
+      if (Math.hypot(Math.abs(x) - .8475, z - 2.62) < .17) continue;
+      P.add('hullDetail', cylY(.028, .032, .065, 8), x, y + .025, z, tilt, 0, 0);
     }
   }
   for (const s of [-1, 1]) {
@@ -58,30 +61,55 @@ function addGlacis(P: TankBuilderPort): void {
   P.addEquipment('hullDetail', box(.80, .022, .089), 0, y + .011, 2.40, tilt, 0, 0);
 }
 
+/** The T-80U X side apron's lower edge (profiles/t80uX.ts skirt): the rubber skirt hangs from it. */
+const APRON_FOOT: readonly (readonly [number, number])[] = [[-2.882, .886], [-2.45, .815], [-1.22, .782], [1.75, .762], [2.886, .782]];
+function apronFoot(z: number): number {
+  for (let i = 1; i < APRON_FOOT.length; i++) {
+    const [z0, y0] = APRON_FOOT[i - 1], [z1, y1] = APRON_FOOT[i];
+    if (z <= z1 || i === APRON_FOOT.length - 1) return y0 + (y1 - y0) * (z - z0) / (z1 - z0);
+  }
+  return APRON_FOOT[0][1];
+}
+
+/** Kubinka's rubber skirts, deeper than the T-80U X apron: seven bolted rubber panels a side hanging from the apron's foot
+ * over the top of the road wheels, and the broad rubber flaps over the front of the tracks from the fenders' noses. */
+function addRubberSkirts(P: TankBuilderPort): void {
+  const z0 = -2.88, n = 7, len = 5.76 / n;
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < n; i++) {
+      const z = z0 + len * (i + .5), top = apronFoot(z) + .03;
+      P.addMudguard('object292-rubber-skirt', 'hullRubber', box(.014, top - .50, len - .012), s * 1.795, (top + .50) / 2, z);
+      P.addEquipment('hullDetail', box(.012, .022, len - .08), s * 1.805, top - .035, z);
+    }
+    P.addMudguard('object292-front-flap', 'hullRubber', box(.50, .42, .012), s * 1.45, .72, 3.33);   // under the fender's nose
+  }
+}
+
 /** The welded box over the T-80U X casting (Kubinka: the casting's lower rim shows beneath it): its body as wide as the
  * casting with near-vertical flanks from the casting's shoulders, back over the ring, the bustle overhanging the engine
  * deck; the hood over the gun's root standing above the cheek blocks; the steel weight-imitator blocks raked back either
  * side of the gun in a V. Turret frame. */
 function addBox(P: TankBuilderPort): void {
+  const r = BOX_ROOF;
   prism(P, 'turret', [
-    [-2.22, -1.30, 1.30, .40, .82], [-1.90, -1.42, 1.42, .28, .85], [-1.10, -1.42, 1.42, .18, BOX_ROOF],
-    [-.10, -1.42, 1.42, .18, BOX_ROOF], [.30, -1.38, 1.38, .24, BOX_ROOF], [.58, -1.22, 1.22, .40, .84],
+    [-2.22, -1.30, 1.30, .34, r - .02], [-1.90, -1.42, 1.42, .14, r], [-1.10, -1.42, 1.42, .06, r],
+    [-.10, -1.42, 1.42, .06, r], [.30, -1.38, 1.38, .10, r], [.58, -1.22, 1.22, .30, r - .02],
   ]);
-  prism(P, 'turret', [[.45, -.52, .52, .40, BOX_ROOF], [.95, -.48, .48, .40, .78], [1.12, -.42, .42, .40, .68]]);
-  // each block's face runs from beside the gun (x .44, z 1.22) back to the casting's flank (x 1.30, z .56)
-  const [ix, iz, ox, oz, depth] = [.44, 1.22, 1.30, .56, .34];
-  const len = Math.hypot(ox - ix, oz - iz), yaw = Math.atan2(iz - oz, ox - ix);
+  prism(P, 'turret', [[.45, -.50, .50, .30, r], [.95, -.46, .46, .30, r - .06], [1.12, -.40, .40, .32, r - .14]]);
+  // each block is a square steel box on the casting's cheek beside the gun, its face raked back 26 degrees from the
+  // gun's side (x .40, z 1.20) to the casting's flank, 0.55 m deep
+  const [ix, iz, len, depth, yaw] = [.40, 1.20, .86, .55, .45];
   for (const s of [-1, 1]) {
     const nx = s * Math.sin(yaw), nz = Math.cos(yaw);
-    const cx = s * (ix + ox) / 2 - nx * depth / 2, cz = (iz + oz) / 2 - nz * depth / 2;
-    P.add('turret', box(len, .52, depth), cx, .38, cz, 0, s * yaw, 0);
-    P.addEquipment('turretDark', box(len - .06, .016, .016), cx + nx * (depth / 2 + .004), .62, cz + nz * (depth / 2 + .004), 0, s * yaw, 0);
-    P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), cx, .66, cz, Math.PI / 2, 0, 0);
+    const cx = s * (ix + len * Math.cos(yaw) / 2) - nx * depth / 2, cz = iz - len * Math.sin(yaw) / 2 - nz * depth / 2;
+    P.add('turret', box(len, .46, depth), cx, .33, cz, 0, s * yaw, 0);
+    P.addEquipment('turretDark', box(len - .06, .016, .016), cx + nx * (depth / 2 + .004), .52, cz + nz * (depth / 2 + .004), 0, s * yaw, 0);
+    P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), cx, .565, cz, Math.PI / 2, 0, 0);
   }
   // the weld seam where the box meets the casting, the bustle's tail lip and the plate seams down its flanks
-  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.022, .022, 1.60), s * 1.42, .19, -.55);
-  P.addEquipment('turretDetail', box(2.50, .05, .05), 0, .81, -2.23);
-  for (const s of [-1, 1]) for (const z of [-1.20, -.20]) P.addEquipment('turretDark', box(.012, .56, .02), s * 1.425, .55, z);
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.022, .022, 1.60), s * 1.42, .07, -.55);
+  P.addEquipment('turretDetail', box(2.50, .05, .05), 0, r - .05, -2.23);
+  for (const s of [-1, 1]) for (const z of [-1.20, -.20]) P.addEquipment('turretDark', box(.012, r - .10, .02), s * 1.425, (r + .06) / 2, z);
 }
 
 /** The roof: the commander's cupola (right) and his sight ahead of it, the gunner's sight box (left, forward), the
@@ -114,8 +142,8 @@ function addRoof(P: TankBuilderPort): void {
 /** The LP-83 on its cradle: the root collar out of the casting's embrasure, then the sleeved tube. Gun frame. */
 function addGun(P: TankBuilderPort): void {
   P.addGunExtra(cylZ(.205, .55, 20, .215), 0, 0, .05);   // inside the casting's embrasure (its cheeks at x .222)
-  P.addGunExtra(cylZ(.245, 1.10, 24, .265), 0, 0, .80);
-  P.addGunExtraDark(cylZ(.25, .04, 20), 0, 0, 1.34);
+  P.addGunExtra(cylZ(.165, 1.10, 24, .18), 0, 0, .80);    // the cradle's sleeve: a modest step over the tube
+  P.addGunExtraDark(cylZ(.17, .04, 20), 0, 0, 1.34);
   build152Gun(P, { ...GUN_LP83, len: F.muzzleZ - F.trunnionZ });
 }
 
@@ -128,13 +156,14 @@ function buildObject292X(P: TankBuilderPort): void {
   P.gunG.position.set(T80U_X_TRUNNION[0] - T80U_X_YAW[0], F.trunnionY - F.ringY, F.trunnionZ - F.ringZ);
   buildT80UXHullBase(P);
   addGlacis(P);
+  addRubberSkirts(P);
   buildT80UXCasting(P);
   addBox(P);
   addRoof(P);
-  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .30, [s * 1.425, .56, -1.55], s * Math.PI / 2);
+  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .26, [s * 1.425, (BOX_ROOF + .06) / 2, -1.55], s * Math.PI / 2);
   addGun(P);
   P.muzzleZ = F.muzzleZ - F.trunnionZ;
-  P.topY = BOX_ROOF + .28;
+  P.topY = BOX_ROOF + .28;   // the cupola's lid
 }
 
 export const OBJECT292_X_PROFILES = { object292: { build: buildObject292X } } as const;

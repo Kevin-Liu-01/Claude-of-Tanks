@@ -15,7 +15,7 @@ import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-const { box, cylY, cylZ, torus } = KIT;
+const { box, cylY, cylZ } = KIT;
 /** The glacis: from the roof at z 1.60 down to the prow's edge (0.92 m at z 3.75). */
 const NOSE_Z0 = 1.60;
 const noseY = (z: number) => F.roofY - (z - NOSE_Z0) * ((F.roofY - .92) / (F.hullFrontZ - NOSE_Z0));

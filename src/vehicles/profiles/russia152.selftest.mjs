@@ -50,10 +50,10 @@ for (const quality of ['high', 'low']) {
       assert.ok(near(b.max.z, muzzleZ, .03), `${quality}: ${id}'s muzzle at the spec's barrel end (${b.max.z.toFixed(3)} v ${muzzleZ.toFixed(3)})`);
       assert.ok(gunG, `${quality}: ${id} has a gun rig`);
     }
-    // the Object 292's hull is the T-80U X's: the same hull group's envelope
+    // the Object 292's hull is the T-80U X's: the same hull group's envelope, its width 2 cm more over Kubinka's rubber skirts
     const hull = (id) => box(tanks[id].root.getObjectByName('rig_hull') ?? tanks[id].hullG);
     const h292 = hull('object292'), hu = hull('t80u');
-    for (const k of ['x', 'y', 'z']) assert.ok(near(h292.min[k], hu.min[k], .01) && near(h292.max[k], hu.max[k], .01), `${quality}: the Object 292's hull is the T-80U X's (${k}: ${h292.min[k].toFixed(3)}..${h292.max[k].toFixed(3)} v ${hu.min[k].toFixed(3)}..${hu.max[k].toFixed(3)})`);
+    for (const k of ['x', 'y', 'z']) assert.ok(near(h292.min[k], hu.min[k], k === 'x' ? .02 : .01) && near(h292.max[k], hu.max[k], k === 'x' ? .02 : .01), `${quality}: the Object 292's hull is the T-80U X's (${k}: ${h292.min[k].toFixed(3)}..${h292.max[k].toFixed(3)} v ${hu.min[k].toFixed(3)}..${hu.max[k].toFixed(3)})`);
     // the T-14 152's hull is the T-14's
     const h152 = hull('t14_152'), h14 = hull('t14_armata');
     for (const k of ['x', 'y', 'z']) assert.ok(near(h152.min[k], h14.min[k], .002) && near(h152.max[k], h14.max[k], .002), `${quality}: the T-14 152's hull is the T-14's (${k})`);

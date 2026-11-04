@@ -52,7 +52,7 @@ const object292 = variant('object292', 't80u', 'Object 292', 'USSR', 'modern');
 // these levers 16 of 17, mean 0.397)
 Object.assign(object292, { hp: 2500, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
 // the T-80U X hull's 3.36 m stern to the muzzle; the box's roof is the structural roof
-Object.assign(object292.dims, { overallLengthM: 3.36 + OBJECT292_FRAME.muzzleZ, heightM: OBJECT292_FRAME.ringY + 0.86 });
+Object.assign(object292.dims, { overallLengthM: 3.36 + OBJECT292_FRAME.muzzleZ, heightM: OBJECT292_FRAME.ringY + OBJECT292_FRAME.boxRoof });
 // the T-80U X casting's measured depression over the engine deck (t80uXArmor.ts) until the gate's sweep measures the LP-83's
 object292.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
 object292.gun = {
@@ -70,7 +70,7 @@ object292.armor.turretPlates = modernArmor({
   gunPivot: [0, OBJECT292_FRAME.trunnionY - OBJECT292_FRAME.ringY, OBJECT292_FRAME.trunnionZ - OBJECT292_FRAME.ringZ],
   barrelLenM: OBJECT292_FRAME.muzzleZ - OBJECT292_FRAME.trunnionZ, barrelRadM: 0.135,
   glacis: [0, 0, 0], lower: [0, 0, 0], side: [0, 0, 0], rear: 0, roof: 0,
-  tw: 1.42, tFrontZ: 1.40, tRearZ: -2.22, tH: 0.86,
+  tw: 1.42, tFrontZ: 1.40, tRearZ: -2.22, tH: OBJECT292_FRAME.boxRoof,
   cheek: [620, 810, 890], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 513, 567],
 }).turretPlates;
 // the T-80U X casting's ring on its raised race and its trunnion (russia152Frames.ts)

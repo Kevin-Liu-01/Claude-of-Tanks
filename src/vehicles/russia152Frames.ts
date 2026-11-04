@@ -8,10 +8,11 @@ export const T14_152_GUN_FRAME = Object.freeze({ trunnionY: 2.121, trunnionZ: 1.
 
 /** The Object 292 on the T-80U X hull (profiles/t80uX.ts; owner 2026-11-04: "only use modern new hulls like the new t80 x
  * hull"): the casting's ring on the T-80U X raised race, the LP-83's trunnion in the casting's own embrasure (the T-80U X
- * trunnion), its muzzle 3.5 m past the hull's nose at 3.36 (Kubinka). */
+ * trunnion), its muzzle 3.5 m past the hull's nose at 3.36 (Kubinka); the welded box's roof 0.74 m over the ring, 0.12 m
+ * over the casting's crown (the Kubinka photographs: the box stands about 0.6 m over the hull's roof). */
 export const OBJECT292_FRAME = Object.freeze({
   ringY: 1.55158 + T80U_X_RING_RAISE_M, ringZ: 0.0718698169,
-  trunnionY: 1.7564274071 + T80U_X_RING_RAISE_M, trunnionZ: 1.4199398169, muzzleZ: 6.86,
+  trunnionY: 1.7564274071 + T80U_X_RING_RAISE_M, trunnionZ: 1.4199398169, muzzleZ: 6.86, boxRoof: 0.74,
 });
 
 /** The Object 195: a 7.9 m hull on seven road wheels (militaryrussia; btvt), its unmanned module's ring amidships over the
