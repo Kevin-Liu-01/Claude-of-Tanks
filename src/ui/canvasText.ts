@@ -4,14 +4,13 @@
  * UI text is DOM, never canvas text: the kit's type, i18n, the zh floor and assistive tech all reach a span, and none
  * reaches a glyph painted into a bitmap. A canvas keeps its graphics and measures its words as before (ctx.measureText
  * lays out its readouts); where it drew a run with fillText it places one here instead, at the same anchor, in the same
- * font, tracking, ink, alignment, baseline, alpha and halo:
+ * font, ink, alignment, baseline, alpha and halo:
  * - a run is a span in a layer over the canvas (inset 0, no input), left where the run's alignment puts it and its top the
  *   anchor less the font's ascent for that baseline, its line box the font's ascent + descent (so the span's baseline is
  *   the canvas's to the font's own metrics);
  * - a halo (the canvas's strokeText under the fill) is -webkit-text-stroke at the same width, painted under the fill;
  * - a repaint is begin(), the runs it places, end(): a run not placed again hides; a run writes only what changed (text,
- *   font, tracking, place, ink, alpha, halo), and its metrics are measured once per text, font and tracking (and again
- *   when a font loads).
+ *   font, place, ink, alpha, halo), and its metrics are measured once per text and font (and again when a font loads).
  * src/ui/uiCanvasCensus.selftest.mjs pins the canvas text left anywhere else; the readouts' data-datum marks go on
  * their runs (run()).
  */
@@ -29,8 +28,6 @@ export interface CanvasTextStyle {
   /** The halo's width in px (a dark stroke under the glyphs), 0 for none, and its ink. */
   haloWidth: number;
   halo: string;
-  /** The tracking the canvas's letterSpacing would add after each glyph (a CSS length; '0px' or absent for none). */
-  letterSpacing?: string;
 }
 
 /** A placed run as the canvas would have drawn it (receipts read these in the canvas's terms). */
@@ -51,8 +48,8 @@ export interface CanvasText {
   begin(): void;
   /** Place run `slot`: `text` at the canvas anchor (x, y) in CSS px, set as `style` says. */
   place(slot: number, text: string, x: number, y: number, style: Readonly<CanvasTextStyle>): void;
-  /** Place run `slot` as `ctx` would draw it now (its font, letterSpacing, align, baseline, fillStyle, globalAlpha; with
-   *  a halo of `haloWidth` in its strokeStyle). */
+  /** Place run `slot` as `ctx` would draw it now (its font, align, baseline, fillStyle, globalAlpha; with a halo of
+   *  `haloWidth` in its strokeStyle). */
   placeAs(slot: number, text: string, x: number, y: number, ctx: CanvasRenderingContext2D, haloWidth?: number): void;
   /** The repaint ends: runs not placed hide. */
   end(): void;
@@ -60,9 +57,6 @@ export interface CanvasText {
   clear(): void;
   /** Run `slot`'s element (made on first use), to mark it as a datum's readout. */
   run(slot: number): HTMLElement;
-  /** Set run `slot` in tabular figures from now on (a readout that ticks in place: the reload countdown). The canvas
-   *  measures proportional figures, so its caller measures the run and anchors it at its left. */
-  tabular(slot: number): void;
   /** The runs the last repaint placed. */
   placed(): readonly CanvasTextRecord[];
 }
@@ -77,11 +71,9 @@ interface Run {
   shown: boolean;
   text: string;
   font: string;
-  letterSpacing: string;
   baseline: string;
   align: string;
   epoch: number;
-  tabular: boolean;
   width: number;
   ascent: number;
   descent: number;
@@ -115,9 +107,7 @@ export function createCanvasText(parent: Element, className: string): CanvasText
   const root = el('div', className ? `cot-ctext ${className}` : 'cot-ctext', parent);
   const runs: Run[] = [];
   const last: CanvasTextRecord[] = [];
-  const scratch: CanvasTextStyle = {
-    font: '', color: '', align: 'left', baseline: 'alphabetic', alpha: 1, haloWidth: 0, halo: '', letterSpacing: '0px',
-  };
+  const scratch: CanvasTextStyle = { font: '', color: '', align: 'left', baseline: 'alphabetic', alpha: 1, haloWidth: 0, halo: '' };
 
   function runAt(slot: number): Run {
     let run = runs[slot];
@@ -125,8 +115,7 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     const span = el('span', '', root);
     span.style.display = 'none';
     run = {
-      el: span, used: false, shown: false, text: '', font: '', letterSpacing: '0px', baseline: '', align: '', epoch: -1,
-      tabular: false,
+      el: span, used: false, shown: false, text: '', font: '', baseline: '', align: '', epoch: -1,
       width: 0, ascent: 0, descent: 0, left: NaN, top: NaN, color: '', alpha: 1, halo: '', haloWidth: 0,
       record: { text: '', x: 0, y: 0, font: '', align: 'left', baseline: 'alphabetic', color: '', alpha: 1 },
     };
@@ -141,16 +130,9 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     if (text !== run.text) { run.text = text; span.textContent = text; run.epoch = -1; }
     if (style.font !== run.font) {
       run.font = style.font;
-      span.style.font = style.font; // (resets line-height: written again below, and the figures)
-      if (run.tabular) span.style.fontVariantNumeric = 'tabular-nums';
+      span.style.font = style.font; // (resets line-height: written again below)
       run.epoch = -1;
       run.ascent = -1;
-    }
-    const letterSpacing = style.letterSpacing || '0px';
-    if (letterSpacing !== run.letterSpacing) {
-      run.letterSpacing = letterSpacing;
-      span.style.letterSpacing = letterSpacing === '0px' ? '' : letterSpacing;
-      run.epoch = -1;
     }
     if (style.baseline !== run.baseline || style.align !== run.align) {
       run.baseline = style.baseline;
@@ -162,7 +144,6 @@ export function createCanvasText(parent: Element, className: string): CanvasText
       let ascent = 0, descent = 0, width = 0;
       if (ctx) {
         ctx.font = style.font;
-        ctx.letterSpacing = letterSpacing;
         ctx.textBaseline = style.baseline;
         const m = ctx.measureText(text);
         width = m.width;
@@ -211,7 +192,6 @@ export function createCanvasText(parent: Element, className: string): CanvasText
     place,
     placeAs(slot, text, x, y, ctx, haloWidth = 0) {
       scratch.font = ctx.font;
-      scratch.letterSpacing = ctx.letterSpacing || '0px';
       scratch.color = String(ctx.fillStyle);
       scratch.align = ctx.textAlign;
       scratch.baseline = ctx.textBaseline;
@@ -233,11 +213,6 @@ export function createCanvasText(parent: Element, className: string): CanvasText
       for (const run of runs) if (run) { run.used = false; hide(run); }
     },
     run: (slot) => runAt(slot).el,
-    tabular(slot) {
-      const run = runAt(slot);
-      run.tabular = true;
-      run.el.style.fontVariantNumeric = 'tabular-nums';
-    },
     placed: () => last,
   };
 }

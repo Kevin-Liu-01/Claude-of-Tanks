@@ -22,10 +22,9 @@ import { brotliCompressSync, brotliDecompressSync, constants } from 'node:zlib';
 import {
   TYPE_FACES, TYPE_FAMILY, TYPE_SOURCES, TYPE_STACK, TYPE_WEIGHTS, TYPE_SCALE, TYPE_FLOOR_PX, TYPE_FACE_RANGES,
   TYPE_FALLBACK_FAMILY, TYPE_FALLBACKS, TYPE_CAPS_RANGE, TYPE_SPACE_RANGE, TYPE_DEFAULT_FAMILIES, TYPE_SYMBOLS, TYPE_ACCENTS,
-  TYPE_NUMERALS, fontFaceCss, numeralFaceCss, typeTokenCss, typeFaceFile, typeHead, expandTypeMarkers, parseTypeMarker, TYPE_MARKER,
+  fontFaceCss, typeTokenCss, typeFaceFile, typeHead, expandTypeMarkers, parseTypeMarker, TYPE_MARKER,
 } from './typeFaces.ts';
-import { FONT_STACK, FONT_COND, FONT_NUM } from './fonts.ts';
-import { CMAP as GLACIS_CMAP, supports as glacisSupports } from './glacis.js';
+import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { zhTypeFloorCss, zhTypeFloorSelectors, zhTypeFloorStyle } from './zhTypeFloor.ts';
 import { PUBLIC_ROUTE_RECORDS } from './localeRouting.ts';
 import { localizeHtmlDocument } from '../presentation/localizedHtml.ts';
@@ -197,37 +196,6 @@ for (const c of ACCENT_CHARS) {
     assert.ok(CHAKRA_CHARS.has(letter) && CHAKRA_CHARS.has(mark), `Chakra Petch composes U+${c.toString(16)} from its own glyphs`);
   }
 }
-// The numerals face (DECISIONS 2026-11-03): Glacis 1.000, Kevin Liu's block face, SIL OFL 1.1, vendored unmodified from
-// Princeton-Powerlifting 8eb6c4f with its outline module src/ui/glacis.js (the baked markings' outlines). The WOFF2 and
-// the module are one build of the same outlines: their character maps are equal. The face's unicode-range is its figures,
-// signs and spaces, never a letter, so FONT_NUM hands letters and localized text to the shell face.
-{
-  const [face] = TYPE_NUMERALS.faces;
-  assert.equal(TYPE_NUMERALS.faces.length, 1, 'Glacis is one face');
-  const bytes = readFileSync(join(ROOT, 'public/fonts', face.file));
-  assert.equal(bytes.subarray(0, 4).toString('latin1'), 'wOF2', `${face.file} is WOFF2`);
-  assert.equal(bytes.length, face.bytes, `${face.file} keeps its pinned size`);
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), face.sha256, `${face.file} is the pinned Glacis 1.000 build`);
-  assert.ok(face.file.startsWith(`${TYPE_NUMERALS.dir}/`), `${face.file} sits beside its licence`);
-  assert.equal(face.weight, '100 1000', 'one Bold face answers every weight (nothing synthesized)');
-  assert.equal(createHash('sha256').update(read('src/ui/glacis.js')).digest('hex'),
-    '5871e53fa50f001a9fea46b13f29283f6c09cb53f6fcd161907682d1777bb6f5', 'src/ui/glacis.js is the 8eb6c4f module, byte for byte');
-  const ofl = read(`public/fonts/${TYPE_NUMERALS.dir}/OFL.txt`);
-  assert.match(ofl, /SIL Open Font License, Version 1\.1/, 'Glacis ships its OFL text');
-  assert.match(ofl, /^Copyright 2026 Kevin Liu/, 'Glacis keeps its copyright line');
-  assert.doesNotMatch(ofl.split('-----')[0], /Reserved Font Name/, 'Glacis reserves no name');
-  const chars = cmapOf(face.file);
-  assert.deepEqual([...chars].sort((a, b) => a - b), Object.keys(GLACIS_CMAP).map(Number).sort((a, b) => a - b),
-    'the WOFF2 and the outline module carry the same characters');
-  const range = rangeSet(TYPE_NUMERALS.range);
-  assert.ok([...'0123456789.,:%/+-×°'].every((ch) => range.has(ch.codePointAt(0)) && chars.has(ch.codePointAt(0))),
-    'the face sets the HUD\'s figures and signs');
-  assert.ok([...range].every((c) => !/\p{L}/u.test(String.fromCodePoint(c))), 'no letter falls in the numerals range');
-  assert.ok([0x202f, 0x2009, 0xa0].every((c) => range.has(c) && chars.has(c)), 'fr-FR grouping and the thin spaces set in the face');
-  assert.ok(!glacisSupports('İ') && !glacisSupports('装填'), 'the module reports what it cannot set (callers fall back)');
-  assert.equal(FONT_NUM, `'${TYPE_NUMERALS.family}',${FONT_COND}`, 'FONT_NUM: Glacis, then the shell family for letters');
-}
-
 // Every character a catalog string or a tank name prints is drawn by a shipped face on both voice paths: the Plex path
 // (Plex Sans, then the accents face, then the marks face) and the Chakra Petch path (its cmap or its composition, then
 // the marks face). Chinese and emoji use the system faces by design; the zero-width space the Chinese catalog marks its
@@ -257,7 +225,7 @@ for (const locale of ['en-US', 'zh-CN']) {
   assert.deepEqual(marks.filter((ch) => !COVERED_MARKS.has(ch)), [], `${locale}: every arrow or math mark in a string has a shipped face`);
 }
 const shippedFontFiles = walk('public/fonts', (path) => /\.(woff2?|ttf|otf)$/i.test(path)).map((path) => path.slice('public/fonts/'.length));
-assert.deepEqual(shippedFontFiles.sort(), [...TYPE_FACES, ...TYPE_SYMBOLS.faces, ...TYPE_ACCENTS.faces, ...TYPE_NUMERALS.faces].map((face) => face.file).sort(), 'public/fonts ships exactly the pinned faces');
+assert.deepEqual(shippedFontFiles.sort(), [...TYPE_FACES, ...TYPE_SYMBOLS.faces, ...TYPE_ACCENTS.faces].map((face) => face.file).sort(), 'public/fonts ships exactly the pinned faces');
 const attribution = read('docs/ATTRIBUTION.md');
 const notice = read('NOTICE.md');
 for (const [voice, source] of Object.entries(TYPE_SOURCES)) {
@@ -275,10 +243,6 @@ for (const [voice, source] of Object.entries(TYPE_SOURCES)) {
   const accents = attribution.split('\n').find((line) => line.startsWith(`| ${TYPE_ACCENTS.family} `));
   assert.ok(accents && /SIL Open Font License 1\.1/.test(accents) && accents.includes(`public/fonts/${TYPE_ACCENTS.dir}/`), 'docs/ATTRIBUTION.md has the Cot Accents row');
   assert.ok(notice.includes(TYPE_ACCENTS.family), 'NOTICE.md names Cot Accents');
-  const glacis = attribution.split('\n').find((line) => line.startsWith(`| ${TYPE_NUMERALS.family} `));
-  assert.ok(glacis && /SIL Open Font License 1\.1/.test(glacis) && glacis.includes(`public/fonts/${TYPE_NUMERALS.dir}/`)
-    && glacis.includes('src/ui/glacis.js'), 'docs/ATTRIBUTION.md has the Glacis row (the face and its outline module)');
-  assert.ok(notice.includes(TYPE_NUMERALS.family), 'NOTICE.md names Glacis');
 }
 
 // ------------------------------------------------------------------------------------------------------- the sources
@@ -354,9 +318,8 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // (5,550 / 961), +1,107 / +71 on /home (4,645 / 992), and on the gallery, which declares the display family as well,
 // +2,512 / +98 (6,632 / 956). The marks face's four Polish letters (265: Chakra Petch's ł Ł ż Ż for PT-84 Orzeł and
 // Żbik) lengthen its two unicode-ranges: +48 raw everywhere, the game head 5,598 / 974, /home 4,693 / 1,002, the
-// gallery 6,680 / 967. The numerals face (Glacis, the game's `num`, 2026-11-03): one unicode-range rule, +183 raw / +44
-// brotli, the game head 5,781 / 1,018.
-const HEAD_BUDGET = Object.freeze({ game: { raw: 5820, brotli: 1025 }, page: { raw: 6720, brotli: 1010 } });
+// gallery 6,680 / 967.
+const HEAD_BUDGET = Object.freeze({ game: { raw: 5630, brotli: 980 }, page: { raw: 6720, brotli: 1010 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])
@@ -391,13 +354,8 @@ for (const path of [...SHIPPED_HTML, ...FIXTURE_HTML]) {
   }
 }
 const marker = (path) => parseTypeMarker(markersOf(read(path))[0]);
-assert.deepEqual(marker('index.html'), { families: ['ui', 'mono', 'body'], preload: ['display-700', 'body-500'], scale: false, fx: false, num: true },
-  'the game page declares the shell, readout and prose-emphasis families and the numerals face, and preloads the wordmark and UI-text faces');
-// The numerals face only where the battle HUD mounts: the game and the HUD preview (which draws the live HUD).
-assert.deepEqual(SHIPPED_HTML.filter((path) => markersOf(read(path)).some((one) => parseTypeMarker(one).num)).sort(),
-  ['index.html', 'site/hud-preview.html'], 'only the HUD\'s documents declare the numerals face');
-assert.ok(typeHead('ui num').includes(numeralFaceCss()) && !typeHead('ui').includes(TYPE_NUMERALS.family), 'num declares the face, nothing else does');
-assert.match(numeralFaceCss(), new RegExp(`unicode-range:${TYPE_NUMERALS.range.replace(/[+]/g, '\\+')}}$`), 'the numerals face downloads only for a figure');
+assert.deepEqual(marker('index.html'), { families: ['ui', 'mono', 'body'], preload: ['display-700', 'body-500'], scale: false, fx: false },
+  'the game page declares the shell, readout and prose-emphasis families and preloads the wordmark and UI-text faces');
 assert.deepEqual(marker('404.html').families, ['ui'], 'the 404 declares only the shell family (its kit voices read it: notFound.css)');
 // Preloads: Medium and Bold on the game page and home only (the type rules); every other document relies on its
 // metric-matched fallbacks, so a late face swaps in without moving text.
@@ -461,8 +419,7 @@ assert.ok(!fontFaceCss(['mono']).includes(TYPE_SYMBOLS.family), 'a readout-only 
 // A page's block holds only its families' faces and fallbacks.
 const gameRules = parseRules(typeHead(marker('index.html')));
 assert.deepEqual([...new Set(gameRules.map((rule) => rule['font-family'].replace(/'/g, '')))].sort(),
-  ['Cot Accents', 'Cot Body Fallback', 'Cot Fallback', 'Cot Mono Fallback', 'Cot Symbols', 'Cot UI', 'Glacis', 'IBM Plex Mono', 'IBM Plex Sans'], 'the game page declares only what it uses');
-for (let weight = 100; weight <= 1000; weight += 50) ruleFor(TYPE_NUMERALS.family, weight, gameRules);
+  ['Cot Accents', 'Cot Body Fallback', 'Cot Fallback', 'Cot Mono Fallback', 'Cot Symbols', 'Cot UI', 'IBM Plex Mono', 'IBM Plex Sans'], 'the game page declares only what it uses');
 // Metric-matched fallbacks, keyed by family: the overrides are the face's vertical metrics over the size-adjust
 // (fontTools, 2026-10-17: IBM Plex Sans and Mono 1025/-275, Chakra Petch 992/-308 at 1000 units per em).
 const PLEX = [1025, 275];
@@ -525,12 +482,9 @@ const weightsIn = (text) => WEIGHT_FORMS.flatMap((form) => [...text.matchAll(for
 //   follow the floor. Its three legacy 800s resolve to Chakra Petch Bold.
 // - garage.css: TEMPORARY (release 230), the compact hero card's 5 px dev-only tag, which the hero-card overlay session
 //   (item/ui-hero-name-overlay-230) resizes with the compact card's name and tier.
-// - canvasText.ts: a run set in tabular figures (the sight's reload countdown, which ticks in place in Glacis's tnum): its
-//   font shorthand resets .num's figures, so the run writes them itself (CanvasText.tabular).
 const LANE_OWNED = Object.freeze({
   'src/ui/battleHudLayout.css': { weights: 3, under: 22, tabular: 1 },
   'src/ui/garage.css': { under: 1 },
-  'src/ui/canvasText.ts': { tabular: 2 },
 });
 for (const [path, text] of sources) {
   const bad = weightsIn(text).filter((weight) => !ALLOWED.has(Number(weight)));
@@ -613,16 +567,11 @@ for (const [path, text] of sources) {
   assert.doesNotMatch(text, /class="[^"]*\bnum\b[^"]*"[^>]*>\$\{t\(/, `${path}: .num holds a readout, never a localized string`);
 }
 assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 'the mode status sentence reads in the shell face (no .num)');
-// The team scores are the HUD's display numerals: Glacis (FONT_NUM, DECISIONS 2026-11-03), centred in fixed columns.
-// They change on a kill, never per frame, so proportional figures move nothing beside them.
+// The team scores are the HUD's display numerals (the data voice: Bold lining figures): Chakra Petch Bold, centred
+// in fixed columns. They change on a kill, never per frame, so proportional figures move nothing beside them.
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');
 assert.match(hud, /<b class="fe">0<\/b>/, 'the enemy score is a display numeral');
-assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_NUM\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the numerals face (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
-// The HUD's counting readouts that tick in place keep .num's tabular figures in Glacis's tnum: one rule names them and
-// points .num's family token at FONT_NUM on those elements alone (no second !important against .num's).
-assert.match(hud, /\.cot-top \.tm\.num,\.cot-net \.num,\.cot-shell \.cnt\.num,\.cot-con \.cnt\.num\{--font-mono:\$\{FONT_NUM\};\}/,
-  'the clock, link, ammo and consumable counts set .num\'s tabular figures in Glacis');
-assert.match(hud, /sightText\.tabular\(SIGHT_TEXT_COUNTDOWN\)/, 'the sight\'s reload countdown ticks in tabular figures');
+assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
 // The end screen's headline tallies and team scores are display numerals too: they count up once (1.05 s ease-out) and
 // settle, and the settled frame is what reads (Plex Mono's full-cell comma printed "8 , 420"). Live gauges keep .num.
 const endScreen = read('src/ui/endScreen.ts');
@@ -767,7 +716,7 @@ for (const path of ['src/vehicles/materialPainterWorkerClient.ts', 'tools/market
   assert.ok(read(path).includes(display700), `${path} loads ${display700}`);
 }
 
-console.log(`typeSystem: ${TYPE_FACES.length} pinned OFL faces + ${TYPE_SYMBOLS.faces.length} marks + ${TYPE_ACCENTS.faces.length} accents + ${TYPE_NUMERALS.faces.length} numerals faces, `
+console.log(`typeSystem: ${TYPE_FACES.length} pinned OFL faces + ${TYPE_SYMBOLS.faces.length} marks + ${TYPE_ACCENTS.faces.length} accents faces, `
   + `${printed.size} printed characters drawn, ${sources.size} shipped sources (weights, `
   + `${TYPE_FLOOR_PX}px floor, .num-only tabular figures, zh display leading and 13 px label floor, no Monument), ${SHIPPED_HTML.length + FIXTURE_HTML.length} `
   + `documents' markers, preloads and head budgets passed`);

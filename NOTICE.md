@@ -38,8 +38,8 @@ Cot Symbols, the marks face Kevin B. Liu drew from Chakra Petch's outlines,
 ships under the same license in `public/fonts/cot-symbols/`, and Cot Accents,
 the accented letters Kevin B. Liu assembled from IBM Plex Sans's own glyphs
 under its own name, in `public/fonts/cot-accents/`; Glacis, Kevin Liu's
-block face for markings and HUD numerals, ships under the same license in
-`public/fonts/glacis/` with its outline module `src/ui/glacis.js`; the
+block face for the markings painted on the tanks, ships under the same license
+as its outline module `src/ui/glacis.js` (license in `public/fonts/glacis/`); the
 retired ABC Monument Grotesk (Dinamo Typefaces) is no longer in the tree. Their
 required notices and exact paths are preserved in
 [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) and `docs/licenses/`. The project

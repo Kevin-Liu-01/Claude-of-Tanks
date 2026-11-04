@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   drawNationalInsignia, drawTacticalNumber, GLACIS_MARKING_OUTLINE, GLACIS_MARKING_TRACKING, SHELL_MIDDLE_CAP_LIFT,
 } from './vehicleMarkings.ts';
@@ -112,6 +114,21 @@ for (const number of ['Kp 12', 'ПТ-76']) {
   drawTacticalNumber(ctx, { tacticalNumber: number }, bounds);
   assert.deepEqual(ctx.drawn.texts, [number], `${number}: Glacis cannot set it as written, so the shell face does`);
   assert.ok(ctx.measureText(number).width + ctx.drawn.lineWidth <= bounds.width * 0.94 + 1e-9, `${number}: fits its bounds`);
+}
+
+// Glacis (DECISIONS 2026-11-03; owner 2026-11-04: the tanks' markings only, never the HUD, so no font file ships): the
+// outline module vendored byte for byte from Princeton-Powerlifting 8eb6c4f, its licence and attribution beside it.
+{
+  const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url));
+  assert.equal(createHash('sha256').update(read('src/ui/glacis.js')).digest('hex'),
+    '5871e53fa50f001a9fea46b13f29283f6c09cb53f6fcd161907682d1777bb6f5', 'src/ui/glacis.js is the 8eb6c4f module, byte for byte');
+  const ofl = read('public/fonts/glacis/OFL.txt').toString('utf8');
+  assert.match(ofl, /SIL Open Font License, Version 1\.1/, 'Glacis ships its OFL text');
+  assert.match(ofl, /^Copyright 2026 Kevin Liu/, 'Glacis keeps its copyright line');
+  const row = read('docs/ATTRIBUTION.md').toString('utf8').split('\n').find((line) => line.startsWith('| Glacis '));
+  assert.ok(row && /SIL Open Font License 1\.1/.test(row) && row.includes('src/ui/glacis.js')
+    && row.includes('public/fonts/glacis/OFL.txt'), 'docs/ATTRIBUTION.md has the Glacis row (the module and its licence)');
+  assert.ok(read('NOTICE.md').toString('utf8').includes('Glacis'), 'NOTICE.md names Glacis');
 }
 
 console.log('vehicleMarkingsCanvas.selftest: all insignia painters and fallback pass; tactical numbers are Glacis outlines that fit their bounds');

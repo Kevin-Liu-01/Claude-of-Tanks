@@ -25,14 +25,6 @@ export const FONT_STACK = "'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','
  */
 export const FONT_COND = FONT_STACK;
 
-/**
- * Numeral stack (DECISIONS 2026-11-03): Glacis's figures and signs, then the shell family, which sets the letters and
- * localized text the face's unicode-range leaves out (the reload unit's ' s', a range tag's ' m', every CJK word). The
- * HUD's scores, clock, counters and the sight's figures; documents declare the face with the `num` marker keyword
- * (typeFaces.ts TYPE_NUMERALS), and where none does the stack is FONT_COND.
- */
-export const FONT_NUM = `'Glacis',${FONT_COND}`;
-
 // The faces the shell paints first (resolved against the 'Cot UI' ranges): Plex Sans Medium, Chakra Petch Bold.
 const WEIGHTS = [500, 700] as const;
 
@@ -42,7 +34,6 @@ const FONT_CSS = `.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end
 .cot-bl,.cot-si,.cot-kc,.cot-touch,.cot-studio{font-weight:500;font-optical-sizing:auto;}`;
 
 let warmed = false;
-let numeralsWarmed = false;
 
 /**
  * Inject the overlay type rules (idempotent) and pre-warm the two first-paint faces so late downloads replace the
@@ -56,14 +47,4 @@ export function ensureFonts(): void {
       document.fonts.load(`${w} 16px 'Cot UI'`).catch(() => {});
     }
   }
-}
-
-/**
- * Pre-warm the numerals face where the HUD mounts, so the sight's measured figures (canvas runs, which measure before the
- * DOM asks for the face) meet Glacis rather than the shell face. A document without the face resolves to nothing.
- */
-export function ensureNumeralFace(): void {
-  if (numeralsWarmed || typeof document === 'undefined' || !document.fonts?.load) return;
-  numeralsWarmed = true;
-  document.fonts.load("700 16px 'Glacis'", '0').catch(() => {});
 }

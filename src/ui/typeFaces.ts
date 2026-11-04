@@ -78,26 +78,6 @@ export const TYPE_ACCENTS = Object.freeze({
   ]),
 });
 
-/**
- * The numerals face: Glacis 1.000, Kevin Liu's chamfered block face (SIL OFL 1.1; Princeton-Powerlifting 8eb6c4f
- * public/fonts/glacis, unmodified; DECISIONS 2026-11-03). One Bold face answers every weight, so nothing is synthesized.
- * FONT_NUM (fonts.ts) names it ahead of the shell family: the HUD's figures and signs set in it, and its unicode-range
- * (the ASCII figures and signs, the no-break, figure, thin and narrow spaces, the degree, middle dot and multiplication
- * signs) leaves letters and localized text to the shell face. Only documents whose marker opts in with `num` declare it
- * (the game and the HUD preview). Its digits are proportional; `.num` readouts take its tnum figures. Baked markings
- * never read the face: they draw its outlines from src/ui/glacis.js (src/ui/glacisText.ts).
- */
-export const TYPE_NUMERALS = Object.freeze({
-  family: 'Glacis',
-  dir: 'glacis',
-  range: 'U+0020-003F,U+00A0,U+00B0,U+00B7,U+00D7,U+2007,U+2009,U+202F',
-  author: 'Kevin Liu',
-  source: 'https://powerlifting.kevinliu.studio/brand (Princeton-Powerlifting 8eb6c4f, public/fonts/glacis, built by `pnpm font`)',
-  faces: Object.freeze([
-    { weight: '100 1000', file: 'glacis/Glacis.woff2', bytes: 2864, sha256: 'fee8056e627c737004ecef21691eb29d381070e5027e0459707ef83e31f16e5a' },
-  ]),
-});
-
 /** The CSS family names. `ui` is the weight-voiced shell family declared over the body and display files. */
 export const TYPE_FAMILY: Readonly<Record<TypeFamilyKey, string>> = Object.freeze({
   display: 'Chakra Petch',
@@ -299,8 +279,6 @@ export interface TypeHeadOptions {
   readonly scale?: boolean;
   /** Emit the display treatments (`.t-accent`, `.t-hollow`). */
   readonly fx?: boolean;
-  /** Declare the numerals face (TYPE_NUMERALS), which FONT_NUM names. */
-  readonly num?: boolean;
 }
 
 /** The rules a document's head carries besides its faces: family tokens, `.num`, the resets, and what it opts into. */
@@ -362,7 +340,7 @@ const FAMILY_KEYS = new Set<string>(['ui', 'display', 'body', 'mono']);
 /**
  * Parse a marker's keywords. `ui`, `display`, `body`, `mono` name the families the page declares (none named: `ui mono`);
  * `<voice>-<weight>` names a face to preload (it must belong to a declared family); `scale` and `fx` opt into the type
- * scale tokens and the display treatments; `num` declares the numerals face.
+ * scale tokens and the display treatments.
  */
 export function parseTypeMarker(keywords: string): TypeMarker {
   const words = keywords.trim() ? keywords.trim().split(/\s+/) : [];
@@ -370,12 +348,10 @@ export function parseTypeMarker(keywords: string): TypeMarker {
   const preload: string[] = [];
   let scale = false;
   let fx = false;
-  let num = false;
   for (const word of words) {
     if (FAMILY_KEYS.has(word)) families.push(word as TypeFamilyKey);
     else if (word === 'scale') scale = true;
     else if (word === 'fx') fx = true;
-    else if (word === 'num') num = true;
     else { typeFaceFile(word); preload.push(word); }
   }
   const declared = families.length ? families : [...TYPE_DEFAULT_FAMILIES];
@@ -384,13 +360,7 @@ export function parseTypeMarker(keywords: string): TypeMarker {
     const used = declared.some((family) => TYPE_FACE_RANGES[family].some(([voice, weight]) => typeFaceFile(`${voice}-${weight}`) === file));
     if (!used) throw new Error(`typeFaces: ${token} is preloaded but no declared family uses it`);
   }
-  return { families: declared, preload, scale, fx, num };
-}
-
-/** The numerals face's @font-face rule (a document opts in with `num`). */
-export function numeralFaceCss(): string {
-  return TYPE_NUMERALS.faces.map((face) => `@font-face{font-family:'${TYPE_NUMERALS.family}';src:url(${FONT_ROOT}${face.file});`
-    + `font-weight:${face.weight};font-display:swap;unicode-range:${TYPE_NUMERALS.range}}`).join('\n');
+  return { families: declared, preload, scale, fx };
 }
 
 /** The head markup one document gets: preloads for the faces its first paint uses, then its rules. */
@@ -401,10 +371,10 @@ export function typeHead(marker: TypeMarker | string): string {
   // The head's rules sit in the surfaces layer with every other sheet (src/ui/styleLayers.ts): unlayered, they would
   // beat every layered rule whatever its specificity.
   return `${links.join('')}<style id="cot-font-faces">${LAYER_ORDER}@layer surfaces{${fontFaceCss(parsed.families)}\n`
-    + `${parsed.num ? `${numeralFaceCss()}\n` : ''}${typeTokenCss(parsed)}}</style>`;
+    + `${typeTokenCss(parsed)}}</style>`;
 }
 
-/** The document marker: `<!--cot:type ui mono num display-700 body-500-->`. */
+/** The document marker: `<!--cot:type ui mono display-700 body-500-->`. */
 export const TYPE_MARKER = /<!--cot:type((?:\s+[a-z]+(?:-\d{3})?)*)\s*-->/g;
 
 /** Expand every type marker of an HTML document (vite.config.ts `cot-type-faces`). */
