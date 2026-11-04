@@ -8,7 +8,7 @@ import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
-import { createAI, mulberry32 } from './ai.ts';
+import { applyPendingBotNews, createAI, mulberry32 } from './ai.ts';
 
 let failures = 0;
 function ok(cond, label) {
@@ -144,10 +144,10 @@ console.log('[3] a scout struck from the side keeps moving; a main battle tank t
     drive(bot, ctl, 3.5, { onTick: (t) => {
       if (Math.abs(t - 1) < SIM_DT / 2) {
         ctl.notifyUnderFire(host, { selfHit: true, damaging: true, kind: 'pen' });
+        applyPendingBotNews([bot]); // the driver's flush after its shells (2026-11-02 audit M7: the news is queued for it)
+        reaction = ctl.debugInfo().reaction;
         atHit = Math.abs(bot.state.speed);
       }
-      // the hit lands at the next update (2026-11-02 audit M7: news between ticks is queued for it)
-      if (Math.abs(t - 1 - SIM_DT) < SIM_DT / 2) reaction = ctl.debugInfo().reaction;
       if (t > 1 && bot.input.throttle === 0 && bot.input.brake) brakingS += SIM_DT;
       after = Math.abs(bot.state.speed);
     } });
