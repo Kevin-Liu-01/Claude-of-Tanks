@@ -4,7 +4,9 @@
 // and an in-process pairing service (server/rooms/localPadService.ts, the LAN helper's): a desktop page and a phone
 // page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic
 // deviceorientation and touch events drive a tank in a solo battle — steer, throttle, aim, scope, ammunition, fire,
-// pause — and the stale fail-safe stops the tank when the phone vanishes. It records:
+// pause — and the stale fail-safe stops the tank when the phone vanishes; the first pairing's controls guide shows over
+// the live panel and leaves by itself or on Skip, a thumb on fire drags to aim, and the battle's cues reach the phone as
+// buzzes (a shot felt once, the gun loaded). It records:
 //   - the network log: no request reaches the pad service, and no pad module loads, before Connect Phone is pressed;
 //     the signaling socket's frames once the data channel is live (signaling only, no input);
 //   - steering latency (the phone's event → the first desktop animation frame whose player input carries it, both
@@ -176,6 +178,19 @@ try {
   await phone.waitForFunction(() => window.__COT_PAD_PHONE?.state === 'live', { timeout: 30_000 });
   await desktop.waitForFunction(() => window.__COT_PAD?.state === 'live' && window.__COT_PAD.path === 'direct', { timeout: 30_000 });
   check('the phone pairs from the QR link with one Start tap; the data channel is live on both sides', true, `button "${startLabel}"`);
+  report.step = 'guide';
+  // the first pairing names the controls over the live panel, and the thumbs work through it
+  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'shown', { timeout: 10_000 }).catch(() => {});
+  const guideShownAt = Date.now();
+  const guide = await phone.evaluate(() => {
+    const lever = document.querySelector('.pad-lever').getBoundingClientRect();
+    const under = document.elementFromPoint(lever.x + lever.width / 2, lever.y + lever.height / 2);
+    return { shown: !document.querySelector('.pad-tour').hidden, marks: document.querySelectorAll('.pad-tour-mark').length,
+      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-lever') };
+  });
+  await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
+  check('the first pairing shows the controls\' guide over the live panel, and a thumb works through it',
+    guide.shown && guide.marks >= 4 && guide.through, `${guide.marks} marks: ${guide.names.join(' · ')}`);
   report.network.phonePageRequests = phoneRequests.length;
   report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
   check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
@@ -197,6 +212,19 @@ try {
   await phone.waitForFunction(() => document.querySelector('.pad-shell[aria-pressed="true"]'), { timeout: 10_000 });
   check('the phone shows the battle\'s ammunition with the current slot', true,
     await phone.$$eval('.pad-shell:not([hidden])', (buttons) => buttons.map((b) => `${b.getAttribute('aria-label')}${b.getAttribute('aria-pressed') === 'true' ? ' (current)' : ''}`).join('; ')));
+  await phone.waitForFunction(() => !document.querySelector('.pad-lock')?.hidden, { timeout: 5000 }).catch(() => {});
+  check('the sight\'s lock key is on the phone in a solo battle', await phone.$eval('.pad-lock', (el) => !el.hidden));
+  // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
+  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'timeout', { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) }).catch(() => {});
+  check('the guide leaves by itself after ten seconds', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'timeout' && document.querySelector('.pad-tour').hidden),
+    `${((Date.now() - guideShownAt) / 1000).toFixed(1)} s after it showed`);
+  await phone.tap('[data-menu]');
+  await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
+  await phone.tap('.pad-opts [data-tour]');
+  await phone.waitForFunction(() => !document.querySelector('.pad-tour').hidden, { timeout: 5000 }).catch(() => {});
+  await phone.tap('.pad-tour-skip');
+  await phone.waitForFunction(() => document.querySelector('.pad-tour').hidden, { timeout: 5000 }).catch(() => {});
+  check('Options shows the guide again, and Skip ends it', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'skipped'));
   deadline();
 
   const player = (expr) => desktop.evaluate(new Function(`const p = window.__DEBUG.game.player; return (${expr});`));
@@ -349,6 +377,25 @@ try {
   check('fire from the phone shoots', ammo1 === ammo0 - 1, `rounds ${ammo0} → ${ammo1}`);
   await phone.waitForFunction(() => document.querySelector('.pad-ctl')?.dataset.state === 'loading', { timeout: 3000 }).catch(() => {});
   check('the phone shows the gun loading: the fire button dark, its ring refilling', await phone.$eval('.pad-ctl', (el) => el.dataset.state === 'loading'));
+  await sleep(800);
+  const felt = await phone.evaluate(() => ({ ...window.__COT_PAD_PHONE.buzz }));
+  const cues = await desktop.evaluate(() => ({ ...(window.__COT_PAD?.cues ?? {}) }));
+  check('the shot is felt once: the trigger kicks at the press, and the battle\'s cue for it adds none', felt.shot === 1 && (cues.shot ?? 0) >= 1,
+    `phone buzzes ${JSON.stringify(felt)}; desktop cues ${JSON.stringify(cues)}`);
+
+  report.step = 'fire drag';
+  // a thumb on fire drags to aim; the gun still loads, so the press spends no round and is felt as a refusal
+  const dragFrom = { yaw: await player('p.state.turretYaw'), rounds: await player('p.combat.ammo[p.combat.shellSlot]') };
+  const releaseFire = await touchDrag('.pad-fire', -160, 0);
+  await releaseFire();
+  await sleep(1500);
+  const dragTo = { yaw: await player('p.state.turretYaw'), rounds: await player('p.combat.ammo[p.combat.shellSlot]') };
+  check('a thumb on the fire button drags to aim', Math.abs(dragTo.yaw - dragFrom.yaw) > 0.05 && dragTo.rounds === dragFrom.rounds,
+    `turret ${(dragFrom.yaw * 57.3).toFixed(1)}° → ${(dragTo.yaw * 57.3).toFixed(1)}°, rounds ${dragFrom.rounds} → ${dragTo.rounds}`);
+  check('a press while the gun loads is felt as a refusal', (await phone.evaluate(() => window.__COT_PAD_PHONE.buzz.unready ?? 0)) >= 1);
+  await desktop.waitForFunction(() => window.__DEBUG.game.player.combat.reload.t <= 0, { timeout: 20_000 }).catch(() => {});
+  await phone.waitForFunction(() => (window.__COT_PAD_PHONE.buzz.ready ?? 0) >= 1, { timeout: 3000 }).catch(() => {});
+  check('the phone buzzes when the gun is loaded', (await phone.evaluate(() => window.__COT_PAD_PHONE.buzz.ready ?? 0)) >= 1);
 
   report.step = 'pause';
   // pause: the phone's pause opens the menu (the battle stands still), again resumes

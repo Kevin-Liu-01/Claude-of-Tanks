@@ -39,6 +39,12 @@ import { couchSeatSides } from '../sim/matchRuleset.ts';
   assert.equal(out.aimDistance, COUCH_AIM_DISTANCE_M);
   controls.take(out);
   assert.equal(out.fire, true, 'a level holds until it changes');
+  controls.releaseVirtual('fire');
+  assert.equal(controls.take(out).fire, false, 'and lets go when it does');
+  controls.pressVirtual('fire');
+  controls.releaseVirtual('fire');
+  assert.equal(controls.take(out).fire, true, 'a tap inside one tick still pulls the trigger');
+  assert.equal(controls.take(out).fire, false, 'once');
 
   controls.tapVirtual('consumable2');
   controls.tapVirtual('smoke');
@@ -62,4 +68,4 @@ import { couchSeatSides } from '../sim/matchRuleset.ts';
   assert.deepEqual([out.throttle, out.steer, out.fire, out.brake, out.actionBits], [0, 0, false, false, 0], 'release lets everything go');
 }
 
-console.log('couchSeats: PASS — seats by side in roster order, the first seat on the first tank, sit-outs; levels hold, taps press once, shells, aim sense, release');
+console.log('couchSeats: PASS — seats by side in roster order, the first seat on the first tank, sit-outs; levels hold, a trigger tap inside a tick fires once, taps press once, shells, aim sense, release');

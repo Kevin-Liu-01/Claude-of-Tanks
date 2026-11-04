@@ -53,6 +53,8 @@ export interface CouchRuntimePorts<E extends CouchEntity & SeatTank> {
   togglePause(): void;
   /** The battle's event bus, for what the input stage reports (a shell it could not load). */
   emit(type: string, payload: Record<string, RuntimeValue>): unknown;
+  /** The same bus's `on`, for what each seat's phone feels (src/pad/padCues.ts: the seat's own gun, hits and hull). */
+  on(type: string, listener: (payload: unknown) => void): () => void;
   /** The battle HUD shows the field, not one tank (body.cot-spectating), while a couch battle runs. */
   setSpectating(on: boolean): void;
 }
@@ -117,7 +119,7 @@ export function createCouchRuntime<E extends CouchEntity & SeatTank>(ports: Couc
       const url = padServiceUrl();
       if (!url) return null;
       lobby = startPadLobby(url, {
-        seat: (seat) => ({ input: controlsOf(seat), source: () => source(seat), togglePause: ports.togglePause }),
+        seat: (seat) => ({ input: controlsOf(seat), source: () => source(seat), togglePause: ports.togglePause, listen: ports.on, ownsPlayer: false }),
         seatGone: (seat) => { controls.get(seat)?.release(); controls.delete(seat); },
       });
       lobby.subscribe((view) => { lobbyView = view; });

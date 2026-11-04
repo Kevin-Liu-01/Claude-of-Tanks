@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { ACTION_DEFS } from '../game/input.ts';
 import {
-  DEFAULT_STEERING, PAD_AIM_GAIN, createPadInputMapper, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
+  AIM_CURVE, DEFAULT_STEERING, PAD_AIM_GAIN, aimGain, aimSpeed, createPadInputMapper, frameDelta, frameInsets, frameTurn, leverValue, lockAngle, steerFromAngle,
   wheelAngleDeg, wrapDeg,
 } from './padInput.ts';
 import { PAD_HOLD_ACTIONS, PAD_TAP_ACTIONS, decodePadAxes, encodePadAxes } from './padProtocol.ts';
@@ -83,6 +83,22 @@ near(steerFromAngle(175, -170), -steerFromAngle(15, 0), 1e-9, 'the centre wraps 
 assert.ok(steerFromAngle(10, 20) < 0, 'left of a re-centred wheel steers left');
 assert.equal(wrapDeg(190), -170);
 assert.equal(wrapDeg(-180), 180);
+// the sight's drag: slow is 1:1, a swipe a few times as far, a flick the most; the scope caps it lower
+assert.equal(aimGain(0), 1, 'a finger at rest keeps the mouse precision');
+assert.equal(aimGain(AIM_CURVE.slowPxPerMs), 1, 'and a slow drag');
+assert.ok(aimGain(0.5) > 2 && aimGain(0.5) < 3, 'a swipe turns two to three times as far');
+assert.equal(aimGain(10), AIM_CURVE.max, 'a flick is capped');
+assert.equal(aimGain(10, true), AIM_CURVE.maxScoped, 'and lower in the scope');
+assert.ok(aimGain(1) > aimGain(0.5), 'faster is further');
+assert.equal(aimGain(Number.NaN), 1);
+{
+  // a 150 px flick at 1.5 px/ms swings the gun past 90° at the mouse's 0.0022 rad per px (cameraRig BASE_SENS)
+  const rad = 150 * PAD_AIM_GAIN * aimGain(1.5) * 0.0022;
+  assert.ok(rad > Math.PI / 2, `a flick across the sight turns the gun past 90° (${(rad * 180 / Math.PI).toFixed(0)}°)`);
+}
+assert.equal(aimSpeed(0, 10, 10), 0.5, 'speed is distance over time, smoothed');
+assert.equal(aimSpeed(1, 0, 16), 0.5, 'a still move halves it');
+assert.equal(aimSpeed(0, 8, 0), 1, 'two moves in one millisecond read as 4 ms apart, never infinite');
 assert.equal(leverValue(0.03, 1), 0, 'the lever has a small dead zone');
 assert.equal(leverValue(2, 1), 1);
 assert.equal(leverValue(-1, 1), -1);
@@ -201,4 +217,4 @@ const BRAKE = 1 << PAD_HOLD_ACTIONS.indexOf('handbrake');
   assert.equal(idle.calls.filter((c) => c[0] === 'move').length, 1, 'a centred, idle phone is not re-zeroed every frame');
 }
 
-console.log('padInput: PASS — wheel angle in every landscape and lean, the locked frame, steering curve, lever, mapper (frames, aim, holds, taps, pause, fail-safe, throttled heartbeat)');
+console.log('padInput: PASS — wheel angle in every landscape and lean, the locked frame, steering curve, the sight\'s speed curve, lever, mapper (frames, aim, holds, taps, pause, fail-safe, throttled heartbeat)');

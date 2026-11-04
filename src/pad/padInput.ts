@@ -102,6 +102,35 @@ export function leverValue(offset: number, travel: number, deadzone = 0.06): num
   return Math.sign(v) * past;
 }
 
+// ---- the sight's drag (phone side) -------------------------------------------------------------------------------
+
+/** The sight's gain by the finger's speed (owner 2026-11-03: looking around "needs to be a lot more intuitive"): a
+ *  slow drag keeps the mouse's precision (1×), a swipe turns a few times as far and a flick swings the gun round, so a
+ *  turn to the rear is one or two flicks rather than six drags across the sight. Speeds in px per ms, smoothed. */
+export interface AimCurve {
+  /** Below this speed the drag is 1:1. */
+  slowPxPerMs: number;
+  /** The gain added per px/ms above it. */
+  perPxPerMs: number;
+  /** The most it multiplies, unscoped and in the scope (where a flick must not throw the sight off the target). */
+  max: number;
+  maxScoped: number;
+}
+
+export const AIM_CURVE: AimCurve = Object.freeze({ slowPxPerMs: 0.1, perPxPerMs: 4, max: 5, maxScoped: 2 });
+
+export function aimGain(speedPxPerMs: number, scoped = false, curve: AimCurve = AIM_CURVE): number {
+  const speed = Math.max(0, Number(speedPxPerMs) || 0);
+  return Math.min(scoped ? curve.maxScoped : curve.max, 1 + curve.perPxPerMs * Math.max(0, speed - curve.slowPxPerMs));
+}
+
+/** The finger's speed from one move: its distance over the time since the last, smoothed with the speed before (a
+ *  move or two of jitter neither starts nor stops a flick). */
+export function aimSpeed(previousPxPerMs: number, distancePx: number, elapsedMs: number): number {
+  const instant = Math.max(0, distancePx) / Math.max(4, elapsedMs);
+  return previousPxPerMs * 0.5 + instant * 0.5;
+}
+
 // ---- the desktop's mapper -----------------------------------------------------------------------------------
 
 /** The input layer's virtual controls (src/game/input.ts InputLayer), the touch HUD's path. */

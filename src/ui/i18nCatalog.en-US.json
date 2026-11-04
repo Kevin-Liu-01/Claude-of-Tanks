@@ -5790,5 +5790,15 @@
   "pad.opt.raise": "Raise",
   "pad.opt.hand": "Fire hand",
   "pad.opt.right": "Right",
-  "pad.opt.left": "Left"
+  "pad.opt.left": "Left",
+  "pad.lock": "Lock on",
+  "pad.opt.buzz": "Vibration",
+  "pad.opt.tour": "Controls guide",
+  "pad.opt.show": "Show",
+  "pad.tour.tilt": "Tilt to steer",
+  "pad.tour.throttle": "Slide to drive",
+  "pad.tour.stick": "Push to drive and steer",
+  "pad.tour.aim": "Drag to aim, flick to turn",
+  "pad.tour.fire": "Tap to fire, drag to aim",
+  "pad.tour.skip": "Skip"
 }

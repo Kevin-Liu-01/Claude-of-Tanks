@@ -10,10 +10,13 @@ import { createPadInputMapper } from './padInput.ts';
 import type { PadInputPort } from './padInput.ts';
 import { PAD_STALE_MS, decodePadAxes } from './padProtocol.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
+import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
 interface PadPlayer {
+  /** The battle entity's id: the bus names the tank each event is about by it (padCues.ts). */
+  id?: string;
   combat: { destroyed?: boolean; shellSlot: number; ammo: readonly number[]; reload: { t: number; totalS: number } } | null;
   spec: { id?: string; topSpeedKmh?: number; gun: { shells: ReadonlyArray<{ type: string; guided?: boolean }> } };
   state?: { turretYaw: number; speed?: number } | null;
@@ -28,10 +31,12 @@ export interface PadStatusSource {
   sniper: boolean;
   player: PadPlayer | null;
   shellCode(type: string): string;
+  /** The sight can lock on (the autoAim tap): the page's own player; a couch seat's sight is its own bearing. */
+  lockable?: boolean;
 }
 
 /** The phone's readout of the local player: ammunition (code, glyph, rounds), the slot, reload, scope, pause. */
-export function padStatusOf(source: PadStatusSource | null): PadStatus | null {
+export function padStatusOf(source: PadStatusSource | null, locked = false): PadStatus | null {
   const player = source?.player;
   const combat = player?.combat;
   if (!source?.battle || !player || !combat) return null;
@@ -53,6 +58,7 @@ export function padStatusOf(source: PadStatusSource | null): PadStatus | null {
     // whole km/h: the speedometer's grain, so a cruising tank sends no status
     ...(player.state && Number.isFinite(player.state.speed) ? { kmh: Math.round(player.state.speed! * 3.6) } : {}),
     ...(Number.isFinite(player.spec.topSpeedKmh) ? { topKmh: Math.round(player.spec.topSpeedKmh!) } : {}),
+    ...(source.lockable ? { lock: locked } : {}),
   };
 }
 
@@ -62,6 +68,11 @@ export interface PadReceiverPorts {
   source(): PadStatusSource | null;
   /** The phone's pause button: the same Settings toggle as Escape. */
   togglePause(): void;
+  /** The battle's event bus (its `on`), for the cues the phone feels (padCues.ts); without it the phone feels only its
+   *  own presses. */
+  listen?(type: string, listener: (payload: unknown) => void): () => void;
+  /** The tank is the page's player, so the events that name no tank are its (false for a couch seat but the player's). */
+  ownsPlayer?: boolean;
 }
 
 export interface PadReceiverView {
@@ -90,6 +101,8 @@ interface PadDebug {
   lastPhoneT: number;
   /** The newest frames' phone stamps and receipt times (epoch ms, uint32): the e2e splits the latency with them. */
   trace: Array<[number, number]>;
+  /** The cues sent, by name. */
+  cues: Record<string, number>;
 }
 
 /** The pairing this tab holds (code and resume token), so a reload resumes it (settings.ts reads the same key). */
@@ -129,7 +142,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
    *  frames and presses wait (its pause button still works, to close the menu it opened). */
   let driving = false;
   const debug: PadDebug | null = import.meta.env?.DEV || (typeof location !== 'undefined' && /[?&]padDebug\b/.test(location.search))
-    ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0, trace: [] } : null;
+    ? { state: 'connecting', path: '', frames: 0, rttMs: null, applyMs: 0, lastPhoneT: 0, trace: [], cues: {} } : null;
   if (debug && options.debugSeat !== undefined) {
     const seats = ((globalThis as { __COT_PAD_SEATS?: Record<number, PadDebug> }).__COT_PAD_SEATS ??= {});
     seats[options.debugSeat] = debug;
@@ -185,6 +198,19 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     },
   });
 
+  // The cues: each of the tank's events goes to the phone the moment the bus carries it, while the phone drives (a
+  // paused battle or a hidden tab feels nothing); the sight's lock is also the status's, so the phone's key lights.
+  let locked = false;
+  const owner = { id: null as string | null, player: ports.ownsPlayer !== false };
+  const unlisten = ports.listen ? PAD_CUE_EVENTS.map((type) => ports.listen!(type, (payload) => {
+    if (type === 'ui:autoAimState' && owner.player) locked = !!(payload && typeof payload === 'object' && Reflect.get(payload, 'on') === true);
+    if (!driving || view.state.kind !== 'live') return;
+    owner.id = ports.source()?.player?.id ?? null;
+    const cue = padCueOf(type, payload, owner);
+    if (!cue || !link.sendCtl({ k: 'cue', ...cue })) return;
+    if (debug) debug.cues[cue.c] = (debug.cues[cue.c] ?? 0) + 1;
+  })) : [];
+
   const timer = setInterval(() => {
     const now = performance.now();
     const relay = view.state.kind === 'live' && view.state.path === 'relay';
@@ -194,10 +220,11 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     const hidden = typeof document !== 'undefined' && document.hidden;
     const nowDriving = !!source?.battle && !source.paused && !hidden;
     if (driving && !nowDriving) mapper.releaseAll();
+    if (!source?.battle) locked = false;
     driving = nowDriving;
     if (view.state.kind !== 'live') return;
     // the phone's readout: on change, at most 5 a second (one on the billed relay), and a heartbeat every 2 s
-    const status = JSON.stringify(padStatusOf(source && hidden ? { ...source, paused: true } : source) ?? IDLE_STATUS);
+    const status = JSON.stringify(padStatusOf(source && hidden ? { ...source, paused: true } : source, locked) ?? IDLE_STATUS);
     const gap = now - lastStatusAt;
     if ((status !== lastStatus && gap >= (relay ? 1000 : 200)) || gap >= 2000) {
       if (link.sendCtl({ k: 'status', s: JSON.parse(status) as PadStatus })) { lastStatus = status; lastStatusAt = now; }
@@ -207,6 +234,7 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
 
   function stop(): void {
     clearInterval(timer);
+    for (const off of unlisten.splice(0)) off();
     mapper.releaseAll();
   }
 

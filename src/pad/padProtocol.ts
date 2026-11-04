@@ -220,6 +220,15 @@ export const PAD_TAP_ACTIONS = [
 export type PadHoldAction = (typeof PAD_HOLD_ACTIONS)[number];
 export type PadTapAction = (typeof PAD_TAP_ACTIONS)[number];
 
+/** What the battle tells the phone's hands (desktop → phone, sent the moment it happens; padCues.ts maps the game's
+ *  events onto them and names each one's buzz): the gun fired, a hit given that hurt or glanced off, a hit taken that
+ *  hurt or glanced off, a module knocked out, the tank on fire, a crash, a kill, the tank destroyed, the sixth sense,
+ *  a press the battle refused, and the sight locking on or letting go. */
+export const PAD_CUES = [
+  'shot', 'hit', 'deflect', 'hurt', 'glance', 'module', 'burning', 'impact', 'kill', 'dead', 'spotted', 'denied', 'lock', 'unlock',
+] as const;
+export type PadCue = (typeof PAD_CUES)[number];
+
 /** A shell slot as the phone shows it: the type's code as every locale prints it (AP, APCR, HE, HEAT, HESH, ATGM…;
  *  src/ui/shellLabels.ts shellTypeCode), its glyph's sprite id (shellIcons.ts) and the rounds left. The desktop resolves
  *  both, so the phone's page loads neither table. */
@@ -248,6 +257,9 @@ export interface PadStatus {
   /** The hull's speed in whole km/h (negative in reverse) and its top speed, for the phone's speedometer. */
   kmh?: number;
   topKmh?: number;
+  /** The sight's lock on the enemy nearest the reticle (the autoAim tap): absent where there is none to have (a couch
+   *  seat's sight is its own bearing). */
+  lock?: boolean;
 }
 
 export type PadCtlMessage =
@@ -258,10 +270,13 @@ export type PadCtlMessage =
   | { k: 'pause' }
   | { k: 'ping'; t: number }
   | { k: 'pong'; t: number; d: number; apply: number }
-  | { k: 'status'; s: PadStatus };
+  | { k: 'status'; s: PadStatus }
+  /** `m`: the cue's strength, 0..1 (a heavier gun, a deeper hit, a harder crash). */
+  | { k: 'cue'; c: PadCue; m?: number };
 
 const HOLDS = new Set<string>(PAD_HOLD_ACTIONS);
 const TAPS = new Set<string>(PAD_TAP_ACTIONS);
+const CUES = new Set<string>(PAD_CUES);
 
 export function readPadCtl(text: string): PadCtlMessage | null {
   if (typeof text !== 'string' || text.length > 2048) return null;
@@ -279,6 +294,10 @@ export function readPadCtl(text: string): PadCtlMessage | null {
     case 'pong':
       return Number.isFinite(record.t) && Number.isFinite(record.d) ? { k: 'pong', t: Number(record.t), d: Number(record.d), apply: Number(record.apply) || 0 } : null;
     case 'status': return isStatus(record.s) ? { k: 'status', s: record.s } : null;
+    case 'cue':
+      if (typeof record.c !== 'string' || !CUES.has(record.c)) return null;
+      return Number.isFinite(record.m) ? { k: 'cue', c: record.c as PadCue, m: Math.max(0, Math.min(1, Number(record.m))) }
+        : { k: 'cue', c: record.c as PadCue };
     default: return null;
   }
 }
@@ -294,7 +313,8 @@ function isStatus(value: unknown): value is PadStatus {
     Number.isFinite(s.reloadS) && Number.isFinite(s.reloadTotalS) &&
     (s.spec === undefined || (typeof s.spec === 'string' && /^[a-z0-9_]{1,48}$/.test(s.spec))) &&
     (s.turret === undefined || Number.isFinite(s.turret)) &&
-    (s.kmh === undefined || Number.isFinite(s.kmh)) && (s.topKmh === undefined || Number.isFinite(s.topKmh));
+    (s.kmh === undefined || Number.isFinite(s.kmh)) && (s.topKmh === undefined || Number.isFinite(s.topKmh)) &&
+    (s.lock === undefined || typeof s.lock === 'boolean');
 }
 
 // ---- The `axes` frame (binary, 24 bytes) -------------------------------------------------------------------------

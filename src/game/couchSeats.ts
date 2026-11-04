@@ -102,6 +102,8 @@ export function createCouchSeatControls(): CouchSeatControls {
   let steer = 0;
   let throttle = 0;
   let fire = false;
+  /** A pull of the trigger since the last tick: a tap (down and up inside one tick) still fires once. */
+  let pulled = false;
   let brake = false;
   let shellSlot = 0;
   let pending = 0;
@@ -119,7 +121,7 @@ export function createCouchSeatControls(): CouchSeatControls {
       aimPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, aimPitch - dy * AIM_RAD_PER_UNIT * 0.5));
     },
     pressVirtual(actionId) {
-      if (actionId === 'fire') fire = true;
+      if (actionId === 'fire') { fire = true; pulled = true; }
       else if (actionId === 'handbrake') brake = true;
     },
     releaseVirtual(actionId) {
@@ -136,7 +138,7 @@ export function createCouchSeatControls(): CouchSeatControls {
       out.throttle = throttle;
       out.steer = steer;
       out.brake = brake;
-      out.fire = fire;
+      out.fire = fire || pulled;
       out.aimLocked = false;
       out.shellSlot = shellSlot;
       out.actionBits = pending;
@@ -144,10 +146,11 @@ export function createCouchSeatControls(): CouchSeatControls {
       out.aimPitch = aimPitch;
       out.aimDistance = COUCH_AIM_DISTANCE_M;
       pending = 0;
+      pulled = false;
       return out;
     },
     release() {
-      steer = 0; throttle = 0; fire = false; brake = false; pending = 0;
+      steer = 0; throttle = 0; fire = false; pulled = false; brake = false; pending = 0;
     },
   };
 }

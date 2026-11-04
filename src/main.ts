@@ -2298,7 +2298,8 @@ const settings = createSettingsAccess({
   isGamePaused: battlePhase.isPauseEligible,
   // a paired phone's readout (docs/PHONE-CONTROLLER.md): the raw facts; the lazy receiver maps them
   phoneSource: () => ({ battle: battlePhase.isBattle(), paused: settings.isOpen(), sniper: rig.mode === 'SNIPER', player: game.player,
-    shellCode: shellTypeCode }),
+    shellCode: shellTypeCode, lockable: true }),
+  phoneEvents: (type, listener) => bus.on(type, listener),
 });
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
@@ -3664,6 +3665,7 @@ const couchOwner = createLazyRuntimeOwner(
     shellCode: shellTypeCode,
     togglePause: () => { if (battlePhase.isBattle()) settings.toggle(); },
     emit: (type, payload) => bus.emit(type, payload),
+    on: (type, listener) => bus.on(type, listener),
     setSpectating: (on) => { document.body.classList.toggle('cot-spectating', on); currentHud()?.setCouchView(on); },
   }),
 );

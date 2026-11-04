@@ -1585,6 +1585,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/pad/padProtocol.selftest.mjs',
     'src/pad/padActor.selftest.mjs',
     'src/pad/padInput.selftest.mjs',
+    'src/pad/padCues.selftest.mjs', // phone-feel-269: what a paired phone feels, the wire, the buzzes
     'src/pad/padLink.selftest.mjs',
     'src/pad/padLobby.selftest.mjs', // 2026-11-01 (couch-mode-268, docs/COUCH-MODE.md): one lobby, a receiver per seat
     'src/game/couchSeats.selftest.mjs', // couch-mode-268: which roster tank each phone drives, and a seat's controls

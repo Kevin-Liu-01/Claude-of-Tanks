@@ -5790,5 +5790,15 @@
   "pad.opt.raise": "提高",
   "pad.opt.hand": "开火手",
   "pad.opt.right": "右手",
-  "pad.opt.left": "左手"
+  "pad.opt.left": "左手",
+  "pad.lock": "锁定目标",
+  "pad.opt.buzz": "振动",
+  "pad.opt.tour": "操作指南",
+  "pad.opt.show": "显示",
+  "pad.tour.tilt": "倾斜手机转向",
+  "pad.tour.throttle": "滑动前进或后退",
+  "pad.tour.stick": "推动驾驶和转向",
+  "pad.tour.aim": "拖动瞄准，快速划动转向",
+  "pad.tour.fire": "点按开火，按住拖动瞄准",
+  "pad.tour.skip": "跳过"
 }
