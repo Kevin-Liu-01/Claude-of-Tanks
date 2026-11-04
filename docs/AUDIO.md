@@ -718,7 +718,11 @@ crew-lines.json ─┐                    crew-voices.json
 4. **Verification**. Each take is transcribed with `scribe_v2` and compared to
    the script (normalised Levenshtein similarity). A transcript that repeats
    the call back to back ("HE. HE.", a stuttered restart) is held under the
-   bar, since by edit distance alone a doubled short call scores 0.5. Below
+   bar, since by edit distance alone a doubled short call scores 0.5; so
+   is a phrase said twice inside a longer call ("开球，开球，去抢球", 0.7 by
+   edit distance), and a second transcript of the take behind a 20 ms lead-in
+   is read for that repeat alone, because one pass often smooths it out
+   (crew-lines-269: 19 of 2,652 takes). Below
    0.62 (0.34 for calls of four characters or fewer) a take is regenerated —
    three attempts by default, and because earlier attempts come from the
    cache, `--attempts 10` on the flagged lines pays only for the new ones — and

@@ -89,12 +89,18 @@ function tandemUnit(chars) {
  * Whether a transcript says the call twice back to back ("HE. HE.", a
  * stuttered restart) where the script does not. The speech model does this
  * often on very short calls, and by edit distance alone a doubled short call
- * scores 0.5, which would pass the loose bar for short calls.
+ * scores 0.5, which would pass the loose bar for short calls. It also doubles
+ * a phrase inside a longer call ("开球，开球，去抢球", "低重力，低重力，…":
+ * crew-lines-269), which edit distance passes at 0.7: a unit of two or more
+ * characters said twice in a row that the script says once, the transcript
+ * that much longer than the script.
  */
 function repeatsCall(heard, text) {
   const want = [...normalize(text)];
-  const unit = tandemUnit([...normalize(heard)]);
-  return unit >= Math.max(2, Math.ceil(want.length / 2)) && unit > tandemUnit(want);
+  const got = [...normalize(heard)];
+  const unit = tandemUnit(got);
+  if (unit <= tandemUnit(want)) return false;
+  return unit >= Math.max(2, Math.ceil(want.length / 2)) || (unit >= 2 && got.length - want.length >= unit);
 }
 
 /** A clean take beats one that repeats the call, then the closer transcript wins. */
@@ -107,14 +113,22 @@ const state = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
 const failures = [];
 const trims = [];
 
-/** Transcribe a take and score it against the script. */
+/**
+ * Transcribe a take and score it against the script. A second transcript of
+ * the same take behind a 20 ms lead-in (other bytes, so its own pass) is read
+ * only for a repeat: one transcriber pass often smooths a doubled phrase out
+ * that the next one hears (crew-lines-269's sweep found 19 of 2,652 takes).
+ */
 async function check(lang, line, text, raw, name) {
   const wav = join(tmp, `${lang}-${line.id}-${name}.wav`);
+  const lead = join(tmp, `${lang}-${line.id}-${name}-lead.wav`);
   writeFileSync(wav, wavFromS16(raw, 24000));
+  writeFileSync(lead, wavFromS16(Buffer.concat([Buffer.alloc(960), raw]), 24000));
   try {
     const stt = await transcribe({ file: wav, languageCode: LANG_CODE[lang] || lang });
-    spent += stt.cost || 0;
-    const repeated = repeatsCall(stt.text, text);
+    const again = await transcribe({ file: lead, languageCode: LANG_CODE[lang] || lang });
+    spent += (stt.cost || 0) + (again.cost || 0);
+    const repeated = repeatsCall(stt.text, text) || repeatsCall(again.text, text);
     return { heard: stt.text, repeated, sim: repeated ? Math.min(similarity(stt.text, text), 0.2) : similarity(stt.text, text) };
   } catch (error) {
     return { heard: `stt error: ${error.message}`, repeated: false, sim: 0 };
