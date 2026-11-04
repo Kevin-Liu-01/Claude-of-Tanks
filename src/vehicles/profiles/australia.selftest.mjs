@@ -2,7 +2,8 @@
 // the native fixture of the M113A1 FSV and MRV and the M113AS4 (profiles/m113.ts), the Leopard AS1 (the 'as1' mark of
 // profiles/leopard1Dk.ts), the M1A1 AIM SA (profiles/abramsAus.ts) and the M1A2 SEPv3 (the source study's 'mounts' fit,
 // profiles/abramsSourceX.ts) and the AS21 Redback (profiles/redback.ts) at both qualities. Each id is Australia's, drawn in
-// the Australia tree at Main's tier on its published gun and crew, its own kit as a player reads it at range (Main's
+// the Australia tree at Main's tier on its published gun and crew (and the US Army's M113A3 on the same M113 build, the
+// owner's 2026-11-03 request, in the US tree's special lane), its own kit as a player reads it at range (Main's
 // condition: the Abrams' tells real, not a paint swap; the owner's heavy field nets on both Abrams, their guns netted to
 // the muzzle), and its as-built envelope inside its photo packet (docs/references/photos/aus-*-20261102.json, 3 %).
 import assert from 'node:assert/strict';
@@ -24,6 +25,8 @@ const IDS = {
   'm1a1_aim_sa_aus': { tier: 8, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.80 },
   'm1a2_sepv3_aus': { tier: 9, role: 'mbt', caliber: 120, packet: ABRAMS, muzzle: 5.809 },
   'redback': { tier: 6, role: 'ifv', caliber: 30, packet: 'aus-redback-20261102.json', muzzle: null },
+  // 269 (the owner, 2026-11-03): the US Army's M113A3 on the same M113 build, in the US tree's special lane
+  'm113a3': { tier: 2, role: 'ifv', caliber: 12.7, packet: 'usa-m113a3-20261103.json', muzzle: null, nation: 'USA', tree: 'usa' },
 };
 await ensureInteriorFills(Object.keys(IDS));
 const within = (actual, expected, label, fraction = 0.03) =>
@@ -35,11 +38,11 @@ assert.ok(!getSpec('m1a2_sepv3_aus').armor.turretPlates.some((plate) => plate.ki
 
 for (const [id, row] of Object.entries(IDS)) {
   const spec = getSpec(id);
-  assert.equal(spec.nation, 'Australia', `${id}: Australia's`);
+  assert.equal(spec.nation, row.nation ?? 'Australia', `${id}: ${row.nation ?? 'Australia'}'s`);
   assert.equal(spec.role, row.role, `${id}: its role`);
   assert.equal(spec.gun.caliberMm, row.caliber, `${id}: the ${row.caliber} mm gun`);
-  assert.equal(spec.visual.insignia, 'au-army-kangaroo', `${id}: the Army's kangaroo`);
-  assert.equal(nodeForVehicle(id)?.tree.id, 'australia', `${id}: drawn in the Australia tree`);
+  if (!row.nation) assert.equal(spec.visual.insignia, 'au-army-kangaroo', `${id}: the Army's kangaroo`);
+  assert.equal(nodeForVehicle(id)?.tree.id, row.tree ?? 'australia', `${id}: drawn in the ${row.tree ?? 'australia'} tree`);
   assert.equal(displayTier(id), row.tier, `${id}: Main's tier`);
   const packetPath = new URL(`../../../docs/references/photos/${row.packet}`, import.meta.url);
   assert.ok(existsSync(packetPath), `${id}: its photo packet`);
@@ -55,7 +58,9 @@ for (const [id, row] of Object.entries(IDS)) {
       tank.root.traverse((part) => names.push(part.name));
       if (id.startsWith('m113')) {
         const receipt = turret?.userData.m113TurretReceipt;
-        assert.equal(receipt?.turret, { m113a1_fsv: 'saladin', m113a1_mrv: 'scorpion', m113as4: 'tenix' }[id], `${id} ${quality}: its turret`);
+        assert.equal(receipt?.turret, { m113a1_fsv: 'saladin', m113a1_mrv: 'scorpion', m113as4: 'tenix', m113a3: 'acav-cupola' }[id],
+          `${id} ${quality}: its turret`);
+        assert.equal(receipt.towTubes, id === 'm113a3' ? 0 : 2, `${id} ${quality}: its TOW tubes`);
         assert.equal(receipt.roadWheels, id === 'm113as4' ? 6 : 5, `${id} ${quality}: its road wheels`);
       }
       if (id === 'leopard_as1') assert.ok(tank.root.getObjectByName('leo1As1LoaderMag'), `${id} ${quality}: the loader's MAG 58`);

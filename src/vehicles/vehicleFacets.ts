@@ -223,7 +223,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'raiju_ifv', 'redback', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_cv9040c', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
   ]),
   apc: Object.freeze([
-    'ares_apc', 'm113as4',
+    'ares_apc', 'm113as4', 'm113a3',
   ]),
   // Casemates (Strv 103, UDES 03, Jagdpanzer E100) and missile carriers (AFT-10, Griffin Viper, Object 695).
   td: Object.freeze([
@@ -282,7 +282,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'k21', 'lrmv_lynx',
-    'm113a1_fsv', 'm113a1_mrv', 'm113as4', 'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
+    'm113a1_fsv', 'm113a1_mrv', 'm113a3', 'm113as4', 'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker',
     'pl01', 'pl01_105', 't49', 'x1_pioneiro', 'x1a2_carcara',
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).

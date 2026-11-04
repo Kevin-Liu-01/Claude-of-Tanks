@@ -179,6 +179,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.army.mod.uk/learn-and-explore/equipment/combat-vehicles/warrior/',
     kind: 'operator',
   }),
+  usArmyM113A3: Object.freeze({
+    title: 'BAE Systems — M113A3 armored personnel carrier (driver front left, commander at the centre cupola)',
+    url: 'https://www.baesystems.com/en-us/product/m113-armored-personnel-carrier',
+    kind: 'manufacturer',
+  }),
   australianM113As4: Object.freeze({
     title: 'Australian Army — M113AS4 armoured personnel carrier',
     url: 'https://army.gov.au/equipment/vehicles-and-surveillance/m113as4-armoured-personnel-carrier',
@@ -485,7 +490,7 @@ const LAYOUTS = Object.freeze({
     missileRack: null,
   }) },
   // 269: the M113AS4's crew of two, its crew commander in the one-man Tenix turret over the M113's front engine
-  m113OneManTurret: { confidence: 'documented', sources: ['australianM113As4'], crew: crew(
+  m113OneManTurret: { confidence: 'documented', sources: ['australianM113As4', 'usArmyM113A3'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['commander', 'turret', 'frontCenter'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
   aresRemoteApc: { confidence: 'documented', sources: ['britishAjax'], crew: crew(
@@ -601,7 +606,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   // (269: the Redback's two-man T2000 turret, beside its LAND 400 rival the KF41)
   ifvFrontTwoMan: ['marder2', 'dardo', 'lrmv_lynx', 'cv9040c', 'ua_cv9040c', 'type89', 'ajax', 'kf41_lynx', 'bmp2', 'hayate_ifv', 'fv510', 'fv510_milan', 'marder1a3', 'cv90', 'redback'],
   namerIfv: ['namer_ifv'],
-  m113OneManTurret: ['m113as4'],
+  m113OneManTurret: ['m113as4', 'm113a3'],
   aresRemoteApc: ['ares_apc'],
   bmp1: ['bwp1'],
   puma: ['borsuk', 'puma_s1', 'spz_puma', 'spz_wotan', 'raiju_ifv', 'cv90_mk4_concept'],

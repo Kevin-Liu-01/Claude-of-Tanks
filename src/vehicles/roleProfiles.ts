@@ -205,6 +205,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   m113a1_fsv: { doctrine: 'support', viewM: 420, still: 0.250, moving: 0.200 },
   m113a1_mrv: { doctrine: 'scout', viewM: 460, still: 0.280, moving: 0.240 },
   m113as4: { doctrine: 'recon', viewM: 440, still: 0.280, moving: 0.240 },
+  // 269: the US M113A3 plays as the Ares APC (its scout optics a step under the Ares's mast)
+  m113a3: { doctrine: 'recon', viewM: 450, still: 0.284, moving: 0.244 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },

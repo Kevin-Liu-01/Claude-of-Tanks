@@ -30,6 +30,7 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   // Leopard AS1 on the Danish welded 1A3, both Abrams on the fleet's M1A1 and SEPv3 study and the AS21 Redback, each proved
   // by its photographs and published dimensions with no 3D model to follow
   'docs/references/photos/aus-m113-20261102.json':Object.freeze(['m113a1_fsv','m113a1_mrv','m113as4']),
+  'docs/references/photos/usa-m113a3-20261103.json':Object.freeze(['m113a3']),
   'docs/references/photos/aus-leopard-as1-20261102.json':Object.freeze(['leopard_as1']),
   'docs/references/photos/aus-abrams-20261102.json':Object.freeze(['m1a1_aim_sa_aus','m1a2_sepv3_aus']),
   'docs/references/photos/aus-redback-20261102.json':Object.freeze(['redback']),

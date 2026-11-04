@@ -857,6 +857,8 @@ export function signatureCamoPatternId(specId: string): CamoPatternId | null {
 const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
   c1_ariete: 'service_ariete_c1',
   c2_ariete: 'sig_ariete_c2',
+  // 269: the US M113A3 in the US Army's MERDC four-colour woodland (its CARC three-tone sits a shade from the Leclerc's)
+  m113a3: 'merdc',
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48a5_patton: 'summer',

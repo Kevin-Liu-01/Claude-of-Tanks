@@ -2,7 +2,7 @@ import type { FleetTankSpec } from './specContracts.ts';
 import type { LauncherMuzzle } from '../sim/launcherPolicy.ts';
 
 import * as detMath from '../sim/detMath.ts';
-import { M113_TOW, type M113Mark } from './m113Datums.ts';
+import { M113_TOW, type M113TowMark } from './m113Datums.ts';
 // Terminal centers measured from the native builders, in final metre frames.
 // These are launch exits, never spare tubes, smoke dispensers or cannon bores.
 // Batteries with authored layouts keep their existing shared geometry datums.
@@ -12,7 +12,7 @@ function turret(x: number, y: number, z: number, pitch = 0, yaw = 0): LauncherMu
 function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y, z }; }
 // 2026-10-21: the TOW collars' mouths on the flat-fronted pod (modern3.ts), 8.5 cm ahead of the old sloped face.
 const bradley = [mouth(-.97, .04, .23), mouth(-.97, -.20, .23)];
-const towMouths = (mark: M113Mark): LauncherMuzzle[] => {
+const towMouths = (mark: M113TowMark): LauncherMuzzle[] => {
   const T = M113_TOW[mark];
   return T.ys.map((y) => turret(T.x, y, T.mouthZ + 0.05));
 };
