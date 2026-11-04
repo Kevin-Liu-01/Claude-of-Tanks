@@ -9,6 +9,8 @@
 //      slab, where round 6's shell law kept the footprint whole to above half its height; every deck keeps that law.
 //   4. The phones' baked deck (sky.ts CLOUD_FRAG): a second copy chosen region by region, so a tile and its neighbour a
 //      period away mostly come from different copies.
+// The pictures the lane's blind critics judged come from tools/cloud-sky-shots.mjs (every map's sky at the battle camera,
+// toward the horizon and overhead, and every Garage yard, on two builds, staged identically).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bakeCloudWeatherStreets, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
