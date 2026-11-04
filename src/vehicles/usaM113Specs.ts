@@ -17,7 +17,8 @@ stripSilhouetteDimensions(m113a3.dims);
 // as built: the 4.86 m hull, 5.38 m over the fuel tanks astern, 2.69 m over the tracks, 2.62 m to the shield's top
 Object.assign(m113a3.dims, { hullLengthM: 4.86, overallLengthM: 5.38, widthM: 2.69, heightM: 2.62 });
 Object.assign(m113a3, { hp: 1500, ...m113Mobility(12.3, 275, 66) });
-m113a3.armor = driverFrontLeft(m113Armor('a3', { tw: 0.42, tFrontZ: 0.40, tRearZ: -0.42, tH: 0.30 }, 1.14, 0.022));
+// (the turret's hit envelope the cupola with its shield and wings, the room the station's crew, belts and feed take)
+m113a3.armor = driverFrontLeft(m113Armor('a3', { tw: 0.50, tFrontZ: 0.45, tRearZ: -0.50, tH: 0.46 }, 1.14, 0.022));
 // the Ares's three belts as the US Army's .50: the M962 SLAP-T, the M20 API-T and the M33 ball
 const US_50 = ['M962 SLAP-T', 'M20 API-T', 'M33 Ball'];
 m113a3.gun = { ...m113a3.gun, shells: m113a3.gun.shells.map((shell, i) => ({ ...shell, name: US_50[i] ?? shell.name })) };

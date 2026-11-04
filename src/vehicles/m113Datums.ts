@@ -17,8 +17,8 @@ export const M113_BASE = Object.freeze({
 });
 /** The turret ring's distance behind the nose (the AS4 profile; the FSV's and MRV's turrets over the fighting
  * compartment behind the driver; the A3's commander's cupola on the roof's centre behind the engine, ahead of the cargo
- * hatch). */
-const RING_BACK: Readonly<Record<M113Mark, number>> = Object.freeze({ fsv: 1.95, mrv: 1.95, as4: 2.55, a3: 1.80 });
+ * hatch, at the FSV's and MRV's station: the powerpack and final drive ahead of it keep their room). */
+const RING_BACK: Readonly<Record<M113Mark, number>> = Object.freeze({ fsv: 1.95, mrv: 1.95, as4: 2.55, a3: 1.95 });
 
 /** The twin TOW launcher on the turret's right flank (owner 2026-11-03: "more firepoweer/tow missiles"; profiles/m113.ts
  * builds it), turret frame: the tubes' x, their two heights over the roof, the mouths' z, the encased round's 1.17 m and the
