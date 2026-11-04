@@ -22,7 +22,7 @@ const cases = [
   ['gepard_1a2', 'ifv', 47.5, 'diesel_v12_modern'], ['pgz95', 'ifv', 22.5, 'diesel_ifv'], ['pgz09', 'ifv', 35, 'diesel_ifv'],
   // 269: the second air-defence round on its base hulls' powertrains
   ['type87_aw', 'ifv', 38, 'diesel_two_stroke'], ['marksman_t55', 'ifv', 41, 'diesel_v12_soviet'],
-  ['itpsv_leopard2', 'ifv', 49, 'diesel_v12_modern'], ['lvkv9040', 'ifv', 23.2, 'diesel_ifv'], ['k30_biho', 'ifv', 26.5, 'diesel_ifv'],
+  ['itpsv_leopard2', 'ifv', 49, 'diesel_v12_modern'], ['lvkv9040', 'ifv', 37, 'diesel_ifv'], ['k30_biho', 'ifv', 26.5, 'diesel_ifv'],
   ['pza_loara', 'ifv', 45.3, 'diesel_v12_soviet'],
 ];
 for (const [id, role, weightTons, family] of cases) {

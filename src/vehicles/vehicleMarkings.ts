@@ -463,7 +463,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type87_aw: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   marksman_t55: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   itpsv_leopard2: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
-  lvkv9040: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  lvkv9040: anchor('hull', 'left', .52, .58, .20, 1), // the CV90 Mk IV hull's (cv90_mk4)
   k30_biho: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   pza_loara: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),

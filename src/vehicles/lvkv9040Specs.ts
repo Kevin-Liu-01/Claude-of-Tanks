@@ -21,6 +21,9 @@ type Point = [number, number, number];
 type Face = 'left' | 'right' | 'floor' | 'roof' | 'rear' | 'front';
 
 const BASE_ID = 'cv90_mk4';
+// The hull plates' thicknesses: the CV9035 DK's, the same Mk IV hull at tier V (its twelve plates share cv90_mk4's
+// geometry vertex for vertex); the Mk IV X's own are its tier-X protection (coordinator 2026-11-04, tiers by capability)
+const ARMOR_BASE_ID = 'cv9035dk';
 
 /** One convex armour polygon, its corners wound counter-clockwise seen from outside. */
 function polygon(name: string, verts: Point[], keMm: number, ceMm: number): ArmorPlate {
@@ -160,7 +163,7 @@ export function synchronizeLvkv9040Frame(): void {
   if (synchronized) return;
   synchronized = true;
   const base = TANK_SPECS[BASE_ID], own = TANK_SPECS.lvkv9040;
-  own.armor.hullPlates = structuredClone(base.armor.hullPlates);
+  own.armor.hullPlates = structuredClone(TANK_SPECS[ARMOR_BASE_ID].armor.hullPlates);
   own.armor.turretPivot = [...base.armor.turretPivot];
   own.armor.modules = [...structuredClone(base.armor.modules.filter((box) => !box.turretLocal)),
     ...own.armor.modules.filter((box) => box.turretLocal)];

@@ -107,7 +107,7 @@ expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('bmpt_t
 expect('tunguska_m', 'bmp3m_dragun125'); expect('pantsir_s1', 'bmp3m_dragun125'); expect('pgz95', 'ztz100'); expect('pgz09', 'ztz100');
 expect('gepard_1a2', 'leo2a4'); assert.equal(resolveNationWheel(TANK_SPECS.gepard_1a2).donor, resolveNationWheel(TANK_SPECS.leo1a5).donor);
 // 269: the second air-defence round draws its base hulls' wheels (the K30 the Korean IFV standard, the K1A1 wheel)
-for (const [id, base] of [['type87_aw', 'type74'], ['marksman_t55', 't55a'], ['itpsv_leopard2', 'leo2a4'], ['lvkv9040', 'cv90'],
+for (const [id, base] of [['type87_aw', 'type74'], ['marksman_t55', 't55a'], ['itpsv_leopard2', 'leo2a4'], ['lvkv9040', 'cv90_mk4'],
   ['pza_loara', 'pt91a_twardy']]) {
   assert.equal(resolveNationWheel(TANK_SPECS[id]).donor, resolveNationWheel(TANK_SPECS[base]).donor, `${id} draws ${base}'s wheel`);
 }

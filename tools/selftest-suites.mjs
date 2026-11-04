@@ -173,6 +173,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/gm352AirDefense.selftest.mjs',
     // 268: the PLA air-defence pair (PGZ-95, PGZ-09): datums, every bore, the QW-2 exits, the clearance scans
     'src/vehicles/profiles/chineseAirDefense.selftest.mjs',
+    // 269: the second air-defence round: the Type 87 on the Type 74 hull, the Marksman turret on the T-55 and Leopard 2A4,
+    // the Lvkv 9040 on the CV90 Mk 4, the K30 Biho on its K200 hull, the PZA Loara on the PT-91: frames, bores, sweeps
+    'src/vehicles/profiles/type87.selftest.mjs',
+    'src/vehicles/profiles/marksman.selftest.mjs',
+    'src/vehicles/profiles/lvkv9040.selftest.mjs',
+    'src/vehicles/profiles/k30Biho.selftest.mjs',
+    'src/vehicles/profiles/loara.selftest.mjs',
     'src/vehicles/profiles/arieteC2X.selftest.mjs',
     'src/vehicles/profiles/xk2.selftest.mjs',
     'src/sim/rocketBattery.selftest.mjs',
