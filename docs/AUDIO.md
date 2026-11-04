@@ -15,7 +15,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
-| 479 sound-effect assets, 851 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 23.5 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
+| 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
 | 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.45 MB per language (52.45 MB in all) | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
@@ -155,7 +155,8 @@ ui, music, voice, alarm ──────────────────�
   trims the top of a near crack (the probe reads its gain reduction), with
   the bed about 4 dB lower to keep them dominant. Gates: a near
   cannon 12 dB over the bed on its loudest 100 ms with its crack peaking at
-  least 22 dB over it and decaying at least 8 dB; 10 and 4 dB at 150 and
+  least 22 dB over it and decaying at least 8 dB (until the booms of
+  2026-11-04); 10 and 4 dB at 150 and
   400 m; our own gun 14 dB with a 22 dB crack; at most 40 samples at the soft
   clip's knee; the radio 6 dB under a near cannon. The final measurement (d52e45620): the bed −32.0 dBFS; a near cannon 13.6 dB over it on its loudest 100 ms, its crack peaking 24.1 dB over it and decaying 10.6 dB, held down 2.3 dB by the limiter with nothing at the clip's knee; 10.7 and 6.2 dB at 150 and 400 m; our own gun 17.2 dB with a 28.0 dB crack (3.3 dB of limiting); the radio 7.4 dB under a near cannon; the garage −31.3 dBFS.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
@@ -222,21 +223,49 @@ centred, with the cabin extras).
 
 ### Weapons
 
-`weaponAudio.ts` classifies every gun into one of eighteen report classes:
-rifle and heavy machine guns, 20/25/30/40/50 mm autocannons,
-90/105/120/125/130/152 mm cannons, ATGM and heavy rocket launchers, and the
-AC-130's autocannon, howitzer and missiles (sound profiles refine the trim,
-e.g. the BMP-3's low-pressure 100 mm, or name a class outright, as the
-gunship's shells do). Each class has a close bank and a distant bank
-crossfaded by range (a cannon keeps its close report to about 150 m), a gun
-tail matched to the map (open, forest, urban, mountain; a machine-gun burst
-gets it once per 0.22 s beat, not once per round), and for the occupied gun
-in the sight an interior report. Our own gun has a dedicated report per bore
-(`gun_own_medium` for 90–105 mm, `gun_own_large` for 120–125 mm,
-`gun_own_heavy` for 130–152 mm, and `missile_launch_own` for launchers),
-fuller and more detailed than anyone else's, as World of Tanks keeps the
-player's shot apart, with the breech's recoil and run-out (`gun_recoil_mech`)
-under it.
+`weaponAudio.ts` keys every weapon by its bore class and ammunition
+construction (gun-reports-269, 2026-11-03): one table, `WEAPON_ROWS`, of 27
+rows from the rifle and heavy machine guns through the 20–50 mm autocannons,
+the 76, 84, 90, 100 and 105 mm unitary-brass guns, the BMP-3's low-pressure
+2A70, the combustible-case 120 and 130 mm smoothbores, the L11/L30 rifled
+120 mm with its bagged charges, the two-piece 125 mm, the KV-2's 152 mm
+howitzer and the M81-family 152 mm gun-launchers, the L9 demolition gun and the
+E-100's 17 cm, the TOS-1A's rockets, every guided round, and the AC-130's three
+guns. A weapon's key comes from its vehicle's own spec (`weaponMounts`): the
+gun's bore, and the construction its rounds imply (a guided or rocket round, a
+belt below 61 mm, British L-series ammunition on a BL gun, a 152 mm that also
+fires a gun-launched missile, the Soviet-pattern 125 mm, a combustible case
+from 115 mm, a separate cased charge from 146 mm, a unitary brass case below).
+The gun decides the report, never the round's damage calibre: a Centurion 3's
+20-pounder fires rounds the damage model sizes at 120 mm and is heard as an
+84 mm gun. Each mount of a gun is its own (the BMP-3's 30 mm, its 2A70 and the
+Arkan fired through it; a Bradley's 25 mm and its TOW), and a shot picks its
+mount by the round it names.
+
+`tools/audio/weapon-census.mjs` walks the fleet, the Gun Game ladder and the
+AC-130 and writes `weaponCensus.generated.ts` (the key union `FLEET_ROWS` must
+cover, so a new weapon fails typecheck until it has a row; each autoloaded main
+gun's loader make and the ready-rack doors, from
+`vehicles/internalLayoutRegistry.ts`) and the census by key and by vehicle in
+[`audio-generation/weapon-census.md`](audio-generation/weapon-census.md);
+`weaponCensus.selftest.mjs` fails when either no longer matches the fleet.
+
+Each row names four reports: the close report 30 m beside the gun, the crew's
+own from the open hatch, the closed turret's close-miked at the loader's
+station (heard in the sight), and the distant boom, crossfaded by range (a
+cannon keeps its close report to about 150 m). A row also carries its muzzle:
+with nothing on it the blast is loudest ahead of the gun (+1.5 dB in front,
+−1 behind, the punch under the report turning with it), a muzzle brake throws it sideways and back (a double-baffle
+brake +2.5 dB beside the gun), which our own report hears only as the brake's
+blast thrown back at the hatch. A gun tail matched to the map (open, forest,
+urban, mountain) follows every report, once per 0.22 s beat for a machine-gun
+burst. Our own roof gun or autocannon in the sight is heard only through its
+closed turret; our own cannon keeps its hatch report under the closed turret's,
+with the breech's recoil and run-out (`gun_recoil_mech`) under it. The battle
+warm decodes the close and distant reports of the roster's mounts (and of the
+roof stations' machine guns and 30 mm cannons; every row when the roster is
+unknown or in the Gun Game); our own reports and our loader's machinery load
+and are pinned once our hull is known.
 
 A gun report is a crack: the close reports were regenerated on 2026-10-02 and
 measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
@@ -260,16 +289,40 @@ velocity.
 ### Your own tank: loading and machinery
 
 Reloads play the loader's choreography (`resolveReloadCuePlan`) at the matching
-reload progress, close-miked in the turret on the interior bus:
+reload progress, close-miked in the turret on the interior bus. What the breech
+gives up comes from the round's construction, the new round going in from the
+loader's make; every cue is anchored in seconds to the cycle's start or end,
+stretched by the round's heft (a 90 mm round ×0.8, a 50 kg 152 mm projectile
+×1.45), so the breech always closes just before the gun is ready however long
+the authoritative reload, and a heavier round's work takes longer.
 
-| Loader | Sequence |
+| Construction | What the breech gives up |
 |---|---|
-| Manual | breech drops open, the case is thrown out, the ready-rack door slides open, a round comes out, the door shuts, the round is rammed home (a separate charge for 152 mm), the breech closes |
-| Carousel autoloader | the stub is kicked out, the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
-| Bustle autoloader | the case is ejected, the next round indexes, the ram, the breech closes |
-| Drum magazine | the drum turns to its first empty chamber, four rounds are fed in one by one, the drum indexes, the breech closes; between rounds of a clip, the drum turns and a round is rammed |
-| Autocannon | the box latches into the feed, the belt and bolt clatter, the latch |
-| Missile | the canister slides into the tube, the second one, the launcher arm swings up, the latch |
+| Unitary brass (76–105 mm) | the case is thrown out and clangs on the floor, weighed by its bore (a 90 mm's light ring, a 100 mm's lacquered steel, a 105 mm's) |
+| Combustible case (120, 130 mm) | only the stub drops out |
+| Two-piece (125 mm) | the steel stub: out through the turret's rear hatch on the AZ carousel, back into its tray on the MZ basket |
+| Separate, bagged (L11/L30 120 mm, L9 165 mm) | the vent tube flicks out; projectile, then the bag charge (the L9's rides in its base), the breech, a fresh vent tube |
+| Separate, cased (152 mm howitzer, 17 cm) | the huge case is pulled out; the projectile is hefted and rammed with a staff, then the cased charge, the heavy breech swung shut |
+| Caseless (152 mm gun-launchers) | the closed-breech scavenger blows the bore clear |
+
+| Loader | The new round |
+|---|---|
+| Manual | the breech drops open, the ready-rack door opens (the bustle and protected racks only), a round comes out, the door shuts, the round is rammed home, the breech closes |
+| AZ carousel (T-72, T-90, Type 96/99) | the carousel turns, the cassette lifts, the chain rammer drives the projectile and then the charge, the breech closes |
+| MZ basket (T-64, T-80, T-84) | the conveyor basket turns, the cassette lifts, two rams, the breech closes |
+| T-14 carousel | the AZ cycle under the unmanned turret |
+| Bustle (Leclerc, Type 90/10, K2, KF51, M1A3) | the next round indexes, the rammer, the breech closes; a magazine refill hands each round in and pushes it into its cell |
+| Strv 103 | the case is thrown out of the hull's rear, the next round drops from the hull magazine, the ram, the breech closes |
+| BMP-3 2A70 | the autoloader turns and rams; a 9M117 is loaded by hand |
+| Roof launcher | the hatch, the canister out of stowage, into the tube, the launcher up, the latch |
+| TOS-1A | the reloading crane lowers rockets into the tubes |
+| AC-130 | the howitzer's breech drops open, a round is hefted and rammed, the breech closes; a pylon missile arms with its relay |
+
+An autocannon's or machine gun's per-shot cycle is its own action, heard with
+the shot (`ac_feed`); selecting another round on a dual-feed autocannon
+switches belts with a solenoid clack, on an autoloader turns the carousel or
+basket, on a bustle loader indexes it. The simulation never reloads a belt, a
+roof gun or a smoke discharger, so none of those has a reload sound.
 
 Every cycle ends in the lock that says the gun is ready. The turret drive has
 a start when a real slew begins (never on a servo flicker), its electric or
@@ -1159,6 +1212,63 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   reverb. The mixer now hands out one send per channel (`reverbSend(bus)`,
   scaled as the channel scales its buses) and keeps the reverb's input to
   itself; `reverbSends.selftest.mjs` walks the graph from every started source.
+
+- **2026-11-03, every calibre and its reload (gun-reports-269).** The owner:
+  "better cannonn sounds for all calibers, interior sounds for shell reloads
+  for different claibers". A census of every weapon the fleet fires
+  ([audio-generation/weapon-census.md](audio-generation/weapon-census.md)) found
+  the report chosen by the round's damage calibre rather than the gun (a
+  Centurion 3's 20-pounder sounded as a 120 mm, an M46's 90 mm as a 105), a
+  reload choreography chosen per vehicle rather than per weapon (a Bradley's TOW
+  reload played an autocannon's box swap), loaders guessed from id patterns, and
+  no bank of their own for the 35, 76, 84 and 100 mm, the 2A70, the rifled
+  120 mm, the 152 mm howitzer and gun-launchers, the 165 and the 170 mm. The
+  mechanism became one table keyed by bore and ammunition construction
+  (Weapons, above), its keys from each vehicle's own spec and a generated census
+  that fails typecheck for a weapon without a row, its loaders from the
+  internal-layout registry. 107 assets were generated (676 takes, then 8 more
+  for a roof gun's own report and 12 for two banks short of reports): every
+  cannon bore's close, own-hatch, closed-turret and distant reports (the 90, 105,
+  120 and 130 mm closes regenerated with words for their own gun; the 125 mm kept
+  its 10-02 takes, the mix tuned on them, when none of its eight new takes
+  measured as a report), each autocannon's and roof
+  machine gun's own, closed-turret and distant report, the 35 mm close, and 26
+  pieces of reload machinery weighed by calibre and construction. The scorer
+  learnt three failure modes (quality.md): the distant echo cut as a second
+  shot, a late-peaking blast outranking cracks, and a click shipped when fewer
+  than two takes survived the cut. The Studio's films play the new banks by a
+  calibre ladder (`CALIBRE_LADDER`); the grouped distant banks, the 152 mm
+  close, the three own and three interior banks, the drum refill and the old
+  charge ram retired. 18,874 credits.
+
+- **2026-11-04, the cannons boom (gun-reports-269, reopened).** The owner: "for
+  the gun sounds it still sounds like guns instead of tank cannons. reprompt it
+  to get the booming cannon sound effects right, rocket effects right, and also
+  all calibers and machine guns accordingly". Every gun, autocannon, machine-gun
+  and rocket bank was regenerated by its bore class
+  ([audio-generation/prompts.md](audio-generation/prompts.md#guns-what-each-class-is-the-boom-round-gun-reports-269-2026-11-04)):
+  a cannon a concussive boom with its energy low and a long rolling echo, an
+  autocannon a heavy thumping pop, the 12.7 and 7.62 mm one isolated round each
+  that the engine fires at the gun's rate (the chug and the rattle), a rocket its
+  motor, howitzers and gun-launchers a softer front, and each one's own-hatch
+  and closed-turret version; the 125 mm's 10-02 takes were replaced with the
+  rest. A local ear proxy, YAMNet
+  ([audio-generation/quality.md](audio-generation/quality.md#the-ear-proxy-run-criticmjs-sfx-criticpy)),
+  judges every file the build ships, as it ships (the mastered WebM of the
+  take's cut), by a rule written before the trial: it fails all 19 sounds the
+  owner rejected and passed the six pilot booms. The build ships a file only on
+  a pass and records its verdict, take, cut and hash in
+  `tools/audio/sfx-verdicts.json` (`sfxVerdicts.selftest.mjs` binds it to the
+  bytes; the listening page reads it); the raw takes' verdicts only order the
+  candidates. 102 banks, 281 files, every bank at its full slots: the machine
+  guns as dry single rounds the engine fires at the gun's rate, the distant ones
+  judged as that burst too. The cannon and autocannon presets are
+  loudness-mastered with no transient shaping; `audio-mix-balance.mjs` no longer
+  caps a near cannon's energy below 100 Hz at half or wants it 8 dB down after
+  a quarter second (a rolling boom measures within 3 dB); the TOS-1A's distant salvo has
+  its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
+  `tools/audio/layered-render.mjs` renders each row as the engine layers it.
+  46,330 credits, the prompt pilots on the ship path included.
 
 ### Cost
 

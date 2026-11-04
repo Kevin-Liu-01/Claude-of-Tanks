@@ -9,7 +9,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // bus events (window.__DEBUG.bus — the object the engine bound via bindBus)
 // and records the master output through the __COT_AUDIO PCM tap. Asserts:
 //   - every scene plays its intended assets (sfxLog names), audibly, unclipped
-//   - calibre ladder: rifle MG → heavy MG → 30 mm → 90 → 120 → 152 mm; the low
+//   - calibre ladder: rifle MG → heavy MG → 30 mm → 76 → 90 → 105 → 120 (and rifled) → 125 → 130 → 152 → 170 mm; the low
 //     band (<150 Hz) share of the capture rises from MG to the 152 mm and the
 //     cannon tail pitch falls with bore
 //   - distance model: a 15 m cannon plays its close report only, a ~210 m one
@@ -34,6 +34,8 @@ const outDir = resolve('shots/sfx-smoke');
 mkdirSync(outDir, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The page's first load (a cold private dep cache under a busy machine's load can take minutes): COT_PAGE_TIMEOUT_MS.
+const PAGE_MS = Number(process.env.COT_PAGE_TIMEOUT_MS) || 90000;
 
 /** Write interleaved stereo Int16 PCM as a RIFF/WAVE file. */
 function writeWav(path, i16, sampleRate) {
@@ -116,8 +118,8 @@ async function openPage() {
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_MS });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: PAGE_MS });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -166,9 +168,10 @@ try {
 
   // Decode every bank the scenes use before the first capture.
   const PRELOAD = [
-    'mg_rifle_close', 'mg_heavy_close', 'mg_far', 'ac_30_close', 'ac_feed', 'ac_far_light',
-    'gun_90_close', 'gun_120_close', 'gun_152_close', 'gun_far_light', 'gun_far_medium', 'gun_far_heavy',
-    'atgm_launch', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain',
+    'mg_rifle_close', 'mg_heavy_close', 'mg_rifle_far', 'mg_heavy_far', 'ac_30_close', 'ac_feed', 'ac_30_far',
+    // gun-reports-269: the per-bore banks (weaponAudio.ts WEAPON_ROWS), the ladder's every high-velocity bore and the short guns
+    ...['76', '90', '105', '120', '120r', '125', '130', '152h', '170'].flatMap((b) => [`gun_${b}_close`, `gun_${b}_far`]), 'gun_120_own',
+    'launch_tube', 'launch_far', 'tail_open', 'tail_forest', 'tail_urban', 'tail_mountain',
     'pen_heavy', 'pen_interior', 'ricochet_heavy', 'nonpen_heavy', 'nonpen_interior', 'era_det', 'he_armor',
     'expl_he_medium', 'ground_sand', 'ground_dirt', 'ground_rock', 'bullet_dirt', 'tank_explode', 'tank_explode_ammo',
     'debris_metal', 'turret_land', 'cookoff_loop', 'burnout_blast', 'tree_snap', 'tree_fall', 'ram_heavy',
@@ -219,9 +222,9 @@ try {
 
   // ---- scene table -----------------------------------------------------------
   let shellId = 9000;
-  const fire = (cal, dx, dz, { player = false, sound = null } = {}) =>
+  const fire = (cal, dx, dz, { player = false, sound = null, name = 'p' } = {}) =>
     `{shellId:${++shellId}, shooterId:${player ? 'window.__P.playerId' : 'window.__P.enemyId'}, isPlayer:${player}, ` +
-    `shellType:'APFSDS', shellName:'p', caliberMm:${cal}, weaponSound:${sound ? `'${sound}'` : 'null'}, ` +
+    `shellType:'APFSDS', shellName:'${name}', caliberMm:${cal}, weaponSound:${sound ? `'${sound}'` : 'null'}, ` +
     `muzzlePos:window.__P.pos(${dx},0,${dz}), dir:[0,0,1]}`;
   const hit = (kind, own, dmg, cal = 105) =>
     `{kind:'${kind}', pos:window.__P.pos(${own ? '0,0,1.5' : '10,0,12'}), targetId:window.__P.${own ? 'playerId' : 'enemyId'}, ` +
@@ -233,14 +236,20 @@ try {
     { name: 'mg_rifle', ev: 'shell:fired', p: fire(7.62, 12, 9), holdMs: 900, expect: ['mg_rifle_close'], ladder: true },
     { name: 'mg_heavy', ev: 'shell:fired', p: fire(12.7, 12, 9, { sound: 'heavy-machine-gun' }), holdMs: 1000, expect: ['mg_heavy_close'], ladder: true },
     { name: 'ac_30', ev: 'shell:fired', p: fire(30, 12, 9, { sound: '2a42' }), holdMs: 1400, expect: ['ac_30_close', 'ac_feed'], ladder: true },
+    { name: 'gun_76', ev: 'shell:fired', p: fire(76, 12, 9), holdMs: 2400, expect: ['gun_76_close', 'tail_'], ladder: true },
     { name: 'gun_90', ev: 'shell:fired', p: fire(90, 12, 9), holdMs: 2600, expect: ['gun_90_close', 'tail_'], ladder: true },
+    { name: 'gun_105', ev: 'shell:fired', p: fire(105, 12, 9), holdMs: 2700, expect: ['gun_105_close', 'tail_'], ladder: true },
     { name: 'gun_120', ev: 'shell:fired', p: fire(120, 12, 9), holdMs: 2800, expect: ['gun_120_close', 'tail_'], ladder: true },
-    { name: 'gun_152', ev: 'shell:fired', p: fire(152, 12, 9), holdMs: 3200, expect: ['gun_152_close', 'tail_'], ladder: true },
+    { name: 'gun_120r', ev: 'shell:fired', p: fire(120, 12, 9, { name: 'L27A1 CHARM-3' }), holdMs: 2800, expect: ['gun_120r_close', 'tail_'], ladder: true },
+    { name: 'gun_125', ev: 'shell:fired', p: fire(125, 12, 9), holdMs: 2900, expect: ['gun_125_close', 'tail_'], ladder: true },
+    { name: 'gun_130', ev: 'shell:fired', p: fire(130, 12, 9), holdMs: 3000, expect: ['gun_130_close', 'tail_'], ladder: true },
+    { name: 'gun_152', ev: 'shell:fired', p: fire(152, 12, 9), holdMs: 3200, expect: ['gun_152h_close', 'tail_'], ladder: true },
+    { name: 'gun_170', ev: 'shell:fired', p: fire(170, 12, 9), holdMs: 3200, expect: ['gun_170_close', 'tail_'], ladder: true },
     // the occupied gun and the distance model
-    { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_close', 'gun_far_medium'] },
-    { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_far_medium'] },
-    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_far_medium'], forbid: ['gun_120_close'], forbidBeyondM: 300 },
-    { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['atgm_launch'] },
+    { name: 'gun_120_own', ev: 'shell:fired', p: fire(120, 0, 3, { player: true }), holdMs: 2800, expect: ['gun_120_own', 'gun_120_far'] },
+    { name: 'gun_120_mid', ev: 'shell:fired', p: fire(120, 150, 150), holdMs: 3400, minRms: 1e-4, expect: ['gun_120_close', 'gun_120_far'] },
+    { name: 'gun_120_distant', ev: 'shell:fired', p: fire(120, 300, 300), holdMs: 4400, minRms: 3e-5, expect: ['gun_120_far'], forbid: ['gun_120_close'], forbidBeyondM: 300 },
+    { name: 'atgm', ev: 'shell:fired', p: fire(130, 14, 9, { sound: 'konkurs-launch' }), holdMs: 2400, expect: ['launch_tube'] },
     // impacts
     { name: 'impact_pen', ev: 'shell:hit', p: hit('pen', false, 180), holdMs: 1600, expect: ['pen_heavy'] },
     { name: 'hit_received_pen', ev: 'shell:hit', p: hit('pen', true, 150), holdMs: 1800, expect: ['pen_heavy', 'pen_interior'] },
@@ -313,6 +322,13 @@ try {
   if (!(sceneAudio.gun_120.lowShare > sceneAudio.ac_30.lowShare)) {
     fail(`120 mm is not bassier than the 30 mm (low share ${sceneAudio.gun_120.lowShare.toFixed(3)} vs ${sceneAudio.ac_30.lowShare.toFixed(3)})`);
   }
+  // gun-reports-269: every bore its own report, and the big guns sit lower than the light ones
+  if (!(sceneAudio.gun_170.lowShare > sceneAudio.gun_76.lowShare)) {
+    fail(`the 17 cm gun is not bassier than the 76 mm (low share ${sceneAudio.gun_170.lowShare.toFixed(3)} vs ${sceneAudio.gun_76.lowShare.toFixed(3)})`);
+  }
+  if (!(sceneAudio.gun_152.lowShare > sceneAudio.gun_90.lowShare)) {
+    fail(`the 152 mm howitzer is not bassier than the 90 mm (low share ${sceneAudio.gun_152.lowShare.toFixed(3)} vs ${sceneAudio.gun_90.lowShare.toFixed(3)})`);
+  }
   const tail90 = entry('gun_90', 'tail_');
   const tail152 = entry('gun_152', 'tail_');
   if (tail90 && tail152 && !(tail152.r < tail90.r)) fail(`cannon tail pitch does not fall with bore (90 mm ${tail90.r}, 152 mm ${tail152.r})`);
@@ -320,8 +336,8 @@ try {
   // ---- distance model ---------------------------------------------------------
   const near = entry('gun_120', 'gun_120_close');
   const mid = entry('gun_120_mid', 'gun_120_close');
-  const midFar = entry('gun_120_mid', 'gun_far_medium');
-  const distant = entry('gun_120_distant', 'gun_far_medium');
+  const midFar = entry('gun_120_mid', 'gun_120_far');
+  const distant = entry('gun_120_distant', 'gun_120_far');
   report.distance = { near, mid, midFar, distant };
   if (near && mid && !(mid.g < near.g * 0.5)) fail(`close report not attenuated at ~210 m (${mid.g} vs ${near.g})`);
   if (distant) {
@@ -331,7 +347,7 @@ try {
     report.distance.expectedDelayS = +expected.toFixed(3);
     if (Math.abs(delay - expected) > 0.25) fail(`distant report delay ${delay.toFixed(2)} s, expected ~${expected.toFixed(2)} s at ${distant.d} m`);
   }
-  const own = entry('gun_120_own', 'gun_120_close');
+  const own = entry('gun_120_own', 'gun_120_own');
   if (own && near && !(own.g > near.g)) fail(`occupied gun not hotter than an enemy gun at 15 m (${own.g} vs ${near.g})`);
   if (own && own.b !== 'ownCombat') fail(`occupied gun routed to ${own.b}, expected the hull's gunfire bus`);
 

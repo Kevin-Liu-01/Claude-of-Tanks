@@ -34,8 +34,11 @@ others.
 - Punchy presets: a first onset inside 0.4 s; single-shot assets lose 1.5 per
   extra onset.
 - Loops: a small seam step and spectral mismatch.
-- Gun reports: an instant rise, early energy and crest up; a late swell, low
-  boom and clipping down.
+- Small-arms reports (the `gunshot` preset): an instant rise, early energy and
+  crest up; a late swell, low boom and clipping down.
+- Cannons and autocannons (the `cannon` and `autocannon` presets, 2026-11-04):
+  their weight and rolling decay are the report, so the longer boom ranks first
+  (up to +2); the ear proxy has already refused every crack.
 - Punch layers: an instant slam over within 200 ms, all weight and no crack.
 - Punch and sub layers: −8 for a pitched low tone that glides 12 % over 60 ms
   or holds for 150 ms.
@@ -51,12 +54,60 @@ Single-shot assets (machine guns, autocannons, bullets, the radio key, the
 punches) are cut before a second report within 8 dB of the first, and a cut
 that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 
+A catalog entry that names a `critic` ships only files the ear proxy passes as
+they ship (below): the build masters a candidate's cut, judges the mastered
+WebM, and skips it on a fail; with none passed the build exits 1.
+
+## The ear proxy (`run-critic.mjs`, `sfx-critic.py`)
+
+A blind, local, free critic (gun-reports-269, 2026-11-04): Google's YAMNet
+AudioSet classifier, MediaPipe's float32 TFLite model run with LiteRT, scores a
+take on its event frames (within 10 dB of its loudest; 20 dB for a rocket, whose
+motor follows a louder blast), and a rule per class decides. The rule was written
+before the trial and is in the script with its history:
+
+| Class | Passes when |
+|---|---|
+| `cannon` | Explosion / Artillery fire / Boom at least 0.1 and twice Gunshot / Cap gun |
+| `cannon-far` | the same with Thunder and Rumble, from 0.02 |
+| `interior` | any closed turret's report: the same with Thump and Bang, from 0.02 |
+| `autocannon` | one round 1.2 times Gunshot (its burst render is reported) |
+| `mg` | one round not a toy, and the burst at the gun's rate ranks Machine gun level with Gunshot (within 5 %, at least 0.25) |
+| `rocket`, `rocket-salvo` | the motor (Whoosh / Hiss / Jet engine; a salvo also Artillery fire) at least 0.05 and over every gun class |
+| `rocket-gun` | a missile through a gun: the cannon rule and its motor |
+
+The verdict of record is the shipped file's. `build-sfx.mjs` judges each file
+it would ship (`tools/audio/critic.mjs`) and writes its verdict, the take, the
+cut and the file's SHA-256 to `tools/audio/sfx-verdicts.json`;
+`src/audio/sfxVerdicts.selftest.mjs` fails on a shipped file without a passing
+verdict for its exact bytes, and the listening page reads the same record.
+`run-critic.mjs` judges the raw takes (a single-shot bank's on its first-report
+cut) only to order the candidates: mastering moves a verdict either way (24 of
+273 files that passed raw failed as shipped, and takes refused raw passed). The
+negative control is the 19 sounds the owner rejected on 2026-11-04: the rule
+fails all 19. The prompt pilot on the 120 mm passed 6 of 6 booms. A prompt
+pilot judged on the ship path (cut, master, judge) is the one to trust. Set it
+up once:
+
+```bash
+uv venv --python 3.12 <venv> && uv pip install --python <venv>/bin/python ai-edge-litert numpy
+```
+
+```bash
+COT_CRITIC_PYTHON=<venv>/bin/python COT_CRITIC_MODEL=<yamnet.tflite> node tools/audio/run-critic.mjs --ids gun_120_close
+```
+
+The model is `storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite`.
+Verdicts sit beside the take cache (`critic.json`, by take) and are reused until
+`--force`. It is a proxy: AudioSet has no rocket class, so a launch is judged by
+its whoosh, and the owner's ear still rules.
+
 ## Failure modes
 
 | Symptom (what a player hears) | Cause | Caught by |
 |---|---|---|
 | Guns sound like old film or explosions | Prompts for "low-frequency punch … rolling echo" returned blasts peaking 60–320 ms late, picked for low end, then limited flat by loudness mastering | Range-recording prompts; transient-anatomy scoring; the `gunshot` preset normalises on the true peak; `shapeTransient` pulls a held body down |
-| A machine gun fires a burst for one round | Short prompts return several shots | "Gunshot sound effect … One isolated shot."; single-shot scoring; first-shot truncation |
+| A machine gun fires a burst for one round | Short prompts return several shots | "One isolated single round"; single-shot scoring; first-shot truncation |
 | A little "boing" under hits or blasts | A falling low sine: once a synthesized fallback, then a risk in generated weight layers | No synthesis anywhere (`soundAssets.selftest.mjs` rejects oscillators); `lowToneGlide` scoring |
 | A lone pop with the real sound arriving late ("occasionally", e.g. every other AC-130 missile) | A split take: the AC-130 missile's take 0 was an ignition pop, 1.5 s of silence, then the motor; two variants that never repeat play it every other time | `splitGap` scoring; the missile now ships takes 3 and 1 |
 | A bed jumps in level every 20 s | A level step at the loop seam | "Continuous at an even level from start to end"; seam scoring; four takes |
@@ -67,6 +118,16 @@ that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 | A correct take is flagged as wrong | Homophones and digits in the transcript | Reported for review, never auto-rejected |
 | An alarm pierces | A bright take (2.4 kHz) | Pinned a lower take; "muffled by the hull" |
 | A thud or a twang loses to rumble | The weight score (`4·low`) on the `impact` preset rewards a take whose body is low-band noise over one with the event (a telegraph wire's twang; a pole's thud 31 dB down that mastering would lift 30 dB) | Pinned (`pole_wires`, `pole_fall`, 2026-10-06); look at the sheet before trusting a weight-scored pick |
+
+| A distant autocannon shot is a 0.1 s blip | The single-shot cut treated the shot's own rolling echo (within 8 dB of the first report) as a second shot | Distant single-shot banks (`SINGLE_FAR`) cut only before a report within 3 dB of the first and lose 0.5 a point per onset past two; a take the cut leaves under 0.25 s is never shipped, even if only one usable take remains (gun-reports-269) |
+| A gun report sounds like an old-film blast although its take scored well | The rise term stops counting at 22 ms, so a take peaking 300 ms late with most of its energy 200–600 ms after the onset outranked real cracks (the 100 mm's own report) | −4 each for a rise over 45 ms and for more than 45 % of the energy in 200–600 ms; a take rising over 60 ms or holding over half its energy there is not shipped while any take is a report; banks left short get more takes (gun-reports-269) |
+| A roof gun's own report is a click | The prompt asked for "a spent case tinkling on the roof": every take answered with a second event, and the first-report cut kept 90 ms | The prompt names one event; the build warns when every take is cut to a click |
+| Cannons sound like guns (owner, 2026-11-04) | "Gunshot sound effect … muzzle-blast crack" prompts, shipped 2026-10-02 to 2026-11-03, return rifle reports; scoring for an instant crack ranked them first | Boom prompts by class ([prompts.md](prompts.md#guns-what-each-class-is-the-boom-round-gun-reports-269-2026-11-04)); the ear proxy refuses a take heard as a gunshot; the `cannon` preset is loudness-mastered with no transient shaping |
+| A missile launch is all blast, no motor | Prompts that named the launch, or said "no gunshot", returned explosions with a gunshot next | The flight named, the gunshot never; the `rocket` rule needs the motor over every gun class |
+| A machine gun round is a click | "One round from a burst" returned bursts 0.08 s apart; the cut kept one period | "One isolated single round"; the critic judges the file it ships, so a burst take that reads as a machine gun cannot pass on its raw burst |
+| A machine gun's burst reads as single gunshots | Each round carried "a short outdoor echo": overlapped at the gun's rate the tails smear (about one take in 36 passed as shipped) | "Very short, tight and dry, no echo" (2-6 in 8); the map's tail layer closes the burst in game |
+| The page shows a failing verdict for a shipped file | The build numbered takes among those still on disk while the page looked the numbers up in the full index | One record: the build writes each shipped file's verdict and hash, the page and a selftest read it |
+| A bank ships fewer variants than its slots | Its prompt passes the ear proxy at a low rate | More takes for that bank (`MORE_TAKES`); a shortfall is listed on the listening page |
 
 When a player reports something "occasional", suspect one bad variant first:
 with two variants that never repeat, a defect plays on every other use.
@@ -98,6 +159,8 @@ with two variants that never repeat, a defect plays on every other use.
   against their preset; `--check` re-measures every recorded asset.
 - `node src/audio/propSounds.selftest.mjs` when a prop sound or a world kind
   changes: every kind has its own recipe and every recipe's asset ships.
+- `node tools/audio/layered-render.mjs <out>`: every weapon row as the engine
+  layers it (close, own hatch, sight, far), rendered offline with ffmpeg.
 - Mix and loudness in a browser: `node tools/audio-mix-balance.mjs`, plus the
   probes in [`docs/AUDIO.md`](../AUDIO.md#verification). These take the
   machine-wide GPU capture lock.
