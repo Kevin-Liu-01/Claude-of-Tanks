@@ -97,12 +97,12 @@ export function showPadTour(layout: PadTourLayout, onSkip: () => void): () => vo
   (root.querySelector('.cot-c-btn__label') as HTMLElement).textContent = t('pad.tour.skip');
   // each name in this screen's language, centred where the phone put its own
   const screen = root.querySelector('.cot-pad-tour-screen') as HTMLElement;
-  for (const [id, , , , , cx, cy] of layout.stops) {
+  const names = layout.stops.map(([id, , , , , cx, cy]) => {
     const name = screen.appendChild(document.createElement('span'));
     name.className = 'cot-pad-tour-name';
     name.textContent = t(NAMES[id]);
-    name.style.transform = `translate(calc(${px(cx)} - 50%),calc(${px(cy)} - 50%))`;
-  }
+    return { name, cx: cx * scale, cy: cy * scale };
+  });
   root.querySelector('.cot-pad-tour-skip')!.addEventListener('click', () => {
     const skip = skipCurrent;
     close();
@@ -110,6 +110,13 @@ export function showPadTour(layout: PadTourLayout, onSkip: () => void): () => vo
   });
   root.classList.add('is-open');
   if (root.hasAttribute('popover')) root.showPopover();
+  // a name stays inside the screen: these words may run wider than the phone's own
+  const inside = (at: number, size: number, room: number): number => Math.round(Math.max(4, Math.min(room - size - 4, at - size / 2)));
+  const roomW = Math.round(layout.w * scale);
+  const roomH = Math.round(layout.h * scale);
+  for (const { name, cx, cy } of names) {
+    name.style.transform = `translate(${inside(cx, name.offsetWidth, roomW)}px,${inside(cy, name.offsetHeight, roomH)}px)`;
+  }
   if (!prefersReducedMotion()) {
     animations.push((root.querySelector('.cot-pad-tour-clock') as HTMLElement)
       .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' }));

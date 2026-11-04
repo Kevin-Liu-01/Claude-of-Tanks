@@ -926,7 +926,7 @@ function paintStatus(next: PadStatus): void {
   scoped = next.sniper;
   // the sight's lock: a key only where there is one to have (a couch seat's sight is its own bearing)
   lockKey.hidden = next.lock === undefined;
-  lockKey.setAttribute('aria-pressed', String(next.lock === true));
+  lockKey.setAttribute('aria-pressed', String(!!next.lock));
   // the tank in the hand is the one on the field: its plan view, and the gun's bearing on the rim (+ is to the left)
   if (next.spec && plan.dataset.spec !== next.spec) {
     plan.dataset.spec = next.spec;

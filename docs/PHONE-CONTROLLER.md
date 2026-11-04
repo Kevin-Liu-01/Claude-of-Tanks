@@ -181,10 +181,12 @@ the phone"), because the big screen is where the player looks:
   phone's socket as invalid and the pairing ended at once (pad-e2e, 2026-11-03). `padLink` now refuses to relay any
   ctl message past that limit, so no message can end a pairing that way again.
 - The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
-  the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own, the same
-  ghost strokes, and Skip with the ten seconds running out under it. It stands in the top layer (a manual popover, as
-  the kit's hover tip does), so it shows over Settings, where a phone pairs, and over the couch lobby. It takes no input
-  but Skip.
+  the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own (kept inside
+  the drawn screen, since its words may run wider than the phone's), the same ghost strokes, and Skip with the ten
+  seconds running out under it. It stands in the top layer (a manual popover, as the kit's hover tip does), so it shows
+  over Settings, where a phone pairs, and over the couch lobby. It takes no input but Skip, and it stays off the
+  surface stack: opened there it would replace the Settings panel or the couch lobby it stands over
+  (`transientSurfaceRegistry.selftest.mjs` names it an exempt).
 - Skip on either side, or the ten seconds, ends it on both (`tour` with `on: false`; an ending is never echoed). A couch
   lobby shows one at a time: a newer phone's guide replaces the one showing.
 
