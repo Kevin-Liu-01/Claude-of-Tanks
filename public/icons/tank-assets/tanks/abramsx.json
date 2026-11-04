@@ -556,17 +556,17 @@
       }
     ]
   },
-  "geometryHash": "45d9df95",
+  "geometryHash": "c3729021",
   "metadataHash": "42a78656",
   "presentationAnchor": {
     "xM": 0.0026,
-    "zM": -0.0939
+    "zM": -0.095
   },
-  "presentationHash": "24bc9d63",
+  "presentationHash": "7f47ba42",
   "presentationProjection": {
     "centerYM": 2.0715,
-    "topHalfM": 6.3541,
-    "sideHalfM": 3.177
+    "topHalfM": 6.3553,
+    "sideHalfM": 3.1776
   },
   "appearance": {
     "version": 1,
@@ -585,7 +585,7 @@
       "opticGlass": 5,
       "armorPaint": 14,
       "gearShadow": 2,
-      "unclassified": 23
+      "unclassified": 21
     }
   },
   "muzzleBore": {
@@ -598,7 +598,7 @@
     "fallback": 1
   },
   "vehicleMarkings": {
-    "total": 5,
+    "total": 3,
     "insignia": 1,
     "designation": 2,
     "verifiedInsignia": 1,
@@ -612,15 +612,15 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24382,
-      "sha256": "b44424ad88e106358590add65b471a619d9ac12160d8d533e6cb85ee7904bb37",
+      "bytes": 24192,
+      "sha256": "d0aca1a330ab35c7584a98ca0f144a3a69d8b0086c4b9482b896f71e7760756f",
       "thumbnail": {
         "file": "thumbs/abramsx_angle.webp",
         "width": 256,
         "height": 256,
         "mime": "image/webp",
-        "bytes": 10246,
-        "sha256": "b662eb96e6c02e9fe93871b780cf4b497f0925a7746521da0fb45c4040fdf67b"
+        "bytes": 10120,
+        "sha256": "352e3160a0ad0bc8ef005d4202944d8bcb43a18319f5f590fa08ab7302005a8a"
       }
     },
     "top": {
@@ -628,56 +628,56 @@
       "width": 512,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 11884,
-      "sha256": "1d5483b25dfe639c0cf12a780091d2ccd88efe73c06ba3abb69a2df25ea2d292"
+      "bytes": 11974,
+      "sha256": "45fda096b76985a7597fc2187fc260df847dbfb6562819d4507aabdfc9a9f921"
     },
     "side": {
       "file": "abramsx_side.webp",
       "width": 512,
       "height": 256,
       "mime": "image/webp",
-      "bytes": 9460,
-      "sha256": "594b640c22cd63bf2c31748f247b343d300ef5f1ebcb44ab3a7e0bc80b1f9bf2"
+      "bytes": 9302,
+      "sha256": "d82f9eba8913beb2135a0e97b9a44a4753b42d1824fedf2f5ee533f3a0fe6fa6"
     },
     "topSilhouette": {
       "file": "abramsx_top_silhouette.png",
       "width": 128,
       "height": 128,
       "mime": "image/png",
-      "bytes": 1563,
-      "sha256": "67bfb5f5c188d9b9229f16315cdb2cfcb97b64969c4272e1cde7717e5660f88d"
+      "bytes": 1627,
+      "sha256": "80da9c8f28ee85244015e3dc480aa4b45254750bde66fe6de466c34625966af3"
     },
     "sideSilhouette": {
       "file": "abramsx_side_silhouette.png",
       "width": 256,
       "height": 128,
       "mime": "image/png",
-      "bytes": 4802,
-      "sha256": "21e3e32db1361fa5d48fc696da6e94a6dd4419c9a39ae3bb176994ccd017c372"
+      "bytes": 4747,
+      "sha256": "a35a311a40460b07f3ea375f3a9d6ffc809e637df696435913f66c6d5662bdc5"
     },
     "armorSide": {
       "file": "abramsx_armor_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 24518,
-      "sha256": "cd200f6f255eb51c8f8ab68a81ac885788088fa4d6544e5a0dd3273c5c294381"
+      "bytes": 24216,
+      "sha256": "4ed73aaf4483a34b77ce78f93ae9d986f72a6e438a1c51ab3650891b3a2d869c"
     },
     "modulesSide": {
       "file": "abramsx_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 25692,
-      "sha256": "ba414e504a0d9ae13ee41fd10e468cbd2212bb0353e8f03b92075a523677eeff"
+      "bytes": 25826,
+      "sha256": "65614321094234f826eb5fb5236b330d2f8e8fa47377ec42dd07d87ae97e3ca3"
     },
     "crewSide": {
       "file": "abramsx_crew_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 20728,
-      "sha256": "4c60b06916b5155a71231d6f2450f205db07857b7303ef2b8db2263bbd536586"
+      "bytes": 20794,
+      "sha256": "083814a759eb407c55afce21a457c71b36e66afb2a9c9e428ad293962c09d553"
     },
     "markings": {
       "file": "abramsx_markings.png",
@@ -690,8 +690,8 @@
     "technicalLabels": {
       "file": "abramsx_technical.json",
       "mime": "application/json",
-      "bytes": 5028,
-      "sha256": "3be6d01d48bd75846dcf58337aa7e36f35f866ae8a5e4e53014c9df34d9bed48"
+      "bytes": 5025,
+      "sha256": "25c9b55d08280d533370664c1649a408cc371e9bc3ac6564b258445c7e9b147a"
     }
   }
 }

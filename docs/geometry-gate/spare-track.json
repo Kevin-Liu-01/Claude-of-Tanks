@@ -4,7 +4,7 @@
  "tankIdSchema": 3,
  "rows": {
   "abramsx": {
-   "inputHash": "a98e422208398019",
+   "inputHash": "62774174c2189623",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1632,50 +1632,25 @@
    "hostSweep": []
   },
   "m1a1": {
-   "inputHash": "5254fd4ad6369c05",
+   "inputHash": "cd12c2f2f4ab4512",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1_abrams_aim": {
-   "inputHash": "8cd69f4077417dda",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildTejasFamilyHullCourse2@profiles/abrams.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.373,
-      "gap": 0.627,
-      "air": 0,
-      "hidden": 0.006,
-      "sunkMaxM": 0.009,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:494>"
-     }
-    }
-   ],
+   "inputHash": "db7acd527944d39a",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1_abrams_fep": {
-   "inputHash": "76657baec4574955",
+   "inputHash": "3a4f498798604832",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1_abrams_hc": {
-   "inputHash": "f709c4d8fba0ec86",
+   "inputHash": "86b73e271c4ba65b",
    "runs": [
     {
      "index": 0,
@@ -1688,15 +1663,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.974,
-      "gap": 0.018,
-      "air": 0.007,
+      "support": 0.995,
+      "gap": 0.005,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1443>"
+      "exposure": 0.978,
+      "host": "hull<addM1A1SkirtsAndFenders@profiles/m1a1Skirts.ts:125>"
      }
     }
    ],
@@ -1704,38 +1679,13 @@
    "hostSweep": []
   },
   "m1a1_abrams_sa": {
-   "inputHash": "1979c92a0d59c946",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildTejasFamilyHullCourse1@profiles/abrams.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.363,
-      "gap": 0.637,
-      "air": 0,
-      "hidden": 0.003,
-      "sunkMaxM": 0.009,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:494>"
-     }
-    }
-   ],
+   "inputHash": "449f3f4cd5d9763c",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1ha": {
-   "inputHash": "8b63bcc3b97d7a8b",
+   "inputHash": "a8f0efb5d3eeed12",
    "runs": [
     {
      "index": 0,
@@ -1746,17 +1696,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.946,
-      "gap": 0.054,
+      "support": 0.34,
+      "gap": 0.66,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.001,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.966,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3249>"
+      "exposure": 0.944,
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3358>"
      }
     }
    ],
@@ -1794,7 +1746,7 @@
    "hostSweep": []
   },
   "m2a2_bradley": {
-   "inputHash": "849ca70f674af00a",
+   "inputHash": "f0ec290bfe081c39",
    "runs": [
     {
      "index": 0,
@@ -1807,15 +1759,44 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.978,
-      "gap": 0.022,
+      "support": 0.613,
+      "gap": 0.387,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.008,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
+      "exposure": 0.966,
+      "host": "hull<addBradleyBowKit@modern3.ts:3530>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m3a2_bradley": {
+   "inputHash": "5047c22a1aae490b",
+   "runs": [
+    {
+     "index": 0,
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.613,
+      "gap": 0.387,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.008,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.966,
+      "host": "hull<addBradleyBowKit@modern3.ts:3530>"
      }
     }
    ],
@@ -1823,7 +1804,7 @@
    "hostSweep": []
   },
   "m3a3_bradley": {
-   "inputHash": "c2302954dfb11a30",
+   "inputHash": "d1ba3d196bb41450",
    "runs": [
     {
      "index": 0,
@@ -1838,19 +1819,41 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.321,
-      "gap": 0.676,
-      "air": 0.004,
-      "hidden": 0,
-      "sunkMaxM": 0.014,
+      "support": 0.403,
+      "gap": 0.597,
+      "air": 0,
+      "hidden": 0.003,
+      "sunkMaxM": 0.017,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.956,
-      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2032>"
+      "exposure": 0.978,
+      "host": "hull<addBradleyBowKit@modern3.ts:3530>"
      }
     },
     {
      "index": 1,
+     "site": "fitting:spareTrackLinks@buildM3A3@profiles/afvFamily.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0.004,
+      "sunkMaxM": 0.02,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.865,
+      "host": "hull<addBradleyHullCore@modern3.ts:1815>"
+     }
+    },
+    {
+     "index": 2,
      "site": "fitting:spareTrackLinks@addM3A3Turret@profiles/afvFamily.ts",
      "source": "fitting",
      "frame": "turret",
@@ -1862,15 +1865,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.162,
-      "gap": 0.838,
+      "support": 0.164,
+      "gap": 0.836,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:836>"
+      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:978>"
      }
     }
    ],
@@ -1968,7 +1971,7 @@
    "hostSweep": []
   },
   "m6_linebacker": {
-   "inputHash": "b4ece2f5be3e4606",
+   "inputHash": "a266784c3396a8ab",
    "runs": [
     {
      "index": 0,
@@ -1981,15 +1984,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.978,
-      "gap": 0.022,
+      "support": 0.613,
+      "gap": 0.387,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.008,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.921,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
+      "exposure": 0.966,
+      "host": "hull<addBradleyBowKit@modern3.ts:3530>"
      }
     }
    ],
@@ -3732,7 +3735,7 @@
    "hostSweep": []
   },
   "ua_m1a1": {
-   "inputHash": "50205df2b0d99c03",
+   "inputHash": "163e39473ab32927",
    "runs": [
     {
      "index": 0,
@@ -3745,15 +3748,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.946,
-      "gap": 0.054,
+      "support": 0.571,
+      "gap": 0.429,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.978,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3249>"
+      "exposure": 0.922,
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3358>"
      }
     }
    ],
@@ -3792,7 +3795,7 @@
    "hostSweep": []
   },
   "ua_m2a3_bradley": {
-   "inputHash": "ed2ab46f752963d3",
+   "inputHash": "f9ce5a17aafa27e9",
    "runs": [
     {
      "index": 0,
@@ -3804,19 +3807,84 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "clips <= 5 cm cosmetic",
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.196,
-      "gap": 0.804,
+      "support": 0.477,
+      "gap": 0.523,
       "air": 0,
-      "hidden": 0.003,
-      "sunkMaxM": 0.018,
+      "hidden": 0,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:1860>"
+      "exposure": 0.944,
+      "host": "hull<addUkrainianBradleyPackage@profiles/afvFamily.ts:310>"
+     }
+    },
+    {
+     "index": 1,
+     "site": "fitting:spareTrackLinks@addUkrainianBradleyFieldKit@profiles/afvFamily.ts~8589ab46",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0.004,
+      "sunkMaxM": 0.02,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.843,
+      "host": "hull<addBradleyHullCore@modern3.ts:1815>"
+     }
+    },
+    {
+     "index": 2,
+     "site": "fitting:spareTrackLinks@addUkrainianBradleyFieldKit@profiles/afvFamily.ts~8589ab46",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0.004,
+      "sunkMaxM": 0.02,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.865,
+      "host": "hull<addBradleyHullCore@modern3.ts:1815>"
+     }
+    },
+    {
+     "index": 3,
+     "site": "fitting:spareTrackLinks@addUkrainianBradleyFieldKit@profiles/afvFamily.ts~ef6480b7",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.729,
+      "gap": 0.271,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.01,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.944,
+      "host": "hull<addUkrainianBradleyPackage@profiles/afvFamily.ts:310>"
      }
     }
    ],
