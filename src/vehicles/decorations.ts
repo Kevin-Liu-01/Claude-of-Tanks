@@ -3163,6 +3163,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // 268: the twin-cannon air defence: the turret-side guns, radars and launchers sweep the deck and roof at every
   // bearing and elevation, so no random stowage; the builders author each vehicle's own fittings
   if (['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'].includes(spec.id)) return [];
+  // 269: the second air-defence round likewise (the Lvkv 9040's single gun and radar drum sweep its roof)
+  if (['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara'].includes(spec.id)) return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

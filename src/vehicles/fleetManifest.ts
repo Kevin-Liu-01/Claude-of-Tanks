@@ -133,6 +133,13 @@ export const FLEET_GROUP_IDS = Object.freeze({
   gm352AirDefense: Object.freeze(['tunguska_m', 'pantsir_s1']),
   gepard: Object.freeze(['gepard_1a2']),
   chineseAirDefense: Object.freeze(['pgz95', 'pgz09']),
+  // 269: the second air-defence round, one self-contained group per base vehicle (the 268 round's pattern); the two
+  // Marksmen share one turret module on two hulls
+  type87: Object.freeze(['type87_aw']),
+  marksman: Object.freeze(['marksman_t55', 'itpsv_leopard2']),
+  lvkv9040: Object.freeze(['lvkv9040']),
+  k30Biho: Object.freeze(['k30_biho']),
+  loara: Object.freeze(['pza_loara']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

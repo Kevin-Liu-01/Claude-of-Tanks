@@ -227,5 +227,10 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // line (the 2K22M Tunguska-M at V off the BMP-3, lane 14 under the BMPTs, the tracked Pantsir-S1 at VI after it); the
 // Flakpanzer Gepard 1A2 at V on Germany's Leopard 1 row after the MBT-70 (lane 5); China's PGZ-95 and PGZ-09 line (the
 // PGZ-95 at V off the AFT-10, lane 4, the PGZ-09 at VI after it).
-assert.equal(digest, 'bfd40f3a3d0dcc68', `tree content changed: re-pin to ${digest} if deliberate`);
+// 269 (the second air-defence round; tiers by capability on the coordinator's suggestion): the Type 87 SPAAG at V on
+// Japan's STB-1 to Type 10 line off the Type 74 (lane 1); the UK's new Marksman line off the Chieftain Mk 10 on lane 5,
+// the Marksman (T-55) at V and the ItPsv Leopard 2 at VI after it; the Lvkv 9040 at V straight on from Sweden's CV90
+// (lane 2); the K30 Biho at V off South Korea's BMP-3 (ROK), lane 2 under the K21; the PZA Loara at VI off Poland's
+// PT-91A Twardy (lane 1).
+assert.equal(digest, 'be0f063a807fb64f', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

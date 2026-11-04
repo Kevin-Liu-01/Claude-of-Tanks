@@ -180,6 +180,10 @@ assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 't49').map(({round}
 const airDefense268Ids = new Set(['tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09']);
 assert.deepEqual(guidedRounds.filter(({spec}) => airDefense268Ids.has(spec.id)).map(({spec, round}) => `${spec.id}/${round.name}`),
   ['tunguska_m/9M311M', 'pantsir_s1/57E6', 'pgz95/QW-2'], 'the 268 air defence carries three guided channels');
+// 269: the second air-defence round (the Type 87, the two Marksmen, the Lvkv 9040, the K30 Biho, the PZA Loara) carries no
+// missile: guns only
+const airDefense269Ids = new Set(['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara']);
+assert.deepEqual(guidedRounds.filter(({spec}) => airDefense269Ids.has(spec.id)), [], 'the 269 air defence carries no guided channel');
 assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id) && !ifvBatchIds.has(spec.id)
   && spec.id !== 't49' && !airDefense268Ids.has(spec.id)).length, 24,
   'the unchanged established guided-ammunition fleet remains covered');
@@ -254,6 +258,8 @@ const laterChannelCounts = {
   bmpt_terminator: 3,
   // 268: the twin-cannon air defence: the SAM carriers' AP, SAM and HE; the Gepard's and the PGZ-09's AP and HE
   tunguska_m: 3, pantsir_s1: 3, gepard_1a2: 2, pgz95: 3, pgz09: 2,
+  // 269: the second air-defence round, each its gun's armour-piercing and high-explosive rounds
+  type87_aw: 2, marksman_t55: 2, itpsv_leopard2: 2, lvkv9040: 2, k30_biho: 2, pza_loara: 2,
 };
 const pattonM48Channels = ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
@@ -269,6 +275,8 @@ const release265Channels = ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'm4
   'cv9035dk', 't49', 'ua_cv9040c'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const airDefense268Channels = [...airDefense268Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(airDefense268Channels, 13, 'the five 268 air-defence vehicles add thirteen channels');
+const airDefense269Channels = [...airDefense269Ids].reduce((n, id) => n + laterChannelCounts[id], 0);
+assert.equal(airDefense269Channels, 12, 'the six 269 air-defence vehicles add twelve channels');
 const brazil266Channels = ['x1_pioneiro', 'x1a2_carcara', 'tamoyo1', 'tamoyo3', 'osorio_p1', 'osorio_p2', 'ee_t3_osorio',
   'ee_t4_osorio'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -331,7 +339,7 @@ assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannel
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
-  - laterChannelCounts.bmpt_terminator, 560,
+  - laterChannelCounts.bmpt_terminator - airDefense269Channels, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

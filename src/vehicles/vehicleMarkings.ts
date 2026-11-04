@@ -456,6 +456,16 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   gepard_1a2: anchor('turret', 'left', 0.78, 0.75, 0.24, 1),
   pgz95: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   pgz09: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  // 269: the second air-defence round. The photographs carry the numbers on the hull: the Type 87's "96-5192" plates
+  // (its turret sides carry the guns), the ItPsv 90's "Ps465-22" on the hull side (photo 01), the K30's "312" (photo 01)
+  // and the Loara's "370" (photo 02) on the hull front's flank, the Lvkv 9040's unit lozenge on the hull side (photo 01,
+  // the CV90's anchor); the guns and radars ride the turret sides
+  type87_aw: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  marksman_t55: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  itpsv_leopard2: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  lvkv9040: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  k30_biho: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
+  pza_loara: anchor('hull', 'left', 0.52, 0.58, 0.22, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).

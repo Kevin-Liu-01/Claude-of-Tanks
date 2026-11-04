@@ -937,6 +937,16 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   pantsir_s1: 'national_ru',
   pgz95: 'sig_type59',
   pgz09: 'sig_ztz100_x',
+  // release 269: the second air-defence round in existing coats (no new paint; saved catalog indices hold): both Marksmen
+  // in Finland's three-tone's closest coat, the CV90 Mk IV's Swedish splinter woodland (paint_cv90_mkiv: green, black and a
+  // grey-green, as the photographs); the K30 Biho in the ROK woodland of the K2 (sig_k2, the photographs' four-colour
+  // coat); the PZA Loara in the PT-91 Twardy's Polish green, sand and black (sig_pt91_twardy). The Type 87 wears Japan's
+  // Factory coat with the Type 74 and the Type 90 (the JGSDF two-tone), the Lvkv 9040 Sweden's (the M90 splinter) with the
+  // CV90.
+  marksman_t55: 'paint_cv90_mkiv',
+  itpsv_leopard2: 'paint_cv90_mkiv',
+  k30_biho: 'sig_k2',
+  pza_loara: 'sig_pt91_twardy',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

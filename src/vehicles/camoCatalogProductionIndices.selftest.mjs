@@ -140,8 +140,9 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro'];
 // Release 266: the US M41A3 and the T49 wear the US Factory coat (the owner's 2026-10-22 rule for plain coats).
 // Release 268: the Flakpanzer Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5 whose hull it rides.
+// Release 269: the Type 87 wears Japan's Factory coat with the Type 74 and the Type 90, the Lvkv 9040 Sweden's with the CV90.
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
-  gepard_1a2: 'service_leo2a6m' };
+  gepard_1a2: 'service_leo2a6m', type87_aw: 'service_type10', lvkv9040: 'service_strv122' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
@@ -165,7 +166,10 @@ const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', magach3: 'service_merka
   magach7c: 'service_merkava2d',
   // release 268: the twin-cannon air defence: the Russian pair in Russia's plain service green, the PGZ-95 in the Type 59's
   // PLA green-and-sand Signature, the PGZ-09 in the ZTZ-100's PLA digital woodland (no new paint, no index moves)
-  tunguska_m: 'national_ru', pantsir_s1: 'national_ru', pgz95: 'sig_type59', pgz09: 'sig_ztz100_x' };
+  tunguska_m: 'national_ru', pantsir_s1: 'national_ru', pgz95: 'sig_type59', pgz09: 'sig_ztz100_x',
+  // release 269: both Marksmen in the CV90 Mk IV's Swedish splinter woodland (Finland's three-tone's closest coat), the K30
+  // Biho in the K2's ROK woodland, the PZA Loara in the PT-91 Twardy's Polish green, sand and black (no new paint)
+  marksman_t55: 'paint_cv90_mkiv', itpsv_leopard2: 'paint_cv90_mkiv', k30_biho: 'sig_k2', pza_loara: 'sig_pt91_twardy' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length + Object.keys(ADDED_IN_EXISTING_COAT).length
   + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length + ADDED_IN_SPEC_COAT.length + Object.keys(ADDED_IN_NATION_COAT).length,

@@ -108,6 +108,14 @@ const RULINGS = {
   gepard_1a2: ['spaa', 'scout', 'service'],
   pgz95: ['spaa', 'scout', 'service'],
   pgz09: ['spaa', 'scout', 'service'],
+  // 269: the second air-defence round (the PZA Loara, one production vehicle and a few prototypes and no series, is listed
+  // with the prototypes)
+  type87_aw: ['spaa', 'scout', 'service'],
+  marksman_t55: ['spaa', 'scout', 'service'],
+  itpsv_leopard2: ['spaa', 'scout', 'service'],
+  lvkv9040: ['spaa', 'scout', 'service'],
+  k30_biho: ['spaa', 'scout', 'service'],
+  pza_loara: ['spaa', 'scout', 'prototype'],
   tos1a_tagil: ['fire-support', 'support', 'service'],
   bmpt_terminator2: ['fire-support', 'support', 'service'],
   t14_armata: ['mbt', 'breakthrough', 'prototype'],

@@ -295,6 +295,17 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://en.wikipedia.org/wiki/Type_95_SPAAA', kind: 'encyclopedia' }),
   wikiPgz09: Object.freeze({ title: 'Wikipedia, "PGZ-09"',
     url: 'https://en.wikipedia.org/wiki/PGZ-09', kind: 'encyclopedia' }),
+  // 269: the second air-defence round (published crew and weapon configurations; no interior drawings)
+  wikiType87: Object.freeze({ title: 'Wikipedia, "Type 87 self-propelled anti-aircraft gun"',
+    url: 'https://en.wikipedia.org/wiki/Type_87_self-propelled_anti-aircraft_gun', kind: 'encyclopedia' }),
+  wikiMarksman: Object.freeze({ title: 'Wikipedia, "Marksman anti-aircraft system" (the T-55AM and Leopard 2A4 hulls)',
+    url: 'https://en.wikipedia.org/wiki/Marksman_anti-aircraft_system', kind: 'encyclopedia' }),
+  wikiCv90Lvkv: Object.freeze({ title: 'Wikipedia, "Combat Vehicle 90" (the Lvkv 90 variant and its table column)',
+    url: 'https://en.wikipedia.org/wiki/Combat_Vehicle_90', kind: 'encyclopedia' }),
+  wikiK30: Object.freeze({ title: 'Wikipedia, "K30 Biho"',
+    url: 'https://en.wikipedia.org/wiki/K30_Biho', kind: 'encyclopedia' }),
+  wikiLoara: Object.freeze({ title: 'Wikipedia, "PZA Loara"',
+    url: 'https://en.wikipedia.org/wiki/PZA_Loara', kind: 'encyclopedia' }),
 } satisfies Record<string, InternalLayoutSource>);
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
@@ -527,6 +538,32 @@ const LAYOUTS = Object.freeze({
   spaaPgz09: { confidence: 'platform-inferred', sources: ['wikiPgz09'], crew: IFV_TWO_MAN_TURRET,
     systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
       ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  // 269: the second air-defence round. Belt-fed twin guns and their ready rounds in the turret (the Lvkv 9040's single
+  // Bofors from its 24-round clips); the driver where the base hull seats him, the gunner (+x) and the commander side by
+  // side in the turret, the fourth seat (the Lvkv's and the K30's radar operator) behind the gunner; the CV90 and the
+  // K200 carry the power pack at the front
+  spaaType87: { confidence: 'platform-inferred', sources: ['wikiType87'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaMarksmanT55: { confidence: 'platform-inferred', sources: ['wikiMarksman'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaMarksmanLeopard2: { confidence: 'platform-inferred', sources: ['wikiMarksman'], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaLvkv9040: { confidence: 'platform-inferred', sources: ['wikiCv90Lvkv'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+    ['radioOperator', 'turret', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'clipFeed' } }) },
+  spaaK30: { confidence: 'platform-inferred', sources: ['wikiK30'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+    ['radioOperator', 'turret', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  spaaLoara: { confidence: 'platform-inferred', sources: ['wikiLoara'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
@@ -635,6 +672,12 @@ const IDS_BY_LAYOUT = Object.freeze({
   spaaGepard: ['gepard_1a2'],
   spaaPgz95: ['pgz95'],
   spaaPgz09: ['pgz09'],
+  spaaType87: ['type87_aw'],
+  spaaMarksmanT55: ['marksman_t55'],
+  spaaMarksmanLeopard2: ['itpsv_leopard2'],
+  spaaLvkv9040: ['lvkv9040'],
+  spaaK30: ['k30_biho'],
+  spaaLoara: ['pza_loara'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
   suppliedWarriorMilan: ['warrior_tes_h'],

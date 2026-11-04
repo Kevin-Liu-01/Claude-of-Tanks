@@ -90,6 +90,12 @@ import { synchronizeLongweiFamilyMetadata } from './longweiFamilySpecs.ts';
 import './gm352AirDefenseSpecs.ts';
 import './gepardSpecs.ts';
 import './chineseAirDefenseSpecs.ts';
+// 269: the second air-defence round registers after the first, so every earlier id keeps its roster place
+import { synchronizeType87Frame } from './type87Specs.ts';
+import { synchronizeMarksmanFrames } from './marksmanSpecs.ts';
+import { synchronizeLvkv9040Frame } from './lvkv9040Specs.ts';
+import { synchronizeK30BihoFrame } from './k30BihoSpecs.ts';
+import { synchronizeLoaraFrame } from './loaraSpecs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
@@ -107,6 +113,13 @@ synchronizeNationalModernizationMetadata();
 synchronizeLongweiFamilyMetadata();
 // 264: the 2A4-era Leopards' plates move onto the release's construction after every registration-time copy of them
 applyLeopard2A4FamilyEnvelopes(TANK_SPECS);
+// 269: the second air-defence round's hulls take their base vehicles' final frames (the T-72B3 frame the renewal gives the
+// PT-91 Twardy, the 2A4 envelopes), once every pass that rewrites those frames has run
+synchronizeType87Frame();
+synchronizeMarksmanFrames();
+synchronizeLvkv9040Frame();
+synchronizeK30BihoFrame();
+synchronizeLoaraFrame();
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);

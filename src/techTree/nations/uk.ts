@@ -19,6 +19,7 @@ export const UK_TREE: NationTree = Object.freeze({
     { id: 'challenger', name: 'Chieftain to Challenger 3' },
     { id: 'chieftain', name: 'Late Chieftain' },
     { id: 'warrior', name: 'Warrior and Ajax' },
+    { id: 'air_defence', name: 'Marksman' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -60,6 +61,11 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'fv510_milan', tier: 3, line: 'warrior', lane: 1, parents: ['fv510'], slot: 'line' }),
     node({ id: 'warrior_tes_h', tier: 5, line: 'warrior', lane: 0, parents: ['fv510_milan'], slot: 'line' }),
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
+    // Marksman (269): the Marconi Marksman turret, trialled on the Chieftain and fielded by Finland on two hulls, the
+    // ItPsv 90 (T-55) at V and the ItPsv Leopard 2 at VI after it, off the Chieftain Mk 10 on lane 5 (lane 4 carries the
+    // Mk 10's run to the FV4030/5; the FV4030/6 drops to lane 5 at VIII)
+    node({ id: 'marksman_t55', tier: 5, line: 'air_defence', lane: 5, parents: ['chieftain_mk10'], slot: 'line' }),
+    node({ id: 'itpsv_leopard2', tier: 6, line: 'air_defence', lane: 5, parents: ['marksman_t55'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
     // release 262: the 2021 Challenger 3 demonstrator and its field fit with the remote station and kit (the owner,

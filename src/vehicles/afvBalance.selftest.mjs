@@ -69,10 +69,19 @@ const EXPECTED = Object.freeze({
   gepard_1a2:          { hp: 2500, speed: 65, reverse: 25, traverse: 42.6, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
   pgz95:               { hp: 2000, speed: 53, reverse: 16, traverse: 49.3, damage: 43, pen: [125, 112, 100], reload: 0.25, sound: 'm242-bushmaster', missile: [300, 'tow-launch'] },
   pgz09:               { hp: 2400, speed: 55, reverse: 18, traverse: 44.8, damage: 58, pen: [142, 128, 114], reload: 0.33, sound: 'kde-35', missile: null },
+  // 269: the second air-defence round, guns only: the Gepard's KDA rows for the four twin-35 mm vehicles, the Tunguska-M's
+  // 30 mm rows for the K30's KCB, and the twin-35 mm rows scaled by calibre (x 40/35) for the Lvkv 9040's one Bofors
+  // (type87Specs.ts, marksmanSpecs.ts, lvkv9040Specs.ts, k30BihoSpecs.ts, loaraSpecs.ts)
+  type87_aw:           { hp: 2350, speed: 53, reverse: 20, traverse: 42.6, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
+  marksman_t55:        { hp: 2400, speed: 50, reverse: 12, traverse: 40.3, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
+  itpsv_leopard2:      { hp: 2600, speed: 72, reverse: 25, traverse: 44.8, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
+  lvkv9040:            { hp: 2350, speed: 70, reverse: 40, traverse: 51.5, damage: 70, pen: [167, 150, 134], reload: 0.40, sound: 'bofors-40', missile: null },
+  k30_biho:            { hp: 2150, speed: 65, reverse: 20, traverse: 51.5, damage: 52, pen: [125, 112, 100], reload: 0.30, sound: 'mk30-2', missile: null },
+  pza_loara:           { hp: 2550, speed: 60, reverse: 20, traverse: 38.1, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 49, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles.
+assert.equal(ifvIds.length, 55, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles; 269: the second air-defence round's six.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

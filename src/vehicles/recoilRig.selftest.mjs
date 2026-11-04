@@ -115,7 +115,10 @@ function rig(id, options = {}) {
 // the Gepard's two KDA in their flank bays (profiles/gepardFrame.ts); the PGZ-95's two side pairs, one fire axis each on its
 // upper gun with both guns of a side in that side's group (profiles/chineseAirDefenseLayout.ts); the PGZ-09's two 35 mm, one
 // a turret side (profiles/chineseAirDefenseLayout.ts)
-const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09'];
+// 269: the second air-defence round's twin 35 mm (the Type 87, both Marksmen, the PZA Loara) and twin 30 mm (the K30
+// Biho), one fire axis a turret side on the registrar's placeholders until their builders' layouts; the Lvkv 9040 has one gun
+const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90', 'bmpt_terminator', 'tunguska_m', 'pantsir_s1', 'gepard_1a2', 'pgz95', 'pgz09',
+  'type87_aw', 'marksman_t55', 'itpsv_leopard2', 'k30_biho', 'pza_loara'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);

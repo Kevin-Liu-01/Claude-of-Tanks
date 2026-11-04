@@ -31,5 +31,7 @@ export const SOUTH_KOREA_TREE: NationTree = Object.freeze({
     // BMP-3 and K21
     node({ id: 'bmp3_rok', tier: 3, line: 'k21', lane: 1, parents: [], slot: 'line' }),
     node({ id: 'k21', tier: 5, line: 'k21', lane: 1, parents: ['bmp3_rok'], slot: 'line' }),
+    // 269: the K30 Biho (the K200 family's air defence; the fleet has no K200) at V off the BMP-3 (ROK), lane 2 under the K21
+    node({ id: 'k30_biho', tier: 5, line: 'k21', lane: 2, parents: ['bmp3_rok'], slot: 'line' }),
   ]),
 });

@@ -14,6 +14,11 @@ import { TOS1A_TAGIL_PROFILES } from './profiles/tos1aTagil.ts';
 import { GM352_AIR_DEFENSE_PROFILES } from './profiles/gm352AirDefense.ts';
 import { GEPARD_PROFILES } from './profiles/gepard.ts';
 import { CHINESE_AIR_DEFENSE_PROFILES } from './profiles/chineseAirDefense.ts';
+import { TYPE87_PROFILES } from './profiles/type87.ts';
+import { MARKSMAN_PROFILES } from './profiles/marksman.ts';
+import { LVKV9040_PROFILES } from './profiles/lvkv9040.ts';
+import { K30_BIHO_PROFILES } from './profiles/k30Biho.ts';
+import { LOARA_PROFILES } from './profiles/loara.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -226,6 +231,12 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...GM352_AIR_DEFENSE_PROFILES,
   ...GEPARD_PROFILES,
   ...CHINESE_AIR_DEFENSE_PROFILES,
+  // 269: the second air-defence round
+  ...TYPE87_PROFILES,
+  ...MARKSMAN_PROFILES,
+  ...LVKV9040_PROFILES,
+  ...K30_BIHO_PROFILES,
+  ...LOARA_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {
