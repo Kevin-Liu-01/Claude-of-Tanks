@@ -36,7 +36,7 @@ import {
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
 import {
-  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
+  exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, resetHullCrashMemory, resolveHullImpact, resolveRamPairDamage,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose, type SupportHeightField as StructureSupportTerrain } from './structureSupport.ts';
@@ -69,7 +69,6 @@ import {
   tickReload,
   tickFire,
   tickModuleRepairs,
-  hullDamageTaken,
 } from './damage.ts';
 import type {
   CombatState,
@@ -77,7 +76,7 @@ import type {
   DamageShellSpec,
   HitEvent,
 } from './damage.ts';
-import { createSpottingSystem } from './spotting.ts';
+import { CAMO_PAINT_BONUS, createMatchSpotting } from './spotting.ts';
 import type {
   ConcealerDisc,
   SpottingRayHit,
@@ -101,7 +100,7 @@ import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { applyEquipmentToCombat, defaultLoadoutFor } from './equipmentRules.ts';
 import type { EquipmentCombatState } from './equipmentRules.ts';
-import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
+import { createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
 import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
@@ -142,6 +141,9 @@ import type {
 import type { SpecialActionState } from './specialActionPolicy.ts';
 import { createDestructionMatch } from './destructionMatch.ts';
 import { createFortifiedCoverLedger, isFortifiedCoverRecord } from './fortifiedCover.ts';
+import { createCrushPressLedger } from './crushPress.ts';
+import { botShotClear, deliverShellHit, deliverShotFired } from './botEvents.ts';
+import { autoRightsItself } from './botDriven.ts';
 import type {
   DestructionLogEntry, StructureBreachEvent, StructureStageEvent, TerrainCraterEvent,
 } from './destructionEvents.ts';
@@ -176,6 +178,11 @@ export interface AuthoritativePlayerRecord {
   /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
   consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
+  /**
+   * The seat's paint matches the battlefield (materials.ts hasCamoPaint): the spotting's CAMO_PAINT_BONUS, as the solo
+   * step grants it. A seat input (2026-11-02 audit M6, spotting parity); a room sends none yet, so online hulls read 0.
+   */
+  camoPaint?: boolean;
 }
 
 export interface AuthoritativePlayerInput extends AimIntentInput {
@@ -238,6 +245,8 @@ export interface AuthoritativeEntity {
   connected: boolean;
   kills: number;
   damage: number;
+  /** The seat's biome-matched paint (AuthoritativePlayerRecord.camoPaint): the spotting's paint bonus. */
+  camoPaint: boolean;
   /** The consumable in each slot, kept across lives (sim/consumableRules.ts sanitizeConsumableLoadout). */
   consumableItems: ConsumableId[];
   /** This life's consumable cooldowns, charges and timed effects. */
@@ -276,10 +285,8 @@ export interface AuthoritativeEntity {
   _ramKeep?: number;
 }
 
-export interface AuthoritativeObstacle extends CollisionRecord {
-  _pressT?: number;
-  _pressS?: number;
-}
+// (the crush press is the match's, never the record's: sim/crushPress.ts; 2026-11-02 audit M6)
+export type AuthoritativeObstacle = CollisionRecord;
 
 interface AuthoritativeWorldRayHit extends SpottingRayHit {
   kind: string;
@@ -479,8 +486,6 @@ const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
-const CRUSH_PRESS_S = 0.45;
-const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
 /** A Governor Override that ended strains the engine (one function for every tank: the tick allocates nothing). */
@@ -937,6 +942,8 @@ export function createAuthoritativeMatch({
   // the pillboxes' damage (sim/fortifiedCover.ts): every round stops on one, and accumulated heavy blows bring it down;
   // the solo step keeps the same ledger (game/state.ts game._fortified)
   const fortified = createFortifiedCoverLedger();
+  // the press the hulls put on what they turn or drive into (sim/crushPress.ts): this match's, never the world records'
+  const crushPress = createCrushPressLedger();
   // destruction (docs/DESTRUCTION.md, 2026-10-07): the match's structures, priced by the munition catalog; the solo
   // step owns the same object (game/state.ts) and calls it at the same moments
   const destruction = createDestructionMatch({
@@ -1048,6 +1055,7 @@ export function createAuthoritativeMatch({
       connected: true,
       kills: 0,
       damage: 0,
+      camoPaint: record.camoPaint === true,
       consumableItems,
       consumables,
       consumableReadyAt: consumables.readyAt,
@@ -1084,7 +1092,11 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
     ? worldCollision.getConcealment() ?? [] : [];
-  const spotting = createSpottingSystem({
+  // the battle's spotting through the solo step's factory (sim/spotting.ts createMatchSpotting: the stagger from the seed,
+  // the seat's paint; 2026-11-02 audit M6)
+  const spotting = createMatchSpotting({
+    seed,
+    teams: [TEAM_ALPHA, TEAM_BRAVO],
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
@@ -1094,9 +1106,7 @@ export function createAuthoritativeMatch({
       const tank = entityById.get(entity.id);
       return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
     },
-    getCamoBonus: () => 0,
-    rng: mulberry32(seed + 31000),
-    teams: [TEAM_ALPHA, TEAM_BRAVO],
+    getCamoBonus: (entity) => (entityById.get(entity.id)?.camoPaint ? CAMO_PAINT_BONUS : 0),
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? preparedGround?.navigation ?? createBotNavigationGrid({
@@ -1244,6 +1254,8 @@ export function createAuthoritativeMatch({
     initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
+    // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
+    resetHullCrashMemory(tank);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
@@ -1355,10 +1367,8 @@ export function createAuthoritativeMatch({
     // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never
     // crushing them)
     if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
-    if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
-    obstacle._pressT = timeS;
-    obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
-    return obstacle._pressS >= CRUSH_PRESS_S;
+    // this match's press of this hull on this record (sim/crushPress.ts, the solo step's ledger; 2026-11-02 audit M6)
+    return crushPress.press(obstacle, entity.id, timeS, SIM_DT);
   }
 
   function queueCrushedObstacle(
@@ -1696,14 +1706,9 @@ export function createAuthoritativeMatch({
     pendingRams.length = 0;
   }
 
-  function ramPairCanDamage(key: string, contact: PendingRam): boolean {
+  function ramPairCooling(key: string): boolean {
     const last = ramPairTime.get(key);
-    if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) return false;
-    const { a, b } = contact;
-    if (!a.combat || !b.combat || a.combat.destroyed) return false;
-    // Teammates still resolve physical separation, but contact can never
-    // become friendly-fire damage or a kill credit.
-    return a.team !== b.team;
+    return last != null && timeS - last < RAM_PAIR_COOLDOWN_S;
   }
 
   function recordRamDestructions(
@@ -1724,28 +1729,20 @@ export function createAuthoritativeMatch({
     });
   }
 
+  /** tank_ram events whose struck hull was already a wreck: its owner took nothing live (canObserveRam). */
+  const wreckRams = new WeakSet<AuthoritativeEvent>();
+
   function resolveRamPair(key: string, contact: PendingRam): void {
-    if (!ramPairCanDamage(key, contact)) return;
+    if (ramPairCooling(key)) return;
     const { a, b } = contact;
-    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on
-    const afx = detMath.sin(a.state.yaw), afz = detMath.cos(a.state.yaw);
-    const bfx = detMath.sin(b.state.yaw), bfz = detMath.cos(b.state.yaw);
-    const damage = ramShares(
-      ruleset.physics, a.spec.weightTons, b.spec.weightTons, contact.closing,
-      ramAggression(contact.closing, -contact.vAn), ramAggression(contact.closing, contact.vBn),
-      contact.vertical ? 0 : -(contact.nx * afx + contact.nz * afz),
-      contact.vertical ? 0 : contact.nx * bfx + contact.nz * bfz,
-    );
-    if (damage.total <= 0) return;
+    // impact physics: the pool splits by mass, by who brought the closing speed and by the face each hull took it on, and a
+    // lethal ram reddens the struck track and the drivetrain — the solo step's one rule (sim/impact.ts resolveRamPairDamage;
+    // a wreck rams nothing, and a teammate contact is reported with no damage, module hit or kill credit: 2026-11-02 audit M6)
+    const dealt = resolveRamPairDamage(ruleset.physics, contact);
+    if (!dealt) return;
     ramPairTime.set(key, timeS);
-    const bWasDestroyed = b.combat.destroyed;
-    const damageA = hullDamageTaken(a.combat, damage.toA);
-    const damageB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
-    a.combat.hp = Math.max(0, a.combat.hp - damageA);
-    if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
-    a.combat.destroyed = a.combat.hp <= 0;
-    if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
-    emit('tank_ram', {
+    const { damageA, damageB, bWasDestroyed, aModulesHit, bModulesHit } = dealt;
+    const ram = emit('tank_ram', {
       aId: a.id,
       bId: b.id,
       damageA,
@@ -1755,6 +1752,12 @@ export function createAuthoritativeMatch({
       y: (a.state.pos.y + b.state.pos.y) * 0.5,
       z: (a.state.pos.z + b.state.pos.z) * 0.5,
     });
+    if (bWasDestroyed) wreckRams.add(ram);
+    if (dealt.friendly) return;
+    // the lethal ram's module receipts before the destruction, as the solo step publishes them (state.ts
+    // publishRamDamage) and as a crash's are (publishEntityImpact): a client sets a peer's module stage only from these
+    for (const hit of aModulesHit) emit('module_state', { id: a.id, module: hit.module, state: hit.newState, source: 'ram' });
+    for (const hit of bModulesHit) emit('module_state', { id: b.id, module: hit.module, state: hit.newState, source: 'ram' });
     recordRamDestructions(a, b, bWasDestroyed);
   }
 
@@ -1908,18 +1911,6 @@ export function createAuthoritativeMatch({
     return shellSpec;
   }
 
-  function botShotIsClear(
-    entity: AuthoritativeEntity,
-    shellSpec: AuthoritativeSpec['gun']['shells'][number],
-  ): boolean {
-    if (!entity.bot) return true;
-    const friendlyRisk = botFriendlyFireRisk(
-      entity, entity.input.aimPoint, shellSpec, entities,
-    );
-    if (!friendlyRisk) return true;
-    entity.aiCtl?.notifyFriendlyBlocked?.(friendlyRisk);
-    return false;
-  }
 
   function selectFallbackAfterShot(
     entity: AuthoritativeEntity,
@@ -1932,13 +1923,6 @@ export function createAuthoritativeMatch({
     if (!entity.bot) emit('ammo_depleted', { id: entity.id, slot: firedSlot, fallbackSlot });
   }
 
-  function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
-    if(isGunship(entity))return;
-    for (const other of entities) {
-      if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
-      if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
-    }
-  }
 
   function emitShellFired(
     entity: AuthoritativeEntity,
@@ -1971,7 +1955,8 @@ export function createAuthoritativeMatch({
 
   function tryFire(entity: AuthoritativeEntity): void {
     const shellSpec = selectedShellForFire(entity);
-    if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
+    // a brain's shot a teammate drove into since its update holds, and tells it (sim/botEvents.ts, the solo step's gate too)
+    if (!shellSpec || !botShotClear(entity, entity.input.aimPoint, shellSpec, entities)) return;
     const combat = entity.combat;
     const gun = gunWorldPose(entity, shellSpec);
     if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
@@ -1995,7 +1980,8 @@ export function createAuthoritativeMatch({
     const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
     fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
-    notifyEnemyBotsOfShot(entity);
+    // the other side's brains within earshot hear it (sim/botEvents.ts, the solo step's delivery)
+    deliverShotFired(entities, entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
   }
 
@@ -2006,18 +1992,9 @@ export function createAuthoritativeMatch({
   ): void {
     // (the scoreboard's damage is the hull points the hits took off, the figure every readout shows: hpRemoved)
     if (shooter && hit.hpRemoved > 0) shooter.damage += hit.hpRemoved;
-    if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
-      ...hit,
-      targetId: target?.id || null,
-    });
-    // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
-    if (!shooter || !target || isGunship(shooter)) return;
-    for (const ally of entities) {
-      if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
-          (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {
-        selfHit: ally === target, damaging: hit.damage > 0, kind: hit.kind,
-      });
-    }
+    // the shooter's controller hears the result, then (bot philosophy r1: a bounce is still a shot at the team) the struck
+    // hull reacts and its teammates gain intel — sim/botEvents.ts, the solo step's delivery (2026-11-02 audit M6)
+    deliverShellHit(entities, shooter, target, shooter?.aiCtl ? { ...hit, targetId: target?.id || null } : hit);
   }
 
   /**
@@ -2323,7 +2300,10 @@ export function createAuthoritativeMatch({
     _lightCoverDir.multiplyScalar(1 / length);
     sweepLightCover(worldCollision.queryObstacles.bind(worldCollision) as LightCoverQuery, shell.prevPos, _lightCoverDir,
       Math.min(stop, length), _lightCoverScratch as CollisionRecord[], (record) => {
-        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps);
+        // the shooter is the blow's source (as destroyShellObstacle names it): a viewer that does not see it reads the
+        // fall without the round's bearing and speed (viewerWorldEvent; 2026-11-02 audit SIDE)
+        destroyObstacle(record as AuthoritativeObstacle, null, 'shell', _lightCoverDir.x, _lightCoverDir.z, shell.spec.velocityMps,
+          shell.shooterId);
       });
   }
 
@@ -2612,9 +2592,12 @@ export function createAuthoritativeMatch({
     upper: AuthoritativeEntity,
     lower: AuthoritativeEntity,
     closing: number,
+    nx = 0,
+    nz = 0,
   ): void {
-    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse
-    pendingRams.push({ a: upper, b: lower, closing, nx: 0, nz: 0, vAn: -closing, vBn: 0, vertical: true });
+    // the upper hull is the aggressor of a vertical closing speed; the vertical module exchanged the impulse. The contact's
+    // normal rides it, as the solo step's queueRam takes it (a lethal landing reddens the track on that side)
+    pendingRams.push({ a: upper, b: lower, closing, nx, nz, vAn: -closing, vBn: 0, vertical: true });
   }
 
   function advanceTankContacts(dt: number): void {
@@ -2629,7 +2612,8 @@ export function createAuthoritativeMatch({
 
   function advanceRollover(dt: number): void {
     for (const entity of entities) {
-      if (entity.modeActive === false || entity.combat.destroyed || !entity.bot) continue;
+      // the hulls no player drives right themselves (sim/botDriven.ts autoRightsItself, the solo step's gate)
+      if (!autoRightsItself(entity)) continue;
       if (stepRolloverLifecycle(entity.state, dt)) emit('tank_autoflip', { id: entity.id });
     }
   }
@@ -2831,6 +2815,18 @@ export function createAuthoritativeMatch({
     return copy;
   }
 
+  /**
+   * A ram as `viewer` may read it. Its two ids and its midpoint place both hulls (the midpoint less one hull's place is
+   * the other's), so it goes to a hull that took it live, and otherwise only to a viewer that sees both parties. Every
+   * viewer sees a wreck, so a wreck party never makes a ram observable on its own: a hidden hull shoving a wreck, its own
+   * team's or the viewer's, gave that viewer its exact place (2026-11-03 review of the 2026-11-02 audit M6).
+   */
+  function canObserveRam(viewer: AuthoritativeEntity, event: Record<string, RuntimeValue>): boolean {
+    const aId = String(event.aId ?? ''), bId = String(event.bId ?? '');
+    if (viewer.id === aId || (viewer.id === bId && !wreckRams.has(event as AuthoritativeEvent))) return true;
+    return canObserveEntity(viewer, aId) && canObserveEntity(viewer, bId);
+  }
+
   function canObserveEvent(viewer: AuthoritativeEntity | undefined, value: RuntimeValue): boolean {
     if (!viewer) return true;
     if (!value || typeof value !== 'object') return false;
@@ -2840,6 +2836,7 @@ export function createAuthoritativeMatch({
     // destruction: a building breaking or the ground cratering is world state every viewer receives; how it was dealt is
     // withheld from a viewer that does not see its source (viewerWorldEvent, 2026-10-13)
     if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
+    if (eventType === 'tank_ram') return canObserveRam(viewer, event);
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
       if (id && canObserveEntity(viewer, String(id))) return true;
     }

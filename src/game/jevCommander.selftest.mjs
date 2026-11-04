@@ -5,7 +5,8 @@ import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, SIM_DT } from '../sim/movement.ts';
 import { createAI, mulberry32 } from './ai.ts';
-import { buildJevTeamState, createJevCommander, createJevFetchTransport } from './jevCommander.ts';
+import { buildJevTeamState, createJevCommander, createJevFetchTransport, createJevReplayCommander, createJevSession } from './jevCommander.ts';
+import { clearBattleAfterExit } from './garageTankLifecycle.ts';
 import { buildJevQuestions, jevLocalThreat, JEV_FOCUS_NONE, JEV_TARGET_NONE, validateJevRequest, validateJevState } from './jevProtocol.ts';
 
 // The commander is driven headless with real controllers (game/ai.ts) on a
@@ -604,19 +605,100 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   commander.dispose();
 }
 {
-  console.log('[11] hung transports and late callbacks never strand the team');
+  console.log('[11] hung transports and late callbacks never strand the team; the deadline is sim seconds, never the wall clock');
   const f=fixture(), fake=fakeTransport(); let clock=0;
   const commander=createJevCommander({transport:fake.transport,teams:['player'],now:()=>clock});
-  commander.step(f.view); clock=5001; f.set(1); commander.step(f.view);
-  assert.equal(fake.requests[0].signal.aborted,true);
+  // (2026-11-02 audit M6) a minute on the wall clock with one sim second gone — a pause, a killcam freeze — aborts nothing
+  commander.step(f.view); clock=60_000; f.set(1); commander.step(f.view);
+  assert.equal(fake.requests[0].signal.aborted,false,'the wall clock decides nothing inside the step');
+  assert.equal(commander.stats().failed,0);
+  f.set(5.1); commander.step(f.view);
+  assert.equal(fake.requests[0].signal.aborted,true,'past the sim deadline the request is given up');
   assert.equal(commander.stats().lastError,'commander_timeout');
   fake.answer((id,q)=>id.startsWith('posture_')?confident('push',Object.keys(q.criteria)):null);
   await tick(); commander.step(f.view);
   assert.equal(commander.stats().ordersApplied,0,'late completion of an aborted request is ignored');
-  f.set(3.1); commander.step(f.view);
+  f.set(7.2); commander.step(f.view);
   assert.equal(fake.requests.length,2,'a later planning request can proceed');
   commander.stop(); assert.equal(fake.requests[1].signal.aborted,true,'battle end aborts outstanding work');
   commander.dispose();
+}
+{
+  console.log('[13] the orders are the battle\'s recorded input: a replay applies the same orders on the same sim seconds');
+  // the live battle: answers land on whatever step they arrive on (here: 4, 2 and 9 steps after the ask)
+  const live = fixture(), fake = fakeTransport();
+  const taken = (f) => {
+    const log = [];
+    for (const tank of f.tanks) if (tank.aiCtl) {
+      const setOrder = tank.aiCtl.setOrder.bind(tank.aiCtl);
+      tank.aiCtl.setOrder = (order) => { log.push([Number(f.view.timeS.toFixed(6)), tank.id, JSON.stringify(order)]); setOrder(order); };
+    }
+    return log;
+  };
+  const liveLog = taken(live);
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy', 'player'], cadenceS: 2, now: () => 0 });
+  const answerAll = (index) => fake.answer((id, question) => {
+    if (id.startsWith('posture_')) return confident(index % 2 ? 'push' : 'hold', Object.keys(question.criteria));
+    if (id.startsWith('fire_')) return { type: 'noul', noul: 0.9 };
+    if (id.startsWith('threat_')) return scoreAnswer(1);
+    return null;
+  });
+  const arriveAt = new Map([[4, 0], [6, 0], [130, 0], [139, 0]]);
+  for (let step = 0; step < 240; step++) {
+    if (arriveAt.has(step) && fake.pending) { answerAll(step); await tick(); }
+    commander.step(live.view);
+    live.advance(SIM_DT);
+  }
+  assert.ok(commander.inputLog.length >= 3, `the answers became recorded batches (${commander.inputLog.length})`);
+  assert.equal(liveLog.length, commander.inputLog.reduce((sum, batch) => sum + batch.orders.length, 0), 'every order the controllers took is in the log');
+  assert.ok(commander.inputLog.every((batch, index, all) => index === 0 || all[index - 1].timeS <= batch.timeS), 'stamped in order on the sim clock');
+  // the replay: the same battle with no network
+  const again = fixture();
+  const replayLog = taken(again);
+  const replay = createJevReplayCommander({ inputLog: commander.inputLog, teams: ['enemy', 'player'] });
+  for (let step = 0; step < 240; step++) { replay.step(again.view); again.advance(SIM_DT); }
+  assert.deepEqual(replayLog, liveLog, 'the replay hands the same controllers the same orders on the same sim seconds');
+  assert.equal(replay.commands(again.byId('kv2')), true);
+  assert.equal(replay.commands(again.byId('m1a1_abrams_hc')), false, 'nor does a replay command the human');
+  commander.dispose();
+  replay.dispose();
+}
+{
+  console.log('[14] the commander\'s life only moves forward, and a quit (the Garage return) disposes it');
+  const f = fixture(), fake = fakeTransport();
+  const commander = createJevCommander({ transport: fake.transport, teams: ['enemy'], now: () => 0 });
+  assert.equal(commander.phase, 'active');
+  commander.step(f.view);
+  const game = { allTanks: [], tanks: [], shells: [], player: null, spotting: null, result: null, resultReason: null, preBattleS: 0,
+    timeS: 1, fireTickAcc: 0, nextShellId: 1, openingRouteJobs: [], jev: commander, _jevView: f.view };
+  clearBattleAfterExit({ game });
+  assert.equal(game.jev, null, 'the battle\'s teardown releases its commander');
+  assert.equal(game._jevView, null);
+  assert.equal(commander.phase, 'disposed');
+  assert.equal(fake.requests[0].signal.aborted, true, 'its request in flight is aborted');
+  fake.answer((id, question) => (id.startsWith('posture_') ? confident('push', Object.keys(question.criteria)) : null));
+  await tick(); commander.step(f.view);
+  assert.equal(commander.stats().ordersApplied, 0, 'a late answer lands nowhere');
+  commander.stop();
+  assert.equal(commander.phase, 'disposed', 'a stop after the dispose changes nothing');
+  assert.equal(commander.active, false);
+}
+{
+  console.log('[15] the page\'s halt has one owner: the session (no transport once halted, the reason kept, an explicit reset)');
+  let made = 0;
+  const session = createJevSession(() => createJevFetchTransport({ url: '/api/jev', fetch: async () => ({ status: 200, json: async () => null }), sid: `sess_owner_${++made}` }));
+  assert.equal(session.state, 'idle');
+  const transport = session.transport();
+  assert.equal(session.state, 'live');
+  assert.equal(session.transport(), transport, 'one transport for the page session');
+  transport.halt('upstream_out_of_credit');
+  transport.halt('session_budget_spent');
+  assert.equal(session.state, 'halted');
+  assert.equal(session.haltReason, 'upstream_out_of_credit', 'the first session-ending answer names the halt');
+  assert.equal(session.transport(), null, 'a halted session hands no transport: the next battle runs the classic brain');
+  session.reset();
+  const fresh = session.transport();
+  assert.ok(fresh && fresh !== transport && fresh.halted === false && fresh.sid !== transport.sid, 'only an explicit reset starts a new session');
 }
 
 {

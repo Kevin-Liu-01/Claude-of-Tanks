@@ -153,8 +153,18 @@ Zone focus is a reinforcement request capped at one third of the commanded batch
 Smoke, roof guns, fall avoidance and jumps remain local reflexes, with the same player
 inventory, spotting and physics rules. See [Bot tactics](BOT-TACTICS.md).
 
-A five-second wall deadline aborts a stalled transport so it cannot strand a team;
-late callbacks are ignored. Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
+A five-second deadline in sim seconds (`requestDeadlineS`) gives up on a stalled request so it cannot strand a
+team (a pause or a killcam freeze stops it with the battle; the transport's own 3.5 s wall timeout ends the fetch);
+late callbacks are ignored. The wall clock only times latency for the stats; nothing in the step reads it.
+
+**Determinism (2026-11-02).** The answers are the battle's external input, like a second player's keys: when one
+arrives is the network's. Every answer's orders are applied at a step boundary and recorded with the sim second they
+were applied on (`commander.inputLog`, `JevOrderBatch`); `createJevReplayCommander` applies the same batches on the same
+sim seconds with no network, so a Jev battle is reproducible from its seed, its player inputs and that log (the classic
+brain needs no log). The commander's life is one forward-only phase (active, stopped at the verdict, disposed at the
+next battle's setup or the Garage return, whichever comes first), and the page's halt has one owner,
+`createJevSession` (state `idle` / `live` / `halted`, the first session-ending reason kept); a halt is not lifted within
+the page session. Every order expires at `untilS` = issue + `orderTtlS` (5 s); the classic brain resumes by itself. That is
 the fallback for everything: a slow proxy, a failed request (the commander backs off, doubling from one
 cadence to 30 s, or what the proxy's `retryAfterMs` asks), an exhausted budget (`requestsPerTeam` = 450 per
 battle), a low-confidence answer. The commander keeps a bounded **order log** (64 entries: bot, posture,

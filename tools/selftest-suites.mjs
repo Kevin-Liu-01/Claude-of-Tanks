@@ -1705,8 +1705,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    'src/sim/ramModuleLaw.selftest.mjs', // 2026-11-02 audit M6: one module law, and a lethal ram's module damage on both drivers
     // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
+    // (2026-11-02 audit M6: and what each team sees, tick for tick — spotting through one factory)
     'src/sim/driverStepParity.selftest.mjs',
+    'src/sim/crushPress.selftest.mjs', // 2026-11-02 audit M6: the crush press is the battle's, per hull and record, on both drivers
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
@@ -1719,6 +1722,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // bridge decks the hull stands on (Aegis Crossing's viaduct, Amberford, Suzhou Creek), driven and parked.
     'src/world/vehicleGroundContact.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
+    'src/sim/hullLifeParity.selftest.mjs', // 2026-11-02 audit M6: a revive's crash memory and the rollover gate, alike on both drivers
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/obstacleDepenetration.selftest.mjs', // 2026-10-12: an overlap leaves over a few steps; travel into a wall stops at once
@@ -1774,6 +1778,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
     'src/sim/hiddenWorldEvents.selftest.mjs',
+    'src/sim/botEvents.selftest.mjs', // 2026-11-02 audit M6: shots, hits and blocked shots reach the bots through one delivery on both drivers
     // ground lane (2026-10-08, crater-render-spec §B, §C): the drawn terrain and the ground cover follow the overlay
     'src/world/terrainCraterMesh.selftest.mjs',
     'src/world/groundCoverCraters.selftest.mjs',
@@ -1869,6 +1874,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.wedgeRelease.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
+    // (2026-11-02 audit M6: and the orders as recorded input a replay applies again, the sim-second deadline, the commander's
+    // forward-only life, the session's halt)
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/serviceRecord.selftest.mjs',
