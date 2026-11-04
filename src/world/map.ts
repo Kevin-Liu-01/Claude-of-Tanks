@@ -48,17 +48,16 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
+import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { loadEarthLand, skyDrawsEarth } from '../engine/earthLandAccess.ts';
 import type { StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { createStructureGroundOcclusion } from '../engine/structureGroundOcclusionRuntime.ts';
 import { aureoleSunOf } from '../engine/structureAureoleBake.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
-import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
-import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { loadMapKits } from './worldKits.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -107,6 +106,12 @@ interface WorldOptions {
 
 interface WorldSlicingOptions {
   fineSlices?: boolean;
+  /**
+   * (2026-11-02 audit R1) The owner of a build that fails or is cancelled part way: it releases the subsystems already
+   * built (their roots), with the same keep rules as a released world (worldBuildCoordinator.ts). Absent (receipts), the
+   * build disposes them itself, keeping whatever the scene still shows.
+   */
+  abandon?(roots: THREE.Object3D[]): void;
 }
 
 type WorldBuildProgress = (label: string, fraction: number) => Promise<void> | void;
@@ -420,7 +425,7 @@ export async function createMapAsync(
   engineContext: RuntimeValue,
   { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
   onStep: WorldBuildProgress | null = null,
-  { fineSlices = false }: WorldSlicingOptions = {},
+  { fineSlices = false, abandon }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
   const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
@@ -463,9 +468,13 @@ export async function createMapAsync(
     mapId, terrainVariant: terrainVariant ?? null, fieldSeed: seed, ringSeed: 1337, vista: getDeviceTier() !== 'mobile',
     debugColors: !!(globalThis as typeof globalThis & { __HORIZON_DEBUG?: boolean }).__HORIZON_DEBUG,
   });
-  if (ringSource) supplyHorizonRing(ringSource);
-  if (hinterlandSource) supplyHinterland(hinterlandSource);
+  // (2026-11-02 audit R1) both go to this build's own terrain build (its stream options), never through a process-wide slot
   let completed = false;
+  // (2026-11-02 audit R1) the subsystems built so far: a build that ends before its world exists releases them (they were
+  // dropped, and with them the terrain material's live preset subscriptions and the vegetation's runtime)
+  let builtTerrain: TerrainRoot | null = null;
+  let builtVegetation: VegetationRuntime | null = null;
+  let builtProps: PropsRuntime | null = null;
   try {
     const step = async (label: string, fraction: number): Promise<void> => {
       if (onStep) await onStep(label, fraction);
@@ -495,11 +504,15 @@ export async function createMapAsync(
         // Heightfield/collision/spotting data remains complete and deterministic.
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
+        horizonRingSupply: ringSource,
+        hinterlandSupply: hinterlandSource,
       }, terrainSources));
+    builtTerrain = terrain;
     submitPrograms(terrain);
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
+    builtVegetation = vegetation;
     submitPrograms(vegetation.group);
     await step('Placing structures', 0.82);
     const kitsAwaitStart = performance.now();
@@ -509,6 +522,7 @@ export async function createMapAsync(
     const propModelsAwaitEnd = performance.now();
     const props = await createPropsAsync(heightField, engineCtx, 2002, config,
       sub('Placing structures', 0.82, 0.96), fineSlices, vegetation, wreckPrefetch, surfacePrefetch);
+    builtProps = props;
     if (props._buildDetail) {
       const elapsedMs = propModelsAwaitEnd - propModelsAwaitStart;
       // Time at the consumer's await, not the overlapped archive transfer's
@@ -527,7 +541,11 @@ export async function createMapAsync(
     // the load probes, beside the terrain's streaming record
     await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
     if (ringSource) terrain.userData.horizonRingLoad = ringSource.stats;
-    if (hinterlandSource) terrain.userData.hinterlandLoad = hinterlandSource.stats;
+    if (hinterlandSource) {
+      terrain.userData.hinterlandLoad = hinterlandSource.stats;
+      // (audit R1) the world owns the Hinterland its worker may still be answering for: its dispose stops it
+      terrain.userData.disposeHinterland = () => hinterlandSource.dispose();
+    }
     if (earthLandReady) await earthLandReady;
     const world = await assembleWorldPaced(engineCtx, config, heightField, terrain, vegetation, props,
       fineSlices ? () => step('Sealing the battlefield', 0.99) : null);
@@ -542,12 +560,23 @@ export async function createMapAsync(
     // the planned wreck bakes nobody took (a cancelled build, a request the plan did not hold) and their worker go
     wreckPrefetch?.dispose();
     surfacePrefetch?.dispose();
-    if (ringSource) { withdrawHorizonRing(ringSource); ringSource.dispose(); }
-    // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; only a build
-    // that failed or was cancelled stops it)
-    if (hinterlandSource) { withdrawHinterland(hinterlandSource); if (!completed) hinterlandSource.dispose(); }
+    ringSource?.dispose();
+    // (the Hinterland's worker may still be answering when the build ends: its land attaches when it does; a build that
+    // failed or was cancelled stops it now, a completed world when it is released — its dispose)
+    if (hinterlandSource && !completed) hinterlandSource.dispose();
     if (!completed) {
       try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
+      // (audit R1) the partial build's rollback: the vegetation's own teardown, then the built roots released
+      try { builtVegetation?.dispose(); } catch { /* preserve the original build failure */ }
+      const roots: THREE.Object3D[] = [];
+      for (const root of [builtTerrain, builtVegetation?.group, builtProps?.group]) if (root) roots.push(root);
+      if (roots.length) {
+        try {
+          for (const root of roots) root.removeFromParent();
+          if (abandon) abandon(roots);
+          else for (const root of roots) disposeObject3DResources(root, { preserveRoots: engineCtx.scene.children.filter((child) => !roots.includes(child)) });
+        } catch { /* preserve the original build failure */ }
+      }
     }
   }
 }
@@ -1053,6 +1082,7 @@ function* assembleWorldSteps(
       delete terrain.userData.cancelSourcedTextures;
       unregisterDestructibles();
       vegetation.dispose();
+      terrain.userData.disposeHinterland?.(); // (2026-11-02 audit R1) a Hinterland still answering attaches nothing now
       // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)
       if (groundOcclusion) {
         if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;

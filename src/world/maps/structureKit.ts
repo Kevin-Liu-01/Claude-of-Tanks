@@ -25,6 +25,7 @@ import {
 import {
   auditRoofPlanePitch, gableAttic, gableSlabSeat, pitchRoofPlane, pitchSkillionRoof,
 } from '../propGeometry.ts';
+import { registerBuildScope } from './buildScopes.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -454,11 +455,11 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
  * (props.ts, lightWreck.ts) and the live break can take it apart. Null outside a light kind's build.
  */
 let craftCapture: { bucket: string; material: FractureMaterial } | null = null;
+registerBuildScope('structureKit.craftCapture', () => craftCapture !== null); // (2026-11-02 audit R1: buildScopes.ts)
 function withCraftCapture<T>(capture: { bucket: string; material: FractureMaterial }, build: () => T): T {
   const prior = craftCapture;
   craftCapture = capture;
-  partTag = null;
-  try { return build(); } finally { craftCapture = prior; partTag = null; }
+  try { return withPartTagScope(build); } finally { craftCapture = prior; }
 }
 
 function mergeConnectedStructure(id: string, given: THREE.BufferGeometry[]): THREE.BufferGeometry {
@@ -1596,8 +1597,19 @@ function colored<T extends THREE.BufferGeometry>(
  * Cleared with null; a craft that sets it clears it before it merges.
  */
 let partTag: { role: FractureRole; group: string | null; material: FractureMaterial } | null = null;
+registerBuildScope('structureKit.partTag', () => partTag !== null);
 function tagParts(role: FractureRole | null, group: string | null = null, material: FractureMaterial = 'canvas'): void {
   partTag = role ? { role, group, material } : null;
+}
+/**
+ * (2026-11-02 audit R1) Every light kind's build runs in a part-tag scope: it starts untagged and leaves the tag as it
+ * found it, a throw included (the 225 fix cleared it at the capture's ends and the merge's start; the orbital family's
+ * builds ran outside any capture, so a tag left set there reached whatever built next in the process).
+ */
+function withPartTagScope<T>(build: () => T): T {
+  const prior = partTag;
+  partTag = null;
+  try { return build(); } finally { partTag = prior; }
 }
 
 function addRaisedGableSupports(
@@ -4250,7 +4262,7 @@ function lightMeta(
     // (props #1: the build reads its pieces as it merges, withCraftCapture)
     // (the space and polar stations are their own family, #12: they keep their broken builds until each is rebuilt
     // member by member, spaceKit.ts)
-    build: family === 'orbital' && !SPACE_KINDS.includes(id) ? build : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
+    build: family === 'orbital' && !SPACE_KINDS.includes(id) ? (rng: Rng) => withPartTagScope(() => build(rng)) : (rng: Rng) => withCraftCapture({ bucket: surfaceMaterial, material: debrisMaterial === 'metal' ? 'metal' : debrisMaterial === 'canvas' ? 'canvas' : 'timber' }, () => build(rng)),
     instanceTintStrength,
   };
   return {

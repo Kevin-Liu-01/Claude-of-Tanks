@@ -10,6 +10,7 @@ import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './ro
 import { terrainNearMeshHeightAt } from './terrain.ts';
 import { placeWreckCollision, placeWreckShellCollision } from './wreckCollision.ts';
 import { polygonGap, shapePolygons } from './parkedVehicleSeparation.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -44,9 +45,10 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
     args.push(values);
     return yield* nested;
   }
+  // (2026-11-02 audit R1) the wrapper asserts no kit build scope is open at a slice (maps/buildScopes.ts)
   const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
-    'bakeTankWreckSteps', wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake);
+    'bakeTankWreckSteps', 'assertNoBuildScopeOpen', wrapper + '\nreturn createPropsAsync;')(build, acquire,
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now }, mainBake, assertNoBuildScopeOpen);
   return { run, events, runtime, args };
 }
 

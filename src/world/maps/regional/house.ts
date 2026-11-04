@@ -12,6 +12,7 @@ import {
   type FacadeContext,
 } from './facade.ts';
 import { withSillShadow } from './openings.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 /** The walls whose occlusion the weathering pass paints (geometry.ts SHADED): a sill's shadow lies on them. */
 const SILL_SHADOWED: ReadonlySet<RegionalBucket> = new Set(['plaster', 'plaster2', 'plaster3', 'stone']);
@@ -267,6 +268,7 @@ interface WearContext {
   facade?: FacadeContext;
 }
 let wearContext: WearContext | null = null;
+registerBuildScope('house.wear', () => wearContext !== null); // (2026-11-02 audit R1: buildScopes.ts)
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
   const prior = wearContext;
   wearContext = wear;
@@ -1018,6 +1020,8 @@ interface HouseMember {
 
 let planSink: HousePlan[] | null = null;
 let memberTarget: { plan: HousePlan; storey: number; face: FaceName; y0: number; y1: number } | null = null;
+registerBuildScope('house.plans', () => planSink !== null);
+registerBuildScope('house.member', () => memberTarget !== null);
 
 /** Run a kit build keeping every house body it builds (the destruction seam's plan; builders are synchronous). */
 export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {

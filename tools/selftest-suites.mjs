@@ -1301,6 +1301,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deferredCombatWarmRuntime.selftest.mjs',
     'src/game/studioAccess.selftest.mjs',
     'src/game/studioEntry.selftest.mjs',
+    'src/game/studioEntrySuperseded.selftest.mjs', // 2026-11-02 audit R1: an entry its exit abandons mid-build settles silently
     // 2026-10-08 (fix/studio-world-step): an export step advances the props' clock and syncs the drawn ground
     'src/game/studioWorldStep.selftest.mjs',
     // 2026-10-08 (destruction core lane): an effect naming an actor the scene does not stage never hangs a film
@@ -1349,11 +1350,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liveHeightFieldProxy.selftest.mjs',
     'src/world/worldBuildCoordinator.selftest.mjs',
     'src/world/worldActivationRuntime.selftest.mjs',
+    'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
+    'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
+    'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
+    'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset
+    'src/world/worldBuildCloseContracts.selftest.mjs', // 2026-11-02 audit R1: vegetation closes on cancel; ring stage kept; no late atlas draw
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/world/terrainStreaming.selftest.mjs',
     'src/world/terrainSplatFields.selftest.mjs',
+    'src/world/terrainPresetListeners.selftest.mjs', // 2026-11-02 audit R1: a closed terrain build leaves no preset listener
     'src/world/textureUploadOrientation.selftest.mjs',
     'src/world/normalMapOrientation.selftest.mjs',
     'src/world/roadPathStyles.selftest.mjs',
@@ -2512,6 +2519,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hinterland/hinterlandLandforms.selftest.mjs',
     // ... (HL-3) its mesh: the depth compression and curvature, the CDLOD selection, the worker's answer and the hook
     'src/world/hinterland/hinterlandMesh.selftest.mjs',
+    'src/world/hinterland/hinterlandLifetime.selftest.mjs', // 2026-11-02 audit R1: the world owns its Hinterland; ring fallback; one root
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
@@ -2532,6 +2540,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // through a gap, sky through the building or inside-out face — held to its ledger row
     'tools/building-integrity-check.selftest.mjs',
     'src/world/maps/regional/facade.selftest.mjs', // 2026-10-05: the facade craft adds dressing only, on desktop, from its own streams
+    'src/world/maps/mapBuildScopes.selftest.mjs', // 2026-11-02 audit R1: kit build slots in one registry, asserted at yields; no cross-build latches
     'src/world/maps/regional/phoneIdentity.selftest.mjs', // 2026-10-08: a phone's kit builds draw the desktop's streams and solids (DESTRUCTION.md §8.4)
     'src/world/maps/regional/skyline.selftest.mjs', // 2026-10-05: the tall- and big-building kit, every builder and damage state sound
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
@@ -2557,6 +2566,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
     'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
+    'src/world/propsShellPoolCancel.selftest.mjs', // 2026-11-02 audit R1: a cancelled props build stops its shell pool's workers
     'src/world/brokenVehiclePool.selftest.mjs', // perf-248: pooled broken vehicle bodies equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',

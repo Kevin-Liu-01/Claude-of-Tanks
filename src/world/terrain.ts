@@ -23,8 +23,8 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import type { HorizonMapConfig, HorizonRingPipeline } from './maps/horizon.ts';
 // The visual horizon installs its ring (horizonRingHook.ts); the authority's height field must not carry it.
-import { horizonRing, horizonRingSupplyFor, type HorizonRing } from './horizonRingHook.ts';
-import { hinterlandSupplyFor } from './hinterlandHook.ts';
+import { horizonRing, type HorizonRing, type HorizonRingSupply } from './horizonRingHook.ts';
+import type { HinterlandSupply } from './hinterlandHook.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
@@ -825,6 +825,9 @@ interface TerrainChunk {
 interface TerrainStreamOptions {
   streamFarLods?: boolean;
   focus?: SpawnPoint;
+  /** (2026-11-02 audit R1) the world build's own horizon ring and Hinterland supplies (map.ts), handed to this build only */
+  horizonRingSupply?: HorizonRingSupply | null;
+  hinterlandSupply?: HinterlandSupply | null;
 }
 
 interface TerrainStreamingStats {
@@ -8436,11 +8439,9 @@ function* createSplatMaterialSteps(
   const landBakeN = mask.image.width;
   // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
   const landTier = { value: landUseTierOf(resolvePresetName()) };
-  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   // Ultra Low (2026-10-13): the splat's cheapest variant from the live preset (both Ultra Low presets end in 'ultralow';
   // read inline: the streaming receipts evaluate these steps in a sandbox that supplies only resolvePresetName)
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
-  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
@@ -8457,6 +8458,13 @@ function* createSplatMaterialSteps(
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  // (2026-11-02 audit R1) the live preset subscriptions start with the material that ends them: subscribed before the
+  // land-use bake's yields, a build cancelled during them left both listeners in the global set for good. Read again here,
+  // so a change during the bake is not missed.
+  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
+  const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
+  landTier.value = landUseTierOf(resolvePresetName());
+  liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0;
   mat.addEventListener('dispose', () => { offLandTier(); });
   mat.addEventListener('dispose', () => { offLiteTerrain(); }); // Ultra Low (2026-10-13)
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
@@ -9181,8 +9189,9 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
+  const owned: { material: THREE.Material | null } = { material: null };
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
-    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation, owned);
   let completed = false;
   try {
     let r = g.next();
@@ -9203,6 +9212,8 @@ export async function buildTerrainMeshesAsync(
       try { sourcePreparation.cancel?.(); } catch { /* preserve the original build failure */ }
       // Close private CPU continuations; this is not partial asset disposal.
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
+      // (audit R1) but the splat material it made goes with it, and with it its live preset subscriptions
+      try { owned.material?.dispose(); } catch { /* preserve the original pacing failure */ }
     }
   }
 }
@@ -9217,7 +9228,6 @@ export async function finishHorizonRingAsync(
 ): Promise<void> {
   const stage = group.userData.finishHorizonRing as (() => Generator<TerrainBuildProgress, void, void>) | undefined;
   if (!stage) return;
-  delete group.userData.finishHorizonRing;
   const steps = stage();
   let completed = false;
   try {
@@ -9228,8 +9238,11 @@ export async function finishHorizonRingAsync(
     }
     completed = true;
   } finally {
+    // (2026-11-02 audit R1) the stage leaves the group once it has drained: deleted first, a cancelled drain left a
+    // ringless group with nothing to finish it
+    if (completed) delete group.userData.finishHorizonRing;
     // a cancelled build (its pacing threw): close the stage's private continuations
-    if (!completed) { try { steps.return?.(); } catch { /* preserve the original failure */ } }
+    else { try { steps.return?.(); } catch { /* preserve the original failure */ } }
   }
 }
 
@@ -9335,6 +9348,7 @@ function* terrainBuildSteps(
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
+  owned: { material: THREE.Material | null } | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
@@ -9369,6 +9383,9 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures, sourcedReady } = materialStep.value;
+  // (2026-11-02 audit R1) the material is the driver's to dispose until the group returns with it (its dispose ends the
+  // live preset subscriptions): a build closed during the chunk rows dropped it with both listeners still subscribed
+  if (owned) owned.material = mat;
   // ground lane: the two-formation bedrock's boundary at its share of the field's height span (S.formation)
   {
     const form = (cfg?.splat as { formation?: TerrainFormation } | undefined)?.formation;
@@ -9510,17 +9527,18 @@ function* terrainBuildSteps(
   // answer; nothing waits for it — the pipeline is built here meanwhile when it has not answered, and its answer is taken
   // the moment it arrives. Any other build makes the ring here, after the chunks. The ring reads nothing the chunks, the
   // water, the vegetation or the props write, and stays the terrain's first child: the same ring.
-  const ringSource = horizonRingSupplyFor(cfg);
+  const ringSource = streamOpts?.horizonRingSupply ?? null;
   // (the horizons stream, 2026-10-13, HL-3) a migrated map — its file's `hinterland` block, or a lab draft under
   // ?hinterland=1 — takes the Hinterland in place of the old ring: the world build supplies it (hinterlandHook.ts) and it
   // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
-  const hinterlandSource = hinterlandSupplyFor(cfg);
+  const hinterlandSource = streamOpts?.hinterlandSupply ?? null;
   function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
     // (horizons-240) the battlefield's own sheets carried past the edge (hinterland/groundDetail.ts)
     const ground = { textures: splatTextures, layerMeans: (mat.userData as { layerMeans?: unknown }).layerMeans,
       roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint,
       tints: ['tintA', 'tintB', 'tintC'].map((k) => (cfg?.splat as Record<string, readonly number[] | undefined> | undefined)?.[k]) };
-    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground });
+    // (2026-11-02 audit R1) and the old ring for the land's place, should the worker fail after this
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground, fallback: () => ringStage() });
     let step = steps.next();
     while (!step.done) {
       yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
@@ -9531,7 +9549,11 @@ function* terrainBuildSteps(
     yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true];
   }
   function* horizonRingStage(): Generator<TerrainBuildProgress, void, void> {
-    if (hinterlandSource) { yield* hinterlandStage(); return; }
+    // (audit R1) a Hinterland whose worker has already failed brings no land: the old ring stands in its place
+    if (hinterlandSource && !hinterlandSource.failed) { yield* hinterlandStage(); return; }
+    yield* ringStage();
+  }
+  function* ringStage(): Generator<TerrainBuildProgress, void, void> {
     let ringPipeline: HorizonRingPipeline | null = ringSource ? ringSource.take() : null;
     if (ringSource && !ringPipeline) {
       const pipelineSteps = horizonRingGeometrySteps(cfg, 1337, heightField, {

@@ -298,6 +298,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { installPaneStackDepth } from './paneStack.ts';
+import { assertNoBuildScopeOpen } from './maps/buildScopes.ts';
 
 /** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
 type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
@@ -3742,6 +3743,8 @@ export async function createPropsAsync(
     // builders up front
     if (!wreckPrefetch) wreckWorker?.prepare();
     while (!r.done) {
+      // (2026-11-02 audit R1) every slice hands control back: no kit's ambient build slot may be open across it
+      assertNoBuildScopeOpen('props build');
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;
@@ -5247,6 +5250,9 @@ ${snowCap ? `
   // A structure whose packet moves or reads its records before then (a carriageway building, a foundry donor, the
   // wharf's fishery) derives everything here, as every structure does in the Node builds.
   const shellPool = structureShellPoolFor(sourceApplication.worker === true);
+  // (2026-11-02 audit R1) a cancelled build stops the shell pool's workers too (only the join disposed them: a build
+  // cancelled before it left up to four cot-structure-shells workers running)
+  sourceApplication.signal?.addEventListener('abort', () => shellPool?.dispose(), { once: true });
   let shellsJoined = false;
   // (perf-248) the burnt vehicles' and the broken carts' bodies, built off the main thread (brokenVehiclePool.ts): posted
   // as their pools finalize, taken at joinBrokenVehicles; a cancelled build stops the pool's workers

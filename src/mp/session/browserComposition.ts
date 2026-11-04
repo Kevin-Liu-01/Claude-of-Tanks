@@ -611,6 +611,15 @@ function isSuperseded(error: RuntimeValue): boolean {
 }
 
 /**
+ * (2026-11-02 audit R1) A rejection that marks itself superseded: the world activation's (src/world/worldActivationRuntime.ts
+ * WorldActivationSupersededError), whose later request is often this composition's own Garage restore (setDormant(true))
+ * after a room closed or was left while loading. It is the round's own supersession once the round no longer owns its load.
+ */
+function marksSuperseded(error: RuntimeValue): boolean {
+  return !!error && typeof error === 'object' && (error as { superseded?: unknown }).superseded === true;
+}
+
+/**
  * 2026-10-10 (the MP shader-prep lane; production 207-211: "Battle shaders could not finish preparing" refused the
  * returning seat's entry at load 54-84, compile 5.0 s + retry 5.0 s): the strict preparation (src/engine/programWarm.ts) is
  * a 5 s wall-clock window, and a busy GPU process links a cold cohort for longer. A window that runs out is not a failure:
@@ -1077,7 +1086,9 @@ export function createBrowserComposition({
     active.failed = true;
     if (!active.abort.signal.aborted) active.abort.abort(error);
     finishTrace(active, 'failed');
-    const superseded = isSuperseded(error);
+    // (audit R1) released first (releaseRoom, disposePresentation, a newer round: round !== active), then superseded by
+    // the covered Garage restore: never a failed entry (no beacon, no report), as the release's own check('world') was
+    const superseded = isSuperseded(error) || (round !== active && marksSuperseded(error));
     if (!superseded) {
       lastFailure = { message: messageOf(error), matchId: active.matchId, stage, reason: reasonOf(error) };
       load.recordEntryFailure?.(lastFailure);

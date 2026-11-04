@@ -158,7 +158,7 @@ export interface TreeImpostorLibrary {
    * waits for them between tasks, and the draws follow. ensureBaked links them inside its first draw, synchronously:
    * a 1.1 s task under a loaded room's cover (nav-perf's root-r program log, the two COT_BAKE_BILLBOARD materials).
    */
-  ensureBakedAsync(waitLinks: () => Promise<void>): Promise<boolean>;
+  ensureBakedAsync(waitLinks: () => Promise<void>, alive?: () => boolean): Promise<boolean>;
   /** A digest of every bake input: the layout, the geometry bytes, the leaf atlases' pixels. */
   digest(): string;
 }
@@ -655,7 +655,7 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
       bakes++;
       return true;
     },
-    async ensureBakedAsync(waitLinks) {
+    async ensureBakedAsync(waitLinks, alive) {
       if (baked) return true;
       const renderer = options.renderer;
       if (!renderer || typeof renderer.setRenderTarget !== 'function' || typeof renderer.render !== 'function') return false;
@@ -670,6 +670,8 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
         } finally { renderer.setRenderTarget(previousTarget); }
         await waitLinks();
         if (baked) return true; // a lazy bake (a frame's update) took it meanwhile
+        // (2026-11-02 audit R1) the world released while its links compiled: no draw into a released atlas
+        if (alive && !alive()) return false;
         const started = performance.now();
         drawBakeRig(renderer, rig);
         bakeMs = performance.now() - started;

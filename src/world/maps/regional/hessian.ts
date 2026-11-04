@@ -21,6 +21,7 @@ import { launder, millAxle, trestle, waterWheel } from './millWorks.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { HESSIAN_COURT_TYPES } from './hessianCourt.ts';
+import { registerBuildScope } from '../buildScopes.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
 // reflectance so the frame still reads in shade
@@ -55,6 +56,7 @@ const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
 });
 
 let palette: FachwerkPalette = HESSIAN_PALETTE;
+registerBuildScope('hessian.palette', () => palette !== HESSIAN_PALETTE); // (2026-11-02 audit R1: buildScopes.ts)
 /** Run a builder under a palette (builders are synchronous: the module-level palette cannot leak). */
 export function withPalette(p: FachwerkPalette, builder: RegionalBuilder): RegionalBuilder {
   return (ctx) => {
