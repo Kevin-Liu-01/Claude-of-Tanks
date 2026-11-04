@@ -1030,19 +1030,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   },
   // Chieftain Mk 3 (release 269; the owner, 2026-11-03: "for the mk3 add. abunch of nts and ghillie on the guns and turret
   // and hull coverinng all suerfaces"): a BAOR tank dressed for a hide (1970s-80s, woodland nets and hessian scrim, the
-  // barrel bound in scrim). Turret: the roof and bustle netted over the NBC pack and the bar basket, round the cupola, the
-  // loader's hatch and both whips (the lenses, the periscopes and the cupola's L37 open themselves), the gun's slot ahead
-  // of the casting's face bare; drapes down both flanks over the side bin, the jerry cans and the baskets (the left
-  // flank's stop behind the searchlight's lens), and over the basket's rear. Hull: the engine deck round its two louvred
-  // covers (their hot air), the front decks and glacis round the driver's hatch, his periscope and the lamps, the nose and
-  // the stern round its exhaust pipes, four drapes a side down the bazooka plates over the running gear. Guns: the L11 in a
-  // scrim sleeve from its root cover to the fume extractor, laid over its upper flanks (never under its axis) where it passes
-  // over the hull, and bound right round from the extractor to short of the muzzle; the ranging gun's barrel in a strip of it. The
-  // cupola's L37 stays bare (a working station: the builder opens its traverse). Owner-local metres of the Mk 5 X build
-  // (chieftain5X.ts: the turret's pivot [0.0031, 1.476, 0.3693], the trunnion 1.2007 ahead of it at y 0.3834).
+  // barrel bound in scrim). Turret: the roof, the cheeks' crowns and the NBC pack's lid netted on a fine grid, humped over
+  // sticks and rolled round the cupola, the loader's hatch, both whips and every lens (the cupola's L37 opens its own
+  // sweep), its front edge short of the casting's nose; a net thrown into the bar basket over its load, its rails clear;
+  // drapes down both flanks over the side bin, the jerry cans and the baskets (the left flank's stop behind the
+  // searchlight's lens). Hull: the engine deck round its two louvred covers (their hot air), the front decks and glacis round
+  // the driver's hatch, his periscope and the lamps, the nose and the stern round its exhaust pipes, three drapes a side down
+  // the bazooka plates over the running gear. Guns: the L11's canvas root cover and tube in scrim laid over their upper
+  // flanks (never under the axis) where they pass over the hull, then bound right round to short of the muzzle collar with
+  // loose ends and garnish hanging from it; the ranging gun's barrel in a strip of it. The cupola's L37 stays bare (a
+  // working station). Owner-local metres of the Mk 5 X build (chieftain5X.ts: the turret's pivot [0.0031, 1.476, 0.3693],
+  // the trunnion 1.2007 ahead of it at y 0.3834).
   chieftain3: {
     id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
+    // r269 polish (the coordinator on the blind critics: "shards past the outline", "right-angled patches", "no thickness",
+    // "the bustle wrap"): no garnish past 14 cm outside the bazooka plates (1.662)
+    fieldClearanceM: 0.03, maxHalfWidth: 1.80, hemFloorM: 0.62,
     // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
     // publishes none), 0.3 degrees deeper (0.8 over the stern from 140, where the recoiled extractor runs back over the
     // deck): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach. Under
@@ -1057,24 +1060,38 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       [180, 0.32]],
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
-      top: [laid({
-        x0: -1.76, x1: 1.76, z0: -2.68, z1: 1.58, nx: 44, nz: 54, y: 0.83,
-        outline: [[-1.76, -2.68], [1.76, -2.68], [1.76, 1.58], [0.24, 1.58], [0.24, 1.06], [-0.24, 1.06], [-0.24, 1.58],
-          [-1.76, 1.58]],
-        holes: [rect(-0.95, -0.01, -1.29, -0.36), rect(0.17, 0.84, -1.09, -0.38), rect(0.707, 0.887, -1.859, -1.679),
-          rect(-0.933, -0.753, -1.839, -1.659)],
-        garnishRiseM: 0.16, garnishDensity: 1.5, seed: 11,
-      })],
-      // both flanks to the cheeks: the clearance keeps the cloth out of the searchlight's and the smoke banks' lines
-      side: [...flanks(-2.57, 0.60, 0.80, 0.50, 1.55, 17).filter((p) => p.side < 0),
-        ...flanks(-2.57, 0.60, 0.80, 0.50, 1.76, 19).filter((p) => p.side > 0)],
-      face: [face({ z: -2.62, x0: -1.40, x1: 1.68, y0: 0.33, y1: 0.80, nx: 31, ny: 6, seed: 23 })],
+      top: [
+        // the roof, the cheeks' crowns and the NBC pack's lid on a 5 cm grid (no stepped right-angled patches), its front
+        // edge wandering over the cheeks short of the nose (no cells stretched down the casting's front), its depth from
+        // the sticks pushed under it, its folds and the rolls bunched round every opening; open round the cupola (a ring),
+        // the loader's hatch and both whips
+        laid({
+          x0: -1.76, x1: 1.76, z0: -2.31, z1: 0.92, nx: 70, nz: 65, y: 0.83,
+          outline: [[-1.76, -2.03], [-0.46, -2.03], [-0.46, -2.31], [0.46, -2.31], [0.46, -2.03], [1.76, -2.03], [1.76, 0.52],
+            [1.38, 0.66], [1.06, 0.80], [0.78, 0.90], [0.52, 0.86], [0.30, 0.74], [-0.30, 0.74], [-0.54, 0.88], [-0.80, 0.92],
+            [-1.10, 0.82], [-1.40, 0.68], [-1.76, 0.54]],
+          holes: [Array.from({ length: 12 }, (_, k): Point2 => [-0.48 + 0.49 * Math.cos(k * Math.PI / 6), -0.824 + 0.49 * Math.sin(k * Math.PI / 6)]),
+            rect(0.18, 0.83, -1.08, -0.39), rect(0.707, 0.887, -1.859, -1.679), rect(-0.933, -0.753, -1.839, -1.659)],
+          tents: [[1.25, -1.45, 0.09], [-1.30, -1.80, 0.08], [0.95, -1.95, 0.07], [-0.10, -1.95, 0.07], [1.45, -0.75, 0.07]],
+          reliefScale: 3, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, seed: 11,
+        }),
+        // the bar basket: the net thrown into it, lying over its load and floor bars and sagging between them, cut round
+        // its rails and the NBC pack (both stand over it), so the rails and the load still read
+        laid({
+          x0: -1.38, x1: 1.66, z0: -2.58, z1: -2.03, nx: 61, nz: 11, y: 0.50, clipToArmour: false, riseLimitM: 0.08,
+          holes: [rect(-0.46, 0.46, -2.32, -2.0)], reliefScale: 2, rimScale: 0.8, garnishRiseM: 0.10, seed: 13,
+        }),
+      ],
+      // the flanks over the side bin, the jerry cans and the baskets; each stops where the casting tucks under the cheek
+      // covers (a drape there fell free past the ring) and the left one behind the searchlight's lens
+      side: [...flanks(-2.57, 0.45, 0.80, 0.50, 1.55, 17).filter((p) => p.side < 0),
+        ...flanks(-2.57, -0.16, 0.80, 0.50, 1.76, 19).filter((p) => p.side > 0)],
     },
     hull: {
       top: [
-        laid({ x0: -1.66, x1: 1.66, z0: -3.58, z1: -0.70, nx: 34, nz: 30, y: 1.70, holes: [rect(-0.92, 0.92, -3.23, -2.47)],
+        laid({ x0: -1.66, x1: 1.66, z0: -3.58, z1: -0.70, nx: 56, nz: 48, y: 1.70, holes: [rect(-0.92, 0.92, -3.23, -2.47)],
           garnishRiseM: 0.12, seed: 31 }),
-        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 34, nz: 42,
+        laid({ x0: -1.66, x1: 1.66, z0: -0.70, z1: 3.40, nx: 44, nz: 55,
           yAt: profile([[-0.70, 1.54], [1.65, 1.523], [2.15, 1.393], [2.57, 1.324], [2.73, 1.265], [3.02, 1.141], [3.40, 1.10]]),
           garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
@@ -1087,11 +1104,19 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
           holes: [rect(-1.00, -0.69, 1.18, 1.60), rect(0.69, 1.00, 1.18, 1.60)] })],
     },
     gun: {
+      // past the stern's reach the scrim's loose ends hang a hand under the barrel either side, its garnish hanging from them
+      side: flanks(3.45, 4.80, 0.02, 0.32, 0.14, 61),
       sleeve: [
         // over the hull (the rear deck binds the gun's floors from below and the fender bins from beside, under its axis)
-        // the scrim is laid over the barrel's upper flanks only, its hems 20 degrees over the axis, its garnish close in
-        { z0: 0.50, z1: 2.80, reachM: 0.20, wrapDeg: 70, garnishOffM: 0.03, garnishDensity: 2, seed: 51 },
-        { z0: 3.76, z1: 4.66, reachM: 0.20, garnishDensity: 6, seed: 53 },
+        // the scrim is laid over the barrel's upper flanks only, its hems 15-20 degrees over the axis: the canvas cover at
+        // the root lofted 5 cm, the tube's 2 cm, garnish close in; then, past the stern's reach (3.45), bound right round
+        // to short of the muzzle collar with garnish hanging from it, the muzzle face bare
+        { z0: 0.45, z1: 0.80, reachM: 0.20, wrapDeg: 75, gapM: 0.05, garnishOffM: 0.04, garnishDensity: 3, seed: 49 },
+        { z0: 0.80, z1: 2.85, reachM: 0.20, wrapDeg: 70, gapM: 0.02, garnishOffM: 0.03, garnishDensity: 2, seed: 51 },
+        { z0: 2.85, z1: 3.45, reachM: 0.20, wrapDeg: 70, gapM: 0.02, garnishOffM: 0.05, garnishDensity: 6, seed: 52 },
+        // (in five lengths: a sleeve's garnish clumps stand a clump apart along it, so each length takes its own)
+        ...[3.45, 3.72, 3.99, 4.26, 4.53].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, garnishOffM: 0.15,
+          garnishDensity: 12, seed: 53 + k * 4 })),
         { z0: 0.68, z1: 1.50, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 140, gapM: 0.005, garnishOffM: 0, seed: 57 },
       ],
     },
