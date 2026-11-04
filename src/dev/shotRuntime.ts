@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../game/appLifecycle.ts';
 import { awaitMapCaptureReadiness, type CaptureWorld } from './mapCaptureReadiness.ts';
 import type { ShotViewName } from './shotContract.ts';
 import type {
@@ -391,12 +392,15 @@ export async function setShotView(
     context.preloadArmorAimOverlay(),
   ]);
 
+  // (2026-11-02 audit F1 review) a still never takes a Studio's scene: refuse before the showroom or the shot mode move
+  assertAppPhaseTransition(context.game as { phase: AppPhase }, 'shot', 'shot:view');
   context.showroom.stop();
   context.setShotMode(true);
   context.setCaptureHidden(true);
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
-  context.game.phase = 'shot';
+  // (2026-11-02 audit F1) the one phase writer: a still is announced (phase:change) like every other phase
+  transitionAppPhase(context.game as { phase: AppPhase }, 'shot', { reason: 'shot:view' });
   // Use the ordinary phase owner: battlefield captures must detach the whole
   // workshop (including its archive timer), not merely hide its DOM panels.
   context.setGarageSpots(name === 'garage');

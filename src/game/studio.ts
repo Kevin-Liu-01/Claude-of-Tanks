@@ -1,4 +1,5 @@
 import { t } from '../ui/i18n.ts';
+import { assertAppPhaseTransition, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
@@ -1876,7 +1877,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (filming) return; // an offline film owns the Studio until it ends
     if (e.code === 'F8' && !e.repeat) {
       if (active) { exit(); e.preventDefault(); return; }
-      if (game.phase === 'garage') {
+      // (2026-11-02 audit F1) a settled Garage screen, as the Studio button's: behind the battle report (perf-246's
+      // preparation) or under a return's veil the scene is already the Garage's, and F8 opened the Studio over them
+      if (isGarageScreenSettled(game as { phase: AppPhase })) {
         enter().catch((err: RuntimeValue) => console.error('[studio] enter failed', err));
         e.preventDefault();
       }
@@ -5651,6 +5654,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       });
       stillOwned();
     }
+    // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the veil or any write
+    assertAppPhaseTransition(game as { phase: AppPhase }, 'studio', 'studio:enter');
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
     const trace: {
       mapId: string;
@@ -5669,7 +5674,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
     const work = async (p: ProgressListener): Promise<void> => {
       p(0.02, 'Preparing studio');
-      game.phase = 'studio';
+      // (2026-11-02 audit F1) the one phase writer announces the Studio (phase:change) like every other phase
+      transitionAppPhase(game as { phase: AppPhase }, 'studio', { reason: 'studio:enter' });
       post.resetAdaptiveResolution?.();
       garage.hide();
       showroom.stop();
@@ -5805,7 +5811,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (error instanceof EntryAbandoned || !owns()) return;
       active = false;
       panel.hide();
-      game.phase = 'garage';
+      // (audit F1) a failed entry hands the scene back with its announcement (main's Garage cleanup, settings, audio),
+      // only when the Studio took it: a refused entry (another presentation owns the scene) writes nothing (F1 review)
+      if (game.phase === 'studio') transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
       throw error;
     }
     trace.totalMs = Math.round(performance.now() - startedAt);

@@ -92,6 +92,11 @@ interface FrameLoopScheduler {
   observeAnimationDecisions(observer: FrameLoopDecisionObserver): FrameLoopObservation;
   /** Accepted network activity can service hidden authority without waiting for a throttled timer. */
   wakeBackground(): boolean;
+  /**
+   * Presentation ticks can run now (not disposed, not backgrounded: the focus rule below). A wait for a presented
+   * frame counts its time only while this holds (2026-11-02 audit F2: the battle reveal's abandon ceiling).
+   */
+  readonly presenting: boolean;
   dispose(): void;
   readonly stats: {
     animationTicks: number;
@@ -434,6 +439,7 @@ export function createFrameLoopScheduler({
       if (serviced) stats.backgroundActivityTicks++;
       return serviced;
     },
+    get presenting() { return !disposed && !isBackgrounded(); },
     stats,
     dispose() {
       if (disposed) return;

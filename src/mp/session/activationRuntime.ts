@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { assertAppPhaseTransition, transitionAppPhase, type AppPhase } from '../../game/appLifecycle.ts';
 interface NetworkPlayerSelection {
   id: string;
   specId: string;
@@ -14,7 +15,7 @@ interface NetworkBattleEntity {
 
 interface NetworkBattleGame {
   mapId?: string;
-  phase?: string;
+  phase?: AppPhase;
   player?: NetworkBattleEntity | null;
 }
 
@@ -79,7 +80,6 @@ interface ActivationPresentationPorts {
   resetBattleResult(): void;
   setGarageSpots(active: boolean): void;
   setGarageSunTrim(active: boolean): void;
-  emitPhaseChange(phase: 'battle'): void;
   emitConsumableReset(): void;
   stopShowroom(): void;
 }
@@ -135,7 +135,7 @@ export function createActivationRuntime({
     presentation?.getWorld, presentation?.setCamoBiome,
     presentation?.hideGarage, presentation?.hideEndOverlay,
     presentation?.resetBattleResult, presentation?.setGarageSpots,
-    presentation?.setGarageSunTrim, presentation?.emitPhaseChange,
+    presentation?.setGarageSunTrim,
     presentation?.emitConsumableReset, presentation?.stopShowroom];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('network battle activation requires every presentation port');
@@ -146,6 +146,8 @@ export function createActivationRuntime({
       if (!viewerId || !own?.specId || !mapId || !bridge || !fx) {
         throw new TypeError('network battle activation requires a complete request');
       }
+      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before any presentation moves
+      assertAppPhaseTransition(game as { phase: AppPhase }, 'battle', 'network-activation');
       const hud = getHud();
       const damagePanel = getDamagePanel();
       if (typeof hud?.shotInfo?.setPlayer !== 'function'
@@ -186,10 +188,15 @@ export function createActivationRuntime({
       presentation.hideEndOverlay();
       presentation.resetBattleResult();
       hud.setMode('battle');
-      game.phase = 'battle';
-      presentation.setGarageSpots(false);
-      presentation.setGarageSunTrim(false);
-      presentation.emitPhaseChange('battle');
+      // (2026-11-02 audit F1) the one phase writer (game/appLifecycle.ts): the edge check, the write and the
+      // announcement; the Garage lights go out between the write and the announcement, as before
+      transitionAppPhase(game as { phase: AppPhase }, 'battle', {
+        reason: 'network-activation',
+        beforeAnnounce: () => {
+          presentation.setGarageSpots(false);
+          presentation.setGarageSunTrim(false);
+        },
+      });
       playerActions.resetConsumables();
       presentation.emitConsumableReset();
       rig.release();

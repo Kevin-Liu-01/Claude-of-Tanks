@@ -1,5 +1,6 @@
 import type { Object3D } from 'three';
 import { clearJuggernautVisual, hasGarageTankEnergyVisual } from './juggernautVisual.ts';
+import { transitionBattleCountdown } from './preBattleCountdown.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * End every battle-owned presentation lifetime before a resident player tank
@@ -60,6 +61,7 @@ interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   spotting: RuntimeValue | null;
   result: RuntimeValue | null;
   resultReason: RuntimeValue | null;
+  resultTimeS?: number | null;
   preBattleS: number;
   timeS: number;
   fireTickAcc: number;
@@ -176,7 +178,8 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
   game.spotting = null;
   game.result = null;
   game.resultReason = null;
-  game.preBattleS = 0;
+  game.resultTimeS = null; // (2026-11-02 audit F1 review) the verdict's time leaves with its battle
+  transitionBattleCountdown(game, 'clear'); // (2026-11-02 audit F1) the countdown's one writer
   game.timeS = 0;
   game.fireTickAcc = 0;
   game.nextShellId = 1;

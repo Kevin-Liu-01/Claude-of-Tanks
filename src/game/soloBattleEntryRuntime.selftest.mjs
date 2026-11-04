@@ -102,6 +102,42 @@ assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery p
   }), /requires every recovery port/, 'a non-callable notice port is refused');
 }
 
+{
+  // (2026-11-02 audit F3 review) The recovery's own Garage return fails once: the cover still comes down (it stayed up
+  // for good over a frozen 'failed' return, with no Esc and no notice), and the return notice offers the return again.
+  const events = [];
+  let garageAttempts = 0;
+  let returnRetry = null;
+  const entryLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const recovering = createSoloBattleEntryRuntime({
+    lifecycle: entryLifecycle,
+    loading: { async begin() { throw new Error('world build failed'); } },
+    battleLoad: { showPending: () => events.push('cover'), hide: async () => { events.push('hide'); } },
+    audio: { loadingOn: () => {} },
+    enterGarage: async () => {
+      garageAttempts += 1;
+      events.push(`garage:${garageAttempts}`);
+      if (garageAttempts === 1) throw new Error('restore failed');
+    },
+    nextFrame: async () => {},
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+    reportError: (message) => events.push(`report:${message}`),
+    presentFailure: () => events.push('entry-notice'),
+    presentReturnFailure: (error, retry) => { events.push(`return-notice:${error.message}`); returnRetry = retry; },
+  });
+  await recovering.beginSelected();
+  assert.deepEqual(events, ['cover', 'report:[battle] entry failed', 'garage:1',
+    'report:[battle] entry recovery return failed', 'hide', 'return-notice:restore failed'],
+  'a failed recovery return still releases the cover, then says so with its retry (not the entry notice)');
+  assert.equal(entryLifecycle.renderingCovered, false, 'the entry no longer covers rendering');
+  assert.equal(entryLifecycle.pending, false, 'and the latch is free');
+  assert.equal(typeof returnRetry, 'function');
+  returnRetry();
+  for (let index = 0; index < 6; index += 1) await Promise.resolve();
+  assert.equal(garageAttempts, 2, 'the notice\'s retry runs the return again');
+  assert.deepEqual(events.slice(-1), ['garage:2'], 'a retry that succeeds opens nothing more');
+}
+
 for (const outcome of ['success', 'import-failure', 'paint-failure']) {
   const rejectImport = outcome !== 'success';
   const events = [];

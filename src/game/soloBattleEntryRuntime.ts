@@ -48,8 +48,32 @@ interface SoloBattleEntryRuntimeOptions {
    * original failure. `retry` runs the same entry again: the notice's one action (loading states, 2026-10-27).
    */
   presentFailure?(error: RuntimeValue, retry: () => void): Promise<RuntimeValue> | RuntimeValue;
+  /**
+   * (2026-11-02 audit F3 review) The recovery's own Garage return failed: say so over the released cover, with the
+   * one action that unblocks the player (`retry` runs the return again). Without it the entry notice carries the
+   * return's failure and that retry. main binds the Garage return failure notice.
+   */
+  presentReturnFailure?(error: RuntimeValue, retry: () => void): Promise<RuntimeValue> | RuntimeValue;
   /** Beacon port: the bounded outcome of a failed solo entry. */
   onFailure?(error: RuntimeValue): void;
+  /**
+   * (2026-11-02 audit F2) "A battle entry began" (`ui:battleStart`) for an entry its caller did not announce: the Play
+   * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button announces its own press before it
+   * calls `begin`. Runs once the entry is accepted, before its cover, inside the press's task.
+   */
+  announce?(payload: { specId: string; mapId: string | null; gameMode: string; campaignOperationId: string | null }): void;
+  /**
+   * (2026-11-02 audit F3) Resolves when no Garage return is in flight. An entry accepted during a return (a press
+   * under its veil, a menu start) waits for it here, holding the entry latch, instead of racing its restore.
+   */
+  whenGarageSettled?(): Promise<void> | null | void;
+  /**
+   * (2026-11-02 audit F2 review) Record what this entry asked for beyond its tank and map (main: battleEntryIntent,
+   * the mode's battlefield variant, its campaign operation, a watched battle), for every accepted entry: the Garage
+   * button, the Play menu and the ladder, and a failure notice's retry, whose recovery return cleared the record.
+   * Runs once no Garage return is in flight (a return's 'garage' announcement clears the record), before the cover.
+   */
+  recordIntent?(options: SoloBattleLoadingStartOptions | undefined): void;
 }
 
 interface SoloBattleEntryRuntime {
@@ -93,21 +117,42 @@ export function createSoloBattleEntryRuntime({
   describePendingMap = () => null,
   reportError = (message, error) => console.error(message, error),
   presentFailure = () => {},
+  presentReturnFailure = presentFailure,
   onFailure = () => {},
+  announce = () => {},
+  whenGarageSettled = () => {},
+  recordIntent = () => {},
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
-    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, onFailure];
+    nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
+    onFailure, announce, whenGarageSettled, recordIntent];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
 
-  const begin = (
+  const run = (
     specId: string,
-    mapId: string | null = null,
-    options: SoloBattleLoadingStartOptions | undefined = undefined,
+    mapId: string | null,
+    options: SoloBattleLoadingStartOptions | undefined,
+    announced: boolean,
   ): Promise<void> => lifecycle.run(async () => {
     try {
+      if (!announced) {
+        try {
+          announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
+            campaignOperationId: options?.campaignOperationId ?? null });
+        } catch (error) {
+          // the press's listeners never block the entry (garage.ts launchBattle contains them the same way)
+          reportError('[battle] battle-start listener failed', error);
+        }
+      }
+      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
+      // (no return in flight: no wait, so the cover still lands inside the press's task)
+      const returning = whenGarageSettled();
+      if (returning) await returning;
+      // the entry's whole intent, after the return's 'garage' announcement (which clears it), before the cover
+      recordIntent(options);
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
@@ -121,23 +166,47 @@ export function createSoloBattleEntryRuntime({
       reportError('[battle] entry failed', error);
       try { onFailure(error); } catch (_) { /* a beacon never changes recovery */ }
       audio.loadingOn(false);
-      await enterGarage();
+      // (2026-11-02 audit F3 review) the recovery's return can fail as well: the cover still comes down (it stayed up
+      // for good, over a frozen 'failed' return with no Esc and no notice), and the notice offers the return again.
+      // A return that failed has no Garage to paint (its frames stay suppressed), so there is no paint to wait for; a
+      // restored Garage still gets its paint first, and a failed paint keeps the cover (never an unpainted Garage).
+      let returned = false;
+      let returnError: RuntimeValue = null;
+      try {
+        await enterGarage();
+        returned = true;
+      } catch (recoveryError) {
+        returnError = recoveryError;
+        reportError('[battle] entry recovery return failed', recoveryError);
+      }
       lifecycle.uncoverRendering();
-      await nextFrame();
+      if (returned) await nextFrame();
       await battleLoad.hide?.();
       // Entry resilience (2026-09-25): the player used to be returned to the
       // Garage with nothing but a console line. The notice comes last so it
       // opens over a painted Garage, and its own failure is only reported.
       try {
-        await presentFailure(error, () => { void begin(specId, mapId, options); });
+        if (returned) await presentFailure(error, () => { void run(specId, mapId, options, false); });
+        else await presentReturnFailure(returnError, retryReturn);
       } catch (noticeError) {
         reportError('[battle] entry failure notice unavailable', noticeError);
       }
     }
   }, undefined);
 
+  /** A failed recovery return's retry: the return again, and its notice again if that fails too. */
+  const retryReturn = (): void => {
+    void Promise.resolve().then(() => enterGarage()).catch((again: RuntimeValue) => {
+      reportError('[battle] entry recovery return failed', again);
+      return presentReturnFailure(again, retryReturn);
+    }).catch((noticeError: RuntimeValue) => reportError('[battle] entry failure notice unavailable', noticeError));
+  };
+
   return Object.freeze({
-    begin,
+    /** The Garage BATTLE button's entry: the button announced its press (`ui:battleStart`) itself. */
+    begin: (specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined) => (
+      run(specId, mapId, options, true)
+    ),
     beginSelected({
       specId,
       mapId,
@@ -146,9 +215,9 @@ export function createSoloBattleEntryRuntime({
       campaignOperationId = null,
     }: SoloBattleEntryRequest = {}) {
       const selected = specId && isVisibleSpecId(specId) ? specId : getSelectedSpecId();
-      return begin(selected, mapId || getSelectedMapId(), {
+      return run(selected, mapId || getSelectedMapId(), {
         randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}),
-      });
+      }, false);
     },
   });
 }

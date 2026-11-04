@@ -1349,6 +1349,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowLatchOwners.selftest.mjs',
     'src/game/battleEntryAcquisition.selftest.mjs',
     'src/game/battleEntryLifecycle.selftest.mjs',
+    'src/game/battleEntryReveal.selftest.mjs', // 2026-11-02 audit F2: the reveal has exits; entry edges and serial (F3 waits)
+    'src/game/soloBattleEntryAnnounce.selftest.mjs', // 2026-11-02 audit F2/F3: every solo start announces; waits for a return
     'src/game/soloBattleDeploymentRuntime.selftest.mjs',
     'src/game/soloBattleFxReadiness.selftest.mjs',
     'src/game/deploymentFxPrograms.selftest.mjs',
@@ -1404,6 +1406,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/garageTankLifecycle.selftest.mjs',
     'src/game/garageReturnRuntime.selftest.mjs',
     'src/game/battleAgainAction.selftest.mjs',
+    'src/game/garageReturnState.selftest.mjs', // 2026-11-02 audit F3: explicit return state, named busy refusals, no polling
+    'src/game/appLifecycle.selftest.mjs', // 2026-11-02 audit F1: one guarded phase writer that always announces
+    'src/game/networkVerdictPhase.selftest.mjs', // 2026-11-02 audit F1: a network verdict owns its time; its report follows the hold
+    'src/game/battleEntryIntent.selftest.mjs', // 2026-11-02 audit F2: one solo intent record; a room world never inherits it
     'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',
@@ -2065,6 +2071,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/app/battleEntryLoadFailure.selftest.mjs',
     'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
+    'src/app/programOriginWatch.selftest.mjs', // 2026-11-02 audit F2: one shared draw wrapper; any stop order restores it
+    'src/app/mainFlowPorts.selftest.mjs', // 2026-11-02 audit F2/F3: main's own flow-port bindings, run from its compositions
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
@@ -2072,6 +2080,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
     'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
+    'src/game/battleCountdownEdges.selftest.mjs', // 2026-11-02 audit F1: one rollout a battle; a capped warm-hold limit; one countdown writer
+    'src/game/battleWarmHold.selftest.mjs', // 2026-11-02 audit F2: one warm-hold owner; a successor never inherits a stale warm
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
     'src/game/ammoSelectionPresentation.selftest.mjs',

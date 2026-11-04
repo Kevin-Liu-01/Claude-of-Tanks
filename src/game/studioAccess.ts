@@ -115,7 +115,13 @@ export function createStudioAccess({
     // network)
     onPending(true);
     loadRuntime()
-      .then((loaded) => { onPending(false); return loaded.enter(); })
+      .then((loaded) => {
+        onPending(false);
+        // (2026-11-02 audit F1 review) the module and the effects loaded over seconds: a battle that started meanwhile
+        // keeps its scene, and the press is dropped as it would have been then
+        if (getPhase() !== 'garage') return undefined;
+        return loaded.enter();
+      })
       .catch((error: RuntimeValue) => { onPending(false); onEntryError(error); });
   };
 

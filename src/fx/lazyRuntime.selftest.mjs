@@ -395,7 +395,9 @@ if (!/function\* prebakeDestroyedVariantSteps\([\s\S]*prebakeBurntSteps/.test(ba
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.test(deferredWarm)
-    || !/setPending:\s*\(pending(?::\s*boolean)?\)[\s\S]{0,80}battleWarmPending = pending/.test(main)) {
+    // (2026-11-02 audit F2) the hold is one generation-scoped owner (game/battleWarmHold.ts)
+    || !/setPending:\s*releaseCurrentWarmHold/.test(main)
+    || !/const releaseCurrentWarmHold = \(pending: boolean\): void => \{ if \(!pending\) battleWarmHold\.release\(battleWarmHold\.generation\); \};/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
 if (!/round\.setupBattle\(game, specId, activeWorld,[\s\S]{0,500}round\.combatWarm\.reset\(\)/.test(soloStart)

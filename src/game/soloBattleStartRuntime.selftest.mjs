@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { applyBurnHook, makeBurnUniforms } from '../vehicles/materials.ts';
 import { createSoloBattleStartRuntime } from './soloBattleStartRuntime.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
 
 /** (ac130-fx-228) the harness roster adds a bot on the player's own spec (a valid duplicate pick) */
 let dupEscort = false;
@@ -22,6 +23,8 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
     state: { yaw: 1.25 }, visual, equip: ['rammer'],
   };
   const game = { preBattleS: 0, mapId: '', phase: 'garage', player: null, tanks: [] };
+  // (2026-11-02 audit F1) the session's lifecycle announces the phase the start runtime moves
+  createAppLifecycle({ game, announce: ({ phase }) => events.push(`phase:${phase}`) });
   const runtime = createSoloBattleStartRuntime({
     state: {
       game,
@@ -102,7 +105,6 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       hideEndOverlay: () => events.push('result:hide'),
       resetBattleResult: () => events.push('result:reset'),
       setGarageLighting: (value) => events.push(`garage:lighting:${value}`),
-      emitPhaseChange: (phase) => events.push(`phase:${phase}`),
       emitConsumableReset: () => events.push('consumable:event'),
       rig: {
         release: () => events.push('rig:release'),
@@ -158,6 +160,19 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
   const harness = createHarness({ playerCreated: false });
   assert.throws(() => harness.runtime.start('m1a1_abrams_hc'), /did not create a player/);
   assert.ok(!harness.events.includes('phase:battle'));
+}
+
+{
+  // (2026-11-02 audit F1 review) a start over the Studio's scene (studio -> battle is no edge) is refused before the
+  // count, the roster, the map, the Garage or the HUD move: the phase write used to throw only after all of them
+  const harness = createHarness();
+  harness.game.phase = 'studio';
+  harness.game.preBattleS = 0;
+  assert.throws(() => harness.runtime.start('m1a1_abrams_hc', 'winter', { preBattleHold: true }),
+    (error) => error?.name === 'AppPhaseTransitionError' && error.from === 'studio' && error.to === 'battle');
+  assert.deepEqual(harness.events, [], 'nothing moved');
+  assert.equal(harness.game.phase, 'studio');
+  assert.equal(harness.game.preBattleS, 0, 'the count was not armed');
 }
 
 

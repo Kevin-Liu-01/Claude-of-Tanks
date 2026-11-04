@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import { createGarageReturnRuntime } from './garageReturnRuntime.ts';
 import { createGameState } from './stateCore.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
 
 function createFixture({
   transitionGate = false, battleCoverDelay = 0, pendingClearsAfter = 2,
@@ -15,15 +16,28 @@ function createFixture({
   game.preBattleS = 3;
   game.mapId = 'verdant';
   const calls = [];
+  // (2026-11-02 audit F1) the Garage phase is announced by the session's lifecycle, not a return port
+  createAppLifecycle({ game, announce: ({ phase }) => { if (phase === 'garage') calls.push(['emitGaragePhase', game.phase]); } });
   const traces = [];
   let now = 100;
   let preserveRoom = true;
   let entryPending = false;
   let entryCovering = false;
-  let coverPolls = 0;
   let releaseTransition = null;
   let triggerCount = 0;
-  let pendingPolls = 0;
+  // (audit F3) the entry lifecycle's edges, as waiters; a fixture whose entry never settles or covers lets the
+  // one deadline fire instead
+  const settledWaiters = [];
+  const coverWaiters = [];
+  const setEntryPending = (value) => {
+    entryPending = value;
+    if (!value) for (const resolve of settledWaiters.splice(0)) resolve();
+  };
+  const setEntryCovering = (value) => {
+    entryCovering = value;
+    if (value) for (const resolve of coverWaiters.splice(0)) resolve();
+  };
+  const deadlinesFire = pendingClearsAfter === Infinity || battleCoverDelay === Infinity;
   const adoptedVisual = { id: 'hero' };
 
   const runtime = createGarageReturnRuntime({
@@ -94,7 +108,7 @@ function createFixture({
         calls.push(['triggerBattle']);
         if (triggerError) throw triggerError;
         if (!triggerAccepted) return false;
-        if (battleCoverDelay === 0) entryCovering = true;
+        if (battleCoverDelay === 0) setEntryCovering(true);
         return true;
       },
     },
@@ -139,18 +153,26 @@ function createFixture({
     createEntryScheduler,
     isBattleEntryPending: () => entryPending,
     isBattleEntryCovering: () => entryCovering,
+    whenBattleEntrySettled: () => {
+      calls.push(['waitEntrySettled']);
+      if (!entryPending) return Promise.resolve();
+      if (pendingClearsAfter !== Infinity) setImmediate(() => setEntryPending(false));
+      return new Promise((resolve) => settledWaiters.push(resolve));
+    },
+    whenBattleEntryCovering: () => {
+      calls.push(['waitEntryCovering']);
+      if (entryCovering) return Promise.resolve();
+      if (triggerCount > 0 && battleCoverDelay !== Infinity) setImmediate(() => setEntryCovering(true));
+      return new Promise((resolve) => coverWaiters.push(resolve));
+    },
     nowMs: () => now,
-    sleep: async (milliseconds) => {
+    sleep: (milliseconds, signal) => {
       calls.push(['sleep', milliseconds]);
-      now += milliseconds;
-      if (entryPending) {
-        pendingPolls += 1;
-        if (pendingPolls >= pendingClearsAfter) entryPending = false;
+      if (deadlinesFire) {
+        now += milliseconds;
+        return Promise.resolve();
       }
-      if (triggerCount > 0 && !entryCovering) {
-        coverPolls += 1;
-        if (coverPolls >= battleCoverDelay) entryCovering = true;
-      }
+      return new Promise((resolve) => signal?.addEventListener('abort', () => resolve(), { once: true }));
     },
     publishTrace: (trace) => traces.push(trace),
   });
@@ -163,7 +185,7 @@ function createFixture({
     adoptedVisual,
     advanceMs(milliseconds) { now += milliseconds; },
     setPreserveRoom(value) { preserveRoom = value; },
-    setEntryPending(value) { entryPending = value; },
+    setEntryPending,
     setTriggerAccepted(value) { triggerAccepted = value; },
     setTriggerError(value) { triggerError = value; },
     setPlacement(value) { placement = value; },
@@ -246,10 +268,11 @@ const firstRematch = rematch.runtime.battleAgain();
 assert.equal(firstRematch, rematch.runtime.battleAgain(),
   'repeat result clicks join the pending return instead of re-entering');
 await firstRematch;
-assert.equal(rematch.calls.filter(([name]) => name === 'sleep').length, 2);
+// (audit F3) one event-driven wait on the previous entry's settle edge, under one 15 s deadline: no polling
+assert.deepEqual(rematch.calls.filter(([name]) => name === 'sleep'), [['sleep', 15_000]]);
 assert.equal(rematch.calls[0][0], 'transitionStart',
   'the result veil starts before waiting for an existing entry');
-assert.ok(rematch.calls.findIndex(([name]) => name === 'sleep')
+assert.ok(rematch.calls.findIndex(([name]) => name === 'waitEntrySettled')
   < rematch.calls.findIndex(([name]) => name === 'clearPresentation'),
   'the existing battle and report survive until the previous entry finishes');
 assert.equal(rematch.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 420);
@@ -270,9 +293,11 @@ assert.equal(rematch.calls.some(([name]) => name === 'adaptive'), false,
 
 const coveredHandoff = createFixture({ battleCoverDelay: 2 });
 await coveredHandoff.runtime.battleAgain();
-assert.equal(coveredHandoff.calls.filter(([name, milliseconds]) => (
-  name === 'sleep' && milliseconds === 16
-)).length, 2, 'the result veil waits until the pre-battle screen owns coverage');
+assert.ok(coveredHandoff.calls.findIndex(([name]) => name === 'waitEntryCovering')
+  > coveredHandoff.calls.findIndex(([name]) => name === 'triggerBattle'),
+  'the result veil waits until the pre-battle screen owns coverage');
+assert.deepEqual(coveredHandoff.calls.filter(([name]) => name === 'sleep'), [['sleep', 15_000]],
+  '(audit F3) the cover wait is the entry lifecycle\'s edge under one deadline, never a 16 ms poll');
 assert.ok(coveredHandoff.calls.findIndex(([name]) => name === 'triggerBattle')
   < coveredHandoff.calls.findIndex(([name]) => name === 'transitionEnd'),
   'the pre-battle cover handoff completes before the result veil exits');
@@ -383,7 +408,7 @@ for (const failure of ['placement', 'restore', 'missing-receipt']) {
     `${failure}: settling the failed promise does not declare Garage presentation ready`);
   assert.equal(isCovered(fixture), true, `${failure}: ordinary frames cannot cold-render after failure unwind`);
   assert.equal(fixture.calls.some(([name]) => name === 'adaptive'), false);
-  for (const phase of ['battle', 'ended', 'shot']) {
+  for (const phase of ['battle', 'studio', 'shot']) {
     fixture.game.phase = phase;
     assert.equal(isCovered(fixture), false, `${phase}: stale failed Garage state cannot freeze an alternate phase`);
   }
@@ -523,7 +548,7 @@ for (const preserveRoom of [true, false]) {
   assert.equal(fixture.calls.filter(([name]) => name === 'clearPresentation').length, 2);
 }
 
-for (const phase of ['battle', 'ended', 'shot']) {
+for (const phase of ['battle', 'studio', 'shot']) {
   const fixture = createFixture({ placement: async () => { throw new Error('lost device'); } });
   await assert.rejects(fixture.runtime.enter(), /lost device/);
   fixture.game.phase = phase;

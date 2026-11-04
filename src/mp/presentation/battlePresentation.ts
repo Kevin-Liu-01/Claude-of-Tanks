@@ -1,4 +1,5 @@
 import { createGunshipBattleVisual } from '../../game/gunshipVisual.ts';
+import { transitionBattleCountdown } from '../../game/preBattleCountdown.ts';
 import type { AerialView } from '../../sim/aerialCombat.ts';
 import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
@@ -151,6 +152,8 @@ export interface PresentationGameState {
   timeS: number;
   preBattleS: number;
   result?: string | null;
+  /** Battle time of the verdict: the post-verdict hold counts from it (app lifecycle's verdict and report). */
+  resultTimeS?: number | null;
   /** battle endings (2026-09-25): the killcam facade main composes (typed loosely); every observable lethal shell_hit feeds it. */
   killcam?: RuntimeValue;
   resultReason?: string | null;
@@ -552,6 +555,10 @@ export function createBattlePresentation({
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
   let verdictSeenAtMs: number | null = null;
+  // (2026-11-02 audit F1 review) Battle time of the newest frame that showed no verdict. It is no later than the
+  // authority's verdict, so a hold counted from it is over by the time the authority's clock freezes at the hold's end
+  // (authoritativeMatch stepPlaying); the frame or event that brings the verdict can be a few steps past it.
+  let verdictFreeBattleS = 0;
   let sessionVerdict: { verdict: VerdictId; reason: string } | null = null;
   let lastFrameAtMs = -Infinity;
   let lastPredictedFireSeq = -1;
@@ -1038,9 +1045,12 @@ export function createBattlePresentation({
     return typeof wave === 'number' && Number.isFinite(wave) ? wave : null;
   }
 
-  function endMatch(result: string, reason: string): void {
+  function endMatch(result: string, reason: string, resultTimeS = Math.min(game.timeS, verdictFreeBattleS)): void {
     game.result = result;
     game.resultReason = reason;
+    // (2026-11-02 audit F1 review) the network verdict owns its time, as the solo sim's does (state.ts): the app
+    // lifecycle's verdict hold and report count from it (appLifecycle.battleSubPhase)
+    game.resultTimeS = resultTimeS;
     // The match keeps publishing the field through the ruleset's post-verdict hold (authoritativeMatch endingHoldS),
     // so the ending director's replay or camera beat plays over a live field, as in solo play.
     bus.emit('battle:ended', {
@@ -1119,7 +1129,8 @@ export function createBattlePresentation({
       lastSmokeJson=frame.meta.smokeJson||'';
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
     }
-    game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
+    // (2026-11-02 audit F1) the countdown's one writer: this client follows the authority's count
+    transitionBattleCountdown(game, 'follow', frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0);
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     // the destruction log is settled state, as the destroyed list is: what this seat did not see happen lands at its end
@@ -1134,6 +1145,7 @@ export function createBattlePresentation({
     // `match_ended` event predates this client; the event keeps the cinematic order when it does arrive. The session's
     // verdict (settleVerdict) waits here too.
     let verdict = frame.meta.verdict, verdictReason = frame.meta.verdictReason;
+    if (verdict === VERDICT.NONE) verdictFreeBattleS = game.timeS;
     if (verdict === VERDICT.NONE && sessionVerdict) { verdict = sessionVerdict.verdict; verdictReason = sessionVerdict.reason; }
     if (verdict !== VERDICT.NONE && !game.result) {
       verdictSeenAtMs ??= clock();
@@ -1442,7 +1454,9 @@ export function createBattlePresentation({
   function endDisconnected(): boolean {
     if (disconnected || game.result) return false;
     disconnected = true;
-    endMatch('draw', 'network_disconnect');
+    // no authority field follows a lost connection, so its verdict has no hold to present: the report is due at once
+    const holdS = Number(game.ruleset?.endingHoldS);
+    endMatch('draw', 'network_disconnect', game.timeS - (Number.isFinite(holdS) ? Math.max(0, holdS) : 0));
     return true;
   }
 

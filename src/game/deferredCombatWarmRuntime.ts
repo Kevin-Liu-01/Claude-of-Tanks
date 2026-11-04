@@ -206,10 +206,13 @@ export function createDeferredCombatWarmRuntime<
 }: DeferredCombatWarmRuntimeOptions<Game, Entity, World>): DeferredCombatWarmRuntime {
   const host = globalThis as DeferredWarmHost;
   let pendingPromise: Promise<void> | null = null;
+  // the generation the slot's warm belongs to (2026-11-02 audit F2)
+  let pendingGeneration: number | null = null;
 
   const cancel = (): void => {
     combatWarm.cancelRare();
     pendingPromise = null;
+    pendingGeneration = null;
   };
 
   const schedule = (generation: number): Promise<void> => {
@@ -217,7 +220,13 @@ export function createDeferredCombatWarmRuntime<
       setPending(false);
       return Promise.resolve();
     }
-    if (pendingPromise) return pendingPromise;
+    if (pendingPromise) {
+      if (pendingGeneration === generation) return pendingPromise;
+      // (audit F2) a successor scheduled before anyone cancelled the stale warm: the slot is the successor's now. The
+      // stale run stops at its next guarded yield; returning its promise left the successor's hold unreleased (the
+      // count frozen on PREPARING).
+      cancel();
+    }
 
     const trace: WarmTrace = { done: false, generation, stages: {} };
     host.__BATTLE_DEFERRED_WARM = trace;
@@ -363,13 +372,14 @@ export function createDeferredCombatWarmRuntime<
     }).finally(() => {
       releaseHold();
       const ownsSlot = pendingPromise === pending;
-      if (ownsSlot) pendingPromise = null;
+      if (ownsSlot) { pendingPromise = null; pendingGeneration = null; }
       if (generation === getGeneration()
           && (ownsSlot || host.__BATTLE_DEFERRED_WARM === trace)) {
         host.__BATTLE_DEFERRED_WARM = trace;
       }
     });
     pendingPromise = pending;
+    pendingGeneration = generation;
     return pending;
   };
 
