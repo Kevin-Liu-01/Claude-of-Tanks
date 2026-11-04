@@ -57,7 +57,8 @@ import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import { notice } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import { CREW_LANGUAGE_NAMES, CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import { WORLD_CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -1351,7 +1352,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
-    // One flag dropdown: national crews, or a fixed pack for every vehicle.
+    // One dropdown: national crews, or a fixed pack for every vehicle: a nation's crew (its flag) or a language with no
+    // country in the game (crew-languages-270). Every row names its language in its own words too.
     const crew = groupCard(body, t('settings.crew.title'));
     const crewRow = el('div', 'cot-set-row cot-set-crew-row', crew);
     settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
@@ -1359,10 +1361,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     crewField.dataset.setting = 'crewVoice';
     const crewItems = (flag?: (nation: string) => string): PickerItem[] => [
       { id: 'national', name: t('settings.crew.national'), glyph: 'globe' },
-      ...Object.entries(CREW_VOICE_NATIONS).map(([value, nation]) => ({ id: value, name: t(`nation.${nation}`), chip: flag?.(nation) })),
+      ...Object.entries(CREW_VOICE_NATIONS).map(([value, nation]) => ({ id: value, name: t(`nation.${nation}`),
+        facts: [CREW_LANGUAGE_NAMES[value as keyof typeof CREW_VOICE_NATIONS]], chip: flag?.(nation), tags: ['nation'] })),
+      ...WORLD_CREW_LANGUAGES.map(value => ({ id: value, name: t(`settings.crew.language.${value}`),
+        facts: [CREW_LANGUAGE_NAMES[value]], glyph: 'radio' as const, tags: ['language'] })),
     ];
     const crewMenu = createPickerMenu(crewField, { id: 'settings-crew-voice', label: t('settings.crew.voice'), items: crewItems(),
       value: input.getSettings().crewVoice, layout: 'list', text: pickerText(),
+      filters: [{ id: 'nation', label: t('settings.crew.nations'), icon: 'globe' }, { id: 'language', label: t('settings.crew.languages'), icon: 'radio' }],
       onChoose: (item) => {
         if (!isCrewVoiceSetting(item.id)) return;
         input.setSetting('crewVoice', item.id);

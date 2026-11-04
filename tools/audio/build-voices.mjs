@@ -37,7 +37,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const OUT = join(ROOT, 'public', 'audio', 'voice');
 const MANIFEST = join(ROOT, 'src', 'audio', 'voiceManifest.generated.ts');
-const STATE = join(HERE, '.voice-manifest.json');
+// COT_VOICE_STATE: a build of some languages beside another (each its own state file, rows merged after).
+const STATE = process.env.COT_VOICE_STATE || join(HERE, '.voice-manifest.json');
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : null);

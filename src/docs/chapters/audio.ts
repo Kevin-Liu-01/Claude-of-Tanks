@@ -1,13 +1,14 @@
 // The Field Manual's sound chapter: what each sound tells you in battle. Copyright © 2026 Kevin B. Liu.
 // The crew's calls are quoted from the caption script the game captions them with (src/audio/captionScript.generated.ts,
 // the first take in the reader's language); the arrival delays from the audio engine's own propagation
-// (src/audio/audioMath.ts); the crew languages from the voice packs (src/audio/vehicleAudioProfiles.ts), named by the
-// reader's locale; the gun reports and their loudness from src/audio/weaponAudio.ts; the sliders and alarms from the
+// (src/audio/audioMath.ts); the crew languages from the voice packs (src/audio/vehicleAudioProfiles.ts), the national ones
+// named by the reader's locale, the ones with no country by the Settings picker's names and in their own words; the gun reports and their loudness from src/audio/weaponAudio.ts; the sliders and alarms from the
 // Sound tab's own labels (src/ui/settings.ts). Node only (tools/docs-prerender.mjs).
 import { CAPTION_SCRIPT } from '../../audio/captionScript.generated.ts';
 import { ATMOSPHERES, propagationDelayS } from '../../audio/audioMath.ts';
 import { CEASE, GUNSHIP } from '../../audio/crewProcedure.ts';
-import { CREW_LANGUAGES } from '../../audio/vehicleAudioProfiles.ts';
+import { CREW_LANGUAGE_NAMES } from '../../audio/crewVoice.ts';
+import { CREW_LANGUAGES, WORLD_CREW_LANGUAGES, type WorldCrewLanguage } from '../../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../../audio/weaponAudio.ts';
 import { flagMarkup } from '../../presentation/publicShell.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
@@ -77,18 +78,26 @@ function delays(): string {
   return `<ul class="dm-delays" aria-label="${esc(t('docs.audio.delaysAria'))}">${row('earth')}${row('mars')}</ul>`;
 }
 
-/** The crew languages, each with its nation's flag and its name in the reader's locale. */
+/** The national crews, each with its nation's flag and its name in the reader's locale. */
 const LANGUAGE_FLAGS: Readonly<Record<string, string>> = {
   'en-US': 'us', 'en-GB': 'gb', de: 'de', ru: 'ru', uk: 'ua', zh: 'cn', fr: 'fr', sv: 'se', ja: 'jp', ko: 'kr', it: 'it', pl: 'pl', he: 'il',
   da: 'dk', 'pt-BR': 'br', 'en-AU': 'au', af: 'za',
 };
 function languages(): string {
   const names = new Intl.DisplayNames([getLocale()], { type: 'language' });
-  return `<ul class="dm-nations">${CREW_LANGUAGES.map((language) => {
+  const world = new Set<string>(WORLD_CREW_LANGUAGES);
+  return `<ul class="dm-nations">${CREW_LANGUAGES.filter((language) => !world.has(language)).map((language) => {
     const flag = LANGUAGE_FLAGS[language];
     if (!flag) throw new Error(`docs: no flag for the ${language} crew`);
     return `<li>${flagMarkup(flag, 'cot-c-flag cot-c-flag--md')}<span>${esc(names.of(language) ?? language)}</span></li>`;
   }).join('')}</ul>`;
+}
+
+/** The crews of languages with no country in the game: the Settings name, then the language in its own words and script. */
+function worldLanguages(): string {
+  const item = (language: WorldCrewLanguage): string => `<li><span>${esc(t(`settings.crew.language.${language}`))}</span>`
+    + `<span class="dm-endonym" lang="${language}" dir="auto">${esc(CREW_LANGUAGE_NAMES[language])}</span></li>`;
+  return `<ul class="dm-nations dm-languages">${WORLD_CREW_LANGUAGES.map(item).join('')}</ul>`;
 }
 
 /** Each gun report's name: the AC-130's three and the two machine guns by name, the rest by calibre and kind. */
@@ -125,6 +134,7 @@ export function audioSections(): RichSection[] {
       + `<h3>${esc(t('docs.audio.gunshipTitle'))}</h3>` + callTable(GUNSHIP_CALLS, t('docs.audio.gunshipAria'))
       + `<h3>${esc(t('docs.audio.modesTitle'))}</h3>` + callTable(MODE_CALLS, t('docs.audio.modesAria'))],
     ['radio', t('docs.audio.radio'), p('docs.audio.radioLede', { languages: String(CREW_LANGUAGES.length) }) + languages()
+      + p('docs.audio.radioWorld', { languages: String(WORLD_CREW_LANGUAGES.length) }) + worldLanguages()
       + facts([['docs.audio.fact.oneAtATime', {}], ['docs.audio.fact.damagedRadio', {}], ['docs.audio.fact.crewSetting', { languages: String(CREW_LANGUAGES.length) }]])],
     ['gunfire', t('docs.audio.gunfire'), p('docs.audio.gunfireLede', { classes: String(Object.keys(WEAPON_CLASSES).length) }) + reports()
       + facts([['docs.audio.fact.hills', {}], ['docs.audio.fact.mars', { speed: String(mars.speedOfSoundMps), db: String(-mars.transmissionDb) }],

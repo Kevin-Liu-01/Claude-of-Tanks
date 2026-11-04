@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, crewLanguageForVehicle, massClass,
+  CREW_LANGUAGES, ENGINE_FAMILIES, ENGINE_FAMILY_IDS, WORLD_CREW_LANGUAGES, crewLanguageForVehicle, massClass,
   resolveEngineFamily, resolveVehicleAudioIdentity,
 } from './vehicleAudioProfiles.ts';
 import { COUNTRIES } from '../sim/countries.ts';
@@ -61,8 +61,12 @@ assert.equal(crewLanguageForVehicle(undefined, undefined), 'en-US');
 // Every country names a crew that ships (the Record is exhaustive at compile time; this checks the values).
 for (const { id, specNations } of COUNTRIES) {
   assert.ok(CREW_LANGUAGES.includes(crewLanguageForVehicle(null, specNations[0])), `${id} speaks a shipped crew language`);
+  assert.ok(!WORLD_CREW_LANGUAGES.includes(crewLanguageForVehicle(null, specNations[0])), `${id} speaks a national crew, not a world one`);
 }
-assert.equal(CREW_LANGUAGES.length, 17);
+// 17 national packs and 21 for languages with no country in the game (crew-languages-270).
+assert.equal(CREW_LANGUAGES.length, 38);
+assert.equal(WORLD_CREW_LANGUAGES.length, 21);
+assert.equal(new Set(CREW_LANGUAGES).size, CREW_LANGUAGES.length);
 
 // Identity details.
 const abrams = resolveVehicleAudioIdentity({ id: 'm1a1_abrams_hc', nation: 'USA', role: 'mbt', weightTons: 66.8, enginePowerHp: 1500, gun: { caliberMm: 120 } });

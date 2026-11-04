@@ -15,7 +15,7 @@ import { MAP_IDS } from '../../world/maps/mapIds.ts';
 import { TOPIC_ORDER, topics } from '../topics.ts';
 import { ROOM_MAX_SPECTATORS, ROOM_MAX_TEAM_SIZE } from '../../mp/room/protocol.ts';
 import { BATTLE_MODE_IDS } from '../../sim/matchModes.ts';
-import { CREW_LANGUAGES } from '../../audio/vehicleAudioProfiles.ts';
+import { CREW_LANGUAGES, WORLD_CREW_LANGUAGES } from '../../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../../audio/weaponAudio.ts';
 import { SCENE_EFFECT_TYPES } from '../../game/studioSceneShare.ts';
 
@@ -73,7 +73,10 @@ assert.equal((seats.match(/<li(?: class="is-on")?><\/li>/g) ?? []).length, ROOM_
 assert.equal((sectionHtml('multiplayer', 'modes').match(/<li><a href="[^"]*#/g) ?? []).length, BATTLE_MODE_IDS.length, 'a chip per battle mode a room plays');
 
 // sound: a crew language each, a bar per gun report, both call tables quote the captions
-assert.equal((sectionHtml('audio', 'radio').match(/class="cot-c-flag/g) ?? []).length, CREW_LANGUAGES.length, 'a flag per crew language');
+assert.equal((sectionHtml('audio', 'radio').match(/class="cot-c-flag/g) ?? []).length, CREW_LANGUAGES.length - WORLD_CREW_LANGUAGES.length,
+  'a flag per national crew');
+assert.equal((sectionHtml('audio', 'radio').match(/class="dm-endonym"/g) ?? []).length, WORLD_CREW_LANGUAGES.length,
+  'each language with no country in the game named in its own words');
 assert.equal((sectionHtml('audio', 'gunfire').match(/class="dm-bar"/g) ?? []).length, Object.keys(WEAPON_CLASSES).length, 'a bar per report class');
 for (const id of ['hits', 'warnings']) assert.ok((sectionHtml('audio', id).match(/<q>/g) ?? []).length >= 10, `the ${id} table quotes the crew`);
 

@@ -37,7 +37,8 @@
     "id-ID",
     "ms",
     "vi",
-    "th"
+    "th",
+    "fil"
   ],
   "lines": [
     {
@@ -229,6 +230,11 @@
         "ทุกคัน เคลื่อนที่ไปข้างหน้า",
         "พลขับ เดินหน้า",
         "พลประจำรถ เข้าประจำที่รบ"
+      ],
+      "fil": [
+        "Lahat ng crew, abante.",
+        "Drayber, larga na.",
+        "Crew, sa inyong puwesto."
       ]
     },
     {
@@ -383,6 +389,10 @@
       "th": [
         "เคลื่อนที่แล้ว",
         "พลขับ ออกรถแล้ว"
+      ],
+      "fil": [
+        "Umaandar na.",
+        "Drayber, gumagalaw na."
       ]
     },
     {
@@ -537,6 +547,10 @@
       "th": [
         "สิ้นสุดการรบ พื้นที่ปลอดภัย",
         "ทำลายกำลังข้าศึกแล้ว ทำได้ดี"
+      ],
+      "fil": [
+        "Tapos ang laban. Secure na ang lugar.",
+        "Wasak ang puwersa ng kalaban. Magaling."
       ]
     },
     {
@@ -691,6 +705,10 @@
       "th": [
         "เราแพ้ศึกนี้ ถอยกลับ",
         "หมดทางสู้แล้ว ถอนตัว"
+      ],
+      "fil": [
+        "Talo ang laban. Atras.",
+        "Tapos na tayo. Umatras na."
       ]
     },
     {
@@ -808,6 +826,9 @@
       ],
       "th": [
         "หยุดยิง ไม่มีฝ่ายใดครองพื้นที่"
+      ],
+      "fil": [
+        "Tigil-putok. Tabla ang laban."
       ]
     },
     {
@@ -999,6 +1020,11 @@
         "พบข้าศึก ยานเกราะ",
         "พบรถถัง",
         "ยานพาหนะข้าศึก พบเป้า"
+      ],
+      "fil": [
+        "Contact. Armor ng kalaban.",
+        "May nakitang tangke.",
+        "Sasakyan ng kalaban, contact."
       ]
     },
     {
@@ -1153,6 +1179,10 @@
       "th": [
         "พบข้าศึก ด้านหน้า",
         "รถถัง ด้านหน้า"
+      ],
+      "fil": [
+        "Contact sa harap.",
+        "Tangke, sa harap."
       ]
     },
     {
@@ -1307,6 +1337,10 @@
       "th": [
         "พบข้าศึก ด้านซ้าย",
         "รถถัง ด้านซ้าย"
+      ],
+      "fil": [
+        "Contact sa kaliwa.",
+        "Tangke, sa kaliwa."
       ]
     },
     {
@@ -1461,6 +1495,10 @@
       "th": [
         "พบข้าศึก ด้านขวา",
         "รถถัง ด้านขวา"
+      ],
+      "fil": [
+        "Contact sa kanan.",
+        "Tangke, sa kanan."
       ]
     },
     {
@@ -1615,6 +1653,10 @@
       "th": [
         "พบข้าศึก ด้านหลัง",
         "รถถังอยู่ข้างหลังเรา"
+      ],
+      "fil": [
+        "Contact sa likod!",
+        "May tangke sa likod natin!"
       ]
     },
     {
@@ -1769,6 +1811,10 @@
       "th": [
         "เราถูกตรวจพบ",
         "ข้าศึกจับตาเราอยู่"
+      ],
+      "fil": [
+        "Nakita na tayo.",
+        "Minamatyagan nila tayo."
       ]
     },
     {
@@ -1960,6 +2006,11 @@
         "กระสุนออกแล้ว",
         "ทำการยิง",
         "ยิงไปแล้ว"
+      ],
+      "fil": [
+        "Lumabas na ang bala.",
+        "Nagpapaputok.",
+        "Putok na."
       ]
     },
     {
@@ -2114,6 +2165,10 @@
       "th": [
         "ปล่อยจรวดแล้ว",
         "จรวดออกแล้ว กำลังนำวิถี"
+      ],
+      "fil": [
+        "Lumipad na ang missile.",
+        "Labas ang missile. Ginagabayan ko."
       ]
     },
     {
@@ -2268,6 +2323,10 @@
       "th": [
         "เจาะทะลุ",
         "เข้าเป้า ทะลุเกราะ"
+      ],
+      "fil": [
+        "Tumagos ang tira.",
+        "Target. Tagos sa armor."
       ]
     },
     {
@@ -2422,6 +2481,10 @@
       "th": [
         "ไม่ทะลุเกราะ",
         "เจาะไม่เข้า"
+      ],
+      "fil": [
+        "Hindi tumagos.",
+        "Hindi lumusot ang tira."
       ]
     },
     {
@@ -2576,6 +2639,10 @@
       "th": [
         "กระสุนแฉลบ",
         "แฉลบออก"
+      ],
+      "fil": [
+        "Dumaplis lang.",
+        "Tumalbog ang tira."
       ]
     },
     {
@@ -2730,6 +2797,10 @@
       "th": [
         "เข้าเป้าดี บางอย่างเสียหาย",
         "โดนจุดสำคัญ"
+      ],
+      "fil": [
+        "Magandang tama. May nasira.",
+        "Kritikal na tama."
       ]
     },
     {
@@ -2884,6 +2955,10 @@
       "th": [
         "เป้าหมายไฟลุก",
         "รถข้าศึกไฟไหม้"
+      ],
+      "fil": [
+        "Nasusunog ang target.",
+        "Nagliliyab na siya."
       ]
     },
     {
@@ -3038,6 +3113,10 @@
       "th": [
         "โดนที่เก็บกระสุน กระสุนข้างในระเบิด",
         "ยิงโดนกระสุนข้าศึก จบแล้ว"
+      ],
+      "fil": [
+        "Tama sa ammo rack. Sumasabog na.",
+        "Tinamaan ang bala niya. Tapos siya."
       ]
     },
     {
@@ -3229,6 +3308,11 @@
         "เป้าหมายถูกทำลาย",
         "เป้าหมายหมดสภาพ",
         "รถถังข้าศึกหมดสภาพ"
+      ],
+      "fil": [
+        "Target, wasak na.",
+        "Tumba ang target.",
+        "Patay ang tangke."
       ]
     },
     {
@@ -3420,6 +3504,11 @@
         "พลาดเป้า",
         "ตกสั้น ปรับใหม่",
         "เลยเป้า"
+      ],
+      "fil": [
+        "Mintis ang tira.",
+        "Kapos. Itatama ko.",
+        "Lumampas sa target."
       ]
     },
     {
@@ -3574,6 +3663,10 @@
       "th": [
         "กำลังบรรจุ",
         "บรรจุใหม่"
+      ],
+      "fil": [
+        "Nagkakarga na.",
+        "Karga ulit."
       ]
     },
     {
@@ -3765,6 +3858,11 @@
         "ปืนพร้อม",
         "บรรจุแล้ว",
         "พร้อมยิง"
+      ],
+      "fil": [
+        "Handa ang kanyon.",
+        "Loaded na.",
+        "Handa na."
       ]
     },
     {
@@ -3919,6 +4017,10 @@
       "th": [
         "กระสุนเจาะเกราะ",
         "บรรจุเจาะเกราะ"
+      ],
+      "fil": [
+        "Sabot, karga.",
+        "Nagkakarga ng sabot."
       ]
     },
     {
@@ -4073,6 +4175,10 @@
       "th": [
         "กระสุนดินโพรง",
         "บรรจุดินโพรง"
+      ],
+      "fil": [
+        "HEAT, karga.",
+        "Nagkakarga ng HEAT."
       ]
     },
     {
@@ -4227,6 +4333,10 @@
       "th": [
         "กระสุนระเบิดแรงสูง",
         "บรรจุระเบิดแรงสูง"
+      ],
+      "fil": [
+        "H-E, karga.",
+        "Nagkakarga ng H-E."
       ]
     },
     {
@@ -4381,6 +4491,10 @@
       "th": [
         "จรวดนำวิถีพร้อม",
         "แท่นยิงจรวดพร้อม"
+      ],
+      "fil": [
+        "Handa ang missile.",
+        "Armado na ang launcher."
       ]
     },
     {
@@ -4535,6 +4649,10 @@
       "th": [
         "ปืนใหญ่กลสามสิบ",
         "สามสิบมิลลิเมตร พร้อม"
+      ],
+      "fil": [
+        "Thirty mike-mike, handa.",
+        "Kanyong thirty mil, handa na."
       ]
     },
     {
@@ -4689,6 +4807,10 @@
       "th": [
         "ปืนใหญ่วิถีโค้ง",
         "หนึ่งห้าสอง พร้อม"
+      ],
+      "fil": [
+        "Howitzer, handa.",
+        "One-five-two, handa na."
       ]
     },
     {
@@ -4843,6 +4965,10 @@
       "th": [
         "เลือกจรวดนำวิถี",
         "จรวดพร้อมยิง"
+      ],
+      "fil": [
+        "Napili ang missile.",
+        "Mga missile, handa na."
       ]
     },
     {
@@ -4997,6 +5123,10 @@
       "th": [
         "เข้าเป้า เป้าหมายถูกทำลาย",
         "กระสุนตก เป้าหมายหมดสภาพ"
+      ],
+      "fil": [
+        "Magandang tama. Wasak ang target.",
+        "Splash. Tumba ang target."
       ]
     },
     {
@@ -5151,6 +5281,10 @@
       "th": [
         "เป้าหมายที่สองถูกทำลาย",
         "อีกคันหมดสภาพ ได้ผลดี"
+      ],
+      "fil": [
+        "Ikalawang target, wasak na.",
+        "Isa pang tumba. Ayos ang tama."
       ]
     },
     {
@@ -5305,6 +5439,10 @@
       "th": [
         "กระสุนใกล้หมด",
         "กระสุนเหลือน้อย ยิงให้แม่นทุกนัด"
+      ],
+      "fil": [
+        "Paubos na ang bala.",
+        "Kaunti na ang bala. Sulitin ang tira."
       ]
     },
     {
@@ -5459,6 +5597,10 @@
       "th": [
         "กระสุนชนิดนี้หมด",
         "ชนิดนี้หมดแล้ว"
+      ],
+      "fil": [
+        "Ubos na ang ganyang bala.",
+        "Wala na tayong ganyan."
       ]
     },
     {
@@ -5613,6 +5755,10 @@
       "th": [
         "เราถูกยิง",
         "โดนยิงต่อเนื่อง"
+      ],
+      "fil": [
+        "Tinamaan tayo.",
+        "Sunod-sunod ang tama."
       ]
     },
     {
@@ -5767,6 +5913,10 @@
       "th": [
         "เกราะรับไว้ได้",
         "กระสุนแฉลบไปแล้ว"
+      ],
+      "fil": [
+        "Kinaya ng armor.",
+        "Tumalbog lang."
       ]
     },
     {
@@ -5921,6 +6071,10 @@
       "th": [
         "เกราะใกล้ไม่ไหว รับได้อีกไม่มาก",
         "เราเสียหายหนัก เคลื่อนที่ต่อไป"
+      ],
+      "fil": [
+        "Bumibigay na ang armor. Hindi na tayo tatagal.",
+        "Malala ang tama natin. Tuloy ang takbo."
       ]
     },
     {
@@ -6075,6 +6229,10 @@
       "th": [
         "ที่เก็บกระสุนโดนยิง",
         "กระสุนในรถเสียหาย"
+      ],
+      "fil": [
+        "Tinamaan ang ammo rack!",
+        "Napinsala ang mga bala!"
       ]
     },
     {
@@ -6229,6 +6387,10 @@
       "th": [
         "ถังน้ำมันโดนยิง",
         "น้ำมันเชื้อเพลิงรั่ว"
+      ],
+      "fil": [
+        "Tinamaan ang fuel tank.",
+        "Tumatagas ang krudo."
       ]
     },
     {
@@ -6383,6 +6545,10 @@
       "th": [
         "ไฟไหม้ ห้องเครื่องยนต์",
         "ไฟไหม้ในตัวรถ"
+      ],
+      "fil": [
+        "Sunog! Sa makina!",
+        "Sunog sa loob ng tangke!"
       ]
     },
     {
@@ -6537,6 +6703,10 @@
       "th": [
         "ไฟดับแล้ว",
         "ดับไฟเรียบร้อย"
+      ],
+      "fil": [
+        "Patay na ang apoy.",
+        "Naapula ang sunog."
       ]
     },
     {
@@ -6691,6 +6861,10 @@
       "th": [
         "เครื่องยนต์เสียหาย",
         "เครื่องยนต์โดนยิง แรงตก"
+      ],
+      "fil": [
+        "May sira ang makina.",
+        "Tinamaan ang makina. Nawawalan ng lakas."
       ]
     },
     {
@@ -6845,6 +7019,10 @@
       "th": [
         "เครื่องยนต์ดับ",
         "เครื่องยนต์ใช้การไม่ได้"
+      ],
+      "fil": [
+        "Patay ang makina.",
+        "Wala na tayong makina."
       ]
     },
     {
@@ -6999,6 +7177,10 @@
       "th": [
         "ระบบส่งกำลังโดนยิง",
         "ห้องเกียร์โดนยิง เปลี่ยนเกียร์ไม่ได้"
+      ],
+      "fil": [
+        "Tinamaan ang transmission.",
+        "Tama sa gearbox. Nawawala ang kambyo."
       ]
     },
     {
@@ -7153,6 +7335,10 @@
       "th": [
         "สายพานขาด รถเคลื่อนที่ไม่ได้",
         "สายพานหลุด"
+      ],
+      "fil": [
+        "Putol ang track. Hindi makagalaw.",
+        "Naputulan tayo ng track."
       ]
     },
     {
@@ -7307,6 +7493,10 @@
       "th": [
         "ปืนหลักเสียหาย",
         "ปืนโดนยิง"
+      ],
+      "fil": [
+        "May sira ang kanyon.",
+        "Tinamaan ang kanyon."
       ]
     },
     {
@@ -7461,6 +7651,10 @@
       "th": [
         "วงแหวนป้อมปืนติดขัด",
         "ป้อมปืนหมุนไม่ได้"
+      ],
+      "fil": [
+        "Na-jam ang turret ring.",
+        "Ayaw umikot ng turret."
       ]
     },
     {
@@ -7578,6 +7772,9 @@
       ],
       "th": [
         "แท่นปืนเสียหาย"
+      ],
+      "fil": [
+        "May sira ang gun mount."
       ]
     },
     {
@@ -7695,6 +7892,9 @@
       ],
       "th": [
         "ระบบบรรจุกระสุนอัตโนมัติเสียหาย"
+      ],
+      "fil": [
+        "May sira ang autoloader."
       ]
     },
     {
@@ -7812,6 +8012,9 @@
       ],
       "th": [
         "ระบบป้อนกระสุนติดขัด"
+      ],
+      "fil": [
+        "Na-jam ang feed."
       ]
     },
     {
@@ -7929,6 +8132,9 @@
       ],
       "th": [
         "ปืนกลบนป้อมใช้การไม่ได้"
+      ],
+      "fil": [
+        "Wala na ang roof gun."
       ]
     },
     {
@@ -8046,6 +8252,9 @@
       ],
       "th": [
         "แท่นยิงจรวดถูกยิง"
+      ],
+      "fil": [
+        "Tinamaan ang missile rack."
       ]
     },
     {
@@ -8200,6 +8409,10 @@
       "th": [
         "กล้องเล็งโดนยิง",
         "ศูนย์เล็งเสียหาย"
+      ],
+      "fil": [
+        "Tinamaan ang optics.",
+        "May sira ang sight."
       ]
     },
     {
@@ -8354,6 +8567,10 @@
       "th": [
         "วิทยุเสียหาย",
         "ติดต่อสื่อสารไม่ได้"
+      ],
+      "fil": [
+        "May sira ang radyo.",
+        "Putol ang komunikasyon."
       ]
     },
     {
@@ -8508,6 +8725,10 @@
       "th": [
         "ผู้บังคับรถถูกยิง",
         "ผู้บังคับรถบาดเจ็บ ผมสั่งการแทน"
+      ],
+      "fil": [
+        "Tinamaan si Kumander.",
+        "Sugatan si Kumander. Ako ang hahawak."
       ]
     },
     {
@@ -8662,6 +8883,10 @@
       "th": [
         "พลยิงบาดเจ็บ",
         "พลยิงถูกยิง"
+      ],
+      "fil": [
+        "Sugatan ang gunner.",
+        "Tinamaan ang gunner."
       ]
     },
     {
@@ -8816,6 +9041,10 @@
       "th": [
         "พลขับบาดเจ็บ",
         "พลขับถูกยิง"
+      ],
+      "fil": [
+        "Sugatan ang drayber.",
+        "Tinamaan ang drayber."
       ]
     },
     {
@@ -8970,6 +9199,10 @@
       "th": [
         "พลบรรจุบาดเจ็บ",
         "พลบรรจุถูกยิง"
+      ],
+      "fil": [
+        "Sugatan ang loader.",
+        "Tinamaan ang loader."
       ]
     },
     {
@@ -9124,6 +9357,10 @@
       "th": [
         "ซ่อมเสร็จแล้ว",
         "ระบบกลับมาใช้การได้"
+      ],
+      "fil": [
+        "Tapos na ang kumpuni.",
+        "Gumagana na ulit ang lahat."
       ]
     },
     {
@@ -9241,6 +9478,9 @@
       ],
       "th": [
         "พลประจำรถกลับเข้าประจำที่"
+      ],
+      "fil": [
+        "Balik sa puwesto ang crew."
       ]
     },
     {
@@ -9395,6 +9635,10 @@
       "th": [
         "ซ่อมสายพานเสร็จ เคลื่อนที่ได้",
         "ใส่สายพานกลับแล้ว"
+      ],
+      "fil": [
+        "Ayos na ang track. Puwede nang umandar.",
+        "Kabit na ulit ang track."
       ]
     },
     {
@@ -9549,6 +9793,10 @@
       "th": [
         "ปืนใช้การได้",
         "ปืนหลักกลับมาแล้ว"
+      ],
+      "fil": [
+        "Gumagana na ang kanyon.",
+        "Balik na ang main gun."
       ]
     },
     {
@@ -9703,6 +9951,10 @@
       "th": [
         "เครื่องยนต์ทำงาน",
         "แรงเครื่องกลับมาแล้ว"
+      ],
+      "fil": [
+        "Umaandar na ang makina.",
+        "Balik na ang lakas."
       ]
     },
     {
@@ -9857,6 +10109,10 @@
       "th": [
         "ใช้ถังดับเพลิง",
         "กำลังดับไฟ"
+      ],
+      "fil": [
+        "Extinguisher, ngayon na!",
+        "Pinapatay ang apoy."
       ]
     },
     {
@@ -10011,6 +10267,10 @@
       "th": [
         "ปล่อยควัน",
         "ยิงลูกระเบิดควัน"
+      ],
+      "fil": [
+        "Labas na ang smoke.",
+        "Bitaw ng smoke."
       ]
     },
     {
@@ -10165,6 +10425,10 @@
       "th": [
         "ปืนกลบนป้อมพร้อม",
         "ปืนกลควบคุมระยะไกลพร้อม"
+      ],
+      "fil": [
+        "Aktibo ang roof gun.",
+        "Handa ang remote gun."
       ]
     },
     {
@@ -10319,6 +10583,10 @@
       "th": [
         "ระบบกันสะเทือนเข้าที่",
         "ลดระดับตัวรถแล้ว เข้าที่"
+      ],
+      "fil": [
+        "Naka-set ang suspension.",
+        "Ibinaba ang hull. Set na."
       ]
     },
     {
@@ -10473,6 +10741,10 @@
       "th": [
         "เสียไปหนึ่งคัน",
         "รถถังฝ่ายเราหมดสภาพ"
+      ],
+      "fil": [
+        "May nawala sa atin.",
+        "Tumba ang tangke ng kakampi."
       ]
     },
     {
@@ -10590,6 +10862,9 @@
       ],
       "th": [
         "เราเหลือคันสุดท้าย ยิงทุกนัดให้ได้ผล"
+      ],
+      "fil": [
+        "Tayo na lang ang natitirang tangke. Sulitin ang bawat tira."
       ]
     },
     {
@@ -10744,6 +11019,10 @@
       "th": [
         "ยึดที่หมายได้แล้ว",
         "จุดนี้เป็นของเรา"
+      ],
+      "fil": [
+        "Secure na ang objective.",
+        "Atin na ang point."
       ]
     },
     {
@@ -10898,6 +11177,10 @@
       "th": [
         "เสียที่หมายแล้ว",
         "ข้าศึกยึดจุดไปแล้ว"
+      ],
+      "fil": [
+        "Nawala sa atin ang objective.",
+        "Nakuha nila ang point."
       ]
     },
     {
@@ -11052,6 +11335,10 @@
       "th": [
         "เราได้ธงข้าศึกแล้ว",
         "ธงข้าศึกอยู่กับเรา นำกลับฐาน"
+      ],
+      "fil": [
+        "Hawak natin ang bandila nila.",
+        "Atin na ang bandila nila. Iuwi sa base."
       ]
     },
     {
@@ -11206,6 +11493,10 @@
       "th": [
         "ข้าศึกได้ธงเราไป",
         "ข้าศึกเอาธงเราไป สกัดคันที่ถือธง"
+      ],
+      "fil": [
+        "Hawak nila ang bandila natin.",
+        "Nasa kalaban ang bandila natin. Harangin ang may dala."
       ]
     },
     {
@@ -11360,6 +11651,10 @@
       "th": [
         "ยึดธงสำเร็จ",
         "ยึดธงได้ เราได้หนึ่งคะแนน"
+      ],
+      "fil": [
+        "Naiuwi natin ang bandila.",
+        "Capture. Isang puntos sa atin."
       ]
     },
     {
@@ -11514,6 +11809,10 @@
       "th": [
         "ธงเรากลับมาแล้ว",
         "ธงกลับถึงฐาน"
+      ],
+      "fil": [
+        "Balik na ang bandila natin.",
+        "Nasa base na ang bandila."
       ]
     },
     {
@@ -11668,6 +11967,10 @@
       "th": [
         "ข้าศึกมาแล้ว",
         "ข้าศึกระลอกใหม่กำลังเข้ามา"
+      ],
+      "fil": [
+        "Ayan na sila.",
+        "Paparating ang wave ng kalaban."
       ]
     },
     {
@@ -11822,6 +12125,10 @@
       "th": [
         "ระลอกนี้ถูกทำลายหมดแล้ว",
         "หมดแล้ว แค่ชั่วคราว"
+      ],
+      "fil": [
+        "Tapos ang wave.",
+        "Ubos na sila. Sa ngayon."
       ]
     },
     {
@@ -11976,6 +12283,10 @@
       "th": [
         "แนวหน้าขยับขึ้นไปแล้ว",
         "ยึดแนวได้ รุกต่อ"
+      ],
+      "fil": [
+        "Umaabante ang linya.",
+        "Nakuha ang linya. Abante."
       ]
     },
     {
@@ -12130,6 +12441,10 @@
       "th": [
         "เข้าประตู",
         "ได้หนึ่งประตู"
+      ],
+      "fil": [
+        "Pasok, goal.",
+        "Puntos natin 'yan."
       ]
     },
     {
@@ -12284,6 +12599,10 @@
       "th": [
         "กลับเข้าสู่การรบ",
         "รถคันใหม่ กลับเข้าสนามรบ"
+      ],
+      "fil": [
+        "Balik sa laban.",
+        "Bagong tangke. Balik tayo."
       ]
     },
     {
@@ -12401,6 +12720,9 @@
       ],
       "th": [
         "รับสิ่งอุปกรณ์ขึ้นรถแล้ว"
+      ],
+      "fil": [
+        "Sakay na ang supply."
       ]
     },
     {
@@ -12555,6 +12877,10 @@
       "th": [
         "ปล่อยหีบกระสุนแล้ว",
         "ทิ้งร่มกระสุนแล้ว"
+      ],
+      "fil": [
+        "Ammo crate, bitaw na.",
+        "Ibinagsak ang supply ng bala."
       ]
     },
     {
@@ -12709,6 +13035,10 @@
       "th": [
         "ปล่อยหีบซ่อมบำรุงแล้ว",
         "ทิ้งร่มชุดซ่อมแล้ว"
+      ],
+      "fil": [
+        "Repair crate, bitaw na.",
+        "Ibinagsak ang repair kit."
       ]
     },
     {
@@ -12863,6 +13193,10 @@
       "th": [
         "ระงับการยิง นั่นฝ่ายเรา",
         "หยุดยิง ฝ่ายเดียวกัน"
+      ],
+      "fil": [
+        "Check fire! Kakampi 'yan!",
+        "Cease fire, kakampi!"
       ]
     },
     {
@@ -13017,6 +13351,10 @@
       "th": [
         "ระงับการยิง เราเป็นฝ่ายเดียวกัน",
         "หยุดยิง รถถังฝ่ายเราอยู่ตรงนี้"
+      ],
+      "fil": [
+        "Check fire! Kakampi kami!",
+        "Cease fire! Kakampi ang tangke rito!"
       ]
     },
     {
@@ -13171,6 +13509,10 @@
       "th": [
         "ระวังหน่อย นั่นรถฝ่ายเรา",
         "เบาหน่อย ฝ่ายเดียวกัน"
+      ],
+      "fil": [
+        "Ingat. Kakampi 'yan.",
+        "Dahan-dahan. Kakampi."
       ]
     },
     {
@@ -13325,6 +13667,10 @@
       "th": [
         "เรากำลังถูกชน",
         "ข้าศึกพุ่งชนเรา"
+      ],
+      "fil": [
+        "Binabangga tayo!",
+        "Sinasalpok niya tayo!"
       ]
     },
     {
@@ -13479,6 +13825,10 @@
       "th": [
         "หมดสภาพไปหนึ่งคัน",
         "ข้าศึกหมดสภาพ"
+      ],
+      "fil": [
+        "Isa ang bagsak.",
+        "Tumba ang kalaban."
       ]
     },
     {
@@ -13633,6 +13983,10 @@
       "th": [
         "อีกคันหมดสภาพ",
         "เป้าหมายที่สองถูกทำลาย"
+      ],
+      "fil": [
+        "Isa pang bagsak.",
+        "Pangalawang target, wasak."
       ]
     },
     {
@@ -13750,6 +14104,9 @@
       ],
       "th": [
         "ข้าศึกเหลือคันเดียว จัดการให้จบ"
+      ],
+      "fil": [
+        "Isa na lang ang kalaban. Tapusin."
       ]
     },
     {
@@ -13867,6 +14224,9 @@
       ],
       "th": [
         "ข้าศึกมีจำนวนมากกว่าเรา"
+      ],
+      "fil": [
+        "Mas marami sila sa atin."
       ]
     },
     {
@@ -14021,6 +14381,10 @@
       "th": [
         "พบข้าศึกหลายเป้า",
         "รถถังข้าศึกหลายคัน"
+      ],
+      "fil": [
+        "Maraming contact.",
+        "Ilang tangke ng kalaban."
       ]
     },
     {
@@ -14175,6 +14539,10 @@
       "th": [
         "จรวดพุ่งเข้ามา",
         "จรวดกำลังมา เตรียมรับแรงกระแทก"
+      ],
+      "fil": [
+        "Missile, paparating!",
+        "Paparating na missile, kumapit!"
       ]
     },
     {
@@ -14329,6 +14697,10 @@
       "th": [
         "โดรนพลีชีพเข้ามา",
         "โดรนอยู่เหนือหัวเรา"
+      ],
+      "fil": [
+        "Drone, paparating!",
+        "May drone sa itaas natin!"
       ]
     },
     {
@@ -14483,6 +14855,10 @@
       "th": [
         "โดรนขึ้นบินแล้ว",
         "ปล่อยโดรน"
+      ],
+      "fil": [
+        "Lipad na ang drone.",
+        "Pinalilipad ang drone."
       ]
     },
     {
@@ -14637,6 +15013,10 @@
       "th": [
         "เสียโดรนแล้ว",
         "โดรนตก ภาพหาย"
+      ],
+      "fil": [
+        "Nawala ang drone.",
+        "Bagsak ang drone, walang feed."
       ]
     },
     {
@@ -14791,6 +15171,10 @@
       "th": [
         "เฉียดไปนิดเดียว",
         "กระสุนเฉียด"
+      ],
+      "fil": [
+        "Muntik na 'yon.",
+        "Dumaan lang sa tabi."
       ]
     },
     {
@@ -14945,6 +15329,10 @@
       "th": [
         "รถตะแคงแล้ว",
         "รถพลิกคว่ำ"
+      ],
+      "fil": [
+        "Nakatagilid tayo!",
+        "Tumaob tayo!"
       ]
     },
     {
@@ -15062,6 +15450,9 @@
       ],
       "th": [
         "รถกลับมาตั้งบนสายพานแล้ว"
+      ],
+      "fil": [
+        "Balik na tayo sa track."
       ]
     },
     {
@@ -15179,6 +15570,9 @@
       ],
       "th": [
         "น้ำกำลังเข้ารถ"
+      ],
+      "fil": [
+        "Pinapasok tayo ng tubig."
       ]
     },
     {
@@ -15333,6 +15727,10 @@
       "th": [
         "เราติดหล่ม",
         "สายพานไม่เกาะพื้น"
+      ],
+      "fil": [
+        "Nabalaho tayo.",
+        "Walang kapit ang track."
       ]
     },
     {
@@ -15487,6 +15885,10 @@
       "th": [
         "ล็อกเป้าหมายแล้ว",
         "จับเป้าได้แล้ว"
+      ],
+      "fil": [
+        "Naka-lock ang target.",
+        "Locked na."
       ]
     },
     {
@@ -15641,6 +16043,10 @@
       "th": [
         "หลุดเป้าแล้ว",
         "เป้าหมายหาย"
+      ],
+      "fil": [
+        "Nawala siya.",
+        "Nawala ang target."
       ]
     },
     {
@@ -15795,6 +16201,10 @@
       "th": [
         "สายพานข้าศึกขาด เคลื่อนที่ไม่ได้",
         "โดนสายพาน ข้าศึกหยุดนิ่งแล้ว"
+      ],
+      "fil": [
+        "Putol ang track niya. Hindi na siya makagalaw.",
+        "Tinamaan ang track niya. Nakatigil siya."
       ]
     },
     {
@@ -15949,6 +16359,10 @@
       "th": [
         "ปืนข้าศึกใช้การไม่ได้",
         "ยิงโดนปืนข้าศึก"
+      ],
+      "fil": [
+        "Patay ang kanyon niya.",
+        "Tinamaan ang kanyon niya."
       ]
     },
     {
@@ -16103,6 +16517,10 @@
       "th": [
         "พลประจำรถข้าศึกโดนแล้ว",
         "คนข้างในบาดเจ็บ"
+      ],
+      "fil": [
+        "Tinamaan ang crew nila.",
+        "Tama sa loob, sa crew."
       ]
     },
     {
@@ -16257,6 +16675,10 @@
       "th": [
         "ยิงโดนเครื่องยนต์ข้าศึก",
         "เครื่องยนต์โดน ข้าศึกช้าลง"
+      ],
+      "fil": [
+        "Tinamaan ang makina niya.",
+        "Tama sa makina. Bumabagal siya."
       ]
     },
     {
@@ -16374,6 +16796,9 @@
       ],
       "th": [
         "กระสุนหมดทุกชนิดแล้ว"
+      ],
+      "fil": [
+        "Ubos na ang bala natin."
       ]
     },
     {
@@ -16528,6 +16953,10 @@
       "th": [
         "ข้าศึกกำลังแย่งที่หมาย",
         "ข้าศึกอยู่บนที่หมายเรา"
+      ],
+      "fil": [
+        "Inaagaw nila ang point.",
+        "May kalaban sa point natin."
       ]
     },
     {
@@ -16645,6 +17074,9 @@
       ],
       "th": [
         "ขอคิดทีละขั้นตอน"
+      ],
+      "fil": [
+        "Pag-isipan ko nang hakbang-hakbang."
       ]
     },
     {
@@ -16762,6 +17194,9 @@
       ],
       "th": [
         "ขั้นที่หนึ่ง เล็ง ขั้นที่สอง ยิง"
+      ],
+      "fil": [
+        "Unang hakbang, asinta. Ikalawang hakbang, putok."
       ]
     },
     {
@@ -16990,6 +17425,12 @@
         "จับตาแนวต้นไม้",
         "ยังไม่พบข้าศึก เฝ้าระวังไว้",
         "ตรวจเขตรับผิดชอบของตน"
+      ],
+      "fil": [
+        "Binabantayan ang sektor.",
+        "Bantay sa gilid ng kakahuyan.",
+        "Walang nakikita. Alerto lang.",
+        "Tingnan ang inyong sektor."
       ]
     },
     {
@@ -17144,6 +17585,10 @@
       "th": [
         "หยุดอยู่ตรงนี้ จับตาด้านหน้า",
         "รักษาที่มั่น ตรวจการณ์ต่อไป"
+      ],
+      "fil": [
+        "Dito muna tayo. Bantayan ang harap.",
+        "Manatili sa puwesto. Tuloy ang bantay."
       ]
     },
     {
@@ -17298,6 +17743,10 @@
       "th": [
         "พลขับ ขับให้นิ่ง ระวังด้านข้าง",
         "เคลื่อนที่ต่อไป เฝ้าระวังรอบตัว"
+      ],
+      "fil": [
+        "Tuloy-tuloy lang, drayber. Bantayan ang gilid.",
+        "Tuloy ang andar. Dilat ang mata."
       ]
     },
     {
@@ -17489,6 +17938,11 @@
         "ปืนพร้อม ไม่มีเป้า",
         "บรรจุแล้ว รอเป้าหมาย",
         "กล้องเล็งว่าง"
+      ],
+      "fil": [
+        "Handa ang kanyon. Walang target.",
+        "Loaded. Naghihintay ng target.",
+        "Clear ang sight."
       ]
     },
     {
@@ -17643,6 +18097,10 @@
       "th": [
         "ตัวรถยังทนไหว รบต่อไป",
         "เสียหายเล็กน้อย ปฏิบัติต่อ"
+      ],
+      "fil": [
+        "Kaya pa ng hull. Laban pa rin.",
+        "Magaan ang pinsala. Tuloy lang."
       ]
     },
     {
@@ -17797,6 +18255,10 @@
       "th": [
         "อาคารถล่ม",
         "บ้านหลังนั้นพังลงมาแล้ว"
+      ],
+      "fil": [
+        "Gumuho ang gusali.",
+        "Bumagsak ang bahay na 'yon."
       ]
     },
     {
@@ -17951,6 +18413,10 @@
       "th": [
         "อากาศยานอยู่เหนือเรา",
         "มีเครื่องบินผ่านเหนือหัว"
+      ],
+      "fil": [
+        "Eroplano sa itaas.",
+        "May mga eroplanong dumadaan."
       ]
     },
     {
@@ -18105,6 +18571,10 @@
       "th": [
         "ปืนใหญ่ ไกลออกไป",
         "เสียงปืนใหญ่อยู่ไกล"
+      ],
+      "fil": [
+        "Artilerya, malayo.",
+        "Mabibigat na kanyon sa malayo."
       ]
     },
     {
@@ -18259,6 +18729,10 @@
       "th": [
         "รุกเข้าที่หมาย",
         "เคลื่อนที่เข้าหาที่หมาย"
+      ],
+      "fil": [
+        "Abante sa objective.",
+        "Tumungo sa objective."
       ]
     },
     {
@@ -18413,6 +18887,10 @@
       "th": [
         "เข้าที่กำบังแล้ว หยุดรอตรงนี้",
         "ซ่อนตัวรถแล้ว รักษาที่มั่น"
+      ],
+      "fil": [
+        "Nakakubli na. Dito muna.",
+        "Hull down. Hawak ang puwesto."
       ]
     },
     {
@@ -18567,6 +19045,10 @@
       "th": [
         "พลยิง เจาะเกราะ รถถัง",
         "พลยิง กระสุนเจาะเกราะ รถถัง"
+      ],
+      "fil": [
+        "Gunner, sabot, tangke.",
+        "Gunner. Sabot. Tangke."
       ]
     },
     {
@@ -18721,6 +19203,10 @@
       "th": [
         "พลยิง ดินโพรง รถถัง",
         "พลยิง กระสุนดินโพรง รถถัง"
+      ],
+      "fil": [
+        "Gunner, HEAT, tangke.",
+        "Gunner. HEAT. Tangke."
       ]
     },
     {
@@ -18875,6 +19361,10 @@
       "th": [
         "พลยิง ระเบิดแรงสูง ยานพาหนะ",
         "พลยิง กระสุนระเบิดแรงสูง ยานพาหนะ"
+      ],
+      "fil": [
+        "Gunner, H-E, sasakyan.",
+        "Gunner. H-E. Sasakyan."
       ]
     },
     {
@@ -19029,6 +19519,10 @@
       "th": [
         "พลยิง จรวดนำวิถี รถถัง",
         "พลยิง จรวด รถถัง"
+      ],
+      "fil": [
+        "Gunner, missile, tangke.",
+        "Gunner. Missile. Tangke."
       ]
     },
     {
@@ -19183,6 +19677,10 @@
       "th": [
         "เห็นเป้าแล้ว",
         "เห็นแล้ว รถถัง"
+      ],
+      "fil": [
+        "Kita ko na.",
+        "Identified. Tangke."
       ]
     },
     {
@@ -19337,6 +19835,10 @@
       "th": [
         "ยิงซ้ำเป้าเดิม",
         "เป้ายังไม่หมดสภาพ ยิงซ้ำ"
+      ],
+      "fil": [
+        "Paputukan ulit.",
+        "Buhay pa ang target. Tira ulit."
       ]
     },
     {
@@ -19491,6 +19993,10 @@
       "th": [
         "เข้าเป้า หยุดยิง",
         "หยุดยิง ตรวจการณ์ในเขตของตน"
+      ],
+      "fil": [
+        "Target. Tigil-putok.",
+        "Cease fire. Bantayan ang sektor."
       ]
     },
     {
@@ -19645,6 +20151,10 @@
       "th": [
         "ระบบป้องกันเชิงรุกทำงาน สกัดกระสุนได้",
         "สกัดทำลายสำเร็จ กระสุนถูกหยุด"
+      ],
+      "fil": [
+        "Pumutok ang A-P-S. Naharang ang bala.",
+        "Hard kill. Napigil ang bala."
       ]
     },
     {
@@ -19799,6 +20309,10 @@
       "th": [
         "ระบบป้องกันข้าศึกสกัดไว้",
         "ถูกสกัด ระบบป้องกันเชิงรุก"
+      ],
+      "fil": [
+        "Nasalo ng A-P-S nila.",
+        "Naharang. Active protection."
       ]
     },
     {
@@ -19953,6 +20467,10 @@
       "th": [
         "เกราะปฏิกิริยารับไว้",
         "แผ่นเกราะระเบิด เกราะยังรับไว้ได้"
+      ],
+      "fil": [
+        "Sinalo ng reactive armor.",
+        "Pumutok ang blocks. Kinaya ng armor."
       ]
     },
     {
@@ -20107,6 +20625,10 @@
       "th": [
         "โดนเกราะปฏิกิริยาข้าศึก",
         "แผ่นเกราะข้าศึกรับไว้"
+      ],
+      "fil": [
+        "Tama sa reactive armor niya.",
+        "Sinalo ng blocks niya."
       ]
     },
     {
@@ -20261,6 +20783,10 @@
       "th": [
         "แบตเตอรี่โดรนต่ำ",
         "โดรนแบตเตอรี่ใกล้หมด"
+      ],
+      "fil": [
+        "Mahina na ang baterya ng drone.",
+        "Paubos na ang baterya ng drone."
       ]
     },
     {
@@ -20415,6 +20941,10 @@
       "th": [
         "สัญญาณโดรนอ่อน",
         "สัญญาณขาดหาย ไกลเกินไป"
+      ],
+      "fil": [
+        "Mahina ang link ng drone.",
+        "Putol-putol ang signal. Masyadong malayo."
       ]
     },
     {
@@ -20569,6 +21099,10 @@
       "th": [
         "โดรนถูกยิงตก",
         "ข้าศึกยิงโดรน ภาพหายแล้ว"
+      ],
+      "fil": [
+        "Napabagsak ang drone.",
+        "Tinamaan nila ang drone. Wala nang feed."
       ]
     },
     {
@@ -20723,6 +21257,10 @@
       "th": [
         "โดรนข้าศึกตก",
         "ยิงโดรนได้แล้ว"
+      ],
+      "fil": [
+        "Bagsak ang drone nila.",
+        "Tinamaan ko ang drone."
       ]
     },
     {
@@ -20877,6 +21415,10 @@
       "th": [
         "เก็บโดรนแล้ว",
         "โดรนกลับลงรถแล้ว"
+      ],
+      "fil": [
+        "Nabawi ang drone.",
+        "Nakabalik na ang drone."
       ]
     },
     {
@@ -21031,6 +21573,10 @@
       "th": [
         "โดรนโจมตี เป้าหมายถูกทำลาย",
         "โดรนพุ่งชนเป้า เป้าหมายหมดสภาพ"
+      ],
+      "fil": [
+        "Drone strike. Wasak ang target.",
+        "Tinamaan siya ng drone. Tumba ang target."
       ]
     },
     {
@@ -21185,6 +21731,10 @@
       "th": [
         "ข้าศึกปล่อยควัน",
         "เป้าหมายอยู่ในควัน จับตาขอบม่านควัน"
+      ],
+      "fil": [
+        "Nagpapausok ang kalaban.",
+        "Usok sa target. Bantayan ang gilid."
       ]
     },
     {
@@ -21339,6 +21889,10 @@
       "th": [
         "ถอยหลังออก",
         "กำลังถอยรถ"
+      ],
+      "fil": [
+        "Aatras na.",
+        "Umaatras tayo."
       ]
     },
     {
@@ -21493,6 +22047,10 @@
       "th": [
         "ชนฝ่าออกไป",
         "เครื่องกีดขวาง ดันฝ่าไป"
+      ],
+      "fil": [
+        "Lulusot tayo.",
+        "May harang. Didiretso."
       ]
     },
     {
@@ -21647,6 +22205,10 @@
       "th": [
         "จับไว้ให้แน่น",
         "เตรียมรับแรงกระแทกตอนลงพื้น"
+      ],
+      "fil": [
+        "Kumapit kayo.",
+        "Humanda sa paglapag."
       ]
     },
     {
@@ -21801,6 +22363,10 @@
       "th": [
         "พลประจำรถ รายงาน",
         "เตรียมพร้อม พลประจำรถรายงานตัว"
+      ],
+      "fil": [
+        "Crew, mag-report.",
+        "Standby lang. Crew, report."
       ]
     },
     {
@@ -21955,6 +22521,10 @@
       "th": [
         "พลยิงพร้อม พลบรรจุพร้อม พลขับพร้อม",
         "ทุกตำแหน่งพร้อม"
+      ],
+      "fil": [
+        "Gunner, handa. Loader, ayos. Drayber, handa.",
+        "Lahat ng puwesto, handa."
       ]
     },
     {
@@ -22109,6 +22679,10 @@
       "th": [
         "บินวนเหนือพื้นที่แล้ว อนุญาตยิง",
         "เครื่องบินปืนพร้อมในพื้นที่ อนุญาตให้ทำการยิง"
+      ],
+      "fil": [
+        "Nasa orbit na. Cleared hot.",
+        "Nasa puwesto ang gunship. Cleared to engage."
       ]
     },
     {
@@ -22263,6 +22837,10 @@
       "th": [
         "ปล่อยจรวดนำวิถี",
         "จรวดออก กำลังติดตามเป้า"
+      ],
+      "fil": [
+        "Rifle. Labas ang missile.",
+        "Rifle. Naka-track ang missile."
       ]
     },
     {
@@ -22417,6 +22995,10 @@
       "th": [
         "กระสุนตกแล้ว",
         "กระสุนตก ไม่มีผล"
+      ],
+      "fil": [
+        "Splash na.",
+        "Splash. Walang epekto."
       ]
     },
     {
@@ -22571,6 +23153,10 @@
       "th": [
         "เข้าเป้าหลายนัด",
         "เข้าเป้า เป้าหมายยังเคลื่อนที่"
+      ],
+      "fil": [
+        "Magandang tama.",
+        "Good hits. Gumagalaw pa ang target."
       ]
     },
     {
@@ -22725,6 +23311,10 @@
       "th": [
         "ระยะใกล้อันตราย",
         "ระยะใกล้อันตราย ฝ่ายเราอยู่ที่จุดตก"
+      ],
+      "fil": [
+        "Danger close.",
+        "Danger close. May kakampi sa bagsakan."
       ]
     },
     {
@@ -22879,6 +23469,10 @@
       "th": [
         "ยิงเสร็จ",
         "ยิงเสร็จ กำลังประเมินผล"
+      ],
+      "fil": [
+        "Tapos na ang tira.",
+        "Rounds complete. Sinusuri ang epekto."
       ]
     },
     {
@@ -23033,6 +23627,10 @@
       "th": [
         "ย้ายการยิง",
         "ย้ายยิง เป้าหมายใหม่"
+      ],
+      "fil": [
+        "Lilipat ng tira.",
+        "Shift fire. Bagong target."
       ]
     },
     {
@@ -23187,6 +23785,10 @@
       "th": [
         "เห็นเป้า ยานเกราะเคลื่อนที่",
         "กล้องจับเป้าได้ ยานพาหนะ"
+      ],
+      "fil": [
+        "Tally. May armor na gumagalaw.",
+        "Nakuha ng sensor. Sasakyan."
       ]
     },
     {
@@ -23341,6 +23943,10 @@
       "th": [
         "ยานเกราะฝ่ายเราหมดสภาพ",
         "เสียรถฝ่ายเราบนพื้นดิน"
+      ],
+      "fil": [
+        "Bagsak ang kakamping armor.",
+        "Nawalan tayo ng kakampi sa ibaba."
       ]
     },
     {
@@ -23495,6 +24101,10 @@
       "th": [
         "รถฝ่ายเราถอนตัวสำเร็จ",
         "ผ่านไปได้อีกคัน"
+      ],
+      "fil": [
+        "Nakalabas na ang kakampi.",
+        "Isa pang nakalusot."
       ]
     },
     {
@@ -23649,6 +24259,10 @@
       "th": [
         "ฝ่ายเราถอนตัวครบ ภารกิจสำเร็จ",
         "ขบวนผ่านไปแล้ว กลับฐาน"
+      ],
+      "fil": [
+        "Nakalabas ang mga kakampi. Tapos ang misyon.",
+        "Nakalusot ang convoy. R-T-B."
       ]
     },
     {
@@ -23803,6 +24417,10 @@
       "th": [
         "เสียขบวนรถแล้ว ผละออกจากพื้นที่",
         "ภารกิจล้มเหลว กลับฐาน"
+      ],
+      "fil": [
+        "Nawala ang convoy. Aalis na tayo.",
+        "Bigo ang misyon. R-T-B."
       ]
     },
     {
@@ -23957,6 +24575,10 @@
       "th": [
         "ยึดธงข้าศึก รักษาธงเรา",
         "ภารกิจชิงธง เคลื่อนที่"
+      ],
+      "fil": [
+        "Kunin ang bandila nila. Bantayan ang atin.",
+        "Habol sa bandila. Larga na."
       ]
     },
     {
@@ -24111,6 +24733,10 @@
       "th": [
         "ยึดที่หมาย เคลื่อนที่",
         "ยึดจุดสำคัญ รุกไปข้างหน้า"
+      ],
+      "fil": [
+        "Kunin ang mga objective. Larga.",
+        "Agawin ang mga point. Abante."
       ]
     },
     {
@@ -24265,6 +24891,10 @@
       "th": [
         "เขี่ยลูก เข้าหาลูกบอล",
         "ลูกบอลเริ่มเล่นแล้ว เดินหน้า"
+      ],
+      "fil": [
+        "Kick-off. Habulin ang bola.",
+        "Live na ang bola. Arangkada."
       ]
     },
     {
@@ -24419,6 +25049,10 @@
       "th": [
         "เข้าที่มั่นตั้งรับ รักษาพื้นที่นี้ไว้",
         "ขุดที่มั่น รักษาแนวรอบนอก"
+      ],
+      "fil": [
+        "Puwestong depensa. Hawakan ang lugar.",
+        "Kubli sa puwesto. Hawakan ang perimeter."
       ]
     },
     {
@@ -24573,6 +25207,10 @@
       "th": [
         "เข้าตี ยึดแนวแรก",
         "เข้าโจมตี รุกเข้าหาแนวข้าศึก"
+      ],
+      "fil": [
+        "Assault. Kunin ang unang linya.",
+        "Atake. Abante sa linya."
       ]
     },
     {
@@ -24727,6 +25365,10 @@
       "th": [
         "แรงโน้มถ่วงต่ำ เร่งเครื่องเบาไว้",
         "เคลื่อนที่ ระวังตอนลงพื้น"
+      ],
+      "fil": [
+        "Mababa ang gravity. Dahan-dahan sa silinyador.",
+        "Abante. Ingat sa paglapag."
       ]
     },
     {
@@ -24881,6 +25523,10 @@
       "th": [
         "เราคือรถถังยักษ์ ข้าศึกทุกคันมุ่งมาที่เรา",
         "ทุกคันต้องการเรา สู้เต็มกำลัง"
+      ],
+      "fil": [
+        "Tayo ang Juggernaut. Lahat sila, papunta sa atin.",
+        "Tayo ang hinahabol nila. Ibuhos ang lahat."
       ]
     },
     {
@@ -25035,6 +25681,10 @@
       "th": [
         "หารถถังยักษ์ให้เจอ ทุกคันรวมกำลังเข้าหา",
         "ล่าคันใหญ่ เคลื่อนที่"
+      ],
+      "fil": [
+        "Hanapin ang Juggernaut. Lahat ng crew, magsama-sama.",
+        "Tugisin ang malaki. Larga na."
       ]
     },
     {
@@ -25189,6 +25839,10 @@
       "th": [
         "ผู้รอดชีวิต อยู่รวมกัน อย่าให้เข้าใกล้",
         "รวมกลุ่มไว้ ต้านไว้"
+      ],
+      "fil": [
+        "Mga survivor, huwag maghiwalay. Huwag silang palapitin.",
+        "Dikit-dikit. Pigilan sila."
       ]
     },
     {
@@ -25343,6 +25997,10 @@
       "th": [
         "อาวุธแรก ทำลายเป้าให้ได้",
         "ขั้นบันไดอาวุธ ทำลายสองคันเลื่อนขั้น"
+      ],
+      "fil": [
+        "Unang armas. Mag-ipon ng kill.",
+        "Hagdan ng armas. Dalawang kill bawat baril."
       ]
     },
     {
@@ -25497,6 +26155,10 @@
       "th": [
         "รุกไปข้างหน้า โดรนพร้อมใช้เมื่อต้องการ",
         "เคลื่อนที่ โดรนพร้อมสนับสนุน"
+      ],
+      "fil": [
+        "Abante. Handa ang drone kapag kailangan.",
+        "Larga. Naka-standby ang mga drone."
       ]
     },
     {
@@ -25651,6 +26313,10 @@
       "th": [
         "สนามยิงพร้อมยิง",
         "เปิดสนามยิงแล้ว ยิงได้ตามอิสระ"
+      ],
+      "fil": [
+        "Hot na ang range.",
+        "Bukas ang range. Malayang magpaputok."
       ]
     },
     {
@@ -25805,6 +26471,10 @@
       "th": [
         "ข้าศึกทำธงเราตก ไปเก็บกลับมา",
         "ธงเราตกอยู่กลางสนาม"
+      ],
+      "fil": [
+        "Nabitawan nila ang bandila natin. Bawiin.",
+        "Nakalapag sa field ang bandila natin."
       ]
     },
     {
@@ -25959,6 +26629,10 @@
       "th": [
         "เราทำธงข้าศึกตก",
         "คันถือธงหมดสภาพ ธงข้าศึกตกอยู่"
+      ],
+      "fil": [
+        "Nabitawan natin ang bandila nila.",
+        "Bagsak ang may dala. Walang may hawak sa bandila nila."
       ]
     },
     {
@@ -26076,6 +26750,9 @@
       ],
       "th": [
         "ข้าศึกนำธงกลับฐานแล้ว"
+      ],
+      "fil": [
+        "Nabawi nila ang bandila nila."
       ]
     },
     {
@@ -26230,6 +26907,10 @@
       "th": [
         "ข้าศึกยึดธงเราได้",
         "ข้าศึกทำคะแนน ธงเราเสียไปแล้ว"
+      ],
+      "fil": [
+        "Naiuwi nila ang bandila natin.",
+        "Capture ng kalaban. Wala na ang bandila natin."
       ]
     },
     {
@@ -26384,6 +27065,10 @@
       "th": [
         "เรากำลังแย่งที่หมายข้าศึก",
         "อยู่บนที่หมายข้าศึก ยึดไว้"
+      ],
+      "fil": [
+        "Inaagaw natin ang point nila.",
+        "Nasa objective nila tayo. Hawakan."
       ]
     },
     {
@@ -26538,6 +27223,10 @@
       "th": [
         "ข้าศึกได้ประตู",
         "เสียประตู ตั้งหลักใหม่"
+      ],
+      "fil": [
+        "Naka-goal sila.",
+        "Goal ng kalaban. Reset."
       ]
     },
     {
@@ -26692,6 +27381,10 @@
       "th": [
         "ลูกบอลกลับจุดเริ่ม",
         "เริ่มใหม่ กลับกลางสนาม"
+      ],
+      "fil": [
+        "Na-reset ang bola.",
+        "Reset. Balik sa gitna."
       ]
     },
     {
@@ -26846,6 +27539,10 @@
       "th": [
         "ระลอกนี้เป็นรถเร็ว",
         "ยานเกราะเบา เคลื่อนที่เร็ว กำลังเข้ามา"
+      ],
+      "fil": [
+        "Mabibilis ang wave na ito.",
+        "Runners. Magaan na armor, mabilis dumating."
       ]
     },
     {
@@ -27000,6 +27697,10 @@
       "th": [
         "ระลอกใหญ่ ข้าศึกจำนวนมาก",
         "มาเป็นฝูง เต็มไปหมด"
+      ],
+      "fil": [
+        "Malaking wave. Ang dami nila.",
+        "Swarm. Kahit saan may kalaban."
       ]
     },
     {
@@ -27154,6 +27855,10 @@
       "th": [
         "ข้าศึกตีโต้ตอบ",
         "ข้าศึกตีโต้ตอบ รักษาแนวไว้"
+      ],
+      "fil": [
+        "Kontra-atake sila!",
+        "Kontra-atake ng kalaban. Hawakan ang linya."
       ]
     },
     {
@@ -27308,6 +28013,10 @@
       "th": [
         "แนวสุดท้าย ยึดให้ได้",
         "แนวสุดท้ายข้างหน้า รุกต่อ"
+      ],
+      "fil": [
+        "Huling linya. Kunin natin.",
+        "Nasa harap ang huling linya. Abante."
       ]
     },
     {
@@ -27462,6 +28171,10 @@
       "th": [
         "เราติดเชื้อแล้ว ล่าผู้รอดชีวิต",
         "ตอนนี้เราอยู่ฝ่ายเขา หาผู้รอดชีวิตให้เจอ"
+      ],
+      "fil": [
+        "Nahawa na tayo. Tugisin ang mga survivor.",
+        "Kasama na nila tayo. Hanapin ang mga survivor."
       ]
     },
     {
@@ -27616,6 +28329,10 @@
       "th": [
         "เสียฝ่ายเราไปหนึ่ง ติดเชื้อแล้ว",
         "ผู้รอดชีวิตติดเชื้อเพิ่มอีกคัน"
+      ],
+      "fil": [
+        "May nakuha sila sa atin. Nahawa na siya.",
+        "Isa pang survivor ang nahawa."
       ]
     },
     {
@@ -27733,6 +28450,9 @@
       ],
       "th": [
         "เราเป็นผู้รอดชีวิตคันสุดท้าย ยืนหยัดไว้"
+      ],
+      "fil": [
+        "Tayo na lang ang survivor. Kapit lang."
       ]
     },
     {
@@ -27887,6 +28607,10 @@
       "th": [
         "หมดเวลา เรายันไว้ได้",
         "ครบเวลา ผู้รอดชีวิตอยู่รอด"
+      ],
+      "fil": [
+        "Oras na. Nakatagal tayo.",
+        "Tapos ang oras. Nakaligtas ang mga survivor."
       ]
     },
     {
@@ -28041,6 +28765,10 @@
       "th": [
         "พบรถถังยักษ์",
         "เห็นรถถังยักษ์แล้ว"
+      ],
+      "fil": [
+        "Nakita ang Juggernaut!",
+        "Kita na natin ang Juggernaut."
       ]
     },
     {
@@ -28195,6 +28923,10 @@
       "th": [
         "รถถังยักษ์หมดสภาพ",
         "คันใหญ่จบแล้ว"
+      ],
+      "fil": [
+        "Bagsak ang Juggernaut.",
+        "Tapos na ang malaki."
       ]
     },
     {
@@ -28349,6 +29081,10 @@
       "th": [
         "หมดเวลา เรายังอยู่",
         "ไม่มีใครล้มเราได้"
+      ],
+      "fil": [
+        "Oras na. Nakatayo pa tayo.",
+        "Hindi nila tayo napabagsak."
       ]
     },
     {
@@ -28503,6 +29239,10 @@
       "th": [
         "อาวุธสุดท้าย ปิดเกมให้ได้",
         "ปืนสุดท้าย อีกสองคันเราชนะ"
+      ],
+      "fil": [
+        "Huling armas. Tapusin na.",
+        "Huling baril. Dalawa pa, panalo na."
       ]
     },
     {
@@ -28657,6 +29397,10 @@
       "th": [
         "ข้าศึกถึงอาวุธสุดท้ายแล้ว",
         "ข้าศึกคันหนึ่งถึงปืนสุดท้าย สกัดให้ได้"
+      ],
+      "fil": [
+        "Nasa huling armas ang kalaban.",
+        "May isa sa kanila sa huling baril. Pigilan siya."
       ]
     },
     {
@@ -28811,6 +29555,10 @@
       "th": [
         "ยึดแนวสุดท้ายได้แล้ว แนวหน้าเป็นของเรา",
         "ยึดที่หมายได้ แนวนี้เป็นของเรา"
+      ],
+      "fil": [
+        "Atin na ang huling linya. Nakuha ang front.",
+        "Nakuha ang objective. Atin ang linya."
       ]
     },
     {
@@ -28965,6 +29713,10 @@
       "th": [
         "เราถูกตีแตก",
         "แนวแตก ถอยกลับ"
+      ],
+      "fil": [
+        "Nalusob na tayo.",
+        "Nalupig tayo. Atras."
       ]
     }
   ]

@@ -11,6 +11,7 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   const ctx = createFakeContext();
   const mixer = createMixer({ context: ctx, reverb: false, channelVolumes: { engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }, masterVolume: 0.8, muted: false });
   const loaded = [];
+  const dropped = [];
   // The net's recorded elements, tagged so a test can tell them from speech.
   const tagged = (tag, duration) => Object.assign(fakeBuffer(duration, 24000), { tag });
   const net = { radio_key_in: tagged('radio_key_in', 0.12), radio_key_out: tagged('radio_key_out', 0.55), radio_static_loop: tagged('radio_static_loop', 4.2) };
@@ -25,11 +26,12 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
     record: (id) => (id === 'radio_static_loop' ? { g: 'radio', n: 1, d: [4.2], c: 1, r: 24000, l: [0.085, 4.085], kb: 25 } : undefined),
     load: () => Promise.resolve(),
     loadVoice(lang) { loaded.push(lang); return Promise.resolve(); },
+    dropVoice(lang) { dropped.push(lang); },
     voiceReady(lang) { return !loading.includes(lang); },
   };
   const random = mulberry32(7);
   const radio = createCrewRadio({ mixer, library, random });
-  return { ctx, mixer, radio, loaded };
+  return { ctx, mixer, radio, loaded, dropped };
 }
 
 // One transmission at a time; flavour never queues behind speech.
@@ -127,9 +129,10 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
 // The national pack speaks, and only it (owner 2026-10-04, no fallbacks): a line missing from it is silent,
 // never another nation's crew standing in.
 {
-  const { radio, loaded } = harness({ languages: ['en-US', 'de'], missing: ['de/fire'] });
+  const { radio, loaded, dropped } = harness({ languages: ['en-US', 'de'], missing: ['de/fire'] });
   radio.setLanguage('de');
   assert.deepEqual(loaded, ['de'], 'switching loads only the national pack');
+  assert.deepEqual(dropped, ['en-US'], 'and releases the pack it leaves: one pack held at a time');
   radio.say('were_hit');
   assert.equal(radio.log.at(-1).lang, 'de');
   radio.silence();

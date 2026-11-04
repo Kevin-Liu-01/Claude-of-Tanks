@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
+import { WORLD_CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 import { GUNSHIP_WEAPONS, matchRulesetFor } from '../sim/matchRuleset.ts';
@@ -645,9 +646,11 @@ assert.ok(logSince(since).some((e) => e.n === 'loading_bed_loop'), 'the loading 
 audio.loadingOn(false);
 assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whole session synthesizes nothing');
 
-// The real settings event reaches every radio call, across every shipped pack.
-const lastPack = Object.keys(CREW_VOICE_NATIONS).at(-1);
-for (const language of Object.keys(CREW_VOICE_NATIONS)) {
+// The real settings event reaches every radio call, across every shipped pack: the national ones and the languages with no
+// country in the game.
+const shippedPacks = [...Object.keys(CREW_VOICE_NATIONS), ...WORLD_CREW_LANGUAGES];
+const lastPack = shippedPacks.at(-1);
+for (const language of shippedPacks) {
   bus.emit('ui:volumes', { crewVoice: language });
   assert.equal(probe.crewLanguage, language);
   await probe.libraryIdle();

@@ -29,14 +29,32 @@ export const ENGINE_FAMILY_IDS: readonly EngineFamilyId[] = Object.freeze([
   'diesel_v12_modern', 'diesel_v12_coldwar', 'diesel_aircooled', 'diesel_ifv', 'gasoline_v12',
 ]);
 
-export type CrewLanguage =
+/** The packs the game's countries speak (COUNTRY_CREW). */
+export type NationalCrewLanguage =
   | 'en-US' | 'en-GB' | 'de' | 'ru' | 'uk' | 'zh' | 'fr'
   | 'sv' | 'ja' | 'ko' | 'it' | 'pl' | 'he'
   | 'da' | 'pt-BR' | 'en-AU' | 'af';
 
+/**
+ * Packs for languages with no country in the game (crew-languages-270): no hull speaks one by default; a player chooses
+ * it in Settings. Each speaks as one real army's armoured crews (docs/AUDIO.md). Indonesian is `id-ID` because `id` is
+ * the crew script's line-id key.
+ */
+export type WorldCrewLanguage =
+  | 'es-ES' | 'es-419' | 'pt-PT' | 'nl' | 'no' | 'fi' | 'el' | 'cs' | 'hu' | 'ro' | 'tr'
+  | 'ar' | 'fa' | 'hi' | 'ur' | 'bn' | 'id-ID' | 'ms' | 'vi' | 'th' | 'fil';
+
+export type CrewLanguage = NationalCrewLanguage | WorldCrewLanguage;
+
+export const WORLD_CREW_LANGUAGES: readonly WorldCrewLanguage[] = Object.freeze([
+  'es-ES', 'es-419', 'pt-PT', 'nl', 'no', 'fi', 'el', 'cs', 'hu', 'ro', 'tr',
+  'ar', 'fa', 'hi', 'ur', 'bn', 'id-ID', 'ms', 'vi', 'th', 'fil',
+]);
+
 export const CREW_LANGUAGES: readonly CrewLanguage[] = Object.freeze([
   'en-US', 'en-GB', 'de', 'ru', 'uk', 'zh', 'fr', 'sv', 'ja', 'ko', 'it', 'pl', 'he',
   'da', 'pt-BR', 'en-AU', 'af',
+  ...WORLD_CREW_LANGUAGES,
 ]);
 
 export type TrackClass = 'light' | 'heavy';
@@ -105,7 +123,7 @@ interface VehicleAudioSpecInput {
  * The crew each country's hulls carry: the operating army's own (crew voices 269). Exhaustive, so a new CountryId fails
  * typecheck until it names a crew. Canada has no pack of its own yet: its crews speak American English.
  */
-const COUNTRY_CREW: Readonly<Record<CountryId, CrewLanguage>> = Object.freeze({
+const COUNTRY_CREW: Readonly<Record<CountryId, NationalCrewLanguage>> = Object.freeze({
   usa: 'en-US', uk: 'en-GB', germany: 'de', russia: 'ru', ukraine: 'uk', china: 'zh', france: 'fr', sweden: 'sv',
   japan: 'ja', south_korea: 'ko', italy: 'it', poland: 'pl', israel: 'he',
   canada: 'en-US', denmark: 'da', brazil: 'pt-BR', australia: 'en-AU', south_africa: 'af',

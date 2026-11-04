@@ -395,6 +395,8 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
       if (next !== language) {
         queue.length = 0;
         if (currentSrc) stopCurrent();
+        // One pack held at a time: the crew it leaves is released (assetLibrary.dropVoice).
+        if (language) library.dropVoice(language);
       }
       language = next;
       void library.loadVoice(next);
