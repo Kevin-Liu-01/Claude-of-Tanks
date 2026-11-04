@@ -591,7 +591,7 @@ file	icons	public/icons/tank-assets/tanks/challenger1_mk3.json	db6b8f2c8e5d15c2
 file	icons	public/icons/tank-assets/tanks/challenger2.json	5e45cad65db99158
 file	icons	public/icons/tank-assets/tanks/challenger2e.json	dc8f7cefb3a12470
 file	icons	public/icons/tank-assets/tanks/challenger3.json	cdbe04c23c2ee00b
-file	icons	public/icons/tank-assets/tanks/challenger3_proto.json	f5b74a905ba17dbd
+file	icons	public/icons/tank-assets/tanks/challenger3_proto.json	1205b0f92eb3223c
 file	icons	public/icons/tank-assets/tanks/challenger3_td.json	a7d8e3b7b4904206
 file	icons	public/icons/tank-assets/tanks/challenger3_td_rws.json	813e6bd8440e0ba3
 file	icons	public/icons/tank-assets/tanks/challenger_x.json	253c20d4c80f2fb1
@@ -622,9 +622,9 @@ file	icons	public/icons/tank-assets/tanks/k1e1.json	40d34550b1ee1739
 file	icons	public/icons/tank-assets/tanks/k21.json	609f5139ecf5a727
 file	icons	public/icons/tank-assets/tanks/k2_black_panther.json	79cea2e95a169372
 file	icons	public/icons/tank-assets/tanks/k2b.json	70ad3cfc5a6dd232
-file	icons	public/icons/tank-assets/tanks/kf41_lynx.json	2cbc55c3d5b8daaf
+file	icons	public/icons/tank-assets/tanks/kf41_lynx.json	1ad2bd6b62512831
 file	icons	public/icons/tank-assets/tanks/kf51_evo.json	b6480088b6c6a7bc
-file	icons	public/icons/tank-assets/tanks/kf51_panther.json	4557a82312651d21
+file	icons	public/icons/tank-assets/tanks/kf51_panther.json	56bdc116ae617d83
 file	icons	public/icons/tank-assets/tanks/kf51_u.json	e6ecc8d2512a16bb
 file	icons	public/icons/tank-assets/tanks/kurganets25.json	15a691fcba2a9a6a
 file	icons	public/icons/tank-assets/tanks/kv2.json	2ef0c59f1fedb452
@@ -720,7 +720,7 @@ file	icons	public/icons/tank-assets/tanks/pt91m.json	cbf7d9eacd700d86
 file	icons	public/icons/tank-assets/tanks/puma_s1.json	5e09d435d7d6fa6a
 file	icons	public/icons/tank-assets/tanks/raiju_ifv.json	924e126874e35b8e
 file	icons	public/icons/tank-assets/tanks/sabra_mk2.json	b563d2abcec51a4e
-file	icons	public/icons/tank-assets/tanks/shot_kal.json	595fbcafb21f6736
+file	icons	public/icons/tank-assets/tanks/shot_kal.json	9fb9681b64b29d9a
 file	icons	public/icons/tank-assets/tanks/spz_puma.json	4cbbfc6871ae4d4f
 file	icons	public/icons/tank-assets/tanks/spz_wotan.json	04515bb6b1a22e7e
 file	icons	public/icons/tank-assets/tanks/stb1.json	63475c23d8621dd0
@@ -728,7 +728,7 @@ file	icons	public/icons/tank-assets/tanks/strv103a.json	214b140164fd29f6
 file	icons	public/icons/tank-assets/tanks/strv103b.json	f6c4429904a1a834
 file	icons	public/icons/tank-assets/tanks/strv105.json	a7114295c008e691
 file	icons	public/icons/tank-assets/tanks/strv121.json	530c878f11e7ea85
-file	icons	public/icons/tank-assets/tanks/strv122.json	b78aceba99f5265b
+file	icons	public/icons/tank-assets/tanks/strv122.json	0e460ed096f41aa1
 file	icons	public/icons/tank-assets/tanks/strv81.json	2f547ef6fe1253eb
 file	icons	public/icons/tank-assets/tanks/t14_armata.json	03bb70f63cc0c339
 file	icons	public/icons/tank-assets/tanks/t49.json	a552a66a555820f5
@@ -741,7 +741,7 @@ file	icons	public/icons/tank-assets/tanks/t64bv.json	e7bcd03ec531e975
 file	icons	public/icons/tank-assets/tanks/t64bv1.json	6bd8b21ec0afe22c
 file	icons	public/icons/tank-assets/tanks/t64bv_donbas.json	67c906ada39636d7
 file	icons	public/icons/tank-assets/tanks/t72_rys.json	2a55eb7c30e90232
-file	icons	public/icons/tank-assets/tanks/t72b3.json	15acb5f65c5670f2
+file	icons	public/icons/tank-assets/tanks/t72b3.json	38b80f8177c81215
 file	icons	public/icons/tank-assets/tanks/t72b3_bastion_m.json	9c5265c182f51e20
 file	icons	public/icons/tank-assets/tanks/t72b3_qilin.json	448ce162194a63eb
 file	icons	public/icons/tank-assets/tanks/t72b3_sich.json	d486c509492bfa8c
@@ -769,7 +769,7 @@ file	icons	public/icons/tank-assets/tanks/t80u_husarz.json	b697daf004d08ab8
 file	icons	public/icons/tank-assets/tanks/t80u_kursk.json	93923a1b7d36a3ed
 file	icons	public/icons/tank-assets/tanks/t80u_yun.json	3b21581579169965
 file	icons	public/icons/tank-assets/tanks/t80u_zoria.json	4c61006d30de532f
-file	icons	public/icons/tank-assets/tanks/t80uk.json	052ee49d501bd29f
+file	icons	public/icons/tank-assets/tanks/t80uk.json	31436669c11ee624
 file	icons	public/icons/tank-assets/tanks/t84.json	de359fa55359e1e6
 file	icons	public/icons/tank-assets/tanks/t84bm_oplot_m.json	3b2662c55ad82374
 file	icons	public/icons/tank-assets/tanks/t90.json	67e342382fd79b9a
@@ -818,7 +818,7 @@ file	icons	public/icons/tank-assets/tanks/vickers_mk1.json	03259d10a9c965d6
 file	icons	public/icons/tank-assets/tanks/vt4a1.json	a048501fb6d54a75
 file	icons	public/icons/tank-assets/tanks/vt4a1_baihu.json	12abe77164163656
 file	icons	public/icons/tank-assets/tanks/warrior_tes_h.json	b721f678f513b528
-file	icons	public/icons/tank-assets/tanks/x1_pioneiro.json	afa7dfbec5eb3416
+file	icons	public/icons/tank-assets/tanks/x1_pioneiro.json	2189b1fc661bb75f
 file	icons	public/icons/tank-assets/tanks/x1a2_carcara.json	f6a12501bc193f42
 file	icons	public/icons/tank-assets/tanks/xk2_black_panther.json	e82e16e01a87c867
 file	icons	public/icons/tank-assets/tanks/ztz100.json	96b619ef5afbd3af
@@ -2749,7 +2749,7 @@ key	icons	challenger1_mk3	bd5df955ed606329	ab21e213dd3f3274
 key	icons	challenger2	4329d40adde01190	0bc1e8176276975e
 key	icons	challenger2e	73c8845c82456d27	44389315546b6f18
 key	icons	challenger3	ad3c464d29e7fd72	877da371904e5d93
-key	icons	challenger3_proto	ad06f4c5601604a2	aff33707afbe6135
+key	icons	challenger3_proto	fe638aadb9dd7971	02ef9c8d9f22ed5f
 key	icons	challenger3_td	ca253248e5c8e894	ebae306c296bc58a
 key	icons	challenger3_td_rws	07e94e61baa50568	bd062289cdc55132
 key	icons	challenger_x	1a0dbfb4cf4e2078	4e27710b689ccab0
@@ -2780,9 +2780,9 @@ key	icons	k1e1	d77c88ea0fafa72a	ca9ed3c3133c3cbf
 key	icons	k21	b319f3f968aa3051	799a3bf575817216
 key	icons	k2_black_panther	c721c4710b395ef6	5ae729d0dbd63772
 key	icons	k2b	7ca82db07cdc3ac4	bb5523d90854e20c
-key	icons	kf41_lynx	570e29ccc26b6e6d	dfaa0d5084cf45ae
+key	icons	kf41_lynx	c0f180ac2ca9f001	3d126d791eccf795
 key	icons	kf51_evo	94fad8ed408e100b	b0b1bb51e05cb2cd
-key	icons	kf51_panther	e33a1ca1d169c5ed	7fc8cf219887b749
+key	icons	kf51_panther	45ad1ba7b1e44e3e	c9af93af0fde28a7
 key	icons	kf51_u	28adf52c68fa714f	e850234f43a686e4
 key	icons	kurganets25	7b4ca4387189f064	b92885a910ffe8c8
 key	icons	kv2	612ab4879307a42a	5881e3b73bd55b48
@@ -2878,7 +2878,7 @@ key	icons	pt91m	7ffd55921433cf05	00010b554180509a
 key	icons	puma_s1	3ef75f0ff4c26402	c6b8a98c1d0d5686
 key	icons	raiju_ifv	60a0355eef1ed5e4	48eef799e7b3e932
 key	icons	sabra_mk2	0137244786fd6e93	0e4ac654a20e08a2
-key	icons	shot_kal	d80c013d84ad4c0a	36a1ce32cc53ec92
+key	icons	shot_kal	431fad034a0fad76	f8d63ccd07aeeee2
 key	icons	spz_puma	50232f5d06202f57	1badae1a129ae634
 key	icons	spz_wotan	11bcfc7af7a15d7c	604110a9959b202a
 key	icons	stb1	7578a8309bd1b7e4	ab0e919a5fe431dc
@@ -2886,7 +2886,7 @@ key	icons	strv103a	9e016bb1195b9b07	44cb48d7d94d210a
 key	icons	strv103b	649b14d6cb515700	658fbbf685a0abf7
 key	icons	strv105	4c8c050f3028b413	8af30f6a5f60493d
 key	icons	strv121	f1dbcf464567d2d5	519c669da4245e1d
-key	icons	strv122	2b58f91965bb93bd	e02bd2cc68896199
+key	icons	strv122	3fbcf69aa280bcc1	0f67f83e87605785
 key	icons	strv81	7bb75549c383b990	6eab35b0f14cfd91
 key	icons	t14_armata	4f829dc09e00ccc9	8f791692f04fc9af
 key	icons	t49	f4733ef1e6b4822c	9f8ba70284d52786
@@ -2899,7 +2899,7 @@ key	icons	t64bv	8b00f43a1a1e9743	bb1c5adb988a3a85
 key	icons	t64bv1	7ebfe25283d72100	13e49cda20670de6
 key	icons	t64bv_donbas	84d1543289043e77	fec4a63f286221d5
 key	icons	t72_rys	4cb6cb73d2de2289	de1a012060885676
-key	icons	t72b3	550e23df14bbf0e2	f262d77c9bbf1503
+key	icons	t72b3	8d1d1aea44b33951	a0d80342a911981e
 key	icons	t72b3_bastion_m	92965dd3ee8f1581	20692ff741a28419
 key	icons	t72b3_qilin	86d1114ac8a32df8	fcaca31b565f26e4
 key	icons	t72b3_sich	f89c594d1f0c1cad	2f393120448f3f6a
@@ -2927,7 +2927,7 @@ key	icons	t80u_husarz	ed01011b5fb62c43	22ddcf7aa3cb1eff
 key	icons	t80u_kursk	c3236c382019e570	76dd8850f3039fd4
 key	icons	t80u_yun	5d59c9c3d1340067	de7852792b0dcfc0
 key	icons	t80u_zoria	68488cbce55552cd	43742feebb5e3c38
-key	icons	t80uk	28dee832119fa314	cab1e43eae87b705
+key	icons	t80uk	dbfc0e9d0216deff	31fc9ed29b4e906a
 key	icons	t84	4ae4c636ae1d4de0	16a3e92928e8bd94
 key	icons	t84bm_oplot_m	d034289b2508f008	3ec9ce30f7e13b88
 key	icons	t90	00d356118753572f	2234ce8e1435f0d7
@@ -2976,8 +2976,8 @@ key	icons	vickers_mk1	e54102cadf7700a4	5de585ea178c5a28
 key	icons	vt4a1	80d9e855d23c02f1	fff6fdaed8c650ba
 key	icons	vt4a1_baihu	0d604dce5cb33322	158d55a9c25ec1ec
 key	icons	warrior_tes_h	0be38d73370c8074	d55517b3f08d2437
-key	icons	x1_pioneiro	8108e768ee06051b	501db21e7478e84a
-key	icons	x1a2_carcara	53455f76194397ee	1d5a2881720ff09b
+key	icons	x1a2_carcara	c97d4978aeedac5c	1d5a2881720ff09b
+key	icons	x1_pioneiro	1694e1381ba9991e	55f2d7aa8bd74544
 key	icons	xk2_black_panther	19ca3580bad277a1	fb57a41ce2726782
 key	icons	ztz100	7d893149600aa528	f11121d644072eda
 key	icons	ztz100_prototype	86514b7d514d17be	d756cc194ada1f03
@@ -9071,7 +9071,7 @@ row	tankAssets	challenger1_mk3	bb60deb25e6ec799
 row	tankAssets	challenger2	6eec697303ed188b
 row	tankAssets	challenger2e	e7fa0e20eab4e0e9
 row	tankAssets	challenger3	200a82dafc57425f
-row	tankAssets	challenger3_proto	20bfa2532056685b
+row	tankAssets	challenger3_proto	2f9b9ecc99e83e6f
 row	tankAssets	challenger3_td	68ed0e8a5ea04e75
 row	tankAssets	challenger3_td_rws	496d544bbb81c6eb
 row	tankAssets	challenger_x	d51b34ac516c380b
@@ -9102,9 +9102,9 @@ row	tankAssets	k1e1	bbd30a5d0677fcda
 row	tankAssets	k21	e5783aaaf7ac3d44
 row	tankAssets	k2_black_panther	d1f025b9d7ff535b
 row	tankAssets	k2b	39a91df13efad67e
-row	tankAssets	kf41_lynx	8a08a7353ddbcd0d
+row	tankAssets	kf41_lynx	5aa06928a8acba73
 row	tankAssets	kf51_evo	af6c3c13a443f49e
-row	tankAssets	kf51_panther	f58e153ef379ee06
+row	tankAssets	kf51_panther	ecfd743b3bd834a5
 row	tankAssets	kf51_u	0e34211dd3e82825
 row	tankAssets	kurganets25	8bfde870c181337a
 row	tankAssets	kv2	fec2d2aa5931d29f
@@ -9200,7 +9200,7 @@ row	tankAssets	pt91m	7d3fcaab684b245c
 row	tankAssets	puma_s1	e720da0007e15dfe
 row	tankAssets	raiju_ifv	19b924f52cc1dbe6
 row	tankAssets	sabra_mk2	7237e433b0d7e44f
-row	tankAssets	shot_kal	acef1b007c7927bc
+row	tankAssets	shot_kal	708432aa9d8d3c0e
 row	tankAssets	spz_puma	d445142dfb2ad57d
 row	tankAssets	spz_wotan	ed8a59b0fb462459
 row	tankAssets	stb1	929cea73087fa463
@@ -9208,7 +9208,7 @@ row	tankAssets	strv103a	2d9a3fbd7a0c61e3
 row	tankAssets	strv103b	9eeafc16acce45eb
 row	tankAssets	strv105	11f55af9265bcd14
 row	tankAssets	strv121	93e2c26c4b3ff1fc
-row	tankAssets	strv122	d12b530e2b6921bb
+row	tankAssets	strv122	1628f57addebf54f
 row	tankAssets	strv81	b8684c77bb85a244
 row	tankAssets	t14_armata	d530e3450c077eeb
 row	tankAssets	t49	2ac2d0fd5a3cb53b
@@ -9221,7 +9221,7 @@ row	tankAssets	t64bv	50142cbeb8258334
 row	tankAssets	t64bv1	6141b832cab30616
 row	tankAssets	t64bv_donbas	cd903f86adb787fe
 row	tankAssets	t72_rys	dccdfc9df63a3db9
-row	tankAssets	t72b3	e1210575b0abd273
+row	tankAssets	t72b3	61510a86e1bf1b0e
 row	tankAssets	t72b3_bastion_m	add527b790ce5acc
 row	tankAssets	t72b3_qilin	3791cb2815734aaa
 row	tankAssets	t72b3_sich	7a55c2d827d1da7e
@@ -9249,7 +9249,7 @@ row	tankAssets	t80u_husarz	64cbeeca7bc8bec8
 row	tankAssets	t80u_kursk	465c1170d4a3a30f
 row	tankAssets	t80u_yun	81540734ae3b523d
 row	tankAssets	t80u_zoria	d012f6c263c57b1a
-row	tankAssets	t80uk	9d0bc7f1c8fa270d
+row	tankAssets	t80uk	22b519d518e34f99
 row	tankAssets	t84	33a2454099ffd2a6
 row	tankAssets	t84bm_oplot_m	1b641e063729d530
 row	tankAssets	t90	0bb1dc2f7801bd1c
@@ -9298,7 +9298,7 @@ row	tankAssets	vickers_mk1	ed234ec001ae8d95
 row	tankAssets	vt4a1	e8daa8dfdb78bf1f
 row	tankAssets	vt4a1_baihu	80df6d84c7831514
 row	tankAssets	warrior_tes_h	c42d3feb72bbb091
-row	tankAssets	x1_pioneiro	5b46b11510ba4c59
+row	tankAssets	x1_pioneiro	349e9f09d30af42d
 row	tankAssets	x1a2_carcara	821dca25171b4c8a
 row	tankAssets	xk2_black_panther	464429086ec140cb
 row	tankAssets	ztz100	8e6415d62346f4ce
@@ -9327,7 +9327,7 @@ tool	controls	e22ca4a12022c981
 tool	fills	384657f2143d5ce5
 tool	gate	762cca5f5ad4b0c3
 tool	gunLines	0bbe9e464815a49a
-tool	icons	65f97256ed1f6c51
+tool	icons	358883cc7bdcb3b0
 tool	ledger	fc616899a98c53f3
 tool	marking	170964b153298fea
 tool	seats	9f35644e7eee127f
