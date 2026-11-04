@@ -45,11 +45,13 @@ const rounds = (gun: string, apfsds: [readonly number[], number, number], heat: 
 // loading mechanism was designed for the box bustle (30 rounds, 16 ready, six a minute) and never fitted to the
 // prototype. Its Kontakt-1 studs carry no bricks, so its hull is the BV's without the ERA plates.
 const object292 = variant('object292', 't80bv', 'Object 292', 'USSR', 'modern');
-Object.assign(object292, { hp: 2350, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
+// (balance, proposed for Main's ruling at VII: the lane's fairness numbers; 2,350 HP and 700 damage at 10 s scored 0/17)
+Object.assign(object292, { hp: 2500, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
 Object.assign(object292.dims, { overallLengthM: 3.39 + OBJECT292_GUN_FRAME.muzzleZ, widthM: 3.525, heightM: 2.25 });
 object292.gun = {
-  ...object292.gun, caliberMm: 152, reloadS: 10.0, baseAccuracy: 0.34, aimTimeS: 2.1, soundProfile: 'lp-83',
-  shells: rounds('LP-83', [[840, 770, 700], 700, 14], [780, 640, 8], [860, 8]),
+  // 9 s: the design's six a minute (10 s) was never fitted; the lane's VII row is in band at 9 s (16 of 17 pairs)
+  ...object292.gun, caliberMm: 152, reloadS: 9.0, baseAccuracy: 0.34, aimTimeS: 2.1, soundProfile: 'lp-83',
+  shells: rounds('LP-83', [[840, 770, 700], 900, 14], [780, 820, 8], [1100, 8]),
 };
 object292.armor.hullPlates = object292.armor.hullPlates.filter((plate) => plate.kind !== 'era');
 // the box turret's plates (the welded box over the T-80BV casting, its front blocks the weight imitators, steel only)
@@ -59,8 +61,11 @@ object292.armor.turretPlates = modernArmor({
   barrelLenM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, barrelRadM: 0.135,
   glacis: [0, 0, 0], lower: [0, 0, 0], side: [0, 0, 0], rear: 0, roof: 0,
   tw: 1.12, tFrontZ: 1.18, tRearZ: -2.30, tH: 0.80,
-  cheek: [620, 600, 660], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 380, 420],
+  cheek: [620, 810, 890], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 513, 567],
 }).turretPlates;
+// the T-80BV hull's ring datum (profiles/t80.ts: the turret at y 1.45 over z 0; the BV row registered here still holds its
+// donor's 1.442 / 0.145 until its own frame pass)
+object292.armor.turretPivot = [0, 1.45, 0];
 object292.armor.gunPivot = [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ];
 object292.armor.gunBarrel = { lengthM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, radiusM: 0.135 };
 // the plain green Kubinka shows (the national Russian plain, camoPolicy national_ru)
@@ -122,7 +127,7 @@ object195.armor = modernArmor({
   barrelLenM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.trunnionZ, barrelRadM: 0.135,
   // the crew capsule behind the nose's combined armour and its built-in ERA; the module is thinner, as the T-14's
   glacis: [900, 950, 1250], lower: [300, 320, 380], side: [200, 200, 220], skirt: [40, 40, 180], rear: 60, roof: 55,
-  tw: 1.28, tFrontZ: 1.40, tRearZ: -1.45, tH: 0.85,
+  tw: 0.96, tFrontZ: 1.30, tRearZ: -1.45, tH: 1.20,
   cheek: [320, 330, 340], tSide: [280, 280, 300], tRear: 60, tRoof: 50, mantlet: [320, 320, 340],
 });
 // the crew capsule: three side by side under the hatches behind the glacis, nobody in the module (the T-14's order)

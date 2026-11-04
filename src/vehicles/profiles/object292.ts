@@ -23,41 +23,50 @@ function prism(P: T80BuilderPort, bucket: string, stations: readonly (readonly [
   P.add(bucket, sectionSolid(stations.map(([z, x0, x1, y0, y1]) => ({ z, ring: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] }))));
 }
 
-/** The welded box: body over the ring, the bustle over the deck, the raked cheek boxes. Turret frame. */
+/** The welded box over the T-80 casting (Kubinka; the critics of round 1: the casting must read below it): its body sits
+ * on the casting's shoulders from a hood over the gun's root back over the ring, the bustle overhangs the engine deck,
+ * and flat applique blocks (the weight imitators) cover the casting's cheeks either side of the gun. Turret frame. */
 function addBox(P: T80BuilderPort): void {
-  // the bustle's floor rakes up to its tail; the body stands on the casting
+  // the bustle's floor rakes up to its tail; the body's floor is the casting's shoulder line
   prism(P, 'turret', [
-    [-2.30, -1.14, 1.14, .40, .79], [-1.95, -1.16, 1.16, .26, .80], [-1.05, -1.20, 1.20, .02, .80],
-    [.20, -1.20, 1.20, .02, .80], [.70, -.62, .62, .40, .78],
+    [-2.30, -1.06, 1.06, .44, .80], [-1.95, -1.08, 1.08, .32, .81], [-1.05, -1.06, 1.06, .36, .82],
+    [.45, -1.00, 1.00, .40, .82], [.62, -.92, .92, .46, .80],
   ]);
-  // the raked cheek boxes standing proud of the casting's nose: full width to z 1.02, the outer corner swept back
+  // the hood over the gun's root, its brow raked down to the mantlet
+  prism(P, 'turret', [[.40, -.56, .56, .58, .80], [.88, -.52, .52, .58, .74], [1.02, -.46, .46, .60, .66]]);
+  // the weight-imitator blocks on the casting's cheeks: flat applique faces, the outer corner swept back
   for (const s of [-1, 1]) {
-    const st: [number, number, number, number, number][] = [[.10, .30, 1.22, .04, .78], [1.02, .30, 1.22, .04, .78],
-      [1.42, .30, .62, .08, .72]];
+    const st: [number, number, number, number, number][] = [[.50, .34, 1.02, .04, .50], [1.12, .34, 1.02, .04, .50],
+      [1.42, .34, .62, .06, .46]];
     prism(P, 'turret', st.map(([z, a, b, y0, y1]): [number, number, number, number, number] => (s > 0 ? [z, a, b, y0, y1] : [z, -b, -a, y0, y1])));
-    // the cheek's top plate seam and the lifting eyes
-    P.addEquipment('turretDark', box(.86, .012, .02), s * .76, .785, 1.00);
-    P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), s * .80, .80, .30, Math.PI / 2, 0, 0);
+    for (const dz of [.70, 1.05]) P.addEquipment('turretDark', KIT.cylY(.022, .022, .02, 8), s * .68, .505, dz);
+    P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), s * .80, .83, .10, Math.PI / 2, 0, 0);
   }
-  // the bustle's tail lip and the plate seams down the body's flanks
-  P.addEquipment('turretDetail', box(2.14, .05, .05), 0, .78, -2.31);
-  for (const s of [-1, 1]) for (const z of [-1.05, .20]) P.addEquipment('turretDark', box(.012, .70, .02), s * 1.205, .42, z);
+  // the weld seam where the box meets the casting, the bustle's tail lip and the plate seams down its flanks
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.022, .022, 1.50), s * 1.01, .39, -.30);
+  P.addEquipment('turretDetail', box(2.06, .05, .05), 0, .79, -2.31);
+  for (const s of [-1, 1]) for (const z of [-1.05, -.20]) P.addEquipment('turretDark', box(.012, .40, .02), s * 1.065, .60, z);
 }
 
 /** The roof: commander's cupola (right), gunner's sight (left, forward), ventilator, loader's-side hatch, antenna. */
 function addRoof(P: T80BuilderPort): void {
-  const top = .80;
-  P.add('turret', cylY(.30, .32, .14, 18), .52, top + .06, -.42);
-  P.add('turretDark', KIT.torus(.30, .022, 18), .52, top + .13, -.42);
-  P.add('turret', cylY(.25, .26, .04, 16), .52, top + .15, -.42);
-  for (const [x, z, ry] of [[.30, -.18, .44], [.52, -.12, 0], [.74, -.20, -.44]]) {
-    P.add('turretDark', box(.12, .06, .07), x, top + .11, z, 0, ry, 0);
-    P.add('turretGlass', box(.09, .035, .012), x, top + .12, z + .04, 0, ry, 0);
+  const top = .82;
+  // the commander's cupola raised on its collar (Kubinka: it stands well above the box's roof)
+  P.add('turret', cylY(.30, .32, .24, 18), .52, top + .11, -.30);
+  P.add('turretDark', KIT.torus(.30, .022, 18), .52, top + .23, -.30);
+  P.add('turret', cylY(.25, .26, .05, 16), .52, top + .255, -.30);
+  for (const [x, z, ry] of [[.30, -.06, .44], [.52, .00, 0], [.74, -.08, -.44]]) {
+    P.add('turretDark', box(.12, .07, .07), x, top + .21, z, 0, ry, 0);
+    P.add('turretGlass', box(.09, .04, .012), x, top + .22, z + .04, 0, ry, 0);
   }
-  // the gunner's sight head in its armoured box with a forward window
-  P.add('turret', box(.44, .22, .50), -.50, top + .10, .32);
-  P.add('turretDark', box(.32, .12, .02), -.50, top + .10, .575);
-  P.add('turretGlass', box(.26, .08, .012), -.50, top + .10, .582);
+  // the gunner's sight head in its tall armoured box at the roof's front left, its window forward
+  P.add('turret', box(.40, .34, .44), -.48, top + .16, .46);
+  P.add('turretDark', box(.30, .16, .02), -.48, top + .20, .685);
+  P.add('turretGlass', box(.24, .11, .012), -.48, top + .20, .692);
+  P.add('turretDetail', box(.44, .04, .48), -.48, top + .34, .46);
+  // the second sight head (the commander's day/night sight) forward of the cupola
+  P.add('turret', box(.22, .24, .26), .50, top + .11, .32);
+  P.add('turretGlass', box(.15, .09, .012), .50, top + .15, .455);
   // the loader's hatch is the autoloader's service hatch here: a low plate with its hinge
   P.add('turretDetail', cylY(.24, .25, .03, 16), -.50, top + .015, -.62);
   P.add('turretDark', box(.32, .03, .05), -.50, top + .04, -.84);
@@ -77,13 +86,15 @@ function addGun(P: T80BuilderPort): void {
   build152Gun(P, { ...GUN_LP83, len: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ });
 }
 
-/** Kubinka's full-height rubber skirts under the BV's skirt band (the band and its front plates are the BV's). Hull frame. */
+/** Kubinka's full-height rubber skirts under the BV's skirt band (the band and its front plates are the BV's), and the
+ * large rubber flaps drooping over the front of the tracks. Hull frame. */
 function addRubberSkirts(P: T80BuilderPort): void {
   for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
     const z0 = -2.90 + i * .885;
-    P.add('hullTrack', box(.03, .44, .87), s * 1.744, .82, z0 + .4425);
-    P.add('hullDark', box(.006, .40, .012), s * 1.762, .82, z0 + .88);
+    P.add('hullTrack', box(.022, .44, .87), s * 1.744, .82, z0 + .4425);
+    P.add('hullDark', box(.006, .40, .012), s * 1.757, .82, z0 + .88);
   }
+  for (const s of [-1, 1]) P.add('hullTrack', box(.48, .46, .022), s * 1.40, .92, 3.46, .22, 0, 0);
 }
 
 /** The glacis' Kontakt-1 mounting studs with no bricks on them (Kubinka): two studs at each of the T-80BV raft's 28
@@ -92,7 +103,7 @@ function addKontaktStuds(P: T80BuilderPort): void {
   const tilt = Math.atan2(.438, .899);                       // the plate's outward normal (0, .899, .438)
   for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
     const y = .84 + r * .115 - .045, z = 3.21 - r * .235 - .022;
-    for (const dx of [-.075, .075]) P.add('hullDetail', KIT.cylY(.022, .024, .05, 8), -.90 + c * .30 + dx, y, z, tilt, 0, 0);
+    for (const dx of [-.075, .075]) P.add('hullDetail', KIT.cylY(.028, .032, .065, 8), -.90 + c * .30 + dx, y, z, tilt, 0, 0);
   }
 }
 
@@ -107,7 +118,7 @@ function* buildObject292Turret(P: T80BuilderPort): TankProfileBuild {
   yield 'object292Casting';
   addBox(P);
   addRoof(P);
-  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .30, [s * 1.165, .55, -1.55], s * Math.PI / 2);
+  for (const s of [-1, 1]) P.decal('turret', 'number', P.spec.visual.number || '', .30, [s * 1.085, .60, -1.55], s * Math.PI / 2);
   yield 'object292Box';
   P.gunG.position.set(0, OBJECT292_GUN_FRAME.trunnionY - RING_Y, OBJECT292_GUN_FRAME.trunnionZ);
   addGun(P);

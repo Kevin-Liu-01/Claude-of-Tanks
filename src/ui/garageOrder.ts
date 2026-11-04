@@ -86,7 +86,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     't90sm',
     't90ms_tagil',
     't90a_burlak',
-    't14_armata', 't14_152', 'object195',
+    't14_armata',
     't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m',
     'kurganets25',
     'bmp3m_dragun125',

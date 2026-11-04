@@ -59,7 +59,7 @@ export function add30mmCannon(P: TankBuilderPort, o: { name: string; x: number; 
   P.add('turretDark', box(.17, .03, .24), x - .19, axisY + .085, pivotZ - .18);
   P.add('turretDark', cylZ(.06, .22, 16), x, axisY, pivotZ + .32);
   const barrel = muzzleZ - .08 - (pivotZ + .43);
-  P.add('turretDark', cylZ(.032, barrel, 14), x, axisY, pivotZ + .43 + barrel / 2);
-  P.add('turretDark', cylZ(.045, .08, 14), x, axisY, muzzleZ - .04);
+  P.add('turretDark', cylZ(.036, barrel, 14), x, axisY, pivotZ + .43 + barrel / 2);
+  P.add('turretDark', cylZ(.050, .10, 14), x, axisY, muzzleZ - .05);
   station.mark('pitch');
 }

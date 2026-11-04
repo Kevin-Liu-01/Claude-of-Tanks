@@ -432,8 +432,8 @@ function addSightCavity(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', cylZ(.065, .025674, 20), .80, localY(2.29), localZ(.664163));
 }
 
-/** The unmanned turret. `gun152` (the T-14 152, profiles/t14_152X.ts): the 2A83's larger mantlet takes the gun
- * opening, so its gun house replaces the 2A82's upper lintel and its lower bearing sits lower. */
+/** The unmanned turret. `gun152` (the T-14 152, profiles/t14_152X.ts): the 2A83's larger mantlet takes more of the gun
+ * opening, so the upper lintel starts higher (under its gun house) and the lower bearing sits lower. */
 export function addTurret(P: TankBuilderPort, gun152 = false): void {
   P.add('turret', cylY(.98, .98, .14, 48), 0, .055, 0);
   // Narrow structural core does not fill the APS space underneath the shroud.
@@ -452,7 +452,7 @@ export function addTurret(P: TankBuilderPort, gun152 = false): void {
   ]));
   // Central gun opening has a real upper lintel and lower armored bearing,
   // leaving the moving mantlet unobstructed instead of building a front box.
-  if (!gun152) frontPanel(P, 1, -.40, .40, 2.32, 2.51, .42);
+  frontPanel(P, 1, -.40, .40, gun152 ? 2.40 : 2.32, 2.51, .42);
   P.add('turret', box(.78, .085, .68), 0, localY(gun152 ? 1.775 : 1.84), localZ(.94));
   frontPanel(P, -1, .39, .48, 1.98, 2.50, .46);
   for (const [x0, x1] of [[.48, .70], [.70, .90], [.90, .99]]) {

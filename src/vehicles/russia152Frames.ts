@@ -5,15 +5,15 @@
 /** The T-14 152's 2A83: the T-14's trunnion raised 7 cm for the larger mantlet, its muzzle 5.75 m ahead of it. */
 export const T14_152_GUN_FRAME = Object.freeze({ trunnionY: 2.121, trunnionZ: 1.00, muzzleZ: 6.75 });
 
-/** The Object 292's LP-83: its trunnion over the T-80BV ring a little higher and further forward than the 2A46's (the
- * larger breech under the welded box), its muzzle 6.15 m ahead (Kubinka: the muzzle stands about 3.5 m past the nose). */
-export const OBJECT292_GUN_FRAME = Object.freeze({ trunnionY: 1.75, trunnionZ: 0.70, muzzleZ: 6.85 });
+/** The Object 292's LP-83: its trunnion low in the casting's reworked embrasure, a little higher and further forward than
+ * the 2A46's, its muzzle 6.15 m ahead (Kubinka: the muzzle stands about 3.5 m past the nose). */
+export const OBJECT292_GUN_FRAME = Object.freeze({ trunnionY: 1.70, trunnionZ: 0.70, muzzleZ: 6.85 });
 
 /** The Object 195: a 7.9 m hull on seven road wheels (militaryrussia; btvt), its unmanned module's ring amidships over the
- * autoloader's carousel, the 2A83's trunnion high in the module, 10.6 m over the gun. */
+ * autoloader's carousel, the 2A83's trunnion high in the tall module (the photographs), 10.6 m over the gun. */
 export const OBJECT195_FRAME = Object.freeze({
-  hullFrontZ: 3.95, hullRearZ: -3.95, roofY: 1.72, ringY: 1.72, ringZ: -0.30,
-  trunnionY: 2.17, trunnionZ: 0.95, muzzleZ: 6.70,
+  hullFrontZ: 3.95, hullRearZ: -3.95, roofY: 1.60, ringY: 1.60, ringZ: -0.30,
+  trunnionY: 2.30, trunnionZ: 0.95, muzzleZ: 6.70,
 });
 
 /** The Object 477 Molot: btvt's 10,650 mm over the gun, 2,434 mm to the turret's roof and a 2,088 mm line of fire; the

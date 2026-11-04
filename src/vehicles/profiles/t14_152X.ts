@@ -27,19 +27,21 @@ function houseSection(z: number, half: number, low: number, top: number): SolidS
 /** The raised armoured house over the 2A83's breech: from behind the ring's centre to a sloped brow over the mantlet,
  * its foot buried in the turret core's roof. */
 function addGunHouse(P: TankBuilderPort): void {
+  // (round 1's critics: the house read as a thin hood; it stands as a box over the roof with near-vertical walls)
   P.add('turret', sectionSolid([
-    houseSection(-.86, .40, 2.38, 2.66),
-    houseSection(-.40, .44, 2.36, 2.71),
-    houseSection(.55, .44, 2.40, 2.71),
-    houseSection(1.02, .43, 2.40, 2.62),
-    houseSection(1.26, .40, 2.40, 2.47),
+    houseSection(-.86, .42, 2.38, 2.76),
+    houseSection(-.40, .46, 2.36, 2.82),
+    houseSection(.60, .46, 2.40, 2.82),
+    houseSection(1.04, .45, 2.40, 2.74),
+    houseSection(1.26, .42, 2.40, 2.56),
   ]));
-  // the brow's lip over the mantlet and the house's bolted roof plate
-  P.addEquipment('turretDetail', box(.80, .03, .06), 0, localY(2.395), localZ(1.24));
-  P.addEquipment('turretDetail', box(.70, .016, 1.10), 0, localY(2.718), localZ(.08));
-  for (const x of [-.30, .30]) for (const z of [-.40, .08, .56]) {
-    P.addEquipment('turretDark', KIT.cylY(.012, .012, .012, 6), x, localY(2.728), localZ(z));
+  // the brow's lip over the mantlet, the house's bolted roof plate and its side seams
+  P.addEquipment('turretDetail', box(.82, .03, .06), 0, localY(2.405), localZ(1.24));
+  P.addEquipment('turretDetail', box(.72, .016, 1.20), 0, localY(2.828), localZ(.10));
+  for (const x of [-.30, .30]) for (const z of [-.40, .10, .60]) {
+    P.addEquipment('turretDark', KIT.cylY(.012, .012, .012, 6), x, localY(2.838), localZ(z));
   }
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.012, .30, .02), s * .465, localY(2.62), localZ(.20));
 }
 
 /** The 2A83's mantlet: the T-14's octagonal shield at the 152 mm gun's size, and the cradle's collar. */
