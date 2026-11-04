@@ -139,11 +139,11 @@ function addCheekBoxes(P: TankBuilderPort): void {
 /** Four smoke dischargers on each cheek, on their own bracket (source Object_22/23, photos 4 and 6): a 2 x 2 bank
  * standing forward of the cheek's lower outer corner, looking forward, a little out and up, its cradle carried on a
  * block whose rear is welded 6 mm into the raked cheek. The heads land where the source's do (x .75-1.0, y 2.2-2.35,
- * z .6-.75). */
+ * z .65-.8). */
 function addSmokeClusters(P: TankBuilderPort): void {
   const up = new THREE.Vector3(0, 1, 0);
   for (const side of [-1, 1]) {
-    const centre = new THREE.Vector3(side * .85, 2.22, .40);
+    const centre = new THREE.Vector3(side * .82, 2.22, .47);
     const normal = new THREE.Vector3(side * 1.08, .266, 1).normalize();
     const aim = new THREE.Vector3(side * Math.sin(.35) * Math.cos(.26), Math.sin(.26), Math.cos(.35) * Math.cos(.26));
     const u = new THREE.Vector3().crossVectors(up, aim).normalize(), v = new THREE.Vector3().crossVectors(aim, u);
@@ -160,7 +160,7 @@ function addSmokeClusters(P: TankBuilderPort): void {
       dark.push(cylZ(.040, .012, P.q ? 14 : 9).translate(0, 0, .256).applyMatrix4(fan));
     }
     // The carrying block: the cradle's rear face and its projection 6 mm into the cheek.
-    const base = new THREE.Vector3(side * .85, 2.22, cheekZ(.85, 2.22)), corners: THREE.Vector3[] = [];
+    const base = new THREE.Vector3(side * .82, 2.22, cheekZ(.82, 2.22)), corners: THREE.Vector3[] = [];
     for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
       const p = new THREE.Vector3(a * .11, b * .10, -.055).applyMatrix4(frame);
       corners.push(p, p.clone().addScaledVector(normal, -(normal.dot(p.clone().sub(base)) + .006)));
