@@ -64,11 +64,16 @@ thumping pop, a deep punch and a short low boom, the mechanism clanking. … One
 round." Its distant report is "about 700 metres away … a low, muffled bang and an
 echo rolling back off the hills".
 
-A machine gun is one isolated round; the engine makes the 12.7 mm's slow chug and
-the 7.62 mm's fast rattle by firing it at the gun's rate: "Sound effect: one
-isolated single round fired from a 7.62 mm machine gun, heard beside it: a short,
-sharp, dry report and the fast mechanical clack of the action, tight, then a short
-outdoor echo." About one take in six passes as a burst, so the banks take 20–48.
+A machine gun is one dry, isolated round; the engine makes the 12.7 mm's slow chug
+and the 7.62 mm's fast rattle by firing it at the gun's rate: "Sound effect: one
+isolated single round fired from a .50 calibre heavy machine gun, heard beside it: a
+deep, heavy report and the heavy metallic clack of the bolt, very short, tight and
+dry, no echo." With "then a short outdoor echo" about one take in 36 passed as a
+burst once shipped, the tails smearing at the gun's rate; dry, 2–6 in 8. "Chugging"
+in the words returned bursts and thumps (1 in 8). The map's tail layer closes the
+burst in game. Far off it is still a burst: "a distant, muffled, deep report and a
+faint heavy clack, short and dry, no echo" (3–4 in 8 as a burst; the old "hollow
+thump with a short echo", 0 of 6).
 
 A rocket is its motor. Name the flight, not the launch:
 
@@ -91,6 +96,9 @@ What failed, in order:
   18); without it, 6 of 8 and 4 of 16. "One round
   from a burst of a machine gun" returned bursts, rounds 0.08 s apart, which the
   single-shot cut leaves as a click.
+- **Two comparisons in a row muddle a bore.** The 165 mm's "a colossal, thudding
+  boom with a soft, blunt front, like heavy artillery" passed 2 of 16 as
+  shipped; "a colossal, deep, thudding boom", 8 of 8.
 - **Naming the launch returns the blast.** "Fired off the launcher", "igniting",
   "rips off the rail" put an explosion first and the motor under it; "roaring to
   life … streaking away … like a jet" returns the motor.

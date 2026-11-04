@@ -71,7 +71,8 @@ const GUN_REPORTS = [
   ['gun_130', '130 mm smoothbore tank cannon', 'an enormous, very deep boom', 'heavy'],
   ['gun_152h', '152 mm short tank howitzer', 'an enormous, dull, thunderous howitzer boom with a soft front and a long low roll', 'superheavy'],
   ['gun_152gl', '152 mm short wide-bore gun-launcher', 'a deep, hollow boom from the short wide barrel, a soft front', 'superheavy'],
-  ['gun_165', '165 mm short demolition gun', 'a colossal, thudding boom with a soft, blunt front, like heavy artillery', 'superheavy'],
+  // (two comparisons in a row, "a soft, blunt front, like heavy artillery", passed 2 of 16 as shipped; plain, 8 of 8)
+  ['gun_165', '165 mm short demolition gun', 'a colossal, deep, thudding boom', 'superheavy'],
   ['gun_170', '170 mm long heavy gun with a muzzle brake', 'a colossal, earth-shaking boom with a huge sideways blast from the brake', 'superheavy'],
 ];
 // The recoil past the loader: lighter guns clack, the big ones slam; the distant boom by size.
@@ -80,13 +81,13 @@ const FAR_BOOM = { light: 'a deep, muffled boom', medium: 'a heavy, deep boom', 
 const LONG = { light: 4.5, medium: 5, heavy: 5, superheavy: 5.5 };
 // Banks where fewer takes than variants passed the critic in the first full run get more (their prompts pass, at a lower rate).
 const MORE_TAKES = {
-  gun_76_close: 14, gun_76_own: 12, gun_165_close: 16, gun_152h_own: 12, gun_152gl_own: 12, gun_152gl_interior: 10,
+  gun_76_close: 14, gun_76_own: 12, gun_105_own: 12, gun_165_own: 12, gun_152h_own: 12, gun_152gl_own: 12, gun_152gl_interior: 10,
   ac_30_close: 16, ac_20_own: 12, ac_25_own: 12, ac_30_own: 24,
   // banks whose takes the ear proxy passed fewer than their variants, topped up
   ac_20_close: 16, ac_25_close: 16, ac_35_close: 16, ac_40_close: 20, ac_50_close: 16, ac_40_own: 40, ac_50_own: 14,
-  ac_20_interior: 20, ac_25_interior: 20, ac_40_interior: 20, ac_25_far: 16, ac_30_far: 16, ac_35_far: 16, mg_heavy_far: 10,
-  // an isolated machine-gun round passes as a burst at the gun's rate about one take in six
-  mg_heavy_close: 36, mg_rifle_close: 20, mg_heavy_own: 48, mg_rifle_own: 36,
+  ac_20_interior: 20, ac_25_interior: 20, ac_40_interior: 20, ac_25_far: 16, ac_30_far: 16, ac_35_far: 16,
+  // a dry machine-gun round passes as a burst at the gun's rate in a quarter to a third of its takes, as shipped
+  mg_heavy_close: 32, mg_rifle_close: 32, mg_heavy_own: 24, mg_rifle_own: 32,
 };
 
 const gunReports = GUN_REPORTS.flatMap(([id, gun, boom, size]) => [
@@ -151,16 +152,20 @@ const autocannons = [...acReports];
 // -------------------------------------------------------- machine guns ---
 // The 12.7 mm is a slow, deep chug and the 7.62 mm a fast mechanical rattle (owner 2026-11-04): one round each, the
 // engine firing them at the gun's rate (roof stations: 0.12 s and 0.09 s), the critic judging the burst. A prompt that
-// names a burst gets one (rounds 0.08 s apart, cut to a click), so the close and hatch rounds are one isolated shot.
+// names a burst gets one (rounds 0.08 s apart, cut to a click), so the close and hatch rounds are one isolated shot,
+// dry: a round with "a short outdoor echo" passed as a burst about once in 36 takes as shipped, "very short, tight and
+// dry, no echo" 2-6 in 8 (the map's own tail closes the burst in game).
+const DRY_ROUND = 'very short, tight and dry, no echo. No music, no voices. One single round.';
 const machineGuns = [
   ...[
-    ['mg_heavy', '.50 calibre heavy machine gun', 'a deep, heavy, chugging thump and the heavy clack of the bolt, tight and dry', 'a heavy, muffled thud through the roof armour and the dull clack of its bolt', 'a deep, hollow thump with a short echo', 600, 1.4, 0.12],
-    ['mg_rifle', '7.62 mm machine gun', 'a short, sharp, dry report and the fast mechanical clack of the action, tight', 'a dull, muffled knock through the roof armour and a quick click of its action', 'a small, hollow pop with a short echo', 400, 1.1, 0.09],
+    ['mg_heavy', '.50 calibre heavy machine gun', 'a deep, heavy report and the heavy metallic clack of the bolt', 'a heavy, muffled thud through the roof armour and the dull clack of its bolt', 'a distant, muffled, deep report and a faint heavy clack', 600, 1.4, 0.12],
+    ['mg_rifle', '7.62 mm machine gun', 'a short, sharp report and the fast mechanical clack of the action', 'a dull, muffled knock through the roof armour and a quick click of its action', 'a distant, muffled, sharp report and a faint mechanical clack', 400, 1.1, 0.09],
   ].flatMap(([id, gun, close, inside, far, metres, dur, gap]) => [
-    short(sfx(`${id}_close`, 'weapons', `Sound effect: one isolated single round fired from a ${gun}, heard beside it: ${close}, then a short outdoor echo. ${NO_MUSIC}. One single round.`, dur, { inf: 0.75, variants: 4, takes: MORE_TAKES[`${id}_close`] ?? 8, proc: 'gunshot', critic: 'mg', burst: [8, gap] })),
-    short(sfx(`${id}_own`, 'weapons', `Sound effect: one isolated single round fired from a ${gun} on a tank's roof mount, heard from the open hatch right beside it: ${close}, then a short outdoor echo. ${NO_MUSIC}. One single round.`, dur, { inf: 0.75, variants: 3, takes: MORE_TAKES[`${id}_own`] ?? 6, proc: 'gunshot', critic: 'mg', burst: [8, gap] })),
+    short(sfx(`${id}_close`, 'weapons', `Sound effect: one isolated single round fired from a ${gun}, heard beside it: ${close}, ${DRY_ROUND}`, 1, { inf: 0.75, variants: 4, takes: MORE_TAKES[`${id}_close`] ?? 8, proc: 'gunshot', critic: 'mg', burst: [8, gap] })),
+    short(sfx(`${id}_own`, 'weapons', `Sound effect: one isolated single round fired from a ${gun} on a tank's roof mount, heard from the open hatch right beside it: ${close}, ${DRY_ROUND}`, 1, { inf: 0.75, variants: 3, takes: MORE_TAKES[`${id}_own`] ?? 6, proc: 'gunshot', critic: 'mg', burst: [8, gap] })),
     short(sfx(`${id}_interior`, 'weapons', `Sound effect: heard inside a closed tank turret as the ${gun} on the roof above fires one round of a burst: ${inside}. No outside echo. ${NO_MUSIC}. One round.`, dur, { inf: 0.75, variants: 3, takes: 6, proc: 'gunshot', critic: 'interior' })),
-    short(sfx(`${id}_far`, 'weapons', `Sound effect: a ${gun} firing one round, heard about ${metres} metres away: ${far}. ${NO_MUSIC}. One round.`, 1.4, { inf: 0.7, variants: 3, takes: MORE_TAKES[`${id}_far`] ?? 5, proc: 'weapon-far', critic: 'mg' })),
+    // far off it is still heard as a burst: a round with its own echo smeared at the gun's rate (0 of 6 shipped passed)
+    short(sfx(`${id}_far`, 'weapons', `Sound effect: one isolated single round fired from a ${gun}, heard about ${metres} metres away: ${far}, short and dry, no echo. No music, no voices. One single round.`, 1, { inf: 0.7, variants: 3, takes: MORE_TAKES[`${id}_far`] ?? 16, proc: 'weapon-far', critic: 'mg', burst: [8, gap] })),
   ]),
 ];
 
@@ -176,7 +181,7 @@ const launchers = [
   short(sfx('atgm_launch', 'weapons', `Field recording of an anti-tank guided missile launched 30 metres away: the rocket motor igniting with a loud roaring rush and a long tearing hiss, the missile whooshing away and its roar fading into the distance over several seconds. ${DOCUMENTARY}`, 4, { inf: 0.6, variants: 3, takes: 12, proc: 'weapon-close', critic: 'rocket' })),
   sfx('missile_flight_loop', 'weapons', `Seamless loop of a guided missile rocket motor in flight: steady roaring hiss with a thin whistle, constant intensity. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   short(sfx('rocket_salvo', 'weapons', `Sound effect: a heavy multiple rocket launcher firing a salvo, heard 50 metres away: a rapid rippling sequence of rocket launches, each a deep thump of ignition and the tearing roar of its motor, overlapping whooshes screaming away overhead, then a rumbling fade. ${MOTOR}`, 6, { inf: 0.55, variants: 2, takes: 6, proc: 'weapon-close', critic: 'rocket-salvo' })),
-  short(sfx('rocket_salvo_far', 'weapons', `Sound effect: a heavy multiple rocket launcher firing a salvo about two kilometres away: a long rippling rumble of distant launches and the fading roar of the rockets' motors across the sky, no crack. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 2, takes: 4, proc: 'weapon-far', critic: 'rocket-salvo' })),
+  short(sfx('rocket_salvo_far', 'weapons', `Sound effect: far off, about two kilometres away, a heavy multiple rocket launcher firing a salvo: a long rolling roar of rocket motors rushing across the sky one after another, rumbling and fading. ${FLIGHT}`, 6, { inf: 0.6, variants: 2, takes: 8, proc: 'weapon-far', critic: 'rocket-salvo' })),
   sfx('smoke_launcher', 'weapons', `One-shot of tank smoke grenade dischargers firing: a rapid volley of four hollow pops. ${FIELD}, ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'oneshot' }),
   sfx('smoke_burst', 'weapons', `One-shot of a smoke grenade bursting in the air: soft dull pop and a billowing hiss of smoke. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 2, proc: 'oneshot' }),
 ];
@@ -781,7 +786,7 @@ const aerial = [
   sfx('gunship_flyover', 'aerial', `Sound effect: a four-engine turboprop military gunship roaring past low overhead, then banking away into a distant orbit, its engines fading. ${FIELD}, ${NO_MUSIC}.`, 6, { variants: 1, takes: 4, proc: 'oneshot', ch: 'stereo' }),
   short(sfx('gunship_30mm_own', 'weapons', `Field recording of a 30 mm cannon firing one round from the side door of a military gunship aircraft, heard inside the cabin: a hard, heavy bang and a short low boom filling the fuselage, the feed clattering and a spent link dropping. No engine noise. ${DOCUMENTARY} One round.`, 2.2, { inf: 0.7, variants: 4, takes: 12, proc: 'autocannon', critic: 'autocannon', burst: [5, 0.14] })),
   short(sfx('gunship_howitzer_own', 'weapons', `Field recording of a 105 mm howitzer firing one round inside the cargo cabin of a military gunship aircraft, like a big artillery piece going off beside you: a deafening boom in the enclosed fuselage, a blast wave slamming the chest, the gun slamming back on its mount. No engine noise. ${DOCUMENTARY}`, 4, { inf: 0.6, variants: 3, takes: 6, proc: 'cannon', critic: 'cannon' })),
-  short(sfx('gunship_missile_own', 'weapons', `Sound effect: a guided missile fired from an aircraft wing pylon, heard from inside the fuselage: a sharp ignition pop, at once the rocket motor roaring into a fierce hiss and whooshing away ahead into the distance. No engine noise. ${MOTOR}`, 3, { inf: 0.55, variants: 2, takes: 5, proc: 'weapon-close', critic: 'rocket' })),
+  short(sfx('gunship_missile_own', 'weapons', `Sound effect: a guided missile's rocket motor roaring to life on an aircraft wing pylon, heard from inside the fuselage, and streaking away ahead: a fierce rushing roar and a long tearing hiss, like a jet blasting past, the whoosh fading into the distance. No aircraft engine noise. ${FLIGHT}`, 3, { inf: 0.55, variants: 2, takes: 8, proc: 'weapon-close', critic: 'rocket' })),
   short(sfx('gunship_30mm_far', 'weapons', `Field recording of a 30 mm cannon firing one round from an aircraft circling a few hundred metres overhead, heard on the ground, like distant artillery: a deep, hollow thump from the sky with a short rolling echo. ${DOCUMENTARY} One round.`, 2.2, { inf: 0.7, variants: 3, takes: 5, proc: 'weapon-far', critic: 'cannon-far' })),
   short(sfx('gunship_howitzer_far', 'weapons', `Field recording of a howitzer fired from an aircraft circling high overhead, heard on the ground, like distant artillery: a deep, heavy boom from the sky, thunder rolling away across the land. ${DOCUMENTARY}`, 5, { inf: 0.6, variants: 2, takes: 5, proc: 'weapon-far', critic: 'cannon-far' })),
   sfx('gunship_casing_drop', 'mechanism', `One-shot of a large hot brass howitzer shell casing ejected onto the steel floor of an aircraft cabin: a heavy metallic clang, a bounce and a rolling ring. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 4, proc: 'foley' }),

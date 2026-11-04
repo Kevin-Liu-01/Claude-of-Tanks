@@ -1055,17 +1055,21 @@ crew-lines.json ─┐                    crew-voices.json
   and closed-turret version; the 125 mm's 10-02 takes were replaced with the
   rest. A local ear proxy, YAMNet
   ([audio-generation/quality.md](audio-generation/quality.md#the-ear-proxy-run-criticmjs-sfx-criticpy)),
-  judges every take by a rule written before the trial: it fails all 19 sounds
-  the owner rejected and passed the six pilot booms, and the build ships only
-  takes it passed. 102 banks were rebuilt; five ship fewer variants than their
-  slots (`mg_heavy_close` 1 of 4, `mg_heavy_own`, `mg_rifle_own` and `ac_30_own`
-  2 of 3, `gunship_30mm_own` 2 of 4). The cannon and autocannon presets are
+  judges every file the build ships, as it ships (the mastered WebM of the
+  take's cut), by a rule written before the trial: it fails all 19 sounds the
+  owner rejected and passed the six pilot booms. The build ships a file only on
+  a pass and records its verdict, take, cut and hash in
+  `tools/audio/sfx-verdicts.json` (`sfxVerdicts.selftest.mjs` binds it to the
+  bytes; the listening page reads it); the raw takes' verdicts only order the
+  candidates. 102 banks, 281 files, every bank at its full slots: the machine
+  guns as dry single rounds the engine fires at the gun's rate, the distant ones
+  judged as that burst too. The cannon and autocannon presets are
   loudness-mastered with no transient shaping; `audio-mix-balance.mjs` no longer
   caps a near cannon's energy below 100 Hz at half or wants it 8 dB down after
   a quarter second (a rolling boom measures within 3 dB); the TOS-1A's distant salvo has
   its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
   `tools/audio/layered-render.mjs` renders each row as the engine layers it.
-  41,054 credits (39,290 on judged takes, 1,764 on three prompt pilots).
+  46,330 credits, the prompt pilots on the ship path included.
 
 ### Cost
 

@@ -54,8 +54,9 @@ Single-shot assets (machine guns, autocannons, bullets, the radio key, the
 punches) are cut before a second report within 8 dB of the first, and a cut
 that leaves under 0.25 s is dropped, so fewer variants ship rather than a click.
 
-A catalog entry that names a `critic` ships only takes the ear proxy passed
-(below); with none passed the asset keeps its files and the build exits 1.
+A catalog entry that names a `critic` ships only files the ear proxy passes as
+they ship (below): the build masters a candidate's cut, judges the mastered
+WebM, and skips it on a fail; with none passed the build exits 1.
 
 ## The ear proxy (`run-critic.mjs`, `sfx-critic.py`)
 
@@ -75,9 +76,18 @@ before the trial and is in the script with its history:
 | `rocket`, `rocket-salvo` | the motor (Whoosh / Hiss / Jet engine; a salvo also Artillery fire) at least 0.05 and over every gun class |
 | `rocket-gun` | a missile through a gun: the cannon rule and its motor |
 
-A single-shot bank is judged on the cut it ships, not the raw take. The negative
-control is the 19 sounds the owner rejected on 2026-11-04: the rule fails all 19.
-The prompt pilot on the 120 mm passed 6 of 6 booms. Set it up once:
+The verdict of record is the shipped file's. `build-sfx.mjs` judges each file
+it would ship (`tools/audio/critic.mjs`) and writes its verdict, the take, the
+cut and the file's SHA-256 to `tools/audio/sfx-verdicts.json`;
+`src/audio/sfxVerdicts.selftest.mjs` fails on a shipped file without a passing
+verdict for its exact bytes, and the listening page reads the same record.
+`run-critic.mjs` judges the raw takes (a single-shot bank's on its first-report
+cut) only to order the candidates: mastering moves a verdict either way (24 of
+273 files that passed raw failed as shipped, and takes refused raw passed). The
+negative control is the 19 sounds the owner rejected on 2026-11-04: the rule
+fails all 19. The prompt pilot on the 120 mm passed 6 of 6 booms. A prompt
+pilot judged on the ship path (cut, master, judge) is the one to trust. Set it
+up once:
 
 ```bash
 uv venv --python 3.12 <venv> && uv pip install --python <venv>/bin/python ai-edge-litert numpy
@@ -114,7 +124,9 @@ its whoosh, and the owner's ear still rules.
 | A roof gun's own report is a click | The prompt asked for "a spent case tinkling on the roof": every take answered with a second event, and the first-report cut kept 90 ms | The prompt names one event; the build warns when every take is cut to a click |
 | Cannons sound like guns (owner, 2026-11-04) | "Gunshot sound effect … muzzle-blast crack" prompts, shipped 2026-10-02 to 2026-11-03, return rifle reports; scoring for an instant crack ranked them first | Boom prompts by class ([prompts.md](prompts.md#guns-what-each-class-is-the-boom-round-gun-reports-269-2026-11-04)); the ear proxy refuses a take heard as a gunshot; the `cannon` preset is loudness-mastered with no transient shaping |
 | A missile launch is all blast, no motor | Prompts that named the launch, or said "no gunshot", returned explosions with a gunshot next | The flight named, the gunshot never; the `rocket` rule needs the motor over every gun class |
-| A machine gun round is a click | "One round from a burst" returned bursts 0.08 s apart; the cut kept one period | "One isolated single round"; the critic judges the cut it ships, so a burst take that reads as a machine gun cannot pass on its raw burst |
+| A machine gun round is a click | "One round from a burst" returned bursts 0.08 s apart; the cut kept one period | "One isolated single round"; the critic judges the file it ships, so a burst take that reads as a machine gun cannot pass on its raw burst |
+| A machine gun's burst reads as single gunshots | Each round carried "a short outdoor echo": overlapped at the gun's rate the tails smear (about one take in 36 passed as shipped) | "Very short, tight and dry, no echo" (2-6 in 8); the map's tail layer closes the burst in game |
+| The page shows a failing verdict for a shipped file | The build numbered takes among those still on disk while the page looked the numbers up in the full index | One record: the build writes each shipped file's verdict and hash, the page and a selftest read it |
 | A bank ships fewer variants than its slots | Its prompt passes the ear proxy at a low rate | More takes for that bank (`MORE_TAKES`); a shortfall is listed on the listening page |
 
 When a player reports something "occasional", suspect one bad variant first:

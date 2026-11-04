@@ -43,7 +43,7 @@ const SPEED_OF_SOUND_MPS = 340;
 export const FILM_SFX: Readonly<Record<string, readonly [string, number]>> = Object.freeze({
   blast_punch_light: ['weapons', 3], blast_punch_medium: ['weapons', 3], blast_punch_heavy: ['weapons', 3],
   // every row of the calibre ladder: its close and distant banks (gun-reports-269)
-  mg_rifle_close: ['weapons', 4], mg_heavy_close: ['weapons', 1], ac_20_close: ['weapons', 4], ac_25_close: ['weapons', 4], ac_30_close: ['weapons', 4],
+  mg_rifle_close: ['weapons', 4], mg_heavy_close: ['weapons', 4], ac_20_close: ['weapons', 4], ac_25_close: ['weapons', 4], ac_30_close: ['weapons', 4],
   ac_35_close: ['weapons', 4], ac_40_close: ['weapons', 4], ac_50_close: ['weapons', 4], gun_76_close: ['weapons', 3], gun_84_close: ['weapons', 3],
   gun_90_close: ['weapons', 3], gun_100_close: ['weapons', 3], gun_105_close: ['weapons', 3], gun_120_close: ['weapons', 3], gun_125_close: ['weapons', 3],
   gun_130_close: ['weapons', 3], gun_152h_close: ['weapons', 3], gun_165_close: ['weapons', 3], gun_170_close: ['weapons', 3], rocket_salvo: ['weapons', 2],
