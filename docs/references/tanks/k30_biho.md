@@ -3,26 +3,28 @@
 ## Current status
 
 - IDs and display names: `k30_biho`, "K30 Biho" (`src/vehicles/tankLabels.ts`); fleet group `k30Biho`.
-- Updated: 2026-11-03 (release 269, registrar R0).
+- Updated: 2026-11-03 (release 269, builder K after the registrar R0).
 - Owner request: "also add the Japanese type 87 SPAAG, UK Marksman, LVKV 9040 (swedish), K30 Bi Ho (korea), PZA Loara (poland)" (2026-11-03, with photographs of the Type 87, the Finnish T-55 Marksman, the Lvkv 9040 and the Loara), then the Leopard 2 Marksman ("produced in 2014 and 15 and started its service in 2016 under the designation ItPsv Leopard 2"); the coordinator settled six new playable ids, nothing existing changes, each built on its real
   base vehicle by composing on the fleet relative's own builders.
-- Implementation status: REGISTERED WITH A PLACEHOLDER BUILD. Every shared table carries the id; the build is the
-  registrar's placeholder (the fleet has no K200, so the ROK Army's BMP-3 hull and running gear (`profiles/afvFamily.ts`) stand in under a box turret with one 30 mm barrel on each side), which builder K replaces with measured geometry in the group files.
-- Qualification status: NOT RUN (placeholder geometry). Photographic qualification (a dated packet under
-  `docs/references/photos/`, registered in `tools/photo-reference-policy.mjs`, with a fixture selftest) is owed once the
-  real build exists: the packet needs the as-built envelope.
-- Publication status: not published; worktree `~/cot-lanes/twin-aa-269`, branch `item/twin-aa-269` (from 2e24acea0c,
-  the 268 round), uncommitted.
-- Current next action: builder K authors the measured build and keeps the spatial datums in the spec file (turret and
-  gun pivots, fire axes, turret plates, turret-local modules and crew) equal to the geometry; then the combat-anatomy
-  update, marking seats, interior fill, presentation anchors, auxiliary inventory and tank assets for this id (generated
-  tables the registrar did not write: the browser's lazy anatomy and marking-seat loaders reject an unknown group until
-  they exist).
+- Implementation status: MEASURED BUILD. The K30 Biho on a new, reusable K200-family hull (`profiles/k200HullLayout.ts`,
+  the data; `profiles/k200Hull.ts`, the builder; the K200A1 at five stations, the K30 at six), the turret and guns in
+  `profiles/k30Biho.ts` on `profiles/k30BihoLayout.ts`; the spec's hull frame (plates, modules, driver, track) is the
+  K200 hull's (`synchronizeK30BihoFrame` copies it from the layout, no longer from the BMP-3 (ROK) stand-in).
+- Qualification status: NOT RUN (photographic packet). Builder K's own checks: see "Builder K receipts" below.
+  Photographic qualification (a dated packet under `docs/references/photos/`, registered in
+  `tools/photo-reference-policy.mjs`, with a fixture selftest) is owed: the as-built envelope is 3.04 x 4.05 x 6.60 m.
+- Publication status: not published; worktree `~/cot-lanes/twin-aa-269`, branch `item/twin-aa-269`, uncommitted.
+- Current next action: the coordinator's changed-only regeneration for this id (combat anatomy, marking seats, interior
+  fill, presentation anchors, auxiliary inventory, tank assets), then the photographic packet.
 
 ## Scope and preservation
 
 - Mode: new photographic id (real vehicle, no 3D source), release 269, the second air-defence round.
-- Owned files (builder K after the registrar): `src/vehicles/k30BihoSpecs.ts`, `src/vehicles/profiles/k30Biho.ts` (and new files beside it: the K200-family hull in its own module, written so a K200 or K242 could use it later), this packet.
+- Owned files (builder K after the registrar): `src/vehicles/k30BihoSpecs.ts`, `src/vehicles/profiles/k30Biho.ts`,
+  `src/vehicles/profiles/k30BihoLayout.ts`, `src/vehicles/profiles/k30Biho.selftest.mjs`, the K200-family hull
+  (`src/vehicles/profiles/k200HullLayout.ts`, `src/vehicles/profiles/k200Hull.ts`: `k200HullLayout(5)` is the
+  K200A1 for a later K200 or K242, `K30_HULL` the K30's), this packet. The hull reuses the fleet's running gear
+  (`KIT.buildRunningGear`) and the PGZ chassis' `convexBody` unchanged.
 - Shared tables the registrar wrote (the builders do not edit them): fleet manifest, factory loader, registration (and its
   frame-synchronisation hook, which hands the spec the base vehicle's final hull frame after every registration-time
   pass), eager procedurals, fleet order, taxonomy, facets, role profiles, labels, wheel sets, track patterns, marking
@@ -52,7 +54,7 @@ radar on a mast over the turret, the EO tracking sensor, crew hatches; the ROK f
 | Speed / range | 65 km/h (the brief's 60) / 500 km | en.wikipedia |
 | Production | 176; in service from 1999 | en.wikipedia |
 
-## Registration numbers (combat rows are final-intent; spatial datums are the placeholder's)
+## Registration numbers (the registrar's combat rows, kept)
 
 | Field | Value | Basis |
 | --- | --- | --- |
@@ -62,15 +64,54 @@ radar on a mast over the turret, the EO tracking sensor, crew hatches; the ROK f
 | Speed, reverse, traverse | 65 / 20 km/h / 46 and 70 deg/s authored | en.wikipedia |
 | Gun arc | -10 / +85 degrees, 50 deg/s | ARMSNET |
 | 30 mm | APDS-T 125/112/100 mm, 52 dmg, 1,120 m/s, 300 rounds; HEI-T (HE channel) 48 dmg, 1,080 m/s, 300 rounds; 0.30 s; sound `mk30-2` | the 2K22M Tunguska-M's 30 mm rows (the BMPT twin 2A42 package at tier V); the 600 rounds split evenly |
-| Dimensions | hull and overall 6.77 m, width 3.00 m, height 4.05 m (radar up) | en.wikipedia |
-| Fire axes | twin, x = +/-1.10 m; muzzles 2.60 m ahead of the trunnion (placeholder) | |
-| Turret | box 1.90 x 0.85 x 2.40 m, 15/20 mm (on the stand-in hull) | placeholder |
-| Crew | driver (hull), gunner, commander and radar operator (turret) | |
-| Paint | spec coat and stock: `sig_k2`, the K2's ROK woodland (green, black and brown), the photographs' four-colour coat's closest | no new paint |
+| Hull armour | glacis 33 mm (KE/CE 70), lower 26 (56), sides 17 (36), rear 16 (32), roof 6 (12) | the BMP-3 (ROK)'s balanced values the stand-in carried, kept for the K200A1's spaced steel on aluminium (12.7 mm AP proof) |
+| Turret armour | 15 mm (KE 15, CE 20) | the registrar's |
+| Paint | spec coat and stock: `sig_k2`, the K2's ROK woodland (green, black and brown) | no new paint |
 | Marking | hull left anchor, number "312" (photo 01) | |
-| Wheels / track | South Korea's IFV rule (the K1A1 wheel the Korean IFV hulls draw; no exception); the compact IFV track (`trackPatterns.ts`) | |
+| Wheels / track | South Korea's IFV rule (the K1A1 wheel); the compact IFV track (`trackPatterns.ts`) | registrar |
 | Audio | `diesel_ifv` | |
-| View / camouflage | 440 m, 0.245 / 0.215 | |
+
+## Measured numbers (builder K)
+
+Scale: photograph 07 (a square telephoto side view of the left flank) at 4.07 mm a pixel, from the track's 152 mm
+pitch (37.4 px, autocorrelated over the lower run). Cross-checks: the road wheels 0.63 m over the tyres (published
+610 mm), the roof 1.85 m (the K200's published "hull top, front" 1.83 m), the raised antenna's top 4.05 m (published).
+A soldier on the roof reads short at this scale (about 1.6 m, stepping up); the published 6.77 m length would need
+4.28 mm a pixel, which makes the wheels 0.66 m and the turret 4.2 m tall with the radar up, so the build keeps 4.07.
+
+| Datum | Value | From |
+| --- | --- | --- |
+| Hull (trim vane's face to rear plate) | 6.43 m = the K200A1's 5.49 m + one 0.94 m station bay | photo 07, x 65 to 1645 |
+| Overall length | 6.60 m (tail-light guards, tow eyes); published 6.77 m: CONFLICT, 3 % short | photo 07 |
+| Width | 2.96 m over the sponsons, 3.00 m over the skirts (published 3.0 m) | published |
+| Roof / sponson underside / skirt bottom / belly | 1.85 / 1.16 / 0.835 / 0.41 m | photo 07; belly the published clearance |
+| Glacis | 1.12 m long, 23 degrees, the nose at 1.40 m; lower plate raked 31 degrees | photo 07 |
+| Road wheels (behind the bow) | 1.351, 2.039, 2.946, 3.724, 4.481, 5.262 m; 0.62 m dual, no return rollers | photo 07 hubs |
+| Sprocket / idler | 0.602 m (front, r 0.27 at 0.67 m) / 5.991 m (rear, r 0.25 at 0.60 m) | photo 07 |
+| Track | 0.38 m (published 381 mm), lane 1.26 m off the centreline | published |
+| Turret ring | 1.20 m aft of the hull's middle, at the roof | photo 07, the turret body's middle |
+| Turret | 2.89 m long (front body to rear face; 3.45 m with the basket), roof 1.09 m over the ring (2.94 m) | photo 07 |
+| Central front body / rear body | 1.28 m wide / 1.90 m at the shoulder over a 1.40 m set-in base | photo 01 ratios (405 x 215 px) |
+| Gun housings | 1.09 m long, 0.80 m tall, 0.285 m wide, elevating with the guns (photo 02) | photos 07, 01 |
+| Bores | 0.60 m over the ring (2.45 m over the ground), 1.51 m apart (photo 01: 1.46 m), muzzles 2.70 m ahead of the trunnion | photos 07, 01 |
+| TPS-830K antenna | 1.50 x 0.54 m reflector, IFF box at 4.05 m | photos 01, 08; published height |
+| EOTS head | 0.42 m wide on the front deck, window sloped 39 degrees | photos 01, 04 |
+
+## Builder K receipts (2026-11-03)
+
+`src/vehicles/profiles/k30Biho.selftest.mjs` holds the layout, the datums, the bores, the envelope, the guns' clearance to
+the turret (2 cm) and the hull (2.5 cm, every 5 degrees of yaw and pitch) and the turret's to the hull. Evidence (renders,
+logs, comparison sheets) in `~/cot-lanes/twin-aa-269-evidence/K/`.
+
+| Check | Result |
+| --- | --- |
+| `k30Biho.selftest.mjs` | PASS: envelope 3.04 x 4.05 x 6.60 m; guns to turret 0.025 m; turret to hull >= 0.08 m at every 5 degrees of yaw; guns to hull 0.050 m over yaw 0-180 and -10 to +85 degrees (worst yaw 0, +75: the housings' rear arc over the roof) |
+| Contact probe (`.qa-dev/contactprobe.mjs`) | PASS: 0 floating, 0 clipping |
+| Roof pockets (`tools/roof-pocket-census.mjs`) | PASS: none |
+| Gun line (`tools/gun-junction-census.mjs`) | PASS: CLOSED, 2 mouths, 3 poses |
+| Internal placement (`internalPlacement.selftest.mjs` checks on this id) | PASS: 4 sided stations, no ring crossings, volumes inside the armour, no overlaps (the fleet run fails only on `marksman_t55` and `itpsv_leopard2`, builder M's) |
+| Selftests naming the id | PASS: vehicleFacets, afvBalance, camoCatalogProductionIndices, vehicleAudioProfiles, ammunitionFlow, nationWheelSets, recoilRig |
+| Geometry digest (`.qa-dev/geodigest2.mjs`) | only `k30_biho` moved (24,507 to 19,252 triangles); `bmp3_rok`, `bmp3`, `pgz95`, `pgz09`, `k21`, `k1a1`, `k1e1`, `k2_black_panther`, `k2b` byte-identical to the registrar's after-digest |
 
 ## Photographic references
 
@@ -87,13 +128,10 @@ Saved under `~/cot-lanes/twin-aa-269-evidence/photos/k30/` (comparison only; nev
 | 07 | [Stinger Live Fire conducted at Daecheon Range for Freedom Shield 2026 260319-A-QD713-1241.jpg](https://commons.wikimedia.org/wiki/File:Stinger_Live_Fire_conducted_at_Daecheon_Range_for_Freedom_Shield_2026_260319-A-QD713-1241.jpg) | Spc. Jakaiyah Rumedon | Public domain | 2026-03-18 |
 | 08 | [2013.10.1 건군 제65주년 국군의 날 행사 The celebration ceremony for the 65th Anniversary of ROK Armed Forces (10078326986).jpg](https://commons.wikimedia.org/wiki/File:2013.10.1_%EA%B1%B4%EA%B5%B0_%EC%A0%9C65%EC%A3%BC%EB%85%84_%EA%B5%AD%EA%B5%B0%EC%9D%98_%EB%82%A0_%ED%96%89%EC%82%AC_The_celebration_ceremony_for_the_65th_Anniversary_of_ROK_Armed_Forces_(10078326986).jpg) | 대한민국 국군 Republic of Korea Armed Forces | CC BY-SA 2.0 | 2013-09-17 |
 
-## Construction work order (builder K)
+## Construction work order (remaining)
 
-- Replace the placeholder with the measured build on the base vehicle's own hull and running-gear builders (default-off
-  options only, every sharing id byte-identical by digest); keep the spec's turret and gun pivots, fire axes
-  (`gun.muzzles`), turret plates, turret-local modules and crew boxes equal to the geometry.
-- Clear the guns, radars and fittings through the whole pitch range at every yaw (a clearance probe in the group's own
-  selftest, as `profiles/chineseAirDefense.selftest.mjs`).
-- Write the K200-family hull new (six road wheels, the K200A1 lengthened by one station) in its own module; the frame hook in `k30BihoSpecs.ts` then copies the stand-in hull's frame and must be replaced by the K200 hull's own records.
-- Then the generated tables for this id: combat anatomy (`npm run tank:anatomy:update` and `check`), marking seats,
-  interior fill, presentation anchors, auxiliary inventory, tank assets; and the photographic packet registration.
+- Generated tables for this id (coordinator, changed-only regeneration): combat anatomy (`npm run tank:anatomy:update`
+  and `check`), marking seats, interior fill, presentation anchors, auxiliary inventory, tank assets; then the
+  photographic packet registration.
+- Photographs that would settle the open numbers: a square front view (the turret's and the antenna's widths), a top
+  view (the turret's plan and the roof hatches), a rear view (the ramp and the rear stowage, the published length).
