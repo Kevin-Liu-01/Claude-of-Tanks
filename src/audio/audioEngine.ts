@@ -1909,12 +1909,6 @@ export function createAudio({
         };
         tanks.set(entity.id, info);
       }
-      const gun = entity.spec?.gun ?? null;
-      if (info.gun !== gun) {
-        info.gun = gun;
-        info.mounts = weaponMounts(gun);
-        if (entity.isPlayer) preloadOwnWeapons(info);
-      }
       info.team = String(entity.team ?? info.team);
       info.isPlayer = !!entity.isPlayer;
       const specId = String(entity.specId ?? entity.spec?.id ?? '');
@@ -1922,6 +1916,14 @@ export function createAudio({
       const vehicleChanged = info.nation !== nation || info.specId !== specId;
       info.specId = specId;
       info.nation = nation;
+      // our own banks follow the new hull's loaders and stations, so its spec is recorded first
+      const gun = entity.spec?.gun ?? null;
+      const gunChanged = info.gun !== gun;
+      if (gunChanged) {
+        info.gun = gun;
+        info.mounts = weaponMounts(gun);
+      }
+      if (entity.isPlayer && (gunChanged || vehicleChanged)) preloadOwnWeapons(info);
       info.pos = p;
       if (dt > 1e-4) {
         const k = clamp(dt / 0.15, 0, 1);

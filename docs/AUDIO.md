@@ -1056,14 +1056,14 @@ crew-lines.json ─┐                    crew-voices.json
   ([audio-generation/quality.md](audio-generation/quality.md#the-ear-proxy-run-criticmjs-sfx-criticpy)),
   judges every take by a rule written before the trial: it fails all 19 sounds
   the owner rejected and passed the six pilot booms, and the build ships only
-  takes it passed. 102 banks were rebuilt; four ship fewer variants than their
-  slots (`mg_heavy_close` 1 of 4, `mg_heavy_own` and `mg_rifle_own` 2 of 3,
-  `gunship_30mm_own` 2 of 4). The cannon and autocannon presets are
+  takes it passed. 102 banks were rebuilt; five ship fewer variants than their
+  slots (`mg_heavy_close` 1 of 4, `mg_heavy_own`, `mg_rifle_own` and `ac_30_own`
+  2 of 3, `gunship_30mm_own` 2 of 4). The cannon and autocannon presets are
   loudness-mastered with no transient shaping; `audio-mix-balance.mjs` no longer
   caps a near cannon's energy below 100 Hz at half; the TOS-1A's distant salvo has
   its own bank (`rocket_salvo_far`, `gun_far_heavy` retired);
   `tools/audio/layered-render.mjs` renders each row as the engine layers it.
-  40,592 credits (38,828 on judged takes, 1,764 on three prompt pilots).
+  41,054 credits (39,290 on judged takes, 1,764 on three prompt pilots).
 
 ### Cost
 

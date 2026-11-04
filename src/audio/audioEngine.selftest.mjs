@@ -717,4 +717,16 @@ else globalThis.localStorage = priorStorage;
   audio.update(1 / 60, listener, tanks);
   ctx.advance(0.3);
 }
+{
+  // A change of hull under the same entity (gun-reports-269): our own banks follow the new hull's loaders and stations,
+  // read from its spec (the T-72B3M's roof carries a 12.7 mm, the AbramsX's a 30 mm cannon).
+  const swapped = { ...tank('me', { isPlayer: true, specId: 'abramsx', nation: 'USA' }), state: me.state };
+  audio.update(1 / 60, listener, [swapped, ally, foe, farFoe]);
+  await probe.libraryIdle();
+  ctx.advance(0.3);
+  since = mark();
+  bus.emit('auxiliary:fired', { id: 'me', x: 0, y: 2.5, z: 0, caliberMm: 30 });
+  names = logSince(since).map((e) => e.n);
+  assert.ok(names.includes('ac_30_own'), `after a change of hull our new roof cannon plays its own report (${names})`);
+}
 console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);
