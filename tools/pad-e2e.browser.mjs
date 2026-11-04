@@ -5,8 +5,8 @@
 // page (an emulated landscape phone with touch) pair with a code from Settings › Controls, then synthetic
 // deviceorientation and touch events drive a tank in a solo battle — steer, throttle, aim, scope, ammunition, fire,
 // pause — and the stale fail-safe stops the tank when the phone vanishes; the first pairing's controls guide shows over
-// the live panel and leaves by itself or on Skip, a thumb on fire drags to aim, and the battle's cues reach the phone as
-// buzzes (a shot felt once, the gun loaded). It records:
+// the live panel and on the game screen together, and leaves both by itself or on either side's Skip; a thumb on fire
+// drags to aim, and the battle's cues reach the phone as buzzes (a shot felt once, the gun loaded). It records:
 //   - the network log: no request reaches the pad service, and no pad module loads, before Connect Phone is pressed;
 //     the signaling socket's frames once the data channel is live (signaling only, no input);
 //   - steering latency (the phone's event → the first desktop animation frame whose player input carries it, both
@@ -191,6 +191,18 @@ try {
   await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
   check('the first pairing shows the controls\' guide over the live panel, and a thumb works through it',
     guide.shown && guide.marks >= 4 && guide.through, `${guide.marks} marks: ${guide.names.join(' · ')}`);
+  // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over Settings
+  const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
+  await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  const screenGuide = await desktop.evaluate(() => {
+    const root = document.querySelector('.cot-pad-tour');
+    return { open: !!root?.classList.contains('is-open'), top: !!root?.matches(':popover-open'),
+      rings: root?.querySelectorAll('.cot-pad-tour-ring').length ?? 0, parts: root?.querySelectorAll('.cot-pad-tour-part').length ?? 0,
+      names: [...(root?.querySelectorAll('.cot-pad-tour-name') ?? [])].map((name) => name.textContent) };
+  });
+  await desktop.screenshot({ path: resolve(outDir, 'desktop-guide.png') });
+  check('the game screen shows the same guide at the same time, over Settings', screenGuide.open && screenGuide.top
+    && screenGuide.rings === guide.marks && screenGuide.parts >= 10, `${screenGuide.parts} controls, ${screenGuide.rings} rings: ${screenGuide.names.join(' · ')}`);
   report.network.phonePageRequests = phoneRequests.length;
   report.network.phoneGameModules = phoneRequests.filter((url) => /\/src\/(main|game|sim|engine|vehicles|world)\//.test(url) || url.includes('/src/main.ts')).length;
   check('the phone page loads none of the game', report.network.phoneGameModules === 0, `${phoneRequests.length} requests`);
@@ -216,15 +228,27 @@ try {
   check('the sight\'s lock key is on the phone in a solo battle', await phone.$eval('.pad-lock', (el) => !el.hidden));
   // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
   await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'timeout', { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) }).catch(() => {});
-  check('the guide leaves by itself after ten seconds', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'timeout' && document.querySelector('.pad-tour').hidden),
-    `${((Date.now() - guideShownAt) / 1000).toFixed(1)} s after it showed`);
+  check('the guide leaves both screens by itself after ten seconds', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'timeout'
+    && document.querySelector('.pad-tour').hidden) && !(await screenGuideOpen()), `${((Date.now() - guideShownAt) / 1000).toFixed(1)} s after it showed`);
   await phone.tap('[data-menu]');
   await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
   await phone.tap('.pad-opts [data-tour]');
   await phone.waitForFunction(() => !document.querySelector('.pad-tour').hidden, { timeout: 5000 }).catch(() => {});
+  await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  const replayedOnScreen = await screenGuideOpen();
   await phone.tap('.pad-tour-skip');
   await phone.waitForFunction(() => document.querySelector('.pad-tour').hidden, { timeout: 5000 }).catch(() => {});
-  check('Options shows the guide again, and Skip ends it', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'skipped'));
+  await desktop.waitForFunction(() => !document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  check('Options shows the guide again on both screens, and Skip on the phone ends it on both', replayedOnScreen
+    && await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'skipped') && !(await screenGuideOpen()));
+  await phone.tap('[data-menu]');
+  await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
+  await phone.tap('.pad-opts [data-tour]');
+  await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  await desktop.click('.cot-pad-tour-skip').catch(() => {});
+  await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'screen', { timeout: 5000 }).catch(() => {});
+  check('Skip on the game screen ends the guide on the phone too', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'screen'
+    && document.querySelector('.pad-tour').hidden) && !(await screenGuideOpen()));
   deadline();
 
   const player = (expr) => desktop.evaluate(new Function(`const p = window.__DEBUG.game.player; return (${expr});`));

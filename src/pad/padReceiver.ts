@@ -11,6 +11,7 @@ import type { PadInputPort } from './padInput.ts';
 import { PAD_STALE_MS, decodePadAxes } from './padProtocol.ts';
 import type { PadAxes, PadStatus } from './padProtocol.ts';
 import { PAD_CUE_EVENTS, padCueOf } from './padCues.ts';
+import { showPadTour } from './padTourScreen.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 
 /** The local player as the receiver reads it (the battle entity's fields the phone shows). */
@@ -141,6 +142,8 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   let applyMs = 0;
   let pendingApplyAt = -1;
   let frames = 0;
+  /** The phone's controls guide on the game screen, while it shows (padTourScreen.ts). */
+  let hideTour: (() => void) | null = null;
   /** The phone drives only in a battle, unpaused, with this tab shown: anywhere else its holds are let go and its
    *  frames and presses wait (its pause button still works, to close the menu it opened). */
   let driving = false;
@@ -197,6 +200,12 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
     onCtl(message) {
       if (message.k === 'ping') link.sendCtl({ k: 'pong', t: message.t, d: performance.now(), apply: Math.round(applyMs * 10) / 10 });
       else if (message.k === 'pong') publish({ rttMs: Math.max(0, performance.now() - message.t) });
+      else if (message.k === 'tour') {
+        // the phone's guide opens here too, battle or not; Skip here ends it on the phone
+        hideTour?.();
+        hideTour = message.on && message.layout
+          ? showPadTour(message.layout, () => { hideTour = null; link.sendCtl({ k: 'tour', on: false }); }) : null;
+      }
       else if (message.k === 'pause' || (driving && message.k !== 'status')) mapper.applyCtl(message);
     },
   });
@@ -244,6 +253,8 @@ export function startPadReceiver(serviceUrl: string, ports: PadReceiverPorts, re
   function stop(): void {
     clearInterval(timer);
     for (const off of unlisten.splice(0)) off();
+    hideTour?.();
+    hideTour = null;
     mapper.releaseAll();
   }
 

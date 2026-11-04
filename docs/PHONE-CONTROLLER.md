@@ -170,6 +170,20 @@ throttle and the sight. The thumbs work through it (no pointer events but Skip's
 running out under Skip, ends it; Options shows it again. The marks are placed in the frame's own layout, so they turn
 with it, and each name takes the first side with room, clear of the other controls and names.
 
+The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
+the phone"), because the big screen is where the player looks:
+
+- With the guide the phone sends its picture of itself on `ctl` (`tour`, `PadTourLayout`): its frame, every control's
+  box (as outlines: keys, round keys, dials, the lever, the sight, the trigger), each stop's ring and where its name
+  sits, in whole frame px (a full panel is about 700 characters; a ctl message holds 2,048).
+- The receiver draws it (`src/pad/padTourScreen.ts`, in the receiver's lazy chunk): the phone in outline at the foot of
+  the screen, up to 720 px wide, each name in the game screen's own language where the phone put its own, the same
+  ghost strokes, and Skip with the ten seconds running out under it. It stands in the top layer (a manual popover, as
+  the kit's hover tip does), so it shows over Settings, where a phone pairs, and over the couch lobby. It takes no input
+  but Skip.
+- Skip on either side, or the ten seconds, ends it on both (`tour` with `on: false`; an ending is never echoed). A couch
+  lobby shows one at a time: a newer phone's guide replaces the one showing.
+
 ### Locked landscape
 
 iOS Safari has no orientation lock (`screen.orientation.lock` is unsupported and the manifest's orientation is ignored),
@@ -258,8 +272,8 @@ a battle, while paused and while its tab is hidden (the pause button still works
 - `tools/pad-e2e.browser.mjs`: two pages pair through the LAN helper, synthetic orientation and touch events drive a tank
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
   pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
-  shows on the first pairing, a thumb works through it, it leaves by itself after ten seconds, Options shows it again
-  and Skip ends it), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
+  shows on the first pairing on the phone and on the game screen together, a thumb works through it, it leaves both by
+  itself after ten seconds, Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
   on fire dragging to aim while the gun loads, and the loaded buzz.
 - `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
 - iOS Simulator for the pad page: the locked frame at every rotation, two-finger presses against a Node desktop that logs

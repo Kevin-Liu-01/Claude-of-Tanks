@@ -229,6 +229,23 @@ export const PAD_CUES = [
 ] as const;
 export type PadCue = (typeof PAD_CUES)[number];
 
+/** The controls guide's picture of the phone (phone → desktop while the guide shows, so the game screen shows it too):
+ *  the phone's frame, every control's box in it, and the guide's stops, each with its ring and where its name sits.
+ *  Whole frame px; the desktop names each stop in its own language. */
+export const PAD_TOUR_PARTS = ['chip', 'key', 'round', 'dial', 'lever', 'sight', 'fire'] as const;
+export const PAD_TOUR_STOPS = ['tilt', 'throttle', 'stick', 'aim', 'fire', 'scope', 'lock'] as const;
+export type PadTourPart = (typeof PAD_TOUR_PARTS)[number];
+export type PadTourStop = (typeof PAD_TOUR_STOPS)[number];
+export interface PadTourLayout {
+  w: number;
+  h: number;
+  /** [kind, x, y, w, h]. */
+  parts: Array<[PadTourPart, number, number, number, number]>;
+  /** [stop, x, y, w, h (its ring's box), its name's centre x, y, ring (0 square, 1 round, 2 none), ghost stroke (0 none,
+   *  1 across, 2 up and down)]. */
+  stops: Array<[PadTourStop, number, number, number, number, number, number, number, number]>;
+}
+
 /** A shell slot as the phone shows it: the type's code as every locale prints it (AP, APCR, HE, HEAT, HESH, ATGM…;
  *  src/ui/shellLabels.ts shellTypeCode), its glyph's sprite id (shellIcons.ts) and the rounds left. The desktop resolves
  *  both, so the phone's page loads neither table. */
@@ -272,11 +289,26 @@ export type PadCtlMessage =
   | { k: 'pong'; t: number; d: number; apply: number }
   | { k: 'status'; s: PadStatus }
   /** `m`: the cue's strength, 0..1 (a heavier gun, a deeper hit, a harder crash). */
-  | { k: 'cue'; c: PadCue; m?: number };
+  | { k: 'cue'; c: PadCue; m?: number }
+  /** The controls guide opened (with the phone's picture) or ended, on either side: Skip on one ends it on both. */
+  | { k: 'tour'; on: boolean; layout?: PadTourLayout };
 
 const HOLDS = new Set<string>(PAD_HOLD_ACTIONS);
 const TAPS = new Set<string>(PAD_TAP_ACTIONS);
 const CUES = new Set<string>(PAD_CUES);
+const TOUR_PARTS = new Set<string>(PAD_TOUR_PARTS);
+const TOUR_STOPS = new Set<string>(PAD_TOUR_STOPS);
+const framePx = (value: unknown): boolean => Number.isInteger(value) && (value as number) >= -4096 && (value as number) <= 8192;
+
+function isTourLayout(value: unknown): value is PadTourLayout {
+  if (!value || typeof value !== 'object') return false;
+  const layout = value as Record<string, unknown>;
+  return framePx(layout.w) && framePx(layout.h) && (layout.w as number) > 0 && (layout.h as number) > 0
+    && Array.isArray(layout.parts) && layout.parts.length <= 40 && layout.parts.every((part) => Array.isArray(part) && part.length === 5
+      && TOUR_PARTS.has(part[0]) && part.slice(1).every(framePx))
+    && Array.isArray(layout.stops) && layout.stops.length <= PAD_TOUR_STOPS.length && layout.stops.every((stop) => Array.isArray(stop)
+      && stop.length === 9 && TOUR_STOPS.has(stop[0]) && stop.slice(1).every(framePx) && stop[7] <= 2 && stop[8] <= 2);
+}
 
 export function readPadCtl(text: string): PadCtlMessage | null {
   if (typeof text !== 'string' || text.length > 2048) return null;
@@ -298,6 +330,10 @@ export function readPadCtl(text: string): PadCtlMessage | null {
       if (typeof record.c !== 'string' || !CUES.has(record.c)) return null;
       return Number.isFinite(record.m) ? { k: 'cue', c: record.c as PadCue, m: Math.max(0, Math.min(1, Number(record.m))) }
         : { k: 'cue', c: record.c as PadCue };
+    case 'tour':
+      if (typeof record.on !== 'boolean') return null;
+      if (record.layout === undefined) return { k: 'tour', on: record.on };
+      return record.on && isTourLayout(record.layout) ? { k: 'tour', on: true, layout: record.layout } : null;
     default: return null;
   }
 }

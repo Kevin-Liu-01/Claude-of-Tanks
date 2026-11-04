@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   PAD_AXES_BYTES, PAD_CODE_ALPHABET, decodePadAxes, encodePadAxes, formatPadCode, padAxesFromRelay, padAxesToRelay,
-  padPageUrl, padSeqNewer, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
+  PAD_TOUR_PARTS, PAD_TOUR_STOPS, padPageUrl, padSeqNewer, parsePadRoute, readPadClientMessage, readPadCtl, readPadHostMessage,
 } from './padProtocol.ts';
 import { resolvePadServiceUrl } from './padEndpoint.ts';
 import { OFFICIAL_ROOMS_URL, OFFICIAL_SITE_HOST } from '../officialHost.ts';
@@ -51,6 +51,24 @@ assert.deepEqual(readPadCtl('{"k":"down","a":"fire","s":70000}'), { k: 'down', a
 assert.equal(readPadCtl('{"k":"down","a":"leaveBattle","s":1}'), null, 'only the phone\'s hold actions');
 assert.equal(readPadCtl('{"k":"tap","a":"settingsMenu"}'), null, 'only the phone\'s tap actions');
 assert.equal(readPadCtl('{"k":"down","a":"fire"}'), null, 'a hold names its seq');
+
+// the controls guide's picture of the phone: the game screen draws it, so it crosses the wire whole or not at all
+{
+  const layout = { w: 812, h: 366, parts: [['key', 400, 0, 48, 48], ['fire', 700, 250, 104, 104]],
+    stops: [['fire', 700, 250, 104, 104, 752, 302, 1, 0], ['aim', 500, 60, 300, 300, 650, 80, 2, 1]] };
+  assert.deepEqual(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout })), { k: 'tour', on: true, layout });
+  assert.deepEqual(readPadCtl('{"k":"tour","on":false}'), { k: 'tour', on: false }, 'an ending carries no picture');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, parts: [['tank', 0, 0, 1, 1]] } })), null, 'an unknown part');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, stops: [['brake', 0, 0, 1, 1, 0, 0, 0, 0]] } })), null, 'an unknown stop');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, w: 0 } })), null, 'an empty frame');
+  assert.equal(readPadCtl(JSON.stringify({ k: 'tour', on: true, layout: { ...layout, parts: [['key', 1.5, 0, 1, 1]] } })), null, 'whole px only');
+  assert.equal(readPadCtl('{"k":"tour"}'), null);
+  // the largest picture a panel draws (every part kind on a big tablet frame, every stop) still fits one ctl message
+  const parts = Array.from({ length: 24 }, (_, i) => [PAD_TOUR_PARTS[i % PAD_TOUR_PARTS.length], 1999, 1999, 1999, 1999]);
+  const stops = PAD_TOUR_STOPS.map((stop) => [stop, 1999, 1999, 1999, 1999, 1999, 1999, 2, 2]);
+  const big = JSON.stringify({ k: 'tour', on: true, layout: { w: 2732, h: 2048, parts, stops } });
+  assert.ok(readPadCtl(big), `the biggest picture fits a ctl message (${big.length} chars)`);
+}
 const status = { battle: true, alive: true, paused: false, sniper: false, slot: 1, shells: [{ type: 'AP', icon: 'shellAp', count: 30 }], reloadS: 1.2, reloadTotalS: 6 };
 assert.deepEqual(readPadCtl(JSON.stringify({ k: 'status', s: status })), { k: 'status', s: status });
 assert.equal(readPadCtl(JSON.stringify({ k: 'status', s: { ...status, shells: 'AP' } })), null);
@@ -98,4 +116,4 @@ assert.equal(resolvePadServiceUrl('', 'http:', '192.168.1.20'), 'ws://192.168.1.
 assert.equal(resolvePadServiceUrl('ws://insecure.test', 'https:', OFFICIAL_SITE_HOST), OFFICIAL_ROOMS_URL, 'no ws:// from an https page');
 assert.equal(resolvePadServiceUrl('', 'https:', 'example.vercel.app'), null, 'a host with no rooms Worker has no pad service');
 
-console.log('padProtocol: PASS — routes, readers, lobby seats, the 24-byte axes frame, relay text, page address, service URL');
+console.log('padProtocol: PASS — routes, readers, the guide\'s picture, lobby seats, the 24-byte axes frame, relay text, page address, service URL');

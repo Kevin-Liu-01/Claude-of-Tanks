@@ -29,7 +29,7 @@ import type { PadBuzz } from './padCues.ts';
 import {
   PAD_FLAG_TILT, PAD_HOLD_ACTIONS, encodePadAxes, formatPadCode, normalizePadCode,
 } from './padProtocol.ts';
-import type { PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction } from './padProtocol.ts';
+import type { PadAxes, PadCue, PadHoldAction, PadStatus, PadTapAction, PadTourLayout, PadTourPart, PadTourStop } from './padProtocol.ts';
 import { padServiceUrl } from './padEndpoint.ts';
 import { t } from '../ui/i18n.ts';
 import { icon } from '../ui/icons/icon.ts';
@@ -700,10 +700,13 @@ $<HTMLButtonElement>('[data-disconnect]').addEventListener('click', () => {
 // phone pairing mode that u can skip and also disappears after like 10 seconds"): a ring on each control and its name
 // beside it, over the live panel, which the thumbs work through; Skip or ten seconds ends it, and Options shows it
 // again. The marks live in the frame, so they turn with it; their places are the controls' layout boxes in the frame.
+// The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
+// the phone"): the phone sends its picture (every control's box, the stops and where their names sit) with the guide,
+// and Skip on either side, or the ten seconds, ends it on both.
 /** A control the guide names: its ring (none for the sight, a surface the others sit on), its ghost stroke, and the
  *  sides its name may take in order (`over` is on the control itself, `inside` along its top edge). */
 interface TourStop {
-  selector: string; words: string; ring?: 'round' | 'none'; move?: 'x' | 'y';
+  id: PadTourStop; selector: string; words: string; ring?: 'round' | 'none'; move?: 'x' | 'y';
   sides: ReadonlyArray<'above' | 'below' | 'left' | 'right' | 'inside' | 'over'>;
 }
 let tourTimer: ReturnType<typeof setTimeout> | undefined;
@@ -725,14 +728,25 @@ function frameBox(element: HTMLElement): { x: number; y: number; w: number; h: n
 function tourStops(): TourStop[] {
   const tilt = settings.tilt;
   return [
-    ...(tilt ? [{ selector: '.pad-tank', words: t('pad.tour.tilt'), ring: 'round', sides: ['over'] } as const] : []),
-    { selector: '.pad-lever', words: t(tilt ? 'pad.tour.throttle' : 'pad.tour.stick'), move: 'y', sides: settings.hand === 'left' ? ['left', 'over'] : ['right', 'over'] },
-    { selector: '.pad-aim', words: t('pad.tour.aim'), ring: 'none', move: 'x', sides: ['inside'] },
-    { selector: '.pad-trigger', words: t('pad.tour.fire'), ring: 'round', sides: ['over'] },
-    { selector: '.pad-scope', words: t('pad.scope'), ring: 'round', sides: ['over', 'above'] },
-    { selector: '.pad-lock', words: t('pad.lock'), ring: 'round', sides: ['over', 'left'] },
+    ...(tilt ? [{ id: 'tilt', selector: '.pad-tank', words: t('pad.tour.tilt'), ring: 'round', sides: ['over'] } as const] : []),
+    { id: tilt ? 'throttle' : 'stick', selector: '.pad-lever', words: t(tilt ? 'pad.tour.throttle' : 'pad.tour.stick'), move: 'y',
+      sides: settings.hand === 'left' ? ['left', 'over'] : ['right', 'over'] },
+    { id: 'aim', selector: '.pad-aim', words: t('pad.tour.aim'), ring: 'none', move: 'x', sides: ['inside'] },
+    { id: 'fire', selector: '.pad-trigger', words: t('pad.tour.fire'), ring: 'round', sides: ['over'] },
+    { id: 'scope', selector: '.pad-scope', words: t('pad.scope'), ring: 'round', sides: ['over', 'above'] },
+    { id: 'lock', selector: '.pad-lock', words: t('pad.lock'), ring: 'round', sides: ['over', 'left'] },
   ];
 }
+
+/** Every control the game screen's picture of the phone draws, and its kind there. */
+const TOUR_PARTS: ReadonlyArray<readonly [string, PadTourPart]> = [
+  ['.pad-link', 'chip'], ['.pad-shell', 'key'], ['.pad-guard', 'key'], ['[data-pause]', 'key'], ['[data-menu]', 'key'],
+  ['.pad-lever', 'lever'], ['.pad-brake', 'key'], ['.pad-speedo', 'dial'], ['.pad-tank', 'dial'], ['.pad-aim', 'sight'],
+  ['.pad-look', 'key'], ['.pad-zoom', 'key'], ['.pad-scope', 'round'], ['.pad-lock', 'round'], ['.pad-trigger', 'fire'],
+];
+const shown = (element: HTMLElement): boolean => element.offsetWidth > 0 && !element.closest('[hidden]');
+/** The guide's picture as the game screen draws it (placeTour writes it). */
+let tourLayout: PadTourLayout | null = null;
 
 /** Lay the marks on their controls and each name on the first side with room (inside the frame, clear of every other
  *  control in the guide and of the names already placed), and Skip over the instruments' message line. */
@@ -741,7 +755,17 @@ function placeTour(): void {
   const width = ctl.clientWidth;
   const height = ctl.clientHeight;
   const stops = tourStops().map((stop) => ({ stop, target: ctl.querySelector<HTMLElement>(stop.selector) }))
-    .filter((entry): entry is { stop: TourStop; target: HTMLElement } => !!entry.target && entry.target.offsetWidth > 0 && !entry.target.closest('[hidden]'));
+    .filter((entry): entry is { stop: TourStop; target: HTMLElement } => !!entry.target && shown(entry.target));
+  const px = Math.round;
+  const layout: PadTourLayout = { w: px(width), h: px(height), parts: [], stops: [] };
+  tourLayout = layout;
+  for (const [selector, kind] of TOUR_PARTS) {
+    for (const part of ctl.querySelectorAll<HTMLElement>(selector)) {
+      if (!shown(part)) continue;
+      const box = frameBox(part);
+      layout.parts.push([kind, px(box.x), px(box.y), px(box.w), px(box.h)]);
+    }
+  }
   const boxes = stops.map(({ target }) => frameBox(target));
   type Box = { x: number; y: number; w: number; h: number };
   const overlaps = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -782,6 +806,8 @@ function placeTour(): void {
     const y = Math.max(0, Math.min(height - h, place.y));
     taken.push({ x, y, w, h });
     tip.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`;
+    layout.stops.push([stop.id, px(box.x), px(box.y), px(box.w), px(box.h), px(x + w / 2), px(y + h / 2),
+      stop.ring === 'round' ? 1 : stop.ring === 'none' ? 2 : 0, stop.move === 'x' ? 1 : stop.move === 'y' ? 2 : 0]);
   });
   // a ghost thumb strokes the throttle and the sight (none under reduced motion)
   for (const animation of ghostAnimations.splice(0)) animation.cancel();
@@ -804,10 +830,14 @@ function showTour(): void {
     .animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: TOUR_MS, easing: 'linear', fill: 'forwards' });
   clearTimeout(tourTimer);
   tourTimer = setTimeout(() => endTour('timeout'), TOUR_MS);
+  if (tourLayout) link?.sendCtl({ k: 'tour', on: true, layout: tourLayout });
   if (debug) debug.tour = 'shown';
 }
-function endTour(how: 'skipped' | 'timeout' | 'ended'): void {
+/** End the guide: skipped here, its time up, the pairing ended, or skipped on the game screen (`screen`). Skip and the
+ *  time running out end it on the game screen too. */
+function endTour(how: 'skipped' | 'timeout' | 'ended' | 'screen'): void {
   if (tour.hidden) return;
+  if (how === 'skipped' || how === 'timeout') link?.sendCtl({ k: 'tour', on: false });
   clearTimeout(tourTimer);
   clockAnimation?.cancel();
   for (const animation of ghostAnimations.splice(0)) animation.cancel();
@@ -1006,6 +1036,7 @@ function connect(route: { code: string } | { resume: { code: string; token: stri
     },
     onCtl(message) {
       if (message.k === 'cue') feelCue(message.c, message.m);
+      else if (message.k === 'tour') { if (!message.on) endTour('screen'); }
       else if (message.k === 'status') { paintStatus(message.s); if (!toured()) showTour(); }
       else if (message.k === 'pong') {
         rttMs = Math.max(0, performance.now() - message.t);
