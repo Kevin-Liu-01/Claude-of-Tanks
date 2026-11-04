@@ -1287,6 +1287,11 @@ export function createBattlePresentation({
           shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
         return;
+      case 'drone_down':
+        // (crew-lines-269) a roof gun brought a drone down (the authority's counter-drone strike): the crew calls its own
+        // drone lost to fire, or the enemy's that our gun downed, as the solo step raises it
+        bus.emit('drone:down', { id: payload.id, killerId: payload.killerId });
+        return;
       case 'tank_destroyed': {
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);

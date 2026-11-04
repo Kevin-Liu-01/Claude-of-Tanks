@@ -506,10 +506,11 @@ its army's register. Two parts:
 | AC-130: a missile away, a heavy round by a friendly tank, three heavy rounds then 7 s quiet, a friendly extracted | "Rifle.", "Danger close.", "Rounds complete.", "Friendly extracted." |
 
 Every one of them has its moment in `voiceTriggers.selftest.mjs`, which drives
-the engine through each mode's opening and endings too. Two of the moments
-reach only a solo battle: the network authority's `drone_down` has no case in
-the presentation, and `tank:jump` returns before its event there (the airborne
-call reads the frame, so it works in both).
+the engine through each mode's opening and endings too. A network seat hears
+the same calls: the presentation now relays the authority's `drone_down` as
+`drone:down` (it had no case and was dropped), and the jump call reads the
+frame's airborne state rather than `tank:jump`, which a network seat never
+raises.
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
 joke) is once a battle and never costs a real call. Both lines are priority-0

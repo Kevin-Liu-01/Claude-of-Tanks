@@ -257,6 +257,9 @@ assert.equal(expired.payload.hitKind, 'prop');
 assert.deepEqual(expired.payload.normal, [0, 0.2, -0.98]);
 presentation.applyEvent({ kind: 'module_state', payload: { id: 'foe', module: 'gun', state: 'red', source: 'hit' } }, { own: false, feedbackPredicted: false });
 assert.equal(busEvents.at(-1).type, 'module:state');
+// (crew-lines-269) a roof gun's counter-drone strike reaches the bus as solo raises it: the crew calls the drone it cost
+presentation.applyEvent({ kind: 'drone_down', payload: { id: 'me', killerId: 'foe' } }, { own: false, feedbackPredicted: false });
+assert.deepEqual(busEvents.at(-1), { type: 'drone:down', payload: { id: 'me', killerId: 'foe' } });
 
 // Spotting, rolling back onto the tracks and our reload reach the bus in solo play's shapes (2026-10-04): the crew's
 // spot calls, the sixth sense, the self-right and the loading machinery work in a network battle too.
