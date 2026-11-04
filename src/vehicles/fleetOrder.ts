@@ -31,6 +31,8 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   sheridan: Object.freeze([
     'm551_sheridan', 'm551a1_tts',
   ]),
+  // release 269: the 152 mm line in its design order
+  russia152: Object.freeze(['object292', 'object477_molot', 'object195', 't14_152']),
   soviet_modern_mbt: Object.freeze([
     't55a', 't62_1975', 't64bv1', 't64bv',
     ...NATIVE_VARIANT_FAMILIES.t72,

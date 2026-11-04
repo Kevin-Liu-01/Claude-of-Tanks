@@ -134,7 +134,10 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // paint their spec's coat.
 const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro'];
 // Release 266: the US M41A3 and the T49 wear the US Factory coat (the owner's 2026-10-22 rule for plain coats).
-const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley' };
+const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
+  // 269: the 152 mm line: the Soviet prototypes in the national Russian plain, the Object 195 and the T-14 152 in the
+  // T-14's Russian service digital
+  object292: 'national_ru', object477_molot: 'national_ru', object195: 'service_t90m', t14_152: 'service_t90m' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.

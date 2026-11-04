@@ -8,7 +8,7 @@
 // its mast and the first prototype's search radar and Shtandart active protection. First-party procedural geometry:
 // Kevin B. Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
 import { KIT, FITTINGS } from './kit.ts';
-import { sectionSolid } from './sectionSolid.ts';
+import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { addHullTub, addSkirtPanels, add30mmCannon } from './russia152Kit.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { OBJECT195_FRAME as F } from '../russia152Frames.ts';
@@ -95,16 +95,17 @@ function addRunningGear(P: TankBuilderPort): void {
 function addModule(P: TankBuilderPort): void {
   P.add('turret', cylY(1.02, 1.04, .14, 40), 0, .06, 0);
   // the square body: the rear tall over the autoloader's breech run, chamfered along its roof
-  P.add('turret', sectionSolid([-1.45, -1.30, .25, .95].map((z, i) => {
+  P.add('turret', sectionSolid([-1.45, -1.30, .25, .95].map((z, i): SolidSection => {
     const half = i === 0 ? 1.04 : 1.12, top = i === 0 ? .94 : 1.02, low = .10;
     return { z, ring: [[-half, low], [half, low], [half, top - .10], [half - .10, top], [-half + .10, top], [-half, top - .10]] };
   })));
   // the front face either side of the gun slot, raked back, and the slot's lintel over the cradle
+  const faces: SolidSection[] = [
+    { z: .95, ring: [[.40, .10], [1.12, .10], [1.12, .92], [.40, .92]] },
+    { z: 1.30, ring: [[.40, .14], [1.02, .14], [1.02, .66], [.40, .66]] },
+  ];
   for (const s of [-1, 1]) {
-    P.add('turret', sectionSolid([
-      { z: .95, ring: [[.40, .10], [1.12, .10], [1.12, .92], [.40, .92]] },
-      { z: 1.30, ring: [[.40, .14], [1.02, .14], [1.02, .66], [.40, .66]] },
-    ].map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
+    P.add('turret', sectionSolid(faces.map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
   }
   P.add('turret', box(.80, .26, .40), 0, .86, 1.10);
   // the gunner's sight block right of the gun: its armoured head, windows and wipers' hoods

@@ -26,6 +26,9 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/type90b-20261031.json':Object.freeze(['type90b']),
   'docs/references/photos/type10-tk-x-20261031.json':Object.freeze(['type10_tk_x']),
   'docs/references/photos/type10b-20261031.json':Object.freeze(['type10b']),
+  // 269 (DECISIONS 2026-11-04, the Russian 152 mm line): the Object 292 on the T-80BV's build, the Molot and the Object 195
+  // on their own hulls, the T-14 152 on the T-14's, none with a 3D model to follow
+  'docs/references/photos/russia-152-20261104.json':Object.freeze(['object292','object477_molot','object195','t14_152']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

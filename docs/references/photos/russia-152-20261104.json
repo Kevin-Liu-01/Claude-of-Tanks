@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "object292": {
+      "name": "Object 292",
+      "authority": "Release 269 (owner 2026-11-04, \"object 292 for a full line of 152 mm variant tanks\", with an unlabelled game render the lane matched to it; DECISIONS \"2026-11-04 Russian 152 mm line\"). The Kirov Plant (KB-3, now Spetsmash) and VNIITransmash's 1990 trials tank, one built, fired at the Rzhev range in 1991 and kept at Kubinka since 22 October 2007. Its hull is the serial T-80BV's (the Spetsmash veterans' article via GlobalSecurity; the Kubinka photographs show the Kontakt-1 stud field with no bricks, the GTD-1000TF's grille and the rubber skirts), built on the T-80BV's builder with its bricks off (profiles/t80.ts, profiles/object292.ts). Its turret is a reworked T-80 cast turret with a welded box for the LP-83 152.4 mm smoothbore and its loading mechanism (designed for the box bustle, never fitted to the prototype): raked cheek blocks, a flat-sided body and a long bustle over the engine deck. The LP-83 has no bore evacuator (photographs; GlobalSecurity: an air purge). 46 t and three crew (infobox figures).",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:Object_292_1.jpg",
+        "https://commons.wikimedia.org/wiki/File:Object_292_2.jpg",
+        "https://commons.wikimedia.org/wiki/File:Object_292_3.jpg",
+        "https://commons.wikimedia.org/wiki/File:Object_292_4.jpg",
+        "https://commons.wikimedia.org/wiki/File:Объект_292_–_Kubinka_Tank_Museum_(37944777522).jpg",
+        "https://web.archive.org/web/20100302172105/http://www.otvaga2004.narod.ru/publ_w4/031_kalibr.htm",
+        "https://www.globalsecurity.org/military/world/russia/object-292.htm",
+        "https://ru.wikipedia.org/wiki/Объект_292",
+        "https://en.wikipedia.org/wiki/Obiekt_292",
+        "https://warthunder.com/en/news/8707-development-call-of-the-dragon-object-292-en"
+      ],
+      "widthM": 3.643,
+      "overallLengthM": 10.24,
+      "tallestM": 3.68,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities): the T-80BV build's own width (its glacis shoulder returns reach 1.82 m a side; the published 3.525 m is the infobox's, unsourced), 10.24 m from the T-80BV's stern to the LP-83's muzzle (the Kubinka photographs put the muzzle about 3.5 m past the nose; no length is published), 3.68 m to the whip's tip (the welded box's roof at 2.25 m; the infobox's 2.193 m height).",
+      "caliberMm": 152,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/russia152.selftest.mjs"
+    },
+    "object477_molot": {
+      "name": "Object 477 Molot",
+      "authority": "Release 269 (owner 2026-11-04, 'Object 477 \"Molot\"', with two game images that guide the look only; DECISIONS \"2026-11-04 Russian 152 mm line\"). KhKBM Kharkiv's OKR \"Boxer\" (1986-91), coded \"Molot\" from the late 1980s, from its project leader's account (Yu. Apukhtin, topwar.ru 2018) and btvt.info (A. Tarasenko, from Apukhtin's diaries): two prototypes; a 50 t specification exceeded by several tonnes; the 6TDF-based 1,200 hp two-stroke diesel; 63 km/h on trials; three crew, the driver forward and the gunner and commander low under the turret; the Perm 152 mm smoothbore (btvt: 2A73) first mounted in the open and then cased in armour on the turret's roof; 8 ready rounds on a belt in the turret's rear fed from two hull conveyors of 32; a 30 mm cannon right of the gun; T-80UD running gear (Apukhtin: six large rubber-tyred road wheels a side, as the one photograph of a 477A shows). btvt's figures: 10,650 mm over the gun, 2,434 mm to the turret's roof, a 2,088 mm line of fire. No photograph shows the turret clearly; btvt's profile drawing and the owner's images guide its form.",
+      "sources": [
+        "https://web.archive.org/web/2019/https://topwar.ru/145734-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-1-jetapy-sozdanija-i-komponovka.html",
+        "https://web.archive.org/web/2019/https://topwar.ru/145828-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-2-vooruzhenie-podvizhnost-zaschita.html",
+        "https://btvt.info/2futureprojects/molot.htm",
+        "https://btvt.info/2futureprojects/molot.files/image012.jpg",
+        "https://gurkhan.blogspot.com/2015/06/blog-post_16.html",
+        "https://gurkhan.blogspot.com/2017/12/blog-post_7.html"
+      ],
+      "widthM": 3.578,
+      "overallLengthM": 10.825,
+      "tallestM": 3.2,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities): 3.58 m over the skirts (no width is published; the T-80UD's running gear and skirts), 10.83 m from the unditching log to the muzzle (btvt's 10.65 m over the gun is to the hull's stern plate, 1.6 % under), 3.20 m to the whips' tips (the casing's roof at btvt's 2.434 m, the line of fire at 2.088 m).",
+      "caliberMm": 152,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/russia152.selftest.mjs"
+    },
+    "object195": {
+      "name": "Object 195",
+      "authority": "Release 269 (owner 2026-11-04, \"make a new russian tank called object 195 ... because it has a 152 mm gun\"; DECISIONS \"2026-11-04 Russian 152 mm line\"). UKBTM and Uralvagonzavod's T-95 of OKR \"Sovershenstvovanie-88\": two prototypes, one driven 15,000 km and fired 287 rounds, trials stopped on 29 December 2008 (UVZ's 2020 release). The owner's first image is a 2008 conjectural profile (Commons File:Ob'yekt_195.jpg), not the tank; the owner's second image, the hangar photograph watermarked \"Gur Khan attacks!\", is the first prototype (Gur Khan, 17 October 2018; bmpd, 18 October 2018: radar and the Shtandart APS, tracks removed), and the build follows it with the second prototype's photograph (btvt) and the 2010 patent's layout: a long hull on seven T-90-type road wheels (btvt), a long shallow glacis over the three-man capsule (Khlopotov: side by side), the tall square unmanned module (Khlopotov: \"Угловатая, квадратная башня\") with the 2A83, the 30 mm 2A42 (Khlopotov) and the sights, radar and APS. 52-58 t (Gen. S. Maev), the 1,650 hp X-type diesel (UVZ).",
+      "sources": [
+        "https://gurkhan.blogspot.com/2018/10/95.html",
+        "https://bmpd.livejournal.com/3381493.html",
+        "https://btvt.info/2futureprojects/t-95.htm",
+        "https://btvt.info/2futureprojects/t-95.files/195_2.jpg",
+        "https://btvt.info/2futureprojects/t-95.files/image003.jpg",
+        "https://gurkhan.blogspot.com/2013/08/3.html",
+        "https://gurkhan.blogspot.com/2020/08/95.html",
+        "https://www.techinsider.ru/weapon/news-609883-stali-izvestny-novye-podrobnosti-o-tankah-obekt-195/",
+        "https://web.archive.org/web/2019/http://militaryrussia.ru/blog/topic-311.html"
+      ],
+      "widthM": 3.588,
+      "overallLengthM": 10.86,
+      "tallestM": 3.77,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities): 3.59 m over the skirts (militaryrussia: about 3.5 m; en.wikipedia's 3.77 m unsourced), 10.86 m from the stern's fittings to the 2A83's muzzle (militaryrussia's 7.8-8.0 m hull; the 7.9 m build hull and the 2A83 of 52-55 calibres), 3.77 m to the whips' tips (the module's roof at 2.74 m and its panoramic sight at 3.30 m; militaryrussia: about 3.1 m over the equipment).",
+      "caliberMm": 152,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": true,
+      "test": "src/vehicles/profiles/russia152.selftest.mjs"
+    },
+    "t14_152": {
+      "name": "T-14 152",
+      "authority": "Release 269 (owner 2026-11-04, \"a t14 armata with a 152 mm variannt\"; DECISIONS \"2026-11-04 Russian 152 mm line\": the existing t14_armata shell with the 2A83 turret, t14_armata unchanged). No 152 mm T-14 has been shown: the owner's second image is the Object 195 (above). Uralvagonzavod to TASS (22 August 2018): ready to build a heavy tank with a 152 mm cannon on the Armata platform; D. Rogozin (May 2015); the 38th Research Institute's proposal (TASS, 26 August 2020). The build is the T-14's own hull, running gear and turret shell (profiles/t14X.ts) with the 2A83's installation (profiles/t14_152X.ts): the trunnion 7 cm higher for the larger mantlet, a raised gun house over the breech, the 2A83's tube.",
+      "sources": [
+        "https://tass.com/defense/1018123",
+        "https://tass.com/defense/1193889",
+        "https://www.themoscowtimes.com/2015/05/14/russian-defense-official-promises-massive-new-cannon-for-armata-tanks-izvestia",
+        "https://en.wikipedia.org/wiki/T-14_Armata",
+        "https://commons.wikimedia.org/wiki/File:Alabino110416-18.jpg",
+        "https://commons.wikimedia.org/wiki/File:9may2015Moscow-06.jpg"
+      ],
+      "widthM": 3.91,
+      "overallLengthM": 11.077,
+      "tallestM": 3.768,
+      "envelopeBasis": "The as-built envelope (Box3 at both qualities): the T-14 build's own width and height (3.91 m, 3.768 m to its whips), 11.08 m from the T-14's stern lattice to the 2A83's muzzle (the T-14 build's 9.97 m with the 2A83's tube 1.1 m longer than the 2A82's, Kotsch: about one metre).",
+      "caliberMm": 152,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": true,
+      "test": "src/vehicles/profiles/russia152.selftest.mjs"
+    }
+  }
+}

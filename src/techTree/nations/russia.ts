@@ -22,6 +22,8 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     { id: 't90_late', name: 'T-90MS, Burlak and Object 695' },
     { id: 'bmp', name: 'BMP and Kurganets' },
     { id: 'support', name: 'TOS and BMPT' },
+    // release 269 (owner 2026-11-04): the 152 mm line
+    { id: 'mm152', name: '152 mm' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -77,6 +79,13 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     node({ id: 'tos1a_tagil', tier: 5, line: 'support', lane: 11, parents: ['bmp3'], slot: 'line' }),
     node({ id: 'bmpt_terminator2', tier: 5, line: 'support', lane: 12, parents: ['tos1a_tagil'], slot: 'line' }),
     node({ id: 'bmpt_t90', tier: 6, line: 'support', lane: 12, parents: ['bmpt_terminator2'], slot: 'line' }),
+    // 152 mm (release 269, owner 2026-11-04: "a full line of 152 mm variant tanks"; tiers proposed for Main's ruling on
+    // the lane's fairness numbers): on from the T-80U along its row, the Object 292 (the T-80 family's 152 mm), the Kharkiv
+    // Molot and the Object 195, the T-14 152 beside it
+    node({ id: 'object292', tier: 7, line: 'mm152', lane: 9, parents: ['t80u'], slot: 'line' }),
+    node({ id: 'object477_molot', tier: 9, line: 'mm152', lane: 9, parents: ['object292'], slot: 'line' }),
+    node({ id: 'object195', tier: 10, line: 'mm152', lane: 9, parents: ['object477_molot'], slot: 'line' }),
+    node({ id: 't14_152', tier: 10, line: 'mm152', lane: 8, parents: ['object195'], slot: 'line' }),
     // Special
     node({
       id: 't14_armata', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special', builds: ['object148_proto'],

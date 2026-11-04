@@ -124,6 +124,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/pdfs/pdf_6184.pdf',
     kind: 'manufacturer',
   }),
+  apukhtinBoxer: Object.freeze({
+    title: 'Yu. Apukhtin — How the last Soviet tank Boxer/Molot (Object 477) was made, part 2',
+    url: 'https://web.archive.org/web/2019/https://topwar.ru/145828-kak-sozdavalsja-poslednij-sovetskij-tank-bokser-molot-obekt-477-chast-2-vooruzhenie-podvizhnost-zaschita.html',
+    kind: 'manufacturer-history',
+  }),
   rostecArmataOptics: Object.freeze({
     title: 'Rostec — T-14 electro-optical observation and aiming systems',
     url: 'https://elements.rostec.ru/media/news/uralvagonzavod-pokazhet-na-armii-2023-vozmozhnosti-modernizatsii-bronetekhniki-/',
@@ -447,6 +452,12 @@ const LAYOUTS = Object.freeze({
   armata: { confidence: 'platform-inferred', sources: ['rostecArmataOptics'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ optics: { placement: 'turretPerimeter', form: 'distributedElectroOpticalSuite' }, ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
+  // release 269: the Object 477 Molot (Yu. Apukhtin, its project leader): the driver forward, the gunner and commander low
+  // under the turret either side of the gun's breech, 8 ready rounds on a belt in the turret's rear niche fed from two
+  // hull conveyors of 32
+  molot: { confidence: 'documented', sources: ['apukhtinBoxer'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'mixed', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   kf51_evo: { confidence: 'documented', sources: ['rheinmetallKf51'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   abramsX: { confidence: 'published-demonstrator', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
@@ -575,13 +586,14 @@ const IDS_BY_LAYOUT = Object.freeze({
   // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader
   sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
   sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik'],
-  bustleAuto: ['type90', 'type90b', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
+  bustleAuto: ['object292', 'type90', 'type90b', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
   stb1ModelSides: ['stb1'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
-  armata: ['object148_proto', 't14_armata'],
+  armata: ['object148_proto', 't14_armata', 'object195', 't14_152'],
+  molot: ['object477_molot'],
   kf51_evo: ['kf51_evo', 'kf51_u', 'kf51_panther'],
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],

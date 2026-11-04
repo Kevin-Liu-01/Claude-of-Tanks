@@ -261,6 +261,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   t90m: { doctrine: 'assault', viewM: 425, still: 0.182, moving: 0.122 },
   t90sm: { doctrine: 'assault', viewM: 420, still: 0.182, moving: 0.122 },
   t14_armata: { doctrine: 'assault', viewM: 435, still: 0.175, moving: 0.115 },
+  // release 269: the 152 mm line. The Object 292 hits hard from range on the T-80BV's turbine hull with steel armour only
+  // and a tall welded box; the Molot, the Object 195 and the T-14 152 lead assaults behind their noses
+  object292: { doctrine: 'precision', viewM: 405, still: 0.215, moving: 0.155 },
+  object477_molot: { doctrine: 'assault', viewM: 420, still: 0.200, moving: 0.140 },
+  object195: { doctrine: 'assault', viewM: 445, still: 0.160, moving: 0.100 },
+  t14_152: { doctrine: 'assault', viewM: 435, still: 0.170, moving: 0.110 },
   griffin50mm: { doctrine: 'support', viewM: 445, still: 0.269, moving: 0.209 },
   kf41_lynx: { doctrine: 'support', viewM: 450, still: 0.269, moving: 0.209 },
   k21: { doctrine: 'recon', viewM: 455, still: 0.293, moving: 0.253 },

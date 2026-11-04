@@ -30,13 +30,13 @@ function addBox(P: T80BuilderPort): void {
     [-2.30, -1.14, 1.14, .40, .79], [-1.95, -1.16, 1.16, .26, .80], [-1.05, -1.20, 1.20, .02, .80],
     [.20, -1.20, 1.20, .02, .80], [.70, -.62, .62, .40, .78],
   ]);
-  // the raked cheek boxes: full width to z 0.70, the outer corner swept back from the nose
+  // the raked cheek boxes standing proud of the casting's nose: full width to z 1.02, the outer corner swept back
   for (const s of [-1, 1]) {
-    const st: [number, number, number, number, number][] = [[.10, .30, 1.22, .04, .78], [.70, .30, 1.22, .04, .78],
-      [1.24, .30, .56, .10, .70]];
-    prism(P, 'turret', st.map(([z, a, b, y0, y1]) => (s > 0 ? [z, a, b, y0, y1] : [z, -b, -a, y0, y1]) as const));
+    const st: [number, number, number, number, number][] = [[.10, .30, 1.22, .04, .78], [1.02, .30, 1.22, .04, .78],
+      [1.42, .30, .62, .08, .72]];
+    prism(P, 'turret', st.map(([z, a, b, y0, y1]): [number, number, number, number, number] => (s > 0 ? [z, a, b, y0, y1] : [z, -b, -a, y0, y1])));
     // the cheek's top plate seam and the lifting eyes
-    P.addEquipment('turretDark', box(.86, .012, .02), s * .76, .785, .70);
+    P.addEquipment('turretDark', box(.86, .012, .02), s * .76, .785, 1.00);
     P.addEquipment('turretDetail', KIT.torus(.045, .012, 10, 6), s * .80, .80, .30, Math.PI / 2, 0, 0);
   }
   // the bustle's tail lip and the plate seams down the body's flanks

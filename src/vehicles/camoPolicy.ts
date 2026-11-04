@@ -925,6 +925,10 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 2026-11-01: the TK-X and the 10B "need to look a lot more unique" than the Type 10 and the Kaitaku)
   type90b: 'paint_type90b',
   type10_tk_x: 'paint_type10',
+  // 269: the Object 292 in the plain green Kubinka shows it in, and the Molot, the 152 mm line's other Soviet prototype, in
+  // the same: the national Russian plain (the service presets are a cold-war amoeba and the T-90M's digital)
+  object292: 'national_ru',
+  object477_molot: 'national_ru',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -9,7 +9,7 @@
 import './sourceXFleetSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { modernArmor, type ShellSpec } from './specHelpers.ts';
+import { crewBox, modernArmor, type ShellSpec } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { MOLOT_FRAME, OBJECT195_FRAME, OBJECT292_GUN_FRAME, T14_152_GUN_FRAME } from './russia152Frames.ts';
 
@@ -48,7 +48,7 @@ const object292 = variant('object292', 't80bv', 'Object 292', 'USSR', 'modern');
 Object.assign(object292, { hp: 2350, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
 Object.assign(object292.dims, { overallLengthM: 3.39 + OBJECT292_GUN_FRAME.muzzleZ, widthM: 3.525, heightM: 2.25 });
 object292.gun = {
-  ...object292.gun, caliberMm: 152, reloadS: 10.0, baseAccuracy: 0.34, aimTimeS: 2.1,
+  ...object292.gun, caliberMm: 152, reloadS: 10.0, baseAccuracy: 0.34, aimTimeS: 2.1, soundProfile: 'lp-83',
   shells: rounds('LP-83', [[840, 770, 700], 700, 14], [780, 640, 8], [860, 8]),
 };
 object292.armor.hullPlates = object292.armor.hullPlates.filter((plate) => plate.kind !== 'era');
@@ -63,7 +63,8 @@ object292.armor.turretPlates = modernArmor({
 }).turretPlates;
 object292.armor.gunPivot = [0, OBJECT292_GUN_FRAME.trunnionY - 1.45, OBJECT292_GUN_FRAME.trunnionZ];
 object292.armor.gunBarrel = { lengthM: OBJECT292_GUN_FRAME.muzzleZ - OBJECT292_GUN_FRAME.trunnionZ, radiusM: 0.135 };
-object292.visual = { scheme: 'solid', base: '#3d4a36', weather: '#46523d', patches: [], marking: 'number', number: '292',
+// the plain green Kubinka shows (the national Russian plain, camoPolicy national_ru)
+object292.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '292',
   trackWidthM: 0.58 };
 
 // ------------------------------------------------------------------------------------------------ Object 477 Molot --
@@ -80,7 +81,7 @@ Object.assign(molot, {
 Object.assign(molot.dims, { hullLengthM: MOLOT_FRAME.hullFrontZ - MOLOT_FRAME.hullRearZ,
   overallLengthM: MOLOT_FRAME.muzzleZ - MOLOT_FRAME.hullRearZ, widthM: 3.52, heightM: MOLOT_FRAME.casingTopY });
 molot.gun = {
-  ...molot.gun, caliberMm: 152, reloadS: 9.0, baseAccuracy: 0.31, aimTimeS: 1.9,
+  ...molot.gun, caliberMm: 152, reloadS: 9.0, baseAccuracy: 0.31, aimTimeS: 1.9, soundProfile: '2a73',
   shells: rounds('2A73', [[920, 850, 780], 720, 20], [820, 660, 10], [880, 10]),
 };
 molot.armor = modernArmor({
@@ -93,7 +94,8 @@ molot.armor = modernArmor({
   tw: 1.20, tFrontZ: 1.30, tRearZ: -1.70, tH: 0.48,
   cheek: [560, 700, 950], tSide: [160, 180, 260], tRear: 50, tRoof: 50, mantlet: [400, 420, 520],
 });
-molot.visual = { scheme: 'solid', base: '#4a5640', weather: '#525d47', patches: [], marking: 'number', number: '477',
+// the Object 292's plain green (camoPolicy national_ru)
+molot.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '477',
   trackWidthM: 0.58 };
 
 // -------------------------------------------------------------------------------------------------------- Object 195 --
@@ -110,7 +112,7 @@ Object.assign(object195, {
 Object.assign(object195.dims, { hullLengthM: OBJECT195_FRAME.hullFrontZ - OBJECT195_FRAME.hullRearZ,
   overallLengthM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.hullRearZ, widthM: 3.56, heightM: 2.62 });
 object195.gun = {
-  ...object195.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.29, aimTimeS: 1.75,
+  ...object195.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.29, aimTimeS: 1.75, soundProfile: '2a83',
   shells: rounds('2A83', [[1000, 920, 840], 740, 18], [860, 680, 8], [900, 10]),
 };
 object195.armor = modernArmor({
@@ -123,6 +125,12 @@ object195.armor = modernArmor({
   tw: 1.28, tFrontZ: 1.40, tRearZ: -1.45, tH: 0.85,
   cheek: [320, 330, 340], tSide: [280, 280, 300], tRear: 60, tRoof: 50, mantlet: [320, 320, 340],
 });
+// the crew capsule: three side by side under the hatches behind the glacis, nobody in the module (the T-14's order)
+object195.armor.crew = [
+  crewBox('driver', [-1.02, .55, 1.55], [-.36, 1.55, 2.60]),
+  crewBox('gunner', [-.33, .55, 1.55], [.33, 1.55, 2.60]),
+  crewBox('commander', [.36, .55, 1.55], [1.02, 1.55, 2.60]),
+];
 object195.visual = { scheme: 'solid', base: '#46523a', weather: '#4e5a42', patches: [], marking: 'number', number: '195',
   trackWidthM: 0.58 };
 
@@ -133,7 +141,7 @@ object195.visual = { scheme: 'solid', base: '#46523a', weather: '#4e5a42', patch
 const t14_152 = variant('t14_152', 't14_armata', 'T-14 152', 'Russia', 'next-generation');
 Object.assign(t14_152.dims, { overallLengthM: 4.327 + T14_152_GUN_FRAME.muzzleZ });
 t14_152.gun = {
-  ...t14_152.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.30, aimTimeS: 1.8,
+  ...t14_152.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.30, aimTimeS: 1.8, soundProfile: '2a83',
   shells: rounds('2A83', [[1000, 920, 840], 740, 18], [860, 680, 10], [900, 12]),
 };
 t14_152.armor.gunPivot = [0, T14_152_GUN_FRAME.trunnionY - 1.69, T14_152_GUN_FRAME.trunnionZ + 0.22];

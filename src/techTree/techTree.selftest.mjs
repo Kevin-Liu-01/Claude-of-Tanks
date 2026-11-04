@@ -221,5 +221,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
-assert.equal(digest, '46b1a3a9307d8466', `tree content changed: re-pin to ${digest} if deliberate`);
+// 269 (owner 2026-11-04): Russia's 152 mm line on from the T-80U along its row (Object 292 VII, Object 477 Molot IX,
+// Object 195 X) with the T-14 152 beside the Object 195 at X; tiers proposed for Main's ruling on the fairness numbers.
+assert.equal(digest, 'b612871964b5d988', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

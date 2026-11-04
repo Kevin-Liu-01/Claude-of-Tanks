@@ -179,6 +179,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t90m: anchor('turret', 'left', .1509, .5880, .24, 1),
   t90sm: anchor('turret', 'left', .14, .65, .24, 1),
   t14_armata: anchor('turret', 'left', .22, .60, .24, 1),
+  // release 269: the 152 mm line (the 292 on its welded box's flank, the Molot and the 195 on their skirts, the T-14 152
+  // where the T-14 carries it)
+  object292: anchor('turret', 'left', .62, .50, .24, 1),
+  object477_molot: anchor('hull', 'left', .42, .55, .24, 1),
+  object195: anchor('hull', 'left', .45, .55, .26, 1),
+  t14_152: anchor('turret', 'left', .22, .60, .24, 1),
   leo2a7v: anchor('hull', 'left', .192, .493, .24, 1),
   leo2a6m: anchor('hull', 'left', .192, .493, .22, 1),
   leo2a5m: anchor('hull', 'right', .655, .54, .22, -1),
