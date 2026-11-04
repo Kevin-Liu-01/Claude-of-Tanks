@@ -121,6 +121,13 @@ interface TopPanel {
    * margin from them, its own lens cones keep it out of each view.
    */
   slots?: Point2[][];
+  /**
+   * Release 269 round 3 (the Chieftain Mk 3's roof: "bare roof round the cupola"): how far ahead of each sideways- or
+   * forward-looking lens this net is slotted open (m; default the builder's, 0.4 m on a field net). A cupola's periscope
+   * ring slotted 0.4 m out each way bares a disc of roof a metre and a half across round it; shorter, the cloth beyond the
+   * slot lies on the plate under each view (the lens rule) and the garnish keeps out of it (its field view).
+   */
+  lensSlotM?: number;
 }
 
 interface SidePanel {
@@ -5587,6 +5594,8 @@ function* addGhillieOwner(
   if (clearance) support.lids = lids;
   // and each lens's view over the roof: a slot widening ahead of a pane that looks out sideways or forward
   const slots: Point2[][] = [];
+  // (each slot's pane and look, for a panel that sets its own slot length: TopPanel.lensSlotM)
+  const slotLooks: Array<readonly [number, number, number, number]> = [];
   if (autoOpen) {
     const lenses = ownerLenses(parent, others);
     clearance?.offerLenses(owner, lenses);
@@ -5602,6 +5611,7 @@ function* addGhillieOwner(
         const fx = dir * nx / h, fz = dir * nz / h, w0 = 0.1, w1 = 0.1 + L * 0.4;
         slots.push([[cx - fz * w0, cz + fx * w0], [cx + fz * w0, cz - fx * w0],
           [cx + fx * L + fz * w1, cz + fz * L - fx * w1], [cx + fx * L - fz * w1, cz + fz * L + fx * w1]]);
+        slotLooks.push([cx, cz, fx, fz]);
       }
     }
     yield;
@@ -5618,7 +5628,10 @@ function* addGhillieOwner(
         opened.push(rect(bx0 - margin, bx1 + margin, bz0 - margin, bz1 + margin));
       }
     }
-    const slotted = margin === undefined ? [] : slots.filter((slot) => !(slot.every(([x]) => x < panel.x0) || slot.every(([x]) => x > panel.x1)
+    const L = panel.lensSlotM, w1 = 0.1 + (L ?? 0) * 0.4;
+    const panelSlots = L === undefined ? slots : !(L > 0) ? [] : slotLooks.map(([cx, cz, fx, fz]): Point2[] => [[cx - fz * 0.1, cz + fx * 0.1],
+      [cx + fz * 0.1, cz - fx * 0.1], [cx + fx * L + fz * w1, cz + fz * L - fx * w1], [cx + fx * L - fz * w1, cz + fz * L + fx * w1]]);
+    const slotted = margin === undefined ? [] : panelSlots.filter((slot) => !(slot.every(([x]) => x < panel.x0) || slot.every(([x]) => x > panel.x1)
       || slot.every(([, z]) => z < panel.z0) || slot.every(([, z]) => z > panel.z1)));
     const laid = topCloth(opened.length || slotted.length
       ? { ...panel, holes: [...(panel.holes ?? []), ...opened], ...(slotted.length ? { slots: slotted } : {}) } : panel, cfg, support, uvk);

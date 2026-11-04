@@ -1073,7 +1073,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
           holes: [Array.from({ length: 12 }, (_, k): Point2 => [-0.48 + 0.49 * Math.cos(k * Math.PI / 6), -0.824 + 0.49 * Math.sin(k * Math.PI / 6)]),
             rect(0.18, 0.83, -1.08, -0.39), rect(0.707, 0.887, -1.859, -1.679), rect(-0.933, -0.753, -1.839, -1.659)],
           tents: [[1.25, -1.45, 0.09], [-1.30, -1.80, 0.08], [0.95, -1.95, 0.07], [-0.10, -1.95, 0.07], [1.45, -0.75, 0.07]],
-          reliefScale: 3, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, seed: 11,
+          reliefScale: 3, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 11,
         }),
         // the bar basket: the net thrown into it, lying over its load and floor bars and sagging between them, cut round
         // its rails and the NBC pack (both stand over it), so the rails and the load still read
