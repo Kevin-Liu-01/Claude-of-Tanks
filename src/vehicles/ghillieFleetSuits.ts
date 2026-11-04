@@ -1036,20 +1036,23 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // flank's stop behind the searchlight's lens), and over the basket's rear. Hull: the engine deck round its two louvred
   // covers (their hot air), the front decks and glacis round the driver's hatch, his periscope and the lamps, the nose and
   // the stern round its exhaust pipes, four drapes a side down the bazooka plates over the running gear. Guns: the L11 in a
-  // scrim sleeve from its root cover to the fume extractor, laid over its flanks (not under it) where it passes over the
-  // hull, and bound right round from the extractor to short of the muzzle; the ranging gun's barrel in a strip of it. The
+  // scrim sleeve from its root cover to the fume extractor, laid over its upper flanks (never under its axis) where it passes
+  // over the hull, and bound right round from the extractor to short of the muzzle; the ranging gun's barrel in a strip of it. The
   // cupola's L37 stays bare (a working station: the builder opens its traverse). Owner-local metres of the Mk 5 X build
   // (chieftain5X.ts: the turret's pivot [0.0031, 1.476, 0.3693], the trunnion 1.2007 ahead of it at y 0.3834).
   chieftain3: {
     id: 'chieftain3', seed: 3069, style: 'leafy', ...DENSE, density: 2.2, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.95, hemFloorM: 0.62,
-    // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build; the spec publishes
-    // none): the suit keeps its clearance from where the gun can go and does not strip the deck it cannot reach
-    gunPitchByYawDeg: [[0, -10], [125, -10], [126, -8.5], [127, -5.2], [128, -3.7], [129, -2.9], [130, -2.5], [132, -2.1],
-      [133, -0.9], [134, -0.3], [135, -0.1], [139, -0.1], [140, -0.4], [142, -1.1], [145, -0.3], [148, -0.2], [149, -0.4],
-      [150, -1], [153, -0.3], [155, -0.1], [159, 0.4], [162, 0.9], [180, 1.2]],
-    // under that curve the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat exemption under it
-    // (it lay 24 mm under the barrel at yaw 150) and the cards keep the clearance across their faces
+    // the gun's measured floors over the rear deck (tools/gun-depression-sweep.mjs on the build, 2026-11-03; the spec
+    // publishes none), each 0.3 degrees deeper: the suit keeps its clearance from where the gun can go and does not strip
+    // the deck it cannot reach. Under them the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat
+    // exemption there (it lay 24 mm under the barrel at yaw 150) and the cards keep the clearance across their faces.
+    gunPitchByYawDeg: [[0, -10], [125, -10], [126, -10], [127, -8.86], [128, -5.52], [129, -4.02], [130, -3.21], [131, -2.89],
+      [132, -2.86], [133, -2.46], [134, -1.27], [135, -0.64], [136, -0.49], [138, -0.49], [139, -0.71], [140, -1.39],
+      [141, -1.58], [142, -1.49], [143, -1.43], [144, -1.43], [145, -0.89], [146, -0.61], [147, -0.58], [148, -0.77],
+      [149, -1.43], [150, -1.36], [151, -1.36], [152, -1.21], [153, -1.14], [154, -0.64], [155, -0.52], [156, -0.49],
+      [158, -0.49], [159, -0.05], [160, 0.04], [161, 0.04], [162, 0.42], [163, 0.57], [164, 0.57], [165, 0.61], [169, 0.61],
+      [170, 0.64], [173, 0.64], [174, 0.7], [175, 0.76], [176, 0.79], [177, 0.79], [178, 0.82], [180, 0.82]],
     clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
       top: [laid({
@@ -1083,7 +1086,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     gun: {
       sleeve: [
-        { z0: 0.50, z1: 2.80, reachM: 0.20, wrapDeg: 125, garnishOffM: 0.035, garnishDensity: 2.5, seed: 51 },
+        // over the hull (the rear deck binds the gun's floors from below and the fender bins from beside, under its axis)
+        // the scrim is laid over the barrel's upper flanks only, its hems 20 degrees over the axis, its garnish close in
+        { z0: 0.50, z1: 2.80, reachM: 0.20, wrapDeg: 70, garnishOffM: 0.03, garnishDensity: 2, seed: 51 },
         { z0: 3.76, z1: 4.66, reachM: 0.20, garnishDensity: 6, seed: 53 },
         { z0: 0.68, z1: 1.50, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 140, gapM: 0.005, garnishOffM: 0, seed: 57 },
       ],
