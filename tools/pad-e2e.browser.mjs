@@ -196,11 +196,17 @@ try {
   // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over Settings
   const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
-  // when it leaves, timed from here (the first sight of it)
+  // when it leaves, timed from here (the first sight of it), with the page's long tasks meanwhile: the battle below starts
+  // inside the guide's ten seconds, and a page busy loading it runs no timer and no message until it is free
   await desktop.evaluate(() => {
     const root = document.querySelector('.cot-pad-tour');
     const seenAt = performance.now();
     window.__padTourShutMs = null;
+    window.__padTourSeenAt = seenAt;
+    window.__padTourBusy = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) if (window.__padTourBusy.length < 400) window.__padTourBusy.push([entry.startTime, entry.duration]);
+    }).observe({ type: 'longtask' });
     if (root) new MutationObserver((_, observer) => {
       if (root.classList.contains('is-open')) return;
       window.__padTourShutMs = Math.round(performance.now() - seenAt);
@@ -245,9 +251,18 @@ try {
   const phoneShut = await phone.evaluate(() => ({ how: window.__COT_PAD_PHONE.tour, ms: window.__COT_PAD_PHONE.tourMs, hidden: document.querySelector('.pad-tour').hidden,
     lineBack: getComputedStyle(document.querySelector('.pad-msg')).visibility !== 'hidden' }));
   const screenShutMs = await desktop.evaluate(() => window.__padTourShutMs);
+  // the game screen's time the page was busy (long tasks) between the first sight and the guide leaving: its close is
+  // judged on the time the page could run, so a battle loading in the window is named, never a late guide
+  const screenBusyMs = await desktop.evaluate(() => {
+    const from = window.__padTourSeenAt;
+    const to = from + (window.__padTourShutMs ?? performance.now() - from);
+    return Math.round(window.__padTourBusy.reduce((sum, [start, length]) => sum + Math.max(0, Math.min(to, start + length) - Math.max(from, start)), 0));
+  });
+  report.tourScreen = { shutMs: screenShutMs, busyMs: screenBusyMs };
   check('the guide leaves both screens by itself after ten seconds', phoneShut.how === 'timeout' && phoneShut.hidden && phoneShut.lineBack
-    && phoneShut.ms >= 9500 && phoneShut.ms <= 12_000 && !(await screenGuideOpen()) && screenShutMs !== null && screenShutMs <= 12_000,
-  `the phone's after ${(phoneShut.ms / 1000).toFixed(1)} s, the game screen's ${screenShutMs === null ? 'never' : `${(screenShutMs / 1000).toFixed(1)} s`} after it was seen`);
+    && phoneShut.ms >= 9500 && phoneShut.ms <= 12_000 && !(await screenGuideOpen()) && screenShutMs !== null && screenShutMs - screenBusyMs <= 12_000,
+  `the phone's after ${(phoneShut.ms / 1000).toFixed(1)} s, the game screen's ${screenShutMs === null ? 'never' : `${(screenShutMs / 1000).toFixed(1)} s`} after it was seen`
+    + ` (its page busy ${(screenBusyMs / 1000).toFixed(1)} s of that)`);
   await phone.tap('[data-menu]');
   await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
   await phone.tap('.pad-opts [data-tour]');
