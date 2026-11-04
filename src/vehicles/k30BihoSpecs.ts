@@ -31,7 +31,7 @@ function sidePair(name: string, xB: number, yB: number, xT: number, yT: number, 
 }
 
 /** The turret's plates, turret-local, on the build's bodies (profiles/k30Biho.ts k30Turret): the central body and its
- * nose, the step over its deck, the rear body below the storage boxes, the boxes, the rear face and the roof. */
+ * nose, the step over its deck, the storage boxes with their sloping undersides, the rear face and the roof. */
 function k30TurretPlates(): ArmorPlate[] {
   const { front: F, rear: R, boxes: X, eots: E } = K30_TURRET;
   const boxFront = (s: number): ArmorPlate => plate(`turret_box_front_${s > 0 ? 'R' : 'L'}`, 15,
@@ -43,7 +43,7 @@ function k30TurretPlates(): ArmorPlate[] {
     roofPlate('turret_front_deck', 15, F.halfX, F.deckY, R.frontZ, F.deckFrontZ, TURRET_ARMOUR),
     frontPlate('turret_step', 15, R.roofHalf, F.deckY, R.frontZ, R.roofY, R.frontZ, TURRET_ARMOUR),
     boxFront(1), boxFront(-1),
-    ...sidePair('turret_side_lower', R.halfX, R.bottomY, R.halfX, (X.frontBottomY + X.rearBottomY) / 2, R.rearZ, R.frontZ),
+    ...sidePair('turret_box_lower', X.inner, X.footY, X.outer, (X.frontBottomY + X.rearBottomY) / 2, X.rearZ, X.frontZ),
     ...sidePair('turret_box', X.outer, (X.frontBottomY + X.rearBottomY) / 2, X.outer, X.eaveY, X.rearZ, X.frontZ),
     rearPlate('turret_rear', 15, X.outer, R.bottomY, R.rearZ, R.roofY, R.rearZ, TURRET_ARMOUR),
     roofPlate('turret_roof', 15, X.outer - 0.04, R.roofY, R.rearZ, R.frontZ, TURRET_ARMOUR),
@@ -68,7 +68,7 @@ function applyK200Frame(own: FleetTankSpec): void {
   const L = K30_HULL, [, , ringZ] = K30_TURRET_PIVOT;
   own.armor.hullPlates = k200HullPlates(L);
   own.armor.turretPivot = [...K30_TURRET_PIVOT];
-  own.armor.modules = [...k200HullModules(L, ringZ, K30_TURRET.collar.r),
+  own.armor.modules = [...k200HullModules(L, ringZ, K30_TURRET.ringR),
     ...own.armor.modules.filter((box) => box.turretLocal)];
   own.armor.crew = [k200Driver(L), ...own.armor.crew.filter((box) => box.turretLocal)];
   own.visual.trackWidthM = L.gear.trackW;
@@ -104,8 +104,8 @@ spec.armor.turretPlates = k30TurretPlates();
   const G = K30_GUNS, T = K30_TURRET, [, gy, gz] = K30_GUN_PIVOT;
   spec.armor.modules = [
     ...spec.armor.modules.filter((box) => !box.turretLocal),
-    // the EOTS head and its laser rangefinder at the nose's tip
-    moduleBox('optics', [-(T.eots.halfX + 0.09), T.eots.baseY - 0.01, T.eots.rearZ], [T.eots.halfX, T.eots.topY, T.eots.frontZ], true),
+    // the EOTS housing and its laser rangefinder at the nose's tip
+    moduleBox('optics', [-(T.eots.halfX + 0.10), T.eots.baseY - 0.01, T.eots.rearZ], [T.eots.halfX, T.eots.topY, T.eots.frontZ], true),
     // the two housings, pitching with the trunnion
     { ...moduleBox('gun', [-G.housingOuter, gy + G.housingBottomY, gz + G.housingRearZ], [G.housingOuter, gy + G.housingTopY,
       gz + G.collarFrontZ], true), gunFollow: true, external: true },
@@ -116,8 +116,8 @@ spec.armor.turretPlates = k30TurretPlates();
       [T.front.halfX - 0.06, T.front.deckY - 0.06, T.front.frontZ - 0.14], true),
     moduleBox('feedSystem', [-(T.front.halfX - 0.06), T.front.bottomY + 0.06, T.rear.frontZ + 0.01],
       [T.front.halfX - 0.06, T.front.deckY - 0.06, T.rear.frontZ + 0.38], true),
-    // the radar's and the radios' electronics at the rear right
-    moduleBox('radio', [-(T.rear.halfX - 0.04), 0.30, T.rear.rearZ + 0.08], [-0.20, 0.85, T.rear.rearZ + 0.53], true),
+    // the radar's and the radios' electronics at the rear right, behind the commander
+    moduleBox('radio', [-(T.rear.halfX - 0.04), 0.30, T.rear.rearZ + 0.08], [-0.06, 0.85, T.rear.rearZ + 0.34], true),
   ];
 }
 // crew 4 (internalLayoutRegistry.ts spaaK30): the driver in the hull (applyK200Frame); the gunner front left (+x) and the
@@ -126,9 +126,9 @@ spec.armor.turretPlates = k30TurretPlates();
 {
   const R = K30_TURRET.rear, floor = R.bottomY + 0.01, head = R.eaveY, side = R.halfX - 0.04;
   spec.armor.crew = [
-    crewBox('gunner', [0.06, floor, -0.45], [side, head, 0.15], true),
+    crewBox('gunner', [0.06, floor, -0.40], [side, head, 0.15], true),
     crewBox('commander', [-side, floor, -0.75], [-0.06, head, -0.05], true),
-    crewBox('radioOperator', [0.06, floor, R.rearZ + 0.08], [side, head, -0.60], true),
+    crewBox('radioOperator', [0.06, floor, R.rearZ + 0.08], [side, head, -0.46], true),
   ];
 }
 applyK200Frame(spec);

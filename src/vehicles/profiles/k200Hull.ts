@@ -134,9 +134,10 @@ function hullDeck(P: TankBuilderPort, L: K200HullLayout): void {
   P.add('hullDark', box(0.06, 0.04, 0.10), hx, L.roofY + 0.045, hz - 0.20);
   for (const dx of [-0.17, 0, 0.17]) KIT.periscope(P, 'hullDetail', hx + dx, L.roofY + 0.025, L.glacisBreakZ - 0.11);
   KIT.periscope(P, 'hullDetail', hx + 0.32, L.roofY + 0.025, hz + 0.05, Math.PI / 2);
-  // the power pack's access plate on the roof's front right, its two handles
-  P.add('hullDetail', box(0.86, 0.016, 0.90), -0.55, L.roofY + 0.004, L.glacisBreakZ - 0.57);
-  for (const dz of [-0.27, 0.27]) P.add('hullDark', box(0.14, 0.025, 0.03), -0.55, L.roofY + 0.022, L.glacisBreakZ - 0.57 + dz);
+  // the power pack's access plate on the roof's front right, its two recessed handles (flush: the turret's nose sweeps
+  // 4 cm over it)
+  P.add('hullDetail', box(0.86, 0.012, 0.90), -0.55, L.roofY, L.glacisBreakZ - 0.57);
+  for (const dz of [-0.27, 0.27]) P.add('hullDark', box(0.14, 0.008, 0.03), -0.55, L.roofY + 0.006, L.glacisBreakZ - 0.57 + dz);
   // lifting eyes at the roof's rear corners (the front pair would stand in the guns' depressed sweep on the K30)
   for (const s of [-1, 1]) KIT.liftEye(P, 'hullDetail', s * (L.sideX - 0.12), L.roofY + 0.012, L.rearZ + 0.12);
 }
