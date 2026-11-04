@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import {
   EFFECT_ATTACHMENT_POLICY,
+  shooterVelocityGain,
+  subjectPointVelocity,
   syncSubjectEmitterAnchor,
 } from './effectAttachments.ts';
 
@@ -63,7 +65,7 @@ if (unresolved.pos.join(',') !== '1,2,3') throw new Error('unresolved emitter mo
 const requiredFamilies = [
   'burningColumn', 'impactDecal', 'trackDust', 'engineExhaust',
   'guidedMissileBody', 'guidedMissileTrail', 'turretPopTrail', 'muzzleFlash',
-  'muzzleRing', 'impactParticles', 'destructionParticles',
+  'muzzleRing', 'muzzleLight', 'muzzleSmoke', 'impactParticles', 'destructionParticles',
   'destroyedTankColumn', 'terrainScorch', 'trackPrint', 'propBreak',
   'propCrush', 'loosePropHit',
 ];
@@ -151,4 +153,195 @@ console.log('effect attachment selftest passed');
   } finally {
     if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
   }
+}
+
+// (fleet review 2026-11-03: s272 ztz99a2_qinglong, s86 leo2a4, s271 vt4a1_baihu) a tank firing at 15 m/s showed its
+// flash a third of the barrel back: every muzzle part was born world-fixed and the hull drove on. The policy says which
+// parts ride the muzzle; this holds the battle flash, its ring and light, and the Studio's cinematic blast to it.
+{
+  for (const family of ['muzzleFlash', 'muzzleRing', 'muzzleLight']) {
+    if (EFFECT_ATTACHMENT_POLICY[family] !== 'shooter-velocity-burst' || shooterVelocityGain(family) !== 1) {
+      throw new Error(`${family} must leave with the shooter's velocity`);
+    }
+  }
+  if (EFFECT_ATTACHMENT_POLICY.muzzleSmoke !== 'world-space-burst' || shooterVelocityGain('muzzleSmoke') !== 0) {
+    throw new Error('muzzle smoke must stay world-space and trail a moving tank');
+  }
+
+  // the carried point's velocity: hull speed along yaw, vertical speed, and the yaw rate swinging the muzzle
+  const vel = [0, 0, 0];
+  subjectPointVelocity({ state: { pos: { x: 2, y: 0, z: 3 }, yaw: 0, speed: 10, yawRate: 0.5, verticalSpeed: -1 } }, 2, 9, vel);
+  near(vel[0], 3, 'a muzzle 6 m ahead swings toward +x as yaw grows'); near(vel[1], -1, 'vertical'); near(vel[2], 10, 'forward');
+  subjectPointVelocity({ state: { yaw: Math.PI / 2, speed: -4 } }, 0, 0, vel);
+  near(vel[0], -4, 'reversing along +x yaw'); near(vel[2], 0, 'no sideways drift', 1e-9);
+  if (subjectPointVelocity(null, 0, 0, vel) || vel.some((v) => v !== 0)) throw new Error('an unresolved shooter carries nothing');
+  // the jet pool's GPU half: a jet's origin is carried linearly (jets have no drag), so it stays on a moving brake
+  const particlesSource = fs.readFileSync(new URL('./particles.ts', import.meta.url), 'utf8');
+  if (!particlesSource.includes('vec3 tipPos = aPB.xyz + aCV * age + axis * ( u * len );')) {
+    throw new Error('the jet shader must carry each jet with its emitter (aCV)');
+  }
+  subjectPointVelocity({ state: { yaw: 0, speed: 900 } }, 0, 0, vel);
+  if (Math.hypot(...vel) > 40 + 1e-9) throw new Error(`a teleport's one-tick speed must be bounded (${Math.hypot(...vel)})`);
+
+  const { createRequire } = await import('node:module');
+  const { createFx } = await import('./effects.ts');
+  const { muzzleBlast } = await import('./cinematicRecipes.ts');
+  const { createCanvas } = createRequire(import.meta.url)('@napi-rs/canvas');
+  const documentBefore = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+  const YAW = 0.4, SPEED = 15, AGE = 0.05;
+  const fwd = [Math.sin(YAW), 0, Math.cos(YAW)];
+  const muzzle0 = [fwd[0] * 5.5, 2.3, fwd[2] * 5.5];
+  const shotVel = fwd.map((f) => f * SPEED);
+  /** One 120 mm shot from a hull at `speed` along YAW: every particle pool, then the ring and light AGE later. */
+  function fire(speed) {
+    const handlers = new Map();
+    const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+    const scene = new THREE.Scene(); // the media layer (propellant gas, ground dust) mounts its draws on the scene
+    const fx = createFx({ anisotropy: 4, scene }, { getHeightAt: () => 0 }, { seed: 91 });
+    fx.bindBus(bus);
+    scene.add(fx.group);
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(-12, 4, 6); camera.lookAt(0, 2, 4); camera.updateMatrixWorld();
+    const shooter = { visual: {}, state: { pos: new THREE.Vector3(0, 0, 0), yaw: YAW, speed, yawRate: 0, verticalSpeed: 0 } };
+    const resolve = (id) => (id === 'h1' ? shooter : null);
+    fx.update(1 / 60, [], camera, resolve);
+    bus.emit('shell:fired', { shellId: 1, shooterId: 'h1', shellType: 'HEAT', caliberMm: 120, muzzlePos: muzzle0, dir: fwd });
+    fx.update(0, [], camera, resolve); // the media layer uploads its bodies on the frame
+    const pools = {};
+    const instanced = []; // every instanced draw in traversal order: the particle pools and the media layer
+    scene.traverse((o) => {
+      const attrs = {};
+      for (const [key, attr] of Object.entries(o.geometry?.attributes ?? {})) {
+        if (attr.isInstancedBufferAttribute) attrs[key] = Float32Array.from(attr.array);
+      }
+      if (!Object.keys(attrs).length) return;
+      const entry = { name: o.name, attrs, count: o.geometry.instanceCount, drag: o.material?.uniforms?.uDrag?.value ?? 0 };
+      instanced.push(entry);
+      if (o.name.startsWith('particles:')) (pools[o.name.slice(10)] ??= []).push(entry);
+    });
+    fx.update(AGE, [], camera, resolve);
+    const ring = [];
+    const light = [];
+    fx.group.traverse((o) => {
+      if (o.name === 'fx:muzzleRing' && o.visible) ring.push(o.position.clone());
+      if (o.name === 'fx:muzzleLight') light.push(o.position.clone());
+    });
+    return { pools, instanced, ring, light };
+  }
+  try {
+    // desktop tier first (the media layer takes the propellant gas and ground dust), then the phone tier, whose pooled
+    // propellant mass, smoke ring, wisps and ground dust must stay world-space (the tier resolves once per process)
+    const still = fire(0), moving = fire(SPEED);
+    const windowBefore = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    globalThis.window = { location: { search: '?tier=mobile' } };
+    let phoneStill, phoneMoving;
+    try {
+      const { resolveDeviceTier, getDeviceTier } = await import('../engine/quality.ts');
+      if (resolveDeviceTier() !== 'mobile' || getDeviceTier() !== 'mobile') throw new Error('the phone tier did not resolve');
+      phoneStill = fire(0); phoneMoving = fire(SPEED);
+    } finally {
+      if (windowBefore) Object.defineProperty(globalThis, 'window', windowBefore); else delete globalThis.window;
+    }
+    const flashCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleFlash'));
+    const smokeCarry = shotVel.map((v) => v * shooterVelocityGain('muzzleSmoke'));
+    /** pool -> [velocity attribute, its item size, the carry the policy says it takes] */
+    const expect = { flash: ['aVL', 4, flashCarry], fire: ['aVL', 4, flashCarry], sparks: ['aVL', 4, flashCarry],
+      jet: ['aCV', 3, flashCarry], psmoke: ['aVL', 4, smokeCarry], smoke: ['aVL', 4, smokeCarry], dust: ['aVL', 4, smokeCarry] };
+    for (const [pool, [key, size, carry]] of Object.entries(expect)) {
+      const a = still.pools[pool]?.[0], b = moving.pools[pool]?.[0];
+      if (!a || !b || a.count !== b.count) throw new Error(`${pool}: the shot must fill the same slots still and moving`);
+      if (['flash', 'fire', 'sparks', 'jet'].includes(pool) && a.count === 0) throw new Error(`${pool}: the shot emitted nothing`);
+      for (let i = 0; i < a.count; i++) {
+        for (let k = 0; k < 3; k++) {
+          near(b.attrs.aPB[i * 4 + k] - a.attrs.aPB[i * 4 + k], 0, `${pool}[${i}] is born at the same muzzle point`);
+          const base = key === 'aCV' ? a.attrs.aCV[i * 3 + k] : 0;
+          if (key === 'aCV' && base !== 0) throw new Error(`a still muzzle's jet must carry nothing (${pool}[${i}])`);
+          near(b.attrs[key][i * size + k] - a.attrs[key][i * size + k], carry[k], `${pool}[${i}] carries ${carry[k]} on axis ${k}`, 1e-4);
+        }
+      }
+    }
+    // every other instanced draw (the smoke and dust pools, chunks, marks) is untouched by the shooter's motion
+    const bright = new Set(['particles:flash', 'particles:fire', 'particles:sparks', 'particles:jet']);
+    for (const [tier, a0, b0] of [['desktop', still, moving], ['phone', phoneStill, phoneMoving]]) {
+      if (a0.instanced.length !== b0.instanced.length) throw new Error(`${tier}: the two shots must build the same draws`);
+      let trailing = 0;
+      a0.instanced.forEach((a, n) => {
+        const b = b0.instanced[n];
+        if (bright.has(a.name)) return;
+        trailing += a.count;
+        for (const key of Object.keys(a.attrs)) {
+          if (a.attrs[key].some((v, i) => v !== b.attrs[key][i])) {
+            throw new Error(`${tier}: ${a.name || `draw ${n}`}.${key} must not move with the shooter`);
+          }
+        }
+      });
+      if (tier === 'phone' && !(phoneStill.pools.psmoke[0].count > 0 && trailing > 0)) {
+        throw new Error('the phone tier must leave its pooled propellant smoke to trail');
+      }
+    }
+    for (const pool of ['flash', 'fire', 'sparks', 'jet']) {
+      const a = phoneStill.pools[pool][0], b = phoneMoving.pools[pool][0];
+      const [key, size] = pool === 'jet' ? ['aCV', 3] : ['aVL', 4];
+      for (let i = 0; i < a.count; i++) {
+        for (let k = 0; k < 3; k++) near(b.attrs[key][i * size + k] - a.attrs[key][i * size + k], flashCarry[k], `phone ${pool}[${i}] carry`, 1e-4);
+      }
+    }
+    // the core 100 ms on, through the puff shader's drag: in the muzzle's frame it sits where a still gun's does
+    const displace = (v, grav, age, drag) => {
+      const k = Math.max(drag, 1e-4), sc = (1 - Math.exp(-k * age)) / k;
+      return [v[0] * sc, v[1] * sc + 0.5 * grav * age * age, v[2] * sc];
+    };
+    const corePos = (run, age) => {
+      const { attrs, drag } = run.pools.flash[0];
+      const d = displace([attrs.aVL[0], attrs.aVL[1], attrs.aVL[2]], attrs.aC0[3], age, drag);
+      return [0, 1, 2].map((k) => attrs.aPB[k] + d[k]);
+    };
+    const t = 0.1;
+    const stillCore = corePos(still, t), movingCore = corePos(moving, t);
+    const muzzleNow = muzzle0.map((m, k) => m + shotVel[k] * t);
+    const offset = Math.hypot(...[0, 1, 2].map((k) => (movingCore[k] - muzzleNow[k]) - (stillCore[k] - muzzle0[k])));
+    const worldFixedLag = Math.hypot(...[0, 1, 2].map((k) => stillCore[k] - (muzzleNow[k] + stillCore[k] - muzzle0[k])));
+    if (!(offset < 0.08)) throw new Error(`the core must ride the muzzle at 15 m/s (${offset.toFixed(3)} m off at 100 ms)`);
+    if (!(worldFixedLag > 1.4)) throw new Error(`the world-fixed reference must show the old lag (${worldFixedLag.toFixed(3)} m)`);
+    // the pressure ring and the muzzle light ride the bore by their own policy rows
+    if (still.ring.length !== 1 || moving.ring.length !== 1) throw new Error('one muzzle ring must be live 50 ms after the shot');
+    if (still.light.length !== 1 || moving.light.length !== 1) throw new Error('the muzzle light must be found');
+    const ringK = shooterVelocityGain('muzzleRing'), lightK = shooterVelocityGain('muzzleLight');
+    for (let k = 0; k < 3; k++) {
+      const axis = ['x', 'y', 'z'][k];
+      near(moving.ring[0][axis] - still.ring[0][axis], shotVel[k] * AGE * ringK, `ring rides the muzzle (${axis})`, 1e-4);
+      near(moving.light[0][axis] - still.light[0][axis], shotVel[k] * AGE * lightK, `light rides the muzzle (${axis})`, 1e-4);
+    }
+    console.log(`effectAttachments.selftest: a 15 m/s shot's core rides its muzzle (${offset.toFixed(3)} m vs ${worldFixedLag.toFixed(2)} m world-fixed at 100 ms)`);
+  } finally {
+    if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
+  }
+
+  // the Studio's cinematic blast layered over it: fireball, flash disc and sparks carry, propellant, dust and grit stay
+  const cine = (muzzleVel) => {
+    let a = 0x5eed;
+    const rng = () => { a = (a + 0x6D2B79F5) | 0; let x = Math.imul(a ^ (a >>> 15), 1 | a); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+    const out = { fire: [], psmoke: [], dust: [], streak: [], chunk: [], jet: [] };
+    const sink = {
+      puff: (pool, o) => (out[pool] ??= []).push([...o.vel]),
+      streak: (o) => out.streak.push([...o.vel]),
+      chunk: (o) => out.chunk.push([...o.vel]),
+      jet: (o) => out.jet.push([...(o.carry ?? [0, 0, 0])]),
+    };
+    const tone = (x, z, o) => { o.light[0] = o.light[1] = o.light[2] = 0.5; o.dark[0] = o.dark[1] = o.dark[2] = 0.3; return o; };
+    const ctx = { sink, world: { groundY: () => 0, tone, water: () => 0 }, env: { night: 0, nowS: 0 }, rng, shift: 0,
+      pulse() {}, addEmitter() {}, scorch() {}, shockRing() {} };
+    muzzleBlast(ctx, muzzle0[0], muzzle0[1], muzzle0[2], fwd[0], fwd[1], fwd[2], 120, muzzleVel);
+    return out;
+  };
+  const a = cine([0, 0, 0]), b = cine(shotVel);
+  const k = shooterVelocityGain('muzzleFlash'), ks = shooterVelocityGain('muzzleSmoke');
+  for (const [kind, gain] of [['fire', k], ['streak', k], ['jet', k], ['psmoke', ks], ['dust', ks], ['chunk', ks]]) {
+    if (!a[kind].length || a[kind].length !== b[kind].length) throw new Error(`cinematic ${kind}: the blast must emit the same parts`);
+    for (let i = 0; i < a[kind].length; i++) {
+      for (let j = 0; j < 3; j++) near(b[kind][i][j] - a[kind][i][j], shotVel[j] * gain, `cinematic ${kind}[${i}] carry`, 1e-9);
+    }
+  }
+  console.log('effectAttachments.selftest: the cinematic muzzle blast carries its bright parts and leaves its smoke');
 }
