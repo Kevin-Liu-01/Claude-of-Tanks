@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  beltCarriesTracer, createProjectileTracers, tracerCaliber, tracerClassFor, tracerLineage,
+  TRACER_ABSENCE_GRACE_S, beltCarriesTracer, createProjectileTracers, tracerCaliber, tracerClassFor, tracerLineage,
 } from './projectileTracers.ts';
 
 // ammunition lineage: green for Soviet-lineage ammunition, red for NATO's and everyone else's
@@ -46,8 +46,9 @@ function frame(shells) {
   tr.end();
   return geo.instanceCount;
 }
-/** End every round in flight (each draws its last streak once), so the next case starts with an empty pool. */
-function flush() { frame([]); frame([]); }
+/** End every round in flight, so the next case starts with an empty pool: a round missing with no strike reported is
+ *  held, undrawn, through the absence grace (2026-11-02 audit F10), so the clock runs past it. */
+function flush() { frame([]); now += TRACER_ABSENCE_GRACE_S + 0.01; frame([]); }
 // a ten-round NATO burst: rounds 0 and 5 glow, the rest fly unseen
 const burst = Array.from({ length: 10 }, (_, i) => shell(100 + i, 'a', 12.7, i));
 assert.equal(frame(burst), 2, 'a 10-round NATO burst shows two tracers');
@@ -88,11 +89,14 @@ assert.equal(frame([shell(500, 'a', 120, 0, 3.6 + 0.2)]), 0, 'a burnt-out tracer
 flush();
 assert.equal(frame([shell(501, 'a', 120, 0, 3.6 + 0.05)]), 1, 'it dims through its burnout first');
 flush();
-// a round that ends draws its last streak once more, then is gone
+// (2026-11-02 audit F10) a round gone with no strike reported has not ended yet (a dropped row): it draws no stale line
+// and is held through the absence grace, then released; a struck one draws its last line into its strike (below)
 assert.equal(frame([shell(600, 'a', 120, 0)]), 1);
-assert.equal(frame([]), 1, 'a round gone since the last frame leaves its last line once');
+assert.equal(frame([]), 0, 'a round missing with no strike leaves no stale line');
+assert.equal(tr.stats().tracked, 1, 'and is held');
+now += TRACER_ABSENCE_GRACE_S + 0.01;
 assert.equal(frame([]), 0, 'and then nothing');
-assert.equal(tr.stats().tracked, 0, 'records are released');
+assert.equal(tr.stats().tracked, 0, 'past the grace its record is released');
 flush();
 // a deflected round tumbles: its light flickers frame to frame
 const flick = [];

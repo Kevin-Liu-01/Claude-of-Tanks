@@ -123,7 +123,10 @@ import {
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
-import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
+import { createWreckTurretDriverIfLoaded, preloadWreckTurretDriver } from './wreckTurretDriverLoader.ts';
+import {
+  isWreckState, tankWreckMove, tankWreckNext, type TankWreckEvent, type TankWreckMove, type TankWreckState,
+} from './wreckLifecycle.ts';
 import type { WreckTurretDriver } from './wreckTurretDriver.ts';
 import {
   bakeTurretRigScale, isTurretSectionFrame, TURRET_SECTION_SCALE_KEY, turretSectionScaleOf, type TurretSectionScale,
@@ -1356,14 +1359,26 @@ export interface TankVisual {
   setWeaponModuleState(module: string, state: ModuleStateName): void;
   stripEra(plateName: string): boolean;
   resetEra(): boolean;
-  setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** `lateCause` (2026-11-02 audit F10): the kill's cause arriving after this wreck was laid (a network peer's event
+   *  after its row's flag): a pop then upgrades a young plain wreck to the cook-off (wreckLifecycle.ts). Any other
+   *  repeat on a wreck does nothing. */
+  setDestroyed(options?: { pop?: boolean; ageS?: number; lateCause?: boolean }): void;
+  /** (2026-11-02 audit F10) The wreck as its one declared state (wreckLifecycle.ts): intact, plain, cook-off, disposed. */
+  wreckState(): TankWreckState;
+  /** (2026-11-02 audit F10) This visual's life: bumped by every reset and its disposal, so a beat deferred for one life
+   *  (an FX timer's wreck, fx/effects.ts) never lands on the next. */
+  wreckLife(): number;
   /**
    * The wreck's turret body pose for this frame (physics lane): the turret frame's world pose [x, y, z, qx, qy, qz, qw]
    * the simulation owns (sim/wreckTurrets.ts), interpolated by the caller; null when none is offered this frame.
    */
   setWreckTurretPose(pose: ArrayLike<number> | null): void;
-  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here. */
+  /** A host will send this wreck's turret pose: hold the turret on its seat until it does, never simulate it here.
+   *  Before the kill it holds for the next wreck (resetDestroyed clears it). */
   awaitWreckTurretPose(): void;
+  /** (2026-11-02 audit F10) The wreck turret's frame pose [x, y, z, qx, qy, qz, qw] as its authority last had it placed,
+   *  into `out`; false when no authority holds the turret (the killcam re-wrecks a restaged victim there). */
+  wreckTurretHeldPose(out: Float64Array): boolean;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
   /**
@@ -10128,6 +10143,7 @@ export function* createTankRuntimeSteps(
     presentationTrackFloorYM, ownsTree,
   } = env;
   let { launcherCursor } = env;
+  const launcherCursorAtBuild = launcherCursor;
   const continuousRootFloor = (): number | undefined => {
     const floor = P.gear?.continuousShoeFloorYM;
     if (floor !== undefined) assertShoeFloorFrame(hullG, root.scale);
@@ -10211,6 +10227,10 @@ export function* createTankRuntimeSteps(
   }
 
   // ---- state ----
+  // (2026-11-02 audit F10) the wreck: one declared state, moved only by moveWreck below (wreckLifecycle.ts); `destroyed`
+  // mirrors "a wreck stands" for the readers that only ask that
+  let wreckState: TankWreckState = 'intact';
+  let wreckLife = 0;
   let destroyed = false;
   let recoilT = 1e9;
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
@@ -10709,6 +10729,32 @@ export function* createTankRuntimeSteps(
     });
   }
   let turretFlying = false;
+  /** (2026-11-02 audit F10) this wreck asked for the physics once (an authority's pose arrived before it had loaded) */
+  let turretDriverRequested = false;
+  function requestTurretDriver(): void {
+    if (turretDriverRequested || geometryOnly) return;
+    turretDriverRequested = true;
+    // the loader reports a failure itself, and a later wreck may ask again (wreckTurretDriverLoader.ts)
+    void preloadWreckTurretDriver().catch(() => undefined);
+  }
+  /**
+   * (2026-11-02 audit F10) The body driver for an authority's turret: made now if the physics has loaded (asked for if
+   * not, on a wreck). A wreck that fell back to the scripted arc (its kill came before the physics) hands its turret to
+   * the body once it has: back on its seat at the kill's yaw, the frame the driver measures from, then placed at the
+   * authority's pose on the next update, so the turret drawn and the turret shells meet agree.
+   */
+  function authorityTurretDriver(): WreckTurretDriver | null {
+    if (!turretDriver) ensureTurretDriver();
+    if (!turretDriver) { if (destroyed) requestTurretDriver(); return null; }
+    if (destroyed && turretDriver.drives && !turretDriver.active) {
+      popActive = false;
+      turretG.position.copy(wreckSeat);
+      turretG.rotation.set(0, popYaw0, 0);
+      turretG.scale.copy(wreckSeatScale);
+      turretDriver.begin(wreckState === 'cookoff', wreckSeat, null);
+    }
+    return turretDriver;
+  }
 
   /** Settled wreck pose (static hulk bakes only): turret knocked askew, resting half-off the ring. */
   function settleTurret() {
@@ -10954,6 +11000,44 @@ export function* createTankRuntimeSteps(
     popScale = pop ? 1 : 0.22;
     popActive = true;
     popT = ageS;
+    popTrailAcc = 0;
+    applyPop();
+  }
+
+  /** The one writer of wreckState and its `destroyed` mirror (wreckLifecycle.ts): the move this event makes. */
+  function moveWreck(event: TankWreckEvent): TankWreckMove {
+    const move = tankWreckMove(wreckState, event, wreckAge);
+    wreckState = tankWreckNext(wreckState, move, event.kind === 'destroy' && event.pop);
+    destroyed = isWreckState(wreckState);
+    if (move === 'reset' || move === 'dispose') wreckLife++;
+    return move;
+  }
+
+  /** setDestroyed's entry (wreckLifecycle.ts): true when a new wreck is to be laid. A young plain wreck's late cook-off
+   *  cause (`lateCause`, named only by the network presentation) upgrades it here; every other repeat, and a disposed
+   *  visual, does nothing. */
+  function enterWreck(opts: { pop?: boolean; lateCause?: boolean } | undefined): boolean {
+    const move = moveWreck({ kind: 'destroy', pop: !!(opts && opts.pop), lateCause: !!(opts && opts.lateCause) });
+    if (move === 'upgrade') upgradeToCookOff();
+    return move === 'wreck';
+  }
+
+  /**
+   * (2026-11-02 audit F10) A young plain wreck learns it was a cook-off (a network peer: the row's DESTROYED flag
+   * landed before the tank_destroyed event that carries the cause): the cook-off's char spread and gun bend, and its
+   * turret thrown as a cook-off's. A body the authority owns flies as the authority threw it (only its trail changes);
+   * a turret thrown here goes again from its seat (a plain kill's hop is a few centimetres: no visible jump).
+   */
+  function upgradeToCookOff(): void {
+    burnU.uBurnK.value.z = BURN_SPREAD_COOKOFF_S;
+    resetLiveCrumple();
+    planLiveCrumple(true);
+    if (turretDriver?.active) { turretDriver.upgradePop(); return; }
+    turretG.position.copy(wreckSeat);
+    turretG.rotation.set(0, popYaw0, 0);
+    popScale = 1;
+    popActive = true;
+    popT = 0;
     popTrailAcc = 0;
     applyPop();
   }
@@ -11643,7 +11727,7 @@ export function* createTankRuntimeSteps(
      *   (screenshot composers freeze mid-flight). Default: settled pose.
      */
     setDestroyed(opts) {
-      if (destroyed) return;
+      if (!enterWreck(opts)) return;
       // (perf-255) the wreck captures and restores the detail: never the far stand-ins
       if (farLodActive) setFarLod(false);
       if (gearLodActive) setGearLod(false);
@@ -11660,7 +11744,6 @@ export function* createTankRuntimeSteps(
       const restoreDetachedBattleDetails = battleDetailGroups.length > 0
         && !battleDetailsAttached;
       setBattleDetailsAttached(true);
-      destroyed = true;
       captureWreckMaterials();
       // r6 SHADER BURN SWEEP (replaces the r4/r5 per-mesh staged swap — that
       // one popped whole meshes from pristine camo to coal black, leaving a
@@ -11691,12 +11774,24 @@ export function* createTankRuntimeSteps(
       if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 
-    setWreckTurretPose(pose) { if (destroyed) turretDriver?.setExternal(pose); },
+    setWreckTurretPose(pose) {
+      if (!pose || wreckState === 'disposed') return;
+      authorityTurretDriver()?.setExternal(pose);
+    },
 
-    awaitWreckTurretPose() { if (destroyed) turretDriver?.awaitExternal(); },
+    awaitWreckTurretPose() {
+      if (wreckState === 'disposed') return;
+      authorityTurretDriver()?.awaitExternal();
+    },
+
+    wreckTurretHeldPose(out) { return destroyed && !!turretDriver && turretDriver.heldPose(out); },
 
     /** @returns {boolean} the wreck look is currently applied */
     isDestroyed() { return destroyed; },
+
+    wreckState() { return wreckState; },
+
+    wreckLife() { return wreckLife; },
 
     /**
      * Install the burn-mask shader hook (DISARMED, uBurnT -1) on every
@@ -11790,10 +11885,12 @@ export function* createTankRuntimeSteps(
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      // (2026-11-02 audit F10) a disposed visual stops here (the three above are idempotent and touch no GPU resource)
+      const wasWreck = destroyed;
+      if (moveWreck({ kind: 'reset' }) !== 'reset') return;
       turretRing.hide();
       reopenInteriorFills();
-      if (destroyed) {
-        destroyed = false;
+      if (wasWreck) {
         // restore the EXACT captured visibility (never a blanket `true` —
         // that resurrected hidden placeholder hulls over GLB models, r4)
         for (const [mesh, mat, wasVisible] of originalMats) {
@@ -11813,6 +11910,7 @@ export function* createTankRuntimeSteps(
         gunG.rotation.x = 0;
       }
       turretDriver?.reset();
+      turretDriverRequested = false;
       turretFlying = false;
       burnU.uBurnT.value = -1; // disarm the burn mask (clones stay cached)
       burnU.uBurnGlow.value = 0;
@@ -11829,6 +11927,11 @@ export function* createTankRuntimeSteps(
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
+      // (2026-11-02 audit F10) the shot cursors and the clocks a rematch must not inherit
+      muzzleAltCursor = 0;
+      launcherCursor = launcherCursorAtBuild;
+      lastFxS = null;
+      gearAccumDt = 0;
       recoilG.position.z = 0;
       recoilG.rotation.z = 0;
       for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
@@ -11865,8 +11968,6 @@ export function* createTankRuntimeSteps(
     resetForGaragePresentation() {
       this.resetDestroyed();
       groundSampler = null;
-      gearAccumDt = 0;
-      lastFxS = null;
       root.rotation.set(0, 0, 0, 'YXZ');
       turretG.rotation.set(0, 0, 0);
       gunG.rotation.set(0, 0, 0);
@@ -11889,6 +11990,10 @@ export function* createTankRuntimeSteps(
     dispose() {
       equipmentDamage.dispose();
       turretRing.dispose();
+      // (2026-11-02 audit F10) latched (the two above are idempotent): a second dispose, and any late wreck or reset after
+      // it, does nothing more
+      if (moveWreck({ kind: 'dispose' }) !== 'dispose') return;
+      turretDriver?.reset();
       reopenInteriorFills();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;

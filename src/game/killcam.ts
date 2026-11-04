@@ -4,6 +4,7 @@ import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './k
 import { hullPointsRemoved } from './hullPointsRemoved.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 import { killcamCameraFloor } from './killcamGround.ts';
+import { recordKillcamWreck, restoreKillcamWreck, type KillcamWreckReceipt } from './killcamWreckReceipt.ts';
 import {
   captureEntityFrame, copyEntityFrame, copyModules, tracePoints, type EntityFrame,
 } from './killcamCapture.ts';
@@ -185,6 +186,10 @@ interface KillcamVisual {
   /** Physics lane: the wreck's turret pose this frame (world turret frame), and the promise that it will come. */
   setWreckTurretPose?(pose: ArrayLike<number> | null): void;
   awaitWreckTurretPose?(): void;
+  /** (2026-11-02 audit F10) where the wreck's authority (a host, the solo step) last had its turret, when one holds it */
+  wreckTurretHeldPose?(out: Float64Array): boolean;
+  /** (2026-11-02 audit F10) the visual's declared wreck state (cook-off or plain), for its killcam receipt */
+  wreckState?(): string;
   isDestroyed?(): boolean;
   resetDestroyed?(): void;
   setVisible?(visible: boolean): void;
@@ -572,12 +577,13 @@ interface PlaybackBundle {
   vegGroup: THREE.Object3D | null;
   vegWasVisible: boolean;
   dimmedLights: Array<[THREE.DirectionalLight | THREE.HemisphereLight, number]> | null;
-  rewreck: { pop: boolean; brokenTracks: string[]; eraSpent: string[] } | null;
+  rewreck: (KillcamWreckReceipt & { brokenTracks: string[]; eraSpent: string[] }) | null;
   restageModuleStates: ModuleStates | null;
   restageEraSpent: string[];
   snapPoseState: ReturnType<typeof replayStateFromPose>;
   attackerPoseState: ReturnType<typeof replayStateFromPose> | null;
-  attackerRestore: { wasDestroyed: boolean; wasVisible: boolean } | null;
+  /** (2026-11-02 audit F10) an attacker wrecked before the replay lifted it keeps its wreck receipt, as the victim does */
+  attackerRestore: { wasDestroyed: boolean; wasVisible: boolean; wreck: KillcamWreckReceipt | null } | null;
   replayMuzzle: THREE.Vector3 | null;
   barrelDot: number | null;
   wreck: {
@@ -2412,16 +2418,14 @@ export function createKillCam(deps: KillcamDeps) {
     snap: ReplaySnapshot,
   ): PlaybackBundle['rewreck'] {
     const visual = snap.targetEnt?.visual;
-    if (!visual?.isDestroyed?.()) return null;
+    // (2026-11-02 audit F10) its look and its authority's held turret pose (killcamWreckReceipt.ts)
+    const wreck = visual ? recordKillcamWreck(visual, !!snap.ev.ammoRacked) : null;
+    if (!wreck) return null;
     const brokenTracks = ['trackL', 'trackR'].filter((module) =>
       (snap.moduleStates && snap.moduleStates[module] === 'red')
       || (snap.ev.modulesHit || []).some((hit) =>
         hit.module === module && hit.newState === 'red'));
-    return {
-      pop: !!snap.ev.ammoRacked,
-      brokenTracks,
-      eraSpent: snap.eraSpent || [],
-    };
+    return { ...wreck, brokenTracks, eraSpent: snap.eraSpent || [] };
   }
 
   function configureReplayActors(
@@ -2701,7 +2705,10 @@ export function createKillCam(deps: KillcamDeps) {
    */
   function hideFx() {
     const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
-    if (fxs && fxs.setReplaySuppressed) fxs.setReplaySuppressed(true);
+    // (2026-11-02 audit F10) the fx runtime owns its group's visibility under the suppression (effects.ts
+    // holdReplayHidden: its subsystems' per-frame writes re-showed what this hid); the list below is the fallback for
+    // an fx group with no runtime to ask
+    if (fxs && fxs.setReplaySuppressed) { fxs.setReplaySuppressed(true); return; }
     if (!pb || !pb.fxGroup) return;
     if (!pb.fxHidden) pb.fxHidden = [];
     for (const child of pb.fxGroup.children) {
@@ -2751,6 +2758,8 @@ export function createKillCam(deps: KillcamDeps) {
     pb.attackerRestore = {
       wasDestroyed,
       wasVisible: visual.root?.visible ?? true,
+      // (2026-11-02 audit F10) read before the restage lifts it: a traded kill's cook-off and its authority's turret
+      wreck: wasDestroyed ? recordKillcamWreck(visual) : null,
     };
   }
 
@@ -5998,7 +6007,10 @@ export function createKillCam(deps: KillcamDeps) {
     const rewreck = replay.rewreck;
     const visual = replay.snap.targetEnt?.visual;
     if (!rewreck || !visual) return;
-    visual.setDestroyed({ pop: rewreck.pop, ageS: 12 });
+    // (2026-11-02 audit F10) a restaged victim whose turret its authority held is declared held again before the
+    // re-wreck, at the pose it had: no local body is thrown and settled where the authority's collision turret is not
+    // (a wreck the replay never lifted keeps its own turret)
+    restoreKillcamWreck(visual, rewreck);
     if (visual.setTrackState) {
       for (const module of rewreck.brokenTracks) visual.setTrackState(module, true);
     }
@@ -6012,9 +6024,10 @@ export function createKillCam(deps: KillcamDeps) {
     if (!replay.attackerPoseState || !attacker?.visual || !attacker.state) return;
     const visual = attacker.visual;
     visual.syncFromState(attacker.state, 0);
-    if (replay.attackerRestore?.wasDestroyed && visual.setDestroyed) {
-      visual.setDestroyed({ pop: false, ageS: 12 });
-    }
+    // (2026-11-02 audit F10) re-wrecked from its receipt, as the victim is: its cook-off look and its authority's turret
+    // pose (it was always a plain wreck whose turret a local body threw and settled by its seat)
+    const wreck = replay.attackerRestore?.wreck;
+    if (wreck) restoreKillcamWreck(visual, wreck);
     if (replay.attackerRestore && !replay.attackerRestore.wasVisible && visual.setVisible) {
       visual.setVisible(false);
     }

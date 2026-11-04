@@ -1030,6 +1030,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     }
     if (Number.isFinite(liveUntil)) liveUntil += delta;
     for (const g of glowP) if (g.w > -1e8) g.w += delta;
+    // (2026-11-02 audit R7) the embers' births are fx-clock stamps too (a forward rebase expired them at once)
+    for (const e of emberP) if (e.w > -1e8) e.w += delta;
   }
 
   function reset(): void {
