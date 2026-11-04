@@ -38,7 +38,7 @@ function addTowLauncher(P: TankBuilderPort, mark: M113Mark): void {
     // the cradle's inner plate, its two arms to the wall, the canisters with their end collars and the dark mouths
     const plateX = T.x + 0.13;
     P.addEquipment('turret', box(0.04, 0.52, 0.86), plateX, yMid, zMid);
-    for (const z of [zMid - 0.30, zMid + 0.30]) P.addEquipment('turret', box(plateX - T.wallX + 0.01, 0.12, 0.14), (plateX + T.wallX) / 2, yMid, z);
+    for (const z of [zMid - 0.30, zMid + 0.30]) P.addEquipment('turret', box(T.wallX - plateX + 0.01, 0.12, 0.14), (plateX + T.wallX) / 2, yMid, z);
     for (const y of T.ys) {
       P.addEquipment('turret', cylZ(0.11, T.len, seg), T.x, y, zMid);
       for (const z of [z0 + 0.04, zMid, T.mouthZ - 0.04]) P.add('turretDetail', cylZ(0.124, 0.06, seg), T.x, y, z);
@@ -56,7 +56,7 @@ function addTowLauncher(P: TankBuilderPort, mark: M113Mark): void {
   P.addEquipment('turret', box(w - 0.04, h - 0.04, 0.05), T.x, yMid, z0 - 0.02);
   const inner = T.x + w / 2;
   for (const z of [zMid - 0.32, zMid + 0.30]) {
-    P.addEquipment('turret', box(inner - T.wallX + 0.02, 0.12, 0.16), (inner + T.wallX) / 2, yMid, z);
+    P.addEquipment('turret', box(T.wallX - inner + 0.02, 0.12, 0.16), (inner + T.wallX) / 2, yMid, z);
     P.add('turretDark', box(w + 0.02, h + 0.02, 0.035), T.x, yMid, z);
   }
   // the two front collars round the mouths and their dark bores, the box's divider
