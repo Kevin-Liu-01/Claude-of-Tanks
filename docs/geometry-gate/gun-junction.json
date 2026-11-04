@@ -128,6 +128,7 @@
   "lrmv_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"78adce3b44d3ca1e","gun":"b50fcfb4e9e573ac"}},
   "m113a1_fsv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0d6b17ca666942e7","gun":"dc1153f9d0ac5598"}},
   "m113a1_mrv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"dd870de4855d8959","gun":"1698a879599e2807"}},
+  "m113a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"19b9b3a9e9b9cb52","gun":"eb149b6eca6ecd70"}},
   "m113as4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"03dcc43195904bfd","gun":"82dcd99aca786125"}},
   "m1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3353e8eebf7e9670","gun":"b6b70118aaa96050"}},
   "m1a1_abrams_aim": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5e12509e25ee3723","gun":"61f80e58684a6b5c"}},
