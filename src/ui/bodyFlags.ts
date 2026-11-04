@@ -16,4 +16,3 @@ export function setBodyFlag(flag: string, reason: string, on: boolean): void {
   const wanted = held.size > 0;
   if (document.body.classList.contains(flag) !== wanted) document.body.classList.toggle(flag, wanted);
 }
-
