@@ -1117,7 +1117,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
           holes: [Array.from({ length: 12 }, (_, k): Point2 => [-0.48 + 0.49 * Math.cos(k * Math.PI / 6), -0.824 + 0.49 * Math.sin(k * Math.PI / 6)]),
             rect(0.18, 0.83, -1.08, -0.39), rect(0.707, 0.887, -1.859, -1.679), rect(-0.933, -0.753, -1.839, -1.659),
             // (round 3: the side baskets carry their own nets, below)
-            rect(-1.45, -0.95, -2.10, -0.99), rect(0.95, 1.72, -2.10, -0.63)],
+            rect(-1.45, -0.95, -2.10, -0.99), rect(0.95, 1.72, -2.10, -0.63),
+            // (round 6: the left side bin and the jerry cans carry their own nets, below)
+            rect(-1.62, -1.12, -0.86, 0.42)],
           tents: [[1.25, -1.45, 0.09], [-1.30, -1.80, 0.08], [0.95, -1.95, 0.07], [-0.10, -1.95, 0.07], [1.45, -0.75, 0.07],
             [0.55, 0.30, 0.08], [-0.20, -0.20, 0.06], [-1.20, -0.40, 0.07]],
           y: 0.83, reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 11,
@@ -1132,6 +1134,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
           outline: [[-1.76, 0.40], [1.76, 0.40], ...ragged([[1.76, 0.52], [1.40, 0.62], [1.12, 0.80], [0.95, 0.95], [0.92, 1.05],
             [0.80, 1.15], [0.78, 1.30], [0.55, 1.38], [0.25, 1.40], [-0.25, 1.40], [-0.45, 1.32], [-0.62, 1.22], [-0.78, 1.12],
             [-0.92, 1.02], [-0.98, 0.92], [-1.12, 0.82], [-1.40, 0.68], [-1.76, 0.54]], 0.035, 11)],
+          holes: [rect(-1.62, -1.12, 0.38, 0.58)],
           tents: [[-0.55, 0.50, 0.07], [0.45, 0.95, 0.06], [-0.60, 1.05, 0.06]],
           reliefScale: 1.2, rimScale: 1.0, garnishRiseM: 0.16, garnishDensity: 1.5, lensSlotM: 0.1, seed: 15,
         }),
@@ -1147,6 +1150,12 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         ...[[-1.45, -0.93, -2.10, -0.99, 0.719, 8], [0.93, 1.72, -2.10, -0.63, 0.779, 12]].map(([x0, x1, z0, z1, y, nx], k) => laid({
           x0, x1, z0, z1, nx, nz: Math.round((z1 - z0) / 0.065), clipToArmour: false, riseLimitM: 0.05, yAt: () => y, sagK: 3,
           reliefScale: 2, rimScale: 0.5, garnishRiseM: 0.12, seed: 71 + k * 6 })),
+        // round 6 (both critics: the dark stowage box on the turret's side and the open rack by the turret rear bare): a net
+        // thrown over the left side bin and over the jerry cans in their rack, resting on their lids and sagging 5-8 cm down
+        // over their edges (round 5's)
+        ...[[-0.17, 0.53, 0.62, 81], [-0.82, -0.37, 0.82, 85]].map(([z0, z1, y, seed]) => laid({
+          x0: -1.58, x1: -1.13, z0, z1, nx: 8, nz: Math.round((z1 - z0) / 0.06), clipToArmour: false, riseLimitM: 0.06,
+          yAt: () => y, sagK: 8, reliefScale: 1.5, rimScale: 0.5, garnishRiseM: 0.06, seed })),
       ],
       face: [face({ z: -2.61, x0: -1.43, x1: 1.71, y0: 0.30, y1: 0.80, nx: 32, ny: 6, swagM: 0.06, seed: 59 }),
         // and down the cheeks' steep fronts below the roof net's edge, either side of the mantlet (the gun's sweep and the
@@ -1186,16 +1195,26 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       sleeve: [
         // the canvas mantlet cover ahead of the turret's cheeks (they stand 2-3 cm beside it to 0.38 m), over its crown and
         // flanks round the ranging gun's housing
-        { z0: 0.40, z1: 0.80, reachM: 0.20, wrapDeg: 110, gapM: 0.015, bunchM: 0.05, garnishOffM: 0.06, garnishDensity: 3, seed: 49 },
+        // (round 6, Opus: "hard, stepped edges between bands": every band's ends taper down onto the barrel over 5 cm)
+        { z0: 0.40, z1: 0.80, reachM: 0.20, wrapDeg: 110, gapM: 0.015, bunchM: 0.05, garnishOffM: 0.06, garnishDensity: 3, taperM: 0.05,
+          seed: 49 },
         // over the hull the rear deck binds the gun from below and the fender bins from beside under its axis
         // (gun-depression-sweep's floors): the scrim laid over the upper flanks only, to 70 degrees round from the crown
         // past the bins' reach, then to 10 degrees under the flanks, tied tight at its hems; the bore evacuator bare
-        { z0: 0.80, z1: 1.12, reachM: 0.20, wrapDeg: 70, gapM: 0.012, bunchM: 0.02, garnishOffM: 0.03, garnishDensity: 3, seed: 51 },
-        { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.06, garnishOffM: 0.065, garnishDensity: 3, seed: 52 },
+        { z0: 0.80, z1: 1.12, reachM: 0.20, wrapDeg: 70, gapM: 0.012, bunchM: 0.02, garnishOffM: 0.03, garnishDensity: 3, taperM: 0.05,
+          seed: 51 },
+        { z0: 1.12, z1: 2.70, reachM: 0.20, wrapDeg: 100, gapM: 0.012, bunchM: 0.06, garnishOffM: 0.065, garnishDensity: 3, taperM: 0.05,
+          seed: 52 },
         // past the evacuator bound right round to 0.4 m short of the muzzle (in four lengths: a sleeve's garnish clumps
-        // stand a clump apart along it, so each length takes its own)
+        // stand a clump apart along it, so each length takes its own). Round 6 (the critics across rounds 3-5: "a clumped
+        // garnish mass about 0.3-0.5 m long hanging under the forward barrel wrap ... continuous with the wrap"): the second
+        // and third lengths let down under the barrel into two crumpled sacks of scrim, 0.27-0.34 m deep and 1.6-1.8 times
+        // the barrel's width, garnish tied on their flanks; the last 0.67 m to the muzzle clear of them (past the stern's
+        // reach: the barrel there never comes over the hull at any yaw)
         ...[3.76, 4.03, 4.30, 4.57].map((z0, k) => ({ z0, z1: z0 + 0.27, reachM: 0.20, gapM: 0.012, bunchM: 0.065,
-          garnishOffM: 0.075, garnishDensity: 5, seed: 53 + k * 4 })),
+          garnishOffM: 0.075, garnishDensity: k === 1 || k === 2 ? 8 : 5, taperM: 0.05,
+          ...(k === 1 ? { sack: { dropM: 0.34, widthM: 0.12 } } : k === 2 ? { sack: { dropM: 0.27, widthM: 0.10, crumpleM: 0.05 } } : {}),
+          seed: 53 + k * 4 })),
         // the ranging gun's barrel bunched in a strip of it, its flash hider bare
         { z0: 0.68, z1: 1.48, axis: [0.004, 0.1726], reachM: 0.035, wrapDeg: 150, gapM: 0.006, bunchM: 0.012, garnishOffM: 0, seed: 57 },
       ],
