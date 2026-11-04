@@ -121,6 +121,7 @@ html,body.pad-page{margin:0;height:100%;overflow:hidden;overscroll-behavior:none
 .pad-hull.is-stick{opacity:.75;}
 .pad-ctl[data-state='down'] .pad-hull,.pad-ctl[data-state='idle'] .pad-hull{opacity:.35;}
 .pad-msg{grid-column:1/-1;min-height:1.3em;margin:0;font-size:var(--fs-13);color:var(--ink-3);text-align:center;}
+.pad-ctl[data-tour] .pad-msg{visibility:hidden;}
 
 /* the gun: the gunner's sight under the right thumb, the fire button in its collar, the reload ring filling around it */
 .pad-right{grid-area:gun;position:relative;min-width:0;min-height:0;}

@@ -167,7 +167,8 @@ Owner 2026-11-03: "a tutorial should show up on first phone pairing mode that u 
 and its name beside it over the live panel: tilt to steer (with tilt on), the throttle (or the stick), drag to aim and
 flick to turn, tap to fire and drag to aim, the scope, and Lock on where there is one. A ghost thumb strokes the
 throttle and the sight. The thumbs work through it (no pointer events but Skip's); Skip, or ten seconds with the time
-running out under Skip, ends it; Options shows it again. The marks are placed in the frame's own layout, so they turn
+running out under Skip, ends it; Options shows it again. Skip stands at the foot of the middle column, where the status
+line gives way to it while the guide shows. The marks are placed in the frame's own layout, so they turn
 with it, and each name takes the first side with room, clear of the other controls and names.
 
 The game screen shows the same guide at the same time (owner 2026-11-03: "the tutorial should open on game screen and
@@ -279,7 +280,7 @@ a battle, while paused and while its tab is hidden (the pause button still works
   in a solo battle (several thumbs at once through CDP touch points), the network log shows zero requests before
   pairing, the latency is measured on one clock, and a desktop reload resumes the pairing. It also checks the guide (it
   shows on the first pairing on the phone and on the game screen together, a thumb works through it, it leaves both by
-  itself after ten seconds, Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
+  itself after ten seconds (timed where each screen saw it go), Options shows it again on both, and Skip on either side ends it on both), the lock key, a shot felt once (the trigger's kick, the battle's cue for it adding none), a thumb
   on fire dragging to aim while the gun loads, and the loaded buzz.
 - `src/pad/padCues.selftest.mjs`: which events are whose cues, the cue on the wire, every buzz's pattern and ticks.
 - iOS Simulator for the pad page: the locked frame at every rotation, two-finger presses against a Node desktop that logs

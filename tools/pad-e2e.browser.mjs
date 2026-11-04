@@ -186,14 +186,27 @@ try {
     const lever = document.querySelector('.pad-lever').getBoundingClientRect();
     const under = document.elementFromPoint(lever.x + lever.width / 2, lever.y + lever.height / 2);
     return { shown: !document.querySelector('.pad-tour').hidden, marks: document.querySelectorAll('.pad-tour-mark').length,
-      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-lever') };
+      names: [...document.querySelectorAll('.pad-tour-tip')].map((tip) => tip.textContent), through: !!under?.closest('.pad-lever'),
+      // Skip stands where the status line is: the line gives way while the guide shows
+      lineAway: getComputedStyle(document.querySelector('.pad-msg')).visibility === 'hidden' };
   });
   await phone.screenshot({ path: resolve(outDir, 'phone-guide.png') });
   check('the first pairing shows the controls\' guide over the live panel, and a thumb works through it',
-    guide.shown && guide.marks >= 4 && guide.through, `${guide.marks} marks: ${guide.names.join(' · ')}`);
+    guide.shown && guide.marks >= 4 && guide.through && guide.lineAway, `${guide.marks} marks: ${guide.names.join(' · ')}`);
   // the game screen shows the same guide at the same time, drawn from the phone's picture of itself, over Settings
   const screenGuideOpen = () => desktop.evaluate(() => !!document.querySelector('.cot-pad-tour')?.classList.contains('is-open'));
   await desktop.waitForFunction(() => document.querySelector('.cot-pad-tour')?.classList.contains('is-open'), { timeout: 5000 }).catch(() => {});
+  // when it leaves, timed from here (the first sight of it)
+  await desktop.evaluate(() => {
+    const root = document.querySelector('.cot-pad-tour');
+    const seenAt = performance.now();
+    window.__padTourShutMs = null;
+    if (root) new MutationObserver((_, observer) => {
+      if (root.classList.contains('is-open')) return;
+      window.__padTourShutMs = Math.round(performance.now() - seenAt);
+      observer.disconnect();
+    }).observe(root, { attributes: true, attributeFilter: ['class'] });
+  });
   const screenGuide = await desktop.evaluate(() => {
     const root = document.querySelector('.cot-pad-tour');
     return { open: !!root?.classList.contains('is-open'), top: !!root?.matches(':popover-open'),
@@ -228,8 +241,13 @@ try {
   check('the sight\'s lock key is on the phone in a solo battle', await phone.$eval('.pad-lock', (el) => !el.hidden));
   // the guide leaves by itself ten seconds after it showed; Options shows it again, and Skip ends it
   await phone.waitForFunction(() => window.__COT_PAD_PHONE?.tour === 'timeout', { timeout: Math.max(1000, 12_000 - (Date.now() - guideShownAt)) }).catch(() => {});
-  check('the guide leaves both screens by itself after ten seconds', await phone.evaluate(() => window.__COT_PAD_PHONE.tour === 'timeout'
-    && document.querySelector('.pad-tour').hidden) && !(await screenGuideOpen()), `${((Date.now() - guideShownAt) / 1000).toFixed(1)} s after it showed`);
+  // timed where each screen saw it go: the phone from its showing, the game screen from the first sight of its own
+  const phoneShut = await phone.evaluate(() => ({ how: window.__COT_PAD_PHONE.tour, ms: window.__COT_PAD_PHONE.tourMs, hidden: document.querySelector('.pad-tour').hidden,
+    lineBack: getComputedStyle(document.querySelector('.pad-msg')).visibility !== 'hidden' }));
+  const screenShutMs = await desktop.evaluate(() => window.__padTourShutMs);
+  check('the guide leaves both screens by itself after ten seconds', phoneShut.how === 'timeout' && phoneShut.hidden && phoneShut.lineBack
+    && phoneShut.ms >= 9500 && phoneShut.ms <= 12_000 && !(await screenGuideOpen()) && screenShutMs !== null && screenShutMs <= 12_000,
+  `the phone's after ${(phoneShut.ms / 1000).toFixed(1)} s, the game screen's ${screenShutMs === null ? 'never' : `${(screenShutMs / 1000).toFixed(1)} s`} after it was seen`);
   await phone.tap('[data-menu]');
   await phone.waitForSelector('.pad-opts[open] [data-tour]', { timeout: 5000 });
   await phone.tap('.pad-opts [data-tour]');

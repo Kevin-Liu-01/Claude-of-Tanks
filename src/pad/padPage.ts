@@ -308,11 +308,11 @@ let reloadKey = '';
 /** Diagnostics for the pad e2e and the owner's real-device check. */
 interface PhoneDebug {
   sent: number; held: number; throttle: number; released: number; rttMs: number | null; applyMs: number; tilt: boolean; state: string; frame: object | null;
-  /** The buzzes played, by name, and the guide's last state (shown, skipped, timed out). */
-  buzz: Record<string, number>; tour: string;
+  /** The buzzes played, by name, the guide's last state (shown, skipped, timed out) and how long it last stayed open. */
+  buzz: Record<string, number>; tour: string; tourMs: number;
 }
 const debug: PhoneDebug | null = import.meta.env.DEV || /[?&]padDebug\b/.test(location.search)
-  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: '' }) : null;
+  ? ((globalThis as { __COT_PAD_PHONE?: PhoneDebug }).__COT_PAD_PHONE = { sent: 0, held: 0, throttle: 0, released: 0, rttMs: null, applyMs: 0, tilt: false, state: 'join', frame: null, buzz: {}, tour: '', tourMs: 0 }) : null;
 
 const steering = (): number => {
   if (settings.tilt && tiltSeen) {
@@ -710,6 +710,7 @@ interface TourStop {
   sides: ReadonlyArray<'above' | 'below' | 'left' | 'right' | 'inside' | 'over'>;
 }
 let tourTimer: ReturnType<typeof setTimeout> | undefined;
+let tourShownAt = 0;
 let clockAnimation: Animation | null = null;
 let ghostAnimations: Animation[] = [];
 const toured = (): boolean => { try { return localStorage.getItem(TOUR_KEY) === '1'; } catch { return true; } };
@@ -823,6 +824,8 @@ function placeTour(): void {
 function showTour(): void {
   try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode: the guide shows each pairing */ }
   tour.hidden = false;
+  // Skip takes the status line's place at the foot of the middle column while the guide shows
+  ctl.dataset.tour = '';
   placeTour();
   // the ten seconds run out under Skip (a still bar under reduced motion)
   clockAnimation?.cancel();
@@ -831,6 +834,7 @@ function showTour(): void {
   clearTimeout(tourTimer);
   tourTimer = setTimeout(() => endTour('timeout'), TOUR_MS);
   if (tourLayout) link?.sendCtl({ k: 'tour', on: true, l: encodePadTour(tourLayout) });
+  tourShownAt = performance.now();
   if (debug) debug.tour = 'shown';
 }
 /** End the guide: skipped here, its time up, the pairing ended, or skipped on the game screen (`screen`). Skip and the
@@ -842,7 +846,8 @@ function endTour(how: 'skipped' | 'timeout' | 'ended' | 'screen'): void {
   clockAnimation?.cancel();
   for (const animation of ghostAnimations.splice(0)) animation.cancel();
   tour.hidden = true;
-  if (debug) debug.tour = how;
+  delete ctl.dataset.tour;
+  if (debug) { debug.tour = how; debug.tourMs = Math.round(performance.now() - tourShownAt); }
 }
 press($<HTMLElement>('.pad-tour-skip', tour), () => endTour('skipped'));
 
