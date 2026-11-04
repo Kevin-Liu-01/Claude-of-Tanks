@@ -111,7 +111,7 @@ function addBody(P: TankBuilderPort, seat: MarksmanSeat): void {
   P.add('turretDark', cylY(A.r + 0.004, A.r + 0.004, 0.012, n), 0, A.topY - 0.008, 0);
   P.add('turret', cylY(COLLAR.r, COLLAR.r, COLLAR.topY + 0.02 - (A.topY - 0.01), n),
     0, (COLLAR.topY + 0.02 + A.topY - 0.01) / 2, 0);
-  // the welded body: its fifteen planar faces (marksmanFrame.ts)
+  // the welded body: its fourteen planar faces (marksmanFrame.ts)
   P.add('turret', polygonSolid(Object.values(MARKSMAN_BODY_FACES).map((face) => face.map(marksmanBodyPoint))));
   // the bearing drums on the flanks (turret stock about the elevation axis), each run into the body, a cover disc on its
   // outer face round the gun's hub
@@ -140,13 +140,14 @@ function addGrilles(P: TankBuilderPort): void {
   }
 }
 
-/** The four 76 mm dischargers at each rear roof corner on a bracket, raised outboard and a little aft (photos 02, 07). */
+/** The four 76 mm dischargers at each rear roof corner on a bracket, raised outboard and a little forward (photos 02, 07;
+ * round 4: never astern, for tools/vehicle-controls-inventory.mjs). */
 function addSmokeDischargers(P: TankBuilderPort): void {
   const { box, cylZ, xform } = KIT;
   const x = BODY.sideX;
   for (const s of SIDES) {
     P.addEquipment('turretDetail', box(0.12, 0.24, 0.30), s * (x + 0.05), SMOKE.y, SMOKE.z);
-    const bore = new THREE.Vector3(s * 0.80, 0.50, -0.22).normalize(), turn = aim(bore);
+    const bore = new THREE.Vector3(s * 0.78, 0.50, 0.30).normalize(), turn = aim(bore);
     for (const dy of [-0.065, 0.065]) {
       for (const dz of [-0.075, 0.075]) {
         const foot = new THREE.Vector3(s * (x + 0.10), SMOKE.y + dy, SMOKE.z + dz);
@@ -178,8 +179,8 @@ function addRoofKit(P: TankBuilderPort): void {
     P.addHatch('turretHatch', cylY(SIGHTS.hatchR, SIGHTS.hatchR, 0.04, n), s * SIGHTS.hatchX, roof + 0.045, SIGHTS.hatchZ);
     P.add('turretDark', box(0.06, 0.04, 0.16), s * (SIGHTS.hatchX + SIGHTS.hatchR - 0.01), roof + 0.06, SIGHTS.hatchZ);
     // lift eyes at the roof's corners and the whips on their bases at its rear
-    liftEye(P, 'turretDetail', s * 0.55, roof, 1.62, 0);
-    liftEye(P, 'turretDetail', s * 0.55, roof, -1.47, 0);
+    liftEye(P, 'turretDetail', s * 0.60, roof, 0.95, 0);
+    liftEye(P, 'turretDetail', s * 0.60, roof, -1.47, 0);
     P.addEquipment('turretDetail', cylY(0.045, 0.05, 0.09, 10), s * 0.50, roof + 0.035, -1.28);
     P.addEquipment('turretDetail', antennaPart(cylY(0.012, 0.016, 2.10, 8)), s * 0.50, roof + 1.10, -1.28);
     // a grab handle either side of the rear face's access plate
@@ -206,8 +207,11 @@ function addRadar(P: TankBuilderPort): void {
     const rib = xform(xform(box(0.026, slant - 0.02, 0.026), 0, 0, 0, -slope, 0, 0), 0, 0, 0, 0, a, 0);
     P.addEquipment('turretDark', rib, x + ribR * Math.sin(a), (R.skirtTopY + skirtFoot) / 2, z + ribR * Math.cos(a));
   }
-  P.addEquipment('turretDetail', cylY(R.columnR, R.columnR, R.columnTopY - R.skirtTopY + 0.03, n), x,
-    (R.columnTopY + R.skirtTopY - 0.03) / 2, z);
+  // the drum housing on the skirt (photo 04), the column on it
+  P.addEquipment('turret', cylY(R.housingR, R.housingR, R.housingTopY - R.skirtTopY + 0.015, n), x,
+    (R.housingTopY + R.skirtTopY - 0.015) / 2, z);
+  P.addEquipment('turretDetail', cylY(R.columnR, R.columnR, R.columnTopY - R.housingTopY + 0.01, n), x,
+    (R.columnTopY + R.housingTopY - 0.01) / 2, z);
   // the head on the column, the electronics box on its right, the elevation axle out of its left side
   P.addEquipment('turretDetail', box(0.26, R.headH, 0.24), x, R.headY, z);
   P.addEquipment('turretDetail', box(0.12, 0.22, 0.20), x - 0.185, R.headY - 0.02, z - 0.01);
@@ -259,11 +263,11 @@ function addGuns(P: TankBuilderPort, seat: MarksmanSeat): void {
       ...section(POD.tailZ, x0, x1 - 0.02, POD.tailBottomY, POD.tailTopY, tc * 0.6, bc * 0.6),
       ...section(POD.tailCutZ, x0, x1, y0, y1, tc, bc),
       ...section(POD.shoulderZ, x0, x1, y0, y1, tc, bc),
-      ...section(POD.shoulderZ + 0.16, x0 + 0.04, x1 - 0.07, y0 + 0.16, y1 - 0.05, tc * 0.8, bc),
+      ...section(POD.shoulderZ + 0.20, x0 + 0.05, x1 - 0.08, y0 + 0.30, y1 - 0.06, tc * 0.8, bc),
       ...section(POD.noseZ, BORE.x - POD.faceHalfW, BORE.x + POD.faceHalfW, BORE.y - POD.faceHalfH, BORE.y + POD.faceHalfH, 0.04, 0.03),
     ])));
     // the access door on the pod's outer face, its hinges at the front edge and its latch
-    const doorY = (y0 + y1) / 2 - 0.02, doorZ = 0.55;
+    const doorY = (y0 + y1) / 2 - 0.02, doorZ = 0.30;
     P.add(podBucket, box(0.016, 0.30, 0.46), s * (x1 + 0.004), doorY, doorZ);
     P.addGunExtraDark(box(0.02, 0.035, 0.08), s * (x1 + 0.013), doorY, doorZ - 0.15);
     for (const dy of [-0.10, 0.10]) P.addGunExtraDark(KIT.cylY(0.012, 0.012, 0.06, 8), s * (x1 + 0.014), doorY + dy, doorZ + 0.23);

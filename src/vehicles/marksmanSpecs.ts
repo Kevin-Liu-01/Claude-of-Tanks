@@ -6,7 +6,7 @@
 //
 // The combat rows are the registrar's (269 R0); builder M's measured build (profiles/marksman.ts, the one turret module
 // profiles/marksmanTurret.ts) sets the spatial datums, every one read from the frame both files share
-// (profiles/marksmanFrame.ts): each hull's ring, the elevation drum, the twin bores, the body's fifteen armoured faces,
+// (profiles/marksmanFrame.ts): each hull's ring, the elevation drum, the twin bores, the body's fourteen armoured faces,
 // the turret's modules and crew, and the guns' stops over each hull's stern.
 // Combat numbers are game tuning on published figures, not weapon specifications. First-party: Kevin B. Liu (NOTICE.md).
 import './supplementalFleetSpecs.ts';
@@ -30,7 +30,7 @@ const mean = (points: readonly Point[]): Point =>
   points.reduce<Point>((acc, p) => [acc[0] + p[0] / points.length, acc[1] + p[1] / points.length, acc[2] + p[2] / points.length], [0, 0, 0]);
 
 /**
- * The turret's armour: the drawn body's fifteen planar faces (marksmanFrame.ts), each wound outward. en.wikipedia: the
+ * The turret's armour: the drawn body's fourteen planar faces (marksmanFrame.ts), each wound outward. en.wikipedia: the
  * turret proof against 14.5 mm and 155 mm air bursts; the roof 30 mm (valka.cz's ItPsv 90 post), the walls 35 mm.
  */
 function bodyPlates(): ArmorPlate[] {
@@ -91,7 +91,7 @@ function marksmanVariant(id: string, baseId: string, name: string, ring: keyof t
   spec.armor.modules = [
     ...hullModules(spec.armor.modules),
     moduleBox('ammoRack', [-.70, .20, -1.50], [.70, .62, -.70], true),
-    moduleBox('feedSystem', [-.74, .30, .80], [.74, .86, 1.45], true),
+    moduleBox('feedSystem', [-.70, .45, .45], [.70, .90, 1.00], true),
     moduleBox('optics', [-(SIGHTS.x + .14), BODY.roofY - .26, SIGHTS.z - .18], [SIGHTS.x + .14, BODY.roofY - .02, SIGHTS.z + .18], true),
     { ...moduleBox('gun', [-POD.outerX, ty + POD.bottomY, tz + POD.tailZ], [POD.outerX, ty + POD.topY, tz + POD.noseZ], true),
       external: true },
@@ -100,8 +100,8 @@ function marksmanVariant(id: string, baseId: string, name: string, ring: keyof t
   // (internalLayoutRegistry.ts spaaMarksman*)
   spec.armor.crew = [
     ...spec.armor.crew.filter((box) => !box.turretLocal),
-    crewBox('gunner', [.08, .02, -.30], [.60, 1.04, .72], true),
-    crewBox('commander', [-.60, .02, -.30], [-.08, 1.04, .72], true),
+    crewBox('gunner', [.08, .02, -.62], [.66, 1.04, .40], true),
+    crewBox('commander', [-.66, .02, -.62], [-.08, 1.04, .40], true),
   ];
   // The Gepard 1A2's twin-KDA package (gepardSpecs.ts), the same Oerlikon gun: the APDS-T unchanged, the HE channel the
   // fragmentation round at the page's 1,175 m/s. en.wikipedia: "460 fragmentation rounds and 40 anti-tank rounds" (the
@@ -145,12 +145,13 @@ Object.assign(marksmanT55, {
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
 marksmanT55.dims = { hullLengthM: 6.04, overallLengthM: 8.24, widthM: 3.34, heightM: 3.71 };
-// The guns' own stops over the stern (builder M, fix round 1): the full -10 degrees all round but where the barrels pass
-// over the deck's rear fittings and the drums (yaw 127-172, at most 0.7 degrees up); per-degree floors at the sweep's
-// 26 mm with gunHullClearance's probe, fitted by tools/gun-depression-sweep.mjs --envelope (the T-55A's own curve, for its
-// 100 mm, does not apply).
-marksmanT55.gunPitchByYawDeg = [[0, -10], [126, -10], [127, -9.6], [130, -9.6], [131, -10], [148, -10], [150, -9.3], [153, -9.4],
-  [154, -10], [166, -10], [167, -9.5], [170, -9.3], [171, -9.3], [172, -9.5], [173, -10], [180, -10]];
+// The guns' own stops over the stern (builder M, round 4): the full -10 degrees all round but where the barrels and their
+// muzzle frames pass over the drums and the deck's rear fittings (yaw 138-178, at most 1.8 degrees up); per-degree floors
+// at the sweep's 26 mm with gunHullClearance's probe, fitted by tools/gun-depression-sweep.mjs --envelope (the T-55A's own
+// curve, for its 100 mm, does not apply).
+marksmanT55.gunPitchByYawDeg = [[0, -10], [137, -10], [139, -9.4], [140, -9.3], [143, -9.3], [146, -9.1], [148, -8.2], [151, -8.2],
+  [152, -8.5], [153, -9.9], [156, -9.8], [157, -10], [160, -9.8], [164, -9.9], [166, -8.7], [167, -8.2], [170, -8.2], [171, -8.5],
+  [172, -9.6], [175, -9.3], [177, -9.3], [178, -9.5], [179, -10], [180, -10]];
 // photo 01 (Helsinki): "Ps465-22" on the hull side
 marksmanT55.visual.number = '465-22';
 marksmanT55.armor.boundingRadiusM = Math.max(marksmanT55.armor.boundingRadiusM, reach(marksmanT55));
@@ -168,10 +169,11 @@ Object.assign(itpsvLeopard2, {
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
 itpsvLeopard2.dims = { hullLengthM: 7.72, overallLengthM: 9.30, widthM: 3.70, heightM: 3.93 };
-// The guns' own stops over the engine deck (builder M, fix round 1): the full -10 degrees but where the barrels pass over
-// the deck's rear fittings (yaw 124-179, at most 0.7 degrees up); measured and fitted as the ItPsv 90's (the Leopard 2A4's
-// own curve, for its 120 mm, does not apply).
-itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [123, -10], [125, -9.6], [139, -9.3], [161, -9.3], [177, -9.8], [180, -10]];
+// The guns' own stops over the engine deck (builder M, round 4): the full -10 degrees but where the barrels and their
+// muzzle frames pass over the deck's rear fittings and the stern rack (yaw 138-180, at most 2 degrees up); measured and
+// fitted as the ItPsv 90's (the Leopard 2A4's own curve, for its 120 mm, does not apply).
+itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [137, -10], [138, -9.3], [140, -8.4], [145, -8.3], [146, -8.3], [150, -8.5], [152, -8.8],
+  [154, -8], [174, -8], [180, -8.5]];
 // no number shows in the 2015 photographs (07-08): the designation's short form
 itpsvLeopard2.visual.number = 'ItPsv';
 itpsvLeopard2.armor.boundingRadiusM = Math.max(itpsvLeopard2.armor.boundingRadiusM, reach(itpsvLeopard2));
