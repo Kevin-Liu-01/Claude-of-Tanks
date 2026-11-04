@@ -3,8 +3,10 @@
 //    planStart set it, abortStart and finishMatch cleared it, so a room its admin locked unlocked itself after every
 //    match and every aborted start. The admin's lock is the admin's alone now; the round's lock is the room's phase.
 // 2. `startMatch` awaited the match host's start and then issued seat tokens and recorded the match on the room it read
-//    before the await. With the LAN service host (server/rooms/localRoomService.ts does not serialize messages) a leave
-//    or a kick lands inside that await: the departed seat was handed a token for a match it is not in.
+//    before the await. Where the actor's host does not hold the room's other events behind the start (a Durable
+//    Object's input gate opens across a non-storage await; the LAN service queues each room's events since mp-migration's
+//    S1, server/rooms/localRoomService.ts serialize()) a leave or a kick lands inside that await: the departed seat was
+//    handed a token for a match it is not in.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from './roomActor.ts';
@@ -81,7 +83,7 @@ function harness() {
   h.actor.handleOpen('k'); await h.send('k', 'room_join', identity('third', token('e'), token('f')));
   await h.send('a', 'room_command', { command: { type: 'set_locked', locked: true } });
   for (const socket of ['a', 'g', 'k']) await h.send(socket, 'room_command', { command: { type: 'set_ready', ready: true } });
-  // the LAN service hands each message to the actor without waiting for the one before (localRoomService.ts)
+  // driven as a host that hands each event to the actor without waiting for the one before (not the LAN service's queue)
   const starting = h.send('a', 'room_command', { command: { type: 'start' } }, 'start');
   await Promise.resolve();
   assert.equal(h.matchHost.calls.length, 1, 'the match host was asked');

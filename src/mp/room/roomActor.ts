@@ -905,9 +905,11 @@ export class RoomActor {
     const startedAt = this.ports.now();
     this.startInFlight = false;
     // The room as it is now, not as it was before the await (audit M2, 2026-11-02): the p2p host answers within a
-    // microtask, but a match service answers later and the LAN service does not serialize messages
-    // (server/rooms/localRoomService.ts), so a leave, a kick or the room's expiry can land inside the await. A seat
-    // that left gets no token; a room that went, or that nobody of the plan is left in, records nothing.
+    // microtask, but a match service answers later, and where the actor's host does not hold the room's other events
+    // behind this one (a Durable Object's input gate opens across a non-storage await, such as a match service's fetch)
+    // a leave, a kick or the room's expiry can land inside the await. The LAN service's per-room queue
+    // (server/rooms/localRoomService.ts serialize()) holds them until the start settles. A seat that left gets no
+    // token; a room that went, or that nobody of the plan is left in, records nothing.
     const seats = this.room === room && room.phase === 'starting'
       ? plan.seats.filter((seat) => room.players.some((player) => player.id === seat.playerId))
       : [];
