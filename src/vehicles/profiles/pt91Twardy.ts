@@ -14,7 +14,7 @@ import {KIT} from './kit.ts';
 import {beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
-import {buildT72B3X,t72b3XCastingContains} from './t72b3X.ts';
+import {buildT72B3X,buildT72B3XHull,t72b3XCastingContains} from './t72b3X.ts';
 import {withSeatRole} from '../spareTrackSeat.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -68,7 +68,7 @@ function glacisTiles(P:TankBuilderPort):void {
   }
 }
 
-function sideScreen(P:TankBuilderPort,side:number):void {
+function sideScreen(P:TankBuilderPort,side:number,tiles=true):void {
   // The steel anti-HEAT screen closes the B3 study's open course between its fender edge (y 1.444) and its lower skirt
   // (top 1.128, outer face x -1.779 / 1.791), hung on four hinges; three courses of tiles cover its forward half from
   // the bow panel back over the third road wheel, the rear half left bare steel. The screen is external armour, not
@@ -76,6 +76,7 @@ function sideScreen(P:TankBuilderPort,side:number):void {
   const face=side<0?1.779:1.791;
   P.addExternalArmor('hull',box(.020,.316,6.10),side*(face-.010),1.286,.20);
   for(const z of [-2.30,-.70,.90,2.50])P.addEquipment('hullDetail',box(.030,.05,.12),side*(face+.005),1.42,z);
+  if(!tiles)return;
   const x=side*(face+TH/2-.003),h=(1.425-.725-2*JOINT)/3;
   const rotation=new THREE.Matrix4().makeRotationZ(-side*Math.PI/2);
   for(let row=0;row<3;row++){
@@ -235,6 +236,27 @@ function crosswindMast(P0:TankBuilderPort):void {
     P.addEquipment('turretDetail',box(.10,.09,.13),...at(.59));
     P.addEquipment('turretDark',cylY(.012,.012,.10,6),...at(.685));
   });
+}
+
+/** Options for the PT-91's hull and running gear under another turret (buildPT91TwardyHull). */
+export interface PT91TwardyHullOptions {
+  /** false: no ERAWA tiles (the glacis courses and the side screens' three courses); the steel screens stay, bare */
+  erawa?:boolean;
+  /** false: the B3 study's deck fittings left out under a raised deck built over it (t72b3X.ts deckFittings) */
+  deckFittings?:boolean;
+  /** false: the B3 study's stern fuel drums left out (t72b3X.ts rearDrums) */
+  rearDrums?:boolean;
+}
+
+/** The PT-91's hull and running gear alone (the B3 study's hull without its Kontakt-5, the ERAWA glacis courses, the steel
+ * side screens and their tiles, the dozer blade), for a vehicle that carries its own turret on them (the PZA Loara,
+ * profiles/loara.ts); its options leave out the tiles, the B3's deck fittings or its stern drums. The defaults draw the
+ * Twardy's hull parts; buildPT91Twardy itself is unchanged. */
+export function buildPT91TwardyHull(P:TankBuilderPort,options:PT91TwardyHullOptions={}):void {
+  buildT72B3XHull(P,{kontakt5:false,deckFittings:options.deckFittings!==false,rearDrums:options.rearDrums!==false});
+  if(options.erawa!==false)glacisTiles(P);
+  for(const side of [-1,1])sideScreen(P,side,options.erawa!==false);
+  blade(P);
 }
 
 export function buildPT91Twardy(P:TankBuilderPort):void {

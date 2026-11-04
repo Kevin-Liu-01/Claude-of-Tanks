@@ -103,23 +103,29 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function engineDeck(P:TankBuilderPort):void {
-  // 2026-10-19 (owner float sweep): the engine-deck plate stood 66 mm over the deck behind the ring step (14 mm off its
-  // edge), the louvre grilles 15-20 mm and a fender plate 34 mm over theirs; each is dropped onto the deck under it
-  P.snapGroup('t72b3-engine-plate',()=>P.addEquipment('hullDetail',box(1.874,.039,.619),.00315,1.4905,-1.71335),{reachM:.08,mode:'down'});
-  for(const x of [-.455,.46])P.snapGroup('t72b3-engine-grille',()=>{
-    P.addEquipment('hullDetail',box(.856,.043,.995),x,1.4352,-2.590);
-    for(let i=0;i<17;i++)P.addEquipment('hullDark',box(.794,.006,.016),x,1.4598,-3.04+i*.055);
-  },{reachM:.04,mode:'down'});
-  for(const [x,z,w,d,y]of [[-1.42,-2.44,.50,.92,1.428],[1.42,-1.7,.51,1.04,1.489],
-    [-1.42,-.22,.48,2.64,1.441],[1.43,-.63,.49,.98,1.447],[1.43,.91,.47,1.13,1.439]])P.snapGroup('t72b3-fender-plate',()=>{
-    P.addEquipment('hullDetail',box(w,.022,d),x,y,z);
-    for(const dz of [-d*.38,d*.38])P.addEquipment('hullDetail',box(.075,.024,.043),x,y+.021,z+dz);
-  },{reachM:.05,mode:'down'});
+/** The deck's own fittings (the engine plate, louvre grilles, fender plates and the driver's hatch) are left out by a hull
+ * that covers this deck with its own (deckFittings: false; the PZA Loara's raised superstructure, profiles/loara.ts). */
+function engineDeck(P:TankBuilderPort,fittings=true):void {
+  if(fittings){
+    // 2026-10-19 (owner float sweep): the engine-deck plate stood 66 mm over the deck behind the ring step (14 mm off its
+    // edge), the louvre grilles 15-20 mm and a fender plate 34 mm over theirs; each is dropped onto the deck under it
+    P.snapGroup('t72b3-engine-plate',()=>P.addEquipment('hullDetail',box(1.874,.039,.619),.00315,1.4905,-1.71335),{reachM:.08,mode:'down'});
+    for(const x of [-.455,.46])P.snapGroup('t72b3-engine-grille',()=>{
+      P.addEquipment('hullDetail',box(.856,.043,.995),x,1.4352,-2.590);
+      for(let i=0;i<17;i++)P.addEquipment('hullDark',box(.794,.006,.016),x,1.4598,-3.04+i*.055);
+    },{reachM:.04,mode:'down'});
+    for(const [x,z,w,d,y]of [[-1.42,-2.44,.50,.92,1.428],[1.42,-1.7,.51,1.04,1.489],
+      [-1.42,-.22,.48,2.64,1.441],[1.43,-.63,.49,.98,1.447],[1.43,.91,.47,1.13,1.439]])P.snapGroup('t72b3-fender-plate',()=>{
+      P.addEquipment('hullDetail',box(w,.022,d),x,y,z);
+      for(const dz of [-d*.38,d*.38])P.addEquipment('hullDetail',box(.075,.024,.043),x,y+.021,z+dz);
+    },{reachM:.05,mode:'down'});
+  }
   P.addEquipment('hullDark',box(.173,.106,.654),1.752,1.3365,-1.70625);
   for(const z of [-1.934,-1.79,-1.646,-1.502])P.addEquipment('hullDetail',box(.024,.122,.029),1.837,1.336,z);
-  P.addEquipment('hullDetail',cylY(.338,.036,32),-.0429,1.4813,1.61995);
-  P.addEquipment('hullDark',box(.365,.019,.064),.039,1.49165,1.7325);
+  if(fittings){
+    P.addEquipment('hullDetail',cylY(.338,.036,32),-.0429,1.4813,1.61995);
+    P.addEquipment('hullDark',box(.365,.019,.064),.039,1.49165,1.7325);
+  }
   for(const x of [-.859,.866]){
     P.snapGroup('t72-headlight',()=>{
       P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.082,.104,24),'headlight'),x,1.144,2.777);
@@ -130,8 +136,8 @@ function engineDeck(P:TankBuilderPort):void {
   }
 }
 
-function rearFittings(P:TankBuilderPort):void {
-  addT72B3RearDrums(P);
+function rearFittings(P:TankBuilderPort,drums=true):void {
+  if(drums)addT72B3RearDrums(P);
   P.addEquipment('hullDetail',cylX(.1156,3.1592,24),-.0002,.8958,-3.15755);
   // 266 (roof-pocket census): the beam's bed, the brackets' web across the stern between the lower rear plate, which
   // faces down over the beam, and the beam's front half (its top and bottom just inside each; its underside 0.86): the
@@ -409,11 +415,15 @@ function mainGun(P:TankBuilderPort):void {
 
 /** Options for a build on the whole B3 study. A vehicle that carries another reactive-armour layout (the T-64BV mod.
  * 2017's and the T-64BV1's Kontakt-1, t64bvK1.ts) leaves out the B3's Kontakt-5 glacis cells, side cassettes and turret cassettes. */
-export interface T72B3XOptions { kontakt5?:boolean }
+export interface T72B3XOptions { kontakt5?:boolean;
+  /** false: no engine-deck plate, grilles, fender plates or driver's hatch (a raised deck built over this one) */
+  deckFittings?:boolean;
+  /** false: no fuel drums over the stern (a raised deck that carries its own rear equipment there) */
+  rearDrums?:boolean }
 
 export function buildT72B3XHull(P:TankBuilderPort,options:T72B3XOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);engineDeck(P);rearFittings(P);if(options.kontakt5!==false)hullEra(P);
+  hull(P);runningGear(P);engineDeck(P,options.deckFittings!==false);rearFittings(P,options.rearDrums!==false);if(options.kontakt5!==false)hullEra(P);
 }
 
 export function buildT72B3X(P:TankBuilderPort,options:T72B3XTurretOptions={}):void {
