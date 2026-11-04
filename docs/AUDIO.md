@@ -947,11 +947,19 @@ crew-lines.json ─┐                    crew-voices.json
   Afrikaans, and Charles Onselen), and `scribe_v2` with the code forced
   transcribes their takes exactly. Cast by audition (33 candidates, all clean):
   Claus Christensen / Peter, Eliel / Cassio Cruz, Steve Hogan / CS New,
-  Charles Onselen / Frederik. Two takes flagged: the Australian "Thirty mil."
-  heard as "30 mil" (a digit, kept), and the Afrikaans "Laai." heard as "Lie"
-  on all ten attempts, rewritten "Laai nou." (clean). Each pack is 215 takes,
-  about 1.5 MB, the size of the existing ones. 37,492 credits (speech 36,468,
-  transcription 1,024), auditions included.
+  Charles Onselen / Frederik. The build flagged two takes: the Australian
+  "Thirty mil." heard as "30 mil" (a digit, kept), and the Afrikaans "Laai."
+  heard as "Lie" on all ten attempts, rewritten "Laai nou.". A second,
+  independent transcript of all 860 shipped takes then caught what edit
+  distance lets through: four Afrikaans takes read the same wrong way every
+  time ("Ons sit vas." as the question "Is dit vas?", "Hom verloor." as "Ons
+  wil hoor"), rewritten in fuller forms ("Ons het vasgeval.", "Ek het hom
+  verloor.", "Enjin is beskadig.", "Bevelvoerder is getref.") and rebuilt
+  clean. The other takes under the bar are digits ("30 mil") and homophones
+  (Danish "Pil" as "Peel", Brazilian "Ricochete" as "Rico 7", Afrikaans
+  "Laai nou" as "Lie now", "enjin" as "engine"). Each pack is 215 takes,
+  1.4–1.6 MB, the size of the existing ones. 38,521 credits (speech 36,649,
+  transcription 1,872), auditions and the second transcript included.
 
 ### Cost
 
@@ -982,9 +990,9 @@ calls (634), the incoming-drone call (172) and the nine lines for the tank's own
 systems, the gunship and its drops (1,202).
 
 Speech has billed one credit per character since 2026-10-14 (about eight times
-the first rounds' rate), so the four packs of 2026-11-03 cost 37,492 credits:
-a whole new pack (121 lines, 215 takes, its audition share and
-re-rolls) is about 9,400.
+the first rounds' rate), so the four packs of 2026-11-03 cost 38,521 credits:
+a whole new pack (121 lines, 215 takes, its audition share,
+re-rolls and a second transcript) is about 9,600.
 
 ## Changing or extending it
 

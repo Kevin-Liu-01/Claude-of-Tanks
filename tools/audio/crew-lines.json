@@ -3124,7 +3124,7 @@
         "Engine hit. Losing power."
       ],
       "af": [
-        "Enjin beskadig.",
+        "Enjin is beskadig.",
         "Enjin getref. Ons verloor krag."
       ]
     },
@@ -3984,7 +3984,7 @@
         "Commander's a casualty. I have command."
       ],
       "af": [
-        "Bevelvoerder getref.",
+        "Bevelvoerder is getref.",
         "Bevelvoerder is uit. Ek neem bevel oor."
       ]
     },
@@ -7116,7 +7116,7 @@
         "No traction."
       ],
       "af": [
-        "Ons sit vas.",
+        "Ons het vasgeval.",
         "Geen trekkrag nie."
       ]
     },
@@ -7264,7 +7264,7 @@
         "Target lost."
       ],
       "af": [
-        "Hom verloor.",
+        "Ek het hom verloor.",
         "Teiken verloor."
       ]
     },
