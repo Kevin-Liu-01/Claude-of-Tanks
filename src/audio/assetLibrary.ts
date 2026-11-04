@@ -99,6 +99,14 @@ function defaultDecoder(sampleRate: number): DecodeContext | null {
   try { return new scope.OfflineAudioContext(1, 1, sampleRate); } catch { return null; }
 }
 
+/**
+ * Crew speech decode rate. Every take plays through the radio's 320 Hz–3.4 kHz
+ * band and a headset speaker rolling off from 4.6 kHz, so 16 kHz (8 kHz
+ * Nyquist) keeps all of it at two thirds of a 24 kHz decode's memory: a
+ * 371-take pack is about 40 MB decoded (crew-lines-269).
+ */
+const VOICE_DECODE_HZ = 16000;
+
 function bufferBytes(buffer: AudioBuffer): number {
   return buffer.length * buffer.numberOfChannels * 4;
 }
@@ -350,8 +358,7 @@ export function createAssetLibrary({
             try {
               const res = await fetchImpl(`${root}audio/voice/${language}/${line}_${i}.webm`);
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              // Speech is band-limited by the radio chain anyway: 24 kHz decode.
-              return await decode(await res.arrayBuffer(), 24000);
+              return await decode(await res.arrayBuffer(), VOICE_DECODE_HZ);
             } catch {
               failed++;
               return null;
