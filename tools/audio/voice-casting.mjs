@@ -55,7 +55,7 @@ const LANGUAGE_QUERY = {
   hi: { language: 'hi' },
   ur: { language: 'ur' },
   bn: { language: 'bn' },
-  id: { language: 'id' },
+  'id-ID': { language: 'id' },
   ms: { language: 'ms' },
   vi: { language: 'vi' },
   th: { language: 'th' },

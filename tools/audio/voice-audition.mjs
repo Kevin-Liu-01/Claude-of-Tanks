@@ -53,7 +53,7 @@ const TEST_LINES = {
   hi: ['दुश्मन टैंक, सामने। फ़ायर।', 'लोड हो गया। तैयार।'],
   ur: ['دشمن کا ٹینک، سامنے۔ فائر۔', 'لوڈ ہو گیا۔ تیار۔'],
   bn: ['শত্রু ট্যাংক, সামনে। ফায়ার।', 'লোড হয়েছে। প্রস্তুত।'],
-  id: ['Tank musuh, di depan. Tembak.', 'Sudah diisi. Siap.'],
+  'id-ID': ['Tank musuh, di depan. Tembak.', 'Sudah diisi. Siap.'],
   ms: ['Kereta kebal musuh, di hadapan. Tembak.', 'Sudah diisi. Sedia.'],
   vi: ['Xe tăng địch, phía trước. Bắn.', 'Đã nạp đạn. Sẵn sàng.'],
   th: ['รถถังข้าศึก ด้านหน้า ยิง', 'บรรจุแล้ว พร้อม'],
@@ -62,7 +62,7 @@ const TEST_LINES = {
 
 const LANGUAGE_CODE = { 'en-US': 'en', 'en-GB': 'en', de: 'de', ru: 'ru', uk: 'uk', zh: 'zh', fr: 'fr', sv: 'sv', ja: 'ja', ko: 'ko', it: 'it', pl: 'pl', he: 'he', da: 'da', 'pt-BR': 'pt', 'en-AU': 'en', af: 'af', 'en-ZA': 'en',
   'es-ES': 'es', 'es-419': 'es', 'pt-PT': 'pt', nl: 'nl', no: 'no', fi: 'fi', el: 'el', cs: 'cs', hu: 'hu', ro: 'ro', tr: 'tr', ar: 'ar',
-  fa: 'fa', hi: 'hi', ur: 'ur', bn: 'bn', id: 'id', ms: 'ms', vi: 'vi', th: 'th', fil: 'fil' };
+  fa: 'fa', hi: 'hi', ur: 'ur', bn: 'bn', 'id-ID': 'id', ms: 'ms', vi: 'vi', th: 'th', fil: 'fil' };
 
 // Candidates per language: [voice_id, name, role-intent].
 export const CANDIDATES = {

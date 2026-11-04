@@ -1,5 +1,5 @@
 {
-  "$comment": "Crew radio cast per language (commander = voice A; gunner, loader and driver = voice B). Serious, mature Voice Library voices chosen by tools/audio/voice-audition.mjs (2026-10-02 recast: speech-to-text clean on the working-register test calls, lower and darker voices preferred; upbeat and energetic profiles removed). Spoken with eleven_v4 at stability 0.6. 2026-11-03 (crew voices 269): Danish, Brazilian Portuguese, Australian English and Afrikaans casts auditioned the same way; both Afrikaans voices are native speakers and scribe_v2 verifies their takes.",
+  "$comment": "Crew radio cast per language (commander = voice A; gunner, loader and driver = voice B). Serious, mature Voice Library voices chosen by tools/audio/voice-audition.mjs (2026-10-02 recast: speech-to-text clean on the working-register test calls, lower and darker voices preferred; upbeat and energetic profiles removed). Spoken with eleven_v4 at stability 0.6. 2026-11-03 (crew voices 269): Danish, Brazilian Portuguese, Australian English and Afrikaans casts auditioned the same way; both Afrikaans voices are native speakers and scribe_v2 verifies their takes. 2026-11-04 (crew-languages-270): 21 crews for languages with no country in the game (Spanish of Spain and of Latin America, European Portuguese, Dutch, Norwegian, Finnish, Greek, Czech, Hungarian, Romanian, Turkish, Arabic, Persian, Hindi, Urdu, Bengali, Indonesian, Malay, Vietnamese, Thai, Filipino): native voices only (the library voice's own language is the crew's), auditioned the same way with the language code forced on scribe_v2.",
   "model": "eleven_v4",
   "cast": {
     "en-US": {
@@ -373,6 +373,468 @@
           "sim": 1,
           "pitchHz": 168,
           "centroidHz": 2293
+        }
+      }
+    },
+    "es-ES": {
+      "commander": {
+        "voice_id": "5IDdqnXnlsZ1FCxoOFYg",
+        "name": "Jesus - Firm, Deep and Reassuring",
+        "public_owner_id": "b2b33f2887840d1430148369feff179d0e8167fab8006a6918b4053a227384fc",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 153,
+          "centroidHz": 2126
+        }
+      },
+      "crew": {
+        "voice_id": "DZyrV4biPT5EX8YED3PT",
+        "name": "Mario - Warm, Solid and Agile",
+        "public_owner_id": "b41e05881a7bdc4975ac90686e91e9a2977625ee1d3ee12196cf01ca615ba8db",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 169,
+          "centroidHz": 2148
+        }
+      }
+    },
+    "es-419": {
+      "commander": {
+        "voice_id": "HNSF1CTQmub252yhXROX",
+        "name": "God - Deep, Powerful and Authoritative",
+        "public_owner_id": "73f03bf68255e84de508574aeb0977528b7c7e39e025e2b71b6dd9655b11a194",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 121,
+          "centroidHz": 2669
+        }
+      },
+      "crew": {
+        "voice_id": "YqZLNYWZm98oKaaLZkUA",
+        "name": "Edoardo - Dark, Measured, Natural",
+        "public_owner_id": "fb580f4adc1c6ca6f2aabe4add40188c5e4996c36c0a2ef6bcec2850d80c08a2",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 150,
+          "centroidHz": 2248
+        }
+      }
+    },
+    "pt-PT": {
+      "commander": {
+        "voice_id": "ejarTsrf33xoVlH9hMuy",
+        "name": "Luis - European Portuguese",
+        "public_owner_id": "24630066fbdda6b5eb590fa85cdfb2ef594c0502d8a807d1deaaab4043a1a96a",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 155,
+          "centroidHz": 1927
+        }
+      },
+      "crew": {
+        "voice_id": "yLNlwWeETM7NDHPI4qEL",
+        "name": "Carlos - Radio Narrator",
+        "public_owner_id": "31505c4ae35ed4ea69c739b34267bf7e91d30e82e43c6194bacbf9e129dbb2ed",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 160,
+          "centroidHz": 2068
+        }
+      }
+    },
+    "nl": {
+      "commander": {
+        "voice_id": "vjeU1L5RIGPyrwuboFwz",
+        "name": "Remko - Calm Dutch Narrator",
+        "public_owner_id": "ae1d87743dfe1a25033ce62ac041bed23ec09c80693c7187f98c67f41963a18c",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 174,
+          "centroidHz": 2050
+        }
+      },
+      "crew": {
+        "voice_id": "vY9oBYvK4JJ9fCOB5lmn",
+        "name": "Eric - Engaging Commercial Storyteller",
+        "public_owner_id": "1d45d2a8a4369cc816a7ad0240f95e7df1fae58ec1ca81a9dbba4ecdf324f13d",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 191,
+          "centroidHz": 2367
+        }
+      }
+    },
+    "no": {
+      "commander": {
+        "voice_id": "ei6ah5sRupNv5tIBtewr",
+        "name": "Magnus - Steady & authentic character",
+        "public_owner_id": "181e4cbae65d209d5090dafe29473311ed5f470c5d24272e649846e93229952b",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 145,
+          "centroidHz": 2020
+        }
+      },
+      "crew": {
+        "voice_id": "s2xtA7B2CTXPPlJzch1v",
+        "name": "Dennis - Clear and Pleasant",
+        "public_owner_id": "3ecf7d5a3435a45c391d35aa79fff38fbf397fa8b2d18e62f33c34707f552fba",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 156,
+          "centroidHz": 2240
+        }
+      }
+    },
+    "fi": {
+      "commander": {
+        "voice_id": "XFCwH7g0WlOZiFnelted",
+        "name": "Ville - Serious and Condescending",
+        "public_owner_id": "97d19225b6290de212bf93d823626448a0ebbbb7b42e29e29b7b6d638cd87032",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 144,
+          "centroidHz": 1955
+        }
+      },
+      "crew": {
+        "voice_id": "3ubwqE3ki2fsQffhmJC3",
+        "name": "Kyosti - Convincing & Calm",
+        "public_owner_id": "56849366de1895481fe39494e75aa6a136cd35e7f3511f74478fb4f85e4794ac",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 146,
+          "centroidHz": 2728
+        }
+      }
+    },
+    "el": {
+      "commander": {
+        "voice_id": "YjbHBTWH8WkGAhNrkp0i",
+        "name": "Miltiadis - Deep, Clear",
+        "public_owner_id": "2bbd8171b39c7d10503e84cf4e7045a3503dd1cb13384e4c7af2ac973446ff1b",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 135,
+          "centroidHz": 2037
+        }
+      },
+      "crew": {
+        "voice_id": "PaZ8laODC1yRxHTPYJFh",
+        "name": "Christos - Casual, Calm and Serious",
+        "public_owner_id": "cd05405c9871bb299b331e7a3c9ccd477ae3928bfe247d22dd22d7514b2785ea",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 149,
+          "centroidHz": 2498
+        }
+      }
+    },
+    "cs": {
+      "commander": {
+        "voice_id": "bfy52CN42mIGk4Q8TZV5",
+        "name": "Jakub - Deep manly movie",
+        "public_owner_id": "81a77c52b222780e930e4c5fc476b773c59d32c06da359290194f36fabf73cca",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 158,
+          "centroidHz": 2120
+        }
+      },
+      "crew": {
+        "voice_id": "nc9b7RT3BfcdfXYGv9uO",
+        "name": "Lukas - Calm, Neutral and Educational",
+        "public_owner_id": "66e3b50b7bbbe898eac73acef1ccd9bb778dfefcbb433a803ad28e7b753bddd0",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 152,
+          "centroidHz": 2557
+        }
+      }
+    },
+    "hu": {
+      "commander": {
+        "voice_id": "A9fIUjJSvi6o6ft9W7Eh",
+        "name": "Erik - Deep Hungarian Baritone",
+        "public_owner_id": "79f40170eb573ae93f9181941c80739dc44c0b28bdf9f9387d4a9585fd3989d9",
+        "audition": {
+          "sim": 0.98,
+          "pitchHz": 138,
+          "centroidHz": 2531
+        }
+      },
+      "crew": {
+        "voice_id": "7B7mSWflzRSaO1yGeJH6",
+        "name": "Gábor - Warm, Natural and Confident",
+        "public_owner_id": "796f0e377be1126e4f1504b3dea33deb6312846b3aa4e3e2ad21fabf5b60f7fc",
+        "audition": {
+          "sim": 0.98,
+          "pitchHz": 169,
+          "centroidHz": 2449
+        }
+      }
+    },
+    "ro": {
+      "commander": {
+        "voice_id": "OlBp4oyr3FBAGEAtJOnU",
+        "name": "Jora Slobod - Calm, Deep and Reassuring",
+        "public_owner_id": "495a061f9b7930e3c37627d5b711c6f999daccbb88f8b98d76ca5db18eaa98cd",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 154,
+          "centroidHz": 2095
+        }
+      },
+      "crew": {
+        "voice_id": "Ln7USjRMilsx2J6nwiCP",
+        "name": "Denis - Deep & Professional",
+        "public_owner_id": "04cb0236d8145363185d2f186b87be55e49aaacbbdc637cbc67d840ffc560579",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 173,
+          "centroidHz": 2459
+        }
+      }
+    },
+    "tr": {
+      "commander": {
+        "voice_id": "j82ax9yhzfYwq9lDvRWL",
+        "name": "Kadir Kayışcı - Deep, Mature and Soft",
+        "public_owner_id": "50fa846ac7597ddc729c33b64e3bec6347727ebc8131f83546a724b817bc2b5b",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 133,
+          "centroidHz": 2736
+        }
+      },
+      "crew": {
+        "voice_id": "ZsYcqahfiS2dy4J6XYC5",
+        "name": "Ahmet - Steady, Confident and Deep",
+        "public_owner_id": "1b406750115f351f32059ef162aee43f650ff125533aa1e7d01095f171423ecf",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 132,
+          "centroidHz": 2374
+        }
+      }
+    },
+    "ar": {
+      "commander": {
+        "voice_id": "3nav5pHC1EYvWOd5LmnA",
+        "name": "Saud - Deep, Formal and Clear",
+        "public_owner_id": "be5f61f0b3a46a321e11690da51e799f3bbd9d9ce2caf24b89ec57bfc9362e4e",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 166,
+          "centroidHz": 2209
+        }
+      },
+      "crew": {
+        "voice_id": "F2jHHIMyJTh1pdwoLzNQ",
+        "name": "Rawi - Calm & Clear Fusha Narrator",
+        "public_owner_id": "7e500019a15ca534f85ebffe65a4370fe8f635c7829c7813c85d31dece855ed3",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 180,
+          "centroidHz": 2068
+        }
+      }
+    },
+    "fa": {
+      "commander": {
+        "voice_id": "PEdcOLzbXYhL8IKOswXB",
+        "name": "Aran - Parsi",
+        "public_owner_id": "166d0a9cb25747bcd01ab4adfed709691f412e3140afdaaed67003153cd5badb",
+        "audition": {
+          "sim": 0.95,
+          "pitchHz": 149,
+          "centroidHz": 2778
+        }
+      },
+      "crew": {
+        "voice_id": "Mn0jJ3FC9Ijz7lQe8ELI",
+        "name": "Arash - Clear, Confident Narrator",
+        "public_owner_id": "e31a3edd51358a6536f2c971ef39c3499615d39cc49a01bff2eaeb7150dec87a",
+        "audition": {
+          "sim": 0.97,
+          "pitchHz": 161,
+          "centroidHz": 2082
+        }
+      }
+    },
+    "hi": {
+      "commander": {
+        "voice_id": "qDuRKMlYmrm8trt5QyBn",
+        "name": "Taksh - Calm, Serious and Smooth",
+        "public_owner_id": "7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6",
+        "audition": {
+          "sim": 0.73,
+          "pitchHz": 156,
+          "centroidHz": 1897
+        }
+      },
+      "crew": {
+        "voice_id": "4BoDaQ6aygOP6fpsUmJe",
+        "name": "Raghav - Calm, Confident and Engaging",
+        "public_owner_id": "7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6",
+        "audition": {
+          "sim": 0.83,
+          "pitchHz": 169,
+          "centroidHz": 2270
+        }
+      }
+    },
+    "ur": {
+      "commander": {
+        "voice_id": "vH5LP38dcYJ3CIbC2rKX",
+        "name": "Amjid - Urdu Documentary Narrator",
+        "public_owner_id": "6706bd0c1eef369d8d0d422a67ec25b2e0028aed02fa5d04594fce3a9d99f19c",
+        "audition": {
+          "sim": 0,
+          "pitchHz": 165,
+          "centroidHz": 2043
+        }
+      },
+      "crew": {
+        "voice_id": "L1f58R08RFtEqY28c3BT",
+        "name": "Naqsh - Documentary",
+        "public_owner_id": "9807482bc8d64c029eb3e350412fb7e1faab80f063134f688aa16c9f115acbea",
+        "audition": {
+          "sim": 0,
+          "pitchHz": 177,
+          "centroidHz": 2212
+        }
+      }
+    },
+    "bn": {
+      "commander": {
+        "voice_id": "VizHiwkPO7hXc967v4tE",
+        "name": "Rakib - Deep, Authoritative",
+        "public_owner_id": "ceda6433f8de4fda9d32412397830f3c51934c7e5731464d5bfd126e6da1620f",
+        "audition": {
+          "sim": 0.5,
+          "pitchHz": 223,
+          "centroidHz": 2209
+        }
+      },
+      "crew": {
+        "voice_id": "1JOQMQINvsOLiEu2pZFd",
+        "name": "Ashwat - Calm, Pleasant Storyteller",
+        "public_owner_id": "7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6",
+        "audition": {
+          "sim": 0.86,
+          "pitchHz": 171,
+          "centroidHz": 2932
+        }
+      }
+    },
+    "id-ID": {
+      "commander": {
+        "voice_id": "xChNffR8mWkGIrdSUYsg",
+        "name": "Mizani - Diplomatic, Serious and Steady",
+        "public_owner_id": "89161038251c9876bd945a15c830cf61ac5e45eebc3778cef2525e7960272a83",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 175,
+          "centroidHz": 2437
+        }
+      },
+      "crew": {
+        "voice_id": "zmqLb9Ysr8fUvDD7hXK8",
+        "name": "Zan - Conversational",
+        "public_owner_id": "51f1f0cdb1fc30c4f42547205bb329f64d340a2a2eddc62b939568e5fd9dcf6f",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 177,
+          "centroidHz": 2727
+        }
+      }
+    },
+    "ms": {
+      "commander": {
+        "voice_id": "VbhRlZCHaUh9hxeUyRBD",
+        "name": "Daud M - Deep & Confident Narrator",
+        "public_owner_id": "7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 151,
+          "centroidHz": 2322
+        }
+      },
+      "crew": {
+        "voice_id": "TXfZrONKsgH1CoxNoMuO",
+        "name": "Ahmad Yusuf",
+        "public_owner_id": "48472fe18fa276a2e8b97e3e7be5583a4747591c22ad0571b27d5398f997a2dd",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 198,
+          "centroidHz": 2105
+        }
+      }
+    },
+    "vi": {
+      "commander": {
+        "voice_id": "ZsjEJaLQy3sgvwxicmDx",
+        "name": "Quang Toan - Deep Vietnamese Storyteller",
+        "public_owner_id": "5c3a5371161ed2a7a4b3ed617dad7247ff46a4c9a2d4f9e7af18fb635e971dc6",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 156,
+          "centroidHz": 1863
+        }
+      },
+      "crew": {
+        "voice_id": "7hsfEc7irDn6E8br0qfw",
+        "name": "Hai Ly - Deep, Serious and Resonant",
+        "public_owner_id": "d834b177a5ca80e7f30cdb933a9c65479a6bb51bcb969da4bac773a3931cda94",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 190,
+          "centroidHz": 1831
+        }
+      }
+    },
+    "th": {
+      "commander": {
+        "voice_id": "xYmBpJREC3WfqEFpbPvO",
+        "name": "Songkran - Calm & Humble",
+        "public_owner_id": "f48f4a99f3882f6dc3bf39b83a4da8ee4222f77636053f2b67b3fe2bdc9ca311",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 168,
+          "centroidHz": 1895
+        }
+      },
+      "crew": {
+        "voice_id": "0CcQkRq8QY9wJYlEFyzz",
+        "name": "Nook - Native",
+        "public_owner_id": "bb9a07f44a5b190b5676d0d77fc5bff63a4ea479b3b5f44d7d965122a4d46974",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 192,
+          "centroidHz": 2176
+        }
+      }
+    },
+    "fil": {
+      "commander": {
+        "voice_id": "pdyi3luhbIqZo983cuhK",
+        "name": "Kalma - Calm & Deep",
+        "public_owner_id": "abbf2883c460af72ef1b15268910c8dc7e7d96431ebed2d10daf4583ee7ebb6a",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 167,
+          "centroidHz": 2369
+        }
+      },
+      "crew": {
+        "voice_id": "rVz5W5gAIQHsFZox2HtT",
+        "name": "Kuya VoiceOver - Documentary Narrator",
+        "public_owner_id": "18b6f038186ba974fe33d7f281cb40fd9146c95a452425bd6a582689ad9c585e",
+        "audition": {
+          "sim": 1,
+          "pitchHz": 200,
+          "centroidHz": 1918
         }
       }
     }
