@@ -578,13 +578,16 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         x0: -1.62, x1: 1.62, z0: -2.85, z1: 1.80, nx: 65, nz: 93, y: 0.97,
         outline: [[-1.36, 1.34], [-0.52, 1.57], [-0.30, 1.45], [0.30, 1.45], [0.52, 1.57], [1.36, 1.34], [1.36, -2.10],
           [1.22, -2.60], [-1.22, -2.60], [-1.36, -2.10]],
-        foliageExclude: [rect(1.24, 1.40, -2.65, 1.40), rect(-1.40, -1.24, -2.65, 1.40), rect(-1.40, 1.40, -2.65, -2.46),
+        foliageExclude: [rect(1.24, 1.40, -2.65, 1.40), rect(-1.40, -1.24, -2.65, 1.40), rect(-1.40, 1.40, -2.65, -2.20),
           rect(-1.40, -0.40, 1.22, 1.60), rect(0.40, 1.40, 1.22, 1.60), rect(-0.40, 0.40, 1.33, 1.60)],
+        // (round 4: "torn net fragments along the rear edge of the roof and the bustle lip", "a small cloth flap near the
+        // rear hatch": the net is cut round the three rear roof boxes instead of climbing them, no bough seats within 0.45 m
+        // of the rear hem, and no scrap under 40 triangles stays)
         holes: [rect(-1.18, -0.52, 0.40, 1.50), rect(-1.28, -0.40, -0.76, 0.12), rect(0.37, 1.25, -0.68, 0.15),
           rect(0.56, 0.98, 0.23, 0.65), rect(-0.43, -0.23, 0.93, 1.09), rect(0.23, 0.43, 0.93, 1.09),
-          rect(-0.14, 0.14, -1.02, -0.74), rect(-0.15, 0.26, -1.49, -1.08), rect(-0.42, -0.24, -1.37, -1.18),
-          rect(1.16, 1.34, -1.36, -1.17)],
-        garnishRiseM: 0.16, garnishDensity: 0.7, seed: 11,
+          rect(-0.14, 0.14, -1.02, -0.74), rect(-1.17, 0.27, -1.49, -1.08), rect(-1.42, -1.09, -2.13, -1.01),
+          rect(1.09, 1.42, -2.07, -1.12)],
+        strictHoles: true, minPieceTris: 40, garnishRiseM: 0.16, garnishDensity: 0.7, seed: 11,
       })],
     },
     hull: {

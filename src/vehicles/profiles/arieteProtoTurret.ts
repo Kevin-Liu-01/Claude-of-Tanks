@@ -380,11 +380,28 @@ function c2AttilaDrum(P: ArieteTurretPort, x: number, z: number, col = 0.08): vo
   }
 }
 
-/** The C2's meteorological mast: a post, its sensor drum and flat head, and three rods hanging down and out from the head,
- * each with its small sensor at the tip (C2 photographs 1 and 3: an umbrella frame, not a star). */
+/** The C2's meteorological mast (C2 photographs 1 and 3): a bolted base plate on the rear roof box with a socket braced by
+ * four gussets and closed by a clamp collar, a sturdy mast with a second clamp collar, its sensor drum and flat head, and
+ * three rods hanging down and out from the head, each with its small sensor at the tip (an umbrella frame, not a star).
+ * (r269 round 4, the critic: "a thin, tripod-like ... sensor on a stalk ... looks lightly attached and nearly floating")
+ */
 function c2MetMast(P: ArieteTurretPort, x: number, y: number, z: number): void {
-  P.add('turretDetail', KIT.cylY(0.035, 0.045, 0.06, 8), x, y + 0.025, z);
-  P.add('turretDetail', KIT.cylY(0.018, 0.018, 0.34, 8), x, y + 0.22, z);
+  P.add('turretDetail', KIT.box(0.16, 0.02, 0.16), x, y + 0.006, z);                            // base plate
+  for (const [dx, dz] of [[-0.055, -0.055], [0.055, -0.055], [-0.055, 0.055], [0.055, 0.055]]) {
+    P.add('turretDark', KIT.cylY(0.011, 0.011, 0.012, 6), x + dx, y + 0.021, z + dz);           // its bolts
+  }
+  P.add('turretDetail', KIT.cylY(0.045, 0.05, 0.12, 10), x, y + 0.075, z);                      // socket
+  for (let k = 0; k < 4; k++) {                                                                  // gussets
+    const a = k * Math.PI / 2;
+    const g = convexBlock([[0.04, 0.012, -0.006], [0.075, 0.012, -0.006], [0.04, 0.10, -0.006],
+      [0.04, 0.012, 0.006], [0.075, 0.012, 0.006], [0.04, 0.10, 0.006]]);
+    P.add('turretDetail', KIT.xform(g, 0, 0, 0, 0, a, 0), x, y, z);
+  }
+  P.add('turretDetail', KIT.cylY(0.054, 0.054, 0.026, 10), x, y + 0.142, z);                   // clamp collar
+  P.add('turretDetail', KIT.box(0.035, 0.026, 0.04), x + 0.066, y + 0.142, z);                  // its clamp lug
+  P.add('turretDark', KIT.cylX(0.007, 0.05, 6), x + 0.066, y + 0.142, z);                       // and its bolt
+  P.add('turretDetail', KIT.cylY(0.026, 0.026, 0.27, 10), x, y + 0.26, z);                      // mast
+  P.add('turretDetail', KIT.cylY(0.033, 0.033, 0.02, 10), x, y + 0.29, z);                      // mid clamp collar
   P.add('turretDetail', KIT.cylY(0.034, 0.030, 0.07, 8), x, y + 0.40, z);
   P.add('turretDetail', KIT.cylY(0.05, 0.05, 0.014, 10), x, y + 0.442, z);
   const len = 0.20, tilt = 0.80;
