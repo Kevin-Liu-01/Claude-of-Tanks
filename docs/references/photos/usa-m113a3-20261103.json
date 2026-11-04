@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m113a3": {
+      "name": "M113A3",
+      "authority": "The owner, 2026-11-03: \"make a USA m113 variant, that plays similar to the ares apc\". The US Army's M113A3 (from 1987) on the Australia line's M113 builder (the 'a3' mark): the M113A1's hull with the RISE powerpack, the spall liner and the two armoured fuel tanks either side of the ramp, the commander's cupola as its one traversing station with the M2 .50 behind an ACAV-style gun shield (its main weapon, not a roof gun). No registered 3D comparison exists. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.baesystems.com/en-us/product/m113-armored-personnel-carrier",
+        "https://en.wikipedia.org/wiki/M113_armored_personnel_carrier",
+        "https://commons.wikimedia.org/wiki/Category:M113A3",
+        "https://www.armyrecognition.com/united_states_us_army_light_armoured_vehicle_uk/m113a3_m113_a3_armoured_vehicle_personnel_carrier_technical_data_sheet_specifications_pictures_video.html"
+      ],
+      "widthM": 2.724,
+      "overallLengthM": 5.427,
+      "tallestM": 4.13,
+      "envelopeBasis": "The as-built envelope: the M113A1 hull 4.86 m long and 2.69 m over its tracks, 5.43 m over the A3's rear fuel tanks; the tallest point is the whip, the gun shield's top 2.62 m.",
+      "caliberMm": 12.7,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "crew": 2,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/australia.selftest.mjs"
+    }
+  }
+}

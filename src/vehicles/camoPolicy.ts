@@ -149,16 +149,22 @@ const AUTHORED_PAINT_IDS_AFTER_265 = Object.freeze(['paint_leo1a5dk1', 'paint_le
  * Engineering Technologies 2012 three-tone desert came with that vehicle and appends last. */
 const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_centurion5_2dk', 'paint_type90b', 'paint_type10',
   'paint_bmpt_terminator'] as const);
+/** Release 269: the Australia line's disruptive three-tone (australiaSpecs.ts): tan under olive and black, on the Leopard AS1,
+ * the M113AS4, both Abrams and the Redback; then the M113A1s' RAAC olive drab under field disruption, a coat of its own on
+ * each (owner 2026-11-03: no plain coats). Appended after 267's saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_268[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_264 as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_265 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_266 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_268 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -200,6 +206,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_264,
   ...AUTHORED_PAINT_IDS_AFTER_265,
   ...AUTHORED_PAINT_IDS_AFTER_266,
+  ...AUTHORED_PAINT_IDS_AFTER_268,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -852,6 +859,8 @@ export function signatureCamoPatternId(specId: string): CamoPatternId | null {
 const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> = Object.freeze({
   c1_ariete: 'service_ariete_c1',
   c2_ariete: 'sig_ariete_c2',
+  // 269: the US M113A3 in the US Army's MERDC four-colour woodland (its CARC three-tone sits a shade from the Leclerc's)
+  m113a3: 'merdc',
   m46_patton: 'summer',
   m47_patton: 'summer',
   m48a5_patton: 'summer',
@@ -947,6 +956,15 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   itpsv_leopard2: 'paint_cv90_mkiv',
   k30_biho: 'sig_k2',
   pza_loara: 'sig_pt91_twardy',
+  // release 269: the Australia line: the RAAC's olive drab under field disruption on the M113A1 FSV (bands) and MRV
+  // (three-tone), the disruptive three-tone from the Leopard AS1 on
+  m113a1_fsv: 'paint_m113a1_fsv',
+  m113a1_mrv: 'paint_m113a1_mrv',
+  leopard_as1: 'paint_leopard_as1',
+  m113as4: 'paint_leopard_as1',
+  m1a1_aim_sa_aus: 'paint_leopard_as1',
+  m1a2_sepv3_aus: 'paint_leopard_as1',
+  redback: 'paint_leopard_as1',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -11,6 +11,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX30X } from './combatAnat
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX40X } from './combatAnatomyGroups/amx40X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARESAPCX } from './combatAnatomyGroups/aresApcX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ARIETEX } from './combatAnatomyGroups/arieteX.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AUSTRALIA } from './combatAnatomyGroups/australia.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BMP3MDRAGUN125X } from './combatAnatomyGroups/bmp3mDragun125X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BORSUK } from './combatAnatomyGroups/borsuk.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_BRAZIL } from './combatAnatomyGroups/brazil.generated.ts';
@@ -103,6 +104,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_AMX40X,
   CALIBRATIONS_ARESAPCX,
   CALIBRATIONS_ARIETEX,
+  CALIBRATIONS_AUSTRALIA,
   CALIBRATIONS_BMP3MDRAGUN125X,
   CALIBRATIONS_BORSUK,
   CALIBRATIONS_BRAZIL,

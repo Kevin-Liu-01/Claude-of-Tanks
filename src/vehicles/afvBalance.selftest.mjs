@@ -78,10 +78,16 @@ const EXPECTED = Object.freeze({
   lvkv9040:            { hp: 2350, speed: 70, reverse: 40, traverse: 51.5, damage: 70, pen: [167, 150, 134], reload: 0.40, sound: 'bofors-40', missile: null },
   k30_biho:            { hp: 2150, speed: 65, reverse: 20, traverse: 51.5, damage: 52, pen: [125, 112, 100], reload: 0.30, sound: 'mk30-2', missile: null },
   pza_loara:           { hp: 2550, speed: 60, reverse: 20, traverse: 38.1, damage: 61, pen: [146, 131, 117], reload: 0.35, sound: 'kde-35', missile: null },
+  // 269 (the m113-hull-269 side, pinned at its merge into the air-defence lane at the merged tree's values): the
+  // M113AS4's .50 and twin TOW-2A and the US M113A3's .50 on the Ares APC's rows (australiaSpecs.ts, usaM113Specs.ts),
+  // the AS21 Redback's 30 mm and Spike LR2 (australiaSpecs.ts)
+  m113as4:             { hp: 1300, speed: 65, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: [450, 'tow-launch'] },
+  redback:             { hp: 2700, speed: 65, reverse: 30, traverse: 47, damage: 95, pen: [245, 224, 202], reload: 0.28, sound: 'mk30-2', missile: [680, 'spike-launch'] },
+  m113a3:              { hp: 1500, speed: 66, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 55, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles; 269: the second air-defence round's six.
+assert.equal(ifvIds.length, 58, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles; 269: the second air-defence round's six, then (the m113-hull-269 merge) the M113AS4, the Redback and the US M113A3.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
