@@ -1048,6 +1048,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     gunPitchByYawDeg: [[0, -10], [125, -10], [126, -8.5], [127, -5.2], [128, -3.7], [129, -2.9], [130, -2.5], [132, -2.1],
       [133, -0.9], [134, -0.3], [135, -0.1], [139, -0.1], [140, -0.4], [142, -1.1], [145, -0.3], [148, -0.2], [149, -0.4],
       [150, -1], [153, -0.3], [155, -0.1], [159, 0.4], [162, 0.9], [180, 1.2]],
+    // under that curve the gun keeps its 26 mm from the bare rear deck: the cloth takes no lying-flat exemption under it
+    // (it lay 24 mm under the barrel at yaw 150) and the cards keep the clearance across their faces
+    clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
       top: [laid({
         x0: -1.76, x1: 1.76, z0: -2.68, z1: 1.58, nx: 44, nz: 54, y: 0.83,

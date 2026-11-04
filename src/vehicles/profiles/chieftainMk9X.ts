@@ -111,6 +111,14 @@ function closures(P: TankBuilderPort, pivot: Point): void {
       P.add('turret', fill);
     }
   }
+  // Release 269: the crack under the casting's aft step (z -0.76..-0.70, x 0.23-0.62 a side, a centimetre or two under
+  // its 1.784 underside, between the step's two walls), shared with the Mk 10 X: the census reads it (184 + 176 cm2)
+  // once the bustle basket and the stowed rods move its grid, and reads it on the round-268b Mk 9 too on that grid.
+  for (const side of [-1, 1]) {
+    const crack = box(.40, .028, .078).translate(side * .425 - pivot[0], 1.776 - pivot[1], -.727 - pivot[2]);
+    crack.userData.chieftainMk9 = 'undercut';
+    P.add('turret', crack);
+  }
   // Under the starboard bow light's stock (x -1.17..-1.41, z 2.79..2.86).
   const bow = box(.25, .045, .10).translate(-1.292, 1.352, 2.825);
   bow.userData.chieftainMk9 = 'bowUndercut';
