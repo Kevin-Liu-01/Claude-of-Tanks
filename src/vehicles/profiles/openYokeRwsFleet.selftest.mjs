@@ -30,7 +30,8 @@ const TARGETS = Object.freeze({
   // 268 r11: beside the sensor tower on the vehicle's right, as photographed; a compact 0.95 station so it clears the
   // tower's plinth and stays on the roof
   kf51_u: Object.freeze({
-    variant: 'kf51b-panther', mount: [-0.83, 0.644, 0.35],
+    // 2026-11-03 (268 r16): the taller KF51-U turret (walls +7 cm) carries its station 7 cm higher
+    variant: 'kf51b-panther', mount: [-0.83, 0.714, 0.35],
     sizeStandard: 'leopard-reduced-tower', scale: 0.95, towerRiseM: 0.14,
     minimumWidth: 0.80, minimumHeight: 0.66, weaponRole: 'roof-primary',
   }),

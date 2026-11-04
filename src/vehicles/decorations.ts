@@ -3022,14 +3022,15 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
+  // 2026-11-03 (268 r16): the KF51-U's antennas are its build's own (two whips and the data link's rod, profiles/
+  // leopard.ts); the decor whips, which the r16 suit's new roof openings let stand (one through the SATCOM radome), are
+  // gone
   kf51_u: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.4 }, slot: ['turretSide', { side: -1 }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },

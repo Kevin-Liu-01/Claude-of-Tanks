@@ -9301,6 +9301,29 @@ function addKF51ClosedShoulderMudguards(P: TankBuilderPort): void {
   });
 }
 
+// 2026-11-03 (268 r16; owner: "add a lot more decorations, equipment, optics, etc"): one KF51-U situational-awareness
+// camera head (the Rheinmetall SAS class, boxed with a dark window): its housing's underside at y, turned ry about its
+// seat so the window looks along (sin ry, 0, cos ry); a sun hood over it unless `hood` is false, and with `lwr` a
+// laser-warning receiver disc on the hood. Lenses are glass unless `glass` is false (dark discs: no lens opening is
+// cut in a suit net round them).
+function addKF51USasHead(P: TankBuilderPort, owner: 'hull' | 'turret', x: number, y: number, z: number, ry: number,
+  options: { hood?: boolean; lwr?: boolean; glass?: boolean } = {}): void {
+  const { box, cylY, cylZ } = KIT;
+  const c = Math.cos(ry), s = Math.sin(ry);
+  const at = (bucket: string, geometry: THREE.BufferGeometry, lx: number, ly: number, lz: number): void => {
+    P.add(`${owner}${bucket}`, geometry, x + lx * c + lz * s, y + ly, z - lx * s + lz * c, 0, ry, 0);
+  };
+  at('Detail', box(0.13, 0.068, 0.10), 0, 0.034, 0);                                     // housing
+  at('Dark', box(0.11, 0.044, 0.010), 0, 0.034, 0.052);                                 // the window's dark plate
+  for (const lx of [-0.028, 0.028]) at(options.glass === false ? 'Dark' : 'Glass', cylZ(0.014, 0.006, 12), lx, 0.034, 0.058);
+  if (options.hood === false) return;
+  at('Detail', box(0.15, 0.012, 0.115), 0, 0.072, 0.008);                               // sun hood
+  if (options.lwr) {
+    at('Dark', cylY(0.040, 0.044, 0.016, 14), 0, 0.085, -0.01);                         // laser-warning receiver
+    at('Detail', cylY(0.030, 0.038, 0.014, 14), 0, 0.099, -0.01);
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // KF51 Panther — owner-source reconstruction (FULL.fbx / Grip420 woodland).
@@ -9325,12 +9348,17 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
   const gear = LEOPARD_2_RUNNING_GEAR;
   const skirtHemY = gear.skirtHemY;
   const turretPivotZM = 0.65;
-  // 268 r13: the roof edge over the upright walls' shoulder (kf51uShellRings), falling only at the gun slot
+  // 268 r13: the roof edge over the upright walls' shoulder (kf51uShellRings), falling only at the gun slot.
+  // 2026-11-03 (268 r16; owner: "update the kf51us hull annd sidekisrts and fenders and turret too"; r15 critics: the
+  // turret "still reads a little low"): the upright walls rise 7 cm more before the chamfer (Commons KF-51U_02/04/09:
+  // tall square cheek blocks and upright sides), so the roof edge and its crown rise with them; below the old shoulder
+  // the walls are unchanged
+  const kf51uWallRiseM = 0.07;
   const turretRoofEdgeHeightsM = [
     0.52, 0.52, 0.63, 0.65, 0.62,
     0.59, 0.59, 0.62, 0.65, 0.63,
-  ] as const;
-  const turretRoofCenterHeightM = 0.68;
+  ].map((h) => Math.round((h + kf51uWallRiseM) * 1000) / 1000);
+  const turretRoofCenterHeightM = Math.round((0.68 + kf51uWallRiseM) * 1000) / 1000;
 
   // §5.299 kf51_u FLEET INTEGRATION (owner order: "make it a lot more inline
   // with our visual aesthetic and tracks and hull and turret"). The
@@ -9405,6 +9433,21 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     P.mats.rubber.color.setHex(0x33352b);
   };
   yield* buildKF51OwnerExactAssemblyStage1();
+  // 2026-11-03 (268 r16; the critics, on the owner's "update the kf51us hull ... too"): the photographed road wheels are
+  // plain grey with RED hub centres (Commons KF-51U_02/03). A red cap on each road wheel's hub (its face 0.156 m out from
+  // the wheel's centre plane), a wheel layer of this hull's own so it turns and rides with its wheel. Its appearance role
+  // is its own (no running-gear finish rule governs it), so the one-wheel-paint normaliser leaves it red;
+  // LEOPARD_2_RUNNING_GEAR and every other hull's wheels are untouched.
+  {
+    const gearUnit = P.gear;
+    if (!gearUnit) throw new Error('kf51_u: running gear must exist before its hub caps');
+    const hubRed = cloneRehookedVehicleMaterial(P.mats.shadow, (material) => {
+      material.color.setHex(0xa3261f);
+      material.userData = { ...material.userData, appearanceRole: 'kf51uHubCap' };
+    });
+    gearUnit.addRoadWheelLayer(cylX(0.046, 0.024, P.q ? 16 : 10), hubRed,
+      { outset: 0.150, name: 'gearRoadWheelRedHubCaps', appearanceRole: 'kf51uHubCap' });
+  }
   yield 'buildKF51OwnerExactAssemblyStage1';
   // (The belly between the tub and the nose fill, open 0.84 m in the owner's 2026-10-19 markup, is closed by leoHullV3's
   // lower front plate.)
@@ -9431,9 +9474,22 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
   };
   const buildKF51OwnerExactHullStage1 = (): void => {
     const skirtOuterX = skirtReceipt.armorOuterFaceX, skirtBandY = 1.40, skirtTopY = skirtReceipt.armorTopY;
-    // a skirt section at z for side s: the upright face, the chamfered band, the inner face over the carrier
+    // a skirt section at z for side s: the upright face, the chamfered band, the inner face over the carrier.
+    // 2026-11-03 (268 r16; owner: "update the kf51us hull annd sidekisrts and fenders"): the face folds in 14 mm along a
+    // crease a third of the way down (7 cm under the band), as photographed (Commons KF-51U_02/03)
+    const skirtCreaseFoldM = 0.014;
     const skirtRing = (s: -1 | 1, hem: number, outer: number, band: number, top: number): [number, number][] => {
-      const ring: [number, number][] = [[1.78, hem], [outer, hem], [outer, band], [1.76, top], [1.74, top], [1.74, hem + 0.06]];
+      const crease = Math.max(hem + 0.04, band - 0.07);
+      const ring: [number, number][] = [[1.78, hem], [outer, hem], [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top],
+        [1.74, top], [1.74, hem + 0.06]];
+      return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse();
+    };
+    // r16: the leading block's section, thick to the track's side (x 1.64; the track's outer face 1.556) so its toe reads
+    // as a block from the front, not a plate
+    const leadRing = (s: -1 | 1, hem: number, outer: number, band: number, top: number): [number, number][] => {
+      const crease = Math.max(hem + 0.04, band - 0.07);
+      const ring: [number, number][] = [[1.64, hem], [outer, hem], [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top],
+        [1.64, top]];
       return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse();
     };
     for (const s of [-1, 1] as const) {
@@ -9453,11 +9509,15 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
             { z: zb, ring: skirtRing(s, skirtHemY + v, skirtOuterX - v, skirtBandY, skirtTopY - v * 0.5) },
           ]));
         }
-        // the angular leading block over the idler: its hem rising along the idler ramp, its band falling to the shoulder
+        // the angular leading block over the idler, its band falling to the front fender box. r16 (owner 11-03; r15 critics:
+        // its lower edge "reads thin"): it angles forward and down to a pointed toe beside the idler (z 3.40, y 0.80;
+        // outboard of the track) and rises steeply from it to the fender box's underside, thick to the track's side
         P.add('hull', sectionSolid([
-          { z: 2.62, ring: skirtRing(s, skirtHemY, skirtOuterX, skirtBandY, skirtTopY) },
-          { z: 3.00, ring: skirtRing(s, skirtHemY + 0.16, skirtOuterX - 0.01, 1.36, 1.50) },
-          { z: 3.32, ring: skirtRing(s, 1.00, skirtOuterX - 0.03, 1.20, 1.36) },
+          { z: 2.62, ring: leadRing(s, skirtHemY, skirtOuterX, skirtBandY, skirtTopY) },
+          { z: 3.00, ring: leadRing(s, 0.84, skirtOuterX - 0.01, 1.36, 1.50) },
+          { z: 3.40, ring: leadRing(s, 0.80, skirtOuterX - 0.02, 1.30, 1.42) },
+          { z: 3.62, ring: leadRing(s, 0.93, skirtOuterX - 0.03, 1.22, 1.33) },
+          { z: 3.82, ring: leadRing(s, 1.05, skirtOuterX - 0.05, 1.17, 1.26) },
         ]));
         // the raked tail fin over the sprocket, out past the rear plate (Commons KF-51U_03/05)
         P.add('hull', sectionSolid([
@@ -9466,10 +9526,26 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
           { z: -3.02, ring: skirtRing(s, skirtHemY, skirtOuterX, skirtBandY, skirtTopY) },
         ]));
       });
+      // r16: the crease's shadow line at the fold, a bolt row along each panel's foot and over the fold, and two lifting
+      // handles on each panel's chamfered band (its outward normal (0.786, 0.619); 4 cm proud, under the drapes' 1.48 top)
+      const bandTilt = Math.atan2(0.786, 0.619);
+      const liftHandle = (): THREE.BufferGeometry => KIT.mergeAll([
+        KIT.xform(cylZ(0.009, 0.10, 6), 0, 0.040, 0),
+        ...[-1, 1].map((e) => KIT.xform(cylY(0.009, 0.009, 0.048, 6), 0, 0.018, e * 0.041)),
+      ]);
       for (let k = 0; k < n; k++) {
         const zc = z0 + L * (k + 0.5);
-        P.add('hullDark', box(0.006, 0.014, L - 0.16), s * (skirtOuterX + 0.001), 1.17, zc);         // the crease
-        if (P.q) for (const dz of [-L * 0.36, 0, L * 0.36]) P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX + 0.004), 1.33, zc + dz);
+        P.add('hullDark', box(0.010, 0.012, L - 0.12), s * (skirtOuterX - 0.002), skirtBandY - 0.07, zc);   // the crease
+        if (P.q) {
+          for (let b = 0; b < 6; b++) {
+            const dz = (b - 2.5) * (L - 0.20) / 5;
+            P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX + 0.004), skirtHemY + 0.05, zc + dz);
+            P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX - 0.004), skirtBandY - 0.035, zc + dz);
+          }
+        }
+        for (const dz of [-L * 0.28, L * 0.28]) {
+          P.add('hullDetail', liftHandle(), s * (skirtOuterX - skirtCreaseFoldM - 0.055 + 0.002), 1.47, zc + dz, 0, 0, -s * bandTilt);
+        }
       }
       for (let k = 1; k < n; k++) P.add('hullDark', box(0.03, skirtBandY - skirtHemY - 0.04, 0.012), s * (skirtOuterX - 0.035), (skirtBandY + skirtHemY) / 2, z0 + L * k);
       // amber side markers at the leading block's front and the fin's tail
@@ -9491,25 +9567,22 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.46);
       // width-indicator rods on the front mudguards
       // 2026-10-19 (owner float sweep): the rods stood 60 mm clear of the mudguard; each seats on its edge.
+      // 2026-11-03 (268 r16): they rise from the front fender box's top (1.389 here), their tips (1.51) under the gun's floor at
+      // full depression (1.52), where the snap had lowered them onto the old mudguard
       P.snapGroup(`kf51u-width-rod-${s}`, () => {
-        P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
-        P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
+        P.add('hullDetail', cylY(0.008, 0.008, 0.115, 6), s * 1.66, 1.435, 3.42);
+        P.add('hullDetail', KIT.sph(0.014, 8), s * 1.66, 1.495, 3.42);
       }, { reachM: 0.08 });
-      // bow tow eyes seated flush on the raked beak underside
-      P.add('hullDetail', box(0.09, 0.10, 0.12), s * 0.62, 0.99, 3.72, 0.86, 0, 0);
-      P.add('hullDark', KIT.cylZ(0.028, 0.05, 8), s * 0.62, 1.06, 3.78);
+      // (r16: the bow tow eyes give way to the lower nose block's tow clevises, below)
       // (268 r15: the rear mudflaps on their posts are retired; the skirts' raked tail fins guard the sprocket, as
       // photographed)
       // front mudguard wing + shortened flap (§B4: idler shoe orbit tops
       // 0.75 at z 3.79-3.81 — flap bottom 0.80 clears; wing rides above) +
       // connector strap back to the fore-fender end (floater law; strap
       // underside 1.17 clears the wrap crest 1.07 at z 3.55)
-      P.add('hull', box(0.70, 0.16, 0.04), s * 1.40, 1.13, 3.80);
-      P.add('hullDetail', box(0.66, 0.018, 0.024), s * 1.40, 1.045, 3.796);
-      // r15: the fender block's LED light bar in its dark bezel (Commons KF-51U_01/09)
-      P.add('hullDark', box(0.40, 0.055, 0.016), s * 1.40, 1.165, 3.826);
-      P.add('hullGlass', markVehicleNightLens(box(0.36, 0.026, 0.010), 'headlight'), s * 1.40, 1.165, 3.836);
-      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.32, 0.90, 3.80);
+      // (r16: the wing and its LED bar give way to the front fender box over the track lane, below)
+      // r16b: the flap hangs under the front fender box's face (z 3.97; the idler's wrap ends at 3.81), as photographed
+      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.36, 0.885, 3.965);
       P.add('hull', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
       // mudguard well sheet over the idler (§B2: the open corridor between
       // the strap and the 1.556 wrap outer read as enclosed top-down cells;
@@ -9540,9 +9613,52 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
         const ring: Array<[number, number]> = [[0.92, bottom], [1.50, bottom], [1.50, top - 0.03], [1.47, top], [0.92, top]];
         return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
       })));
-      // the LED light bars in the nose plate's upper corners, in dark bezels
-      P.add('hullDark', box(0.40, 0.05, 0.016), s * 0.66, 1.205, 3.925);
-      P.add('hullGlass', markVehicleNightLens(box(0.36, 0.024, 0.012), 'headlight'), s * 0.66, 1.205, 3.931);
+      // 2026-11-03 (268 r16; owner: "update the kf51us hull ... and fenders"): the front fender box over the track lane
+      // (Commons KF-51U_01/09: the nose runs the hull's full width, its outer corners boxes over the tracks with the light
+      // clusters), from the bow block's front (z 3.28) to the nose's front line (3.90), its top the glacis', a chamfer to
+      // its front face, its underside rising back over the idler's wrap (4 cm over the crest at z 3.40, 5.5 cm at 3.55),
+      // its outer top edge chamfered like the skirts' band and its outer front corner cut at 45 degrees
+      // (ahead of z 3.80 the wrap is gone and the face drops to 0.97 over the flap)
+      // r16b (blind A/B, 11-03: the r16 fender tips "barely register" and the nose read as one plate; Commons KF-51U_01/09:
+      // each corner box is its own block): its top stands 4.5 cm over the glacis' line (under the gun's floor: 1.475 at
+      // z 3.28 under 1.53), its face 8 cm ahead of the nose's centre face (z 4.00 to 3.92), its inner top edge chamfered so
+      // the step to the nose reads as a seam, a dark seam strip down its inner front edge
+      const box0 = 0.95, boxRise = 0.045, under = (z: number): number => (z <= 3.80 ? 1.21 - 0.1625 * (z - 3.28) / 0.52
+        : z <= 3.88 ? 1.0475 - 0.0775 * (z - 3.80) / 0.08 : 0.97 + 0.02 * (z - 3.88) / 0.12);
+      const boxStations: Array<[number, number, number]> = [[3.28, kf51uTopAt(3.28) + boxRise, 1.88],
+        [3.80, kf51uTopAt(3.80) + boxRise, 1.88], [3.88, kf51uTopAt(3.82) + boxRise, 1.88], [3.94, 1.29, 1.86],
+        [4.00, 1.25, 1.80]];
+      P.add('hull', sectionSolid(boxStations.map(([z, top, xo]) => {
+        const ring: Array<[number, number]> = [[box0, under(z)], [xo, under(z)], [xo, top - 0.06], [xo - 0.06, top], [box0 + 0.04, top],
+          [box0, top - 0.04]];
+        return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
+      })));
+      P.add('hullDark', box(0.012, 0.24, 0.012), s * (box0 + 0.004), 1.12, 3.998);
+      // its light cluster high on the face (a long LED bar and a square lamp outboard, in one dark bezel), the IR driving
+      // light under it
+      P.add('hullDark', box(0.48, 0.07, 0.016), s * 1.38, 1.165, 4.005);
+      P.add('hullGlass', markVehicleNightLens(box(0.32, 0.030, 0.010), 'headlight'), s * 1.33, 1.165, 4.014);
+      P.add('hullGlass', markVehicleNightLens(box(0.075, 0.042, 0.010), 'headlight'), s * 1.555, 1.165, 4.014);
+      P.add('hullDark', box(0.15, 0.072, 0.016), s * 1.30, 1.056, 4.005);
+      P.add('hullGlass', box(0.12, 0.045, 0.008), s * 1.30, 1.056, 4.015);
+    }
+    // r16: the lower nose block (Commons KF-51U_01/09): under the nose face a second band (y 0.97-1.05) and a lower
+    // facet falling back 45 degrees to the underside at y 0.78-0.80, its sides chamfered inside the tracks' inner faces
+    // (x 0.9685); a crease line between the bands. r16b (blind A/B: the hanging clevises read as loose parts): two tow
+    // eyes recessed flush in its lower facet, nothing below its underside
+    P.add('hull', sectionSolid([
+      { z: 3.56, ring: [[-0.92, 0.78], [0.92, 0.78], [0.94, 0.86], [0.94, 1.06], [-0.94, 1.06], [-0.94, 0.86]] },
+      { z: 3.78, ring: [[-0.90, 0.80], [0.90, 0.80], [0.94, 0.88], [0.94, 1.06], [-0.94, 1.06], [-0.94, 0.88]] },
+      { z: 3.92, ring: [[-0.86, 0.97], [0.86, 0.97], [0.93, 1.00], [0.93, 1.048], [-0.93, 1.048], [-0.93, 1.00]] },
+    ]));
+    P.add('hullDark', box(1.72, 0.012, 0.010), 0, 1.040, 3.921);
+    {
+      // the facet runs (z 3.92, y 0.97) to (3.78, 0.80); its outward normal (y -0.636, z 0.772)
+      const tilt = Math.atan2(0.14, 0.17), ny = -0.636, nz = 0.772, fy = 0.885, fz = 3.85;
+      for (const s of [-1, 1] as const) {
+        P.add('hullDark', box(0.16, 0.10, 0.012), s * 0.55, fy + ny * 0.002, fz + nz * 0.002, -tilt, 0, 0);        // recess
+        P.add('hullDetail', cylX(0.016, 0.12, 8), s * 0.55, fy + ny * 0.012, fz + nz * 0.012);                        // eye pin
+      }
     }
     // the three hull crew stations on the crew roof: twin vision blocks ahead of each on the glacis. r15 (owner 11-02:
     // "add some cupolas"): the commander (the vehicle's right) and the gunner ride low periscope cupolas, 5 and 4.5 cm
@@ -9597,13 +9713,44 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     P.add('hull', convexSlab(
       [-1.48, 1.44, -3.84], [1.48, 1.44, -3.84], [1.48, 1.36, -3.69], [-1.48, 1.36, -3.69],
       [-1.48, 1.78, -3.84], [1.48, 1.78, -3.84], [1.48, 1.78, -3.69], [-1.48, 1.78, -3.69]));
+    // 2026-11-03 (268 r16; owner: "... and fenders"; r15 critics: join the rear grilles): the grilles are one dark band
+    // across the fascia (Commons KF-51U_05), two light dividers splitting it into the outer trapezoids and the centre's
+    // rising wedge, its slats running the band's width
+    P.add('hullDark', convexSlab(
+      [-1.10, 1.70, -3.836], [1.10, 1.70, -3.836], [0.98, 1.50, -3.836], [-0.98, 1.50, -3.836],
+      [-1.10, 1.70, -3.852], [1.10, 1.70, -3.852], [0.98, 1.50, -3.852], [-0.98, 1.50, -3.852]));
+    if (P.q) for (const y of [1.55, 1.60, 1.65]) P.add('hullDetail', box(2 * (0.98 + (y - 1.50) * 0.6) - 0.06, 0.010, 0.010), 0, y, -3.856);
     for (const s of [-1, 1] as const) {
-      P.add('hullDark', convexSlab(
-        [s * 0.16, 1.70, -3.836], [s * 1.04, 1.70, -3.836], [s * 0.92, 1.50, -3.836], [s * 0.36, 1.50, -3.836],
-        [s * 0.16, 1.70, -3.852], [s * 1.04, 1.70, -3.852], [s * 0.92, 1.50, -3.852], [s * 0.36, 1.50, -3.852]));
-      if (P.q) for (const y of [1.55, 1.60, 1.65]) P.add('hullDetail', box(0.66 - (1.70 - y) * 0.3, 0.010, 0.010), s * 0.62, y, -3.856);
-      P.add('hullDark', box(0.34, 0.06, 0.020), s * 1.26, 1.725, -3.845);                       // corner light bar bezel
-      P.add('hullGlass', markVehicleNightLens(box(0.30, 0.028, 0.010), 'marker', { tint: 'red' }), s * 1.26, 1.725, -3.856);
+      const a = Math.atan2(0.20, 0.20);
+      P.add('hullDetail', box(0.018, 0.283, 0.012), s * 0.26, 1.60, -3.856, 0, 0, s * a);      // divider
+    }
+    for (const s of [-1, 1] as const) {
+      P.add('hullDark', box(0.34, 0.06, 0.020), s * 1.40, 1.725, -3.845);                       // corner light bar bezel
+      P.add('hullGlass', markVehicleNightLens(box(0.30, 0.028, 0.010), 'marker', { tint: 'red' }), s * 1.40, 1.725, -3.856);
+      // r16: the rear fender box blends the fascia out to the skirts' line (Commons KF-51U_03/05): from the fascia's face
+      // forward to the fender's end (z -3.10), its top the fascia's falling to the fender, its underside 17 cm over the
+      // sprocket's wrap, its outer top and bottom edges chamfered. r16b (blind A/B; Commons KF-51U_03, the real rear
+      // corner): a large faceted box, it projects 30 cm back past the fascia to a chamfered end face
+      P.add('hull', sectionSolid(([[-4.14, 1.46, 1.62, 1.54, 1.80], [-4.04, 1.38, 1.72, 1.48, 1.86], [-3.84, 1.36, 1.78, 1.46, 1.86],
+        [-3.40, 1.34, 1.78, 1.46, 1.86], [-3.10, 1.34, 1.62, 1.46, 1.86]] as const).map(([z, bottom, top, xi, xo]) => {
+        const ring: Array<[number, number]> = [[xi, bottom], [xo - 0.04, bottom], [xo, bottom + 0.04], [xo, top - 0.06], [xo - 0.06, top],
+          [xi, top]];
+        return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
+      })));
+      // and the big plate it drops toward the track behind the sprocket (Commons KF-51U_03): upright from its underside
+      // (z -3.92/-3.98) to y 1.00, then angled down and forward to y 0.56 at z -3.66/-3.72 (25 cm behind the sprocket's
+      // wrap at every height, x 1.24-1.86; the outer piece's foot rising 6 cm: its outer bottom corner cut). Its upright
+      // back carries the rear stowage the decor hangs there
+      for (const [xa, xb, footA, footB] of [[1.24, 1.80, 0.56, 0.56], [1.80, 1.86, 0.56, 0.62]] as const) {
+        const xu = xa < 1.5 ? 1.16 : xa;                                                              // the upright part's wider foot
+        P.add('hull', convexSlab(
+          [s * xu, 1.00, -3.98], [s * xb, 1.00, -3.98], [s * xb, 1.00, -3.92], [s * xu, 1.00, -3.92],
+          [s * xu, 1.38, -3.98], [s * xb, 1.38, -3.98], [s * xb, 1.38, -3.92], [s * xu, 1.38, -3.92]));
+        P.add('hull', convexSlab(
+          [s * xa, footA, -3.72], [s * xb, footB, -3.72], [s * xb, footB, -3.66], [s * xa, footA, -3.66],
+          [s * xa, 1.004, -3.98], [s * xb, 1.004, -3.98], [s * xb, 1.004, -3.92], [s * xa, 1.004, -3.92]));
+      }
+      P.add('hullDark', box(0.50, 0.012, 0.010), s * 1.52, 1.00, -3.984);                       // the crease at the bend
       P.add('hullDark', cylZ(0.065, 0.024, 16), s * 0.62, 1.14, -3.69);                          // round tail lamp
       P.add('hullGlass', markVehicleNightLens(cylZ(0.048, 0.010, 16), 'marker', { tint: 'red' }), s * 0.62, 1.14, -3.703);
       P.add('hullDark', cylZ(0.15, 0.020, 6), s * 1.02, 1.08, -3.69, 0, 0, Math.PI / 6);        // exhaust hex grille
@@ -9611,6 +9758,119 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     }
     P.add('hullDark', box(0.12, 0.05, 0.02), 0, 1.74, -3.846);                                  // convoy light
     P.add('hullGlass', markVehicleNightLens(box(0.08, 0.026, 0.008), 'marker'), 0, 1.74, -3.857);
+
+    // ---- 2026-11-03 (268 r16; owner: "add a lot more decorations, equipment, optics, etc"): the hull kit a modern
+    // German demonstrator carries, each piece seated on the hull as built (lane probes .qa-dev/ifv/r16probe.mjs). Ahead
+    // of the turret every top stays under the gun's floor at full depression over every yaw (r16gunfloor.mjs: 1.56-1.62
+    // over the bow blocks and the glacis' fore half) and under the cupola tops (1.675); beside and behind it, under the
+    // turret's 1.78 underside or outside its swept radius.
+    {
+      const glacisTilt = frontTilt;
+      // a part on the glacis or a bow block's top (both follow kf51uTopAt), tilted with it; ly from the plate
+      const onGlacis = (bucket: string, geometry: THREE.BufferGeometry, x: number, z: number, ly = 0): void => {
+        P.add(bucket, geometry, x, kf51uTopAt(z) + ly / Math.cos(glacisTilt), z, glacisTilt, 0, 0);
+      };
+      // the driver's thermal/day camera ahead of his vision blocks (DNRS class): a wedge base level on the glacis, the
+      // housing, its window and two lenses, a sun hood (top 1.568; the gun's floor over it 1.59-1.61)
+      {
+        const z0 = 3.20, z1 = 3.40, top = 1.474;
+        P.add('hullDetail', convexSlab(
+          [-0.12, kf51uTopAt(z0) - 0.006, z0], [0.12, kf51uTopAt(z0) - 0.006, z0], [0.12, kf51uTopAt(z1) - 0.006, z1], [-0.12, kf51uTopAt(z1) - 0.006, z1],
+          [-0.12, top, z0], [0.12, top, z0], [0.12, top, z1], [-0.12, top, z1]));
+        P.add('hullDetail', box(0.20, 0.085, 0.15), 0, top + 0.040, 3.30);
+        P.add('hullDetail', box(0.22, 0.012, 0.075), 0, top + 0.088, 3.345);
+        P.add('hullDark', box(0.17, 0.055, 0.012), 0, top + 0.040, 3.379);
+        P.add('hullGlass', cylZ(0.024, 0.008, 14), -0.045, top + 0.040, 3.386);                // thermal lens
+        P.add('hullGlass', cylZ(0.016, 0.008, 12), 0.045, top + 0.040, 3.386);                 // day lens
+      }
+      for (const s of [-1, 1] as const) {
+        // situational-awareness heads set into the front fender boxes' 45-degree outer front corners (r16b: the raised
+        // boxes took the bow blocks' corners), looking out along the corner's normal, under the box's top and inside the
+        // skirts' line (x 1.904)
+        addKF51USasHead(P, 'hull', s * (1.82 + Math.SQRT1_2 * 0.015), 1.085, 3.98 + Math.SQRT1_2 * 0.015, s * Math.PI / 4, { hood: false });
+        // (the IR driving lights ride the front fender box's face, above)
+        // crew grab handles: one along each bow block's top, one across the glacis by the nose
+        const handle = (length: number): THREE.BufferGeometry => KIT.mergeAll([
+          KIT.xform(cylX(0.011, length, 8), 0, 0.045, 0),
+          ...[-1, 1].map((e) => KIT.xform(cylY(0.011, 0.011, 0.054, 8), e * (length / 2 - 0.011), 0.018, 0)),
+        ]);
+        P.add('hullDetail', handle(0.22), s * 1.10, kf51uTopAt(3.12), 3.12, glacisTilt, Math.PI / 2, 0);
+        onGlacis('hullDetail', handle(0.22), s * 0.36, 3.66);
+        // lifting eyes on the glacis behind the nose's corners
+        onGlacis('hullDetail', box(0.10, 0.03, 0.08), s * 0.80, 3.72, 0.006);
+        onGlacis('hullDetail', KIT.xform(KIT.torus(0.040, 0.014, 12), 0, 0, 0, Math.PI / 2, 0, 0), s * 0.80, 3.72, 0.058);
+      }
+      // the fenders beside the turret (their dark tread strip tops at 1.612, x 1.625-1.735; the turret's underside 1.78
+      // over them): a doubled tow cable on each, an eye at each end, three clamps; ahead of it a pioneer tool
+      for (const s of [-1, 1] as const) {
+        const xo = s * 1.715, xi = s * 1.645, y = 1.629, r = 0.020;
+        const curve = new THREE.CatmullRomCurve3([
+          [xi, y, -2.86], [xi, y, -2.2], [xi, y, -1.2], [xi, y, -0.28], [s * 1.652, y, -0.17], [s * 1.680, y, -0.135],
+          [s * 1.708, y, -0.17], [xo, y, -0.28], [xo, y, -1.2], [xo, y, -2.2], [xo, y, -2.58],
+        ].map(([a, b, c]) => new THREE.Vector3(a, b, c)), false, 'centripetal');
+        P.add('hullDark', new THREE.TubeGeometry(curve, P.q ? 120 : 48, r, 6, false));
+        for (const [x, zEnd] of [[xi, -2.86], [xo, -2.58]] as const) {
+          P.add('hullDetail', cylZ(0.026, 0.06, 10), x, y, zEnd - 0.025);                         // ferrule over the end
+          P.add('hullDark', KIT.torus(0.035, 0.010, 12), x, 1.619, zEnd - 0.055 - 0.035);          // the eye, lying flat
+        }
+        for (const z of [-2.2, -1.2, -0.45]) {
+          P.add('hullDetail', box(0.15, 0.010, 0.035), s * 1.68, y + r + 0.004, z);                // clamp strap
+          for (const x of [1.615, 1.745]) P.add('hullDetail', box(0.010, 0.060, 0.035), s * x, 1.624, z);
+        }
+        if (s > 0) {
+          // sledgehammer: its head across the fender, the helve forward, two clamps
+          P.add('hullWood', cylZ(0.017, 0.80, 8), s * 1.68, 1.627, 0.64);
+          P.add('hullDark', box(0.16, 0.058, 0.065), s * 1.68, 1.639, 0.245);
+          for (const z of [0.48, 0.92]) {
+            P.add('hullDetail', box(0.075, 0.008, 0.03), s * 1.68, 1.648, z);
+            for (const dx of [-0.032, 0.032]) P.add('hullDetail', box(0.008, 0.040, 0.03), s * 1.68 + dx, 1.628, z);
+          }
+        } else {
+          // spade, its blade forward
+          KIT.shovelTool(P, s * 1.68, 1.626, 0.62, 0.95);
+          for (const z of [0.38, 0.80]) {
+            P.add('hullDetail', box(0.075, 0.008, 0.03), s * 1.68, 1.646, z);
+            for (const dx of [-0.032, 0.032]) P.add('hullDetail', box(0.008, 0.040, 0.03), s * 1.68 + dx, 1.627, z);
+          }
+        }
+      }
+      // the rear fascia (face z -3.84, y 1.44-1.78; its top 1.78-1.79): the reversing camera over the grille band beside
+      // the convoy light, situational-awareness heads on the rear fender boxes' tops looking out astern, the infantry
+      // telephone (the vehicle's right) and the external fire-extinguisher pull (its left) between the band and the corners
+      P.add('hullDetail', box(0.11, 0.062, 0.065), 0.20, 1.736, -3.868);
+      P.add('hullDark', box(0.085, 0.036, 0.010), 0.20, 1.736, -3.903);
+      P.add('hullGlass', cylZ(0.015, 0.006, 12), 0.20, 1.736, -3.910);
+      P.add('hullDetail', box(0.13, 0.010, 0.08), 0.20, 1.772, -3.876);
+      for (const s of [-1, 1] as const) {
+        P.add('hullDetail', box(0.15, 0.024, 0.13), s * 1.66, 1.791, -3.77);
+        addKF51USasHead(P, 'hull', s * 1.66, 1.800, -3.77, s * Math.PI * 0.75);
+      }
+      // on the fascia's top ledge, clear of the gun's line astern (x +-0.25): the track-tool bin on the left half (its
+      // lid seam, hinges and two latches). (r16b: the tarp roll on the right half is gone: it read as a barrel)
+      P.add('hullDetail', box(0.90, 0.11, 0.13), 0.73, 1.836, -3.768);
+      P.add('hullDark', box(0.88, 0.008, 0.006), 0.73, 1.872, -3.835);
+      for (const dx of [-0.30, 0.30]) {
+        P.add('hullDark', box(0.05, 0.05, 0.012), 0.73 + dx, 1.845, -3.838);                     // latch
+        P.add('hullDark', cylX(0.009, 0.08, 8), 0.73 + dx, 1.893, -3.708);                      // hinge
+      }
+      P.add('hullDetail', box(0.17, 0.15, 0.075), -1.26, 1.56, -3.8735);                        // telephone box
+      P.add('hullDark', box(0.15, 0.008, 0.006), -1.26, 1.60, -3.911);                          // its lid seam
+      P.add('hullDark', cylX(0.008, 0.12, 8), -1.26, 1.632, -3.911);                            // and hinge
+      P.add('hullDark', box(0.06, 0.018, 0.024), -1.26, 1.53, -3.918);                          // the lid's pull
+      P.add('hullDetail', box(0.13, 0.11, 0.04), 1.26, 1.57, -3.856);                           // extinguisher pull housing
+      P.add('hullDark', cylZ(0.008, 0.05, 8), 1.26, 1.57, -3.897);                              // its stem
+      P.add('hullDetail', cylX(0.013, 0.10, 8), 1.26, 1.57, -3.928);                            // and T-grip
+      P.add('hullDark', box(0.10, 0.03, 0.006), 1.26, 1.49, -3.843);                            // placard
+      // the lower rear plate (z -3.68): the tow pintle under the convoy plate, the NATO slave socket beside it
+      P.add('hullDetail', box(0.24, 0.16, 0.03), 0, 1.06, -3.693);                              // pintle mounting plate
+      P.add('hullDark', cylZ(0.055, 0.13, 12), 0, 1.06, -3.77);                                 // its housing
+      P.add('hullDark', box(0.05, 0.11, 0.05), 0, 1.035, -3.855);                               // the jaw
+      P.add('hullDetail', cylY(0.013, 0.013, 0.13, 8), 0, 1.06, -3.862);                        // its pin
+      P.add('hullDetail', box(0.03, 0.022, 0.09), 0, 1.120, -3.805);                            // latch lever
+      P.add('hullDark', cylZ(0.060, 0.04, 14), 0.32, 1.29, -3.70);                              // slave socket housing
+      P.add('hullDetail', cylZ(0.052, 0.016, 14), 0.32, 1.29, -3.727);                          // its cap
+      P.add('hullDark', box(0.03, 0.022, 0.03), 0.32, 1.352, -3.70);                            // the cap's hinge
+    }
 
     // ---- TURRET -------------------------------------------------------------
     // One connected faceted wedge.  The source roof is only ~0.68 m above the
@@ -9637,6 +9897,7 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     { height: -0.01, inset: 0.93 },
     { height: 0.14, inset: 1.00 },
     { height: [0.48, 0.48, 0.54, 0.50, 0.48, 0.46, 0.46, 0.48, 0.50, 0.54], inset: 0.985 },
+    { height: [0.48, 0.48, 0.54, 0.50, 0.48, 0.46, 0.46, 0.48, 0.50, 0.54].map((h) => h + kf51uWallRiseM), inset: 0.985 },
     { height: turretRoofEdgeHeightsM, inset: 0.90, centerHeight: turretRoofCenterHeightM },
   ];
   const kf51uShellStock = recessKF51BTurret(convexCrownedStock(polyMultiLoft(turretPlan, kf51uShellRings)));
@@ -9712,11 +9973,13 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     };
     const sightX = kf51uSightX, sightY = kf51uSightY;
     // r14 (blind critics: the window read small): it spans most of the outer block, 0.36 x 0.22 m, as photographed
-    onCheek('turretDark', box(0.38, 0.235, 0.02), sightX, sightY, 0.0);                         // window recess
-    onCheek('turretDetail', box(0.36, 0.215, 0.02), sightX, sightY, 0.008);                     // bolted frame
-    onCheek('turretDark', box(0.33, 0.185, 0.012), sightX, sightY, 0.014);                      // the dark lens plate
-    onCheek('turretDark', cylZ(0.080, 0.012, P.q ? 28 : 16), sightX + 0.07, sightY, 0.020);
-    onCheek('turretGlass', cylZ(0.072, 0.006, P.q ? 28 : 16), sightX + 0.07, sightY, 0.027);    // large lens, inboard
+    // r16 (owner 11-03: "... and turret too"): the box reads bigger on the taller cheek, 0.40 x 0.255 m, its large lens
+    // 18 cm across
+    onCheek('turretDark', box(0.40, 0.255, 0.02), sightX, sightY, 0.0);                         // window recess
+    onCheek('turretDetail', box(0.38, 0.235, 0.02), sightX, sightY, 0.008);                     // bolted frame
+    onCheek('turretDark', box(0.35, 0.205, 0.012), sightX, sightY, 0.014);                      // the dark lens plate
+    onCheek('turretDark', cylZ(0.090, 0.012, P.q ? 28 : 16), sightX + 0.07, sightY, 0.020);
+    onCheek('turretGlass', cylZ(0.082, 0.006, P.q ? 28 : 16), sightX + 0.07, sightY, 0.027);    // large lens, inboard
     onCheek('turretGlass', cylZ(0.030, 0.006, 16), sightX - 0.085, sightY + 0.05, 0.022);       // small round lens
     onCheek('turretGlass', cylZ(0.025, 0.006, 14), sightX - 0.085, sightY - 0.010, 0.022);      // teardrop head
     onCheek('turretGlass', box(0.032, 0.034, 0.006), sightX - 0.085, sightY - 0.035, 0.022);    // and tail
@@ -9935,12 +10198,13 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // pointed flat and stood 35 mm off the ledge)
       const rosyAxis = new THREE.Vector3(0.74, 0.62, 0.26).normalize();
       const rosyRy = Math.asin(rosyAxis.x), rosyRx = -Math.asin(rosyAxis.y / Math.cos(rosyRy));
+      // 2026-11-03 (268 r16; owner: "... and turret too"): chunkier, 12 cm tubes on 15 cm sockets, set 1.5 cm farther out
       for (const z of [-0.20, -0.42, -0.64, -0.86]) {
-        const [x, y] = shelfTopAt(z, 0.045);
+        const [x, y] = shelfTopAt(z, 0.06);
         const at = (d: number): [number, number, number] => [s * (x + d * rosyAxis.x), y + d * rosyAxis.y, z + d * rosyAxis.z];
-        P.add('turretDark', cylZ(0.060, 0.04, 14), ...at(0), rosyRx, s * rosyRy, 0);                       // socket
-        P.add('turretDetail', markSmokeTube(cylZ(0.047, 0.15, 14)), ...at(0.06), rosyRx, s * rosyRy, 0);
-        P.add('turretDark', KIT.sph(0.044, 10), ...at(0.13), rosyRx, s * rosyRy, 0);                       // domed cap
+        P.add('turretDark', cylZ(0.074, 0.05, 16), ...at(0), rosyRx, s * rosyRy, 0);                       // socket
+        P.add('turretDetail', markSmokeTube(cylZ(0.060, 0.17, 16)), ...at(0.07), rosyRx, s * rosyRy, 0);
+        P.add('turretDark', KIT.sph(0.056, 12), ...at(0.15), rosyRx, s * rosyRy, 0);                       // domed cap
       }
       // and four domed ROSY caps on the shelf's tail behind the launcher
       for (const z of [-1.93, -2.01, -2.09, -2.17]) {
@@ -10131,6 +10395,53 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       for (const dy of [0.08, 0.13, 0.18]) P.add('turretDark', cylY(0.058, 0.058, 0.014, 12), -0.34, yv + dy, -2.46);
       P.add('turretDetail', cylY(0.040, 0.060, 0.025, 12), -0.34, yv + 0.21, -2.46);
     }
+
+    // ---- 2026-11-03 (268 r16; owner: "add a lot more decorations, equipment, optics, etc"): the roof kit, each piece
+    // seated on the shell by rays (roofYAt) and opened in the suit's roof net (ghillieFleetSuits.ts kf51_u)
+    {
+      // the roof-mounted coaxial MG (Commons KF-51U_01/04): its barrel out of a wedge shroud on the left cheek's roof
+      // beside the gun slot (the slot's walls at x 0.43, the fore-roof's open air to 0.40), hinged at its back
+      const x = 0.62, zb = 1.00, zf = 1.33;
+      const yb = roofYAt(x, zb) - 0.006, yf = Math.min(roofYAt(x - 0.045, zf), roofYAt(x + 0.045, zf)) - 0.006;
+      const topAt = (z: number): number => yb + 0.115 + (yf + 0.06 - yb - 0.115) * (z - zb) / (zf - zb);
+      P.add('turretDetail', convexSlab(
+        [x - 0.08, yb, zb], [x + 0.08, yb, zb], [x + 0.045, yf, zf], [x - 0.045, yf, zf],
+        [x - 0.075, topAt(zb), zb], [x + 0.075, topAt(zb), zb], [x + 0.04, topAt(zf), zf], [x - 0.04, topAt(zf), zf]));
+      P.add('turretDark', cylZ(0.016, 0.32, 10), x, yf + 0.036, 1.43);                          // barrel
+      P.add('turretDark', cylZ(0.022, 0.05, 10), x, yf + 0.036, 1.575);                         // muzzle
+      for (const dx of [-0.04, 0.04]) P.add('turretDark', cylX(0.011, 0.045, 8), x + dx, topAt(zb + 0.03) + 0.005, zb + 0.03);
+    }
+    {
+      // the auxiliary gunner's sight on the left cheek's roof plate (x 0.92, z 0.92; top y + 0.006): a raked armoured
+      // head on a collar, its window and two lenses looking forward under a brow
+      const x = 0.92, z = 0.93;
+      const pt = Math.max(roofYAt(x - 0.15, 0.80), roofYAt(x + 0.15, 0.80), roofYAt(x - 0.15, 1.04), roofYAt(x + 0.15, 1.04)) + 0.006;
+      P.add('turretDetail', box(0.24, 0.03, 0.20), x, pt + 0.011, z);
+      const yb = pt + 0.024, yt = pt + 0.19, zr = z - 0.10, zfb = z + 0.10, zft = z + 0.06;
+      P.add('turretDetail', convexSlab(
+        [x - 0.11, yb, zr], [x + 0.11, yb, zr], [x + 0.11, yb, zfb], [x - 0.11, yb, zfb],
+        [x - 0.11, yt, zr], [x + 0.11, yt, zr], [x + 0.11, yt, zft], [x - 0.11, yt, zft]));
+      const rake = Math.atan2(zfb - zft, yt - yb), wy = pt + 0.12;
+      const faceZ = zfb - (zfb - zft) * (wy - yb) / (yt - yb);
+      const n = [Math.sin(rake), Math.cos(rake)] as const;                                       // (y, z) of the face's normal
+      P.add('turretDark', box(0.17, 0.085, 0.012), x, wy + n[0] * 0.002, faceZ + n[1] * 0.002, -rake, 0, 0);
+      P.add('turretGlass', cylZ(0.032, 0.008, 16), x - 0.035, wy + n[0] * 0.010, faceZ + n[1] * 0.010, -rake, 0, 0);
+      P.add('turretGlass', cylZ(0.020, 0.008, 14), x + 0.045, wy + n[0] * 0.010, faceZ + n[1] * 0.010, -rake, 0, 0);
+      P.add('turretDetail', box(0.26, 0.022, 0.075), x, yt + 0.006, zft - 0.0025);               // brow
+    }
+    for (const s of [-1, 1] as const) {
+      // situational-awareness heads with laser-warning receivers at the roof's four corners: forward-out on the cheek
+      // roofs, astern-out on the bustle's (their lenses dark, so the net's openings stay the explicit holes). r16b (blind
+      // A/B: keep the roof low): each sits on a 1.4 cm pad, its top 12 cm over the roof
+      const fx = s * 1.24, fz = 0.80, fy = Math.max(roofYAt(fx - 0.07, fz - 0.07), roofYAt(fx + 0.07, fz + 0.07), roofYAt(fx - 0.07, fz + 0.07), roofYAt(fx + 0.07, fz - 0.07));
+      P.add('turretDark', cylY(0.060, 0.064, 0.020, 12), fx, fy + 0.004, fz);
+      addKF51USasHead(P, 'turret', fx, fy + 0.011, fz, s * Math.PI / 4, { lwr: true });
+      const rx = s * 0.86, rz = -2.60, ry = Math.max(roofYAt(rx - 0.07, rz - 0.07), roofYAt(rx + 0.07, rz + 0.07), roofYAt(rx - 0.07, rz + 0.07), roofYAt(rx + 0.07, rz - 0.07));
+      P.add('turretDark', cylY(0.060, 0.064, 0.020, 12), rx, ry + 0.004, rz);
+      addKF51USasHead(P, 'turret', rx, ry + 0.011, rz, s * Math.PI * 0.75, { lwr: true, glass: false });
+    }
+    // (r16b, blind A/B: the real KF51-U's roof is clean; the SATCOM radome, the acoustic detector and the third antenna
+    // are gone)
 
   };
   buildKF51OwnerExactTurretStage2();
