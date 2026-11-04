@@ -9479,17 +9479,23 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
     // 2026-11-03 (268 r16; owner: "update the kf51us hull annd sidekisrts and fenders"): the face folds in 14 mm along a
     // crease a third of the way down (7 cm under the band), as photographed (Commons KF-51U_02/03)
     const skirtCreaseFoldM = 0.014;
+    // r17 (269; r16b critic: "the skirts lack the photo's step"; Commons KF-51U_02/03): the panel's lower third is a keel
+    // facet angled in under a crease, its hem 11 cm inside the upright face, the bottom face 9 cm deep to x 1.70 (outside
+    // the track's 1.556)
+    const skirtKeelInsetM = 0.11;
+    const skirtKeelY = (hem: number, band: number, crease: number): number => Math.min(hem + (band - hem) * 0.35, crease - 0.02);
     const skirtRing = (s: -1 | 1, hem: number, outer: number, band: number, top: number): [number, number][] => {
       const crease = Math.max(hem + 0.04, band - 0.07);
-      const ring: [number, number][] = [[1.78, hem], [outer, hem], [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top],
-        [1.74, top], [1.74, hem + 0.06]];
+      const ring: [number, number][] = [[1.70, hem], [outer - skirtKeelInsetM, hem], [outer, skirtKeelY(hem, band, crease)],
+        [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top], [1.74, top]];
       return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse();
     };
     // r16: the leading block's section, thick to the track's side (x 1.64; the track's outer face 1.556) so its toe reads
-    // as a block from the front, not a plate
-    const leadRing = (s: -1 | 1, hem: number, outer: number, band: number, top: number): [number, number][] => {
+    // as a block from the front, not a plate. r17: the panels' keel facet runs into it and fades out by its toe (inset)
+    const leadRing = (s: -1 | 1, hem: number, outer: number, band: number, top: number, inset = 0): [number, number][] => {
       const crease = Math.max(hem + 0.04, band - 0.07);
-      const ring: [number, number][] = [[1.64, hem], [outer, hem], [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top],
+      const ring: [number, number][] = [[1.64, hem], [outer - inset, hem], [outer, skirtKeelY(hem, band, crease)],
+        [outer, crease], [outer - skirtCreaseFoldM, band], [1.76, top],
         [1.64, top]];
       return s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse();
     };
@@ -9514,8 +9520,8 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
         // its lower edge "reads thin"): it angles forward and down to a pointed toe beside the idler (z 3.40, y 0.80;
         // outboard of the track) and rises steeply from it to the fender box's underside, thick to the track's side
         P.add('hull', sectionSolid([
-          { z: 2.62, ring: leadRing(s, skirtHemY, skirtOuterX, skirtBandY, skirtTopY) },
-          { z: 3.00, ring: leadRing(s, 0.84, skirtOuterX - 0.01, 1.36, 1.50) },
+          { z: 2.62, ring: leadRing(s, skirtHemY, skirtOuterX, skirtBandY, skirtTopY, skirtKeelInsetM) },
+          { z: 3.00, ring: leadRing(s, 0.84, skirtOuterX - 0.01, 1.36, 1.50, skirtKeelInsetM * 0.45) },
           { z: 3.40, ring: leadRing(s, 0.80, skirtOuterX - 0.02, 1.30, 1.42) },
           { z: 3.62, ring: leadRing(s, 0.93, skirtOuterX - 0.03, 1.22, 1.33) },
           { z: 3.82, ring: leadRing(s, 1.05, skirtOuterX - 0.05, 1.17, 1.26) },
@@ -9534,13 +9540,15 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
         KIT.xform(cylZ(0.009, 0.10, 6), 0, 0.040, 0),
         ...[-1, 1].map((e) => KIT.xform(cylY(0.009, 0.009, 0.048, 6), 0, 0.018, e * 0.041)),
       ]);
+      const keelY = skirtKeelY(skirtHemY, skirtBandY, Math.max(skirtHemY + 0.04, skirtBandY - 0.07));
       for (let k = 0; k < n; k++) {
         const zc = z0 + L * (k + 0.5);
         P.add('hullDark', box(0.010, 0.012, L - 0.12), s * (skirtOuterX - 0.002), skirtBandY - 0.07, zc);   // the crease
+        P.add('hullDark', box(0.010, 0.012, L - 0.12), s * (skirtOuterX - 0.002), keelY, zc);                // r17: the keel's
         if (P.q) {
           for (let b = 0; b < 6; b++) {
             const dz = (b - 2.5) * (L - 0.20) / 5;
-            P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX + 0.004), skirtHemY + 0.05, zc + dz);
+            P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX + 0.004), keelY + 0.035, zc + dz);  // r17: over the keel
             P.add('hullDetail', cylX(0.012, 0.010, 6), s * (skirtOuterX - 0.004), skirtBandY - 0.035, zc + dz);
           }
         }
@@ -9548,7 +9556,8 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
           P.add('hullDetail', liftHandle(), s * (skirtOuterX - skirtCreaseFoldM - 0.055 + 0.002), 1.47, zc + dz, 0, 0, -s * bandTilt);
         }
       }
-      for (let k = 1; k < n; k++) P.add('hullDark', box(0.03, skirtBandY - skirtHemY - 0.04, 0.012), s * (skirtOuterX - 0.035), (skirtBandY + skirtHemY) / 2, z0 + L * k);
+      // the joints' seams down the upright face (r17: over the keel, whose facet falls away under them)
+      for (let k = 1; k < n; k++) P.add('hullDark', box(0.03, skirtBandY - keelY - 0.03, 0.012), s * (skirtOuterX - 0.035), (skirtBandY + keelY) / 2, z0 + L * k);
       // amber side markers at the leading block's front and the fin's tail
       for (const [z, y] of [[3.05, 1.30], [-3.66, 1.30]] as const) {
         P.add('hullDark', box(0.03, 0.06, 0.12), s * (skirtOuterX - 0.005), y, z);
@@ -9583,7 +9592,8 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // underside 1.17 clears the wrap crest 1.07 at z 3.55)
       // (r16: the wing and its LED bar give way to the front fender box over the track lane, below)
       // r16b: the flap hangs under the front fender box's face (z 3.97; the idler's wrap ends at 3.81), as photographed
-      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.36, 0.885, 3.965);
+      // (r17: 4 cm back, under the box's level underside ahead of its cut-back foot)
+      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.36, 0.885, 3.925);
       P.add('hull', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
       // mudguard well sheet over the idler (§B2: the open corridor between
       // the strap and the 1.556 wrap outer read as enclosed top-down cells;
@@ -9624,8 +9634,11 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // each corner box is its own block): its top stands 4.5 cm over the glacis' line (under the gun's floor: 1.475 at
       // z 3.28 under 1.53), its face 8 cm ahead of the nose's centre face (z 4.00 to 3.92), its inner top edge chamfered so
       // the step to the nose reads as a seam, a dark seam strip down its inner front edge
+      // r17 (269; r16b critic: "front fender faces flat boxy slabs"; Commons KF-51U_01/09): the face's foot is cut back,
+      // its lower 5 cm a facet from z 3.94 (y 0.98) up to the face at 1.03, and a hood shades the light cluster
       const box0 = 0.95, boxRise = 0.045, under = (z: number): number => (z <= 3.80 ? 1.21 - 0.1625 * (z - 3.28) / 0.52
-        : z <= 3.88 ? 1.0475 - 0.0775 * (z - 3.80) / 0.08 : 0.97 + 0.02 * (z - 3.88) / 0.12);
+        : z <= 3.88 ? 1.0475 - 0.0775 * (z - 3.80) / 0.08 : z <= 3.94 ? 0.97 + 0.01 * (z - 3.88) / 0.06
+        : 0.98 + 0.05 * (z - 3.94) / 0.06);
       const boxStations: Array<[number, number, number]> = [[3.28, kf51uTopAt(3.28) + boxRise, 1.88],
         [3.80, kf51uTopAt(3.80) + boxRise, 1.88], [3.88, kf51uTopAt(3.82) + boxRise, 1.88], [3.94, 1.29, 1.86],
         [4.00, 1.25, 1.80]];
@@ -9634,14 +9647,17 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
           [box0, top - 0.04]];
         return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
       })));
-      P.add('hullDark', box(0.012, 0.24, 0.012), s * (box0 + 0.004), 1.12, 3.998);
-      // its light cluster high on the face (a long LED bar and a square lamp outboard, in one dark bezel), the IR driving
-      // light under it
+      P.add('hullDark', box(0.012, 0.20, 0.012), s * (box0 + 0.004), 1.14, 3.998);
+      // its light cluster high on the face (a long LED bar and a square lamp outboard, in one dark bezel) under a hood
+      // (r17), the IR driving light under it (r17: raised 2 cm onto the face over the cut-back foot)
       P.add('hullDark', box(0.48, 0.07, 0.016), s * 1.38, 1.165, 4.005);
       P.add('hullGlass', markVehicleNightLens(box(0.32, 0.030, 0.010), 'headlight'), s * 1.33, 1.165, 4.014);
       P.add('hullGlass', markVehicleNightLens(box(0.075, 0.042, 0.010), 'headlight'), s * 1.555, 1.165, 4.014);
-      P.add('hullDark', box(0.15, 0.072, 0.016), s * 1.30, 1.056, 4.005);
-      P.add('hullGlass', box(0.12, 0.045, 0.008), s * 1.30, 1.056, 4.015);
+      P.add('hull', convexSlab(
+        [s * 1.13, 1.200, 4.000], [s * 1.63, 1.200, 4.000], [s * 1.63, 1.200, 4.045], [s * 1.13, 1.200, 4.045],
+        [s * 1.13, 1.222, 4.000], [s * 1.63, 1.222, 4.000], [s * 1.63, 1.212, 4.045], [s * 1.13, 1.212, 4.045]));
+      P.add('hullDark', box(0.15, 0.062, 0.016), s * 1.30, 1.076, 4.005);
+      P.add('hullGlass', box(0.12, 0.040, 0.008), s * 1.30, 1.076, 4.015);
     }
     // r16: the lower nose block (Commons KF-51U_01/09): under the nose face a second band (y 0.97-1.05) and a lower
     // facet falling back 45 degrees to the underside at y 0.78-0.80, its sides chamfered inside the tracks' inner faces
@@ -9740,20 +9756,17 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
           [xi, top]];
         return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() };
       })));
-      // and the big plate it drops toward the track behind the sprocket (Commons KF-51U_03): upright from its underside
-      // (z -3.92/-3.98) to y 1.00, then angled down and forward to y 0.56 at z -3.66/-3.72 (25 cm behind the sprocket's
-      // wrap at every height, x 1.24-1.86; the outer piece's foot rising 6 cm: its outer bottom corner cut). Its upright
-      // back carries the rear stowage the decor hangs there
-      for (const [xa, xb, footA, footB] of [[1.24, 1.80, 0.56, 0.56], [1.80, 1.86, 0.56, 0.62]] as const) {
-        const xu = xa < 1.5 ? 1.16 : xa;                                                              // the upright part's wider foot
+      // and the block it drops behind the sprocket (Commons KF-51U_03/05). r17 (269; r16b critics, both: the bent
+      // two-piece plate read as splayed legs): one thick upright block, as photographed from astern, from the box's
+      // underside to y 0.62 at its back face (z -3.98; its front face -3.84, 37 cm behind the sprocket's wrap), its foot
+      // raked 4 cm up to the front and its outer bottom corner cut; x 1.24-1.86 across the track. Its back carries the
+      // rear stowage the decor hangs there
+      for (const [xa, xb, footA, footB] of [[1.24, 1.76, 0.62, 0.62], [1.76, 1.86, 0.62, 0.72]] as const) {
         P.add('hull', convexSlab(
-          [s * xu, 1.00, -3.98], [s * xb, 1.00, -3.98], [s * xb, 1.00, -3.92], [s * xu, 1.00, -3.92],
-          [s * xu, 1.38, -3.98], [s * xb, 1.38, -3.98], [s * xb, 1.38, -3.92], [s * xu, 1.38, -3.92]));
-        P.add('hull', convexSlab(
-          [s * xa, footA, -3.72], [s * xb, footB, -3.72], [s * xb, footB, -3.66], [s * xa, footA, -3.66],
-          [s * xa, 1.004, -3.98], [s * xb, 1.004, -3.98], [s * xb, 1.004, -3.92], [s * xa, 1.004, -3.92]));
+          [s * xa, footA, -3.98], [s * xb, footB, -3.98], [s * xb, footB + 0.04, -3.84], [s * xa, footA + 0.04, -3.84],
+          [s * xa, 1.38, -3.98], [s * xb, 1.38, -3.98], [s * xb, 1.38, -3.84], [s * xa, 1.38, -3.84]));
       }
-      P.add('hullDark', box(0.50, 0.012, 0.010), s * 1.52, 1.00, -3.984);                       // the crease at the bend
+      P.add('hullDark', box(0.40, 0.012, 0.010), s * 1.50, 0.80, -3.984);                       // its lower panel seam
       P.add('hullDark', cylZ(0.065, 0.024, 16), s * 0.62, 1.14, -3.69);                          // round tail lamp
       P.add('hullGlass', markVehicleNightLens(cylZ(0.048, 0.010, 16), 'marker', { tint: 'red' }), s * 0.62, 1.14, -3.703);
       P.add('hullDark', cylZ(0.15, 0.020, 6), s * 1.02, 1.08, -3.69, 0, 0, Math.PI / 6);        // exhaust hex grille
@@ -10410,7 +10423,10 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       P.add('turretDetail', convexSlab(
         [x - 0.08, yb, zb], [x + 0.08, yb, zb], [x + 0.045, yf, zf], [x - 0.045, yf, zf],
         [x - 0.075, topAt(zb), zb], [x + 0.075, topAt(zb), zb], [x + 0.04, topAt(zf), zf], [x - 0.04, topAt(zf), zf]));
+      // r17 (269; r16b critic: "a thin rod at the turret's front left by the mantlet"): a cooling jacket over the barrel's
+      // rear 18 cm out of the shroud, so the gun reads as an MG, not a rod
       P.add('turretDark', cylZ(0.016, 0.32, 10), x, yf + 0.036, 1.43);                          // barrel
+      P.add('turretDark', cylZ(0.026, 0.18, 12), x, yf + 0.036, 1.36);                          // cooling jacket
       P.add('turretDark', cylZ(0.022, 0.05, 10), x, yf + 0.036, 1.575);                         // muzzle
       for (const dx of [-0.04, 0.04]) P.add('turretDark', cylX(0.011, 0.045, 8), x + dx, topAt(zb + 0.03) + 0.005, zb + 0.03);
     }
