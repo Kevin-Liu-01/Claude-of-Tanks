@@ -4586,6 +4586,10 @@ uniform float uThatch;
 // ground-269: the ground-surface table's classes as codes (groundSurfaces.ts groundSurfaceUniformValues): the open ground's
 // (macro, strength, close, strength), the worn ground's, and the town floor's (macro, close, strength, on)
 uniform vec4 uGsOpen, uGsWorn, uGsTown;
+// ground-269: the detail relief's greatest tilt on the open ground's class and on the rest (x, y; 0 = no cap), and the cap
+// the splat's normal pass applies here (set in splatCompute)
+uniform vec4 uGsNear;
+float gGsTilt = 0.0;
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -8252,6 +8256,10 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
     vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
     pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
   }
+  // ground-269 (groundSurfaces.ts relief): the detail relief's tilt held to its ground class's own. The stacked octaves
+  // (the soil's clods, the blades, the mid tussocks, the dapple, ×2 by the range gain) tilted facets past the sun's height
+  // and the turf drew soft near-black blotches a metre or two across — the owner's "black spaces" (0 = no cap)
+  if (gGsTilt > 0.0) { float gsPl = length(pN.xz); if (gsPl > gGsTilt) pN.xz *= gGsTilt / gsPl; }
   vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
@@ -8439,7 +8447,7 @@ function* createSplatMaterialSteps(
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
     yardCinder = 0;
-    groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); // ground-269
+    groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); groundSurface.near.fill(0); // ground-269
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
@@ -8554,6 +8562,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uGsOpen = { value: new THREE.Vector4(...groundSurface.open) };
     shader.uniforms.uGsWorn = { value: new THREE.Vector4(...groundSurface.worn) };
     shader.uniforms.uGsTown = { value: new THREE.Vector4(...groundSurface.town) };
+    shader.uniforms.uGsNear = { value: new THREE.Vector4(...groundSurface.near) };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12

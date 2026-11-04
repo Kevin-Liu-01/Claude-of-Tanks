@@ -65,7 +65,7 @@ function parse(argv) {
     if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
     for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
     for (const p of job.poses) if (!POSES.includes(p)) throw new Error(`${job.name}: unknown pose ${p}`);
-    for (const v of job.variants) if (v !== 'base' && !uniformVariant(v)) throw new Error(`${job.name}: unknown variant ${v}`);
+    for (const v of job.variants) if (!parseVariant(v)) throw new Error(`${job.name}: unknown variant ${v}`);
     if (!existsSync(path.join(job.dist, 'index.html'))) throw new Error(`${job.dist} has no build`);
   }
   return out;
@@ -76,6 +76,25 @@ function uniformVariant(variant) {
   if (!variant.startsWith('u:')) return null;
   const sets = variant.slice(2).split(',').map((item) => /^(u[A-Za-z0-9]+)(?:\.([xyzw]))?=(-?[0-9.]+)$/.exec(item));
   return sets.every(Boolean) ? sets.map(([, name, c, v]) => [name, c ?? null, Number(v)]) : null;
+}
+
+/** A variant: `base`, or `;`-joined parts — `u:` uniform sets and `hide:<decal kind>[+<kind>]` (the props' ground decals by
+ * their userData.terrainDecalKind: 'ground-contact', 'apron', 'crater', …); null when a part does not parse. */
+function parseVariant(variant) {
+  const out = { sets: [], hide: [] };
+  if (variant === 'base') return out;
+  for (const part of variant.split(';')) {
+    if (part.startsWith('hide:')) {
+      const kinds = part.slice(5).split('+').filter(Boolean);
+      if (!kinds.length) return null;
+      out.hide.push(...kinds);
+    } else {
+      const sets = uniformVariant(part);
+      if (!sets) return null;
+      out.sets.push(...sets);
+    }
+  }
+  return out;
 }
 
 function stamp() { return new Date().toISOString().slice(11, 19); }
@@ -220,6 +239,19 @@ function pageVehicles({ keepId, show }) {
   return hidden;
 }
 
+/** The props' ground decals of `kinds` hidden (an empty list shows every decal this page hid again). */
+function pageHideDecals(kinds) {
+  let n = 0;
+  window.__DEBUG.scene.traverse((o) => {
+    const kind = o.userData?.terrainDecalKind;
+    if (!kind) return;
+    if (o.userData.__gsVisible === undefined) o.userData.__gsVisible = o.visible;
+    o.visible = kinds.includes(kind) ? false : o.userData.__gsVisible;
+    if (kinds.includes(kind)) n++;
+  });
+  return n;
+}
+
 /** Terrain-program uniforms on every material that has them; null restores every uniform this page set. */
 function pageSetUniforms(sets) {
   const D = window.__DEBUG, props = D.renderer.properties;
@@ -331,7 +363,9 @@ async function shootMap(entry, options, frames) {
     await sleep(400);
     const shots = { grassSettled: settled };
     for (const variant of options.variants) {
-      const n = await page.evaluate(pageSetUniforms, variant === 'base' ? [] : uniformVariant(variant));
+      const pv = parseVariant(variant);
+      const n = await page.evaluate(pageSetUniforms, pv.sets);
+      const hidden = await page.evaluate(pageHideDecals, pv.hide);
       await sleep(400);
       const tag = variant.replace(/[^A-Za-z0-9.=-]+/g, '_');
       if (pose.kind === 'spot') {
@@ -340,15 +374,16 @@ async function shootMap(entry, options, frames) {
           await sleep(500);
           const file = path.join(frames, `${mapId}-${pose.name}-${suffix}-${tag}.png`);
           await page.screenshot({ path: file, type: 'png' });
-          shots[`${variant}:${suffix}`] = { file: path.basename(file), materials: n };
+          shots[`${variant}:${suffix}`] = { file: path.basename(file), materials: n, decalsHidden: hidden };
         }
       } else {
         const file = path.join(frames, `${mapId}-${pose.name}-${tag}.png`);
         await page.screenshot({ path: file, type: 'png' });
-        shots[variant] = { file: path.basename(file), materials: n };
+        shots[variant] = { file: path.basename(file), materials: n, decalsHidden: hidden };
       }
     }
     await page.evaluate(pageSetUniforms, null);
+    await page.evaluate(pageHideDecals, []);
     receipt.poses[pose.name] = { resolved, town: pose.town ?? null, hull: pose.hull ?? null, offDeg: pose.offDeg ?? null, shots };
   }
   receipt.errors = entry.errors.splice(0);

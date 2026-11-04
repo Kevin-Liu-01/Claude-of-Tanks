@@ -19,6 +19,8 @@
 export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShader.ts): the ground-surface table's laws — the open ground's mosaic, the close stones and
   // the town floor, by class code (groundSurfaces.ts)
   {
+    // the detail relief's cap (SPLAT_NORMAL_FRAG): the turf's own on the sward, the ground's elsewhere, none on rock
+    gGsTilt = uGsNear.x > 0.0 && fR < 0.5 ? mix(uGsNear.y, uGsNear.x, clamp(meadowG, 0.0, 1.0)) : 0.0;
     vec2 gsSun = normalize(uSunDirW.xz + vec2(1e-4));
     float gsOff = (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW);
     // the open ground's 1–10 m mosaic (sward, tussock)

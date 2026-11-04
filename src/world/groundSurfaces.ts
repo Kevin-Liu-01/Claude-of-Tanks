@@ -48,7 +48,9 @@ export type GroundCover = 'meadow' | 'steppe' | 'verge' | 'reed' | 'dune' | 'sed
 interface GroundClassRow {
   readonly textures: GroundTextures;
   readonly macro: { readonly kind: GroundMacro; readonly strength: number };
-  readonly close: { readonly kind: GroundClose; readonly strength: number };
+  /** The close detail, and the relief's greatest tilt (the horizontal share of a detail facet's normal: 0.32 ≈ 18°, a
+   * facet never turned past a mid sun's height, so the relief never draws a near-black blotch; 0 = no cap, rock). */
+  readonly close: { readonly kind: GroundClose; readonly strength: number; readonly tilt: number };
   readonly cover: GroundCover;
   readonly sim: SimSurface;
 }
@@ -73,10 +75,15 @@ export const GROUND_CLASS_IDS = Object.freeze([
 export type GroundClass = (typeof GROUND_CLASS_IDS)[number];
 
 const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
+/** The detail relief's greatest tilt by the class's macro law: turf soft, soils and yards rougher, rock uncapped. */
+const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
+  sward: 0.32, tussock: 0.36, soil: 0.5, yard: 0.45, rubble: 0.55, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.45,
+});
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,
   cover: GroundCover, sim: SimSurface): GroundClassRow => Object.freeze({
-  textures, macro: Object.freeze({ kind: macro, strength: macroStrength }), close: Object.freeze({ kind: close, strength: closeStrength }), cover, sim,
+  textures, macro: Object.freeze({ kind: macro, strength: macroStrength }),
+  close: Object.freeze({ kind: close, strength: closeStrength, tilt: RELIEF_TILT[macro] }), cover, sim,
 });
 
 /** The classes. */
@@ -210,15 +217,17 @@ export function mapGround(mapId: string | null | undefined): MapGroundRow {
 }
 
 /**
- * The terrain material's three vectors for a map (one vec4 each, no sampler — the program sits at the 16-unit budget):
- * (the open ground's macro code and strength, its close code and strength), the worn ground's likewise, and the town
- * floor's (macro code, close code, close strength, 1 where the map draws a town floor of this table's). A town floor
- * whose class has no macro of the table's (cinder, slag, setts, packed sand) keeps the material's own law there.
+ * The terrain material's four vectors for a map (one vec4 each, no sampler — the program sits at the 16-unit budget):
+ * (the open ground's macro code and strength, its close code and strength), the worn ground's likewise, the town floor's
+ * (macro code, close code, close strength, 1 where the map draws a town floor of this table's) and the relief caps (the
+ * open ground's greatest detail tilt, the worn ground's). A town floor whose class has no macro of the table's (cinder,
+ * slag, setts, packed sand) keeps the material's own law there.
  */
 export function groundSurfaceUniformValues(mapId: string | null | undefined): {
   open: [number, number, number, number];
   worn: [number, number, number, number];
   town: [number, number, number, number];
+  near: [number, number, number, number];
 } {
   const g = mapGround(mapId);
   const pack = (cls: GroundClass): [number, number, number, number] => {
@@ -231,5 +240,7 @@ export function groundSurfaceUniformValues(mapId: string | null | undefined): {
     open: pack(g.open),
     worn: pack(g.worn),
     town: town && townMacro > 0 ? [townMacro, GROUND_CLOSE_CODE[town.close.kind], town.close.strength, 1] : [0, 0, 0, 0],
+    // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them)
+    near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, 0, 0],
   };
 }

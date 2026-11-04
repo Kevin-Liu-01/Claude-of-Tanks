@@ -110,7 +110,8 @@ for (const mapId of MAP_IDS) {
 const MACRO_DRAWN = new Set([0, 1, 2, 3, 4, 5]), CLOSE_DRAWN = new Set([0, 1, 2, 3]);
 for (const mapId of MAP_IDS) {
   const u = groundSurfaceUniformValues(mapId);
-  for (const v of [...u.open, ...u.worn, ...u.town]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
+  for (const v of [...u.open, ...u.worn, ...u.town, ...u.near]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
+  assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.6 && u.near[1] > 0.2 && u.near[1] <= 0.6, `${mapId}: relief caps ${u.near}`);
   assert.ok(MACRO_DRAWN.has(u.open[0]) && CLOSE_DRAWN.has(u.open[2]) && CLOSE_DRAWN.has(u.worn[2]), `${mapId}: drawn codes`);
   assert.ok(u.town[0] === 0 || u.town[0] === 4 || u.town[0] === 5, `${mapId}: town floor code ${u.town[0]}`);
 }
@@ -137,6 +138,10 @@ assert.ok(tokenAt > computeAt && tokenAt < fragEnd && raw[tokenAt - 1] === '\n',
 assert.ok(tokenAt > raw.indexOf("the cover's own patchwork at 2–8 m", computeAt) && tokenAt < raw.indexOf('the borders themselves', computeAt),
   'after the patchwork, before the borders');
 assert.equal(raw.split('uniform vec4 uGsOpen, uGsWorn, uGsTown;').length, 2, 'the uniforms declared once');
-for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
+for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
+// the relief cap: set in splatCompute by the chunk, applied in the normal pass before the world normal is composed
+assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk sets the cap');
+const capAt = raw.indexOf('if (gGsTilt > 0.0) { float gsPl = length(pN.xz);');
+assert.ok(capAt > raw.indexOf('const SPLAT_NORMAL_FRAG') && capAt < raw.indexOf('vec3 wN = normalize(vec3(gN.x + pN.x', capAt), 'the cap before wN');
 
 console.log(`groundSurfaces: PASS (${GROUND_CLASS_IDS.length} classes, ${MAP_IDS.length} maps, ${residuals.length} named residuals)`);
