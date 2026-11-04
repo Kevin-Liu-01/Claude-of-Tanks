@@ -15,7 +15,7 @@ import { SurfaceGrid, densePoints, gunHullProbe, meshTriangles, meshesUnder, GUN
 import { BODY_EXCLUDED_SEAT_ROLES, bodyGeometryWithout } from '../../../tools/body-height-parts.mjs';
 import { TYPE74_HULL_STATIONS as HULL } from './type74Family.ts';
 import {
-  TYPE87_GUNS as G, TYPE87_RADARS as R, TYPE87_RING as RING, TYPE87_STERN_Z, TYPE87_TRUNNION as AXIS, TYPE87_TURRET as T,
+  TYPE87_GUNS as G, TYPE87_HULL as H, TYPE87_RADARS as R, TYPE87_RING as RING, TYPE87_TRUNNION as AXIS, TYPE87_TURRET as T,
 } from './type87Frame.ts';
 
 const ID = 'type87_aw';
@@ -46,6 +46,14 @@ for (const box of spec.armor.crew.filter((c) => c.turretLocal)) {
     && box.min[2] >= T.rearZ && box.max[2] <= T.faceZ, `${box.crew} sits inside the central body`);
 }
 assert.ok(spec.armor.crew.find((c) => c.crew === 'gunner').min[0] > 0, 'the gunner on the left (+x)');
+// the driver on the left (photos 03, 05), the radio module beside him moved with him off the APU's side
+const driver = spec.armor.crew.find((c) => c.crew === 'driver' && !c.turretLocal);
+assert.ok(Math.sign(driver.min[0] + driver.max[0]) === H.driverSide, 'the driver on the Type 87\'s side');
+const radio = spec.armor.modules.find((m) => m.module === 'radio' && !m.turretLocal);
+assert.ok(!radio || radio.max[0] <= driver.min[0] || radio.min[0] >= driver.max[0], 'the hull radio clear of the driver');
+// the search antenna stands just over the tracking dish's rim (photos 03, 05, 06: about 0.05 m)
+const rim = R.dishY + R.dishR * Math.cos(R.dishTiltDeg * Math.PI / 180);
+assert.ok(R.antennaBottomY - rim >= 0.03 && R.antennaBottomY - rim <= 0.07, `the antenna ${(R.antennaBottomY - rim).toFixed(3)} m over the dish`);
 // the turret's plates stay on the drawn shell's envelope (the body, the cheeks and the fixed pods)
 for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
   assert.ok(Math.abs(x) <= T.podOuterX + 1e-9 && y >= T.floorY - 1e-9 && y <= T.podFrontTopY + 1e-9 && z >= T.rearZ - 1e-9
@@ -53,16 +61,21 @@ for (const p of spec.armor.turretPlates) for (const [x, y, z] of p.verts) {
 }
 // the hull's stern plates follow the enlarged hull's overhung stern (profiles/type74Family.ts Type74FamilyOptions): the
 // upper face at the deck's end, the lower plate raked forward to the belly
-const sternAt = (y) => TYPE87_STERN_Z + HULL.overhungSternRakeZ
-  * Math.min(1, Math.max(0, (HULL.overhungSternFootY - y) / (HULL.overhungSternFootY - HULL.bellyY)));
+const sternAt = (y) => H.sternZ + (y >= HULL.overhungSternFootY ? 0 : y >= HULL.overhungSternKneeY
+  ? HULL.overhungSternKneeZ * (HULL.overhungSternFootY - y) / (HULL.overhungSternFootY - HULL.overhungSternKneeY)
+  : HULL.overhungSternKneeZ + (HULL.overhungSternToeZ - HULL.overhungSternKneeZ)
+    * Math.min(1, (HULL.overhungSternKneeY - y) / (HULL.overhungSternKneeY - HULL.bellyY)));
 const rear = spec.armor.hullPlates.find((p) => p.name === 'hull_rear');
 for (const [, y, z] of rear.verts) near(z, sternAt(y), `the hull's rear plate at y ${y}`, 1e-6);
+for (const p of spec.armor.hullPlates) if (!/^track/.test(p.name)) {
+  for (const [, y, z] of p.verts) if (z < -3.0) near(z, sternAt(y), `${p.name}'s stern vertex at y ${y}`, 1e-6);
+}
 for (const p of spec.armor.hullPlates) {
   const minZ = Math.min(...p.verts.map((v) => v[2]));
   if (/^track/.test(p.name)) assert.ok(minZ > -3.5, `${p.name} keeps the running gear's length`);
-  else assert.ok(minZ >= TYPE87_STERN_Z - 1e-9, `${p.name} inside the enlarged hull`);
+  else assert.ok(minZ >= H.sternZ - 1e-9, `${p.name} inside the enlarged hull`);
 }
-near(spec.dims.hullLengthM, 3.37 - TYPE87_STERN_Z, 'the enlarged hull\'s length', 0.01);
+near(spec.dims.hullLengthM, 3.37 - H.sternZ + H.basketDepth, 'the enlarged hull\'s length', 0.01);
 
 /** The highest point of the visible body (whips left out, as the geometry gate's body: tools/body-height-parts.mjs). */
 function bodyTop(root) {
@@ -109,11 +122,12 @@ for (const quality of ['high', 'low']) {
     assert.ok(width <= 3.18 * 1.01, `${quality}: ${width.toFixed(3)} m across`);
     const hullBox = new THREE.Box3();
     for (const mesh of meshesUnder(tank.root, [turret])) hullBox.union(new THREE.Box3().setFromObject(mesh));
-    assert.ok(hullBox.min.z <= TYPE87_STERN_Z + 1e-3 && hullBox.min.z >= TYPE87_STERN_Z - 0.10,
-      `${quality}: the hull ends at the enlarged stern (${hullBox.min.z.toFixed(3)})`);
+    const sternBack = H.sternZ - H.basketDepth;
+    assert.ok(hullBox.min.z <= sternBack + 1e-3 && hullBox.min.z >= sternBack - 0.05,
+      `${quality}: the hull ends at the enlarged stern's basket (${hullBox.min.z.toFixed(3)})`);
     // tallest: the search radar's antenna raised to the published 4.40 m (1 %), the whips left out
     const top = bodyTop(tank.root);
-    near(top, RING[1] + R.antennaY + R.antennaHalfH, `${quality}: tallest`, 0.01);
+    near(top, RING[1] + R.antennaTopY, `${quality}: tallest`, 0.01);
     near(top, 4.40, `${quality}: the raised radar's published height`, 0.044);
 
     // Both guns clear the turret through the whole arc: every gun surface sample (2 cm) keeps 15 mm from every turret
@@ -123,7 +137,7 @@ for (const quality of ['high', 'low']) {
     const all = densePoints(meshTriangles(meshesUnder(gun), gInv).tri, 0.02);
     const samples = [];
     for (let i = 0; i < all.length; i += 3) {
-      if (Math.hypot(all[i + 1], all[i + 2]) < 0.07 && Math.abs(all[i]) < G.boreX - G.drumW / 2 + 0.03) continue; // a shaft
+      if (Math.hypot(all[i + 1], all[i + 2]) < 0.07 && Math.abs(all[i]) < G.boreX - G.hubW / 2 + 0.03) continue; // a shaft
       samples.push(all[i], all[i + 1], all[i + 2]);
     }
     const [, py, pz] = AXIS;

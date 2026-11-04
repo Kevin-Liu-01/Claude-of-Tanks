@@ -9,10 +9,10 @@
 import './japan.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { crewBox, moduleBox, plate, shell, type ArmorPlate } from './specHelpers.ts';
+import { crewBox, moduleBox, plate, shell, type ArmorPlate, type Vec3Tuple } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import {
-  TYPE87_GUNS as G, TYPE87_RING, TYPE87_STERN_Z, TYPE87_TRUNNION, TYPE87_TURRET as T,
+  TYPE87_GUNS as G, TYPE87_HULL as H, TYPE87_RING, TYPE87_TRUNNION, TYPE87_TURRET as T,
 } from './profiles/type87Frame.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
@@ -58,15 +58,15 @@ delete spec.hydropneumaticAim;
 stripSilhouetteDimensions(spec.dims);
 // en.wikipedia (Type 87 self-propelled anti-aircraft gun): 38.0 t, 7.99 m, 3.18 m, 3.25 m radar retracted (4.40 m
 // erected), crew 3, the Mitsubishi 10ZF22WT two-stroke V10 at 720 hp, 53 km/h, the guns -5 to +85 degrees; 52 built
-// 1987-2002. ja.wikipedia: the hull is a new one enlarged from the Type 74's (photo 01: 7.32 m, the Type 74's 6.77 m
-// with the deck run 0.60 m further aft, profiles/type87Frame.ts TYPE87_STERN_Z).
+// 1987-2002. ja.wikipedia: the hull is a new one enlarged from the Type 74's (photo 01: 7.35 m to the stern basket's
+// back, the Type 74's 6.77 m; profiles/type87Frame.ts TYPE87_HULL).
 Object.assign(spec, {
   hp: 2350, enginePowerHp: 720, weightTons: 38, topSpeedKmh: 53, reverseSpeedKmh: 20, hullTraverseDegS: 38,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 5,
 });
-spec.dims = { hullLengthM: 7.32, overallLengthM: 7.99, widthM: 3.18, heightM: 3.25 };
+spec.dims = { hullLengthM: +(3.37 - H.sternZ + H.basketDepth).toFixed(2), overallLengthM: 7.99, widthM: 3.18, heightM: 3.25 };
 // the Type 74 hull's ring (profiles/type74Family.ts) and the drawn guns (profiles/type87Frame.ts): the elevation axis at
-// the pods' fronts, the bores on it 0.94 m either side, the bore mouths (the muzzle brakes' face flanges) 3.24 m ahead
+// the tips of the pods' wedge noses, the bores on it 0.94 m either side, the bore mouths (the muzzle brakes' face flanges) 3.24 m ahead
 // of it inside the v0 cages, whose end rings reach 3.50 m: 7.95 m overall with the guns forward (the published 7.99)
 spec.armor.turretPivot = [...TYPE87_RING];
 spec.armor.gunPivot = [...TYPE87_TRUNNION];
@@ -79,21 +79,27 @@ spec.armor.turretPlates = [
     ['right']),
   ...boxPlates('type87_cheek_l', [T.bodyHalfW, T.floorY, T.cheekRearZ], [T.cheekOuterX, T.cheekTopY, T.cheekFrontZ], 20, 25,
     ['left']),
-  ...boxPlates('type87_pod_r', [-T.podOuterX, T.podRearBottomY, T.podRearZ], [-T.bodyHalfW, T.podFrontTopY, T.podFrontZ], 20, 25,
+  ...boxPlates('type87_pod_r', [-T.podOuterX, T.podRearBottomY, T.podRearZ], [-T.bodyHalfW, T.podFrontTopY, T.noseTipZ], 20, 25,
     ['right']),
-  ...boxPlates('type87_pod_l', [T.bodyHalfW, T.podRearBottomY, T.podRearZ], [T.podOuterX, T.podFrontTopY, T.podFrontZ], 20, 25,
+  ...boxPlates('type87_pod_l', [T.bodyHalfW, T.podRearBottomY, T.podRearZ], [T.podOuterX, T.podFrontTopY, T.noseTipZ], 20, 25,
     ['left']),
 ];
-// the sights under the roof's front edge; both guns' receivers in their fixed pods with the cradles' drums in front of
-// them (the pods do not pitch)
+// the sights under the roof's front edge; both guns' receivers in their fixed pods with the cradles' trunnion blocks at
+// their noses (the pods do not pitch); the ready rounds low in the central body behind the crew and the twin belt feed
+// over them (internalLayoutRegistry.ts spaaType87: ammunition and feed in the turret); the hull keeps the Type 74's
+// modules but its ammunition (the hook below), the transmission behind the engine in the enlarged stern
+const HULL_MODULES = [moduleBox('transmission', [-.80, .95, -3.55], [.80, 1.45, -3.20])];
 spec.armor.modules = [
-  ...spec.armor.modules.filter((box) => !box.turretLocal),
+  ...spec.armor.modules.filter((box) => !box.turretLocal && box.module !== 'ammoRack'),
+  ...HULL_MODULES,
   moduleBox('optics', [-.45, .78, 1.20], [.45, 1.00, 1.62], true),
   moduleBox('gun', [-T.podOuterX + .02, T.podRearBottomY + .04, T.podRearZ + .04],
-    [T.podOuterX - .02, TYPE87_TRUNNION[1] + G.drumR, TYPE87_TRUNNION[2] + G.drumR], true),
+    [T.podOuterX - .02, TYPE87_TRUNNION[1] + G.hubR, TYPE87_TRUNNION[2] + G.hubR], true),
+  moduleBox('ammoRack', [-.60, .08, -1.78], [.60, .58, -.95], true),
+  moduleBox('feedSystem', [-.60, .62, -1.72], [.60, .95, -1.00], true),
 ];
-// crew 3: the driver in the hull (the Type 74's), the gunner (+x, the left) and the commander side by side in the
-// central body under their hatches (internalLayoutRegistry.ts spaaType87)
+// crew 3: the driver in the hull (the Type 74's seat on the Type 87's side, the hook below), the gunner (+x, the left)
+// and the commander side by side in the central body under their hatches (internalLayoutRegistry.ts spaaType87)
 spec.armor.crew = [
   ...spec.armor.crew.filter((box) => !box.turretLocal),
   crewBox('gunner', [.08, .10, -.80], [.62, .98, .15], true),
@@ -124,18 +130,27 @@ spec.armor.boundingRadiusM = Math.max(spec.armor.boundingRadiusM, reach(spec));
 
 registerFleetSpecs(registries, ['type87_aw'], { type87_aw: spec });
 
-/** The enlarged hull's stern (profiles/type74Family.ts overhungStern): the vertical upper face at the deck's end over the
- * lower plate raked forward to the belly, at height y. */
-const OVERHUNG_FOOT_Y = 1.10, OVERHUNG_RAKE_Z = 0.40, BELLY_Y = 0.43;
-const sternZAt = (y: number): number =>
-  TYPE87_STERN_Z + OVERHUNG_RAKE_Z * Math.min(1, Math.max(0, (OVERHUNG_FOOT_Y - y) / (OVERHUNG_FOOT_Y - BELLY_Y)));
+/** The enlarged hull's stern at height y (profiles/type74Family.ts overhungSternZ, TYPE74_HULL_STATIONS): the vertical
+ * upper face at the deck's end, the overhang's underside to the knee, the lower plate raked forward to the belly. */
+const FOOT_Y = 1.13, KNEE_Z = 0.26, KNEE_Y = 0.98, TOE_Z = 0.72, BELLY_Y = 0.43;
+const sternZAt = (y: number): number => H.sternZ + (y >= FOOT_Y ? 0 : y >= KNEE_Y
+  ? KNEE_Z * (FOOT_Y - y) / (FOOT_Y - KNEE_Y)
+  : KNEE_Z + (TOE_Z - KNEE_Z) * Math.min(1, (KNEE_Y - y) / (KNEE_Y - BELLY_Y)));
+/** A hull box mirrored across the centreline (the Type 74's driver and radio on the Type 87's sides). */
+const mirrored = <B extends { min: Vec3Tuple; max: Vec3Tuple }>(box: B): B =>
+  ({ ...box, min: [-box.max[0], box.min[1], box.min[2]], max: [-box.min[0], box.max[1], box.max[2]] }) as B;
+/** Whether a hull box of the Type 74's sits on the other side from the Type 87's driver (the driver and the radio beside
+ * him change sides together: the Type 87's APU takes the Type 74 driver's side, photo 06). */
+const otherSide = (box: { min: Vec3Tuple; max: Vec3Tuple }): boolean =>
+  Math.sign(box.min[0] + box.max[0]) === -H.driverSide;
 
 let synchronized = false;
 /**
  * Registration hook (fleetRegistration.ts, after every registration-time pass that rewrites a hull frame): the Type 74's
  * final hull frame (hull plates, ring, hull modules, driver, track width) under this id's own turret records, so the
  * armour matches the hull profiles/type87.ts builds; the hull's stern plates and the rear ends of its sides and roof are
- * carried aft to the enlarged hull's stern (the tracks keep theirs). Idempotent.
+ * carried aft to the enlarged hull's stern (the tracks keep theirs), and the driver's seat and the radio beside it go to
+ * the Type 87's sides (the driver on the left, photos 03, 05). Idempotent.
  */
 export function synchronizeType87Frame(): void {
   if (synchronized) return;
@@ -145,10 +160,14 @@ export function synchronizeType87Frame(): void {
     ...p, verts: p.verts?.map(([x, y, z]): Point => (z < -3.0 ? [x, y, sternZAt(y)] : [x, y, z])),
   }));
   own.armor.turretPivot = [...base.armor.turretPivot];
-  own.armor.modules = [...structuredClone(base.armor.modules.filter((box) => !box.turretLocal)),
-    ...own.armor.modules.filter((box) => box.turretLocal)];
-  own.armor.crew = [...structuredClone(base.armor.crew.filter((box) => !box.turretLocal)),
-    ...own.armor.crew.filter((box) => box.turretLocal)];
+  const driver = base.armor.crew.find((box) => box.crew === 'driver' && !box.turretLocal);
+  const swap = !!driver && otherSide(driver);
+  own.armor.modules = [...structuredClone(base.armor.modules.filter((box) => !box.turretLocal && box.module !== 'ammoRack'))
+    .map((box) => (swap && (box.module === 'radio') ? mirrored(box) : box)),
+  ...structuredClone(HULL_MODULES), ...own.armor.modules.filter((box) => box.turretLocal)];
+  own.armor.crew = [...structuredClone(base.armor.crew.filter((box) => !box.turretLocal))
+    .map((box) => (swap && box.crew === 'driver' ? mirrored(box) : box)),
+  ...own.armor.crew.filter((box) => box.turretLocal)];
   own.visual.trackWidthM = base.visual.trackWidthM;
   own.armor.boundingRadiusM = Math.max(base.armor.boundingRadiusM, reach(own));
 }

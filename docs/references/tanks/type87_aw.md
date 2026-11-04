@@ -6,10 +6,11 @@
 - Updated: 2026-11-03 (release 269, builder J after registrar R0).
 - Owner request: "also add the Japanese type 87 SPAAG, UK Marksman, LVKV 9040 (swedish), K30 Bi Ho (korea), PZA Loara (poland)" (2026-11-03, with photographs of the Type 87, the Finnish T-55 Marksman, the Lvkv 9040 and the Loara), then the Leopard 2 Marksman ("produced in 2014 and 15 and started its service in 2016 under the designation ItPsv Leopard 2"); the coordinator settled six new playable ids, nothing existing changes, each built on its real
   base vehicle by composing on the fleet relative's own builders.
-- Implementation status: MEASURED BUILD (builder J). The fleet's Type 74 hull and running gear
-  (`profiles/type74Family.ts`, called with two default-off options: the hull alone, and the enlarged hull's overhung
-  stern) under the Type 87's welded turret (`profiles/type87.ts`), every shared datum in `profiles/type87Frame.ts`, which
-  `type87Specs.ts` reads. `type74` and `stb1` digest byte-identical.
+- Implementation status: MEASURED BUILD (builder J, committed 41da460953) and its fix round after a blind photo critic's
+  7/10 (below, uncommitted). The fleet's Type 74 hull and running gear (`profiles/type74Family.ts`, called with its
+  default-off options: the hull alone, the enlarged hull's overhung stern, level sponsons, the driver's side, no glacis
+  cable, the upper run's sag) under the Type 87's welded turret (`profiles/type87.ts`), every shared datum in
+  `profiles/type87Frame.ts`, which `type87Specs.ts` reads. `type74` and `stb1` digest byte-identical.
 - Qualification status: native fixture `src/vehicles/profiles/type87.selftest.mjs` PASS (datums, crew, stern plates,
   envelope, both guns' sweeps). Photographic qualification (a dated packet under `docs/references/photos/`, registered in
   `tools/photo-reference-policy.mjs`) NOT RUN: owed with the generated tables.
@@ -24,7 +25,8 @@
 - Mode: new photographic id (real vehicle, no 3D source), release 269, the second air-defence round.
 - Owned files (builder J after the registrar): `src/vehicles/type87Specs.ts`, `src/vehicles/profiles/type87.ts`,
   `src/vehicles/profiles/type87Frame.ts`, `src/vehicles/profiles/type87.selftest.mjs`, this packet; default-off options in
-  `src/vehicles/profiles/type74Family.ts` (`hullOnly`, `overhungSternZ`, the exported `TYPE74_HULL_STATIONS`).
+  `src/vehicles/profiles/type74Family.ts` (`hullOnly`, `overhungSternZ`, `levelSponsonFrontZ`, `driverSide`,
+  `glacisCable`, `trackSag`, the exported `TYPE74_HULL_STATIONS`).
 - Shared tables the registrar wrote (the builders do not edit them): fleet manifest, factory loader, registration (and its
   frame-synchronisation hook, which hands the spec the base vehicle's final hull frame after every registration-time
   pass), eager procedurals, fleet order, taxonomy, facets, role profiles, labels, wheel sets, track patterns, marking
@@ -111,21 +113,21 @@ within 2 cm of the Type 74 build's, which checks the model. Side-by-side overlay
 
 | Part | Number | From |
 | --- | --- | --- |
-| Hull | the Type 74's, its deck and sponsons run to z -3.95 (an overhung stern: vertical upper face to 1.10 m, the lower plate raked 0.40 m forward to the belly); 7.32 m against the Type 74's 6.77 | photo 01: the sponsons end 1.03 m behind the sprocket's axis (the Type 74's 0.17), the lower hull 0.63 m; ja.wikipedia "74式戦車の車体を拡大した新造車体" |
+| Hull | the Type 74's, enlarged: the overhung stern's face at z -3.88 with the basket and corner bins 0.10 m behind it (the underside stepping to a knee at -3.62 / 0.98 m, the lower plate to the belly at -3.16), level sponsons to 2.61, deep front fenders to 3.43; 7.35 m against the Type 74's 6.77 | photo 01: the rear end 1.03 m behind the sprocket's axis (the Type 74's 0.17), the lower hull 0.63 m, the side's top edge level to 1,480 px; photos 04, 06, 07; ja.wikipedia "74式戦車の車体を拡大した新造車体" |
 | Ring | the Type 74's (0, 1.60, 0.50) | the hull's own ring |
 | Central body | 1.40 m wide, rear face 1.85 m behind the ring, nose 1.95 m ahead, roof 1.02 m over the ring (2.62 m) | photo 01: 695 / 1,418 / 533 px; photo 05: 808-1,135 px |
 | Nose | bevelled top edge to 0.94 m, the upper plate leaning back 10 degrees to 0.40 m, the chin raked 28 degrees to 0.17 m; the front face 1.20 m wide (vertical edges chamfered) | photo 01: 535 / 650 / 695 px; photos 04, 06 |
-| Cheeks | 2.28 m across the pair, 0.40 m tall, from the ring's line to 1.10 m ahead | photo 05: 700-1,245 px; photo 01: the dischargers' block 1,035-1,265 / 640-725 px |
-| Gun pods | fixed (their front aspect is the same 0.60 x 0.65 m at 30, 75 and 90 degrees: photos 03-06); 0.60 m wide (0.69-1.30 m out), 1.18 m long, 7 degrees nose-up, octagonal with a broad top-outer chamfer, the tail drawn in | photo 05: 650-790 px; photo 01: 775-1,000 px, top 532-500, bottom 640-615 |
+| Cheeks | 2.28 m across the pair, 0.40 m tall, from the ring's line to 1.10 m ahead; four open smoke tubes on a 0.72 m bracket on each | photo 05: 700-1,245 px; photo 01: the dischargers' block 1,035-1,265 / 640-725 px |
+| Gun pods | fixed (their front aspect is the same 0.60 x 0.65 m at 30, 75 and 90 degrees: photos 03-06); 0.60 m wide (0.69-1.30 m out), 0.62-0.66 m deep, the body 0.98 m long, 7 degrees nose-up, octagonal with a broad top-outer chamfer, the tail drawn in, then the angular wedge nose to a 0.26 x 0.24 m face 0.135 m behind the axis | photo 05: 650-790 px; photo 01: 775-1,000 px, top 532-500, bottom 640-615; photos 01, 04, 06 for the nose |
 | Flank cover | a disc 0.44 m in radius at y 0.56, z -0.66, its lower half under the pod | photo 01: about 920/615 px |
-| Elevation axis | (0, 0.90, 0.00) turret-local, on the bores at the pods' fronts; the cradle's drum (0.19 m) 3 cm in front of the pod's face | photo 01: the barrel line meets the pod face at 546 px |
+| Elevation axis | (0, 0.90, 0.00) turret-local, on the bores at the wedge noses' tips; a trunnion block 0.095 m in radius on it, the square sleeve ahead | photo 01: the barrel line meets the pods' fronts at 546 px |
 | Bores | x +/-0.94 m (the pods' inner half) | photo 05: 745 / 1,165 px |
-| Barrel | sleeve 0.08-0.60, jacket to 1.30, the L/90 tube to 3.00 with rings at 2.55 and 2.80, the brake to its face flange at 3.24 (the bore mouth), the v0 cage's three rods and end ring to 3.50 | photo 01 at 4x: brake 0.24 m, cage 0.26 m; the tips measure 3.39 m from the axis, 3 % under what 7.99 m needs: 3.50 m gives 7.95 (8.03 m to the tail lamps) |
-| Tracking radar | pedestal 0.44 x 0.34 m to 1.86 m, the drum leaning forward on it, a covered dish 0.86 m across centred (0, 1.95, -1.16), canted up 26 degrees; electro-optical box (right) and cylinder (left) on its flanks | photo 01: 745-870 / 320-480 px; photo 05: 200 px; photo 06 |
-| Search radar | a hinge between the rear boxes at (0, 1.12, -1.76), a box-section arm 0.34 x 0.22 m up and back to (2.18, -2.22), the upright and turntable, the antenna bar 1.50 x 0.26 x 0.30 m (radome forward) centred 2.66 m: its top at 4.39 m | photo 01: 700/510, 640/345 and 235 px (4.42 m); photo 05: 350 px across; the published 4.40 m |
+| Barrel | the square sleeve 0.00-0.50, jacket to 1.30, the L/90 tube to 3.00 with rings at 2.55 and 2.80, the brake to its face flange at 3.24 (the bore mouth), the v0 cage's three rods and end ring to 3.50 | photo 01 at 4x: brake 0.24 m, cage 0.26 m; the tips measure 3.39 m from the axis, 3 % under what 7.99 m needs: 3.50 m gives 7.95 (8.03 m to the tail lamps) |
+| Tracking radar | pedestal 0.44 x 0.30 m under a head 0.64 m across to 2.06 m, a covered dish 0.86 m across centred (0, 2.01, -1.12), canted up 26 degrees; the sensor box (0.26 x 0.40 m) on the head's left, the cylinder (0.26 m across) on its right | photo 01: 745-870 / 320-480 px; photo 05: 200 px, the dish 1.0 m over the roof; photos 02, 06, 08 |
+| Search radar | a hinge between the rear boxes at (0, 1.11, -1.80), a box-section boom 0.48 x 0.40 m at its root narrowing to 0.36 x 0.28 m, up and back to (2.05, -2.20), the upright and turntable, the antenna slab 1.52 x 0.34 x 0.32 m (flat face, top plate, flared end plates, feed box) from 2.45 to 2.79 m: 0.04 m over the dish's rim, its top at 4.39 m | photo 01: 700/510, 640/345 and 235 px (4.42 m); photos 02, 03, 05, 06, 08; the published 4.40 m |
 | Rear | two stowage boxes 0.40 x 0.34 x 0.52 m either side of the hinge; the wire basket on the rear face's left; the whips on the pods' rear faces | photos 07, 09-11 |
-| Roof | two hatches (0.28 m) at x +/-0.33, z -0.40; sight heads at the front edge; the ventilator post at -0.55 (the right), z 0.67 | photo 01 (the open lid at 975 px); photos 03, 05, 06 |
-| Stern kit | the outlet grille across the upper stern, tail lamps on the sponsons' ends, two tow shackles on the lower plate, rubber mudflaps, a stowage box on each rear deck corner | photos 01, 07, 10 |
+| Roof | two hatches (0.28 m) at x +/-0.33, z -0.40; sight heads at the front edge; the ventilator post at -0.55 (the right), z 0.67; the side vents 0.32 x 0.40 m | photo 01 (the open lid at 975 px); photos 03, 04, 05, 06 |
+| Hull kit | the raised mesh basket (eight bays, 0.38 m) between the lidded corner bins with the tail lamps, two tow shackles on the raked lower plate, rubber mudflaps front and rear, two stowage boxes inboard on the rear deck, the APU intake grille on the glacis' right | photos 01, 04, 06, 07, 10 |
 
 ### Photo-matching notes
 
@@ -154,7 +156,53 @@ within 2 cm of the Type 74 build's, which checks the model. Side-by-side overlay
   tracks excepted) to the overhung stern.
 - Combat rows unchanged from the registrar's.
 
-### Receipts (builder J, 2026-11-03)
+### Fix round (blind photo critic 7/10, "instantly recognisable")
+
+Each item re-checked against the photographs; the numbers are in `profiles/type87Frame.ts`.
+
+| Critic item | Fix |
+| --- | --- |
+| 1. Search antenna too high, a round-ended pipe, its end too small; the boom thin and uniform | The antenna 0.04 m over the dish's rim (photos 03, 05, 06; the dish raised to 2.01 m, photo 05), a flat-faced slab 1.52 x 0.34 x 0.32 m under a flat top plate, flared end plates and a feed box on its back (photos 02, 08), top still 4.39 m; the boom 0.48 x 0.40 m at its root narrowing to 0.36 x 0.28 m (photos 02, 08) |
+| 2. A drum between each housing and its barrel; the housing too shallow | The drum gone: each fixed pod ends in an angular wedge nose (the top falling a little, the bottom rising steeply to a 0.26 x 0.24 m face round the bore, photos 01, 04, 06), a small trunnion block (0.095 m) on the axis and a square sleeve 0.20 m tapering to 0.17 m; the pod 0.62-0.66 m deep (0.09 of the hull's length, photo 01) |
+| 3. Tracking-radar fittings swapped and small | A head 0.64 m across on the pedestal; the sensor box (0.26 x 0.40 x 0.34 m) on its left (+x, photos 05, 08), the cylinder (0.26 m across, 0.30 m long, round end outboard) on its right (photos 01, 02, 08); the old leaning drum on the pedestal was this cylinder |
+| 4. Smoke dischargers a closed box | Open tubes (a rim round a dark bore) on a 0.72 m bracket standing off the cheek on two plates (photos 01, 04); the cheek block itself is in the photos and stays |
+| 5. Side vent too small | 0.32 x 0.40 m, five blades (photos 01, 04) |
+| 6. Rear: a flat grille; deck boxes at the corners | The upper stern a raised mesh basket 0.38 m tall in eight bays between two lidded corner bins (photo 07), the tail lamps on the bins; the deck boxes inboard at +/-0.74 m (photos 01, 07); the overhung stern's underside steps up to a knee 0.63 m behind the sprocket before the lower plate (photo 01: grass under the overhang) |
+| Hull: wedge nose | `levelSponsonFrontZ` 2.61: the sponsons level at the deck to their square fronts (89 % of the length, photo 01), the lamp boxes on them at the deck, the central glacis between them |
+| Hull: no deep front fenders | Fender plates from the sponsons' fronts to 3.43 m with a 0.20 m lip ahead of the tracks and rubber flaps under it (photos 04, 06) |
+| Hull: upper run sagging | `trackSag` 0.015: nearly straight, 0.2 m over the wheels (photos 01, 04) |
+| Hull: glacis tow cable | `glacisCable: false` (no photo shows it) |
+| Hull: driver on the right; grille on the front deck | `driverSide` +1: the hatch and periscopes on the left (photos 03, 05), the driver's seat and the hull radio moved with them; the APU intake grille on the glacis' right (photo 06, ja.wikipedia) |
+
+Interior (spec): the ready rounds and the twin belt feed authored in the central body behind the crew (the layout's
+turret ammunition and feed; the sketched ones crossed the crew), the Type 74's hull ammunition dropped, a transmission
+authored behind the engine in the enlarged stern (the sketched one sat inside the engine).
+
+#### For a later Type 74 pass (not changed: `type74` stays byte-identical)
+
+- The Type 74's driver's hatch, periscopes and driver's seat stand at -x, the vehicle's right by `vehicleSide.ts`; its
+  packet records the driver front left (authored in the old program frame). The Type 87 takes `driverSide` +1.
+- Whether the Type 74's sponsons also run level to its lamp boxes as the Type 87's do (the build slopes them with the
+  glacis, from the owner's STB-1 model): no Type 74 photograph in this lane to settle it.
+- Not Type 74 defects: the sagging upper run (its packet: no return rollers, dead track sag) and the glacis tow cable
+  (its NDA photographs) are the Type 74's own; only the Type 87 turns them off.
+
+### Receipts (fix round, builder J, 2026-11-03)
+
+- `profiles/type87.selftest.mjs`: PASS (8.016 m long, 3.170 m wide, 4.390 m tall; the guns keep 35 mm from the turret
+  over -5 to +85 degrees and 25 mm from the hull at every 5 degrees of yaw and pitch; the driver's side, the antenna's
+  0.04 m over the dish and every stern vertex of the hull plates checked).
+- Digest: `type74` c3f05bb10c02:49926 and `stb1` 3d5ab2291bdd:49618 byte-identical; `type87_aw` a569ca8d502d (28,251
+  triangles).
+- Contact probe 0 floating / 0 clipping; roof pockets none (a first pass left a 14 cm pocket under each pod's front over
+  the cheek; the pods' undersides now stand clear of the cheeks' tops); gun-junction census 0 gaps.
+- internalPlacement restricted to `type87_aw` (a copy of the selftest's checks for this id): sides, ring, volumes and
+  overlaps clean (before the authored turret ammunition, feed and transmission: gunner and commander inside the
+  sketched feed, the sketched transmission inside the engine).
+- recoilRig, internalLayoutRegistry, japaneseCastTurrets, weldedShellSurfaces, ammunitionFlow PASS; typecheck clean.
+- Renders: `~/cot-lanes/twin-aa-269-evidence/J/r2/` (11 views, low quality, the fixed side and its photo 01 overlays).
+
+### Receipts (first build, builder J, 2026-11-03)
 
 - `profiles/type87.selftest.mjs`: PASS (8.026 m long, 3.170 m wide, 4.390 m tall; the guns keep 30 mm from the turret
   over -5 to +85 degrees, and 25 mm from the hull at every 5 degrees of yaw and pitch).
