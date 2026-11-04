@@ -38,13 +38,17 @@ function fixtureHeightAt(fx) {
 }
 
 /** A WebAssembly instance's lattice filled from the fixture (every corner known, every fold decided). */
-function fillWasmLattice(w, fx) {
-  // every pointer before any view: the first call allocates the instance's state and may grow (detach) the memory
-  const heights = w.lattice_heights_ptr(), ready = w.lattice_ready_ptr();
-  w.lattice_flips_ptr();
+export function fillWasmLattice(w, fx) {
+  // (2026-11-02 audit S2) through the kernel's checked writers: each corner and split is written once
+  // the pointer before the view: the first call allocates the instance's state and may grow (detach) the memory
+  const heights = w.scratch_ptr(N * N * 4);
   new Float32Array(w.memory.buffer, heights, N * N).set(fx.lattice);
-  new Uint8Array(w.memory.buffer, ready, Math.ceil(N * N / 8)).fill(0xff);
-  for (let i = 0; i < fx.folds.length; i += 3) w.lattice_set_flip_from_centre(fx.folds[i], fx.folds[i + 1], fx.folds[i + 2]);
+  const filled = w.lattice_fill(heights, N * N);
+  if (filled !== 0) throw new Error(`the kernel refused the fixture's lattice (code ${filled})`);
+  for (let i = 0; i < fx.folds.length; i += 3) {
+    const decided = w.lattice_set_flip_from_centre(fx.folds[i], fx.folds[i + 1], fx.folds[i + 2]);
+    if (decided !== 0) throw new Error(`the kernel refused the fixture's fold (${fx.folds[i]}, ${fx.folds[i + 1]}): code ${decided}`);
+  }
 }
 
 const mismatchReport = (name, total, bad, first) => ({ kernel: name, checked: total, mismatches: bad, ...(first ? { first } : {}) });

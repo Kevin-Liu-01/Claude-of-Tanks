@@ -1285,6 +1285,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloKernelObstacleQuery.selftest.mjs',
     // fix-detached-buffer-265: the kernels' views across a memory growth (Desert's first step threw on live 264c)
     'src/game/soloKernelMemoryGrowth.selftest.mjs',
+    // 2026-11-02 audit S2: a solo battle's kernel choice is made once at its setup (kernels landing before its first step
+    // carry the next battle, never half of this one)
+    'src/game/soloKernelChoice.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
@@ -1744,6 +1747,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/fortifiedCover.selftest.mjs',
     'src/sim/setPieceShellBreak.selftest.mjs',
     'src/sim/terrainDeformation.selftest.mjs',
+    // 2026-11-02 audit S2: the overlay's clock as a state: reset unsets it (no heap starts on the last battle's time), and
+    // a risen ground keeps its lattice cache while the clock runs
+    'src/sim/terrainOverlayClock.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
     'src/sim/destructionLogBudget.selftest.mjs', // 243 security C3: the destruction log's budget
@@ -2021,6 +2027,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainContactSurface.selftest.mjs',
     // 2026-10-25 (workstream #3, the Rust core's flagged kernels): the WebAssembly contact surface and grids, bit for bit
     'src/world/wasmWorldKernels.selftest.mjs',
+    // 2026-11-02 audit S2: the kernels' cross-call protocols checked per call (write-once lattice, walk ids, a hull's
+    // query/begin/samples, grid handles), on the package and at the seam
+    'src/world/wasmKernelProtocols.selftest.mjs',
+    // 2026-11-02 audit S2: the kernel's copy of the match's ground is a binding (bound twice, rebound, unbound: each change
+    // once), and a heap laid on a clock that ran before the bind rises on it on both
+    'src/world/wasmGroundMirror.selftest.mjs',
     // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
     'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',

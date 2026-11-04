@@ -2359,8 +2359,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const margin = spec.dims.widthM * 0.5 + 1.2;
     if (clearanceScan) {
       // (the kernels' walk: the records within the margin, bridge decks aside, in the grid's order)
-      clearanceScan.begin(px - margin, pz - margin, px + margin, pz + margin);
-      for (let o = clearanceScan.point(px, pz, margin, CLEARANCE_SKIP_BRIDGE); o; o = clearanceScan.point(px, pz, margin, CLEARANCE_SKIP_BRIDGE)) {
+      const walk = clearanceScan.begin(px - margin, pz - margin, px + margin, pz + margin);
+      for (let o = clearanceScan.point(walk, px, pz, margin, CLEARANCE_SKIP_BRIDGE); o; o = clearanceScan.point(walk, px, pz, margin, CLEARANCE_SKIP_BRIDGE)) {
         if (!o.crushed && steerAroundObstacle(input, o, fx, fz)) return;
       }
       return;
@@ -3030,8 +3030,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /** A solid (not crushed, crushable or a bridge deck) within `margin` of (x, z). */
   function solidWithin(x: number, z: number, margin: number): boolean {
     if (clearanceScan) {
-      clearanceScan.begin(x - margin, z - margin, x + margin, z + margin);
-      for (let o = clearanceScan.point(x, z, margin, SOLID_SKIPS); o; o = clearanceScan.point(x, z, margin, SOLID_SKIPS)) {
+      const walk = clearanceScan.begin(x - margin, z - margin, x + margin, z + margin);
+      for (let o = clearanceScan.point(walk, x, z, margin, SOLID_SKIPS); o; o = clearanceScan.point(walk, x, z, margin, SOLID_SKIPS)) {
         if (!o.crushed) return true;
       }
       return false;
@@ -3057,9 +3057,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const minX = Math.min(sx, ex) - margin, minZ = Math.min(sz, ez) - margin;
     const maxX = Math.max(sx, ex) + margin, maxZ = Math.max(sz, ez) + margin;
     if (clearanceScan) {
-      clearanceScan.begin(minX, minZ, maxX, maxZ);
-      for (let o = clearanceScan.lane(sx, sz, dx, dz, length, margin, SOLID_SKIPS); o;
-        o = clearanceScan.lane(sx, sz, dx, dz, length, margin, SOLID_SKIPS)) {
+      const walk = clearanceScan.begin(minX, minZ, maxX, maxZ);
+      for (let o = clearanceScan.lane(walk, sx, sz, dx, dz, length, margin, SOLID_SKIPS); o;
+        o = clearanceScan.lane(walk, sx, sz, dx, dz, length, margin, SOLID_SKIPS)) {
         if (o !== skip && !o.crushed && laneSolidBlocks(o, sx, sz, ex, ez, margin)) return true;
       }
       return false;
@@ -3091,10 +3091,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const minX = Math.min(sx, ex) - margin, minZ = Math.min(sz, ez) - margin;
     const maxX = Math.max(sx, ex) + margin, maxZ = Math.max(sz, ez) + margin;
     if (clearanceScan) {
-      clearanceScan.begin(minX, minZ, maxX, maxZ);
-      for (let o = clearanceScan.lane(sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS); o;
-        o = clearanceScan.lane(sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS)) {
-        if (!o.crushed && clearanceScan.entry > 0) return true;
+      const walk = clearanceScan.begin(minX, minZ, maxX, maxZ);
+      for (let o = clearanceScan.lane(walk, sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS); o;
+        o = clearanceScan.lane(walk, sx, sz, dirX, dirZ, reach, margin, SOLID_SKIPS)) {
+        if (!o.crushed && clearanceScan.entry(walk) > 0) return true;
       }
       return false;
     }
