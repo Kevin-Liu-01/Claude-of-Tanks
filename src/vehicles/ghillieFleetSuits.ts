@@ -566,12 +566,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     // forward of 1.93 now, under the add-on boxes' rear ends), the rear drape between the left bin and the APU
     // 269 round 2 (blind A/B arieter269t, both critics: "cloth flares past the front cheek corners in the top view", "the
     // cloth sheet over the turret rear is a big flat patch ... it spills over the rear view"): the roof net stops behind
-    // the new add-on cheek modules' tops (1.34) and inside the walls' plan (+-1.50), the rear drape is gone, and the
+    // the new add-on cheek modules' tops (1.34), inside the walls' plan (+-1.50) and 15 cm short of the stowage box's rear
+    // edge (-2.55), the rear drape is gone, and the
     // openings follow the moved fittings: the Lothar box and the Attila drum (now 0.45-1.45), the loader's gun on its
     // plinth, the met mast's hanging rods
     turret: {
       top: [laid({
-        x0: -1.50, x1: 1.50, z0: -2.80, z1: 1.34, nx: 38, nz: 52, y: 0.97,
+        x0: -1.50, x1: 1.50, z0: -2.55, z1: 1.34, nx: 38, nz: 49, y: 0.97,
         holes: [rect(-1.18, -0.52, 0.40, 1.50), rect(-1.28, -0.40, -0.76, 0.12), rect(0.37, 1.25, -0.68, 0.15),
           rect(0.56, 0.98, 0.23, 0.65), rect(-0.43, -0.23, 0.93, 1.09), rect(0.23, 0.43, 0.93, 1.09),
           rect(-0.14, 0.14, -1.02, -0.74), rect(-0.15, 0.26, -1.49, -1.08), rect(-0.42, -0.24, -1.37, -1.18),

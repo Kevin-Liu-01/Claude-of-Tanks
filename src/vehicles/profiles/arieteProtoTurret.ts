@@ -359,7 +359,8 @@ function c2LotharSight(P: ArieteTurretPort, x: number, z: number): void {
  * a mesh guard over the box's top (photograph 3), a low domed cap with two lifting rings. */
 function c2AttilaDrum(P: ArieteTurretPort, x: number, z: number, col = 0.08): void {
   const seg = P.q ? 22 : 12, r = 0.19, h = 0.40;
-  P.add('turret', KIT.cylY(0.13, 0.15, col + 0.02, seg), x, arieteProtoRoofY(x, z) - 0.015 + (col + 0.02) / 2, z);
+  // (the base as wide as the collar it carries: no overhang to hold water, the roof-pocket census)
+  P.add('turret', KIT.cylY(r + 0.025, r + 0.04, col + 0.02, seg), x, arieteProtoRoofY(x, z) - 0.015 + (col + 0.02) / 2, z);
   const y0 = arieteProtoRoofY(x, z) - 0.015 + col;
   P.add('turret', KIT.cylY(r + 0.025, r + 0.04, 0.06, seg), x, y0 + 0.03, z);
   P.addModuleVisual('optics', 'turret', KIT.cylY(r, r, h, seg), x, y0 + 0.06 + h / 2, z);
@@ -393,15 +394,15 @@ function c2MetMast(P: ArieteTurretPort, x: number, y: number, z: number): void {
 }
 
 /** The C2 loader's 12.7 mm shield (C2 photographs 1 and 3): two tall flat leaves either side of the barrel, 0.45 m from
- * under the receiver to well over it with a 11 cm gap for the barrel, each stiffened down its outer edge, joined under the
- * gun by a cross plate. They are drawn into the station's painted cradle mesh (its pitch group: origin on the trunnion, +z
+ * under the receiver to well over it with a 9 cm gap for the barrel (1 cm off its jacket, ahead of the receiver: the gun
+ * recoils away from them), each stiffened down its outer edge, joined under the gun by a cross plate. They are drawn into the station's painted cradle mesh (its pitch group: origin on the trunnion, +z
  * firing), so they ride the gun's pitch and the station's yaw as the fleet's shields do, ahead of the receiver and its
  * can, their feet clear of the mount at full depression. */
 function c2LoaderShield(mg: THREE.Group): void {
   const pitch = mg.getObjectByName('auxiliaryWeaponPitch');
   const host = pitch?.children.find((o) => (o as THREE.Mesh).isMesh && o.userData.fittingSlot === 'detail') as THREE.Mesh | undefined;
   if (!host) throw new Error('arieteProtoTurret: the C2 loader station has no painted cradle mesh');
-  const z0 = 0.30, z1 = 0.325, yb = -0.23, yt = 0.22, xi = 0.055, xo = 0.235;
+  const z0 = 0.30, z1 = 0.325, yb = -0.23, yt = 0.22, xi = 0.043, xo = 0.225;
   const parts: THREE.BufferGeometry[] = [];
   for (const s of [-1, 1]) {
     parts.push(convexBlock(mirror([[xi, yb, z0], [xi, yb, z1], [xi, yt, z0], [xi, yt, z1], [xo, yb + 0.03, z0], [xo, yb + 0.03, z1],
@@ -466,17 +467,18 @@ function c2Package(P: ArieteTurretPort, receipt: ArieteProtoTurretReceipt, c2Era
       c2Era.turretCheekForwardNormalDotMin = Math.min(c2Era.turretCheekForwardNormalDotMin,
         new THREE.Vector3(FSW, C2_RAKE, 1).normalize().z);
     }
-    // the cheek module's side: one bolted plate 8 cm proud, its front on the add-on front and its top running up to the
-    // front modules' top (C2 photographs 1 and 4), with the oval access panel on it
+    // the cheek module's side: one bolted module 20 cm proud (C2 photograph 3: the side modules' fronts stand proud at the
+    // turret's corners; r269 round 2, the critics: deeper flank modules), its front on the add-on front and its top
+    // running up to the front modules' top (C2 photographs 1 and 4), with the oval access panel on it
     // (its rear edge stands against the fore add-on box, C2 photograph 4: no bare wall between them)
     const zt = 0.38, zbk = 0.42, yBot = FLOOR + CHAMF;
     const side = (x: number): V3[] => [[x, EAVE - 0.01, zt], [x, EAVE - 0.01, SZ0], [x, C2_TOP - 0.005, c2FrontZ(W, C2_TOP) - 0.025],
       [x, yBot, c2FrontZ(W, yBot) - 0.004], [x, yBot, zbk]];
     cluster(() => {
-      P.add('turret', convexBlock(mirror([...side(W - 0.045), ...side(W + 0.08)], s)));
-      P.add('turret', KIT.box(0.02, 0.24, 0.42), s * (W + 0.088), 0.47, 1.12);                   // access panel
-      bolts(P, [[0.85, 0.34], [0.62, 0.62], [1.45, 0.34], [1.70, 0.34], [1.30, 0.68]].map(([zz, yy]) =>
-        new THREE.Vector3(s * (W + 0.08), yy, zz)), new THREE.Vector3(s, 0, 0));
+      P.add('turret', convexBlock(mirror([...side(W - 0.045), ...side(W + 0.20)], s)));
+      P.add('turret', KIT.box(0.02, 0.24, 0.42), s * (W + 0.208), 0.47, 1.05);                   // access panel
+      bolts(P, [[0.85, 0.34], [0.62, 0.62], [1.40, 0.34], [1.60, 0.34], [1.25, 0.68]].map(([zz, yy]) =>
+        new THREE.Vector3(s * (W + 0.20), yy, zz)), new THREE.Vector3(s, 0, 0));
     });
     receipt.c2SidePlates++;
     c2Era.turretSideCassettes++;
@@ -656,13 +658,15 @@ export function arieteProtoTurretFittings(P: ArieteTurretPort, o: { mark: Mark; 
     c2AttilaDrum(P, -0.80, 0.64);
     // the loader's 12.7 mm (C2 photographs 1 and 3: not a remote station but a crew pintle M2 behind a tall two-leaf
     // shield, the leaves about 0.45 m tall either side of the barrel; photograph 1: its pintle on a squat base): the
-    // riding pintle on a stout 12 cm armoured plinth, the gun 0.39 m and the leaves' tops 0.64 m over the roof
+    // riding pintle on a stout 12 cm armoured plinth, the gun 0.40 m and the leaves' tops 0.63 m over the roof (the class
+    // gun at 0.95, as in round 1: at 1.0 in this 1.1 rig its trigger block stands 15.4 mm off the receiver, over the
+    // fleet contact receipt's 15 mm)
     const mx = 0.70, mz = 0.40, my = arieteProtoRoofY(mx, mz), ph = 0.12;
     P.add('turret', convexBlock([-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => [[mx + sx * 0.15, my - 0.02, mz + sz * 0.15],
       [mx + sx * 0.15, my + ph - 0.03, mz + sz * 0.15], [mx + sx * 0.12, my + ph, mz + sz * 0.12]] as V3[]))));
     P.add('turretDark', KIT.box(0.31, 0.012, 0.31), mx, my + 0.05, mz);                         // pedestal's base seam
     const mg = FITTINGS.pintleMG({ working: true, ridingCradle: true, mats: P.mats, cls: 'm2', tone: 'two-tone', elev: -0.02,
-      ammo: true, scale: 1.0, seed: 46 });
+      ammo: true, scale: 0.95, seed: 46 });
     c2LoaderShield(mg);
     mg.name = 'arieteC2RemoteRws';
     mg.userData.remoteControlled = true;
