@@ -67,6 +67,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'server/collisionManifestRoutes.selftest.mjs': lists('server/world-collision-manifests-228/*.json', 'src/**/*.{ts,mjs,js}',
     'server/**/*.{ts,mjs,js}'),
   'server/dedicatedWorldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
+  // 2026-11-02 audit R6 (loaders-workers): the lazy-chunk ratchet walks every source module and every site page
+  'src/app/lazyChunkSites.selftest.mjs': lists('src/**/*.ts', 'site/*.html'),
   'src/audio/audioEngine.selftest.mjs': lists('src/mp/**/*.{ts,mjs}', 'src/sim/**/*.{ts,mjs}', 'server/**/*.{ts,mjs}'),
   'src/audio/soundAssets.selftest.mjs': lists('src/audio/*.ts'),
   'src/audio/voiceTriggers.selftest.mjs': lists('src/audio/*.ts'),
