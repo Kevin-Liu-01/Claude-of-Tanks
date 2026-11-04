@@ -53,38 +53,40 @@ export const TYPE87_TURRET = Object.freeze({
   floorY: 0.02, roofY: 1.02, roofChamfer: 0.05,
   bodyHalfW: 0.70, rearZ: -1.85, rearChamfer: 0.10,
   // the nose: the roof's front edge, the bevel's foot, the upper plate's foot, the chin's foot and the underside's front
-  noseRoofZ: 1.72, bevelZ: 1.86, bevelY: 0.94, faceZ: 1.95, faceY: 0.40, chinZ: 1.80, chinY: 0.17, bellyZ: 1.60,
+  noseRoofZ: 1.72, bevelZ: 1.86, bevelY: 0.94, faceZ: 1.95, faceY: 0.40, chinZ: 1.80, chinY: 0.17, bellyZ: 1.48,
   noseHalfW: 0.60, noseEdgeZ: 1.76,
   cheekInnerX: 0.66, cheekOuterX: 1.14, cheekTopY: 0.42, cheekRearZ: -0.10, cheekFrontZ: 1.10, cheekChamfer: 0.10,
-  podInnerX: 0.69, podOuterX: 1.30, podRearZ: -1.40, podFrontZ: -0.42,
-  // the pod's foot and top at its rear and front stations (the 7 degree rise; fix round: 0.61-0.66 m deep, 0.09 of the
-  // hull's length in photo 01, its underside kept clear over the cheek's top so no pocket forms under it), then its
-  // angular wedge nose: the top falling a little and the bottom rising steeply to a small face round the bore (photos 01,
-  // 04, 06), 0.135 m behind the elevation axis
+  podInnerX: 0.69, podOuterX: 1.30, podRearZ: -1.40, podFrontZ: -0.55,
+  // the pod's foot and top at its rear and front stations (the 7 degree rise; 0.61-0.66 m deep, 0.09 of the hull's
+  // length in photo 01, its underside kept clear over the cheek's top so no pocket forms under it), then its front third
+  // tapering, mostly from the underside, straight into the barrel's collar (round 3, photos 01, 04): the top falling
+  // 0.14 m, the bottom rising 0.32 m and the sides closing to a 0.20 x 0.20 m face round the bore 0.11 m behind the
+  // elevation axis
   podRearBottomY: 0.39, podRearTopY: 1.00, podFrontBottomY: 0.48, podFrontTopY: 1.14,
-  noseTipZ: -0.135, noseTipHalfW: 0.13, noseTipHalfH: 0.12,
-  coverX: 0.72, coverR: 0.44, coverY: 0.56, coverZ: -0.66,
+  noseTipZ: -0.11, noseTipHalfW: 0.10, noseTipHalfH: 0.10,
+  // the trunnion drum on the body's flank, its lower half under the pod (photo 01: 0.46 m radius about 920/615 px), a
+  // drum 0.06 m proud with a chamfered rim and a hub (a deeper one roofs a see-through pocket over the cheek)
+  coverX: 0.72, coverR: 0.44, coverW: 0.06, coverY: 0.56, coverZ: -0.66,
 });
 
 /**
- * The guns' elevation axis (turret-local): at the tips of the pods' wedge noses, on the bores (photo 01: the barrels'
- * line meets the pods' fronts at 546 px, 0.90 m over the ring). The pods do not pitch; each gun's cradle turns on a small
- * trunnion block on the axis just ahead of its pod's nose, the square barrel sleeve and the barrel ahead of it.
+ * The guns' elevation axis (turret-local): at the tips of the pods' tapered noses, on the bores (photo 01: the barrels'
+ * line meets the pods' fronts at 546 px, 0.90 m over the ring). The pods do not pitch; each barrel's collar turns just
+ * ahead of its pod's nose, the barrel ahead of it.
  */
 export const TYPE87_TRUNNION = Object.freeze([0, 0.90, 0.00] as const);
 
 /**
  * The two 35 mm KDA (Oerlikon, Japan Steel Works licence; L/90, a 3.15 m barrel), gun-local: the bores either side
- * (photo 05: 0.94 m out, the pods' inner half) on the axis; the trunnion block, the square sleeve to the jacket (photos
- * 01, 04, 06), the barrel's rings, the
+ * (photo 05: 0.94 m out, the pods' inner half) on the axis; the collar the pod's nose tapers into (photos 01, 04, 06),
+ * the jacket, the barrel's rings, the
  * muzzle brake with its face flange (the bore mouth, muzzleZ) and the v0 measuring cage of three rods reaching past it to
  * its end ring (photo 01 at 4x: the brake 0.24 m, the cage 0.26 m). The cage's tip stands 3.50 m ahead of the axis:
  * photo 01 measures 3.39 m (the muzzles at 1,670/359 px), 3 % under what the published 7.99 m needs; 3.50 m makes 7.95 m
  * with the guns forward.
  */
 export const TYPE87_GUNS = Object.freeze({
-  boreX: 0.94, hubR: 0.095, hubW: 0.24,
-  sleeveRearZ: 0.0, sleeveRearHalf: 0.10, sleeveFrontZ: 0.50, sleeveFrontHalf: 0.085,
+  boreX: 0.94, collarR: 0.08, collarRearZ: -0.04, collarFrontZ: 0.14,
   jacketR: 0.062, jacketFrontZ: 1.30, barrelR: 0.046, barrelTipR: 0.038,
   ringZs: [2.55, 2.80] as readonly number[],
   brakeRearZ: 3.00, brakeR: 0.066, flangeR: 0.074, muzzleZ: 3.24,
@@ -99,19 +101,20 @@ export const TYPE87_GUNS = Object.freeze({
  *     01: 135 px tall for 0.86); on the head's left the sensor box a third of the dish wide (photos 05, 08), on its right
  *     the large cylinder (0.26 m across, its round end outboard: photos 01, 02, 08);
  *   - the search radar raised on its boom at the very rear (photos 01, 02, 08): a heavy box-section boom from a hinge
- *     between the rear boxes, 0.48 x 0.40 m at its root narrowing to 0.36 x 0.28 m, up and back to an elbow, a short
- *     upright to the turntable, and the antenna 0.05 m over the dish's rim (photos 03, 05, 06): a flat-faced slab 1.52 m
- *     across under a flat top plate, flared end plates and a feed box on its back (photos 02, 08), 0.34 m tall, its top
- *     at the published 4.40 m raised height (photo 01: 235 px reads 4.42 m).
+ *     between the rear boxes, 0.48 x 0.40 m at its root narrowing to 0.36 x 0.28 m, leaning back 25 degrees (photo 01)
+ *     to an elbow, a short upright to the turntable, and the antenna 0.06 m over the dish's rim (photos 03, 05, 06): 1.52 m
+ *     across, 0.56 m deep and 0.33 m tall (round 3, photos 01, 02, 08), a flat back and top running into a curved front,
+ *     its ends D-shaped, a feed box on its back, its top at the published 4.40 m raised height (photo 01: 235 px reads
+ *     4.42 m).
  */
 export const TYPE87_RADARS = Object.freeze({
   pedestalHalfW: 0.22, pedestalRearZ: -1.56, pedestalFrontZ: -1.26, headHalfW: 0.32, headBottomY: 1.52, headTopY: 2.06,
   headRearZ: -1.50, headFrontZ: -1.24,
   dishR: 0.43, dishY: 2.01, dishZ: -1.12, dishTiltDeg: 26,
   sensorW: 0.26, sensorH: 0.40, sensorD: 0.34, cylinderR: 0.13, cylinderL: 0.30,
-  hingeY: 1.11, hingeZ: -1.80, elbowY: 2.05, elbowZ: -2.20, rootHalfW: 0.24, rootDepth: 0.40, armHalfW: 0.18,
+  hingeY: 1.11, hingeZ: -1.80, elbowY: 2.22, elbowZ: -2.32, rootHalfW: 0.24, rootDepth: 0.40, armHalfW: 0.18,
   armDepth: 0.28,
-  antennaBottomY: 2.45, antennaTopY: 2.79, antennaZ: -2.26, antennaHalfW: 0.76, antennaDepth: 0.32,
+  antennaBottomY: 2.46, antennaTopY: 2.79, antennaZ: -2.30, antennaHalfW: 0.76, antennaDepth: 0.56, antennaFlatDepth: 0.22,
 });
 
 /** The rear roof's two stowage boxes either side of the arm's hinge (photos 07, 09: 0.39 m wide, 0.36 m tall). */

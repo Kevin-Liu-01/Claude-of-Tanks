@@ -66,7 +66,7 @@ Object.assign(spec, {
 });
 spec.dims = { hullLengthM: +(3.37 - H.sternZ + H.basketDepth).toFixed(2), overallLengthM: 7.99, widthM: 3.18, heightM: 3.25 };
 // the Type 74 hull's ring (profiles/type74Family.ts) and the drawn guns (profiles/type87Frame.ts): the elevation axis at
-// the tips of the pods' wedge noses, the bores on it 0.94 m either side, the bore mouths (the muzzle brakes' face flanges) 3.24 m ahead
+// the tips of the pods' tapered noses, the bores on it 0.94 m either side, the bore mouths (the muzzle brakes' face flanges) 3.24 m ahead
 // of it inside the v0 cages, whose end rings reach 3.50 m: 7.95 m overall with the guns forward (the published 7.99)
 spec.armor.turretPivot = [...TYPE87_RING];
 spec.armor.gunPivot = [...TYPE87_TRUNNION];
@@ -84,8 +84,8 @@ spec.armor.turretPlates = [
   ...boxPlates('type87_pod_l', [T.bodyHalfW, T.podRearBottomY, T.podRearZ], [T.podOuterX, T.podFrontTopY, T.noseTipZ], 20, 25,
     ['left']),
 ];
-// the sights under the roof's front edge; both guns' receivers in their fixed pods with the cradles' trunnion blocks at
-// their noses (the pods do not pitch); the ready rounds low in the central body behind the crew and the twin belt feed
+// the sights under the roof's front edge; both guns' receivers in their fixed pods to the barrels' collars at their
+// noses (the pods do not pitch); the ready rounds low in the central body behind the crew and the twin belt feed
 // over them (internalLayoutRegistry.ts spaaType87: ammunition and feed in the turret); the hull keeps the Type 74's
 // modules but its ammunition (the hook below), the transmission behind the engine in the enlarged stern
 const HULL_MODULES = [moduleBox('transmission', [-.80, .95, -3.55], [.80, 1.45, -3.20])];
@@ -94,7 +94,7 @@ spec.armor.modules = [
   ...HULL_MODULES,
   moduleBox('optics', [-.45, .78, 1.20], [.45, 1.00, 1.62], true),
   moduleBox('gun', [-T.podOuterX + .02, T.podRearBottomY + .04, T.podRearZ + .04],
-    [T.podOuterX - .02, TYPE87_TRUNNION[1] + G.hubR, TYPE87_TRUNNION[2] + G.hubR], true),
+    [T.podOuterX - .02, TYPE87_TRUNNION[1] + G.collarR, TYPE87_TRUNNION[2] + G.collarFrontZ], true),
   moduleBox('ammoRack', [-.60, .08, -1.78], [.60, .58, -.95], true),
   moduleBox('feedSystem', [-.60, .62, -1.72], [.60, .95, -1.00], true),
 ];

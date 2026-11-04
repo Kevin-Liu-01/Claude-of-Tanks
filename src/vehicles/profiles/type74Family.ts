@@ -123,6 +123,8 @@ interface Type74FamilyOptions {
   readonly glacisCable?: boolean;
   /** The upper track run's dead sag (m): the Type 74's 0.10 rides the road wheels' tops. */
   readonly trackSag?: number;
+  /** The stowage lockers on the side slopes (the Type 74's; the Type 87's sides carry flush panels, its caller's). */
+  readonly sideLockers?: boolean;
 }
 
 /** The overhung stern's upper face foot, the knee where its underside meets the lower plate, and the lower plate's toe
@@ -131,7 +133,7 @@ const OVERHUNG_STERN_FOOT_Y = 1.13, OVERHUNG_STERN_KNEE_Z = 0.26, OVERHUNG_STERN
 
 /** The hull's stations a vehicle on it seats its own hull kit against (269: the Type 87's stern kit, profiles/type87.ts). */
 export const TYPE74_HULL_STATIONS = Object.freeze({
-  deckY: DECK, bellyY: BELLY, tubHalfW: TUB, sponsonFloorY: FLOOR, sponsonX: SPONSON_X,
+  deckY: DECK, bellyY: BELLY, tubHalfW: TUB, sponsonFloorY: FLOOR, sponsonX: SPONSON_X, deckEdgeX: DECK_EDGE, lip: LIP,
   overhungSternFootY: OVERHUNG_STERN_FOOT_Y, overhungSternKneeZ: OVERHUNG_STERN_KNEE_Z,
   overhungSternKneeY: OVERHUNG_STERN_KNEE_Y, overhungSternToeZ: OVERHUNG_STERN_TOE_Z,
 });
@@ -264,11 +266,13 @@ function addProductionHullKit(P: TankBuilderPort, sternKit = true, options: Type
   }
   // stowage lockers on the side slopes, low on them: their tops stay under the deck line, where the mask and the bustle
   // swing over them, and their outer edges inside the width anchor
-  for (const s of [-1, 1]) for (const [z, len] of [[0.85, 0.80], [-0.30, 0.90]] as const) {
-    const p = onSlope(s, 0.45, 0.05);
-    P.addEquipment('hull', box(0.16, 0.10, len), p.x, p.y, z, 0, 0, p.rz);
-    const lid = onSlope(s, 0.45, 0.102);
-    P.add('hullDark', box(0.17, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
+  if (options.sideLockers ?? true) {
+    for (const s of [-1, 1]) for (const [z, len] of [[0.85, 0.80], [-0.30, 0.90]] as const) {
+      const p = onSlope(s, 0.45, 0.05);
+      P.addEquipment('hull', box(0.16, 0.10, len), p.x, p.y, z, 0, 0, p.rz);
+      const lid = onSlope(s, 0.45, 0.102);
+      P.add('hullDark', box(0.17, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
+    }
   }
   // the pioneer tools on the rear deck strip, outside the bustle's sweep; the rear deck's lifting eyes
   shovelTool(P, -1.12, DECK + 0.015, -2.40);

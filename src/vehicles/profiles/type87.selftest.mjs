@@ -131,15 +131,12 @@ for (const quality of ['high', 'low']) {
     near(top, 4.40, `${quality}: the raised radar's published height`, 0.044);
 
     // Both guns clear the turret through the whole arc: every gun surface sample (2 cm) keeps 15 mm from every turret
-    // surface at each degree from -5 to +85, but the trunnion shafts, which turn in the body's flanks about their own axis.
+    // surface at each degree from -5 to +85 (round 3: no trunnion shaft left to except).
     const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert();
     const grid = new SurfaceGrid(meshTriangles(meshesUnder(turret, [gun]), tInv).tri, { cell: 0.05, rq: 0.065 });
     const all = densePoints(meshTriangles(meshesUnder(gun), gInv).tri, 0.02);
     const samples = [];
-    for (let i = 0; i < all.length; i += 3) {
-      if (Math.hypot(all[i + 1], all[i + 2]) < 0.07 && Math.abs(all[i]) < G.boreX - G.hubW / 2 + 0.03) continue; // a shaft
-      samples.push(all[i], all[i + 1], all[i + 2]);
-    }
+    for (let i = 0; i < all.length; i += 3) samples.push(all[i], all[i + 1], all[i + 2]);
     const [, py, pz] = AXIS;
     let worst = Infinity, worstPitch = 0;
     for (let deg = -spec.gunDepressionDeg; deg <= spec.gunElevationDeg; deg++) {
