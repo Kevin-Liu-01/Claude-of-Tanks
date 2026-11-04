@@ -3236,44 +3236,44 @@
   "class": "cannon",
   "variants": [
    {
-    "source": "326948ee43e9b1a774806f38.pcm",
+    "source": "db3c42786bf6e8b4da3fa00f.pcm",
     "cutS": 5.48,
-    "sha256": "37a3857b54c73d4468d5456c360377d04ba45b9f777a1f6b5ecf55e7b6852bb0",
+    "sha256": "841a43ec8741e8c761fa6264b448d226dc2399249cb27249ef0fa172fcf8b080",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.8891,
+     "bestScore": 0.6516,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.3406,
+     "againstScore": 0.2648,
      "top": "Explosion"
     }
    },
    {
-    "source": "4b77ca94a721b5611a90a3d8.pcm",
+    "source": "43500c61e7dc2a788a00a90b.pcm",
     "cutS": 5.48,
-    "sha256": "e113eb6a1ba604d22c9585ccd34bba8eaf6714f135e9644bcaf238b74af50389",
+    "sha256": "b0ab4f2b516303f060dbc6806ad38138a58d9943017040dfb21037df53cb928d",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.6299,
+     "bestScore": 0.4115,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.1904,
+     "againstScore": 0.1641,
      "top": "Explosion"
     }
    },
    {
-    "source": "33d75a85ae3939e56d753fe6.pcm",
+    "source": "191238ccabc75f3207c88771.pcm",
     "cutS": 5.48,
-    "sha256": "1777bd4cb256716445429a390ce6ac76352472795b4496e3792039fca8a9197a",
+    "sha256": "0e850f377f70044654161c1c9b042e7efc4197742ca4beed3370a4f304a8a8ae",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.7552,
+     "bestScore": 0.8034,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.1797,
+     "againstScore": 0.2747,
      "top": "Explosion"
     }
    }
@@ -3349,44 +3349,44 @@
   "class": "cannon",
   "variants": [
    {
-    "source": "4edf179b00e62b1f64279efe.pcm",
+    "source": "38c0deb26f9e0dce539249b9.pcm",
     "cutS": 5.48,
-    "sha256": "364ce2e40a95cf02e1f4a96b6f934caae6a26df012ba96abfea1023ab16a9282",
+    "sha256": "c8ba9b9352d06d570598cedbe473d5cf8df0f970ff42960f1224a5315b165213",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.5,
+     "bestScore": 0.4844,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.0957,
+     "againstScore": 0.1508,
      "top": "Explosion"
     }
    },
    {
-    "source": "f2277fedc8cee22a3e00819e.pcm",
+    "source": "3f9dd2efb8dfe8b92d338494.pcm",
     "cutS": 5.48,
-    "sha256": "2489a8657b8e961272ef1cd47e1ce4d6dc6aa2d1a430a7546f9d48b8bf16bf38",
+    "sha256": "6d220cfa6a994be08270dea7b7af18abd5e37d44d764a123449592ccdafff1dc",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.5273,
+     "bestScore": 0.4714,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.2344,
+     "againstScore": 0.2227,
      "top": "Explosion"
     }
    },
    {
-    "source": "d949cd6cfdf3933161a48966.pcm",
+    "source": "a9fabe1267d6147a496a232d.pcm",
     "cutS": 5.48,
-    "sha256": "c5ace639d3406078dc58c03ee530914be3e2e529c992cc78b95af1fd7f1886cb",
+    "sha256": "8f2f52bd15b6b26b8a1de639581ae087d15c898df42115a30264405d0f06e507",
     "class": "cannon",
     "pass": true,
     "single": {
      "best": "Explosion",
-     "bestScore": 0.151,
+     "bestScore": 0.2402,
      "against": "Gunshot, gunfire",
-     "againstScore": 0.0508,
+     "againstScore": 0.0371,
      "top": "Explosion"
     }
    }

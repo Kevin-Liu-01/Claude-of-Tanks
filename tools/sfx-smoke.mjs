@@ -10,8 +10,11 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // and records the master output through the __COT_AUDIO PCM tap. Asserts:
 //   - every scene plays its intended assets (sfxLog names), audibly, unclipped
 //   - calibre ladder: rifle MG → heavy MG → 30 mm → 76 → 90 → 105 → 120 (and rifled) → 125 → 130 → 152 → 170 mm; the low
-//     band (<150 Hz) share of the capture rises from MG to the 152 mm and the
-//     cannon tail pitch falls with bore
+//     band (<150 Hz) share of the capture, over every variant of each pair's bank, holds each pair of
+//     tools/audio/gun-ladder.mjs (the files' own low shares are held in Node by sfxLoudness.selftest) and the cannon
+//     tail pitch falls with bore
+//   - a popped turret's landing plays where its body hits (the fx clock's landing, as the turret's rigid body reports it)
+//   Every asset is held on its loudest take, as in tools/audio-mix-balance.mjs.
 //   - distance model: a 15 m cannon plays its close report only, a ~210 m one
 //     both layers, a ~420 m one its distant report only, and the distant report
 //     arrives at the speed of sound
@@ -27,7 +30,9 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { GUN_LADDER, LADDER_BANKS, LADDER_HZ } from './audio/gun-ladder.mjs';
+import { loudestTakes } from './audio/held-takes.mjs';
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const outDir = resolve('shots/sfx-smoke');
@@ -62,7 +67,7 @@ function analyze(i16, sampleRate) {
     sum2 += x * x;
   }
   const rms = Math.sqrt(sum2 / Math.max(1, mono.length));
-  const [lowShare] = mono.length >= 4096 ? bandEnergy(mono, sampleRate, [[0, 150]]) : [0];
+  const [lowShare] = mono.length >= 4096 ? bandEnergy(mono, sampleRate, [[0, LADDER_HZ]]) : [0];
   return {
     peak,
     peakDb: peak > 0 ? 20 * Math.log10(peak) : -Infinity,
@@ -140,7 +145,10 @@ async function bootIntoBattle() {
 await openPage();
 
 let failed = false;
-const report = { scenes: {}, ladder: {}, distance: {}, errors: [] };
+const report = { scenes: {}, ladder: {}, ladderBanks: {}, distance: {}, errors: [] };
+// each shipped asset's variant count (the ladder captures a bank on every one)
+const SFX_ASSETS_N = Object.fromEntries(Object.entries(JSON.parse(readFileSync(new URL('./audio/.sfx-manifest.json', import.meta.url), 'utf8')))
+  .map(([id, rec]) => [id, rec.n]));
 const fail = (msg) => { failed = true; report.errors.push(msg); console.error('[sfx-smoke] FAIL: ' + msg); };
 
 try {
@@ -181,6 +189,8 @@ try {
   const lib = await page.evaluate(() => window.__COT_AUDIO.library());
   console.log(`[sfx-smoke] context up (sr=${sampleRate}), decoded ${lib.assets} assets (${lib.decodedMb} MB, ${lib.failed} failed)`);
   if (lib.failed) fail(`${lib.failed} SFX assets failed to decode`);
+  // Every asset on its loudest take (tools/audio/held-takes.mjs): no check rides on the stream's draw.
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), loudestTakes());
   // Freeze the battle (the pre-battle hold) so bots neither drive nor fire into
   // the captures, quiet the beds, and let earlier chatter drain.
   await page.evaluate(() => {
@@ -262,7 +272,11 @@ try {
     // destruction and contact
     { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
-      expect: ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop'] },
+      expect: ['tank_explode_ammo', 'debris_metal', 'cookoff_loop'] },
+    // the popped turret's landing (physics lane, 2026-10-10): its rigid body reports the hit through the fx clock and the
+    // engine plays it there; a bus event pops no turret, so the scene lands one through the same report
+    { name: 'turret_landing', holdMs: 2200, expect: ['turret_land'],
+      call: `import('/src/fx/clock.ts').then((m) => m.emitTurretLanding(...window.__P.pos(4,-1.5,30), 11))` },
     { name: 'tank_burnout', ev: 'tank:destroyed', holdMs: 3600,
       p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(14,-1.5,26), killerId:null, cause:'fire'}`,
       expect: ['burnout_blast'] },
@@ -284,7 +298,8 @@ try {
     await tapStart();
     await sleep(250);
     const emittedAt = await page.evaluate(() => window.__P.now());
-    await emit(sc.ev, sc.p);
+    if (sc.call) await page.evaluate(sc.call);
+    else await emit(sc.ev, sc.p);
     await sleep(sc.holdMs);
     const i16 = await tapStopAndFetch();
     const a = analyze(i16, sampleRate);
@@ -316,18 +331,36 @@ try {
   // ---- calibre ladder ---------------------------------------------------------
   const ladder = SCENES.filter((s) => s.ladder).map((s) => s.name);
   for (const name of ladder) report.ladder[name] = +sceneAudio[name].lowShare.toFixed(3);
-  if (!(sceneAudio.gun_152.lowShare > sceneAudio.mg_rifle.lowShare * 1.5)) {
-    fail(`152 mm is not bassier than the rifle MG (low share ${sceneAudio.gun_152.lowShare.toFixed(3)} vs ${sceneAudio.mg_rifle.lowShare.toFixed(3)})`);
+  // gun-reports-269: every bore its own report, and the big guns sit lower than the light ones. The ladder is a bank's
+  // property (world-sfx-269): a pair's scene (the ladder scene whose first expected sample is its bank) is captured on
+  // every variant of that bank, held in turn, and compared on the mean, as sfxLoudness.selftest compares the files — one
+  // held take compares two takes (the 17 cm's loudest is its brightest). Each capture starts in silence: a cannon's boom
+  // rings 5.5 s, and one still rolling under a rifle MG's capture read as its bass (0.68 against its files' 0.1).
+  const ladderScene = (bank) => SCENES.find((s) => s.ladder && s.expect[0] === bank);
+  const held = loudestTakes();
+  const bankLow = {};
+  const RING_MS = 6500;
+  for (const bank of LADDER_BANKS) {
+    const sc = ladderScene(bank);
+    const lows = [];
+    for (let v = 0; v < SFX_ASSETS_N[bank]; v++) {
+      await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), { ...held, [bank]: v });
+      await sleep(RING_MS);
+      await tapStart();
+      await sleep(250);
+      await emit(sc.ev, sc.p.replace(/shellId:\d+/, `shellId:${++shellId}`));
+      await sleep(sc.holdMs);
+      lows.push(analyze(await tapStopAndFetch(), sampleRate).lowShare);
+    }
+    bankLow[bank] = lows.reduce((sum, x) => sum + x, 0) / lows.length;
+    report.ladderBanks[bank] = lows.map((x) => +x.toFixed(3));
   }
-  if (!(sceneAudio.gun_120.lowShare > sceneAudio.ac_30.lowShare)) {
-    fail(`120 mm is not bassier than the 30 mm (low share ${sceneAudio.gun_120.lowShare.toFixed(3)} vs ${sceneAudio.ac_30.lowShare.toFixed(3)})`);
-  }
-  // gun-reports-269: every bore its own report, and the big guns sit lower than the light ones
-  if (!(sceneAudio.gun_170.lowShare > sceneAudio.gun_76.lowShare)) {
-    fail(`the 17 cm gun is not bassier than the 76 mm (low share ${sceneAudio.gun_170.lowShare.toFixed(3)} vs ${sceneAudio.gun_76.lowShare.toFixed(3)})`);
-  }
-  if (!(sceneAudio.gun_152.lowShare > sceneAudio.gun_90.lowShare)) {
-    fail(`the 152 mm howitzer is not bassier than the 90 mm (low share ${sceneAudio.gun_152.lowShare.toFixed(3)} vs ${sceneAudio.gun_90.lowShare.toFixed(3)})`);
+  await page.evaluate((h) => window.__COT_AUDIO.holdVariants(h), held);
+  for (const [heavier, lighter, factor] of GUN_LADDER) {
+    const [h, l] = [ladderScene(heavier).name, ladderScene(lighter).name];
+    if (!(bankLow[heavier] > bankLow[lighter] * factor)) {
+      fail(`${h} is not bassier than ${l}${factor !== 1 ? ` x${factor}` : ''} (mean low share over its takes ${bankLow[heavier].toFixed(3)} vs ${bankLow[lighter].toFixed(3)})`);
+    }
   }
   const tail90 = entry('gun_90', 'tail_');
   const tail152 = entry('gun_152', 'tail_');

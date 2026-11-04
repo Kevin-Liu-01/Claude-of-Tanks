@@ -274,7 +274,8 @@
     "durS": 2.2,
     "mMax": -15.9,
     "integrated": -20.8,
-    "truePeak": -0.2
+    "truePeak": -0.2,
+    "low150": 0.988
    },
    {
     "sha256": "b7cf2edc442fb79c009efc3718d9641c7b2906592d61c7c51e3b5f7bf9143f72",
@@ -282,7 +283,8 @@
     "durS": 2.2,
     "mMax": -13.7,
     "integrated": -16.8,
-    "truePeak": -1.2
+    "truePeak": -1.2,
+    "low150": 0.83
    },
    {
     "sha256": "e2cc27785d330282afc0ab6d9bae0fbeac8c35acdab0c0a0d74d6ac27b22816a",
@@ -290,7 +292,8 @@
     "durS": 2.2,
     "mMax": -13.4,
     "integrated": -19.3,
-    "truePeak": -0.9
+    "truePeak": -0.9,
+    "low150": 0.741
    },
    {
     "sha256": "fdff4b007abd999bb40cde8638ddb2be5df4018541154fe0293c5cf3e35ad4f0",
@@ -298,7 +301,8 @@
     "durS": 2.2,
     "mMax": -17.5,
     "integrated": -22.3,
-    "truePeak": -0.7
+    "truePeak": -0.7,
+    "low150": 0.892
    }
   ]
  },
@@ -3420,7 +3424,8 @@
     "durS": 5,
     "mMax": -11.4,
     "integrated": -16.1,
-    "truePeak": -0.9
+    "truePeak": -0.9,
+    "low150": 0.902
    },
    {
     "sha256": "2bcb5860e02cd44a78bc53d83c659d937d7aedda5d71b3ce35c30fcf5df25261",
@@ -3428,7 +3433,8 @@
     "durS": 5,
     "mMax": -12.4,
     "integrated": -17.4,
-    "truePeak": -0.6
+    "truePeak": -0.6,
+    "low150": 0.967
    },
    {
     "sha256": "951ca108a405f815b20c91816b01f1e1dc9379a71d79c35329406cfcb0b9fe5f",
@@ -3436,7 +3442,8 @@
     "durS": 5,
     "mMax": -12,
     "integrated": -15.7,
-    "truePeak": -0.6
+    "truePeak": -0.6,
+    "low150": 0.956
    }
   ]
  },
@@ -3960,7 +3967,8 @@
     "durS": 5.48,
     "mMax": -11.2,
     "integrated": -15.2,
-    "truePeak": -0.8
+    "truePeak": -0.8,
+    "low150": 0.76
    },
    {
     "sha256": "bb14874250d7b657379f525100fbde34617372746d1e9da17ebd8b252c31f9c0",
@@ -3968,7 +3976,8 @@
     "durS": 5.48,
     "mMax": -11.1,
     "integrated": -16.5,
-    "truePeak": -0.7
+    "truePeak": -0.7,
+    "low150": 0.657
    },
    {
     "sha256": "b282c76b1684929ddc02c05f119da5b4acd5cff46bb288f62486f90e72c5beda",
@@ -3976,7 +3985,8 @@
     "durS": 4.98,
     "mMax": -11.4,
     "integrated": -17.7,
-    "truePeak": -0.6
+    "truePeak": -0.6,
+    "low150": 0.627
    }
   ]
  },
@@ -4171,28 +4181,31 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "37a3857b54c73d4468d5456c360377d04ba45b9f777a1f6b5ecf55e7b6852bb0",
-    "bytes": 54224,
-    "durS": 4.818,
-    "mMax": -11.3,
+    "sha256": "841a43ec8741e8c761fa6264b448d226dc2399249cb27249ef0fa172fcf8b080",
+    "bytes": 57529,
+    "durS": 5.48,
+    "mMax": -11.4,
     "integrated": -16.7,
-    "truePeak": -0.3
+    "truePeak": -0.7,
+    "low150": 0.858
    },
    {
-    "sha256": "e113eb6a1ba604d22c9585ccd34bba8eaf6714f135e9644bcaf238b74af50389",
-    "bytes": 59845,
+    "sha256": "b0ab4f2b516303f060dbc6806ad38138a58d9943017040dfb21037df53cb928d",
+    "bytes": 70953,
     "durS": 5.48,
-    "mMax": -11,
-    "integrated": -16.8,
-    "truePeak": -1.5
+    "mMax": -12.2,
+    "integrated": -19.6,
+    "truePeak": -0.7,
+    "low150": 0.921
    },
    {
-    "sha256": "1777bd4cb256716445429a390ce6ac76352472795b4496e3792039fca8a9197a",
-    "bytes": 61915,
+    "sha256": "0e850f377f70044654161c1c9b042e7efc4197742ca4beed3370a4f304a8a8ae",
+    "bytes": 61713,
     "durS": 5.48,
-    "mMax": -11,
-    "integrated": -16.8,
-    "truePeak": -1.8
+    "mMax": -11.3,
+    "integrated": -16.6,
+    "truePeak": -0.5,
+    "low150": 0.683
    }
   ]
  },
@@ -4248,28 +4261,28 @@
   "channels": 1,
   "variants": [
    {
-    "sha256": "364ce2e40a95cf02e1f4a96b6f934caae6a26df012ba96abfea1023ab16a9282",
-    "bytes": 65532,
-    "durS": 5.48,
-    "mMax": -11.6,
-    "integrated": -16.4,
+    "sha256": "c8ba9b9352d06d570598cedbe473d5cf8df0f970ff42960f1224a5315b165213",
+    "bytes": 57376,
+    "durS": 4.972,
+    "mMax": -11.5,
+    "integrated": -16,
     "truePeak": -0.5
    },
    {
-    "sha256": "2489a8657b8e961272ef1cd47e1ce4d6dc6aa2d1a430a7546f9d48b8bf16bf38",
-    "bytes": 59536,
+    "sha256": "6d220cfa6a994be08270dea7b7af18abd5e37d44d764a123449592ccdafff1dc",
+    "bytes": 65087,
     "durS": 5.48,
-    "mMax": -11,
-    "integrated": -16.7,
-    "truePeak": -1.2
+    "mMax": -12.1,
+    "integrated": -15.7,
+    "truePeak": -0.4
    },
    {
-    "sha256": "c5ace639d3406078dc58c03ee530914be3e2e529c992cc78b95af1fd7f1886cb",
-    "bytes": 48375,
-    "durS": 4.194,
-    "mMax": -11.8,
-    "integrated": -18.5,
-    "truePeak": -0.5
+    "sha256": "8f2f52bd15b6b26b8a1de639581ae087d15c898df42115a30264405d0f06e507",
+    "bytes": 65679,
+    "durS": 5.48,
+    "mMax": -11.5,
+    "integrated": -17.2,
+    "truePeak": -0.6
    }
   ]
  },
@@ -4284,7 +4297,8 @@
     "durS": 4.338,
     "mMax": -11.3,
     "integrated": -15.4,
-    "truePeak": -0.9
+    "truePeak": -0.9,
+    "low150": 0.77
    },
    {
     "sha256": "d408128a83a51497830f9c8904a8695acc8eecbfc575d4de52349698c3a271cf",
@@ -4292,7 +4306,8 @@
     "durS": 4.48,
     "mMax": -12.7,
     "integrated": -19,
-    "truePeak": -0.5
+    "truePeak": -0.5,
+    "low150": 0.737
    },
    {
     "sha256": "52d0db09015255918c49c6bba8609fbd5a8d28f794a2c687a695e1e0de20a3ad",
@@ -4300,7 +4315,8 @@
     "durS": 4.144,
     "mMax": -11.3,
     "integrated": -15.9,
-    "truePeak": -0.7
+    "truePeak": -0.7,
+    "low150": 0.699
    }
   ]
  },
@@ -4500,7 +4516,8 @@
     "durS": 4.48,
     "mMax": -11.5,
     "integrated": -16.4,
-    "truePeak": -0.6
+    "truePeak": -0.6,
+    "low150": 0.569
    },
    {
     "sha256": "c1f7eb7dc5111b8c7420da926f5a9eeb37d7c6dbd9c7a395c7134c7ca72a9e63",
@@ -4508,7 +4525,8 @@
     "durS": 4.48,
     "mMax": -10.9,
     "integrated": -15.1,
-    "truePeak": -0.8
+    "truePeak": -0.8,
+    "low150": 0.635
    },
    {
     "sha256": "d5c81c0b824221f385102e6e1a8ee0ccb821003fd6639e6ece3109a9667bfc61",
@@ -4516,7 +4534,8 @@
     "durS": 4.48,
     "mMax": -11.3,
     "integrated": -16.2,
-    "truePeak": -0.7
+    "truePeak": -0.7,
+    "low150": 0.417
    }
   ]
  },
@@ -5643,7 +5662,8 @@
     "durS": 1,
     "mMax": -22.4,
     "integrated": -24.7,
-    "truePeak": -1.5
+    "truePeak": -1.5,
+    "low150": 0.08
    },
    {
     "sha256": "fa34603539026ed3832de2aadd39a043e0f3de7230f715c20ff5a23158432b6b",
@@ -5651,7 +5671,8 @@
     "durS": 1,
     "mMax": -20.7,
     "integrated": -23.5,
-    "truePeak": -1.6
+    "truePeak": -1.6,
+    "low150": 0.116
    },
    {
     "sha256": "5ae556bdc72d50d403b33ec86dbd08fdb227655f609f1fa2f35157bbc5efe45b",
@@ -5659,7 +5680,8 @@
     "durS": 1,
     "mMax": -14.4,
     "integrated": -18,
-    "truePeak": -1.1
+    "truePeak": -1.1,
+    "low150": 0.106
    },
    {
     "sha256": "0c260cd9175d65003345df4332270c4bd6da00c0afba1c533245ea193ed0c1c6",
@@ -5667,7 +5689,8 @@
     "durS": 1,
     "mMax": -20.6,
     "integrated": -24.3,
-    "truePeak": -3.1
+    "truePeak": -3.1,
+    "low150": 0.039
    }
   ]
  },
