@@ -454,43 +454,47 @@ function addK21Mantlet(P: TankBuilderPort): void {
                 .map(([r, z]) => new THREE.Vector2(r, z)), segments).rotateX(Math.PI / 2);
         }));
     // Jacket: chamfered rear end, body, rounded front flange, then the collar's two steps and the cone to the .036 tube.
-    P.addGunExtra(lathe([[0, .532], [.100, .532], [.125, .560], [.125, .770], [.135, .776], [.135, .804], [.131, .816],
-        [.120, .825], [.100, .825], [.100, .862], [.094, .868], [.075, .868], [.075, .898], [.069, .904], [.052, .904],
-        [.044, .936], [0, .936]], [5, 6]));
+    P.addGunExtra(lathe([[0, .532], [.100, .532], [.125, .560], [.125, .810], [.135, .816], [.135, .844], [.131, .856],
+        [.120, .865], [.100, .865], [.100, .902], [.094, .908], [.075, .908], [.075, .938], [.069, .944], [.052, .944],
+        [.044, .976], [0, .976]], [5, 6]));
     const plate = (w: number, bottom: number, top: number, c: number) => [[-w, bottom], [w, bottom], [w, top - c],
         [w - c, top], [-w + c, top], [-w, top - c]] as const;
     // Housing body with a chamfered rear edge, and its hood: a frame 5 mm proud of the body all round, 40 mm deep.
     P.addGunExtra(sectionSolid([
-        { z: .525, ring: plate(.196, .090, .238, .016) },
-        { z: .562, ring: plate(.200, .086, .272, .022) },
-        { z: .768, ring: plate(.200, .086, .272, .022) },
+        { z: .525, ring: plate(.206, .090, .246, .016) },
+        { z: .562, ring: plate(.210, .086, .282, .022) },
+        { z: .808, ring: plate(.210, .086, .282, .022) },
     ]));
-    const hood = new THREE.Shape(plate(.205, .081, .281, .024).map(([x, y]) => new THREE.Vector2(x, y)));
-    hood.holes.push(new THREE.Path(plate(.168, .110, .240, .010).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
-    P.addGunExtra(new THREE.ExtrudeGeometry(hood, { depth: .040, bevelEnabled: false, steps: 1 }), 0, 0, .762);
+    const hood = new THREE.Shape(plate(.215, .081, .291, .024).map(([x, y]) => new THREE.Vector2(x, y)));
+    hood.holes.push(new THREE.Path(plate(.176, .112, .250, .010).map(([x, y]) => new THREE.Vector2(x, y)).reverse()));
+    P.addGunExtra(new THREE.ExtrudeGeometry(hood, { depth: .040, bevelEnabled: false, steps: 1 }), 0, 0, .802);
     // Coaxial port in the recessed plate, facing straight ahead: a flush dark mouth inside a low raised collar.
     const lip = [[.044, -.004], [.056, -.004], [.056, .006], [.052, .011], [.044, .011], [.044, -.004]] as const;
-    P.addGunExtra(lathe(lip, [], P.q ? 20 : 12), 0, .176, .768);
-    P.addGunExtraDark(cylZ(.044, .006, P.q ? 20 : 12), 0, .176, .768);
+    P.addGunExtra(lathe(lip, [], P.q ? 20 : 12), 0, .181, .808);
+    P.addGunExtraDark(cylZ(.044, .006, P.q ? 20 : 12), 0, .181, .808);
 }
 /** The real gun sits in a vertical well cut in the turret front plate, with chamfered lower corners. This turret face
- * is a closed plate, so a bevelled armour lip, a dark lining on its inner walls and a dark back plate form the well
- * (world metres). 2026-11-04: grown with the jacket; the .32 m opening leaves a .035 m dark gap round it, the sill
- * clears its lowest sweep at full depression, the lip stands .06 m proud of the face and its arms stop under the
- * housing's floor at full depression. */
+ * is a closed plate, so a bevelled armour surround, a dark lining on its inner walls and a dark back plate form the well
+ * (world metres). 2026-11-04: grown with the jacket. The .32 m opening leaves a .035 m dark gap round it and its sill
+ * clears the jacket's lowest sweep at full depression. Below the bore the surround's inner arms stop under the
+ * housing's floor at full depression; outboard of the housing (|x| .235 and out, .02 m clear of it at every pitch) its
+ * cheeks rise to 2.46, so the slot reads deep and the jacket's root never shows daylight from the side. */
 function addK21GunWell(P: TankBuilderPort): void {
-    const top = 2.322, inner = [[.160, top], [.160, 2.142], [.118, 2.100], [-.118, 2.100], [-.160, 2.142], [-.160, top]] as const;
-    const frame = (outer: number, bottom: number) => [[-outer, bottom], [outer, bottom], [outer, top], ...inner,
-        [-outer, top]] as const;
-    equipment(P, 'turret', 'PaintedDetail', sectionSolid([{ z: .785, ring: frame(.300, 2.072) },
-        { z: .850, ring: frame(.212, 2.090) }]), 0, 0, 0);
+    const top = 2.322, step = .235, inner = [[.160, top], [.160, 2.142], [.118, 2.100], [-.118, 2.100], [-.160, 2.142],
+        [-.160, top]] as const;
+    const surround = (outer: number, bottom: number, cheek: number) => [[-outer, bottom], [outer, bottom], [outer, cheek],
+        [step, cheek], [step, top], ...inner, [-step, top], [-step, cheek], [-outer, cheek]] as const;
+    equipment(P, 'turret', 'PaintedDetail', sectionSolid([{ z: .785, ring: surround(.320, 2.072, 2.460) },
+        { z: .860, ring: surround(.300, 2.090, 2.448) }]), 0, 0, 0);
     // Dark lining 2.5 mm either side of the opening's walls and sill, recessed 2 mm behind the lip.
     const d = .0025, k = d * (Math.SQRT2 - 1), y = top - .002;
     const lining = [[-.160 - d, y], [-.160 - d, 2.142 - k], [-.118 - k, 2.100 - d], [.118 + k, 2.100 - d],
         [.160 + d, 2.142 - k], [.160 + d, y], [.160 - d, y], [.160 - d, 2.142 + k], [.118 - k, 2.100 + d],
         [-.118 + k, 2.100 + d], [-.160 + d, 2.142 + k], [-.160 + d, y]] as const;
-    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .789, ring: lining }, { z: .848, ring: lining }]), 0, 0, 0);
-    const back = [[-.118, 2.096], [.118, 2.096], [.161, 2.139], [.161, 2.440], [-.161, 2.440], [-.161, 2.139]] as const;
+    equipment(P, 'turret', 'Dark', sectionSolid([{ z: .789, ring: lining }, { z: .858, ring: lining }]), 0, 0, 0);
+    // Back plate: the opening, then the full slot between the cheeks above the arms.
+    const back = [[-.118, 2.096], [.118, 2.096], [.161, 2.139], [.161, 2.318], [.236, 2.318], [.236, 2.458],
+        [-.236, 2.458], [-.236, 2.318], [-.161, 2.318], [-.161, 2.139]] as const;
     equipment(P, 'turret', 'Dark', sectionSolid([{ z: .786, ring: back }, { z: .800, ring: back }]), 0, 0, 0);
 }
 function buildK21Turret(P: TankBuilderPort): void {
