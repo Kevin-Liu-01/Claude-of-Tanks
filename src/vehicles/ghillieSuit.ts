@@ -71,6 +71,13 @@ interface TopPanel {
    * origin, instead of ending in the grid's staircase where a diagonal edge (a cheek's top edge) crosses the cells.
    */
   clipEdges?: readonly (readonly [Point2, Point2])[];
+  /**
+   * Release 268 builder E (m1a1_abrams_fep, the critics: "rigid flat boards ... like paint, with no volume"): a fitted
+   * cover's lumps, the most it rises over its seat (m): a slow swell and smaller bunches, never into the armour.
+   */
+  lumpM?: number;
+  /** Release 268 builder E: no torn cells along the grid's border (a sleeve's edges meet its side drapes edge to edge). */
+  cleanEdge?: boolean;
   /** Scales an unseated carrier's billow and gathered folds (default 1; a hull deck under the turret's sweep keeps it low). */
   reliefScale?: number;
   /** Scales the roll bunched round each opening of an unseated carrier (default 1; low under a roof gun's sweep). */
@@ -191,6 +198,51 @@ interface SidePanel {
   garnishZ?: readonly [number, number];
   /** Release 268 builder E: no tuft point stands further than this off the axis (|x|): tufts lie on a skirt cover. */
   garnishMaxX?: number;
+  /** Release 268 builder E: the cover lies on its wall and what it carries (HugSpec), from topAt to a clean hem. */
+  hug?: HugSpec;
+}
+
+/**
+ * Release 268 builder E (m1a1_abrams_fep, the critics: "flat boards", "a tall flat-sided box", "a loose plank", "flat
+ * cards standing off the faces"): a cover laid ON what it covers. Each point lies on the outermost armour within reach of
+ * it, the cloth sagging between its supports (the armour's dilation by a sag paraboloid, HUG_SAG_K), with lumps up to
+ * lumpM over that; where it leaves its last support it hangs plumb (it never tucks in under an overhang faster than a
+ * slow drift). Its top row is tied to the surface under it, the seat gap off it, so the cover hangs from where it is
+ * fastened. reachA / reachB: the reach along the drape and up it (m).
+ */
+interface HugSpec {
+  readonly lumpM: number;
+  readonly reachA?: number;
+  readonly reachB?: number;
+}
+/** The sag of a hugging cover between its supports: 2 cm at 10 cm from the nearest. */
+const HUG_SAG_K = 2.0;
+/** How fast a hugging cover may drift in under an overhang as it falls (m per 2 cm row). */
+const HUG_DRIFT_M = 0.004;
+/** One hugging section: from yTop down to hemY in 2 cm rows; `wall(dA, y)` is the outermost armour dA along the drape. */
+function hugSection(wall: (dA: number, y: number) => number | null, hug: HugSpec, yTop: number, hemY: number, gap: number,
+  lump: (y: number) => number, maxOut = Infinity): { pts: Array<[number, number]>; corner: number } | null {
+  const ra = hug.reachA ?? 0.12, rb = hug.reachB ?? 0.10;
+  const pts: Array<[number, number]> = [];
+  let prev: number | null = null;
+  for (let yy = yTop; yy >= hemY - 1e-6; yy -= 0.02) {
+    if (!pts.length) {
+      // the tie: the top row on the surface under it
+      const w = wall(0, yy);
+      if (w !== null) { prev = w; pts.push([Math.min(maxOut, w + gap), yy]); continue; }
+    }
+    let best = -Infinity;
+    for (let da = -ra; da <= ra + 1e-9; da += ra / 3) for (let db = -rb; db <= rb + 1e-9; db += 0.02) {
+      if (yy + db > yTop + 0.02) continue;
+      const w = wall(da, yy + db);
+      if (w !== null) best = Math.max(best, w - HUG_SAG_K * (da * da + db * db));
+    }
+    if (prev !== null) best = Math.max(best, prev - HUG_DRIFT_M);
+    if (best === -Infinity) continue;
+    prev = best;
+    pts.push([Math.min(maxOut, best + gap + lump(yy)), yy]);
+  }
+  return pts.length > 1 ? { pts, corner: 0 } : null;
 }
 
 interface FacePanel {
@@ -217,6 +269,8 @@ interface FacePanel {
   taut?: boolean;
   /** Release 268 builder E: scales this face's garnish count (default 1), as TopPanel.garnishDensity. */
   garnishDensity?: number;
+  /** Release 268 builder E: the cover lies on the face and what it carries (HugSpec), from y1 to a clean hem at y0. */
+  hug?: HugSpec;
 }
 
 interface GhilliePanels {
@@ -1257,7 +1311,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
           if (d < 0.05) seam = Math.max(seam, 0.009 * (1 - d / 0.05));
         }
       }
-      y[k] = base[k] + 0.001 + 0.0015 * (1 + clothNoise(xs[i], zs[j], 0.4, s + 3)) + seam;
+      // (release 268 builder E, TopPanel.lumpM: a slow swell and smaller bunches over the seat, never into the armour)
+      const lumps = panel.lumpM ? panel.lumpM * (0.62 * (0.5 + 0.5 * clothNoise(xs[i], zs[j], 0.34, s + 61))
+        + 0.38 * (0.5 + 0.5 * clothNoise(xs[i], zs[j], 0.13, s + 67))) : 0;
+      y[k] = base[k] + 0.001 + 0.0015 * (1 + clothNoise(xs[i], zs[j], 0.4, s + 3)) + seam + lumps;
     }
   } else {
     // supports: the sticks and boughs pushed under the net (they hold it up; it sags away from them); the roll
@@ -1483,7 +1540,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       .some(([px, pz]) => insideAny(px, pz, holeSet))) continue;
     if (clipped(i, j)) continue;
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
-    if (edge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    if (edge && !panel.cleanEdge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     if (cutLines.length) {
       const poly = clipCell([a, b, c, d]);
@@ -1994,7 +2051,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const maxOut = (cfg.maxHalfWidth ?? Infinity) - 0.002;
   const probe = support.probe;
   const hem = (z: number): number => {
-    if (panel.flat || panel.taut) return bottomAt(z);
+    if (panel.flat || panel.taut || panel.hug) return bottomAt(z);
     const authored = bottomAt(z + side * HEM_PHASE_M);
     const h = hemAt(ties, z);
     // a ragged hem: scalloped between the ties, torn short and long from one column to the next
@@ -2024,8 +2081,8 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     return null;
   };
   const spec: CurtainSpec = {
-    a0: z0, a1: z1, seed: s, foldK: panel.flat || panel.taut ? 0 : support.fitted ? 0.18 : 1, maxOut,
-    ...(panel.flat || panel.taut ? { cleanHem: true } : {}),
+    a0: z0, a1: z1, seed: s, foldK: panel.flat || panel.taut || panel.hug ? 0 : support.fitted ? 0.18 : 1, maxOut,
+    ...(panel.flat || panel.taut || panel.hug ? { cleanHem: true } : {}),
     hem,
     section(z, hemY) {
       if (!probe) return null;
@@ -2038,6 +2095,12 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
         }
         const x = Math.min(maxOut, Math.max(wall + FITTED_GAP_M, outAt(z, 1)));
         return { pts: [[x, yTop], [x, hemY]], corner: 0 };
+      }
+      if (panel.hug) {
+        // armour under a cut (a discharger bank the cloth is cut away over) does not hold the cloth out
+        const held = (zz: number, yy: number): boolean => !cuts.some(([c0, c1, , hi]) => zz > c0 && zz < c1 && yy < hi);
+        return hugSection((dz, yy) => (held(z + dz, yy) ? probe.side(yy, z + dz, side) : null), panel.hug, topAt(z), hemY,
+          FITTED_GAP_M, (yy) => panel.hug!.lumpM * (0.5 + 0.5 * clothNoise(yy, z, 0.26, s + 71)), maxOut);
       }
       if (panel.taut) {
         const yTop = topAt(z);
@@ -2117,7 +2180,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     allowed: () => true,
     cardOk: (p) => p[2] >= z0 - 0.05 && p[2] <= z1 + 0.05 && (!underTurret || p[1] <= topRow(p[2]) + 0.005)
       // (release 268, SidePanel.flat / taut: the hem is clean, no spray hangs below it)
-      && (!(panel.flat || panel.taut) || p[1] >= bottomAt(p[2]) + 0.01)
+      && (!(panel.flat || panel.taut || panel.hug) || p[1] >= bottomAt(p[2]) + 0.01)
       && (!panel.garnishZ || (p[2] >= panel.garnishZ[0] && p[2] <= panel.garnishZ[1]))
       && (panel.garnishMaxX === undefined || Math.abs(p[0]) <= panel.garnishMaxX)
       && !cuts.some(([c0, c1, , hi]) => p[2] > c0 - 0.04 && p[2] < c1 + 0.04 && p[1] < hi + 0.04),
@@ -2134,18 +2197,39 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
   const tied = panel.seatGapM !== undefined || support.fitted;
   const gap = tied && probe ? Math.min(panel.seatGapM ?? FITTED_GAP_M, DRAPE_GAP_M - 0.002) : panel.seatGapM ?? DRAPE_GAP_M;
   const hem = (x: number): number => {
-    if (panel.taut) return y0;
+    if (panel.taut || panel.hug) return y0;
     const jag = (hash01(Math.round(x * 41), s, 0x5d) - 0.5) * 0.04;
     const scallop = 0.035 * Math.max(0, Math.sin(x * 7.3 + s * 0.01)) ** 2;
     const raised = support.hemFloorAt ? support.hemFloorAt(x, facing * authoredZ(x, y0)) : -Infinity;
     return Math.max(y0 - scallop + jag, support.hull ? Math.min(y0, support.hemFloor) : y0 - 0.06, raised);
   };
   const spec: CurtainSpec = {
-    a0: x0, a1: x1, seed: s, foldK: panel.taut ? 0 : tied ? 0.25 : 0.8, maxOut: Infinity,
-    ...(panel.taut ? { cleanHem: true } : {}),
+    a0: x0, a1: x1, seed: s, foldK: panel.taut || panel.hug ? 0 : tied ? 0.25 : 0.8, maxOut: Infinity,
+    ...(panel.taut || panel.hug ? { cleanHem: true } : {}),
     hem,
     section(x, hemY) {
       if (!probe) return null;
+      if (panel.hug) {
+        // the face and what it carries (within TIED_REACH_M of the authored plane), or the plane itself where neither is;
+        // each column starts on the outline's top edge (a slanted edge is the cloth's, not the grid's staircase)
+        let yTop = y1;
+        if (outline) {
+          let top = -Infinity;
+          for (let k = 0; k < outline.length; k++) {
+            const [ax, ay] = outline[k], [bx, by] = outline[(k + 1) % outline.length];
+            if ((x - ax) * (x - bx) > 0 || ax === bx) continue;
+            top = Math.max(top, ay + (by - ay) * (x - ax) / (bx - ax));
+          }
+          if (!Number.isFinite(top)) return null;
+          yTop = Math.min(y1, top - 0.004);
+        }
+        // (only the panel's own span holds it: past its ends stand the mantlet's shield and the flank's cassettes)
+        return hugSection((dx, yy) => {
+          if (x + dx < x0 || x + dx > x1) return null;
+          const plane = facing * authoredZ(x + dx, yy), f = probe.face(x + dx, yy, facing);
+          return f !== null && Math.abs(f - plane) <= TIED_REACH_M ? f : plane;
+        }, panel.hug, yTop, hemY, gap, (yy) => panel.hug!.lumpM * (0.5 + 0.5 * clothNoise(x, yy, 0.26, s + 73)));
+      }
       if (panel.taut) {
         // each height's furthest-out armour (within 6 cm across), as a lift off the authored plane; bridged 10 cm up and
         // down at 8 mm per 2 cm, so the cloth spans the modules' seams and comes down to the plate past their ends
@@ -3914,7 +3998,9 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         // (the A/B polish: a little relief so the cloth reads as net, not paint; no spray standing at the cheeks' front
         // corners or over the mantlet slot)
         foliageExclude: [rect(0.95, 1.30, -0.10, 1.20), rect(-1.30, -0.95, -0.10, 1.20), rect(-0.55, 0.55, 1.15, 1.85)],
-        reliefScale: 0.6, rimScale: 0.5, garnishRiseM: 0.05, seed: 37 }],
+        // (the A/B net-volume round, the critics: "rigid flat boards and stair-stepped flat patches, like paint": the
+        // cover swells up to 2.4 cm over its seat in slow lumps and smaller bunches, its tufts standing a little higher)
+        lumpM: 0.024, reliefScale: 0.6, rimScale: 0.5, garnishRiseM: 0.07, seed: 37 }],
       // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): both flank covers were fitted round
       // the bustle, each column stepping out and back as the wall did, and creased into a crumpled lump at the rear
       // corner: on the -X flank over the bustle-side stowage drum and its boxes (x -1.70..-1.47, z -3.17..-2.08), on the
@@ -3935,20 +4021,28 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       // launchers' tops and stood above the corner seen from across the roof, so the cut now runs the drape's full
       // height there, and the cheek's side face ahead of the bank carries its own short length of the cover)
       // (each keeps its columns' spacing, so they fall at the smoke launchers' cut as before)
-      side: [-1, 1].map((side) => ({ side, z0: -2.43, z1: 1.16, nz: side < 0 ? 36 : 35, ny: 8, taut: true,
+      // (the A/B net-volume round, the critics: "a tall flat-sided box that hides the sloped front face", "one sheet stands
+      // off the turret wall like a loose plank": each cover lies ON the wall and its cassettes (SidePanel.hug), sagging
+      // between them and lumpy, the 26-degree wall reading through it, and hangs plumb below the last cassette)
+      // (and they end at the M250 bank: their short lengths over the cheek's side face ahead of it read as cards standing
+      // off the corner)
+      side: [-1, 1].map((side) => ({ side, z0: -2.43, z1: 0.34, nz: 28, ny: 18, hug: { lumpM: 0.012 },
         topAt: (z: number) => Math.min(sepv3TurretRoofY(z) - 0.01, 0.632 - (z - 0.94) * 2.758), bottomAt: () => 0.04,
         outAt: (z: number, t: number) => (z < -1.65 ? 1.60 : 1.72) + (1 - t) * 0.028, seed: 51 + side,
-        cuts: [[0.36, 0.76, 0.10, 0.70]], garnishDensity: 0.7, garnishZ: [-1.95, 0.0] as const })),
+        garnishDensity: 0.7, garnishZ: [-1.95, 0.0] as const })),
       // The cheeks' front faces under the same net (SidePanel's taut rule for a face, FacePanel.taut), laid over the
       // spec's eight ERA modules on each (they stay as built), from the cheek's top edge to its toe, outboard of the
       // mantlet slot by 6 cm (|x| >= 0.38).
       // (the cloth follows the face over the modules, bridging their seams, and comes down to the plate past their ends;
       // its top edge is the cheek's, y = 0.4879 + 0.1145|x|, where the roof net's clipped edge meets it)
-      face: [1, -1].map((s) => ({ z: 1.4, x0: s > 0 ? 0.38 : -1.58, x1: s > 0 ? 1.58 : -0.38, y0: -0.02, y1: 0.64, nx: 14, ny: 6,
-        zAt: (x: number, y: number) => 2.3131 - 0.7269 * Math.abs(x) - 0.7053 * y + 0.12, taut: true,
+      // (the A/B net-volume round, the critics: "the cheek covers are flat cards standing off the faces": each lies on its
+      // modules and the face between and past them, sagging into their seams, lumpy (FacePanel.hug))
+      face: [1, -1].map((s) => ({ z: 1.4, x0: s > 0 ? 0.385 : -1.565, x1: s > 0 ? 1.565 : -0.385, y0: -0.02, y1: 0.64, nx: 22, ny: 14,
+        zAt: (x: number, y: number) => 2.3131 - 0.7269 * Math.abs(x) - 0.7053 * y + 0.12,
+        hug: { lumpM: 0.01, reachA: 0.10, reachB: 0.08 },
         // (the A/B polish: the net lies on the cheeks with its relief alone, no sheets standing at their front corners
         // or a flap over the mantlet slot)
-        outline: [[s * 0.38, -0.02], [s * 1.57, -0.02], [s * 1.259, 0.632], [s * 0.38, 0.531]], garnishDensity: 0, seed: 61 + s })),
+        outline: [[s * 0.38, -0.03], [s * 1.575, -0.03], [s * 1.259, 0.632], [s * 0.38, 0.531]], garnishDensity: 0, seed: 61 + s })),
     },
     // The M256 under the same net (the owner's cover request, 2026-11-03: "cover ... cannonn with gfhillie and nett"): a
     // sleeve from the shield's collar to 0.35 m short of the muzzle (gun frame, z along the bore), pitching with the gun:
@@ -3959,13 +4053,18 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     gun: {
       // (the A/B polish: thinner and on the tube, so the thermal sleeve's and the evacuator's steps show; started 0.20 m
       // clear of the shield's face; the tufts low along it, none within 0.25 m of the shield or on the last 1.1 m)
-      top: [{ x0: -0.10, x1: 0.10, z0: 0.62, z1: 3.77, nx: 4, nz: 64,
-        yAt: (_x: number, z: number) => m1a1GunSleeveR(z) + 0.01,
+      // (the A/B net-volume round, the critics: "banded sleeves" blurring the evacuator, tube and sleeve into one thick
+      // section: no cord ties round it any more, and both halves lie on each step of the tube, 3 cm columns)
+      top: [{ x0: -0.085, x1: 0.085, z0: 0.62, z1: 3.77, nx: 6, nz: 104,
+        yAt: (_x: number, z: number) => m1a1GunSleeveR(z) + 0.01, lumpM: 0.003, cleanEdge: true,
         yFromArmour: true, clipToArmour: true, seatGapM: 0.008, riseLimitM: 0.12, envelopeM: 0.03,
         foliageExclude: [rect(-0.3, 0.3, 0.55, 0.85), rect(-0.3, 0.3, 3.05, 3.85)],
         garnishDensity: 20, garnishRiseM: 0.03, garnishHalfWidthM: 0.22, reliefScale: 0.15, rimScale: 0.3, seed: 41 }],
-      side: [-1, 1].map((side) => ({ side, z0: 0.62, z1: 3.77, nz: 48, ny: 4, taut: true,
-        topAt: (z: number) => m1a1GunSleeveR(z) * 0.55, bottomAt: () => -0.09,
+      // (each side from the top's 0.085 edge, where the tube's surface stands 8.5 cm off the bore line, edge to edge, down
+      // round the tube to 9 cm under it)
+      side: [-1, 1].map((side) => ({ side, z0: 0.62, z1: 3.77, nz: 104, ny: 8,
+        hug: { lumpM: 0.003, reachA: 0.02, reachB: 0.02 },
+        topAt: (z: number) => Math.sqrt(Math.max(0, m1a1GunSleeveR(z) ** 2 - 0.085 ** 2)), bottomAt: () => -0.09,
         outAt: (z: number) => m1a1GunSleeveR(z) + 0.008, garnishZ: [0.85, 3.05] as const, seed: 43 + side })),
     },
   },
