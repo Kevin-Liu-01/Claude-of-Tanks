@@ -26,6 +26,8 @@ import { FIRE_BASE_TICKS, selectShell, strainModule, tickModuleRepairs, tickRelo
 import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
+import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
 
 export { MIGRATION_EVENT_KIND, MigrationStore, isMigrationEventKind } from '../match/migrationStore.ts';
 export type { MigrationChunkPayload, RetainedBlob } from '../match/migrationStore.ts';
@@ -180,7 +182,9 @@ const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
 const isReloadKind = (kind: unknown): kind is typeof RELOAD_KINDS[number] => (RELOAD_KINDS as readonly unknown[]).includes(kind);
 const finiteOr = (value: unknown, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
 const captureReload = (reload: ReloadLike | undefined): MigrationReload => [reload?.t ?? 0, reload?.totalS ?? 0, reload?.kind ?? 'ready'];
-function writeReload(target: ReloadLike | undefined, carried: MigrationReload | undefined): void {
+/** A channel at rest (loaded, no cycle running): the fresh host's own channel is that already (damage.ts createCombatState). */
+const reloadAtRest = (reload: ReloadLike | undefined): boolean => !reload || (reload.t <= 0 && reload.kind === 'ready');
+function writeReload(target: ReloadLike | undefined, carried: MigrationReload | null | undefined): void {
   if (!target || !Array.isArray(carried)) return;
   target.t = Math.max(0, finiteOr(carried[0], target.t));
   target.totalS = Math.max(0, finiteOr(carried[1], target.totalS));
@@ -703,7 +707,28 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
 /** Seconds left until a sim time (never negative). */
 const leftOf = (at: number, timeS: number): number => Math.max(0, Math.round((finiteOr(at, 0) - timeS) * 1000) / 1000);
 
-/** The extras beside a keyframe row: what the wire row does not carry (MigrationEntityExtras). */
+/** Each vehicle's auxiliary kit as a fresh host builds it (auxiliarySystems.ts createAuxiliaryState), by spec id. */
+const freshAuxiliary = new Map<string, AuxiliaryState>();
+function freshAuxiliaryOf(spec: { id?: string }): AuxiliaryState {
+  const key = String(spec.id ?? '');
+  let fresh = freshAuxiliary.get(key);
+  if (!fresh) { fresh = createAuxiliaryState(spec); freshAuxiliary.set(key, fresh); }
+  return fresh;
+}
+
+/** The auxiliary entry as the fresh host's own kit has it already: lights, switch and smoke charges at the start, nothing cooling down, no rounds fired. */
+function auxiliaryAtRest(entry: NonNullable<MigrationEntityExtras['auxiliary']>, fresh: AuxiliaryState): boolean {
+  return entry.lights === fresh.lights && entry.gunOn === fresh.gunOn && entry.smokeCharges === fresh.smokeCharges && entry.smokeReadyIn === 0 &&
+    entry.shots === fresh.shots && entry.nextShotIn === 0 && (entry.stations ?? []).every(([shots, nextShotIn]) => shots === 0 && nextShotIn === 0);
+}
+
+/**
+ * The extras beside a keyframe row: what the wire row does not carry (MigrationEntityExtras). Round 2 (U2): only what
+ * differs from the state a fresh host builds (restoreCombatExtras keeps the fresh entity's value for an absent field):
+ * a channel at rest is null and an all-rest list absent, a full magazine absent, a consumable block without cooldowns or
+ * active items carries its charges alone, an auxiliary kit at rest is absent. Every field written for every entity
+ * nearly doubled the sealed keyframe each peer receives every 2 s (19 KB to 36 KB typical).
+ */
 export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] {
   const out: MigrationEntityExtras[] = [];
   const timeS = actor.authority.timeS;
@@ -723,24 +748,28 @@ export function captureEntityExtras(actor: MatchActor): MigrationEntityExtras[] 
     const extras: MigrationEntityExtras = { entityId, kills: entity.kills, damage: Math.round(entity.damage), modules, crew, burning };
     if (Object.keys(moduleHp).length) extras.moduleHp = moduleHp;
     if (burning) extras.fire = [combat.fire.ticksLeft, combat.fire.tickTimer];
-    if (combat.reloadChannels?.length) extras.reloads = combat.reloadChannels.map((channel) => captureReload(channel));
-    if (combat.gunReload) extras.gunReload = captureReload(combat.gunReload);
-    if (combat.magazine) extras.magazineRounds = combat.magazine.rounds;
+    if (combat.reloadChannels?.some((channel) => !reloadAtRest(channel))) {
+      extras.reloads = combat.reloadChannels.map((channel) => (reloadAtRest(channel) ? null : captureReload(channel)));
+    }
+    if (combat.gunReload && !reloadAtRest(combat.gunReload)) extras.gunReload = captureReload(combat.gunReload);
+    if (combat.magazine && combat.magazine.rounds !== combat.magazine.capacity) extras.magazineRounds = combat.magazine.rounds;
     if (combat.launcherSalvoShots) extras.launcherSalvoShots = combat.launcherSalvoShots;
     if (combat.launcherCursor) extras.launcherCursor = combat.launcherCursor;
     const consumables = entity.consumables;
     if (consumables) {
       const activeFor: Record<string, number> = {};
       for (const [item, until] of Object.entries(consumables.until)) if (until > timeS) activeFor[item] = leftOf(until, timeS);
-      extras.consumables = { readyIn: consumables.readyAt.map((at) => leftOf(at, timeS)), charges: consumables.charges.slice(), activeFor };
+      const readyIn = consumables.readyAt.map((at) => leftOf(at, timeS));
+      extras.consumables = { charges: consumables.charges.slice(), ...(readyIn.some((left) => left > 0) ? { readyIn } : {}), ...(Object.keys(activeFor).length ? { activeFor } : {}) };
     }
     const aux = combat.auxiliary;
     if (aux) {
-      extras.auxiliary = {
+      const auxiliary: NonNullable<MigrationEntityExtras['auxiliary']> = {
         lights: aux.lights, gunOn: aux.gunOn, smokeCharges: aux.smokeCharges, smokeReadyIn: leftOf(aux.smokeReadyAt, timeS),
         shots: aux.shots, nextShotIn: leftOf(aux.nextShot, timeS),
         ...(aux.stations?.length ? { stations: aux.stations.map((station): [number, number] => [station.shots, leftOf(station.nextShot, timeS)]) } : {}),
       };
+      if (!auxiliaryAtRest(auxiliary, freshAuxiliaryOf(entity.spec))) extras.auxiliary = auxiliary;
     }
     out.push(extras);
   }
