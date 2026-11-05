@@ -34,10 +34,12 @@ const isOffline = (): boolean => typeof navigator !== 'undefined' && navigator.o
  * One reusable, failure-only notice; return/entry owners keep their safe UI. Its one action is declared (2026-11-02
  * audit, 05-ui-2 #8): none, retry, or reload, and a reload while offline waits for the network: the button shows
  * disabled (a press there used to be ignored silently) and the browser's `online` event enables it again. Two notices
- * never stand at once: opening one closes the other (modal.ts open() closes the active modal).
+ * never stand at once: opening one closes the other (modal.ts open() closes the active modal). The wait ends however
+ * the notice closes (round 2): its action, hide(), or the modal's own close (its button, Escape, another modal), which
+ * `makeModal`'s onClose reports.
  */
 export function createGarageReturnFailurePresenter(
-  makeModal: () => FailureModal,
+  makeModal: (onClose: () => void) => FailureModal,
   getTitle: () => string,
   formatBody: (reason: string, error: RuntimeValue) => string = (reason) => reason,
 ): FailurePresenter {
@@ -61,7 +63,7 @@ export function createGarageReturnFailurePresenter(
   };
   const show = (error: RuntimeValue, retry: (() => void) | null = null): void => {
     const title = getTitle();
-    modal ??= makeModal();
+    modal ??= makeModal(stopWaiting);
     modal.setTitle(title);
     // Errors are text, never markup. Unknown failures still have a useful
     // notice without assuming an Error's realm or retaining gameplay state.
@@ -101,7 +103,7 @@ export function createGarageReturnFailurePresenter(
 
 // Imported by main only after a failed action, not on boot or a good rematch.
 export const showGarageReturnFailure = createGarageReturnFailurePresenter(
-  () => createModal({ size: 'small', surface: 'garage-return-failure' }),
+  (onClose) => createModal({ size: 'small', surface: 'garage-return-failure', onClose }),
   () => t('boot.retry'),
 );
 
@@ -114,7 +116,7 @@ export const hideGarageReturnFailure = (): void => showGarageReturnFailure.hide(
  * silent return (soloBattleEntryRuntime.ts). Demand-loaded like the return notice.
  */
 export const showSoloEntryFailure = createGarageReturnFailurePresenter(
-  () => createModal({ size: 'small', surface: 'battle-entry-failure' }),
+  (onClose) => createModal({ size: 'small', surface: 'battle-entry-failure', onClose }),
   () => t('battle.entryFailed.title'),
   // a file the network dropped says so quietly (no module URL in the player's face), a chunk that did not arrive
   // asks for the page's reload; any other failure keeps its reason

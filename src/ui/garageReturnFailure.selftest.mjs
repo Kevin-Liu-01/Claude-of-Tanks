@@ -130,6 +130,20 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   presenter(new Error('a build failure'), () => {});
   assert.equal(action.disabled, false, 'a retry (no reload) never waits for the network');
   assert.equal(online, 0);
+  // (round 2) the notice closing itself (its close button, Escape through the stack, another modal opening) ends the
+  // wait too: the online listener used to stay until the network came back and re-enabled a closed notice's button
+  {
+    let fake = null;
+    const notice = createGarageReturnFailurePresenter((onClose) => {
+      fake = { body: { textContent: '' }, footer: { children: [], append(child) { this.children.push(child); } },
+        setTitle() {}, open() {}, close() { onClose?.(); } };
+      return fake;
+    }, () => 'The battle could not start');
+    notice(chunk);
+    assert.equal(online, 1, 'offline, the reload waits for the network');
+    fake.close({ restoreFocus: true }); // the modal's own close (createModal calls its onClose), not the presenter's hide
+    assert.equal(online, 0, 'a notice that closed itself stops the wait');
+  }
   delete globalThis.window;
   delete globalThis.location;
   if (realNavigator) Object.defineProperty(globalThis, 'navigator', realNavigator); else delete globalThis.navigator;
