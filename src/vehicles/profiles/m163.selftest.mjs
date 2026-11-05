@@ -15,8 +15,11 @@
 //  - a whip at each rear corner of the turret (r3), about 2.5 m from foot to tip and raked aft (r4), riding the turret,
 //    behind everything the gun sweeps from full depression to full elevation;
 //  - r4: the raised base's deck 0.25 m over the roof; the upright slab at the ring's right front, over the gun, its rear
-//    top corner cut; the radar's cases 0.4 of the housing across and longer than it; the cradle's flat side plates
-//    either side of the housing, pitching with the gun and off the rotor;
+//    top corner cut; the cradle's flat side plates either side of the housing, pitching with the gun and off the rotor;
+//  - r5: the radar's cases 0.4 of the housing across, their feet level with its foot, their capped tops 15 % of its
+//    diameter over it, on a beam with a brace; the tube under the barrels a third of their length past the housing; the
+//    guard frame over the breech, rising from the ring's front, clear of the seat (and of the gun: the sweep below); the
+//    M741's fuel tanks over the track's ends, their tops falling aft; the long case across the roof's left rear;
 //  - from full depression to full elevation every gun part keeps 2 cm from its turret's own stock (the cross shaft and
 //    the feed joint, bodies about the elevation axis seated in the arms, keep it at every pitch by construction: gun
 //    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw (both ways) and
@@ -33,7 +36,8 @@ import { GUN_HULL_KEEP_M, SurfaceGrid, densePoints, gunHullProbe, meshTriangles,
 import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
-import { M163_GUN, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
+import { m113Datums } from '../m113Datums.ts';
+import { M163_GUN, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
 
 const DEG = Math.PI / 180;
 const ID = 'm163_vads';
@@ -123,15 +127,26 @@ try {
   // of the plate with their tops at the frame's height
   const R = M163_RADAR;
   assert.ok(R.x < 0 && R.z < 0, 'the radar stands right rear');
-  // (r4: the cases 0.4 of the housing across and longer than it, reaching under it; the ray 3 cm off the lid's centre)
-  assert.ok(2 * R.caseR >= 0.38 * 2 * R.r && R.caseTopY - R.caseBottomY >= 1.05 * 2 * R.r && R.caseBottomY < R.y - R.r,
-    'the radar\'s cases as fat as 0.4 of the housing, longer than it, reaching under it');
+  // (r5: the cases 0.4 of the housing across, their feet level with its foot, their capped tops 15 % of its diameter over
+  // its top; the ray 3 cm off the cap's centre)
+  assert.ok(2 * R.caseR >= 0.38 * 2 * R.r, 'the radar\'s cases 0.4 of the housing across');
+  near(R.caseBottomY, R.y - R.r, 0.005, 'the cases\' feet level with the housing\'s foot');
+  near(R.caseTopY - (R.y + R.r), 0.15 * 2 * R.r, 0.01, 'the cases\' capped tops 15 % of the housing over it');
   for (const s of [-1, 1]) {
     const caseTop = firstHit(turret, turret, [R.x + s * R.caseDx + 0.03, 1.6, R.z - R.caseDz], [0, -1, 0], 1);
     assert.ok(caseTop, `the radar's ${s < 0 ? 'outboard' : 'inboard'} case is drawn`);
-    near(caseTop.point.y, R.caseTopY + 0.02, 0.006, 'the case\'s lid');
-    const caseSide = firstHit(turret, turret, [R.x + s * R.caseDx, R.caseBottomY + 0.05, R.z - 1.5], [0, 0, 1], 1.5);
-    near(caseSide?.point.z ?? 0, R.z - R.caseDz - R.caseR, 0.006, 'the case reaching under the housing');
+    near(caseTop.point.y, R.caseTopY, 0.004, 'the case\'s cap');
+    const caseSide = firstHit(turret, turret, [R.x + s * R.caseDx, R.caseBottomY + 0.08, R.z - 1.5], [0, 0, 1], 1.5);
+    near(caseSide?.point.z ?? 0, R.z - R.caseDz - R.caseR, 0.006, 'the case down to the housing\'s foot');
+  }
+  // the support beam under the housing (r5: photos 00, 01, 06): its top halfway out, the brace under it
+  {
+    const Rp0 = T.radarPlate, bx0 = Rp0.x + 0.03, bz0 = Rp0.z0 + 0.15;
+    const mid = [(bx0 + R.x) / 2, (bz0 + R.z) / 2];
+    const beamTop = firstHit(turret, turret, [mid[0], R.y - R.r - 0.01, mid[1]], [0, -1, 0], 0.2);
+    near(beamTop?.point.y ?? 0, R.armY + R.beamH / 2, 0.004, 'the beam\'s top halfway out');
+    const brace = firstHit(turret, turret, [bx0 + (R.x - bx0) * 0.3, R.armY - R.beamH / 2 - 0.002, bz0 + (R.z - bz0) * 0.3], [0, -1, 0], 0.3);
+    assert.ok(brace && brace.point.y > R.braceFootY, 'the brace under the beam');
   }
   assert.ok(Math.hypot(R.x, R.z) > T.drumR, 'the radar housing stands outboard of the ring\'s edge');
   const ball = firstHit(turret, turret, [R.x, 1.6, R.z], [0, -1, 0], 1);
@@ -161,6 +176,38 @@ try {
     const side = firstHit(gun, gun, [s * 1, -0.05, 0.10], [-s, 0, 0], 1);
     near(Math.abs(side?.point.x ?? 0), K.x + K.t / 2, 0.003, `the cradle's ${s > 0 ? 'outboard' : 'inboard'} side plate`);
     assert.ok(side && under(side.object, gun) && !under(side.object, rotor), 'the cradle pitches with the gun, off the rotor');
+  }
+  // the tube under the barrels (r5: photos 00, 03, 04, 10): pitching with the gun, a third of the barrels past the housing
+  {
+    const G = M163_GUN, tube = firstHit(gun, gun, [0, -1, G.underZ[1] - 0.10], [0, 1, 0], 1);
+    near(tube?.point.y ?? 0, G.underY - G.underR, 0.003, 'the tube under the barrels near its nose');
+    assert.ok(tube && !under(tube.object, rotor), 'the tube off the rotor');
+    assert.ok(G.underZ[1] - G.housingFrontZ >= 0.33 * (G.barrelTipZ - G.barrelRearZ), 'the tube a third of the barrels past the housing');
+  }
+  // the guard frame (r5: photos 00, 02, 04, 08): over the gun's breech at the gunner's chest, rising from the deck at the
+  // ring's front, clear of the gunner's seat (the turret's sweep below holds it clear of the gun at every pitch)
+  {
+    const F = M163_GUNNER.guard, S = M163_GUNNER.seat;
+    const top = firstHit(turret, turret, [M163_TRUNNION[0], 1.6, 0.09], [0, -1, 0], 1, [gun]);
+    near(top?.point.y ?? 0, 1.11 + F.r, 0.012, 'the guard frame over the gun\'s breech');
+    const foot = firstHit(turret, turret, [F.path[0][0], 1.6, F.path[0][2] + 0.015], [0, -1, 0], 1.6, [gun]);
+    assert.ok(foot && foot.point.y > T.deckY + 0.3, 'the guard frame rising from the ring\'s front');
+    for (const [x, y, z] of F.path) assert.ok(Math.hypot(x - S.x, y - S.y, z - S.z) > 0.45, 'the guard frame clear of the gunner\'s seat');
+  }
+  // the hull (r5): the A2 fuel tanks riding over the track's ends with the idlers under them, their tops falling aft;
+  // the long flat case across the roof's left rear
+  {
+    const D = m113Datums('fsv'), roofY = M741_RING.roofY;
+    for (const s of [-1, 1]) {
+      const low = firstHit(hull, hull, [s * 1.085, 0.56, D.sternZ - 1.5], [0, 0, 1], 1.6);
+      assert.ok(low && low.point.z > D.sternZ - 0.40, `the ${s > 0 ? 'left' : 'right'} idler's hub shows under its fuel tank (hit z ${low?.point.z.toFixed(2)})`);
+      const face = firstHit(hull, hull, [s * 1.085, 0.93, D.sternZ - 1.5], [0, 0, 1], 1.6);
+      near(face?.point.z ?? 0, D.sternZ - 0.43, 0.01, 'the fuel tank\'s rear face');
+      const [front, rear] = [-0.08, -0.36].map((dz) => firstHit(hull, hull, [s * 1.0, 2.2, D.sternZ + dz], [0, -1, 0], 1.6)?.point.y ?? 0);
+      assert.ok(front - rear > 0.12 && rear > 0.9, `the fuel tank's top falling aft (${front.toFixed(2)} to ${rear.toFixed(2)})`);
+    }
+    const caseTop = [-0.20, 0.35, 0.90].map((x) => firstHit(hull, hull, [x, 2.4, D.sternZ + 0.48], [0, -1, 0], 0.7)?.point.y ?? 0);
+    for (const y of caseTop) assert.ok(y > roofY + 0.2 && y < roofY + 0.3, `the long case 1.3 m across the roof's left rear (top ${y.toFixed(2)})`);
   }
   // the box shield's outer face square to the hull (one face from the side, photo 08)
   const B = T.boxShield, midY = (B.footY + B.topY) / 2, outX = (B.foot.outX + B.top.outX) / 2;

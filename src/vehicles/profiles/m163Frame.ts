@@ -72,9 +72,10 @@ export const M163_GUN = Object.freeze({
   cradle: Object.freeze({ x: 0.165, t: 0.025, floorY: -0.1875, floorZ0: -0.13,
     outline: Object.freeze([[0.25, -0.20], [0.25, 0.10], [0.12, 0.13], [-0.19, 0.13], [-0.24, 0.07], [-0.24, -0.05],
       [-0.13, -0.20]] as const) }),
-  /** the cylinder under the housing pointing forward (r3: photos 03, 04): 0.09 m across (0.64 of the cluster's 0.14 m),
-   * 0.50 m long (a third of the barrels' length), its nose ring */
-  underR: 0.045, underY: -0.15, underZ: [-0.03, 0.47] as const,
+  /** the tube under the barrels pointing forward, parallel to them (r5: photos 00, 03, 04, 10): 0.09 m across (0.64 of the
+   * cluster's 0.14 m), from under the housing's rear third to 0.54 m ahead of its mouth (a third of the barrels' 1.52 m;
+   * 04: ~0.45 m beyond the cradle), its nose ring and cap */
+  underR: 0.045, underY: -0.15, underZ: [-0.03, 0.78] as const,
   /** the round lamp on the mount's top (r2: photo 06), 0.15 m across */
   lampR: 0.075, lampX: 0.09, lampY: 0.235, lampZ: 0.15,
   /** the segmented linkless chute from the inboard trunnion's feed joint rising aft of the housing and arching 0.38 m over
@@ -89,12 +90,20 @@ export const M163_MUZZLE_Z = 1.655;
 /** The spindle's opening the fleet carves at the mouth (tankFactoryCore.ts P.muzzleMouth). */
 export const M163_MUZZLE_MOUTH = Object.freeze({ outerRadiusM: 0.013, innerRadiusM: 0.006 });
 
-/** The gunner's seat in his column and his sight head on its post on the column's front rim, above the gun's breech and
- * inboard of its sweep (r2: photos 00/01, 06: a box 0.20 x 0.20 x 0.30 m, its top 1.1 m over the roof). The linkless
- * drum lives in the hull under the turret (m163Specs.ts). */
+/** The gunner's seat in his column, his sight head on its post on the column's front rim, above the gun's breech and
+ * inboard of its sweep (r2: photos 00/01, 06: a box 0.20 x 0.20 x 0.30 m, its top 1.1 m over the roof), and the guard
+ * frame over the breech to it. The linkless drum lives in the hull under the turret (m163Specs.ts). */
 export const M163_GUNNER = Object.freeze({
   seat: Object.freeze({ x: -0.16, y: 0.50, z: -0.40 }),
   sight: Object.freeze({ x: 0.02, y: 1.00, z: -0.02, w: 0.20, h: 0.20, d: 0.30 }),
+  /** the guard frame (r5: photos 00, 02, 04, 08): one 6 cm pipe rising from the deck at the ring's front inboard of the
+   * gun, arching back to the sight head's top front at the gunner's chest, running outboard over the gun's breech and
+   * down outboard of the gun to the deck beside its trunnion arm. Over the breech it stays 0.55 m or more from the
+   * elevation axis and 20 degrees or more behind the vertical, outside everything the gun sweeps from -5 to +80 degrees
+   * (the barrels reach 89 degrees at full elevation, the chute's arch 0.45 m from the axis). [x, y, z] points. */
+  guard: Object.freeze({ r: 0.03, path: Object.freeze([[0.0, 0.24, 0.62], [0.0, 0.70, 0.62], [0.0, 0.98, 0.50],
+    [0.02, 1.10, 0.30], [0.08, 1.11, 0.12], [0.30, 1.11, 0.09], [0.55, 1.09, 0.10], [0.62, 0.95, 0.16], [0.62, 0.60, 0.26],
+    [0.62, 0.24, 0.30]] as const) }),
 });
 
 /**
@@ -103,16 +112,20 @@ export const M163_GUNNER = Object.freeze({
  * front, its dome looking forward along the gun and its flat round back plate square across the turret's rear with a
  * stub aft (07: the round plate facing straight aft; 01, 06: a case at the housing's rear edge in side view; 10: the
  * round face forward; 03 at 45 degrees fits either), the two upright cases left and right on the back plate's edges,
- * 0.4 of the housing across and longer than it, reaching under it (r4: 01, 03). The housing's top stands 1.16 m over the
- * roof (the back plate's rim 1.17 m), 3.03 m overall: the published 2.90 m (115 in) sits 4 % under it, the photographs
- * over it (01: the housing ~0.6 m across, its top ~1.3 m up).
+ * 0.4 of the housing across, their feet level with its foot and their capped tops 15 % of its diameter over its top
+ * (r4/r5: 00, 01, 03), on a long beam with a diagonal brace from the slab at the turret's base (r5: 00, 01, 06). The
+ * cases' caps stand 1.17 m over the roof, 3.03 m overall: the housing sits 7 cm lower than r2-r4 put it so the caps keep
+ * the r4 height; the published 2.90 m (115 in) sits 4 % under it.
  */
 export const M163_RADAR = Object.freeze({
-  x: -0.90, y: 0.88, z: -0.56, r: 0.28,
+  x: -0.90, y: 0.81, z: -0.56, r: 0.28,
   /** the back plate: its distance behind the housing's centre, its radius and thickness */
   backZ: 0.175, backR: 0.29, backT: 0.03,
-  /** the cases either side of the back plate (r4: photos 01, 03, each 0.41 of the housing's diameter across and 1.1 of it
-   * long, reaching under it): their radius, x from the housing's centre, z behind it, foot and top */
-  caseR: 0.115, caseDx: 0.28, caseDz: 0.27, caseBottomY: 0.50, caseTopY: 1.12,
-  armY: 0.56, yokeY: 0.585,
+  /** the cases either side of the back plate (r4: photos 01, 03, 0.41 of the housing's diameter across; r5: photos 00,
+   * 01, 03, their feet level with the housing's foot and their capped tops 15 % of its diameter over its top): their
+   * radius, x from the housing's centre, z behind it, foot, the cap's depth and the capped top */
+  caseR: 0.115, caseDx: 0.28, caseDz: 0.27, caseBottomY: 0.53, capH: 0.025, caseTopY: 1.17,
+  /** the support beam (r5: photos 00, 01, 06, a long horizontal beam from the turret's base out under the housing with
+   * a diagonal brace): the beam's centre height, its width and depth; the brace's foot height on the slab; the yoke */
+  armY: 0.465, beamW: 0.08, beamH: 0.07, braceFootY: 0.28, yokeY: 0.515,
 });

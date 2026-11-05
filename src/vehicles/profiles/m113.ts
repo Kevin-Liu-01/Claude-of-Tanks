@@ -20,8 +20,8 @@
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
 //   the A1's internal fuel, the turret's race cut into the roof's rear half where the cargo hatch was and the commander's
 //   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04); no hull whips, the M163's
-//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's low armoured fuel tanks either side
-//   of the ramp (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
+//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's armoured fuel tanks either side
+//   of the ramp over the track's ends (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -212,19 +212,30 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
       P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
     }
   };
-  // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
-  // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
-  // roof: 0.45 to 1.03 m at the plate, the rear face 0.39 m tall, the ramp's edge to the hull's side; 0.43 m deep, the
-  // 17 in the A2's tanks add to its length in TM 9-2350-277): lower and shorter than the AS4's pair
+  // the M113A2's armoured fuel tanks either side of the ramp, their tops falling steeply to a short rear face, two ribs
+  // down each slope, a filler cap between them, a tail light low in each rear face and two struts under each to the rear
+  // plate (Commons photo 07 of the M163's rear: 0.43 m deep, the 17 in the A2's tanks add to its length in TM 9-2350-277;
+  // the twin-aa lane's r5 read of 07, builder V: they ride on the track's ends, so the idlers and the track's rear wraps
+  // show under them, their bottoms 0.76 m up at the top of the idlers' rims, their tops 1.22 m at the plate falling to
+  // 0.98 m over a rear face 0.22 m tall)
   const addA2FuelTanks = (): void => {
-    const z0 = D.sternZ, z1 = D.sternZ - 0.43, slope = Math.atan2(0.19, 0.43);
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yFront = 1.22, yRear = 0.98;
+    const slope = Math.atan2(yFront - yRear, z0 - z1), run = Math.hypot(yFront - yRear, z0 - z1);
+    const strutY = 0.50, strutZ = z1 + 0.07, strutLen = Math.hypot(yLo - strutY, z0 - strutZ);
     for (const s of [-1, 1] as const) {
       const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
-      P.addEquipment('hull', slab([lo, 0.45, z0], [hi, 0.45, z0], [hi, 0.45, z1], [lo, 0.45, z1],
-        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.84, z1], [lo, 0.84, z1]));
-      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.955, D.sternZ - 0.20, -slope, 0, 0);
-      P.add('hullDark', box(0.18, 0.09, 0.012), x, 0.54, z1 - 0.004);
-      P.add('hullGlass', box(0.12, 0.04, 0.012), x, 0.54, z1 - 0.010);
+      P.addEquipment('hull', slab([lo, yLo, z0], [hi, yLo, z0], [hi, yLo, z1], [lo, yLo, z1],
+        [lo, yFront, z0], [hi, yFront, z0], [hi, yRear, z1], [lo, yRear, z1]));
+      for (const dx of [-0.12, 0.12]) {
+        P.add('hullDetail', box(0.035, 0.03, run - 0.06), x + dx, (yFront + yRear) / 2 + 0.012, (z0 + z1) / 2, -slope, 0, 0);
+      }
+      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, (yFront + yRear) / 2 + 0.015, (z0 + z1) / 2, -slope, 0, 0);
+      P.add('hullDark', box(0.18, 0.09, 0.012), x, yLo + 0.08, z1 - 0.004);
+      P.add('hullGlass', box(0.12, 0.04, 0.012), x, yLo + 0.08, z1 - 0.010);
+      for (const dx of [-0.15, 0.15]) {
+        P.add('hullDark', box(0.04, 0.025, strutLen), x + dx, (yLo + strutY) / 2, (z0 + strutZ) / 2,
+          Math.atan2(yLo - strutY, z0 - strutZ), 0, 0);
+      }
     }
   };
   if (mark === 'mrv') {
