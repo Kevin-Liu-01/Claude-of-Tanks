@@ -73,6 +73,35 @@ const SITES = [
   ['src/ui/garage.ts', ['heroCardChunk.load()'], [/(?<!typeof )import\('\.\/heroCard\.(?:ts|css)'\)/]],
   ['src/ui/endScreen.ts', ['heroCardChunk.load()'], [/(?<!typeof )import\('\.\/heroCard\.(?:ts|css)'\)/]],
   ['src/gallery/gallery.ts', ['heroCardChunk.load()'], [/(?<!typeof )import\('\.\.\/ui\/heroCard\.(?:ts|css)'\)/]],
+  // (round 2 U35) the second policy: createLazyRuntimeOwner and the hand-written access facades (a memo their failure
+  // cleared, asked again at once by every call, with no backoff and no 404 rule); the mode world presentation's memo, asked
+  // again by every frame's mode state; the latches set before an import and never lifted (the lighting rig's caster kinds
+  // and static cache, the post pass's GPU timer); the resident catalog slices; the Garage's environment kit; and the 404
+  // search's kept memo, which takes the kit's opener rule (its page does not boot this policy's chunk)
+  ['src/app/lazyRuntimeOwner.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/soloBattleAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/soloBattleStartAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/battleVisualStreamerAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/armorAimOverlayAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/battleClientAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/battleWarmAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/garageDressingAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/ui/touchControlsAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/game/battleModuleAccess.ts', ['createLazyChunk(load)'], [/\bpending\b/]],
+  ['src/game/mobileBattleInputAccess.ts', ['const autoAimChunk = createLazyChunk('], [/if \(autoAim\) return autoAim;/]],
+  ['src/game/matchModeWorldLazy.ts', ['createLazyChunk(load)'], [/\bloading\s*\?\?=/]],
+  ['src/fx/fxRuntimeAccess.ts', ['const moduleChunk = createLazyChunk('], [/\bmodulePromise\b/]],
+  ['src/game/killcamAccess.ts', ['const moduleChunk = createLazyChunk('], [/\bmodulePromise\b/]],
+  ['src/mp/session/compositionAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/dev/perfDiagnosticsAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/dev/driveTestAccess.ts', ['createLazyChunk('], [/\bpending\b/]],
+  ['src/ui/garageArchitecture.ts', ['createLazyChunk(loadKit)'], [/\benvironmentKitPromise\b/]],
+  ['src/ui/i18nSlices.ts', ['createLazyChunk('], [/\brequest\s*\?\?=/]],
+  ['src/engine/lighting.ts', ["import('./shadowDepthKinds.ts').then((module) => { settleDepthKind",
+    "createLazyChunk((): Promise<void> => import('./shadowStaticCache.ts')"], [/Requested = true;\s*import\(/]],
+  ['src/engine/post.ts', ["createLazyChunk((): Promise<void> => import('./gpuFrameTimer.ts')"], [/gpuFrameTimerRequested = true;\s*import\(/]],
+  ['src/presentation/notFound.ts', ['importWhenOnline(', 'markLoadFailed([field])'], [/\bsearch\s*\?\?=/]],
+  ['src/vehicles/wreckTurretDriverLoader.ts', ['createLazyChunk(() => importer()'], [/\bloading\s*=\s*importer\(/]],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -96,7 +125,6 @@ const KNOWN = new Set([
   // the opening of a dossier's technical drawing section (infoGuides mounted; the drawing holds its own sheet below)
   'src/engine/cloudPresets.ts cloudscapeLoad', 'src/engine/earthLandAccess.ts earthLandLoad', 'src/engine/lightModelCore.ts groundedLoad',
   'src/main.ts battleEndGarageWarmLoad', 'src/ui/garageConsumables.ts smokeLoad', 'src/ui/infoGuides.ts mounted',
-  'src/vehicles/wreckTurretDriverLoader.ts loading',
   // a stylesheet alone: kept for the document, the policy's rule for a failed stylesheet (asked again it never applies)
   'src/ui/technicalDiagramLabels.ts sheet', 'src/ui/technicalDrawing.ts sheet',
   // pages that do not boot app/lazyChunk.ts (it rides the game, cn and Gallery boot chunk, vite.config.ts
@@ -107,6 +135,27 @@ const KNOWN = new Set([
   'src/ui/icons/icon.ts fullSprite',
   // the sky's HDRI experiment (HDRI_ENV_URL is null: never called)
   'src/engine/sky.ts hdriPromise',
+  // (round 2 U35) facade-shaped memos that are not a chunk's load, or that sit over loads this policy already holds:
+  // an initialization over a module the policy holds, made again after a failure (the effects' and the kill-cam's runtime
+  // over their moduleChunk; the Studio's runtime over main.ts studioModule; the Play menu over battleModuleAccess's chunk);
+  'src/fx/fxRuntimeAccess.ts runtimePromise', 'src/game/killcamAccess.ts runtimePromise', 'src/game/studioAccess.ts runtimePromise',
+  'src/game/playSurfaceRuntime.ts menuPromise',
+  // a join of loads the policy holds, cleared so the next ask reaches their own state (the mobile input's touch controls
+  // and auto-aim chunks; the Studio's whole fleet, every group a fleetFactory chunk; the Garage's fleet takes, its module
+  // fleetTakesChunk and its index a fetch);
+  'src/game/mobileBattleInputAccess.ts pending', 'src/game/studio.ts fleetReady', 'src/ui/garage.ts fleetRequest',
+  // a kit opener: its trigger marks a failed chunk and its next press reloads (components/loadFailure.ts pressFailed, before
+  // the facade is asked), so the facade forgets only a panel that threw for another reason (the settings panel, the
+  // custom camouflage studio); the Studio's module memo over its opener chunk (main.ts studioModule, opener: true);
+  'src/ui/settingsAccess.ts pending', 'src/ui/customCamoStudioAccess.ts pending', 'src/game/studioAccess.ts modulePromise',
+  // a fetch of data, which may be asked again (components/loadFailure.ts isChunkFailure): the prop model archive, the fleet
+  // takes index, the ICE configuration; and a warm task, not a load (the Studio effects' warm)
+  'src/world/propsModelStore.ts loadPromise', 'src/ui/fleetTakes.ts request', 'src/mp/transport/iceConfig.ts inFlight',
+  'src/game/battleWarmRuntime.ts studioEffectsWarmPromise',
+  // the audio mixer's chunk (lazyAudio.ts modulePromise), cleared on failure and asked again by the next gesture or phase
+  // edge (resume, the loading bed, the Garage sting), never per frame or tick, with a warning each time; the mixer's runtime
+  // over it (realPromise) is an initialization. The audio owner moves it onto this policy (round 2 crossClusterNeeds)
+  'src/audio/lazyAudio.ts modulePromise', 'src/audio/lazyAudio.ts realPromise',
 ]);
 const found = new Set();
 const multipart = [];
@@ -151,11 +200,23 @@ const closeOf = (source, open) => {
   }
   return source.length;
 };
-/** The chain an `import(` at `at` starts: the call and each `.then(`, `.catch(` and `.finally(` after it. */
-const chainOf = (source, at) => {
-  let end = closeOf(source, at + 'import'.length);
+/** The chain a call whose `(` is at `open` starts: the call and each `.then(`, `.catch(` and `.finally(` after it. */
+const chainFrom = (source, open) => {
+  let end = closeOf(source, open);
   for (let next; (next = /^\s*\.\s*(?:then|catch|finally)\s*\(/.exec(source.slice(end, end + 200)));) end = closeOf(source, end + next[0].length - 1);
-  return source.slice(at, end);
+  return source.slice(open, end);
+};
+/** The chain an `import(` at `at` starts. */
+const chainOf = (source, at) => chainFrom(source, at + 'import'.length);
+/** The body of this module's function or arrow named `name` (its block, or an arrow's expression), or ''. */
+const bodyOf = (source, name) => {
+  const definition = new RegExp(`\\bfunction\\s+${name}\\s*\\(|\\b(?:const|let)\\s+${name}\\s*=\\s*(?:async\\s*)?\\(`).exec(source);
+  if (!definition) return '';
+  const params = closeOf(source, definition.index + definition[0].length - 1);
+  const head = /^\s*(?::[^{=;]*)?(=>)?\s*/.exec(source.slice(params, params + 300));
+  const at = params + head[0].length;
+  if (source[at] === '{') return source.slice(at, closeOf(source, at));
+  return head[1] ? source.slice(at, at + 600).split(/;\n/)[0] : '';
 };
 const walk = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -189,9 +250,36 @@ const walk = (dir) => {
         if (memo && (memo[2] || !/\b(?:const|let|var)\s+$/.test(before.slice(0, memo.index + memo[0].indexOf(memo[1]))))) found.add(`${file} ${memo[1]}`);
         // a memo or latch the import's handlers clear (`x = null`, `flag = false`): asked again at once by the next caller
         for (const reset of chainOf(source, match.index).matchAll(/(?<![=!<>.\w$])(\w+)\s*=\s*(?:false|null)\b(?!\s*=)/g)) found.add(`${file} ${reset[1]}`);
+        // (round 2 U35) a latch set just before the import and never lifted (`asked = true; import(`): a failure stood for
+        // the session (the lighting rig's caster kinds and static cache, the post pass's GPU timer)
+        const latch = /(?:^|[^.\w$])(\w+)\s*=\s*true;\s*$/.exec(before);
+        if (latch) found.add(`${file} ${latch[1]}`);
       }
       graph.set(file, { edges: edges.filter((edge) => edge?.endsWith('.ts')), sheets });
       if (file === 'src/app/lazyChunk.ts') continue;
+      // (round 2 U35) the hand-written access facade: a memo its failure clears by identity (`if (pending === request)
+      // pending = null`), asked again at once by every call with no backoff, whatever its loader (an import here, or one
+      // passed in: the nine createLazyRuntimeOwner facades and about twenty more were this second policy)
+      for (const match of source.matchAll(/if \((\w+) === (?:request|retryable)\) \1 = null/g)) found.add(`${file} ${match[1]}`);
+      // (round 2 U35) a memo of a call (`x ??= load()`, `x ??= f().then(`): cleared by its own handlers (the mode world's
+      // `loading ??= load().then(…, () => { loading = null })`, asked again by every frame's mode state), or kept on a
+      // failure when the callee is this module's own loader of a chunk (the 404 search's `search ??= loadSearch()`)
+      for (const match of source.matchAll(/(?<![.\w$])(\w+)\s*\?\?=\s*([\w$]+)(?:\.[\w$]+)*\(/g)) {
+        const [, name, callee] = match;
+        if (callee === 'import' || callee === 'createLazyChunk') continue;
+        const chain = chainFrom(source, match.index + match[0].length - 1);
+        const cleared = new RegExp(`(?<![=!<>.\\w$])${name}\\s*=\\s*(?:false|null)\\b(?!\\s*=)`).test(chain);
+        if (cleared || /(?<![\w.$])import\(\s*['"]/.test(bodyOf(source, callee))) found.add(`${file} ${name}`);
+      }
+      // (round 2 U35) the same memo assigned by hand (`if (!x) x = loader().then(…, () => { x = null })`) from a callee named
+      // for loading (a loader passed in: the wreck turret's physics `importer` was one)
+      for (const match of source.matchAll(/(?<![.\w$?!=<>])(\w+)\s*=\s*((?:load|import|preload|ensure)[\w$]*)(?:\.[\w$]+)*\(/gi)) {
+        const [, name, callee] = match;
+        if (callee === 'import' || /\b(?:const|let|var)\s+$/.test(source.slice(Math.max(0, match.index - 8), match.index))) continue;
+        const chain = chainFrom(source, match.index + match[0].length - 1);
+        if (/\.\s*(?:then|catch|finally)\s*\(/.test(chain)
+          && new RegExp(`(?<![=!<>.\\w$])${name}\\s*=\\s*(?:false|null)\\b(?!\\s*=)`).test(chain)) found.add(`${file} ${name}`);
+      }
       // a default-policy chunk of several parts settles them all: Promise.all keeps whichever rejection came first
       for (const match of source.matchAll(/\bcreateLazyChunk\(/g)) {
         const open = match.index + match[0].length - 1;

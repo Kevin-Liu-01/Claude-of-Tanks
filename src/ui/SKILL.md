@@ -93,8 +93,15 @@ an in-page retry of a chunk: its failure marks the trigger with
 `components/loadFailure.ts` `markLoadFailed` (a danger dot that needs no chunk),
 its next press goes through `pressFailed` (the page reloads once online, never
 by itself), and a page's enhancement asks once through `importWhenOnline`
-(`node src/ui/components/loadFailure.selftest.mjs`). Every lazy chunk's load
-is one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6): a failed
+(`node src/ui/components/loadFailure.selftest.mjs`). A lazy chunk's load is
+one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6), held directly
+or through `app/lazyRuntimeOwner.ts` (the access facades' owner of a module and
+the runtime made from it); a page that does not boot the policy's chunk (the
+docs, the 404 page) takes the kit's opener rule through `importWhenOnline`. The
+memos that differ are named, each with its reason, in `lazyChunkSites`' KNOWN
+list (an initialization or a join over loads the policy holds, a kit opener
+whose press reloads, a stylesheet alone, a data fetch, the audio mixer's
+chunk), and the selftest fails a new hand-made memo, facade or latch. A failed
 stylesheet (in any part of the load: a load of several parts settles them with
 `importAll`), a removed chunk (a hashed chunk that answers 404, which also shows
 the watchdog's reload action), or any failure of an opener's chunk

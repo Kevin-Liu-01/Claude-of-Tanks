@@ -17,7 +17,10 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `mainBattleHudRuntime.ts` coordinates lazy HUD acquisition and visibility.
 `combatAimComposition.ts` connects camera, reticle, physical aim, and spotting.
 `combatWarmComposition.ts` owns renderer-lifetime warm caches and cancellation.
-`lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration.
+`lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration;
+every lazy chunk's failure policy is `lazyChunk.ts` (`lazyRuntimeOwner.ts` is
+one of its chunks per facade; `lazyChunkSites.selftest.mjs` fails a new
+hand-made memo, facade or latch).
 `watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
 its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 

@@ -31,6 +31,11 @@
  * see. The re-ask is for the callers with no trigger: builders, warms, presentation attachments, notices, decorative
  * paint.
  *
+ * The access facades hold theirs here too, through lazyRuntimeOwner.ts (a module and the runtime made from it) or a
+ * createLazyChunk of their own (round 2 U35: they were a second policy, a memo their failure cleared, asked again at once
+ * by every call). The memos that differ are named with their reasons in app/lazyChunkSites.selftest.mjs KNOWN, which
+ * fails a new hand-made memo, facade or latch.
+ *
  * DOM-free and Node-runnable: the clock, the network probe, the 404 classifier and the reload surface default to the
  * platform and are injectable (outside a document nothing is classified: no probe request leaves a Node receipt).
  */
