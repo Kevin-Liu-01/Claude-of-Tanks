@@ -334,12 +334,14 @@ function addK2BCheekPod(P: ProceduralBuilderPort & Modern3BuilderPort, side: num
  */
 function addK2BCornerHousings(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   for (const side of [-1, 1]) {
-    const xi = side * 1.14, xo = side * 1.80;
+    // r269s3: the outer face 3 mm outboard of the guard flare's (x 1.80), which it shared over z 3.18-3.47
+    const xi = side * 1.14, xo = side * 1.803;
     P.add('hull', convexSlab(                                                  // fender box: flat top, 45-degree front
       [xi, 1.15, 2.97], [xo, 1.15, 2.97], [xo, 1.15, 3.47], [xi, 1.15, 3.47],
       [xi, 1.40, 2.97], [xo, 1.40, 2.97], [xo, 1.40, 3.22], [xi, 1.40, 3.22]));
     // lamp box on the raked face (z 3.22 + (1.40 - y)), 5 mm into it, its front vertical
-    const la = side * 1.24, lb = side * 1.70, faceZ = (y: number): number => 3.22 + (1.40 - y) - 0.005;
+    // (r269s3: its outer end 3 mm inside the bow closure's x 1.70 face)
+    const la = side * 1.24, lb = side * 1.697, faceZ = (y: number): number => 3.22 + (1.40 - y) - 0.005;
     P.add('hull', convexSlab(
       [la, 1.21, faceZ(1.21)], [lb, 1.21, faceZ(1.21)], [lb, 1.21, 3.43], [la, 1.21, 3.43],
       [la, 1.32, faceZ(1.32)], [lb, 1.32, faceZ(1.32)], [lb, 1.32, 3.43], [la, 1.32, 3.43]));
@@ -382,10 +384,12 @@ function addK2BPackage(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   // trimmed to the old gun plant's 0.24 m.
   const gunFrontPort = P as ProceduralBuilderPort & Partial<Pick<TankBuilderPort, 'addEquipment'>>;
   if (!gunFrontPort.addEquipment) throw new Error('K2B gun front requires the builder equipment slots');
-  addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>, 0.24);
+  // (r269s3: the sight hood's side reveals 1 mm proud of the lid faces they shared, a coplanar flicker)
+  addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>, 0.24, 0.001);
   P.add('turretDetail', cylY(0.11, 0.12, 0.08, 14), 0.56, 0.73, -0.22);
-  // the hull number on the right side's armour group (k2bHullKit.ts; face x -1.865), in the upper-row tile -0.23..-0.61
-  P.decal('hull', 'number', 'K2B', 0.24, [-1.868, 1.18, -0.42], -Math.PI / 2);
+  // the hull number on the right side's armour group (k2bHullKit.ts; its upper tier's face x -1.885), inside the tile
+  // -0.23..-0.61, clear of its corner bolts
+  P.decal('hull', 'number', 'K2B', 0.24, [-1.888, 1.16, -0.43], -Math.PI / 2);
   // r269 (owner 2026-11-04: "add 2 fuel cans to back that are elevated to be visible from front"): two NATO cans in a
   // frame on the bustle's core roof, standing over the turret roof line (k2bHullKit.ts addK2BFuelCans)
   addK2BFuelCans(P);
