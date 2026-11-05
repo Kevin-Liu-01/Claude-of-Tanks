@@ -203,8 +203,8 @@ const MULT_KEYS: readonly ConsumableMultKey[] = Object.freeze(['reload', 'aimTim
 /**
  * The named layers a combat state's equipMults key is the product of (audit M5, 2026-11-02). A key any layer writes is
  * written by composeMultiplier alone, from:
- *   equipment    the life's own value, as the first layered write found it (applyEquipmentToCombat and the ruleset's
- *                reload fold, applyRulesetToCombat, both run on a fresh combat state before anything else)
+ *   equipment    the life's own value: what applyEquipmentToCombat and the ruleset's reload fold (applyRulesetToCombat)
+ *                left in equipMults, read when a layer first touches the key, and again whenever another hand changed it
  *   mode         the mode's stamps, one factor per source and key (the Juggernaut boss's reload, the wave hostiles',
  *                the infected's, the AC-130 convoy's): setting a source again replaces its factor, so a stamp needs no
  *                "already applied" latch
@@ -212,11 +212,23 @@ const MULT_KEYS: readonly ConsumableMultKey[] = Object.freeze(['reload', 'aimTim
  * Before, the consumables rebuilt equipMults from a snapshot taken when their state was made, and a mode stamp
  * multiplied in afterwards was lost at the first timed item's use or end (the boss's x0.5 reload, for good).
  * The layers live and die with the combat state: a revive's fresh state starts its own.
+ *
+ * The equipment layer takes the equipment writers' word in any order (round 2 U10, 2026-11-04). They write equipMults
+ * directly and know nothing of the layers; the drivers happen to run both on a fresh combat state before any layer
+ * exists, and the layers relied on that order: a ruleset fold or a re-equip after the layers existed was overwritten
+ * at the next item's use or end. Now the layers remember the equipMults object they read (`source`) and the value they
+ * last composed for each key (`composed`). A replaced object (applyEquipmentToCombat on a live state: a re-equip) is a
+ * new equipment layer, read afresh; a key whose value changed since the last composition (the ruleset's reload fold)
+ * folds that change into the equipment layer. The mode and item layers are kept on both.
  */
 export interface MultiplierLayers {
   readonly equipment: Record<string, number>;
   readonly mode: Record<string, Record<string, number>>;
   readonly consumables: Record<string, number>;
+  /** The equipMults object the equipment layer was read from. */
+  source: Record<string, unknown> | null;
+  /** What composeMultiplier last wrote for each key. */
+  readonly composed: Record<string, number>;
 }
 /** A combat state as the layers see it (damage.ts CombatState and the mode controller's entities are structurally one). */
 export interface LayeredCombat {
@@ -225,15 +237,30 @@ export interface LayeredCombat {
 }
 
 function multiplierLayers(combat: LayeredCombat): MultiplierLayers {
-  return combat.multiplierLayers ??= { equipment: {}, mode: {}, consumables: {} };
+  return combat.multiplierLayers ??= { equipment: {}, mode: {}, consumables: {}, source: null, composed: {} };
 }
 
-/** The equipment layer's value of `key`, taken from equipMults the first time a layer touches it. */
+/**
+ * The equipment layer's value of `key`: taken from equipMults the first time a layer touches it, read afresh from a
+ * replaced equipMults object (a re-equip), and with any change another hand made since the last composition folded in
+ * (the ruleset's reload fold after the layers exist; MultiplierLayers).
+ */
 function equipmentFactor(combat: LayeredCombat, layers: MultiplierLayers, key: string): number {
+  const mults = combat.equipMults;
+  if (mults && layers.source !== mults) {
+    if (layers.source) {
+      for (const name in layers.equipment) delete layers.equipment[name];
+      for (const name in layers.composed) delete layers.composed[name];
+    }
+    layers.source = mults;
+  }
+  const current = mults?.[key];
+  const value = typeof current === 'number' && Number.isFinite(current) ? current : 1;
   const known = layers.equipment[key];
-  if (known !== undefined) return known;
-  const current = combat.equipMults?.[key];
-  return layers.equipment[key] = typeof current === 'number' && Number.isFinite(current) ? current : 1;
+  if (known === undefined) return layers.equipment[key] = value;
+  const composed = layers.composed[key];
+  if (composed === undefined || composed === value) return known;
+  return layers.equipment[key] = composed !== 0 ? known * (value / composed) : value;
 }
 
 /** The one writer of a layered equipMults key: equipment x every mode source x the consumables. */
@@ -246,7 +273,10 @@ export function composeMultiplier(combat: LayeredCombat, key: string): number {
   }
   const item = layers.consumables[key];
   if (item !== undefined) value *= item;
-  (combat.equipMults ??= {})[key] = value;
+  const mults = combat.equipMults ??= {};
+  mults[key] = value;
+  layers.source = mults;
+  layers.composed[key] = value;
   return value;
 }
 

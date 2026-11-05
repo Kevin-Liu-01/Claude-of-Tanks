@@ -6,7 +6,8 @@
 // consumables before the controller stamps it (at spawn) and inside the revive hook (at a revive): the fixtures do too.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
-import { consumableTiming, matchRulesetFor } from './matchRuleset.ts';
+import { applyRulesetToCombat, consumableTiming, matchRulesetFor } from './matchRuleset.ts';
+import { applyEquipmentToCombat, computeEquipMults } from './equipmentRules.ts';
 import * as consumableRules from './consumableRules.ts';
 import { ESCORT_RULES, createGunshipEscort } from './gunshipEscort.ts';
 
@@ -101,6 +102,35 @@ const expire = (entity, timeS) => tickConsumables(entity.consumables, entity.com
   assert.equal(items.base.reload, 0.9, 'the consumables\' base is the equipment layer');
   setModeMultiplier(c, 'hostile', 'reload', 1);
   assert.equal(composeMultiplier(c, 'reload'), 0.9 * 0.5, 'a source set back to 1 drops out');
+}
+
+// ---- round 2 U10: the equipment layer takes its writers' word in any order. applyRulesetToCombat folds the ruleset's
+// reload into equipMults and applyEquipmentToCombat replaces equipMults whole; both know nothing of the layers, and the
+// layers relied on the drivers running them first. Run after the layers exist, each was overwritten at the next item.
+{
+  const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-12, `${message}: ${actual} vs ${expected}`);
+  const holder = { id: 'late', combat: combat() };
+  holder.combat.equipMults.reload = 0.9;
+  arm(holder); // the layers exist
+  consumableRules.setModeMultiplier(holder.combat, 'juggernaut', 'reload', 0.5);
+  const slow = { ...matchRulesetFor('standard'), reloadScale: 1.6 };
+  applyRulesetToCombat(holder.combat, [], slow); // the ruleset's reload fold, after the layers
+  near(holder.combat.equipMults.reload, 0.9 * 0.5 * 1.6, 'the fold lands');
+  use(holder, 0, 1);
+  near(holder.combat.equipMults.reload, 0.9 * 1.6 * 0.5 * RATIONS_RELOAD_MULT, 'the rations bend the folded reload');
+  expire(holder, 1 + 41);
+  near(holder.combat.equipMults.reload, 0.9 * 1.6 * 0.5, 'and the fold outlives them (it was lost to the old equipment value)');
+
+  const kit = computeEquipMults(['rammer']).reload;
+  assert.notEqual(kit, 1, 'the rammer bends the reload');
+  const refit = { id: 'refit', combat: combat() };
+  arm(refit);
+  consumableRules.setModeMultiplier(refit.combat, 'juggernaut', 'reload', 0.5);
+  applyEquipmentToCombat(refit.combat, ['rammer']); // a re-equip on the live state: a new equipMults object
+  use(refit, 0, 1);
+  near(refit.combat.equipMults.reload, kit * 0.5 * RATIONS_RELOAD_MULT, 'the next item composes the new equipment with the stamp');
+  expire(refit, 1 + 41);
+  near(refit.combat.equipMults.reload, kit * 0.5, 'the new equipment and the stamp both hold');
 }
 
 console.log('modeMultiplierLayers: the boss keeps x0.5 through an item\'s use and end; hostile and infection stamps both land; layers compose once');
