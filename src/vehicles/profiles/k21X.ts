@@ -8,7 +8,7 @@ import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, panel, openGunTube, hullStation, optic } from './easternSourceKit.ts';
-import { addK21Mantlet, addK21Turret, K21_HATCHES } from './k21Turret.ts';
+import { addK21Mantlet, addK21Turret, K21_HATCHES, K21_TURRET } from './k21Turret.ts';
 import { addK21GlacisPlates, addK21HullDeckKit, addK21TurretDeckKit } from './k21DeckKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { launchCellParts } from './missileCanisterStock.ts';
@@ -49,10 +49,12 @@ function rearFender(P: TankBuilderPort, side: number): void {
                 [side * x1, 1.3729], [side * x0, 1.3729]] },
         { z: -3.5664, ring: [[side * x0, 1.1444], [side * x1, 1.1444], [side * x1, 1.1825], [side * x0, 1.1825]] },
     ].map(s => ({ ...s, ring: (side < 0 ? s.ring.reverse() : s.ring).map(([x, y]) => [x, y] as const) })));
-    P.addMudguard(`k21-rear-roof-${side}`, 'hull', strip(inner, outer, false));
+    // 2026-11-04 (overlap audit): the roof strip runs between its two webs and the lip sits 0.5 mm inside the channel's
+    // rear end and faces, so no two same-facing faces share a plane (the channel's outline is unchanged).
+    P.addMudguard(`k21-rear-roof-${side}`, 'hull', strip(inner + wall, outer - wall, false));
     P.addMudguard(`k21-rear-inboard-web-${side}`, 'hull', strip(inner, inner + wall, true));
     P.addMudguard(`k21-rear-outboard-web-${side}`, 'hull', strip(outer - wall, outer, true));
-    P.addMudguard(`k21-rear-lip-${side}`, 'hull', box(outer - inner, .0273, .0117), side * (inner + outer) / 2, 1.15805, -3.93165);
+    P.addMudguard(`k21-rear-lip-${side}`, 'hull', box(outer - inner - .001, .0263, .0112), side * (inner + outer) / 2, 1.15805, -3.93140);
     P.addMudguard(`k21-rear-${side}`, 'hullRubber', box(.6587, .1162, .0117), side < 0 ? -1.2320 : 1.2343, 1.0961, -3.92185);
     // The existing side wall starts forward of the actual rear corner.
     equipment(P, 'hull', 'Detail', box(.0157, .9619, .720), side < 0 ? -1.5643 : 1.5666, 1.33435, -3.3041);
@@ -362,14 +364,17 @@ function buildK21Gear(P: TankBuilderPort): void {
 function addBasket(P: TankBuilderPort): void {
     // Source Object_32 scalar extents: rails x+-1.034, y2.039..2.479,
     // z-2.447..-1.717 before the registered -13.8 mm floor shift.
+    // 2026-11-04 (overlap audit): the rails and floor bars are a touch slimmer than the uprights and end inside them
+    // and 5 mm into the turret's rear wall, so no two same-facing faces share a plane.
+    const run = -1.712 - -2.431, mid = (-1.712 + -2.431) / 2;
     for (const x of [-1.018, -.328, 0, .328, 1.018]) {
         equipment(P, 'turret', 'Detail', box(.032, .424, .032), x, 2.237, -2.431);
-        equipment(P, 'turret', 'Detail', box(.032, .032, .73), x, 2.042, -2.082);
+        equipment(P, 'turret', 'Detail', box(.028, .028, run), x, 2.042, mid);
     }
     for (const y of [2.133, 2.309, 2.449]) {
-        equipment(P, 'turret', 'Detail', box(2.068, .032, .032), 0, y, -2.431);
+        equipment(P, 'turret', 'Detail', box(2.008, .026, .026), 0, y, -2.431);
         for (const x of [-1.018, 1.018])
-            equipment(P, 'turret', 'Detail', box(.032, .032, .73), x, y, -2.082);
+            equipment(P, 'turret', 'Detail', box(.026, .026, run), x, y, mid);
     }
     // Independently authored rounded bags/rolls from Object_20 envelope study.
     // 2026-10-19 (owner float sweep): the left roll (x -.601) hung between floor bars 20 mm off the turret wall;
@@ -389,11 +394,13 @@ function addK21Launcher(P: TankBuilderPort): void {
     const angle = Math.PI / 9, width = .2335, height = .4110, wall = .008;
     const centerV = 2.8196568, front = .4243, back = -.8886;
     const terminalV = [2.71787735, 2.90094968];
-    const face = new THREE.Shape();
-    face.moveTo(-width / 2, -height / 2);
-    face.lineTo(width / 2, -height / 2);
-    face.lineTo(width / 2, height / 2);
-    face.lineTo(-width / 2, height / 2);
+    // 2026-11-04 (overlap audit): the face, top, bottom and back plates sit inside the two full side walls, so no two
+    // same-facing faces share a plane; the housing's outline and apertures are unchanged.
+    const face = new THREE.Shape(), fw = width / 2 - wall, fh = height / 2 - wall;
+    face.moveTo(-fw, -fh);
+    face.lineTo(fw, -fh);
+    face.lineTo(fw, fh);
+    face.lineTo(-fw, fh);
     face.closePath();
     for (const v of terminalV) {
         const hole = new THREE.Path();
@@ -405,9 +412,9 @@ function addK21Launcher(P: TankBuilderPort): void {
         }).translate(0, 0, front - wall)];
     for (const side of [-1, 1]) {
         housing.push(box(wall, height, front - back).translate(side * (width - wall) / 2, 0, (front + back) / 2));
-        housing.push(box(width, wall, front - back).translate(0, side * (height - wall) / 2, (front + back) / 2));
+        housing.push(box(width - 2 * wall, wall, front - back).translate(0, side * (height - wall) / 2, (front + back) / 2));
     }
-    housing.push(box(width, height, wall).translate(0, 0, back + wall / 2));
+    housing.push(box(width - 2 * wall, height - 2 * wall, wall).translate(0, 0, back + wall / 2));
     // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): each aperture gains a proud rim collar whose
     // dark liner runs back to the missile's nose cap, and the caps are unpainted dark stock. The housing is unchanged.
     const dark: THREE.BufferGeometry[] = [];
@@ -441,30 +448,35 @@ function buildK21Turret(P: TankBuilderPort): void {
     P.add('turret', cylY(.93, 1.00, .15, P.q ? 36 : 20), 0, .045, 0);
     addK21Turret(P);
     // The two crew hatches as the source and photo 4 show them: round covers on a low ring, hinged at the rear.
+    const roof = K21_TURRET.roofY;
     for (const [x, z] of K21_HATCHES) {
-        equipment(P, 'turret', 'Detail', cylY(.335, .345, .020, P.q ? 32 : 18), x, 2.615, z);
-        equipment(P, 'turret', 'Detail', cylY(.300, .310, .035, P.q ? 32 : 18), x, 2.6385, z);
+        equipment(P, 'turret', 'Detail', cylY(.335, .345, .020, P.q ? 32 : 18), x, roof + .009, z);
+        equipment(P, 'turret', 'Detail', cylY(.300, .310, .035, P.q ? 32 : 18), x, roof + .0325, z);
         for (const d of [-.12, .12])
-            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, 2.645, z - .27);
+            equipment(P, 'turret', 'Detail', cylX(.023, .11, 12), x + d, roof + .039, z - .27);
     }
     // Source sight envelopes are asymmetric, with a sloped left hood and a
     // rounded right optical head. Both sit on their own finite roof mounts.
+    // 2026-11-04: both sights are 12-15 % larger, as photos 4 and 6 measure them (the gunner's box 0.57-0.62 m wide and
+    // 0.36-0.39 m tall, the commander's drum 0.44-0.48 m across).
+    const hx = -.642, gw = 1.15, gh = 1.12;
     equipment(P, 'turret', 'Detail', sectionSolid([
-        { z: -.22, ring: [[-.254, 0], [.254, 0], [.20, .3115], [-.20, .3115]] },
-        { z: .13, ring: [[-.254, 0], [.254, 0], [.16, .28], [-.16, .28]] },
-        { z: .22, ring: [[-.254, 0], [.254, 0], [.16, .23], [-.16, .23]] },
-    ]), -.642, 2.607, -.34);
-    optic(P, 'turret', -.642, 2.760, -.123, .32, .115, .058);
+        { z: -.22, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.20 * gw, .3115 * gh], [-.20 * gw, .3115 * gh]] },
+        { z: .13, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.16 * gw, .28 * gh], [-.16 * gw, .28 * gh]] },
+        { z: .22, ring: [[-.254 * gw, 0], [.254 * gw, 0], [.16 * gw, .23 * gh], [-.16 * gw, .23 * gh]] },
+    ]), hx, roof + .001, -.34);
+    optic(P, 'turret', hx, roof + .154 * gh, -.123, .32 * gw, .115 * gh, .058);
     // Measured cap/neck/collar profile, with the receiving roof lowered to
     // Object_22's actual 2.606 m datum so the narrow neck is visible.
+    const cr = 1.12, ch = 1.08, cx = .711, cz = -.166, base = roof - .0083;
     const sightProfile = [[0, 0], [.153, 0], [.150, .035], [.132, .075],
         [.159, .115], [.186, .175], [.201, .275], [.197, .375], [.165, .420], [0, .428]];
     // 2026-10-19 (owner float sweep): the sight and its head stood 12 mm above the roof; now seated on it.
-    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 28 : 16), .711, 2.5977, -.166);
-    optic(P, 'turret', .711, 2.8925, -.009, .18, .125, .075);
+    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r * cr, y * ch)), P.q ? 28 : 16), cx, base, cz);
+    optic(P, 'turret', cx, base + .2948 * ch, cz + .157 * cr, .18 * cr, .125 * ch, .075);
     for (const x of [-.797, -.667, -.537]) {
-        equipment(P, 'turret', 'Detail', box(.120, .066, .060), x, 2.666, -.126);
-        equipment(P, 'turret', 'Glass', box(.095, .034, .010), x, 2.671, -.092);
+        equipment(P, 'turret', 'Detail', box(.120 * gw, .066 * gh, .060), hx + (x - hx) * gw, roof + .06 * gh, -.126);
+        equipment(P, 'turret', 'Glass', box(.095 * gw, .034 * gh, .010), hx + (x - hx) * gw, roof + .065 * gh, -.092);
     }
     // Object_14 collars start in the rear roof shoulder at 2.50638 m;
     // Object_21 whips begin at their narrow 2.673 m terminal, not above a gap.
