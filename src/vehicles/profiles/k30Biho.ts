@@ -22,7 +22,6 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-import { weaponAssembly } from './weaponStock.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { convexBody, mirrored, type P3 } from './plaAirDefenseChassis.ts';
@@ -266,35 +265,35 @@ function housingProfile(inset: number, steps: number): Array<[number, number]> {
 
 function k30Guns(P: TankBuilderPort): void {
   const G = K30_GUNS, n = P.q ? 16 : 10, steps = P.q ? 4 : 2;
-  weaponAssembly(P, () => {
-    for (const s of [-1, 1]) {
-      const x = s * G.gunX, barrel = s < 0 ? 0 : 1;
-      // the shaft from the central body into the housing (a body of revolution about the pitch axis)
-      P.addGunExtra(cylX(0.09, 0.06, P.q ? 18 : 12), s * 0.655, 0, 0);
-      // the housing, rounded on top: inner face full size, the outer face bevelled
-      P.addGunExtra(convexBody([
-        ...housingProfile(0, steps).map(([z, y]) => [s * G.housingInner, y, z] as P3),
-        ...housingProfile(0.025, steps).map(([z, y]) => [s * G.housingOuter, y, z] as P3),
-      ]));
-      // the recessed panel in the outer face: its frame standing proud, two openings in it (photograph 02)
-      const px = s * (G.housingOuter + 0.0055), pz0 = -0.25, pz1 = 0.55, py0 = -0.28, py1 = 0.10;
-      for (const y of [py0, py1]) P.addGunExtra(box(0.021, 0.03, pz1 - pz0 + 0.03), px, y, (pz0 + pz1) / 2);
-      for (const z of [pz0, pz1]) P.addGunExtra(box(0.021, py1 - py0 + 0.03, 0.03), px, (py0 + py1) / 2, z);
-      for (const z of [0.02, 0.32]) P.addGunExtraDark(box(0.012, 0.16, 0.22), s * (G.housingOuter + 0.002), -0.10, z);
-      // the collar on the front face, the recoil spring ahead of it with its coils
-      P.addGunExtra(cylZ(G.collarR, G.collarFrontZ - G.housingFrontZ + 0.01, n), x, 0, (G.collarFrontZ + G.housingFrontZ - 0.01) / 2);
-      P.addGunExtraDark(cylZ(G.springR, G.springFrontZ - G.collarFrontZ + 0.005, n), x, 0, (G.springFrontZ + G.collarFrontZ - 0.005) / 2);
-      for (let k = 0; k < 4; k++) {
-        P.addGunExtraDark(torus(G.springR, 0.008, n, 4).rotateX(Math.PI / 2), x, 0, G.collarFrontZ + 0.03 + k * 0.045);
-      }
-      // the barrel group (its own recoil group): the thick root sliding in the spring, the tube, the muzzle brake
-      const rootRear = G.housingFrontZ - 0.06;
-      P.add(`gunBarrel${barrel}`, cylZ(G.rootR, G.rootFrontZ - rootRear, n), x, 0, (G.rootFrontZ + rootRear) / 2);
-      P.add(`gunBarrel${barrel}`, cylZ(G.barrelR, G.brakeRearZ - G.rootFrontZ + 0.04, n), x, 0, (G.brakeRearZ + G.rootFrontZ) / 2);
-      P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR, G.muzzleZ - G.brakeRearZ, n), x, 0, (G.muzzleZ + G.brakeRearZ) / 2);
-      P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR + 0.006, 0.03, n), x, 0, G.brakeRearZ + 0.03);
+  // The guns are not weapon stock: the K30 carries no missiles, so like the Gepard and the PGZ-09 its gun housings take
+  // hits through the gun module, not external-weapon hitboxes (externalWeapons.selftest)
+  for (const s of [-1, 1]) {
+    const x = s * G.gunX, barrel = s < 0 ? 0 : 1;
+    // the shaft from the central body into the housing (a body of revolution about the pitch axis)
+    P.addGunExtra(cylX(0.09, 0.06, P.q ? 18 : 12), s * 0.655, 0, 0);
+    // the housing, rounded on top: inner face full size, the outer face bevelled
+    P.addGunExtra(convexBody([
+      ...housingProfile(0, steps).map(([z, y]) => [s * G.housingInner, y, z] as P3),
+      ...housingProfile(0.025, steps).map(([z, y]) => [s * G.housingOuter, y, z] as P3),
+    ]));
+    // the recessed panel in the outer face: its frame standing proud, two openings in it (photograph 02)
+    const px = s * (G.housingOuter + 0.0055), pz0 = -0.25, pz1 = 0.55, py0 = -0.28, py1 = 0.10;
+    for (const y of [py0, py1]) P.addGunExtra(box(0.021, 0.03, pz1 - pz0 + 0.03), px, y, (pz0 + pz1) / 2);
+    for (const z of [pz0, pz1]) P.addGunExtra(box(0.021, py1 - py0 + 0.03, 0.03), px, (py0 + py1) / 2, z);
+    for (const z of [0.02, 0.32]) P.addGunExtraDark(box(0.012, 0.16, 0.22), s * (G.housingOuter + 0.002), -0.10, z);
+    // the collar on the front face, the recoil spring ahead of it with its coils
+    P.addGunExtra(cylZ(G.collarR, G.collarFrontZ - G.housingFrontZ + 0.01, n), x, 0, (G.collarFrontZ + G.housingFrontZ - 0.01) / 2);
+    P.addGunExtraDark(cylZ(G.springR, G.springFrontZ - G.collarFrontZ + 0.005, n), x, 0, (G.springFrontZ + G.collarFrontZ - 0.005) / 2);
+    for (let k = 0; k < 4; k++) {
+      P.addGunExtraDark(torus(G.springR, 0.008, n, 4).rotateX(Math.PI / 2), x, 0, G.collarFrontZ + 0.03 + k * 0.045);
     }
-  }, 'gun', 10);
+    // the barrel group (its own recoil group): the thick root sliding in the spring, the tube, the muzzle brake
+    const rootRear = G.housingFrontZ - 0.06;
+    P.add(`gunBarrel${barrel}`, cylZ(G.rootR, G.rootFrontZ - rootRear, n), x, 0, (G.rootFrontZ + rootRear) / 2);
+    P.add(`gunBarrel${barrel}`, cylZ(G.barrelR, G.brakeRearZ - G.rootFrontZ + 0.04, n), x, 0, (G.brakeRearZ + G.rootFrontZ) / 2);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR, G.muzzleZ - G.brakeRearZ, n), x, 0, (G.muzzleZ + G.brakeRearZ) / 2);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR + 0.006, 0.03, n), x, 0, G.brakeRearZ + 0.03);
+  }
   P.muzzleZ = G.muzzleZ;
 }
 
