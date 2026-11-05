@@ -12,8 +12,11 @@
 //    across the turret's rear, its cases left and right of the plate with their tops at the frame's height; the gun on
 //    the left; the gunner's column open at the top; the box shield's outer face square to the hull; the build's length,
 //    width and height (its whips aside) are the spec's dims (3 %);
-//  - a whip at each rear corner of the turret (r3), about 2.5 m from foot to tip, riding the turret, behind everything the
-//    gun sweeps from full depression to full elevation;
+//  - a whip at each rear corner of the turret (r3), about 2.5 m from foot to tip and raked aft (r4), riding the turret,
+//    behind everything the gun sweeps from full depression to full elevation;
+//  - r4: the raised base's deck 0.25 m over the roof; the upright slab at the ring's right front, over the gun, its rear
+//    top corner cut; the radar's cases 0.4 of the housing across and longer than it; the cradle's flat side plates
+//    either side of the housing, pitching with the gun and off the rotor;
 //  - from full depression to full elevation every gun part keeps 2 cm from its turret's own stock (the cross shaft and
 //    the feed joint, bodies about the elevation axis seated in the arms, keep it at every pitch by construction: gun
 //    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw (both ways) and
@@ -120,10 +123,15 @@ try {
   // of the plate with their tops at the frame's height
   const R = M163_RADAR;
   assert.ok(R.x < 0 && R.z < 0, 'the radar stands right rear');
+  // (r4: the cases 0.4 of the housing across and longer than it, reaching under it; the ray 3 cm off the lid's centre)
+  assert.ok(2 * R.caseR >= 0.38 * 2 * R.r && R.caseTopY - R.caseBottomY >= 1.05 * 2 * R.r && R.caseBottomY < R.y - R.r,
+    'the radar\'s cases as fat as 0.4 of the housing, longer than it, reaching under it');
   for (const s of [-1, 1]) {
-    const caseTop = firstHit(turret, turret, [R.x + s * R.caseDx, 1.6, R.z - R.backZ - 0.03], [0, -1, 0], 1);
+    const caseTop = firstHit(turret, turret, [R.x + s * R.caseDx + 0.03, 1.6, R.z - R.caseDz], [0, -1, 0], 1);
     assert.ok(caseTop, `the radar's ${s < 0 ? 'outboard' : 'inboard'} case is drawn`);
-    near(caseTop.point.y, R.caseTopY, 0.01, 'the case\'s top');
+    near(caseTop.point.y, R.caseTopY + 0.02, 0.006, 'the case\'s lid');
+    const caseSide = firstHit(turret, turret, [R.x + s * R.caseDx, R.caseBottomY + 0.05, R.z - 1.5], [0, 0, 1], 1.5);
+    near(caseSide?.point.z ?? 0, R.z - R.caseDz - R.caseR, 0.006, 'the case reaching under the housing');
   }
   assert.ok(Math.hypot(R.x, R.z) > T.drumR, 'the radar housing stands outboard of the ring\'s edge');
   const ball = firstHit(turret, turret, [R.x, 1.6, R.z], [0, -1, 0], 1);
@@ -135,6 +143,25 @@ try {
   for (const z of plate) near(z, R.z - R.backZ - R.backT / 2, 0.004, 'the back plate square across the turret\'s rear');
   const tub = firstHit(turret, turret, [T.column.x, 1.6, T.column.z], [0, -1, 0], 1.5);
   assert.ok(tub && tub.point.y < T.column.topY - 0.2, 'the gunner\'s column is open at the top');
+  // the raised base: its deck 0.25 m over the roof (photos 03, 08)
+  const deck = firstHit(turret, turret, [-0.40, 1.6, 0.45], [0, -1, 0], 1.6);
+  near(deck?.point.y ?? 0, T.deckY, 0.003, 'the base\'s deck');
+  // the upright slab at the ring's right front: its outboard face, its top over the gun, its rear top corner cut
+  const Rp = T.radarPlate;
+  const slab = firstHit(turret, turret, [-1.6, 0.70, Rp.z1 - 0.12], [1, 0, 0], 1.2);
+  near(slab?.point.x ?? 0, Rp.x, 0.003, 'the slab\'s outboard face');
+  const slabTop = firstHit(turret, turret, [Rp.x + Rp.t / 2, 1.6, Rp.z1 - 0.12], [0, -1, 0], 1.2);
+  near(slabTop?.point.y ?? 0, Rp.topY, 0.003, 'the slab\'s top');
+  assert.ok(Rp.topY > M163_TRUNNION[1] + M163_GUN.housingR && Rp.z1 - Rp.z0 >= 0.4, 'the slab 0.45 m long, over the gun');
+  const cut = firstHit(turret, turret, [Rp.x + Rp.t / 2, 1.6, Rp.z0 + 0.03], [0, -1, 0], 1.2);
+  assert.ok(cut && cut.point.y < Rp.topY - 0.1, 'the slab\'s rear top corner cut off');
+  // the cradle: its flat side plates either side of the housing, on the gun's elevating group (photos 03, 10)
+  const K = M163_GUN.cradle;
+  for (const s of [-1, 1]) {
+    const side = firstHit(gun, gun, [s * 1, -0.05, 0.10], [-s, 0, 0], 1);
+    near(Math.abs(side?.point.x ?? 0), K.x + K.t / 2, 0.003, `the cradle's ${s > 0 ? 'outboard' : 'inboard'} side plate`);
+    assert.ok(side && under(side.object, gun) && !under(side.object, rotor), 'the cradle pitches with the gun, off the rotor');
+  }
   // the box shield's outer face square to the hull (one face from the side, photo 08)
   const B = T.boxShield, midY = (B.footY + B.topY) / 2, outX = (B.foot.outX + B.top.outX) / 2;
   for (const z of [-0.45, -0.75, -1.05]) {
@@ -151,13 +178,16 @@ try {
     return new THREE.Box3().setFromObject(w).applyMatrix4(tInvW);
   });
   assert.deepEqual(whipBoxes.map((b) => Math.sign(b.getCenter(new THREE.Vector3()).x)).sort(), [-1, 1], 'one whip each side');
+  const W = T.whip, lean = W.h * Math.sin(W.rakeAft);
   for (const b of whipBoxes) {
     assert.ok(b.max.z < -0.75, `a whip at the turret's rear (z ${b.max.z.toFixed(2)})`);
-    near(b.max.y - b.min.y, T.whip.h + 0.12, 0.06, 'a whip about 2.5 m from foot to tip');
+    near(b.max.y - b.min.y, 0.12 + W.h * Math.cos(W.rakeAft), 0.06, 'a whip about 2.5 m from foot to tip');
+    // (r4: raked aft, photos 03, 04: its tip about lean behind its foot, hardly to either side)
+    assert.ok(b.max.z - b.min.z > lean * 0.8 && b.max.x - b.min.x < 0.6 * lean, `a whip raked aft (${(b.max.z - b.min.z).toFixed(2)} m back, ${(b.max.x - b.min.x).toFixed(2)} m across)`);
   }
   // envelope, in the hull frame
   const box = envelope(root, whips), size = box.getSize(new THREE.Vector3());
-  near(size.y, spec.dims.heightM, spec.dims.heightM * 0.03, 'height over the radar\'s cases');
+  near(size.y, spec.dims.heightM, spec.dims.heightM * 0.03, 'height over the radar');
   near(size.z, spec.dims.overallLengthM, spec.dims.overallLengthM * 0.03, 'length');
   near(size.x, spec.dims.widthM, spec.dims.widthM * 0.03, 'width over the tracks');
   // the gun's sweep against the turret's own stock, from full depression to full elevation

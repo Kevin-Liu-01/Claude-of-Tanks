@@ -6,30 +6,36 @@
 // First-party: Kevin B. Liu (NOTICE.md).
 
 /**
- * The M157 mount's open turret (r3, the blind critic's read checked against photos 04, 07, 08, 09): a low ring on the
- * M741's 1.40 m race (0.20 m: photo 09's slotted ring); the gunner's column, an open cylindrical tub at the ring's rear
- * right quarter (photo 07 from astern: the round body just right of centre; 08, 09 from the left: behind the gun), so the
- * ring's front and the gun's side open (01, 06); the box shield square to the hull against the column's left side and
- * running aft past it (08: one broad flared face from the left, its ends leaning out; 07: its narrower end from astern),
- * an open-topped box 1.0 m long and 0.5 m wide, its top 4 cm over the column's rim and its foot 85 % of the way down the
- * column's 0.54 m over the deck (3.8 cm over the beacon's cage as it sweeps past); a tall narrow plate at the column's right that carries the radar's arm (00/03, 06); a whip at each rear corner
- * (03, 04: two whips about 2.5 m tall rising from the turret's rear, one each side). The race's top stands 0.04 m over
- * the roof; the ring's foot sits 1 cm into it.
+ * The M157 mount's open turret (r4, the blind critics' reads checked against photos 01, 03, 04, 07, 08, 09): the raised
+ * base on the M741's 1.40 m race, a frustum 0.22 m tall flaring slightly to its foot, its deck 0.25 m over the roof
+ * (03, 08: a base ~0.25 m high; 09: its slotted side; the race's top, 0.04 m over the roof, is the hull's datum,
+ * m741Datums.ts M741_RING.raceTopY, so the height is built here, the foot sitting 1 cm into the race); the gunner's
+ * column, an open cylindrical tub at the ring's rear right quarter (07 from astern: the round body just right of centre;
+ * 08, 09 from the left: behind the gun), so the ring's front and the gun's side open (01, 06); the box shield square to
+ * the hull against the column's left side and running aft past it (08: one broad flared face from the left, its ends
+ * leaning out; 07: its narrower end from astern), an open-topped box 1.0 m long and 0.5 m wide, its top 4 cm over the
+ * column's rim and its foot 0.46 m under it (3.8 cm over the hull's beacon as it sweeps past); the upright slab at the
+ * ring's right front between the gun and the radar's boom, the boom rooted on it (01, 03: a flat slab ~0.45 m long and
+ * 4 cm thick from the deck to over the gun, its rear top corner cut off); a whip at each rear corner (03, 04: two whips
+ * about 2.5 m tall rising from the turret's rear, one each side, raked aft).
  */
 export const M163_TURRET = Object.freeze({
-  drumR: 0.745, footR: 0.73, footY: 0.03, deckY: 0.20,
-  /** the column: its centre, outer radius, wall and rim (0.90 m across, 0.54 m over the ring) */
+  /** the base: its foot's radius and height (the flare's end), its top's radius under the deck's edge, the deck */
+  footR: 0.79, footY: 0.03, drumR: 0.745, deckY: 0.25,
+  /** the column: its centre, outer radius, wall and rim (0.90 m across, 0.49 m over the deck) */
   column: Object.freeze({ x: -0.16, z: -0.44, r: 0.45, wall: 0.03, topY: 0.74 }),
   /** the box shield (turret-local, square to the hull): its flat inner face 3 cm into the column's left wall, its foot and
    * top, and at each its outer face's x and its front and rear ends' z (the outer face and both ends leaning out) */
   boxShield: Object.freeze({ innerX: 0.255, footY: 0.32, topY: 0.78,
     foot: Object.freeze({ outX: 0.72, z0: -0.36, z1: -1.12 }), top: Object.freeze({ outX: 0.80, z0: -0.27, z1: -1.25 }) }),
-  /** the tall plate at the column's right that carries the radar's arm: x, its z span, its foot and top, its thickness */
-  radarPlate: Object.freeze({ x: -0.66, z0: -0.22, z1: -0.07, topY: 0.89, t: 0.035 }),
-  /** the whips (FITTINGS.antennaWhip, its 0.12 m pot under a 2.40 m rod: 2.51 m from foot to tip, raked 6 degrees out),
+  /** the upright slab at the ring's right front that carries the radar's boom (r4: the r2/r3 "tall plate" at the column's
+   * right was this part, drawn 0.15 m long and too far aft): its outer face's x, its thickness, its rear and front ends'
+   * z, its top, and the cut off its rear top corner (back along the top, down the rear edge) */
+  radarPlate: Object.freeze({ x: -0.58, t: 0.04, z0: -0.17, z1: 0.28, topY: 0.80, cutZ: 0.17, cutY: 0.20 }),
+  /** the whips (FITTINGS.antennaWhip, its 0.12 m pot under a 2.40 m rod: 2.47 m from foot to tip, raked 12 degrees aft),
    * the left one on the box shield's top at its rear outer corner, the right one on a bracket off the column's rear right
    * wall (at a bearing from the column's centre, its foot's radius and height) */
-  whip: Object.freeze({ h: 2.40, rake: 0.10, left: Object.freeze({ x: 0.68, z: -1.14 }),
+  whip: Object.freeze({ h: 2.40, rakeAft: 0.21, left: Object.freeze({ x: 0.68, z: -1.14 }),
     right: Object.freeze({ bearingDeg: -150, r: 0.515, y: 0.66 }) }),
 });
 
@@ -59,6 +65,13 @@ export const M163_GUN = Object.freeze({
   hubR: 0.016,
   /** the two trunnion arms either side of the housing (turret-local x): the inboard one the feed's pedestal; their bosses */
   armInnerX: 0.115, armOuterX: 0.525, armT: 0.03, armInnerT: 0.05, bossR: 0.075,
+  /** the cradle round the housing, elevating with it (r4: photos 03, 10, a heavy box with flat side plates): two side
+   * plates 0.49 m long and 0.33 m tall at x +/-0.165 (2.75 cm inside the arms), their outline [z, y] (the rear foot cut
+   * so the cradle clears the deck straight under the trunnion), joined by a floor under the housing and a front plate
+   * under the rotor */
+  cradle: Object.freeze({ x: 0.165, t: 0.025, floorY: -0.1875, floorZ0: -0.13,
+    outline: Object.freeze([[0.25, -0.20], [0.25, 0.10], [0.12, 0.13], [-0.19, 0.13], [-0.24, 0.07], [-0.24, -0.05],
+      [-0.13, -0.20]] as const) }),
   /** the cylinder under the housing pointing forward (r3: photos 03, 04): 0.09 m across (0.64 of the cluster's 0.14 m),
    * 0.50 m long (a third of the barrels' length), its nose ring */
   underR: 0.045, underY: -0.15, underZ: [-0.03, 0.47] as const,
@@ -85,19 +98,21 @@ export const M163_GUNNER = Object.freeze({
 });
 
 /**
- * The AN/VPS-2 range-only radar (turret-local, right rear; r3, the critic's read of photos 01, 06, 07 over 03): its round
- * housing 0.56 m across outboard of the ring's edge on a horizontal arm from the tall plate, its dome looking forward along
- * the gun and its flat round back plate square across the turret's rear with a stub aft (07: the round plate facing
- * straight aft; 01, 06: a case at the housing's rear edge in side view; 03 at 45 degrees fits either), the two upright
- * cases seated left and right on the back plate's edges. Its top and the cases' stand 1.16 m over the roof, 3.02 m
- * overall: the published 2.90 m (115 in) sits 4 % under it, the photographs over it (01: the housing ~0.6 m across, its
- * top ~1.3 m up).
+ * The AN/VPS-2 range-only radar (turret-local, right rear; r3/r4, the critics' reads of photos 01, 03, 06, 07, 10): its
+ * round housing 0.56 m across outboard of the ring's edge on a horizontal boom from the upright slab at the ring's right
+ * front, its dome looking forward along the gun and its flat round back plate square across the turret's rear with a
+ * stub aft (07: the round plate facing straight aft; 01, 06: a case at the housing's rear edge in side view; 10: the
+ * round face forward; 03 at 45 degrees fits either), the two upright cases left and right on the back plate's edges,
+ * 0.4 of the housing across and longer than it, reaching under it (r4: 01, 03). The housing's top stands 1.16 m over the
+ * roof (the back plate's rim 1.17 m), 3.03 m overall: the published 2.90 m (115 in) sits 4 % under it, the photographs
+ * over it (01: the housing ~0.6 m across, its top ~1.3 m up).
  */
 export const M163_RADAR = Object.freeze({
   x: -0.90, y: 0.88, z: -0.56, r: 0.28,
   /** the back plate: its distance behind the housing's centre, its radius and thickness */
   backZ: 0.175, backR: 0.29, backT: 0.03,
-  /** the cases either side of the back plate (x from the housing's centre, z 3 cm behind the plate) */
-  caseR: 0.065, caseDx: 0.30, caseBottomY: 0.60, caseTopY: 1.16,
+  /** the cases either side of the back plate (r4: photos 01, 03, each 0.41 of the housing's diameter across and 1.1 of it
+   * long, reaching under it): their radius, x from the housing's centre, z behind it, foot and top */
+  caseR: 0.115, caseDx: 0.28, caseDz: 0.27, caseBottomY: 0.50, caseTopY: 1.12,
   armY: 0.56, yokeY: 0.585,
 });
