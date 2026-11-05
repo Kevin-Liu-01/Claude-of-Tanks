@@ -26,7 +26,7 @@ import {
 } from '../wire/index.ts';
 import type { EntityRow, ViewerState } from '../wire/index.ts';
 import { applyMovementCheckpoint } from './movementCheckpoint.ts';
-import { applyHullBodyRowFlags } from './hullBodyRow.ts';
+import { BODY_PHASE_ROW_FLAGS, applyHullBodyRowFlags } from './hullBodyRow.ts';
 import { publishedTrackContact } from '../../sim/trackContact.ts';
 import { lerpAngle } from './interpolation.ts';
 import type { PredictionControl } from './inputStream.ts';
@@ -159,7 +159,7 @@ const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_ANGLE_DEADZONE_RAD = 0.0035;
 const REST_YAW_RATE_RAD_S = 0.0035;
 /** The authority hull is in flight or in its rigid phase (wire 10 names a plain tumble too, as simAtRest reads it). */
-const ACTIVE_BODY_FLAGS = ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING | ENTITY_FLAGS.TUMBLING;
+const ACTIVE_BODY_FLAGS = BODY_PHASE_ROW_FLAGS;
 /** Tick poses kept for the display blend (the replay window is 24 ticks). */
 const POSE_RING = 32;
 

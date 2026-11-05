@@ -261,6 +261,8 @@ export interface SnapshotPacket {
   meta: SnapshotMeta;
   /** Keyframe: the whole destroyed list; delta: indices destroyed since the baseline. */
   destroyed: number[];
+  /** Each `destroyed` index's fall (wire 11, sim/obstacleFall.ts), in its order; absent or short: none for every one. */
+  destroyedFalls?: number[];
   /** Keyframe: the whole destruction log; delta: the entries after the baseline's `destructionBase` (destructionLog.ts). */
   destruction: DestructionLogEntry[];
   /** The log length the entries follow (0 in a keyframe). */
@@ -269,6 +271,8 @@ export interface SnapshotPacket {
   /** Entity ids present in the baseline but hidden now (delta only). */
   removed: number[];
   shells: ShellRow[];
+  /** Rounds this viewer was shown that left its view still in flight (wire 11; see SnapshotFrame.unseenShells). */
+  unseenShells?: number[];
   viewer: ViewerState | null;
   /** JSON text of the mode presentation state, or null in standard mode. */
   modeStateJson: string | null;
@@ -285,10 +289,25 @@ export interface SnapshotFrame {
   meta: SnapshotMeta;
   /** Sorted destroyed obstacle indices (persistent within the round). */
   destroyed: number[];
+  /**
+   * How each `destroyed` index fell, in its order (wire 11, round 2 U27; sim/obstacleFall.ts): the cause and direction
+   * as this viewer may read them, what a seat that did not see a fall lays the prop with. Absent, or not as long as
+   * `destroyed`: none for every index (a ram along the prop's own heading, sim/obstacleFall.ts withheldObstacleFall, as a
+   * withheld live event lays it). Falls take only the room a frame leaves (destroyedSet.ts writeDestroyedFalls): a
+   * decoded frame may hold none where its host's held some.
+   */
+  destroyedFalls?: number[];
   /** The destruction log so far (persistent within the round, append-only; absent reads as empty). */
   destruction?: DestructionLogEntry[];
   entities: EntityRow[];
   shells: ShellRow[];
+  /**
+   * The rounds (ShellRow ids, ascending) this viewer was shown that left its view still in flight (wire 11, round 2 U31):
+   * the authority hides a round with its shooter, so a round absent from `shells` is either ended or unseen, and only the
+   * authority can tell which. Each is named for UNSEEN_SHELL_MARK_TICKS after it left, whatever happens to it then (its
+   * end stays the authority's), so a lost snapshot does not lose the mark. Absent: none.
+   */
+  unseenShells?: number[];
   viewer: ViewerState | null;
   modeStateJson: string | null;
 }

@@ -168,7 +168,7 @@ own team at full rate, and nothing for hidden enemies (as v1: hidden coordinates
 server). Rows are delta-coded against the last acknowledged snapshot; a keyframe goes every 2 s
 or on a missing baseline.
 
-**Budget (28 players, 30 Hz).** Full row ≈ 44 B (quantized: position 3×i32 mm, velocity 3×i16
+**Budget (28 players, 30 Hz).** Full row ≈ 43 B (quantized: position 3×i32 mm, velocity 3×i16
 cm/s, five angles u16, hp u16, reload/magazine/ammo u8–u16, flags u8, sparse ERA list); typical
 delta row ≈ 12–20 B. Per client: keyframe ≈ 1.3 KB, delta snapshot ≈ 0.4–0.6 KB → 12–18 KB/s down,
 < 3 KB/s up. Server egress for a full room ≈ 0.4–0.5 MB/s. Authority CPU: measured in phase 1
@@ -404,9 +404,9 @@ after the shooter looked is missed live and hit rewound.
 
 | What | Number |
 |---|---|
-| Full entity row (keyframe, typical tank) | 44 B mean; worst distinct gun channel + 3 ERA cassettes 53 B |
+| Full entity row (keyframe, typical tank) | 43 B mean (wire 11); worst distinct gun channel + 3 ERA cassettes 52 B |
 | Typical moving delta row (pos rel, velocity, yaw, tilt rel, turret) | 16 B |
-| 28-entity keyframe incl. viewer section | 1473 B; delta snapshot 489 B; snapshot header 41 B |
+| 28-entity keyframe incl. viewer section | 1458 B; delta snapshot 491 B; snapshot header 43 B |
 | Input frame (3 controls) | 57 B (1.7 KB/s at 30 frames/s, 3.4 KB/s at 60) |
 | Tick p95, 28 bots, dedicated shards, headless | winter 1.53 · mars 1.82 · alpine 3.99 · badlands 2.03 · delta 3.11 · steppe 2.79 · monsoon 2.68 ms |
 | Tick p95, 28 bots + 28 acknowledging viewers | 3.79 · 2.48 · 3.76 · 3.79 · 3.70 · 2.27 · 4.17 ms (budget 6) |

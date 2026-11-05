@@ -24,7 +24,7 @@ import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
 import {
   CLOSE_REASON, HELLO_CAPABILITY, INPUT_MARGIN_UNKNOWN, MAX_CLIENT_MESSAGE_BYTES, MAX_ENTITIES, MAX_SEATS, MESSAGE_TYPE,
-  NO_ENTITY, NO_SEAT, NO_TICK, PROTOCOL_VERSION, SHELL_FLAGS, SNAPSHOT_HZ, TEAM, TICK_HZ,
+  NO_ENTITY, NO_SEAT, NO_TICK, PROTOCOL_VERSION, SHELL_FLAGS, SNAPSHOT_HZ, TEAM, TICK_HZ, UNSEEN_SHELL_MARK_TICKS,
 } from '../../src/mp/wire/constants.ts';
 import type { CloseReasonId, TeamId } from '../../src/mp/wire/constants.ts';
 import { decodeMessage, encodeMessage, shellTypeIndex } from '../../src/mp/wire/codec.ts';
@@ -352,6 +352,10 @@ interface ActorClient {
   /** The message-rate token bucket: `tokens` refill at MAX_MESSAGES_PER_SECOND up to MESSAGE_BURST. */
   rate: { tokens: number; lastMs: number };
   closing: boolean;
+  /** The rounds this client's last frame showed, by wire id, as the authority holds them (read for `dead`; round 2 U31). */
+  shownShells: Map<number, SnapshotShellSource>;
+  /** Rounds that left this client's view in flight, by wire id: the tick they left (unseenShellsFor). */
+  unseenShells: Map<number, number>;
 }
 
 /**
@@ -550,6 +554,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const viewEntities: AuthoritativeEntity[] = [];
   const viewShells: SnapshotShellSource[] = [];
   const viewQuantizedShells: QuantizedShellSnapshot[] = [];
+  /** The authority's round behind each viewQuantizedShells entry (the observe view only). */
+  const viewShellSources: SnapshotShellSource[] = [];
+  const shownShellScratch = new Map<number, SnapshotShellSource>();
   let frameMeta: SnapshotMeta | null = null;
   let frameMetaTick = -1;
   // the snapshot budget's scratch (buildFrame): the due mid and far rows of one viewer's frame, reused for every frame
@@ -570,6 +577,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   let rowCacheTick = -1;
   let sortedDestroyed: number[] = [];
   let destroyedRevision = -1;
+  let destroyedLength = -1;
+  /** For each sorted index, its position in the authority's list (where its fall is, round 2 U27). */
+  let sortedDestroyedAt: number[] = [];
+  /** A viewer's falls in the sorted order, by the authority's falls array (a new array whenever the list grows). */
+  let sortedFallsFor = new WeakMap<readonly number[], number[]>();
   // destruction (docs/DESTRUCTION.md §8.2): the authority's log, copied for the frames whenever it grows
   let destructionFrameLog: DestructionLogEntry[] = [];
   const totals = { bytesOut: 0, bytesIn: 0, snapshots: 0, keyframes: 0, droppedSnapshots: 0, backpressureCloses: 0, events: 0, malformed: 0, rejectedInputs: 0 };
@@ -881,12 +893,33 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   function destroyedList(meta: Record<string, unknown> | null): number[] {
     const revision = Number(meta?.destructibleRevision) || 0;
-    if (revision !== destroyedRevision) {
-      const indices = Array.isArray(meta?.destroyedObstacleIndices) ? meta.destroyedObstacleIndices as number[] : [];
-      sortedDestroyed = [...new Set(indices.filter((index) => Number.isInteger(index) && index >= 0))].sort((a, b) => a - b);
+    const indices = Array.isArray(meta?.destroyedObstacleIndices) ? meta.destroyedObstacleIndices as number[] : [];
+    if (revision !== destroyedRevision || indices.length !== destroyedLength) {
+      // the first position of each valid index, sorted by index (a restore may grow the list inside one revision)
+      const first = new Map<number, number>();
+      for (let at = 0; at < indices.length; at++) {
+        const index = indices[at]!;
+        if (Number.isInteger(index) && index >= 0 && !first.has(index)) first.set(index, at);
+      }
+      sortedDestroyed = [...first.keys()].sort((a, b) => a - b);
+      sortedDestroyedAt = sortedDestroyed.map((index) => first.get(index)!);
+      sortedFallsFor = new WeakMap();
       destroyedRevision = revision;
+      destroyedLength = indices.length;
     }
     return sortedDestroyed;
+  }
+
+  /** The viewer's falls for destroyedList's order (round 2, U27): none where the authority names none or a list it lacks. */
+  function destroyedFalls(meta: Record<string, unknown> | null): number[] | undefined {
+    const falls = Array.isArray(meta?.destroyedObstacleFalls) ? meta.destroyedObstacleFalls as number[] : null;
+    if (!falls || falls.length !== destroyedLength || !sortedDestroyed.length) return undefined;
+    let sorted = sortedFallsFor.get(falls);
+    if (!sorted) {
+      sorted = sortedDestroyedAt.map((at) => falls[at] ?? 0);
+      sortedFallsFor.set(falls, sorted);
+    }
+    return sorted;
   }
 
   /**
@@ -911,7 +944,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       for (const shell of viewShells) {
         if (viewQuantizedShells.length >= MAX_VIEW_SHELLS) break;
         const captured = captureShellSnapshot(shell);
-        if (captured) viewQuantizedShells.push(captured);
+        if (captured) { viewQuantizedShells.push(captured); viewShellSources.push(shell); }
       }
       meta = authority.snapshotMeta(client.viewerId);
     }
@@ -999,7 +1032,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         shellType: shellTypeIndex(shell.type), flags: shell.guided ? SHELL_FLAGS.GUIDED : 0,
       });
     }
+    // the rounds that left this view in flight (the observe view: the bench's snapshot view holds no rounds to ask)
+    const unseenShells = frameView === 'snapshot' ? undefined : unseenShellsFor(client, tick);
     viewQuantizedShells.length = 0;
+    viewShellSources.length = 0;
     // the frame meta is every viewer's the same in a tick (phase, clocks, verdict, smoke, revision): captured once
     if (frameMetaTick !== tick) { frameMeta = captureMeta(metaWithResumedClock(meta), ended); frameMetaTick = tick; }
     const margin = client.input.marginTicks;
@@ -1012,12 +1048,40 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       inputMarginTicks: margin == null ? INPUT_MARGIN_UNKNOWN : Math.max(-128, Math.min(126, margin)),
       meta: frameMeta!,
       destroyed: destroyedList(meta),
+      destroyedFalls: destroyedFalls(meta),
       destruction: destructionLog(meta),
       entities,
       shells,
+      ...(unseenShells ? { unseenShells } : {}),
       viewer: client.entity ? captureViewerState(client.entityId, meta?.localPrediction, snapshotIndex % checkpointEverySnapshots === 0) : null,
       modeStateJson: meta?.modeState ? JSON.stringify(meta.modeState) : null,
     };
+  }
+
+  /**
+   * The rounds (wire ids, ascending) this client's frames showed that are gone from this one while the authority still
+   * flies them (round 2 of the 2026-11-02 audit, U31; wire 11): the authority hides a round with its shooter (spotting)
+   * and a view keeps MAX_VIEW_SHELLS, so a round's absence alone cannot tell the client an end from a spotting loss. A
+   * round that ended (`dead`) is not named: its absence is its end. Each is named for UNSEEN_SHELL_MARK_TICKS from the
+   * frame it left, whatever becomes of it after, so a lost snapshot loses no mark and the mark never tells its end (a
+   * hidden round's end stays the authority's). Undefined when there is none.
+   */
+  function unseenShellsFor(client: ActorClient, tick: number): number[] | undefined {
+    const current = shownShellScratch;
+    current.clear();
+    for (let index = 0; index < viewShellSources.length; index++) {
+      current.set(Number(viewQuantizedShells[index]!.id) & 0xffff, viewShellSources[index]!);
+    }
+    for (const [id, source] of client.shownShells) if (!current.has(id) && source.dead !== true) client.unseenShells.set(id, tick);
+    client.shownShells.clear();
+    for (const [id, source] of current) client.shownShells.set(id, source);
+    if (!client.unseenShells.size) return undefined;
+    const ids: number[] = [];
+    for (const [id, since] of client.unseenShells) {
+      if (current.has(id) || tick - since >= UNSEEN_SHELL_MARK_TICKS) client.unseenShells.delete(id);
+      else ids.push(id);
+    }
+    return ids.length ? ids.sort((a, b) => a - b) : undefined;
   }
 
   /** Backpressure withheld this client's snapshot: true when that closed it (starved past its limit). */
@@ -1228,6 +1292,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       interest: createViewerInterest(), latency: createLatencyTracker(), chat: createChatLimiter(),
       bytesOut: 0, bytesIn: 0, events: 0, droppedSnapshots: 0, malformed: 0, pressureSinceMs: null, starvedSinceMs: null, welcomedAtMs: now(),
       rate: { tokens: MESSAGE_BURST, lastMs: now() }, closing: false,
+      shownShells: new Map(), unseenShells: new Map(),
     };
     clients.set(client, true);
     clientBySeat.set(client.seat, client);

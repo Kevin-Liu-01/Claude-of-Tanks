@@ -156,6 +156,7 @@ import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../worl
 import { fellConcealersAt } from './spotting.ts';
 
 import * as detMath from './detMath.ts';
+import { OBSTACLE_FALL_NONE, encodeObstacleFall } from './obstacleFall.ts';
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
 type LobbyTeam = Team | typeof TEAM_SPECTATOR;
 type MatchPhase = 'loading' | 'countdown' | 'playing';
@@ -918,6 +919,13 @@ export function createAuthoritativeMatch({
   // (physics stream, 2026-10-16) the same indices as a set: a restore of thousands (a keyframe, a migration, a late
   // join over Saltwind's crushed walls) asks it, not the list, whether an index is in (the list keeps its order)
   const destroyedObstacleSet = new Set<number>();
+  // (round 2, U27) each listed obstacle's fall, in the list's order (sim/obstacleFall.ts), and the team whose viewers may
+  // read it (null: every viewer). A fall is the live event's cause and direction, so it is withheld as that event's are:
+  // a hull source's fall reads only to its own team (viewerWorldEvent withholds them from a viewer that does not see the
+  // source; the list outlives the moment, so the team that always saw it is the one that reads it). A restored entry has
+  // none (a keyframe names indices only).
+  const destroyedObstacleFalls: number[] = [];
+  const destroyedObstacleFallTeams: (Team | null)[] = [];
   let destructibleRevision = 0;
   const shells: DamageShell[] = [];
   const destroyedBeforeBurst = new Map<string, boolean>();
@@ -1625,6 +1633,9 @@ export function createAuthoritativeMatch({
     if (typeof destroyedIndex === 'number' && Number.isSafeInteger(destroyedIndex)) {
       destroyedObstacleIndices.push(destroyedIndex);
       destroyedObstacleSet.add(destroyedIndex);
+      const source = sourceId ? entityById.get(sourceId) : undefined;
+      destroyedObstacleFalls.push(encodeObstacleFall(cause, directionX, directionZ));
+      destroyedObstacleFallTeams.push(source && !source.combat.destroyed ? source.team : null);
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
@@ -1699,7 +1710,10 @@ export function createAuthoritativeMatch({
         if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
         obstacle.crushed = true;
       }
-      if (!destroyedObstacleSet.has(index)) { destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index); }
+      if (!destroyedObstacleSet.has(index)) {
+        destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index);
+        destroyedObstacleFalls.push(OBSTACLE_FALL_NONE); destroyedObstacleFallTeams.push(null);
+      }
       restored++;
     }
     destructibleRevision = Math.max(destructibleRevision, Math.floor(finite(revision, 0)), destroyedObstacleIndices.length);
@@ -2770,6 +2784,25 @@ export function createAuthoritativeMatch({
     timeS: -1, revision: -1, smokeCount: -1, smokeScreens: [], destroyed: [],
   };
 
+  /** The destroyed list's falls as `viewer` may read them (none where its team may not; whole for a viewer that is no
+   *  hull: a spectator, the sealed migration keyframe): a new array when the list grew, so a frame never sees one move. */
+  const destroyedFallViews = new Map<string, { length: number; falls: number[] }>();
+  function destroyedFallsFor(viewer: AuthoritativeEntity | undefined): number[] {
+    const key = viewer ? viewer.team : '';
+    let view = destroyedFallViews.get(key);
+    if (!view) destroyedFallViews.set(key, view = { length: -1, falls: [] });
+    if (view.length !== destroyedObstacleFalls.length) {
+      const falls = new Array<number>(destroyedObstacleFalls.length);
+      for (let i = 0; i < falls.length; i++) {
+        const team = destroyedObstacleFallTeams[i];
+        falls[i] = !viewer || team === null || team === viewer.team ? destroyedObstacleFalls[i]! : OBSTACLE_FALL_NONE;
+      }
+      view.falls = falls;
+      view.length = falls.length;
+    }
+    return view.falls;
+  }
+
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
     const entity = entityById.get(entityId);
     return Boolean(entity && entity.modeActive !== false &&
@@ -2789,7 +2822,8 @@ export function createAuthoritativeMatch({
    * The event as `viewer` may read it: whole when its source is this viewer's team, spotted by it, destroyed, or not a
    * hull of this match (a scripted or mode source); else one shared copy without WITHHELD_WORLD_FIELDS — the world
    * state it carries (which prop, which structure and stage, the hole, the crater) is unchanged, and the presentation
-   * lays it with neutral values (the prop's own fall axis, the structure's centre).
+   * lays it with neutral values (a ram along the prop's own heading, sim/obstacleFall.ts withheldObstacleFall; the
+   * structure's centre).
    */
   function viewerWorldEvent(viewer: AuthoritativeEntity | undefined, event: AuthoritativeEvent): AuthoritativeEvent {
     if (!viewer) return event;
@@ -3004,6 +3038,8 @@ export function createAuthoritativeMatch({
         resultReason,
         destructibleRevision,
         destroyedObstacleIndices: sharedMeta.destroyed,
+        // (round 2, U27) each listed index's fall as this viewer may read it, in the list's order
+        destroyedObstacleFalls: destroyedFallsFor(viewer),
         // the destruction log (append-only; the host actor copies it when it grows)
         destructionLog: destruction.log,
         ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),

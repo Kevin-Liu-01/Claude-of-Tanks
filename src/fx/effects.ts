@@ -520,6 +520,8 @@ interface FxEventMap {
   'module:state': ModuleStateEvent;
   'tank:fire': TankFireEvent;
   'aps:intercept': ApsInterceptEvent;
+  /** (round 2 of the 2026-11-02 audit, U31) a network round that left this view still in flight (battlePresentation). */
+  'shell:unseen': { shellId: ShellId; shooterId?: ShellId | null };
 }
 
 /**
@@ -669,6 +671,9 @@ const MISSILE_RECORD_LINGER_S = 0.48;
 /** (2026-11-02 audit F10) A round missing from the frames this long (fx s) has ended (no event raised it here: a networked
  *  round that left the snapshot); a shorter absence (a dropped frame, a spotting blink) is not an end. As a drone's. */
 const MISSILE_ABSENCE_GRACE_S = 0.12;
+/** (round 2 of the 2026-11-02 audit, U31) how long a round a network view lost in flight is held out of view (s): long
+ *  enough for its shooter to be spotted again; past it the round ends as an absent round does. */
+const UNSEEN_ROUND_HOLD_S = 3;
 /** an APS interceptor's flash lives two frames at 60 Hz: a bright frame, never a glow (apsIntercept) */
 const APS_FLASH_LIFE_S = 1 / 30;
 /** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
@@ -1191,7 +1196,14 @@ function* createFxSteps(
   let droneWorldSeam: FxWorldSeam | null = null;
   const droneWorld = { raycast: (origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number) =>
     droneWorldSeam?.raycast?.(origin, direction, maxDist) ?? null };
+  // (round 2 of the 2026-11-02 audit, U31) rounds a network view reports out of view while they fly ('shell:unseen'): the
+  // hold left (s of the fx clock, so no stamp to rebase) through which their records are held undrawn instead of ended
+  // by the absence grace: a tracer keeps its belt place, a missile its trail and wire, a drone its airframe and no flight
+  // home. A round seen again leaves the hold; one never seen again ends as an absent round does once the hold runs out.
+  const unseenRounds = new Map<ShellId, number>();
+  const roundHeld = (id: ShellId): boolean => unseenRounds.has(id);
   const drones = createDronePresentation(group, {
+    held: roundHeld,
     world: () => { droneWorldSeam = world?.() ?? null; return droneWorldSeam?.raycast ? droneWorld : null; },
     resolveCarrier: (ownerId) => {
       const owner = decalEntityFor(ownerId as ShellId);
@@ -1551,6 +1563,7 @@ function* createFxSteps(
     thermal: () => heatCamera,
     // (ac130-barrels-230) a gunship round seen from its own lens leaves its gun drawn beside the lens
     lens: (heavy, ox, oy, oz, dx, dy, dz, out) => lensOffset(heavy ? 'howitzer' : 'cannon', ox, oy, oz, dx, dy, dz, out),
+    held: roundHeld,
   });
   timeShifts.add('projectileTracers', tracers);
   group.add(tracers.mesh);
@@ -5523,11 +5536,21 @@ function* createFxSteps(
     atgmFlares.userData.lastCount = liveAtgmCount;
   }
 
+  /** (round 2, U31) the unseen rounds' holds this frame: a round in the frame again leaves its hold, the rest run down. */
+  function holdUnseenRounds(shells: LiveShell[], tickDt: number): void {
+    if (!unseenRounds.size) return;
+    for (let index = 0; index < shells.length; index++) if (!shells[index]!.dead) unseenRounds.delete(shells[index]!.id);
+    for (const [id, left] of unseenRounds) {
+      if (left - tickDt <= 0) unseenRounds.delete(id);
+      else unseenRounds.set(id, left - tickDt);
+    }
+  }
+
   /** A missile's record after its round is gone: its wire parts and its trail ends where it was last seen (a networked
    *  round that left the snapshot raised no event here), then the record is dropped. */
   function ageMissileRecords(tickDt: number): void {
     for (const [id, trail] of guidedTrails) {
-      if (trail.seen) continue;
+      if (trail.seen || unseenRounds.has(id)) continue;
       trail.age += tickDt;
       // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
       // wire parts where it was last seen. (2026-11-02 audit F10) Past a grace, once: a frame's blink parted wires and
@@ -6705,6 +6728,7 @@ function* createFxSteps(
       sweepShellsThroughProps(shells);
       // (ac130-barrels-230) the pilot's guns on this frame's lens, before its rounds are drawn from their muzzles
       poseLensGuns(camera, dt);
+      holdUnseenRounds(shells, tickDt);
       writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
       // (FX lane 10-14) the trails and wires after their rounds (the clock, the wind; a wire's sag, its launcher's pull, its
@@ -7091,6 +7115,8 @@ function* createFxSteps(
           retireSubjectColumn(e.id);
         }
       });
+      // (round 2 of the 2026-11-02 audit, U31) a network round out of view, not ended: held (unseenRounds)
+      onFxEvent(bus, 'shell:unseen', (e) => { if (e.shellId != null) unseenRounds.set(e.shellId, UNSEEN_ROUND_HOLD_S); });
     },
 
     /**
@@ -7866,6 +7892,7 @@ function* createFxSteps(
       // are already running: its cough read as the smoke launch "bursting into dark brown-black smoke")
       battleFreshS = options?.running ? 999 : 0;
       guidedTrails.clear();
+      unseenRounds.clear();
       missileLaunchAt.clear();
       missileByShooter.clear();
       calibreByShooter.clear();
