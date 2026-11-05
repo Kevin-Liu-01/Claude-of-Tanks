@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createGarageScreen, createLazyPanelToggle } from './garageScreen.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
+import { createBootReadiness } from '../app/bootReadiness.ts';
 import { CONSUMABLES_PICKER_CLOSED, nextConsumablesPicker } from './garageConsumables.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
@@ -49,53 +50,33 @@ import { createLazyChunk } from '../app/lazyChunk.ts';
   assert.equal(screen.hide(), false, 'hiding a hidden Garage changes nothing');
 }
 
-// 2. The shared ready wait: one poll for every waiter, ready runs each once, a halted boot ends the wait.
+// 2. The shared ready wait rides the boot latch's edge (round 2: no poll; gameReady.selftest drives it over garage.ts's
+//    callouts): ready runs each waiter once, a cancelled one never, and a halted boot ends the wait.
 {
-  const timers = [];
-  let ready = false;
+  const latch = createBootReadiness();
   let halted = false;
-  const waiter = createGameReadyWaiter({
-    isReady: () => ready,
-    hasFailed: () => halted,
-    schedule: (callback, delayMs) => { const handle = { callback, delayMs }; timers.push(handle); return handle; },
-    cancel: (handle) => { const at = timers.indexOf(handle); if (at >= 0) timers.splice(at, 1); },
-  });
+  const waiter = createGameReadyWaiter({ isReady: () => latch.ready, hasFailed: () => halted,
+    onReady: (callback) => latch.whenReady(callback) });
   const ran = [];
   waiter.whenReady(() => ran.push('gallery'));
   waiter.whenReady(() => ran.push('deploy'));
   const cancelHotspots = waiter.whenReady(() => ran.push('hotspots'));
-  assert.equal(timers.length, 1, 'three waiters share one poll (the Garage ran four chains)');
   cancelHotspots();
-  timers.shift().callback();
-  assert.equal(timers.length, 1);
-  ready = true;
-  timers.shift().callback();
+  assert.equal(waiter.state, 'waiting');
+  assert.deepEqual(ran, [], 'nothing runs before the boot settles, and reading the state runs nothing');
+  latch.markReady();
   assert.deepEqual(ran, ['gallery', 'deploy']);
-  assert.equal(timers.length, 0, 'the poll ends once the game is playable');
   waiter.whenReady(() => ran.push('late'));
   assert.deepEqual(ran.at(-1), 'late', 'a waiter after ready runs at once');
   assert.equal(waiter.state, 'ready');
 
-  ready = false;
-  const failing = createGameReadyWaiter({
-    isReady: () => ready,
-    hasFailed: () => halted,
-    schedule: (callback, delayMs) => { const handle = { callback, delayMs }; timers.push(handle); return handle; },
-    cancel: () => {},
-    pollMs: 100,
-    slowAfterMs: 300,
-    slowPollMs: 1000,
-  });
-  failing.whenReady(() => ran.push('never'));
-  for (let i = 0; i < 3; i++) timers.shift().callback();
-  assert.equal(timers.at(-1).delayMs, 1000, 'a stalled boot keeps one slow poll');
+  const halting = createBootReadiness();
+  const failing = createGameReadyWaiter({ isReady: () => halting.ready, hasFailed: () => halted,
+    onReady: (callback) => halting.whenReady(callback) });
   halted = true;
-  timers.shift().callback();
   assert.equal(failing.state, 'failed');
-  assert.equal(timers.length, 0, 'a halted boot stops the poll: a terminal state, not a chain for the session');
   failing.whenReady(() => ran.push('never'));
-  assert.equal(timers.length, 0);
-  assert.equal(ran.includes('never'), false);
+  assert.equal(ran.includes('never'), false, 'a halted boot runs no waiter');
 }
 
 // 3. The consumables picker: its wait for the smoke table is a state every dismissal clears.

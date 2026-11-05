@@ -14,6 +14,7 @@ import { createFakeDom, settle } from './fleetTakes.test-support.mjs';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
 import { t } from './i18n.ts';
 import { createGameReadyWaiter } from './gameReady.ts';
+import { createBootReadiness } from '../app/bootReadiness.ts';
 import { createLazyChunk } from '../app/lazyChunk.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -54,12 +55,14 @@ function mountPanel(module) {
   const column = dom.document.createElement('div');
   column.className = 'cot-leftcol';
   root.append(column);
-  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: {}, bootReady: false,
+  const harness = { preloads: [], imports: 0, idle: [], intervals: new Map(), nextInterval: 1, window: {},
     closers: [] };
   // (2026-11-02 audit F5) the panel waits on the shared ready wait (gameReady.ts) and gives the Garage screen its closer;
   // (audit S3) that wait reads the product's boot latch (src/app/bootReadiness.ts), as the page's own gameReady does
-  const gameReady = createGameReadyWaiter({ isReady: () => harness.bootReady === true, hasFailed: () => false,
-    schedule: dom.setTimeout, cancel: dom.clearTimeout });
+  // (round 2) on the latch's ready edge, which play() settles
+  harness.latch = createBootReadiness();
+  const gameReady = createGameReadyWaiter({ isReady: () => harness.latch.ready, hasFailed: () => false,
+    onReady: (callback) => harness.latch.whenReady(callback) });
   const garageScreen = { onHide(closer) { harness.closers.push(closer); return () => {}; } };
   const context = {
     root, FEATURED_SHOTS: SHOTS, document: dom.document, t, uiIconSVG: () => '',
@@ -90,8 +93,8 @@ function mountPanel(module) {
   harness.caption = root.querySelector('.fcap');
   harness.video = () => harness.shot.querySelector('video');
   harness.play = async () => {
-    harness.bootReady = true;
-    dom.runTimers(); // the readiness poll hands activation to the idle queue
+    harness.latch.markReady(); // the latch's edge hands activation to the idle queue
+    dom.runTimers();
     for (const callback of harness.idle.splice(0)) callback();
     await settle();
   };

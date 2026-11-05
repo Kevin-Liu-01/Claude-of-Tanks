@@ -127,6 +127,8 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   let picker: ReturnType<typeof createPicker> | null = null;
   let openSlot = -1;
   let pickerState: ConsumablesPickerState = CONSUMABLES_PICKER_CLOSED;
+  // (2026-11-02 audit 05-ui-2 #6, round 2) the tank the picker was asked for: a redraw for another tank closes it
+  let pickerVehicleId: string | null = null;
 
   const items = (): ConsumableId[] => {
     const vehicle = options.vehicle();
@@ -224,6 +226,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   };
   function open(slot: number): void {
     if (options.locked()) return;
+    pickerVehicleId = options.vehicle()?.id ?? null;
     const show = move({ type: 'press', slot, tableReady: !!smokeOf });
     if (pickerState.phase === 'pending') {
       // the first open waits for the smoke table: the wait stands on the surface stack as the picker would, so Escape, a
@@ -297,16 +300,21 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     owns: (node) => host.contains(node),
     close: (reason) => close({ restoreFocus: reason === 'escape' }),
   };
-  // the picker while it waits for the smoke table (the same surface to the census; its panel shows once it opens)
+  // the picker while it waits for the smoke table (the same surface to the census; its panel shows once it opens). Its box
+  // is the band of slots, which shows while the Garage does (round 2: the panel is display:none until it opens, so every
+  // resize or layout sweep took the wait for a surface that no longer showed and dismissed the press without a word)
   const pendingSurface: TransientSurface = {
     id: 'garage-consumables',
-    element: () => panel,
+    element: () => host,
     owns: (node) => host.contains(node),
     close: () => { move({ type: 'dismiss' }); },
   };
 
   function render(): void {
     const vehicle = options.vehicle();
+    // a tank change (garage.ts renderStats) closes the picker, as the equipment's refreshEquipSel does: its cards and locks
+    // were the old tank's (the save is sanitized for the new one, consumableLoadout.ts, so this was the view alone)
+    if (pickerState.phase !== 'closed' && (vehicle?.id ?? null) !== pickerVehicleId) close({ restoreFocus: false });
     const views = consumableSlotsView(items());
     const n = choices();
     host.innerHTML = views.map((view) =>

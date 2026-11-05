@@ -1120,6 +1120,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/surfaceStackOwnership.selftest.mjs',
     // 2026-11-02 audit F5: the Garage's one open state, the epoch its lazy openers check, the shared ready wait
     'src/ui/garageOpenState.selftest.mjs',
+    // 2026-11-02 audit Q11/U24 (round 2): the ready wait rides the boot latch's edge; a read runs no waiter (the callouts once)
+    'src/ui/gameReady.selftest.mjs',
+    // 2026-11-02 audit U24 (round 2): a first show waits under the boot splash only while it covers; the return sweeps
+    // the battle's hidden surfaces
+    'src/ui/garageShow.selftest.mjs',
+    // 2026-11-02 audit U24 / 05-ui-2 #6 (round 2): the consumables wait survives a layout sweep; a tank change or the
+    // room's lock closes the picker
+    'src/ui/garageConsumablesPicker.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
     // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
@@ -1148,6 +1156,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageArchitecture.selftest.mjs',
     // 2026-11-02 audit R5: one record per Garage scene pack (cancellable prewarms, a true upload latch, context-loss renewal)
     'src/ui/garageArchitectureRecords.selftest.mjs',
+    // 2026-11-02 audit U25 (round 2): a cancelled hover prewarm stops at its next prepare slice; a revived one prepares the rest
+    'src/ui/garagePrewarmCancel.selftest.mjs',
     // 2026-11-02 audit 06-ui-3 #7: the stage reveals a variant whole (tints with its scene), supersedes, stops on dispose
     'src/ui/garageVariantReveal.selftest.mjs',
     'src/ui/garageYardWear.selftest.mjs',

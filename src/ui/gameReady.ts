@@ -1,17 +1,24 @@
 // gameReady.ts — one wait for "the game is playable" (2026-11-02 audit F5). Copyright © 2026 Kevin B. Liu.
 //
 // Four Garage features (the featured gallery, the hotspots, Deploy's sheet, the camo swatch painter) each polled
-// `window.__GAME_READY` on their own timer and never stopped when the boot did not finish. They now share one waiter with
-// a declared state: waiting (one shared poll, slowing down after a while), ready (every waiter ran once), or failed (the
-// boot halted on purpose: the capability gate's __COT_BOOT_HALTED, after which no poll runs). The probe is the one place
-// that reads the boot's state: the product's boot latch (src/app/bootReadiness.ts, 2026-11-02 audit S3), not its harness
-// mirror window.__GAME_READY, which only tools read.
+// `window.__GAME_READY` on their own timer and never stopped when the boot did not finish. They share this one wait, on
+// the product's boot latch (src/app/bootReadiness.ts, audit S3), not its harness mirror window.__GAME_READY, which only
+// tools read. Round 2: the wait rides the latch's ready edge, so nothing polls (the round-1 waiter polled the latch every
+// 120 ms, then every second for the rest of a stalled boot's session).
+//
+// The declared state is read, never settled, by `state`: ready (the latch settled), failed (the capability gate halted
+// the boot on purpose, __COT_BOOT_HALTED: no waiter will ever run, and none registers) or waiting. Reading it runs
+// nothing, so a caller that reads it while its own waiter is registered cannot re-enter itself (round 2, Q11: the round-1
+// getter ran the waiters inline, and two callouts presses loaded the hotspots twice). A boot that stops on an uncaught
+// error never settles the latch: its waiters stay registered with nothing scheduled for them, while index.html's recovery
+// replaces the document or shows its reload, the one way on. If that boot still finishes, they run then.
 
-import { isBootReady } from '../app/bootReadiness.ts';
+import { isBootReady, whenBootReady } from '../app/bootReadiness.ts';
 
 export type GameReadyState = 'waiting' | 'ready' | 'failed';
 
 export interface GameReadyWaiter {
+  /** The boot's state now. Reading it runs nothing. */
   readonly state: GameReadyState;
   /** Run `callback` once the game is playable (now, when it already is); never when the boot failed. Returns a cancel. */
   whenReady(callback: () => void): () => void;
@@ -20,74 +27,28 @@ export interface GameReadyWaiter {
 interface GameReadyOptions {
   isReady(): boolean;
   hasFailed(): boolean;
-  schedule(callback: () => void, delayMs: number): unknown;
-  cancel(handle: unknown): void;
-  pollMs?: number;
-  /** After this long waiting, poll at `slowPollMs` instead (a stalled boot keeps one slow poll, not four fast ones). */
-  slowAfterMs?: number;
-  slowPollMs?: number;
+  /** The latch's ready edge: runs `callback` once when the boot settles, and returns a cancel (bootReadiness.whenReady). */
+  onReady(callback: () => void): () => void;
 }
 
-export function createGameReadyWaiter({
-  isReady,
-  hasFailed,
-  schedule,
-  cancel,
-  pollMs = 120,
-  slowAfterMs = 30_000,
-  slowPollMs = 1_000,
-}: GameReadyOptions): GameReadyWaiter {
-  let state: GameReadyState = 'waiting';
-  const waiters = new Set<() => void>();
-  let timer: unknown = null;
-  let waitedMs = 0;
-
-  const settle = (): void => {
-    if (state !== 'waiting') return;
-    if (isReady()) {
-      state = 'ready';
-      const ready = [...waiters];
-      waiters.clear();
-      for (const callback of ready) callback();
-    } else if (hasFailed()) {
-      state = 'failed';
-      waiters.clear();
-    }
-  };
-  const poll = (): void => {
-    timer = null;
-    settle();
-    if (state !== 'waiting' || !waiters.size) return;
-    const delay = waitedMs >= slowAfterMs ? slowPollMs : pollMs;
-    waitedMs += delay;
-    timer = schedule(poll, delay);
-  };
-
+export function createGameReadyWaiter({ isReady, hasFailed, onReady }: GameReadyOptions): GameReadyWaiter {
+  const stateNow = (): GameReadyState => (isReady() ? 'ready' : hasFailed() ? 'failed' : 'waiting');
   return {
-    get state() { settle(); return state; },
+    get state() { return stateNow(); },
     whenReady(callback) {
-      settle();
+      const state = stateNow();
       if (state === 'ready') { callback(); return () => {}; }
       if (state === 'failed') return () => {};
-      waiters.add(callback);
-      if (timer === null) {
-        waitedMs += pollMs;
-        timer = schedule(poll, pollMs);
-      }
-      return () => {
-        waiters.delete(callback);
-        if (!waiters.size && timer !== null) { cancel(timer); timer = null; }
-      };
+      return onReady(callback);
     },
   };
 }
 
 interface BootFlags { __COT_BOOT_HALTED?: string }
 
-/** The page's one waiter: the boot's ready latch, and its deliberate halt as the failed state. */
+/** The page's one waiter: the boot latch's ready edge, and its deliberate halt as the failed state. */
 export const gameReady: GameReadyWaiter = createGameReadyWaiter({
   isReady: isBootReady,
   hasFailed: () => typeof window !== 'undefined' && !!(window as unknown as BootFlags).__COT_BOOT_HALTED,
-  schedule: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
-  cancel: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+  onReady: whenBootReady,
 });

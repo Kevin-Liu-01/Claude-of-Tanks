@@ -289,14 +289,24 @@ function hash(text: string): number {
  * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
  * work yields to the event loop every few pieces, so a cold visit never builds the whole table inside one frame.
  */
-export async function prepareGarageKitPieces(variant: GarageVariant, placement: GarageKitPlacement, piecesPerSlice = 4): Promise<void> {
+export async function prepareGarageKitPieces(
+  variant: GarageVariant,
+  placement: GarageKitPlacement,
+  piecesPerSlice = 4,
+  stillWanted: () => boolean = () => true,
+): Promise<boolean> {
   let built = 0;
   for (const item of garageKitItems(variant, placement)) {
     buildGarageKitPiece(item, variant.architecture, variant.mapId);
     built += 1;
     // a few pieces a slice (each is a few milliseconds cold), then the event loop runs: no clock decides the slices
-    if (built % piecesPerSlice === 0) await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    if (built % piecesPerSlice === 0) {
+      await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+      // (2026-11-02 audit R5, round 2) a cancelled prewarm stops here; the pieces it built stay cached for the next one
+      if (!stillWanted()) return false;
+    }
   }
+  return true;
 }
 
 /**

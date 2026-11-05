@@ -147,7 +147,10 @@ export const GARAGE_PACK_MOVES: Readonly<Record<GaragePackPhase, readonly Garage
 });
 
 interface GaragePackRecord {
-  readonly key: GarageArchitectureKey;
+  /** Its variant's id (round 2: a pack is its variant's, whose map gives it its terrain, kit, skyline and structures;
+   *  keyed by architecture, a second variant of one architecture got the first one's build back, relabelled). */
+  readonly key: string;
+  readonly architecture: GarageArchitectureKey;
   phase: GaragePackPhase;
   build: GarageEnvironmentBuild | null;
   /** The step in flight (the build or the warm), shared by every caller asking for this pack. */
@@ -335,7 +338,8 @@ export function createGarageArchitectureController(
   // 2026-11-02 audit R5: one record per scene pack (its phase, its build, its step in flight) and one transition
   // function, instead of four promise maps, two sets, a WeakSet and a seven-way readiness inference. The map's order is
   // the LRU (touch moves a record to its end).
-  const packs = new Map<GarageArchitectureKey, GaragePackRecord>();
+  // one record per variant (its id), oldest first
+  const packs = new Map<string, GaragePackRecord>();
   let assets: GarageEnvironmentAssetLibrary | null = null;
   // the shown pack: always a warmed record
   let active: GaragePackRecord | null = null;
@@ -363,16 +367,16 @@ export function createGarageArchitectureController(
   };
   const current = (record: GaragePackRecord): boolean => !disposed && packs.get(record.key) === record;
   const isCurrentSelection = (generation: number, variant: GarageVariant): boolean => !disposed
-    && generation === selectionGeneration && selected?.architecture === variant.architecture;
+    && generation === selectionGeneration && selected?.id === variant.id;
   const settleStep = (record: GaragePackRecord, task: Promise<GarageEnvironmentBuild | null>): void => {
     const clear = (): void => { if (record.promise === task) record.promise = null; };
     task.then(clear, clear);
   };
   // A hover prewarm is the only caller that may be cancelled: a newer prewarm or a selection elsewhere stops it at its
   // next checkpoint (before the bake, between texture uploads), so N hovered cards no longer cost N bakes.
-  const cancelPrewarms = (keep: GarageArchitectureKey): void => {
+  const cancelPrewarms = (keep: string): void => {
     for (const record of packs.values()) {
-      if (record.speculative && record.key !== keep && record.key !== selected?.architecture
+      if (record.speculative && record.key !== keep && record.key !== selected?.id
         && (record.phase === 'building' || record.phase === 'warming')) record.cancelled = true;
     }
   };
@@ -410,7 +414,7 @@ export function createGarageArchitectureController(
         // A selected build can finish its preparation promise one microtask
         // before the caller presents it. Never let a concurrent selector
         // prewarm evict that handoff target in the gap.
-        && record.key !== selected?.architecture
+        && record.key !== selected?.id
         && record.phase !== 'building'
         && record.phase !== 'warming'
         && record.holds === 0
@@ -429,7 +433,7 @@ export function createGarageArchitectureController(
 
   const collectStats = (): GarageArchitectureStats => {
     const textureStats = assets?.diagnostics() || { residentSets: 0, referencedSets: 0 };
-    const record = selected ? packs.get(selected.architecture) ?? null : null;
+    const record = selected ? packs.get(selected.id) ?? null : null;
     const selectedBuild = record?.build ?? null;
     // ready is the selected record's own phase: warmed, shown, and the build's own completion flag
     const selectedReady = !!record && !!selectedBuild && active === record && record.phase === 'warmed'
@@ -533,14 +537,13 @@ export function createGarageArchitectureController(
     return stats;
   };
 
-  const show = (variant: GarageVariant, record: GaragePackRecord): boolean => {
+  const show = (_variant: GarageVariant, record: GaragePackRecord): boolean => {
     const build = record.build;
     if (!build || !current(record) || record.phase !== 'warmed') return false;
     if (active && active !== record && active.build) active.build.root.visible = false;
     active = record;
     build.root.visible = true;
-    build.root.userData.architectureKey = variant.architecture;
-    build.root.userData.mapId = variant.mapId;
+    // (its labels are its own variant's, written at attach: show() relabels nothing)
     touch(record);
     trim();
     publish();
@@ -567,12 +570,12 @@ export function createGarageArchitectureController(
     advance(record, attached);
     touch(record);
     trim();
-    if (selected?.architecture === variant.architecture && attached === 'warmed') show(variant, record);
+    if (selected?.id === variant.id && attached === 'warmed') show(variant, record);
     return current(record) ? build : null;
   };
 
   const ensure = (variant: GarageVariant, speculative: boolean): Promise<GarageEnvironmentBuild | null> => {
-    const existing = packs.get(variant.architecture);
+    const existing = packs.get(variant.id);
     if (existing) {
       // a fresh request revives a cancelled pack; a selection takes over a prewarm of it (no longer cancellable)
       existing.cancelled = false;
@@ -581,7 +584,8 @@ export function createGarageArchitectureController(
       return Promise.resolve(existing.build);
     }
     const record: GaragePackRecord = {
-      key: variant.architecture, phase: 'building', build: null, promise: null, speculative, cancelled: false, holds: 0,
+      key: variant.id, architecture: variant.architecture, phase: 'building', build: null, promise: null, speculative,
+      cancelled: false, holds: 0,
     };
     packs.set(record.key, record);
     const stillWanted = (): boolean => current(record) && !record.cancelled;
@@ -593,7 +597,12 @@ export function createGarageArchitectureController(
       // its prepared pieces and skyline stay cached until its bake, however many Garages prepare at once
       const release = kit.pinGarageEnvironmentCaches(variant);
       try {
-        await kit.prepareGarageEnvironmentAssets(library, variant);
+        // (round 2) the prepare asks stillWanted between its slices: a cancelled prewarm (or a disposed controller) stops
+        // at its next slice. One that stopped and was revived since (its card selected) prepares the rest: the caches
+        // keep what the stopped pass made
+        while ((await kit.prepareGarageEnvironmentAssets(library, variant, stillWanted)) === false) {
+          if (!stillWanted()) return null;
+        }
         // a cancelled prewarm (or a disposed controller) skips the synchronous bake, the switch's long task
         if (!stillWanted()) return null;
         const startedAt = performance.now();
@@ -680,14 +689,14 @@ export function createGarageArchitectureController(
   };
 
   const prepare = async (variant: GarageVariant, speculative = false): Promise<GarageEnvironmentBuild | null> => {
-    if (speculative) cancelPrewarms(variant.architecture);
+    if (speculative) cancelPrewarms(variant.id);
     const building = ensure(variant, speculative);
     // held from the request to the reveal: the cache trim never evicts a pack its caller is about to warm or show
-    const held = packs.get(variant.architecture);
+    const held = packs.get(variant.id);
     if (held) held.holds += 1;
     try {
       const build = await building;
-      const record = packs.get(variant.architecture);
+      const record = packs.get(variant.id);
       if (!build || !record || record.build !== build) return null;
       return await warmForReveal(record);
     } finally {
@@ -704,7 +713,7 @@ export function createGarageArchitectureController(
     rendererEpoch += 1;
     initializedTextures = new WeakSet<THREE.Texture>();
     for (const record of packs.values()) {
-      if (record !== active && record.phase === 'warmed' && record.key !== 'field_shed') advance(record, 'attached');
+      if (record !== active && record.phase === 'warmed' && record.architecture !== 'field_shed') advance(record, 'attached');
     }
     publish();
   };
@@ -718,8 +727,8 @@ export function createGarageArchitectureController(
     // (2026-11-02 audit 05-ui-2 #4) a surface set that failed while a cached pack held it is asked for again on every
     // selection, so switching between two cached packs (no bake, no acquire) still heals it
     assets?.retryFailed();
-    cancelPrewarms(variant.architecture);
-    const record = packs.get(variant.architecture);
+    cancelPrewarms(variant.id);
+    const record = packs.get(variant.id);
     const shown = !!record && record.phase === 'warmed' && show(variant, record);
     if (shown) {
       lastBuildMs = 0;
@@ -731,7 +740,7 @@ export function createGarageArchitectureController(
       queueMicrotask(() => {
         if (!isCurrentSelection(generation, variant)) return;
         void prepare(variant).then((build) => {
-          const ready = packs.get(variant.architecture);
+          const ready = packs.get(variant.id);
           if (build && ready && isCurrentSelection(generation, variant)) show(variant, ready);
         }).catch(() => {
           // The stage owns bounded retry/fallback presentation. Keep this
@@ -755,16 +764,16 @@ export function createGarageArchitectureController(
       return prepare(variant, true).then(() => collectStats());
     },
     stats: collectStats,
-    /** The pack records' phases, oldest first (diagnostics and receipts). */
-    packPhases: (): Array<{ key: GarageArchitectureKey; phase: GaragePackPhase }> => (
-      [...packs.values()].map((record) => ({ key: record.key, phase: record.phase }))),
+    /** The pack records' phases, oldest first (diagnostics and receipts): each its architecture and its variant. */
+    packPhases: (): Array<{ key: GarageArchitectureKey; variantId: string; phase: GaragePackPhase }> => (
+      [...packs.values()].map((record) => ({ key: record.architecture, variantId: record.key, phase: record.phase }))),
     async whenReady(): Promise<GarageArchitectureStats> {
       // the same staleness rule as setVariant's reveal: the selection this call started under must still stand
       const target = selected;
       const generation = selectionGeneration;
       if (target) {
         const build = await prepare(target);
-        const record = packs.get(target.architecture);
+        const record = packs.get(target.id);
         if (build && record && isCurrentSelection(generation, target)) show(target, record);
       }
       return collectStats();

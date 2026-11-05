@@ -315,7 +315,7 @@ export function createGaragePedestalRuntime({
     const originalDispose = visual.dispose;
     visual.dispose = () => {
       if (residency.get(visual) === 'retired') return;
-      residency.set(visual, 'retired');
+      moveResidency(visual, 'retired');
       if (cache.get(visual.specId) === visual) cache.delete(visual.specId);
       if (current === visual) current = null;
       originalDispose.call(visual);
@@ -1033,6 +1033,19 @@ export function createGaragePedestalRuntime({
       pollToken += 1;
       preloader.invalidate();
       cancelWatchdog(watchdog);
+      // (2026-11-02 audit R5, round 2) the cached heroes go with the pedestal: each is retired (the tracked dispose takes
+      // it out of the cache) with its root out of the scene, except one the battle holds, which stays the battle's to
+      // dispose (a lent hero is released; production never disposes the pedestal, its page does)
+      const owned = new Set(cache.values());
+      if (current) owned.add(current);
+      for (const visual of owned) {
+        if (residency.get(visual) === 'lent') { releaseLent(visual); continue; }
+        if (heldByBattle(visual)) continue;
+        scene.remove(visual.root);
+        visual.dispose();
+      }
+      cache.clear();
+      current = null;
     },
   };
 }
