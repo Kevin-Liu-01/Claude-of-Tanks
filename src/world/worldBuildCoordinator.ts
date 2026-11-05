@@ -53,13 +53,18 @@ interface BackgroundWorkLease {
 
 /**
  * (2026-11-02 audit R1) A build record's phase, once three independent flags (background, cancelled and a one-shot
- * interrupt): background (speculative, paced behind the Garage) → foreground (promoted by a demand) or cancelled. Nothing
- * leaves foreground or cancelled, so the one-shot interrupt fires exactly once, on the way out of background.
+ * interrupt): background (speculative, paced behind the Garage) → foreground (promoted by a demand) or cancelled.
+ * (round 2 U26) A foreground build whose every demand was let go (each activation waiting on it superseded: the entry's
+ * failure restoring the Garage, the Studio left while its battlefield loads) is speculative again: back to background,
+ * where it yields to the Garage, the next entry on another battlefield cancels it as any stale prefetch, and the next on
+ * this one promotes it again. Before, it kept loading-pace slices into the Garage and beside the next entry's build (two
+ * build peaks at once on the mobile tier, which keeps one world). Nothing leaves cancelled. Leaving background fires
+ * the record's interrupt (the pacing waits end); entering it arms a fresh one.
  */
 type BuildPhase = 'background' | 'foreground' | 'cancelled';
 const BUILD_MOVES: Readonly<Record<BuildPhase, readonly BuildPhase[]>> = {
   background: ['foreground', 'cancelled'],
-  foreground: [],
+  foreground: ['background'],
   cancelled: [],
 };
 
@@ -76,15 +81,24 @@ interface BuildRecord<World extends WorldScene> {
   waitForGarageLull: boolean;
   /** A background build paced like a covered load (prefetch pace 'loading'): a returning tab's battlefield under its boot. */
   loadingPace: boolean;
+  /** (round 2 U26) the foreground demands (beginBuild without `background`) still waiting on this build. */
+  demands: number;
   backgroundInterrupted: Promise<void>;
   interruptBackgroundWait(): void;
 }
 
-/** The record's one transition: a refused move (a promoted or cancelled record) changes nothing and reports false. */
+/** (round 2 U26) A fresh interrupt for the record's background waits (it is one-shot: leaving background fires it). */
+function armBackgroundWait<World extends WorldScene>(record: Pick<BuildRecord<World>, 'backgroundInterrupted' | 'interruptBackgroundWait'>): void {
+  record.backgroundInterrupted = new Promise<void>((resolve) => { record.interruptBackgroundWait = resolve; });
+}
+
+/** The record's one transition: a refused move (a cancelled record, or a repeated one) changes nothing and reports false. */
 function moveBuild<World extends WorldScene>(record: BuildRecord<World>, next: BuildPhase): boolean {
   if (!BUILD_MOVES[record.phase].includes(next)) return false;
+  const left = record.phase;
   record.phase = next;
-  record.interruptBackgroundWait();
+  if (left === 'background') record.interruptBackgroundWait();
+  if (next === 'background') armBackgroundWait(record);
   return true;
 }
 
@@ -131,6 +145,11 @@ interface WorldBuildRequest<World extends WorldScene = WorldScene> {
   fraction: number;
   label: string;
   stageTimings: Record<string, number>;
+  /**
+   * (round 2 U26) Let go of this demand (once; a no-op for a cached world or a background request): the build's last
+   * foreground demand let go returns it to background (BUILD_MOVES).
+   */
+  release(): void;
 }
 
 export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
@@ -149,6 +168,13 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
    * Ultra Low a cached map came back with live-following lite terrain under its build-time vegetation.
    */
   cached(id: string): World | null;
+  /** (round 2 U26) Whether cached(id) would hand out a world now, with none of its side effects (nothing is retired). */
+  reusable(id: string): boolean;
+  /**
+   * (round 2 U26) The build id of every resident world (a retired one under the id it was built for), for the probes'
+   * residency census: the cache's own keys carry the retired suffix.
+   */
+  residentIds(): string[];
   /**
    * (2026-11-02 audit R1) Hold the world cached (or about to be cached) under `id` against eviction while an activation
    * warms it; the returned release drops the hold (once) and lets the residency budget run again.
@@ -368,6 +394,19 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return null;
   };
 
+  const reusable = (id: string): boolean => {
+    const world = cache.get(id);
+    if (!world) return false;
+    const built = classOf.get(world);
+    return built === undefined || built === buildClass();
+  };
+
+  const residentIds = (): string[] => {
+    const ids: string[] = [];
+    for (const key of cache.keys()) ids.push(retired.has(key) ? key.slice(0, key.indexOf('~')) : key);
+    return ids;
+  };
+
   const retain = (id: string): (() => void) => {
     const hold = { key: id };
     holds.add(hold);
@@ -386,7 +425,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     if (resident) {
       return {
         promise: Promise.resolve(resident), listeners: null, fraction: 1, label: 'Ready',
-        stageTimings: {},
+        stageTimings: {}, release: () => {},
       };
     }
 
@@ -401,10 +440,6 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     }
 
     if (!record) {
-      let interruptBackgroundWait = (): void => {};
-      const backgroundInterrupted = new Promise<void>((resolve) => {
-        interruptBackgroundWait = resolve;
-      });
       const created: BuildRecord<World> = {
         id: mapId,
         fraction: 0,
@@ -417,9 +452,11 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         phase: background ? 'background' : 'foreground',
         waitForGarageLull,
         loadingPace: options.loadingPace ?? false,
-        backgroundInterrupted,
-        interruptBackgroundWait,
+        demands: 0,
+        backgroundInterrupted: Promise.resolve(),
+        interruptBackgroundWait: () => {},
       };
+      armBackgroundWait(created);
       record = created;
       const startedAt = now();
       const startedInBackground = background;
@@ -547,7 +584,8 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         next.group.visible = false;
         // Cancellation during the final pacing yield must finish assembly so
         // a real world owns every resource before this final-disposal path.
-        // Earlier partial-builder rollback remains outside this coordinator.
+        // (audit R1) A build cancelled earlier never gets here: createMapAsync hands the subsystems it had built to
+        // slicing.abandon (abandonPartial), released as a released world's are.
         if (created.phase === 'cancelled') releaseWorld(mapId, next);
         throwIfCancelled();
         cache.set(mapId, next);
@@ -574,12 +612,27 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
       try { onProgress(record.fraction, record.label); } catch { /* advisory */ }
     }
     if (!record.promise) throw new Error(`Battlefield build ${mapId} has no promise`);
+    // (round 2 U26) a foreground demand holds the build foreground until it is let go (its activation superseded or
+    // settled); the last one let go returns a still-running build to background
+    let release = (): void => {};
+    if (!background) {
+      const demanded = record;
+      demanded.demands += 1;
+      let held = true;
+      release = () => {
+        if (!held) return;
+        held = false;
+        demanded.demands -= 1;
+        if (demanded.demands === 0 && builds.get(mapId) === demanded) moveBuild(demanded, 'background');
+      };
+    }
     return {
       promise: record.promise,
       listeners: record.listeners,
       fraction: record.fraction,
       label: record.label,
       stageTimings: record.stageTimings,
+      release,
     };
   };
 
@@ -620,6 +673,8 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     enforceCacheBudget,
     releaseCached,
     cached,
+    reusable,
+    residentIds,
     retain,
     beginBuild,
     prefetch,

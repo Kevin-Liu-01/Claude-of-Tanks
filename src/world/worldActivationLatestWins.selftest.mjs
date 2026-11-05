@@ -6,7 +6,8 @@
 // 2. a direct activation or switchMap during an ensure's warm supersedes it the same way.
 // 3. a world an ensure is warming is never evicted by the budget or by the dormant release meanwhile (before, the warm
 //    went on to present a released world).
-// 4. the overlap is real: the entry barriers are Promise.all, so a failed sibling leaves its entry's ensure running.
+// 4. the overlap is real (driven): the solo barrier is Promise.all, so a failed sibling leaves its entry's ensure running;
+//    the network barrier waits for its world first.
 // 5. (review) a request that ends without presenting hides the world it warmed again (every built world sits in the scene
 //    hidden; before, the warm's lift stayed and a superseded world drew over the one presented), and a superseded warm
 //    stops at its next wait (no program compile or shadow warm of a world nobody presents).
@@ -14,7 +15,6 @@
 //    orphaned ensure still builds) supersedes it: the battlefield never presents, never applies its sky, over the Garage.
 // The scene membership is the real phase residency (engine/phaseSceneResidency.ts), as main.ts wires it.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createWorldActivationRuntime } from './worldActivationRuntime.ts';
 import { createPhaseSceneResidency } from '../engine/phaseSceneResidency.ts';
@@ -108,10 +108,11 @@ for (const worldScenes of [1, 2]) {
   assert.equal(bravo.released, false, 'the mobile budget never releases the battlefield the latest request presents');
   await flush();
   assert.deepEqual(h.drawn(), ['bravo'], `${worldScenes}: the superseded world never draws beside the one presented`);
-  if (worldScenes === 1) {
-    assert.ok(!h.runtime.cache.has('alpha') && h.disposed.includes('alpha'),
-      'the superseded build is released by the budget once nothing holds it (mobile keeps one world)');
-  } else assert.ok(h.runtime.cache.has('alpha'), 'desktop keeps the superseded build cached, hidden');
+  // (round 2 U26) the superseded build is speculative again and the later entry's request cancels it, on either tier: a
+  // build nobody waits on never runs beside a demanded one (this pinned 'desktop keeps the superseded build cached', the
+  // never-cancelled foreground build the audit names; worldActivationOrphans.selftest covers the orphan's pacing)
+  assert.ok(!h.runtime.cache.has('alpha') && h.disposed.includes('alpha'),
+    `${worldScenes}: the superseded build is cancelled by the later request and released, never cached`);
 }
 
 // ---- 2. a direct activation, or switchMap, during an ensure's warm supersedes it
@@ -247,13 +248,48 @@ for (const later of ['activate', 'switchMap']) {
   assert.deepEqual(h.compiled, [], 'the abandoned warm compiles nothing');
 }
 
-// ---- 4. the overlap the owner closes: the entry barriers are Promise.all, so a failed sibling leaves the ensure running
+// ---- 4. the overlap the owner closes, driven through the real barriers (round 2 U26: this was a source regex, and it named
+// acquireNetwork's barrier, which never orphans its world). The solo barrier (acquireSolo) is Promise.all: a failed sibling
+// settles it while the world task still runs, and the entry's failure path restores the Garage over that orphan. The
+// network barrier (acquireNetwork) waits for its world task before it rethrows. The MP v2 round loader's own Promise.all
+// (mp/session/browserComposition.ts) orphans its world the way acquireSolo does.
 {
-  const acquisition = readFileSync(new URL('../game/battleEntryAcquisition.ts', import.meta.url), 'utf8');
-  assert.match(acquisition, /await Promise\.all\(tasks\.map\(\(task\) => run\(task\)\)\);/,
-    'solo entry: one rejected task settles the barrier while the world task keeps running');
-  assert.match(acquisition, /await Promise\.all\(\[modulesP, worldP, matchP\]\)/,
-    'network entry: a failed connect settles the barrier while the world keeps loading');
+  const { createBattleEntryAcquisition } = await import('../game/battleEntryAcquisition.ts');
+  const h = harness({ worldScenes: 1 });
+  const bravoGate = h.gate('bravo');
+  const failure = new Error('battle modules failed');
+  let world = null;
+  const barrier = createBattleEntryAcquisition({ now: () => 0 }).acquireSolo([
+    () => Promise.reject(failure),
+    () => (world = h.runtime.ensure('bravo', null, { precompile: false, atmosphere: 'covered-battle' })),
+  ]);
+  await assert.rejects(barrier, (error) => error === failure, 'solo: the failed sibling settles the barrier');
+  let worldSettled = false;
+  world.then(() => { worldSettled = true; }, () => { worldSettled = true; });
+  await flush();
+  assert.equal(worldSettled, false, 'solo: the world task still builds: the barrier orphaned it');
+  h.runtime.setDormant(true); // the entry's failure path restores the Garage (garageReturnRuntime)
+  bravoGate.resolve();
+  assert.equal((await settle(world)).error?.name, 'WorldActivationSuperseded', 'solo: the orphan settles superseded');
+  assert.equal(h.runtime.current, null, 'solo: and never presents over the Garage');
+  assert.deepEqual(h.drawn(), [], 'solo: nothing of it draws');
+
+  const worldGate = deferred();
+  let networkWorld = false;
+  const connectFailure = new Error('connect refused');
+  const network = settle(createBattleEntryAcquisition({ now: () => 0 }).acquireNetwork({
+    loadModules: async () => 'modules',
+    loadWorld: () => worldGate.promise.then(() => { networkWorld = true; return 'world'; }),
+    connect: async () => { throw connectFailure; },
+    publishMatch() {},
+  }));
+  let networkSettled = false;
+  network.then(() => { networkSettled = true; });
+  await flush();
+  assert.equal(networkSettled, false, 'network: a failed connect waits for its world task before it rethrows');
+  worldGate.resolve();
+  assert.equal((await network).error, connectFailure, 'network: then the first failure');
+  assert.equal(networkWorld, true, 'network: its world task finished first (acquireNetwork never orphans the world)');
 }
 
 console.log('worldActivationLatestWins.selftest: the latest request presents, an earlier ensure is superseded (never swaps over it), direct activation, switchMap and the Garage restore supersede a warm, a request that never presents hides its world again and stops warming it, a warming world is held against the budget and the dormant release PASS');
