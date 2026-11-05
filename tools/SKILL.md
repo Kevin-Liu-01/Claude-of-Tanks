@@ -477,7 +477,10 @@ bad flag return before a server exists; every run writes
 The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run with
 `node tools/with-session-mutex.mjs "$SP/probe.lock" -- nice -n 19 node tools/<probe>.mjs ...`
 (an owned mutex, reaped once its holder is dead; a bare `mkdir` loop left a killed
-agent's mutex held for good, 2026-11-02 audit S4). The tools take neither it nor the `/tmp/cot-shots` FIFO, so
+agent's mutex held for good, 2026-11-02 audit S4). To hold the `/tmp/cot-shots` FIFO across several steps, run them
+under one normal ticket with `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`
+(round 2 U38: the one hold wrapper's shell form; every tool under it that takes the lock nests in that hold through its
+token; a wait that runs out exits 77). The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
 127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:

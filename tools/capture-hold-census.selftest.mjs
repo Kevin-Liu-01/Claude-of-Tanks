@@ -156,7 +156,7 @@ const DIRECT_ACQUIRERS = Object.freeze([
   'tools/shot-schematic-parity-probe.mjs', 'tools/six-modes.browser.mjs', 'tools/smoke-launchers.browser.mjs',
   'tools/solo-cold-import-cover-probe.mjs', 'tools/solo-kernels-probe.mjs',
   'tools/sourced-image-composition-probe.mjs', 'tools/spectator-cursor.browser.mjs',
-  'tools/studio-ground-contact-probe.mjs', 'tools/tank-energy.browser.mjs', 'tools/tank-regen-changed.mjs',
+  'tools/studio-ground-contact-probe.mjs', 'tools/tank-energy.browser.mjs',
   'tools/terrain-fast-cache-benchmark.mjs', 'tools/tree-crown-audit.browser.mjs',
   'tools/vehicle-special-action.browser.mjs', 'tools/vehicle-status.browser.mjs', 'tools/visual-census.mjs',
   'tools/water-palette-probe.mjs', 'tools/world-residency-probe.mjs', 'tools/wreck-build-profile.mjs',
@@ -168,7 +168,7 @@ const DIRECT_ACQUIRER_RECEIPTS = Object.freeze([
   'tools/black-world.browser.selftest.mjs', 'tools/browser-guard-holds.selftest.mjs',
   'tools/browser-launch.selftest.mjs', 'tools/capture-command.selftest.mjs', 'tools/capture-lock-class.selftest.mjs',
   'tools/capture-lock-reentry.selftest.mjs',
-  'tools/capture-lock.selftest.mjs', 'tools/cloud-history.browser.selftest.mjs',
+  'tools/capture-lock.selftest.mjs', 'tools/chain-lifecycle.selftest.mjs', 'tools/cloud-history.browser.selftest.mjs',
   'tools/destruction-first-use.browser.selftest.mjs', 'tools/garage-roster-settle.browser.selftest.mjs',
   'tools/garage-switch-probe.selftest.mjs', 'tools/horizon-panorama-bake.browser.selftest.mjs',
   'tools/hud-self-measure.browser.selftest.mjs', 'tools/late-fx-matrix.browser.selftest.mjs',
@@ -177,7 +177,7 @@ const DIRECT_ACQUIRER_RECEIPTS = Object.freeze([
   'tools/session-mutex.selftest.mjs', 'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs', 'tools/standard-check-stages.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs', 'tools/vehicle-ground-occlusion.browser.selftest.mjs',
-  'tools/visual-census-lock.selftest.mjs', 'tools/visual-census.selftest.mjs',
+  'tools/visual-census-lock.selftest.mjs', 'tools/visual-census.selftest.mjs', 'tools/with-capture-lock.selftest.mjs',
 ]);
 
 // a read of the retired nesting flag (built from parts so this file is not its own finding)

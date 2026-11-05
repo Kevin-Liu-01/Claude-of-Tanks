@@ -924,6 +924,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/visual-census-lock.selftest.mjs',
     // 2026-11-02 audit S4: the probe mutex has an owner (a dead holder's reaped, a live or shell holder's never)
     'tools/session-mutex.selftest.mjs',
+    // 2026-11-02 audit U38 (round 2): the hold CLI, one normal-ticket hold per command whose tools nest in it; exit 77 on a wait
+    'tools/with-capture-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     'tools/battle-spike-analysis.selftest.mjs', // battle-spikes-253: the spike census's attribution on a synthetic battle of known causes
     'tools/battle-spike-census.selftest.mjs', // battle-spikes-253: the streamed trace's splitter, the census's arguments
