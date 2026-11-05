@@ -8470,8 +8470,8 @@ function* createSplatMaterialSteps(
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
-    yardCinder = 0;
     groundSurface.open.fill(0); groundSurface.worn.fill(0); groundSurface.town.fill(0); groundSurface.near.fill(0); // ground-269
+    yardCinder = 0;
   }
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
