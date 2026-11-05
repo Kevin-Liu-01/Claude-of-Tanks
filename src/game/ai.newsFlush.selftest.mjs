@@ -9,11 +9,16 @@
 // old state (5 v 5 urban pacing trace: a different battle from 50 s on). Pins: [1] after the drivers' flush the
 // teammate's answer is live before anyone thinks, and the bot that thinks first reads it; [2] the authority's step and
 // [3] the solo step end with no bot holding news, over a fight that delivers shots heard, results and hits.
+// Round 2 (U17): ending a step with no news waiting is true of a flush anywhere in the step, after spotting and the mode
+// step included, so [2] and [3] did not pin where the news lands. They now also read every bot's queue as the
+// spotting update starts (the authority's phase profile clock) and as the solo step enters its spotting and mode
+// stages (the frame-stage hook): none may hold news there. A flush moved after spotting fails both.
 import { Vector3 } from 'three';
 import * as ai from './ai.ts';
 import { createBus, createCollider, createGameState, setupBattle, simStep } from './state.ts';
 import { spawnTanks } from './rosterState.ts';
 import { openWatchSeats } from './watchSeat.ts';
+import { FRAME_STAGE, setFrameStageSink } from './frameStages.ts';
 import { ensureFullFleet } from '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
@@ -113,10 +118,20 @@ function countNews(hulls) {
 }
 const waiting = (hulls) => hulls.filter((hull) => hull.aiCtl && hull.aiCtl.debugInfo().pendingEvents > 0).map((hull) => hull.id);
 
-console.log('[2] the authority\'s step ends with no bot holding news');
+console.log('[2] the authority\'s step ends with no bot holding news, and none holds any when the spotting reads the field');
 {
+  // the bench's phase profile: its clock is read as the visibility update starts (and as it ends), after the flush point
+  let entities = null, spottingReads = 0, heldAtSpotting = 0, firstAtSpotting = '';
+  const profile = { spottingMs: 0, clock: () => {
+    if (entities) {
+      spottingReads++;
+      const ids = waiting(entities);
+      if (ids.length && !heldAtSpotting++) firstAtSpotting = ids.join(',');
+    }
+    return 0;
+  } };
   const match = createAuthoritativeMatch({
-    mapId: 'verdant', seed: 123, countdownS: 0,
+    mapId: 'verdant', seed: 123, countdownS: 0, profile,
     players: [
       { id: 'a1', specId: 'm1a1_abrams_hc', team: 'alpha', bot: true, spawn: { x: 0, z: 0, yaw: 0 } },
       { id: 'a2', specId: 't90am', team: 'alpha', bot: true, spawn: { x: 24, z: 0, yaw: 0 } },
@@ -125,6 +140,7 @@ console.log('[2] the authority\'s step ends with no bot holding news');
     ],
   });
   match.onMatchReady();
+  entities = match.entities;
   const news = countNews(match.entities);
   const inputs = new Map();
   let stepsWithNews = 0, held = 0, firstHeld = '';
@@ -138,9 +154,11 @@ console.log('[2] the authority\'s step ends with no bot holding news');
   ok(news.fired > 0 && news.result > 0 && news.underFire > 0,
     `the fight delivered news (heard ${news.fired}, results ${news.result}, under fire ${news.underFire}; ${stepsWithNews} steps)`);
   ok(held === 0, `no step ended with news waiting (${held} did${firstHeld ? `, first at ${firstHeld}` : ''})`);
+  ok(spottingReads > 0 && heldAtSpotting === 0,
+    `no bot held news as the spotting read the field (${heldAtSpotting} of ${spottingReads} reads${firstAtSpotting ? `, first ${firstAtSpotting}` : ''})`);
 }
 
-console.log('[3] the solo step ends with no bot holding news');
+console.log('[3] the solo step ends with no bot holding news, and none holds any at its spotting and mode stages');
 {
   const MAP = 'steppe';
   const field = createDedicatedWorldCollision(MAP);
@@ -177,18 +195,35 @@ console.log('[3] the solo step ends with no bot holding news');
   }
   const news = countNews(game.tanks);
   let stepsWithNews = 0, held = 0, firstHeld = '';
-  for (let tick = 0; tick < 1200 && !(news.underFire >= 2 && stepsWithNews >= 4); tick++) {
-    const before = news.fired + news.result + news.underFire;
-    simStep(game, bus, field, null, collider);
-    if (news.fired + news.result + news.underFire > before) stepsWithNews++;
+  // the step's stage marks (game/frameStages.ts): the spotting and the mode stage read every bot's queue as they begin
+  const staged = { spotting: 0, mode: 0 }, heldAtStage = { spotting: 0, mode: 0 };
+  let firstAtStage = '';
+  setFrameStageSink({ begin() {}, end() {}, stage(stage) {
+    const name = stage === FRAME_STAGE.spotting ? 'spotting' : stage === FRAME_STAGE.mode ? 'mode' : null;
+    if (!name) return;
+    staged[name]++;
     const ids = waiting(game.tanks);
-    if (ids.length && !held++) firstHeld = `${game.timeS.toFixed(2)} s: ${ids.join(',')}`;
+    if (ids.length && !heldAtStage[name]++ && !firstAtStage) firstAtStage = `${name} at ${game.timeS.toFixed(2)} s: ${ids.join(',')}`;
+  } });
+  try {
+    for (let tick = 0; tick < 1200 && !(news.underFire >= 2 && stepsWithNews >= 4); tick++) {
+      const before = news.fired + news.result + news.underFire;
+      simStep(game, bus, field, null, collider);
+      if (news.fired + news.result + news.underFire > before) stepsWithNews++;
+      const ids = waiting(game.tanks);
+      if (ids.length && !held++) firstHeld = `${game.timeS.toFixed(2)} s: ${ids.join(',')}`;
+    }
+  } finally {
+    setFrameStageSink(null);
   }
   ok(game.tanks.every((entity) => entity.aiCtl) && sides.player.length > 0 && sides.enemy.length > 0,
     `every hull is a bot's (${sides.player.length} v ${sides.enemy.length})`);
   ok(news.fired > 0 && news.result > 0 && news.underFire > 0,
     `the fight delivered news (heard ${news.fired}, results ${news.result}, under fire ${news.underFire}; ${stepsWithNews} steps)`);
   ok(held === 0, `no step ended with news waiting (${held} did${firstHeld ? `, first at ${firstHeld}` : ''})`);
+  ok(staged.spotting > 0 && staged.mode > 0 && heldAtStage.spotting === 0 && heldAtStage.mode === 0,
+    `no bot held news as the spotting (${heldAtStage.spotting} of ${staged.spotting}) or the mode step `
+    + `(${heldAtStage.mode} of ${staged.mode}) began${firstAtStage ? `; first ${firstAtStage}` : ''}`);
 }
 
 if (failures) { console.error(`ai.newsFlush.selftest: ${failures} failure(s)`); process.exit(1); }
