@@ -77,7 +77,7 @@ const goOnline = () => { online = true; const listeners = windowListeners.get('o
 
 /** One page: a document with the search form, and notFound.ts run on it. */
 let page = 0;
-async function openPage() {
+async function openPage({ focused = false } = {}) {
   const label = element();
   const input = element({ value: '', closest: (selector) => (selector === 'label' ? label : null) });
   const list = element({ hidden: true });
@@ -94,6 +94,8 @@ async function openPage() {
     querySelectorAll: (selector) => (selector === 'form[data-nf-search]' ? [form] : []),
     querySelector: () => null, getElementById: () => null,
   };
+  // the player pressed the field before this deferred module ran: it holds the focus, and no focus event comes
+  if (focused) globalThis.document.activeElement = input;
   page += 1;
   await import(`./notFound.ts?page=${page}`);
   return { label, input, list };
@@ -135,6 +137,47 @@ const type = async (input, value) => { input.value = value; input.fire('input');
   assert.equal(reloads, 1, 'the field\'s next press reloads the page');
 }
 
+// ---- (round 2 review) no focus event: a field that held the focus before the module ran asks at mount, and a keystroke
+// asks too (the base asked on every keystroke; the first round's fix asked on the focus event alone, so a field focused
+// before the mount never asked and typing showed nothing)
+{
+  online = true;
+  asked.length = 0;
+  const { input, list } = await openPage({ focused: true });
+  await settle();
+  assert.equal(asked.length, 1, 'a field that held the focus before the mount asks for the indexes then');
+  await type(input, 'leopard');
+  assert.equal(asked.length, 1);
+  assert.equal(list.hidden, false, 'and its query shows its hits');
+  assert.equal(list.children.length, 2);
+}
+{
+  asked.length = 0;
+  const { input, list } = await openPage();
+  await type(input, 'leopard');
+  assert.equal(asked.length, 1, `a keystroke with no focus event asks for the indexes (${asked.length} asks)`);
+  assert.equal(list.hidden, false, 'and the query shows its hits once they are in');
+  assert.equal(list.children.length, 2);
+  await type(input, 'leopard 2');
+  assert.equal(asked.length, 1, 'once');
+}
+// ---- offline, the focus and every keystroke wait for one `online` event (a latch, not one listener per keystroke)
+{
+  online = false;
+  asked.length = 0;
+  windowListeners.delete('online');
+  const { input, list } = await openPage();
+  input.fire('focus');
+  for (const value of ['l', 'le', 'leo', 'leopard']) await type(input, value);
+  assert.equal(asked.length, 0, 'nothing is asked for while offline');
+  assert.equal((windowListeners.get('online') ?? []).length, 1, `one wait for the network, not one per keystroke (${(windowListeners.get('online') ?? []).length})`);
+  goOnline();
+  await settle();
+  assert.equal(asked.length, 1, 'back online, the indexes are asked for once');
+  assert.equal(list.children.length, 2, 'and what was typed shows its hits');
+  online = true;
+}
+
 // ---- the plain path: the indexes load with the first focus, and a query shows its hits
 {
   asked.length = 0;
@@ -149,4 +192,4 @@ const type = async (input, value) => { input.value = value; input.fire('input');
 }
 
 hook.deregister();
-console.log('notFoundSearchLoad.selftest: the 404 search asks once, never offline; a failure marks the field (its press reloads) and raises nothing per keystroke');
+console.log('notFoundSearchLoad.selftest: the 404 search asks once (a focus, a keystroke, or a field focused before the mount), never offline; a failure marks the field (its press reloads) and raises nothing per keystroke');

@@ -60,14 +60,22 @@ function mountSearch(form: HTMLFormElement): void {
   // after it raised an unhandled rejection.
   const field = input.closest('label') ?? form;
   let search: Promise<Search> | null = null;
-  const load = (): void => importWhenOnline(() => {
-    search = loadSearch();
-    // what was typed while the indexes loaded (or while the page waited to be online) shows once they are in
-    return search.then((find) => { if (input.value.trim()) render(find(input.value), input.value); });
-  }, () => {
-    markLoadFailed([field]);
-    field.addEventListener('pointerdown', () => pressFailed(field));
-  });
+  // (round 2 review) asked by the field's first focus or its first keystroke, whichever comes first, and at mount when
+  // the field already holds the focus (a press before this deferred module ran fires no focus event for it). The latch
+  // makes the ask once: offline it waits for one `online` event, never one per keystroke.
+  let requested = false;
+  const load = (): void => {
+    if (requested) return;
+    requested = true;
+    importWhenOnline(() => {
+      search = loadSearch();
+      // what was typed while the indexes loaded (or while the page waited to be online) shows once they are in
+      return search.then((find) => { if (input.value.trim()) render(find(input.value), input.value); });
+    }, () => {
+      markLoadFailed([field]);
+      field.addEventListener('pointerdown', () => pressFailed(field));
+    });
+  };
   const render = (hits: readonly Hit[], query: string): void => {
     list.replaceChildren(...hits.map((hit) => {
       const row = (rows[hit.kind] as HTMLTemplateElement).content.firstElementChild!.cloneNode(true) as HTMLLIElement;
@@ -82,6 +90,7 @@ function mountSearch(form: HTMLFormElement): void {
   };
   input.addEventListener('focus', load, { once: true });
   input.addEventListener('input', () => {
+    load();
     const query = input.value;
     void search?.then((find) => { if (input.value === query) render(find(query), query); }, () => {});
   });
@@ -120,6 +129,7 @@ function mountSearch(form: HTMLFormElement): void {
     const first = list.querySelector<HTMLAnchorElement>('a');
     if (first && !list.hidden) location.assign(first.href);
   });
+  if (document.activeElement === input) load();
 }
 
 document.querySelectorAll<HTMLFormElement>('form[data-nf-search]').forEach(mountSearch);
