@@ -3,6 +3,8 @@ interface StudioRuntime {
   active: boolean;
   tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
+  /** Leave for the Garage; resolves once that exit has run (absent on the inactive placeholder). */
+  exit?(): Promise<RuntimeValue> | RuntimeValue;
   /** The scene the boot URL carries (studio.ts bootScene); absent on the inactive placeholder. */
   bootScene?(): { readonly map: Promise<string | null>; open(fallbackMap: string): Promise<void> } | null;
 }

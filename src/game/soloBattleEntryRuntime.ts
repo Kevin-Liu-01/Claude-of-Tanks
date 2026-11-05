@@ -59,7 +59,8 @@ interface SoloBattleEntryRuntimeOptions {
   /**
    * (2026-11-02 audit F2) "A battle entry began" (`ui:battleStart`) for an entry its caller did not announce: the Play
    * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button announces its own press before it
-   * calls `begin`. Runs once the entry is accepted, before its cover, inside the press's task.
+   * calls `begin`. Runs once the entry is accepted and no Garage return is in flight (round 2 U19), before its cover:
+   * inside the press's task unless it waited for a return.
    */
   announce?(payload: { specId: string; mapId: string | null; gameMode: string; campaignOperationId: string | null }): void;
   /**
@@ -74,6 +75,20 @@ interface SoloBattleEntryRuntimeOptions {
    * Runs once no Garage return is in flight (a return's 'garage' announcement clears the record), before the cover.
    */
   recordIntent?(options: SoloBattleLoadingStartOptions | undefined): void;
+  /**
+   * (round 2, app-flow) A network round owns the screen outside the entry latch (main: the composition's `entering`, a
+   * round the room's session entered on a later match_start while the room is kept, with no launch of its own). A
+   * start then is refused as the latch refuses one (busy): it covered and loaded a solo battle over the round's loader.
+   */
+  isNetworkRoundEntering?(): boolean;
+  /**
+   * (round 2, app-flow review 2) The scene can hand over to a battle now (main: the app lifecycle's edge table). Read at
+   * the press and again after a return wait, before the announcement, the intent and the cover; a start it refuses is
+   * refused as the latch refuses one (busy). A start over the Studio (the __DEBUG.beginSoloBattle hook) covered and
+   * loaded its world there and was refused only by the solo start after that load; a start queued behind a return
+   * resumed with no check at all.
+   */
+  canTakeScene?(): boolean;
 }
 
 interface SoloBattleEntryRuntime {
@@ -122,11 +137,15 @@ export function createSoloBattleEntryRuntime({
   announce = () => {},
   whenGarageSettled = () => {},
   recordIntent = () => {},
+  isNetworkRoundEntering = () => false,
+  canTakeScene = () => true,
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled, recordIntent];
+    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene];
+  /** Another owner has the screen (a network round entering), or the scene may not hand over to a battle: busy. */
+  const sceneRefused = (): boolean => isNetworkRoundEntering() || !canTakeScene();
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -136,8 +155,19 @@ export function createSoloBattleEntryRuntime({
     mapId: string | null,
     options: SoloBattleLoadingStartOptions | undefined,
     announced: boolean,
-  ): Promise<void> => lifecycle.run(async () => {
+  ): Promise<void> => (sceneRefused() ? Promise.resolve() : lifecycle.run(async () => {
     try {
+      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
+      // (no return in flight: no wait, so the announcement and the cover still land inside the press's task)
+      const returning = whenGarageSettled();
+      if (returning) {
+        await returning;
+        // (round 2, app-flow) a network round the room's session entered meanwhile has the screen, or (review 2) the
+        // scene is not one a battle may take (a Studio opened meanwhile): busy, as at the press
+        if (sceneRefused()) return;
+      }
+      // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
+      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same way)
       if (!announced) {
         try {
           announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
@@ -147,10 +177,6 @@ export function createSoloBattleEntryRuntime({
           reportError('[battle] battle-start listener failed', error);
         }
       }
-      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
-      // (no return in flight: no wait, so the cover still lands inside the press's task)
-      const returning = whenGarageSettled();
-      if (returning) await returning;
       // the entry's whole intent, after the return's 'garage' announcement (which clears it), before the cover
       recordIntent(options);
       // The loading transaction itself is demand-loaded. Own its canonical
@@ -192,7 +218,7 @@ export function createSoloBattleEntryRuntime({
         reportError('[battle] entry failure notice unavailable', noticeError);
       }
     }
-  }, undefined);
+  }, undefined));
 
   /** A failed recovery return's retry: the return again, and its notice again if that fails too. */
   const retryReturn = (): void => {

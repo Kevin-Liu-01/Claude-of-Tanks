@@ -1,5 +1,5 @@
 import { t } from '../ui/i18n.ts';
-import { assertAppPhaseTransition, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, assertGarageScreenSettled, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { isBootReady, whenBootReady } from '../app/bootReadiness.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
@@ -644,7 +644,9 @@ interface StudioRuntime {
   readonly active: boolean;
   tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: EnterOptions): Promise<void>;
-  exit(): void;
+  /** Leave for the Garage; resolves once the exit in flight (or already running) has run (round 2: a network round
+   *  that must take the scene waits for it). */
+  exit(): Promise<unknown>;
   /** The scene the page's URL carries (a shared #scene= link or a ?scene= path link), or null. */
   bootScene(): StudioBootScene | null;
   api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
@@ -5868,6 +5870,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the session, the veil or any
     // write (integration IR1: a refusal after the session's entry left it 'entering', so every later press was 'busy')
     assertAppPhaseTransition(game as { phase: AppPhase }, 'studio', 'studio:enter');
+    // (round 2, app-flow) and from the Garage only when it is the settled screen, as F8 and the Studio button are: a
+    // battle entry's cover (a network round the room's session entered, with no launch of its own) or a return under its
+    // veil refuses here. Window.__STUDIO.load, a scene link and a press queued behind an exit reach this entry without
+    // those checks. The 'studio' write below runs in this same task, so the check holds for it. The direct /studio boot
+    // enters under its own cover.
+    if (!opts.coveredByBoot) assertGarageScreenSettled(game as { phase: AppPhase }, 'studio:enter');
     // (audit F9) the session's entry: its token goes stale at an exit, and every step below checks it after its await
     const owner = session.beginEntry();
     if (!owner) throw new Error(t('studio.error.busy'));
@@ -6031,9 +6039,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (game.phase === 'studio') {
         // (audit F9) a failed entry leaves as an exit does: the Garage, its showroom and spots, the dormant battlefield
         // and its own light come back (only the active flag and the phase did before)
+        // (audit F1; round 2 IR1) the return hands the scene back with its announcement, once, when it lands: a return
+        // that failed before writing the Garage's scene is 'failed' (frames suppressed, nothing restored), and its own
+        // exit (main's enterGarageWithExit: the notice and its Retry) announces studio -> garage when it lands. A write
+        // here as well announced the Garage over the failed return and then again on the Retry.
         try { await leaveForGarage(); } catch (rollback) { console.error('[studio] the failed entry\'s Garage return failed', rollback); }
-        // (audit F1) the return hands the scene back with its announcement; one that never wrote it still does here
-        if (game.phase === 'studio') transitionAppPhase(game as { phase: AppPhase }, 'garage', { reason: 'studio:entry-failed' });
       } else if (game.phase === 'garage') {
         // (audit F1 review) the Garage took the scene back while the entry ran (studio -> garage is the Studio's one
         // hand-over): no second Garage return over it and no phase write. (integration review r2) It still leaves as an
@@ -6069,10 +6079,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   let exitRun: Promise<unknown> | null = null;
   let closing: Promise<void> | null = null; // the teardown in flight (an exit's or a failed entry's)
-  function exit() {
+  function exit(): Promise<unknown> {
     camoTryOn.preview(null, null);
     commitHistory(); // the last edit reaches the autosave before the Studio closes
-    if (!active || session.phase === 'exiting') return;
+    // (round 2, app-flow) the exit (or a failed entry's teardown) already running, for a caller that waits for the Garage
+    if (!active || session.phase === 'exiting') return exitRun ?? closing ?? Promise.resolve();
     // (audit F9) the press ends the session at once: every in-flight step stops at its next await, a film export is
     // cancelled, and the teardown below waits for what is still landing (studioSession.ts)
     session.beginExit();
@@ -6086,6 +6097,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       .catch((error: unknown) => (active ? doExit() : Promise.reject(error)))
       .catch((error: unknown) => { console.error('[studio] exit failed', error); })
       .finally(() => { exitRun = null; });
+    return exitRun;
   }
 
   async function doExit() {

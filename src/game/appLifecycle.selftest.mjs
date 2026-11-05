@@ -5,8 +5,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  APP_PHASE_EDGES, AppPhaseTransitionError, appLifecycleOf, assertAppPhaseTransition, battleSubPhase,
-  createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
+  APP_PHASE_EDGES, AppPhaseTransitionError, GarageScreenUnsettledError, appLifecycleOf, assertAppPhaseTransition,
+  assertGarageScreenSettled, battleSubPhase, canTransitionAppPhase, createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
 } from './appLifecycle.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
@@ -158,9 +158,15 @@ assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ config
 {
   const legal = (from, to) => { try { assertAppPhaseTransition({ phase: from }, to, 'check'); return true; } catch { return false; } };
   for (const [from, targets] of Object.entries(APP_PHASE_EDGES)) {
-    for (const to of Object.keys(APP_PHASE_EDGES)) assert.equal(legal(from, to), targets.includes(to), `${from} -> ${to}`);
+    for (const to of Object.keys(APP_PHASE_EDGES)) {
+      assert.equal(legal(from, to), targets.includes(to), `${from} -> ${to}`);
+      // (round 2, app-flow review 2) the same table as a question, for a start that refuses before its first mutation
+      assert.equal(canTransitionAppPhase({ phase: from }, to), targets.includes(to), `can ${from} -> ${to}`);
+    }
   }
   assert.equal(legal('ended', 'battle'), true, 'an unknown current value may move anywhere, as in transitionAppPhase');
+  assert.equal(canTransitionAppPhase({ phase: 'ended' }, 'battle'), true);
+  assert.equal(canTransitionAppPhase({ phase: 'garage' }, 'ended'), false, 'an unknown target is never legal');
   assert.throws(() => assertAppPhaseTransition({ phase: 'garage' }, 'ended', 'check'), TypeError, 'an unknown phase is refused');
   const heard = [];
   const session = { phase: 'battle', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
@@ -172,4 +178,28 @@ assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ config
   assert.deepEqual(heard, [], 'and never announces');
 }
 
-console.log('appLifecycle.selftest: guarded edges (and the write-free check), every phase announced, screen vs scene, derived battle sub-phases passed');
+// (round 2, app-flow review) An opening over the Garage's scene (the Studio's entry) needs the Garage to be the settled
+// screen: garage -> studio is a legal edge, so under a battle entry's cover (a network round the room's session entered
+// with no launch of its own) only this check refuses it. It never writes; another phase is the edge table's.
+{
+  const session = game();
+  let covering = true;
+  let returnOwed = false;
+  createAppLifecycle({ game: session, announce() {}, readers: { isEntryCovering: () => covering, isReturnOwed: () => returnOwed } });
+  assert.throws(() => assertGarageScreenSettled(session, 'studio:enter'),
+    (error) => error instanceof GarageScreenUnsettledError && error.code === 'garage_unsettled' && error.state === 'loading'
+      && error.reason === 'studio:enter');
+  covering = false;
+  returnOwed = true;
+  assert.throws(() => assertGarageScreenSettled(session, 'studio:enter'), (error) => error.state === 'returning');
+  returnOwed = false;
+  assertGarageScreenSettled(session, 'studio:enter');
+  session.phase = 'shot';
+  covering = true;
+  assertGarageScreenSettled(session, 'studio:enter'); // a dev still: the edge table decides
+  assert.equal(session.phase, 'shot', 'the check never writes');
+  const bare = game();
+  assertGarageScreenSettled(bare, 'studio:enter'); // a bare session reads its scene phase
+}
+
+console.log('appLifecycle.selftest: guarded edges (and the write-free check), every phase announced, screen vs scene, derived battle sub-phases, the settled-Garage opening check passed');

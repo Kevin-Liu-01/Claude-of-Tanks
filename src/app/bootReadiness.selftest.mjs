@@ -76,18 +76,24 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 }
 
 // The lifecycle's 'boot' state: the splash is the screen until the latch settled and the entry gate let the player in
-// (a /studio boot included); a settled Garage only then. main binds the reader.
+// (a /studio boot included); a settled Garage only then. main binds the reader where it creates the lifecycle (round 2
+// U40: it was bound with the late readers, so the lifecycle read 'garage' while main's module still evaluated).
 {
   const game = { phase: 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
-  const appLifecycle = createAppLifecycle({ game, announce() {} });
+  const start = mainSource.indexOf('\nconst appLifecycle = createAppLifecycle(');
+  const end = mainSource.indexOf('\n});\n', start);
+  assert.ok(start > 0 && end > start, "main's lifecycle creation is one statement");
   const scope = {
-    appLifecycle,
+    createAppLifecycle, game, bus: { emit() {} },
     bootReadiness: { ready: false },
     boot: { gated: false },
     battleEntryLifecycle: { pending: false, renderingCovered: false },
     battleLoad: { covering: false },
     garageReturn: { state: 'idle' },
   };
+  const appLifecycle = runMainStatements(mainSource.slice(start + 1, end + 4), scope, 'appLifecycle');
+  assert.equal(appLifecycle.state, 'boot', 'before the late readers: the splash is the screen');
+  scope.appLifecycle = appLifecycle;
   runMainStatements(mainStatement('appLifecycle.setReaders({'), scope, 'null');
   assert.equal(appLifecycle.state, 'boot', 'still loading: the splash is the screen');
   assert.equal(isGarageScreenSettled(game), false, 'F8 and the Studio button wait for the Garage screen');

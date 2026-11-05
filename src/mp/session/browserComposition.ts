@@ -346,6 +346,12 @@ export interface BrowserRoomPorts {
   enterGarage(): MaybePromise<void>;
   /** The transition out of a live battle (the Garage return's `leave`). */
   returnToGarage(): Promise<void>;
+  /**
+   * (round 2, app-flow) Hand this round the scene before it covers, loads or announces anything: a Studio open in this
+   * tab leaves first, and a scene that still cannot hand over to a battle rejects (main.ts takeSceneForRound, the app
+   * lifecycle's edge). Null when it can hand over now.
+   */
+  takeSceneForRound(): Promise<void> | null;
   getPhase(): string;
   hasResult(): boolean;
 }
@@ -489,6 +495,13 @@ export interface BrowserComposition {
   readonly active: boolean;
   /** The round has been activated into the live battle phase. */
   readonly inMatch: boolean;
+  /**
+   * (round 2, app-flow) A round owns the screen: from its start (its scene hand-over, then its cover) until it reveals
+   * or its covered Garage restore has landed, whether a launch (`beginRoom`) or the room's session (a later match_start
+   * while the room is kept: a rematch, the next match) entered it. main's app lifecycle reads 'loading' through it, so
+   * the Studio's F8, its button and its entry refuse to open over the round meanwhile.
+   */
+  readonly entering: boolean;
   readonly room: V2RoomSession | null;
   readonly session: SessionOwner | null;
   /** One display frame (the app's network pump, every phase). */
@@ -706,6 +719,7 @@ function validatePorts(ports: BrowserCompositionPorts): void {
     ['room.getMenu', ports.room?.getMenu], ['room.setGarageStatus', ports.room?.setGarageStatus], ['room.emitRoomState', ports.room?.emitRoomState],
     ['room.clearInput', ports.room?.clearInput], ['room.enterGarage', ports.room?.enterGarage], ['room.returnToGarage', ports.room?.returnToGarage],
     ['room.getPhase', ports.room?.getPhase], ['room.hasResult', ports.room?.hasResult],
+    ['room.takeSceneForRound', ports.room?.takeSceneForRound],
   ];
   for (const [name, port] of required) {
     if (typeof port !== 'function') throw new TypeError(`multiplayer v2 browser composition requires the ${name} port`);
@@ -741,6 +755,9 @@ export function createBrowserComposition({
   let roomSession: V2RoomSession | null = null;
   let session: SessionOwner | null = null;
   let round: ActiveRound | null = null;
+  // (round 2, app-flow) a failed or lost round's covered restore still in flight (failRound, stopLoading): its round is
+  // already released, and the round still owns the screen until the loader is down (`entering`)
+  let restoring = 0;
   let latestLobby: SerializedLobby | null = null;
   let latestRoom: RoomSnapshot | null = null;
   let menuAttached = false;
@@ -1030,19 +1047,24 @@ export function createBrowserComposition({
 
   /** v1's `stopLoading`: reacquire opaque coverage, restore the Garage under it, then fade the loader. */
   const stopLoading = async (label = 'Restoring Garage'): Promise<void> => {
-    if (!load.battleLoad.visible) {
-      load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
-    }
-    load.battleLoad.progress(1, label);
-    lifecycle.coverRendering();
-    load.audio.loadingOn(false);
+    restoring += 1; // (round 2, app-flow) the round's screen until the loader is down
     try {
-      await roomPorts.enterGarage();
+      if (!load.battleLoad.visible) {
+        load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
+      }
+      load.battleLoad.progress(1, label);
+      lifecycle.coverRendering();
+      load.audio.loadingOn(false);
+      try {
+        await roomPorts.enterGarage();
+      } finally {
+        // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
+        // that throws still releases the cover and the loader; the caller reports the error.
+        lifecycle.uncoverRendering();
+        try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      }
     } finally {
-      // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
-      // that throws still releases the cover and the loader; the caller reports the error.
-      lifecycle.uncoverRendering();
-      try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      restoring -= 1;
     }
   };
 
@@ -1106,12 +1128,16 @@ export function createBrowserComposition({
       load.battleLoad.show({ mapName: notice, thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
       load.battleLoad.progress(1, 'Returning to Garage');
     }
+    // (round 2, app-flow) released above (nothing ran in between), and the round keeps the screen through the leave and
+    // the covered restore below
+    restoring += 1;
     try {
       if (session) await session.leaveMatch(superseded ? 'superseded' : 'entry_failed');
       await stopLoading(notice ? 'Returning to Garage' : undefined);
     } catch (restoreError) {
       reportError('multiplayer v2 entry', restoreError);
     } finally {
+      restoring -= 1;
       settleEntry(false);
       if (!superseded) {
         syncMenu();
@@ -1163,6 +1189,14 @@ export function createBrowserComposition({
     };
     try {
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
+      // (round 2, app-flow) the round takes the scene first, before its cover, its world or its announcement: a Studio
+      // open in this tab leaves (a later round while the room is kept), and a scene that still cannot hand over refuses
+      // the round here (the activation refused it only after the round had covered and loaded its world over the Studio)
+      const handOver = roomPorts.takeSceneForRound();
+      if (handOver) {
+        try { await handOver; } catch (error) { await failRound(active, error, 'scene'); throw error; }
+        check('scene');
+      }
       const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
       try {
         load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant });
@@ -1666,6 +1700,7 @@ export function createBrowserComposition({
     beginRoom,
     get active() { return round !== null; },
     get inMatch() { return !!round && round.activated; },
+    get entering() { return (round !== null && !round.revealed) || restoring > 0; },
     get room() { return roomSession; },
     get session() { return session; },
     pump,

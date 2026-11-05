@@ -3,7 +3,7 @@
 // holdExpired to nothing), so deleting main's line brought a hazard back with every runtime test green: the Play
 // menu's and campaign's battles recorded no profile history without `announce: ... ui:battleStart`.
 import assert from 'node:assert/strict';
-import { createAppLifecycle } from '../game/appLifecycle.ts';
+import * as appLifecycleModule from '../game/appLifecycle.ts';
 import { createBattleEntryIntent } from '../game/battleEntryIntent.ts';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 import { createBattleFrameRuntime } from '../game/battleFrameRuntime.ts';
@@ -12,6 +12,8 @@ import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts'
 import { terrainVariantFor } from '../sim/matchRuleset.ts';
 import { mainSource, mainStatement, runMainStatements } from './mainComposition.test-support.mjs';
 
+// (canTransitionAppPhase by name: this file still runs, and fails by assertion, against a main.ts that has none)
+const { createAppLifecycle, canTransitionAppPhase } = appLifecycleModule;
 const flush = async (turns = 12) => { for (let index = 0; index < turns; index += 1) await Promise.resolve(); };
 
 // The solo entry: main's announce, whenGarageSettled and presentReturnFailure bindings.
@@ -24,9 +26,13 @@ function mainFunction(head) {
   assert.ok(start >= 0 && end > start, `main.ts declares ${head}`);
   return mainSource.slice(start + 1, end + 2);
 }
-function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {} } = {}) {
+function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {},
+  onlineMatch = { current: null }, game = { phase: 'garage' } } = {}) {
   const events = [];
   const scope = {
+    onlineMatch,
+    game,
+    canTransitionAppPhase,
     createSoloBattleEntryRuntime,
     battleEntryIntent: createBattleEntryIntent(),
     terrainVariantFor,
@@ -84,10 +90,53 @@ function phaseListener(game, battleEntryIntent) {
   const { entry, events } = soloEntry({ whenSettled: () => settled });
   const pending = entry.beginSelected();
   await flush();
-  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart'], 'no cover and no load while the return is in flight');
+  // (round 2 U19) and no announcement: the return's 'garage' comes before this battle's ui:battleStart
+  assert.deepEqual(events.map(([type]) => type), [], 'no announcement, no cover and no load while the return is in flight');
   settle();
   await pending;
   assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);
+}
+
+{
+  // (round 2, app-flow review) A network round the room's session entered (a later match_start while the room is kept)
+  // runs outside the entry latch: a solo start under its loader was accepted and covered and loaded a solo battle over
+  // it. main binds isNetworkRoundEntering to the composition's `entering`, and the start is refused as busy.
+  const onlineMatch = { current: { entering: true } };
+  const { entry, events, lifecycle } = soloEntry({ onlineMatch });
+  await entry.beginSelected();
+  await entry.begin('m1a1_abrams_hc', 'desert');
+  assert.deepEqual(events.map(([type]) => type), [], 'no announcement, no cover and no load under the round');
+  assert.equal(lifecycle.pending, false, 'and no entry latch taken');
+  assert.equal(lifecycle.entrySerial, 0);
+  // a start that waited on a return while such a round began: refused once the return lands
+  onlineMatch.current.entering = false;
+  let settle;
+  const settled = new Promise((resolve) => { settle = resolve; });
+  const waiting = soloEntry({ onlineMatch, whenSettled: () => settled });
+  const pending = waiting.entry.beginSelected();
+  await flush();
+  onlineMatch.current.entering = true;
+  settle();
+  await pending;
+  assert.deepEqual(waiting.events.map(([type]) => type), [], 'the round that began meanwhile keeps the screen');
+  // the round revealed: the next start runs
+  onlineMatch.current.entering = false;
+  await entry.beginSelected();
+  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);
+}
+
+{
+  // (round 2, app-flow review 2) main binds the start's scene check to the edge table: the __DEBUG.beginSoloBattle hook
+  // over the Studio covered and loaded a solo battle there, refused only after the load (and its recovery ran a Garage
+  // return under the open Studio); a start queued behind a return now re-reads it before its announcement and cover.
+  const game = { phase: 'studio' };
+  const { events, lifecycle, beginLocalBattle } = soloEntry({ game });
+  await beginLocalBattle({ specId: 'leopard2a4', mapId: 'winter' });
+  assert.deepEqual(events.map(([type]) => type), [], 'nothing announces, covers or loads over the Studio');
+  assert.equal(lifecycle.entrySerial, 0);
+  game.phase = 'garage';
+  await beginLocalBattle({ specId: 'leopard2a4', mapId: 'winter' });
+  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load'], 'and from the Garage it runs');
 }
 
 {
@@ -196,6 +245,30 @@ function phaseListener(game, battleEntryIntent) {
   assert.equal(appLifecycle.state, 'garage');
 }
 
+// (round 2 U40) The lifecycle is the boot's from its creation: main bound its isBooting reader only with the late
+// readers, thousands of lines later, so while main's module evaluated (the splash the screen) the lifecycle read
+// 'garage' to isGarageScreenSettled and any early reader of window.__APP_LIFECYCLE.
+{
+  const start = mainSource.indexOf('\nconst appLifecycle = createAppLifecycle(');
+  assert.ok(start > 0, 'main creates the app lifecycle');
+  let depth = 0;
+  let end = start + 1;
+  for (let at = mainSource.indexOf('(', start); at < mainSource.length; at += 1) {
+    if (mainSource[at] === '(') depth += 1;
+    else if (mainSource[at] === ')' && --depth === 0) { end = mainSource.indexOf(';', at) + 1; break; }
+  }
+  const creation = mainSource.slice(start + 1, end);
+  const game = { phase: 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+  const scope = { createAppLifecycle, game, bus: { emit() {} }, bootReadiness: { ready: false }, boot: { gated: false } };
+  const appLifecycle = runMainStatements(creation, scope, 'appLifecycle');
+  assert.equal(appLifecycle.state, 'boot', 'before any late reader is bound, the splash is the screen');
+  scope.bootReadiness.ready = true;
+  scope.boot.gated = true;
+  assert.equal(appLifecycle.state, 'boot', 'the entry gate still waits on the player');
+  scope.boot.gated = false;
+  assert.equal(appLifecycle.state, 'garage');
+}
+
 // The battle frame: main's countdown ports (the warm hold's expiry beacon, the rollout on main's bus).
 {
   const game = { phase: 'battle', preBattleS: 0, result: null, player: { input: {}, combat: {} } };
@@ -227,9 +300,52 @@ function phaseListener(game, battleEntryIntent) {
   assert.deepEqual(events.filter(([type]) => type === 'battle:rollout'), [['battle:rollout', {}]], 'one rollout on main\'s bus');
 }
 
+// (round 2, app-flow) A network round takes the scene from whatever holds it before it covers anything: main's one
+// owner leaves a Studio open in this tab first (its exit, awaited), then the app lifecycle's edge decides; the room's
+// launch goes through it before its intent cover, and every round the composition enters through the room port. A
+// round used to cover and load its world over the Studio, and only its activation refused studio -> battle.
+{
+  const { AppPhaseTransitionError, assertAppPhaseTransition, GarageScreenUnsettledError } = await import('../game/appLifecycle.ts');
+  const events = [];
+  const game = { phase: 'studio' };
+  let exitLeaves = true;
+  const garageReturn = { state: 'idle' };
+  const scope = {
+    game, assertAppPhaseTransition, GarageScreenUnsettledError, garageReturn,
+    loadStudioRuntime: async () => ({ exit: async () => { events.push('studio.exit'); if (exitLeaves) game.phase = 'garage'; } }),
+    onlineMatch: { current: { beginRoom: async () => { events.push(`beginRoom:${game.phase}`); return true; } } },
+    networkBattleIntentCover: { show: () => events.push('intentCover') },
+  };
+  const { takeSceneForRound, beginMultiplayerV2Battle } = runMainStatements(
+    [mainFunction('function takeSceneForRound('), mainFunction('function beginMultiplayerV2Battle(')], scope,
+    '{ takeSceneForRound, beginMultiplayerV2Battle }');
+  assert.equal(await beginMultiplayerV2Battle({}), true);
+  assert.deepEqual(events, ['studio.exit', 'beginRoom:garage'], "the room's launch leaves the Studio before the round begins");
+  events.length = 0;
+  assert.equal(takeSceneForRound(), null, 'from the Garage the scene hands over now (nothing waits: the cover stays in its task)');
+  assert.equal(beginMultiplayerV2Battle({}) instanceof Promise, true);
+  assert.deepEqual(events, ['beginRoom:garage'], 'and the launch begins in the same task');
+  game.phase = 'battle';
+  assert.equal(takeSceneForRound(), null, 'a rematch in place');
+  game.phase = 'studio';
+  exitLeaves = false; // the Studio's Garage return failed: the scene is still the Studio's
+  await assert.rejects(takeSceneForRound(), (error) => error instanceof AppPhaseTransitionError && error.from === 'studio',
+    'a Studio that could not leave refuses the round before its cover');
+  // (review 2) a Studio whose Garage return failed after it wrote the Garage's scene: no Garage to hand over (its notice
+  // is the screen, its frames suppressed), so the round is refused as well, never loaded over the failed return
+  game.phase = 'studio';
+  exitLeaves = true;
+  garageReturn.state = 'failed';
+  await assert.rejects(takeSceneForRound(), (error) => error instanceof GarageScreenUnsettledError,
+    'a Studio whose return failed refuses the round before its cover');
+  assert.equal(game.phase, 'garage');
+  assert.match(mainSource, /\n\s+takeSceneForRound,\n/, "main binds the room's takeSceneForRound to the same owner");
+}
+
 // Every Garage return caller without an exit of its own takes main's (garageReturnState.selftest.mjs runs it).
 assert.match(mainSource, /setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,/, "the Studio's exit");
-assert.match(mainSource, /enterGarage: enterGarageWithExit,\n\s+returnToGarage: \(\) => garageReturn\.leave\(\),/, "the room's covered restore");
+assert.match(mainSource, /enterGarage: enterGarageWithExit,\n/, "the room's covered restore");
+assert.match(mainSource, /\n\s+returnToGarage: returnRoomToGarage,\n/, "(round 2 U20) the room's own returns");
 assert.match(mainStatement('const soloBattleEntry = createSoloBattleEntryRuntime({'),
   /presentReturnFailure: \(error, retry\) => presentGarageReturnFailure\(error, retry\),/, "the solo entry's recovery");
 assert.match(mainStatement('const battleAgainAction = createBattleAgainAction({'),

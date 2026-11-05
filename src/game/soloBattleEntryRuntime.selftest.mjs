@@ -289,6 +289,47 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   await make(() => null).beginSelected({ mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' });
   assert.deepEqual(covers[0], ['cover', { mapId: 'alpine', modeId: 'frontline_assault', campaign: true, campaignOperationId: 'iron_ridge' }]);
 }
+// (round 2, app-flow review 2) The scene's edge decides a start before its announcement, its intent and its cover, at
+// the press and again after a return wait (canTakeScene; main: the app lifecycle's edge table). A start from the Studio
+// (the __DEBUG.beginSoloBattle hook) covered and loaded its world over the Studio, and only the solo start refused
+// studio -> battle after that load, whose recovery then ran a Garage return under the open Studio; a start queued behind
+// a return resumed with no check, so a Studio opened meanwhile was covered and loaded over as well.
+{
+  let scene = 'studio';
+  const events = [];
+  const make = (whenGarageSettled = () => null) => {
+    const latch = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+    const entry = createSoloBattleEntryRuntime({
+      lifecycle: latch,
+      loading: { begin: async () => { events.push(`load:${scene}`); } },
+      battleLoad: { showPending: () => events.push(`cover:${scene}`), hide: async () => {} },
+      audio: { loadingOn() {} }, enterGarage: () => events.push('garage'), nextFrame: async () => {},
+      isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
+      reportError: () => events.push('error'),
+      announce: () => events.push(`announce:${scene}`), recordIntent: () => events.push(`intent:${scene}`),
+      whenGarageSettled, canTakeScene: () => scene !== 'studio',
+    });
+    return { entry, latch };
+  };
+  const fromStudio = make();
+  await fromStudio.entry.beginSelected({});
+  await fromStudio.entry.begin('m1a1_abrams_hc', 'desert');
+  assert.deepEqual(events, [], 'a start over the Studio is refused before anything announces, covers or loads');
+  assert.equal(fromStudio.latch.entrySerial, 0, 'and takes no entry latch');
+  scene = 'garage';
+  let settle;
+  const returning = new Promise((resolve) => { settle = resolve; });
+  const queued = make(() => returning);
+  const pending = queued.entry.beginSelected({});
+  await Promise.resolve();
+  scene = 'studio'; // something opened the Studio while the start waited on the return
+  settle();
+  await pending;
+  assert.deepEqual(events, [], 'a start that waited is refused once the scene it waited for is not the Garage\'s to hand over');
+  scene = 'garage';
+  await make().entry.beginSelected({});
+  assert.deepEqual(events, ['announce:garage', 'intent:garage', 'cover:garage', 'load:garage'], 'from the Garage the start runs');
+}
 const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null, options\?: SoloBattleLoadingStartOptions\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
   'the composition names the map the intent will consume, from the same pending map the loading owner falls back to');

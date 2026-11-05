@@ -31,7 +31,9 @@ const compactOutput = option('summary', '0') === '1';
 const launchBrowser = () => launchGuardedBrowser(puppeteer, {
   headless: 'new',
   // (2026-11-02 audit S3) a --url deployment may predate src/app/automationPath.ts, which ignores the player's request
-  // and installs the QA runtime under navigator.webdriver: the driver is hidden so either build takes the player's path
+  // and installs the QA runtime under navigator.webdriver: the driver is hidden so either build takes the player's path.
+  // (round 2) the entry telemetry excludes only navigator.webdriver, so every page this probe opens (the recovery
+  // scenarios too, which used to report the driver) turns it off by URL
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
     '--disable-blink-features=AutomationControlled'],
 });
@@ -140,6 +142,7 @@ async function constrainedColdLoad({ name, noHero }) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   const url = new URL(baseUrl);
   url.searchParams.set('nosplash', '1');
+  url.searchParams.set('telemetry', 'off'); // (round 2) a hidden driver is no player: the entry telemetry stays off
   if (noHero) url.searchParams.set('nohero', '1');
   url.searchParams.set('coldProbe', '1');
   const startedAt = Date.now();
@@ -176,6 +179,7 @@ async function failedMainChunkRecovery() {
   });
   const url = new URL(baseUrl);
   url.searchParams.set('nosplash', '1');
+  url.searchParams.set('telemetry', 'off'); // (round 2) a hidden driver is no player: the entry telemetry stays off
   url.searchParams.set('nohero', '1');
   url.searchParams.set('recoveryProbe', '1');
   const startedAt = Date.now();
@@ -216,6 +220,7 @@ async function failedMainEvaluationRecovery() {
   });
   const url = new URL(baseUrl);
   url.searchParams.set('nosplash', '1');
+  url.searchParams.set('telemetry', 'off'); // (round 2) a hidden driver is no player: the entry telemetry stays off
   url.searchParams.set('nohero', '1');
   url.searchParams.set('evaluationRecoveryProbe', '1');
   const startedAt = Date.now();
@@ -264,6 +269,7 @@ async function failedSelectedBuilderRecovery() {
   });
   const url = new URL(baseUrl);
   url.searchParams.set('nosplash', '1');
+  url.searchParams.set('telemetry', 'off'); // (round 2) a hidden driver is no player: the entry telemetry stays off
   url.searchParams.set('nohero', '1');
   url.searchParams.set('builderRecoveryProbe', '1');
   const startedAt = Date.now();

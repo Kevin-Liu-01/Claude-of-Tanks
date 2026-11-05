@@ -238,7 +238,12 @@ export interface GarageReturnRuntime {
   readonly state: GarageReturnState;
   /** Ordinary Garage frames stay suppressed (the Garage is not handed over restored). */
   readonly framesSuppressed: boolean;
-  /** Resolves when the return entry in flight (swap, preparation, handoff, skipped restore) settles; null: none is. */
+  /**
+   * Resolves when no return is in flight: a Leave until its entry settles (its veil's fade-in, before the entry begins,
+   * included; its dwell and fade-out not, so a waiting start covers under the still-opaque veil) and any return entry
+   * (swap, preparation, handoff, skipped restore); null: none is. Battle Again's lease is not waited for: its own
+   * trigger starts the next battle inside it.
+   */
   whenSettled(): Promise<void> | null;
   readonly lastTrace: GarageReturnTrace | null;
   enter(options?: GarageReturnOptions): Promise<void>;
@@ -378,6 +383,8 @@ export function createGarageReturnRuntime<Visual = object>(
   let transitionLease: { readonly promise: Promise<void>; readonly operation: GarageReturnOperation } | null = null;
   let entryLease: { readonly promise: Promise<void>; readonly prepares: boolean } | null = null;
   let recoveryLease: { readonly promise: Promise<boolean>; readonly isCurrent: () => boolean } | null = null;
+  // (round 2 U21, review 2) a Leave's run until its entry settles: its veil's fade-in included, its dwell and fade-out not
+  let leaveEntry: Promise<void> | null = null;
   let lastTrace: GarageReturnTrace | null = null;
   let lastEntryOptions: GarageReturnOptions = {};
   let state: GarageReturnState = 'idle';
@@ -438,6 +445,11 @@ export function createGarageReturnRuntime<Visual = object>(
   ): Promise<void> => {
     const prepareOnly = options.prepareOnly === true;
     const preserveRoom = options.preserveRoom ?? network.shouldPreserveRoom();
+    // (round 2, app-flow review 2) A return from the Studio releases no network presentation: the Studio never holds one
+    // (the edge table refuses studio -> battle, and a network round takes the scene from a Studio only once it has left,
+    // main.ts takeSceneForRound). The release ran from every phase, so the Studio's exit disposed the kept room's round
+    // that was waiting on that very hand-over and left its match ('returned_to_garage'), with no failure and no notice.
+    const releasesNetwork = game.phase !== 'studio';
     // A context loss re-runs a preparation as a preparation: the report is still the screen.
     lastEntryOptions = prepareOnly ? { preserveRoom, prepareOnly } : { preserveRoom };
     const selectedSpecId = getSelectedSpecId();
@@ -491,8 +503,10 @@ export function createGarageReturnRuntime<Visual = object>(
     presentation.suspendEffects();
     markStage('presentationReset');
 
-    if (preserveRoom) network.disposePresentation();
-    else network.closeMatch('returned_to_garage');
+    if (releasesNetwork) {
+      if (preserveRoom) network.disposePresentation();
+      else network.closeMatch('returned_to_garage');
+    }
     markStage('networkRelease');
 
     transitionBattleCountdown(game, 'clear');
@@ -601,6 +615,8 @@ export function createGarageReturnRuntime<Visual = object>(
     if (game.phase !== 'garage' || lastTrace !== trace || state !== 'prepared') {
       throw new GarageReturnSupersededError('presentation', 'The prepared Garage was superseded before its handoff.');
     }
+    // (round 2 U20) the report is no longer the screen: a retry of this return (its context recovery) hands it over
+    lastEntryOptions = { preserveRoom: lastEntryOptions.preserveRoom };
     moveTo('handoff', trace);
     try {
       performHandoffSteps(trace, startedAt, markStage);
@@ -694,11 +710,20 @@ export function createGarageReturnRuntime<Visual = object>(
     return enter({ prepareOnly: true }).then(() => state === 'prepared', () => false);
   };
 
+  /**
+   * (round 2 U20) The context recovery decides from the return's state, never its trace's diagnostics (a failed
+   * handoff's trace says its preparation restored the Garage, so it was never retried). Nothing is owed by an idle
+   * return, a Garage prepared behind the report (main restores its GPU; its handoff restores nothing) or a skipped
+   * restore (the next battle's entry owns the screen); a return in flight is waited for; a failed or superseded one is
+   * retried.
+   */
+  const recoveryRetries = (current: GarageReturnState): boolean => current === 'failed' || current === 'superseded';
+  const currentState = (): GarageReturnState => state;
   const performContextRecovery = async (isCurrent: () => boolean): Promise<boolean> => {
     const interrupted = lastTrace;
-    const originalOptions = lastEntryOptions;
-    // A skipped restore (Battle Again) has no Garage to recover: the next battle's entry owns the screen.
-    if (game.phase !== 'garage' || !interrupted?.presentationUnready || state === 'restoreSkipped') return false;
+    if (game.phase !== 'garage' || !interrupted || state === 'idle' || state === 'prepared' || state === 'restoreSkipped') {
+      return false;
+    }
     // A loss can still be unwinding through the original entry's await. Do not
     // race its teardown or mistake its eventual rejection for a recovery failure.
     await entryLease?.promise.catch(() => {});
@@ -710,11 +735,14 @@ export function createGarageReturnRuntime<Visual = object>(
       await entryLease?.promise;
       if (!isCurrent()) throw new Error('Garage graphics recovery belongs to an expired context.');
       if (game.phase !== 'garage') return false;
-      if (lastTrace?.presentationUnready) throw new Error('The newer Garage return is not ready.');
+      // (the newer return's state as it settled: the awaits above moved it, which the narrowing does not see)
+      const settled = currentState();
+      if (recoveryRetries(settled) || settled === 'restoreSkipped') throw new Error('The newer Garage return is not ready.');
       return false;
     }
-    if (!interrupted.presentationUnready) return false;
-    await enter(originalOptions, () => isCurrent() && game.phase === 'garage');
+    if (!recoveryRetries(state)) return false;
+    // (the options of the return it retries, as it last ran: a handoff's are a foreground return's)
+    await enter(lastEntryOptions, () => isCurrent() && game.phase === 'garage');
     return true;
   };
 
@@ -775,18 +803,31 @@ export function createGarageReturnRuntime<Visual = object>(
   };
 
   const leave = (): Promise<void> => beginTransition('leave', async () => {
-    // Input state releases immediately; the scene swap remains under the veil. The report stays on screen until the
-    // veil covers it (enter() clears it there): hiding it first showed the bare battle for a few frames
-    // (2026-10-22, nav-perf-240).
-    presentation.clearBattle({ keepScreens: true });
-    await transition.run(() => enter(), {
-      kicker: t('transition.kicker.leavingBattle'),
-      title: t('transition.title.garage'),
-      mapId: world.currentMapId() || game.mapId,
-      progress: false,
-      minShowMs: 150,
-      pace: 'quick',
-    });
+    // (round 2 U21, review 2) "this Leave's entry has settled", for whenSettled: released when its entry settles or, if
+    // the veil was taken over before the entry ran, when the Leave ends
+    let settleEntry!: () => void;
+    const entrySettled = new Promise<void>((resolve) => { settleEntry = resolve; });
+    const releaseEntry = (): void => {
+      if (leaveEntry === entrySettled) leaveEntry = null;
+      settleEntry();
+    };
+    leaveEntry = entrySettled;
+    try {
+      // Input state releases immediately; the scene swap remains under the veil. The report stays on screen until the
+      // veil covers it (enter() clears it there): hiding it first showed the bare battle for a few frames
+      // (2026-10-22, nav-perf-240).
+      presentation.clearBattle({ keepScreens: true });
+      await transition.run(() => enter().finally(releaseEntry), {
+        kicker: t('transition.kicker.leavingBattle'),
+        title: t('transition.title.garage'),
+        mapId: world.currentMapId() || game.mapId,
+        progress: false,
+        minShowMs: 150,
+        pace: 'quick',
+      });
+    } finally {
+      releaseEntry();
+    }
   });
 
   const battleAgain = (trigger: () => boolean = () => ui.triggerBattle()): Promise<void> => (
@@ -832,12 +873,30 @@ export function createGarageReturnRuntime<Visual = object>(
     })
   );
 
+  /**
+   * (round 2 U21) The one "a return is in flight" edge every battle start waits on (main's whenGarageSettled): it read
+   * only the entry lease, so a start accepted while a Leave's veil still faded in (the lease held, the entry not yet
+   * begun) did not wait, and its cover and load ran under the veil where the return's teardown cleared them.
+   * (review 2) A Leave counts until its entry settles, not for its whole lease: through the veil's dwell and fade-out
+   * the queued start held the latch with no cover, main's lifecycle read 'garage' over the uncovered Garage (whose
+   * presses .cot-trans.out passes), a Studio opened there, and the start then covered and loaded over it. Now the
+   * start's cover lands in the microtask chain that ends the entry, under the still-opaque veil (z-index 170 over the
+   * loader's 150), which then fades out onto it.
+   */
+  const whenSettled = (): Promise<void> | null => {
+    const leaving = leaveEntry;
+    const entering = entryLease?.promise ?? null;
+    if (!leaving && !entering) return null;
+    return Promise.all([leaving, entering].map((lease) => lease?.then(() => {}, () => {})))
+      .then(() => whenSettled() ?? undefined);
+  };
+
   return {
     get transitioning() { return transitionLease !== null; },
     get operation() { return transitionLease?.operation ?? null; },
     get state() { return state; },
     get framesSuppressed() { return state !== 'idle'; },
-    whenSettled: () => entryLease?.promise.then(() => {}, () => {}) ?? null,
+    whenSettled,
     get lastTrace() { return lastTrace; },
     get awaitingHandoff() {
       return game.phase === 'garage' && (state === 'preparing' || state === 'prepared' || state === 'handoff');

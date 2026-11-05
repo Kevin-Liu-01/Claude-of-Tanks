@@ -398,8 +398,9 @@ if (!/function\* prebakeDestroyedVariantSteps\([\s\S]*prebakeBurntSteps/.test(ba
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.test(deferredWarm)
     // (2026-11-02 audit F2) the hold is one generation-scoped owner (game/battleWarmHold.ts)
-    || !/setPending:\s*releaseCurrentWarmHold/.test(main)
-    || !/const releaseCurrentWarmHold = \(pending: boolean\): void => \{ if \(!pending\) battleWarmHold\.release\(battleWarmHold\.generation\); \};/.test(main)) {
+    || !/setPending:\s*releaseWarmHold/.test(main)
+    // (round 2 U20) and it releases the caller's generation, never the current one in its place
+    || !/const releaseWarmHold = \(pending: boolean, generation: number = battleWarmHold\.generation\): void => \{ if \(!pending\) battleWarmHold\.release\(generation\); \};/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
 if (!/round\.setupBattle\(game, specId, activeWorld,[\s\S]{0,500}round\.combatWarm\.reset\(\)/.test(soloStart)

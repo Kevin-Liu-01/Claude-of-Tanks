@@ -246,6 +246,32 @@ export function isGarageScreenSettled(game: { phase: AppPhase }): boolean {
   return owner ? owner.state === 'garage' : game.phase === 'garage';
 }
 
+/** (round 2, app-flow) Something that opens over the Garage was refused: the Garage scene is not the settled screen. */
+export class GarageScreenUnsettledError extends Error {
+  readonly code = 'garage_unsettled';
+  /** What the screen belongs to instead (the lifecycle's state: 'loading', 'returning', 'boot'). */
+  readonly state: string;
+  readonly reason: string;
+  constructor(state: string, reason: string) {
+    super(`The Garage is not the screen (${state}): nothing opens over it (${reason}).`);
+    this.name = 'GarageScreenUnsettledError';
+    this.state = state;
+    this.reason = reason;
+  }
+}
+
+/**
+ * (round 2, app-flow) Refuse an opening over the Garage's scene (the Studio's entry) unless the Garage is the settled
+ * screen, before the opener's first mutation: a battle entry's cover (a network round the room's session entered with
+ * no launch of its own included), a return under its veil or behind the report, or the boot splash, as F8 and the
+ * Studio button already were. Only the Garage's own scene is checked here; the edge table decides every other phase (a
+ * dev still may start anything).
+ */
+export function assertGarageScreenSettled(game: { phase: AppPhase }, reason: string): void {
+  if (game.phase !== 'garage' || isGarageScreenSettled(game)) return;
+  throw new GarageScreenUnsettledError(owners.get(game)?.state ?? game.phase, reason);
+}
+
 /**
  * (2026-11-02 audit F1 review) Refuse an illegal hand-over before a writer's first mutation: the same error
  * `transitionAppPhase` throws, with nothing written. A writer that sets up its scene (a roster, a map, the HUD, the
@@ -253,6 +279,16 @@ export function isGarageScreenSettled(game: { phase: AppPhase }): boolean {
  */
 export function assertAppPhaseTransition(game: { phase: AppPhase }, next: AppPhase, reason: string): void {
   assertEdge(game.phase, next, reason);
+}
+
+/**
+ * (round 2, app-flow review 2) The edge table as a question, for an owner that refuses a hand-over as busy before its
+ * first mutation rather than failing it (the solo start at its press and after a return wait). The same rule as the
+ * check above: an unknown current value may move anywhere, and an unknown target never is legal.
+ */
+export function canTransitionAppPhase(game: { phase: AppPhase }, next: AppPhase): boolean {
+  if (!isAppPhase(next)) return false;
+  return !isAppPhase(game.phase) || APP_PHASE_EDGES[game.phase].includes(next);
 }
 
 /**

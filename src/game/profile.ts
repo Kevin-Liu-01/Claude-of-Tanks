@@ -65,6 +65,8 @@ interface BattleTally {
   kills: number;
   damage: number;
   startedAt: number;
+  /** (round 2 U19) Its battle took the scene (phase:change 'battle' after the announcement). */
+  reached: boolean;
 }
 
 const installedBuses = new WeakSet<ProfileEventBus>();
@@ -241,14 +243,22 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
       kills: 0,
       damage: 0,
       startedAt: Date.now(),
+      reached: false,
     };
   });
   // (2026-11-02 audit F2) a battle left without its result (a quit) keeps no tally: the Garage's phase drops it, so
   // a later battle can never be recorded under the earlier one's vehicle, map or start time. Every entry path now
   // announces itself (ui:battleStart: the Garage button, the network roster, the solo entry owner for the Play menu
   // and the campaign ladder), so its result has a tally of its own.
+  // (round 2 U19) The drop is the tally's own battle's: a start queued under a Garage return (the Garage button's press
+  // under its veil) is announced before that return hands the screen over, and its 'garage' (from the battle before's
+  // screen) is the battle before leaving, not this one. An entry that never reached its battle (a failed entry's
+  // recovery: the Garage again, from the Garage) is dropped as before.
   bus.on('phase:change', (payload) => {
-    if (recordOf(payload)?.phase === 'garage') tally = null;
+    const event = recordOf(payload);
+    if (!tally) return;
+    if (event?.phase === 'battle') tally.reached = true;
+    else if (event?.phase === 'garage' && (tally.reached || event.from !== 'battle')) tally = null;
   });
   bus.on('shell:hit', (payload) => {
     const event = recordOf(payload) ?? {};

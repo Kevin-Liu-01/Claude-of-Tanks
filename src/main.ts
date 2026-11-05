@@ -254,7 +254,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
-import { createAppLifecycle } from './game/appLifecycle.ts';
+import { assertAppPhaseTransition, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -729,7 +729,14 @@ const game: MainGameState = createGameState<
 game.battleCount = battleOrdinalBase();
 // (2026-11-02 audit F1) the app's one lifecycle: every game.phase writer goes through transitionAppPhase, which checks
 // the edge and announces phase:change here; tools read the derived state from window.__APP_LIFECYCLE (read-only)
-const appLifecycle = createAppLifecycle({ game, announce: (announcement) => bus.emit('phase:change', announcement) });
+// (round 2 U40) the boot's reader from the start: the boot screen and its latch exist before the lifecycle, so the
+// lifecycle never reads 'garage' while main's module still evaluates under the splash
+const appLifecycle = createAppLifecycle({
+  game,
+  announce: (announcement) => bus.emit('phase:change', announcement),
+  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
+  readers: { isBooting: () => !bootReadiness.ready || boot.gated },
+});
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__APP_LIFECYCLE', { configurable: true, get: () => appLifecycle.snapshot() });
   // (audit S3) the automation path this page runs (tools/game-readiness.mjs records it with every receipt)
@@ -784,8 +791,13 @@ let camoSweepP = Promise.resolve();
 // (2026-11-02 audit F2) the countdown's warm hold: armed by a deployment for its generation, lifted only by that
 // generation's release, superseded at once by an invalidation (src/game/battleWarmHold.ts)
 const battleWarmHold = createBattleWarmHold();
-/** The warm ports' setPending(false): lift the current generation's hold (their callers check the generation first). */
-const releaseCurrentWarmHold = (pending: boolean): void => { if (!pending) battleWarmHold.release(battleWarmHold.generation); };
+/**
+ * The warm ports' setPending(false, generation): lift that generation's hold, and only it (round 2 U20: the adapter
+ * dropped the caller's generation and released the current one, so a stale caller lifted its successor's hold). A
+ * caller with no generation (the combat warm's load failure, checked current first; a renderer reset) means the
+ * current one.
+ */
+const releaseWarmHold = (pending: boolean, generation: number = battleWarmHold.generation): void => { if (!pending) battleWarmHold.release(generation); };
 let sceneWatchdogEntryGeneration = 0;
 let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = null;
 
@@ -2067,7 +2079,7 @@ const combatWarmComposition = createCombatWarmComposition({
     return battleVisuals;
   },
   getGeneration: () => battleWarmHold.generation,
-  setPending: releaseCurrentWarmHold,
+  setPending: releaseWarmHold,
   prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
   prepareModeVisuals: () => battlePresentation.prepareModeVisuals(),
@@ -2492,7 +2504,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getGeneration: () => battleWarmHold.generation,
     // the deployment's arm is its hold (its setPending(true) has nothing left to do)
     advanceGeneration: () => battleWarmHold.arm(),
-    setPending: releaseCurrentWarmHold,
+    setPending: releaseWarmHold,
     setDestructionWarmed: combatWarmComposition.setDestructionWarmed,
     devTrace,
   }),
@@ -2803,6 +2815,10 @@ function resolveFxSubject(id: string) {
  * import is retryable, which is essential for first-visit clients on unstable mobile connections.
  */
 function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
+  // (round 2, app-flow) the room's launch takes the scene first: a Studio open in this tab leaves, then the launch runs
+  // as from the Garage (its cover in that task)
+  const handOver = takeSceneForRound();
+  if (handOver) return handOver.then(() => beginMultiplayerV2Battle(request));
   const current = onlineMatch.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
@@ -2812,6 +2828,28 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
       await networkBattleIntentCover.releaseAfterFailure();
       throw error;
     });
+}
+
+/**
+ * (round 2, app-flow) The one owner of a network round's scene hand-over, decided before the round covers, loads or
+ * announces anything (the room's launch above, and every round the composition enters: its room port). A round takes a
+ * seat into battle from whatever phase the page is in, and the edge table refuses studio -> battle: the activation
+ * refused it only after the round had covered the screen and loaded its world over the Studio. A Studio open in this
+ * tab leaves first (its exit, to the Garage, awaited: a match the seat readied for takes it there; that Garage return
+ * releases no network presentation, so the round waiting here survives it); then the app lifecycle's edge decides, so a
+ * Studio that could not leave refuses the round here: its Garage return failed before the Garage took the scene (the
+ * edge), or after (review 2: the return's state; no Garage to hand over, its notice the screen). Null when the scene
+ * can hand over now: nothing waits, so a launch's cover still lands in its own task.
+ */
+function takeSceneForRound(): Promise<void> | null {
+  if (game.phase !== 'studio') {
+    assertAppPhaseTransition(game, 'battle', 'network-round');
+    return null;
+  }
+  return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => {
+    assertAppPhaseTransition(game, 'battle', 'network-round');
+    if (garageReturn.state !== 'idle') throw new GarageScreenUnsettledError('returning', 'network-round: the Studio\'s Garage return did not land');
+  });
 }
 
 /** The composition's modules (one list: a returning tab's boot loads the same chunks ahead of its entry, lever 3c). */
@@ -2853,7 +2891,10 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           clearInput: () => input.setEnabled(false),
           // (audit F3 review) the covered restore after a failed join: a failed return says so and offers its retry
           enterGarage: enterGarageWithExit,
-          returnToGarage: () => garageReturn.leave(),
+          // (round 2 U20) the room's own returns take the Leave's exit as well (a bare leave() froze a failed one)
+          returnToGarage: returnRoomToGarage,
+          // (round 2, app-flow) every round takes the scene before its cover: a Studio open in this tab leaves first
+          takeSceneForRound,
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
         },
@@ -3418,7 +3459,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   warm: {
     invalidate: () => { battleWarmHold.invalidate(); sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
     cancel: cancelDeferredCombatWarm,
-    setPending: releaseCurrentWarmHold,
+    setPending: releaseWarmHold,
   },
   work: {
     noteActivity: () => garageDressingScheduler.noteActivity(),
@@ -3508,24 +3549,44 @@ const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Pro
     .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
 };
 /**
+ * (round 2 U20) The one return exit every return caller takes after a rejection, decided by the return's declared
+ * state, never by the caller's error: a return left 'failed' (Garage frames suppressed, the screen still owed) says so
+ * and offers `retry`. A busy refusal (the other operation holds the return), a superseded return ('superseded':
+ * another presentation took the scene, or the context recovery retries it) and a return that never began (its veil
+ * taken over first) owe the player nothing. True when the notice opened.
+ */
+const exitFailedGarageReturn = (error: RuntimeValue, retry: () => void): boolean => {
+  if (garageReturn.state !== 'failed' || Reflect.get(Object(error), 'code') === 'garage_return_busy') return false;
+  console.error('[garage return] return failed', error);
+  void presentGarageReturnFailure(error, retry);
+  return true;
+};
+/**
  * Every return caller that has no failure exit of its own (the Studio's exit, the room's covered restore) gets the
  * Leave's: a return that failed and still owes the screen says so and offers the return again ('failed' → 'entering').
- * The caller still sees the rejection; a superseded return ('superseded': another presentation took the scene, or the
- * context recovery retries it) is not a dead end and opens nothing.
+ * The caller still sees the rejection.
  */
 const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: RuntimeValue) => {
-  if (garageReturn.state === 'failed') {
-    console.error('[garage return] return failed', error);
-    void presentGarageReturnFailure(error, retryGarageReturn);
-  }
+  exitFailedGarageReturn(error, retryGarageReturn);
   throw error;
 });
 const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
+/**
+ * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the
+ * Leave, with the same exit, whose retry is that Leave again. The room still sees the rejection (it reports it, and
+ * opens its own failure notice only after a return that landed).
+ */
+const returnRoomToGarage = (): Promise<void> => garageReturn.leave().catch((error: RuntimeValue) => {
+  exitFailedGarageReturn(error, () => { void returnRoomToGarage().catch(() => { /* its notice is the exit */ }); });
+  throw error;
+});
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
+// (round 2, app-flow) and every network round from its start until it reveals or its covered restore lands: a round
+// the room's session entered (a later match_start while the room is kept) runs outside the entry lifecycle's run, and
+// the lifecycle read 'garage' under its loader, so F8, the Studio button and Window.__STUDIO.load opened over it
 appLifecycle.setReaders({
-  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
-  isBooting: () => !bootReadiness.ready || boot.gated,
-  isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
+  isEntryCovering: () => (battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered))
+    || onlineMatch.current?.entering === true,
   isReturnOwed: () => garageReturn.state !== 'idle',
 });
 // perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
@@ -3566,15 +3627,15 @@ const leaveBattleToGarage = (): Promise<void> => {
   // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
   // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection
   return garageReturn.leave().catch((error: RuntimeValue) => {
-    // (the code check, not an import: the return implementation stays off the boot graph)
-    // (audit F3 review) a Leave cut short by another presentation or a context change opens no notice either
+    // (audit F3 review, round 2 U20) the return's state decides (exitFailedGarageReturn): a failed return says so and
+    // offers the Leave again; a Leave refused as busy, cut short by another presentation or a context change, or whose
+    // veil was taken over before its work ran opens no notice (the code check, not an import: the return
+    // implementation stays off the boot graph)
+    if (exitFailedGarageReturn(error, () => { void leaveBattleToGarage(); })) return;
     const code = Reflect.get(Object(error), 'code');
     if (code === 'garage_return_busy' || code === 'garage_return_superseded') {
       console.info('[garage return] Leave ignored:', Reflect.get(Object(error), 'message'));
-      return;
-    }
-    console.error('[garage return] Leave failed', error);
-    void presentGarageReturnFailure(error, () => { void leaveBattleToGarage(); });
+    } else console.error('[garage return] Leave failed', error);
   });
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
@@ -3587,6 +3648,11 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   announce: (payload) => bus.emit('ui:battleStart', payload),
   // (audit F3) a start accepted while a Garage return is in flight waits for it instead of racing its restore
   whenGarageSettled: () => garageReturn.whenSettled(),
+  // (round 2, app-flow) a network round the room's session entered (outside the entry latch) keeps the screen
+  isNetworkRoundEntering: () => onlineMatch.current?.entering === true,
+  // (round 2, app-flow review 2) the edge table decides a start before its announcement and cover, at the press and after
+  // a return wait: over the Studio (the __DEBUG.beginSoloBattle hook) it covered and loaded, refused only after the load
+  canTakeScene: () => canTransitionAppPhase(game, 'battle'),
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.
