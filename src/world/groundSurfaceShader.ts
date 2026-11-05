@@ -104,7 +104,9 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
     }
     // the close stones: one per hash cell, on the worn soil, the sward's thin patches and the town floor
     if (uLandTier > 0.5) {
-      float gsOpenS = uGsOpen.z > 0.5 ? gsThin * uGsOpen.w : 0.0;
+      // (on a sward the stones lie where it thins over its soil; a class with no mosaic of the table's — sand, snow, the
+      // canyons' hardpan, regolith, gravel — carries them over its open ground)
+      float gsOpenS = uGsOpen.z > 0.5 ? (uGsOpen.x > 0.5 && uGsOpen.x < 2.5 ? gsThin : meadowG * (1.0 - fR) * gsOff) * uGsOpen.w : 0.0;
       float gsWornS = uGsWorn.z > 0.5 ? fD * (1.0 - gsTownW) * keepM * gsOff * uGsWorn.w : 0.0;
       float gsTownS = uGsTown.y > 0.5 ? gsTownW * uGsTown.z : 0.0;
       float kind = gsTownS > max(gsOpenS, gsWornS) ? uGsTown.y : gsWornS > gsOpenS ? uGsWorn.z : uGsOpen.z;
@@ -126,7 +128,8 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
         float disc = (1.0 - smoothstep(0.78, 1.0, sd)) * on;
         float shd = (1.0 - smoothstep(0.65, 1.15, length(d + gsSun * 0.38))) * on * (1.0 - disc);
         float gL = reduxLuma(a.rgb);
-        vec3 stoneC = mix(vec3(gL), a.rgb, 0.35) * (0.80 + 0.70 * h.x);
+        // (on bright ground — snow, pale sand — a stone or a clod varies less and its shadow carries its form)
+        vec3 stoneC = mix(vec3(gL), a.rgb, 0.35) * mix(0.80 + 0.70 * h.x, 0.90 + 0.18 * h.x, smoothstep(0.35, 0.65, gL));
         // (round 1's "confetti": the chips a fixed white and orange) a broken brick or a piece of concrete, a shade off the
         // floor it lies on
         if (kind > 2.5) stoneC = mix(vec3(gL), a.rgb, 0.4) * (h2.y > 0.55 ? vec3(1.12, 0.78, 0.66) : vec3(1.05, 1.05, 1.06)) * (0.72 + 0.50 * h.x);

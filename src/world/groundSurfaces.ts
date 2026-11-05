@@ -112,21 +112,21 @@ export const GROUND_CLASSES: Readonly<Record<GroundClass, GroundClassRow>> = Obj
   cinder: row(painter('terrain.ts yard cinder over the dirt set'), 'none', 0, 'grit', 0.8, 'weeds', 'earth'),
   // a works' slag, ballast and hardstanding (terrain.ts works floor)
   slag: row(painter('terrain.ts worksSlag'), 'none', 0, 'grit', 0.6, 'none', 'earth'),
-  // loose sand, its ripples and lag
-  sand: row(photo('sand'), 'sand', 0, 'grain', 0, 'none', 'sand'),
-  // a strand's dry sand above the swash (the shore policy prints it as sand)
-  beachSand: row(photo('sand'), 'sand', 0, 'grain', 0, 'dune', 'sand'),
-  // the canyons' packed ochre and red earth shelves (the sand set toned): earth underfoot
-  hardpan: row(photo('sand'), 'sand', 0, 'grit', 0.5, 'none', 'earth'),
-  // airless or Martian regolith: fine dust over basalt grit
-  regolith: row(photo('sand'), 'sand', 0, 'grain', 0, 'none', 'sand'),
+  // loose sand, its ripples, and the lag of pebbles the wind leaves on it
+  sand: row(photo('sand'), 'sand', 0, 'grit', 0.35, 'none', 'sand'),
+  // a strand's dry sand above the swash (the shore policy prints it as sand), shells and pebbles in it
+  beachSand: row(photo('sand'), 'sand', 0, 'grit', 0.3, 'dune', 'sand'),
+  // the canyons' packed ochre and red earth shelves (the sand set toned), stones weathered out of them: earth underfoot
+  hardpan: row(photo('sand'), 'sand', 0, 'stones', 0.6, 'none', 'earth'),
+  // airless or Martian regolith: fine dust over basalt grit and the ejecta's stones
+  regolith: row(photo('sand'), 'sand', 0, 'stones', 0.5, 'none', 'sand'),
   // the bedded sandstone and mudstone walls (terrain.ts makeSandstoneLayer)
   sandstone: row(painter('terrain.ts makeSandstoneLayer'), 'rock', 0, 'none', 0, 'none', 'earth'),
-  // wind-packed snow: crust and powder, sastrugi
-  snow: row(photo('snow'), 'snow', 0, 'grain', 0, 'sedge', 'snow'),
-  // a snow map's worn ground: the snow trampled and compacted, slushy in its hollows, the dirt set showing only where the
-  // wear is strong (terrain.ts's snow wear law over the D layer)
-  trampledSnow: row(photo('dirt'), 'snow', 0, 'none', 0, 'none', 'snow'),
+  // wind-packed snow: crust and powder, sastrugi, the clods of broken crust
+  snow: row(photo('snow'), 'snow', 0, 'stones', 0.35, 'sedge', 'snow'),
+  // a snow map's worn ground: the snow trampled and compacted, slushy in its hollows, its clods kicked up, the dirt set
+  // showing only where the wear is strong (terrain.ts's snow wear law over the D layer)
+  trampledSnow: row(photo('dirt'), 'snow', 0, 'stones', 0.5, 'none', 'snow'),
   // frozen marsh and lake ice (terrain.ts makeIceLayer)
   ice: row(painter('terrain.ts makeIceLayer and its cracks'), 'none', 0, 'none', 0, 'none', 'hard'),
   // marsh mud, its puddles' gloss (terrain.ts createWetSplatLayer)
