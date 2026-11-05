@@ -106,6 +106,16 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
  * (CPU model, Verdant: the footprint a fifth of its widest at 0.83 of the slab, round 6 at 0.88; its base half as wide).
  */
 export const CLOUD_DOME_CROWN = 0.4;
+/**
+ * clouds-269: the share of a lane's weather the wind frame's cumulus field takes for a regime's street knob — whole for a
+ * street sky (0.75 and over), 0.3 of it for the fair-weather and humilis skies (0.3-0.4), smooth between. The fair-weather
+ * maps' rows rode round 71's rolls at that knob's whole share; with the rolls gone, the blind critics still preferred the
+ * old fair-weather masses to the lobes' scatter of small puffs ("strings of small puffs", "stray specks").
+ */
+export function cloudStreetShare(streets: number): number {
+  const s = clamp(streets, 0, 1), t = clamp((s - 0.4) / 0.35, 0, 1);
+  return s * (0.3 + 0.7 * t * t * (3 - 2 * t));
+}
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
 const CLOUD_LOCAL_CELL_M = 1200;
@@ -214,7 +224,10 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     // (2026-10-18, the 228 census) a thin deck draws a share of that extinction (Whiteout's pale polar stratus)
     mediumShare: isDeck ? clamp(preset.deckDensity ?? 1, 0.05, 1) : 1,
     channels,
-    streets: clamp(preset.streets, 0, 1) * (1 - deck),
+    // (clouds-269) a street sky reads the wind frame's cumulus at its share; a fair-weather or humilis sky at under a
+    // third of it, so the local weather's own masses carry it (the blind critics' "full, billowing cumulus" in the before,
+    // its rows gone with the rolls) and the wind frame's lobes only break them up
+    streets: cloudStreetShare(preset.streets) * (1 - deck),
     envelope,
     // (a tower's flanks at the full erosion streaked with the shape volume's grain over kilometres of height: towers take
     // a softer carving, their mass in the light)
