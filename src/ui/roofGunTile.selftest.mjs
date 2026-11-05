@@ -4,7 +4,8 @@
 // while red, so the crew could not switch the silenced gun off there. Driven through the real HUD (initHud) over the
 // recording DOM: the tile keeps showing the switch (active, aria-pressed), marks a switched-on red gun 'silenced' (its
 // icon struck in the danger ink, battleHudLayout.css) and says so in its tip and label, takes a press to switch a red gun
-// off, and refuses only the switch on. The paint itself (the struck icon) needs a browser and is not reproduced here.
+// off, and refuses only the switch on. The paint itself (the struck icon) needs a browser and is not reproduced here; the
+// stylesheet's rule is checked as text.
 import { created } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -79,5 +80,18 @@ Object.assign(roofModule, { state: 'red' });
 player.combat.destroyed = true;
 frame();
 assert.equal(read().disabled, true, 'a destroyed tank takes no press');
+
+// the stylesheet strikes a silenced tile's icon with the spent control's slash, and leaves its lit tile alone (the tile
+// rule that drops the wash and ring is the spent control's only)
+{
+  const layout = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...layout.matchAll(/([^{}]+)\{([^}]*)\}/g)];
+  const rule = (selector) => rules.find(([, list]) => list.split(',').map((item) => item.trim()).includes(selector));
+  const slash = rule('.cot-vehicle-controls>button.silenced .si::after');
+  assert.ok(slash && /background:var\(--hud-danger\)/.test(slash[2]) && /rotate\(-45deg\)/.test(slash[2]), 'a silenced icon is struck in the danger ink');
+  assert.equal(slash, rule('.cot-vehicle-controls>button.empty .si::after'), "with the spent control's own slash");
+  assert.ok(rule('.cot-vehicle-controls>button.silenced .si'), 'its icon is drawn in the danger ink');
+  assert.equal(rule('.cot-vehicle-controls>button.silenced'), undefined, 'a silenced tile keeps its lit frame');
+}
 
 console.log('roofGunTile: the HUD tile shows the roof-gun switch, marks a switched-on red gun silenced, takes a press to switch it off and refuses only the switch on');
