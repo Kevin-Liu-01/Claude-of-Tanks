@@ -11,7 +11,8 @@
 //   4. The Studio declares the falls' driver as it takes and gives back a world (studioCrush.ts): from the first frame the
 //      world's own update moves no fall the timeline drives, a paused timeline holds them, and the update drives them again
 //      once the Studio leaves. It was a per-call latch: the first frame advanced a fall twice, a paused Studio's update
-//      went on finishing falls.
+//      went on finishing falls. Given back, a later battle's fall on that world moves with its update again (round 2
+//      review: a world left on the timeline would down a trunk and its canopy and never fell the tree).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -155,9 +156,28 @@ const hull = { id: 'p', specId: 't90am', isPlayer: true, state: { speed: 9, yaw:
   const held = pose(studio.tree.mat);
   for (let frame = 0; frame < 6; frame++) world.update(1 / 60); // a paused Studio: its timeline steps nothing
   assert.equal(pose(studio.tree.mat), held, 'a paused timeline holds the fall (before: the world\'s update finished it)');
-  crushes.restore(world); // the Studio leaves the world
+  crushes.restore(world); // the Studio leaves the world: its crushes stand up again (a reset)
+  assert.equal(studio.felled.driver, 'frame', 'given back: the world\'s update is the falls\' driver again');
+  assert.equal(studio.tree.crushed, false, 'and the tree the Studio felled stands');
+  const upright = pose(studio.tree.mat);
+  world.crushObstacle(studio.record, 1, 0); // a battle's hull on the world the Studio left fells the tree
   world.update(1 / 60);
-  assert.notEqual(pose(studio.tree.mat), held, 'given back, the world\'s update drives its falls again');
+  assert.notEqual(pose(studio.tree.mat), upright,
+    'a later battle\'s fall moves with the world\'s update (a world still on the timeline: its trunk and canopy down, the tree upright)');
+  // the stub's seams are the page world's: map.ts hands the driver and the timeline's steps to vegetation.ts, whose
+  // update advances the falls as the frame and whose advanceToppled as the timeline, and both reach felledTrees.ts
+  const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
+  assert.match(map, /setFallDriver: \(driver: 'frame' \| 'timeline'\) => \{ vegetation\.setFallDriver\?\.\(driver\); \},/, 'map.ts: the driver');
+  assert.match(map, /advanceToppledVegetation: \(dt: number\) => \{ vegetation\.advanceToppled\?\.\(dt\); \},/, 'map.ts: the timeline\'s step');
+  assert.match(map, /advanceDestruction: \(dt: number\) => \{\s*props\.advanceDestructibles\?\.\(dt\);\s*vegetation\.advanceToppled\?\.\(dt\);/, 'map.ts: a seek\'s run-out');
+  assert.match(map, /= vegetation\.update\(dt, /, 'map.ts: the frame\'s update');
+  assert.match(vegetation, /setFallDriver: \(driver: FallDriver\) => felledTrees\.setDriver\(driver\)/, 'vegetation.ts: the driver');
+  assert.match(vegetation, /advanceToppled: \(dt: number\) => felledTrees\.advance\(dt, 'timeline'\)/, 'vegetation.ts: the timeline\'s step');
+  const updateAt = vegetation.indexOf('\n  function update(');
+  const update = vegetation.slice(updateAt, vegetation.indexOf('\n  }\n', updateAt));
+  assert.equal(update.match(/felledTrees\.advance\(dt, 'frame'\)/g)?.length, 1, 'vegetation.ts: its update, the frame\'s');
+  assert.equal(vegetation.match(/felledTrees\.advance\(/g)?.length, 2, 'and no third caller');
 }
 
 console.log('felledTreeOwners.selftest: the world\'s crush owns a felled tree\'s records and canopy in the solo step, the restore and the page world, and the Studio declares the falls\' driver PASS');
