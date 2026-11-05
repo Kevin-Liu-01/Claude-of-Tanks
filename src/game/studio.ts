@@ -644,7 +644,9 @@ interface StudioRuntime {
   readonly active: boolean;
   tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: EnterOptions): Promise<void>;
-  exit(): void;
+  /** Leave for the Garage; resolves once the exit in flight (or already running) has run (round 2: a network round
+   *  that must take the scene waits for it). */
+  exit(): Promise<unknown>;
   /** The scene the page's URL carries (a shared #scene= link or a ?scene= path link), or null. */
   bootScene(): StudioBootScene | null;
   api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
@@ -6047,10 +6049,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   let exitRun: Promise<unknown> | null = null;
   let closing: Promise<void> | null = null; // the teardown in flight (an exit's or a failed entry's)
-  function exit() {
+  function exit(): Promise<unknown> {
     camoTryOn.preview(null, null);
     commitHistory(); // the last edit reaches the autosave before the Studio closes
-    if (!active || session.phase === 'exiting') return;
+    // (round 2, app-flow) the exit (or a failed entry's teardown) already running, for a caller that waits for the Garage
+    if (!active || session.phase === 'exiting') return exitRun ?? closing ?? Promise.resolve();
     // (audit F9) the press ends the session at once: every in-flight step stops at its next await, a film export is
     // cancelled, and the teardown below waits for what is still landing (studioSession.ts)
     session.beginExit();
@@ -6064,6 +6067,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       .catch((error: unknown) => (active ? doExit() : Promise.reject(error)))
       .catch((error: unknown) => { console.error('[studio] exit failed', error); })
       .finally(() => { exitRun = null; });
+    return exitRun;
   }
 
   async function doExit() {

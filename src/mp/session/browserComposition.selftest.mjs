@@ -256,7 +256,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null, prewarmRoster = null, submitPrograms = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null, prewarmRoster = null, submitPrograms = null, takeScene = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -355,6 +355,8 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       clearInput: () => calls.push('clearInput'),
       enterGarage: async () => { game.phase = 'garage'; calls.push('enterGarage'); if (enterGarage) await enterGarage(); },
       returnToGarage: async () => { game.phase = 'garage'; calls.push('returnToGarage'); },
+      // (round 2, app-flow) main.ts takeSceneForRound: null (the scene hands over now) unless a case scripts it
+      takeSceneForRound: () => (takeScene ? takeScene(game, calls) : null),
       getPhase: () => game.phase,
       hasResult: () => !!game.result,
     },
@@ -677,6 +679,62 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   await settle();
   assert.ok(failing.menu.attached, 'the lobby re-attaches so the player can retry from the room');
   assert.equal(failing.lifecycle.pending, false);
+}
+
+// ------------------------------------------------------------ (round 2, app-flow) a round that starts while the Studio holds the scene
+// The round took a seat into battle from whatever phase the page was in: over the Studio it covered the screen, loaded
+// its world and announced its battle, and only the activation refused studio -> battle. The round now hands the scene
+// over first (the room's takeSceneForRound, main.ts): the Studio leaves, then the cover, the world and the announcement;
+// a Studio that could not leave refuses the round there, before anything is covered, loaded or announced.
+{
+  const studio = createHarness({
+    takeScene: (game, calls) => {
+      if (game.phase !== 'studio') return null;
+      calls.push('takeScene');
+      return Promise.resolve().then(() => { calls.push('studio.exit'); game.phase = 'garage'; });
+    },
+  });
+  const room = makeRoomSession(studio.calls);
+  const entered = studio.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  studio.game.phase = 'studio';
+  const mark = studio.calls.push('--round') - 1;
+  const owner = studio.sessions[0];
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  const after = studio.calls.slice(mark);
+  const at = (call) => after.indexOf(call);
+  assert.ok(at('studio.exit') > 0, 'the Studio leaves first');
+  for (const later of ['resetRoundState', 'battleStart:me:m1a1_abrams_hc:alpine', 'load.show:Map alpine', 'loadWorld:alpine:null']) {
+    assert.ok(at(later) > at('studio.exit'), `${later} after the Studio left`);
+  }
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await entered, true, 'and the round reveals from the Garage');
+  assert.equal(studio.game.phase, 'battle');
+  studio.composition.dispose();
+
+  // a Studio that could not leave (its Garage return failed): the round is refused before anything is covered or loaded
+  const refused = createHarness({
+    takeScene: (game, calls) => {
+      if (game.phase !== 'studio') return null;
+      calls.push('takeScene');
+      return Promise.reject(Object.assign(new Error('The studio cannot hand the scene to the battle directly (network-round).'), { code: 'app_phase_illegal' }));
+    },
+  });
+  const refusedRoom = makeRoomSession(refused.calls);
+  const refusedEntry = refused.composition.beginRoom({ role: 'host', session: refusedRoom, lobbyState: refusedRoom.lobby });
+  refused.game.phase = 'studio';
+  const refusedMark = refused.calls.push('--round') - 1;
+  await assert.rejects(refused.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' }),
+    /cannot hand the scene to the battle/);
+  const tail = refused.calls.slice(refusedMark);
+  for (const never of ['resetRoundState', 'battleStart:me:m1a1_abrams_hc:alpine', 'load.show:Map alpine', 'loadWorld:alpine:null']) {
+    assert.ok(!tail.includes(never), `no ${never} over the Studio`);
+  }
+  assert.ok(tail.includes('leaveMatch:entry_failed'), 'the seat leaves the match');
+  assert.equal(refused.ports.failure.stage, 'scene', 'the failure names the hand-over');
+  assert.equal(await refusedEntry, false);
+  refused.composition.dispose();
 }
 
 // ------------------------------------------------------------ the black watchdog refusing the frame is an entry failure too

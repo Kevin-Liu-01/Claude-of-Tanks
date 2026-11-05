@@ -346,6 +346,12 @@ export interface BrowserRoomPorts {
   enterGarage(): MaybePromise<void>;
   /** The transition out of a live battle (the Garage return's `leave`). */
   returnToGarage(): Promise<void>;
+  /**
+   * (round 2, app-flow) Hand this round the scene before it covers, loads or announces anything: a Studio open in this
+   * tab leaves first, and a scene that still cannot hand over to a battle rejects (main.ts takeSceneForRound, the app
+   * lifecycle's edge). Null when it can hand over now.
+   */
+  takeSceneForRound(): Promise<void> | null;
   getPhase(): string;
   hasResult(): boolean;
 }
@@ -706,6 +712,7 @@ function validatePorts(ports: BrowserCompositionPorts): void {
     ['room.getMenu', ports.room?.getMenu], ['room.setGarageStatus', ports.room?.setGarageStatus], ['room.emitRoomState', ports.room?.emitRoomState],
     ['room.clearInput', ports.room?.clearInput], ['room.enterGarage', ports.room?.enterGarage], ['room.returnToGarage', ports.room?.returnToGarage],
     ['room.getPhase', ports.room?.getPhase], ['room.hasResult', ports.room?.hasResult],
+    ['room.takeSceneForRound', ports.room?.takeSceneForRound],
   ];
   for (const [name, port] of required) {
     if (typeof port !== 'function') throw new TypeError(`multiplayer v2 browser composition requires the ${name} port`);
@@ -1163,6 +1170,14 @@ export function createBrowserComposition({
     };
     try {
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
+      // (round 2, app-flow) the round takes the scene first, before its cover, its world or its announcement: a Studio
+      // open in this tab leaves (a later round while the room is kept), and a scene that still cannot hand over refuses
+      // the round here (the activation refused it only after the round had covered and loaded its world over the Studio)
+      const handOver = roomPorts.takeSceneForRound();
+      if (handOver) {
+        try { await handOver; } catch (error) { await failRound(active, error, 'scene'); throw error; }
+        check('scene');
+      }
       const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
       try {
         load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant });

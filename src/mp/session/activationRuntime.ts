@@ -146,7 +146,9 @@ export function createActivationRuntime({
       if (!viewerId || !own?.specId || !mapId || !bridge || !fx) {
         throw new TypeError('network battle activation requires a complete request');
       }
-      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before any presentation moves
+      // (2026-11-02 audit F1 review) refuse an illegal hand-over (a Studio's scene) before any presentation moves. (round
+      // 2) The round decided its hand-over before its cover (browserComposition: the room's takeSceneForRound, main.ts),
+      // so this is the last guard, for a Studio entered under the round's cover by a tool's hook (Window.__STUDIO.load).
       assertAppPhaseTransition(game as { phase: AppPhase }, 'battle', 'network-activation');
       const hud = getHud();
       const damagePanel = getDamagePanel();

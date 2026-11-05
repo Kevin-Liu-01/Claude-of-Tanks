@@ -254,7 +254,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
-import { createAppLifecycle } from './game/appLifecycle.ts';
+import { assertAppPhaseTransition, createAppLifecycle } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -2805,6 +2805,10 @@ function resolveFxSubject(id: string) {
  * import is retryable, which is essential for first-visit clients on unstable mobile connections.
  */
 function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
+  // (round 2, app-flow) the room's launch takes the scene first: a Studio open in this tab leaves, then the launch runs
+  // as from the Garage (its cover in that task)
+  const handOver = takeSceneForRound();
+  if (handOver) return handOver.then(() => beginMultiplayerV2Battle(request));
   const current = onlineMatch.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
@@ -2814,6 +2818,25 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
       await networkBattleIntentCover.releaseAfterFailure();
       throw error;
     });
+}
+
+/**
+ * (round 2, app-flow) The one owner of a network round's scene hand-over, decided before the round covers, loads or
+ * announces anything (the room's launch above, and every round the composition enters: its room port). A round takes a
+ * seat into battle from whatever phase the page is in, and the edge table refuses studio -> battle: the activation
+ * refused it only after the round had covered the screen and loaded its world over the Studio. A Studio open in this
+ * tab leaves first (its exit, to the Garage, awaited: a match the seat readied for takes it there); then the app
+ * lifecycle's edge decides, so a Studio that could not leave (its Garage return failed) refuses the round here. Null
+ * when the scene can hand over now: nothing waits, so a launch's cover still lands in its own task.
+ */
+function takeSceneForRound(): Promise<void> | null {
+  if (game.phase !== 'studio') {
+    assertAppPhaseTransition(game, 'battle', 'network-round');
+    return null;
+  }
+  return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => {
+    assertAppPhaseTransition(game, 'battle', 'network-round');
+  });
 }
 
 /** The composition's modules (one list: a returning tab's boot loads the same chunks ahead of its entry, lever 3c). */
@@ -2857,6 +2880,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           enterGarage: enterGarageWithExit,
           // (round 2 U20) the room's own returns take the Leave's exit as well (a bare leave() froze a failed one)
           returnToGarage: returnRoomToGarage,
+          // (round 2, app-flow) every round takes the scene before its cover: a Studio open in this tab leaves first
+          takeSceneForRound,
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
         },

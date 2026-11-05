@@ -228,6 +228,39 @@ function phaseListener(game, battleEntryIntent) {
   assert.deepEqual(events.filter(([type]) => type === 'battle:rollout'), [['battle:rollout', {}]], 'one rollout on main\'s bus');
 }
 
+// (round 2, app-flow) A network round takes the scene from whatever holds it before it covers anything: main's one
+// owner leaves a Studio open in this tab first (its exit, awaited), then the app lifecycle's edge decides; the room's
+// launch goes through it before its intent cover, and every round the composition enters through the room port. A
+// round used to cover and load its world over the Studio, and only its activation refused studio -> battle.
+{
+  const { AppPhaseTransitionError, assertAppPhaseTransition } = await import('../game/appLifecycle.ts');
+  const events = [];
+  const game = { phase: 'studio' };
+  let exitLeaves = true;
+  const scope = {
+    game, assertAppPhaseTransition,
+    loadStudioRuntime: async () => ({ exit: async () => { events.push('studio.exit'); if (exitLeaves) game.phase = 'garage'; } }),
+    onlineMatch: { current: { beginRoom: async () => { events.push(`beginRoom:${game.phase}`); return true; } } },
+    networkBattleIntentCover: { show: () => events.push('intentCover') },
+  };
+  const { takeSceneForRound, beginMultiplayerV2Battle } = runMainStatements(
+    [mainFunction('function takeSceneForRound('), mainFunction('function beginMultiplayerV2Battle(')], scope,
+    '{ takeSceneForRound, beginMultiplayerV2Battle }');
+  assert.equal(await beginMultiplayerV2Battle({}), true);
+  assert.deepEqual(events, ['studio.exit', 'beginRoom:garage'], "the room's launch leaves the Studio before the round begins");
+  events.length = 0;
+  assert.equal(takeSceneForRound(), null, 'from the Garage the scene hands over now (nothing waits: the cover stays in its task)');
+  assert.equal(beginMultiplayerV2Battle({}) instanceof Promise, true);
+  assert.deepEqual(events, ['beginRoom:garage'], 'and the launch begins in the same task');
+  game.phase = 'battle';
+  assert.equal(takeSceneForRound(), null, 'a rematch in place');
+  game.phase = 'studio';
+  exitLeaves = false; // the Studio's Garage return failed: the scene is still the Studio's
+  await assert.rejects(takeSceneForRound(), (error) => error instanceof AppPhaseTransitionError && error.from === 'studio',
+    'a Studio that could not leave refuses the round before its cover');
+  assert.match(mainSource, /\n\s+takeSceneForRound,\n/, "main binds the room's takeSceneForRound to the same owner");
+}
+
 // Every Garage return caller without an exit of its own takes main's (garageReturnState.selftest.mjs runs it).
 assert.match(mainSource, /setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,/, "the Studio's exit");
 assert.match(mainSource, /enterGarage: enterGarageWithExit,\n/, "the room's covered restore");
