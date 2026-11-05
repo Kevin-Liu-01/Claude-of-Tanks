@@ -325,6 +325,8 @@ for (const waiters of [1, 0]) {
 // child stopped after the release, a report written last, and puppeteer's non-exiting listener.
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-hold-unwind-'));
+  const strays = []; // a failed run's server and browser are stopped here, never left behind (a passed run asserts them gone)
+  let passed = false;
   try {
     const lockDir = join(root, 'lock'), events = join(root, 'events'), report = join(root, 'report.json');
     writeFileSync(events, '');
@@ -367,6 +369,7 @@ for (const waiters of [1, 0]) {
     for (let i = 0; i < 800 && !read().some((line) => line.startsWith('up ')); i++) await sleep(25);
     const up = read().find((line) => line.startsWith('up ')) ?? '';
     const serverPid = Number(/server=(\d+)/.exec(up)?.[1]), browserPid = Number(/browser=(\d+)/.exec(up)?.[1]);
+    strays.push(serverPid, browserPid);
     assert.ok(serverPid > 0 && browserPid > 0 && existsSync(lockDir), `the child holds, with a server and a browser up: ${err.slice(-400)}`);
     const started = Date.now();
     child.kill('SIGTERM');
@@ -382,7 +385,9 @@ for (const waiters of [1, 0]) {
     assert.throws(() => process.kill(serverPid, 0), /ESRCH/, 'the server child is stopped, not orphaned');
     assert.throws(() => process.kill(browserPid, 0), /ESRCH/, 'the browser is gone');
     assert.equal(existsSync(lockDir), false, 'and the hold was released');
+    passed = true;
   } finally {
+    if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
     rmSync(root, { recursive: true, force: true });
   }
 }
