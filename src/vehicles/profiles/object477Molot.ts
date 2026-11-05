@@ -13,6 +13,7 @@
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { add30mmCannon, sideSolid } from './russia152Kit.ts';
+import { reserveDecorVolume } from './fieldChest.ts';
 import { GUN_2A73, build152Gun } from './gun152.ts';
 import { MOLOT_FRAME as F } from '../russia152Frames.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -246,7 +247,7 @@ function casingRing(z: number, hw: number, y0: number, y1: number): SolidSection
  * raised panoramic sight, hatches, smoke banks, stowage and the 30 mm. */
 function addTurret(P: TankBuilderPort): void {
   const body = (z: number, w0: number, ws: number, ys: number, wr: number, yr: number): SolidSection => ({ z,
-    ring: [[-w0, .01], [w0, .01], [ws, ys], [wr, yr], [-wr, yr], [-ws, ys]] });
+    ring: [[-w0, .05], [w0, .05], [ws, ys], [wr, yr], [-wr, yr], [-ws, ys]] });
   P.add('turret', sectionSolid([body(-1.80, .86, .96, .13, .82, .33), body(-1.45, 1.04, 1.13, .14, .95, .37),
     body(-1.05, 1.12, 1.22, .14, 1.02, .38), body(.55, 1.12, 1.22, .14, 1.02, .38), body(1.00, .90, .98, .13, .80, .34),
     body(1.32, .46, .52, .11, .42, .26)]));
@@ -276,8 +277,8 @@ function addTurret(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', box(.56, .02, .70), 0, .844, .05);
   for (const z of [-.20, .30]) P.addEquipment('turretDark', box(.10, .03, .04), .20, .86, z);
   for (const [x, z] of [[-.36, 1.45], [.36, 1.45], [-.30, -.30], [.30, -.30]]) P.addEquipment('turretDetail', box(.03, .06, .08), x, .864, z);
-  // the casing's bolted flank plates on its right side, clear of the 30 mm's sweep on its left
-  for (const z of [.80, 1.30]) P.addEquipment('turretDetail', box(.02, .22, .40), -.51, .70, z);
+  // the casing's bolted flank plates (the left pair 2 cm proud, clear of the 30 mm's barrel)
+  for (const s of [-1, 1]) for (const z of [.80, 1.30]) P.addEquipment('turretDetail', box(.02, .22, .40), s * .505, .70, z);
   // the gunner's multichannel sight (optical, TV, laser rangefinder and the missile's guidance channel) on the casing's
   // right flank, its hooded head over the casing's roof (btvt's drawing), its windows forward behind armoured doors
   P.add('turret', prism([[.55, -.80, -.45, .34, .80], [1.05, -.80, -.45, .34, .80]]));
@@ -334,23 +335,18 @@ function addTurret(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', box(.10, .04, .04), -.62, .80, -1.60);
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [.382, .58, -.80], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [-.382, .58, -.80], -Math.PI / 2);
-  // the GSh-30 beside the gun's casing on its raised race: its barrel crosses the casing from 14 degrees inboard
-  // (tools/roof-station-arcs.mjs, barrel lines against the turret's stock), so it turns from a degree short of that round
-  // its outboard side to 172 degrees; over the turret's rear quarter it depresses only as far as the table lets it (each
-  // degree the smallest of it and its neighbours)
+  // the GSh-30 beside the gun's casing on its raised race: its barrel crosses the casing from 13 degrees inboard
+  // (.qa-dev/r152/station-levels.mjs, barrel lines against the turret's stock at level and full elevation), so it turns
+  // from a degree short of that round its outboard side to 172 degrees; at the inboard stop and over the turret's rear
+  // quarter it depresses only as far as the table lets it (each degree the smallest of it and its neighbours)
   P.add('turret', cylY(.22, .24, .08, 22), .80, .40, .45);
+  // the decor's loads keep out of the barrel's sweep over the turret's left (fieldChest.ts reserveDecorVolume; turret frame)
+  reserveDecorVolume(P.turretG, [.35, .20, -1.60], [2.00, 1.05, 2.45]);
   add30mmCannon(P, { name: 'molot_gsh30', x: .80, deck: .44, z: .45, axisY: .68, pivotZ: .45, muzzleZ: 2.35,
     yawArc: [-0.2094, 3.0020],
-    depressionByYaw: [[1.1694, 0.18], [1.1868, 0.174], [1.2043, 0.163], [1.2217, 0.154], [1.2566, 0.154], [1.2741, 0.157],
-      [1.2915, 0.177], [1.309, 0.18], [1.3265, 0.18], [1.3439, 0.177], [1.3614, 0.163], [1.3788, 0.151],
-      [1.4137, 0.151], [1.4312, 0.154], [1.4486, 0.165], [1.4661, 0.18], [1.4835, 0.18], [1.501, 0.177],
-      [1.5184, 0.16], [1.5359, 0.149], [1.5882, 0.149], [1.6057, 0.16], [1.6232, 0.18], [1.6406, 0.18],
-      [1.6581, 0.165], [1.6755, 0.149], [1.693, 0.14], [1.7279, 0.14], [1.7453, 0.146], [1.7628, 0.163],
-      [1.7802, 0.18], [1.7977, 0.157], [1.8151, 0.14], [1.8326, 0.132], [1.8675, 0.132], [1.885, 0.143],
-      [1.9024, 0.16], [1.9199, 0.149], [1.9373, 0.132], [1.9548, 0.126], [1.9897, 0.126], [2.0071, 0.137],
-      [2.0246, 0.154], [2.042, 0.168], [2.0595, 0.18], [2.7576, 0.18], [2.7751, 0.171], [2.7925, 0.165],
-      [2.81, 0.157], [2.8274, 0.149], [2.8449, 0.143], [2.8623, 0.135], [2.8798, 0.129], [2.8972, 0.12],
-      [2.9147, 0.112], [2.9322, 0.109], [2.9671, 0.109], [2.9845, 0.008], [3.002, 0.008]] });
+    depressionByYaw: [[-0.2094, 0], [-0.192, 0.18], [2.7751, 0.18], [2.7925, 0.174], [2.81, 0.165], [2.8274, 0.16],
+      [2.8449, 0.149], [2.8623, 0.137], [2.8798, 0.129], [2.8972, 0.12], [2.9147, 0.112], [2.9671, 0.112],
+      [2.9845, 0.008], [3.002, 0.008]] });
 }
 
 /** The gun's mount inside the casing, its armoured cradle sleeve ahead of the casing's face with the boresight's box on it,
@@ -363,10 +359,10 @@ function addGun(P: TankBuilderPort): void {
   ]));
   const sleeve = (z: number, k: number): SolidSection => ({ z, ring: [[-.13 * k, -.17 * k], [.13 * k, -.17 * k], [.19 * k, -.11 * k],
     [.19 * k, .12 * k], [.13 * k, .18 * k], [-.13 * k, .18 * k], [-.19 * k, .12 * k], [-.19 * k, -.11 * k]] });
-  P.addGunExtra(sectionSolid([sleeve(.80, 1), sleeve(1.22, 1), sleeve(1.30, .86)]));
-  P.addGunExtra(cylZ(.21, .05, 24), 0, 0, 1.25);
-  P.addGunExtra(block(.12, .09, .26), 0, .225, 1.02);
-  P.addGunExtra(block(.07, .05, .012), 0, .225, 1.156);
+  P.addGunExtra(sectionSolid([sleeve(.80, 1), sleeve(1.06, 1), sleeve(1.13, .86)]));
+  P.addGunExtra(cylZ(.20, .04, 24), 0, 0, 1.08);
+  P.addGunExtra(block(.12, .09, .22), 0, .225, .95);
+  P.addGunExtra(block(.07, .05, .012), 0, .225, 1.066);
   build152Gun(P, { ...GUN_2A73, len: F.muzzleZ - F.trunnionZ });
 }
 
