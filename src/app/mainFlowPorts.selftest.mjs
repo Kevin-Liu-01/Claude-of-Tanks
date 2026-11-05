@@ -84,7 +84,8 @@ function phaseListener(game, battleEntryIntent) {
   const { entry, events } = soloEntry({ whenSettled: () => settled });
   const pending = entry.beginSelected();
   await flush();
-  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart'], 'no cover and no load while the return is in flight');
+  // (round 2 U19) and no announcement: the return's 'garage' comes before this battle's ui:battleStart
+  assert.deepEqual(events.map(([type]) => type), [], 'no announcement, no cover and no load while the return is in flight');
   settle();
   await pending;
   assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);

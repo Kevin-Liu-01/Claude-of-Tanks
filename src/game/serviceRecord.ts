@@ -240,6 +240,8 @@ interface BattleTracker {
   vehicleId: string;
   mapId: string;
   startedAt: number;
+  /** (round 2 U19) Its battle took the scene (phase:change 'battle' since it began). */
+  reached: boolean;
   kills: number;
   damage: number;
   damageTaken: number;
@@ -518,7 +520,7 @@ export function markServiceRecordSeen(): void {
 
 function newTracker(vehicleId: string, mapId: string): BattleTracker {
   return {
-    vehicleId, mapId, startedAt: Date.now(),
+    vehicleId, mapId, startedAt: Date.now(), reached: false,
     kills: 0, damage: 0, damageTaken: 0, blocked: 0, shots: 0, aimedShots: 0, aimedHits: 0,
     pending: [], streak: 0, bestStreak: 0, chain: 0, bestChain: 0, lastKillT: -Infinity,
     longestKillM: 0, killShots: new Map(), damaged: new Set(), damageBy: new Map(), spotted: new Set(),
@@ -574,8 +576,11 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const next = text(recordOf(payload)?.phase);
     // Leaving a battle without its result (a quit) drops what it tracked; debug and API entry can skip the garage's
     // battle start, so arriving in one starts tracking if nothing is.
-    if (phase === 'battle' && next !== 'battle') battle = null;
+    // (round 2 U19) only its own battle's leaving: a start queued under a Garage return began tracking before the
+    // battle before handed its screen to the Garage, and that hand-over is not this battle's quit
+    if (phase === 'battle' && next !== 'battle' && battle?.reached !== false) battle = null;
     if (next === 'battle' && !battle) start({});
+    if (next === 'battle' && battle) battle.reached = true;
     phase = next;
   });
 

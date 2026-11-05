@@ -59,7 +59,8 @@ interface SoloBattleEntryRuntimeOptions {
   /**
    * (2026-11-02 audit F2) "A battle entry began" (`ui:battleStart`) for an entry its caller did not announce: the Play
    * menu, the campaign ladder and `beginSelected` callers. The Garage BATTLE button announces its own press before it
-   * calls `begin`. Runs once the entry is accepted, before its cover, inside the press's task.
+   * calls `begin`. Runs once the entry is accepted and no Garage return is in flight (round 2 U19), before its cover:
+   * inside the press's task unless it waited for a return.
    */
   announce?(payload: { specId: string; mapId: string | null; gameMode: string; campaignOperationId: string | null }): void;
   /**
@@ -138,6 +139,12 @@ export function createSoloBattleEntryRuntime({
     announced: boolean,
   ): Promise<void> => lifecycle.run(async () => {
     try {
+      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
+      // (no return in flight: no wait, so the announcement and the cover still land inside the press's task)
+      const returning = whenGarageSettled();
+      if (returning) await returning;
+      // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
+      // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same way)
       if (!announced) {
         try {
           announce({ specId, mapId, gameMode: options?.gameMode ?? 'standard',
@@ -147,10 +154,6 @@ export function createSoloBattleEntryRuntime({
           reportError('[battle] battle-start listener failed', error);
         }
       }
-      // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
-      // (no return in flight: no wait, so the cover still lands inside the press's task)
-      const returning = whenGarageSettled();
-      if (returning) await returning;
       // the entry's whole intent, after the return's 'garage' announcement (which clears it), before the cover
       recordIntent(options);
       // The loading transaction itself is demand-loaded. Own its canonical
