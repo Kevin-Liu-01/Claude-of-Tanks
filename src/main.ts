@@ -254,7 +254,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
-import { assertAppPhaseTransition, createAppLifecycle } from './game/appLifecycle.ts';
+import { assertAppPhaseTransition, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -2832,9 +2832,11 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
  * announces anything (the room's launch above, and every round the composition enters: its room port). A round takes a
  * seat into battle from whatever phase the page is in, and the edge table refuses studio -> battle: the activation
  * refused it only after the round had covered the screen and loaded its world over the Studio. A Studio open in this
- * tab leaves first (its exit, to the Garage, awaited: a match the seat readied for takes it there); then the app
- * lifecycle's edge decides, so a Studio that could not leave (its Garage return failed) refuses the round here. Null
- * when the scene can hand over now: nothing waits, so a launch's cover still lands in its own task.
+ * tab leaves first (its exit, to the Garage, awaited: a match the seat readied for takes it there; that Garage return
+ * releases no network presentation, so the round waiting here survives it); then the app lifecycle's edge decides, so a
+ * Studio that could not leave refuses the round here: its Garage return failed before the Garage took the scene (the
+ * edge), or after (review 2: the return's state; no Garage to hand over, its notice the screen). Null when the scene
+ * can hand over now: nothing waits, so a launch's cover still lands in its own task.
  */
 function takeSceneForRound(): Promise<void> | null {
   if (game.phase !== 'studio') {
@@ -2843,6 +2845,7 @@ function takeSceneForRound(): Promise<void> | null {
   }
   return loadStudioRuntime().then((runtime) => runtime.exit?.()).then(() => {
     assertAppPhaseTransition(game, 'battle', 'network-round');
+    if (garageReturn.state !== 'idle') throw new GarageScreenUnsettledError('returning', 'network-round: the Studio\'s Garage return did not land');
   });
 }
 

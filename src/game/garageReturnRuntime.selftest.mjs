@@ -238,6 +238,21 @@ assert.deepEqual(closed.calls.find(([name]) => name === 'closeMatch'),
   ['closeMatch', 'returned_to_garage']);
 assert.equal(closed.calls.some(([name]) => name === 'disposeNetworkPresentation'), false);
 
+// (round 2, app-flow review 2) A return from the Studio releases no network presentation: the Studio never holds one
+// (the edge table refuses studio -> battle, and a network round takes the scene from a Studio only once it has left,
+// main.ts takeSceneForRound). The Studio's exit ran this release, so a kept room's round waiting on that hand-over was
+// disposed and its match left ('returned_to_garage'): the round the seat readied for was silently lost.
+for (const preserveRoom of [true, false]) {
+  const fromStudio = createFixture();
+  fromStudio.game.phase = 'studio';
+  fromStudio.setPreserveRoom(preserveRoom);
+  await fromStudio.runtime.enter();
+  assert.equal(fromStudio.game.phase, 'garage');
+  assert.equal(fromStudio.runtime.state, 'idle');
+  assert.equal(fromStudio.calls.some(([name]) => name === 'disposeNetworkPresentation' || name === 'closeMatch'), false,
+    `a Studio's Garage return (room ${preserveRoom ? 'kept' : 'not kept'}) leaves the network alone`);
+}
+
 const leaving = createFixture({ transitionGate: true });
 const firstLeave = leaving.runtime.leave();
 const secondLeave = leaving.runtime.leave();

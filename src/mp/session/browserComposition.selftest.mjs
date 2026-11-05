@@ -11,6 +11,9 @@ import { MULTIPLAYER_V2_SESSION } from './playMenuAdapter.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
 import { ACTION_BITS, CLOSE_REASON, PROTOCOL_VERSION, TEAM, VERDICT } from '../wire/index.ts';
 import { WorldActivationSupersededError } from '../../world/worldActivationRuntime.ts';
+import { createGarageReturnRuntime } from '../../game/garageReturnRuntime.ts';
+import { assertAppPhaseTransition, GarageScreenUnsettledError } from '../../game/appLifecycle.ts';
+import { mainSource, runMainStatements } from '../../app/mainComposition.test-support.mjs';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const settle = async (times = 6) => { for (let index = 0; index < times; index++) await tick(); };
@@ -407,6 +410,67 @@ async function enterRound(harness, { role = 'host', round = 1, mapId = 'alpine',
   return { room, entry, owner };
 }
 
+/** main's top-level function declaration that begins with `head`, through its closing `}` line. */
+function mainFunction(head) {
+  const start = mainSource.indexOf(`\n${head}`);
+  const end = mainSource.indexOf('\n}\n', start + 1);
+  assert.ok(start >= 0 && end > start, `main.ts declares ${head}`);
+  return mainSource.slice(start + 1, end + 2);
+}
+
+// main's Garage return network port, as the composition sees it (onlineMatch.current is this composition)
+assert.match(mainSource, /\n {2}network: \{\n {4}shouldPreserveRoom: \(\) => onlineMatch\.current\?\.shouldPreserveRoom\(\) \?\? false,\n {4}disposePresentation: \(\) => \{ onlineMatch\.current\?\.disposePresentation\(\); \},\n {4}closeMatch: \(reason: string\) => \{ onlineMatch\.current\?\.closeMatch\(reason\); \},\n/,
+  "main binds the Garage return's network release to the composition");
+
+/**
+ * (round 2, app-flow review 2) The Studio's hand-over as main runs it: main's own takeSceneForRound over a real Garage
+ * return whose network port is main's binding to this composition. The Studio's exit (studio.ts exit -> tearDownToGarage)
+ * hands back through ctx.enterGarage (main: enterGarageWithExit over garageReturn.enter) and never rejects (its chain
+ * ends in a catch). The doubles of old wrote 'garage' and skipped the return's network release, which disposed the
+ * round waiting on this hand-over.
+ */
+function createMainStudioHandOver(harness, { restoreFails = false } = {}) {
+  const { game, calls } = harness;
+  const noop = () => {};
+  const onlineMatch = { current: harness.composition };
+  const garageReturn = createGarageReturnRuntime({
+    game,
+    getSelectedSpecId: () => 'm1a1_abrams_hc',
+    presentation: { setAdaptiveSuspended: noop, clearBattle: noop, resetBattleTank: noop, suspendEffects: noop, setShotMode: noop,
+      setCaptureHidden: noop, unfreezeEffects: noop, resetHudFrame: noop },
+    network: {
+      shouldPreserveRoom: () => onlineMatch.current?.shouldPreserveRoom() ?? false,
+      disposePresentation: () => { calls.push('return:disposePresentation'); onlineMatch.current?.disposePresentation(); },
+      closeMatch: (reason) => { calls.push(`return:closeMatch:${reason}`); onlineMatch.current?.closeMatch(reason); },
+    },
+    warm: { invalidate: noop, cancel: noop, setPending: noop },
+    work: { noteActivity: noop, resetFramePacer: noop, scheduleDressing: noop },
+    world: { currentMapId: () => game.mapId, ensureGaragePlacement: async () => {}, setDormant: noop, setFarCascadeDormant: noop,
+      clearCamoOverrides: noop },
+    roster: { adoptBattlePlayer: () => null, clearBattle: noop, repaintHero: noop },
+    settings: { isOpen: () => false, close: noop },
+    ui: { setGarageSpots: noop, setGarageSunTrim: noop, hideEndOverlay: noop, exitPointerLock: noop, hideHud: noop, showGarage: noop,
+      poseGarageCamera: noop, startShowroom: noop, triggerBattle: () => false },
+    audio: { ambientOn: noop, playGarageSting: noop },
+    transition: { run: async (work) => work() },
+    restoreGaragePresentation: async () => {
+      if (restoreFails) throw new Error('the Garage presentation did not restore');
+      return { totalMs: 1 };
+    },
+    isBattleEntryPending: () => harness.lifecycle.pending,
+    isBattleEntryCovering: () => false,
+    whenBattleEntrySettled: () => Promise.resolve(),
+    whenBattleEntryCovering: () => new Promise(noop),
+    nowMs: () => 0,
+    sleep: () => Promise.resolve(),
+  });
+  const studioRuntime = { exit: () => { calls.push('studio.exit'); return garageReturn.enter().catch(() => {}); } };
+  const { takeSceneForRound } = runMainStatements([mainFunction('function takeSceneForRound(')], {
+    game, assertAppPhaseTransition, GarageScreenUnsettledError, garageReturn, loadStudioRuntime: async () => studioRuntime,
+  }, '{ takeSceneForRound }');
+  return { garageReturn, takeSceneForRound };
+}
+
 // ------------------------------------------------------------ port validation and session guard
 {
   assert.throws(() => createBrowserComposition({ ports: {} }), /requires the lifecycle.run port/);
@@ -686,32 +750,91 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
 // its world and announced its battle, and only the activation refused studio -> battle. The round now hands the scene
 // over first (the room's takeSceneForRound, main.ts): the Studio leaves, then the cover, the world and the announcement;
 // a Studio that could not leave refuses the round there, before anything is covered, loaded or announced.
+// (review 2) The hand-over runs main's own takeSceneForRound over a real Garage return bound to this composition: the
+// Studio's exit is that return, and its network release (the kept room's disposePresentation) aborted the very round
+// waiting on the hand-over and left its match, so the round was superseded at 'scene' with no failure and no notice.
 {
-  const studio = createHarness({
-    takeScene: (game, calls) => {
-      if (game.phase !== 'studio') return null;
-      calls.push('takeScene');
-      return Promise.resolve().then(() => { calls.push('studio.exit'); game.phase = 'garage'; });
-    },
-  });
+  let handOver = null;
+  const studio = createHarness({ takeScene: () => handOver.takeSceneForRound() });
+  handOver = createMainStudioHandOver(studio);
   const room = makeRoomSession(studio.calls);
   const entered = studio.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
   studio.game.phase = 'studio';
   const mark = studio.calls.push('--round') - 1;
   const owner = studio.sessions[0];
-  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  const enteredRound = await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' })
+    .then(() => 'entered', (error) => `rejected: ${error?.name}: ${error?.message}`);
+  assert.equal(enteredRound, 'entered', 'the round outlives the Studio\'s hand-back');
   const after = studio.calls.slice(mark);
   const at = (call) => after.indexOf(call);
   assert.ok(at('studio.exit') > 0, 'the Studio leaves first');
   for (const later of ['resetRoundState', 'battleStart:me:m1a1_abrams_hc:alpine', 'load.show:Map alpine', 'loadWorld:alpine:null']) {
     assert.ok(at(later) > at('studio.exit'), `${later} after the Studio left`);
   }
+  for (const never of ['return:disposePresentation', 'leaveMatch:returned_to_garage']) {
+    assert.ok(!after.includes(never), `the Studio's Garage return releases nothing of the network (${never})`);
+  }
+  assert.equal(handOver.garageReturn.state, 'idle', 'the Garage landed');
   await owner.welcome();
   owner.frame(frame());
   await settle(12);
   assert.equal(await entered, true, 'and the round reveals from the Garage');
   assert.equal(studio.game.phase, 'battle');
   studio.composition.dispose();
+
+  // the same hand-over for a round the room's session enters (the room's next match, the room kept): the first round's
+  // own return releases its presentation and leaves its match; the Studio opened over that Garage then hands over to
+  // the next round, which reveals
+  let keptHandOver = null;
+  const kept = createHarness({ takeScene: () => keptHandOver.takeSceneForRound() });
+  keptHandOver = createMainStudioHandOver(kept);
+  const first = await enterRound(kept);
+  await settle(12);
+  assert.equal(await first.entry, true);
+  await keptHandOver.garageReturn.enter();
+  assert.ok(kept.calls.includes('leaveMatch:returned_to_garage'), "the battle's own Garage return leaves its match");
+  assert.equal(kept.game.phase, 'garage');
+  kept.game.result = null;
+  await settle();
+  kept.game.phase = 'studio'; // F8 over the settled, room-kept Garage
+  const keptMark = kept.calls.push('--next-match') - 1;
+  const nextRound = await first.owner.enter({ matchStart: matchStart(2, 'desert'), room: snapshot({ phase: 'starting', round: 2 }), spectator: false, playerId: 'me' })
+    .then(() => 'entered', (error) => `rejected: ${error?.name}: ${error?.message}`);
+  assert.equal(nextRound, 'entered', "the room's next round outlives the Studio's hand-back");
+  await first.owner.welcome();
+  first.owner.frame(frame());
+  await settle(12);
+  const keptAfter = kept.calls.slice(keptMark);
+  assert.ok(keptAfter.includes('studio.exit'), 'the Studio left');
+  assert.ok(!keptAfter.includes('leaveMatch:returned_to_garage'), 'and the seat kept the match the room started');
+  assert.equal(kept.game.phase, 'battle', 'the round revealed');
+  assert.equal(kept.composition.stats().round.matchId, 'match-2');
+  assert.equal(kept.composition.entering, false);
+  assert.equal(kept.ports.failure ?? null, null, 'no failure');
+  kept.composition.dispose();
+
+  // a Studio whose Garage return failed after it wrote the Garage's scene (its notice is the screen, Garage frames
+  // suppressed) left no Garage to hand over: refused by name like a Studio that could not leave, with the room offered,
+  // never a round loaded over the failed return (whose notice's Retry would then have torn that round down)
+  let failedHandOver = null;
+  const failedReturn = createHarness({ takeScene: () => failedHandOver.takeSceneForRound() });
+  failedHandOver = createMainStudioHandOver(failedReturn, { restoreFails: true });
+  const failedRoom = makeRoomSession(failedReturn.calls);
+  const failedEntry = failedReturn.composition.beginRoom({ role: 'host', session: failedRoom, lobbyState: failedRoom.lobby });
+  failedReturn.game.phase = 'studio';
+  const failedMark = failedReturn.calls.push('--round') - 1;
+  const failedRound = await failedReturn.sessions[0].enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' })
+    .then(() => 'entered', (error) => error);
+  assert.ok(failedRound instanceof GarageScreenUnsettledError, `the round is refused at the hand-over (${failedRound?.message ?? failedRound})`);
+  const failedTail = failedReturn.calls.slice(failedMark);
+  for (const never of ['resetRoundState', 'battleStart:me:m1a1_abrams_hc:alpine', 'loadWorld:alpine:null']) {
+    assert.ok(!failedTail.includes(never), `no ${never} over the failed return`);
+  }
+  assert.equal(failedReturn.ports.failure.stage, 'scene', 'the failure names the hand-over');
+  assert.equal(await failedEntry, false);
+  await settle();
+  assert.ok(failedReturn.menu.attached, 'the room is offered again');
+  failedReturn.composition.dispose();
 
   // a Studio that could not leave (its Garage return failed): the round is refused before anything is covered or loaded
   const refused = createHarness({

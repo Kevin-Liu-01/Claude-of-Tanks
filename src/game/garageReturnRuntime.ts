@@ -442,6 +442,11 @@ export function createGarageReturnRuntime<Visual = object>(
   ): Promise<void> => {
     const prepareOnly = options.prepareOnly === true;
     const preserveRoom = options.preserveRoom ?? network.shouldPreserveRoom();
+    // (round 2, app-flow review 2) A return from the Studio releases no network presentation: the Studio never holds one
+    // (the edge table refuses studio -> battle, and a network round takes the scene from a Studio only once it has left,
+    // main.ts takeSceneForRound). The release ran from every phase, so the Studio's exit disposed the kept room's round
+    // that was waiting on that very hand-over and left its match ('returned_to_garage'), with no failure and no notice.
+    const releasesNetwork = game.phase !== 'studio';
     // A context loss re-runs a preparation as a preparation: the report is still the screen.
     lastEntryOptions = prepareOnly ? { preserveRoom, prepareOnly } : { preserveRoom };
     const selectedSpecId = getSelectedSpecId();
@@ -495,8 +500,10 @@ export function createGarageReturnRuntime<Visual = object>(
     presentation.suspendEffects();
     markStage('presentationReset');
 
-    if (preserveRoom) network.disposePresentation();
-    else network.closeMatch('returned_to_garage');
+    if (releasesNetwork) {
+      if (preserveRoom) network.disposePresentation();
+      else network.closeMatch('returned_to_garage');
+    }
     markStage('networkRelease');
 
     transitionBattleCountdown(game, 'clear');

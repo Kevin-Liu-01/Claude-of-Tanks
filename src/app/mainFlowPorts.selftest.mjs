@@ -287,12 +287,13 @@ function phaseListener(game, battleEntryIntent) {
 // launch goes through it before its intent cover, and every round the composition enters through the room port. A
 // round used to cover and load its world over the Studio, and only its activation refused studio -> battle.
 {
-  const { AppPhaseTransitionError, assertAppPhaseTransition } = await import('../game/appLifecycle.ts');
+  const { AppPhaseTransitionError, assertAppPhaseTransition, GarageScreenUnsettledError } = await import('../game/appLifecycle.ts');
   const events = [];
   const game = { phase: 'studio' };
   let exitLeaves = true;
+  const garageReturn = { state: 'idle' };
   const scope = {
-    game, assertAppPhaseTransition,
+    game, assertAppPhaseTransition, GarageScreenUnsettledError, garageReturn,
     loadStudioRuntime: async () => ({ exit: async () => { events.push('studio.exit'); if (exitLeaves) game.phase = 'garage'; } }),
     onlineMatch: { current: { beginRoom: async () => { events.push(`beginRoom:${game.phase}`); return true; } } },
     networkBattleIntentCover: { show: () => events.push('intentCover') },
@@ -312,6 +313,14 @@ function phaseListener(game, battleEntryIntent) {
   exitLeaves = false; // the Studio's Garage return failed: the scene is still the Studio's
   await assert.rejects(takeSceneForRound(), (error) => error instanceof AppPhaseTransitionError && error.from === 'studio',
     'a Studio that could not leave refuses the round before its cover');
+  // (review 2) a Studio whose Garage return failed after it wrote the Garage's scene: no Garage to hand over (its notice
+  // is the screen, its frames suppressed), so the round is refused as well, never loaded over the failed return
+  game.phase = 'studio';
+  exitLeaves = true;
+  garageReturn.state = 'failed';
+  await assert.rejects(takeSceneForRound(), (error) => error instanceof GarageScreenUnsettledError,
+    'a Studio whose return failed refuses the round before its cover');
+  assert.equal(game.phase, 'garage');
   assert.match(mainSource, /\n\s+takeSceneForRound,\n/, "main binds the room's takeSceneForRound to the same owner");
 }
 
