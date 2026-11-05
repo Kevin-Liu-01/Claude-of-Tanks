@@ -4229,9 +4229,12 @@ const studioAccess = createStudioAccess({
     },
     setWorldDormant,
     // (audit F9) a Studio battlefield build an exit outlived activates its world when it lands (awake, under its own sky
-    // and sun): while the Garage still owns the screen, its own presentation comes back (the world asleep, its sky and trim)
+    // and sun): while the Garage still owns the screen, its own presentation comes back (the world asleep, its sky and trim).
+    // (round 2 IR1) The lifecycle says whether it does: 'garage' is the settled Garage screen, never a return that still
+    // owes it (in flight, handed off, skipped, superseded, or failed with its notice and Retry: that return restores the
+    // Garage itself); and no battle entry is being assembled from it, nor Battle Again's lease running
     restoreGarageWorld: () => {
-      if (game.phase !== 'garage' || battleEntryLifecycle.pending || battleLoad.covering || garageReturn.transitioning) return;
+      if (appLifecycle.state !== 'garage' || battleEntryLifecycle.pending || battleLoad.covering || garageReturn.transitioning) return;
       void garageEnvironmentPresentation.activate(selectedGarageVariantId);
     },
     // (audit F3 review) the Studio's exit: a failed return says so and offers its retry, instead of a frozen Garage

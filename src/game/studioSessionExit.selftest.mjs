@@ -7,6 +7,9 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, StudioSessionEnded } from './studioSession.ts';
+// (round 2) the history's reading, by namespace: a copy of this file on a tree without it still links
+import * as studioSessionModule from './studioSession.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
@@ -14,7 +17,8 @@ const CORE = ['setMap', 'withStage', 'doExit', 'exit', 'load', 'ensureLoadMap', 
   'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm', 'directProduction'];
 // the session's helpers where the file has them
 const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'tearDownStudio', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
-  'ensureSessionWorld', 'productionBusy'];
+  'ensureSessionWorld', 'productionBusy', 'busyFlags', 'commitHistory', 'restoreAutosave', 'flushHistory', 'undo', 'stepHistory',
+  'restoreDocument', 'invalidate'];
 const found = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
@@ -25,6 +29,17 @@ const found = new Map();
 for (const name of CORE) assert.ok(found.has(name), `studio.ts declares ${name}`);
 // the export's lazy module is a port here
 const functions = [...found.values()].join('\n').replace("await import('./studioFilmExport.ts')", 'await importFilmExport()');
+// (round 2 U36) a tank added in the open Studio, run on its own over the holder its load reads (scenario 17's batching case)
+const actorFunctions = [];
+(function visit(node) {
+  if (ts.isFunctionDeclaration(node) && node.name && ['addActor', 'activateActorPresentation'].includes(node.name.text)) {
+    actorFunctions.push(node.getText(source));
+  }
+  ts.forEachChild(node, visit);
+})(source);
+assert.equal(actorFunctions.length, 2, 'studio.ts declares addActor and activateActorPresentation');
+// the session's holders where the module has them (a copy of this file on a tree without them still links)
+const createSessionHolder = studioSessionModule.createSessionHolder ?? (() => ({ held: false, take: () => () => {} }));
 
 function makeStudio(overrides = {}) {
   const calls = [];
@@ -33,7 +48,7 @@ function makeStudio(overrides = {}) {
   const exportFrames = { rendered: 0, aborted: false };
   const ports = {
     calls, exportFrames,
-    session: createStudioSession(), studioBusy, transportHeld, isStudioSessionEnded, StudioSessionEnded,
+    session: createStudioSession(), studioBusy, transportHeld, isStudioSessionEnded, StudioSessionEnded, createSessionHolder,
     t: (key) => key, console,
     resolveMapId: (id) => id, getMapConfig: (id) => ({ name: id }),
     studioTimeLightsLamps: () => false, studioTimeFor: (_map, time) => time,
@@ -54,11 +69,21 @@ function makeStudio(overrides = {}) {
       restoreStudioAtmosphere: () => calls.push('atmosphere-restored'),
       getStudioLight: () => null,
     },
-    setCamoBiome: noop, applyCamoPatterns: noop, settleActor: noop, invalidate: noop,
+    setCamoBiome: noop, applyCamoPatterns: noop, settleActor: noop,
     panel: { setStage: (stage) => calls.push(stage ? 'stage-on' : 'stage-off'), setStageProgress: noop, refreshAll: noop,
-      refreshMap: noop, hide: () => calls.push('panel-hidden'), refreshSelected: noop },
+      refreshMap: noop, hide: () => calls.push('panel-hidden'), refreshSelected: noop, refreshHistory: noop },
     transition: { run: async (work) => work(noop) },
-    camoTryOn: { preview: noop }, commitHistory: noop,
+    camoTryOn: { preview: noop },
+    // (round 2 U36) the history's parts: the document as authored (the battlefield as rendered, the edits made), the autosave
+    // a commit writes, and the one the header's Restore reads
+    historyHeld: studioSessionModule.historyHeld, edits: [], HISTORY_LIMIT: 50, undoStack: [], redoStack: [],
+    // the history's settle timer is recorded, never run (a scenario flushes the history itself)
+    HISTORY_SETTLE_MS: 400, setTimeout: () => { calls.push('history-armed'); return 1; }, clearTimeout: noop,
+    // an undo across battlefields loads the document (restoreDocument's other path is the same battlefield's patch)
+    sameActorSet: () => false,
+    documentJson: () => ({ map: ports.world.mapId, actors: ports.edits.map((id) => ({ id })) }),
+    emptyDocument: (doc) => !doc.actors?.length, writeAutosave: (text) => calls.push(['autosave', text]),
+    readAutosave: () => null,
     lighting: { updateFrustums: noop, update: noop },
     // load's parts
     sceneInCurrentTankIds: (json) => json, productionAspect: noop, normalizeFilm: (film) => film, isStudioTime: () => true,
@@ -70,7 +95,7 @@ function makeStudio(overrides = {}) {
     addActor: (cfg) => { calls.push(['add-actor', cfg.id]); return { cfg }; }, setHydropneumaticAim: noop,
     loadedStoryboard: () => ({ shots: [], durationMs: 8000 }), bindStoryboardTracks: noop,
     applyCamera: noop, clampStudioTime: (time) => time, replaceLoadEffects: noop, applyPictureRuntime: noop,
-    restoreLoadedPresentation: noop, stateJson: () => ({ ok: true }),
+    restoreLoadedPresentation: noop, stateJson: () => ({ ok: true }), post: {},
     enter: async () => { calls.push('studio-enter'); }, sceneMeta: { seed: 5000 },
     // the film side
     filmRenderer: { active: false, begin() { this.active = true; calls.push('film-open'); return { startMs: 0, frames: 4 }; },
@@ -122,7 +147,10 @@ function makeStudio(overrides = {}) {
     const { ${names.join(', ')} } = ports;
     let active = true, entering = null, closing = null, exitRun = null, mapChange = null, buildPlateUp = false;
     let recording = null, loading = false, productionLoading = false, productionOwnsLoad = false, filming = false, restoringHistory = false;
-    let lightChanges = 0;
+    let lightChanges = 0, historyTimer = 0, historyHead = null, pointerHeld = false, selectedEffect = null, frameDirty = false;
+    // (round 2 U36) the session's holders (the lane base's plain latches above)
+    const sceneLoad = createSessionHolder(), staging = createSessionHolder(), historyRestore = createSessionHolder();
+    const relighting = createSessionHolder();
     let filmExport = null, filmCues = null, filmShake = 1, timeScale = 0, clockMs = 1200, timeOfDay = 'day', studioLight = null;
     let storyboard = { shots: [], durationMs: 8000 }, selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     let placeArmed = null, dragActor = null, dragging = false, lookThrough = true, productionFormat = 'landscape';
@@ -134,11 +162,15 @@ function makeStudio(overrides = {}) {
     // the Studio is open: its session entered (the base keeps only the active flag)
     session.open(session.beginEntry());
     return {
-      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport, directProduction,
+      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport, directProduction, restoreAutosave, busy: () => busy(),
+      undo, flushHistory, invalidate, get loading() { return loading; }, get sceneLoad() { return sceneLoad; },
+      // the user enters the Studio again (doEnter's session moves)
+      reenter: () => { session.open(session.beginEntry()); active = true; game.phase = 'studio'; },
       setTime: (time) => applyStudioLight(time, null, true),
       get active() { return active; }, get mapChange() { return mapChange; }, get timeOfDay() { return timeOfDay; },
       get filmExport() { return filmExport; }, set recording(value) { recording = value; },
-      set filming(value) { filming = value; }, set productionLoading(value) { productionLoading = value; },
+      set filming(value) { filming = value; },
+      set productionLoading(value) { productionLoading = value; if (value) staging.take(session.token()); },
     };
     }
   `);
@@ -458,6 +490,265 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   assert.ok(!h.calls.includes('garage-sun'), 'a build its live session still owns is the Studio\'s');
 }
 
+// 15. (round 2 U36) An edit still settling when the battlefield changes, then Exit during the build: the exit's commit
+// takes the edit to the autosave (a battlefield change leaves the document the authored scene; the flush stops once the
+// Studio closes, so a commit refused here was lost). A scene load in flight still keeps its half-built scene out.
+{
+  const h = makeStudio();
+  h.ports.edits.push('lead-moved');
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  assert.ok(h.studio.mapChange, 'the battlefield change is building');
+  h.studio.exit();
+  await settle();
+  const saved = h.calls.filter((c) => Array.isArray(c) && c[0] === 'autosave');
+  assert.equal(saved.length, 1, 'the exit during the build commits the last edit');
+  assert.deepEqual(JSON.parse(saved[0][1]), { map: 'verdant', actors: [{ id: 'lead-moved' }] },
+    'the scene as authored: the edit, on the battlefield the change had not replaced');
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.equal(await outcome(switching), 'AbortError');
+}
+{
+  const h = makeStudio();
+  const loading = track(h.studio.load({ map: 'desert', actors: [] }));
+  await settle();
+  assert.ok(h.studio.mapChange, 'the load is building its battlefield');
+  h.ports.edits.push('half-built');
+  h.studio.exit();
+  await settle();
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'a scene load in flight is no step');
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.equal(await outcome(loading), 'AbortError');
+}
+
+// 16. (round 2 U36) Exit while the header's Restore builds the autosaved scene: the restore ends quietly (false), never an
+// unhandled rejection under the panel's handler, and no step is committed for the scene the exit took back.
+{
+  const h = makeStudio({ readAutosave: () => ({ savedAt: 1, doc: { map: 'desert', actors: [{ id: 'm1a1' }] } }) });
+  const restoring = h.studio.restoreAutosave().then((value) => ({ value }), (error) => ({ error: error.name }));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world'), [['ensure-world', 'desert']]);
+  h.studio.exit();
+  await settle();
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.deepEqual(await Promise.race([restoring, settle().then(() => 'still restoring')]), { value: false },
+    'a restore the exit took back resolves false');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits nothing');
+}
+
+// 17. (round 2 U36) A battlefield change belongs to its session: one an exit outlived (a cold build still going) neither
+// holds a Studio entered again (busy() read 'map' until the dead build settled: recording, undo, a film refused) nor
+// queues that Studio's own change behind it.
+{
+  const builds = [];
+  let h = null;
+  h = makeStudio({
+    ensureWorld: (id) => new Promise((resolve) => {
+      h.calls.push(['ensure-world', id]);
+      builds.push({ id, land: () => { h.ports.world = { ...h.ports.world, mapId: id }; resolve(h.ports.world); } });
+    }),
+  });
+  const stale = track(h.studio.setMap('desert'));
+  await settle();
+  h.studio.exit();
+  await settle();
+  assert.equal(h.studio.active, false, 'the exit tore the Studio down without waiting for the build');
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), null, 'the Studio entered again is not held by the closed session\'s change');
+  const next = track(h.studio.setMap('arctic'));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world').map((c) => c[1]), ['desert', 'arctic'],
+    'its own change builds at once, not behind the dead one');
+  assert.ok(h.studio.mapChange, 'and holds the Studio while it builds');
+  assert.equal(h.studio.busy(), 'map');
+  builds.find((build) => build.id === 'desert').land();
+  await settle();
+  assert.equal(await outcome(stale), 'AbortError', 'the dead change ends as a cancel');
+  assert.equal(h.studio.busy(), 'map', 'and leaves the live change\'s latch alone');
+  builds.find((build) => build.id === 'arctic').land();
+  await settle();
+  h.releaseAtmosphere();
+  assert.equal(await outcome(next), 'resolved');
+  assert.equal(h.studio.mapChange, null);
+  assert.equal(h.studio.busy(), null);
+}
+
+// 17 (the Studio's other holders). (round 2 U36) A scene load, a staging and an undo across battlefields hold the Studio
+// for their own session only. Exit while one waits on a cold build, then enter again: on the merged code the new Studio
+// read busy 'scene' until the dead build settled, refused its own load (loadInFlight), skipped its added tanks' rail
+// binding, headlights and panel row (a load batches those for its own pass), and an undo's stale flag kept its history
+// from committing. Here the new Studio is free, its own load builds at once and holds it, and the dead run's end
+// releases nothing of the live load's.
+/** addActor and its presentation, run over the holder (and, on the lane base, the plain flag) the Studio's load set. */
+const addActorIn = (h) => {
+  const added = [];
+  const noop = () => {};
+  const ports = {
+    loading: h.studio.loading, sceneLoad: h.studio.sceneLoad,
+    getSpec: (id) => ({ name: id }), DEFAULT_ACTOR_ID: 'm1a1', isTankBuilderReady: () => true, t: (key) => key,
+    game: { _engineCtx: {} }, createTank: () => ({ root: {}, syncFromState: noop }), scene: { add: noop },
+    hfDug: { getHeightAt: () => 0 },
+    createActorRecord: (_cfg, specId, _spec, visual) => ({ specId, visual, camo: null, authoredStateName: 'idle', authoredStateAgeS: 0 }),
+    actors: [], bindStoryboardTracks: () => added.push('bind'), actorRoots: [], actorByRoot: new WeakMap(),
+    setCamoOverride: noop, applyCamoPatterns: noop, settleActor: noop, applyActorState: noop, igniteColumn: noop,
+    panel: { refreshActors: () => added.push('listed') }, invalidate: noop,
+    ctx: { getStudioLight: () => ({ setActorRoots: () => added.push('headlights') }) },
+  };
+  const addActor = new Function(...Object.keys(ports),
+    `let uidSeq = 1;\n${stripTypeScriptTypes(actorFunctions.join('\n'))}\nreturn addActor;`)(...Object.values(ports));
+  addActor({ id: 'leo2a4' });
+  return added;
+};
+for (const [name, start, ended] of [
+  ['scene load', (h) => h.studio.load({ map: 'desert', actors: [] }), 'AbortError'],
+  ['staging', (h) => h.studio.directProduction({ presetId: 'desert-crossfire' }), 'AbortError'],
+  // stepHistory reads an undo the exit took back as no step (false)
+  ['undo across battlefields', (h) => {
+    h.ports.undoStack.push(JSON.stringify({ map: 'desert', actors: [] }));
+    return h.studio.undo();
+  }, 'resolved'],
+]) {
+  const builds = [];
+  let h = null;
+  h = makeStudio({
+    ensureWorld: (id) => new Promise((resolve) => {
+      h.calls.push(['ensure-world', id]);
+      builds.push({ id, land: () => { h.ports.world = { ...h.ports.world, mapId: id }; resolve(h.ports.world); } });
+    }),
+  });
+  const built = () => h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world').map((c) => c[1]);
+  const stale = track(start(h));
+  await settle();
+  assert.deepEqual(built(), ['desert'], `the ${name} is building its battlefield`);
+  assert.equal(h.studio.busy(), 'scene', `the ${name} holds the Studio`);
+  h.studio.exit();
+  await settle();
+  assert.equal(h.studio.active, false, `the exit tore the Studio down without waiting for the ${name}'s build`);
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), null, `the Studio entered again is not held by the closed session's ${name}`);
+  assert.deepEqual(addActorIn(h), ['bind', 'listed', 'headlights'],
+    `a tank added after the closed session's ${name} gets its rail binding, panel row and headlights`);
+  const before = h.calls.length;
+  h.studio.invalidate(); // an edit in the Studio entered again
+  assert.deepEqual(h.calls.slice(before), ['history-armed'], `an edit after the closed session's ${name} arms the history`);
+  h.ports.edits.push('reentered-edit');
+  h.studio.flushHistory();
+  assert.ok(h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave' && c[1].includes('reentered-edit')),
+    `the history commits an edit after the closed session's ${name}`);
+  const next = track(h.studio.load({ map: 'arctic', actors: [] }));
+  await settle();
+  assert.equal(next.state, 'pending', `the new Studio's own load runs after the closed session's ${name}`);
+  assert.deepEqual(built(), ['desert', 'arctic'], 'and builds its battlefield at once');
+  assert.equal(h.studio.busy(), 'scene', 'and holds the Studio while it builds');
+  builds.find((build) => build.id === 'desert').land();
+  await settle();
+  assert.equal(await outcome(stale), ended, `the closed session's ${name} ends as a cancel`);
+  assert.equal(h.studio.busy(), 'scene', 'and its end releases nothing of the live load\'s');
+  builds.find((build) => build.id === 'arctic').land();
+  await settle();
+  h.releaseAtmosphere();
+  await settle();
+  h.releaseBuilders();
+  assert.equal(await outcome(next), 'resolved');
+  assert.equal(h.studio.busy(), null);
+}
+// and a light change: one whose preparation outlived the exit's bounded wait holds no Studio entered again (busy() read
+// 'light' until it landed), and its end releases nothing of the new session's own change
+{
+  const preps = [];
+  const h = makeStudio({ session: createStudioSession({ settleMs: 20 }) });
+  h.ports.ctx.prepareStudioAtmosphere = (time) => new Promise((resolve) => {
+    preps.push({ time, land: () => resolve({ time }) });
+  });
+  const stale = track(h.studio.setTime('dusk'));
+  await settle();
+  assert.equal(h.studio.busy(), 'light', 'the change holds the Studio while it prepares');
+  h.studio.exit();
+  await new Promise((resolve) => { setTimeout(resolve, 60); }); // past the exit's bound
+  await settle();
+  assert.equal(h.studio.active, false, 'the bound let the exit go on');
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), null, 'the Studio entered again is not held by the closed session\'s light change');
+  const next = track(h.studio.setTime('night'));
+  await settle();
+  assert.equal(h.studio.busy(), 'light', 'its own change holds it');
+  preps.find((prep) => prep.time === 'dusk').land();
+  await settle();
+  assert.equal(await outcome(stale), 'AbortError', 'the closed session\'s change ends as a cancel');
+  assert.equal(h.studio.busy(), 'light', 'and its end releases nothing of the live change\'s');
+  preps.find((prep) => prep.time === 'night').land();
+  assert.equal(await outcome(next), 'resolved');
+  assert.equal(h.studio.timeOfDay, 'night');
+  assert.equal(h.studio.busy(), null);
+}
+
+// and a load asked for while the Studio is closed (a script, a take): it builds into the session its own entry begins
+// (session.claim()). An exit that takes that entry back, then a new entry, leaves it holding nothing and building nothing
+// there: on the merged code it held the new Studio as 'scene', and once its entry returned it read session.token(), the
+// new session's, and staged its scene into it.
+{
+  let finishEntry = null;
+  let h = null;
+  h = makeStudio({
+    // enter(): the entry begins its session at once and opens when its build lands (doEnter, without the build)
+    enter: () => new Promise((resolve) => {
+      const entry = h.ports.session.beginEntry();
+      h.calls.push('studio-enter');
+      finishEntry = () => { h.ports.session.open(entry); resolve(); };
+    }),
+  });
+  h.studio.exit();
+  await settle();
+  assert.equal(h.studio.active, false);
+  const stale = track(h.studio.load({ map: 'desert', actors: [{ id: 'leo2a4' }] }));
+  await settle();
+  assert.ok(h.calls.includes('studio-enter'), 'the load enters the Studio itself');
+  assert.equal(h.studio.busy(), 'session', 'its entry holds the Studio');
+  h.ports.session.beginExit(); // the exit takes the entry back (doEnter's failed-entry path), and the teardown closes it
+  h.ports.session.close();
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), null, 'the Studio entered again is not held by a load whose entry the exit took back');
+  finishEntry(); // the abandoned entry returns
+  await settle();
+  h.releaseBuilders();
+  assert.equal(await outcome(stale), 'AbortError', 'the load stops: the session it entered ended');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'ensure-world'), 'it switches the Studio entered again to nothing');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'add-actor'), 'and no tank of it joins that Studio');
+}
+// (its own entry, kept) a load that enters the Studio holds it from the request through its entry and its build: a second
+// load meanwhile is refused, while the entry is still to begin (it waits for an exit's teardown or the boot) as once it
+// runs, and once the entry opens the load builds its scene into that session
+{
+  let beginEntry = null, finishEntry = null;
+  let h = null;
+  h = makeStudio({
+    // enter() waits for the teardown or the boot before its entry begins, then opens when its build lands
+    enter: () => new Promise((resolve) => {
+      beginEntry = () => {
+        const entry = h.ports.session.beginEntry();
+        finishEntry = () => { h.ports.session.open(entry); resolve(); };
+      };
+    }),
+  });
+  h.studio.exit();
+  await settle();
+  const first = track(h.studio.load({ map: 'verdant', actors: [{ id: 'leo2a4' }] }));
+  await settle();
+  const refused = (load) => Promise.race([load.then(() => 'loaded', (error) => error.message), settle().then(() => 'still loading')]);
+  assert.equal(await refused(h.studio.load({ map: 'verdant', actors: [] })), 'studio.error.loadInFlight',
+    'a second load while the first one\'s entry is still to begin is refused');
+  beginEntry();
+  assert.equal(await refused(h.studio.load({ map: 'verdant', actors: [] })), 'studio.error.loadInFlight',
+    'and while that entry runs');
+  finishEntry();
+  await settle();
+  assert.equal(h.studio.busy(), 'scene', 'the open Studio is held by the load that entered it');
+  h.releaseBuilders();
+  assert.equal(await outcome(first), 'resolved', 'and the load builds into the session its entry began');
+  assert.ok(h.calls.some((c) => Array.isArray(c) && c[0] === 'add-actor' && c[1] === 'leo2a4'));
+  assert.equal(h.studio.busy(), null);
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -472,9 +763,44 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   // assembled from the Garage keeps the phase there and owns the world it builds)
   // (integration IR6) the slice ends at the Garage ports that follow it, whatever binds enterGarage (app-flow's exit)
   const port = main.slice(main.indexOf('restoreGarageWorld: () => {'), main.indexOf('setGarageSpots, setGarageSunTrim, enterGarage'));
-  assert.ok(port.length > 0 && port.length < 600, 'main.ts hands the Studio the Garage\'s presentation');
-  assert.match(port, /if \(game\.phase !== 'garage' \|\| battleEntryLifecycle\.pending \|\| battleLoad\.covering \|\| garageReturn\.transitioning\) return;/);
+  assert.ok(port.length > 0 && port.length < 900, 'main.ts hands the Studio the Garage\'s presentation');
   assert.match(port, /garageEnvironmentPresentation\.activate\(selectedGarageVariantId\)/, 'the Garage\'s own presentation: asleep, its sky and trim');
+  // (round 2 IR1) run the port itself over app-flow's lifecycle (appLifecycle.ts, bound as main.ts binds it): the Garage's
+  // presentation comes back only while the Garage is the settled screen. A return that still owes the screen (failed: its
+  // notice and Retry; superseded; handed off or skipped) restores the Garage itself, so the late build's undo stays out.
+  const restoreGarageWorldIn = (state) => {
+    const game = { phase: state.phase ?? 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+    const garageReturn = { state: state.returnState ?? 'idle', transitioning: state.transitioning ?? false };
+    const battleEntryLifecycle = { pending: state.entryPending ?? false, renderingCovered: false };
+    const battleLoad = { covering: state.covering ?? false };
+    const appLifecycle = createAppLifecycle({ game, announce: () => {} });
+    appLifecycle.setReaders({
+      isBooting: () => state.booting ?? false,
+      isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
+      isReturnOwed: () => garageReturn.state !== 'idle',
+    });
+    const activated = [];
+    const garageEnvironmentPresentation = { activate: (variant) => { activated.push(variant); return Promise.resolve(); } };
+    const ports = { game, garageReturn, battleEntryLifecycle, battleLoad, appLifecycle, garageEnvironmentPresentation,
+      selectedGarageVariantId: 'hangar' };
+    const context = new Function(...Object.keys(ports), `return ({ ${port} });`)(...Object.values(ports));
+    context.restoreGarageWorld();
+    return activated;
+  };
+  assert.deepEqual(restoreGarageWorldIn({}), ['hangar'], 'a settled Garage gets its presentation back');
+  for (const [name, state] of [
+    ['a failed return (its notice and Retry own the screen)', { returnState: 'failed' }],
+    ['a superseded return', { returnState: 'superseded' }],
+    ['a return under its veil', { returnState: 'entering', transitioning: true }],
+    ['a handoff behind the report', { returnState: 'handoff' }],
+    ['a skipped restore (Battle Again)', { returnState: 'restoreSkipped' }],
+    ['Battle Again\'s lease between its return and its battle', { transitioning: true }],
+    ['a battle entry being assembled', { entryPending: true }],
+    ['a battle entry\'s cover', { entryPending: true, covering: true }],
+    ['a battle cover', { covering: true }],
+    ['a battle', { phase: 'battle' }],
+    ['a Studio entered again', { phase: 'studio' }],
+  ]) assert.deepEqual(restoreGarageWorldIn(state), [], `no Garage presentation over ${name}`);
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves');
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build, load, staging, undo or light change holds no later Studio; the late build\'s undo waits for a settled Garage');

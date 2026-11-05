@@ -7,11 +7,16 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createStudioSession, studioBusy, transportHeld } from './studioSession.ts';
+// (round 2 U36) the session's holders, by namespace: a copy of this file on a tree without them still links
+import * as studioSessionModule from './studioSession.ts';
+const createSessionHolder = studioSessionModule.createSessionHolder ?? (() => ({ held: false, take: () => () => {} }));
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
 const CORE = ['playTimeline', 'pauseTimeline', 'seekTimeline', 'shuttle', 'onPointerDown', 'onPointerUp', 'flushHistory'];
-const HELPERS = ['busy', 'onPointerCancel'];
+// (round 2 Q18) the Studio's own busy reading (and its flags where the file has them), never a copy: a wrong mapping in it
+// (a dropped flag) must fail here
+const HELPERS = ['busy', 'busyFlags', 'onPointerCancel'];
 const found = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
@@ -28,7 +33,7 @@ function makeStudio() {
   const timers = [];
   const noop = () => {};
   const ports = {
-    session: createStudioSession(), studioBusy, transportHeld,
+    session: createStudioSession(), studioBusy, transportHeld, createSessionHolder,
     rail: { updateVisibility: noop }, panel: { refreshTime: noop, refreshAll: noop, refreshSelected: noop },
     invalidate: noop, flareToWallClock: noop, clampStudioTime: (time) => time, post: {},
     rebuildEffects: (ms) => calls.push(['rebuild', ms]),
@@ -41,26 +46,39 @@ function makeStudio() {
     function makeTransportHarness(ports) {
     const { ${Object.keys(ports).join(', ')} } = ports;
     let active = true, recording = null, filming = false, filmExport = null, loading = false, productionLoading = false;
-    let mapChange = null, restoringHistory = false, timeScale = 0, reverseRate = 0, reverseShuttleMs = 0, reverseWallS = 0;
+    let mapChange = null, restoringHistory = false, lightChanges = 0, timeScale = 0, reverseRate = 0, reverseShuttleMs = 0, reverseWallS = 0;
     let clockMs = 3000, storyboard = { durationMs: 8000 }, pointerHeld = false, dragActor = null, dragging = false;
     let dragMoved = 0, placeArmed = null, historyTimer = 0;
+    // (round 2 U36) the holders (the lane base's plain latches above): set() takes a hold for the session it is given
+    const sceneLoad = createSessionHolder(), staging = createSessionHolder(), historyRestore = createSessionHolder();
+    const relighting = createSessionHolder();
+    const holders = { loading: sceneLoad, productionLoading: staging, restoringHistory: historyRestore, lightChanges: relighting };
+    const releases = {};
     const api = { setTimeScale: (value) => { if (!transportHeld(busy())) timeScale = value; return timeScale; } };
-    function busy() {
-      return studioBusy({ open: session.phase === 'open', recording: !!recording, filming, exporting: !!filmExport,
-        scene: loading || productionLoading, mapChange: !!mapChange, restoring: restoringHistory });
-    }
-    ${[...found.entries()].filter(([name]) => name !== 'busy').map(([, fn]) => fn).join('\n')}
+    ${[...found.values()].join('\n')}
     session.open(session.beginEntry());
     return {
-      playTimeline, pauseTimeline, seekTimeline, shuttle, onPointerDown, onPointerUp, flushHistory,
+      playTimeline, pauseTimeline, seekTimeline, shuttle, onPointerDown, onPointerUp, flushHistory, busy: () => busy(),
       cancel: ${cancelHandler ?? 'null'},
-      set: (patch) => {
+      set: (patch, owner = session.token()) => {
+        for (const key of Object.keys(holders)) {
+          if (!(key in patch)) continue;
+          releases[key]?.();
+          releases[key] = patch[key] ? holders[key].take(owner) : null;
+        }
         if ('recording' in patch) recording = patch.recording;
         if ('filming' in patch) filming = patch.filming;
         if ('filmExport' in patch) filmExport = patch.filmExport;
         if ('timeScale' in patch) timeScale = patch.timeScale;
         if ('dragActor' in patch) dragActor = patch.dragActor;
+        if ('loading' in patch) loading = patch.loading;
+        if ('productionLoading' in patch) productionLoading = patch.productionLoading;
+        if ('mapChange' in patch) mapChange = patch.mapChange;
+        if ('restoringHistory' in patch) restoringHistory = patch.restoringHistory;
+        if ('lightChanges' in patch) lightChanges = patch.lightChanges;
       },
+      reenter: () => { session.open(session.beginEntry()); active = true; },
+      token: () => session.token(),
       exit: () => { session.beginExit(); active = false; dragActor = null; dragging = false; session.close(); },
       get state() { return { timeScale, clockMs, reverseRate, pointerHeld, dragging, dragActor, historyTimer }; },
     };
@@ -128,4 +146,53 @@ function makeStudio() {
   assert.ok(!calls.includes('commit'));
 }
 
-console.log('studioTransport.selftest: the take owns the playhead through a recording\'s priming, a film and an export; a cancelled pointer and a closed Studio release the history flush');
+// 4. (round 2 Q18) The Studio's real busy() maps every one of its holders (a copy here once hid a dropped flag): each flag
+// alone names its holder, the transport is held for a recording, a film and an export only, and an idle Studio is free.
+{
+  const { studio } = makeStudio();
+  const mapChangeOf = (current) => ({ work: new Promise(() => {}), owner: { current: () => current } });
+  assert.equal(studio.busy(), null, 'an open, idle Studio holds nothing');
+  for (const [holder, patch, clear] of [
+    ['recording', { recording: { awaitingFirstChunk: false } }, { recording: null }],
+    ['film', { filming: true }, { filming: false }],
+    ['export', { filmExport: { controller: null } }, { filmExport: null }],
+    ['scene', { loading: true }, { loading: false }],
+    ['scene', { productionLoading: true }, { productionLoading: false }],
+    ['map', { mapChange: mapChangeOf(true) }, { mapChange: null }],
+    ['history', { restoringHistory: true }, { restoringHistory: false }],
+    ['light', { lightChanges: 1 }, { lightChanges: 0 }],
+  ]) {
+    studio.set(patch);
+    assert.equal(studio.busy(), holder, `busy() names ${holder} for ${JSON.stringify(Object.keys(patch))}`);
+    studio.set({ timeScale: 0 });
+    const played = studio.playTimeline();
+    assert.equal(played, !['recording', 'film', 'export'].includes(holder), `Play under ${holder}`);
+    studio.pauseTimeline();
+    studio.set(clear);
+    studio.set({ timeScale: 0 });
+    assert.equal(studio.busy(), null, `releasing ${holder} frees the Studio`);
+  }
+  // (round 2 U36) a battlefield change is its session's: a change left over from a closed session holds nothing
+  studio.set({ mapChange: mapChangeOf(false) });
+  assert.equal(studio.busy(), null, 'a closed session\'s battlefield change does not hold a newer one');
+  studio.set({ mapChange: null });
+  const closed = studio.token();
+  studio.exit();
+  assert.equal(studio.busy(), 'session', 'a closed Studio reads as the session');
+  studio.reenter();
+  assert.equal(studio.busy(), null);
+  // and so is every other holder: a scene load, a staging, an undo or a light change still in flight from the closed
+  // session (a cold build its exit outlived) holds nothing in the Studio entered again
+  for (const key of ['loading', 'productionLoading', 'restoringHistory', 'lightChanges']) {
+    studio.set({ [key]: true }, closed);
+    assert.equal(studio.busy(), null, `a closed session's ${key} does not hold a newer one`);
+    studio.set({ [key]: false });
+  }
+}
+
+// 5. (round 2 Q18) Ctrl/Cmd+Z and +Y ask the panel's reading as its undo and redo buttons do (studioPanelBusy case 5): an
+// undo between a queued still's captures replaced the scene the next still took under the old shot's name.
+assert.match(text, /if \(!e\.repeat && !panel\.busy\(\)\) void \(e\.code === 'KeyY' \|\| e\.shiftKey \? redo\(\) : undo\(\)\);/,
+  'the keyboard\'s undo and redo wait for whatever holds the panel');
+
+console.log('studioTransport.selftest: the take owns the playhead through a recording\'s priming, a film and an export; a cancelled pointer and a closed Studio release the history flush; the real busy() names every holder and the keyboard\'s undo asks the panel');
