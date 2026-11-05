@@ -15,8 +15,8 @@ import { TRANSPORT_CLOSE } from '../transport/transport.ts';
 import { matchRefusalCodeOf, matchRefusalMessage } from '../wire/matchBuild.ts';
 import type { Transport, TransportStateChange, TransportStats } from '../transport/transport.ts';
 import {
-  CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PROTOCOL_VERSION, SNAPSHOT_HZ,
-  TICK_HZ, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
+  CLOSE_REASON, ENTITY_FLAGS, HELLO_CAPABILITY, MESSAGE_TYPE, NO_ENTITY, NO_TICK, PHASE, PROTOCOL_VERSION, SNAPSHOT_HZ,
+  TICK_HZ, VERDICT, VIEWER_MODULES, WIRE_VERSION, decodeMessage, dequantizeReloadS, encodeMessage,
 } from '../wire/index.ts';
 import type {
   CloseReasonId, EntityRow, ErrorMessage, EventMessage, PhaseId, PongMessage, RosterEntry, SnapshotFrame,
@@ -127,6 +127,12 @@ export interface MatchFrame {
   ownShots: OwnShotEvent[];
   extrapolatedMs: number;
   phase: ConnectionPhase;
+  /**
+   * How many times a link's host restarted the battle under this client (MatchClientStats.battleRestarts). What the
+   * presentation laid down as settled state before a restart (fallen props, the destruction log) is of a battle no longer
+   * played: the restarted host has it standing (round 2 U1).
+   */
+  battleRestarts: number;
 }
 
 /** What this client holds for a host migration (P2 client lane): the sealed blobs and the newest assembled frame. */
@@ -214,6 +220,8 @@ export interface MatchClientStats {
   taskStarvations: number;
   /** New links whose host ran on another timeline than this client's clocks (followTimeline): the clocks re-anchored. */
   timelineRestarts: number;
+  /** New links whose host had restarted the battle (followTimeline): what was retained of the battle before it went. */
+  battleRestarts: number;
 }
 
 /**
@@ -242,6 +250,11 @@ const VIEWER_GUN_INDEX = VIEWER_MODULES.indexOf('gun');
 const VIEWER_GUN_MOUNT_INDEX = VIEWER_MODULES.indexOf('gunMount');
 
 function u32(value: number): number { return Math.round(value) >>> 0; }
+
+/** Whether a frame's battle had begun: playing, ended or decided (null: no frame yet). */
+function battleBegun(phase: PhaseId | null, verdict: VerdictId | null): boolean {
+  return phase === PHASE.PLAYING || phase === PHASE.ENDED || (verdict !== null && verdict !== VERDICT.NONE);
+}
 
 /**
  * The words a player sees when the host runs another build: what happened and what to do (refresh). One vocabulary
@@ -318,12 +331,6 @@ export class MatchClient {
   private disposed = false;
   private latestDestroyed: readonly number[] = [];
   private latestRevision = 0;
-  /** Every obstacle a `world_prop_destroyed` named this round (RetainedMigrationState.fallen). */
-  private readonly fallenObstacles = new Set<number>();
-  /** Every stage a `structure_stage` named this round (RetainedMigrationState.destruction). */
-  private readonly retainedDestruction: DestructionLogEntry[] = [];
-  /** The tick of each entity's newest `mode_respawn` this round, by authoritative id (RetainedMigrationState.respawns). */
-  private readonly respawnTicks = new Map<string, number>();
   private latestDestruction: readonly DestructionLogEntry[] = [];
   private matchPhase: PhaseId | null = null;
   private verdict: VerdictId | null = null;
@@ -333,6 +340,7 @@ export class MatchClient {
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
   private timelineRestarts = 0;
+  private battleRestarts = 0;
   /** The first snapshot after a WELCOME still has to be read against this client's clocks (followTimeline). */
   private timelineCheckPending = false;
   private helloRetries = 0;
@@ -406,7 +414,7 @@ export class MatchClient {
         entityId: NO_ENTITY, playerId: '', state: null, row: null, viewer: null, authorityTick: -1,
         authorityReceivedAtMs: null, predictedShot: null,
       },
-      events: [], ownShots: [], extrapolatedMs: 0, phase: 'idle',
+      events: [], ownShots: [], extrapolatedMs: 0, phase: 'idle', battleRestarts: 0,
     };
     this.unsubscribe.push(transport.onFrame((bytes) => this.receive(bytes)));
     this.unsubscribe.push(transport.onState((change) => this.transportChanged(change)));
@@ -443,9 +451,9 @@ export class MatchClient {
   retainedMigration(): RetainedMigrationState {
     return {
       keyframe: this.migration.keyframe, config: this.migration.config, latestFrame: this.snapshots.latest, latestFrameAtMs: this.lastAuthorityAtMs,
-      fallen: [...this.fallenObstacles],
-      destruction: this.retainedDestruction.slice(),
-      respawns: [...this.respawnTicks],
+      fallen: this.migration.fallen,
+      destruction: this.migration.destruction,
+      respawns: this.migration.respawns,
     };
   }
 
@@ -537,6 +545,7 @@ export class MatchClient {
     frame.destructibleRevision = this.latestRevision;
     frame.destruction = this.latestDestruction;
     frame.phase = this.recovery.current;
+    frame.battleRestarts = this.battleRestarts;
     if (this.predictor) this.predictor.present(elapsedS, this.displayTick);
     const viewer = frame.viewer;
     viewer.entityId = this.ownEntityId;
@@ -619,6 +628,7 @@ export class MatchClient {
       helloRetries: this.helloRetries,
       taskStarvations: this.starvations,
       timelineRestarts: this.timelineRestarts,
+      battleRestarts: this.battleRestarts,
     };
   }
 
@@ -810,6 +820,8 @@ export class MatchClient {
     this.tickClock.reset();
     this.tickClock.observe(welcome.serverTick, serverTimeMs);
     this.timelineCheckPending = true;
+    // what this link brings is dated by it: the snapshot that tells a restarted battle may come after some of its events
+    this.migration.beginLink();
     // HELLO -> WELCOME is a round trip with a server stamp: the first clock sample.
     if (this.helloSentAtMs !== null) this.serverClock.observePong(this.helloSentAtMs, nowMs, serverTimeMs);
     if (!this.serverClock.isSeeded) this.serverClock.seed(serverTimeMs, nowMs);
@@ -826,21 +838,32 @@ export class MatchClient {
   }
 
   /**
-   * The first snapshot on a link, against this client's server clock (review round 1, U1): a host whose loop runs further
-   * from the clock than the clock's own hard resync bound, which no link delay explains, runs another timeline, and the
-   * clocks re-anchor on it at once. A kept host (matchSession.ts bootKeptHost: nobody else could host) restarts a battle
-   * on the newest tick it knows, behind every peer's clock by the time since; kept, the old host's samples held the offset
-   * until the window turned over, and the input stream, started at the WELCOME on the old timeline, sent every INPUT far
-   * ahead of the new host (refused), then none at all until the new timeline caught up with it. A host on the same
-   * timeline (a reconnect, a migration that skipped its boot's ticks) is left as it is. The snapshot's stamp seeds the
-   * clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME.
+   * The first snapshot on a link, against what this client followed before it (review rounds 1 and 2, U1). A kept host
+   * (matchSession.ts bootKeptHost: nobody else could host) restarts a battle that had begun: migrationFallback's last
+   * resort, a countdown from the spawns at battle time 0, on the newest tick the host knows.
+   * - The battle. A host behind the clocks, or one that shows a battle this client saw begin as not begun (a resumed
+   *   battle keeps its newest frame's phase, migrationState.ts resumePhaseOf; a reconnect's host moves only forward),
+   *   restarted it. Everything retained of the battle before this link goes (MigrationStore.abandonBattle): the keyframe,
+   *   whose higher tick outranked the restarted battle's, and the falls, destruction and revives the next host merges
+   *   into its resume. The presentation's settled world is told by MatchFrame.battleRestarts.
+   * - The clocks. A host whose loop runs further from the clock than the clock's own hard resync bound, which no link
+   *   delay explains, runs another timeline, and the clocks re-anchor on it at once. Kept, the old host's samples held the
+   *   offset until the window turned over, and the input stream, started at the WELCOME on the old timeline, sent every
+   *   INPUT far ahead of the new host (refused), then none at all until the new timeline caught up with it. A host on the
+   *   same timeline (a reconnect, a migration that skipped its boot's ticks) is left as it is. The snapshot's stamp seeds
+   *   the clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME.
    */
-  private followTimeline(tick: number, serverTimeMs: number, nowMs: number): void {
+  private followTimeline(frame: SnapshotFrame, serverTimeMs: number, nowMs: number): void {
+    const tick = frame.tick;
     const offTimelineMs = serverTimeMs - this.serverClock.serverNow(nowMs);
-    if (Math.abs(offTimelineMs) <= this.serverClock.hardResyncMs) return;
+    const hardResyncMs = this.serverClock.hardResyncMs;
+    // this.matchPhase and this.verdict are still the newest frame's before this link (receiveSnapshot sets them after)
+    if (offTimelineMs < -hardResyncMs || (battleBegun(this.matchPhase, this.verdict) && !battleBegun(frame.meta.phase, frame.meta.verdict))) {
+      this.battleRestarts++;
+      this.migration.abandonBattle();
+    }
+    if (Math.abs(offTimelineMs) <= hardResyncMs) return;
     this.timelineRestarts++;
-    // behind: the battle restarted, and the keyframe retained from the old timeline is of a battle no longer played
-    if (offTimelineMs < 0) this.migration.forgetKeyframe();
     this.serverClock.reset();
     this.serverClock.seed(serverTimeMs, nowMs);
     this.tickClock.reset();
@@ -904,7 +927,7 @@ export class MatchClient {
     const frame = accepted.frame;
     if (accepted.keyframe) this.keyframeRequestedForGap = false;
     const serverTimeMs = this.timeUnwrap.unwrap(frame.serverTimeMs);
-    if (this.timelineCheckPending) { this.timelineCheckPending = false; this.followTimeline(frame.tick, serverTimeMs, nowMs); }
+    if (this.timelineCheckPending) { this.timelineCheckPending = false; this.followTimeline(frame, serverTimeMs, nowMs); }
     this.tickClock.observe(frame.tick, serverTimeMs);
     this.lastAuthorityAtMs = nowMs;
     this.snapshotsAccepted++;
@@ -983,15 +1006,15 @@ export class MatchClient {
       (game ??= []).push(event);
       if (event.kind === 'world_prop_destroyed') {
         const index = Number(event.payload.obstacleIndex);
-        if (Number.isSafeInteger(index) && index >= 0) this.fallenObstacles.add(index);
+        if (Number.isSafeInteger(index) && index >= 0) this.migration.retainFallen(index);
       } else if (event.kind === 'mode_respawn') {
-        if (typeof event.payload.id === 'string') this.respawnTicks.set(event.payload.id, message.tick);
+        if (typeof event.payload.id === 'string') this.migration.retainRespawn(event.payload.id, message.tick);
       } else if (event.kind === 'structure_stage') {
         const structureId = Number(event.payload.structureId), stage = event.payload.stage;
         if (Number.isSafeInteger(structureId) && structureId >= 0
           && (stage === 'damaged' || stage === 'breached' || stage === 'collapsed')) {
           const cx = Number(event.payload.cx), cz = Number(event.payload.cz);
-          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz)
+          this.migration.retainDestruction(Number.isFinite(cx) && Number.isFinite(cz)
             ? { kind: 'stage', structureId, stage, cx, cz } : { kind: 'stage', structureId, stage });
         }
       } else if (event.kind === 'structure_breach') {
@@ -1003,7 +1026,7 @@ export class MatchClient {
           && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) && Number.isFinite(radiusM)) {
           const cx = Number(p.cx), cz = Number(p.cz);
           const entry = { kind: 'breach' as const, structureId, section, hole, x, y, z, radiusM, sectionDown: p.sectionDown === true };
-          this.retainedDestruction.push(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
+          this.migration.retainDestruction(Number.isFinite(cx) && Number.isFinite(cz) ? { ...entry, cx, cz } : entry);
         }
       }
     }
