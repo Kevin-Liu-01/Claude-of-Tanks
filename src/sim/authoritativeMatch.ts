@@ -2817,7 +2817,8 @@ export function createAuthoritativeMatch({
    * The event as `viewer` may read it: whole when its source is this viewer's team, spotted by it, destroyed, or not a
    * hull of this match (a scripted or mode source); else one shared copy without WITHHELD_WORLD_FIELDS — the world
    * state it carries (which prop, which structure and stage, the hole, the crater) is unchanged, and the presentation
-   * lays it with neutral values (the prop's own fall axis, the structure's centre).
+   * lays it with neutral values (a ram along the prop's own heading, sim/obstacleFall.ts withheldObstacleFall; the
+   * structure's centre).
    */
   function viewerWorldEvent(viewer: AuthoritativeEntity | undefined, event: AuthoritativeEvent): AuthoritativeEvent {
     if (!viewer) return event;

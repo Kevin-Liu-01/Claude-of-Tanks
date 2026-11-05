@@ -165,7 +165,7 @@ assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (t
   const all = encodeBoth(full(everyIndex));
   assert.ok(all.bytes.byteLength <= MAX_MESSAGE_BYTES, `every legal index down beside every bound: a ${all.bytes.byteLength} B keyframe`);
   assert.equal(all.flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, 0, 'falls that do not fit travel as none (the flag clear)');
-  assert.equal(all.frame.destroyedFalls, undefined, 'the client reads none: each prop lies on its own axis');
+  assert.equal(all.frame.destroyedFalls, undefined, 'the client reads none: each prop lies along its own heading (obstacleFall.ts withheldObstacleFall)');
   assert.deepEqual(all.frame.destroyed, everyIndex, 'every index still comes back');
   assert.equal(all.frame.modeStateJson, modeStateJson);
   assert.equal(all.frame.shells.length, MAX_SHELLS);

@@ -10,8 +10,11 @@
  *
  * `none` is a fall this viewer may not read (the authority withholds a fall's cause and direction from a viewer that did
  * not see its source, as it withholds them from the live world_prop_destroyed event: sim/authoritativeMatch.ts
- * viewerWorldEvent) or one nobody recorded (a list restored from a migration keyframe). It lays the prop as that withheld
- * event lays it: along the prop's own fall axis (direction 0, 0), as a ram.
+ * viewerWorldEvent) or one nobody recorded (a list restored from a migration keyframe). It lays the prop as a ram along
+ * the prop's own heading (withheldObstacleFall: a fixed hash of its authority index), the lay the withheld live event
+ * gets too, so a seat that watched a withheld fall and a seat that joined after it lay the prop alike. Not direction
+ * (0, 0): the world's hinge reads a zero direction as a fall toward +Z (world/topple.ts setToppleAxis, settledToppleAngle),
+ * so until the round 2 review every withheld fall, settled or live, lay toward +Z.
  *
  * Pure: the encoder reads detMath (the authority's), the decoder plain Math (presentation). Node-runnable.
  */
@@ -19,6 +22,7 @@ import * as detMath from './detMath.ts';
 
 export const OBSTACLE_FALL_NONE = 0;
 const CAUSE_SHIFT = 6;
+const HEADING_BITS = 6;
 const HEADING_MASK = 0x3f;
 const HEADING_STEPS = 64;
 const CAUSE_RAM = 1;
@@ -26,7 +30,7 @@ const CAUSE_SHELL = 2;
 
 export type ObstacleFallCause = 'ram' | 'shell';
 
-/** A fall as the presentation's crush takes it: the world-space direction (unit, or 0, 0 for none) and the cause. */
+/** A fall as the presentation's crush takes it: the world-space direction (unit) and the cause. */
 export interface ObstacleFall {
   cause: ObstacleFallCause;
   dx: number;
@@ -50,14 +54,29 @@ export function isObstacleFallCode(code: number): boolean {
   return cause !== 0 || (code & HEADING_MASK) === 0;
 }
 
-/** The fall a byte names, into `out` (none: the withheld event's lay, direction 0, 0 as a ram). */
-export function decodeObstacleFall(code: number, out: ObstacleFall): ObstacleFall {
+/**
+ * The fall a byte names for the prop with authority index `index`, into `out` (none, or no fall code: that prop's
+ * withheld lay, withheldObstacleFall).
+ */
+export function decodeObstacleFall(code: number, index: number, out: ObstacleFall): ObstacleFall {
   const cause = isObstacleFallCode(code) ? code >> CAUSE_SHIFT : 0;
-  if (cause === 0) {
-    out.cause = 'ram'; out.dx = 0; out.dz = 0;
-    return out;
-  }
-  const heading = ((code & HEADING_MASK) / HEADING_STEPS) * 2 * Math.PI;
+  if (cause === 0) return withheldObstacleFall(index, out);
+  return headingFall(cause, code & HEADING_MASK, out);
+}
+
+/**
+ * The lay of a fall this viewer may not read, for the prop with authority index `index` (the identity every seat shares,
+ * whatever its world's layout): a ram along a heading that is the prop's own, the index's Fibonacci hash in 64ths of a
+ * turn, so it says nothing the index does not, differs from prop to prop and is the same on every seat. The settled list's
+ * none (battlePresentation applyDestroyed) and the live world_prop_destroyed event without its direction (the same
+ * module's event handler) both lay a prop with it.
+ */
+export function withheldObstacleFall(index: number, out: ObstacleFall): ObstacleFall {
+  return headingFall(CAUSE_RAM, Math.imul((index | 0) + 1, 0x9e3779b1) >>> (32 - HEADING_BITS), out);
+}
+
+function headingFall(cause: number, step: number, out: ObstacleFall): ObstacleFall {
+  const heading = (step / HEADING_STEPS) * 2 * Math.PI;
   out.cause = cause === CAUSE_SHELL ? 'shell' : 'ram';
   out.dx = Math.sin(heading);
   out.dz = Math.cos(heading);

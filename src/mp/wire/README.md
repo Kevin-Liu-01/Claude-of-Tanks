@@ -108,8 +108,11 @@ destruction log's budget answers). A fall byte (`src/sim/obstacleFall.ts`) is th
 a blast fells as a shell) and the heading of the fall, `atan2(dx, dz)` in 64ths of a turn, in bits 0–5 (0 with none). A
 client that did not see a prop fall lays it with its fall instead of a ram toward +Z. The authority withholds a fall from
 a viewer as it withholds the live `world_prop_destroyed` event's cause and direction: a hull source's fall reads only to
-that hull's team (and to spectators), the other team reads none, which lays the prop along its own fall axis as the
-withheld event does. A list restored from a migration keyframe carries none (the keyframe names indices only).
+that hull's team (and to spectators), the other team reads none. A none lays the prop as a ram along its own heading
+(`obstacleFall.ts withheldObstacleFall`: a fixed hash of its index, the same on every seat), the lay the withheld live
+event gets too, so a seat that watched the fall and a seat that joined after it lay the prop alike; never direction
+(0, 0), which the world's hinge (`src/world/topple.ts`) lays toward +Z. A list restored from a migration keyframe carries
+none (the keyframe names indices only).
 
 The *unseen shells* (wire 11, U31) are the rounds this viewer was shown that left its view while the authority still flies
 them: the authority hides a round with its shooter, and a view holds at most 256, so a round's absence alone cannot tell

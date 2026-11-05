@@ -44,7 +44,7 @@ import {
 import type { RosterEntry, TeamId, VerdictId, WireEvent } from '../wire/index.ts';
 import { createEntitySample, decodeRow } from '../match/interpolation.ts';
 import { applyPresentedHullRowFlags } from '../match/hullBodyRow.ts';
-import { OBSTACLE_FALL_NONE, decodeObstacleFall, type ObstacleFall } from '../../sim/obstacleFall.ts';
+import { OBSTACLE_FALL_NONE, decodeObstacleFall, withheldObstacleFall, type ObstacleFall } from '../../sim/obstacleFall.ts';
 import type { EntitySample, ShellSample } from '../match/interpolation.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
@@ -267,8 +267,8 @@ const POS_SCALE = 1;
 /** The persistent destroyed list lays props down as settled state: final pose, no fall, no debris, no sound. */
 const SETTLED_CRUSH: Readonly<{ settled: true }> = Object.freeze({ settled: true as const });
 const NO_IDS: readonly number[] = Object.freeze([]);
-/** The settled replay's fall, decoded in place (no allocation a prop). */
-const settledFall: ObstacleFall = { cause: 'ram', dx: 0, dz: 0 };
+/** A prop's fall (the settled list's, a withheld live event's), decoded in place (no allocation a prop). */
+const propFall: ObstacleFall = { cause: 'ram', dx: 0, dz: 0 };
 const scratchSample = createEntitySample();
 const muzzleTip = new Vector3();
 const shotDirection = new Vector3();
@@ -1012,8 +1012,10 @@ export function createBattlePresentation({
    * (2026-10-01) it felled every tree first — early, toward +Z, at speed 0 — and the event found nothing left to fell.
    * Compared by content, not by a monotonic revision alone: a migrated host continues the old revision, but a list
    * may still read differently with a lower number for a moment. Each listed prop lies as it fell (wire 11, round 2 U27:
-   * `falls`, sim/obstacleFall.ts): its cause and direction where this viewer may read them, else along its own fall axis
-   * as a ram, as the live event without its source's fields lays it. Before, every one lay as a ram toward +Z.
+   * `falls`, sim/obstacleFall.ts): its cause and direction where this viewer may read them, else as a ram along the prop's
+   * own heading (withheldObstacleFall, a hash of its index), as the live event without its source's fields lays it here.
+   * Before, every one lay as a ram toward +Z (and until the round 2 review a none still did: direction 0, 0 is +Z to the
+   * world's hinge, world/topple.ts).
    */
   function applyDestroyed(indices: readonly number[], falls: readonly number[], revision: number,
     pending: ((index: number) => boolean) | null): void {
@@ -1030,7 +1032,7 @@ export function createBattlePresentation({
       if (!obstacle || obstacle.crushed) continue;
       // its event is owed to this presentation: it falls then, live
       if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
-      const fall = decodeObstacleFall(aligned ? falls[at]! : OBSTACLE_FALL_NONE, settledFall);
+      const fall = decodeObstacleFall(aligned ? falls[at]! : OBSTACLE_FALL_NONE, index, propFall);
       worldCollision.crushObstacle?.(obstacle, fall.dx, fall.dz, 0, fall.cause, SETTLED_CRUSH);
       obstacle.crushed = true;
     }
@@ -1371,8 +1373,16 @@ export function createBattlePresentation({
         // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
         // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
         if (obstacle.crushed) return;
+        // A fall withheld from this viewer (its source a hull it does not see: sim/authoritativeMatch.ts viewerWorldEvent
+        // drops the cause, the direction and the speed) lies as the settled list's none lays it, along the prop's own
+        // heading (round 2 U27 review): a seat that watched it and a seat that joined after it lay the prop alike, and
+        // neither toward +Z, which direction 0, 0 is to the world's hinge (world/topple.ts setToppleAxis).
+        const withheld = typeof payload.directionX !== 'number' || typeof payload.directionZ !== 'number'
+          ? withheldObstacleFall(index, propFall) : null;
+        const directionX = withheld ? withheld.dx : Number(payload.directionX) || 0;
+        const directionZ = withheld ? withheld.dz : Number(payload.directionZ) || 0;
         worldCollision?.crushObstacle?.(
-          obstacle, Number(payload.directionX) || 0, Number(payload.directionZ) || 0, Number(payload.speedMps) || 0,
+          obstacle, directionX, directionZ, Number(payload.speedMps) || 0,
           // a blast fells a prop as a shell does (destruction, 2026-10-07: the solo step crushes it with 'shell' too)
           payload.cause === 'shell' || payload.cause === 'blast' ? 'shell' : 'ram',
         );
@@ -1386,7 +1396,7 @@ export function createBattlePresentation({
           // the prop's height sizes the splinters and picks the sound, as the solo step's crush event does
           h: obstacle.max[1] - obstacle.min[1],
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
-          dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
+          dir: [directionX, 0, directionZ],
         });
         return;
       }

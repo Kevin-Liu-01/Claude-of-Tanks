@@ -99,7 +99,8 @@ export function readDestroyedSet(reader: ByteReader): number[] {
  * (the C3 hazard, src/sim/destructionMatch.ts DESTRUCTION_LOG_BUDGET_BYTES). A frame whose falls are all none carries none.
  * Monsoon's whole crushable field down is 8,928 B of falls and fits beside every other section at its bound (a 64,523 B
  * keyframe, destroyedSet.selftest); a frame they do not fit (every legal index down: 64 KB of falls) sends none, and its
- * viewer lays those props on their own axis, as the other team's viewers lay a withheld fall.
+ * viewer lays each of those props along its own heading (sim/obstacleFall.ts withheldObstacleFall), as the other team's
+ * viewers lay a withheld fall.
  */
 
 /**

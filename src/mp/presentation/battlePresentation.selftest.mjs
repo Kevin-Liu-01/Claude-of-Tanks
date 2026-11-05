@@ -8,6 +8,8 @@ import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
 import { prebuildRosterVisuals, prewarmRosterVisuals } from './battlePresentation.ts';
 import { battleStaticDrawMerge } from '../../vehicles/fleetFactory.ts';
+import { withheldObstacleFall } from '../../sim/obstacleFall.ts';
+import { setToppleAxis, settledToppleAngle } from '../../world/topple.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -614,10 +616,12 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
 // lane it felled every listed prop on arrival — early, toward +Z, at speed 0 — and the `world_prop_destroyed` event found
 // nothing left to fell; a late joiner watched every earlier fall replay; a host migration's re-sends crunched twice.
 // (round 2 of the 2026-11-02 audit, U27) A listed prop lies as it fell: the list's falls (wire 11) give the cause and the
-// direction; a list without them (an older frame, a migration's restored entries) lays it as the withheld live event does,
-// on its own fall axis (0, 0) as a ram. Before, every settled prop lay as a ram toward +Z (0, 1): this receipt pinned it.
+// direction; a none, or a list without them (an older frame, a migration's restored entries), lays it as the withheld live
+// event does: as a ram along the prop's own heading (sim/obstacleFall.ts withheldObstacleFall). Before, every settled prop
+// lay as a ram toward +Z (0, 1): this receipt pinned it. Until the round 2 review a none was direction (0, 0), which the
+// world's hinge (world/topple.ts) lays exactly as (0, 1): so the lays below are judged through topple.ts, not by arguments.
 {
-  const propObstacles = Array.from({ length: 6 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
+  const propObstacles = Array.from({ length: 7 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
   const propCalls = [];
   const propFx = [];
   const propWorld = {
@@ -635,6 +639,15 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   // prop 0 a ram toward -X, prop 4 a shell toward -Z (codes: cause << 6 | heading in 64ths of a turn, sim/obstacleFall.ts)
   props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destroyedFalls: [(1 << 6) | 48, (1 << 6) | 16, (2 << 6) | 32], destructibleRevision: 3 }));
   const near = (a, b) => Math.abs(a - b) < 1e-9;
+  // the lay the world's hinge makes of a crush's direction: its axis and its settled angle on a slope
+  const slope = { getHeightAt: (x, z) => 0.35 * z + 0.12 * x };
+  const lay = (dx, dz) => {
+    const axis = setToppleAxis(new Vector3(), dx, dz);
+    return [axis.x, axis.y, axis.z, settledToppleAngle(slope, 0, 0, 0, dx, dz, 6, 0.2)].map((v) => Math.round(v * 1e6) / 1e6 + 0);
+  };
+  const layOf = (call) => lay(call[1], call[2]);
+  const ownLay = (index) => { const own = withheldObstacleFall(index, { cause: 'ram', dx: 0, dz: 0 }); return lay(own.dx, own.dz); };
+  const PLUS_Z_LAY = lay(0, 1);
   assert.equal(propCalls.length, 2, 'what predates the view lands settled; the owed prop is left to its event');
   assert.ok(propCalls[0][0] === 0 && near(propCalls[0][1], -1) && near(propCalls[0][2], 0) && propCalls[0][4] === 'ram' && propCalls[0][5] === true,
     `a settled prop lies as it fell: a ram toward -X (${propCalls[0]})`);
@@ -660,14 +673,30 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(propCalls.at(-1), [3, 0, 1, 900, 'shell', false]);
   // the new host\'s list reads lower for a moment (a revision regression across a migration) yet names a prop this view
   // has not laid down: the content decides, not the number
-  // (its fall withheld from this viewer: none, the prop's own axis as a ram)
+  // (its fall withheld from this viewer: none, a ram along the prop's own heading)
   props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destroyedFalls: [(1 << 6) | 48, 0], destructibleRevision: 2 }));
-  assert.deepEqual(propCalls.at(-1), [1, 0, 0, 0, 'ram', true], 'a fall this viewer may not read lies on the prop\'s own axis');
-  // a frame without the owed-prop predicate or the falls (a recorder, an older frame) still settles its list, on each
-  // prop's own axis: never toward +Z
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [1, 0, 'ram', true]);
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(1), 'a fall this viewer may not read lies along the prop\'s own heading');
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY, 'not as the old ram toward +Z');
+  // a frame without the owed-prop predicate or the falls (a recorder, an older frame) still settles its list, each prop
+  // along its own heading: never toward +Z
   props.applyFrame(frame({ tick: 700, destroyed: [0, 1, 5], destructibleRevision: 4 }));
-  assert.deepEqual(propCalls.at(-1), [5, 0, 0, 0, 'ram', true]);
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [5, 0, 'ram', true]);
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(5));
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY);
+  assert.notDeepEqual(ownLay(1), ownLay(5), 'two props, two headings');
   assert.equal(crushFx(), 2, 'only the two live events sounded');
+  // a live fall withheld from this viewer (no cause, direction or speed: its source hidden) lies as a settled none would:
+  // along the prop's own heading, and its splinters fly that way
+  const before = propCalls.length;
+  props.applyEvent({ kind: 'world_prop_destroyed', payload: { obstacleIndex: 6, kind: 'tree' } }, { own: false, feedbackPredicted: false });
+  assert.equal(propCalls.length, before + 1);
+  assert.deepEqual([propCalls.at(-1)[0], propCalls.at(-1)[3], propCalls.at(-1)[4], propCalls.at(-1)[5]], [6, 0, 'ram', false], 'it falls live, as a ram');
+  assert.deepEqual(layOf(propCalls.at(-1)), ownLay(6), 'a withheld live fall lies along the prop\'s own heading');
+  assert.notDeepEqual(layOf(propCalls.at(-1)), PLUS_Z_LAY, 'not toward +Z');
+  assert.ok(near(propFx.at(-1).payload.dir[0], propCalls.at(-1)[1]) && near(propFx.at(-1).payload.dir[2], propCalls.at(-1)[2]),
+    'its splinters fly along that heading');
+  assert.equal(crushFx(), 3);
   props.dispose();
 }
 

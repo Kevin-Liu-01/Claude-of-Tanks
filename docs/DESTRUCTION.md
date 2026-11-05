@@ -511,7 +511,9 @@ viewer whose team does not see that source a copy without `cause`, `munition`, `
 `munition` (a breach, a crater), and a prop's fall without `cause`, `directionX/Z`, `speedMps`. The world state is
 unchanged for everyone (the log, the destroyed list, which structure, which stage, the hole, the crater), so a rejoin
 and a migration read one history; the presentation lays a withheld event with neutral values (the structure's centre,
-the prop's own fall axis; `destructionMirror` already fell back to them). Its own team, a spotting team and a spectator
+`destructionMirror`'s fallback; a prop's own heading, `src/sim/obstacleFall.ts withheldObstacleFall`, which a settled
+destroyed list's withheld fall uses too: until 2026-11-05 the prop's "own fall axis" was direction (0, 0), which the
+world's hinge lays toward +Z). Its own team, a spotting team and a spectator
 read events whole. Receipt: `hiddenWorldEvents.selftest`; the world-events audit reports the withheld deliveries (36 of
 155 in its 4v4 run) and judges them like the rest.
 
