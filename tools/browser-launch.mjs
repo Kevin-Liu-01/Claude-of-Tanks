@@ -460,6 +460,18 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
 
 const guards = new WeakMap();
 
+/**
+ * Stop every guarded browser this process still has open (round 2 U38): each tree killed by its exact pids, as at exit.
+ * The open capture hold's default teardown (tools/capture-hold.mjs openCaptureHold): a one-hold tool's browsers stop
+ * drawing when its hold is stopped past the cap or by a signal, whoever launched them (a probe session, a helper).
+ * Returns the pids signalled.
+ */
+export function stopGuardedBrowsers() {
+  const killed = [];
+  for (const guard of [...live]) { guard.stop(); killed.push(...reapTree(guard)); }
+  return killed;
+}
+
 /** The guard record of a browser launchGuardedBrowser returned (peaks, tripped), or null. */
 export function browserGuardOf(browser) {
   return guards.get(browser) ?? null;

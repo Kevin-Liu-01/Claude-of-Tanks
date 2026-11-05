@@ -49,7 +49,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { constants } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { setBrowserGuardContext } from './browser-launch.mjs';
+import { setBrowserGuardContext, stopGuardedBrowsers } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -428,6 +428,34 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   if (!tornDown && afterRelease) { try { await afterRelease(prepared); } catch (error) { say(`after the release: ${error?.message ?? error}`); } }
   if (failure) throw failure.error;
   return result;
+}
+
+/**
+ * The open form of withCaptureHold (round 2 U38), for a tool whose run is a script rather than one function: it resolves
+ * once the lock is held with { prepared, signal, checkpoint, heldAt, say, release }. The hold is withCaptureHold's, the one
+ * owner of a hold (refresh, the cap and its yield, signals, the release at exit), so a tool that acquired the lock itself
+ * moves onto it by two lines:
+ *   const hold = await openCaptureHold({ label: 'my-probe', timeoutMs: 45 * 60_000 });
+ *   try { ... } finally { await browser?.close(); await hold.release(); }
+ * The caller closes what it opened, then awaits release() (once; later calls return the same promise), which releases
+ * with no teardown of its own. `teardown` is what a stop past the cap's grace or a signal runs before the release; by
+ * default every guarded browser this process launched is stopped (tools/browser-launch.mjs stopGuardedBrowsers: what
+ * draws), so the cap holds for a tool that never checkpoints. `atCap: 'keep'` declares a hold that cannot be stopped.
+ * The hold's lines go to stderr unless `log` says otherwise (a tool's stdout may be its report).
+ */
+export async function openCaptureHold({ teardown = () => { stopGuardedBrowsers(); }, log = (line) => console.error(line), ...options } = {}) {
+  let held, finish;
+  const heldNow = new Promise((resolve) => { held = resolve; });
+  const done = new Promise((resolve) => { finish = resolve; });
+  const whole = withCaptureHold(async (context) => { held(context); await done; }, { ...options, teardown, log,
+    // the normal way out is the caller's: it closed what it opened before release()
+    beforeRelease: options.beforeRelease ?? (() => {}) });
+  const ended = whole.then(() => ({ endedUnheld: true }));
+  ended.catch(() => {}); // a failed wait rejects through the race below
+  const context = await Promise.race([heldNow, ended]);
+  if (context?.endedUnheld) throw new Error('openCaptureHold: the hold ended before it was held');
+  let releasing = null;
+  return { ...context, release: () => (releasing ??= (finish(), whole)) };
 }
 
 /**

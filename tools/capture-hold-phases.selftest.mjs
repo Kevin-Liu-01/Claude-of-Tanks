@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import * as captureHold from './capture-hold.mjs';
 import { runWarmHold, withCaptureHold } from './capture-hold.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -171,6 +172,44 @@ for (const waiters of [1, 0]) {
   assert.deepEqual(torn, ['warm'], 'a wait that ends without a hold tears down what it prepared');
 }
 
+// ---- (round 2 U38) the open form: a script tool's hold is withCaptureHold's, two lines at its acquire and its release ----
+// 75 tools and 28 receipts acquired the lock themselves, each with its own refresh timer and none with the cap: past it a
+// tool that never checkpoints kept the lock however many waited. openCaptureHold resolves once held; release() ends it.
+{
+  const { openCaptureHold } = captureHold;
+  assert.equal(typeof openCaptureHold, 'function', 'the one wrapper has an open form for script tools');
+  // held, then released by the caller, once; the default teardown never runs on the normal way out
+  const events = [];
+  const hold = await openCaptureHold({ lock: fakeLock({ events }), log: () => {}, prepare: async () => 'warm', teardown: async () => events.push('teardown') });
+  assert.equal(hold.prepared, 'warm');
+  assert.ok(hold.signal instanceof AbortSignal && typeof hold.checkpoint === 'function', 'the hold\'s signal and checkpoint');
+  events.push('work');
+  const first = hold.release(), second = hold.release();
+  assert.equal(first, second, 'release() once; a second call returns the same promise');
+  await first;
+  assert.deepEqual(events, ['hold', 'work', 'release'], 'the caller closed its own: no teardown on the way out');
+  // a wait that fails rejects (no unhandled rejection), and nothing is held
+  const failing = { acquire: async () => { throw new Error('cot-shots lock timeout'); }, release: () => false, refresh: () => false };
+  await assert.rejects(openCaptureHold({ lock: failing, log: () => {} }), /lock timeout/);
+  // the cap: past it with a waiter, a tool that never checkpoints has its signal aborted, then its teardown run after the
+  // grace (by default every guarded browser of the process stops); its release waits for that teardown
+  const capped = [];
+  const capHold = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: capped }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05,
+    teardown: async () => { await sleep(60); capped.push('teardown done'); } });
+  watchAbort(capHold.signal, capped);
+  await sleep(250); // a script that ignores the signal
+  await capHold.release();
+  assert.deepEqual(capped, ['hold', 'abort', 'teardown done', 'release'], `stopped at the cap, torn down, then released (${capped.join(' ')})`);
+  // a declared keep is logged, never stopped
+  const kept = [];
+  const keepHold = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: kept }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05,
+    atCap: 'keep', teardown: async () => kept.push('teardown') });
+  watchAbort(keepHold.signal, kept);
+  await sleep(150);
+  await keepHold.release();
+  assert.deepEqual(kept, ['hold', 'release'], 'atCap keep: past the cap, not stopped');
+}
+
 // ---- withCaptureHold on a real private lock: a SIGTERM tears down, releases and exits 143 --------------------------
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-hold-phases-'));
@@ -193,6 +232,36 @@ for (const waiters of [1, 0]) {
     assert.equal(code, 143, 'it exits 128 + SIGTERM');
     assert.ok(existsSync(marker) && Number(readFileSync(marker, 'utf8')) > 0, 'its teardown ran');
     assert.equal(existsSync(lockDir), false, 'and its hold was released');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- (round 2 U38) the open form on a real private lock: a SIGTERM stops it as any hold; its lines stay off stdout ------
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-open-'));
+  try {
+    const lockDir = join(root, 'lock'), marker = join(root, 'torn');
+    const script = `import { writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+      setInterval(() => {}, 1000);
+      const hold = await openCaptureHold({ lock, label: 'open-probe', timeoutMs: 5000, teardown: async () => writeFileSync(${JSON.stringify(marker)}, 'torn') });
+      console.log(JSON.stringify({ holding: true }));
+      try { await new Promise(() => {}); } finally { await hold.release(); }`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    for (let i = 0; i < 400 && !out.includes('holding'); i++) await sleep(25);
+    assert.ok(existsSync(lockDir), `the child holds its private lock: ${err.slice(-400)}`);
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status) => done(status)));
+    assert.equal(code, 143, 'it exits 128 + SIGTERM');
+    assert.equal(readFileSync(marker, 'utf8'), 'torn', 'its teardown ran');
+    assert.equal(existsSync(lockDir), false, 'and its hold was released');
+    assert.equal(out.trim(), '{"holding":true}', 'stdout is the tool\'s own (a report stays parseable)');
+    assert.match(err, /\[open-probe [\d:]+\] lock held after/, 'the hold\'s lines go to stderr');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
