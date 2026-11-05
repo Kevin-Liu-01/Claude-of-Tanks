@@ -4,6 +4,16 @@
 the M2A2's hull and two-man 25 mm turret with the A2 package (bolted spaced appliqué, skirts, the TOW twin launcher on
 the turret's left), no firing ports, two scouts and more ammunition inside.
 
+## Release 269: the M2A2 and M3A2 designs swapped
+
+The owner, 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the m3a2
+bradley". Since 269 the M3A2 is the shared hull under the turret measured from the owner's supplied model, with its flank
+dressing and crew bags (`src/vehicles/modern3.ts` `buildBradleySourceTurretIfv`, the M2A2's 268 build; packet
+[m2a2_bradley.md](m2a2_bradley.md)), on the source turret's datums (`modern3Specs.ts` `bradleySourceArmorInput`, the M2A2
+row's family base). The classic turret described below is the M2A2's (`modern3.ts` `buildM2A2Bradley`; its gun datums,
+envelope and rear stops set on the M2A2 in `m3a2BradleySpecs.ts`). The M3A2 keeps its id, name, tier, the M3's stowed
+loads and its number B-31. The sections below record the 268 build.
+
 ## Why it exists (release 268)
 
 The owner, 2026-11-02, after release 268 rebuilt the Bradley family from his supplied model: "also make a new variant

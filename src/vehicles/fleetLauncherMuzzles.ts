@@ -16,7 +16,8 @@ function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y,
 // so its two mouths at the plate's 4 cm-proud collars stand one over the other (the source's erected 1.05/1.35 at 1.055).
 const bradley = [turret(1.105, .68, .60), turret(1.105, .38, .60)];
 const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
-  m2a2_bradley: bradley,
+  // 269: the source turret is the M3A2's, the classic turret the M2A2's (modern3.ts buildM2A2Bradley)
+  m3a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
   bmp2: [turret(.06, .655 + .025 * detMath.sin(.02), .155 + .025 * detMath.cos(.02), .02)],
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
@@ -32,9 +33,10 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
     (.927 + .0125 * detMath.cos(.04)) * 1.1, detMath.atan(detMath.tan(.04) * .84))],
   bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * detMath.sin(.035)), y, .668 + .011 * detMath.cos(.035), 0, s * .035))),
   bwp1: [turret(.28, 1.11, .76)],
-  // 268: the M3A2's classic TOW pod on the turret's LEFT, turret-fixed, its two collar mouths one over the other
-  // (profiles/bradleyClassicTurret.ts; 7cc204ab32's gun-frame mouths, mirrored, plus the mirrored gun pivot)
-  m3a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
+  // 268: the classic TOW pod on the turret's LEFT, turret-fixed, its two collar mouths one over the other
+  // (profiles/bradleyClassicTurret.ts; 7cc204ab32's gun-frame mouths, mirrored, plus the mirrored gun pivot); the M2A2's
+  // since 269
+  m2a2_bradley: CLASSIC_TOW_MOUTHS.map(m => turret(m.x, m.y, m.z)),
   marder1a3: [turret(.55, .92, .445)],
   // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
   // 268 (2026-11-02): the pack on the turret's LEFT, +X, as the owner's supplied Bradley carries it (was x -.91).

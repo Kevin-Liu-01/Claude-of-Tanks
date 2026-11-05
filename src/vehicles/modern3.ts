@@ -21,6 +21,7 @@ import './modern3Specs.ts';
 import { drainTankBuild, steppedBuilder, type TankProfileBuild } from './tankBuildCooperation.ts';
 import { sectionSolid } from './profiles/sectionSolid.ts';
 import { markVehicleNightLens } from './vehicleNightLighting.ts';
+import { buildBradleyClassicTurret } from './profiles/bradleyClassicTurret.ts';
 
 type Vec3Tuple = [number, number, number];
 type GeometryScale = number | readonly [number, number, number];
@@ -3615,10 +3616,20 @@ export function bradleyFlankDressing(P: Modern3BuilderPort,
   });
 }
 
-const buildM2A2Bradley = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileBuild {
+// 269 (owner 2026-11-05: "the m3a2 bradley USA should be m2a2 bradley, and our current m2a2 bradley usa should be the
+// m3a2 bradley"): the M2A2 is the shared hull under the classic turret (the M3A2's 268 build); the M3A2 is the hull under
+// the source turret with the crew bags (the M2A2's 268 build, profiles/m3a2Bradley.ts).
+function buildM2A2Bradley(P: TankBuilderPort): void {
+  buildBradleyHull(P);
+  bradleyFlankDressing(P, { turretSeat: false });
+  buildBradleyClassicTurret(P, { deckY: BRADLEY_TURRET_RING.deckY - P.spec.armor.turretPivot[1] });
+}
+
+/** The shared hull under the source-measured turret, its flank dressing and the crew bags: the M3A2 (269). */
+export const buildBradleySourceTurretIfv = steppedBuilder(function* (P: Modern3BuilderPort): TankProfileBuild {
   yield* buildBradleySteps(P);
   bradleyFlankDressing(P);
-  // the M2A2's crew bags hung on the right side's rear, over the skirt ledge (source: x −1.86..−1.49, y 1.21..1.76,
+  // the crew bags hung on the right side's rear, over the skirt ledge (the owner's source: x −1.86..−1.49, y 1.21..1.76,
   // z −2.62..−2.02); the M3A3's side armour course, the Ukrainian tiles and the M6's kit hold that stretch
   KIT.stowage(P, 'hullCloth', P.rng, [[-1.70, 1.49, -2.48, 0.30, 0.48, 0.30], [-1.69, 1.50, -2.17, 0.28, 0.46, 0.28]]);
 });
