@@ -326,6 +326,11 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'PZA Loara', shortName: 'PZA Loara',
     searchAliases: ['Loara', 'Loara-A', 'PZA Loara-A', 'Przeciwlotniczy Zestaw Artyleryjski Loara'],
   },
+  // 269: the M163 VADS
+  m163_vads: {
+    displayName: 'M163 VADS', shortName: 'M163',
+    searchAliases: ['M163', 'M163A1', 'VADS', 'Vulcan Air Defense System', 'M163 Vulcan', 'M741', 'M168 Vulcan', 'Vulcan SPAAG'],
+  },
   marder2: {displayName:'Marder 2',shortName:'Marder 2',searchAliases:['Marder 2 VT 001','TS503']},
   spz_wotan: {
     displayName: 'SPz Wotan', shortName: 'SPz Wotan',

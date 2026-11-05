@@ -15,6 +15,7 @@
 //    yaw/roll kick mirroring with the firing barrel, flash-origin swap
 //    distance, belt-refire clearance — plus a roster guard that fails if a
 //    future gun.muzzles id is added without coverage here;
+//  - the rotary plant (269, the M163 VADS): its rotor rides the stroke, spins on its kicks, coasts to rest;
 //  - casemate law: fixedMount chains re-seat rig_muzzle AND rig_recoil under
 //    rig_hull; tubeless mounts (hull-printed cannons, incl. the hidden
 //    ball-mount stub collars) never slide — their budget rides a boosted
@@ -197,6 +198,34 @@ for (const id of TWIN_PLANT) {
   }
   near(recoilG.rotation.z, 0, 1e-12, `${id}: cradle roll returns to zero`);
 }
+// 269: the rotary plant (the M163 VADS's Vulcan; gunRotorSpin.ts): its six barrels ride one rotor on rig_recoil, so the
+// belt stroke carries them; each kick runs the rotor up, the rotor's spin never moves the fire axis, and with no shot it
+// coasts to rest. Every other id carries no rotor.
+{
+  const { visual, state, recoilG } = rig('m163_vads');
+  const rotor = recoilG.children.find((child) => child.userData.gunRotor);
+  assert.ok(rotor, 'm163_vads: the rotor rides rig_recoil');
+  const axis = visual.gunDirWorld(new THREE.Vector3()).clone();
+  const cycle = getSpec('m163_vads').gun.autoloader.intraClipS;
+  visual.recoilKick(0, 0.36);
+  visual.syncFromState(state, 0.03);
+  assert.ok(recoilG.position.z < -0.04, 'm163_vads: the belt stroke carries the rotor');
+  for (let shot = 0; shot < 8; shot++) { visual.recoilKick(0, 0.36); visual.syncFromState(state, cycle); }
+  assert.ok(rotor.rotation.z !== 0, 'm163_vads: the kicks spin the rotor');
+  for (let f = 0; f < 300; f++) visual.syncFromState(state, 1 / 60);
+  const rest = rotor.rotation.z;
+  visual.syncFromState(state, 1 / 60);
+  assert.equal(rotor.rotation.z, rest, 'm163_vads: the rotor coasts to rest without shots');
+  assert.ok(rest !== 0 && visual.gunDirWorld(new THREE.Vector3()).angleTo(axis) < 1e-3,
+    'm163_vads: the turned rotor leaves the fire axis on the bore');
+  for (const id of ['bmp3', 'gepard_1a2']) {
+    const other = rig(id);
+    let rotors = 0;
+    other.visual.root.traverse((object) => { if (object.userData.gunRotor) rotors++; });
+    assert.equal(rotors, 0, `${id}: no rotor`);
+  }
+}
+
 // Eight fixed missile canisters use separate launch origins, without the
 // barrel stroke of a cannon. The measured cradle remains the pitch pivot.
 const FIXED_LAUNCHERS = ['aft10'];

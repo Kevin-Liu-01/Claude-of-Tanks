@@ -245,6 +245,7 @@ const GROUP_LOADERS = Object.freeze({
   lvkv9040: () => import('./profiles/lvkv9040.ts').then((mod) => registerProfiles(mod.LVKV9040_PROFILES)),
   k30Biho: () => import('./profiles/k30Biho.ts').then((mod) => registerProfiles(mod.K30_BIHO_PROFILES)),
   loara: () => import('./profiles/loara.ts').then((mod) => registerProfiles(mod.LOARA_PROFILES)),
+  m163: () => import('./profiles/m163.ts').then((mod) => registerProfiles(mod.M163_PROFILES)),
 } satisfies Record<FleetGroup, GroupLoader>);
 const groupPromises = new Map<FleetGroup, Promise<void>>();
 const readyGroups = new Set<FleetGroup>();

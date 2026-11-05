@@ -64,6 +64,9 @@ export const USA_TREE: NationTree = Object.freeze({
     // 269 (the owner, 2026-11-03: "make a USA m113 variant, that plays similar to the ares apc"): the M113A3 at II, the
     // Ares APC's tier in the UK tree's special lane
     node({ id: 'm113a3', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    // 269 (the owner, 2026-11-04: "also add the m163 VADS"): the M163 on the M113's M741 at IV, after the M113A3 on its
+    // special lane (a special has no parents; a 20 mm gun a tier under the 35 mm Gepard at V)
+    node({ id: 'm163_vads', tier: 4, line: 'special', lane: 1, parents: [], slot: 'special' }),
     node({ id: 'm1a2_abrams_tusk', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

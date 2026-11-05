@@ -239,5 +239,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
 // tree's special lane at II. (Pinned 80f1ffa376ebe14a on the M113 side.)
 // 269 re-pin (item/aa269-m163, the merge of m113-hull-269 e1a98b884c into the air-defence lane): both sides' trees together.
-assert.equal(digest, 'dbd5beb9c49a31f9', `tree content changed: re-pin to ${digest} if deliberate`);
+// (Pinned dbd5beb9c49a31f9 at the merge.) 269 re-pin (the owner, 2026-11-04: "also add the m163 VADS"): the M163 VADS in
+// the US tree's special lane at IV, after the M113A3 on its lane 1.
+assert.equal(digest, 'fe18bdaefade0e19', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

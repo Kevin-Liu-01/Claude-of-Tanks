@@ -469,6 +469,10 @@
    "name": "M113AS4",
    "card": null
   },
+  "m163_vads": {
+   "name": "M163 VADS",
+   "card": null
+  },
   "m1a1": {
    "name": "M1A1 Abrams",
    "card": "/brand/og-r2/tanks/m1a1-card.jpg"

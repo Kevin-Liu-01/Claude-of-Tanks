@@ -184,6 +184,8 @@ assert.deepEqual(guidedRounds.filter(({spec}) => airDefense268Ids.has(spec.id)).
 // missile: guns only
 const airDefense269Ids = new Set(['type87_aw', 'marksman_t55', 'itpsv_leopard2', 'lvkv9040', 'k30_biho', 'pza_loara']);
 assert.deepEqual(guidedRounds.filter(({spec}) => airDefense269Ids.has(spec.id)), [], 'the 269 air defence carries no guided channel');
+// 269: the M163 VADS fires its Vulcan only: no missile
+assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'm163_vads'), [], 'the M163 VADS carries no guided channel');
 // 269: the Redback fires its Spike LR2 from its own launcher, one guided channel counted beside the established fleet; the
 // three M113s their twin TOW (owner 2026-11-03: "more firepoweer/tow missiles"), one channel each
 assert.deepEqual(guidedRounds.filter(({spec}) => spec.id === 'redback').map(({round}) => round.name), ['Spike LR2'],
@@ -271,6 +273,8 @@ const laterChannelCounts = {
   m113a1_fsv: 3, m113a1_mrv: 3, m113as4: 3, leopard_as1: 3,
   // 269: the US M113A3's three .50 belts (the Ares APC's)
   m113a3: 3, m1a1_aim_sa_aus: 3, m1a2_sepv3_aus: 3, redback: 3,
+  // 269: the M163 VADS's Vulcan, its M53 API and M56 HEI
+  m163_vads: 2,
 };
 const australia269Channels = ['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback', 'm113a3']
   .reduce((n, id) => n + laterChannelCounts[id], 0);
@@ -346,13 +350,13 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // and the Leopard 1A2A1's three (265), and the fourth-batch Leopard 2A3's three (release 265), and the three PT-84s'
 // three each (262, merged in 265), and the Danish Leopards' three each (266), and the Magach 6B's and 7C's three each
 // (266), and the Brazil line's eight, three each (266), and the Leopard 2A7 DK's and Centurion Mk 5/2 DK's three each (267),
-// and the Type 90 (B)'s three (267), and the Australian line's seven (269).
+// and the Type 90 (B)'s three (267), and the Australian line's seven (269), and the M163 VADS's two (269).
 assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0) - pattonM48Channels - centurionFamilyChannels
   - laterChannelCounts.leo1a2a1 - laterChannelCounts.leo2a3_b4 - pt84Channels - release265Channels
   - laterChannelCounts.magach6b - laterChannelCounts.magach7c - brazil266Channels
   - laterChannelCounts.leo2a7dk - laterChannelCounts.centurion5_2dk - laterChannelCounts.type90b - airDefense268Channels
-  - laterChannelCounts.bmpt_terminator - airDefense269Channels - australia269Channels, 560,
+  - laterChannelCounts.bmpt_terminator - airDefense269Channels - australia269Channels - laterChannelCounts.m163_vads, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

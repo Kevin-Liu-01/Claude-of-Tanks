@@ -303,4 +303,5 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["lvkv9040","sweden","modern",5],
   ["k30_biho","south_korea","modern",5],
   ["pza_loara","poland","modern",6],
+  ["m163_vads","usa","cold-war",4],
 ];

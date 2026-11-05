@@ -116,6 +116,8 @@ const RULINGS = {
   lvkv9040: ['spaa', 'scout', 'service'],
   k30_biho: ['spaa', 'scout', 'service'],
   pza_loara: ['spaa', 'scout', 'prototype'],
+  // 269: the M163 VADS (in US service 1968 to the 1990s)
+  m163_vads: ['spaa', 'scout', 'service'],
   tos1a_tagil: ['fire-support', 'support', 'service'],
   bmpt_terminator2: ['fire-support', 'support', 'service'],
   t14_armata: ['mbt', 'breakthrough', 'prototype'],

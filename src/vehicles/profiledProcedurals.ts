@@ -19,6 +19,7 @@ import { MARKSMAN_PROFILES } from './profiles/marksman.ts';
 import { LVKV9040_PROFILES } from './profiles/lvkv9040.ts';
 import { K30_BIHO_PROFILES } from './profiles/k30Biho.ts';
 import { LOARA_PROFILES } from './profiles/loara.ts';
+import { M163_PROFILES } from './profiles/m163.ts';
 import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
 import { buildGriffin50X } from './profiles/griffin50X.ts';
 import { buildAjaxX } from './profiles/ajaxX.ts';
@@ -239,6 +240,8 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...LVKV9040_PROFILES,
   ...K30_BIHO_PROFILES,
   ...LOARA_PROFILES,
+  // 269: the M163 VADS
+  ...M163_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {
