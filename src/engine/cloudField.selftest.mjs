@@ -6,8 +6,8 @@
 //      across the wind past a cloud's size shows no peak. A negative control (round 71's seven ruled rolls) fails both.
 //   2. The shape volume's lattice and its repeats: the medium reads it off the world's axes, through a smooth warp, and
 //      each region's billows from another height of the volume (cloudShaders.ts cl2Media).
-//   3. The prism: a convective lane's crown (cloudShaders.ts cl2Shell, twinned here) takes round 6's flat lid off every
-//      core, the body below and the flat base kept; every deck keeps that law.
+//   3. The prism: a convective lane's crown (cloudShaders.ts cl2Media, twinned here) closes the shape's erosion over the
+//      top of the slab: round 6's flat lid off every core, the body below and the flat base kept; every deck keeps that law.
 //   4. The phones' baked deck (sky.ts CLOUD_FRAG): a second copy chosen region by region, so a tile and its neighbour a
 //      period away mostly come from different copies.
 // The pictures the lane's blind critics judged come from tools/cloud-sky-shots.mjs (every map's sky at the battle camera,
@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bakeCloudWeatherStreets, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { CLOUD_DOME_CROWN, cloudLaneStreetShare, cloudStackOf, cloudStreetShare, packCloudStack } from './cloudLayers.ts';
+import { CLOUD_DOME_DEPTH, cloudLaneStreetShare, cloudStackOf, cloudStreetShare, packCloudStack } from './cloudLayers.ts';
 import { deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUD2_PERIODS } from './cloudShaders.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
@@ -83,37 +83,35 @@ assert.ok(mediaSrc.indexOf('sp.y += warp.z') < mediaSrc.indexOf('textureLod( tSh
 
 // ---- 3. the prism
 const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexOf('vec4 cl2Media('));
-for (const line of [
-  'vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );',
-  'vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );',
-  'vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );',
-  'd *= mix( vec4( 1.0 ), roundTop, step( vec4( 1e-4 ), uLayerDome ) );',
-]) assert.ok(shellSrc.includes(line), `the crown twin mirrors: ${line}`);
-/** The shell's density (one lane) at a height fraction over weather w: round 6's law, crowned when `dome` > 0. */
-function shellTwin(lane, hf, w) {
+const crownLine = 'd *= mix( vec4( 1.0 ), 1.0 - smoothstep( 1.0 - uLayerDome, vec4( 1.0 ), vec4( hf ) ), step( vec4( 1e-4 ), uLayerDome ) );';
+assert.ok(shellSrc.includes(crownLine), `the crown twin mirrors: ${crownLine}`);
+assert.ok(mediaSrc.includes('vec4 lo = vec4( 1.0 - shape ) * uLayerShape;') && mediaSrc.includes('vec4 d = clamp( ( shell - lo ) / max( 1.0 - lo, vec4( 1e-3 ) ), 0.0, 1.0 );'),
+  'the shape\'s remap twinned');
+/**
+ * A point's density (one lane) at a height fraction over weather w where the shape volume reads s: round 6's shell, the
+ * shape's remap, crowned when `dome` > 0.
+ */
+function mediaTwin(lane, hf, w, s) {
   const hs = smooth(0, 0.06, hf) * (1 - Math.pow(hf, 1 / Math.max(lane.bias, 0.05)));
   const admitted = lane.cover * hs;
-  let d = clamp((w - (1 - admitted)) / Math.max(admitted * lane.filter, 0.02), 0, 1);
-  if (lane.dome > 0) {
-    const e = clamp((w - (1 - lane.cover)) / Math.max(lane.cover, 0.02), 0, 1);
-    const crown = Math.pow(Math.max(e, 1e-4), lane.dome);
-    d *= Math.max(1 - smooth(crown * 0.75, crown, hf), hf >= 0.74 && lane.anvil > 1e-4 ? 1 : 0);
-  }
-  return d * lane.core;
+  let shell = clamp((w - (1 - admitted)) / Math.max(admitted * lane.filter, 0.02), 0, 1);
+  if (lane.dome > 0) shell *= 1 - smooth(1 - lane.dome, 1, hf);
+  shell *= lane.core;
+  const lo = (1 - s) * lane.shape;
+  return clamp((shell - lo) / Math.max(1 - lo, 1e-3), 0, 1);
 }
 /**
- * A cloud's mass at each height: the shell's mean over an even ramp of weather (edge to peak). The shape volume carves a
- * point into cloud where its noise clears what the shell leaves (cl2Media), so the cloud's breadth at a height follows
- * this mean.
+ * A cloud's mass at each height: the density's mean over an even ramp of weather (edge to peak) and an even spread of the
+ * shape volume's values, so the cloud's breadth at a height follows this mean.
  */
 function mass(lane, hf) {
   let m = 0;
-  for (let i = 0; i < 400; i++) m += shellTwin(lane, hf, 1 - lane.cover + lane.cover * (i + 0.5) / 400);
-  return m / 400;
+  for (let i = 0; i < 200; i++) for (let j = 0; j < 20; j++) m += mediaTwin(lane, hf, 1 - lane.cover + lane.cover * (i + 0.5) / 200, (j + 0.5) / 20);
+  return m / 4000;
 }
 const verdant = getMapConfig('verdant');
 const cumulus = cloudStackOf(deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...verdant.sky, cloudscape: verdant.clouds })).lanes[0];
-assert.equal(cumulus.dome, CLOUD_DOME_CROWN - 0.2 * 0.15, 'Verdant\'s cumulus takes the crown (its towers 0.15)');
+assert.equal(cumulus.dome, CLOUD_DOME_DEPTH, 'Verdant\'s cumulus takes the crown');
 const profileOf = (lane) => {
   const at = (h) => mass(lane, h), widest = Math.max(...[0.1, 0.15, 0.2, 0.25, 0.3].map(at));
   return { half: at(0.5) / widest, high: at(0.75) / widest, top: at(0.95) / widest, base: at(0.03) / widest };
@@ -123,11 +121,14 @@ const old = profileOf({ ...cumulus, dome: 0 });
 // (2026-11-04, Verdant: round 6's mass at 0.5 / 0.75 / 0.95 of the slab and its base 0.81 / 0.50 / 0.12 and 0.50 — a body
 // carried to a flat lid at the ceiling. The first GPU pass faded the upper half too, and the blind critics read every
 // cumulus as flattened: the body is kept, the lid taken off. A rim that lifted each cloud's base toward its edge read as
-// ledges inside a mass, and went (2026-11-05): the base is the condensation level's flat line, as round 6's.)
+// ledges inside a mass, and went (2026-11-05): the base is the condensation level's flat line, as round 6's. Round 10's
+// crown, at a height set by each column's excess, kept 0.41 at three quarters and ended the weak columns in flat strips;
+// the crown from the ceiling keeps round 6's body to three quarters of the slab.)
 assert.ok(old.top > 0.08, `round 6's law: a flat lid at the slab's ceiling (${old.top.toFixed(2)})`);
 assert.ok(dome.top < 0.02, `the crown takes the lid off: nothing at the ceiling (${dome.top.toFixed(3)})`);
 assert.ok(Math.abs(dome.base - old.base) < 0.02, `one flat base line, round 6's (${dome.base.toFixed(2)} against ${old.base.toFixed(2)})`);
-assert.ok(dome.half > 0.9 * old.half, `and the body below is round 6's (${dome.half.toFixed(2)} at half the slab against ${old.half.toFixed(2)})`);
+assert.ok(dome.half > 0.98 * old.half && dome.high > 0.95 * old.high,
+  `and the body below is round 6's (${dome.half.toFixed(2)} / ${dome.high.toFixed(2)} at a half and three quarters of the slab against ${old.half.toFixed(2)} / ${old.high.toFixed(2)})`);
 
 // the share of the wind frame's lobes: a full fair-weather sky keeps its clouds apart on them, a sparse one and a tower's
 // sky keep the knob's (Verdant at under a third of the knob: one mass over nine tenths of its cloud)
@@ -146,7 +147,7 @@ for (const id of MAP_IDS) {
   for (const lane of stack.lanes) {
     const deck = lane.flat >= 0.45 && lane.cells > 0;
     if (deck) assert.equal(lane.dome, 0, `${id}: a deck keeps the shell law`);
-    else assert.ok(lane.dome > 0.2 && lane.dome <= CLOUD_DOME_CROWN, `${id}: its cumulus domes (${lane.dome})`);
+    else assert.equal(lane.dome, CLOUD_DOME_DEPTH, `${id}: its cumulus takes the crown`);
   }
   const u = {};
   for (const k of ['uLayerBase', 'uLayerTop', 'uLayerCover', 'uLayerDensity', 'uLayerShape', 'uLayerDetail', 'uLayerBias', 'uLayerFilter',

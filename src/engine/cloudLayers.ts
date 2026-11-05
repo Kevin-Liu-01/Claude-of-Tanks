@@ -55,8 +55,8 @@ export interface CloudLane {
   /** a deck's lumps: the cells' channel at a third of their period thickening and thinning the column (0..1) */
   lumps: number;
   /**
-   * clouds-269: a convective lane's crown — the exponent of the height a column's top rounds off at over its excess above
-   * the base footprint (cloudShaders.ts cl2Shell; low, more of the footprint stands tall). 0 = the shell law alone (a deck).
+   * clouds-269: a convective lane's crown — the share of its slab under the ceiling over which its shell eases out
+   * (cloudShaders.ts cl2Shell). 0 = the shell law alone (a deck).
    */
   dome: number;
   /** the density profile over the height fraction: a·e^(b·η) + c·η + d */
@@ -100,12 +100,12 @@ export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
   CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
 });
 /**
- * clouds-269 (the owner, 2026-11-04: "less prism-y"): a cumulus column's crown is its excess over the base footprint to
- * this power (cloudShaders.ts cl2Shell), the density fading over the crown's top quarter, so a core rounds off at its
- * own height instead of under round 6's lid at the slab's ceiling (CPU model, Verdant: the footprint a fifth of its
- * widest at 0.83 of the slab, round 6 at 0.88; the mass at 0.95 of the slab 0.007 of its widest, round 6 0.117).
+ * clouds-269 (the owner, 2026-11-04: "less prism-y"): the share of a convective lane's slab under its ceiling over which
+ * its shell eases out (cloudShaders.ts cl2Shell), so the shape's erosion takes a core's top billow by billow, each turret
+ * at its own height, instead of round 6's lid at the ceiling; a column that ends lower keeps round 6's height (cloudField's
+ * twin, Verdant: the mass at 0.95 of the slab under 0.01 of its widest, round 6 0.12; to three quarters of it round 6's).
  */
-export const CLOUD_DOME_CROWN = 0.4;
+export const CLOUD_DOME_DEPTH = 0.25;
 /**
  * clouds-269: the share of a lane's weather the wind frame's cumulus field takes for a regime's street knob — whole for a
  * street sky (0.75 and over), 0.3 of it for the fair-weather and humilis skies (0.3-0.4), smooth between. The fair-weather
@@ -260,8 +260,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     anvil: clamp(preset.anvil, 0, 1),
     core,
     lumps: cellsEff > 0 ? clamp(Math.max(preset.lumps ?? 0, 0.5), 0, 1) : 0,
-    // a cumulus' crown rounds over its footprint (a hemisphere's shoulder at a half); a tower's stands taller over more of it
-    dome: isDeck ? 0 : CLOUD_DOME_CROWN - 0.2 * clamp(preset.towers, 0, 1),
+    // every convective lane's tops carved over the same share of its slab (a tower's slab is the deeper: taller turrets)
+    dome: isDeck ? 0 : CLOUD_DOME_DEPTH,
     // denser toward the top for convective cloud (the condensate accumulates aloft), even through a sheet
     profile: deck > 0.5 ? [0, 0, 0.2, 0.8] : [0, 0, 0.6, 0.4],
     // a deck's base is lit through its column; a cumulus' shaded flank and base only a little (the octaves and the sky

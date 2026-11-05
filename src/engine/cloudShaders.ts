@@ -102,8 +102,8 @@ uniform vec4 uLayerAnvil;
 uniform vec4 uLayerCore;
 // the deck lumps: the cell channel at a third of the cells' period thickens and thins the column (0 = none)
 uniform vec4 uLayerLumps;
-// clouds-269: a convective lane's dome — the exponent of a column's crown over its excess (cl2Shell; 0 = round 6's shell
-// law, the decks')
+// clouds-269: a convective lane's crown — the share of the slab under its ceiling over which its shell fades out (cl2Shell;
+// 0 = round 6's law, the decks')
 uniform vec4 uLayerDome;
 uniform vec4 uProfA;
 uniform vec4 uProfB;
@@ -208,21 +208,17 @@ vec4 cl2Shell( float h, vec4 weather, vec2 cell, out vec4 hf ) {
 	vec4 ramp = max( admitted * uLayerFilter, vec4( 0.02 ) );
 	vec4 d = clamp( ( weather - ( 1.0 - admitted ) ) / ramp, 0.0, 1.0 );
 	// clouds-269 (the owner: "make clouds more natural and also less prism-y"): a convective lane's crown. Under the law
-	// above a footprint's core kept its density up to the slab's ceiling, so the cores of every mass stood to one height
-	// under a flat lid. A column's excess over the base footprint (0 at its edge, 1 at the weather's peak) sets its crown,
-	// e^dome of the slab, over whose top quarter the density fades (to nothing at the ceiling), so the shape volume rounds
-	// every core's top into billows at its own height. The base stays the condensation level's one flat line: a base lifted
-	// by each cloud's own share of the slab drew overlapping clouds as stacked flat-bottomed tiers (the blind critics'
-	// "two stacked pancakes", 2026-11-04), and a rim lifted toward each cloud's edge as ledges inside a mass ("stacked
-	// horizontal tiers with flat, ledge-like bases", 2026-11-05). The body below is the law's above (the first GPU pass, a
-	// dome fading from 55 % of the crown, thinned every cumulus' upper half: the blind critics' "flattened", "sheet-like"
-	// clouds); a cumulonimbus' anvil keeps its band.
-	if ( dot( uLayerDome, uLayerDome ) > 0.0 ) {
-		vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );
-		vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );
-		vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );
-		d *= mix( vec4( 1.0 ), roundTop, step( vec4( 1e-4 ), uLayerDome ) );
-	}
+	// above a core keeps its density up to the slab's ceiling, so the cores of every mass stood to one height under a flat
+	// lid. Over the slab's top uLayerDome the shell eases to nothing at the ceiling, so the shape's erosion takes a core's
+	// top billow by billow — the surviving share of the shape volume shrinking with height, each turret at its own — and a
+	// column that ends lower keeps this law's height and its billows (a deeper fade thinned every body's upper half: the
+	// mass at three quarters of Verdant's slab 0.19 of its widest at a 0.4 fade, round 6's 0.50). (Round 10's crown faded each column over the top
+	// quarter of a height set by its excess over the base footprint: the weak columns ended in thin flat strips and a
+	// saturated core under one soft lid — the blind critics' "flat pancakes", "a squarish loaf with a flat top",
+	// 2026-11-05 — and its anvil band left a ledge under each anvil.) The base stays the condensation level's one flat
+	// line: a base lifted by each cloud's own share of the slab drew overlapping clouds as stacked flat-bottomed tiers, a
+	// rim lifted toward each cloud's edge ledges inside a mass.
+	d *= mix( vec4( 1.0 ), 1.0 - smoothstep( 1.0 - uLayerDome, vec4( 1.0 ), vec4( hf ) ), step( vec4( 1e-4 ), uLayerDome ) );
 	// a broken deck's cells stand apart: clear lanes where the cells thin out (closing as the deck closes — none from a
 	// cover of one; the first GPU pair drew Frosthollow's broken deck as one white sheet)
 	vec4 gapOn = uLayerCells * clamp( ( 1.0 - uLayerCover ) * 8.0, 0.0, 1.0 );
