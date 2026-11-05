@@ -178,6 +178,9 @@ const HOSTING: ReadonlySet<SessionRoleState> = new Set(['booting_host', 'live_ho
  */
 export type HostDecline = null | 'unable' | 'headroom' | 'reentry' | 'match';
 
+/** Why an election's host boot was given up before it went live (MatchSession.bootSuperseded). */
+type BootSuperseded = 'left the match' | 'newer election' | 'host released' | 'match link closed';
+
 /**
  * How long an elected host's tab may hold the match with loading reports before its actor runs (plan step 8): the
  * slowest measured entries (a cold compile, the 145 s welcomed-compiling rejoin) fit; a wedged entry is replaced 90 s
@@ -1162,6 +1165,19 @@ export class MatchSession {
     this.peerTransport?.retarget('host changed');
   }
 
+  /**
+   * Why an election's host boot no longer stands, or null while it does (round 2: every cause was logged as a newer
+   * election). The seat left the match (a leave, or a newer round's entry, moved the match client); the boot's host is no
+   * longer this seat's (a newer election replaced it, or the room's step-down or the finished match's release dropped
+   * it); or the match link the host was to serve closed.
+   */
+  private bootSuperseded(host: MatchHost, client: MatchClient, migrating: MigratingTransport, generation: number): BootSuperseded | null {
+    if (this.matchClient !== client) return 'left the match';
+    if (this.host !== host) return this.room.generation > generation ? 'newer election' : 'host released';
+    if (migrating.state === 'closed') return 'match link closed';
+    return null;
+  }
+
   private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null): Promise<void> {
     const me = this.room.playerId;
     const secret = change.hostSecret ?? this.hostSecret;
@@ -1218,10 +1234,11 @@ export class MatchSession {
         // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
         // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and
         // told the room a capable seat is unable to host (integration review r1).
-        if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') {
+        const superseded = this.bootSuperseded(host, client, migrating, change.generation);
+        if (superseded) {
           if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot superseded'); }
           host.stop();
-          this.log('info', 'elected host boot superseded by a newer election', { generation: change.generation, running: this.runningGeneration });
+          this.log('info', 'elected host boot superseded', { cause: superseded, generation: change.generation, running: this.runningGeneration });
           return;
         }
         this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation });
@@ -1257,7 +1274,7 @@ export class MatchSession {
       // A newer election stopped this boot (the replaced path, audit M2 2026-11-02): its own migration runs on. Reporting
       // a failure here cleared the newer migration's flag and told the room a capable seat is unable to host.
       if (this.host !== host) {
-        this.log('info', 'elected host boot superseded by a newer election', { generation: change.generation, running: this.runningGeneration });
+        this.log('info', 'elected host boot superseded', { cause: this.bootSuperseded(host, client, migrating, change.generation), generation: change.generation, running: this.runningGeneration });
         return;
       }
       this.host = null;
@@ -1269,9 +1286,11 @@ export class MatchSession {
       this.setDecline('match', { declined: true, unable: true });
       return;
     }
-    if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') {
+    const superseded = this.bootSuperseded(host, client, migrating, change.generation);
+    if (superseded) {
       if (this.host === host) { this.host = null; this.moveRole(this.peerTransport ? 'peer' : 'none', 'boot superseded'); }
       host.stop();
+      this.log('info', 'elected host boot superseded', { cause: superseded, generation: change.generation, running: this.runningGeneration });
       return;
     }
     const previous = this.peerTransport;
