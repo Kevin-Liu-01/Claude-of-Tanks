@@ -51,7 +51,7 @@ import { expandGlobs } from './changed-only/globs.mjs';
 import { movedShared, sharedDigests, sharedOutputs } from './changed-only/parts.mjs';
 import { browserIdCap } from './browser-id-chunks.mjs';
 import { uniqueIds } from './id-list.mjs';
-import { createChildGroups, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
+import { createChildGroups, runInCaptureHold, stopOnSignal, takeChainLock } from './chain-lifecycle.mjs';
 import { releaseAllCaptureHolds } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
@@ -259,29 +259,25 @@ async function runParts(step, ids, state, scopedArgs, extra) {
 
 /** Run a GPU step on `ids` in capture-lock holds, each one browser within the step's time and renderer caps (gpuChunks). */
 async function runGpuStep(step, ids, state) {
-  const { createCaptureLock } = await import('./capture-lock.mjs');
   const list = ids ?? state.ids;
   const skipped = {};
   // A whole-fleet run larger than one hold is chunked too; the chunks together cover every id, written by the tool's
   // own --ids merge.
   const chunks = gpuChunks(step, list);
   for (const [index, chunk] of chunks.entries()) {
-    const lock = createCaptureLock();
     log(`[regen] ${step.name}: waiting for the capture lock (chunk ${index + 1}/${chunks.length}, ${chunk.length} ids)`);
-    await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
-    const refresh = setInterval(() => lock.refresh(), 60_000);
-    try {
+    // the GPU child runs inside this hold: a tool of it that takes the lock itself nests in it (runInCaptureHold's env)
+    const run = await runInCaptureHold(async (env) => {
       await gate(step.gb);
       // A whole-fleet run that fits one hold runs the tool's own whole-fleet mode (no --ids), exactly as a full regen.
       const scope = !ids && chunks.length === 1 ? step.full : step.scoped(chunk);
       const skippedFile = skipFile(step, index + 1);
-      // the GPU child runs inside this hold: a tool of it that takes the lock itself nests in it (capture-lock nestedEnv)
-      const run = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
-        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}`,
-          env: { ...childEnv, ...lock.nestedEnv() } });
-      if (run.code !== 0) return run;
-      Object.assign(skipped, readSkipped(skippedFile));
-    } finally { clearInterval(refresh); lock.release(); }
+      const result = await runChild([step.tool, ...step.flags, ...scope, ...(skippedFile ? [`${step.skipped}=${skippedFile}`] : [])],
+        { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}`, env });
+      if (result.code === 0) Object.assign(skipped, readSkipped(skippedFile));
+      return result;
+    }, { label: `regen ${step.name}-${index + 1}`, baseEnv: childEnv, log });
+    if (run.code !== 0) return run;
   }
   return { code: 0, skipped };
 }
@@ -447,12 +443,8 @@ async function runCheck(definition, ids) {
   const runArgs = [definition.checkTool ?? definition.tool, ...flags, ...scope];
   const label = `${definition.name}-check${ids ? '-ids' : ''}`;
   if (definition.device === 'gpu') {
-    const { createCaptureLock } = await import('./capture-lock.mjs');
-    const lock = createCaptureLock();
-    await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
-    const refresh = setInterval(() => lock.refresh(), 60_000);
-    try { return await runChild(runArgs, { niced: false, timeoutS: 1200, label }); }
-    finally { clearInterval(refresh); lock.release(); }
+    // (round 2 U38) the check child carries the hold's token too, as runGpuStep's children do
+    return runInCaptureHold((env) => runChild(runArgs, { niced: false, timeoutS: 1200, label, env }), { label: `regen ${label}`, baseEnv: childEnv, log });
   }
   await gate(definition.gb);
   return runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, ids?.length ?? (definition.universe === 'maps' ? 40 : 220)), label });

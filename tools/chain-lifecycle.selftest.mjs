@@ -7,6 +7,7 @@
 //   writing after it is gone);
 // - a budget: past it, the teardown runs before the exit (a spawned server is stopped), where the old process.exit(3)
 //   left it running.
+// - a GPU child of the chain runs inside a capture hold (runInCaptureHold) and carries its token (round 2 U38);
 // - the regen chain and mp-room-census use these (read from their sources).
 // Every process this receipt starts is killed by its exact pid at the end, whatever happened.
 import assert from 'node:assert/strict';
@@ -23,8 +24,8 @@ const started = new Set();
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
 const readPid = (file) => { try { return Number(readFileSync(file, 'utf8').trim()) || null; } catch { return null; } };
 /** A node child running `script` (an ES module); resolves { code, signal, out } once it closes. */
-function node(script, { args = [], timeoutMs = 60_000 } = {}) {
-  const child = spawn(process.execPath, ['--input-type=module', '-e', script, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+function node(script, { args = [], timeoutMs = 60_000, env = process.env } = {}) {
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env });
   started.add(child.pid);
   let out = '';
   child.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
@@ -161,6 +162,35 @@ try {
     }
   }
 
+  // ---- (round 2 U38) a GPU child of the chain runs in a capture hold and carries its token ------------------------------
+  // runCheck's GPU branch held the lock itself and spawned its check child without the hold's token, so a check tool that
+  // took the lock would have waited behind its own parent. Both GPU branches hold through runInCaptureHold now: the work
+  // gets the hold's token in its env, a child that takes the same lock nests at once, the chain keeps its own signals
+  // (no handler is added) and the hold is released after the work.
+  {
+    const lifecycle = await import(MODULE);
+    assert.equal(typeof lifecycle.runInCaptureHold, 'function', 'the chain holds its GPU children through one helper');
+    const { createCaptureLock } = await import(new URL('./capture-lock.mjs', import.meta.url).href);
+    const dirs = { lockDir: join(root, 'gpu.lock'), queueDir: join(root, 'gpu.queue'), log: () => {} };
+    const lock = createCaptureLock(dirs);
+    const signalsBefore = process.listenerCount('SIGTERM');
+    let during = null;
+    const result = await lifecycle.runInCaptureHold(async (env) => {
+      during = { token: env.COT_SHOTS_HELD ?? null, base: env.COT_CHAIN_SELFTEST_BASE ?? null, signals: process.listenerCount('SIGTERM') };
+      const child = node(`import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: () => {} });
+        const t0 = Date.now();
+        try { await lock.acquire(1500); console.log(JSON.stringify({ ok: true, nested: lock.nested, ms: Date.now() - t0 })); lock.release(); }
+        catch (error) { console.log(JSON.stringify({ ok: false, error: error.message })); }`, { env });
+      return JSON.parse((await child.closed).out.trim().split('\n').at(-1));
+    }, { label: 'selftest gpu', lock, baseEnv: { ...process.env, COT_CHAIN_SELFTEST_BASE: 'kept' }, timeoutMs: 2_000 });
+    assert.match(during.token ?? '', new RegExp(`^${process.pid}:[0-9a-f]{24}$`), 'the work\'s env carries the hold\'s token');
+    assert.equal(during.base, 'kept', 'on top of the chain\'s own child env');
+    assert.equal(during.signals, signalsBefore, 'the chain owns its signals: the hold adds no handler');
+    assert.deepEqual([result.ok, result.nested], [true, true], `a child that takes the lock nests in the hold: ${JSON.stringify(result)}`);
+    assert.equal(existsSync(dirs.lockDir), false, 'the hold is released after the work');
+  }
+
   // ---- the callers --------------------------------------------------------------------------------------------------
   {
     const read = (rel) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -170,6 +200,10 @@ try {
     assert.match(chain, /children\.spawn\(/, 'its steps run in their own process groups');
     assert.match(chain, /stopOnSignal\(children/, 'and a stop reaches them before the lock goes');
     assert.doesNotMatch(chain, /process\.on\(signal, \(\) => \{ unlock\(\); process\.exit/, 'no unlock-and-exit handler is left');
+    // (round 2 U38) both GPU branches (a step's chunks and a step's check) hold through runInCaptureHold, with its env
+    assert.equal((chain.match(/runInCaptureHold\(/g) ?? []).length, 2, 'runGpuStep and runCheck hold through runInCaptureHold');
+    assert.doesNotMatch(chain, /\.acquire\(|createCaptureLock/, 'the chain takes no capture lock of its own');
+    assert.equal((chain.match(/niced: false, [^\n]*\benv\b/g) ?? []).length, 2, 'each GPU child gets the hold\'s env');
     assert.match(census, /armBudget\(budgetMin \* 60_000, \{ teardown/, 'mp-room-census tears down past its budget');
     assert.doesNotMatch(census, /setTimeout\(\(\) => \{[^}]*process\.exit\(3\)/, 'and no budget timer exits past the finally');
   }

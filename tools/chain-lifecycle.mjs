@@ -14,6 +14,9 @@
 //   group is also swept once its leader closes, and at exit.
 // - armBudget: a budget timer that called process.exit skipped every finally, leaving a spawned server, a browser and
 //   the capture lock to the OS. It now runs the tool's teardown (bounded) and then exits with the budget's code.
+// - runInCaptureHold (round 2 U38): the chain's GPU children run inside one capture hold each, held through the one hold
+//   wrapper (capture-hold.mjs withCaptureHold) and carrying its nested-hold token; runCheck's GPU branch had held the lock
+//   itself and spawned its child without the token, so a check tool that took the lock would wait behind its own parent.
 import { spawn } from 'node:child_process';
 import { constants } from 'node:os';
 import { readFileSync } from 'node:fs';
@@ -120,6 +123,21 @@ export function stopOnSignal(groups, { cleanup = () => {}, graceMs = 15_000, log
     for (const name of names) signals.removeListener(name, handler);
     signals.removeListener('exit', atExit);
   };
+}
+
+/**
+ * Run `work(env)` inside one capture hold for a chain that owns its signals (stopOnSignal: its cleanup releases every
+ * hold, capture-lock releaseAllCaptureHolds), through capture-hold.mjs withCaptureHold with `signals: []`. `env` is
+ * `baseEnv` plus the hold's nested-hold token (capture-lock nestedEnv): a GPU child of the chain that takes the lock itself
+ * nests in this hold instead of waiting behind its own parent. A child runs whole under its own wall-clock limit, so past
+ * the cap the hold is logged, not stopped (atCap 'keep'). Resolves with work's result.
+ */
+export async function runInCaptureHold(work, { label = 'chain', baseEnv = process.env, lock = null, log = () => {},
+  timeoutMs = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000, refreshMs = 60_000 } = {}) {
+  const [{ withCaptureHold }, { createCaptureLock }] = await Promise.all([import('./capture-hold.mjs'), import('./capture-lock.mjs')]);
+  const held = lock ?? createCaptureLock();
+  return withCaptureHold(() => work({ ...baseEnv, ...held.nestedEnv() }), { label, lock: held, timeoutMs, refreshMs, log,
+    signals: [], atCap: 'keep' });
 }
 
 /** `fn` run at most once; every later call returns the first call's promise. */
