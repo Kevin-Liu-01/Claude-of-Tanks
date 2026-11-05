@@ -286,6 +286,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/capture-lock-reentry.selftest.mjs': outside('its own queue and lock directories under tmpdir'),
   // round 2 U39: the SIGTERM case's private root (its cache directory, lock and markers) under tmpdir
   'tools/isolated-capture-browser.selftest.mjs': outside('its signal case\'s private root under tmpdir'),
+  // round 2 U38 review: the queued-at-a-signal case's private queue directory under tmpdir
+  'tools/capture-hold-phases.selftest.mjs': outside('its queued case\'s private queue directory under tmpdir'),
   'tools/media-r5/priority-yield.mjs': outside('the capture queue directory (CAPTURE_QUEUE_DIR, or the queueDir its caller passes)'),
   'tools/media-r5/site-loops.mjs': outside('the renders and deliver folders its CLI names (shots/site50 by default, media output), ' +
     'or the receipt\'s tmpdir fixture'),
@@ -329,6 +331,9 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/pr-census.mjs': cli('report() lists the record directory --report names; its receipt imports the census helpers'),
   // 2026-11-02 audit S4: tools the capture-hold census only names (it reads their source, never runs them)
   'tools/media-r5/lab.mjs': cli('lists the --scenes directories its CLI names'),
+  // round 2 U38 review: tools the capture-hold census names (their signal handlers are on the unlocked path), never runs
+  'tools/click-timeline.mjs': cli('report() lists the run folders --report names'),
+  'tools/nav-timeline.mjs': cli('report() lists the run folders --report names'),
   // round 2 U39: tools lease-exit.selftest reads (their exit statuses), never runs
   'tools/media-r5/site50-finals.mjs': cli('lists the render and scene folders its CLI names'),
   'tools/media-r5/cinema-jobs.mjs': cli('lists the resolved-scene folder its CLI names'),
