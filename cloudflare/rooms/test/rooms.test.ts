@@ -124,6 +124,26 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     expect((await stale.request('room_join', identity('second', token('c'), token('c')))).payload.code).toBe('resume_denied');
   });
 
+  it('keeps the admin\'s lock of a waiting room stored before the lock split across an eviction (round 2 U6)', async () => {
+    const admin = await create('ROOM07');
+    expect((await admin.command({ type: 'set_locked', locked: true })).type).toBe('room_ack');
+    const stub = env.ROOMS.getByName('ROOM07');
+    // the state a Worker before the split stored: the admin's lock in `locked` alone
+    await runInDurableObject(stub, (_instance, state) => {
+      const stored = JSON.parse(state.storage.sql.exec<{ data: string }>('SELECT data FROM room_state WHERE id=1').one().data) as RoomActorState;
+      const settings = stored.room!.settings as { locked: boolean; adminLocked?: boolean };
+      delete settings.adminLocked;
+      settings.locked = true;
+      state.storage.sql.exec('UPDATE room_state SET data=? WHERE id=1', JSON.stringify(stored));
+    });
+    await evictDurableObject(stub);
+    // the first touch after the deploy (the admin readies) keeps the room locked, and a fresh join is refused
+    expect((await admin.command({ type: 'set_ready', ready: true })).type).toBe('room_ack');
+    expect((await storedState('ROOM07')).room?.settings.locked).toBe(true);
+    const late = await connect('ROOM07', 'late');
+    expect((await late.request('room_join', identity('late', token('c'), token('d')))).payload.code).toBe('room_locked');
+  });
+
   it('expires 24 h after the last message and deallocates, and never closes on departures', async () => {
     const admin = await create('ROOM06', { teamSize: 1 });
     admin.socket.close();
