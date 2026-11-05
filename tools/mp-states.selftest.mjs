@@ -49,10 +49,18 @@ assert.equal(JSON.stringify({ phase: SESSION_PHASE.lobby }), '{"phase":"lobby"}'
 {
   const all = new Set([HOST_STATE, MATCH_PHASE, ROOM_CLIENT_PHASE, ROOM_MATCH_STATUS, ROOM_PHASE, SESSION_PHASE,
     SESSION_ROLE, TRANSPORT_STATE].flatMap(words));
-  const literal = new RegExp(`\\.(?:phase|role|state|hostState|status|matchPhase)\\s*[!=]==\\s*'(?:${[...all].join('|')})'`, 'g');
+  // (round 2 U40) any state-shaped field, its name's prefix included (.sessionPhase, .roomPhase, .hostState): the
+  // pattern that named six fields let mp-exit-e2e's `report.steps.leave.sessionPhase !== 'lobby'` through
+  const field = '\\w*(?:[Pp]hase|[Rr]ole|[Ss]tate|[Ss]tatus)';
+  const literal = new RegExp(`\\.${field}\\s*[!=]==\\s*'(?:${[...all].join('|')})'`, 'g');
+  const control = new RegExp(literal.source);
+  assert.ok(control.test("report.steps.leave.sessionPhase !== 'lobby'"), 'a prefixed field is a state field');
+  assert.ok(control.test("x.roomPhase === 'playing'") && control.test("h.hostState === 'live'") && control.test("s.phase === 'lobby'"));
+  assert.ok(!control.test("x.sessionPhase !== SESSION_PHASE.lobby") && !control.test("x.label === 'lobby'"), 'a vocabulary word or another field is not');
   const exceptions = {
     // (268, origin/main) the e2e's RTCPeerConnection rows count the browser's own connectionState words, not a protocol state
-    'tools/mp-p2p-e2e.mjs': ["entry.state === 'failed'"],
+    // (round 2 U40) and the peer connection's own connectionState word, which the wider field pattern now reads
+    'tools/mp-p2p-e2e.mjs': ["pc.connectionState === 'closed'", "entry.state === 'failed'"],
     // the headless peer harness reports its own match phases ('ended' among them): two vocabularies (findings 24 #8)
     'tools/mp-p2p-soak.mjs': ["entry.phase === 'closed'", "entry.phase === 'ended'", "entry.phase === 'failed'"],
     // the authority's own MatchPhase (src/sim/authoritativeMatch.ts), not a protocol state
@@ -64,7 +72,7 @@ assert.equal(JSON.stringify({ phase: SESSION_PHASE.lobby }), '{"phase":"lobby"}'
   const found = {};
   for (const file of harnesses) {
     const hits = [...read(file).matchAll(new RegExp(`[A-Za-z0-9_$?.()]*${literal.source}`, 'g'))].map((match) => match[0]
-      .replace(/^.*?([A-Za-z0-9_$]+\??\.(?:phase|role|state|hostState|status|matchPhase))/, '$1'));
+      .replace(new RegExp(`^.*?([A-Za-z0-9_$]+\\??\\.${field})`), '$1'));
     if (hits.length) found[file] = hits;
   }
   assert.deepEqual(found, exceptions, 'MP harness comparisons against literal state words');

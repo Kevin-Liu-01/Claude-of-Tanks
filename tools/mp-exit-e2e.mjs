@@ -124,7 +124,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
       matchStartKept: !!p3.headless.room.matchStart, actorClients: actor()?.stats().clients ?? 0, rosterEntity: roster3?.entityId ?? null, movedMAfterLeave: movedM,
     };
     log(`p3 left the battle: session ${report.steps.leave.sessionPhase}, room ${report.steps.leave.roomPhase}, seat kept ${report.steps.leave.seatKept}, actor clients ${report.steps.leave.actorClients}, hull moved ${movedM?.toFixed(2)} m in 2 s`);
-    if (report.steps.leave.sessionPhase !== 'lobby') failures.push(`leave: session ${report.steps.leave.sessionPhase}`);
+    if (report.steps.leave.sessionPhase !== SESSION_PHASE.lobby) failures.push(`leave: session ${report.steps.leave.sessionPhase}`);
     if (!report.steps.leave.seatKept || !report.steps.leave.matchStartKept) failures.push('leave: the room seat or the match_start was lost');
     if (movedM !== null && movedM > 1.5) failures.push(`leave: the released hull kept moving (${movedM.toFixed(2)} m)`);
 
@@ -185,7 +185,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     await until(() => (actor()?.stats().clients ?? 0) === 2, 'the kicked client left the actor', 5_000);
     report.steps.kick = { reason: p2.headless.room.lastClosedReason, sessionPhase: p2.headless.session.phase, actorClients: actor()?.stats().clients ?? 0 };
     log(`p2 kicked: room ${report.steps.kick.reason}, session ${report.steps.kick.sessionPhase}, actor clients ${report.steps.kick.actorClients}`);
-    if (report.steps.kick.reason !== 'kicked' || report.steps.kick.sessionPhase !== 'lobby') failures.push(`kick: ${JSON.stringify(report.steps.kick)}`);
+    if (report.steps.kick.reason !== 'kicked' || report.steps.kick.sessionPhase !== SESSION_PHASE.lobby) failures.push(`kick: ${JSON.stringify(report.steps.kick)}`);
     retire(p2);
 
     // ---- 6. the verdict reaches the survivors; the room unlocks; the fresh join seats p4 again; the rematch welcomes it
@@ -197,7 +197,7 @@ export async function runExitE2E({ battleS = 15, world = 'terrain', mapId = 'ver
     await p4b.headless.room.join({ roomCode: code, selection: { specId: 'm1a1_abrams_hc' } });
     report.steps.rejoin = { roomPhase: roomSnapshot()?.phase ?? null, seated: !!roomSnapshot()?.players.some((player) => player.id === 'p4'), matchStart: p4b.headless.room.matchStart !== null, sessionPhase: p4b.headless.session.phase };
     log(`p4 joined again by code after the verdict: room ${report.steps.rejoin.roomPhase}, seated ${report.steps.rejoin.seated}, match_start ${report.steps.rejoin.matchStart}, session ${report.steps.rejoin.sessionPhase}`);
-    if (!report.steps.rejoin.seated || report.steps.rejoin.matchStart || report.steps.rejoin.sessionPhase !== 'lobby') failures.push(`rejoin: ${JSON.stringify(report.steps.rejoin)}`);
+    if (!report.steps.rejoin.seated || report.steps.rejoin.matchStart || report.steps.rejoin.sessionPhase !== SESSION_PHASE.lobby) failures.push(`rejoin: ${JSON.stringify(report.steps.rejoin)}`);
     await Promise.all(survivors().map((entry) => entry.headless.room.setReady(true)));
     await until(() => roomSnapshot()?.players.filter((player) => player.connected).every((player) => player.ready), 'everyone ready again', 10_000);
     await p1.headless.room.start();
