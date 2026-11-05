@@ -25,7 +25,9 @@ assert.match(state, /hitWater: shellHitsWater\(world, hit\),/, 'shell:expired ca
 const fx = readFileSync(new URL('../fx/effects.ts', import.meta.url), 'utf8');
 assert.match(fx, /function waterSplash\(/, 'FX owns a water splash');
 // the destruction-fx lane's burst (fx/blastRecipes.ts) takes the same water flag: a water burst, else the ground's
-assert.match(fx, /if \(e\.hitTerrain\) \{\s*const water = !!e\.hitWater \|\| shellPointOnWater\(_v3\);\s*if \(mediaGroundHit\(_v3, [^,]+, water, arrival\)\) \{[^}]*\}\s*if \(water\) waterSplash\(_v3, e\.caliberMm \|\| 76, false\);\s*else dirtPlume\(_v3, e\.caliberMm \|\| 76, false\);/,
+// (2026-11-02 audit U31, round 2: the ground hit also takes the round's noBurst flag, and a round whose hull drew its burst
+// draws no fallback plume)
+assert.match(fx, /if \(e\.hitTerrain\) \{\s*const water = !!e\.hitWater \|\| shellPointOnWater\(_v3\);(?:\s*\/\/[^\n]*)*\s*if \(mediaGroundHit\(_v3, [^,]+, water, arrival(?:, [^)]+)?\)\) \{[^}]*\}\s*(?:if \(burstDrawn\) return;\s*)?if \(water\) waterSplash\(_v3, e\.caliberMm \|\| 76, false\);\s*else dirtPlume\(_v3, e\.caliberMm \|\| 76, false\);/,
   'expired shells on water splash instead of throwing dirt');
 assert.match(fx, /case 'terrain':\s*if \(mediaGroundHit\(pos, [^,]+, shellPointOnWater\(pos\), null\)\) break;\s*if \(shellPointOnWater\(pos\)\) waterSplash\(pos, caliberMm, caliberMm >= 105\);\s*else dirtPlume\(pos, caliberMm, caliberMm >= 105\);/,
   'direct terrain impacts respect the water mask');
