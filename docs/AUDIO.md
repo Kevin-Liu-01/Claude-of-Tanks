@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 566 sound-effect assets, 1065 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 28.1 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 17 crew radio packs × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.45 MB per language (52.45 MB in all) | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
+| 38 crew radio packs (17 national, 21 for languages with no country in the game) × 190 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | 2.69–3.64 MB per language (122.04 MB in all) | only the crew's pack, one at a time: switching crews releases the pack left (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -1229,6 +1229,41 @@ already approved (the Afrikaans "Laai nou." came back a different attempt).
   decodes at 16 kHz (the radio passes nothing above 4.6 kHz), about 40 MB
   where 24 kHz would have been 60. The lane cost 128,897 credits (119,731
   speech, 9,166 transcription) against its 3M cap.
+- **2026-11-04, crews in languages with no country in the game (lane
+  crew-languages-270).** The owner: "add a bunch more crew radio lines for
+  languages that might not have a country in the game but still can be applied
+  as crew voices for international gamers! itd be a great feature and def one
+  wed want to "flex" about." Twenty-one packs, each all 190 lines and 371
+  takes, which no hull speaks by default and any player can choose
+  (`WORLD_CREW_LANGUAGES`; the runtime section above). One writer per language
+  worked from the en-US master, each line's moment and two or three shipped
+  packs of nearby armies, take n the same call as en-US take n; a validator
+  held the ids, take counts, script, digits and doubled phrases. Indonesian is
+  `id-ID`: `id` is the script's line-id key and overwrote every line's id.
+  Casting kept Voice Library voices whose own language is the crew's (a
+  multilingual English voice lists Finnish or Greek as verified) and forced
+  the language on the transcriber (auto-detection reads spoken Urdu as Hindi).
+  One build process was ffmpeg-bound (`masterTake` runs five synchronous
+  ffmpeg a take; about 14 takes a minute at a load of 700), so six builds ran
+  side by side, each with its own state file (`COT_VOICE_STATE`), and their
+  rows were merged. An independent transcript of all 7,791 takes flagged 59;
+  three fresh transcripts each then sorted them. 21 takes were reworded and
+  rebuilt, and each now reads as written: a Spanish "Motor dañado" said twice,
+  a laugh before the Persian "نزدیک بود" and a groan before "Paso a través",
+  the Greek "Έβαλαν γκολ" heard as a name, the Hungarian "Töltök" as
+  "Csütörtök" (Thursday), the Czech "Za cílem" as "Za týden" (in a week) and
+  seven Vietnamese calls ("Xe bị lật" came back as the English "Save me
+  luck"). The rest stand: numbers the transcriber writes as digits, the exhale
+  the armour-held lines direct ("steady, exhale"), and sound-alikes a fresh
+  pass hears right. The 21 packs are 2.92–3.64 MB (69.6 MB; all 38 are
+  122.04 MB) and decode at 16 kHz to 38.6–49.0 MB, Urdu (802 s) the longest of
+  the 38. The radio now releases the pack it leaves (`assetLibrary.dropVoice`),
+  so a phone holds one pack however many crews a player tries. The tree's
+  `git ls-files` passed execFileSync's 1 MB default, so the five whole-tree
+  listings (attribution audit, native-playables audit, public-repo hygiene,
+  QA evidence manifest, asset provenance) read up to 64 MB. The lane cost
+  372,951 credits (345,823 speech, 27,128 transcription; 10,368 of it the
+  audition) against its 500k cap.
 - **2026-11-03, the world, the vehicles and the modes (world-sfx-269).** The
   owner: "make a lot better sounds for everything ... all the special
   moodes". The audit (`~/cot-launch-state/streams/world-sfx-269/AUDIT.md`)
@@ -1414,6 +1449,11 @@ re-rolls and a second transcript) is about 9,600.
 crew-lines-269 (69 lines and 20 takes in all 17 packs, 2,652 takes) cost
 128,897 credits: 119,731 of speech, 9,166 of transcription (the build's check,
 its second transcript for repeats and the independent sweep); about 7,600 a
+pack.
+
+crew-languages-270 (21 whole packs, 7,791 takes) cost 372,951 credits: 345,823
+of speech, 27,128 of transcription (the audition 10,368, the six builds, three
+rounds of rewritten takes and the independent sweep); about 17,300 a whole
 pack.
 
 ## Changing or extending it
