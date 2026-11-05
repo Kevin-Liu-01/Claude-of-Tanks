@@ -233,6 +233,25 @@ function addGpsFlirHead(P: AbramsIdentityPort, label: string, w: number, h: numb
 // ---------------------------------------------------------------------------------------------------------------------
 // M1A1 FEP — USMC Firepower Enhancement Package
 
+/**
+ * The top of the M240's receiver cover in the carrier's frame: the centre of the body's vertices within 1 cm of its top.
+ * The body mesh is the receiver and the barrel in one, so the middle of its box lies forward of the receiver, over the
+ * cradle's front yoke (release 268: the sight's rail stood there and crossed the cradle as the gun recoiled;
+ * fleetPassDefault's workingPintleCradle). The barrel and its jacket ride lower than the cover.
+ */
+function receiverCoverCentre(body: THREE.Mesh, carrier: THREE.Object3D): THREE.Vector3 {
+  const toCarrier = new THREE.Matrix4().copy(carrier.matrixWorld).invert().multiply(body.matrixWorld);
+  const position = body.geometry.attributes.position, v = new THREE.Vector3();
+  let topY = -Infinity;
+  for (let i = 0; i < position.count; i++) topY = Math.max(topY, v.fromBufferAttribute(position, i).applyMatrix4(toCarrier).y);
+  const cover = new THREE.Box3();
+  for (let i = 0; i < position.count; i++) {
+    v.fromBufferAttribute(position, i).applyMatrix4(toCarrier);
+    if (v.y >= topY - 0.01) cover.expandByPoint(v);
+  }
+  return new THREE.Vector3((cover.min.x + cover.max.x) / 2, topY, (cover.min.z + cover.max.z) / 2);
+}
+
 /** The loader's thermal weapon sight rides his M240 (on the pitching gun, so it follows the working station). */
 function addLoaderThermalSight(P: AbramsIdentityPort): void {
   const station = P.turretG.children.find((child) => child.name.startsWith('fitting_abramsLoaderM240_'));
@@ -243,11 +262,7 @@ function addLoaderThermalSight(P: AbramsIdentityPort): void {
   // stale frame, the sight sat 1.33 m under the turret floor, inside the hull, where the roof net read it as the loader's
   // weapon sweeping below the roof everywhere round its station)
   carrier.updateWorldMatrix(true, true);
-  const bodyBox = new THREE.Box3().setFromObject(body);
-  const toCarrier = new THREE.Matrix4().copy(carrier.matrixWorld).invert();
-  // the receiver's top centre and its length, in the carrier's frame
-  const top = new THREE.Vector3((bodyBox.min.x + bodyBox.max.x) / 2, bodyBox.max.y, (bodyBox.min.z + bodyBox.max.z) / 2)
-    .applyMatrix4(toCarrier);
+  const top = receiverCoverCentre(body as THREE.Mesh, carrier);
   const sight = new THREE.Group();
   sight.name = 'fepLoaderThermalSight';
   const parts: Array<[THREE.BufferGeometry, THREE.Material]> = [
