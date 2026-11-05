@@ -81,11 +81,11 @@
   glacis cuts g1-g4 changed nothing (11/29, 0.747). The trunnion was the datum fault, not the armour.
 - Round 5 (ec4bdb9613): trunnion 2.30 -> 2.12, the lintel deepened to close the gap over the gun. Untrimmed at X: 15/29
   fair, mean 0.659 (fair/levers/o195-low-b0).
-- Trim (53a7320c33): the 2A83's rounds at 0.946 (APFSDS 740 -> 700, HEAT 643, HE 851): 16/29 fair, mean 0.639
-  (o195-low-c2), the smallest trim that meets the mean and the most pairs fair of ten trials (HP 2,400-2,700, damage
-  680-700, reload 9-9.5 and their pairs: 12-16/29). Two thirds fair is out of reach of every uniform lever: the pairs split
-  by penetration and alpha (the Challenger 3 TD pair under 0.1, the Oplots, ZTZ-20s and PT-84 Orzeł at 1.0), and the
-  module's 320 mm cheeks are penetrated by every peer, so an armour cut moves nothing.
+- Trim (53a7320c33): the 2A83's rounds at 0.946 (APFSDS 740 -> 700, HEAT 643, HE 851). On the range's 6 seeds 16/29
+  fair, mean 0.639 (o195-low-c2), the most pairs fair of ten trials (HP 2,400-2,700, damage 680-700, reload 9-9.5 and their
+  pairs: 12-16/29). On 24 seeds (lever-row --seeds=24) the 6-seed spread proves mostly noise: 700 gives 20/29 fair, mean
+  0.561 (o195-low-24-d0-was700), 720 gives 18/29 (0.574), untrimmed 740 gives 17/29 (0.586). 700 is the smallest damage
+  trim meeting both of Main's terms. No armour cut: the module's 320 mm cheeks are penetrated by every peer already.
 
 ## Publication receipt (only if requested)
 

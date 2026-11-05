@@ -12,7 +12,6 @@ import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhou
 import { crewBox, modernArmor, type ShellSpec } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { MOLOT_FRAME, OBJECT195_FRAME, OBJECT292_FRAME, T14_152_GUN_FRAME } from './russia152Frames.ts';
-import { T80U_X_GUN_PITCH_BY_YAW_DEG } from './t80uXArmor.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -53,8 +52,10 @@ const object292 = variant('object292', 't80u', 'Object 292', 'USSR', 'modern');
 Object.assign(object292, { hp: 2500, weightTons: 46, enginePowerHp: 1100, topSpeedKmh: 70, gunElevationDeg: 15, gunDepressionDeg: 5 });
 // the T-80U X hull's 3.36 m stern to the muzzle; the box's roof is the structural roof
 Object.assign(object292.dims, { overallLengthM: 3.36 + OBJECT292_FRAME.muzzleZ, heightM: OBJECT292_FRAME.ringY + OBJECT292_FRAME.boxRoof });
-// the T-80U X casting's measured depression over the engine deck (t80uXArmor.ts) until the gate's sweep measures the LP-83's
-object292.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
+// the LP-83's measured depression (tools/gun-depression-sweep.mjs at 26 mm): the T-80U X's own stops, shallower over the
+// stern, where the LP-83's sleeve clamps pass the empty drum cradles (above level from 169 to 176 degrees)
+object292.gunPitchByYawDeg = [[0, -5], [134, -5], [142, -3.6], [143, -3.5], [155, -3.1], [156, -2.8], [161, -0.8], [162, -0.5],
+  [164, -0.3], [168, -0.2], [169, 0.8], [170, 1.2], [175, 1.3], [176, 1], [178, -0.3], [180, -0.3]];
 object292.gun = {
   // 9 s: the six a minute (10 s) was the design rate of a loading mechanism the prototype never got (GlobalSecurity,
   // militaryrussia: "not installed"), so the 9 s breaks no real figure
@@ -108,6 +109,10 @@ molot.armor = modernArmor({
   tw: 1.20, tFrontZ: 1.30, tRearZ: -1.70, tH: 0.48,
   cheek: [560, 700, 950], tSide: [160, 180, 260], tRear: 50, tRoof: 50, mantlet: [400, 420, 520],
 });
+// the 2A73's measured depression (tools/gun-depression-sweep.mjs at 26 mm): shallower over the rear quarters, where the
+// tube passes the hull's fittings (hullDetail)
+molot.gunPitchByYawDeg = [[0, -6], [133, -6], [134, -5], [135, -4.3], [136, -4], [143, -2.9], [147, -2.5], [151, -2.5],
+  [155, -2.7], [156, -3], [157, -3.6], [159, -6], [180, -6]];
 // the Object 292's plain green (camoPolicy national_ru)
 molot.visual = { scheme: 'solid', base: '#44553a', weather: '#4f6144', patches: [], marking: 'number', number: '477',
   trackWidthM: 0.58 };
@@ -127,9 +132,9 @@ Object.assign(object195.dims, { hullLengthM: OBJECT195_FRAME.hullFrontZ - OBJECT
   overallLengthM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.hullRearZ, widthM: 3.56, heightM: 2.62 });
 object195.gun = {
   ...object195.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.29, aimTimeS: 1.75, soundProfile: '2a83',
-  // Main 2026-11-04: tier X with the smallest trim that brings its mean to 0.65 or under. The T-14 152's rounds at 0.946
-  // (740 -> 700, the 259 range: 16/29 fair, mean 0.639; untrimmed 15/29, 0.659): its spread is pair by pair (the guns
-  // fire level, the 152 mm penetrates every peer and every peer the module), which no HP, damage or reload trim narrows
+  // Main 2026-11-04: tier X with the smallest trim that brings its mean to 0.65 or under with two thirds of its pairs
+  // fair. The T-14 152's rounds at 0.946 (740 -> 700): on the 259 range's 24 seeds 20/29 fair, mean 0.561 (720: 18/29,
+  // 0.574; untrimmed: 17/29, 0.586); on its 6 seeds 16/29, 0.639, the least spread of ten HP, damage and reload trims
   shells: rounds('2A83', [[1000, 920, 840], 700, 18], [860, 643, 8], [851, 10]),
 };
 object195.armor = modernArmor({
