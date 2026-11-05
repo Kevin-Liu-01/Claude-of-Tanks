@@ -12,8 +12,8 @@
  * the hull the session's player, so the watcher's input enters the step as any player's does and the controller never
  * also writes it; leaveWatchSeat gives the controller back, which resumes from the hull's live state (pose, hull,
  * rounds, reload, modules; its resume() restarts what it measures between ticks and moves its own record's clocks on by
- * the park, so the stretch it was parked is no tick of its own, and the watcher's rounds still in flight are not its
- * own). A seat's
+ * the park, so the stretch it was parked is no tick of its own, looks at its target afresh after any park that could
+ * have hidden a move or a round, and the watcher's rounds still in flight are not its own). A seat's
  * `bot` flag never changes: the mode controller keeps reading the human seat as the human's (its one life in
  * Frontline, the Horde's survivors) and every other seat as a bot's, so taking control bends no mode rule.
  *
@@ -84,8 +84,9 @@ function parkBrain(brain: unknown, timeS: number | undefined): void {
  * A controller handed a hull back restarts what it measures between its own ticks from the hull as it stands (ai.ts
  * resume, 2026-11-02 audit M7): parked, it was not stepped, and the gap would read as one tick of its own (the hull
  * the watcher lost as one burst of damage, the ground covered as one tick's progress, the watcher's shot as its own,
- * the park as a silence of its gun). `timeS` is the battle's clock at the hand-back; `firstShellId` the battle's next
- * shell id, so a round the watcher fired before Leave that lands after it is not reported to the bot as its own.
+ * the park as a silence of its gun, the target it could not watch as still and silent). `timeS` is the battle's clock
+ * at the hand-back; `firstShellId` the battle's next shell id, so a round the watcher fired before Leave that lands
+ * after it is not reported to the bot as its own.
  */
 function resumeBrain(brain: unknown, timeS: number | undefined, firstShellId: number | undefined): void {
   (brain as WatchSeatBrain | null)?.resume?.(timeS, firstShellId);

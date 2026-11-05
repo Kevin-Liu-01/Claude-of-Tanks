@@ -158,10 +158,10 @@ interface AiController {
   park(timeS?: number): void;
   /**
    * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat) or after a revive:
-   * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), and after a
-   * park the clocks of its own record (its last round, its last penetration) move on by the park's length. `timeS` is
-   * the match clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not
-   * this bot's).
+   * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), after a
+   * park the clocks of its own record (its last round, its last penetration) move on by the park's length, and its view
+   * of its target (stillness, silence) starts again unless the park could hide nothing from it. `timeS` is the match
+   * clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not this bot's).
    */
   resume(timeS?: number, firstShellId?: number): void;
   debugInfo(): AiControllerDebugInfo;
@@ -721,6 +721,12 @@ const PEN_DENIED_FLANK_S = 8;
 // hull has held still and whose gun has stayed silent this long is pressed to a point-blank side aspect.
 const PASSIVE_TARGET_STILL_S = 15;
 const PASSIVE_TARGET_SILENT_S = 15;
+// What one look at the target counts (updateTargetActivity): a hull below these rates is still, and a reload that jumps
+// by more than TARGET_SHOT_JUMP_S between looks is a round fired. resume() keeps the view through a park only as long
+// as these looks could have seen nothing it missed (targetViewHeldThroughPark; round 2, U18).
+const TARGET_STILL_MPS = 0.5;
+const TARGET_STILL_YAW_RATE = 0.05;
+const TARGET_SHOT_JUMP_S = 1;
 const PASSIVE_PRESS_NO_PEN_S = 15;     // this bot's own shells have not penetrated it for this long
 const PASSIVE_PRESS_STANDOFF_M = 70;   // the press point's distance from the target
 const PASSIVE_PRESS_ASPECT_RAD = 1.3;  // ~75° off the target's nose: a side plate, not a glacis
@@ -5760,11 +5766,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       prevTargetReloadT = target.combat?.reload?.t ?? 0;
     }
     // a hull this bot's ram run is pushing has not moved itself (see RAM_CONTACT_HOLD_S)
-    const still = (Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05)
+    const still = (Math.abs(target.state.speed ?? 0) < TARGET_STILL_MPS
+      && Math.abs(target.state.yawRate ?? 0) < TARGET_STILL_YAW_RATE)
       || (ramming && timeS < ramContactUntilS && ramContactId === target.id);
     targetStillS = still ? targetStillS + dt : 0;
     const reloadT = target.combat?.reload?.t ?? 0;
-    if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
+    if (reloadT > prevTargetReloadT + TARGET_SHOT_JUMP_S) targetLastShotS = timeS; // a shell left its gun
     prevTargetReloadT = reloadT;
   }
 
@@ -6871,12 +6878,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // this bot's again (a round with a lower id left the gun while something else had the hull)
   let parkedAtS = NaN;
   let ownShellsFromId = -Infinity;
+  // the target as the bot last saw it when the park began (resume checks it against the target at the hand-back)
+  let parkTargetId: string | null = null;
+  let parkTargetX = 0, parkTargetZ = 0, parkTargetYaw = 0, parkTargetReloadT = 0;
   /**
    * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
-   * The controller is not stepped meanwhile; resume() reads how long the park lasted.
+   * The controller is not stepped meanwhile; resume() reads how long the park lasted and what became of the target.
    */
   function park(timeS?: number): void {
     parkedAtS = timeS !== undefined && Number.isFinite(timeS) ? timeS : NaN;
+    const seen = target && enemyAlive(target) ? target : null;
+    parkTargetId = seen ? seen.id : null;
+    if (!seen) return;
+    parkTargetX = seen.state.pos.x;
+    parkTargetZ = seen.state.pos.z;
+    parkTargetYaw = seen.state.yaw;
+    parkTargetReloadT = seen.combat?.reload?.t ?? 0;
   }
   /**
    * The resume entry point (2026-11-02 audit M7). Watch mode parks a bot's controller while the watcher drives its hull
@@ -6888,23 +6905,34 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * next step, and a leg, crest, cover point or vantage picked where the hull stood is dropped. Windows on match time
    * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. A revive hands the same
    * controller a new hull at its spawn and comes here too (both drivers' revive hooks), with no park.
-   * The clocks that time this bot's own record since an event (its last round, its last penetration, the target's last
-   * shot as it saw it, its last missed round, its search leg's start) stood still with the bot (round 2, U18): they move
-   * on by the park's length (shiftRecordClocks, from park()'s clock to `timeS`), so the watcher's stretch is no silence
-   * of the bot's gun (a stalemate push, a search leg, a passive press) and a short Take and Leave changes nothing. With no
-   * park (a revive) they stay as they are. `firstShellId`, the battle's next shell id at the hand-back, marks the rounds
-   * that are this bot's again: the result of one fired before it (the watcher's, landing after Leave) is not reported
-   * to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the clock news handed over before
-   * the next tick reads. A brain never stepped (the battle opening's hand-off) has no record to move. Allocation-free.
+   * The clocks that time this bot's own record since an event (its last round, its last penetration, its last missed
+   * round, its search leg's start and displacement) stood still with the bot (round 2, U18): they move on by the park's
+   * length (shiftRecordClocks, from park()'s clock to `timeS`), so the watcher's stretch is no silence of the bot's gun
+   * (a stalemate push, a search leg, a passive press) and a short Take and Leave changes nothing. With no park (a
+   * revive) they stay as they are. The bot's view of its target (how long it has held still, how long its gun has been
+   * silent) is no record of the bot's but what it saw, and it saw nothing while parked: it carries on only through a park
+   * that could hide nothing from it (targetViewHeldThroughPark); after any other park, and after a revive, the target is
+   * looked at afresh, as on a new target (lookAtTargetAgain). `firstShellId`, the battle's next shell id at the
+   * hand-back, marks the rounds that are this bot's again: the result of one fired before it (the watcher's, landing
+   * after Leave) is not reported to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the
+   * clock news handed over before the next tick reads. A brain never stepped (the battle opening's hand-off) has no
+   * record to move. Allocation-free.
    */
   function resume(timeS?: number, firstShellId?: number): void {
     clearPendingEvents();
     const clock = timeS !== undefined && Number.isFinite(timeS);
     if (clock) nowS = timeS;
     if (firstShellId !== undefined && Number.isFinite(firstShellId)) ownShellsFromId = Math.max(ownShellsFromId, firstShellId);
-    const parkS = clock && Number.isFinite(parkedAtS) ? Math.max(0, timeS - parkedAtS) : 0;
+    const parked = clock && Number.isFinite(parkedAtS);
+    const parkS = parked ? Math.max(0, timeS - parkedAtS) : 0;
     parkedAtS = NaN;
     if (objectiveTick > 0 && parkS > 0) shiftRecordClocks(parkS);
+    if (target) {
+      if (parked && targetViewHeldThroughPark(parkS)) targetLastShotS += parkS; // its silence as seen runs on from Take
+      else lookAtTargetAgain(nowS);
+      prevTargetReloadT = target.combat?.reload?.t ?? 0;
+    }
+    parkTargetId = null;
     const st = entity.state;
     lastHp = combatHitPoints(entity);
     burstDamage = 0;
@@ -6945,12 +6973,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function shiftRecordClocks(parkS: number): void {
     lastFiredAtS += parkS;       // the stalemate push, the search gate and the settle's starved test
     lastPenAtS += parkS;         // the passive press (PASSIVE_PRESS_NO_PEN_S of its own shells)
-    targetLastShotS += parkS;    // the target's silence as this bot last saw it (targetPassive)
     missLastShotS += parkS;      // the miss streak's settle (missedOut)
     if (searching) {             // a search leg's budget, and a displaced leg's wait, are the bot's driving, not the park
       searchLegStartS += parkS;
       if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
     }
+  }
+  /**
+   * The park could hide nothing from the bot's looks at its target (updateTargetActivity), so what it saw holds: the same
+   * live target, a park no longer than TARGET_SHOT_JUMP_S (a round the looks count leaves a longer reload, which is still
+   * running at the hand-back), the hull where a still one could have stood (TARGET_STILL_* over the park) and its reload
+   * no further from ready than the park's countdown leaves it. A longer park could hold a round fired and reloaded
+   * unseen, or a drive away and back: the view starts again.
+   */
+  function targetViewHeldThroughPark(parkS: number): boolean {
+    if (!target || target.id !== parkTargetId || !enemyAlive(target) || parkS > TARGET_SHOT_JUMP_S) return false;
+    const st = target.state;
+    if (detMath.hypot(st.pos.x - parkTargetX, st.pos.z - parkTargetZ) > TARGET_STILL_MPS * parkS + 1e-3) return false;
+    if (Math.abs(wrapAngle(st.yaw - parkTargetYaw)) > TARGET_STILL_YAW_RATE * parkS + 1e-3) return false;
+    return (target.combat?.reload?.t ?? 0) <= Math.max(0, parkTargetReloadT - parkS) + 1e-3;
+  }
+  /**
+   * The target's activity as at a first look (updateTargetActivity's new-target branch), keeping the target and this
+   * bot's own penetration clock: still for no time, silent from now.
+   */
+  function lookAtTargetAgain(timeS: number): void {
+    targetStillS = 0;
+    targetLastShotS = timeS;
   }
 
   function update(dt: number, timeS: number): void {

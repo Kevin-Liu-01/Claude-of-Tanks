@@ -15,6 +15,11 @@
 // on by its length, and a result of a round that left the gun before the hand-back is not the bot's. Pins: [4] the
 // watcher's rounds landing after Leave leave the bot as if they had never been reported, its own next round counts;
 // [5] a 0.1 s toggle moves the stalemate push by 0.1 s, and the target's silence as the bot saw it runs on.
+// Review round 1: the freeze also carried the bot's view of its target (its stillness and silence) over every park, so a
+// target that drove and fired while the watcher held the hull read as passive a second after Leave. That view is what
+// the bot saw, not its record: [6] it starts again after any park that could have hidden a move or a round (longer than
+// one look's shot threshold, a move, a reload begun) and after a resume with no park (a revive), and runs on through a
+// short, quiet one.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -259,6 +264,51 @@ console.log('[5] a short Take and Leave moves the bot\'s own clocks by the park,
     `the toggle moved the push by its own 0.1 s, not by a fresh silence (${(toggled.atS - plain.atS).toFixed(2)} s later)`);
   ok(toggled.passiveAfter >= toggled.passiveBefore,
     `the target's stillness as the bot saw it runs on (${toggled.passiveBefore} s before the toggle, ${toggled.passiveAfter} s after)`);
+}
+
+console.log('[6] after a park that could have hidden a move or a round, the bot looks at its target afresh');
+// Reproduced on 6db97c221d (the review's probe): the freeze carried the bot's view of its target over any park, so a
+// target that drove and fired while the watcher held the hull read as still and silent for the whole stretch before
+// Take, and as passive about 1 s after Leave (targetPassiveS 13.9 at Leave, 14.9 a second later; the passive press, the
+// ram finish and the low-health stand all read it). The view now holds only through a park that could hide nothing.
+{
+  const RELOAD_S = getSpec('t90am').gun.reloadS;
+  // the bot watches a still, silent target for 14 s with its gun held; `during(enemy, tick)` acts out the park
+  const watched = ({ parkS, during = () => {}, resumeOnly = false }) => {
+    const run = tracedBattle({ gunHeld: true });
+    run.step(14);
+    const before = run.brain.debugInfo().targetPassiveS;
+    if (resumeOnly) run.brain.resume(run.game.timeS); // a hand-back with no park: a revive's (both drivers' hooks)
+    else {
+      takeWatchSeat(run.game, run.bot);
+      const ticks = Math.round(parkS / SIM_DT);
+      for (let i = 0; i < ticks; i++) {
+        run.step(SIM_DT, false);
+        during(run.enemy, i, ticks);
+        if (run.enemy.combat.reload.t > 0) run.enemy.combat.reload.t = Math.max(0, run.enemy.combat.reload.t - SIM_DT);
+      }
+      leaveWatchSeat(run.game);
+    }
+    run.step(1);
+    return { before, after: run.brain.debugInfo().targetPassiveS, targetId: run.brain.targetId };
+  };
+  const fire = (enemy) => { enemy.combat.reload.t = RELOAD_S; };
+  const moved = watched({ parkS: 20, during: (enemy, i, ticks) => {
+    if (i < ticks / 2) { enemy.state.speed = 6; enemy.state.pos.x += 6 * SIM_DT; } else enemy.state.speed = 0;
+    if (i === 30) fire(enemy);
+  } });
+  ok(moved.before >= 13 && moved.after <= 1.1 && moved.targetId === 'enemy',
+    `a 20 s park in which the target drove 60 m and fired: its view restarts (targetPassiveS ${moved.before} s at Take, ${moved.after} s 1 s after Leave)`);
+  const firedInPlace = watched({ parkS: 20, during: (enemy, i) => { if (i === 30) fire(enemy); } });
+  ok(firedInPlace.after <= 1.1,
+    `a 20 s park in which the target fired in place and reloaded by Leave: no trace is left, and the view restarts (${firedInPlace.after} s)`);
+  const shortShot = watched({ parkS: 0.5, during: (enemy, i) => { if (i === 10) fire(enemy); } });
+  ok(shortShot.after <= 1.1, `a 0.5 s park in which the target fired: its reload shows the round, and the view restarts (${shortShot.after} s)`);
+  const shortQuiet = watched({ parkS: 0.5 });
+  ok(shortQuiet.after >= shortQuiet.before,
+    `a 0.5 s park with the target still and silent: the view runs on (${shortQuiet.before} s at Take, ${shortQuiet.after} s after)`);
+  const revived = watched({ resumeOnly: true });
+  ok(revived.after <= 1.1, `a resume with no park (a revive) looks at the target afresh (${revived.before} s before, ${revived.after} s after)`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }
