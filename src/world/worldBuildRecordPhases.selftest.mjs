@@ -1,6 +1,7 @@
 // worldBuildRecordPhases.selftest.mjs — (2026-11-02 audit R1) the world build coordinator's records and releases.
-// 1. A build record is one phase (background → foreground | cancelled; nothing leaves foreground or cancelled): a promoted
-//    build is never cancelled by a later speculation sweep, and a cancelled one is never promoted.
+// 1. A build record is one phase (background → foreground | cancelled; foreground → background once its last demand is let
+//    go, round 2 U26; nothing leaves cancelled): a promoted build is never cancelled by a later speculation sweep while it
+//    is demanded, and a cancelled one is never promoted.
 // 2. A prefetch of a map whose cancelled build is still settling starts the fresh build (it waits for the old one) instead
 //    of being skipped until the old one settles.
 // 3. The paced release reads its keep list at every slice: a world cached while a release runs keeps the resources it

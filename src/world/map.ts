@@ -253,6 +253,12 @@ export interface WorldRuntime {
   /** The felled trees' falls alone (the Studio: its props fall on their own clock, updateProps). */
   advanceToppledVegetation(dt: number): void;
   /**
+   * (round 2 U28) Who advances the felled trees' falls: the world's own update ('frame', a battle's) or the Studio's
+   * timeline ('timeline': advanceDestruction and advanceToppledVegetation), declared by the Studio as it takes the world
+   * and gives it back (studioCrush.ts).
+   */
+  setFallDriver(driver: 'frame' | 'timeline'): void;
+  /**
    * Ground lane (2026-10-08, the FX lane's explosive marks): the cover inside `r` of (x, z) cleared for the rest of the
    * battle and the tall grass laid low in the ring out to 1.6 r — presentation only (no overlay stamp, no lift; the
    * crater law's presentation hole, groundCoverCraters.ts addHole). Call it once per mark; the battle's reset clears it.
@@ -1172,14 +1178,9 @@ function* assembleWorldSteps(
     ) => {
       if (!ob) return false;
       const settled = options?.settled === true;
-      if (isTreeObstacle(ob)) {
-        const toppled = vegetation.crushTree(ob, dx, dz, settled);
-        if (toppled) {
-          ob.crushed = true;
-          ob.dead = true;
-        }
-        return toppled;
-      }
+      // (round 2 U28) the felled-tree owner (felledTrees.ts fell) writes the trunk's flags and fells its canopy: no second
+      // writer here
+      if (isTreeObstacle(ob)) return vegetation.crushTree(ob, dx, dz, settled);
       // DESTRUCTIBLES r1: the overrun speed rides through so debris inherits
       // the hull's velocity (props.ts breakRecord scales the throw).
       if (ob.propIdx != null && props.crushDestructible) {
@@ -1197,6 +1198,11 @@ function* assembleWorldSteps(
       trackMarks.reset(); // item 45: every battle starts on unmarked ground
       // (2026-11-02 audit R2) and on still water and an unpressed sward: the last battle's ripples and the hulls' flattened
       // grass (the press fields) went on into the next battle on a cached world
+      // (round 2 U27, decided) The Studio's reset of its battlefield runs this too (studioCrush.ts: a scene's start, a new
+      // plan, a backward seek past a crush it applied, its exit), as it ran the track marks and the cover holes above before
+      // the audit. Kept on purpose: ripples and the press are transient traces (the sward springs back within seconds), so
+      // a backward seek that kept them would draw the take's later trail where its hulls have not been yet; a cleared field
+      // presses again as the take plays on (the props' presses are replayed, studio.ts pressBetween; the grass's need not be)
       terrain.userData.resetWater?.(); setWater([]);
       tallGrass.pressure?.clear(); tallGrass.pressureFine?.clear();
     },
@@ -1209,6 +1215,7 @@ function* assembleWorldSteps(
       vegetation.advanceToppled?.(dt);
     },
     advanceToppledVegetation: (dt: number) => { vegetation.advanceToppled?.(dt); },
+    setFallDriver: (driver: 'frame' | 'timeline') => { vegetation.setFallDriver?.(driver); },
     spawnPoints,
     /** @returns minimap features; the water split is sampled once per world (the battle's audio reads them mid-fight) */
     getMinimapFeatures: () => {

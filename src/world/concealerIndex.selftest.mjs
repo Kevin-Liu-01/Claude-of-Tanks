@@ -10,15 +10,20 @@
 //     again when the list grew;
 //   - the headless world's crush of every tree fells every canopy and no bush, reading each disc's centre a bounded
 //     number of times, not once per tree;
-//   - the page world's felled-tree owner (felledTrees.ts) the same, and restoreAll stands them all again.
+//   - the page world's felled-tree owner (felledTrees.ts) the same, and restoreAll stands them all again;
+//   - (round 2 Q13) a disc moved in place after the index was built (a same-length donor swap) is found at its new centre:
+//     the mover tells the index (moveConcealerDisc), and every disc move in the world code goes through it.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createConcealerIndex } from './concealerIndex.ts';
+import { readFileSync } from 'node:fs';
+import * as concealerIndexModule from './concealerIndex.ts';
 import { fellConcealersAt } from '../sim/spotting.ts';
 import { createHeadlessCollisionWorld } from './headlessCollisionWorld.ts';
 import { createFelledTrees } from './felledTrees.ts';
 import { setCircleShape } from './collision.ts';
 import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
+
+const { createConcealerIndex } = concealerIndexModule;
 
 let seed = 0x5eed;
 const rand = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -107,6 +112,29 @@ const treeAt = (i) => [-600 + (i % 60) * 20, -600 + Math.floor(i / 60) * 24];
   assert.ok(concealers.every((d) => !d.dead) && records.every((r) => !r.crushed && !r.dead), 'restoreAll: every canopy and trunk record stands');
   assert.equal(felled.fell(records[7], 1, 0), true, 'a stood tree falls again');
   assert.deepEqual([!!concealers[21].dead, !!concealers[22].dead, !!concealers[23].dead], [true, true, false], 'its canopy with it, not the bush beside');
+}
+
+// ---- (round 2 Q13) an in-place move after the first fell: two trees swap their ground (tidalMangrove.ts displaceSquatter,
+// the list's length unchanged); each canopy is found at its new centre
+{
+  const move = concealerIndexModule.moveConcealerDisc ?? ((disc, x, z) => { disc.x = x; disc.z = z; });
+  const a = { x: 10, z: 10, r: 3, add: 0.08 }, b = { x: 200, z: -40, r: 3, add: 0.08 }, bush = { x: 14, z: 10, r: 2, add: 0.35 };
+  const discs = [a, b, bush];
+  const index = createConcealerIndex(discs);
+  assert.equal(index.fellAt(500, 500), 0, 'a fell far from every disc builds the index');
+  move(a, 200, -40);
+  move(b, 10, 10);
+  assert.equal(index.fellAt(200, -40), 1, 'the disc moved onto the trunk falls with it (before: the index still had it at its old centre)');
+  assert.equal(a.dead, true, 'the moved disc');
+  assert.notEqual(b.dead, true, 'not the one that moved away');
+  assert.equal(index.fellAt(10, 10), 1, 'and the other at its new centre');
+  assert.equal(b.dead, true);
+  assert.notEqual(bush.dead, true, 'the bush stands');
+  // the census: the world code moves a disc only through moveConcealerDisc
+  for (const rel of ['./authoredTreePlacement.ts', './tidalMangrove.ts', './vegetation.ts', './felledTrees.ts', './headlessCollisionWorld.ts']) {
+    const text = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /\b(concealer|disc)\.(x|z)\s*[-+*/]?=[^=]/, `${rel}: no disc centre written past moveConcealerDisc`);
+  }
 }
 
 console.log('concealerIndex.selftest: a felled tree\'s canopy found in constant time, the same discs as the scan, in both worlds');

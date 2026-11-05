@@ -21,16 +21,35 @@ export interface ConcealerIndex {
   fellAt(x: number, z: number): number;
 }
 
+/** (round 2 Q13) Each indexed disc's index: a disc moved through moveConcealerDisc marks it stale. A disc is one world's. */
+const indexOfDisc = new WeakMap<object, { stale: boolean }>();
+
+/**
+ * (round 2 Q13) Move a concealment disc's centre (a tree relocated with its canopy: authoredTreePlacement.ts relocate,
+ * tidalMangrove.ts moveTidalTree). The index buckets discs by centre and re-indexes when the list's length changes; an
+ * in-place move keeps the length (a donor swap moves two discs), so the mover tells the index here. Every disc move goes
+ * through this (concealerIndex.selftest's census).
+ */
+export function moveConcealerDisc(disc: { x: number; z: number }, x: number, z: number): void {
+  disc.x = x;
+  disc.z = z;
+  const index = indexOfDisc.get(disc);
+  if (index) index.stale = true;
+}
+
 /** The world's discs by their centre. Built at the first fell (after the world's build placed and trimmed them), and
- *  again if the list's length changed since. */
+ *  again if the list's length changed or a disc moved (moveConcealerDisc) since. */
 export function createConcealerIndex(concealers: readonly ConcealerDisc[]): ConcealerIndex {
   let cells: Map<number, ConcealerDisc[]> | null = null;
   let indexedLength = -1;
+  const state = { stale: false };
 
   function build(): Map<number, ConcealerDisc[]> {
     const map = new Map<number, ConcealerDisc[]>();
+    state.stale = false;
     for (let i = 0; i < concealers.length; i++) {
       const disc = concealers[i]!;
+      indexOfDisc.set(disc, state);
       const key = Math.floor(disc.x / CELL_M) * ROW + Math.floor(disc.z / CELL_M);
       const cell = map.get(key);
       if (cell) cell.push(disc);
@@ -41,7 +60,7 @@ export function createConcealerIndex(concealers: readonly ConcealerDisc[]): Conc
   }
 
   function fellAt(x: number, z: number): number {
-    if (!cells || indexedLength !== concealers.length) cells = build();
+    if (!cells || state.stale || indexedLength !== concealers.length) cells = build();
     const ix = Math.floor(x / CELL_M), iz = Math.floor(z / CELL_M);
     let felled = 0;
     for (let dx = -1; dx <= 1; dx++) {

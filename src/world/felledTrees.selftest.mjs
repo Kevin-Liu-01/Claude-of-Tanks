@@ -8,7 +8,7 @@
 // fall in a frame. On the owner, with a plain trunk record and concealment discs:
 //   - fell: the tree, its trunk record (crushed, dead) and its canopy's disc (dead) together; a bush's disc beside stays;
 //   - restoreAll: all three stand again, the tree at its placement, never a crater's lift;
-//   - one driver a frame: the frame's update yields to a timeline that drove the falls since its last call;
+//   - one declared driver: the Studio's timeline once it has the world (setDriver), else the frame's update;
 //   - settled: the final pose at the next advance, no fall in between.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -60,18 +60,28 @@ function world() {
   assert.deepEqual(w.tree.mat.elements, w.placement.elements, 'the upright pose is the placement (the crater\'s lift is the follower\'s)');
 }
 
-// ---- one driver a frame: the Studio's timeline drives the falls, the frame's update yields to it
+// ---- one declared driver (round 2 U28; it was a per-call latch): the Studio's timeline drives the falls once it has taken
+// the world, the frame's update moves none of them meanwhile, and the frame drives them again once the timeline leaves
 {
   const timelineOnly = world(), both = world();
-  for (const w of [timelineOnly, both]) w.felled.fell(w.record, 1, 0);
+  for (const w of [timelineOnly, both]) { w.felled.setDriver('timeline'); w.felled.fell(w.record, 1, 0); }
+  assert.equal(both.felled.driver, 'timeline');
   for (let frame = 0; frame < 20; frame++) {
+    both.felled.advance(1 / 60, 'frame'); // the world's own update first in the frame (the first Studio frame's order)
     timelineOnly.felled.advance(1 / 60, 'timeline');
     both.felled.advance(1 / 60, 'timeline');
-    both.felled.advance(1 / 60, 'frame'); // the world's own update in the same frame
   }
   assert.deepEqual(both.tree.mat.elements, timelineOnly.tree.mat.elements, 'the fall runs at the timeline\'s pace, never twice a frame');
+  const paused = both.tree.mat.clone();
+  for (let frame = 0; frame < 5; frame++) both.felled.advance(1 / 60, 'frame'); // a paused Studio: no timeline call
+  assert.deepEqual(both.tree.mat.elements, paused.elements, 'a paused timeline holds the fall: the frame\'s update moves nothing');
+  both.felled.setDriver('frame');
   both.felled.advance(1 / 60, 'frame');
   assert.notDeepEqual(both.tree.mat.elements, timelineOnly.tree.mat.elements, 'with the timeline gone the frame drives the fall again');
+  both.felled.advance(1 / 60, 'timeline');
+  const framed = both.tree.mat.clone();
+  both.felled.advance(1 / 60, 'timeline');
+  assert.deepEqual(both.tree.mat.elements, framed.elements, 'and a stray timeline call moves nothing');
 }
 
 // ---- settled (a late joiner's destroyed list): the final pose at the next advance, no fall in between

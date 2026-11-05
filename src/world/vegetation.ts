@@ -12,7 +12,7 @@ import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.t
 import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone, type HeightField, type TerrainPlacementSampler } from './terrain.ts';
-import { createFelledTrees } from './felledTrees.ts';
+import { createFelledTrees, type FallDriver } from './felledTrees.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
@@ -502,8 +502,6 @@ export function outlandAdoptable(x: number, z: number, reachM = OUTLAND_ADOPT_M)
 
 export interface TreeObstacle extends CollisionRecord {
   treeIdx: number;
-  _pressS?: number;
-  _pressT?: number;
 }
 
 interface ConcealmentDisc extends VegetationDisc {
@@ -555,6 +553,8 @@ export interface VegetationRuntime {
   resetToppled(): void;
   /** Step only the felled trunks' falls by `dt` (update runs them; the Scene Studio runs them on its timeline). */
   advanceToppled(dt: number): void;
+  /** (round 2 U28) Who advances the falls: this update ('frame') or the Studio's timeline (advanceToppled). */
+  setFallDriver(driver: FallDriver): void;
   _clusters: VegetationDisc[];
   /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
   _standOutline(index: number, x: number, z: number): number;
@@ -9283,8 +9283,8 @@ function* vegetationBuildSteps(
   // slot plumbing (writeTreeSlot handles the ranged GPU uploads), so the
   // felled trunk persists as set dressing exactly where it dropped.
   // (2026-11-02 audit M9) the felled-tree transition (felledTrees.ts): the tree, its trunk's records and its canopy's
-  // concealment discs fall and stand together; its upright pose is its placement before any crater lift; one driver a
-  // frame advances a fall (the Studio's timeline, else this update)
+  // concealment discs fall and stand together; its upright pose is its placement before any crater lift; one declared
+  // driver advances the falls (this update, or the Studio's timeline while it has the world: setFallDriver)
   const felledTrees = createFelledTrees<TreeRecord>({
     trees, records: treeObstacles, concealers, heightField,
     write: (t) => {
@@ -9301,14 +9301,10 @@ function* vegetationBuildSteps(
     return felledTrees.fell(ob, dx, dz, settled);
   }
   function resetToppled(): void {
+    // (2026-11-02 audit M6; round 2 U13) a hull's press on a trunk is its battle's own ledger (sim/crushPress.ts), cleared
+    // at each battle start (game/state.ts resetBattleSession) and made per match by the authority: no press state lives
+    // on the trunk records, so the reset is the felled trees' alone
     felledTrees.restoreAll();
-    // (2026-11-02 audit M6) nothing reads these two fields any more: a hull's press on a trunk is its battle's own ledger
-    // (sim/crushPress.ts), which the solo step clears at each battle start (game/state.ts resetBattleSession) and the
-    // authority makes per match. These writes are dead and go with the fields in the press cleanup (round two).
-    for (const ob of treeObstacles) {
-      ob._pressS = 0;
-      ob._pressT = -1e9;
-    }
   }
 
   const grassSelection: {
@@ -9892,7 +9888,7 @@ function* vegetationBuildSteps(
     return batch.trees.length;
   }
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, groundCoverSealSteps, treeObstacles, concealers,
-    crushTree, resetToppled, advanceToppled: (dt: number) => felledTrees.advance(dt, 'timeline'), _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, advanceToppled: (dt: number) => felledTrees.advance(dt, 'timeline'), setFallDriver: (driver: FallDriver) => felledTrees.setDriver(driver), _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _seeThrough: () => ({ on: seeThrough, sweeps: occlusionSweeps, sniperTarget: sniperFadeTarget, crownReach: uCrownNearReach.value,
       shrubReach: uShrubNearReach.value, nearSee: uCotNearSee.value }),
     _woodsMask: woodsMask,

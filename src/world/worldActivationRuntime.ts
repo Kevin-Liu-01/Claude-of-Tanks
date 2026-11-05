@@ -100,6 +100,12 @@ interface ActivationRequest {
   state: ActivationRequestState;
   /** The world this request warms, once resolved. */
   world: object | null;
+  /**
+   * (round 2 U26) What the request puts back the moment it is superseded, not when it next wakes: its demand on the
+   * build (the build's last demand let go returns it to background) and its warm's lift (the world hidden again). Before,
+   * a superseded world stayed lifted and drawn over the Garage until its pending cloud or frame wait resolved.
+   */
+  standDown: (() => void) | null;
 }
 
 /**
@@ -180,6 +186,10 @@ export interface WorldActivationRuntime<
   readonly resourceLimits: WorldBuildCoordinator<World>['resourceLimits'];
   readonly prefetchStats: WorldPrefetchStats;
   readonly lastRelease: WorldBuildCoordinator<World>['lastRelease'];
+  /** (round 2 U26) Whether an ensure of `mapId` would reuse its cached world now (the class owner's, with no side effect). */
+  isReusable(mapId: string): boolean;
+  /** (round 2 U26) The build id of every resident world (the probes' residency census). */
+  residentIds(): string[];
   loadModule(): ReturnType<WorldBuildCoordinator<World>['loadModule']>;
   enforceCacheBudget(): void;
   prefetch(mapId: string, options?: { intent?: boolean; pace?: 'background' | 'loading' }): Promise<World | null> | null;
@@ -235,10 +245,14 @@ export function createWorldActivationRuntime<
   // (2026-11-02 audit R1) the latest activation request: an ensure, a direct activate or a switchMap takes the next ticket
   let activationTicket = 0;
   let latestRequest: ActivationRequest | null = null;
+  // (round 2 U26) the newest request that published a trace: an older request never overwrites a newer one's in the slot
+  let publishedTicket = 0;
   const supersedeActivations = (): void => {
     activationTicket += 1;
-    if (latestRequest && (latestRequest.state === 'resolving' || latestRequest.state === 'warming')) {
-      moveActivationRequest(latestRequest, 'superseded');
+    const superseded = latestRequest;
+    if (superseded && (superseded.state === 'resolving' || superseded.state === 'warming')) {
+      moveActivationRequest(superseded, 'superseded');
+      superseded.standDown?.();
     }
     latestRequest = null;
   };
@@ -354,12 +368,16 @@ export function createWorldActivationRuntime<
     props?: object | null;
   };
 
-  const createStageMarker = (trace: WorldActivationTrace): {
+  const createStageMarker = (trace: WorldActivationTrace, ticket: number): {
     mark(stage: WorldActivationStage): void;
     complete(): void;
     fail(error: NonNullable<WorldActivationTrace['error']>): void;
   } => {
     const publish = (): void => {
+      // (round 2 U26) the one trace slot (main.ts window.__WORLD_LOAD) holds the newest request's: a superseded request
+      // settling after a later one published keeps its trace to itself
+      if (ticket < publishedTicket) return;
+      publishedTicket = ticket;
       try {
         options.publishActivationTrace?.({
           ...trace,
@@ -421,9 +439,12 @@ export function createWorldActivationRuntime<
     cached: World | null,
     trace: WorldActivationTrace,
     onProgress: ProgressListener | null,
+    holdDemand: (release: () => void) => void,
   ): Promise<World> => {
     if (cached) return cached;
     const request = coordinator.beginBuild(id, onProgress);
+    // (round 2 U26) the activation's demand on the build, let go when the activation is superseded or settles
+    if (typeof request.release === 'function') holdDemand(request.release);
     try {
       const built = await request.promise;
       trace.buildDetail = { ...request.stageTimings };
@@ -551,7 +572,7 @@ export function createWorldActivationRuntime<
     const baseId = mapId || pendingMapId;
     const id = activationOptions?.terrainVariant ? `${baseId}#${activationOptions.terrainVariant}` : baseId;
     supersedeActivations();
-    const request: ActivationRequest = { ticket: activationTicket, id, state: 'resolving', world: null };
+    const request: ActivationRequest = { ticket: activationTicket, id, state: 'resolving', world: null, standDown: null };
     latestRequest = request;
     coordinator.cancelBackgroundExcept(id);
     // (audit R1) a world built under another quality class is retired here (it builds afresh; on screen, it stays until
@@ -569,7 +590,7 @@ export function createWorldActivationRuntime<
       startedAt,
       stageIntervals: [{ stage: 'build', startTime: startedAt }],
     };
-    const timer = createStageMarker(trace);
+    const timer = createStageMarker(trace, request.ticket);
     const live = (): boolean => request.ticket === activationTicket;
     /**
      * (audit R1) After every wait: a later request supersedes this one, which settles without presenting — with the world
@@ -587,7 +608,7 @@ export function createWorldActivationRuntime<
      * lifted: every built world is in the scene hidden (map.ts, the coordinator) and the residency hides a dormant one, so
      * a world nobody presents is hidden again — unless a later request is warming this same world (its warm owns it now).
      */
-    const standDown = (): void => {
+    const hideWarmed = (): void => {
       const warmed = request.world as World | null;
       if (!warmed || request.state === 'activated') return;
       if (warmed === current && !dormant) return;
@@ -595,8 +616,21 @@ export function createWorldActivationRuntime<
         && latestRequest.state === 'warming') return;
       warmed.group.visible = false;
     };
+    let releaseDemand: (() => void) | null = null;
+    // (round 2 U26) run by supersedeActivations the moment a later request supersedes this one, and again (idempotent)
+    // when it settles
+    const standDown = (): void => {
+      releaseDemand?.();
+      releaseDemand = null;
+      hideWarmed();
+    };
+    request.standDown = standDown;
     try {
-      const next = await resolveWorld(id, cached, trace, onProgress);
+      const next = await resolveWorld(id, cached, trace, onProgress, (release) => {
+        // superseded while its build was being looked up: the demand goes at once
+        if (live()) releaseDemand = release;
+        else release();
+      });
       if (supersededBy(next)) {
         timer.complete();
         return next;
@@ -638,14 +672,19 @@ export function createWorldActivationRuntime<
       return next;
     } catch (error) {
       if (request.state === 'resolving' || request.state === 'warming') moveActivationRequest(request, 'failed');
+      // (round 2 U26) a superseded request settles as superseded, whatever its abandoned work threw since (the build a
+      // later entry on another battlefield cancelled, BUILD_MOVES): its callers decide by the supersession and their own
+      // ownership (WorldActivationSupersededError), never by a stale prefetch's cancellation
+      const thrown = request.state === 'superseded' && !(error instanceof WorldActivationSupersededError)
+        ? new WorldActivationSupersededError(id) : error;
       let detail = { name: 'Error', message: 'Unprintable activation error' };
       try {
-        detail = error instanceof Error
-          ? { name: error.name, message: error.message }
-          : { name: 'Error', message: String(error) };
+        detail = thrown instanceof Error
+          ? { name: thrown.name, message: thrown.message }
+          : { name: 'Error', message: String(thrown) };
       } catch { /* arbitrary thrown values need not be printable */ }
       timer.fail(detail);
-      throw error;
+      throw thrown;
     } finally {
       standDown();
       releaseHold();
@@ -662,6 +701,8 @@ export function createWorldActivationRuntime<
     resourceLimits: coordinator.resourceLimits,
     prefetchStats: coordinator.stats,
     get lastRelease() { return coordinator.lastRelease; },
+    isReusable: (mapId) => coordinator.reusable(mapId),
+    residentIds: () => coordinator.residentIds(),
     loadModule: () => coordinator.loadModule(),
     enforceCacheBudget: () => coordinator.enforceCacheBudget(),
     prefetch: (mapId, prefetchOptions) => {

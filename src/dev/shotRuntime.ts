@@ -138,6 +138,8 @@ interface RuntimeShotWorld extends ShotWorld, CaptureWorld {
   };
   setSniperFade(value: number, immediate: boolean, fovDeg: number, aimDistM: number): void;
   setWindTime(timeS?: number): void;
+  /** map.ts WorldRuntime: every felled tree, broken prop and battle trace of the last battle stood again. */
+  resetDestructibles?(): void;
 }
 
 interface RuntimeShotHud extends ShotHud {
@@ -272,6 +274,9 @@ async function ensureShotWorld(
   context.setWorldDormant(false);
   context.setCamoBiome(mapId);
   context.applyCamoPatterns();
+  // (round 2 U28) a still's battle starts from an intact world, as a battle does (soloBattleStartRuntime.ts): setupBattle
+  // leaves a world that owns its destruction to its own reset, so a shot after a battle kept that battle's felled trees
+  world.resetDestructibles?.();
   context.setupBattle(context.game, playerSpecId, world);
   context.resetCombatWarm();
   context.buildShellCards(context.game.player.spec);

@@ -1436,6 +1436,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldBuildCoordinator.selftest.mjs',
     'src/world/worldActivationRuntime.selftest.mjs',
     'src/world/worldActivationLatestWins.selftest.mjs', // 2026-11-02 audit R1: the latest activation presents; a warming world is held
+    // 2026-11-02 audit U26 (round 2): an orphaned build is speculative again, a superseded warm hides its world at once
+    'src/world/worldActivationOrphans.selftest.mjs',
     'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
     'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
     'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset
@@ -2741,6 +2743,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/topple.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
     'src/world/felledTrees.selftest.mjs',
+    // 2026-11-02 audit U28 (round 2): the world's crush owns a felled tree's records and canopy; the Studio declares the falls' driver
+    'src/world/felledTreeOwners.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
     'src/world/concealerIndex.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',

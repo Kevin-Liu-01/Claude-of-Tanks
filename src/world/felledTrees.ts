@@ -10,8 +10,10 @@
 // Here: fell(record) fells the tree, its trunk's records (collision.ts setCrushedRecords, the props' transition) and its
 // canopy's discs (spotting.ts fellConcealersAt's 1 cm law, through concealerIndex.ts: a whole destroyed set restored
 // at once stays linear) together; restoreAll() stands every one
-// of them again; the upright pose is the tree's placement before any crater lift (craterBase), taken at each fall; a fall
-// is advanced by one driver a frame (the Studio's timeline, when it drives one, else the frame's update).
+// of them again; the upright pose is the tree's placement before any crater lift (craterBase), taken at each fall; the
+// falls are advanced by one declared driver (round 2 U28: setDriver; the frame's update unless the Studio's timeline has
+// taken the world, studioCrush.ts). It was a per-call latch: the first Studio frame could advance a fall twice, and in a
+// paused Studio the frame's update went on finishing falls the timeline holds.
 import * as THREE from 'three';
 import { setCrushedRecords, type CollisionRecord } from './collision.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
@@ -60,8 +62,11 @@ export interface FelledTrees<T extends FellableTree> {
   fell(record: FellableTreeRecord, dx: number, dz: number, settled?: boolean): boolean;
   /** Every tree, trunk record and canopy disc standing again; no fall in flight. */
   restoreAll(): void;
-  /** Advance the falls by `dt` from `driver`; the frame's update yields to a timeline that drove them since its last call. */
+  /** Advance the falls by `dt` from `driver`: only the declared driver's calls move them. */
   advance(dt: number, driver: FallDriver): void;
+  /** (round 2 U28) Declare who advances the falls ('frame' until a timeline takes the world, and again once it leaves). */
+  setDriver(driver: FallDriver): void;
+  readonly driver: FallDriver;
   /** Falls in flight. */
   readonly falling: number;
   /** (receipts) the falls in flight: each tree, its pivot and the pose it falls from. */
@@ -86,7 +91,7 @@ export function createFelledTrees<T extends FellableTree>(host: FelledTreesHost<
   const _axis = new THREE.Vector3();
   const _m1 = new THREE.Matrix4();
   const _m2 = new THREE.Matrix4();
-  let timelineDrove = false;
+  let driver: FallDriver = 'frame';
   const canopy = createConcealerIndex(host.concealers);
 
   function fell(record: FellableTreeRecord, dx: number, dz: number, settled = false): boolean {
@@ -109,7 +114,6 @@ export function createFelledTrees<T extends FellableTree>(host: FelledTreesHost<
   function restoreAll(): void {
     host.poseChanged();
     anims.length = 0;
-    timelineDrove = false;
     host.standingChanged(); // trees perf: the righted trees are culled again from the next update
     for (const record of host.records) {
       setCrushedRecords([record], [record], false);
@@ -142,11 +146,17 @@ export function createFelledTrees<T extends FellableTree>(host: FelledTreesHost<
     }
   }
 
-  function advance(dt: number, driver: FallDriver): void {
-    if (driver === 'timeline') timelineDrove = true;
-    else if (timelineDrove) { timelineDrove = false; return; } // the timeline drove the falls since the last frame
+  function advance(dt: number, from: FallDriver): void {
+    if (from !== driver) return; // the other driver's call: the declared one moves the falls
     if (anims.length) step(dt);
   }
 
-  return { fell, restoreAll, advance, get falling() { return anims.length; }, get _falls() { return anims; } };
+  function setDriver(next: FallDriver): void {
+    driver = next;
+  }
+
+  return {
+    fell, restoreAll, advance, setDriver,
+    get driver() { return driver; }, get falling() { return anims.length; }, get _falls() { return anims; },
+  };
 }

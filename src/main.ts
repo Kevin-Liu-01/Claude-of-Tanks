@@ -684,7 +684,6 @@ worldRuntime = createWorldActivationRuntime<
   publishActivationTrace: (trace) => { window.__WORLD_LOAD = trace; },
   publishMinimapTrace: (trace) => { window.__MINIMAP_LOAD = trace; },
 });
-const worldCache = worldRuntime.cache;
 const residentLimits = worldRuntime.resourceLimits;
 const worldPrefetchStats = worldRuntime.prefetchStats;
 if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
@@ -2706,7 +2705,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
     getMapThumb: (mapId: string) => battleBackdrop(mapId),
-    hasCachedWorld: (mapId: string) => !!worldCache.get(mapId),
+    // (round 2 U26) the class owner's answer: a world built under another quality class is rebuilt, not reused
+    hasCachedWorld: (mapId: string) => worldRuntime.isReusable(mapId),
     getWorld: () => {
       const world = currentWorld();
       if (!world) throw new Error('solo battle loading requires an active world');
@@ -4419,7 +4419,7 @@ if (diagnosticsRequested) {
       getSelectedSpecId: () => selectedVehicle.id,
       getWatchController: () => watchOwner.current?.controller ?? null,
       getPedestalCacheIds: () => [...pedestal.cacheIds],
-      getWorldCacheIds: () => [...worldCache.keys()],
+      getWorldCacheIds: () => worldRuntime.residentIds(), // (round 2 U26) build ids, a retired world's under its own
       getResidentLimits: () => ({ ...residentLimits }),
       getBattleVisualPoolStats: () => battleVisualPool.stats(),
       getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),

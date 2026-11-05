@@ -187,6 +187,25 @@ assert.equal(complete.restoreCount, 1, 'desktop return renews the released Garag
 assert.equal(complete.disposeCount, 1, 'cached battle captures do not repeatedly release Garage buffers');
 assert.equal(complete.phase.diagnostics().gpu.suspended, false);
 
+// (round 2 U28) a still's battle starts from an intact world: the world's own reset (map.ts resetDestructibles: felled
+// trees, broken props, the last battle's traces) runs before the shot's setupBattle, on a fresh and on a cached world
+{
+  const fresh = createFixture();
+  const order = [];
+  const switchMap = fresh.context.switchMap;
+  fresh.context.switchMap = async (mapId) => {
+    await switchMap(mapId);
+    fresh.world.resetDestructibles = () => order.push('reset-destructibles');
+  };
+  fresh.context.setupBattle = () => order.push('setup-battle');
+  for (const name of ['battlefield', 'battlefield']) {
+    fresh.setTarget(name);
+    await setShotView(name, fresh.context);
+  }
+  assert.deepEqual(order, ['reset-destructibles', 'setup-battle', 'reset-destructibles', 'setup-battle'],
+    'the last battle\'s felled trees and broken props stand again before each shot\'s battle (before: setupBattle only)');
+}
+
 // Use the real phase GPU owner and real geometry disposal events. Captures on
 // both device policies must renew the suspended phase before reporting ready,
 // otherwise a later battle entry mistakes reuploaded resources for suspended.
