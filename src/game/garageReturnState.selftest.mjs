@@ -17,7 +17,8 @@ function deferred() {
 }
 const flush = async (turns = 12) => { for (let i = 0; i < turns; i += 1) await Promise.resolve(); };
 
-function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle', placement = null, entryScheduler = null } = {}) {
+function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle', placement = null, entryScheduler = null,
+  showGarage = () => {}, transitionRun = null } = {}) {
   const game = createGameState();
   game.phase = phase;
   const announcements = [];
@@ -47,10 +48,10 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
     settings: { isOpen: () => false, close: noop },
     // (emitGaragePhase: the port of old, ignored now that the session's lifecycle announces the phase)
     ui: { setGarageSpots: noop, setGarageSunTrim: noop, emitGaragePhase: noop, hideEndOverlay: noop, exitPointerLock: noop, hideHud: noop,
-      showGarage: noop, poseGarageCamera: noop, startShowroom: noop,
+      showGarage, poseGarageCamera: noop, startShowroom: noop,
       triggerBattle: () => { game.phase = 'battle'; setTimeout(() => setCovering(true), 5); return true; } },
     audio: { ambientOn: noop, playGarageSting: noop },
-    transition: { run: async (work) => { const gate = transitionWork?.(); if (gate) await gate; return work(); } },
+    transition: { run: transitionRun ?? (async (work) => { const gate = transitionWork?.(); if (gate) await gate; return work(); }) },
     restoreGaragePresentation: async () => { observe(); if (restore) return restore(); return { totalMs: 1 }; },
     ...(entryScheduler ? { createEntryScheduler: () => entryScheduler } : {}),
     isBattleEntryPending: () => entryPending,
@@ -254,26 +255,102 @@ const isSuperseded = (by) => (error) => error?.name === 'GarageReturnSupersededE
   assert.equal(main.notices.length, 0);
 }
 
-// main's Leave: a superseded Leave opens no notice; a failed one still does, with its retry (the Leave again).
-{
+// main's Leave, over the real return: a failed one opens the notice with its retry (the Leave again); a superseded one
+// opens none. (round 2 U20) The exit is the return's declared state, not the caller's error: a Leave whose veil was
+// taken over before its work ran (transition.ts AbortError, the return never began) owes the player nothing, and opened
+// the notice over the battle that still had the screen.
+const leaveStatement = (() => {
   const start = mainSource.indexOf('\nconst leaveBattleToGarage = ');
   const end = mainSource.indexOf('\n};\n', start);
   assert.ok(start > 0 && end > start);
-  const leaveStatement = mainSource.slice(start + 1, end + 3);
-  for (const [error, expected] of [
-    [Object.assign(new Error('cut short'), { code: 'garage_return_superseded' }), 0],
-    [new Error('restore failed'), 1],
-  ]) {
-    const notices = [];
-    const leave = runMainStatements(leaveStatement, {
-      onlineMatch: { current: null }, battleEntryLifecycle: { pending: false },
-      garageReturn: { leave: () => Promise.reject(error) },
-      presentGarageReturnFailure: (failure, retry) => { notices.push({ failure, retry }); return Promise.resolve(); },
-      console: { error() {}, info() {}, warn() {} },
-    }, 'leaveBattleToGarage');
-    await leave();
-    assert.equal(notices.length, expected, `${error.message}: ${expected ? 'a notice' : 'no notice'}`);
-  }
+  return mainSource.slice(start + 1, end + 3);
+})();
+function mainLeave(runtime) {
+  const exits = mainExits(runtime);
+  const leave = runMainStatements([exitStatements.replace("import('./ui/garageReturnFailure.ts')", 'loadFailure()'), leaveStatement], {
+    onlineMatch: { current: null }, battleEntryLifecycle: { pending: false }, garageReturn: runtime,
+    console: { error() {}, info() {}, warn() {} },
+    loadFailure: async () => ({ showGarageReturnFailure: (error, retry) => exits.notices.push({ error, retry }) }),
+  }, 'leaveBattleToGarage');
+  return { leave, notices: exits.notices };
+}
+{
+  let failRestore = true;
+  const failed = createFixture({ restore: async () => { if (failRestore) throw new Error('restore failed'); return { totalMs: 1 }; } });
+  const main = mainLeave(failed.runtime);
+  await main.leave();
+  await flush();
+  assert.equal(failed.runtime.state, 'failed');
+  assert.equal(main.notices.length, 1, 'a failed Leave says so');
+  failRestore = false;
+  main.notices[0].retry();
+  for (let index = 0; index < 8 && failed.runtime.state !== 'idle'; index += 1) await flush();
+  assert.equal(failed.runtime.state, 'idle', "its retry (the Leave again) restores the Garage");
+
+  let activate = true;
+  const cut = createFixture({
+    entryScheduler: { isCurrent: () => true, yieldControl: async () => {} },
+    placement: () => { if (activate) { activate = false; transitionAppPhase(cut.game, 'battle', { reason: 'network-activation' }); } },
+  });
+  const cutMain = mainLeave(cut.runtime);
+  await cutMain.leave();
+  await flush();
+  assert.equal(cut.runtime.state, 'superseded');
+  assert.equal(cutMain.notices.length, 0, 'a superseded Leave opens no notice');
+
+  const covered = createFixture({ transitionRun: async () => { throw new DOMException('Transition cover was superseded', 'AbortError'); } });
+  const coveredMain = mainLeave(covered.runtime);
+  await coveredMain.leave();
+  await flush();
+  assert.equal(covered.runtime.state, 'idle', 'the return never began');
+  assert.equal(covered.game.phase, 'battle', 'the battle still has the screen');
+  assert.equal(coveredMain.notices.length, 0, 'and no notice opens over it');
+}
+
+// (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle) take the
+// Leave's exit too: main bound them to a bare garageReturn.leave(), whose failure reached only the room's reportError,
+// so a failed room return froze the Garage with no notice and no Retry.
+{
+  const binding = mainSource.match(/\n\s+returnToGarage: ([^\n]+),\n/)?.[1];
+  assert.ok(binding, "main binds the room's returnToGarage");
+  let failRestore = true;
+  const f = createFixture({ restore: async () => { if (failRestore) throw new Error('restore failed'); return { totalMs: 1 }; } });
+  const notices = [];
+  const room = runMainStatements(exitStatements, {
+    garageReturn: f.runtime,
+    console: { error() {}, info() {}, warn() {} },
+    loadFailure: async () => ({ showGarageReturnFailure: (error, retry) => notices.push({ error, retry }) }),
+  }, `{ returnToGarage: (${binding}) }`);
+  await assert.rejects(room.returnToGarage(), /restore failed/, 'the room still sees the rejection');
+  await flush();
+  assert.equal(f.runtime.state, 'failed');
+  assert.equal(notices.length, 1, 'a failed room return says so over the frozen Garage');
+  assert.equal(typeof notices[0].retry, 'function', 'and offers the return again');
+  failRestore = false;
+  notices[0].retry();
+  for (let index = 0; index < 8 && f.runtime.state !== 'idle'; index += 1) await flush();
+  assert.equal(f.runtime.state, 'idle', "the notice's retry restores the Garage");
+  assert.equal(f.game.phase, 'garage');
+  assert.equal(notices.length, 1);
+}
+
+// (round 2 U20) The context recovery decides from the return's state, never its trace's diagnostics: a handoff that
+// failed (state 'failed'; its trace's presentationUnready is false, since its preparation restored the Garage) was
+// never retried after a context restore, so the Garage stayed frozen under frames the failed state suppresses.
+{
+  let failShow = false;
+  const f = createFixture({ showGarage: () => { if (failShow) { failShow = false; throw new Error('garage ui failed'); } } });
+  assert.equal(await f.runtime.prepare(), true, 'prepared behind the report');
+  failShow = true;
+  await assert.rejects(f.runtime.leave(), /garage ui failed/);
+  assert.equal(f.runtime.state, 'failed', 'the handoff failed');
+  assert.equal(f.runtime.lastTrace.presentationUnready, false, '(its preparation had restored the Garage)');
+  assert.equal(await f.runtime.recoverAfterContextRestore(() => true), true, 'the recovery retries the failed handoff');
+  assert.equal(f.runtime.state, 'idle', 'and hands over a restored Garage');
+  assert.equal(f.runtime.framesSuppressed, false);
+  assert.equal(f.lifecycle.screenPhase, 'garage');
+  // nothing owed: nothing to recover
+  assert.equal(await f.runtime.recoverAfterContextRestore(() => true), false);
 }
 
 // Battle Again whose skipped restore throws (the trigger found no battle): the visible Garage was frozen and its

@@ -601,6 +601,8 @@ export function createGarageReturnRuntime<Visual = object>(
     if (game.phase !== 'garage' || lastTrace !== trace || state !== 'prepared') {
       throw new GarageReturnSupersededError('presentation', 'The prepared Garage was superseded before its handoff.');
     }
+    // (round 2 U20) the report is no longer the screen: a retry of this return (its context recovery) hands it over
+    lastEntryOptions = { preserveRoom: lastEntryOptions.preserveRoom };
     moveTo('handoff', trace);
     try {
       performHandoffSteps(trace, startedAt, markStage);
@@ -694,11 +696,19 @@ export function createGarageReturnRuntime<Visual = object>(
     return enter({ prepareOnly: true }).then(() => state === 'prepared', () => false);
   };
 
+  /**
+   * (round 2 U20) The context recovery decides from the return's state, never its trace's diagnostics (a failed
+   * handoff's trace says its preparation restored the Garage, so it was never retried). Nothing is owed by an idle
+   * return, a Garage prepared behind the report (main restores its GPU; its handoff restores nothing) or a skipped
+   * restore (the next battle's entry owns the screen); a return in flight is waited for; a failed or superseded one is
+   * retried.
+   */
+  const recoveryRetries = (current: GarageReturnState): boolean => current === 'failed' || current === 'superseded';
   const performContextRecovery = async (isCurrent: () => boolean): Promise<boolean> => {
     const interrupted = lastTrace;
-    const originalOptions = lastEntryOptions;
-    // A skipped restore (Battle Again) has no Garage to recover: the next battle's entry owns the screen.
-    if (game.phase !== 'garage' || !interrupted?.presentationUnready || state === 'restoreSkipped') return false;
+    if (game.phase !== 'garage' || !interrupted || state === 'idle' || state === 'prepared' || state === 'restoreSkipped') {
+      return false;
+    }
     // A loss can still be unwinding through the original entry's await. Do not
     // race its teardown or mistake its eventual rejection for a recovery failure.
     await entryLease?.promise.catch(() => {});
@@ -710,11 +720,12 @@ export function createGarageReturnRuntime<Visual = object>(
       await entryLease?.promise;
       if (!isCurrent()) throw new Error('Garage graphics recovery belongs to an expired context.');
       if (game.phase !== 'garage') return false;
-      if (lastTrace?.presentationUnready) throw new Error('The newer Garage return is not ready.');
+      if (recoveryRetries(state) || state === 'restoreSkipped') throw new Error('The newer Garage return is not ready.');
       return false;
     }
-    if (!interrupted.presentationUnready) return false;
-    await enter(originalOptions, () => isCurrent() && game.phase === 'garage');
+    if (!recoveryRetries(state)) return false;
+    // (the options of the return it retries, as it last ran: a handoff's are a foreground return's)
+    await enter(lastEntryOptions, () => isCurrent() && game.phase === 'garage');
     return true;
   };
 

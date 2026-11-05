@@ -230,7 +230,8 @@ function phaseListener(game, battleEntryIntent) {
 
 // Every Garage return caller without an exit of its own takes main's (garageReturnState.selftest.mjs runs it).
 assert.match(mainSource, /setGarageSpots, setGarageSunTrim, enterGarage: enterGarageWithExit,/, "the Studio's exit");
-assert.match(mainSource, /enterGarage: enterGarageWithExit,\n\s+returnToGarage: \(\) => garageReturn\.leave\(\),/, "the room's covered restore");
+assert.match(mainSource, /enterGarage: enterGarageWithExit,\n/, "the room's covered restore");
+assert.match(mainSource, /\n\s+returnToGarage: returnRoomToGarage,\n/, "(round 2 U20) the room's own returns");
 assert.match(mainStatement('const soloBattleEntry = createSoloBattleEntryRuntime({'),
   /presentReturnFailure: \(error, retry\) => presentGarageReturnFailure\(error, retry\),/, "the solo entry's recovery");
 assert.match(mainStatement('const battleAgainAction = createBattleAgainAction({'),

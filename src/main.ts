@@ -2850,7 +2850,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           clearInput: () => input.setEnabled(false),
           // (audit F3 review) the covered restore after a failed join: a failed return says so and offers its retry
           enterGarage: enterGarageWithExit,
-          returnToGarage: () => garageReturn.leave(),
+          // (round 2 U20) the room's own returns take the Leave's exit as well (a bare leave() froze a failed one)
+          returnToGarage: returnRoomToGarage,
           getPhase: () => game.phase,
           hasResult: () => !!game.result,
         },
@@ -3505,19 +3506,37 @@ const presentGarageReturnFailure = (error: RuntimeValue, retry: () => void): Pro
     .catch((noticeError: RuntimeValue) => console.error('[garage return] failure notice unavailable', noticeError));
 };
 /**
+ * (round 2 U20) The one return exit every return caller takes after a rejection, decided by the return's declared
+ * state, never by the caller's error: a return left 'failed' (Garage frames suppressed, the screen still owed) says so
+ * and offers `retry`. A busy refusal (the other operation holds the return), a superseded return ('superseded':
+ * another presentation took the scene, or the context recovery retries it) and a return that never began (its veil
+ * taken over first) owe the player nothing. True when the notice opened.
+ */
+const exitFailedGarageReturn = (error: RuntimeValue, retry: () => void): boolean => {
+  if (garageReturn.state !== 'failed' || Reflect.get(Object(error), 'code') === 'garage_return_busy') return false;
+  console.error('[garage return] return failed', error);
+  void presentGarageReturnFailure(error, retry);
+  return true;
+};
+/**
  * Every return caller that has no failure exit of its own (the Studio's exit, the room's covered restore) gets the
  * Leave's: a return that failed and still owes the screen says so and offers the return again ('failed' → 'entering').
- * The caller still sees the rejection; a superseded return ('superseded': another presentation took the scene, or the
- * context recovery retries it) is not a dead end and opens nothing.
+ * The caller still sees the rejection.
  */
 const enterGarageWithExit = (): Promise<void> => enterGarage().catch((error: RuntimeValue) => {
-  if (garageReturn.state === 'failed') {
-    console.error('[garage return] return failed', error);
-    void presentGarageReturnFailure(error, retryGarageReturn);
-  }
+  exitFailedGarageReturn(error, retryGarageReturn);
   throw error;
 });
 const retryGarageReturn = (): void => { void enterGarageWithExit().catch(() => { /* its notice is the exit */ }); };
+/**
+ * (round 2 U20) The room's own returns (its room closed or left, or the seat dropped, during a revealed battle): the
+ * Leave, with the same exit, whose retry is that Leave again. The room still sees the rejection (it reports it, and
+ * opens its own failure notice only after a return that landed).
+ */
+const returnRoomToGarage = (): Promise<void> => garageReturn.leave().catch((error: RuntimeValue) => {
+  exitFailedGarageReturn(error, () => { void returnRoomToGarage().catch(() => { /* its notice is the exit */ }); });
+  throw error;
+});
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
   // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
@@ -3563,15 +3582,15 @@ const leaveBattleToGarage = (): Promise<void> => {
   // (2026-11-02 audit F3) a Leave pressed during Battle Again is refused by name (the rematch keeps the screen); a
   // failed return says so over the frozen Garage and offers its retry, instead of a silent rejection
   return garageReturn.leave().catch((error: RuntimeValue) => {
-    // (the code check, not an import: the return implementation stays off the boot graph)
-    // (audit F3 review) a Leave cut short by another presentation or a context change opens no notice either
+    // (audit F3 review, round 2 U20) the return's state decides (exitFailedGarageReturn): a failed return says so and
+    // offers the Leave again; a Leave refused as busy, cut short by another presentation or a context change, or whose
+    // veil was taken over before its work ran opens no notice (the code check, not an import: the return
+    // implementation stays off the boot graph)
+    if (exitFailedGarageReturn(error, () => { void leaveBattleToGarage(); })) return;
     const code = Reflect.get(Object(error), 'code');
     if (code === 'garage_return_busy' || code === 'garage_return_superseded') {
       console.info('[garage return] Leave ignored:', Reflect.get(Object(error), 'message'));
-      return;
-    }
-    console.error('[garage return] Leave failed', error);
-    void presentGarageReturnFailure(error, () => { void leaveBattleToGarage(); });
+    } else console.error('[garage return] Leave failed', error);
   });
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
