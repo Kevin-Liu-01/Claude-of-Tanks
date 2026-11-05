@@ -1962,7 +1962,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   // on battle:presented (the result presentation's hand-off, end overlay built).
   const inputOwner = battleInputOwnerFor(bus);
   const reportGate = createBattleReportGate<EndScreenResult>({
-    blocked: () => inputOwner.state === 'presentation' || inputOwner.state === 'menu',
+    holdReason: () => (inputOwner.state === 'presentation' || inputOwner.state === 'menu' ? inputOwner.state : null),
     render: (result) => renderStats(result),
   });
   inputOwner.onChange(() => reportGate.ownerChanged());

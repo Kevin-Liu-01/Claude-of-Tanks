@@ -140,7 +140,23 @@ owner.closeMenu();
 frame();
 assert.equal(shown(), true, 'the report renders once the menu closes');
 
+// --- (d) U22, round 2: a menu held open past the 16 s watchdog still holds the report; its close decides again, so the
+// verdict's final-kill replay (armed by the first frame after the close) takes the screen before the report -----------
+newBattle();
+await new Promise((resolve) => realTimers.setTimeout(resolve, 300)); // the owner's done grace, on the page clock
+assert.equal(owner.openMenu(), true);
+ended();
+for (let i = 0; i < 60; i++) frame();
+advance(20_000); // the player reads the controls for 20 s; the result presentation does not advance under the menu
+assert.equal(shown(), false, 'no report under a menu held open past the watchdog');
+owner.closeMenu();
+frame(() => replayBegins('final'));
+assert.equal(shown(), false, 'the verdict\'s replay is not armed over a report already on screen');
+replayDone();
+frame();
+assert.equal(shown(), true, 'the report renders after the replay');
+
 hud.setMode('hidden');
 assert.equal(shown(), false, 'hideStats drops the report');
 for (const host of [globalThis, windowStub]) Object.assign(host, realTimers);
-console.log('battleReportGateHud.selftest: through the real HUD, a verdict during a mid-battle replay waits for its camera beat and battle:presented, a stale decision never decides the next battle\'s report, and the menu holds the report');
+console.log('battleReportGateHud.selftest: through the real HUD, a verdict during a mid-battle replay waits for its camera beat and battle:presented, a stale decision never decides the next battle\'s report, and the menu holds the report (past the watchdog too)');

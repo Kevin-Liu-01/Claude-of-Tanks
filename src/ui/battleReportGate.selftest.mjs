@@ -1,7 +1,7 @@
 // 2026-11-02 audit F4: the end-of-battle report gate (shotInfo.ts) as one owner: idle | deciding | held, fed by the
-// battle input owner. Pinned here with fake timers; the browser hazards themselves (a stale decision from battle N
-// deciding battle N+1, a verdict armed a frame late burying its replay under the report) were not reproduced in a
-// page: the gate's transitions are.
+// battle input owner. This receipt pins the gate's own transitions with fake timers. The hazards themselves (a stale
+// decision from battle N deciding battle N+1, a verdict armed a frame late burying its replay under the report, the
+// report under a long-open menu) are reproduced in Node through the real HUD in battleReportGateHud.selftest.mjs.
 import assert from 'node:assert/strict';
 import { createBattleReportGate, REPORT_DECIDE_FALLBACK_MS, REPORT_MAX_WAIT_MS } from './battleReportGate.ts';
 import { createBattleInputOwner } from './battleInputOwner.ts';
@@ -51,7 +51,7 @@ function harness() {
   };
   const rendered = [];
   const gate = createBattleReportGate({
-    blocked: () => owner.state === 'presentation' || owner.state === 'menu',
+    holdReason: () => (owner.state === 'presentation' || owner.state === 'menu' ? owner.state : null),
     render: (result) => rendered.push(result),
     timers: t.port,
   });
@@ -125,6 +125,43 @@ function harness() {
   assert.equal(gate.state, 'deciding');
   t.frame();
   assert.deepEqual(rendered, ['victory']);
+}
+
+// (U22, round 2) the menu's hold has no watchdog: a verdict with Settings open past REPORT_MAX_WAIT_MS stays held until
+// the menu closes (the report under the menu would have the verdict's replay armed over it at the close), then decides
+{
+  const { t, owner, gate, rendered, replay } = harness();
+  owner.openMenu();
+  gate.ended('victory');
+  assert.equal(gate.hold, 'menu');
+  t.advance(3 * REPORT_MAX_WAIT_MS);
+  assert.deepEqual(rendered, [], 'no report under a menu held open past the watchdog');
+  owner.closeMenu();
+  assert.equal(gate.state, 'deciding');
+  replay.begin(); // the verdict's final-kill replay, armed by the first frame after the close
+  t.frame();
+  assert.equal(gate.hold, 'presentation');
+  assert.deepEqual(rendered, [], 'the replay takes the screen before the report');
+  t.advance(REPORT_MAX_WAIT_MS - 1);
+  assert.deepEqual(rendered, []);
+  t.advance(1);
+  assert.deepEqual(rendered, ['victory'], 'a presentation hold keeps its watchdog');
+}
+// a presentation hold that hands over to the menu drops the watchdog; the menu handing back re-arms it
+{
+  const { t, owner, gate, rendered } = harness();
+  owner.beginPresentation('ending');
+  gate.ended('defeat');
+  t.advance(REPORT_MAX_WAIT_MS / 2);
+  owner.endPresentation('ending');
+  owner.openMenu(); // the decision has not run yet: the menu holds it
+  t.frame();
+  assert.equal(gate.hold, 'menu');
+  t.advance(2 * REPORT_MAX_WAIT_MS);
+  assert.deepEqual(rendered, [], 'the menu\'s hold outlives the presentation\'s watchdog');
+  owner.closeMenu();
+  t.frame();
+  assert.deepEqual(rendered, ['defeat']);
 }
 
 // a stale decision from battle N never decides battle N+1

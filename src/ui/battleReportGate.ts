@@ -14,12 +14,16 @@
  *             (the result presentation is not updated while either runs) still takes the screen before the report
  *
  * battle:presented (the result presentation's report hand-off, after the end overlay exists) renders a held report at
- * once. A watchdog of MAX_WAIT_MS from the latest hold guarantees a stuck presentation never eats the report. Every
- * scheduled callback carries the gate's generation, and clear() cancels them, so a stale decision from one battle can
- * never decide the next battle's report.
+ * once. A watchdog of MAX_WAIT_MS from the latest presentation hold guarantees a stuck presentation never eats the
+ * report. The menu's hold has no watchdog: the player holds it, the result presentation does not advance under it, and
+ * a report rendered under the menu would have the verdict's replay or camera beat armed over it once the menu closes
+ * (U22, round 2); its close decides again. Every scheduled callback carries the gate's generation, and clear() cancels
+ * them, so a stale decision from one battle can never decide the next battle's report.
  */
 
 export type ReportGateState = 'idle' | 'deciding' | 'held';
+/** What holds the report: a presentation (a replay, an ending beat) or the Settings menu. */
+export type ReportHold = 'presentation' | 'menu';
 
 type TimerHandle = ReturnType<typeof setTimeout>;
 
@@ -31,8 +35,8 @@ interface ReportGateTimers {
 }
 
 interface ReportGateOptions<R> {
-  /** A presentation or the Settings menu owns the screen (the battle input owner, battleInputOwner.ts). */
-  blocked(): boolean;
+  /** What owns the screen now, or null when the report may render (the battle input owner, battleInputOwner.ts). */
+  holdReason(): ReportHold | null;
   render(result: R): void;
   timers?: ReportGateTimers;
   decideFallbackMs?: number;
@@ -41,6 +45,8 @@ interface ReportGateOptions<R> {
 
 export interface BattleReportGate<R> {
   readonly state: ReportGateState;
+  /** The hold while held, else null. */
+  readonly hold: ReportHold | null;
   readonly pending: R | null;
   /** battle:ended: buffer the report and decide. */
   ended(result: R): void;
@@ -68,13 +74,14 @@ const defaultTimers = (): ReportGateTimers => ({
 });
 
 export function createBattleReportGate<R>({
-  blocked,
+  holdReason,
   render,
   timers = defaultTimers(),
   decideFallbackMs = REPORT_DECIDE_FALLBACK_MS,
   maxWaitMs = REPORT_MAX_WAIT_MS,
 }: ReportGateOptions<R>): BattleReportGate<R> {
   let state: ReportGateState = 'idle';
+  let heldFor: ReportHold | null = null;
   let pending: { result: R } | null = null;
   let generation = 0;
   let frame: number | null = null;
@@ -97,6 +104,7 @@ export function createBattleReportGate<R>({
     const { result } = pending;
     pending = null;
     state = 'idle';
+    heldFor = null;
     generation++;
     cancelAll();
     render(result);
@@ -111,23 +119,34 @@ export function createBattleReportGate<R>({
     }, maxWaitMs);
   };
 
-  const hold = (): void => {
-    if (state === 'held') return;
+  const disarmWatchdog = (): void => {
+    if (watchdog !== null) { timers.clearTimer(watchdog); watchdog = null; }
+  };
+
+  // a presentation hold runs on the watchdog (re-armed for each one); the menu's hold waits for its close
+  const hold = (reason: ReportHold): void => {
+    if (state === 'held' && heldFor === reason) return;
     cancelDecision();
     state = 'held';
-    armWatchdog();
+    heldFor = reason;
+    if (reason === 'presentation') armWatchdog();
+    else disarmWatchdog();
   };
 
   const decide = (): void => {
     if (!pending || state !== 'deciding') return;
     cancelDecision();
-    if (blocked()) hold();
+    const reason = holdReason();
+    if (reason) hold(reason);
     else flush();
   };
 
   const openDecision = (): void => {
     state = 'deciding';
+    heldFor = null;
     cancelDecision();
+    // the deciding window is bounded by its own fallback; a watchdog the menu disarmed comes back for it
+    if (watchdog === null) armWatchdog();
     const mine = generation;
     // one full frame first (the main loop's end flow, which arms the verdict's close, runs inside the next animation
     // frame), then a macrotask so the decision runs after that frame's synchronous work completes
@@ -148,20 +167,24 @@ export function createBattleReportGate<R>({
 
   return {
     get state() { return state; },
+    get hold() { return heldFor; },
     get pending() { return pending ? pending.result : null; },
     ended(result) {
       generation++;
       cancelAll();
       pending = { result };
-      if (blocked()) { state = 'deciding'; hold(); return; }
-      armWatchdog();
+      const reason = holdReason();
+      if (reason) { state = 'deciding'; hold(reason); return; }
       openDecision();
     },
     ownerChanged() {
       if (!pending) return;
-      const isBlocked = blocked();
-      if (state === 'deciding' && isBlocked) hold();
-      else if (state === 'held' && !isBlocked) openDecision();
+      const reason = holdReason();
+      if (reason) {
+        if (state === 'deciding' || (state === 'held' && heldFor !== reason)) hold(reason);
+      } else if (state === 'held') {
+        openDecision();
+      }
     },
     presented() {
       // a held report renders now; a deciding one renders at its decision (after the frame that presented it)
@@ -172,6 +195,7 @@ export function createBattleReportGate<R>({
       cancelAll();
       pending = null;
       state = 'idle';
+      heldFor = null;
     },
   };
 }
