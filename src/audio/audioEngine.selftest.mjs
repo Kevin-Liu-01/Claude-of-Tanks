@@ -640,6 +640,8 @@ ctx.advance(13);
 since = mark();
 bus.emit('player:spotted', { timeS: 13 });
 assert.ok(logSince(since).some((e) => e.n === 'ui_alert'), 'the lamp sounds each time it lights');
+assert.equal(probe.sayLog.at(-1)?.id, 'sixth_sense',
+  'and each exposure asks the radio: "once per exposure" is sixth_sense\'s cooldown, armed only when the call plays');
 since = mark();
 audio.loadingOn(true);
 assert.ok(logSince(since).some((e) => e.n === 'loading_bed_loop'), 'the loading screen has its recorded bed');

@@ -186,4 +186,101 @@ for (const lang of CREW_LANGUAGES) {
   assert.equal(radio.speaking, true, 'reapplying the same choice does not interrupt speech');
 }
 
-console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, complete packs without fallback, damage and live crew switching passed');
+// A line commits when it plays (crew-languages-270). A call asked while its pack decodes waits in the queue and plays
+// once the pack lands inside its staleS: the result after a crew switch, and an immediate call on a free net.
+{
+  const loading = ['de'];
+  const languages = ['en-US'];
+  const { ctx, radio } = harness({ languages, loading });
+  radio.setLanguage('de');
+  assert.equal(radio.say('victory', { delayS: 0.4 }), true, 'the result queues while the pack decodes');
+  ctx.advance(3);
+  radio.update();
+  assert.equal(radio.log.length, 0, 'nothing plays before the pack lands');
+  assert.deepEqual(radio.debugState().pending.map((q) => q.id), ['victory'], 'and the call stays queued');
+  loading.length = 0;
+  languages.push('de');
+  ctx.advance(0.1);
+  radio.update();
+  assert.deepEqual([radio.log.at(-1)?.id, radio.log.at(-1)?.lang], ['victory', 'de'], 'it plays once the pack lands');
+  assert.equal(radio.debugState().pending.length, 0);
+}
+{
+  const loading = ['de'];
+  const languages = ['en-US'];
+  const { ctx, radio } = harness({ languages, loading });
+  radio.setLanguage('de');
+  assert.equal(radio.say('were_hit'), true, 'an immediate call on a free net queues instead of being lost');
+  ctx.advance(0.5);
+  loading.length = 0;
+  languages.push('de');
+  radio.update();
+  assert.equal(radio.log.at(-1)?.id, 'were_hit');
+}
+// ...and expires if the pack lands after it; a pack that has landed without a take of the line stays silent at once.
+{
+  const loading = ['de'];
+  const languages = ['en-US'];
+  const { ctx, radio } = harness({ languages, loading });
+  radio.setLanguage('de');
+  radio.say('victory', { delayS: 0.4 });
+  ctx.advance(8.5);
+  radio.update();
+  assert.equal(radio.debugState().pending.length, 0, 'stale before the pack landed');
+  loading.length = 0;
+  languages.push('de');
+  ctx.advance(0.1);
+  radio.update();
+  assert.equal(radio.log.length, 0, 'never played late');
+}
+{
+  const { radio } = harness({ missing: ['en-US/were_hit'] });
+  assert.equal(radio.say('were_hit'), false);
+  assert.equal(radio.debugState().pending.length, 0, 'nothing to wait for: no decode running');
+}
+
+// A refused sixth_sense arms nothing: the 20 s "once per exposure" is the line's cooldown, armed when it plays.
+{
+  const { ctx, radio } = harness();
+  assert.equal(VOICE_LINES.sixth_sense.cdS, 20);
+  assert.equal(radio.say('sixth_sense', { delayS: 3 }), true);
+  ctx.advance(2.6);
+  assert.equal(radio.say('fire'), true);
+  ctx.advance(0.9);
+  radio.update();
+  ctx.advance(0.7);
+  radio.update();
+  assert.deepEqual(radio.log.map((e) => e.id), ['fire'], 'the fire call held the net through the sixth sense\'s stale time');
+  assert.equal(radio.debugState().pending.length, 0, 'so it expired');
+  ctx.advance(2);
+  assert.equal(radio.say('sixth_sense', { delayS: 3 }), true, 'the next exposure is not blocked by the refused one');
+  ctx.advance(3.1);
+  radio.update();
+  assert.equal(radio.log.at(-1).id, 'sixth_sense');
+  ctx.advance(5);
+  assert.equal(radio.say('sixth_sense', { delayS: 3 }), false, 'the call that played keeps its cooldown');
+  ctx.advance(15.1);
+  assert.equal(radio.say('sixth_sense', { delayS: 3 }), true);
+}
+
+// A due call that cannot play yet (its take still decoding) stays queued without holding back a lower one that can,
+// then cuts it once its take lands.
+{
+  const missing = ['de/victory'];
+  const loading = ['de'];
+  const { ctx, radio } = harness({ missing, loading });
+  radio.setLanguage('de');
+  radio.say('victory', { delayS: 0.2 });
+  radio.say('were_hit', { delayS: 0.2 });
+  ctx.advance(0.3);
+  radio.update();
+  assert.equal(radio.log.at(-1)?.id, 'were_hit', 'the playable lower call goes');
+  assert.deepEqual(radio.debugState().pending.map((q) => q.id), ['victory'], 'while the blocked one waits');
+  missing.length = 0;
+  loading.length = 0;
+  ctx.advance(0.1);
+  radio.update();
+  assert.equal(radio.log.at(-1)?.id, 'victory', 'and cuts in once its take lands');
+}
+
+console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, complete packs without fallback, damage, live crew switching and lines that commit when they play passed');

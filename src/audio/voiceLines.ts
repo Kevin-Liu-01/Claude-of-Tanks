@@ -38,13 +38,15 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   defeat: V(4, 10, 'result', 8),
   draw: V(4, 10, 'result', 8),
   // awareness
-  enemy_spotted: V(1, 9, 'awareness', 0.9, 4.5),
-  spotted_front: V(1, 9, 'awareness', 0.9, 4.5),
-  spotted_left: V(1, 9, 'awareness', 0.9, 4.5),
-  spotted_right: V(1, 9, 'awareness', 0.9, 4.5),
-  spotted_rear: V(2, 8, 'awareness', 0.9, 4),
+  // one spot call in 5 s: the group cooldown the radio arms when a call plays
+  enemy_spotted: V(1, 9, 'awareness', 0.9, 5),
+  spotted_front: V(1, 9, 'awareness', 0.9, 5),
+  spotted_left: V(1, 9, 'awareness', 0.9, 5),
+  spotted_right: V(1, 9, 'awareness', 0.9, 5),
+  spotted_rear: V(2, 8, 'awareness', 0.9, 5),
   spotted_multiple: V(2, 14, 'awareness', 1.0, 4),
-  sixth_sense: V(3, 14, 'awareness', 1.0),
+  // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
+  sixth_sense: V(3, 20, 'awareness', 1.0),
   // our gunnery
   firing: V(0, 12, 'gun_cycle', 0.35),
   missile_away: V(1, 8, 'gun_cycle', 0.5),
