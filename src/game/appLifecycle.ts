@@ -282,6 +282,16 @@ export function assertAppPhaseTransition(game: { phase: AppPhase }, next: AppPha
 }
 
 /**
+ * (round 2, app-flow review 2) The edge table as a question, for an owner that refuses a hand-over as busy before its
+ * first mutation rather than failing it (the solo start at its press and after a return wait). The same rule as the
+ * check above: an unknown current value may move anywhere, and an unknown target never is legal.
+ */
+export function canTransitionAppPhase(game: { phase: AppPhase }, next: AppPhase): boolean {
+  if (!isAppPhase(next)) return false;
+  return !isAppPhase(game.phase) || APP_PHASE_EDGES[game.phase].includes(next);
+}
+
+/**
  * The one phase writer. With a bound lifecycle it announces `phase:change`; a bare session (a Node selftest's game
  * double) still gets the edge check and the write, with nobody to announce to.
  */

@@ -254,7 +254,7 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
-import { assertAppPhaseTransition, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
+import { assertAppPhaseTransition, canTransitionAppPhase, createAppLifecycle, GarageScreenUnsettledError } from './game/appLifecycle.ts';
 import { bootReadiness } from './app/bootReadiness.ts';
 import { createBattleEntryIntent, type BattleTerrainVariant } from './game/battleEntryIntent.ts';
 import { createBattleWarmHold } from './game/battleWarmHold.ts';
@@ -3647,6 +3647,9 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   whenGarageSettled: () => garageReturn.whenSettled(),
   // (round 2, app-flow) a network round the room's session entered (outside the entry latch) keeps the screen
   isNetworkRoundEntering: () => onlineMatch.current?.entering === true,
+  // (round 2, app-flow review 2) the edge table decides a start before its announcement and cover, at the press and after
+  // a return wait: over the Studio (the __DEBUG.beginSoloBattle hook) it covered and loaded, refused only after the load
+  canTakeScene: () => canTransitionAppPhase(game, 'battle'),
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.

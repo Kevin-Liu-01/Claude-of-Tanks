@@ -3,7 +3,7 @@
 // holdExpired to nothing), so deleting main's line brought a hazard back with every runtime test green: the Play
 // menu's and campaign's battles recorded no profile history without `announce: ... ui:battleStart`.
 import assert from 'node:assert/strict';
-import { createAppLifecycle } from '../game/appLifecycle.ts';
+import * as appLifecycleModule from '../game/appLifecycle.ts';
 import { createBattleEntryIntent } from '../game/battleEntryIntent.ts';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
 import { createBattleFrameRuntime } from '../game/battleFrameRuntime.ts';
@@ -12,6 +12,8 @@ import { createSoloBattleEntryRuntime } from '../game/soloBattleEntryRuntime.ts'
 import { terrainVariantFor } from '../sim/matchRuleset.ts';
 import { mainSource, mainStatement, runMainStatements } from './mainComposition.test-support.mjs';
 
+// (canTransitionAppPhase by name: this file still runs, and fails by assertion, against a main.ts that has none)
+const { createAppLifecycle, canTransitionAppPhase } = appLifecycleModule;
 const flush = async (turns = 12) => { for (let index = 0; index < turns; index += 1) await Promise.resolve(); };
 
 // The solo entry: main's announce, whenGarageSettled and presentReturnFailure bindings.
@@ -25,10 +27,12 @@ function mainFunction(head) {
   return mainSource.slice(start + 1, end + 2);
 }
 function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {},
-  onlineMatch = { current: null } } = {}) {
+  onlineMatch = { current: null }, game = { phase: 'garage' } } = {}) {
   const events = [];
   const scope = {
     onlineMatch,
+    game,
+    canTransitionAppPhase,
     createSoloBattleEntryRuntime,
     battleEntryIntent: createBattleEntryIntent(),
     terrainVariantFor,
@@ -119,6 +123,20 @@ function phaseListener(game, battleEntryIntent) {
   onlineMatch.current.entering = false;
   await entry.beginSelected();
   assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);
+}
+
+{
+  // (round 2, app-flow review 2) main binds the start's scene check to the edge table: the __DEBUG.beginSoloBattle hook
+  // over the Studio covered and loaded a solo battle there, refused only after the load (and its recovery ran a Garage
+  // return under the open Studio); a start queued behind a return now re-reads it before its announcement and cover.
+  const game = { phase: 'studio' };
+  const { events, lifecycle, beginLocalBattle } = soloEntry({ game });
+  await beginLocalBattle({ specId: 'leopard2a4', mapId: 'winter' });
+  assert.deepEqual(events.map(([type]) => type), [], 'nothing announces, covers or loads over the Studio');
+  assert.equal(lifecycle.entrySerial, 0);
+  game.phase = 'garage';
+  await beginLocalBattle({ specId: 'leopard2a4', mapId: 'winter' });
+  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load'], 'and from the Garage it runs');
 }
 
 {

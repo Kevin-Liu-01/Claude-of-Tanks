@@ -6,7 +6,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   APP_PHASE_EDGES, AppPhaseTransitionError, GarageScreenUnsettledError, appLifecycleOf, assertAppPhaseTransition,
-  assertGarageScreenSettled, battleSubPhase, createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
+  assertGarageScreenSettled, battleSubPhase, canTransitionAppPhase, createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
 } from './appLifecycle.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
@@ -158,9 +158,15 @@ assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ config
 {
   const legal = (from, to) => { try { assertAppPhaseTransition({ phase: from }, to, 'check'); return true; } catch { return false; } };
   for (const [from, targets] of Object.entries(APP_PHASE_EDGES)) {
-    for (const to of Object.keys(APP_PHASE_EDGES)) assert.equal(legal(from, to), targets.includes(to), `${from} -> ${to}`);
+    for (const to of Object.keys(APP_PHASE_EDGES)) {
+      assert.equal(legal(from, to), targets.includes(to), `${from} -> ${to}`);
+      // (round 2, app-flow review 2) the same table as a question, for a start that refuses before its first mutation
+      assert.equal(canTransitionAppPhase({ phase: from }, to), targets.includes(to), `can ${from} -> ${to}`);
+    }
   }
   assert.equal(legal('ended', 'battle'), true, 'an unknown current value may move anywhere, as in transitionAppPhase');
+  assert.equal(canTransitionAppPhase({ phase: 'ended' }, 'battle'), true);
+  assert.equal(canTransitionAppPhase({ phase: 'garage' }, 'ended'), false, 'an unknown target is never legal');
   assert.throws(() => assertAppPhaseTransition({ phase: 'garage' }, 'ended', 'check'), TypeError, 'an unknown phase is refused');
   const heard = [];
   const session = { phase: 'battle', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };

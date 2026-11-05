@@ -3,7 +3,9 @@
 // silently became the other operation; Battle Again polled the entry latch every 150 ms and 16 ms for 15 s.
 import assert from 'node:assert/strict';
 import * as garageReturnModule from './garageReturnRuntime.ts';
-import { createAppLifecycle, transitionAppPhase } from './appLifecycle.ts';
+import { assertGarageScreenSettled, createAppLifecycle, GarageScreenUnsettledError, isGarageScreenSettled, transitionAppPhase } from './appLifecycle.ts';
+import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
+import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import { createBattleAgainAction } from './battleAgainAction.ts';
 import { createGameState } from './stateCore.ts';
 import { mainSource, mainStatement, runMainStatements } from '../app/mainComposition.test-support.mjs';
@@ -149,6 +151,81 @@ function createFixture({ restore = null, clearBattle = () => {}, phase = 'battle
     return true;
   });
   assert.equal(seen, null, "Battle Again's trigger is not queued behind Battle Again");
+}
+
+// (round 2 U21, review 2) A start queued behind a Leave covers under the Leave's veil, before the veil fades out. The
+// wait covered the Leave's whole lease, the veil's dwell and fade-out included (transition.ts run() then hide()), while
+// the queued start held the entry latch with no cover: main's lifecycle read 'garage' (the return idle, the entry not
+// covering), so F8, the Studio button and the Studio's own entry passed over the uncovered Garage (.cot-trans.out passes
+// presses), and the start then announced, covered and loaded its battle over the Studio. The wait ends when the Leave's
+// entry settles: the restored Garage is the scene, and the start's cover lands in that same microtask chain.
+{
+  const fadeIn = deferred();
+  const fadeOut = deferred();
+  let veil = 'off';
+  const f = createFixture({
+    // transition.ts run(): fade in, the work under the opaque veil, then the dwell and hide()'s fade-out, awaited
+    transitionRun: async (work) => {
+      veil = 'fading-in';
+      await fadeIn.promise;
+      veil = 'opaque';
+      const result = await work();
+      veil = 'dwell'; // still opaque: run() holds minShowMs on a timer, then hide() adds .out (presses pass) and fades
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      veil = 'fading-out';
+      await fadeOut.promise;
+      veil = 'off';
+      return result;
+    },
+  });
+  const battleEntryLifecycle = createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 });
+  const battleLoad = { covering: false };
+  // main's own late readers (main.ts appLifecycle.setReaders) over the real latch and this return
+  runMainStatements(mainStatement('appLifecycle.setReaders({'), {
+    appLifecycle: f.lifecycle, battleEntryLifecycle, battleLoad, onlineMatch: { current: null }, garageReturn: f.runtime,
+  }, 'null');
+  const covers = [];
+  const loads = [];
+  const loadGate = deferred();
+  const solo = createSoloBattleEntryRuntime({
+    lifecycle: battleEntryLifecycle,
+    // (the battle's load holds until the end: the start is loading, under its cover, through the Leave's fade-out)
+    loading: { begin: async () => { loads.push(f.game.phase); await loadGate.promise; } },
+    battleLoad: { showPending: () => { covers.push(`${f.game.phase}/${veil}`); battleLoad.covering = true; }, hide: async () => { battleLoad.covering = false; } },
+    audio: { loadingOn() {} }, enterGarage: async () => {}, nextFrame: async () => {}, isVisibleSpecId: () => true,
+    getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'verdant', reportError: () => {},
+    whenGarageSettled: () => f.runtime.whenSettled(),
+  });
+  /** F8 / the Studio button / Window.__STUDIO.load at this moment: studio.ts doEnter writes 'studio' when let in. */
+  const studioOpens = () => {
+    let refusedBy = null;
+    try { assertGarageScreenSettled(f.game, 'studio:enter'); } catch (error) { refusedBy = error; }
+    const opens = f.game.phase === 'garage' && isGarageScreenSettled(f.game) && refusedBy === null;
+    if (opens) transitionAppPhase(f.game, 'studio', { reason: 'studio:enter' });
+    return opens;
+  };
+  const leaving = f.runtime.leave();
+  const start = solo.beginSelected({}); // a menu start (or a press) accepted during the Leave's fade-in
+  await flush();
+  assert.equal(veil, 'fading-in');
+  assert.deepEqual(covers, [], "no cover while the Leave's entry has not run");
+  assert.equal(studioOpens(), false, "the battle's scene refuses the Studio during the fade-in");
+  fadeIn.resolve();
+  await flush(200);
+  assert.equal(veil, 'dwell', "(the Leave's entry landed: the veil dwells)");
+  assert.equal(f.game.phase, 'garage');
+  assert.deepEqual(covers, ['garage/dwell'], "the queued start's cover lands under the Leave's opaque veil, before its fade-out");
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  assert.equal(veil, 'fading-out');
+  assert.equal(f.lifecycle.state, 'loading', "the lifecycle reads the start's cover, never 'garage', during the fade-out");
+  assert.throws(() => assertGarageScreenSettled(f.game, 'studio:enter'), (error) => error instanceof GarageScreenUnsettledError && error.state === 'loading');
+  assert.equal(studioOpens(), false, 'F8, the Studio button and the Studio\'s own entry are refused during the fade-out');
+  fadeOut.resolve();
+  await leaving;
+  loadGate.resolve();
+  await start;
+  await flush();
+  assert.deepEqual(loads, ['garage'], 'the start loaded its battle from the Garage, never over a Studio');
 }
 
 // The edge table is closed: every target is a declared state, and the in-flight states only settle.

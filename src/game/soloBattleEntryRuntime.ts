@@ -81,6 +81,14 @@ interface SoloBattleEntryRuntimeOptions {
    * start then is refused as the latch refuses one (busy): it covered and loaded a solo battle over the round's loader.
    */
   isNetworkRoundEntering?(): boolean;
+  /**
+   * (round 2, app-flow review 2) The scene can hand over to a battle now (main: the app lifecycle's edge table). Read at
+   * the press and again after a return wait, before the announcement, the intent and the cover; a start it refuses is
+   * refused as the latch refuses one (busy). A start over the Studio (the __DEBUG.beginSoloBattle hook) covered and
+   * loaded its world there and was refused only by the solo start after that load; a start queued behind a return
+   * resumed with no check at all.
+   */
+  canTakeScene?(): boolean;
 }
 
 interface SoloBattleEntryRuntime {
@@ -130,11 +138,14 @@ export function createSoloBattleEntryRuntime({
   whenGarageSettled = () => {},
   recordIntent = () => {},
   isNetworkRoundEntering = () => false,
+  canTakeScene = () => true,
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering];
+    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering, canTakeScene];
+  /** Another owner has the screen (a network round entering), or the scene may not hand over to a battle: busy. */
+  const sceneRefused = (): boolean => isNetworkRoundEntering() || !canTakeScene();
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -144,15 +155,16 @@ export function createSoloBattleEntryRuntime({
     mapId: string | null,
     options: SoloBattleLoadingStartOptions | undefined,
     announced: boolean,
-  ): Promise<void> => (isNetworkRoundEntering() ? Promise.resolve() : lifecycle.run(async () => {
+  ): Promise<void> => (sceneRefused() ? Promise.resolve() : lifecycle.run(async () => {
     try {
       // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
       // (no return in flight: no wait, so the announcement and the cover still land inside the press's task)
       const returning = whenGarageSettled();
       if (returning) {
         await returning;
-        // (round 2, app-flow) a network round the room's session entered meanwhile has the screen: busy, as at the press
-        if (isNetworkRoundEntering()) return;
+        // (round 2, app-flow) a network round the room's session entered meanwhile has the screen, or (review 2) the
+        // scene is not one a battle may take (a Studio opened meanwhile): busy, as at the press
+        if (sceneRefused()) return;
       }
       // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
       // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same way)
