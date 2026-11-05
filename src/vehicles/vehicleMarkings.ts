@@ -138,8 +138,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
   christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
-  // 266: the Army plaque on the Vickers turret's bustle flank, behind the bins and ahead of the dischargers
-  osorio_p1: anchor('turret', 'left', .22, .45, .30, 1),
+  // 266: the Army plaque on the Vickers turret's flank. glacis-269 (Main, 2026-11-04): forward of the slat cage, which
+  // stood over the plaque and the number at .22 (the "01" read "U1" from eye height; the nine-ray receipt passed between
+  // the slats), both clear from eye height here
+  osorio_p1: anchor('turret', 'left', .68, .45, .30, 1),
   // (low on the wall aft of the basket, its number further aft: the dischargers and the basket's rail covered them in the
   // rear three-quarter view; blind critics, rounds 9 and 10)
   osorio_p2: anchor('turret', 'left', .17, .30, .22, -1),
@@ -331,7 +333,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a4: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
   // German derivatives use separate, surface-seated stations so their
   // markings remain readable around each distinct applique/slat package.
-  leo2a3: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  // glacis-269 (Main, 2026-11-04): the 2A3's turret flanks are its stowage boxes (turretEquipment, not armour), so the
+  // turret seats sat on the strip of armour under them, their tops cut by the boxes' lower edge from eye height; the
+  // hull side under the turret reads clear (as the 2A4M CAN's)
+  leo2a3: anchor('hull', 'left', 0.45, 0.62, 0.24, -1),
   leo2a3_b4: anchor('turret', 'right', 0.40, 0.42, 0.24, -1),
   leo2a4m_can: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a4_otco: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
