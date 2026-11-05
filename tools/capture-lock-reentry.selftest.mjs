@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runCapturedCommand } from './capture-command.mjs';
+import * as captureLock from './capture-lock.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 // the lock reads these by name; this receipt pins its own semantics, so it owns all of them (as capture-lock.selftest)
@@ -183,6 +184,16 @@ try {
     });
     assert.deepEqual([exclusive.ok, exclusive.nested], [true, true], `a timing child nests in a timing hold: ${JSON.stringify(exclusive)}`);
     parent.release();
+  }
+  // ---- (round 2 Q20) the ancestor chain from one process table: parent first, stops at pid 1, a gap or a cycle -----------
+  {
+    const { ancestorChain, parsePsParents } = captureLock;
+    assert.equal(typeof ancestorChain, 'function', 'the walk reads one table (ancestorChain), not one ps per level');
+    const table = parsePsParents('  PID  PPID\n    1     0\n   10     1\n   20    10\n   30    20\n   40    40\n  bad line\n');
+    assert.deepEqual([...ancestorChain(table, 30)], [30, 20, 10], 'up to pid 1, which is never an ancestor that counts');
+    assert.deepEqual([...ancestorChain(table, 99)], [99], 'a pid the table lacks ends the walk after it');
+    assert.deepEqual([...ancestorChain(table, 40)], [40], 'a cycle ends it');
+    assert.deepEqual([...ancestorChain(new Map(), 1)], [], 'launchd/init alone is no ancestor');
   }
   // ---- COT_LANE_HOLD=1 with no token: nests only in a live hold an ancestor of this process owns (round 3) ------------
   // Lane-hold helpers outside the repo (fifo-hold.mjs: take the FIFO, then run a probe with COT_LANE_HOLD=1 and no token)

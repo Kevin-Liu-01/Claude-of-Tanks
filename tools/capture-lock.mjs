@@ -853,16 +853,35 @@ export function sessionMutexHeldByAncestor(dir, { lockStaleMs = DEFAULT_LOCK_STA
   return state === 'live' && pid > 1 && ancestorPids().has(pid);
 }
 
-/** This process's ancestors, its parent first, up the ppid chain (stops at pid 1, a failed `ps`, or 64 levels); this
- *  process itself is not among them. */
-function ancestorPids() {
+/** The ancestors of `from` in `parentOf` (pid -> ppid): `from` first, up the chain (stops at pid 1, a pid the table
+ *  lacks, a cycle, or 64 levels). */
+export function ancestorChain(parentOf, from) {
   const pids = new Set();
-  let at = process.ppid;
+  let at = from;
   for (let depth = 0; depth < 64 && at > 1 && !pids.has(at); depth++) {
     pids.add(at);
-    try { at = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { break; }
+    at = parentOf.get(at) ?? 0;
   }
   return pids;
+}
+
+/** `ps -A -o pid=,ppid=` output as a pid -> ppid map. */
+export function parsePsParents(text) {
+  const parentOf = new Map();
+  for (const line of String(text ?? '').split('\n')) {
+    const match = /^\s*(\d+)\s+(\d+)\s*$/.exec(line);
+    if (match) parentOf.set(Number(match[1]), Number(match[2]));
+  }
+  return parentOf;
+}
+
+/** This process's ancestors, its parent first, up the ppid chain (stops at pid 1, a pid gone from the table, or 64
+ *  levels); this process itself is not among them. One `ps` reads the whole process table (round 2 Q20: the walk ran
+ *  one `ps` per level, tens of milliseconds each on a loaded machine); a failed `ps` leaves the parent alone. */
+function ancestorPids() {
+  let table = '';
+  try { table = execFileSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 16 * 1024 * 1024 }); } catch { /* the parent alone */ }
+  return ancestorChain(parsePsParents(table), process.ppid);
 }
 
 /** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */

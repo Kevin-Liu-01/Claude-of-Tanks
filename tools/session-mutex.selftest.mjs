@@ -133,6 +133,24 @@ try {
     assert.deepEqual([sessionMutexState(dir).state, sessionMutexHeldByAncestor(dir)], ['live', false], 'a child\'s hold is not this process\'s ancestor\'s');
     holder.kill('SIGKILL');
     await new Promise((done) => holder.once('close', done));
+    // (round 2 Q20) the ancestor walk reads the process table once: it ran one `ps` per level (a grandchild under a shell,
+    // the selftest runner and the session's shells made it six to ten on this machine). A stand-in `ps` first on PATH
+    // counts the calls of a walk from a grandchild of the holder (a shell stays between them).
+    {
+      const fake = join(root, 'fake-ps'), calls = join(root, 'ps-calls');
+      mkdirSync(fake);
+      writeFileSync(join(fake, 'ps'), `#!/bin/sh\necho call >> ${JSON.stringify(calls)}\nexec /bin/ps "$@"\n`, { mode: 0o755 });
+      const deep = join(root, 'deep');
+      const held = claimSessionMutex(deep);
+      try {
+        const walk = `import { sessionMutexHeldByAncestor } from ${JSON.stringify(LOCK)}; process.stdout.write(String(sessionMutexHeldByAncestor(${JSON.stringify(deep)})));`;
+        const run = spawnSync('/bin/sh', ['-c', '"$0" "$@"; exit $?', process.execPath, '--input-type=module', '-e', walk],
+          { encoding: 'utf8', env: { ...process.env, PATH: `${fake}:${process.env.PATH}` } });
+        assert.equal(run.stdout, 'true', `a grandchild of the holder nests: ${run.stderr}`);
+        const count = readFileSync(calls, 'utf8').trim().split('\n').length;
+        assert.equal(count, 1, `one ps for the whole walk, not one per level (${count})`);
+      } finally { releaseSessionMutex(held, { log: quiet }); }
+    }
     // (round 2 U38) the polite lock (visual-census --probe-lock) under the mutex's holder nests in it too: it waited behind
     // its own parent (a live owner is never reaped), 20 min as the patient head, then stepped behind until its timeout
     const fifo = { queueDir: join(root, 'polite-queue'), lockDir: join(root, 'polite-fifo') };
