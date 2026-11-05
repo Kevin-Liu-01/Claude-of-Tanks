@@ -230,8 +230,8 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'aft10', 'griffin_viper', 'jpz_e100', 'object695', 'strv103a', 'strv103b', 'udes03',
   ]),
   spaa: Object.freeze([
-    'gepard_1a2', 'itpsv_leopard2', 'k30_biho', 'lvkv9040', 'm6_linebacker', 'marksman_t55', 'pantsir_s1', 'pgz09', 'pgz95',
-    'pza_loara', 'tunguska_m', 'type87_aw',
+    'gepard_1a2', 'itpsv_leopard2', 'k30_biho', 'lvkv9040', 'm163_vads', 'm6_linebacker', 'marksman_t55', 'pantsir_s1', 'pgz09',
+    'pgz95', 'pza_loara', 'tunguska_m', 'type87_aw',
   ]),
   // Tank-support fighting vehicles (BMPT), the TOS-1A rocket system and the owner-authored ZTZ-100 missile-support
   // prototype: none is a tank, a troop carrier or a dedicated tank destroyer.
@@ -283,7 +283,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'gepard_1a2', 'itpsv_leopard2',
-    'k21', 'k30_biho', 'lrmv_lynx', 'lvkv9040', 'm113a1_mrv', 'm113a3', 'm113as4',
+    'k21', 'k30_biho', 'lrmv_lynx', 'lvkv9040', 'm113a1_mrv', 'm113a3', 'm113as4', 'm163_vads',
     'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker', 'marksman_t55',
     'pantsir_s1', 'pgz09', 'pgz95', 'pl01', 'pl01_105', 'pza_loara', 't49', 'tunguska_m', 'type87_aw', 'x1_pioneiro',
     'x1a2_carcara',
@@ -310,7 +310,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a3dk', 'leo1a5', 'leo1a5dk',
     'leo1a5dk1', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a3_b4', 'leo2a4', 'leo2a4_otco',
     'leo2a4_v', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v',
-    'leopard_as1', 'lrmv_lynx', 'lvkv9040', 'm113a1_fsv', 'm113a1_mrv', 'm113a3', 'm113as4', 'm1a1', 'm1a1_abrams_aim',
+    'leopard_as1', 'lrmv_lynx', 'lvkv9040', 'm113a1_fsv', 'm113a1_mrv', 'm113a3', 'm113as4', 'm163_vads', 'm1a1', 'm1a1_abrams_aim',
     'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_aim_sa_aus', 'm1a1ha',
     'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a2_sepv3_aus', 'm2a2_bradley', 'm3a3_bradley',
     'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a2ga2', 'm48a3_patton',

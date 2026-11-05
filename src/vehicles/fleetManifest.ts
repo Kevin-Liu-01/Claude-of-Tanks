@@ -142,6 +142,8 @@ export const FLEET_GROUP_IDS = Object.freeze({
   lvkv9040: Object.freeze(['lvkv9040']),
   k30Biho: Object.freeze(['k30_biho']),
   loara: Object.freeze(['pza_loara']),
+  // 269: the M163 VADS, its Vulcan turret on the M113 builder's M741 hull
+  m163: Object.freeze(['m163_vads']),
 } as const);
 
 export type FleetGroup = keyof typeof FLEET_GROUP_IDS;

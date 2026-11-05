@@ -52,6 +52,8 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
   lvkv9040: 'Lvkv 9040: one 40 mm Bofors L/70 and the smoke dischargers; no roof machine gun.',
   k30_biho: 'K30 Biho: two 30 mm KCB and the smoke dischargers; no roof machine gun.',
   pza_loara: 'PZA Loara: two 35 mm Oerlikon KDA and the smoke dischargers; no secondary armament.',
+  // 269: the M163 VADS
+  m163_vads: 'M163 VADS: the 20 mm M168 Vulcan in its open one-man mount; no roof machine gun.',
   tos1a_tagil: 'TOS-1A Solntsepyok: the 24-tube 220 mm launcher on a T-72 chassis; the crew relies on personal arms and '
     + 'the vehicle carries no machine gun.',
   kv2: 'KV-2: the 152 mm M-10 and three 7.62 mm DT machine guns in ball mounts (coaxial, turret rear and hull bow); no '

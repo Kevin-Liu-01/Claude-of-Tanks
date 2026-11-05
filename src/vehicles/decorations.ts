@@ -3173,6 +3173,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (['m113a1_fsv', 'm113a1_mrv', 'm113as4', 'leopard_as1', 'm1a1_aim_sa_aus', 'm1a2_sepv3_aus', 'redback'].includes(spec.id)) return [];
   // 269: the US M113A3 carries its own tarp roll and fuel tanks (profiles/m113.ts)
   if (spec.id === 'm113a3') return [];
+  // 269: the M163 VADS: the Vulcan and the radar sweep the roof at every bearing; its builder authors its stowage case
+  if (spec.id === 'm163_vads') return [];
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.

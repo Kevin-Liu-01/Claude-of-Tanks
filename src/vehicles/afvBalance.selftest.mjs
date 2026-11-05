@@ -84,10 +84,13 @@ const EXPECTED = Object.freeze({
   m113as4:             { hp: 1300, speed: 65, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: [450, 'tow-launch'] },
   redback:             { hp: 2700, speed: 65, reverse: 30, traverse: 47, damage: 95, pen: [245, 224, 202], reload: 0.28, sound: 'mk30-2', missile: [680, 'spike-launch'] },
   m113a3:              { hp: 1500, speed: 66, reverse: 14, traverse: 61.6, damage: 24, pen: [80, 70, 55], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
+  // 269: the M163 VADS (m163Specs.ts): its 20 mm Vulcan at the gun's 1,000 rounds a minute (cycle 0.06 s) in the burst
+  // limiter's 60-round bursts, the headline reload the burst limiter's 4.0 s reset (a magazine's: fleetBalance.selftest)
+  m163_vads:           { hp: 1750, speed: 64, reverse: 14, traverse: 61.6, damage: 20, pen: [90, 72, 55], reload: 4.0, cycle: 0.06, magazine: 60, sound: 'rh202', missile: null },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 58, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles; 269: the second air-defence round's six, then (the m113-hull-269 merge) the M113AS4, the Redback and the US M113A3.
+assert.equal(ifvIds.length, 59, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 267: the BMPT Terminator; 268: the five twin-cannon air-defence vehicles; 269: the second air-defence round's six, then (the m113-hull-269 merge) the M113AS4, the Redback and the US M113A3, then the M163 VADS.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 
@@ -116,7 +119,12 @@ for (const id of ifvIds) {
 
   const round = spec.gun.shells[0];
   assert.equal(spec.gun.reloadS, expected.reload, `${id}: headline reload`);
-  assert.equal(round.reloadS, expected.reload, `${id}: default-round reload`);
+  // (a burst magazine's rounds cycle at the magazine's own interval: the M163 VADS, 269)
+  assert.equal(round.reloadS, expected.cycle ?? expected.reload, `${id}: default-round reload`);
+  if (expected.magazine) {
+    assert.deepEqual(spec.gun.autoloader, { magazineSize: expected.magazine, intraClipS: expected.cycle, fullReloadS: expected.reload },
+      `${id}: the burst magazine`);
+  }
   assert.equal(round.dmg, expected.damage, `${id}: default-round damage`);
   assert.deepEqual([round.pen100Mm, round.pen1000Mm, round.pen2000Mm], expected.pen,
     `${id}: default-round penetration curve`);

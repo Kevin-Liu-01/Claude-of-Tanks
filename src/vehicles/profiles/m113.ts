@@ -19,7 +19,9 @@
 //   on the roof; no TOW.
 // - m741: the M163 VADS's carrier (an M113A1; buildM113HullSteps alone, the Vulcan turret the twin-aa lane's): no cupola,
 //   the A1's internal fuel, the turret's race cut into the roof's rear half where the cargo hatch was and the commander's
-//   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04).
+//   round hatch behind it at the right rear (m741Datums.ts; the owner's photo of 2026-11-04); no hull whips, the M163's
+//   antennas on its turret (Commons photos 03 and 04); `a2FuelTanks` hangs the M113A2's low armoured fuel tanks either side
+//   of the ramp (the M163A1's and A2's M741A1; Commons photo 07 of the rear), off by default.
 // Datums: the published M113A1 (4.863 m long, 2.686 m over the tracks, 0.43 m clearance, 0.381 m tracks, five 0.61 m road
 // wheels a side, the sprocket ahead and the idler astern, no return rollers) and the AS4's side profile (Commons,
 // scaled on its 5.53 m hull: the roof 1.96 m over its appliqué, the turret's top 2.60 m, the wheels 0.70 m apart, the ring
@@ -30,6 +32,7 @@ import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { antennaPart } from './antennaPart.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { weaponAssembly } from './weaponStock.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -50,10 +53,12 @@ function addTowLauncher(P: TankBuilderPort, mark: M113TowMark): void {
     const plateX = T.x + 0.13;
     P.addEquipment('turret', box(0.04, 0.52, 0.86), plateX, yMid, zMid);
     for (const z of [zMid - 0.30, zMid + 0.30]) P.addEquipment('turret', box(T.wallX - plateX + 0.01, 0.12, 0.14), (plateX + T.wallX) / 2, yMid, z);
+    // (the front collar stands 4.5 cm proud of the canister, its dark bore at the launch exit fleetLauncherMuzzles.ts
+    // fires from, 5 cm ahead of mouthZ as on the FSV and MRV: flush with the canister the exit hung 43 mm in air)
     for (const y of T.ys) {
       P.addEquipment('turret', cylZ(0.11, T.len, seg), T.x, y, zMid);
-      for (const z of [z0 + 0.04, zMid, T.mouthZ - 0.04]) P.add('turretDetail', cylZ(0.124, 0.06, seg), T.x, y, z);
-      P.add('turretDark', cylZ(0.09, 0.012, seg), T.x, y, T.mouthZ + 0.001);
+      for (const z of [z0 + 0.04, zMid, T.mouthZ + 0.015]) P.add('turretDetail', cylZ(0.124, 0.06, seg), T.x, y, z);
+      P.add('turretDark', cylZ(0.09, 0.012, seg), T.x, y, T.mouthZ + 0.046);
       P.add('turretDetail', box(0.02, 0.03, T.len * 0.8), T.x + 0.11, y, zMid);
     }
     // the canisters' straps over the cradle, the umbilical's cable to the turret
@@ -99,8 +104,10 @@ function addSpareTows(P: TankBuilderPort, x: number, y: number, z: number): void
 }
 
 /** The M113 hull, its running gear, its fittings and the mark's hull kit, no turret: each mark's first four steps, and the
- * M163 VADS's M741 carrier alone (the twin-aa lane: `yield* buildM113HullSteps(P, 'm741')`, its turret on M741_RING). */
-export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): TankProfileBuild {
+ * M163 VADS's M741 carrier alone (the twin-aa lane: `yield* buildM113HullSteps(P, 'm741')`, its turret on M741_RING;
+ * `{ a2FuelTanks: true }` for the M741A1's external tanks). */
+export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
+  opts: { readonly a2FuelTanks?: boolean } = {}): TankProfileBuild {
   const { box, cylX, cylY, torus, xform, buildRunningGear, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;
   const as4 = mark === 'as4', a3 = mark === 'a3', m741 = mark === 'm741';
@@ -205,6 +212,21 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): Tan
       P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), s * 1.095, 1.815, D.sternZ - 0.30);
     }
   };
+  // the M113A2's armoured fuel tanks, low either side of the ramp from the hull's foot, their tops falling to the rear,
+  // a filler cap on each and a tail light low in each rear face (Commons photo 07 of the M163's rear, scaled on the 1.86 m
+  // roof: 0.45 to 1.03 m at the plate, the rear face 0.39 m tall, the ramp's edge to the hull's side; 0.43 m deep, the
+  // 17 in the A2's tanks add to its length in TM 9-2350-277): lower and shorter than the AS4's pair
+  const addA2FuelTanks = (): void => {
+    const z0 = D.sternZ, z1 = D.sternZ - 0.43, slope = Math.atan2(0.19, 0.43);
+    for (const s of [-1, 1] as const) {
+      const lo = s < 0 ? -1.31 : 0.86, hi = s < 0 ? -0.86 : 1.31, x = s * 1.085;
+      P.addEquipment('hull', slab([lo, 0.45, z0], [hi, 0.45, z0], [hi, 0.45, z1], [lo, 0.45, z1],
+        [lo, 1.03, z0], [hi, 1.03, z0], [hi, 0.84, z1], [lo, 0.84, z1]));
+      P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, 0.955, D.sternZ - 0.20, -slope, 0, 0);
+      P.add('hullDark', box(0.18, 0.09, 0.012), x, 0.54, z1 - 0.004);
+      P.add('hullGlass', box(0.12, 0.04, 0.012), x, 0.54, z1 - 0.010);
+    }
+  };
   if (mark === 'mrv') {
     // the buoyancy pods: two slab panels on each side, the full side from the glacis' top to the rear plate (the Perth and
     // Puckapunyal MRVs; the folded trim vane holds the glacis)
@@ -247,12 +269,13 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark): Tan
     P.add('hullDetail', cylY(R.diameter / 2, R.diameter / 2 + 0.02, R.raceTopY - R.roofY, P.q ? 32 : 20), R.x, (R.roofY + R.raceTopY) / 2, R.z);
     P.addCupola('hull', cylY(H.r - 0.01, H.r, 0.05, P.q ? 20 : 14), H.x, B.roofY + 0.025, H.z);
     P.add('hullDark', cylX(0.025, 0.30, 8), H.x, B.roofY + 0.06, H.z + H.r - 0.02);
+    if (opts.a2FuelTanks) addA2FuelTanks();
   }
   // (the AS4's whips stand over its bins: its spares stay inside; the A3 and the M741 carry no TOW)
   if (mark === 'fsv' || mark === 'mrv') addSpareTows(P, 0.60, B.roofY, D.sternZ + 0.85);
-  // the whips: two on the roof's rear corners (the M741's one on the left: its commander's hatch holds the right)
-  for (const s of [-1, 1] as const) {
-    if (m741 && s < 0) continue;
+  // the whips: two on the roof's rear corners (none on the M741: the M163's ride its turret, and a left-rear whip stood
+  // 1.90 m from the ring, inside the Vulcan's 1.99 m sweep)
+  if (!m741) for (const s of [-1, 1] as const) {
     P.add('hullDetail', cylY(0.04, 0.05, 0.07, 10), s * 0.95, B.roofY + 0.035, D.sternZ + (as4 ? 1.00 : 0.30));
     P.addEquipment('hull', antennaPart(cylY(0.012, 0.015, 2.2, 8)), s * 0.95, B.roofY + 1.17, D.sternZ + (as4 ? 1.00 : 0.30), 0, 0, s * 0.03);
   }
@@ -402,7 +425,8 @@ function* buildM113Steps(P: TankBuilderPort, mark: M113Mark): TankProfileBuild {
     // face's top edge in air, which the sealed check read as see-through)
     P.decal('turret', 'flag', 'au-army-kangaroo', 0.17, [-0.12, 0.14, 0.704], 0);
   }
-  if (mark !== 'a3') addTowLauncher(P, mark);
+  // the launcher is damageable weapon stock: its mouths are the drawn terminals the launches leave from
+  if (mark !== 'a3') weaponAssembly(P, () => addTowLauncher(P, mark));
   P.turretG.userData.m113TurretReceipt = Object.freeze({
     mark, roadWheels: D.wheelZs.length, length: D.length,
     turret: mark === 'fsv' ? 'saladin' : mark === 'mrv' ? 'scorpion' : a3 ? 'acav-cupola' : 'tenix', buoyancyPods: mark === 'mrv',

@@ -325,6 +325,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m113a1_fsv: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
   // (269: the US M113A3's star and number on its bare left hull side, as the FSV's)
   m113a3: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
+  // (269: the M163 VADS's on the same bare left hull side of the M741; photo 03 carries the division's patch there)
+  m163_vads: anchor('hull', 'left', 0.40, 0.70, 0.30, 1),
   m113a1_mrv: anchor('turret', 'left', 0.35, 0.45, 0.22, 1),
   m113as4: anchor('turret', 'left', 0.30, 0.50, 0.20, 1),
   // the kangaroo on the turret's forward flank, as on the 2024-26 photographs

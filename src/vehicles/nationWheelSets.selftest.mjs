@@ -112,6 +112,8 @@ for (const [id, base] of [['type87_aw', 'type74'], ['marksman_t55', 't55a'], ['i
   assert.equal(resolveNationWheel(TANK_SPECS[id]).donor, resolveNationWheel(TANK_SPECS[base]).donor, `${id} draws ${base}'s wheel`);
 }
 expect('k30_biho', 'k1e1');
+// 269: the M163 VADS draws the US M113A3's wheel (the same M113 running gear)
+assert.equal(resolveNationWheel(TANK_SPECS.m163_vads).donor, resolveNationWheel(TANK_SPECS.m113a3).donor, 'm163_vads draws m113a3\'s wheel');
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');

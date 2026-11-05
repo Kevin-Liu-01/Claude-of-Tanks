@@ -61,6 +61,8 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1', 't49',
     // release 269: the Type 87 self-propelled anti-aircraft gun (in service 1987, on the cold-war Type 74)
     'type87_aw',
+    // release 269: the M163 VADS (in US service 1968 to the 1990s, on the M741, an M113A1)
+    'm163_vads',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
     // 2026-10-13 (VEH-11, coordinator ruling): the Warrior TES(H) is a 2000s Afghanistan fit at tier X.

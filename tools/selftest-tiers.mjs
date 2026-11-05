@@ -425,6 +425,7 @@ export const MANUAL_SUITES = Object.freeze({
     'src/vehicles/profiles/loara.selftest.mjs',
     'src/vehicles/profiles/longwei.selftest.mjs',
     'src/vehicles/profiles/lvkv9040.selftest.mjs',
+    'src/vehicles/profiles/m163.selftest.mjs',
     'src/vehicles/profiles/m1a3Concept.selftest.mjs',
     'src/vehicles/profiles/m3BradleyGunMount.selftest.mjs',
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',

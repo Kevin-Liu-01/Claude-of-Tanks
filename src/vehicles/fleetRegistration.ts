@@ -100,6 +100,8 @@ import { synchronizeMarksmanFrames } from './marksmanSpecs.ts';
 import { synchronizeLvkv9040Frame } from './lvkv9040Specs.ts';
 import { synchronizeK30BihoFrame } from './k30BihoSpecs.ts';
 import { synchronizeLoaraFrame } from './loaraSpecs.ts';
+// 269: the M163 VADS on the M113 builder's M741 hull, registered after the second air-defence round
+import { synchronizeM163Frame } from './m163Specs.ts';
 
 import { TANK_SPECS, finalizeFirstPartyRoster } from './specs.ts';
 import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
@@ -124,6 +126,7 @@ synchronizeMarksmanFrames();
 synchronizeLvkv9040Frame();
 synchronizeK30BihoFrame();
 synchronizeLoaraFrame();
+synchronizeM163Frame();
 applyModernEraFold(TANK_SPECS);
 applyShownTierFloors(TANK_SPECS);
 applySameTierFairness(TANK_SPECS);

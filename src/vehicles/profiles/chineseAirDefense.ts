@@ -310,32 +310,32 @@ function pgz09Turret(P: TankBuilderPort): void {
 
 function pgz09Guns(P: TankBuilderPort): void {
   const G = PGZ09_GUNS, n = P.q ? 16 : 10;
-  weaponAssembly(P, () => {
-    for (const s of [-1, 1]) {
-      const x = s * G.gunX, barrel = s < 0 ? 0 : 1;
-      // the trunnion shaft from the boss into the housing (a body of revolution about the pitch axis)
-      P.addGunExtra(cylX(0.10, 0.12, P.q ? 18 : 12), s * 1.00, 0, 0);
-      // the tall angular armoured housing: its top the turret's rear roof (the shoulder), its front face deep, its
-      // underside a wedge pointing down to the keel under the trunnion; the outer face bevelled at the top and front
-      const inner = s * G.housingInner, outer = s * G.housingOuter;
-      P.addGunExtra(convexBody([
-        [inner, G.housingTopY, G.housingRearZ], [inner, G.housingTopY, G.housingFrontZ],
-        [inner, G.housingFrontBottomY, G.housingFrontZ], [inner, G.housingKeelY, G.housingKeelZ],
-        [inner, G.housingRearBottomY, G.housingRearZ],
-        [outer, G.housingTopY - 0.07, G.housingRearZ + 0.04], [outer, G.housingTopY - 0.07, G.housingFrontZ - 0.06],
-        [outer, G.housingFrontBottomY + 0.05, G.housingFrontZ - 0.04], [outer, G.housingKeelY + 0.05, G.housingKeelZ],
-        [outer, G.housingRearBottomY + 0.03, G.housingRearZ + 0.04],
-      ]));
-      P.addGunExtraDark(box(0.26, 0.012, 0.62), (inner + outer) / 2, G.housingTopY + 0.004, -0.10);
-      P.addGunExtra(cylZ(G.collarR, G.collarFrontZ - G.housingFrontZ + 0.03, n), x, 0, (G.collarFrontZ + G.housingFrontZ) / 2 - 0.015);
-      // the barrel, sliding back into the collar, and the muzzle booster with its velocity-measuring ring
-      const rootZ = G.housingFrontZ + 0.08;
-      P.add(`gunBarrel${barrel}`, cylZ(G.barrelR, G.brakeRearZ - rootZ + 0.03, n), x, 0, (G.brakeRearZ + rootZ) / 2 + 0.015);
-      P.add(`gunBarrel${barrel}`, cylZ(0.058, 0.50, n), x, 0, G.collarFrontZ + 0.24);
-      P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR, G.muzzleZ - G.brakeRearZ, n), x, 0, (G.muzzleZ + G.brakeRearZ) / 2);
-      P.add(`gunBarrel${barrel}Dark`, cylZ(0.088, 0.10, n), x, 0, G.brakeRearZ + 0.10);
-    }
-  }, 'gun', 10);
+  // The guns are not weapon stock: the PGZ-09 carries no missiles, so like the Gepard and the other gun-only air
+  // defence its pods take hits through the gun module, not external-weapon hitboxes (externalWeapons.selftest)
+  for (const s of [-1, 1]) {
+    const x = s * G.gunX, barrel = s < 0 ? 0 : 1;
+    // the trunnion shaft from the boss into the housing (a body of revolution about the pitch axis)
+    P.addGunExtra(cylX(0.10, 0.12, P.q ? 18 : 12), s * 1.00, 0, 0);
+    // the tall angular armoured housing: its top the turret's rear roof (the shoulder), its front face deep, its
+    // underside a wedge pointing down to the keel under the trunnion; the outer face bevelled at the top and front
+    const inner = s * G.housingInner, outer = s * G.housingOuter;
+    P.addGunExtra(convexBody([
+      [inner, G.housingTopY, G.housingRearZ], [inner, G.housingTopY, G.housingFrontZ],
+      [inner, G.housingFrontBottomY, G.housingFrontZ], [inner, G.housingKeelY, G.housingKeelZ],
+      [inner, G.housingRearBottomY, G.housingRearZ],
+      [outer, G.housingTopY - 0.07, G.housingRearZ + 0.04], [outer, G.housingTopY - 0.07, G.housingFrontZ - 0.06],
+      [outer, G.housingFrontBottomY + 0.05, G.housingFrontZ - 0.04], [outer, G.housingKeelY + 0.05, G.housingKeelZ],
+      [outer, G.housingRearBottomY + 0.03, G.housingRearZ + 0.04],
+    ]));
+    P.addGunExtraDark(box(0.26, 0.012, 0.62), (inner + outer) / 2, G.housingTopY + 0.004, -0.10);
+    P.addGunExtra(cylZ(G.collarR, G.collarFrontZ - G.housingFrontZ + 0.03, n), x, 0, (G.collarFrontZ + G.housingFrontZ) / 2 - 0.015);
+    // the barrel, sliding back into the collar, and the muzzle booster with its velocity-measuring ring
+    const rootZ = G.housingFrontZ + 0.08;
+    P.add(`gunBarrel${barrel}`, cylZ(G.barrelR, G.brakeRearZ - rootZ + 0.03, n), x, 0, (G.brakeRearZ + rootZ) / 2 + 0.015);
+    P.add(`gunBarrel${barrel}`, cylZ(0.058, 0.50, n), x, 0, G.collarFrontZ + 0.24);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(G.brakeR, G.muzzleZ - G.brakeRearZ, n), x, 0, (G.muzzleZ + G.brakeRearZ) / 2);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.088, 0.10, n), x, 0, G.brakeRearZ + 0.10);
+  }
   P.muzzleZ = G.muzzleZ;
 }
 

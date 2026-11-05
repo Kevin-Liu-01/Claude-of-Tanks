@@ -316,6 +316,9 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://en.wikipedia.org/wiki/K30_Biho', kind: 'encyclopedia' }),
   wikiLoara: Object.freeze({ title: 'Wikipedia, "PZA Loara"',
     url: 'https://en.wikipedia.org/wiki/PZA_Loara', kind: 'encyclopedia' }),
+  // 269: the M163 VADS (the crew of four, the linkless drum, the stowed rounds)
+  wikiM163: Object.freeze({ title: 'Wikipedia, "M163 VADS"',
+    url: 'https://en.wikipedia.org/wiki/M163_VADS', kind: 'encyclopedia' }),
 } satisfies Record<string, InternalLayoutSource>);
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
@@ -578,6 +581,15 @@ const LAYOUTS = Object.freeze({
   spaaLoara: { confidence: 'platform-inferred', sources: ['wikiLoara'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'frontLeft'], ['commander', 'turret', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  // 269: the M163 VADS on the M741 (an M113A1): the driver at the front left beside the 6V53, the gunner alone in his
+  // column at the open mount's rear right, the Vulcan on its left front and the radar on its right, the commander under
+  // his hatch at the right rear and the loader opposite him; the linkless drum in the hull under the turret, its chute up
+  // through the inboard trunnion
+  spaaM163: { confidence: 'platform-inferred', sources: ['wikiM163'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'turret', 'midRight'], ['commander', 'hull', 'rearRight'],
+    ['loader', 'hull', 'rearLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    ammoRack: { placement: 'hull', form: 'hullBins' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' } }) },
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
@@ -694,6 +706,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   spaaLvkv9040: ['lvkv9040'],
   spaaK30: ['k30_biho'],
   spaaLoara: ['pza_loara'],
+  spaaM163: ['m163_vads'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
   suppliedWarriorMilan: ['warrior_tes_h'],

@@ -24,6 +24,8 @@ const cases = [
   ['type87_aw', 'ifv', 38, 'diesel_two_stroke'], ['marksman_t55', 'ifv', 41, 'diesel_v12_soviet'],
   ['itpsv_leopard2', 'ifv', 49, 'diesel_v12_modern'], ['lvkv9040', 'ifv', 37, 'diesel_ifv'], ['k30_biho', 'ifv', 26.5, 'diesel_ifv'],
   ['pza_loara', 'ifv', 45.3, 'diesel_v12_soviet'],
+  // 269: the M163 VADS on the M113's powertrain (the IFV family, as the M113A3)
+  ['m163_vads', 'ifv', 12.31, 'diesel_ifv'],
 ];
 for (const [id, role, weightTons, family] of cases) {
   assert.equal(resolveEngineFamily({ id, role, weightTons, era: 'modern' }), family, `${id} → ${family}`);

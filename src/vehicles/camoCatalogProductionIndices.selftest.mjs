@@ -147,7 +147,9 @@ const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'x1_pioneiro'];
 // Release 268: the Flakpanzer Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5 whose hull it rides.
 // Release 269: the Type 87 wears Japan's Factory coat with the Type 74 and the Type 90, the Lvkv 9040 Sweden's with the CV90.
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', t49: 'service_usa_desert', ua_cv9040c: 'service_ua_m2a3_bradley',
-  gepard_1a2: 'service_leo2a6m', type87_aw: 'service_type10', lvkv9040: 'service_strv122' };
+  gepard_1a2: 'service_leo2a6m', type87_aw: 'service_type10', lvkv9040: 'service_strv122',
+  // Release 269: the M163 VADS wears the US Factory coat, the desert tan of the owner's photograph (no new paint)
+  m163_vads: 'service_usa_desert' };
 // (266: the Ukrainian CV9040C wears Ukraine's Bradley service coat, the national Factory coat for its IFVs)
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
