@@ -35,6 +35,11 @@
 // formats also: the master is gone and the film is that proxy). A group with no record (delivered before the record) is
 // current when each of its outputs is newer than its input, and is recorded so. Only stale groups are made again: a run
 // stopped anywhere in a take delivers again what its inputs changed, and nothing else.
+// Round 2 review (Q20) of round 3: the formats group counted only its .mp4 and poster (and the share GIF), so a take
+// missing another format (its webm, its 4K, a --loop-master edit master asked for later) stayed "up to date"; it now
+// needs every format the flags ask for and every one its record says the film made. And a take up to date kept its film
+// master under --drop-film-masters (the early "up to date" skipped the drop, so a run stopped between the record and the
+// drop kept the 3.8 GB master for good); the drop now runs for it too, with no format made again.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
@@ -124,11 +129,17 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   };
   const saveRecord = () => writeFileAtomic(complete, `${JSON.stringify({ at: new Date().toISOString(), inputs: made }, null, 1)}\n`);
   const sceneCurrent = !existsSync(sceneFile) || (existsSync(sceneOut) && readFileSync(sceneOut).equals(readFileSync(sceneFile)));
-  const filmCurrent = stillsOnly || current('film', master, [`${id}.mp4`, `${id}.jpg`, ...(GIF.length ? [`${id}-share.gif`] : [])]);
+  // the formats group: every format the flags ask for, and every one the record says this film made (the 4K of a 2160p take)
+  const formatNames = [...new Set([`${id}.mp4`, `${id}.webm`, `${id}-mobile.mp4`, `${id}.jpg`, ...(flags.has('--loop-master') ? [`${id}-loop-master.mov`] : []),
+    ...GIF.map(([, suffix]) => `${id}${suffix}`), ...(Array.isArray(made.formats) ? made.formats : [])])];
+  const filmCurrent = stillsOnly || current('film', master, formatNames);
   // --stills-only delivers the stills again whatever their times (its purpose); a run with encodes checks them
   const stillCurrent = !stillsOnly && current('still', still, [`${id}-4k.png`, `${id}-4k.jpg`, `${id}.webp`]);
   const closeCurrent = !stillsOnly && current('close', closeStill, [`${id}-close-4k.png`, `${id}-close-4k.jpg`, `${id}-close.webp`]);
-  if (!stillsOnly && filmCurrent && stillCurrent && closeCurrent && sceneCurrent) {
+  // a take up to date whose film master is still there gives it up now (the drop below), with no format made again
+  const dropDue = Boolean(filmMaster && flags.has('--drop-film-masters') && !stillsOnly);
+  const upToDate = !stillsOnly && filmCurrent && stillCurrent && closeCurrent && sceneCurrent;
+  if (upToDate && !dropDue) {
     console.log(`${id}: formats up to date`); continue;
   }
   if (stillsOnly && !existsSync(join(out, `${id}.mp4`))) { console.log(`${id}: no formats delivered yet (--stills-only)`); continue; }
@@ -150,13 +161,16 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     `[1:v]trim=start=0:end=${X},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
   const film = filteredFilm(master, join(deliver, '.master-work'), `${id}-film`, FILTER);
   const inputs = ['-i', film, '-ss', String(L), '-i', film];
+  const madeFormats = [];
   for (const [key, suffix, post, enc, needsUhd] of VIDEO) {
     if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
     ff(...inputs, '-filter_complex', `${loop};[loop]${post}[v]`, '-map', '[v]', '-an', ...enc, join(out, `${id}${suffix}`));
+    madeFormats.push(`${id}${suffix}`);
   }
   for (const [, suffix, pre, gen, use] of GIF) {
     ff(...inputs, '-filter_complex', `${loop};[loop]${pre},split[g1][g2];[g1]${gen}[p];[g2][p]${use}[v]`, '-map', '[v]', '-loop', '0', join(out, `${id}${suffix}`));
+    madeFormats.push(`${id}${suffix}`);
   }
   // the share GIF must fit common upload limits: step down size and rate until it is under SHARE_GIF_MAX
   for (const [w, fps, dither] of GIF.length ? SHARE_LADDER : []) {
@@ -167,11 +181,12 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   ff(...inputs, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
   if (film !== master) unlinkSync(film);
   // the formats and the poster are whole: made from this film (and the proxy beside its master, which may replace it)
-  Object.assign(made, { film: film0, proxy: proxy0 });
+  Object.assign(made, { film: film0, proxy: proxy0, formats: [...madeFormats, `${id}.jpg`] });
   saveRecord();
   } else {
     L = +(probe(join(out, `${id}.mp4`))).toFixed(3); uhd = existsSync(join(out, `${id}-4k.mp4`));
-    if (!stillsOnly) console.log(`${id}: formats current, not re-encoded; delivering ${[!stillCurrent && 'the still', !closeCurrent && 'the close still', !sceneCurrent && 'the scene'].filter(Boolean).join(', ')}`);
+    if (upToDate) console.log(`${id}: formats up to date; dropping its film master`);
+    else if (!stillsOnly) console.log(`${id}: formats current, not re-encoded; delivering ${[!stillCurrent && 'the still', !closeCurrent && 'the close still', !sceneCurrent && 'the scene'].filter(Boolean).join(', ')}`);
   }
   // the scene: copied whenever its bytes differ (cinema-jobs rewrites it, unchanged, on every launch: no input of a format)
   if (!sceneCurrent) copyFileAtomic(sceneFile, sceneOut);
