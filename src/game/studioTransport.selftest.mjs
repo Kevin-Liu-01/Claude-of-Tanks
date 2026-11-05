@@ -7,6 +7,9 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createStudioSession, studioBusy, transportHeld } from './studioSession.ts';
+// (round 2 U36) the session's holders, by namespace: a copy of this file on a tree without them still links
+import * as studioSessionModule from './studioSession.ts';
+const createSessionHolder = studioSessionModule.createSessionHolder ?? (() => ({ held: false, take: () => () => {} }));
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
@@ -30,7 +33,7 @@ function makeStudio() {
   const timers = [];
   const noop = () => {};
   const ports = {
-    session: createStudioSession(), studioBusy, transportHeld,
+    session: createStudioSession(), studioBusy, transportHeld, createSessionHolder,
     rail: { updateVisibility: noop }, panel: { refreshTime: noop, refreshAll: noop, refreshSelected: noop },
     invalidate: noop, flareToWallClock: noop, clampStudioTime: (time) => time, post: {},
     rebuildEffects: (ms) => calls.push(['rebuild', ms]),
@@ -46,13 +49,23 @@ function makeStudio() {
     let mapChange = null, restoringHistory = false, lightChanges = 0, timeScale = 0, reverseRate = 0, reverseShuttleMs = 0, reverseWallS = 0;
     let clockMs = 3000, storyboard = { durationMs: 8000 }, pointerHeld = false, dragActor = null, dragging = false;
     let dragMoved = 0, placeArmed = null, historyTimer = 0;
+    // (round 2 U36) the holders (the lane base's plain latches above): set() takes a hold for the session it is given
+    const sceneLoad = createSessionHolder(), staging = createSessionHolder(), historyRestore = createSessionHolder();
+    const relighting = createSessionHolder();
+    const holders = { loading: sceneLoad, productionLoading: staging, restoringHistory: historyRestore, lightChanges: relighting };
+    const releases = {};
     const api = { setTimeScale: (value) => { if (!transportHeld(busy())) timeScale = value; return timeScale; } };
     ${[...found.values()].join('\n')}
     session.open(session.beginEntry());
     return {
       playTimeline, pauseTimeline, seekTimeline, shuttle, onPointerDown, onPointerUp, flushHistory, busy: () => busy(),
       cancel: ${cancelHandler ?? 'null'},
-      set: (patch) => {
+      set: (patch, owner = session.token()) => {
+        for (const key of Object.keys(holders)) {
+          if (!(key in patch)) continue;
+          releases[key]?.();
+          releases[key] = patch[key] ? holders[key].take(owner) : null;
+        }
         if ('recording' in patch) recording = patch.recording;
         if ('filming' in patch) filming = patch.filming;
         if ('filmExport' in patch) filmExport = patch.filmExport;
@@ -65,6 +78,7 @@ function makeStudio() {
         if ('lightChanges' in patch) lightChanges = patch.lightChanges;
       },
       reenter: () => { session.open(session.beginEntry()); active = true; },
+      token: () => session.token(),
       exit: () => { session.beginExit(); active = false; dragActor = null; dragging = false; session.close(); },
       get state() { return { timeScale, clockMs, reverseRate, pointerHeld, dragging, dragActor, historyTimer }; },
     };
@@ -162,10 +176,18 @@ function makeStudio() {
   studio.set({ mapChange: mapChangeOf(false) });
   assert.equal(studio.busy(), null, 'a closed session\'s battlefield change does not hold a newer one');
   studio.set({ mapChange: null });
+  const closed = studio.token();
   studio.exit();
   assert.equal(studio.busy(), 'session', 'a closed Studio reads as the session');
   studio.reenter();
   assert.equal(studio.busy(), null);
+  // and so is every other holder: a scene load, a staging, an undo or a light change still in flight from the closed
+  // session (a cold build its exit outlived) holds nothing in the Studio entered again
+  for (const key of ['loading', 'productionLoading', 'restoringHistory', 'lightChanges']) {
+    studio.set({ [key]: true }, closed);
+    assert.equal(studio.busy(), null, `a closed session's ${key} does not hold a newer one`);
+    studio.set({ [key]: false });
+  }
 }
 
 // 5. (round 2 Q18) Ctrl/Cmd+Z and +Y ask the panel's reading as its undo and redo buttons do (studioPanelBusy case 5): an

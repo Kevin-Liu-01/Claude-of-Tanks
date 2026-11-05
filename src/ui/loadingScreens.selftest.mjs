@@ -371,7 +371,7 @@ assert.match(garageReturnRuntimeSource, /ui\.hideHud\(\)/,
 assert.match(mainSource, /hideHud: \(\) => currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
   'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
-  /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
+  /actors\.push\(a\);[\s\S]{0,260}if \(!sceneLoad\.held\) bindStoryboardTracks\(\)/, // (round 2 U36) the load's session holder
   'Studio batch loads must not rebuild timeline bindings for every intermediate actor');
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,

@@ -4,6 +4,9 @@ import {stripTypeScriptTypes} from 'node:module';
 import {t} from '../ui/i18n.ts';
 import ts from 'typescript-compiler-api';
 import {createStudioSession,studioBusy} from './studioSession.ts';
+// (round 2 U36) the session's holders, by namespace: a copy of this file on a tree without them still links
+import * as studioSessionModule from './studioSession.ts';
+const createSessionHolder=studioSessionModule.createSessionHolder??(()=>({held:false,take:()=>()=>{}}));
 
 // Exercise the real recording functions with a controlled browser encoder.
 // Event order and failure injection are independent of production internals.
@@ -35,10 +38,11 @@ function fixture() {
   }
   const track=()=>{const t={stopped:false,stop(){this.stopped=true;},requestFrame(){if(throwAt==='requestFrame')throw Error('requestFrame');if(++submitted===chunkAfter)encoders.at(-1).chunk();}};tracks.push(t);return t;};
   const make=new Function('ports',`
-    const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post,t,createStudioSession,studioBusy}=ports;
+    const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post,t,createStudioSession,studioBusy,createSessionHolder}=ports;
     let recording=null,timeScale=0,clockMs=0,filming=false;
     // the Studio's holders, read by its real busy() (studioSession.ts studioBusy): idle and open unless a case holds one
     let filmExport=null,loading=false,productionLoading=false,mapChange=null,restoringHistory=false,lightChanges=0;
+    const sceneLoad=createSessionHolder(),staging=createSessionHolder(),historyRestore=createSessionHolder(),relighting=createSessionHolder();
     const session=createStudioSession();session.open(session.beginEntry());
     ${stripTypeScriptTypes(busyFunctions.join('\n'))}
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
@@ -51,12 +55,13 @@ function fixture() {
     ${tickFunction}
     return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;},hold:h=>{
       if(h==='film')filming=true;if(h==='export')filmExport={};if(h==='session')session.beginExit();
-      if(h==='scene')loading=true;if(h==='map')mapChange={work:new Promise(()=>{}),owner:session.token()};
-      if(h==='history')restoringHistory=true;if(h==='light')lightChanges=1;
+      if(h==='scene'){loading=true;sceneLoad.take(session.token());}if(h==='map')mapChange={work:new Promise(()=>{}),owner:session.token()};
+      if(h==='staging'){productionLoading=true;staging.take(session.token());}
+      if(h==='history'){restoringHistory=true;historyRestore.take(session.token());}if(h==='light'){lightChanges=1;relighting.take(session.token());}
     }};
   `);
   // the Studio's messages come from the catalog (studio.error.*): the sandbox reads them through the real translator
-  const api=make({t,createStudioSession,studioBusy,MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
+  const api=make({t,createStudioSession,studioBusy,createSessionHolder,MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
     performance:{now:()=>now},setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},
     document:{createElement(){return {click(){downloads++;}}}},post:{render(){if(throwAt==='render')throw Error('render');}}});
   return {...api,frame:(dt=1/60,wall=dt)=>{now+=wall*1000;api.frame(dt,wall);},encoders,tracks,timers,throwAt:x=>{throwAt=x;},tick:()=>{for(const fn of [...timers.values()])fn();},
@@ -117,7 +122,8 @@ for(const stage of ['constructor','start','render','requestFrame']) {
 // is not open or a scene, battlefield, history or (round 2, through the real busy()) light change in flight. No encoder
 // starts; a live recording is its own answer.
 for(const [holder,message] of [['film','studio.error.finishFilm'],['export','studio.error.finishFilm'],['session','studio.error.busy'],
-  ['scene','studio.error.busy'],['map','studio.error.busy'],['history','studio.error.busy'],['light','studio.error.busy']]) {
+  ['scene','studio.error.busy'],['staging','studio.error.busy'],['map','studio.error.busy'],['history','studio.error.busy'],
+  ['light','studio.error.busy']]) {
   const f=fixture();f.hold(holder);const refused=f.recordVideo({download:false});
   assert.equal(f.encoders.length,0,`${holder}: no encoder starts`);assert.equal(f.state().active,false);
   await assert.rejects(refused,{message:t(message)},`${holder} refuses a recording`);

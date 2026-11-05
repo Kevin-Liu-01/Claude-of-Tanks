@@ -9,7 +9,8 @@
  * Held work that outlives the bound gets its undo (hold's afterEnd) once the teardown is done, unless a newer session is
  * live by then: the teardown's restore stays the last word however slow the work. Work the exit does not wait for at all
  * (a battlefield build, which the world runtime activates when it lands) is trailed: a late result gets its undo the same
- * way, once the teardown is done.
+ * way, once the teardown is done. What holds the Studio while it runs (a scene load, a staging, an undo, a light change)
+ * is a holder of the session it began in (createSessionHolder): it holds no Studio entered after that session ended.
  *
  *   closed ──beginEntry──▶ entering ──open──▶ open
  *                            │                 │
@@ -44,6 +45,11 @@ export interface StudioSessionToken {
   current(): boolean;
   /** Throws StudioSessionEnded once that session ended. */
   check(): void;
+  /**
+   * (round 2 U36) True once the token's session can hold the Studio no more: it ended, or none was live when the token
+   * was handed out. A claim (claim()) is not ended while the entry it waits for is still to begin.
+   */
+  ended(): boolean;
 }
 
 export interface StudioSessionOptions {
@@ -58,6 +64,12 @@ export interface StudioSession {
   readonly generation: number;
   /** A token for the live session; stale from the start when no session is entering or open. */
   token(): StudioSessionToken;
+  /**
+   * (round 2 U36) The token of the session a step builds into: the live one, or, while none is live, the one the next
+   * entry begins (a load that enters the Studio itself). Not current until that entry begins and stale once it ends, so a
+   * step whose entry an exit took back never builds into, or holds, a Studio entered after it.
+   */
+  claim(): StudioSessionToken;
   /** closed → entering: a new generation. Null when a session is already running or still exiting. */
   beginEntry(): StudioSessionToken | null;
   /** entering → open, for the entry that holds `token` only. */
@@ -119,6 +131,8 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
       generation: issued,
       current,
       check() { if (!current()) throw new StudioSessionEnded(); },
+      // a claim's session is still to begin while the generation is short of it
+      ended: () => !valid || issued < generation || (issued === generation && !live()),
     };
   };
 
@@ -126,6 +140,8 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
     get phase() { return phase; },
     get generation() { return generation; },
     token: () => tokenFor(generation, live()),
+    // with none live, the next entry's: beginEntry moves the generation on by one (an exit already moved it past its own)
+    claim: () => (live() ? tokenFor(generation, true) : tokenFor(generation + 1, true)),
     beginEntry() {
       if (!move('entering')) return null;
       generation += 1;
@@ -192,6 +208,39 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
         const handle = schedule(() => { waited(); resolve(false); }, settleMs);
         void Promise.all(mine).then(() => { unschedule(handle); waited(); resolve(true); });
       });
+    },
+  };
+}
+
+/**
+ * (round 2 U36) One kind of the Studio's in-flight work (a scene load, a staging, an undo or redo, a light change), each
+ * run held for the session it began in. It holds the Studio while that session is live (or, for a claim, still to begin),
+ * never a Studio entered after an exit outlived it: a dead run that hung on a cold build read busy in the next session
+ * until it settled, and refused that session's own load. Each run's release drops its own hold only, so the late end of
+ * a closed session's run never releases a live one's.
+ */
+export interface StudioSessionHolder {
+  /** A run of a session that has not ended is in flight. */
+  readonly held: boolean;
+  /** Hold for `owner`'s session; the release drops this hold only (a second call does nothing). */
+  take(owner: StudioSessionToken): () => void;
+}
+
+export function createSessionHolder(): StudioSessionHolder {
+  const holds: StudioSessionToken[] = [];
+  return {
+    get held() {
+      for (let i = 0; i < holds.length; i++) if (!holds[i].ended()) return true;
+      return false;
+    },
+    take(owner) {
+      holds.push(owner);
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        holds.splice(holds.indexOf(owner), 1);
+      };
     },
   };
 }
