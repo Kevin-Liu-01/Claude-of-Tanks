@@ -5,7 +5,8 @@
 //   node tools/cloud-sky-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v1] [--wait-hours=16]
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
-//               "maps": ["verdant", ...], "garage": ["verdant_motor_pool", ...], "poses": ["battle", "horizon", "high"] }]
+//               "maps": ["verdant", ...], "garage": ["verdant_motor_pool", ...], "poses": ["battle", "horizon", "high"],
+//               "query": "fx=off" }]   (query: optional, appended to the boot URL — a diagnostic job's switches)
 //
 // The harness is tools/ground-surface-shots.mjs's (item ground-269): one render-class ticket, the first unit staged while
 // it waits, checkpoint() between units; units run job by job, each on a fresh page, the whole unit (its staging too)
@@ -138,7 +139,7 @@ function pageBattlePose({ yaw }) {
   return { cam: D.camera.position.toArray(), dir: D.camera.getWorldDirection(new V()).toArray(), fov: D.camera.fov };
 }
 
-async function bootPage(browser, baseUrl, device, garageVariant = null) {
+async function bootPage(browser, baseUrl, device, garageVariant = null, query = '') {
   const page = await browser.newPage();
   const errors = [];
   const d = DEVICES[device];
@@ -156,7 +157,7 @@ async function bootPage(browser, baseUrl, device, garageVariant = null) {
     const text = message.text();
     if (message.type() === 'error' && !text.includes('favicon') && !text.startsWith('Failed to load resource')) errors.push(text.slice(0, 300));
   });
-  await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&${d.query}`, { waitUntil: 'domcontentloaded', timeout: 600000 });
+  await page.goto(`${baseUrl.replace(/\/$/, '')}/?nosplash=1&${d.query}${query ? `&${query}` : ''}`, { waitUntil: 'domcontentloaded', timeout: 600000 });
   return { page, errors, stage: null };
 }
 
@@ -255,7 +256,7 @@ async function main(argv) {
   const openUnit = async ({ job, unit }) => {
     browser ??= await launch();
     pagesSinceLaunch++;
-    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null);
+    entry = await bootPage(browser, servers.get(job.dist).url, job.device, unit.kind === 'garage' ? unit.id : null, job.query ?? '');
     await stageUnit(entry, unit);
   };
   const close = async () => {
