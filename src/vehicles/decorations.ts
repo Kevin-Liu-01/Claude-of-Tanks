@@ -69,6 +69,7 @@ import {
   buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
   buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
   canRack, canRackStyleFor, FABRIC_FAMILIES, sandbag, whipAntennaParts, type AccessoryPainter, type RGB,
+  buildCableCoil, buildCargoNet, buildCrewKit, CREW_KIT_SOFT, type CargoNetGrid,
 } from './accessoryKits.ts';
 import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
 import { clearGhillieForSmoke, drapeGhillieOverLoads, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
@@ -122,6 +123,8 @@ interface DecorPartMeta {
    * frame, [minX, maxX, minZ, maxZ, topY], so an audit can measure the stacked piece against what carries it.
    */
   stackedOn?: [number, number, number, number, number];
+  /** A cargo net's node grid (release 269): the netOver slot lays its cords over the load under it. */
+  net?: CargoNetGrid;
 }
 
 interface DecorPart {
@@ -287,6 +290,17 @@ interface DecorSlotArgs {
   routes?: Array<[string, DecorSlotArgs]>;
   /** turretRoofPair: the bank's yaw off the bow, mirrored per side (radians) */
   yaw?: number;
+  // release 269 (lane abrams-bradley-269): the crew's load at measured stations (stowAt, netOver, gutterRoll, plateHang)
+  /** Stations tried in order, frame-local [x, z] (stowAt) or rear-plate [x, y] (plateHang). */
+  at?: Array<readonly [number, number]>;
+  /** The station is in the turret frame (stowAt, netOver). */
+  turret?: boolean;
+  /** The load may rest on the decor seated before it (stowAt, netOver read it as support). */
+  stack?: boolean;
+  /** A rack floor's height under the station (frame-local; an open mesh the probes see through). */
+  floor?: number;
+  /** A net's footprint (frame-local) and the rails its hem is hooked to (their top, frame-local y). */
+  x0?: number; x1?: number; z0?: number; z1?: number; edge?: number;
 }
 
 interface DecorManifestRow {
@@ -299,6 +313,11 @@ interface DecorManifestRow {
    * not wait behind cargo whose growth spends the triangle budget. It keeps its own roll and seed draws.
    */
   early?: boolean;
+  /**
+   * A lived-in load row (release 269, LIVED_IN_ROWS): appended after every other row, it draws nothing from the manifest's
+   * stream and seats under the larger LIVED_IN_TRIS budget, so the rows before it keep their seats and their budget.
+   */
+  livedIn?: boolean;
 }
 
 type DecorManifestBuilder = (spec: FleetTankSpec, rng: Rng) => DecorManifestRow[];
@@ -752,7 +771,7 @@ function padQuad(w: number, d: number, x: number, y: number, z: number): THREE.B
 }
 
 const SECURED_HARD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations']);
-const SECURED_PAD_KITS: ReadonlySet<string> = new Set(['cargo', 'jerry', 'rations', 'bin', 'packs', 'tarp', 'camonet']);
+const SECURED_PAD_KITS: ReadonlySet<string> = new Set(['cargo', 'jerry', 'rations', 'bin', 'packs', 'tarp', 'camonet', 'crewkit']);
 const SOFT_CARGO: ReadonlySet<string> = new Set(['long-duffel', 'large-rucksack', 'bedroll-pair', 'folded-tarp-pack',
   'camo-net-bag', 'crew-backpack', 'helmet-bundle', 'folding-chair', 'cable-reel']);
 function secureLoadParts(parts: DecorPartList, kit: string, variant: string, detail: 0 | 1, tie: RGB): void {
@@ -766,7 +785,8 @@ function secureLoadParts(parts: DecorPartList, kit: string, variant: string, det
   // round 4 follow-up (2026-10-07): the pad is one upward quad 1.5 mm proud (two triangles; its 3 mm block cost twelve,
   // and its sides sat inside the footprint where nothing sees them)
   parts.push({ mat: 'cans', role: 'pad', geo: bakeTint(padQuad(w * 0.86, d * 0.86, cx, 0.0015, cz), 0.03, 0.03, 0.026, 0) });
-  const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant));
+  const hard = SECURED_HARD_KITS.has(kit) || (kit === 'cargo' && !SOFT_CARGO.has(variant))
+    || (kit === 'crewkit' && !SOFT_CARGO.has(variant) && !CREW_KIT_SOFT.has(variant));
   // round 5: the coarse level (28 m on, where the chase and flank cameras sit) carries the ties too, without buckles
   if (!hard) return;
   const alongX = w >= d; // the tie crosses the short axis
@@ -2406,6 +2426,30 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     return parts;
   },
 
+  // -- the crew's load (release 269, lane abrams-bradley-269): the issue boxes and rolls of accessoryKits'
+  //    CREW_KIT_VARIANTS, any other name the fleet cargo variant of that name ----------------------------------------
+  crewkit({ rng, v = 'mre-stack', nation = '', detail = 1, fabric }) {
+    const parts: DecorPartList = [];
+    buildCrewKit(v, accessoryPainter(parts, rng, detail, nation, fabric), equipmentPaletteForNation(nation), canRackStyleFor(nation));
+    return parts;
+  },
+
+  // -- a webbing cargo net (release 269), flat on y = 0 here: the netOver slot lays it over the load it holds ------------
+  cargonet({ rng, w = 1.2, len = 0.4, detail = 1, nation = '' }) {
+    const parts: DecorPartList = [];
+    const grid = cargoNetGrid(w, len);
+    buildCargoNet(accessoryPainter(parts, rng, detail, nation), grid, new Array<number>(grid.nx * grid.nz).fill(0.012));
+    parts.meta = { net: grid };
+    return parts;
+  },
+
+  // -- a coiled tow cable hung on two J-hooks (release 269; the Bradley's on its rear ramp), +Z out of the plate ---------
+  coil({ rng, r = 0.3, n = 3, detail = 1 }) {
+    const parts: DecorPartList = [];
+    buildCableCoil(accessoryPainter(parts, rng, detail), r, n);
+    return parts;
+  },
+
   // -- chain segment hanging off a bow shackle --------------------------------------------
   chain({ rng, links = 6 }) {
     const parts: DecorPartList = [];
@@ -2453,7 +2497,16 @@ export const DECOR_KIT_INFO = {
   bucket: { label: 'Bucket', eras: ['ww2', 'cold-war'], variants: [{}] },
   chain: { label: 'Chain segment', eras: ['ww2', 'cold-war', 'modern'], variants: [{ links: 6 }] },
   foliage: { label: 'Fresh-cut branches (opt-in)', eras: ['modern'], variants: [{ v: 'flank', n: 5 }, { v: 'deck', n: 4 }] },
+  crewkit: { label: 'Crew load (ammunition cans, MRE cases, water, rolls)', eras: ['cold-war', 'modern'], variants: [
+    { v: 'ammo-can-stack' }, { v: 'mre-stack' }, { v: 'water-case' }, { v: 'mat-roll' }, { v: 'sleep-system' }, { v: 'assault-pack' }] },
+  cargonet: { label: 'Cargo net', eras: ['cold-war', 'modern'], variants: [{ w: 1.2, len: 0.4 }] },
+  coil: { label: 'Coiled tow cable', eras: ['cold-war', 'modern'], variants: [{ r: 0.3, n: 3 }] },
 };
+
+/** A cargo net's node grid over w x len (release 269): a 12 cm mesh, at least three nodes a side. */
+function cargoNetGrid(w: number, len: number): CargoNetGrid {
+  return { nx: Math.max(3, Math.round(w / 0.12) + 1), nz: Math.max(3, Math.round(len / 0.12) + 1), w, len };
+}
 
 // ---------------------------------------------------------------------------
 // ERA + MANIFESTS
@@ -3161,9 +3214,122 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
   stb1: (): DecorManifestRow[] => [],
 });
 
+// ---------------------------------------------------------------------------------------------------------------
+// Release 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys
+// ---------------------------------------------------------------------------------------------------------------
+// The owner, 2026-11-05: "add a bunch of extra decorations annd tank props and boxes and bags and other soldier
+// reuqipment onn all of these bradleys and m1a1s" (and on the M1E3, 2026-10-28: "make it. feel rlly used and lived in!").
+// Each row seats a crew load at stations measured on the vehicle's own geometry (turret- or hull-frame, docs/DECORATIONS.md
+// "Release 269"): an M1A1's bustle rack filled under a cargo net and packs hung on its turret side rack's rails; a
+// Bradley's side gutters (rolls) and its rear ramp (the tow cable coiled there, as the crews carry it). Phase 1 puts
+// nothing on a Bradley turret. The rows come after every other row of the tank (their draws come after the others', and
+// they seat under LIVED_IN_TRIS), so nothing the tank carried before moves.
+
+/** The near-level triangle budget the lived-in rows seat under (the fleet's 6,000 holds for every row before them). */
+const LIVED_IN_TRIS = 11000;
+const lived = (kit: string, v: Omit<DecorKitArgs, 'rng'>, slot: [string, DecorSlotArgs]): DecorManifestRow =>
+  ({ kit, p: 1, v, slot, livedIn: true });
+const crew = (v: string, slot: string, args: DecorSlotArgs): DecorManifestRow => lived('crewkit', { v }, [slot, args]);
+
+/**
+ * The bustle rack on the owner's M1A1 turret (profiles/abrams.ts, m1a1Source: its front at the rear face z -2.56, 0.41 m
+ * deep, the open mesh floor at 0.28, the rails at 0.68 falling to 0.63 over the rear rail, inner faces at x +-1.355, a
+ * divider bar at x +-1.06), turret frame. The profile's own low fill stands in its middle bays (0.37-0.60); the crew's
+ * load goes on the floor and on that fill, standing 10-35 cm over the rails as a full rack does, the light rolls and bags
+ * on the cases, a net over the lot hooked to the rails. Where the drone dock's parked airframe reaches back over the
+ * rack's front half (dockKeepOut: the M1A1's from x 0.10 to 0.81, the HA's from 0.43 to 1.14) only low cases stand and the
+ * net stops short of it (`netX`: the net's span).
+ *
+ * The rear deck carries nothing: behind the turret it is the gun's own path (gunPitchByYawDeg holds the gun 0-3 degrees
+ * up from yaw 142 to 180, its barrel 6 cm over the deck there) and the bustle rack's sweep.
+ */
+const M1A1_RACK = Object.freeze({ floor: 0.29, z: -2.77, z0: -2.94, z1: -2.6, rail: 0.66 });
+function m1a1RackLoad(netX: readonly [number, number] = [-1.0, 0.78], dockFree = true, waterX = 0.62): DecorManifestRow[] {
+  const R = M1A1_RACK, at = (...xs: number[]): DecorSlotArgs => ({ turret: true, floor: R.floor, at: xs.map((x) => [x, R.z] as const) });
+  // (the loads on the cases ride a little aft, clear of the bustle roof's own loads where they overhang the rack)
+  const on = (...xs: number[]): DecorSlotArgs => ({ turret: true, floor: R.floor, stack: true, at: xs.map((x) => [x, R.z - 0.05] as const) });
+  return [
+    crew('water-case', 'stowAt', at(waterX, waterX + 0.04)),
+    crew('ammo-can-stack', 'stowAt', at(-0.2, -0.16)),
+    crew('large-rucksack', 'stowAt', at(-0.76, -0.9, -0.62)),
+    crew('mat-roll', 'stowAt', on(-0.8, -0.92, -0.68)),
+    // (where the dock's airframe reaches over the water case, nothing stands on it)
+    ...(dockFree ? [crew('sleep-system', 'stowAt', on(0.64, 0.6))] : []),
+    lived('cargonet', { w: netX[1] - netX[0], len: R.z1 - R.z0 },
+      ['netOver', { turret: true, floor: R.floor, x0: netX[0], x1: netX[1], z0: R.z0, z1: R.z1, edge: R.rail }]),
+  ];
+}
+/**
+ * Packs hung on the turret side rack's rails (the owner's-model M1A1s: rails at x +-1.649, 30 mm, their outer face 1.664, the
+ * top rail's top 0.694, posts at z -0.18, -0.93, -1.54, -2.13; turret frame): a slim assault pack in each of the two
+ * middle bays of each side, where nothing on the turret wall looks or swings.
+ */
+function m1a1SideRackPacks(): DecorManifestRow[] {
+  return [1, -1].flatMap((side) => [-1.235, -1.835].map((z) =>
+    crew('assault-pack', 'railHang', { side, x: 1.664, edge: 0.694, at: [[z, 0], [z + 0.06, 0], [z - 0.06, 0]] })));
+}
+/**
+ * The tejas-family bustle rack (m1a1_abrams_hc, m1a1_abrams_fep: x +-1.07, z -2.6..-2.98) already loaded by its profile
+ * (bags to 0.92, the HC's cans to 1.19, a flat top at 0.70 between them): the crew's `rolls` ([kind, x]) on that load
+ * and, with `netX`, a net over the rack.
+ */
+function tejasRackLoad(netX: readonly [number, number] | null, rolls: ReadonlyArray<readonly [string, number]>): DecorManifestRow[] {
+  const z = -2.82;
+  return [
+    ...rolls.map(([v, x]) => crew(v, 'stowAt', { turret: true, stack: true, floor: 0.32, at: [[x, z], [x + 0.05, z]] })),
+    ...(netX ? [lived('cargonet', { w: netX[1] - netX[0], len: 0.34 }, ['netOver', { turret: true, floor: 0.32, x0: netX[0],
+      x1: netX[1], z0: -2.95, z1: -2.61, edge: 0.84 }])] : []),
+  ];
+}
+/**
+ * The Bradley hull's load (hull frame, BRADLEY_HULL): rolls in both side gutters where the family's own fittings leave
+ * them clear (`rolls`: [kind, side, z]), and the tow cable coiled on the rear ramp where the fleet's racks leave it room.
+ * The flat roof behind the turret carries nothing: the 25 mm gun at full depression crosses it (the decor's gun guard
+ * turned away cases there and a second roll piled on a gutter roll).
+ */
+function bradleyHullLoad(rolls: ReadonlyArray<readonly [string, number, number]>): DecorManifestRow[] {
+  return [
+    // (the gutter ends at the upper side plate's inner face, BRADLEY_HULL.edgeX 1.51)
+    ...rolls.map(([v, side, z]) => crew(v, 'gutterRoll', { side, x: 1.53, at: [[z, 0], [z + 0.12, 0], [z - 0.12, 0]] })),
+    lived('coil', { r: 0.25, n: 3 }, ['plateHang', { at: [[0.36, 1.62], [-0.36, 1.62], [0, 1.62], [0.45, 1.52], [-0.45, 1.52],
+      [0.05, 1.5], [-0.05, 1.5]] }]),
+  ];
+}
+const LIVED_IN_ROWS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
+  // the dock's airframe over x 0.10..0.81: the net over it stays low, no sleeping bag on the water case
+  m1a1: () => [...m1a1RackLoad(undefined, false), ...m1a1SideRackPacks()],
+  // the dock's airframe over x 0.43..1.14: the water case beside the cans, the net stops short of it
+  m1a1ha: () => [...m1a1RackLoad([-1.0, 0.36], false, 0.19), ...m1a1SideRackPacks()],
+  m1a1_abrams_sa: () => [...m1a1RackLoad(), ...m1a1SideRackPacks()],
+  m1a1_abrams_aim: () => [...m1a1RackLoad(), ...m1a1SideRackPacks()],
+  // its rack is full to 0.92 (and its cans to 1.19) and its drone dock's airframe reaches back over x -0.87..-0.15: a
+  // sleeping bag on the profile's duffel, no net over the cans
+  m1a1_abrams_hc: () => tejasRackLoad(null, [['sleep-system', 0.15]]),
+  // the rack's flat top is free from x -0.25 to 0.35: the cans there, a roll on the duffel
+  m1a1_abrams_fep: () => tejasRackLoad([-1.03, 1.03], [['ammo-can-stack', 0.05], ['mat-roll', -0.55]]),
+  // (the M3A2 draws the M2A2's rows: DECOR_TWIN)
+  m2a2_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55]]),
+  m3a3_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55]]),
+  // its right gutter carries the unditching log (z -1..-2)
+  ua_m2a3_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['sleep-system', -1, -2.75], ['mat-roll', -1, -0.5]]),
+  // its gutters carry boxes at z -2.0..-2.5, and its turret's low overhang leaves the forward gutters to the flat rolls
+  m6_linebacker: () => bradleyHullLoad([['sleep-system', 1, -2.8], ['mat-roll', 1, -1.4], ['folded-tarp-pack', 1, -0.75],
+    ['sleep-system', -1, -2.8], ['mat-roll', -1, -1.3]]),
+});
+
+/** Resolve the manifest rows for one spec: its rows (baseDecorManifest), then its lived-in rows (release 269). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  const base = baseDecorManifest(spec, rng);
+  const livedIn = LIVED_IN_ROWS[DECOR_TWIN.get(spec.id) ?? spec.id];
+  return livedIn ? [...base, ...livedIn()] : base;
+}
+
+function baseDecorManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
-  if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
+  if (twin) return baseDecorManifest({ ...spec, id: twin }, rng);
   // These concepts own their complete stowage and mounts. Generic aft cargo
   // falls behind the native fuel drums, outside any physical support.
   if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];
@@ -4251,10 +4417,12 @@ const SAGGING_CARGO: ReadonlySet<string> = new Set(['long-duffel', 'large-rucksa
 const LOAD_KITS: ReadonlySet<string> = new Set(['jerry', 'rations', 'packs', 'tarp', 'camonet', 'bin', 'drums', 'wheel',
   'bucket', 'sandbags', 'log']);
 function isLoadPiece(pieceName: string): boolean {
-  return pieceName.startsWith('cargo:') || LOAD_KITS.has(pieceName);
+  return pieceName.startsWith('cargo:') || pieceName.startsWith('crewkit:') || LOAD_KITS.has(pieceName);
 }
 function sagsOnSupport(pieceName: string): boolean {
   if (pieceName.startsWith('cargo:')) return SAGGING_CARGO.has(pieceName.slice(6));
+  // release 269: the crew's load names a crew-kit piece or a fleet cargo variant
+  if (pieceName.startsWith('crewkit:')) return SAGGING_CARGO.has(pieceName.slice(8)) || CREW_KIT_SOFT.has(pieceName.slice(8));
   return SAGGING_KITS.has(pieceName);
 }
 function supportedSeat(
@@ -5027,7 +5195,8 @@ function clonePartList(parts: DecorPartList): DecorPartList {
  * draw must still carry every piece of that bucket.
  */
 const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 'cargo', 'basket', 'tools', 'drums',
-  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg']);
+  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock', 'aamg',
+  'crewkit', 'cargonet', 'coil']);
 /** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
 const FUNCTIONAL_KITS = new Set(['smoke']);
 /** How far under a load's foot a field suit's roof cloth still counts as lying on the plate the load stands on. */
@@ -6170,6 +6339,42 @@ function* decorationSteps(
       return need > SIDE_PUSH_MAX_M ? null : need;
     }
 
+    // ---- release 269 (lane abrams-bradley-269): the decor already seated, as support for the crew's load -------------
+    // A stacked load and a cargo net rest on what the frame's earlier pieces hold (committedGeos, frame coordinates):
+    // straight down onto the highest of the tank's own surface, the decor and a rack's open floor.
+    const decorRayMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    const decorRayMeshes: Record<DecorFrame, { count: number; meshes: THREE.Mesh[] }> = {
+      hull: { count: -1, meshes: [] }, turret: { count: -1, meshes: [] },
+    };
+    const decorRay = new THREE.Raycaster();
+    function decorTopAt(frame: DecorFrame, x: number, z: number, fromY: number): number {
+      const cache = decorRayMeshes[frame];
+      if (cache.count !== committedGeos[frame].length) {
+        cache.meshes = committedGeos[frame].map((geo) => new THREE.Mesh(geo, decorRayMat));
+        cache.count = committedGeos[frame].length;
+      }
+      if (!cache.meshes.length) return -Infinity;
+      decorRay.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
+      decorRay.far = fromY + 2;
+      const hit = decorRay.intersectObjects(cache.meshes, false)[0];
+      return hit ? hit.point.y : -Infinity;
+    }
+    /** A load carried with no flat foot under it (a roll in a gutter, a pack hung on rails) drops its contact pads. */
+    function dropPads(list: DecorPartList): void {
+      for (const level of [list, list.coarse ?? []]) {
+        for (let i = level.length - 1; i >= 0; i--) if (level[i].role === 'pad') { resources.releaseGeometry(level[i].geo); level.splice(i, 1); }
+      }
+    }
+    /** The support under (x, z) in `frame`: the tank's solid surface, with `stack` the decor too, and a rack floor. */
+    function supportAt(frame: DecorFrame, x: number, z: number, args: DecorSlotArgs): number {
+      const fromY = frame === 'hull' ? topFrom : 3.5;
+      const prober = frame === 'hull' ? solidHullProber() : solidTurretProber();
+      let y = prober.top(x, z, fromY)?.p.y ?? -Infinity;
+      if (args.stack) y = Math.max(y, decorTopAt(frame, x, z, fromY));
+      if (args.floor !== undefined) y = Math.max(y, args.floor);
+      return y;
+    }
+
     const placeHullRearDeck: SlotPlacer = (_args, parts, name) => {
       const bounds = partsBBox(parts);
       const depth = bounds.max.z - bounds.min.z;
@@ -6745,6 +6950,199 @@ function* decorationSteps(
         disposePartList(parts);
         return ok;
       },
+      // ---- release 269 (lane abrams-bradley-269; the owner: "a bunch of extra decorations and tank props and boxes and
+      // bags and other soldier equipment"): the crew's load at measured stations ------------------------------------------
+      // A load at the first of its frame-local stations (`at`, else x/z) that carries it: a rigid one rests on the highest
+      // of nine support points with at least three of them within 2 cm of that height (it stands on them, not on a post),
+      // a soft one sags onto the high points. With `stack` it may rest on the decor seated before it (whose ledger boxes
+      // under it then pass the overlap check); with `floor` on a rack's open mesh floor. A load on a deck keeps its
+      // lashings; one in a rack or on another load its own straps.
+      stowAt(args, parts, name) {
+        const frame: DecorFrame = args.turret ? 'turret' : 'hull';
+        const ledger = frame === 'hull' ? placedHull : placedTurret;
+        const soft = sagsOnSupport(name);
+        const stations = args.at ?? [[args.x ?? 0, args.z ?? 0] as const];
+        for (const [sx, sz] of stations) {
+          const yaw = (args.yaw ?? 0) + transitYaw(slotRng) * 0.5;
+          const rot = E(0, yaw, 0);
+          const e = placedBox(parts, V(0, 0, 0), rot);
+          const cx = sx + (e.min.x + e.max.x) / 2, cz = sz + (e.min.z + e.max.z) / 2;
+          const hx = Math.max(0.03, (e.max.x - e.min.x) * 0.42), hz = Math.max(0.03, (e.max.z - e.min.z) * 0.42);
+          const ys: number[] = [];
+          for (const fx of [-1, 0, 1]) for (const fz of [-1, 0, 1]) ys.push(supportAt(frame, cx + fx * hx, cz + fz * hz, args));
+          if (ys.some((y) => !Number.isFinite(y))) continue;
+          const top = Math.max(...ys);
+          const sorted = [...ys].sort((p, q) => p - q);
+          // (in a rack the profile's own fill is uneven: two bearing points, the rack and the net hold the rest)
+          if (!soft && ys.filter((y) => y >= top - 0.02).length < (args.floor !== undefined ? 2 : 3)) continue;
+          // a soft load settles toward its middle support, at most SOFT_SAG_M under its highest
+          const seatY = soft ? top - Math.min(SOFT_SAG_M, top - sorted[4]) * 0.6 : top;
+          const foot = new THREE.Box3(new THREE.Vector3(sx + e.min.x, -Infinity, sz + e.min.z), new THREE.Vector3(sx + e.max.x, Infinity, sz + e.max.z));
+          const under = args.stack ? ledger.filter((b) => b.max.y <= seatY + 0.03 && b.intersectsBox(foot)) : [];
+          for (const b of under) ledger.splice(ledger.indexOf(b), 1);
+          const ok = commit(name, clonePartList(parts), frame, V(sx, seatY - 0.004, sz), rot, ledger,
+            { seatY, ...(args.stack || args.floor !== undefined ? {} : { secure: 'deck' as const }) });
+          ledger.push(...under);
+          if (ok) { disposePartList(parts); return true; }
+        }
+        disposePartList(parts);
+        return false;
+      },
+      // A cargo net over the load in a footprint (x0..x1, z0..z1, frame-local): each node rests 1.2 cm over the highest of
+      // the tank, the decor seated before it and the rack floor, its hem never under the rails it is hooked to (`edge`),
+      // and every span lifted until its line clears what it crosses; the cords are then built through those nodes.
+      netOver(args, parts, name) {
+        const frame: DecorFrame = args.turret ? 'turret' : 'hull';
+        const grid = parts.meta?.net;
+        disposePartList(parts);
+        if (!grid || args.x0 === undefined || args.x1 === undefined || args.z0 === undefined || args.z1 === undefined) return false;
+        const cx = (args.x0 + args.x1) / 2, cz = (args.z0 + args.z1) / 2;
+        const { nx, nz, w, len } = grid;
+        const surf = (x: number, z: number): number => supportAt(frame, x, z, { ...args, stack: true });
+        const node = (i: number, k: number): [number, number] => [cx - w / 2 + (i / (nx - 1)) * w, cz - len / 2 + (k / (nz - 1)) * len];
+        // each node over the highest support within 4 cm of it (the cords lie across what is under them)
+        const floorY = new Array<number>(nx * nz), hem: boolean[] = [];
+        for (let k = 0; k < nz; k++) for (let i = 0; i < nx; i++) {
+          const [x, z] = node(i, k);
+          let y = -Infinity;
+          for (const [dx, dz] of [[0, 0], [0.04, 0], [-0.04, 0], [0, 0.04], [0, -0.04]]) y = Math.max(y, surf(x + dx, z + dz));
+          floorY[k * nx + i] = y + 0.01;
+          // the long sides are hooked to the rails (`edge`); the ends lie on the load they finish over
+          hem.push(k === 0 || k === nz - 1);
+        }
+        if (floorY.some((y) => !Number.isFinite(y))) return false;
+        // a net pulled tight: the long sides hooked to their rails, every other node at most 2.5 cm under the mean of its
+        // neighbours, so the net bridges the gaps between the loads instead of dropping into them
+        const ys = floorY.map((y, n) => (hem[n] && args.edge !== undefined ? Math.max(y, args.edge) : y));
+        for (let pass = 0; pass < 24; pass++) {
+          for (let k = 1; k < nz - 1; k++) for (let i = 0; i < nx; i++) {
+            const n = k * nx + i;
+            const near = [n - nx, n + nx, ...(i > 0 ? [n - 1] : []), ...(i < nx - 1 ? [n + 1] : [])];
+            const mean = near.reduce((sum, m) => sum + ys[m], 0) / near.length;
+            ys[n] = Math.max(floorY[n], mean - 0.025);
+          }
+        }
+        // a span whose line would cut what it crosses lifts by what it lacks
+        const spans: Array<[number, number]> = [];
+        for (let k = 0; k < nz; k++) for (let i = 0; i < nx - 1; i++) spans.push([k * nx + i, k * nx + i + 1]);
+        for (let i = 0; i < nx; i++) for (let k = 0; k < nz - 1; k++) spans.push([k * nx + i, (k + 1) * nx + i]);
+        for (const [a, b] of spans) {
+          const [ax, az] = node(a % nx, Math.floor(a / nx)), [bx, bz] = node(b % nx, Math.floor(b / nx));
+          let need = 0;
+          for (const t of [0.33, 0.67]) need = Math.max(need, surf(ax + (bx - ax) * t, az + (bz - az) * t) + 0.008 - (ys[a] + (ys[b] - ys[a]) * t));
+          if (need > 0) { ys[a] += need; ys[b] += need; }
+        }
+        const nation = spec.nation || '';
+        const near: DecorPartList = [];
+        buildCargoNet(accessoryPainter(near, slotRng, lowTier ? 0 : 1, nation), grid, ys);
+        if (!lowTier) {
+          const coarse: DecorPartList = [];
+          buildCargoNet(accessoryPainter(coarse, slotRng, 0, nation), grid, ys);
+          near.coarse = coarse;
+        }
+        near.meta = { net: grid };
+        return commit(name, near, frame, V(cx, 0, cz), E(), frame === 'hull' ? placedHull : placedTurret, { allowOverlap: true });
+      },
+      // A roll lying fore and aft in the hull's side gutter (the Bradley's, between the roof's outboard fall and the upper
+      // side plate): the floor across the gutter is read at three stations along the roll and the roll's section (an
+      // ellipse of its own width and height) settles to the lowest place where it clears every floor point, against the
+      // plate's inner face (`x`: the gutter's outer limit, the plate's inner face; nothing outboard of it, a ledge or a
+      // sponson lower down, is the gutter); a soft roll then sinks 1.2 cm into its support.
+      gutterRoll(args, parts, name) {
+        const side = args.side ?? 1, outer = args.x ?? W / 2 + 0.06;
+        const bb = partsBBox(parts);
+        const half = (bb.max.x - bb.min.x) / 2, hw = (bb.max.z - bb.min.z) / 2, hh = (bb.max.y - Math.max(0, bb.min.y)) / 2;
+        const prober = solidHullProber();
+        const zs = args.at ? args.at.map(([z]) => z) : [args.z ?? 0];
+        for (const zc of zs) {
+          const xs: number[] = [], fl: number[] = [];
+          for (let a = 0.4; a <= outer + 0.08; a += 0.02) {
+            let y = -Infinity;
+            for (const dz of [-half * 0.7, 0, half * 0.7]) y = Math.max(y, prober.top(side * a, zc + dz, topFrom)?.p.y ?? -Infinity);
+            xs.push(side * a); fl.push(y);
+          }
+          let best: { x: number; foot: number } | null = null;
+          for (let c = 0.4 + hw; c <= outer - hw; c += 0.01) {
+            const cxr = side * c;
+            let foot = -Infinity, open = false;
+            for (let i = 0; i < xs.length; i++) {
+              const u = (xs[i] - cxr) / hw;
+              if (Math.abs(u) >= 1) continue;
+              if (!Number.isFinite(fl[i])) { open = true; break; }
+              foot = Math.max(foot, fl[i] - hh + hh * Math.sqrt(1 - u * u));
+            }
+            if (open || !Number.isFinite(foot)) continue;
+            if (!best || foot < best.foot - 1e-4) best = { x: cxr, foot };
+          }
+          if (!best) continue;
+          const rot = E(0, Math.PI / 2 + (slotRng() - 0.5) * 0.04, 0);
+          // a roll in a V has no flat foot: no contact pad (the contact census read the flat quad crossing the gutter's walls)
+          const candidate = clonePartList(parts);
+          dropPads(candidate);
+          if (commit(name, candidate, 'hull', V(best.x, best.foot - 0.012, zc), rot, placedHull, { seatY: best.foot })) {
+            disposePartList(parts);
+            return true;
+          }
+        }
+        disposePartList(parts);
+        return false;
+      },
+      // A piece hung flat on the rear plate at the first of its stations (`at`, [x, y]) where the plate is one flat face
+      // under the piece's whole span (four probes at 0.42 of its size within 2 cm of the plane); +Z out of the plate.
+      plateHang(args, parts, name) {
+        const bb = partsBBox(parts);
+        const r = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y) * 0.42;
+        const embedM = 0.004;
+        for (const [x, y] of args.at ?? [[0, H * 0.5] as const]) {
+          const h = hullP.zface(x, y, 1, sternZ - 1.4);
+          if (!isRearPlateHit(h)) continue;
+          const flat = ([[-r, 0], [r, 0], [0, -r], [0, r]] as const).every(([dx, dy]) => {
+            const e = hullP.zface(x + dx, y + dy, 1, sternZ - 1.4);
+            return isRearPlateHit(e) && Math.abs(e.p.z - (h.p.z - (h.n.x * dx + h.n.y * dy) / h.n.z)) <= 0.02;
+          });
+          if (!flat) continue;
+          const candidate = clonePartList(parts);
+          if (commit(name, candidate, 'hull', surfaceMountPosition(candidate, h, embedM), surfaceMountEuler(h.n), placedHull,
+            { zExtra: 0.4, attachment: { slot: 'plate-hang', supportPoint: h.p, supportNormal: h.n, embedM } })) {
+            disposePartList(parts);
+            return true;
+          }
+        }
+        disposePartList(parts);
+        return false;
+      },
+      // A soft pack hung on the outside of a turret side rack's rails by its shoulder straps (`side`; stations `at` [z, 0];
+      // the rails' outer face at `railX`, the top rail's top at `edge`, turret frame): its back panel against the rails,
+      // its top a hand over the top rail, the two straps looped over that rail.
+      railHang(args, parts, name) {
+        const side = args.side ?? 1, railX = args.x ?? 1.664, top = args.edge ?? 0.694;
+        // the pack lies on its back panel (local y up from it, its length along x): stood up, its back toward the rails
+        const rot = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+          new THREE.Vector3(0, 1, 0), new THREE.Vector3(side, 0, 0), new THREE.Vector3(0, 0, -side)));
+        const e = placedBox(parts, V(0, 0, 0), rot);
+        for (const [zc] of args.at ?? [[args.z ?? -1.5, 0] as const]) {
+          const pos = V(side * (railX + 0.003) - (side > 0 ? e.min.x : e.max.x), top + 0.03 - e.max.y, zc - (e.min.z + e.max.z) / 2);
+          // the straps: from the pack's back at its top, up over the top rail and 7 cm down its inside, in the piece frame
+          const inv = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1)).invert();
+          const strap = (list: DecorPartList, detail: 0 | 1): void => {
+            const P = accessoryPainter(list, slotRng, detail, spec.nation || '');
+            for (const dz of [-0.075, 0.075]) {
+              const z = zc + dz, r = 0.024, cxr = side * (railX - 0.015);
+              const pts = [[side * (railX + 0.05), top + 0.018, z], [side * (railX + 0.012), top + 0.03, z],
+                [cxr, top + r * 0.95, z], [cxr - side * r * 0.85, top + 0.002, z],
+                [side * (railX - 0.036), top - 0.03, z], [side * (railX - 0.036), top - 0.07, z]];
+              P.strap(sweptTube(pts, 0.006, detail ? 4 : 3, detail ? 10 : 5).applyMatrix4(inv), 0.5);
+            }
+          };
+          const candidate = clonePartList(parts);
+          dropPads(candidate);
+          strap(candidate, lowTier ? 0 : 1);
+          if (candidate.coarse) strap(candidate.coarse, 0);
+          if (commit(name, candidate, 'turret', pos, rot, placedTurret)) { disposePartList(parts); return true; }
+        }
+        disposePartList(parts);
+        return false;
+      },
       bowChain(_args, parts, name) {
         const y = H * 0.3;
         const h = hullP.zface(-W * 0.28, y, -1, L / 2 + 1.6);
@@ -7278,11 +7676,11 @@ function* decorationSteps(
         if (row.kit === 'wheel') values.r = wheelR;
         if (row.kit === 'drums') values._W = W;
         // round 4 follow-up: a can rack is the nation's own (canRackStyleFor); round 5: a bin wears the nation's paint
-        if (row.kit === 'jerry' || row.kit === 'bin') values.nation = spec.nation || '';
+        if (row.kit === 'jerry' || row.kit === 'bin' || row.kit === 'crewkit' || row.kit === 'cargonet') values.nation = spec.nation || '';
         // The mobile tier builds only the coarse forms; other tiers build both levels
         // from identically seeded streams (builders draw before branching on detail).
         const variant = String(values.v ?? '');
-        const pieceName = row.kit === 'cargo' ? `cargo:${variant}` : row.kit;
+        const pieceName = row.kit === 'cargo' || row.kit === 'crewkit' ? `${row.kit}:${variant}` : row.kit;
         // round 5: the n-th soft load of the tank takes the n-th fabric of its rotation (fabricFamily), so its kit
         // alternates light and dark goods; the counter steps once per built row, the same at every tier
         if (sagsOnSupport(pieceName)) values.fabric = fabricBase + fabricCount++;
@@ -7322,7 +7720,7 @@ function* decorationSteps(
       try {
         const before = summary.skipped.length;
         const pieceName = row.kit === 'cargo'
-          ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit;
+          ? `cargo:${String(row.v?.v || 'field-kit')}` : row.kit === 'crewkit' ? `crewkit:${String(row.v?.v || 'mre-stack')}` : row.kit;
         const ok = slotFn === SLOTS.fleetCargo
           ? yield* fleetCargoSteps(row.slot[1] || {}, parts, pieceName)
           : slotFn(row.slot[1] || {}, parts, pieceName);
@@ -7411,6 +7809,8 @@ function* decorationSteps(
         // the decor seats no weapon (DECOR_RETIRED_KITS); the roof gun row's draws stay consumed above
         if (skipRow(row)) { yield { stage: 'manifest-row', completed: index + 1, total: manifest.length }; continue; }
         if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
+          // release 269: the lived-in rows come last and seat under their own, larger budget
+          if (row.livedIn) budget.max = Math.max(budget.max, LIVED_IN_TRIS);
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {

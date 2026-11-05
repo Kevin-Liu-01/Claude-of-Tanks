@@ -1190,6 +1190,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
+    // 269 (lane abrams-bradley-269): the lived-in loads of the M1A1s and the Bradleys (crew kit, cargo net, coiled cable)
+    'src/vehicles/decorLivedIn.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
     // 2026-10-30 (the owner: "for tanks like griffin, dont allow decorations to be on the missile pods"): every launcher id
