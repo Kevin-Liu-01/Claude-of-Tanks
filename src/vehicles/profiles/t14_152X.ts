@@ -8,7 +8,9 @@
 // Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { T14X_RING, addHull, addRoofEquipment, addTurret } from './t14X.ts';
+import { T14X_RING, addHull, addTurret } from './t14X.ts';
+import { addT14_152FieldKit, T14_152_TOWER_TOP } from './t14_152Kit.ts';
+import { addT14_152Suit } from './t14_152Suit.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { T14_152_GUN_FRAME } from '../russia152Frames.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -63,10 +65,11 @@ export function buildT14_152X(P: TankBuilderPort): void {
   addHull(P);
   addTurret(P, true);
   addGunHouse(P);
-  addRoofEquipment(P, true);
+  addT14_152FieldKit(P);
   addMantlet(P);
   build152Gun(P, { ...GUN_2A83, len: T14_152_GUN_FRAME.muzzleZ - T14_152_GUN_FRAME.trunnionZ });
-  P.topY = localY(3.18);
+  addT14_152Suit(P);
+  P.topY = T14_152_TOWER_TOP;
 }
 
 export const T14_152_X_PROFILES = { t14_152: { build: buildT14_152X } };
