@@ -228,8 +228,13 @@ function authorityAtRest(row: EntityRow): boolean {
     Math.abs(dequantizeVelocity(row.verticalSpeed)) <= REST_SPEED_MPS;
 }
 
-/** The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). */
-function applyAuthorityRow(state: TankState, row: EntityRow): void {
+/**
+ * The authority row's pose and body flags onto the simulation state (the checkpoint refines the integrator). Also a
+ * migrated host's restore of every hull from its keyframe or newest row (migrationState.ts applyResumeState, round 2 U2):
+ * the pose alone left the fresh host's ground contact, body mode, spring and ride under it, so an airborne hull fell from
+ * its old ride height or snapped to the ground on the first step, and one on its side or roof came back supported.
+ */
+export function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state.pos.set(dequantizePosition(row.x), dequantizePosition(row.y), dequantizePosition(row.z));
   state.yaw = dequantizeAngle(row.yaw);
   state.speed = dequantizeVelocity(row.speed);

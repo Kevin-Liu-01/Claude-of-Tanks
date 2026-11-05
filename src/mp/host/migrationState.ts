@@ -16,8 +16,9 @@ import { eraPlateIndices } from '../wire/era.ts';
 import { ENTITY_FLAGS, INPUT_MARGIN_UNKNOWN, MAX_EVENT_JSON_BYTES, NO_TICK, PHASE, TICK_MS, VERDICT } from '../wire/constants.ts';
 import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from '../wire/codec.ts';
 import type { EntityRow, SnapshotFrame, WireEvent } from '../wire/messages.ts';
-import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitComponent, dequantizeVelocity } from '../wire/quantize.ts';
+import { dequantizePosition, dequantizeReloadS, dequantizeUnitComponent } from '../wire/quantize.ts';
 import { bytesToBase64Url } from '../match/base64url.ts';
+import { applyAuthorityRow } from '../match/prediction.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
 import type { RoomMatchStatus } from '../room/protocol.ts';
@@ -631,16 +632,9 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     const entity = actor.entityForWireId(row.entityId);
     if (!entity) { skipped++; continue; }
     const tank = entity.state;
-    tank.pos.x = dequantizePosition(row.x);
-    tank.pos.y = dequantizePosition(row.y);
-    tank.pos.z = dequantizePosition(row.z);
-    tank.yaw = dequantizeAngle(row.yaw);
-    tank.speed = dequantizeVelocity(row.speed);
-    tank.verticalSpeed = dequantizeVelocity(row.verticalSpeed);
-    tank.turretYaw = dequantizeAngle(row.turretYaw);
-    tank.gunPitch = dequantizeAngle(row.gunPitch);
-    tank.visualPitch = dequantizeAngle(row.pitch);
-    tank.visualRoll = dequantizeAngle(row.roll);
+    // the pose, ground contact and body mode (wire 10's body bits), the spring and the ride, as the client's predictor
+    // takes a row (round 2 U2: the pose alone left the fresh hull's contact, mode and ride under it)
+    applyAuthorityRow(tank, row);
     const combat = entity.combat;
     combat.hp = row.hp;
     combat.maxHp = Math.max(1, row.maxHp);
