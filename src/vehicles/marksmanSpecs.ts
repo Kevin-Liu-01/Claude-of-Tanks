@@ -135,7 +135,7 @@ function reach(record: FleetTankSpec): number {
 // en.wikipedia (Marksman anti-aircraft system): the T-55AM conversion, 41 t (36 t for the T-55AM), crew 3, the V-55 V12 at
 // 620 hp; seven ordered by Finland in 1990, in service 1990, to war-time storage in 2010; the guns -10 to +85 degrees.
 // valka.cz's ItPsv 90 post: the turret 11 t, 1,910 mm high marching and 2,705 mm with the radar in its firing position.
-// The hull is the fleet's T-55A (6.04 m, 3.27 m across the fenders; 3.34 m over photo 01's flexible skirts). As built:
+// The hull is the fleet's T-55A (6.04 m, 3.27 m across the fenders; 3.40 m over photo 01's hanging flaps). As built:
 // 8.24 m with the guns forward (the muzzles 4.70 m ahead of the hull's centre over the 3.54 m of the drums behind it) and
 // 3.71 m tall (the radar's 2.29 m over the T-55's 1.42 m ring plane; fix round 1 lowered it 0.39 m to photo 02's
 // proportions; valka.cz's 2,705 mm is not the drawn radar's).
@@ -144,14 +144,11 @@ Object.assign(marksmanT55, {
   hp: 2400, enginePowerHp: 620, weightTons: 41, topSpeedKmh: 50, reverseSpeedKmh: 12, hullTraverseDegS: 36,
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
-marksmanT55.dims = { hullLengthM: 6.04, overallLengthM: 8.24, widthM: 3.34, heightM: 3.71 };
-// The guns' own stops over the stern (builder M, round 4): the full -10 degrees all round but where the barrels and their
-// muzzle frames pass over the drums and the deck's rear fittings (yaw 138-178, at most 1.8 degrees up); per-degree floors
-// at the sweep's 26 mm with gunHullClearance's probe, fitted by tools/gun-depression-sweep.mjs --envelope (the T-55A's own
-// curve, for its 100 mm, does not apply).
-marksmanT55.gunPitchByYawDeg = [[0, -10], [137, -10], [139, -9.4], [140, -9.3], [143, -9.3], [146, -9.1], [148, -8.2], [151, -8.2],
-  [152, -8.5], [153, -9.9], [156, -9.8], [157, -10], [160, -9.8], [164, -9.9], [166, -8.7], [167, -8.2], [170, -8.2], [171, -8.5],
-  [172, -9.6], [175, -9.3], [177, -9.3], [178, -9.5], [179, -10], [180, -10]];
+marksmanT55.dims = { hullLengthM: 6.04, overallLengthM: 8.24, widthM: 3.40, heightM: 3.71 };
+// The guns keep their full -10 degrees all round over this hull (builder M, round 5: with the bores 0.50 m over the drums'
+// axis the barrels and muzzle frames clear the stern's drums and fittings at every bearing; per-degree floors at the
+// sweep's 26 mm with gunHullClearance's probe), so the T-55A's own curve, for its 100 mm, is dropped.
+delete marksmanT55.gunPitchByYawDeg;
 // photo 01 (Helsinki): "Ps465-22" on the hull side
 marksmanT55.visual.number = '465-22';
 marksmanT55.armor.boundingRadiusM = Math.max(marksmanT55.armor.boundingRadiusM, reach(marksmanT55));
@@ -169,11 +166,11 @@ Object.assign(itpsvLeopard2, {
   turretTraverseDegS: 70, gunPitchDegS: 50, gunElevationDeg: 85, gunDepressionDeg: 10,
 });
 itpsvLeopard2.dims = { hullLengthM: 7.72, overallLengthM: 9.30, widthM: 3.70, heightM: 3.93 };
-// The guns' own stops over the engine deck (builder M, round 4): the full -10 degrees but where the barrels and their
-// muzzle frames pass over the deck's rear fittings and the stern rack (yaw 138-180, at most 2 degrees up); measured and
-// fitted as the ItPsv 90's (the Leopard 2A4's own curve, for its 120 mm, does not apply).
-itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [137, -10], [138, -9.3], [140, -8.4], [145, -8.3], [146, -8.3], [150, -8.5], [152, -8.8],
-  [154, -8], [174, -8], [180, -8.5]];
+// The guns' own stops over the engine deck (builder M, round 5): the full -10 degrees but where the muzzle frames pass over
+// the deck's rear fittings (yaw 154-174, at most 0.4 degrees up); per-degree floors at the sweep's 26 mm with
+// gunHullClearance's probe, fitted by tools/gun-depression-sweep.mjs --envelope (the Leopard 2A4's own curve, for its 120
+// mm, does not apply).
+itpsvLeopard2.gunPitchByYawDeg = [[0, -10], [153, -10], [154, -9.7], [164, -9.6], [174, -9.6], [175, -10], [180, -10]];
 // no number shows in the 2015 photographs (07-08): the designation's short form
 itpsvLeopard2.visual.number = 'ItPsv';
 itpsvLeopard2.armor.boundingRadiusM = Math.max(itpsvLeopard2.armor.boundingRadiusM, reach(itpsvLeopard2));

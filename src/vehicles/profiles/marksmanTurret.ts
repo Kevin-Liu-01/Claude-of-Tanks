@@ -22,6 +22,7 @@ import { KIT } from './kit.ts';
 import { antennaPart } from './antennaPart.ts';
 import {
   MARKSMAN_ADAPTERS, MARKSMAN_BARREL as BARREL, MARKSMAN_BODY as BODY, MARKSMAN_BODY_FACES, MARKSMAN_BORE as BORE,
+  MARKSMAN_BROW as BROW,
   MARKSMAN_COLLAR as COLLAR, MARKSMAN_DRUM as DRUM, MARKSMAN_GRILLE as GRILLE, MARKSMAN_MUZZLE_Z, MARKSMAN_POD as POD,
   MARKSMAN_RADAR as RADAR, MARKSMAN_RINGS, MARKSMAN_SIGHTS as SIGHTS, MARKSMAN_SMOKE as SMOKE, MARKSMAN_TRUNNION,
   marksmanBodyPoint,
@@ -111,8 +112,13 @@ function addBody(P: TankBuilderPort, seat: MarksmanSeat): void {
   P.add('turretDark', cylY(A.r + 0.004, A.r + 0.004, 0.012, n), 0, A.topY - 0.008, 0);
   P.add('turret', cylY(COLLAR.r, COLLAR.r, COLLAR.topY + 0.02 - (A.topY - 0.01), n),
     0, (COLLAR.topY + 0.02 + A.topY - 0.01) / 2, 0);
-  // the welded body: its fourteen planar faces (marksmanFrame.ts)
+  // the welded body: its fourteen planar faces (marksmanFrame.ts), and the brow block jutting at its top front (photo 07)
   P.add('turret', polygonSolid(Object.values(MARKSMAN_BODY_FACES).map((face) => face.map(marksmanBodyPoint))));
+  P.add('turret', convex([-1, 1].flatMap((sx) => [
+    [sx * BROW.halfW, BROW.topY, BROW.backZ], [sx * BROW.halfW, BROW.topY, BROW.frontZ],
+    [sx * BROW.halfW, BROW.frontBottomY, BROW.frontZ], [sx * BROW.halfW, BROW.rootY, BROW.rootZ],
+    [sx * BROW.halfW, BROW.rootY, BROW.backZ],
+  ] as P3[])));
   // the bearing drums on the flanks (turret stock about the elevation axis), each run into the body, a cover disc on its
   // outer face round the gun's hub
   const [, ty, tz] = MARKSMAN_TRUNNION;
@@ -170,16 +176,17 @@ function addRoofKit(P: TankBuilderPort): void {
     // size, against the turret's height in photo 02)
     const x = s * SIGHTS.x, z = SIGHTS.z;
     P.addEquipment('turretDetail', cylY(0.10, 0.11, 0.06, n), x, roof + 0.02, z);
-    P.addEquipment('turretDetail', box(0.15, 0.18, 0.21), x, roof + 0.135, z);
-    P.add('turretDark', box(0.12, 0.075, 0.012), x, roof + 0.155, z + 0.106);
-    P.add('turretGlass', box(0.095, 0.055, 0.012), x, roof + 0.155, z + 0.112);
-    P.addEquipment('turretDetail', box(0.17, 0.02, 0.07), x, roof + 0.22, z + 0.11);
+    const headTop = roof + 0.045 + SIGHTS.headH;
+    P.addEquipment('turretDetail', box(0.15, SIGHTS.headH, 0.21), x, roof + 0.045 + SIGHTS.headH / 2, z);
+    P.add('turretDark', box(0.12, 0.09, 0.012), x, headTop - 0.08, z + 0.106);
+    P.add('turretGlass', box(0.095, 0.065, 0.012), x, headTop - 0.08, z + 0.112);
+    P.addEquipment('turretDetail', box(0.17, 0.02, 0.07), x, headTop - 0.005, z + 0.11);
     // the crew hatch ahead of it, hinged on its outer side
     P.add('turretDetail', cylY(SIGHTS.hatchR + 0.04, SIGHTS.hatchR + 0.04, 0.035, n), s * SIGHTS.hatchX, roof + 0.012, SIGHTS.hatchZ);
     P.addHatch('turretHatch', cylY(SIGHTS.hatchR, SIGHTS.hatchR, 0.04, n), s * SIGHTS.hatchX, roof + 0.045, SIGHTS.hatchZ);
     P.add('turretDark', box(0.06, 0.04, 0.16), s * (SIGHTS.hatchX + SIGHTS.hatchR - 0.01), roof + 0.06, SIGHTS.hatchZ);
     // lift eyes at the roof's corners and the whips on their bases at its rear
-    liftEye(P, 'turretDetail', s * 0.60, roof, 0.95, 0);
+    liftEye(P, 'turretDetail', s * 0.60, roof, 0.84, 0);
     liftEye(P, 'turretDetail', s * 0.60, roof, -1.47, 0);
     P.addEquipment('turretDetail', cylY(0.045, 0.05, 0.09, 10), s * 0.50, roof + 0.035, -1.28);
     P.addEquipment('turretDetail', antennaPart(cylY(0.012, 0.016, 2.10, 8)), s * 0.50, roof + 1.10, -1.28);
@@ -263,7 +270,7 @@ function addGuns(P: TankBuilderPort, seat: MarksmanSeat): void {
       ...section(POD.tailZ, x0, x1 - 0.02, POD.tailBottomY, POD.tailTopY, tc * 0.6, bc * 0.6),
       ...section(POD.tailCutZ, x0, x1, y0, y1, tc, bc),
       ...section(POD.shoulderZ, x0, x1, y0, y1, tc, bc),
-      ...section(POD.shoulderZ + 0.20, x0 + 0.05, x1 - 0.08, y0 + 0.30, y1 - 0.06, tc * 0.8, bc),
+      ...section(POD.shoulderZ + 0.20, x0 + 0.05, x1 - 0.08, y0 + 0.24, y1 - 0.02, tc * 0.8, bc),
       ...section(POD.noseZ, BORE.x - POD.faceHalfW, BORE.x + POD.faceHalfW, BORE.y - POD.faceHalfH, BORE.y + POD.faceHalfH, 0.04, 0.03),
     ])));
     // the access door on the pod's outer face, its hinges at the front edge and its latch
