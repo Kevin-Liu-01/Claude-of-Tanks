@@ -4591,6 +4591,7 @@ uniform vec4 uGsOpen, uGsWorn, uGsTown;
 // splatCompute)
 uniform vec4 uGsNear;
 float gGsTilt = 0.0;
+float gGsGain = 0.0;      // ground-269: the share a detail facet may gain (the cap's other side; set in splatCompute)
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -4674,6 +4675,7 @@ float gPaddyWater = 0.0;     // (Caldera round 4) a flooded paddy's alone: its p
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gCropReliefW = 0.0;    // ground lane (wave 274): gCropW for the sward's relief — none on a young green crop (a short sward)
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
+float gParcelW = 0.0;        // ground-269: an urban land use's parcel weight, any crop (the town floor lies over it at the old wear's share)
 float gJebelMatte = 0.0;     // the Redrock lane, round 11b: a jebel face's weight (its sheen cut in the aomap stage)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
 float gYardOil = 0.0;        // ground lane (2026-10-08): a cinder yard's oil stains (a satin in the roughness stage)
@@ -6683,6 +6685,7 @@ void splatCompute() {
       // (2026-10-07, Ironworks round 4: a works' wear is its cinder — toward the map's pale dirt it lifted every lot)
       if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),
         clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * 0.40 * inField * landW);
+      gParcelW = inField * landW * step(0.5, uLandE.w);
       // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
@@ -8279,12 +8282,16 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // tussocks, the dapple, x2 by the range gain) turned facets from a low sun until they lost most of it, and the turf
   // drew soft near-black blotches a metre or two across — the owner's "black spaces". A facet past the share is eased
   // back toward the smooth normal just far enough; every facet that keeps its light keeps its relief (0 = no cap)
+  // (ab9, Blackglass's long view: with the dark facets held, the lit ones alone drew the relief, and at range the blades'
+  // sun sides laid pale combed arcs across the hill — "directional stroke texture", "banding") nor gains more than
+  // gGsGain of it
   #if NUM_DIR_LIGHTS > 0
   if (gGsTilt > 0.0) {
     vec3 gsL = directionalLights[0].direction;
     vec3 gsG = normalize((viewMatrix * vec4(gN, 0.0)).xyz);
-    float gsGL = dot(gsG, gsL), gsNL = dot(normal, gsL);
-    if (gsGL > 0.02 && gsNL < gsGL * (1.0 - gGsTilt)) normal = normalize(mix(gsG, normal, clamp(gsGL * gGsTilt / max(gsGL - gsNL, 1e-4), 0.0, 1.0)));
+    float gsGL = dot(gsG, gsL), gsD = dot(normal, gsL) - gsGL;
+    float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);
+    if (gsGL > 0.02 && abs(gsD) > gsB) normal = normalize(mix(gsG, normal, clamp(gsB / max(abs(gsD), 1e-4), 0.0, 1.0)));
   }
   #endif
 }

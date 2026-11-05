@@ -111,7 +111,8 @@ const MACRO_DRAWN = new Set([0, 1, 2, 3, 4, 5, 6]), CLOSE_DRAWN = new Set([0, 1,
 for (const mapId of MAP_IDS) {
   const u = groundSurfaceUniformValues(mapId);
   for (const v of [...u.open, ...u.worn, ...u.town, ...u.near]) assert.ok(Number.isFinite(v), `${mapId}: finite`);
-  assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.6 && u.near[1] > 0.2 && u.near[1] <= 0.6, `${mapId}: relief caps ${u.near}`);
+  // (c4: sand's and snow's relief is their detail and their darkest facet no black — their caps 0.65)
+  assert.ok(u.near[0] > 0.2 && u.near[0] <= 0.7 && u.near[1] > 0.2 && u.near[1] <= 0.7, `${mapId}: relief caps ${u.near}`);
   assert.equal(u.near[2], 0.42, `${mapId}: the setts' joints' floor`);
   assert.equal(u.near[3], 1, `${mapId}: the fields' grain and the hardstanding's staggered repairs`);
   assert.ok(MACRO_DRAWN.has(u.open[0]) && CLOSE_DRAWN.has(u.open[2]) && CLOSE_DRAWN.has(u.worn[2]), `${mapId}: drawn codes`);
@@ -136,7 +137,11 @@ for (const chunk of [GROUND_SURFACE_GLSL, GROUND_SURFACE_WORKS_GLSL]) {
   assert.ok(!chunk.includes('`') && !chunk.includes('${'), 'plain GLSL');
   assert.ok(!/texture2D|textureLod\(u(Alb|Nrm)/.test(chunk), 'no layer fetch: noise reads and hash cells only');
   assert.ok(!/\bfor\s*\(|\bwhile\s*\(/.test(chunk), 'no loop (no per-pixel search)');
+  // (ab8, Blackglass: a read of nz(...).b drew the woods mask, tiled, as dark smudges) the noise texture's B channel is the
+  // woods mask, read only at its own 1/1024 scale in terrain.ts
+  assert.ok(!/nz\([^;]*\)\.b\b/.test(chunk), 'no read of the woods mask as a noise field');
 }
+assert.ok(GROUND_SURFACE_GLSL.includes('gsTownW *= 1.0 - 0.6 * gParcelW;'), 'the town floor over a land-use parcel at the old wear\'s share');
 const raw = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const fragAt = raw.indexOf('const SPLAT_COMMON_FRAG = /* glsl */`');
 const computeAt = raw.indexOf('void splatCompute() {', fragAt);
@@ -155,6 +160,15 @@ assert.equal(raw.split('uniform vec4 uGsOpen, uGsWorn, uGsTown;').length, 2, 'th
 for (const name of ['uGsOpen', 'uGsWorn', 'uGsTown', 'uGsNear']) assert.ok(raw.includes(`shader.uniforms.${name} = {`), `the material sets ${name}`);
 // the relief cap: set in splatCompute by the chunk, applied in the normal pass before the world normal is composed
 assert.ok(GROUND_SURFACE_GLSL.includes('gGsTilt = uGsNear.x > 0.0'), 'the chunk sets the cap');
+// (ab9, Blackglass: the lit facets alone drew pale combed arcs at range) and its other side, a facet's gain, the cap's own
+// past ~45 m; the normal pass bounds both
+assert.ok(GROUND_SURFACE_GLSL.includes('gGsGain = gGsTilt * mix(3.0, 1.0, smoothstep(15.0, 45.0, camDist));'), 'the chunk sets the gain');
+assert.ok(raw.includes('float gsB = gsGL * (gsD < 0.0 ? gGsTilt : gGsGain);'), 'the normal pass bounds a facet\'s loss and its gain');
+// (ab9, Ironworks: "black" lots) the works floor never under a tenth of the light; (Cinder Junction: "pale blotches …
+// repeating") its ash the 4–8 m drifts alone
+assert.ok(GROUND_SURFACE_WORKS_GLSL.includes('max(1.0, 0.10 / max(reduxLuma(a.rgb), 0.01))')
+  && !GROUND_SURFACE_WORKS_GLSL.split('\n').some(l => !l.trim().startsWith('//') && /\bn1h\b/.test(l)),
+  'the works floor lifted off black, its ash the drifts alone');
 // the sown fields' level and grain read the switch (the old clamp at 0), as the hardstanding's repairs do
 assert.ok(raw.includes('if (uGsNear.w > 0.0) {\n        float gsML = max(reduxLuma(uMeanG.rgb), 1e-3);'), 'the crops keep their grain');
 assert.ok(raw.includes('if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0)'), 'the repairs staggered');
@@ -167,6 +181,10 @@ assert.ok(props.includes("decalKind === 'apron' ? apronGroundTableHook : null") 
   'the aprons draw nothing where the table runs');
 // the setts' joints and lost setts (roadSurfaceShader.ts) read the floor, the old law at 0
 const pave = readFileSync(new URL('./roadSurfaceShader.ts', import.meta.url), 'utf8');
+// (ab9, Ruinspires: "asphalt reads untextured", the phone's "large untextured paving slabs") the asphalt's and the print's
+// mid grain read the floor too
+assert.equal(pave.split('if (uGsNear.z > 0.0) asph *= mix(0.90, 1.10,').length, 2, 'the asphalt\'s mid mottle, by the table');
+assert.equal(pave.split('if (uGsNear.z > 0.0) pav.rgb *= mix(0.90, 1.10,').length, 2, 'the print\'s grain, by the table');
 for (const t of ['if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);', 'uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6',
   'if (uGsNear.z > 0.0) jointM = max(jointM,', 'vec3 settJ = uGsNear.z > 0.0 ? sett * uGsNear.z : vec3(0.040, 0.036, 0.031);'])
   assert.ok(pave.includes(t), `the paving reads the joints' floor: ${t}`);

@@ -83,9 +83,10 @@ const photo = (set: GroundPhotoSet): GroundTextures => ({ photo: set });
  * and block detail"; 0.42 keeps a joint a clear shade under its stone, the old joints' ~0.38 lifted only off black.) */
 const SETTS_JOINT_FLOOR = 0.42;
 /** The relief's cap by the class's macro law (the share of the direct light a facet may lose): turf soft, soils and yards
- * rougher, rock uncapped. */
+ * rougher, rock uncapped; (c4: the Sahel's ripples and Winterfront's drifts "stronger in B" at 0.4) sand and snow, whose relief
+ * is their detail and whose darkest facet is no black, loosest. */
 const RELIEF_TILT: Readonly<Record<GroundMacro, number>> = Object.freeze({
-  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.4, snow: 0.4, rock: 0, none: 0.4,
+  sward: 0.3, tussock: 0.35, soil: 0.45, yard: 0.4, rubble: 0.5, slag: 0.45, paved: 0.3, sand: 0.65, snow: 0.65, rock: 0, none: 0.4,
 });
 const painter = (name: string): GroundTextures => ({ painter: name });
 const row = (textures: GroundTextures, macro: GroundMacro, macroStrength: number, close: GroundClose, closeStrength: number,
@@ -117,7 +118,7 @@ export const GROUND_CLASSES: Readonly<Record<GroundClass, GroundClassRow>> = Obj
   // a works' slag, ballast and hardstanding (terrain.ts worksSlag; its floor law, groundSurfaceShader.ts works floor)
   slag: row(painter('terrain.ts worksSlag'), 'slag', 1, 'grit', 0.6, 'none', 'earth'),
   // loose sand, its ripples, and the lag of pebbles the wind leaves on it
-  sand: row(photo('sand'), 'sand', 0, 'grit', 0.35, 'none', 'sand'),
+  sand: row(photo('sand'), 'sand', 0, 'grit', 0.25, 'none', 'sand'),
   // a strand's dry sand above the swash (the shore policy prints it as sand), shells and pebbles in it
   beachSand: row(photo('sand'), 'sand', 0, 'grit', 0.3, 'dune', 'sand'),
   // the canyons' packed ochre and red earth shelves (the sand set toned), stones weathered out of them: earth underfoot
@@ -249,7 +250,8 @@ export function groundSurfaceUniformValues(mapId: string | null | undefined): {
     worn: pack(g.worn),
     town: town && townMacro > 0 ? [townMacro, GROUND_CLOSE_CODE[town.close.kind], town.close.strength, 1] : [0, 0, 0, 0],
     // the relief caps: the open ground's class, and the worn ground's for the rest (the sward's share mixes them); and the
-    // setts' joints' floor (a share of their stone's tone: sand and grit, not a black grid, on every map's paving)
+    // setts' joints' floor (a share of their stone's tone: sand and grit, not a black grid, on every map's paving; at 0 the
+    // paving's old law, its asphalt's and its print's mid grain off too)
     // (w: 1 — the land use's sown fields keep their sward's grain both ways round its level, no clamped ceiling with dark
     // holes; its hardstanding's repairs staggered and softened, no checkerboard)
     near: [GROUND_CLASSES[g.open].close.tilt || 0.45, GROUND_CLASSES[g.worn].close.tilt || 0.45, SETTS_JOINT_FLOOR, 1],

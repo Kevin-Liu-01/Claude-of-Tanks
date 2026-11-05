@@ -169,6 +169,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
         // sky ambient read as a frozen canal; darker worn stone keeps the
         // street below the facade value range
         pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
+        // (ground-269, ab9, Ruinspires on the phone: "large untextured paving slabs" — the print's slabs one tone each from
+        // a few metres out) the stone's own grain, 0.3–0.7 m, one read, eased to its mean past resolution
+        if (uGsNear.z > 0.0) pav.rgb *= mix(0.90, 1.10, smoothstep(0.30, 0.70, mix(0.5, nz(uv, 0.37, vec2(0.47, 0.19)).r, tileVis(2.7))));
         if (uPaveSlab.x > 0.0) {
           // maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): airfield
           // concrete in place of the map's sett print — square slabs with sealed expansion joints, a tone per slab (pours
@@ -415,6 +418,9 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           float aggGV = tileVis(0.03);
           if (aggGV > 0.01) asph *= 1.0 + (nz(uv, 13.0, vec2(0.53, 0.29)).r - 0.5) * 0.22 * aggGV;
           asph *= 1.0 - 0.13 * smoothstep(0.56, 0.84, nzq(uv, 0.09, vec2(0.71, 0.37)).x);
+          // (ground-269, ab9, Ruinspires' street from the town camera: "asphalt reads untextured" between the aggregate,
+          // gone past a few metres, and the binder's blotches of several) the surface's mid mottle, 0.3–0.7 m, to ~40 m
+          if (uGsNear.z > 0.0) asph *= mix(0.90, 1.10, smoothstep(0.42, 0.60, mix(0.51, nzq(uv, 0.37, vec2(0.23, 0.61)).y, tileVis(2.7))));
           if (fr) {
             float ravel = smoothstep(roadHalf - 1.0, roadHalf - 0.15, dRoad) * (1.0 - paveTownW)
               * smoothstep(0.40, 0.70, nz(uv, 1.1, vec2(0.37, 0.61)).r);
