@@ -5,7 +5,8 @@
 //   build carries its chunks: the open-tabs 404 trap) and names the commands that finish it; a record that fails after
 //   the deploy names `record <sha>`; a missing or wrong own-file list stops the deploy before Vercel runs;
 // - the cache lock has an owner: a SIGKILLed step's lock is reaped, a live step's names its pid;
-// - workers records each deployed Worker's commit (workers.json), and a failure part-way names the Worker left behind.
+// - workers records each deployed Worker's commit (workers.json), and a failure part-way names the Worker left behind;
+//   a Worker that deployed but could not be recorded is named live and unrecorded, with --record-only (round 2 U39).
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -116,7 +117,35 @@ try {
     assert.deepEqual(Object.keys(readWorkerDeploys(cache)).sort(), ['rooms', 'telemetry'], 'a full run records both');
     assert.match(both.notes.join('\n'), new RegExp(`release pairing: web ${sha12}; rooms ${sha12}, telemetry ${sha12}`));
   }
-  console.log('release-record.selftest: a live deploy is recorded before verify and every later failure names its command, the file list is checked before the deploy, a killed step\'s cache lock is reaped, and each Worker\'s commit is on record');
+
+  // ---- (round 2 U39) a Worker that deployed but could not be recorded is live, not 'not deployed' -----------------------
+  // The record takes the cache lock; a live release step holding it (a build carrying assets) made recordWorkerDeploy throw
+  // after wrangler had deployed, and the error then listed that live Worker under 'not deployed (still <old commit>)'.
+  {
+    git('commit', '-q', '--allow-empty', '-m', 'release: the next commit');
+    const next = git('rev-parse', 'HEAD'), next12 = next.slice(0, 12);
+    const options = parseReleaseArgs(['workers', next, `--asset-cache=${cache}`, '--only=rooms'], {});
+    const hold = claimOwnedLock(join(cache, '.lock')); // a live release step holds the cache
+    let message = '';
+    try {
+      const runner = recorder();
+      await assert.rejects(runRelease(options, { root: repo, runner }), (error) => { message = error.message; return true; });
+      assert.ok(runner.calls.some((call) => call.includes('wrangler deploy')), 'wrangler deployed rooms');
+    } finally { releaseOwnedLock(hold, { log: () => {} }); }
+    assert.doesNotMatch(message, /not deployed: rooms\b/, `a deployed Worker is never listed as not deployed: ${message}`);
+    assert.ok(message.includes(`cloudflare/rooms is deployed at ${next12} but not recorded`), message);
+    assert.ok(message.includes(`node tools/release.mjs workers ${next12} --record-only=rooms`), `the error names the command that records it: ${message}`);
+    assert.ok(message.includes(`Workers at ${next12}: rooms (deployed, not recorded); not deployed: none`), message);
+    assert.equal(readWorkerDeploys(cache).rooms.commit, sha, 'the record still names the old commit');
+    // the command it names records the Worker without a worktree or a deploy
+    const runner = recorder();
+    await runRelease(parseReleaseArgs(['workers', next, `--asset-cache=${cache}`, '--record-only=rooms'], {}), { root: repo, runner });
+    assert.deepEqual(runner.calls, [], 'no worktree, no npm, no wrangler');
+    assert.equal(readWorkerDeploys(cache).rooms.commit, next, 'rooms is on record at the commit it runs');
+    assert.match(runner.notes.join('\n'), new RegExp(`rooms ${next12}, telemetry ${sha12}`), 'and the pairing names it');
+    assert.throws(() => parseReleaseArgs(['workers', next, '--record-only=rooms', '--only=rooms'], {}), /drop --only/);
+  }
+  console.log('release-record.selftest: a live deploy is recorded before verify and every later failure names its command, the file list is checked before the deploy, a killed step\'s cache lock is reaped, each Worker\'s commit is on record, and a deployed Worker the record missed is named live with the command that records it');
 } finally {
   if (savedBin === undefined) delete process.env.COT_VERCEL_BIN; else process.env.COT_VERCEL_BIN = savedBin;
   rmSync(scratch, { recursive: true, force: true });

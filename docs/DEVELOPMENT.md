@@ -152,6 +152,7 @@ The deployment owner releases a gated commit with the versioned tool instead of 
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
     node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
+    node tools/release.mjs workers <sha> --record-only=rooms   # record a Worker that deployed but failed to record (no deploy)
     node tools/release.mjs <command> ... --dry-run   # print every command; run nothing (no Vercel, wrangler or network)
 
 - `build` deletes the pulled `.vercel/.env*.local` files in a `finally` block, whatever happens. The
