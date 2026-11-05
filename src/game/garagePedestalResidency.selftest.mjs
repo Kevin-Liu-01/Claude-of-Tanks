@@ -174,4 +174,44 @@ function harness() {
   assert.equal(h.runtime.current, null);
 }
 
-console.log('garagePedestalResidency.selftest: declared hero residency, lend/adopt edges and the watchdog PASS');
+// (round 2, U25) The pedestal's dispose takes its cached heroes with it: each is retired and its resources freed, except a
+// lent hero the battle still holds, which stays the battle's (the pedestal lets it go: released).
+{
+  const h = harness();
+  await h.runtime.set('alpha');
+  const alpha = h.runtime.current;
+  h.setSelected('bravo');
+  await h.runtime.set('bravo');
+  const bravo = h.runtime.current;
+  h.setSelected('charlie');
+  await h.runtime.set('charlie');
+  const charlie = h.runtime.current;
+  h.entities.set('charlie', {});
+  assert.equal(h.runtime.lendToBattle('charlie'), true);
+  h.setPlayer({ visual: charlie });
+  const disposedRoots = new Set();
+  for (const visual of [alpha, bravo, charlie]) {
+    const inner = visual.dispose;
+    visual.dispose = () => { disposedRoots.add(visual.specId); inner.call(visual); };
+  }
+  assert.equal(h.runtime.residencyOf(alpha), 'parked');
+  h.runtime.dispose();
+  assert.equal(h.runtime.residencyOf(alpha), 'retired', 'a parked hero the pedestal cached is retired with it');
+  assert.equal(h.runtime.residencyOf(bravo), 'retired');
+  assert.equal(h.runtime.hasCached('alpha') || h.runtime.hasCached('bravo'), false, 'and leaves the cache');
+  assert.equal(alpha.root.parent, null, 'its root leaves the scene');
+  assert.equal(h.runtime.residencyOf(charlie), 'released', 'the lent hero the battle holds is the battle\'s now');
+  assert.equal(charlie.root.parent === null && h.runtime.residencyOf(charlie) === 'retired', false,
+    'and is never disposed under the battle');
+  assert.equal(h.runtime.current, null);
+}
+
+// (round 2, U25) moveResidency is the one writer of the declared state: the dispose wrapper retires through it.
+{
+  const source = (await import('node:fs')).readFileSync(new URL('./garagePedestalRuntime.ts', import.meta.url), 'utf8');
+  assert.equal((source.match(/residency\.set\(/g) ?? []).length, 1, 'residency.set( is written only inside moveResidency');
+  assert.match(source, /if \(residency\.get\(visual\) === 'retired'\) return;\n\s+moveResidency\(visual, 'retired'\);/,
+    'the dispose wrapper retires through moveResidency');
+}
+
+console.log('garagePedestalResidency.selftest: declared hero residency, lend/adopt edges, the watchdog and the pedestal\'s dispose PASS');
