@@ -166,5 +166,10 @@ async function newHost(resume, battleLimitS = null) {
   result = fallback({ resumeTick: 0, roomMatchStatus: 'playing', kept: true });
   assert.equal(result.kind, 'restart', `a kept host restarts (got ${kindOf(result)})`);
   assert.equal(result.lastResort, 'room', 'and names what it restarts over');
+  // review round 1: on the newest tick it knows (bootKeptHost passes the election's report tick), not at 0
+  result = fallback({ resumeTick: 1800, roomMatchStatus: 'playing', kept: true });
+  assert.equal(result.kind, 'restart');
+  assert.equal(result.resumeTick, 1800, 'a kept restart runs on from the report tick');
+  assert.equal(result.state.frame.tick, 1800);
 }
 console.log('resumePhase: a migrated countdown counts on, an ended match stays ended with its verdict, and an unreadable keyframe declines a battle in progress or restarts the countdown on the clients\' timeline');

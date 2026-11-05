@@ -212,6 +212,8 @@ export interface MatchClientStats {
   helloRetries: number;
   /** Episodes where this tab's own tasks were starved past TASK_STARVED_MS (the stall clock rested; taskProbe). */
   taskStarvations: number;
+  /** New links whose host ran on another timeline than this client's clocks (followTimeline): the clocks re-anchored. */
+  timelineRestarts: number;
 }
 
 /**
@@ -330,6 +332,9 @@ export class MatchClient {
   private keyframeRequests = 0;
   private inputFramesSent = 0;
   private resumeHintsSent = 0;
+  private timelineRestarts = 0;
+  /** The first snapshot after a WELCOME still has to be read against this client's clocks (followTimeline). */
+  private timelineCheckPending = false;
   private helloRetries = 0;
   private helloRetriesLeft = MAX_HELLO_RETRIES;
   private snapshotsAccepted = 0;
@@ -613,6 +618,7 @@ export class MatchClient {
       resumeHintsSent: this.resumeHintsSent,
       helloRetries: this.helloRetries,
       taskStarvations: this.starvations,
+      timelineRestarts: this.timelineRestarts,
     };
   }
 
@@ -797,7 +803,13 @@ export class MatchClient {
     this.helloRetriesLeft = MAX_HELLO_RETRIES;
     this.timeUnwrap.reset();
     const serverTimeMs = this.timeUnwrap.unwrap(welcome.serverTimeMs);
+    // the link's host maps its own ticks to its time: an earlier host's anchor says nothing of a new one (observe ignores
+    // older ticks, so a host whose ticks run behind the old one's was never followed). A host on the same timeline gives
+    // the same mapping. The server clock's offset is judged at the first snapshot (followTimeline): a migrated host
+    // welcomes its held seats at the resume tick, before its loop skips the ticks it stood still.
+    this.tickClock.reset();
     this.tickClock.observe(welcome.serverTick, serverTimeMs);
+    this.timelineCheckPending = true;
     // HELLO -> WELCOME is a round trip with a server stamp: the first clock sample.
     if (this.helloSentAtMs !== null) this.serverClock.observePong(this.helloSentAtMs, nowMs, serverTimeMs);
     if (!this.serverClock.isSeeded) this.serverClock.seed(serverTimeMs, nowMs);
@@ -811,6 +823,33 @@ export class MatchClient {
     this.lastPingAtMs = -Infinity;
     this.pingsSent = 0;
     for (const listener of this.welcomeListeners) listener(welcome);
+  }
+
+  /**
+   * The first snapshot on a link, against this client's server clock (review round 1, U1): a host whose loop runs further
+   * from the clock than the clock's own hard resync bound, which no link delay explains, runs another timeline, and the
+   * clocks re-anchor on it at once. A kept host (matchSession.ts bootKeptHost: nobody else could host) restarts a battle
+   * on the newest tick it knows, behind every peer's clock by the time since; kept, the old host's samples held the offset
+   * until the window turned over, and the input stream, started at the WELCOME on the old timeline, sent every INPUT far
+   * ahead of the new host (refused), then none at all until the new timeline caught up with it. A host on the same
+   * timeline (a reconnect, a migration that skipped its boot's ticks) is left as it is. The snapshot's stamp seeds the
+   * clock (one way, low by the link's delay) and a fresh ping burst corrects it, as after a first WELCOME.
+   */
+  private followTimeline(tick: number, serverTimeMs: number, nowMs: number): void {
+    if (Math.abs(serverTimeMs - this.serverClock.serverNow(nowMs)) <= this.serverClock.hardResyncMs) return;
+    this.timelineRestarts++;
+    this.serverClock.reset();
+    this.serverClock.seed(serverTimeMs, nowMs);
+    this.tickClock.reset();
+    this.tickClock.observe(tick, serverTimeMs);
+    this.pendingPings.length = 0;
+    this.lastPingAtMs = -Infinity;
+    this.pingsSent = 0;
+    if (this.isSeated) {
+      // the controls sampled for the old timeline's ticks are no one's now
+      this.predictor?.reset();
+      this.inputStream.start(Math.max(tick, Math.floor(this.tickClock.tickAt(this.serverClock.serverNow(nowMs))) + this.inputStream.lead + 1));
+    }
   }
 
   private ensurePredictor(): void {
@@ -862,6 +901,7 @@ export class MatchClient {
     const frame = accepted.frame;
     if (accepted.keyframe) this.keyframeRequestedForGap = false;
     const serverTimeMs = this.timeUnwrap.unwrap(frame.serverTimeMs);
+    if (this.timelineCheckPending) { this.timelineCheckPending = false; this.followTimeline(frame.tick, serverTimeMs, nowMs); }
     this.tickClock.observe(frame.tick, serverTimeMs);
     this.lastAuthorityAtMs = nowMs;
     this.snapshotsAccepted++;

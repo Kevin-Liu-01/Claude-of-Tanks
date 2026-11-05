@@ -1065,13 +1065,21 @@ export class MatchSession {
    * `generation + 1` through handleHostChanged: the seat then ran ahead of the room, its reports carried a generation the
    * room never issued, and the room's next real election (at that generation, naming another seat) read as "not newer"
    * and was ignored.
+   * The kept host restarts a battle that had begun (migrationFallback's last resort) on the newest tick it knows (review
+   * round 1, U1): the room's election that named it carries the old host's last report tick (roomActor.ts migrateHost),
+   * and it used to be dropped for 0, so the restart ran behind every peer's clock by the whole battle. What the seat cannot
+   * know (the ticks since that report; a reload hears no election at all) the peers' clients follow at their WELCOME
+   * (matchClient.ts receiveWelcome: a host on another timeline re-anchors the clocks).
    */
   private bootKeptHost(round: SessionRound, detail: string): void {
     const client = this.matchClient;
     const migrating = this.migrating;
     if (!client || !migrating || migrating.state === 'closed' || this.currentRound !== round) return;
     const me = this.room.playerId;
-    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: 0, reason: 'declined', ...(this.hostSecret ? { hostSecret: this.hostSecret } : {}) };
+    const election = this.room.lastHostChanged;
+    const reportTick = election && election.hostId === me && election.generation === this.room.generation && this.room.matchStart?.matchId === round.matchStart.matchId
+      ? election.resumeTick : 0;
+    const change: RoomHostChangedPayload = { hostId: me, generation: this.room.generation, resumeTick: reportTick, reason: 'declined', ...(this.hostSecret ? { hostSecret: this.hostSecret } : {}) };
     this.runningGeneration = Math.max(this.runningGeneration, change.generation);
     this.migrationsSeen++;
     this.migrationActive = true;
