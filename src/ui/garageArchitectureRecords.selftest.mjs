@@ -200,9 +200,43 @@ try {
     assert.equal(retries.count, before + 1, 'and its selection still asks the library to reload failed sets');
     controller.dispose();
   }
+
+  // 8. (round 2, U25; 05-ui-2 #1) A pack is its variant's: two variants that share an architecture each get their own
+  // build (their maps differ: terrain, kit, skyline, structures). The packs were keyed by architecture, so the second
+  // variant got the first one's build back and show() relabelled it with the second's mapId. Today the table is 1:1
+  // (garageVariants.ts), so the twin here is a stand-in.
+  {
+    const [a] = outdoor;
+    const twin = { ...a, id: `${a.id}_twin`, mapId: 'twinmap', name: 'Twin' };
+    const builtFor = [];
+    const { kit } = fakeKit();
+    const build = kit.buildGarageEnvironment;
+    kit.buildGarageEnvironment = (ctx, assets, variant) => {
+      builtFor.push(variant.id);
+      const made = build(ctx, assets, variant);
+      made.root.userData.builtFor = variant.id;
+      return made;
+    };
+    const controller = createGarageArchitectureController({ renderer: { initTexture() {} } }, new THREE.Group(), () => {},
+      async () => kit);
+    controller.setVariant(a);
+    assert.equal((await controller.whenReady()).mapId, a.mapId);
+    controller.setVariant(twin);
+    const stats = await controller.whenReady();
+    assert.deepEqual(builtFor, [a.id, twin.id], 'the twin variant bakes its own pack (it got the first variant\'s back)');
+    assert.equal(stats.mapId, 'twinmap');
+    const shown = controller.group.children.find((child) => child.visible);
+    assert.equal(shown?.userData.builtFor, twin.id, 'the pack on show is the one baked for the selected variant');
+    assert.equal(shown?.userData.mapId, 'twinmap');
+    controller.setVariant(a);
+    assert.equal((await controller.whenReady()).mapId, a.mapId);
+    assert.deepEqual(builtFor, [a.id, twin.id], 'both stay cached: going back bakes nothing');
+    assert.equal(controller.group.children.find((child) => child.visible)?.userData.builtFor, a.id);
+    controller.dispose();
+  }
 } finally {
   if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
   if (originalRaf === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = originalRaf;
 }
 
-console.log('garageArchitectureRecords.selftest: one record per pack, cancellable prewarms, a true upload latch, context-loss renewal, selections retry failed surfaces PASS');
+console.log('garageArchitectureRecords.selftest: one record per pack, cancellable prewarms, a true upload latch, context-loss renewal, selections retry failed surfaces, a pack per variant PASS');
