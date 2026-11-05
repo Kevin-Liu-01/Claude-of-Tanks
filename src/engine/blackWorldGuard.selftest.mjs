@@ -802,6 +802,29 @@ for (const [expected, healedBy, inject] of proofs) {
   assert.equal(receipt.healedBy, 'H4', 'the first verdict after a ready restore credits H4');
   h.guard.dispose();
 }
+{
+  // (round 2 U30) 'pending' and 'back' read apart: while the recovery has not answered, the frames drawn (the restore's
+  // own confirm frame) judge nothing and end no wait; once it answers ready, the first verdict judges the context
+  const h = createWorld({ samples: 4 });
+  const requests = [];
+  h.renderer.userData = { requestContextRestore: () => new Promise((resolve) => requests.push(resolve)) };
+  h.frames(30);
+  for (let i = 0; i < 600 && !requests.length; i++) h.frames(1, () => { h.gpu.glMasked = true; });
+  assert.equal(requests.length, 1);
+  const [receipt] = h.guard.receipts;
+  const verdicts = h.guard.stats().verdicts;
+  h.gpu.glMasked = false; // a healthy picture while the restore is still pending
+  h.frames(60);
+  assert.equal(receipt.closed, false, 'no verdict while the restore is pending closes the incident');
+  assert.equal(h.guard.stats().verdicts, verdicts, 'none is judged at all');
+  assert.equal(h.reports.length, 0, 'and nothing is reported while it waits');
+  requests[0]('ready');
+  await Promise.resolve(); await Promise.resolve();
+  h.frames(60);
+  assert.equal(receipt.closed, true, 'the answer back: the first verdict on the returned context closes it');
+  assert.equal(receipt.healedBy, 'H4');
+  h.guard.dispose();
+}
 
 // ---- (2026-11-02 audit R3) H1's state is the reveal's: an owner that changes it on purpose holds an exemption ----
 {
