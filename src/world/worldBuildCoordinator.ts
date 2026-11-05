@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import {
   createOpaqueLoadingYielder,
   type WorkYielder,
@@ -239,15 +240,13 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     lastMs: 0,
     active: null,
   };
-  let modulePromise: Promise<WorldMapModule<World>> | null = null;
   let lastRelease: ReleaseReceipt | null = null;
 
-  const loadModule = (): Promise<WorldMapModule<World>> => {
-    if (!modulePromise) {
-      modulePromise = dependencies.loadModule();
-    }
-    return modulePromise;
-  };
+  // (round 2 U35) the map module is one lazy chunk under the app's policy (app/lazyChunk.ts): a hand-made memo kept its
+  // first failure for the document, so one failed transfer (a Garage speculation offline) failed every later battle's
+  // world build until a reload. A failure is asked again by the next build (at once, then past the backoff, never offline)
+  const moduleChunk = createLazyChunk((): Promise<WorldMapModule<World>> => dependencies.loadModule(), { now });
+  const loadModule = (): Promise<WorldMapModule<World>> => moduleChunk.load();
 
   const releaseRoot = (id: string, root: THREE.Object3D, paced: boolean): void => {
     const preserveRoots = dependencies.scene.children.filter(
