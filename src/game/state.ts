@@ -56,6 +56,8 @@ import {
 } from './teamArrangement.ts';
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
 import { battleRosterPlan } from './soloRosterPlan.ts';
+// the dev battle hold (src/dev/battleHold.ts, __DEBUG.battleHold): bots stand, the player takes no damage, no verdict
+import { battleHeld, holdBattleStep, undoHeldDamage } from './devBattleHold.ts';
 import { createJevCommander, createJevFetchTransport, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -2005,6 +2007,8 @@ function announceDestroyed(
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
   source: 'ac130' | 'drone' | null = null,
 ): void {
+  // a held player is never announced destroyed: the step's losses are undone before the verdict (devBattleHold.ts)
+  if (ent === game.player && battleHeld(game)) return;
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId);
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
@@ -2608,6 +2612,8 @@ function retargetObjectiveBots(game: SoloGameState): void {
 }
 
 function stepBotControllers(game: SoloGameState): void {
+  // a held battle's bots stand in place of their controllers, and the player's damage state is pinned (devBattleHold.ts)
+  if (battleHeld(game)) { holdBattleStep(game); return; }
   // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
   if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
@@ -3134,7 +3140,9 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   context.entities=game.tanks;
   const screens=game.auxiliarySmokeScreens;
   if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
-  for(const entity of game.tanks){
+  // a held battle's bots (devBattleHold.ts) fire no roof gun and ask for nothing
+  const held=battleHeld(game);
+  for(const entity of game.tanks){if(held&&entity!==game.player)continue;
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
     if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
@@ -3179,6 +3187,8 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 }
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
+  // a held step's losses to the player are undone before the mode and the verdict read them (devBattleHold.ts)
+  if (battleHeld(game)) undoHeldDamage(game);
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
@@ -3275,7 +3285,8 @@ function settleBattleResult(
 ): void {
   // the verdict's side is the player's, or a watched battle's human seat's whoever drives it (watchSeat.ts)
   const seat = verdictSeat(game);
-  if (game.result !== null || !seat) return;
+  // a held battle reaches no verdict until its release; the mode's outcome repeats until then (devBattleHold.ts)
+  if (game.result !== null || !seat || battleHeld(game)) return;
   let enemiesLeft = 0;
   let alliesLeft = 0;
   for (const entity of game.tanks) {

@@ -122,7 +122,9 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('t90am'));
+  // the battle behind the smoke held alive and still for the whole run (src/dev/battleHold.ts): its bots never end it in
+  // defeat (one run lost it at ~260 s of ~520 s) and never fire, so no hit call of theirs crosses the lines driven here
+  await page.evaluate(() => { window.__DEBUG.battleHold.set(true); return window.__DEBUG.startBattle('t90am'); });
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },

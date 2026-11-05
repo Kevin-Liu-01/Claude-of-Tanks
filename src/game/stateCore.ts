@@ -57,6 +57,8 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   campaignOperationId: string | null;
   /** Watch mode (game/watchSeat.ts): a watched battle's seat ledger; null otherwise. */
   watch?: WatchSession | null;
+  /** The dev battle hold's switch (dev/battleHold.ts; game/devBattleHold.ts reads it); absent in a player's session. */
+  devBattleHold?: boolean;
 }
 
 /**

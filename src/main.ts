@@ -4346,6 +4346,7 @@ if (diagnosticsRequested) {
       },
       getDamagePanel: currentDamagePanel,
       getNetworkDiagnostics: () => onlineMatch.current?.stats() ?? null,
+      isNetworkBattle: onlineMatchActive,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
     } satisfies DebugSurfaceDependencies,
