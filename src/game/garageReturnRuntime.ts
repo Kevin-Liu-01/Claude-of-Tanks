@@ -708,6 +708,7 @@ export function createGarageReturnRuntime<Visual = object>(
    * retried.
    */
   const recoveryRetries = (current: GarageReturnState): boolean => current === 'failed' || current === 'superseded';
+  const currentState = (): GarageReturnState => state;
   const performContextRecovery = async (isCurrent: () => boolean): Promise<boolean> => {
     const interrupted = lastTrace;
     if (game.phase !== 'garage' || !interrupted || state === 'idle' || state === 'prepared' || state === 'restoreSkipped') {
@@ -724,7 +725,9 @@ export function createGarageReturnRuntime<Visual = object>(
       await entryLease?.promise;
       if (!isCurrent()) throw new Error('Garage graphics recovery belongs to an expired context.');
       if (game.phase !== 'garage') return false;
-      if (recoveryRetries(state) || state === 'restoreSkipped') throw new Error('The newer Garage return is not ready.');
+      // (the newer return's state as it settled: the awaits above moved it, which the narrowing does not see)
+      const settled = currentState();
+      if (recoveryRetries(settled) || settled === 'restoreSkipped') throw new Error('The newer Garage return is not ready.');
       return false;
     }
     if (!recoveryRetries(state)) return false;
