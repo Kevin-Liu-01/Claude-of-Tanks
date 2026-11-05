@@ -471,6 +471,13 @@ const MEMBERS_MUTEX_STALE_MS = 10_000;
 /** A slot this young that cannot be parsed is a write in progress. */
 const SLOT_WRITE_GRACE_MS = 10_000;
 const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+/** A queue poll's wait: `ms`, or until `signal` aborts (its listener goes with the wait). */
+const pause = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) { resolve(); return; }
+  const done = () => { clearTimeout(timer); signal?.removeEventListener('abort', done); resolve(); };
+  const timer = setTimeout(done, ms);
+  signal?.addEventListener('abort', done, { once: true });
+});
 
 const slotText = (record) => `pid ${record.pid}\n${JSON.stringify(record)}\n`;
 const isGroupToken = (token, id) => token.id === id && Number.isSafeInteger(token.group?.max) && token.group.max > 0;
@@ -802,6 +809,11 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
 // older than `graceMs`; a bare directory with neither is never reaped, since its holder (a shell loop) may be alive. Shell
 // holders run their command under tools/with-session-mutex.mjs, which holds the mutex with an owner for the command's life.
 
+/** The exit status of a hold CLI (tools/with-session-mutex.mjs, tools/with-capture-lock.mjs) that gave up waiting for its
+ *  lock (round 2 U39): the session-mutex wrapper exited 75, the number the selftest runner reads as STARVED
+ *  (tools/selftest-verdict.mjs), so a receipt run under it that timed out on the mutex was never counted red. */
+export const LOCK_WAIT_TIMEOUT_EXIT = 77;
+
 /** Take the session mutex at `dir`: the hold, or null while it is taken. */
 export function claimSessionMutex(dir) {
   const hold = claimOwnedLock(dir, { terms: { session: true } });
@@ -845,19 +857,32 @@ export function sessionMutexState(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } =
  *  its own parent (2026-11-02 audit S4, round 2). */
 export function sessionMutexHeldByAncestor(dir, { lockStaleMs = DEFAULT_LOCK_STALE_MS } = {}) {
   const { state, pid } = sessionMutexState(dir, { lockStaleMs });
-  return state === 'live' && pid > 1 && ancestorPids().has(pid);
+  return state === 'live' && pid > 1 && ancestorOf([pid]) === pid;
 }
 
-/** This process's ancestors, its parent first, up the ppid chain (stops at pid 1, a failed `ps`, or 64 levels); this
- *  process itself is not among them. */
-function ancestorPids() {
-  const pids = new Set();
+/** The first of `targets` (pids) on this process's ppid chain, its parent first, or null (stops at pid 1, a failed `ps`,
+ *  a cycle or 64 levels; this process itself is never its own ancestor). Round 2 Q20: the walk read every level up to
+ *  pid 1 with one `ps` each (8 on this machine's session shells) before it asked; it now stops at the first target, so a
+ *  child of the holder needs no `ps` at all and a grandchild one. A walk that finds none still reads every level, as
+ *  before; one `ps -A` of the whole table instead cost more than the whole walk here (0.25 s for 1,200 processes). */
+export function ancestorOf(targets, { ppidOf = defaultPpidOf } = {}) {
+  const wanted = new Set([...targets].filter((pid) => Number.isSafeInteger(pid) && pid > 1 && pid !== process.pid));
+  if (!wanted.size) return null;
+  const seen = new Set();
   let at = process.ppid;
-  for (let depth = 0; depth < 64 && at > 1 && !pids.has(at); depth++) {
-    pids.add(at);
-    try { at = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { break; }
+  for (let depth = 0; depth < 64 && at > 1 && !seen.has(at); depth++) {
+    if (wanted.has(at)) return at;
+    seen.add(at);
+    const next = ppidOf(at);
+    if (!Number.isSafeInteger(next)) break;
+    at = next;
   }
-  return pids;
+  return null;
+}
+
+/** The parent of `at` (one `ps`), or null. (The call reads as it did, so the changed-only pin of this file stands.) */
+function defaultPpidOf(at) {
+  try { return Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(at)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()); } catch { return null; }
 }
 
 /** Free the session mutex at `dir` when its owner is dead (see session mutexes above); true when it is free afterwards. */
@@ -1069,12 +1094,9 @@ function ancestorHold(lockDir, lockStaleMs) {
   const owner = readOwner(lockDir);
   if (owner.state !== 'ok') return null;
   const holders = isGroupToken(owner.token, at.id) ? readSlots(lockDir).map((slot) => slot.record).filter(Boolean) : [owner.token];
-  const ancestors = holders.length ? ancestorPids() : new Set();
-  for (const holder of holders) {
-    const parent = ancestors.has(holder.pid) ? nestedParent(`${holder.pid}:${holder.nonce}`, lockDir, lockStaleMs) : null;
-    if (parent) return parent;
-  }
-  return null;
+  const ancestor = holders.length ? ancestorOf(holders.map((holder) => holder.pid)) : null;
+  const holder = ancestor === null ? null : holders.find((entry) => entry.pid === ancestor);
+  return holder ? nestedParent(`${holder.pid}:${holder.nonce}`, lockDir, lockStaleMs) : null;
 }
 
 /**
@@ -1134,6 +1156,8 @@ export function createCaptureLock({
    * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
    * `lockClass` ('timing' or 'render'), `command` (the command a wrapper runs, to classify it), `holdCapMinutes` and
    * `holdCapReason` (2026-10-27): see lock classes and the hold cap above.
+   * `signal` (round 2 U38): an AbortSignal that withdraws the wait (the ticket leaves the queue) and rejects with its
+   * reason; the open hold's signal owner uses it, so a tool queued at a SIGTERM runs its own way out.
    * (2026-11-02 audit S4) An instance owns at most one hold and runs at most one acquire: acquire() on an instance that
    * holds, or whose earlier acquire still waits, rejects at once. A second hold overwrote the first: a render slot then
    * leaked until the process exited, and an exclusive acquire waited on its own live pid until its timeout. Release first
@@ -1151,17 +1175,29 @@ export function createCaptureLock({
   }
 
   async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
-    holdCapMinutes = null, holdCapReason = null, priority = null,
+    holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false, signal = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     // a child of a holder nests in its parent's hold (see nested holds above): read by name, the variables they are
     let parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs), via = NESTED_HOLD_ENV;
-    if (!parent && process.env.COT_LANE_HOLD) {
+    // `ancestorHeld` (round 2 U38) is the same claim made by a tool's own flag (garage-wheel-band --lock-held,
+    // media-motion-savedata's COT_CAPTURE_LOCK_HELD=1), which skipped the lock unchecked: checked the same way
+    if (!parent && (process.env.COT_LANE_HOLD || ancestorHeld)) {
+      const claim = process.env.COT_LANE_HOLD ? 'COT_LANE_HOLD' : 'the caller says an ancestor holds it';
       parent = ancestorHold(lockDir, lockStaleMs);
-      via = 'COT_LANE_HOLD, an ancestor\'s live hold';
+      via = `${claim}, an ancestor's live hold`;
       if (!parent) {
-        noteOnce(`cot-lane-hold:${lockDir}`, `[capture-lock] COT_LANE_HOLD is set, but no ancestor of this process holds ${lockDir} (a leftover `
+        noteOnce(`cot-lane-hold:${lockDir}`, `[capture-lock] ${claim}, but no ancestor of this process holds ${lockDir} (a leftover `
           + 'export, someone else\'s hold, or a free lock): queueing as usual', log);
       }
+    }
+    const classed = resolveLockClass({ option: lockClass, command });
+    // (round 2 U38) a timing hold never nests in a render one: the render group admits a second render member, so the
+    // timing work would share the GPU with another render, the exclusivity its class exists for. Queueing would wait
+    // behind its own parent, so it is refused at once, by name. A child classed by default (no class named, no script
+    // matched) asked for nothing: it nests in its parent's class, as before.
+    if (parent && parent.lockClass === 'render' && classed.lockClass === 'timing' && classed.from !== 'default') {
+      throw new Error(`capture lock: a timing hold (${classed.from}) cannot nest in the render hold of pid ${parent.pid} (${via}): a render `
+        + 'group shares the GPU with another render; run it outside that hold, or under a timing one');
     }
     if (parent) {
       const prepared = typeof prepare === 'function' ? await prepare() : undefined;
@@ -1173,7 +1209,6 @@ export function createCaptureLock({
         ...(via === NESTED_HOLD_ENV ? {} : { via: 'lane-hold' }), command: process.argv.slice(1).join(' ').slice(0, 300) });
       return prepared;
     }
-    const classed = resolveLockClass({ option: lockClass, command });
     if (classed.from === 'default') {
       const who = (command ?? process.argv.slice(1).join(' ')).slice(0, 160);
       noteOnce(`default-class:${who}`, `[capture-lock] ${who}: classed timing by default (no script name matched), an exclusive hold; `
@@ -1236,6 +1271,7 @@ export function createCaptureLock({
     try {
       for (;;) {
         if (prepareError) throw prepareError;
+        if (signal?.aborted) throw signal.reason ?? new Error('capture lock: the wait was withdrawn');
         const names = readQueue(queueDir, ownTicket);
         const ahead = readyAhead(queueDir, names, ownTicket, queueRules, enough);
         if (!ready && !preparing) {
@@ -1271,7 +1307,7 @@ export function createCaptureLock({
         // remove a directory that holds an owner token, and must not wait behind a dead one. Only the head claims.
         if (reapDeadLock(lockDir, { lockStaleMs, orphanStaleMs, log, logFile, note: atHead && ready }) && atHead && ready) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, turn || (atHead && ready) ? 300 : 1000));
+        await pause(turn || (atHead && ready) ? 300 : 1000, signal);
       }
     } catch (error) {
       // A wait that ends without a hold still lets `prepare` finish, and hands its result to the caller to close.
@@ -1315,8 +1351,11 @@ export function createCaptureLock({
    * re-queues at the back with the same class and cap; it resolves once it holds the lock again. `beforeYield()` runs
    * while the lock is still held (freeze the pages: nothing draws after the release), `afterResume()` once it is held
    * again. Before the cap, or with nobody waiting, it returns at once. Resolves { yielded, heldMs, capMs, waitedMs }.
+   * `signal` (round 2 U38 review): an AbortSignal that withdraws the re-queue, as acquire's does. The ticket leaves the
+   * queue, afterResume never runs, and checkpoint rejects with the signal's reason, holding nothing. A tool signalled while
+   * it waited to hold again could not leave: its finally never ran, and its server outlived the exit.
    */
-  async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null } = {}) {
+  async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null, signal = null } = {}) {
     if (!hold) throw new Error('checkpoint(): this lock holds nothing (call it between batches, while the lock is held)');
     // a nested hold is its parent's to yield
     if (hold.nested) return { yielded: false, heldMs: Date.now() - heldSince, capMs: null, waitedMs: 0, nested: true };
@@ -1333,8 +1372,13 @@ export function createCaptureLock({
     if (beforeYield) await beforeYield();
     release(`hold cap: yielded after ${(heldMs / 60_000).toFixed(1)} min with ${waiters} waiting`);
     const queuedAt = Date.now();
-    await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
-      holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason, priority: terms.priority ?? 'normal' });
+    try {
+      await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
+        holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason, priority: terms.priority ?? 'normal', signal });
+    } catch (error) {
+      if (signal?.aborted) log(`[capture-lock] this ${terms.lockClass} hold's re-queue after its yield was withdrawn: it holds nothing now`);
+      throw error;
+    }
     if (afterResume) await afterResume();
     return { yielded: true, heldMs, capMs, waitedMs: Date.now() - queuedAt };
   }

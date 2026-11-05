@@ -4,7 +4,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
 import {settleMapTextures,captureTimingBackend} from './map-environment-acquisition.mjs';
 import {settleResidencyTerrain} from './world-residency-acquisition.mjs';
@@ -20,9 +20,9 @@ if(!Number.isInteger(candidate.color)||candidate.color<0||candidate.color>0xffff
  ||![candidate.opacity,candidate.roughness].every(v=>Number.isFinite(v)&&v>0&&v<1))throw Error('Invalid material values');
 const views=JSON.parse(await readFile(poses,'utf8')).filter(v=>!v.unresolved);
 const dir=resolve(out);await mkdir(dir,{recursive:false});
-const lock=createCaptureLock(),report={map,tier,night,candidate,views:[],errors:[]};let browser,refresh;
+let hold;const report={map,tier,night,candidate,views:[],errors:[]};let browser;
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
+ hold = await openCaptureHold({ label: 'water-palette-probe', timeoutMs: 45*60*1000 });
  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:'new',protocolTimeout:240000,
   args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']}));
  report.nativeLaunch=verifyNativeBrowserLaunch(browser);
@@ -91,5 +91,5 @@ try{
  }
  report.passed=report.errors.length===0&&report.views.length===views.length&&views.length>0;
 }catch(error){report.errors.push(String(error.stack??error));process.exitCode=1;}
-finally{if(browser)await browser.close();if(refresh)clearInterval(refresh);lock.release();await writeFile(resolve(dir,'report.json'),JSON.stringify(report,null,2));}
+finally{if(browser)await browser.close();await hold?.release();await writeFile(resolve(dir,'report.json'),JSON.stringify(report,null,2));}
 if(report.errors.length)throw Error(report.errors.join('\n'));

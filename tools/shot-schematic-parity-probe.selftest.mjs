@@ -50,12 +50,10 @@ function fixture({ queued = false, hungFixture = false, hungClose = false,
     readFile: async () => 'frozen-source',
     writeFile: async (_path, bytes) => { reports.push(JSON.parse(bytes)); },
     rm: async (path, options) => calls.push(['rm', path, options]),
-    createCaptureLock: () => ({
-      acquire: () => new Promise(resolveAcquire => {
-        admit = () => { held = true; resolveAcquire(); };
-        if (!queued) admit();
-      }),
-      refresh() {}, release() { if (held) { held = false; calls.push(['release']); } },
+    // (round 2 U38) the probe holds through the one wrapper's open form; this stand-in hold admits as the lock did
+    openCaptureHold: () => new Promise(resolveAcquire => {
+      admit = () => { held = true; resolveAcquire({ refresh() {}, async release() { if (held) { held = false; calls.push(['release']); } } }); };
+      if (!queued) admit();
     }),
     createServer: async options => {
       calls.push(['server', options]);

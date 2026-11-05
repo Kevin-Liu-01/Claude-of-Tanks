@@ -893,7 +893,8 @@ export async function runCensus(options) {
   for (const side of options.roots) {
     if (!existsSync(path.join(side.root, 'dist', 'index.html'))) throw new Error(`${side.root} has no dist (npm run build)`);
   }
-  let locks = await acquireProbeLocks({ log });
+  // its own SIGTERM/SIGINT handler closes the browser and exits (one owner of a signal): the hold leaves signals to it
+  let locks = await acquireProbeLocks({ log, hold: { signals: [] } });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   // a chunk with a budget stops hard 30 minutes past it, whatever is pending: the FIFO is the other lanes' too
@@ -915,6 +916,7 @@ export async function runCensus(options) {
         const order = turn++ % 2 ? [...options.roots].reverse() : options.roots;
         for (const side of order) {
           if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); return { failures, stopped: true }; }
+          if (locks.signal.aborted) { log('the capture hold was stopped (the lock\'s cap with a waiter): stopping'); return { failures, stopped: true }; }
           try { await runScenario(options, side, scenario, size, done); } catch (error) {
             failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 2600) });
             log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 1500)}`);
@@ -922,7 +924,8 @@ export async function runCensus(options) {
           if (guardReleasedLocks) {
             guardReleasedLocks = false;
             log('the browser guard released the capture FIFO: queueing again');
-            locks = await acquireProbeLocks({ log });
+            await locks.release(); // the trip released its lock already: the hold ends before the next one queues
+            locks = await acquireProbeLocks({ log, hold: { signals: [] } });
           }
         }
       }
@@ -930,7 +933,7 @@ export async function runCensus(options) {
   } finally {
     for (const server of servers) await server.close().catch(() => {});
     clearInterval(refresh);
-    locks.release();
+    await locks.release();
   }
   writeFileSync(path.join(options.out, 'census.json'), JSON.stringify(summarizeCensus(options.out), null, 1));
   if (options.roots.length > 1) writeFileSync(path.join(options.out, 'census-ab.json'), JSON.stringify(compareCensus(options.out), null, 1));

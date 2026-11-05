@@ -32,7 +32,7 @@
 // leave the frame as the tank's own materials draw it (the difference is reported; it clears the skin for the rest of
 // the run, so give it one Garage).
 // Takes the shared capture lock (tools/capture-lock.mjs) for the whole run (--lock-held: the caller holds it, a chain's
-// lease) and stops before --cap-min minutes of hold; serves --root (default: the current directory) through its own
+// lease, checked since round 2 U38: it nests only in an ancestor's live hold) and stops before --cap-min minutes of hold; serves --root (default: the current directory) through its own
 // vite dev server, with a fresh browser per chunk of --tanks (tools/browser-id-chunks.mjs; the battle views run in the
 // last). Writes <out>/report.json and PNGs.
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
@@ -40,7 +40,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { waitForBootLoaded } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
@@ -76,8 +76,7 @@ const VIEWS = {
   front: { dist: 2.6, up: 0.12, sz: 0.5, fov: 40, ty: 0.5, zf: 0.9 },
 };
 
-const lock = createCaptureLock();
-let heartbeat = null, server = null, baseUrl = null, heldAt = 0;
+let hold = null, server = null, baseUrl = null, heldAt = 0;
 const overCap = () => Date.now() - heldAt > capMs;
 const report = { root, garages, tanks, views: viewNames, gate: { maxStep, minTag }, garage: [], battle: [], errors: [] };
 let failed = [];
@@ -424,12 +423,10 @@ async function probeChunk(page, chunk, last) {
 
 const capStop = new Error('garage-wheel-band: hold cap');
 try {
-  if (!lockHeld) {
-    log('waiting for the capture lock');
-    await lock.acquire(5 * 60 * 60 * 1000);
-    heartbeat = setInterval(() => lock.refresh(), 30_000);
-    heartbeat.unref();
-  }
+  // --lock-held (a chain that holds the lock) is checked, not trusted (round 2 U38): the hold nests only in an ancestor's
+  // live hold, else it queues as usual; it used to skip the lock whatever held it
+  log('waiting for the capture lock');
+  hold = await openCaptureHold({ label: 'garage-wheel-band', timeoutMs: 5 * 60 * 60 * 1000, ancestorHeld: lockHeld });
   heldAt = Date.now();
   log('capture lock held');
   server = await createServer({
@@ -457,8 +454,7 @@ try {
   report.garage.sort((a, b) => order(a) - order(b));
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 1));
   await server?.close().catch(() => {});
-  if (heartbeat) clearInterval(heartbeat);
-  if (!lockHeld) lock.release();
+  await hold?.release();
   log('done', out);
 }
 if (failed.length) {

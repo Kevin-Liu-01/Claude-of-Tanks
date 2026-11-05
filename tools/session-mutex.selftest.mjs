@@ -13,6 +13,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { claimSessionMutex, reapDeadSessionMutex, releaseSessionMutex, releaseSessionMutexAt, sessionMutexHeldByAncestor,
   sessionMutexState } from './capture-lock.mjs';
+import * as captureLock from './capture-lock.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { createPoliteCaptureLock } from './visual-census-lock.mjs';
 
 const LOCK = new URL('./capture-lock.mjs', import.meta.url).href;
@@ -90,15 +92,28 @@ try {
     const waiter = spawn(process.execPath, [WRAPPER, dir, '--', process.execPath, '-e', 'process.exit(0)'], { stdio: ['ignore', 'ignore', 'pipe'] });
     let err = '';
     waiter.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
-    await new Promise((done) => setTimeout(done, 600));
+    // (round 2) the release waits for the waiter to say who holds the mutex: a fixed 600 ms let a waiter that started late
+    // under load (the integration saw it) be released before it ever printed
+    for (let i = 0; i < 2400 && !/is held \(live/.test(err) && waiter.exitCode === null; i++) await new Promise((done) => setTimeout(done, 25));
     assert.equal(waiter.exitCode, null, 'still waiting while the mutex is held');
+    assert.match(err, /is held \(live, pid \d+/, 'it said who held it');
     releaseSessionMutex(hold, { log: quiet });
     const code = await new Promise((done) => waiter.once('close', done));
     assert.equal(code, 0, err);
-    assert.ok(Date.now() - started >= 600 && /is held \(live/.test(err), 'it waited, and said who held it');
+    assert.ok(Date.now() - started > 0, 'it waited');
     assert.equal(existsSync(dir), false);
     const usage = spawnSync(process.execPath, [WRAPPER, dir], { encoding: 'utf8' });
     assert.equal(usage.status, 2);
+    // (round 2 U39) a wait that runs out has its own status: it exited 75, the runner's STARVED, so a receipt run under the
+    // wrapper that never got the mutex was neither red nor cached (a third meaning of 75)
+    const held = claimSessionMutex(dir);
+    try {
+      const gaveUp = spawnSync(process.execPath, [WRAPPER, dir, '--wait-min=0.002', '--', process.execPath, '-e', 'process.exit(0)'],
+        { encoding: 'utf8' });
+      assert.match(gaveUp.stderr, /still held after 0\.002 min: giving up/, gaveUp.stderr);
+      assert.notEqual(gaveUp.status, SELFTEST_STARVED_EXIT, 'a mutex wait that runs out is not the selftests\' STARVED verdict');
+      assert.equal(gaveUp.status, captureLock.LOCK_WAIT_TIMEOUT_EXIT, 'it exits the hold CLIs\' wait-timeout status');
+    } finally { releaseSessionMutex(held, { log: quiet }); }
   }
   // ---- held by an ancestor (round 2): a command run under the holder nests in it; another process's is not its own ------
   {
@@ -121,8 +136,51 @@ try {
     assert.deepEqual([sessionMutexState(dir).state, sessionMutexHeldByAncestor(dir)], ['live', false], 'a child\'s hold is not this process\'s ancestor\'s');
     holder.kill('SIGKILL');
     await new Promise((done) => holder.once('close', done));
+    // (round 2 Q20) the ancestor walk stops at the holder: it ran one `ps` per level up to pid 1 (a grandchild under a
+    // shell, the selftest runner and the session's shells made it eight on this machine). A stand-in `ps` first on PATH
+    // counts the calls: a child of the holder reads none, a grandchild (a shell stays between them) one.
+    {
+      const fake = join(root, 'fake-ps'), calls = join(root, 'ps-calls');
+      mkdirSync(fake);
+      writeFileSync(join(fake, 'ps'), `#!/bin/sh\necho call >> ${JSON.stringify(calls)}\nexec /bin/ps "$@"\n`, { mode: 0o755 });
+      const deep = join(root, 'deep');
+      const held = claimSessionMutex(deep);
+      try {
+        const walk = `import { sessionMutexHeldByAncestor } from ${JSON.stringify(LOCK)}; process.stdout.write(String(sessionMutexHeldByAncestor(${JSON.stringify(deep)})));`;
+        const run = spawnSync('/bin/sh', ['-c', '"$0" "$@"; exit $?', process.execPath, '--input-type=module', '-e', walk],
+          { encoding: 'utf8', env: { ...process.env, PATH: `${fake}:${process.env.PATH}` } });
+        assert.equal(run.stdout, 'true', `a grandchild of the holder nests: ${run.stderr}`);
+        const count = readFileSync(calls, 'utf8').trim().split('\n').length;
+        assert.equal(count, 1, `one ps, for the shell between them, not one per level up to pid 1 (${count})`);
+        rmSync(calls);
+        const child = spawnSync(process.execPath, ['--input-type=module', '-e', walk], { encoding: 'utf8', env: { ...process.env, PATH: `${fake}:${process.env.PATH}` } });
+        assert.equal(child.stdout, 'true', `a child of the holder nests: ${child.stderr}`);
+        assert.equal(existsSync(calls), false, 'and reads no ps at all');
+      } finally { releaseSessionMutex(held, { log: quiet }); }
+    }
+    // (round 2 U38) the polite lock (visual-census --probe-lock) under the mutex's holder nests in it too: it waited behind
+    // its own parent (a live owner is never reaped), 20 min as the patient head, then stepped behind until its timeout
+    const fifo = { queueDir: join(root, 'polite-queue'), lockDir: join(root, 'polite-fifo') };
+    const census = `import { createPoliteCaptureLock } from ${JSON.stringify(new URL('./visual-census-lock.mjs', import.meta.url).href)};
+      import { sessionMutexState } from ${JSON.stringify(LOCK)};
+      const lock = createPoliteCaptureLock({ probeDir: ${JSON.stringify(dir)}, queueDir: ${JSON.stringify(fifo.queueDir)}, lockDir: ${JSON.stringify(fifo.lockDir)},
+        requeuePauseMs: 20, headPollMs: 15, patientPollMs: 20, patientHeadMs: 200, maxHolderWaitMs: 50 });
+      const t0 = Date.now();
+      try {
+        await lock.acquire(1500);
+        const ms = Date.now() - t0, held = lock.held;
+        lock.release();
+        const after = sessionMutexState(${JSON.stringify(dir)});
+        console.log(JSON.stringify({ ok: true, ms, held, after: after.state, own: after.pid === process.ppid }));
+      } catch (error) { console.log(JSON.stringify({ ok: false, ms: Date.now() - t0, error: error.message })); }`;
+    const polite = spawnSync(process.execPath, [WRAPPER, dir, '--', process.execPath, '--input-type=module', '-e', census], { encoding: 'utf8' });
+    assert.equal(polite.status, 0, polite.stderr);
+    const result = JSON.parse(polite.stdout.trim().split('\n').at(-1));
+    assert.equal(result.ok, true, `the polite lock under the mutex's holder nests in it: ${JSON.stringify(result)}`);
+    assert.deepEqual([result.held, result.after, result.own], [true, 'live', true], 'held while it ran; its release leaves the holder\'s mutex');
+    assert.equal(existsSync(dir), false, 'the wrapper released the mutex once its command ended');
   }
-  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper, and a holder\'s descendants nesting in it');
+  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper (its wait timeout its own status), and a holder\'s descendants nesting in it');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

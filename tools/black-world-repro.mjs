@@ -204,7 +204,7 @@ if (unknown.length) { console.error(`unknown map id(s): ${unknown.join(', ')}`);
 
 const puppeteer = (await import('puppeteer')).default;
 const { createCanvas, loadImage } = await import('@napi-rs/canvas');
-const { createCaptureLock } = await import('./capture-lock.mjs');
+const { openCaptureHold } = await import('./capture-hold.mjs');
 const { nativeBrowserLaunchOptions } = await import('./native-browser-launch.mjs');
 // (round 3) the page functions shared with the black-world browser receipt
 const { sunScan } = await import('./black-world-page-probes.mjs');
@@ -216,9 +216,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---------------------------------------------------------------------------------------------------------------------
 // capture lock: one hold per part, a fresh ticket each time, never longer than --hold-min
 // ---------------------------------------------------------------------------------------------------------------------
-const lock = createCaptureLock();
+// each hold is tools/capture-hold.mjs openCaptureHold's (round 2 U38: refresh, the cap, signals, the release at exit)
+let captureHold = null;
 let holdingSince = 0;
-let refresher = null;
 async function acquire() {
   if (!useLock || holdingSince) return;
   log('waiting for the capture lock (normal band)');
@@ -229,22 +229,20 @@ async function acquire() {
   if (stampArg > 0 && !acquire.usedStamp) {
     acquire.usedStamp = true;
     const { ticketAt } = await import('./capture-lock.mjs');
-    await lock.acquire(6 * 3600 * 1000, { ticket: ticketAt(stampArg) });
-  } else await lock.acquire(6 * 3600 * 1000);
+    captureHold = await openCaptureHold({ label: 'black-world-repro', timeoutMs: 6 * 3600 * 1000, ticket: ticketAt(stampArg) });
+  } else captureHold = await openCaptureHold({ label: 'black-world-repro', timeoutMs: 6 * 3600 * 1000 });
   holdingSince = Date.now();
-  refresher = setInterval(() => lock.refresh(), 30_000);
   log(`capture lock held after ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 function release() {
   if (!holdingSince) return;
   if (stressBrowser) { const b = stressBrowser; stressBrowser = null; b.close().catch(() => {}); }
-  clearInterval(refresher); refresher = null;
-  lock.release();
+  const held = captureHold;
+  captureHold = null;
+  void held?.release();
   log(`capture lock released after ${Math.round((Date.now() - holdingSince) / 1000)} s`);
   holdingSince = 0;
 }
-process.on('exit', () => { try { lock.release(); } catch { /* none */ } });
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { lock.release(); } catch { /* none */ } process.exit(130); });
 const holdLeftMs = () => (holdingSince ? holdMs - (Date.now() - holdingSince) : Infinity);
 /** A call that answers within ms or rejects (the page stays as it is; the caller records the miss). */
 function bounded(promise, ms = callTimeoutMs, what = 'call') {

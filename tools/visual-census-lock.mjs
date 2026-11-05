@@ -22,10 +22,16 @@
 // token with the pid and its start time, and the `pid` file older readers take). A dead owner's mutex is reaped; a legacy
 // one (a `pid` file only) once that pid is dead and the mutex is older than probeDeadGraceMs; a bare directory with
 // neither (a shell holder's mkdir) is never reaped: the old rule reaped it 60 s on, under a live shell holder.
+//
+// Round 2 U38: a census started under the session mutex's own holder (`tools/with-session-mutex.mjs $SP/probe.lock --
+// node tools/visual-census.mjs --probe-lock=$SP/probe.lock`) waited behind its own parent: the mutex has a live owner, so
+// it is never reaped, and the patient head waited 20 min, then stepped behind until its timeout. When the mutex's live
+// owner is an ancestor of this process (capture-lock sessionMutexHeldByAncestor, as frame-budget-probe's acquireProbeLocks
+// does) the lock nests in it: held for this acquire, never released by it.
 import { mkdirSync, readdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { claimOwnedLock, claimSessionMutex, reapDeadLock, reapDeadSessionMutex, refreshOwnedLock, releaseOwnedLock,
-  releaseSessionMutex } from './capture-lock.mjs';
+  releaseSessionMutex, sessionMutexHeldByAncestor, sessionMutexState } from './capture-lock.mjs';
 
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
@@ -72,7 +78,8 @@ export function createPoliteCaptureLock({
   probeDeadGraceMs = PROBE_DEAD_GRACE_MS,
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
-  let fifoHold = null, probeHold = null;
+  // probeNested: the session mutex is an ancestor's (round 2 U38), held for this acquire and never released by it
+  let fifoHold = null, probeHold = null, probeNested = false;
   const arrived = Date.now();
   const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > ticketStaleMs; } catch { return false; } };
   // 2026-10-03: a waiter renews its own ticket and restores it if another waiter reaped it, as capture-lock.mjs does;
@@ -105,7 +112,22 @@ export function createPoliteCaptureLock({
   // 2026-10-03: a session mutex whose holder died without releasing it (a SIGKILL, a crash) stayed busy for good, and
   // every lane's captures queued behind it until someone deleted it by hand. A dead owner's mutex is reaped (capture-lock
   // reapDeadSessionMutex); a live holder's mutex never is.
+  // whether the mutex's live holder is an ancestor, asked once per holder (its directory and pid), not on every poll: a
+  // patient head polls every 2 s, and a walk that finds no ancestor reads every level of the ppid chain
+  let ancestorMemo = null;
+  const heldByAncestor = () => {
+    const state = sessionMutexState(probeDir);
+    if (state.state !== 'live' || !(state.pid > 1)) return false;
+    const key = `${state.id}:${state.pid}`;
+    if (ancestorMemo?.key !== key) ancestorMemo = { key, held: sessionMutexHeldByAncestor(probeDir) };
+    return ancestorMemo.held;
+  };
   const takeProbe = () => {
+    if (heldByAncestor()) {
+      if (!probeNested) log('the session mutex is held by an ancestor of this process: nested in it');
+      probeNested = true;
+      return true;
+    }
     probeHold = claimSessionMutex(probeDir);
     if (!probeHold && reapDeadSessionMutex(probeDir, { graceMs: probeDeadGraceMs, log })) {
       log('reaped a dead holder\'s session mutex');
@@ -113,7 +135,7 @@ export function createPoliteCaptureLock({
     }
     return probeHold !== null;
   };
-  const dropProbe = () => { const releasing = probeHold; probeHold = null; if (releasing) releaseSessionMutex(releasing, { log }); };
+  const dropProbe = () => { const releasing = probeHold; probeHold = null; probeNested = false; if (releasing) releaseSessionMutex(releasing, { log }); };
 
   async function acquire(timeoutMs = 10 * 60 * 1000) {
     const started = Date.now();
@@ -190,6 +212,6 @@ export function createPoliteCaptureLock({
       dropProbe();
       return released;
     },
-    get held() { return fifoHold !== null && probeHold !== null; },
+    get held() { return fifoHold !== null && (probeHold !== null || probeNested); },
   };
 }

@@ -3,16 +3,16 @@
 // neither source geometry nor physical support is inferred from a shadow.
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {withIsolatedCaptureBrowser} from './isolated-capture-browser.mjs';
 import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
 import {DUEL_SCENARIOS} from './studio-example-scenarios.mjs';
 import { BOOT_LOADED_EXPRESSION } from './game-readiness.mjs';
 const out=resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6)||'.qa-dev/studio-ground-contact');
 mkdirSync(out,{recursive:false});const report={rows:[],errors:[]};
-const job=DUEL_SCENARIOS[2],lock=createCaptureLock();let refresh;
+const job=DUEL_SCENARIOS[2];let hold;
 try {
-  await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
+  hold = await openCaptureHold({ label: 'studio-ground-contact-probe', timeoutMs: 45*60*1000 });
   await withIsolatedCaptureBrowser({root:process.cwd(),logLevel:'error',
     server:{port:0,host:'127.0.0.1',hmr:false,watch:null}},nativeBrowserLaunchOptions({headless:'new',
       args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']}),async({server,browser})=>{
@@ -80,5 +80,5 @@ try {
     }
   });
 }catch(error){report.errors.push(String(error));process.exitCode=1;}
-finally{if(refresh)clearInterval(refresh);lock.release();writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));}
+finally{await hold?.release();writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));}
 if(report.errors.length)throw Error(report.errors.join('\n'));

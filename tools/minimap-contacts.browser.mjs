@@ -4,13 +4,13 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/minimap-markers'));
 await mkdir(out,{recursive:true});
-const lock=createCaptureLock();await lock.acquire();
-const heartbeat=setInterval(()=>lock.refresh(),30000);
+let hold;hold = await openCaptureHold({ label: 'minimap-contacts', timeoutMs: 10 * 60 * 1000 });
+
 let browser;
 const errors=[],reports=[];
 try{
@@ -77,4 +77,4 @@ try{
   assert.deepEqual(errors,[]);
   await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));
   console.log(`minimap-contacts.browser: ${reports.length} viewport cases; repeated respawns, hidden positions and reserve waves passed`);
-}finally{await browser?.close();clearInterval(heartbeat);lock.release();}
+}finally{await browser?.close();await hold?.release();}

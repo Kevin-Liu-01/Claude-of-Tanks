@@ -15,7 +15,8 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync, readdir
 import { createHash } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createCaptureLock, stampBehindWaiting, ticketAt } from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+import { stampBehindWaiting, ticketAt } from '../capture-lock.mjs';
 import { digest, sourceDigest, contactSheet, leaseClock, cinemaLeaseMs, CINEMA_LEASE_CAP_MIN } from './pipeline.mjs';
 import { CINEMA_LEASE_OVER_EXIT } from './lease-exit.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
@@ -188,13 +189,14 @@ const framePlugin = {
   },
 };
 
-const lock = createCaptureLock();
 let server, browser, interrupted = false;
 // a place-keeping lease lets a waiting perf cost hold in first (the coordinator, 2026-10-13): it rejoins one past the
 // last perf band ticket waiting, read as it joins
 const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(stampBehindWaiting(Number(args['ticket-stamp'])));
 // a deterministic film render (frozen clock, no timing measured): it shares the lock with other renders (audit S4)
-await lock.acquire(6 * 60 * 60 * 1000, { ticket, lockClass: 'render' });
+// the hold is tools/capture-hold.mjs openCaptureHold's (round 2 U38: refresh, the cap as a backstop to the lease below, the
+// release at exit); the cinema keeps its own signal handler (the take stops at its next frame)
+const hold = await openCaptureHold({ label: 'cinema', timeoutMs: 6 * 60 * 60 * 1000, ticket, lockClass: 'render', signals: [] });
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
 let leaseOver = false, leaseStopped = false;
 // endBefore() ends the lease before a film its longest take would carry past the budget; a take that runs past the budget
@@ -211,7 +213,6 @@ let wedged = false;
 const timedOut = (error) => /timed out/i.test(String(error?.message ?? error));
 const stop = () => { interrupted = true; void browser?.close().catch(() => {}); };
 process.once('SIGINT', stop); process.once('SIGTERM', stop);
-const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
 try {
   const port = Number(args.port ?? 5381);
   server = await createServer({ root: process.cwd(), logLevel: 'error', plugins: [framePlugin],
@@ -363,10 +364,10 @@ try {
         // The encodes and probes run synchronously and hold off the 30 s lease timer: renew the lock before each one.
         if (job.master === 'prores') {
           const path = join(job.out, 'films', `${stem}-master.mov`);
-          lock.refresh();
+          hold.refresh();
           execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv422p10le,${tagged}`, '-c:v', 'prores_ks', '-profile:v', '3', '-vendor', 'apl0',
             '-pix_fmt', 'yuv422p10le', ...colorTags, path]);
-          lock.refresh();
+          hold.refresh();
           const meta = probe(path);
           const stream = meta.streams[0];
           if (Number(stream.nb_read_frames) !== frames || stream.width !== width || stream.height !== height || stream.codec_name !== 'prores') {
@@ -376,10 +377,10 @@ try {
         }
         if (job.proxy) {
           const path = join(job.out, 'films', `${stem}-proxy.mp4`);
-          lock.refresh();
+          hold.refresh();
           execFileSync('ffmpeg', [...input, '-vf', `${toVideo},format=yuv420p,${tagged}`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '14',
             '-profile:v', 'high', '-pix_fmt', 'yuv420p', ...colorTags, '-movflags', '+faststart', path]);
-          lock.refresh();
+          hold.refresh();
           const meta = probe(path);
           const stream = meta.streams[0];
           if (Number(stream.nb_read_frames) !== frames || stream.width !== width || stream.height !== height) {
@@ -458,7 +459,7 @@ try {
   }
 } finally {
   clearTimeout(leaseLimit);
-  await browser?.close().catch(() => {}); await server?.close().catch(() => {}); clearInterval(lease); lock.release();
+  await browser?.close().catch(() => {}); await server?.close().catch(() => {}); await hold.release();
   process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop);
   const changed = sourceDigest() !== fingerprint;
   for (const job of jobs) {

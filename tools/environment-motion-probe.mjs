@@ -9,7 +9,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { preview } from 'vite';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
 import { outputResolution } from '../src/engine/resolutionPolicy.ts';
 import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScalePolicy.ts';
@@ -693,7 +694,7 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
     buildIndexHash: hash, expectedBuildIndexHash, playwrightModule: playwrightModule ?? 'playwright',
     acquisitionHash: motionAcquisitionHash(),
     pid: process.pid, cases: [], errors: [], startedAt: new Date().toISOString() };
-  let server, refresh, browser, browserOwner;
+  let server, browser, browserOwner;
   fs.mkdirSync(output, { recursive: true });
   const write = (file, value) => fs.writeFileSync(path.join(output, file), `${JSON.stringify(value, null, 2)}\n`);
   const interrupt = signal => {
@@ -703,8 +704,7 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
   const onTerm = () => interrupt('SIGTERM'), onInt = () => interrupt('SIGINT');
   process.once('SIGTERM', onTerm); process.once('SIGINT', onInt);
   try {
-    await acquireCaptureLock(20 * 60 * 1000);
-    refresh = setInterval(refreshCaptureLock, 60_000); refresh.unref();
+    hold = await openCaptureHold({ label: 'environment-motion-probe', timeoutMs: 20 * 60 * 1000, signals: [] /* its own signal handler cleans up */ });
     if (report.errors.length || buildHash() !== hash) throw new Error('Interrupted or approved build changed before launch');
     server = await preview({ root, logLevel: 'error', preview: { host: '127.0.0.1', port: 5876, strictPort: true } });
     browserOwner = await launchGuardedBrowser(chromium, { headless: true, channel: 'chromium',
@@ -734,7 +734,7 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
       await bounded(new Promise(resolve => server.httpServer.close(resolve)), 10000, 'preview close')
         .then(() => { report.serverClosed = true; }, error => report.errors.push(String(error)));
     }
-    clearInterval(refresh); releaseCaptureLock(); report.lockReleased = true;
+    await hold?.release(); report.lockReleased = true;
     process.removeListener('SIGTERM', onTerm); process.removeListener('SIGINT', onInt);
     report.complete = report.cases.length === cases.length && !report.errors.length
       && report.cases.every(row => row.livePass && row.video?.verified && !row.errors.length);

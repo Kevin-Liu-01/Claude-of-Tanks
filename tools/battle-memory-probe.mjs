@@ -438,6 +438,8 @@ if (isMainModule(import.meta.url)) {
   try {
     const budget = options.gate ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : null;
     for (const scenario of options.scenarios) {
+      // the hold's stop (the lock's cap with a waiter, a signal): the scenarios left wait for the next run, never a gate's pass
+      if (locks.signal.aborted) { log('the capture hold was stopped: the scenarios left wait for the next run'); process.exitCode ||= 3; break; }
       const record = await probeScenario(options, scenario);
       writeFileSync(path.join(options.out, `${keyOf(scenario, options.size)}.json`), JSON.stringify(record, null, 1));
       log(`${keyOf(scenario, options.size)}: growth ${JSON.stringify(record.growth)}; peak ${JSON.stringify(record.peakRss)}`);
@@ -451,7 +453,7 @@ if (isMainModule(import.meta.url)) {
   } finally {
     await server.close().catch(() => {});
     clearInterval(refresh);
-    locks.release();
+    await locks.release();
   }
   if (options.gate && failed) { log(`${failed} limit(s) FAILED`); process.exitCode = 1; }
 }

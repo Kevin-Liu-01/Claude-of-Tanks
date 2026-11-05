@@ -152,6 +152,7 @@ The deployment owner releases a gated commit with the versioned tool instead of 
     node tools/release.mjs verify <sha> --sweep   # served stamp names <sha>; every chunk 200; a missing chunk uncacheable
     node tools/release.mjs rollback [--to=<deployment>]   # promote the deployment before the live one
     node tools/release.mjs workers <sha> [--only=rooms]   # npm ci, typecheck, test, wrangler deploy --tag/--message <sha>
+    node tools/release.mjs workers <sha> --record-only=rooms   # record a Worker that deployed but failed to record (no deploy)
     node tools/release.mjs <command> ... --dry-run   # print every command; run nothing (no Vercel, wrangler or network)
 
 - `build` deletes the pulled `.vercel/.env*.local` files in a `finally` block, whatever happens. The
@@ -302,8 +303,27 @@ only:
 - **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
   every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
   frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
-  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
-  before the release. A signal releases the lock, closes the browser and exits.
+  before the release. The lock's 20-minute cap applies (`holdMinutes`, when given, is a budget of its own): past it with
+  anyone waiting a `checkpoint()` yields, a shoot that never checkpoints has its signal aborted, and past `graceSeconds`
+  the browser is closed before the release. A signal releases the lock, closes the browser and exits.
+- **One hold wrapper (2026-11-02 audit S4, round 2 U38).** `withCaptureHold(work, options)` owns every hold: refresh, the
+  cap and its yield, signals, the release at exit, and the teardown before the release. A script tool holds through its
+  open form: `const hold = await openCaptureHold({ label, timeoutMs, ... })`, then `await hold.release()` once it has
+  closed its browser; a stop past the cap's grace or a signal stops every guarded browser of the process
+  (`browser-launch.mjs` `stopGuardedBrowsers`). A stop is enforced: a stopped hold refuses the process's browser
+  launches until it is released, and a work still running two minutes after its teardown began loses the lock. A tool
+  that launches no browser gives the cap a stop of its own: it reads `hold.signal` into its cancellation, or awaits
+  `hold.between()` between synchronous steps. On a signal the open form lets the tool's way out run: its signal aborts,
+  its browsers stop, its finally reaches `release()`, which resolves, and the process exits 128 + n once that is done
+  (30 s at most). A tool waiting in a cap yield's re-queue leaves the queue: its `checkpoint()` (or `between()`) rejects
+  with the signal's error. A tool with its own SIGINT/SIGTERM handler passes `signals: []`: one owner of a signal per process.
+  `frame-budget-probe.mjs` `acquireProbeLocks` (the capture FIFO with the session mutex, for that probe,
+  time-to-battle-probe, battle-spike-census, battle-memory-probe and shadow-cache-truth) holds its FIFO through the
+  open form too, and hands its callers the hold's `signal`.
+  A shell holds one normal ticket across several steps with
+  `node tools/with-capture-lock.mjs [--lock-class=render|timing] [--place=<key>] -- <command>`: every tool under it that
+  takes the lock nests in that hold (its token), and a wait that runs out exits 77. `tools/capture-hold-census.selftest.mjs`
+  lists the few tools that still acquire the lock themselves, each with its reason, and refuses a new one.
 - **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
   serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
   expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir

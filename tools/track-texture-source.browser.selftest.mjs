@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -152,13 +152,12 @@ async function nativeFixture() {
   return report;
 }
 
-const lock = createCaptureLock();
+let hold;
 const report = { protocol: 'track-texture-source-native-v1', ok: false, sourceHash: sourceHash(),
   errors: [], fixture: null, browserClosed: false, serverClosed: false, cacheRemoved: false, lockReleased: false };
-let server, browser, page, cacheDir, refresh;
+let server, browser, page, cacheDir;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'track-texture-source.browser.selftest', timeoutMs: 45 * 60_000 });
   cacheDir = mkdtempSync(join(tmpdir(), 'cot-track-source-vite-'));
   server = await createServer({ root, cacheDir, logLevel: 'error', optimizeDeps: { noDiscovery: true },
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
@@ -203,7 +202,7 @@ finally {
   catch (error) { report.errors.push(String(error)); }
   if (cacheDir) try { rmSync(cacheDir, { recursive: true, force: true }); report.cacheRemoved = true; }
   catch (error) { report.errors.push(String(error)); }
-  clearInterval(refresh); lock.release(); report.lockReleased = true;
+  await hold?.release(); report.lockReleased = true;
 }
 report.ok = report.errors.length === 0 && report.fixture?.disposed === true
   && report.browserClosed && report.serverClosed && report.cacheRemoved && report.lockReleased;

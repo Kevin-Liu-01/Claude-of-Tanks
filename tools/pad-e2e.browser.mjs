@@ -19,7 +19,7 @@ import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { createLocalPadService } from '../server/rooms/localPadService.ts';
 import { readinessExpression } from './game-readiness.mjs';
 
@@ -58,7 +58,7 @@ padServer.on('upgrade', (request, socket, head) => { if (!pads.handleUpgrade(req
 await new Promise((done) => padServer.listen(0, '127.0.0.1', done));
 const padService = `ws://127.0.0.1:${padServer.address().port}`;
 
-const lock = createCaptureLock();
+let captureHold = null; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 let vite = null;
 let browser = null;
 /** The phone runs in a browser of its own: a second tab of one headless window would hide the desktop's, and a hidden
@@ -73,7 +73,7 @@ try {
   for (const path of ['/pad', '/']) {
     await fetch(`http://127.0.0.1:${port}${path}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(900_000) }).catch(() => {});
   }
-  await lock.acquire(4 * 60 * 60 * 1000, { lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
+  captureHold = await openCaptureHold({ label: 'pad-e2e', timeoutMs: 4 * 60 * 60 * 1000, lockClass: 'timing', command: 'tools/pad-e2e.browser.mjs' });
   startedAt = Date.now();
   report.loadAtGrant = (await import('node:os')).loadavg().map((v) => Math.round(v));
   const origin = `http://127.0.0.1:${port}`;
@@ -501,7 +501,7 @@ try {
   try { await phoneBrowser?.close(); } catch { /* gone */ }
   try { await browser?.close(); } catch { /* gone */ }
   try { await vite?.close(); } catch { /* gone */ }
-  lock.release();
+  await captureHold?.release();
   await pads.close();
   padServer.close();
   const failed = Object.entries(report.checks).filter(([, value]) => !value.ok).map(([name]) => name);

@@ -4,7 +4,8 @@
 // hold wrapper): refresh, signals and exit; a signal ends the command (SIGTERM, then SIGKILL after 15 s) before the lock
 // is released, for every hold of the process at once (tank-release-check runs several: capture-hold's one signal owner,
 // so a queued hold no longer exits the process under a holder's running command). A command cannot yield, so past the
-// cap it is logged, not stopped (atCap: 'keep').
+// cap it is logged, not stopped (atCap: 'keep'). `capture` takes the hold's queue terms (place, ticket, lockClass,
+// holdCapMinutes, holdCapReason, priority) and its label and log; tools/with-capture-lock.mjs is its shell form.
 import { spawn } from 'node:child_process';
 import { withCaptureHold } from './capture-hold.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
@@ -45,8 +46,10 @@ export async function runCapturedCommand(command, args, options = {}, capture = 
     signal.addEventListener('abort', () => { void stopChild(running.child); }, { once: true });
     await running.done;
   }, {
-    label: 'capture-command', lock, timeoutMs: capture.timeoutMs ?? 45 * 60 * 1000, command: [command, ...args].join(' '),
-    lockClass: capture.lockClass ?? null, refreshMs: capture.refreshMs ?? 30000, log: capture.log ?? (() => {}),
+    label: capture.label ?? 'capture-command', lock, timeoutMs: capture.timeoutMs ?? 45 * 60 * 1000, command: [command, ...args].join(' '),
+    lockClass: capture.lockClass ?? null, place: capture.place ?? null, ticket: capture.ticket ?? null,
+    holdCapMinutes: capture.holdCapMinutes ?? null, holdCapReason: capture.holdCapReason ?? null, priority: capture.priority ?? null,
+    refreshMs: capture.refreshMs ?? 30000, log: capture.log ?? (() => {}),
     // a wrapped command (a release-gate step) can neither checkpoint nor stop part-way: past the cap it is logged, not stopped
     atCap: 'keep',
     teardown: () => stopChild(running?.child),

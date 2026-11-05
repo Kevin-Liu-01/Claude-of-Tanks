@@ -104,6 +104,8 @@ export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
 ].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
   // 2026-11-02 audit S5: the chain's lock and child process groups
   'tools/chain-lifecycle.mjs',
+  // round 2 U38: the chain's GPU holds go through the one hold wrapper (chain-lifecycle runInCaptureHold) and its Vite child
+  'tools/capture-hold.mjs', 'tools/vite-child.mjs',
   'tools/selftest-inputs.mjs', 'tools/id-list.mjs', 'tools/browser-id-chunks.mjs', 'tools/browser-id-caps.mjs',
   'tools/browser-launch.mjs', 'tools/icons-page-public.mjs', 'tools/served-public.mjs', 'tools/gate-page-public.mjs',
   'tools/page-catalog-keys.mjs', 'tools/game-readiness.mjs'])])));

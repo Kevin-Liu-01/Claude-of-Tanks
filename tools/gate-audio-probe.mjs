@@ -16,7 +16,7 @@ import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { BOOT_LOADED_EXPRESSION, assertAutomationPath } from './game-readiness.mjs';
 
 const argv = process.argv.slice(2);
@@ -102,11 +102,9 @@ async function probe(base) {
   }
 }
 
-const lock = createCaptureLock();
+let hold;
 mkdirSync(out, { recursive: true });
-await lock.acquire(150 * 60 * 1000, { place: 'gate-audio-probe' });
-const refresher = setInterval(() => lock.refresh(), 30_000);
-refresher.unref();
+hold = await openCaptureHold({ label: 'gate-audio-probe', timeoutMs: 150 * 60 * 1000, place: 'gate-audio-probe' });
 const results = [];
 try {
   for (let i = 0; i < runs; i++) {
@@ -118,7 +116,6 @@ try {
       + `  console ${(result.console ?? []).length}${result.error ? `  ERROR ${result.error}` : ''}`);
   }
 } finally {
-  clearInterval(refresher);
-  await lock.release();
+  await hold?.release();
 }
 writeFileSync(join(out, `gate-audio.${Date.now()}.json`), `${JSON.stringify(results, null, 1)}\n`);

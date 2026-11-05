@@ -36,7 +36,8 @@ try {
   assert.deepEqual(holds.map((record) => record.classFrom), ['default', 'default', 'lockClass', 'command'], 'the hold log keeps it');
   // the media renderers name their class at the call
   for (const rel of ['./media-production/cinema.mjs', './media-production/produce.mjs']) {
-    assert.match(readFileSync(new URL(rel, import.meta.url), 'utf8'), /lock\.acquire\([^\n]*lockClass: 'render'/, `${rel} names its class`);
+    // (round 2 U38) held through the one wrapper's open form, which takes the acquire options
+    assert.match(readFileSync(new URL(rel, import.meta.url), 'utf8'), /openCaptureHold\(\{[^\n]*lockClass: 'render'/, `${rel} names its class`);
   }
   console.log('capture-lock-class.selftest: a defaulted (exclusive) class is said once and recorded; the media renderers name theirs');
 } finally {

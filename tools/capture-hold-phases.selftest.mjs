@@ -9,14 +9,15 @@
 // queued) meet one SIGTERM.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import * as captureHold from './capture-hold.mjs';
 import { runWarmHold, withCaptureHold } from './capture-hold.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-function fakeLock({ capMs = null, waiters = 1, yieldWaitMs = 40, nested = false, events }) {
+function fakeLock({ capMs = null, waiters = 1, yieldWaitMs = 40, resumeDelayMs = 0, nested = false, events }) {
   let heldAt = 0, held = false;
   const lock = {
     async acquire(_ms, { prepare } = {}) {
@@ -38,6 +39,7 @@ function fakeLock({ capMs = null, waiters = 1, yieldWaitMs = 40, nested = false,
       await sleep(yieldWaitMs);
       held = true; heldAt = Date.now(); events.push('hold again');
       await afterResume?.();
+      if (resumeDelayMs) await sleep(resumeDelayMs); // a checkpoint still finishing once held again
       return { yielded: true };
     },
   };
@@ -171,6 +173,102 @@ for (const waiters of [1, 0]) {
   assert.deepEqual(torn, ['warm'], 'a wait that ends without a hold tears down what it prepared');
 }
 
+// ---- (round 2 U38) the open form: a script tool's hold is withCaptureHold's, two lines at its acquire and its release ----
+// 75 tools and 28 receipts acquired the lock themselves, each with its own refresh timer and none with the cap: past it a
+// tool that never checkpoints kept the lock however many waited. openCaptureHold resolves once held; release() ends it.
+{
+  const { openCaptureHold } = captureHold;
+  assert.equal(typeof openCaptureHold, 'function', 'the one wrapper has an open form for script tools');
+  // held, then released by the caller, once; the default teardown never runs on the normal way out
+  const events = [];
+  const hold = await openCaptureHold({ lock: fakeLock({ events }), log: () => {}, prepare: async () => 'warm', teardown: async () => events.push('teardown') });
+  assert.equal(hold.prepared, 'warm');
+  assert.ok(hold.signal instanceof AbortSignal && typeof hold.checkpoint === 'function', 'the hold\'s signal and checkpoint');
+  events.push('work');
+  const first = hold.release(), second = hold.release();
+  assert.equal(first, second, 'release() once; a second call returns the same promise');
+  await first;
+  assert.deepEqual(events, ['hold', 'work', 'release'], 'the caller closed its own: no teardown on the way out');
+  // a wait that fails rejects (no unhandled rejection), and nothing is held
+  const failing = { acquire: async () => { throw new Error('cot-shots lock timeout'); }, release: () => false, refresh: () => false };
+  await assert.rejects(openCaptureHold({ lock: failing, log: () => {} }), /lock timeout/);
+  // the cap: past it with a waiter, a tool that never checkpoints has its signal aborted, then its teardown run after the
+  // grace (by default every guarded browser of the process stops); its release waits for that teardown
+  const capped = [];
+  const capHold = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: capped }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05,
+    teardown: async () => { await sleep(60); capped.push('teardown done'); } });
+  watchAbort(capHold.signal, capped);
+  await sleep(250); // a script that ignores the signal
+  await capHold.release();
+  assert.deepEqual(capped, ['hold', 'abort', 'teardown done', 'release'], `stopped at the cap, torn down, then released (${capped.join(' ')})`);
+  // a declared keep is logged, never stopped
+  const kept = [];
+  const keepHold = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: kept }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05,
+    atCap: 'keep', teardown: async () => kept.push('teardown') });
+  watchAbort(keepHold.signal, kept);
+  await sleep(150);
+  await keepHold.release();
+  assert.deepEqual(kept, ['hold', 'release'], 'atCap keep: past the cap, not stopped');
+}
+
+// ---- (round 2 U38 review) a stop is enforced: the lock goes without the work, and no browser launches under it ----------
+// The open hold's default teardown stops guarded browsers, so for a holder with none (seven CPU-only tools) a cap stop was a
+// log line and the lock stayed until the tool ended; and teardown runs once, so a per-row loop that caught the kill
+// launched its next browser and drew on. Now a work still running `teardownWaitMs` after its teardown began loses the lock,
+// and a stopped hold refuses the process's launches until it is released.
+{
+  const { openCaptureHold } = captureHold;
+  // a tool that never releases loses the lock: cap 30 ms, grace 50 ms, then 80 ms after its teardown began
+  const forfeit = [];
+  const neverReleased = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: forfeit }), log: () => {}, capCheckMs: 10,
+    graceSeconds: 0.05, teardownWaitMs: 80, teardown: async () => forfeit.push('teardown') });
+  watchAbort(neverReleased.signal, forfeit);
+  for (let i = 0; i < 100 && !forfeit.includes('release'); i++) await sleep(10);
+  assert.deepEqual(forfeit, ['hold', 'abort', 'teardown', 'release'], `the caller never released, and the lock went at the cap (${forfeit.join(' ')})`);
+  await neverReleased.release();
+  assert.deepEqual(forfeit, ['hold', 'abort', 'teardown', 'release'], 'its late release() releases nothing twice');
+  // the function form: a work that ignores its signal is out of the lock before it ends
+  const work = [];
+  await withCaptureHold(async ({ signal }) => { watchAbort(signal, work); await sleep(400); work.push('work end'); },
+    { lock: fakeLock({ capMs: 30, waiters: 1, events: work }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05, teardownWaitMs: 80,
+      teardown: async () => work.push('teardown') });
+  assert.deepEqual(work, ['hold', 'abort', 'teardown', 'release', 'work end'], `forfeited before the work ended (${work.join(' ')})`);
+  // a stopped hold refuses this process's launches, and lifts the refusal once released
+  const { launchGuardedBrowser } = await import('./browser-launch.mjs');
+  const refusal = [];
+  const stopped = await openCaptureHold({ label: 'refusing', lock: fakeLock({ capMs: 30, waiters: 1, events: refusal }), log: () => {}, capCheckMs: 10,
+    graceSeconds: 5, teardown: async () => {} });
+  for (let i = 0; i < 100 && !stopped.signal.aborted; i++) await sleep(10);
+  assert.ok(stopped.signal.aborted, 'stopped at the cap');
+  let launched = 0;
+  const launcher = { launch: async () => { launched++; return { double: true }; } };
+  await assert.rejects(launchGuardedBrowser(launcher, {}, { label: 'next-row' }), /next-row\) refused: the refusing capture hold was stopped/);
+  assert.equal(launched, 0, 'the launcher never ran');
+  await stopped.release();
+  assert.deepEqual(await launchGuardedBrowser(launcher), { double: true }, 'launches again once the stopped hold is released');
+  // between(): a synchronous tool's steps let the refresh and the cap run; at the cap it yields (it checkpoints), and once
+  // stopped it throws the stop's reason
+  const steps = [];
+  const cpu = await openCaptureHold({ lock: fakeLock({ capMs: 30, waiters: 1, events: steps }), log: () => {}, capCheckMs: 10, graceSeconds: 0.05 });
+  for (let i = 0; i < 12; i++) { await cpu.between(); const until = Date.now() + 8; while (Date.now() < until) { /* a synchronous step */ } }
+  await cpu.release();
+  assert.ok(steps.includes('yield') && !cpu.signal.aborted, `between() yields at the cap (${steps.join(' ')})`);
+  const halted = await openCaptureHold({ lock: fakeLock({ capMs: null, waiters: 1, events: [] }), log: () => {}, capCheckMs: 10, graceSeconds: 5,
+    holdMinutes: 0.0005, teardown: async () => {} });
+  for (let i = 0; i < 100 && !halted.signal.aborted; i++) await sleep(10);
+  await assert.rejects(halted.between(), /hold limit/, 'a stopped hold\'s between() throws the stop\'s reason');
+  await halted.release();
+  // (review 2) a stop that comes while between()'s checkpoint runs (its yield, its resume) is thrown when it returns: the
+  // step after it never runs stopped. The budget (120 ms) restarts at the resume and ends inside the checkpoint's last 400 ms.
+  const late = await openCaptureHold({ lock: fakeLock({ capMs: 1, waiters: 1, yieldWaitMs: 5, resumeDelayMs: 400, events: [] }), log: () => {},
+    capCheckMs: 1_000, graceSeconds: 5, holdMinutes: 0.002, teardown: async () => {} });
+  await sleep(5);
+  const lateStep = await late.between().then(() => 'returned', (error) => error);
+  assert.ok(late.signal.aborted, 'the budget stopped the hold during the checkpoint');
+  assert.match(String(lateStep?.message ?? lateStep), /hold limit/, 'and between() throws the stop\'s reason when its checkpoint returns');
+  await late.release();
+}
+
 // ---- withCaptureHold on a real private lock: a SIGTERM tears down, releases and exits 143 --------------------------
 {
   const root = mkdtempSync(join(tmpdir(), 'cot-hold-phases-'));
@@ -197,6 +295,215 @@ for (const waiters of [1, 0]) {
     rmSync(root, { recursive: true, force: true });
   }
 }
+// ---- (round 2 U38) the open form on a real private lock: a SIGTERM stops it as any hold; its lines stay off stdout ------
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-open-'));
+  try {
+    const lockDir = join(root, 'lock'), marker = join(root, 'torn');
+    const script = `import { writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+      setInterval(() => {}, 1000);
+      const hold = await openCaptureHold({ lock, label: 'open-probe', timeoutMs: 5000, signalWaitMs: 300,
+        teardown: async () => writeFileSync(${JSON.stringify(marker)}, 'torn') });
+      console.log(JSON.stringify({ holding: true }));
+      try { await new Promise(() => {}); } finally { await hold.release(); }`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    for (let i = 0; i < 400 && !out.includes('holding'); i++) await sleep(25);
+    assert.ok(existsSync(lockDir), `the child holds its private lock: ${err.slice(-400)}`);
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status) => done(status)));
+    assert.equal(code, 143, 'it exits 128 + SIGTERM');
+    assert.equal(readFileSync(marker, 'utf8'), 'torn', 'its teardown ran');
+    assert.equal(existsSync(lockDir), false, 'and its hold was released');
+    assert.equal(out.trim(), '{"holding":true}', 'stdout is the tool\'s own (a report stays parseable)');
+    assert.match(err, /\[open-probe [\d:]+\] lock held after/, 'the hold\'s lines go to stderr');
+    assert.match(err, /has not released 0\.3 s after its teardown; releasing for it/, 'a caller that never comes out is released for, then the exit');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- (round 2 U38 review) the open form's signal path lets the caller's way out run ------------------------------------
+// Round one's open form released and exited within microseconds of a SIGTERM, and a caller's `await hold.release()` never
+// returned: a migrated tool's finally (its Vite server, its temporary directory) and what followed its release (a preview
+// child killed, a report written) never ran. On base (a direct acquire) puppeteer's own SIGTERM listener kept the process
+// alive and the finally cleaned up. Modelled here: a stand-in guarded browser (the default teardown kills it), a server
+// child stopped after the release, a report written last, and puppeteer's non-exiting listener.
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-unwind-'));
+  const strays = []; // a failed run's server and browser are stopped here, never left behind (a passed run asserts them gone)
+  let passed = false;
+  try {
+    const lockDir = join(root, 'lock'), events = join(root, 'events'), report = join(root, 'report.json');
+    writeFileSync(events, '');
+    const script = `import { spawn } from 'node:child_process';
+      import { appendFileSync, writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      import { launchGuardedBrowser } from ${JSON.stringify(new URL('./browser-launch.mjs', import.meta.url).href)};
+      const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+      process.on('SIGTERM', () => note('puppeteer listener')); // @puppeteer/browsers: closes the browser, never exits
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(join(root, 'queue'))}, log: () => {} });
+      const server = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      const hold = await openCaptureHold({ lock, label: 'unwind-probe', timeoutMs: 5000 });
+      let child = null;
+      const launcher = { launch: async (options) => {
+        child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)', '--', ...options.args], { detached: true, stdio: 'ignore' });
+        return { process: () => child, close: async () => { try { child.kill('SIGKILL'); } catch { /* gone */ } } };
+      } };
+      const browser = await launchGuardedBrowser(launcher, {}, { label: 'stand-in', intervalMs: 60_000 });
+      note('up server=' + server.pid + ' browser=' + child.pid);
+      try {
+        // the run waits on its browser, as a page call does, and fails once the browser is gone
+        await new Promise((_, reject) => child.once('exit', () => reject(new Error('Target closed'))));
+      } catch (error) { note('run failed: ' + error.message + ' (signal aborted: ' + hold.signal.aborted + ')'); }
+      finally {
+        await browser.close();
+        await hold.release();
+        note('released');
+        await launchGuardedBrowser(launcher).then(() => note('relaunched'), (error) => note('relaunch: ' + error.message));
+        server.kill('SIGTERM');
+        await new Promise((done) => server.once('exit', done));
+        note('server stopped');
+        writeFileSync(${JSON.stringify(report)}, JSON.stringify({ interrupted: true }));
+        note('report written');
+      }`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const read = () => readFileSync(events, 'utf8').trim().split('\n').filter(Boolean);
+    for (let i = 0; i < 800 && !read().some((line) => line.startsWith('up ')); i++) await sleep(25);
+    const up = read().find((line) => line.startsWith('up ')) ?? '';
+    const serverPid = Number(/server=(\d+)/.exec(up)?.[1]), browserPid = Number(/browser=(\d+)/.exec(up)?.[1]);
+    strays.push(serverPid, browserPid);
+    assert.ok(serverPid > 0 && browserPid > 0 && existsSync(lockDir), `the child holds, with a server and a browser up: ${err.slice(-400)}`);
+    const started = Date.now();
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status, signal) => done(status ?? signal)));
+    const lines = read();
+    assert.equal(code, 143, `it exits 128 + SIGTERM (${lines.join(', ')}; ${err.slice(-300)})`);
+    assert.ok(Date.now() - started < 20_000, 'on its own once its way out is done, not at the bound');
+    const order = ['run failed: Target closed (signal aborted: true)', 'released', 'server stopped', 'report written'];
+    assert.deepEqual(lines.filter((line) => order.includes(line)), order, `the browser stopped, the finally ran to its release, then what follows (${lines.join(', ')})`);
+    assert.ok(lines.some((line) => /^relaunch: .*refused: SIGTERM: the process is stopping/.test(line)), `no browser launches after the signal (${lines.join(', ')})`);
+    assert.ok(lines.includes('puppeteer listener'), 'a non-exiting listener beside the owner changes nothing');
+    assert.deepEqual(JSON.parse(readFileSync(report, 'utf8')), { interrupted: true }, 'the report is written');
+    assert.throws(() => process.kill(serverPid, 0), /ESRCH/, 'the server child is stopped, not orphaned');
+    assert.throws(() => process.kill(browserPid, 0), /ESRCH/, 'the browser is gone');
+    assert.equal(existsSync(lockDir), false, 'and the hold was released');
+    passed = true;
+  } finally {
+    if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- (round 2 U38 review) a hold queued at a signal leaves the queue, and its caller's way out runs ---------------------
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-queued-'));
+  const { createCaptureLock } = await import('./capture-lock.mjs');
+  const lockDir = join(root, 'lock'), queueDir = join(root, 'queue'), out = join(root, 'out.json');
+  const holder = createCaptureLock({ lockDir, queueDir, log: () => {} });
+  try {
+    await holder.acquire(2_000);
+    const script = `import { writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(queueDir)}, log: () => {} });
+      let outcome = 'held';
+      try { const hold = await openCaptureHold({ lock, label: 'queued-probe', timeoutMs: 60_000 }); await hold.release(); }
+      catch (error) { outcome = error.code ?? error.message; }
+      finally { writeFileSync(${JSON.stringify(out)}, JSON.stringify({ outcome })); }`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const tickets = () => { try { return readdirSync(queueDir).filter((name) => /\.[tw]$/.test(name)); } catch { return []; } };
+    for (let i = 0; i < 400 && !tickets().length; i++) await sleep(25);
+    assert.equal(tickets().length, 1, `the child waits in the queue: ${err.slice(-300)}`);
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status, signal) => done(status ?? signal)));
+    assert.equal(code, 143, `it exits 128 + SIGTERM: ${err.slice(-300)}`);
+    assert.deepEqual(JSON.parse(readFileSync(out, 'utf8')), { outcome: 'CAPTURE_HOLD_SIGNAL' }, 'its openCaptureHold rejected, and its finally ran');
+    assert.deepEqual(tickets(), [], 'its ticket left the queue');
+    assert.ok(holder.held && holder.refresh(), 'the holder keeps its lock');
+  } finally {
+    holder.release();
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+// ---- (round 2 U38 review 2) a signal while the open hold waits in its cap yield's re-queue lets the caller out ------------
+// loading-census checkpoints between rows and pages, so on a contended lock it spends much of a run re-queued after a yield.
+// That re-queue took no withdraw signal: a SIGTERM there left the caller blocked in checkpoint(), the hold was released for
+// it 30 s later and the process exited with its finally never run (its preview server orphaned, its report never written).
+{
+  const root = mkdtempSync(join(tmpdir(), 'cot-hold-yield-'));
+  const { createCaptureLock } = await import('./capture-lock.mjs');
+  const lockDir = join(root, 'lock'), queueDir = join(root, 'queue'), events = join(root, 'events'), report = join(root, 'report.json');
+  writeFileSync(events, '');
+  const waiter = createCaptureLock({ lockDir, queueDir, log: () => {} });
+  const strays = [];
+  let passed = false;
+  try {
+    const script = `import { spawn } from 'node:child_process';
+      import { appendFileSync, writeFileSync } from 'node:fs';
+      import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+      import { openCaptureHold } from ${JSON.stringify(new URL('./capture-hold.mjs', import.meta.url).href)};
+      const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');
+      const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+      // a 200 ms cap: the child yields at its first checkpoint past it once the parent queues
+      const lock = createCaptureLock({ lockDir: ${JSON.stringify(lockDir)}, queueDir: ${JSON.stringify(queueDir)}, log: (line) => note('lock: ' + line), holdCapMs: 200 });
+      const server = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      let hold = null;
+      try {
+        hold = await openCaptureHold({ lock, label: 'yield-probe', timeoutMs: 60_000, capCheckMs: 50, signalWaitMs: 3000 });
+        note('up server=' + server.pid);
+        for (let row = 0; row < 100_000; row++) { await sleep(25); if ((await hold.checkpoint())?.yielded) note('resumed'); }
+      } catch (error) { note('run failed: ' + (error.code ?? error.message)); }
+      finally {
+        server.kill('SIGTERM');
+        await new Promise((done) => server.once('exit', done));
+        note('server stopped');
+        await hold?.release();
+        note('released');
+        writeFileSync(${JSON.stringify(report)}, JSON.stringify({ interrupted: true }));
+        note('report written');
+      }`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
+    const read = () => readFileSync(events, 'utf8').trim().split('\n').filter(Boolean);
+    for (let i = 0; i < 800 && !read().some((line) => line.startsWith('up ')); i++) await sleep(25);
+    const serverPid = Number(/server=(\d+)/.exec(read().find((line) => line.startsWith('up ')) ?? '')?.[1]);
+    strays.push(serverPid);
+    assert.ok(serverPid > 0 && existsSync(lockDir), `the child holds, with a server up: ${err.slice(-400)}`);
+    // the parent queues; past its cap the child yields to it and re-queues behind it
+    await waiter.acquire(20_000);
+    const tickets = () => { try { return readdirSync(queueDir).filter((name) => /\.[tw]$/.test(name)); } catch { return []; } };
+    for (let i = 0; i < 400 && !tickets().length; i++) await sleep(25);
+    assert.equal(tickets().length, 1, `the child waits in its yield's re-queue (${read().join(', ')})`);
+    assert.ok(read().some((line) => /yielding at its checkpoint and re-queueing/.test(line)), 'it yielded at its checkpoint');
+    child.kill('SIGTERM');
+    const code = await new Promise((done) => child.once('close', (status, signal) => done(status ?? signal)));
+    const lines = read().filter((line) => !line.startsWith('lock: '));
+    assert.equal(code, 143, `it exits 128 + SIGTERM (${lines.join(', ')}; ${err.slice(-300)})`);
+    const order = ['run failed: CAPTURE_HOLD_SIGNAL', 'server stopped', 'released', 'report written'];
+    assert.deepEqual(lines.filter((line) => order.includes(line)), order,
+      `the re-queue is withdrawn, the caller's checkpoint rejects, and its finally runs to the end (${lines.join(', ')})`);
+    assert.ok(!/releasing for it/.test(err), `nobody was released for (${err.slice(-300)})`);
+    assert.deepEqual(JSON.parse(readFileSync(report, 'utf8')), { interrupted: true }, 'the report is written');
+    assert.throws(() => process.kill(serverPid, 0), /ESRCH/, 'the server child is stopped, not orphaned');
+    assert.deepEqual(tickets(), [], 'its ticket left the queue');
+    assert.ok(waiter.held && waiter.refresh(), 'the hold it yielded to keeps the lock');
+    passed = true;
+  } finally {
+    if (!passed) for (const pid of strays) { try { if (pid > 0) process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+    waiter.release();
+    rmSync(root, { recursive: true, force: true });
+  }
+}
 // ---- several holds in one process (round 2): a signal stops them all before the one exit ------------------------------
 // tank-release-check runs its capture steps four at a time through runCapturedCommand: one holding, the others queued.
 // Each hold had its own handler and exited after its own teardown, so a queued hold's (nothing to tear down) exited at
@@ -208,11 +515,12 @@ for (const waiters of [1, 0]) {
     writeFileSync(events, '');
     writeFileSync(writes, '');
     // the holder's command takes 800 ms to stop after its SIGTERM, writing all the while
+    // (its handler goes in before it says it is up: under load a TERM that came between the two killed it by default)
     const command = `const { appendFileSync } = require('node:fs');
-      appendFileSync(${JSON.stringify(events)}, 'child up ' + process.pid + '\\n');
-      setInterval(() => appendFileSync(${JSON.stringify(writes)}, 'x'), 50);
       process.on('SIGTERM', () => { appendFileSync(${JSON.stringify(events)}, 'child TERM\\n');
-        setTimeout(() => { appendFileSync(${JSON.stringify(events)}, 'child exit\\n'); process.exit(0); }, 800); });`;
+        setTimeout(() => { appendFileSync(${JSON.stringify(events)}, 'child exit\\n'); process.exit(0); }, 800); });
+      setInterval(() => appendFileSync(${JSON.stringify(writes)}, 'x'), 50);
+      appendFileSync(${JSON.stringify(events)}, 'child up ' + process.pid + '\\n');`;
     const driver = `import { appendFileSync } from 'node:fs';
       import { runCapturedCommand } from ${JSON.stringify(new URL('./capture-command.mjs', import.meta.url).href)};
       const note = (line) => appendFileSync(${JSON.stringify(events)}, line + '\\n');

@@ -8,12 +8,27 @@
 //   released first on every way out, round 2).
 // - One hold wrapper: tools/capture-hold.mjs withCaptureHold (and runWarmHold on it) owns a hold's refresh, cap, yield,
 //   signals and teardown; a tool that calls a capture lock's acquire() itself sets its own timers, limits and signal
-//   handlers, so a fix to hold semantics had to be made in each. The direct acquirers today are listed below (grandfathered;
-//   the lock's own receipts among them): a new one fails here (hold through withCaptureHold), and a migrated one must
-//   leave the list. A direct acquirer is a source that imports a capture lock and calls acquire(), or one that calls
-//   acquire() on a lock it was handed (`lock.acquire(`, `capture.lock.acquire(`; round 2: withIsolatedCaptureBrowser and
-//   hud-ammo-capture's runCapture held that way, parallel wrappers the import test never saw; both hold through
-//   withCaptureHold now).
+//   handlers, so a fix to hold semantics had to be made in each. Round 2 U38 (2026-11-04): a script tool holds through the
+//   wrapper's open form, openCaptureHold (two lines: the acquire and the release), whose default teardown stops the
+//   process's guarded browsers, so the cap holds for a tool that never checkpoints; 68 of the 75 tools and every browser
+//   receipt moved onto it. The direct acquirers left are listed below, each with the reason it differs (the lock's own
+//   receipts among them): a new one fails here, and so does a row with no reason or one that no longer acquires. A
+//   direct acquirer is a source that imports a capture lock and calls acquire(), or one that calls acquire() on a lock it
+//   was handed (`lock.acquire(`, `capture.lock.acquire(`; round 2: withIsolatedCaptureBrowser and hud-ammo-capture's
+//   runCapture held that way, parallel wrappers the import test never saw; both hold through withCaptureHold now).
+//   (review 2) A direct acquirer's importers are listed too, each with what it takes: frame-budget-probe's
+//   acquireProbeLocks handed its FIFO to four other tools that never called acquire() themselves, so none was listed and
+//   none had the cap. It holds through openCaptureHold now, and acquireProbeLocks counts as a wrapper call.
+// - No trusted held-lock claim (round 2 U38): a tool's own flag that says the caller holds the lock (--lock-held,
+//   COT_CAPTURE_LOCK_HELD=1) is passed as the hold's ancestorHeld, checked against the live owner as COT_LANE_HOLD is.
+// - One owner of a signal (round 2 U38 review): a wrapper user with its own SIGINT/SIGTERM handler (process.on/once, an
+//   emitter helper such as registerCancellation) passes `signals: []`. With the hold's owner too, the owner released the
+//   lock and exited while the tool's own cancellation still ran: horizon-construction-bench left a 0-byte 'wx' report and
+//   wreck-paint-bench let the lock go before its worker closed, its final report never written.
+// - A real stop for the cap (round 2 U38 review): the open hold's default teardown stops guarded browsers, so a wrapper
+//   user that launches none (itself or through a module it imports) gives the cap a stop of its own: it reads its hold's
+//   signal, awaits between() between synchronous steps, passes a teardown, or declares atCap. Otherwise a cap stop was a
+//   log line and the hold went on (seven CPU-only holders did so).
 // - No unchecked nesting (round 2): COT_LANE_HOLD=1 skipped the capture FIFO and the session mutex in three tools with
 //   nothing checking that a live hold backed it (its helper, tools/tmp-lane-hold.mjs, is gone), so a leftover export ran
 //   GPU work unlocked. A child nests through its hold's token (capture-lock nestedEnv, checked against the owner record),
@@ -57,8 +72,11 @@ function finallyBlocks(text) {
   });
   return blocks;
 }
-const RELEASE = /\b(?:lock|capture|fifo|locks|captureLock|holdLock)\??\.release\(\)/;
-const CLOSE = /\bbrowser\??\.close\(\)/;
+// (round 2 U38) any spelling of a capture release: releaseCaptureLock(), and release() with or without a reason on a lock,
+// lease or hold object (lock.release('reason'), lease.release(), hold.release()); and any browser's close, whatever it is
+// called (chrome.close(), ctx.browser.close(), this.browser?.close(), guardedBrowser.close())
+const RELEASE = /(?:\breleaseCaptureLock\(|\b(?:\w*[lL]ock|locks|capture|fifo|lease|hold)\??\.release\([^)]*\))/;
+const CLOSE = /\b(?:\w*[bB]rowser|chrome)\??\.close\(/;
 // a release as a statement (not an argument, as in a receipt's `assert.equal(lock.release(), false)`)
 const RELEASE_STATEMENT = new RegExp(`(?:^|[;{}]|\\)|=>|&&|\\|\\||\\breturn|\\bvoid|\\bawait)[ \\t]*${RELEASE.source}`, 'gm');
 const STICKY_CLOSE = new RegExp(CLOSE.source, 'y');
@@ -95,6 +113,13 @@ assert.deepEqual(releaseBeforeClose('process.once(signal, async () => { lock.rel
 assert.deepEqual(releaseBeforeClose('const close = async () => {\n  await browser?.close();\n  lock.release();\n  await server.close();\n};'), [], 'the browser, then the release');
 assert.deepEqual(releaseBeforeClose('assert.equal(lock.release(), false, \'nothing left\');\nawait browser.close();'), [], 'a checked release is not a release statement');
 assert.deepEqual(releaseBeforeClose('const lease = () => {\n  lock.release();\n};\n}\nconst stop = async () => { await browser.close(); };'), [], 'a close two blocks out');
+// (round 2 U38) the spellings the first census missed
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  releaseCaptureLock();\n  await browser.close();\n}'), [1, 2], 'the shared lock\'s releaseCaptureLock()');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  lock.release(\'done\');\n  await browser.close();\n}'), [1, 2], 'a release with a reason');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  lease.release();\n  await chrome.close();\n}'), [1, 2], 'a lease and a browser named chrome');
+assert.deepEqual(releaseBeforeClose('const stop = async () => {\n  await hold.release();\n  await ctx.browser?.close();\n};'), [2], 'a hold handle and a browser on an object');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  await guardedBrowser.close();\n  releaseCaptureLock();\n}'), [], 'any browser closed first');
+assert.deepEqual(releaseBeforeClose('try { go(); } finally {\n  pool.release();\n  await browser.close();\n}'), [], 'another release (a worker pool) is no capture release');
 
 // a source that imports a capture lock (built from parts so this file is not its own finding) and calls acquire() itself
 const LOCK_IMPORT = new RegExp(['capture-lock', '\\.mjs|visual-census-lock', '\\.mjs'].join(''));
@@ -121,54 +146,144 @@ const acquiresDirectly = (file, text) => !HOLD_OWNERS.has(file)
   assert.equal(acquiresDirectly('tools/a.selftest.mjs', `assert.ok(source.indexOf('await lock.${'acq'}uire(') > 0);`), false, 'a string a receipt reads');
   assert.equal(acquiresDirectly('tools/a.mjs', `const handle = assets.${'acq'}uire(key);`), false, 'another acquire() on no lock');
 }
-/** The tools that hold the GPU through a capture lock's acquire() themselves (2026-11-02): migrate one, drop its row. */
-const DIRECT_ACQUIRERS = Object.freeze([
-  'tools/anatomy-render-set.mjs', 'tools/audio-default-sink-probe.mjs', 'tools/bake-minimap-assets.mjs',
-  'tools/black-world-repro.mjs', 'tools/bot-targeting.browser.mjs', 'tools/challenger-assembly.browser.mjs',
-  'tools/combat-visibility.browser.mjs', 'tools/contig-phase-audit.mjs', 'tools/crushable-clutter.browser.mjs',
-  'tools/drone-details.browser.mjs', 'tools/drone-hud.browser.mjs', 'tools/environment-motion-probe.mjs',
-  'tools/far-tree-trunk-audit.mjs', 'tools/feature-promo-capture.mjs', 'tools/field-guide-capture.mjs',
-  'tools/fonts.browser.mjs', 'tools/frame-budget-probe.mjs', 'tools/garage-battle-actions-probe.mjs',
-  'tools/garage-draw-range-probe.mjs', 'tools/garage-mobile.browser.mjs', 'tools/garage-mode-preview.browser.mjs',
-  'tools/garage-wheel-band.browser.mjs', 'tools/gate-audio-probe.mjs', 'tools/griffin-viper-garage-probe.mjs',
-  'tools/ground-banding-shots.mjs', 'tools/gunship-fx.browser.mjs', 'tools/gunship-hud.browser.mjs',
-  'tools/gunship-lens-strip.browser.mjs', 'tools/horizon-construction-bench.mjs', 'tools/isometric-camera.browser.mjs',
-  'tools/letterbox-bands.browser.mjs', 'tools/loading-census.mjs', 'tools/map-environment-audit.mjs',
-  'tools/marketing-shots/capture-multiplayer-dual-screen.mjs', 'tools/marketing-shots/capture-showcase-r2-ui.mjs',
-  'tools/marketing-shots/mode-battle-shots.mjs', 'tools/marking-flicker-probe.mjs',
-  'tools/media-motion-savedata.browser.mjs', 'tools/media-production/cinema.mjs', 'tools/media-production/produce.mjs',
-  'tools/media-r5/lab.mjs', 'tools/media-r5/studio-ui.mjs', 'tools/minimap-contacts.browser.mjs',
-  'tools/mp-room-census.mjs', 'tools/offline-import-probe.mjs', 'tools/pad-e2e.browser.mjs',
-  'tools/props-build-profile.mjs', 'tools/rapid-fire-feedback.browser.mjs', 'tools/road-border-corridor-pilot.mjs',
-  'tools/road-corridor-sections.mjs', 'tools/road-exit-native-audit.mjs', 'tools/run-selftests.mjs',
-  'tools/running-gear-damage.browser.mjs', 'tools/selftest-cpu-pool.mjs', 'tools/shot-card-fit.browser.mjs',
-  'tools/shot-damage-figures.browser.mjs',
-  'tools/shot-schematic-parity-probe.mjs', 'tools/six-modes.browser.mjs', 'tools/smoke-launchers.browser.mjs',
-  'tools/solo-cold-import-cover-probe.mjs', 'tools/solo-kernels-probe.mjs',
-  'tools/sourced-image-composition-probe.mjs', 'tools/spectator-cursor.browser.mjs',
-  'tools/studio-ground-contact-probe.mjs', 'tools/tank-energy.browser.mjs', 'tools/tank-regen-changed.mjs',
-  'tools/terrain-fast-cache-benchmark.mjs', 'tools/tree-crown-audit.browser.mjs',
-  'tools/vehicle-special-action.browser.mjs', 'tools/vehicle-status.browser.mjs', 'tools/visual-census.mjs',
-  'tools/water-palette-probe.mjs', 'tools/world-residency-probe.mjs', 'tools/wreck-build-profile.mjs',
-  'tools/wreck-paint-bench.mjs',
-]);
-/** The lock's own receipts (and receipts that hold a private or the shared lock themselves), listed the same way. */
-const DIRECT_ACQUIRER_RECEIPTS = Object.freeze([
-  'tools/articulated-shadow-batch.browser.selftest.mjs', 'tools/battle-geometry-sharing.browser.selftest.mjs',
-  'tools/black-world.browser.selftest.mjs', 'tools/browser-guard-holds.selftest.mjs',
-  'tools/browser-launch.selftest.mjs', 'tools/capture-command.selftest.mjs', 'tools/capture-lock-class.selftest.mjs',
-  'tools/capture-lock-reentry.selftest.mjs',
-  'tools/capture-lock.selftest.mjs', 'tools/cloud-history.browser.selftest.mjs',
-  'tools/destruction-first-use.browser.selftest.mjs', 'tools/garage-roster-settle.browser.selftest.mjs',
-  'tools/garage-switch-probe.selftest.mjs', 'tools/horizon-panorama-bake.browser.selftest.mjs',
-  'tools/hud-self-measure.browser.selftest.mjs', 'tools/late-fx-matrix.browser.selftest.mjs',
-  'tools/media-r5/priority-yield.selftest.mjs', 'tools/mp-rooms-entry.browser.selftest.mjs',
-  'tools/pane-stack-layer.browser.selftest.mjs', 'tools/resolved-depth-copy.browser.selftest.mjs',
-  'tools/session-mutex.selftest.mjs', 'tools/source-dimension-frame.browser.selftest.mjs',
-  'tools/sourced-building-source.browser.selftest.mjs', 'tools/standard-check-stages.selftest.mjs',
-  'tools/track-texture-source.browser.selftest.mjs', 'tools/vehicle-ground-occlusion.browser.selftest.mjs',
-  'tools/visual-census-lock.selftest.mjs', 'tools/visual-census.selftest.mjs',
-]);
+/** The tools that still hold the GPU through a capture lock's acquire() themselves, each with the reason it differs from
+ *  the one wrapper (round 2 U38: the other 68 of the 75 listed on 2026-11-02 hold through withCaptureHold or its open form,
+ *  openCaptureHold). A new direct acquirer fails here; one with no reason, or one that no longer acquires, too. */
+const DIRECT_ACQUIRERS = Object.freeze({
+  'tools/anatomy-render-set.mjs': 'loads the lock from the checkout it renders (toolRoot), which may predate the open hold; its own 19.5-min watchdog ends the hold (exit 124) under the cap',
+  'tools/ground-banding-shots.mjs': 'yields at the 20-min cap itself: --band gives the lock up and re-enters the priority band one past its highest live stamp, staging the next pair while it waits (a fresh ticket per yield)',
+  'tools/media-r5/lab.mjs': 'the media lease protocol: per-job, per-map and budget leases with paid yields to normal-band holds (priority-yield.mjs), decided on lock.held (priority-yield.selftest pins it)',
+  'tools/media-r5/studio-ui.mjs': 'loads the lock from the checkout it serves (cwd), which may predate the open hold; one short hold per script, the browser kept idle between them; a script is one frame-by-frame film, which cannot stop part-way, so its cap is logged by the lock (refresh past the cap), as the film renders\' atCap keep is',
+  'tools/run-selftests.mjs': 'the suite runner\'s CPU lease: bounded 45 s batches that rejoin the FIFO between receipts, released before a receipt that holds the lock itself',
+  'tools/selftest-cpu-pool.mjs': 'the pool form of the suite runner\'s bounded CPU lease',
+});
+/** (review 2) The sources outside receipts that import a direct acquirer, with what they take from it: an export that takes
+ *  the lock for its caller (acquireProbeLocks did, for four tools) hands that caller a hold the rules above never see. */
+const DIRECT_ACQUIRER_IMPORTERS = Object.freeze({
+  'tools/gate.mjs': 'runSelftestSuite and runSelftestFile from run-selftests: the suite runner\'s own bounded 45 s CPU lease, the cap inside the runner',
+  'tools/run-selftests.mjs': 'runSelftestCpuPool from selftest-cpu-pool: the pool form of the same bounded lease',
+  'tools/test-audit.mjs': 'run-selftests\' constants only (worker count, file sets): no lock',
+  'tools/test-heavy.mjs': 'run-selftests\' suite runner, whole: its bounded CPU lease',
+});
+/** The receipts that call acquire() on a capture lock (the lock's own, and the ones proving a wrapper on private
+ *  directories), with the reason; the browser receipts that held the shared lock hold through the wrapper (round 2 U38). */
+const DIRECT_ACQUIRER_RECEIPTS = Object.freeze({
+  'tools/browser-guard-holds.selftest.mjs': 'pins what a guard trip releases, on private locks',
+  'tools/browser-launch.selftest.mjs': 'pins the guard trip\'s release of a private hold',
+  'tools/capture-command.selftest.mjs': 'pins runCapturedCommand on a private lock',
+  'tools/capture-hold-phases.selftest.mjs': 'holds a private lock itself so a child\'s open hold queues behind it (a signal while queued)',
+  'tools/capture-lock-class.selftest.mjs': 'the lock\'s own receipt (classes)',
+  'tools/capture-lock-reentry.selftest.mjs': 'the lock\'s own receipt (re-entry, nesting)',
+  'tools/capture-lock.selftest.mjs': 'the lock\'s own receipt',
+  'tools/chain-lifecycle.selftest.mjs': 'a child under runInCaptureHold takes a private lock to prove it nests',
+  'tools/media-r5/priority-yield.selftest.mjs': 'pins lock.held on a private hold',
+  'tools/session-mutex.selftest.mjs': 'the polite lock on private directories',
+  'tools/standard-check-stages.selftest.mjs': 'a fixture repository\'s stand-in lock',
+  'tools/visual-census-lock.selftest.mjs': 'the polite lock\'s own receipt',
+  'tools/visual-census.selftest.mjs': 'the polite lock on private directories',
+  'tools/with-capture-lock.selftest.mjs': 'children take a private lock to prove they nest in the hold CLI\'s hold',
+});
+for (const [file, reason] of [...Object.entries(DIRECT_ACQUIRERS), ...Object.entries(DIRECT_ACQUIRER_RECEIPTS)]) {
+  assert.ok(typeof reason === 'string' && reason.length >= 20, `${file}: a direct acquirer states why it differs from the one wrapper`);
+}
+
+// (round 2 U38) a claim that the caller holds the lock is checked, never trusted: a tool's own flag for it (garage-wheel-band
+// --lock-held, media-motion-savedata COT_CAPTURE_LOCK_HELD=1) skipped the lock whatever held it, the COT_LANE_HOLD hazard
+// again; it is passed as the hold's `ancestorHeld` (nested only in an ancestor's live hold). A stub lock stands in only
+// where nothing draws (a SwiftShader preview) or in a receipt's fixture.
+const LOCK_CLAIM = new RegExp(['COT_CAPTURE', '_LOCK_HELD|[\'"`]lock', '-held[\'"`]'].join(''));
+const STUB_LOCK = new RegExp(['acq', 'uire\\s*:\\s*async\\s*\\(\\s*\\)\\s*=>\\s*\\{\\s*\\}'].join(''));
+const STUB_LOCKS = Object.freeze({
+  'tools/anatomy-render-set.mjs': 'a --swiftshader preview set renders on the CPU: no GPU, so no lock',
+  'tools/selftest-scans.selftest.mjs': 'a receipt\'s stand-in runner lock',
+});
+const unchecked = (file, text) => {
+  const body = code(text);
+  const found = [];
+  if (LOCK_CLAIM.test(body) && !/\bancestorHeld\s*:/.test(body)) found.push('reads a held-lock claim without passing it as ancestorHeld');
+  if (STUB_LOCK.test(body) && !Object.hasOwn(STUB_LOCKS, file)) found.push('stands a stub in for the capture lock');
+  return found;
+};
+assert.deepEqual(unchecked('tools/a.mjs', `const lock = process.env.${'COT_CAPTURE'}_LOCK_HELD === '1' ? { ${'acq'}uire: async () => {}, release() {} } : createCaptureLock();`).length, 2, 'a trusted claim and its stub');
+assert.deepEqual(unchecked('tools/a.mjs', `const held = !!flag('lock${'-held'}');\nif (!held) await lock.${'acq'}uire(1);`).length, 1, 'a flag that skips the acquire');
+assert.deepEqual(unchecked('tools/a.mjs', `const held = !!flag('lock${'-held'}');\nawait openCaptureHold({ ancestorHeld: held });`), [], 'a claim passed to the checked path');
+assert.deepEqual(unchecked('tools/anatomy-render-set.mjs', `const lock = sw ? { ${'acq'}uire: async () => {} } : createCaptureLock();`), [], 'a CPU-only preview');
+
+// (round 2 U38 review) a wrapper call, a signal handler of a source's own, `signals: []`, a guarded launch and a cap stop,
+// each read from code outside one-line strings (a receipt's source pins name them in strings)
+const codeLines = new Map(); // one code() per source text: the census reads ~5,900 sources several times
+const linesOf = (text) => {
+  let lines = codeLines.get(text);
+  if (!lines) { lines = code(text).split('\n'); codeLines.set(text, lines); }
+  return lines;
+};
+const globalOf = new Map();
+const outside = (text, pattern) => {
+  let global = globalOf.get(pattern);
+  if (!global) { global = new RegExp(pattern.source, 'g'); globalOf.set(pattern, global); }
+  // a quick test of the whole text first: most sources never name the pattern
+  if (!pattern.test(text)) return false;
+  return linesOf(text).some((line) => [...line.matchAll(global)].some((match) => !inString(line, match.index)));
+};
+// (review 2) acquireProbeLocks (frame-budget-probe) holds its FIFO through openCaptureHold: its callers are the wrapper's
+const WRAPPER_CALL = /\b(?:withCaptureHold|openCaptureHold|runWarmHold|acquireProbeLocks)\(/;
+const OWN_SIGNAL = [
+  /\.(?:on|once|addListener|prependListener)\(\s*['"`]SIG(?:INT|TERM|HUP)['"`]/, // process.once('SIGTERM', …), emitter.on('SIGINT', …)
+  /\bregister\w*Cancellation\(/, // a helper that installs one (wreck-build-profile's comes from props-build-profile)
+];
+// a handler named through a list: for (const s of ['SIGINT', 'SIGTERM']) process.once(s, …), ['SIGINT', …].map(…)
+const SIGNAL_LIST = /\[[^\]\n]*['"`]SIG(?:INT|TERM)['"`][^\]\n]*\]/;
+const LISTED_HANDLER = /\bprocess\.(?:on|once)\(\s*[A-Za-z_$][\w$]*\s*,/;
+const NO_SIGNALS = /\bsignals\s*:\s*\[\s*\]/;
+const ownSignalHandler = (text) => OWN_SIGNAL.some((pattern) => outside(text, pattern)) || (outside(text, SIGNAL_LIST) && outside(text, LISTED_HANDLER));
+/** A wrapper user whose own SIGINT/SIGTERM handler shares the signal with the hold's owner (no `signals: []`). */
+const twoSignalOwners = (text) => outside(text, WRAPPER_CALL) && ownSignalHandler(text) && !outside(text, NO_SIGNALS);
+{
+  const hold = 'const hold = await openCaptureHold({ label: \'a\' });';
+  assert.equal(twoSignalOwners(`${hold}\nprocess.once('SIGTERM', () => controller.abort());`), true, 'a handler of its own and the hold\'s owner');
+  assert.equal(twoSignalOwners(`${hold}\nemitter.on('SIGINT', stop);`), true, 'an emitter helper\'s handler');
+  assert.equal(twoSignalOwners(`${hold}\nconst cancellation = registerProfileCancellation(() => child);`), true, 'a helper imported from another tool');
+  assert.equal(twoSignalOwners(`await withCaptureHold(work, { lock });\nconst handlers = ['SIGINT', 'SIGTERM'].map(name => [name, stop]);\n`
+    + 'for (const [name, handler] of handlers) process.once(name, handler);'), true, 'a list of signals (horizon-construction-bench)');
+  assert.equal(twoSignalOwners(`${hold.replace('})', ', signals: [] })')}\nprocess.once('SIGTERM', stop);`), false, 'signals: [] leaves the signal to the tool');
+  assert.equal(twoSignalOwners(`${hold}\npreview?.kill('SIGTERM');`), false, 'a kill is no handler');
+  assert.equal(twoSignalOwners(`assert.ok(source.indexOf("process.on('SIGINT'") > source.indexOf('await openCaptureHold('));`), false, 'a receipt\'s strings');
+  assert.equal(twoSignalOwners(`process.once('SIGTERM', stop);\nawait lock.${'acq'}uire(1);`), false, 'no wrapper: the direct-acquirer rule\'s');
+  // (review 2) the probe pair's callers hold through the wrapper (battle-spike-census exits on its own handler)
+  assert.equal(twoSignalOwners('let locks = await acquireProbeLocks({ log });\nfor (const signal of [\'SIGTERM\', \'SIGINT\']) {\n  process.once(signal, close);\n}'),
+    true, 'acquireProbeLocks is a wrapper call');
+  assert.equal(twoSignalOwners('let locks = await acquireProbeLocks({ log, hold: { signals: [] } });\nprocess.once(\'SIGTERM\', close);'), false,
+    'its hold options leave the signal to the tool');
+}
+/** The tools that own a signal beside a wrapper call that is not the hold's, with the reason. */
+const SIGNAL_OWNERS_OFF_THE_HOLD = Object.freeze({
+  'tools/capture-hold-phases.selftest.mjs': 'the wrapper\'s own receipt: its handlers are stand-in commands\' and tools\', inside child scripts (template strings)',
+  'tools/click-timeline.mjs': 'its SIGTERM/SIGINT/SIGALRM/SIGHUP handler is on the unlocked path only; with --lock it holds through runWarmHold, whose owner handles signals',
+  'tools/nav-timeline.mjs': 'its SIGTERM/SIGINT/SIGALRM/SIGHUP handler is on the unlocked path only; with --lock it holds through runWarmHold, whose owner handles signals',
+});
+// a guarded browser launched in the source or in a module it imports (one level: garage-switch-probe.selftest runs
+// garage-switch-probe's runProfile in its own process); runWarmHold's warm resources have their own teardown (closeWarm)
+// (a call, not the definition: every wrapper user imports capture-hold.mjs, which defines runWarmHold)
+const GUARDED = /(?<!function\s+)\b(?:launchGuardedBrowser|withMapProbeSession|withDistProbeSession|eachBrowserChunk|withIsolatedCaptureBrowser|runWarmHold)\(/;
+const RELATIVE_IMPORT = /(?:\bfrom\s*|\bimport\(\s*)['"`](\.{1,2}\/[^'"`]+\.[cm]?[jt]s)['"`]/g;
+const CAP_STOP = [
+  /\bteardown\s*:/, /\batCap\s*:/, // a teardown that stops its workers; a declared keep
+  /\b\w*[hH]old\??\.(?:signal|between)\b/, // the open hold's signal into its cancellation, or between() between steps
+  /\(\s*\{[^})]*\b(?:signal|between)\b[^})]*\}\s*\)\s*=>/, // withCaptureHold's work reading its signal or between()
+];
+const capStopped = (text) => CAP_STOP.some((pattern) => outside(text, pattern));
+{
+  const hold = 'const hold = await openCaptureHold({ label: \'a\' });';
+  assert.equal(capStopped(`${hold}\nfor (const r of rows) build(r);\nawait hold.release();`), false, 'a CPU loop that never stops');
+  assert.equal(capStopped(`${hold}\nhold.signal.addEventListener('abort', () => cancellation.interrupt());`), true, 'its signal into its cancellation');
+  assert.equal(capStopped(`${hold}\nfor (const r of rows) { await hold.between(); build(r); }`), true, 'between() between synchronous steps');
+  assert.equal(capStopped('await withCaptureHold(async ({ between }) => measure({ between }), { lock });'), true, 'a work that reads between()');
+  assert.equal(capStopped('await withCaptureHold(({ signal }) => run(signal), { lock });'), true, 'a work that reads its signal');
+  assert.equal(capStopped('await openCaptureHold({ label: \'a\', teardown: () => child?.kill(\'SIGKILL\') });'), true, 'a teardown of its own');
+  assert.equal(capStopped('await openCaptureHold({ label: \'a\', atCap: \'keep\' });'), true, 'a declared keep');
+}
+/** CPU-only holders whose cap stop is still only logged, with the reason (none since round 2 U38's review). */
+const CPU_HOLDERS_UNSTOPPED = Object.freeze({});
 
 // a read of the retired nesting flag (built from parts so this file is not its own finding)
 const LANE_HOLD = new RegExp(['\\benv\\??\\.COT_LANE', '_HOLD\\b|\\[[\'"`]COT_LANE', '_HOLD[\'"`]\\]'].join(''));
@@ -198,14 +313,53 @@ assert.deepEqual(bypasses, [], `never skip a lock on COT_LANE_HOLD: capture-lock
 const early = [...sources].flatMap(([file, text]) => releaseBeforeClose(text).map((line) => `${file}:${line}`));
 assert.deepEqual(early, [], `close the browser before the capture lock is released (the next holder's GPU work would overlap it)\n  ${early.join('\n  ')}`);
 
-const listed = new Set([...DIRECT_ACQUIRERS, ...DIRECT_ACQUIRER_RECEIPTS]);
+const claims = [...sources].flatMap(([file, text]) => unchecked(file, text).map((why) => `${file}: ${why}`));
+assert.deepEqual(claims, [], `a held-lock claim is checked (the hold's ancestorHeld), never a skip:\n  ${claims.join('\n  ')}`);
+
+const owners = [...sources].filter(([file, text]) => file !== 'tools/capture-hold.mjs' && twoSignalOwners(text)).map(([file]) => file).sort();
+assert.deepEqual(owners.filter((file) => !Object.hasOwn(SIGNAL_OWNERS_OFF_THE_HOLD, file)), [],
+  `a tool with its own SIGINT/SIGTERM handler passes signals: [] to its hold (one owner of a signal per process)\n  `
+  + owners.filter((file) => !Object.hasOwn(SIGNAL_OWNERS_OFF_THE_HOLD, file)).join('\n  '));
+assert.deepEqual(Object.keys(SIGNAL_OWNERS_OFF_THE_HOLD).filter((file) => !owners.includes(file)), [], 'a signal-owner row that no longer applies: drop it');
+
+const holdsGuarded = (file, text) => {
+  if (outside(text, GUARDED)) return true;
+  for (const [, spec] of code(text).matchAll(RELATIVE_IMPORT)) {
+    const imported = join(file, '..', spec).replace(/\\/g, '/');
+    const body = sources.get(imported) ?? sources.get(imported.replace(/\.js$/, '.ts'));
+    if (body && outside(body, GUARDED)) return true;
+  }
+  return false;
+};
+const cpuHolders = [...sources].filter(([file, text]) => !HOLD_OWNERS.has(file) && outside(text, WRAPPER_CALL) && !holdsGuarded(file, text));
+const unstopped = cpuHolders.filter(([file, text]) => !capStopped(text) && !Object.hasOwn(CPU_HOLDERS_UNSTOPPED, file)).map(([file]) => file).sort();
+assert.deepEqual(unstopped, [], `a hold that launches no browser gives the cap a stop of its own (its signal, between(), a teardown, or atCap)\n  ${unstopped.join('\n  ')}`);
+assert.ok(cpuHolders.length >= 8, `the CPU-only holders are found (${cpuHolders.map(([file]) => file).join(', ')})`);
+
+const listed = new Set([...Object.keys(DIRECT_ACQUIRERS), ...Object.keys(DIRECT_ACQUIRER_RECEIPTS)]);
 const direct = [...sources].filter(([file, text]) => acquiresDirectly(file, text)).map(([file]) => file).sort();
 const unlisted = direct.filter((file) => !listed.has(file));
 assert.deepEqual(unlisted, [], `hold the capture lock through tools/capture-hold.mjs withCaptureHold (refresh, cap, yield, signals and teardown in one place), not acquire():\n  ${unlisted.join('\n  ')}`);
 const stale = [...listed].filter((file) => !direct.includes(file));
 assert.deepEqual(stale, [], `no longer a direct acquirer (migrated, moved or gone): drop its row\n  ${stale.join('\n  ')}`);
-const wrapped = [...sources].filter(([file, text]) => file !== 'tools/capture-hold.mjs' && /\b(?:withCaptureHold|runWarmHold)\(/.test(code(text))).length;
-assert.ok(wrapped >= 6, `the wrapper has its users (${wrapped})`);
+// (review 2) every source outside receipts that imports a direct acquirer says what it takes from it
+const importsOf = (file, text) => [...code(text).matchAll(RELATIVE_IMPORT)].map(([, spec]) => join(file, '..', spec).replace(/\\/g, '/'));
+{
+  const acquirer = Object.keys(DIRECT_ACQUIRERS)[0];
+  const spec = acquirer.replace(/^tools\//, './');
+  assert.deepEqual(importsOf('tools/a.mjs', `import { take } from '${spec}';`), [acquirer], 'an import of a direct acquirer');
+  assert.deepEqual(importsOf('tools/a.mjs', `const runner = await import('${spec}');`), [acquirer], 'a dynamic one');
+  assert.deepEqual(importsOf('tools/a.mjs', `// import { take } from '${spec}';`), [], 'a comment');
+}
+const importers = [...sources].filter(([file, text]) => !/\.selftest\.mjs$/.test(file)
+  && importsOf(file, text).some((imported) => Object.hasOwn(DIRECT_ACQUIRERS, imported))).map(([file]) => file).sort();
+assert.deepEqual(importers.filter((file) => !Object.hasOwn(DIRECT_ACQUIRER_IMPORTERS, file)), [],
+  `a tool that imports a direct acquirer may hold through its export, outside every rule here: hold through the wrapper, or list it with what it takes\n  `
+  + importers.filter((file) => !Object.hasOwn(DIRECT_ACQUIRER_IMPORTERS, file)).join('\n  '));
+assert.deepEqual(Object.keys(DIRECT_ACQUIRER_IMPORTERS).filter((file) => !importers.includes(file)), [], 'an importer row that no longer applies: drop it');
+const wrapped = [...sources].filter(([file, text]) => file !== 'tools/capture-hold.mjs' && /\b(?:withCaptureHold|runWarmHold|openCaptureHold)\(/.test(code(text))).length;
+assert.ok(wrapped >= 70, `the wrapper has its users (${wrapped})`);
 
 console.log(`capture-hold-census.selftest: ${sources.size} sources; no retired memory-guard gate; no COT_LANE_HOLD bypass; every browser closes before its lock goes; `
-  + `${wrapped} hold through the wrapper, ${DIRECT_ACQUIRERS.length} tools and ${DIRECT_ACQUIRER_RECEIPTS.length} receipts still acquire directly (listed)`);
+  + `one signal owner per hold; ${cpuHolders.length} CPU-only holders each stop at the cap; ${wrapped} hold through the wrapper, ${Object.keys(DIRECT_ACQUIRERS).length} tools and ${Object.keys(DIRECT_ACQUIRER_RECEIPTS).length} receipts acquire directly (each with its reason, `
+  + `${importers.length} importers with theirs); no held-lock claim trusted`);

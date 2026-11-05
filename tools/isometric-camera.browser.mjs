@@ -6,12 +6,13 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {acquireCaptureLock,refreshCaptureLock,releaseCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/isometric');mkdirSync(out,{recursive:true});
-let server,browser,lease;const errors=[],views=[];
-await acquireCaptureLock(60000);lease=setInterval(refreshCaptureLock,60000);
+let server,browser;const errors=[],views=[];
+hold = await openCaptureHold({ label: 'isometric-camera', timeoutMs: 60000 });
 try {
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5207,strictPort:true,hmr:false,watch:{ignored:['**/*']}}});await server.listen();
  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
@@ -72,4 +73,4 @@ try {
  assert.deepEqual(errors,[]);
  writeFileSync(resolve(out,'report.json'),JSON.stringify({pass:true,views,errors},null,2));
  console.log('Isometric settings, persistence, live battle, four viewports, sniper return and live toggle passed');
-} finally {clearInterval(lease);await browser?.close();await server?.close();releaseCaptureLock();}
+} finally {await browser?.close();await server?.close();await hold?.release();}

@@ -460,6 +460,30 @@ function watchBrowserTree(target, rootPid, guardOptions = {}) {
 
 const guards = new WeakMap();
 
+/**
+ * Stop every guarded browser this process still has open (round 2 U38): each tree killed by its exact pids, as at exit.
+ * The open capture hold's default teardown (tools/capture-hold.mjs openCaptureHold): a one-hold tool's browsers stop
+ * drawing when its hold is stopped past the cap or by a signal, whoever launched them (a probe session, a helper).
+ * Returns the pids signalled (none: nothing of this process draws).
+ */
+export function stopGuardedBrowsers() {
+  const killed = [];
+  for (const guard of [...live]) { guard.stop(); killed.push(...reapTree(guard)); }
+  return killed;
+}
+
+// (round 2 U38) a stopped hold launches nothing new: teardown runs once per hold, so a tool whose per-row loop caught the
+// kill and launched its next browser drew on past the stop (and, once the hold went, unlocked). A hold that is stopped
+// (past the cap's grace, its budget, a signal) refuses this process's launches until it is released; a signal's refusal
+// stays (the process is on its way out).
+const launchRefusals = new Map();
+/** Refuse every guarded launch of this process, naming `reason`, until the returned function lifts this refusal. */
+export function refuseGuardedLaunches(reason) {
+  const key = Symbol('refusal');
+  launchRefusals.set(key, String(reason));
+  return () => { launchRefusals.delete(key); };
+}
+
 /** The guard record of a browser launchGuardedBrowser returned (peaks, tripped), or null. */
 export function browserGuardOf(browser) {
   return guards.get(browser) ?? null;
@@ -475,6 +499,9 @@ export function browserGuardOf(browser) {
  * result back unwatched: the guard only ever samples and kills a process tree this process started.
  */
 export async function launchGuardedBrowser(launcher, options = {}, guard = {}) {
+  if (launchRefusals.size) {
+    throw new Error(`browser launch${guard.label ? ` (${guard.label})` : ''} refused: ${[...launchRefusals.values()].at(-1)}`);
+  }
   const method = guard.method ?? 'launch';
   if (typeof launcher?.[method] !== 'function') throw new TypeError(`launchGuardedBrowser: the launcher has no ${method}()`);
   tripReleaseScope(guard); // a malformed scope fails before a browser starts

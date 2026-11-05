@@ -16,7 +16,8 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { eachBrowserChunk } from './browser-id-chunks.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { CONTIG_CELL_M } from './contig-grid.mjs';
 import { uniqueIds } from './id-list.mjs';
@@ -86,12 +87,12 @@ async function withPage(run, dependencies = {}) {
 }
 
 async function locked(run) {
-  await acquireCaptureLock(60 * 60 * 1000);
-  const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
+  hold = await openCaptureHold({ label: 'contig-phase-audit', timeoutMs: 60 * 60 * 1000 });
+  const refresher = setInterval(() => { hold?.refresh(); }, 60 * 1000);
   refresher.unref();
-  try { return await run(); } finally { clearInterval(refresher); releaseCaptureLock(); }
+  try { return await run(); } finally { clearInterval(refresher); await hold?.release(); }
 }
-process.on('exit', releaseCaptureLock);
+
 
 const fmt = (v) => (v >= 0 ? '+' : '') + v.toFixed(2);
 const cm = (m) => `${Math.round(m * 100)}`;

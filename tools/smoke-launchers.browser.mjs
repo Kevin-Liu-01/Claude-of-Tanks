@@ -5,14 +5,14 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 const out=resolve('.qa-dev/smoke-live');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let server,browser,refresh;
+let hold;let server,browser;
 const report={pass:false,garage:[],battle:null,errors:[]};
 try{
- await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
+ hold = await openCaptureHold({ label: 'smoke-launchers', timeoutMs: 45*60*1000 });
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5218,strictPort:true,hmr:false,watch:{ignored:['**/*']}}});await server.listen();
  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
  const page=await browser.newPage();page.on('pageerror',e=>report.errors.push(e.message));
@@ -46,5 +46,5 @@ try{
  assert.deepEqual(report.errors,[]);report.pass=true;console.log('KF41 live Smoke control launched all 12 canisters');
 }finally{
  writeFileSync(resolve(out,'report.json'),JSON.stringify(report,null,2));
- clearInterval(refresh);await browser?.close();await server?.close();lock.release();
+ await browser?.close();await server?.close();await hold?.release();
 }

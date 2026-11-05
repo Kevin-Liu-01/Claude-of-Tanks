@@ -30,7 +30,9 @@
 //                  typecheck, test, wrangler deploy --tag <sha12> --message "<sha12> <subject>". Each deployed
 //                  Worker's commit is recorded in the release cache (workers.json), so which web release pairs with
 //                  which Workers is on record (2026-11-02 audit S5); a failure part-way names the Workers left on
-//                  another commit.
+//                  another commit, and a Worker that deployed but could not be recorded (the cache lock busy) as live at
+//                  <sha> but unrecorded (round 2 U39), with --record-only=<name>: record that Worker at <sha> without a
+//                  deploy (no worktree, no wrangler), the command that error names.
 //   clean <sha>    remove the build worktree of <sha>.
 //
 // Options: --scope=<team> (env COT_VERCEL_SCOPE; default kl01s-projects), --site=<origin>
@@ -86,7 +88,7 @@ export function parseReleaseArgs(argv, env = process.env) {
   if (!COMMANDS.has(command)) throw new Error(`Usage: node tools/release.mjs <${[...COMMANDS].join('|')}> [<sha>] [options] [--dry-run]`);
   const options = { command, sha: null, dryRun: false, scope: env.COT_VERCEL_SCOPE || RELEASE_DEFAULTS.scope,
     site: RELEASE_DEFAULTS.site, dir: null, title: null, ref: RELEASE_DEFAULTS.ref, to: null, only: null,
-    attempts: 12, intervalMs: 10_000, sweep: false, keep: false, verify: true,
+    attempts: 12, intervalMs: 10_000, sweep: false, keep: false, verify: true, recordOnly: null,
     assetCache: defaultAssetCacheDir(env), carryReleases: ASSET_CARRY_DEFAULTS.releases, carryMaxBytes: ASSET_CARRY_DEFAULTS.maxBytes };
   for (const arg of rest) {
     const [flag, ...parts] = arg.split('=');
@@ -103,6 +105,7 @@ export function parseReleaseArgs(argv, env = process.env) {
     else if (flag === '--ref' && /^[\w./-]+$/.test(value) && command === 'deploy') options.ref = value;
     else if (flag === '--to' && /^[\w.:/-]+$/.test(value) && command === 'rollback') options.to = value;
     else if (flag === '--only' && /^[a-z][\w-]*$/.test(value) && command === 'workers') options.only = value;
+    else if (flag === '--record-only' && /^[a-z][\w-]*$/.test(value) && command === 'workers') options.recordOnly = value;
     else if (flag === '--attempts' && /^[1-9]\d*$/.test(value) && command !== 'rollback') options.attempts = Number(value);
     else if (flag === '--interval' && /^\d+$/.test(value) && command !== 'rollback') options.intervalMs = Number(value) * 1000;
     else if (arg === '--sweep' && command === 'verify') options.sweep = true;
@@ -110,6 +113,7 @@ export function parseReleaseArgs(argv, env = process.env) {
     else if (arg === '--no-verify' && (command === 'deploy' || command === 'record')) options.verify = false;
     else throw new Error(`Unknown or misplaced option for ${command}: ${arg}`);
   }
+  if (options.recordOnly && options.only) throw new Error('--record-only=<name> names its one Worker; drop --only');
   if (NEEDS_SHA.has(command) && !options.sha) throw new Error(`${command} needs the commit to release: node tools/release.mjs ${command} <sha>`);
   if (options.sha && !/^[\w./^~-]+$/.test(options.sha)) throw new Error(`Not a revision: ${options.sha}`);
   return options;
@@ -658,10 +662,24 @@ async function workers(options, { root, runner }) {
   const dir = join(tmpdir(), `cot-workers-${commit.slice(0, 12)}`);
   const available = readdirSync(join(root, 'cloudflare'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   const names = options.only ? [options.only] : available;
-  if (options.only && !available.includes(options.only)) throw new Error(`no Worker cloudflare/${options.only}; expected ${available.join(' or ')}`);
+  const sha12 = commit.slice(0, 12);
+  for (const name of [options.only, options.recordOnly]) {
+    if (name && !available.includes(name)) throw new Error(`no Worker cloudflare/${name}; expected ${available.join(' or ')}`);
+  }
+  if (options.recordOnly) {
+    // a Worker a `workers` run deployed but could not record: on record now, with no worktree and no deploy
+    if (runner.dryRun) runner.note(`record cloudflare/${options.recordOnly} at ${sha12} in ${join(options.assetCache, WORKER_INDEX)} (no deploy)`);
+    else {
+      recordWorkerDeploy({ cacheDir: options.assetCache, name: options.recordOnly, commit });
+      try { runner.note(pairingLine(releasePairing(options.assetCache))); } catch (error) { runner.note(`release pairing unread: ${error.message}`); }
+    }
+    return;
+  }
   if (existsSync(dir)) throw new Error(`${dir} exists; remove it (git worktree remove --force ${dir})`);
   await runner.run(['git', 'worktree', 'add', '--detach', dir, commit], { cwd: root });
-  const sha12 = commit.slice(0, 12), deployed = [];
+  // live: the Workers wrangler deployed at this commit; unrecorded: those of them whose record then failed (round 2 U39: a
+  // live Worker whose record threw, the cache lock busy, was listed as 'not deployed')
+  const deployed = [], unrecorded = [];
   try {
     for (const name of names) {
       const workerDir = join(dir, 'cloudflare', name);
@@ -669,16 +687,24 @@ async function workers(options, { root, runner }) {
       await runner.run([npm, 'run', 'typecheck'], { cwd: workerDir });
       await runner.run([npm, 'test'], { cwd: workerDir });
       await runner.run([npx, ...workerDeployArgs({ commit, subject })], { cwd: workerDir });
+      // the Worker runs this commit from here, whatever the record below does
+      deployed.push(name);
       // the pairing is on record the moment the Worker runs this commit
       if (runner.dryRun) runner.note(`record cloudflare/${name} at ${sha12} in ${join(options.assetCache, WORKER_INDEX)}`);
-      else recordWorkerDeploy({ cacheDir: options.assetCache, name, commit });
-      deployed.push(name);
+      else {
+        try { recordWorkerDeploy({ cacheDir: options.assetCache, name, commit }); } catch (error) {
+          unrecorded.push(name);
+          throw new Error(`cloudflare/${name} is deployed at ${sha12} but not recorded (${error.message}); record it: `
+            + `node tools/release.mjs workers ${sha12} --record-only=${name}`);
+        }
+      }
     }
   } catch (error) {
     const known = runner.dryRun ? {} : (() => { try { return readWorkerDeploys(options.assetCache); } catch { return {}; } })();
     const left = names.filter((name) => !deployed.includes(name))
       .map((name) => `${name} (still ${known[name]?.commit?.slice(0, 12) ?? 'unrecorded'})`);
-    throw new Error(`${error.message}; Workers at ${sha12}: ${deployed.join(', ') || 'none'}; not deployed: ${left.join(', ')}. The Workers `
+    const live = deployed.map((name) => (unrecorded.includes(name) ? `${name} (deployed, not recorded)` : name));
+    throw new Error(`${error.message}; Workers at ${sha12}: ${live.join(', ') || 'none'}; not deployed: ${left.join(', ') || 'none'}. The Workers `
       + `are on different commits until each is deployed: node tools/release.mjs workers ${sha12} --only=<name>`);
   } finally {
     await runner.run(['git', 'worktree', 'remove', '--force', dir], { cwd: root });

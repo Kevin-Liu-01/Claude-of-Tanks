@@ -6,11 +6,11 @@ import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
-import {createCaptureLock} from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 
 const out=resolve('.qa-dev/fonts');mkdirSync(out,{recursive:true});
-const lock=createCaptureLock();let server,browser,refresh;
+let hold;let server,browser;
 let delivery='normal',pending=[],requests=[];
 const reports=[];
 // The UI faces; the metric-matched fallback is a local system face under another name.
@@ -26,7 +26,7 @@ async function renderedFonts(page,selector){
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 try{
-  await lock.acquire();refresh=setInterval(()=>lock.refresh(),30000);
+  hold = await openCaptureHold({ label: 'fonts', timeoutMs: 10 * 60 * 1000 });
   server=await createServer({logLevel:'error',plugins:[{name:'font-delivery-test',configureServer(vite){
     vite.middlewares.use((req,res,next)=>{
       const path=req.url?.split('?')[0];
@@ -98,5 +98,5 @@ try{
 }finally{
   for(const release of pending)release();
   writeFileSync(resolve(out,'report.json'),JSON.stringify(reports,null,2));
-  clearInterval(refresh);await browser?.close();await server?.close();lock.release();
+  await browser?.close();await server?.close();await hold?.release();
 }

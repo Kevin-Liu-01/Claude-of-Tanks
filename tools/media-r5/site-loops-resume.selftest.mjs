@@ -194,9 +194,43 @@ esac
     assert.doesNotMatch(run(id).stdout, /s04-test: formats up to date/, 'a new film is not up to date');
     assert.ok(encodes().includes(`${id}.mp4`), 'its formats are encoded again');
   }
+  // ---- round 2 review (Q20) of round 3: every format counts, and an up-to-date take gives up its master under the flag ----
+  // The formats group counted only the .mp4 and the poster, so a take missing another format stayed "up to date"; and the
+  // early "up to date" skipped --drop-film-masters, so a take whose run stopped between its record and the drop (or ran
+  // without the flag) kept its film master for good.
+  {
+    const id = 's05-test', films = join(renders, 'films', id, 'films');
+    mkdirSync(films, { recursive: true });
+    writeFileSync(join(films, `${id}-master.mov`), 'the master');
+    const first = run(id);
+    assert.equal(first.status, 0, first.stderr);
+    assert.ok(existsSync(join(films, `${id}-master.mov`)), 'no --drop-film-masters: the master stays');
+    // a format gone from the take (removed, or never made): not up to date, and the formats are made again
+    rmSync(out(id, `${id}.webm`));
+    encodes();
+    const missing = run(id);
+    assert.doesNotMatch(missing.stdout, /s05-test: formats up to date/, `a take without its webm is not up to date (${missing.stdout.trim()})`);
+    assert.match(text(id, `${id}.webm`) ?? '', /^complete /, 'the webm is made again');
+    // the 4K the record says this 2160p film made counts too
+    rmSync(out(id, `${id}-4k.mp4`));
+    assert.doesNotMatch(run(id).stdout, /s05-test: formats up to date/, 'nor is one without the 4K its film made');
+    assert.match(text(id, `${id}-4k.mp4`) ?? '', /^complete /);
+    // a format the flags newly ask for (--loop-master's edit master) is owed
+    encodes();
+    assert.doesNotMatch(run(id, null, '--loop-master').stdout, /s05-test: formats up to date/, 'a format the flags newly ask for is owed');
+    assert.ok(encodes().includes(`${id}-loop-master.mov`), 'and made');
+    // an up-to-date take run with --drop-film-masters gives up its master, with no format made again
+    const drop = run(id, null, '--drop-film-masters', '--loop-master');
+    assert.equal(drop.status, 0, drop.stderr);
+    assert.match(drop.stdout, /s05-test: formats up to date; dropping its film master/, drop.stdout);
+    assert.deepEqual(encodes(), [`${id}-proxy.mp4`], 'only the proxy the master leaves behind is encoded');
+    assert.equal(existsSync(join(films, `${id}-master.mov`)), false, 'the master is dropped');
+    assert.match(run(id, null, '--drop-film-masters').stdout, /s05-test: formats up to date/, 'then the take is up to date on its proxy');
+    assert.deepEqual(encodes(), []);
+  }
   const index = JSON.parse(readFileSync(join(deliver, 'deliver-index.json'), 'utf8'));
-  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test', 's03-test', 's04-test'], 'the index lists the whole takes');
-  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master; a run stopped between the poster and the stills delivers the new still next time; each group follows its own input (an unchanged scene rewrite or a new still re-encodes no format, a dropped master\'s take stays current on its proxy)');
+  assert.deepEqual(index.map((row) => row.id), ['s01-test', 's02-test', 's03-test', 's04-test', 's05-test'], 'the index lists the whole takes');
+  console.log('site-loops-resume.selftest: outputs are whole or absent; a stopped encode re-encodes its take; a stopped proxy never costs the master; a run stopped between the poster and the stills delivers the new still next time; each group follows its own input (an unchanged scene rewrite or a new still re-encodes no format, a dropped master\'s take stays current on its proxy), every format counts, and an up-to-date take still gives up its master');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

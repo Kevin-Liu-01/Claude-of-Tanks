@@ -15,7 +15,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { audioSinkOrder, deadline, summarizeAudioSinkExperiment } from './audio-default-sink.fixture.mjs';
@@ -156,8 +156,8 @@ async function runAudioSinkProbe(options) {
       ? 'Fresh browser process/audio service per arm, previous browser fully closed; OS/default-device cache unspecified.'
       : 'Fresh browser context and AudioContext per sample; shared browser/audio service cannot demonstrate cold B startup.',
     browserRuns: [], samples: [], errors: [], cleanupErrors: [], browserClosed: false, serverClosed: false, lockReleased: false };
-  const lock = createCaptureLock();
-  let refresh, held = false, browser, interrupted = null;
+  let hold;
+  let held = false, browser, interrupted = null;
   const active = () => { if (interrupted) throw new Error(`Interrupted by ${interrupted}`); };
   const interrupt = signal => { interrupted ||= signal; if (browser) void browser.close().catch(() => {}); };
   const sigint = () => interrupt('SIGINT'), sigterm = () => interrupt('SIGTERM');
@@ -165,8 +165,7 @@ async function runAudioSinkProbe(options) {
   try {
     // Queue waiting does not consume the per-attempt deadline. On interruption
     // the existing non-abortable FIFO producer drains before this owner exits.
-    await lock.acquire(45 * 60_000); held = true; active();
-    refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
+    hold = await openCaptureHold({ label: 'audio-default-sink-probe', timeoutMs: 45 * 60_000, signals: [] /* its own SIGINT/SIGTERM handler stops the run and writes the report */ }); held = true; active();
     await runAudioBrowserGroups({ blocks, freshBrowserPerArm }, async (scenarios, browserRunIndex) => {
       active();
       let closing;
@@ -238,8 +237,7 @@ async function runAudioSinkProbe(options) {
     assert.equal(acquisitionHash(), report.acquisitionHash, 'Acquisition source changed during measurement');
   } catch (error) { report.errors.push(String(error)); }
   finally {
-    clearInterval(refresh);
-    if (held) { lock.release(); report.lockReleased = true; }
+    if (held) { await hold?.release(); report.lockReleased = true; }
     process.removeListener('SIGINT', sigint); process.removeListener('SIGTERM', sigterm);
   }
   report.browserClosed = report.browserRuns.length > 0 && report.browserRuns.every(run => run.browserClosed && run.processExited);

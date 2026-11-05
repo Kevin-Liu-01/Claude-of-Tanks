@@ -9,11 +9,8 @@ import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  acquireCaptureLock,
-  refreshCaptureLock,
-  releaseCaptureLock,
-} from '../capture-lock.mjs';
+import { openCaptureHold } from '../capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { BOOT_LOADED_EXPRESSION } from '../game-readiness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -35,9 +32,9 @@ const productShots = config.shots.filter((shot) =>
     && (!onlyIds.size || onlyIds.has(shot.id)));
 mkdirSync(outDir, { recursive: true });
 
-await acquireCaptureLock(30 * 60 * 1000);
-process.on('exit', releaseCaptureLock);
-const lockRefresher = setInterval(() => refreshCaptureLock(), 60 * 1000);
+hold = await openCaptureHold({ label: 'capture-showcase-r2-ui', timeoutMs: 30 * 60 * 1000 });
+
+const lockRefresher = setInterval(() => hold?.refresh(), 60 * 1000);
 lockRefresher.unref();
 
 const port = 7800 + Math.floor(Math.random() * 400);
@@ -179,5 +176,5 @@ try {
   if (browser) await browser.close();
   await server.close();
   clearInterval(lockRefresher);
-  releaseCaptureLock();
+  await hold?.release();
 }

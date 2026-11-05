@@ -356,7 +356,10 @@ async function main(opt) {
           // resumable by (build, map): the cold and warm runs share one fresh profile, so a unit runs whole or not at all
           const fileOf = (run) => path.join(out, `${mapId}-${labels[i]}-${run}-r${rep}${opt.profile ? '-prof' : ''}.json`);
           if (runs.every((run) => existsSync(fileOf(run)))) continue;
-          if (Date.now() - startedAt + unitMs > budgetMs) { log(`budget: ${mapId} ${labels[i]} left for the next run`); left++; continue; }
+          // its own budget, or the hold's stop (the lock's cap with a waiter, a signal)
+          if (locks.signal.aborted || Date.now() - startedAt + unitMs > budgetMs) {
+            log(`${locks.signal.aborted ? 'the capture hold was stopped' : 'budget'}: ${mapId} ${labels[i]} left for the next run`); left++; continue;
+          }
           const dir = mkdtempSync(path.join(os.tmpdir(), 'ttb-profile-'));
           const launch = () => launchGuardedBrowser(puppeteer, { headless: 'new', userDataDir: dir, protocolTimeout: 600000,
             args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080', ...extraBrowserArgs] });
@@ -396,7 +399,7 @@ async function main(opt) {
     if (left) process.exitCode = 3;
   } finally {
     if (refresh) clearInterval(refresh);
-    locks?.release();
+    await locks?.release();
     await Promise.race([Promise.all(servers.map((s) => s.close().catch(() => {}))), sleep(3000)]);
   }
 }

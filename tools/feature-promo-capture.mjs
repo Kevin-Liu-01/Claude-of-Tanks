@@ -1,12 +1,13 @@
 // Recovered from the owner-preserved Studio packet da7e96085; current TypeScript
 // runtime and shared FIFO own execution. Capture/encode must not overlap probes.
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
+let hold; // the capture hold (tools/capture-hold.mjs openCaptureHold: refresh, cap, signals, release at exit)
 import { BOOT_LOADED_EXPRESSION, readinessExpression, waitForBootLoaded } from './game-readiness.mjs';
-await acquireCaptureLock(45 * 60 * 1000);
-process.once('exit', releaseCaptureLock);
-const captureLeaseRefresh = setInterval(refreshCaptureLock, 30000);
-captureLeaseRefresh.unref();
+hold = await openCaptureHold({ label: 'feature-promo-capture', timeoutMs: 45 * 60 * 1000 });
+
+
+
 
 // Record the live application surfaces used by the 35-second feature promo.
 //
@@ -58,7 +59,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 function normalizeContainer(path) {
   const remuxed = `${path}.remux.webm`;
-  refreshCaptureLock();
+  hold?.refresh();
   const result = spawnSync('ffmpeg', [
     '-hide_banner', '-loglevel', 'error', '-y', '-i', path,
     '-map', '0:v:0', '-c', 'copy', remuxed,

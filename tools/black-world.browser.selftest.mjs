@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { nanSceneFault, sunScan } from './black-world-page-probes.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
@@ -76,12 +76,11 @@ const sceneTargetStatus = () => {
   return out;
 };
 
-const lock = createCaptureLock();
+let hold;
 const report = { errors: [], checks: {} };
-let server, browser, refresh;
+let server, browser;
 try {
-  await lock.acquire(45 * 60_000);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'black-world.browser.selftest', timeoutMs: 45 * 60_000 });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 60_000, protocolTimeout: 300_000,
@@ -274,7 +273,7 @@ try {
     try { await bounded(server.close(), 10_000, 'server close'); }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh); lock.release();
+  await hold?.release();
 }
 report.ok = report.errors.length === 0;
 console.log(JSON.stringify(report, null, 2));

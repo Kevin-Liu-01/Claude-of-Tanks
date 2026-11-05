@@ -15,7 +15,7 @@ import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
 import { launchGuardedBrowser } from './browser-launch.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 import { BOOT_LOADED_EXPRESSION, readinessExpression } from './game-readiness.mjs';
 
@@ -26,13 +26,12 @@ const JSON_OUT = arg('json', null);
 const VIEW = { width: 1280, height: 720 };
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-const lock = createCaptureLock();
+let hold;
 const report = { map: MAP, spec: SPEC, errors: [] };
-let server, browser, refresh;
+let server, browser;
 try {
   // counts programs, times nothing: a render hold
-  await lock.acquire(45 * 60_000, { place: 'destruction-first-use', lockClass: 'render' });
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
+  hold = await openCaptureHold({ label: 'destruction-first-use.browser.selftest', timeoutMs: 45 * 60_000, place: 'destruction-first-use', lockClass: 'render' });
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 60_000, protocolTimeout: 300_000,
@@ -173,8 +172,7 @@ try {
   console.log('destruction-first-use.browser.selftest: the first destruction linked no FX program after the reveal PASS');
 } finally {
   if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(report, null, 2));
-  clearInterval(refresh);
   await browser?.close().catch(() => {});
   await server?.close().catch(() => {});
-  try { lock.release(); } catch { /* the hold is reaped once this process exits */ }
+  try { await hold?.release(); } catch { /* the hold is reaped once this process exits */ }
 }

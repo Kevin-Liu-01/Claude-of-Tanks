@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
 
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
@@ -77,8 +77,8 @@ const report = { protocol: 'articulated-shadow-batch-native-v3', ok: false, sour
     'Four real light cameras and full native frustum traversal; no fake culling, quality changes, timing or FPS claim.',
     'WEBGL_multi_draw availability is observed. Its absence requires exact original-count fallback, not invented savings.',
     'Queued signals use ordinary OS termination; dead FIFO tickets are reaped by the existing shared owner.'] };
-const lock = createCaptureLock();
-let server, browser, page, refresh, directory, admitted = false, closePromise = null;
+let hold;
+let server, browser, page, directory, admitted = false, closePromise = null;
 async function closeBrowser() {
   if (!browser) return;
   if (closePromise) return closePromise;
@@ -104,9 +104,8 @@ const onInt = () => interrupt('SIGINT'), onTerm = () => interrupt('SIGTERM');
 try {
   directory = outputDirectory(process.argv.slice(2)); report.source = sourceReceipt();
   if (directory) writeFileSync(join(directory, 'admission.json'), JSON.stringify({ source: report.source }), { flag: 'wx' });
-  await lock.acquire(45 * 60_000); admitted = true;
+  hold = await openCaptureHold({ label: 'articulated-shadow-batch.browser.selftest', timeoutMs: 45 * 60_000, signals: [] /* its own signal handler stops the run */ }); admitted = true;
   process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
-  refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
   server = await createServer({ root: rootDir, logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     plugins: [{ name: 'articulated-shadow-native-fixture', enforce: 'pre', configureServer(instance) {
@@ -163,8 +162,7 @@ finally {
     try { await bounded(server.close(), 10_000, 'owned Vite close'); report.serverClosed = true; }
     catch (error) { report.errors.push(String(error)); }
   }
-  clearInterval(refresh);
-  if (admitted && (!browser || report.browserClosed)) { lock.release(); report.lockReleased = true; }
+  if (admitted && (!browser || report.browserClosed)) { await hold?.release(); report.lockReleased = true; }
   process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
 }
 report.ok = report.errors.length === 0 && report.fixture?.ok === true && report.fixture.disposed

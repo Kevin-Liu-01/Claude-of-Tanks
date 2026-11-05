@@ -14,7 +14,9 @@ import puppeteer from 'puppeteer';
  * call. The hold is withCaptureHold's (2026-11-02 audit S4, round 2: this wrapper acquired, refreshed and released the lock
  * itself, with no signal handling): refresh, signals (the browser closes, the lock goes, one exit) and the release after
  * the browser. `run` gets no checkpoint and is one whole audit pass, so past the cap it is logged, not stopped (atCap
- * 'keep', unless `capture.atCap` says 'stop'). */
+ * 'keep', unless `capture.atCap` says 'stop'). A signal (or a stop past its grace) tears the whole run down in the hold:
+ * the browser, then the server and this run's optimizer cache, since the signal owner exits after the release and this
+ * function's finally never runs (round 2 U39: a SIGTERM left the Vite server and the cot-release-vite-* directory behind). */
 export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, run, dependencies = {}) {
   const {
     mkdtempSync = fs.mkdtempSync,
@@ -34,6 +36,20 @@ export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, r
     if (!open) return;
     try { await open.close(); } catch (error) { failures.push({ resource: 'browser', error }); }
   };
+  // each closes once, whoever asks first (the finally, or the hold's teardown on a signal)
+  const closeServer = async () => { const open = server; server = null; if (open) await open.close(); };
+  const removeOwnCache = () => { const dir = cacheDir; cacheDir = null; if (dir) removeCache(dir, { recursive:true, force:true }); };
+  // the hold's teardown on a signal or a stop past its grace: the browser first (nothing draws), then the server and the
+  // cache; the process exits after the release, so a cleanup error is reported here
+  const tearDownAll = async () => {
+    await closeBrowser();
+    for (const [resource, close] of [['server', closeServer], ['cache', removeOwnCache]]) {
+      try { await close(); } catch (error) { failures.push({ resource, error }); }
+    }
+    for (const { resource, error } of failures.splice(0)) {
+      try { logCleanupError(resource, error); } catch { /* reporting must not stop the teardown */ }
+    }
+  };
   const open = async () => {
     cacheDir = mkdtempSync(path.join(temporaryDirectory(), 'cot-release-vite-'));
     server = await createViteServer({
@@ -47,11 +63,12 @@ export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, r
   };
   try {
     if (capture) {
-      // nothing draws once the browser is closed: the hold ends there (its teardown), before the server and cache
+      // nothing draws once the browser is closed: the hold ends there (beforeRelease), before the server and cache; a
+      // signal or a stop past its grace tears down all three before the release (the teardown)
       return await withCaptureHold(() => run({ server, browser }), {
         label: capture.label ?? 'isolated-capture', lock: capture.lock, timeoutMs: capture.waitMs ?? 4 * 3600 * 1000,
         place: capture.place ?? null, prepare: open, atCap: capture.atCap ?? 'keep', log: capture.log ?? (() => {}),
-        teardown: closeBrowser,
+        beforeRelease: closeBrowser, teardown: tearDownAll,
       });
     }
     await open();
@@ -63,8 +80,8 @@ export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, r
     for (const [resource, close] of [
       // a hold's browser is closed by its teardown, before the release; this closes one a failed wait left open
       ['browser', async () => { await closeBrowser(); }],
-      ['server', async () => { if (server) await server.close(); }],
-      ['cache', () => { if (cacheDir) removeCache(cacheDir, { recursive:true, force:true }); }],
+      ['server', closeServer],
+      ['cache', removeOwnCache],
     ]) {
       try { await close(); }
       catch (error) { failures.push({ resource, error }); }

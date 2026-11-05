@@ -14,7 +14,7 @@ import { resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
-import { createCaptureLock } from './capture-lock.mjs';
+import { openCaptureHold } from './capture-hold.mjs';
 import { readinessExpression } from './game-readiness.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
@@ -27,7 +27,7 @@ const cycles = Number(arg('cycles', 2));
 const port = Number(arg('port', 5294));
 const out = resolve(root, '.qa-dev', checkOnly ? 'solo-kernels-check.json' : `solo-kernels-${mapId}.json`);
 
-const lock = createCaptureLock();
+let hold;
 const vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-kernels-vite-cache'), logLevel: 'error',
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 await vite.listen();
@@ -73,7 +73,7 @@ function inclusive(profile, names) {
 
 const report = { mapId, seconds, cycles, check: null, runs: [], maps: [] };
 try {
-  await lock.acquire(90 * 60 * 1000);
+  hold = await openCaptureHold({ label: 'solo-kernels-probe', timeoutMs: 90 * 60 * 1000 });
   if (checkOnly) {
     // the default flip's gate: every battlefield, the TypeScript driving a battle and the kernels answering beside it
     const { MAP_IDS } = await import('../src/world/maps/index.ts');
@@ -137,5 +137,5 @@ try {
   // (2026-11-02 audit S4) the browser closes before the lock goes: the next holder's GPU work never overlaps this Chrome
   await browser.close();
   await vite.close();
-  lock.release();
+  await hold?.release();
 }
