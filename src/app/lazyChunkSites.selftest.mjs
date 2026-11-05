@@ -102,6 +102,15 @@ const SITES = [
   ['src/engine/post.ts', ["createLazyChunk((): Promise<void> => import('./gpuFrameTimer.ts')"], [/gpuFrameTimerRequested = true;\s*import\(/]],
   ['src/presentation/notFound.ts', ['importWhenOnline(', 'markLoadFailed([field])'], [/\bsearch\s*\?\?=/]],
   ['src/vehicles/wreckTurretDriverLoader.ts', ['createLazyChunk(() => importer()'], [/\bloading\s*=\s*importer\(/]],
+  // (round 2 review) the two kit facades the first pass left as memos: the custom camouflage studio, preloaded on every
+  // pointer over or focus into its swatch, is an opener's chunk (a failure kept; the intent marks the swatch, never asks
+  // offline); the settings panel, which every battle entry awaits, is a default-policy chunk (an opener's kept failure
+  // would fail every later battle), and the gear keeps the kit's mark and reload for its own press
+  ['src/ui/customCamoStudioAccess.ts', ['createLazyChunk(load, { opener: true })'], [/\bpending\b/]],
+  ['src/ui/garage.ts', ['if (customCamoStudioFailed || customCamoStudioAccess?.peek() || navigator.onLine === false) return;',
+    "markLoadFailed([makeOwnOption()], t('garage.camo.customStudioRetryTitle'));"], [/customCamoStudioAccess\?\.preload\(\)\.catch\(\(\) => \{\s*\}\)/]],
+  ['src/ui/settingsAccess.ts', ['const chunk = createLazyChunk(() => load().then(', 'const preload = (): Promise<SettingsRuntime> => chunk.load();'],
+    [/\bpending\b/, /\bopener:\s*true\b/]],
 ];
 const offenders = [];
 for (const [file, present, absent] of SITES) {
@@ -144,10 +153,9 @@ const KNOWN = new Set([
   // and auto-aim chunks; the Studio's whole fleet, every group a fleetFactory chunk; the Garage's fleet takes, its module
   // fleetTakesChunk and its index a fetch);
   'src/game/mobileBattleInputAccess.ts pending', 'src/game/studio.ts fleetReady', 'src/ui/garage.ts fleetRequest',
-  // a kit opener: its trigger marks a failed chunk and its next press reloads (components/loadFailure.ts pressFailed, before
-  // the facade is asked), so the facade forgets only a panel that threw for another reason (the settings panel, the
-  // custom camouflage studio); the Studio's module memo over its opener chunk (main.ts studioModule, opener: true);
-  'src/ui/settingsAccess.ts pending', 'src/ui/customCamoStudioAccess.ts pending', 'src/game/studioAccess.ts modulePromise',
+  // the Studio's module memo over its opener chunk (main.ts studioModule, opener: true, which keeps any failure, so the
+  // memo's clear only reaches that kept failure: the Studio's links are marked and their next press reloads);
+  'src/game/studioAccess.ts modulePromise',
   // a fetch of data, which may be asked again (components/loadFailure.ts isChunkFailure): the prop model archive, the fleet
   // takes index, the ICE configuration; and a warm task, not a load (the Studio effects' warm)
   'src/world/propsModelStore.ts loadPromise', 'src/ui/fleetTakes.ts request', 'src/mp/transport/iceConfig.ts inFlight',

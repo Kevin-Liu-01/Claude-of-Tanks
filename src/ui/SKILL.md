@@ -99,9 +99,12 @@ or through `app/lazyRuntimeOwner.ts` (the access facades' owner of a module and
 the runtime made from it); a page that does not boot the policy's chunk (the
 docs, the 404 page) takes the kit's opener rule through `importWhenOnline`. The
 memos that differ are named, each with its reason, in `lazyChunkSites`' KNOWN
-list (an initialization or a join over loads the policy holds, a kit opener
-whose press reloads, a stylesheet alone, a data fetch, the audio mixer's
-chunk), and the selftest fails a new hand-made memo, facade or latch. A failed
+list (an initialization or a join over loads the policy holds, the Studio's
+module memo over its opener chunk, a stylesheet alone, a data fetch, the audio
+mixer's chunk), and the selftest fails a new hand-made memo, facade or latch.
+A kit facade is a chunk too: the custom camouflage studio's is an opener's
+(its intent preload marks the swatch and never asks offline), the settings
+panel's is a default-policy chunk because every battle entry awaits it. A failed
 stylesheet (in any part of the load: a load of several parts settles them with
 `importAll`), a removed chunk (a hashed chunk that answers 404, which also shows
 the watchdog's reload action), or any failure of an opener's chunk
