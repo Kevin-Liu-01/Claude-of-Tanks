@@ -151,8 +151,11 @@ const AUTHORED_PAINT_IDS_AFTER_266 = Object.freeze(['paint_leo2a7dk', 'paint_cen
   'paint_bmpt_terminator'] as const);
 /** Release 269: the Australia line's disruptive three-tone (australiaSpecs.ts): tan under olive and black, on the Leopard AS1,
  * the M113AS4, both Abrams and the Redback; then the M113A1s' RAAC olive drab under field disruption, a coat of its own on
- * each (owner 2026-11-03: no plain coats). Appended after 267's saved catalog indices. */
-const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv'] as const);
+ * each (owner 2026-11-03: no plain coats); then the Tunguska-M's 2008 Moscow parade three-tone and the Pantsir-S1's
+ * tri-colour blotch (gm352AirDefenseSpecs.ts; owner 2026-11-05: "tunguska and pantsir need camos"). Appended after 267's
+ * saved catalog indices. */
+const AUTHORED_PAINT_IDS_AFTER_268 = Object.freeze(['paint_leopard_as1', 'paint_m113a1_fsv', 'paint_m113a1_mrv',
+  'paint_tunguska_m', 'paint_pantsir_s1'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_264[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_265[number] | typeof AUTHORED_PAINT_IDS_AFTER_266[number]
@@ -938,12 +941,13 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_tk_x: 'paint_type10',
   // release 267: the original BMPT Terminator in the Engineering Technologies 2012 vehicle's three-tone desert
   bmpt_terminator: 'paint_bmpt_terminator',
-  // release 268: the twin-cannon air defence in existing coats (no new paint; saved catalog indices hold): the Russian pair
-  // in Russia's plain service green (the photographs' solid coat), the PGZ-95 in the PLA green-and-sand organic coat (the
-  // Type 59's Signature recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature,
-  // the ZTZ-20's stock; the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5.
-  tunguska_m: 'national_ru',
-  pantsir_s1: 'national_ru',
+  // release 268: the twin-cannon air defence: the PGZ-95 in the PLA green-and-sand organic coat (the Type 59's Signature
+  // recipe, the museum vehicle's), the PGZ-09 in the PLA digital woodland (the ZTZ-100's Signature, the ZTZ-20's stock;
+  // the 2017 parade photographs). The Gepard 1A2 wears Germany's Factory coat with the Leopard 1A5. Release 269 (owner
+  // 2026-11-05: "tunguska and pantsir need camos"): the Russian pair leave the plain service green, each in a coat of its
+  // own: the Tunguska-M the 2008 Moscow parade's grey-buff and black bands, the Pantsir-S1 a tri-colour blotch.
+  tunguska_m: 'paint_tunguska_m',
+  pantsir_s1: 'paint_pantsir_s1',
   pgz95: 'sig_type59',
   pgz09: 'sig_ztz100_x',
   // release 269: the second air-defence round in existing coats (no new paint; saved catalog indices hold): both Marksmen
