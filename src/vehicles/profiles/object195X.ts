@@ -9,13 +9,14 @@
 // Kevin B. Liu (NOTICE.md); sources in docs/references/photos/russia-152-20261104.json.
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { addHullTub, addSkirtPanels, add30mmCannon, sideSolid } from './russia152Kit.ts';
+import { addHullTub, add30mmCannon, sideSolid } from './russia152Kit.ts';
+import { slatPanel } from './leopard2A4KitParts.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { OBJECT195_FRAME as F } from '../russia152Frames.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-const { box, cylY, cylZ, torus } = KIT;
+const { box, cylX, cylY, cylZ, torus } = KIT;
 const ty = (worldY: number) => worldY - F.ringY;
 const tz = (worldZ: number) => worldZ - F.ringZ;
 
@@ -76,6 +77,100 @@ function addHull(P: TankBuilderPort): void {
   P.decal('hull', 'number', P.spec.visual.number || '', .32, [-1.806, 1.22, -1.20], -Math.PI / 2);
 }
 
+/** The hull's kit (owner 2026-11-05, "make the hulls much better"; the owner's renders): the raised armour module on
+ * the fore glacis with its seams and lifting eyes, the armoured headlight housings at the bow's corners, the bars across
+ * the lower nose plate, grab rails along the glacis' edges, the louvred exhaust on the left flank, the unditching log and
+ * the stowage boxes on the stern. Hull frame. */
+function addHullKit(P: TankBuilderPort): void {
+  // the fore glacis module: a plate laid on the glacis from ahead of the periscopes to the nose's edge, its three panels'
+  // seams, its chamfered lip and two lifting eyes
+  const z0 = 2.56, z1 = 3.58, zc = (z0 + z1) / 2, yc = glacisY(zc) + .045, len = Math.hypot(z1 - z0, glacisY(z0) - glacisY(z1));
+  P.add('hull', box(2.36, .08, len), 0, yc, zc, GLACIS_RAKE, 0, 0);
+  P.add('hull', box(2.30, .05, .10), 0, glacisY(z1) + .03, z1 + .02, GLACIS_RAKE + .55, 0, 0);
+  for (const x of [-.40, .40]) P.addEquipment('hullDark', box(.014, .012, len - .04), x, yc + .042, zc, GLACIS_RAKE, 0, 0);
+  for (const x of [-.80, .80]) P.addEquipment('hullDetail', KIT.torus(.05, .013, 10, 5), x, glacisY(2.80) + .11, 2.80, GLACIS_RAKE, 0, 0);
+  // the armoured headlight housings: a box at each corner of the bow, the lamp in its hood and the guard's bars
+  for (const s of [-1, 1]) {
+    const x = s * 1.32, z = 3.38, y = glacisY(z) + .10;
+    P.addEquipment('hullDetail', box(.30, .18, .26), x, y, z);
+    P.addEquipment('hullDark', cylZ(.075, .03, 16), x, y + .01, z + .135);
+    for (const dx of [-.10, .10]) P.addEquipment('hullDetail', box(.018, .18, .018), x + dx, y + .02, z + .19);
+    P.addEquipment('hullDetail', box(.24, .018, .018), x, y + .11, z + .19);
+  }
+  // the bars across the lower nose plate (the renders' slatted bow)
+  for (const dy of [-.08, 0, .08]) P.addEquipment('hullDetail', box(1.90, .035, .05), 0, .84 + dy, 3.96 - dy * .45, -.45, 0, 0);
+  // grab rails along the glacis' edges, each a bar on two stand-offs
+  for (const s of [-1, 1]) {
+    for (const z of [1.90, 2.40]) P.addEquipment('hullDetail', box(.02, .06, .02), s * 1.22, glacisY(z) + .03, z, GLACIS_RAKE, 0, 0);
+    P.addEquipment('hullDetail', box(.022, .022, .54), s * 1.22, glacisY(2.15) + .06, 2.15, GLACIS_RAKE, 0, 0);
+  }
+  // the louvred exhaust on the left flank over the engine (the T-90's side, the photographs' grille)
+  P.addEquipment('hullDark', box(.03, .30, .80), 1.705, 1.40, -2.55);
+  for (let k = 0; k < 6; k++) P.addEquipment('hullDetail', box(.05, .03, .78), 1.715, 1.28 + k * .05, -2.55, 0, 0, .35);
+  // the unditching log across the stern and the stowage boxes either side of it
+  const log = FITTINGS.unditchingLog({ mats: P.mats, len: 2.30, r: .13, straps: 2, seed: 195 });
+  log.position.set(0, R_STERN + .16, -3.80);
+  P.hullG.add(log);
+  for (const s of [-1, 1]) {
+    P.addEquipment('hullDetail', box(.60, .34, .30), s * 1.15, R_STERN + .15, -3.66);
+    P.addEquipment('hullDark', box(.56, .015, .015), s * 1.15, R_STERN + .25, -3.505);
+  }
+}
+
+/** The stern deck's height at the log and boxes (the tub's station at z -3.80). */
+const R_STERN = F.roofY - .08;
+
+/** The hull side's top line (the tub's stations: the stern's steps, the flat roof, the glacis down to the nose). */
+const SIDE_TOP: readonly (readonly [number, number])[] = [[-3.95, F.roofY - .18], [-3.80, F.roofY - .08], [-3.45, F.roofY - .04],
+  [-2.90, F.roofY], [GLACIS_Z0, F.roofY], [3.05, glacisY(3.05)], [3.42, glacisY(3.42)], [3.62, glacisY(3.62)]];
+/** The skirts' foot: level over the wheels, rising over the sprocket and the idler. */
+const SKIRT_FOOT: readonly (readonly [number, number])[] = [[-3.86, .90], [-3.30, .70], [-3.10, .68], [3.10, .68], [3.62, .98]];
+function along(line: readonly (readonly [number, number])[], z: number): number {
+  for (let i = 1; i < line.length; i++) {
+    const [z0, y0] = line[i - 1], [z1, y1] = line[i];
+    if (z <= z1 || i === line.length - 1) return y0 + (y1 - y0) * Math.min(1, Math.max(0, (z - z0) / (z1 - z0)));
+  }
+  return line[0][1];
+}
+const skirtTop = (z: number) => along(SIDE_TOP, z) - .02;
+
+/** The side skirts (owner 2026-11-05, "properly match sideskirts to hull side profiles"): one plate a side whose top edge
+ * runs 2 cm under the hull side's own top line (the stern's steps, the roof, the glacis down to the nose) and whose foot
+ * rises over the sprocket and the idler; panel seams, recessed handles, a top lip and bolt rows along it; over the crew
+ * capsule the bolted armour modules (the owner's renders), their tops following the same line; a rubber strip along the
+ * foot. */
+function addSkirts(P: TankBuilderPort): void {
+  // the plate 4 cm thick, its modules 4 cm proud of it: inside the packet's 3.59 m over the skirts
+  const X0 = 1.715, X1 = 1.755;
+  const zs = [...new Set([-3.86, -3.80, -3.45, -3.30, -3.10, -2.90, GLACIS_Z0, 2.0, 2.5, 3.05, 3.10, 3.42, 3.62])].sort((p, q) => p - q);
+  const plate = zs.map((z): SolidSection => ({ z, ring: [[X0, along(SKIRT_FOOT, z)], [X1, along(SKIRT_FOOT, z)], [X1, skirtTop(z)], [X0, skirtTop(z)]] }));
+  const seams = [-3.10, -2.067, -1.033, 0, 1.043, 2.07, 3.10];
+  for (const s of [-1, 1]) {
+    P.add('hull', sideSolid(plate, s));
+    for (const z of seams) P.addEquipment('hullDark', box(.012, skirtTop(z) - along(SKIRT_FOOT, z) - .04, .016), s * (X1 + .006), (skirtTop(z) + along(SKIRT_FOOT, z)) / 2, z);
+    // the top lip, laid along the line in its straight runs
+    for (const [z0, z1] of [[-3.80, -3.45], [-3.45, -2.90], [-2.90, GLACIS_Z0], [GLACIS_Z0, 3.05], [3.05, 3.42]] as const) {
+      const y0 = skirtTop(z0) - .04, y1 = skirtTop(z1) - .04;
+      P.addEquipment('hullDetail', box(.016, .022, Math.hypot(z1 - z0, y1 - y0) - .04), s * (X1 + .008), (y0 + y1) / 2, (z0 + z1) / 2, Math.atan2(y0 - y1, z1 - z0), 0, 0);
+    }
+    // the plain panels' recessed handles and bolt rows
+    for (let i = 0; i < 4; i++) {
+      const zc = -3.10 + 1.033 * (i + .5);
+      P.addEquipment('hullDark', box(.012, .05, .16), s * (X1 + .004), .86, zc);
+      for (let k = 0; k < 5; k++) P.addEquipment('hullDetail', cylX(.02, .02, 8), s * (X1 + .01), .76, zc - .36 + k * .18);
+    }
+    // the armour modules over the crew capsule: six thick segments, each a sloped-top block to the line, its bolts below it
+    for (let k = 0; k < 6; k++) {
+      const za = 1.06 + k * .34, zb = za + .31, foot = .73;
+      P.add('hull', sideSolid([za, zb].map((z): SolidSection => ({ z, ring: [[X1, foot], [X1 + .04, foot], [X1 + .04, skirtTop(z) - .07], [X1, skirtTop(z) - .07]] })), s));
+      const zc = (za + zb) / 2, top = skirtTop(zb) - .07;
+      for (let y = .80; y < top - .08; y += .20) for (const dz of [-.09, .09]) P.addEquipment('hullDetail', cylX(.024, .016, 8), s * (X1 + .046), y, zc + dz);
+      if (k % 3 === 1) P.addEquipment('hullDetail', KIT.torus(.04, .011, 10, 5), s * (X1 + .02), top + .03, zc, 0, 0, Math.PI / 2);
+    }
+    P.addEquipment('hullRubber', box(.02, .12, 6.20), s * (X0 + .01), .63, 0);
+  }
+}
+
 function addRunningGear(P: TankBuilderPort): void {
   // seven T-90-type road wheels a side (btvt: «катки аналогичны применяемым на танке Т-90»), torsion bars, the
   // sprocket aft and the idler forward; the T-90's own wheel, shoe and roller measures (profiles/t90AwX.ts)
@@ -88,91 +183,122 @@ function addRunningGear(P: TankBuilderPort): void {
     arms: true, coveredTop: true, paintedEnds: true, sprocketDepthScale: .82, idlerDepthScale: .82, linkPitchM: .138,
     trackShoeDimensions: { padHeight: .036, grouserHeight: .010, webHeight: .018, hornHeight: .040, pinRadius: .009, pinCentreY: 0 },
   });
-  // the flat skirt panels with recessed handles, the stern's last panel stepped down (Gur Khan photograph)
-  addSkirtPanels(P, { x: 1.755, z0: -3.10, z1: 3.10, y0: .68, y1: F.roofY - .02, n: 6, th: .05 });
-  addSkirtPanels(P, { x: 1.755, z0: -3.86, z1: -3.10, y0: .86, y1: F.roofY - .10, n: 1, th: .05 });
-  // the skirts' angled front panel down to the nose (both photographs)
-  for (const s of [-1, 1]) {
-    P.add('hull', sideSolid([
-      { z: 3.10, ring: [[1.73, .68], [1.78, .68], [1.78, F.roofY - .02], [1.73, F.roofY - .02]] },
-      { z: 3.62, ring: [[1.73, .98], [1.78, .98], [1.78, glacisY(3.62) + .02], [1.73, glacisY(3.62) + .02]] },
-    ], s));
+  addSkirts(P);
+  // a slat cage across the stern plate over the engine's back, on posts from the plate
+  for (let k = 0; k < 5; k++) P.addEquipment('hullDetail', box(2.70, .03, .016), 0, .86 + k * .13, -4.10);
+  for (const x of [-1.30, -.45, .45, 1.30]) {
+    P.addEquipment('hullDetail', box(.03, .60, .03), x, 1.12, -4.10);
+    for (const y of [.90, 1.34]) P.addEquipment('hullDark', box(.025, .025, .14), x, y, -4.03);
   }
 }
 
-/** The unmanned module (round 2, the critics: narrow and tall, the gun high, its face crowded): the ring collar, the
- * square body, the gun slot's lintel over the round mantlet, the stacked sight boxes, the square sight tower on its roof,
- * the search radar's boxes and the Shtandart's domes and launchers, and the 2A42 in its pod on the roof's left. */
+/** The module's turntable (owner 2026-11-05: "the object 195 should also be on a rotating disc thing"; the second
+ * prototype at Donguz and the owner's renders): a wide armoured disc on the ring, wider than the module, its chamfered rim
+ * ringed with the Shtandart's launcher tubes round the front and both sides, turning with the module. */
+function addTurntable(P: TankBuilderPort): void {
+  P.add('turret', KIT.lathe([[0, 0], [1.30, 0], [1.34, .04], [1.34, .13], [1.27, .20], [1.10, .22], [0, .22]], 56));
+  P.addEquipment('turretDark', torus(1.335, .012, 56, 4), 0, .085, 0);
+  // the launcher tubes: one every 15 degrees from 22 to 128 degrees either side of the gun, laid radially on the rim,
+  // raised 12 degrees, each in a cradle block on the disc
+  for (const s of [-1, 1]) for (let deg = 22; deg <= 128; deg += 15) {
+    const a = s * deg * Math.PI / 180, x = Math.sin(a), z = Math.cos(a);
+    P.addEquipment('turretDetail', box(.20, .12, .16), x * 1.20, .28, z * 1.20, 0, a, 0);
+    P.addEquipment('turretDetail', cylZ(.078, .28, 14), x * 1.30, .32, z * 1.30, -.21, a, 0);
+    P.addEquipment('turretDark', cylZ(.064, .012, 14), x * 1.44, .35, z * 1.44, -.21, a, 0);
+  }
+}
+
+/** The unmanned module on its turntable (owner 2026-11-05, "the object 195 ... turrets look terrible"; the owner's
+ * renders and the Donguz prototype): a low, wide body over the autoloader's breech run, faceted cheeks either side of
+ * the gun's cradle, a long wedge bustle over the engine deck, the gunner's sight tower at the front left under its
+ * armoured shutter, the commander's panoramic sight on its mast, the Shtandart's sensors, and the 2A42 on the roof's
+ * right. */
 function addModule(P: TankBuilderPort): void {
-  P.add('turret', cylY(1.00, 1.02, .14, 40), 0, .06, 0);
-  // the square body: the rear tall over the autoloader's breech run, chamfered along its roof
-  P.add('turret', sectionSolid([-1.45, -1.30, .25, .95].map((z, i): SolidSection => {
-    const half = i === 0 ? .88 : .95, top = i === 0 ? 1.12 : 1.20, low = .10;
-    return { z, ring: [[-half, low], [half, low], [half, top - .10], [half - .10, top], [-half + .10, top], [-half, top - .10]] };
-  })));
-  // the front faces either side of the gun slot, raked back, and the lintel over the mantlet
-  const faces: SolidSection[] = [
-    { z: .95, ring: [[.40, .10], [.95, .10], [.95, 1.10], [.40, 1.10]] },
-    { z: 1.25, ring: [[.40, .14], [.88, .14], [.88, .80], [.40, .80]] },
+  const TOP = 1.12, LOW = .22;
+  // the body and the bustle: one solid from the bustle's chamfered tail to the cheeks' root; its floor steps up behind the
+  // turntable's rim so the bustle clears the engine deck
+  const body: [number, number, number, number][] = [
+    // [z, half-width, floor, roof]
+    [-2.05, .70, .58, TOP - .14], [-1.90, .86, .44, TOP - .02], [-1.40, .92, .34, TOP], [-1.22, .92, LOW, TOP],
+    [.82, .92, LOW, TOP],
+  ];
+  P.add('turret', sectionSolid(body.map(([z, half, low, top]): SolidSection => ({ z, ring: [[-half, low], [half, low],
+    [half, top - .10], [half - .10, top], [-half + .10, top], [-half, top - .10]] }))));
+  // the faceted cheeks: each a pyramid of plates narrowing to a blunt nose ahead of the body (the renders' big facets)
+  const cheek: SolidSection[] = [
+    { z: .82, ring: [[.40, LOW], [.92, LOW], [.92, TOP - .10], [.82, TOP], [.40, TOP]] },
+    { z: 1.08, ring: [[.40, LOW + .02], [.90, LOW + .05], [.90, .74], [.70, .96], [.40, .96]] },
+    { z: 1.36, ring: [[.40, LOW + .08], [.64, .34], [.72, .52], [.58, .74], [.40, .78]] },
   ];
   for (const s of [-1, 1]) {
-    P.add('turret', sectionSolid(faces.map(({ z, ring }) => ({ z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as [number, number]).reverse() }))));
+    P.add('turret', sideSolid(cheek, s));
+    // the facet seams and a weld bead down each cheek's ridge
+    P.addEquipment('turretDark', box(.012, .40, .30), s * .80, .60, 1.12, -.30, s * .55, 0);
   }
-  // the lintel over the mantlet closes the gun slot down to the shield's top at full elevation (0.81)
-  P.add('turret', box(.80, .32, .36), 0, 1.02, 1.10);
-  // the gunner's sight boxes stacked right of the gun, their windows and hoods
-  for (const [y, h] of [[.50, .30], [.86, .30]]) {
-    P.add('turret', box(.34, h, .30), .66, y, 1.32);
-    P.addEquipment('turretDark', box(.26, h - .08, .02), .66, y, 1.475);
-    P.addEquipment('turretGlass', box(.18, h - .14, .012), .66, y, 1.484);
-    P.addEquipment('turretDetail', box(.32, .03, .08), .66, y + h / 2, 1.46);
+  // the flanks' bolted add-on panels, three a side between the cheeks and the bustle's grilles
+  for (const s of [-1, 1]) for (const [z0, z1] of [[-1.15, -.55], [-.50, .10], [.15, .78]] as const) {
+    P.add('turret', box(.06, .62, z1 - z0 - .03), s * .95, .62, (z0 + z1) / 2);
+    for (const y of [.37, .87]) for (const z of [z0 + .08, z1 - .10]) P.addEquipment('turretDark', cylX(.022, .02, 8), s * .985, y, z);
   }
-  // the square sight tower on the roof (both photographs), its window forward
-  P.add('turret', box(.42, .40, .44), -.36, 1.40, .30);
-  P.addEquipment('turretDark', box(.32, .22, .02), -.36, 1.43, .525);
-  P.addEquipment('turretGlass', box(.26, .16, .012), -.36, 1.43, .533);
-  P.addEquipment('turretDetail', box(.46, .04, .48), -.36, 1.62, .30);
-  // the tall sight and sensor box stepped up at the module's rear right
-  P.add('turret', box(.40, .46, .56), .62, 1.40, -1.00);
-  P.addEquipment('turretDark', box(.30, .24, .02), .62, 1.44, -.715);
-  P.addEquipment('turretGlass', box(.22, .16, .012), .62, 1.44, -.707);
-  // the commander's panoramic sight in its armoured box at the back left
-  P.add('turret', box(.36, .30, .36), -.50, 1.35, -.85);
-  P.addEquipment('turretDetail', cylY(.15, .15, .14, 20), -.50, 1.57, -.85);
-  P.addEquipment('turretGlass', box(.18, .08, .01), -.50, 1.57, -.698);
-  // the search radar's antenna boxes on the module's rear corners and the Shtandart's sensor domes and launchers
+  // the lintel over the gun slot (down to the cradle's shield at full elevation) and its brow
+  P.add('turret', box(.80, .22, .52), 0, TOP - .11, 1.06);
+  P.addEquipment('turretDetail', box(.84, .05, .10), 0, TOP - .20, 1.31);
+  // the gunner's sight tower at the front left: a tall armoured box, its window forward under an armoured shutter hinged
+  // open at the brow, a slat cage round its outboard flank
+  const tx = .60, tz = .50;
+  P.add('turret', sectionSolid([
+    { z: tz - .26, ring: [[tx - .22, TOP - .02], [tx + .22, TOP - .02], [tx + .22, TOP + .48], [tx + .14, TOP + .56], [tx - .14, TOP + .56], [tx - .22, TOP + .48]] },
+    { z: tz + .22, ring: [[tx - .22, TOP - .02], [tx + .22, TOP - .02], [tx + .22, TOP + .48], [tx + .14, TOP + .56], [tx - .14, TOP + .56], [tx - .22, TOP + .48]] },
+  ]));
+  P.addEquipment('turretDark', box(.32, .22, .02), tx, TOP + .32, tz + .23);
+  P.addEquipment('turretGlass', box(.26, .16, .012), tx, TOP + .32, tz + .238);
+  P.addEquipment('turretDetail', box(.36, .26, .03), tx, TOP + .64, tz + .30, -1.05, 0, 0);
+  for (const s of [-1, 1]) P.addEquipment('turretDark', box(.02, .05, .16), tx + s * .17, TOP + .56, tz + .24, -.55, 0, 0);
+  slatPanel(P, 'turret', { sx: 1, faceX: tx + .22, standM: .10, z0: tz - .24, z1: tz + .20, y0: TOP + .02, y1: TOP + .50, rails: 5 });
+  // the commander's panoramic sight on its mast behind the tower
+  P.addEquipment('turretDetail', cylY(.07, .09, .30, 14), .30, TOP + .15, -.70);
+  P.add('turret', cylY(.17, .17, .22, 20), .30, TOP + .41, -.70);
+  P.addEquipment('turretDark', cylY(.175, .175, .04, 20), .30, TOP + .54, -.70);
+  for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    P.addEquipment('turretGlass', box(.12, .08, .012), .30 + Math.sin(a) * .172, TOP + .42, -.70 + Math.cos(a) * .172, 0, a, 0);
+  }
+  // the bustle's ventilation grilles on both flanks and its stowage box on the tail
   for (const s of [-1, 1]) {
-    P.addEquipment('turretDetail', box(.30, .42, .12), s * .90, .80, -1.38, 0, s * -.45, 0);
-    P.addEquipment('turretDark', box(.24, .34, .02), s * .94, .80, -1.43, 0, s * -.45, 0);
-    for (const dz of [.55, .10]) {
-      P.addEquipment('turretDetail', cylY(.09, .09, .06, 16), s * .99, .14, dz);
-      P.addEquipment('turretGlass', KIT.sph(.085, 14, Math.PI / 2), s * .99, .21, dz);
-    }
-    const tubes = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: .045, len: .30, pitch: -.30, splay: .20, arc: .42, spacing: .10, seed: 195 + s });
-    tubes.position.set(s * .97, .98, .98);
-    tubes.rotation.y = s * .55;
+    P.addEquipment('turretDark', box(.02, .30, .70), s * .925, .72, -1.60);
+    for (let k = 0; k < 6; k++) P.addEquipment('turretDetail', box(.03, .30, .02), s * .935, .72, -1.90 + k * .12);
+  }
+  P.addEquipment('turretDetail', box(1.20, .30, .10), 0, .74, -2.08);
+  // the Shtandart's sensor domes on the flanks under the roof's edge and its radar panels on the bustle's corners
+  for (const s of [-1, 1]) {
+    P.addEquipment('turretDetail', cylX(.085, .06, 16), s * .975, .96, .10);
+    P.addEquipment('turretGlass', KIT.sph(.075, 14, Math.PI / 2), s * 1.005, .96, .10, 0, 0, s * -Math.PI / 2);
+    P.addEquipment('turretDetail', box(.30, .42, .10), s * .86, .66, -1.20, 0, s * -.60, 0);
+    P.addEquipment('turretDark', box(.24, .34, .02), s * .90, .66, -1.16, 0, s * -.60, 0);
+    // the 2 x 2 smoke banks on the module's flanks behind the cheeks
+    const tubes = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: .05, len: .26, pitch: -.30, splay: .25, arc: .40, spacing: .11, seed: 195 + s });
+    tubes.position.set(s * .97, .62, .55);
+    tubes.rotation.y = s * .70;
     P.turretG.add(tubes);
-    P.addEquipment('turretDetail', box(.26, .06, .30), s * .97, .90, .98, 0, s * .55, 0);
   }
-  // roof: the loading hatch and the stub antennas
-  P.addEquipment('turretDetail', box(.60, .03, .52), .30, 1.215, -.70);
-  P.addEquipment('turretDark', box(.60, .01, .02), .30, 1.233, -.95);
-  for (const [x, z, h] of [[.80, -1.30, .95], [-.80, -1.30, .80]]) {
-    P.addEquipment('turretDetail', cylY(.04, .05, .08, 12), x, 1.16, z);
-    P.addEquipment('turretDark', cylY(.009, .012, h, 8), x, 1.20 + h / 2, z);
+  // roof: the loading hatch, the sight tower's grab rails and the stub antennas on the bustle
+  P.addEquipment('turretDetail', box(.60, .03, .52), -.26, TOP + .015, -1.05);
+  P.addEquipment('turretDark', box(.60, .01, .02), -.26, TOP + .033, -1.30);
+  for (const [x, z, h] of [[.70, -1.85, 1.05], [-.70, -1.85, .90]]) {
+    P.addEquipment('turretDetail', cylY(.04, .05, .08, 12), x, TOP - .06, z);
+    P.addEquipment('turretDark', cylY(.009, .012, h, 8), x, TOP - .02 + h / 2, z);
   }
-  P.decal('turret', 'number', P.spec.visual.number || '', .28, [.955, .62, -.50], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', .28, [-.955, .62, -.50], -Math.PI / 2);
-  // the 2A42 in its low pod on the roof's left, beside the sight tower. Its barrel crosses the module's raised roof from
-  // 8 degrees inboard (tools/roof-station-arcs.mjs, barrel lines against the turret's stock): it turns from a degree short
-  // of that round its outboard side to 172 degrees, past the drone stand's seat; over the roof edge ahead and the stern
-  // it depresses only as far as the table lets it (each degree the smallest of it and its neighbours)
-  add30mmCannon(P, { name: 'object195_2a42', x: -.74, deck: 1.20, z: -.20, axisY: 1.34, pivotZ: -.20, muzzleZ: 1.85,
-    yawArc: [-3.0020, 0.1047],
-    depressionByYaw: [[-3.002, 0.101], [-2.9845, 0.115], [-2.9671, 0.129], [-2.9496, 0.14], [-2.9322, 0.154], [-2.9147, 0.168],
-      [-2.8972, 0.18], [-0.384, 0.18], [-0.3665, 0.168], [-0.3142, 0.168], [-0.2967, 0.174], [-0.2793, 0.168],
-      [-0.2618, 0.165], [-0.2269, 0.165], [-0.2094, 0.154], [-0.192, 0.14], [-0.1745, 0.129], [-0.1571, 0.115],
-      [-0.1396, 0.101], [-0.1222, 0.084], [-0.1047, 0.078], [0.1047, 0.078]] });
+  P.decal('turret', 'number', P.spec.visual.number || '', .28, [.925, .62, -.30], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', .28, [-.925, .62, -.30], -Math.PI / 2);
+  // the 2A42 in its low pod on the roof's right. Its barrel crosses the sight tower and the commander's mast from 42
+  // degrees inboard and the bustle's roof kit past 158 degrees outboard (.qa-dev/r152/station-levels.mjs, barrel lines
+  // against the module's stock at level and full elevation): it turns from a degree short of each; over the cheek and
+  // the lintel ahead it depresses only as far as the table lets it (each degree the smallest of it and its neighbours)
+  add30mmCannon(P, { name: 'object195_2a42', x: -.66, deck: TOP, z: -.40, axisY: TOP + .14, pivotZ: -.40, muzzleZ: 1.65,
+    yawArc: [-2.7402, 0.6981],
+    depressionByYaw: [[-0.3491, 0.18], [-0.3316, 0.174], [-0.3142, 0.163], [-0.2967, 0.154], [-0.2793, 0.146], [-0.2618, 0.135],
+      [-0.2443, 0.126], [-0.2269, 0.118], [-0.2094, 0.106], [-0.192, 0.098], [-0.1745, 0.087], [-0.1571, 0.078], [-0.1396, 0.073],
+      [0.1222, 0.073], [0.1396, 0.056], [0.1571, 0.05], [0.3316, 0.05], [0.3491, 0.047], [0.4712, 0.047], [0.4887, 0.045],
+      [0.576, 0.045], [0.5934, 0.047], [0.6109, 0.047], [0.6283, 0.05], [0.6632, 0.05], [0.6807, 0.053], [0.6981, 0.053]] });
 }
 
 /** The 2A83 on its exposed cradle: the cradle's shield, the recoil cylinders' housings, the tube. Gun frame. */
@@ -195,7 +321,9 @@ export function buildObject195X(P: TankBuilderPort): void {
   P.turretG.position.set(0, F.ringY, F.ringZ);
   P.gunG.position.set(0, ty(F.trunnionY), tz(F.trunnionZ));
   addHull(P);
+  addHullKit(P);
   addRunningGear(P);
+  addTurntable(P);
   addModule(P);
   addGun(P);
   P.topY = 1.64;
