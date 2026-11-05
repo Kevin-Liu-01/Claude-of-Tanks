@@ -32,6 +32,7 @@ import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: SW -> NE. Stations follow the low ground of the seed-1337 field
@@ -424,7 +425,7 @@ export default {
     dressingRules: { fencesClearBuildings: true },
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
-    architecture: 'lorrain',
+    architecture: BUILDING_STYLES.autumn.kit,
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills

@@ -28,6 +28,7 @@
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The scenery's sandstone in the Dahar's own colour: the dusty buff-red of the boulders (props rockTone), not the
@@ -393,7 +394,7 @@ export default {
     // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
     dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Tunisian ksar kit (maps/regional/ksar.ts)
-    architecture: 'ksar',
+    architecture: BUILDING_STYLES.desert.kit,
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters
     // plus a souk ('market'/'marketRow' builders, maps/mapKits.ts via the
     // urbanKit registry) so the crossroads reads as a lived-in bazaar town

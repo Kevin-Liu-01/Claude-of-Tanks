@@ -21,6 +21,7 @@ import { registerHouseDamageKits } from './damage.ts';
 import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { preloadEveryKit } from '../../kitRegistryNode.ts';
+import { buildingStyleOf } from '../buildingStyleTable.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -50,7 +51,7 @@ export function kitLegacy(mapId: string): boolean {
 //   so every synchronous builder and every receipt that iterates ARCHITECTURE_STYLES sees every kit.
 // A style asked for before it is loaded (the browser only) fails closed with its id: never a silent fallback.
 interface StyleRow { readonly name: string; readonly load: () => Promise<Record<string, unknown>> }
-const STYLE_TABLE: Readonly<Record<string, StyleRow>> = Object.freeze({
+const STYLE_TABLE = Object.freeze({
   hessian: { name: 'HESSIAN_STYLE', load: () => import('./hessian.ts') },
   savoyard: { name: 'SAVOYARD_STYLE', load: () => import('./savoyard.ts') },
   dalmatian: { name: 'DALMATIAN_STYLE', load: () => import('./dalmatian.ts') },
@@ -87,7 +88,10 @@ const STYLE_TABLE: Readonly<Record<string, StyleRow>> = Object.freeze({
   // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's habitats, nodes, garages, tank farms, tower, lab,
   // crane, logistics modules and tool lockers
   littrow: { name: 'LITTROW_STYLE', load: () => import('./littrow.ts') },
-});
+} satisfies Record<string, StyleRow>);
+/** A regional kit's id (STYLE_TABLE's rows; the building-style table names one per map). */
+export type ArchitectureId = keyof typeof STYLE_TABLE;
+const ROWS: Readonly<Record<string, StyleRow | undefined>> = STYLE_TABLE;
 
 const loadedStyles = new Map<string, ArchitectureStyle>();
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLE_TABLE));
@@ -106,15 +110,15 @@ function admitStyle(id: string, style: ArchitectureStyle | undefined): void {
 /** Load these styles (ids null/undefined are skipped); an unknown id fails as resolveRegionalArchitecture does. */
 export async function loadRegionalArchitectures(ids: Iterable<string | null | undefined>): Promise<void> {
   const wanted = [...new Set([...ids].filter((id): id is string => id != null))];
-  for (const id of wanted) if (!STYLE_TABLE[id]) throw unknownStyle(id);
-  const modules = await Promise.all(wanted.map((id) => (loadedStyles.has(id) ? null : STYLE_TABLE[id].load())));
+  for (const id of wanted) if (!ROWS[id]) throw unknownStyle(id);
+  const modules = await Promise.all(wanted.map((id) => (loadedStyles.has(id) ? null : ROWS[id]!.load())));
   // admitted in the table's order whatever order the modules arrived in
-  wanted.forEach((id, k) => { if (modules[k]) admitStyle(id, modules[k]![STYLE_TABLE[id].name] as ArchitectureStyle); });
+  wanted.forEach((id, k) => { if (modules[k]) admitStyle(id, modules[k]![ROWS[id]!.name] as ArchitectureStyle); });
 }
 const unknownStyle = (id: string): Error => new Error(`Unknown architecture style ${id} (known: ${ARCHITECTURE_STYLE_IDS.join(', ')})`);
 // Node: every style now, one module after another in the table's order (kitRegistryNode.ts)
 if (preloadEveryKit()) {
-  for (const id of ARCHITECTURE_STYLE_IDS) admitStyle(id, (await STYLE_TABLE[id].load())[STYLE_TABLE[id].name] as ArchitectureStyle);
+  for (const id of ARCHITECTURE_STYLE_IDS) admitStyle(id, (await ROWS[id]!.load())[ROWS[id]!.name] as ArchitectureStyle);
 }
 // (227, lane B) a catalog frame that carries its lattice (railKit.ts gantryFrame) falls as it (latticeFall.ts)
 registerLatticeFrameKit('gantry');
@@ -126,7 +130,7 @@ setKitPlanReader((parts) => regionalKitPlanOf(parts));
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed; so does one not loaded yet. */
 export function resolveRegionalArchitecture(id: string | null | undefined): ArchitectureStyle | null {
   if (id == null) return null;
-  if (!STYLE_TABLE[id]) throw unknownStyle(id);
+  if (!ROWS[id]) throw unknownStyle(id);
   const style = loadedStyles.get(id);
   if (!style) {
     throw new Error(`Architecture style ${id} is not loaded: the world build loads its map's styles first `
@@ -219,7 +223,12 @@ function drain<T>(steps: Generator<RegionalSlice, T, void>): T {
 function* buildRegionalPartsSteps(
   style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number,
 ): Generator<RegionalSlice, RegionalParts, void> {
-  const palette = style.weather ?? DEFAULT_WEATHER;
+  // (buildings-270) the map's row of the building-style table sets the weathering strengths and the war-wear share of
+  // its own kit there (a border farmstead of another kit keeps that kit's)
+  const row = buildingStyleOf(ctx.mapId);
+  const own = row?.kit === style.id ? row : null;
+  const kitPalette = style.weather ?? DEFAULT_WEATHER;
+  const palette = own ? { ...kitPalette, damp: own.weathering.damp, moss: own.weathering.moss } : kitPalette;
   const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
@@ -227,7 +236,7 @@ function* buildRegionalPartsSteps(
   // (and the facade craft's slot, house.ts withWear: window heads, thatch courses, gutter brackets ... on desktop builds, its
   // choices from a stream of its own forked from the same seed — the build, look, wear and weather streams draw as before)
   const legacy = kitLegacy(ctx.mapId);
-  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
+  const wear = { amount: own ? own.damage.wear : style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0),
     facade: { tier: ctx.tier, rng: streamFrom((wearSeed ^ 0x6a09e667) >>> 0), stone: style.surfaces.stone, ground: ctx.ground,
       groundCraft: style.groundCraft !== false && !legacy, legacy } };
   const tints = pickWeatherTints(palette, weatherRng);

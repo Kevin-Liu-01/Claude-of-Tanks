@@ -31,6 +31,7 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { BUILDING_STYLES } from './buildingStyleTable.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
@@ -350,7 +351,7 @@ export default {
     // sovkhoz's own: the widest warehouse lot is the grain elevator, the gantry the conveyor gallery to the wagon bin, the
     // depot the MTS garage, the sheds its implement sheds, the corner shop the club, the farmhouse a two-family house, the
     // cottages settlers' houses, the container rows the fuel store or the brigade wagons, the barn a sheep barn
-    architecture: 'tselina',
+    architecture: BUILDING_STYLES.steppe.kit,
     // The landmarks lane (2026-10-06; src/world/landmarks/): the grain station's concrete elevator — the Virgin Lands'
     // standard battery of silos with its work tower — north of the siding across the track from the long grain store,
     // the buffer stop at its west end; and the collective farm's entrance arch over the station road where it reaches
