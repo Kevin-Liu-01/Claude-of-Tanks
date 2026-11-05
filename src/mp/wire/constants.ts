@@ -182,7 +182,7 @@ export const CONTROL_FLAGS = Object.freeze({
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
-export const ACTION_BIT_MASK = 0x1fff; // thirteen action bits, including FPV launch/return
+export const ACTION_BIT_MASK = 0xffff; // sixteen action bits: FPV launch/return, and the three airstrikes (air-support-270)
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);

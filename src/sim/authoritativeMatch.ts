@@ -113,7 +113,8 @@ import {
   suppressNewFire, tickConsumables, useConsumableSlot as useConsumableSlotRule,
   type ConsumableHost, type ConsumableId, type ConsumableState,
 } from './consumableRules.ts';
-import { PLAYER_ACTION_BITS } from './playerActions.ts';
+import { PLAYER_ACTION_BITS, AIR_STRIKE_BITS } from './playerActions.ts';
+import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from './airSupportFire.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import type { AimIntentInput } from './aimIntent.ts';
 import {
@@ -126,7 +127,7 @@ import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunit
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
-  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor, AIR_STRIKE_KINDS,
   type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -1081,6 +1082,7 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const worldConcealers = worldCollision && typeof worldCollision.getConcealment === 'function'
     ? worldCollision.getConcealment() ?? [] : [];
+  let airReveal: (id: string, team: string) => boolean = () => false;
   const spotting = createSpottingSystem({
     getTanks: () => entities,
     alwaysVisible: !!ruleset.alwaysVisible,
@@ -1094,6 +1096,8 @@ export function createAuthoritativeMatch({
     getCamoBonus: () => 0,
     rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
+    // Air Support's recon pass (the mode controller is built below; until then nothing is revealed)
+    revealed: (id, team) => airReveal(id, team),
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? preparedGround?.navigation ?? createBotNavigationGrid({
@@ -1183,7 +1187,7 @@ export function createAuthoritativeMatch({
 
   function emit(type: string, payload: Record<string, RuntimeValue>): AuthoritativeEvent {
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
-      typeof payload.killerId==='string'?payload.killerId:null);
+      typeof payload.killerId==='string'?payload.killerId:null, typeof payload.source === 'string' && payload.source !== 'drone');
     if (type === 'tank_destroyed') {
       // the turret flies (a cook-off) or comes off its ring (any other death), seeded by the kill
       const dead = entityById.get(String(payload.id));
@@ -1263,6 +1267,21 @@ export function createAuthoritativeMatch({
     initializeAerial(entity, ruleset);
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
+  const airSupportView = modeController.airSupport;
+  if (airSupportView) airReveal = (id, team) => airSupportView.revealed(id, team === TEAM_BRAVO ? 'bravo' : 'alpha');
+  // Air Support's rounds in this authority: its entities, its spotting, its ground, its shell ids; each round is announced
+  // to every viewer as a mode event (never withheld: it names the strike, not the caller)
+  const airFireContext: AirSupportFireContext<AuthoritativeEntity> = {
+    entities,
+    isSpotted: (id, team) => spotting.isSpotted(id, team),
+    teamOf: (entity) => (entity.team === TEAM_BRAVO ? 'bravo' : 'alpha'),
+    terrainHeight: (x, z) => heightField.getHeightAt(x, z),
+    nextId: nextAerialShellId,
+    launch: (shell, strike) => {
+      shells.push(shell as DamageShell);
+      emit('mode_strike_round', strikeRoundPayload(shell, strike));
+    },
+  };
   const nextModeRouteS = { alpha: 0, bravo: 0 };
 
   function applyNetworkInput(
@@ -1865,6 +1884,9 @@ export function createAuthoritativeMatch({
     if (!result) {
       if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
       if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
+      // Air Support: an airstrike called at the crew's aim point (the strike view's reticle)
+      const air = modeController.airSupport, aim = entity.input.aimPoint;
+      if (air && aim) for (const kind of AIR_STRIKE_KINDS) if (bits & AIR_STRIKE_BITS[kind]) air.requestStrike(entity.id, kind, aim.x, aim.z, timeS + modeTimeOffsetS);
       // (2026-10-09) the canisters fly through the match's collision (the shards and their destruction state): they
       // bounce off walls, and the clouds stay out of the houses beside them
       // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
@@ -2035,6 +2057,8 @@ export function createAuthoritativeMatch({
     // (ac130-fx-228) the attacker's weapons platform when not its vehicle (sim/aerialCombat.ts killSourceOf): free event JSON, absent for a
     // vehicle's own guns, so an older peer reads the same payload
     const attackerSource = supportKillSource(killSourceOf(entityById.get(shell.shooterId), shell.spec));
+    // Air Support: a crew's own guns earn support points for the damage they deal (an airstrike's earn none)
+    if (target) modeController.airSupport?.recordDamage(shell.shooterId, target.id, hit.hpRemoved || 0, !!attackerSource);
     emit('shell_hit', {
       ...hit,
       munition, chargeKg, ...(blast ? { blast } : {}),
@@ -2201,6 +2225,7 @@ export function createAuthoritativeMatch({
       ...(craterId !== null ? { craterId } : {}),
       shellId: shell.id,
       shooterId: shell.shooterId,
+      ...(typeof (shell as { strikeId?: number }).strikeId === 'number' ? { strikeId: (shell as { strikeId?: number }).strikeId! } : {}),
       kind: worldHit.kind,
       surfaceKind: worldHit.record?.kind || worldHit.kind,
       x: shell.pos.x,
@@ -2299,6 +2324,8 @@ export function createAuthoritativeMatch({
       }
       stepShell(shell, dt);
       if (modeController.tryHitBall(shell)) continue;
+      // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
+      if (modeController.airSupport?.tryHitAircraft(shell, timeS + modeTimeOffsetS)) continue;
       // mp v2 lag compensation: the sweep and its resolution read the poses the shooter saw
       shellRewind?.begin(shell);
       try {
@@ -2343,6 +2370,7 @@ export function createAuthoritativeMatch({
     const started = profile ? profile.clock() : 0;
     for (const event of spotting.update(SIM_DT, timeS)) {
       emit('tank_spotted', { ...event });
+      modeController.airSupport?.recordSpot(event.spotterId, event.id, timeS + modeTimeOffsetS);
     }
     if (profile) profile.spottingMs += profile.clock() - started;
   }
@@ -2705,6 +2733,9 @@ export function createAuthoritativeMatch({
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
     for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell, aerialWorld);
+    // Air Support: the airstrikes' rounds leave on the mode's clock, into the normal shells (sim/airSupportFire.ts)
+    const airSupport = modeController.airSupport;
+    if (airSupport?.strikes.length) stepAirSupportFire(airSupport, timeS + modeTimeOffsetS - dt, timeS + modeTimeOffsetS, airFireContext);
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);
@@ -2839,6 +2870,8 @@ export function createAuthoritativeMatch({
     // destruction: a building breaking or the ground cratering is world state every viewer receives; how it was dealt is
     // withheld from a viewer that does not see its source (viewerWorldEvent, 2026-10-13)
     if (eventType === 'structure_stage' || eventType === 'structure_breach' || eventType === 'terrain_crater') return true;
+    // an airstrike's round bursts where its aircraft or battery put it, not where its caller stands: every viewer sees it
+    if (eventType === 'shell_impact' && typeof event.strikeId === 'number') return true;
     for (const id of [event.id, event.shooterId, event.targetId, event.killerId, event.aId, event.bId]) {
       if (id && canObserveEntity(viewer, String(id))) return true;
     }
@@ -2950,7 +2983,10 @@ export function createAuthoritativeMatch({
       }
       for (const shell of shells) {
         const shooter = entityById.get(String(shell.shooterId));
-        if (!shooter || canObserveEntity(viewer, shooter.id)) shellsOut.push(shell as unknown as SnapshotShellSource);
+        // an airstrike's round flies from its aircraft or battery: every viewer sees it come in (sim/airSupportFire.ts)
+        if (!shooter || typeof (shell as { strikeId?: number }).strikeId === 'number' || canObserveEntity(viewer, shooter.id)) {
+          shellsOut.push(shell as unknown as SnapshotShellSource);
+        }
       }
     },
 
@@ -2996,7 +3032,8 @@ export function createAuthoritativeMatch({
 
     captureModeCheckpoint() {
       // the wave modes carry their waves, line and queue too (round 2: a migrated host restarted them from the beginning)
-      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)) return null;
+      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)
+        && !ruleset.airSupport) return null;
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
       return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };

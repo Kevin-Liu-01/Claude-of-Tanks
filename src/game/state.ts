@@ -160,7 +160,9 @@ import {
 import {
   createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
 } from './soloConsumables.ts';
-import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { PLAYER_ACTION_BITS, AIR_STRIKE_BITS } from '../sim/playerActions.ts';
+import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from '../sim/airSupportFire.ts';
+import { AIR_STRIKE_KINDS } from '../sim/matchRuleset.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
   autoCamoIdsForBattle,
@@ -321,7 +323,7 @@ interface SoloHitEvent extends HitEvent {
   attackerName?: string;
   attackerSpecId?: string;
   /** (ac130-fx-228) the attacker's weapons platform when it is not the vehicle itself (sim/aerialCombat.ts killSourceOf) */
-  attackerSource?: 'ac130' | 'drone';
+  attackerSource?: 'ac130' | 'drone' | 'strafe' | 'bomb';
   targetName?: string;
   targetSpecId?: string;
   targetMaxHp?: number;
@@ -825,6 +827,8 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
       return consumableSpottingIds(entity.consumables, entity.equip, game.timeS);
     },
     rng: mulberry32(9100),
+    // Air Support's recon pass: its reveals, on the mode's sides
+    revealed: (id, team) => !!game.matchModeController?.airSupport?.revealed(id, team === 'enemy' ? 'bravo' : 'alpha'),
   });
 }
 
@@ -1939,6 +1943,8 @@ function enrichHitEvent(
   const source = supportKillSource(killSourceOf(attacker, shellSpec ?? { name: event.shellName }));
   if (source) event.attackerSource = source;
   if (!target) return;
+  // Air Support: a crew's own guns earn support points for the damage they deal (an airstrike's earn none)
+  game.matchModeController?.airSupport?.recordDamage(event.attackerId, target.id, event.hpRemoved || 0, !!source);
   event.targetName = target.spec.name;
   event.targetSpecId = target.specId;
   event.targetMaxHp = target.combat?.maxHp || 0;
@@ -2006,10 +2012,10 @@ function announceDestroyed(
   ent: SoloEntity,
   killerId: string | null,
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
-  source: 'ac130' | 'drone' | null = null,
+  source: 'ac130' | 'drone' | 'strafe' | 'bomb' | null = null,
 ): void {
   ent._destroyedAnnounced = true;
-  game.matchModeController?.recordDestruction(ent.id, killerId);
+  game.matchModeController?.recordDestruction(ent.id, killerId, source != null && source !== 'drone');
   // a cook-off or a fuel fire bursts on the structures beside the hull (never on the tanks)
   game._destruction?.tankDeath(cause, ent.spec.weightTons, ent.state.pos.x, ent.state.pos.y, ent.state.pos.z);
   if (cause === 'ammorack' || cause === 'fire') {
@@ -2202,7 +2208,8 @@ function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
     guideShellToward(shell, shooter.input.aimPoint, SIM_DT);
   }
   stepShell(shell, SIM_DT);
-  return !!game.matchModeController?.tryHitBall(shell);
+  // Air Support: a round through an enemy aircraft's hit sphere is spent on it (sim/airSupport.ts tryHitAircraft)
+  return !!game.matchModeController?.tryHitBall(shell) || !!game.matchModeController?.airSupport?.tryHitAircraft(shell, game.timeS);
 }
 
 function traceNearestTank(
@@ -2578,6 +2585,7 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   if (!game.spotting) return;
   for (const event of game.spotting.update(SIM_DT, game.timeS)) {
     bus.emit('tank:spotted', event);
+    game.matchModeController?.airSupport?.recordSpot(event.spotterId, event.id, game.timeS);
     if (game.player && event.id === game.player.id && event.team !== game.player.team) {
       bus.emit('player:spotted', { timeS: game.timeS });
     }
@@ -3145,6 +3153,9 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
     if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
     if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
+    // Air Support: an airstrike called at the crew's aim point (the strike view's reticle)
+    const air=game.matchModeController?.airSupport;
+    if(air)for(const kind of AIR_STRIKE_KINDS)if(bits&AIR_STRIKE_BITS[kind])air.requestStrike(entity.id,kind,entity.input.aimPoint.x,entity.input.aimPoint.z,game.timeS);
     // (2026-10-09) the canisters fly through the world's own collision: they bounce off walls, and the clouds stay out
     // of the houses beside them
     // the canister lands on the match's ground (its craters and heaps), as the authority's does
@@ -3190,7 +3201,7 @@ function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | nu
   // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
   const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
   if (game.matchModeState && perspective) {
-    if (game.ruleset.gunGame || game.ruleset.infection || game.ruleset.aerial) {
+    if (game.ruleset.gunGame || game.ruleset.infection || game.ruleset.aerial || game.ruleset.airSupport) {
       game.matchModeState = game.matchModeController!.serialize(perspective.id);
     }
     game.matchModeState.playerAmmo = totalAmmunition(perspective.combat);
@@ -3342,6 +3353,29 @@ function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['
  * input before movement; contacts resolve before weapons; projectiles resolve
  * before damage timers; objective state settles before the match verdict.
  */
+/** The solo battle's side of Air Support's rounds: its tanks, its spotting (the mode's sides mapped to its teams), its
+ *  ground, its shell ids, and the round announced to the presentation as the authority announces it (mode:strike_round). */
+const _airFireContexts = new WeakMap<SoloGameState, AirSupportFireContext<SoloEntity>>();
+function airSupportFireContext(game: SoloGameState, bus: EventBus, world: SoloWorld): AirSupportFireContext<SoloEntity> {
+  let context = _airFireContexts.get(game);
+  if (!context) {
+    context = {
+      entities: game.tanks,
+      isSpotted: (id, team) => (game.spotting ? game.spotting.isSpotted(id, team === 'alpha' ? 'player' : 'enemy') : true),
+      teamOf: (entity) => (entity.team === 'enemy' ? 'bravo' : 'alpha'),
+      terrainHeight: (x, z) => groundFor(world).field.getHeightAt(x, z),
+      nextId: () => game.nextShellId++,
+      launch: (shell, strike) => {
+        game.shells.push(shell as SoloGameState['shells'][number]);
+        bus.emit('mode:strike_round', strikeRoundPayload(shell, strike));
+      },
+    };
+    _airFireContexts.set(game, context);
+  }
+  context.entities = game.tanks;
+  return context;
+}
+
 export function simStep(
   game: SoloGameState,
   bus: EventBus,
@@ -3374,6 +3408,9 @@ export function simStep(
   _aerialWorldGame = game; _aerialWorldSource = world;
   for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);
   _aerialWorldGame = null; _aerialWorldSource = null;
+  // Air Support: the airstrikes' rounds leave on the mode's clock, into the normal shells (sim/airSupportFire.ts)
+  const airSupport = game.matchModeController?.airSupport;
+  if (airSupport?.strikes.length) stepAirSupportFire(airSupport, game.timeS - SIM_DT, game.timeS, airSupportFireContext(game, bus, world));
   stages?.stage(FRAME_STAGE.movement);
   stepTankMovement(game, bus, world, rig, collider);
   stages?.stage(FRAME_STAGE.contacts);

@@ -306,6 +306,8 @@ export const MODE_CREW: Readonly<Record<GameModeId, ModeCrew>> = Object.freeze({
   drone: { swap: { battle_start: 'start_drone', ...NO_TEAM_COUNTS } },
   // the tank seats under the gunship speak as any tank crew; the gunship's own crew is GUNSHIP_CREW
   ac130: { swap: {} },
+  // Air Support: the zone battle's crews, with the call-ins' own radio (air-support-270)
+  air_support: { swap: { battle_start: 'start_zones', ...NO_TEAM_COUNTS } },
   // a practice range: targets in lanes, reset at will, no verdict
   proving_ground: { swap: { battle_start: 'start_range', respawn: null, ...NO_TEAM_COUNTS } },
 });

@@ -25,6 +25,8 @@ export const MODE_OPENER: Readonly<Record<GameModeId, string | null>> = Object.f
   infected: 'mode_infected_outbreak', turbo_ball: 'mode_turbo_horn', gun_game: 'mode_gungame_armory', ac130: 'gunship_flyover',
   capture_the_flag: 'mode_ctf_opener', zone_control: 'mode_zone_opener', mars: 'mode_mars_opener', drone: 'mode_drone_opener',
   proving_ground: 'mode_range_opener',
+  // Air Support opens on a strike jet's low pass over the field (air-support-270)
+  air_support: 'jet_flyover',
 });
 
 /** A mode's opener (an id the table does not name opens on the battle horn, as the standard battle does). */

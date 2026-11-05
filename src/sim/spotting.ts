@@ -127,6 +127,9 @@ interface SpottingDependencies {
   getEquipment?: (tank: SpottingTank) => readonly string[] | null | undefined;
   rng?: () => number;
   teams?: readonly string[];
+  /** Air Support's recon pass (sim/airSupport.ts): `team` holds tank `id` revealed now, whatever its eyes see. A reveal
+   *  answers isSpotted as a sighting does, so the snapshots, the markers and the bots read it through the one filter. */
+  revealed?: (id: string, team: string) => boolean;
 }
 
 interface SpottingEvent {
@@ -934,6 +937,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
      */
     isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
       if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id && (tank.aerial?.kind !== 'gunship' || tank.team === team));
+      if (deps.revealed?.(id, team)) return true;
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;
