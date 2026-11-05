@@ -60,12 +60,12 @@ export const GROUND_SURFACE_GLSL = /* glsl */`  // ground-269 (groundSurfaceShad
       if (gsTownW > 0.003) {
         vec2 tq = mix(vec2(0.5), nzq(uvW, 0.11, vec2(0.37, 0.83)), tileVis(3.0)); // (eased to the median past resolution)
         float tf = mix(0.5, nzq(uv, 0.31, vec2(0.71, 0.29)).y, tileVis(0.9));
-        // the floor's own tone: the map's soil greyed toward a gravel, its light halfway between the drawn ground's own and a
-        // pale gravel's 0.20 (the critics' first round on Suzhou Creek: a fixed pale floor laid a flat sandy area round the
-        // towers), carrying a third of the drawn ground's grain (the woods' litter of the dirt set read as twigs and straw)
+        // the floor's own tone: the map's soil greyed toward a gravel, its light three tenths of the way from the drawn
+        // ground's own to a pale gravel's 0.20 (the critics' rounds on Suzhou Creek: a paler floor laid a flat sandy apron
+        // round the towers), carrying a third of the drawn ground's grain (the woods' litter of the dirt set: twigs, straw)
         float gL = reduxLuma(a.rgb), dL = max(reduxLuma(uMeanD.rgb), 0.02);
         vec3 grey = mix(vec3(dL), uMeanD.rgb, 0.35) * uSoilTint;
-        grey *= (mix(min(gL, 0.20), 0.20, 0.5) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
+        grey *= (mix(min(gL, 0.20), 0.20, 0.3) / max(reduxLuma(grey), 0.02)) * mix(1.0, gL / dL, 0.33);
         vec3 floorC;
         if (uGsTown.x < 4.5) {
           // yard: pale trodden gravel and earth, its paths paler, its hollows damp, weeds where nothing treads

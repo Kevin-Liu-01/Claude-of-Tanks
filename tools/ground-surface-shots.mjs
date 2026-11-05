@@ -379,9 +379,29 @@ async function planPoses(page, stage, wanted) {
   return out;
 }
 
+/** Every hull's AI and inputs frozen and the track prints cleared, before a map's poses (page side). */
+function pageQuietGround() {
+  const D = window.__DEBUG;
+  let frozen = 0;
+  for (const e of D.game.tanks) {
+    if (!e.isPlayer) e.aiCtl = null;
+    if (e.input) { e.input.actionBits = 0; if ('throttle' in e.input) e.input.throttle = 0; if ('steer' in e.input) e.input.steer = 0; }
+    if (e.state) e.state.speed = 0;
+    frozen++;
+  }
+  D.world._trackMarks?.reset?.();
+  return frozen;
+}
+
 async function shootMap(entry, options, frames) {
   const { page, mapId, stage } = entry;
   await page.bringToFront();
+  // (ab6, Suzhou Creek: the bots' spin at the spawn left dozens of track arcs, read as combed streaks on the new straw)
+  // the hulls frozen and the prints cleared before any pose, on both variants alike
+  await page.evaluate(pageQuietGround);
+  // (the hulls stood where staging left them only until the thaw: the poses read where they stand now)
+  const fresh = await page.evaluate(pageStage);
+  stage.allies = fresh.allies;
   await sleep(1500);
   const poses = await planPoses(page, stage, options.poses);
   const receipt = { player: stage.player, allies: stage.allies.length, poses: {}, preset: null };

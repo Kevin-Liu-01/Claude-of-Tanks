@@ -150,6 +150,9 @@ assert.ok(raw.includes('if (uGsNear.w > 0.0) hp.x += 0.5 * mod(floor(hp.y), 2.0)
 const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.ok(props.includes('shader.uniforms.uGsContact = { value: 1 };') && props.includes('if (vColor.r < 0.5) diffuseColor.a *= mix(1.0, 0.4, uGsContact);'),
   'the foundation rings softened, the old law at uGsContact 0');
+// the street-row towns' aprons give way to the town floor (props.ts apronGroundTableHook), the old decal at uGsApron 0
+assert.ok(props.includes("decalKind === 'apron' ? apronGroundTableHook : null") && props.includes('diffuseColor.a *= 1.0 - uGsApron;'),
+  'the aprons draw nothing where the table runs');
 // the setts' joints and lost setts (roadSurfaceShader.ts) read the floor, the old law at 0
 const pave = readFileSync(new URL('./roadSurfaceShader.ts', import.meta.url), 'utf8');
 for (const t of ['if (uGsNear.z > 0.0) jointC = max(jointC, stone * uGsNear.z);', 'uGsNear.z > 0.0 ? mix(jointC, uMeanD.rgb * uSoilTint * 0.8, 0.5) : jointC * 0.6',
