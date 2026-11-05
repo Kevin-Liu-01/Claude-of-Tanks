@@ -130,8 +130,8 @@ import { smokeBankBase, smokeHoldInside, smokeWallRoom, smokeWindForMap, type Sm
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
-import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBusy, transportHeld } from './studioSession.ts';
-import type { StudioBusy, StudioSessionToken } from './studioSession.ts';
+import { createStudioSession, historyHeld, isStudioSessionEnded, StudioSessionEnded, studioBusy, transportHeld } from './studioSession.ts';
+import type { StudioBusy, StudioBusyFlags, StudioSessionToken } from './studioSession.ts';
 import { WHEEL_DOLLY_MAX_UNITS, wheelDollyFactor, wheelNotchUnits } from './wheelNotches.ts';
 import type { FilmFrameInfo, FilmNearSurfaces, FilmSessionInfo } from './studioFilm.ts';
 import { createFilmTimeMap, normalizeFilm, filmOutputSize, FILM_CUE_ATTACK_MS, FILM_DEFAULTS } from './studioFilmPlan.ts';
@@ -764,7 +764,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // waits for what is still in flight before the Garage takes the battlefield back.
   const session = createStudioSession();
   let loading = false;         // load() in flight (blocks re-entrant loads)
-  let mapChange: Promise<string> | null = null; // serialized map switch
+  // serialized map switch, and the session it belongs to (round 2 U36: one an exit outlived holds no later session)
+  let mapChange: { readonly work: Promise<string>; readonly owner: StudioSessionToken } | null = null;
   let lightChanges = 0;        // (audit F9) time of day / sun changes in flight (busy() 'light')
   // the whole fleet's builders (247): warmed once the Studio is up, never part of its entry (__STUDIO.ready() awaits it)
   let fleetReady: Promise<void> | null = null;
@@ -4916,10 +4917,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * that began in the export's module gap.
    */
   function busy(exceptExport = false): StudioBusy | null {
-    return studioBusy({
+    return studioBusy(busyFlags(exceptExport));
+  }
+  /** The Studio's holders as flags (studioSession.ts): busy() ranks them; the history reads them itself (historyHeld). */
+  function busyFlags(exceptExport = false): StudioBusyFlags {
+    return {
       open: session.phase === 'open', recording: !!recording, filming, exporting: !exceptExport && !!filmExport,
-      scene: loading || productionLoading, mapChange: !!mapChange, restoring: restoringHistory, lighting: lightChanges > 0,
-    });
+      scene: loading || productionLoading, mapChange: !!mapChange && mapChange.owner.current(), restoring: restoringHistory,
+      lighting: lightChanges > 0,
+    };
   }
 
   function filmBusy(exceptExport = false): string | null {
@@ -5303,7 +5309,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
   function commitHistory(): void {
     if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
-    if (busy()) return;
+    // (round 2 U36) a battlefield or light change leaves the document the authored scene: exit()'s and the page hide's
+    // commit during one still take the last edit to the autosave
+    if (historyHeld(busyFlags())) return;
     const doc = documentJson();
     const text = JSON.stringify(doc);
     if (text === historyHead) return;
@@ -5340,7 +5348,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   async function restoreAutosave(): Promise<boolean> {
     const saved = readAutosave();
     if (!saved || busy()) return false;
-    await load(saved.doc);
+    const owner = session.token();
+    try {
+      await load(saved.doc);
+    } catch (error) {
+      // (round 2 U36) an exit took the restore back, whatever its step ended with (StudioSessionEnded, a superseded
+      // battlefield build): no step and no rejection; a scene that would not load is still the caller's
+      if (!owner.current()) return false;
+      throw error;
+    }
     commitHistory(); // opening the saved scene is a step: undo returns to the empty Studio
     return true;
   }
@@ -5704,9 +5720,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const current = getWorld();
     if (current && current.mapId === id) return id;
     // one change at a time, in request order: a request made during another waits for it (two waiting requests once both
-    // built at once, and the first to finish cleared the latch the other still held)
-    while (mapChange) {
-      await mapChange.catch(() => undefined);
+    // built at once, and the first to finish cleared the latch the other still held). (round 2 U36) Only its own session's:
+    // a change an exit outlived is no longer the Studio's (the world runtime's latest request supersedes its build)
+    while (mapChange?.owner.current()) {
+      await mapChange.work.catch(() => undefined);
       owner.check();
       const latest = getWorld();
       if (latest && latest.mapId === id) return id;
@@ -5748,10 +5765,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       progress(1, 'Studio ready');
       return world?.mapId || id;
     };
-    const mine = withStage(id, work, owner.current);
+    const mine = { work: withStage(id, work, owner.current), owner };
     mapChange = mine;
     try {
-      return await mine;
+      return await mine.work;
     } finally {
       if (mapChange === mine) mapChange = null;
     }

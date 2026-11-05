@@ -15,6 +15,8 @@ const CORE = ['runQueue', 'startFilmExport', 'drawSound', 'chooseMap', 'chooseTi
 const HELPERS = ['outputBusy', 'panelBusy', 'hostBusy'];
 const found = new Map();
 let clearHandler = null;
+// (round 2 Q18) the header's Restore, Undo and Redo: restoreBtn/undoBtn/redoBtn.addEventListener('click', handler)
+const headerHandlers = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
     found.set(node.name.text, node.getText(source));
@@ -22,10 +24,15 @@ let clearHandler = null;
   // the queue's Clear: queueClear.addEventListener('click', handler)
   if (ts.isCallExpression(node) && node.expression.getText(source) === 'queueClear.addEventListener'
     && node.arguments[0]?.getText(source) === "'click'") clearHandler = node.arguments[1].getText(source);
+  for (const button of ['restoreBtn', 'undoBtn', 'redoBtn']) {
+    if (ts.isCallExpression(node) && node.expression.getText(source) === `${button}.addEventListener`
+      && node.arguments[0]?.getText(source) === "'click'") headerHandlers.set(button, node.arguments[1].getText(source));
+  }
   ts.forEachChild(node, visit);
 })(source);
 for (const name of CORE) assert.ok(found.has(name), `studioPanel.ts declares ${name}`);
 assert.ok(clearHandler, 'the queue has a Clear handler');
+for (const button of ['restoreBtn', 'undoBtn', 'redoBtn']) assert.ok(headerHandlers.has(button), `the header has its ${button} handler`);
 
 // Load JSON reads its file under the session it was chosen in: a read that lands after an exit is refused by load()
 // (StudioSessionEnded) instead of entering the Studio again over the Garage
@@ -38,7 +45,7 @@ assert.match(text, /if \(panelBusy\(\)\) return; \/\/ \(audit F9\) a take record
 assert.match(text, /busy: hostBusy, \/\/ \(audit F9\)/, 'the Director reads the panel\'s holders with its own');
 assert.doesNotMatch(text, /function outputBusy\(/, 'one reading: the output side has no second predicate');
 
-function makePanel({ display = 'block', soundPreview = async () => null } = {}) {
+function makePanel({ display = 'block', soundPreview = async () => null, restoreAutosave = async () => true } = {}) {
   const calls = [];
   const timers = [];
   const jobs = [];
@@ -52,14 +59,19 @@ function makePanel({ display = 'block', soundPreview = async () => null } = {}) 
       setMap: (id) => { calls.push(['map', id]); return Promise.resolve(id); },
       setTimeOfDay: (time) => { calls.push(['time', time]); return Promise.resolve(time); },
       directProduction: (options) => { calls.push(['stage', options.presetId]); return Promise.resolve({}); },
+      undo: () => { calls.push(['undo']); return Promise.resolve(true); },
+      redo: () => { calls.push(['redo']); return Promise.resolve(true); },
+      restoreAutosave: () => { calls.push(['restore']); return restoreAutosave(); },
     },
+    restoreBtn: { disabled: false },
     productionPanel: { busy: () => held.director },
     toggleMapPick: () => {}, setMapLoading: () => {}, timeMenu: { setDisabled: () => {} },
     t: (key) => key, console, aborted: (error) => error?.name === 'AbortError', errorMessage: (error) => String(error),
-    refreshQueue: () => calls.push('refresh-queue'), api: { notice: noop => noop, refreshAll: () => {}, refreshMap: () => {} },
+    refreshQueue: () => calls.push('refresh-queue'),
+    api: { notice: noop => noop, refreshAll: () => {}, refreshMap: () => {}, refreshHistory: () => calls.push('refresh-history') },
     renderFilm: () => { calls.push('render-film'); return new Promise(() => {}); },
     filmSize: { seg: { value: '1080' } }, filmFps: { seg: { value: '30' } }, filmBlur: { seg: { value: '1' } },
-    filmShake: { seg: { value: '1' } }, flashBusy: () => {},
+    filmShake: { seg: { value: '1' } }, flashBusy: (text) => calls.push(['flash', text]),
     root: { style: { display } }, setTimeout: (callback, ms) => { timers.push({ callback, ms }); return timers.length; },
     SOUND_BUCKETS: 400, soundPath: { setAttribute: () => {} }, soundWave: { classList: { remove: () => {} } },
   };
@@ -73,8 +85,9 @@ function makePanel({ display = 'block', soundPreview = async () => null } = {}) 
     const runJob = (job) => new Promise((resolve, reject) => { pending = { job, resolve, reject }; });
     ${[...found.values()].join('\n')}
     const clear = ${clearHandler};
+    const header = { restore: ${headerHandlers.get('restoreBtn')}, undo: ${headerHandlers.get('undoBtn')}, redo: ${headerHandlers.get('redoBtn')} };
     return {
-      runQueue, startFilmExport, drawSound, clear, queueJobs, chooseMap, chooseTime, stagePreset,
+      runQueue, startFilmExport, drawSound, clear, queueJobs, chooseMap, chooseTime, stagePreset, header,
       finish: () => { const current = pending; pending = null; current.resolve(1); },
       get running() { return pending?.job ?? null; },
       set queueRunning(value) { queueRunning = value; },
@@ -164,4 +177,21 @@ const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((reso
   }
 }
 
-console.log('studioPanelBusy.selftest: Clear during a queue run skips no job, Export film waits for the queue, a hidden panel\'s sound lane stops re-arming, and the map pick, the palette\'s sequences, a time change, Export and the queue\'s Start ask one busy reading');
+// 5. (round 2 U36) The header's Restore: a restore that fails says so in the panel, never an unhandled rejection (the
+// handler only chained .finally).
+{
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const failing = makePanel({ restoreAutosave: () => Promise.reject(new Error('the saved scene names an unknown tank')) });
+    failing.panel.header.restore();
+    for (let i = 0; i < 4; i++) await settle();
+    assert.deepEqual(unhandled, [], 'a failed restore is no unhandled rejection');
+    assert.ok(failing.calls.some((call) => Array.isArray(call) && call[0] === 'flash' && call[1] === 'studio.loadFailed'),
+      'the panel says the restore failed');
+    assert.ok(failing.calls.includes('refresh-history'), 'and the header refreshes after it');
+  } finally { process.off('unhandledRejection', onUnhandled); }
+}
+
+console.log('studioPanelBusy.selftest: Clear during a queue run skips no job, Export film waits for the queue, a hidden panel\'s sound lane stops re-arming, and the map pick, the palette\'s sequences, a time change, Export and the queue\'s Start ask one busy reading, and a failed Restore says so');

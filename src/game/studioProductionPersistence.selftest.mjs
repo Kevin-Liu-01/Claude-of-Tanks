@@ -19,7 +19,7 @@ import { createStudioSession, studioBusy } from './studioSession.ts';
 const source = ts.createSourceFile('studio.ts', readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 // (2026-11-03 audit F9) and the one busy reading the production entry points ask
 const names = new Set(['stateJson', 'actorStateJson', 'pictureStateEntry', 'load', 'setProductionFormat', 'directProduction', 'busy',
-  'productionBusy']);
+  'busyFlags', 'productionBusy']); // (round 2) busy() ranks the flags busyFlags() reads
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));

@@ -2,6 +2,8 @@
 // tokens every async step checks, the cancels and held work an exit settles, and the one busy reading every entry point asks.
 import assert from 'node:assert/strict';
 import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBusy, transportHeld } from './studioSession.ts';
+// (round 2) the history's reading, by namespace: a copy of this file on a tree without it fails at its assertion
+import * as studioSessionModule from './studioSession.ts';
 
 // The phases and their moves: closed → entering → open → exiting → closed; a failed entry leaves through exiting.
 {
@@ -167,6 +169,51 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
   assert.equal(logged.length, 1, 'a throwing undo is logged, never thrown');
 }
 
+// (round 2 U36) An exit waits for its own session's held work only. A preparation an earlier session held that never
+// settled is that session's (its token is stale, its afterEnd undoes it if it ever lands): every later exit waited the
+// full bound under its veil for it.
+{
+  const timers = [];
+  const session = createStudioSession({
+    setTimeout: (callback) => { timers.push(callback); return timers.length; },
+    clearTimeout: () => {},
+  });
+  const turn = () => new Promise((resolve) => setImmediate(resolve));
+  const undone = [];
+  let land = null;
+  session.open(session.beginEntry());
+  session.hold(new Promise((resolve) => { land = resolve; }), () => undone.push('hung'));
+  session.beginExit();
+  let first = null;
+  void session.settled().then((value) => { first = value; });
+  timers.at(-1)(); await turn();
+  assert.equal(first, false, 'the first exit waited its bound for its own hung preparation');
+  session.close();
+  session.open(session.beginEntry());
+  const armed = timers.length;
+  session.beginExit();
+  let second = null;
+  void session.settled().then((value) => { second = value; });
+  await turn();
+  assert.equal(second, true, 'a later exit with nothing of its own in flight settles at once');
+  assert.equal(timers.length, armed, 'and arms no bound');
+  session.close();
+  // its own work is still waited for, an earlier session's hung work beside it or not
+  session.open(session.beginEntry());
+  let landOwn = null;
+  session.hold(new Promise((resolve) => { landOwn = resolve; }));
+  session.beginExit();
+  let third = null;
+  void session.settled().then((value) => { third = value; });
+  await turn();
+  assert.equal(third, null, 'the exit waits for its own session\'s preparation');
+  landOwn(); await turn();
+  assert.equal(third, true, 'and settles once it lands');
+  session.close();
+  land(); await turn();
+  assert.deepEqual(undone, ['hung'], 'the earlier session\'s work, landing at last, still gets its undo');
+}
+
 // Trailed work (a battlefield build the exit does not wait for, which the world runtime activates when it lands): its undo
 // runs only when it fulfils after its session ended, once the teardown is done, and never under a newer live session or
 // for a build that failed (it activated nothing).
@@ -230,6 +277,19 @@ import { createStudioSession, isStudioSessionEnded, StudioSessionEnded, studioBu
   for (const [patch, expected] of cases) assert.equal(studioBusy({ ...free, ...patch }), expected, JSON.stringify(patch));
   assert.deepEqual(['recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light', null].map(transportHeld),
     [true, true, true, false, false, false, false, false, false], 'a load, a map change, an undo or a light change leaves the playhead alone');
+  // (round 2 U36) a history commit's reading: every holder but a battlefield change and a light change keeps the edit out
+  // (neither touches the tanks, the storyboard or the effects), whichever holder studioBusy ranks first
+  const { historyHeld } = studioSessionModule;
+  assert.equal(typeof historyHeld, 'function', 'studioSession.ts declares the history\'s reading (historyHeld)');
+  assert.equal(historyHeld(free), null);
+  assert.equal(historyHeld({ ...free, mapChange: true }), null, 'a battlefield change leaves the document the authored scene');
+  assert.equal(historyHeld({ ...free, lighting: true }), null, 'so does a light change');
+  assert.equal(historyHeld({ ...free, mapChange: true, lighting: true }), null);
+  for (const [patch, expected] of [
+    [{ recording: true }, 'recording'], [{ filming: true }, 'film'], [{ exporting: true }, 'export'], [{ open: false }, 'session'],
+    [{ scene: true, mapChange: true }, 'scene'], [{ restoring: true, mapChange: true }, 'history'],
+    [{ restoring: true, lighting: true }, 'history'],
+  ]) assert.equal(historyHeld({ ...free, ...patch }), expected, `history held: ${JSON.stringify(patch)}`);
 }
 
 console.log('studioSession.selftest: the phase and its moves, stale tokens after an exit, cancels, held work with its bound and its late undo, the late undo of trailed builds, and the busy reading pass');

@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, StudioSessionEnded } from './studioSession.ts';
+// (round 2) the history's reading, by namespace: a copy of this file on a tree without it still links
+import * as studioSessionModule from './studioSession.ts';
 import { createAppLifecycle } from './appLifecycle.ts';
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
@@ -15,7 +17,7 @@ const CORE = ['setMap', 'withStage', 'doExit', 'exit', 'load', 'ensureLoadMap', 
   'exportFilmFile', 'cancelFilmExport', 'filmBusy', 'beginFilm', 'endFilm', 'directProduction'];
 // the session's helpers where the file has them
 const HELPERS = ['leaveForGarage', 'tearDownToGarage', 'tearDownStudio', 'prepareAtmosphere', 'openFilm', 'busy', 'filmExportAborted',
-  'ensureSessionWorld', 'productionBusy'];
+  'ensureSessionWorld', 'productionBusy', 'busyFlags', 'commitHistory', 'restoreAutosave'];
 const found = new Map();
 (function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name && [...CORE, ...HELPERS].includes(node.name.text) && !found.has(node.name.text)) {
@@ -57,9 +59,15 @@ function makeStudio(overrides = {}) {
     },
     setCamoBiome: noop, applyCamoPatterns: noop, settleActor: noop, invalidate: noop,
     panel: { setStage: (stage) => calls.push(stage ? 'stage-on' : 'stage-off'), setStageProgress: noop, refreshAll: noop,
-      refreshMap: noop, hide: () => calls.push('panel-hidden'), refreshSelected: noop },
+      refreshMap: noop, hide: () => calls.push('panel-hidden'), refreshSelected: noop, refreshHistory: noop },
     transition: { run: async (work) => work(noop) },
-    camoTryOn: { preview: noop }, commitHistory: noop,
+    camoTryOn: { preview: noop },
+    // (round 2 U36) the history's parts: the document as authored (the battlefield as rendered, the edits made), the autosave
+    // a commit writes, and the one the header's Restore reads
+    historyHeld: studioSessionModule.historyHeld, edits: [], HISTORY_LIMIT: 50, undoStack: [], redoStack: [],
+    documentJson: () => ({ map: ports.world.mapId, actors: ports.edits.map((id) => ({ id })) }),
+    emptyDocument: (doc) => !doc.actors?.length, writeAutosave: (text) => calls.push(['autosave', text]),
+    readAutosave: () => null,
     lighting: { updateFrustums: noop, update: noop },
     // load's parts
     sceneInCurrentTankIds: (json) => json, productionAspect: noop, normalizeFilm: (film) => film, isStudioTime: () => true,
@@ -123,7 +131,7 @@ function makeStudio(overrides = {}) {
     const { ${names.join(', ')} } = ports;
     let active = true, entering = null, closing = null, exitRun = null, mapChange = null, buildPlateUp = false;
     let recording = null, loading = false, productionLoading = false, productionOwnsLoad = false, filming = false, restoringHistory = false;
-    let lightChanges = 0;
+    let lightChanges = 0, historyTimer = 0, historyHead = null;
     let filmExport = null, filmCues = null, filmShake = 1, timeScale = 0, clockMs = 1200, timeOfDay = 'day', studioLight = null;
     let storyboard = { shots: [], durationMs: 8000 }, selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     let placeArmed = null, dragActor = null, dragging = false, lookThrough = true, productionFormat = 'landscape';
@@ -135,7 +143,9 @@ function makeStudio(overrides = {}) {
     // the Studio is open: its session entered (the base keeps only the active flag)
     session.open(session.beginEntry());
     return {
-      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport, directProduction,
+      setMap, load, exit, doExit, exportFilmFile, cancelFilmExport, directProduction, restoreAutosave, busy: () => busy(),
+      // the user enters the Studio again (doEnter's session moves)
+      reenter: () => { session.open(session.beginEntry()); active = true; game.phase = 'studio'; },
       setTime: (time) => applyStudioLight(time, null, true),
       get active() { return active; }, get mapChange() { return mapChange; }, get timeOfDay() { return timeOfDay; },
       get filmExport() { return filmExport; }, set recording(value) { recording = value; },
@@ -459,6 +469,89 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   assert.ok(!h.calls.includes('garage-sun'), 'a build its live session still owns is the Studio\'s');
 }
 
+// 15. (round 2 U36) An edit still settling when the battlefield changes, then Exit during the build: the exit's commit
+// takes the edit to the autosave (a battlefield change leaves the document the authored scene; the flush stops once the
+// Studio closes, so a commit refused here was lost). A scene load in flight still keeps its half-built scene out.
+{
+  const h = makeStudio();
+  h.ports.edits.push('lead-moved');
+  const switching = track(h.studio.setMap('desert'));
+  await settle();
+  assert.ok(h.studio.mapChange, 'the battlefield change is building');
+  h.studio.exit();
+  await settle();
+  const saved = h.calls.filter((c) => Array.isArray(c) && c[0] === 'autosave');
+  assert.equal(saved.length, 1, 'the exit during the build commits the last edit');
+  assert.deepEqual(JSON.parse(saved[0][1]), { map: 'verdant', actors: [{ id: 'lead-moved' }] },
+    'the scene as authored: the edit, on the battlefield the change had not replaced');
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.equal(await outcome(switching), 'AbortError');
+}
+{
+  const h = makeStudio();
+  const loading = track(h.studio.load({ map: 'desert', actors: [] }));
+  await settle();
+  assert.ok(h.studio.mapChange, 'the load is building its battlefield');
+  h.ports.edits.push('half-built');
+  h.studio.exit();
+  await settle();
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'a scene load in flight is no step');
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.equal(await outcome(loading), 'AbortError');
+}
+
+// 16. (round 2 U36) Exit while the header's Restore builds the autosaved scene: the restore ends quietly (false), never an
+// unhandled rejection under the panel's handler, and no step is committed for the scene the exit took back.
+{
+  const h = makeStudio({ readAutosave: () => ({ savedAt: 1, doc: { map: 'desert', actors: [{ id: 'm1a1' }] } }) });
+  const restoring = h.studio.restoreAutosave().then((value) => ({ value }), (error) => ({ error: error.name }));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world'), [['ensure-world', 'desert']]);
+  h.studio.exit();
+  await settle();
+  h.releaseWorld(); await settle(); h.releaseAtmosphere();
+  assert.deepEqual(await Promise.race([restoring, settle().then(() => 'still restoring')]), { value: false },
+    'a restore the exit took back resolves false');
+  assert.ok(!h.calls.some((c) => Array.isArray(c) && c[0] === 'autosave'), 'and commits nothing');
+}
+
+// 17. (round 2 U36) A battlefield change belongs to its session: one an exit outlived (a cold build still going) neither
+// holds a Studio entered again (busy() read 'map' until the dead build settled: recording, undo, a film refused) nor
+// queues that Studio's own change behind it.
+{
+  const builds = [];
+  let h = null;
+  h = makeStudio({
+    ensureWorld: (id) => new Promise((resolve) => {
+      h.calls.push(['ensure-world', id]);
+      builds.push({ id, land: () => { h.ports.world = { ...h.ports.world, mapId: id }; resolve(h.ports.world); } });
+    }),
+  });
+  const stale = track(h.studio.setMap('desert'));
+  await settle();
+  h.studio.exit();
+  await settle();
+  assert.equal(h.studio.active, false, 'the exit tore the Studio down without waiting for the build');
+  h.studio.reenter();
+  assert.equal(h.studio.busy(), null, 'the Studio entered again is not held by the closed session\'s change');
+  const next = track(h.studio.setMap('arctic'));
+  await settle();
+  assert.deepEqual(h.calls.filter((c) => Array.isArray(c) && c[0] === 'ensure-world').map((c) => c[1]), ['desert', 'arctic'],
+    'its own change builds at once, not behind the dead one');
+  assert.ok(h.studio.mapChange, 'and holds the Studio while it builds');
+  assert.equal(h.studio.busy(), 'map');
+  builds.find((build) => build.id === 'desert').land();
+  await settle();
+  assert.equal(await outcome(stale), 'AbortError', 'the dead change ends as a cancel');
+  assert.equal(h.studio.busy(), 'map', 'and leaves the live change\'s latch alone');
+  builds.find((build) => build.id === 'arctic').land();
+  await settle();
+  h.releaseAtmosphere();
+  assert.equal(await outcome(next), 'resolved');
+  assert.equal(h.studio.mapChange, null);
+  assert.equal(h.studio.busy(), null);
+}
+
 // main.ts's side of the token (its preparation, a port above): after its awaits it lights nothing for a session that ended.
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
@@ -513,4 +606,4 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   ]) assert.deepEqual(restoreGarageWorldIn(state), [], `no Garage presentation over ${name}`);
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; the late build\'s undo waits for a settled Garage');
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; an exit during a build commits the last edit; a restore the exit took back resolves false; a closed session\'s build holds no later Studio; the late build\'s undo waits for a settled Garage');

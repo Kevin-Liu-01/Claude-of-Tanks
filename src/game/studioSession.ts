@@ -81,7 +81,10 @@ export interface StudioSession {
    * `work` itself.
    */
   trail<T>(work: Promise<T>, afterEnd: () => void): Promise<T>;
-  /** Resolves once every held work settled, or after settleMs (true when everything settled). */
+  /**
+   * Resolves once the held work settled, or after settleMs (true when it all settled). During an exit that is the work of
+   * the session it ends (and anything held since the exit began); an earlier session's is left to its own afterEnd.
+   */
   settled(): Promise<boolean>;
 }
 
@@ -92,7 +95,10 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
   let phase: StudioSessionPhase = 'closed';
   let generation = 0;
   const cancels = new Set<() => void>();
-  const held = new Set<Promise<unknown>>();
+  // held work and the generation it was held under (round 2 U36: an exit waits for its own session's only)
+  const held = new Map<Promise<unknown>, number>();
+  // the generation of the session the running exit ends (beginExit moves the generation past it)
+  let exitingFrom = -1;
   // the generation whose exit stopped waiting for held work (its teardown may run from then on), and the undos of work
   // that settled after that, waiting for the teardown to finish
   let waitedGeneration = -1;
@@ -131,6 +137,7 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
     },
     beginExit() {
       if (!move('exiting')) return false;
+      exitingFrom = generation;
       generation += 1;
       const pending = [...cancels];
       cancels.clear();
@@ -152,7 +159,7 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
       const issued = generation;
       const owned = live(); // held by a live session (else it was stale from the start)
       const entry = work.then(() => undefined, () => undefined);
-      held.add(entry);
+      held.set(entry, issued);
       void entry.then(() => {
         held.delete(entry);
         if (!afterEnd || (owned && issued === generation)) return; // still its own session's: nothing to undo
@@ -175,10 +182,15 @@ export function createStudioSession(options: StudioSessionOptions = {}): StudioS
     },
     settled() {
       const waited = (): void => { if (phase === 'exiting') waitedGeneration = generation; };
-      if (!held.size) { waited(); return Promise.resolve(true); }
+      // (round 2 U36) an exit waits for the work of the session it ends (and anything held since it began), never for an
+      // earlier session's: that work's token is stale and its afterEnd covers it, and one that hung kept every later exit
+      // under its veil for the full bound
+      const since = phase === 'exiting' ? exitingFrom : -Infinity;
+      const mine = [...held].filter(([, issued]) => issued >= since).map(([entry]) => entry);
+      if (!mine.length) { waited(); return Promise.resolve(true); }
       return new Promise<boolean>((resolve) => {
         const handle = schedule(() => { waited(); resolve(false); }, settleMs);
-        void Promise.all([...held]).then(() => { unschedule(handle); waited(); resolve(true); });
+        void Promise.all(mine).then(() => { unschedule(handle); waited(); resolve(true); });
       });
     },
   };
@@ -218,3 +230,12 @@ export function studioBusy(flags: StudioBusyFlags): StudioBusy | null {
 
 /** The take owns the playhead (play, pause, rate, shuttle, seek, step) while it records, renders or exports a film. */
 export const transportHeld = (busy: StudioBusy | null): boolean => busy === 'recording' || busy === 'film' || busy === 'export';
+
+/**
+ * (round 2 U36) What keeps an edit out of the history and the autosave: every holder but a battlefield change and a light
+ * change. Neither touches the tanks, the storyboard or the effects, and the document names the battlefield and the time
+ * as rendered until the change lands, so an exit or a page hide during one still commits the last edit (a commit refused
+ * there was lost: the flush stops once the Studio closes). Read from the flags, not from busy()'s first holder, which a
+ * battlefield change would rank above an undo in flight.
+ */
+export const historyHeld = (flags: StudioBusyFlags): StudioBusy | null => studioBusy({ ...flags, mapChange: false, lighting: false });

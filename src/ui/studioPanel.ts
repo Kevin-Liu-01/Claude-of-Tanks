@@ -538,7 +538,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   restoreBtn.hidden = true;
   restoreBtn.addEventListener('click', () => {
     restoreBtn.disabled = true;
-    void S.restoreAutosave().finally(() => { restoreBtn.disabled = false; api.refreshHistory(); });
+    // (round 2 U36) a restore the exit took back resolves false; one that failed says so instead of an unhandled rejection
+    void S.restoreAutosave()
+      .catch((error: RuntimeValue) => flashBusy(t('studio.loadFailed', { error: errorMessage(error) })))
+      .finally(() => { restoreBtn.disabled = false; api.refreshHistory(); });
   });
   const undoBtn = iconButton(t('studio.ws.undoTitle'));
   undoBtn.innerHTML = uiIconSVG('undo', 16);
