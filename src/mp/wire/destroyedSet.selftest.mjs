@@ -3,12 +3,19 @@
 // migrations stalled) — below Monsoon's 9,119 crushable props. The set now travels as the smaller of a gap list and a
 // bitset; the encoder never throws on a legal set and the worst case — every crushable prop of the densest battlefield
 // down — fits a keyframe with the full roster many times over.
+// Wire 11 (round 2 of the 2026-11-02 audit, U27) adds a fall byte per listed prop. The falls take only the room a frame
+// leaves under MAX_MESSAGE_BYTES (destroyedSet.ts writeDestroyedFalls), so they can never stop a keyframe (the C3 hazard):
+// the worst keyframes below carry every other section at its bound (the destruction log at its budget, the mode state at
+// its cap, MAX_SHELLS rounds and as many unseen, MAX_ENTITIES rows) with every fall readable.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ByteReader, ByteWriter, WireError } from './bytes.ts';
 import { MAX_DESTROYED_INDEX, destroyedSetBytes, readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
-import { MAX_MESSAGE_BYTES, PHASE, VERDICT, WIRE_VERSION } from './constants.ts';
-import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from './codec.ts';
+import {
+  MAX_ENTITIES, MAX_MESSAGE_BYTES, MAX_MODE_STATE_JSON_BYTES, MAX_SHELLS, PHASE, SNAPSHOT_FLAGS, VERDICT, WIRE_VERSION,
+} from './constants.ts';
+import { applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage, encodeSnapshotFrame } from './codec.ts';
+import { DESTRUCTION_LOG_BUDGET_BYTES } from '../../sim/destructionMatch.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
 import { chunkMigrationBlob, decodeMigrationKeyframe, encodeMigrationKeyframe } from '../host/migrationState.ts';
 
@@ -76,8 +83,9 @@ assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (t
   assert.ok(worst.crushable.length > 4096, `the densest battlefield (${worst.id}, ${worst.crushable.length} crushable) is past wire 5's cap`);
   // a realistic 14v14 keyframe (wire.selftest's section 4 battle): 28 hulls mid-fight, the viewer section, no ERA
   const tick = 600;
+  const rowsUpTo = (count) => {
   const entities = [];
-  for (let id = 1; id <= 28; id++) {
+  for (let id = 1; id <= count; id++) {
     const speed = 500 + ((id * 37) % 1000);
     const reload = 300 + ((id * 131) % 2500), reloadTotal = 3000 + ((id * 17) % 2000);
     entities.push({
@@ -88,6 +96,9 @@ assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (t
       magazineRounds: 0, magazineCapacity: 0, shellSlot: id % 3, ammo0: 30 - (id % 7), ammo1: 12, ammo2: 8, flags: 0, eraSpent: [],
     });
   }
+  return entities;
+  };
+  const entities = rowsUpTo(28);
   const key = {
     tick, serverTimeMs: tick * 1000 / 60 | 0, ackedInputTick: tick - 3, ackedFireSeq: 4, ackedActionSeq: 2, inputMarginTicks: 2,
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: tick * 1000 / 60 | 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: worst.crushable.length },
@@ -113,7 +124,64 @@ assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (t
   const blob = encodeMigrationKeyframe({ tick, battleTimeMs: 10_000, phase: 'playing', frame: key, entities: [] });
   assert.deepEqual(decodeMigrationKeyframe(blob).frame.destroyed, worst.crushable, 'the migration keyframe carries the whole set');
   assert.ok(chunkMigrationBlob('mp:keyframe', 1, tick, blob).length <= 64, 'within the migration chunk budget');
-  console.log(`destroyedSet.selftest: list or bitset, the smaller; every legal set encodes (65,536 indices in ${roundTripBytes()} B); malformed frames typed; ${worst.id}'s ${worst.crushable.length} crushable props down in a ${bytes.byteLength} B keyframe (wire 5 threw past 4,096)`);
+
+  // ---- wire 11: the falls take only the room a keyframe leaves --------------------------------------------------
+  const fallsFor = (indices) => indices.map((index) => ((1 + (index % 2)) << 6) | (index % 64)); // every fall readable
+  const encodeBoth = (frame) => {
+    const direct = encodeSnapshotFrame(frame, null);
+    assert.deepEqual(direct, encodeMessage(buildSnapshotPacket(frame, null)), 'the direct encoder writes the packet path\'s bytes');
+    const decoded = decodeMessage(direct);
+    assert.ok(decoded.ok, decoded.ok ? '' : decoded.error.message);
+    return { bytes: direct, frame: applySnapshotPacket(decoded.message, null), flags: direct[2 + 4 + 4] };
+  };
+  // the realistic keyframe with every fall readable: they ride, a byte a prop
+  const withFalls = encodeBoth({ ...key, destroyedFalls: fallsFor(worst.crushable) });
+  assert.deepEqual(withFalls.frame.destroyedFalls, fallsFor(worst.crushable), 'the realistic keyframe carries every fall');
+  assert.equal(withFalls.bytes.byteLength, bytes.byteLength + worst.crushable.length, 'a byte a listed prop, nothing else');
+  // the worst keyframe: every other section at its bound
+  const BREACH_BYTES = 28; // destructionLog.ts's largest entry: a breach with its footprint centre, a two-byte structure id
+  const log = Array.from({ length: Math.floor(DESTRUCTION_LOG_BUDGET_BYTES / BREACH_BYTES) }, (_, n) => ({
+    kind: 'breach', structureId: 200 + n, section: 24, hole: n & 0xff, x: 1000 + n, y: 12.5, z: -1000 - n, radiusM: 1.25,
+    sectionDown: n % 3 === 0, cx: 1000.5 + n, cz: -999.5 - n,
+  }));
+  const shells = Array.from({ length: MAX_SHELLS }, (_, n) => ({
+    id: n, shooterEntityId: 1 + (n % MAX_ENTITIES), x: -2e9 + n, y: 2e9 - n, z: 2e9 - n * 7, vx: -30000, vy: 30000, vz: -30000, shellType: 0, flags: 1,
+  }));
+  const unseenShells = Array.from({ length: MAX_SHELLS }, (_, n) => 1000 + n * 3);
+  const modeStateJson = JSON.stringify({ pad: 'x'.repeat(MAX_MODE_STATE_JSON_BYTES - 10) });
+  assert.equal(Buffer.byteLength(modeStateJson), MAX_MODE_STATE_JSON_BYTES, 'the mode state at its cap');
+  const full = (destroyed, smokeJson = '') => ({
+    ...key, meta: { ...key.meta, ...(smokeJson ? { smokeJson } : {}) }, entities: rowsUpTo(MAX_ENTITIES), shells, unseenShells,
+    modeStateJson, destruction: log, destroyed, destroyedFalls: fallsFor(destroyed),
+  });
+  const monsoon = encodeBoth(full(worst.crushable));
+  assert.ok(monsoon.bytes.byteLength <= MAX_MESSAGE_BYTES, `the worst ${worst.id} keyframe encodes (${monsoon.bytes.byteLength} B)`);
+  assert.ok(monsoon.flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, `${worst.id}'s falls fit beside every other section at its bound`);
+  assert.deepEqual(monsoon.frame.destroyedFalls, fallsFor(worst.crushable), 'and each comes back with its index');
+  assert.equal(monsoon.frame.destruction.length, log.length, 'the log at its budget rides whole');
+  const room = MAX_MESSAGE_BYTES - monsoon.bytes.byteLength;
+  // every legal index down: the set alone is 8 KB, the falls 64 KB more; they travel as none and the keyframe encodes
+  const everyIndex = Array.from({ length: MAX_DESTROYED_INDEX + 1 }, (_, i) => i);
+  const all = encodeBoth(full(everyIndex));
+  assert.ok(all.bytes.byteLength <= MAX_MESSAGE_BYTES, `every legal index down beside every bound: a ${all.bytes.byteLength} B keyframe`);
+  assert.equal(all.flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, 0, 'falls that do not fit travel as none (the flag clear)');
+  assert.equal(all.frame.destroyedFalls, undefined, 'the client reads none: each prop lies on its own axis');
+  assert.deepEqual(all.frame.destroyed, everyIndex, 'every index still comes back');
+  assert.equal(all.frame.modeStateJson, modeStateJson);
+  assert.equal(all.frame.shells.length, MAX_SHELLS);
+  assert.deepEqual(all.frame.unseenShells, unseenShells);
+  // exact at the edge: falls that fill the message to its last byte ride; one byte more of the frame and they do not
+  const edge = (smokeBytes) => encodeBoth(full(worst.crushable, 's'.repeat(smokeBytes)));
+  const probe = edge(200);
+  const fit = 200 + (MAX_MESSAGE_BYTES - probe.bytes.byteLength);
+  const atEdge = edge(fit);
+  assert.equal(atEdge.bytes.byteLength, MAX_MESSAGE_BYTES, 'the frame fills the message');
+  assert.ok(atEdge.flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, 'falls that fit to the last byte ride');
+  const over = edge(fit + 1);
+  assert.equal(over.flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, 0, 'one byte past it they travel as none');
+  assert.equal(over.bytes.byteLength, MAX_MESSAGE_BYTES + 1 - worst.crushable.length, 'and the frame is its size without them');
+  assert.equal(over.frame.meta.smokeJson.length, fit + 1);
+  console.log(`destroyedSet.selftest: list or bitset, the smaller; every legal set encodes (65,536 indices in ${roundTripBytes()} B); malformed frames typed; ${worst.id}'s ${worst.crushable.length} crushable props down in a ${bytes.byteLength} B keyframe (wire 5 threw past 4,096), ${withFalls.bytes.byteLength} B with every fall; beside a ${DESTRUCTION_LOG_BUDGET_BYTES} B log, a full mode state, ${MAX_SHELLS} rounds and unseen ids and ${MAX_ENTITIES} rows: ${monsoon.bytes.byteLength} B with every fall (${room} B left), every legal index down ${all.bytes.byteLength} B with the falls dropped; falls ride exactly to the message's last byte`);
 }
 
 function roundTripBytes() { return roundTrip(Array.from({ length: MAX_DESTROYED_INDEX + 1 }, (_, i) => i)).bytes.byteLength; }

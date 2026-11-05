@@ -130,7 +130,7 @@ parts (monsoon):
 | monsoon | 1.11 / 2.68 | 1.68 / 4.17 | 29.1 KB/s |
 
 Budget: p95 ≤ 6 ms. Wire sizes (`src/mp/wire/wire.selftest`, wire 11): full row 43 B,
-moving delta row 16 B, 28-entity keyframe with the viewer section 1459 B,
+moving delta row 16 B, 28-entity keyframe with the viewer section 1458 B,
 input frame 60 B. A spectator sees all 28 rows; a seated player sees its team
 plus spotted enemies, so its egress is lower.
 

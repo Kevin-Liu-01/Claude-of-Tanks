@@ -292,7 +292,8 @@ export interface SnapshotFrame {
   /**
    * How each `destroyed` index fell, in its order (wire 11, round 2 U27; sim/obstacleFall.ts): the cause and direction
    * as this viewer may read them, what a seat that did not see a fall lays the prop with. Absent, or not as long as
-   * `destroyed`: none for every index (the prop's own fall axis, as a withheld live event lays it).
+   * `destroyed`: none for every index (the prop's own fall axis, as a withheld live event lays it). Falls take only the
+   * room a frame leaves (destroyedSet.ts writeDestroyedFalls): a decoded frame may hold none where its host's held some.
    */
   destroyedFalls?: number[];
   /** The destruction log so far (persistent within the round, append-only; absent reads as empty). */

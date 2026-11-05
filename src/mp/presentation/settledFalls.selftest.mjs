@@ -7,7 +7,8 @@
 //      own team and a spectator read a hidden rammer's fall, the other team reads none; a restored list has none;
 //   3. the match actor sorts the list and carries each viewer's falls with it, in the same order, onto the wire;
 //   4. the wire: a keyframe carries every fall, a delta its additions', a frame applied onto its baseline keeps both,
-//      the direct encoder writes the packet path's bytes, and a malformed falls section is refused;
+//      the direct encoder writes the packet path's bytes, a frame without readable falls costs nothing, and a malformed
+//      falls section is refused (the bound that keeps falls from stopping a keyframe: destroyedSet.selftest);
 //   5. the presentation lays each settled prop with its fall; a frame without falls lays it on its own axis, never +Z.
 // Run with: node src/mp/presentation/settledFalls.selftest.mjs
 import assert from 'node:assert/strict';
@@ -18,8 +19,8 @@ import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { createLoopbackLink } from '../../../server/match/link.ts';
 import {
-  MESSAGE_TYPE, PHASE, PROTOCOL_VERSION, VERDICT, WIRE_VERSION, applySnapshotPacket, buildSnapshotPacket, decodeMessage,
-  encodeMessage, zeroEntityRow,
+  MESSAGE_TYPE, PHASE, PROTOCOL_VERSION, SNAPSHOT_FLAGS, VERDICT, WIRE_VERSION, applySnapshotPacket, buildSnapshotPacket,
+  decodeMessage, encodeMessage, zeroEntityRow,
 } from '../wire/index.ts';
 import { encodeSnapshotFrame } from '../wire/codec.ts';
 import { createBattlePresentation } from './index.ts';
@@ -159,7 +160,8 @@ const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) <= tolerance;
   assert.equal(bare.frame.destroyedFalls, undefined, 'a list without falls decodes without them (none)');
   assert.equal(k.bytes - bare.bytes, 3, 'a byte a listed index');
   const allNone = roundTrip(frameOf(10, [3, 40, 41], [0, 0, 0]), null);
-  assert.equal(allNone.bytes, bare.bytes, 'falls that are all none cost the form byte only');
+  assert.equal(allNone.bytes, bare.bytes, 'falls that are all none cost nothing');
+  assert.equal(allNone.frame.destroyedFalls, undefined, 'and decode as none');
   // a delta: its additions' falls, applied onto the baseline's
   const next = frameOf(12, [3, 7, 40, 41, 90], [(1 << 6) | 5, (1 << 6) | 20, OBSTACLE_FALL_NONE, (2 << 6) | 63, (2 << 6) | 1]);
   const d = roundTrip(next, key);
@@ -175,21 +177,24 @@ const near = (a, b, tolerance = 1e-9) => Math.abs(a - b) <= tolerance;
     'an addition without a fall is none; the baseline\'s stand');
   // a frame whose falls do not line up with its list carries none (never a shifted fall)
   assert.equal(roundTrip(frameOf(10, [3, 40, 41], [(1 << 6) | 5]), null).frame.destroyedFalls, undefined);
-  // malformed: a cause 3 code, a none with a heading, an unknown form
+  // malformed: a cause 3 code, a none with a heading, the flag over an empty set, a truncated section
   const bytes = encodeSnapshotFrame(key, null);
-  const setAt = (() => { // the falls section follows the set: form 0, count 3, gaps 3, 36, 0
-    for (let at = 0; at < bytes.length - 6; at++) {
-      if (bytes[at] === 0 && bytes[at + 1] === 3 && bytes[at + 2] === 3 && bytes[at + 3] === 36 && bytes[at + 4] === 0 && bytes[at + 5] === 1) return at + 5;
-    }
-    return -1;
-  })();
-  assert.ok(setAt > 0, 'the falls section is found after the set');
-  for (const [offset, value, why] of [[0, 7, 'an unknown form'], [1, 0xc5, 'a cause 3 code'], [2, 0x03, 'a none with a heading']]) {
-    const bad = Uint8Array.from(bytes);
-    bad[setAt + offset] = value;
+  const flagsAt = 2 + 4 + 4; // after the header (version, type), tick and serverTimeMs
+  assert.equal(bytes[flagsAt] & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS, 'the header flag marks the falls');
+  assert.deepEqual([...bytes.subarray(bytes.length - 3)], key.destroyedFalls, 'the falls are the frame\'s last field');
+  const refused = (bad, code, why) => {
     const decoded = decodeMessage(bad, { resolveBaseline: () => null });
-    assert.ok(!decoded.ok && decoded.error.code === 'range', `${why} is refused (${decoded.ok ? 'decoded' : decoded.error.code})`);
+    assert.ok(!decoded.ok && decoded.error.code === code, `${why} is refused as ${code} (${decoded.ok ? 'decoded' : decoded.error.code})`);
+  };
+  for (const [offset, value, why] of [[3, 0xc5, 'a cause 3 code'], [2, 0x03, 'a none with a heading']]) {
+    const bad = Uint8Array.from(bytes);
+    bad[bytes.length - offset] = value;
+    refused(bad, 'range', why);
   }
+  refused(bytes.subarray(0, bytes.length - 1), 'truncated', 'a falls section one byte short');
+  const emptySet = Uint8Array.from(encodeSnapshotFrame(frameOf(10, []), null));
+  emptySet[flagsAt] |= SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS;
+  refused(emptySet, 'invalid_message', 'the flag over a set that names nothing');
 }
 
 // ---- 5. the presentation lays each settled prop with its fall --------------------------------------------------------

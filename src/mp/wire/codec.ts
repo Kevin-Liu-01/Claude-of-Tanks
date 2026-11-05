@@ -219,6 +219,7 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   }
   writer.u32(tickOrNone(packet.tick));
   writer.u32(packet.serverTimeMs);
+  const flagsAt = writer.length;
   writer.u8(flags);
   writer.u32(packet.keyframe ? NO_TICK : tickOrNone(packet.baseTick));
   writer.u32(tickOrNone(packet.ackedInputTick));
@@ -228,8 +229,6 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   writeMeta(writer, packet.meta, hasVerdict);
   // wire 6 (2026-10-13): the smaller of a gap list and a bitset, never a cap a long match can pass (destroyedSet.ts)
   writeDestroyedSet(writer, packet.destroyed);
-  // wire 11 (round 2, U27): each index's fall, in the set's order
-  writeDestroyedFalls(writer, alignedFalls(packet.destroyed, packet.destroyedFalls), packet.destroyed.length);
   if (packet.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   writer.u8(packet.entities.length);
   const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
@@ -248,6 +247,10 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   if (destruction.length) {
     writer.u32(packet.keyframe ? 0 : packet.destructionBase);
     writeDestructionEntries(writer, destruction);
+  }
+  // wire 11 (round 2, U27): each index's fall, in the set's order, last and only into the room the frame leaves
+  if (writeDestroyedFalls(writer, alignedFalls(packet.destroyed, packet.destroyedFalls), packet.destroyed.length)) {
+    writer.setU8(flagsAt, flags | SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS);
   }
 }
 
@@ -521,7 +524,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (tick === NO_TICK) throw new WireError('range', 'snapshot tick is required');
   const serverTimeMs = reader.u32();
   const flags = reader.u8();
-  if (flags > 63) throw new WireError('range', 'snapshot flags out of range');
+  if (flags > 127) throw new WireError('range', 'snapshot flags out of range');
   const keyframe = (flags & SNAPSHOT_FLAGS.KEYFRAME) !== 0;
   const baseTick = tickOrNone(reader.u32());
   if (keyframe !== (baseTick === NO_TICK)) throw new WireError('invalid_message', 'keyframe flag disagrees with base tick');
@@ -532,7 +535,6 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const inputMarginTicks = reader.i8();
   const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0);
   const destroyed = readDestroyedSet(reader);
-  const destroyedFalls = readDestroyedFalls(reader, destroyed.length);
   const baseline = keyframe ? null : resolveBaseline(baseTick);
   // the baseline's row for an entity: a cursor while the patches come in entity order (every host writes them so, over a
   // sorted baseline), a map built once if they ever do not (mp-scale-251: no map a snapshot)
@@ -592,6 +594,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
     if (keyframe && destructionBase !== 0) throw new WireError('invalid_message', 'a keyframe carries the whole destruction log');
     destruction = readDestructionEntries(reader);
   }
+  const destroyedFalls = flags & SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS ? readDestroyedFalls(reader, destroyed.length) : null;
   return {
     type: MESSAGE_TYPE.SNAPSHOT, tick, serverTimeMs, keyframe, baseTick, ackedInputTick, ackedFireSeq, ackedActionSeq,
     inputMarginTicks, meta, destroyed, ...(destroyedFalls ? { destroyedFalls } : {}), destruction, destructionBase, entities,
@@ -780,12 +783,14 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   const hasVerdict = frame.meta.verdict !== 0;
   writer.u32(tickOrNone(frame.tick));
   writer.u32(frame.serverTimeMs);
-  writer.u8((keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
+  const flagsAt = writer.length;
+  const flags = (keyframe ? SNAPSHOT_FLAGS.KEYFRAME : 0) |
     (frame.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (frame.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
     (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
     (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0) |
-    (frame.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0));
+    (frame.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0);
+  writer.u8(flags);
   writer.u32(keyframe ? NO_TICK : tickOrNone(baseline.tick));
   writer.u32(tickOrNone(frame.ackedInputTick));
   writer.u16(frame.ackedFireSeq);
@@ -795,7 +800,6 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   const frameFalls = alignedFalls(frame.destroyed, frame.destroyedFalls);
   const added = baseline ? sortedAdditions(baseline.destroyed, frame.destroyed, frameFalls) : frame.destroyed;
   writeDestroyedSet(writer, added);
-  writeDestroyedFalls(writer, baseline ? (frameFalls ? additionFallScratch : null) : frameFalls, added.length);
   // the rows: every row on a keyframe, a changed one on a delta (both lists sorted by entity id)
   if (frame.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   const rowCountAt = writer.length;
@@ -835,6 +839,10 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   if (destructionCount) {
     writer.u32(keyframe ? 0 : destructionBase);
     writeDestructionEntries(writer, frameDestruction.slice(destructionBase));
+  }
+  // wire 11 (round 2, U27): the falls last, only into the room the frame leaves (destroyedSet.ts writeDestroyedFalls)
+  if (writeDestroyedFalls(writer, baseline ? (frameFalls ? additionFallScratch : null) : frameFalls, added.length)) {
+    writer.setU8(flagsAt, flags | SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS);
   }
   if (writer.length > MAX_MESSAGE_BYTES) throw new WireError('bad_length', `message exceeds ${MAX_MESSAGE_BYTES} bytes`);
   return writer.toBytes();

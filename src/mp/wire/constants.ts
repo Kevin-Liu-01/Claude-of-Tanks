@@ -26,9 +26,11 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // (18 bits; 1 to 3 bytes, a flagless row's 1 where the u16 took 2). Before, a client rebuilt the tumble as
 // overturned-or-righting and judged a stack from a support cache its copy of the hull never filled, so the prediction
 // world's tank contacts and the authority's split the same pair (src/mp/match/hullBodyRow.ts).
-// 11 (round 2 of the 2026-11-02 audit, 2026-11-05): two snapshot additions. (a) U27: a non-empty destroyed set is followed
-// by each index's fall (destroyedSet.ts writeDestroyedFalls; src/sim/obstacleFall.ts: cause and heading in a byte, none
-// where the viewer may not read them), so a late joiner lays a prop as it fell, not as a ram toward +Z. (b) U31:
+// 11 (round 2 of the 2026-11-02 audit, 2026-11-05): two snapshot additions. (a) U27: SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS
+// and, as the frame's last field, each index of its destroyed set's fall (destroyedSet.ts writeDestroyedFalls;
+// src/sim/obstacleFall.ts: cause and heading in a byte, none where the viewer may not read them), so a late joiner lays a
+// prop as it fell, not as a ram toward +Z; the falls take only the room the frame leaves under MAX_MESSAGE_BYTES (past it
+// they travel as none), so they never stop a keyframe. (b) U31:
 // SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS and, after the shells, the rounds this viewer was shown that left its view still in
 // flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end.
 export const WIRE_VERSION = 11;
@@ -231,6 +233,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   HAS_DESTRUCTION: 1 << 4,
   /** The packet names rounds this viewer was shown that left its view in flight (wire 11, SnapshotFrame.unseenShells). */
   HAS_UNSEEN_SHELLS: 1 << 5,
+  /** The packet ends with a fall for each index of its destroyed set (wire 11, destroyedSet.ts writeDestroyedFalls). */
+  HAS_DESTROYED_FALLS: 1 << 6,
 } as const);
 /**
  * How long a round that left a viewer's view in flight stays named in its snapshots (wire 11, round 2 U31): ten snapshots

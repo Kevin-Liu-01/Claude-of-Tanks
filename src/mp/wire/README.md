@@ -61,17 +61,18 @@ Server → client
 ## SNAPSHOT
 
 ```
-u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT, HAS_DESTRUCTION, HAS_UNSEEN_SHELLS)
+u32 tick, u32 serverTimeMs, u8 flags (SNAPSHOT_FLAGS: KEYFRAME, HAS_VIEWER, HAS_MODE_STATE, HAS_VERDICT, HAS_DESTRUCTION, HAS_UNSEEN_SHELLS, HAS_DESTROYED_FALLS)
 u32 baseTick (NO_TICK on keyframes), u32 ackedInputTick, u16 ackedFireSeq, u16 ackedActionSeq
 i8 inputMarginTicks (how many ticks early the newest input arrived; negative = late; 127 = unknown)
 u8 phase, u16 countdownMs, u32 battleTimeMs, u8 verdict, [string verdictReason if HAS_VERDICT], u32 destructibleRevision
 destroyed set (keyframe: every destroyed obstacle index; delta: indices destroyed since the baseline; wire 6: below)
-[a set naming any index] destroyed falls (wire 11: below)
 u8 entityCount, entity rows ...
 u8 removedCount, u8 entityId ... (entities in the baseline that are hidden now)
 u16 shellCount, shells: u16 id, u8 shooterEntityId, 3 × i32 pos mm, 3 × i16 vel dm/s, u8 shellType, u8 flags (GUIDED)
 [HAS_UNSEEN_SHELLS] varint count (1..256), u16 shell id ... strictly ascending (wire 11: below)
 [HAS_VIEWER] viewer section, [HAS_MODE_STATE] string modeStateJson ≤ 8192
+[HAS_DESTRUCTION] u32 destructionBase, destruction log entries (destructionLog.ts)
+[HAS_DESTROYED_FALLS] u8 fall per index the destroyed set names, in its order (wire 11: below; always the last field)
 ```
 
 An *index list* is `varint count`, then the first index and the gaps
@@ -79,8 +80,9 @@ An *index list* is `varint count`, then the first index and the gaps
 
 A *destroyed set* (wire 6, 2026-10-13, `destroyedSet.ts`) is `u8 form`, then either form 0, an index list without a
 cap (indices 0..65535), or form 1, `varint byteLength` and a bitset (bit `i & 7` of byte `i >> 3` per destroyed index,
-the last byte holding a set bit) — whichever is smaller; at most 8 KB for any legal set. Wire 5 wrote an index list
-capped at 4,096 and its encoder threw past it (below Monsoon's 9,119 crushable props), failing every later keyframe.
+the last byte holding a set bit) — whichever is smaller; at most 8,195 B for any legal set (the set alone: the destroyed
+falls below take only the room a frame leaves). Wire 5 wrote an index list capped at 4,096 and its encoder threw past it
+(below Monsoon's 9,119 crushable props), failing every later keyframe.
 
 The *viewer section*'s movement checkpoint (wire 7, 2026-10-15, the MP stream): `u8 movementVersion` with its high bit
 (0x80) set marks a masked checkpoint, written only on a delta whose baseline frame holds a viewer on the same checkpoint
@@ -97,9 +99,12 @@ the presentation to that event. A host that resumes a match from a migration key
 into its own world and continues `destructibleRevision` from the keyframe's value; the revision never restarts at
 zero inside a match.
 
-The *destroyed falls* (wire 11, round 2 of the 2026-11-02 audit, U27; `destroyedSet.ts writeDestroyedFalls`) follow a
-set that names at least one index: `u8 form`, 0 (every fall none, nothing follows) or 1 (one fall byte per listed index,
-in the set's ascending order). A fall byte (`src/sim/obstacleFall.ts`) is the cause in bits 6–7 (0 none, 1 ram, 2 shell;
+The *destroyed falls* (wire 11, round 2 of the 2026-11-02 audit, U27; `destroyedSet.ts writeDestroyedFalls`) are the
+frame's last field, behind `SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS`: one fall byte per index the frame's set names, in the set's
+ascending order (a keyframe's whole list, a delta's additions). The flag is clear, and nothing follows, when every fall is
+none or when the falls would carry the frame past `MAX_MESSAGE_BYTES`: falls are presentation only and `none` is a legal
+fall, so they take only the room the frame leaves and never stop a keyframe that encodes without them (the C3 hazard the
+destruction log's budget answers). A fall byte (`src/sim/obstacleFall.ts`) is the cause in bits 6–7 (0 none, 1 ram, 2 shell;
 a blast fells as a shell) and the heading of the fall, `atan2(dx, dz)` in 64ths of a turn, in bits 0–5 (0 with none). A
 client that did not see a prop fall lays it with its fall instead of a ram toward +Z. The authority withholds a fall from
 a viewer as it withholds the live `world_prop_destroyed` event's cause and direction: a hull source's fall reads only to
@@ -274,8 +279,11 @@ plain jump more than 0.5 m up sets it as well.
 
 ### Destroyed falls and unseen shells (wire 11, 2026-11-05, round 2 of the 2026-11-02 audit)
 
-`WIRE_VERSION` 11, `PROTOCOL_VERSION` 12: the destroyed set is followed by its falls, and `SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS`
-adds the unseen-shells list after the shells (both described under SNAPSHOT above). A keyframe costs one byte more for a
-set that names any index and one byte per listed prop when any fall is readable; a delta costs a byte per prop it adds;
-a frame with no unseen round costs nothing. Receipts: `src/mp/presentation/settledFalls.selftest.mjs`,
+`WIRE_VERSION` 11, `PROTOCOL_VERSION` 12: `SNAPSHOT_FLAGS.HAS_DESTROYED_FALLS` ends a frame with its destroyed set's falls,
+and `SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS` adds the unseen-shells list after the shells (both described under SNAPSHOT above).
+A keyframe costs one byte per listed prop when any fall is readable and the falls fit what the frame leaves (Monsoon's
+whole crushable field: 8,928 B); a delta costs a byte per prop it adds; a frame with no readable fall or no unseen round
+costs nothing for it. `destroyedSet.selftest` builds the worst keyframes: Monsoon with every fall readable beside a full
+destruction log, mode state, shell and unseen list carries its falls, and every legal index down sends none and still
+encodes. Receipts: `src/mp/presentation/settledFalls.selftest.mjs`,
 `src/mp/presentation/unseenRounds.selftest.mjs`.

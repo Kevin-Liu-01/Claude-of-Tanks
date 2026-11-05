@@ -620,7 +620,11 @@ log (300 stage entries, 160 craters) is 3.3 KB in a keyframe.
 **The log's wire budget** (security audit 2026-10-22, C3). A keyframe carries the whole log beside the entity rows,
 the shells, the mode state and the destroyed set inside one 64 KB message (`MAX_MESSAGE_BYTES`). A Ruinspires log
 grown past about 2,340 breach entries no longer fit, and every viewer's snapshots and the migration keyframe stopped
-for the rest of the match.
+for the rest of the match. Wire 11's destroyed falls (a byte a listed prop, `src/mp/wire/destroyedSet.ts`) are the
+frame's last field and take only the room the rest leaves, sending none past it, so they never cost the log its budget.
+`destroyedSet.selftest` builds the worst keyframe: Monsoon's every crushable prop down with every fall readable, this log
+at its budget, a full mode state, 256 rounds and as many unseen ids, 64 rows: 64,523 B with every fall. Every legal index
+down beside the same bounds sends its falls as none and encodes in 62,638 B.
 
 The log now keeps to `DESTRUCTION_LOG_BUDGET_BYTES` (36 KB of worst-case entry sizes, `src/sim/destructionMatch.ts`):
 - Stage and crater entries are always logged. They are finite (three transitions a structure, `maxCraters`), and the
