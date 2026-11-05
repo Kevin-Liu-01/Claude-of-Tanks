@@ -1619,6 +1619,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
     'src/engine/shadowDepthKinds.selftest.mjs', // 2026-10-12: one shadow depth material per caster kind (the perf stream)
+    // 2026-11-02 audit R6 (round 2 U35): a failed caster-kind or static-cache chunk is asked again past the policy's backoff
+    'src/engine/shadowChunkLoadFailure.selftest.mjs',
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',

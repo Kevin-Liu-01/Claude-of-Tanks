@@ -564,12 +564,16 @@ const isFrozenWorldRoot = (object: THREE.Object3D): boolean => object.userData.m
 // entry: the first instanced or batched caster's shadow draw asks for it (the world, the hulls' gear batches and the
 // garage stand's instanced casters draw from the first frames), and until it lands three derives
 // its depth programs as it always did (the same maps either way; the kinds only spare the re-derivations).
+// (2026-11-02 audit R6, round 2 U35) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was three's own
+// derivation for the session; now the rig's update lifts the latch once a frame while the chunk is failed, and the next
+// caster drawn asks (at once after one failure, then past the backoff; the same handled promise until then)
 let settleDepthKind: typeof import('./shadowDepthKinds.ts').settleShadowDepthKind | null = null;
 let depthKindsRequested = false;
+const depthKindsLoad = createLazyChunk((): Promise<void> =>
+  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; }));
 function requestDepthKinds(): void {
   depthKindsRequested = true;
-  import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
-    () => { /* three's own derivation for the session */ });
+  void depthKindsLoad.load(); // until it lands, and while it fails, three derives its depth programs as it always did
 }
 /**
  * 2026-10-14 (SKY shadows r2a, P1b): a DoubleSide or alpha-tested caster's front faces are in the map, so its depth draw
@@ -1036,12 +1040,16 @@ export function createLighting(
   // gain 1.5-3 ms), so Ultra keeps re-centring every cascade until a dirty-rect reuse makes the copies small
   let poseHoldTier = preset !== PRESETS.ultra;
   let staticShadowCacheRequested = mobileTier;
+  // (2026-11-02 audit R6, round 2 U35) under the one lazy-chunk policy (app/lazyChunk.ts): a failure was the ordinary
+  // render for the session; now update lifts the latch once a frame while the chunk is failed, and the next frame that
+  // sees the frozen world root asks (at once after one failure, then past the backoff; the same handled promise until then)
+  const staticShadowCacheLoad = createLazyChunk((): Promise<void> => import('./shadowStaticCache.ts').then((module) => {
+    staticShadowCache = module.createShadowStaticCache();
+    setShadowCascadeCache(staticShadowCache);
+  }));
   const requestStaticShadowCache = (): void => {
     staticShadowCacheRequested = true;
-    import('./shadowStaticCache.ts').then((module) => {
-      staticShadowCache = module.createShadowStaticCache();
-      setShadowCascadeCache(staticShadowCache);
-    }, () => { /* the ordinary render for the session */ });
+    void staticShadowCacheLoad.load(); // the ordinary render until it lands, and while it fails
   };
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
@@ -1501,6 +1509,10 @@ export function createLighting(
     const forcedFrame = force || forceFrames > 0;
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
+    // (round 2 U35) a failed caster-kind or static-cache chunk: its latch lifts once a frame, and its next need asks
+    // again under the policy's backoff (the kept failure until then, which allocates nothing)
+    if (depthKindsLoad.state === 'failed') depthKindsRequested = false;
+    if (staticShadowCacheLoad.state === 'failed') staticShadowCacheRequested = false;
     casterProxies?.updateCasterProxies(csm.lights, scene, false);
     nearVehiclePolicy.update();
     evaluateCasterProfiles(false);
