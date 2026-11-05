@@ -138,7 +138,7 @@ try {
   assert.equal(firstDone(), true, `a prepare whose scene was replaced mid-link still settles (${lost.length} links lost under a disposed material)`);
   assert.equal(secondDone(), true);
   assert.equal(disposed.has(built[0].material), true, 'the replaced scene is disposed once its link settled');
-  assert.equal(built[0].frames.root.parent, null, 'and it left the stage at once');
+  assert.ok(built[0].frames.root.parent === null, 'and it left the stage at once');
 
   // ---- a layer shows one state; the next state's staged scene is dropped by a third prepare while it links
   view.show('armor', second);
