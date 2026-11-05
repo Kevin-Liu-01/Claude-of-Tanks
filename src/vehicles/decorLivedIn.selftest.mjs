@@ -6,10 +6,12 @@
 //    tow cable: every piece authored on its foot, its near level inside the 700-triangle piece budget, its coarse level
 //    no heavier, in the same envelope and from the same random draws (the placement seats both with one matrix).
 // 2. The lived-in rows come after every other row of their tank, always carried, drawing nothing from the manifest's
-//    stream (the rows before them keep their draws and seats); phase 1 puts none on a Bradley turret; the M3A2 draws the
-//    M2A2's rows (DECOR_TWIN) and every other vehicle's manifest has none.
-// 3. Built with its decor, an M1A1 seats the bustle rack's load under its cargo net and the packs on its side rack's
-//    rails, and an M2A2 the gutter rolls and the ramp's coiled cable, inside the lived-in budget.
+//    stream (the rows before them keep their draws and seats); the M3A3's turret carries none yet (its turret is still
+//    being built); the M3A2 keeps the M2A2's seed and hull load (DECOR_TWIN) with rows for its own turret; every other
+//    vehicle's manifest has none.
+// 3. Built with its decor, an M1A1 seats the bustle rack's load under its cargo net, the packs on its side rack's rails and
+//    the rolls in its trough, and an M2A2 the gutter rolls, the trim vane's net, the ramp's coiled cable and its turret
+//    rack's load, inside the lived-in budget (LIVED_IN_TRIS).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -81,8 +83,8 @@ for (const [kit, args, label] of [
 // 2. the manifests
 // the rows each carries at least: the owner's-model racks a full load and four rail packs, the tejas racks what their
 // profile's own load leaves room for, the Bradley hulls their gutter rolls and the coil
-const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 9, m1a1ha: 9, m1a1_abrams_sa: 10, m1a1_abrams_aim: 10, m1a1_abrams_hc: 1,
-  m1a1_abrams_fep: 3, m2a2_bradley: 7, m3a2_bradley: 7, m3a3_bradley: 7, ua_m2a3_bradley: 6, m6_linebacker: 6 });
+const LIVED_IN_ROWS_MIN = Object.freeze({ m1a1: 22, m1a1ha: 20, m1a1_abrams_sa: 23, m1a1_abrams_aim: 23, m1a1_abrams_hc: 2,
+  m1a1_abrams_fep: 5, m2a2_bradley: 18, m3a2_bradley: 17, m3a3_bradley: 14, ua_m2a3_bradley: 16, m6_linebacker: 13 });
 const LIVED_IN_IDS = Object.keys(LIVED_IN_ROWS_MIN);
 const BRADLEYS = new Set(['m2a2_bradley', 'm3a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker']);
 const counting = () => { let n = 0; const rng = () => { n++; return ((n * 0.618034) % 1); }; rng.count = () => n; return rng; };
@@ -96,17 +98,20 @@ for (const id of LIVED_IN_IDS) {
   ok(manifest.slice(0, first).every((row) => !row.livedIn), `${id}: no lived-in row before the tank's own rows`);
   ok(manifest.filter((row) => row.livedIn).length >= LIVED_IN_ROWS_MIN[id],
     `${id}: its load (${manifest.filter((row) => row.livedIn).length} rows, at least ${LIVED_IN_ROWS_MIN[id]})`);
-  if (BRADLEYS.has(id)) {
+  if (id === 'm3a3_bradley') {
     ok(manifest.filter((row) => row.livedIn).every((row) => !row.slot[1].turret && !row.slot[0].startsWith('turret')),
-      `${id}: phase 1 puts nothing on a Bradley turret`);
+      `${id}: nothing on its turret until its turret is finished`);
   }
 }
-// the lived-in rows draw nothing: the M3A2 (DECOR_TWIN) and the M2A2 draw the same rows from the same stream
+// the lived-in rows draw nothing: the M3A2 (DECOR_TWIN) and the M2A2 draw the same stream; the M3A2 carries the M2A2's
+// hull load and its own turret's
 {
   const a = counting(), b = counting();
   const m2 = decorManifestFor(getSpec('m2a2_bradley'), a), m3 = decorManifestFor(getSpec('m3a2_bradley'), b);
   ok(a.count() === b.count(), 'the M3A2 consumes the M2A2 manifest stream');
-  ok(JSON.stringify(m2.filter((row) => row.livedIn)) === JSON.stringify(m3.filter((row) => row.livedIn)), 'the M3A2 carries the M2A2 hull load');
+  const hull = (rows) => JSON.stringify(rows.filter((row) => row.livedIn && !row.slot[1].turret && !row.slot[0].startsWith('turret')));
+  ok(hull(m2) === hull(m3), 'the M3A2 carries the M2A2 hull load');
+  ok(JSON.stringify(m2.filter((row) => row.livedIn)) !== JSON.stringify(m3.filter((row) => row.livedIn)), 'and its own turret load');
 }
 for (const id of ['leo2a4', 'challenger2', 't90am', 'ua_m1a1', 'abramsx']) {
   ok(!decorManifestFor(getSpec(id), counting()).some((row) => row.livedIn), `${id}: no lived-in rows`);
@@ -116,7 +121,7 @@ for (const id of ['leo2a4', 'challenger2', 't90am', 'ua_m1a1', 'abramsx']) {
 const MINE = /^(crewkit|cargonet|coil)/;
 const rows = [];
 try {
-  for (const [id, want] of [['m1a1', { crewkit: 8, cargonet: 1, turret: 9 }], ['m2a2_bradley', { crewkit: 5, coil: 1 }]]) {
+  for (const [id, want] of [['m1a1', { crewkit: 16, cargonet: 1, turret: 17 }], ['m2a2_bradley', { crewkit: 10, coil: 1, turret: 2 }]]) {
     const tank = createTank(id, null, { camoSeed: 4242, quality: 'high', decor: true, staticPreview: true });
     try {
       const summary = tank.root.userData.__decorSummary;
@@ -126,9 +131,9 @@ try {
       ok(count(/^crewkit/) >= want.crewkit, `${id}: ${count(/^crewkit/)} crew loads seated (>= ${want.crewkit})`);
       if (want.cargonet) ok(count(/^cargonet/) === want.cargonet, `${id}: the bustle rack's net is laid`);
       if (want.coil) ok(count(/^coil/) === want.coil, `${id}: the ramp's tow cable is coiled`);
-      if (want.turret) ok(lived.filter((piece) => piece.frame === 'turret').length >= want.turret, `${id}: the bustle rack is loaded`);
-      if (BRADLEYS.has(id)) ok(lived.every((piece) => piece.frame === 'hull'), `${id}: nothing on the turret in phase 1`);
-      ok(summary.tris <= 11000, `${id}: inside the lived-in budget (${summary.tris})`);
+      if (want.turret) ok(lived.filter((piece) => piece.frame === 'turret').length >= want.turret,
+        `${id}: the turret is loaded (${lived.filter((piece) => piece.frame === 'turret').length} pieces)`);
+      ok(summary.tris <= 16000, `${id}: inside the lived-in budget (${summary.tris})`);
       rows.push(`${id} ${lived.length} lived pieces, ${summary.tris} tris, ${summary.drawCalls} draws`);
     } finally {
       tank.dispose();

@@ -3227,7 +3227,7 @@ const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[
 // they seat under LIVED_IN_TRIS), so nothing the tank carried before moves.
 
 /** The near-level triangle budget the lived-in rows seat under (the fleet's 6,000 holds for every row before them). */
-const LIVED_IN_TRIS = 11000;
+const LIVED_IN_TRIS = 16000;
 const lived = (kit: string, v: Omit<DecorKitArgs, 'rng'>, slot: [string, DecorSlotArgs]): DecorManifestRow =>
   ({ kit, p: 1, v, slot, livedIn: true });
 const crew = (v: string, slot: string, args: DecorSlotArgs): DecorManifestRow => lived('crewkit', { v }, [slot, args]);
@@ -3245,29 +3245,37 @@ const crew = (v: string, slot: string, args: DecorSlotArgs): DecorManifestRow =>
  * up from yaw 142 to 180, its barrel 6 cm over the deck there) and the bustle rack's sweep.
  */
 const M1A1_RACK = Object.freeze({ floor: 0.29, z: -2.77, z0: -2.94, z1: -2.6, rail: 0.66 });
-function m1a1RackLoad(netX: readonly [number, number] = [-1.0, 0.78], dockFree = true, waterX = 0.62): DecorManifestRow[] {
-  const R = M1A1_RACK, at = (...xs: number[]): DecorSlotArgs => ({ turret: true, floor: R.floor, at: xs.map((x) => [x, R.z] as const) });
+/**
+ * Phase 2 (the coordinator: "much more volume ... a viewer should see the crew kit immediately"): the rack overflows. A
+ * first layer on the floor and the profile's fill (`floor`: [kind, x]), a second piled on it (`piled`), the net over the
+ * span `netX`. `dock`: the x range the drone dock's airframe reaches over (nothing there may stand over 0.76).
+ */
+function m1a1RackLoad(floor: ReadonlyArray<readonly [string, number]>, piled: ReadonlyArray<readonly [string, number]>,
+  netX: readonly [number, number]): DecorManifestRow[] {
+  const R = M1A1_RACK, at = (x: number): DecorSlotArgs => ({ turret: true, floor: R.floor, at: [[x, R.z], [x + 0.04, R.z]] });
   // (the loads on the cases ride a little aft, clear of the bustle roof's own loads where they overhang the rack)
-  const on = (...xs: number[]): DecorSlotArgs => ({ turret: true, floor: R.floor, stack: true, at: xs.map((x) => [x, R.z - 0.05] as const) });
+  const on = (x: number): DecorSlotArgs => ({ turret: true, floor: R.floor, stack: true, at: [[x, R.z - 0.05], [x + 0.04, R.z - 0.05]] });
   return [
-    crew('water-case', 'stowAt', at(waterX, waterX + 0.04)),
-    crew('ammo-can-stack', 'stowAt', at(-0.2, -0.16)),
-    crew('large-rucksack', 'stowAt', at(-0.76, -0.9, -0.62)),
-    crew('mat-roll', 'stowAt', on(-0.8, -0.92, -0.68)),
-    // (where the dock's airframe reaches over the water case, nothing stands on it)
-    ...(dockFree ? [crew('sleep-system', 'stowAt', on(0.64, 0.6))] : []),
+    ...floor.map(([v, x]) => crew(v, 'stowAt', at(x))),
+    ...piled.map(([v, x]) => crew(v, 'stowAt', on(x))),
     lived('cargonet', { w: netX[1] - netX[0], len: R.z1 - R.z0 },
       ['netOver', { turret: true, floor: R.floor, x0: netX[0], x1: netX[1], z0: R.z0, z1: R.z1, edge: R.rail }]),
   ];
 }
 /**
  * Packs hung on the turret side rack's rails (the owner's-model M1A1s: rails at x +-1.649, 30 mm, their outer face 1.664, the
- * top rail's top 0.694, posts at z -0.18, -0.93, -1.54, -2.13; turret frame): a slim assault pack in each of the two
- * middle bays of each side, where nothing on the turret wall looks or swings.
+ * top rail's top 0.694, posts at z -0.18, -0.93, -1.54, -2.13; turret frame): a slim assault pack in each of the three
+ * rear bays of each side, where nothing on the turret wall looks or swings; and (phase 2) rolls stuffed into the rack's
+ * trough behind the rails in every bay ahead of the bustle rack, foam mats and sleeping bags.
  */
 function m1a1SideRackPacks(): DecorManifestRow[] {
-  return [1, -1].flatMap((side) => [-1.235, -1.835].map((z) =>
-    crew('assault-pack', 'railHang', { side, x: 1.664, edge: 0.694, at: [[z, 0], [z + 0.06, 0], [z - 0.06, 0]] })));
+  return [1, -1].flatMap((side) => [
+    ...[-1.235, -1.835, -2.55].map((z) =>
+      crew('assault-pack', 'railHang', { side, x: 1.664, edge: 0.694, at: [[z, 0], [z + 0.06, 0], [z - 0.06, 0]] })),
+    ...([[side > 0 ? 'mat-roll' : 'sleep-system', -0.555], ['sleep-system', -1.235], [side > 0 ? 'sleep-system' : 'mat-roll', -1.835],
+      ['sleep-system', -2.35]] as const).map(([v, z]) =>
+      crew(v, 'troughRoll', { side, x: 1.634, edge: 0.68, at: [[z, 0], [z + 0.03, 0], [z - 0.03, 0]] })),
+  ]);
 }
 /**
  * The tejas-family bustle rack (m1a1_abrams_hc, m1a1_abrams_fep: x +-1.07, z -2.6..-2.98) already loaded by its profile
@@ -3294,37 +3302,82 @@ function bradleyHullLoad(rolls: ReadonlyArray<readonly [string, number, number]>
     ...rolls.map(([v, side, z]) => crew(v, 'gutterRoll', { side, x: 1.53, at: [[z, 0], [z + 0.12, 0], [z - 0.12, 0]] })),
     lived('coil', { r: 0.25, n: 3 }, ['plateHang', { at: [[0.36, 1.62], [-0.36, 1.62], [0, 1.62], [0.45, 1.52], [-0.45, 1.52],
       [0.05, 1.5], [-0.05, 1.5]] }]),
+    // phase 2 (the coordinator: "a rolled camouflage net and duffels strapped across the trim vane/front deck, as Desert
+    // Storm and OIF Bradleys carried them"): the net rolled across the trim vane's lower edge between the gun's line and
+    // the spare links (the driver's periscopes look out over it from 2.08 m), a duffel and the ammunition cans on the nose
+    // shelf in front of the links (z 2.84..3.18, 1.40 m), the driver's side of the shelf left clear
+    lived('camonet', { v: 'roll', len: 0.85 }, ['slopeLoad', { at: [[0.02, 2.5], [0.06, 2.46], [-0.02, 2.52]] }]),
+    crew('long-duffel', 'stowAt', { at: [[-0.42, 3.0], [-0.4, 2.98]] }),
+    crew('ammo-can-stack', 'stowAt', { at: [[-1.05, 3.0], [-1.03, 2.98]] }),
+  ];
+}
+/**
+ * Phase 2: a Bradley turret's load (turret frame, about its ring at x -0.14, z -0.40): rolls and bags piled on the
+ * profile's own bustle rack (`rack`: its footprint and the height its load stands to; `on`: [kind, x]) under a net
+ * hooked to the rack's rails, and a duffel hung on the right flank's rear quarter (turretSide, its welded L-arms), clear
+ * of the TOW or Stinger launcher on the left, the hatches, the sights and the whips.
+ */
+function bradleyTurretLoad(rack: { x0: number; x1: number; z0: number; z1: number; floor: number; edge: number } | null,
+  on: ReadonlyArray<readonly [string, number]>, flank = true, net = true): DecorManifestRow[] {
+  const z = rack ? (rack.z0 + rack.z1) / 2 : 0;
+  return [
+    ...(rack ? on.map(([v, x]) => crew(v, 'stowAt', { turret: true, stack: true, floor: rack.floor, at: [[x, z], [x + 0.04, z]] })) : []),
+    ...(rack && net ? [lived('cargonet', { w: rack.x1 - rack.x0, len: rack.z1 - rack.z0 }, ['netOver', { turret: true, floor: rack.floor,
+      x0: rack.x0, x1: rack.x1, z0: rack.z0, z1: rack.z1, edge: rack.edge }])] : []),
+    ...(flank ? [crew('long-duffel', 'turretSide', { side: -1, rear: true })] : []),
   ];
 }
 const LIVED_IN_ROWS: Readonly<Record<string, () => DecorManifestRow[]>> = Object.freeze({
-  // the dock's airframe over x 0.10..0.81: the net over it stays low, no sleeping bag on the water case
-  m1a1: () => [...m1a1RackLoad(undefined, false), ...m1a1SideRackPacks()],
+  // the dock's airframe over x 0.10..0.81: the water case alone under it, the net over it low; an MRE pair in the left bay
+  m1a1: () => [...m1a1RackLoad([['water-case', 0.62], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76], ['mre-stack', 1.14]],
+    [['mat-roll', -0.8], ['long-duffel', -0.45], ['helmet-bundle', 1.14]], [-1.0, 0.78]), ...m1a1SideRackPacks()],
   // the dock's airframe over x 0.43..1.14: the water case beside the cans, the net stops short of it
-  m1a1ha: () => [...m1a1RackLoad([-1.0, 0.36], false, 0.19), ...m1a1SideRackPacks()],
-  m1a1_abrams_sa: () => [...m1a1RackLoad(), ...m1a1SideRackPacks()],
-  m1a1_abrams_aim: () => [...m1a1RackLoad(), ...m1a1SideRackPacks()],
-  // its rack is full to 0.92 (and its cans to 1.19) and its drone dock's airframe reaches back over x -0.87..-0.15: a
-  // sleeping bag on the profile's duffel, no net over the cans
-  m1a1_abrams_hc: () => tejasRackLoad(null, [['sleep-system', 0.15]]),
-  // the rack's flat top is free from x -0.25 to 0.35: the cans there, a roll on the duffel
-  m1a1_abrams_fep: () => tejasRackLoad([-1.03, 1.03], [['ammo-can-stack', 0.05], ['mat-roll', -0.55]]),
-  // (the M3A2 draws the M2A2's rows: DECOR_TWIN)
-  m2a2_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
-    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55]]),
+  m1a1ha: () => [...m1a1RackLoad([['water-case', 0.19], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76]],
+    [['mat-roll', -0.8], ['long-duffel', -0.45]], [-1.0, 0.36]), ...m1a1SideRackPacks()],
+  m1a1_abrams_sa: () => [...m1a1RackLoad([['water-case', 0.62], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76], ['mre-stack', 1.14]],
+    [['sleep-system', 0.64], ['mat-roll', -0.8], ['long-duffel', -0.45], ['helmet-bundle', 1.14]], [-1.0, 1.3]), ...m1a1SideRackPacks()],
+  m1a1_abrams_aim: () => [...m1a1RackLoad([['water-case', 0.62], ['ammo-can-stack', -0.2], ['large-rucksack', -0.76], ['mre-stack', 1.14]],
+    [['sleep-system', 0.64], ['mat-roll', -0.8], ['long-duffel', -0.45], ['helmet-bundle', 1.14]], [-1.0, 1.3]), ...m1a1SideRackPacks()],
+  // its rack is full to 0.92 (and its cans to 1.19) and its drone dock's airframe reaches back over x -0.87..-0.15 as far
+  // as z -2.78: a sleeping bag on the profile's duffel, a foam mat behind the dock's reach, no net over the cans
+  m1a1_abrams_hc: () => [...tejasRackLoad(null, [['sleep-system', 0.15]]),
+    crew('mat-roll', 'stowAt', { turret: true, stack: true, floor: 0.32, at: [[-0.5, -2.875], [-0.46, -2.875]] })],
+  // the rack's flat top is free from x -0.25 to 0.35: the cans there with a water case on them, a duffel on the profile's
+  // bags, a roll on its equipment
+  m1a1_abrams_fep: () => tejasRackLoad([-1.03, 1.03], [['ammo-can-stack', 0.05], ['water-case', 0.05], ['long-duffel', -0.5],
+    ['mat-roll', 0.6]]),
+  // (the M3A2 keeps the M2A2's decor seed through DECOR_TWIN but its own rows: its turret is the source-measured one)
+  // phase 2: fuller gutters (a roll forward of the turret beside the engine deck and the driver on each side)
+  m2a2_bradley: () => [...bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55], ['camo-net-bag', 1, 0.45],
+    ['sleep-system', -1, 0.4], ['mat-roll', 1, 1.15], ['long-duffel', -1, 1.15]]),
+  // the classic turret's bustle rack (x -0.62..0.30, z -1.30..-0.98, its bags to 0.55)
+  ...bradleyTurretLoad({ x0: -0.62, x1: 0.3, z0: -1.3, z1: -0.98, floor: 0.45, edge: 0.55 }, [['sleep-system', -0.36], ['mat-roll', 0.02]])],
+  // the source-measured turret's rack (x -0.40..0.20, z -1.52..-1.28, its bags to 0.66)
+  m3a2_bradley: () => [...bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55], ['camo-net-bag', 1, 0.45],
+    ['sleep-system', -1, 0.4], ['mat-roll', 1, 1.15], ['long-duffel', -1, 1.15]]),
+  ...bradleyTurretLoad({ x0: -0.4, x1: 0.2, z0: -1.52, z1: -1.28, floor: 0.47, edge: 0.62 }, [['mat-roll', -0.1]])],
   m3a3_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
-    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55]]),
-  // its right gutter carries the unditching log (z -1..-2)
-  ua_m2a3_bradley: () => bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
-    ['sleep-system', -1, -2.75], ['mat-roll', -1, -0.5]]),
-  // its gutters carry boxes at z -2.0..-2.5, and its turret's low overhang leaves the forward gutters to the flat rolls
-  m6_linebacker: () => bradleyHullLoad([['sleep-system', 1, -2.8], ['mat-roll', 1, -1.4], ['folded-tarp-pack', 1, -0.75],
-    ['sleep-system', -1, -2.8], ['mat-roll', -1, -1.3]]),
+    ['long-duffel', -1, -2.58], ['mat-roll', -1, -1.2], ['sleep-system', -1, -0.55], ['camo-net-bag', 1, 0.45],
+    ['sleep-system', -1, 0.4], ['mat-roll', 1, 1.15], ['long-duffel', -1, 1.15]]),
+  // its right gutter carries the unditching log (z -1..-2); its turret's railed rack (x -0.40..0.62, z -1.60..-1.28)
+  ua_m2a3_bradley: () => [...bradleyHullLoad([['long-duffel', 1, -2.62], ['mat-roll', 1, -1.3], ['sleep-system', 1, -0.6],
+    ['sleep-system', -1, -2.75], ['mat-roll', -1, -0.5], ['camo-net-bag', 1, 0.45], ['mat-roll', 1, 1.15], ['long-duffel', -1, 1.15]]),
+  ...bradleyTurretLoad({ x0: -0.4, x1: 0.62, z0: -1.6, z1: -1.28, floor: 0.46, edge: 0.6 }, [['mat-roll', 0.05], ['sleep-system', 0.42]])],
+  // its gutters carry boxes at z -2.0..-2.5, and its turret's low overhang leaves the forward gutters to the flat rolls;
+  // its turret carries the crew's bags across its rear (x -0.30..0.74, z -1.76..-1.60, to 0.63): a roll and a sleeping bag
+  // piled on them
+  m6_linebacker: () => [...bradleyHullLoad([['sleep-system', 1, -2.8], ['mat-roll', 1, -1.4], ['folded-tarp-pack', 1, -0.75],
+    ['sleep-system', -1, -2.8], ['mat-roll', -1, -1.3], ['mat-roll', 1, 0.45], ['camo-net-bag', -1, 0.4]]),
+  ...bradleyTurretLoad({ x0: -0.3, x1: 0.74, z0: -1.76, z1: -1.6, floor: 0.5, edge: 0.6 }, [['mat-roll', 0.3], ['sleep-system', -0.12]], false, false)],
 });
 
 /** Resolve the manifest rows for one spec: its rows (baseDecorManifest), then its lived-in rows (release 269). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const base = baseDecorManifest(spec, rng);
-  const livedIn = LIVED_IN_ROWS[DECOR_TWIN.get(spec.id) ?? spec.id];
+  // (a twin's own rows where its turret differs, else its twin's: the M3A2 since 269's swap)
+  const livedIn = LIVED_IN_ROWS[spec.id] ?? LIVED_IN_ROWS[DECOR_TWIN.get(spec.id) ?? spec.id];
   return livedIn ? [...base, ...livedIn()] : base;
 }
 
@@ -7115,6 +7168,58 @@ function* decorationSteps(
       // A soft pack hung on the outside of a turret side rack's rails by its shoulder straps (`side`; stations `at` [z, 0];
       // the rails' outer face at `railX`, the top rail's top at `edge`, turret frame): its back panel against the rails,
       // its top a hand over the top rail, the two straps looped over that rail.
+      // A roll strapped across a sloped plate (a Bradley's trim vane; stations `at`, hull frame): its flat underside laid on
+      // the plate's plane, read at its middle and both ends (each within 2 cm of that plane), its axis across the slope.
+      slopeLoad(args, parts, name) {
+        const bb = partsBBox(parts);
+        const half = (bb.max.x - bb.min.x) / 2;
+        const prober = solidHullProber();
+        for (const [x, z] of args.at ?? [[args.x ?? 0, args.z ?? 0] as const]) {
+          const h = prober.top(x, z, topFrom);
+          if (!h || h.n.y < 0.6) continue;
+          const flat = [-half * 0.8, half * 0.8].every((dx) => {
+            const e = prober.top(x + dx, z, topFrom);
+            return !!e && Math.abs(e.p.y - (h.p.y - (h.n.x * dx) / h.n.y)) <= 0.02;
+          });
+          if (!flat) continue;
+          const candidate = clonePartList(parts);
+          dropPads(candidate);
+          if (commit(name, candidate, 'hull', h.p.clone().addScaledVector(h.n, -0.01), roofMountEuler(h.n, 0), placedHull,
+            { attachment: { slot: 'slope', supportPoint: h.p, supportNormal: h.n, embedM: 0.01, mountAxis: 'y' } })) {
+            disposePartList(parts);
+            return true;
+          }
+        }
+        disposePartList(parts);
+        return false;
+      },
+      // A roll lying fore and aft in a turret side rack's trough, behind its rails (`side`, stations `at` [z, 0], the rails'
+      // inner face `x`, turret frame): the turret wall read straight in from outside at two heights between the rails
+      // (a line, the wall's tumblehome), the roll's section set against that wall and the rails' inner face, where the
+      // trough is as wide as the roll; it rests on the wall and the middle rail, held by the posts at the bay's ends.
+      troughRoll(args, parts, name) {
+        const side = args.side ?? 1, railIn = args.x ?? 1.634;
+        const bb = partsBBox(parts);
+        const hw = (bb.max.z - bb.min.z) / 2, hh = (bb.max.y - Math.max(0, bb.min.y)) / 2;
+        const solid = solidTurretProber();
+        for (const [zc] of args.at ?? [[args.z ?? -1.5, 0] as const]) {
+          const a = solid.side(0.3, zc, side, W / 2 + 1), b = solid.side(0.55, zc, side, W / 2 + 1);
+          if (!a || !b || Math.abs(a.p.x) >= railIn - 0.05 || Math.abs(b.p.x) >= railIn - 0.05) continue;
+          // the wall as x = c - k y (outboard distance from the centre line)
+          const k = (Math.abs(a.p.x) - Math.abs(b.p.x)) / (b.p.y - a.p.y), c = Math.abs(a.p.x) + k * a.p.y;
+          if (!(k > 0.05 && k < 1.5)) continue;
+          const cx = railIn - hw;
+          const cy = (hw * Math.hypot(1, k) + c - cx) / k;
+          const foot = cy - hh;
+          if (foot < 0.2 || cy + hh > (args.edge ?? 0.68)) continue;
+          const rot = E(0, Math.PI / 2 + (slotRng() - 0.5) * 0.03, 0);
+          const candidate = clonePartList(parts);
+          dropPads(candidate);
+          if (commit(name, candidate, 'turret', V(side * cx, foot, zc), rot, placedTurret)) { disposePartList(parts); return true; }
+        }
+        disposePartList(parts);
+        return false;
+      },
       railHang(args, parts, name) {
         const side = args.side ?? 1, railX = args.x ?? 1.664, top = args.edge ?? 0.694;
         // the pack lies on its back panel (local y up from it, its length along x): stood up, its back toward the rails
