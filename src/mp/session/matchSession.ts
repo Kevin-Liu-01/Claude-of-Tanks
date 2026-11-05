@@ -432,11 +432,24 @@ export class MatchSession {
     return true;
   }
 
-  /** Watch a host this seat boots: its actor running moves the role from booting to live. */
+  /**
+   * Watch a host this seat boots: its actor running moves the role from booting to live. A live host that fails (its
+   * thread died: browserHostPort.ts reports a Worker error at any point as boot_failed, and the host tears itself down)
+   * hands the match on at once, as a failed boot does (round 2 Q2): the role kept live_host with the dead host and the
+   * room heard nothing, so with this page's room socket still up every peer waited for the room's report staleness (90 s)
+   * before the next election. A failing boot is becomeHost's to report (its host.start rejects).
+   */
   private watchHost(host: MatchHost): void {
-    const off = host.onState((state) => {
+    const off = host.onState((state, detail) => {
       if (this.host !== host) { off(); return; }
       if (state === 'live' && this.roleState === 'booting_host') this.moveRole('live_host', 'host live');
+      if (state === 'failed' && this.roleState === 'live_host') {
+        this.host = null;
+        this.moveRole('none', 'host failed');
+        this.log('error', 'the live host failed; handing the match on', { generation: this.room.generation, detail });
+        this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
+        this.setDecline('match', { declined: true, unable: true });
+      }
       if (state === 'stopped' || state === 'failed') off();
     });
   }
