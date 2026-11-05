@@ -50,80 +50,6 @@
   },
   "armor": {
     "schemaVersion": 3,
-    "externalWeapons": [
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [-1.06,0.7415,-0.675],
-        "max": [-0.94,0.9385,-0.475],
-        "physicalMm": 10,
-        "surfaceFingerprint": "21159a13"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [-1.42,0.67,-1.37],
-        "max": [-1.02,1.27,0.05],
-        "physicalMm": 10,
-        "surfaceFingerprint": "5f25474a"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [-1.305,0.755,0.02],
-        "max": [-1.135,0.925,0.225],
-        "physicalMm": 10,
-        "surfaceFingerprint": "547f1559"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [0.94,0.7415,-0.675],
-        "max": [1.06,0.9385,-0.475],
-        "physicalMm": 10,
-        "surfaceFingerprint": "0bf0b2b1"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [1.02,0.67,-1.37],
-        "max": [1.42,1.27,0.05],
-        "physicalMm": 10,
-        "surfaceFingerprint": "f1a0629a"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [1.135,0.755,0.02],
-        "max": [1.305,0.925,0.225],
-        "physicalMm": 10,
-        "surfaceFingerprint": "1b332085"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [-1.35,1.268,-0.985],
-        "max": [-1.09,1.28,-0.365],
-        "physicalMm": 10,
-        "surfaceFingerprint": "e4a3d9ab"
-      },
-      {
-        "module": "gun",
-        "turretLocal": true,
-        "gunFollow": true,
-        "min": [1.09,1.268,-0.985],
-        "max": [1.35,1.28,-0.365],
-        "physicalMm": 10,
-        "surfaceFingerprint": "0a63d23f"
-      }
-    ],
     "turretPivot": [0,1.74,-1.1],
     "plates": [
       {
@@ -875,7 +801,7 @@
     ]
   },
   "geometryHash": "d9ce19a7",
-  "metadataHash": "aec4156e",
+  "metadataHash": "8346aeaa",
   "presentationAnchor": {
     "xM": 0.0015,
     "zM": -0.0041
@@ -977,16 +903,16 @@
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 45828,
-      "sha256": "8aecdce88c336a6a34804184330a082a383f301a93ee33c886ebbe0412bc4fd4"
+      "bytes": 46182,
+      "sha256": "0e1ea05d4658502d11cd99b892c9d14737d045afb365d2ebbb8fc6c701dd25b5"
     },
     "modulesSide": {
       "file": "pgz09_modules_side.webp",
       "width": 1024,
       "height": 512,
       "mime": "image/webp",
-      "bytes": 44474,
-      "sha256": "347967d398689c81777551595a5bdb8c6eb22158380d27db5a23d21e8a113aaf"
+      "bytes": 44966,
+      "sha256": "eef6e9c9ca7dcb56a734b0a844c00719a28d85ef01f44daa646a66dab3a49879"
     },
     "crewSide": {
       "file": "pgz09_crew_side.webp",
@@ -1007,8 +933,8 @@
     "technicalLabels": {
       "file": "pgz09_technical.json",
       "mime": "application/json",
-      "bytes": 4708,
-      "sha256": "ce7cefd3145cbba83bf81d8ddb32151dc754b453708c13a149ed1a2fee03f5cd"
+      "bytes": 4479,
+      "sha256": "4dd4c88bba9e5e2c611fd191de2e61e312cc3c6302398640f462e8f7b73d4bf0"
     }
   }
 }

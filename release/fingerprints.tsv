@@ -221,7 +221,7 @@ file	anatomy	src/vehicles/combatAnatomyGroups/challenger.generated.ts	0d8656caa4
 file	anatomy	src/vehicles/combatAnatomyGroups/challenger1X.generated.ts	9a7d485ea3e4b400
 file	anatomy	src/vehicles/combatAnatomyGroups/chieftain10X.generated.ts	5d67707ef96a14da
 file	anatomy	src/vehicles/combatAnatomyGroups/chieftain5X.generated.ts	dac51c12ebacfa15
-file	anatomy	src/vehicles/combatAnatomyGroups/chineseAirDefense.generated.ts	287ec9148f5ea0e6
+file	anatomy	src/vehicles/combatAnatomyGroups/chineseAirDefense.generated.ts	0f4e87b76a18c7e9
 file	anatomy	src/vehicles/combatAnatomyGroups/christian2.generated.ts	7783be8a7bdd61e8
 file	anatomy	src/vehicles/combatAnatomyGroups/cv90105TmlSourceX.generated.ts	b90a46a00f247a25
 file	anatomy	src/vehicles/combatAnatomyGroups/cv9040CSourceX.generated.ts	2649338334da9432
@@ -721,7 +721,7 @@ file	icons	public/icons/tank-assets/tanks/olifant_mk2.json	289449a942572fa2
 file	icons	public/icons/tank-assets/tanks/osorio_p1.json	770d98aa2efa6d55
 file	icons	public/icons/tank-assets/tanks/osorio_p2.json	8ff8df9f8e02bb0a
 file	icons	public/icons/tank-assets/tanks/pantsir_s1.json	ba12713654da92fd
-file	icons	public/icons/tank-assets/tanks/pgz09.json	b27583dfc608cde6
+file	icons	public/icons/tank-assets/tanks/pgz09.json	d010d987123d6be9
 file	icons	public/icons/tank-assets/tanks/pgz95.json	324e97c3bc7eda4f
 file	icons	public/icons/tank-assets/tanks/pl01.json	381010ec6f617116
 file	icons	public/icons/tank-assets/tanks/pl01_105.json	5c3edb49f53c4148
@@ -939,7 +939,7 @@ file	marking	src/vehicles/vehicleMarkingSeatGroups/ukraine.generated.ts	9ec67e21
 file	marking	src/vehicles/vehicleMarkingSeatGroups/xk2.generated.ts	320c7bb927428a72
 file	marking	src/vehicles/vehicleMarkingSeatLoaders.generated.ts	638e01a1f949bda0
 file	marking	src/vehicles/vehicleMarkingSeats.generated.ts	b36a37ee260a0474
-file	seats	src/sim/missionAttachmentSeats.generated.ts	9bceec2720b6008b
+file	seats	src/sim/missionAttachmentSeats.generated.ts	4b210fb8b5799645
 file	seats	src/sim/missionDockSeats.generated.ts	ec2015847244f04a
 file	spareTrack	docs/geometry-gate/spare-track.json	7237e5e8352ae31d
 file	spareTrack	src/vehicles/spareTrackSeatPlan.ts	1211a2d55d4d44eb
@@ -962,7 +962,7 @@ group	challenger	9e96f215c827a535
 group	challenger1X	e4715446aacadc35
 group	chieftain10X	aae76e9e8f48472a
 group	chieftain5X	761ea6a7e4c42265
-group	chineseAirDefense	2ac87e7182beabe0
+group	chineseAirDefense	2cedb94397019acd
 group	christian2	bca4244b8ce97668
 group	cv90105TmlSourceX	092318e79fe95992
 group	cv9040CSourceX	68d23cf82db55b10
@@ -1198,8 +1198,8 @@ key	anatomy	olifant_mk2	89826838d70c40a3	cd1bc2dd29e7e70b
 key	anatomy	osorio_p1	b92b0b60ae5552dc	4576978931e8cc71
 key	anatomy	osorio_p2	3ce8d2613941c993	137a42a61957a3d3
 key	anatomy	pantsir_s1	02eebfd28482f76b	4fde4d9a9972d485
-key	anatomy	pgz09	0477d6b49cfefd6d	bc8ef0d7d75e74c9
-key	anatomy	pgz95	81e5fe556615ed7f	42bec454032b7c61
+key	anatomy	pgz09	e00fcb8e8877f540	8423ce787b97555b
+key	anatomy	pgz95	c2fa348464512bb6	42bec454032b7c61
 key	anatomy	pl01	58ddd4f7179337d4	359cd50b307c9f6e
 key	anatomy	pl01_105	fd014bb5318af70e	878385fbca88a8ab
 key	anatomy	pt64_tur	c5b2902dce157018	458f2996dd6b419c
@@ -1484,8 +1484,8 @@ key	centering	olifant_mk2	1d69bea82f7192de	56189d9added745d
 key	centering	osorio_p1	48faeb5a038766f3	f6a1eeca3fec2683
 key	centering	osorio_p2	b0839cd5c808d789	0644f95e8e5501a1
 key	centering	pantsir_s1	80a297834e20030f	f401407efe9dd99c
-key	centering	pgz09	c717c63b9aaf6e59	1f368c52e6b8ffeb
-key	centering	pgz95	15bd83cfbc67eaa7	2318f416ab51ac1f
+key	centering	pgz09	9ae46f6a8eda1fe5	1f368c52e6b8ffeb
+key	centering	pgz95	47d150d277b3ba96	2318f416ab51ac1f
 key	centering	pl01	4c9d57e5acd9d692	fb1b5e8dcdedd98c
 key	centering	pl01_105	3852ff32895cf1ec	b415cd3319da1cd9
 key	centering	pt64_tur	aff5d73f6d49783a	a7a77e2abb067bf3
@@ -1803,8 +1803,8 @@ key	controls	olifant_mk2	0823f37e7dd3c37a	02b327554d5e35e1
 key	controls	osorio_p1	4558785bcca28568	252d38409e7a63e4
 key	controls	osorio_p2	77d11464fadafd76	f3d778211c153906
 key	controls	pantsir_s1	9aa9705ceeaa2580	547537bffd8e63a4
-key	controls	pgz09	ec5b475884ab9d5b	7d303a5be865fe92
-key	controls	pgz95	0702a3a7abb213c2	3e4a0729b6962abb
+key	controls	pgz09	16518c85ef0c2bbf	7d303a5be865fe92
+key	controls	pgz95	dacdabe96670e460	3e4a0729b6962abb
 key	controls	pl01	d8b39a197981dce6	cbd8f92c7394b651
 key	controls	pl01_105	a8e4c20bd2ca4702	b951c019df5f8d84
 key	controls	pt64_tur	ae2d1d4857b4313e	3e14aedf3ec0e46e
@@ -2089,8 +2089,8 @@ key	fills	olifant_mk2	adf54d97ce5d6141	acec1bea98968f74
 key	fills	osorio_p1	7765c6ff54953cca	3af387d4d37a36d9
 key	fills	osorio_p2	4ce42bfc785b3ebc	655e8f9d85fe4adf
 key	fills	pantsir_s1	82b37825f9b1412f	cb17c7a7e52f5789
-key	fills	pgz09	3c92a372689cdf86	2de42f7116a10e1d
-key	fills	pgz95	ea68c242d058cae4	da7ea9748a537a5d
+key	fills	pgz09	8eadde1c6e2ec734	2de42f7116a10e1d
+key	fills	pgz95	a9aa48aa3945ba2a	da7ea9748a537a5d
 key	fills	pl01	56ae7385531ffb45	f8f8b6c789ee7868
 key	fills	pl01_105	8c0dc452803d6ae5	65131dd9dcc76f2d
 key	fills	pt64_tur	2623a2304cd2f6a9	454d7477d61de12f
@@ -2367,8 +2367,8 @@ key	gate	olifant_mk2	9f20349f4fdbb268	2a91139109c96403
 key	gate	osorio_p1	15b7aae87cd38b10	2a91139109c96403
 key	gate	osorio_p2	ef3488393ea73663	2a91139109c96403
 key	gate	pantsir_s1	b8f885d7752aa03d	2a91139109c96403
-key	gate	pgz09	b6fb4474a83e43a9	2a91139109c96403
-key	gate	pgz95	c0a4c428be74fc25	2a91139109c96403
+key	gate	pgz09	4303590ba94d1ce3	2a91139109c96403
+key	gate	pgz95	19abe58e4d8e1062	2a91139109c96403
 key	gate	pl01	ac5934d107ee57a7	8df96478a532945c
 key	gate	pl01_105	5cc64113a85d744e	85e2a64d00ac07aa
 key	gate	pt64_tur	0932c21187385d28	2a91139109c96403
@@ -2652,8 +2652,8 @@ key	gunLines	olifant_mk2	3c8ec8b32369f929	e57131ef30a1108a
 key	gunLines	osorio_p1	16a5165c50fba68d	a55b9f5cec485394
 key	gunLines	osorio_p2	60e18f115fdc39be	398f1269267521d6
 key	gunLines	pantsir_s1	7471704ea495e5aa	b2b1a4a4bb9c5807
-key	gunLines	pgz09	8961b18fa692d841	aced65103d31efcf
-key	gunLines	pgz95	ce8ab9725b2873a0	4a23421004cf2974
+key	gunLines	pgz09	0a10ae42ebc47c4b	aced65103d31efcf
+key	gunLines	pgz95	ad68f71f06679910	4a23421004cf2974
 key	gunLines	pl01	a9c213037ad8fc8f	05d2f5cbe77b8ec4
 key	gunLines	pl01_105	ac8f648bff8ddb9c	7c0443f747432728
 key	gunLines	pt64_tur	45b91c686a17a8ed	ce56a6e80aceb967
@@ -2938,8 +2938,8 @@ key	icons	olifant_mk2	d025f5e15367c686	ddd334fca83cc3cd
 key	icons	osorio_p1	af859b86f69450f4	048925362081d0e6
 key	icons	osorio_p2	ab223be07fbd9823	4b4bed02b18edd13
 key	icons	pantsir_s1	f75b52dd3d29e5ba	3f3ea9f8d8719c27
-key	icons	pgz09	3ecc6f8f339f53ba	df39e048bb17002c
-key	icons	pgz95	59f9b00058510e74	9e87665d3a962a68
+key	icons	pgz09	4e16970be2eb34be	f98dc0c148277c04
+key	icons	pgz95	93f93c8edc5976f3	9e87665d3a962a68
 key	icons	pl01	f5ed089d52eb9726	2bd6e7c279e04b0a
 key	icons	pl01_105	0b7cfff986684fe9	d6fbd61f0ea8695a
 key	icons	pt64_tur	5a268c53811d31b9	56c5fc56aaf6ca82
@@ -3224,8 +3224,8 @@ key	ledger	olifant_mk2	915793a7dd17c5bb	a09125a8a566f17a
 key	ledger	osorio_p1	2fb4a52e8a59c97d	9466069bdc93225b
 key	ledger	osorio_p2	8cd37c5e76400423	bc6654c415212921
 key	ledger	pantsir_s1	0827bfa14fba4c21	7c84f0328856c3e2
-key	ledger	pgz09	1a33d7a9d3d7a0de	f6065039982abfcc
-key	ledger	pgz95	0581e78a5f215e0f	607e718022595384
+key	ledger	pgz09	e840de57414ddd51	f6065039982abfcc
+key	ledger	pgz95	e1cf8398d334a77c	607e718022595384
 key	ledger	pl01	375af08c21fbb446	5c273cbc9b27bc1b
 key	ledger	pl01_105	cfb55af4764d45bb	f142ad5786e59313
 key	ledger	pt64_tur	c28c051df5ffa3eb	e51263810617e9be
@@ -3510,8 +3510,8 @@ key	marking	olifant_mk2	b23e30e4cf0d2d13	67ed82ce39fad8db
 key	marking	osorio_p1	0a98c558150e620f	70bb6f0f3c5e0096
 key	marking	osorio_p2	12045518cee13f52	6c4615137f29b65d
 key	marking	pantsir_s1	d2dbd6144867a82a	7292e0b35bb4b089
-key	marking	pgz09	d09c7c233cf5f346	fad9c14857fd16c6
-key	marking	pgz95	61498fbe15817e26	3e3dcdc14755ac4b
+key	marking	pgz09	c1e5faa08e82d36d	fad9c14857fd16c6
+key	marking	pgz95	0c3f8289e137e356	3e3dcdc14755ac4b
 key	marking	pl01	a850d96074a40532	fe523de06ca52bc5
 key	marking	pl01_105	5ace8d321f861a35	f143218a0af645f4
 key	marking	pt64_tur	deef34163fe8949f	2a7204d1685da912
@@ -3796,8 +3796,8 @@ key	seats	olifant_mk2	69b3057320ac23b2	8cc1bd30bf3e8ea5
 key	seats	osorio_p1	a28010c954676f52	4317213dd1cda42d
 key	seats	osorio_p2	dfc443ba5e8d1fdf	fed815c0653a77d7
 key	seats	pantsir_s1	adb24f3497d76cde	1dade47384fc18dc
-key	seats	pgz09	0f825e4be511e74d	76bda497b08fd0f2
-key	seats	pgz95	fdd60a541cb278fe	0935ddef23f38e11
+key	seats	pgz09	4a1289e732411a64	76494806b9468926
+key	seats	pgz95	378c57ce610d9cad	0935ddef23f38e11
 key	seats	pl01	6421833508a70995	ef0de2748c4df823
 key	seats	pl01_105	be4f586c636eb36d	ed919df34a11c7df
 key	seats	pt64_tur	4b0b977e3378e44e	e3b7616637cd01be
@@ -4082,8 +4082,8 @@ key	spareTrack	olifant_mk2	f73c2d2df159dbff	c7cc872dedaa9c39
 key	spareTrack	osorio_p1	5d76ae6bc5b0ae9e	e8996b9aa9657ce6
 key	spareTrack	osorio_p2	87ed9b22f70f8eb3	ecc974e7ff247c12
 key	spareTrack	pantsir_s1	69658b985c4d612d	0427b7136bd7f00a
-key	spareTrack	pgz09	754a5c8b9c8c30d5	5f2179424e254b5e
-key	spareTrack	pgz95	2d2989c0024d9c7f	3d606ea0127bd8f8
+key	spareTrack	pgz09	830364fb8ee88c72	5f2179424e254b5e
+key	spareTrack	pgz95	75050c16f1d812f9	3d606ea0127bd8f8
 key	spareTrack	pl01	84707ecca69a765e	7089c6c27577b258
 key	spareTrack	pl01_105	59cba7c3c496caef	c9b16a0588141112
 key	spareTrack	pt64_tur	cbf7cb1b65b58cf4	635d8284448999d1
@@ -4950,7 +4950,7 @@ row	combatAnatomy	olifant_mk2	88a188cbef9b6a51
 row	combatAnatomy	osorio_p1	5aa6cafa6ab9e456
 row	combatAnatomy	osorio_p2	2de5a63d1110f031
 row	combatAnatomy	pantsir_s1	465fb7e2bf90e92b
-row	combatAnatomy	pgz09	d6e370e0aa906a75
+row	combatAnatomy	pgz09	34ff45ec863f0965
 row	combatAnatomy	pgz95	7d96891a73811f4c
 row	combatAnatomy	pl01	bba29a95e1ebf974
 row	combatAnatomy	pl01_105	4a1ff91392b40dd6
@@ -7077,7 +7077,7 @@ row	missionAttachmentSeats	olifant_mk2	434f1938fdeeb4ad
 row	missionAttachmentSeats	osorio_p1	77aaca2a5f2bb6d5
 row	missionAttachmentSeats	osorio_p2	a1394281db1ff0f5
 row	missionAttachmentSeats	pantsir_s1	19055bf140d4612d
-row	missionAttachmentSeats	pgz09	e296a9ccd8b693d6
+row	missionAttachmentSeats	pgz09	ebdcb2aa3d5c3071
 row	missionAttachmentSeats	pgz95	8a20503777a7152a
 row	missionAttachmentSeats	pl01	5163eab09777a6ff
 row	missionAttachmentSeats	pl01_105	aa055f7edd655023
@@ -9400,7 +9400,7 @@ row	tankAssets	olifant_mk2	1e49c9f62bde46eb
 row	tankAssets	osorio_p1	682491ce6b073708
 row	tankAssets	osorio_p2	e243a5e6039a0bb3
 row	tankAssets	pantsir_s1	a21ef270ca265de4
-row	tankAssets	pgz09	7de3f4bd8b07d6f9
+row	tankAssets	pgz09	82b483a5ad6f445d
 row	tankAssets	pgz95	684c26431e4c428e
 row	tankAssets	pl01	96b4ace5bb5ec454
 row	tankAssets	pl01_105	cb6df94491caa8c3
