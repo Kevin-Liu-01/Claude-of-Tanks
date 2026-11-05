@@ -15,7 +15,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createWorldActivationRuntime } from '../world/worldActivationRuntime.ts';
-import { assertAppPhaseTransition, transitionAppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, assertGarageScreenSettled, transitionAppPhase } from './appLifecycle.ts';
 import { createStudioSession } from './studioSession.ts';
 
 const source = ts.createSourceFile('studio.ts',
@@ -82,7 +82,7 @@ function harness() {
     // the Studio session (studioSession.ts) and the film a teardown ends
     session: createStudioSession(), t: (key) => key, filmRenderer: { active: false }, endFilm: noop,
     // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
-    transitionAppPhase, assertAppPhaseTransition,
+    transitionAppPhase, assertAppPhaseTransition, assertGarageScreenSettled,
     window: { requestIdleCallback: (callback) => callback() }, game, camera,
     // (2026-11-02 audit S3) the boot latch the entry waits on (src/app/bootReadiness.ts, as studio.ts imports it)
     isBootReady: () => true, whenBootReady: (callback) => { callback(); return noop; },

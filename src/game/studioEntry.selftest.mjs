@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGaragePhasePresentationRuntime } from './garagePhasePresentationRuntime.ts';
-import { assertAppPhaseTransition, createAppLifecycle, transitionAppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, assertGarageScreenSettled, createAppLifecycle, transitionAppPhase } from './appLifecycle.ts';
 import { createStudioSession } from './studioSession.ts';
 
 // Execute the actual Studio enter/doEnter/doExit callers without constructing
@@ -27,7 +27,7 @@ assert.equal(functions.length, names.size);
 
 const noop = () => {};
 async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false, refusedOver = null,
-  abandon = false, handedBack = false }) {
+  abandon = false, handedBack = false, unsettled = false }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -46,7 +46,13 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const garageSky = { sunIntensity: 4.2, sunColorHex: 0xffffff };
   const game = { phase: refusedOver ?? 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
   const announcements = [];
-  if (refusedOver) createAppLifecycle({ game, announce: ({ from, phase, reason }) => announcements.push(`${from}>${phase}:${reason}`) });
+  // (round 2, app-flow) `unsettled`: a battle entry's cover is the screen over the Garage's scene (main's isEntryCovering:
+  // a network round the room's session entered, with no launch of its own)
+  let covering = unsettled;
+  if (refusedOver || unsettled) {
+    createAppLifecycle({ game, announce: ({ from, phase, reason }) => announcements.push(`${from}>${phase}:${reason}`),
+      readers: { isEntryCovering: () => covering } });
+  }
   const presentation = createGaragePhasePresentationRuntime({
     scene: new THREE.Scene(), stageRoot: new THREE.Group(), dressingRoot: new THREE.Group(),
     garagePosition: new THREE.Vector3(), sunDirection: new THREE.Vector3(0, 1, 0),
@@ -103,7 +109,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     // the entry's own frames between its two first-view preparations (2026-10-26)
     nextFrame: async () => {},
     // (2026-11-02 audit F1) the Studio moves the phase through the one phase writer, as studio.ts imports it
-    transitionAppPhase, assertAppPhaseTransition,
+    transitionAppPhase, assertAppPhaseTransition, assertGarageScreenSettled,
   };
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
@@ -118,6 +124,28 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   `);
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
   const pending = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
+  if (unsettled && !directBoot) {
+    // (round 2, app-flow review) an entry over a battle entry's cover on the Garage's scene: a round the room's session
+    // entered (a later match_start while the room is kept) loads under its loader with the scene still the Garage's, and
+    // Window.__STUDIO.load or a press queued behind an exit reached this entry without F8's settled-screen check. The
+    // garage -> studio edge is legal, so only this check refuses it, before the session, the stage or any write.
+    await assert.rejects(pending, (error) => error?.name === 'GarageScreenUnsettledError' && error.code === 'garage_unsettled'
+      && error.state === 'loading');
+    assert.equal(game.phase, 'garage', 'the round keeps the Garage scene it is loading over');
+    assert.deepEqual(announcements, [], 'nothing is announced');
+    assert.deepEqual(calls, [], 'nothing moved');
+    assert.equal(studio.active(), false);
+    assert.equal(ports.session.phase, 'closed', 'the refused entry holds no session');
+    covering = false; // the round revealed (or its covered restore landed): the Garage is the screen again
+    const later = studio.enter({ map: 'whiteout' });
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    releaseWorld();
+    await later;
+    assert.equal(studio.active(), true, 'a press once the Garage is the screen again opens the Studio');
+    assert.equal(game.phase, 'studio');
+    await studio.doExit();
+    return;
+  }
   if (refusedOver) {
     // (2026-11-02 audit F1 review) an entry over a battle's scene (Window.__STUDIO.load, a press whose module arrived
     // after a battle started) is refused before the stage, the panel or any write; its catch used to write 'garage'
@@ -312,6 +340,10 @@ await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
 await scenario({ directBoot: false, refusedOver: 'battle' });
+// (round 2, app-flow review) the settled-screen check: an entry under a battle entry's cover is refused; the direct
+// /studio boot enters under its own cover
+await scenario({ directBoot: false, unsettled: true });
+await scenario({ directBoot: true, unsettled: true });
 await scenario({ directBoot: false, abandon: true });
 await scenario({ directBoot: false, handedBack: true });
 await scenario({ directBoot: false, handedBack: 'battle' });
@@ -321,6 +353,6 @@ const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url
 assert.match(panelSource, /setStage\(stage\) \{[^]{0,900}?if \(part !== exitBtn\) \(part as HTMLElement\)\.inert = waiting;/,
   'every part of the Studio waits through a build but Exit');
 assert.doesNotMatch(panelSource, /app\.inert = /, 'the app itself is never inert (Exit is inside it)');
-console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit, a refusal over a battle that holds no session, a '
+console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load, a build that lands after the exit, a refusal over a battle that holds no session, a refusal under a battle entry\'s cover on the Garage\'s scene, a '
   + 'failed entry whose scene the Garage already took back (the Studio\'s own teardown, no second return) or a battle has since, '
   + 'and Garage return ordering pass');

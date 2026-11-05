@@ -1,5 +1,5 @@
 import { t } from '../ui/i18n.ts';
-import { assertAppPhaseTransition, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
+import { assertAppPhaseTransition, assertGarageScreenSettled, isGarageScreenSettled, transitionAppPhase, type AppPhase } from './appLifecycle.ts';
 import { isBootReady, whenBootReady } from '../app/bootReadiness.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { sceneInCurrentTankIds } from './tankIdBoundaries.ts';
@@ -5846,6 +5846,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // (2026-11-02 audit F1 review) a Studio never takes a battle's scene: refuse before the session, the veil or any
     // write (integration IR1: a refusal after the session's entry left it 'entering', so every later press was 'busy')
     assertAppPhaseTransition(game as { phase: AppPhase }, 'studio', 'studio:enter');
+    // (round 2, app-flow) and from the Garage only when it is the settled screen, as F8 and the Studio button are: a
+    // battle entry's cover (a network round the room's session entered, with no launch of its own) or a return under its
+    // veil refuses here. Window.__STUDIO.load, a scene link and a press queued behind an exit reach this entry without
+    // those checks. The 'studio' write below runs in this same task, so the check holds for it. The direct /studio boot
+    // enters under its own cover.
+    if (!opts.coveredByBoot) assertGarageScreenSettled(game as { phase: AppPhase }, 'studio:enter');
     // (audit F9) the session's entry: its token goes stale at an exit, and every step below checks it after its await
     const owner = session.beginEntry();
     if (!owner) throw new Error(t('studio.error.busy'));

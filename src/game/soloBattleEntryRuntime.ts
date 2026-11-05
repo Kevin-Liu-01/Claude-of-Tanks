@@ -75,6 +75,12 @@ interface SoloBattleEntryRuntimeOptions {
    * Runs once no Garage return is in flight (a return's 'garage' announcement clears the record), before the cover.
    */
   recordIntent?(options: SoloBattleLoadingStartOptions | undefined): void;
+  /**
+   * (round 2, app-flow) A network round owns the screen outside the entry latch (main: the composition's `entering`, a
+   * round the room's session entered on a later match_start while the room is kept, with no launch of its own). A
+   * start then is refused as the latch refuses one (busy): it covered and loaded a solo battle over the round's loader.
+   */
+  isNetworkRoundEntering?(): boolean;
 }
 
 interface SoloBattleEntryRuntime {
@@ -123,11 +129,12 @@ export function createSoloBattleEntryRuntime({
   announce = () => {},
   whenGarageSettled = () => {},
   recordIntent = () => {},
+  isNetworkRoundEntering = () => false,
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
   const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError, presentFailure, presentReturnFailure,
-    onFailure, announce, whenGarageSettled, recordIntent];
+    onFailure, announce, whenGarageSettled, recordIntent, isNetworkRoundEntering];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('solo battle entry runtime requires every recovery port');
   }
@@ -137,12 +144,16 @@ export function createSoloBattleEntryRuntime({
     mapId: string | null,
     options: SoloBattleLoadingStartOptions | undefined,
     announced: boolean,
-  ): Promise<void> => lifecycle.run(async () => {
+  ): Promise<void> => (isNetworkRoundEntering() ? Promise.resolve() : lifecycle.run(async () => {
     try {
       // A Garage return still in flight (its veil, its restore) finishes first: the entry latch holds this request.
       // (no return in flight: no wait, so the announcement and the cover still land inside the press's task)
       const returning = whenGarageSettled();
-      if (returning) await returning;
+      if (returning) {
+        await returning;
+        // (round 2, app-flow) a network round the room's session entered meanwhile has the screen: busy, as at the press
+        if (isNetworkRoundEntering()) return;
+      }
       // (round 2 U19) announced once the return is done: its 'garage' announcement (the battle before leaving) comes
       // first, so every ui:battleStart listener sees this battle begin after it (profile.ts keys its tally the same way)
       if (!announced) {
@@ -195,7 +206,7 @@ export function createSoloBattleEntryRuntime({
         reportError('[battle] entry failure notice unavailable', noticeError);
       }
     }
-  }, undefined);
+  }, undefined));
 
   /** A failed recovery return's retry: the return again, and its notice again if that fails too. */
   const retryReturn = (): void => {

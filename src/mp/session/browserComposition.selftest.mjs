@@ -737,6 +737,126 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   refused.composition.dispose();
 }
 
+// ------------------------------------------------------------ (round 2, app-flow review) a round the room's session enters with no launch
+// A later match_start while the room is kept (a rematch, the room's next match) enters its round through the session
+// alone, outside any beginRoom run: the entry lifecycle was not pending, so main's app lifecycle read 'garage' under the
+// round's loader. F8 (studioAccess), the Studio button and the Studio's own entry (Window.__STUDIO.load) opened the
+// Studio over the round, whose activation refused studio -> battle only after its world had loaded, and whose failure
+// restore then ran the covered Garage return over the open Studio. The composition's `entering` holds the round's screen
+// from its start until it reveals or its covered restore lands; main's own reader (main.ts) reads 'loading' through it.
+{
+  const { createAppLifecycle, GarageScreenUnsettledError, assertGarageScreenSettled } = await import('../../game/appLifecycle.ts');
+  const { createStudioAccess } = await import('../../game/studioAccess.ts');
+  const { mainSource, mainStatement, runMainStatements } = await import('../../app/mainComposition.test-support.mjs');
+  let releaseWorld = null;
+  let releaseRestore = null;
+  const kept = createHarness({
+    loadWorld: async (mapId, onProgress) => {
+      kept.calls.push(`loadWorld:${mapId}`);
+      onProgress(0.5, 'Half');
+      if (mapId === 'desert') await new Promise((resolve) => { releaseWorld = resolve; });
+      if (mapId === 'winter') throw new Error('the battlefield did not load');
+      await tick();
+    },
+    enterGarage: () => (releaseRestore ? new Promise((resolve) => { const release = releaseRestore; releaseRestore = () => { release(); resolve(); }; }) : undefined),
+  });
+  const { game, composition, lifecycle, battleLoad, calls } = kept;
+  game.resultTimeS = null;
+  // main's app lifecycle over this round, through main's own late readers (the entry's cover, the composition's round)
+  const announced = [];
+  const appLifecycle = createAppLifecycle({ game, announce: ({ from, phase, reason }) => announced.push(`${from}>${phase}:${reason}`) });
+  runMainStatements(mainStatement('appLifecycle.setReaders({'), {
+    appLifecycle,
+    battleEntryLifecycle: { get pending() { return lifecycle.pending; }, get renderingCovered() { return lifecycle.covered; } },
+    battleLoad: { get covering() { return battleLoad.visible; } },
+    onlineMatch: { current: composition },
+    garageReturn: { state: 'idle' },
+  }, 'null');
+  // the real Studio access, on main's own phase binding (getPhase: () => appLifecycle.state)
+  assert.match(mainSource, /\n {2}getPhase: \(\) => appLifecycle\.state,\n/, 'main binds the Studio access to the app lifecycle\'s state');
+  const studioRuntime = { active: false, entries: 0, tick() {}, enter() { studioRuntime.entries++; game.phase = 'studio'; } };
+  let f8 = null;
+  const access = createStudioAccess({
+    loadModule: async () => ({ createStudio: () => studioRuntime }),
+    preloadFxModule: async () => ({}), ensureFxRuntime: async () => ({}), prepareRuntime() {}, createContext: () => ({}),
+    getPhase: () => appLifecycle.state,
+    keyTarget: { addEventListener: (_type, listener) => { f8 = listener; }, removeEventListener: () => { f8 = null; } },
+    onEntryError: (error) => calls.push(`studio.error:${error.message}`),
+  });
+  access.installKeyboard();
+  const pressF8 = () => f8?.({ code: 'F8', repeat: false, preventDefault() {}, stopImmediatePropagation() {} });
+  /** Every way the Studio opens over the Garage's scene, at this moment: F8, its button, its own entry's check. */
+  const studioRefused = async (label) => {
+    pressF8();
+    access.open();
+    await settle(2);
+    assert.equal(studioRuntime.entries, 0, `${label}: neither F8 nor the Studio button enters the Studio`);
+    assert.throws(() => assertGarageScreenSettled(game, 'studio:enter'),
+      (error) => error instanceof GarageScreenUnsettledError && error.state === 'loading',
+      `${label}: the Studio's own entry (studio.ts doEnter, Window.__STUDIO.load) refuses as well`);
+    assert.notEqual(game.phase, 'studio', `${label}: nothing writes 'studio'`);
+  };
+
+  // the first round, from the room's launch; then the Garage return with the room kept
+  const { room, entry, owner } = await enterRound(kept);
+  await settle(12);
+  assert.equal(await entry, true);
+  composition.disposePresentation();
+  game.phase = 'garage';
+  game.result = null;
+  await settle();
+  assert.equal(appLifecycle.state, 'garage', 'the room-kept Garage is the screen');
+  assert.notEqual(composition.entering, true);
+
+  // the room's next match: the session enters its round, no launch
+  const mark = calls.push('--session-round') - 1;
+  const entering = owner.enter({ matchStart: matchStart(2, 'desert'), room: snapshot({ phase: 'starting', round: 2 }), spectator: false, playerId: 'me' });
+  await settle(2);
+  assert.ok(calls.slice(mark).includes('loadWorld:desert'), 'the round loads its world under its loader');
+  assert.equal(lifecycle.pending, false, 'no launch: the entry lifecycle is not pending');
+  assert.equal(battleLoad.visible, true);
+  assert.equal(appLifecycle.state, 'loading', 'the app lifecycle reads the round\'s loading (it read \'garage\')');
+  assert.equal(composition.entering, true);
+  await studioRefused('under the round\'s loader');
+  releaseWorld();
+  await entering;
+  await owner.welcome();
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(game.phase, 'battle', 'and the round reveals');
+  assert.equal(composition.stats().round.matchId, 'match-2');
+  assert.equal(composition.entering, false, 'revealed: the round no longer holds an entry');
+  assert.ok(!announced.some((line) => line.includes('studio')), 'no Studio phase was announced');
+
+  // a session-entered round that fails: the round holds the screen through its covered restore, until the loader is down
+  composition.disposePresentation();
+  game.phase = 'garage';
+  game.result = null;
+  await settle();
+  releaseRestore = () => {};
+  const failMark = calls.push('--session-round-fails') - 1;
+  const failing = owner.enter({ matchStart: matchStart(3, 'winter'), room: snapshot({ phase: 'starting', round: 3 }), spectator: false, playerId: 'me' })
+    .then(() => 'entered', (error) => error);
+  await settle(4);
+  assert.ok(calls.slice(failMark).includes('enterGarage'), 'the failed round restores the Garage under its loader');
+  assert.equal(game.phase, 'garage');
+  assert.equal(battleLoad.visible, true);
+  assert.equal(appLifecycle.state, 'loading', 'its covered restore is still the round\'s screen');
+  assert.equal(composition.entering, true);
+  await studioRefused('under the failed round\'s covered restore');
+  releaseRestore();
+  assert.match((await failing).message, /did not load/);
+  await settle(4);
+  assert.equal(battleLoad.visible, false);
+  assert.equal(composition.entering, false, 'the restore landed and the loader is down');
+  assert.equal(appLifecycle.state, 'garage', 'the Garage is the screen again');
+  access.open();
+  await settle(4);
+  assert.equal(studioRuntime.entries, 1, 'and the Studio button opens the Studio over the settled Garage');
+  void room;
+  composition.dispose();
+}
+
 // ------------------------------------------------------------ the black watchdog refusing the frame is an entry failure too
 {
   const dark = createHarness({ blackWatchdog: async () => ({ failed: true, error: 'black' }) });

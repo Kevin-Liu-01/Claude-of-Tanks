@@ -5,8 +5,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  APP_PHASE_EDGES, AppPhaseTransitionError, appLifecycleOf, assertAppPhaseTransition, battleSubPhase,
-  createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
+  APP_PHASE_EDGES, AppPhaseTransitionError, GarageScreenUnsettledError, appLifecycleOf, assertAppPhaseTransition,
+  assertGarageScreenSettled, battleSubPhase, createAppLifecycle, deriveAppLifecycleState, transitionAppPhase,
 } from './appLifecycle.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
@@ -172,4 +172,28 @@ assert.match(main, /Object\.defineProperty\(window, '__APP_LIFECYCLE', \{ config
   assert.deepEqual(heard, [], 'and never announces');
 }
 
-console.log('appLifecycle.selftest: guarded edges (and the write-free check), every phase announced, screen vs scene, derived battle sub-phases passed');
+// (round 2, app-flow review) An opening over the Garage's scene (the Studio's entry) needs the Garage to be the settled
+// screen: garage -> studio is a legal edge, so under a battle entry's cover (a network round the room's session entered
+// with no launch of its own) only this check refuses it. It never writes; another phase is the edge table's.
+{
+  const session = game();
+  let covering = true;
+  let returnOwed = false;
+  createAppLifecycle({ game: session, announce() {}, readers: { isEntryCovering: () => covering, isReturnOwed: () => returnOwed } });
+  assert.throws(() => assertGarageScreenSettled(session, 'studio:enter'),
+    (error) => error instanceof GarageScreenUnsettledError && error.code === 'garage_unsettled' && error.state === 'loading'
+      && error.reason === 'studio:enter');
+  covering = false;
+  returnOwed = true;
+  assert.throws(() => assertGarageScreenSettled(session, 'studio:enter'), (error) => error.state === 'returning');
+  returnOwed = false;
+  assertGarageScreenSettled(session, 'studio:enter');
+  session.phase = 'shot';
+  covering = true;
+  assertGarageScreenSettled(session, 'studio:enter'); // a dev still: the edge table decides
+  assert.equal(session.phase, 'shot', 'the check never writes');
+  const bare = game();
+  assertGarageScreenSettled(bare, 'studio:enter'); // a bare session reads its scene phase
+}
+
+console.log('appLifecycle.selftest: guarded edges (and the write-free check), every phase announced, screen vs scene, derived battle sub-phases, the settled-Garage opening check passed');

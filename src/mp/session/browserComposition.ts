@@ -495,6 +495,13 @@ export interface BrowserComposition {
   readonly active: boolean;
   /** The round has been activated into the live battle phase. */
   readonly inMatch: boolean;
+  /**
+   * (round 2, app-flow) A round owns the screen: from its start (its scene hand-over, then its cover) until it reveals
+   * or its covered Garage restore has landed, whether a launch (`beginRoom`) or the room's session (a later match_start
+   * while the room is kept: a rematch, the next match) entered it. main's app lifecycle reads 'loading' through it, so
+   * the Studio's F8, its button and its entry refuse to open over the round meanwhile.
+   */
+  readonly entering: boolean;
   readonly room: V2RoomSession | null;
   readonly session: SessionOwner | null;
   /** One display frame (the app's network pump, every phase). */
@@ -748,6 +755,9 @@ export function createBrowserComposition({
   let roomSession: V2RoomSession | null = null;
   let session: SessionOwner | null = null;
   let round: ActiveRound | null = null;
+  // (round 2, app-flow) a failed or lost round's covered restore still in flight (failRound, stopLoading): its round is
+  // already released, and the round still owns the screen until the loader is down (`entering`)
+  let restoring = 0;
   let latestLobby: SerializedLobby | null = null;
   let latestRoom: RoomSnapshot | null = null;
   let menuAttached = false;
@@ -1037,19 +1047,24 @@ export function createBrowserComposition({
 
   /** v1's `stopLoading`: reacquire opaque coverage, restore the Garage under it, then fade the loader. */
   const stopLoading = async (label = 'Restoring Garage'): Promise<void> => {
-    if (!load.battleLoad.visible) {
-      load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
-    }
-    load.battleLoad.progress(1, label);
-    lifecycle.coverRendering();
-    load.audio.loadingOn(false);
+    restoring += 1; // (round 2, app-flow) the round's screen until the loader is down
     try {
-      await roomPorts.enterGarage();
+      if (!load.battleLoad.visible) {
+        load.battleLoad.show({ mapName: 'Returning to Garage', thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
+      }
+      load.battleLoad.progress(1, label);
+      lifecycle.coverRendering();
+      load.audio.loadingOn(false);
+      try {
+        await roomPorts.enterGarage();
+      } finally {
+        // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
+        // that throws still releases the cover and the loader; the caller reports the error.
+        lifecycle.uncoverRendering();
+        try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      }
     } finally {
-      // 2026-10-10 (prod 211: a refused rejoin left the loader on, label empty, and no Rejoin battle): a Garage restore
-      // that throws still releases the cover and the loader; the caller reports the error.
-      lifecycle.uncoverRendering();
-      try { await load.nextFrame(); } finally { await load.battleLoad.hide(); }
+      restoring -= 1;
     }
   };
 
@@ -1113,12 +1128,16 @@ export function createBrowserComposition({
       load.battleLoad.show({ mapName: notice, thumb: '', biome: 'none', mode: 'Deployment ended', allies: [], enemies: [] });
       load.battleLoad.progress(1, 'Returning to Garage');
     }
+    // (round 2, app-flow) released above (nothing ran in between), and the round keeps the screen through the leave and
+    // the covered restore below
+    restoring += 1;
     try {
       if (session) await session.leaveMatch(superseded ? 'superseded' : 'entry_failed');
       await stopLoading(notice ? 'Returning to Garage' : undefined);
     } catch (restoreError) {
       reportError('multiplayer v2 entry', restoreError);
     } finally {
+      restoring -= 1;
       settleEntry(false);
       if (!superseded) {
         syncMenu();
@@ -1681,6 +1700,7 @@ export function createBrowserComposition({
     beginRoom,
     get active() { return round !== null; },
     get inMatch() { return !!round && round.activated; },
+    get entering() { return (round !== null && !round.revealed) || restoring > 0; },
     get room() { return roomSession; },
     get session() { return session; },
     pump,

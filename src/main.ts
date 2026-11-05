@@ -3575,8 +3575,12 @@ const returnRoomToGarage = (): Promise<void> => garageReturn.leave().catch((erro
   throw error;
 });
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
+// (round 2, app-flow) and every network round from its start until it reveals or its covered restore lands: a round
+// the room's session entered (a later match_start while the room is kept) runs outside the entry lifecycle's run, and
+// the lifecycle read 'garage' under its loader, so F8, the Studio button and Window.__STUDIO.load opened over it
 appLifecycle.setReaders({
-  isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
+  isEntryCovering: () => (battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered))
+    || onlineMatch.current?.entering === true,
   isReturnOwed: () => garageReturn.state !== 'idle',
 });
 // perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
@@ -3638,6 +3642,8 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   announce: (payload) => bus.emit('ui:battleStart', payload),
   // (audit F3) a start accepted while a Garage return is in flight waits for it instead of racing its restore
   whenGarageSettled: () => garageReturn.whenSettled(),
+  // (round 2, app-flow) a network round the room's session entered (outside the entry latch) keeps the screen
+  isNetworkRoundEntering: () => onlineMatch.current?.entering === true,
   // (audit F2 review) every accepted entry records its whole intent, a failure notice's retry included (its recovery
   // return's 'garage' announcement cleared the record). batch 19 (2026-09-14): the Garage BATTLE button is a free
   // sortie in the chosen rules, so a Frontline Assault pick carves the trenches like a ladder launch does.

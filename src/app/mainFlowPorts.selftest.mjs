@@ -24,9 +24,11 @@ function mainFunction(head) {
   assert.ok(start >= 0 && end > start, `main.ts declares ${head}`);
   return mainSource.slice(start + 1, end + 2);
 }
-function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {} } = {}) {
+function soloEntry({ whenSettled = () => null, begin = async () => {}, enterGarage = async () => {}, onEntryNotice = () => {},
+  onlineMatch = { current: null } } = {}) {
   const events = [];
   const scope = {
+    onlineMatch,
     createSoloBattleEntryRuntime,
     battleEntryIntent: createBattleEntryIntent(),
     terrainVariantFor,
@@ -88,6 +90,34 @@ function phaseListener(game, battleEntryIntent) {
   assert.deepEqual(events.map(([type]) => type), [], 'no announcement, no cover and no load while the return is in flight');
   settle();
   await pending;
+  assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);
+}
+
+{
+  // (round 2, app-flow review) A network round the room's session entered (a later match_start while the room is kept)
+  // runs outside the entry latch: a solo start under its loader was accepted and covered and loaded a solo battle over
+  // it. main binds isNetworkRoundEntering to the composition's `entering`, and the start is refused as busy.
+  const onlineMatch = { current: { entering: true } };
+  const { entry, events, lifecycle } = soloEntry({ onlineMatch });
+  await entry.beginSelected();
+  await entry.begin('m1a1_abrams_hc', 'desert');
+  assert.deepEqual(events.map(([type]) => type), [], 'no announcement, no cover and no load under the round');
+  assert.equal(lifecycle.pending, false, 'and no entry latch taken');
+  assert.equal(lifecycle.entrySerial, 0);
+  // a start that waited on a return while such a round began: refused once the return lands
+  onlineMatch.current.entering = false;
+  let settle;
+  const settled = new Promise((resolve) => { settle = resolve; });
+  const waiting = soloEntry({ onlineMatch, whenSettled: () => settled });
+  const pending = waiting.entry.beginSelected();
+  await flush();
+  onlineMatch.current.entering = true;
+  settle();
+  await pending;
+  assert.deepEqual(waiting.events.map(([type]) => type), [], 'the round that began meanwhile keeps the screen');
+  // the round revealed: the next start runs
+  onlineMatch.current.entering = false;
+  await entry.beginSelected();
   assert.deepEqual(events.map(([type]) => type), ['ui:battleStart', 'cover', 'load']);
 }
 
