@@ -1,7 +1,7 @@
 {
  "binary": "cot_sim_wasm.wasm",
- "bytes": 117231,
- "sha256": "5558215045cebf9e475c22a065f0bdbd511a0835fde0dd31d925ae4634fdb871",
+ "bytes": 117433,
+ "sha256": "6c91db919bd5ec9710236e3bba32b2523bf1bd060e5393f14f1099ec719963c2",
  "sources": {
   "crates/cot-sim/src/ballistics.rs": "3eb8df5b5ea57b0a1d84c2e15e2e48a593ac7e6f4016f4316cf79cbf56b7da22",
   "crates/cot-sim/src/clearance.rs": "800ff50b4b5d75b4e0f81df8150f3988837a7cbf7d8a8264dc1ddb0ea88e83ea",
@@ -15,7 +15,7 @@
   "crates/cot-sim/src/rng.rs": "cca250925c54a2bf6a17e48d4a793da926f90808e5f1bf798078283c66eb1883",
   "crates/cot-sim/src/structure_support.rs": "3aaca0c7d93467b64495179fe9a3f2d095f4ba156df3b92a94eaa7c6906eea75",
   "crates/cot-sim/src/support_sampling.rs": "4abc6ed0df11cc476b78353d8e76e46a7000d874e915381c58837506bf02f844",
-  "crates/cot-sim-wasm/src/lib.rs": "a7edf84e58a2cba93dcdbc036fd4c4f75239e104d1fb99d4ea1d375e80a2a491",
+  "crates/cot-sim-wasm/src/lib.rs": "109470d017bbe3e28f8efdde50a1df8d06d87d005c0fb86c7392354f5c83c493",
   "Cargo.toml": "2d70bde60f12bfebafef285321ebc7c01ba103c65b10777b74e6736fcad5dabd",
   "Cargo.lock": "f6407ddc32a653a5cc48c6df87c374e49ad1a518abc954b836165a23d545d0fc",
   "rust-toolchain.toml": "6e30b4c77263719b30fd273ae18f798328033a9d2fb7154506db6f2a07066fdb",

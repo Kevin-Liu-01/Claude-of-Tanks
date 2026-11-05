@@ -14,6 +14,9 @@
  * The kernel checks its cross-call protocols per call (2026-11-02 audit S2: a hull's query, flags, begin and samples; a
  * clearance walk named by its id; grid handles; a write-once lattice) and refuses a call out of order with a code; every
  * code is asserted here (`refused`), so an order slip throws where it happens instead of answering from a half-made state.
+ * The code is the last checked call's (round 2 U37), so a refused sample's NaN throws while a NaN the kernel answered
+ * passes. The mirrored ground is asserted in step: each crater admitted (the bind's replay included), the revisions and
+ * the clock.
  */
 import type { ClearanceScan, CollisionRecord, ObstacleQuery, SimpleCollisionShape } from './collision.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
@@ -34,7 +37,7 @@ interface CotSimExports {
   grid_query(handle: number, minX: number, minZ: number, maxX: number, maxZ: number): number;
   grid_out_ptr(handle: number): number;
   overlay_add_crater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number): number;
-  overlay_add_rubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0: number, hasT0: number): void;
+  overlay_add_rubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0: number): void;
   overlay_add_course(cx: number, cz: number, c: number, s: number, hw: number, skirtM: number, profile: number, n: number): void;
   overlay_reset(): void;
   overlay_set_time(timeS: number): void;
@@ -69,7 +72,10 @@ const REFUSALS = ['accepted', 'the records are not loaded', 'out of its order', 
 const REFUSED_COUNT = -1;
 /** A clearance walk's next refused: a later begin superseded the walk (WALK_STALE). */
 const WALK_STALE = -2;
-/** The kernel refused `call`: an order slip in this host, thrown where it happens. */
+/** The refusal of a superseded walk's call (REFUSED_STALE_WALK). */
+const REFUSED_STALE_WALK = 9;
+/** The kernel refused `call` (its protocol_refusal, the last checked call's): an order slip in this host, thrown where it
+ * happens. */
 function refused(w: CotSimExports, call: string): Error {
   const code = w.protocol_refusal();
   return new Error(`world kernels: ${call} refused (${REFUSALS[code] ?? `code ${code}`})`);
@@ -203,9 +209,10 @@ function createClearanceScan(w: CotSimExports, records: CollisionRecord[]): Clea
     },
     entry(walk) {
       const entry = w.clearance_entry(walk);
-      // (NaN: the walk was superseded, or it handed out no lane's record yet)
-      if (Number.isNaN(entry)) throw superseded(walk);
-      return entry;
+      if (entry === entry) return entry;
+      // NaN: the walk was superseded (refused), or its lane has handed out no record yet (taken: the code tells them apart)
+      if (w.protocol_refusal() === REFUSED_STALE_WALK) throw superseded(walk);
+      throw new Error(`world kernels: clearance walk ${walk >>> 0}'s entry read before its lane handed out a record`);
     },
   };
 }
@@ -244,8 +251,10 @@ function loadSupportRecords(w: CotSimExports, records: CollisionRecord[], grid: 
  * Replay `overlay`'s clock and stamps into the (reset) kernel, then keep it in step: the overlay tells its mirrors each
  * change (terrainDeformation.ts TerrainDeformationMirror) until the returned unbind. A heap goes over with its start as the
  * overlay resolved it, so the kernel's copy never rests on its own clock's history (a heap laid between a bind and the
- * next clock step started on the kernel's unset clock: risen at once there, rising here); the revisions are asserted in
- * step after every stamp, so a change told twice, or one the kernel refused, throws where it happens.
+ * next clock step started on the kernel's unset clock: risen at once there, rising here). `overlay_add_rubble` takes no
+ * other start (round 2 U37), so the kernel's clock never decides one. Each crater is asserted admitted, the replay's
+ * included, the revisions in step after every stamp and the clocks after every step, so a change told twice, one the
+ * kernel refused or a clock out of step throws where it happens.
  */
 function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation): () => void {
   const course = (stamp: { cx: number; cz: number; c: number; s: number; hw: number; skirtM: number; profile: Float64Array }) => {
@@ -253,27 +262,38 @@ function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation): () => voi
     new Float64Array(w.memory.buffer, ptr, stamp.profile.length).set(stamp.profile);
     w.overlay_add_course(stamp.cx, stamp.cz, stamp.c, stamp.s, stamp.hw, stamp.skirtM, ptr, stamp.profile.length);
   };
+  const admitCrater = (stamp: { x: number; z: number; radiusM: number; depthM: number; rimM: number; seed: number }, when: string) => {
+    if (w.overlay_add_crater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed) !== 1) {
+      throw new Error(`world kernels: the mirrored ground refused a crater the overlay admitted (${when})`);
+    }
+  };
+  const clockInStep = (what: string): void => {
+    const kernelS = w.overlay_time();
+    if (!Object.is(kernelS, overlay.clockS)) {
+      throw new Error(`world kernels: the mirrored ground's clock reads ${kernelS} s where the overlay's reads ${overlay.clockS} s (${what})`);
+    }
+  };
   // the clock first: the replayed heaps read it as the overlay's do
   w.overlay_set_time(overlay.clockS);
+  clockInStep('the bind');
   for (const stamp of overlay.stamps) {
     // (each stamp as it was admitted: a heap with its resolved start, so a replay rises on the same clock)
-    if (stamp.kind === 'crater') w.overlay_add_crater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed);
-    else if (stamp.kind === 'rubble') w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0, 1);
+    if (stamp.kind === 'crater') admitCrater(stamp, 'replayed at the bind');
+    else if (stamp.kind === 'rubble') w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0);
     else course(stamp);
   }
+  // (every replayed stamp admitted: the offset is the two histories' own, so the step check below covers the replay too)
   const offset = overlay.revision - w.overlay_revision();
   const inStep = (what: string): void => {
     if (overlay.revision - w.overlay_revision() !== offset) throw new Error(`world kernels: the mirrored ground left the overlay's step at ${what}`);
   };
   return overlay.mirror({
     crater(stamp) {
-      if (w.overlay_add_crater(stamp.x, stamp.z, stamp.radiusM, stamp.depthM, stamp.rimM, stamp.seed) !== 1) {
-        throw new Error('world kernels: the mirrored ground refused a crater the overlay admitted');
-      }
+      admitCrater(stamp, 'as it landed');
       inStep('a crater');
     },
     rubble(stamp) {
-      w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0, 1);
+      w.overlay_add_rubble(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.yaw, stamp.heightM, stamp.t0);
       inStep('a heap');
     },
     course(stamp) {
@@ -283,8 +303,12 @@ function mirrorOverlay(w: CotSimExports, overlay: TerrainDeformation): () => voi
     reset() {
       w.overlay_reset();
       inStep('a reset');
+      clockInStep('a reset');
     },
-    time(timeS) { w.overlay_set_time(timeS); },
+    time(timeS) {
+      w.overlay_set_time(timeS);
+      clockInStep('a step');
+    },
   });
 }
 
@@ -314,10 +338,17 @@ function createKernelSupportField(w: CotSimExports, records: CollisionRecord[], 
     out = new Float64Array(w.memory.buffer, outPtr, OUT_LEN);
   };
   const copy = (to: Float64Array, from: number, count: number) => { for (let k = 0; k < count; k++) to[k] = out[from + k]; };
+  const contact = w.support_contact;
+  /** A sample's answer; NaN from a refused sample (between a hull's query and its begin: a beginHull that threw) throws,
+   * and a NaN the kernel answered (its ground's) passes (round 2 U37: the code is this call's). */
+  const sampled = (value: number, call: string): number => {
+    if (value === value || w.protocol_refusal() === 0) return value;
+    throw refused(w, call);
+  };
   return {
-    getHeightAt: (x, z) => top(x, z, terrainAt(x, z)),
-    getHeightAtFast: (x, z) => top(x, z, terrainFast(x, z)),
-    getContactHeightAt: w.support_contact,
+    getHeightAt: (x, z) => sampled(top(x, z, terrainAt(x, z)), 'support_top'),
+    getHeightAtFast: (x, z) => sampled(top(x, z, terrainFast(x, z)), 'support_top'),
+    getContactHeightAt: (x, z) => sampled(contact(x, z), 'support_contact'),
     getTerrainContactHeightAt: w.terrain_contact,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
