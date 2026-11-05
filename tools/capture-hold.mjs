@@ -223,12 +223,17 @@ async function closeWarm(warmed, say) {
 // - `holdMinutes` (optional) is the caller's own budget per hold segment: past it the work is stopped, waiters or not.
 // - The abort is final: a checkpoint after it never yields ({ yielded: false, stopped: true }), so the grace can never fire
 //   mid-yield. A yield stops every timer; the resume starts the segment again.
+// - (round 2 U38 review) A yield's re-queue takes the hold's `signal`, which a signal stop aborts: the ticket leaves the
+//   queue and the checkpoint rejects with the stop's reason (yielding → stopping, nothing held). A re-queue that fails
+//   otherwise (its wait ran out) ends the same way. Before this, a SIGTERM during the re-queue left the caller blocked in
+//   checkpoint() until the process exited around it. A signal while holding halts the phases (`halt()`: every timer
+//   stops and no checkpoint yields), since the signal owner runs that hold's teardown itself.
 // - A nested hold (capture-lock nestedEnv: a child inside its parent's hold) runs no cap: the parent's is the one.
 // - `atCap: 'keep'` is a work that can neither checkpoint nor stop without losing its whole run (a wrapped command such as
 //   a release-gate step or a film render): past the cap it is logged, not stopped, as the lock alone did. It is declared
 //   at the call site, so the advisory holders are the ones that say so.
 function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capCheckMs = 30_000, atCap = 'stop', say, onAbort, onTeardown,
-  onYield = null, onResume = null, onForfeit = null, teardownWaitMs = 120_000 }) {
+  onYield = null, onResume = null, onForfeit = null, teardownWaitMs = 120_000, signal = null }) {
   if (atCap !== 'stop' && atCap !== 'keep') throw new TypeError(`atCap: 'stop' or 'keep', not ${JSON.stringify(atCap)}`);
   let phase = 'holding', cooperative = false, segmentAt = Date.now(), keptNoted = false, teardownDone = null, ended = false, forfeited = false;
   let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null, forfeitTimer = null;
@@ -290,25 +295,41 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
     get teardownDone() { return teardownDone; },
     /** Whether the lock went without the work (a work still running `teardownWaitMs` after its teardown began). */
     get forfeited() { return forfeited; },
-    /** Between batches: yields past the cap while anyone waits (the lock decides), never after a stop. */
+    /** Between batches: yields past the cap while anyone waits (the lock decides), never after a stop. A re-queue that
+     *  `signal` withdraws (or that fails) rejects, with nothing held. */
     async checkpoint() {
       if (phase !== 'holding' && phase !== 'yield-due') return { yielded: false, stopped: true };
       cooperative = true;
       if (typeof lock.checkpoint !== 'function') return { yielded: false };
-      const result = await lock.checkpoint({
-        beforeYield: async () => {
-          clear();
-          phase = 'yielding';
-          if (onYield) await onYield();
-        },
-        afterResume: async () => {
-          if (onResume) await onResume();
-          phase = 'holding';
-          arm();
-        },
-      });
+      let result;
+      try {
+        result = await lock.checkpoint({
+          signal,
+          beforeYield: async () => {
+            clear();
+            phase = 'yielding';
+            if (onYield) await onYield();
+          },
+          afterResume: async () => {
+            if (onResume) await onResume();
+            phase = 'holding';
+            arm();
+          },
+        });
+      } catch (error) {
+        // the yield gave the lock up and its re-queue never held again: the work is out of the lock, and stops
+        if (phase === 'yielding') phase = 'stopping';
+        throw error;
+      }
       if (!result?.yielded && phase === 'yield-due') { clearTimeout(dueTimer); dueTimer = null; phase = 'holding'; } // nobody waits now
       return result ?? { yielded: false };
+    },
+    /** A signal stopped this hold (the signal owner tears it down itself): every timer stops and no checkpoint yields; a
+     *  yield in progress is withdrawn through `signal`. */
+    halt() {
+      if (phase !== 'holding' && phase !== 'yield-due') return;
+      clear();
+      phase = 'stopping';
     },
     finish() {
       ended = true; clear(); clearTimeout(graceTimer); clearTimeout(forfeitTimer); graceTimer = forfeitTimer = null;
@@ -342,7 +363,8 @@ const turn = () => new Promise((next) => setImmediate(next));
 // - 'unwind' (openCaptureHold, round 2 U38): the caller's way out runs. Its signal aborts and its teardown runs (the
 //   browsers stop drawing), then the caller's own finally (a server stopped, a temporary directory removed) reaches its
 //   release(), which resolves, so what follows it (a report written) runs too. A queued hold leaves the queue and its
-//   openCaptureHold rejects; one started meanwhile rejects at once. The exit code is 128 + n unless the tool sets its own;
+//   openCaptureHold rejects; a hold waiting in its cap yield's re-queue leaves it and its checkpoint() (or between())
+//   rejects; one started meanwhile rejects at once. The exit code is 128 + n unless the tool sets its own;
 //   the process ends when its work is done, or `signalWaitMs` after the last release at most. A caller that has not
 //   released within `signalWaitMs` of its teardown is released for it, and the process exits then. On base (a direct
 //   acquire) puppeteer's own SIGTERM listener kept such a tool alive, so its finally cleaned up; the first open form
@@ -409,7 +431,7 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   // the process is stopping on a signal: a hold started now never queues (the exit is on its way)
   if (signalStop) { if (unwind) throw signalError(stopSignal); return NEVER; }
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
-  let prepared, held = false, tearing = null, forfeited = false, lift = null;
+  let prepared, held = false, tearing = null, forfeited = false, lift = null, phases = null;
   const tear = async (value) => { if (teardown) { try { await teardown(value); } catch (error) { say(`teardown failed: ${error?.message ?? error}`); } } };
   // one teardown per hold, whoever asks first (the grace, a signal, the way out)
   const tearOnce = () => (tearing ??= tear(prepared));
@@ -434,6 +456,8 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
         return;
       }
       say(`${signal}: asking the work to stop and tearing down; the caller's way out runs to its release`);
+      // a caller waiting in its yield's re-queue leaves it: its checkpoint rejects (the phases pass this signal on)
+      phases?.halt();
       controller.abort(signalError(signal));
       if (!(await bounded(tearOnce(), signalWaitMs))) say(`the teardown still runs after ${signalWaitMs / 1000} s`);
       if (await bounded(released, signalWaitMs)) return;
@@ -473,7 +497,8 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   process.once('exit', release);
   const refresher = setInterval(() => lock.refresh(), refreshMs);
   refresher.unref();
-  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, atCap, say, onYield, onResume, teardownWaitMs,
+  phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, atCap, say, onYield, onResume, teardownWaitMs,
+    signal: controller.signal,
     onAbort: (reason) => {
       // a stopped hold launches nothing new (its teardown runs once); lifted once it is released
       lift = refuseGuardedLaunches(`the ${label} capture hold was stopped (${reason.message})`);
@@ -489,7 +514,10 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   const between = async () => {
     await turn();
     controller.signal.throwIfAborted();
-    return phases.checkpoint();
+    const result = await phases.checkpoint();
+    // a stop that came while the checkpoint ran (its yield's re-queue, its resume) ends the work here, not one step on
+    controller.signal.throwIfAborted();
+    return result;
   };
   let result, failure = null;
   try {
@@ -539,7 +567,8 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
  * a `teardown` that stops its workers (capture-hold-census.selftest checks that each one does). A work that ignores the
  * stop loses the lock `teardownWaitMs` after the teardown (the phases' forfeit). `atCap: 'keep'` declares a hold that
  * cannot be stopped. On a signal the caller's way out runs (onSignal 'unwind', at the signal owner above): its `signal`
- * aborts, the teardown runs, and release() resolves, so its finally and what follows the release finish before the exit.
+ * aborts, the teardown runs, and release() resolves, so its finally and what follows the release finish before the exit. A
+ * caller waiting in a cap yield's re-queue is let out too: its checkpoint() rejects with the signal's error.
  * The hold's lines go to stderr unless `log` says otherwise (a tool's stdout may be its report).
  */
 export async function openCaptureHold({ teardown = null, log = (line) => console.error(line), lock = createCaptureLock(), ...options } = {}) {

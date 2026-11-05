@@ -1351,8 +1351,11 @@ export function createCaptureLock({
    * re-queues at the back with the same class and cap; it resolves once it holds the lock again. `beforeYield()` runs
    * while the lock is still held (freeze the pages: nothing draws after the release), `afterResume()` once it is held
    * again. Before the cap, or with nobody waiting, it returns at once. Resolves { yielded, heldMs, capMs, waitedMs }.
+   * `signal` (round 2 U38 review): an AbortSignal that withdraws the re-queue, as acquire's does. The ticket leaves the
+   * queue, afterResume never runs, and checkpoint rejects with the signal's reason, holding nothing. A tool signalled while
+   * it waited to hold again could not leave: its finally never ran, and its server outlived the exit.
    */
-  async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null } = {}) {
+  async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null, signal = null } = {}) {
     if (!hold) throw new Error('checkpoint(): this lock holds nothing (call it between batches, while the lock is held)');
     // a nested hold is its parent's to yield
     if (hold.nested) return { yielded: false, heldMs: Date.now() - heldSince, capMs: null, waitedMs: 0, nested: true };
@@ -1369,8 +1372,13 @@ export function createCaptureLock({
     if (beforeYield) await beforeYield();
     release(`hold cap: yielded after ${(heldMs / 60_000).toFixed(1)} min with ${waiters} waiting`);
     const queuedAt = Date.now();
-    await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
-      holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason, priority: terms.priority ?? 'normal' });
+    try {
+      await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
+        holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason, priority: terms.priority ?? 'normal', signal });
+    } catch (error) {
+      if (signal?.aborted) log(`[capture-lock] this ${terms.lockClass} hold's re-queue after its yield was withdrawn: it holds nothing now`);
+      throw error;
+    }
     if (afterResume) await afterResume();
     return { yielded: true, heldMs, capMs, waitedMs: Date.now() - queuedAt };
   }
