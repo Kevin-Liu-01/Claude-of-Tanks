@@ -772,6 +772,26 @@ export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, f
       lock.refresh();
       await pause(500);
     }
+    if (lock.nested) {
+      // (round 2 Q20) nested in an ancestor's FIFO hold (its token, or COT_LANE_HOLD under its live hold): giving the turn
+      // back frees nothing, since the ancestor keeps the FIFO, so this looped for good in 45-minute rounds. A mutex holder
+      // queued behind that hold can never free it: refused at once. Any other holder gets one bounded wait.
+      if (queued) {
+        throw new Error(`session mutex ${sessionMutex}: its holder is queued behind the FIFO hold this probe is nested in (an ancestor's), so `
+          + 'it can never free; run the probe without --session-mutex, or under the mutex\'s holder');
+      }
+      const waitFrom = Date.now();
+      while (Date.now() - waitFrom < mutexIdleWaitMs) {
+        await pause(5_000);
+        lock.refresh();
+        if (tryMutex(sessionMutex)) {
+          log(`session mutex held, nested in an ancestor's FIFO hold (round ${round})`);
+          return { round, refresh: () => lock.refresh(), release: () => { releaseMutex(sessionMutex); lock.release(); } };
+        }
+      }
+      throw new Error(`session mutex ${sessionMutex} still busy after ${Math.round(mutexIdleWaitMs / 60_000)} min, nested in an ancestor's FIFO hold `
+        + '(giving the turn back would free nothing)');
+    }
     lock.release();
     log(`session mutex busy at the FIFO head (its holder ${queued ? 'is queued behind us' : `kept it ${Math.round(mutexWaitMs / 1000)} s`}): `
       + `turn given back; re-entering at our place once it is free (round ${round})`);

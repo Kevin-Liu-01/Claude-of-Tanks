@@ -320,6 +320,31 @@ assert.equal(stats([]).med, null);
   assert.deepEqual(events, ['fifo', 'fifo-release'], 'an ancestor\'s mutex is nested in, never taken or released');
 }
 {
+  // (round 2 Q20) nested in an ancestor's FIFO hold, the turn given back frees nothing: a busy mutex looped for good in
+  // 45-minute rounds. Now a holder queued behind that hold is refused at once, and any other gets one bounded wait.
+  const nestedLock = () => {
+    const lock = { nested: true, acquires: 0, acquire: async () => { lock.acquires++; }, release: () => {}, refresh: () => {} };
+    return lock;
+  };
+  const bounded = (promise) => Promise.race([promise, new Promise((done) => setTimeout(() => done('looping'), 2_000))]);
+  const queuedLock = nestedLock();
+  const queued = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: queuedLock, mutexWaitMs: 5, pause: () => new Promise((done) => setTimeout(done, 5)),
+    tryMutex: () => false, releaseMutex: () => {}, mutexBusy: () => true, holderQueued: () => true, mutexNested: () => false }).catch((error) => error));
+  assert.ok(queued instanceof Error && /queued behind the FIFO hold this probe is nested in/.test(queued.message),
+    `a mutex holder queued behind the ancestor's hold is refused, not waited on (${queued?.message ?? queued}; ${queuedLock.acquires} acquires)`);
+  const busyLock = nestedLock();
+  const busy = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: busyLock, mutexWaitMs: 5, mutexIdleWaitMs: 40,
+    pause: () => new Promise((done) => setTimeout(done, 5)), tryMutex: () => false, releaseMutex: () => {}, mutexBusy: () => true,
+    holderQueued: () => false, mutexNested: () => false }).catch((error) => error));
+  assert.ok(busy instanceof Error && /still busy after/.test(busy.message), `one bounded wait, then a named failure (${busy?.message ?? busy})`);
+  assert.equal(busyLock.acquires, 1, 'the nested FIFO is never re-entered in rounds');
+  let tries = 0;
+  const freed = await bounded(acquireProbeLocks({ sessionMutex: '/m', lock: nestedLock(), mutexWaitMs: 5, mutexIdleWaitMs: 2_000,
+    pause: () => new Promise((done) => setTimeout(done, 5)), tryMutex: () => ++tries > 4, releaseMutex: () => {}, mutexBusy: () => true,
+    holderQueued: () => false, mutexNested: () => false }));
+  assert.equal(typeof freed?.release, 'function', `a mutex that frees during the wait is taken (${freed})`);
+}
+{
   const slot = (label, order, gpu) => ({ mapId: 'verdant', label, key: `verdant-s${order}-${label}`, samples: [{ viewport: '1600x900', view: 'chase',
     summary: { gpuFrame: { med: gpu, p25: gpu - 1 }, cpuFrame: { med: 5 }, calls: { med: 600 }, tris: { med: 1 }, segmentedOverWhole: 1,
       passes: { scene: { gpu: { med: gpu / 2 }, cpu: { med: 1 }, calls: { med: 300 } } } } }] });
