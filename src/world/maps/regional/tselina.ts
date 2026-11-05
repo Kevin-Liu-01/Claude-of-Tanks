@@ -1001,9 +1001,8 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     stone: [[1, 1, 1], [0.95, 0.94, 0.9], [1.0, 0.98, 0.94], [0.9, 0.89, 0.86]],
     roof: [[1, 1, 1], [0.92, 0.9, 0.86], [0.84, 0.83, 0.8], [1.04, 1.02, 0.98]],
     // a dry continental climate: little rising damp, lichen rather than moss
-    damp: 0.4, moss: 0.15, mossTint: [1.0, 0.92, 0.7],
+    mossTint: [1.0, 0.92, 0.7],
   },
-  wear: 0.25,
   // the settlers' yards: a picket fence round the kitchen garden (ogorod), a gate, the shed in its corner (yards.ts)
   // (gauntlet wave 106, round 2: "Western cottages") wattle fences (pleten) round the settlers' yards, not white pickets;
   // (board fences turned the bots' battles a minute shorter on the pacing receipt's seeds — the wattle holds the band)

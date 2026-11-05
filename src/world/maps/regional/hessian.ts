@@ -1053,10 +1053,10 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   weather: {
     plaster: [[1, 1, 1], [1, 0.97, 0.9], [1, 0.94, 0.84], [0.97, 0.96, 0.93], [1, 0.93, 0.89]],
     stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
-    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82]],
-    damp: 0.85, moss: 0.55,
+    // (buildings-270, the census: every roof the same new orange tile) the village's roofs of every age, as Osthessen's
+    // photos show them: new engobe, weathered red-brown, the old dark tile, a re-laid grey-brown, a slate-dark one
+    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82], [0.66, 0.58, 0.54], [0.58, 0.56, 0.56]],
   },
-  wear: 0.22,
   // the farmyards: a board fence (the Hessian Staketenzaun of rough boards, not the white picket the gauntlet read as
   // American, waves 183–184) round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
   // the map-revival lane (2026-10-05, Frontier's Hofreiten; the coordinator approved the flag): a farmhouse whose flank

@@ -476,7 +476,6 @@ export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[0.9, 0.88, 0.84], [0.82, 0.8, 0.77], [0.74, 0.72, 0.7]],
     stone: [[0.8, 0.76, 0.74], [0.7, 0.66, 0.64], [0.6, 0.57, 0.56], [0.75, 0.71, 0.68]],
     roof: [[0.92, 0.92, 0.92], [0.8, 0.79, 0.79], [0.7, 0.69, 0.7]],
-    damp: 0.7, moss: 0.1,
   },
   // the colliery cottages' gardens: a board fence round the vegetable plot behind the pair, a gate (yards.ts; the
   // facades lane, 2026-10-06, after waves 182-184 read the white picket as American: a Ruhr colony fenced its gardens in

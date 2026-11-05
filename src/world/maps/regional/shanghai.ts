@@ -707,10 +707,8 @@ export const SHANGHAI_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
     // grey brick, brown brick, the red of the later lanes
     stone: [[1, 1, 1], [0.78, 0.8, 0.84], [0.9, 0.82, 0.78], [1.06, 0.9, 0.84], [0.84, 0.76, 0.72]],
     roof: [[1, 1, 1], [0.9, 0.9, 0.92], [0.82, 0.82, 0.84], [1.04, 1.02, 1.0]],
-    damp: 0.85, moss: 0.35,
   },
   // the autumn of 1937: Zhabei shelled and burnt, the Settlement's edges pocked
-  wear: 0.3,
 });
 
 export type { RegionalParts, Rgb };

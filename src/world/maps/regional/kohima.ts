@@ -427,7 +427,8 @@ export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
     // tones; the plaster photo set is off (its 2.4 m tile repeats a lichen motif down every wall)
     render: { kind: 'limewash', seed: 0x6b0a },
-    tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)] },
+    // (buildings-270, the census: the bazaar's planks read grey-black; the Naga Hills photos' timber is a dark-stained brown)
+    tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)], wood: (_h, s, l) => [0.065, Math.min(1, s * 0.7 + 0.16), Math.min(1, l * 0.95 + 0.02)] },
   },
   builders: KOHIMA_BUILDERS,
   // the Angami yards: a bamboo fence round the vegetable terrace and the granary on posts, an open gap (yards.ts)

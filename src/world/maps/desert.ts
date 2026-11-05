@@ -463,7 +463,9 @@ export default {
     // to a diagonal frontage reached the carriageway at the old [11.5, 4.5]
     buildingLat: [14, 4], maxSpread: 2.2,
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.068, 0.52, clamp01(l * 0.98 + 0.02)], // warm sand-plaster adobe
+      // (buildings-270, the census: the houses' render was the sand's own orange, and they sank into the ground; the Dahar
+      // photos' mud-lime render is a greyer buff ochre over the rubble)
+      plaster: (h: number, s: number, l: number) => [0.092, 0.36, clamp01(l * 0.94 + 0.02)], // buff mud-lime render
       roof: (h: number, s: number, l: number) => [0.065, clamp01(s * 0.8), clamp01(l * 1.1)],
       stone: (h: number, s: number, l: number) => [0.07, clamp01(s * 2 + 0.1), clamp01(l * 1.18 + 0.03)], // sandstone
       wood: (h: number, s: number, l: number) => [0.08, clamp01(s * 0.9), clamp01(l * 1.15)],

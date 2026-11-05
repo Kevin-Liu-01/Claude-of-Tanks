@@ -491,7 +491,8 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     sourced: { plaster: true, wood: true },
     tones: {
       plaster: (_h, s, l) => [0.11, Math.min(1, s * 0.2), Math.min(1, l * 1.3 + 0.12)],
-      plaster2: (_h, s, l) => [0.09, Math.min(1, s * 0.6 + 0.18), Math.min(1, l * 1.08 + 0.06)],
+      // (buildings-270) the second family the village's lime wash, as the Dahar photos' white houses and cell bands
+      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.2 + 0.05), Math.min(1, l * 1.3 + 0.17)],
       plaster3: (_h, s, l) => [0.085, Math.min(1, s * 0.7 + 0.22), Math.min(1, l * 1.02 + 0.03)],
     },
   },
@@ -502,9 +503,7 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [1.04, 1.02, 0.98], [0.95, 0.9, 0.82], [0.9, 0.84, 0.74], [1.06, 1.05, 1.02]],
     stone: [[1, 1, 1], [0.94, 0.92, 0.9]],
     roof: [[1, 1, 1], [0.9, 0.86, 0.82]],
-    damp: 0.25, moss: 0.05,
   },
-  wear: 0.15,
   // the courtyards: mud-brick walls round each house's court (hosh), a gate (yards.ts)
   yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gateadobe', shed: null, garden: false },
 });
@@ -1311,9 +1310,7 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     plaster: [[1, 1, 1], [1.05, 1.04, 1.02], [0.94, 0.92, 0.88], [0.9, 0.87, 0.82], [1.08, 1.07, 1.05]],
     stone: [[1, 1, 1], [0.95, 0.94, 0.92]],
     roof: [[1, 1, 1], [0.9, 0.87, 0.83]],
-    damp: 0.12, moss: 0,
   },
-  wear: 0.2,
   // the courtyards: palm-rib (jerid) fences round each house's court (yards.ts; round 2, wave 125: the generic adobe wall
   // read as "salmon-pink stucco with fired-brick coping")
   yard: { kinds: ['adobe'], fence: 'fencewattle', gate: null, shed: null, garden: false },

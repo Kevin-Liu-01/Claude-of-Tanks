@@ -163,9 +163,7 @@ export const OLYMPUS_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     plaster: [[1, 1, 1], [0.98, 0.96, 0.94]],
     stone: [[1, 1, 1], [0.95, 0.92, 0.9], [1.03, 0.98, 0.95]],
     roof: [[1, 1, 1], [0.96, 0.92, 0.88]],
-    damp: 0.05, moss: 0,
   },
-  wear: 0.05,
 });
 
 export type { RegionalParts };

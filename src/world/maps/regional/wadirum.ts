@@ -9,11 +9,15 @@ import {
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
-import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dressOf, type ArchitectureStyle, type RegionalBuildContext, type RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 
 const STEEL_DOORS: readonly Rgb[] = [0x3f6a5a, 0x3e5f86, 0x6a6e70, 0x8a6a3e].map(rgb);
 const TANK = rgb(0x262626), REBAR = rgb(0x5a3e2e);
+/** (buildings-270) the dress Rum's photos show house to house (the building-style table's badlands axes): the steel door's
+ *  paint and the roof tank's plastic */
+const DOOR_PAINTS: Readonly<Record<string, Rgb>> = { blue: rgb(0x2e6aa8), green: rgb(0x3f6a5a), grey: rgb(0x6a6e70) };
+const TANK_PLASTICS: Readonly<Record<string, Rgb>> = { black: TANK, white: rgb(0xd8d6d0) };
 const SAND_SHEET: readonly Rgb[] = [0xc8b48e, 0xbcae96, 0xd6ccb4].map(rgb);
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -21,7 +25,7 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 }
 
 /** Rooftop furniture: rebar stubs at the corners and columns, one or two black tanks on a steel stand. */
-function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => number): void {
+function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => number, tank: Rgb = TANK): void {
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]] as const) {
     if (sx === 0 && rng() < 0.5) continue;
     const x = sx * (W / 2 - 0.2), z = sz * (D / 2 - 0.2);
@@ -36,7 +40,7 @@ function rooftop(sink: PartSink, W: number, D: number, top: number, rng: () => n
     // the stand's frame on the legs' heads, the tank on it (the connectivity sweep: the round tank sat inside the
     // square of legs, touching none)
     sink.span('structureMetal', x - 0.48, top + 0.55, z - 0.48, x + 0.48, top + 0.6, z + 0.48, { colour: rgb(0x6a6e70), decor: true });
-    sink.cylinder('structureMetal', [x, top + 0.6, z], 'y', 1.1, 0.55, 10, { colour: TANK, decor: true });
+    sink.cylinder('structureMetal', [x, top + 0.6, z], 'y', 1.1, 0.55, 10, { colour: tank, decor: true });
   }
 }
 
@@ -100,7 +104,8 @@ const blockHouse: RegionalBuilder = (ctx) => {
   // the draw that chose bare block stays, so the rest of the house draws as before)
   if (ctx.wallBucket !== 'stone') rng();
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
-  const door = pick(rng, STEEL_DOORS);
+  // (the draw stays: the house's build stream reads as before; the map's dress paints the door)
+  const drawn = pick(rng, STEEL_DOORS), door = DOOR_PAINTS[dressOf(ctx, 'door', '')] ?? drawn;
   const style: WindowStyle = { frame: rgb(0x5a5e60), frameWidth: 0.05, frameOut: 0.04, bars: 'six', surround: null, sill: { bucket: 'plaster', out: 0.06 }, shutters: null };
   const count = rng() < upperStoreyShare(ctx) ? 2 : 1;
   // the stair takes a strip of the plot along the +x side (the house a metre narrower beside it)
@@ -134,7 +139,7 @@ const blockHouse: RegionalBuilder = (ctx) => {
       { colour: pick(look, SAND_SHEET), decor: true });
     sink.quad('structureMetal', facePoint(df, d0.u - cw / 2, top - 0.01, 0.0), facePoint(df, d0.u + cw / 2, top - 0.01, 0.0), facePoint(df, d0.u + cw / 2, top - 0.07, cd), facePoint(df, d0.u - cw / 2, top - 0.07, cd),
       { colour: rgb(0x5a5a56), decor: true });
-    rooftop(sink, W, D, f.eaveY + 0.2, rng);
+    rooftop(sink, W, D, f.eaveY + 0.2, rng, TANK_PLASTICS[dressOf(ctx, 'tank', 'black')] ?? TANK);
     houseWeather(sink, f, W, D, count);
     // (the fixtures keep off the side the stair stands against)
     houseFixtures(sink, W, D, f.eaveY + 0.2, rng, stair);
@@ -739,6 +744,13 @@ export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     },
   },
   builders: WADIRUM_BUILDERS,
+  // (buildings-270) the renders house to house as Rum's photos show them — sand, terracotta-pink, white wash, bare grey
+  // block — and the sun-faded sheet; the climate is the map's row (dry: dust at the foot, no green)
+  weather: {
+    plaster: [[1, 1, 1], [1.05, 0.95, 0.9], [1.07, 1.05, 1.02], [0.93, 0.93, 0.94], [1.02, 0.97, 0.9]],
+    stone: [[1, 1, 1], [0.94, 0.92, 0.9], [1.04, 1.0, 0.95]],
+    roof: [[1, 1, 1], [0.92, 0.9, 0.87], [1.05, 1.03, 1.0]],
+  },
   // the courtyards: a block wall round the house's court, a gate (yards.ts)
   yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gateadobe', shed: null, garden: false },
 });

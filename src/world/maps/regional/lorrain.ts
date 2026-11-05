@@ -940,9 +940,7 @@ export const LORRAIN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     plaster: [[1, 1, 1], [1.0, 0.95, 0.88], [0.96, 0.94, 0.9], [1.02, 0.97, 0.9], [0.92, 0.9, 0.86]],
     stone: [[1, 1, 1], [0.94, 0.92, 0.88], [1.02, 0.98, 0.92], [0.9, 0.88, 0.85]],
     roof: [[1, 1, 1], [0.9, 0.86, 0.8], [0.84, 0.8, 0.76], [1.04, 0.98, 0.92], [0.94, 0.9, 0.86]],
-    damp: 0.75, moss: 0.45,
   },
-  wear: 0.3,
   // (2026-10-07, the cost trim; the coordinator's ruling) the grey lime drawn from the rose-beige's bucket under its
   // colour ratio: the two procedural renders share one relief, so one draw and one shadow caster fewer
   foldThirdPlaster: true,
