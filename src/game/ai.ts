@@ -775,6 +775,9 @@ const SEARCH_LEG_STRIKES = 3;              // stuck strikes on one leg before it
 const SEARCH_GOAL_ARRIVE_M = 30;           // a goal this close is not worth a leg
 const SEARCH_PROJECTION_M = 60;            // a dry-policy route may end this far from its goal and still count
 const SEARCH_CHECK_S = 2;                  // cadence of the leg lifecycle checks
+// A displaced leg (another owner's route took its waypoints: claimWaypoints) waits for that route at most this long from
+// the displacement: the search's longest leg (round 2, U16)
+const SEARCH_DISPLACED_MAX_S = SEARCH_LEG_MAX_S;
 const PEN_GATE_RATIO_NEAR = 1.0;           // the gate ratio at point-blank range: the historical 0.9 answered the
 const PEN_GATE_RATIO_FAR = 1.15;           // penetration roll, not the lay — even at 76 m the tier's 0.47 m error
 const PEN_GATE_NEAR_M = 80;                // lands a round priced on a 0.9-1.0 lower-front strip on the glacis
@@ -1317,12 +1320,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here, and so
    * does the end of the overlay whose leg the list was (round 2, U16): a level route another owner writes over ends here,
    * superseded, with no verdict on its target (the 'levelRoute' drive owner and updateElevationLock's end test read only
-   * the level route's own list); a search leg's list taken by another owner is no longer the search's to judge
-   * (searchOwnsRoute: updateSearchLeg plans the next leg once the route that took it is used up, and counts it as no
-   * failed leg). A claim is never refused: the last writer has the list, as before.
+   * the level route's own list); a search leg whose list another owner takes is displaced here (displaceSearchLeg): its
+   * own evidence (budget, strikes, the enemy's move off its sector) no longer judges or ends anything, and
+   * updateSearchLeg plans the next leg only once the route in place is used up (or SEARCH_DISPLACED_MAX_S after the
+   * displacement), counting no failed leg. A claim is never refused: the last writer has the list, as before.
    */
   function claimWaypoints(owner: RouteOwner, loop: boolean): void {
     if (levelRouting && owner !== 'level') supersedeLevelRoute();
+    if (searching && owner !== 'search' && owner !== 'sector' && searchDisplacedAtS < 0) displaceSearchLeg();
     waypoints.length = 0;
     wpIndex = 0;
     autoPatrolBuilt = true;
@@ -1462,7 +1467,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let flankLaneCheckS = -Infinity;
   let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
-  let searching = false;                     // the search runs: its leg's route is in the waypoints (searchOwnsRoute)
+  let searching = false;                     // the search runs: its leg's route is in the waypoints, unless displaced
+  // when another owner's route took the leg's waypoints (claimWaypoints; round 2, U16); -1 while the leg drives its own
+  let searchDisplacedAtS = -1;
+  let searchLegsDisplaced = 0;               // probe-visible count of legs another owner's route displaced
   let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
   const searchGoal = { x: 0, z: 0 };
   let searchLegs = 0;                        // probe-visible count of legs begun
@@ -5120,6 +5128,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     searchLegBudgetS = clamp(SEARCH_LEG_MIN_S + routeLengthM / SEARCH_LEG_SPEED_MPS, SEARCH_LEG_MIN_S, SEARCH_LEG_MAX_S);
     searchLegStartDistM = detMath.hypot(goalX - entity.state.pos.x, goalZ - entity.state.pos.z);
     searchStrikesAtStart = strikeEvents;
+    searchDisplacedAtS = -1;                 // the leg drives its own route
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S;
     hasMoveTarget = false;
@@ -5165,18 +5174,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     startSearchLeg('direct', sector.x, sector.z, detMath.hypot(sector.x - position.x, sector.z - position.z), timeS);
   }
 
-  /** The waypoints are the search leg's own (beginSearchLeg wrote them), not a route another owner wrote over it. */
-  function searchOwnsRoute(): boolean {
-    return routeOwner === 'search' || routeOwner === 'sector';
+  /** Another owner's route took the search leg's waypoints (claimWaypoints): the leg waits for it, judged neither way. */
+  function displaceSearchLeg(): void {
+    searchDisplacedAtS = nowS;
+    searchLegsDisplaced++;
   }
 
   function updateSearchLeg(enemy: AiEntity, timeS: number): void {
     if (timeS < searchNextCheckS) return;
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S; // the search keeps the pressure semantics of the old push windows
+    // displaced (round 2, U16): the leg's budget, strikes and sector were evidence about a route it no longer drives, so
+    // none of them ends the wait; the route in place (a commander's point, a retreat's support, the mode's route push)
+    // is driven out first, and the next leg starts its own baselines (startSearchLeg)
+    if (searchDisplacedAtS >= 0) {
+      if (routeUsedUp() || timeS - searchDisplacedAtS > SEARCH_DISPLACED_MAX_S) beginSearchLeg(enemy, timeS);
+      return;
+    }
     const position = entity.state.pos;
-    // the route in the waypoints is used up: the leg's own, or the one another owner wrote over it (round 2, U16: the
-    // leg ended with its list, claimWaypoints; the search waits for that route as it did, then plans its next leg)
     const consumed = routeUsedUp();
     const stuck = strikeEvents - searchStrikesAtStart >= SEARCH_LEG_STRIKES;
     const overBudget = timeS - searchLegStartS > searchLegBudgetS;
@@ -5187,8 +5202,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // re-planned from here toward the same goals rather than rotated away from them
     const progressed = overBudget && !stuck && !consumed
       && detMath.hypot(searchGoal.x - position.x, searchGoal.z - position.z) < searchLegStartDistM * 0.5;
-    // the leg ended without contact; a leg another owner's route displaced was not driven, and is judged neither way
-    if (searchOwnsRoute() && (consumed || stuck || overBudget) && !progressed) searchFailures++;
+    if ((consumed || stuck || overBudget) && !progressed) searchFailures++; // the leg ended without contact
     beginSearchLeg(enemy, timeS);
   }
 
@@ -6933,7 +6947,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     lastPenAtS += parkS;         // the passive press (PASSIVE_PRESS_NO_PEN_S of its own shells)
     targetLastShotS += parkS;    // the target's silence as this bot last saw it (targetPassive)
     missLastShotS += parkS;      // the miss streak's settle (missedOut)
-    if (searching) searchLegStartS += parkS; // a search leg's budget is the bot's driving, not the park
+    if (searching) {             // a search leg's budget, and a displaced leg's wait, are the bot's driving, not the park
+      searchLegStartS += parkS;
+      if (searchDisplacedAtS >= 0) searchDisplacedAtS += parkS;
+    }
   }
 
   function update(dt: number, timeS: number): void {
@@ -7412,6 +7429,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       passivePressArcT: +passivePressArcT.toFixed(1),
       // round 62 pacing: the search for a lost enemy and the empty rack
       searching, searchKind, searchLegs, searchFailures,
+      searchDisplaced: searching && searchDisplacedAtS >= 0, searchLegsDisplaced, // round 2, U16
+      searchLegAgeS: searching ? +(nowS - searchLegStartS).toFixed(2) : null,
+      searchLegBudgetS: searching ? +searchLegBudgetS.toFixed(1) : null,
       searchGoalX: Math.round(searchGoal.x), searchGoalZ: Math.round(searchGoal.z),
       wpIndex, wpCount: waypoints.length, routeOwner, // audit M7: who wrote the waypoints
       pendingEvents: pendingCount, // audit M7: between-tick inputs waiting for the drivers' flush

@@ -10,7 +10,9 @@
 // the bot gave the live deck target up as unbearable (the reviewer's probe: 303 ticks); a search leg judged the route
 // that displaced it, and its end counted as a failed leg. claimWaypoints now ends the overlay whose list it takes. Pins:
 // [4] a point over a live level route ends the route with no verdict, and 'levelRoute' never drives a list not its
-// own; [5] a search leg displaced by another route waits for that route and counts no failure for it.
+// own; [5] a search leg displaced by another route waits for that route and counts no failure for it; [6] none of the
+// displaced leg's own evidence (the enemy's move off its sector, its spent budget, the strikes on the other route) ends
+// that wait early, and only SEARCH_DISPLACED_MAX_S from the displacement cuts it short.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -205,6 +207,80 @@ console.log('[5] a search leg displaced by another route waits for that route an
   ok(next.searchFailures === 0, `the displaced leg is no failed leg of the search's (failures ${next.searchFailures})`);
   ok(next.routeOwner === 'search' && next.searchKind === leg.searchKind,
     `the next leg is the search's own, from the same goals (${next.searchKind}, owner ${next.routeOwner})`);
+}
+
+console.log('[6] a displaced search leg is ended by none of its own evidence: the route in place is driven out first');
+// Reproduced on 6db97c221d (the review's probe): the displaced leg still judged its end by its own leg's evidence, read
+// against the other owner's list, and its next leg overwrote that list before the route was used up. A commander's
+// point 150 m off was overwritten 2.02 s later, 156.9 m short, when the enemy moved off the leg's sector.
+{
+  /** Run a sector leg, write `route` over it, apply `after`, then run until the search plans again (or `seconds`). */
+  const displaced = ({ enemyAt, route, after = () => {}, seconds, hold = false }) => {
+    const bot = tank('bot', 'alpha', 0, -450);
+    const enemy = tank('enemy', 'bravo', enemyAt[0], enemyAt[1]);
+    const { ctl, run } = scene(bot, [enemy], () => null);
+    const searched = run(40, (info) => info.searching);
+    const leg = ctl.debugInfo();
+    const points = route(bot.state.pos);
+    ctl.setWaypoints(points, { loop: false });
+    const taken = ctl.debugInfo();
+    after(enemy);
+    const end = points[points.length - 1];
+    let ticks = 0, nearestEnd = Infinity, overBudgetTicks = 0, strikeRises = 0, lastStrikes = 0, replanned = false;
+    const takenOwner = taken.routeOwner;
+    let lastWaiting = null;
+    const holdX = bot.state.pos.x, holdZ = bot.state.pos.z;
+    const step = hold ? (seconds2, until) => {
+      // the hull cannot move (wedged where the route took it): the controller still drives, its watchdog counts strikes
+      for (let i = 0; i < Math.round(seconds2 / SIM_DT); i++) {
+        run(SIM_DT, null);
+        bot.state.pos.x = holdX; bot.state.pos.z = holdZ; bot.state.speed = 0;
+        if (until(ctl.debugInfo())) return true;
+      }
+      return false;
+    } : run;
+    replanned = step(seconds, (info) => {
+      ticks++;
+      if (info.searchLegs > leg.searchLegs) return true;
+      lastWaiting = info;
+      nearestEnd = Math.min(nearestEnd, Math.hypot(bot.state.pos.x - end[0], bot.state.pos.z - end[1]));
+      if (info.searchLegAgeS > leg.searchLegBudgetS) overBudgetTicks++;
+      if (info.strikes > lastStrikes) strikeRises++;
+      lastStrikes = info.strikes;
+      return false;
+    });
+    return { searched, leg, taken, takenOwner, ticks, nearestEnd, overBudgetTicks, strikeRises, replanned,
+      waiting: lastWaiting, next: ctl.debugInfo() };
+  };
+  // [6a] the enemy moves 200 m off the leg's sector while a commander's point 150 m off has the hull
+  const a = displaced({ enemyAt: [5, 150], seconds: 60,
+    route: (at) => [[at.x + 120, at.z + 90]], after: (enemy) => { enemy.state.pos.x += 200; } });
+  ok(a.searched && a.leg.searchKind === 'sector' && a.taken.routeOwner === 'destination' && a.taken.searchDisplaced,
+    `[6a] the point displaces the sector leg (${a.leg.searchKind}, owner ${a.taken.routeOwner}, displaced ${a.taken.searchDisplaced})`);
+  ok(a.replanned && a.nearestEnd < 12,
+    `[6a] the enemy's move off the sector does not end the wait: the point is driven out first (${a.nearestEnd.toFixed(1)} m from it when the search plans again)`);
+  ok(a.next.searchFailures === 0 && !a.next.searchDisplaced && a.next.searchLegAgeS < 0.1,
+    `[6a] no failed leg, and the next leg starts its own baselines (failures ${a.next.searchFailures}, displaced ${a.next.searchDisplaced}, age ${a.next.searchLegAgeS} s)`);
+  // [6b] the leg's own budget runs out while a long route of another owner's is driven
+  const b = displaced({ enemyAt: [0, -390], seconds: 150, route: (at) => {
+    const legs = [];
+    for (let i = 1; i <= 12; i++) legs.push([at.x + i * 30, at.z + (i % 2 ? 60 : 0)]);
+    return legs;
+  } });
+  ok(b.searched && b.taken.routeOwner === 'route' && b.taken.searchDisplaced,
+    `[6b] a route list displaces the leg (budget ${b.leg.searchLegBudgetS} s, owner ${b.taken.routeOwner})`);
+  ok(b.overBudgetTicks > 120, `[6b] the wait runs past the displaced leg's budget (${(b.overBudgetTicks * SIM_DT).toFixed(1)} s over it)`);
+  ok(b.replanned && b.nearestEnd < 12,
+    `[6b] the spent budget does not end the wait: the route is driven out first (${b.nearestEnd.toFixed(1)} m from its end)`);
+  ok(b.next.searchFailures === 0 && b.next.searchLegAgeS < 0.1,
+    `[6b] no failed leg; the next leg's clock starts at the re-plan (failures ${b.next.searchFailures}, age ${b.next.searchLegAgeS} s)`);
+  // [6c] a hull that cannot move on the other owner's route: strikes pile up and the budget runs out; only the cap ends it
+  const c = displaced({ enemyAt: [0, -390], seconds: 160, hold: true, route: (at) => [[at.x + 80, at.z - 80]] });
+  const waitedS = c.ticks * SIM_DT;
+  ok(c.strikeRises >= 3 && c.overBudgetTicks > 0,
+    `[6c] the wedged hull gathers stuck strikes and outlasts the leg's budget on the other route (${c.strikeRises} strike(s))`);
+  ok(c.replanned && Math.abs(waitedS - 150) <= 2.5 && c.next.searchFailures === 0,
+    `[6c] the wait ends at the cap, SEARCH_DISPLACED_MAX_S from the displacement (${waitedS.toFixed(1)} s, failures ${c.next.searchFailures})`);
 }
 
 if (failures) { console.error(`ai.routeOwner.selftest: ${failures} failure(s)`); process.exit(1); }
