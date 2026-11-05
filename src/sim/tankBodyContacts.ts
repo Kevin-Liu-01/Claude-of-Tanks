@@ -321,16 +321,44 @@ function ensureBodyState(state: TankBodyState) {
 }
 
 /**
- * The hull bears on another hull's body: it rests on a roof (the contact pass's restSupportY), the pass held it this tick
- * (dynamicSupport), or it rides more than STACK_ELEVATED_M above its own static support. A snapshot row carries the answer
- * (ENTITY_FLAGS.STACKED, wire 10; src/mp/match/hullBodyRow.ts): a client's copy of another hull runs no contact pass and
- * has no support cache of its own (audit M8, 2026-11-02).
+ * The hull is supported by another hull's body, or elevated above its own static support: it rests on a roof (the contact
+ * pass's restSupportY), the pass held it this tick (dynamicSupport), or it rides more than STACK_ELEVATED_M above its own
+ * static support. The last term is true for any hull that high, a plain jump on open ground included (most of a jump's
+ * airborne ticks), not only for a hull on another: it mirrors isDynamicBodyContact, which the tank contacts read. A
+ * snapshot row carries the answer (ENTITY_FLAGS.STACKED, wire 10; src/mp/match/hullBodyRow.ts): a client's copy of
+ * another hull runs no contact pass and has no support cache of its own (audit M8, 2026-11-02).
  */
 export function hullBearsOnBody(state: {
   pos: { y: number }; _sup?: { y: number; top?: number }; _body?: { dynamicSupport?: boolean; restSupportY?: number };
 }): boolean {
   return state._body?.dynamicSupport === true || Number.isFinite(state._body?.restSupportY) ||
     state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+}
+
+/** Where a snapshot row keeps the hull's body bits (the sim's SNAPSHOT_FLAGS and the wire's ENTITY_FLAGS hold the same
+ * values: hullBodyRow.selftest pins them). */
+export interface HullBodyFlagBits {
+  readonly AIRBORNE: number; readonly OVERTURNED: number; readonly AUTO_RIGHTING: number;
+  readonly TUMBLING: number; readonly STACKED: number;
+}
+
+/**
+ * The hull's body bits for a snapshot row: ground contact, the body mode's storage (src/sim/hullBodyMode.ts) and
+ * hullBearsOnBody. The one packer (round 2, U14): the authority's wire rows (src/mp/match/hullBodyRow.ts
+ * hullBodyRowFlags) and the sim's viewer snapshot (worldSnapshot.ts) both pack through it. A state without a position
+ * (a hand-built fixture) has no stack term.
+ */
+export function hullBodyFlags(state: {
+  grounded?: boolean; overturned?: boolean; pos?: { y: number } | null; _sup?: { y: number; top?: number } | null;
+  _body?: { tumbling?: boolean; autoRighting?: boolean; dynamicSupport?: boolean; restSupportY?: number } | null;
+}, bits: HullBodyFlagBits): number {
+  let flags = 0;
+  if (state.grounded === false) flags |= bits.AIRBORNE;
+  if (state.overturned) flags |= bits.OVERTURNED;
+  if (state._body?.autoRighting) flags |= bits.AUTO_RIGHTING;
+  if (state._body?.tumbling) flags |= bits.TUMBLING;
+  if (state.pos && hullBearsOnBody(state as Parameters<typeof hullBearsOnBody>[0])) flags |= bits.STACKED;
+  return flags;
 }
 
 function isDynamicBodyContact(entity: TankBodyEntity): boolean {

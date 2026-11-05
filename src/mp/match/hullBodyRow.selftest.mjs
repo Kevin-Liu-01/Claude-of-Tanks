@@ -22,8 +22,8 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../../sim/movement.ts';
 import { hullBodyMode, restoreHullBodyMode, setHullGrounded } from '../../sim/hullBodyMode.ts';
-import { hullBearsOnBody, prefersVerticalTankContact, resolveTankBodyContacts } from '../../sim/tankBodyContacts.ts';
-import { SNAPSHOT_FLAGS } from '../../sim/worldSnapshot.ts';
+import { hullBearsOnBody, hullBodyFlags, prefersVerticalTankContact, resolveTankBodyContacts } from '../../sim/tankBodyContacts.ts';
+import { SNAPSHOT_FLAGS, captureEntitySnapshot } from '../../sim/worldSnapshot.ts';
 import { captureEntityRow, createEraIndexer } from '../../../server/match/entityRows.ts';
 import {
   ByteReader, ByteWriter, ENTITY_FLAGS, ENTITY_FLAG_BITS, PHASE, ROW_GROUP, STATUS_WORD_MAX, VERDICT, WIRE_VERSION,
@@ -65,6 +65,30 @@ const DEG = Math.PI / 180;
     assert.ok(HULL_BODY_ROW_FLAGS & ENTITY_FLAGS[name], `the owner packs ${name}`);
   }
   assert.equal(STATUS_WORD_MAX, (1 << 18) - 1, 'seven status bits and eleven flags');
+  // one packer (round 2, U14): the sim's viewer snapshot and the authority's wire rows pack the body bits through
+  // tankBodyContacts.ts hullBodyFlags, so the two captures cannot drift apart
+  const bodyBits = HULL_BODY_ROW_FLAGS;
+  const states = [];
+  for (const grounded of [true, false]) for (const tumbling of [false, true]) for (const overturned of [false, true])
+    for (const autoRighting of [false, true]) for (const support of ['ground', 'roof', 'dynamic', 'elevated']) {
+      const state = createTankState(SPEC, new Vector3(4, support === 'elevated' ? 3 : 1, -2), 0.3);
+      setHullGrounded(state, grounded);
+      restoreHullBodyMode(state, overturned, tumbling, autoRighting);
+      state._sup.y = 1; state._sup.top = 1;
+      if (support === 'roof') state._body.restSupportY = 2.4;
+      if (support === 'dynamic') state._body.dynamicSupport = true;
+      states.push(state);
+    }
+  let stacked = 0;
+  for (const state of states) {
+    const wire = hullBodyRowFlags(state);
+    assert.equal(wire, hullBodyFlags(state, ENTITY_FLAGS), 'the wire row packs through the one packer');
+    const snapshot = captureEntitySnapshot({ id: 'h', specId: SPEC.id, team: 'alpha', state, combat: { hp: 1, maxHp: 1, ammo: [0, 0, 0] }, input: {} });
+    assert.equal(snapshot.flags & bodyBits, wire, 'the viewer snapshot packs the same body bits');
+    if (wire & ENTITY_FLAGS.STACKED) stacked++;
+  }
+  assert.ok(stacked >= states.length * 3 / 4, `roof, contact-pass and elevated supports all read STACKED (${stacked} of ${states.length})`);
+
   const TICK = 600;
   const roundTrip = (flags) => {
     const row = Object.assign(zeroEntityRow(3), { tick: TICK, hp: 900, maxHp: 1000, reloadKind: 1, gunReloadKind: 1, shellSlot: 2, flags });

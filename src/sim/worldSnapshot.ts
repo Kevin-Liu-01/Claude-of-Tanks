@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { magazineIndicator } from './magazineIndicator.ts';
 import type { MagazineIndicator, MagazineIndicatorSpec } from './magazineIndicator.ts';
 import * as detMath from './detMath.ts';
-import { hullBearsOnBody } from './tankBodyContacts.ts';
+import { hullBodyFlags } from './tankBodyContacts.ts';
 const POSITION_SCALE = 100;      // centimeters
 const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
@@ -37,7 +37,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   AUTO_RIGHTING: 1 << 8,
   /** The rigid phase itself (audit M8, 2026-11-02; the wire's ENTITY_FLAGS.TUMBLING, wire 10). */
   TUMBLING: 1 << 9,
-  /** The hull bears on another hull (tankBodyContacts.ts hullBearsOnBody; the wire's ENTITY_FLAGS.STACKED, wire 10). */
+  /** Supported by another hull or elevated above its own static support (tankBodyContacts.ts hullBearsOnBody; the
+   *  wire's ENTITY_FLAGS.STACKED, wire 10). */
   STACKED: 1 << 10,
 });
 
@@ -194,11 +195,8 @@ function entityFlags(entity: SnapshotEntitySource): number {
   if (entity.input && entity.input.fire) flags |= SNAPSHOT_FLAGS.FIRING;
   if (entity.spotted) flags |= SNAPSHOT_FLAGS.SPOTTED;
   if (entity.specialAction?.active) flags |= SNAPSHOT_FLAGS.SPECIAL_ACTIVE;
-  if (entity.state?.grounded === false) flags |= SNAPSHOT_FLAGS.AIRBORNE;
-  if (entity.state?.overturned) flags |= SNAPSHOT_FLAGS.OVERTURNED;
-  if (entity.state?._body?.autoRighting) flags |= SNAPSHOT_FLAGS.AUTO_RIGHTING;
-  if (entity.state?._body?.tumbling) flags |= SNAPSHOT_FLAGS.TUMBLING;
-  if (entity.state?.pos && hullBearsOnBody(entity.state as Parameters<typeof hullBearsOnBody>[0])) flags |= SNAPSHOT_FLAGS.STACKED;
+  // the body bits through the one packer the wire rows use too (round 2, U14)
+  if (entity.state) flags |= hullBodyFlags(entity.state as Parameters<typeof hullBodyFlags>[0], SNAPSHOT_FLAGS);
   return flags;
 }
 

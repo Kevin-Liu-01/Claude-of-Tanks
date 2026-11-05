@@ -16,6 +16,7 @@
 import { ENTITY_FLAGS, RELOAD_KIND_NAMES, TICK_MS, dequantizeAngle, dequantizePosition, dequantizeReloadS,
   dequantizeShellVelocity, dequantizeUnitComponent, dequantizeVelocity, shellTypeName } from '../wire/index.ts';
 import type { EntityRow, PhaseId, ShellRow, SnapshotFrame, VerdictId } from '../wire/index.ts';
+import { BODY_PHASE_ROW_FLAGS, RIGID_PHASE_ROW_FLAGS } from './hullBodyRow.ts';
 
 /** One presented entity in SI units (metres, m/s, radians, seconds). */
 export interface EntitySample {
@@ -601,9 +602,10 @@ export class RemoteInterpolator {
     } else out.vy = 0;
     out.reloadS = Math.max(0, out.reloadS - extraS);
     out.gunReloadS = Math.max(0, out.gunReloadS - extraS);
-    // Continue the last short-arc angular motion for at most one observed interval.
-    if (continuous && previousRow && !(row.flags & (ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING)) &&
-        !((previousRow.flags ^ row.flags) & (ENTITY_FLAGS.AIRBORNE | ENTITY_FLAGS.OVERTURNED | ENTITY_FLAGS.AUTO_RIGHTING))) {
+    // Continue the last short-arc angular motion for at most one observed interval: never in the rigid phase (a plain
+    // tumble included: wire 10's TUMBLING, round 2 U14), nor across a change of ground contact or body phase.
+    if (continuous && previousRow && !(row.flags & RIGID_PHASE_ROW_FLAGS) &&
+        !((previousRow.flags ^ row.flags) & BODY_PHASE_ROW_FLAGS)) {
       const fraction = Math.min(1, extraS / durationS);
       const a = decodeRow(previousRow, this.scratchA);
       for (const key of CONTINUED_ANGLES) out[key] += shortestAngleDelta(a[key], out[key]) * fraction;
