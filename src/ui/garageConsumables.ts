@@ -9,6 +9,7 @@
 // (game/consumableLoadout.ts `cot.cons.<specId>`) and announced (CONSUMABLE_LOADOUT_EVENT) so the settings rows and the
 // battle tray name the same items. The battle reads the same save at spawn.
 
+import { createLazyChunk } from '../app/lazyChunk.ts';
 import { createPicker, type PickerItem, type PickerText } from './components/picker.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { consumableIconSVG } from './equipIcons.ts';
@@ -91,12 +92,16 @@ const escapeAttr = (value: string): string => value.replace(/&/g, '&amp;').repla
 // which tanks carry smoke dischargers is the auxiliary inventory's, a large generated table the Garage's boot never
 // carries: the picker loads it on first open, and the smoke gate holds from then on (the battle always reads it)
 let smokeOf: ((id: string) => boolean) | null = null;
-let smokeLoad: Promise<void> | null = null;
+// (round 2 U35) the table is one lazy chunk under the app's policy (app/lazyChunk.ts). Its memo was cleared on a failure
+// and asked again at once by the next caller, and the band's warm asks on every pointer crossing into it, so a table
+// that failed to arrive (a removed deployment's 404, a browser that fails a re-ask at once) was asked again on every
+// hover. Now: at once after one failure, then past the backoff (2, 4 ... s), never offline; a removed chunk is terminal
+const smokeChunk = createLazyChunk(() => import('../vehicles/auxiliaryInventory.ts').then(({ auxiliaryCapabilities }) => {
+  smokeOf = (id) => !!auxiliaryCapabilities({ id })?.smoke?.length;
+}));
+/** The table's load. Never rejects: a table that did not arrive leaves smokeOf null, and the picker's wait closes. */
 function loadSmokeTable(): Promise<void> {
-  smokeLoad ??= import('../vehicles/auxiliaryInventory.ts').then(({ auxiliaryCapabilities }) => {
-    smokeOf = (id) => !!auxiliaryCapabilities({ id })?.smoke?.length;
-  }, () => { smokeLoad = null; });
-  return smokeLoad;
+  return smokeChunk.load().then(undefined, () => undefined);
 }
 const vehicleFacts = (vehicle: { readonly id: string; readonly era?: string; readonly role?: string }) =>
   consumableSpecFor(vehicle, smokeOf ? smokeOf(vehicle.id) : undefined);
