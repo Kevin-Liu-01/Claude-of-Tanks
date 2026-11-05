@@ -249,6 +249,8 @@ interface SoloAiController {
   setOrder?(order: AiOrder | null): void;
   /** Apply what reached the brain since its last update (ai.ts applyPendingBotNews; audit M7). */
   applyPendingNews?(): void;
+  /** Hand the hull back (a revive's new life; Watch mode's Leave through watchSeat.ts): ai.ts resume (round 2 U18). */
+  resume?(timeS?: number, firstShellId?: number): void;
 }
 
 interface ReloadPresentationEvent {
@@ -1551,6 +1553,9 @@ export function setupBattle(
         updateTank(ent, world.heightField, SIM_DT);
       }
       ent.visual?.syncFromState?.(ent.state);
+      // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn (ai.ts
+      // resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
+      ent.aiCtl?.resume?.(game.timeS);
     },
   });
   for (const entity of game.tanks) {

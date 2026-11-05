@@ -230,6 +230,8 @@ interface AuthoritativeAIController {
   notifyFriendlyBlocked(risk: AIFriendlyRisk): void;
   /** Apply what reached the brain since its last update (game/ai.ts applyPendingBotNews; audit M7). */
   applyPendingNews?(): void;
+  /** Hand the hull back after a revive (game/ai.ts resume; round 2 U18). */
+  resume?(timeS?: number): void;
 }
 
 export interface AuthoritativeEntity {
@@ -1267,6 +1269,9 @@ export function createAuthoritativeMatch({
     // a fresh life: no crash of the last one carries into its first blow (sim/impact.ts, the solo step's revive too)
     resetHullCrashMemory(tank);
     if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
+    // the same brain drives the new life: what it measures between ticks restarts from the hull at its spawn
+    // (game/ai.ts resume, on the battle's clock; round 2 U18), so the wreck-to-spawn move is no tick of progress
+    tank.aiCtl?.resume?.(timeS);
   }
 
   const modeController = createMatchModeController<AuthoritativeEntity>({
