@@ -1179,8 +1179,15 @@ function* createFxSteps(
       particles.emit('smoke', _puffO);
     }
   });
+  // (round 2 U31) the runtime's root (fx.group: the pooled lights and the veil) and the veil every visual is made under
+  // (`group` below): the killcam's suppression hides the veil, one switch only it writes (holdReplayHidden), so each
+  // subsystem's own visibility writes are never rewritten and stand at the release (the lights stay lit in the root:
+  // the light count keeps the programs)
+  const root = new THREE.Group();
+  root.name = 'fx';
   const group = new THREE.Group();
-  group.name = 'fx';
+  group.name = 'fx-replay-veil';
+  root.add(group);
   // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
   if (engineCtx?.setupShadowMaterial) {
     configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
@@ -1200,12 +1207,13 @@ function* createFxSteps(
         destroyed: !!owner.combat?.destroyed, flying: owner.aerial?.active === true };
     },
     onReturnEvent: (id, event, reason) => {
-      const log = (group.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
+      const log = (root.userData.droneFlightsHomeLog ??= []) as { id: string | number; event: string; reason: string }[];
       log.push({ id, event, reason }); if (log.length > 32) log.shift();
     },
   });
   // Diagnostics (films and probes): the flights home in progress, read off the FX group.
-  group.userData.droneFlightsHome = () => drones.returning();
+  root.userData.droneFlightsHome = () => drones.returning();
+  root.matrixAutoUpdate = false;
   group.matrixAutoUpdate = false;
   group.add(particles.group);
   // destruction-fx lane (2026-10-07): the simulated media and the thrown material. Desktop tiers only: the phone tier
@@ -1339,6 +1347,8 @@ function* createFxSteps(
   settledFracture.matrixAutoUpdate = false;
   settledFracture.userData.staticShadowRoot = true;
   group.add(settledFracture);
+  // (round 2 U31) through the root and its veil (shadowStaticCache.ts walks a nest inside a nest)
+  root.userData.staticShadowNest = true;
   group.userData.staticShadowNest = true;
   const fractureStages: FractureStages | null = createFractureStages({
     group, settled: settledFracture, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
@@ -1418,7 +1428,7 @@ function* createFxSteps(
   const _lightCool = new THREE.Color(LIGHT_COOL_HEX);
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
-  group.add(muzzleLight, explosionLight);
+  root.add(muzzleLight, explosionLight);
   // (2026-10-14, contact r2) unshadowed, so the near hulls shadow them on the ground in the aerial pass (groundKeyLights.ts)
   registerGroundKeyLight(muzzleLight);
   registerGroundKeyLight(explosionLight);
@@ -1820,7 +1830,7 @@ function* createFxSteps(
   }
   // (fx 9) the Studio's cinematic quality writes the pools' scene tint itself (FxCinematicPort.setLightTintShading)
   let cinematicTintOwner = false;
-  group.userData.softParticles = {
+  root.userData.softParticles = {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
       || (vol ? vol.isActive() : false)
@@ -6470,33 +6480,23 @@ function* createFxSteps(
 
   let cinematicPortState: FxCinematicPort | null = null;
   /**
-   * (2026-11-02 audit F10) Under the killcam's suppression the runtime owns its scene graph's visibility: every non-light
-   * child of the group stays hidden whatever its subsystem's update writes (they write `mesh.visible = n > 0` every
-   * frame, which re-showed what the killcam had hidden; a child added meanwhile, the lens guns, was never hidden), and
-   * the release gives each the visibility its owner last asked for (the killcam's blanket true showed meshes their owners
-   * had emptied). Pooled lights stay in the scene (the light count keeps the programs). Value: what the owner wants.
+   * (2026-11-02 audit F10; round 2 U31) Under the killcam's suppression the runtime hides its visuals by the veil they are
+   * all made under (`group`), the one switch only the suppression writes. The subsystems keep writing their own
+   * children's visibility (`mesh.visible = n > 0` every frame, or once: the lens guns' hide when the camera leaves the
+   * lens), none of it is rewritten, and the release shows each as its owner last left it. A child made meanwhile is under
+   * the veil too. (Round one rewrote each child's flag and recorded what it hid: an owner's hide during the suppression
+   * read as the suppression's own, and the release showed the lens guns over a killcam that had left the lens.) Pooled
+   * lights stay in the root, lit (the light count keeps the programs).
    */
-  const replayHidden = new Map<THREE.Object3D, boolean>();
-  function holdReplayHidden(): void {
-    const children = group.children;
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if ((child as THREE.Light).isLight) continue;
-      if (child.visible) { replayHidden.set(child, true); child.visible = false; }
-      else if (!replayHidden.has(child)) replayHidden.set(child, false);
-    }
-  }
-  function releaseReplayHidden(): void {
-    for (const [child, wanted] of replayHidden) child.visible = wanted;
-    replayHidden.clear();
-  }
+  function holdReplayHidden(): void { group.visible = false; }
+  function releaseReplayHidden(): void { group.visible = true; }
   /**
    * (2026-11-02 audit F10) this runtime's binding of each bus it heard (bindBus), keyed by bus: the page binds its bus
    * and the Studio its private one to the same runtime, and binding one never undoes the other
    */
   const busBindings = new Map<FxEventBus, () => void>();
   const fx: FxRuntime = {
-    group,
+    group: root,
 
     /**
      * Hide already-recorded battle destruction while killcam shows the
@@ -6731,8 +6731,6 @@ function* createFxSteps(
         readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
       ageMissileRecords(tickDt);
-      // (2026-11-02 audit F10) last, over whatever the subsystems wrote this frame
-      if (replaySuppressed) holdReplayHidden();
     },
 
     /**
