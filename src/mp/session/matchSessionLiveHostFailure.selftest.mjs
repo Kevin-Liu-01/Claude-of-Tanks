@@ -6,6 +6,10 @@
 // once the host's room socket is gone too, and this page's socket lives on, so every peer waited for the room's report
 // staleness (ROOM_MATCH_REPORT_STALE_AFTER_MS, 90 s) before the next election. Now the session declines as unable at the
 // failure (setDecline 'match', as a failed boot does) and leaves its hosting role, so the room elects at once.
+// Review round 1: the first fix dropped the host and moved the role to 'none', and so stranded the seat's own player. Its
+// match client sat on the dead host's loopback, which only the host's pump drives, 'reconnecting' until its recovery
+// grace ran out, and the room's next election reached nothing (no host to step down, no peer link to retarget). The seat
+// now steps down as stepDown does: its client moves onto a peer link at once, and the next election names its host.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomClient } from '../room/roomClient.ts';
@@ -106,9 +110,19 @@ try {
   assert.ok(declined, `the seat tells the room at once that it cannot host (it said nothing: role ${session.roleStatus}, the peers wait out the room's 90 s report staleness)`);
   assert.equal(declined.declined, true);
   assert.equal(declined.unable, true, 'as unable: the room elects another seat, or ends the match when none can');
-  assert.equal(session.roleStatus, 'none', `the seat leaves its hosting role (${session.roleStatus})`);
+  assert.equal(session.roleStatus, 'peer', `the seat steps down to a peer (${session.roleStatus})`);
   assert.equal(session.matchHost, null, 'and drops the failed host');
   assert.equal(hostDeclines(mark).length, 1, 'once');
+  assert.notEqual(session.migrating?.inner, host.transport, 'its own client left the dead host\'s loopback');
+  assert.equal(session.migrating?.state, 'reconnecting', `its client waits on a peer link for the next host (${session.migrating?.state})`);
+  // the room elects the other seat: this seat follows it as a peer, as any peer of the failed host does
+  transport.deliver({ type: 'host_changed', payload: { hostId: 'other', generation: 2, resumeTick: 600, reason: 'declined' } });
+  await until(() => session.roleStatus === 'migrating', `the next election reaches the seat (role ${session.roleStatus}, link ${session.migrating?.state})`, 3000);
+  assert.equal(session.p2p?.hostId, 'other', 'it follows the elected host');
+  assert.equal(session.p2p?.generation, 2);
+  assert.equal(session.p2p?.migrating, true, 'a migration, as on every peer');
+  assert.equal(session.phase, 'match', 'still in the match');
+  assert.notEqual(session.matchClient?.phase, 'closed', `its client still runs the round (${session.matchClient?.phase})`);
 } finally {
   clearInterval(pump);
   ackAll();
@@ -117,4 +131,4 @@ try {
   session.dispose(); client.dispose();
   for (const core of cores) core.dispose();
 }
-console.log('matchSessionLiveHostFailure.selftest: a live host whose thread fails hands the match on at once: one unable decline, the hosting role left');
+console.log('matchSessionLiveHostFailure.selftest: a live host whose thread fails hands the match on at once: one unable decline, the seat steps down to a peer and follows the next election');

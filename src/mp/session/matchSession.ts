@@ -437,17 +437,25 @@ export class MatchSession {
    * thread died: browserHostPort.ts reports a Worker error at any point as boot_failed, and the host tears itself down)
    * hands the match on at once, as a failed boot does (round 2 Q2): the role kept live_host with the dead host and the
    * room heard nothing, so with this page's room socket still up every peer waited for the room's report staleness (90 s)
-   * before the next election. A failing boot is becomeHost's to report (its host.start rejects).
+   * before the next election. The seat steps down as stepDown does (review round 1): its own match client moves onto a
+   * peer link, which has no target until the room names another host (roomSignaler), and follows the room's next
+   * election like any peer. Left on the dead host's loopback, which only the host's own pump drives, the client hung in
+   * 'reconnecting' with role 'none' until its recovery grace ran out, and no election could reach it. A failing boot is
+   * becomeHost's to report (its host.start rejects).
    */
   private watchHost(host: MatchHost): void {
     const off = host.onState((state, detail) => {
       if (this.host !== host) { off(); return; }
       if (state === 'live' && this.roleState === 'booting_host') this.moveRole('live_host', 'host live');
       if (state === 'failed' && this.roleState === 'live_host') {
-        this.host = null;
-        this.moveRole('none', 'host failed');
         this.log('error', 'the live host failed; handing the match on', { generation: this.room.generation, detail });
-        this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
+        if (this.migrating && this.migrating.state !== 'closed') this.stepDown('host failed');
+        if (this.host === host) {
+          // no live match link to step down onto (this seat's client already ended its round): the host goes all the same
+          this.host = null;
+          this.moveRole('none', 'host failed');
+          this.p2pListeners.emit({ kind: 'role', role: null, generation: this.room.generation });
+        }
         this.setDecline('match', { declined: true, unable: true });
       }
       if (state === 'stopped' || state === 'failed') off();
