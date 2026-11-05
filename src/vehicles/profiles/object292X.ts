@@ -179,7 +179,7 @@ function addRubberSkirts(P: TankBuilderPort): void {
     for (let i = 0; i < n; i++) {
       const z0 = SKIRT_Z0 + i * len + (i ? gap / 2 : 0), z1 = SKIRT_Z0 + (i + 1) * len - (i < n - 1 ? gap / 2 : 0);
       const zs = [z0, ...breaks.filter((z) => z > z0 + .02 && z < z1 - .02), z1].sort((a, b) => a - b);
-      P.addMudguard('object292-rubber-skirt', 'hullRubber', sectionSolid(zs.map((z) => ({ z, ring: skirtSection(z, s) }))));
+      P.addMudguard('object292-rubber-skirt', 'hullRubber', sectionSolid(zs.map((z) => ({ z, ring: skirtSection(z, s) })), { sideQuadDiagonal: 'convex' }));
       // the clamp bolts along the panel's top, on the apron's slope
       for (let k = 0; k < 4; k++) {
         const z = z0 + (k + .5) * (z1 - z0) / 4, top = fenderTop(z) - .022, knee = Math.min(apronFoot(z), top - .06), y = top - .07;
@@ -203,7 +203,7 @@ function addRubberSkirts(P: TankBuilderPort): void {
 }
 
 /** The stern: the GTD-1000TF's exhaust grille in the sloping upper plate (a dark well under a grid of bars in a frame), the
- * stern's tow hooks and the empty drum cradles' foot brackets. Hull frame. */
+ * stern's tow hooks and the empty drum cradles' brackets where their arms leave the fenders. Hull frame. */
 function addStern(P: TankBuilderPort): void {
   // the upper rear plate slopes from (z -3.13, y 1.547) to (z -3.36, y 1.347)
   const tilt = Math.atan2(1.547 - 1.347, 3.36 - 3.13), zc = -3.245, yc = 1.447 + .004, L = .27;
@@ -333,16 +333,18 @@ function addRoof(P: TankBuilderPort): void {
 }
 
 /** The LP-83 on its cradle: the T-80U X's trunnion block across the embrasure, the cradle's fat root drum out of the
- * casting with its lipped front, a step and a cone down to the tube's thermal sleeve, then the sleeved tube. Gun frame. */
+ * casting with its lipped front, a step and a cone down to the tube's thermal sleeve, then the sleeved tube. The drum and
+ * its fittings stand proud above the bore, their undersides no lower than the slimmer sleeve's they replace, so the gun
+ * keeps its measured depression stops over the deck. Gun frame. */
 function addGun(P: TankBuilderPort): void {
   const seg = P.q ? 28 : 14;
   // the T-80U X's own trunnion block (its cheeks at x .222): a cylinder round the pitch axis keeps its envelope at every
   // pitch, so the mount clears the X's deck as the T-80U's does
   P.addGunExtra(cylX(.203, .446, 28), 0, 0, -.004);
-  P.addGunExtra(cylZ(.212, .58, seg, .218), 0, 0, .36);
-  P.addGunExtraDark(cylZ(.224, .045, seg), 0, 0, .63);
-  P.addGunExtra(cylZ(.184, .06, seg), 0, 0, .675);
-  P.addGunExtra(cylZ(.150, .26, seg, .184), 0, 0, .835);
+  P.addGunExtra(cylZ(.212, .58, seg, .218), 0, .043, .36);          // underside .175 under the bore
+  P.addGunExtraDark(cylZ(.224, .045, seg), 0, .052, .63);
+  P.addGunExtra(cylZ(.184, .06, seg), 0, .012, .675);
+  P.addGunExtra(cylZ(.150, .26, seg, .184), 0, .012, .835);
   P.addGunExtraDark(cylZ(.158, .03, seg), 0, 0, .965);
   build152Gun(P, { ...GUN_LP83, len: F.muzzleZ - F.trunnionZ });
 }

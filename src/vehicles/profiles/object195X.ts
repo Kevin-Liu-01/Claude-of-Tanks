@@ -79,8 +79,8 @@ function addHull(P: TankBuilderPort): void {
 
 /** The hull's kit (owner 2026-11-05, "make the hulls much better"; the owner's renders): the raised armour module on
  * the fore glacis with its seams and lifting eyes, the armoured headlight housings at the bow's corners, the bars across
- * the lower nose plate, grab rails along the glacis' edges, the louvred exhaust on the left flank, the unditching log and
- * the stowage boxes on the stern. Hull frame. */
+ * the lower nose plate, grab rails along the glacis' edges, the louvred exhaust on the left flank and the unditching log on
+ * the stern plate. Hull frame. */
 function addHullKit(P: TankBuilderPort): void {
   // the fore glacis module: a plate laid on the glacis from ahead of the periscopes to the nose's edge, its three panels'
   // seams, its chamfered lip and two lifting eyes
@@ -107,18 +107,12 @@ function addHullKit(P: TankBuilderPort): void {
   // the louvred exhaust on the left flank over the engine (the T-90's side, the photographs' grille)
   P.addEquipment('hullDark', box(.03, .30, .80), 1.705, 1.40, -2.55);
   for (let k = 0; k < 6; k++) P.addEquipment('hullDetail', box(.05, .03, .78), 1.715, 1.28 + k * .05, -2.55, 0, 0, .35);
-  // the unditching log across the stern and the stowage boxes either side of it
+  // the unditching log on the stern plate over the slat cage, below the deck's edge: the 2A83 keeps its full depression
+  // over the stern (tools/gun-depression-sweep.mjs; on the deck the log held it to -2.5 degrees from 153 degrees)
   const log = FITTINGS.unditchingLog({ mats: P.mats, len: 2.30, r: .13, straps: 2, seed: 195 });
-  log.position.set(0, R_STERN + .16, -3.80);
+  log.position.set(0, 1.36, -4.10);
   P.hullG.add(log);
-  for (const s of [-1, 1]) {
-    P.addEquipment('hullDetail', box(.60, .34, .30), s * 1.15, R_STERN + .15, -3.66);
-    P.addEquipment('hullDark', box(.56, .015, .015), s * 1.15, R_STERN + .25, -3.505);
-  }
 }
-
-/** The stern deck's height at the log and boxes (the tub's station at z -3.80). */
-const R_STERN = F.roofY - .08;
 
 /** The hull side's top line (the tub's stations: the stern's steps, the flat roof, the glacis down to the nose). */
 const SIDE_TOP: readonly (readonly [number, number])[] = [[-3.95, F.roofY - .18], [-3.80, F.roofY - .08], [-3.45, F.roofY - .04],
@@ -184,11 +178,11 @@ function addRunningGear(P: TankBuilderPort): void {
     trackShoeDimensions: { padHeight: .036, grouserHeight: .010, webHeight: .018, hornHeight: .040, pinRadius: .009, pinCentreY: 0 },
   });
   addSkirts(P);
-  // a slat cage across the stern plate over the engine's back, on posts from the plate
-  for (let k = 0; k < 5; k++) P.addEquipment('hullDetail', box(2.70, .03, .016), 0, .86 + k * .13, -4.10);
+  // a slat cage across the stern plate over the engine's back, on posts from the plate, under the log
+  for (let k = 0; k < 4; k++) P.addEquipment('hullDetail', box(2.70, .03, .016), 0, .80 + k * .12, -4.10);
   for (const x of [-1.30, -.45, .45, 1.30]) {
-    P.addEquipment('hullDetail', box(.03, .60, .03), x, 1.12, -4.10);
-    for (const y of [.90, 1.34]) P.addEquipment('hullDark', box(.025, .025, .14), x, y, -4.03);
+    P.addEquipment('hullDetail', box(.03, .44, .03), x, .98, -4.10);
+    for (const y of [.84, 1.14]) P.addEquipment('hullDark', box(.025, .025, .14), x, y, -4.03);
   }
 }
 
@@ -289,16 +283,16 @@ function addModule(P: TankBuilderPort): void {
   }
   P.decal('turret', 'number', P.spec.visual.number || '', .28, [.925, .62, -.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', .28, [-.925, .62, -.30], -Math.PI / 2);
-  // the 2A42 in its low pod on the roof's right. Its barrel crosses the sight tower and the commander's mast from 42
+  // the 2A42 in its low pod on the roof's right. Its barrel crosses the sight tower and the commander's mast from 38
   // degrees inboard and the bustle's roof kit past 158 degrees outboard (.qa-dev/r152/station-levels.mjs, barrel lines
-  // against the module's stock at level and full elevation): it turns from a degree short of each; over the cheek and
+  // against the module's stock from level to full elevation): it turns from a degree short of each; over the cheek and
   // the lintel ahead it depresses only as far as the table lets it (each degree the smallest of it and its neighbours)
   add30mmCannon(P, { name: 'object195_2a42', x: -.66, deck: TOP, z: -.40, axisY: TOP + .14, pivotZ: -.40, muzzleZ: 1.65,
-    yawArc: [-2.7402, 0.6981],
+    yawArc: [-2.7402, 0.6283],
     depressionByYaw: [[-0.3491, 0.18], [-0.3316, 0.174], [-0.3142, 0.163], [-0.2967, 0.154], [-0.2793, 0.146], [-0.2618, 0.135],
       [-0.2443, 0.126], [-0.2269, 0.118], [-0.2094, 0.106], [-0.192, 0.098], [-0.1745, 0.087], [-0.1571, 0.078], [-0.1396, 0.073],
       [0.1222, 0.073], [0.1396, 0.056], [0.1571, 0.05], [0.3316, 0.05], [0.3491, 0.047], [0.4712, 0.047], [0.4887, 0.045],
-      [0.576, 0.045], [0.5934, 0.047], [0.6109, 0.047], [0.6283, 0.05], [0.6632, 0.05], [0.6807, 0.053], [0.6981, 0.053]] });
+      [0.576, 0.045], [0.5934, 0.047], [0.6109, 0.047], [0.6283, 0.05]] });
 }
 
 /** The 2A83 on its exposed cradle: the cradle's shield, the recoil cylinders' housings, the tube. Gun frame. */

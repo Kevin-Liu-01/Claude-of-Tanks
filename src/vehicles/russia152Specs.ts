@@ -71,7 +71,8 @@ object292.armor.turretPlates = modernArmor({
   gunPivot: [0, OBJECT292_FRAME.trunnionY - OBJECT292_FRAME.ringY, OBJECT292_FRAME.trunnionZ - OBJECT292_FRAME.ringZ],
   barrelLenM: OBJECT292_FRAME.muzzleZ - OBJECT292_FRAME.trunnionZ, barrelRadM: 0.135,
   glacis: [0, 0, 0], lower: [0, 0, 0], side: [0, 0, 0], rear: 0, roof: 0,
-  tw: 1.42, tFrontZ: 1.40, tRearZ: -2.22, tH: OBJECT292_FRAME.boxRoof,
+  // the cheek blocks welded round the casting's cheeks and flanks (looks round 2026-11-05) to the box's tail
+  tw: 1.46, tFrontZ: 1.40, tRearZ: -2.22, tH: OBJECT292_FRAME.boxRoof,
   cheek: [620, 810, 890], tSide: [200, 200, 240], tRear: 40, tRoof: 45, mantlet: [380, 513, 567],
 }).turretPlates;
 // the T-80U X casting's ring on its raised race and its trunnion (russia152Frames.ts)
