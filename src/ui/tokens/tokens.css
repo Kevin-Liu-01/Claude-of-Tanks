@@ -10,7 +10,7 @@
   --modehue-standard:#efb258;--modehue-drone:#9d8cff;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
   --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
   --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
-  --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
+  --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;--modehue-air-support:#517efb;
   --settingshue-controls:#6d86ff;--settingshue-gameplay:#bff18b;--settingshue-sound:#6cf6fd;--settingshue-graphics:#ba8ac5;
   --settingshue-accessibility:#c0789b;--settingshue-language:#55a57d;
   --paper-50:#f6f3ec;--paper-100:#ece8de;--paper-300:#c9c5bb;--paper-500:#9a9a95;--paper-600:#7c8187;--paper-700:#5d636a;
@@ -53,6 +53,7 @@
   --mode-turbo-ball:var(--modehue-turbo-ball);--mode-mars:var(--modehue-mars);--mode-endless-horde:var(--modehue-endless-horde);
   --mode-gun-game:var(--modehue-gun-game);--mode-juggernaut:var(--modehue-juggernaut);--mode-infected:var(--modehue-infected);
   --mode-realistic:var(--modehue-realistic);--mode-ac130:var(--modehue-ac130);--mode-proving-ground:var(--modehue-proving-ground);
+  --mode-air-support:var(--modehue-air-support);
   --settings-controls:var(--settingshue-controls);--settings-gameplay:var(--settingshue-gameplay);--settings-sound:var(--settingshue-sound);
   --settings-graphics:var(--settingshue-graphics);--settings-accessibility:var(--settingshue-accessibility);
   --settings-language:var(--settingshue-language);

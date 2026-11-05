@@ -140,6 +140,10 @@ export interface AirSupportRules {
   readonly teamGunshipCap: number;
   /** The furthest a crew may mark from its own hull (the strike view's reach). */
   readonly callRangeM: number;
+  /** Counter-air: roof stations engage enemy aircraft within their counter-drone range × `rangeScale`; each round lands
+   *  the drone share × `hitScale` (an aircraft is a far larger target) of `damagePerHit`. A roof station's round itself
+   *  never strikes an aircraft's sphere (its share is its hit); a main gun's does, for its damage. */
+  readonly counterAir: { readonly rangeScale: number; readonly hitScale: number; readonly damagePerHit: number };
   /** The recon pass: a jet along the heading through the mark; every enemy within `revealM` of its track as it passes is
    *  spotted for its side for `revealS` (through the spotting system). */
   readonly recon: AirStrikeRules & { readonly trackM: number; readonly revealM: number; readonly revealS: number };
@@ -164,6 +168,7 @@ export const AIR_SUPPORT_RULES: AirSupportRules = Object.freeze({
   teamAirCap: 2,
   teamGunshipCap: 1,
   callRangeM: 700,
+  counterAir: Object.freeze({ rangeScale: 1.5, hitScale: 4, damagePerHit: 150 }),
   // the photo pass: 3 s of warning, then a jet at 250 m along a 600 m track through the mark; 12 s of spotting within 160 m
   recon: Object.freeze({ cost: 120, cooldownS: 40, warningS: 3, hp: 400, hitRadiusM: 8, altitudeM: 250, speedMps: 200,
     trackM: 600, revealM: 160, revealS: 12 }),

@@ -101,8 +101,10 @@ export interface AirSupport {
   recordKill(victimId: string, killerId: string | null, supportKill: boolean): void;
   recordCapture(team: ObjectiveTeam, x: number, z: number, radiusM: number): void;
   recordSpot(spotterId: string | null | undefined, targetId: string, timeS: number): void;
-  tryHitAircraft(shell: { dead?: boolean; shooterId?: string; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean;
+  tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean;
   damageAircraft(strike: AirStrike, by: string, damage: number, timeS: number): void;
+  counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void;
+  aircraftPoseOf(strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }): Point3 & { yaw: number; bank: number };
   aircraftWithin(team: ObjectiveTeam, x: number, y: number, z: number, rangeM: number, timeS: number): AirStrike | null;
   /** Whether a recon pass has `id` revealed to `side` now (the spotting system's reveal hook). */
   revealed(id: string, side: ObjectiveTeam): boolean;
@@ -127,6 +129,16 @@ function strikeEndS(rules: AirSupportRules, kind: AirStrikeKind, landsS: number)
   if (kind === 'strafe') return landsS + rules.strafe.fireS + 5;
   if (kind === 'bomb') return landsS + 4;
   return landsS + rules.gunship.orbitS + 8;
+}
+
+/** A call-in's ground footprint, the shape the reticle, the minimap and the world draw it as. */
+export type StrikeFootprint =
+  | { readonly shape: 'circle'; readonly radiusM: number }
+  | { readonly shape: 'lane'; readonly halfLengthM: number; readonly halfWidthM: number };
+export function strikeFootprint(rules: AirSupportRules, kind: AirStrikeKind): StrikeFootprint {
+  if (kind === 'recon') return { shape: 'lane', halfLengthM: rules.recon.trackM * 0.5, halfWidthM: rules.recon.revealM };
+  if (kind === 'strafe') return { shape: 'lane', halfLengthM: rules.strafe.lengthM * 0.5, halfWidthM: rules.strafe.halfWidthM };
+  return { shape: 'circle', radiusM: kind === 'gunship' ? rules.gunship.engageM : rules[kind].radiusM };
 }
 
 /** The strafing lane's start: half the lane short of the mark along the heading. */
@@ -330,8 +342,9 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
    * A round of the other side passing through a flying aircraft's hit sphere strikes it for the round's damage (the strike's
    * own side never hits its own aircraft: its own rounds leave from inside it). True when the round was spent on it.
    */
-  function tryHitAircraft(shell: { dead?: boolean; shooterId?: string; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean {
-    if (shell.dead || !strikes.length) return false;
+  function tryHitAircraft(shell: { dead?: boolean; shooterId?: string; roofStation?: boolean; prevPos: Point3; pos: Point3; spec: { dmg: number } }, timeS: number): boolean {
+    // a roof station's round lands its counter-air share instead (counterAirHit), never twice
+    if (shell.dead || shell.roofStation || !strikes.length) return false;
     const shooter = shell.shooterId ? byId.get(shell.shooterId) : undefined;
     if (!shooter) return false;
     const team = teamOf(shooter);
@@ -357,6 +370,11 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     award(by, rules.points.downed);
     const pose = aircraftPose(rules, strike, timeS, _pose);
     emit('mode_aircraft_down', { strikeId: strike.id, kind: strike.kind, team: strike.team, by, x: pose.x, y: pose.y, z: pose.z });
+  }
+
+  /** A roof station's round at an aircraft lands `chance` (its counter-drone share at the range) of a strike. */
+  function counterAirHit(strike: AirStrike, chance: number, by: string, timeS: number): void {
+    damageAircraft(strike, by, chance * rules.counterAir.hitScale * rules.counterAir.damagePerHit, timeS);
   }
 
   /** The aircraft an enemy roof station could engage now: flying, the other side's, within `rangeM`. */
@@ -507,7 +525,8 @@ export function createAirSupport<Entity extends AirSupportEntity>(options: AirSu
     rules,
     strikes: strikes as readonly AirStrike[],
     seed,
-    requestStrike, recordDamage, recordKill, recordCapture, recordSpot, tryHitAircraft, damageAircraft, aircraftWithin,
+    requestStrike, recordDamage, recordKill, recordCapture, recordSpot, tryHitAircraft, damageAircraft, counterAirHit, aircraftWithin,
+    aircraftPoseOf: (strike: AirStrike, timeS: number, out: Point3 & { yaw: number; bank: number }) => aircraftPose(rules, strike, timeS, out),
     evadeTarget, step, view,
     revealed: (id: string, side: ObjectiveTeam): boolean => (revealedUntil.get(`${side}:${id}`) ?? -Infinity) >= nowS,
     pointsOf: (id: string): number => points.get(id) ?? 0,

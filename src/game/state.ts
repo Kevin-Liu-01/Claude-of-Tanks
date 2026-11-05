@@ -162,6 +162,7 @@ import {
 } from './soloConsumables.ts';
 import { PLAYER_ACTION_BITS, AIR_STRIKE_BITS } from '../sim/playerActions.ts';
 import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from '../sim/airSupportFire.ts';
+import type { AirStrike } from '../sim/airSupport.ts';
 import { AIR_STRIKE_KINDS } from '../sim/matchRuleset.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
@@ -695,6 +696,9 @@ function acquireShell(
   sh.dmgRoll = 0;
   sh.bounces = 0;
   sh.carriedThrough = false;
+  // a pooled round forgets a roof station's mark and an airstrike's (sim/airSupportFire.ts)
+  sh.roofStation = false;
+  (sh as DamageShell & { strikeId?: number }).strikeId = undefined;
   sh.gravityMps2 = shellGravityMps2(shellSpec);
   return sh;
 }
@@ -1172,6 +1176,7 @@ function createBattleBot(
       intel: {
         freshestContact: () => context.game.matchModeController?.freshestSighting(entity) ?? null,
         enemyDeployment: () => context.game.matchModeController?.enemyDeployment(entity) ?? null,
+        airThreatM: () => context.game.matchModeController?.airThreatM(entity) ?? Infinity,
       },
     },
   }) as SoloAiController;
@@ -3145,6 +3150,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     droneHit: (carrier: SoloEntity, chance: number, shooter: SoloEntity) => {
       if (strikeDrone(carrier, chance)) bus.emit('drone:down', { id: carrier.id, killerId: shooter.id });
     },
+    // Air Support's counter-air: the stations engage the other side's aircraft (sim/airSupport.ts)
+    ...(game.matchModeController?.airSupport ? { counterAir: soloCounterAir(game) } : {}),
   };auxiliaryContexts.set(game,context);}
   context.entities=game.tanks;
   const screens=game.auxiliarySmokeScreens;
@@ -3174,9 +3181,31 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
       if(stepRoofStation(entity,station,game.timeS,SIM_DT,context))fireAuxiliaryShot(game,entity);
   }
 }
+/** Air Support's counter-air for the solo battle's roof stations: the nearest enemy aircraft, and its share of a round. */
+const _soloAirPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+function soloCounterAir(game: SoloGameState): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
+  return {
+    nearest(shooter, origin, rangeM, out, roundMps) {
+      const air = game.matchModeController?.airSupport;
+      const strike = air?.aircraftWithin(shooter.team === 'enemy' ? 'bravo' : 'alpha', origin.x, origin.y, origin.z, rangeM, game.timeS);
+      if (!air || !strike) return null;
+        const pose = air.aircraftPoseOf(strike, game.timeS, _soloAirPose);
+        // led: where the aircraft will be when the round meets it (its flight is the record's: exact)
+        const leadS = Math.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
+        air.aircraftPoseOf(strike, game.timeS + leadS, _soloAirPose);
+        out.set(_soloAirPose.x, _soloAirPose.y, _soloAirPose.z);
+      return strike;
+    },
+    hit(aircraft, chance, shooter) {
+      game.matchModeController?.airSupport?.counterAirHit(aircraft as AirStrike, chance, shooter.id, game.timeS);
+    },
+  };
+}
+
 /** The shell a roof station just fired (auxiliaryShot), in the solo battle. */
 function fireAuxiliaryShot(game: SoloGameState, entity: SoloEntity): void {
   const shell=acquireShell(auxiliaryShot.shell,entity.id,entity.isPlayer,auxiliaryShot.origin,auxiliaryShot.direction,game.nextShellId++);
+  shell.roofStation=true;
   shell.rocket=false;shell.gravityMps2*=entity.modeGravityScale??1;game.shells.push(shell);
   game.spotting?.notifyFired(entity.id,game.timeS,auxiliaryShot.shell.caliberMm);
 }

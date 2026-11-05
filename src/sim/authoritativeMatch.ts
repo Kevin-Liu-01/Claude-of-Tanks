@@ -115,6 +115,7 @@ import {
 } from './consumableRules.ts';
 import { PLAYER_ACTION_BITS, AIR_STRIKE_BITS } from './playerActions.ts';
 import { stepAirSupportFire, strikeRoundPayload, type AirSupportFireContext } from './airSupportFire.ts';
+import type { AirStrike } from './airSupport.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import type { AimIntentInput } from './aimIntent.ts';
 import {
@@ -1151,6 +1152,7 @@ export function createAuthoritativeMatch({
         intel: {
           freshestContact: () => modeController.freshestSighting(entity),
           enemyDeployment: () => modeController.enemyDeployment(entity),
+          airThreatM: () => modeController.airThreatM(entity),
         },
         ...(navigation ? {
           planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
@@ -1268,6 +1270,23 @@ export function createAuthoritativeMatch({
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   const airSupportView = modeController.airSupport;
+  const _airPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
+  /** Air Support's counter-air for the roof stations: the nearest enemy aircraft, and its share of a round. */
+  function counterAirFor(now: () => number): NonNullable<Parameters<typeof stepRoofGun>[3]['counterAir']> {
+    return {
+      nearest(shooter, origin, rangeM, out, roundMps) {
+        const strike = airSupportView!.aircraftWithin(shooter.team === TEAM_BRAVO ? 'bravo' : 'alpha', origin.x, origin.y, origin.z, rangeM, now());
+        if (!strike) return null;
+        const pose = airSupportView!.aircraftPoseOf(strike, now(), _airPose);
+        // led: where the aircraft will be when the round meets it (its flight is the record's: exact)
+        const leadS = detMath.hypot(pose.x - origin.x, pose.y - origin.y, pose.z - origin.z) / Math.max(1, roundMps);
+        airSupportView!.aircraftPoseOf(strike, now() + leadS, _airPose);
+        out.set(_airPose.x, _airPose.y, _airPose.z);
+        return strike;
+      },
+      hit(aircraft, chance, shooter) { airSupportView!.counterAirHit(aircraft as AirStrike, chance, shooter.id, now()); },
+    };
+  }
   if (airSupportView) airReveal = (id, team) => airSupportView.revealed(id, team === TEAM_BRAVO ? 'bravo' : 'alpha');
   // Air Support's rounds in this authority: its entities, its spotting, its ground, its shell ids; each round is announced
   // to every viewer as a mode event (never withheld: it names the strike, not the caller)
@@ -2675,6 +2694,8 @@ export function createAuthoritativeMatch({
     droneHit: (carrier: AuthoritativeEntity, chance: number, shooter: AuthoritativeEntity) => {
       if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id });
     },
+    // Air Support's counter-air: the stations engage the other side's aircraft (sim/airSupport.ts)
+    ...(modeController.airSupport ? { counterAir: counterAirFor(() => timeS + modeTimeOffsetS) } : {}),
   };
   /** The shell a roof station just fired (auxiliaryShot). */
   function fireAuxiliaryShot(entity: AuthoritativeEntity): void {

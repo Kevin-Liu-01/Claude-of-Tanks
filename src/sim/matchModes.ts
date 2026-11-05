@@ -413,6 +413,8 @@ export interface MatchModeController<
   freshestSighting(entity: Entity): { x: number; z: number } | null;
   /** The enemy side's public deployment centre (the honest search's last resort). */
   enemyDeployment(entity: Entity): { x: number; z: number } | null;
+  /** Air Support: the distance from `entity` to the nearest enemy aircraft in the air (Infinity outside the mode). */
+  airThreatM(entity: Entity): number;
   serialize(viewerId?: string | null): MatchModePresentationState;
   /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
   reviveAll(): void;
@@ -2431,6 +2433,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
+  // Air Support: the reach a bot looks for enemy aircraft in (its roof gun's counter-air reach and a margin)
+  const AIR_THREAT_SCAN_M = 600, airThreatPose = { x: 0, y: 0, z: 0, yaw: 0, bank: 0 };
   /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
   function restoreWaves(saved: WaveCheckpoint): void {
     wave = saved.wave;
@@ -2558,6 +2562,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (!seen) return null;
       sightingOut.x = seen.x; sightingOut.z = seen.z;
       return sightingOut;
+    },
+    airThreatM(entity) {
+      if (!air) return Infinity;
+      const pos = entity.state.pos;
+      const strike = air.aircraftWithin(teamOf(entity), pos.x, pos.y, pos.z, AIR_THREAT_SCAN_M, placementTimeS);
+      if (!strike) return Infinity;
+      air.aircraftPoseOf(strike, placementTimeS, airThreatPose);
+      return detMath.hypot(airThreatPose.x - pos.x, airThreatPose.y - pos.y, airThreatPose.z - pos.z);
     },
     enemyDeployment(entity) {
       const at = centers[otherTeam(teamOf(entity))];

@@ -187,6 +187,29 @@ run({ migrateAt: 'bomb' });
   }
   make.stop();
 }
+// counter-air: a bot crew's roof station engages the strafing jet as it runs in and lands its shares on the airframe
+{
+  const actor = createMatchActor({ roomId: 'air-aa', mapId: 'verdant', mode: 'air_support', seed: 9, seats: [seats[0]],
+    bots: [{ playerId: 'aa', name: 'AA', team: 'bravo', specId: SPEC }],
+    ruleset: matchRulesetFor('air_support'), world: world(), countdownS: 0, autoStart: false, now: () => 0, schedule: () => () => {}, resume: null });
+  const sim = actor.authority; sim.onMatchReady();
+  const air = sim.modeController.airSupport;
+  const saved = air.capture(); saved.points = saved.points.map(([id]) => [id, id === 'caller' ? R.points.cap : 0]); air.restore(saved);
+  const input = { throttle: 0, steer: 0, fire: false, brake: true, aimYaw: 0, aimPitch: 0, aimDistance: 100, shellSlot: 0, actionBits: 0 };
+  const hold = () => { sim.entityById.get('caller').state.pos.set(0, 0, -200); const aa = sim.entityById.get('aa'); if (!aa.combat.destroyed) aa.state.pos.set(0, 0, 150); };
+  hold();
+  const hits = [];
+  for (let n = 0; n < 60 * 14; n++) {
+    if (n === 30) { Object.assign(input, encodeAimIntent(sim.entityById.get('caller').state.pos, { x: 0, y: 0, z: 150 })); input.actionBits = AIR_STRIKE_BITS.strafe; }
+    sim.step({ dt: 1 / 60, inputs: new Map([['caller', input]]) });
+    input.actionBits = 0;
+    for (const e of sim.eventsForViewer('caller')) if (e.type === 'mode_aircraft_hit') hits.push(e);
+    sim.afterEventBroadcast();
+    hold();
+  }
+  assert.ok(hits.length > 0 && hits.every((e) => e.by === 'aa' && e.kind === 'strafe'), `the bot's roof station hits the jet (${hits.length} shares)`);
+  actor.stop();
+}
 assert.ok(AIR_STRIKE_KINDS.every((kind) => R[kind].warningS >= 3), 'every call-in warns at least 3 s');
 assert.ok(!airStrikeFlies('artillery') && airStrikeFlies('gunship'));
 console.log(`airSupport: 5 call-ins accepted, ${rounds.length} rounds, ${arrivals.length} arrivals all at or after their warnings (earliest +${earliest.toFixed(3)} s); recon reveals; points, cooldowns, air cap, shoot-down, bots calling and evading, migration and replay pass`);

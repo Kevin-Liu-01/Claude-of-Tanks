@@ -395,6 +395,8 @@ interface AiDependencies {
   intel?: {
     freshestContact(): { x: number; z: number } | null;
     enemyDeployment(): { x: number; z: number } | null;
+    /** Air Support (air-support-270): the distance to the nearest enemy aircraft in the air (Infinity: none). */
+    airThreatM?(): number;
   };
 }
 
@@ -6675,6 +6677,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');
     abilityContext.reloadS = slotReloadS(chosenSlot);
     abilityContext.contactM = target && losClear && isVisibleToTeam(target) ? currentTargetDistance() : Infinity;
+    abilityContext.airThreatM = deps.intel?.airThreatM?.() ?? Infinity;
     abilityContext.safeJump = false;
     abilityContext.offensive = offensiveJumpDue();
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
