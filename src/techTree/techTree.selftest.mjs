@@ -221,11 +221,14 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 267 (the owner 2026-11-01, "finish it"): the Leopard 2A7 DK, held since 2026-10-30, at X after the 2A5 DK; the
 // Centurion Mk 5/2 DK (the owner, the same day) at III after the M41 DK-1, the CV9035 DK after it again.
 // 267 (the Japan line): the Type 90 (B) built on the Type 90's node (builds: type90_kyumaru, type90b), its tier 8.
+// 2026-11-02 re-pin (268, lane abrams-bradley-268, the owner's ask): the M3A2 Bradley at II beside the M2A2 on the
+// Bradley line (lane 10, off the M2A2); the T49 one lane down to 11 so that connector runs clear.
 // 2026-11-02 re-pin (269, Main's ruling on the Australia tree, head B): the Australia tree, its root the Leopard AS1 (I),
 // the M1A1 AIM SA (VIII) and the M1A2 SEPv3 (IX) after it, the Centurion Mk 5/1 (II) moved here from the UK tree's special
 // lane, the M113A1 FSV and MRV (I), the M113AS4 (II, with the Ares APC) and the AS21 Redback (VI). The UK tree's nations
 // drop Australia. 2026-11-03 re-pin (Main's ruling on the M113s' TOW): the M113AS4 from II to III.
 // 2026-11-03 re-pin (the owner: "make a USA m113 variant, that plays similar to the ares apc"): the US M113A3 in the US
 // tree's special lane at II.
-assert.equal(digest, '80f1ffa376ebe14a', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-11-05 re-pin (269 on 268): the Australia tree and the US M113A3 beside 268's M3A2 node and the T49's lane 11.
+assert.equal(digest, 'c759742a472c47e9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

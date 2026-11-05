@@ -9,6 +9,8 @@ const EXPECTED = Object.freeze({
   amx10p: { hp: 2000, speed: 65, reverse: 22, traverse: 53.8, damage: 44, pen: [190, 170, 150], reload: .22, sound: 'rh202', missile: null },
   amx10p_25: { hp: 2300, speed: 65, reverse: 22, traverse: 53.8, damage: 70, pen: [225, 205, 185], reload: .30, sound: 'm242-bushmaster', missile: null },
   m2a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 44.5, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
+  // 268: the M3A2 (m3a2BradleySpecs.ts), the M2A2's vehicle and rounds under the classic turret; its recon doctrine (roleProfiles.ts) turns the hull faster
+  m3a2_bradley:       { hp: 1650, speed: 61, reverse: 20, traverse: 47, damage: 58, pen: [130, 118, 106], reload: 0.42, sound: 'm242-bushmaster', missile: [540, 'tow-launch'] },
   bmp2:               { hp: 1050, speed: 65, reverse: 12, traverse: 53, damage: 42, pen: [74, 66, 58], reload: 0.28, sound: '2a42', missile: [430, 'konkurs-launch'] },
   spz_puma:           { hp: 2000, speed: 70, reverse: 30, traverse: 48.8, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
   marder2: { hp:2750,speed:60,reverse:27,traverse:44.5,damage:135,pen:[185,170,155],reload:.55,sound:'xm913-50',missile:null },
@@ -63,7 +65,7 @@ const EXPECTED = Object.freeze({
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 43, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C.
+assert.equal(ifvIds.length, 44, 'complete selectable IFV fleet'); // Includes independent Marder 2 and M6; SPz Wotan remains selectable; 265: the CV9035 DK; 266: the Ukrainian CV9040C; 268: the M3A2.
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

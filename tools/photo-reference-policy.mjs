@@ -34,6 +34,9 @@ const PHOTO_REFERENCE_PACKETS=Object.freeze({
   'docs/references/photos/aus-leopard-as1-20261102.json':Object.freeze(['leopard_as1']),
   'docs/references/photos/aus-abrams-20261102.json':Object.freeze(['m1a1_aim_sa_aus','m1a2_sepv3_aus']),
   'docs/references/photos/aus-redback-20261102.json':Object.freeze(['redback']),
+  // 268 (owner 2026-11-02): the M3A2 Bradley, the shared Bradley hull under main's classic M2A2 turret (mirrored); the
+  // turret is kept as main built it, not measured to a model, so the id proves its packet
+  'docs/references/photos/m3a2-bradley-20261102.json':Object.freeze(['m3a2_bradley']),
 });
 export const PHOTO_REFERENCE_IDS=Object.freeze(Object.values(PHOTO_REFERENCE_PACKETS).flat());
 /** The packet holding an id's photographic target; null for an id with none. */

@@ -42,6 +42,8 @@ const CURVES = {
   c2_ariete: [],
   m3a3_bradley: [[0, 39]], // the mantlet's underside 11 mm over the roof at -9; the M3 keeps its full forward depression
   m6_linebacker: [],
+  // 268: the M3A2 under the classic turret, its turret-fixed TOW pod clear of the gun; its measured rear stops (m3a2BradleySpecs.ts)
+  m3a2_bradley: [],
   // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts) and the T-72 Ryś on its raised ring
   // (t80uXArmor.ts T80U_X_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],

@@ -48,6 +48,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD2A4FAMILY } from './vehicleMarkin
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDA6X } from './vehicleMarkingSeatGroups/leopardA6X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDX } from './vehicleMarkingSeatGroups/leopardX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LRMVLYNX } from './vehicleMarkingSeatGroups/lrmvLynx.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_M3A2BRADLEY } from './vehicleMarkingSeatGroups/m3a2Bradley.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M41 } from './vehicleMarkingSeatGroups/m41.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_M6LINEBACKER } from './vehicleMarkingSeatGroups/m6Linebacker.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MARDER2 } from './vehicleMarkingSeatGroups/marder2.generated.ts';
@@ -140,6 +141,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_LEOPARDA6X,
   SEATS_LEOPARDX,
   SEATS_LRMVLYNX,
+  SEATS_M3A2BRADLEY,
   SEATS_M41,
   SEATS_M6LINEBACKER,
   SEATS_MARDER2,

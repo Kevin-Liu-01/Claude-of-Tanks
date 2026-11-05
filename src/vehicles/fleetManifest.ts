@@ -6,6 +6,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   sinoSovietConcepts: Object.freeze(['type96_72_long','type96_80_feng','type96_72m_lei']),
   t72Rys: Object.freeze(['t72_rys']),
   m6Linebacker: Object.freeze(['m6_linebacker']),
+  m3a2Bradley: Object.freeze(['m3a2_bradley']),
   marder2: Object.freeze(['marder2']),
   amx10p: Object.freeze(['amx10p', 'amx10p_25']),
   dardo: Object.freeze(['dardo']),

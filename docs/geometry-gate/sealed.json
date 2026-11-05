@@ -1726,7 +1726,7 @@
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2661,
+   "netSeeThroughPx": 3053,
    "tris": 130668,
    "frame": [
     0,
@@ -1743,6 +1743,26 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 3128
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2661
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 1829
      }
     }
    ]
@@ -4068,13 +4088,35 @@
    "openViews": 0,
    "insideOutPx": 1,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 36300,
+   "netSeeThroughPx": 22935,
    "tris": 138014,
    "frame": [
     -0.05,
     1.7,
     0.9,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "268 shell rebuilt to the owner m1a1-abrams-usa model, the FEP hull drapes hang flat on the skirt line and the ua_m1a1 cage net sits on the new turret and skirts, so less declared netting shows",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 36300
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "268 final net, the FEP ULCANS cover lies on the turret, cheeks and gun and the ua_m1a1 cage net lies on its roof, measured from the owner model shell",
+     "by": "abrams-bradley-268",
+     "date": "2026-11-04",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 27470
+     }
+    }
    ]
   },
   "ua_m1a2_abrams": {
@@ -5365,6 +5407,21 @@
     2.05,
     -0.25,
     3.8
+   ]
+  },
+  "m3a2_bradley": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 298,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 0,
+   "tris": 82095,
+   "frame": [
+    0,
+    1.55,
+    -0.05,
+    4.2
    ]
   }
  }

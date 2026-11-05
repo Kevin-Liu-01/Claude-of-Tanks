@@ -15,15 +15,15 @@ Run times: `tools/selftest-durations.json`, else this machine's latest observati
 
 | Decision | Receipts | CPU-min |
 |---|---:|---:|
-| KEEP | 1508 | 163.3 |
+| KEEP | 1508 | 163.4 |
 | MERGE | 0 | 0.0 |
 | MANUAL | 655 | 1157.1 |
 | RETIRE | 2 | 0.7 |
 
 | Suite run | Receipts | CPU-min | Simulated wall (min) |
 |---|---:|---:|---:|
-| Before: every receipt (npm test without the tiers) | 2164 | 1320.8 | 233.1 |
-| After: the default tier | 1508 | 163.3 | 36.9 |
+| Before: every receipt (npm test without the tiers) | 2164 | 1320.9 | 233.1 |
+| After: the default tier | 1508 | 163.4 | 36.9 |
 
 Default tier: 12.4 % of the whole registry's CPU; 17.8 % of the 916 CPU-min the snapshot gave for the 1,863 receipts it timed. Its wall: 0.2 min exclusive receipts, 18.1 min pool, 18.6 min browser receipts.
 
@@ -662,7 +662,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `src/vehicles/coplanarDepthLayers.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (type10b), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/abramsCwsRoofSeating.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m1a1, m1a1ha, ua_m1a1), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/abramsWheelBayPanels.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m1a1_abrams_hc, m1a1, m1a1ha, m1a1_abrams_sa, ...), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
-| `src/vehicles/profiles/bradleyHullClosure.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m2a2_bradley, ua_m2a3_bradley, m3a3_bradley, marder1a3), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
+| `src/vehicles/profiles/bradleyHullClosure.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (m2a2_bradley, ua_m2a3_bradley, m3a3_bradley, m6_linebacker, ...), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/challenger2Geometry.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (challenger2), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/kurganetsRoofFittings.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (kurganets25), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
 | `src/vehicles/profiles/leclercGunHousingRig.selftest.mjs` | 14 | MANUAL (tanks) | per-tank pin (leclerc_s2, leclerc_sxxi, leclerc_s1), 14 s | test:heavy -- tanks; lane mode and tank:release:check run it for its ids |
@@ -1132,6 +1132,7 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/media-r5/fleet-media.selftest.mjs` | 6.0 | KEEP | tool contract, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/media-r5/tank-share.selftest.mjs` | 6.0 | KEEP | tool contract, 6.0 s: og-r2: a tank link shares its tank (the table, the cards, the rewrite) | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/selftest-cache-dir.selftest.mjs` | 6.0 | KEEP | test, gate or release tooling, 6.0 s | default tier (npm test, the release gate; lane mode by its closure) |
+| `src/vehicles/profiles/m3a2Bradley.selftest.mjs` | 5.8 | KEEP | vehicle rule, 5.8 s: 268: the M3A2 under the classic turret (its photo packet fixture) | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/pad/padLink.selftest.mjs` | 5.4 | KEEP | contract, 5.4 s: The phone controller's link over real sockets (docs/PHONE-CONTROLLER.md): a desktop link and a phone link pair | default tier (npm test, the release gate; lane mode by its closure) |
 | `src/sim/botRouteStartCell.selftest.mjs` | 5.3 | KEEP | simulation rule, 5.3 s: 2026-10-28 (bot-wedge-264): no route starts from a grid cell the hull cannot drive out of (the Badlands mesa f | default tier (npm test, the release gate; lane mode by its closure) |
 | `server/collisionManifestIndex.selftest.mjs` | 5.0 | KEEP | server service, 5.0 s: 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check) | default tier (npm test, the release gate; lane mode by its closure) |
@@ -2313,4 +2314,3 @@ None. Folding receipts saves only process starts (about a second each) and would
 | `tools/fused-roof-gun-boxes.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: 266 (Main 2026-10-31): a fused source names its roof gun by registered boxes; the boxed ids' records compare b | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/heap-retainers.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: battle-spikes-253: a leaked object's strong retainer paths from a streamed heap snapshot | default tier (npm test, the release gate; lane mode by its closure) |
 | `tools/interaction-access.selftest.mjs` | 0.1 | KEEP | tool contract, 0.1 s: The keyboard and touch judge (INTERACTION-REDESIGN.md part D, UI-GAUNTLET line 12): judgeAccess() over hand-ma | default tier (npm test, the release gate; lane mode by its closure) |
-| `src/vehicles/profiles/australia.selftest.mjs` | n/a | KEEP | vehicle rule, n/a s: release 269 (owner: "flesh out south african and australian tank trees"): the Australian line's M113s, Leopard | default tier (npm test, the release gate; lane mode by its closure) |
