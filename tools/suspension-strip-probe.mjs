@@ -404,21 +404,26 @@ function pageFindStage(world, kind, landing) {
   return best;
 }
 
-/** movement.ts resetTankVerticalState, for a page whose modules are bundled (the fields it resets, nothing else). */
+/** movement.ts resetTankVerticalState, for a page whose modules are bundled (the fields it resets, nothing else): both
+ * ground copies at once (hullBodyMode.ts setHullGrounded) and, on the ground, the body mode as resetHullBodyMode leaves
+ * it (an upright hull supported, its tumble and any righting with it; an overturned one keeps its rigid phase). */
 function pageResetVertical(state, y, verticalSpeed, grounded) {
   state.pos.y = y;
-  state.verticalSpeed = verticalSpeed;
+  state.verticalSpeed = Number.isFinite(verticalSpeed) ? verticalSpeed : 0;
   state.grounded = grounded !== false;
   state.landingImpactMps = 0;
+  state.fallImpactMps = 0;
   const ride = state._ride;
-  ride.y = y; ride.v = verticalSpeed; ride.supportY = NaN; ride.groundV = 0; ride.grounded = state.grounded;
-  ride.airTime = 0; ride.bounces = 0;
-  if ('rebound' in ride) ride.rebound = 0;
+  ride.y = y; ride.v = state.verticalSpeed; ride.supportY = NaN; ride.groundV = 0; ride.grounded = state.grounded;
+  ride.airTime = 0; ride.bounces = 0; ride.rebound = 0; ride.stroke = 0; ride.solverLift = 0;
   state._sup.x = NaN;
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
   state._body.restSupportY = NaN;
-  if (grounded !== false && !state.overturned) state._body.tumbling = false;
+  state._body.bodyRest = 0;
+  if (grounded === false) return;
+  if (state.overturned === true) state._body.tumbling = true;
+  else { state._body.tumbling = false; state._body.autoRighting = false; state.overturned = false; }
 }
 
 /** A hull falling level whatever it stood on (round 4's cross-slope drop): its attitude and its turn rates zeroed. */
@@ -668,9 +673,9 @@ async function stampAndRead(page, stamp) {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     // the renderer's visibility amplification of the sim's suspension rock (tankFactoryCore SUSP_VIS_P / _R, SWAY_VIS)
     const VIS = { p: 2.2, r: 1.9, sway: 2.4 };
-    const flP = st._flinch?.p ?? 0, flR = st._flinch?.r ?? 0;
-    const renderedPitch = st.visualPitch + (st._susp?.p ?? 0) * VIS.p - flP;
-    const renderedRoll = st.visualRoll + (st._susp?.r ?? 0) * VIS.r + (st._swayEst ?? 0) * VIS.sway + flR;
+    // (audit M9) the hit flinch is the visual's own spring now, never a sim field: the probe fires nothing, so it adds none
+    const renderedPitch = st.visualPitch + (st._susp?.p ?? 0) * VIS.p;
+    const renderedRoll = st.visualRoll + (st._susp?.r ?? 0) * VIS.r + (st._swayEst ?? 0) * VIS.sway;
     const root = p.visual.root;
     const render = { y: root.position.y, pitch: -root.rotation.x, roll: root.rotation.z };
     const ground = hf.getHeightAt(st.pos.x, st.pos.z);

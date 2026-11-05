@@ -45,6 +45,8 @@ import {
   SIM_DT, applyShellKnock, createTankState, fireRecoil, resetTankVerticalState, updateTank,
 } from '../src/sim/movement.ts';
 import { applyMovementPredictionState, captureMovementPredictionState } from '../src/sim/movementPredictionState.ts';
+import { enterHullTumble } from '../src/sim/hullBodyMode.ts';
+import { applyHullBodyRowFlags, hullBodyRowFlags } from '../src/mp/match/hullBodyRow.ts';
 import { publishedTrackContact } from '../src/sim/trackContact.ts';
 import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
 import { tankBodyTopM, tankContactRect } from '../src/sim/tankContactShape.ts';
@@ -670,7 +672,7 @@ function seatAirborne(entity, world, dropTo, { pitch: pitchGiven, roll: rollGive
   state._spring.pitchV = 0;
   state._spring.rollV = 0;
   resetTankVerticalState(state, y, vy, false);
-  if (Math.cos(pitch) * Math.cos(roll) < 0.55) state._body.tumbling = true;
+  if (Math.cos(pitch) * Math.cos(roll) < 0.55) enterHullTumble(state);
 }
 
 /**
@@ -702,18 +704,16 @@ function replayStateFrom(entity) {
   state.visualRoll = source.visualRoll;
   state.turretYaw = source.turretYaw;
   state.gunPitch = source.gunPitch;
-  state.grounded = source.grounded;
-  state.overturned = source.overturned;
+  // ground contact and the body mode as the client's rewind restores them: the row's body bits through their owner
+  // (prediction.ts applyAuthorityRow; wire 10 carries the rigid phase itself, round 2 U14)
+  applyHullBodyRowFlags(state, hullBodyRowFlags(source));
   // the hydropneumatic aim the client's presentation sets from the special action (prediction.ts copies it too)
   state.suspensionAim = source.suspensionAim;
-  state._body.autoRighting = source._body.autoRighting;
-  state._body.tumbling = state.overturned || state._body.autoRighting;
   state._prevSpeed = state.speed;
   state._spring.pitch = state.visualPitch;
   state._spring.roll = state.visualRoll;
   state._ride.y = state.pos.y;
   state._ride.v = state.verticalSpeed;
-  state._ride.grounded = state.grounded;
   state._ride.airTime = 0;
   state._ride.supportY = NaN;
   const checkpoint = captureMovementPredictionState(source);
