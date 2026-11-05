@@ -356,3 +356,27 @@ gunPitchByYawDeg re-measured (tools/gun-depression-sweep.mjs: no mount conflict,
 −7.8 from 161, was −5 from 159 with front dips to −7.9); `fleetLauncherMuzzles.ts` takes the shared Bradley row. The 268
 scout shell (`bradleyScoutTurretShell.ts`) and the compact M3 gun mount (`m3BradleyGunMount.ts` and its receipt) left
 with that turret.
+
+## 269, second order — the special M3A3 (owner 2026-11-05)
+
+Owner (verbatim): "make the m3a3 special by having a munch of extra optics tech and a launcher aonn its other sdie and a
+bunch of extra boxes". All on `profiles/bradleyA3Turret.ts`, turret-local:
+
+- A second twin TOW launcher on the right wall: the family's launcher (`modern3.ts` `addBradleyTowLauncher(P, -1)`, a new
+  `side` argument defaulting to the left) mirrored about the shell's centre plane (`BRADLEY_TOW_MIRROR_X`, x −0.07), so it
+  stands 7 cm off the right wall as the left stands off the left; it replaces the right-wall stowage bin. It fires:
+  `fleetLauncherMuzzles.ts` lists four mouths (the left pair, then (−1.245, 0.68/0.38, 0.60)), TOW `launcherTubes`
+  2 → 4; the ten rounds carried are unchanged.
+- Optics: a long-range scout sensor head (LRAS3 pattern) on a post and yoke over its electronics box behind the gunner's
+  hatch (head x −0.08..0.38, z −1.06..−0.78, 0.33..0.55 m over the roof): thermal, TV and laser-rangefinder windows of
+  armoured glass in dark bezels under 5 cm lens hoods, looking over the IBAS head. Four situational-awareness camera pods,
+  each with a laser-warning receiver dome on its crown: on the cheeks' outer faces (z 0.72, 0.64 m, facing 60° out from
+  ahead) and on posts at the rear roof corners (facing aft and out), the rear pair cabled along the roof into the
+  sensor's box. The IBAS head, the viewer and their views are untouched.
+- Boxes: a welded bustle box across the rear wall (x −0.66..0.52, 0.27..0.55 m, 0.47 m deep) with lid seams and latches,
+  armoured electronics boxes with doors at its ends over the chine, the open rack on its lid (empty: the decor layer
+  carries the crew's loose kit), and the electronics box under the sensor.
+- BRAT: the right wall's tiles move aft of the new launcher, a column of two as on the left.
+
+The traversing turret keeps 47 mm over the hull at its closest, as the M2A2's shell does (`.qa-dev` overhang probe:
+every turret vertex beyond 0.95 m of the ring axis, 360 yaws).

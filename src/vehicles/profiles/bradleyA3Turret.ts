@@ -18,13 +18,21 @@
 // - BRAT tiles for the spec's gameplay turret ERA zones: two rows of two on each cheek's upper plate (where the 2004 Iraq
 //   head-on photograph shows boxes seated beside the gun), and on the wall faces the launcher and the bin leave free (the
 //   left wall aft of the launcher, the right wall aft of the bin).
+// 269, second order (owner 2026-11-05: "make the m3a3 special by having a munch of extra optics tech and a launcher aonn
+// its other sdie and a bunch of extra boxes"): the family's launcher again on the right wall, mirrored about the shell's
+// centre plane and firing (fleetLauncherMuzzles.ts, four TOW mouths), in place of the stowage bin; a long-range scout
+// sensor head (LRAS3 pattern: thermal, TV and laser rangefinder windows under lens hoods) on a yoke over its electronics
+// box behind the gunner's hatch; four situational-awareness camera pods, each crowned by a laser-warning receiver, on
+// the cheeks' outer faces and the rear roof corners, cabled to the sensor's box; a welded bustle box across the rear wall
+// with armoured electronics boxes at its ends, its open rack on the lid left empty for the crew's loose kit.
 // Every part is turret-local (ring plane y 0, +z forward, +x the vehicle's left).
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import {
-  BRADLEY_BIN, BRADLEY_TURRET, addBradleyCommanderStation, addBradleySmokeBanks, addBradleyStowageBin,
-  addBradleyTowLauncher, addBradleyTurretShell, bradleyCheekPlateFrame,
+  BRADLEY_TURRET, addBradleyCommanderStation, addBradleySmokeBanks, addBradleyTowLauncher, addBradleyTurretShell,
+  bradleyCheekPlateFrame,
 } from '../modern3.ts';
 
 type EraPut = (...transform: number[]) => void;
@@ -48,6 +56,15 @@ const BRADLEY_A3_CIV = Object.freeze({
   windowY: R + 0.23,
 });
 const GUNNER_HATCH = Object.freeze({ x: 0.46, z: -0.34 });
+/** The long-range scout sensor (turret-local): its electronics box on the roof behind the gunner's hatch, the post and
+ *  yoke over it, the head and its three windows (thermal, TV, laser rangefinder). */
+const BRADLEY_A3_LRAS = Object.freeze({
+  x: 0.15, z: -0.92, box: Object.freeze({ x0: 0.00, x1: 0.30, z0: -1.06, z1: -0.79, top: R + 0.10 }),
+  head: Object.freeze({ x0: -0.08, x1: 0.38, z0: -1.06, z1: -0.78, y0: R + 0.33, y1: R + 0.55 }),
+  lenses: Object.freeze([[0.03, R + 0.44, 0.068], [0.22, R + 0.465, 0.045], [0.30, R + 0.385, 0.022]] as const),
+});
+/** The bustle (turret-local): the welded box on the rear wall's face, its end boxes over the chine, the rack on its lid. */
+const BRADLEY_A3_BUSTLE = Object.freeze({ x0: -0.66, x1: 0.52, y0: 0.27, y1: 0.55, z0: -1.66, z1: -1.195 });
 
 function addIbas(P: TankBuilderPort): void {
   const { box } = KIT;
@@ -100,15 +117,102 @@ function addGunnerHatch(P: TankBuilderPort): void {
   P.add('turretDark', box(0.10, 0.03, 0.05), x, R + 0.10, z - 0.25);
 }
 
+/** A part placed in a turret-local frame turned `ry` about +y and set at (x, y, z). */
+function placed(g: THREE.BufferGeometry, ox: number, oy: number, oz: number, x: number, y: number, z: number, ry: number) {
+  return KIT.xform(KIT.xform(g, ox, oy, oz), x, y, z, 0, ry, 0);
+}
+
+/** A situational-awareness camera pod with a laser-warning receiver on its crown, facing `ry` (its local +z): the
+ *  housing (its back at local z 0, 5 mm into the face it bolts to), the armoured camera window under a lens hood, the
+ *  receiver's dark dome. `post` stands it on the roof on a short post instead. */
+function addSensorPod(P: TankBuilderPort, x: number, y: number, z: number, ry: number, post = false): void {
+  const { box, cylY, sph } = KIT;
+  const back = post ? -0.035 : -0.005;
+  if (post) P.add('turretDetail', cylY(0.022, 0.026, 0.10, P.q ? 12 : 8), x, R + 0.045, z);
+  const cy = post ? R + 0.135 : y;
+  P.addEquipment('turret', placed(box(0.12, 0.085, 0.07), 0, 0, back + 0.035, x, cy, z, ry));
+  P.add('turretGlass', placed(box(0.065, 0.034, 0.008), 0, -0.006, back + 0.072, x, cy, z, ry));
+  P.add('turretDetail', placed(box(0.09, 0.012, 0.035), 0, 0.019, back + 0.083, x, cy, z, ry));
+  P.add('turretDark', placed(sph(0.026, P.q ? 14 : 10, Math.PI / 2), 0, 0.0415, back + 0.035, x, cy, z, ry));
+}
+
+function addSensorPods(P: TankBuilderPort): void {
+  const T = BRADLEY_TURRET;
+  // the cheeks' outer faces at z 0.72 (the beak's plan line, outer half-width falling 0.28 m over 0.49 m: facing 60
+  // degrees out from ahead), 1.7 cm in from the chine at 0.64 m: ahead of the launchers' collars, over the smoke banks
+  const z = 0.72, y = 0.64, yaw = Math.atan2(T.beakZ - 0.66, T.halfW - T.beakHalfW);
+  for (const side of [-1, 1]) {
+    const face = T.halfW - (T.halfW - T.beakHalfW) * (z - 0.66) / (T.beakZ - 0.66) - (side > 0 ? T.plusInset : 0) - 0.017;
+    addSensorPod(P, side * face, y, z, side * yaw);
+  }
+  // the rear roof corners on posts, looking aft and out
+  addSensorPod(P, 0.56, 0, -1.06, Math.PI * 0.75, true);
+  addSensorPod(P, -0.50, 0, -1.08, -Math.PI * 0.75, true);
+}
+
+function addLongRangeSensor(P: TankBuilderPort): void {
+  const { box, cylY, cylZ, lathe } = KIT;
+  const L = BRADLEY_A3_LRAS, B = L.box, H = L.head;
+  // the electronics box welded to the roof, the post and the yoke the head elevates in
+  P.add('turretDetail', sectionSolid([
+    { z: B.z0, ring: chamferRing(B.x0, B.x1, R - 0.01, B.top - 0.02, 0.015) },
+    { z: B.z0 + 0.02, ring: chamferRing(B.x0, B.x1, R - 0.01, B.top, 0.02) },
+    { z: B.z1 - 0.02, ring: chamferRing(B.x0, B.x1, R - 0.01, B.top, 0.02) },
+    { z: B.z1, ring: chamferRing(B.x0, B.x1, R - 0.01, B.top - 0.02, 0.015) },
+  ]));
+  P.add('turretDark', box(0.20, 0.012, 0.012), (B.x0 + B.x1) / 2, R + 0.06, B.z1 + 0.004);               // lid seam
+  P.add('turretDetail', cylY(0.05, 0.06, 0.21, P.q ? 16 : 10), L.x, B.top + 0.095, L.z);
+  P.add('turretDetail', box(H.x1 - H.x0 + 0.08, 0.03, 0.10), L.x, H.y0 - 0.015, L.z);
+  for (const s of [-1, 1]) P.add('turretDetail', box(0.025, 0.17, 0.10), L.x + s * ((H.x1 - H.x0) / 2 + 0.0125), H.y0 + 0.07, L.z);
+  // the head: a welded box, its front top falling to the window face
+  const head = (z: number, drop: number) => ({ z, ring: chamferRing(H.x0, H.x1, H.y0, H.y1 - drop, 0.03) });
+  P.addEquipment('turret', sectionSolid([head(H.z0, 0.02), head(H.z0 + 0.02, 0), head(H.z1 - 0.08, 0), head(H.z1, 0.05)]));
+  // the three windows: armoured glass in a dark bezel, each under its own lens hood (an open tube 5 cm proud)
+  for (const [x, y, r] of L.lenses) {
+    P.add('turretDark', cylZ(r + 0.012, 0.012, P.q ? 24 : 14), x, y, H.z1 + 0.002);
+    P.add('turretGlass', cylZ(r, 0.012, P.q ? 24 : 14), x, y, H.z1 + 0.006);
+    P.add('turretDetail', KIT.xform(lathe([[r + 0.002, 0], [r + 0.016, 0], [r + 0.016, 0.05], [r + 0.002, 0.05], [r + 0.002, 0]],
+      P.q ? 24 : 14), x, y, H.z1 + 0.004, Math.PI / 2, 0, 0));
+  }
+  // cable runs on the roof from the rear pods into the electronics box, held by two clamps each
+  for (const [x0, x1] of [[B.x1, 0.535], [-0.475, B.x0]] as const) {
+    const cx = (x0 + x1) / 2;
+    P.add('turretDark', KIT.cylX(0.012, Math.abs(x1 - x0), P.q ? 10 : 6), cx, R + 0.010, -1.02);
+    for (const k of [-0.3, 0.3]) P.add('turretDetail', box(0.03, 0.022, 0.045), cx + k * (x1 - x0), R + 0.011, -1.02);
+  }
+}
+
 function addBustleAndWhips(P: TankBuilderPort): void {
-  // the bustle rack on the rear wall, open aft (the Ukrainian model's reaches 0.50 m aft of the wall, 1.3 m wide)
+  const { box } = KIT;
+  const U = BRADLEY_A3_BUSTLE;
+  // the welded bustle box on the rear wall's face (5 mm into it), its lid's edges chamfered; two lid seams and latches
+  P.add('turretDetail', sectionSolid([
+    { z: U.z0, ring: chamferRing(U.x0, U.x1, U.y0, U.y1 - 0.025, 0.02) },
+    { z: U.z0 + 0.025, ring: chamferRing(U.x0, U.x1, U.y0, U.y1, 0.025) },
+    { z: U.z1, ring: chamferRing(U.x0, U.x1, U.y0, U.y1, 0.025) },
+  ]));
+  for (const x of [-0.27, 0.13]) {
+    P.add('turretDark', box(0.012, 0.012, U.z1 - U.z0 - 0.06), x, U.y1 - 0.004, (U.z0 + U.z1) / 2 + 0.01);
+    P.add('turretDetail', box(0.06, 0.05, 0.02), x - 0.16, U.y1 - 0.06, U.z0 - 0.008);
+  }
+  // the armoured electronics boxes at its ends, on the rear face over the chine, their doors facing aft
+  for (const [x0, x1] of [[U.x1, 0.70], [-0.84, U.x0]] as const) {
+    P.add('turretDetail', sectionSolid([
+      { z: -1.50, ring: chamferRing(x0, x1, 0.40, 0.62 - 0.02, 0.015) },
+      { z: -1.48, ring: chamferRing(x0, x1, 0.40, 0.62, 0.02) },
+      { z: U.z1, ring: chamferRing(x0, x1, 0.40, 0.62, 0.02) },
+    ]));
+    P.add('turretDark', box(x1 - x0 - 0.05, 0.16, 0.008), (x0 + x1) / 2, 0.51, -1.503);
+    P.add('turretDetail', box(0.03, 0.05, 0.02), (x0 + x1) / 2, 0.51, -1.51);
+  }
+  // the open rack on the lid, left empty for the crew's loose kit (the decor layer's loads)
   const rack = FITTINGS.stowageRack({
-    mats: P.mats, w: 1.30, d: 0.46, h: 0.40, rails: 4, fill: 0.5, seed: 3610, rotation: [0, Math.PI, 0],
+    mats: P.mats, w: U.x1 - U.x0, d: 0.44, h: 0.28, rails: 3, fill: 0, seed: 3610, rotation: [0, Math.PI, 0],
   });
-  rack.position.set(-0.07, 0.28, BRADLEY_TURRET.rearZ - 0.24);
+  rack.position.set((U.x0 + U.x1) / 2, U.y1, (U.z0 + U.z1) / 2 - 0.01);
   P.turretG.add(rack);
-  // the whips on the rear roof: the left corner (the A2's station) and inboard of the viewer's plinth
-  for (const [x, z, seed] of [[0.50, -1.02, 8], [-0.46, -1.06, 5]] as const) {
+  // the whips beside the scout sensor (left) and inboard of the viewer (right)
+  for (const [x, z, seed] of [[0.52, -0.84, 8], [-0.28, -0.93, 5]] as const) {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.62, rake: 0.04, seed });
     whip.position.set(x, R, z);
     P.turretG.add(whip);
@@ -116,7 +220,7 @@ function addBustleAndWhips(P: TankBuilderPort): void {
 }
 
 /** The A3 turret on the family's A2 build: keeps the gun the family build seated (its rig, mantlet and M242), replaces
- *  the A2's turret with the shared shell, launcher, bin, smoke banks and commander's station plus the A3's own kit. */
+ *  the A2's turret with the shared shell, both launchers, smoke banks and commander's station plus the A3's own kit. */
 export function buildBradleyA3Turret(P: TankBuilderPort): void {
   P.clear('turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth', 'turretExternalArmor', 'turretCupola',
     'turretHatch', 'turretEquipment', 'turretTrack');
@@ -124,12 +228,14 @@ export function buildBradleyA3Turret(P: TankBuilderPort): void {
   for (const child of [...P.turretG.children]) if (child !== P.gunG) P.turretG.remove(child);
   addBradleyTurretShell(P);
   addBradleyTowLauncher(P);
+  addBradleyTowLauncher(P, -1);
   addBradleyCommanderStation(P);
   addGunnerHatch(P);
-  addBradleyStowageBin(P);
   addBradleySmokeBanks(P);
   addIbas(P);
   addCiv(P);
+  addLongRangeSensor(P);
+  addSensorPods(P);
   addBustleAndWhips(P);
   P.topY = Math.max(P.topY || 0, BRADLEY_A3_CIV.head.y1);
 }
@@ -145,15 +251,14 @@ export function placeBradleyA3CheekEra(side: number, put: EraPut): void {
   }
 }
 
-/** BRAT tiles on the turret's free wall faces (turret-local): on the left wall a column of two aft of the stowed launcher,
- *  on the right two columns of two aft of the stowage bin, all between the chine and the wall's top edge. */
+/** BRAT tiles on the turret's free wall faces (turret-local): on each wall a column of two aft of its stowed launcher,
+ *  between the chine and the wall's top edge. */
 export function placeBradleyA3SideEra(side: number, put: EraPut): void {
   const T = BRADLEY_TURRET;
   const inset = side > 0 ? T.plusInset : 0;
   const wallX = (y: number) => T.halfW - (T.halfW - T.edgeHalfW) * (y - T.chineY) / (T.edgeY - T.chineY) - inset;
-  const w = side > 0 ? 0.30 : 0.25, h = 0.17, d = 0.07;
-  const zs = side > 0 ? [-0.92] : [BRADLEY_BIN.z0 - 0.045 - w / 2, BRADLEY_BIN.z0 - 0.045 - w * 1.5 - 0.02];
-  for (const z of zs) for (const y of [0.42, 0.605]) {
+  const w = 0.30, h = 0.17, d = 0.07;
+  for (const z of [-0.92]) for (const y of [0.42, 0.605]) {
     put(side * (wallX(y) + d / 2 - 0.005), y, z, 0, side * Math.PI / 2, 0, w / BRICK.w, h / BRICK.h, d / BRICK.d);
   }
 }

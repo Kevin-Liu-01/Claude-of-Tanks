@@ -332,8 +332,10 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       shells: [
         shell('M919 APFSDS-T', 'APFSDS', 25, 185, 170, 70, 1345,
           { pen2000Mm: 155, reloadS: 0.33, count: 300 }),
+        // 269 (owner: "a launcher aonn its other sdie"): a second twin launcher on the turret's right, four ready tubes
+        // (launcherTubes 2 -> 4); the ten rounds carried are unchanged
         shell('BGM-71F TOW-2B', 'HEAT', 152, 1050, 1050, 700, 195,
-          { reloadS: 2.8, count: 10, guided: true, soundProfile: 'tow-launch', launcherTubes: 2 }),
+          { reloadS: 2.8, count: 10, guided: true, soundProfile: 'tow-launch', launcherTubes: 4 }),
         shell('M792 HEI-T', 'HE', 25, 8, 8, 62, 1100,
           { pen2000Mm: 8, reloadS: 0.33, count: 300 }),
       ],
