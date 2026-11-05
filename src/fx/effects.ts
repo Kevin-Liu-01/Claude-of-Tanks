@@ -1372,6 +1372,7 @@ function* createFxSteps(
    *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
    *  own size, unless it is far bigger than what raised the load (dcore 2026-10-11, waves 397/401). */
   const strikeDust = new Map<number, [number, number, number]>();
+  timeShifts.on('strikeDust', (delta) => { for (const last of strikeDust.values()) last[0] += delta; });
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   /** (2026-11-02 audit F10) what each building has laid here: a replayed or doubled stage or breach lays nothing again */
@@ -2257,6 +2258,7 @@ function* createFxSteps(
   const CROWD_SLOTS = 48, CROWD_S = 1.0, CROWD_CELL_M = 25;
   const crowdT = new Float64Array(CROWD_SLOTS).fill(-1e9), crowdCell = new Int32Array(CROWD_SLOTS);
   let crowdNext = 0;
+  timeShifts.on('salvoCrowd', (delta) => { for (let i = 0; i < CROWD_SLOTS; i++) crowdT[i] += delta; });
   function burstCrowd(x: number, z: number): number {
     const now = particles.getTime();
     const cell = (Math.floor(x / CROWD_CELL_M) & 0xffff) * 65536 + (Math.floor(z / CROWD_CELL_M) & 0xffff);
@@ -5647,12 +5649,15 @@ function* createFxSteps(
   const SKIRT_BUDGET = 240;
   const skirtBirths = new Float64Array(SKIRT_BUDGET);
   let skirtHead = 0, skirtCount = 0;
+  timeShifts.on('trackSkirts', (delta) => { for (let i = 0; i < SKIRT_BUDGET; i++) skirtBirths[i] += delta; });
   // the trail sources: each track's contact (skirt) and each engine's stack (exhaust), matched by place
   const TRAIL_SKIRT = 0, TRAIL_EXHAUST = 1;
   // an engine's billow bursts (exhaust): the rate while one lasts, a rise of the load that starts one, how long it lasts
   // and the rest before the next can start
   const EXHAUST_BURST_RATE = 9, EXHAUST_THROTTLE_UP = 0.3, EXHAUST_BURST_S = 0.7, EXHAUST_BURST_REST_S = 1.5;
-  const fxTrails = createTrailCadence(96);
+  const fxTrails = timeShifts.add('trailCadence', createTrailCadence(96));
+  // the exhaust's lane of each source's two values is its burst's end (fx s; the skirt leaves its lanes unread)
+  timeShifts.on('exhaustBursts', (delta) => { const aux = fxTrails.aux; for (let i = 1; i < aux.length; i += 2) aux[i] += delta; });
   function mediaTrackSkirt(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, groundType: string,
     surface: number, gy: number): void {
     if (!blast) return;

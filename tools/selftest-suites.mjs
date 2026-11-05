@@ -1065,6 +1065,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/fx/clockRebase.selftest.mjs', // 2026-11-02 audit R7: one registry of fx-clock shifts; embers, fracture holds and pieces keep their time
+    'src/fx/fxClockStampCensus.selftest.mjs', // 2026-11-02 audit U33/Q15 (round 2): a rebase leaves no fx-clock stamp the runtime holds (by census, no list)
     // 2026-10-10 (physics lane, for the destruction core's natural collapses): the presentation pool of falling pieces.
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
