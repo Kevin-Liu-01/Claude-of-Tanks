@@ -168,6 +168,10 @@ t14_152.gun = {
 };
 t14_152.armor.gunPivot = [0, T14_152_GUN_FRAME.trunnionY - 1.69, T14_152_GUN_FRAME.trunnionZ + 0.22];
 t14_152.armor.gunBarrel = { lengthM: T14_152_GUN_FRAME.muzzleZ - T14_152_GUN_FRAME.trunnionZ, radiusM: 0.135 };
+// the 2A83's measured depression (tools/gun-depression-sweep.mjs at 26 mm): shallower over the T-14's engine deck from 137
+// degrees (the 125 mm T-14 publishes none)
+t14_152.gunPitchByYawDeg = [[0, -8], [137, -8], [148, -5.1], [153, -4.2], [156, -4.2], [159, -5.3], [164, -5.5], [169, -6],
+  [172, -6], [177, -6.6], [180, -6.6]];
 t14_152.visual = { ...t14_152.visual, number: '152' };
 
 registerFleetSpecs(registries, RUSSIA_152_IDS, { object292, object477_molot: molot, object195, t14_152 });
