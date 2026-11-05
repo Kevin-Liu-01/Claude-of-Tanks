@@ -1940,7 +1940,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y redo
     if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {
       e.preventDefault();
-      if (!e.repeat) void (e.code === 'KeyY' || e.shiftKey ? redo() : undo());
+      // (round 2 Q18) as the header's buttons: never while anything holds the panel (a queued still between its captures)
+      if (!e.repeat && !panel.busy()) void (e.code === 'KeyY' || e.shiftKey ? redo() : undo());
       return;
     }
     if (e.code === 'Escape') { exit(); return; }

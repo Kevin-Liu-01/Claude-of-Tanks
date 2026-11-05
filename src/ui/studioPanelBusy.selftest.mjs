@@ -177,9 +177,29 @@ const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((reso
   }
 }
 
-// 5. (round 2 U36) The header's Restore: a restore that fails says so in the panel, never an unhandled rejection (the
-// handler only chained .finally).
+// 5. (round 2 Q18) The header's Restore, Undo and Redo replace the scene too (an undo between a queued still's captures:
+// the next still took the restored scene under the old shot's name): each asks the same reading and does nothing while
+// anything holds the panel; an idle Studio runs them. A restore that fails says so in the panel, never an unhandled
+// rejection.
 {
+  const header = (calls) => calls.filter((call) => Array.isArray(call) && ['undo', 'redo', 'restore'].includes(call[0]));
+  for (const [name, hold] of [
+    ['a queue run', (h) => { h.panel.queueRunning = true; }],
+    ['a sun change in flight', (h) => { h.panel.lightInFlight = new Promise(() => {}); }],
+    ['the Director\'s staging', (h) => { h.held.director = true; }],
+    ...['recording', 'film', 'export', 'session', 'scene', 'map', 'history', 'light'].map((holder) => [
+      `the Studio's ${holder}`, (h) => { h.held.studio = holder; }]),
+  ]) {
+    const h = makePanel();
+    hold(h);
+    h.panel.header.undo(); h.panel.header.redo(); h.panel.header.restore();
+    await settle();
+    assert.deepEqual(header(h.calls), [], `no undo, redo or restore during ${name}`);
+  }
+  const idle = makePanel();
+  idle.panel.header.undo(); idle.panel.header.redo(); idle.panel.header.restore();
+  await settle();
+  assert.deepEqual(header(idle.calls).map((call) => call[0]), ['undo', 'redo', 'restore'], 'an idle Studio runs them');
   const unhandled = [];
   const onUnhandled = (reason) => unhandled.push(reason);
   process.on('unhandledRejection', onUnhandled);
@@ -194,4 +214,4 @@ const settle = async () => { for (let i = 0; i < 6; i++) await new Promise((reso
   } finally { process.off('unhandledRejection', onUnhandled); }
 }
 
-console.log('studioPanelBusy.selftest: Clear during a queue run skips no job, Export film waits for the queue, a hidden panel\'s sound lane stops re-arming, and the map pick, the palette\'s sequences, a time change, Export and the queue\'s Start ask one busy reading, and a failed Restore says so');
+console.log('studioPanelBusy.selftest: Clear during a queue run skips no job, Export film waits for the queue, a hidden panel\'s sound lane stops re-arming, and the map pick, the palette\'s sequences, a time change, Export, the queue\'s Start and the header\'s Restore, Undo and Redo ask one busy reading');

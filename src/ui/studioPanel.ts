@@ -379,6 +379,11 @@ interface StudioPanelRuntime {
   tick(dt: number): void;
   /** The header's undo, redo and saved state after a step or an autosave. */
   refreshHistory(): void;
+  /**
+   * (round 2 Q18) The panel's one reading (panelBusy): the Studio's holders and the panel's own (a queue run, a time or sun
+   * change, the Director's staging or take fetch). The Studio's keyboard undo and redo ask it as the header's buttons do.
+   */
+  busy(): boolean;
   /** The command palette (Ctrl/Cmd+K). */
   openCommands(): void;
   /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
@@ -536,7 +541,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   savedState.append(el('i'), el('span'));
   const restoreBtn = chipButton(t('studio.ws.restore'), 'undo');
   restoreBtn.hidden = true;
+  // (round 2 Q18) the saved scene, an undo and a redo replace the scene: never while anything holds the panel (an undo
+  // between a queued still's captures was taken under the old shot's name)
   restoreBtn.addEventListener('click', () => {
+    if (panelBusy()) return;
     restoreBtn.disabled = true;
     // (round 2 U36) a restore the exit took back resolves false; one that failed says so instead of an unhandled rejection
     void S.restoreAutosave()
@@ -545,11 +553,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   const undoBtn = iconButton(t('studio.ws.undoTitle'));
   undoBtn.innerHTML = uiIconSVG('undo', 16);
-  undoBtn.addEventListener('click', () => { void S.undo(); });
+  undoBtn.addEventListener('click', () => { if (!panelBusy()) void S.undo(); });
   const redoBtn = iconButton(t('studio.ws.redoTitle'));
   redoBtn.classList.add('redo');
   redoBtn.innerHTML = uiIconSVG('undo', 16);
-  redoBtn.addEventListener('click', () => { void S.redo(); });
+  redoBtn.addEventListener('click', () => { if (!panelBusy()) void S.redo(); });
   const historyTools = el('span', 'hist');
   historyTools.append(savedState, restoreBtn, undoBtn, redoBtn);
   /** "2 minutes ago" in the page's language, empty under a minute. */
@@ -3102,6 +3110,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     },
     drawSelection,
     openCommands() { commandPalette.open(); },
+    busy: () => panelBusy(),
     refreshHistory() {
       const history = S.history;
       undoBtn.disabled = !history.undo;
