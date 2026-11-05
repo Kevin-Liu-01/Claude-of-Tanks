@@ -31,6 +31,7 @@ import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
@@ -425,7 +426,7 @@ export default {
     // plain (baked roster tanks, paired duel beats), tank-trap lines
     // the map-vehicles lane (2026-10-06, the period ruling): the Virgin Lands in the 1950s: the T-54 (its Type 59
     // copy)
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59'] },
+    tankWrecks: WRECK_CASTS.steppe,
     sandbagLines: 10,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 13 fence or gate records reaching into a structure)

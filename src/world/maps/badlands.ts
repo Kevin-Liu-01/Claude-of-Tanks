@@ -16,6 +16,7 @@
 // about the outpost (8, 0): alpha deploys in the south mouth, bravo in the north mouth, and every inselberg, ridge,
 // strongpoint, floor track and objective has its counterpart. The canyon walls and their ravines keep their own shapes.
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -372,7 +373,7 @@ export default {
     rockSoilTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.15 + l * 0.74)],
     // the map-vehicles lane (2026-10-06, the period ruling): Jordan: the Al-Hussein (Challenger 1), the M60A3, the
     // Khalid's Chieftain and the Tariq's Centurion
-    tankWrecks: { era: 'cold-war', count: 7, debris: true, ids: ['challenger1_mk2', 'm60a3', 'chieftain3', 'centurion5_2'] },
+    tankWrecks: WRECK_CASTS.badlands,
     inhabit: {
       // (the maps lane, 2026-10-14: a village of some ninety compounds, so its yards and lanes carry a village's life — the
       // pickups and lorries at the gates, the drums and the jerry cans, the camps' tents; was core clutter 26, drums 12, pots

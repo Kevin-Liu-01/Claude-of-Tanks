@@ -13,7 +13,7 @@ import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim,
 // wrecks.selftest exercises interleaved real first-party builders against its
 // independent pre-change fingerprints. No Canvas, browser or timing gate.
 const source = readFileSync(new URL('./wrecks.ts', import.meta.url), 'utf8');
-const boundary = source.indexOf('export function wreckPool');
+const boundary = source.indexOf('export function wreckRemnantPaint');
 assert.ok(boundary > 0);
 const body = source.slice(0, boundary).replace(/^import[\s\S]*?;\n/gm, '')
   .replace('  const panel = hash3(', '  observePaint();\n  const panel = hash3(');
@@ -50,7 +50,7 @@ function inFixture(fixture, work) {
   try { return work(); } finally { active = previous; }
 }
 function fixture(options = {}) {
-  const result = { seed: 2002, pop: true, failure: null, offset: 0,
+  const result = { seed: 2002, state: 'turret_blown_off', failure: null, offset: 0,
     geometries: new Map(), sources: new Set(), materials: new Set(),
     clones: 0, painted: 0, poses: 0, disposals: 0, warnings: [], ...options };
   fixtures.push(result);
@@ -88,9 +88,9 @@ function makeVisual(specId, context, options) {
   return {
     root,
     setDestroyed(pose) {
-      context.poses++; assert.deepEqual(pose, { pop: context.pop, ageS: 1000 });
+      context.poses++; assert.deepEqual(pose, { pop: context.state === 'turret_blown_off', ageS: 1000 });
       if (context.failure === 'pose') throw new Error('pose failure');
-      hull.rotation.z = context.pop ? 0.09 : -0.04;
+      hull.rotation.z = context.state === 'turret_blown_off' ? 0.09 : -0.04;
     },
     dispose() {
       context.disposals++;
@@ -132,7 +132,7 @@ const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPai
   planWreckCrumple, refineForCrumple, crumpleWreckGeometry,
   buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk);
 
-function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, pop: f.pop }); }
+function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, state: f.state }); }
 function advance(f, steps) { return inFixture(f, () => steps.next()); }
 function collect(f) {
   const steps = start(f), stages = [];
@@ -210,7 +210,7 @@ try {
       assert.equal(baked, null); assert.equal(f.warnings.length, 1); assertDisposed(f);
     }
   }
-  const options = [{ seed: 2002, offset: 0, pop: true }, { seed: 2526, offset: 3, pop: false }];
+  const options = [{ seed: 2002, offset: 0, state: 'turret_blown_off' }, { seed: 2526, offset: 3, state: 'burnt_out' }];
   const controls = options.map(option => {
     const f = fixture(option), baked = inFixture(f, () => api.bakeTankWreck(f, 'fixture', option));
     assertDisposed(f, baked); const snapshot = outputSnapshot(baked); disposeOutput(baked); return snapshot;

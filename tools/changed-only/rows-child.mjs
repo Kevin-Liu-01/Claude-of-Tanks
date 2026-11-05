@@ -154,8 +154,8 @@ if (WORLD_TABLES && MAP_REGISTRY_FILE && existsSync(join(root, MAP_REGISTRY_FILE
       scan(config, named);
       const props = config.props ?? {}, wrecks = props.tankWrecks;
       const count = wrecks ? (wrecks.count ?? 3) : (props.wrecks ?? 0);
-      const era = (wrecks && wrecks.era) || 'ww2';
-      const cast = count > 0 && roster ? [...new Set([...roster.resolveWreckRoster(era, wrecks?.ids), ...roster.resolveWreckRoster(era)])] : [];
+      // (wrecks-270) a map's cast is its row in maps/wreckCasts.ts, no era fallback
+      const cast = count > 0 && roster ? roster.resolveWreckRoster(wrecks?.ids) : [];
       const { plan = {}, variants = {} } = tables.plan ?? {};
       const planned = new Set((plan[map] ?? []).map((row) => row[0]));
       for (const [key, rows] of Object.entries(variants)) if (key.startsWith(`${map}@`)) for (const row of rows) planned.add(row[0]);

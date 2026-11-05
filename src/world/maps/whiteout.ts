@@ -10,6 +10,7 @@
 import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 // (the map-content lane's R6; gauntlet wave 358a: "flat orange-brown boulder blobs", "the cairn's warm brown should be
 // desaturated to frost-shattered grey") the plateau's granite as Baffin's is under the frost: cool grey, lichen-dark
 const FROST_GRANITE: readonly [number, number, number] = [0.58, 0.05, 0.42];
@@ -162,7 +163,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
+    tankWrecks: WRECK_CASTS.whiteout,
     // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
     // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
     // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below

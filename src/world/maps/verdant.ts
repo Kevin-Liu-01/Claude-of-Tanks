@@ -21,6 +21,7 @@
 
 import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 
 export default {
   id: 'verdant',
@@ -218,7 +219,7 @@ export default {
     // all destructible (drive-through, shell-breakable)
     // the map-vehicles lane (2026-10-06, the period ruling): Kursk, 1943: the KV-2, the fleet's one Soviet tank of
     // the war
-    tankWrecks: { era: 'ww2', count: 5, debris: true, ids: ['kv2'] },
+    tankWrecks: WRECK_CASTS.verdant,
     sandbagLines: 12,
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —

@@ -32,6 +32,7 @@
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { STEINBURG_ROWS } from './steinburgRows.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -364,7 +365,7 @@ export default {
     // the shelled-town read finally includes the armor that died taking it
     // the map-vehicles lane (2026-10-06, the period ruling): the inner-German border of the 1980s: the Bundeswehr's
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
+    tankWrecks: WRECK_CASTS.urban,
     sandbagLines: 12,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 16 fence or gate records reaching into a structure)

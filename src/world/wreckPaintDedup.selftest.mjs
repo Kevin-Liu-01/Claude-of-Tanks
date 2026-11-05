@@ -17,7 +17,7 @@ import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim,
 // the production painter, and exact-word compaction. Older nonstaged M1A1 and
 // Type10 stream goldens remain independently asserted by wrecks.selftest.mjs.
 const source = readFileSync(new URL('./wrecks.ts', import.meta.url), 'utf8');
-const boundary = source.indexOf('export function wreckPool');
+const boundary = source.indexOf('export function wreckRemnantPaint');
 assert.ok(boundary > 0);
 const preparation = '    const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);';
 const fallback = '    if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);';
@@ -83,7 +83,7 @@ function originalControl(fixture) {
 }
 
 assert.equal(typeof globalThis.document, 'undefined', 'wreck work does not acquire Canvas or texture painters');
-const fixtures = [{ specId: 't90am', seed: 2526, pop: false }, { specId: 'xk2_black_panther', seed: 2002, pop: true }];
+const fixtures = [{ specId: 't90am', seed: 2526, state: 'burnt_out' }, { specId: 'xk2_black_panther', seed: 2002, state: 'turret_blown_off' }];
 for (const fixture of fixtures) await ensureTankBuilder(fixture.specId);
 const controls = fixtures.map(originalControl), receipts = [];
 const jobs = fixtures.map(fixture => {

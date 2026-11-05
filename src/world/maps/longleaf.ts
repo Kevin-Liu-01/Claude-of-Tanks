@@ -13,6 +13,7 @@
 // (treeBiomes.ts).
 import frontier from './frontier.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
@@ -156,7 +157,7 @@ export default {
     haystacks: 8, rocks: 30, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 2, sandbagLines: 14, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.longleaf,
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
   // the map-revival lane (2026-10-05, round 2; gauntlet wave 124: "no log pond, lumber stacks or working mill yard"): the

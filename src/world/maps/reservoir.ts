@@ -14,6 +14,7 @@
 // from the north bank's timber landing over the dry promontory between the lobes to the substation road.
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import frontier from './frontier.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
   // Route preference only: other maps retain their authored shallow fords.
@@ -137,7 +138,7 @@ export default {
     haystacks: 8, rocks: 194, outcrops: 32, craters: 48, rubblePiles: 14, cropFields: 3, sandbagLines: 16, hedgehogs: 10,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.reservoir,
     inhabit: { stalls: 1, benches: 3, coreClutter: 20, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 3, trucks: 5, jeeps: 4, drumClusters: 5, camps: 3, modernClutter: 20, looseClutter: 20, roadFence: 'fenceplank', yardFence: 'fencerail' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Eifel's slate. The

@@ -25,6 +25,7 @@
 import { TRODDEN_GREEN_PAINT, WORN_YARD_PAINT } from '../hardstandSurface.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 // 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant";
 // gauntlet wave 116: half-timbered houses "standing alone in meadows, with no courtyards and no river", the crossroads a
 // hard square of bare dirt): the village is rebuilt as the Hünfeld basin's villages stand, a Haufendorf of Hofreiten —
@@ -339,7 +340,7 @@ export default {
     cropFields: 9, hedgehogs: 10, sandbagLines: 14,
     // the map-vehicles lane (2026-10-06, the period ruling): the Fulda Gap in the 1980s: V Corps' M60A3s and M1A1s,
     // the Bundeswehr's Leopard 1A5 and Marder, the 8th Guards Army's T-80B and BMP-2
-    tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'] },
+    tankWrecks: WRECK_CASTS.frontier,
     inhabit: {
       stalls: 2, benches: 3, coreClutter: 18, bales: 14, stooks: 12,
       troughs: 2, churns: 2, laundry: 2, handcarts: 3, carts: 4,

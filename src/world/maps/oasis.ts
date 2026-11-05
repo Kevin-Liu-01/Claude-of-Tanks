@@ -13,6 +13,7 @@ import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
 
 import * as detMath from '../../sim/detMath.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 // Oasis round 3 (the map-revival lane, 2026-10-07; gauntlet wave 135: "a sparse scatter of small white boxes isolated on
 // open dune sand along wide empty roads, with no dense heaped Shali core, no mud-walled garden plots and no palm
 // groves"): Siwa authored lot by lot — old Shali heaped north of the caravan street (its blocks packed a metre apart,
@@ -170,7 +171,7 @@ export default {
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Egypt: the M60A3 and M1A1, the T-62 and T-55 (its Type
     // 59 copy)
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'm1a1', 't62_1975', 'type59'] },
+    tankWrecks: WRECK_CASTS.oasis,
     // (round 3, wave 135: "a corrugated blue shed") the modern clutter's containers and sheds mostly gone (was 18)
     inhabit: { stalls: 0, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 4, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },

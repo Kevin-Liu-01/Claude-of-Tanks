@@ -34,7 +34,7 @@ import {
   type WreckGeometryBuildSlice,
 } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
-import { resolveWreckRoster } from './wreckRoster.ts';
+import { WRECK_STATE_TABLE, type WreckState, type WreckStateRow } from './wreckStates.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
@@ -44,7 +44,8 @@ import {
 
 export interface WreckOptions {
   seed?: number;
-  pop?: boolean;
+  /** How it died and what has happened to it since (wreckStates.ts); default burnt_out. */
+  state?: WreckState;
   /** (tank-opt RING) false bakes a cook-off's hulk without its ring well (the receipts' A/B); default on. */
   ring?: boolean;
   /** The paint the tank wore (sRGB hex; the map's camouflage family, wreckRemnantPaint): patches survive the burn on
@@ -75,6 +76,11 @@ export interface WreckBake {
    *  12 cm of its base (its track runs on the ground). The seat samples the terrain over it alone (seatHulk), not over
    *  the envelope of a tossed turret or a gun run out past the hull. */
   contact?: [number, number, number, number];
+  /** (wrecks-270) How far under the ground line its base stands (m): a half-buried hulk's drift, a ditched nose. The
+   *  seat lowers the hulk by it; its geometry and solids are in the frame the ground meets at y = 0. */
+  buried?: number;
+  /** (wrecks-270) The side a track_thrown hulk lost its track on (-1 or 1, x's sign): the debris lays the run there. */
+  thrownSide?: number;
 }
 
 type TankWreckVisual = ReturnType<typeof createTank>;
@@ -255,6 +261,7 @@ const WRECK_BURNT_AWAY = /_ghillie_/;
 const WRECK_TWO_SIDED = /^(?:hull|turret|gunMount)(?:Cloth|CanvasPale|CanvasSkin)$/;
 
 function isDiscardedWreckPart(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
+  if (mesh.userData.wreckRemoved) return true;
   if (isSimplifiedTrackReplacement(mesh)) return true;
   if (mesh.name !== 'gearTrackPadsSimplified' && !chainVisible(mesh, root)) return true;
   return WRECK_FINE_GEAR.test(mesh.name || '');
@@ -276,6 +283,29 @@ function reversedWreckGeometry(geometry: THREE.BufferGeometry, owner: WreckBakeO
   const normal = back.getAttribute('normal') as THREE.BufferAttribute | undefined;
   if (normal) for (let i = 0; i < normal.array.length; i++) normal.array[i] = -normal.array[i];
   return back;
+}
+
+/** (wrecks-270) A part with the triangles on one side of the hull's centre line (x * side > 0, the bake's frame) taken
+ *  away: a thrown track's run. Null when nothing is left. */
+function dropWreckSide(geometry: THREE.BufferGeometry, side: number, owner: WreckBakeOwner): THREE.BufferGeometry | null {
+  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (flat !== geometry) owner.geometries.add(flat);
+  const position = flat.attributes.position;
+  const keep: number[] = [];
+  for (let t = 0; t + 2 < position.count; t += 3) {
+    if ((position.getX(t) + position.getX(t + 1) + position.getX(t + 2)) * side <= 0) keep.push(t);
+  }
+  if (!keep.length) return null;
+  if (keep.length * 3 === position.count) return flat;
+  const out = new THREE.BufferGeometry();
+  owner.geometries.add(out);
+  for (const [name, attribute] of Object.entries(flat.attributes) as [string, THREE.BufferAttribute][]) {
+    const size = attribute.itemSize, src = attribute.array;
+    const array = new (src.constructor as Float32ArrayConstructor)(keep.length * 3 * size);
+    keep.forEach((t, k) => array.set(src.subarray(t * size, (t + 3) * size), k * 3 * size));
+    out.setAttribute(name, new THREE.BufferAttribute(array, size, attribute.normalized));
+  }
+  return out;
 }
 
 function* appendWreckMeshGeometrySteps(
@@ -322,6 +352,15 @@ function* appendWreckMeshGeometrySteps(
   if (mesh instanceof THREE.InstancedMesh) {
     const first = target.geos.length;
     yield* appendInstancedGeometrySteps(mesh, rootInv, target.geos, owner, crumple);
+    // (wrecks-270) a thrown track: the run on that side is gone
+    const side = mesh.userData.wreckDropSide as number | undefined;
+    if (side) {
+      for (let i = target.geos.length - 1; i >= first; i--) {
+        const part = target.geos[i];
+        part.computeBoundingBox();
+        if ((part.boundingBox!.min.x + part.boundingBox!.max.x) * side > 0) { target.geos.splice(i, 1); owner.geometries.delete(part); part.dispose(); }
+      }
+    }
     // its copies are bent already: the ring cuts them with the rest
     if (ring && ringCuttable(mesh, root)) for (let i = first; i < target.geos.length; i++) ring.parts.set(target.geos[i], false);
     return;
@@ -331,7 +370,10 @@ function* appendWreckMeshGeometrySteps(
   // The carved muzzle's wall and backstop close the aperture cut from the barrel's own face: never a small part.
   const small = Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M;
   if (small && !mesh.userData.carvedBoreStock) return;
-  const clone = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
+  const posed = cloneWreckGeometry(mesh.geometry, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld), owner);
+  // (wrecks-270) a thrown track: the run on that side is gone
+  const clone = mesh.userData.wreckDropSide ? dropWreckSide(posed, mesh.userData.wreckDropSide as number, owner) : posed;
+  if (!clone) return;
   // the plates get corners to bend first (a box plate's middle has none), then the crumple moves them
   const refined = refineForCrumple(crumple, clone, mesh);
   if (refined !== clone) owner.geometries.add(refined);
@@ -439,6 +481,7 @@ function wreckVertexColor(
   rustPhase: number,
   remnant: readonly [number, number, number] | null,
   color: [number, number, number],
+  age = 0,
 ): readonly [number, number, number] {
   const panel = hash3(
     Math.round(px * 2.4) * 0.5,
@@ -447,7 +490,8 @@ function wreckVertexColor(
   );
   const grain = hash3(px * 9.1, py * 9.1, pz * 9.1);
   const rust = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
-  if (rust > 0.80 && up < 0.85) {
+  // (wrecks-270) an old hulk: the rust spreads over the soot and the oxide over the flanks, year on year
+  if (rust > 0.80 - age * 0.24 && up < 0.85 + age * 0.15) {
     const level = 0.085 + grain * 0.075;
     color[0] = level * 1.75;
     color[1] = level * 0.9;
@@ -461,7 +505,8 @@ function wreckVertexColor(
   };
   // heat oxide in broad blotches down the flanks (less on the faces the sky sees)
   const oxide = wreckCell(px, py, pz, 1.25, rustPhase);
-  if (oxide > 0.52) mix(WRECK_OXIDE, ((oxide - 0.52) / 0.48) * 0.85 * (1 - up * 0.6));
+  const oxideFrom = 0.52 - age * 0.22;
+  if (oxide > oxideFrom) mix(WRECK_OXIDE, Math.min(1, ((oxide - oxideFrom) / (1 - oxideFrom)) * (0.85 + age * 0.15)) * (1 - up * 0.6 * (1 - age)));
   // the paint it wore, surviving in patches low on the flanks where the fire ran thinnest
   if (remnant && up < 0.55 && py < 1.35) {
     const keep = wreckCell(px, py, pz, 1.7, rustPhase * 0.37 + 5.1);
@@ -502,6 +547,7 @@ function* paintWreckGeometrySteps(
   merged: THREE.BufferGeometry,
   rustPhase: number,
   remnant: readonly [number, number, number] | null = null,
+  age = 0,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
@@ -518,6 +564,7 @@ function* paintWreckGeometrySteps(
       rustPhase,
       remnant,
       scratchColor,
+      age,
     );
     colors[i * 3] = color[0];
     colors[i * 3 + 1] = color[1];
@@ -547,12 +594,14 @@ function wreckBakeResult(
   shellSolids: number[][] | null = null,
   burntAway: THREE.Box3 | null = null,
   budgetTriDelta = 0,
+  ground: number | null = null,
 ): WreckBake {
   merged.computeBoundingBox();
   const own = merged.boundingBox;
   if (!own) throw new Error('wreck bounds unavailable');
   const burnt = burntAway && !burntAway.isEmpty() ? burntAway : null;
-  const baseY = burnt ? Math.min(own.min.y, burnt.min.y) : own.min.y;
+  // (wrecks-270) a state that sinks the hulk names its ground line: what lies under it is in the earth
+  const baseY = ground ?? (burnt ? Math.min(own.min.y, burnt.min.y) : own.min.y);
   for (const solid of solids) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   for (const solid of shellSolids ?? []) for (let i = 1; i < solid.length; i += 3) solid[i] -= baseY;
   merged.translate(0, -baseY, 0);
@@ -587,6 +636,7 @@ function wreckBakeResult(
     hz: (bounds.max.z - bounds.min.z) / 2,
     h: bounds.max.y - bounds.min.y,
     ...(burnt ? { placeHx: (footprint.max.x - footprint.min.x) / 2, placeHz: (footprint.max.z - footprint.min.z) / 2 } : {}),
+    ...(ground !== null && bounds.min.y < 0 ? { buried: -bounds.min.y } : {}),
     tris: ((merged.index?.count ?? merged.attributes.position.count) / 3) | 0,
     budgetTris: (((merged.index?.count ?? merged.attributes.position.count) / 3) | 0) + budgetTriDelta,
   };
@@ -599,8 +649,8 @@ function wreckBakeResult(
  *
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
  * @param {string} specId roster vehicle id ('kv2', 'm1a1_abrams_hc', ...)
- * @param {{seed?: number, pop?: boolean}} [opts] pop=true = ammo-rack wreck
- *   (turret tossed beside the ring), else unseated-askew turret
+ * @param {{seed?: number, state?: WreckState}} [opts] the damage state (wreckStates.ts): turret_blown_off is the
+ *   ammo-rack wreck (turret tossed beside the ring), burnt_out the unseated-askew turret
  * @returns {?{geo: THREE.BufferGeometry, hx: number, hz: number, h: number,
  *   tris: number}} null on any build failure
  */
@@ -637,6 +687,93 @@ export function* bakeTankWreckSteps(
   }
 }
 
+// (wrecks-270) The parts a state takes off, by the factory's part names.
+const WRECK_TRACK_PART = /^gearTrack/;
+const WRECK_WHEEL_PART = /^gear(?:RoadWheel|ReturnRoller|EndWheel)/;
+const WRECK_FITTING_GROUP = /^fitting_|KitRackLoad|M2HB|MachineGun|machineGun/;
+const WRECK_FITTING_MESH = /(?:Glass|Cloth|CanvasPale|CanvasSkin|Rubber)$/;
+
+/** `object`'s bounds in the root frame. */
+function rootFrameBox(object: THREE.Object3D, rootInv: THREE.Matrix4): THREE.Box3 {
+  const box = new THREE.Box3(), part = new THREE.Box3(), m = new THREE.Matrix4();
+  object.updateMatrixWorld(true);
+  object.traverse((node) => {
+    if (!(node instanceof THREE.Mesh) || !node.geometry?.attributes?.position || !chainVisible(node, object)) return;
+    if (node instanceof THREE.InstancedMesh) return; // the running gear's copies stay inside the hull's own bounds
+    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+    box.union(part.copy(node.geometry.boundingBox!).applyMatrix4(m.multiplyMatrices(rootInv, node.matrixWorld)));
+  });
+  return box;
+}
+
+const pick = (range: readonly [number, number], rng: () => number): number => range[0] + (range[1] - range[0]) * rng();
+
+/**
+ * (wrecks-270) A damage state's moves on the settled wreck's hierarchy, before the bake reads it (wreckStates.ts): the
+ * tracks, wheels, fittings or gun taken off; the turret lifted off and set down beside the hull; the whole hulk pitched
+ * nose-down about its tail, rolled onto its side about a track's outer edge, or sunk. Returns the ground line in the
+ * root frame when the state sinks the hulk into it (the bake's base), else null (the base is its lowest point), and the
+ * side a thrown track came off (0 for none). Its
+ * own stream from the seed: the bake's other draws are the same in every state.
+ */
+function poseWreckState(root: THREE.Object3D, state: WreckStateRow, seed: number): { ground: number | null; thrownSide: number } {
+  const rng = mulberry32((seed ^ 0x57a7e5) >>> 0);
+  const rootInv = root.matrixWorld.clone().invert();
+  const hull = root.getObjectByName('rig_hull') ?? root;
+  const hullBox = rootFrameBox(hull, rootInv);
+  if (hullBox.isEmpty()) return { ground: null, thrownSide: 0 };
+  const ground0 = hullBox.min.y;
+  const halfW = Math.max(-hullBox.min.x, hullBox.max.x);
+  const dropSide = state.removes.track === 'one' ? (rng() < 0.5 ? -1 : 1) : 0;
+  const { removes } = state;
+  const take = (node: THREE.Object3D): void => { node.visible = false; node.userData.wreckRemoved = true; };
+  const part = new THREE.Box3(), m = new THREE.Matrix4();
+  root.traverse((node) => {
+    const name = node.name || '';
+    if (removes.fittings && !(node instanceof THREE.Mesh) && WRECK_FITTING_GROUP.test(name)) take(node);
+    if (!(node instanceof THREE.Mesh)) return;
+    if (removes.fittings && (WRECK_FITTING_MESH.test(name) || WRECK_FITTING_GROUP.test(name))) take(node);
+    if (removes.wheels && WRECK_WHEEL_PART.test(name)) take(node);
+    if (!WRECK_TRACK_PART.test(name) || removes.track === 'none') return;
+    if (removes.track === 'both') { take(node); return; }
+    // one track: a run wholly on that side goes; one mesh holding both runs loses that side's triangles in the bake
+    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+    part.copy(node.geometry.boundingBox!).applyMatrix4(m.multiplyMatrices(rootInv, node.matrixWorld));
+    if (node instanceof THREE.InstancedMesh || part.min.x * dropSide < 0 && part.max.x * dropSide > 0) node.userData.wreckDropSide = dropSide;
+    else if ((part.min.x + part.max.x) * dropSide > 0) take(node);
+  });
+  if (removes.gun) { const gun = root.getObjectByName('rig_gun'); if (gun) take(gun); }
+  const turret = root.getObjectByName('rig_turret');
+  if (state.turretSetDown && turret) {
+    // lifted off the ring and set down upright on the ground beside the hull, turned as the crane left it
+    if (turret.parent !== root) root.attach(turret);
+    const side = rng() < 0.5 ? -1 : 1;
+    turret.position.set(0, 0, 0);
+    turret.quaternion.setFromEuler(new THREE.Euler((rng() - 0.5) * 0.1, rng() * Math.PI * 2, (rng() - 0.5) * 0.1, 'YXZ'));
+    const tb = rootFrameBox(turret, rootInv);
+    turret.position.set(
+      side * (halfW + (tb.max.x - tb.min.x) / 2 + 0.6) - (tb.min.x + tb.max.x) / 2,
+      ground0 - tb.min.y - 0.04,
+      (hullBox.min.z + hullBox.max.z) / 2 + (rng() - 0.5) * 2 - (tb.min.z + tb.max.z) / 2,
+    );
+  }
+  const pitch = pick(state.pitch, rng), rollSide = dropSide || (rng() < 0.5 ? -1 : 1), roll = pick(state.roll, rng);
+  const sink = pick(state.sink, rng) * (hullBox.max.y - hullBox.min.y);
+  if (!pitch && !roll && !sink) return { ground: null, thrownSide: dropSide };
+  // the pivot: a ditched nose turns about the tail's lower edge; a hulk on its side about its track's outer edge; the
+  // rest about the hull's middle on the ground
+  const pivot = pitch > 0.1 ? new THREE.Vector3(0, ground0, hullBox.min.z)
+    : roll > 0.5 ? new THREE.Vector3(rollSide * halfW, ground0, 0)
+      : new THREE.Vector3((hullBox.min.x + hullBox.max.x) / 2, ground0, (hullBox.min.z + hullBox.max.z) / 2);
+  const turn = new THREE.Matrix4().makeTranslation(pivot.x, pivot.y, pivot.z)
+    .multiply(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(pitch, 0, -rollSide * Math.abs(roll), 'XYZ')))
+    .multiply(new THREE.Matrix4().makeTranslation(-pivot.x, -pivot.y, -pivot.z));
+  for (const child of [...root.children]) child.applyMatrix4(turn);
+  // a ditched nose and a sunk hulk keep the ground where it was (the tail's edge, the drift's top); one on its side
+  // rests on its lowest point
+  return { ground: pitch > 0.1 ? ground0 : sink > 0 ? ground0 + sink : null, thrownSide: dropSide };
+}
+
 function* buildTankWreckSteps(
   engineCtx: object,
   specId: string,
@@ -666,11 +803,16 @@ function* buildTankWreckSteps(
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
     });
     owner.visual = visual;
+    const state = WRECK_STATE_TABLE[opts.state ?? 'burnt_out'];
     // settled wreck pose through the factory's own machinery: ageS far past
     // every timeline => turret settled (popped beside the ring or unseated
     // askew), gun drooped, burn timeline fully aged.
-    visual.setDestroyed({ pop: !!opts.pop, ageS: 1000 });
+    visual.setDestroyed({ pop: state.pop, ageS: 1000 });
     const root = visual.root;
+    root.updateMatrixWorld(true);
+    // (wrecks-270) then the state's moves on the same hierarchy: parts off, the turret set down, the hull pitched, rolled
+    // or sunk; the solids, the crumple, the ring and the geometry below all read the posed hierarchy
+    const { ground, thrownSide } = poseWreckState(root, state, seed);
     root.updateMatrixWorld(true);
     const solids = collectWreckSolids(root);
     const shellSolids = collectWreckShellSolids(root);
@@ -678,11 +820,11 @@ function* buildTankWreckSteps(
     // the metal deformed (the owner, 2026-10-09: "crumpled not just turn rusty"): dents, sagging fenders, hanging
     // skirts, a slack track, a bent barrel — planned from the posed hierarchy on the wreck's own seed, applied part by
     // part as the bake collects it; the solids above are the posed hierarchy's, so collision does not move
-    const crumple = planWreckCrumple(root, seed, !!opts.pop);
+    const crumple = planWreckCrumple(root, seed, state.pop);
     // (tank-opt RING, 2026-10-16; the owner: "when the turret blows off we should see that") a cook-off's hulk shows the
     // ring its turret left: staged after the solids and the crumple plan (neither moves), merged into the one mesh; a
     // plain kill's turret still covers its ring, so its hulk keeps the deck as it was
-    const ring = opts.pop && opts.ring !== false ? stageWreckRing(visual, root) : null;
+    const ring = state.pop && opts.ring !== false ? stageWreckRing(visual, root) : null;
     yield { fine: true, stage: 'construct' };
     const collected = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple, ring);
     if (ring) yield* finishWreckRingSteps(ring, collected, owner);
@@ -704,10 +846,11 @@ function* buildTankWreckSteps(
     // RGB is determined by these exact position/normal words. Paint only the
     // first-occurrence representatives, retaining the original corner index.
     const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);
-    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant));
+    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant), state.age);
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
-    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids, burntAway, budgetTriDelta);
+    const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids, burntAway, budgetTriDelta, ground);
+    if (thrownSide) result.thrownSide = thrownSide;
     yield { fine: true, stage: 'finalize' };
     owner.geometries.delete(merged);
     if (shadowGeo) owner.geometries.delete(shadowGeo);
@@ -719,16 +862,6 @@ function* buildTankWreckSteps(
   } finally {
     disposeWreckBakeOwner(owner);
   }
-}
-
-/**
- * Public-roster wreck pools. Saved/hidden builder donors are not eligible;
- * only the selected public vehicle's procedural family is demand-loaded.
- * @param {string} era canonical vehicle era
- * @returns {string[]}
- */
-export function wreckPool(era: string): string[] {
-  return resolveWreckRoster(era);
 }
 
 /**

@@ -29,6 +29,7 @@
 // the village and its casemate at the western pass redoubt; the houses shelled in April 1945, roofless.
 
 import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
+import { WRECK_CASTS } from './wreckCasts.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -189,7 +190,7 @@ export default {
     dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
-    tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
+    tankWrecks: WRECK_CASTS.alpine,
     inhabit: {
       // (round 3, gauntlet waves 127 and 129: "traffic cones", "a modern candy-striped stall"): April 1945 at the
       // frontier — no market stalls, the cable reels and direction signs of the army's line works, no cones, Jersey

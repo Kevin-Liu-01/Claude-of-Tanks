@@ -153,9 +153,9 @@ registerHooks({ load(url, context, next) {
 const { createProps, preloadPropModels } = await import('./props.ts');
 const { originalCompose } = await import('./mangroveFisheryWharf.ts');
 const { ensureTankBuilder } = await import('../vehicles/fleetFactory.ts');
-const { wreckPool } = await import('./wrecks.ts');
+const { wreckDonorsFor } = await import('./wreckRoster.ts');
 globalThis.fetch = async url => new Response(readFileSync(url));
-await preloadPropModels(); await Promise.all(wreckPool('modern').map(id => ensureTankBuilder(id)));
+await preloadPropModels(); await Promise.all(wreckDonorsFor('mangrove').map(id => ensureTankBuilder(id)));
 canvasFixture();
 const field = createHeightField(seed, mangrove);
 // The actual normal-import builder includes authored relocation, all trees,
