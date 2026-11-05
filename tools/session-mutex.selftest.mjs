@@ -13,6 +13,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { claimSessionMutex, reapDeadSessionMutex, releaseSessionMutex, releaseSessionMutexAt, sessionMutexHeldByAncestor,
   sessionMutexState } from './capture-lock.mjs';
+import * as captureLock from './capture-lock.mjs';
+import { SELFTEST_STARVED_EXIT } from './selftest-verdict.mjs';
 import { createPoliteCaptureLock } from './visual-census-lock.mjs';
 
 const LOCK = new URL('./capture-lock.mjs', import.meta.url).href;
@@ -99,6 +101,16 @@ try {
     assert.equal(existsSync(dir), false);
     const usage = spawnSync(process.execPath, [WRAPPER, dir], { encoding: 'utf8' });
     assert.equal(usage.status, 2);
+    // (round 2 U39) a wait that runs out has its own status: it exited 75, the runner's STARVED, so a receipt run under the
+    // wrapper that never got the mutex was neither red nor cached (a third meaning of 75)
+    const held = claimSessionMutex(dir);
+    try {
+      const gaveUp = spawnSync(process.execPath, [WRAPPER, dir, '--wait-min=0.002', '--', process.execPath, '-e', 'process.exit(0)'],
+        { encoding: 'utf8' });
+      assert.match(gaveUp.stderr, /still held after 0\.002 min: giving up/, gaveUp.stderr);
+      assert.notEqual(gaveUp.status, SELFTEST_STARVED_EXIT, 'a mutex wait that runs out is not the selftests\' STARVED verdict');
+      assert.equal(gaveUp.status, captureLock.LOCK_WAIT_TIMEOUT_EXIT, 'it exits the hold CLIs\' wait-timeout status');
+    } finally { releaseSessionMutex(held, { log: quiet }); }
   }
   // ---- held by an ancestor (round 2): a command run under the holder nests in it; another process's is not its own ------
   {
@@ -122,7 +134,7 @@ try {
     holder.kill('SIGKILL');
     await new Promise((done) => holder.once('close', done));
   }
-  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper, and a holder\'s descendants nesting in it');
+  console.log('session-mutex.selftest: an owned probe mutex (live kept, dead and legacy-dead reaped, a bare shell mkdir never), the polite lock on it, the shell wrapper (its wait timeout its own status), and a holder\'s descendants nesting in it');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

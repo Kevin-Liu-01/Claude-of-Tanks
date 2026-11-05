@@ -213,6 +213,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   // 2026-11-02 audit S4: the capture-hold census reads every source (tracked and new) for its hold rules
   'tools/capture-hold-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
+  // round 2 U39: no source exits a named status (STARVED, lease over, lock wait timeout, browser guard) as a bare number
+  'tools/media-production/lease-exit.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),

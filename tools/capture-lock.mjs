@@ -802,6 +802,11 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
 // older than `graceMs`; a bare directory with neither is never reaped, since its holder (a shell loop) may be alive. Shell
 // holders run their command under tools/with-session-mutex.mjs, which holds the mutex with an owner for the command's life.
 
+/** The exit status of a hold CLI (tools/with-session-mutex.mjs, tools/with-capture-lock.mjs) that gave up waiting for its
+ *  lock (round 2 U39): the session-mutex wrapper exited 75, the number the selftest runner reads as STARVED
+ *  (tools/selftest-verdict.mjs), so a receipt run under it that timed out on the mutex was never counted red. */
+export const LOCK_WAIT_TIMEOUT_EXIT = 77;
+
 /** Take the session mutex at `dir`: the hold, or null while it is taken. */
 export function claimSessionMutex(dir) {
   const hold = claimOwnedLock(dir, { terms: { session: true } });

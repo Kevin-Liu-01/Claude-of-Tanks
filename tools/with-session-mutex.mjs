@@ -5,11 +5,12 @@
 // directory had no owner: a killed agent left it held for good. This holds the mutex through capture-lock.mjs
 // claimSessionMutex (an owner token with this process's pid and start time), waits while a live holder has it, reaps a
 // dead holder's, forwards SIGINT/SIGTERM/SIGHUP to the command, releases the mutex when the command ends (or this
-// process is signalled) and exits with the command's status. --wait-min=<minutes> (default 240) bounds the wait.
+// process is signalled) and exits with the command's status. --wait-min=<minutes> (default 240) bounds the wait; a wait that
+// runs out exits LOCK_WAIT_TIMEOUT_EXIT (77; it was 75, the selftest runner's STARVED, round 2 U39).
 import { spawn } from 'node:child_process';
 import { constants } from 'node:os';
 import { resolve } from 'node:path';
-import { claimSessionMutex, reapDeadSessionMutex, releaseSessionMutex, sessionMutexState } from './capture-lock.mjs';
+import { claimSessionMutex, LOCK_WAIT_TIMEOUT_EXIT, reapDeadSessionMutex, releaseSessionMutex, sessionMutexState } from './capture-lock.mjs';
 
 const argv = process.argv.slice(2);
 const split = argv.indexOf('--');
@@ -26,7 +27,7 @@ const until = Date.now() + waitMin * 60_000;
 let hold = null, noted = false;
 while (!(hold = claimSessionMutex(mutex))) {
   if (reapDeadSessionMutex(mutex, { log: say })) continue;
-  if (Date.now() > until) { say(`${mutex} still held after ${waitMin} min: giving up`); process.exit(75); }
+  if (Date.now() > until) { say(`${mutex} still held after ${waitMin} min: giving up`); process.exit(LOCK_WAIT_TIMEOUT_EXIT); }
   if (!noted) {
     const state = sessionMutexState(mutex);
     say(`${mutex} is held (${state.state}${state.pid ? `, pid ${state.pid}` : ''}${state.why ? `: ${state.why}` : ''}); waiting`);
