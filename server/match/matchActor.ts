@@ -235,6 +235,35 @@ export interface ActorClientStats {
  * the LAN host's status, which fell back to 'unknown').
  */
 export type MatchActorPhase = 'loading' | 'countdown' | 'playing' | 'ending' | 'ended' | 'stopped';
+
+const battleClockScreens = new WeakMap<object, { offsetS: number; screen: Record<string, unknown> }>();
+/** A smoke screen with its launch time on the battle clock (one copy per screen and offset: the frames reuse it). */
+function smokeOnBattleClock(screen: unknown, offsetS: number): unknown {
+  if (!screen || typeof screen !== 'object' || typeof (screen as { born?: unknown }).born !== 'number') return screen;
+  const cached = battleClockScreens.get(screen);
+  if (cached && cached.offsetS === offsetS) return cached.screen;
+  const shifted = { ...(screen as Record<string, unknown>), born: Math.round(((screen as { born: number }).born + offsetS) * 1000) / 1000 };
+  battleClockScreens.set(screen, { offsetS, screen: shifted });
+  return shifted;
+}
+
+/**
+ * An authority meta on the battle clock the clients read (a resumed actor's: the authority's own clock plus what the old
+ * hosts had played, `resumedBattleTimeMs`): its battleTimeMs and every smoke screen's launch time (round 2 U2). A client
+ * ages a network screen by its battle clock (battlePresentation.ts game.timeS, auxiliaryPresentation.ts), so on a
+ * resumed host every screen read as launched `resumedBattleTimeMs` ago: past SMOKE_DURATION_S, it was never drawn. The
+ * migration keyframe's meta goes through it too (matchHostCore.ts buildKeyframe), so a resume reads every screen on one
+ * clock (migrationState.ts applyResumeState).
+ */
+export function metaOnBattleClock(meta: Record<string, unknown> | null, resumedBattleTimeMs: number): Record<string, unknown> | null {
+  if (!resumedBattleTimeMs || !meta) return meta;
+  const screens = meta.smokeScreens;
+  const offsetS = resumedBattleTimeMs / 1000;
+  return {
+    ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs,
+    ...(Array.isArray(screens) && screens.length ? { smokeScreens: screens.map((screen) => smokeOnBattleClock(screen, offsetS)) } : {}),
+  };
+}
 /** The phase in the rooms' status vocabulary (MatchHostStatus.phase): the hold and its end are both 'ended'. */
 export type MatchStatusPhase = 'loading' | 'countdown' | 'playing' | 'ended' | 'stopped';
 
@@ -595,8 +624,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
 
   /** The battle clock as the clients read it: the authority's, plus what the old host had already played. */
   function metaWithResumedClock(meta: Record<string, unknown> | null): Record<string, unknown> | null {
-    if (!resumedBattleTimeMs || !meta) return meta;
-    return { ...meta, battleTimeMs: (Number(meta.battleTimeMs) || 0) + resumedBattleTimeMs };
+    return metaOnBattleClock(meta, resumedBattleTimeMs);
   }
 
   function send(client: ActorClient, bytes: Uint8Array): boolean {

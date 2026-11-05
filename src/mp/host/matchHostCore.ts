@@ -11,7 +11,7 @@
  */
 import type { DestructionLogEntry } from '../../sim/destructionEvents.ts';
 import { quantizeDestructionEntry } from '../wire/destructionLog.ts';
-import { createMatchActor, matchStatusPhase } from '../../../server/match/matchActor.ts';
+import { createMatchActor, matchStatusPhase, metaOnBattleClock } from '../../../server/match/matchActor.ts';
 import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { hostRulesetFor } from './hostRuleset.ts';
 import type { ActorWorldCollision, MatchActor } from '../../../server/match/matchActor.ts';
@@ -389,12 +389,14 @@ export function createMatchHostCore({
     const destroyed = Array.isArray(meta.destroyedObstacleIndices)
       ? [...new Set((meta.destroyedObstacleIndices as number[]).filter((index) => Number.isInteger(index) && index >= 0))].sort((a, b) => a - b) : [];
     const battleTimeMs = Math.round(live.authority.timeS * 1000) + live.resumedBattleTimeMs;
+    // the meta on the battle clock, its smoke screens too, as the actor's own frames carry it (round 2 U2)
+    const battleMeta = metaOnBattleClock(meta, live.resumedBattleTimeMs) ?? meta;
     // destruction (docs/DESTRUCTION.md §8.3): the sealed keyframe carries the whole log, as the wire quantizes it
     const destruction = Array.isArray(meta.destructionLog)
       ? (meta.destructionLog as DestructionLogEntry[]).map(quantizeDestructionEntry) : [];
     const frame: SnapshotFrame = {
       tick, serverTimeMs, ackedInputTick: NO_TICK, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: INPUT_MARGIN_UNKNOWN,
-      meta: captureMeta({ ...meta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
+      meta: captureMeta({ ...battleMeta, battleTimeMs }, live.ended), destroyed, destruction, entities, shells: [], viewer: null,
       modeStateJson: meta.modeState ? JSON.stringify(meta.modeState) : null,
     };
     const status = currentPhase(live);

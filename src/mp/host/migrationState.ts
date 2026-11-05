@@ -28,6 +28,7 @@ import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
 import type { ConsumableState } from '../../sim/consumableRules.ts';
 import { createAuxiliaryState } from '../../sim/auxiliarySystems.ts';
 import type { AuxiliaryState } from '../../sim/auxiliarySystems.ts';
+import type { SmokeScreen } from '../../sim/smokeScreen.ts';
 
 export { MIGRATION_EVENT_KIND, MigrationStore, isMigrationEventKind } from '../match/migrationStore.ts';
 export type { MigrationChunkPayload, RetainedBlob } from '../match/migrationStore.ts';
@@ -701,7 +702,20 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);
   // destruction (docs/DESTRUCTION.md §8.3): stages and collapses (records, heaps, the route grid) without events
   if (state.frame.destruction?.length) actor.authority.restoreDestruction(state.frame.destruction);
+  // the smoke screens still standing (round 2 U2): the frame's meta carries them on the battle clock (matchActor.ts
+  // metaOnBattleClock), this actor's authority counts from its resumed battle time
+  const smoke = smokeScreensOf(state.frame.meta.smokeJson);
+  if (smoke.length) actor.authority.restoreSmokeScreens(smoke, -actor.resumedBattleTimeMs / 1000);
   return { restored, skipped, destroyedRestored: destroyed.restored, destroyedUnknown: destroyed.unknown };
+}
+
+/** The compact smoke screens a frame meta carries (SnapshotMeta.smokeJson), or none when it carries none or cannot be read. */
+function smokeScreensOf(json: string | undefined): SmokeScreen[] {
+  if (!json) return [];
+  try {
+    const screens = JSON.parse(json) as unknown;
+    return Array.isArray(screens) ? screens.filter((screen): screen is SmokeScreen => !!screen && typeof screen === 'object' && Number.isFinite((screen as SmokeScreen).born)) : [];
+  } catch { return []; }
 }
 
 /** Seconds left until a sim time (never negative). */

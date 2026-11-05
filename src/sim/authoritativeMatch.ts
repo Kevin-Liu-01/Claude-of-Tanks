@@ -1,8 +1,8 @@
 import type { ModeCheckpoint, ModeLife } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
-import { packSmokeScreen } from './smokeReceipt.ts';
-import { auxiliaryCapabilities, requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
+import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
+import { auxiliaryCapabilities, requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, SMOKE_DURATION_S, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -449,6 +449,14 @@ export interface AuthoritativeMatch {
    * where it lay, or awake to fall on from there. False for an unknown hull or a vehicle without a turret.
    */
   restoreWreckTurret(id: string, pose: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number; asleep: boolean }): boolean;
+  /**
+   * A resumed match (round 2 U2): the smoke screens still standing, from the compact form a snapshot meta carries
+   * (smokeReceipt.ts packSmokeScreen), rebuilt on this map's wind and moved onto this authority's clock by `clockShiftS`
+   * (each launch time plus it). They block sight lines here as they did on the previous authority, and the frames carry
+   * them on (a migrated host used to drop every screen: the hulls behind them were seen at once). Screens past their
+   * duration are left out. Returns how many were laid down.
+   */
+  restoreSmokeScreens(screens: readonly SmokeScreen[], clockShiftS: number): { restored: number };
   /** Every turret body's pose, rounded to the millimetre (the determinism audit hashes it). */
   wreckTurretDigest(): string;
 }
@@ -3045,6 +3053,19 @@ export function createAuthoritativeMatch({
         out[7] = pose.asleep ? 1 : 0;
       }
       return ok;
+    },
+    restoreSmokeScreens(screens, clockShiftS) {
+      let restored = 0;
+      const shift = Number.isFinite(clockShiftS) ? clockShiftS : 0;
+      for (const packed of screens) {
+        if (!packed || typeof packed !== 'object' || !Number.isFinite(packed.born)) continue;
+        const born = packed.born + shift;
+        if (!(timeS - born <= SMOKE_DURATION_S)) continue;
+        auxiliarySmokeScreens.push({ ...restoreSmokeScreen(packed, smokeWind), born });
+        restored++;
+      }
+      while (auxiliarySmokeScreens.length > 84) auxiliarySmokeScreens.shift();
+      return { restored };
     },
     wreckTurretDigest: () => wreckTurrets.digest(),
   };
