@@ -506,8 +506,8 @@ const camoSwatchPaintVersion = new WeakMap();
 const camoSwatchAccess = createCamoSwatchAccess({
   load: () => import('./camoSwatchPainter.ts'),
   isPlayable: () => gameReady.state === 'ready',
-  // (2026-11-02 audit F5) while the game is not playable its wait is the shared one (gameReady.ts), which ends when
-  // the boot halts; once it is, the access's own post-ready delay is an ordinary timer
+  // (2026-11-02 audit F5) while the game is not playable its wait is the shared one (gameReady.ts, the boot latch's
+  // ready edge); once it is, the access's own post-ready delay is an ordinary timer
   schedule: (callback, delayMs) => {
     const state = gameReady.state;
     if (state === 'waiting') return { cancelReady: gameReady.whenReady(callback) };
