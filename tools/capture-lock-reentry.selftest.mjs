@@ -272,6 +272,30 @@ try {
     const free = await laneChild(rig('lane-free'), 2_000);
     assert.deepEqual([free.ok, free.nested], [true, false], `a free lock: held on its own, not nested: ${JSON.stringify(free)}`);
   }
+  // ---- (round 2 U38) ancestorHeld: a tool's own held-lock claim (--lock-held, COT_CAPTURE_LOCK_HELD=1) is checked as the
+  // flag is: it skipped the lock whatever held it; now it nests only in an ancestor's live hold and otherwise queues
+  {
+    const claimChild = (dirs, timeoutMs) => new Promise((done) => {
+      const script = `import { createCaptureLock } from ${JSON.stringify(new URL('./capture-lock.mjs', import.meta.url).href)};
+        const notes = [];
+        const lock = createCaptureLock({ lockDir: ${JSON.stringify(dirs.lockDir)}, queueDir: ${JSON.stringify(dirs.queueDir)}, log: (line) => notes.push(line) });
+        try { await lock.acquire(${timeoutMs}, { ancestorHeld: true }); const nested = lock.nested; lock.release(); console.log(JSON.stringify({ ok: true, nested, notes })); }
+        catch (error) { console.log(JSON.stringify({ ok: false, error: error.message, notes })); }`;
+      const proc = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'inherit'] });
+      let out = '';
+      proc.stdout.setEncoding('utf8').on('data', (chunk) => { out += chunk; });
+      proc.once('close', () => done(JSON.parse(out.trim().split('\n').at(-1))));
+    });
+    const dirs = rig('claim');
+    const parent = createCaptureLock(dirs);
+    await parent.acquire(2_000);
+    const under = await claimChild(dirs, 2_000);
+    assert.deepEqual([under.ok, under.nested], [true, true], `a claim under its parent's live hold nests: ${JSON.stringify(under)}`);
+    parent.release();
+    const free = await claimChild(rig('claim-free'), 2_000);
+    assert.deepEqual([free.ok, free.nested], [true, false], 'on a free lock the claim changes nothing: held on its own');
+    assert.ok(free.notes.some((line) => /the caller says an ancestor holds it, but no ancestor/.test(line)), `and it says so: ${free.notes.join('\n')}`);
+  }
   // ---- the wrapper hands the token down: a tool under runCapturedCommand that takes the lock itself nests ------------
   {
     const dirs = rig('wrapped');
