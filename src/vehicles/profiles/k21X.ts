@@ -372,7 +372,7 @@ function addBasket(P: TankBuilderPort): void {
         equipment(P, 'turret', 'Detail', box(.028, .028, run), x, 2.042, mid);
     }
     for (const y of [2.133, 2.309, 2.449]) {
-        equipment(P, 'turret', 'Detail', box(2.036, .026, .026), 0, y, -2.431);
+        equipment(P, 'turret', 'Detail', box(2.008, .026, .026), 0, y, -2.431);
         for (const x of [-1.018, 1.018])
             equipment(P, 'turret', 'Detail', box(.026, .026, run), x, y, mid);
     }

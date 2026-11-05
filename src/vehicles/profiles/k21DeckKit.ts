@@ -56,7 +56,8 @@ function periscope(P: TankBuilderPort, owner: 'hull' | 'turret', x: number, y: n
 function grabHandle(P: TankBuilderPort, owner: 'hull' | 'turret', x: number, y: number, z: number, w: number, h: number,
   tilt = 0): void {
   const parts = [box(0.016, h + 0.008, 0.016).translate(-w / 2, (h - 0.008) / 2, 0),
-    box(0.016, h + 0.008, 0.016).translate(w / 2, (h - 0.008) / 2, 0), cylX(0.009, w + 0.016, 8).translate(0, h, 0)];
+    // 2026-11-04 (overlap audit): the bar's ends stop 2 mm inside the feet's outer faces, not on them
+    box(0.016, h + 0.008, 0.016).translate(w / 2, (h - 0.008) / 2, 0), cylX(0.009, w + 0.012, 8).translate(0, h, 0)];
   equipment(P, owner, 'Detail', KIT.mergeAll(parts), x, y, z, tilt, 0, 0);
 }
 
