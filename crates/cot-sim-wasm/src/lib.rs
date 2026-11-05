@@ -18,8 +18,10 @@
 //! The calls that only make sense in an order carry their protocol here, checked per call (2026-11-02 audit S2): a
 //! write-once lattice, a clearance walk named by the id its begin returned, the hull support's query → flags → begin →
 //! samples, and grid handles this instance made. A call out of order or with a stale name is refused with a code (the
-//! `REFUSED_*` constants; [`protocol_refusal`] names the last), never answered from a half-made state, and the host
-//! (src/world/wasmWorldKernels.ts) asserts on it.
+//! `REFUSED_*` constants; [`protocol_refusal`] names the last checked call's, 0 when it was taken), never answered from a
+//! half-made state, and the host (src/world/wasmWorldKernels.ts) asserts on it: a refused sample's NaN too, which the
+//! code tells from a NaN the call answered (round 2 U37). The overlay mirror takes each heap's start as the TypeScript's
+//! overlay resolved it, so the kernel's clock never decides one.
 
 use cot_sim::clearance;
 use cot_sim::contact::{ContactLattice, LatticeRefusal, Sample};
@@ -69,7 +71,7 @@ pub extern "C" fn js_pow(x: f64, y: f64) -> f64 {
     jsmath::pow(x, y)
 }
 
-/// No refusal: the call was taken.
+/// No refusal: the last checked call was taken.
 pub const ACCEPTED: u32 = 0;
 /// The obstacle records are not loaded (`records_load` first).
 pub const REFUSED_NOT_LOADED: u32 = 1;
@@ -155,7 +157,8 @@ struct State {
     support_grid: Option<usize>,
     support: SupportField,
     support_phase: SupportPhase,
-    /// The last refusal's code (`protocol_refusal`).
+    /// The last checked call's refusal (`protocol_refusal`): each call that checks a protocol sets it, [`ACCEPTED`] when
+    /// it was taken, so the host can tell a refused NaN from an answered one.
     refusal: u32,
 }
 
@@ -177,6 +180,11 @@ impl State {
             support_phase: SupportPhase::Unloaded,
             refusal: ACCEPTED,
         }
+    }
+
+    /// Begin a checked call: taken until it refuses (`protocol_refusal` is this call's, never an older one's).
+    fn check(&mut self) {
+        self.refusal = ACCEPTED;
     }
 
     /// Note a refusal and return its code.
@@ -232,6 +240,7 @@ impl State {
     }
 
     fn lattice_set_vertex(&mut self, ix: u32, iz: u32, height: f64) -> u32 {
+        self.check();
         match self.lattice.set_vertex(ix as usize, iz as usize, height) {
             Ok(()) => ACCEPTED,
             Err(refusal) => self.refuse(lattice_refusal(refusal)),
@@ -241,6 +250,7 @@ impl State {
     /// Every corner at once (N × N Float32 heights, row-major in z); refused whole when one would change a known corner.
     fn lattice_fill(&mut self, heights: &[f32]) -> u32 {
         use cot_sim::contact::N;
+        self.check();
         if heights.len() != N * N {
             return self.refuse(REFUSED_OUT_OF_RANGE);
         }
@@ -262,6 +272,7 @@ impl State {
     }
 
     fn lattice_set_flip_from_centre(&mut self, ix: u32, iz: u32, centre: f64) -> u32 {
+        self.check();
         match self.lattice.set_flip_from_centre(ix as usize, iz as usize, centre) {
             Ok(()) => ACCEPTED,
             Err(refusal) => self.refuse(lattice_refusal(refusal)),
@@ -281,12 +292,26 @@ impl State {
     }
 
     fn grid_query(&mut self, handle: u32, min_x: f64, min_z: f64, max_x: f64, max_z: f64) -> u32 {
+        self.check();
         let Some((grid, out)) = self.grid(handle) else { return self.refuse_count(REFUSED_BAD_HANDLE) };
         grid.query(min_x, min_z, max_x, max_z, out);
         out.len() as u32
     }
 
+    /// Where grid `handle`'s answers lie, or null (refused) for a handle this instance never made, or freed.
+    fn grid_out(&mut self, handle: u32) -> *const u32 {
+        self.check();
+        match self.grid(handle) {
+            Some((_, out)) => out.as_ptr(),
+            None => {
+                self.refuse(REFUSED_BAD_HANDLE);
+                core::ptr::null()
+            }
+        }
+    }
+
     fn grid_free(&mut self, handle: u32) -> u32 {
+        self.check();
         if self.grid(handle).is_none() {
             return self.refuse(REFUSED_BAD_HANDLE);
         }
@@ -300,6 +325,7 @@ impl State {
     // ---- the records and a hull's support
 
     fn records_load(&mut self, records: Vec<Record>, bridges: Vec<bool>, grid: u32) -> u32 {
+        self.check();
         if self.grid(grid).is_none() {
             return self.refuse_count(REFUSED_BAD_HANDLE);
         }
@@ -315,6 +341,7 @@ impl State {
     }
 
     fn support_query(&mut self, x: f64, z: f64) -> u32 {
+        self.check();
         let Some(at) = self.support_grid.filter(|_| self.support_phase != SupportPhase::Unloaded) else {
             return self.refuse_count(REFUSED_NOT_LOADED);
         };
@@ -325,6 +352,7 @@ impl State {
     }
 
     fn support_begin(&mut self, x: f64, z: f64, belly_y: f64, pose: Option<&HullFootprint>) -> u32 {
+        self.check();
         match self.support_phase {
             SupportPhase::Unloaded => return self.refuse(REFUSED_NOT_LOADED),
             SupportPhase::Loaded | SupportPhase::Begun => return self.refuse(REFUSED_OUT_OF_ORDER),
@@ -342,9 +370,10 @@ impl State {
         ACCEPTED
     }
 
-    /// Whether a sample may read the hull: refused between a query and its begin, where the candidates are the next
-    /// hull's and their tops not yet gathered.
+    /// Whether a sample may read the hull (the sample's check): refused between a query and its begin, where the
+    /// candidates are the next hull's and their tops not yet gathered.
     fn support_readable(&mut self) -> bool {
+        self.check();
         if matches!(self.support_phase, SupportPhase::Queried { .. }) {
             self.refuse(REFUSED_OUT_OF_ORDER);
             return false;
@@ -385,20 +414,27 @@ impl State {
     }
 
     fn clearance_begin(&mut self, min_x: f64, min_z: f64, max_x: f64, max_z: f64) -> u32 {
+        self.check();
         let Some(at) = self.support_grid else {
             self.refuse(REFUSED_NOT_LOADED);
             return 0;
         };
         self.close_walk();
-        let State { grids, walk, .. } = self;
-        let Some((grid, out)) = grids[at].as_mut() else { return 0 };
+        let State { grids, walk, refusal, .. } = self;
+        let Some((grid, out)) = grids[at].as_mut() else {
+            // (round 2 U37: refused with its code, as support_query's is; grid_free keeps the support grid while its
+            // records are loaded, so no export reaches this today)
+            *refusal = REFUSED_BAD_HANDLE;
+            return 0;
+        };
         grid.query(min_x, min_z, max_x, max_z, out);
         walk.candidates.extend_from_slice(out);
         walk.id
     }
 
-    /// Whether `walk` names the open walk (else the call is refused).
+    /// Whether `walk` names the open walk (the walk call's check; else the call is refused).
     fn walk_open(&mut self, walk: u32) -> bool {
+        self.check();
         if walk != 0 && walk == self.walk.id {
             return true;
         }
@@ -456,7 +492,8 @@ fn state() -> &'static mut State {
     unsafe { (*core::ptr::addr_of_mut!(STATE)).get_or_insert_with(State::new) }
 }
 
-/// The last refused call's code (`REFUSED_*`; 0 while none was refused).
+/// The last checked call's code: `REFUSED_*` when it was refused, 0 when it was taken (each call that checks a protocol
+/// sets it, so a NaN or a null the host reads is told from an answer by this call's code, never an older one's).
 #[unsafe(no_mangle)]
 pub extern "C" fn protocol_refusal() -> u32 {
     state().refusal
@@ -569,13 +606,10 @@ pub extern "C" fn grid_query(handle: u32, min_x: f64, min_z: f64, max_x: f64, ma
 }
 
 /// Where grid `handle`'s last answer lies (stable: the buffer holds every record's index at most once); null for a
-/// handle this instance never made, or freed.
+/// handle this instance never made, or freed (`REFUSED_BAD_HANDLE`).
 #[unsafe(no_mangle)]
 pub extern "C" fn grid_out_ptr(handle: u32) -> *const u32 {
-    match state().grid(handle) {
-        Some((_, out)) => out.as_ptr(),
-        None => core::ptr::null(),
-    }
+    state().grid_out(handle)
 }
 
 /// Free grid `handle` (its handle is never made again); the grid the records were loaded over stays while they do
@@ -595,6 +629,7 @@ pub extern "C" fn grid_query_batch(handle: u32, boxes: *const f64, n: usize, cou
         (core::slice::from_raw_parts(boxes, 4 * n), core::slice::from_raw_parts_mut(counts, n), core::slice::from_raw_parts_mut(indices, capacity))
     };
     let s = state();
+    s.check();
     let Some((grid, out)) = s.grid(handle) else { return s.refuse_count(REFUSED_BAD_HANDLE) };
     let mut total = 0usize;
     for (i, b) in boxes.chunks_exact(4).enumerate() {
@@ -724,11 +759,12 @@ pub extern "C" fn overlay_add_crater(x: f64, z: f64, radius_m: f64, depth_m: f64
     state().overlay.add_crater(x, z, radius_m, depth_m, rim_m, seed) as u32
 }
 
-/// `addRubble`; `has_t0` 0 is the TypeScript's `undefined` start.
+/// `addRubble` with the start the TypeScript's overlay resolved (its stamp's `t0`: the call's own, the overlay's clock,
+/// or −∞ on an unset clock). The kernel never resolves a start on its own clock (round 2 U37: a heap laid before a
+/// `set_time` rose otherwise than one laid after it), so a mirrored heap rises as the overlay's does in any call order.
 #[unsafe(no_mangle)]
-#[allow(clippy::too_many_arguments)]
-pub extern "C" fn overlay_add_rubble(cx: f64, cz: f64, hw: f64, hd: f64, yaw: f64, height_m: f64, t0: f64, has_t0: u32) {
-    state().overlay.add_rubble(cx, cz, hw, hd, yaw, height_m, if has_t0 != 0 { Some(t0) } else { None });
+pub extern "C" fn overlay_add_rubble(cx: f64, cz: f64, hw: f64, hd: f64, yaw: f64, height_m: f64, t0: f64) {
+    state().overlay.add_rubble(cx, cz, hw, hd, yaw, height_m, Some(t0));
 }
 
 /// `addCourse`: its (u, h) knots are `n` doubles at `profile`.
@@ -1144,6 +1180,43 @@ mod tests {
         assert_eq!(s.support_begin(40.0, 40.0, 2.3, None), ACCEPTED);
         assert_eq!(s.support_top(40.0, 40.0, 0.5), 2.0);
         assert!(s.support_contact(40.0, 40.0).is_finite());
+    }
+
+    #[test]
+    fn the_refusal_is_the_last_checked_calls() {
+        // (round 2 U37) a taken call clears the code, so the host tells a refused NaN from an answered one
+        let (mut s, grid) = loaded();
+        assert_eq!(s.grid_query(77, -1.0, -1.0, 2.0, 2.0), REFUSED_COUNT);
+        assert_eq!(s.refusal, REFUSED_BAD_HANDLE);
+        assert_eq!(s.grid_query(grid, -1.0, -1.0, 2.0, 2.0), 1);
+        assert_eq!(s.refusal, ACCEPTED, "a taken call clears the code: an older refusal never names this call");
+        assert_eq!(s.support_query(10.0, 10.0), 2);
+        assert!(s.support_top(10.0, 10.0, 0.5).is_nan());
+        assert_eq!(s.refusal, REFUSED_OUT_OF_ORDER, "a refused sample's NaN names its code");
+        assert_eq!(s.support_begin(10.0, 10.0, 2.3, None), ACCEPTED);
+        assert_eq!(s.refusal, ACCEPTED);
+        assert!(s.support_top(500.0, 500.0, f64::NAN).is_nan(), "a NaN ground answers NaN");
+        assert_eq!(s.refusal, ACCEPTED, "and that NaN is an answer, not a refusal");
+        // a walk's entry before its lane handed out a record is NaN and taken; a superseded walk's is refused
+        let walk = s.clearance_begin(0.0, 0.0, 20.0, 20.0);
+        assert!(s.clearance_entry(walk).is_nan());
+        assert_eq!(s.refusal, ACCEPTED, "no lane record yet is no refusal");
+        s.clearance_begin(39.0, 39.0, 41.0, 41.0);
+        assert!(s.clearance_entry(walk).is_nan());
+        assert_eq!(s.refusal, REFUSED_STALE_WALK);
+        // the support grid's slot emptied under its records (no export can: grid_free keeps it while they are loaded)
+        s.grids[grid as usize] = None;
+        assert_eq!(s.clearance_begin(0.0, 0.0, 20.0, 20.0), 0, "no walk over a missing grid");
+        assert_eq!(s.refusal, REFUSED_BAD_HANDLE, "and the refusal names it (it returned 0 with no code)");
+    }
+
+    #[test]
+    fn a_missing_answer_buffer_names_its_refusal() {
+        let (mut s, grid) = loaded();
+        assert!(!s.grid_out(grid).is_null());
+        assert_eq!(s.refusal, ACCEPTED);
+        assert!(s.grid_out(77).is_null(), "a handle never made has no answer buffer");
+        assert_eq!(s.refusal, REFUSED_BAD_HANDLE, "and the null names its refusal (it left the code untouched)");
     }
 
     #[test]

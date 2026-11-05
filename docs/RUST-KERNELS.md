@@ -25,22 +25,29 @@ function, `env.terrain_height`, the map's height function.
 
 One instance keeps one world's state across calls, so the calls that only make sense in an order carry that order in
 the kernel (`crates/cot-sim-wasm` `State`), checked per call. A call out of order, or naming a stale walk or handle, is
-refused with a code (`REFUSED_*`, `protocol_refusal` names the last) and never answered from a half-made state;
-`src/world/wasmWorldKernels.ts` asserts on every code, so a host's slip throws where it happens.
+refused with a code (`REFUSED_*`) and never answered from a half-made state. `protocol_refusal` names the last checked
+call's code, 0 when it was taken, so the host tells a refused NaN or null from an answer (round 2 U37).
+`src/world/wasmWorldKernels.ts` asserts on every refusal, a refused sample's NaN included, so a host's slip throws where
+it happens; a NaN the kernel answered (its ground's) passes.
 
 - **Contact lattice:** each corner and fold split is written once (`lattice_set_vertex`, `lattice_fill`,
   `lattice_set_flip_from_centre`): the same value again is taken, another refused, a split waits for its corners. There
   is no raw write pointer. `contact_status` is the last call's, `contact_cell_flipped`'s included.
 - **A hull's support:** `support_query` (refused before `records_load`) → the host writes the candidates' flags →
   `support_begin` at the same point (refused with no query since the last begin, or at another point) → the samples
-  (refused between a query and its begin: NaN, or −1 for a count).
+  (refused between a query and its begin: NaN, or −1 for a count; only a `beginHull` that threw leaves a hull there, and
+  the host throws on such a sample).
 - **The clearance walks:** `clearance_begin` returns the walk's id, which its `*_next` and `clearance_entry` calls name.
   A walk begun inside another supersedes it, and the outer walk's next call is refused (`WALK_STALE`); `records_load`
-  ends any walk.
+  ends any walk. `clearance_entry` is NaN for a superseded walk (refused) and for an open one whose lane has handed out
+  no record yet (taken); the host's error names which.
 - **Grids:** a handle names a grid of the instance that made it; one never made, or freed (`grid_free`), is refused. The
   hosts build a world's grids once, with its instance.
 - **The overlay mirror:** the kernel's clock is unset (NaN, `overlay_time`) on a fresh or reset overlay, as the
-  TypeScript's `clockS`.
+  TypeScript's `clockS`. A heap goes over with the start the overlay resolved: `overlay_add_rubble` takes no other, so
+  the kernel's clock never decides a start and a heap rises the same whether it was laid before or after a `set_time`.
+  The host asserts the copy in step: each crater admitted (the bind's replay included), the revisions after every
+  change, the clocks at the bind, every step and every reset.
 
 ## Turning them off
 
@@ -81,6 +88,7 @@ cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<st
 | `cargo test -p cot-sim` | Every port against the TypeScript's golden vectors (`tools/port-golden-vectors.mjs`) |
 | `cargo test -p cot-sim-wasm --lib` | The cross-call protocols on an instance's own state (a native test links `terrain_height`) |
 | `node src/world/wasmKernelProtocols.selftest.mjs` | The protocols on the committed package: its raw exports and the production seam |
+| `node src/world/wasmKernelRefusals.selftest.mjs` | Each refusal named by the call it refused, asserted at the seam (a refused sample's NaN, a walk's missing entry, a replayed crater); a heap's start is the one it was given |
 | `node tools/build-cot-sim-wasm.mjs --check` | The committed binary is the clean rebuild |
 | `node src/world/wasmWorldKernels.selftest.mjs` (core suite) | Parity through the production seam, and a match's digests |
 | `node tools/rust-kernel-tick-ab.mjs --map=<id> --bots=30` | Tick CPU against the TypeScript at 16 a side, digests every 300 ticks |

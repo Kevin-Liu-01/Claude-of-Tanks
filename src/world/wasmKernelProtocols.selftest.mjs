@@ -16,7 +16,6 @@ import { readFileSync } from 'node:fs';
 import { compileWorldKernels } from './wasmWorldKernels.ts';
 import { createTerrainContactSampler, terrainCellFoldCandidate } from './terrainContactSurface.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
-import { fillWasmLattice } from '../../tools/rust-kernel-bench-core.mjs';
 
 const module = await compileWorldKernels(readFileSync(new URL('../../crates/cot-sim-wasm/pkg/cot_sim_wasm.wasm', import.meta.url)));
 const steep = (x, z) => 30 * Math.sin(x * 0.05) * Math.cos(z * 0.04) - 12 * Math.abs(Math.sin((x - z) * 0.9)) + 0.25 * x;
@@ -40,6 +39,9 @@ const NOT_LOADED = 1, OUT_OF_ORDER = 2, MISMATCH = 3, CONFLICT = 4, OUT_OF_RANGE
 
 // ---- the lattice is written once, and the bench's fixture fill rides the checked writers
 {
+  // (round 2 Q19: imported here, so this receipt copied alone onto a tree without the bench's checked fill fails at the
+  // contact block's hazard above, not when the module links)
+  const { fillWasmLattice } = await import('../../tools/rust-kernel-bench-core.mjs');
   const w = instance();
   assert.equal(typeof w.lattice_heights_ptr, 'undefined', 'no raw write pointer into the lattice');
   assert.equal(typeof w.lattice_ready_ptr, 'undefined');
