@@ -69,6 +69,8 @@ interface StudioCrushWorld {
   advanceDestruction(dt: number): void;
   /** Whether a crush event this side never pressed sweeps a hull across the prop (the battle: yes; the Studio: no). */
   setCrushSweeps?(on: boolean): void;
+  /** (round 2 U28) Who advances the felled trees' falls: the world's own update, or this timeline (map.ts). */
+  setFallDriver?(driver: 'frame' | 'timeline'): void;
 }
 
 /**
@@ -167,7 +169,9 @@ export function createStudioCrushes(): StudioCrushes {
     applied = 0; live = false; touched = false;
   };
   return {
-    setPlan(world, next) { reset(world); events = next; },
+    // (round 2 U28) the Studio's timeline drives the felled trees' falls on the world it plans on (advanceDestruction,
+    // advanceToppledVegetation): the world's own update stands still for them, paused or playing, from the first frame
+    setPlan(world, next) { world?.setFallDriver?.('timeline'); reset(world); events = next; },
     advanceTo(world, tMs, onProp) {
       const start = applied;
       while (applied < events.length && events[applied].tMs <= tMs) {
@@ -192,7 +196,7 @@ export function createStudioCrushes(): StudioCrushes {
     },
     // (2026-11-02 audit R2) the Studio turns a world's sweeps off while it plans on it (studio.ts syncCrushPlan); a world it
     // left for another kept them off into a later battle, where a remote or late crush of a car stood drawn intact
-    restore(world) { world?.setCrushSweeps?.(true); reset(world); },
+    restore(world) { world?.setCrushSweeps?.(true); world?.setFallDriver?.('frame'); reset(world); },
     nextTime: () => (applied < events.length ? events[applied].tMs : Infinity),
     get events() { return events; },
   };

@@ -2328,8 +2328,8 @@ function crushWorldPropFromShell(
     shell.spec.velocityMps,
     'shell',
   );
+  // (round 2 U28) the world's crush felled the tree's canopy with its trunk (felledTrees.ts; the headless world's)
   if (!crushed || record.treeIdx == null) return;
-  if (record.shape2 && world.getConcealment) fellConcealersAt(world.getConcealment(), record.shape2.cx, record.shape2.cz);
   bus.emit('prop:crushed', {
     shooterId: shell.shooterId,
     cause: 'shell',
@@ -2880,18 +2880,21 @@ function resolveCrushContacts(
   for (const contact of collider.pendingCrush) {
     const obstacle = contact.ob;
     if (obstacle.crushed) continue;
-    obstacle.crushed = true;
     const entity = contact.ent;
     const directionSign = Math.sign(entity.state.speed || 1);
     const directionX = Math.sin(entity.state.yaw) * directionSign;
     const directionZ = Math.cos(entity.state.yaw) * directionSign;
     const overrunMps = Math.abs(entity.state.speed);
-    world.crushObstacle?.(obstacle, directionX, directionZ, overrunMps);
-    entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
-    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
-    if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
+    // (round 2 U28) the world's crush first, on a record still standing (the headless world refuses one already marked and
+    // left the prop's other records and the tree's canopy up), then the step's own mark. The world's crush fells a felled
+    // tree's canopy with its trunk (felledTrees.ts, the headless world's crushObstacle; destruction, docs/DESTRUCTION.md
+    // §6): only a world that crushes nothing leaves the canopy to the step
+    if (world.crushObstacle) world.crushObstacle(obstacle, directionX, directionZ, overrunMps);
+    else if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
       fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
     }
+    obstacle.crushed = true;
+    entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
     bus.emit('prop:crushed', {
       id: entity.id,
       specId: entity.specId,
@@ -3413,11 +3416,10 @@ function fellBlastProps(game: SoloGameState, bus: EventBus, world: SoloWorld | n
       const obstacle = _blastFelled[i];
       const dx = (obstacle.min[0] + obstacle.max[0]) * 0.5 - x, dz = (obstacle.min[2] + obstacle.max[2]) * 0.5 - z;
       const length = Math.hypot(dx, dz) || 1;
-      obstacle.crushed = true;
+      // (round 2 U28) the world's crush on a standing record, then the step's mark (resolveCrushContacts); the world fells
+      // a tree's canopy with it
       world.crushObstacle(obstacle, dx / length, dz / length, 6, 'shell');
-      if (obstacle.treeIdx != null && obstacle.shape2 && world.getConcealment) {
-        fellConcealersAt(world.getConcealment(), obstacle.shape2.cx, obstacle.shape2.cz);
-      }
+      obstacle.crushed = true;
       bus.emit('prop:crushed', {
         cause: 'blast', speedMps: 6, kind: obstacle.kind || 'prop', h: obstacle.max[1] - obstacle.min[1],
         pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],

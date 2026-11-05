@@ -1611,6 +1611,7 @@ export function createAuthoritativeMatch({
       entity?.state ? detMath.cos(entity.state.yaw) * directionSign : 1
     );
     const speedMps = impactSpeedMps ?? (entity?.state ? Math.abs(entity.state.speed) : 0);
+    const worldCrushes = !!worldCollision && typeof worldCollision.crushObstacle === 'function';
     const destroyed = worldCollision && typeof worldCollision.crushObstacle === 'function'
       ? worldCollision.crushObstacle(obstacle, directionX, directionZ, speedMps)
       : true;
@@ -1623,8 +1624,9 @@ export function createAuthoritativeMatch({
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
-    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6)
-    if (obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
+    // a felled tree stops concealing (destruction, docs/DESTRUCTION.md §6): (round 2 U28) the world's crush fells its
+    // canopy with its trunk (headlessCollisionWorld.ts crushObstacle); only a world that crushes nothing leaves it here
+    if (!worldCrushes && obstacle.treeIdx != null && obstacle.shape2) fellConcealersAt(worldConcealers, obstacle.shape2.cx, obstacle.shape2.cz);
     emitFrom(sourceId, 'world_prop_destroyed', {
       obstacleIndex: destroyedIndex,
       propIdx: obstacle.propIdx,

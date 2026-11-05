@@ -105,7 +105,8 @@ for (const [name, text] of [['solo', solo], ['studio', studioSim]]) {
   assert.match(text, /if \(!obstacle\.crushable \|\| obstacle\.crushed \|\| obstacle\.min\[1\] > y \+ radius \|\| isFortifiedCoverRecord\(obstacle\)\) continue;/,
     `${name}: crushable, standing, within reach of the burst's height, not fortified cover (a pillbox's ledger breaks it)`);
   assert.match(text, /const fell = Math\.min\((_blastFelled|felled)\.length, PROP_FELL_PER_BLAST, budget\);/, `${name}: at most a burst's share`);
-  assert.match(text, /obstacle\.crushed = true;\s*world\.crushObstacle\(obstacle, dx \/ length, dz \/ length, 6, 'shell'\);/, `${name}: the world's crush`);
+  // (round 2 U28) the world's crush on a standing record first, then the step's mark
+  assert.match(text, /world\.crushObstacle\(obstacle, dx \/ length, dz \/ length, 6, 'shell'\);\s*obstacle\.crushed = true;/, `${name}: the world's crush`);
 }
 assert.match(studioSim, /step\(\) \{\s*\/\/[^\n]*\n\s*fellBlastProps\(\);\s*match\.step\(\);/, 'studio: felled before the match steps, as the solo step');
 // the Studio's strike round on the ground

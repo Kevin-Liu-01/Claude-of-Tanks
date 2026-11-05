@@ -356,6 +356,23 @@ try {
   } finally { tossed.dispose(); }
 }
 
+// ---- (round 2 U28) the authority's crush of cover never waits on draw readiness: a prop whose pool has no intact
+// instances yet (finalizeDestructiblePools runs before any battle today, so this is the guard) still opens its movement and
+// shell records; a cosmetic path still opens nothing (before: breakRecord returned on the pool before the transition)
+{
+  const undrawn = fixture([['wallstone', 0, 0], ['crate', 4, 0]]);
+  const pool = undrawn.pools.get('wallstone');
+  const imI = pool.imI;
+  try {
+    pool.imI = null;
+    seam.notifyShellImpact(0, 0.1, 0, { r: 4.6, he: true });
+    assert.equal(undrawn.records[0].ob.crushed, false, 'undrawn: a cosmetic burst still opens no cover');
+    assert.ok(undrawn.crushDestructible(0, 1, 0, 8, 'ram'), 'undrawn: the authority\'s crush breaks it');
+    assert.deepEqual([undrawn.records[0].state, undrawn.records[0].ob.crushed, undrawn.records[0].col?.dead ?? true], [1, true, true],
+      'undrawn: its movement and shell records open (collision never waits on draw readiness)');
+  } finally { pool.imI = imI; undrawn.dispose(); }
+}
+
 // ---- (round 2 U13) a reset leaves no press state on the world's records: the hull's press is the battle's own ledger
 // (sim/crushPress.ts); the reset wrote two dead fields onto every movement record
 {

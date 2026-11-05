@@ -2726,6 +2726,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/topple.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree, its trunk record and its canopy fall and stand together (felledTrees.ts)
     'src/world/felledTrees.selftest.mjs',
+    // 2026-11-02 audit U28 (round 2): the world's crush owns a felled tree's records and canopy; the Studio declares the falls' driver
+    'src/world/felledTreeOwners.selftest.mjs',
     // 2026-11-02 audit M9: a felled tree's canopy found in constant time; a whole destroyed set restores linearly (concealerIndex.ts)
     'src/world/concealerIndex.selftest.mjs',
     'src/world/loosePropPhysics.selftest.mjs',

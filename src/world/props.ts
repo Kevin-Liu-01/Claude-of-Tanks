@@ -12662,9 +12662,14 @@ ${snowCap ? `
       return false;
     }
     const pool = dPools.get(rec.kind);
-    if (!rec.clutter && (!pool || !pool.imI)) return false;
+    // (round 2 U28) whether the prop draws (a clutter set, or a pool finalized with its intact instances): the authority's
+    // crush of cover opens it whether or not it does — collision never waits on draw readiness (every pool is finalized
+    // before a battle today, finalizeDestructiblePools, so the undrawn case is a guard, not a path)
+    const drawn = !!rec.clutter || !!pool?.imI;
+    if (!drawn && !(authority && (rec.ob || rec.col))) return false;
     // Loose dressing is displaced, never consumed. Shells/blasts kick it too,
     // and a later tank can push the exact same object again after it settles.
+    // (a physics kind carries no cover record, the build throws on one, so an undrawn one returned above)
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
     if (pool?.imI) setWorldNightFixtureActive(pool.imI, rec.slot, false);
@@ -12673,8 +12678,9 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.clutter) rec.clutter.setCrushed(true); // (its pose; its records' flags are crushRecordsOf's above)
-    else if (pool && crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
-    else if (pool) animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
+    else if (!pool?.imI) { /* (round 2 U28) undrawn: its collision opened above, nothing to pose */ }
+    else if (crushPress.takes(idx, cause, dx, dz, settled)) { /* drawn by the press: its paint and its crumple */ }
+    else animateBrokenRecord(rec, pool, dx, dz, speed, l, settled);
     // Late joiners restore persistent destruction without replaying its blast.
     if (settled) return true;
     // Explosive decoration chains next tick through the cosmetic-only impact
