@@ -5,8 +5,8 @@
 //
 //   node tools/building-style-reading.mjs [--kits=a,b] [--json=out.json]
 //
-// Each builder is built at three seeds on the census plots (tools/building-detail-census.mjs), and every house body it
-// lays (house.ts HousePlan; recorded bodies excluded) is read.
+// Each of a kit's dwelling builders (the census's dwelling class) is built at three seeds on the census plots
+// (tools/building-detail-census.mjs), and every house body it lays (house.ts HousePlan; recorded bodies excluded) is read.
 import { writeFileSync } from 'node:fs';
 import { isMainModule } from './map-probe-runtime.mjs';
 
@@ -48,7 +48,7 @@ export async function readKits({ kits = null } = {}) {
   const { streamFrom } = await import('../src/world/maps/regional/geometry.ts');
   const { MAP_IDS } = await import('../src/world/maps/mapIds.ts');
   const { getMapConfig } = await import('../src/world/maps/index.ts');
-  const { INFO } = await import('./building-detail-census.mjs');
+  const { INFO, DWELLINGS } = await import('./building-detail-census.mjs');
   const mapOf = {};
   for (const id of MAP_IDS) {
     const kit = getMapConfig(id).props?.architecture;
@@ -59,7 +59,11 @@ export async function readKits({ kits = null } = {}) {
     if (kits && !kits.includes(style.id)) continue;
     const mapId = mapOf[style.id] ?? 'selftest';
     const r = { map: mapId, houses: 0, storeys: [], storeyM: [], roofs: {}, pitchDeg: [], windowW: [], windowH: [], bayM: [], doors: {} };
-    for (const id of Object.keys(style.builders)) {
+    // the kit's dwellings (the census's dwelling class and the kit's own, ArchitectureStyle.dwellings): the houses a row
+    // describes; a kit without any (a works, a station) is read whole
+    const all = Object.keys(style.builders);
+    const dwellings = all.filter((id) => DWELLINGS.has(id) || style.dwellings?.includes(id));
+    for (const id of dwellings.length ? dwellings : all) {
       const [w, d, h] = INFO[id] ?? [7, 9, 6];
       for (const [seed, wall] of SEEDS) {
         let parts;

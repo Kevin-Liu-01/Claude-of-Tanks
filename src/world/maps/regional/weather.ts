@@ -32,15 +32,12 @@ export interface WeatherTints {
   roofAge: number;
 }
 
-/** A style's weathering: tint palettes (around 1.0, multiplied into the shared surface textures) and strengths. */
+/** A style's tint palettes (around 1.0, multiplied into the shared surface textures). The weathering's strengths, damp and
+ * moss, are the place's: the map's row of the building-style table (buildingStyleTable.ts climateOf). */
 export interface WeatherPalette {
   plaster: readonly Rgb[];
   stone: readonly Rgb[];
   roof: readonly Rgb[];
-  /** rising damp and splash at the wall foot, 0 (arid) – 1 (wet) */
-  damp: number;
-  /** moss and lichen toward the eaves, 0 – 1 */
-  moss: number;
   /** the growth's colour multiplier (green moss inland, orange-yellow lichen on Atlantic slate and granite) */
   mossTint?: Rgb;
 }
@@ -49,7 +46,6 @@ export const DEFAULT_WEATHER: WeatherPalette = Object.freeze({
   plaster: [[1, 1, 1], [1.0, 0.97, 0.9], [0.95, 0.95, 0.93], [1.0, 0.95, 0.88]],
   stone: [[1, 1, 1], [0.94, 0.93, 0.9], [1.0, 0.97, 0.92], [0.9, 0.9, 0.9]],
   roof: [[1, 1, 1], [0.9, 0.84, 0.78], [0.82, 0.8, 0.76], [1.04, 0.98, 0.94]],
-  damp: 0.8, moss: 0.5,
 } as WeatherPalette);
 
 /**

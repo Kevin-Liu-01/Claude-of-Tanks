@@ -871,9 +871,7 @@ export const LITTROW_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     plaster: [[1, 1, 1], [0.95, 0.95, 0.94], [0.9, 0.9, 0.89]],
     stone: [[1, 1, 1], [0.94, 0.94, 0.93], [1.04, 1.03, 1.02]],
     roof: [[1, 1, 1], [0.95, 0.95, 0.94]],
-    damp: 0, moss: 0,
   },
-  wear: 0.15,
   // the yards round the habitats, garages and tank farms: a course of regolith bags (the Moon's fenceplank, dressed
   // through its structure variants), an open gap for the gate, the EVA tool locker in the far corner, no garden
   yard: { kinds: ['barn', 'schoolhouse', 'farmhouse'], fence: 'fenceplank', gate: null, shed: 'granary', shedSize: [3.0, 2.4], garden: false, tidy: true },
