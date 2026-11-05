@@ -31,7 +31,7 @@ import { RemoteInterpolator } from './interpolation.ts';
 import type { EntitySample, FrameMetaSample, InterpolatorOptions, ShellSample } from './interpolation.ts';
 import { LocalPredictor } from './prediction.ts';
 import type { CorrectionPolicy, PredictionStats, PredictionWorld } from './prediction.ts';
-import { ConnectionRecovery, RESUME_HOLD_MS } from './recovery.ts';
+import { ConnectionRecovery, MIGRATION_WELCOME_ALLOWANCE_MS } from './recovery.ts';
 import type { ConnectionPhase, RecoveryOptions } from './recovery.ts';
 import { MigrationStore } from './migrationStore.ts';
 import type { RetainedBlob } from './migrationStore.ts';
@@ -623,8 +623,9 @@ export class MatchClient {
     if (change.state === 'open') {
       this.openedAtMs = this.clock();
       // a link to the host the room just elected (the session followed its host_changed: migration.setGeneration): that
-      // host may hold this seat's HELLO for its resume hold, so the stall clock allows it (audit M1, recovery.ts)
-      this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? RESUME_HOLD_MS : 0;
+      // host's boot and resume hold may keep this seat's HELLO unanswered, so the stall clock allows both (audit M1,
+      // round 2 Q1: the hold alone ran out under a slow boot; recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS)
+      this.holdAllowanceMs = change.resumed && this.migration.hostGeneration > this.welcomedGeneration ? MIGRATION_WELCOME_ALLOWANCE_MS : 0;
       // A resumed link may be a new host (a migration): the own newest authority row from the host we lost is the seed
       // for our hull if the new host could not see it (P3b); the actor bounds it and ignores it on a plain reconnect.
       // The hint is dated by the row's capture tick (the last time the authority captured the pose fresh), never the

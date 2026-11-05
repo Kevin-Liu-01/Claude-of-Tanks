@@ -18,6 +18,24 @@ import type { TransportState } from '../transport/transport.ts';
  */
 export const RESUME_HOLD_MS = 3_000;
 
+/**
+ * The longest an elected host's boot may run before it fails itself (matchHost.ts: its boot timeout's default) and
+ * declines, so the room elects another seat (round 2 Q1).
+ */
+export const ELECTED_HOST_BOOT_MS = 30_000;
+
+/**
+ * How much longer than its stall clock a seat waits for the WELCOME on a link to a host the room just elected (round 2
+ * Q1; RecoveryInput.holdAllowanceMs): the host's whole boot bound and its resume hold. The link opens about the election,
+ * before the boot (peers re-offer the moment they hear it), and the host answers no HELLO until its boot is done and
+ * its hold is over: no signal reaches the seat in between, so nothing shorter than the host's own bounds is safe. A
+ * fixed RESUME_HOLD_MS held only while the boot fit in the stall clock (5 s + 3 s against a 3.4-4.3 s unprepared boot
+ * plus up to 3 s of hold): a slower device's boot pushed every held seat into a fresh link during the hold. A host that
+ * died meanwhile is the room's to replace (its socket lease, its reports, the boot timeout's decline): the seat follows
+ * the next election on a fresh link and clock.
+ */
+export const MIGRATION_WELCOME_ALLOWANCE_MS = ELECTED_HOST_BOOT_MS + RESUME_HOLD_MS;
+
 export type ConnectionPhase =
   | 'idle' | 'connecting' | 'handshaking' | 'live' | 'stalled' | 'reconnecting' | 'failed' | 'left' | 'closed';
 
@@ -38,8 +56,9 @@ export interface RecoveryInput {
   /** Local time the WELCOME was accepted on the current socket (the stall clock starts here before the first snapshot). */
   welcomedAtMs?: number | null;
   /**
-   * How much longer than `stallMs` the current socket may wait for its WELCOME: RESUME_HOLD_MS on a link to a host the
-   * room just elected (it may hold this seat's HELLO that long), 0 otherwise.
+   * How much longer than `stallMs` the current socket may wait for its WELCOME: MIGRATION_WELCOME_ALLOWANCE_MS on a link
+   * to a host the room just elected (its boot and its resume hold may keep this seat's HELLO unanswered that long), 0
+   * otherwise.
    */
   holdAllowanceMs?: number;
   /**

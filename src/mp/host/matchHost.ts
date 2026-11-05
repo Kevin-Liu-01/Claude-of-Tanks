@@ -18,6 +18,7 @@ import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../ma
 import { CLOSE_REASON } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { ELECTED_HOST_BOOT_MS } from '../match/recovery.ts';
 import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
@@ -108,7 +109,8 @@ export interface MatchHost {
 
 const PRESSURE_INTERVAL_MS = 100;
 const UPLINK_WINDOW_MS = 1000;
-const DEFAULT_BOOT_TIMEOUT_MS = 30_000;
+// the elected host's boot bound a held seat's stall clock allows for (recovery.ts MIGRATION_WELCOME_ALLOWANCE_MS)
+const DEFAULT_BOOT_TIMEOUT_MS = ELECTED_HOST_BOOT_MS;
 const PORT_CLOSE_GRACE_MS = 500;
 
 export function createMatchHost({
