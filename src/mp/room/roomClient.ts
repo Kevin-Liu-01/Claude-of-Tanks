@@ -45,6 +45,25 @@ export class RoomConnectError extends Error {
   }
 }
 
+/**
+ * A request this client never put on the wire (no open socket): the room never saw it. Still a RoomError `internal`
+ * ('not connected') for every caller that reads only the code; roomCommandNeverApplied tells it apart.
+ */
+class RoomRequestUnsent extends RoomError {
+  constructor() { super('internal', 'not connected'); }
+}
+
+/**
+ * Whether a failed `host_decline` (a command the room applies in one write after its checks) certainly left the room's
+ * record as it was (round 2 Q4 review): the room refused it with a code of its own (roomPolicy's checks throw before the
+ * write; `internal` is a fault that may come after it), or this client never sent it (not joined, no open socket). A
+ * timeout, a lost or closed socket or a disposed client is not certain: the room may have applied the command without
+ * answering in time (a slow room, a stalled tab), and its echo can still come.
+ */
+export function roomCommandNeverApplied(error: unknown): boolean {
+  return error instanceof RoomError && (error.code !== 'internal' || error instanceof RoomRequestUnsent);
+}
+
 /** A phase change; `reconnecting` repeats per attempt with the attempt ordinal and the delay before it. */
 export interface RoomClientPhaseChange {
   phase: RoomClientPhase;
@@ -522,7 +541,7 @@ export class RoomClient {
       if (!this.sendEnvelope({ type, requestId, payload })) {
         this.clearTimer(timer);
         this.pending.delete(requestId);
-        reject(new RoomError('internal', 'not connected'));
+        reject(new RoomRequestUnsent());
       }
     });
   }

@@ -13,6 +13,8 @@
 // e2e passed only when it caught the echo inside the room's coalescing window.
 // (5) (round 2 U7) A decline the room refuses stays the seat's and goes through its one owner: it is said again when
 // the room's record moves or on an admission, never on every snapshot or every slow frame.
+// (6)-(8) (round 2 Q4) The late mark ends only when no late say of the seat's may land: a refusal ends it, a timeout or
+// a lost socket does not, and (8) names the failures that prove a command never reached the room's record.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { RoomActor } from '../room/roomActor.ts';
@@ -85,6 +87,7 @@ function scriptedTransport() {
     reconnect() {}, close() { transport.state = 'closed'; states.emit({ state: 'closed', previous: 'open', reason: 'client' }); },
     onFrame: (listener) => frames.add(listener), onState: (listener) => states.add(listener),
     deliver(envelope) { frames.emit(encoder.encode(JSON.stringify(envelope))); },
+    blip() { transport.state = 'reconnecting'; states.emit({ state: 'reconnecting', previous: 'open', detail: 'blip' }); },
     outbound,
   };
   return transport;
@@ -99,9 +102,9 @@ const snapshot = ({ host = { transport: 'p2p', hostId: null, generation: 0, sinc
 const world = new RtcWorld();
 const cores = [];
 const declinesOf = (transport, from = 0) => transport.outbound.slice(from).filter((envelope) => envelope.payload?.command?.type === 'host_decline').map((envelope) => envelope.payload.command);
-async function seat(p2p = {}, { declined = false } = {}) {
+async function seat(p2p = {}, { declined = false, requestTimeoutMs = 60_000 } = {}) {
   let transport = null;
-  const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs: 60_000, createTransport: () => { transport = scriptedTransport(); return transport; } });
+  const client = new RoomClient({ endpoint: 'ws://rooms.test', player: { id: 'me', name: 'Me' }, pingIntervalMs: 0, requestTimeoutMs, createTransport: () => { transport = scriptedTransport(); return transport; } });
   const session = new MatchSession({
     room: client, clock: () => performance.now(),
     createPresentation: () => { const presentation = new RecordingPresentation(16); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
@@ -268,5 +271,111 @@ async function seat(p2p = {}, { declined = false } = {}) {
     session.dispose(); client.dispose();
   }
 }
+// ---- (7) (round 2 Q4, the review of (6)'s fix) a request that times out is no refusal: the room may have applied the
+// late decline after its reset all the same, and its echo must still be withdrawn. 44af12dcec cleared the late mark on
+// every failure, so the willing seat's record stayed declined (the next election passed it over, last resort only). The
+// same holds for a request that timed out before the reset; the mark then never formed (the in-flight count had dropped).
+const LATE_TIMEOUT_MS = 800;
+const holdDeclines = (envelope) => envelope.payload?.command?.type === 'host_decline' && envelope.payload.command.declined === true;
+// a room that answers every command at once but the ones `hold` keeps (a slow room that has not answered them in time)
+function answering(transport, hold) {
+  const answered = new Set();
+  const timer = setInterval(() => {
+    for (const envelope of transport.outbound) {
+      if (envelope.type !== 'room_command' || answered.has(envelope.requestId) || hold(envelope)) continue;
+      answered.add(envelope.requestId);
+      transport.deliver({ type: 'room_ack', requestId: envelope.requestId, payload: { revision: 1 } });
+    }
+  }, 10);
+  return () => clearInterval(timer);
+}
+// how each declineHost request of the seat ended ('ack' or the rejection's message)
+function declineOutcomes(client) {
+  const outcomes = [];
+  const declineHost = client.declineHost.bind(client);
+  client.declineHost = (...args) => {
+    const request = declineHost(...args);
+    request.then(() => outcomes.push('ack'), (error) => outcomes.push(String(error?.message ?? error)));
+    return request;
+  };
+  return outcomes;
+}
+async function hostThenLeave(transport, session, matchId) {
+  const hostSecret = sha256(`${SECRET}:${matchId}`);
+  const seatToken = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const match = { id: matchId, round: 1, status: 'playing', mapId: 'verdant', seed: 7, startedAt: 1000, endedAt: null, verdict: null };
+  transport.deliver({ type: 'room_state', payload: { room: snapshot({ host: { transport: 'p2p', hostId: 'me', generation: 1, since: 2000 }, phase: 'starting', match: { ...match, status: 'starting' } }) } });
+  transport.deliver({ type: 'match_start', payload: { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken, matchUrl: p2pMatchUrl(roomCode, 1), hostId: 'me', hostSecret, expiresAt: Date.now() + 3_600_000 } });
+  await until(() => session.phase === 'match' && session.matchHost?.state === 'live', `${matchId}: this seat hosts round 1`, 60_000);
+  await session.leaveMatch('garage');
+  const leaveSay = transport.outbound.findLast(holdDeclines);
+  assert.deepEqual(leaveSay.payload.command, { type: 'host_decline', declined: true, unable: true }, `${matchId}: setup: the leave handed the match on`);
+  const ended = { host: { transport: 'p2p', hostId: null, generation: 1, since: 4000 }, phase: 'waiting', match: { ...match, status: 'ended', endedAt: 4000, verdict: { result: 'alpha', reason: 'elimination' } } };
+  return { leaveSay, ended };
+}
+for (const resetFirst of [true, false]) {
+  const label = resetFirst ? '(7) timed out after the reset' : '(7) timed out before the reset';
+  const { client, session, transport } = await seat({}, { requestTimeoutMs: LATE_TIMEOUT_MS });
+  const outcomes = declineOutcomes(client);
+  const stopAnswering = answering(transport, holdDeclines);
+  const pump = setInterval(() => session.update(performance.now(), 1 / 60), 16);
+  try {
+    const { ended } = await hostThenLeave(transport, session, resetFirst ? 'm7-0000d7d7' : 'm7-0000e7e7');
+    const reset = () => transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
+    // the room ends the match and resets every decline before it reads the leave's; its answer misses the budget
+    if (resetFirst) reset();
+    await until(() => outcomes.includes('room_command timed out'), `${label}: the leave's decline request timed out`);
+    if (!resetFirst) reset();
+    // ... and the room applied it after the reset all the same: its echo comes
+    const mark = transport.outbound.length;
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: true }) } });
+    await sleep(0);
+    assert.deepEqual(declinesOf(transport, mark), [{ type: 'host_decline', declined: false }],
+      `${label}: the willing seat's own late decline, applied after the reset, is withdrawn (${JSON.stringify(declinesOf(transport, mark))})`);
+    // once: the mark is spent, and a later declined record (another tool's) is left alone
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: false }) } });
+    transport.deliver({ type: 'room_state', payload: { room: snapshot({ ...ended, declined: true }) } });
+    await sleep(0);
+    assert.deepEqual(declinesOf(transport, mark), [{ type: 'host_decline', declined: false }], `${label}: withdrawn once`);
+  } finally {
+    stopAnswering();
+    clearInterval(pump);
+    session.dispose(); client.dispose();
+  }
+}
+// ---- (8) (round 2 Q4 review) which failures prove a command never reached the room's record: a refusal with the room's
+// own code, or a request never sent (not joined, no open socket). A timeout, a lost socket and the room's `internal` do not.
+{
+  const { roomCommandNeverApplied } = await import('../room/roomClient.ts');
+  const { RoomError } = await import('../room/protocol.ts');
+  assert.equal(roomCommandNeverApplied(new RoomError('invalid_command')), true, '(8) a refusal with the room\'s code');
+  assert.equal(roomCommandNeverApplied(new RoomError('internal')), false, '(8) the room\'s internal fault may follow its write');
+  assert.equal(roomCommandNeverApplied(new Error('boom')), false, '(8) a foreign error proves nothing');
+  const { client, session, transport } = await seat({}, { requestTimeoutMs: 50 });
+  const failure = (request) => request.then(() => null, (error) => error);
+  const timedOut = await failure(client.declineHost(true));
+  assert.equal(timedOut.message, 'room_command timed out', '(8) setup: an unanswered request times out');
+  assert.equal(roomCommandNeverApplied(timedOut), false, '(8) a timeout may follow a write the room made');
+  const pending = failure(client.declineHost(true));
+  transport.blip();
+  const lost = await pending;
+  assert.equal(lost.message, 'connection lost', '(8) setup: a lost socket fails the request');
+  assert.equal(roomCommandNeverApplied(lost), false, '(8) a lost socket may follow a write the room made');
+  const notJoined = await failure(client.declineHost(true));
+  assert.equal(notJoined.code, 'not_in_room', '(8) setup: a client that is not joined sends nothing');
+  assert.equal(roomCommandNeverApplied(notJoined), true, '(8) a request never sent (not joined)');
+  session.dispose(); client.dispose();
+}
+{
+  // no open socket while joined: the request is never put on the wire
+  const { roomCommandNeverApplied } = await import('../room/roomClient.ts');
+  const { client, session, transport } = await seat();
+  transport.state = 'closing';
+  const unsent = await client.declineHost(true).then(() => null, (error) => error);
+  assert.equal(unsent.message, 'not connected', '(8) setup: a joined client without an open socket');
+  assert.equal(unsent.code, 'internal', '(8) still internal for every caller that reads only the code');
+  assert.equal(roomCommandNeverApplied(unsent), true, '(8) a request never sent (no open socket)');
+  session.dispose(); client.dispose();
+}
 for (const core of cores) core.dispose();
-console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds; a refused decline stays the seat\'s and is not said on every snapshot or frame, and a refused late one marks nothing');
+console.log('matchSessionDecline.selftest: a decline lasts its match (the room resets it, the session forgets it); a seat that cannot host says so again; the session withdraws only its own late decline or one an admission finds; a refused decline stays the seat\'s and is not said on every snapshot or frame; a refused late one marks nothing, a timed-out one is still withdrawn');

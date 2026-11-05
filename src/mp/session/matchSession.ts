@@ -31,6 +31,7 @@ import { Listeners } from '../transport/transport.ts';
 import type { Transport, Unsubscribe } from '../transport/transport.ts';
 import { CLOSE_REASON, TICK_MS, VERDICT } from '../wire/index.ts';
 import type { CloseReasonId, VerdictId, WelcomeMessage } from '../wire/index.ts';
+import { roomCommandNeverApplied } from '../room/roomClient.ts';
 import type { RoomClient } from '../room/roomClient.ts';
 import { parseP2pMatchUrl, ROOM_HOST_UNREACHABLE_AFTER_MS, ROOM_HOST_UNREACHABLE_REPEAT_MS, ROOM_MATCH_REPORT_INTERVAL_MS } from '../room/protocol.ts';
 import type { RoomHostChangedPayload, RoomMatchStartPayload, RoomMatchStatusPayload, RoomSnapshot } from '../room/protocol.ts';
@@ -295,9 +296,17 @@ export class MatchSession {
   private decline: HostDecline = null;
   /** The current decline was said with `unable` (a decline said again carries the flag it was said with). */
   private declineUnable = false;
-  /** Declines this seat said (declined: true) that the room has not answered yet. */
-  private declinesInFlight = 0;
-  /** A per-match decline was forgotten while a command saying it was in flight: the room reads it after its reset. */
+  /**
+   * Declines this seat said (declined: true) that may still reach the room's record: unanswered, or failed without
+   * certainty (a timeout, a lost socket: the room may have applied it all the same). An ack, a certain refusal
+   * (roomCommandNeverApplied) or an admission (its record supersedes every earlier command of this seat) retires one.
+   */
+  private readonly declinesMayLand = new Set<object>();
+  /**
+   * A per-match decline was forgotten at the room's reset while a say of it may still land: the record turning declined
+   * is that one. Cleared by its withdrawal, a new decline, a room no longer waiting, an admission, or a certain refusal
+   * of the last say that may land.
+   */
   private lateDecline = false;
   /** The room's record of this seat's decline at its last snapshot (null before one): a true → false edge is a reset. */
   private declineRecord: boolean | null = null;
@@ -493,16 +502,22 @@ export class MatchSession {
       if (say?.declined) this.declineUnable = say.unable === true;
     }
     if (!say) return;
-    if (say.declined) this.declinesInFlight++;
-    // A refused or unanswered decline never reaches the room's record: once none is left on its way, no late one can
-    // echo, so the mark that a late one would (lateDecline) goes too (round 2 Q4: it outlived a refusal, and the next
-    // declined record in that lobby, one other code sent through the room client, was withdrawn as if it were the late one).
-    const settled = (failed: boolean): void => {
-      if (!say.declined) return;
-      this.declinesInFlight--;
-      if (failed && this.declinesInFlight === 0) this.lateDecline = false;
-    };
-    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then(() => settled(false), () => settled(true)); // the room may predate the command
+    const declining = say.declined ? {} : null;
+    if (declining) this.declinesMayLand.add(declining);
+    void this.room.declineHost(say.declined, say.unable ? { unable: true } : {}).then( // the room may predate the command
+      // it reached the record; applied after the reset, its echo is on its way and the mark waits for that
+      () => { if (declining) this.declinesMayLand.delete(declining); },
+      (error: unknown) => {
+        // Only a say that certainly never reached the room's record (refused, never sent) is over: once none may land,
+        // no late one can echo (round 2 Q4). A timeout or a lost socket may follow a write the room made: 44af12dcec
+        // cleared the mark on every failure, so a willing seat's own late decline that the room applied after a timed-out
+        // request stayed on its record; before that, a refused one kept the mark and the next external decline went.
+        // A room refuses host_decline for the seat or the room as a whole (not_in_room; invalid_command from a room that
+        // predates it), never one say of two, so an acked say whose echo is due and a refused one do not meet at a reset.
+        if (!declining || !roomCommandNeverApplied(error) || !this.declinesMayLand.delete(declining)) return;
+        if (this.declinesMayLand.size === 0) this.lateDecline = false;
+      },
+    );
   }
 
   /**
@@ -517,6 +532,13 @@ export class MatchSession {
    */
   private syncDecline(admitted: boolean): void {
     if (!this.p2pOptions || this.room.phase !== 'joined') return;
+    if (admitted) {
+      // the room's record at an admission holds every earlier command of this seat it applied, and the admission retired
+      // the seat's old socket, whose later frames the room turns away (roomActor handleMessage): nothing said before it
+      // can land after it
+      this.declinesMayLand.clear();
+      this.lateDecline = false;
+    }
     const room = this.room.room;
     const record = room?.players.find((player) => player.id === this.room.playerId)?.hostDeclined ?? null;
     const previousRecord = this.declineRecord;
@@ -531,8 +553,8 @@ export class MatchSession {
     if (room.phase !== 'waiting') this.lateDecline = false;
     if ((this.decline === 'match' || this.decline === 'reentry') && room.phase === 'waiting') {
       this.log('info', 'the match a decline was made for is over: willing to host again', { decline: this.decline });
-      // a command saying it, still on its way, reaches the room after the reset: the record turning declined is that one
-      const late = !record && this.declinesInFlight > 0;
+      // a say that may still land reaches the room after the reset: the record turning declined is that one
+      const late = !record && this.declinesMayLand.size > 0;
       this.setDecline(null, record ? { declined: false } : undefined);
       this.lateDecline = late;
       return;
