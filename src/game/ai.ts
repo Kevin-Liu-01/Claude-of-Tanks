@@ -1305,8 +1305,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // objective, a commander's point, the support a retreat drives to); 'route' an integration's own list (an opening
   // or patrol route); 'patrol' the auto loop; 'sector', 'search' and 'level' the controller's own legs.
   let routeOwner: RouteOwner = 'none';
-  /** Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here. */
+  /**
+   * Take the waypoints for `owner`: an empty list, its cursor at the start. Every writer of the list comes here, and so
+   * does the end of the overlay whose leg the list was (round 2, U16): a level route another owner writes over ends here,
+   * superseded, with no verdict on its target (the 'levelRoute' drive owner and updateElevationLock's end test read only
+   * the level route's own list); a search leg's list taken by another owner is no longer the search's to judge
+   * (searchOwnsRoute: updateSearchLeg plans the next leg once the route that took it is used up, and counts it as no
+   * failed leg). A claim is never refused: the last writer has the list, as before.
+   */
   function claimWaypoints(owner: RouteOwner, loop: boolean): void {
+    if (levelRouting && owner !== 'level') supersedeLevelRoute();
     waypoints.length = 0;
     wpIndex = 0;
     autoPatrolBuilt = true;
@@ -1446,7 +1454,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let flankLaneCheckS = -Infinity;
   let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
-  let searching = false;                     // a search leg's route is in the waypoints
+  let searching = false;                     // the search runs: its leg's route is in the waypoints (searchOwnsRoute)
   let searchKind = '';                       // probe-visible: sector | seen | objective | sweep | wide | direct
   const searchGoal = { x: 0, z: 0 };
   let searchLegs = 0;                        // probe-visible count of legs begun
@@ -1491,6 +1499,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let levelRouteUntilS = -1;
   let levelRouteStrikes = 0;
   let levelRoutes = 0;                       // probe-visible count
+  let levelRoutesSuperseded = 0;             // probe-visible count of level routes another owner's waypoints ended
   let unbearableId: string | null = null;    // the target no gun angle or route reaches…
   let unbearableUntilS = -1;                 // …until this sim second
   let unbearableVerdicts = 0;                // probe-visible count
@@ -5148,14 +5157,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     startSearchLeg('direct', sector.x, sector.z, detMath.hypot(sector.x - position.x, sector.z - position.z), timeS);
   }
 
+  /** The waypoints are the search leg's own (beginSearchLeg wrote them), not a route another owner wrote over it. */
+  function searchOwnsRoute(): boolean {
+    return routeOwner === 'search' || routeOwner === 'sector';
+  }
+
   function updateSearchLeg(enemy: AiEntity, timeS: number): void {
     if (timeS < searchNextCheckS) return;
     searchNextCheckS = timeS + SEARCH_CHECK_S;
     pressUntilS = timeS + STALEMATE_PUSH_S; // the search keeps the pressure semantics of the old push windows
     const position = entity.state.pos;
-    const last = waypoints.length ? waypoints[waypoints.length - 1] : null;
-    const consumed = !last || (wpIndex >= waypoints.length - 1
-      && detMath.hypot(last.x - position.x, last.z - position.z) < ARRIVE_DIST_M * 2);
+    // the route in the waypoints is used up: the leg's own, or the one another owner wrote over it (round 2, U16: the
+    // leg ended with its list, claimWaypoints; the search waits for that route as it did, then plans its next leg)
+    const consumed = routeUsedUp();
     const stuck = strikeEvents - searchStrikesAtStart >= SEARCH_LEG_STRIKES;
     const overBudget = timeS - searchLegStartS > searchLegBudgetS;
     const enemyMoved = searchKind === 'sector'
@@ -5165,7 +5179,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // re-planned from here toward the same goals rather than rotated away from them
     const progressed = overBudget && !stuck && !consumed
       && detMath.hypot(searchGoal.x - position.x, searchGoal.z - position.z) < searchLegStartDistM * 0.5;
-    if ((consumed || stuck || overBudget) && !progressed) searchFailures++; // the leg ended without contact
+    // the leg ended without contact; a leg another owner's route displaced was not driven, and is judged neither way
+    if (searchOwnsRoute() && (consumed || stuck || overBudget) && !progressed) searchFailures++;
     beginSearchLeg(enemy, timeS);
   }
 
@@ -5571,9 +5586,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function endLevelRoute(): void {
     levelRouting = false;
     levelRouteTargetId = null;
-    // the leg clears only its own route: one another driver wrote over it (a commander's point, the mode's route push)
-    // is that driver's, and it stays
+    // the leg clears only its own route (a route another driver wrote over it ended the leg there: claimWaypoints)
     if (routeOwner === 'level') claimWaypoints('none', loopWaypoints);
+  }
+
+  /** Another owner took the level route's waypoints (claimWaypoints): the leg ends with them, judged neither way. */
+  function supersedeLevelRoute(): void {
+    levelRouting = false;
+    levelRouteTargetId = null;
+    levelRoutesSuperseded++;
   }
 
   function markUnbearable(candidate: AiEntity, timeS: number): void {
@@ -7354,7 +7375,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
       missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs, jockeyLegs,
-      levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
+      levelRouting, levelRoutes, levelRoutesSuperseded, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
       pressPointZ: passivePressing ? pressPoint.z : NaN,

@@ -5,6 +5,12 @@
 // exactly where the mission route does when that enemy stands by the objective, and once the objective carries its
 // mission label (missionOwnsRoute: "a route another driver left there is taken back") the search's route was kept.
 // Pins: each writer tags the list; the mission takes back that search leg; its own route is never churned.
+// Round 2 (U16): the overlays that keep a leg in the waypoints still drove and judged whatever list was in place. A point
+// written over a live level route was driven as the level route ('levelRoute' owned the hull) and judged as its end, so
+// the bot gave the live deck target up as unbearable (the reviewer's probe: 303 ticks); a search leg judged the route
+// that displaced it, and its end counted as a failed leg. claimWaypoints now ends the overlay whose list it takes. Pins:
+// [4] a point over a live level route ends the route with no verdict, and 'levelRoute' never drives a list not its
+// own; [5] a search leg displaced by another route waits for that route and counts no failure for it.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -80,9 +86,8 @@ console.log('[2] a search leg ending on the mission\'s own last point is still t
   ok(!churned, 'the mission\'s own route is kept, not re-planned every tick');
 }
 
-console.log('[3] a level route that ends clears only its own route');
-{
-  // ai.levels.selftest's deck: a 25 m cliff north of z 40, a ramp corridor up it at x 100..130
+/** ai.levels.selftest's deck: a 25 m cliff north of z 40, a ramp corridor up it at x 100..130; a floor bot under a deck enemy. */
+async function deckScene() {
   const DECK_Y = 25, CLIFF_Z = 40;
   const cliff = (z) => Math.max(0, Math.min(DECK_Y, (z - (CLIFF_Z - 2)) / 4 * DECK_Y));
   const getHeightAt = (x, z) => {
@@ -130,6 +135,12 @@ console.log('[3] a level route that ends clears only its own route');
     }
     return false;
   };
+  return { ctl, deck, run };
+}
+
+console.log('[3] a level route that ends clears only its own route');
+{
+  const { ctl, deck, run } = await deckScene();
   const routing = run(30, (info) => info.levelRouting);
   ok(routing && ctl.debugInfo().routeOwner === 'level', `the floor bot takes a route to the deck (owner ${ctl.debugInfo().routeOwner})`);
   ctl.setWaypoints([[-60, 0]], { loop: false }); // a commander's point over the leg
@@ -139,6 +150,61 @@ console.log('[3] a level route that ends clears only its own route');
   const info = ctl.debugInfo();
   ok(!info.levelRouting, 'the level route ends');
   ok(info.wpCount >= 1 && info.routeOwner === 'destination', `the commander's route stays (${info.wpCount} waypoint(s), ${info.routeOwner})`);
+}
+
+console.log('[4] a point written over a live level route ends the route: no verdict, and no other list driven as it');
+{
+  const { ctl, deck, run } = await deckScene();
+  const routing = run(30, (info) => info.levelRouting);
+  ok(routing && ctl.debugInfo().routeOwner === 'level', `the floor bot takes a route to the deck (owner ${ctl.debugInfo().routeOwner})`);
+  const verdicts = ctl.debugInfo().unbearableVerdicts;
+  ctl.setWaypoints([[-60, 0]], { loop: false }); // a commander's point over the leg; the deck target stays alive
+  const taken = ctl.debugInfo();
+  ok(!taken.levelRouting && taken.routeOwner === 'destination',
+    `the point takes the waypoints and the level route ends with it (levelRouting ${taken.levelRouting}, owner ${taken.routeOwner})`);
+  let foreign = 0, ticks = 0, levelTicks = 0, foreignOwner = '';
+  const watch = (info) => {
+    ticks++;
+    if (info.driveOwner === 'levelRoute') {
+      levelTicks++;
+      if (info.routeOwner !== 'level') { foreign++; foreignOwner ||= info.routeOwner; }
+    }
+    return false;
+  };
+  // the base's verdict came at the displaced route's end, 303 ticks on; the lock re-arms only after ELEVATION_LOCK_S (6 s)
+  run(5.5, watch);
+  const after = ctl.debugInfo();
+  ok(!deck.combat.destroyed && after.unbearableVerdicts === verdicts,
+    `the live deck target is not given up for the point's end (${after.unbearableVerdicts - verdicts} verdict(s) in ${ticks} ticks)`);
+  ok(foreign === 0, `'levelRoute' drove no list but its own (${foreign} of ${levelTicks} 'levelRoute' ticks on another list${foreignOwner ? `, first '${foreignOwner}'` : ''})`);
+  // the lock may take the long way again later: that route is the level route's own, and only it is driven as one
+  run(12, watch);
+  ok(foreign === 0, `and later (${ctl.debugInfo().levelRoutes} level route(s) begun, ${foreign} foreign 'levelRoute' ticks of ${ticks})`);
+}
+
+console.log('[5] a search leg displaced by another route waits for that route and counts no failed leg for it');
+{
+  const bot = tank('bot', 'alpha', 0, -450);
+  const enemy = tank('enemy', 'bravo', 5, 150); // hidden, far: the 25 s search heads for its sector
+  const { ctl, run } = scene(bot, [enemy], () => null);
+  const searched = run(40, (info) => info.searching);
+  const leg = ctl.debugInfo();
+  ok(searched && leg.routeOwner === 'search' && leg.searchFailures === 0,
+    `the search takes the hull (${leg.searchKind}, owner ${leg.routeOwner}, ${leg.searchLegs} leg(s))`);
+  // another driver's route over the leg (the support a retreat drives to, a mode's route push): 30 m off
+  const point = { x: bot.state.pos.x + 25, z: bot.state.pos.z + 18 };
+  ctl.setWaypoints([[point.x, point.z]], { loop: false });
+  ok(ctl.debugInfo().routeOwner === 'destination', 'the route takes the waypoints');
+  let nearest = Infinity;
+  const replanned = run(30, (info) => {
+    nearest = Math.min(nearest, Math.hypot(bot.state.pos.x - point.x, bot.state.pos.z - point.z));
+    return info.searchLegs > leg.searchLegs;
+  });
+  const next = ctl.debugInfo();
+  ok(replanned && nearest < 12, `the route is driven out before the search plans again (${nearest.toFixed(1)} m from its end)`);
+  ok(next.searchFailures === 0, `the displaced leg is no failed leg of the search's (failures ${next.searchFailures})`);
+  ok(next.routeOwner === 'search' && next.searchKind === leg.searchKind,
+    `the next leg is the search's own, from the same goals (${next.searchKind}, owner ${next.routeOwner})`);
 }
 
 if (failures) { console.error(`ai.routeOwner.selftest: ${failures} failure(s)`); process.exit(1); }
