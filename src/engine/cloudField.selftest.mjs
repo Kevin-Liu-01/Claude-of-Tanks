@@ -83,18 +83,18 @@ const shellSrc = shaders.slice(shaders.indexOf('vec4 cl2Shell('), shaders.indexO
 for (const line of [
   'vec4 e = clamp( ( weather - ( 1.0 - uLayerCover ) ) / max( uLayerCover, vec4( 0.02 ) ), 0.0, 1.0 );',
   'vec4 crown = pow( max( e, vec4( 1e-4 ) ), max( uLayerDome, vec4( 0.05 ) ) );',
-  'vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e );',
+  'vec4 rim = 0.1 * ( 1.0 - e ) * ( 1.0 - e ) + 0.2 * cl2BaseLift;',
   'vec4 roundTop = max( 1.0 - smoothstep( crown * 0.75, crown, hf ), step( 0.74, hf ) * step( vec4( 1e-4 ), uLayerAnvil ) );',
   'd *= mix( vec4( 1.0 ), smoothstep( rim, rim + 0.08, hf ) * roundTop, step( vec4( 1e-4 ), uLayerDome ) );',
 ]) assert.ok(shellSrc.includes(line), `the crown twin mirrors: ${line}`);
 /** The shell's density (one lane) at a height fraction over weather w: round 6's law, crowned when `dome` > 0. */
-function shellTwin(lane, hf, w) {
+function shellTwin(lane, hf, w, baseLift = 0) {
   const hs = smooth(0, 0.06, hf) * (1 - Math.pow(hf, 1 / Math.max(lane.bias, 0.05)));
   const admitted = lane.cover * hs;
   let d = clamp((w - (1 - admitted)) / Math.max(admitted * lane.filter, 0.02), 0, 1);
   if (lane.dome > 0) {
     const e = clamp((w - (1 - lane.cover)) / Math.max(lane.cover, 0.02), 0, 1);
-    const crown = Math.pow(Math.max(e, 1e-4), lane.dome), rim = 0.1 * (1 - e) * (1 - e);
+    const crown = Math.pow(Math.max(e, 1e-4), lane.dome), rim = 0.1 * (1 - e) * (1 - e) + 0.2 * baseLift;
     const roundTop = Math.max(1 - smooth(crown * 0.75, crown, hf), hf >= 0.74 && lane.anvil > 1e-4 ? 1 : 0);
     d *= smooth(rim, rim + 0.08, hf) * roundTop;
   }

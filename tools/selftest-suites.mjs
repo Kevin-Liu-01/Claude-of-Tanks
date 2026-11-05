@@ -1442,6 +1442,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cloudDeckCover.selftest.mjs',
     // clouds-269 (2026-11-04): the cloud field without rows or a lattice, the cumulus domed, the phones' deck unrepeated
     'src/engine/cloudField.selftest.mjs',
+    // clouds-269: every map's cumulus as the medium places it, aperiodic (round 71's ruled rolls the negative control)
+    'src/engine/cloudPlacement.selftest.mjs',
     // 2026-10-05 (the skies-and-atmosphere lane): one wind per battlefield — every map's surface wind from its source, its
     // clouds' drift veered from it (never opposed)
     'src/world/sceneWind.selftest.mjs',

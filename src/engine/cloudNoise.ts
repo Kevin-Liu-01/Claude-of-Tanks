@@ -180,7 +180,8 @@ function* equaliseHistogram(field: Float32Array): Generator<void, Float32Array, 
  * clouds-269 (the owner, 2026-11-04: "many clouds i see are in perfect lines or grrid which is noot like real cloud
  * patterns"): the wind frame's cumulus as separate clouds, never rows. One lobe per cell of a `cells`² lattice (a fifth
  * of the cells empty), centred anywhere in its cell, the lattice bent by a low-frequency warp of up to half a cell; each
- * lobe its own radius (0.45–0.85 of a cell), along-wind aspect (1–1.3) and a yaw of up to 30° off the wind, peaked like a
+ * lobe its own radius (0.45–0.85 of a cell), along-wind aspect (1–1.15: longer lobes merged into Urban's long banks) and a
+ * yaw of up to 40° off the wind, peaked like a
  * dome (1 − (d / r)², so the shell rounds every cloud over it), soft-unioned with its neighbours so they merge into masses
  * of every size; a mesoscale gate gathers them into groups and clearings, a lobe whole or gone (a half-gated lobe was a
  * fragment). Round 71's rolls (seven Gaussian ridges a tile, 1.7 km apart, a chain of lumps on each) drew every cumulus
@@ -196,14 +197,14 @@ function* windCumulus(N: number, cells: number, seed: number, out: Float32Array)
   yield* perlin2(N, 2, seed + 5, gate, 0.6); yield* perlin2(N, 5, seed + 6, gate, 0.4);
   const attributes = new Float64Array(cells * cells * 7);
   for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
-    const i = (y * cells + x) * 7, yaw = (hash3(x, y, 5, seed) - 0.5) * 1.0;
+    const i = (y * cells + x) * 7, yaw = (hash3(x, y, 5, seed) - 0.5) * 1.4;
     attributes[i] = hash3(x, y, 1, seed);
     attributes[i + 1] = hash3(x, y, 2, seed);
     attributes[i + 2] = 0.45 + 0.4 * hash3(x, y, 3, seed);
     attributes[i + 3] = hash3(x, y, 4, seed) < 1 / 5 ? 0 : 0.75 + 0.25 * hash3(x, y, 8, seed);
     attributes[i + 4] = Math.cos(yaw);
     attributes[i + 5] = Math.sin(yaw);
-    attributes[i + 6] = 1 + 0.3 * hash3(x, y, 6, seed);
+    attributes[i + 6] = 1 + 0.15 * hash3(x, y, 6, seed);
   }
   for (let y = 0; y < N; y++) {
     yield;
