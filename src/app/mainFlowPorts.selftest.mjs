@@ -197,6 +197,30 @@ function phaseListener(game, battleEntryIntent) {
   assert.equal(appLifecycle.state, 'garage');
 }
 
+// (round 2 U40) The lifecycle is the boot's from its creation: main bound its isBooting reader only with the late
+// readers, thousands of lines later, so while main's module evaluated (the splash the screen) the lifecycle read
+// 'garage' to isGarageScreenSettled and any early reader of window.__APP_LIFECYCLE.
+{
+  const start = mainSource.indexOf('\nconst appLifecycle = createAppLifecycle(');
+  assert.ok(start > 0, 'main creates the app lifecycle');
+  let depth = 0;
+  let end = start + 1;
+  for (let at = mainSource.indexOf('(', start); at < mainSource.length; at += 1) {
+    if (mainSource[at] === '(') depth += 1;
+    else if (mainSource[at] === ')' && --depth === 0) { end = mainSource.indexOf(';', at) + 1; break; }
+  }
+  const creation = mainSource.slice(start + 1, end);
+  const game = { phase: 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+  const scope = { createAppLifecycle, game, bus: { emit() {} }, bootReadiness: { ready: false }, boot: { gated: false } };
+  const appLifecycle = runMainStatements(creation, scope, 'appLifecycle');
+  assert.equal(appLifecycle.state, 'boot', 'before any late reader is bound, the splash is the screen');
+  scope.bootReadiness.ready = true;
+  scope.boot.gated = true;
+  assert.equal(appLifecycle.state, 'boot', 'the entry gate still waits on the player');
+  scope.boot.gated = false;
+  assert.equal(appLifecycle.state, 'garage');
+}
+
 // The battle frame: main's countdown ports (the warm hold's expiry beacon, the rollout on main's bus).
 {
   const game = { phase: 'battle', preBattleS: 0, result: null, player: { input: {}, combat: {} } };

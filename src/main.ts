@@ -730,7 +730,14 @@ const game: MainGameState = createGameState<
 game.battleCount = battleOrdinalBase();
 // (2026-11-02 audit F1) the app's one lifecycle: every game.phase writer goes through transitionAppPhase, which checks
 // the edge and announces phase:change here; tools read the derived state from window.__APP_LIFECYCLE (read-only)
-const appLifecycle = createAppLifecycle({ game, announce: (announcement) => bus.emit('phase:change', announcement) });
+// (round 2 U40) the boot's reader from the start: the boot screen and its latch exist before the lifecycle, so the
+// lifecycle never reads 'garage' while main's module still evaluates under the splash
+const appLifecycle = createAppLifecycle({
+  game,
+  announce: (announcement) => bus.emit('phase:change', announcement),
+  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
+  readers: { isBooting: () => !bootReadiness.ready || boot.gated },
+});
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, '__APP_LIFECYCLE', { configurable: true, get: () => appLifecycle.snapshot() });
   // (audit S3) the automation path this page runs (tools/game-readiness.mjs records it with every receipt)
@@ -3569,8 +3576,6 @@ const returnRoomToGarage = (): Promise<void> => garageReturn.leave().catch((erro
 });
 // (audit F1) the lifecycle's late-bound facts: a battle entry's cover, and a Garage return that still owes the screen
 appLifecycle.setReaders({
-  // (2026-11-02 audit S3) the splash is the screen until the boot is ready and its entry gate let the player in
-  isBooting: () => !bootReadiness.ready || boot.gated,
   isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
   isReturnOwed: () => garageReturn.state !== 'idle',
 });
