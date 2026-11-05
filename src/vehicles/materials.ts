@@ -243,9 +243,9 @@ const MARKING_TEXT_SPAN = 240;
 /**
  * A text decal's lettering (DECISIONS 2026-11-03): Glacis's outlines, spaced as painted markings are, at the decal's
  * size rule brought down where the measured run would pass MARKING_TEXT_SPAN, an outlined marking's outline
- * (glacisMarkingOutline: 6 % of the size, never under the old face's 6-texel stencil halo) stroked under the fill with
- * mitred corners clipped short so the chamfers stay crisp. `outlineWidth` is the old face's halo (and says the marking
- * has one). Hull lettering's caps stand where the shell face's did over (x, y) (SHELL_MIDDLE_CAP_LIFT); a plate's or a
+ * (glacisMarkingOutline: 6 % of the size, never under the old face's 6-texel stencil halo nor over the old face's halo on
+ * that marking) stroked under the fill with mitred corners clipped short so the chamfers stay crisp. `outlineWidth` is the
+ * old face's halo (and says the marking has one). Hull lettering's caps stand where the shell face's did over (x, y) (SHELL_MIDDLE_CAP_LIFT); a plate's or a
  * disc's centre on it. Text Glacis cannot set keeps 'Cot UI' bold at the rule's size.
  */
 function letterMarking(
@@ -259,7 +259,7 @@ function letterMarking(
       (MARKING_TEXT_SPAN - outlineWidth) / Math.max(1e-6, glacisWidth(text, { ...options, size: 1 })));
     const path = glacisPath(text, x, seat === 'hull' ? y - size * SHELL_MIDDLE_CAP_LIFT : y, { ...options, size });
     if (outlineWidth) {
-      ctx.lineWidth = glacisMarkingOutline(size);
+      ctx.lineWidth = glacisMarkingOutline(size, outlineWidth);
       ctx.lineJoin = 'miter'; ctx.miterLimit = 2; ctx.strokeStyle = outline;
       ctx.stroke(path);
     }

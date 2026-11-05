@@ -85,13 +85,20 @@ for (const [number, fits] of [['32', true], ['732', true], ['OTCO', false], ['KU
   assert.ok(Math.abs(mid - (bounds.y + bounds.height / 2 - capHeight / 0.7 * SHELL_MIDDLE_CAP_LIFT)) < 0.01,
     `${number}: its caps stand where the shell face's did (centre ${mid.toFixed(2)})`);
   assert.ok(Math.abs(SHELL_MIDDLE_CAP_LIFT - 0.0869) < 1e-4, 'Chakra Petch Bold\'s caps stood 0.087 em above Chrome\'s middle');
-  assert.ok(Math.abs(lineWidth - glacisMarkingOutline(capHeight / 0.7)) < 0.01,
-    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size, at least ${GLACIS_MARKING_OUTLINE_FLOOR} texels`);
+  const size = capHeight / 0.7;
+  assert.ok(Math.abs(lineWidth - glacisMarkingOutline(size, Math.max(2, size * 0.08))) < 0.01,
+    `${number}: its outline is ${GLACIS_MARKING_OUTLINE * 100} % of its size, at least ${GLACIS_MARKING_OUTLINE_FLOOR} texels, at most the shell face's 8 %`);
+}
+// One outline rule (Main, 2026-11-05): 6 % of the size, at least the floor, never wider than the old face's halo on the
+// same marking. A stencil's halo was 6 texels (the 150 px "O" and "UN" keep it), a text decal's 10, a tactical number's
+// 8 % of its size (the BMPT-90's 53.5 px designation takes 4.28, not the floor's 6).
+for (const [size, halo, outline] of [[150, 6, 6], [33, 6, 6], [120, 10, 7.2], [53.5, 4.28, 4.28], [90, 7.2, 6], [128, 10.24, 7.68]]) {
+  assert.ok(Math.abs(glacisMarkingOutline(size, halo) - outline) < 1e-9, `${size} px under a ${halo}-texel halo: ${outline} texels`);
 }
 // glacis-269 blind critics: at Glacis's own spacing (side bearings 28 + 28 of 1000) an 8 % outline merged neighbours
 // and clogged counters. Markings space wide: any two glyphs keep 6 % of the em of paint clear between their outlines
-// (Q's tail runs to its advance by design and is left out). That holds from 100 px up; under it the outline is the
-// floor's 6-texel halo, and small stencils' outlines meet as the old face's did (glacis-269 round 2).
+// (Q's tail runs to its advance by design and is left out). That holds from 100 px up; under it a stencil's outline is
+// the floor's 6-texel halo, and small stencils' outlines meet as the old face's did (glacis-269 round 2).
 const bearings = [...'0123456789ABCDEFGHIJKLMNOPRSTUVWXYZ-./'].map((ch) => {
   const name = CMAP[ch.codePointAt(0)];
   const glyph = GLYPHS[`${name}.ss01`] ?? GLYPHS[name]; // the markings set ss01 (glacisText.ts)
