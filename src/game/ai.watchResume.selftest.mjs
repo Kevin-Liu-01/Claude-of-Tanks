@@ -6,6 +6,15 @@
 // calls the controller's resume() with the battle's clock; after it no fallback, no shot of the watcher's, no progress
 // spike, no stalemate push or search leg from the park's silence, and the bot fights on (it keeps its target, and real
 // damage after the resume still counts).
+// Round 2 (U18): two leftovers of the same class. A round the watcher fired just before Leave that landed after it was
+// reported to the brain handed back (shooter.aiCtl) and booked as the bot's own: its miss streak reset, its
+// non-penetrations counted toward a flank, its aim error re-drawn from the bot's seeded stream. And the first tick back
+// restarted the clocks of the bot's own record in full after any hand-back, so a 0.1 s Take and Leave put the
+// stalemate push, the search gate and the passive press back by their whole windows. takeWatchSeat now parks the brain
+// with the battle's clock and Leave hands it back with the battle's next shell id: the park's stretch moves those clocks
+// on by its length, and a result of a round that left the gun before the hand-back is not the bot's. Pins: [4] the
+// watcher's rounds landing after Leave leave the bot as if they had never been reported, its own next round counts;
+// [5] a 0.1 s toggle moves the stalemate push by 0.1 s, and the target's silence as the bot saw it runs on.
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -82,19 +91,24 @@ console.log('[1] Leave hands the brain back: the stretch the watcher drove is no
 
 console.log('[2] the resume reaches the brain on every hand-off');
 {
-  const calls = [];
-  const fake = (id) => ({ id, resume: (timeS) => calls.push(`${id}@${timeS}`) });
+  const calls = [], parks = [], shellIds = [];
+  const fake = (id) => ({ id, park: (timeS) => parks.push(`${id}@${timeS}`),
+    resume: (timeS, firstShellId) => { calls.push(`${id}@${timeS}`); shellIds.push(`${id}#${firstShellId}`); } });
   const seat = tank('seat', 'alpha', 0, 0), bot = tank('bot', 'alpha', 10, 0);
   seat.aiCtl = fake('seat'); bot.aiCtl = fake('bot');
-  const game = { player: seat, tanks: [seat, bot], ruleset: { watch: { takeControl: true } }, watch: null, timeS: 3 };
+  const game = { player: seat, tanks: [seat, bot], ruleset: { watch: { takeControl: true } }, watch: null, timeS: 3, nextShellId: 5 };
   prepareWatchSeat(game, seat);
   ok(calls.length === 0, 'parking resumes nothing');
   openWatchSeats(game);
   ok(calls.join() === 'seat@3', 'the battle opening hands the human seat to its brain, resumed at the battle\'s clock');
+  game.timeS = 11;
   takeWatchSeat(game, bot);
+  ok(parks.join() === 'bot@11', `Take control parks the taken seat's brain at the battle's clock (${parks.join()})`);
   game.timeS = 17;
+  game.nextShellId = 9;
   leaveWatchSeat(game);
   ok(calls.join() === 'seat@3,bot@17', `Leave resumes the taken seat's brain at the battle's clock (${calls.join()})`);
+  ok(shellIds.join() === 'seat#5,bot#9', `each hand-back names the battle's next shell id (${shellIds.join()})`);
   const plain = tank('plain', 'alpha', 20, 0);
   plain.aiCtl = { id: 'plain' }; // a controller without resume (a stand-in) is handed back as before
   game.tanks.push(plain);
@@ -161,6 +175,90 @@ console.log('[3] a park longer than the stalemate silence is no silence of the b
       `30 s park, the target killed by the watcher: no search leg on the first tick back (searching ${info.searching}, ${info.searchKind || '-'})`);
     ok(!info.pressing, `and no push (pressing ${info.pressing})`);
   }
+}
+
+/** A watched battle whose seat and bot are brains; `trace` records the bot's inputs and decisions tick by tick. */
+function tracedBattle({ gunHeld = false } = {}) {
+  const seat = tank('seat', 'alpha', -40, -30), bot = tank('bot', 'alpha', 0, 0), enemy = tank('enemy', 'bravo', 0, 80, Math.PI);
+  const tanks = [seat, bot, enemy];
+  wire(seat, tanks, 3);
+  wire(bot, tanks, 41);
+  const game = { player: seat, tanks, ruleset: { watch: { takeControl: true } }, watch: null, timeS: 1, nextShellId: 40 };
+  prepareWatchSeat(game, seat);
+  openWatchSeats(game);
+  const trace = [];
+  const step = (seconds, drive = true, until = null) => {
+    for (let i = 0; i < Math.round(seconds / SIM_DT); i++) {
+      game.timeS += SIM_DT;
+      if (drive && bot.aiCtl) {
+        bot.aiCtl.update(SIM_DT, game.timeS);
+        const d = bot.aiCtl.debugInfo(), input = bot.input;
+        trace.push([input.throttle, input.steer, input.fire, input.aimPoint.x, input.aimPoint.z, d.mode, d.targetId,
+          d.reaction, d.missStreak, d.pressing, d.driveOwner].join('|'));
+      }
+      // the gun fires what the bot pulls (one shell id each), and reloads; a held gun never comes ready
+      if (bot.input.fire) { game.nextShellId++; bot.combat.reload.t = bot.spec.gun.reloadS; bot.input.fire = false; }
+      if (gunHeld) bot.combat.reload.t = 5;
+      else if (bot.combat.reload.t > 0) bot.combat.reload.t = Math.max(0, bot.combat.reload.t - SIM_DT);
+      bot.input.throttle = 0; bot.input.steer = 0; bot.input.brake = false;
+      updateTank(bot, field, SIM_DT, null);
+      if (until && bot.aiCtl && until(bot.aiCtl.debugInfo())) return true;
+    }
+    return false;
+  };
+  return { game, bot, enemy, step, trace, brain: bot.aiCtl };
+}
+const firstDifference = (a, b) => {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) if (a[i] !== b[i]) return i;
+  return -1;
+};
+
+console.log('[4] the watcher\'s rounds that land after Leave are not the bot\'s; its own next round is');
+{
+  // three twin battles: the watcher fires two rounds and leaves while they fly; B hears them land, C hears its own round
+  const runs = ['A', 'B', 'C'].map((name) => {
+    const run = tracedBattle();
+    run.step(2);
+    ok(takeWatchSeat(run.game, run.bot), `${name}: Take control`);
+    const watcherRounds = [run.game.nextShellId++, run.game.nextShellId++]; // fired by the watcher, still in flight
+    run.step(0.5, false);
+    ok(leaveWatchSeat(run.game) === run.bot, `${name}: Leave with both rounds in flight`);
+    if (name !== 'A') for (const shellId of watcherRounds) run.brain.notifyShellResult({ targetId: 'enemy', kind: 'nonpen', shellId });
+    if (name === 'C') run.brain.notifyShellResult({ targetId: 'enemy', kind: 'nonpen', shellId: run.game.nextShellId++ });
+    run.step(3);
+    return run;
+  });
+  const [a, b, c] = runs;
+  const diverged = firstDifference(a.trace, b.trace);
+  ok(diverged < 0, `the watcher's two non-penetrations landing after Leave change nothing (${diverged < 0
+    ? `identical for ${a.trace.length} ticks` : `first difference at tick ${diverged}: ${a.trace[diverged]} / ${b.trace[diverged]}`})`);
+  ok(firstDifference(a.trace, c.trace) >= 0, 'a round of the bot\'s own after the hand-back still reports to it');
+}
+
+console.log('[5] a short Take and Leave moves the bot\'s own clocks by the park, not by their windows');
+{
+  // the gun is held (never ready), the target seen and still: the stalemate push comes after the doctrine's 12 s silence
+  const pushAt = (toggleAtS) => {
+    const run = tracedBattle({ gunHeld: true });
+    let passiveBefore = null, passiveAfter = null;
+    if (toggleAtS !== null) {
+      run.step(toggleAtS - run.game.timeS);
+      passiveBefore = run.brain.debugInfo().targetPassiveS;
+      ok(takeWatchSeat(run.game, run.bot), `Take control at ${run.game.timeS.toFixed(2)} s`);
+      run.step(0.1, false);
+      ok(leaveWatchSeat(run.game) === run.bot, `Leave 0.1 s later`);
+      run.step(SIM_DT);
+      passiveAfter = run.brain.debugInfo().targetPassiveS;
+    }
+    const pushed = run.step(30, true, (info) => info.pressing);
+    return { pushed, atS: run.game.timeS, passiveBefore, passiveAfter };
+  };
+  const plain = pushAt(null), toggled = pushAt(6);
+  ok(plain.pushed && toggled.pushed, `both bots push (at ${plain.atS.toFixed(2)} s and ${toggled.atS.toFixed(2)} s)`);
+  ok(Math.abs(toggled.atS - plain.atS - 0.1) < 0.05,
+    `the toggle moved the push by its own 0.1 s, not by a fresh silence (${(toggled.atS - plain.atS).toFixed(2)} s later)`);
+  ok(toggled.passiveAfter >= toggled.passiveBefore,
+    `the target's stillness as the bot saw it runs on (${toggled.passiveBefore} s before the toggle, ${toggled.passiveAfter} s after)`);
 }
 
 if (failures) { console.error(`ai.watchResume.selftest: ${failures} failure(s)`); process.exit(1); }

@@ -34,6 +34,8 @@ export interface BotHitEvent {
   readonly kind: string;
   readonly damage?: number;
   readonly shellName?: string;
+  /** The round's id (the driver's hit event): a brain handed its hull back ignores rounds fired before (game/ai.ts resume). */
+  readonly shellId?: number;
 }
 
 /** A gunfire bearing heard this far off (m) is a contact hint; a hit within this of the struck hull is the team's intel. */

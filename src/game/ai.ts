@@ -153,11 +153,17 @@ interface AiController {
   /** The tier the controller was built with (the solo battle and the authority may step it down per ruleset). */
   readonly difficulty: AiDifficulty;
   /**
-   * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat): what the
-   * controller measures between its own ticks, and the clocks of its own record (its last round, its last
-   * penetration), restart from the hull as it stands now (audit M7). `timeS` is the match clock at the hand-back.
+   * Something else drives the hull from `timeS` (the match clock) until resume(): Watch mode's taken seat (round 2, U18).
    */
-  resume(timeS?: number): void;
+  park(timeS?: number): void;
+  /**
+   * Take the hull back after a stretch in which something else drove it (Watch mode's taken seat) or after a revive:
+   * what the controller measures between its own ticks restarts from the hull as it stands now (audit M7), and after a
+   * park the clocks of its own record (its last round, its last penetration) move on by the park's length. `timeS` is
+   * the match clock at the hand-back; `firstShellId` the battle's next shell id then (an earlier round's result is not
+   * this bot's).
+   */
+  resume(timeS?: number, firstShellId?: number): void;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -6847,7 +6853,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   // ---- main update ----------------------------------------------------------
 
-  let recordClocksStale = false; // a resume is waiting for the first tick back (restartRecordClocks)
+  // the park (Watch mode's Take control): when this controller stopped being stepped, and the first shell id that is
+  // this bot's again (a round with a lower id left the gun while something else had the hull)
+  let parkedAtS = NaN;
+  let ownShellsFromId = -Infinity;
+  /**
+   * The park entry point (round 2, U18): something else drives the hull from `timeS` (the match clock) until resume().
+   * The controller is not stepped meanwhile; resume() reads how long the park lasted.
+   */
+  function park(timeS?: number): void {
+    parkedAtS = timeS !== undefined && Number.isFinite(timeS) ? timeS : NaN;
+  }
   /**
    * The resume entry point (2026-11-02 audit M7). Watch mode parks a bot's controller while the watcher drives its hull
    * (game/watchSeat.ts) and hands it back on Leave; the controller was not stepped in between, so what it measures
@@ -6856,17 +6872,25 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * the watcher's last shot as this bot's (its spot's count, a miss at its target), and the stuck and dwell clocks ran
    * on from where the hull stood. They restart from the hull as it stands now; the mission re-plans from here at its
    * next step, and a leg, crest, cover point or vantage picked where the hull stood is dropped. Windows on match time
-   * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. The clocks that time this
-   * bot's own record since an event grew through the park as well, though the bot saw none of it (the watcher fired,
-   * not the bot): they restart at its first tick back (restartRecordClocks), so a park longer than the doctrine's
-   * stalemate silence is no silence of the bot's (a stalemate push, a search leg) and no stretch without a
-   * penetration (the passive press). `timeS`, the match clock at the hand-back, is the clock news handed over before
-   * that tick reads. A brain never stepped (the battle opening's hand-off) has no record to restart. Allocation-free.
+   * (the *UntilS ends) expire by themselves and stay; news queued before the park is dropped. A revive hands the same
+   * controller a new hull at its spawn and comes here too (both drivers' revive hooks), with no park.
+   * The clocks that time this bot's own record since an event (its last round, its last penetration, the target's last
+   * shot as it saw it, its last missed round, its search leg's start) stood still with the bot (round 2, U18): they move
+   * on by the park's length (shiftRecordClocks, from park()'s clock to `timeS`), so the watcher's stretch is no silence
+   * of the bot's gun (a stalemate push, a search leg, a passive press) and a short Take and Leave changes nothing. With no
+   * park (a revive) they stay as they are. `firstShellId`, the battle's next shell id at the hand-back, marks the rounds
+   * that are this bot's again: the result of one fired before it (the watcher's, landing after Leave) is not reported
+   * to the bot (notifyShellResult). `timeS`, the match clock at the hand-back, is also the clock news handed over before
+   * the next tick reads. A brain never stepped (the battle opening's hand-off) has no record to move. Allocation-free.
    */
-  function resume(timeS?: number): void {
+  function resume(timeS?: number, firstShellId?: number): void {
     clearPendingEvents();
-    if (timeS !== undefined && Number.isFinite(timeS)) nowS = timeS;
-    if (objectiveTick > 0) recordClocksStale = true;
+    const clock = timeS !== undefined && Number.isFinite(timeS);
+    if (clock) nowS = timeS;
+    if (firstShellId !== undefined && Number.isFinite(firstShellId)) ownShellsFromId = Math.max(ownShellsFromId, firstShellId);
+    const parkS = clock && Number.isFinite(parkedAtS) ? Math.max(0, timeS - parkedAtS) : 0;
+    parkedAtS = NaN;
+    if (objectiveTick > 0 && parkS > 0) shiftRecordClocks(parkS);
     const st = entity.state;
     lastHp = combatHitPoints(entity);
     burstDamage = 0;
@@ -6903,15 +6927,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     missionRouteX = missionRouteZ = Infinity;
     missionRouteAtS = -Infinity;
   }
-  /** The first tick after a resume: the bot's own record restarts here (see resume). */
-  function restartRecordClocks(timeS: number): void {
-    recordClocksStale = false;
-    lastFiredAtS = timeS;        // the stalemate push, the search gate and the settle's starved test count silence from here
-    lastPenAtS = timeS;          // the passive press waits PASSIVE_PRESS_NO_PEN_S of its own shells again
-    targetActivityId = null;     // the target's stillness and last shot re-baseline at the next look (updateTargetActivity)
-    missStreak = 0;              // rounds in a row from one spot: the watcher's rounds broke the row
-    missStreakTargetId = null;
-    if (searching) searchLegStartS = timeS; // a search leg's budget is the bot's driving, not the park
+  /** The park's stretch is no time of the bot's own record: the clocks timed since its own events move on by it. */
+  function shiftRecordClocks(parkS: number): void {
+    lastFiredAtS += parkS;       // the stalemate push, the search gate and the settle's starved test
+    lastPenAtS += parkS;         // the passive press (PASSIVE_PRESS_NO_PEN_S of its own shells)
+    targetLastShotS += parkS;    // the target's silence as this bot last saw it (targetPassive)
+    missLastShotS += parkS;      // the miss streak's settle (missedOut)
+    if (searching) searchLegStartS += parkS; // a search leg's budget is the bot's driving, not the park
   }
 
   function update(dt: number, timeS: number): void {
@@ -6925,7 +6947,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateTick(dt: number, timeS: number): void {
     if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
-    if (recordClocksStale) restartRecordClocks(timeS);
     const input = entity.input;
     const cb = entity.combat;
     const allyYieldingPrev = allyYielding;
@@ -7176,11 +7197,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * Queued until the drivers' flush (see the between-tick inputs above).
    * @param {object} hitEvent HitEvent (§2.6)
    */
-  function notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName'>>): void {
+  function notifyShellResult(
+    hitEvent: Pick<HitEvent, 'targetId' | 'kind'> & Partial<Pick<HitEvent, 'shellName' | 'shellId'>>,
+  ): void {
     // A roof-gun bounce says nothing about the cannon's penetration solution.
     // Do not re-roll main aim or trigger a flank for each automatic-gun bullet.
     if (!hitEvent) return;
     if (hitEvent.shellName && !spec.gun.shells.some(shell => shell.name === hitEvent.shellName)) return;
+    // a round that left the gun before this controller had the hull back (the watcher's, landing after Leave) is not
+    // this bot's (resume's firstShellId; round 2, U18)
+    if (hitEvent.shellId !== undefined && hitEvent.shellId < ownShellsFromId) return;
     if (draining) { applyShellResult(hitEvent.targetId ?? null, hitEvent.kind); return; }
     const event = pendingSlot(PENDING_SHELL_RESULT, hitEvent.targetId ?? '');
     event.targetId = hitEvent.targetId ?? null;
@@ -7336,6 +7362,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     notifyFriendlyBlocked,
     setOrder,
     applyPendingNews: drainPendingEvents,
+    park,
     resume,
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,

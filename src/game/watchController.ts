@@ -46,6 +46,9 @@ interface WatchGame<TEntity extends WatchEntity> {
   ruleset: { readonly watch?: WatchRules | null; readonly respawnS: number | null };
   watch?: WatchSession | null;
   world?: unknown;
+  /** The battle's clock and next shell id: a taken seat's brain parks and is handed back on them (watchSeat.ts). */
+  timeS?: number;
+  nextShellId?: number;
 }
 
 interface WatchRigPort {
