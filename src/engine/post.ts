@@ -118,6 +118,7 @@ import {
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 import { createNamedHolds, type NamedHold } from './namedHolds.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 /**
  * (2026-11-02 audit R3) who holds the adaptive governor off. The governor measures only while none does:
@@ -2799,6 +2800,12 @@ export function createPost(
   // graph; until it arrives, or without the timer extension, the policy decides on the frame cadence alone.
   let gpuFrameTimer: GpuFrameTimer | null = null;
   let gpuFrameTimerRequested = false;
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failure was the cadence rules alone for the session;
+  // now the next decision window that sees the frozen world asks again under the one policy (at once after one failure,
+  // then past its backoff; the kept failure in between)
+  const gpuFrameTimerLoad = createLazyChunk((): Promise<void> => import('./gpuFrameTimer.ts').then((module) => {
+    gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
+  }));
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let telemetryClock = 0;
@@ -2988,11 +2995,10 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
+    if (gpuFrameTimerLoad.state === 'failed') gpuFrameTimerRequested = false;
     if (!gpuFrameTimerRequested && scene.children.some((o) => o.userData.matrixTraversalFrozen === true)) {
       gpuFrameTimerRequested = true;
-      import('./gpuFrameTimer.ts').then((module) => {
-        gpuFrameTimer = module.createGpuFrameTimer(renderer.getContext() as WebGL2RenderingContext);
-      }, () => { /* the cadence rules alone */ });
+      void gpuFrameTimerLoad.load(); // the cadence rules alone until it lands, and while it fails
     }
     const action = qualityPolicy.evaluate({
       clockSeconds: dynClock,

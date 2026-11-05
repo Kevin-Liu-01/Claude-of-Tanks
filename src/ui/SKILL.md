@@ -97,8 +97,22 @@ an in-page retry of a chunk: its failure marks the trigger with
 `components/loadFailure.ts` `markLoadFailed` (a danger dot that needs no chunk),
 its next press goes through `pressFailed` (the page reloads once online, never
 by itself), and a page's enhancement asks once through `importWhenOnline`
-(`node src/ui/components/loadFailure.selftest.mjs`). Every lazy chunk's load
-is one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6): a failed
+(`node src/ui/components/loadFailure.selftest.mjs`). A lazy chunk's load is
+one `app/lazyChunk.ts` `createLazyChunk` (2026-11-02 audit R6), held directly
+or through `app/lazyRuntimeOwner.ts` (the access facades' owner of a module and
+the runtime made from it); a page that does not boot the policy's chunk (the
+docs, the 404 page) takes the kit's opener rule through `importWhenOnline`. The
+memos that differ are named, each with its reason, in `lazyChunkSites`' KNOWN
+list (a memo cleared on failure whose callers ask once per lifecycle edge or
+open, never per frame, tick, pointer move or focus move; an initialization or a
+join over loads the policy holds; the Studio's module memo over its opener
+chunk; a stylesheet alone; a data fetch; the audio mixer's chunk). The selftest
+fails a new hand-made memo, facade or latch in the spellings it reads (its
+comments list them); another spelling goes unseen, so a new lazy load starts
+from `createLazyChunk`.
+A kit facade is a chunk too: the custom camouflage studio's is an opener's
+(its intent preload marks the swatch and never asks offline), the settings
+panel's is a default-policy chunk because every battle entry awaits it. A failed
 stylesheet (in any part of the load: a load of several parts settles them with
 `importAll`), a removed chunk (a hashed chunk that answers 404, which also shows
 the watchdog's reload action), or any failure of an opener's chunk

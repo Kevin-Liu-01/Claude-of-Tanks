@@ -48,9 +48,10 @@ const gallery = source('../gallery/gallery.ts');
 // ---- the vehicle load's failure edge, and (16-audio-gallery item 8) the half-swapped specimen it used to leave
 {
   const wrapper = lift(gallery, 'async function loadTank(');
-  const run = async ({ superseded = false, shown = 'm1a1_abrams_hc', pressed = 'leopard2_proto', lab = true, swapped = false, marked = [] } = {}) => {
+  const run = async ({ superseded = false, shown = 'm1a1_abrams_hc', pressed = 'leopard2_proto', lab = true, swapped = false, marked = [], options, online = true } = {}) => {
     const calls = [];
     const scope = {
+      navigator: { onLine: online },
       loadVersion: 4,
       selectedId: shown,
       shownId: shown,
@@ -67,7 +68,7 @@ const gallery = source('../gallery/gallery.ts');
         throw new TypeError('Failed to fetch dynamically imported module: /assets/leopard-12345678.js');
       },
       // the kit's press on a row whose load failed: true (it reloads once online), so the load stops there
-      pressFailed: (row) => { if (row?.failed) { calls.push(`reload ${row.id}`); return true; } return false; },
+      pressFailed: (row) => { if (!row?.failed) return false; if (online) calls.push(`reload ${row.id}`); return true; },
       rowFor: (id) => (id ? { id, failed: scope.failedLoads.has(id) } : null),
       renderDossier: (record) => calls.push(`dossier ${record.id}`),
       markSelectedRow: () => calls.push(`row ${scope.selectedId}`),
@@ -79,7 +80,7 @@ const gallery = source('../gallery/gallery.ts');
       console: { warn: () => calls.push('warn') },
     };
     const loadTank = new Function('scope', `with (scope) { ${wrapper}\nreturn loadTank; }`)(scope);
-    await loadTank(pressed);
+    await loadTank(pressed, options);
     return { calls, scope };
   };
   {
@@ -93,6 +94,15 @@ const gallery = source('../gallery/gallery.ts');
   assert.deepEqual((await run({ superseded: true })).calls, ['load leopard2_proto'], 'a superseded load leaves the newer load\'s silhouette alone');
   assert.deepEqual((await run({ marked: ['leopard2_proto'] })).calls, ['reload leopard2_proto'],
     "a failed vehicle's next press reloads (the kit's opener rule): its load is not asked again in the page");
+  // (round 2, the loaders residual) a Back or Forward move to a failed tank's address: online the page reloads there; offline
+  // it cannot, and the address (which the move had put on the failed tank) goes back to the tank still shown
+  assert.deepEqual((await run({ marked: ['leopard2_proto'], options: { history: true } })).calls, ['reload leopard2_proto'],
+    'online, a history move to a failed tank reloads at its address');
+  assert.deepEqual((await run({ marked: ['leopard2_proto'], options: { history: true }, online: false })).calls, ['url m1a1_abrams_hc'],
+    'offline, a history move to a failed tank puts the address back on the tank shown (it stayed on the failed id)');
+  assert.deepEqual((await run({ marked: ['leopard2_proto'], online: false })).calls, [], 'offline, a press waits and the row keeps saying so');
+  assert.match(gallery, /window\.addEventListener\('popstate', \(\) => \{[\s\S]{0,200}loadTank\([^\n]*history: true \}\);/,
+    'the history move says it is one');
   {
     const { calls, scope } = await run({ shown: null, lab: false });
     assert.deepEqual(calls, ['load leopard2_proto', 'hide hidden', 'warn', 'marked leopard2_proto', 'toast loadFailed.generic error'],

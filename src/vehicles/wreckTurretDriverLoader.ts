@@ -10,6 +10,7 @@
  * turret to the body once it lands; a failed load is a declared state, reported once per attempt, never swallowed.
  */
 import type { WreckTurretDriver, WreckTurretDriverOptions } from './wreckTurretDriver.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type DriverModule = typeof import('./wreckTurretDriver.ts');
 
@@ -32,33 +33,22 @@ export function createWreckTurretDriverLoader(
   importer: () => Promise<DriverModule>,
   report: (message: string, error: unknown) => void = (message, error) => console.warn(message, error),
 ): WreckTurretDriverLoader {
-  let loaded: DriverModule | null = null;
-  let loading: Promise<DriverModule> | null = null;
-  let state: WreckTurretDriverLoadState = 'idle';
-  let error: unknown = null;
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed load was asked again at once by every preload;
+  // now under the one policy (at once after one failure, then past its backoff; a removed chunk shows the reload action),
+  // reported once per attempt that asked
+  const chunk = createLazyChunk(() => importer().catch((failure: unknown) => {
+    report('[wreck turret] the turret physics failed to load: turrets keep the scripted pop until a retry lands', failure);
+    throw failure;
+  }));
   return {
-    get state() { return state; },
-    get error() { return error; },
+    get state() { return chunk.state === 'ready' ? 'loaded' : chunk.state; },
+    get error() { return chunk.error; },
     preload() {
-      if (loaded) return Promise.resolve();
-      if (!loading) {
-        state = 'loading';
-        error = null;
-        loading = importer().then(
-          (module) => { loaded = module; state = 'loaded'; return module; },
-          (failure: unknown) => {
-            loading = null;
-            state = 'failed';
-            error = failure;
-            report('[wreck turret] the turret physics failed to load: turrets keep the scripted pop until a retry lands', failure);
-            throw failure;
-          },
-        );
-      }
-      return loading.then(() => undefined);
+      if (chunk.value) return Promise.resolve();
+      return chunk.load().then(() => undefined);
     },
     create(options) {
-      return loaded ? loaded.createWreckTurretDriver(options) : null;
+      return chunk.value ? chunk.value.createWreckTurretDriver(options) : null;
     },
   };
 }

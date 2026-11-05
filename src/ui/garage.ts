@@ -2175,10 +2175,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           requeueThumb: requeueTankThumbs,
         });
       });
-      // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch
+      // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch. (round 2 U35) Its chunk is
+      // an opener's (customCamoStudioAccess.ts keeps any failure): an intent never spends that one try offline, and one that
+      // failed marks the swatch as a failed press does, so the next press reloads (a loaded or failed studio asks nothing)
       const preloadStudio = (event: Event): void => {
         if (!eventElement(event)?.closest(`[data-id="${CUSTOM_CAMO_ID}"]`)) return;
-        customCamoStudioAccess?.preload().catch(() => { /* the press says so */ });
+        if (customCamoStudioFailed || customCamoStudioAccess?.peek() || navigator.onLine === false) return;
+        customCamoStudioAccess?.preload().catch(() => {
+          customCamoStudioFailed = true;
+          markLoadFailed([makeOwnOption()], t('garage.camo.customStudioRetryTitle'));
+        });
       };
       host.addEventListener('pointerover', preloadStudio);
       host.addEventListener('focusin', preloadStudio);

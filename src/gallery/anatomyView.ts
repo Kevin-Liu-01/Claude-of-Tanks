@@ -427,7 +427,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   function ensureScene(nextVehicle: AnatomyVehicle): void {
     if (anatomy && vehicle?.key === nextVehicle.key) return;
     const keep = pickKey(selected);
-    anatomy?.dispose();
+    if (anatomy) retire(anatomy, linked);
     restoreExterior();
     vehicle = nextVehicle;
     if (staged?.key === nextVehicle.key) {
@@ -452,8 +452,16 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   // returned early there, so show built the scene in place and its programs linked in its first frame (click-perf-248).
   let staged: { key: string; scene: AnatomyScene; linked: Promise<void> } | null = null;
   function dropStaged(): void {
-    staged?.scene.dispose();
+    if (staged) retire(staged.scene, staged.linked);
     staged = null;
+  }
+  /** A scene off the stage at once, disposed once its programs' link settles (round 2 U35). three's compileAsync polls
+   *  each material's program until it is ready, and reads a disposed material's as undefined and throws in its timer, so
+   *  a scene disposed mid-link (dropped by the next state's prepare, replaced by ensureScene, released) left its link,
+   *  and every prepare awaiting it, unsettled: the Gallery's loading toast stayed and waitAnatomyReady hung. */
+  function retire(scene: AnatomyScene, link: Promise<void> | null): void {
+    scene.frames.root.removeFromParent();
+    if (link) void link.then(() => scene.dispose()); else scene.dispose();
   }
   function linkPrograms(layer: AnatomyScene, exteriorRoot: THREE.Object3D): Promise<void> {
     const { renderer, scene, camera } = host;
@@ -938,7 +946,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     release() {
       view.hide();
       dropStaged();
-      anatomy?.dispose();
+      if (anatomy) retire(anatomy, linked);
       anatomy = null;
       vehicle = null;
       badgeItems.length = 0;

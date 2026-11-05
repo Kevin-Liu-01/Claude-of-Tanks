@@ -978,6 +978,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/paintCaches.selftest.mjs',
     // 2026-11-02 audit R6: the Gallery's load failure edge and latest-show waiters; the HUD editor's backdrop decode
     'src/ui/cachedFailures.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): no Gallery anatomy scene is disposed mid-link, so every prepare settles
+    'src/gallery/anatomyViewLinkDispose.selftest.mjs',
     // 2026-11-02 audit R6: a failed interior-fill, turret-ring or prebuild chunk is asked again; the builder predicate needs the fills
     'src/vehicles/builderLoadFailure.selftest.mjs',
     'src/dev/debugSurface.selftest.mjs',
@@ -1197,6 +1199,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/optionalProduction.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
     'src/presentation/notFound.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the 404 search asks once, never offline; a failure marks the field, its press reloads
+    'src/presentation/notFoundSearchLoad.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'tools/marketing-shots/og-images.selftest.mjs',
     // og-r2: a tank link shares its tank (the table, the cards, the rewrite)
@@ -1445,6 +1449,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldBuildRecordPhases.selftest.mjs', // 2026-11-02 audit R1: one build phase; prefetch after cancel; live release keep list
     'src/world/worldBuildRollback.selftest.mjs', // 2026-11-02 audit R1: a build ended part way releases what it built
     'src/world/worldBuildPresetClass.selftest.mjs', // 2026-11-02 audit R1: a cached world is reused only under its own preset
+    // 2026-11-02 audit R6 (round 2 U35): a failed map module transfer no longer fails every later world build
+    'src/world/worldModuleLoadFailure.selftest.mjs',
     'src/world/worldBuildCloseContracts.selftest.mjs', // 2026-11-02 audit R1: vegetation closes on cancel; ring stage kept; no late atlas draw
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
@@ -1536,6 +1542,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): a failed light model or cloudscape chunk is asked again by the next battle
+    'src/engine/battleAtmosphereChunkReask.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
     'tools/night-fixture-census.selftest.mjs',
@@ -1629,6 +1637,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
     'src/engine/shadowDepthKinds.selftest.mjs', // 2026-10-12: one shadow depth material per caster kind (the perf stream)
+    // 2026-11-02 audit R6 (round 2 U35): a failed caster-kind or static-cache chunk is asked again past the policy's backoff
+    'src/engine/shadowChunkLoadFailure.selftest.mjs',
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
@@ -2091,6 +2101,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
     'src/game/consumableLoadout.selftest.mjs',
+    // 2026-11-02 audit R6 (round 2 U35): the consumables' smoke table is asked again under the lazy-chunk policy, never per hover
+    'src/ui/garageSmokeTableLoad.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point

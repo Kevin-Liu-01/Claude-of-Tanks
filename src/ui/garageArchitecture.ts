@@ -6,6 +6,7 @@ import type {
   GarageEnvironmentAssetLibrary,
   GarageEnvironmentBuild,
 } from './garageEnvironmentKit.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface ArchitectureEngineContext {
   anisotropy?: number;
@@ -340,7 +341,6 @@ export function createGarageArchitectureController(
   let active: GaragePackRecord | null = null;
   let selected: GarageVariant | null = null;
   let lastBuildMs = 0;
-  let environmentKitPromise: ReturnType<typeof loadEnvironmentKit> | null = null;
   let selectionGeneration = 0;
   // Renderer-lifetime upload latch, replaced (not cleared) when the WebGL context is lost: a restored context holds
   // none of these uploads. `rendererEpoch` lets a warm in flight across a loss land renewable instead of warmed.
@@ -377,19 +377,11 @@ export function createGarageArchitectureController(
     }
   };
 
-  const getEnvironmentKit = (): ReturnType<GarageEnvironmentKitLoader> => {
-    if (!environmentKitPromise) {
-      const request = loadKit();
-      const retryable = request.catch((error) => {
-        // A transient chunk/network failure must not poison every subsequent
-        // Garage selection for the lifetime of the page.
-        if (environmentKitPromise === retryable) environmentKitPromise = null;
-        throw error;
-      });
-      environmentKitPromise = retryable;
-    }
-    return environmentKitPromise;
-  };
+  // A transient chunk/network failure must not poison every subsequent Garage selection for the lifetime of the page:
+  // (2026-11-02 audit R6, round 2 U35) the kit is one app/lazyChunk.ts chunk, asked again under the one policy (at once
+  // after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every selection
+  const environmentKit = createLazyChunk(loadKit);
+  const getEnvironmentKit = (): ReturnType<GarageEnvironmentKitLoader> => environmentKit.load();
 
   const ensureAssets = (
     kit: Awaited<ReturnType<typeof loadEnvironmentKit>>,

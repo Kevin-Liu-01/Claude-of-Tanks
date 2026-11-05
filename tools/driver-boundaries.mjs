@@ -56,7 +56,7 @@ const MAIN_LOCAL_ENTRIES = Object.freeze(['beginLocalBattleEntry', 'beginLocalBa
  * module whose closure reaches the client stack. A new one is added here on purpose.
  */
 const MAIN_ONLINE_DECLARATIONS = Object.freeze([
-  'importMultiplayerV2Modules', 'loadMultiplayerV2Composition', 'loadMultiplayerLobby', 'multiplayerLobby', 'onlineMatch',
+  'importMultiplayerV2Modules', 'loadMultiplayerV2Composition', 'lobbyIntentChunk', 'loadMultiplayerLobby', 'multiplayerLobby', 'onlineMatch',
   'onlineMatchActive', 'onlinePump', 'multiplayerAppPorts', 'networkBattleIntentCover', 'beginMultiplayerV2Battle',
   'presentationScenePorts', 'loadPlayMenuModule', 'playSurface', 'startupIntent',
 ]);

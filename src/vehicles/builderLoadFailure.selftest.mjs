@@ -81,6 +81,30 @@ const { finalized } = await import(FINALIZE);
 const { started } = await import(PREBUILD);
 const leopard = 'leopard2_proto';
 const sibling = 'leo2_revolution';
+
+// ---- (round 2 U35) a group's own backoff counts only its own chunk: while the profile kit failed, every ask of a group
+// failed with the kit's error and raised that group's count and backoff (its chunk wrapped the kit), so once another
+// ask brought the kit back, the group kept failing at once with the stale kit error until its own longer backoff passed
+// (up to a minute). Now the kit is awaited first and a group's chunk is asked only once the kit is in.
+{
+  const { FLEET_GROUP_BY_ID } = await import('./fleetManifest.ts');
+  const idOf = (group) => Object.keys(FLEET_GROUP_BY_ID).find((id) => FLEET_GROUP_BY_ID[id] === group);
+  const italian = idOf('italy'), swedish = idOf('sweden');
+  assert.ok(italian && swedish, 'two groups the later cases do not use');
+  failing.add('./profiles/kit.ts', 3);
+  await assert.rejects(ensureTankBuilder(italian), /profiles\/kit\.ts/); // the kit's first failure
+  await assert.rejects(ensureTankBuilder(italian), /profiles\/kit\.ts/); // asked again at once: its second
+  clock = 2_000;
+  await assert.rejects(ensureTankBuilder(swedish), /profiles\/kit\.ts/); // past the kit's 2 s backoff: its third
+  clock = 4_000;
+  await assert.rejects(ensureTankBuilder(italian), /profiles\/kit\.ts/); // the kit's 4 s backoff stands: its kept failure
+  clock = 6_000;
+  await ensureTankBuilder(swedish); // past the kit's backoff: the kit loads, and the Swedish group with it
+  const late = await ensureTankBuilder(italian).then(() => null, (error) => error);
+  assert.equal(late, null, `the kit is in, so the Italian group loads on its first ask (it waited out its own inflated backoff with the kit's stale error: ${late?.message})`);
+  assert.equal(isTankBuilderReady(italian), true);
+}
+
 {
   failing.add('interiorFillGroups/leopard.generated.ts');
   await assert.rejects(ensureTankBuilder(leopard), /dynamically imported module/);

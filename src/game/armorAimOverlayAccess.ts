@@ -1,5 +1,5 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ArmorAimOverlayRuntime } from './armorAimOverlay.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 export type {
   ArmorAimOverlayRuntime,
@@ -31,21 +31,10 @@ export function createArmorAimOverlayAccess(
   load: () => Promise<ArmorAimOverlayModule> = loadDefaultOverlay,
 ): ArmorAimOverlayAccess {
   let current: ArmorAimOverlayRuntime | null = null;
-  let pending: Promise<ArmorAimOverlayRuntime> | null = null;
-
-  const preload = (): Promise<ArmorAimOverlayRuntime> => {
-    if (current) return Promise.resolve(current);
-    if (pending) return pending;
-    const request = load().then((module) => {
-      current = module.createArmorAimOverlay();
-      return current;
-    }).catch((error: RuntimeValue) => {
-      if (pending === request) pending = null;
-      throw error;
-    });
-    pending = request;
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => load().then((module) => (current = module.createArmorAimOverlay())));
+  const preload = (): Promise<ArmorAimOverlayRuntime> => chunk.load();
 
   return {
     preload,

@@ -68,7 +68,9 @@ if (!/createFxRuntimeAccess(?:<[^>]+>)?\(\{[\s\S]{0,260}loadModule:\s*\(\)\s*=>\
     || !/const ensureFxRuntime = fxRuntimeAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate FX import and construction ownership');
 }
-if (!/if \(modulePromise === request\) modulePromise = null/.test(fxRuntimeAccess)
+// (2026-11-02 audit R6, round 2 U35) the module stage is one app/lazyChunk.ts chunk (a failure is asked again under the
+// one policy), and the runtime stage, an initialization over it, is made again after a failure
+if (!/const moduleChunk = createLazyChunk\(\(\) => Promise\.resolve\(\)\.then\(loadModule\)\);/.test(fxRuntimeAccess)
     || !/if \(runtimePromise === request\) runtimePromise = null/.test(fxRuntimeAccess)) {
   throw new Error('FX module and runtime failures must remain independently retryable');
 }
@@ -106,7 +108,7 @@ if (!/createKillcamAccess\(\{[\s\S]{0,300}loadModule:\s*\(\)\s*=>\s*import\(['"]
     || !/const ensureKillcamRuntime = killcamAccess\.ensureRuntime/.test(main)) {
   throw new Error('the composition root must delegate killcam import and runtime ownership');
 }
-if (!/if \(modulePromise === request\) modulePromise = null/.test(killcamAccess)
+if (!/const moduleChunk = createLazyChunk\(\(\) => Promise\.resolve\(\)\.then\(loadModule\)\);/.test(killcamAccess)
     || !/if \(runtimePromise === request\) runtimePromise = null/.test(killcamAccess)) {
   throw new Error('killcam module and runtime failures must remain independently retryable');
 }
