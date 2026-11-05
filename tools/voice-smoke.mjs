@@ -307,6 +307,10 @@ try {
     if (a.lowShare > 0.12) fail(`${lang}: radio low cut missing (${(a.lowShare * 100).toFixed(1)}% below 150 Hz)`);
   }
   await page.evaluate(() => window.__COT_AUDIO.forceCrewLanguage(null));
+  // One pack is held at a time (crewRadio.setLanguage drops the one it leaves): the national crew's pack decodes again
+  // before the result line below can be said.
+  await page.waitForFunction('window.__COT_AUDIO.crewLanguage === "ru" && window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 })
+    .catch(() => fail('the national crew (ru) pack did not decode again after the pack sweep'));
   await page.evaluate(() => window.__P.emit('ui:volumes', { master: 0.8, engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }));
   const library = await page.evaluate(() => window.__COT_AUDIO.library());
   report.library = library;
