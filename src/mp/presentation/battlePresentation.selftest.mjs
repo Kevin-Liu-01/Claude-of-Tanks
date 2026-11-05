@@ -613,6 +613,9 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
 // The persistent destroyed list reaches the presentation one interpolation delay ahead of the presented world. Before this
 // lane it felled every listed prop on arrival — early, toward +Z, at speed 0 — and the `world_prop_destroyed` event found
 // nothing left to fell; a late joiner watched every earlier fall replay; a host migration's re-sends crunched twice.
+// (round 2 of the 2026-11-02 audit, U27) A listed prop lies as it fell: the list's falls (wire 11) give the cause and the
+// direction; a list without them (an older frame, a migration's restored entries) lays it as the withheld live event does,
+// on its own fall axis (0, 0) as a ram. Before, every settled prop lay as a ram toward +Z (0, 1): this receipt pinned it.
 {
   const propObstacles = Array.from({ length: 6 }, (_, index) => ({ min: [index * 4, 0, 40], max: [index * 4 + 1, 2, 41], crushed: false, crushable: true, crushMin: 0, shape2: null }));
   const propCalls = [];
@@ -629,8 +632,14 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   const crushFx = () => propFx.filter((event) => event.type === 'prop:crushed').length;
   const propFrame = (overrides) => frame({ destroyedPending: (index) => owed.has(index), ...overrides });
   // a late joiner's first frame: the list is settled state — final pose, no fall, no sound; the prop whose event is owed waits for it
-  props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destructibleRevision: 3 }));
-  assert.deepEqual(propCalls, [[0, 0, 1, 0, 'ram', true], [4, 0, 1, 0, 'ram', true]], 'what predates the view lands settled; the owed prop is left to its event');
+  // prop 0 a ram toward -X, prop 4 a shell toward -Z (codes: cause << 6 | heading in 64ths of a turn, sim/obstacleFall.ts)
+  props.applyFrame(propFrame({ tick: 500, destroyed: [0, 2, 4], destroyedFalls: [(1 << 6) | 48, (1 << 6) | 16, (2 << 6) | 32], destructibleRevision: 3 }));
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.equal(propCalls.length, 2, 'what predates the view lands settled; the owed prop is left to its event');
+  assert.ok(propCalls[0][0] === 0 && near(propCalls[0][1], -1) && near(propCalls[0][2], 0) && propCalls[0][4] === 'ram' && propCalls[0][5] === true,
+    `a settled prop lies as it fell: a ram toward -X (${propCalls[0]})`);
+  assert.ok(propCalls[1][0] === 4 && near(propCalls[1][1], 0) && near(propCalls[1][2], -1) && propCalls[1][4] === 'shell' && propCalls[1][5] === true,
+    `a shell's fall keeps its cause and its direction (${propCalls[1]})`);
   assert.equal(crushFx(), 0, 'settled state makes no sound');
   assert.equal(propObstacles[2].crushed, false);
   // the owed event arrives: a live fall with the authority\'s direction and speed, and the crunch
@@ -651,11 +660,13 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(propCalls.at(-1), [3, 0, 1, 900, 'shell', false]);
   // the new host\'s list reads lower for a moment (a revision regression across a migration) yet names a prop this view
   // has not laid down: the content decides, not the number
-  props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destructibleRevision: 2 }));
-  assert.deepEqual(propCalls.at(-1), [1, 0, 1, 0, 'ram', true]);
-  // a frame without the owed-prop predicate (a recorder, an older client) still settles its list
+  // (its fall withheld from this viewer: none, the prop's own axis as a ram)
+  props.applyFrame(propFrame({ tick: 600, destroyed: [0, 1], destroyedFalls: [(1 << 6) | 48, 0], destructibleRevision: 2 }));
+  assert.deepEqual(propCalls.at(-1), [1, 0, 0, 0, 'ram', true], 'a fall this viewer may not read lies on the prop\'s own axis');
+  // a frame without the owed-prop predicate or the falls (a recorder, an older frame) still settles its list, on each
+  // prop's own axis: never toward +Z
   props.applyFrame(frame({ tick: 700, destroyed: [0, 1, 5], destructibleRevision: 4 }));
-  assert.deepEqual(propCalls.at(-1), [5, 0, 1, 0, 'ram', true]);
+  assert.deepEqual(propCalls.at(-1), [5, 0, 0, 0, 'ram', true]);
   assert.equal(crushFx(), 2, 'only the two live events sounded');
   props.dispose();
 }

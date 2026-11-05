@@ -12,6 +12,7 @@
  * largest possible set is 8 KB as a bitset, so the encoder never throws on a legal set, however long the match.
  */
 import { WireError, type ByteReader, type ByteWriter } from './bytes.ts';
+import { isObstacleFallCode } from '../../sim/obstacleFall.ts';
 
 /** The highest obstacle index a destroyed set may name. */
 export const MAX_DESTROYED_INDEX = 0xffff;
@@ -84,4 +85,43 @@ export function readDestroyedSet(reader: ByteReader): number[] {
     return out;
   }
   throw new WireError('range', `unknown destroyed set form ${form}`);
+}
+
+/**
+ * Each listed index's fall (wire 11, 2026-11-05, round 2 of the 2026-11-02 audit, U27; src/sim/obstacleFall.ts), right
+ * after a set that names at least one index: `u8 form`, then form 0 (every fall none: nothing follows) or form 1 (one fall
+ * byte per index, in the set's ascending order). A set that names nothing carries no falls. A keyframe's whole field
+ * felled costs a byte an obstacle more (Monsoon's 9,119 crushable props: 9 KB).
+ */
+const FALLS_NONE = 0;
+const FALLS_BYTES = 1;
+
+export function writeDestroyedFalls(writer: ByteWriter, falls: readonly number[] | null, count: number): void {
+  if (count <= 0) return;
+  let any = false;
+  if (falls) {
+    for (let position = 0; position < count; position++) {
+      const code = falls[position] ?? 0;
+      if (!isObstacleFallCode(code)) throw new WireError('range', `destroyed fall ${code} is no fall code`);
+      if (code !== 0) any = true;
+    }
+  }
+  if (!any) { writer.u8(FALLS_NONE); return; }
+  writer.u8(FALLS_BYTES);
+  for (let position = 0; position < count; position++) writer.u8(falls![position] ?? 0);
+}
+
+/** The falls after a set of `count` indices: null when they are all none (form 0, or an empty set). */
+export function readDestroyedFalls(reader: ByteReader, count: number): number[] | null {
+  if (count <= 0) return null;
+  const form = reader.u8();
+  if (form === FALLS_NONE) return null;
+  if (form !== FALLS_BYTES) throw new WireError('range', `unknown destroyed falls form ${form}`);
+  const out: number[] = new Array(count);
+  for (let position = 0; position < count; position++) {
+    const code = reader.u8();
+    if (!isObstacleFallCode(code)) throw new WireError('range', 'destroyed fall out of range');
+    out[position] = code;
+  }
+  return out;
 }

@@ -26,7 +26,12 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // (18 bits; 1 to 3 bytes, a flagless row's 1 where the u16 took 2). Before, a client rebuilt the tumble as
 // overturned-or-righting and judged a stack from a support cache its copy of the hull never filled, so the prediction
 // world's tank contacts and the authority's split the same pair (src/mp/match/hullBodyRow.ts).
-export const WIRE_VERSION = 10;
+// 11 (round 2 of the 2026-11-02 audit, 2026-11-05): two snapshot additions. (a) U27: a non-empty destroyed set is followed
+// by each index's fall (destroyedSet.ts writeDestroyedFalls; src/sim/obstacleFall.ts: cause and heading in a byte, none
+// where the viewer may not read them), so a late joiner lays a prop as it fell, not as a ram toward +Z. (b) U31:
+// SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS and, after the shells, the rounds this viewer was shown that left its view still in
+// flight (codec.ts writeUnseenShells), so a client tells a spotting loss from an end.
+export const WIRE_VERSION = 11;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -42,9 +47,16 @@ export const WIRE_VERSION = 10;
 // a 251 tab and a 252 tab never share a match (the joining side reads "Refresh to join this match").
 // 10 (consumables-260, 2026-10-26): wire 9 and the consumable catalog (each seat's consumables; consumable_used names
 // its item and charges): a 259 tab and a 260 tab never share a match.
-// 11 (audit M8, 2026-11-02): wire 10, the TUMBLING and STACKED row flags the clients' hull copies restore their body mode
-// and their tank contacts from.
-export const PROTOCOL_VERSION = 11; // wire 10, the tumbling and stacked row flags
+// 11 (the 2026-11-02 audit, round 1): wire 10, the TUMBLING and STACKED row flags the clients' hull copies restore their
+// body mode and their tank contacts from (audit M8); and the host handover a migration seals, which two builds would read
+// differently: the mode checkpoint's objective pitch (`ModeCheckpoint.objectives`, M1), every tank's life
+// (`ModeCheckpoint.lives`, M4: an older checkpoint derives them) and the pillboxes' booked points
+// (`NewModeCheckpoint.fortified`, M1); a resumed verdict (`AuthoritativeMatch.restoreVerdict`, M1: a keyframe sealed after
+// the verdict resumed as a running match); the extras' combat counters (`MigrationEntityExtras` moduleHp, fire, reloads,
+// magazines, consumables, auxiliary) and the resume state's keyframeTick, timeS, revivedEntityIds and respawnTicks (M1);
+// and the room's adminLocked (M2).
+// 12 (round 2 of the 2026-11-02 audit, 2026-11-05): wire 11, the destroyed list's falls (U27) and the unseen rounds (U31).
+export const PROTOCOL_VERSION = 12; // wire 11, destroyed falls and unseen rounds
 
 export const TICK_HZ = 60;
 /**
@@ -217,7 +229,14 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   HAS_VERDICT: 1 << 3,
   /** The packet carries destruction log entries (docs/DESTRUCTION.md §8.2). */
   HAS_DESTRUCTION: 1 << 4,
+  /** The packet names rounds this viewer was shown that left its view in flight (wire 11, SnapshotFrame.unseenShells). */
+  HAS_UNSEEN_SHELLS: 1 << 5,
 } as const);
+/**
+ * How long a round that left a viewer's view in flight stays named in its snapshots (wire 11, round 2 U31): ten snapshots
+ * at 20 Hz, so a lost one does not lose the mark. Fixed, whatever becomes of the round, so the mark never tells its end.
+ */
+export const UNSEEN_SHELL_MARK_TICKS = TICK_HZ / 2;
 
 /** Entity row groups (a varint mask, low bits are the motion groups that change every interval). */
 export const ROW_GROUP = Object.freeze({

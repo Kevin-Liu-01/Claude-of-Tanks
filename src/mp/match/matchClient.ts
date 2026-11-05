@@ -103,10 +103,14 @@ export interface MatchFrame {
   renderTimeMs: number;
   entities: EntitySample[];
   shells: ShellSample[];
+  /** Rounds gone from `shells` that left this view in flight (wire 11): out of view, not ended (FrameSample.unseenShells). */
+  unseenShells: readonly number[];
   meta: FrameMetaSample;
   modeStateJson: string | null;
   /** Persistent destroyed obstacle indices and their revision (from the newest frame). */
   destroyed: readonly number[];
+  /** Each `destroyed` index's fall in its order (wire 11, sim/obstacleFall.ts); empty: none for every one. */
+  destroyedFalls: readonly number[];
   destructibleRevision: number;
   /**
    * Whether a `world_prop_destroyed` for this obstacle index is still on its way to the presentation (queued behind the
@@ -227,6 +231,7 @@ interface PendingPing {
   sentAtMs: number;
 }
 
+const NO_FALLS: readonly number[] = Object.freeze([]);
 const MAX_PENDING_PINGS = 8;
 const MAX_TICKS_PER_FRAME = 4;
 /** A posted task waiting this long means this tab's own tasks are starved (taskProbe). */
@@ -315,6 +320,7 @@ export class MatchClient {
   private closeDetail = '';
   private disposed = false;
   private latestDestroyed: readonly number[] = [];
+  private latestDestroyedFalls: readonly number[] = NO_FALLS;
   private latestRevision = 0;
   /** Every obstacle a `world_prop_destroyed` named this round (RetainedMigrationState.fallen). */
   private readonly fallenObstacles = new Set<number>();
@@ -390,9 +396,9 @@ export class MatchClient {
     this.ownShots = new OwnShotPredictor();
     this.recovery = new ConnectionRecovery(recovery);
     this.frame = {
-      tick: 0, renderTimeMs: 0, entities: [], shells: [],
+      tick: 0, renderTimeMs: 0, entities: [], shells: [], unseenShells: [],
       meta: { phase: 0, countdownMs: 0, battleTimeMs: 0, verdict: 0, verdictReason: '', destructibleRevision: 0 },
-      modeStateJson: null, destroyed: [], destructibleRevision: 0,
+      modeStateJson: null, destroyed: [], destroyedFalls: NO_FALLS, destructibleRevision: 0,
       destroyedPending: (index) => this.events.isObstaclePending(index),
       destruction: [],
       destructionPending: (structureId) => this.events.isStructurePending(structureId),
@@ -525,10 +531,12 @@ export class MatchClient {
     frame.renderTimeMs = sample.renderTimeMs;
     frame.entities = sample.entities;
     frame.shells = sample.shells;
+    frame.unseenShells = sample.unseenShells;
     frame.meta = sample.meta;
     frame.modeStateJson = sample.modeStateJson;
     frame.extrapolatedMs = sample.extrapolatedMs;
     frame.destroyed = this.latestDestroyed;
+    frame.destroyedFalls = this.latestDestroyedFalls;
     frame.destructibleRevision = this.latestRevision;
     frame.destruction = this.latestDestruction;
     frame.phase = this.recovery.current;
@@ -867,6 +875,7 @@ export class MatchClient {
     this.inputStream.acknowledge(frame, nowMs);
     this.interpolator.push(frame, serverTimeMs, nowMs, this.snapshots.lastGapTick === frame.tick);
     this.latestDestroyed = frame.destroyed;
+    this.latestDestroyedFalls = frame.destroyedFalls && frame.destroyedFalls.length === frame.destroyed.length ? frame.destroyedFalls : NO_FALLS;
     this.latestRevision = frame.meta.destructibleRevision;
     this.latestDestruction = frame.destruction ?? [];
     this.matchPhase = frame.meta.phase;

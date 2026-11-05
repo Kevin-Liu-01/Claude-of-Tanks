@@ -18,6 +18,8 @@ import { ENTITY_FLAGS, RELOAD_KIND_NAMES, TICK_MS, dequantizeAngle, dequantizePo
 import type { EntityRow, PhaseId, ShellRow, SnapshotFrame, VerdictId } from '../wire/index.ts';
 import { BODY_PHASE_ROW_FLAGS, RIGID_PHASE_ROW_FLAGS } from './hullBodyRow.ts';
 
+const NO_UNSEEN_SHELLS: readonly number[] = Object.freeze([]);
+
 /** One presented entity in SI units (metres, m/s, radians, seconds). */
 export interface EntitySample {
   auxiliaryJson?: string;
@@ -91,6 +93,9 @@ export interface FrameSample {
   renderTimeMs: number;
   entities: EntitySample[];
   shells: ShellSample[];
+  /** The newer frame's rounds that left this view still in flight (wire 11, SnapshotFrame.unseenShells): a round gone from
+   *  `shells` and named here is out of view, any other gone round ended. */
+  unseenShells: readonly number[];
   meta: FrameMetaSample;
   modeStateJson: string | null;
   /** Milliseconds of extrapolation past the newest frame this sample used. */
@@ -335,7 +340,7 @@ export class RemoteInterpolator {
     this.delayMs = this.minDelayMs;
     this.targetDelayMs = this.minDelayMs;
     this.output = {
-      tick: 0, renderTimeMs: 0, entities: [], shells: this.shellSamples,
+      tick: 0, renderTimeMs: 0, entities: [], shells: this.shellSamples, unseenShells: NO_UNSEEN_SHELLS,
       meta: { phase: 0, countdownMs: 0, battleTimeMs: 0, verdict: 0, verdictReason: '', destructibleRevision: 0 },
       modeStateJson: null, extrapolatedMs: 0, resynced: false,
     };
@@ -463,6 +468,7 @@ export class RemoteInterpolator {
       this.maxExtrapolatedMs = Math.max(this.maxExtrapolatedMs, extrapolatedMs);
     }
     this.sampleShells(older, newer, renderTime, extrapolatedMs);
+    out.unseenShells = newer.frame.unseenShells ?? NO_UNSEEN_SHELLS;
     this.sampleMeta(older, newer, renderTime, extrapolatedMs);
     out.modeStateJson = newer.frame.modeStateJson;
     return out;

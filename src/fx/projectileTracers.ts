@@ -74,6 +74,9 @@ interface TracerOptions {
    *  out.rangeM) over which the drawn round joins its flight line; false when no gun is drawn there */
   lens?(heavy: boolean, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, out: LensRound): boolean;
   capacity?: number;
+  /** (round 2 of the 2026-11-02 audit, U31) a round the network view reports out of view, still in flight: held, undrawn,
+   *  past the absence grace (effects.ts unseenRounds), so seen again it keeps its record and its belt's tracer choice */
+  held?(id: ShellKey): boolean;
 }
 /** (ac130-barrels-230) a lens gun's muzzle off its round's origin (world m) and the range (m) the drawn round joins in */
 export interface LensRound { x: number; y: number; z: number; rangeM: number }
@@ -683,7 +686,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     if (r.seen) return;
     if (!r.ended) {
       r.missedS += absentStepS;
-      if (r.missedS < TRACER_ABSENCE_GRACE_S) return;
+      if (r.missedS < TRACER_ABSENCE_GRACE_S || o.held?.(id) === true) return;
     } else if (r.lit && r.k > 0) put(r, r.k * 0.8, 0);
     records.delete(id);
     release(r);

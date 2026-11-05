@@ -5,7 +5,7 @@
  */
 import { ByteReader, ByteWriter, WireError, toUint8Array } from './bytes.ts';
 import { readDestructionEntries, writeDestructionEntries } from './destructionLog.ts';
-import { readDestroyedSet, writeDestroyedSet } from './destroyedSet.ts';
+import { readDestroyedFalls, readDestroyedSet, writeDestroyedFalls, writeDestroyedSet } from './destroyedSet.ts';
 import { encodeEventPayload, readEventPayload } from './eventPayload.ts';
 import {
   CLOSE_REASON, EVENT_KIND_NAMES, EVENT_KIND_OTHER, MAX_BUILD_BYTES, MAX_CHAT_BYTES,
@@ -212,7 +212,8 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
     (packet.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (packet.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
     (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
-    (destruction.length ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0);
+    (destruction.length ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0) |
+    (packet.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0);
   if (!packet.keyframe && (!baseline || baseline.tick !== packet.baseTick)) {
     throw new WireError('missing_baseline', 'delta snapshot needs its baseline frame');
   }
@@ -227,6 +228,8 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   writeMeta(writer, packet.meta, hasVerdict);
   // wire 6 (2026-10-13): the smaller of a gap list and a bitset, never a cap a long match can pass (destroyedSet.ts)
   writeDestroyedSet(writer, packet.destroyed);
+  // wire 11 (round 2, U27): each index's fall, in the set's order
+  writeDestroyedFalls(writer, alignedFalls(packet.destroyed, packet.destroyedFalls), packet.destroyed.length);
   if (packet.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   writer.u8(packet.entities.length);
   const baseRows = baseline ? new Map(baseline.entities.map((row) => [row.entityId, row])) : null;
@@ -239,12 +242,47 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   if (packet.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   writer.u16(packet.shells.length);
   for (const shell of packet.shells) writeShell(writer, shell);
+  if (packet.unseenShells?.length) writeUnseenShells(writer, packet.unseenShells);
   if (packet.viewer) writeViewer(writer, packet.viewer, packet.keyframe ? null : baseline?.viewer ?? null);
   if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
   if (destruction.length) {
     writer.u32(packet.keyframe ? 0 : packet.destructionBase);
     writeDestructionEntries(writer, destruction);
   }
+}
+
+/** A frame's falls when they line up with its destroyed list (an older or hand-built frame has none: every fall none). */
+function alignedFalls(destroyed: readonly number[], falls: readonly number[] | undefined): readonly number[] | null {
+  return falls && falls.length === destroyed.length ? falls : null;
+}
+
+/**
+ * The rounds this viewer was shown that left its view in flight (wire 11, round 2 U31; SnapshotFrame.unseenShells), after
+ * the shells when SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS is set: `varint count` (1..MAX_SHELLS), then each round's u16 id,
+ * strictly ascending.
+ */
+function writeUnseenShells(writer: ByteWriter, ids: readonly number[]): void {
+  if (ids.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot unseen shells');
+  writer.varint(ids.length);
+  let previous = -1;
+  for (const id of ids) {
+    if (!Number.isInteger(id) || id <= previous || id > 0xffff) throw new WireError('range', 'unseen shell ids must be strictly increasing u16');
+    writer.u16(id);
+    previous = id;
+  }
+}
+
+function readUnseenShells(reader: ByteReader): number[] {
+  const count = reader.varint();
+  if (count < 1 || count > MAX_SHELLS) throw new WireError('too_many', 'snapshot unseen shells');
+  const ids: number[] = new Array(count);
+  let previous = -1;
+  for (let index = 0; index < count; index++) {
+    const id = reader.u16();
+    if (id <= previous) throw new WireError('invalid_message', 'unseen shell ids must be strictly increasing');
+    ids[index] = previous = id;
+  }
+  return ids;
 }
 
 function writeResumeHint(writer: ByteWriter, message: ResumeHintMessage): void {
@@ -483,7 +521,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (tick === NO_TICK) throw new WireError('range', 'snapshot tick is required');
   const serverTimeMs = reader.u32();
   const flags = reader.u8();
-  if (flags > 31) throw new WireError('range', 'snapshot flags out of range');
+  if (flags > 63) throw new WireError('range', 'snapshot flags out of range');
   const keyframe = (flags & SNAPSHOT_FLAGS.KEYFRAME) !== 0;
   const baseTick = tickOrNone(reader.u32());
   if (keyframe !== (baseTick === NO_TICK)) throw new WireError('invalid_message', 'keyframe flag disagrees with base tick');
@@ -494,6 +532,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   const inputMarginTicks = reader.i8();
   const meta = readMeta(reader, (flags & SNAPSHOT_FLAGS.HAS_VERDICT) !== 0);
   const destroyed = readDestroyedSet(reader);
+  const destroyedFalls = readDestroyedFalls(reader, destroyed.length);
   const baseline = keyframe ? null : resolveBaseline(baseTick);
   // the baseline's row for an entity: a cursor while the patches come in entity order (every host writes them so, over a
   // sorted baseline), a map built once if they ever do not (mp-scale-251: no map a snapshot)
@@ -543,6 +582,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (shellCount > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   const shells: ShellRow[] = [];
   for (let index = 0; index < shellCount; index++) shells.push(readShell(reader));
+  const unseenShells = flags & SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS ? readUnseenShells(reader) : [];
   const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader, baseline?.viewer ?? null) : null;
   const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? reader.string(MAX_MODE_STATE_JSON_BYTES) : null;
   let destructionBase = 0;
@@ -554,7 +594,8 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   }
   return {
     type: MESSAGE_TYPE.SNAPSHOT, tick, serverTimeMs, keyframe, baseTick, ackedInputTick, ackedFireSeq, ackedActionSeq,
-    inputMarginTicks, meta, destroyed, destruction, destructionBase, entities, removed, shells, viewer, modeStateJson,
+    inputMarginTicks, meta, destroyed, ...(destroyedFalls ? { destroyedFalls } : {}), destruction, destructionBase, entities,
+    removed, shells, ...(unseenShells.length ? { unseenShells } : {}), viewer, modeStateJson,
   };
 }
 
@@ -651,6 +692,15 @@ function destroyedAdditions(base: readonly number[], next: readonly number[]): n
   return next.filter((index) => !known.has(index));
 }
 
+/** The falls of `destroyedAdditions(base, next)`, from `next`'s (aligned) falls; null when it has none. */
+function destroyedAdditionFalls(base: readonly number[], next: readonly number[], falls: readonly number[] | null): number[] | null {
+  if (!falls) return null;
+  const known = new Set(base);
+  const out: number[] = [];
+  for (let at = 0; at < next.length; at++) if (!known.has(next[at]!)) out.push(falls[at] ?? 0);
+  return out;
+}
+
 function rowsSorted(rows: readonly EntityRow[]): boolean {
   for (let index = 1; index < rows.length; index++) if (rows[index]!.entityId <= rows[index - 1]!.entityId) return false;
   return true;
@@ -666,31 +716,44 @@ function patchesSorted(patches: readonly EntityRowPatch[]): boolean {
   return true;
 }
 
-/** The union of two strictly increasing lists, strictly increasing. */
-function sortedUnion(a: readonly number[], b: readonly number[]): number[] {
+/**
+ * The union of two strictly increasing lists, strictly increasing, and its falls (wire 11) into `falls` when either side
+ * has some: an index in both keeps `a`'s.
+ */
+function sortedUnion(a: readonly number[], b: readonly number[], aFalls: readonly number[] | null = null,
+  bFalls: readonly number[] | null = null, falls: number[] | null = null): number[] {
   const out: number[] = [];
   let i = 0, j = 0;
   while (i < a.length || j < b.length) {
     const next = j >= b.length || (i < a.length && a[i]! <= b[j]!) ? a[i]! : b[j]!;
-    if (i < a.length && a[i] === next) i++;
-    if (j < b.length && b[j] === next) j++;
+    let fall = 0;
+    if (j < b.length && b[j] === next) { fall = bFalls?.[j] ?? 0; j++; }
+    if (i < a.length && a[i] === next) { fall = aFalls?.[i] ?? 0; i++; }
     out.push(next);
+    falls?.push(fall);
   }
   return out;
 }
 
 const NO_INDICES: readonly number[] = Object.freeze([]);
 const additionScratch: number[] = [];
+const additionFallScratch: number[] = [];
 
-/** The destroyed indices in `next` that `base` lacks, both strictly increasing: a merge walk, into a reused list. */
-function sortedAdditions(base: readonly number[], next: readonly number[]): readonly number[] {
+/**
+ * The destroyed indices in `next` that `base` lacks, both strictly increasing: a merge walk, into a reused list; their
+ * falls (from `next`'s aligned `falls`) into another (wire 11).
+ */
+function sortedAdditions(base: readonly number[], next: readonly number[], falls: readonly number[] | null = null): readonly number[] {
+  additionFallScratch.length = 0;
   if (next === base || next.length === base.length && next.length === 0) return NO_INDICES;
   additionScratch.length = 0;
   let cursor = 0;
-  for (const index of next) {
+  for (let at = 0; at < next.length; at++) {
+    const index = next[at]!;
     while (cursor < base.length && base[cursor]! < index) cursor++;
     if (cursor < base.length && base[cursor] === index) { cursor++; continue; }
     additionScratch.push(index);
+    additionFallScratch.push(falls?.[at] ?? 0);
   }
   return additionScratch;
 }
@@ -721,14 +784,18 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
     (frame.viewer ? SNAPSHOT_FLAGS.HAS_VIEWER : 0) |
     (frame.modeStateJson != null ? SNAPSHOT_FLAGS.HAS_MODE_STATE : 0) |
     (hasVerdict ? SNAPSHOT_FLAGS.HAS_VERDICT : 0) |
-    (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0));
+    (destructionCount ? SNAPSHOT_FLAGS.HAS_DESTRUCTION : 0) |
+    (frame.unseenShells?.length ? SNAPSHOT_FLAGS.HAS_UNSEEN_SHELLS : 0));
   writer.u32(keyframe ? NO_TICK : tickOrNone(baseline.tick));
   writer.u32(tickOrNone(frame.ackedInputTick));
   writer.u16(frame.ackedFireSeq);
   writer.u16(frame.ackedActionSeq);
   writer.i8(frame.inputMarginTicks);
   writeMeta(writer, frame.meta, hasVerdict);
-  writeDestroyedSet(writer, baseline ? sortedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed);
+  const frameFalls = alignedFalls(frame.destroyed, frame.destroyedFalls);
+  const added = baseline ? sortedAdditions(baseline.destroyed, frame.destroyed, frameFalls) : frame.destroyed;
+  writeDestroyedSet(writer, added);
+  writeDestroyedFalls(writer, baseline ? (frameFalls ? additionFallScratch : null) : frameFalls, added.length);
   // the rows: every row on a keyframe, a changed one on a delta (both lists sorted by entity id)
   if (frame.entities.length > MAX_ENTITIES) throw new WireError('too_many', 'snapshot entity rows');
   const rowCountAt = writer.length;
@@ -762,6 +829,7 @@ export function encodeSnapshotFrame(frame: SnapshotFrame, baseline: SnapshotFram
   if (frame.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   writer.u16(frame.shells.length);
   for (const shell of frame.shells) writeShell(writer, shell);
+  if (frame.unseenShells?.length) writeUnseenShells(writer, frame.unseenShells);
   if (frame.viewer) writeViewer(writer, frame.viewer, keyframe ? null : baseline.viewer ?? null);
   if (frame.modeStateJson != null) writer.string(frame.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
   if (destructionCount) {
@@ -800,12 +868,17 @@ export function buildSnapshotPacket(frame: SnapshotFrame, baseline: SnapshotFram
     inputMarginTicks: frame.inputMarginTicks,
     meta: frame.meta,
     destroyed: baseline ? destroyedAdditions(baseline.destroyed, frame.destroyed) : frame.destroyed.slice(),
+    ...(alignedFalls(frame.destroyed, frame.destroyedFalls) ? {
+      destroyedFalls: baseline ? destroyedAdditionFalls(baseline.destroyed, frame.destroyed, frame.destroyedFalls!)!
+        : frame.destroyedFalls!.slice(),
+    } : {}),
     // the log only grows: a delta carries what follows its baseline's length
     destruction: (frame.destruction ?? []).slice(baseline ? (baseline.destruction ?? []).length : 0),
     destructionBase: baseline ? (baseline.destruction ?? []).length : 0,
     entities,
     removed,
     shells: frame.shells,
+    ...(frame.unseenShells?.length ? { unseenShells: frame.unseenShells } : {}),
     viewer: frame.viewer,
     modeStateJson: frame.modeStateJson,
   };
@@ -852,11 +925,29 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     }
     entities.sort((a, b) => a.entityId - b.entityId);
   }
-  // the persistent lists: the baseline's own arrays when the packet adds nothing (frames never change them)
-  const destroyed = !base ? packet.destroyed.slice()
-    : !packet.destroyed.length ? base.destroyed
-      : indicesSorted(base.destroyed) && indicesSorted(packet.destroyed) ? sortedUnion(base.destroyed, packet.destroyed)
-        : [...new Set([...base.destroyed, ...packet.destroyed])].sort((a, b) => a - b);
+  // the persistent lists: the baseline's own arrays when the packet adds nothing (frames never change them); each
+  // index keeps its fall (wire 11), the baseline's where both name it
+  const packetFalls = alignedFalls(packet.destroyed, packet.destroyedFalls);
+  const baseFalls = base ? alignedFalls(base.destroyed, base.destroyedFalls) : null;
+  let destroyedFalls: number[] | undefined;
+  let destroyed: number[];
+  if (!base) {
+    destroyed = packet.destroyed.slice();
+    if (packetFalls) destroyedFalls = packetFalls.slice();
+  } else if (!packet.destroyed.length) {
+    destroyed = base.destroyed;
+    if (baseFalls) destroyedFalls = base.destroyedFalls;
+  } else if (indicesSorted(base.destroyed) && indicesSorted(packet.destroyed)) {
+    const falls = baseFalls || packetFalls ? [] as number[] : null;
+    destroyed = sortedUnion(base.destroyed, packet.destroyed, baseFalls, packetFalls, falls);
+    if (falls) destroyedFalls = falls;
+  } else {
+    const fallOf = new Map<number, number>();
+    packet.destroyed.forEach((index, at) => fallOf.set(index, packetFalls?.[at] ?? 0));
+    base.destroyed.forEach((index, at) => fallOf.set(index, baseFalls?.[at] ?? 0));
+    destroyed = [...fallOf.keys()].sort((a, b) => a - b);
+    if (baseFalls || packetFalls) destroyedFalls = destroyed.map((index) => fallOf.get(index)!);
+  }
   const baseLog = base ? base.destruction ?? [] : [];
   const additions = packet.destruction ?? [];
   if (base && additions.length && packet.destructionBase !== baseLog.length) {
@@ -872,9 +963,11 @@ export function applySnapshotPacket(packet: SnapshotPacket, baseline: SnapshotFr
     inputMarginTicks: packet.inputMarginTicks,
     meta: packet.meta,
     destroyed,
+    ...(destroyedFalls ? { destroyedFalls } : {}),
     destruction,
     entities,
     shells: packet.shells,
+    ...(packet.unseenShells?.length ? { unseenShells: packet.unseenShells } : {}),
     viewer: packet.viewer,
     modeStateJson: packet.modeStateJson,
   };

@@ -42,6 +42,9 @@ interface DronePresentationOptions {
   resolveCarrier?(ownerId: string | number): DroneCarrierView | null;
   /** Diagnostics: each flight home's start and end, with the reason it ended (or never began). */
   onReturnEvent?(id: string | number, event: 'start' | 'end' | 'skip', reason: string): void;
+  /** (round 2 of the 2026-11-02 audit, U31) a drone the network view reports out of view, still in flight (effects.ts
+   *  unseenRounds): its airframe is held, undrawn, and no flight home begins, until it is seen again or the hold ends. */
+  held?(id: string | number): boolean;
 }
 type ReturnPhase = 'grace' | 'transit' | 'descent' | 'handoff';
 interface ReturnFlight {
@@ -338,6 +341,7 @@ export function createDronePresentation(parent: THREE.Group, options: DronePrese
       // (2026-11-02 audit F10) its airframe kept through the return's grace: seen again inside it (a dropped frame, a
       // spotting blink) the flight goes on as it was (its attitude, its launch frame), not a fresh airframe
       for(const [id,state] of attitudes)if(state.seen!==frame){
+        if(!impacted.has(id)&&options.held?.(id)===true)continue;
         if(returns.get(id)?.phase==='grace')continue;
         const track=tracks.get(id);
         if(!track)options.onReturnEvent?.(id,'skip','no track');
