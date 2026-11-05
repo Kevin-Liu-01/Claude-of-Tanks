@@ -6,11 +6,17 @@
 //   rects for a hidden surface and dismissed the press without a word: the player's press did nothing.
 // - A tank change. Choosing another tank redraws the slots, but the open picker kept the old tank's cards and locks over
 //   the new tank's slots (display-only: the save is sanitized for the new tank, game/consumableLoadout.ts). The picker
-//   now closes when the tank it shows is no longer the shown one, as the equipment picker's refreshEquipSel does, and
-//   when the room holds the tank fixed (garage.ts's vehicle lock closes it beside the equipment's).
+//   now closes when the tank it shows is no longer the shown one, as the equipment picker's refreshEquipSel does.
+// - The room's hold. A tank the room holds (the player is ready) closes the picker, as it closes the equipment's: a
+//   choice would save over the held tank. Only the hold: garage.ts's setRoomStatus runs on every lobby update (a member
+//   joins, readies or picks a tank), and the round-2 review found its first close ran on all of them, shutting an open
+//   picker mid-choice. Case 4 runs garage.ts's own setRoomStatus in a vm, with this picker as its garageConsumables.
 // The stand-in elements remember classes, data and listeners; a box has client rects only while it shows (the panel
 // with its `open` class, the band of slots always). The surface stack and the table import are the real ones.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import { runInNewContext } from 'node:vm';
 
 class FakeElement {
   constructor(tag = 'div') {
@@ -150,14 +156,61 @@ await check('a redraw for the same tank keeps the picker', async () => {
   assert.deepEqual(openSurfaceIds(), []);
 });
 
-// 4. garage.ts closes the picker when the room holds the tank fixed, beside the equipment's (a choice would save over it)
-await check('the room\'s lock closes the picker', async () => {
-  const { readFileSync } = await import('node:fs');
+/** garage.ts's own setRoomStatus, with `consumables` as its picker and a count of the equipment picker's closes. */
+function roomStatusOn(picker) {
   const garage = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
-  assert.match(garage, /closeEqPicker\(\);\n(?:\s+\/\/[^\n]*\n)?\s+garageConsumables\?\.close\(\{ restoreFocus: false \}\);\n    \},/,
-    'the vehicle lock closes the consumables picker too');
+  const start = garage.indexOf('    setRoomStatus(status');
+  const end = garage.indexOf('\n    },\n', start);
+  assert.ok(start > 0 && end > start, 'garage.ts holds setRoomStatus');
+  const method = stripTypeScriptTypes(`function ${garage.slice(start, end + '\n    }'.length).trimStart()}`);
+  const element = () => new FakeElement('div');
+  const context = {
+    equipmentCloses: 0,
+    garageConsumables: picker,
+    closeEqPicker: () => { context.equipmentCloses += 1; },
+    requiredElement: (parent, selector) => parent.querySelector(selector),
+    t: (key) => key,
+    battleWord: () => 'Battle',
+    battleRuleMeta: {}, battleModeMeta: { solo: { label: 'Solo' } }, battleGameMode: 'solo',
+    root: element(), battleBtn: element(), roomControls: element(), roomReady: element(), roomReminder: element(),
+    document: { createElement: (tag) => new FakeElement(tag), createTextNode: (text) => ({ text }) },
+  };
+  runInNewContext(`let roomStatus = null;\nlet vehicleLocked = false;\n${method}\n`
+    + 'globalThis.setRoomStatus = setRoomStatus;\nglobalThis.isLocked = () => vehicleLocked;', context);
+  return { set: context.setRoomStatus, locked: context.isLocked, equipmentCloses: () => context.equipmentCloses };
+}
+
+// 4. The room's hold closes the picker, and only the hold: a lobby update with the tank free leaves an open picker open.
+await check('only the room\'s hold closes the picker', async () => {
+  const room = roomStatusOn(consumables);
+  const status = { mode: 'private', roomCode: 'K7QX', canSetReady: true, total: 3 };
+  press(2);
+  assert.equal(panel.classList.contains('open'), true, 'the picker is open');
+  room.set({ ...status, ready: false, readyCount: 1 }); // another member readies, joins or picks a tank
+  room.set({ ...status, ready: false, readyCount: 2 });
+  assert.equal(room.locked(), false);
+  assert.equal(panel.classList.contains('open'), true, 'a lobby update with the tank free closed the player\'s open picker');
+  assert.equal(room.equipmentCloses(), 0, 'and the equipment picker');
+  room.set({ ...status, ready: true, readyCount: 3 }); // the player is ready: the room holds the tank
+  locked = room.locked(); // (garage.ts gives the picker locked: () => vehicleLocked)
+  assert.equal(locked, true, 'the ready player\'s tank is held');
+  assert.equal(panel.classList.contains('open'), false, 'the room\'s hold leaves the picker open over the held tank');
+  assert.deepEqual(openSurfaceIds(), [], 'and its place on the stack');
+  assert.equal(room.equipmentCloses(), 1, 'the hold closes the equipment picker too');
+  press(2);
+  assert.equal(panel.classList.contains('open'), false, 'a held tank opens no picker');
+  room.set({ ...status, ready: false, readyCount: 2 }); // not ready again: the tank is free
+  locked = room.locked();
+  assert.equal(locked, false);
+  press(2);
+  assert.equal(panel.classList.contains('open'), true, 'a free tank opens the picker again');
+  room.set(null); // the room ends
+  assert.equal(panel.classList.contains('open'), true, 'leaving the room leaves the picker as it was');
+  assert.equal(room.equipmentCloses(), 1, 'only the hold closed the equipment picker');
+  consumables.close({ restoreFocus: false });
 });
 
 consumables.dispose();
 assert.deepEqual(failures, [], `garageConsumablesPicker.selftest: ${failures.length} case(s) failed`);
-console.log('garageConsumablesPicker.selftest: the table wait survives a layout sweep; a tank change closes the picker; a redraw keeps it PASS');
+console.log('garageConsumablesPicker.selftest: the table wait survives a layout sweep; a tank change closes the picker; a redraw keeps it;'
+  + ' only the room\'s hold closes it PASS');

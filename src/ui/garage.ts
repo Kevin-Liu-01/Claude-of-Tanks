@@ -5088,9 +5088,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }));
       vehicleLocked = ready;
       root.classList.toggle('vehicle-locked', vehicleLocked);
-      closeEqPicker();
-      // (2026-11-02 audit 05-ui-2 #6, round 2) and the consumables picker: a choice in it would save over the held tank
-      garageConsumables?.close({ restoreFocus: false });
+      // (2026-11-02 audit 05-ui-2 #6, round 2) a tank the room holds closes both pickers: a choice in either would
+      // save over it. Only the hold does: this runs on every lobby update (a member joins, readies or picks a tank),
+      // and an unconditional close shut the player's open picker mid-choice. Neither picker opens while it is held.
+      if (vehicleLocked) {
+        closeEqPicker();
+        garageConsumables?.close({ restoreFocus: false });
+      }
     },
 
     isVehicleLocked() { return vehicleLocked; },
