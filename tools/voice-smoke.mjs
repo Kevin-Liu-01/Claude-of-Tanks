@@ -27,6 +27,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { bandEnergy } from './audio/pcm.mjs';
+import { pageLoadBudget } from './tool-page-load.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -106,10 +107,13 @@ async function openPage() {
     if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
   });
   page.on('pageerror', (err) => consoleErrors.push(String(err)));
+  // the tools' page budget (tool-page-load.mjs: 180 s navigation, COT_NAV_TIMEOUT_MS): its cold private vite cache took
+  // past 90 s on a loaded machine, twice, before any line was heard
+  const { navTimeoutMs, readyTimeoutMs } = pageLoadBudget({ readyTimeoutMs: 90000 });
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
