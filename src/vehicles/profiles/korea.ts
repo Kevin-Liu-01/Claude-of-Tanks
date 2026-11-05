@@ -384,8 +384,9 @@ function addK2BPackage(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   if (!gunFrontPort.addEquipment) throw new Error('K2B gun front requires the builder equipment slots');
   addK2GunFront(gunFrontPort as Pick<TankBuilderPort, 'add' | 'addEquipment'>, 0.24);
   P.add('turretDetail', cylY(0.11, 0.12, 0.08, 14), 0.56, 0.73, -0.22);
-  // the hull number on the right side's armour group (k2bHullKit.ts; face x -1.865), in the upper-row tile -0.23..-0.61
-  P.decal('hull', 'number', 'K2B', 0.24, [-1.868, 1.18, -0.42], -Math.PI / 2);
+  // the hull number on the right side's armour group (k2bHullKit.ts; its upper tier's face x -1.885), inside the tile
+  // -0.23..-0.61, clear of its corner bolts
+  P.decal('hull', 'number', 'K2B', 0.24, [-1.888, 1.16, -0.43], -Math.PI / 2);
   // r269 (owner 2026-11-04: "add 2 fuel cans to back that are elevated to be visible from front"): two NATO cans in a
   // frame on the bustle's core roof, standing over the turret roof line (k2bHullKit.ts addK2BFuelCans)
   addK2BFuelCans(P);
