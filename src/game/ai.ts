@@ -870,6 +870,8 @@ const UNBEARABLE_S = 75;
 const LEVEL_ROUTE_OPTIONS = Object.freeze({ requireGoalLevel: true });
 // Search goal order by how many legs have ended without contact: straight at the enemy first, then the last
 // sighting and the ring round the sector, then the ring from other sides.
+// The declared order of one hull's shell results (or hits) on a bot in one phase (round 2, U17; see pendingBefore).
+const PENDING_KIND_ORDER: readonly string[] = Object.freeze(['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'era']);
 const SEARCH_ORDER: ReadonlyArray<readonly string[]> = Object.freeze([
   Object.freeze(['sector', 'seen', 'objective', 'sweep', 'wide']),
   Object.freeze(['seen', 'sweep', 'sector', 'wide']),
@@ -7051,17 +7053,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // arrives), and these start flanks and hit reactions, change the mode and draw from this bot's seeded stream. They
   // are queued, and applied together in one declared order: gunshots heard, then this bot's own shell results, then
   // hits on its team, then the commander's orders; within a kind by the shooter's id (a hit on this hull before a
-  // teammate's report) or the struck hull's id, and arrival order only among events with the same key. So a bot's
-  // decisions are a function of what reached it in a phase, not of the order it was told. What each event does is
-  // unchanged (the apply* functions below); the validity checks still run when the event arrives.
+  // teammate's report) or the struck hull's id, then by what the event says (pendingPayloadBefore: a shell result's
+  // kind, a hit's damage and then its kind). Events still tied are the same event told twice, which apply alike in
+  // either order. Orders alone keep their arrival order: they come from the team's one commander, in its own sequence,
+  // and the later replaces the earlier (applyOrder). So a bot's decisions are a function of what reached it in a phase,
+  // not of the order it was told. What each event does is unchanged (the apply* functions below); the validity checks
+  // still run when the event arrives.
   // Where they are applied is the drivers' (applyPendingBotNews, at the end of their fire-and-shells phase and again
   // before the first controller updates), so the news lands where the callbacks always ran: at the last tick's clock,
   // with the spotting, the mode's objective and this bot's target and mode as the phase left them, and every teammate
   // that thinks first in the next step reads this bot's answer (refreshFocusCounts, the squad's flank election, the
-  // commander's team document). Against callbacks applied one at a time, two things differ, both inside one phase: the
-  // declared order, and that an event no longer sees what a later shell of the same phase did (a hull it destroyed) or
-  // what a teammate's earlier news in the phase changed in that teammate before this bot's turn (the hulls' order
-  // decides). update() applies anything still queued first (a caller that steps a controller alone).
+  // commander's team document). Against callbacks applied one at a time, three things differ, all inside one phase:
+  // the declared order; an event now sees what a later shell of the same phase did (a hull it destroyed: the
+  // enemyAlive and acquireTarget reads run at the flush, after the phase's last shell); and it no longer sees what a
+  // teammate's earlier news in the phase changed in that teammate before this bot's turn (the hulls' order decides).
+  // update() applies anything still queued first (a caller that steps a controller alone).
   // notifyFriendlyBlocked stays immediate: it only raises a timer to a floor and counts, the same in any order, and
   // draws nothing.
   const PENDING_ENEMY_FIRED = 0, PENDING_SHELL_RESULT = 1, PENDING_UNDER_FIRE = 2, PENDING_ORDER = 3;
@@ -7098,12 +7104,36 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     event.order = null;
     return event;
   }
-  /** Declared order: kind; a hit on this hull before a teammate's report; the key (a hull id); then arrival. */
+  /**
+   * Declared order: kind; a hit on this hull before a teammate's report; the key (a hull id); what the event says
+   * (pendingPayloadBefore); then arrival, which decides only between equal events and between the commander's orders.
+   */
   function pendingBefore(a: PendingEvent, b: PendingEvent): boolean {
     if (a.rank !== b.rank) return a.rank < b.rank;
     if (a.selfHit !== b.selfHit) return a.selfHit;
     if (a.key !== b.key) return a.key < b.key;
+    if (a.rank !== PENDING_ORDER) {
+      if (pendingPayloadBefore(a, b)) return true;
+      if (pendingPayloadBefore(b, a)) return false;
+    }
     return a.seq < b.seq;
+  }
+  /**
+   * One hull's events of one kind, by what they say (round 2, U17): a hit that did damage before one that did not, then
+   * the result's kind (PENDING_KIND_ORDER, the penetrations first: a phase's non-penetrations count on from them), then
+   * any other kind by name. A gunshot heard says nothing beyond its shooter (the key).
+   */
+  function pendingPayloadBefore(a: PendingEvent, b: PendingEvent): boolean {
+    const damageA = a.damaging === true ? 0 : a.damaging === false ? 1 : 2;
+    const damageB = b.damaging === true ? 0 : b.damaging === false ? 1 : 2;
+    if (damageA !== damageB) return damageA < damageB;
+    const kindA = pendingKindRank(a.kind), kindB = pendingKindRank(b.kind);
+    if (kindA !== kindB) return kindA < kindB;
+    return (a.kind ?? '') < (b.kind ?? '');
+  }
+  function pendingKindRank(kind: string | undefined): number {
+    const index = kind === undefined ? -1 : PENDING_KIND_ORDER.indexOf(kind);
+    return index < 0 ? PENDING_KIND_ORDER.length : index;
   }
   const reactionInfo: HitReactionInfo = {};
   function drainPendingEvents(): void {
