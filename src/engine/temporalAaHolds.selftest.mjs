@@ -21,7 +21,7 @@ function between(source, start, end) {
 }
 
 assert.doesNotMatch(film, /post\.taa\.enabled\s*=|post\.upscaler\.temporalAccumulation\s*=/, 'the film writes neither field');
-assert.match(film, /temporalHold: post\.holdTemporalAA\('studio-film'\)/);
+assert.match(film, /temporalHold = post\.holdTemporalAA\('studio-film'\)/);
 assert.match(film, /state\.temporalHold\.release\(\);/);
 
 const owner = between(post, "  /** The temporal AA's effective state", '\n  });') + '\n  });';

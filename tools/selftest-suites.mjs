@@ -483,6 +483,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/studioPlanView.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
     'src/game/studioFilmSupport.selftest.mjs',
+    'src/game/studioFilmHolds.selftest.mjs', // 2026-11-02 audit U30 (round 2): a film entry that throws gives its governor and temporal-AA holds back
     'src/engine/filmDepthProbe.selftest.mjs',
     'src/game/studioFilmMux.selftest.mjs',
     'src/game/studioFilmAudio.selftest.mjs',
