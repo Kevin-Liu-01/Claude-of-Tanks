@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { createStudioSession, studioBusy, transportHeld, isStudioSessionEnded, StudioSessionEnded } from './studioSession.ts';
+import { createAppLifecycle } from './appLifecycle.ts';
 
 const text = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 const source = ts.createSourceFile('studio.ts', text, ts.ScriptTarget.Latest, true);
@@ -472,9 +473,44 @@ for (const phaseAtLanding of ['garage', 'battle']) {
   // assembled from the Garage keeps the phase there and owns the world it builds)
   // (integration IR6) the slice ends at the Garage ports that follow it, whatever binds enterGarage (app-flow's exit)
   const port = main.slice(main.indexOf('restoreGarageWorld: () => {'), main.indexOf('setGarageSpots, setGarageSunTrim, enterGarage'));
-  assert.ok(port.length > 0 && port.length < 600, 'main.ts hands the Studio the Garage\'s presentation');
-  assert.match(port, /if \(game\.phase !== 'garage' \|\| battleEntryLifecycle\.pending \|\| battleLoad\.covering \|\| garageReturn\.transitioning\) return;/);
+  assert.ok(port.length > 0 && port.length < 900, 'main.ts hands the Studio the Garage\'s presentation');
   assert.match(port, /garageEnvironmentPresentation\.activate\(selectedGarageVariantId\)/, 'the Garage\'s own presentation: asleep, its sky and trim');
+  // (round 2 IR1) run the port itself over app-flow's lifecycle (appLifecycle.ts, bound as main.ts binds it): the Garage's
+  // presentation comes back only while the Garage is the settled screen. A return that still owes the screen (failed: its
+  // notice and Retry; superseded; handed off or skipped) restores the Garage itself, so the late build's undo stays out.
+  const restoreGarageWorldIn = (state) => {
+    const game = { phase: state.phase ?? 'garage', preBattleS: 0, result: null, resultTimeS: null, timeS: 0 };
+    const garageReturn = { state: state.returnState ?? 'idle', transitioning: state.transitioning ?? false };
+    const battleEntryLifecycle = { pending: state.entryPending ?? false, renderingCovered: false };
+    const battleLoad = { covering: state.covering ?? false };
+    const appLifecycle = createAppLifecycle({ game, announce: () => {} });
+    appLifecycle.setReaders({
+      isBooting: () => state.booting ?? false,
+      isEntryCovering: () => battleEntryLifecycle.pending && (battleLoad.covering === true || battleEntryLifecycle.renderingCovered),
+      isReturnOwed: () => garageReturn.state !== 'idle',
+    });
+    const activated = [];
+    const garageEnvironmentPresentation = { activate: (variant) => { activated.push(variant); return Promise.resolve(); } };
+    const ports = { game, garageReturn, battleEntryLifecycle, battleLoad, appLifecycle, garageEnvironmentPresentation,
+      selectedGarageVariantId: 'hangar' };
+    const context = new Function(...Object.keys(ports), `return ({ ${port} });`)(...Object.values(ports));
+    context.restoreGarageWorld();
+    return activated;
+  };
+  assert.deepEqual(restoreGarageWorldIn({}), ['hangar'], 'a settled Garage gets its presentation back');
+  for (const [name, state] of [
+    ['a failed return (its notice and Retry own the screen)', { returnState: 'failed' }],
+    ['a superseded return', { returnState: 'superseded' }],
+    ['a return under its veil', { returnState: 'entering', transitioning: true }],
+    ['a handoff behind the report', { returnState: 'handoff' }],
+    ['a skipped restore (Battle Again)', { returnState: 'restoreSkipped' }],
+    ['Battle Again\'s lease between its return and its battle', { transitioning: true }],
+    ['a battle entry being assembled', { entryPending: true }],
+    ['a battle entry\'s cover', { entryPending: true, covering: true }],
+    ['a battle cover', { covering: true }],
+    ['a battle', { phase: 'battle' }],
+    ['a Studio entered again', { phase: 'studio' }],
+  ]) assert.deepEqual(restoreGarageWorldIn(state), [], `no Garage presentation over ${name}`);
 }
 
-console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves');
+console.log('studioSessionExit.selftest: an exit during a map switch, its lighting (bounded or not), a scene load, a film export, the export\'s module gap and a time change lands nothing after the teardown; a build that outlives the exit leaves the Garage its presentation; a closed session\'s load never re-enters; a recording, a battlefield change, a staging or a light change refuses the export\'s film; a staging refuses a film, an export or a light change; queued switches run in order; a superseded exit cover still leaves; the late build\'s undo waits for a settled Garage');
