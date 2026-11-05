@@ -12,6 +12,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { addHullTub, addSkirtPanels, add30mmCannon, sideSolid } from './russia152Kit.ts';
 import { GUN_2A83, build152Gun } from './gun152.ts';
 import { OBJECT195_FRAME as F } from '../russia152Frames.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylY, cylZ, torus } = KIT;
@@ -57,7 +58,7 @@ function addHull(P: TankBuilderPort): void {
   // headlights and the fender tips over the idlers
   for (const s of [-1, 1]) {
     P.addEquipment('hullDark', box(.16, .10, .08), s * 1.30, glacisY(3.44) - .02, 3.44);
-    P.addEquipment('hullGlass', box(.12, .06, .01), s * 1.30, glacisY(3.44) - .02, 3.485);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.12, .06, .01), 'headlight'), s * 1.30, glacisY(3.44) - .02, 3.485);
     P.addMudguard('object195-front-guard', 'hull', box(.56, .04, .55), s * 1.42, 1.13, 3.75, -.10, 0, 0);
     P.addMudguard('object195-front-flap', 'hullRubber', box(.50, .26, .03), s * 1.42, .98, 4.02);
     P.addMudguard('object195-rear-flap', 'hullRubber', box(.50, .30, .03), s * 1.42, 1.04, -3.93);
