@@ -1210,7 +1210,9 @@ export class MatchSession {
     // no readable keyframe (audit M1, migrationState.ts migrationFallback): a battle in progress is declined, never
     // restarted at tick 0; before the battle the countdown starts over on the timeline the clients keep
     if (!resume) {
-      const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000 });
+      const roomMatch = this.room.room?.match;
+      const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000,
+        roomMatchStatus: roomMatch && roomMatch.id === round.matchStart.matchId ? roomMatch.status : null });
       if (fallback.kind === 'decline') {
         // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
         // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and

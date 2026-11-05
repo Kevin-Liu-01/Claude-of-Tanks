@@ -20,6 +20,7 @@ import { dequantizeAngle, dequantizePosition, dequantizeReloadS, dequantizeUnitC
 import { bytesToBase64Url } from '../match/base64url.ts';
 import { MIGRATION_EVENT_KIND, MIGRATION_MAX_CHUNKS } from '../match/migrationStore.ts';
 import type { HostBootConfig, HostResumeState, MigrationEntityExtras, MigrationReload } from './hostProtocol.ts';
+import type { RoomMatchStatus } from '../room/protocol.ts';
 import { FIRE_BASE_TICKS, selectShell, strainModule, tickModuleRepairs, tickReload } from '../../sim/damage.ts';
 import type { CombatState, DamageTankSpec } from '../../sim/damage.ts';
 import { applyConsumableMultipliers } from '../../sim/consumableRules.ts';
@@ -500,26 +501,65 @@ export function resumePhaseOf(state: Pick<HostResumeState, 'phase' | 'frame'>): 
   return { phase: 'playing' };
 }
 
+/**
+ * What tells an elected seat with no readable keyframe that the battle had begun (migrationFallback, round 2 U1):
+ *   - 'frame': its newest frame says playing, ended or decided;
+ *   - 'room': the room's record of the match says it played (roomPolicy.ts markMatchPlaying: a host reported 'playing');
+ *   - 'report_tick': the old host's last report to the room (the election's resumeTick, roomActor.ts migrateHost) is
+ *     dated at or past the end of the countdown. A host reports at each phase change and every
+ *     ROOM_MATCH_REPORT_INTERVAL_MS (matchHostCore.ts housekeep), so its countdown reports are dated before the countdown
+ *     ends and its first 'playing' report at or after it. The end is the seat's newest countdown frame's (its tick plus
+ *     the time it had left: any timeline), else a first boot's (the actor's tick 0 is its countdown's start,
+ *     matchActor.ts start).
+ */
+export type MigrationPlayEvidence = 'frame' | 'room' | 'report_tick';
+
 /** What an elected seat with no readable keyframe does (migrationFallback). */
 export type MigrationFallback =
-  | { kind: 'decline'; reason: 'battle_in_progress' }
+  | { kind: 'decline'; reason: 'battle_in_progress'; evidence: MigrationPlayEvidence }
   | { kind: 'restart'; state: HostResumeState; resumeTick: number };
+
+/** Ticks a report may come early of the countdown's end it is judged against (the countdown's milliseconds round to a tick). */
+const COUNTDOWN_END_SLACK_TICKS = 2;
+
+/** The first evidence that the battle had begun (MigrationPlayEvidence), or null when everything the seat holds says it had not. */
+export function migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus = null }: {
+  latestFrame: SnapshotFrame | null; resumeTick: number; countdownMs: number; roomMatchStatus?: RoomMatchStatus | null;
+}): MigrationPlayEvidence | null {
+  const meta = latestFrame?.meta;
+  if (meta && (meta.phase === PHASE.PLAYING || meta.phase === PHASE.ENDED || meta.verdict !== VERDICT.NONE)) return 'frame';
+  if (roomMatchStatus === 'playing' || roomMatchStatus === 'ended' || roomMatchStatus === 'lost') return 'room';
+  // 0: the room holds no report of the current host (none yet, or the room cleared it at the previous election)
+  const reported = Math.max(0, Math.floor(Number(resumeTick) || 0));
+  const countdownEndTick = latestFrame && meta
+    ? latestFrame.tick + Math.ceil(Math.max(0, meta.countdownMs | 0) / TICK_MS)
+    : Math.ceil(Math.max(0, Number(countdownMs) || 0) / TICK_MS);
+  if (reported > 0 && reported >= countdownEndTick - COUNTDOWN_END_SLACK_TICKS) return 'report_tick';
+  return null;
+}
 
 /**
  * An elected seat whose retained keyframe is missing or cannot be opened (audit M1, 2026-11-02). It used to boot fresh at
  * tick 0 whatever the match had reached: a battle in progress restarted from its spawns, behind every client's clock
  * (a client's tick clock ignores older ticks, so its inputs ran far ahead of the new host's). Now:
- *   - the seat saw the battle playing or decided (its newest frame says so): it declines as unable, so the room elects a
- *     seat that holds a keyframe, or ends the match when none can;
+ *   - anything the seat holds says the battle had begun (migrationPlayEvidence: its newest frame, the room's record of
+ *     the match, or the old host's last report tick against the countdown's end): it declines as unable, so the room
+ *     elects a seat that holds a keyframe, or ends the match when none can. Round 2 (U1): the newest frame alone was read,
+ *     so a seat with none (welcomed, never sent a snapshot) restarted a battle in progress from its spawns whatever the
+ *     room's resume tick proved;
  *   - before the battle played (no frame yet, or only the countdown): the match starts over from its countdown on the
  *     timeline the clients already keep, at the later of the room's resume tick and the seat's newest tick plus the time
  *     since: a resume state with no rows (every hull on its spawn), so the boot takes the one resume path.
+ * A frame-less seat judges the report tick against a first boot's countdown: after an earlier restart (its countdown
+ * began later) it declines a countdown still running, the safe side (the room elects another seat, or ends the match).
  */
-export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs }: {
+export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null }: {
   latestFrame: SnapshotFrame | null; latestFrameAtMs: number | null; nowMs: number; resumeTick: number; countdownMs: number;
+  /** The room's record of the elected match (the seat's room snapshot); null when it names another match or none. */
+  roomMatchStatus?: RoomMatchStatus | null;
 }): MigrationFallback {
-  const phase = latestFrame?.meta.phase;
-  if (phase === PHASE.PLAYING || phase === PHASE.ENDED || (latestFrame && latestFrame.meta.verdict !== VERDICT.NONE)) return { kind: 'decline', reason: 'battle_in_progress' };
+  const evidence = migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus });
+  if (evidence) return { kind: 'decline', reason: 'battle_in_progress', evidence };
   const seen = latestFrame && latestFrameAtMs !== null ? latestFrame.tick + Math.max(0, Math.ceil((nowMs - latestFrameAtMs) / TICK_MS)) : 0;
   const tick = Math.max(0, Math.floor(Number(resumeTick) || 0), seen);
   const remainingMs = Math.max(0, Math.round(Number(countdownMs) || 0));
