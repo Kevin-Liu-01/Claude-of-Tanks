@@ -8,6 +8,8 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
+import { stationDepression, stationProbe } from '../../../tools/roof-station-arcs.mjs';
 
 const PACKET = JSON.parse(readFileSync(new URL('../../../docs/references/photos/russia-152-20261104.json', import.meta.url), 'utf8'));
 const IDS = ['object292', 'object477_molot', 'object195', 't14_152'];
@@ -65,4 +67,31 @@ for (const quality of ['high', 'low']) {
     }
   } finally { for (const tank of Object.values(tanks)) tank.dispose(); }
 }
-console.log('russia152.selftest: the 152 mm line hits harder and reloads slower from fewer rounds; the Object 292 on the T-80U X hull, the T-14 152 on the T-14\'s; envelopes are the packet\'s; the 30 mm cannons work');
+// The 30 mm stations' arcs and depression tables hold against the built stock (tools/roof-station-arcs.mjs, the M551 TTS
+// receipt's check 8, src/sim/roofStations.selftest.mjs): every degree of the arc is clear from level to full elevation,
+// full depression outside the table, each table entry and the smaller of two neighbouring entries between them, and the
+// arc ends within 4 degrees of the stock it keeps clear of
+for (const [id, name] of [['object195', 'object195_2a42'], ['object477_molot', 'molot_gsh30']]) {
+  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
+  try {
+    tank.root.updateMatrixWorld(true);
+    const station = tank.root.getObjectByName(name), profile = auxiliaryWeaponProfile(30, id), DEG = Math.PI / 180;
+    const { probe } = stationProbe(tank.root, station), [lo, hi] = station.userData.yawArc, table = station.userData.depressionByYaw;
+    const held = (yaw) => {
+      if (yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;
+      const k = table.findIndex(([y]) => y >= yaw - 1e-9);
+      return table[k][0] <= yaw + 1e-9 ? table[k][1] : Math.min(table[k - 1][1], table[k][1]);
+    };
+    for (let yaw = lo; yaw <= hi + 1e-9; yaw += DEG) {
+      for (let pitch = 0; pitch <= profile.elevationRad + 1e-9; pitch += .05) assert.ok(!probe(yaw, pitch), `${name}: clear at ${(yaw / DEG).toFixed(0)} deg, +${pitch.toFixed(2)}`);
+      assert.ok(!probe(yaw, -held(yaw)), `${name}: its held depression ${held(yaw)} rad is clear at ${(yaw / DEG).toFixed(0)} deg`);
+    }
+    for (const [yaw, depression] of table) {
+      const [deepest] = stationDepression(tank.root, station, profile, [yaw / DEG]);
+      assert.ok(depression <= deepest + 1e-9, `${name}: the table at ${(yaw / DEG).toFixed(0)} deg within the measured limit (${depression} v ${deepest})`);
+    }
+    const blockedNear = (from, sign) => { for (let k = 1; k <= 4; k++) for (let p = 0; p <= profile.elevationRad; p += .05) if (probe(from + sign * k * DEG, p)) return true; return false; };
+    assert.ok(blockedNear(lo, -1) && blockedNear(hi, 1), `${name}: the arc ends within 4 degrees of the stock it keeps clear of`);
+  } finally { tank.dispose(); }
+}
+console.log('russia152.selftest: the 152 mm line hits harder and reloads slower from fewer rounds; the Object 292 on the T-80U X hull, the T-14 152 on the T-14\'s; envelopes are the packet\'s; the 30 mm cannons work inside measured arcs and depression tables');

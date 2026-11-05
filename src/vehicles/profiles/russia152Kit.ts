@@ -51,11 +51,14 @@ export function addSkirtPanels(P: TankBuilderPort, o: { x: number; z0: number; z
  * line's ids the 3UBR6 round).
  */
 export function add30mmCannon(P: TankBuilderPort, o: { name: string; x: number; deck: number; z: number; axisY: number;
-  pivotZ: number; muzzleZ: number }): void {
+  pivotZ: number; muzzleZ: number; yawArc?: readonly [number, number]; depressionByYaw?: readonly (readonly [number, number])[] }): void {
   const { x, deck, z, axisY, pivotZ, muzzleZ } = o;
   P.addEquipment('turretDetail', cylY(.20, .23, .06, 20), x, deck + .015, z);
   const station = beginAuxiliaryStation(P, { name: o.name, caliberMm: 30,
     yaw: [x, deck + .045, z], pivot: [x, axisY, pivotZ], muzzle: [x, axisY, muzzleZ] });
+  // a measured traverse and depression keep the barrel out of the vehicle's own stock (tools/roof-station-arcs.mjs)
+  if (o.yawArc) station.root.userData.yawArc = [...o.yawArc];
+  if (o.depressionByYaw) station.root.userData.depressionByYaw = o.depressionByYaw.map(([y, d]) => [y, d]);
   P.addEquipment('turretDetail', cylY(.16, .18, .07, 20), x, deck + .08, z);
   for (const side of [-1, 1]) P.addEquipment('turretDetail', box(.05, axisY - deck - .05, .20), x + side * .17, (axisY + deck) / 2 + .03, pivotZ);
   station.mark('yaw');

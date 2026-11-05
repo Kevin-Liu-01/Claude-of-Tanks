@@ -163,8 +163,16 @@ function addModule(P: TankBuilderPort): void {
   }
   P.decal('turret', 'number', P.spec.visual.number || '', .28, [.955, .62, -.50], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', .28, [-.955, .62, -.50], -Math.PI / 2);
-  // the 2A42 in its low pod on the roof's left, beside the sight tower
-  add30mmCannon(P, { name: 'object195_2a42', x: -.74, deck: 1.20, z: -.20, axisY: 1.34, pivotZ: -.20, muzzleZ: 1.85 });
+  // the 2A42 in its low pod on the roof's left, beside the sight tower. Its barrel crosses the module's raised roof from
+  // 8 degrees inboard (tools/roof-station-arcs.mjs, barrel lines against the turret's stock): it turns from a degree short
+  // of that round its outboard side to 172 degrees, past the drone stand's seat; over the roof edge ahead and the stern
+  // it depresses only as far as the table lets it (each degree the smallest of it and its neighbours)
+  add30mmCannon(P, { name: 'object195_2a42', x: -.74, deck: 1.20, z: -.20, axisY: 1.34, pivotZ: -.20, muzzleZ: 1.85,
+    yawArc: [-3.0020, 0.1047],
+    depressionByYaw: [[-3.002, 0.101], [-2.9845, 0.115], [-2.9671, 0.129], [-2.9496, 0.14], [-2.9322, 0.154], [-2.9147, 0.168],
+      [-2.8972, 0.18], [-0.384, 0.18], [-0.3665, 0.168], [-0.3142, 0.168], [-0.2967, 0.174], [-0.2793, 0.168],
+      [-0.2618, 0.165], [-0.2269, 0.165], [-0.2094, 0.154], [-0.192, 0.14], [-0.1745, 0.129], [-0.1571, 0.115],
+      [-0.1396, 0.101], [-0.1222, 0.084], [-0.1047, 0.078], [0.1047, 0.078]] });
 }
 
 /** The 2A83 on its exposed cradle: the cradle's shield, the recoil cylinders' housings, the tube. Gun frame. */

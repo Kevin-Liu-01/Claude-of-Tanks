@@ -149,7 +149,22 @@ function addTurret(P: TankBuilderPort): void {
   }
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [1.205, .24, -.70], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', .26, [-1.205, .24, -.70], -Math.PI / 2);
-  add30mmCannon(P, { name: 'molot_gsh30', x: .80, deck: .44, z: .45, axisY: .68, pivotZ: .45, muzzleZ: 2.35 });
+  // the GSh-30 beside the gun's casing: its barrel crosses the casing from 14 degrees inboard (tools/roof-station-arcs.mjs,
+  // barrel lines against the turret's stock), so it turns from a degree short of that round its outboard side to 172
+  // degrees; over the turret's rear quarter it depresses only as far as the table lets it (each degree the smallest of it
+  // and its neighbours)
+  add30mmCannon(P, { name: 'molot_gsh30', x: .80, deck: .44, z: .45, axisY: .68, pivotZ: .45, muzzleZ: 2.35,
+    yawArc: [-0.2094, 3.0020],
+    depressionByYaw: [[1.1694, 0.18], [1.1868, 0.174], [1.2043, 0.163], [1.2217, 0.154], [1.2566, 0.154], [1.2741, 0.157],
+      [1.2915, 0.177], [1.309, 0.18], [1.3265, 0.18], [1.3439, 0.177], [1.3614, 0.163], [1.3788, 0.151],
+      [1.4137, 0.151], [1.4312, 0.154], [1.4486, 0.165], [1.4661, 0.18], [1.4835, 0.18], [1.501, 0.177],
+      [1.5184, 0.16], [1.5359, 0.149], [1.5882, 0.149], [1.6057, 0.16], [1.6232, 0.18], [1.6406, 0.18],
+      [1.6581, 0.165], [1.6755, 0.149], [1.693, 0.14], [1.7279, 0.14], [1.7453, 0.146], [1.7628, 0.163],
+      [1.7802, 0.18], [1.7977, 0.157], [1.8151, 0.14], [1.8326, 0.132], [1.8675, 0.132], [1.885, 0.143],
+      [1.9024, 0.16], [1.9199, 0.149], [1.9373, 0.132], [1.9548, 0.126], [1.9897, 0.126], [2.0071, 0.137],
+      [2.0246, 0.154], [2.042, 0.168], [2.0595, 0.18], [2.7576, 0.18], [2.7751, 0.171], [2.7925, 0.165],
+      [2.81, 0.157], [2.8274, 0.149], [2.8449, 0.143], [2.8623, 0.135], [2.8798, 0.129], [2.8972, 0.12],
+      [2.9147, 0.112], [2.9322, 0.109], [2.9671, 0.109], [2.9845, 0.008], [3.002, 0.008]] });
 }
 
 /** The gun's armoured mantlet at the casing's brow and the 152 mm tube. Gun frame. */
