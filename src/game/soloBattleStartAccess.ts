@@ -3,6 +3,7 @@ import type {
   SoloBattleStartRuntime,
   SoloBattleStartRuntimeOptions,
 } from './soloBattleStartRuntime.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 interface SoloBattleStartModule {
   createSoloBattleStartRuntime(options: SoloBattleStartRuntimeOptions): SoloBattleStartRuntime;
@@ -29,21 +30,10 @@ export function createSoloBattleStartAccess({
   }
 
   let runtime: SoloBattleStartRuntime | null = null;
-  let pending: Promise<SoloBattleStartRuntime> | null = null;
-
-  const preload = () => {
-    if (runtime) return Promise.resolve(runtime);
-    if (pending) return pending;
-    const request = load().then((module) => {
-      runtime = module.createSoloBattleStartRuntime(options());
-      return runtime;
-    });
-    pending = request;
-    request.catch(() => {
-      if (pending === request) pending = null;
-    });
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => load().then((module) => (runtime = module.createSoloBattleStartRuntime(options()))));
+  const preload = () => chunk.load();
 
   return {
     preload,

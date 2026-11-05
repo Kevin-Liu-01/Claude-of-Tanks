@@ -74,7 +74,7 @@ assert.throws(
   assert.equal(openerAsks, 1, 'an opener is asked once');
 
   // an async factory (the Garage dressing prepares its fleet first) settles before the runtime is current
-  const prepared = createLazyRuntimeOwner(async () => ({ id: 7 }), async (module) => { await null; return { built: module.id }; });
+  const prepared = createLazyRuntimeOwner(async () => ({ id: 7 }), async (module) => { await Promise.resolve(); return { built: module.id }; });
   const shared = prepared.preload();
   assert.equal(prepared.preload(), shared, 'one promise while it loads');
   assert.deepEqual(await shared, { built: 7 });

@@ -1,4 +1,5 @@
 import { preloadWreckTurretDriver } from '../vehicles/wreckTurretDriverLoader.ts';
+import { createLazyChunk } from '../app/lazyChunk.ts';
 
 type RuntimeModule = typeof import('./battleWarmRuntime.ts');
 type RuntimeLoader = () => Promise<RuntimeModule>;
@@ -44,22 +45,10 @@ export function createBattleWarmAccess(
   load: RuntimeLoader = loadBattleWarmRuntime,
 ): BattleWarmAccess {
   let runtime: RuntimeModule | null = null;
-  let pending: Promise<RuntimeModule> | null = null;
-
-  const preload = (): Promise<RuntimeModule> => {
-    if (runtime) return Promise.resolve(runtime);
-    if (pending) return pending;
-    const request = load().then((loaded) => {
-      runtime = loaded;
-      pending = null;
-      return loaded;
-    });
-    pending = request;
-    request.catch(() => {
-      if (pending === request) pending = null;
-    });
-    return request;
-  };
+  // (2026-11-02 audit R6, round 2 U35) one app/lazyChunk.ts chunk: a failed transfer is asked again under the one policy
+  // (at once after one failure, then past its backoff; a removed chunk shows the reload action), not at once by every call
+  const chunk = createLazyChunk(() => load().then((loaded) => (runtime = loaded)));
+  const preload = (): Promise<RuntimeModule> => chunk.load();
 
   return {
     preload,
