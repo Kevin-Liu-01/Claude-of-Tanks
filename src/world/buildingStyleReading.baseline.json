@@ -1,0 +1,1186 @@
+{
+  "hessian": {
+    "map": "frontier",
+    "houses": 15,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.55,
+      "pitchDeg": 49,
+      "bayM": 2
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      2.4,
+      2.75
+    ],
+    "roofs": {
+      "halfhip": 7,
+      "gable": 8
+    },
+    "pitchDeg": [
+      46,
+      53
+    ],
+    "window": {
+      "w": 0.75,
+      "h": 1,
+      "bayM": [
+        1.8,
+        2.3
+      ]
+    },
+    "doors": {
+      "door": 12,
+      "shopfront": 3,
+      "gate": 3
+    }
+  },
+  "savoyard": {
+    "map": "alpine",
+    "houses": 12,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.9,
+      "pitchDeg": 26,
+      "bayM": 2.6
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      2.1,
+      3.4
+    ],
+    "roofs": {
+      "gable": 6,
+      "hip": 6
+    },
+    "pitchDeg": [
+      22,
+      27
+    ],
+    "window": {
+      "w": 0.85,
+      "h": 1.3,
+      "bayM": [
+        2.6,
+        2.9
+      ]
+    },
+    "doors": {
+      "door": 15,
+      "loft": 4
+    }
+  },
+  "dalmatian": {
+    "map": "saltwind",
+    "houses": 18,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.8,
+      "pitchDeg": 23,
+      "bayM": 3.3
+    },
+    "storeys": [
+      1,
+      3
+    ],
+    "storeyM": [
+      2.65,
+      3.3
+    ],
+    "roofs": {
+      "gable": 12,
+      "shed": 3,
+      "hip": 3
+    },
+    "pitchDeg": [
+      16,
+      24
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.2,
+      "bayM": [
+        2.4,
+        6.1
+      ]
+    },
+    "doors": {
+      "door": 30
+    }
+  },
+  "breton": {
+    "map": "coastal",
+    "houses": 15,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.7,
+      "pitchDeg": 47,
+      "bayM": 4.4
+    },
+    "storeys": [
+      1,
+      3
+    ],
+    "storeyM": [
+      2.5,
+      2.9
+    ],
+    "roofs": {
+      "gable": 15
+    },
+    "pitchDeg": [
+      41,
+      53
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.1,
+      "bayM": [
+        2.4,
+        6.6
+      ]
+    },
+    "doors": {
+      "door": 12,
+      "gate": 3,
+      "loft": 3
+    }
+  },
+  "kolkhoz": {
+    "map": "verdant",
+    "houses": 9,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.55,
+      "pitchDeg": 40,
+      "bayM": 3.3
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.45,
+      3.3
+    ],
+    "roofs": {
+      "hip": 9
+    },
+    "pitchDeg": [
+      26,
+      43
+    ],
+    "window": {
+      "w": 0.7,
+      "h": 0.95,
+      "bayM": [
+        2.7,
+        5.2
+      ]
+    },
+    "doors": {
+      "door": 9
+    }
+  },
+  "goral": {
+    "map": "winter",
+    "houses": 12,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.55,
+      "pitchDeg": 51,
+      "bayM": 2.9
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      1.3,
+      2.7
+    ],
+    "roofs": {
+      "halfhip": 12
+    },
+    "pitchDeg": [
+      49,
+      54
+    ],
+    "window": {
+      "w": 0.65,
+      "h": 0.8,
+      "bayM": [
+        2.3,
+        5.4
+      ]
+    },
+    "doors": {
+      "door": 15
+    }
+  },
+  "polder": {
+    "map": "polders",
+    "houses": 12,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.9,
+      "pitchDeg": 51,
+      "bayM": 3.9
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      2.4,
+      2.9
+    ],
+    "roofs": {
+      "gable": 12
+    },
+    "pitchDeg": [
+      45,
+      52
+    ],
+    "window": {
+      "w": 0.95,
+      "h": 1.35,
+      "bayM": [
+        2.2,
+        4.4
+      ]
+    },
+    "doors": {
+      "door": 18,
+      "gate": 3,
+      "loft": 12
+    }
+  },
+  "eifel": {
+    "map": "reservoir",
+    "houses": 15,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.55,
+      "pitchDeg": 48,
+      "bayM": 2
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      2.4,
+      2.75
+    ],
+    "roofs": {
+      "halfhip": 8,
+      "gable": 7
+    },
+    "pitchDeg": [
+      46,
+      53
+    ],
+    "window": {
+      "w": 0.75,
+      "h": 1,
+      "bayM": [
+        1.9,
+        2.3
+      ]
+    },
+    "doors": {
+      "door": 12,
+      "gate": 3
+    }
+  },
+  "mekong": {
+    "map": "mangrove",
+    "houses": 6,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3,
+      "pitchDeg": 26,
+      "bayM": 2.8
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.5,
+      3
+    ],
+    "roofs": {
+      "gable": 5,
+      "hip": 1
+    },
+    "pitchDeg": [
+      22,
+      34
+    ],
+    "window": {
+      "w": 0.9,
+      "h": 1,
+      "bayM": [
+        2.5,
+        4.9
+      ]
+    },
+    "doors": {
+      "door": 9
+    }
+  },
+  "nordland": {
+    "map": "fjord",
+    "houses": 12,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.5,
+      "pitchDeg": 38,
+      "bayM": 2.8
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      0.7,
+      3
+    ],
+    "roofs": {
+      "gable": 9,
+      "hip": 3
+    },
+    "pitchDeg": [
+      28,
+      41
+    ],
+    "window": {
+      "w": 0.95,
+      "h": 1.3,
+      "bayM": [
+        2.4,
+        3.8
+      ]
+    },
+    "doors": {
+      "door": 15,
+      "loft": 24,
+      "shopfront": 3
+    }
+  },
+  "bengal": {
+    "map": "delta",
+    "houses": 9,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3,
+      "pitchDeg": 29,
+      "bayM": 2.8
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      2.7,
+      3.2
+    ],
+    "roofs": {
+      "gable": 2,
+      "hip": 4,
+      "flat": 3
+    },
+    "pitchDeg": [
+      25,
+      39
+    ],
+    "window": {
+      "w": 0.7,
+      "h": 0.7,
+      "bayM": [
+        2.8,
+        4.3
+      ]
+    },
+    "doors": {
+      "door": 6,
+      "gate": 3
+    }
+  },
+  "franconian": {
+    "map": "urban",
+    "houses": 18,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.6,
+      "pitchDeg": 52,
+      "bayM": 2
+    },
+    "storeys": [
+      2,
+      4
+    ],
+    "storeyM": [
+      2.45,
+      2.9
+    ],
+    "roofs": {
+      "gable": 12,
+      "halfhip": 6
+    },
+    "pitchDeg": [
+      46,
+      55
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.1,
+      "bayM": [
+        1.8,
+        2.3
+      ]
+    },
+    "doors": {
+      "door": 15,
+      "shopfront": 6,
+      "gate": 3
+    }
+  },
+  "ksar": {
+    "map": "desert",
+    "houses": 10,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3.25,
+      "pitchDeg": null,
+      "bayM": 4.4
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.3,
+      3.6
+    ],
+    "roofs": {
+      "flat": 10
+    },
+    "pitchDeg": null,
+    "window": {
+      "w": 0.55,
+      "h": 0.7,
+      "bayM": [
+        3.8,
+        4.8
+      ]
+    },
+    "doors": {
+      "door": 10,
+      "loft": 8
+    }
+  },
+  "arctic": {
+    "map": "whiteout",
+    "houses": 28,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.7,
+      "pitchDeg": 8,
+      "bayM": 2.2
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.25,
+      6.4
+    ],
+    "roofs": {
+      "flat": 18,
+      "gable": 4,
+      "shed": 6
+    },
+    "pitchDeg": [
+      4,
+      10
+    ],
+    "window": {
+      "w": 0.9,
+      "h": 0.7,
+      "bayM": [
+        2,
+        4
+      ]
+    },
+    "doors": {
+      "door": 22,
+      "gate": 9
+    }
+  },
+  "siwa": {
+    "map": "oasis",
+    "houses": 21,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.85,
+      "pitchDeg": null,
+      "bayM": 2.1
+    },
+    "storeys": [
+      1,
+      3
+    ],
+    "storeyM": [
+      2.6,
+      3.05
+    ],
+    "roofs": {
+      "flat": 21
+    },
+    "pitchDeg": null,
+    "window": {
+      "w": 0.5,
+      "h": 0.55,
+      "bayM": [
+        1.9,
+        2.3
+      ]
+    },
+    "doors": {
+      "door": 12
+    }
+  },
+  "wadirum": {
+    "map": "badlands",
+    "houses": 9,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3.05,
+      "pitchDeg": null,
+      "bayM": 2.3
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      3,
+      3.05
+    ],
+    "roofs": {
+      "flat": 9
+    },
+    "pitchDeg": null,
+    "window": {
+      "w": 0.9,
+      "h": 1,
+      "bayM": [
+        2.3,
+        3.6
+      ]
+    },
+    "doors": {
+      "door": 13
+    }
+  },
+  "ruhr": {
+    "map": "railyard",
+    "houses": 3,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.8,
+      "pitchDeg": 45,
+      "bayM": 3.2
+    },
+    "storeys": [
+      2,
+      2
+    ],
+    "storeyM": [
+      2.6,
+      2.8
+    ],
+    "roofs": {
+      "gable": 3
+    },
+    "pitchDeg": [
+      45,
+      45
+    ],
+    "window": {
+      "w": 0.9,
+      "h": 1.3,
+      "bayM": [
+        2.3,
+        3.2
+      ]
+    },
+    "doors": {
+      "door": 6
+    }
+  },
+  "kohima": {
+    "map": "monsoon",
+    "houses": 6,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3.3,
+      "pitchDeg": 52,
+      "bayM": 4.2
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      1.7,
+      3.3
+    ],
+    "roofs": {
+      "hip": 3,
+      "gable": 3
+    },
+    "pitchDeg": [
+      28,
+      52
+    ],
+    "window": {
+      "w": 1,
+      "h": 1.5,
+      "bayM": [
+        2.6,
+        5.2
+      ]
+    },
+    "doors": {
+      "door": 6
+    }
+  },
+  "hostomel": {
+    "map": "airfield",
+    "houses": 6,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.4,
+      "pitchDeg": 43,
+      "bayM": 0.8
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.2,
+      2.55
+    ],
+    "roofs": {
+      "gable": 3,
+      "shed": 3
+    },
+    "pitchDeg": [
+      12,
+      45
+    ],
+    "window": {
+      "w": 0.6,
+      "h": 0.95,
+      "bayM": [
+        0.8,
+        3.2
+      ]
+    },
+    "doors": {
+      "door": 6
+    }
+  },
+  "kyushu": {
+    "map": "caldera",
+    "houses": 27,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 4,
+      "pitchDeg": 27,
+      "bayM": 2.1
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      3,
+      5.6
+    ],
+    "roofs": {
+      "hip": 6,
+      "gable": 18,
+      "flat": 3
+    },
+    "pitchDeg": [
+      18,
+      30
+    ],
+    "window": {
+      "w": 1.1,
+      "h": 1.3,
+      "bayM": [
+        1.9,
+        4.4
+      ]
+    },
+    "doors": {
+      "gate": 11,
+      "loft": 78,
+      "door": 16
+    }
+  },
+  "queenstown": {
+    "map": "copper_mesa",
+    "houses": 21,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 4,
+      "pitchDeg": 24,
+      "bayM": 2.8
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      2.7,
+      8.5
+    ],
+    "roofs": {
+      "gable": 9,
+      "hip": 12
+    },
+    "pitchDeg": [
+      18,
+      26
+    ],
+    "window": {
+      "w": 1,
+      "h": 2,
+      "bayM": [
+        2.4,
+        4.4
+      ]
+    },
+    "doors": {
+      "door": 18,
+      "gate": 9
+    }
+  },
+  "glencanyon": {
+    "map": "skybridge",
+    "houses": 9,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.55,
+      "pitchDeg": 17,
+      "bayM": 6.5
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.55,
+      2.55
+    ],
+    "roofs": {
+      "gable": 9
+    },
+    "pitchDeg": [
+      17,
+      17
+    ],
+    "window": {
+      "w": 1.1,
+      "h": 1.1,
+      "bayM": [
+        3.8,
+        6.5
+      ]
+    },
+    "doors": {
+      "door": 9
+    }
+  },
+  "navajo": {
+    "map": "titan_gorge",
+    "houses": 6,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.6,
+      "pitchDeg": 19,
+      "bayM": 3.4
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.55,
+      2.65
+    ],
+    "roofs": {
+      "gable": 4,
+      "flat": 2
+    },
+    "pitchDeg": [
+      16,
+      20
+    ],
+    "window": {
+      "w": 0.85,
+      "h": 1.1,
+      "bayM": [
+        3.1,
+        5
+      ]
+    },
+    "doors": {
+      "door": 6
+    }
+  },
+  "saar": {
+    "map": "foundry",
+    "houses": 6,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 3,
+      "pitchDeg": 45,
+      "bayM": 3.1
+    },
+    "storeys": [
+      2,
+      2
+    ],
+    "storeyM": [
+      1.5,
+      3.05
+    ],
+    "roofs": {
+      "gable": 6
+    },
+    "pitchDeg": [
+      43,
+      46
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.1,
+      "bayM": [
+        2.9,
+        3.2
+      ]
+    },
+    "doors": {
+      "door": 12,
+      "gate": 4,
+      "shopfront": 3
+    }
+  },
+  "shanghai": {
+    "map": "blackglass",
+    "houses": 4,
+    "mid": {
+      "storeys": 3,
+      "storeyM": 3.1,
+      "pitchDeg": 26,
+      "bayM": 2
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      2.9,
+      3.4
+    ],
+    "roofs": {
+      "gable": 3,
+      "flat": 1
+    },
+    "pitchDeg": [
+      26,
+      28
+    ],
+    "window": {
+      "w": 0.85,
+      "h": 1.5,
+      "bayM": [
+        1.5,
+        4.6
+      ]
+    },
+    "doors": {
+      "door": 8
+    }
+  },
+  "longleaf": {
+    "map": "longleaf",
+    "houses": 12,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3,
+      "pitchDeg": 30,
+      "bayM": 5
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      2.8,
+      4.6
+    ],
+    "roofs": {
+      "gable": 9,
+      "hip": 3
+    },
+    "pitchDeg": [
+      24,
+      31
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.4,
+      "bayM": [
+        4.2,
+        5.6
+      ]
+    },
+    "doors": {
+      "door": 30
+    }
+  },
+  "sarajevo": {
+    "map": "ruinspires",
+    "houses": 3,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.8,
+      "pitchDeg": 51,
+      "bayM": 2.2
+    },
+    "storeys": [
+      2,
+      3
+    ],
+    "storeyM": [
+      2.7,
+      4.25
+    ],
+    "roofs": {
+      "hip": 2,
+      "gable": 1
+    },
+    "pitchDeg": [
+      39,
+      53
+    ],
+    "window": {
+      "w": 0.7,
+      "h": 1,
+      "bayM": [
+        1.8,
+        3.1
+      ]
+    },
+    "doors": {
+      "door": 5,
+      "gate": 1
+    }
+  },
+  "andalusian": {
+    "map": "cliffbridge",
+    "houses": 18,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.9,
+      "pitchDeg": 21,
+      "bayM": 3
+    },
+    "storeys": [
+      1,
+      3
+    ],
+    "storeyM": [
+      2.1,
+      3.4
+    ],
+    "roofs": {
+      "gable": 12,
+      "hip": 3,
+      "shed": 3
+    },
+    "pitchDeg": [
+      13,
+      23
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.1,
+      "bayM": [
+        2.7,
+        4.5
+      ]
+    },
+    "doors": {
+      "door": 49,
+      "loft": 6,
+      "gate": 3
+    }
+  },
+  "chouf": {
+    "map": "orchard",
+    "houses": 21,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 3.45,
+      "pitchDeg": 27,
+      "bayM": 3.5
+    },
+    "storeys": [
+      1,
+      2
+    ],
+    "storeyM": [
+      3.4,
+      5.6
+    ],
+    "roofs": {
+      "hip": 8,
+      "flat": 10,
+      "gable": 3
+    },
+    "pitchDeg": [
+      26,
+      28
+    ],
+    "window": {
+      "w": 0.8,
+      "h": 1.35,
+      "bayM": [
+        2.8,
+        8.4
+      ]
+    },
+    "doors": {
+      "door": 24,
+      "loft": 3
+    }
+  },
+  "lorrain": {
+    "map": "autumn",
+    "houses": 21,
+    "mid": {
+      "storeys": 2,
+      "storeyM": 2.7,
+      "pitchDeg": 25,
+      "bayM": 2.5
+    },
+    "storeys": [
+      1,
+      3
+    ],
+    "storeyM": [
+      2.5,
+      3
+    ],
+    "roofs": {
+      "gable": 18,
+      "flat": 3
+    },
+    "pitchDeg": [
+      25,
+      26
+    ],
+    "window": {
+      "w": 0.9,
+      "h": 1.3,
+      "bayM": [
+        2,
+        5.9
+      ]
+    },
+    "doors": {
+      "door": 42,
+      "gate": 3,
+      "loft": 6,
+      "shopfront": 15
+    }
+  },
+  "tselina": {
+    "map": "steppe",
+    "houses": 15,
+    "mid": {
+      "storeys": 1,
+      "storeyM": 2.7,
+      "pitchDeg": 21,
+      "bayM": 2.4
+    },
+    "storeys": [
+      1,
+      1
+    ],
+    "storeyM": [
+      2.25,
+      3.7
+    ],
+    "roofs": {
+      "gable": 4,
+      "shed": 6,
+      "hip": 5
+    },
+    "pitchDeg": [
+      12,
+      24
+    ],
+    "window": {
+      "w": 0.85,
+      "h": 1.2,
+      "bayM": [
+        0.8,
+        3.4
+      ]
+    },
+    "doors": {
+      "door": 12
+    }
+  },
+  "olympus": {
+    "map": "mars",
+    "houses": 0,
+    "mid": null,
+    "storeys": null,
+    "storeyM": null,
+    "roofs": {},
+    "pitchDeg": null,
+    "window": null,
+    "doors": {}
+  },
+  "littrow": {
+    "map": "moon",
+    "houses": 0,
+    "mid": null,
+    "storeys": null,
+    "storeyM": null,
+    "roofs": {},
+    "pitchDeg": null,
+    "window": null,
+    "doors": {}
+  }
+}
