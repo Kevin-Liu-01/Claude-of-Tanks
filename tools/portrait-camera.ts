@@ -25,7 +25,8 @@ export function portraitSideRatio(id: string): number {
   // Release 269: the M113A1 FSV's whips over its short Saladin-turreted hull stood 115.3 card px against the 111.8 px
   // full-height envelope at the default 0.56, and the MRV's the same once the field load left it (106.6 x 115.3); the
   // X1's side-on view (a small chassis under tall whips) widens their cores.
-  // (the US M113A3 on the same hull and whips: 106.9 x 113.9 at the default)
-  if (id === 'm113a1_fsv' || id === 'm113a1_mrv' || id === 'm113a3') return 1.10;
+  // (the US M113A3 on the same hull and whips: 106.9 x 113.9 at the default; the M163 VADS's whip over its Vulcan
+  // turret 90.9 x 112.0)
+  if (id === 'm113a1_fsv' || id === 'm113a1_mrv' || id === 'm113a3' || id === 'm163_vads') return 1.10;
   return 0.56;
 }

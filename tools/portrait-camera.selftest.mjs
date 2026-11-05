@@ -18,7 +18,7 @@ const changed = new Set(['t72b3', 'strv122']);
 // M113A3's on the same hull).
 const sourceDirections = new Map([['kf41_lynx', 0.86], ['merkava4_barak', 0.70], ['kf51_panther', 0.72], ['shot_kal', 0.74],
   ['x1_pioneiro', 1.10], ['x1a2_carcara', 0.70], ['t80uk', 0.70], ['m113a1_fsv', 1.10], ['m113a1_mrv', 1.10],
-  ['m113a3', 1.10]]);
+  ['m113a3', 1.10], ['m163_vads', 1.10]]);
 for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
   const expected = sourceDirections.get(id) ?? (changed.has(id) ? 0.76 : 0.56);
   assert.equal(portraitSideRatio(id), expected, `${id}: exact portrait-only azimuth (bow to the left)`);
