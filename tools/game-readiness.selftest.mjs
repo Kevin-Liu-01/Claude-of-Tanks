@@ -302,4 +302,37 @@ const listed = (key) => {
     'the exit timing polls for the Garage in the same function');
 }
 
+// (round 2 U40) Every documented session open for an agent-browser session tool asks for the path that tool checks
+// (sessionPathProblem): docs/DEVELOPMENT.md's release audit opened its session with no `&automation=harness`, so
+// render-stability-audit and map-shadow-audit refused it at the documented first step.
+{
+  const { readdirSync } = await import('node:fs');
+  const sessionTools = new Map(toolCensusFiles(ROOT).flatMap((file) => {
+    const wanted = codeText(read(file), file).match(/sessionPathProblem\([^\n]*?,\s*'(player|harness)'\)/)?.[1];
+    return wanted && file !== 'tools/game-readiness.mjs' ? [[file.replace(/^tools\//, '').replace(/\.mjs$/, ''), wanted]] : [];
+  }));
+  assert.ok(sessionTools.has('render-stability-audit') && sessionTools.has('map-shadow-audit'), 'the session tools are found');
+  const pages = ['docs', 'tools'].flatMap((dir) => readdirSync(join(ROOT, dir)).filter((name) => name.endsWith('.md')).map((name) => `${dir}/${name}`))
+    .concat([...sessionTools.keys()].map((tool) => `tools/${tool}.mjs`));
+  let checked = 0;
+  for (const page of pages) {
+    const text = read(page);
+    const opened = new Map([...text.matchAll(/agent-browser --session (\S+) open \\?\s*'([^']+)'/g)].map((match) => [match[1], match[2]]));
+    for (const [, tool, sessionName] of text.matchAll(/node tools\/([\w-]+)\.mjs (\S+)/g)) {
+      const wanted = sessionTools.get(tool);
+      const url = opened.get(sessionName);
+      if (!wanted || !url) continue;
+      checked += 1;
+      assert.match(url, new RegExp(`[?&]automation=${wanted}(?:&|$)`), `${page}: the ${sessionName} session ${tool} reads is opened on the ${wanted} path`);
+    }
+    for (const [, sessionName, url] of text.matchAll(/agent-browser --session (\S+) open \\?\s*'([^']+)'/g)) {
+      if (page.startsWith('tools/') && page.endsWith('.mjs')) {
+        checked += 1;
+        assert.match(url, /[?&]automation=(?:player|harness)(?:&|$)/, `${page}: its usage opens ${sessionName} on a named path`);
+      }
+    }
+  }
+  assert.ok(checked >= 4, `the documented sessions were checked (${checked})`);
+}
+
 console.log('game-readiness.selftest: one readiness probe over the published lifecycle; every hand-built read listed');

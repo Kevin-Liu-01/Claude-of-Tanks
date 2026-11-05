@@ -1368,7 +1368,7 @@ Rendered shadow and temporal-stability release audit:
     npm run build
     npx vite preview --host 127.0.0.1 --port 5173 --strictPort
     agent-browser --session cot-shadow-audit open \
-      'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1'
+      'http://127.0.0.1:5173/?nosplash=1&tier=desktop&diagforce=1&automation=harness'
     node tools/render-stability-audit.mjs cot-shadow-audit
     node tools/map-shadow-audit.mjs cot-shadow-audit
     agent-browser --session cot-shadow-audit close
