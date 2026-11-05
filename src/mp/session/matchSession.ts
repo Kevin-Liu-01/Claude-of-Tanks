@@ -1071,7 +1071,7 @@ export class MatchSession {
     this.servingHostId = me;
     this.migrationHostId = me;
     this.p2pListeners.emit({ kind: 'migration', phase: 'begin', hostId: me, generation: change.generation, role: this.role, detail });
-    void this.becomeHost(client, round, change, migrating, previousHostId);
+    void this.becomeHost(client, round, change, migrating, previousHostId, true);
   }
 
   /** The room replaced this host (a host_only on a report): the actor stops, this seat follows the room's current host as a peer. */
@@ -1172,7 +1172,7 @@ export class MatchSession {
     this.peerTransport?.retarget('host changed');
   }
 
-  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null): Promise<void> {
+  private async becomeHost(client: MatchClient, round: SessionRound, change: RoomHostChangedPayload, migrating: MigratingTransport, previousHostId: string | null = null, kept = false): Promise<void> {
     const me = this.room.playerId;
     const secret = change.hostSecret ?? this.hostSecret;
     if (!this.canHost || !secret) {
@@ -1225,7 +1225,7 @@ export class MatchSession {
     if (!resume) {
       const roomMatch = this.room.room?.match;
       const fallback = migrationFallback({ latestFrame: retained.latestFrame, latestFrameAtMs: retained.latestFrameAtMs, nowMs: this.clock(), resumeTick: change.resumeTick, countdownMs: (this.p2pOptions?.countdownS ?? 5) * 1000,
-        roomMatchStatus: roomMatch && roomMatch.id === round.matchStart.matchId ? roomMatch.status : null });
+        roomMatchStatus: roomMatch && roomMatch.id === round.matchStart.matchId ? roomMatch.status : null, kept });
       if (fallback.kind === 'decline') {
         // A newer election (or the round's end) landed during the key awaits above: this boot is superseded, as in the
         // host.start catch below (audit M2). Reporting a failure here cleared the newer migration's flag and host and

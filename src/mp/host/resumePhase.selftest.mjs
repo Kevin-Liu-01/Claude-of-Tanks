@@ -161,5 +161,10 @@ async function newHost(resume, battleLimitS = null) {
   assert.equal(result.kind, 'restart', `a report inside the countdown with the room starting restarts the countdown (got ${kindOf(result)})`);
   assert.equal(result.resumeTick, 75);
   assert.equal(migration.migrationPlayEvidence({ latestFrame: null, resumeTick: 0, countdownMs: 5000, roomMatchStatus: null }), null, 'no report, no frame, no record: nothing says the battle began');
+  // a kept host (its re-entry decline found nobody to hand the match on to: matchSession.ts bootKeptHost) restarts as the
+  // named last resort, whatever the evidence: a decline there ends the match for every seat
+  result = fallback({ resumeTick: 0, roomMatchStatus: 'playing', kept: true });
+  assert.equal(result.kind, 'restart', `a kept host restarts (got ${kindOf(result)})`);
+  assert.equal(result.lastResort, 'room', 'and names what it restarts over');
 }
 console.log('resumePhase: a migrated countdown counts on, an ended match stays ended with its verdict, and an unreadable keyframe declines a battle in progress or restarts the countdown on the clients\' timeline');

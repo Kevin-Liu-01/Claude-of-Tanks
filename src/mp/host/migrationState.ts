@@ -548,7 +548,8 @@ export type MigrationPlayEvidence = 'frame' | 'room' | 'report_tick';
 /** What an elected seat with no readable keyframe does (migrationFallback). */
 export type MigrationFallback =
   | { kind: 'decline'; reason: 'battle_in_progress'; evidence: MigrationPlayEvidence }
-  | { kind: 'restart'; state: HostResumeState; resumeTick: number };
+  /** `lastResort`: a kept host restarting a battle that had begun (the evidence), since nobody else can host it. */
+  | { kind: 'restart'; state: HostResumeState; resumeTick: number; lastResort?: MigrationPlayEvidence };
 
 /** Ticks a report may come early of the countdown's end it is judged against (the countdown's milliseconds round to a tick). */
 const COUNTDOWN_END_SLACK_TICKS = 2;
@@ -583,14 +584,18 @@ export function migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, ro
  *     since: a resume state with no rows (every hull on its spawn), so the boot takes the one resume path.
  * A frame-less seat judges the report tick against a first boot's countdown: after an earlier restart (its countdown
  * began later) it declines a countdown still running, the safe side (the room elects another seat, or ends the match).
+ * A kept host (matchSession.ts bootKeptHost: its re-entry decline found nobody to hand the match on to) restarts
+ * whatever the evidence, named as the last resort: a decline there ends the match for every seat.
  */
-export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null }: {
+export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeTick, countdownMs, roomMatchStatus = null, kept = false }: {
   latestFrame: SnapshotFrame | null; latestFrameAtMs: number | null; nowMs: number; resumeTick: number; countdownMs: number;
   /** The room's record of the elected match (the seat's room snapshot); null when it names another match or none. */
   roomMatchStatus?: RoomMatchStatus | null;
+  /** The room kept this seat as the host with no one else to elect (no election: the session's own last resort). */
+  kept?: boolean;
 }): MigrationFallback {
   const evidence = migrationPlayEvidence({ latestFrame, resumeTick, countdownMs, roomMatchStatus });
-  if (evidence) return { kind: 'decline', reason: 'battle_in_progress', evidence };
+  if (evidence && !kept) return { kind: 'decline', reason: 'battle_in_progress', evidence };
   const seen = latestFrame && latestFrameAtMs !== null ? latestFrame.tick + Math.max(0, Math.ceil((nowMs - latestFrameAtMs) / TICK_MS)) : 0;
   const tick = Math.max(0, Math.floor(Number(resumeTick) || 0), seen);
   const remainingMs = Math.max(0, Math.round(Number(countdownMs) || 0));
@@ -599,7 +604,7 @@ export function migrationFallback({ latestFrame, latestFrameAtMs, nowMs, resumeT
     meta: { phase: PHASE.COUNTDOWN, countdownMs: Math.min(0xffff, remainingMs), battleTimeMs: 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: 0 },
     destroyed: [], destruction: [], entities: [], shells: [], viewer: null, modeStateJson: null,
   };
-  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] } };
+  return { kind: 'restart', resumeTick: tick, state: { tick, battleTimeMs: 0, phase: 'countdown', frame, entities: [] }, ...(evidence ? { lastResort: evidence } : {}) };
 }
 
 /**
