@@ -392,7 +392,8 @@ export function buildK2(P: Modern3BuilderPort,
   // 267 (owner 2026-11-01, "update ... K2B, xK2"): the XK2 photographs' one continuous deep armoured skirt, hem level
   // at the wheel tops, heavy bolted modules over its front half (profiles/xk2Hull.ts). The print's sawtooth of teeth and
   // open notches, its asymmetric stringer and fender strips and the bow datum post are gone.
-  addK2Skirts(P);
+  // r269: the K2B's bolted add-on run (profiles/k2bHullKit.ts) replaces the heavy modules on its plate
+  addK2Skirts(P, { heavyModules: !k2bBow });
   };
   buildK2Skirts();
   const buildK2HullFurniture = (): void => {
