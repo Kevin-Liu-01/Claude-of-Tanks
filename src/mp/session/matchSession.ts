@@ -1301,7 +1301,7 @@ export class MatchSession {
           this.log('info', 'elected host boot superseded', { cause: superseded, generation: change.generation, running: this.runningGeneration });
           return;
         }
-        this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation });
+        this.log('warn', 'elected without a readable keyframe of a battle in progress; declining', { generation: change.generation, evidence: fallback.evidence });
         // through the session's role machine and its one decline writer, as the boot-failed path below (integration
         // IR11: this branch was written before either existed; it left the role at 'booting_host' with no host, and its
         // decline went past the session's own record)
@@ -1314,6 +1314,8 @@ export class MatchSession {
         this.setDecline('match', { declined: true, unable: true });
         return;
       }
+      // a kept host restarting a battle that had begun says so, with what told it the battle had begun (round 2 U1)
+      if (fallback.lastResort) this.log('warn', 'kept host restarts a battle in progress as the last resort', { generation: change.generation, evidence: fallback.lastResort, resumeTick: fallback.resumeTick });
       resume = { ...fallback.state, resumeTick: fallback.resumeTick };
     }
     if (!plan) {
