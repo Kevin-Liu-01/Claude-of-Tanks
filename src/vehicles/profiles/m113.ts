@@ -218,13 +218,13 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
   // idlers and the track's rear wraps show under them; 0.50 m tall, a vertical rear face for the lower half carrying a
   // tail light, then a face sloping 45 degrees forward over the upper half to a short flat top at the plate; on the right
   // tank a flat hinged lid on the slope carrying the filler cap, on the left a recessed channel down the slope between two
-  // ridges and the cap above it; two struts under each to the rear plate
+  // ridges and the cap on the slope beside it; plain outer faces (r8: nothing on or under them; each tank hangs on the
+  // rear plate by its front face)
   const addA2FuelTanks = (): void => {
     const z0 = D.sternZ, z1 = D.sternZ - 0.43, yLo = 0.76, yTop = 1.26, yFace = yLo + 0.5 * (yTop - yLo), run = yTop - yFace;
     const slope = Math.atan2(yTop - yFace, run), slopeLen = Math.hypot(yTop - yFace, run);
     const onSlope = (u: number, out: number): [number, number] => [yFace + u * (yTop - yFace) + out * Math.cos(slope),
       z1 + u * run - out * Math.sin(slope)];
-    const strutY = 0.50, strutZ = z1 + 0.07, strutLen = Math.hypot(yLo - strutY, z0 - strutZ);
     // the tank's side profile [z, y], extruded across x (sectionSolid's stations along +z, turned a quarter about y)
     const profile = [[z0, yLo], [z1, yLo], [z1, yFace], [z1 + run, yTop], [z0, yTop]] as const;
     const ring = profile.map(([z, y]) => [-z, y] as SectionPoint);
@@ -243,18 +243,15 @@ export function* buildM113HullSteps(P: TankBuilderPort, mark: M113HullMark,
         const [cy, cz] = onSlope(0.55, 0.024);
         P.add('hullDark', cylY(0.05, 0.05, 0.025, 10), x, cy, cz, -slope, 0, 0);
       } else {
-        // the left tank's recessed channel down the slope between two ridges, the filler cap on the flat top
+        // the left tank's recessed channel down the slope between two ridges, the filler cap on the slope beside it
         const [ry, rz] = onSlope(0.5, 0.012), [gy, gz] = onSlope(0.5, 0.001);
         for (const dx of [-0.055, 0.055]) P.add('hullDetail', box(0.03, 0.03, slopeLen - 0.04), x + dx, ry, rz, -slope, 0, 0);
         P.add('hullDark', box(0.08, 0.004, slopeLen - 0.06), x, gy, gz, -slope, 0, 0);
-        P.add('hullDark', cylY(0.05, 0.05, 0.03, 10), x, yTop + 0.012, (z1 + run + z0) / 2);
+        const [cy, cz] = onSlope(0.6, 0.024);
+        P.add('hullDark', cylY(0.05, 0.05, 0.025, 10), x + s * 0.13, cy, cz, -slope, 0, 0);
       }
       P.add('hullDark', box(0.18, 0.09, 0.012), x, yLo + 0.10, z1 - 0.004);
       P.add('hullGlass', box(0.12, 0.04, 0.012), x, yLo + 0.10, z1 - 0.010);
-      for (const dx of [-0.15, 0.15]) {
-        P.add('hullDark', box(0.04, 0.025, strutLen), x + dx, (yLo + strutY) / 2, (z0 + strutZ) / 2,
-          Math.atan2(yLo - strutY, z0 - strutZ), 0, 0);
-      }
     }
   };
   if (mark === 'mrv') {

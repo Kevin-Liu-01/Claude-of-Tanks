@@ -32,9 +32,12 @@ export const M163_TURRET = Object.freeze({
     foot: Object.freeze({ outX: 0.72, z0: -0.36, z1: -1.12, cornerR: 0.10 }),
     top: Object.freeze({ outX: 0.80, z0: -0.27, z1: -1.25, cornerR: 0.13 }) }),
   /** the upright slab at the ring's right front that carries the radar's boom (r4: the r2/r3 "tall plate" at the column's
-   * right was this part, drawn 0.15 m long and too far aft): its outer face's x, its thickness, its rear and front ends'
-   * z, its top, and the cut off its rear top corner (back along the top, down the rear edge) */
-  radarPlate: Object.freeze({ x: -0.58, t: 0.04, z0: -0.17, z1: 0.28, topY: 0.80, cutZ: 0.17, cutY: 0.20 }),
+   * right was this part, drawn 0.15 m long and too far aft; r8: photo 00/03 measured on its edges against the housing,
+   * the face foreshortened by the 45 degree view, puts it 1.0-1.2 of the housing's 0.56 m long with a long sloping top
+   * edge falling to its rear): its outer face's x, its thickness, its rear and front ends' z, its top, and the cut off
+   * its rear top corner (back along the top, down the rear edge). 0.62 m long, 1.1 of the housing; 2 cm outboard of the
+   * column's wall at its rear end */
+  radarPlate: Object.freeze({ x: -0.64, t: 0.04, z0: -0.30, z1: 0.32, topY: 0.82, cutZ: 0.35, cutY: 0.37 }),
   /** the whips (FITTINGS.antennaWhip, its 0.12 m pot under a 2.40 m rod: 2.47 m from foot to tip, raked 12 degrees aft),
    * the left one on the box shield's top at its rear outer corner, the right one on a bracket off the column's rear right
    * wall (at a bearing from the column's centre, its foot's radius and height) */
@@ -108,19 +111,20 @@ export const M163_GUNNER = Object.freeze({
   seat: Object.freeze({ x: -0.16, y: 0.50, z: -0.40 }),
   sight: Object.freeze({ x: 0.02, y: 1.00, z: -0.02, w: 0.20, h: 0.20, d: 0.30 }),
   /** the guard frame (r7: photos 00, 02, 04, 08): two tubular rails fixed to the turret straddling the receiver, one each
-   * side of the gun (02 from above), their tops level while the gun elevates (04 at 17 degrees, 08 at 5) 0.33 m over the
-   * elevation axis at the gunner's chest; each front curving up in a rounded handrail bend from its trunnion arm's front at
+   * side of the gun (02 from above), their tops level while the gun elevates (04 at 17 degrees, 08 at 5) at the gunner's
+   * chest (r8: photo 00 puts the top 0.6 of the housing's radius over its centre, 0.97 m; 04 and 08 read 0.33-0.46 m over
+   * the elevation axis by where the axis is taken, 0.91-1.04 m; built at 0.975 m, under the housing's top); each front curving up in a rounded handrail bend from its trunnion arm's front at
    * trunnion height, ahead of the receiver (04, 08); the inboard rail running aft into the sight head's front, the outboard
    * one aft beside the gun and round inboard behind the breech into the sight head's outboard face (the one cross tie, 0.55
    * m from the axis and 140 degrees round from the bore). Inboard of the gun's inboard reach (0.14 m, the chute's ribs) and
    * outboard of its outboard one (0.50 m, the cradle), so the barrels pass between them from -5 to +80 degrees; no leg to
    * the floor, nothing across the cradle, nothing into the box shield. 5 cm pipe; [x, y, z] points. */
   guard: Object.freeze({ r: 0.025,
-    inboard: Object.freeze([[0.075, 0.58, 0.40], [0.075, 0.64, 0.50], [0.075, 0.79, 0.53], [0.075, 0.89, 0.45],
-      [0.075, 0.915, 0.33], [0.075, 0.915, 0.20], [0.075, 0.915, 0.12]] as const),
-    outboard: Object.freeze([[0.575, 0.58, 0.40], [0.59, 0.64, 0.50], [0.59, 0.79, 0.53], [0.59, 0.89, 0.45],
-      [0.59, 0.915, 0.33], [0.59, 0.915, 0.0], [0.57, 0.92, -0.10], [0.45, 0.925, -0.125], [0.30, 0.93, -0.125],
-      [0.13, 0.93, -0.10]] as const) }),
+    inboard: Object.freeze([[0.075, 0.58, 0.40], [0.075, 0.66, 0.50], [0.075, 0.80, 0.55], [0.075, 0.92, 0.51],
+      [0.075, 0.975, 0.40], [0.075, 0.975, 0.25], [0.075, 0.975, 0.12]] as const),
+    outboard: Object.freeze([[0.575, 0.58, 0.40], [0.59, 0.66, 0.50], [0.59, 0.80, 0.55], [0.59, 0.92, 0.51],
+      [0.59, 0.975, 0.40], [0.59, 0.975, 0.20], [0.59, 0.975, 0.0], [0.57, 0.98, -0.10], [0.45, 0.98, -0.125], [0.30, 0.98, -0.125],
+      [0.13, 0.98, -0.10]] as const) }),
 });
 
 /**
@@ -146,3 +150,8 @@ export const M163_RADAR = Object.freeze({
    * a diagonal brace): the beam's centre height, its width and depth; the brace's foot height on the slab; the yoke */
   armY: 0.465, beamW: 0.08, beamH: 0.07, braceFootY: 0.28, yokeY: 0.515,
 });
+
+/** The amber beacon (hull frame; r8: photos 00/03, 01): directly behind the right lamp cluster's guard at the roof's front
+ * right corner, on a post from the roof braced to the guard; its cage 0.136 m across and 0.17 m tall (against the cluster's
+ * 0.30 x 0.16 m: 0.43-0.54 of its width, 1.0-1.6 of its height), its base 0.11 m over the roof. */
+export const M163_BEACON = Object.freeze({ x: -0.98, z: 1.60, baseOverRoof: 0.11, cageR: 0.068, cageH: 0.17 });

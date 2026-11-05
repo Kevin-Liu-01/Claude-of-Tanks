@@ -40,7 +40,7 @@ import { M113_BASE, m113Datums } from '../m113Datums.ts';
 import { M741_RING } from '../m741Datums.ts';
 import { GUN_ROTOR_KEY, type GunRotorTag } from '../gunRotorSpin.ts';
 import {
-  M163_GUN as G, M163_GUNNER, M163_MUZZLE_MOUTH, M163_MUZZLE_Z, M163_RADAR as R, M163_TRUNNION, M163_TURRET as T,
+  M163_BEACON, M163_GUN as G, M163_GUNNER, M163_MUZZLE_MOUTH, M163_MUZZLE_Z, M163_RADAR as R, M163_TRUNNION, M163_TURRET as T,
 } from './m163Frame.ts';
 
 type P3 = readonly [number, number, number];
@@ -97,10 +97,10 @@ function arcWall(rIn: number, rOut: number, y0: number, top0: number, top1: numb
 // ---------------------------------------------------------------------------------------------------- the hull kit --
 /** The long flat stowage case lying across the roof's left rear beside the commander's hatch (r5: photos 00, 03, a long,
  * flat, ribbed case, not a two-part block) on three skids: its lid's seam, two ribs round its long faces and ends, four
- * latches along its front, a handle at each end, its corners capped; the amber beacon at the roof's right front (photo 03)
- * on its post, its lens in a cage. */
+ * latches along its front, a handle at each end, its corners capped; the amber beacon, a tall lamp in its cage at the
+ * roof's front right corner behind the right lamp cluster's guard (r8: photos 00/03, 01). */
 function addHullKit(P: TankBuilderPort): void {
-  const { box, cylY, cylZ, sph, xform } = KIT;
+  const { box, cylY, cylZ, sph, torus, xform } = KIT;
   const D = m113Datums('fsv'), roof = M113_BASE.roofY;
   // (the left end 0.10 m short of the rear left lift eye, the right end clear of the commander's hatch; its top 0.24 m
   // over the roof, under the box shield's foot and the gun's depressed barrels as the turret turns)
@@ -118,18 +118,21 @@ function addHullKit(P: TankBuilderPort): void {
     for (const dz of [-0.07, 0.07]) P.add('hullDark', box(0.03, 0.03, 0.02), cx + sx * (len / 2 + 0.012), y0 + h * 0.62, cz + dz);
   }
   for (const dx of [-0.45, -0.15, 0.15, 0.45]) P.add('hullDark', box(0.05, 0.06, 0.016), cx + dx, y0 + h * 0.70, cz + d / 2 + 0.006);
-  // the beacon
-  // (r7: at the roof's front right corner over the right lamp cluster's guard, photos 00/03, 01/06; out of the gun's reach)
-  const bx = -0.98, bz = 1.60;
-  P.addEquipment('hullDark', cylY(0.055, 0.065, 0.03, 12), bx, roof + 0.010, bz);
-  P.addEquipment('hullDark', cylY(0.016, 0.016, 0.12, 8), bx, roof + 0.08, bz);
-  P.addEquipment('hullDark', cylY(0.05, 0.05, 0.025, 12), bx, roof + 0.150, bz);
-  P.add('hullGlass', xform(sph(0.045, 12), 0, 0, 0, 0, 0, 0, [1, 1.35, 1]), bx, roof + 0.205, bz);
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
-    P.add('hullDark', cylY(0.005, 0.005, 0.12, 6), bx + Math.sin(a) * 0.052, roof + 0.215, bz + Math.cos(a) * 0.052);
+  // the beacon (r8: photos 00/03, 01; m163Frame.ts M163_BEACON): a tall amber lamp in its cage directly behind the right
+  // lamp cluster's guard, on a post from the roof braced to the guard, its top 1.5 cluster heights over the cluster's top
+  // (2.17 m); out of the gun's reach
+  const Bc = M163_BEACON, bx = Bc.x, bz = Bc.z, base = roof + Bc.baseOverRoof, cageR = Bc.cageR, cageH = Bc.cageH;
+  P.addEquipment('hullDark', cylY(0.045, 0.06, 0.02, 12), bx, roof + 0.010, bz);
+  P.addEquipment('hullDark', cylY(0.022, 0.026, base - roof, 10), bx, (roof + base) / 2, bz);
+  P.add('hullDark', box(0.035, 0.035, 0.11), bx, base - 0.04, bz + 0.04);
+  P.addEquipment('hullDark', cylY(cageR + 0.004, cageR + 0.006, 0.022, 14), bx, base + 0.011, bz);
+  P.add('hullGlass', xform(sph(0.052, 14), 0, 0, 0, 0, 0, 0, [1, 1.45, 1]), bx, base + 0.022 + cageH / 2, bz);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+    P.add('hullDark', cylY(0.005, 0.005, cageH, 6), bx + Math.sin(a) * cageR, base + 0.022 + cageH / 2, bz + Math.cos(a) * cageR);
   }
-  P.add('hullDark', cylY(0.054, 0.054, 0.008, 12), bx, roof + 0.278, bz);
+  for (const y of [base + 0.022 + cageH * 0.5, base + 0.022 + cageH]) P.add('hullDark', torus(cageR, 0.006, 14, 4), bx, y, bz);
+  P.add('hullDark', cylY(cageR - 0.01, cageR + 0.002, 0.016, 14), bx, base + 0.022 + cageH + 0.008, bz);
 }
 
 // ------------------------------------------------------------------------------------------------------ the turret --
@@ -285,10 +288,11 @@ function addGunnerStation(P: TankBuilderPort): void {
 }
 
 /** The AN/VPS-2 (photos 00, 01, 06, 07): the long beam from the slab at the turret's base out under the housing with its
- * diagonal brace, the yoke, the round housing, its dome looking forward along the gun and its flat round back plate square
- * across the turret's rear with a stub aft, the two capped upright cases left and right on the back plate's edges. */
+ * diagonal brace, the yoke, the round housing, its dome looking forward along the gun and its flat round back plate of
+ * its full diameter square across the turret's rear with a rim, a flat bracket and a decal plate, the two capped upright
+ * cases left and right on the back plate's edges. */
 function addRadar(P: TankBuilderPort): void {
-  const { box, cylY, cylZ, xform } = KIT;
+  const { box, cylY, xform } = KIT;
   const Rp = T.radarPlate;
   // the beam from the slab at the turret's base out under the housing (0.15 m from the slab's rear edge, its root 3 cm
   // into the 4 cm slab so its oblique end stays inside the slab and its flange; it runs 0.10 m past the housing's
@@ -306,12 +310,16 @@ function addRadar(P: TankBuilderPort): void {
   const rr = R.r, back = -R.backZ + R.backT / 2;
   P.addEquipment('turret', forward(latheY([[0.0005, back], [rr - 0.01, back], [rr, back + 0.05], [rr, 0.02], [rr * 0.93, 0.11],
     [rr * 0.78, 0.19], [rr * 0.53, 0.25], [rr * 0.25, rr - 0.01], [0.0005, rr]], P.q ? 28 : 16)), R.x, R.y, R.z);
-  // the back plate square across the turret's rear, its rim and the stub aft at its centre (photo 07)
+  // the back plate square across the turret's rear: a flat disc of the housing's full diameter, its rim, a flat bracket
+  // on it (a centre block, a bar up to the rim and a bar across) and a decal plate low on it (r8: photo 07)
+  const backFace = R.z - R.backZ - R.backT / 2;
   P.addEquipment('turretDark', forward(latheY([[0.0005, -R.backT / 2], [R.backR, -R.backT / 2], [R.backR, R.backT / 2],
-    [0.0005, R.backT / 2]], P.q ? 28 : 16)), R.x, R.y, R.z - R.backZ);
-  P.add('turretDetail', forward(KIT.torus(R.backR - 0.006, 0.010, P.q ? 28 : 16, 6)), R.x, R.y, R.z - R.backZ - R.backT / 2);
-  P.add('turretDetail', box(0.12, 0.10, 0.08), R.x, R.y + 0.03, R.z - R.backZ - R.backT / 2 - 0.035);
-  P.add('turretDark', cylZ(0.035, 0.06, 12), R.x, R.y + 0.03, R.z - R.backZ - R.backT / 2 - 0.10);
+    [0.0005, R.backT / 2]], P.q ? 32 : 18)), R.x, R.y, R.z - R.backZ);
+  P.add('turretDetail', forward(KIT.torus(R.backR - 0.008, 0.016, P.q ? 32 : 18, 6)), R.x, R.y, backFace);
+  P.add('turretDetail', box(0.14, 0.12, 0.04), R.x, R.y + 0.02, backFace - 0.018);
+  P.add('turretDetail', box(0.04, R.backR - 0.06, 0.025), R.x, R.y + 0.02 + (R.backR - 0.06) / 2, backFace - 0.011);
+  P.add('turretDetail', box(2 * R.backR - 0.14, 0.035, 0.025), R.x, R.y + 0.02, backFace - 0.011);
+  P.add('turretDetail', box(0.08, 0.055, 0.006), R.x - 0.10, R.y - 0.15, backFace - 0.003);
   // the knob on the dome's upper face, forward of its crown and under the cases' tops (photo 03)
   P.add('turretDark', cylY(0.022, 0.026, 0.04, 10), R.x, R.y + 0.245 + 0.01, R.z + 0.13);
   // the cases, left and right on the back plate's edges, their feet level with the housing's and their capped tops over

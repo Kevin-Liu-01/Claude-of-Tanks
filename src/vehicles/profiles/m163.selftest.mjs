@@ -23,6 +23,8 @@
 //    of the gun: the sweep below); the linked belt chute flat and ribbed in two halves meeting on the elevation axis; the
 //    M741's fuel tanks over the track's ends, half a vertical face and half a 45 degree slope; the box shield's front
 //    outboard corner rounded;
+//  - r8: the rails' tops raised to 0.975 m; the slab a housing's width long; the back plate flat across the housing's
+//    full diameter; the beacon a tall lamp at the roof's front right corner out of the gun's reach;
 //  - from full depression to full elevation every gun part keeps 2 cm from its turret's own stock (the cross shaft and
 //    the feed joint, bodies about the elevation axis seated in the arms, keep it at every pitch by construction: gun
 //    points within 9 cm of the axis are left out), and 2.5 cm from the hull at every 5 degrees of yaw (both ways) and
@@ -40,7 +42,7 @@ import { minimumMechanicalGunPitch } from '../../sim/gunPitchLimits.ts';
 import { GUN_ROTOR_KEY } from '../gunRotorSpin.ts';
 import { M741_COMMANDER_HATCH, M741_RING } from '../m741Datums.ts';
 import { m113Datums } from '../m113Datums.ts';
-import { M163_GUN, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
+import { M163_BEACON, M163_GUN, M163_GUNNER, M163_MUZZLE_Z, M163_RADAR, M163_TRUNNION, M163_TURRET as T } from './m163Frame.ts';
 
 const DEG = Math.PI / 180;
 const ID = 'm163_vads';
@@ -159,6 +161,11 @@ try {
   near(pole?.point.z ?? 0, R.z + R.r, 0.012, 'the dome\'s pole looks forward');
   const plate = [-0.15, 0.15].map((dx) => firstHit(turret, turret, [R.x + dx, R.y + 0.2, R.z - 1], [0, 0, 1], 1)?.point.z ?? 0);
   for (const z of plate) near(z, R.z - R.backZ - R.backT / 2, 0.004, 'the back plate square across the turret\'s rear');
+  // (r8: flat across the housing's full diameter, photo 07; rays clear of its bracket, decal and the cases)
+  assert.ok(R.backR >= R.r, 'the back plate the housing\'s full diameter');
+  for (const [dx, dy] of [[0.12, -0.15], [-0.12, -0.20], [0, -0.24]]) {
+    near(firstHit(turret, turret, [R.x + dx, R.y + dy, R.z - 1], [0, 0, 1], 1)?.point.z ?? 0, R.z - R.backZ - R.backT / 2, 0.003, `the back plate flat at ${dx}, ${dy}`);
+  }
   const tub = firstHit(turret, turret, [T.column.x, 1.6, T.column.z], [0, -1, 0], 1.5);
   assert.ok(tub && tub.point.y < T.column.topY - 0.2, 'the gunner\'s column is open at the top');
   // the raised base: its deck 0.25 m over the roof (photos 03, 08)
@@ -170,7 +177,7 @@ try {
   near(slab?.point.x ?? 0, Rp.x, 0.003, 'the slab\'s outboard face');
   const slabTop = firstHit(turret, turret, [Rp.x + Rp.t / 2, 1.6, Rp.z1 - 0.12], [0, -1, 0], 1.2);
   near(slabTop?.point.y ?? 0, Rp.topY, 0.003, 'the slab\'s top');
-  assert.ok(Rp.topY > M163_TRUNNION[1] + M163_GUN.housingR && Rp.z1 - Rp.z0 >= 0.4, 'the slab 0.45 m long, over the gun');
+  assert.ok(Rp.topY > M163_TRUNNION[1] + M163_GUN.housingR && Rp.z1 - Rp.z0 >= 2 * M163_RADAR.r, 'the slab a housing\'s width long or more, over the gun');
   const cut = firstHit(turret, turret, [Rp.x + Rp.t / 2, 1.6, Rp.z0 + 0.03], [0, -1, 0], 1.2);
   assert.ok(cut && cut.point.y < Rp.topY - 0.1, 'the slab\'s rear top corner cut off');
   // the cradle: its flat side plates either side of the housing, on the gun's elevating group (photos 03, 10)
@@ -198,7 +205,7 @@ try {
     assert.ok(xi + F.r <= TX0 - K.x - K.t / 2 - 0.02 && xo - F.r >= TX0 + K.x + K.t / 2 + 0.02, 'the rails straddle the gun\'s cradle');
     for (const x of [xi, xo]) {
       const top = firstHit(turret, turret, [x, 1.6, 0.25], [0, -1, 0], 1, [gun]);
-      near(top?.point.y ?? 0, 0.915 + F.r, 0.006, `the rail at x ${x} level at the gunner's chest`);
+      near(top?.point.y ?? 0, F.inboard[5][1] + F.r, 0.006, `the rail at x ${x} level at the gunner's chest`);
       const bend = firstHit(turret, turret, [x, 0.75, 1.6], [0, 0, -1], 1.6, [gun]);
       assert.ok(bend && bend.point.z > M163_TRUNNION[2] + 0.15, `the rail at x ${x} bending up ahead of the receiver (z ${bend?.point.z.toFixed(2)})`);
     }
@@ -240,6 +247,12 @@ try {
       const [lo, hi] = [0.08, 0.18].map((dz) => firstHit(hull, hull, [s * 0.90, 2.2, z1 + dz], [0, -1, 0], 1.6)?.point.y ?? 0);
       near((hi - lo) / 0.10, 1, 0.15, `the fuel tank's 45 degree slope (${lo.toFixed(3)} to ${hi.toFixed(3)})`);
     }
+    // (r8: the beacon a tall lamp at the roof's front right corner behind the lamp cluster's guard, out of the gun's reach)
+    const Bc = M163_BEACON, lamp = firstHit(hull, hull, [Bc.x + 0.02, 2.6, Bc.z + 0.02], [0, -1, 0], 1);
+    assert.ok(lamp && lamp.point.y > roofY + 0.27 && lamp.point.y < roofY + 0.35, `the beacon's top ${lamp?.point.y.toFixed(3)}`);
+    assert.ok(Bc.x < -0.9 && Bc.z > D.glacisTopZ - 0.1, 'the beacon at the roof\'s front right corner');
+    const reach = Math.hypot(M163_TRUNNION[0], M163_TRUNNION[2] + M163_GUN.barrelTipZ) + 0.1;
+    assert.ok(Math.hypot(Bc.x - M741_RING.x, Bc.z - M741_RING.z) - Bc.cageR > reach, 'the beacon out of the gun\'s reach');
     const caseTop = [-0.20, 0.35, 0.90].map((x) => firstHit(hull, hull, [x, 2.4, D.sternZ + 0.48], [0, -1, 0], 0.7)?.point.y ?? 0);
     for (const y of caseTop) assert.ok(y > roofY + 0.2 && y < roofY + 0.3, `the long case 1.3 m across the roof's left rear (top ${y.toFixed(2)})`);
   }
