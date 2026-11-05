@@ -875,7 +875,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * The one writer of a tank's life (ModeLife; audit M4). A move LIFE_MOVES does not list is refused (false); `restore`
    * (a migrated host taking the old one's word) sets any life. The fields follow the life: modeActive (on the field:
    * alive or down) through the drivers' setActive hook, which every move but a death calls as before; a benched hull's
-   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life.
+   * combat.destroyed, stop and rest clock; on a restore, combat.destroyed for every life. A move to alive takes the combat
+   * state it finds: the drivers' revive hook (reviveAtSpawn) or a migrated row (adoptLiveCombat) left it live.
    */
   function setLife(entity: Entity, next: ModeLife, restore = false): boolean {
     const from = entity.modeLife ?? 'alive';
@@ -1494,11 +1495,27 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   };
 
+  /**
+   * The second way back to alive, beside reviveAtSpawn (round 2 U9): a wreck whose combat state another hand stood live
+   * again, which in the product is a migrated host's row (migrationState applyResumeState writes combat.destroyed from the
+   * old host's newer row, a hull the old host revived after its keyframe). It begins a new life as a revive does: modeLives
+   * counts it (lag compensation's life boundary), its pending respawn is dropped (or the due revive threw the living hull
+   * back to its spawn) and its next death scores again. No mode_respawn: the revive was the old host's and was announced
+   * there. Before, it moved the life to alive and nothing else.
+   */
+  const adoptLiveCombat = (entity: Entity): void => {
+    respawnAt.delete(entity.id);
+    scoredDeaths.delete(entity.id);
+    restedAt.delete(entity.id);
+    entity.modeLives = (entity.modeLives ?? 0) + 1;
+    setLife(entity, 'alive');
+  };
+
   const observeEntityDeath = (entity: Entity, timeS: number): void => {
     // a death is the move alive -> down, and only that move (ModeLife): a benched or rescued hull is never one. A wreck
-    // whose combat state stands live again by any other hand than a revive (a migrated row) is alive again, as before.
+    // whose combat state stands live again by any other hand than a revive (a migrated row) begins a new life.
     const life = entity.modeLife ?? 'alive';
-    if (life === 'down' && !entity.combat.destroyed) { setLife(entity, 'alive'); return; }
+    if (life === 'down' && !entity.combat.destroyed) { adoptLiveCombat(entity); return; }
     if (life !== 'alive' || !entity.combat.destroyed) return;
     setLife(entity, 'down');
     if (!restedAt.has(entity.id)) restedAt.set(entity.id, timeS);

@@ -16,7 +16,8 @@ const revive = (target, spawn) => {
   target.combat = { hp: 1000, maxHp: 1000, destroyed: false, ammo: [20], ammoCapacity: [20] };
 };
 
-// ---- a Horde hostile the placement refuses goes back to the wave's queue; the wave counts only hulls on the field
+// ---- a refused Horde arrival retries as an arrival on its 1 s deadline (the ring, its base if clear, or the stall rule)
+// and stays owed by the wave (queued, not alive) until it lands; the wave counts only hulls on the field
 {
   const BASE_Z = 380;
   let victim = null;
@@ -51,10 +52,10 @@ const revive = (target, spawn) => {
     clock += 0.5; mode.step(1 / 60, clock);
     cleared = events.some((e) => e.type === 'mode_wave_cleared' && e.payload.wave === 1);
   }
-  assert.ok(cleared, 'the wave clears: the refused arrival was owed by the queue, and the trickle brought one in');
+  assert.ok(cleared, 'the wave clears: the refused arrival stayed owed (queued, not alive) and landed on a later retry');
   const again = arrived.filter((r) => r.id === victim);
   assert.ok(again.length >= 1 && again.every((r) => Math.abs(r.z - BASE_Z) >= 60),
-    'the refused hostile came back through the trickle, on the ring, never by a retry aimed at its base');
+    'the refused hostile came back as an arrival on the ring, never by a retry aimed at its refusing base');
   assert.equal(owed.modeLife, 'down', 'and its wreck lies on the field');
 }
 
@@ -117,4 +118,32 @@ const revive = (target, spawn) => {
   assert.equal(convoy.modeActive, false);
 }
 
-console.log('modeLife: one life state per tank; a refused Horde arrival stays owed by the queue; a restore benches its resting hulls');
+// ---- round 2 U9: the second way back to alive. A wreck whose combat state another hand stood live again (a migrated
+// host's row: applyResumeState writes combat.destroyed from the old host's newer row) begins a new life as a revive does:
+// modeLives counts it (lag compensation's life boundary) and its pending respawn is dropped, so the due revive does not
+// throw the living hull back to its spawn. Before, the life moved to alive and nothing else.
+{
+  const a = tank('a', 'alpha', 0, -100, false), b = tank('b', 'bravo', 0, 100);
+  const events = [];
+  const ctf = createMatchModeController({ mode: 'capture_the_flag', entities: [a, b],
+    emit: (type, payload) => events.push({ type, payload }), revive });
+  a.combat.destroyed = true;
+  ctf.step(1 / 60, 1);
+  assert.equal(a.modeLife, 'down');
+  const lives = a.modeLives ?? 0;
+  a.combat = { hp: 640, maxHp: 1000, destroyed: false, ammo: [12], ammoCapacity: [20] }; // the row's live hull
+  Object.assign(a.state.pos, { x: 33, z: 44 });
+  ctf.step(1 / 60, 1.5);
+  assert.equal(a.modeLife, 'alive', 'a live row is a live hull');
+  assert.equal(a.modeLives, lives + 1, 'and a new life: the life boundary moves with it');
+  ctf.step(1 / 60, 40);
+  assert.deepEqual([a.state.pos.x, a.state.pos.z], [33, 44], 'the old death\'s respawn does not throw the living hull back to its spawn');
+  assert.equal(a.combat.hp, 640, 'nor refit it');
+  assert.equal(events.filter((e) => e.type === 'mode_respawn' && e.payload.id === 'a').length, 0,
+    'no mode_respawn: the revive was the old host\'s and was announced there');
+  a.combat.destroyed = true;
+  ctf.step(1 / 60, 41);
+  assert.equal(a.modeLife, 'down', 'its next death is a death');
+}
+
+console.log('modeLife: one life state per tank; a refused Horde arrival retries as an arrival and stays owed, not alive; a restore benches its resting hulls; a wreck stood live by a migrated row begins a counted life');
