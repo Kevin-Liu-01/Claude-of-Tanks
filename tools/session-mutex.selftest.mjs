@@ -92,12 +92,15 @@ try {
     const waiter = spawn(process.execPath, [WRAPPER, dir, '--', process.execPath, '-e', 'process.exit(0)'], { stdio: ['ignore', 'ignore', 'pipe'] });
     let err = '';
     waiter.stderr.setEncoding('utf8').on('data', (chunk) => { err += chunk; });
-    await new Promise((done) => setTimeout(done, 600));
+    // (round 2) the release waits for the waiter to say who holds the mutex: a fixed 600 ms let a waiter that started late
+    // under load (the integration saw it) be released before it ever printed
+    for (let i = 0; i < 2400 && !/is held \(live/.test(err) && waiter.exitCode === null; i++) await new Promise((done) => setTimeout(done, 25));
     assert.equal(waiter.exitCode, null, 'still waiting while the mutex is held');
+    assert.match(err, /is held \(live, pid \d+/, 'it said who held it');
     releaseSessionMutex(hold, { log: quiet });
     const code = await new Promise((done) => waiter.once('close', done));
     assert.equal(code, 0, err);
-    assert.ok(Date.now() - started >= 600 && /is held \(live/.test(err), 'it waited, and said who held it');
+    assert.ok(Date.now() - started > 0, 'it waited');
     assert.equal(existsSync(dir), false);
     const usage = spawnSync(process.execPath, [WRAPPER, dir], { encoding: 'utf8' });
     assert.equal(usage.status, 2);
