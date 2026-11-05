@@ -202,7 +202,13 @@ that build's own harnesses waited on (the fourth column), its facts say `lifecyc
 there. Such a build opened on the player's path without `?debug=1` has no `__DEBUG` either (black-world-repro
 `--plain` against prod): each readiness then reads what the page shows (the last column; facts `legacy.source`
 'dom'), and the two that need the countdown cannot be read there, so `waitForReady` fails naming that instead of a
-bare timeout (open such a build with `?debug=1` for them). `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
+bare timeout (open such a build with `?debug=1` for them). A build whose screen has none of the elements that
+fallback reads (`legacy.landmarks` false: an A/B baseline old enough to differ) fails by that name too. Which
+definition decided is never silent: on a build with no lifecycle the page logs a `[cot-readiness]` line once a document
+for each definition, and every page a launched browser hands out forwards it to the tool's stderr (`prepareToolPage`),
+so a receipt's log says the legacy predicate decided. `scenePhaseExpression(phase)` is a timing edge, not a readiness:
+who owns the scene (a Garage return writes the Garage's scene under its veil, before the screen settles), for a check
+that times how soon a hand-over began (pause-probe's Leave), followed by a READY wait before the screen is read. `BOOT_LOADED_EXPRESSION` / `waitForBootLoaded` is the boot latch's harness mirror (`window.__GAME_READY`,
 written by src/app/bootReadiness.ts): the boot finished loading, while the entry gate may still wait on the player
 (the lifecycle's 'boot' state until it is dismissed).
 
