@@ -471,6 +471,13 @@ const MEMBERS_MUTEX_STALE_MS = 10_000;
 /** A slot this young that cannot be parsed is a write in progress. */
 const SLOT_WRITE_GRACE_MS = 10_000;
 const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+/** A queue poll's wait: `ms`, or until `signal` aborts (its listener goes with the wait). */
+const pause = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) { resolve(); return; }
+  const done = () => { clearTimeout(timer); signal?.removeEventListener('abort', done); resolve(); };
+  const timer = setTimeout(done, ms);
+  signal?.addEventListener('abort', done, { once: true });
+});
 
 const slotText = (record) => `pid ${record.pid}\n${JSON.stringify(record)}\n`;
 const isGroupToken = (token, id) => token.id === id && Number.isSafeInteger(token.group?.max) && token.group.max > 0;
@@ -1149,6 +1156,8 @@ export function createCaptureLock({
    * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
    * `lockClass` ('timing' or 'render'), `command` (the command a wrapper runs, to classify it), `holdCapMinutes` and
    * `holdCapReason` (2026-10-27): see lock classes and the hold cap above.
+   * `signal` (round 2 U38): an AbortSignal that withdraws the wait (the ticket leaves the queue) and rejects with its
+   * reason; the open hold's signal owner uses it, so a tool queued at a SIGTERM runs its own way out.
    * (2026-11-02 audit S4) An instance owns at most one hold and runs at most one acquire: acquire() on an instance that
    * holds, or whose earlier acquire still waits, rejects at once. A second hold overwrote the first: a render slot then
    * leaked until the process exited, and an exclusive acquire waited on its own live pid until its timeout. Release first
@@ -1166,7 +1175,7 @@ export function createCaptureLock({
   }
 
   async function acquireOnce(timeoutMs, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
-    holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false,
+    holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false, signal = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     // a child of a holder nests in its parent's hold (see nested holds above): read by name, the variables they are
     let parent = nestedParent(process.env.COT_SHOTS_HELD, lockDir, lockStaleMs), via = NESTED_HOLD_ENV;
@@ -1262,6 +1271,7 @@ export function createCaptureLock({
     try {
       for (;;) {
         if (prepareError) throw prepareError;
+        if (signal?.aborted) throw signal.reason ?? new Error('capture lock: the wait was withdrawn');
         const names = readQueue(queueDir, ownTicket);
         const ahead = readyAhead(queueDir, names, ownTicket, queueRules, enough);
         if (!ready && !preparing) {
@@ -1297,7 +1307,7 @@ export function createCaptureLock({
         // remove a directory that holds an owner token, and must not wait behind a dead one. Only the head claims.
         if (reapDeadLock(lockDir, { lockStaleMs, orphanStaleMs, log, logFile, note: atHead && ready }) && atHead && ready) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, turn || (atHead && ready) ? 300 : 1000));
+        await pause(turn || (atHead && ready) ? 300 : 1000, signal);
       }
     } catch (error) {
       // A wait that ends without a hold still lets `prepare` finish, and hands its result to the caller to close.

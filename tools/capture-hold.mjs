@@ -49,7 +49,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { constants } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { setBrowserGuardContext, stopGuardedBrowsers } from './browser-launch.mjs';
+import { refuseGuardedLaunches, setBrowserGuardContext, stopGuardedBrowsers } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -213,6 +213,10 @@ async function closeWarm(warmed, say) {
 // grace timer running, which closed the browser during the re-queue wait (the thaw then hit closed pages). One owner now:
 //   holding → (yield-due →) yielding → holding … → stopping (abort: the work is asked to stop) → torn-down (the grace
 //   passed: teardown, nothing draws) → released (once that teardown has finished, bounded by `teardownWaitMs`).
+// - (round 2 U38) A stop is enforced, not only asked for: from the abort on, the stopped hold refuses this process's
+//   browser launches (browser-launch refuseGuardedLaunches: a per-row loop that caught the kill launched its next browser,
+//   which the once-only teardown never stopped), and a work still running `teardownWaitMs` after its teardown began loses
+//   the lock (forfeited: the lock goes, and what the work does now runs unheld). The cap holds without the work's help.
 // - The cap is the lock's own (lock.heldCapMs, the base cap while a release ticket waits). Past it with anyone waiting, a
 //   work that has called checkpoint() is yield-due: its next checkpoint yields; none within the grace, it is stopped. A
 //   work that never checkpoints is stopped at once. With nobody waiting it keeps the lock (the lock's rule).
@@ -224,10 +228,10 @@ async function closeWarm(warmed, say) {
 //   a release-gate step or a film render): past the cap it is logged, not stopped, as the lock alone did. It is declared
 //   at the call site, so the advisory holders are the ones that say so.
 function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capCheckMs = 30_000, atCap = 'stop', say, onAbort, onTeardown,
-  onYield = null, onResume = null }) {
+  onYield = null, onResume = null, onForfeit = null, teardownWaitMs = 120_000 }) {
   if (atCap !== 'stop' && atCap !== 'keep') throw new TypeError(`atCap: 'stop' or 'keep', not ${JSON.stringify(atCap)}`);
-  let phase = 'holding', cooperative = false, segmentAt = Date.now(), keptNoted = false, teardownDone = null;
-  let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null;
+  let phase = 'holding', cooperative = false, segmentAt = Date.now(), keptNoted = false, teardownDone = null, ended = false, forfeited = false;
+  let budgetTimer = null, capTimer = null, graceTimer = null, dueTimer = null, forfeitTimer = null;
   const clear = () => { clearTimeout(budgetTimer); clearInterval(capTimer); clearTimeout(dueTimer); budgetTimer = capTimer = dueTimer = null; };
   const stop = (why) => {
     if (phase !== 'holding' && phase !== 'yield-due') return;
@@ -242,6 +246,14 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
       // kept, not dropped: the release waits for it (a shoot ends as soon as its browser starts closing, and the lock
       // went while Chrome still closed; 2026-11-02 audit S4, round 2)
       teardownDone = Promise.resolve().then(onTeardown);
+      // the work still runs `teardownWaitMs` after its teardown began: the lock goes without it (the cap is the lock's)
+      if (onForfeit) {
+        forfeitTimer = setTimeout(() => {
+          if (ended) return;
+          forfeited = true;
+          onForfeit();
+        }, teardownWaitMs);
+      }
     }, graceSeconds * 1000);
   };
   const capCheck = () => {
@@ -276,6 +288,8 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
     get tornDown() { return phase === 'torn-down'; },
     /** The teardown the grace started (torn-down), or null: the release waits for it. */
     get teardownDone() { return teardownDone; },
+    /** Whether the lock went without the work (a work still running `teardownWaitMs` after its teardown began). */
+    get forfeited() { return forfeited; },
     /** Between batches: yields past the cap while anyone waits (the lock decides), never after a stop. */
     async checkpoint() {
       if (phase !== 'holding' && phase !== 'yield-due') return { yielded: false, stopped: true };
@@ -296,7 +310,10 @@ function createHoldPhases({ lock, holdMinutes = null, graceSeconds = 60, capChec
       if (!result?.yielded && phase === 'yield-due') { clearTimeout(dueTimer); dueTimer = null; phase = 'holding'; } // nobody waits now
       return result ?? { yielded: false };
     },
-    finish() { clear(); clearTimeout(graceTimer); graceTimer = null; if (phase !== 'torn-down') phase = 'released'; },
+    finish() {
+      ended = true; clear(); clearTimeout(graceTimer); clearTimeout(forfeitTimer); graceTimer = forfeitTimer = null;
+      if (phase !== 'torn-down') phase = 'released';
+    },
   };
 }
 
@@ -307,6 +324,8 @@ const bounded = (promise, ms) => {
   return Promise.race([Promise.resolve(promise).then(() => true, () => true),
     new Promise((done) => { timer = setTimeout(() => done(false), ms); timer.unref?.(); })]).finally(() => clearTimeout(timer));
 };
+/** One turn of the event loop: due timers (a hold's refresh, its cap check) and a signal's handler run. */
+const turn = () => new Promise((next) => setImmediate(next));
 
 // ---- one signal owner for every hold of this process (2026-11-02 audit S4, round 2) ------------------------------------
 // Each withCaptureHold added its own process.once handler, and each handler exited the process after its own teardown. In
@@ -314,17 +333,37 @@ const bounded = (promise, ms) => {
 // runCapturedCommand: one holding, the others queued) a queued hold's handler, with nothing to tear down, exited the
 // process within microseconds: the holder's lock went by its 'exit' listener while its command still ran, and the
 // command's SIGKILL timer died with the process. One owner now: the first live hold installs the handlers and the last one
-// gone removes them; a signal stops every live hold together (each one's teardown, bounded by its `signalWaitMs`, then its
-// release) and the process exits once, 128 + n, after all of them. A second signal while stopping changes nothing (the
-// stop is already bounded). A hold that ends while the stop runs never returns to its caller (who would start its next
-// step), and a hold started meanwhile never queues.
+// gone removes them; a signal stops every live hold together and the process exits once, 128 + n, after all of them. A
+// second signal while stopping changes nothing (the stop is already bounded), and no browser launches from then on.
+// How a hold stops is its `onSignal`:
+// - 'exit' (withCaptureHold's default): its teardown, bounded by its `signalWaitMs`, then its release. A hold that ends
+//   while the stop runs never returns to its caller (who would start its next step), and a hold started meanwhile never
+//   queues. Once every hold is released the process exits.
+// - 'unwind' (openCaptureHold, round 2 U38): the caller's way out runs. Its signal aborts and its teardown runs (the
+//   browsers stop drawing), then the caller's own finally (a server stopped, a temporary directory removed) reaches its
+//   release(), which resolves, so what follows it (a report written) runs too. A queued hold leaves the queue and its
+//   openCaptureHold rejects; one started meanwhile rejects at once. The exit code is 128 + n unless the tool sets its own;
+//   the process ends when its work is done, or `signalWaitMs` after the last release at most. A caller that has not
+//   released within `signalWaitMs` of its teardown is released for it, and the process exits then. On base (a direct
+//   acquire) puppeteer's own SIGTERM listener kept such a tool alive, so its finally cleaned up; the first open form
+//   exited within microseconds of the signal, and those finallies never ran.
 const liveHolds = new Set();
-let signalStop = null;
+let signalStop = null, stopSignal = null;
 const NEVER = new Promise(() => {});
+const signalError = (signal) => Object.assign(new Error(`${signal}: the process is stopping, so the capture hold ends`), { code: 'CAPTURE_HOLD_SIGNAL', signal });
 function onHoldSignal(signal) {
   if (signalStop) return;
-  signalStop = Promise.allSettled([...liveHolds].map((hold) => hold.stopForSignal(signal)))
-    .then(() => process.exit(128 + (constants.signals[signal] ?? 15)));
+  stopSignal = signal;
+  const code = 128 + (constants.signals[signal] ?? 15);
+  process.exitCode = code;
+  refuseGuardedLaunches(`${signal}: the process is stopping`); // never lifted
+  const holds = [...liveHolds];
+  signalStop = Promise.allSettled(holds.map((hold) => hold.stopForSignal(signal))).then(() => {
+    if (!holds.every((hold) => hold.unwind && !hold.stuck)) process.exit(code);
+    // every caller is out of its hold: what follows its release runs, then the process ends on its own, or at the bound
+    const waitMs = Math.max(0, ...holds.map((hold) => hold.signalWaitMs));
+    setTimeout(() => process.exit(), waitMs).unref();
+  });
 }
 function registerHold(hold) {
   if (!liveHolds.size) for (const signal of SIGNALS) process.on(signal, onHoldSignal);
@@ -340,41 +379,66 @@ function unregisterHold(hold) {
  * callers each set their own timers, limits and signal handlers; tools/capture-hold-census.selftest.mjs lists them and
  * refuses a new one). It queues (`prepare` runs while queued, its result is `prepared`), refreshes, owns the cap and the
  * yield (createHoldPhases above), ends cleanly on SIGTERM/SIGINT/SIGHUP with every other hold of the process (the signal
- * owner above: teardown, release, one exit at 128 + n) and at exit (release), and tears down before the release, so
- * nothing draws once the lock is gone.
+ * owner above) and at exit (release), and tears down before the release, so nothing draws once the lock is gone.
  *   const shots = await withCaptureHold(async ({ signal, checkpoint }) => { ... }, { label: 'my-probe', timeoutMs,
  *     teardown: async () => { await browser?.close(); await server?.close(); } });
- * `work({ prepared, signal, checkpoint, heldAt, say })` runs inside the hold: stop when `signal` aborts, call
- * `checkpoint()` between batches. `teardown(prepared)` stops what draws (a stop past its grace, a signal, a failed wait
- * with something prepared); it runs at most once per hold. `beforeRelease(prepared)` runs on the normal way out before the
- * release (default: teardown), `afterRelease(prepared)` after it; `onYield()`/`onResume()` run around a checkpoint yield.
+ * `work({ prepared, signal, checkpoint, between, heldAt, say })` runs inside the hold: stop when `signal` aborts, call
+ * `checkpoint()` between batches. A synchronous CPU tool awaits `between()` between its steps: one turn of the event loop
+ * (the refresh, the cap check and a signal run), its checkpoint, and the stop's reason thrown once the hold was stopped.
+ * `teardown(prepared)` stops what draws (a stop past its grace, a signal, a failed wait with something prepared); it runs
+ * at most once per hold. `beforeRelease(prepared)` runs on the normal way out before the release (default: teardown),
+ * `afterRelease(prepared)` after it; `onYield()`/`onResume()` run around a checkpoint yield.
  * `holdMinutes`, `graceSeconds`: see the phases; the release waits up to `teardownWaitMs` for a teardown the grace began,
- * and a signal waits up to `signalWaitMs` for this hold's teardown (more than a teardown's own SIGKILL fallback). The
- * acquire options (`place`, `ticket`, `lockClass`, `command`, `holdCapMinutes`, `holdCapReason`, `priority`,
- * `ancestorHeld`: the caller says an ancestor holds the lock, checked as COT_LANE_HOLD is) go to the lock. `signals: []`
- * leaves signals to the caller (a chain that stops its own children first); otherwise the shared owner handles SIGTERM,
- * SIGINT and SIGHUP. `atCap: 'keep'` declares a work that cannot yield or stop part-way (see the phases).
+ * and a work still running then loses the lock (forfeited); a signal waits up to `signalWaitMs` for this hold's teardown
+ * (more than a teardown's own SIGKILL fallback). The acquire options (`place`, `ticket`, `lockClass`, `command`,
+ * `holdCapMinutes`, `holdCapReason`, `priority`, `ancestorHeld`: the caller says an ancestor holds the lock, checked as
+ * COT_LANE_HOLD is) go to the lock. `signals: []` leaves signals to the caller (a chain that stops its own children
+ * first; a tool whose own SIGINT/SIGTERM handler stops its run and writes its report: one owner of a signal per process,
+ * which capture-hold-census.selftest checks); otherwise the shared owner handles SIGTERM, SIGINT and SIGHUP as `onSignal`
+ * says ('exit' or 'unwind', above). `atCap: 'keep'` declares a work that cannot yield or stop part-way (see the phases).
  */
 export async function withCaptureHold(work, { label = 'capture', lock = createCaptureLock(), timeoutMs = 45 * 60_000, place = null,
   ticket = null, lockClass = null, command = null, holdCapMinutes = null, holdCapReason = null, priority = null, ancestorHeld = false,
   prepare = null, holdMinutes = null, graceSeconds = 60, refreshMs = 30_000, capCheckMs = 30_000, atCap = 'stop', teardown = null, beforeRelease = null,
-  afterRelease = null, onYield = null, onResume = null, signals = SIGNALS, teardownWaitMs = 120_000, signalWaitMs = 30_000,
+  afterRelease = null, onYield = null, onResume = null, signals = SIGNALS, onSignal = 'exit', teardownWaitMs = 120_000, signalWaitMs = 30_000,
   log = console.log } = {}) {
   if (typeof work !== 'function') throw new TypeError('withCaptureHold needs work()');
   if (atCap !== 'stop' && atCap !== 'keep') throw new TypeError(`withCaptureHold atCap: 'stop' or 'keep', not ${JSON.stringify(atCap)}`);
+  if (onSignal !== 'exit' && onSignal !== 'unwind') throw new TypeError(`withCaptureHold onSignal: 'exit' or 'unwind', not ${JSON.stringify(onSignal)}`);
+  const unwind = onSignal === 'unwind';
   // the process is stopping on a signal: a hold started now never queues (the exit is on its way)
-  if (signalStop) return NEVER;
+  if (signalStop) { if (unwind) throw signalError(stopSignal); return NEVER; }
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
-  let prepared, held = false, tearing = null;
+  let prepared, held = false, tearing = null, forfeited = false, lift = null;
   const tear = async (value) => { if (teardown) { try { await teardown(value); } catch (error) { say(`teardown failed: ${error?.message ?? error}`); } } };
   // one teardown per hold, whoever asks first (the grace, a signal, the way out)
   const tearOnce = () => (tearing ??= tear(prepared));
+  const controller = new AbortController(), withdraw = new AbortController();
+  let releasedNow;
+  const released = new Promise((done) => { releasedNow = done; });
   // A signal ends the run cleanly, queued or holding: puppeteer's own SIGTERM handler closes the browser but leaves the
-  // process waiting in the queue (2026-10-22), so the signal owner tears down, releases and exits for every hold at once.
+  // process waiting in the queue (2026-10-22), so the signal owner stops every hold at once (see onSignal above).
   const entry = {
+    unwind, signalWaitMs, stuck: false,
     async stopForSignal(signal) {
-      say(`${signal}: tearing down and releasing`);
-      if (!(await bounded(tearOnce(), signalWaitMs))) say(`the teardown still runs after ${signalWaitMs / 1000} s; releasing`);
+      if (!unwind) {
+        say(`${signal}: tearing down and releasing`);
+        if (!(await bounded(tearOnce(), signalWaitMs))) say(`the teardown still runs after ${signalWaitMs / 1000} s; releasing`);
+        lock.release();
+        return;
+      }
+      if (!held) {
+        say(`${signal}: leaving the queue`);
+        withdraw.abort(signalError(signal));
+        await bounded(released, signalWaitMs);
+        return;
+      }
+      say(`${signal}: asking the work to stop and tearing down; the caller's way out runs to its release`);
+      controller.abort(signalError(signal));
+      if (!(await bounded(tearOnce(), signalWaitMs))) say(`the teardown still runs after ${signalWaitMs / 1000} s`);
+      if (await bounded(released, signalWaitMs)) return;
+      say(`the caller has not released ${signalWaitMs / 1000} s after its teardown; releasing for it`);
+      entry.stuck = true;
       lock.release();
     },
   };
@@ -384,15 +448,24 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   const queuedAt = Date.now();
   try {
     prepared = await lock.acquire(timeoutMs, { place, ticket, lockClass, command, holdCapMinutes, holdCapReason, priority,
-      ...(ancestorHeld ? { ancestorHeld: true } : {}),
+      ...(ancestorHeld ? { ancestorHeld: true } : {}), ...(unwind ? { signal: withdraw.signal } : {}),
       ...(typeof prepare === 'function' ? { prepare: async () => (prepared = await prepare()) } : {}) });
   } catch (error) {
-    if (signalStop) return NEVER;
+    if (signalStop && !unwind) return NEVER;
     dropSignals();
     if (error?.prepared !== undefined) { prepared = error.prepared; await tearOnce(); }
+    releasedNow();
     throw error;
   }
-  if (signalStop) { lock.release(); return NEVER; } // held as the stop began: given straight back, the exit is on its way
+  if (signalStop) {
+    // held as the stop began: given straight back, the exit is on its way
+    lock.release();
+    if (!unwind) return NEVER;
+    dropSignals();
+    await tearOnce();
+    releasedNow();
+    throw signalError(stopSignal);
+  }
   held = true;
   const heldAt = Date.now();
   say(`lock held after ${((heldAt - queuedAt) / 60_000).toFixed(1)} min in the queue${lock.nested ? ' (nested in its parent\'s hold)' : ''}`);
@@ -400,33 +473,52 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
   process.once('exit', release);
   const refresher = setInterval(() => lock.refresh(), refreshMs);
   refresher.unref();
-  const controller = new AbortController();
-  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, atCap, say, onYield, onResume,
-    onAbort: (reason) => controller.abort(reason), onTeardown: tearOnce });
+  const phases = createHoldPhases({ lock, holdMinutes, graceSeconds, capCheckMs, atCap, say, onYield, onResume, teardownWaitMs,
+    onAbort: (reason) => {
+      // a stopped hold launches nothing new (its teardown runs once); lifted once it is released
+      lift = refuseGuardedLaunches(`the ${label} capture hold was stopped (${reason.message})`);
+      controller.abort(reason);
+    },
+    onTeardown: tearOnce,
+    onForfeit: () => {
+      clearInterval(refresher);
+      forfeited = true;
+      say(`the work still runs ${teardownWaitMs / 1000} s after its teardown began: the lock is given up without it (what it does now runs unheld)`);
+      lock.release('the hold was stopped and its work did not end: forfeited');
+    } });
+  const between = async () => {
+    await turn();
+    controller.signal.throwIfAborted();
+    return phases.checkpoint();
+  };
   let result, failure = null;
   try {
-    result = await work({ prepared, signal: controller.signal, checkpoint: () => phases.checkpoint(), heldAt, say });
+    result = await work({ prepared, signal: controller.signal, checkpoint: () => phases.checkpoint(), between, heldAt, say });
   } catch (error) {
     failure = { error };
   }
-  // A signal stop in progress owns the rest: this hold is released with the others, and the caller never sees an end (it
-  // would start its next step). The hold stays registered until its release, so a signal during the way out is handled.
-  if (signalStop) return NEVER;
+  // A signal stop in progress ('exit') owns the rest: this hold is released with the others, and the caller never sees an
+  // end (it would start its next step). The hold stays registered until its release, so a signal during the way out is
+  // handled. An 'unwind' hold takes its normal way out (its teardown already ran) and returns to its caller.
+  if (signalStop && !unwind) return NEVER;
   const tornDown = phases.tornDown, teardownDone = phases.teardownDone;
   phases.finish();
   clearInterval(refresher);
   if (tornDown) {
     // the grace began a teardown (the browser closing): the lock goes once it is done, never while Chrome still draws
-    if (teardownDone && !(await bounded(teardownDone, teardownWaitMs))) say(`the teardown still runs after ${teardownWaitMs / 1000} s; releasing`);
+    if (!forfeited && teardownDone && !(await bounded(teardownDone, teardownWaitMs))) say(`the teardown still runs after ${teardownWaitMs / 1000} s; releasing`);
   } else {
     const step = beforeRelease ?? (teardown ? tearOnce : null);
     if (step) { try { await step(prepared); } catch (error) { say(`before the release: ${error?.message ?? error}`); } }
   }
-  if (signalStop) return NEVER;
+  if (signalStop && !unwind) return NEVER;
   process.removeListener('exit', release);
-  if (held) lock.release();
+  if (held && !forfeited && !entry.stuck) lock.release();
   dropSignals();
-  say(`released after ${((Date.now() - heldAt) / 1000).toFixed(0)} s`);
+  if (!signalStop) lift?.();
+  releasedNow();
+  say(forfeited ? `ended ${((Date.now() - heldAt) / 1000).toFixed(0)} s after the hold began (the lock was forfeited before)`
+    : `released after ${((Date.now() - heldAt) / 1000).toFixed(0)} s`);
   if (!tornDown && afterRelease) { try { await afterRelease(prepared); } catch (error) { say(`after the release: ${error?.message ?? error}`); } }
   if (failure) throw failure.error;
   return result;
@@ -434,23 +526,35 @@ export async function withCaptureHold(work, { label = 'capture', lock = createCa
 
 /**
  * The open form of withCaptureHold (round 2 U38), for a tool whose run is a script rather than one function: it resolves
- * once the lock is held with { prepared, signal, checkpoint, heldAt, say, refresh, release }. The hold is withCaptureHold's, the one
- * owner of a hold (refresh, the cap and its yield, signals, the release at exit), so a tool that acquired the lock itself
- * moves onto it by two lines:
+ * once the lock is held with { prepared, signal, checkpoint, between, heldAt, say, refresh, release }. The hold is
+ * withCaptureHold's, the one owner of a hold (refresh, the cap and its yield, signals, the release at exit), so a tool that
+ * acquired the lock itself moves onto it by two lines:
  *   const hold = await openCaptureHold({ label: 'my-probe', timeoutMs: 45 * 60_000 });
  *   try { ... } finally { await browser?.close(); await hold.release(); }
  * The caller closes what it opened, then awaits release() (once; later calls return the same promise), which releases
  * with no teardown of its own. `teardown` is what a stop past the cap's grace or a signal runs before the release; by
  * default every guarded browser this process launched is stopped (tools/browser-launch.mjs stopGuardedBrowsers: what
- * draws), so the cap holds for a tool that never checkpoints. `atCap: 'keep'` declares a hold that cannot be stopped.
+ * draws), so the cap holds for a tool that never checkpoints. A tool that launches no browser (a CPU-only holder) gives the
+ * cap a stop of its own: it reads `signal` into its cancellation, awaits `between()` between synchronous steps, or passes
+ * a `teardown` that stops its workers (capture-hold-census.selftest checks that each one does). A work that ignores the
+ * stop loses the lock `teardownWaitMs` after the teardown (the phases' forfeit). `atCap: 'keep'` declares a hold that
+ * cannot be stopped. On a signal the caller's way out runs (onSignal 'unwind', at the signal owner above): its `signal`
+ * aborts, the teardown runs, and release() resolves, so its finally and what follows the release finish before the exit.
  * The hold's lines go to stderr unless `log` says otherwise (a tool's stdout may be its report).
  */
-export async function openCaptureHold({ teardown = () => { stopGuardedBrowsers(); }, log = (line) => console.error(line), lock = createCaptureLock(),
-  ...options } = {}) {
+export async function openCaptureHold({ teardown = null, log = (line) => console.error(line), lock = createCaptureLock(), ...options } = {}) {
+  const label = options.label ?? 'capture';
+  // the default teardown says what it stopped: a CPU-only holder has no browser, and its cap is its own stop's
+  const stopBrowsers = () => {
+    const pids = stopGuardedBrowsers();
+    log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${pids.length ? `stopped this process's guarded browsers (${pids.length} processes)`
+      : 'no guarded browser of this process to stop: the work stops on its signal, or loses the lock at the forfeit'}`);
+  };
   let held, finish;
   const heldNow = new Promise((resolve) => { held = resolve; });
   const done = new Promise((resolve) => { finish = resolve; });
-  const whole = withCaptureHold(async (context) => { held(context); await done; }, { ...options, lock, teardown, log,
+  const whole = withCaptureHold(async (context) => { held(context); await done; }, { ...options, lock, teardown: teardown ?? stopBrowsers, log,
+    onSignal: 'unwind',
     // the normal way out is the caller's: it closed what it opened before release()
     beforeRelease: options.beforeRelease ?? (() => {}) });
   const ended = whole.then(() => ({ endedUnheld: true }));
