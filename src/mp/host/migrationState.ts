@@ -209,13 +209,33 @@ function restoreShellSlot(combat: CombatState, slot: number, spec: DamageTankSpe
  * host's absolute times, read on its clock at the row's tick). The extras fill in what the row does not carry, aged by
  * the gap through the simulation's own laws. On the keyframe's own row (no gap) the extras are exact and win: the row's
  * reload times are quantized.
+ * Round 2 (U2): the gaps are sim time, and every entity ages to the resume frame. The ticks overstated the sim time when
+ * the old host's loop dropped ticks on a stall (server/match/loop.ts: the tick keeps the wall grid while the sim stands),
+ * which over-aged reloads, repairs, cooldowns, item windows and fires and ran the old-clock reading of a row's auxiliary
+ * times ahead; the frame's battle clock (sim time, matchActor.ts battleTimeMs) is exact. And a row a delta left untouched
+ * (or an interest tier held) keeps its older tick, so the keyframe's row stood for it with no gap and its extras came back
+ * unaged by up to a keyframe interval although the world had moved on: the rest of the way (`tailS`) ages them too.
  */
 interface ResumeReading {
   readonly row: EntityRow;
-  /** Seconds the row is newer than the extras (0: the keyframe's own row, or one held from before it). */
+  /** Sim seconds the row is newer than the extras (0: the keyframe's own row): the row wins for what it carries. */
   readonly gapS: number;
-  /** The old host's authority clock (s) at the row's tick; null when the keyframe did not carry it. */
+  /** Sim seconds from the row's reading to the resume frame's: everything the entity carries ages by them as well. */
+  readonly tailS: number;
+  /** The old host's authority clock (s) at the row's reading; null when the keyframe did not carry it. */
   readonly clockS: number | null;
+}
+
+/**
+ * The sim time from the extras' capture to the resume frame (round 2 U2): the two battle clocks (the frame meta's
+ * battleTimeMs, the keyframe's), never more than their ticks allow; the ticks alone for a state that names no keyframe
+ * battle clock.
+ */
+function resumeFrameGapS(state: HostResumeState, extrasTick: number): number {
+  const ticksS = Math.max(0, state.frame.tick - extrasTick) * TICK_MS / 1000;
+  const battle = state.keyframeBattleTimeMs;
+  if (typeof battle !== 'number' || !Number.isFinite(battle) || !Number.isFinite(state.battleTimeMs)) return ticksS;
+  return Math.max(0, Math.min(ticksS, (state.battleTimeMs - battle) / 1000));
 }
 
 const isDestroyedRow = (row: EntityRow): boolean => (row.flags & ENTITY_FLAGS.DESTROYED) !== 0 || row.hp <= 0;
@@ -320,9 +340,12 @@ function rowAuxiliary(json: string | undefined, clockS: number): MigrationEntity
 
 /** The fight's counters an extras entry carries (MigrationEntityExtras), through the functions the simulation uses. */
 function restoreCombatExtras(combat: CombatState, consumables: ConsumableState | null | undefined, extras: MigrationEntityExtras, timeS: number, reading: ResumeReading): void {
-  const { row, gapS } = reading;
+  const { row, gapS, tailS } = reading;
   const newer = gapS > 0;
-  const ageS = (leftS: unknown): number => Math.max(0, finiteOr(leftS, 0) - gapS);
+  // what the row does not carry ages all the way to the resume frame (the reload channels: to the row here, applyResumeState
+  // ages them the rest of the way once the row's own are written)
+  const totalS = gapS + tailS;
+  const ageS = (leftS: unknown): number => Math.max(0, finiteOr(leftS, 0) - totalS);
   // modules: the hp, the law's state from it (damage.ts strainModule: a fresh module is at full hp), red repair progress
   if (extras.moduleHp && typeof extras.moduleHp === 'object') {
     for (const [moduleId, carried] of Object.entries(extras.moduleHp)) {
@@ -339,10 +362,11 @@ function restoreCombatExtras(combat: CombatState, consumables: ConsumableState |
   if (combat.fire) {
     combat.fire.burning = burning;
     if (burning && extras.burning && Array.isArray(extras.fire)) {
-      combat.fire.ticksLeft = Math.max(1, Math.round(finiteOr(extras.fire[0], 1)) - Math.floor(gapS / FIRE_TICK_S));
+      combat.fire.ticksLeft = Math.max(1, Math.round(finiteOr(extras.fire[0], 1)) - Math.floor(totalS / FIRE_TICK_S));
       combat.fire.tickTimer = Math.max(0, finiteOr(extras.fire[1], 0));
     } else if (burning && newer) {
-      combat.fire.ticksLeft = Math.max(2, Math.round(FIRE_BASE_TICKS * multOf(combat.equipMults as Record<string, unknown> | undefined, 'fireTicks')));
+      const budget = Math.max(2, Math.round(FIRE_BASE_TICKS * multOf(combat.equipMults as Record<string, unknown> | undefined, 'fireTicks')));
+      combat.fire.ticksLeft = Math.max(1, budget - Math.floor(tailS / FIRE_TICK_S));
       combat.fire.tickTimer = 0;
     }
   }
@@ -373,10 +397,10 @@ function restoreCombatExtras(combat: CombatState, consumables: ConsumableState |
     restoreActiveItems(consumables, combat, active, timeS);
   }
   // a red module's repair runs on through the gap (damage.ts tickModuleRepairs, at the restored repair rate)
-  if (newer) tickModuleRepairs(combat, gapS);
+  if (totalS > 0) tickModuleRepairs(combat, totalS);
   const fromRow = newer && reading.clockS !== null ? rowAuxiliary(row.auxiliaryJson, reading.clockS) : null;
   const aux = fromRow ?? extras.auxiliary;
-  const auxAgeS = fromRow ? 0 : gapS;
+  const auxAgeS = fromRow ? tailS : totalS;
   if (combat.auxiliary && aux && typeof aux === 'object') {
     const state = combat.auxiliary;
     const after = (leftS: unknown): number => timeS + Math.max(0, finiteOr(leftS, 0) - auxAgeS);
@@ -444,8 +468,9 @@ export function resumeStateFromRetained(
   destructionEvents: readonly DestructionLogEntry[] = [],
   respawns: readonly (readonly [id: string, tick: number])[] = [],
 ): { state: HostResumeState; baseTick: number; baseAtMs: number } {
-  // the extras stay the keyframe's, dated by its tick, when a newer frame moves `tick` on (applyResumeState ages them)
-  const state: HostResumeState = { ...keyframe, keyframeTick: keyframe.tick };
+  // the extras stay the keyframe's, dated by its tick and battle clock, when a newer frame moves `tick` on (applyResumeState
+  // ages them by the sim time between the two battle clocks)
+  const state: HostResumeState = { ...keyframe, keyframeTick: keyframe.tick, keyframeBattleTimeMs: keyframe.battleTimeMs };
   let baseTick = keyframe.tick;
   let baseAtMs = keyframeAtMs;
   if (latest && latest.tick > keyframe.tick && latestAtMs !== null) {
@@ -596,6 +621,7 @@ export function resumeHoldSeats(
  */
 export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
   const extrasTick = Number.isInteger(state.keyframeTick) ? state.keyframeTick! : state.tick;
+  const frameGapS = resumeFrameGapS(state, extrasTick);
   const revived = revivedSinceKeyframe(actor, state, extrasTick);
   if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(checkpointAfterRevives(state.modeCheckpoint, revived));
   let restored = 0;
@@ -643,9 +669,11 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
     // the migration seed (P3b): the actor remembers what each entity was restored from, so its own seat's hint can be bounded
     actor.noteRestoredRow(row.entityId, row.tick, tank.pos.x, tank.pos.z);
     const extras = extrasById.get(row.entityId);
-    // the row against the extras (ResumeReading): how much newer it is, and the old host's clock at its tick
-    const gapS = Math.max(0, row.tick - extrasTick) * TICK_MS / 1000;
-    const reading: ResumeReading = { row, gapS, clockS: typeof state.timeS === 'number' ? state.timeS + gapS : null };
+    // the row against the extras (ResumeReading): how much newer it is in sim time (never past the frame's battle clock),
+    // what is left to the resume frame, and the old host's clock at its reading
+    const gapS = Math.min(Math.max(0, row.tick - extrasTick) * TICK_MS / 1000, frameGapS);
+    const tailS = Math.max(0, frameGapS - gapS);
+    const reading: ResumeReading = { row, gapS, tailS, clockS: typeof state.timeS === 'number' ? state.timeS + gapS : null };
     if (extras) {
       // the tallies run on across lives; the fight is the extras' only while the hull lives the life they saw (a revived
       // hull keeps the fresh state the new host built, and what its newer row carries)
@@ -668,6 +696,8 @@ export function applyResumeState(actor: MatchActor, state: HostResumeState): { r
       }
     }
     if (gapS > 0 || !extras) restoreRowCounts(combat, row, entity.spec);
+    // every channel the rest of the way to the resume frame (a cycle that ends readies, a magazine load that ends refills)
+    if (tailS > 0) tickReload(combat, tailS);
     restored++;
   }
   const destroyed = actor.authority.restoreDestroyedObstacles(state.frame.destroyed, state.frame.meta.destructibleRevision);

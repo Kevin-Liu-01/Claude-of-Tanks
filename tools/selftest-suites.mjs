@@ -105,6 +105,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/host/objectiveModesMigration.selftest.mjs', // 2026-11-02 audit M1: Zone Control, Mars, CTF and Turbo Ball survive a host handoff
     'src/mp/host/combatMigration.selftest.mjs', // 2026-11-02 audit M1: reload channels, module hp, fires, magazines, consumables, smoke and pillboxes survive a host handoff; a newer frame's rows win, mode stamps hold
     'src/mp/host/reviveMigration.selftest.mjs', // 2026-11-02 audit M1 (review round 2): a hull revived between the keyframe and the newest frame keeps its fresh life and is not revived again
+    'src/mp/host/resumeAging.selftest.mjs', // 2026-11-02 audit U2 (round 2): resumed extras age by the sim time between the battle clocks, an untouched row's to the resume frame too
     'src/mp/host/resumePhase.selftest.mjs', // 2026-11-02 audit M1: a migrated countdown counts on, an ended match stays ended, an unreadable keyframe never restarts a battle
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',

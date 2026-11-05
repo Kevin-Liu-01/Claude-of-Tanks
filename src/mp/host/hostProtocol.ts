@@ -77,6 +77,12 @@ export interface HostResumeState {
    * `tick` on (migrationState.ts resumeStateFromRetained). Absent: `tick`.
    */
   keyframeTick?: number;
+  /**
+   * The battle clock (ms) the extras were captured at (round 2 U2): the keyframe's, while `battleTimeMs` moves on with a
+   * newer frame's. The sim time between the two ages the extras (migrationState.ts resumeFrameGapS); a tick gap overstates
+   * it when the old host dropped ticks. Absent: the tick gap.
+   */
+  keyframeBattleTimeMs?: number;
   /** The old host's authority clock (s) at `keyframeTick`, the clock a row's auxiliary times count on. Absent on an older keyframe. */
   timeS?: number;
   /**
