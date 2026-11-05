@@ -35,9 +35,10 @@ export const GUN_2A83: Gun152Measures = Object.freeze({
   evac: null,
 });
 
-/** The LP-83 (Kubinka's Object 292: three sleeve sections clamped ahead of the root collar, no bore evacuator). */
+/** The LP-83 (Kubinka's Object 292: three sleeve sections clamped ahead of the root collar, no bore evacuator). Its
+ * recoiling root stays inside the T-80U X casting's trunnion block (baseR 0.15): at 0.21 it swung onto the X's deck. */
 export const GUN_LP83: Gun152Measures = Object.freeze({
-  len: 6.15, r: 0.115, baseR: 0.21,
+  len: 6.15, r: 0.115, baseR: 0.15,
   sleeve: Object.freeze([[0.22, 0.44], [0.45, 0.67], [0.68, 0.90]] as const),
   evac: null,
 });

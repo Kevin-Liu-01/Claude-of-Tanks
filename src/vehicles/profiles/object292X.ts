@@ -19,7 +19,7 @@ import { machinedRing } from '../machineGunGeometry.ts';
 import { OBJECT292_FRAME as F } from '../russia152Frames.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-const { box, cylY, cylZ } = KIT;
+const { box, cylX, cylY, cylZ } = KIT;
 /** The welded box's roof (turret frame: metres over the T-80U X casting's ring datum). */
 const BOX_ROOF = F.boxRoof;
 
@@ -141,7 +141,9 @@ function addRoof(P: TankBuilderPort): void {
 
 /** The LP-83 on its cradle: the root collar out of the casting's embrasure, then the sleeved tube. Gun frame. */
 function addGun(P: TankBuilderPort): void {
-  P.addGunExtra(cylZ(.205, .55, 20, .215), 0, 0, .05);   // inside the casting's embrasure (its cheeks at x .222)
+  // the T-80U X's own trunnion block across the casting's embrasure (its cheeks at x .222): a cylinder round the pitch
+  // axis keeps its envelope at every pitch, so the mount clears the X's deck as the T-80U's does
+  P.addGunExtra(cylX(.203, .446, 28), 0, 0, -.004);
   P.addGunExtra(cylZ(.165, 1.10, 24, .18), 0, 0, .80);    // the cradle's sleeve: a modest step over the tube
   P.addGunExtraDark(cylZ(.17, .04, 20), 0, 0, 1.34);
   build152Gun(P, { ...GUN_LP83, len: F.muzzleZ - F.trunnionZ });

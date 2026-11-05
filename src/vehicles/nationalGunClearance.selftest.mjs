@@ -69,6 +69,8 @@ const CURVES = {
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
+  // release 269: the Object 292 on the T-80U X hull and casting, its LP-83 inside the X's trunnion block on the X's curve
+  object292: [],
   // release 231: the C1 Ariete pre-series, its hull under the turret's sweep and its mantlet raked (profiles/misc.ts)
   c1_ariete_preserie: [],
   // release 231: the Ariete prototypes, their turrets' undersides at the hull slab and the roof ahead of the turret at the

@@ -127,7 +127,10 @@ Object.assign(object195.dims, { hullLengthM: OBJECT195_FRAME.hullFrontZ - OBJECT
   overallLengthM: OBJECT195_FRAME.muzzleZ - OBJECT195_FRAME.hullRearZ, widthM: 3.56, heightM: 2.62 });
 object195.gun = {
   ...object195.gun, caliberMm: 152, reloadS: 8.5, baseAccuracy: 0.29, aimTimeS: 1.75, soundProfile: '2a83',
-  shells: rounds('2A83', [[1000, 920, 840], 740, 18], [860, 680, 8], [900, 10]),
+  // Main 2026-11-04: tier X with the smallest trim that brings its mean to 0.65 or under. The T-14 152's rounds at 0.946
+  // (740 -> 700, the 259 range: 16/29 fair, mean 0.639; untrimmed 15/29, 0.659): its spread is pair by pair (the guns
+  // fire level, the 152 mm penetrates every peer and every peer the module), which no HP, damage or reload trim narrows
+  shells: rounds('2A83', [[1000, 920, 840], 700, 18], [860, 643, 8], [851, 10]),
 };
 object195.armor = modernArmor({
   hl: OBJECT195_FRAME.hullFrontZ, hw: 1.78, inW: 1.12, floor: 0.45, trkTop: 1.10, roofY: OBJECT195_FRAME.roofY,
