@@ -13,7 +13,7 @@
   X rebuild (evidence matrix).
 - Publication status / exact authority: lane branch only; Main integrates. No deploy.
 - Worktree / branch / baseline commit: ~/cot-lanes/russia-152, item/russia-152, base f98c38c63c (the 269 audio stack).
-- Current next action: the round audits on the X rebuild, its tier VII fairness row on the X spec, the round-4 critic.
+- Current next action: its own depression curve from the sweep, the regeneration chain and the release gate.
 - Blocking choices / known failures: none open; the critics' residual likeness notes are in the round log.
 
 ## Scope and preservation
@@ -46,9 +46,10 @@
 - Datums: the T-80U X's own (profiles/t80uX.ts): ground 0, hull 6.72 m (stern to -3.525 at the drum cradles), 3.60 m
   over the fenders, the casting's ring at y 1.6166 (1.55158 + the 0.065 raised race), z 0.0719; the trunnion at y 1.8214,
   z 1.4199 (the casting's own embrasure); the LP-83's muzzle at z 6.86 (3.5 m past the nose, the Kubinka photographs); the
-  box's roof 0.86 m over the ring (2.48 m), 0.24 m over the casting's.
+  box's roof 0.74 m over the ring (2.36 m), flush with the casting's crown.
 - Published dimensions versus native: published (infoboxes, unsourced) 3.525 m wide, 2.193 m high, 46 t; native 3.60 m
-  (the T-80U X fenders), 10.385 m over the gun (no length published), box roof 2.48 m, whip tip 3.906 m.
+  (the T-80U X fenders, 3.622 m over the rubber skirts), 10.385 m over the gun (no length published), box roof 2.36 m,
+  whip tip 3.786 m.
 - Unresolved conflicts: none blocking.
 
 ## Construction work order
@@ -56,12 +57,13 @@
 - Gross form: a T-80U X hull with a T-80BV-pattern glacis under a T-80U casting carrying a tall flat-sided welded box.
 - Hull, glacis, skirts: buildT80UXHullBase (no Kontakt-5); 4 x 7 stud pairs along the glacis normal (the hull core's
   stations), headlights in guards at z 2.62, the splash strip at z 2.40.
-- Turret: buildT80UXCasting; the box (prism stations z -2.22..0.58, half-width 1.30-1.42, floor 0.18-0.40, roof 0.86); the
-  hood (z 0.45-1.12, half-width 0.52-0.42, roof 0.86-0.68); the cheek blocks (face from x 0.44 z 1.22 to x 1.30 z 0.56,
-  0.34 deep, 0.12-0.64 high).
+- Turret: buildT80UXCasting; the box (prism stations z -2.22..0.58, half-width 1.22-1.42, floor 0.06-0.34, roof 0.74); the
+  hood (z 0.45-1.12, half-width 0.50-0.40, roof 0.74-0.60); the square steel cheek boxes (0.86 x 0.46 x 0.55, yawed 0.45 rad
+  from x 0.40 z 1.20) with seam strips and lifting eyes.
 - Running gear: the T-80U X's measured six wheels, three return rollers a side, the Russian X track standard.
-- Primitives: the T-80U X recipes, sectionSolid prisms, KIT boxes and cylinders; the LP-83 from profiles/gun152.ts.
-- Budget: 96,630 triangles at high (the T-80U X 98,418).
+- Primitives: the T-80U X recipes, sectionSolid prisms, KIT boxes and cylinders; the LP-83 from profiles/gun152.ts inside
+  the T-80U X's own trunnion block (cylX round the pitch axis: its envelope holds at every pitch).
+- Budget: 98,031 triangles at high (the sealed check; the T-80U X 98,418).
 - Material roles: hull/turret body paint; rubber apron and skirts (the T-80U X's own); glass on the sights.
 - Intentional negative spaces: the casting's gun embrasure (x +-0.222).
 - Permanent armour: the cheek blocks are turret armour (the x1.35 cheek and mantlet ratings); no ERA.
@@ -77,8 +79,8 @@
 | Source/conversion/frame integrity | NOT APPLICABLE (photographic target) | | | |
 | Every registered silhouette / raw aggregate | NOT APPLICABLE (no registered oracle) | | | |
 | Geometry components / dimension score / 3% check | NOT RUN | X rebuild | node tools/photo-reference-check.mjs --ids=object292 | |
-| Independent 14-view critic / actual Gallery | NOT RUN (X rebuild); rounds 1-3 PASS on the legacy build | | critics/r1..r3/TALLY.md | likeness "partly" x3 |
-| Winding, closure and intentional negative space | NOT RUN | | node tools/winding-audit.mjs --ids=object292 --check; tank-sealed-check | |
+| Independent 14-view critic / actual Gallery | PASS round 4 (3/3 matched, X rebuild); round 5 owed | raster/r8set, r10 | critics/r4/TALLY.md | likeness yes/partly/partly |
+| Winding, closure and intentional negative space | PASS (sealed); winding in the gate | round 5 | node tools/tank-sealed-check.mjs --ids=object292 --ledger=docs/geometry-gate/sealed.json (logs/sealed-x.json) | open px 0 in 0/33 views; inside-out 44 px in 0 views; bore masked |
 | Physical seats and yaw/pitch/recoil ownership | NOT RUN | | node tools/turret-parent-audit.mjs --ids=object292 | |
 | High/low gear motion / strict band+shoe / duplicates | NOT RUN | | node tools/track-clip-audit.mjs --ids=object292 --exact --strict | |
 | Actual return rollers / track thickness / chassis-side closure | NOT RUN (inherits the T-80U X's) | | | |
@@ -102,6 +104,13 @@
   near-vertical flanks, the cheek blocks raised in a V, the T-80U X's apron, rubber skirts and empty drum cradles (the
   Kubinka photographs), the commander's cupola moved to the right (the T-80's seating). Renders raster/r8. Next: audits,
   critic round 4.
+- Round 4 critics (raster/r8set): matched 3/3, the lineup told apart 3/3 (5/5 confidence on the 292); notes: the cheek
+  blocks read as raked fins, the cradle sleeve fat, the skirts over the wheels' tops, no front flaps, sparse studs.
+- Round 5 (e70aeb4f09, raster/r9): square steel cheek boxes, the box flush and lower (roof 0.74), a modest sleeve, studs
+  across the glacis in eight double columns, Kubinka's deep rubber skirts and front flaps.
+- Round 6 (53a7320c33): the gun-depression sweep found the LP-83's 0.24 m recoiling root on the deck (elevation over 8
+  degrees at yaw 0-55, every pitch at 132-180): the root slimmed to 0.15 m inside the T-80U X's trunnion block; the 292
+  joins nationalGunClearance on its own measured curve.
 
 ## Publication receipt (only if requested)
 

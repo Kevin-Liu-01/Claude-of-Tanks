@@ -6,12 +6,13 @@
 - Owner request: "make a new russian tank called object 195 (image 1)" (2026-11-04); the same day: "use our proper tank generation procedure and dont use the old t80 hull only
   use modern new hulls like the nnew t80 x hulll".
 - ID and display name: object195, "Object 195"; tier X (Main 2026-11-04, with the smallest trim), Russia, next-generation, prototype.
-- Implementation status: built on its own long hull (profiles/object195X.ts, profiles/russia152Kit.ts), registered; the tier X trim pending (armour trials after no HP, damage or reload trim reached two thirds fair).
+- Implementation status: built on its own long hull (profiles/object195X.ts, profiles/russia152Kit.ts), registered; the
+  trunnion at 2.12 m (the hangar photograph); the tier X trim applied (the 2A83 rounds at 0.946: 700 damage).
 - Qualification status: photo-class (docs/references/photos/russia-152-20261104.json, fixture
   src/vehicles/profiles/russia152.selftest.mjs); the round audits, the anatomy update and the release gate are owed.
 - Publication status / exact authority: lane branch only; Main integrates. No deploy.
 - Worktree / branch / baseline commit: ~/cot-lanes/russia-152, item/russia-152, base f98c38c63c (the 269 audio stack).
-- Current next action: apply the trim; the round audits.
+- Current next action: the regeneration chain and the release gate.
 - Blocking choices / known failures: none open; residual likeness notes in the round log.
 
 ## Scope and preservation
@@ -29,7 +30,9 @@
 - Source credits and limitations: Gur Khan (17 Oct 2018, gurkhan.blogspot.com/2018/10/95.html), bmpd (18 Oct 2018), militaryrussia, btvt; owner image 2 is the first prototype.
 - Canonical oracle path and SHA-256: NOT APPLICABLE (photo route).
 - Signed axis transform / handedness / uniform scale / translation: NOT APPLICABLE (no source mesh).
-- Datums (src/vehicles/russia152Frames.ts): hull z -3.95..3.95, roof 1.60, ring 1.60 at z -0.30, trunnion 2.30 at z 0.95, muzzle 6.70 (10.6 m over the gun).
+- Datums (src/vehicles/russia152Frames.ts): hull z -3.95..3.95, roof 1.60, ring 1.60 at z -0.30, trunnion 2.12 at z 0.95
+  (Gur Khan's hangar photograph: the gun leaves the module's lower half, about half a metre over the roof; 2.30 before
+  round 5), muzzle 6.70 (10.6 m over the gun).
 - Published dimensions versus native: 7.9 m hull (militaryrussia, btvt), about 10.6 m over the gun; the packet's envelope is the as-built Box3 (3.588 / 10.86 / 3.75).
 - Unresolved conflicts: none blocking.
 
@@ -37,7 +40,8 @@
 
 - Hull: addHullTub stations, GLACIS_Z0 1.60 to the nose at 1.02, glacis seams, three hatches on the glacis.
 - Running gear: seven T-90-type wheels at z +-2.58 (0.86 pitch).
-- Module: half-width 0.95, top 1.20 over the ring, the front faces and lintel, stacked sight boxes, the square sight tower, the rear sight box, the commander's box, radar boxes, APS domes, smoke banks; the 30 mm object195_2a42 pod; the octagon shield, the trunnion block, the round mantlet and the 2A83.
+- Module: half-width 0.95, top 1.20 over the ring, the front faces and the deep lintel over the gun (0.32 m from 0.86 to
+  1.18 over the ring), stacked sight boxes, the square sight tower, the rear sight box, the commander's box, radar boxes, APS domes, smoke banks; the 30 mm object195_2a42 pod; the octagon shield, the trunnion block, the round mantlet and the 2A83.
 - Plates: modernArmor (glacis [900,950,1250]); the crew in the hull's capsule (z 1.55-2.60).
 
 ## Evidence matrix
@@ -72,6 +76,16 @@
 - Fairness at X (fair/levers/): HP, damage and reload trims r1-r5 reached at most 16/29 fair (r4, 2,400 HP and 680 damage:
   15/29, mean 0.642); the 195 beats the same fourteen opponents 0.83-1.00 whatever the trim, so armour trials follow
   (Main's ruling: armour only when none of those gets there, said in the READY).
+- Diagnosis (a shell_hit probe in a source copy): the range fires level at each shooter's gun height. At 2.30 m the
+  195's 152 mm put 35 of 53 hits on the Abrams X's turret roof, and its opponents hit only its module, never the glacis:
+  glacis cuts g1-g4 changed nothing (11/29, 0.747). The trunnion was the datum fault, not the armour.
+- Round 5 (ec4bdb9613): trunnion 2.30 -> 2.12, the lintel deepened to close the gap over the gun. Untrimmed at X: 15/29
+  fair, mean 0.659 (fair/levers/o195-low-b0).
+- Trim (53a7320c33): the 2A83's rounds at 0.946 (APFSDS 740 -> 700, HEAT 643, HE 851): 16/29 fair, mean 0.639
+  (o195-low-c2), the smallest trim that meets the mean and the most pairs fair of ten trials (HP 2,400-2,700, damage
+  680-700, reload 9-9.5 and their pairs: 12-16/29). Two thirds fair is out of reach of every uniform lever: the pairs split
+  by penetration and alpha (the Challenger 3 TD pair under 0.1, the Oplots, ZTZ-20s and PT-84 Orzeł at 1.0), and the
+  module's 320 mm cheeks are penetrated by every peer, so an armour cut moves nothing.
 
 ## Publication receipt (only if requested)
 
