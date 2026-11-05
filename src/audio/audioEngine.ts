@@ -2357,6 +2357,10 @@ export function createAudio({
       scene = sceneForMap(mapId);
       atmosphere = atmosphereForMap(mapId);
       pool.setAtmosphere(atmosphere);
+      // the battle's room from its edge (U34, round 2): the loader's bed and the battle's vehicle rigs, heard under the
+      // loader, never ring in the Garage hangar's reverb; the reveal's ambientOn brings the world's loops (the director's
+      // play sets the same room again)
+      mixer.setReverb(scene.reverb);
       if (ambientWanted) ambience.play(scene, true);
     } else {
       scene = GARAGE_SCENE;
@@ -3098,6 +3102,7 @@ export function createAudio({
       /** The battle mode and the per-battle intents it gates (2026-11-02 audit F11). */
       battleState: () => ({ ...battleMode, ambientWanted, startEngineArmed: startEngineSoon, deathsLatched: deathLatch.size, loopsWaiting: waitingLoops.length }),
       get snapshot() { return mixer?.snapshot ?? null; },
+      get reverb() { return mixer?.reverb ?? null; },
       get tier() { return tier; },
       library: () => library?.stats() ?? null,
       /** Whether any owner pins an asset (2026-11-02 audit F11: the battle warm replaces the battle's pins only). */

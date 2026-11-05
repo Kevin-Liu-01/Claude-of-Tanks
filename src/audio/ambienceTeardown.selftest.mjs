@@ -40,6 +40,11 @@ assert.ok(loops.includes('loading_bed_loop'), `the loader keeps its bed (${loops
 assert.ok(!loops.includes('amb_garage'), `the garage hangar never comes back under the loader (${loops})`);
 assert.ok(!loops.includes(battleBed), 'nor the battle\'s world before the reveal');
 assert.equal(probe.ambientState().active, false, 'the ambience director holds no scene under the loader');
+// (U34, round 2) and the room is the battle's from its edge: the loader's bed and the battle's vehicle rigs, already heard
+// under it, never ring in the Garage hangar's reverb until the reveal (the convolver's impulse is the room's)
+const convolver = ctx.nodes.find((node) => node.kind === 'convolver');
+assert.ok(convolver, 'the mixer has its convolver');
+assert.equal(probe.reverb, sceneForMap(MAP).reverb, `the battle's room under its loader (${probe.reverb})`);
 
 // the reveal: the loader's bed off, the battle's world on
 audio.loadingOn(false);

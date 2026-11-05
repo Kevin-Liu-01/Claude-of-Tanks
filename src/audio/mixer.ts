@@ -37,6 +37,8 @@ export interface Mixer {
   readonly reverbInput: AudioNode;
   readonly master: GainNode;
   readonly snapshot: SnapshotId;
+  /** The room the reverb rings in (setReverb's last id). */
+  readonly reverb: ReverbId;
   /** Logical-dB top of the HDR window. */
   readonly hdrTop: number;
   setChannel(channel: SettingsChannel, value: number): void;
@@ -298,6 +300,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
     reverbInput,
     master,
     get snapshot() { return snapshot; },
+    get reverb() { return reverbId; },
     get hdrTop() { return hdrTop; },
     setChannel(channel, value) {
       chan[channel] = clamp(Number.isFinite(value) ? value : 1, 0, 1);
