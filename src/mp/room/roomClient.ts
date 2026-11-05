@@ -672,6 +672,9 @@ export class RoomClient {
   private async connectAndAdmit(kind: 'create' | 'join', code: string, payload: Record<string, unknown>): Promise<RoomSnapshot> {
     if (this.disposed) throw new RoomError('internal', 'room client disposed');
     this.closedReason = null;
+    // a fresh create or join is a new seat, never the one a past leave() was leaving (round 2 U8: the flag was never
+    // reset, so a client reused after a leave dropped every match_start and host_changed); a resume runs through admit()
+    this.leaving = false;
     this.roomCode = code;
     this.setPhase('connecting', kind);
     this.openTransport(code);
